@@ -30,6 +30,8 @@
 </style>
 <h1>Asynchronous I/O in Windows for UNIX Programmers</h1>
 
+<p>Ryan Dahl ry@tinyclouds.org
+
 <p>This document assumes you are familiar with how non-blocking socket I/O
 is done in UNIX.
 
@@ -40,7 +42,7 @@ high-concurrency servers, they've simply choosen a different paradigm for
 this called <a
   href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">overlapped
   I/O</a>.  The mechanism in Windows by which multiple sockets are polled
-for compltion is called
+for completion is called
 <a href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O
   completion ports</a>. More or less equivlant to <a
   href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> (Macintosh,
@@ -58,9 +60,9 @@ For example, instead of waiting for a socket to become writable and then
 to it, as you do in UNIX operating systems, you rather <a
   href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
 a buffer and wait for it to have been sent.
-The result is that non-blocking <code>write(2)</code> <code>read(2)</code>
+The result is that non-blocking <code>write(2)</code> and <code>read(2)</code>
 are non-portable to Windows. This tends to throw the poor sap assigned with
-the job of porting your app to Windows into complusive nervous twitches.
+the job of porting your app to Windows into compulsive nervous twitches.
 
 <p>
 Almost every socket operation that you're familar with has an 
@@ -100,15 +102,64 @@ overlapped counter-part (<a href="#table-foot">see table</a>).
       <a href="http://msdn.microsoft.com/en-us/library/ms741688(v=VS.85).aspx"><code>WSARecv()</code></a>
     </td>
   </tr>
+
   <tr>
-    <td>socket or pipe</td>
+    <td>socket</td>
     <td>
-      <code>connect(2)</code>
+      <pre>connect(2)</pre>
+      Non-blocking <code>connect()</code> is has difficult semantics in
+      UNIX. The proper way to connect to a remote host is this: call
+      <code>connect(2)</code> which will usually return <code>EAGAIN</code>.
+      Poll on the file descriptor for writablity. Then use
+      <pre>int error;
+socklen_t len = sizeof(int);
+getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len);</pre>
+      The <code>error</code> should be zero if the connection succeeded.
+      (Documented in <code>connect(2)</code> under <code>EINPROGRESS</code>
+      on the Linux man page.)
     </td>
     <td>
       <a href="http://msdn.microsoft.com/en-us/library/ms737606(VS.85).aspx"><code>ConnectEx()</code></a>
     </td>
   </tr>
+
+  <tr>
+    <td>pipe</td>
+    <td>
+      <pre>connect(2)</pre>
+    </td>
+    <td>
+      <a
+        href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe()</code></a>
+
+      Be sure to set <code>PIPE_NOWAIT</code> in <code>CreateNamedPipe()</code>
+    </td>
+  </tr>
+
+
+  <tr>
+    <td>socket</td>
+    <td>
+      <pre>accept(2)</pre>
+    </td>
+    <td>
+      <a
+        href="http://msdn.microsoft.com/en-us/library/ms737524(v=VS.85).aspx"><code>AcceptEx()</code></a>
+    </td>
+  </tr>
+
+  <tr>
+    <td>pipe</td>
+    <td>
+      <pre>accept(2)</pre>
+    </td>
+    <td>
+      <a
+        href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe()</code></a>
+    </td>
+  </tr>
+
+
   <tr>
     <td>file</td>
     <td>

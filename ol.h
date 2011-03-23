@@ -8,78 +8,102 @@
 typedef ol_read_cb void(*)(ol_buf *bufs, int bufcnt);
 typedef ol_close_cb void(*)(int read, int write);
 typedef ol_connect_cb void(*)();
-typedef ol_connect_cb void(*)();
-
-
-typedef enum {
-  OL_NAMED_PIPE,
-  OL_TCP,
-  OL_TCP6
-} ol_socket_type;
-
-
-typedef struct {
-  size_t len;
-  char* buf;
-} ol_buf;
-
-
-typedef struct {
-  size_t len;
-  void* name;
-} ol_addr;
 
 
 /**
- * Creates a new socket of given type. If bind_addr is NULL a random
- * port will be bound in the case of OL_TCP and OL_TCP6. In the case
- * of NAMED_PIPE, bind_addr specifies a string describing the location
- * to bind to.
+ * Do not make assumptions about the order of the elements in this sturct.
+ * Always use offsetof because the order is platform dependent. Has a char*
+ * buf and size_t len. That's all you need to know.
  */
-ol_socket* ol_socket_create(ol_socket_type type, ol_buf* bind_addr,
-    ol_read_cb cb, ol_close_cb cb);
+struct ol_buf;
 
 
-int ol_socket_connect(ol_socket* socket, ol_addr addr,
+
+/**
+ * Creates a tcp h. If bind_addr is NULL a random
+ * port will be bound.
+ */
+ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb);
+
+
+ol_handle* ol_file_new(char *filename, int read, ol_read_cb cb,
+    ol_close_cb cb);
+
+
+/**
+ * In the case of servers, give a filename. In the case of clients
+ * leave filename NULL.
+ */
+ol_handle* ol_named_pipe_new(char *filename, ol_read_cb cb,
+    ol_close_cb cb);
+
+
+ol_handle* ol_tty_new(ol_tty_read_cb cb, ol_close_cb cb);
+
+
+/**
+ * Only works with named pipes and TCP sockets.
+ */
+int ol_connect(ol_handle* h, sockaddr* addr, sockaddr_len len,
     ol_buf* buf, size_t* bytes_sent, ol_connect_cb ol);
 
 
-int ol_socket_pause(ol_socket* socket);
-
-
-int ol_socket_resume(ol_socket* socket);
-
-
 /**
- * Get local address. addr is filled.
+ * Depth of write buffer in bytes.
  */
-int ol_socket_address(ol_socket* socket, ol_addr* addr);
+size_t ol_buffer_size(ol_handle* h);
+
+
+int ol_pause(ol_handle* h);
+
+
+int ol_resume(ol_handle* h);
 
 
 /**
- * Returns file descriptor. There may be only limited numbers of file
- * descriptors allowed by the operating system. On Windows this limit is
- * 2048 (see _setmaxstdio[http://msdn.microsoft.com/en-us/library/6e3b887c.aspx])
+ * Returns file descriptor associated with the handle. There may be only
+ * limited numbers of file descriptors allowed by the operating system. On
+ * Windows this limit is 2048 (see
+ * _setmaxstdio[http://msdn.microsoft.com/en-us/library/6e3b887c.aspx])
  */
-int ol_socket_get_fd(ol_socket* socket);
+int ol_get_fd(ol_handle* h);
 
 
 /**
- * Send data to socket. User responsible for bufs until callback is made.
- * Multiple ol_socket_write() calls may be issued before the previous ones
+ * Send data to h. User responsible for bufs until callback is made.
+ * Multiple ol_handle_write() calls may be issued before the previous ones
  * complete - data will sent in the correct order.
  */
-int ol_socket_write(ol_socket* socket, ol_buf* bufs, int bufcnt,
+int ol_write(ol_handle* h, ol_buf* bufs, int bufcnt,
     size_t* bytes_sent, ol_write_cb cb);
 
 
-int ol_socket_listen(ol_socket* server, int backlog, ol_accept_cb cb);
+/**
+ * Note: works on both named pipes and TCP handles.
+ */
+int ol_listen(ol_handle* h, int backlog, ol_accept_cb cb);
 
 
-int ol_socket_shutdown_write(ol_socket* socket);
+/**
+ * Writes EOF or sends a FIN packet.
+ */
+int ol_end(ol_handle* h);
 
 
-int ol_socket_close(ol_socket* socket);
+int ol_close(ol_handle* h);
 
 
-int ol_socket_free(ol_socket* socket);
+/**
+ * Releases memory associated with handle. You MUST call this after
+ * ol_close_cb() is made with both 0 arguments.
+ */
+int ol_free(ol_handle* h);
+
+
+ol_loop* ol_loop_new();
+ol_loop* ol_associate(ol_handle* handle);
+void ol_run();
+
+
+
+
