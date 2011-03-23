@@ -50,7 +50,18 @@ int ol_socket_pause(ol_socket* socket);
 int ol_socket_resume(ol_socket* socket);
 
 
+/**
+ * Get local address. addr is filled.
+ */
 int ol_socket_address(ol_socket* socket, ol_addr* addr);
+
+
+/**
+ * Returns file descriptor. There may be only limited numbers of file
+ * descriptors allowed by the operating system. On Windows this limit is
+ * 2048 (see _setmaxstdio[http://msdn.microsoft.com/en-us/library/6e3b887c.aspx])
+ */
+int ol_socket_get_fd(ol_socket* socket);
 
 
 /**
