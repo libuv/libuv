@@ -1,0 +1,68 @@
+<style>
+  body {
+    width: 30em;
+    font-size: 12pt;
+    font-family: Arial;
+    max-width: 30em;
+    margin: 1em;
+  }
+</style>
+<h1>Asynchronous I/O in Windows for UNIX Programmers</h1>
+
+<p>Windows has very different notions for how asynchronous and non-blocking I/O
+are done. While Windows does have <code>select()</code>, it is severely
+limited: it supports only 64 file descriptors. (Does <code>select()</code>
+work on named pipes in windows?) Windows has the possibility of serving
+20,000 TCP connections using a different API called <a
+  href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">overlapped
+  I/O</a> using <a
+  href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O
+  completion ports</a>.  Unfortunately I/O completion ports 
+
+
+
+
+
+
+tips
+<ul>
+<li> overlapped = non-blocking.
+<li> There is no overlapped <a href="http://msdn.microsoft.com/en-us/library/ms738518(VS.85).aspx"><code>GetAddrInfoEx()</code></a> function. It seems Asynchronous Procedure Calls must be used instead.
+<li> <a href=http://msdn.microsoft.com/en-us/library/ms740673(VS.85).aspx"><code>Windows Sockets 2</code></a>
+</ul>
+
+IOCP:
+<ul>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">Synchronization and Overlapped Input and Output</a>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>WSAOVERLAPPED</code> Structure</a>
+  <ul>
+  <li><a href="http://msdn.microsoft.com/en-us/library/ms683209(v=VS.85).aspx"><code>GetOverlappedResult()</code></a>
+  <li><a href="http://msdn.microsoft.com/en-us/library/ms683244(v=VS.85).aspx"><code>HasOverlappedIoCompleted()</code></a>
+  <li><a href="http://msdn.microsoft.com/en-us/library/aa363792(v=vs.85).aspx"><code>CancelIoEx()</code></a>
+  &mdash; cancels an overlapped operation.
+  </ul>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms741688(v=VS.85).aspx"><code>WSARecv()</code></a>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms737606(VS.85).aspx"><code>ConnectEx()</code></a>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms740565(v=VS.85).aspx"><code>TransmitFile()</code></a>
+&mdash; an async <code>sendfile()</code> for windows.
+<li><a href="http://msdn.microsoft.com/en-us/library/ms741565(v=VS.85).aspx"><code>WSADuplicateSocket()</code></a>
+&mdash; describes how to share a socket between two processes.
+</ul>
+
+APC:
+<ul>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms681951(v=vs.85).aspx">Asynchronous Procedure Calls</a>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms682016"><code>DNSQuery()</code></a>
+&mdash; General purpose DNS query function like <code>res_query()</code> on UNIX.
+</ul>
+
+
+Pipes:
+<ul>
+<li><a href="http://msdn.microsoft.com/en-us/library/aa365781(v=VS.85).aspx"><code>Pipe functions</code></a>
+<li><a href="http://msdn.microsoft.com/en-us/library/aa365150(VS.85).aspx"><code>CreateNamedPipe</code></a>
+<li><a href="http://msdn.microsoft.com/en-us/library/aa365144(v=VS.85).aspx"><code>CallNamedPipe</code></a>
+&mdash; like <code>accept</code> is for UNIX pipes.
+<li><a href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe</code></a>
+</ul>
