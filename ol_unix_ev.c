@@ -22,6 +22,7 @@ ol_loop* ol_associate(ol_handle* handle)
 {
 }
 
+
 void ol_run(ol_loop *loop) {
   ev_run(loop, 0);
 }
@@ -48,17 +49,29 @@ ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb) {
 }
 
 
+void handle_tcp_io() {
+
+}
+
+
 int try_connect(ol_handle* h) {
   int r = connect(h->fd, h->connect_addr, h->connect_addrlen);
 
   if (r != 0) {
     if (errno == EINPROGRESS) {
-      /* Wait for fd to become writable */
+      /* Wait for fd to become writable. */
       h->connecting = 1;
       ev_io_init(&h->write_watcher, handle_tcp_io, h->fd, EV_WRITE);
       ev_io_start(h->loop, &h->write_watcher);
     }
     return got_error("connect", errno);
+  }
+
+  /* Connected */
+  if (h->connect_cb) {
+    h->connect_cb(h);
+    h->connecting = 0;
+    h->connect_cb = NULL;
   }
 
   return 0;
@@ -77,14 +90,14 @@ int ol_connect(ol_handle* h, sockaddr* addr, sockaddr_len addrlen,
 
   if (buf) {
     ol_write(h, buf, 1, bytes_sent, cb);
+  } else {
     h->connect_cb = cb;
   }
 
-  if (0 == try_connect(h)) {
-    if (
-  }
+  return try_connect(h);
+}
 
 
-
-  return 0;
+int ol_get_fd(ol_handle* h) {
+  return h->fd;
 }

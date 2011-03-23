@@ -1,251 +1,304 @@
-<style>
-  body {
-    font-size: 12pt;
-    font-family: Arial;
-    max-width: 40em;
-    margin: 1em;
-  }
+<html>
+  <head>
+    <style>
+      body {
+        max-width: 40em;
+        margin: 2em;
+      }
 
-  a {
-    color: inherit;
-  }
+      a {
+        color: inherit;
+      }
 
-  a:hover {
-    color: red;
-  }
+      a:hover {
+        color: red;
+      }
 
-  table td {
-    min-width: 10em;
-    vertical-align: top;
-    padding: 0.5em;
-  }
-
-  table td {
-    border-bottom: 1px solid #bbb;
-  }
-
-  table tr:first-child td {
-    border-top: 1px solid #bbb;
-  }
-</style>
+      dt { margin-top: 1em; }
+      dd { margin-bottom: 1em; }
+    </style>
+    <title>Asynchronous I/O in Windows for UNIX Programmers</title>
+  </head>
+  <body>
 <h1>Asynchronous I/O in Windows for UNIX Programmers</h1>
 
-<p>Ryan Dahl ry@tinyclouds.org
+<p>Ryan Dahl ryan@joyent.com
 
 <p>This document assumes you are familiar with how non-blocking socket I/O
 is done in UNIX.
 
-<p>Windows has very different notions for how asynchronous and non-blocking I/O
-are done. While Windows has <code>select()</code> it supports only 64
-file descriptors.  Obviously Microsoft does understand how to make
-high-concurrency servers, they've simply choosen a different paradigm for
-this called <a
+<p>Windows has different notions for how asynchronous and non-blocking I/O
+are done. <code>select()</code> is supported in Window but it supports only 64
+file descriptors&mdash;which is unacceptable.
+Microsoft understands how to make high-concurrency servers but they've
+choosen to do it with an system somewhat different than what one is used to
+UNIX. It is called <a
   href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">overlapped
-  I/O</a>.  The mechanism in Windows by which multiple sockets are polled
-for completion is called
-<a href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O
-  completion ports</a>. More or less equivlant to <a
-  href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> (Macintosh,
-FreeBSD, other BSDs), <a href="http://en.wikipedia.org/wiki/Epoll">epoll</a>
+  I/O</a>.  The device by which overlapped socket I/O is polled for
+completion is an <a
+  href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O
+  completion port</a>. It is more or less equivalent to <a
+  href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> (Macintosh and
+BSDs), <a href="http://en.wikipedia.org/wiki/Epoll">epoll</a>
 (Linux), <a
   href="http://developers.sun.com/solaris/articles/event_completion.html">event
   completion ports</a> (Solaris), <a href="">poll</a> (modern UNIXes), or <a
   href="http://www.kernel.org/doc/man-pages/online/pages/man2/select.2.html">select</a>
-(all operating systems). The main difference is that in UNIX you ask the
-kernel to wait for file descriptors to change their readability or
-writablity while in windows you wait for asynchronous functions to complete.
+(all operating systems). The main variation is that in UNIXes you generally
+ask the kernel to wait for file descriptors to change their readability or
+writablity, while in Windows you wait for asynchronous functions to complete.
+
+<p>
 For example, instead of waiting for a socket to become writable and then
 <a
   href="http://www.kernel.org/doc/man-pages/online/pages/man2/write.2.html"><code>write(2)</code></a>
-to it, as you do in UNIX operating systems, you rather <a
+to it, as you do in UNIX operating systems, you would rather <a
   href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
 a buffer and wait for it to have been sent.
-The result is that non-blocking <code>write(2)</code> and <code>read(2)</code>
-are non-portable to Windows. This tends to throw the poor sap assigned with
-the job of porting your app to Windows into compulsive nervous twitches.
 
 <p>
-Almost every socket operation that you're familar with has an 
-overlapped counter-part (<a href="#table-foot">see table</a>).
+The consequence of this different polling interface is that non-blocking
+<code>write(2)</code> and <code>read(2)</code> (among other calls) are not
+portable to Windows for high-performance servers.
 
 
-<p id="table-foot">
-<table cellspacing=0>
-  <!-- TODO: links -->
-  <tr>
-    <td></td>
-    <td>
-      <pre>int fd;</pre>
-    </td>
-    <td>
-      <pre>HANDLE handle;</pre>
-      <pre>SOCKET socket;</pre>
-      (the two are the same type)
-  </tr>
-  <tr>
-    <td>socket or pipe</td>
-    <td>
-      <code>send(2)</code>,
-      <code>write(2)</code>
-    </td>
-    <td>
-      <a href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
-    </td>
-  </tr>
-  <tr>
-    <td>socket or pipe</td>
-    <td>
-      <code>recv(2)</code>,
-      <code>read(2)</code>
-    </td>
-    <td>
-      <a href="http://msdn.microsoft.com/en-us/library/ms741688(v=VS.85).aspx"><code>WSARecv()</code></a>
-    </td>
-  </tr>
+<p>In UNIX nearly everything has a file descriptor and <code>read(2)</code>
+and <code>write(2)</code> more or less work on all of them. This is a nice
+abstraction but for non-blocking I/O it does not dig as deep as one would
+like. The file system itself has no concept of non-blocking I/O&mdash;file
+descriptors for on disk files cannot be polled for readability,
+<code>read(2)</code> always has the possibility of blocking for an
+indefinite amount of time. UNIX users should not snub the Windows async API,
+in practice the explicit difference between sockets, pipes, on disk files,
+and TTYs seems make usage more clear where as in UNIX they deceptively seem
+seem like they should work similar but do not.
 
-  <tr>
-    <td>socket</td>
-    <td>
-      <pre>connect(2)</pre>
-      Non-blocking <code>connect()</code> is has difficult semantics in
-      UNIX. The proper way to connect to a remote host is this: call
-      <code>connect(2)</code> which will usually return <code>EAGAIN</code>.
-      Poll on the file descriptor for writablity. Then use
-      <pre>int error;
+
+<p>
+Almost every socket operation that you're familiar with has an
+overlapped counter-part. The following section tries to pair Windows
+overlapped I/O syscalls with non-blocking UNIX ones.
+
+
+<h3>TCP Sockets</h3>
+
+TCP Sockets are by far the most important stream to get right.
+Servers should expect to be handling tens of thousands of these
+per thread, concurrently. This is possible with overlapped I/O in Windows if
+one is careful to avoid UNIX-ism like file descriptors. (Windows has a
+hard limit of 2048 open file descriptors&mdash;see
+<a
+  href="http://msdn.microsoft.com/en-us/library/6e3b887c.aspx"><code>_setmaxstdio()</code></a>.)
+
+
+<dl>
+
+<dt><code>send(2)</code>, <code>write(2)</code></dt>
+<dd>Windows: <a href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
+</dd>
+
+
+<dt><code>recv(2)</code>, <code>read(2)</code></dt>
+<dd>
+Windows: <a href="http://msdn.microsoft.com/en-us/library/ms741688(v=VS.85).aspx"><code>WSARecv()</code></a>
+</dd>
+
+
+<dt><code>connect(2)</code></dt>
+<dd>
+Windows: <a href="http://msdn.microsoft.com/en-us/library/ms737606(VS.85).aspx"><code>ConnectEx()</code></a>
+
+<p>
+Non-blocking <code>connect()</code> is has difficult semantics in
+UNIX. The proper way to connect to a remote host is this: call
+<code>connect(2)</code> while it returns
+<code>EINPROGRESS</code> poll on the file descriptor for writablity.
+Then use
+<pre>int error;
 socklen_t len = sizeof(int);
 getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len);</pre>
-      The <code>error</code> should be zero if the connection succeeded.
-      (Documented in <code>connect(2)</code> under <code>EINPROGRESS</code>
-      on the Linux man page.)
-    </td>
-    <td>
-      <a href="http://msdn.microsoft.com/en-us/library/ms737606(VS.85).aspx"><code>ConnectEx()</code></a>
-    </td>
-  </tr>
-
-  <tr>
-    <td>pipe</td>
-    <td>
-      <pre>connect(2)</pre>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe()</code></a>
-
-      Be sure to set <code>PIPE_NOWAIT</code> in <code>CreateNamedPipe()</code>
-    </td>
-  </tr>
+A zero <code>error</code> indicates that the connection succeeded.
+(Documented in <code>connect(2)</code> under <code>EINPROGRESS</code>
+on the Linux man page.)
+</dd>
 
 
-  <tr>
-    <td>socket</td>
-    <td>
-      <pre>accept(2)</pre>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/ms737524(v=VS.85).aspx"><code>AcceptEx()</code></a>
-    </td>
-  </tr>
-
-  <tr>
-    <td>pipe</td>
-    <td>
-      <pre>accept(2)</pre>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe()</code></a>
-    </td>
-  </tr>
+<dt><code>accept(2)</code></dt>
+<dd>
+Windows: <a href="http://msdn.microsoft.com/en-us/library/ms737524(v=VS.85).aspx"><code>AcceptEx()</code></a>
+</dd>
 
 
-  <tr>
-    <td>file</td>
-    <td>
-      <code>write(2)</code>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/aa365748(v=VS.85).aspx"><code>WriteFileEx()</code></a>
-    </td>
-  </tr>
-  <tr>
-    <td>file</td>
-    <td>
-      <code>read(2)</code>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/aa365468(v=VS.85).aspx"><code>ReadFileEx()</code></a>
-    </td>
-  </tr>
-  <tr>
-    <td>socket and file</td>
-    <td>
-      <code>sendfile()</code> [<a href="#sendfile-foot">1</a>]
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/ms740565(v=VS.85).aspx"><code>TransmitFile()</code></a>
-    </td>
-  </tr>
+<dt><code>sendfile(2)</code></dt>
+<dd>
+Windows: <a href="http://msdn.microsoft.com/en-us/library/ms740565(v=VS.85).aspx"><code>TransmitFile()</code></a>
 
-  <tr>
-    <td>tty</td>
-    <td>
-      <a
-        href="http://www.kernel.org/doc/man-pages/online/pages/man3/tcsetattr.3.html"><code>tcsetattr(3)</code></a>
-    </td>
-    <td>
-      <a href="http://msdn.microsoft.com/en-us/library/ms686033(VS.85).aspx"><code>SetConsoleMode()</code></a>
-    </td>
-  </tr>
-
-  <tr>
-    <td>tty</td>
-    <td>
-      <code>read(2)</code>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/ms684958(v=VS.85).aspx"><code>ReadConsole()</code></a>
-      and
-      <a
-        href="http://msdn.microsoft.com/en-us/library/ms684961(v=VS.85).aspx"><code>ReadConsoleInput()</code></a>
-      do not support overlapped I/O and there are no overlapped
-      counter-parts. One strategy to get around this is
-      <pre><a
-          href="http://msdn.microsoft.com/en-us/library/ms685061(VS.85).aspx">RegisterWaitForSingleObject</a>(&tty_wait_handle, tty_handle,
-        tty_want_poll, NULL, INFINITE, WT_EXECUTEINWAITTHREAD |
-        WT_EXECUTEONLYONCE)</pre>
-      which will execute <code>tty_want_poll()</code> in a different thread.
-      You can use this to notify the calling thread that
-      <code>ReadConsoleInput()</code> will not block.
-
-    </td>
-  </tr>
-
-  <tr>
-    <td>tty</td>
-    <td>
-      <code>write(2)</code>
-    </td>
-    <td>
-      <a
-        href="http://msdn.microsoft.com/en-us/library/ms687401(v=VS.85).aspx"><code>WriteConsole()</code></a> 
-      is also blocking but this is probably acceptable.
-    </td>
-
-  </tr>
-  
-</table>
-
-<p id="sendfile-foot">[1] <code>sendfile()</code> on UNIX has not been agreed
-on yet. Each operating system has a slightly different API.
+<p> The exact API of <code>sendfile(2)</code> on UNIX has not been agreed
+on yet. Each operating system does it slightly different. All
+<code>sendfile(2)</code> implementations (except possibly FreeBSD?) are blocking
+even on non-blocking sockets.
+<ul>
+<li><a href="http://www.kernel.org/doc/man-pages/online/pages/man2/sendfile.2.html">Linux <code>sendfile(2)</code></a>
+<li><a href="http://www.freebsd.org/cgi/man.cgi?query=sendfile&sektion=2">FreeBSD <code>sendfile(2)</code></a>
+<li><a href="http://www.manpagez.com/man/2/sendfile/">Darwin <code>sendfile(2)</code></a>
+</ul>
+Marc Lehmann has written <a
+  href="https://github.com/joyent/node/blob/2c185a9dfd3be8e718858b946333c433c375c295/deps/libeio/eio.c#L954-1080">a
+  portable version in libeio</a>.
+</dd>
 
 
-<p id="foot2">
+The following are nearly same in Windows overlapped and UNIX
+non-blocking sockets. The only difference is that the UNIX variants
+take integer file descriptors while Windows uses <code>SOCKET</code>.
+<ul>
+  <li><a href="http://msdn.microsoft.com/en-us/library/ms740496(v=VS.85).aspx"><code>sockaddr</code></a>
+  <li><a href="http://msdn.microsoft.com/en-us/library/ms737550(v=VS.85).aspx"><code>bind()</code></a>
+  <li><a href="http://msdn.microsoft.com/en-us/library/ms738543(v=VS.85).aspx"><code>getsockname()</code></a>
+</ul>
+
+<h3>Named Pipes</h3>
+
+Windows has "named pipes" which are more or less the same as <a
+  href="http://www.kernel.org/doc/man-pages/online/pages/man7/unix.7.html"><code>AF_UNIX</code>
+  domain sockets</a>. <code>AF_UNIX</code> sockets exist in the file system
+often looking like
+<pre>/tmp/<i>pipename</i></pre>
+
+Windows named pipes have a path, but they are not directly part of the file
+system; instead they look like
+
+<pre>\\.\pipe\<i>pipename</i></pre>
+
+
+<dl>
+<dt><code>socket(AF_UNIX, SOCK_STREAM, 0), bind(2), listen(2)</code></dt>
+<dd>
+<a href="http://msdn.microsoft.com/en-us/library/aa365150(VS.85).aspx"><code>CreateNamedPipe()</code></a>
+
+<p>Use <code>FILE_FLAG_OVERLAPPED</code>, <code>PIPE_TYPE_BYTE</code>,
+<code>PIPE_NOWAIT</code>.
+</dd>
+
+
+<dt><code>send(2)</code>, <code>write(2)</code></dt>
+<dd>
+<a href="http://msdn.microsoft.com/en-us/library/aa365748(v=VS.85).aspx"><code>WriteFileEx()</code></a>
+</dd>
+
+
+<dt><code>recv(2)</code>, <code>read(2)</code></dt>
+<dd> 
+<a href="http://msdn.microsoft.com/en-us/library/aa365468(v=VS.85).aspx"><code>ReadFileEx()</code></a>
+</dd>
+
+<dt><code>connect(2)</code></dt>
+<dd>
+<a href="http://msdn.microsoft.com/en-us/library/aa365150(VS.85).aspx"><code>CreateNamedPipe()</code></a>
+</dd>
+
+
+<dt><code>accept(2)</code></dt>
+<dd>
+<a href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe()</code></a>
+</dd>
+
+
+</dl>
+
+Examples:
+<ul>
+<li><a
+  href="http://msdn.microsoft.com/en-us/library/aa365601(v=VS.85).aspx">Named
+  Pipe Server Using Completion Routines</a>
+<li><a
+  href="http://msdn.microsoft.com/en-us/library/aa365603(v=VS.85).aspx">Named
+  Pipe Server Using Overlapped I/O</a>
+</ul>
+
+
+<h3>On Disk Files</h3>
+
+<p>
+In UNIX file system files are not able to use non-blocking I/O. There are
+some operating systems that have asynchronous I/O but it is not standard and
+at least on Linux is done with pthreads in GNU libc. For this reason
+applications designed to be portable across different UNIXes must manage a
+thread pool for issuing file I/O syscalls.
+
+<p>
+The situation is better in Windows: true overlapped I/O is available when
+reading or writing a stream of data to a file.
+
+<dl>
+
+<dt><code>write(2)</code></dt>
+<dd> Windows:
+<a href="http://msdn.microsoft.com/en-us/library/aa365748(v=VS.85).aspx"><code>WriteFileEx()</code></a>
+
+<p>Solaris's event completion ports has true in-kernel async writes with <a
+  href="http://download.oracle.com/docs/cd/E19253-01/816-5171/aio-write-3rt/index.html">aio_write(3RT)</a>
+</dd>
+
+<dt><code>read(2)</code></dt>
+<dd> Windows:
+<a href="http://msdn.microsoft.com/en-us/library/aa365468(v=VS.85).aspx"><code>ReadFileEx()</code></a>
+
+<p>Solaris's event completion ports has true in-kernel async reads with <a
+  href="http://download.oracle.com/docs/cd/E19253-01/816-5171/aio-read-3rt/index.html">aio_read(3RT)</a>
+</dd>
+
+</dl>
+
+<h3>Console/TTY</h3>
+
+<p>It is (usually?) possible to poll a UNIX TTY file descriptor for
+readability or writablity just like a TCP socket&mdash;this is very helpful
+and nice. In Windows the situation is worse, not only is it a completely
+different API but there are not overlapped versions to read and write to the
+TTY. Polling for readability can be accomplished by waiting in another
+thread with <a
+  href="http://msdn.microsoft.com/en-us/library/ms685061(VS.85).aspx"><code>RegisterWaitForSingleObject()</code></a>.
+
+<dl>
+
+<dt><code>read(2)</code></dt>
+<dd>
+<a
+href="http://msdn.microsoft.com/en-us/library/ms684958(v=VS.85).aspx"><code>ReadConsole()</code></a>
+and
+<a
+href="http://msdn.microsoft.com/en-us/library/ms684961(v=VS.85).aspx"><code>ReadConsoleInput()</code></a>
+do not support overlapped I/O and there are no overlapped
+counter-parts. One strategy to get around this is
+<pre><a href="http://msdn.microsoft.com/en-us/library/ms685061(VS.85).aspx">RegisterWaitForSingleObject</a>(&tty_wait_handle, tty_handle,
+  tty_want_poll, NULL, INFINITE, WT_EXECUTEINWAITTHREAD |
+  WT_EXECUTEONLYONCE)</pre>
+which will execute <code>tty_want_poll()</code> in a different thread.
+You can use this to notify the calling thread that
+<code>ReadConsoleInput()</code> will not block.
+</dd>
+
+
+<dt><code>write(2)</code></dt>
+<dd>
+<a href="http://msdn.microsoft.com/en-us/library/ms687401(v=VS.85).aspx"><code>WriteConsole()</code></a>
+is also blocking but this is probably acceptable.
+</dd>
+
+
+<dt><a
+  href="http://www.kernel.org/doc/man-pages/online/pages/man3/tcsetattr.3.html"><code>tcsetattr(3)</code></a></dt>
+<dd>
+<a href="http://msdn.microsoft.com/en-us/library/ms686033(VS.85).aspx"><code>SetConsoleMode()</code></a>
+</dd>
+
+
+</dl>
+
+
+
+<h2 id="foot2">Links</h2>
 <p>
 tips
 <ul>
@@ -297,3 +350,5 @@ Pipes:
 &mdash; like <code>accept</code> is for UNIX pipes.
 <li><a href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe</code></a>
 </ul>
+
+</body></html>

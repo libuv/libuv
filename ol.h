@@ -18,7 +18,6 @@ typedef ol_connect_cb void(*)();
 struct ol_buf;
 
 
-
 /**
  * Creates a tcp h. If bind_addr is NULL a random
  * port will be bound.
