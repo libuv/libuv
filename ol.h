@@ -3,9 +3,9 @@
  */
 
 #ifdef __POSIX__
-# include "ol_unix.h"
+# include "ol-unix.h"
 #else
-# include "ol_win.h"
+# include "ol-win.h"
 #endif
 
 /**
