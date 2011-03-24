@@ -13,7 +13,7 @@
  */
 typedef enum {
   OL_SUCCESS = 0,
-  OL_EAGAIN = -1,
+  OL_EPENDING = -1, /* Windows users think WSA_IO_PENDING */
   OL_EPIPE = -2,
   OL_EMEM = -3,
 } ol_errno;
@@ -36,10 +36,10 @@ typedef enum {
 } ol_handle_type;
 
 
-typedef ol_read_cb void(*)(ol_handle* h, ol_buf *bufs, int bufcnt);
-typedef ol_close_cb void(*)(ol_handle* h, int read, int write, ol_errno err);
-typedef ol_connect_cb void(*)(ol_handle* h);
-typedef ol_accept_cb void(*)(ol_handle* h, ol_handle *peer);
+typedef void(*)(ol_handle* h, ol_buf *bufs, int bufcnt) ol_read_cb;
+typedef void(*)(ol_handle* h, int read, int write, ol_errno err) ol_close_cb;
+typedef void(*)(ol_handle* h) ol_connect_cb;
+typedef void(*)(ol_handle* h, ol_handle *peer) ol_accept_cb;
 
 
 /**
@@ -52,29 +52,29 @@ ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb);
  * Creates a new file handle. The 'read' parameter is boolean indicating if
  * the file should be read from or created.
  */
-ol_handle* ol_file_new(char *filename, int read, ol_read_cb cb,
-    ol_close_cb cb);
+ol_handle* ol_file_new(char *filename, int read, ol_read_cb read_cb,
+    ol_close_cb close_cb);
 
 
 /**
  * In the case of servers, give a filename. In the case of clients
  * leave filename NULL.
  */
-ol_handle* ol_named_pipe_new(char *filename, ol_read_cb cb,
-    ol_close_cb cb);
+ol_handle* ol_named_pipe_new(char *filename, ol_read_cb read_cb,
+    ol_close_cb close_cb);
 
 
 /**
  * Allocates a new tty handle.
  */
-ol_handle* ol_tty_new(ol_tty_read_cb cb, ol_close_cb cb);
+ol_handle* ol_tty_new(ol_tty_read_cb read_cb, ol_close_cb close_cb);
 
 
 /**
  * Only works with named pipes and TCP sockets.
  */
 int ol_connect(ol_handle* h, sockaddr* addr, sockaddr_len len,
-    ol_buf* buf, size_t* bytes_sent, ol_connect_cb cb);
+    ol_buf* buf, ol_connect_cb connect_cb);
 
 
 /**
@@ -111,12 +111,15 @@ ol_handle_type ol_get_type(ol_handle* h);
 
 
 /**
- * Send data to h. User responsible for bufs until callback is made.
+ * Send data to handle. User responsible for bufs until callback is made.
  * Multiple ol_handle_write() calls may be issued before the previous ones
  * complete - data will sent in the correct order.
+ *
+ * Returns zero on succuessful write and bytes_sent is filled with the
+ * number of bytes successfully written. If an asyncrhonous write was
+ * successfully initiated then OL_EAGAIN is returned.
  */
-int ol_write(ol_handle* h, ol_buf* bufs, int bufcnt,
-    size_t* bytes_sent, ol_write_cb cb);
+int ol_write(ol_handle* h, ol_buf* bufs, int bufcnt, ol_write_cb cb);
 
 
 /**

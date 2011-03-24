@@ -4,10 +4,6 @@
  */
 
 
-#include <ngx_config.h>
-#include <ngx_core.h>
-
-
 #ifndef _NGX_QUEUE_H_INCLUDED_
 #define _NGX_QUEUE_H_INCLUDED_
 
@@ -101,11 +97,6 @@ struct ngx_queue_s {
 
 #define ngx_queue_data(q, type, link)                                         \
     (type *) ((u_char *) q - offsetof(type, link))
-
-
-ngx_queue_t *ngx_queue_middle(ngx_queue_t *queue);
-void ngx_queue_sort(ngx_queue_t *queue,
-    ngx_int_t (*cmp)(const ngx_queue_t *, const ngx_queue_t *));
 
 
 #endif /* _NGX_QUEUE_H_INCLUDED_ */
