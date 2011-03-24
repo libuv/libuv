@@ -1,13 +1,12 @@
-#ifdef windows
-# include "ol_win.h"
-#else
+/**
+ * Overlapped I/O for every operating system.
+ */
+
+#ifdef __POSIX__
 # include "ol_unix.h"
+#else
+# include "ol_win.h"
 #endif
-
-
-typedef ol_read_cb void(*)(ol_buf *bufs, int bufcnt);
-typedef ol_close_cb void(*)(int read, int write);
-typedef ol_connect_cb void(*)();
 
 
 /**
@@ -18,13 +17,22 @@ typedef ol_connect_cb void(*)();
 struct ol_buf;
 
 
+typedef ol_read_cb void(*)(ol_buf *bufs, int bufcnt);
+typedef ol_close_cb void(*)(int read, int write);
+typedef ol_connect_cb void(*)();
+typedef ol_accept_cb void(*)(ol_handle *peer);
+
+
 /**
- * Creates a tcp h. If bind_addr is NULL a random
- * port will be bound.
+ * Creates a tcp handle used for both client and servers.
  */
 ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb);
 
 
+/**
+ * Creates a new file handle. The 'read' parameter is boolean indicating if
+ * the file should be read from or created.
+ */
 ol_handle* ol_file_new(char *filename, int read, ol_read_cb cb,
     ol_close_cb cb);
 
@@ -37,6 +45,9 @@ ol_handle* ol_named_pipe_new(char *filename, ol_read_cb cb,
     ol_close_cb cb);
 
 
+/**
+ * Allocates a new tty handle.
+ */
 ol_handle* ol_tty_new(ol_tty_read_cb cb, ol_close_cb cb);
 
 
@@ -44,7 +55,13 @@ ol_handle* ol_tty_new(ol_tty_read_cb cb, ol_close_cb cb);
  * Only works with named pipes and TCP sockets.
  */
 int ol_connect(ol_handle* h, sockaddr* addr, sockaddr_len len,
-    ol_buf* buf, size_t* bytes_sent, ol_connect_cb ol);
+    ol_buf* buf, size_t* bytes_sent, ol_connect_cb cb);
+
+
+/**
+ * Only works for TCP sockets.
+ */
+int ol_bind(ol_handle* h, sockaddr* addr, sockaddr_len len);
 
 
 /**
@@ -99,9 +116,18 @@ int ol_close(ol_handle* h);
 int ol_free(ol_handle* h);
 
 
+
+
 ol_loop* ol_loop_new();
+
+
 ol_loop* ol_associate(ol_handle* handle);
-void ol_run();
+
+
+void ol_loop_free(ol_loop* loop);
+
+
+void ol_run(ol_loop* loop);
 
 
 

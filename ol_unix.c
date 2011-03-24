@@ -1,8 +1,7 @@
+#include "ol.h"
 
 
-
-ol_loop* ol_loop_new()
-{
+ol_loop* ol_loop_new() {
   ol_loop* loop = malloc(sizeof(ol_loop));
   if (!loop) {
     return NULL;
@@ -13,13 +12,11 @@ ol_loop* ol_loop_new()
     return NULL;
   }
 
-
   return loop;
 }
 
 
-ol_loop* ol_associate(ol_handle* handle)
-{
+ol_loop* ol_associate(ol_handle* handle) {
 }
 
 
