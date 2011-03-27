@@ -17,67 +17,145 @@
       dt { margin-top: 1em; }
       dd { margin-bottom: 1em; }
     </style>
-    <title>Asynchronous I/O in Windows for UNIX Programmers</title>
+    <title>Asynchronous I/O in Windows for Unix Programmers</title>
   </head>
   <body>
-<h1>Asynchronous I/O in Windows for UNIX Programmers</h1>
+<h1>Asynchronous I/O in Windows for Unix Programmers</h1>
 
 <p>Ryan Dahl ryan@joyent.com
 
 <p>This document assumes you are familiar with how non-blocking socket I/O
-is done in UNIX.
+is done in Unix.
 
-<p>Windows has different notions for how asynchronous and non-blocking I/O
-are done. <code>select()</code> is supported in Window but it supports only 64
-file descriptors&mdash;which is unacceptable.
-Microsoft understands how to make high-concurrency servers but they've
-choosen to do it with an system somewhat different than what one is used to
-UNIX. It is called <a
+<p>Windows presents asynchronous and non-blocking I/O differently than in Unix.
+The syscall <code>select()</code> is available in Windows but it
+supports only 64 file descriptors&mdash;which is unacceptable for
+high-concurrency servers.  Instead a system called <a
   href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">overlapped
-  I/O</a>.  The device by which overlapped socket I/O is polled for
-completion is an <a
+  I/O</a> is used.  <a
   href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O
-  completion port</a>. It is more or less equivalent to <a
-  href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> (Macintosh and
-BSDs), <a href="http://en.wikipedia.org/wiki/Epoll">epoll</a>
-(Linux), <a
+  completion ports</a> (IOCP) are the objects used to poll overlapped I/O
+for completion.
+
+<p>
+IOCP are similar to the Unix I/O multiplexers
+<ul>
+  <li> <a
+  href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> on Macintosh and
+BSDs,
+  <li> <a href="http://en.wikipedia.org/wiki/Epoll">epoll</a>
+  on Linux,
+  <li> <a
   href="http://developers.sun.com/solaris/articles/event_completion.html">event
-  completion ports</a> (Solaris), <a href="">poll</a> (modern UNIXes), or <a
-  href="http://www.kernel.org/doc/man-pages/online/pages/man2/select.2.html">select</a>
-(all operating systems). The main variation is that in UNIXes you generally
-ask the kernel to wait for file descriptors to change their readability or
-writablity, while in Windows you wait for asynchronous functions to complete.
-
-<p>
+  completion ports</a> on Solaris,
+  <li> <a href="">poll</a> on modern Unixes, or
+  <li> <a
+    href="http://www.kernel.org/doc/man-pages/online/pages/man2/select.2.html"><code>select()</code></a>,
+  which is available everywhere but is inefficient.
+</ul>
+The fundamental variation is that in Unixes you generally ask the kernel to
+wait for state change in a file descriptor's readability or writablity. With
+overlapped I/O and IOCP the programmers waits for asynchronous function
+calls to complete.
 For example, instead of waiting for a socket to become writable and then
-<a
-  href="http://www.kernel.org/doc/man-pages/online/pages/man2/write.2.html"><code>write(2)</code></a>
-to it, as you do in UNIX operating systems, you would rather <a
+using <a
+  href="http://www.kernel.org/doc/man-pages/online/pages/man2/send.2.html"><code>send(2)</code></a>
+on it, as you commonly do in Unix operating systems, with overlapped I/O you
+would rather <a
   href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
-a buffer and wait for it to have been sent.
+the data and then wait for it to have been sent.
 
-<p>
-The consequence of this different polling interface is that non-blocking
-<code>write(2)</code> and <code>read(2)</code> (among other calls) are not
-portable to Windows for high-performance servers.
+<p> Unix non-blocking I/O is not beautiful. A major feature of Unix is the
+unified treatment of all things as files (or more precisely as file
+descriptors); TCP sockets work with <code>write(2)</code>,
+<code>read(2)</code>, and <code>close(2)</code> just as they do on regular
+files. Well, kind of. Synchronous operations work similarly on different
+types of file descriptors but once demands on performance drive you to world of
+<code>O_NONBLOCK</code>, various types of file descriptors can act quite
+different for even the most basic operations. In particular,
+regular file system files do <i>not</i> support non-blocking operations (and not a
+single man page mentions it). 
 
+For example, one cannot poll on a regular file FD for readability expecting
+it to indicate when it is safe to do a non-blocking read.
 
-<p>In UNIX nearly everything has a file descriptor and <code>read(2)</code>
-and <code>write(2)</code> more or less work on all of them. This is a nice
-abstraction but for non-blocking I/O it does not dig as deep as one would
-like. The file system itself has no concept of non-blocking I/O&mdash;file
-descriptors for on disk files cannot be polled for readability,
-<code>read(2)</code> always has the possibility of blocking for an
-indefinite amount of time. UNIX users should not snub the Windows async API,
-in practice the explicit difference between sockets, pipes, on disk files,
-and TTYs seems make usage more clear where as in UNIX they deceptively seem
-seem like they should work similar but do not.
+Regular file are always readable and <code>read(2)</code> calls
+<i>always</i> have the possibility of blocking the calling thread for an
+unknown amount of time.
+
+<p>POSIX has defined <a
+  href="http://pubs.opengroup.org/onlinepubs/007908799/xsh/aio.h.html">an
+  asynchronous interface</a> for some operations but implementations for
+many Unixes have unclear status. On Linux the
+<code>aio_*</code> routines are implemented in userland in GNU libc using
+pthreads.
+<a
+  href="http://www.kernel.org/doc/man-pages/online/pages/man2/io_submit.2.html"><code>io_submit(2)</code></a>
+does not have a GNU libc wrapper and has been reported <a
+  href="http://voinici.ceata.org/~sana/blog/?p=248"> to be very slow and
+  possibly blocking</a>. <a
+  href="http://download.oracle.com/docs/cd/E19253-01/816-5171/aio-write-3rt/index.html">Solaris
+  has real kernel AIO</a> but it's unclear what its performance
+characteristics are for socket I/O as opposed to disk I/O.
+Contemporary high-performance Unix socket programs use non-blocking
+file descriptors with a I/O multiplexer&mdash;not POSIX AIO.
+Common practice for accessing the disk asynchronously is still done using custom
+userland thread pools&mdash;not POSIX AIO.
+
+<p>Windows IOCP does support both sockets and regular file I/O which
+greatly simplifies the handling of disks.
+
+<p> Writing code that can take advantage of the best worlds on across Unix operating
+systems and Windows is very difficult, requiring one to understand intricate
+APIs and undocumented details from many different operating systems. There
+are several projects which have made attempts to provide an abstraction
+layer but in the author's opinion, none are satisfactory.
+<ul>
+  <li>Marc Lehmann's
+  <a href="http://software.schmorp.de/pkg/libev.html">libev</a> and
+  <a href="http://software.schmorp.de/pkg/libeio.html">libeio</a>.
+  libev is the perfect minimal abstraction of the Unix I/O multiplexers. It
+  includes several helpful tools like <code>ev_async</code>, which is for
+  asynchronous notification, but the main piece is the <code>ev_io</code>,
+  which informs the user about the state of file descriptors. As mentioned
+  before, in general it is not possible to get state changes for regular
+  files&mdash;and even if it were the <code>write(2)</code> and
+  <code>read(2)</code> calls do not guarantee that they won't block.
+  Therefore libeio is provided for calling various disk-related
+  syscalls in a managed thread pool. Unfortunately the abstraction layer
+  which libev targets is not appropriate for IOCP&mdash;libev works strictly
+  with file descriptors and does not the concept of a <i>socket</i>.
+  Furthermore users on Unix will be using libeio for file I/O which is not
+  ideal for porting to Windows. On windows libev currently uses
+  <code>select()</code>&mdash;which is limited to 64 file descriptors per
+  thread.
+
+  <li><a href="http://monkey.org/~provos/libevent/">libevent</a>.
+  Somewhat bulkier than libev with code for RPC, DNS, and HTTP included.
+  Does not support file I/O.
+  libev was
+  created after Lehmann <a
+    href="http://www.mail-archive.com/libevent-users@monkey.org/msg00753.html">evaluated
+    libevent and rejected it</a>&mdash;it's interesting to read his reasons
+  why.  <a
+    href="http://google-opensource.blogspot.com/2010/01/libevent-20x-like-libevent-14x-only.html">A
+    major rewrite</a> was done for version 2 to support Windows IOCP but <a
+    href="http://www.mail-archive.com/libevent-users@monkey.org/msg01730.html">anecdotal
+    evidence</a> suggests that it is still not working correctly.
+
+  <li><a
+    href="http://www.boost.org/doc/libs/1_43_0/doc/html/boost_asio.html">Boost
+    ASIO</a>
+  
+
+</ul>
+
 
 
 <p>
 Almost every socket operation that you're familiar with has an
 overlapped counter-part. The following section tries to pair Windows
-overlapped I/O syscalls with non-blocking UNIX ones.
+overlapped I/O syscalls with non-blocking Unix ones.
 
 
 <h3>TCP Sockets</h3>
@@ -85,7 +163,7 @@ overlapped I/O syscalls with non-blocking UNIX ones.
 TCP Sockets are by far the most important stream to get right.
 Servers should expect to be handling tens of thousands of these
 per thread, concurrently. This is possible with overlapped I/O in Windows if
-one is careful to avoid UNIX-ism like file descriptors. (Windows has a
+one is careful to avoid Unix-ism like file descriptors. (Windows has a
 hard limit of 2048 open file descriptors&mdash;see
 <a
   href="http://msdn.microsoft.com/en-us/library/6e3b887c.aspx"><code>_setmaxstdio()</code></a>.)
@@ -110,7 +188,7 @@ Windows: <a href="http://msdn.microsoft.com/en-us/library/ms737606(VS.85).aspx">
 
 <p>
 Non-blocking <code>connect()</code> is has difficult semantics in
-UNIX. The proper way to connect to a remote host is this: call
+Unix. The proper way to connect to a remote host is this: call
 <code>connect(2)</code> while it returns
 <code>EINPROGRESS</code> poll on the file descriptor for writablity.
 Then use
@@ -133,7 +211,7 @@ Windows: <a href="http://msdn.microsoft.com/en-us/library/ms737524(v=VS.85).aspx
 <dd>
 Windows: <a href="http://msdn.microsoft.com/en-us/library/ms740565(v=VS.85).aspx"><code>TransmitFile()</code></a>
 
-<p> The exact API of <code>sendfile(2)</code> on UNIX has not been agreed
+<p> The exact API of <code>sendfile(2)</code> on Unix has not been agreed
 on yet. Each operating system does it slightly different. All
 <code>sendfile(2)</code> implementations (except possibly FreeBSD?) are blocking
 even on non-blocking sockets.
@@ -164,8 +242,8 @@ Marc Lehmann has written <a
 </dd>
 
 
-The following are nearly same in Windows overlapped and UNIX
-non-blocking sockets. The only difference is that the UNIX variants
+The following are nearly same in Windows overlapped and Unix
+non-blocking sockets. The only difference is that the Unix variants
 take integer file descriptors while Windows uses <code>SOCKET</code>.
 <ul>
   <li><a href="http://msdn.microsoft.com/en-us/library/ms740496(v=VS.85).aspx"><code>sockaddr</code></a>
@@ -176,8 +254,8 @@ take integer file descriptors while Windows uses <code>SOCKET</code>.
 <h3>Named Pipes</h3>
 
 Windows has "named pipes" which are more or less the same as <a
-  href="http://www.kernel.org/doc/man-pages/online/pages/man7/unix.7.html"><code>AF_UNIX</code>
-  domain sockets</a>. <code>AF_UNIX</code> sockets exist in the file system
+  href="http://www.kernel.org/doc/man-pages/online/pages/man7/unix.7.html"><code>AF_Unix</code>
+  domain sockets</a>. <code>AF_Unix</code> sockets exist in the file system
 often looking like
 <pre>/tmp/<i>pipename</i></pre>
 
@@ -188,7 +266,7 @@ system; instead they look like
 
 
 <dl>
-<dt><code>socket(AF_UNIX, SOCK_STREAM, 0), bind(2), listen(2)</code></dt>
+<dt><code>socket(AF_Unix, SOCK_STREAM, 0), bind(2), listen(2)</code></dt>
 <dd>
 <a href="http://msdn.microsoft.com/en-us/library/aa365150(VS.85).aspx"><code>CreateNamedPipe()</code></a>
 
@@ -236,10 +314,10 @@ Examples:
 <h3>On Disk Files</h3>
 
 <p>
-In UNIX file system files are not able to use non-blocking I/O. There are
+In Unix file system files are not able to use non-blocking I/O. There are
 some operating systems that have asynchronous I/O but it is not standard and
 at least on Linux is done with pthreads in GNU libc. For this reason
-applications designed to be portable across different UNIXes must manage a
+applications designed to be portable across different Unixes must manage a
 thread pool for issuing file I/O syscalls.
 
 <p>
@@ -268,7 +346,7 @@ reading or writing a stream of data to a file.
 
 <h3>Console/TTY</h3>
 
-<p>It is (usually?) possible to poll a UNIX TTY file descriptor for
+<p>It is (usually?) possible to poll a Unix TTY file descriptor for
 readability or writablity just like a TCP socket&mdash;this is very helpful
 and nice. In Windows the situation is worse, not only is it a completely
 different API but there are not overlapped versions to read and write to the
@@ -354,7 +432,7 @@ APC:
 <ul>
 <li><a href="http://msdn.microsoft.com/en-us/library/ms681951(v=vs.85).aspx">Asynchronous Procedure Calls</a>
 <li><a href="http://msdn.microsoft.com/en-us/library/ms682016"><code>DNSQuery()</code></a>
-&mdash; General purpose DNS query function like <code>res_query()</code> on UNIX.
+&mdash; General purpose DNS query function like <code>res_query()</code> on Unix.
 </ul>
 
 
@@ -363,7 +441,7 @@ Pipes:
 <li><a href="http://msdn.microsoft.com/en-us/library/aa365781(v=VS.85).aspx"><code>Pipe functions</code></a>
 <li><a href="http://msdn.microsoft.com/en-us/library/aa365150(VS.85).aspx"><code>CreateNamedPipe</code></a>
 <li><a href="http://msdn.microsoft.com/en-us/library/aa365144(v=VS.85).aspx"><code>CallNamedPipe</code></a>
-&mdash; like <code>accept</code> is for UNIX pipes.
+&mdash; like <code>accept</code> is for Unix pipes.
 <li><a href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe</code></a>
 </ul>
 
@@ -371,6 +449,6 @@ Pipes:
 Also useful:
 <a
   href="http://msdn.microsoft.com/en-us/library/xw1ew2f8(v=vs.80).aspx">Introduction
-  to Visual C++ for UNIX Users</a>
+  to Visual C++ for Unix Users</a>
 
 </body></html>

@@ -8,15 +8,39 @@
 # include "ol-win.h"
 #endif
 
+typedef struct {
+  int code;
+  const char* msg;
+} ol_err;
+
 /**
  * Error codes are not cross-platform, so we have our own.
  */
 typedef enum {
   OL_SUCCESS = 0,
-  OL_EPENDING = -1, /* Windows users think WSA_IO_PENDING */
+  OL_EPENDING = -1,
   OL_EPIPE = -2,
-  OL_EMEM = -3,
-} ol_errno;
+  OL_EMEM = -3
+} ol_err;
+
+
+inline const char* ol_err_string(int errorno) {
+  switch (errorno) {
+    case OL_SUCCESS:
+    case OL_EPENDING:
+      return "";
+
+    case OL_EPIPE:
+      return "EPIPE: Write to non-writable handle";
+
+    case OL_EMEM:
+      return "EMEM: Out of memory!";
+
+    default:
+      assert(0);
+      return "Unknown error code. Bug.";
+  }
+}
 
 
 /**
@@ -37,15 +61,17 @@ typedef enum {
 
 
 typedef void(*)(ol_handle* h, ol_buf *bufs, int bufcnt) ol_read_cb;
-typedef void(*)(ol_handle* h, int read, int write, ol_errno err) ol_close_cb;
+typedef void(*)(ol_handle* h, int read, int write, ol_err err) ol_close_cb;
 typedef void(*)(ol_handle* h) ol_connect_cb;
 typedef void(*)(ol_handle* h, ol_handle *peer) ol_accept_cb;
+typedef void(*)(ol_handle* h) ol_write_cb;
 
 
 /**
  * Creates a tcp handle used for both client and servers.
  */
-ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb);
+ol_handle* ol_tcp_new(int v4, sockaddr* addr,
+    ol_read_cb read_cb, ol_close_cb close_cb);
 
 
 /**
@@ -73,16 +99,10 @@ ol_handle* ol_tty_new(ol_tty_read_cb read_cb, ol_close_cb close_cb);
 /**
  * Only works with named pipes and TCP sockets.
  */
-int ol_connect(ol_handle* h, sockaddr* addr, sockaddr_len len,
-    ol_buf* buf, ol_connect_cb connect_cb);
+int ol_connect(ol_handle* h, sockaddr* addr, ol_buf* initial_buf,
+    ol_connect_cb connect_cb);
 
-
-/**
- * Only works for TCP sockets.
- */
-int ol_bind(ol_handle* h, sockaddr* addr, sockaddr_len len);
-
-
+struct sockaddr oi_ip4_addr(char*, int port);
 /**
  * Depth of write buffer in bytes.
  */
@@ -120,12 +140,14 @@ ol_handle_type ol_get_type(ol_handle* h);
  * successfully initiated then OL_EAGAIN is returned.
  */
 int ol_write(ol_handle* h, ol_buf* bufs, int bufcnt, ol_write_cb cb);
+int ol_write2(ol_handle* h, char *base, size_t len);
+int ol_write3(ol_handle* h, const char *string);
 
 
 /**
  * Works on both named pipes and TCP handles.
  */
-int ol_listen(ol_handle* h, int backlog, ol_accept_cb cb);
+int ol_listen(ol_loop* loop, ol_handle* h, int backlog, ol_accept_cb cb);
 
 
 /**

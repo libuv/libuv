@@ -27,7 +27,9 @@ void ol_run(ol_loop *loop) {
 }
 
 
-ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb) {
+ol_handle* ol_tcp_new(int v4, sockaddr* addr, sockaddr_len len,
+    ol_read_cb read_cb, ol_close_cb close_cb) {
+
   ol_handle *handle = calloc(sizeof(ol_handle), 1);
   if (!handle) {
     return NULL;
@@ -40,10 +42,33 @@ ol_handle* ol_tcp_new(int v4, ol_read_cb read_cb, ol_close_cb close_cb) {
 
   int domain = v4 ? AF_INET : AF_INET6;
   handle->fd = socket(domain, SOCK_STREAM, 0);
-  if (fd == -1) {
+  if (handle->fd == -1) {
     free(handle);
-    got_error("socket", errno);
+    got_error("socket", err);
     return NULL;
+  }
+
+  /* Lose the pesky "Address already in use" error message */
+  int yes = 1;
+  int r = setsockopt(handle->fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+  if (r == -1) {
+    close(handle->fd);
+    free(handle);
+    unhandled_error("setsockopt", r);
+    return NULL;
+  }
+
+  /* We auto-bind the specified address */
+  if (addr) {
+    int r = bind(handle->fd, addr, v4 ? sizeof(sockaddr_in) :
+        sizeof(sockaddr_in6));
+
+    if (r < 0) {
+      got_error("bind", errno);
+      close(handle->fd);
+      free(handle);
+      return NULL;
+    }
   }
 
   return handle;
@@ -70,9 +95,9 @@ static void tcp_check_connect_status(ol_handle* h) {
 
   if (error == 0) {
     tcp_connected(h);
-  } else if (errno != EINPROGRESS) {
+  } else if (err != EINPROGRESS) {
     close(h->fd);
-    got_error("connect", errno);
+    got_error("connect", err);
   }
 
   /* EINPROGRESS - unlikely. What to do? */
@@ -97,10 +122,10 @@ static void tcp_flush(oi_loop* loop, ol_handle* h) {
     ssize_t written = writev(h->fd, vec, remaining_bufcnt);
 
     if (written < 0) {
-      if (errno == EAGAIN) {
+      if (err == EAGAIN) {
         ev_io_start(loop, &h->write_watcher);
       } else {
-        got_error("writev", errno);
+        got_error("writev", err);
       }
 
     } else {
@@ -161,14 +186,14 @@ int ol_connect(ol_handle* h, sockaddr* addr, sockaddr_len addrlen,
   int r = connect(h->fd, h->connect_addr, h->connect_addrlen);
 
   if (r != 0) {
-    if (errno == EINPROGRESS) {
+    if (err == EINPROGRESS) {
       /* Wait for fd to become writable. */
       h->connecting = 1;
       ev_io_init(&h->write_watcher, tcp_io, h->fd, EV_WRITE);
       ev_io_start(h->loop, &h->write_watcher);
     }
 
-    return got_error("connect", errno);
+    return got_error("connect", err);
   }
 
   /* Connected */
@@ -243,9 +268,33 @@ int ol_write(ol_handle* h, ol_buf* bufs, int bufcnt, ol_write_cb cb) {
        * to the write queue.
        */
     }
-
-
   }
 
 
+}
+
+
+int ol_write2(ol_handle* h, char *base, size_t len) {
+  ol_buf buf;
+  buf.base = base;
+  buf.len = len;
+
+  return ol_write(h, &buf, 1, NULL);
+}
+
+
+int ol_write3(ol_handle* h, const char *string) {
+  /* You're doing it wrong if strlen(string) > 1mb. */
+  return ol_write2(h, string, strnlen(string, 1024 * 1024));
+}
+
+
+struct sockaddr oi_ip4_addr(char *ip, int port) {
+  sockaddr_in addr;
+
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr.s_addr = inet_addr(ip);
+
+  return addr;
 }
