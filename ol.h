@@ -85,6 +85,7 @@ int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb);
 int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr);
 int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
 int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
+int ol_write2(ol_handle* handle, const char* msg);
 int ol_shutdown(ol_handle* handle, ol_req *req);
 
 // Request handle to be closed. close_cb will be made
@@ -93,7 +94,7 @@ int ol_close(ol_handle* handle);
 
 // Must be called for all handles after close_cb. Handles that arrive
 // via the accept_cb must use ol_free().
-int ol_free(ol_handle* handle);
+void ol_free(ol_handle* handle);
 
 
 

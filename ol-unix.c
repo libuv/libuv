@@ -3,17 +3,16 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
+#include <string.h> /* strnlen */
 
 
 void ol_tcp_io(EV_P_ ev_io* watcher, int revents);
 void ol_tcp_connect(ol_handle* handle, ol_req* req);
+int ol_close_error(ol_handle* handle, ol_err err);
 
 
 static int ol_err_new(int e) {
-  if (e == 0) {
-    return e;
-  } else {
-  }
+  return e;
 }
 
 
@@ -25,6 +24,16 @@ struct sockaddr_in ol_ip4_addr(char *ip, int port) {
   addr.sin_addr.s_addr = inet_addr(ip);
 
   return addr;
+}
+
+
+int ol_close(ol_handle* handle) {
+  return ol_close_error(handle, 0);
+}
+
+
+int ol_run() {
+  ev_run(0);
 }
 
 
@@ -65,15 +74,16 @@ int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
 }
 
 
-void ol_close_error(ol_handle* handle, ol_err err) {
+int ol_close_error(ol_handle* handle, ol_err err) {
   ev_io_stop(&handle->_.read_watcher);
   close(handle->_.fd);
   handle->_.fd = -1;
 
-
   if (handle->close_cb) {
     handle->close_cb(handle, err);
   }
+
+  return err;
 }
 
 
@@ -197,3 +207,31 @@ int ol_connect(ol_handle* handle, ol_req *req_in, struct sockaddr* addr) {
   return ol_err_new(r);
 }
 
+int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
+  // stub
+  assert(0);
+  return 0;
+}
+
+
+int ol_write2(ol_handle* handle, const char* msg) {
+  size_t len = strnlen(msg, 1024 * 1024);
+  ol_buf b;
+  b.base = (char*)msg;
+  b.len = len;
+  return ol_write(handle, NULL, &b, 1);
+}
+
+
+int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
+  // stub
+  assert(0);
+  return 0;
+}
+
+
+void ol_free(ol_handle* handle) {
+  free(handle);
+  // lists?
+  return;
+}

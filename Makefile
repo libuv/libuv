@@ -2,7 +2,7 @@ test/echo-server: test/echo-server.c ol.a
 	$(CC) -o test/echo-server test/echo-server.c ol.a -lm
 
 ol.a: ol-unix.o ev/ev.o
-	ar rcs ol.a ol-unix.o ev/ev.o
+	$(AR) rcs ol.a ol-unix.o ev/ev.o
 
 ol-unix.o: ol-unix.c ol.h ol-unix.h
 	$(CC) -c ol-unix.c -o ol-unix.o -lm
@@ -17,9 +17,9 @@ ev/config.h:
 .PHONY: clean distclean
 
 clean:
-	rm *.o *.a
+	$(RM) -f *.o *.a
 	$(MAKE) -C ev clean
 
 distclean:
-	rm *.o *.a
+	$(RM) -f *.o *.a
 	$(MAKE) -C ev clean

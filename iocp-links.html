@@ -52,11 +52,9 @@ high-concurrency servers.  Instead a system called <a
   href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">overlapped
   I/O</a> is used.  <a
   href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O
-  completion ports</a> (IOCP) are the objects used to poll overlapped I/O
+  completion ports</a> (IOCPs) are the objects used to poll overlapped I/O
 for completion.
-
-<p>
-IOCP are similar to the Unix I/O multiplexers
+IOCPs are similar to the Unix I/O multiplexers
 <ul>
   <li> <a
   href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> on Macintosh and
@@ -66,25 +64,25 @@ BSDs,
   <li> <a
   href="http://developers.sun.com/solaris/articles/event_completion.html">event
   completion ports</a> on Solaris,
-  <li> <a href="">poll</a> on modern Unixes, or
+  <li> <a href="">poll</a> on modern Unixes, and
   <li> <a
     href="http://www.kernel.org/doc/man-pages/online/pages/man2/select.2.html"><code>select()</code></a>,
-  which is available everywhere but is inefficient.
+  which is available everywhere.
 </ul>
-The fundamental variation is that in Unixes you generally ask the kernel to
+The fundamental variation is that in a Unix you generally ask the kernel to
 wait for state change in a file descriptor's readability or writablity. With
-overlapped I/O and IOCP the programmers waits for asynchronous function
+overlapped I/O and IOCPs the programmers waits for asynchronous function
 calls to complete.
 For example, instead of waiting for a socket to become writable and then
 using <a
   href="http://www.kernel.org/doc/man-pages/online/pages/man2/send.2.html"><code>send(2)</code></a>
-on it, as you commonly do in Unix operating systems, with overlapped I/O you
+on it, as you commonly would do in a Unix, with overlapped I/O you
 would rather <a
   href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
 the data and then wait for it to have been sent.
 
-<p> Unix non-blocking I/O is not beautiful. A major feature of Unix is the
-unified treatment of all things as files (or more precisely as file
+<p> Unix non-blocking I/O is not beautiful. A principle abstraction in Unix
+is the unified treatment of many things as files (or more precisely as file
 descriptors). <code>write(2)</code>, <code>read(2)</code>, and
 <code>close(2)</code> work with TCP sockets just as they do on regular
 files. Well&mdash;kind of. Synchronous operations work similarly on different
@@ -121,7 +119,7 @@ file descriptors with a I/O multiplexer&mdash;not POSIX AIO.
 Common practice for accessing the disk asynchronously is still done using custom
 userland thread pools&mdash;not POSIX AIO.
 
-<p>Windows IOCP does support both sockets and regular file I/O which
+<p>Windows IOCPs does support both sockets and regular file I/O which
 greatly simplifies the handling of disks. Although the function names are
 not exactly the same in Windows for sockets and regular files, the
 they act similar.
@@ -279,7 +277,7 @@ layer but in the author's opinion, none are completely satisfactory.
   <code>read(2)</code> calls do not guarantee that they won't block.
   Therefore libeio is provided for calling various disk-related
   syscalls in a managed thread pool. Unfortunately the abstraction layer
-  which libev targets is not appropriate for IOCP&mdash;libev works strictly
+  which libev targets is not appropriate for IOCPs&mdash;libev works strictly
   with file descriptors and does not the concept of a <i>socket</i>.
   Furthermore users on Unix will be using libeio for file I/O which is not
   ideal for porting to Windows. On windows libev currently uses
@@ -295,14 +293,14 @@ layer but in the author's opinion, none are completely satisfactory.
     libevent and rejected it</a>&mdash;it's interesting to read his reasons
   why.  <a
     href="http://google-opensource.blogspot.com/2010/01/libevent-20x-like-libevent-14x-only.html">A
-    major rewrite</a> was done for version 2 to support Windows IOCP but <a
+    major rewrite</a> was done for version 2 to support Windows IOCPs but <a
     href="http://www.mail-archive.com/libevent-users@monkey.org/msg01730.html">anecdotal
     evidence</a> suggests that it is still not working correctly.
 
 <p><b><a
     href="http://www.boost.org/doc/libs/1_43_0/doc/html/boost_asio.html">Boost
     ASIO</a>.</b> It basically does what you want on Windows and Unix for
-    sockets. That is, epoll on Linux, kqueue on Macintosh, IOCP on Windows.
+    sockets. That is, epoll on Linux, kqueue on Macintosh, IOCPs on Windows.
     It does not support file I/O. In the author's opinion is it too large
     for a not extremely difficult problem (~300 files, ~12000 semicolons).
 
