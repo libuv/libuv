@@ -2,14 +2,14 @@
 #include <stdio.h>
 
 
-static const size_t BUFSIZE = 1024;
+#define BUFSIZE 1024
 
 
 typedef struct {
   ol_handle *handle;
   ol_req req;
-  char read_buffer[BUFSIZE];
   ol_buf buf;
+  char read_buffer[BUFSIZE];
 } peer_t;
 
 
@@ -51,25 +51,25 @@ void try_read(peer_t* peer) {
 
 void on_close(ol_handle* peer, ol_err err) {
   if (err) {
-    fprintf(stdout, "Socket error: %s\n", ol_errno_string(err));
+    fprintf(stdout, "Socket error\n");
   }
 
   ol_free(peer);
 }
 
 
-static void on_accept(ol_handle* server, ol_handle* new_client) {
+void on_accept(ol_handle* server, ol_handle* new_client) {
   new_client->close_cb = on_close;
 
-  peer_t p = malloc(sizeof(peer_t));
+  peer_t* p = malloc(sizeof(peer_t));
   p->handle = new_client;
   p->buf.base = p->read_buffer;
   p->buf.len = BUFSIZE;
   p->req.data = p;
 
-  try_read(peer);
+  try_read(p);
 
-  r = ol_write2(new_client, "Hello\n");
+  int r = ol_write2(new_client, "Hello\n");
   if (r < 0) {
     // error
     assert(0);
@@ -78,10 +78,10 @@ static void on_accept(ol_handle* server, ol_handle* new_client) {
 
 
 int main(int argc, char** argv) {
-  ol_handle* server = ol_handle_new(NULL);
+  ol_handle* server = ol_handle_new(on_close, NULL);
 
-  struct sockaddr addr = oi_ip4_addr("0.0.0.0", 8000);
-  ol_bind(server, &addr);
+  struct sockaddr_in addr = ol_ip4_addr("0.0.0.0", 8000);
+  ol_bind(server, (struct sockaddr*) &addr);
   ol_listen(server, 128, on_accept);
 
   ol_run();
