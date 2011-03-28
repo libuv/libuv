@@ -1,8 +1,8 @@
 #include "ol.h"
 
-#define EV_STANDALONE 1
-#define EV_MULTIPLICITY 0
-#include "ev/ev.c"
+#include <stdlib.h>
+#include <errno.h>
+#include <assert.h>
 
 
 void ol_tcp_io(EV_P_ ev_io* watcher, int revents);

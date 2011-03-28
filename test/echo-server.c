@@ -1,5 +1,6 @@
 #include "../ol.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 
 #define BUFSIZE 1024
