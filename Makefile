@@ -13,3 +13,13 @@ ev/ev.o: ev/config.h ev/ev.c
 ev/config.h:
 	cd ev && ./configure
 
+
+.PHONY: clean distclean
+
+clean:
+	rm *.o *.a
+	$(MAKE) -C ev clean
+
+distclean:
+	rm *.o *.a
+	$(MAKE) -C ev clean
