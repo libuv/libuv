@@ -16,6 +16,24 @@
 
       dt { margin-top: 1em; }
       dd { margin-bottom: 1em; }
+
+      table {
+        margin: 1em 0;
+        padding: 0;
+      }
+
+      table th {
+        text-align: left;
+        padding: 0.5em;
+        white-space: nowrap;
+      }
+
+      table td {
+        padding: 0.5em;
+        text-align: left;
+        white-space: nowrap;
+      }
+
     </style>
     <title>Asynchronous I/O in Windows for Unix Programmers</title>
   </head>
@@ -67,14 +85,15 @@ the data and then wait for it to have been sent.
 
 <p> Unix non-blocking I/O is not beautiful. A major feature of Unix is the
 unified treatment of all things as files (or more precisely as file
-descriptors); TCP sockets work with <code>write(2)</code>,
-<code>read(2)</code>, and <code>close(2)</code> just as they do on regular
-files. Well, kind of. Synchronous operations work similarly on different
+descriptors). <code>write(2)</code>, <code>read(2)</code>, and
+<code>close(2)</code> work with TCP sockets just as they do on regular
+files. Well&mdash;kind of. Synchronous operations work similarly on different
 types of file descriptors but once demands on performance drive you to world of
-<code>O_NONBLOCK</code>, various types of file descriptors can act quite
+<code>O_NONBLOCK</code> various types of file descriptors can act quite
 different for even the most basic operations. In particular,
-regular file system files do <i>not</i> support non-blocking operations (and not a
-single man page mentions it). 
+regular file system files do <i>not</i> support non-blocking operations.
+
+(Disturbingly no man page mentions this rather important fact.)
 
 For example, one cannot poll on a regular file FD for readability expecting
 it to indicate when it is safe to do a non-blocking read.
@@ -103,17 +122,154 @@ Common practice for accessing the disk asynchronously is still done using custom
 userland thread pools&mdash;not POSIX AIO.
 
 <p>Windows IOCP does support both sockets and regular file I/O which
-greatly simplifies the handling of disks.
+greatly simplifies the handling of disks. Although the function names are
+not exactly the same in Windows for sockets and regular files, the
+they act similar.
+
+<table>
+  <tr>
+    <th></th>
+    <th>Regular File Read</th>
+    <th>Regular File Write</th>
+    <th>Socket Read</th>
+    <th>Socket Write</th>
+  </tr>
+  <tr>
+    <th>Windows</th>
+    <td><code>ReadFile()</code></td>
+    <td><code>WriteFile()</code></td>
+    <td><code>WSARecv()</code></td>
+    <td><code>WSASend()</code></td>
+  </tr>
+  <tr>
+    <th>POSIX</th>
+    <td><code>read()</code></td>
+    <td><code>write()</code></td>
+    <td><code>read()</code> or <code>recv()</code></td>
+    <td><code>write()</code> or <code>send()</code></td>
+  </tr>
+</table>
+
+<p><code>ReadFile()</code> and <code>WSARecv()</code> operate on regular
+files and sockets, respectively. They both are for sending data. Both take a 
+<a href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>OVERLAPPED</code></a>
+argument.
+
+<pre>
+typedef void* HANDLE;
+typedef HANDLE SOCKET;
+
+BOOL ReadFile(HANDLE file,
+              void* buffer,
+              DWORD numberOfBytesToRead,
+              DWORD* numberOfBytesRead,
+              OVERLAPPED* overlapped);
+
+int WSARecv(SOCKET s,
+            WSABUF* buffers,
+            DWORD bufferCount,
+            DWORD* numberOfBytesRecvd,
+            DWORD* flags,
+            OVERLAPPED* overlapped,
+            OVERLAPPED_COMPLETION_ROUTINE completionRoutine);
+</pre>
+
+For now ignore the <code>completionRoutine</code> parameter in
+<code>WSARecv</code>.
+
+<p>
+Both functions have the possibility of executing the read synchronously
+or asynchronously. A synchronous operation is indicated by
+returning 0 and <a
+href="http://msdn.microsoft.com/en-us/library/ms741580(v=VS.85).aspx">WSAGetLastError()</code></a>
+returning <code>WSA_IO_PENDING</code>.
+
+<p>
+When either function operates asynchronously the
+the user-supplied <a
+href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>OVERLAPPED*</code></a>
+is a handle to the incomplete operation.
+
+<pre>
+typedef struct {
+  unsigned long* Internal;
+  unsigned long* InternalHigh;
+  union {
+    struct {
+      WORD Offset;
+      WORD OffsetHigh;
+    };
+    void* Pointer;
+  };
+  HANDLE hEvent;
+} OVERLAPPED;
+</pre>
+
+To poll on the completion of one of these functions,
+use an IOCP, <code>overlapped->hEvent</code>, and
+<a
+href="http://msdn.microsoft.com/en-us/library/aa364986(v=vs.85).aspx"><code>GetQueuedCompletionStatus()</code></a>.
+
+<h3>Simple TCP Connection Example</h3>
+
+<p>To demonstrate the use of <code>GetQueuedCompletionStatus()</code> an
+example of connecting to <code>localhost</code> at port 8000 is presented.
+
+<pre>
+char* buffer[200];
+WSABUF b = { buffer, 200 };
+size_t bytes_recvd;
+int r, total_events;
+OVERLAPPED overlapped;
+HANDLE port;
+
+port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+if (!port) {
+  goto error;
+}
+
+
+r = WSARecv(socket, &b, 1, &bytes_recvd, NULL, &overlapped, NULL);
+
+CreateIoCompletionPort(port, &overlapped.hEvent, 
+
+if (r == 0) {
+  if (WSAGetLastError() == WSA_IO_PENDING) {
+    /* Asynchronous */
+    GetQueuedCompletionStatus()
+
+
+    if (r == WAIT_TIMEOUT) {
+      printf("Timeout\n");
+    } else {
+      
+    }
+
+
+  } else {
+    /* Error */
+    printf("Error %d\n", WSAGetLastError());
+  }
+} else {
+  /* Synchronous */
+  printf("read %ld bytes from socket\n", bytes_recvd);
+}
+
+
+
+</pre>
+
+<h3>Previous Work</h3>
 
 <p> Writing code that can take advantage of the best worlds on across Unix operating
 systems and Windows is very difficult, requiring one to understand intricate
 APIs and undocumented details from many different operating systems. There
 are several projects which have made attempts to provide an abstraction
-layer but in the author's opinion, none are satisfactory.
-<ul>
-  <li>Marc Lehmann's
+layer but in the author's opinion, none are completely satisfactory.
+
+<p><b>Marc Lehmann's
   <a href="http://software.schmorp.de/pkg/libev.html">libev</a> and
-  <a href="http://software.schmorp.de/pkg/libeio.html">libeio</a>.
+  <a href="http://software.schmorp.de/pkg/libeio.html">libeio</a>.</b>
   libev is the perfect minimal abstraction of the Unix I/O multiplexers. It
   includes several helpful tools like <code>ev_async</code>, which is for
   asynchronous notification, but the main piece is the <code>ev_io</code>,
@@ -130,7 +286,7 @@ layer but in the author's opinion, none are satisfactory.
   <code>select()</code>&mdash;which is limited to 64 file descriptors per
   thread.
 
-  <li><a href="http://monkey.org/~provos/libevent/">libevent</a>.
+<p><b><a href="http://monkey.org/~provos/libevent/">libevent</a>.</b>
   Somewhat bulkier than libev with code for RPC, DNS, and HTTP included.
   Does not support file I/O.
   libev was
@@ -143,15 +299,16 @@ layer but in the author's opinion, none are satisfactory.
     href="http://www.mail-archive.com/libevent-users@monkey.org/msg01730.html">anecdotal
     evidence</a> suggests that it is still not working correctly.
 
-  <li><a
+<p><b><a
     href="http://www.boost.org/doc/libs/1_43_0/doc/html/boost_asio.html">Boost
-    ASIO</a>
-  
+    ASIO</a>.</b> It basically does what you want on Windows and Unix for
+    sockets. That is, epoll on Linux, kqueue on Macintosh, IOCP on Windows.
+    It does not support file I/O. In the author's opinion is it too large
+    for a not extremely difficult problem (~300 files, ~12000 semicolons).
 
-</ul>
 
 
-
+<h2>File Types</h2>
 <p>
 Almost every socket operation that you're familiar with has an
 overlapped counter-part. The following section tries to pair Windows
@@ -311,7 +468,7 @@ Examples:
 </ul>
 
 
-<h3>On Disk Files</h3>
+<h3>Regular Files</h3>
 
 <p>
 In Unix file system files are not able to use non-blocking I/O. There are
@@ -392,7 +549,7 @@ is also blocking but this is probably acceptable.
 
 
 
-<h2 id="foot2">Links</h2>
+<h2>Assorted Links</h2>
 <p>
 tips
 <ul>
@@ -405,7 +562,7 @@ tips
 IOCP:
 <ul>
 <li><a href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">Synchronization and Overlapped Input and Output</a>
-<li><a href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>WSAOVERLAPPED</code> Structure</a>
+<li><a href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>OVERLAPPED</code> Structure</a>
   <ul>
   <li><a href="http://msdn.microsoft.com/en-us/library/ms683209(v=VS.85).aspx"><code>GetOverlappedResult()</code></a>
   <li><a href="http://msdn.microsoft.com/en-us/library/ms683244(v=VS.85).aspx"><code>HasOverlappedIoCompleted()</code></a>
@@ -445,6 +602,7 @@ Pipes:
 <li><a href="http://msdn.microsoft.com/en-us/library/aa365146(v=VS.85).aspx"><code>ConnectNamedPipe</code></a>
 </ul>
 
+<code>WaitForMultipleObjectsEx</code> is pronounced "wait for multiple object sex".
 
 Also useful:
 <a

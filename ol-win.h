@@ -10,3 +10,9 @@ typedef struct _ol_buf {
   _ol_buf* next;
   _ol_buf* prev;
 } ol_buf;
+
+
+typedef struct {
+  OVERLAPPED overlapped;
+  ngx_queue_t queue;
+} ol_req_private;

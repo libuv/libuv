@@ -1,192 +1,78 @@
-/**
- * Overlapped I/O for every operating system.
- */
+typedef int ol_err; // FIXME
 
-#ifdef __POSIX__
-# include "ol-unix.h"
-#else
-# include "ol-win.h"
-#endif
-
-typedef struct {
-  int code;
-  const char* msg;
-} ol_err;
-
-/**
- * Error codes are not cross-platform, so we have our own.
- */
-typedef enum {
-  OL_SUCCESS = 0,
-  OL_EPENDING = -1,
-  OL_EPIPE = -2,
-  OL_EMEM = -3
-} ol_err;
-
-
-inline const char* ol_err_string(int errorno) {
-  switch (errorno) {
-    case OL_SUCCESS:
-    case OL_EPENDING:
-      return "";
-
-    case OL_EPIPE:
-      return "EPIPE: Write to non-writable handle";
-
-    case OL_EMEM:
-      return "EMEM: Out of memory!";
-
-    default:
-      assert(0);
-      return "Unknown error code. Bug.";
-  }
-}
-
-
-/**
- * Do not make assumptions about the order of the elements in this sturct.
- * Always use offsetof because the order is platform dependent. Has a char*
- * buf and size_t len. That's all you need to know.
- */
-struct ol_buf;
+typedef void (*)(ol_req* req, ol_err e) ol_req_cb;
+typedef void (*)(ol_req* req, size_t nread, ol_err e) ol_read_cb;
+typedef void (*)(ol_req* req, ol_err e) ol_write_cb;
+typedef void (*)(ol_handle* server, ol_handle* new_client) ol_accept_cb;
+typedef void (*)(ol_handle* handle, ol_err e) ol_close_cb;
 
 
 typedef enum {
-  OL_TCP,
-  OL_TCP6,
+  OL_UNKNOWN_HANDLE = 0,
+  OL_TCP_CONNECTION,
+  OL_TCP_SERVER,
   OL_NAMED_PIPE,
+  OL_TTY,
   OL_FILE,
-  OL_TTY
 } ol_handle_type;
 
 
-typedef void(*)(ol_handle* h, ol_buf *bufs, int bufcnt) ol_read_cb;
-typedef void(*)(ol_handle* h, int read, int write, ol_err err) ol_close_cb;
-typedef void(*)(ol_handle* h) ol_connect_cb;
-typedef void(*)(ol_handle* h, ol_handle *peer) ol_accept_cb;
-typedef void(*)(ol_handle* h) ol_write_cb;
+typesef struct {
+  // read-only
+  ol_handle_type type;
+  // private
+  ol_handle_private _;
+  // public
+  ol_accept_cb accept_cb;
+  ol_close_cb close_cb;
+  void* data;
+} ol_handle;
 
 
-/**
- * Creates a tcp handle used for both client and servers.
- */
-ol_handle* ol_tcp_new(int v4, sockaddr* addr,
-    ol_read_cb read_cb, ol_close_cb close_cb);
+typedef enum {
+  OL_UNKNOWN_REQ = 0,
+  OL_CONNECT,
+  OL_READ,
+  OL_WRITE
+  OL_SHUTDOWN
+} ol_req_type;
 
 
-/**
- * Creates a new file handle. The 'read' parameter is boolean indicating if
- * the file should be read from or created.
- */
-ol_handle* ol_file_new(char *filename, int read, ol_read_cb read_cb,
-    ol_close_cb close_cb);
+typedef struct {
+  // read-only
+  ol_req_type type;
+  ol_handle *handle;
+  // private
+  ol_req_private _;
+  // public
+  union {
+    ol_read_cb read_cb;
+    ol_write_cb write_cb;
+    ol_req_cb connect_cb;
+    ol_req_cb shutdown_cb;
+  };
+  void *data;
+} ol_req;
 
 
-/**
- * In the case of servers, give a filename. In the case of clients
- * leave filename NULL.
- */
-ol_handle* ol_named_pipe_new(char *filename, ol_read_cb read_cb,
-    ol_close_cb close_cb);
+int ol_run();
 
+ol_handle* ol_handle_new(ol_close_cb close_cb, void* data);
 
-/**
- * Allocates a new tty handle.
- */
-ol_handle* ol_tty_new(ol_tty_read_cb read_cb, ol_close_cb close_cb);
+// TCP server methods.
+int ol_bind(ol_handle* handle, sockaddr* addr);
+int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb);
 
+// TCP socket methods.
+int ol_connect(ol_handle* handle, ol_req *req, sockaddr* addr);
+int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
+int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
+int ol_shutdown(ol_handle* handle, ol_req *req);
 
-/**
- * Only works with named pipes and TCP sockets.
- */
-int ol_connect(ol_handle* h, sockaddr* addr, ol_buf* initial_buf,
-    ol_connect_cb connect_cb);
+// Request handle to be closed. close_cb will be made
+// synchronously during this call.
+int ol_close(ol_handle* handle);
 
-struct sockaddr oi_ip4_addr(char*, int port);
-/**
- * Depth of write buffer in bytes.
- */
-size_t ol_buffer_size(ol_handle* h);
-
-
-int ol_read_stop(ol_handle* h);
-
-
-int ol_read_start(ol_handle* h);
-
-
-/**
- * Returns file descriptor associated with the handle. There may be only
- * limited numbers of file descriptors allowed by the operating system. On
- * Windows this limit is 2048 (see
- * _setmaxstdio[http://msdn.microsoft.com/en-us/library/6e3b887c.aspx])
- */
-int ol_get_fd(ol_handle* h);
-
-
-/**
- * Returns the type of the handle.
- */
-ol_handle_type ol_get_type(ol_handle* h);
-
-
-/**
- * Send data to handle. User responsible for bufs until callback is made.
- * Multiple ol_handle_write() calls may be issued before the previous ones
- * complete - data will sent in the correct order.
- *
- * Returns zero on succuessful write and bytes_sent is filled with the
- * number of bytes successfully written. If an asyncrhonous write was
- * successfully initiated then OL_EAGAIN is returned.
- */
-int ol_write(ol_handle* h, ol_buf* bufs, int bufcnt, ol_write_cb cb);
-int ol_write2(ol_handle* h, char *base, size_t len);
-int ol_write3(ol_handle* h, const char *string);
-
-
-/**
- * Works on both named pipes and TCP handles.
- */
-int ol_listen(ol_loop* loop, ol_handle* h, int backlog, ol_accept_cb cb);
-
-
-/**
- * Writes EOF or sends a FIN packet.
- * Further calls to ol_write() result in OI_EPIPE error. When the send
- * buffer is drained and the other side also terminates their writes, the
- * handle is finally closed and ol_close_cb() made. There is no need to call
- * ol_close() after this.
- */
-int ol_graceful_close(ol_handle* h);
-
-
-/**
- * Immediately closes the handle. If there is data in the send buffer
- * it will not be sent.
- */
-int ol_close(ol_handle* h);
-
-
-/**
- * Releases memory associated with handle. You MUST call this after
- * ol_close_cb() is made with both 0 arguments.
- */
-int ol_free(ol_handle* h);
-
-
-
-
-ol_loop* ol_loop_new();
-
-
-void ol_associate(ol_loop* loop, ol_handle* handle);
-
-
-void ol_loop_free(ol_loop* loop);
-
-
-void ol_run(ol_loop* loop);
-
-
-
-
+// Must be called for all handles after close_cb. Handles that arrive
+// via the accept_cb must use ol_free().
+int ol_free(ol_handle* handle);

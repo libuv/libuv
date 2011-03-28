@@ -18,9 +18,13 @@ typedef struct {
 } ol_bucket;
 
 
+
+typedef struct {
+} ol_req_private;
+
+
 typedef struct {
   int fd;
-  ol_handle_type type;
 
   ol_read_cb read_cb;
   ol_close_cb close_cb;
@@ -31,4 +35,4 @@ typedef struct {
 
   ngx_queue_s write_queue;
   ngx_queue_s all_handles;
-} ol_handle;
+} ol_handle_private;
