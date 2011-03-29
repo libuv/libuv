@@ -3,7 +3,6 @@
 
 #include "ngx-queue.h"
 
-#define EV_MULTIPLICITY 0
 #include "ev/ev.h"
 
 #include <sys/types.h>
@@ -41,6 +40,8 @@ typedef struct {
 
 typedef struct {
   int fd;
+
+  ol_err err;
 
   ol_read_cb read_cb;
   ol_close_cb close_cb;

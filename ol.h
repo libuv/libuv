@@ -73,6 +73,7 @@ struct ol_req_s {
 };
 
 
+void ol_init();
 int ol_run();
 
 ol_handle* ol_handle_new(ol_close_cb close_cb, void* data);

@@ -80,11 +80,23 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
 
 
 int main(int argc, char** argv) {
+  ol_init();
+
   ol_handle* server = ol_handle_new(on_close, NULL);
 
   struct sockaddr_in addr = ol_ip4_addr("0.0.0.0", 8000);
-  ol_bind(server, (struct sockaddr*) &addr);
-  ol_listen(server, 128, on_accept);
+
+  int r = ol_bind(server, (struct sockaddr*) &addr);
+  if (r) {
+    fprintf(stderr, "Bind error\n");
+    return 1;
+  }
+
+  r = ol_listen(server, 128, on_accept);
+  if (r) {
+    fprintf(stderr, "Listen error\n");
+    return 1;
+  }
 
   ol_run();
 
