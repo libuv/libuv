@@ -37,7 +37,7 @@ void after_read(ol_req* req, size_t nread, ol_err err) {
     } else {
       peer_t *peer = (peer_t*) req->data;
       peer->buf.len = nread;
-      peer->req.write_cb = after_write;
+      peer->req.cb = after_write;
       ol_write(peer->handle, &peer->req, &peer->buf, 1);
     }
   }
@@ -46,7 +46,7 @@ void after_read(ol_req* req, size_t nread, ol_err err) {
 
 void try_read(peer_t* peer) {
   peer->buf.len = BUFSIZE;
-  peer->req.read_cb = after_read;
+  peer->req.cb = after_read;
   ol_read(peer->handle, &peer->req, &peer->buf, 1);
 }
 
@@ -76,7 +76,7 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
 
   r = ol_write2(new_client, "Hello\n");
   if (r < 0) {
-    // error
+    /* error */
     assert(0);
   }
 }

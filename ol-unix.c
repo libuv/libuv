@@ -4,6 +4,12 @@
 #include <errno.h>
 #include <assert.h>
 #include <string.h> /* strnlen */
+#include <unistd.h>
+#include <fcntl.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 void ol_tcp_io(EV_P_ ev_io* watcher, int revents);
@@ -123,9 +129,9 @@ void ol_server_io(EV_P_ ev_io* watcher, int revents) {
 
     if (fd < 0) {
       if (errno == EAGAIN) {
-        return; // No problem.
+        return; /* No problem. */
       } else if (errno == EMFILE) {
-        // TODO special trick. unlock reserved socket, accept, close.
+        /* TODO special trick. unlock reserved socket, accept, close. */
         return;
       } else {
         ol_close_error(handle, ol_err_new(handle, errno));
@@ -211,7 +217,7 @@ void ol_tcp_connect(ol_handle* handle, ol_req* req) {
     ev_set_cb(&handle->_.read_watcher, ol_tcp_io);
 
     /* Successful connection */
-    ol_connect_cb connect_cb = req->connect_cb;
+    ol_connect_cb connect_cb = req->cb;
     if (connect_cb) {
       if (req->_.local) {
         connect_cb(NULL, ol_err_new(handle, 0));
@@ -303,7 +309,7 @@ int ol_connect(ol_handle* handle, ol_req *req_in, struct sockaddr* addr) {
 }
 
 int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
-  // stub
+  /* stub */
   assert(0);
   return 0;
 }
@@ -319,18 +325,18 @@ int ol_write2(ol_handle* handle, const char* msg) {
 
 
 void ol_req_append(ol_handle* handle, ol_req *req) {
-  ngx_queue_insert_tail(&handle->read_reqs, &req->read_queue);
+  ngx_queue_insert_tail(&handle->_.read_reqs, &req->_.read_reqs);
 }
 
 
 int ol_read(ol_handle* handle, ol_req *req_in, ol_buf* bufs, int bufcnt) {
   assert(handle->_.fd >= 0);
 
-  if (!ngx_queue_empty(&handle->read_reqs)) {
+  if (!ngx_queue_empty(&handle->_.read_reqs)) {
     /* There are already pending read_reqs. We must get in line. */
-    assert(ev_is_active(&handle->read_watcher));
+    assert(ev_is_active(&handle->_.read_watcher));
 
-    ol_req *req = ol_req_maybe_alloc(handle, req_in);
+    ol_req* req = ol_req_maybe_alloc(handle, req_in);
     if (!req) {
       return ol_err_new(handle, ENOMEM);
     }
@@ -341,19 +347,21 @@ int ol_read(ol_handle* handle, ol_req *req_in, ol_buf* bufs, int bufcnt) {
 
   } else {
     /* Attempt to read immediately */
-    ssize_t nread = readv(handle->_.fd, (struct iovec) bufs, bufcnt);
+    ssize_t nread = readv(handle->_.fd, (struct iovec*) bufs, bufcnt);
 
     if (nread < 0) {
 
     }
 
     ssize_t buftotal;
-    for (int i = 0; i < bufcnt; i++) {
-      buftotal += bufs.len;
+    int i;
+    for (i = 0; i < bufcnt; i++) {
+      buftotal += bufs[i].len;
       if (buftotal == nread) {
         /* We read everything */
-        if (req_in.read_cb) {
-          req_in.read_cb(handle, req_in, nread, 0);
+        ol_read_cb cb = req_in->cb;
+        if (cb) {
+          cb(req_in, nread, 0);
         }
       }
 
@@ -365,12 +373,10 @@ int ol_read(ol_handle* handle, ol_req *req_in, ol_buf* bufs, int bufcnt) {
     if (!req) {
       return ol_err_new(handle, ENOMEM);
     }
-
-    // blah
   }
 
 
-  ngx_queue_insert_tail();
+  /* ngx_queue_insert_tail(); */
 
   return 0;
 }
@@ -378,6 +384,6 @@ int ol_read(ol_handle* handle, ol_req *req_in, ol_buf* bufs, int bufcnt) {
 
 void ol_free(ol_handle* handle) {
   free(handle);
-  // lists?
+  /* lists? */
   return;
 }

@@ -5,7 +5,7 @@
 
 
 
-typedef int ol_err; // FIXME
+typedef int ol_err; /* FIXME */
 
 typedef struct ol_req_s ol_req;
 typedef struct ol_handle_s ol_handle;
@@ -36,11 +36,11 @@ typedef enum {
 
 
 struct ol_handle_s {
-  // read-only
+  /* read-only */
   ol_handle_type type;
-  // private
+  /* private */
   ol_handle_private _;
-  // public
+  /* public */
   ol_accept_cb accept_cb;
   ol_close_cb close_cb;
   void* data;
@@ -57,18 +57,13 @@ typedef enum {
 
 
 struct ol_req_s {
-  // read-only
+  /* read-only */
   ol_req_type type;
   ol_handle* handle;
-  // private
+  /* private */
   ol_req_private _;
-  // public
-  union {
-    ol_read_cb read_cb;
-    ol_write_cb write_cb;
-    ol_connect_cb connect_cb;
-    ol_shutdown_cb shutdown_cb;
-  };
+  /* public */
+  void* cb;
   void *data;
 };
 
@@ -78,28 +73,29 @@ int ol_run();
 
 ol_handle* ol_handle_new(ol_close_cb close_cb, void* data);
 
-// TCP server methods.
+/* TCP server methods. */
 int ol_bind(ol_handle* handle, struct sockaddr* addr);
 int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb);
 
-// TCP socket methods.
+/* TCP socket methods. */
 int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr);
 int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
 int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
 int ol_write2(ol_handle* handle, const char* msg);
 int ol_shutdown(ol_handle* handle, ol_req *req);
 
-// Request handle to be closed. close_cb will be made
-// synchronously during this call.
+/* Request handle to be closed. close_cb will be made */
+/* synchronously during this call. */
 int ol_close(ol_handle* handle);
 
-// Must be called for all handles after close_cb. Handles that arrive
-// via the accept_cb must use ol_free().
+/* Must be called for all handles after close_cb. Handles that arrive
+ * via the accept_cb must use ol_free().
+ */
 void ol_free(ol_handle* handle);
 
 
 
-// Utility
+/* Utility */
 struct sockaddr_in ol_ip4_addr(char *ip, int port);
 
 #endif /* OL_H */

@@ -20,21 +20,11 @@ typedef struct {
 } ol_buf;
 
 
-typedef struct {
-  ol_buf* bufs;
-  int bufcnt;
-  int current_index;
-  size_t written;
-  ol_write_cb write_cb;
-  ol_handle* handle;
-  ngx_queue_t write_queue;
-} ol_bucket;
-
-
 
 typedef struct {
   int local;
   ol_req_cb connect_cb;
+  ngx_queue_t read_reqs;
 } ol_req_private;
 
 
@@ -52,8 +42,7 @@ typedef struct {
   ev_io write_watcher;
 
   ngx_queue_t write_queue;
-  ngx_queue_t all_handles;
-
+  ngx_queue_t read_reqs;
 
 } ol_handle_private;
 
