@@ -1,0 +1,14 @@
+*.swp
+*.o
+*.lo
+*.la
+*.a
+ev/.deps/
+ev/.libs/
+ev/Makefile
+ev/config.h
+ev/config.log
+ev/config.status
+ev/libtool
+ev/stamp-h1
+test/echo-server
