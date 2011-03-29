@@ -12,3 +12,4 @@ ev/config.status
 ev/libtool
 ev/stamp-h1
 test/echo-server
+ev/autom4te.cache
