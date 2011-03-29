@@ -61,9 +61,12 @@ void on_close(ol_handle* peer, ol_err err) {
 
 
 void on_accept(ol_handle* server, ol_handle* new_client) {
+  peer_t* p;
+  int r;
+
   new_client->close_cb = on_close;
 
-  peer_t* p = malloc(sizeof(peer_t));
+  p = (peer_t*)malloc(sizeof(peer_t)); 
   p->handle = new_client;
   p->buf.base = p->read_buffer;
   p->buf.len = BUFSIZE;
@@ -71,7 +74,7 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
 
   try_read(p);
 
-  int r = ol_write2(new_client, "Hello\n");
+  r = ol_write2(new_client, "Hello\n");
   if (r < 0) {
     // error
     assert(0);
@@ -80,13 +83,17 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
 
 
 int main(int argc, char** argv) {
+  ol_handle* server;
+  struct sockaddr_in addr;
+  int r;
+
   ol_init();
 
-  ol_handle* server = ol_handle_new(on_close, NULL);
+  server = ol_handle_new(on_close, NULL);
 
-  struct sockaddr_in addr = ol_ip4_addr("0.0.0.0", 8000);
+  addr = ol_ip4_addr("0.0.0.0", 8000);
 
-  int r = ol_bind(server, (struct sockaddr*) &addr);
+  r = ol_bind(server, (struct sockaddr*) &addr);
   if (r) {
     fprintf(stderr, "Bind error\n");
     return 1;
