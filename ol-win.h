@@ -20,7 +20,6 @@ typedef struct {
   int flags;
 } ol_req_private;
 
-
 typedef struct {
   union {
     SOCKET socket;

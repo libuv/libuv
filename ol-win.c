@@ -162,7 +162,7 @@ void ol_get_extension_function(SOCKET socket, GUID guid, void **target) {
 
 void ol_init() {
   const GUID wsaid_connectex            = WSAID_CONNECTEX;
-  const GUID wsaid_acceptex             = WSAID_CONNECTEX;
+  const GUID wsaid_acceptex             = WSAID_ACCEPTEX;
   const GUID wsaid_getacceptexsockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
   const GUID wsaid_disconnectex         = WSAID_DISCONNECTEX;
   const GUID wsaid_transmitfile         = WSAID_TRANSMITFILE;
@@ -195,7 +195,7 @@ void ol_init() {
   }
 
   /* Create an I/O completion port */
-  ol_iocp_ = CreateIoCompletionPort(NULL, NULL, 0, 0);
+  ol_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
   if (ol_iocp_ == NULL) {
     ol_fatal_error(GetLastError(), "CreateIoCompletionPort");
   }
@@ -241,10 +241,11 @@ int ol_set_socket_options(ol_handle *handle) {
 ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
   ol_handle *handle;
 
-  handle = (ol_handle*)calloc(sizeof(ol_handle), 1);
+  handle = (ol_handle*)malloc(sizeof(ol_handle));
   handle->close_cb = close_cb;
   handle->data = data;
   handle->type = OL_TCP;
+  handle->_.accept_req = NULL;
 
   handle->_.socket = socket(AF_INET, SOCK_STREAM, 0);
   if (handle->_.socket == INVALID_SOCKET) {
@@ -313,7 +314,7 @@ void ol_queue_accept(ol_handle *handle) {
 
   /* Prepare the ol_req and OVERLAPPED structures. */
   req = handle->_.accept_req;
-  req->_.flags |= OL_REQ_PENDING;
+  req->_.flags = OL_REQ_PENDING;
   req->data = (void*)peer;
   memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
 
@@ -337,7 +338,6 @@ void ol_queue_accept(ol_handle *handle) {
 }
 
 
-
 int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
   ol_req* req;
 
@@ -350,6 +350,75 @@ int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
   handle->_.accept_req->type = OL_ACCEPT;
   
   ol_queue_accept(handle);
+
+  return 0;
+}
+
+
+int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
+  int result;
+  DWORD bytes;
+
+  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
+  req->handle = handle;
+  req->type = OL_WRITE;
+
+  result = WSASend(handle->_.socket, 
+                   (WSABUF*)bufs, 
+                   bufcnt, 
+                   &bytes, 
+                   0, 
+                   &req->_.overlapped, 
+                   NULL);
+  if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
+    ol_errno_ = WSAGetLastError();
+    return -1;
+  }
+
+  return 0;
+}
+
+int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
+  int result;
+  DWORD bytes, flags;
+
+  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
+  req->handle = handle;
+  req->type = OL_READ;
+
+  flags = 0;
+  result = WSARecv(handle->_.socket, 
+                   (WSABUF*)bufs, 
+                   bufcnt, 
+                   &bytes, 
+                   &flags, 
+                   &req->_.overlapped, 
+                   NULL);
+  if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
+    ol_errno_ = WSAGetLastError();
+    return -1;
+  }
+
+  return 0;
+}
+
+
+void ol_after_write2(ol_req* req, ol_err e) {
+  free(req);
+}
+
+
+int ol_write2(ol_handle* handle, const char* msg) {
+  ol_req *req;
+  ol_buf buf;
+
+  req = (ol_req*)malloc(sizeof(*req));
+  req->cb = (void*)&ol_after_write2;
+
+  buf.base = (char*)msg;
+  buf.len = strlen(msg);
+    
+  return ol_write(handle, req, &buf, 1);
 }
 
 
@@ -388,7 +457,7 @@ void ol_poll() {
   ol_req* req;
   ol_handle* handle;
   ol_handle *peer;
-
+  
   success = GetQueuedCompletionStatus(ol_iocp_,
                                       &bytes,
                                       &key,
@@ -401,6 +470,30 @@ void ol_poll() {
   req = ol_overlapped_to_req(overlapped);
 
   switch (req->type) {
+    case OL_WRITE:
+      if (req->cb) {
+        handle = (ol_handle*)key;
+        success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+        if (success) {
+          ((ol_write_cb)req->cb)(req, 0);
+        } else {
+          ((ol_write_cb)req->cb)(req, GetLastError());
+        }
+      }
+      return;
+
+    case OL_READ:
+      if (req->cb) {
+        handle = (ol_handle*)key;
+        success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+        if (success) {
+          ((ol_read_cb)req->cb)(req, bytes, 0);
+        } else {
+          ((ol_read_cb)req->cb)(req, bytes, GetLastError());
+        }
+      }
+      return;
+
     case OL_ACCEPT:
       peer = (ol_handle*)req->data;
 
@@ -437,6 +530,9 @@ void ol_poll() {
       return;
   }
 }
+
+
+
 
 
 int ol_run() {
