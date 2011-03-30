@@ -17,6 +17,7 @@ typedef struct _ol_buf {
 
 typedef struct {
   OVERLAPPED overlapped;
+  int flags;
 } ol_req_private;
 
 
@@ -25,4 +26,5 @@ typedef struct {
     SOCKET socket;
     HANDLE handle;
   };
+  struct ol_req_s* accept_req;
 } ol_handle_private;
