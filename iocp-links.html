@@ -24,12 +24,12 @@
 
       table th {
         text-align: left;
-        padding: 0.5em;
+        padding: 0.2em;
         white-space: nowrap;
       }
 
       table td {
-        padding: 0.5em;
+        padding: 0.2em;
         text-align: left;
         white-space: nowrap;
       }
@@ -120,70 +120,28 @@ Common practice for accessing the disk asynchronously is still done using custom
 userland thread pools&mdash;not POSIX AIO.
 
 <p>Windows IOCPs does support both sockets and regular file I/O which
-greatly simplifies the handling of disks. Although the function names are
-not exactly the same in Windows for sockets and regular files, the
-they act similar.
-
-<table>
-  <tr>
-    <th></th>
-    <th>Regular File Read</th>
-    <th>Regular File Write</th>
-    <th>Socket Read</th>
-    <th>Socket Write</th>
-  </tr>
-  <tr>
-    <th>Windows</th>
-    <td><code>ReadFile()</code></td>
-    <td><code>WriteFile()</code></td>
-    <td><code>WSARecv()</code></td>
-    <td><code>WSASend()</code></td>
-  </tr>
-  <tr>
-    <th>POSIX</th>
-    <td><code>read()</code></td>
-    <td><code>write()</code></td>
-    <td><code>read()</code> or <code>recv()</code></td>
-    <td><code>write()</code> or <code>send()</code></td>
-  </tr>
-</table>
-
-<p><code>ReadFile()</code> and <code>WSARecv()</code> operate on regular
-files and sockets, respectively. They both are for sending data. Both take a 
-<a href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>OVERLAPPED</code></a>
-argument.
+greatly simplifies the handling of disks. For example,
+<a href="http://msdn.microsoft.com/en-us/library/aa365468(v=VS.85).aspx"><code>ReadFileEx()</code></a>
+operates on both.
+As a first example let's look at how <code>ReadFile()</code> works.
 
 <pre>
 typedef void* HANDLE;
-typedef HANDLE SOCKET;
 
 BOOL ReadFile(HANDLE file,
               void* buffer,
               DWORD numberOfBytesToRead,
               DWORD* numberOfBytesRead,
               OVERLAPPED* overlapped);
-
-int WSARecv(SOCKET s,
-            WSABUF* buffers,
-            DWORD bufferCount,
-            DWORD* numberOfBytesRecvd,
-            DWORD* flags,
-            OVERLAPPED* overlapped,
-            OVERLAPPED_COMPLETION_ROUTINE completionRoutine);
 </pre>
 
-For now ignore the <code>completionRoutine</code> parameter in
-<code>WSARecv</code>.
-
 <p>
-Both functions have the possibility of executing the read synchronously
+The function has the possibility of executing the read synchronously
 or asynchronously. A synchronous operation is indicated by
 returning 0 and <a
 href="http://msdn.microsoft.com/en-us/library/ms741580(v=VS.85).aspx">WSAGetLastError()</code></a>
 returning <code>WSA_IO_PENDING</code>.
-
-<p>
-When either function operates asynchronously the
+When <code>ReadFile()</code> operates asynchronously the
 the user-supplied <a
 href="http://msdn.microsoft.com/en-us/library/ms741665(v=VS.85).aspx"><code>OVERLAPPED*</code></a>
 is a handle to the incomplete operation.
@@ -327,13 +285,17 @@ hard limit of 2048 open file descriptors&mdash;see
 <dl>
 
 <dt><code>send(2)</code>, <code>write(2)</code></dt>
-<dd>Windows: <a href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>
+<dd>Windows:
+<a href="http://msdn.microsoft.com/en-us/library/ms742203(v=vs.85).aspx"><code>WSASend()</code></a>,
+<a href="http://msdn.microsoft.com/en-us/library/aa365748(v=VS.85).aspx"><code>WriteFileEx()</code></a>
 </dd>
 
 
 <dt><code>recv(2)</code>, <code>read(2)</code></dt>
 <dd>
-Windows: <a href="http://msdn.microsoft.com/en-us/library/ms741688(v=VS.85).aspx"><code>WSARecv()</code></a>
+Windows: 
+<a href="http://msdn.microsoft.com/en-us/library/ms741688(v=VS.85).aspx"><code>WSARecv()</code></a>,
+<a href="http://msdn.microsoft.com/en-us/library/aa365468(v=VS.85).aspx"><code>ReadFileEx()</code></a>
 </dd>
 
 
