@@ -355,6 +355,41 @@ int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
 }
 
 
+int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr) {
+  int addrsize;  
+  int result;
+  DWORD bytes;
+
+  if (addr->sa_family == AF_INET) {
+    addrsize = sizeof(struct sockaddr_in);
+  } else if (addr->sa_family == AF_INET6) {
+    addrsize = sizeof(struct sockaddr_in6);
+  } else {
+    assert(0);
+    return -1;
+  }
+
+  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
+  req->handle = handle;
+  req->type = OL_CONNECT;
+
+  result = pConnectEx(handle->_.socket,
+                      addr,
+                      addrsize,
+                      NULL,
+                      0,
+                      &bytes,
+                      &req->_.overlapped);
+
+  if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
+    ol_errno_ = WSAGetLastError();
+    return -1;
+  }
+
+  return 0;
+}
+
+
 int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes;
@@ -528,11 +563,20 @@ void ol_poll() {
       /* Queue another accept */
       ol_queue_accept(handle);
       return;
+
+    case OL_CONNECT:
+      if (req->cb) {
+        handle = (ol_handle*)key;
+        success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+        if (success) {
+          ((ol_connect_cb)req->cb)(req, 0);
+        } else {
+          ((ol_connect_cb)req->cb)(req, GetLastError());
+        }
+      }
+      return;
   }
 }
-
-
-
 
 
 int ol_run() {
