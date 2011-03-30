@@ -19,7 +19,7 @@ typedef ol_req_cb ol_connect_cb;
 typedef ol_req_cb ol_shutdown_cb;
 
 
-#if defined(__unix__) ||defined(__POSIX__)
+#if defined(__unix__) || defined(__POSIX__)
 # include "ol-unix.h"
 #else
 # include "ol-win.h"
@@ -50,6 +50,7 @@ struct ol_handle_s {
 typedef enum {
   OL_UNKNOWN_REQ = 0,
   OL_CONNECT,
+  OL_ACCEPT,
   OL_READ,
   OL_WRITE,
   OL_SHUTDOWN

@@ -1,18 +1,28 @@
 
+#include <winsock2.h>
+#include <mswsock.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+
 
 /**
- * Note can be cast to
- * WSABUF[http://msdn.microsoft.com/en-us/library/ms741542(v=vs.85).aspx]
+ * It should be possible to cast ol_buf[] to WSABUF[]
+ * see http://msdn.microsoft.com/en-us/library/ms741542(v=vs.85).aspx
  */
 typedef struct _ol_buf {
-  u_long len;
-  char* buf;
-  _ol_buf* next;
-  _ol_buf* prev;
+  ULONG len;
+  char* base;
 } ol_buf;
 
 
 typedef struct {
   OVERLAPPED overlapped;
-  ngx_queue_t queue;
 } ol_req_private;
+
+
+typedef struct {
+  union {
+    SOCKET socket;
+    HANDLE handle;
+  };
+} ol_handle_private;
