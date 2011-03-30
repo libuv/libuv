@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
   ol_init();
 
-  server = ol_handle_new(on_close, NULL);
+  server = ol_tcp_handle_new(on_close, NULL);
 
   addr = ol_ip4_addr("0.0.0.0", 8000);
 

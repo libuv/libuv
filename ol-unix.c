@@ -54,7 +54,7 @@ int ol_run() {
 }
 
 
-ol_handle* ol_handle_new(ol_close_cb close_cb, void* data) {
+ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
   ol_handle *handle = calloc(sizeof(ol_handle), 1);
   handle->close_cb = close_cb;
   handle->data = data;
@@ -127,7 +127,7 @@ int ol_tcp_init_fd(int fd) {
 
 
 ol_handle* ol_tcp_open(ol_handle* parent, int fd) {
-  ol_handle* h = ol_handle_new(NULL, NULL);
+  ol_handle* h = ol_tcp_handle_new(NULL, NULL);
   if (!h) {
     return NULL;
   }

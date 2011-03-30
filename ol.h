@@ -80,7 +80,12 @@ const char* ol_err_str(ol_err err);
 void ol_init();
 int ol_run();
 
-ol_handle* ol_handle_new(ol_close_cb close_cb, void* data);
+ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data);
+/* TODO:
+ * ol_named_pipe_handle_new
+ * ol_file_handle_new
+ * ol_tty_handle_new
+ */
 
 /* TCP server methods. */
 int ol_bind(ol_handle* handle, struct sockaddr* addr);
