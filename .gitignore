@@ -3,6 +3,12 @@
 *.lo
 *.la
 *.a
+*.opensdf
+*.orig
+*.sdf
+*.suo
+*.vcxproj.filters
+*.vcxproj.user
 ev/.deps/
 ev/.libs/
 ev/Makefile
@@ -13,3 +19,6 @@ ev/libtool
 ev/stamp-h1
 test/echo-server
 ev/autom4te.cache
+/ipch/
+/Debug/
+/Release/
