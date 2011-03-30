@@ -68,6 +68,15 @@ struct ol_req_s {
 };
 
 
+/**
+ * Most functions return boolean: 0 for success and -1 for failure.
+ * On error the user should then call ol_last_error() to determine
+ * the error code.
+ */
+ol_err ol_last_error();
+const char* ol_err_str(ol_err err);
+
+
 void ol_init();
 int ol_run();
 
