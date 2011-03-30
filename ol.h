@@ -1,7 +1,7 @@
 #ifndef OL_H
 #define OL_H
 
-#include <sys/types.h> /* size_t */
+#include <stddef.h> /* size_t */
 
 
 
