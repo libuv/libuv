@@ -80,7 +80,7 @@ const char* ol_err_str(ol_err err);
 void ol_init();
 int ol_run();
 
-void ol_req_init(ol_req *req, void *cb);
+void ol_req_init(ol_req* req, void* cb);
 
 ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data);
 /* TODO:

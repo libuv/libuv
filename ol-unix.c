@@ -261,7 +261,7 @@ void ol__read(ol_handle* handle) {
     } else {
       ol_err err = ol_err_new(handle, errno);
       if (cb) {
-        cb(req, 0, err);
+        cb(req, 0);
       }
       ol_close_error(handle, errno);
     }
@@ -280,7 +280,7 @@ void ol__read(ol_handle* handle) {
 
     /* NOTE: call callback AFTER freeing the request data. */
     if (cb) {
-      cb(req, nread, 0);
+      cb(req, nread);
     }
 
     if (ol_read_reqs_empty(handle)) {
@@ -366,7 +366,8 @@ ol_req* ol_req_maybe_alloc(ol_handle* handle, ol_req* in_req) {
     in_req->_.local = 0;
     return in_req;
   } else {
-    ol_req *req = calloc(sizeof(ol_req), 1);
+    ol_req *req = malloc(sizeof(ol_req));
+    ol_req_init(req, NULL);
     req->handle = handle;
     ngx_queue_init(&(req->_.read_reqs));
     req->_.local = 1;
@@ -431,7 +432,7 @@ int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
   } else {
     if (req && req->cb) {
       ol_write_cb cb = req->cb;
-      cb(req, 0);
+      cb(req);
     }
     return 0;
   }
@@ -464,7 +465,7 @@ int ol_read(ol_handle* handle, ol_req *req_in, ol_buf* bufs, int bufcnt) {
     ol_err err = ol_err_new(handle, errno);
 
     if (cb) {
-      cb(req_in, nread, err);
+      cb(req_in, nread);
     }
 
     return err;
@@ -473,7 +474,7 @@ int ol_read(ol_handle* handle, ol_req *req_in, ol_buf* bufs, int bufcnt) {
   if (nread >= 0) {
     /* Successful read. */
     if (cb) {
-      cb(req_in, nread, 0);
+      cb(req_in, nread);
     }
     return 0;
   }
@@ -516,4 +517,11 @@ void ol_free(ol_handle* handle) {
   free(handle);
   /* lists? */
   return;
+}
+
+
+void ol_req_init(ol_req *req, void *cb) {
+  req->type = OL_UNKNOWN_REQ;
+  req->cb = cb;
+  ngx_queue_init(&(req->_.read_reqs));
 }
