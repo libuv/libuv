@@ -25,6 +25,8 @@ typedef struct {
   int local;
   ol_req_cb connect_cb;
   ngx_queue_t read_reqs;
+  ol_buf* read_bufs;
+  int read_bufcnt;
 } ol_req_private;
 
 
