@@ -70,12 +70,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ol-win.c" />
-    <ClCompile Include="test\echo-server.c" />
+    <ClCompile Include="test\echo-demo.c" />
+    <ClCompile Include="test\echo.c" />
+    <ClCompile Include="test\test-ping-pong.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ngx-queue.h" />
     <ClInclude Include="ol-win.h" />
     <ClInclude Include="ol.h" />
+    <ClInclude Include="test\echo.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="iocp-links.html" />

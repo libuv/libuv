@@ -2,9 +2,11 @@
 #include "echo.h"
 
 int main(int argc, char** argv) {
+  int r;
+
   ol_init();
 
-  int r = echo_start(8000);
+  r = echo_start(8000);
   if (r) {
     return r;
   }
