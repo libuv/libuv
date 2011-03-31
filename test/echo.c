@@ -8,7 +8,7 @@
 
 
 typedef struct {
-  ol_handle *handle;
+  ol_handle* handle;
   ol_req req;
   ol_buf buf;
   char read_buffer[BUFSIZE];
@@ -103,4 +103,3 @@ int echo_start(int port) {
 
   return 0;
 }
-

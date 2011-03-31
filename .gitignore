@@ -23,3 +23,4 @@ ev/autom4te.cache
 /Release/
 
 test/echo-demo
+test/test-ping-pong

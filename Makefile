@@ -1,5 +1,10 @@
+all: test/echo-demo test/test-ping-pong
+
 test/echo-demo: test/echo-demo.c test/echo.o ol.a
 	$(CC) -ansi -g -o test/echo-demo test/echo-demo.c test/echo.o ol.a -lm
+
+test/test-ping-pong: test/test-ping-pong.c test/echo.o ol.a
+	$(CC) -ansi -g -o test/test-ping-pong test/test-ping-pong.c test/echo.o ol.a -lm
 
 ol.a: ol-unix.o ev/ev.o
 	$(AR) rcs ol.a ol-unix.o ev/ev.o

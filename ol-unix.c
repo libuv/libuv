@@ -63,6 +63,7 @@ ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
     return NULL;
   }
 
+  handle->type = OL_TCP;
   handle->close_cb = close_cb;
   handle->data = data;
 
@@ -316,7 +317,6 @@ void ol_tcp_io(EV_P_ ev_io* watcher, int revents) {
 void ol_tcp_connect(ol_handle* handle, ol_req* req) {
   assert(handle->_.fd >= 0);
   assert(req);
-  assert(req->type == OL_CONNECT);
 
   int error;
   int errorsize = sizeof(int);
