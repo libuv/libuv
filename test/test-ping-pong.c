@@ -20,30 +20,31 @@ typedef struct {
   char read_buffer[BUFSIZE];
 } pinger;
 
+void pinger_try_read(pinger* pinger);
 
 void pinger_on_close(ol_handle* handle, ol_err err) {
+  pinger* p;
+
   assert(!err);
-  pinger* p = handle->data;
+  p = (pinger*)handle->data;
   assert(1000 == p->pongs);
   free(p);
   ol_free(handle);
   completed_pingers++;
+  echo_stop();
 }
 
-
-void pinger_after_read(ol_req* req, size_t nread, ol_err err) {
-  int i, r;
-
-  if (!err) {
-    return;
-  }
+void pinger_after_read(ol_req* req, size_t nread) {
+  unsigned int i;
+  int r;
+  pinger* p;
 
   if (nread == 0) {
     ol_close(req->handle);
     return;
   }
 
-  pinger *p = req->data;
+  p = (pinger*)req->data;
 
   /* Now we count the pings */
   for (i = 0; i < nread; i++) {
@@ -57,9 +58,12 @@ void pinger_after_read(ol_req* req, size_t nread, ol_err err) {
         assert(!r);
       } else {
         ol_close(p->handle);
+        return;
       }
     }
   }
+
+  pinger_try_read(p);
 }
 
 
@@ -70,8 +74,9 @@ void pinger_try_read(pinger* pinger) {
 }
 
 
-void pinger_on_connect(ol_handle* handle, ol_err err) {
+void pinger_on_connect(ol_req *req, ol_err err) {
   int r;
+  ol_handle *handle = req->handle;
 
   pinger *p = calloc(sizeof(pinger), 1);
   p->handle = handle;
@@ -94,8 +99,12 @@ void pinger_on_connect(ol_handle* handle, ol_err err) {
 int pinger_connect(int port) {
   /* Try to connec to the server and do 1000 ping-pongs. */
   ol_handle* handle = ol_tcp_handle_new(pinger_on_close, NULL);
-  struct sockaddr_in addr = ol_ip4_addr("127.0.0.1", port);
-  return ol_connect(handle, &connect_req, (struct sockaddr*)&addr);
+  struct sockaddr_in client_addr = ol_ip4_addr("0.0.0.0", 0);
+  struct sockaddr_in server_addr = ol_ip4_addr("127.0.0.1", port);
+
+  ol_bind(handle, (struct sockaddr*)&client_addr);
+  ol_req_init(&connect_req, &pinger_on_connect);
+  return ol_connect(handle, &connect_req, (struct sockaddr*)&server_addr);
 }
 
 

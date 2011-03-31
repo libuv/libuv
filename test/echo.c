@@ -22,6 +22,9 @@ void on_close(ol_handle* peer, ol_err err);
 void on_accept(ol_handle* server, ol_handle* new_client);
 
 
+ol_handle *server = NULL;
+
+
 void after_write(ol_req* req) {
   peer_t *peer = (peer_t*) req->data;
   try_read(peer);
@@ -58,7 +61,6 @@ void on_close(ol_handle* peer, ol_err err) {
 
 void on_accept(ol_handle* server, ol_handle* new_client) {
   peer_t* p;
-  int r;
 
   new_client->close_cb = on_close;
 
@@ -70,21 +72,29 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
   ol_req_init(&p->req, NULL);
 
   try_read(p);
+}
 
-  r = ol_write2(new_client, "Hello\n");
-  if (r < 0) {
-    /* error */
-    assert(0);
+
+void on_server_close(ol_handle* handle, ol_err err) {
+  assert(handle == server);
+
+  if (err) {
+    fprintf(stdout, "Socket error\n");
   }
+
+  ol_free(server);
+  server = NULL;
 }
 
 
 int echo_start(int port) {
-  ol_handle* server = ol_tcp_handle_new(on_close, NULL);
-
   struct sockaddr_in addr = ol_ip4_addr("0.0.0.0", port);
+  int r;
 
-  int r = ol_bind(server, (struct sockaddr*) &addr);
+  assert(server == NULL);
+  server = ol_tcp_handle_new(&on_server_close, NULL);
+
+  r = ol_bind(server, (struct sockaddr*) &addr);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Bind error\n");
@@ -99,4 +109,9 @@ int echo_start(int port) {
   }
 
   return 0;
+}
+
+int echo_stop() {
+  assert(server != NULL);
+  ol_close(server);
 }
