@@ -75,13 +75,15 @@
  * Private ol_req flags. 
  */
 /* The request is currently queued. */
-#define OL_REQ_PENDING  0x01 
-/* When STRAY is set, that means that the owner of the containing ol_req */
-/* struct was destroyed while the old_req was queued to an iocp, so its */
-/* memory could not be freed. The event loop will release the ol_req */
-/* structure as soon as it is dequeued with GetQueuedCompletionStatus. */
-#define OL_REQ_STRAY    0x02
+#define OL_REQ_PENDING    0x01 
 
+/* When STRAY is set, that means that the handle owning the ol_req */
+/* struct was destroyed while the old_req was queued to an iocp */
+#define OL_REQ_STRAY      0x02
+
+/* When INTERNAL is set that means that the ol_req struct was */
+/* allocated by libol, so libol also needs to free it again */
+#define OL_REQ_INTERNAL   0x04
 
 /*
  * Pointers to winsock extension functions that have to be retrieved dynamically
@@ -91,7 +93,6 @@ LPFN_ACCEPTEX             pAcceptEx;
 LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs;
 LPFN_DISCONNECTEX         pDisconnectEx;
 LPFN_TRANSMITFILE         pTransmitFile;
-
 
 /*
  * Global I/O completion port 
@@ -202,6 +203,12 @@ void ol_init() {
 }
 
 
+void ol_req_init(ol_req *req, void *cb) {
+  req->_.flags = 0;
+  req->cb = cb;
+}
+
+
 ol_req* ol_overlapped_to_req(OVERLAPPED* overlapped) {
   return CONTAINING_RECORD(overlapped, ol_req, _.overlapped);
 }
@@ -239,7 +246,7 @@ int ol_set_socket_options(ol_handle *handle) {
 
 
 ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
-  ol_handle *handle;
+  ol_handle* handle;
 
   handle = (ol_handle*)malloc(sizeof(ol_handle));
   handle->close_cb = close_cb;
@@ -261,6 +268,38 @@ ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
   }
     
   return handle;
+}
+
+
+int ol_close_error(ol_handle* handle, ol_err error) {
+  switch (handle->type) {
+    case OL_TCP:
+      if (handle->_.accept_req) {
+        if (handle->_.accept_req->_.flags & OL_REQ_PENDING) {
+          handle->_.accept_req->_.flags |= OL_REQ_STRAY;
+        } else {
+          free(handle->_.accept_req);
+        }
+      }
+      if (closesocket(handle->_.socket) == SOCKET_ERROR)
+        return -1;
+      return 0;
+
+    default:
+      /* Not supported */
+      assert(0);
+      return -1;
+  }
+}
+
+
+int ol_close(ol_handle* handle) {
+  return ol_close_error(handle, 0);
+}
+
+
+void ol_free(ol_handle* handle) {
+  free(handle);
 }
 
 
@@ -304,8 +343,9 @@ void ol_queue_accept(ol_handle *handle) {
 
   peer = ol_tcp_handle_new(NULL, NULL);
   if (peer == NULL) {
-    /* Todo: report instead of dying */
-    ol_fatal_error(ol_errno_, "AcceptEx");
+    /* destroy ourselves */
+    ol_close_error(handle, ol_errno_);
+    return;
   }
 
   /* AcceptEx specifies that the buffer must be big enough to at least hold */
@@ -314,7 +354,8 @@ void ol_queue_accept(ol_handle *handle) {
 
   /* Prepare the ol_req and OVERLAPPED structures. */
   req = handle->_.accept_req;
-  req->_.flags = OL_REQ_PENDING;
+  assert(!(req->_.flags & OL_REQ_PENDING));
+  req->_.flags |= OL_REQ_PENDING;
   req->data = (void*)peer;
   memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
 
@@ -328,13 +369,16 @@ void ol_queue_accept(ol_handle *handle) {
                  &req->_.overlapped)) {
     if (WSAGetLastError() != ERROR_IO_PENDING) {
       ol_errno_ = WSAGetLastError();
-      req->_.flags &= ~OL_REQ_PENDING;
+      /* destroy the preallocated client handle */
       ol_close(peer);
       ol_free(peer);
-      /* Todo: report instead of dying */
-      ol_fatal_error(ol_errno_, "AcceptEx");
+      /* destroy ourselves */
+      ol_close_error(handle, ol_errno_);
+      return;
     }
   }
+
+  req->_.flags |= OL_REQ_PENDING;
 }
 
 
@@ -348,6 +392,7 @@ int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
   req = (ol_req*)malloc(sizeof(handle->_.accept_req));
   handle->_.accept_req = req;
   handle->_.accept_req->type = OL_ACCEPT;
+  handle->_.accept_req->_.flags = OL_REQ_INTERNAL;
   
   ol_queue_accept(handle);
 
@@ -359,6 +404,8 @@ int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr) {
   int addrsize;  
   int result;
   DWORD bytes;
+
+  assert(!(req->_.flags & OL_REQ_PENDING));
 
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
@@ -386,6 +433,8 @@ int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr) {
     return -1;
   }
 
+  req->_.flags |= OL_REQ_PENDING;
+
   return 0;
 }
 
@@ -393,6 +442,8 @@ int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr) {
 int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes;
+
+  assert(!(req->_.flags & OL_REQ_PENDING));
 
   memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
   req->handle = handle;
@@ -410,6 +461,8 @@ int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
     return -1;
   }
 
+  req->_.flags |= OL_REQ_PENDING;
+
   return 0;
 }
 
@@ -417,10 +470,12 @@ int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes, flags;
 
+  assert(!(req->_.flags & OL_REQ_PENDING));
+
   memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
   req->handle = handle;
   req->type = OL_READ;
-
+  
   flags = 0;
   result = WSARecv(handle->_.socket, 
                    (WSABUF*)bufs, 
@@ -434,12 +489,9 @@ int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
     return -1;
   }
 
+  req->_.flags |= OL_REQ_PENDING;
+
   return 0;
-}
-
-
-void ol_after_write2(ol_req* req, ol_err e) {
-  free(req);
 }
 
 
@@ -448,39 +500,13 @@ int ol_write2(ol_handle* handle, const char* msg) {
   ol_buf buf;
 
   req = (ol_req*)malloc(sizeof(*req));
-  req->cb = (void*)&ol_after_write2;
+  req->_.flags = OL_REQ_INTERNAL;
+  req->cb = NULL;
 
   buf.base = (char*)msg;
   buf.len = strlen(msg);
     
   return ol_write(handle, req, &buf, 1);
-}
-
-
-int ol_close(ol_handle* handle) {
-  switch (handle->type) {
-    case OL_TCP:
-      if (handle->_.accept_req) {
-        if (handle->_.accept_req->_.flags & OL_REQ_PENDING) {
-          handle->_.accept_req->_.flags |= OL_REQ_STRAY;
-        } else {
-          free(handle->_.accept_req);
-        }
-      }
-      if (closesocket(handle->_.socket) == SOCKET_ERROR)
-        return -1;
-      return 0;
-
-    default:
-      /* Not supported */
-      assert(0);
-      return -1;
-  }
-}
-
-
-void ol_free(ol_handle* handle) {
-  free(handle);
 }
 
 
@@ -504,60 +530,61 @@ void ol_poll() {
 
   req = ol_overlapped_to_req(overlapped);
 
+  /* Mark the request non-pending */
+  req->_.flags &= ~OL_REQ_PENDING;
+
+  /* If the related socket got closed in the meantime, disregard this */
+  /* result. If necessary free the request */
+  if (req->_.flags & OL_REQ_STRAY) {
+    if (req->type == OL_ACCEPT) {
+      peer = (ol_handle*)req->data;
+      ol_close(peer);
+      ol_free(peer);
+    }
+    if (req->_.flags & OL_REQ_INTERNAL) {
+      /* Free it */
+      free(req);
+    }
+    return;
+  }
+
   switch (req->type) {
     case OL_WRITE:
-      if (req->cb) {
-        handle = (ol_handle*)key;
-        success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
-        if (success) {
-          ((ol_write_cb)req->cb)(req, 0);
-        } else {
-          ((ol_write_cb)req->cb)(req, GetLastError());
-        }
+      handle = (ol_handle*)key;
+      success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+      if (!success) {
+        ol_close_error(handle, GetLastError());
+      } else if (req->cb) {
+        ((ol_write_cb)req->cb)(req);
+      } 
+      if (req->_.flags & OL_REQ_INTERNAL) {
+        free(req);
       }
       return;
 
     case OL_READ:
-      if (req->cb) {
-        handle = (ol_handle*)key;
-        success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
-        if (success) {
-          ((ol_read_cb)req->cb)(req, bytes, 0);
-        } else {
-          ((ol_read_cb)req->cb)(req, bytes, GetLastError());
-        }
+      handle = (ol_handle*)key;
+      success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+      if (!success) {
+        ((ol_close_cb)req->cb)(handle, GetLastError());
+      } else if (req->cb) {
+        ((ol_read_cb)req->cb)(req, bytes);
       }
-      return;
+      if (req->_.flags & OL_REQ_INTERNAL) {
+        free(req);
+      }
+      break;
 
     case OL_ACCEPT:
       peer = (ol_handle*)req->data;
-
-      /* If the listening socket got closed in the meantime, disregard this */
-      /* result. However we still need to free the peer socket allocated */
-      /* by ol_queue_accept. */
-      if (req->_.flags & OL_REQ_STRAY) {
-        ol_close(peer);
-        ol_free(peer);
-        free(req);
-        return;
-      }
-
       handle = (ol_handle*)key;
-
       success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
-
       if (success && handle->accept_cb) {
         handle->accept_cb(handle, peer);
-
       } else {
+        /* Ignore failed accept if the listen socket is still healthy */
         ol_close(peer);
         ol_free(peer);
-        
-        if (!success) {
-          ol_errno_ = GetLastError();
-          /* Todo: actually handle the error instead of dying */
-          ol_fatal_error(GetLastError(), "AcceptEx");
-        }
       }
 
       /* Queue another accept */
@@ -573,6 +600,9 @@ void ol_poll() {
         } else {
           ((ol_connect_cb)req->cb)(req, GetLastError());
         }
+      }
+      if (req->_.flags & OL_REQ_INTERNAL) {
+        free(req);
       }
       return;
   }
