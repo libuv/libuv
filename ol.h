@@ -10,13 +10,12 @@ typedef int ol_err; /* FIXME */
 typedef struct ol_req_s ol_req;
 typedef struct ol_handle_s ol_handle;
 
-typedef void (*ol_req_cb)(ol_req* req, ol_err e);
-typedef void (*ol_read_cb)(ol_req* req, size_t nread, ol_err e);
-typedef void (*ol_write_cb)(ol_req* req, ol_err e);
+typedef void (*ol_read_cb)(ol_req* req, size_t nread);
+typedef void (*ol_write_cb)(ol_req* req);
 typedef void (*ol_accept_cb)(ol_handle* server, ol_handle* new_client);
 typedef void (*ol_close_cb)(ol_handle* handle, ol_err e);
-typedef ol_req_cb ol_connect_cb;
-typedef ol_req_cb ol_shutdown_cb;
+typedef void (*ol_connect_cb)(ol_req* req, ol_err e);
+typedef void (*ol_shutdown_cb)(ol_req* req);
 
 
 #if defined(__unix__) || defined(__POSIX__)
@@ -80,6 +79,8 @@ const char* ol_err_str(ol_err err);
 
 void ol_init();
 int ol_run();
+
+void ol_req_init(ol_req *req, void *cb);
 
 ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data);
 /* TODO:

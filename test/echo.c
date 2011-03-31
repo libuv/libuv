@@ -15,31 +15,27 @@ typedef struct {
 } peer_t;
 
 
-void after_write(ol_req* req, ol_err err);
-void after_read(ol_req* req, size_t nread, ol_err err);
+void after_write(ol_req* req);
+void after_read(ol_req* req, size_t nread);
 void try_read(peer_t* peer);
 void on_close(ol_handle* peer, ol_err err);
 void on_accept(ol_handle* server, ol_handle* new_client);
 
 
-void after_write(ol_req* req, ol_err err) {
-  if (!err) {
-    peer_t *peer = (peer_t*) req->data;
-    try_read(peer);
-  }
+void after_write(ol_req* req) {
+  peer_t *peer = (peer_t*) req->data;
+  try_read(peer);
 }
 
 
-void after_read(ol_req* req, size_t nread, ol_err err) {
-  if (!err) {
-    if (nread == 0) {
-      ol_close(req->handle);
-    } else {
-      peer_t *peer = (peer_t*) req->data;
-      peer->buf.len = nread;
-      peer->req.cb = after_write;
-      ol_write(peer->handle, &peer->req, &peer->buf, 1);
-    }
+void after_read(ol_req* req, size_t nread) {
+  if (nread == 0) {
+    ol_close(req->handle);
+  } else {
+    peer_t *peer = (peer_t*) req->data;
+    peer->buf.len = nread;
+    peer->req.cb = after_write;
+    ol_write(peer->handle, &peer->req, &peer->buf, 1);
   }
 }
 
@@ -71,6 +67,7 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
   p->buf.base = p->read_buffer;
   p->buf.len = BUFSIZE;
   p->req.data = p;
+  ol_req_init(&p->req, NULL);
 
   try_read(p);
 
