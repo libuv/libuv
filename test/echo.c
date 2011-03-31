@@ -66,7 +66,7 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
 
   new_client->close_cb = on_close;
 
-  p = (peer_t*)malloc(sizeof(peer_t)); 
+  p = (peer_t*)malloc(sizeof(peer_t));
   p->handle = new_client;
   p->buf.base = p->read_buffer;
   p->buf.len = BUFSIZE;
@@ -82,30 +82,24 @@ void on_accept(ol_handle* server, ol_handle* new_client) {
 }
 
 
-int main(int argc, char** argv) {
-  ol_handle* server;
-  struct sockaddr_in addr;
-  int r;
+int echo_start(int port) {
+  ol_handle* server = ol_tcp_handle_new(on_close, NULL);
 
-  ol_init();
+  struct sockaddr_in addr = ol_ip4_addr("0.0.0.0", port);
 
-  server = ol_tcp_handle_new(on_close, NULL);
-
-  addr = ol_ip4_addr("0.0.0.0", 8000);
-
-  r = ol_bind(server, (struct sockaddr*) &addr);
+  int r = ol_bind(server, (struct sockaddr*) &addr);
   if (r) {
+    /* TODO: Error codes */
     fprintf(stderr, "Bind error\n");
     return 1;
   }
 
   r = ol_listen(server, 128, on_accept);
   if (r) {
+    /* TODO: Error codes */
     fprintf(stderr, "Listen error\n");
     return 1;
   }
-
-  ol_run();
 
   return 0;
 }
