@@ -13,7 +13,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#if !defined(HAVE_STRNLEN) /* Implement for platforms that lack strnlen */
+
+#ifndef strnlen
 size_t strnlen (register const char* s, size_t maxlen) {
   register const char *e;
   size_t n;
@@ -21,7 +22,7 @@ size_t strnlen (register const char* s, size_t maxlen) {
   for (e = s, n = 0; *e && n < maxlen; e++, n++);
   return n;
 }
-#endif
+#endif  /* strnlen */
 
 
 void ol_tcp_io(EV_P_ ev_io* watcher, int revents);

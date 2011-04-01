@@ -25,11 +25,6 @@ typedef void (*ol_shutdown_cb)(ol_req* req);
 #endif
 
 
-#if !defined(__APPLE__) /* FIXME: detect during configure */
-# define HAVE_STRNLEN
-#endif
-
-
 typedef enum {
   OL_UNKNOWN_HANDLE = 0,
   OL_TCP,
