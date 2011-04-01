@@ -18,10 +18,15 @@ typedef void (*ol_connect_cb)(ol_req* req, ol_err e);
 typedef void (*ol_shutdown_cb)(ol_req* req);
 
 
-#if defined(__unix__) || defined(__POSIX__)
+#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
 # include "ol-unix.h"
 #else
 # include "ol-win.h"
+#endif
+
+
+#if !defined(__APPLE__) /* FIXME: detect during configure */
+# define HAVE_STRNLEN
 #endif
 
 
