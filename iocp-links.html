@@ -45,35 +45,26 @@
 <p>This document assumes you are familiar with how non-blocking socket I/O
 is done in Unix.
 
-<p>Windows presents asynchronous and non-blocking I/O differently than in Unix.
-The syscall
-<a href="http://msdn.microsoft.com/en-us/library/ms740141(v=VS.85).aspx"><code>select()</code>
-  is available in Windows</a>.
-<code>select</code> processing is O(n) in the number of file descriptors
-unlike the modern constant-time multiplexers like epoll which makes it
+<p>The syscall
+<a href="http://msdn.microsoft.com/en-us/library/ms740141(v=VS.85).aspx"><code>select</code>
+  is available in Windows</a> 
+but <code>select</code> processing is O(n) in the number of file descriptors
+unlike the modern constant-time multiplexers like epoll which makes select
 unacceptable for high-concurrency servers.
+This document will describe how high-concurrency programs are
+designed in Windows.
 
 <p>
-Windows has another way of polling called
+Instead of <a href="http://en.wikipedia.org/wiki/Epoll">epoll</a>
+or
+<a href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a>,
+Windows has its own I/O multiplexer  called
 <a href="http://msdn.microsoft.com/en-us/library/aa365198(VS.85).aspx">I/O completion ports</a>
 (IOCPs). IOCPs are the objects used to poll
 <a href="http://msdn.microsoft.com/en-us/library/ms686358(v=vs.85).aspx">overlapped I/O</a>
 for completion. IOCP polling is constant time (REF?).
-They are similar to the Unix I/O multiplexers
-<ul>
-  <li> <a
-  href="http://en.wikipedia.org/wiki/Kqueue">kqueue</a> on Macintosh and
-BSDs,
-  <li> <a href="http://en.wikipedia.org/wiki/Epoll">epoll</a>
-  on Linux,
-  <li> <a
-  href="http://developers.sun.com/solaris/articles/event_completion.html">event
-  completion ports</a> on Solaris,
-  <li> <a href="">poll</a> on modern Unixes, and
-  <li> <a
-    href="http://www.kernel.org/doc/man-pages/online/pages/man2/select.2.html"><code>select()</code></a>,
-  which is available everywhere.
-</ul>
+
+<p>
 The fundamental variation is that in a Unix you generally ask the kernel to
 wait for state change in a file descriptor's readability or writablity. With
 overlapped I/O and IOCPs the programmers waits for asynchronous function
