@@ -94,11 +94,11 @@ int ol_bind(ol_handle* handle, struct sockaddr* addr);
 int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb);
 
 /* TCP socket methods. */
-int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr);
-int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
-int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt);
+int ol_connect(ol_handle* handle, ol_req* req, struct sockaddr* addr);
+int ol_read(ol_handle* handle, ol_req* req, ol_buf* bufs, int bufcnt);
+int ol_write(ol_handle* handle, ol_req* req, ol_buf* bufs, int bufcnt);
 int ol_write2(ol_handle* handle, const char* msg);
-int ol_shutdown(ol_handle* handle, ol_req *req);
+int ol_shutdown(ol_handle* handle, ol_req* req);
 
 /* Request handle to be closed. close_cb will be made */
 /* synchronously during this call. */
@@ -112,6 +112,6 @@ void ol_free(ol_handle* handle);
 
 
 /* Utility */
-struct sockaddr_in ol_ip4_addr(char *ip, int port);
+struct sockaddr_in ol_ip4_addr(char* ip, int port);
 
 #endif /* OL_H */
