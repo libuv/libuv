@@ -25,6 +25,8 @@ typedef struct {
     SOCKET socket;
     HANDLE handle;
   };
-  struct ol_req_s* accept_req;
+  unsigned int flags;
+  unsigned int reqs_pending;
+  ol_err error;
 } ol_handle_private;
 
