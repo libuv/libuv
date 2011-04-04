@@ -1,10 +1,13 @@
 #include "../ol.h"
-#include "echo.h"
+#include "test.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static int completed_pingers = 0;
 static ol_req connect_req;
+
+#define NUM_PINGS 50
 
 /* 64 bytes is enough for a pinger */
 #define BUFSIZE 64
@@ -27,11 +30,10 @@ void pinger_on_close(ol_handle* handle, ol_err err) {
 
   assert(!err);
   p = (pinger*)handle->data;
-  assert(1000 == p->pongs);
+  assert(NUM_PINGS == p->pongs);
   free(p);
   ol_free(handle);
   completed_pingers++;
-  echo_stop();
 }
 
 void pinger_after_read(ol_req* req, size_t nread) {
@@ -53,7 +55,7 @@ void pinger_after_read(ol_req* req, size_t nread) {
     p->state = (p->state + 1) % 5;
     if (p->state == 0) {
       p->pongs++;
-      if (p->pongs < 1000) {
+      if (p->pongs < NUM_PINGS) {
         r = ol_write2(p->handle, PING);
         assert(!r);
       } else {
@@ -75,10 +77,16 @@ void pinger_try_read(pinger* pinger) {
 
 
 void pinger_on_connect(ol_req *req, ol_err err) {
-  int r;
   ol_handle *handle = req->handle;
+  pinger *p;
+  int r;
 
-  pinger *p = calloc(sizeof(pinger), 1);
+  if (err) {
+    /* error */
+    assert(0);
+  }
+
+  p = calloc(sizeof(pinger), 1);
   p->handle = handle;
   p->buf.base = p->read_buffer;
   p->buf.len = BUFSIZE;
@@ -97,10 +105,10 @@ void pinger_on_connect(ol_req *req, ol_err err) {
 
 
 int pinger_connect(int port) {
-  /* Try to connec to the server and do 1000 ping-pongs. */
+  /* Try to connec to the server and do NUM_PINGS ping-pongs. */
   ol_handle* handle = ol_tcp_handle_new(pinger_on_close, NULL);
   struct sockaddr_in client_addr = ol_ip4_addr("0.0.0.0", 0);
-  struct sockaddr_in server_addr = ol_ip4_addr("127.0.0.1", port);
+  struct sockaddr_in server_addr = ol_ip4_addr("127.0.0.1", TEST_PORT);
 
   ol_bind(handle, (struct sockaddr*)&client_addr);
   ol_req_init(&connect_req, &pinger_on_connect);
@@ -108,12 +116,8 @@ int pinger_connect(int port) {
 }
 
 
-int main(int argc, char** argv) {
+TEST_IMPL(ping_pong) {
   ol_init();
-
-  if (echo_start(8000)) {
-    return 1;
-  }
 
   if (pinger_connect(8000)) {
     return 2;

@@ -1,7 +1,7 @@
 #include "../ol.h"
+#include "test.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 
 
 #define BUFSIZE 1024
@@ -111,7 +111,19 @@ int echo_start(int port) {
   return 0;
 }
 
+
 int echo_stop() {
   assert(server != NULL);
-  ol_close(server);
+  return ol_close(server);
+}
+
+
+TEST_IMPL(echo_server) {
+  ol_init();
+  if (echo_start(TEST_PORT))
+    return 1;
+
+  fprintf(stderr, "Listening!\n");
+  ol_run();
+  return 0;
 }
