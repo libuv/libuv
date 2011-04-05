@@ -17,7 +17,7 @@ int process_start(char *name, process_info_t *p) {
   PROCESS_INFORMATION pi;
   DWORD result;
 
-  if (GetTempPathW(sizeof(path), (WCHAR*)&path) == 0)
+  if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR*)&path) == 0)
     goto error;
   if (GetTempFileNameW((WCHAR*)&path, L"ol_", 0, (WCHAR*)&filename) == 0)
     goto error;
@@ -48,7 +48,7 @@ int process_start(char *name, process_info_t *p) {
   if (!SetHandleInformation(nul, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
     goto error;
 
-  result = GetModuleFileName(NULL, (WCHAR*)&image, sizeof(image));
+  result = GetModuleFileNameW(NULL, (WCHAR*)&image, sizeof(image) / sizeof(WCHAR));
   if (result == 0 || result == sizeof(image))
     goto error;
 
@@ -83,12 +83,11 @@ int process_start(char *name, process_info_t *p) {
 
   return 0;
 
-
 error:
   if (file != INVALID_HANDLE_VALUE)
     CloseHandle(file);
   if (nul != INVALID_HANDLE_VALUE)
-    CloseHandle(file);
+    CloseHandle(nul);
 
   return -1;
 }
