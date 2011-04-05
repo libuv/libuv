@@ -39,12 +39,12 @@ int run_test(test_entry_t *test) {
 
   process_count = 0;
 
-  /* Start all helpers for this test first */
+  /* Start all helpers for this test first. */
   for (helper = (test_entry_t*)&TESTS; helper->main; helper++) {
     if (helper->is_helper &&
         strcmp(test->test_name, helper->test_name) == 0) {
       if (process_start(helper->process_name, &processes[process_count]) == -1) {
-        sprintf_s((char*)&errmsg, sizeof(errmsg), "process `%s` failed to start.", helper->process_name);
+        snprintf((char*)&errmsg, sizeof(errmsg), "process `%s` failed to start.", helper->process_name);
         goto finalize;
       }
       process_count++;
@@ -53,7 +53,7 @@ int run_test(test_entry_t *test) {
 
   /* Start the main test process. */
   if (process_start(test->process_name, &processes[process_count]) == -1) {
-    sprintf_s((char*)&errmsg, sizeof(errmsg), "process `%s` failed to start.", test->process_name);
+    snprintf((char*)&errmsg, sizeof(errmsg), "process `%s` failed to start.", test->process_name);
     goto finalize;
   }
   main_process = &processes[process_count];
@@ -64,14 +64,14 @@ int run_test(test_entry_t *test) {
   if (result == -1) {
     FATAL("process_wait failed\n");
   } else if (result == -2) {
-    sprintf_s((char*)&errmsg, sizeof(errmsg), "timeout.");
+    snprintf((char*)&errmsg, sizeof(errmsg), "timeout.");
     goto finalize;
   }
 
-  /* Reap main process */
+  /* Reap the main process. */
   result = process_reap(main_process);
   if (result != 0) {
-    sprintf_s((char*)&errmsg, sizeof(errmsg), "exit code %d.", result);
+    snprintf((char*)&errmsg, sizeof(errmsg), "exit code %d.", result);
     goto finalize;
   }
 
@@ -81,6 +81,7 @@ int run_test(test_entry_t *test) {
 finalize:
   /* Kill all (helper) processes that are still running. */
   for (i = 0; i < process_count; i++)
+    /* If terminate fails the process is probably already closed. */
     process_terminate(&processes[i]);
 
   /* Wait until all processes have really terminated. */
@@ -128,11 +129,11 @@ int main(int argc, char **argv) {
   test_entry_t *test;
 
 #ifdef _WIN32
-  /* On windows disable the "application crashed" popup */
+  /* On windows disable the "application crashed" popup. */
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
 #endif
 
-  /* Disable output buffering */
+  /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
 
@@ -146,7 +147,7 @@ int main(int argc, char **argv) {
     return 255;
 
   } else {
-    /* Count the number of tests */
+    /* Count the number of tests. */
     total = 0;
     test = (test_entry_t*)&TESTS;
     for (test = (test_entry_t*)&TESTS; test->main; test++) {
@@ -154,7 +155,7 @@ int main(int argc, char **argv) {
         total++;
     }
 
-    /* Run all tests */
+    /* Run all tests. */
     passed = 0;
     failed = 0;
     test = (test_entry_t*)&TESTS;

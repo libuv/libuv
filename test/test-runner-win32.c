@@ -55,7 +55,7 @@ int process_start(char *name, process_info_t *p) {
   if (_snwprintf_s((wchar_t*)&args,
                    sizeof(args) / sizeof(wchar_t),
                    _TRUNCATE,
-                   L"\"%s\" %S meh",
+                   L"\"%s\" %S",
                    image,
                    name) < 0)
     goto error;
@@ -95,7 +95,7 @@ error:
 
 
 /* Timeout is is msecs. Set timeout < 0 to never time out. */
-/* Returns 0 when all processes are terminated, -1 on timeout. */
+/* Returns 0 when all processes are terminated, -2 on timeout. */
 int process_wait(process_info_t *vec, int n, int timeout) {
   int i;
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
@@ -138,7 +138,6 @@ long int process_output_size(process_info_t *p) {
 
 
 int process_copy_output(process_info_t *p, int fd) {
-  /* Any errors in this function are ignored */
   DWORD read;
   char buf[1024];
 
@@ -162,7 +161,6 @@ char* process_get_name(process_info_t *p) {
 
 
 int process_terminate(process_info_t *p) {
-  /* If it fails the process is probably already closed. */
   if (!TerminateProcess(p->process, 1))
     return -1;
   return 0;

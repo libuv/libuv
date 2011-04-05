@@ -70,11 +70,11 @@ char* process_get_name(process_info_t *p);
 /* Terminate process `p`. */
 int process_terminate(process_info_t *p);
 
-/* Return the return value of process p. */
+/* Return the exit code of process p. */
 /* On error, return -1. */
 int process_reap(process_info_t *p);
 
-/* Clean up after terminating process `p` (e.g. free the output buffer etc.) */
+/* Clean up after terminating process `p` (e.g. free the output buffer etc.). */
 void process_cleanup(process_info_t *p);
 
 /* Move the console cursor one line up and back to the first column. */
