@@ -285,7 +285,10 @@ ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
 
 
 int ol_close_error(ol_handle* handle, ol_err e) {
+  ol_req *req;
+
   if (handle->_.flags & OL_HANDLE_CLOSING)
+
     return 0;
 
   handle->_.error = e;
@@ -293,17 +296,21 @@ int ol_close_error(ol_handle* handle, ol_err e) {
   switch (handle->type) {
     case OL_TCP:
       closesocket(handle->_.socket);
-      if (handle->_.reqs_pending != 0) {
-        /* Cannot free the handle right now because there are queued */
-        /* operations. Close the socket, wait for for all packets to come */
-        /* out, then have ol_poll call close_cb. */
-        handle->_.flags |= OL_HANDLE_CLOSING;
-      } else {
-        /* There are no pending operations. Call the close callback now. */
-        handle->_.flags |= OL_HANDLE_CLOSED;
-        if (handle->close_cb)
-          handle->close_cb(handle, e);
+      if (handle->_.reqs_pending == 0) {
+        /* If there are no operations queued for this socket, queue one */
+        /* manually, so ol_poll will call close_cb. */
+        req = (ol_req*)malloc(sizeof(*req));
+        req->handle = handle;
+        req->type = OL_CLOSE;
+        req->_.flags = 0;
+        if (!PostQueuedCompletionStatus(ol_iocp_, 0, (ULONG_PTR)handle, &req->_.overlapped))
+          ol_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+        req->_.flags |= OL_REQ_PENDING;
+        handle->_.reqs_pending++;
       }
+
+      /* After all packets to come out, ol_poll will call close_cb. */
+      handle->_.flags |= OL_HANDLE_CLOSING;
       return 0;
 
     default:
@@ -588,7 +595,6 @@ void ol_poll() {
       handle->_.flags |= OL_HANDLE_CLOSED;
       if (handle->close_cb)
         handle->close_cb(handle, handle->_.error);
-      ol_refs_--;
     }
     return;
   }
@@ -649,6 +655,10 @@ void ol_poll() {
         free(req);
       }
       return;
+
+    case OL_CLOSE:
+      /* Should never get here */
+      assert(0);
   }
 }
 

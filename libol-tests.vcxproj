@@ -22,6 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="test\echo-server.c" />
+    <ClCompile Include="test\test-callback-stack.c" />
     <ClCompile Include="test\test-fail-always.c" />
     <ClCompile Include="test\test-pass-always.c" />
     <ClCompile Include="test\test-ping-pong.c" />

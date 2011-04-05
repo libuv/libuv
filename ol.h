@@ -52,7 +52,8 @@ typedef enum {
   OL_ACCEPT,
   OL_READ,
   OL_WRITE,
-  OL_SHUTDOWN
+  OL_SHUTDOWN,
+  OL_CLOSE
 } ol_req_type;
 
 

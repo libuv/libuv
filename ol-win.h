@@ -29,4 +29,3 @@ typedef struct {
   unsigned int reqs_pending;
   ol_err error;
 } ol_handle_private;
-
