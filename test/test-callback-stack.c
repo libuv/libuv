@@ -10,18 +10,21 @@ void close_cb(ol_handle *handle, ol_err e) {
   assert("ol_close error" && e == 0);
   assert("ol_close_cb not called from a fresh stack" && nested == 0);
   close_cb_called++;
-  ol_free(handle);
 }
 
 
 TEST_IMPL(close_cb_stack) {
-  ol_handle *handle;
+  ol_handle handle;
+  int r;
 
   ol_init();
-  handle = ol_tcp_handle_new(&close_cb, NULL);
+
+  r = ol_tcp_handle_init(&handle, &close_cb, NULL);
+  assert(!r);
 
   nested++;
-  ol_close(handle);
+  r = ol_close(&handle);
+  assert(!r);
   nested--;
 
   ol_run();

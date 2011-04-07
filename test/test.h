@@ -8,5 +8,6 @@
   int run_##name()
 
 #define TEST_PORT 8123
+#define TEST_PORT_2 8124
 
 #endif /* TEST_H_ */

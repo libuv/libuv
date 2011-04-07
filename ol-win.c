@@ -82,14 +82,6 @@
 /* The request is currently queued. */
 #define OL_REQ_PENDING      0x01
 
-/* When STRAY is set, that means that the handle owning the ol_req */
-/* struct was destroyed while the old_req was queued to an iocp */
-#define OL_REQ_STRAY        0x02
-
-/* When INTERNAL is set that means that the ol_req struct was */
-/* allocated by libol, so libol also needs to free it again */
-#define OL_REQ_INTERNAL     0x04
-
 /*
  * Pointers to winsock extension functions that have to be retrieved dynamically
  */
@@ -212,39 +204,41 @@ void ol_init() {
 }
 
 
-void ol_req_init(ol_req *req, void *cb) {
-  req->_.flags = 0;
+void ol_req_init(ol_req* req, ol_handle* handle, void *cb) {
+  req->type = OL_UNKNOWN_REQ;
+  req->flags = 0;
+  req->handle = handle;
   req->cb = cb;
 }
 
 
 ol_req* ol_overlapped_to_req(OVERLAPPED* overlapped) {
-  return CONTAINING_RECORD(overlapped, ol_req, _.overlapped);
+  return CONTAINING_RECORD(overlapped, ol_req, overlapped);
 }
 
 
-int ol_set_socket_options(ol_handle *handle) {
+int ol_set_socket_options(SOCKET socket) {
   DWORD yes = 1;
 
   /* Set the SO_REUSEADDR option on the socket */
   /* If it fails, soit. */
-  setsockopt(handle->_.socket,
+  setsockopt(socket,
              SOL_SOCKET,
              SO_REUSEADDR,
              (char*)&yes,
              sizeof(int));
 
   /* Make the socket non-inheritable */
-  if (!SetHandleInformation(handle->_.handle, HANDLE_FLAG_INHERIT, 0)) {
+  if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
     ol_errno_ = GetLastError();
     return -1;
   }
 
   /* Associate it with the I/O completion port. */
   /* Use ol_handle pointer as completion key. */
-  if (CreateIoCompletionPort(handle->_.handle,
+  if (CreateIoCompletionPort((HANDLE)socket,
                              ol_iocp_,
-                             (ULONG_PTR)handle,
+                             (ULONG_PTR)socket,
                              0) == NULL) {
     ol_errno_ = GetLastError();
     return -1;
@@ -254,63 +248,82 @@ int ol_set_socket_options(ol_handle *handle) {
 }
 
 
-ol_handle* ol_tcp_handle_new(ol_close_cb close_cb, void* data) {
-  ol_handle* handle;
-
-  handle = (ol_handle*)malloc(sizeof(ol_handle));
+int ol_tcp_handle_init(ol_handle *handle, ol_close_cb close_cb, void* data) {
   handle->close_cb = close_cb;
   handle->data = data;
   handle->type = OL_TCP;
-  handle->_.flags = 0;
-  handle->_.reqs_pending = 0;
-  handle->_.error = 0;
+  handle->flags = 0;
+  handle->reqs_pending = 0;
+  handle->error = 0;
+  handle->accept_data = NULL;
 
-  handle->_.socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (handle->_.socket == INVALID_SOCKET) {
+  handle->socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (handle->socket == INVALID_SOCKET) {
     ol_errno_ = WSAGetLastError();
-    free(handle);
-    return NULL;
+    return -1;
   }
 
-  if (ol_set_socket_options(handle) != 0) {
-    closesocket(handle->_.socket);
-    free(handle);
-    return NULL;
+  if (ol_set_socket_options(handle->socket) != 0) {
+    closesocket(handle->socket);
+    return -1;
   }
 
   ol_refs_++;
 
-  return handle;
+  return 0;
+}
+
+
+int ol_tcp_handle_accept(ol_handle* server, ol_handle* client, ol_close_cb close_cb, void* data) {
+  if (!server->accept_data ||
+      server->accept_data->socket == INVALID_SOCKET) {
+    ol_errno_ = WSAENOTCONN;
+    return -1;
+  }
+
+  client->close_cb = close_cb;
+  client->data = data;
+  client->type = OL_TCP;
+  client->socket = server->accept_data->socket;
+  client->flags = 0;
+  client->reqs_pending = 0;
+  client->error = 0;
+  client->accept_data = NULL;
+
+  server->accept_data->socket = INVALID_SOCKET;
+  ol_refs_++;
+
+  return 0;
 }
 
 
 int ol_close_error(ol_handle* handle, ol_err e) {
   ol_req *req;
 
-  if (handle->_.flags & OL_HANDLE_CLOSING)
+  if (handle->flags & OL_HANDLE_CLOSING)
 
     return 0;
 
-  handle->_.error = e;
+  handle->error = e;
 
   switch (handle->type) {
     case OL_TCP:
-      closesocket(handle->_.socket);
-      if (handle->_.reqs_pending == 0) {
+      closesocket(handle->socket);
+      if (handle->reqs_pending == 0) {
         /* If there are no operations queued for this socket, queue one */
         /* manually, so ol_poll will call close_cb. */
         req = (ol_req*)malloc(sizeof(*req));
         req->handle = handle;
         req->type = OL_CLOSE;
-        req->_.flags = 0;
-        if (!PostQueuedCompletionStatus(ol_iocp_, 0, (ULONG_PTR)handle, &req->_.overlapped))
+        req->flags = 0;
+        if (!PostQueuedCompletionStatus(ol_iocp_, 0, (ULONG_PTR)handle, &req->overlapped))
           ol_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
-        req->_.flags |= OL_REQ_PENDING;
-        handle->_.reqs_pending++;
+        req->flags |= OL_REQ_PENDING;
+        handle->reqs_pending++;
       }
 
       /* After all packets to come out, ol_poll will call close_cb. */
-      handle->_.flags |= OL_HANDLE_CLOSING;
+      handle->flags |= OL_HANDLE_CLOSING;
       return 0;
 
     default:
@@ -323,12 +336,6 @@ int ol_close_error(ol_handle* handle, ol_err e) {
 
 int ol_close(ol_handle* handle) {
   return ol_close_error(handle, 0);
-}
-
-
-void ol_free(ol_handle* handle) {
-  free(handle);
-  ol_refs_--;
 }
 
 
@@ -355,7 +362,7 @@ int ol_bind(ol_handle* handle, struct sockaddr* addr) {
     return -1;
   }
 
-  if (bind(handle->_.socket, addr, addrsize) == SOCKET_ERROR) {
+  if (bind(handle->socket, addr, addrsize) == SOCKET_ERROR) {
     ol_errno_ = WSAGetLastError();
     return -1;
   }
@@ -364,77 +371,93 @@ int ol_bind(ol_handle* handle, struct sockaddr* addr) {
 }
 
 
-void ol_queue_accept(ol_handle *handle, ol_req *req) {
-  ol_handle* peer;
-  void *buffer;
+void ol_queue_accept(ol_handle *handle) {
+  ol_accept_data* data;
   BOOL success;
   DWORD bytes;
 
-  peer = ol_tcp_handle_new(NULL, NULL);
-  if (peer == NULL) {
-    /* destroy ourselves */
+  data = handle->accept_data;
+  assert(data != NULL);
+
+  data->socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (data->socket == INVALID_SOCKET) {
+    ol_close_error(handle, WSAGetLastError());
+    return;
+  }
+
+  if (ol_set_socket_options(data->socket) != 0) {
+    closesocket(data->socket);
     ol_close_error(handle, ol_errno_);
     return;
   }
 
-  /* AcceptEx specifies that the buffer must be big enough to at least hold */
-  /* two socket addresses plus 32 bytes. */
-  buffer = malloc(sizeof(struct sockaddr_storage) * 2 + 32);
-
   /* Prepare the ol_req and OVERLAPPED structures. */
-  assert(!(req->_.flags & OL_REQ_PENDING));
-  req->_.flags |= OL_REQ_PENDING;
-  req->data = (void*)peer;
-  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
+  assert(!(data->req.flags & OL_REQ_PENDING));
+  data->req.flags |= OL_REQ_PENDING;
+  memset(&data->req.overlapped, 0, sizeof(data->req.overlapped));
 
-  success = pAcceptEx(handle->_.socket,
-                      peer->_.socket,
-                      buffer,
+  success = pAcceptEx(handle->socket,
+                      data->socket,
+                      (void*)&data->buffer,
                       0,
                       sizeof(struct sockaddr_storage),
                       sizeof(struct sockaddr_storage),
                       &bytes,
-                      &req->_.overlapped);
+                      &data->req.overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
     ol_errno_ = WSAGetLastError();
     /* destroy the preallocated client handle */
-    ol_close(peer);
-    ol_free(peer);
+    closesocket(data->socket);
     /* destroy ourselves */
     ol_close_error(handle, ol_errno_);
     return;
   }
 
-  handle->_.reqs_pending++;
-  req->_.flags |= OL_REQ_PENDING;
+  handle->reqs_pending++;
+  data->req.flags |= OL_REQ_PENDING;
 }
 
 
 int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
-  ol_req* req;
+  ol_accept_data *data;
 
-  if (listen(handle->_.socket, backlog) == SOCKET_ERROR)
+  if (handle->accept_data != NULL) {
+    /* Already listening. */
+    ol_errno_ = WSAEALREADY;
     return -1;
+  }
 
-  handle->accept_cb = cb;
-  req = (ol_req*)malloc(sizeof(*req));
-  req->type = OL_ACCEPT;
-  req->handle = handle;
-  req->_.flags = OL_REQ_INTERNAL;
+  data = (ol_accept_data*)malloc(sizeof(*data));
+  if (!data) {
+    ol_errno_ = WSAENOBUFS;
+    return -1;
+  }
+  data->socket = INVALID_SOCKET;
+  ol_req_init(&data->req, handle, (void*)cb);
+  data->req.type = OL_ACCEPT;
 
-  ol_queue_accept(handle, req);
+  if (listen(handle->socket, backlog) == SOCKET_ERROR) {
+    ol_errno_ = WSAGetLastError();
+    free(data);
+    return -1;
+  }
+
+  handle->accept_data = data;
+
+  ol_queue_accept(handle);
 
   return 0;
 }
 
 
-int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr) {
+int ol_connect(ol_req* req, struct sockaddr* addr) {
   int addrsize;
   BOOL success;
   DWORD bytes;
+  ol_handle* handle = req->handle;
 
-  assert(!(req->_.flags & OL_REQ_PENDING));
+  assert(!(req->flags & OL_REQ_PENDING));
 
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
@@ -445,101 +468,96 @@ int ol_connect(ol_handle* handle, ol_req *req, struct sockaddr* addr) {
     return -1;
   }
 
-  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
-  req->handle = handle;
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = OL_CONNECT;
 
-  success = pConnectEx(handle->_.socket,
+  success = pConnectEx(handle->socket,
                        addr,
                        addrsize,
                        NULL,
                        0,
                        &bytes,
-                       &req->_.overlapped);
+                       &req->overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
     ol_errno_ = WSAGetLastError();
     return -1;
   }
 
-  req->_.flags |= OL_REQ_PENDING;
-  handle->_.reqs_pending++;
+  req->flags |= OL_REQ_PENDING;
+  handle->reqs_pending++;
 
   return 0;
 }
 
 
-int ol_write(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
+int ol_write(ol_req *req, ol_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes;
+  ol_handle* handle = req->handle;
 
-  assert(!(req->_.flags & OL_REQ_PENDING));
+  assert(!(req->flags & OL_REQ_PENDING));
 
-  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
-  req->handle = handle;
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = OL_WRITE;
 
-  result = WSASend(handle->_.socket,
+  result = WSASend(handle->socket,
                    (WSABUF*)bufs,
                    bufcnt,
                    &bytes,
                    0,
-                   &req->_.overlapped,
+                   &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
     ol_errno_ = WSAGetLastError();
     return -1;
   }
 
-  req->_.flags |= OL_REQ_PENDING;
-  handle->_.reqs_pending++;
+  req->flags |= OL_REQ_PENDING;
+  handle->reqs_pending++;
 
   return 0;
 }
 
 
-int ol_read(ol_handle* handle, ol_req *req, ol_buf* bufs, int bufcnt) {
+int ol_read(ol_req *req, ol_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes, flags;
+  ol_handle* handle = req->handle;
 
-  assert(!(req->_.flags & OL_REQ_PENDING));
+  assert(!(req->flags & OL_REQ_PENDING));
 
-  memset(&req->_.overlapped, 0, sizeof(req->_.overlapped));
-  req->handle = handle;
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = OL_READ;
 
   flags = 0;
-  result = WSARecv(handle->_.socket,
+  result = WSARecv(handle->socket,
                    (WSABUF*)bufs,
                    bufcnt,
                    &bytes,
                    &flags,
-                   &req->_.overlapped,
+                   &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
     ol_errno_ = WSAGetLastError();
     return -1;
   }
 
-  req->_.flags |= OL_REQ_PENDING;
-  handle->_.reqs_pending++;
+  req->flags |= OL_REQ_PENDING;
+  handle->reqs_pending++;
 
   return 0;
 }
 
 
-int ol_write2(ol_handle* handle, const char* msg) {
-  ol_req *req;
+int ol_write2(ol_req *req, const char* msg) {
   ol_buf buf;
-
-  req = (ol_req*)malloc(sizeof(*req));
-  req->_.flags = OL_REQ_INTERNAL;
-  req->cb = NULL;
+  ol_handle* handle = req->handle;
 
   buf.base = (char*)msg;
   buf.len = strlen(msg);
 
-  return ol_write(handle, req, &buf, 1);
+  return ol_write(req, &buf, 1);
 }
 
 
@@ -555,8 +573,7 @@ void ol_poll() {
   OVERLAPPED* overlapped;
   ol_req* req;
   ol_handle* handle;
-  ol_handle *peer;
-  int free_req;
+  ol_accept_data *data;
 
   success = GetQueuedCompletionStatus(ol_iocp_,
                                       &bytes,
@@ -571,88 +588,80 @@ void ol_poll() {
   handle = req->handle;
 
   /* Mark the request non-pending */
-  req->_.flags &= ~OL_REQ_PENDING;
-  handle->_.reqs_pending--;
-
-  /* Cache this value, because when the req is not internal the callback */
-  /* might free the req structure, so we cannot look at the flags field */
-  /* after the callback has been called. */
-  free_req = req->_.flags & OL_REQ_INTERNAL;
+  req->flags &= ~OL_REQ_PENDING;
+  handle->reqs_pending--;
 
   /* If the related socket got closed in the meantime, disregard this */
-  /* result. If it is an internal request, free it. If this is the last */
-  /* request pending, close the handle's close callback. */
-  if (handle->_.flags & OL_HANDLE_CLOSING) {
-    if (req->type == OL_ACCEPT) {
-      peer = (ol_handle*)req->data;
-      ol_close(peer);
-      ol_free(peer);
-    }
-    if (free_req) {
-      free(req);
-    }
-    if (handle->_.reqs_pending == 0) {
-      handle->_.flags |= OL_HANDLE_CLOSED;
-      if (handle->close_cb)
-        handle->close_cb(handle, handle->_.error);
+  /* result. If this is the last request pending, call the handle's close callback. */
+  if (handle->flags & OL_HANDLE_CLOSING) {
+    if (handle->reqs_pending == 0) {
+      handle->flags |= OL_HANDLE_CLOSED;
+      if (handle->accept_data) {
+        if (handle->accept_data) {
+          if (handle->accept_data->socket) {
+            closesocket(handle->accept_data->socket);
+          }
+          free(handle->accept_data);
+          handle->accept_data = NULL;
+        }
+      }
+      if (handle->close_cb) {
+        handle->close_cb(handle, handle->error);
+      }
+      ol_refs_--;
     }
     return;
   }
 
   switch (req->type) {
     case OL_WRITE:
-      success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+      success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (!success) {
         ol_close_error(handle, GetLastError());
       } else if (req->cb) {
         ((ol_write_cb)req->cb)(req);
       }
-      if (free_req) {
-        free(req);
-      }
       return;
 
     case OL_READ:
-      handle = (ol_handle*)key;
-      success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+      success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (!success) {
-        ((ol_close_cb)req->cb)(handle, GetLastError());
+        ol_close_error(handle, GetLastError());
       } else if (req->cb) {
         ((ol_read_cb)req->cb)(req, bytes);
-      }
-      if (free_req) {
-        free(req);
       }
       break;
 
     case OL_ACCEPT:
-      peer = (ol_handle*)req->data;
-      handle = (ol_handle*)key;
-      success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
-      if (success && handle->accept_cb) {
-        handle->accept_cb(handle, peer);
-      } else {
-        /* Ignore failed accept if the listen socket is still healthy */
-        ol_close(peer);
-        ol_free(peer);
+      data = handle->accept_data;
+      assert(data != NULL);
+      assert(data->socket != INVALID_SOCKET);
+
+      success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
+      if (success && req->cb) {
+        ((ol_accept_cb)req->cb)(handle);
+      }
+
+      /* accept_cb should call ol_accept_handle which sets data->socket */
+      /* to INVALID_SOCKET. */
+      /* Just ignore failed accept if the listen socket is still healthy. */
+      if (data->socket != INVALID_SOCKET) {
+        closesocket(handle->socket);
+        data->socket = INVALID_SOCKET;
       }
 
       /* Queue another accept */
-      ol_queue_accept(handle, req);
+      ol_queue_accept(handle);
       return;
 
     case OL_CONNECT:
       if (req->cb) {
-        handle = (ol_handle*)key;
-        success = GetOverlappedResult(handle->_.handle, overlapped, &bytes, FALSE);
+        success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
         if (success) {
           ((ol_connect_cb)req->cb)(req, 0);
         } else {
           ((ol_connect_cb)req->cb)(req, GetLastError());
         }
-      }
-      if (free_req) {
-        free(req);
       }
       return;
 

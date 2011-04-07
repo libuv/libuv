@@ -14,18 +14,29 @@ typedef struct _ol_buf {
   char* base;
 } ol_buf;
 
-
-typedef struct {
+struct ol_req_s {
+  struct ol_req_shared_s;
   OVERLAPPED overlapped;
   int flags;
-} ol_req_private;
+};
 
 typedef struct {
+  ol_req req;
+  SOCKET socket;
+
+  /* AcceptEx specifies that the buffer must be big enough to at least hold */
+  /* two socket addresses plus 32 bytes. */
+  char buffer[sizeof(struct sockaddr_storage) * 2 + 32];
+} ol_accept_data;
+
+struct ol_handle_s {
+  struct ol_handle_shared_s;
   union {
     SOCKET socket;
     HANDLE handle;
   };
+  ol_accept_data *accept_data;
   unsigned int flags;
   unsigned int reqs_pending;
   ol_err error;
-} ol_handle_private;
+};

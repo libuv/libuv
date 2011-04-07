@@ -3,50 +3,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 #define BUFSIZE 1024
 
-
 typedef struct {
-  ol_handle* handle;
+  ol_handle handle;
   ol_req req;
   ol_buf buf;
   char read_buffer[BUFSIZE];
 } peer_t;
 
+ol_handle server;
 
 void after_write(ol_req* req);
 void after_read(ol_req* req, size_t nread);
 void try_read(peer_t* peer);
 void on_close(ol_handle* peer, ol_err err);
-void on_accept(ol_handle* server, ol_handle* new_client);
-
-
-ol_handle *server = NULL;
+void on_accept(ol_handle* handle);
 
 
 void after_write(ol_req* req) {
-  peer_t *peer = (peer_t*) req->data;
+  peer_t* peer = (peer_t*) req->data;
   try_read(peer);
 }
 
 
 void after_read(ol_req* req, size_t nread) {
+  peer_t* peer;
+  int r;
+
   if (nread == 0) {
     ol_close(req->handle);
   } else {
-    peer_t *peer = (peer_t*) req->data;
+    peer = (peer_t*) req->data;
     peer->buf.len = nread;
-    peer->req.cb = after_write;
-    ol_write(peer->handle, &peer->req, &peer->buf, 1);
+    ol_req_init(&peer->req, &peer->handle, after_write);
+    peer->req.data = peer;
+    r = ol_write(&peer->req, &peer->buf, 1);
+    assert(!r);
   }
 }
 
 
 void try_read(peer_t* peer) {
+  int r;
+
   peer->buf.len = BUFSIZE;
-  peer->req.cb = after_read;
-  ol_read(peer->handle, &peer->req, &peer->buf, 1);
+  ol_req_init(&peer->req, &peer->handle, after_read);
+  peer->req.data = peer;
+  r = ol_read(&peer->req, &peer->buf, 1);
+  assert(!r);
 }
 
 
@@ -54,36 +59,28 @@ void on_close(ol_handle* peer, ol_err err) {
   if (err) {
     fprintf(stdout, "Socket error\n");
   }
-
-  ol_free(peer);
 }
 
 
-void on_accept(ol_handle* server, ol_handle* new_client) {
-  peer_t* p;
+void on_accept(ol_handle* server) {
+  peer_t* p = (peer_t*)malloc(sizeof(peer_t));
+  int r;
 
-  new_client->close_cb = on_close;
+  r = ol_tcp_handle_accept(server, &p->handle, on_close, (void*)p);
+  assert(!r);
 
-  p = (peer_t*)malloc(sizeof(peer_t));
-  p->handle = new_client;
-  p->buf.base = p->read_buffer;
-  p->buf.len = BUFSIZE;
-  p->req.data = p;
-  ol_req_init(&p->req, NULL);
+  p->buf.base = (char*)&p->read_buffer;
 
   try_read(p);
 }
 
 
 void on_server_close(ol_handle* handle, ol_err err) {
-  assert(handle == server);
+  assert(handle == &server);
 
   if (err) {
     fprintf(stdout, "Socket error\n");
   }
-
-  ol_free(server);
-  server = NULL;
 }
 
 
@@ -91,17 +88,21 @@ int echo_start(int port) {
   struct sockaddr_in addr = ol_ip4_addr("0.0.0.0", port);
   int r;
 
-  assert(server == NULL);
-  server = ol_tcp_handle_new(&on_server_close, NULL);
+  r = ol_tcp_handle_init(&server, on_server_close, NULL);
+  if (r) {
+    /* TODO: Error codes */
+    fprintf(stderr, "Socket creation error\n");
+    return 1;
+  }
 
-  r = ol_bind(server, (struct sockaddr*) &addr);
+  r = ol_bind(&server, (struct sockaddr*) &addr);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Bind error\n");
     return 1;
   }
 
-  r = ol_listen(server, 128, on_accept);
+  r = ol_listen(&server, 128, on_accept);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error\n");
@@ -113,8 +114,7 @@ int echo_start(int port) {
 
 
 int echo_stop() {
-  assert(server != NULL);
-  return ol_close(server);
+  return ol_close(&server);
 }
 
 
