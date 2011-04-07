@@ -1,5 +1,5 @@
-#ifndef OL_UNIX_H
-#define OL_UNIX_H
+#ifndef OIO_UNIX_H
+#define OIO_UNIX_H
 
 #include "ngx-queue.h"
 
@@ -17,28 +17,28 @@
 typedef struct {
   char* base;
   size_t len;
-} ol_buf;
+} oio_buf;
 
 
 
 typedef struct {
   int local;
-  ol_connect_cb connect_cb;
+  oio_connect_cb connect_cb;
   ngx_queue_t read_reqs;
-  ol_buf* read_bufs;
+  oio_buf* read_bufs;
   int read_bufcnt;
-} ol_req_private;
+} oio_req_private;
 
 
 typedef struct {
   int fd;
 
-  ol_err err;
+  oio_err err;
 
-  ol_read_cb read_cb;
-  ol_close_cb close_cb;
+  oio_read_cb read_cb;
+  oio_close_cb close_cb;
 
-  ol_req *connect_req;
+  oio_req *connect_req;
 
   ev_io read_watcher;
   ev_io write_watcher;
@@ -46,7 +46,7 @@ typedef struct {
   ngx_queue_t write_queue;
   ngx_queue_t read_reqs;
 
-} ol_handle_private;
+} oio_handle_private;
 
 
-#endif /* OL_UNIX_H */
+#endif /* OIO_UNIX_H */

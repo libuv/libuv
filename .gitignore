@@ -19,8 +19,8 @@ ev/libtool
 ev/stamp-h1
 ev/autom4te.cache
 /ipch/
-/Debug/
-/Release/
+/Win32/
+/x64/
 
 test/echo-demo
 test/test-ping-pong

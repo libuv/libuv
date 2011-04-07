@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libol", "libol.vcxproj", "{301FE650-CD34-14E5-6B63-42E383FA02BC}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio", "liboio.vcxproj", "{301FE650-CD34-14E5-6B63-42E383FA02BC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libol-test", "libol-test.vcxproj", "{1D7C3F6C-A4AF-DD73-2D20-B2FC919B3744}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio-test", "liboio-test.vcxproj", "{1D7C3F6C-A4AF-DD73-2D20-B2FC919B3744}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -19,7 +19,7 @@ int process_start(char *name, process_info_t *p) {
 
   if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR*)&path) == 0)
     goto error;
-  if (GetTempFileNameW((WCHAR*)&path, L"ol_", 0, (WCHAR*)&filename) == 0)
+  if (GetTempFileNameW((WCHAR*)&path, L"oio", 0, (WCHAR*)&filename) == 0)
     goto error;
 
   file = CreateFileW((WCHAR*)filename,

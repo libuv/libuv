@@ -1,16 +1,16 @@
 all: test/echo-demo test/test-ping-pong
 
-test/echo-demo: test/echo-demo.c test/echo.o ol.a
-	$(CC) -ansi -g -o test/echo-demo test/echo-demo.c test/echo.o ol.a -lm
+test/echo-demo: test/echo-demo.c test/echo.o oio.a
+	$(CC) -ansi -g -o test/echo-demo test/echo-demo.c test/echo.o oio.a -lm
 
-test/test-ping-pong: test/test-ping-pong.c test/echo.o ol.a
-	$(CC) -ansi -g -o test/test-ping-pong test/test-ping-pong.c test/echo.o ol.a -lm
+test/test-ping-pong: test/test-ping-pong.c test/echo.o oio.a
+	$(CC) -ansi -g -o test/test-ping-pong test/test-ping-pong.c test/echo.o oio.a -lm
 
-ol.a: ol-unix.o ev/ev.o
-	$(AR) rcs ol.a ol-unix.o ev/ev.o
+oio.a: oio-unix.o ev/ev.o
+	$(AR) rcs oio.a oio-unix.o ev/ev.o
 
-ol-unix.o: ol-unix.c ol.h ol-unix.h
-	$(CC) -ansi -g -c ol-unix.c -o ol-unix.o
+oio-unix.o: oio-unix.c oio.h oio-unix.h
+	$(CC) -ansi -g -c oio-unix.c -o oio-unix.o
 
 test/echo.o: test/echo.c test/echo.h
 	$(CC) -ansi -g -c test/echo.c -o test/echo.o

@@ -1,5 +1,5 @@
 
-#include "ol.h"
+#include "oio.h"
 #include <assert.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -71,16 +71,16 @@
 #endif
 
 /*
- * Private ol_handle flags
+ * Private oio_handle flags
  */
-#define OL_HANDLE_CLOSING   0x01
-#define OL_HANDLE_CLOSED    0x03
+#define OIO_HANDLE_CLOSING   0x01
+#define OIO_HANDLE_CLOSED    0x03
 
 /*
- * Private ol_req flags.
+ * Private oio_req flags.
  */
 /* The request is currently queued. */
-#define OL_REQ_PENDING      0x01
+#define OIO_REQ_PENDING      0x01
 
 /*
  * Pointers to winsock extension functions that have to be retrieved dynamically
@@ -94,21 +94,21 @@ LPFN_TRANSMITFILE         pTransmitFile;
 /*
  * Global I/O completion port
  */
-HANDLE ol_iocp_;
+HANDLE oio_iocp_;
 
 
 /* Global error code */
-int ol_errno_;
+int oio_errno_;
 
 
 /* Reference count that keeps the event loop alive */
-int ol_refs_ = 0;
+int oio_refs_ = 0;
 
 
 /*
  * Display an error message and abort the event loop.
  */
-void ol_fatal_error(const int errorno, const char *syscall) {
+void oio_fatal_error(const int errorno, const char *syscall) {
   char *buf = NULL;
   const char *errmsg;
 
@@ -142,7 +142,7 @@ void ol_fatal_error(const int errorno, const char *syscall) {
 /*
  * Retrieves the pointer to a winsock extension function.
  */
-void ol_get_extension_function(SOCKET socket, GUID guid, void **target) {
+void oio_get_extension_function(SOCKET socket, GUID guid, void **target) {
   DWORD result, bytes;
 
   result = WSAIoctl(socket,
@@ -157,12 +157,12 @@ void ol_get_extension_function(SOCKET socket, GUID guid, void **target) {
 
   if (result == SOCKET_ERROR) {
     *target = NULL;
-    ol_fatal_error(WSAGetLastError(), "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
+    oio_fatal_error(WSAGetLastError(), "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
   }
 }
 
 
-void ol_init() {
+void oio_init() {
   const GUID wsaid_connectex            = WSAID_CONNECTEX;
   const GUID wsaid_acceptex             = WSAID_ACCEPTEX;
   const GUID wsaid_getacceptexsockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
@@ -176,48 +176,48 @@ void ol_init() {
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
   if (errorno != 0) {
-    ol_fatal_error(errorno, "WSAStartup");
+    oio_fatal_error(errorno, "WSAStartup");
   }
 
 
   /* Retrieve the needed winsock extension function pointers. */
   dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
   if (dummy == INVALID_SOCKET) {
-    ol_fatal_error(WSAGetLastError(), "socket");
+    oio_fatal_error(WSAGetLastError(), "socket");
   }
 
-  ol_get_extension_function(dummy, wsaid_connectex,            (void**)&pConnectEx           );
-  ol_get_extension_function(dummy, wsaid_acceptex,             (void**)&pAcceptEx            );
-  ol_get_extension_function(dummy, wsaid_getacceptexsockaddrs, (void**)&pGetAcceptExSockAddrs);
-  ol_get_extension_function(dummy, wsaid_disconnectex,         (void**)&pDisconnectEx        );
-  ol_get_extension_function(dummy, wsaid_transmitfile,         (void**)&pTransmitFile        );
+  oio_get_extension_function(dummy, wsaid_connectex,            (void**)&pConnectEx           );
+  oio_get_extension_function(dummy, wsaid_acceptex,             (void**)&pAcceptEx            );
+  oio_get_extension_function(dummy, wsaid_getacceptexsockaddrs, (void**)&pGetAcceptExSockAddrs);
+  oio_get_extension_function(dummy, wsaid_disconnectex,         (void**)&pDisconnectEx        );
+  oio_get_extension_function(dummy, wsaid_transmitfile,         (void**)&pTransmitFile        );
 
   if (closesocket(dummy) == SOCKET_ERROR) {
-    ol_fatal_error(WSAGetLastError(), "closesocket");
+    oio_fatal_error(WSAGetLastError(), "closesocket");
   }
 
   /* Create an I/O completion port */
-  ol_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
-  if (ol_iocp_ == NULL) {
-    ol_fatal_error(GetLastError(), "CreateIoCompletionPort");
+  oio_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+  if (oio_iocp_ == NULL) {
+    oio_fatal_error(GetLastError(), "CreateIoCompletionPort");
   }
 }
 
 
-void ol_req_init(ol_req* req, ol_handle* handle, void *cb) {
-  req->type = OL_UNKNOWN_REQ;
+void oio_req_init(oio_req* req, oio_handle* handle, void *cb) {
+  req->type = OIO_UNKNOWN_REQ;
   req->flags = 0;
   req->handle = handle;
   req->cb = cb;
 }
 
 
-ol_req* ol_overlapped_to_req(OVERLAPPED* overlapped) {
-  return CONTAINING_RECORD(overlapped, ol_req, overlapped);
+oio_req* oio_overlapped_to_req(OVERLAPPED* overlapped) {
+  return CONTAINING_RECORD(overlapped, oio_req, overlapped);
 }
 
 
-int ol_set_socket_options(SOCKET socket) {
+int oio_set_socket_options(SOCKET socket) {
   DWORD yes = 1;
 
   /* Set the SO_REUSEADDR option on the socket */
@@ -230,17 +230,17 @@ int ol_set_socket_options(SOCKET socket) {
 
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
-    ol_errno_ = GetLastError();
+    oio_errno_ = GetLastError();
     return -1;
   }
 
   /* Associate it with the I/O completion port. */
-  /* Use ol_handle pointer as completion key. */
+  /* Use oio_handle pointer as completion key. */
   if (CreateIoCompletionPort((HANDLE)socket,
-                             ol_iocp_,
+                             oio_iocp_,
                              (ULONG_PTR)socket,
                              0) == NULL) {
-    ol_errno_ = GetLastError();
+    oio_errno_ = GetLastError();
     return -1;
   }
 
@@ -248,10 +248,10 @@ int ol_set_socket_options(SOCKET socket) {
 }
 
 
-int ol_tcp_handle_init(ol_handle *handle, ol_close_cb close_cb, void* data) {
+int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data) {
   handle->close_cb = close_cb;
   handle->data = data;
-  handle->type = OL_TCP;
+  handle->type = OIO_TCP;
   handle->flags = 0;
   handle->reqs_pending = 0;
   handle->error = 0;
@@ -259,31 +259,31 @@ int ol_tcp_handle_init(ol_handle *handle, ol_close_cb close_cb, void* data) {
 
   handle->socket = socket(AF_INET, SOCK_STREAM, 0);
   if (handle->socket == INVALID_SOCKET) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     return -1;
   }
 
-  if (ol_set_socket_options(handle->socket) != 0) {
+  if (oio_set_socket_options(handle->socket) != 0) {
     closesocket(handle->socket);
     return -1;
   }
 
-  ol_refs_++;
+  oio_refs_++;
 
   return 0;
 }
 
 
-int ol_tcp_handle_accept(ol_handle* server, ol_handle* client, ol_close_cb close_cb, void* data) {
+int oio_tcp_handle_accept(oio_handle* server, oio_handle* client, oio_close_cb close_cb, void* data) {
   if (!server->accept_data ||
       server->accept_data->socket == INVALID_SOCKET) {
-    ol_errno_ = WSAENOTCONN;
+    oio_errno_ = WSAENOTCONN;
     return -1;
   }
 
   client->close_cb = close_cb;
   client->data = data;
-  client->type = OL_TCP;
+  client->type = OIO_TCP;
   client->socket = server->accept_data->socket;
   client->flags = 0;
   client->reqs_pending = 0;
@@ -291,39 +291,39 @@ int ol_tcp_handle_accept(ol_handle* server, ol_handle* client, ol_close_cb close
   client->accept_data = NULL;
 
   server->accept_data->socket = INVALID_SOCKET;
-  ol_refs_++;
+  oio_refs_++;
 
   return 0;
 }
 
 
-int ol_close_error(ol_handle* handle, ol_err e) {
-  ol_req *req;
+int oio_close_error(oio_handle* handle, oio_err e) {
+  oio_req *req;
 
-  if (handle->flags & OL_HANDLE_CLOSING)
+  if (handle->flags & OIO_HANDLE_CLOSING)
 
     return 0;
 
   handle->error = e;
 
   switch (handle->type) {
-    case OL_TCP:
+    case OIO_TCP:
       closesocket(handle->socket);
       if (handle->reqs_pending == 0) {
         /* If there are no operations queued for this socket, queue one */
-        /* manually, so ol_poll will call close_cb. */
-        req = (ol_req*)malloc(sizeof(*req));
+        /* manually, so oio_poll will call close_cb. */
+        req = (oio_req*)malloc(sizeof(*req));
         req->handle = handle;
-        req->type = OL_CLOSE;
+        req->type = OIO_CLOSE;
         req->flags = 0;
-        if (!PostQueuedCompletionStatus(ol_iocp_, 0, (ULONG_PTR)handle, &req->overlapped))
-          ol_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
-        req->flags |= OL_REQ_PENDING;
+        if (!PostQueuedCompletionStatus(oio_iocp_, 0, (ULONG_PTR)handle, &req->overlapped))
+          oio_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+        req->flags |= OIO_REQ_PENDING;
         handle->reqs_pending++;
       }
 
-      /* After all packets to come out, ol_poll will call close_cb. */
-      handle->flags |= OL_HANDLE_CLOSING;
+      /* After all packets to come out, oio_poll will call close_cb. */
+      handle->flags |= OIO_HANDLE_CLOSING;
       return 0;
 
     default:
@@ -334,12 +334,12 @@ int ol_close_error(ol_handle* handle, ol_err e) {
 }
 
 
-int ol_close(ol_handle* handle) {
-  return ol_close_error(handle, 0);
+int oio_close(oio_handle* handle) {
+  return oio_close_error(handle, 0);
 }
 
 
-struct sockaddr_in ol_ip4_addr(char *ip, int port) {
+struct sockaddr_in oio_ip4_addr(char *ip, int port) {
   struct sockaddr_in addr;
 
   addr.sin_family = AF_INET;
@@ -350,7 +350,7 @@ struct sockaddr_in ol_ip4_addr(char *ip, int port) {
 }
 
 
-int ol_bind(ol_handle* handle, struct sockaddr* addr) {
+int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   int addrsize;
 
   if (addr->sa_family == AF_INET) {
@@ -363,7 +363,7 @@ int ol_bind(ol_handle* handle, struct sockaddr* addr) {
   }
 
   if (bind(handle->socket, addr, addrsize) == SOCKET_ERROR) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     return -1;
   }
 
@@ -371,8 +371,8 @@ int ol_bind(ol_handle* handle, struct sockaddr* addr) {
 }
 
 
-void ol_queue_accept(ol_handle *handle) {
-  ol_accept_data* data;
+void oio_queue_accept(oio_handle *handle) {
+  oio_accept_data* data;
   BOOL success;
   DWORD bytes;
 
@@ -381,19 +381,19 @@ void ol_queue_accept(ol_handle *handle) {
 
   data->socket = socket(AF_INET, SOCK_STREAM, 0);
   if (data->socket == INVALID_SOCKET) {
-    ol_close_error(handle, WSAGetLastError());
+    oio_close_error(handle, WSAGetLastError());
     return;
   }
 
-  if (ol_set_socket_options(data->socket) != 0) {
+  if (oio_set_socket_options(data->socket) != 0) {
     closesocket(data->socket);
-    ol_close_error(handle, ol_errno_);
+    oio_close_error(handle, oio_errno_);
     return;
   }
 
-  /* Prepare the ol_req and OVERLAPPED structures. */
-  assert(!(data->req.flags & OL_REQ_PENDING));
-  data->req.flags |= OL_REQ_PENDING;
+  /* Prepare the oio_req and OVERLAPPED structures. */
+  assert(!(data->req.flags & OIO_REQ_PENDING));
+  data->req.flags |= OIO_REQ_PENDING;
   memset(&data->req.overlapped, 0, sizeof(data->req.overlapped));
 
   success = pAcceptEx(handle->socket,
@@ -406,58 +406,58 @@ void ol_queue_accept(ol_handle *handle) {
                       &data->req.overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     /* destroy the preallocated client handle */
     closesocket(data->socket);
     /* destroy ourselves */
-    ol_close_error(handle, ol_errno_);
+    oio_close_error(handle, oio_errno_);
     return;
   }
 
   handle->reqs_pending++;
-  data->req.flags |= OL_REQ_PENDING;
+  data->req.flags |= OIO_REQ_PENDING;
 }
 
 
-int ol_listen(ol_handle* handle, int backlog, ol_accept_cb cb) {
-  ol_accept_data *data;
+int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
+  oio_accept_data *data;
 
   if (handle->accept_data != NULL) {
     /* Already listening. */
-    ol_errno_ = WSAEALREADY;
+    oio_errno_ = WSAEALREADY;
     return -1;
   }
 
-  data = (ol_accept_data*)malloc(sizeof(*data));
+  data = (oio_accept_data*)malloc(sizeof(*data));
   if (!data) {
-    ol_errno_ = WSAENOBUFS;
+    oio_errno_ = WSAENOBUFS;
     return -1;
   }
   data->socket = INVALID_SOCKET;
-  ol_req_init(&data->req, handle, (void*)cb);
-  data->req.type = OL_ACCEPT;
+  oio_req_init(&data->req, handle, (void*)cb);
+  data->req.type = OIO_ACCEPT;
 
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     free(data);
     return -1;
   }
 
   handle->accept_data = data;
 
-  ol_queue_accept(handle);
+  oio_queue_accept(handle);
 
   return 0;
 }
 
 
-int ol_connect(ol_req* req, struct sockaddr* addr) {
+int oio_connect(oio_req* req, struct sockaddr* addr) {
   int addrsize;
   BOOL success;
   DWORD bytes;
-  ol_handle* handle = req->handle;
+  oio_handle* handle = req->handle;
 
-  assert(!(req->flags & OL_REQ_PENDING));
+  assert(!(req->flags & OIO_REQ_PENDING));
 
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
@@ -469,7 +469,7 @@ int ol_connect(ol_req* req, struct sockaddr* addr) {
   }
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
-  req->type = OL_CONNECT;
+  req->type = OIO_CONNECT;
 
   success = pConnectEx(handle->socket,
                        addr,
@@ -480,26 +480,26 @@ int ol_connect(ol_req* req, struct sockaddr* addr) {
                        &req->overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     return -1;
   }
 
-  req->flags |= OL_REQ_PENDING;
+  req->flags |= OIO_REQ_PENDING;
   handle->reqs_pending++;
 
   return 0;
 }
 
 
-int ol_write(ol_req *req, ol_buf* bufs, int bufcnt) {
+int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes;
-  ol_handle* handle = req->handle;
+  oio_handle* handle = req->handle;
 
-  assert(!(req->flags & OL_REQ_PENDING));
+  assert(!(req->flags & OIO_REQ_PENDING));
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
-  req->type = OL_WRITE;
+  req->type = OIO_WRITE;
 
   result = WSASend(handle->socket,
                    (WSABUF*)bufs,
@@ -509,26 +509,26 @@ int ol_write(ol_req *req, ol_buf* bufs, int bufcnt) {
                    &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     return -1;
   }
 
-  req->flags |= OL_REQ_PENDING;
+  req->flags |= OIO_REQ_PENDING;
   handle->reqs_pending++;
 
   return 0;
 }
 
 
-int ol_read(ol_req *req, ol_buf* bufs, int bufcnt) {
+int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes, flags;
-  ol_handle* handle = req->handle;
+  oio_handle* handle = req->handle;
 
-  assert(!(req->flags & OL_REQ_PENDING));
+  assert(!(req->flags & OIO_REQ_PENDING));
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
-  req->type = OL_READ;
+  req->type = OIO_READ;
 
   flags = 0;
   result = WSARecv(handle->socket,
@@ -539,63 +539,63 @@ int ol_read(ol_req *req, ol_buf* bufs, int bufcnt) {
                    &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
-    ol_errno_ = WSAGetLastError();
+    oio_errno_ = WSAGetLastError();
     return -1;
   }
 
-  req->flags |= OL_REQ_PENDING;
+  req->flags |= OIO_REQ_PENDING;
   handle->reqs_pending++;
 
   return 0;
 }
 
 
-int ol_write2(ol_req *req, const char* msg) {
-  ol_buf buf;
-  ol_handle* handle = req->handle;
+int oio_write2(oio_req *req, const char* msg) {
+  oio_buf buf;
+  oio_handle* handle = req->handle;
 
   buf.base = (char*)msg;
   buf.len = strlen(msg);
 
-  return ol_write(req, &buf, 1);
+  return oio_write(req, &buf, 1);
 }
 
 
-ol_err ol_last_error() {
-  return ol_errno_;
+oio_err oio_last_error() {
+  return oio_errno_;
 }
 
 
-void ol_poll() {
+void oio_poll() {
   BOOL success;
   DWORD bytes;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
-  ol_req* req;
-  ol_handle* handle;
-  ol_accept_data *data;
+  oio_req* req;
+  oio_handle* handle;
+  oio_accept_data *data;
 
-  success = GetQueuedCompletionStatus(ol_iocp_,
+  success = GetQueuedCompletionStatus(oio_iocp_,
                                       &bytes,
                                       &key,
                                       &overlapped,
                                       INFINITE);
 
   if (!success && !overlapped)
-    ol_fatal_error(GetLastError(), "GetQueuedCompletionStatus");
+    oio_fatal_error(GetLastError(), "GetQueuedCompletionStatus");
 
-  req = ol_overlapped_to_req(overlapped);
+  req = oio_overlapped_to_req(overlapped);
   handle = req->handle;
 
   /* Mark the request non-pending */
-  req->flags &= ~OL_REQ_PENDING;
+  req->flags &= ~OIO_REQ_PENDING;
   handle->reqs_pending--;
 
   /* If the related socket got closed in the meantime, disregard this */
   /* result. If this is the last request pending, call the handle's close callback. */
-  if (handle->flags & OL_HANDLE_CLOSING) {
+  if (handle->flags & OIO_HANDLE_CLOSING) {
     if (handle->reqs_pending == 0) {
-      handle->flags |= OL_HANDLE_CLOSED;
+      handle->flags |= OIO_HANDLE_CLOSED;
       if (handle->accept_data) {
         if (handle->accept_data) {
           if (handle->accept_data->socket) {
@@ -608,41 +608,41 @@ void ol_poll() {
       if (handle->close_cb) {
         handle->close_cb(handle, handle->error);
       }
-      ol_refs_--;
+      oio_refs_--;
     }
     return;
   }
 
   switch (req->type) {
-    case OL_WRITE:
+    case OIO_WRITE:
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (!success) {
-        ol_close_error(handle, GetLastError());
+        oio_close_error(handle, GetLastError());
       } else if (req->cb) {
-        ((ol_write_cb)req->cb)(req);
+        ((oio_write_cb)req->cb)(req);
       }
       return;
 
-    case OL_READ:
+    case OIO_READ:
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (!success) {
-        ol_close_error(handle, GetLastError());
+        oio_close_error(handle, GetLastError());
       } else if (req->cb) {
-        ((ol_read_cb)req->cb)(req, bytes);
+        ((oio_read_cb)req->cb)(req, bytes);
       }
       break;
 
-    case OL_ACCEPT:
+    case OIO_ACCEPT:
       data = handle->accept_data;
       assert(data != NULL);
       assert(data->socket != INVALID_SOCKET);
 
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (success && req->cb) {
-        ((ol_accept_cb)req->cb)(handle);
+        ((oio_accept_cb)req->cb)(handle);
       }
 
-      /* accept_cb should call ol_accept_handle which sets data->socket */
+      /* accept_cb should call oio_accept_handle which sets data->socket */
       /* to INVALID_SOCKET. */
       /* Just ignore failed accept if the listen socket is still healthy. */
       if (data->socket != INVALID_SOCKET) {
@@ -651,31 +651,31 @@ void ol_poll() {
       }
 
       /* Queue another accept */
-      ol_queue_accept(handle);
+      oio_queue_accept(handle);
       return;
 
-    case OL_CONNECT:
+    case OIO_CONNECT:
       if (req->cb) {
         success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
         if (success) {
-          ((ol_connect_cb)req->cb)(req, 0);
+          ((oio_connect_cb)req->cb)(req, 0);
         } else {
-          ((ol_connect_cb)req->cb)(req, GetLastError());
+          ((oio_connect_cb)req->cb)(req, GetLastError());
         }
       }
       return;
 
-    case OL_CLOSE:
+    case OIO_CLOSE:
       /* Should never get here */
       assert(0);
   }
 }
 
 
-int ol_run() {
-  while (ol_refs_ > 0) {
-    ol_poll();
+int oio_run() {
+  while (oio_refs_ > 0) {
+    oio_poll();
   }
-  assert(ol_refs_ == 0);
+  assert(oio_refs_ == 0);
   return 0;
 }
