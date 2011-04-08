@@ -71,6 +71,16 @@
 #endif
 
 /*
+ * Pointers to winsock extension functions that have to be retrieved dynamically
+ */
+LPFN_CONNECTEX            pConnectEx;
+LPFN_ACCEPTEX             pAcceptEx;
+LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs;
+LPFN_DISCONNECTEX         pDisconnectEx;
+LPFN_TRANSMITFILE         pTransmitFile;
+
+
+/*
  * Private oio_handle flags
  */
 #define OIO_HANDLE_CLOSING   0x01
@@ -82,14 +92,19 @@
 /* The request is currently queued. */
 #define OIO_REQ_PENDING      0x01
 
+
 /*
- * Pointers to winsock extension functions that have to be retrieved dynamically
+ * Special oio_req type used by AcceptEx calls
  */
-LPFN_CONNECTEX            pConnectEx;
-LPFN_ACCEPTEX             pAcceptEx;
-LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs;
-LPFN_DISCONNECTEX         pDisconnectEx;
-LPFN_TRANSMITFILE         pTransmitFile;
+typedef struct oio_accept_req_s {
+  struct oio_req_s;
+  SOCKET socket;
+
+  /* AcceptEx specifies that the buffer must be big enough to at least hold */
+  /* two socket addresses plus 32 bytes. */
+  char buffer[sizeof(struct sockaddr_storage) * 2 + 32];
+} oio_accept_req;
+
 
 /*
  * Global I/O completion port
@@ -197,7 +212,7 @@ void oio_init() {
   }
 
   /* Create an I/O completion port */
-  oio_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+  oio_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
   if (oio_iocp_ == NULL) {
     oio_fatal_error(GetLastError(), "CreateIoCompletionPort");
   }
@@ -255,7 +270,8 @@ int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data) {
   handle->flags = 0;
   handle->reqs_pending = 0;
   handle->error = 0;
-  handle->accept_data = NULL;
+  handle->accept_reqs = NULL;
+  handle->accepted_socket = INVALID_SOCKET;
 
   handle->socket = socket(AF_INET, SOCK_STREAM, 0);
   if (handle->socket == INVALID_SOCKET) {
@@ -275,8 +291,7 @@ int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data) {
 
 
 int oio_tcp_handle_accept(oio_handle* server, oio_handle* client, oio_close_cb close_cb, void* data) {
-  if (!server->accept_data ||
-      server->accept_data->socket == INVALID_SOCKET) {
+  if (!server->accepted_socket == INVALID_SOCKET) {
     oio_errno_ = WSAENOTCONN;
     return -1;
   }
@@ -284,13 +299,14 @@ int oio_tcp_handle_accept(oio_handle* server, oio_handle* client, oio_close_cb c
   client->close_cb = close_cb;
   client->data = data;
   client->type = OIO_TCP;
-  client->socket = server->accept_data->socket;
+  client->socket = server->accepted_socket;
   client->flags = 0;
   client->reqs_pending = 0;
   client->error = 0;
-  client->accept_data = NULL;
+  client->accepted_socket = INVALID_SOCKET;
+  client->accept_reqs = NULL;
 
-  server->accept_data->socket = INVALID_SOCKET;
+  server->accepted_socket = INVALID_SOCKET;
   oio_refs_++;
 
   return 0;
@@ -371,81 +387,83 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
 }
 
 
-void oio_queue_accept(oio_handle *handle) {
-  oio_accept_data* data;
+void oio_queue_accept(oio_accept_req *req, oio_handle *handle) {
   BOOL success;
   DWORD bytes;
 
-  data = handle->accept_data;
-  assert(data != NULL);
-
-  data->socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (data->socket == INVALID_SOCKET) {
+  req->socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (req->socket == INVALID_SOCKET) {
     oio_close_error(handle, WSAGetLastError());
     return;
   }
 
-  if (oio_set_socket_options(data->socket) != 0) {
-    closesocket(data->socket);
+  if (oio_set_socket_options(req->socket) != 0) {
+    closesocket(req->socket);
     oio_close_error(handle, oio_errno_);
     return;
   }
 
   /* Prepare the oio_req and OVERLAPPED structures. */
-  assert(!(data->req.flags & OIO_REQ_PENDING));
-  data->req.flags |= OIO_REQ_PENDING;
-  memset(&data->req.overlapped, 0, sizeof(data->req.overlapped));
+  assert(!(req->flags & OIO_REQ_PENDING));
+  req->flags |= OIO_REQ_PENDING;
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
 
   success = pAcceptEx(handle->socket,
-                      data->socket,
-                      (void*)&data->buffer,
+                      req->socket,
+                      (void*)&req->buffer,
                       0,
                       sizeof(struct sockaddr_storage),
                       sizeof(struct sockaddr_storage),
                       &bytes,
-                      &data->req.overlapped);
+                      &req->overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
     oio_errno_ = WSAGetLastError();
     /* destroy the preallocated client handle */
-    closesocket(data->socket);
+    closesocket(req->socket);
     /* destroy ourselves */
     oio_close_error(handle, oio_errno_);
     return;
   }
 
   handle->reqs_pending++;
-  data->req.flags |= OIO_REQ_PENDING;
+  req->flags |= OIO_REQ_PENDING;
 }
 
 
 int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
-  oio_accept_data *data;
+  oio_accept_req* req;
+  oio_accept_req* reqs;
+  int i;
 
-  if (handle->accept_data != NULL) {
+  assert(backlog > 0);
+
+  if (handle->accept_reqs != NULL) {
     /* Already listening. */
     oio_errno_ = WSAEALREADY;
     return -1;
   }
 
-  data = (oio_accept_data*)malloc(sizeof(*data));
-  if (!data) {
+  reqs = (oio_accept_req*)malloc(sizeof(oio_accept_req) * backlog);
+  if (!reqs) {
     oio_errno_ = WSAENOBUFS;
     return -1;
   }
-  data->socket = INVALID_SOCKET;
-  oio_req_init(&data->req, handle, (void*)cb);
-  data->req.type = OIO_ACCEPT;
 
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
     oio_errno_ = WSAGetLastError();
-    free(data);
+    free(reqs);
     return -1;
   }
 
-  handle->accept_data = data;
+  for (i = backlog, req = reqs; i > 0; i--, req++) {
+    req->socket = INVALID_SOCKET;
+    oio_req_init((oio_req*)req, handle, (void*)cb);
+    req->type = OIO_ACCEPT;
+    oio_queue_accept(req, handle);
+  }
 
-  oio_queue_accept(handle);
+  handle->accept_reqs = (oio_accept_req*)reqs;
 
   return 0;
 }
@@ -572,8 +590,8 @@ void oio_poll() {
   ULONG_PTR key;
   OVERLAPPED* overlapped;
   oio_req* req;
+  oio_accept_req *accept_req;
   oio_handle* handle;
-  oio_accept_data *data;
 
   success = GetQueuedCompletionStatus(oio_iocp_,
                                       &bytes,
@@ -594,16 +612,17 @@ void oio_poll() {
   /* If the related socket got closed in the meantime, disregard this */
   /* result. If this is the last request pending, call the handle's close callback. */
   if (handle->flags & OIO_HANDLE_CLOSING) {
+    /* If we reserved a socket handle to accept, free it. */
+    if (req->type == OIO_ACCEPT) {
+      accept_req = (oio_accept_req*)req;
+      if (accept_req->socket != INVALID_SOCKET) {
+        closesocket(accept_req->socket);
+      }
+    }
     if (handle->reqs_pending == 0) {
       handle->flags |= OIO_HANDLE_CLOSED;
-      if (handle->accept_data) {
-        if (handle->accept_data) {
-          if (handle->accept_data->socket) {
-            closesocket(handle->accept_data->socket);
-          }
-          free(handle->accept_data);
-          handle->accept_data = NULL;
-        }
+      if (handle->accept_reqs) {
+        free(handle->accept_reqs);
       }
       if (handle->close_cb) {
         handle->close_cb(handle, handle->error);
@@ -630,35 +649,55 @@ void oio_poll() {
       } else if (req->cb) {
         ((oio_read_cb)req->cb)(req, bytes);
       }
-      break;
+      return;
 
     case OIO_ACCEPT:
-      data = handle->accept_data;
-      assert(data != NULL);
-      assert(data->socket != INVALID_SOCKET);
+      accept_req = (oio_accept_req*)req;
+      assert(accept_req->socket != INVALID_SOCKET);
+      assert(handle->accepted_socket == INVALID_SOCKET);
+
+      handle->accepted_socket = accept_req->socket;
 
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
-      if (success && req->cb) {
-        ((oio_accept_cb)req->cb)(handle);
+      if (success) {
+        if (setsockopt(handle->accepted_socket,
+                SOL_SOCKET,
+                SO_UPDATE_ACCEPT_CONTEXT,
+                (char*)&handle->socket,
+                sizeof(handle->socket)) == 0) {
+          if (req->cb) {
+            ((oio_accept_cb)req->cb)(handle);
+          }
+        } else {
+          oio_fatal_error(WSAGetLastError(), "setsockopt");
+        }
       }
 
       /* accept_cb should call oio_accept_handle which sets data->socket */
       /* to INVALID_SOCKET. */
       /* Just ignore failed accept if the listen socket is still healthy. */
-      if (data->socket != INVALID_SOCKET) {
-        closesocket(handle->socket);
-        data->socket = INVALID_SOCKET;
+      if (handle->accepted_socket != INVALID_SOCKET) {
+        closesocket(handle->accepted_socket);
+        handle->accepted_socket = INVALID_SOCKET;
       }
 
       /* Queue another accept */
-      oio_queue_accept(handle);
+      oio_queue_accept(accept_req, handle);
       return;
 
     case OIO_CONNECT:
       if (req->cb) {
         success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
         if (success) {
-          ((oio_connect_cb)req->cb)(req, 0);
+          if (setsockopt(handle->socket,
+                         SOL_SOCKET,
+                         SO_UPDATE_CONNECT_CONTEXT,
+                         NULL,
+                         0) == 0) {
+            ((oio_connect_cb)req->cb)(req, 0);
+          } else {
+            ((oio_connect_cb)req->cb)(req, WSAGetLastError());
+          }
         } else {
           ((oio_connect_cb)req->cb)(req, GetLastError());
         }

@@ -17,6 +17,13 @@ typedef void (*oio_connect_cb)(oio_req* req, oio_err e);
 typedef void (*oio_shutdown_cb)(oio_req* req);
 
 
+#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
+# include "oio-unix.h"
+#else
+# include "oio-win.h"
+#endif
+
+
 typedef enum {
   OIO_UNKNOWN_HANDLE = 0,
   OIO_TCP,
@@ -36,29 +43,26 @@ typedef enum {
 } oio_req_type;
 
 
-struct oio_handle_shared_s {
+struct oio_handle_s {
   /* read-only */
   oio_handle_type type;
   /* public */
   oio_close_cb close_cb;
   void* data;
+  /* private */
+  struct oio_handle_private_s;
 };
 
-struct oio_req_shared_s {
+typedef struct oio_req_s {
   /* read-only */
   oio_req_type type;
   /* public */
   oio_handle* handle;
   void* cb;
   void* data;
-};
-
-
-#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
-# include "oio-unix.h"
-#else
-# include "oio-win.h"
-#endif
+  /* private */
+  struct oio_req_private_s;
+} oio_req;
 
 
 /**
@@ -75,7 +79,7 @@ int oio_run();
 
 void oio_req_init(oio_req* req, oio_handle* handle, void* cb);
 
-/* 
+/*
  * TODO:
  * - oio_(pipe|pipe_tty)_handle_init
  * - oio_bind_pipe(char *name)

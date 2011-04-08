@@ -14,28 +14,18 @@ typedef struct oio_buf {
   char* base;
 } oio_buf;
 
-struct oio_req_s {
-  struct oio_req_shared_s;
+struct oio_req_private_s {
   OVERLAPPED overlapped;
   int flags;
 };
 
-typedef struct {
-  oio_req req;
-  SOCKET socket;
-
-  /* AcceptEx specifies that the buffer must be big enough to at least hold */
-  /* two socket addresses plus 32 bytes. */
-  char buffer[sizeof(struct sockaddr_storage) * 2 + 32];
-} oio_accept_data;
-
-struct oio_handle_s {
-  struct oio_handle_shared_s;
+struct oio_handle_private_s {
   union {
     SOCKET socket;
     HANDLE handle;
   };
-  oio_accept_data *accept_data;
+  SOCKET accepted_socket;
+  struct oio_accept_req_s* accept_reqs;
   unsigned int flags;
   unsigned int reqs_pending;
   oio_err error;
