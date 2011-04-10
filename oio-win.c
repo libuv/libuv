@@ -85,6 +85,7 @@ LPFN_TRANSMITFILE         pTransmitFile;
  */
 #define OIO_HANDLE_CLOSING   0x01
 #define OIO_HANDLE_CLOSED    0x03
+#define OIO_HANDLE_BOUND     0x04
 
 /*
  * Private oio_req flags.
@@ -118,6 +119,10 @@ int oio_errno_;
 
 /* Reference count that keeps the event loop alive */
 int oio_refs_ = 0;
+
+
+/* Ip address used to bind to any port at any interface */
+struct sockaddr_in addr_ip4_any_;
 
 
 /*
@@ -194,6 +199,8 @@ void oio_init() {
     oio_fatal_error(errorno, "WSAStartup");
   }
 
+  /* Set implicit binding address used by connectEx */
+  addr_ip4_any_ = oio_ip4_addr("0.0.0.0", 0);
 
   /* Retrieve the needed winsock extension function pointers. */
   dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -383,6 +390,8 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
     return -1;
   }
 
+  handle->flags |= OIO_HANDLE_BOUND;
+
   return 0;
 }
 
@@ -479,8 +488,13 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
 
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
+    if (!(handle->flags & OIO_HANDLE_BOUND) &&
+        oio_bind(handle, &addr_ip4_any_) < 0)
+      return -1;
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
+    assert(0);
+    return -1;
   } else {
     assert(0);
     return -1;
