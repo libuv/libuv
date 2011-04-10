@@ -1,4 +1,4 @@
-all: test/echo-demo test/test-ping-pong
+all: oio.a
 
 test/echo-demo: test/echo-demo.c test/echo.o oio.a
 	$(CC) -ansi -g -o test/echo-demo test/echo-demo.c test/echo.o oio.a -lm

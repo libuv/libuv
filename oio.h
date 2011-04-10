@@ -54,10 +54,10 @@ struct oio_handle_s {
   oio_close_cb close_cb;
   void* data;
   /* private */
-  struct oio_handle_private_s;
+  oio_handle_private_fields
 };
 
-typedef struct oio_req_s {
+struct oio_req_s {
   /* read-only */
   oio_req_type type;
   /* public */
@@ -65,8 +65,8 @@ typedef struct oio_req_s {
   void* cb;
   void* data;
   /* private */
-  struct oio_req_private_s;
-} oio_req;
+  oio_req_private_fields
+};
 
 
 /**
