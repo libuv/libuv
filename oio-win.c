@@ -13,20 +13,25 @@
  * Mingw32 doesn't have these :-(
  */
 #ifndef WSAID_ACCEPTEX
-# define WSAID_ACCEPTEX \
-         {0xb5367df1, 0xcbac, 0x11cf, {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}};
+# define WSAID_ACCEPTEX                                        \
+         {0xb5367df1, 0xcbac, 0x11cf,                          \
+         {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
 
-# define WSAID_CONNECTEX \
-         {0x25a207b9, 0xddf3, 0x4660, {0x8e, 0xe9, 0x76, 0xe5, 0x8c, 0x74, 0x06, 0x3e}};
+# define WSAID_CONNECTEX                                       \
+         {0x25a207b9, 0xddf3, 0x4660,                          \
+         {0x8e, 0xe9, 0x76, 0xe5, 0x8c, 0x74, 0x06, 0x3e}}
 
-# define WSAID_GETACCEPTEXSOCKADDRS \
-         {0xb5367df2, 0xcbac, 0x11cf, {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}};
+# define WSAID_GETACCEPTEXSOCKADDRS                            \
+         {0xb5367df2, 0xcbac, 0x11cf,                          \
+         {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
 
-# define WSAID_DISCONNECTEX \
-         {0x7fda2e11, 0x8630, 0x436f, {0xa0, 0x31, 0xf5, 0x36, 0xa6, 0xee, 0xc1, 0x57}};
+# define WSAID_DISCONNECTEX                                    \
+         {0x7fda2e11, 0x8630, 0x436f,                          \
+         {0xa0, 0x31, 0xf5, 0x36, 0xa6, 0xee, 0xc1, 0x57}}
 
-# define WSAID_TRANSMITFILE \
-         {0xb5367df0, 0xcbac, 0x11cf, {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}};
+# define WSAID_TRANSMITFILE                                    \
+         {0xb5367df0, 0xcbac, 0x11cf,                          \
+         {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
 
   typedef BOOL(*LPFN_ACCEPTEX)
               (SOCKET sListenSocket,
@@ -74,13 +79,13 @@
 #endif
 
 /*
- * Pointers to winsock extension functions that have to be retrieved dynamically
+ * Pointers to winsock extension functions to be retrieved dynamically
  */
-LPFN_CONNECTEX            pConnectEx;
-LPFN_ACCEPTEX             pAcceptEx;
-LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs;
-LPFN_DISCONNECTEX         pDisconnectEx;
-LPFN_TRANSMITFILE         pTransmitFile;
+static LPFN_CONNECTEX            pConnectEx;
+static LPFN_ACCEPTEX             pAcceptEx;
+static LPFN_GETACCEPTEXSOCKADDRS pGetAcceptExSockAddrs;
+static LPFN_DISCONNECTEX         pDisconnectEx;
+static LPFN_TRANSMITFILE         pTransmitFile;
 
 
 /*
@@ -111,7 +116,7 @@ typedef struct oio_accept_req_s {
 
 
 /* Binary tree used to keep the list of timers sorted. */
-int oio_timer_compare(oio_req* t1, oio_req* t2);
+static int oio_timer_compare(oio_req* t1, oio_req* t2);
 RB_HEAD(oio_timer_s, oio_req_s);
 RB_PROTOTYPE(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
 
@@ -120,32 +125,32 @@ static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
 
 
 /* The current time according to the event loop. in msecs. */
-int64_t oio_now_ = 0;
-int64_t oio_ticks_per_msec_ = 0;
+static int64_t oio_now_ = 0;
+static int64_t oio_ticks_per_msec_ = 0;
 
 
 /*
  * Global I/O completion port
  */
-HANDLE oio_iocp_;
+static HANDLE oio_iocp_;
 
 
 /* Global error code */
-int oio_errno_;
+static int oio_errno_;
 
 
 /* Reference count that keeps the event loop alive */
-int oio_refs_ = 0;
+static int oio_refs_ = 0;
 
 
 /* Ip address used to bind to any port at any interface */
-struct sockaddr_in addr_ip4_any_;
+static struct sockaddr_in oio_addr_ip4_any_;
 
 
 /*
  * Display an error message and abort the event loop.
  */
-void oio_fatal_error(const int errorno, const char *syscall) {
+static void oio_fatal_error(const int errorno, const char *syscall) {
   char *buf = NULL;
   const char *errmsg;
 
@@ -179,7 +184,8 @@ void oio_fatal_error(const int errorno, const char *syscall) {
 /*
  * Retrieves the pointer to a winsock extension function.
  */
-void oio_get_extension_function(SOCKET socket, GUID guid, void **target) {
+static void oio_get_extension_function(SOCKET socket, GUID guid,
+    void **target) {
   DWORD result, bytes;
 
   result = WSAIoctl(socket,
@@ -194,7 +200,8 @@ void oio_get_extension_function(SOCKET socket, GUID guid, void **target) {
 
   if (result == SOCKET_ERROR) {
     *target = NULL;
-    oio_fatal_error(WSAGetLastError(), "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
+    oio_fatal_error(WSAGetLastError(),
+                    "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
   }
 }
 
@@ -218,7 +225,7 @@ void oio_init() {
   }
 
   /* Set implicit binding address used by connectEx */
-  addr_ip4_any_ = oio_ip4_addr("0.0.0.0", 0);
+  oio_addr_ip4_any_ = oio_ip4_addr("0.0.0.0", 0);
 
   /* Retrieve the needed winsock extension function pointers. */
   dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -226,11 +233,21 @@ void oio_init() {
     oio_fatal_error(WSAGetLastError(), "socket");
   }
 
-  oio_get_extension_function(dummy, wsaid_connectex,            (void**)&pConnectEx           );
-  oio_get_extension_function(dummy, wsaid_acceptex,             (void**)&pAcceptEx            );
-  oio_get_extension_function(dummy, wsaid_getacceptexsockaddrs, (void**)&pGetAcceptExSockAddrs);
-  oio_get_extension_function(dummy, wsaid_disconnectex,         (void**)&pDisconnectEx        );
-  oio_get_extension_function(dummy, wsaid_transmitfile,         (void**)&pTransmitFile        );
+  oio_get_extension_function(dummy,
+                             wsaid_connectex,
+                             (void**)&pConnectEx);
+  oio_get_extension_function(dummy,
+                             wsaid_acceptex,
+                             (void**)&pAcceptEx);
+  oio_get_extension_function(dummy,
+                             wsaid_getacceptexsockaddrs,
+                             (void**)&pGetAcceptExSockAddrs);
+  oio_get_extension_function(dummy,
+                             wsaid_disconnectex,
+                             (void**)&pDisconnectEx);
+  oio_get_extension_function(dummy,
+                             wsaid_transmitfile,
+                             (void**)&pTransmitFile);
 
   if (closesocket(dummy) == SOCKET_ERROR) {
     oio_fatal_error(WSAGetLastError(), "closesocket");
@@ -259,12 +276,12 @@ void oio_req_init(oio_req* req, oio_handle* handle, void *cb) {
 }
 
 
-oio_req* oio_overlapped_to_req(OVERLAPPED* overlapped) {
+static oio_req* oio_overlapped_to_req(OVERLAPPED* overlapped) {
   return CONTAINING_RECORD(overlapped, oio_req, overlapped);
 }
 
 
-int oio_set_socket_options(SOCKET socket) {
+static int oio_set_socket_options(SOCKET socket) {
   DWORD yes = 1;
 
   /* Set the SO_REUSEADDR option on the socket */
@@ -295,7 +312,8 @@ int oio_set_socket_options(SOCKET socket) {
 }
 
 
-int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data) {
+int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb,
+    void* data) {
   handle->close_cb = close_cb;
   handle->data = data;
   handle->type = OIO_TCP;
@@ -322,7 +340,8 @@ int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data) {
 }
 
 
-int oio_tcp_handle_accept(oio_handle* server, oio_handle* client, oio_close_cb close_cb, void* data) {
+int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
+    oio_close_cb close_cb, void* data) {
   if (!server->accepted_socket == INVALID_SOCKET) {
     oio_errno_ = WSAENOTCONN;
     return -1;
@@ -345,7 +364,7 @@ int oio_tcp_handle_accept(oio_handle* server, oio_handle* client, oio_close_cb c
 }
 
 
-int oio_close_error(oio_handle* handle, oio_err e) {
+static int oio_close_error(oio_handle* handle, oio_err e) {
   oio_req *req;
 
   if (handle->flags & OIO_HANDLE_CLOSING)
@@ -364,8 +383,12 @@ int oio_close_error(oio_handle* handle, oio_err e) {
         req->handle = handle;
         req->type = OIO_CLOSE;
         req->flags = 0;
-        if (!PostQueuedCompletionStatus(oio_iocp_, 0, (ULONG_PTR)handle, &req->overlapped))
+        if (!PostQueuedCompletionStatus(oio_iocp_,
+                                        0,
+                                        (ULONG_PTR)handle,
+                                        &req->overlapped)) {
           oio_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+        }
         req->flags |= OIO_REQ_PENDING;
         handle->reqs_pending++;
       }
@@ -421,7 +444,7 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
 }
 
 
-void oio_queue_accept(oio_accept_req *req, oio_handle *handle) {
+static void oio_queue_accept(oio_accept_req *req, oio_handle *handle) {
   BOOL success;
   DWORD bytes;
 
@@ -514,7 +537,7 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
     if (!(handle->flags & OIO_HANDLE_BOUND) &&
-        oio_bind(handle, &addr_ip4_any_) < 0)
+        oio_bind(handle, &oio_addr_ip4_any_) < 0)
       return -1;
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
@@ -670,7 +693,7 @@ int64_t oio_now() {
 }
 
 
-void oio_poll() {
+static void oio_poll() {
   BOOL success;
   DWORD bytes;
   ULONG_PTR key;
@@ -730,7 +753,8 @@ void oio_poll() {
   handle->reqs_pending--;
 
   /* If the related socket got closed in the meantime, disregard this */
-  /* result. If this is the last request pending, call the handle's close callback. */
+  /* result. If this is the last request pending, call the handle's close */
+  /* callback. */
   if (handle->flags & OIO_HANDLE_CLOSING) {
     /* If we reserved a socket handle to accept, free it. */
     if (req->type == OIO_ACCEPT) {
@@ -807,7 +831,10 @@ void oio_poll() {
 
     case OIO_CONNECT:
       if (req->cb) {
-        success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
+        success = GetOverlappedResult(handle->handle,
+                                      overlapped,
+                                      &bytes,
+                                      FALSE);
         if (success) {
           if (setsockopt(handle->socket,
                          SOL_SOCKET,
