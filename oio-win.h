@@ -1,8 +1,11 @@
 
+#include <stdint.h>
 #include <winsock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+
+#include "tree.h"
 
 
 /**
@@ -15,7 +18,15 @@ typedef struct oio_buf {
 } oio_buf;
 
 struct oio_req_private_s {
-  OVERLAPPED overlapped;
+  union {
+    /* Used by I/O operations */
+    OVERLAPPED overlapped;
+    /* Used by timers */
+    struct {
+      RB_ENTRY(oio_req_s) tree_entry;
+      int64_t due;
+    };
+  };
   int flags;
 };
 

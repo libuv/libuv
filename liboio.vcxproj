@@ -93,6 +93,7 @@
     <ClInclude Include="ngx-queue.h" />
     <ClInclude Include="oio-win.h" />
     <ClInclude Include="oio.h" />
+    <ClInclude Include="tree.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="oio-win.c" />

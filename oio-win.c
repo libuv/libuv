@@ -1,8 +1,11 @@
 
-#include "oio.h"
 #include <assert.h>
+#include <errno.h>
 #include <malloc.h>
 #include <stdio.h>
+
+#include "oio.h"
+#include "tree.h"
 
 
 /*
@@ -107,6 +110,20 @@ typedef struct oio_accept_req_s {
 } oio_accept_req;
 
 
+/* Binary tree used to keep the list of timers sorted. */
+int oio_timer_compare(oio_req* t1, oio_req* t2);
+RB_HEAD(oio_timer_s, oio_req_s);
+RB_PROTOTYPE(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
+
+/* The head of the timers tree */
+static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
+
+
+/* The current time according to the event loop. in msecs. */
+int64_t oio_now_ = 0;
+int64_t oio_ticks_per_msec_ = 0;
+
+
 /*
  * Global I/O completion port
  */
@@ -191,6 +208,7 @@ void oio_init() {
 
   WSADATA wsa_data;
   int errorno;
+  LARGE_INTEGER timer_frequency;
   SOCKET dummy;
 
   /* Initialize winsock */
@@ -223,6 +241,13 @@ void oio_init() {
   if (oio_iocp_ == NULL) {
     oio_fatal_error(GetLastError(), "CreateIoCompletionPort");
   }
+
+  /* Initialize the event loop time */
+  if (!QueryPerformanceFrequency(&timer_frequency))
+    oio_fatal_error(GetLastError(), "QueryPerformanceFrequency");
+  oio_ticks_per_msec_ = timer_frequency.QuadPart / 1000;
+
+  oio_update_time();
 }
 
 
@@ -598,6 +623,53 @@ oio_err oio_last_error() {
 }
 
 
+static int oio_timer_compare(oio_req *a, oio_req* b) {
+  if (a->due < b->due)
+    return -1;
+  if (a->due > b->due)
+    return 1;
+  if ((intptr_t)a < (intptr_t)b)
+    return -1;
+  if ((intptr_t)a > (intptr_t)b)
+    return 1;
+  return 0;
+}
+
+
+RB_GENERATE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
+
+
+int oio_timeout(oio_req* req, int64_t timeout) {
+  assert(!(req->flags & OIO_REQ_PENDING));
+
+  req->type = OIO_TIMEOUT;
+
+  req->due = oio_now_ + timeout;
+  if (RB_INSERT(oio_timer_s, &oio_timers_, req) != NULL) {
+    oio_errno_ = EINVAL;
+    return -1;
+  }
+
+  req->flags |= OIO_REQ_PENDING;
+  return 0;
+}
+
+
+void oio_update_time() {
+  LARGE_INTEGER counter;
+
+  if (!QueryPerformanceCounter(&counter))
+    oio_fatal_error(GetLastError(), "QueryPerformanceCounter");
+
+  oio_now_ = counter.QuadPart / oio_ticks_per_msec_;
+}
+
+
+int64_t oio_now() {
+  return oio_now_;
+}
+
+
 void oio_poll() {
   BOOL success;
   DWORD bytes;
@@ -606,15 +678,49 @@ void oio_poll() {
   oio_req* req;
   oio_accept_req *accept_req;
   oio_handle* handle;
+  DWORD timeout;
+  int64_t delta;
+
+  oio_update_time();
+
+  /* Check if there are any running timers */
+  req = RB_MIN(oio_timer_s, &oio_timers_);
+  if (req) {
+    delta = req->due - oio_now_;
+    if (delta >= UINT_MAX) {
+      /* Can't have a timeout greater than UINT_MAX, and a timeout value of */
+      /* UINT_MAX means infinite, so that's no good either. */
+      timeout = UINT_MAX - 1;
+    } else if (delta < 0) {
+      /* Negative timeout values are not allowed */
+      timeout = 0;
+    } else {
+      timeout = (DWORD)delta;
+    }
+  } else {
+    /* No timers */
+    timeout = INFINITE;
+  }
 
   success = GetQueuedCompletionStatus(oio_iocp_,
                                       &bytes,
                                       &key,
                                       &overlapped,
-                                      INFINITE);
+                                      timeout);
 
+  /* Call timer callbacks */
+  oio_update_time();
+  for (req = RB_MIN(oio_timer_s, &oio_timers_);
+       req != NULL && req->due <= oio_now_;
+       req = RB_MIN(oio_timer_s, &oio_timers_)) {
+    RB_REMOVE(oio_timer_s, &oio_timers_, req);
+    req->flags &= ~OIO_REQ_PENDING;
+    ((oio_timer_cb)req->cb)(req, req->due - oio_now_);
+  }
+
+  /* Quit if there were no io requests dequeued. */
   if (!success && !overlapped)
-    oio_fatal_error(GetLastError(), "GetQueuedCompletionStatus");
+    return;
 
   req = oio_overlapped_to_req(overlapped);
   handle = req->handle;
