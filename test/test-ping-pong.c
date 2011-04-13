@@ -101,9 +101,9 @@ void pinger_on_connect(oio_req *req, oio_err err) {
 }
 
 
-int pinger_new(int port) {
+int pinger_new() {
   struct sockaddr_in client_addr = oio_ip4_addr("0.0.0.0", 0);
-  struct sockaddr_in server_addr = oio_ip4_addr("145.94.50.9", TEST_PORT);
+  struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
   pinger_t *pinger;
 
   pinger = (pinger_t*)malloc(sizeof(*pinger));
@@ -130,7 +130,7 @@ int pinger_new(int port) {
 TEST_IMPL(ping_pong) {
   oio_init();
 
-  if (pinger_new(8000)) {
+  if (pinger_new()) {
     return 2;
   }
 
