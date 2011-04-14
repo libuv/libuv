@@ -2,7 +2,7 @@
 #include "test-runner.h"
 
 #include <assert.h>
-#include <io.h>
+#include <stdio.h>
 #include <stdio.h>
 #include <string.h>
 

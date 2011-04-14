@@ -67,6 +67,11 @@ int oio_run() {
 }
 
 
+int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data) {
+  return -1;
+}
+
+/* Remove me */
 oio_handle* oio_tcp_handle_new(oio_close_cb close_cb, void* data) {
   oio_handle *handle = calloc(sizeof(oio_handle), 1);
   if (!handle) {
@@ -204,6 +209,12 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
   handle->read_watcher.data = handle;
 
   return 0;
+}
+
+
+int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
+    oio_close_cb close_cb, void* data) {
+  ;
 }
 
 
