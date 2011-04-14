@@ -32,6 +32,7 @@ int process_start(char* name, process_info_t* p) {
   }
 
   p->terminated = 0;
+  p->status = 0;
 
   get_executable_path();
 
@@ -72,7 +73,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
     p = (process_info_t*)(vec + i * sizeof(process_info_t));
     if (p->terminated) continue;
     int status = 0;
-    int r = waitpid(p->pid, &p->status, 0);
+    int r = waitpid(p->pid, &(p->status), 0);
     if (r < 0) {
       return -1;
     }
@@ -140,7 +141,11 @@ int process_terminate(process_info_t *p) {
 /* Return the exit code of process p. */
 /* On error, return -1. */
 int process_reap(process_info_t *p) {
-  return WEXITSTATUS(p->status);
+  if (WIFEXITED(p->status)) {
+    return WEXITSTATUS(p->status);
+  } else  {
+    return p->status; /* ? */
+  }
 }
 
 
