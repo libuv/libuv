@@ -29,7 +29,6 @@ void after_write(oio_req* req) {
 
 void after_read(oio_req* req, size_t nread) {
   peer_t* peer;
-  int r;
 
   if (nread == 0) {
     oio_close(req->handle);
@@ -38,20 +37,18 @@ void after_read(oio_req* req, size_t nread) {
     peer->buf.len = nread;
     oio_req_init(&peer->req, &peer->handle, after_write);
     peer->req.data = peer;
-    r = oio_write(&peer->req, &peer->buf, 1);
-    assert(!r);
+    if (oio_write(&peer->req, &peer->buf, 1))
+      FATAL(oio_write failed)
   }
 }
 
 
 void try_read(peer_t* peer) {
-  int r;
-
   peer->buf.len = BUFSIZE;
   oio_req_init(&peer->req, &peer->handle, after_read);
   peer->req.data = peer;
-  r = oio_read(&peer->req, &peer->buf, 1);
-  assert(!r);
+  if (oio_read(&peer->req, &peer->buf, 1))
+    FATAL(oio_read failed)
 }
 
 
@@ -64,10 +61,9 @@ void on_close(oio_handle* peer, oio_err err) {
 
 void on_accept(oio_handle* server) {
   peer_t* p = (peer_t*)malloc(sizeof(peer_t));
-  int r;
 
-  r = oio_tcp_handle_accept(server, &p->handle, on_close, (void*)p);
-  assert(!r);
+  if (oio_tcp_handle_accept(server, &p->handle, on_close, (void*)p))
+    FATAL(oio_tcp_handle_accept failed)
 
   p->buf.base = (char*)&p->read_buffer;
 
@@ -76,11 +72,8 @@ void on_accept(oio_handle* server) {
 
 
 void on_server_close(oio_handle* handle, oio_err err) {
-  assert(handle == &server);
-
-  if (err) {
-    fprintf(stdout, "Socket error\n");
-  }
+  ASSERT(handle == &server);
+  ASSERT(!err)
 }
 
 

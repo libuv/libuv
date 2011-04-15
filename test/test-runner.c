@@ -1,7 +1,7 @@
 
+#include "test.h"
 #include "test-runner.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,13 +14,6 @@
 
 /* The time in milliseconds after which a single test times out, */
 #define TEST_TIMEOUT 20000
-
-/* Die with fatal error. */
-#define FATAL(msg)  assert(msg && 0);
-
-/* Log to stderr. */
-#define LOG(...)    fprintf(stderr, "%s", __VA_ARGS__)
-#define LOGF(...)   fprintf(stderr, __VA_ARGS__)
 
 
 /*
@@ -62,7 +55,7 @@ int run_test(test_entry_t *test) {
   /* Wait for the main process to terminate. */
   result = process_wait(main_process, 1, TEST_TIMEOUT);
   if (result == -1) {
-    FATAL("process_wait failed\n");
+    FATAL(process_wait failed)
   } else if (result == -2) {
     snprintf((char*)&errmsg, sizeof(errmsg), "timeout.");
     goto finalize;
@@ -86,7 +79,7 @@ finalize:
 
   /* Wait until all processes have really terminated. */
   if (process_wait((process_info_t*)&processes, process_count, -1) < 0)
-    FATAL("process_wait failed\n");
+    FATAL(process_wait failed)
 
   /* Show error and output from processes if the test failed. */
   if (!success) {

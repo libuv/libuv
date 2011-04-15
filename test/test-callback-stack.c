@@ -6,30 +6,31 @@ int nested = 0;
 int close_cb_called = 0;
 
 
-void close_cb(oio_handle *handle, oio_err e) {
-  assert("oio_close error" && e == 0);
-  assert("oio_close_cb not called from a fresh stack" && nested == 0);
+void close_cb(oio_handle *handle, oio_err err) {
+  ASSERT(!err)
+  ASSERT(nested == 0 && "oio_close_cb must be called from a fresh stack")
   close_cb_called++;
 }
 
 
 TEST_IMPL(close_cb_stack) {
   oio_handle handle;
-  int r;
 
   oio_init();
 
-  r = oio_tcp_handle_init(&handle, &close_cb, NULL);
-  assert(!r);
+  if (oio_tcp_handle_init(&handle, &close_cb, NULL))
+    FATAL(oio_tcp_handle_init failed)
 
   nested++;
-  r = oio_close(&handle);
-  assert(!r);
+
+  if (oio_close(&handle))
+    FATAL(oio_close failed)
+
   nested--;
 
   oio_run();
 
-  assert("oio_close_cb not called exactly once" && close_cb_called);
+  ASSERT(close_cb_called && "oio_close_cb must be called exactly once")
 
   return 0;
 }
