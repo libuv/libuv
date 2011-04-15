@@ -2,23 +2,23 @@
 #include "test.h"
 
 
-int expected = 0;
-int timeouts = 0;
+static int expected = 0;
+static int timeouts = 0;
 
 
-void timeout_cb(oio_req *req) {
+static void timeout_cb(oio_req *req) {
   ASSERT(req != NULL);
   free(req);
   timeouts++;
 }
 
-void exit_timeout_cb(oio_req *req) {
+static void exit_timeout_cb(oio_req *req) {
   ASSERT(req != NULL);
   ASSERT(timeouts == expected);
   exit(0);
 }
 
-void dummy_timeout_cb(oio_req *req) {
+static void dummy_timeout_cb(oio_req *req) {
   /* Should never be called */
   FATAL(dummy_timer_cb should never be called)
 }

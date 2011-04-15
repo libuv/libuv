@@ -1,7 +1,7 @@
 TEST_DECLARE (echo_server)
 TEST_DECLARE (ping_pong)
-TEST_DECLARE (close_cb_stack);
-TEST_DECLARE (timeout);
+TEST_DECLARE (close_cb_stack)
+TEST_DECLARE (timeout)
 TEST_DECLARE (fail_always)
 TEST_DECLARE (pass_always)
 

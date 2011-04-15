@@ -502,6 +502,11 @@ int oio_write2(oio_req* req, const char* msg) {
 }
 
 
+int oio_timeout(oio_req *req, int64_t timeout) {
+  return -1;
+}
+
+
 int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
   oio_handle* handle = req->handle;
   ssize_t nread = -1;
