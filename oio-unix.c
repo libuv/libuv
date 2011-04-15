@@ -28,13 +28,36 @@ size_t strnlen (register const char* s, size_t maxlen) {
 void oio_tcp_io(EV_P_ ev_io* watcher, int revents);
 void oio_tcp_connect(oio_handle* handle, oio_req* req);
 int oio_tcp_open(oio_handle*, int fd);
-int oio_close_error(oio_handle* handle, oio_err err);
+void oio_finish_close(oio_handle* handle);
+
+
+/* flags */
+enum {
+  OIO_CLOSING = 0x00000001,
+  OIO_CLOSED  = 0x00000002
+};
+
+
+void oio_flag_set(oio_handle* handle, int flag) {
+  handle->flags |= flag;
+}
+
+
+void oio_flag_unset(oio_handle* handle, int flag) {
+  handle->flags = handle->flags & ~flag;
+}
+
+
+int oio_flag_is_set(oio_handle* handle, int flag) {
+  return handle->flags & flag;
+}
 
 
 static oio_err oio_err_new(oio_handle* handle, int e) {
   handle->err = e;
   return e;
 }
+
 
 oio_err oio_err_last(oio_handle *handle) {
   return handle->err;
@@ -53,7 +76,16 @@ struct sockaddr_in oio_ip4_addr(char *ip, int port) {
 
 
 int oio_close(oio_handle* handle) {
-  return oio_close_error(handle, 0);
+  oio_flag_set(handle, OIO_CLOSING);
+
+  if (!ev_is_active(&handle->read_watcher)) {
+    ev_io_init(&handle->read_watcher, oio_tcp_io, handle->fd, EV_READ);
+    ev_io_start(EV_DEFAULT_ &handle->read_watcher);
+  }
+
+  ev_feed_fd_event(EV_DEFAULT_ handle->fd, EV_READ | EV_WRITE);
+
+  return 0;
 }
 
 
@@ -73,6 +105,7 @@ int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb,
   handle->close_cb = close_cb;
   handle->data = data;
   handle->accepted_fd = -1;
+  handle->flags = 0;
 
   ngx_queue_init(&handle->read_reqs);
 
@@ -149,6 +182,11 @@ void oio_server_io(EV_P_ ev_io* watcher, int revents) {
 
   assert(revents == EV_READ);
 
+  if (oio_flag_is_set(handle, OIO_CLOSING)) {
+    oio_finish_close(handle);
+    return;
+  }
+
   if (handle->accepted_fd >= 0) {
     ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
     return;
@@ -169,7 +207,8 @@ void oio_server_io(EV_P_ ev_io* watcher, int revents) {
         /* TODO special trick. unlock reserved socket, accept, close. */
         return;
       } else {
-        oio_close_error(handle, oio_err_new(handle, errno));
+        handle->err = oio_err_new(handle, errno);
+        oio_close(handle);
       }
 
     } else {
@@ -225,16 +264,24 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
 }
 
 
-int oio_close_error(oio_handle* handle, oio_err err) {
+void oio_finish_close(oio_handle* handle) {
+  assert(!oio_flag_is_set(handle, OIO_CLOSED));
+  oio_flag_set(handle, OIO_CLOSED);
+
   ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
+  ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
   close(handle->fd);
+
   handle->fd = -1;
 
-  if (handle->close_cb) {
-    handle->close_cb(handle, err);
+  if (handle->accepted_fd >= 0) {
+    close(handle->accepted_fd);
+    handle->accepted_fd = -1;
   }
 
-  return err;
+  if (handle->close_cb) {
+    handle->close_cb(handle, 0);
+  }
 }
 
 
@@ -290,7 +337,8 @@ void oio__read(oio_handle* handle) {
       if (cb) {
         cb(req, 0);
       }
-      oio_close_error(handle, errno);
+      handle->err = errno;
+      oio_close(handle);
     }
   } else {
     /* Successful read */
@@ -317,6 +365,11 @@ void oio_tcp_io(EV_P_ ev_io* watcher, int revents) {
   oio_handle* handle = watcher->data;
 
   assert(handle->fd >= 0);
+
+  if (oio_flag_is_set(handle, OIO_CLOSING)) {
+    oio_finish_close(handle);
+    return;
+  }
 
   if (handle->connect_req) {
     oio_tcp_connect(handle, handle->connect_req);
@@ -368,7 +421,8 @@ void oio_tcp_connect(oio_handle* handle, oio_req* req) {
       req->connect_cb(req, err);
     }
 
-    oio_close_error(handle, err);
+    handle->err = err;
+    oio_close(handle);
   }
 }
 

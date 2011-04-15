@@ -1,4 +1,4 @@
-all: oio.a
+all: oio.a test/test-runner
 
 TESTS=test/echo-server.c \
 			test/test-pass-always.c \

@@ -11,9 +11,7 @@
 #include <netinet/tcp.h>
 
 
-/**
- * Note can be cast to io_vec.
- */
+/* Note: May be cast to struct iovec. See writev(2). */
 typedef struct {
   char* base;
   size_t len;
@@ -21,7 +19,6 @@ typedef struct {
 
 
 #define oio_req_private_fields \
-  int local; \
   oio_connect_cb connect_cb; \
   ngx_queue_t read_reqs; \
   oio_buf* read_bufs; \
@@ -30,6 +27,7 @@ typedef struct {
 
 #define oio_handle_private_fields \
   int fd; \
+  int flags; \
   oio_err err; \
   oio_read_cb read_cb; \
   oio_accept_cb accept_cb; \
