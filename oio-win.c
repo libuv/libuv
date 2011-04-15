@@ -673,6 +673,7 @@ int oio_timeout(oio_req* req, int64_t timeout) {
     return -1;
   }
 
+  oio_refs_++;
   req->flags |= OIO_REQ_PENDING;
   return 0;
 }
@@ -738,6 +739,7 @@ static void oio_poll() {
        req = RB_MIN(oio_timer_s, &oio_timers_)) {
     RB_REMOVE(oio_timer_s, &oio_timers_, req);
     req->flags &= ~OIO_REQ_PENDING;
+    oio_refs_--;
     ((oio_timer_cb)req->cb)(req, req->due - oio_now_);
   }
 

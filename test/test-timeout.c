@@ -14,7 +14,6 @@ void timeout_cb(oio_req *req) {
 
 void exit_timeout_cb(oio_req *req) {
   ASSERT(req != NULL);
-  free(req);
   ASSERT(timeouts == expected);
   exit(0);
 }
@@ -33,7 +32,7 @@ TEST_IMPL(timeout) {
 
   oio_init();
 
-  /* Let 10 timers time out it 500 ms. */
+  /* Let 10 timers time out in 500 ms total. */
   for (i = 0; i < 10; i++) {
     req = (oio_req*)malloc(sizeof(*req));
     ASSERT(req != NULL)
