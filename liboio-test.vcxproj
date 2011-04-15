@@ -143,6 +143,7 @@
     <ClCompile Include="test\test-ping-pong.c" />
     <ClCompile Include="test\test-runner-win32.c" />
     <ClCompile Include="test\test-runner.c" />
+    <ClCompile Include="test\test-timeout.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="test\test-list.h" />
