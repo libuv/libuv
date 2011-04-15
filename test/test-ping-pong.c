@@ -45,7 +45,7 @@ void pinger_after_write(oio_req *req) {
 
 void pinger_write_ping(pinger_t* pinger) {
   oio_req *req;
-  
+
   req = (oio_req*)malloc(sizeof(*req));
   oio_req_init(req, &pinger->handle, pinger_after_write);
 

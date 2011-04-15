@@ -4,7 +4,8 @@ TESTS=test/echo-server.c \
 			test/test-pass-always.c \
 			test/test-fail-always.c \
 			test/test-ping-pong.c \
-			test/test-callback-stack.c
+			test/test-callback-stack.c \
+			test/test-timeout.c
 
 test/test-runner: test/*.h test/test-runner.c test/test-runner-unix.c $(TESTS) oio.a
 	$(CC) -ansi -g -lm -o test/test-runner  test/test-runner.c test/test-runner-unix.c $(TESTS) oio.a
