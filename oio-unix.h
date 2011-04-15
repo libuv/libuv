@@ -33,6 +33,7 @@ typedef struct {
   oio_err err; \
   oio_read_cb read_cb; \
   oio_accept_cb accept_cb; \
+  int accepted_fd; \
   oio_req *connect_req; \
   ev_io read_watcher; \
   ev_io write_watcher; \

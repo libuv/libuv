@@ -1,0 +1,2 @@
+"test-runner ping_pong" should run just the ping pong test with the echo
+server process.

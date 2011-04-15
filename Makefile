@@ -1,4 +1,4 @@
-all: oio.a test/test-runner
+all: oio.a
 
 TESTS=test/echo-server.c \
 			test/test-pass-always.c \
@@ -31,7 +31,10 @@ ev/config.h:
 	cd ev && ./configure
 
 
-.PHONY: clean distclean
+.PHONY: clean distclean test
+
+test: test/test-runner
+	test/test-runner
 
 clean:
 	$(RM) -f *.o *.a test/test-runner
