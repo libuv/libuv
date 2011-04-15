@@ -40,7 +40,7 @@ TEST_IMPL(timeout) {
 
     oio_req_init(req, NULL, timeout_cb);
 
-    if (oio_timeout(req, i * 50) < 1)
+    if (oio_timeout(req, i * 50) < 0)
       FATAL(oio_timeout failed)
 
     expected++;
