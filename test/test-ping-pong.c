@@ -43,23 +43,28 @@ void pinger_after_write(oio_req *req) {
 }
 
 
-void pinger_write_ping(pinger_t* pinger) {
+static void pinger_write_ping(pinger_t* pinger) {
   oio_req *req;
 
   req = (oio_req*)malloc(sizeof(*req));
   oio_req_init(req, &pinger->handle, pinger_after_write);
 
-  if (oio_write2(req, (char*)&PING))
+  if (oio_write2(req, (char*)&PING)) {
     FATAL(oio_write2 failed)
+  }
+
+  puts("PING");
 }
 
-void pinger_after_read(oio_req* req, size_t nread) {
+
+static void pinger_after_read(oio_req* req, size_t nread) {
   unsigned int i;
   pinger_t* pinger;
 
   pinger = (pinger_t*)req->handle->data;
 
   if (nread == 0) {
+    puts("got EOF");
     oio_close(&pinger->handle);
     return;
   }
@@ -69,6 +74,7 @@ void pinger_after_read(oio_req* req, size_t nread) {
     ASSERT(pinger->buf.base[i] == PING[pinger->state])
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
+      printf("PONG %d\n", pinger->pongs);
       pinger->pongs++;
       if (pinger->pongs < NUM_PINGS) {
         pinger_write_ping(pinger);
@@ -84,6 +90,7 @@ void pinger_after_read(oio_req* req, size_t nread) {
 
 
 void pinger_try_read(pinger_t* pinger) {
+  oio_req_init(&pinger->read_req, &pinger->handle, pinger_after_read);
   oio_read(&pinger->read_req, &pinger->buf, 1);
 }
 
@@ -98,7 +105,8 @@ void pinger_on_connect(oio_req *req, oio_err err) {
 }
 
 
-int pinger_new() {
+void pinger_new() {
+  int r;
   struct sockaddr_in client_addr = oio_ip4_addr("0.0.0.0", 0);
   struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
   pinger_t *pinger;
@@ -106,31 +114,27 @@ int pinger_new() {
   pinger = (pinger_t*)malloc(sizeof(*pinger));
   pinger->state = 0;
   pinger->pongs = 0;
-  pinger->buf.len = sizeof(pinger->read_buffer);
+  pinger->buf.len = BUFSIZE;
   pinger->buf.base = (char*)&pinger->read_buffer;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  if (oio_tcp_handle_init(&pinger->handle, pinger_on_close, (void*)pinger)) {
-    return -1;
-  }
+  r = oio_tcp_handle_init(&pinger->handle, pinger_on_close, (void*)pinger);
+  ASSERT(!r)
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
   oio_req_init(&pinger->connect_req, &pinger->handle, pinger_on_connect);
-  oio_req_init(&pinger->read_req, &pinger->handle, pinger_after_read);
 
   oio_bind(&pinger->handle, (struct sockaddr*)&client_addr);
-  return oio_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
+  r = oio_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
+  ASSERT(!r)
 }
 
 
 TEST_IMPL(ping_pong) {
   oio_init();
 
-  if (pinger_new()) {
-    return 2;
-  }
-
+  pinger_new();
   oio_run();
 
   ASSERT(completed_pingers == 1)

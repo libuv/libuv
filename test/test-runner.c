@@ -3,7 +3,6 @@
 #include "test-runner.h"
 
 #include <stdio.h>
-#include <stdio.h>
 #include <string.h>
 
 /* Actual tests and helpers are defined in test-list.h */
