@@ -4,3 +4,6 @@ server process.
 - FATAL should take a string
 
 - ASSERT and FATAL should require semicolons.
+
+- Should oio_req need to be initialized before each use? Currently in Linux
+  this is necessary.
