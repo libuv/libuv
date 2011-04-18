@@ -105,7 +105,7 @@ int echo_start(int port) {
   struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", port);
   int r;
 
-  r = oio_tcp_handle_init(&server, on_server_close, NULL);
+  r = oio_tcp_init(&server, on_server_close, NULL);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Socket creation error\n");

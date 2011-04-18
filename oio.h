@@ -121,7 +121,7 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb);
 
 /* TCP socket methods. */
 /* Handle and callback bust be set by calling oio_req_init. */
-int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb, void* data);
+int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb, void* data);
 int oio_bind(oio_handle* handle, struct sockaddr* addr);
 int oio_connect(oio_req* req, struct sockaddr* addr);
 int oio_shutdown(oio_req* req);

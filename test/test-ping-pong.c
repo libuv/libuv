@@ -139,7 +139,7 @@ void pinger_new() {
   pinger->buf.base = (char*)&pinger->read_buffer;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = oio_tcp_handle_init(&pinger->handle, pinger_on_close, (void*)pinger);
+  r = oio_tcp_init(&pinger->handle, pinger_on_close, (void*)pinger);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */

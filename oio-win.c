@@ -343,7 +343,7 @@ static int oio_set_socket_options(SOCKET socket) {
 }
 
 
-int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb,
+int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb,
     void* data) {
   handle->close_cb = close_cb;
   handle->data = data;

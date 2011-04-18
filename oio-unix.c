@@ -121,7 +121,7 @@ int oio_run() {
 }
 
 
-int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb,
+int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb,
     void* data) {
   handle->type = OIO_TCP;
   handle->close_cb = close_cb;
@@ -203,7 +203,7 @@ int oio_tcp_open(oio_handle* handle, int fd) {
   ev_io_set(&handle->read_watcher, fd, EV_READ);
   ev_io_set(&handle->write_watcher, fd, EV_WRITE);
 
-  /* These should have been set up by oio_tcp_handle_init. */
+  /* These should have been set up by oio_tcp_init. */
   assert(handle->next_watcher.data == handle);
   assert(handle->write_watcher.data == handle);
   assert(handle->read_watcher.data == handle);
@@ -263,7 +263,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
     return -1;
   }
 
-  if (oio_tcp_handle_init(client, close_cb, data)) {
+  if (oio_tcp_init(client, close_cb, data)) {
     return -1;
   }
 

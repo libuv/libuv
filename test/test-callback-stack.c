@@ -42,8 +42,8 @@ TEST_IMPL(close_cb_stack) {
 
   oio_init();
 
-  if (oio_tcp_handle_init(&handle, &close_cb, NULL)) {
-    FATAL("oio_tcp_handle_init failed");
+  if (oio_tcp_init(&handle, &close_cb, NULL)) {
+    FATAL("oio_tcp_init failed");
   }
 
   nested++;
