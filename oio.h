@@ -1,6 +1,9 @@
 #ifndef OIO_H
 #define OIO_H
 
+#define OIO_VERSION_MAJOR 0
+#define OIO_VERSION_MINOR 1
+
 #include <stdint.h> /* int64_t */
 #include <stddef.h> /* size_t */
 
