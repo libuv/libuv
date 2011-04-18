@@ -19,9 +19,9 @@
             "Fatal error in %s on line %d: %s\n",         \
             __FILE__,                                     \
             __LINE__,                                     \
-            #msg);                                        \
+            msg);                                         \
     abort();                                              \
-  } while (0);
+  } while (0)
 
 
 /*
@@ -29,14 +29,16 @@
  * a release build.
  */
 #define ASSERT(expr)                                      \
-    if (!(expr)) {                                        \
-      fprintf(stderr,                                     \
-              "Assertion failed in %s on line %d: %s\n",  \
-              __FILE__,                                   \
-              __LINE__,                                   \
-              #expr);                                     \
-      abort();                                            \
-    }
+ do {                                                     \
+  if (!(expr)) {                                          \
+    fprintf(stderr,                                       \
+            "Assertion failed in %s on line %d: %s\n",    \
+            __FILE__,                                     \
+            __LINE__,                                     \
+            #expr);                                       \
+    abort();                                              \
+  }                                                       \
+ } while (0)
 
 
 /* Just sugar for wrapping the main() for a test. */

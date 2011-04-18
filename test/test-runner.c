@@ -54,7 +54,7 @@ int run_test(test_entry_t *test) {
   /* Wait for the main process to terminate. */
   result = process_wait(main_process, 1, TEST_TIMEOUT);
   if (result == -1) {
-    FATAL(process_wait failed)
+    FATAL("process_wait failed");
   } else if (result == -2) {
     snprintf((char*)&errmsg, sizeof(errmsg), "timeout.");
     goto finalize;
@@ -78,7 +78,7 @@ finalize:
 
   /* Wait until all processes have really terminated. */
   if (process_wait((process_info_t*)&processes, process_count, -1) < 0)
-    FATAL(process_wait failed)
+    FATAL("process_wait failed");
 
   /* Show error and output from processes if the test failed. */
   if (!success) {

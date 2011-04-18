@@ -159,4 +159,5 @@ void process_cleanup(process_info_t *p) {
 /* Move the console cursor one line up and back to the first column. */
 int rewind_cursor() {
   printf("\033[1A\033[80D");
+  return 0;
 }

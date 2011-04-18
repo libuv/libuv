@@ -38,7 +38,7 @@ void after_read(oio_req* req, size_t nread) {
     oio_req_init(&peer->req, &peer->handle, after_write);
     peer->req.data = peer;
     if (oio_write(&peer->req, &peer->buf, 1)) {
-      FATAL(oio_write failed)
+      FATAL("oio_write failed");
     }
   }
 }
@@ -49,7 +49,7 @@ void try_read(peer_t* peer) {
   oio_req_init(&peer->req, &peer->handle, after_read);
   peer->req.data = peer;
   if (oio_read(&peer->req, &peer->buf, 1)) {
-    FATAL(oio_read failed)
+    FATAL("oio_read failed");
   }
 }
 
@@ -65,10 +65,10 @@ void on_accept(oio_handle* server) {
   peer_t* p = (peer_t*)calloc(sizeof(peer_t), 1);
 
   int r = oio_tcp_handle_init(&p->handle, on_close, (void*)p);
-  ASSERT(!r)
+  ASSERT(!r);
 
   if (oio_tcp_handle_accept(server, &p->handle)) {
-    FATAL(oio_tcp_handle_accept failed)
+    FATAL("oio_tcp_handle_accept failed");
   }
 
   p->buf.base = (char*)&p->read_buffer;
@@ -79,7 +79,7 @@ void on_accept(oio_handle* server) {
 
 void on_server_close(oio_handle* handle, oio_err err) {
   ASSERT(handle == &server);
-  ASSERT(!err)
+  ASSERT(!err);
 }
 
 
