@@ -60,6 +60,7 @@ struct oio_handle_s {
   oio_handle_private_fields
 };
 
+
 struct oio_req_s {
   /* read-only */
   oio_req_type type;

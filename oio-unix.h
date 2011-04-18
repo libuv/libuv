@@ -35,6 +35,7 @@ typedef struct {
   oio_req *connect_req; \
   ev_io read_watcher; \
   ev_io write_watcher; \
+  ev_idle next_watcher; \
   ngx_queue_t write_queue; \
   ngx_queue_t read_reqs;
 
