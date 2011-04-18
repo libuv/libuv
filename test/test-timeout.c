@@ -5,7 +5,7 @@
 static int expected = 0;
 static int timeouts = 0;
 
-static int start_time;
+static int64_t start_time;
 
 static void timeout_cb(oio_req *req) {
   ASSERT(req != NULL);

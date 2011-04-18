@@ -6,6 +6,11 @@
 #include "test.h"
 #include "runner.h"
 
+/* MinGW lacks a definition for _TRUNCATE. */
+#ifndef _TRUNCATE
+# define _TRUNCATE  ((size_t)-1)
+#endif
+
 
 int process_start(char *name, process_info_t *p) {
   HANDLE file = INVALID_HANDLE_VALUE;

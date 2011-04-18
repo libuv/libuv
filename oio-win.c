@@ -1,6 +1,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <malloc.h>
 #include <stdio.h>
 
@@ -78,6 +79,15 @@
                DWORD dwFlags);
 #endif
 
+
+/*
+ * MinGW is missing this too
+ */
+#ifndef SO_UPDATE_CONNECT_CONTEXT
+# define SO_UPDATE_CONNECT_CONTEXT   0x7010
+#endif
+
+
 /*
  * Pointers to winsock extension functions to be retrieved dynamically
  */
@@ -106,7 +116,7 @@ static LPFN_TRANSMITFILE         pTransmitFile;
  * Special oio_req type used by AcceptEx calls
  */
 typedef struct oio_accept_req_s {
-  struct oio_req_s;
+  struct oio_req_s req;
   SOCKET socket;
 
   /* AcceptEx specifies that the buffer must be big enough to at least hold */
@@ -118,7 +128,7 @@ typedef struct oio_accept_req_s {
 /* Binary tree used to keep the list of timers sorted. */
 static int oio_timer_compare(oio_req* t1, oio_req* t2);
 RB_HEAD(oio_timer_s, oio_req_s);
-RB_PROTOTYPE(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
+RB_PROTOTYPE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
 
 /* The head of the timers tree */
 static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
@@ -444,52 +454,52 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
 }
 
 
-static void oio_queue_accept(oio_accept_req *req, oio_handle *handle) {
+static void oio_queue_accept(oio_accept_req *areq, oio_handle *handle) {
   BOOL success;
   DWORD bytes;
 
-  req->socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (req->socket == INVALID_SOCKET) {
+  areq->socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (areq->socket == INVALID_SOCKET) {
     oio_close_error(handle, WSAGetLastError());
     return;
   }
 
-  if (oio_set_socket_options(req->socket) != 0) {
-    closesocket(req->socket);
+  if (oio_set_socket_options(areq->socket) != 0) {
+    closesocket(areq->socket);
     oio_close_error(handle, oio_errno_);
     return;
   }
 
   /* Prepare the oio_req and OVERLAPPED structures. */
-  assert(!(req->flags & OIO_REQ_PENDING));
-  req->flags |= OIO_REQ_PENDING;
-  memset(&req->overlapped, 0, sizeof(req->overlapped));
+  assert(!(areq->req.flags & OIO_REQ_PENDING));
+  areq->req.flags |= OIO_REQ_PENDING;
+  memset(&areq->req.overlapped, 0, sizeof(areq->req.overlapped));
 
   success = pAcceptEx(handle->socket,
-                      req->socket,
-                      (void*)&req->buffer,
+                      areq->socket,
+                      (void*)&areq->buffer,
                       0,
                       sizeof(struct sockaddr_storage),
                       sizeof(struct sockaddr_storage),
                       &bytes,
-                      &req->overlapped);
+                      &areq->req.overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
     oio_errno_ = WSAGetLastError();
     /* destroy the preallocated client handle */
-    closesocket(req->socket);
+    closesocket(areq->socket);
     /* destroy ourselves */
     oio_close_error(handle, oio_errno_);
     return;
   }
 
   handle->reqs_pending++;
-  req->flags |= OIO_REQ_PENDING;
+  areq->req.flags |= OIO_REQ_PENDING;
 }
 
 
 int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
-  oio_accept_req* req;
+  oio_accept_req* areq;
   oio_accept_req* reqs;
   int i;
 
@@ -513,11 +523,11 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
     return -1;
   }
 
-  for (i = backlog, req = reqs; i > 0; i--, req++) {
-    req->socket = INVALID_SOCKET;
-    oio_req_init((oio_req*)req, handle, (void*)cb);
-    req->type = OIO_ACCEPT;
-    oio_queue_accept(req, handle);
+  for (i = backlog, areq = reqs; i > 0; i--, areq++) {
+    areq->socket = INVALID_SOCKET;
+    oio_req_init((oio_req*)areq, handle, (void*)cb);
+    areq->req.type = OIO_ACCEPT;
+    oio_queue_accept(areq, handle);
   }
 
   handle->accept_reqs = (oio_accept_req*)reqs;
@@ -537,7 +547,7 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
     if (!(handle->flags & OIO_HANDLE_BOUND) &&
-        oio_bind(handle, &oio_addr_ip4_any_) < 0)
+        oio_bind(handle, (struct sockaddr*)&oio_addr_ip4_any_) < 0)
       return -1;
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
