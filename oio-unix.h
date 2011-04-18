@@ -22,6 +22,7 @@ typedef struct {
   oio_connect_cb connect_cb; \
   ngx_queue_t read_reqs; \
   oio_buf* read_bufs; \
+  ev_timer timer; \
   int read_bufcnt;
 
 

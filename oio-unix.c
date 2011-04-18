@@ -535,8 +535,38 @@ int oio_write2(oio_req* req, const char* msg) {
 }
 
 
+void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
+  oio_req* req = watcher->data;
+  assert(watcher == &req->timer);
+  assert(EV_TIMER & revents);
+
+  /* This watcher is not repeating. */
+  assert(!ev_is_active(watcher));
+  assert(!ev_is_pending(watcher));
+
+  if (req->cb) {
+    oio_timer_cb cb = req->cb;
+    cb(req, 0);
+  }
+}
+
+
+void oio_update_time() {
+  assert(0 && "implement me");
+}
+
+
+int64_t oio_now() {
+  assert(0 && "implement me");
+  return 0;
+}
+
+
 int oio_timeout(oio_req *req, int64_t timeout) {
-  return -1;
+  ev_timer_init(&req->timer, oio__timeout, timeout / 1000.0, 0.0);
+  ev_timer_start(EV_DEFAULT_UC_ &req->timer);
+  req->timer.data = req;
+  return 0;
 }
 
 
