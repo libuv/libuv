@@ -552,13 +552,12 @@ void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
 
 
 void oio_update_time() {
-  assert(0 && "implement me");
+  ev_now_update(EV_DEFAULT_UC);
 }
 
 
 int64_t oio_now() {
-  assert(0 && "implement me");
-  return 0;
+  return (int64_t)(ev_now(EV_DEFAULT_UC) * 1000);
 }
 
 

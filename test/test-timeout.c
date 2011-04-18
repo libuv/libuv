@@ -5,16 +5,22 @@
 static int expected = 0;
 static int timeouts = 0;
 
+static int start_time;
 
 static void timeout_cb(oio_req *req) {
   ASSERT(req != NULL);
   free(req);
   timeouts++;
+
+  /* Just call this randomly for the code coverage. */
+  oio_update_time();
 }
 
 static void exit_timeout_cb(oio_req *req) {
+  int64_t now = oio_now();
   ASSERT(req != NULL);
   ASSERT(timeouts == expected);
+  ASSERT(start_time < now);
   exit(0);
 }
 
@@ -31,6 +37,9 @@ TEST_IMPL(timeout) {
   int i;
 
   oio_init();
+
+  start_time = oio_now();
+  ASSERT(0 < start_time);
 
   /* Let 10 timers time out in 500 ms total. */
   for (i = 0; i < 10; i++) {
