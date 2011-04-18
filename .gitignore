@@ -22,4 +22,4 @@ ev/autom4te.cache
 /Win32/
 /x64/
 
-test/test-runner
+test/runner
