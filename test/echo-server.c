@@ -67,7 +67,7 @@ void on_accept(oio_handle* server) {
   int r = oio_tcp_handle_init(&p->handle, on_close, (void*)p);
   ASSERT(!r)
 
-  if (oio_tcp_handle_accept(server, &p->handle, on_close, (void*)p)) {
+  if (oio_tcp_handle_accept(server, &p->handle)) {
     FATAL(oio_tcp_handle_accept failed)
   }
 

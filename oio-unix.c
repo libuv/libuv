@@ -236,8 +236,7 @@ void oio__server_io(EV_P_ ev_io* watcher, int revents) {
 }
 
 
-int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
-    oio_close_cb close_cb, void* data) {
+int oio_tcp_handle_accept(oio_handle* server, oio_handle* client) {
   if (server->accepted_fd < 0) {
     return -1;
   }

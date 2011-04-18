@@ -107,8 +107,7 @@ int oio_shutdown(oio_req* req);
 
 /* TCP server methods. */
 int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb);
-int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
-                          oio_close_cb close_cb, void* data);
+int oio_tcp_handle_accept(oio_handle* server, oio_handle* client);
 
 /* Generic handle methods */
 int oio_read(oio_req* req, oio_buf* bufs, int bufcnt);
