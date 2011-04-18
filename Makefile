@@ -1,6 +1,6 @@
 CFLAGS=-ansi -g -Wall
 LINKFLAGS=-g -lm
-all: oio.a test/test-runner
+all: oio.a test/runner
 
 TESTS=test/echo-server.c \
 			test/test-pass-always.c \
@@ -9,8 +9,8 @@ TESTS=test/echo-server.c \
 			test/test-callback-stack.c \
 			test/test-timeout.c
 
-test/test-runner: test/*.h test/test-runner.c test/test-runner-unix.c $(TESTS) oio.a
-	$(CC) $(CFLAGS) $(LINKFLAGS) -o test/test-runner  test/test-runner.c test/test-runner-unix.c $(TESTS) oio.a
+test/runner: test/*.h test/runner.c test/runner-unix.c $(TESTS) oio.a
+	$(CC) $(CFLAGS) $(LINKFLAGS) -o test/runner  test/runner.c test/runner-unix.c $(TESTS) oio.a
 
 oio.a: oio-unix.o ev/ev.o
 	$(AR) rcs oio.a oio-unix.o ev/ev.o
@@ -30,11 +30,11 @@ ev/config.h:
 
 .PHONY: clean distclean test
 
-test: test/test-runner
-	test/test-runner
+test: test/runner
+	test/runner
 
 clean:
-	$(RM) -f *.o *.a test/test-runner
+	$(RM) -f *.o *.a test/runner
 	$(MAKE) -C ev clean
 
 distclean:

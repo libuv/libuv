@@ -4,7 +4,7 @@
 #include <windows.h>
 
 #include "test.h"
-#include "test-runner.h"
+#include "runner.h"
 
 
 int process_start(char *name, process_info_t *p) {
@@ -104,7 +104,7 @@ int process_wait(process_info_t *vec, int n, int timeout) {
   if (n == 0)
     return 0;
 
-  ASSERT(n <= MAXIMUM_WAIT_OBJECTS)
+  ASSERT(n <= MAXIMUM_WAIT_OBJECTS);
 
   for (i = 0; i < n; i++)
     handles[i] = vec[i].process;

@@ -1,6 +1,6 @@
 
 #include "test.h"
-#include "test-runner.h"
+#include "runner.h"
 
 #include <stdio.h>
 #include <string.h>

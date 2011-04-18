@@ -1,5 +1,5 @@
-#include "test-runner-unix.h"
-#include "test-runner.h"
+#include "runner-unix.h"
+#include "runner.h"
 
 #include <unistd.h>
 #include <stdio.h>
