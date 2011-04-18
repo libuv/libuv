@@ -130,7 +130,7 @@ int oio_shutdown(oio_req* req);
 int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb);
 
 /* Call this after accept_cb. client does not need to be initialized. */
-int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
+int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data);
 
 /* Generic handle methods */

@@ -248,7 +248,7 @@ void oio__server_io(EV_P_ ev_io* watcher, int revents) {
       handle->accepted_fd = fd;
       handle->accept_cb(handle);
       if (handle->accepted_fd >= 0) {
-        /* The user hasn't yet accepted called oio_tcp_handle_accept() */
+        /* The user hasn't yet accepted called oio_accept() */
         ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
         return;
       }
@@ -257,7 +257,7 @@ void oio__server_io(EV_P_ ev_io* watcher, int revents) {
 }
 
 
-int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
+int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data) {
   if (server->accepted_fd < 0) {
     return -1;

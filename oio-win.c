@@ -371,7 +371,7 @@ int oio_tcp_handle_init(oio_handle *handle, oio_close_cb close_cb,
 }
 
 
-int oio_tcp_handle_accept(oio_handle* server, oio_handle* client,
+int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data) {
   if (!server->accepted_socket == INVALID_SOCKET) {
     oio_errno_ = WSAENOTCONN;

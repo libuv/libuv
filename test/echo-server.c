@@ -85,8 +85,8 @@ void on_close(oio_handle* peer, oio_err err) {
 void on_accept(oio_handle* server) {
   peer_t* p = (peer_t*)calloc(sizeof(peer_t), 1);
 
-  if (oio_tcp_handle_accept(server, &p->handle, on_close, (void*)p)) {
-    FATAL("oio_tcp_handle_accept failed");
+  if (oio_accept(server, &p->handle, on_close, (void*)p)) {
+    FATAL("oio_accept failed");
   }
 
   p->buf.base = (char*)&p->read_buffer;
