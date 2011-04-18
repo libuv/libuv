@@ -6,9 +6,13 @@
 #include "test.h"
 #include "runner.h"
 
-/* MinGW lacks a definition for _TRUNCATE. */
-#ifndef _TRUNCATE
-# define _TRUNCATE  ((size_t)-1)
+
+/* 
+ * Define the stuff that MinGW doesn't have
+ */
+#ifndef GetFileSizeEx
+  WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile,
+                                       PLARGE_INTEGER lpFileSize);
 #endif
 
 
@@ -57,12 +61,11 @@ int process_start(char *name, process_info_t *p) {
   if (result == 0 || result == sizeof(image))
     goto error;
 
-  if (_snwprintf_s((wchar_t*)&args,
-                   sizeof(args) / sizeof(wchar_t),
-                   _TRUNCATE,
-                   L"\"%s\" %S",
-                   image,
-                   name) < 0)
+  if (_snwprintf((wchar_t*)&args,
+                 sizeof(args) / sizeof(wchar_t),
+                 L"\"%s\" %S",
+                 image,
+                 name) < 0)
     goto error;
 
   memset((void*)&si, 0, sizeof(si));

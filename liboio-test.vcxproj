@@ -141,13 +141,13 @@
     <ClCompile Include="test\test-fail-always.c" />
     <ClCompile Include="test\test-pass-always.c" />
     <ClCompile Include="test\test-ping-pong.c" />
-    <ClCompile Include="test\runner-win32.c" />
+    <ClCompile Include="test\runner-win.c" />
     <ClCompile Include="test\runner.c" />
     <ClCompile Include="test\test-timeout.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="test\test-list.h" />
-    <ClInclude Include="test\runner-win32.h" />
+    <ClInclude Include="test\runner-win.h" />
     <ClInclude Include="test\runner.h" />
     <ClInclude Include="test\test.h" />
   </ItemGroup>

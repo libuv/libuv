@@ -37,7 +37,7 @@ typedef struct {
  * Include platform-dependent definitions
  */
 #ifdef _WIN32
-# include "runner-win32.h"
+# include "runner-win.h"
 #else
 # include "runner-unix.h"
 #endif

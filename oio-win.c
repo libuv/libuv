@@ -642,7 +642,6 @@ int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
 
 int oio_write2(oio_req *req, const char* msg) {
   oio_buf buf;
-  oio_handle* handle = req->handle;
 
   buf.base = (char*)msg;
   buf.len = strlen(msg);
