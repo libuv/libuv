@@ -2,6 +2,6 @@ This is the new networking layer for Node. Its purpose is to abstract
 IOCP on windows and libev on Unix systems. We intend to eventually contain
 all platform differences in this library.
 
-The library shall be considered part of Node despite being in a separate
-repository. It is released under the same license
-https://github.com/joyent/node/blob/master/LICENSE
+
+http://nodejs.org/
+
