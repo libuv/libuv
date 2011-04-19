@@ -135,6 +135,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="test\benchmark-ping-pongs.c" />
+    <ClCompile Include="test\echo-server.c" />
     <ClCompile Include="test\run-benchmarks.c" />
     <ClCompile Include="test\runner-win.c" />
     <ClCompile Include="test\runner.c" />

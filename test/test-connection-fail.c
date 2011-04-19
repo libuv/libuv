@@ -45,15 +45,18 @@ static void on_connect(oio_req *req, int err) {
 
 
 TEST_IMPL(test_connection_fail) {
+  struct sockaddr_in client_addr, server_addr;
+  int r;
+  
   oio_init();
 
-  struct sockaddr_in client_addr = oio_ip4_addr("0.0.0.0", 0);
-
+  client_addr = oio_ip4_addr("0.0.0.0", 0);
+  
   /* There should be no servers listening on this port. */
-  struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
+  server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  int r = oio_tcp_init(&handle, on_close, NULL);
+  r = oio_tcp_init(&handle, on_close, NULL);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
