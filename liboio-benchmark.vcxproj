@@ -138,12 +138,24 @@
     <ClCompile Include="test\benchmark-ping-pongs.c" />
     <ClCompile Include="test\echo-server.c" />
     <ClCompile Include="test\run-benchmarks.c" />
+    <ClCompile Include="test\runner-unix.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="test\runner-win.c" />
     <ClCompile Include="test\runner.c" />
     <ClCompile Include="test\benchmark-dummy.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="test\benchmark-list.h" />
+    <ClInclude Include="test\runner-unix.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="test\runner-win.h" />
     <ClInclude Include="test\runner.h" />
     <ClInclude Include="test\task.h" />

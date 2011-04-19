@@ -137,6 +137,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="test\echo-server.c" />
+    <ClCompile Include="test\runner-unix.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="test\test-callback-stack.c" />
     <ClCompile Include="test\test-connection-fail.c" />
     <ClCompile Include="test\test-fail-always.c" />
@@ -148,6 +154,12 @@
     <ClCompile Include="test\run-tests.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="test\runner-unix.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="test\test-list.h" />
     <ClInclude Include="test\runner-win.h" />
     <ClInclude Include="test\runner.h" />
