@@ -473,8 +473,9 @@ void oio_tcp_connect(oio_handle* handle) {
   } else {
     oio_err err = oio_err_new(handle, error);
 
-    if (req->connect_cb) {
-      req->connect_cb(req, err);
+    oio_connect_cb connect_cb = req->cb;
+    if (connect_cb) {
+      connect_cb(req, err);
     }
 
     handle->err = err;
