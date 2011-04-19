@@ -18,19 +18,20 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-CFLAGS=-ansi -g -Wall
+all: oio.a test/run-tests test/run-benchmarks
+
+CFLAGS=-ansi -g
 LINKFLAGS=-g -lm
-all: oio.a test/runner
+TESTS=test/echo-server.c test/test-*.c
+BENCHMARKS=test/benchmark-*.c
 
-TESTS=test/echo-server.c \
-			test/test-pass-always.c \
-			test/test-fail-always.c \
-			test/test-ping-pong.c \
-			test/test-callback-stack.c \
-			test/test-timeout.c
+test/run-tests: test/*.h test/run-tests.c test/runner.c test/runner-unix.c $(TESTS) oio.a
+	$(CC) $(CFLAGS) $(LINKFLAGS) -o test/run-tests test/run-tests.c \
+		test/runner.c test/runner-unix.c $(TESTS) oio.a
 
-test/runner: test/*.h test/runner.c test/runner-unix.c $(TESTS) oio.a
-	$(CC) $(CFLAGS) $(LINKFLAGS) -o test/runner  test/runner.c test/runner-unix.c $(TESTS) oio.a
+test/run-benchmarks: test/*.h test/run-benchmarks.c test/runner.c test/runner-unix.c $(BENCHMARKS) oio.a
+	$(CC) $(CFLAGS) $(LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
+		 test/runner.c test/runner-unix.c $(BENCHMARKS) oio.a
 
 oio.a: oio-unix.o ev/ev.o
 	$(AR) rcs oio.a oio-unix.o ev/ev.o
@@ -48,13 +49,16 @@ ev/config.h:
 	cd ev && ./configure
 
 
-.PHONY: clean distclean test
+.PHONY: clean distclean test benchmark
 
-test: test/runner
-	test/runner
+test: test/run-tests
+	test/run-tests
+
+benchmark: test/run-benchmarks
+	test/run-benchmarks
 
 clean:
-	$(RM) -f *.o *.a test/runner
+	$(RM) -f *.o *.a test/run-tests test/run-benchmarks
 	$(MAKE) -C ev clean
 
 distclean:
