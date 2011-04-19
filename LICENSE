@@ -29,9 +29,9 @@ maintained libraries.
 
 The externally maintained libraries used by liboio are:
 
-  - tree.h (from FreeBSD; Two clause BSD license)
+  - tree.h (from FreeBSD), copyright Niels Provos. Two clause BSD license.
 
-  - ngx_queue.h from Nginx, copyright Igor Sysoev. Two clause BSD license.
+  - ngx_queue.h (from Nginx), copyright Igor Sysoev. Two clause BSD license.
 
   - libev, located at ev/ is copyright Marc Alexander Lehmann, and
     dual-licensed under the MIT license and GPL2.
