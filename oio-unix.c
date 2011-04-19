@@ -63,13 +63,13 @@ int oio_flag_is_set(oio_handle* handle, int flag) {
 }
 
 
-static int oio_err_new(oio_handle* handle, int e) {
+static oio_err oio_err_new(oio_handle* handle, int e) {
   handle->err = e;
   return e;
 }
 
 
-int oio_err_last(oio_handle *handle) {
+oio_err oio_err_last(oio_handle *handle) {
   return handle->err;
 }
 
@@ -377,7 +377,7 @@ void oio__read(oio_handle* handle) {
       assert(ev_is_active(&handle->read_watcher));
       ev_io_start(EV_DEFAULT_ &handle->read_watcher);
     } else {
-      int err = oio_err_new(handle, errorno);
+      oio_err err = oio_err_new(handle, errorno);
       if (cb) {
         cb(req, 0);
       }
@@ -459,7 +459,7 @@ void oio_tcp_connect(oio_handle* handle) {
     return;
 
   } else {
-    int err = oio_err_new(handle, error);
+    oio_err err = oio_err_new(handle, error);
 
     oio_connect_cb connect_cb = req->cb;
     if (connect_cb) {
@@ -599,7 +599,7 @@ int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
 
   if (nread < 0 && errorno != EAGAIN) {
     /* Real error. */
-    int err = oio_err_new(handle, errorno);
+    oio_err err = oio_err_new(handle, errorno);
 
     if (cb) {
       cb(req, nread);
