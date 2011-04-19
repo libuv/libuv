@@ -50,7 +50,7 @@ typedef struct {
 void pinger_try_read(pinger_t* pinger);
 
 
-void pinger_on_close(oio_handle* handle, oio_err err) {
+void pinger_on_close(oio_handle* handle, int err) {
   pinger_t* pinger = (pinger_t*)handle->data;
 
   printf("%d pings\n", pinger->pongs);
@@ -117,7 +117,7 @@ void pinger_try_read(pinger_t* pinger) {
 }
 
 
-void pinger_on_connect(oio_req *req, oio_err err) {
+void pinger_on_connect(oio_req *req, int err) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(!err);

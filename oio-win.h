@@ -62,4 +62,4 @@ typedef struct oio_buf {
   struct oio_accept_req_s* accept_reqs;   \
   unsigned int flags;                     \
   unsigned int reqs_pending;              \
-  oio_err error;
+  int error;

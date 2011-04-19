@@ -39,7 +39,7 @@ oio_handle server;
 void after_write(oio_req* req);
 void after_read(oio_req* req, size_t nread);
 void try_read(peer_t* peer);
-void on_close(oio_handle* peer, oio_err err);
+void on_close(oio_handle* peer, int err);
 void on_accept(oio_handle* handle);
 
 
@@ -75,7 +75,7 @@ void try_read(peer_t* peer) {
 }
 
 
-void on_close(oio_handle* peer, oio_err err) {
+void on_close(oio_handle* peer, int err) {
   if (err) {
     fprintf(stdout, "Socket error\n");
   }
@@ -95,7 +95,7 @@ void on_accept(oio_handle* server) {
 }
 
 
-void on_server_close(oio_handle* handle, oio_err err) {
+void on_server_close(oio_handle* handle, int err) {
   ASSERT(handle == &server);
   ASSERT(!err);
 }

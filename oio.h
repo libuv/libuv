@@ -29,8 +29,6 @@
 #include <stddef.h> /* size_t */
 
 
-typedef int oio_err; /* FIXME */
-
 typedef struct oio_req_s oio_req;
 typedef struct oio_handle_s oio_handle;
 
@@ -38,8 +36,8 @@ typedef struct oio_handle_s oio_handle;
 typedef void (*oio_read_cb)(oio_req* req, size_t nread);
 typedef void (*oio_write_cb)(oio_req* req);
 typedef void (*oio_accept_cb)(oio_handle* handle);
-typedef void (*oio_close_cb)(oio_handle* handle, oio_err e);
-typedef void (*oio_connect_cb)(oio_req* req, oio_err e);
+typedef void (*oio_close_cb)(oio_handle* handle, int e);
+typedef void (*oio_connect_cb)(oio_req* req, int e);
 typedef void (*oio_shutdown_cb)(oio_req* req);
 typedef void (*oio_timer_cb)(oio_req* req, int64_t skew);
 
@@ -99,8 +97,8 @@ struct oio_req_s {
  * On error the user should then call oio_last_error() to determine
  * the error code.
  */
-oio_err oio_last_error();
-const char* oio_err_str(oio_err err);
+int oio_last_error();
+const char* oio_err_str(int err);
 
 
 void oio_init();

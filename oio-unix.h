@@ -49,7 +49,7 @@ typedef struct {
 #define oio_handle_private_fields \
   int fd; \
   int flags; \
-  oio_err err; \
+  int err; \
   oio_read_cb read_cb; \
   oio_accept_cb accept_cb; \
   int accepted_fd; \

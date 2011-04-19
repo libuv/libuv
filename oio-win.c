@@ -394,7 +394,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
 }
 
 
-static int oio_close_error(oio_handle* handle, oio_err e) {
+static int oio_close_error(oio_handle* handle, int e) {
   oio_req *req;
 
   if (handle->flags & OIO_HANDLE_CLOSING)
@@ -670,7 +670,7 @@ int oio_write2(oio_req *req, const char* msg) {
 }
 
 
-oio_err oio_last_error() {
+int oio_last_error() {
   return oio_errno_;
 }
 
