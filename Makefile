@@ -21,9 +21,9 @@
 all: oio.a test/run-tests test/run-benchmarks
 
 CFLAGS=-ansi -g
-LINKFLAGS=-g -lm
+LINKFLAGS=-lm
 TESTS=test/echo-server.c test/test-*.c
-BENCHMARKS=test/benchmark-*.c
+BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
 test/run-tests: test/*.h test/run-tests.c test/runner.c test/runner-unix.c $(TESTS) oio.a
 	$(CC) $(CFLAGS) $(LINKFLAGS) -o test/run-tests test/run-tests.c \

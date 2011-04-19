@@ -144,3 +144,14 @@ TEST_IMPL(echo_server) {
   oio_run();
   return 0;
 }
+
+/* FIXME: Ugly. Isn't there a better way to do this? */
+BENCHMARK_IMPL(echo_server) {
+  oio_init();
+  if (echo_start(TEST_PORT))
+    return 1;
+
+  fprintf(stderr, "Listening!\n");
+  oio_run();
+  return 0;
+}
