@@ -19,8 +19,9 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef TEST_H_
-#define TEST_H_
+#ifndef TASK_H_
+#define TASK_H_
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,8 +63,11 @@
  } while (0)
 
 
-/* Just sugar for wrapping the main() for a test. */
+/* Just sugar for wrapping the main() for a task. */
 #define TEST_IMPL(name)   \
-  int run_##name()
+  int run_test_##name()
 
-#endif /* TEST_H_ */
+#define BENCHMARK_IMPL(name)  \
+  int run_benchmark_##name()
+
+#endif /* TASK_H_ */

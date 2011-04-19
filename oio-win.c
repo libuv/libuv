@@ -19,7 +19,6 @@
  * IN THE SOFTWARE.
  */
 
-
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>

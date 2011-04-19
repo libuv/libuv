@@ -19,11 +19,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "task.h"
+BENCHMARK_DECLARE (dummy)
 
-
-TEST_IMPL(fail_always) {
-  /* This test always fails. It is used to test the test runner. */
-  FATAL("Yes, it always fails");
-  return 2;
-}
+TASK_LIST_START
+  BENCHMARK_ENTRY (dummy)
+TASK_LIST_END

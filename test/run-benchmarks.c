@@ -19,11 +19,41 @@
  * IN THE SOFTWARE.
  */
 
+#include <stdio.h>
+#include <string.h>
+
+#include "runner.h"
 #include "task.h"
 
+/* Actual benchmarks and helpers are defined in benchmark-list.h */
+#include "benchmark-list.h"
 
-TEST_IMPL(fail_always) {
-  /* This test always fails. It is used to test the test runner. */
-  FATAL("Yes, it always fails");
-  return 2;
+
+/* The time in milliseconds after which a single benchmark times out. */
+#define BENCHMARK_TIMEOUT  60000
+
+
+int main(int argc, char **argv) {
+  task_entry_t *task;
+
+  platform_init();
+
+  if (argc > 1) {
+    /* A specific process was requested. */
+    run_process(argv[1]);
+
+  } else {
+    /* Run all benchmarks. */
+    task = (task_entry_t*)&TASKS;
+    for (task = (task_entry_t*)&TASKS; task->main; task++) {
+      if (task->is_helper) {
+        continue;
+      }
+
+      run_task(task, BENCHMARK_TIMEOUT, 1);
+    }
+    LOG("Done.\n");
+
+    return 0;
+  }
 }

@@ -19,12 +19,14 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
-#include "test.h"
-
-/* TODO: Add explanation of why we want on_close to be called from fresh
+/* 
+ * TODO: Add explanation of why we want on_close to be called from fresh
  * stack.
  */
+
+#include "../oio.h"
+#include "task.h"
+
 
 int nested = 0;
 int close_cb_called = 0;

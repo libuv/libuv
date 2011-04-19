@@ -19,41 +19,62 @@
  * IN THE SOFTWARE.
  */
 
-
-#ifndef TEST_RUNNER_H_
-#define TEST_RUNNER_H_
+#ifndef RUNNER_H_
+#define RUNNER_H_
 
 
 /*
- * Struct to store both tests and to define helper processes for tests.
+ * The maximum number of processes (main + helpers) that a test / benchmark
+ * can have.
+ */
+#define MAX_PROCESSES 8
+
+
+/*
+ * Struct to store both tests and to define helper processes for tasks.
  */
 typedef struct {
-  char *test_name;
+  char *task_name;
   char *process_name;
   int (*main)();
   int is_helper;
-} test_entry_t;
+} task_entry_t, bench_entry_t;
+
+
+/* Runs an individual task; returns 1 if the test succeeded, 0 if it failed. */
+/* If the test fails it prints diagnostic information. */
+/* If benchmark_output is nonzero, the output from the main process is
+/* always shown. */
+int run_task(task_entry_t *test, int timeout, int benchmark_output);
 
 
 /*
- * Macros used by test-list.h
+ * Macros used by test-list.h and benchmark-list.h.
  */
-#define TEST_DECLARE(name)                    \
-  int run_##name();
+#define TASK_LIST_START                           \
+  task_entry_t TASKS[] = {
 
-#define TEST_LIST_START                       \
-  test_entry_t TESTS[] = {
-
-#define TEST_LIST_END                         \
+#define TASK_LIST_END                             \
     { 0, 0, 0, 0 }                            \
   };
 
+#define TEST_DECLARE(name)                        \
+  int run_test_##name();
+
 #define TEST_ENTRY(name)                      \
-    { #name, #name, &run_##name, 0 },
+    { #name, #name, &run_test_##name, 0 },
 
 #define TEST_HELPER(name, proc)               \
-    { #name, #proc, &run_##proc, 1 },
+    { #name, #proc, &run_test_##proc, 1 },
 
+#define BENCHMARK_DECLARE(name)                   \
+  int run_benchmark_##name();
+
+#define BENCHMARK_ENTRY(name)                     \
+    { #name, #name, &run_benchmark_##name, 0 },
+
+#define BENCHMARK_HELPER(name, proc)              \
+    { #name, #proc, &run_benchmark_##proc, 1 },
 
 /*
  * Include platform-dependent definitions
@@ -65,11 +86,26 @@ typedef struct {
 #endif
 
 
+/* The array that is filled by test-list.h or benchmark-list.h */
+extern task_entry_t TASKS[];
+
+/* Start a specific process declared by TEST_ENTRY or TEST_HELPER. */
+/* Returns the exit code of the specific process. */
+int run_task(task_entry_t *test, int timeout, int benchmark_output);
+
+/* Start a specific process declared by TEST_ENTRY or TEST_HELPER. */
+/* Returns the exit code of the specific process. */
+int run_process(char* name);
+
+
 /*
  * Stuff that should be implemented by test-runner-<platform>.h
  * All functions return 0 on success, -1 on failure, unless specified
  * otherwise.
  */
+
+/* Do platform-specific initialization. */
+void platform_init();
 
 /* Invoke "arv[0] test-name". Store process info in *p. */
 /* Make sure that all stdio output of the processes is buffered up. */
@@ -102,4 +138,4 @@ void process_cleanup(process_info_t *p);
 /* Move the console cursor one line up and back to the first column. */
 int rewind_cursor();
 
-#endif /* TEST_RUNNER_H_ */
+#endif /* RUNNER_H_ */

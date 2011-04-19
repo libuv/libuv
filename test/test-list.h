@@ -26,7 +26,8 @@ TEST_DECLARE (timeout)
 TEST_DECLARE (fail_always)
 TEST_DECLARE (pass_always)
 
-TEST_LIST_START
+TASK_LIST_START
+
   TEST_ENTRY  (ping_pong)
   TEST_HELPER (ping_pong, echo_server)
 
@@ -37,4 +38,4 @@ TEST_LIST_START
   TEST_ENTRY  (fail_always)
 
   TEST_ENTRY  (pass_always)
-TEST_LIST_END
+TASK_LIST_END

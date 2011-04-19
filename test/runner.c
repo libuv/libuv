@@ -19,32 +19,41 @@
  * IN THE SOFTWARE.
  */
 
-#include "test.h"
-#include "runner.h"
-
-#include <stdio.h>
 #include <string.h>
 
-/* Actual tests and helpers are defined in test-list.h */
-#include "test-list.h"
+#include "runner.h"
+#include "task.h"
 
-/* The maximum number of processes (main + helpers) that a test can have. */
-#define TEST_MAX_PROCESSES 8
 
-/* The time in milliseconds after which a single test times out, */
-#define TEST_TIMEOUT 20000
+/* Start a specific process declared by TEST_ENTRY or TEST_HELPER. */
+/* Returns the exit code of the specific process. */
+int run_process(char* name) {
+  task_entry_t *test;
+
+  for (test = (task_entry_t*)&TASKS; test->main; test++) {
+    if (strcmp(name, test->process_name) == 0) {
+      return test->main();
+    }
+  }
+
+  LOGF("Test process %s not found!\n", name);
+  return 255;
+}
 
 
 /*
- * Runs an individual test; returns 1 if the test succeeded, 0 if it failed.
+ * Runs all processes associated with a particular test or benchmark.
+ * It returns 1 if the test succeeded, 0 if it failed.
  * If the test fails it prints diagnostic information.
+ * If benchmark_output is nonzero, the output from the main process is
+ * always shown.
  */
-int run_test(test_entry_t *test) {
+int run_task(task_entry_t *test, int timeout, int benchmark_output) {
   int i, result, success;
   char errmsg[256];
-  test_entry_t *helper;
+  task_entry_t *helper;
   int process_count;
-  process_info_t processes[TEST_MAX_PROCESSES];
+  process_info_t processes[MAX_PROCESSES];
   process_info_t *main_process;
 
   success = 0;
@@ -52,12 +61,14 @@ int run_test(test_entry_t *test) {
   process_count = 0;
 
   /* Start all helpers for this test first. */
-  for (helper = (test_entry_t*)&TESTS; helper->main; helper++) {
+  for (helper = (task_entry_t*)&TASKS; helper->main; helper++) {
     if (helper->is_helper &&
-        strcmp(test->test_name, helper->test_name) == 0) {
+        strcmp(test->task_name, helper->task_name) == 0) {
       if (process_start(helper->process_name, &processes[process_count]) == -1) {
-        snprintf((char*)&errmsg, sizeof(errmsg),
-            "process `%s` failed to start.", helper->process_name);
+        snprintf((char*)&errmsg,
+                 sizeof(errmsg),
+                 "process `%s` failed to start.",
+                 helper->process_name);
         goto finalize;
       }
       process_count++;
@@ -74,7 +85,7 @@ int run_test(test_entry_t *test) {
   process_count++;
 
   /* Wait for the main process to terminate. */
-  result = process_wait(main_process, 1, TEST_TIMEOUT);
+  result = process_wait(main_process, 1, timeout);
   if (result == -1) {
     FATAL("process_wait failed");
   } else if (result == -2) {
@@ -107,27 +118,44 @@ finalize:
   /* Show error and output from processes if the test failed. */
   if (!success) {
     LOG("=============================================================\n");
-    LOGF("Test `%s` failed: %s\n", test->test_name, errmsg);
+    LOGF("`%s` failed: %s\n", test->task_name, errmsg);
 
     for (i = 0; i < process_count; i++) {
       switch (process_output_size(&processes[i])) {
-        case -1:
-          LOGF("Output from process `%s`: << unavailable >>\n",
-              process_get_name(&processes[i]));
-          break;
+       case -1:
+        LOGF("Output from process `%s`: (unavailable)\n",
+             process_get_name(&processes[i]));
+        break;
 
-        case 0:
-          LOGF("Output from process `%s`: << no output >>\n",
-              process_get_name(&processes[i]));
-          break;
+       case 0:
+        LOGF("Output from process `%s`: (no output)\n",
+             process_get_name(&processes[i]));
+        break;
 
-        default:
-          LOGF("Output from process `%s`:\n", process_get_name(&processes[i]));
-          process_copy_output(&processes[i], fileno(stderr));
-          break;
+       default:
+        LOGF("Output from process `%s`:\n", process_get_name(&processes[i]));
+        process_copy_output(&processes[i], fileno(stderr));
+        break;
       }
     }
     LOG("\n");
+
+  /* In benchmark mode show concise output from the main process. */
+  } else if (benchmark_output) {
+    switch (process_output_size(main_process)) {
+     case -1:
+      LOGF("%s: (unavailabe)\n", test->task_name);
+      break;
+
+     case 0:
+      LOGF("%s: (no output)\n", test->task_name);
+      break;
+
+     default:
+      LOGF("%s: ", test->task_name);
+      process_copy_output(main_process, fileno(stderr));
+      break;
+    }
   }
 
   /* Clean up all process handles. */
@@ -136,69 +164,4 @@ finalize:
   }
 
   return success;
-}
-
-
-void log_progress(int total, int passed, int failed, char *name) {
-  LOGF("[%% %3d|+ %3d|- %3d]: %-50s\n", (passed + failed) / total * 100,
-      passed, failed, name);
-}
-
-
-int main(int argc, char **argv) {
-  int total, passed, failed;
-  test_entry_t *test;
-
-#ifdef _WIN32
-  /* On windows disable the "application crashed" popup. */
-  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
-      SEM_NOOPENFILEERRORBOX);
-#endif
-
-  /* Disable stdio output buffering. */
-  setvbuf(stdout, NULL, _IONBF, 0);
-  setvbuf(stderr, NULL, _IONBF, 0);
-
-  if (argc > 1) {
-    /* A specific test process is being started. */
-    for (test = (test_entry_t*)&TESTS; test->main; test++) {
-      if (strcmp(argv[1], test->process_name) == 0) {
-        return test->main();
-      }
-    }
-    LOGF("Test process %s not found!\n", argv[1]);
-    return 255;
-
-  } else {
-    /* Count the number of tests. */
-    total = 0;
-    test = (test_entry_t*)&TESTS;
-    for (test = (test_entry_t*)&TESTS; test->main; test++) {
-      if (!test->is_helper) {
-        total++;
-      }
-    }
-
-    /* Run all tests. */
-    passed = 0;
-    failed = 0;
-    test = (test_entry_t*)&TESTS;
-    for (test = (test_entry_t*)&TESTS; test->main; test++) {
-      if (test->is_helper) {
-        continue;
-      }
-
-      log_progress(total, passed, failed, test->test_name);
-      rewind_cursor();
-
-      if (run_test(test)) {
-        passed++;
-      } else {
-        failed++;
-      }
-    }
-    log_progress(total, passed, failed, "Done.");
-
-    return 0;
-  }
 }

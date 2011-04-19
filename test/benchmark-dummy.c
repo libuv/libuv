@@ -22,8 +22,7 @@
 #include "task.h"
 
 
-TEST_IMPL(fail_always) {
-  /* This test always fails. It is used to test the test runner. */
-  FATAL("Yes, it always fails");
-  return 2;
+BENCHMARK_IMPL(dummy) {
+  LOG("23487 foos/bar\n");
+  return 0;
 }

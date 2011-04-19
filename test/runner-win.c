@@ -23,17 +23,29 @@
 #include <stdio.h>
 #include <windows.h>
 
-#include "test.h"
+#include "task.h"
 #include "runner.h"
 
 
-/* 
+/*
  * Define the stuff that MinGW doesn't have
  */
 #ifndef GetFileSizeEx
   WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile,
                                        PLARGE_INTEGER lpFileSize);
 #endif
+
+
+/* Do platform-specific initialization. */
+void platform_init() {
+  /* Disable the "application crashed" popup. */
+  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
+      SEM_NOOPENFILEERRORBOX);
+
+  /* Disable stdio output buffering. */
+  setvbuf(stdout, NULL, _IONBF, 0);
+  setvbuf(stderr, NULL, _IONBF, 0);
+}
 
 
 int process_start(char *name, process_info_t *p) {

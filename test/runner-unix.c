@@ -43,6 +43,14 @@ static void get_executable_path() {
 }
 
 
+/* Do platform-specific initialization. */
+void platform_init() {
+  /* Disable stdio output buffering. */
+  setvbuf(stdout, NULL, _IONBF, 0);
+  setvbuf(stderr, NULL, _IONBF, 0);
+}
+
+
 /* Invoke "arv[0] test-name". Store process info in *p. */
 /* Make sure that all stdio output of the processes is buffered up. */
 int process_start(char* name, process_info_t* p) {
