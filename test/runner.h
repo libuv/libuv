@@ -51,30 +51,34 @@ int run_task(task_entry_t *test, int timeout, int benchmark_output);
 /*
  * Macros used by test-list.h and benchmark-list.h.
  */
-#define TASK_LIST_START                           \
+#define TASK_LIST_START                             \
   task_entry_t TASKS[] = {
 
-#define TASK_LIST_END                             \
-    { 0, 0, 0, 0 }                            \
+#define TASK_LIST_END                               \
+    { 0, 0, 0, 0 }                                  \
   };
 
-#define TEST_DECLARE(name)                        \
+#define TEST_DECLARE(name)                          \
   int run_test_##name();
 
-#define TEST_ENTRY(name)                      \
+#define TEST_ENTRY(name)                            \
     { #name, #name, &run_test_##name, 0 },
 
-#define TEST_HELPER(name, proc)               \
-    { #name, #proc, &run_test_##proc, 1 },
-
-#define BENCHMARK_DECLARE(name)                   \
+#define BENCHMARK_DECLARE(name)                     \
   int run_benchmark_##name();
 
-#define BENCHMARK_ENTRY(name)                     \
+#define BENCHMARK_ENTRY(name)                       \
     { #name, #name, &run_benchmark_##name, 0 },
 
-#define BENCHMARK_HELPER(name, proc)              \
-    { #name, #proc, &run_benchmark_##proc, 1 },
+#define HELPER_DECLARE(name)                        \
+  int run_helper_##name();
+
+#define HELPER_ENTRY(task_name, name)               \
+    { #task_name, #name, &run_helper_##name, 1 },
+
+#define TEST_HELPER       HELPER_ENTRY
+#define BENCHMARK_HELPER  HELPER_ENTRY
+
 
 /*
  * Include platform-dependent definitions

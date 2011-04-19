@@ -47,11 +47,11 @@ static void on_connect(oio_req *req, int err) {
 TEST_IMPL(test_connection_fail) {
   struct sockaddr_in client_addr, server_addr;
   int r;
-  
+
   oio_init();
 
   client_addr = oio_ip4_addr("0.0.0.0", 0);
-  
+
   /* There should be no servers listening on this port. */
   server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
 

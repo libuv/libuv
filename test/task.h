@@ -63,11 +63,14 @@
  } while (0)
 
 
-/* Just sugar for wrapping the main() for a task. */
+/* Just sugar for wrapping the main() for a task or helper. */
 #define TEST_IMPL(name)   \
   int run_test_##name()
 
 #define BENCHMARK_IMPL(name)  \
   int run_benchmark_##name()
+
+#define HELPER_IMPL(name)  \
+  int run_helper_##name()
 
 #endif /* TASK_H_ */

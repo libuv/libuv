@@ -19,13 +19,13 @@
  * IN THE SOFTWARE.
  */
 
-TEST_DECLARE (echo_server)
-TEST_DECLARE (ping_pong)
-TEST_DECLARE (close_cb_stack)
-TEST_DECLARE (timeout)
-TEST_DECLARE (fail_always)
-TEST_DECLARE (pass_always)
-TEST_DECLARE (test_connection_fail)
+TEST_DECLARE   (ping_pong)
+TEST_DECLARE   (close_cb_stack)
+TEST_DECLARE   (timeout)
+TEST_DECLARE   (fail_always)
+TEST_DECLARE   (pass_always)
+TEST_DECLARE   (test_connection_fail)
+HELPER_DECLARE (echo_server)
 
 TASK_LIST_START
 
