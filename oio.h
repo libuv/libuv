@@ -131,10 +131,11 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb);
 int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data);
 
-/* Generic handle methods */
+/* Generic read/write methods. */
+/* The buffers to be written or read into must remain valid until the */
+/* callback is called. The oio_buf array does need not remain valid! */
 int oio_read(oio_req* req, oio_buf* bufs, int bufcnt);
 int oio_write(oio_req* req, oio_buf* bufs, int bufcnt);
-int oio_write2(oio_req *req, const char* msg);
 
 /* Timer methods */
 int oio_timeout(oio_req *req, int64_t timeout);

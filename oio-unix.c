@@ -26,24 +26,12 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <assert.h>
-#include <string.h> /* strnlen */
 #include <unistd.h>
 #include <fcntl.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-
-#ifndef strnlen
-size_t strnlen (register const char* s, size_t maxlen) {
-  register const char *e;
-  size_t n;
-
-  for (e = s, n = 0; *e && n < maxlen; e++, n++);
-  return n;
-}
-#endif  /* strnlen */
 
 
 void oio_tcp_io(EV_P_ ev_io* watcher, int revents);
@@ -527,6 +515,8 @@ int oio_connect(oio_req *req, struct sockaddr* addr) {
 }
 
 
+/* The buffers to be written must remain valid until the callback is called. */
+/* This is not required for the oio_buf array. */
 int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
   oio_handle* handle = req->handle;
   assert(handle->fd >= 0);
@@ -549,15 +539,6 @@ int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
     }
     return 0;
   }
-}
-
-
-int oio_write2(oio_req* req, const char* msg) {
-  size_t len = strnlen(msg, 1024 * 1024);
-  oio_buf b;
-  b.base = (char*)msg;
-  b.len = len;
-  return oio_write(req, &b, 1);
 }
 
 

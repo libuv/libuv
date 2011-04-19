@@ -660,16 +660,6 @@ int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
 }
 
 
-int oio_write2(oio_req *req, const char* msg) {
-  oio_buf buf;
-
-  buf.base = (char*)msg;
-  buf.len = strlen(msg);
-
-  return oio_write(req, &buf, 1);
-}
-
-
 int oio_last_error() {
   return oio_errno_;
 }

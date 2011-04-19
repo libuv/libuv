@@ -67,12 +67,16 @@ void pinger_after_write(oio_req *req) {
 
 static void pinger_write_ping(pinger_t* pinger) {
   oio_req *req;
+  oio_buf buf;
+
+  buf.base = (char*)&PING;
+  buf.len = strlen(PING);
 
   req = (oio_req*)malloc(sizeof(*req));
   oio_req_init(req, &pinger->handle, pinger_after_write);
 
-  if (oio_write2(req, (char*)&PING)) {
-    FATAL("oio_write2 failed");
+  if (oio_write(req, &buf, 1)) {
+    FATAL("oio_write failed");
   }
 
   puts("PING");
