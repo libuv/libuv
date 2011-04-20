@@ -29,9 +29,9 @@
 #include <stddef.h> /* size_t */
 
 
+typedef struct oio_err_s oio_err;
 typedef struct oio_handle_s oio_handle;
 typedef struct oio_req_s oio_req;
-typedef struct oio_err_s oio_err;
 
 /**
  * The status parameter is 0 if the request completed successfully,
@@ -53,25 +53,6 @@ typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
 # include "oio-win.h"
 #endif
 
-
-typedef enum {
-  OIO_UNKNOWN_HANDLE = 0,
-  OIO_TCP,
-  OIO_NAMED_PIPE,
-  OIO_TTY,
-  OIO_FILE,
-} oio_handle_type;
-
-typedef enum {
-  OIO_UNKNOWN_REQ = 0,
-  OIO_CONNECT,
-  OIO_ACCEPT,
-  OIO_READ,
-  OIO_WRITE,
-  OIO_SHUTDOWN,
-  OIO_CLOSE,
-  OIO_TIMEOUT
-} oio_req_type;
 
 /* Expand this list if necessary. */
 typedef enum {
@@ -109,6 +90,32 @@ typedef enum {
   OIO_ETIMEDOUT
 } oio_err_code;
 
+typedef enum {
+  OIO_UNKNOWN_HANDLE = 0,
+  OIO_TCP,
+  OIO_NAMED_PIPE,
+  OIO_TTY,
+  OIO_FILE,
+} oio_handle_type;
+
+typedef enum {
+  OIO_UNKNOWN_REQ = 0,
+  OIO_CONNECT,
+  OIO_ACCEPT,
+  OIO_READ,
+  OIO_WRITE,
+  OIO_SHUTDOWN,
+  OIO_CLOSE,
+  OIO_TIMEOUT
+} oio_req_type;
+
+
+struct oio_err_s {
+  /* read-only */
+  oio_err_code code;
+  /* private */
+  int sys_errno_;
+};
 
 struct oio_handle_s {
   /* read-only */
@@ -129,13 +136,6 @@ struct oio_req_s {
   void* data;
   /* private */
   oio_req_private_fields
-};
-
-struct oio_err_s {
-  /* read-only */
-  oio_err_code code;
-  /* private */
-  int sys_errno_;
 };
 
 
