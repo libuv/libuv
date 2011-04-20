@@ -29,19 +29,22 @@
 #include <stddef.h> /* size_t */
 
 
-typedef int oio_err; /* FIXME */
-
-typedef struct oio_req_s oio_req;
 typedef struct oio_handle_s oio_handle;
+typedef struct oio_req_s oio_req;
+typedef struct oio_err_s oio_err;
 
-/* TODO: tell the callback if the request was completed or cancelled */
-typedef void (*oio_read_cb)(oio_req* req, size_t nread);
-typedef void (*oio_write_cb)(oio_req* req);
+/**
+ * The status parameter is 0 if the request completed successfully,
+ * and should be -1 if the request was cancelled or failed.
+ * For oio_close_cb, -1 means that the handle was closed due to an error.
+ * Error details can be obtained by calling oio_last_error().
+ */
+typedef void (*oio_read_cb)(oio_req* req, size_t nread, int status);
+typedef void (*oio_write_cb)(oio_req* req, int status);
+typedef void (*oio_connect_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
-typedef void (*oio_close_cb)(oio_handle* handle, oio_err e);
-typedef void (*oio_connect_cb)(oio_req* req, oio_err e);
-typedef void (*oio_shutdown_cb)(oio_req* req);
-typedef void (*oio_timer_cb)(oio_req* req, int64_t skew);
+typedef void (*oio_close_cb)(oio_handle* handle, int status);
+typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
 
 
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
@@ -70,6 +73,42 @@ typedef enum {
   OIO_TIMEOUT
 } oio_req_type;
 
+/* Expand this list if necessary. */
+typedef enum {
+  OIO_UNKNOWN = -1,
+  OIO_OK = 0,
+  OIO_EACCESS,
+  OIO_EADDRINUSE,
+  OIO_EADDRNOTAVAIL,
+  OIO_EAFNOSUPPORT,
+  OIO_EALREADY,
+  OIO_EBADF,
+  OIO_EBUSY,
+  OIO_ECONNABORTED,
+  OIO_ECONNREFUSED,
+  OIO_ECONNRESET,
+  OIO_EDESTADDRREQ,
+  OIO_EHOSTUNREACH,
+  OIO_EINTR,
+  OIO_EINVAL,
+  OIO_EISCONN,
+  OIO_EMFILE,
+  OIO_ENETDOWN,
+  OIO_ENETUNREACH,
+  OIO_ENFILE,
+  OIO_ENOBUFS,
+  OIO_ENOMEM,
+  OIO_ENONET,
+  OIO_ENOPROTOOPT,
+  OIO_ENOTCONN,
+  OIO_ENOTSOCK,
+  OIO_ENOTSUP,
+  OIO_EPROTO,
+  OIO_EPROTONOSUPPORT,
+  OIO_EPROTOTYPE,
+  OIO_ETIMEDOUT
+} oio_errno;
+
 
 struct oio_handle_s {
   /* read-only */
@@ -80,7 +119,6 @@ struct oio_handle_s {
   /* private */
   oio_handle_private_fields
 };
-
 
 struct oio_req_s {
   /* read-only */
@@ -93,6 +131,13 @@ struct oio_req_s {
   oio_req_private_fields
 };
 
+struct oio_err_s {
+  /* read-only */
+  oio_errno errno;
+  /* private */
+  int sys_errno_;
+};
+
 
 /**
  * Most functions return boolean: 0 for success and -1 for failure.
@@ -100,7 +145,7 @@ struct oio_req_s {
  * the error code.
  */
 oio_err oio_last_error();
-const char* oio_err_str(oio_err err);
+char* oio_strerror(oio_err err);
 
 
 void oio_init();
