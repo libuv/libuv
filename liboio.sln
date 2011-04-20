@@ -5,8 +5,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio", "liboio.vcxproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio-test", "liboio-test.vcxproj", "{1D7C3F6C-A4AF-DD73-2D20-B2FC919B3744}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CB2DC484-525A-4EB1-9DCB-192C69576A3E}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio-benchmark", "liboio-benchmark.vcxproj", "{595734A6-DDB3-9EB6-906F-E8534ADD789B}"
 EndProject
 Global
