@@ -28,7 +28,6 @@
 #include "oio.h"
 #include "tree.h"
 
-
 /*
  * Guids and typedefs for winsock extension functions
  * Mingw32 doesn't have these :-(
@@ -99,12 +98,18 @@
                DWORD dwFlags);
 #endif
 
-
 /*
  * MinGW is missing this too
  */
 #ifndef SO_UPDATE_CONNECT_CONTEXT
 # define SO_UPDATE_CONNECT_CONTEXT   0x7010
+#endif
+
+/*
+ * Described in MSDN but apparently not defined in the SDK.
+ */
+#ifndef ERROR_SUCCESS
+# define ERROR_SUCCESS  0
 #endif
 
 
@@ -166,7 +171,8 @@ static HANDLE oio_iocp_;
 
 
 /* Global error code */
-static int oio_errno_;
+static const oio_err oio_ok_ = { OIO_OK, ERROR_SUCCESS };
+static oio_err oio_last_error_ = { OIO_OK, ERROR_SUCCESS };
 
 
 /* Reference count that keeps the event loop alive */
@@ -208,6 +214,38 @@ static void oio_fatal_error(const int errorno, const char *syscall) {
 
   *((char*)NULL) = 0xff; /* Force debug break */
   abort();
+}
+
+
+oio_err oio_last_error() {
+  return oio_last_error_;
+}
+
+
+static oio_err_code oio_translate_sys_error(int sys_errno) {
+  switch (sys_errno) {
+    case ERROR_SUCCESS:                 return OIO_OK;
+    case ERROR_TOO_MANY_OPEN_FILES:     return OIO_EMFILE;
+    case WSAEMFILE:                     return OIO_EMFILE;
+    case WSAEINVAL:                     return OIO_EINVAL;
+    case WSAEALREADY:                   return OIO_EALREADY;
+    case ERROR_OUTOFMEMORY:             return OIO_ENOMEM;
+    default:                            return OIO_UNKNOWN;
+  }
+}
+
+
+static oio_err oio_new_sys_error(int sys_errno) {
+  oio_err e;
+  e.code = oio_translate_sys_error(sys_errno);
+  e.sys_errno_ = sys_errno;
+  return e;
+}
+
+
+static void oio_set_sys_error(int sys_errno) {
+  oio_last_error_.code = oio_translate_sys_error(sys_errno);
+  oio_last_error_.sys_errno_ = sys_errno;
 }
 
 
@@ -324,7 +362,7 @@ static int oio_set_socket_options(SOCKET socket) {
 
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
-    oio_errno_ = GetLastError();
+    oio_set_sys_error(GetLastError());
     return -1;
   }
 
@@ -334,7 +372,7 @@ static int oio_set_socket_options(SOCKET socket) {
                              oio_iocp_,
                              (ULONG_PTR)socket,
                              0) == NULL) {
-    oio_errno_ = GetLastError();
+    oio_set_sys_error(GetLastError());
     return -1;
   }
 
@@ -349,13 +387,13 @@ int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb,
   handle->type = OIO_TCP;
   handle->flags = 0;
   handle->reqs_pending = 0;
-  handle->error = 0;
+  handle->error = oio_ok_;
   handle->accept_reqs = NULL;
   handle->accepted_socket = INVALID_SOCKET;
 
   handle->socket = socket(AF_INET, SOCK_STREAM, 0);
   if (handle->socket == INVALID_SOCKET) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     return -1;
   }
 
@@ -373,7 +411,7 @@ int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb,
 int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data) {
   if (!server->accepted_socket == INVALID_SOCKET) {
-    oio_errno_ = WSAENOTCONN;
+    oio_set_sys_error(WSAENOTCONN);
     return -1;
   }
 
@@ -383,7 +421,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
   client->socket = server->accepted_socket;
   client->flags = 0;
   client->reqs_pending = 0;
-  client->error = 0;
+  client->error = oio_ok_;
   client->accepted_socket = INVALID_SOCKET;
   client->accept_reqs = NULL;
 
@@ -397,9 +435,9 @@ int oio_accept(oio_handle* server, oio_handle* client,
 static int oio_close_error(oio_handle* handle, oio_err e) {
   oio_req *req;
 
-  if (handle->flags & OIO_HANDLE_CLOSING)
-
+  if (handle->flags & OIO_HANDLE_CLOSING) {
     return 0;
+  }
 
   handle->error = e;
 
@@ -436,7 +474,7 @@ static int oio_close_error(oio_handle* handle, oio_err e) {
 
 
 int oio_close(oio_handle* handle) {
-  return oio_close_error(handle, 0);
+  return oio_close_error(handle, oio_ok_);
 }
 
 
@@ -464,7 +502,7 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   }
 
   if (bind(handle->socket, addr, addrsize) == SOCKET_ERROR) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     return -1;
   }
 
@@ -480,13 +518,13 @@ static void oio_queue_accept(oio_accept_req *areq, oio_handle *handle) {
 
   areq->socket = socket(AF_INET, SOCK_STREAM, 0);
   if (areq->socket == INVALID_SOCKET) {
-    oio_close_error(handle, WSAGetLastError());
+    oio_close_error(handle, oio_new_sys_error(WSAGetLastError()));
     return;
   }
 
   if (oio_set_socket_options(areq->socket) != 0) {
     closesocket(areq->socket);
-    oio_close_error(handle, oio_errno_);
+    oio_close_error(handle, oio_last_error_);
     return;
   }
 
@@ -505,11 +543,11 @@ static void oio_queue_accept(oio_accept_req *areq, oio_handle *handle) {
                       &areq->req.overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     /* destroy the preallocated client handle */
     closesocket(areq->socket);
     /* destroy ourselves */
-    oio_close_error(handle, oio_errno_);
+    oio_close_error(handle, oio_last_error_);
     return;
   }
 
@@ -527,18 +565,18 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
 
   if (handle->accept_reqs != NULL) {
     /* Already listening. */
-    oio_errno_ = WSAEALREADY;
+    oio_set_sys_error(WSAEALREADY);
     return -1;
   }
 
   reqs = (oio_accept_req*)malloc(sizeof(oio_accept_req) * backlog);
   if (!reqs) {
-    oio_errno_ = WSAENOBUFS;
+    oio_set_sys_error(ERROR_OUTOFMEMORY);
     return -1;
   }
 
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     free(reqs);
     return -1;
   }
@@ -590,7 +628,7 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
                        &req->overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     return -1;
   }
 
@@ -619,7 +657,7 @@ int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
                    &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     return -1;
   }
 
@@ -649,7 +687,7 @@ int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
                    &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_errno_ = WSAGetLastError();
+    oio_set_sys_error(WSAGetLastError());
     return -1;
   }
 
@@ -657,11 +695,6 @@ int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
   handle->reqs_pending++;
 
   return 0;
-}
-
-
-oio_err oio_last_error() {
-  return oio_errno_;
 }
 
 
@@ -688,7 +721,7 @@ int oio_timeout(oio_req* req, int64_t timeout) {
 
   req->due = oio_now_ + timeout;
   if (RB_INSERT(oio_timer_s, &oio_timers_, req) != NULL) {
-    oio_errno_ = EINVAL;
+    oio_set_sys_error(ERROR_INVALID_DATA);
     return -1;
   }
 
@@ -759,7 +792,7 @@ static void oio_poll() {
     RB_REMOVE(oio_timer_s, &oio_timers_, req);
     req->flags &= ~OIO_REQ_PENDING;
     oio_refs_--;
-    ((oio_timer_cb)req->cb)(req, req->due - oio_now_);
+    ((oio_timer_cb)req->cb)(req, req->due - oio_now_, 0);
   }
 
   /* Quit if there were no io requests dequeued. */
@@ -790,7 +823,8 @@ static void oio_poll() {
         free(handle->accept_reqs);
       }
       if (handle->close_cb) {
-        handle->close_cb(handle, handle->error);
+        oio_last_error_ = handle->error;
+        handle->close_cb(handle, handle->error.code == OIO_OK ? 0 : 1);
       }
       oio_refs_--;
     }
@@ -801,18 +835,22 @@ static void oio_poll() {
     case OIO_WRITE:
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (!success) {
-        oio_close_error(handle, GetLastError());
-      } else if (req->cb) {
-        ((oio_write_cb)req->cb)(req);
+        oio_set_sys_error(GetLastError());
+        oio_close_error(handle, oio_last_error_);
+      }
+      if (req->cb) {
+        ((oio_write_cb)req->cb)(req, success ? 0 : -1);
       }
       return;
 
     case OIO_READ:
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (!success) {
-        oio_close_error(handle, GetLastError());
-      } else if (req->cb) {
-        ((oio_read_cb)req->cb)(req, bytes);
+        oio_set_sys_error(GetLastError());
+        oio_close_error(handle, oio_last_error_);
+      }
+      if (req->cb) {
+        ((oio_read_cb)req->cb)(req, bytes, success ? 0 : -1);
       }
       return;
 
@@ -826,21 +864,19 @@ static void oio_poll() {
       success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
       if (success) {
         if (setsockopt(handle->accepted_socket,
-                SOL_SOCKET,
-                SO_UPDATE_ACCEPT_CONTEXT,
-                (char*)&handle->socket,
-                sizeof(handle->socket)) == 0) {
+                       SOL_SOCKET,
+                       SO_UPDATE_ACCEPT_CONTEXT,
+                       (char*)&handle->socket,
+                       sizeof(handle->socket)) == 0) {
           if (req->cb) {
             ((oio_accept_cb)req->cb)(handle);
           }
-        } else {
-          oio_fatal_error(WSAGetLastError(), "setsockopt");
         }
       }
 
       /* accept_cb should call oio_accept_handle which sets data->socket */
       /* to INVALID_SOCKET. */
-      /* Just ignore failed accept if the listen socket is still healthy. */
+      /* Errorneous accept is ignored if the listen socket is still healthy. */
       if (handle->accepted_socket != INVALID_SOCKET) {
         closesocket(handle->accepted_socket);
         handle->accepted_socket = INVALID_SOCKET;
@@ -864,10 +900,12 @@ static void oio_poll() {
                          0) == 0) {
             ((oio_connect_cb)req->cb)(req, 0);
           } else {
-            ((oio_connect_cb)req->cb)(req, WSAGetLastError());
+            oio_set_sys_error(WSAGetLastError());
+            ((oio_connect_cb)req->cb)(req, -1);
           }
         } else {
-          ((oio_connect_cb)req->cb)(req, GetLastError());
+          oio_set_sys_error(WSAGetLastError());
+          ((oio_connect_cb)req->cb)(req, -1);
         }
       }
       return;
