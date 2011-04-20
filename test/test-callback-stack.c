@@ -32,8 +32,8 @@ int nested = 0;
 int close_cb_called = 0;
 
 
-void close_cb(oio_handle *handle, oio_err err) {
-  ASSERT(!err);
+void close_cb(oio_handle *handle, int status) {
+  ASSERT(status == 0);
   ASSERT(nested == 0 && "oio_close_cb must be called from a fresh stack");
   close_cb_called++;
 }

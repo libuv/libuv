@@ -36,21 +36,29 @@ typedef struct {
 
 oio_handle server;
 
-void after_write(oio_req* req);
-void after_read(oio_req* req, size_t nread);
+void after_write(oio_req* req, int status);
+void after_read(oio_req* req, size_t nread, int status);
 void try_read(peer_t* peer);
-void on_close(oio_handle* peer, oio_err err);
+void on_close(oio_handle* peer, int status);
 void on_accept(oio_handle* handle);
 
 
-void after_write(oio_req* req) {
-  peer_t* peer = (peer_t*) req->data;
+void after_write(oio_req* req, int status) {
+  peer_t* peer;
+
+  ASSERT(status == 0);
+
+  peer = (peer_t*) req->data;
   try_read(peer);
 }
 
 
-void after_read(oio_req* req, size_t nread) {
-  peer_t* peer = req->data;
+void after_read(oio_req* req, size_t nread, int status) {
+  peer_t* peer;
+
+  ASSERT(status == 0);
+
+  peer = req->data;
 
   if (nread == 0) {
     oio_close(req->handle);
@@ -75,8 +83,8 @@ void try_read(peer_t* peer) {
 }
 
 
-void on_close(oio_handle* peer, oio_err err) {
-  if (err) {
+void on_close(oio_handle* peer, int status) {
+  if (status != 0) {
     fprintf(stdout, "Socket error\n");
   }
 }
@@ -95,9 +103,9 @@ void on_accept(oio_handle* server) {
 }
 
 
-void on_server_close(oio_handle* handle, oio_err err) {
+void on_server_close(oio_handle* handle, int status) {
   ASSERT(handle == &server);
-  ASSERT(!err);
+  ASSERT(status == 0);
 }
 
 

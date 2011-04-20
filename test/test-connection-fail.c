@@ -32,15 +32,17 @@ static int connect_cb_calls;
 static int close_cb_calls;
 
 
-static void on_close(oio_handle* handle, oio_err err) {
-  ASSERT(!err);
+static void on_close(oio_handle* handle, int status) {
+  ASSERT(status == 0);
   close_cb_calls++;
 }
 
 
-static void on_connect(oio_req *req, oio_err err) {
-  ASSERT(err);
+static void on_connect(oio_req *req, int status) {
+  ASSERT(status == -1);
   connect_cb_calls++;
+
+  oio_close(req->handle);
 }
 
 

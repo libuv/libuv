@@ -48,10 +48,10 @@ typedef struct {
 void pinger_try_read(pinger_t* pinger);
 
 
-void pinger_on_close(oio_handle* handle, oio_err err) {
+void pinger_on_close(oio_handle* handle, int status) {
   pinger_t* pinger = (pinger_t*)handle->data;
 
-  ASSERT(!err);
+  ASSERT(status == 0);
   ASSERT(NUM_PINGS == pinger->pongs);
 
   free(pinger);
@@ -60,7 +60,9 @@ void pinger_on_close(oio_handle* handle, oio_err err) {
 }
 
 
-void pinger_after_write(oio_req *req) {
+void pinger_after_write(oio_req *req, int status) {
+  ASSERT(status == 0);
+
   free(req);
 }
 
@@ -83,9 +85,11 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_after_read(oio_req* req, size_t nread) {
+static void pinger_after_read(oio_req* req, size_t nread, int status) {
   unsigned int i;
   pinger_t* pinger;
+
+  ASSERT(status == 0);
 
   pinger = (pinger_t*)req->handle->data;
 
@@ -121,10 +125,10 @@ void pinger_try_read(pinger_t* pinger) {
 }
 
 
-void pinger_on_connect(oio_req *req, oio_err err) {
+void pinger_on_connect(oio_req *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
-  ASSERT(!err);
+  ASSERT(status == 0);
 
   pinger_try_read(pinger);
   pinger_write_ping(pinger);

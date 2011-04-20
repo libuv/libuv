@@ -28,8 +28,10 @@ static int timeouts = 0;
 
 static int64_t start_time;
 
-static void timeout_cb(oio_req *req) {
+static void timeout_cb(oio_req *req, int status) {
   ASSERT(req != NULL);
+  ASSERT(status == 0);
+
   free(req);
   timeouts++;
 
@@ -37,9 +39,10 @@ static void timeout_cb(oio_req *req) {
   oio_update_time();
 }
 
-static void exit_timeout_cb(oio_req *req) {
+static void exit_timeout_cb(oio_req *req, int status) {
   int64_t now = oio_now();
   ASSERT(req != NULL);
+  ASSERT(status == 0);
   ASSERT(timeouts == expected);
   ASSERT(start_time < now);
   exit(0);
