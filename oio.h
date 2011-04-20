@@ -107,7 +107,7 @@ typedef enum {
   OIO_EPROTONOSUPPORT,
   OIO_EPROTOTYPE,
   OIO_ETIMEDOUT
-} oio_errno;
+} oio_err_code;
 
 
 struct oio_handle_s {
@@ -133,7 +133,7 @@ struct oio_req_s {
 
 struct oio_err_s {
   /* read-only */
-  oio_errno errno;
+  oio_err_code code;
   /* private */
   int sys_errno_;
 };
