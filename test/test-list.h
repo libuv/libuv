@@ -20,17 +20,21 @@
  */
 
 TEST_DECLARE   (ping_pong)
+TEST_DECLARE   (delayed_accept)
+TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (close_cb_stack)
 TEST_DECLARE   (timeout)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
-TEST_DECLARE   (connection_fail)
 HELPER_DECLARE (echo_server)
 
 TASK_LIST_START
-
   TEST_ENTRY  (ping_pong)
   TEST_HELPER (ping_pong, echo_server)
+
+  TEST_ENTRY  (delayed_accept)
+
+  TEST_ENTRY  (connection_fail)
 
   TEST_ENTRY  (close_cb_stack)
 
@@ -39,5 +43,4 @@ TASK_LIST_START
   TEST_ENTRY  (fail_always)
 
   TEST_ENTRY  (pass_always)
-  TEST_ENTRY  (connection_fail)
 TASK_LIST_END
