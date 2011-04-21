@@ -105,7 +105,6 @@ typedef enum {
   OIO_READ,
   OIO_WRITE,
   OIO_SHUTDOWN,
-  OIO_CLOSE,
   OIO_TIMEOUT
 } oio_req_type;
 

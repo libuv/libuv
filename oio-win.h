@@ -54,6 +54,7 @@ typedef struct oio_buf {
   int flags;
 
 #define oio_handle_private_fields         \
+  oio_handle* closed_next;                \
   union {                                 \
     SOCKET socket;                        \
     HANDLE handle;                        \
