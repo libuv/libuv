@@ -40,13 +40,13 @@ static void on_close(oio_handle* handle, int status) {
 
 static void on_connect(oio_req *req, int status) {
   ASSERT(status == -1);
+  ASSERT(oio_last_error().code == OIO_ECONNREFUSED);
   connect_cb_calls++;
-
   oio_close(req->handle);
 }
 
 
-TEST_IMPL(test_connection_fail) {
+TEST_IMPL(connection_fail) {
   struct sockaddr_in client_addr, server_addr;
   int r;
 

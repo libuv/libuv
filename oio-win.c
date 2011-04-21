@@ -230,6 +230,7 @@ static oio_err_code oio_translate_sys_error(int sys_errno) {
     case WSAEINVAL:                     return OIO_EINVAL;
     case WSAEALREADY:                   return OIO_EALREADY;
     case ERROR_OUTOFMEMORY:             return OIO_ENOMEM;
+    case ERROR_CONNECTION_REFUSED:      return OIO_ECONNREFUSED;
     default:                            return OIO_UNKNOWN;
   }
 }

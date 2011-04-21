@@ -24,7 +24,7 @@ TEST_DECLARE   (close_cb_stack)
 TEST_DECLARE   (timeout)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
-TEST_DECLARE   (test_connection_fail)
+TEST_DECLARE   (connection_fail)
 HELPER_DECLARE (echo_server)
 
 TASK_LIST_START
@@ -39,5 +39,5 @@ TASK_LIST_START
   TEST_ENTRY  (fail_always)
 
   TEST_ENTRY  (pass_always)
-  TEST_ENTRY  (test_connection_fail)
+  TEST_ENTRY  (connection_fail)
 TASK_LIST_END
