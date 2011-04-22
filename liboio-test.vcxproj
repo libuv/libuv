@@ -151,6 +151,7 @@
     <ClCompile Include="test\test-ping-pong.c" />
     <ClCompile Include="test\runner-win.c" />
     <ClCompile Include="test\runner.c" />
+    <ClCompile Include="test\test-tcp-writealot.c" />
     <ClCompile Include="test\test-timeout.c" />
     <ClCompile Include="test\run-tests.c" />
   </ItemGroup>

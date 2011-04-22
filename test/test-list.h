@@ -21,6 +21,7 @@
 
 TEST_DECLARE   (ping_pong)
 TEST_DECLARE   (delayed_accept)
+TEST_DECLARE   (tcp_writealot)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (close_cb_stack)
 TEST_DECLARE   (timeout)
@@ -33,6 +34,9 @@ TASK_LIST_START
   TEST_HELPER (ping_pong, echo_server)
 
   TEST_ENTRY  (delayed_accept)
+
+  TEST_ENTRY  (tcp_writealot)
+  TEST_HELPER (tcp_writealot, echo_server)
 
   TEST_ENTRY  (connection_fail)
 
