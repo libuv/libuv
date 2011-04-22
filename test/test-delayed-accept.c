@@ -43,7 +43,7 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static void do_accept(oio_req *req, int status) {
+static void do_accept(oio_req* req, int status) {
   oio_handle* server;
   oio_handle* accepted_handle = (oio_handle*)malloc(sizeof *accepted_handle);
   int r;
@@ -102,7 +102,7 @@ static void start_server() {
 }
 
 
-static void read_cb(oio_req *req, size_t nread, int status) {
+static void read_cb(oio_req* req, size_t nread, int status) {
   /* The server will not send anything, it should close gracefully. */
   ASSERT(req != NULL);
   ASSERT(status == 0);
@@ -114,7 +114,7 @@ static void read_cb(oio_req *req, size_t nread, int status) {
 }
 
 
-static void connect_cb(oio_req *req, int status) {
+static void connect_cb(oio_req* req, int status) {
   oio_buf buf;
   int r;
 
@@ -138,12 +138,10 @@ static void client_connect() {
   struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
   oio_handle* client = (oio_handle*)malloc(sizeof *client);
   oio_req* connect_req = (oio_req*)malloc(sizeof *connect_req);
-  oio_req* read_req = (oio_req*)malloc(sizeof *read_req);
   int r;
 
   ASSERT(client != NULL);
   ASSERT(connect_req != NULL);
-  ASSERT(read_req != NULL);
 
   r = oio_tcp_init(client, close_cb, NULL);
   ASSERT(r == 0);

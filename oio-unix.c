@@ -69,12 +69,12 @@ static oio_err oio_err_new(oio_handle* handle, int e) {
 }
 
 
-oio_err oio_err_last(oio_handle *handle) {
+oio_err oio_err_last(oio_handle* handle) {
   return handle->err;
 }
 
 
-struct sockaddr_in oio_ip4_addr(char *ip, int port) {
+struct sockaddr_in oio_ip4_addr(char* ip, int port) {
   struct sockaddr_in addr;
 
   addr.sin_family = AF_INET;
@@ -109,7 +109,7 @@ int oio_run() {
 }
 
 
-int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb,
+int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
     void* data) {
   handle->type = OIO_TCP;
   handle->close_cb = close_cb;
@@ -472,7 +472,7 @@ void oio_tcp_connect(oio_handle* handle) {
 }
 
 
-int oio_connect(oio_req *req, struct sockaddr* addr) {
+int oio_connect(oio_req* req, struct sockaddr* addr) {
   oio_handle* handle = req->handle;
 
   if (handle->fd <= 0) {
@@ -517,7 +517,7 @@ int oio_connect(oio_req *req, struct sockaddr* addr) {
 
 /* The buffers to be written must remain valid until the callback is called. */
 /* This is not required for the oio_buf array. */
-int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
+int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
   oio_handle* handle = req->handle;
   assert(handle->fd >= 0);
   ssize_t r;
@@ -568,7 +568,7 @@ int64_t oio_now() {
 }
 
 
-int oio_timeout(oio_req *req, int64_t timeout) {
+int oio_timeout(oio_req* req, int64_t timeout) {
   ev_timer_init(&req->timer, oio__timeout, timeout / 1000.0, 0.0);
   ev_timer_start(EV_DEFAULT_UC_ &req->timer);
   req->timer.data = req;
@@ -576,7 +576,7 @@ int oio_timeout(oio_req *req, int64_t timeout) {
 }
 
 
-int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
+int oio_read(oio_req* req, oio_buf* bufs, int bufcnt) {
   oio_handle* handle = req->handle;
   ssize_t nread = -1;
   int errorno = EAGAIN;

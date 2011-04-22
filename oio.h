@@ -158,14 +158,14 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb);
 /*
  * TODO:
  * - oio_(pipe|pipe_tty)_handle_init
- * - oio_bind_pipe(char *name)
- * - oio_continuous_read(oio_handle *handle, oio_continuous_read_cb *cb)
+ * - oio_bind_pipe(char* name)
+ * - oio_continuous_read(oio_handle* handle, oio_continuous_read_cb* cb)
  * - A way to list cancelled oio_reqs after before/on oio_close_cb
  */
 
 /* TCP socket methods. */
 /* Handle and callback bust be set by calling oio_req_init. */
-int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb, void* data);
+int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb, void* data);
 int oio_bind(oio_handle* handle, struct sockaddr* addr);
 int oio_connect(oio_req* req, struct sockaddr* addr);
 int oio_shutdown(oio_req* req);
@@ -184,7 +184,7 @@ int oio_read(oio_req* req, oio_buf* bufs, int bufcnt);
 int oio_write(oio_req* req, oio_buf* bufs, int bufcnt);
 
 /* Timer methods */
-int oio_timeout(oio_req *req, int64_t timeout);
+int oio_timeout(oio_req* req, int64_t timeout);
 
 /* Request handle to be closed. close_cb will be called */
 /* asynchronously after this call. */

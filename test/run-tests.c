@@ -33,7 +33,7 @@
 #define TEST_TIMEOUT  20000
 
 
-static void log_progress(int total, int passed, int failed, char *name) {
+static void log_progress(int total, int passed, int failed, char* name) {
   LOGF("[%% %3d|+ %3d|- %3d]: %-50s\n", (passed + failed) / total * 100,
       passed, failed, name);
 }
@@ -41,7 +41,7 @@ static void log_progress(int total, int passed, int failed, char *name) {
 
 int main(int argc, char **argv) {
   int total, passed, failed;
-  task_entry_t *task;
+  task_entry_t* task;
 
   platform_init();
 

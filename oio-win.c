@@ -65,7 +65,7 @@
 
   typedef BOOL(*LPFN_CONNECTEX)
               (SOCKET s,
-               const struct sockaddr *name,
+               const struct sockaddr* name,
                int namelen,
                PVOID lpSendBuffer,
                DWORD dwSendDataLength,
@@ -77,9 +77,9 @@
                DWORD dwReceiveDataLength,
                DWORD dwLocalAddressLength,
                DWORD dwRemoteAddressLength,
-               LPSOCKADDR *LocalSockaddr,
+               LPSOCKADDR* LocalSockaddr,
                LPINT LocalSockaddrLength,
-               LPSOCKADDR *RemoteSockaddr,
+               LPSOCKADDR* RemoteSockaddr,
                LPINT RemoteSockaddrLength);
 
   typedef BOOL(*LPFN_DISCONNECTEX)
@@ -190,9 +190,9 @@ static struct sockaddr_in oio_addr_ip4_any_;
 /*
  * Display an error message and abort the event loop.
  */
-static void oio_fatal_error(const int errorno, const char *syscall) {
-  char *buf = NULL;
-  const char *errmsg;
+static void oio_fatal_error(const int errorno, const char* syscall) {
+  char* buf = NULL;
+  const char* errmsg;
 
   FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
       FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorno,
@@ -341,7 +341,7 @@ void oio_init() {
 }
 
 
-void oio_req_init(oio_req* req, oio_handle* handle, void *cb) {
+void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
   req->type = OIO_UNKNOWN_REQ;
   req->flags = 0;
   req->handle = handle;
@@ -385,7 +385,7 @@ static int oio_set_socket_options(SOCKET socket) {
 }
 
 
-int oio_tcp_init(oio_handle *handle, oio_close_cb close_cb,
+int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
     void* data) {
   handle->close_cb = close_cb;
   handle->data = data;
@@ -481,7 +481,7 @@ int oio_close(oio_handle* handle) {
 
 
 static void oio_call_close_cbs() {
-  oio_handle *handle;
+  oio_handle* handle;
 
   while (oio_closed_handles_) {
     handle = oio_closed_handles_;
@@ -505,7 +505,7 @@ static void oio_call_close_cbs() {
 }
 
 
-struct sockaddr_in oio_ip4_addr(char *ip, int port) {
+struct sockaddr_in oio_ip4_addr(char* ip, int port) {
   struct sockaddr_in addr;
 
   addr.sin_family = AF_INET;
@@ -539,7 +539,7 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
 }
 
 
-static void oio_queue_accept(oio_accept_req *areq, oio_handle *handle) {
+static void oio_queue_accept(oio_accept_req* areq, oio_handle* handle) {
   BOOL success;
   DWORD bytes;
 
@@ -666,7 +666,7 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
 }
 
 
-int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
+int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes;
   oio_handle* handle = req->handle;
@@ -695,7 +695,7 @@ int oio_write(oio_req *req, oio_buf* bufs, int bufcnt) {
 }
 
 
-int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
+int oio_read(oio_req* req, oio_buf* bufs, int bufcnt) {
   int result;
   DWORD bytes, flags;
   oio_handle* handle = req->handle;
@@ -725,7 +725,7 @@ int oio_read(oio_req *req, oio_buf* bufs, int bufcnt) {
 }
 
 
-static int oio_timer_compare(oio_req *a, oio_req* b) {
+static int oio_timer_compare(oio_req* a, oio_req* b) {
   if (a->due < b->due)
     return -1;
   if (a->due > b->due)
@@ -779,7 +779,7 @@ static void oio_poll() {
   ULONG_PTR key;
   OVERLAPPED* overlapped;
   oio_req* req;
-  oio_accept_req *accept_req;
+  oio_accept_req* accept_req;
   oio_handle* handle;
   DWORD timeout;
   int64_t delta;
