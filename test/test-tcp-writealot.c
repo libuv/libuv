@@ -25,8 +25,8 @@
 #include <stdlib.h>
 
 
-#define WRITES            5
-#define CHUNKS_PER_WRITE  5
+#define WRITES            3
+#define CHUNKS_PER_WRITE  3
 #define CHUNK_SIZE        10485760 /* 10 MB */
 
 #define TOTAL_BYTES       (WRITES * CHUNKS_PER_WRITE * CHUNK_SIZE)
