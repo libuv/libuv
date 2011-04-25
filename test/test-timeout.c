@@ -28,7 +28,7 @@ static int timeouts = 0;
 
 static int64_t start_time;
 
-static void timeout_cb(oio_req *req, int status) {
+static void timeout_cb(oio_req *req, int64_t skew, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
 
@@ -39,7 +39,7 @@ static void timeout_cb(oio_req *req, int status) {
   oio_update_time();
 }
 
-static void exit_timeout_cb(oio_req *req, int status) {
+static void exit_timeout_cb(oio_req *req, int64_t skew, int status) {
   int64_t now = oio_now();
   ASSERT(req != NULL);
   ASSERT(status == 0);
@@ -48,7 +48,7 @@ static void exit_timeout_cb(oio_req *req, int status) {
   exit(0);
 }
 
-static void dummy_timeout_cb(oio_req *req) {
+static void dummy_timeout_cb(oio_req *req, int64_t skew, int status) {
   /* Should never be called */
   FATAL("dummy_timer_cb should never be called");
 }
