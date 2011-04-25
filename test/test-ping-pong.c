@@ -137,7 +137,6 @@ void pinger_on_connect(oio_req *req, int status) {
 
 void pinger_new() {
   int r;
-  struct sockaddr_in client_addr = oio_ip4_addr("0.0.0.0", 0);
   struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
   pinger_t *pinger;
 
@@ -155,7 +154,6 @@ void pinger_new() {
   /* so these handles can be pre-initialized. */
   oio_req_init(&pinger->connect_req, &pinger->handle, pinger_on_connect);
 
-  oio_bind(&pinger->handle, (struct sockaddr*)&client_addr);
   r = oio_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
   ASSERT(!r);
 }
