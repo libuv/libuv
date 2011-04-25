@@ -19,35 +19,49 @@
  * IN THE SOFTWARE.
  */
 
-TEST_DECLARE   (ping_pong)
-TEST_DECLARE   (delayed_accept)
-TEST_DECLARE   (tcp_writealot)
-TEST_DECLARE   (bind_error_addrinuse)
-TEST_DECLARE   (connection_fail)
-TEST_DECLARE   (close_cb_stack)
-TEST_DECLARE   (timeout)
-TEST_DECLARE   (fail_always)
-TEST_DECLARE   (pass_always)
-HELPER_DECLARE (echo_server)
+#include "../oio.h"
+#include "task.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-TASK_LIST_START
-  TEST_ENTRY  (ping_pong)
-  TEST_HELPER (ping_pong, echo_server)
 
-  TEST_ENTRY  (delayed_accept)
+static int close_cb_called = 0;
 
-  TEST_ENTRY  (tcp_writealot)
-  TEST_HELPER (tcp_writealot, echo_server)
 
-  TEST_ENTRY  (bind_error_addrinuse)
+static void close_cb(oio_handle* handle, int status) {
+  ASSERT(handle != NULL);
+  ASSERT(status == 0);
 
-  TEST_ENTRY  (connection_fail)
+  close_cb_called++;
+}
 
-  TEST_ENTRY  (close_cb_stack)
 
-  TEST_ENTRY  (timeout)
+TEST_IMPL(bind_error_addrinuse) {
+  struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
+  oio_handle server1, server2;
+  int r;
 
-  TEST_ENTRY  (fail_always)
+  oio_init();
 
-  TEST_ENTRY  (pass_always)
-TASK_LIST_END
+  r = oio_tcp_init(&server1, close_cb, NULL);
+  ASSERT(r == 0);
+
+  r = oio_bind(&server1, (struct sockaddr*) &addr);
+  ASSERT(r == 0);
+
+  r = oio_tcp_init(&server2, close_cb, NULL);
+  ASSERT(r == 0);
+
+  r = oio_bind(&server2, (struct sockaddr*) &addr);
+  ASSERT(r == -1);
+  ASSERT(oio_last_error().code == OIO_EADDRINUSE);
+
+  oio_close(&server1);
+  oio_close(&server2);
+
+  oio_run();
+
+  ASSERT(close_cb_called == 2);
+
+  return 0;
+}
