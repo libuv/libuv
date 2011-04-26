@@ -30,6 +30,10 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <assert.h>
+
+#include <sys/select.h>
+#include <pthread.h>
 
 #define PATHMAX 1024
 static char executable_path[PATHMAX] = { '\0' };
@@ -92,23 +96,122 @@ int process_start(char* name, process_info_t* p) {
 }
 
 
+typedef struct {
+  int pipe[2];
+  process_info_t* vec;
+  int n;
+} dowait_args;
+
+
+/* This function is run inside a pthread. We do this so that we can possibly
+ * timeout.
+ */
+static void* dowait(void* data) {
+  dowait_args* args = data;
+
+  int i, status, r;
+  process_info_t* p;
+
+  for (i = 0; i < args->n; i++) {
+    p = (process_info_t*)(args->vec + i * sizeof(process_info_t));
+    if (p->terminated) continue;
+    status = 0;
+    r = waitpid(p->pid, &p->status, 0);
+    if (r < 0) {
+      perror("waitpid");
+      return NULL;
+    }
+    p->terminated = 1;
+  }
+
+  if (args->pipe[1] >= 0) {
+    /* Write a character to the main thread to notify it about this. */
+    char c = 0;
+    write(args->pipe[1], &c, 1);
+  }
+
+  return NULL;
+}
+
+
 /* Wait for all `n` processes in `vec` to terminate. */
 /* Time out after `timeout` msec, or never if timeout == -1 */
 /* Return 0 if all processes are terminated, -1 on error, -2 on timeout. */
 int process_wait(process_info_t* vec, int n, int timeout) {
   int i;
   process_info_t* p;
-  for (i = 0; i < n; i++) {
-    p = (process_info_t*)(vec + i * sizeof(process_info_t));
-    if (p->terminated) continue;
-    int status = 0;
-    int r = waitpid(p->pid, &(p->status), 0);
-    if (r < 0) {
-      return -1;
-    }
-    p->terminated = 1;
+  dowait_args args;
+  args.vec = vec;
+  args.n = n;
+  args.pipe[0] = -1;
+  args.pipe[1] = -1;
+
+  /* The simple case is where there is no timeout */
+  if (timeout == -1) {
+    dowait(&args);
+    return 0;
   }
-  return 0;
+
+  /* Hard case. Do the wait with a timeout.
+   *
+   * Assumption: we are the only ones making this call right now. Otherwise
+   * we'd need to lock vec.
+   */
+
+  pthread_t tid;
+  int retval;
+
+  int r = pipe((int*)&(args.pipe));
+  if (r) {
+    perror("pipe()");
+    return -1;
+  }
+
+  r = pthread_create(&tid, NULL, dowait, &args);
+  if (r) {
+    perror("pthread_create()");
+    retval = -1;
+    goto terminate;
+  }
+
+  struct timeval tv;
+  tv.tv_sec = timeout / 1000;
+  tv.tv_usec = 0;
+
+  fd_set fds;
+  FD_ZERO(&fds);
+  FD_SET(args.pipe[0], &fds);
+
+  r = select(args.pipe[0] + 1, &fds, NULL, NULL, &tv);
+
+  if (r == -1) {
+    perror("select()");
+    retval = -1;
+
+  } else if (r) {
+    /* The thread completed successfully. */
+    retval = 0;
+
+  } else {
+    /* Timeout. Kill all the children. */
+    for (i = 0; i < n; i++) {
+      p = (process_info_t*)(vec + i * sizeof(process_info_t));
+      kill(p->pid, SIGTERM);
+    }
+    retval = -2;
+
+    /* Wait for thread to finish. */
+    r = pthread_join(tid, NULL);
+    if (r) {
+      perror("pthread_join");
+      retval = -1;
+    }
+  }
+
+terminate:
+  close(args.pipe[0]);
+  close(args.pipe[1]);
+  return retval;
 }
 
 

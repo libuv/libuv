@@ -40,10 +40,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (delayed_accept)
 
-  /*
   TEST_ENTRY  (tcp_writealot)
   TEST_HELPER (tcp_writealot, echo_server)
-  */
 
   TEST_ENTRY  (bind_error_access)
 

@@ -30,7 +30,7 @@
 
 
 /* The time in milliseconds after which a single test times out. */
-#define TEST_TIMEOUT  20000
+#define TEST_TIMEOUT  5000
 
 
 static void log_progress(int total, int passed, int failed, char* name) {
