@@ -228,14 +228,20 @@ oio_err oio_last_error() {
 
 static oio_err_code oio_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
-    case ERROR_SUCCESS:                 return OIO_OK;
-    case ERROR_TOO_MANY_OPEN_FILES:     return OIO_EMFILE;
-    case WSAEMFILE:                     return OIO_EMFILE;
-    case WSAEINVAL:                     return OIO_EINVAL;
-    case WSAEALREADY:                   return OIO_EALREADY;
-    case ERROR_OUTOFMEMORY:             return OIO_ENOMEM;
-    case ERROR_CONNECTION_REFUSED:      return OIO_ECONNREFUSED;
-    default:                            return OIO_UNKNOWN;
+    case ERROR_SUCCESS:                     return OIO_OK;
+    case ERROR_NOACCESS:                    return OIO_EACCESS;
+    case WSAEACCES:                         return OIO_EACCESS;
+    case ERROR_ADDRESS_ALREADY_ASSOCIATED:  return OIO_EADDRINUSE;
+    case WSAEADDRINUSE:                     return OIO_EADDRINUSE;
+    case WSAEADDRNOTAVAIL:                  return OIO_EADDRNOTAVAIL;
+    case WSAEALREADY:                       return OIO_EALREADY;
+    case ERROR_CONNECTION_REFUSED:          return OIO_ECONNREFUSED;
+    case WSAECONNREFUSED:                   return OIO_ECONNREFUSED;
+    case WSAEINVAL:                         return OIO_EINVAL;
+    case ERROR_TOO_MANY_OPEN_FILES:         return OIO_EMFILE;
+    case WSAEMFILE:                         return OIO_EMFILE;
+    case ERROR_OUTOFMEMORY:                 return OIO_ENOMEM;
+    default:                                return OIO_UNKNOWN;
   }
 }
 
