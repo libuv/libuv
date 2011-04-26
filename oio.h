@@ -33,8 +33,7 @@ typedef struct oio_err_s oio_err;
 typedef struct oio_handle_s oio_handle;
 typedef struct oio_req_s oio_req;
 
-/**
- * The status parameter is 0 if the request completed successfully,
+/* The status parameter is 0 if the request completed successfully,
  * and should be -1 if the request was cancelled or failed.
  * For oio_close_cb, -1 means that the handle was closed due to an error.
  * Error details can be obtained by calling oio_last_error().
@@ -164,10 +163,12 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb);
  * - A way to list cancelled oio_reqs after before/on oio_close_cb
  */
 
-/* TCP socket methods. */
-/* Handle and callback bust be set by calling oio_req_init. */
+/* TCP socket methods.
+ * Handle and callback bust be set by calling oio_req_init.
+ */
 int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb, void* data);
 int oio_bind(oio_handle* handle, struct sockaddr* addr);
+
 int oio_connect(oio_req* req, struct sockaddr* addr);
 int oio_shutdown(oio_req* req);
 
