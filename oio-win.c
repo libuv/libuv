@@ -363,14 +363,6 @@ static oio_req* oio_overlapped_to_req(OVERLAPPED* overlapped) {
 static int oio_set_socket_options(SOCKET socket) {
   DWORD yes = 1;
 
-  /* Set the SO_REUSEADDR option on the socket */
-  /* If it fails, soit. */
-  setsockopt(socket,
-             SOL_SOCKET,
-             SO_REUSEADDR,
-             (char*)&yes,
-             sizeof(int));
-
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
     oio_set_sys_error(GetLastError());
