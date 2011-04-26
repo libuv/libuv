@@ -26,7 +26,6 @@ TEST_DECLARE   (bind_error_access)
 TEST_DECLARE   (bind_error_addrinuse)
 TEST_DECLARE   (bind_error_addrnotavail)
 TEST_DECLARE   (bind_error_fault_1)
-TEST_DECLARE   (bind_error_fault_2)
 TEST_DECLARE   (bind_error_inval)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (close_cb_stack)
@@ -53,8 +52,6 @@ TASK_LIST_START
   TEST_ENTRY  (bind_error_addrnotavail)
 
   TEST_ENTRY  (bind_error_fault_1)
-
-  TEST_ENTRY  (bind_error_fault_2)
 
   TEST_ENTRY  (bind_error_inval)
 

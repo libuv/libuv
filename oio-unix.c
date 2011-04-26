@@ -80,10 +80,13 @@ int oio_flag_is_set(oio_handle* handle, int flag) {
 static oio_err_code oio_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
     case 0: return OIO_OK;
+    case EACCES: return OIO_EACCESS;
+    case EFAULT: return OIO_EFAULT;
     case EMFILE: return OIO_EMFILE;
     case EINVAL: return OIO_EINVAL;
     case ECONNREFUSED: return OIO_ECONNREFUSED;
     case EADDRINUSE: return OIO_EADDRINUSE;
+    case EADDRNOTAVAIL: return OIO_EADDRNOTAVAIL;
     default: return OIO_UNKNOWN;
   }
 }
@@ -186,11 +189,21 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
     domain = AF_INET;
+
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
+
+    /* For platform compat, if the address is 255.255.255.255 then we must
+     * return EACCESS.  */
+    if (addr_in->sin_addr.s_addr == 0xFFFFFFFF) {
+      oio_err_new(handle, EACCES);
+      return -1;
+    }
+
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
     domain = AF_INET6;
   } else {
-    assert(0);
+    oio_err_new(handle, EFAULT);
     return -1;
   }
 
