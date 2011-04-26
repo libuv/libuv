@@ -24,6 +24,7 @@
 #include <stdio.h> /* printf */
 
 #include <stdlib.h>
+#include <string.h> /* strerror */
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
@@ -32,6 +33,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+
+static oio_err last_err;
 
 
 void oio_tcp_io(EV_P_ ev_io* watcher, int revents);
@@ -53,6 +57,16 @@ void oio_flag_set(oio_handle* handle, int flag) {
 }
 
 
+oio_err oio_last_error() {
+  return last_err;
+}
+
+
+char* oio_strerror(oio_err err) {
+  return strerror(err.sys_errno_);
+}
+
+
 void oio_flag_unset(oio_handle* handle, int flag) {
   handle->flags = handle->flags & ~flag;
 }
@@ -63,9 +77,24 @@ int oio_flag_is_set(oio_handle* handle, int flag) {
 }
 
 
-static oio_err oio_err_new(oio_handle* handle, int e) {
-  handle->err = e;
-  return e;
+static oio_err_code oio_translate_sys_error(int sys_errno) {
+  switch (sys_errno) {
+    case 0: return OIO_OK;
+    case EMFILE: return OIO_EMFILE;
+    case EINVAL: return OIO_EINVAL;
+    case ECONNREFUSED: return OIO_ECONNREFUSED;
+    case EADDRINUSE: return OIO_EADDRINUSE;
+    default: return OIO_UNKNOWN;
+  }
+}
+
+
+static oio_err oio_err_new(oio_handle* handle, int sys_error) {
+  oio_err err;
+  err.sys_errno_ = sys_error;
+  err.code = oio_translate_sys_error(sys_error);
+  last_err = err;
+  return err;
 }
 
 
@@ -166,8 +195,8 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   }
 
   r = bind(handle->fd, addr, addrsize);
-
-  return oio_err_new(handle, r);
+  oio_err_new(handle, errno);
+  return r;
 }
 
 
@@ -273,7 +302,8 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
 
   int r = listen(handle->fd, backlog);
   if (r < 0) {
-    return oio_err_new(handle, errno);
+    oio_err_new(handle, errno);
+    return -1;
   }
 
   handle->accept_cb = cb;
@@ -379,7 +409,7 @@ void oio__read(oio_handle* handle) {
     } else {
       oio_err err = oio_err_new(handle, errorno);
       if (cb) {
-        cb(req, 0);
+        cb(req, 0, -1);
       }
       handle->err = err;
       oio_close(handle);
@@ -395,7 +425,7 @@ void oio__read(oio_handle* handle) {
 
     /* NOTE: call callback AFTER freeing the request data. */
     if (cb) {
-      cb(req, nread);
+      cb(req, nread, 0);
     }
 
     if (oio_read_reqs_empty(handle)) {
@@ -463,7 +493,7 @@ void oio_tcp_connect(oio_handle* handle) {
 
     oio_connect_cb connect_cb = req->cb;
     if (connect_cb) {
-      connect_cb(req, err);
+      connect_cb(req, -1);
     }
 
     handle->err = err;
@@ -492,11 +522,13 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
   ngx_queue_init(&req->read_reqs);
 
   if (handle->connect_req) {
-    return oio_err_new(handle, EALREADY);
+    oio_err_new(handle, EALREADY);
+    return -1;
   }
 
   if (handle->type != OIO_TCP) {
-    return oio_err_new(handle, ENOTSOCK);
+    oio_err_new(handle, ENOTSOCK);
+    return -1;
   }
 
   handle->connect_req = req;
@@ -505,7 +537,8 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
 
   int r = connect(handle->fd, addr, addrsize);
   if (r != 0 && errno != EINPROGRESS) {
-    return oio_err_new(handle, r);
+    oio_err_new(handle, errno);
+    return -1;
   }
 
   assert(handle->write_watcher.data == handle);
@@ -531,11 +564,12 @@ int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
 
   if (r < 0) {
     assert(errorno != EAGAIN && "write queueing not yet supported");
-    return oio_err_new(handle, r);
+    oio_err_new(handle, errorno);
+    return -1;
   } else {
     if (req && req->cb) {
       oio_write_cb cb = req->cb;
-      cb(req);
+      cb(req, 0);
     }
     return 0;
   }
@@ -553,7 +587,8 @@ void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
 
   if (req->cb) {
     oio_timer_cb cb = req->cb;
-    cb(req, 0);
+    /* TODO skew */
+    cb(req, 0, 0);
   }
 }
 
@@ -602,16 +637,16 @@ int oio_read(oio_req* req, oio_buf* bufs, int bufcnt) {
     oio_err err = oio_err_new(handle, errorno);
 
     if (cb) {
-      cb(req, nread);
+      cb(req, nread, -1);
     }
 
-    return err;
+    return -1;
   }
 
   if (nread >= 0) {
     /* Successful read. */
     if (cb) {
-      cb(req, nread);
+      cb(req, nread, 0);
     }
     return 0;
   }

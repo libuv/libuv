@@ -23,13 +23,13 @@
 #include "runner.h"
 
 #include <unistd.h>
+#include <string.h> /* strdup */
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <string.h>
 
 #define PATHMAX 1024
 static char executable_path[PATHMAX] = { '\0' };
@@ -187,6 +187,6 @@ void process_cleanup(process_info_t *p) {
 
 /* Move the console cursor one line up and back to the first column. */
 int rewind_cursor() {
-  printf("\033[1A\033[80D");
+  printf("\033[0A\r");
   return 0;
 }

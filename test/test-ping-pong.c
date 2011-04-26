@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h> /* strlen */
 
 static int completed_pingers = 0;
 

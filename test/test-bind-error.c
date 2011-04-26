@@ -37,7 +37,7 @@ static void close_cb(oio_handle* handle, int status) {
 
 
 TEST_IMPL(bind_error_addrinuse) {
-  struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
+  struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", TEST_PORT);
   oio_handle server1, server2;
   int r;
 
@@ -45,15 +45,19 @@ TEST_IMPL(bind_error_addrinuse) {
 
   r = oio_tcp_init(&server1, close_cb, NULL);
   ASSERT(r == 0);
-
   r = oio_bind(&server1, (struct sockaddr*) &addr);
   ASSERT(r == 0);
 
   r = oio_tcp_init(&server2, close_cb, NULL);
   ASSERT(r == 0);
-
   r = oio_bind(&server2, (struct sockaddr*) &addr);
+  ASSERT(r == 0);
+
+  r = oio_listen(&server1, 128, NULL);
+  ASSERT(r == 0);
+  r = oio_listen(&server2, 128, NULL);
   ASSERT(r == -1);
+
   ASSERT(oio_last_error().code == OIO_EADDRINUSE);
 
   oio_close(&server1);
