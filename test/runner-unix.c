@@ -39,12 +39,21 @@
 static char executable_path[PATHMAX] = { '\0' };
 
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h> /* _NSGetExecutablePath */
+
+static void get_executable_path() {
+  uint32_t bufsize = sizeof(executable_path);
+  _NSGetExecutablePath(executable_path, &bufsize);
+}
+#else
 /* Linux-only */
 static void get_executable_path() {
   if (!executable_path[0]) {
     readlink("/proc/self/exe", executable_path, PATHMAX - 1);
   }
 }
+#endif
 
 
 /* Do platform-specific initialization. */
