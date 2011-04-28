@@ -299,6 +299,6 @@ void process_cleanup(process_info_t *p) {
 
 /* Move the console cursor one line up and back to the first column. */
 int rewind_cursor() {
-  printf("\033[0A\r");
+  printf("\033[2K\r");
   return 0;
 }

@@ -117,7 +117,7 @@ finalize:
 
   /* Show error and output from processes if the test failed. */
   if (!success) {
-    LOG("=============================================================\n");
+    LOG("\n=============================================================\n");
     LOGF("`%s` failed: %s\n", test->task_name, errmsg);
 
     for (i = 0; i < process_count; i++) {

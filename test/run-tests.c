@@ -34,7 +34,7 @@
 
 
 static void log_progress(int total, int passed, int failed, char* name) {
-  LOGF("[%% %3d|+ %3d|- %3d]: %-50s\n", (passed + failed) / total * 100,
+  LOGF("[%% %3d|+ %3d|- %3d]: %s", (passed + failed) / total * 100,
       passed, failed, name);
 }
 
@@ -68,8 +68,8 @@ int main(int argc, char **argv) {
         continue;
       }
 
-      log_progress(total, passed, failed, task->task_name);
       rewind_cursor();
+      log_progress(total, passed, failed, task->task_name);
 
       if (run_task(task, TEST_TIMEOUT, 0)) {
         passed++;
@@ -77,6 +77,8 @@ int main(int argc, char **argv) {
         failed++;
       }
     }
+
+    rewind_cursor();
     log_progress(total, passed, failed, "Done.");
 
     return 0;
