@@ -21,15 +21,14 @@
 
 #include "oio.h"
 
+#include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
-
 #include <stdlib.h>
 #include <string.h> /* strerror */
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

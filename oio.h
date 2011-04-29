@@ -26,8 +26,7 @@
 #define OIO_VERSION_MINOR 1
 
 #include <stdint.h> /* int64_t */
-#include <stddef.h> /* size_t */
-
+#include <sys/types.h> /* size_t */
 
 typedef struct oio_err_s oio_err;
 typedef struct oio_handle_s oio_handle;
