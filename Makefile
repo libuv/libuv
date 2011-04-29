@@ -25,14 +25,15 @@ LINKFLAGS=-lm
 TESTS=test/echo-server.c test/test-*.c
 BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
+RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
 RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
 
 test/run-tests: test/*.h test/run-tests.c test/runner.c test/runner-unix.c $(TESTS) oio.a
-	$(CC) $(CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-tests test/run-tests.c \
+	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-tests test/run-tests.c \
 		test/runner.c test/runner-unix.c $(TESTS) oio.a
 
 test/run-benchmarks: test/*.h test/run-benchmarks.c test/runner.c test/runner-unix.c $(BENCHMARKS) oio.a
-	$(CC) $(CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
+	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
 		 test/runner.c test/runner-unix.c $(BENCHMARKS) oio.a
 
 oio.a: oio-unix.o ev/ev.o
