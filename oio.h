@@ -36,8 +36,11 @@ typedef struct oio_req_s oio_req;
  * and should be -1 if the request was cancelled or failed.
  * For oio_close_cb, -1 means that the handle was closed due to an error.
  * Error details can be obtained by calling oio_last_error().
+ *
+ * In the case of oio_read_cb the oio_buf returned should be freed by the
+ * user.
  */
-typedef void (*oio_read_cb)(oio_req* req, size_t nread, int status);
+typedef void (*oio_read_cb)(oio_req* req, oio_buf, int status);
 typedef void (*oio_write_cb)(oio_req* req, int status);
 typedef void (*oio_connect_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
@@ -178,11 +181,20 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb);
 int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data);
 
-/* Generic read/write methods. The buffers to be written or read into must
- * remain valid until the callback is called. The oio_buf array does need
- * not remain valid!
- */
-int oio_read(oio_req* req, oio_buf* bufs, int bufcnt);
+
+/* The user must supply an alloc callback for an oio_buf. Depending on the
+ * oio_handle being read from the alloc callback will be made at different
+ * times. For sockets it will be made directly before a non-blocking read
+ * for files it will be made before the request to the kernel is sent. This
+ * is to provide a consistent abstraction between non-blocking reads and
+ * async/completion reads.
+ * The second parameter of the alloc callback is the suggested size
+ * of the oio_buf, however the user is free to return any non-zero sized
+ * oio_buf.
+ * When the read is complete oio_read_cb will be made, specified by req->cb.
+by*/
+int oio_read(oio_req*, oio_buf (*alloc)(oio_handle*, size_t));
+
 int oio_write(oio_req* req, oio_buf* bufs, int bufcnt);
 
 /* Timer methods */
