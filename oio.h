@@ -40,7 +40,8 @@ typedef struct oio_req_s oio_req;
  * In the case of oio_read_cb the oio_buf returned should be freed by the
  * user.
  */
-typedef void (*oio_read_cb)(oio_req* req, oio_buf, int status);
+typedef oio_buf (*oio_alloc_cb)(oio_handle* handle, size_t suggested_size);
+typedef void (*oio_read_cb)(oio_handle *handle, int nread, oio_buf buf);
 typedef void (*oio_write_cb)(oio_req* req, int status);
 typedef void (*oio_connect_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
@@ -59,6 +60,7 @@ typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
 typedef enum {
   OIO_UNKNOWN = -1,
   OIO_OK = 0,
+  OIO_EOF,
   OIO_EACCESS,
   OIO_EADDRINUSE,
   OIO_EADDRNOTAVAIL,
@@ -149,7 +151,7 @@ oio_err oio_last_error();
 char* oio_strerror(oio_err err);
 
 
-void oio_init();
+void oio_init(oio_alloc_cb alloc);
 int oio_run();
 
 void oio_update_time();
@@ -182,18 +184,16 @@ int oio_accept(oio_handle* server, oio_handle* client,
     oio_close_cb close_cb, void* data);
 
 
-/* The user must supply an alloc callback for an oio_buf. Depending on the
- * oio_handle being read from the alloc callback will be made at different
- * times. For sockets it will be made directly before a non-blocking read
- * for files it will be made before the request to the kernel is sent. This
- * is to provide a consistent abstraction between non-blocking reads and
- * async/completion reads.
- * The second parameter of the alloc callback is the suggested size
- * of the oio_buf, however the user is free to return any non-zero sized
- * oio_buf.
- * When the read is complete oio_read_cb will be made, specified by req->cb.
-by*/
-int oio_read(oio_req*, oio_buf (*alloc)(oio_handle*, size_t));
+/* Read data from an incoming stream. The callback will be made several */
+/* several times until there is no more data to read or oio_read_stop is */
+/* called. When we've reached EOF nread will be set to -1 and the error is */
+/* set to OIO_EOF. When nread == -1 the buf parameter might not point to a */
+/* valid buffer; in that case buf.len and buf.base are both set to 0. */
+/* Note that nread might also be 0, which does *not* indicate an error or */
+/* eof; it happens when liboio requested a buffer through the alloc callback */
+/* but then decided that it didn't need that buffer. */
+int oio_read_start(oio_handle* handle, oio_read_cb cb);
+int oio_read_stop(oio_handle* handle);
 
 int oio_write(oio_req* req, oio_buf* bufs, int bufcnt);
 

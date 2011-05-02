@@ -30,15 +30,13 @@ typedef struct {
   oio_handle handle;
   oio_req req;
   oio_buf buf;
-  char read_buffer[BUFSIZE];
   int msg;
 } peer_t;
 
 oio_handle server;
 
 void after_write(oio_req* req, int status);
-void after_read(oio_req* req, size_t nread, int status);
-void try_read(peer_t* peer);
+void after_read(oio_handle* handle, int nread, oio_buf buf);
 void on_close(oio_handle* peer, int status);
 void on_accept(oio_handle* handle);
 
@@ -49,37 +47,44 @@ void after_write(oio_req* req, int status) {
   ASSERT(status == 0);
 
   peer = (peer_t*) req->data;
-  try_read(peer);
+
+  /* Free the read/write buffer */
+  free(peer->buf.base);
+
+  /* Start reading again */
+  oio_read_start(req->handle, after_read);
 }
 
 
-void after_read(oio_req* req, size_t nread, int status) {
+void after_read(oio_handle* handle, int nread, oio_buf buf) {
   peer_t* peer;
+  
+  if (nread < 0) {
+    /* Error or EOF */
+    ASSERT (oio_last_error().code == OIO_EOF);
+    
+    if (buf.base) {
+      free(buf.base);
+    }
 
-  ASSERT(status == 0);
-
-  peer = req->data;
+    oio_close(handle);
+    return;
+  } 
 
   if (nread == 0) {
-    oio_close(req->handle);
-  } else {
-    peer->buf.len = nread;
-    oio_req_init(&peer->req, &peer->handle, after_write);
-    peer->req.data = peer;
-    if (oio_write(&peer->req, &peer->buf, 1)) {
-      FATAL("oio_write failed");
-    }
+    /* Everything OK, but nothing read. */
+    free(buf.base);
+    return;
   }
-}
 
-
-void try_read(peer_t* peer) {
-  peer->buf.len = BUFSIZE;
-  oio_req_init(&peer->req, &peer->handle, after_read);
+  oio_req_init(&peer->req, &peer->handle, after_write);
   peer->req.data = peer;
-  if (oio_read(&peer->req, &peer->buf, 1)) {
-    FATAL("oio_read failed");
+  peer->buf.base = buf.base;
+  peer->buf.len = nread;
+  if (oio_write(&peer->req, &peer->buf, 1)) {
+    FATAL("oio_write failed");
   }
+  oio_read_stop(handle);
 }
 
 
@@ -97,9 +102,7 @@ void on_accept(oio_handle* server) {
     FATAL("oio_accept failed");
   }
 
-  p->buf.base = (char*)&p->read_buffer;
-
-  try_read(p);
+  oio_read_start(server, after_read);
 }
 
 
@@ -143,8 +146,16 @@ int echo_stop() {
 }
 
 
+oio_buf echo_alloc(oio_handle* handle, size_t suggested_size) {
+  oio_buf buf;
+  buf.base = (char*) malloc(suggested_size);
+  buf.len = suggested_size;
+  return buf;
+}
+
+
 HELPER_IMPL(echo_server) {
-  oio_init();
+  oio_init(echo_alloc);
   if (echo_start(TEST_PORT))
     return 1;
 
