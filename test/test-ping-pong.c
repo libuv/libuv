@@ -42,7 +42,6 @@ typedef struct {
   oio_handle handle;
   oio_req connect_req;
   oio_req read_req;
-  oio_buf buf;
   char read_buffer[BUFSIZE];
 } pinger_t;
 
@@ -108,7 +107,7 @@ static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
 
   /* Now we count the pings */
   for (i = 0; i < nread; i++) {
-    ASSERT(pinger->buf.base[i] == PING[pinger->state]);
+    ASSERT(buf.base[i] == PING[pinger->state]);
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
       printf("PONG %d\n", pinger->pongs);
@@ -143,8 +142,6 @@ void pinger_new() {
   pinger = (pinger_t*)malloc(sizeof(*pinger));
   pinger->state = 0;
   pinger->pongs = 0;
-  pinger->buf.len = BUFSIZE;
-  pinger->buf.base = (char*)&pinger->read_buffer;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
   r = oio_tcp_init(&pinger->handle, pinger_on_close, (void*)pinger);

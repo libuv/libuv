@@ -77,6 +77,8 @@ void after_read(oio_handle* handle, int nread, oio_buf buf) {
     return;
   }
 
+  peer = (peer_t*) handle->data;
+
   oio_req_init(&peer->req, &peer->handle, after_write);
   peer->req.data = peer;
   peer->buf.base = buf.base;
@@ -102,7 +104,7 @@ void on_accept(oio_handle* server) {
     FATAL("oio_accept failed");
   }
 
-  oio_read_start(server, after_read);
+  oio_read_start(&p->handle, after_read);
 }
 
 
