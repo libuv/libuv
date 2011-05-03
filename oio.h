@@ -32,6 +32,14 @@ typedef struct oio_err_s oio_err;
 typedef struct oio_handle_s oio_handle;
 typedef struct oio_req_s oio_req;
 
+
+#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
+# include "oio-unix.h"
+#else
+# include "oio-win.h"
+#endif
+
+
 /* The status parameter is 0 if the request completed successfully,
  * and should be -1 if the request was cancelled or failed.
  * For oio_close_cb, -1 means that the handle was closed due to an error.
@@ -47,13 +55,6 @@ typedef void (*oio_connect_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
 typedef void (*oio_close_cb)(oio_handle* handle, int status);
 typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
-
-
-#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
-# include "oio-unix.h"
-#else
-# include "oio-win.h"
-#endif
 
 
 /* Expand this list if necessary. */
@@ -120,15 +121,6 @@ struct oio_err_s {
   int sys_errno_;
 };
 
-struct oio_handle_s {
-  /* read-only */
-  oio_handle_type type;
-  /* public */
-  oio_close_cb close_cb;
-  void* data;
-  /* private */
-  oio_handle_private_fields
-};
 
 struct oio_req_s {
   /* read-only */
@@ -139,6 +131,17 @@ struct oio_req_s {
   void* data;
   /* private */
   oio_req_private_fields
+};
+
+
+struct oio_handle_s {
+  /* read-only */
+  oio_handle_type type;
+  /* public */
+  oio_close_cb close_cb;
+  void* data;
+  /* private */
+  oio_handle_private_fields
 };
 
 
