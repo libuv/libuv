@@ -22,9 +22,9 @@
 TEST_DECLARE   (ping_pong)
 TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (tcp_writealot)
-TEST_DECLARE   (bind_error_access)
 TEST_DECLARE   (bind_error_addrinuse)
-TEST_DECLARE   (bind_error_addrnotavail)
+TEST_DECLARE   (bind_error_addrnotavail_1)
+TEST_DECLARE   (bind_error_addrnotavail_2)
 TEST_DECLARE   (bind_error_fault_1)
 TEST_DECLARE   (bind_error_inval)
 TEST_DECLARE   (connection_fail)
@@ -43,11 +43,11 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_writealot)
   TEST_HELPER (tcp_writealot, echo_server)
 
-  TEST_ENTRY  (bind_error_access)
-
   TEST_ENTRY  (bind_error_addrinuse)
 
-  TEST_ENTRY  (bind_error_addrnotavail)
+  TEST_ENTRY  (bind_error_addrnotavail_1)
+
+  TEST_ENTRY  (bind_error_addrnotavail_2)
 
   TEST_ENTRY  (bind_error_fault_1)
 

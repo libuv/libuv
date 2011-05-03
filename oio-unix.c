@@ -204,16 +204,6 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
     domain = AF_INET;
-
-    struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
-
-    /* For platform compat, if the address is 255.255.255.255 then we must
-     * return EACCESS.  */
-    if (addr_in->sin_addr.s_addr == 0xFFFFFFFF) {
-      oio_err_new(handle, EACCES);
-      return -1;
-    }
-
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
     domain = AF_INET6;

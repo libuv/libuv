@@ -43,30 +43,6 @@ static oio_buf alloc_cb(oio_handle* handle, size_t size) {
 }
 
 
-TEST_IMPL(bind_error_access) {
-  struct sockaddr_in addr = oio_ip4_addr("255.255.255.255", TEST_PORT);
-  oio_handle server;
-  int r;
-
-  oio_init(alloc_cb);
-
-  r = oio_tcp_init(&server, close_cb, NULL);
-  ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &addr);
-  ASSERT(r == -1);
-
-  ASSERT(oio_last_error().code == OIO_EACCESS);
-
-  oio_close(&server);
-
-  oio_run();
-
-  ASSERT(close_cb_called == 1);
-
-  return 0;
-}
-
-
 TEST_IMPL(bind_error_addrinuse) {
   struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", TEST_PORT);
   oio_handle server1, server2;
@@ -102,7 +78,30 @@ TEST_IMPL(bind_error_addrinuse) {
 }
 
 
-TEST_IMPL(bind_error_addrnotavail) {
+TEST_IMPL(bind_error_addrnotavail_1) {
+  struct sockaddr_in addr = oio_ip4_addr("127.255.255.255", TEST_PORT);
+  oio_handle server;
+  int r;
+
+  oio_init(alloc_cb);
+
+  r = oio_tcp_init(&server, close_cb, NULL);
+  ASSERT(r == 0);
+  r = oio_bind(&server, (struct sockaddr*) &addr);
+  ASSERT(r == -1);
+  ASSERT(oio_last_error().code == OIO_EADDRNOTAVAIL);
+
+  oio_close(&server);
+
+  oio_run();
+
+  ASSERT(close_cb_called == 1);
+
+  return 0;
+}
+
+
+TEST_IMPL(bind_error_addrnotavail_2) {
   struct sockaddr_in addr = oio_ip4_addr("4.4.4.4", TEST_PORT);
   oio_handle server;
   int r;
