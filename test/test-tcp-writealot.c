@@ -56,7 +56,7 @@ static void close_cb(oio_handle* handle, int status) {
 
 static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   ASSERT(handle != NULL);
-  
+
   if (nread < 0) {
     ASSERT(oio_last_error().code == OIO_EOF);
 

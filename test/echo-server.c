@@ -50,7 +50,7 @@ void after_write(oio_req* req, int status) {
   }
 
   wr = (write_req_t*) req;
-  
+
   /* Free the read/write buffer and the request */
   free(wr->buf.base);
   free(wr);
@@ -59,18 +59,18 @@ void after_write(oio_req* req, int status) {
 
 void after_read(oio_handle* handle, int nread, oio_buf buf) {
   write_req_t *wr;
-  
+
   if (nread < 0) {
     /* Error or EOF */
     ASSERT (oio_last_error().code == OIO_EOF);
-    
+
     if (buf.base) {
       free(buf.base);
     }
 
     oio_close(handle);
     return;
-  } 
+  }
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */

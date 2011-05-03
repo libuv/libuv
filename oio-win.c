@@ -596,7 +596,7 @@ void oio_queue_read(oio_handle* handle) {
   DWORD bytes, flags;
 
   assert(handle->flags & OIO_HANDLE_READING);
-  
+
   req = &handle->read_accept_req;
   assert(!(req->flags & OIO_REQ_PENDING));
   memset(&req->overlapped, 0, sizeof(req->overlapped));
@@ -632,7 +632,7 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
     return -1;
   }
 
-  if (handle->flags & OIO_HANDLE_LISTENING || 
+  if (handle->flags & OIO_HANDLE_LISTENING ||
       handle->flags & OIO_HANDLE_READING) {
     /* Already listening. */
     oio_set_sys_error(WSAEALREADY);
@@ -648,7 +648,7 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
   handle->accept_cb = cb;
 
   oio_queue_accept(handle);
-    
+
   return 0;
 }
 
@@ -679,7 +679,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
 
 
 int oio_read_start(oio_handle* handle, oio_read_cb cb) {
-  if (handle->flags & OIO_HANDLE_LISTENING || 
+  if (handle->flags & OIO_HANDLE_LISTENING ||
       handle->flags & OIO_HANDLE_READING) {
     /* Already listening. */
     oio_set_sys_error(WSAEALREADY);
@@ -919,12 +919,12 @@ static void oio_poll() {
           buf = oio_alloc_(handle, 65536);
           assert(buf.len > 0);
           flags = 0;
-          if (WSARecv(handle->socket, 
-                      (WSABUF*)&buf, 
-                      1, 
-                      &bytes, 
-                      &flags, 
-                      NULL, 
+          if (WSARecv(handle->socket,
+                      (WSABUF*)&buf,
+                      1,
+                      &bytes,
+                      &flags,
+                      NULL,
                       NULL) != SOCKET_ERROR) {
             if (bytes > 0) {
               /* Successful read */

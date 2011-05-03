@@ -111,7 +111,7 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   if (buf.base) {
     free(buf.base);
   }
-  
+
   oio_close(handle);
 }
 
