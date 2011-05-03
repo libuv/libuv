@@ -221,12 +221,13 @@ void process_cleanup(process_info_t *p) {
 }
 
 
-int rewind_cursor() {
+static int clear_line() {
   HANDLE handle;
   CONSOLE_SCREEN_BUFFER_INFO info;
   COORD coord;
+  DWORD written;
 
-  handle = (HANDLE)_get_osfhandle(fileno(stdout));
+  handle = (HANDLE)_get_osfhandle(fileno(stderr));
   if (handle == INVALID_HANDLE_VALUE)
     return -1;
 
@@ -237,11 +238,21 @@ int rewind_cursor() {
   if (coord.Y <= 0)
     return -1;
 
-  coord.Y--;
   coord.X = 0;
 
   if (!SetConsoleCursorPosition(handle, coord))
     return -1;
 
+  if (!FillConsoleOutputCharacterW(handle, 0x20, info.dwSize.X, coord, &written))
+    return -1;
+
   return 0;
+}
+
+
+void rewind_cursor() {
+  if (clear_line() == -1) {
+    /* If clear_line fails (stdout is not a console), print a newline. */
+    fprintf(stderr, "\n");
+  }
 }

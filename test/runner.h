@@ -140,6 +140,6 @@ int process_reap(process_info_t *p);
 void process_cleanup(process_info_t *p);
 
 /* Move the console cursor one line up and back to the first column. */
-int rewind_cursor();
+void rewind_cursor();
 
 #endif /* RUNNER_H_ */
