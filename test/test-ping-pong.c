@@ -86,17 +86,23 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_after_read(oio_req* req, size_t nread, int status) {
+static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
   unsigned int i;
   pinger_t* pinger;
 
-  ASSERT(status == 0);
+  pinger = (pinger_t*)handle->data;
 
-  pinger = (pinger_t*)req->handle->data;
+  if (nread < 0) {
+    ASSERT(oio_last_error().code == OIO_EOF);
 
-  if (nread == 0) {
     puts("got EOF");
+
+    if (buf.base) {
+      free(buf.base);
+    }
+
     oio_close(&pinger->handle);
+
     return;
   }
 
@@ -115,14 +121,6 @@ static void pinger_after_read(oio_req* req, size_t nread, int status) {
       }
     }
   }
-
-  pinger_try_read(pinger);
-}
-
-
-void pinger_try_read(pinger_t* pinger) {
-  oio_req_init(&pinger->read_req, &pinger->handle, pinger_after_read);
-  oio_read(&pinger->read_req, &pinger->buf, 1);
 }
 
 
@@ -131,8 +129,9 @@ void pinger_on_connect(oio_req *req, int status) {
 
   ASSERT(status == 0);
 
-  pinger_try_read(pinger);
   pinger_write_ping(pinger);
+  
+  oio_read_start(req->handle, pinger_read_cb);
 }
 
 
@@ -160,8 +159,16 @@ void pinger_new() {
 }
 
 
+static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  oio_buf buf;
+  buf.base = (char*)malloc(size);
+  buf.len = size;
+  return buf;
+}
+
+
 TEST_IMPL(ping_pong) {
-  oio_init();
+  oio_init(alloc_cb);
 
   pinger_new();
   oio_run();

@@ -54,13 +54,18 @@ static void dummy_timeout_cb(oio_req *req, int64_t skew, int status) {
 }
 
 
+static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  FATAL("alloc should not be called");
+}
+
+
 TEST_IMPL(timeout) {
   oio_req *req;
   oio_req exit_req;
   oio_req dummy_req;
   int i;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   start_time = oio_now();
   ASSERT(0 < start_time);

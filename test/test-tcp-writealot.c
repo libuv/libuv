@@ -55,34 +55,24 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static void read_cb(oio_req* req, size_t nread, int status) {
-  oio_buf receive_buf;
-  int r;
+static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
+  ASSERT(handle != NULL);
+  
+  if (nread < 0) {
+    ASSERT(oio_last_error().code == OIO_EOF);
 
-  /* The server will not send anything, it should close gracefully. */
-  ASSERT(req != NULL);
-  ASSERT(status == 0);
+    if (buf.base) {
+      free(buf.base);
+    }
 
-  if (nread > 0) {
-    bytes_received_done += nread;
-
-    receive_buf.len = CHUNK_SIZE;
-    receive_buf.base = receive_buffer + bytes_received_done;
-    receive_buf.len = (CHUNK_SIZE > TOTAL_BYTES - bytes_received_done)
-                    ? TOTAL_BYTES - bytes_received_done
-                    : CHUNK_SIZE;
+    oio_close(handle);
+    return;
   }
 
-  /* As long as we don't have graceful disconnect, I'll have to be this... */
-  /* Todo: FIXME */
-  if (bytes_received_done < TOTAL_BYTES) {
-    oio_req_init(req, req->handle, read_cb);
-    r = oio_read(req, &receive_buf, 1);
-    ASSERT(r == 0);
-  } else {
-    oio_close(req->handle);
-    free(req);
-  }
+
+  bytes_received_done += nread;
+
+  free(buf.base);
 }
 
 
@@ -135,10 +125,17 @@ static void connect_cb(oio_req* req, int status) {
   receive_buf.base = receive_buffer;
 
   oio_req_init(req, handle, read_cb);
-  r = oio_read(req, &receive_buf, 1);
+  r = oio_read_start(handle, read_cb);
   ASSERT(r == 0);
 }
 
+
+static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  oio_buf buf;
+  buf.base = (char*)malloc(size);
+  buf.len = size;
+  return buf;
+}
 
 
 TEST_IMPL(tcp_writealot) {
@@ -156,7 +153,7 @@ TEST_IMPL(tcp_writealot) {
   ASSERT(send_buffer != NULL);
   ASSERT(receive_buffer != NULL);
 
-  oio_init();
+  oio_init(alloc_cb);
 
   r = oio_tcp_init(client, close_cb, NULL);
   ASSERT(r == 0);

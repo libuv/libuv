@@ -102,32 +102,32 @@ static void start_server() {
 }
 
 
-static void read_cb(oio_req* req, size_t nread, int status) {
+static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   /* The server will not send anything, it should close gracefully. */
-  ASSERT(req != NULL);
-  ASSERT(status == 0);
-  ASSERT(nread == 0);
+  ASSERT(handle != NULL);
+  ASSERT(nread == -1);
+  ASSERT(oio_last_error().code == OIO_EOF);
 
-  oio_close(req->handle);
-
-  free(req);
+  if (buf.base) {
+    free(buf.base);
+  }
+  
+  oio_close(handle);
 }
 
 
 static void connect_cb(oio_req* req, int status) {
-  oio_buf buf;
   int r;
 
   ASSERT(req != NULL);
   ASSERT(status == 0);
 
+  free(req);
+
   /* Reuse the req to do a read. */
   /* Not that the server will send anything, but otherwise we'll never know */
   /* when te server closes the connection. */
-  oio_req_init(req, req->handle, read_cb);
-  buf.base = (char*)&BUFFER;
-  buf.len = sizeof BUFFER;
-  r = oio_read(req, &buf, 1);
+  r = oio_read_start(req->handle, read_cb);
   ASSERT(r == 0);
 
   connect_cb_called++;
@@ -152,8 +152,17 @@ static void client_connect() {
 }
 
 
+static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  oio_buf buf;
+  buf.base = (char*)malloc(size);
+  buf.len = size;
+  return buf;
+}
+
+
+
 TEST_IMPL(delayed_accept) {
-  oio_init();
+  oio_init(alloc_cb);
 
   start_server();
 

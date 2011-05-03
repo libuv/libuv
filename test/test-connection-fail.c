@@ -46,11 +46,18 @@ static void on_connect(oio_req *req, int status) {
 }
 
 
+static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  oio_buf buf = {0, 0};
+  FATAL("alloc should not be called");
+  return buf;
+}
+
+
 TEST_IMPL(connection_fail) {
   struct sockaddr_in client_addr, server_addr;
   int r;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   client_addr = oio_ip4_addr("0.0.0.0", 0);
 

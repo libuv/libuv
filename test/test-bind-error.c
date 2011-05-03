@@ -36,12 +36,19 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
+static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  oio_buf buf = {0, 0};
+  FATAL("alloc should not be called");
+  return buf;
+}
+
+
 TEST_IMPL(bind_error_access) {
   struct sockaddr_in addr = oio_ip4_addr("255.255.255.255", TEST_PORT);
   oio_handle server;
   int r;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   r = oio_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
@@ -65,7 +72,7 @@ TEST_IMPL(bind_error_addrinuse) {
   oio_handle server1, server2;
   int r;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   r = oio_tcp_init(&server1, close_cb, NULL);
   ASSERT(r == 0);
@@ -100,7 +107,7 @@ TEST_IMPL(bind_error_addrnotavail) {
   oio_handle server;
   int r;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   r = oio_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
@@ -123,7 +130,7 @@ TEST_IMPL(bind_error_fault_1) {
   oio_handle server;
   int r;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   r = oio_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
@@ -149,7 +156,7 @@ TEST_IMPL(bind_error_inval) {
   oio_handle server;
   int r;
 
-  oio_init();
+  oio_init(alloc_cb);
 
   r = oio_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
