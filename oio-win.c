@@ -373,23 +373,26 @@ static oio_req* oio_overlapped_to_req(OVERLAPPED* overlapped) {
 }
 
 
-static int oio_set_socket_options(SOCKET socket) {
+static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
+    void* data, SOCKET socket) {
   DWORD yes = 1;
 
-  /* Set the SO_REUSEADDR option on the socket */
-  /* If it fails, soit. */
-  0&&setsockopt(socket,
-             SOL_SOCKET,
-             SO_REUSEADDR,
-             (char*)&yes,
-             sizeof(int));
+  handle->socket = socket;
+  handle->close_cb = close_cb;
+  handle->data = data;
+  handle->type = OIO_TCP;
+  handle->flags = 0;
+  handle->reqs_pending = 0;
+  handle->error = oio_ok_;
+  handle->accept_socket = INVALID_SOCKET;
+
+  oio_req_init(&(handle->read_accept_req), handle, NULL);
 
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
     oio_set_sys_error(WSAGetLastError());
     return -1;
   }
-
 
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
@@ -407,60 +410,26 @@ static int oio_set_socket_options(SOCKET socket) {
     return -1;
   }
 
+  oio_refs_++;
+
   return 0;
 }
 
 
 int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
     void* data) {
-  handle->close_cb = close_cb;
-  handle->data = data;
-  handle->type = OIO_TCP;
-  handle->flags = 0;
-  handle->reqs_pending = 0;
-  handle->error = oio_ok_;
-  handle->accept_socket = INVALID_SOCKET;
+  SOCKET sock;
 
-  oio_req_init(&(handle->read_accept_req), handle, NULL);
-
-  handle->socket = socket(AF_INET, SOCK_STREAM, 0);
+  sock = socket(AF_INET, SOCK_STREAM, 0);
   if (handle->socket == INVALID_SOCKET) {
     oio_set_sys_error(WSAGetLastError());
     return -1;
   }
 
-  if (oio_set_socket_options(handle->socket) != 0) {
-    closesocket(handle->socket);
+  if (oio_tcp_init_socket(handle, close_cb, data, sock) == -1) {
+    closesocket(sock);
     return -1;
   }
-
-  oio_refs_++;
-
-  return 0;
-}
-
-
-int oio_accept(oio_handle* server, oio_handle* client,
-    oio_close_cb close_cb, void* data) {
-  if (server->accept_socket == INVALID_SOCKET) {
-    oio_set_sys_error(WSAENOTCONN);
-    return -1;
-  }
-
-  client->close_cb = close_cb;
-  client->data = data;
-  client->type = OIO_TCP;
-  client->socket = server->accept_socket;
-  client->flags = 0;
-  client->reqs_pending = 0;
-  client->error = oio_ok_;
-  client->accept_socket = INVALID_SOCKET;
-
-  oio_req_init(&(client->read_accept_req), client, NULL);
-
-  oio_refs_++;
-
-  server->accept_socket = INVALID_SOCKET;
 
   return 0;
 }
@@ -588,12 +557,6 @@ static void oio_queue_accept(oio_handle* handle) {
     return;
   }
 
-  if (oio_set_socket_options(accept_socket) != 0) {
-    closesocket(accept_socket);
-    oio_close_error(handle, oio_last_error_);
-    return;
-  }
-
   /* Prepare the oio_req and OVERLAPPED structures. */
   req = &handle->read_accept_req;
   assert(!(req->flags & OIO_REQ_PENDING));
@@ -687,6 +650,31 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
   oio_queue_accept(handle);
     
   return 0;
+}
+
+
+int oio_accept(oio_handle* server, oio_handle* client,
+    oio_close_cb close_cb, void* data) {
+  int rv = 0;
+
+  if (server->accept_socket == INVALID_SOCKET) {
+    oio_set_sys_error(WSAENOTCONN);
+    return -1;
+  }
+
+  if (oio_tcp_init_socket(client, close_cb, data, server->accept_socket) == -1) {
+    oio_fatal_error(oio_last_error_.sys_errno_, "init");
+    closesocket(server->accept_socket);
+    rv = -1;
+  }
+
+  server->accept_socket = INVALID_SOCKET;
+
+  if (!(server->flags & OIO_HANDLE_CLOSING)) {
+    oio_queue_accept(server);
+  }
+
+  return rv;
 }
 
 
@@ -976,29 +964,23 @@ static void oio_poll() {
         assert(handle->accept_socket != INVALID_SOCKET);
 
         success = GetOverlappedResult(handle->handle, overlapped, &bytes, FALSE);
+        success = success && (setsockopt(handle->accept_socket,
+                                         SOL_SOCKET,
+                                         SO_UPDATE_ACCEPT_CONTEXT,
+                                         (char*)&handle->socket,
+                                         sizeof(handle->socket)) == 0);
+
         if (success) {
-          if (setsockopt(handle->accept_socket,
-                         SOL_SOCKET,
-                         SO_UPDATE_ACCEPT_CONTEXT,
-                         (char*)&handle->socket,
-                         sizeof(handle->socket)) == 0) {
-            if (handle->accept_cb) {
-              ((oio_accept_cb)handle->accept_cb)(handle);
-            }
+          if (handle->accept_cb) {
+            ((oio_accept_cb)handle->accept_cb)(handle);
+          }
+        } else {
+          /* Errorneous accept is ignored if the listen socket is still healthy. */
+          closesocket(handle->accept_socket);
+          if (!(handle->flags & OIO_HANDLE_CLOSING)) {
+            oio_queue_accept(handle);
           }
         }
-
-        /* accept_cb should call oio_accept which sets handle->accept_socket */
-        /* to INVALID_SOCKET. */
-        /* Errorneous accept is ignored if the listen socket is still healthy. */
-        if (handle->accept_socket != INVALID_SOCKET) {
-          closesocket(handle->accept_socket);
-          handle->accept_socket = INVALID_SOCKET;
-        }
-
-        /* Queue another accept */
-        if (!(handle->flags & OIO_HANDLE_CLOSING))
-          oio_queue_accept(handle);
         break;
 
       case OIO_CONNECT:
