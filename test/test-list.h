@@ -59,7 +59,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (timeout)
 
+#if 0
+  /* These are for testing the test runner. */
   TEST_ENTRY  (fail_always)
-
   TEST_ENTRY  (pass_always)
+#endif
 TASK_LIST_END
