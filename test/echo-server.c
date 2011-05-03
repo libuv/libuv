@@ -24,16 +24,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BUFSIZE 1024
 
 typedef struct {
-  oio_handle handle;
   oio_req req;
   oio_buf buf;
-  int msg;
-} peer_t;
+} write_req_t;
+
 
 oio_handle server;
+
 
 void after_write(oio_req* req, int status);
 void after_read(oio_handle* handle, int nread, oio_buf buf);
@@ -42,22 +41,20 @@ void on_accept(oio_handle* handle);
 
 
 void after_write(oio_req* req, int status) {
-  peer_t* peer;
+  write_req_t* wr;
 
   ASSERT(status == 0);
 
-  peer = (peer_t*) req->data;
-
-  /* Free the read/write buffer */
-  free(peer->buf.base);
-
-  /* Start reading again */
-  oio_read_start(req->handle, after_read);
+  wr = (write_req_t*) req;
+  
+  /* Free the read/write buffer and the request */
+  free(wr->buf.base);
+  free(wr);
 }
 
 
 void after_read(oio_handle* handle, int nread, oio_buf buf) {
-  peer_t* peer;
+  write_req_t *wr;
   
   if (nread < 0) {
     /* Error or EOF */
@@ -77,16 +74,14 @@ void after_read(oio_handle* handle, int nread, oio_buf buf) {
     return;
   }
 
-  peer = (peer_t*) handle->data;
+  wr = (write_req_t*) malloc(sizeof *wr);
 
-  oio_req_init(&peer->req, &peer->handle, after_write);
-  peer->req.data = peer;
-  peer->buf.base = buf.base;
-  peer->buf.len = nread;
-  if (oio_write(&peer->req, &peer->buf, 1)) {
+  oio_req_init(&wr->req, handle, after_write);
+  wr->buf.base = buf.base;
+  wr->buf.len = nread;
+  if (oio_write(&wr->req, &wr->buf, 1)) {
     FATAL("oio_write failed");
   }
-  oio_read_stop(handle);
 }
 
 
@@ -98,13 +93,13 @@ void on_close(oio_handle* peer, int status) {
 
 
 void on_accept(oio_handle* server) {
-  peer_t* p = (peer_t*)calloc(sizeof(peer_t), 1);
+  oio_handle* handle = (oio_handle*) malloc(sizeof *handle);
 
-  if (oio_accept(server, &p->handle, on_close, (void*)p)) {
+  if (oio_accept(server, handle, on_close, NULL)) {
     FATAL("oio_accept failed");
   }
 
-  oio_read_start(&p->handle, after_read);
+  oio_read_start(handle, after_read);
 }
 
 
