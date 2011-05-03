@@ -161,6 +161,8 @@ static HANDLE oio_iocp_;
 static const oio_err oio_ok_ = { OIO_OK, ERROR_SUCCESS };
 static oio_err oio_last_error_ = { OIO_OK, ERROR_SUCCESS };
 
+/* Error message string */
+static char* oio_err_str_ = NULL;
 
 /* Global alloc function */
 oio_alloc_cb oio_alloc_ = NULL;
@@ -214,6 +216,23 @@ static void oio_fatal_error(const int errorno, const char* syscall) {
 
 oio_err oio_last_error() {
   return oio_last_error_;
+}
+
+
+char* oio_strerror(oio_err err) {
+  if (oio_err_str_ != NULL) {
+    LocalFree((void*) oio_err_str_);
+  }
+
+  FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+      FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err.sys_errno_,
+      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&oio_err_str_, 0, NULL);
+
+  if (oio_err_str_) {
+    return oio_err_str_;
+  } else {
+    return "Unknown error";
+  }
 }
 
 
