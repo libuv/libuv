@@ -25,7 +25,7 @@ TEST_DECLARE   (tcp_writealot)
 TEST_DECLARE   (bind_error_addrinuse)
 TEST_DECLARE   (bind_error_addrnotavail_1)
 TEST_DECLARE   (bind_error_addrnotavail_2)
-TEST_DECLARE   (bind_error_fault_1)
+TEST_DECLARE   (bind_error_fault)
 TEST_DECLARE   (bind_error_inval)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (close_cb_stack)
@@ -49,7 +49,7 @@ TASK_LIST_START
 
   TEST_ENTRY  (bind_error_addrnotavail_2)
 
-  TEST_ENTRY  (bind_error_fault_1)
+  TEST_ENTRY  (bind_error_fault)
 
   TEST_ENTRY  (bind_error_inval)
 

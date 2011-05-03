@@ -247,6 +247,7 @@ static oio_err_code oio_translate_sys_error(int sys_errno) {
     case WSAEALREADY:                       return OIO_EALREADY;
     case ERROR_CONNECTION_REFUSED:          return OIO_ECONNREFUSED;
     case WSAECONNREFUSED:                   return OIO_ECONNREFUSED;
+    case WSAEFAULT:                         return OIO_EFAULT;
     case WSAEINVAL:                         return OIO_EINVAL;
     case ERROR_TOO_MANY_OPEN_FILES:         return OIO_EMFILE;
     case WSAEMFILE:                         return OIO_EMFILE;
@@ -550,7 +551,7 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
   } else {
-    assert(0);
+    oio_set_sys_error(WSAEFAULT);
     return -1;
   }
 

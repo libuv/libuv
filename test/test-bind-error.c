@@ -124,7 +124,7 @@ TEST_IMPL(bind_error_addrnotavail_2) {
 }
 
 
-TEST_IMPL(bind_error_fault_1) {
+TEST_IMPL(bind_error_fault) {
   char garbage[] = "blah blah blah blah blah blah blah blah blah blah blah blah";
   oio_handle server;
   int r;
