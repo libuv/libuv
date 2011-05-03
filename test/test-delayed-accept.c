@@ -43,7 +43,7 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static void do_accept(oio_req* req, int status) {
+static void do_accept(oio_req* req, int64_t skew, int status) {
   oio_handle* server;
   oio_handle* accepted_handle = (oio_handle*)malloc(sizeof *accepted_handle);
   int r;
@@ -122,15 +122,14 @@ static void connect_cb(oio_req* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
 
-  free(req);
-
-  /* Reuse the req to do a read. */
   /* Not that the server will send anything, but otherwise we'll never know */
   /* when te server closes the connection. */
   r = oio_read_start(req->handle, read_cb);
   ASSERT(r == 0);
 
   connect_cb_called++;
+
+  free(req);
 }
 
 
