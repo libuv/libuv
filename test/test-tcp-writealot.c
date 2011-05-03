@@ -80,7 +80,12 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
 
 static void write_cb(oio_req* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+
+  if (status) {
+    oio_err err = oio_last_error();
+    fprintf(stderr, "oio_write error: %s\n", oio_strerror(err));
+    ASSERT(0);
+  }
 
   bytes_sent_done += CHUNKS_PER_WRITE * CHUNK_SIZE;
   write_cb_called++;

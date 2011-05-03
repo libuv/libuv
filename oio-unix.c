@@ -441,12 +441,9 @@ void oio__write(oio_handle* handle) {
   /* Cast to iovec. We had to have our own oio_buf instead of iovec
    * because Windows's WSABUF is not an iovec.
    */
-  struct iovec* iov = (struct iovec*) (req->read_bufs +
-      req->write_index * sizeof(oio_buf));
+  assert(sizeof(oio_buf) == sizeof(struct iovec));
+  struct iovec* iov = (struct iovec*) &(req->read_bufs[req->write_index]);
   int iovcnt = req->read_bufcnt - req->write_index;
-
-  assert(iov);
-  assert(iovcnt > 0);
 
   /* Now do the actual writev. Note that we've been updating the pointers
    * inside the iov each time we write. So there is no need to offset it.
@@ -461,11 +458,11 @@ void oio__write(oio_handle* handle) {
       oio_err err = oio_err_new(handle, errno);
 
       /* XXX How do we handle the error? Need test coverage here. */
+      oio_close(handle);
 
       if (cb) {
         cb(req, -1);
       }
-      oio_close(handle);
       return;
     }
   } else {
@@ -473,19 +470,24 @@ void oio__write(oio_handle* handle) {
 
     /* The loop updates the counters. */
     while (n > 0) {
-      char* base = req->read_bufs[req->write_index].base;
-      size_t len = req->read_bufs[req->write_index].len;
+      oio_buf* buf = &(req->read_bufs[req->write_index]);
+      size_t len = buf->len;
+
       assert(req->write_index < req->read_bufcnt);
 
       if (n < len) {
-        req->read_bufs[req->write_index].base += n;
-        req->read_bufs[req->write_index].len -= n;
+        buf->base += n;
+        buf->len -= n;
         handle->write_queue_size -= n;
         n = 0;
+
+        assert(buf->base > 0x100);
+
         /* There is more to write. Break and ensure the watcher is pending. */
         break;
 
       } else {
+        assert(buf->base > 0x100);
         /* Finished writing the buf at index req->write_index. */
         req->write_index++;
 

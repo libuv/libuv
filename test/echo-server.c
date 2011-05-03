@@ -43,7 +43,11 @@ void on_accept(oio_handle* handle);
 void after_write(oio_req* req, int status) {
   write_req_t* wr;
 
-  ASSERT(status == 0);
+  if (status) {
+    oio_err err = oio_last_error();
+    fprintf(stderr, "oio_write error: %s\n", oio_strerror(err));
+    ASSERT(0);
+  }
 
   wr = (write_req_t*) req;
   
