@@ -33,7 +33,6 @@
 
 
 static char* send_buffer;
-static char* receive_buffer;
 
 
 static int connect_cb_called = 0;
@@ -69,8 +68,11 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
     return;
   }
 
-
   bytes_received_done += nread;
+
+  /* TODO: fix this when we support sending EOF. */
+  if (bytes_received_done == TOTAL_BYTES)
+    oio_close(handle);
 
   free(buf.base);
 }
@@ -89,7 +91,6 @@ static void write_cb(oio_req* req, int status) {
 
 static void connect_cb(oio_req* req, int status) {
   oio_buf send_bufs[CHUNKS_PER_WRITE];
-  oio_buf receive_buf;
   oio_handle* handle;
   int i, j, r;
 
@@ -121,9 +122,6 @@ static void connect_cb(oio_req* req, int status) {
   req = (oio_req*)malloc(sizeof *req);
   ASSERT(req != NULL);
 
-  receive_buf.len = CHUNK_SIZE;
-  receive_buf.base = receive_buffer;
-
   oio_req_init(req, handle, read_cb);
   r = oio_read_start(handle, read_cb);
   ASSERT(r == 0);
@@ -148,10 +146,8 @@ TEST_IMPL(tcp_writealot) {
   ASSERT(connect_req != NULL);
 
   send_buffer = (char*)malloc(TOTAL_BYTES + 1);
-  receive_buffer = (char*)malloc(TOTAL_BYTES + 1);
 
   ASSERT(send_buffer != NULL);
-  ASSERT(receive_buffer != NULL);
 
   oio_init(alloc_cb);
 

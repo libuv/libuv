@@ -55,7 +55,9 @@ static void dummy_timeout_cb(oio_req *req, int64_t skew, int status) {
 
 
 static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+  oio_buf buf = {0, 0};
   FATAL("alloc should not be called");
+  return buf;
 }
 
 
