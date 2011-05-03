@@ -53,6 +53,7 @@ typedef struct {
   oio_accept_cb accept_cb; \
   int accepted_fd; \
   oio_req *connect_req; \
+  oio_req *shutdown_req; \
   ev_io read_watcher; \
   ev_io write_watcher; \
   ev_idle next_watcher; \

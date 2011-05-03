@@ -47,9 +47,11 @@ void oio_finish_close(oio_handle* handle);
 
 /* flags */
 enum {
-  OIO_CLOSING = 0x00000001,
-  OIO_CLOSED  = 0x00000002,
-  OIO_READING = 0x00000004,
+  OIO_CLOSING  = 0x00000001, /* oio_close() called but not finished. */
+  OIO_CLOSED   = 0x00000002, /* close(2) finished. */
+  OIO_READING  = 0x00000004, /* oio_read_start() called. */
+  OIO_SHUTTING = 0x00000008, /* oio_shutdown() called but not complete. */
+  OIO_SHUT     = 0x00000010, /* Write side closed. */
 };
 
 
@@ -471,13 +473,10 @@ void oio__write(oio_handle* handle) {
         handle->write_queue_size -= n;
         n = 0;
 
-        assert(buf->base > 0x100);
-
         /* There is more to write. Break and ensure the watcher is pending. */
         break;
 
       } else {
-        assert(buf->base > 0x100);
         /* Finished writing the buf at index req->write_index. */
         req->write_index++;
 
@@ -501,11 +500,32 @@ void oio__write(oio_handle* handle) {
             cb(req, 0);
           }
 
-          if (ngx_queue_empty(&handle->write_queue)) {
+          if (!ngx_queue_empty(&handle->write_queue)) {
+            assert(handle->write_queue_size > 0);
+          } else {
+            /* Write queue drained. */
             assert(handle->write_queue_size == 0);
             ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
-          } else {
-            assert(handle->write_queue_size > 0);
+
+            if (oio_flag_is_set(handle, OIO_SHUTTING) &&
+                !oio_flag_is_set(handle, OIO_CLOSING) &&
+                !oio_flag_is_set(handle, OIO_SHUT)) {
+              assert(handle->shutdown_req);
+
+              req = handle->shutdown_req;
+              oio_shutdown_cb cb = req->cb;
+
+              if (shutdown(handle->fd, SHUT_WR)) {
+                /* Error. Nothing we can do, close the handle. */
+                oio_err_new(req, errno);
+                oio_close(handle);
+                if (cb) cb(req, -1);
+              } else {
+                oio_err_new(handle, 0);
+                oio_flag_set(handle, OIO_SHUT);
+                if (cb) cb(req, 0);
+              }
+            }
           }
 
           return;
@@ -566,6 +586,25 @@ void oio__read(oio_handle* handle) {
       handle->read_cb(handle, nread, buf);
     }
   }
+}
+
+
+int oio_shutdown(oio_req* req) {
+  oio_handle* handle = req->handle;
+  assert(handle->fd >= 0);
+
+  if (oio_flag_is_set(handle, OIO_SHUT) ||
+      oio_flag_is_set(handle, OIO_CLOSED) ||
+      oio_flag_is_set(handle, OIO_CLOSING)) {
+    return -1;
+  }
+
+  handle->shutdown_req = req;
+  req->type = OIO_SHUTDOWN;
+
+  oio_flag_set(handle, OIO_SHUTTING);
+
+  return 0;
 }
 
 

@@ -35,6 +35,7 @@
 static char* send_buffer;
 
 
+static int shutdown_cb_called = 0;
 static int connect_cb_called = 0;
 static int write_cb_called = 0;
 static int close_cb_called = 0;
@@ -54,11 +55,26 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
+static void shutdown_cb(oio_req* req, int status) {
+  ASSERT(req);
+  ASSERT(status == 0);
+
+  /* Now we wait for the EOF */
+  shutdown_cb_called++;
+
+  /* We should have had all the writes called already. */
+  ASSERT(write_cb_called == WRITES);
+
+  free(req);
+}
+
+
 static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   ASSERT(handle != NULL);
 
   if (nread < 0) {
     ASSERT(oio_last_error().code == OIO_EOF);
+    printf("GOT EOF\n");
 
     if (buf.base) {
       free(buf.base);
@@ -69,10 +85,6 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   }
 
   bytes_received_done += nread;
-
-  /* TODO: fix this when we support sending EOF. */
-  if (bytes_received_done == TOTAL_BYTES)
-    oio_close(handle);
 
   free(buf.base);
 }
@@ -123,6 +135,13 @@ static void connect_cb(oio_req* req, int status) {
     ASSERT(r == 0);
   }
 
+  /* Shutdown on drain. FIXME: dealloc req? */
+  req = (oio_req*) malloc(sizeof(oio_req));
+  ASSERT(req != NULL);
+  oio_req_init(req, handle, shutdown_cb);
+  r = oio_shutdown(req);
+  ASSERT(r == 0);
+
   /* Start reading */
   req = (oio_req*)malloc(sizeof *req);
   ASSERT(req != NULL);
@@ -165,6 +184,7 @@ TEST_IMPL(tcp_writealot) {
 
   oio_run();
 
+  ASSERT(shutdown_cb_called == 1);
   ASSERT(connect_cb_called == 1);
   ASSERT(write_cb_called == WRITES);
   ASSERT(close_cb_called == 1);

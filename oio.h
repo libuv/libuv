@@ -52,6 +52,7 @@ typedef oio_buf (*oio_alloc_cb)(oio_handle* handle, size_t suggested_size);
 typedef void (*oio_read_cb)(oio_handle *handle, int nread, oio_buf buf);
 typedef void (*oio_write_cb)(oio_req* req, int status);
 typedef void (*oio_connect_cb)(oio_req* req, int status);
+typedef void (*oio_shutdown_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
 typedef void (*oio_close_cb)(oio_handle* handle, int status);
 typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
