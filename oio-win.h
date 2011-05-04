@@ -59,13 +59,19 @@ typedef struct oio_buf {
     SOCKET socket;                        \
     HANDLE handle;                        \
   };                                      \
-  union {                                 \
-    void *read_cb;                        \
-    void *accept_cb;                      \
-  };                                      \
   struct oio_req_s read_accept_req;       \
-  char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];  \
-  SOCKET accept_socket;                   \
+  union {                                 \
+    struct {                              \
+      char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];  \
+      void *accept_cb;                    \
+      SOCKET accept_socket;               \
+    };                                    \
+    struct {                              \
+      unsigned int write_reqs_pending;    \
+      void* read_cb;                      \
+      oio_req* shutdown_req;              \
+    };                                    \
+  };                                      \
   unsigned int flags;                     \
   unsigned int reqs_pending;              \
   oio_err error;

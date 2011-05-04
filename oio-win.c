@@ -119,12 +119,16 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 /*
  * Private oio_handle flags
  */
-#define OIO_HANDLE_CLOSING          0x01
-#define OIO_HANDLE_CLOSED           0x02
-#define OIO_HANDLE_BOUND            0x04
-#define OIO_HANDLE_READING          0x08
-#define OIO_HANDLE_LISTENING        0x10
-#define OIO_HANDLE_BIND_ERROR       0x20
+#define OIO_HANDLE_CLOSING          0x0001
+#define OIO_HANDLE_CLOSED           0x0002
+#define OIO_HANDLE_BOUND            0x0004
+#define OIO_HANDLE_LISTENING        0x0008
+#define OIO_HANDLE_CONNECTION       0x0010
+#define OIO_HANDLE_CONNECTED        0x0020
+#define OIO_HANDLE_READING          0x0040
+#define OIO_HANDLE_EOF              0x0080
+#define OIO_HANDLE_SHUT             0x0100
+#define OIO_HANDLE_BIND_ERROR       0x1000
 
 /*
  * Private oio_req flags.
@@ -416,6 +420,12 @@ static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
 }
 
 
+static void oio_tcp_init_connection(oio_handle* handle) {
+  handle->flags |= OIO_HANDLE_CONNECTION;
+  handle->write_reqs_pending = 0;
+}
+
+
 int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
     void* data) {
   SOCKET sock;
@@ -668,6 +678,8 @@ int oio_accept(oio_handle* server, oio_handle* client,
     rv = -1;
   }
 
+  oio_tcp_init_connection(client);
+
   server->accept_socket = INVALID_SOCKET;
 
   if (!(server->flags & OIO_HANDLE_CLOSING)) {
@@ -679,10 +691,18 @@ int oio_accept(oio_handle* server, oio_handle* client,
 
 
 int oio_read_start(oio_handle* handle, oio_read_cb cb) {
-  if (handle->flags & OIO_HANDLE_LISTENING ||
-      handle->flags & OIO_HANDLE_READING) {
-    /* Already listening. */
+  if (!(handle->flags & OIO_HANDLE_CONNECTION)) {
+    oio_set_sys_error(WSAEINVAL);
+    return -1;
+  }
+
+  if (handle->flags & OIO_HANDLE_READING) {
     oio_set_sys_error(WSAEALREADY);
+    return -1;
+  }
+
+  if (handle->flags & OIO_HANDLE_EOF) {
+    oio_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
 
@@ -762,6 +782,16 @@ int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
 
   assert(!(req->flags & OIO_REQ_PENDING));
 
+  if (!(req->handle->flags & OIO_HANDLE_CONNECTION)) {
+    oio_set_sys_error(WSAEINVAL);
+    return -1;
+  }
+
+  if (req->handle->flags & OIO_HANDLE_SHUT) {
+    oio_set_sys_error(WSAESHUTDOWN);
+    return -1;
+  }
+
   memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = OIO_WRITE;
 
@@ -779,6 +809,44 @@ int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
 
   req->flags |= OIO_REQ_PENDING;
   handle->reqs_pending++;
+  handle->write_reqs_pending++;
+
+  return 0;
+}
+
+
+int oio_shutdown(oio_req* req) {
+  oio_handle* handle = req->handle;
+  int status = 0;
+
+  if (!(req->handle->flags & OIO_HANDLE_CONNECTION)) {
+    oio_fatal_error(WSAEINVAL, "aaa");
+    oio_set_sys_error(WSAEINVAL);
+    return -1;
+  }
+
+  if (handle->flags & OIO_HANDLE_SHUT) {
+    oio_fatal_error(WSAESHUTDOWN, "bbb");
+    oio_set_sys_error(WSAESHUTDOWN);
+    return -1;
+  }
+
+  handle->flags |= OIO_HANDLE_SHUT;
+
+  if (handle->write_reqs_pending == 0) {
+    if (shutdown(handle->socket, SD_SEND) == SOCKET_ERROR) {
+      oio_set_sys_error(WSAGetLastError());
+      status = -1;
+    }
+    if (handle->flags & OIO_HANDLE_EOF) {
+      oio_close_error(handle, status == 0 ? oio_ok_ : oio_last_error_);
+    }
+    if (req->cb) {
+      ((oio_shutdown_cb)req->cb)(req, status);
+    }
+  } else {
+    handle->shutdown_req = req;
+  }
 
   return 0;
 }
@@ -844,6 +912,7 @@ static void oio_poll() {
   DWORD flags;
   DWORD err;
   int64_t delta;
+  int status;
 
   /* Call all pending close callbacks. */
   /* TODO: ugly, fixme. */
@@ -907,6 +976,24 @@ static void oio_poll() {
         if (req->cb) {
           ((oio_write_cb)req->cb)(req, success ? 0 : -1);
         }
+
+        handle->write_reqs_pending--;
+
+        if (success &&
+            handle->write_reqs_pending == 0
+            && handle->flags & OIO_HANDLE_SHUT) {
+          status = 0;
+          if (shutdown(handle->socket, SD_SEND) == SOCKET_ERROR) {
+            oio_set_sys_error(WSAGetLastError());
+            status = -1;
+          }
+          if (handle->flags & OIO_HANDLE_EOF) {
+            oio_close_error(handle, status == 0 ? oio_ok_ : oio_last_error_);
+          }
+          if (handle->shutdown_req->cb) {
+            ((oio_shutdown_cb)handle->shutdown_req->cb)(handle->shutdown_req, status);
+          }
+        }
         break;
 
       case OIO_READ:
@@ -936,9 +1023,15 @@ static void oio_poll() {
             } else {
               /* Connection closed */
               handle->flags &= ~OIO_HANDLE_READING;
+              handle->flags |= OIO_HANDLE_EOF;
               oio_last_error_.code = OIO_EOF;
               oio_last_error_.sys_errno_ = ERROR_SUCCESS;
               ((oio_read_cb)handle->read_cb)(handle, -1, buf);
+              if ((handle->flags & OIO_HANDLE_SHUT) &&
+                  handle->write_reqs_pending == 0) {
+                oio_close(handle);
+              }
+              break;
             }
           } else {
             err = WSAGetLastError();
@@ -955,6 +1048,7 @@ static void oio_poll() {
         }
         /* Post another 0-read if still reading and not closing */
         if (!(handle->flags & OIO_HANDLE_CLOSING) &&
+            !(handle->flags & OIO_HANDLE_EOF) &&
             handle->flags & OIO_HANDLE_READING) {
           oio_queue_read(handle);
         }
@@ -995,6 +1089,7 @@ static void oio_poll() {
                            SO_UPDATE_CONNECT_CONTEXT,
                            NULL,
                            0) == 0) {
+              oio_tcp_init_connection(handle);
               ((oio_connect_cb)req->cb)(req, 0);
             } else {
               oio_set_sys_error(WSAGetLastError());
