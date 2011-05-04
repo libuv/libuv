@@ -561,6 +561,10 @@ void oio__read(oio_handle* handle) {
       oio_err_new_artificial(handle, OIO_EOF);
       ev_io_stop(EV_DEFAULT_UC_ &handle->read_watcher);
       handle->read_cb(handle, -1, buf);
+
+      if (oio_flag_is_set(handle, OIO_SHUT)) {
+        oio_close(handle);
+      }
       return;
     } else {
       /* Successful read */

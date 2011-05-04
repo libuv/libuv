@@ -201,6 +201,7 @@ BENCHMARK_IMPL(ping_pongs) {
   pinger_new();
   oio_run();
 
+  printf("completed_pingers %d\n", completed_pingers);
   ASSERT(completed_pingers == 1);
 
   return 0;

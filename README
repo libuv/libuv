@@ -2,6 +2,17 @@ This is the new networking layer for Node. Its purpose is to abstract
 IOCP on windows and libev on Unix systems. We intend to eventually contain
 all platform differences in this library.
 
-
 http://nodejs.org/
+
+== Design
+
+The goal of this library is to provide high-concurrency high-performance I/O
+on all operating systems. This is a large undertaking. Some of the API
+decisions may seem arbitrary but are actually borne out of various specific
+platform issues.
+
+=== oio_read_start(), oio_read_stop()
+
+Originally we wanted to provide a asynchronous read function that was
+similar to 
 
