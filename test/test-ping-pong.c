@@ -129,7 +129,7 @@ void pinger_on_connect(oio_req *req, int status) {
   ASSERT(status == 0);
 
   pinger_write_ping(pinger);
-  
+
   oio_read_start(req->handle, pinger_read_cb);
 }
 

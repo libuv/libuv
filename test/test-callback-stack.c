@@ -28,45 +28,159 @@
 #include "task.h"
 
 
+const char MESSAGE[] = "Failure is for the weak. Everyone dies alone.";
+
+oio_handle client;
+oio_req connect_req, write_req, timeout_req, shutdown_req;
+
 int nested = 0;
 int close_cb_called = 0;
+int connect_cb_called = 0;
+int write_cb_called = 0;
+int timeout_cb_called = 0;
+int bytes_received = 0;
+int shutdown_cb_called = 0;
 
 
-void close_cb(oio_handle *handle, int status) {
+void close_cb(oio_handle* handle, int status) {
   ASSERT(status == 0);
-  ASSERT(nested == 0 && "oio_close_cb must be called from a fresh stack");
+  ASSERT(nested == 0 && "close_cb must be called from a fresh stack");
+
   close_cb_called++;
 }
 
 
+void shutdown_cb(oio_req* req, int status) {
+  ASSERT(status == 0);
+  ASSERT(nested == 0 && "shutdown_cb must be called from a fresh stack");
+
+  shutdown_cb_called++;
+}
+
+
+void read_cb(oio_handle* handle, int nread, oio_buf buf) {
+  ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
+
+  if (nread == -1) {
+    ASSERT(oio_last_error().code == OIO_EOF);
+
+    nested++;
+    if (oio_close(handle)) {
+      FATAL("oio_close failed");
+    }
+    nested--;
+
+    return;
+  }
+
+  bytes_received += nread;
+  free(buf.base);
+
+  /* We call shutdown here because when bytes_received == sizeof MESSAGE */
+  /* there will be no more data sent nor received, so here it would be */
+  /* possible for a backend to to call shutdown_cb immediately and *not* */
+  /* from a fresh stack. */
+  if (bytes_received == sizeof MESSAGE) {
+    nested++;
+    oio_req_init(&shutdown_req, handle, shutdown_cb);
+    if (oio_shutdown(&shutdown_req)) {
+      FATAL("oio_shutdown failed");
+    }
+    nested--;
+  }
+}
+
+
+void timeout_cb(oio_req* req, int64_t skew, int status) {
+  ASSERT(status == 0);
+  ASSERT(nested == 0 && "timeout_cb must be called from a fresh stack");
+
+  nested++;
+  if (oio_read_start(&client, read_cb)) {
+    FATAL("oio_read_start failed");
+  }
+  nested--;
+
+  timeout_cb_called++;
+}
+
+
+void write_cb(oio_req* req, int status) {
+  ASSERT(status == 0);
+  ASSERT(nested == 0 && "write_cb must be called from a fresh stack");
+
+  /* After the data has been sent, we're going to wait for a while, then */
+  /* start reading. This makes us certain that the message has been echoed */
+  /* back to our receive buffer when we start reading. This maximizes the */
+  /* tempation for the backend to use dirty stack for calling read_cb. */
+  nested++;
+  oio_req_init(&timeout_req, NULL, timeout_cb);
+  if (oio_timeout(&timeout_req, 500)) {
+    FATAL("oio_timeout failed");
+  }
+  nested--;
+
+  write_cb_called++;
+}
+
+
+void connect_cb(oio_req* req, int status) {
+  oio_buf buf;
+
+  ASSERT(status == 0);
+  ASSERT(nested == 0 && "connect_cb must be called from a fresh stack");
+
+  nested++;
+
+  buf.base = (char*) &MESSAGE;
+  buf.len = sizeof MESSAGE;
+
+  oio_req_init(&write_req, req->handle, write_cb);
+
+  if (oio_write(&write_req, &buf, 1)) {
+    FATAL("oio_write failed");
+  }
+
+  nested--;
+
+  connect_cb_called++;
+}
+
+
 static oio_buf alloc_cb(oio_handle* handle, size_t size) {
-  oio_buf buf = {0, 0};
-  FATAL("alloc should not be called");
+  oio_buf buf;
+  buf.len = size;
+  buf.base = (char*) malloc(size);
+  ASSERT(buf.base);
   return buf;
 }
 
 
-TEST_IMPL(close_cb_stack) {
-  oio_handle handle;
+TEST_IMPL(callback_stack) {
+  struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
 
   oio_init(alloc_cb);
 
-  if (oio_tcp_init(&handle, &close_cb, NULL)) {
+  if (oio_tcp_init(&client, &close_cb, NULL)) {
     FATAL("oio_tcp_init failed");
   }
 
   nested++;
-
-  if (oio_close(&handle)) {
-    FATAL("oio_close failed");
+  oio_req_init(&connect_req, &client, connect_cb);
+  if (oio_connect(&connect_req, (struct sockaddr*) &addr)) {
+    FATAL("oio_connect failed");
   }
-
   nested--;
 
   oio_run();
 
   ASSERT(nested == 0);
-  ASSERT(close_cb_called == 1 && "oio_close_cb must be called exactly once");
+  ASSERT(connect_cb_called == 1 && "connect_cb must be called exactly once");
+  ASSERT(write_cb_called == 1 && "write_cb must be called exactly once");
+  ASSERT(timeout_cb_called == 1 && "timeout_cb must be called exactly once");
+  ASSERT(bytes_received == sizeof MESSAGE);
+  ASSERT(shutdown_cb_called == 1 && "shutdown_cb must be called exactly once");
+  ASSERT(close_cb_called == 1 && "close_cb must be called exactly once");
 
   return 0;
 }

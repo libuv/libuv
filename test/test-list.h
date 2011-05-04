@@ -28,7 +28,7 @@ TEST_DECLARE   (bind_error_addrnotavail_2)
 TEST_DECLARE   (bind_error_fault)
 TEST_DECLARE   (bind_error_inval)
 TEST_DECLARE   (connection_fail)
-TEST_DECLARE   (close_cb_stack)
+TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (timeout)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
@@ -55,7 +55,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (connection_fail)
 
-  TEST_ENTRY  (close_cb_stack)
+  TEST_ENTRY  (callback_stack)
+  TEST_HELPER (callback_stack, echo_server)
 
   TEST_ENTRY  (timeout)
 
