@@ -41,9 +41,9 @@ typedef struct {
 #define oio_req_private_fields \
   int write_index; \
   ev_timer timer; \
-  ngx_queue_t read_reqs; \
-  oio_buf* read_bufs; \
-  int read_bufcnt;
+  ngx_queue_t queue; \
+  oio_buf* bufs; \
+  int bufcnt;
 
 
 #define oio_handle_private_fields \
@@ -58,8 +58,7 @@ typedef struct {
   ev_io write_watcher; \
   ev_idle next_watcher; \
   ngx_queue_t write_queue; \
-  size_t write_queue_size; \
-  ngx_queue_t read_reqs;
+  size_t write_queue_size;
 
 
 #endif /* OIO_UNIX_H */

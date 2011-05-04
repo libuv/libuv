@@ -162,8 +162,6 @@ int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
   handle->accepted_fd = -1;
   handle->fd = -1;
 
-  ngx_queue_init(&handle->read_reqs);
-
   ngx_queue_init(&handle->write_queue);
   handle->write_queue_size = 0;
 
@@ -232,9 +230,6 @@ int oio_tcp_open(oio_handle* handle, int fd) {
   /* Reuse the port address. */
   r = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
   assert(r == 0);
-
-  /* Initialize the queue structure for oio_read() requests. */
-  ngx_queue_init(&handle->read_reqs);
 
   /* Associate the fd with each ev_io watcher. */
   ev_io_set(&handle->read_watcher, fd, EV_READ);
@@ -363,23 +358,6 @@ void oio_finish_close(oio_handle* handle) {
 }
 
 
-oio_req* oio_read_reqs_head(oio_handle* handle) {
-  if (ngx_queue_empty(&handle->read_reqs)) {
-    return NULL;
-  }
-
-  ngx_queue_t* q = ngx_queue_head(&handle->read_reqs);
-  if (!q) {
-    return NULL;
-  }
-
-  oio_req* req = ngx_queue_data(q, struct oio_req_s, read_reqs);
-  assert(req);
-
-  return req;
-}
-
-
 oio_req* oio_write_queue_head(oio_handle* handle) {
   if (ngx_queue_empty(&handle->write_queue)) {
     return NULL;
@@ -390,15 +368,10 @@ oio_req* oio_write_queue_head(oio_handle* handle) {
     return NULL;
   }
 
-  oio_req* req = ngx_queue_data(q, struct oio_req_s, read_reqs);
+  oio_req* req = ngx_queue_data(q, struct oio_req_s, queue);
   assert(req);
 
   return req;
-}
-
-
-int oio_read_reqs_empty(oio_handle* handle) {
-  return ngx_queue_empty(&(handle->read_reqs));
 }
 
 
@@ -420,7 +393,7 @@ void oio__write(oio_handle* handle) {
 
   /* TODO: should probably while(1) here until EAGAIN */
 
-  /* Get the request at the head of the read_reqs queue. */
+  /* Get the request at the head of the queue. */
   oio_req* req = oio_write_queue_head(handle);
   if (!req) {
     /* This probably shouldn't happen. Maybe assert(0) here. */
@@ -434,8 +407,8 @@ void oio__write(oio_handle* handle) {
    * because Windows's WSABUF is not an iovec.
    */
   assert(sizeof(oio_buf) == sizeof(struct iovec));
-  struct iovec* iov = (struct iovec*) &(req->read_bufs[req->write_index]);
-  int iovcnt = req->read_bufcnt - req->write_index;
+  struct iovec* iov = (struct iovec*) &(req->bufs[req->write_index]);
+  int iovcnt = req->bufcnt - req->write_index;
 
   /* Now do the actual writev. Note that we've been updating the pointers
    * inside the iov each time we write. So there is no need to offset it.
@@ -462,10 +435,10 @@ void oio__write(oio_handle* handle) {
 
     /* The loop updates the counters. */
     while (n > 0) {
-      oio_buf* buf = &(req->read_bufs[req->write_index]);
+      oio_buf* buf = &(req->bufs[req->write_index]);
       size_t len = buf->len;
 
-      assert(req->write_index < req->read_bufcnt);
+      assert(req->write_index < req->bufcnt);
 
       if (n < len) {
         buf->base += n;
@@ -486,14 +459,14 @@ void oio__write(oio_handle* handle) {
         assert(handle->write_queue_size >= len);
         handle->write_queue_size -= len;
 
-        if (req->write_index == req->read_bufcnt) {
+        if (req->write_index == req->bufcnt) {
           /* Then we're done! */
           assert(n == 0);
 
           /* Pop the req off handle->write_queue. */
-          ngx_queue_remove(&req->read_reqs);
-          free(req->read_bufs); /* FIXME: we should not be allocing for each read */
-          req->read_bufs = NULL;
+          ngx_queue_remove(&req->queue);
+          free(req->bufs); /* FIXME: we should not be allocing for each read */
+          req->bufs = NULL;
 
           /* NOTE: call callback AFTER freeing the request data. */
           if (cb) {
@@ -517,7 +490,7 @@ void oio__write(oio_handle* handle) {
 
               if (shutdown(handle->fd, SHUT_WR)) {
                 /* Error. Nothing we can do, close the handle. */
-                oio_err_new(req, errno);
+                oio_err_new(handle, errno);
                 oio_close(handle);
                 if (cb) cb(req, -1);
               } else {
@@ -692,7 +665,7 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
   }
 
   req->type = OIO_CONNECT;
-  ngx_queue_init(&req->read_reqs);
+  ngx_queue_init(&req->queue);
 
   if (handle->connect_req) {
     oio_err_new(handle, EALREADY);
@@ -740,23 +713,18 @@ int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
   oio_handle* handle = req->handle;
   assert(handle->fd >= 0);
 
-  ngx_queue_init(&req->read_reqs);
+  ngx_queue_init(&req->queue);
   req->type = OIO_WRITE;
 
-  /* TODO rename:
-   * req->read_reqs   to req->queue
-   * req->read_bufs   to req->bufs
-   * req->read_bufcnt to req->bufcnt
-   */
-  req->read_bufs = malloc(sizeof(oio_buf) * bufcnt);
-  memcpy(req->read_bufs, bufs, bufcnt * sizeof(oio_buf));
-  req->read_bufcnt = bufcnt;
+  req->bufs = malloc(sizeof(oio_buf) * bufcnt);
+  memcpy(req->bufs, bufs, bufcnt * sizeof(oio_buf));
+  req->bufcnt = bufcnt;
 
   req->write_index = 0;
   handle->write_queue_size += oio__buf_count(bufs, bufcnt);
 
   /* Append the request to write_queue. */
-  ngx_queue_insert_tail(&handle->write_queue, &req->read_reqs);
+  ngx_queue_insert_tail(&handle->write_queue, &req->queue);
 
   assert(!ngx_queue_empty(&handle->write_queue));
   assert(handle->write_watcher.cb == oio__tcp_io);
@@ -846,5 +814,5 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
   req->type = OIO_UNKNOWN_REQ;
   req->cb = cb;
   req->handle = handle;
-  ngx_queue_init(&req->read_reqs);
+  ngx_queue_init(&req->queue);
 }
