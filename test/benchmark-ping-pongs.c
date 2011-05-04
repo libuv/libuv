@@ -26,16 +26,8 @@
 #include <stdio.h>
 #include <string.h> /* strlen */
 
-static int completed_pingers = 0;
-static int64_t start_time;
-
 /* Run the benchmark for this many ms */
 #define TIME 1000
-
-/* 64 bytes is enough for a pinger */
-#define BUFSIZE 1024
-
-static char PING[] = "PING\n";
 
 
 typedef struct {
@@ -43,15 +35,50 @@ typedef struct {
   int state;
   oio_handle handle;
   oio_req connect_req;
-  oio_req read_req;
-  oio_buf buf;
-  char read_buffer[BUFSIZE];
+  oio_req shutdown_req;
 } pinger_t;
 
-void pinger_try_read(pinger_t* pinger);
+typedef struct buf_s {
+  oio_buf oio_buf;
+  struct buf_s* next;
+} buf_t;
 
 
-void pinger_on_close(oio_handle* handle, int status) {
+static char PING[] = "PING\n";
+
+buf_t* buf_freelist = NULL;
+
+static int completed_pingers = 0;
+static int64_t start_time;
+
+
+oio_buf buf_alloc(oio_handle* handle, size_t size) {
+  buf_t* ab;
+
+  ab = buf_freelist;
+
+  if (ab != NULL) {
+    buf_freelist = ab->next;
+    return ab->oio_buf;
+  }
+
+  ab = (buf_t*) malloc(size + sizeof *ab);
+  ab->oio_buf.len = size;
+  ab->oio_buf.base = ((char*) ab) + sizeof *ab;
+
+  return ab->oio_buf;
+}
+
+
+void buf_free(oio_buf oio_buf) {
+  buf_t* ab = (buf_t*) (oio_buf.base - sizeof *ab);
+
+  ab->next = buf_freelist;
+  buf_freelist = ab;
+}
+
+
+void pinger_close_cb(oio_handle* handle, int status) {
   pinger_t* pinger;
 
   ASSERT(status == 0);
@@ -65,7 +92,7 @@ void pinger_on_close(oio_handle* handle, int status) {
 }
 
 
-void pinger_after_write(oio_req *req, int status) {
+void pinger_write_cb(oio_req *req, int status) {
   ASSERT(status == 0);
 
   free(req);
@@ -80,7 +107,7 @@ static void pinger_write_ping(pinger_t* pinger) {
   buf.len = strlen(PING);
 
   req = (oio_req*)malloc(sizeof(*req));
-  oio_req_init(req, &pinger->handle, pinger_after_write);
+  oio_req_init(req, &pinger->handle, pinger_write_cb);
 
   if (oio_write(req, &buf, 1)) {
     FATAL("oio_write failed");
@@ -88,28 +115,37 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_after_read(oio_req* req, size_t nread, int status) {
+static void pinger_shutdown_cb(oio_handle* handle, int status) {
+  ASSERT(status == 0);
+}
+
+
+static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
   unsigned int i;
   pinger_t* pinger;
 
-  ASSERT(status == 0);
+  pinger = (pinger_t*)handle->data;
 
-  pinger = (pinger_t*)req->handle->data;
+  if (nread < 0) {
+    ASSERT(oio_last_error().code == OIO_EOF);
 
-  if (nread == 0) {
-    puts("got EOF");
-    oio_close(&pinger->handle);
+    if (buf.base) {
+      buf_free(buf);
+    }
+
     return;
   }
 
   /* Now we count the pings */
   for (i = 0; i < nread; i++) {
-    ASSERT(pinger->buf.base[i] == PING[pinger->state]);
+    ASSERT(buf.base[i] == PING[pinger->state]);
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
       pinger->pongs++;
       if (oio_now() - start_time > TIME) {
-        oio_close(&pinger->handle);
+        oio_req_init(&pinger->shutdown_req, handle, pinger_shutdown_cb);
+        oio_shutdown(&pinger->shutdown_req);
+        break;
         return;
       } else {
         pinger_write_ping(pinger);
@@ -117,23 +153,20 @@ static void pinger_after_read(oio_req* req, size_t nread, int status) {
     }
   }
 
-  pinger_try_read(pinger);
+  buf_free(buf);
 }
 
 
-void pinger_try_read(pinger_t* pinger) {
-  oio_req_init(&pinger->read_req, &pinger->handle, pinger_after_read);
-  oio_read(&pinger->read_req, &pinger->buf, 1);
-}
-
-
-void pinger_on_connect(oio_req *req, int status) {
+void pinger_connect_cb(oio_req *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(status == 0);
 
-  pinger_try_read(pinger);
   pinger_write_ping(pinger);
+
+  if (oio_read_start(req->handle, pinger_read_cb)) {
+    FATAL("oio_read_start failed");
+  }
 }
 
 
@@ -146,16 +179,14 @@ void pinger_new() {
   pinger = (pinger_t*)malloc(sizeof(*pinger));
   pinger->state = 0;
   pinger->pongs = 0;
-  pinger->buf.len = BUFSIZE;
-  pinger->buf.base = (char*)&pinger->read_buffer;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = oio_tcp_init(&pinger->handle, pinger_on_close, (void*)pinger);
+  r = oio_tcp_init(&pinger->handle, pinger_close_cb, (void*)pinger);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  oio_req_init(&pinger->connect_req, &pinger->handle, pinger_on_connect);
+  oio_req_init(&pinger->connect_req, &pinger->handle, pinger_connect_cb);
 
   oio_bind(&pinger->handle, (struct sockaddr*)&client_addr);
   r = oio_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
@@ -164,7 +195,7 @@ void pinger_new() {
 
 
 BENCHMARK_IMPL(ping_pongs) {
-  oio_init();
+  oio_init(buf_alloc);
   start_time = oio_now();
 
   pinger_new();
