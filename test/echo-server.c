@@ -57,8 +57,14 @@ void after_write(oio_req* req, int status) {
 }
 
 
+void after_shutdown(oio_req* req, int status) {
+  free(req);
+}
+
+
 void after_read(oio_handle* handle, int nread, oio_buf buf) {
   write_req_t *wr;
+  oio_req* req;
 
   if (nread < 0) {
     /* Error or EOF */
@@ -68,7 +74,10 @@ void after_read(oio_handle* handle, int nread, oio_buf buf) {
       free(buf.base);
     }
 
-    oio_close(handle);
+    req = (oio_req*) malloc(sizeof *req);
+    oio_req_init(req, handle, after_shutdown);
+    oio_shutdown(req);
+
     return;
   }
 
