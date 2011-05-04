@@ -127,7 +127,9 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 #define OIO_HANDLE_CONNECTED        0x0020
 #define OIO_HANDLE_READING          0x0040
 #define OIO_HANDLE_EOF              0x0080
-#define OIO_HANDLE_SHUT             0x0100
+#define OIO_HANDLE_SHUTTING         0x0100
+#define OIO_HANDLE_SHUT             0x0200
+#define OIO_HANDLE_ENDGAME_QUEUED   0x0400
 #define OIO_HANDLE_BIND_ERROR       0x1000
 
 /*
@@ -147,7 +149,7 @@ static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
 
 
 /* Head of a single-linked list of closed handles */
-static oio_handle* oio_closed_handles_ = NULL;
+static oio_handle* oio_endgame_handles_ = NULL;
 
 
 /* The current time according to the event loop. in msecs. */
@@ -445,13 +447,84 @@ int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
 }
 
 
-static void oio_close_ready(oio_handle* handle) {
-  assert(handle->flags & OIO_HANDLE_CLOSING);
-  assert(!(handle->flags & OIO_HANDLE_CLOSED));
-  assert(handle->reqs_pending == 0);
+static void oio_tcp_endgame(oio_handle* handle) {
+  oio_err err;
+  int status;
 
-  handle->closed_next = oio_closed_handles_;
-  oio_closed_handles_ = handle;
+  if (handle->flags & OIO_HANDLE_SHUTTING &&
+      !(handle->flags & OIO_HANDLE_SHUT) &&
+      handle->write_reqs_pending == 0) {
+
+    if (shutdown(handle->socket, SD_SEND) != SOCKET_ERROR) {
+      status = 0;
+      handle->flags |= OIO_HANDLE_SHUT;
+    } else {
+      status = -1;
+      err = oio_new_sys_error(WSAGetLastError());
+    }
+    if (handle->shutdown_req->cb) {
+      handle->shutdown_req->flags &= ~OIO_REQ_PENDING;
+      if (status == -1) {
+        oio_last_error_ = err;
+      }
+      ((oio_shutdown_cb)handle->shutdown_req->cb)(handle->shutdown_req, status);
+    }
+    handle->reqs_pending--;
+  }
+
+  if (handle->flags & OIO_HANDLE_EOF &&
+      handle->flags & OIO_HANDLE_SHUT &&
+      !(handle->flags & OIO_HANDLE_CLOSING)) {
+    /* Because oio_close will add the handle to the endgame_handles list, */
+    /* return here and call the close cb the next time. */
+    oio_close(handle);
+    return;
+  }
+
+  if (handle->flags & OIO_HANDLE_CLOSING &&
+      !(handle->flags & OIO_HANDLE_CLOSED) &&
+      handle->reqs_pending == 0) {
+    handle->flags |= OIO_HANDLE_CLOSED;
+
+    if (handle->close_cb) {
+      oio_last_error_ = handle->error;
+      handle->close_cb(handle, handle->error.code == OIO_OK ? 0 : 1);
+    }
+
+    oio_refs_--;
+  }
+}
+
+
+static void oio_call_endgames() {
+  oio_handle* handle;
+
+  while (oio_endgame_handles_) {
+    handle = oio_endgame_handles_;
+    oio_endgame_handles_ = handle->endgame_next;
+
+    handle->flags &= ~OIO_HANDLE_ENDGAME_QUEUED;
+
+    switch (handle->type) {
+      case OIO_TCP:
+        oio_tcp_endgame(handle);
+        break;
+
+      default:
+        assert(0);
+        break;
+    }
+  }
+}
+
+
+static void oio_want_endgame(oio_handle* handle) {
+  if (!(handle->flags & OIO_HANDLE_ENDGAME_QUEUED)) {
+    handle->flags |= OIO_HANDLE_ENDGAME_QUEUED;
+
+    handle->endgame_next = oio_endgame_handles_;
+    oio_endgame_handles_ = handle;
+  }
 }
 
 
@@ -466,13 +539,7 @@ static int oio_close_error(oio_handle* handle, oio_err e) {
     case OIO_TCP:
       closesocket(handle->socket);
       handle->flags |= OIO_HANDLE_CLOSING;
-
-      /* If there are no pending requests for this handle, enqueue the close */
-      /* callback immediately. Otherwise oio_poll will do it after the last */
-      /* request returns. */
-      if (handle->reqs_pending == 0) {
-        oio_close_ready(handle);
-      }
+      oio_want_endgame(handle);
       return 0;
 
     default:
@@ -485,28 +552,6 @@ static int oio_close_error(oio_handle* handle, oio_err e) {
 
 int oio_close(oio_handle* handle) {
   return oio_close_error(handle, oio_ok_);
-}
-
-
-static void oio_call_close_cbs() {
-  oio_handle* handle;
-
-  while (oio_closed_handles_) {
-    handle = oio_closed_handles_;
-    oio_closed_handles_ = handle->closed_next;
-
-    assert(handle->flags & OIO_HANDLE_CLOSING);
-    assert(!(handle->flags & OIO_HANDLE_CLOSED));
-    assert(handle->reqs_pending == 0);
-
-    handle->flags |= OIO_HANDLE_CLOSED;
-    oio_refs_--;
-
-    if (handle->close_cb) {
-      oio_last_error_ = handle->error;
-      handle->close_cb(handle, handle->error.code == OIO_OK ? 0 : 1);
-    }
-  }
 }
 
 
@@ -711,7 +756,7 @@ int oio_read_start(oio_handle* handle, oio_read_cb cb) {
 
   /* If reading was stopped and then started again, there could stell be a */
   /* read request pending. */
-  if (!handle->read_accept_req.flags & OIO_REQ_PENDING)
+  if (!(handle->read_accept_req.flags & OIO_REQ_PENDING))
     oio_queue_read(handle);
 
   return 0;
@@ -787,7 +832,7 @@ int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
     return -1;
   }
 
-  if (req->handle->flags & OIO_HANDLE_SHUT) {
+  if (req->handle->flags & OIO_HANDLE_SHUTTING) {
     oio_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
@@ -824,27 +869,19 @@ int oio_shutdown(oio_req* req) {
     return -1;
   }
 
-  if (handle->flags & OIO_HANDLE_SHUT) {
+  if (handle->flags & OIO_HANDLE_SHUTTING) {
     oio_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
 
-  handle->flags |= OIO_HANDLE_SHUT;
+  req->type = OIO_SHUTDOWN;
+  req->flags |= OIO_REQ_PENDING;
 
-  if (handle->write_reqs_pending == 0) {
-    if (shutdown(handle->socket, SD_SEND) == SOCKET_ERROR) {
-      oio_set_sys_error(WSAGetLastError());
-      status = -1;
-    }
-    if (handle->flags & OIO_HANDLE_EOF) {
-      oio_close_error(handle, status == 0 ? oio_ok_ : oio_last_error_);
-    }
-    if (req->cb) {
-      ((oio_shutdown_cb)req->cb)(req, status);
-    }
-  } else {
+  handle->flags |= OIO_HANDLE_SHUTTING;
     handle->shutdown_req = req;
-  }
+  handle->reqs_pending++;
+
+  oio_want_endgame(handle);
 
   return 0;
 }
@@ -914,7 +951,7 @@ static void oio_poll() {
 
   /* Call all pending close callbacks. */
   /* TODO: ugly, fixme. */
-  oio_call_close_cbs();
+  oio_call_endgames();
   if (oio_refs_ == 0)
     return;
 
@@ -974,23 +1011,11 @@ static void oio_poll() {
         if (req->cb) {
           ((oio_write_cb)req->cb)(req, success ? 0 : -1);
         }
-
         handle->write_reqs_pending--;
-
         if (success &&
-            handle->write_reqs_pending == 0
-            && handle->flags & OIO_HANDLE_SHUT) {
-          status = 0;
-          if (shutdown(handle->socket, SD_SEND) == SOCKET_ERROR) {
-            oio_set_sys_error(WSAGetLastError());
-            status = -1;
-          }
-          if (handle->flags & OIO_HANDLE_EOF) {
-            oio_close_error(handle, status == 0 ? oio_ok_ : oio_last_error_);
-          }
-          if (handle->shutdown_req->cb) {
-            ((oio_shutdown_cb)handle->shutdown_req->cb)(handle->shutdown_req, status);
-          }
+            handle->write_reqs_pending == 0 &&
+            handle->flags & OIO_HANDLE_SHUTTING) {
+          oio_want_endgame(handle);
         }
         break;
 
@@ -1025,10 +1050,7 @@ static void oio_poll() {
               oio_last_error_.code = OIO_EOF;
               oio_last_error_.sys_errno_ = ERROR_SUCCESS;
               ((oio_read_cb)handle->read_cb)(handle, -1, buf);
-              if ((handle->flags & OIO_HANDLE_SHUT) &&
-                  handle->write_reqs_pending == 0) {
-                oio_close(handle);
-              }
+              oio_want_endgame(handle);
               break;
             }
           } else {
@@ -1108,7 +1130,7 @@ static void oio_poll() {
     /* more pending requests. */
     if (handle->flags & OIO_HANDLE_CLOSING &&
         handle->reqs_pending == 0) {
-      oio_close_ready(handle);
+      oio_want_endgame(handle);
     }
   } /* if (overlapped) */
 }
