@@ -250,6 +250,7 @@ static oio_err_code oio_translate_sys_error(int sys_errno) {
     case ERROR_ADDRESS_ALREADY_ASSOCIATED:  return OIO_EADDRINUSE;
     case WSAEADDRINUSE:                     return OIO_EADDRINUSE;
     case WSAEADDRNOTAVAIL:                  return OIO_EADDRNOTAVAIL;
+    case WSAEWOULDBLOCK:                    return OIO_EAGAIN;
     case WSAEALREADY:                       return OIO_EALREADY;
     case ERROR_CONNECTION_REFUSED:          return OIO_ECONNREFUSED;
     case WSAECONNREFUSED:                   return OIO_ECONNREFUSED;
@@ -1057,6 +1058,7 @@ static void oio_poll() {
             err = WSAGetLastError();
             if (err == WSAEWOULDBLOCK) {
               /* 0-byte read */
+              oio_set_sys_error(WSAEWOULDBLOCK);
               ((oio_read_cb)handle->read_cb)(handle, 0, buf);
             } else {
               /* Ouch! serious error. */
