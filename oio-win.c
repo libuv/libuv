@@ -820,13 +820,11 @@ int oio_shutdown(oio_req* req) {
   int status = 0;
 
   if (!(req->handle->flags & OIO_HANDLE_CONNECTION)) {
-    oio_fatal_error(WSAEINVAL, "aaa");
     oio_set_sys_error(WSAEINVAL);
     return -1;
   }
 
   if (handle->flags & OIO_HANDLE_SHUT) {
-    oio_fatal_error(WSAESHUTDOWN, "bbb");
     oio_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
