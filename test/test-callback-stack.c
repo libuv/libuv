@@ -61,7 +61,14 @@ void shutdown_cb(oio_req* req, int status) {
 void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
-  if (nread == -1) {
+  printf("Read. nread == %d\n", nread);
+  free(buf.base);
+
+  if (nread == 0) {
+    ASSERT(oio_last_error().code == OIO_EAGAIN);
+    return;
+
+  } else if (nread == -1) {
     ASSERT(oio_last_error().code == OIO_EOF);
 
     nested++;
@@ -74,7 +81,6 @@ void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   }
 
   bytes_received += nread;
-  free(buf.base);
 
   /* We call shutdown here because when bytes_received == sizeof MESSAGE */
   /* there will be no more data sent nor received, so here it would be */
@@ -83,6 +89,9 @@ void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   if (bytes_received == sizeof MESSAGE) {
     nested++;
     oio_req_init(&shutdown_req, handle, shutdown_cb);
+
+    puts("Shutdown");
+
     if (oio_shutdown(&shutdown_req)) {
       FATAL("oio_shutdown failed");
     }
@@ -94,6 +103,8 @@ void read_cb(oio_handle* handle, int nread, oio_buf buf) {
 void timeout_cb(oio_req* req, int64_t skew, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "timeout_cb must be called from a fresh stack");
+
+  puts("Timeout complete. Now read data...");
 
   nested++;
   if (oio_read_start(&client, read_cb)) {
@@ -108,6 +119,8 @@ void timeout_cb(oio_req* req, int64_t skew, int status) {
 void write_cb(oio_req* req, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "write_cb must be called from a fresh stack");
+
+  puts("Data written. 500ms timeout...");
 
   /* After the data has been sent, we're going to wait for a while, then */
   /* start reading. This makes us certain that the message has been echoed */
@@ -126,6 +139,8 @@ void write_cb(oio_req* req, int status) {
 
 void connect_cb(oio_req* req, int status) {
   oio_buf buf;
+
+  puts("Connected. Write some data to echo server...");
 
   ASSERT(status == 0);
   ASSERT(nested == 0 && "connect_cb must be called from a fresh stack");
@@ -164,6 +179,8 @@ TEST_IMPL(callback_stack) {
   if (oio_tcp_init(&client, &close_cb, NULL)) {
     FATAL("oio_tcp_init failed");
   }
+
+  puts("Connecting...");
 
   nested++;
   oio_req_init(&connect_req, &client, connect_cb);

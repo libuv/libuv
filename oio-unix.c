@@ -388,6 +388,35 @@ void oio__next(EV_P_ ev_idle* watcher, int revents) {
 }
 
 
+static void oio__drain(oio_handle* handle) {
+  assert(!oio_write_queue_head(handle));
+  assert(handle->write_queue_size == 0);
+
+  ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
+
+  /* Shutdown? */
+  if (oio_flag_is_set(handle, OIO_SHUTTING) &&
+      !oio_flag_is_set(handle, OIO_CLOSING) &&
+      !oio_flag_is_set(handle, OIO_SHUT)) {
+    assert(handle->shutdown_req);
+
+    oio_req* req = handle->shutdown_req;
+    oio_shutdown_cb cb = req->cb;
+
+    if (shutdown(handle->fd, SHUT_WR)) {
+      /* Error. Nothing we can do, close the handle. */
+      oio_err_new(handle, errno);
+      oio_close(handle);
+      if (cb) cb(req, -1);
+    } else {
+      oio_err_new(handle, 0);
+      oio_flag_set(handle, OIO_SHUT);
+      if (cb) cb(req, 0);
+    }
+  }
+}
+
+
 void oio__write(oio_handle* handle) {
   assert(handle->fd >= 0);
 
@@ -396,8 +425,8 @@ void oio__write(oio_handle* handle) {
   /* Get the request at the head of the queue. */
   oio_req* req = oio_write_queue_head(handle);
   if (!req) {
-    /* This probably shouldn't happen. Maybe assert(0) here. */
-    ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
+    assert(handle->write_queue_size == 0);
+    oio__drain(handle);
     return;
   }
 
@@ -477,28 +506,7 @@ void oio__write(oio_handle* handle) {
             assert(handle->write_queue_size > 0);
           } else {
             /* Write queue drained. */
-            assert(handle->write_queue_size == 0);
-            ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
-
-            if (oio_flag_is_set(handle, OIO_SHUTTING) &&
-                !oio_flag_is_set(handle, OIO_CLOSING) &&
-                !oio_flag_is_set(handle, OIO_SHUT)) {
-              assert(handle->shutdown_req);
-
-              req = handle->shutdown_req;
-              oio_shutdown_cb cb = req->cb;
-
-              if (shutdown(handle->fd, SHUT_WR)) {
-                /* Error. Nothing we can do, close the handle. */
-                oio_err_new(handle, errno);
-                oio_close(handle);
-                if (cb) cb(req, -1);
-              } else {
-                oio_err_new(handle, 0);
-                oio_flag_set(handle, OIO_SHUT);
-                if (cb) cb(req, 0);
-              }
-            }
+            oio__drain(handle);
           }
 
           return;
@@ -576,6 +584,8 @@ int oio_shutdown(oio_req* req) {
   req->type = OIO_SHUTDOWN;
 
   oio_flag_set(handle, OIO_SHUTTING);
+
+  ev_io_start(EV_DEFAULT_UC_ &handle->write_watcher);
 
   return 0;
 }
