@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     }
 
     rewind_cursor();
-    log_progress(total, passed, failed, "Done.");
+    log_progress(total, passed, failed, "Done.\n");
 
     return 0;
   }
