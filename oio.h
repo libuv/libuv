@@ -56,7 +56,7 @@ typedef void (*oio_shutdown_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
 typedef void (*oio_close_cb)(oio_handle* handle, int status);
 typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
-typedef void (*oio_loop_cb)(oio_req* req, int status);
+typedef void (*oio_loop_cb)(oio_handle* handle, int status);
 
 
 /* Expand this list if necessary. */
@@ -163,6 +163,11 @@ char* oio_strerror(oio_err err);
 void oio_init(oio_alloc_cb alloc);
 int oio_run();
 
+/* Manually modify the event loop's reference count. Useful if the user wants */
+/* to have a handle or timeout that doesn't keep the loop alive. */
+void oio_ref();
+void oio_unref();
+
 void oio_update_time();
 int64_t oio_now();
 
@@ -211,13 +216,13 @@ int oio_timeout(oio_req* req, int64_t timeout);
 
 /* Every active prepare handle gets its callback called exactly once per loop */
 /* iteration, just before the system blocks to wait for completed i/o. */
-int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb);
+int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb, void* data);
 int oio_prepare_start(oio_handle* handle, oio_loop_cb cb);
 int oio_prepare_stop(oio_handle* handle);
 
 /* Every active check handle gets its callback called exactly once per loop */
 /* iteration, just after the system returns from blocking. */
-int oio_check_init(oio_handle* handle, oio_close_cb close_cb);
+int oio_check_init(oio_handle* handle, oio_close_cb close_cb, void* data);
 int oio_check_start(oio_handle* handle, oio_loop_cb cb);
 int oio_check_stop(oio_handle* handle);
 
@@ -225,7 +230,7 @@ int oio_check_stop(oio_handle* handle);
 /* stopped. This happens after all other types of callbacks are processed. */
 /* When there are multiple "idle" handles active, their callbacks are called */
 /* in turn. */
-int oio_idle_init(oio_handle* handle, oio_close_cb close_cb);
+int oio_idle_init(oio_handle* handle, oio_close_cb close_cb, void* data);
 int oio_idle_start(oio_handle* handle, oio_loop_cb cb);
 int oio_idle_stop(oio_handle* handle);
 
