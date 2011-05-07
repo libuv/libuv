@@ -482,8 +482,8 @@ static void oio_tcp_endgame(oio_handle* handle) {
   }
 
   if (handle->flags & OIO_HANDLE_CLOSING &&
-      !(handle->flags & OIO_HANDLE_CLOSED) &&
       handle->reqs_pending == 0) {
+    assert(!(handle->flags & OIO_HANDLE_CLOSED));
     handle->flags |= OIO_HANDLE_CLOSED;
 
     if (handle->close_cb) {
@@ -644,7 +644,7 @@ static void oio_queue_accept(oio_handle* handle) {
 }
 
 
-void oio_queue_read(oio_handle* handle) {
+static void oio_queue_read(oio_handle* handle) {
   oio_req *req;
   oio_buf buf;
   int result;
@@ -948,7 +948,6 @@ static void oio_poll() {
   DWORD flags;
   DWORD err;
   int64_t delta;
-  int status;
 
   /* Call all pending close callbacks. */
   /* TODO: ugly, fixme. */
