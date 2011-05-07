@@ -56,6 +56,7 @@ typedef void (*oio_shutdown_cb)(oio_req* req, int status);
 typedef void (*oio_accept_cb)(oio_handle* handle);
 typedef void (*oio_close_cb)(oio_handle* handle, int status);
 typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
+typedef void (*oio_loop_cb)(oio_req* req, int status);
 
 
 /* Expand this list if necessary. */
@@ -103,6 +104,9 @@ typedef enum {
   OIO_NAMED_PIPE,
   OIO_TTY,
   OIO_FILE,
+  OIO_PREPARE,
+  OIO_CHECK,
+  OIO_IDLE
 } oio_handle_type;
 
 typedef enum {
@@ -204,6 +208,26 @@ int oio_write(oio_req* req, oio_buf* bufs, int bufcnt);
 
 /* Timer methods */
 int oio_timeout(oio_req* req, int64_t timeout);
+
+/* Every active prepare handle gets its callback called exactly once per loop */
+/* iteration, just before the system blocks to wait for completed i/o. */
+int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb);
+int oio_prepare_start(oio_handle* handle, oio_loop_cb cb);
+int oio_prepare_stop(oio_handle* handle);
+
+/* Every active check handle gets its callback called exactly once per loop */
+/* iteration, just before the system blocks to wait for completed i/o. */
+int oio_check_init(oio_handle* handle, oio_close_cb close_cb);
+int oio_check_start(oio_handle* handle, oio_loop_cb cb);
+int oio_check_stop(oio_handle* handle);
+
+/* Every active idle handle gets its callback called repeatedly until it is */
+/* stopped. This happens after all other types of callbacks are processed. */
+/* When there are multiple "idle" handles active, their callbacks are called */
+/* in turn. */
+int oio_idle_init(oio_handle* handle, oio_close_cb close_cb);
+int oio_idle_start(oio_handle* handle, oio_loop_cb cb);
+int oio_idle_stop(oio_handle* handle);
 
 /* Request handle to be closed. close_cb will be called
  * asynchronously after this call.
