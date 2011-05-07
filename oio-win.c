@@ -1145,3 +1145,13 @@ int oio_run() {
   assert(oio_refs_ == 0);
   return 0;
 }
+
+
+void oio_ref() {
+  oio_refs_++;
+}
+
+
+void oio_unref() {
+  oio_refs_--;
+}
