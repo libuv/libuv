@@ -393,8 +393,6 @@ static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
   handle->error = oio_ok_;
   handle->accept_socket = INVALID_SOCKET;
 
-  oio_req_init(&(handle->read_accept_req), handle, NULL);
-
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
     oio_set_sys_error(WSAGetLastError());
@@ -426,6 +424,7 @@ static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
 static void oio_tcp_init_connection(oio_handle* handle) {
   handle->flags |= OIO_HANDLE_CONNECTION;
   handle->write_reqs_pending = 0;
+  oio_req_init(&(handle->read_req), handle, NULL);
 }
 
 
@@ -614,7 +613,7 @@ static void oio_queue_accept(oio_handle* handle) {
   }
 
   /* Prepare the oio_req and OVERLAPPED structures. */
-  req = &handle->read_accept_req;
+  req = &handle->accept_req;
   assert(!(req->flags & OIO_REQ_PENDING));
   req->type = OIO_ACCEPT;
   req->flags |= OIO_REQ_PENDING;
@@ -653,7 +652,7 @@ void oio_queue_read(oio_handle* handle) {
 
   assert(handle->flags & OIO_HANDLE_READING);
 
-  req = &handle->read_accept_req;
+  req = &handle->read_req;
   assert(!(req->flags & OIO_REQ_PENDING));
   memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = OIO_READ;
@@ -703,6 +702,7 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
   handle->flags |= OIO_HANDLE_LISTENING;
   handle->accept_cb = cb;
 
+  oio_req_init(&(handle->accept_req), handle, NULL);
   oio_queue_accept(handle);
 
   return 0;
@@ -757,7 +757,7 @@ int oio_read_start(oio_handle* handle, oio_read_cb cb) {
 
   /* If reading was stopped and then started again, there could stell be a */
   /* read request pending. */
-  if (!(handle->read_accept_req.flags & OIO_REQ_PENDING))
+  if (!(handle->read_req.flags & OIO_REQ_PENDING))
     oio_queue_read(handle);
 
   return 0;

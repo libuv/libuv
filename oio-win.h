@@ -53,25 +53,33 @@ typedef struct oio_buf {
   };                                      \
   int flags;
 
-#define oio_handle_private_fields         \
-  oio_handle* endgame_next;               \
+#define oio_tcp_connection_fields         \
+  void* read_cb;                          \
+  struct oio_req_s read_req;              \
+  unsigned int write_reqs_pending;        \
+  oio_req* shutdown_req;
+
+#define oio_tcp_server_fields             \
+  void *accept_cb;                        \
+  SOCKET accept_socket;                   \
+  struct oio_req_s accept_req;            \
+  char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];
+
+#define oio_tcp_fields                    \
+  unsigned int reqs_pending;              \
   union {                                 \
     SOCKET socket;                        \
     HANDLE handle;                        \
   };                                      \
-  struct oio_req_s read_accept_req;       \
   union {                                 \
-    struct {                              \
-      char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];  \
-      void *accept_cb;                    \
-      SOCKET accept_socket;               \
-    };                                    \
-    struct {                              \
-      unsigned int write_reqs_pending;    \
-      void* read_cb;                      \
-      oio_req* shutdown_req;              \
-    };                                    \
-  };                                      \
+    struct { oio_tcp_connection_fields }; \
+    struct { oio_tcp_server_fields     }; \
+  };
+
+#define oio_handle_private_fields         \
+  oio_handle* endgame_next;               \
   unsigned int flags;                     \
-  unsigned int reqs_pending;              \
-  oio_err error;
+  oio_err error;                          \
+  union {                                 \
+    struct { oio_tcp_fields  };           \
+  };
