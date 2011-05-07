@@ -126,6 +126,7 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 #define OIO_HANDLE_CONNECTION       0x0010
 #define OIO_HANDLE_CONNECTED        0x0020
 #define OIO_HANDLE_READING          0x0040
+#define OIO_HANDLE_ACTIVE           0x0040
 #define OIO_HANDLE_EOF              0x0080
 #define OIO_HANDLE_SHUTTING         0x0100
 #define OIO_HANDLE_SHUT             0x0200
@@ -146,6 +147,17 @@ RB_PROTOTYPE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
 
 /* The head of the timers tree */
 static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
+
+
+/* Lists of active oio_prepare / oio_check / oio_idle watchers */
+static oio_handle* oio_prepare_handles_ = NULL;
+static oio_handle* oio_check_handles_ = NULL;
+static oio_handle* oio_idle_handles_ = NULL;
+
+/* This pointer will refer to the prepare/check/idle handle whose callback */
+/* is scheduled to be called next. This is needed to allow safe removal */
+/* from one of the lists above while that list being iterated. */
+static oio_handle* oio_next_loop_handle_ = NULL;
 
 
 /* Head of a single-linked list of closed handles */
@@ -496,6 +508,20 @@ static void oio_tcp_endgame(oio_handle* handle) {
 }
 
 
+static void oio_loop_endgame(oio_handle* handle) {
+  if (handle->flags & OIO_HANDLE_CLOSING) {
+    assert(!(handle->flags & OIO_HANDLE_CLOSED));
+    handle->flags |= OIO_HANDLE_CLOSED;
+
+    if (handle->close_cb) {
+      handle->close_cb(handle, 0);
+    }
+
+    oio_refs_--;
+  }
+}
+
+
 static void oio_call_endgames() {
   oio_handle* handle;
 
@@ -508,6 +534,12 @@ static void oio_call_endgames() {
     switch (handle->type) {
       case OIO_TCP:
         oio_tcp_endgame(handle);
+        break;
+
+      case OIO_PREPARE:
+      case OIO_CHECK:
+      case OIO_IDLE:
+        oio_loop_endgame(handle);
         break;
 
       default:
@@ -539,6 +571,21 @@ static int oio_close_error(oio_handle* handle, oio_err e) {
     case OIO_TCP:
       closesocket(handle->socket);
       handle->flags |= OIO_HANDLE_CLOSING;
+      oio_want_endgame(handle);
+      return 0;
+
+    case OIO_PREPARE:
+      oio_prepare_stop(handle);
+      oio_want_endgame(handle);
+      return 0;
+
+    case OIO_CHECK:
+      oio_check_stop(handle);
+      oio_want_endgame(handle);
+      return 0;
+
+    case OIO_IDLE:
+      oio_idle_stop(handle);
       oio_want_endgame(handle);
       return 0;
 
@@ -936,6 +983,137 @@ int64_t oio_now() {
 }
 
 
+int oio_loop_init(oio_handle* handle, oio_close_cb cb, void* data) {
+  handle->data = data;
+  handle->flags = 0;
+  handle->error = oio_ok_;
+
+  oio_refs_++;
+
+  return 0;
+}
+
+
+static int oio_loop_start(oio_handle* handle, oio_loop_cb loop_cb,
+    oio_handle** list) {
+  oio_handle* old_head;
+
+  if (handle->flags & OIO_HANDLE_ACTIVE)
+    return 0;
+
+  old_head = *list;
+
+  handle->loop_next = old_head;
+  handle->loop_prev = NULL;
+
+  if (old_head) {
+    old_head->loop_prev = handle;
+  }
+
+  *list = handle;
+
+  handle->loop_cb = loop_cb;
+  handle->flags |= OIO_HANDLE_ACTIVE;
+
+  return 0;
+}
+
+
+static int oio_loop_stop(oio_handle* handle, oio_handle** list) {
+  if (!(handle->flags & OIO_HANDLE_ACTIVE))
+    return 0;
+
+  /* Update loop head if needed */
+  if (*list == handle) {
+    *list = handle->loop_next;
+  }
+
+  /* Update the iterator-next pointer of needed */
+  if (oio_next_loop_handle_ == handle) {
+    oio_next_loop_handle_ = handle->loop_next;
+  }
+
+  if (handle->loop_prev) {
+    handle->loop_prev->loop_next = handle->loop_next;
+  }
+  if (handle->loop_next) {
+    handle->loop_next->loop_prev = handle->loop_prev;
+  }
+
+  handle->flags &= ~OIO_HANDLE_ACTIVE;
+
+  return 0;
+}
+
+
+static void oio_loop_invoke(oio_handle* list) {
+  oio_handle *handle;
+
+  oio_next_loop_handle_ = list;
+
+  while (oio_next_loop_handle_ != NULL) {
+    handle = oio_next_loop_handle_;
+    oio_next_loop_handle_ = handle->loop_next;
+
+    ((oio_loop_cb)handle->loop_cb)(handle, 0);
+  }
+}
+
+
+int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  handle->type = OIO_PREPARE;
+  return oio_loop_init(handle, close_cb, data);
+}
+
+
+int oio_check_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  handle->type = OIO_CHECK;
+  return oio_loop_init(handle, close_cb, data);
+}
+
+
+int oio_idle_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  handle->type = OIO_IDLE;
+  return oio_loop_init(handle, close_cb, data);
+}
+
+
+int oio_prepare_start(oio_handle* handle, oio_loop_cb loop_cb) {
+  assert(handle->type == OIO_PREPARE);
+  return oio_loop_start(handle, loop_cb, &oio_prepare_handles_);
+}
+
+
+int oio_check_start(oio_handle* handle, oio_loop_cb loop_cb) {
+  assert(handle->type == OIO_CHECK);
+  return oio_loop_start(handle, loop_cb, &oio_check_handles_);
+}
+
+
+int oio_idle_start(oio_handle* handle, oio_loop_cb loop_cb) {
+  assert(handle->type == OIO_IDLE);
+  return oio_loop_start(handle, loop_cb, &oio_idle_handles_);
+}
+
+
+int oio_prepare_stop(oio_handle* handle) {
+  assert(handle->type == OIO_PREPARE);
+  return oio_loop_stop(handle, &oio_prepare_handles_);
+}
+
+
+int oio_check_stop(oio_handle* handle) {
+  assert(handle->type == OIO_CHECK);
+  return oio_loop_stop(handle, &oio_check_handles_);
+}
+
+
+int oio_idle_stop(oio_handle* handle) {
+  assert(handle->type == OIO_IDLE);
+  return oio_loop_stop(handle, &oio_idle_handles_);
+}
+
+
 static void oio_poll() {
   BOOL success;
   DWORD bytes;
@@ -954,6 +1132,8 @@ static void oio_poll() {
   oio_call_endgames();
   if (oio_refs_ == 0)
     return;
+
+  oio_loop_invoke(oio_prepare_handles_);
 
   oio_update_time();
 
@@ -982,8 +1162,12 @@ static void oio_poll() {
                                       &overlapped,
                                       timeout);
 
-  /* Call timer callbacks */
   oio_update_time();
+
+  /* Call check callbacks */
+  oio_loop_invoke(oio_check_handles_);
+
+  /* Call timer callbacks */
   for (req = RB_MIN(oio_timer_s, &oio_timers_);
        req != NULL && req->due <= oio_now_;
        req = RB_MIN(oio_timer_s, &oio_timers_)) {
@@ -1134,6 +1318,12 @@ static void oio_poll() {
       oio_want_endgame(handle);
     }
   } /* if (overlapped) */
+
+  /* Call idle callbacks */
+  while (oio_idle_handles_) {
+    oio_loop_invoke(oio_idle_handles_);
+    oio_call_endgames();
+  }
 }
 
 

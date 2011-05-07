@@ -76,10 +76,16 @@ typedef struct oio_buf {
     struct { oio_tcp_server_fields     }; \
   };
 
+#define oio_loop_fields                   \
+  oio_handle* loop_prev;                  \
+  oio_handle* loop_next;                  \
+  void* loop_cb;
+
 #define oio_handle_private_fields         \
   oio_handle* endgame_next;               \
   unsigned int flags;                     \
   oio_err error;                          \
   union {                                 \
     struct { oio_tcp_fields  };           \
+    struct { oio_loop_fields };           \
   };
