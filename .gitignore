@@ -19,7 +19,6 @@ ev/libtool
 ev/stamp-h1
 ev/autom4te.cache
 /ipch/
-/Win32/
-/x64/
+/build
 test/run-tests
 test/run-benchmarks
