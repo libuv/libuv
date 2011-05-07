@@ -216,7 +216,7 @@ int oio_prepare_start(oio_handle* handle, oio_loop_cb cb);
 int oio_prepare_stop(oio_handle* handle);
 
 /* Every active check handle gets its callback called exactly once per loop */
-/* iteration, just before the system blocks to wait for completed i/o. */
+/* iteration, just after the system returns from blocking. */
 int oio_check_init(oio_handle* handle, oio_close_cb close_cb);
 int oio_check_start(oio_handle* handle, oio_loop_cb cb);
 int oio_check_stop(oio_handle* handle);
