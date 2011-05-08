@@ -213,8 +213,20 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
   }
 
   r = bind(handle->fd, addr, addrsize);
-  oio_err_new(handle, errno);
-  return r;
+
+  if (r) {
+    switch (errno) {
+      case EADDRINUSE:
+        handle->delayed_error = errno;
+        return 0;
+
+      default:
+        oio_err_new(handle, errno);
+        return -1;
+    }
+  }
+
+  return 0;
 }
 
 
@@ -316,6 +328,11 @@ int oio_accept(oio_handle* server, oio_handle* client,
 
 int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
   assert(handle->fd >= 0);
+
+  if (handle->delayed_error) {
+    oio_err_new(handle, handle->delayed_error);
+    return -1;
+  }
 
   int r = listen(handle->fd, backlog);
   if (r < 0) {
