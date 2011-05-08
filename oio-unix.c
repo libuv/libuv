@@ -848,3 +848,58 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
   req->handle = handle;
   ngx_queue_init(&req->queue);
 }
+
+
+int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  assert(0 && "implement me");
+}
+
+
+int oio_prepare_start(oio_handle* handle, oio_loop_cb cb) {
+  assert(0 && "implement me");
+}
+
+
+int oio_prepare_stop(oio_handle* handle) {
+  assert(0 && "implement me");
+}
+
+
+int oio_check_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  assert(0 && "implement me");
+}
+
+
+int oio_check_start(oio_handle* handle, oio_loop_cb cb) {
+  assert(0 && "implement me");
+}
+
+
+int oio_check_stop(oio_handle* handle) {
+  assert(0 && "implement me");
+}
+
+
+void oio_ref() {
+  assert(0 && "implement me");
+}
+
+
+void oio_unref() {
+  assert(0 && "implement me");
+}
+
+
+int oio_idle_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  assert(0 && "implement me");
+}
+
+
+int oio_idle_start(oio_handle* handle, oio_loop_cb cb) {
+  assert(0 && "implement me");
+}
+
+
+int oio_idle_stop(oio_handle* handle) {
+  assert(0 && "implement me");
+}
