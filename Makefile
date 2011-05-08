@@ -18,7 +18,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-name_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 ifneq (,$(findstring MINGW,$(uname_S)))
 include config-mingw.mk
@@ -30,11 +30,11 @@ all: oio.a test/run-tests test/run-benchmarks
 
 test/run-tests$(E): test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) oio.a
 	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-tests test/run-tests.c \
-		test/runner.c $(RUNNER_SRC) $(TESTS) oio.a
+		test/runner.c $(RUNNER_SRC) $(TESTS) oio.a $(RUNNER_LIBS)
 
 test/run-benchmarks$(E): test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
 	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
-		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
+		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a $(RUNNER_LIBS)
 
 test/echo.o: test/echo.c test/echo.h
 	$(CC) $(CFLAGS) -c test/echo.c -o test/echo.o
@@ -43,10 +43,10 @@ test/echo.o: test/echo.c test/echo.h
 .PHONY: clean clean-platform distclean distclean-platform test benchmark
 
 
-test: test/run-tests
+test: test/run-tests$(E)
 	test/run-tests
 
-bench: test/run-benchmarks
+bench: test/run-benchmarks$(E)
 	test/run-benchmarks
 
 clean: clean-platform

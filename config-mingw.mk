@@ -30,7 +30,8 @@ TESTS=test/echo-server.c test/test-*.c
 BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
-RUNNER_LINKFLAGS=$(LINKFLAGS) -lws2_32
+RUNNER_LINKFLAGS=$(LINKFLAGS)
+RUNNER_LIBS=-lws2_32
 RUNNER_SRC=test/runner-win.c
 
 oio.a: oio-win.o 
@@ -41,4 +42,3 @@ oio-win.o: oio-win.c oio.h oio-win.h
 
 distclean-platform:
 clean-platform:
-	;

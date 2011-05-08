@@ -28,6 +28,7 @@ BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
 RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
+RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
 oio.a: oio-unix.o ev/ev.o
