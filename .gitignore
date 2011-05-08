@@ -18,8 +18,8 @@ ev/config.status
 ev/libtool
 ev/stamp-h1
 ev/autom4te.cache
-/ipch/
-/build
+/msvs/ipch/
+/build/
 test/run-tests
 test/run-benchmarks
 test/run-benchmarks.dSYM/
