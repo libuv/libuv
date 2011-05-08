@@ -18,6 +18,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+# Use make -f Makefile.gcc PREFIX=i686-w64-mingw32-
+# for cross compilation
+CC = $(PREFIX)gcc
+AR = $(PREFIX)ar
+E=.exe
+
 CFLAGS=-g --std=gnu89
 LINKFLAGS=-lm
 TESTS=test/echo-server.c test/test-*.c
@@ -32,9 +38,6 @@ oio.a: oio-win.o
 
 oio-win.o: oio-win.c oio.h oio-win.h
 	$(CC) $(CFLAGS) -c oio-win.c -o oio-win.o
-
-clean:
-	$(RM) -f *.o *.a test/run-tests.exe test/run-benchmarks.exe
 
 distclean:
 	$(RM) -f *.o *.a

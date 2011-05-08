@@ -18,6 +18,9 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+CC = $(PREFIX)gcc
+AR = $(PREFIX)ar
+E=
 CFLAGS=--std=gnu89 -g
 LINKFLAGS=-lm
 TESTS=test/echo-server.c test/test-*.c
@@ -38,10 +41,6 @@ ev/ev.o: ev/config.h ev/ev.c
 
 ev/config.h:
 	cd ev && ./configure
-
-clean:
-	$(RM) -f *.o *.a test/run-tests test/run-benchmarks
-	$(MAKE) -C ev clean
 
 distclean:
 	$(RM) -f *.o *.a

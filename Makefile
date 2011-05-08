@@ -28,11 +28,11 @@ endif
 
 all: oio.a test/run-tests test/run-benchmarks
 
-test/run-tests: test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) oio.a
+test/run-tests$(E): test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) oio.a
 	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-tests test/run-tests.c \
 		test/runner.c $(RUNNER_SRC) $(TESTS) oio.a
 
-test/run-benchmarks: test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
+test/run-benchmarks$(E): test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
 	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
 		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
 
@@ -48,3 +48,6 @@ test: test/run-tests
 
 bench: test/run-benchmarks
 	test/run-benchmarks
+
+clean:
+	$(RM) -f *.o *.a test/run-tests$(E) test/run-benchmarks$(E)
