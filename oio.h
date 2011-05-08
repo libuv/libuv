@@ -209,7 +209,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
 int oio_read_start(oio_handle* handle, oio_read_cb cb);
 int oio_read_stop(oio_handle* handle);
 
-int oio_write(oio_req* req, oio_buf* bufs, int bufcnt);
+int oio_write(oio_req* req, oio_buf bufs[], int bufcnt);
 
 /* Timer methods */
 int oio_timeout(oio_req* req, int64_t timeout);

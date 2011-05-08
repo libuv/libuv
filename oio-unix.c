@@ -740,13 +740,14 @@ static size_t oio__buf_count(oio_buf bufs[], int bufcnt) {
 /* The buffers to be written must remain valid until the callback is called.
  * This is not required for the oio_buf array.
  */
-int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
+int oio_write(oio_req* req, oio_buf bufs[], int bufcnt) {
   oio_handle* handle = req->handle;
   assert(handle->fd >= 0);
 
   ngx_queue_init(&req->queue);
   req->type = OIO_WRITE;
 
+  /* TODO: Don't malloc for each write... */
   req->bufs = malloc(sizeof(oio_buf) * bufcnt);
   memcpy(req->bufs, bufs, bufcnt * sizeof(oio_buf));
   req->bufcnt = bufcnt;
