@@ -40,7 +40,7 @@ test/echo.o: test/echo.c test/echo.h
 	$(CC) $(CFLAGS) -c test/echo.c -o test/echo.o
 
 
-.PHONY: clean distclean test benchmark
+.PHONY: clean clean-platform distclean distclean-platform test benchmark
 
 
 test: test/run-tests
@@ -49,5 +49,8 @@ test: test/run-tests
 bench: test/run-benchmarks
 	test/run-benchmarks
 
-clean:
+clean: clean-platform
+	$(RM) -f *.o *.a test/run-tests$(E) test/run-benchmarks$(E)
+
+distclean: distclean-platform
 	$(RM) -f *.o *.a test/run-tests$(E) test/run-benchmarks$(E)

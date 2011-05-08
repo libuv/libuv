@@ -39,5 +39,6 @@ oio.a: oio-win.o
 oio-win.o: oio-win.c oio.h oio-win.h
 	$(CC) $(CFLAGS) -c oio-win.c -o oio-win.o
 
-distclean:
-	$(RM) -f *.o *.a
+distclean-platform:
+clean-platform:
+	;

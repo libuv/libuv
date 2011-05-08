@@ -42,6 +42,8 @@ ev/ev.o: ev/config.h ev/ev.c
 ev/config.h:
 	cd ev && ./configure
 
-distclean:
-	$(RM) -f *.o *.a
+clean-platform:
 	$(MAKE) -C ev clean
+
+distclean-platform:
+	$(MAKE) -C ev distclean
