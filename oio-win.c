@@ -566,27 +566,26 @@ static int oio_close_error(oio_handle* handle, oio_err e) {
   }
 
   handle->error = e;
+  handle->flags |= OIO_HANDLE_CLOSING;
 
+  oio_want_endgame(handle);
+
+  /* Handle-specific close actions */
   switch (handle->type) {
     case OIO_TCP:
       closesocket(handle->socket);
-      handle->flags |= OIO_HANDLE_CLOSING;
-      oio_want_endgame(handle);
       return 0;
 
     case OIO_PREPARE:
       oio_prepare_stop(handle);
-      oio_want_endgame(handle);
       return 0;
 
     case OIO_CHECK:
       oio_check_stop(handle);
-      oio_want_endgame(handle);
       return 0;
 
     case OIO_IDLE:
       oio_idle_stop(handle);
-      oio_want_endgame(handle);
       return 0;
 
     default:
@@ -983,7 +982,8 @@ int64_t oio_now() {
 }
 
 
-int oio_loop_init(oio_handle* handle, oio_close_cb cb, void* data) {
+int oio_loop_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+  handle->close_cb = (void*) close_cb;
   handle->data = data;
   handle->flags = 0;
   handle->error = oio_ok_;
