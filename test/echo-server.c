@@ -31,16 +31,16 @@ typedef struct {
 } write_req_t;
 
 
-oio_handle server;
+static oio_handle server;
 
 
-void after_write(oio_req* req, int status);
-void after_read(oio_handle* handle, int nread, oio_buf buf);
-void on_close(oio_handle* peer, int status);
-void on_accept(oio_handle* handle);
+static void after_write(oio_req* req, int status);
+static void after_read(oio_handle* handle, int nread, oio_buf buf);
+static void on_close(oio_handle* peer, int status);
+static void on_accept(oio_handle* handle);
 
 
-void after_write(oio_req* req, int status) {
+static void after_write(oio_req* req, int status) {
   write_req_t* wr;
 
   if (status) {
@@ -57,12 +57,12 @@ void after_write(oio_req* req, int status) {
 }
 
 
-void after_shutdown(oio_req* req, int status) {
+static void after_shutdown(oio_req* req, int status) {
   free(req);
 }
 
 
-void after_read(oio_handle* handle, int nread, oio_buf buf) {
+static void after_read(oio_handle* handle, int nread, oio_buf buf) {
   write_req_t *wr;
   oio_req* req;
 
@@ -98,14 +98,14 @@ void after_read(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-void on_close(oio_handle* peer, int status) {
+static void on_close(oio_handle* peer, int status) {
   if (status != 0) {
     fprintf(stdout, "Socket error\n");
   }
 }
 
 
-void on_accept(oio_handle* server) {
+static void on_accept(oio_handle* server) {
   oio_handle* handle = (oio_handle*) malloc(sizeof *handle);
 
   if (oio_accept(server, handle, on_close, NULL)) {
@@ -116,13 +116,13 @@ void on_accept(oio_handle* server) {
 }
 
 
-void on_server_close(oio_handle* handle, int status) {
+static void on_server_close(oio_handle* handle, int status) {
   ASSERT(handle == &server);
   ASSERT(status == 0);
 }
 
 
-int echo_start(int port) {
+static int echo_start(int port) {
   struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", port);
   int r;
 
@@ -151,12 +151,12 @@ int echo_start(int port) {
 }
 
 
-int echo_stop() {
+static int echo_stop() {
   return oio_close(&server);
 }
 
 
-oio_buf echo_alloc(oio_handle* handle, size_t suggested_size) {
+static oio_buf echo_alloc(oio_handle* handle, size_t suggested_size) {
   oio_buf buf;
   buf.base = (char*) malloc(suggested_size);
   buf.len = suggested_size;

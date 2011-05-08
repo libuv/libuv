@@ -48,7 +48,7 @@ typedef struct {
 void pinger_try_read(pinger_t* pinger);
 
 
-void pinger_on_close(oio_handle* handle, int status) {
+static void pinger_on_close(oio_handle* handle, int status) {
   pinger_t* pinger = (pinger_t*)handle->data;
 
   ASSERT(status == 0);
@@ -60,7 +60,7 @@ void pinger_on_close(oio_handle* handle, int status) {
 }
 
 
-void pinger_after_write(oio_req *req, int status) {
+static void pinger_after_write(oio_req *req, int status) {
   ASSERT(status == 0);
 
   free(req);
@@ -123,7 +123,7 @@ static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-void pinger_on_connect(oio_req *req, int status) {
+static void pinger_on_connect(oio_req *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(status == 0);
@@ -134,7 +134,7 @@ void pinger_on_connect(oio_req *req, int status) {
 }
 
 
-void pinger_new() {
+static void pinger_new() {
   int r;
   struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
   pinger_t *pinger;

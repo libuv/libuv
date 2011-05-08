@@ -28,21 +28,21 @@
 #include "task.h"
 
 
-const char MESSAGE[] = "Failure is for the weak. Everyone dies alone.";
+static const char MESSAGE[] = "Failure is for the weak. Everyone dies alone.";
 
-oio_handle client;
-oio_req connect_req, write_req, timeout_req, shutdown_req;
+static oio_handle client;
+static oio_req connect_req, write_req, timeout_req, shutdown_req;
 
-int nested = 0;
-int close_cb_called = 0;
-int connect_cb_called = 0;
-int write_cb_called = 0;
-int timeout_cb_called = 0;
-int bytes_received = 0;
-int shutdown_cb_called = 0;
+static int nested = 0;
+static int close_cb_called = 0;
+static int connect_cb_called = 0;
+static int write_cb_called = 0;
+static int timeout_cb_called = 0;
+static int bytes_received = 0;
+static int shutdown_cb_called = 0;
 
 
-void close_cb(oio_handle* handle, int status) {
+static void close_cb(oio_handle* handle, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "close_cb must be called from a fresh stack");
 
@@ -50,7 +50,7 @@ void close_cb(oio_handle* handle, int status) {
 }
 
 
-void shutdown_cb(oio_req* req, int status) {
+static void shutdown_cb(oio_req* req, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "shutdown_cb must be called from a fresh stack");
 
@@ -58,7 +58,7 @@ void shutdown_cb(oio_req* req, int status) {
 }
 
 
-void read_cb(oio_handle* handle, int nread, oio_buf buf) {
+static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
   printf("Read. nread == %d\n", nread);
@@ -100,7 +100,7 @@ void read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-void timeout_cb(oio_req* req, int64_t skew, int status) {
+static void timeout_cb(oio_req* req, int64_t skew, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "timeout_cb must be called from a fresh stack");
 
@@ -116,7 +116,7 @@ void timeout_cb(oio_req* req, int64_t skew, int status) {
 }
 
 
-void write_cb(oio_req* req, int status) {
+static void write_cb(oio_req* req, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "write_cb must be called from a fresh stack");
 
@@ -137,7 +137,7 @@ void write_cb(oio_req* req, int status) {
 }
 
 
-void connect_cb(oio_req* req, int status) {
+static void connect_cb(oio_req* req, int status) {
   oio_buf buf;
 
   puts("Connected. Write some data to echo server...");

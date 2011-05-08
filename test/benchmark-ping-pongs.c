@@ -46,13 +46,13 @@ typedef struct buf_s {
 
 static char PING[] = "PING\n";
 
-buf_t* buf_freelist = NULL;
+static buf_t* buf_freelist = NULL;
 
 static int completed_pingers = 0;
 static int64_t start_time;
 
 
-oio_buf buf_alloc(oio_handle* handle, size_t size) {
+static oio_buf buf_alloc(oio_handle* handle, size_t size) {
   buf_t* ab;
 
   ab = buf_freelist;
@@ -70,7 +70,7 @@ oio_buf buf_alloc(oio_handle* handle, size_t size) {
 }
 
 
-void buf_free(oio_buf oio_buf) {
+static void buf_free(oio_buf oio_buf) {
   buf_t* ab = (buf_t*) (oio_buf.base - sizeof *ab);
 
   ab->next = buf_freelist;
@@ -78,7 +78,7 @@ void buf_free(oio_buf oio_buf) {
 }
 
 
-void pinger_close_cb(oio_handle* handle, int status) {
+static void pinger_close_cb(oio_handle* handle, int status) {
   pinger_t* pinger;
 
   ASSERT(status == 0);
@@ -92,7 +92,7 @@ void pinger_close_cb(oio_handle* handle, int status) {
 }
 
 
-void pinger_write_cb(oio_req *req, int status) {
+static void pinger_write_cb(oio_req *req, int status) {
   ASSERT(status == 0);
 
   free(req);
@@ -157,7 +157,7 @@ static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-void pinger_connect_cb(oio_req *req, int status) {
+static void pinger_connect_cb(oio_req *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(status == 0);
@@ -170,7 +170,7 @@ void pinger_connect_cb(oio_req *req, int status) {
 }
 
 
-void pinger_new() {
+static void pinger_new() {
   int r;
   struct sockaddr_in client_addr = oio_ip4_addr("0.0.0.0", 0);
   struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
