@@ -151,8 +151,7 @@ struct oio_handle_s {
 };
 
 
-/**
- * Most functions return boolean: 0 for success and -1 for failure.
+/* Most functions return boolean: 0 for success and -1 for failure.
  * On error the user should then call oio_last_error() to determine
  * the error code.
  */
@@ -163,8 +162,9 @@ char* oio_strerror(oio_err err);
 void oio_init(oio_alloc_cb alloc);
 int oio_run();
 
-/* Manually modify the event loop's reference count. Useful if the user wants */
-/* to have a handle or timeout that doesn't keep the loop alive. */
+/* Manually modify the event loop's reference count. Useful if the user wants
+ * to have a handle or timeout that doesn't keep the loop alive.
+ */
 void oio_ref();
 void oio_unref();
 
@@ -198,14 +198,15 @@ int oio_accept(oio_handle_t* server, oio_handle_t* client,
     oio_close_cb close_cb, void* data);
 
 
-/* Read data from an incoming stream. The callback will be made several */
-/* several times until there is no more data to read or oio_read_stop is */
-/* called. When we've reached EOF nread will be set to -1 and the error is */
-/* set to OIO_EOF. When nread == -1 the buf parameter might not point to a */
-/* valid buffer; in that case buf.len and buf.base are both set to 0. */
-/* Note that nread might also be 0, which does *not* indicate an error or */
-/* eof; it happens when liboio requested a buffer through the alloc callback */
-/* but then decided that it didn't need that buffer. */
+/* Read data from an incoming stream. The callback will be made several
+ * several times until there is no more data to read or oio_read_stop is
+ * called. When we've reached EOF nread will be set to -1 and the error is
+ * set to OIO_EOF. When nread == -1 the buf parameter might not point to a
+ * valid buffer; in that case buf.len and buf.base are both set to 0.
+ * Note that nread might also be 0, which does *not* indicate an error or
+ * eof; it happens when liboio requested a buffer through the alloc callback
+ * but then decided that it didn't need that buffer.
+ */
 int oio_read_start(oio_handle_t* handle, oio_read_cb cb);
 int oio_read_stop(oio_handle_t* handle);
 
@@ -214,22 +215,25 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt);
 /* Timer methods */
 int oio_timeout(oio_req_t* req, int64_t timeout);
 
-/* Every active prepare handle gets its callback called exactly once per loop */
-/* iteration, just before the system blocks to wait for completed i/o. */
+/* Every active prepare handle gets its callback called exactly once per loop
+ * iteration, just before the system blocks to wait for completed i/o.
+ */
 int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_prepare_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_prepare_stop(oio_handle_t* handle);
 
-/* Every active check handle gets its callback called exactly once per loop */
-/* iteration, just after the system returns from blocking. */
+/* Every active check handle gets its callback called exactly once per loop
+ * iteration, just after the system returns from blocking.
+ */
 int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_check_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_check_stop(oio_handle_t* handle);
 
-/* Every active idle handle gets its callback called repeatedly until it is */
-/* stopped. This happens after all other types of callbacks are processed. */
-/* When there are multiple "idle" handles active, their callbacks are called */
-/* in turn. */
+/* Every active idle handle gets its callback called repeatedly until it is
+ * stopped. This happens after all other types of callbacks are processed.
+ * When there are multiple "idle" handles active, their callbacks are called
+ * in turn.
+ */
 int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_idle_stop(oio_handle_t* handle);
