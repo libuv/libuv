@@ -23,12 +23,12 @@
 #include "../oio.h"
 
 BENCHMARK_IMPL(size_handle) {
-  LOGF("%lu oio_handle\n", sizeof(oio_handle));
+  LOGF("%lu oio_handle_t\n", sizeof(oio_handle_t));
   return 0;
 }
 
 
 BENCHMARK_IMPL(size_req) {
-  LOGF("%lu oio_req\n", sizeof(oio_req));
+  LOGF("%lu oio_req_t\n", sizeof(oio_req_t));
   return 0;
 }

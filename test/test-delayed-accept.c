@@ -33,7 +33,7 @@ static int close_cb_called = 0;
 static int connect_cb_called = 0;
 
 
-static void close_cb(oio_handle* handle, int status) {
+static void close_cb(oio_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -43,16 +43,16 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static void do_accept(oio_req* req, int64_t skew, int status) {
-  oio_handle* server;
-  oio_handle* accepted_handle = (oio_handle*)malloc(sizeof *accepted_handle);
+static void do_accept(oio_req_t* req, int64_t skew, int status) {
+  oio_handle_t* server;
+  oio_handle_t* accepted_handle = (oio_handle_t*)malloc(sizeof *accepted_handle);
   int r;
 
   ASSERT(req != NULL);
   ASSERT(status == 0);
   ASSERT(accepted_handle != NULL);
 
-  server = (oio_handle*)req->data;
+  server = (oio_handle_t*)req->data;
   r = oio_accept(server, accepted_handle, close_cb, NULL);
   ASSERT(r == 0);
 
@@ -70,8 +70,8 @@ static void do_accept(oio_req* req, int64_t skew, int status) {
 }
 
 
-static void accept_cb(oio_handle* handle) {
-  oio_req* timeout_req = (oio_req*)malloc(sizeof *timeout_req);
+static void accept_cb(oio_handle_t* handle) {
+  oio_req_t* timeout_req = (oio_req_t*)malloc(sizeof *timeout_req);
 
   ASSERT(timeout_req != NULL);
 
@@ -86,7 +86,7 @@ static void accept_cb(oio_handle* handle) {
 
 static void start_server() {
   struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", TEST_PORT);
-  oio_handle* server = (oio_handle*)malloc(sizeof *server);
+  oio_handle_t* server = (oio_handle_t*)malloc(sizeof *server);
   int r;
 
   ASSERT(server != NULL);
@@ -102,7 +102,7 @@ static void start_server() {
 }
 
 
-static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
+static void read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
   /* The server will not send anything, it should close gracefully. */
   ASSERT(handle != NULL);
   ASSERT(nread == -1);
@@ -116,7 +116,7 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-static void connect_cb(oio_req* req, int status) {
+static void connect_cb(oio_req_t* req, int status) {
   int r;
 
   ASSERT(req != NULL);
@@ -135,8 +135,8 @@ static void connect_cb(oio_req* req, int status) {
 
 static void client_connect() {
   struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
-  oio_handle* client = (oio_handle*)malloc(sizeof *client);
-  oio_req* connect_req = (oio_req*)malloc(sizeof *connect_req);
+  oio_handle_t* client = (oio_handle_t*)malloc(sizeof *client);
+  oio_req_t* connect_req = (oio_req_t*)malloc(sizeof *connect_req);
   int r;
 
   ASSERT(client != NULL);
@@ -151,7 +151,7 @@ static void client_connect() {
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf;
   buf.base = (char*)malloc(size);
   buf.len = size;

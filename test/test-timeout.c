@@ -28,7 +28,7 @@ static int timeouts = 0;
 
 static int64_t start_time;
 
-static void timeout_cb(oio_req *req, int64_t skew, int status) {
+static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
 
@@ -39,7 +39,7 @@ static void timeout_cb(oio_req *req, int64_t skew, int status) {
   oio_update_time();
 }
 
-static void exit_timeout_cb(oio_req *req, int64_t skew, int status) {
+static void exit_timeout_cb(oio_req_t *req, int64_t skew, int status) {
   int64_t now = oio_now();
   ASSERT(req != NULL);
   ASSERT(status == 0);
@@ -48,13 +48,13 @@ static void exit_timeout_cb(oio_req *req, int64_t skew, int status) {
   exit(0);
 }
 
-static void dummy_timeout_cb(oio_req *req, int64_t skew, int status) {
+static void dummy_timeout_cb(oio_req_t *req, int64_t skew, int status) {
   /* Should never be called */
   FATAL("dummy_timer_cb should never be called");
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
@@ -62,9 +62,9 @@ static oio_buf alloc_cb(oio_handle* handle, size_t size) {
 
 
 TEST_IMPL(timeout) {
-  oio_req *req;
-  oio_req exit_req;
-  oio_req dummy_req;
+  oio_req_t *req;
+  oio_req_t exit_req;
+  oio_req_t dummy_req;
   int i;
 
   oio_init(alloc_cb);
@@ -74,7 +74,7 @@ TEST_IMPL(timeout) {
 
   /* Let 10 timers time out in 500 ms total. */
   for (i = 0; i < 10; i++) {
-    req = (oio_req*)malloc(sizeof(*req));
+    req = (oio_req_t*)malloc(sizeof(*req));
     ASSERT(req != NULL);
 
     oio_req_init(req, NULL, timeout_cb);

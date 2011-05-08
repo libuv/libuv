@@ -29,8 +29,8 @@
 #include <sys/types.h> /* size_t */
 
 typedef struct oio_err_s oio_err;
-typedef struct oio_handle_s oio_handle;
-typedef struct oio_req_s oio_req;
+typedef struct oio_handle_s oio_handle_t;
+typedef struct oio_req_s oio_req_t;
 
 
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
@@ -48,15 +48,15 @@ typedef struct oio_req_s oio_req;
  * In the case of oio_read_cb the oio_buf returned should be freed by the
  * user.
  */
-typedef oio_buf (*oio_alloc_cb)(oio_handle* handle, size_t suggested_size);
-typedef void (*oio_read_cb)(oio_handle *handle, int nread, oio_buf buf);
-typedef void (*oio_write_cb)(oio_req* req, int status);
-typedef void (*oio_connect_cb)(oio_req* req, int status);
-typedef void (*oio_shutdown_cb)(oio_req* req, int status);
-typedef void (*oio_accept_cb)(oio_handle* handle);
-typedef void (*oio_close_cb)(oio_handle* handle, int status);
-typedef void (*oio_timer_cb)(oio_req* req, int64_t skew, int status);
-typedef void (*oio_loop_cb)(oio_handle* handle, int status);
+typedef oio_buf (*oio_alloc_cb)(oio_handle_t* handle, size_t suggested_size);
+typedef void (*oio_read_cb)(oio_handle_t *handle, int nread, oio_buf buf);
+typedef void (*oio_write_cb)(oio_req_t* req, int status);
+typedef void (*oio_connect_cb)(oio_req_t* req, int status);
+typedef void (*oio_shutdown_cb)(oio_req_t* req, int status);
+typedef void (*oio_accept_cb)(oio_handle_t* handle);
+typedef void (*oio_close_cb)(oio_handle_t* handle, int status);
+typedef void (*oio_timer_cb)(oio_req_t* req, int64_t skew, int status);
+typedef void (*oio_loop_cb)(oio_handle_t* handle, int status);
 
 
 /* Expand this list if necessary. */
@@ -132,7 +132,7 @@ struct oio_req_s {
   /* read-only */
   oio_req_type type;
   /* public */
-  oio_handle* handle;
+  oio_handle_t* handle;
   void* cb;
   void* data;
   /* private */
@@ -171,30 +171,30 @@ void oio_unref();
 void oio_update_time();
 int64_t oio_now();
 
-void oio_req_init(oio_req* req, oio_handle* handle, void* cb);
+void oio_req_init(oio_req_t* req, oio_handle_t* handle, void* cb);
 
 /*
  * TODO:
  * - oio_(pipe|pipe_tty)_handle_init
  * - oio_bind_pipe(char* name)
- * - oio_continuous_read(oio_handle* handle, oio_continuous_read_cb* cb)
+ * - oio_continuous_read(oio_handle_t* handle, oio_continuous_read_cb* cb)
  * - A way to list cancelled oio_reqs after before/on oio_close_cb
  */
 
 /* TCP socket methods.
  * Handle and callback bust be set by calling oio_req_init.
  */
-int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb, void* data);
-int oio_bind(oio_handle* handle, struct sockaddr* addr);
+int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
+int oio_bind(oio_handle_t* handle, struct sockaddr* addr);
 
-int oio_connect(oio_req* req, struct sockaddr* addr);
-int oio_shutdown(oio_req* req);
+int oio_connect(oio_req_t* req, struct sockaddr* addr);
+int oio_shutdown(oio_req_t* req);
 
 /* TCP server methods. */
-int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb);
+int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb);
 
 /* Call this after accept_cb. client does not need to be initialized. */
-int oio_accept(oio_handle* server, oio_handle* client,
+int oio_accept(oio_handle_t* server, oio_handle_t* client,
     oio_close_cb close_cb, void* data);
 
 
@@ -206,38 +206,38 @@ int oio_accept(oio_handle* server, oio_handle* client,
 /* Note that nread might also be 0, which does *not* indicate an error or */
 /* eof; it happens when liboio requested a buffer through the alloc callback */
 /* but then decided that it didn't need that buffer. */
-int oio_read_start(oio_handle* handle, oio_read_cb cb);
-int oio_read_stop(oio_handle* handle);
+int oio_read_start(oio_handle_t* handle, oio_read_cb cb);
+int oio_read_stop(oio_handle_t* handle);
 
-int oio_write(oio_req* req, oio_buf bufs[], int bufcnt);
+int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt);
 
 /* Timer methods */
-int oio_timeout(oio_req* req, int64_t timeout);
+int oio_timeout(oio_req_t* req, int64_t timeout);
 
 /* Every active prepare handle gets its callback called exactly once per loop */
 /* iteration, just before the system blocks to wait for completed i/o. */
-int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb, void* data);
-int oio_prepare_start(oio_handle* handle, oio_loop_cb cb);
-int oio_prepare_stop(oio_handle* handle);
+int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
+int oio_prepare_start(oio_handle_t* handle, oio_loop_cb cb);
+int oio_prepare_stop(oio_handle_t* handle);
 
 /* Every active check handle gets its callback called exactly once per loop */
 /* iteration, just after the system returns from blocking. */
-int oio_check_init(oio_handle* handle, oio_close_cb close_cb, void* data);
-int oio_check_start(oio_handle* handle, oio_loop_cb cb);
-int oio_check_stop(oio_handle* handle);
+int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
+int oio_check_start(oio_handle_t* handle, oio_loop_cb cb);
+int oio_check_stop(oio_handle_t* handle);
 
 /* Every active idle handle gets its callback called repeatedly until it is */
 /* stopped. This happens after all other types of callbacks are processed. */
 /* When there are multiple "idle" handles active, their callbacks are called */
 /* in turn. */
-int oio_idle_init(oio_handle* handle, oio_close_cb close_cb, void* data);
-int oio_idle_start(oio_handle* handle, oio_loop_cb cb);
-int oio_idle_stop(oio_handle* handle);
+int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
+int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb);
+int oio_idle_stop(oio_handle_t* handle);
 
 /* Request handle to be closed. close_cb will be called
  * asynchronously after this call.
  */
-int oio_close(oio_handle* handle);
+int oio_close(oio_handle_t* handle);
 
 
 /* Utility */

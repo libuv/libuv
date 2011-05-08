@@ -30,8 +30,8 @@
 
 static const char MESSAGE[] = "Failure is for the weak. Everyone dies alone.";
 
-static oio_handle client;
-static oio_req connect_req, write_req, timeout_req, shutdown_req;
+static oio_handle_t client;
+static oio_req_t connect_req, write_req, timeout_req, shutdown_req;
 
 static int nested = 0;
 static int close_cb_called = 0;
@@ -42,7 +42,7 @@ static int bytes_received = 0;
 static int shutdown_cb_called = 0;
 
 
-static void close_cb(oio_handle* handle, int status) {
+static void close_cb(oio_handle_t* handle, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "close_cb must be called from a fresh stack");
 
@@ -50,7 +50,7 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static void shutdown_cb(oio_req* req, int status) {
+static void shutdown_cb(oio_req_t* req, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "shutdown_cb must be called from a fresh stack");
 
@@ -58,7 +58,7 @@ static void shutdown_cb(oio_req* req, int status) {
 }
 
 
-static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
+static void read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
   printf("Read. nread == %d\n", nread);
@@ -100,7 +100,7 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-static void timeout_cb(oio_req* req, int64_t skew, int status) {
+static void timeout_cb(oio_req_t* req, int64_t skew, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "timeout_cb must be called from a fresh stack");
 
@@ -116,7 +116,7 @@ static void timeout_cb(oio_req* req, int64_t skew, int status) {
 }
 
 
-static void write_cb(oio_req* req, int status) {
+static void write_cb(oio_req_t* req, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "write_cb must be called from a fresh stack");
 
@@ -137,7 +137,7 @@ static void write_cb(oio_req* req, int status) {
 }
 
 
-static void connect_cb(oio_req* req, int status) {
+static void connect_cb(oio_req_t* req, int status) {
   oio_buf buf;
 
   puts("Connected. Write some data to echo server...");
@@ -162,7 +162,7 @@ static void connect_cb(oio_req* req, int status) {
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf;
   buf.len = size;
   buf.base = (char*) malloc(size);

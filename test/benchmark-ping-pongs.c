@@ -33,9 +33,9 @@
 typedef struct {
   int pongs;
   int state;
-  oio_handle handle;
-  oio_req connect_req;
-  oio_req shutdown_req;
+  oio_handle_t handle;
+  oio_req_t connect_req;
+  oio_req_t shutdown_req;
 } pinger_t;
 
 typedef struct buf_s {
@@ -52,7 +52,7 @@ static int completed_pingers = 0;
 static int64_t start_time;
 
 
-static oio_buf buf_alloc(oio_handle* handle, size_t size) {
+static oio_buf buf_alloc(oio_handle_t* handle, size_t size) {
   buf_t* ab;
 
   ab = buf_freelist;
@@ -78,7 +78,7 @@ static void buf_free(oio_buf oio_buf) {
 }
 
 
-static void pinger_close_cb(oio_handle* handle, int status) {
+static void pinger_close_cb(oio_handle_t* handle, int status) {
   pinger_t* pinger;
 
   ASSERT(status == 0);
@@ -92,7 +92,7 @@ static void pinger_close_cb(oio_handle* handle, int status) {
 }
 
 
-static void pinger_write_cb(oio_req *req, int status) {
+static void pinger_write_cb(oio_req_t *req, int status) {
   ASSERT(status == 0);
 
   free(req);
@@ -100,13 +100,13 @@ static void pinger_write_cb(oio_req *req, int status) {
 
 
 static void pinger_write_ping(pinger_t* pinger) {
-  oio_req *req;
+  oio_req_t *req;
   oio_buf buf;
 
   buf.base = (char*)&PING;
   buf.len = strlen(PING);
 
-  req = (oio_req*)malloc(sizeof(*req));
+  req = (oio_req_t*)malloc(sizeof(*req));
   oio_req_init(req, &pinger->handle, pinger_write_cb);
 
   if (oio_write(req, &buf, 1)) {
@@ -115,12 +115,12 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_shutdown_cb(oio_handle* handle, int status) {
+static void pinger_shutdown_cb(oio_handle_t* handle, int status) {
   ASSERT(status == 0);
 }
 
 
-static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
+static void pinger_read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
   unsigned int i;
   pinger_t* pinger;
 
@@ -157,7 +157,7 @@ static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-static void pinger_connect_cb(oio_req *req, int status) {
+static void pinger_connect_cb(oio_req_t *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(status == 0);

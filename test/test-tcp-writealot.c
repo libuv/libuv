@@ -45,7 +45,7 @@ static int bytes_received = 0;
 static int bytes_received_done = 0;
 
 
-static void close_cb(oio_handle* handle, int status) {
+static void close_cb(oio_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -55,7 +55,7 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static void shutdown_cb(oio_req* req, int status) {
+static void shutdown_cb(oio_req_t* req, int status) {
   ASSERT(req);
   ASSERT(status == 0);
 
@@ -69,7 +69,7 @@ static void shutdown_cb(oio_req* req, int status) {
 }
 
 
-static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
+static void read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
   ASSERT(handle != NULL);
 
   if (nread < 0) {
@@ -90,7 +90,7 @@ static void read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-static void write_cb(oio_req* req, int status) {
+static void write_cb(oio_req_t* req, int status) {
   ASSERT(req != NULL);
 
   if (status) {
@@ -106,9 +106,9 @@ static void write_cb(oio_req* req, int status) {
 }
 
 
-static void connect_cb(oio_req* req, int status) {
+static void connect_cb(oio_req_t* req, int status) {
   oio_buf send_bufs[CHUNKS_PER_WRITE];
-  oio_handle* handle;
+  oio_handle_t* handle;
   int i, j, r;
 
   ASSERT(req != NULL);
@@ -127,7 +127,7 @@ static void connect_cb(oio_req* req, int status) {
       bytes_sent += CHUNK_SIZE;
     }
 
-    req = (oio_req*)malloc(sizeof *req);
+    req = (oio_req_t*)malloc(sizeof *req);
     ASSERT(req != NULL);
 
     oio_req_init(req, handle, write_cb);
@@ -136,14 +136,14 @@ static void connect_cb(oio_req* req, int status) {
   }
 
   /* Shutdown on drain. FIXME: dealloc req? */
-  req = (oio_req*) malloc(sizeof(oio_req));
+  req = (oio_req_t*) malloc(sizeof(oio_req_t));
   ASSERT(req != NULL);
   oio_req_init(req, handle, shutdown_cb);
   r = oio_shutdown(req);
   ASSERT(r == 0);
 
   /* Start reading */
-  req = (oio_req*)malloc(sizeof *req);
+  req = (oio_req_t*)malloc(sizeof *req);
   ASSERT(req != NULL);
 
   oio_req_init(req, handle, read_cb);
@@ -152,7 +152,7 @@ static void connect_cb(oio_req* req, int status) {
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
@@ -162,8 +162,8 @@ static oio_buf alloc_cb(oio_handle* handle, size_t size) {
 
 TEST_IMPL(tcp_writealot) {
   struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
-  oio_handle* client = (oio_handle*)malloc(sizeof *client);
-  oio_req* connect_req = (oio_req*)malloc(sizeof *connect_req);
+  oio_handle_t* client = (oio_handle_t*)malloc(sizeof *client);
+  oio_req_t* connect_req = (oio_req_t*)malloc(sizeof *connect_req);
   int r;
 
   ASSERT(client != NULL);

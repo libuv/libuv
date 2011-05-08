@@ -117,7 +117,7 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 
 
 /*
- * Private oio_handle flags
+ * Private oio_handle_t flags
  */
 #define OIO_HANDLE_CLOSING          0x0001
 #define OIO_HANDLE_CLOSED           0x0002
@@ -134,14 +134,14 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 #define OIO_HANDLE_BIND_ERROR       0x1000
 
 /*
- * Private oio_req flags.
+ * Private oio_req_t flags.
  */
 /* The request is currently queued. */
 #define OIO_REQ_PENDING      0x01
 
 
 /* Binary tree used to keep the list of timers sorted. */
-static int oio_timer_compare(oio_req* t1, oio_req* t2);
+static int oio_timer_compare(oio_req_t* t1, oio_req_t* t2);
 RB_HEAD(oio_timer_s, oio_req_s);
 RB_PROTOTYPE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
 
@@ -150,18 +150,18 @@ static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
 
 
 /* Lists of active oio_prepare / oio_check / oio_idle watchers */
-static oio_handle* oio_prepare_handles_ = NULL;
-static oio_handle* oio_check_handles_ = NULL;
-static oio_handle* oio_idle_handles_ = NULL;
+static oio_handle_t* oio_prepare_handles_ = NULL;
+static oio_handle_t* oio_check_handles_ = NULL;
+static oio_handle_t* oio_idle_handles_ = NULL;
 
 /* This pointer will refer to the prepare/check/idle handle whose callback */
 /* is scheduled to be called next. This is needed to allow safe removal */
 /* from one of the lists above while that list being iterated. */
-static oio_handle* oio_next_loop_handle_ = NULL;
+static oio_handle_t* oio_next_loop_handle_ = NULL;
 
 
 /* Head of a single-linked list of closed handles */
-static oio_handle* oio_endgame_handles_ = NULL;
+static oio_handle_t* oio_endgame_handles_ = NULL;
 
 
 /* The current time according to the event loop. in msecs. */
@@ -379,7 +379,7 @@ void oio_init(oio_alloc_cb alloc_cb) {
 }
 
 
-void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
+void oio_req_init(oio_req_t* req, oio_handle_t* handle, void* cb) {
   req->type = OIO_UNKNOWN_REQ;
   req->flags = 0;
   req->handle = handle;
@@ -387,12 +387,12 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
 }
 
 
-static oio_req* oio_overlapped_to_req(OVERLAPPED* overlapped) {
-  return CONTAINING_RECORD(overlapped, oio_req, overlapped);
+static oio_req_t* oio_overlapped_to_req(OVERLAPPED* overlapped) {
+  return CONTAINING_RECORD(overlapped, oio_req_t, overlapped);
 }
 
 
-static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
+static int oio_tcp_init_socket(oio_handle_t* handle, oio_close_cb close_cb,
     void* data, SOCKET socket) {
   DWORD yes = 1;
 
@@ -418,7 +418,7 @@ static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
   }
 
   /* Associate it with the I/O completion port. */
-  /* Use oio_handle pointer as completion key. */
+  /* Use oio_handle_t pointer as completion key. */
   if (CreateIoCompletionPort((HANDLE)socket,
                              oio_iocp_,
                              (ULONG_PTR)socket,
@@ -433,14 +433,14 @@ static int oio_tcp_init_socket(oio_handle* handle, oio_close_cb close_cb,
 }
 
 
-static void oio_tcp_init_connection(oio_handle* handle) {
+static void oio_tcp_init_connection(oio_handle_t* handle) {
   handle->flags |= OIO_HANDLE_CONNECTION;
   handle->write_reqs_pending = 0;
   oio_req_init(&(handle->read_req), handle, NULL);
 }
 
 
-int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
+int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
     void* data) {
   SOCKET sock;
 
@@ -459,7 +459,7 @@ int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
 }
 
 
-static void oio_tcp_endgame(oio_handle* handle) {
+static void oio_tcp_endgame(oio_handle_t* handle) {
   oio_err err;
   int status;
 
@@ -508,7 +508,7 @@ static void oio_tcp_endgame(oio_handle* handle) {
 }
 
 
-static void oio_loop_endgame(oio_handle* handle) {
+static void oio_loop_endgame(oio_handle_t* handle) {
   if (handle->flags & OIO_HANDLE_CLOSING) {
     assert(!(handle->flags & OIO_HANDLE_CLOSED));
     handle->flags |= OIO_HANDLE_CLOSED;
@@ -523,7 +523,7 @@ static void oio_loop_endgame(oio_handle* handle) {
 
 
 static void oio_call_endgames() {
-  oio_handle* handle;
+  oio_handle_t* handle;
 
   while (oio_endgame_handles_) {
     handle = oio_endgame_handles_;
@@ -550,7 +550,7 @@ static void oio_call_endgames() {
 }
 
 
-static void oio_want_endgame(oio_handle* handle) {
+static void oio_want_endgame(oio_handle_t* handle) {
   if (!(handle->flags & OIO_HANDLE_ENDGAME_QUEUED)) {
     handle->flags |= OIO_HANDLE_ENDGAME_QUEUED;
 
@@ -560,7 +560,7 @@ static void oio_want_endgame(oio_handle* handle) {
 }
 
 
-static int oio_close_error(oio_handle* handle, oio_err e) {
+static int oio_close_error(oio_handle_t* handle, oio_err e) {
   if (handle->flags & OIO_HANDLE_CLOSING) {
     return 0;
   }
@@ -596,7 +596,7 @@ static int oio_close_error(oio_handle* handle, oio_err e) {
 }
 
 
-int oio_close(oio_handle* handle) {
+int oio_close(oio_handle_t* handle) {
   return oio_close_error(handle, oio_ok_);
 }
 
@@ -612,7 +612,7 @@ struct sockaddr_in oio_ip4_addr(char* ip, int port) {
 }
 
 
-int oio_bind(oio_handle* handle, struct sockaddr* addr) {
+int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
   int addrsize;
   DWORD err;
 
@@ -643,8 +643,8 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
 }
 
 
-static void oio_queue_accept(oio_handle* handle) {
-  oio_req* req;
+static void oio_queue_accept(oio_handle_t* handle) {
+  oio_req_t* req;
   BOOL success;
   DWORD bytes;
   SOCKET accept_socket;
@@ -658,7 +658,7 @@ static void oio_queue_accept(oio_handle* handle) {
     return;
   }
 
-  /* Prepare the oio_req and OVERLAPPED structures. */
+  /* Prepare the oio_req_t and OVERLAPPED structures. */
   req = &handle->accept_req;
   assert(!(req->flags & OIO_REQ_PENDING));
   req->type = OIO_ACCEPT;
@@ -690,8 +690,8 @@ static void oio_queue_accept(oio_handle* handle) {
 }
 
 
-static void oio_queue_read(oio_handle* handle) {
-  oio_req *req;
+static void oio_queue_read(oio_handle_t* handle) {
+  oio_req_t *req;
   oio_buf buf;
   int result;
   DWORD bytes, flags;
@@ -725,7 +725,7 @@ static void oio_queue_read(oio_handle* handle) {
 }
 
 
-int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
+int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb) {
   assert(backlog > 0);
 
   if (handle->flags & OIO_HANDLE_BIND_ERROR) {
@@ -755,7 +755,7 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
 }
 
 
-int oio_accept(oio_handle* server, oio_handle* client,
+int oio_accept(oio_handle_t* server, oio_handle_t* client,
     oio_close_cb close_cb, void* data) {
   int rv = 0;
 
@@ -782,7 +782,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
 }
 
 
-int oio_read_start(oio_handle* handle, oio_read_cb cb) {
+int oio_read_start(oio_handle_t* handle, oio_read_cb cb) {
   if (!(handle->flags & OIO_HANDLE_CONNECTION)) {
     oio_set_sys_error(WSAEINVAL);
     return -1;
@@ -810,18 +810,18 @@ int oio_read_start(oio_handle* handle, oio_read_cb cb) {
 }
 
 
-int oio_read_stop(oio_handle* handle) {
+int oio_read_stop(oio_handle_t* handle) {
   handle->flags &= ~OIO_HANDLE_READING;
 
   return 0;
 }
 
 
-int oio_connect(oio_req* req, struct sockaddr* addr) {
+int oio_connect(oio_req_t* req, struct sockaddr* addr) {
   int addrsize;
   BOOL success;
   DWORD bytes;
-  oio_handle* handle = req->handle;
+  oio_handle_t* handle = req->handle;
 
   assert(!(req->flags & OIO_REQ_PENDING));
 
@@ -867,10 +867,10 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
 }
 
 
-int oio_write(oio_req* req, oio_buf bufs[], int bufcnt) {
+int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
   int result;
   DWORD bytes;
-  oio_handle* handle = req->handle;
+  oio_handle_t* handle = req->handle;
 
   assert(!(req->flags & OIO_REQ_PENDING));
 
@@ -907,8 +907,8 @@ int oio_write(oio_req* req, oio_buf bufs[], int bufcnt) {
 }
 
 
-int oio_shutdown(oio_req* req) {
-  oio_handle* handle = req->handle;
+int oio_shutdown(oio_req_t* req) {
+  oio_handle_t* handle = req->handle;
   int status = 0;
 
   if (!(req->handle->flags & OIO_HANDLE_CONNECTION)) {
@@ -934,7 +934,7 @@ int oio_shutdown(oio_req* req) {
 }
 
 
-static int oio_timer_compare(oio_req* a, oio_req* b) {
+static int oio_timer_compare(oio_req_t* a, oio_req_t* b) {
   if (a->due < b->due)
     return -1;
   if (a->due > b->due)
@@ -950,7 +950,7 @@ static int oio_timer_compare(oio_req* a, oio_req* b) {
 RB_GENERATE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
 
 
-int oio_timeout(oio_req* req, int64_t timeout) {
+int oio_timeout(oio_req_t* req, int64_t timeout) {
   assert(!(req->flags & OIO_REQ_PENDING));
 
   req->type = OIO_TIMEOUT;
@@ -982,7 +982,7 @@ int64_t oio_now() {
 }
 
 
-int oio_loop_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_loop_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   handle->close_cb = (void*) close_cb;
   handle->data = data;
   handle->flags = 0;
@@ -994,9 +994,9 @@ int oio_loop_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
 }
 
 
-static int oio_loop_start(oio_handle* handle, oio_loop_cb loop_cb,
-    oio_handle** list) {
-  oio_handle* old_head;
+static int oio_loop_start(oio_handle_t* handle, oio_loop_cb loop_cb,
+    oio_handle_t** list) {
+  oio_handle_t* old_head;
 
   if (handle->flags & OIO_HANDLE_ACTIVE)
     return 0;
@@ -1019,7 +1019,7 @@ static int oio_loop_start(oio_handle* handle, oio_loop_cb loop_cb,
 }
 
 
-static int oio_loop_stop(oio_handle* handle, oio_handle** list) {
+static int oio_loop_stop(oio_handle_t* handle, oio_handle_t** list) {
   if (!(handle->flags & OIO_HANDLE_ACTIVE))
     return 0;
 
@@ -1046,8 +1046,8 @@ static int oio_loop_stop(oio_handle* handle, oio_handle** list) {
 }
 
 
-static void oio_loop_invoke(oio_handle* list) {
-  oio_handle *handle;
+static void oio_loop_invoke(oio_handle_t* list) {
+  oio_handle_t *handle;
 
   oio_next_loop_handle_ = list;
 
@@ -1060,55 +1060,55 @@ static void oio_loop_invoke(oio_handle* list) {
 }
 
 
-int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   handle->type = OIO_PREPARE;
   return oio_loop_init(handle, close_cb, data);
 }
 
 
-int oio_check_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   handle->type = OIO_CHECK;
   return oio_loop_init(handle, close_cb, data);
 }
 
 
-int oio_idle_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   handle->type = OIO_IDLE;
   return oio_loop_init(handle, close_cb, data);
 }
 
 
-int oio_prepare_start(oio_handle* handle, oio_loop_cb loop_cb) {
+int oio_prepare_start(oio_handle_t* handle, oio_loop_cb loop_cb) {
   assert(handle->type == OIO_PREPARE);
   return oio_loop_start(handle, loop_cb, &oio_prepare_handles_);
 }
 
 
-int oio_check_start(oio_handle* handle, oio_loop_cb loop_cb) {
+int oio_check_start(oio_handle_t* handle, oio_loop_cb loop_cb) {
   assert(handle->type == OIO_CHECK);
   return oio_loop_start(handle, loop_cb, &oio_check_handles_);
 }
 
 
-int oio_idle_start(oio_handle* handle, oio_loop_cb loop_cb) {
+int oio_idle_start(oio_handle_t* handle, oio_loop_cb loop_cb) {
   assert(handle->type == OIO_IDLE);
   return oio_loop_start(handle, loop_cb, &oio_idle_handles_);
 }
 
 
-int oio_prepare_stop(oio_handle* handle) {
+int oio_prepare_stop(oio_handle_t* handle) {
   assert(handle->type == OIO_PREPARE);
   return oio_loop_stop(handle, &oio_prepare_handles_);
 }
 
 
-int oio_check_stop(oio_handle* handle) {
+int oio_check_stop(oio_handle_t* handle) {
   assert(handle->type == OIO_CHECK);
   return oio_loop_stop(handle, &oio_check_handles_);
 }
 
 
-int oio_idle_stop(oio_handle* handle) {
+int oio_idle_stop(oio_handle_t* handle) {
   assert(handle->type == OIO_IDLE);
   return oio_loop_stop(handle, &oio_idle_handles_);
 }
@@ -1119,8 +1119,8 @@ static void oio_poll() {
   DWORD bytes;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
-  oio_req* req;
-  oio_handle* handle;
+  oio_req_t* req;
+  oio_handle_t* handle;
   oio_buf buf;
   DWORD timeout;
   DWORD flags;

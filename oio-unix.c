@@ -40,9 +40,9 @@ static oio_alloc_cb alloc_cb;
 
 void oio__tcp_io(EV_P_ ev_io* watcher, int revents);
 void oio__next(EV_P_ ev_idle* watcher, int revents);
-static void oio_tcp_connect(oio_handle* handle);
-int oio_tcp_open(oio_handle*, int fd);
-void oio_finish_close(oio_handle* handle);
+static void oio_tcp_connect(oio_handle_t* handle);
+int oio_tcp_open(oio_handle_t*, int fd);
+void oio_finish_close(oio_handle_t* handle);
 
 
 /* flags */
@@ -55,7 +55,7 @@ enum {
 };
 
 
-void oio_flag_set(oio_handle* handle, int flag) {
+void oio_flag_set(oio_handle_t* handle, int flag) {
   handle->flags |= flag;
 }
 
@@ -70,12 +70,12 @@ char* oio_strerror(oio_err err) {
 }
 
 
-void oio_flag_unset(oio_handle* handle, int flag) {
+void oio_flag_unset(oio_handle_t* handle, int flag) {
   handle->flags = handle->flags & ~flag;
 }
 
 
-int oio_flag_is_set(oio_handle* handle, int flag) {
+int oio_flag_is_set(oio_handle_t* handle, int flag) {
   return (handle->flags & flag) != 0;
 }
 
@@ -97,7 +97,7 @@ static oio_err_code oio_translate_sys_error(int sys_errno) {
 }
 
 
-static oio_err oio_err_new_artificial(oio_handle* handle, int code) {
+static oio_err oio_err_new_artificial(oio_handle_t* handle, int code) {
   oio_err err;
   err.sys_errno_ = 0;
   err.code = code;
@@ -106,7 +106,7 @@ static oio_err oio_err_new_artificial(oio_handle* handle, int code) {
 }
 
 
-static oio_err oio_err_new(oio_handle* handle, int sys_error) {
+static oio_err oio_err_new(oio_handle_t* handle, int sys_error) {
   oio_err err;
   err.sys_errno_ = sys_error;
   err.code = oio_translate_sys_error(sys_error);
@@ -126,7 +126,7 @@ struct sockaddr_in oio_ip4_addr(char* ip, int port) {
 }
 
 
-int oio_close(oio_handle* handle) {
+int oio_close(oio_handle_t* handle) {
   oio_flag_set(handle, OIO_CLOSING);
 
   ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
@@ -152,7 +152,7 @@ int oio_run() {
 }
 
 
-int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
+int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
     void* data) {
   handle->type = OIO_TCP;
   handle->close_cb = close_cb;
@@ -181,7 +181,7 @@ int oio_tcp_init(oio_handle* handle, oio_close_cb close_cb,
 }
 
 
-int oio_bind(oio_handle* handle, struct sockaddr* addr) {
+int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
   int addrsize;
   int domain;
   int r;
@@ -230,7 +230,7 @@ int oio_bind(oio_handle* handle, struct sockaddr* addr) {
 }
 
 
-int oio_tcp_open(oio_handle* handle, int fd) {
+int oio_tcp_open(oio_handle_t* handle, int fd) {
   assert(fd >= 0);
   handle->fd = fd;
 
@@ -259,7 +259,7 @@ int oio_tcp_open(oio_handle* handle, int fd) {
 
 
 void oio__server_io(EV_P_ ev_io* watcher, int revents) {
-  oio_handle* handle = watcher->data;
+  oio_handle_t* handle = watcher->data;
   assert(watcher == &handle->read_watcher ||
          watcher == &handle->write_watcher);
   assert(revents == EV_READ);
@@ -303,7 +303,7 @@ void oio__server_io(EV_P_ ev_io* watcher, int revents) {
 }
 
 
-int oio_accept(oio_handle* server, oio_handle* client,
+int oio_accept(oio_handle_t* server, oio_handle_t* client,
     oio_close_cb close_cb, void* data) {
   if (server->accepted_fd < 0) {
     return -1;
@@ -326,7 +326,7 @@ int oio_accept(oio_handle* server, oio_handle* client,
 }
 
 
-int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
+int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb) {
   assert(handle->fd >= 0);
 
   if (handle->delayed_error) {
@@ -351,7 +351,7 @@ int oio_listen(oio_handle* handle, int backlog, oio_accept_cb cb) {
 }
 
 
-void oio_finish_close(oio_handle* handle) {
+void oio_finish_close(oio_handle_t* handle) {
   assert(oio_flag_is_set(handle, OIO_CLOSING));
   assert(!oio_flag_is_set(handle, OIO_CLOSED));
   oio_flag_set(handle, OIO_CLOSED);
@@ -375,7 +375,7 @@ void oio_finish_close(oio_handle* handle) {
 }
 
 
-oio_req* oio_write_queue_head(oio_handle* handle) {
+oio_req_t* oio_write_queue_head(oio_handle_t* handle) {
   if (ngx_queue_empty(&handle->write_queue)) {
     return NULL;
   }
@@ -385,7 +385,7 @@ oio_req* oio_write_queue_head(oio_handle* handle) {
     return NULL;
   }
 
-  oio_req* req = ngx_queue_data(q, struct oio_req_s, queue);
+  oio_req_t* req = ngx_queue_data(q, struct oio_req_s, queue);
   assert(req);
 
   return req;
@@ -393,7 +393,7 @@ oio_req* oio_write_queue_head(oio_handle* handle) {
 
 
 void oio__next(EV_P_ ev_idle* watcher, int revents) {
-  oio_handle* handle = watcher->data;
+  oio_handle_t* handle = watcher->data;
   assert(watcher == &handle->next_watcher);
   assert(revents == EV_IDLE);
 
@@ -405,7 +405,7 @@ void oio__next(EV_P_ ev_idle* watcher, int revents) {
 }
 
 
-static void oio__drain(oio_handle* handle) {
+static void oio__drain(oio_handle_t* handle) {
   assert(!oio_write_queue_head(handle));
   assert(handle->write_queue_size == 0);
 
@@ -417,7 +417,7 @@ static void oio__drain(oio_handle* handle) {
       !oio_flag_is_set(handle, OIO_SHUT)) {
     assert(handle->shutdown_req);
 
-    oio_req* req = handle->shutdown_req;
+    oio_req_t* req = handle->shutdown_req;
     oio_shutdown_cb cb = req->cb;
 
     if (shutdown(handle->fd, SHUT_WR)) {
@@ -434,13 +434,13 @@ static void oio__drain(oio_handle* handle) {
 }
 
 
-void oio__write(oio_handle* handle) {
+void oio__write(oio_handle_t* handle) {
   assert(handle->fd >= 0);
 
   /* TODO: should probably while(1) here until EAGAIN */
 
   /* Get the request at the head of the queue. */
-  oio_req* req = oio_write_queue_head(handle);
+  oio_req_t* req = oio_write_queue_head(handle);
   if (!req) {
     assert(handle->write_queue_size == 0);
     oio__drain(handle);
@@ -541,7 +541,7 @@ void oio__write(oio_handle* handle) {
 }
 
 
-void oio__read(oio_handle* handle) {
+void oio__read(oio_handle_t* handle) {
   /* XXX: Maybe instead of having OIO_READING we just test if
    * handle->read_cb is NULL or not?
    */
@@ -591,8 +591,8 @@ void oio__read(oio_handle* handle) {
 }
 
 
-int oio_shutdown(oio_req* req) {
-  oio_handle* handle = req->handle;
+int oio_shutdown(oio_req_t* req) {
+  oio_handle_t* handle = req->handle;
   assert(handle->fd >= 0);
 
   if (oio_flag_is_set(handle, OIO_SHUT) ||
@@ -613,7 +613,7 @@ int oio_shutdown(oio_req* req) {
 
 
 void oio__tcp_io(EV_P_ ev_io* watcher, int revents) {
-  oio_handle* handle = watcher->data;
+  oio_handle_t* handle = watcher->data;
   assert(watcher == &handle->read_watcher ||
          watcher == &handle->write_watcher);
 
@@ -640,10 +640,10 @@ void oio__tcp_io(EV_P_ ev_io* watcher, int revents) {
  * In order to determine if we've errored out or succeeded must call
  * getsockopt.
  */
-static void oio_tcp_connect(oio_handle* handle) {
+static void oio_tcp_connect(oio_handle_t* handle) {
   assert(handle->fd >= 0);
 
-  oio_req* req = handle->connect_req;
+  oio_req_t* req = handle->connect_req;
   assert(req);
 
   int error;
@@ -679,8 +679,8 @@ static void oio_tcp_connect(oio_handle* handle) {
 }
 
 
-int oio_connect(oio_req* req, struct sockaddr* addr) {
-  oio_handle* handle = req->handle;
+int oio_connect(oio_req_t* req, struct sockaddr* addr) {
+  oio_handle_t* handle = req->handle;
 
   if (handle->fd <= 0) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -740,8 +740,8 @@ static size_t oio__buf_count(oio_buf bufs[], int bufcnt) {
 /* The buffers to be written must remain valid until the callback is called.
  * This is not required for the oio_buf array.
  */
-int oio_write(oio_req* req, oio_buf bufs[], int bufcnt) {
-  oio_handle* handle = req->handle;
+int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
+  oio_handle_t* handle = req->handle;
   assert(handle->fd >= 0);
 
   ngx_queue_init(&req->queue);
@@ -770,7 +770,7 @@ int oio_write(oio_req* req, oio_buf bufs[], int bufcnt) {
 
 
 void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
-  oio_req* req = watcher->data;
+  oio_req_t* req = watcher->data;
   assert(watcher == &req->timer);
   assert(EV_TIMER & revents);
 
@@ -796,7 +796,7 @@ int64_t oio_now() {
 }
 
 
-int oio_timeout(oio_req* req, int64_t timeout) {
+int oio_timeout(oio_req_t* req, int64_t timeout) {
   ev_timer_init(&req->timer, oio__timeout, timeout / 1000.0, 0.0);
   ev_timer_start(EV_DEFAULT_UC_ &req->timer);
   req->timer.data = req;
@@ -804,7 +804,7 @@ int oio_timeout(oio_req* req, int64_t timeout) {
 }
 
 
-int oio_read_start(oio_handle* handle, oio_read_cb cb) {
+int oio_read_start(oio_handle_t* handle, oio_read_cb cb) {
   /* The OIO_READING flag is irrelevant of the state of the handle - it just
    * expresses the desired state of the user.
    */
@@ -826,7 +826,7 @@ int oio_read_start(oio_handle* handle, oio_read_cb cb) {
 }
 
 
-int oio_read_stop(oio_handle* handle) {
+int oio_read_stop(oio_handle_t* handle) {
   oio_flag_unset(handle, OIO_READING);
 
   ev_io_stop(EV_DEFAULT_UC_ &handle->read_watcher);
@@ -835,14 +835,14 @@ int oio_read_stop(oio_handle* handle) {
 }
 
 
-void oio_free(oio_handle* handle) {
+void oio_free(oio_handle_t* handle) {
   free(handle);
   /* lists? */
   return;
 }
 
 
-void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
+void oio_req_init(oio_req_t* req, oio_handle_t* handle, void* cb) {
   req->type = OIO_UNKNOWN_REQ;
   req->cb = cb;
   req->handle = handle;
@@ -850,32 +850,32 @@ void oio_req_init(oio_req* req, oio_handle* handle, void* cb) {
 }
 
 
-int oio_prepare_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   assert(0 && "implement me");
 }
 
 
-int oio_prepare_start(oio_handle* handle, oio_loop_cb cb) {
+int oio_prepare_start(oio_handle_t* handle, oio_loop_cb cb) {
   assert(0 && "implement me");
 }
 
 
-int oio_prepare_stop(oio_handle* handle) {
+int oio_prepare_stop(oio_handle_t* handle) {
   assert(0 && "implement me");
 }
 
 
-int oio_check_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   assert(0 && "implement me");
 }
 
 
-int oio_check_start(oio_handle* handle, oio_loop_cb cb) {
+int oio_check_start(oio_handle_t* handle, oio_loop_cb cb) {
   assert(0 && "implement me");
 }
 
 
-int oio_check_stop(oio_handle* handle) {
+int oio_check_stop(oio_handle_t* handle) {
   assert(0 && "implement me");
 }
 
@@ -890,16 +890,16 @@ void oio_unref() {
 }
 
 
-int oio_idle_init(oio_handle* handle, oio_close_cb close_cb, void* data) {
+int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
   assert(0 && "implement me");
 }
 
 
-int oio_idle_start(oio_handle* handle, oio_loop_cb cb) {
+int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb) {
   assert(0 && "implement me");
 }
 
 
-int oio_idle_stop(oio_handle* handle) {
+int oio_idle_stop(oio_handle_t* handle) {
   assert(0 && "implement me");
 }

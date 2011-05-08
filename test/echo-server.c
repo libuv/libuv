@@ -26,21 +26,21 @@
 
 
 typedef struct {
-  oio_req req;
+  oio_req_t req;
   oio_buf buf;
 } write_req_t;
 
 
-static oio_handle server;
+static oio_handle_t server;
 
 
-static void after_write(oio_req* req, int status);
-static void after_read(oio_handle* handle, int nread, oio_buf buf);
-static void on_close(oio_handle* peer, int status);
-static void on_accept(oio_handle* handle);
+static void after_write(oio_req_t* req, int status);
+static void after_read(oio_handle_t* handle, int nread, oio_buf buf);
+static void on_close(oio_handle_t* peer, int status);
+static void on_accept(oio_handle_t* handle);
 
 
-static void after_write(oio_req* req, int status) {
+static void after_write(oio_req_t* req, int status) {
   write_req_t* wr;
 
   if (status) {
@@ -57,14 +57,14 @@ static void after_write(oio_req* req, int status) {
 }
 
 
-static void after_shutdown(oio_req* req, int status) {
+static void after_shutdown(oio_req_t* req, int status) {
   free(req);
 }
 
 
-static void after_read(oio_handle* handle, int nread, oio_buf buf) {
+static void after_read(oio_handle_t* handle, int nread, oio_buf buf) {
   write_req_t *wr;
-  oio_req* req;
+  oio_req_t* req;
 
   if (nread < 0) {
     /* Error or EOF */
@@ -74,7 +74,7 @@ static void after_read(oio_handle* handle, int nread, oio_buf buf) {
       free(buf.base);
     }
 
-    req = (oio_req*) malloc(sizeof *req);
+    req = (oio_req_t*) malloc(sizeof *req);
     oio_req_init(req, handle, after_shutdown);
     oio_shutdown(req);
 
@@ -98,15 +98,15 @@ static void after_read(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-static void on_close(oio_handle* peer, int status) {
+static void on_close(oio_handle_t* peer, int status) {
   if (status != 0) {
     fprintf(stdout, "Socket error\n");
   }
 }
 
 
-static void on_accept(oio_handle* server) {
-  oio_handle* handle = (oio_handle*) malloc(sizeof *handle);
+static void on_accept(oio_handle_t* server) {
+  oio_handle_t* handle = (oio_handle_t*) malloc(sizeof *handle);
 
   if (oio_accept(server, handle, on_close, NULL)) {
     FATAL("oio_accept failed");
@@ -116,7 +116,7 @@ static void on_accept(oio_handle* server) {
 }
 
 
-static void on_server_close(oio_handle* handle, int status) {
+static void on_server_close(oio_handle_t* handle, int status) {
   ASSERT(handle == &server);
   ASSERT(status == 0);
 }
@@ -156,7 +156,7 @@ static int echo_stop() {
 }
 
 
-static oio_buf echo_alloc(oio_handle* handle, size_t suggested_size) {
+static oio_buf echo_alloc(oio_handle_t* handle, size_t suggested_size) {
   oio_buf buf;
   buf.base = (char*) malloc(suggested_size);
   buf.len = suggested_size;

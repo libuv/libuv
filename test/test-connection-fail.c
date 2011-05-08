@@ -26,19 +26,19 @@
 #include <stdio.h>
 
 
-static oio_handle handle;
-static oio_req req;
+static oio_handle_t handle;
+static oio_req_t req;
 static int connect_cb_calls;
 static int close_cb_calls;
 
 
-static void on_close(oio_handle* handle, int status) {
+static void on_close(oio_handle_t* handle, int status) {
   ASSERT(status == 0);
   close_cb_calls++;
 }
 
 
-static void on_connect(oio_req *req, int status) {
+static void on_connect(oio_req_t *req, int status) {
   ASSERT(status == -1);
   ASSERT(oio_last_error().code == OIO_ECONNREFUSED);
   connect_cb_calls++;
@@ -46,7 +46,7 @@ static void on_connect(oio_req *req, int status) {
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;

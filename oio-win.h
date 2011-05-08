@@ -57,7 +57,7 @@ typedef struct oio_buf {
   void* read_cb;                          \
   struct oio_req_s read_req;              \
   unsigned int write_reqs_pending;        \
-  oio_req* shutdown_req;
+  oio_req_t* shutdown_req;
 
 #define oio_tcp_server_fields             \
   void *accept_cb;                        \
@@ -77,12 +77,12 @@ typedef struct oio_buf {
   };
 
 #define oio_loop_fields                   \
-  oio_handle* loop_prev;                  \
-  oio_handle* loop_next;                  \
+  oio_handle_t* loop_prev;                  \
+  oio_handle_t* loop_next;                  \
   void* loop_cb;
 
 #define oio_handle_private_fields         \
-  oio_handle* endgame_next;               \
+  oio_handle_t* endgame_next;               \
   unsigned int flags;                     \
   oio_err error;                          \
   union {                                 \

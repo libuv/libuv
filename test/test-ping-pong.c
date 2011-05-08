@@ -39,16 +39,16 @@ static char PING[] = "PING\n";
 typedef struct {
   int pongs;
   int state;
-  oio_handle handle;
-  oio_req connect_req;
-  oio_req read_req;
+  oio_handle_t handle;
+  oio_req_t connect_req;
+  oio_req_t read_req;
   char read_buffer[BUFSIZE];
 } pinger_t;
 
 void pinger_try_read(pinger_t* pinger);
 
 
-static void pinger_on_close(oio_handle* handle, int status) {
+static void pinger_on_close(oio_handle_t* handle, int status) {
   pinger_t* pinger = (pinger_t*)handle->data;
 
   ASSERT(status == 0);
@@ -60,7 +60,7 @@ static void pinger_on_close(oio_handle* handle, int status) {
 }
 
 
-static void pinger_after_write(oio_req *req, int status) {
+static void pinger_after_write(oio_req_t *req, int status) {
   ASSERT(status == 0);
 
   free(req);
@@ -68,13 +68,13 @@ static void pinger_after_write(oio_req *req, int status) {
 
 
 static void pinger_write_ping(pinger_t* pinger) {
-  oio_req *req;
+  oio_req_t *req;
   oio_buf buf;
 
   buf.base = (char*)&PING;
   buf.len = strlen(PING);
 
-  req = (oio_req*)malloc(sizeof(*req));
+  req = (oio_req_t*)malloc(sizeof(*req));
   oio_req_init(req, &pinger->handle, pinger_after_write);
 
   if (oio_write(req, &buf, 1)) {
@@ -85,7 +85,7 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
+static void pinger_read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
   unsigned int i;
   pinger_t* pinger;
 
@@ -123,7 +123,7 @@ static void pinger_read_cb(oio_handle* handle, int nread, oio_buf buf) {
 }
 
 
-static void pinger_on_connect(oio_req *req, int status) {
+static void pinger_on_connect(oio_req_t *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(status == 0);
@@ -156,7 +156,7 @@ static void pinger_new() {
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf;
   buf.base = (char*)malloc(size);
   buf.len = size;

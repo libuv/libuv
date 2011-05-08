@@ -72,15 +72,15 @@
 #define TIMEOUT         100
 
 
-static oio_handle prepare_1_handle;
-static oio_handle prepare_2_handle;
+static oio_handle_t prepare_1_handle;
+static oio_handle_t prepare_2_handle;
 
-static oio_handle check_handle;
+static oio_handle_t check_handle;
 
-static oio_handle idle_1_handles[IDLE_COUNT];
-static oio_handle idle_2_handle;
+static oio_handle_t idle_1_handles[IDLE_COUNT];
+static oio_handle_t idle_2_handle;
 
-static oio_req timeout_req;
+static oio_req_t timeout_req;
 
 
 static int loop_iteration = 0;
@@ -106,7 +106,7 @@ static int idle_2_is_active = 0;
 static int timeout_cb_called = 0;
 
 
-static void timeout_cb(oio_req *req, int64_t skew, int status) {
+static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
   ASSERT(req == &timeout_req);
   ASSERT(status == 0);
 
@@ -116,7 +116,7 @@ static void timeout_cb(oio_req *req, int64_t skew, int status) {
 }
 
 
-static void idle_2_cb(oio_handle* handle, int status) {
+static void idle_2_cb(oio_handle_t* handle, int status) {
   ASSERT(handle == &idle_2_handle);
   ASSERT(status == 0);
 
@@ -126,7 +126,7 @@ static void idle_2_cb(oio_handle* handle, int status) {
 }
 
 
-static void idle_2_close_cb(oio_handle* handle, int status){
+static void idle_2_close_cb(oio_handle_t* handle, int status){
   ASSERT(handle == &idle_2_handle);
   ASSERT(status == 0);
 
@@ -137,7 +137,7 @@ static void idle_2_close_cb(oio_handle* handle, int status){
 }
 
 
-static void idle_1_cb(oio_handle* handle, int status) {
+static void idle_1_cb(oio_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -160,7 +160,7 @@ static void idle_1_cb(oio_handle* handle, int status) {
 }
 
 
-static void idle_1_close_cb(oio_handle* handle, int status){
+static void idle_1_close_cb(oio_handle_t* handle, int status){
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -168,7 +168,7 @@ static void idle_1_close_cb(oio_handle* handle, int status){
 }
 
 
-static void check_cb(oio_handle* handle, int status) {
+static void check_cb(oio_handle_t* handle, int status) {
   int i;
 
   ASSERT(handle == &check_handle);
@@ -205,7 +205,7 @@ static void check_cb(oio_handle* handle, int status) {
 }
 
 
-static void check_close_cb(oio_handle* handle, int status){
+static void check_close_cb(oio_handle_t* handle, int status){
   ASSERT(handle == &check_handle);
   ASSERT(status == 0);
 
@@ -213,7 +213,7 @@ static void check_close_cb(oio_handle* handle, int status){
 }
 
 
-static void prepare_2_cb(oio_handle* handle, int status) {
+static void prepare_2_cb(oio_handle_t* handle, int status) {
   ASSERT(handle == &prepare_2_handle);
   ASSERT(status == 0);
 
@@ -232,7 +232,7 @@ static void prepare_2_cb(oio_handle* handle, int status) {
 }
 
 
-static void prepare_2_close_cb(oio_handle* handle, int status){
+static void prepare_2_close_cb(oio_handle_t* handle, int status){
   ASSERT(handle == &prepare_2_handle);
   ASSERT(status == 0);
 
@@ -240,7 +240,7 @@ static void prepare_2_close_cb(oio_handle* handle, int status){
 }
 
 
-static void prepare_1_cb(oio_handle* handle, int status) {
+static void prepare_1_cb(oio_handle_t* handle, int status) {
   ASSERT(handle == &prepare_1_handle);
   ASSERT(status == 0);
 
@@ -258,7 +258,7 @@ static void prepare_1_cb(oio_handle* handle, int status) {
 }
 
 
-static void prepare_1_close_cb(oio_handle* handle, int status){
+static void prepare_1_close_cb(oio_handle_t* handle, int status){
   ASSERT(handle == &prepare_1_handle);
   ASSERT(status == 0);
 
@@ -266,7 +266,7 @@ static void prepare_1_close_cb(oio_handle* handle, int status){
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf rv = { 0, 0 };
   FATAL("alloc_cb should never be called in this test");
   return rv;

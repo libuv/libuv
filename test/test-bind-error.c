@@ -28,7 +28,7 @@
 static int close_cb_called = 0;
 
 
-static void close_cb(oio_handle* handle, int status) {
+static void close_cb(oio_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -36,7 +36,7 @@ static void close_cb(oio_handle* handle, int status) {
 }
 
 
-static oio_buf alloc_cb(oio_handle* handle, size_t size) {
+static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
   oio_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
@@ -45,7 +45,7 @@ static oio_buf alloc_cb(oio_handle* handle, size_t size) {
 
 TEST_IMPL(bind_error_addrinuse) {
   struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", TEST_PORT);
-  oio_handle server1, server2;
+  oio_handle_t server1, server2;
   int r;
 
   oio_init(alloc_cb);
@@ -80,7 +80,7 @@ TEST_IMPL(bind_error_addrinuse) {
 
 TEST_IMPL(bind_error_addrnotavail_1) {
   struct sockaddr_in addr = oio_ip4_addr("127.255.255.255", TEST_PORT);
-  oio_handle server;
+  oio_handle_t server;
   int r;
 
   oio_init(alloc_cb);
@@ -106,7 +106,7 @@ TEST_IMPL(bind_error_addrnotavail_1) {
 
 TEST_IMPL(bind_error_addrnotavail_2) {
   struct sockaddr_in addr = oio_ip4_addr("4.4.4.4", TEST_PORT);
-  oio_handle server;
+  oio_handle_t server;
   int r;
 
   oio_init(alloc_cb);
@@ -129,7 +129,7 @@ TEST_IMPL(bind_error_addrnotavail_2) {
 
 TEST_IMPL(bind_error_fault) {
   char garbage[] = "blah blah blah blah blah blah blah blah blah blah blah blah";
-  oio_handle server;
+  oio_handle_t server;
   int r;
 
   oio_init(alloc_cb);
@@ -155,7 +155,7 @@ TEST_IMPL(bind_error_fault) {
 TEST_IMPL(bind_error_inval) {
   struct sockaddr_in addr1 = oio_ip4_addr("0.0.0.0", TEST_PORT);
   struct sockaddr_in addr2 = oio_ip4_addr("0.0.0.0", TEST_PORT_2);
-  oio_handle server;
+  oio_handle_t server;
   int r;
 
   oio_init(alloc_cb);
