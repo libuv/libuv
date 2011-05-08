@@ -20,7 +20,6 @@
 
 CFLAGS=--std=gnu89 -g
 LINKFLAGS=-lm
-LIBS=
 TESTS=test/echo-server.c test/test-*.c
 BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
