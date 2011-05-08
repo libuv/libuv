@@ -57,7 +57,7 @@ ev/config.h:
 test: test/run-tests
 	test/run-tests
 
-benchmark: test/run-benchmarks
+bench: test/run-benchmarks
 	test/run-benchmarks
 
 clean:

@@ -20,9 +20,15 @@
  */
 
 #include "task.h"
+#include "../oio.h"
+
+BENCHMARK_IMPL(size_handle) {
+  LOGF("%lu oio_handle\n", sizeof(oio_handle));
+  return 0;
+}
 
 
-BENCHMARK_IMPL(dummy) {
-  LOG("23487 foos/bar\n");
+BENCHMARK_IMPL(size_req) {
+  LOGF("%lu oio_req\n", sizeof(oio_req));
   return 0;
 }

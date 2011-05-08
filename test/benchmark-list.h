@@ -19,12 +19,14 @@
  * IN THE SOFTWARE.
  */
 
-BENCHMARK_DECLARE (dummy)
+BENCHMARK_DECLARE (size_handle)
+BENCHMARK_DECLARE (size_req)
 BENCHMARK_DECLARE (ping_pongs)
 HELPER_DECLARE    (echo_server)
 
 TASK_LIST_START
-  BENCHMARK_ENTRY  (dummy)
+  BENCHMARK_ENTRY  (size_handle)
+  BENCHMARK_ENTRY  (size_req)
 
   BENCHMARK_ENTRY  (ping_pongs)
   BENCHMARK_HELPER (ping_pongs, echo_server)
