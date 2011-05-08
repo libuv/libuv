@@ -867,7 +867,7 @@ int oio_connect(oio_req* req, struct sockaddr* addr) {
 }
 
 
-int oio_write(oio_req* req, oio_buf* bufs, int bufcnt) {
+int oio_write(oio_req* req, oio_buf bufs[], int bufcnt) {
   int result;
   DWORD bytes;
   oio_handle* handle = req->handle;
