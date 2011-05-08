@@ -18,33 +18,24 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-name_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+CFLAGS=-g --std=gnu89
+LINKFLAGS=-lm
+LIBS = -lws2_32
+TESTS=test/echo-server.c test/test-*.c
+BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
-ifneq (,$(findstring MINGW,$(uname_S)))
-include config-mingw.mk
-else
-include config-unix.mk
-endif
+RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
+RUNNER_LINKFLAGS=$(LINKFLAGS)
+RUNNER_SRC=test/runner-win.c
 
-all: oio.a test/run-tests test/run-benchmarks
+oio.a: oio-win.o 
+	$(AR) rcs oio.a oio-win.o
 
-test/run-tests: test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) oio.a
-	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-tests test/run-tests.c \
-		test/runner.c $(RUNNER_SRC) $(TESTS) oio.a
+oio-win.o: oio-win.c oio.h oio-win.h
+	$(CC) $(CFLAGS) -c oio-win.c -o oio-win.o
 
-test/run-benchmarks: test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
-	$(CC) $(RUNNER_CFLAGS) $(RUNNER_LINKFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
-		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) oio.a
+clean:
+	$(RM) -f *.o *.a test/run-tests.exe test/run-benchmarks.exe
 
-test/echo.o: test/echo.c test/echo.h
-	$(CC) $(CFLAGS) -c test/echo.c -o test/echo.o
-
-
-.PHONY: clean distclean test benchmark
-
-
-test: test/run-tests
-	test/run-tests
-
-bench: test/run-benchmarks
-	test/run-benchmarks
+distclean:
+	$(RM) -f *.o *.a
