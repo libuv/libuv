@@ -198,6 +198,32 @@ static struct sockaddr_in oio_addr_ip4_any_;
 static char oio_zero_[] = "";
 
 
+/* Atomic set operation on char */
+#ifdef _MSC_VER /* MSVC */
+
+/* Supported by MSVC on x32 and x64 */
+#pragma intrinsic(_InterlockedOr8)
+
+char __declspec(inline) AtomicExchangeSet(char volatile* target) {
+  return _InterlockedOr8(target, 1);
+}
+
+#else /* GCC */
+
+/* Mingw-32 version, hopefully this works for 64-bit gcc as well. */
+inline char AtomicExchangeSet(char volatile* target) {
+  const char one = 1;
+  char result;
+  __asm__ __volatile__ ("lock xchgb %0, %1\n\t"
+                        : "=r"(result), "=m"(*target)
+                        : "0"(one), "m"(*target)
+                        : "memory");
+  return result;
+}
+
+#endif
+
+
 /*
  * Display an error message and abort the event loop.
  */
@@ -1174,7 +1200,7 @@ int oio_async_send(oio_handle_t* handle) {
   /* or closed handle. */
   assert(!(handle->flags & OIO_HANDLE_CLOSING));
 
-  if (!(InterlockedOr8(&handle->async_sent, 1))) {
+  if (!AtomicExchangeSet(&handle->async_sent)) {
     if (!PostQueuedCompletionStatus(oio_iocp_,
                                     0,
                                     0,
