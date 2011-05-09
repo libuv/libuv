@@ -1311,6 +1311,9 @@ static void oio_poll() {
           }
         }
         break;
+
+      default:
+        assert(0);
     }
 
     /* The number of pending requests is now down by one */
