@@ -319,7 +319,7 @@ uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
     return 0;
   }
 
-  return t;
+  return (uintptr_t)t;
 }
 
 
