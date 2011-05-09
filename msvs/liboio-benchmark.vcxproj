@@ -136,6 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\test\benchmark-ping-pongs.c" />
+    <ClCompile Include="..\test\benchmark-pump.c" />
     <ClCompile Include="..\test\benchmark-sizes.c" />
     <ClCompile Include="..\test\echo-server.c" />
     <ClCompile Include="..\test\run-benchmarks.c" />
