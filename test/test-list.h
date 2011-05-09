@@ -31,6 +31,7 @@ TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (timeout)
 TEST_DECLARE   (loop_handles)
+TEST_DECLARE   (async)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 HELPER_DECLARE (echo_server)
@@ -62,6 +63,8 @@ TASK_LIST_START
   TEST_ENTRY  (timeout)
 
   TEST_ENTRY  (loop_handles)
+
+  TEST_ENTRY  (async)
 
 #if 0
   /* These are for testing the test runner. */
