@@ -28,7 +28,7 @@
 #include <stdint.h> /* int64_t */
 #include <sys/types.h> /* size_t */
 
-typedef struct oio_err_s oio_err;
+typedef struct oio_err_s oio_err_t;
 typedef struct oio_handle_s oio_handle_t;
 typedef struct oio_req_s oio_req_t;
 
@@ -159,8 +159,8 @@ struct oio_handle_s {
  * On error the user should then call oio_last_error() to determine
  * the error code.
  */
-oio_err oio_last_error();
-char* oio_strerror(oio_err err);
+oio_err_t oio_last_error();
+char* oio_strerror(oio_err_t err);
 
 
 void oio_init(oio_alloc_cb alloc);

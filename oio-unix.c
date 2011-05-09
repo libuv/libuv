@@ -34,7 +34,7 @@
 #include <arpa/inet.h>
 
 
-static oio_err last_err;
+static oio_err_t last_err;
 static oio_alloc_cb alloc_cb;
 
 
@@ -60,12 +60,12 @@ void oio_flag_set(oio_handle_t* handle, int flag) {
 }
 
 
-oio_err oio_last_error() {
+oio_err_t oio_last_error() {
   return last_err;
 }
 
 
-char* oio_strerror(oio_err err) {
+char* oio_strerror(oio_err_t err) {
   return strerror(err.sys_errno_);
 }
 
@@ -97,8 +97,8 @@ static oio_err_code oio_translate_sys_error(int sys_errno) {
 }
 
 
-static oio_err oio_err_new_artificial(oio_handle_t* handle, int code) {
-  oio_err err;
+static oio_err_t oio_err_new_artificial(oio_handle_t* handle, int code) {
+  oio_err_t err;
   err.sys_errno_ = 0;
   err.code = code;
   last_err = err;
@@ -106,8 +106,8 @@ static oio_err oio_err_new_artificial(oio_handle_t* handle, int code) {
 }
 
 
-static oio_err oio_err_new(oio_handle_t* handle, int sys_error) {
-  oio_err err;
+static oio_err_t oio_err_new(oio_handle_t* handle, int sys_error) {
+  oio_err_t err;
   err.sys_errno_ = sys_error;
   err.code = oio_translate_sys_error(sys_error);
   last_err = err;
@@ -526,7 +526,7 @@ void oio__write(oio_handle_t* handle) {
 
   if (n < 0) {
     if (errno != EAGAIN) {
-      oio_err err = oio_err_new(handle, errno);
+      oio_err_t err = oio_err_new(handle, errno);
 
       /* XXX How do we handle the error? Need test coverage here. */
       oio_close(handle);
@@ -725,7 +725,7 @@ static void oio_tcp_connect(oio_handle_t* handle) {
     return;
 
   } else {
-    oio_err err = oio_err_new(handle, error);
+    oio_err_t err = oio_err_new(handle, error);
 
     handle->connect_req = NULL;
 

@@ -94,7 +94,7 @@ static void write_cb(oio_req_t* req, int status) {
   ASSERT(req != NULL);
 
   if (status) {
-    oio_err err = oio_last_error();
+    oio_err_t err = oio_last_error();
     fprintf(stderr, "oio_write error: %s\n", oio_strerror(err));
     ASSERT(0);
   }

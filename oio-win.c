@@ -176,8 +176,8 @@ static HANDLE oio_iocp_;
 
 
 /* Global error code */
-static const oio_err oio_ok_ = { OIO_OK, ERROR_SUCCESS };
-static oio_err oio_last_error_ = { OIO_OK, ERROR_SUCCESS };
+static const oio_err_t oio_ok_ = { OIO_OK, ERROR_SUCCESS };
+static oio_err_t oio_last_error_ = { OIO_OK, ERROR_SUCCESS };
 
 /* Error message string */
 static char* oio_err_str_ = NULL;
@@ -258,12 +258,12 @@ static void oio_fatal_error(const int errorno, const char* syscall) {
 }
 
 
-oio_err oio_last_error() {
+oio_err_t oio_last_error() {
   return oio_last_error_;
 }
 
 
-char* oio_strerror(oio_err err) {
+char* oio_strerror(oio_err_t err) {
   if (oio_err_str_ != NULL) {
     LocalFree((void*) oio_err_str_);
   }
@@ -302,8 +302,8 @@ static oio_err_code oio_translate_sys_error(int sys_errno) {
 }
 
 
-static oio_err oio_new_sys_error(int sys_errno) {
-  oio_err e;
+static oio_err_t oio_new_sys_error(int sys_errno) {
+  oio_err_t e;
   e.code = oio_translate_sys_error(sys_errno);
   e.sys_errno_ = sys_errno;
   return e;
@@ -486,7 +486,7 @@ int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
 
 
 static void oio_tcp_endgame(oio_handle_t* handle) {
-  oio_err err;
+  oio_err_t err;
   int status;
 
   if (handle->flags & OIO_HANDLE_SHUTTING &&
@@ -605,7 +605,7 @@ static void oio_want_endgame(oio_handle_t* handle) {
 }
 
 
-static int oio_close_error(oio_handle_t* handle, oio_err e) {
+static int oio_close_error(oio_handle_t* handle, oio_err_t e) {
   if (handle->flags & OIO_HANDLE_CLOSING) {
     return 0;
   }
