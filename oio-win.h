@@ -81,6 +81,11 @@ typedef struct oio_buf {
   oio_handle_t* loop_next;                \
   void* loop_cb;
 
+#define oio_async_fields                  \
+  struct oio_req_s async_req;             \
+  /* char to avoid alignment issues */    \
+  char volatile async_sent;
+
 #define oio_handle_private_fields         \
   oio_handle_t* endgame_next;             \
   unsigned int flags;                     \
@@ -88,4 +93,5 @@ typedef struct oio_buf {
   union {                                 \
     struct { oio_tcp_fields  };           \
     struct { oio_loop_fields };           \
+    struct { oio_async_fields };          \
   };

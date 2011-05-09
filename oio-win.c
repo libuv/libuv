@@ -522,6 +522,21 @@ static void oio_loop_endgame(oio_handle_t* handle) {
 }
 
 
+static void oio_async_endgame(oio_handle_t* handle) {
+  if (handle->flags & OIO_HANDLE_CLOSING &&
+      !handle->async_sent) {
+    assert(!(handle->flags & OIO_HANDLE_CLOSED));
+    handle->flags |= OIO_HANDLE_CLOSED;
+
+    if (handle->close_cb) {
+      handle->close_cb(handle, 0);
+    }
+
+    oio_refs_--;
+  }
+}
+
+
 static void oio_call_endgames() {
   oio_handle_t* handle;
 
@@ -540,6 +555,10 @@ static void oio_call_endgames() {
       case OIO_CHECK:
       case OIO_IDLE:
         oio_loop_endgame(handle);
+        break;
+
+      case OIO_ASYNC:
+        oio_async_endgame(handle);
         break;
 
       default:
@@ -591,6 +610,11 @@ static int oio_close_error(oio_handle_t* handle, oio_err e) {
       oio_idle_stop(handle);
       oio_want_endgame(handle);
       return 0;
+
+    case OIO_ASYNC:
+      if (!handle->async_sent) {
+        oio_want_endgame(handle);
+      }
       return 0;
 
     default:
@@ -1119,6 +1143,50 @@ int oio_idle_stop(oio_handle_t* handle) {
 }
 
 
+int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
+                   oio_close_cb close_cb, void* data) {
+  oio_req_t* req;
+
+  handle->type = OIO_ASYNC;
+  handle->close_cb = (void*) close_cb;
+  handle->data = data;
+  handle->flags = 0;
+  handle->async_sent = 0;
+  handle->error = oio_ok_;
+
+  req = &handle->async_req;
+  oio_req_init(req, handle, async_cb);
+  req->type = OIO_WAKEUP;
+
+  oio_refs_++;
+
+  return 0;
+}
+
+
+int oio_async_send(oio_handle_t* handle) {
+  if (handle->type != OIO_ASYNC) {
+    /* Can't set errno because that's not thread-safe. */
+    return -1;
+  }
+
+  /* The user should make sure never to call oio_async_send to a closing */
+  /* or closed handle. */
+  assert(!(handle->flags & OIO_HANDLE_CLOSING));
+
+  if (!(InterlockedOr8(&handle->async_sent, 1))) {
+    if (!PostQueuedCompletionStatus(oio_iocp_,
+                                    0,
+                                    0,
+                                    &handle->async_req.overlapped)) {
+      oio_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    }
+  }
+
+  return 0;
+}
+
+
 static void oio_poll() {
   BOOL success;
   DWORD bytes;
@@ -1312,18 +1380,31 @@ static void oio_poll() {
         }
         break;
 
+      case OIO_WAKEUP:
+        handle->async_sent = 0;
+        if (req->cb) {
+          ((oio_async_cb)req->cb)(handle, 0);
+        }
+        if (handle->flags & OIO_HANDLE_CLOSING) {
+          oio_want_endgame(handle);
+        }
+        break;
+
       default:
         assert(0);
     }
 
-    /* The number of pending requests is now down by one */
-    handle->reqs_pending--;
+    /* TODO: reorganize this */
+    if (handle->type == OIO_TCP) {
+      /* The number of pending requests is now down by one */
+      handle->reqs_pending--;
 
-    /* Queue the handle's close callback if it is closing and there are no */
-    /* more pending requests. */
-    if (handle->flags & OIO_HANDLE_CLOSING &&
-        handle->reqs_pending == 0) {
-      oio_want_endgame(handle);
+      /* Queue the handle's close callback if it is closing and there are no */
+      /* more pending requests. */
+      if (handle->flags & OIO_HANDLE_CLOSING &&
+          handle->reqs_pending == 0) {
+        oio_want_endgame(handle);
+      }
     }
   } /* if (overlapped) */
 
