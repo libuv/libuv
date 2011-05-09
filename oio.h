@@ -56,7 +56,9 @@ typedef void (*oio_shutdown_cb)(oio_req_t* req, int status);
 typedef void (*oio_accept_cb)(oio_handle_t* handle);
 typedef void (*oio_close_cb)(oio_handle_t* handle, int status);
 typedef void (*oio_timer_cb)(oio_req_t* req, int64_t skew, int status);
+/* TODO: do loop_cb and async_cb really need a status argument? */
 typedef void (*oio_loop_cb)(oio_handle_t* handle, int status);
+typedef void (*oio_async_cb)(oio_handle_t* handle, int stats);
 
 
 /* Expand this list if necessary. */
@@ -106,7 +108,8 @@ typedef enum {
   OIO_FILE,
   OIO_PREPARE,
   OIO_CHECK,
-  OIO_IDLE
+  OIO_IDLE,
+  OIO_ASYNC
 } oio_handle_type;
 
 typedef enum {
@@ -116,7 +119,8 @@ typedef enum {
   OIO_READ,
   OIO_WRITE,
   OIO_SHUTDOWN,
-  OIO_TIMEOUT
+  OIO_TIMEOUT,
+  OIO_WAKEUP
 } oio_req_type;
 
 
@@ -237,6 +241,16 @@ int oio_check_stop(oio_handle_t* handle);
 int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_idle_stop(oio_handle_t* handle);
+
+/* oio_async_send wakes up the event loop and calls the async handle's callback
+ * There is no guarantee that every oio_async_send call leads to exactly one
+ * invocation of the callback; The only guarantee is that the callback function
+ * is  called at least once after the call to async_send. Unlike everything
+ * else, oio_async_send can be called from another thread.
+ */
+int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
+                   oio_close_cb close_cb, void* data);
+int oio_async_send(oio_handle_t* handle);
 
 /* Request handle to be closed. close_cb will be called
  * asynchronously after this call.
