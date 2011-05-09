@@ -123,9 +123,9 @@ static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
 
 
 static void idle_2_cb(oio_handle_t* handle, int status) {
-  LOG("IDLE_2_CB\n");
-
   int r;
+
+  LOG("IDLE_2_CB\n");
 
   ASSERT(handle == &idle_2_handle);
   ASSERT(status == 0);
