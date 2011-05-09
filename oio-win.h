@@ -77,12 +77,12 @@ typedef struct oio_buf {
   };
 
 #define oio_loop_fields                   \
-  oio_handle_t* loop_prev;                  \
-  oio_handle_t* loop_next;                  \
+  oio_handle_t* loop_prev;                \
+  oio_handle_t* loop_next;                \
   void* loop_cb;
 
 #define oio_handle_private_fields         \
-  oio_handle_t* endgame_next;               \
+  oio_handle_t* endgame_next;             \
   unsigned int flags;                     \
   oio_err error;                          \
   union {                                 \

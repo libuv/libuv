@@ -117,7 +117,7 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 
 
 /*
- * Private oio_handle_t flags
+ * Private oio_handle flags
  */
 #define OIO_HANDLE_CLOSING          0x0001
 #define OIO_HANDLE_CLOSED           0x0002
@@ -134,7 +134,7 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 #define OIO_HANDLE_BIND_ERROR       0x1000
 
 /*
- * Private oio_req_t flags.
+ * Private oio_req flags.
  */
 /* The request is currently queued. */
 #define OIO_REQ_PENDING      0x01
@@ -568,24 +568,29 @@ static int oio_close_error(oio_handle_t* handle, oio_err e) {
   handle->error = e;
   handle->flags |= OIO_HANDLE_CLOSING;
 
-  oio_want_endgame(handle);
-
   /* Handle-specific close actions */
   switch (handle->type) {
     case OIO_TCP:
       closesocket(handle->socket);
+      if (handle->reqs_pending == 0) {
+        oio_want_endgame(handle);
+      }
       return 0;
 
     case OIO_PREPARE:
       oio_prepare_stop(handle);
+      oio_want_endgame(handle);
       return 0;
 
     case OIO_CHECK:
       oio_check_stop(handle);
+      oio_want_endgame(handle);
       return 0;
 
     case OIO_IDLE:
       oio_idle_stop(handle);
+      oio_want_endgame(handle);
+      return 0;
       return 0;
 
     default:
@@ -658,7 +663,7 @@ static void oio_queue_accept(oio_handle_t* handle) {
     return;
   }
 
-  /* Prepare the oio_req_t and OVERLAPPED structures. */
+  /* Prepare the oio_req and OVERLAPPED structures. */
   req = &handle->accept_req;
   assert(!(req->flags & OIO_REQ_PENDING));
   req->type = OIO_ACCEPT;
@@ -1321,8 +1326,8 @@ static void oio_poll() {
 
   /* Call idle callbacks */
   while (oio_idle_handles_) {
-    oio_loop_invoke(oio_idle_handles_);
     oio_call_endgames();
+    oio_loop_invoke(oio_idle_handles_);
   }
 }
 
