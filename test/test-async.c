@@ -28,38 +28,73 @@
 static oio_handle_t prepare_handle;
 
 static oio_handle_t async1_handle;
-static oio_handle_t async2_handle;
+/* static oio_handle_t async2_handle; */
 
 static int prepare_cb_called = 0;
 
-static int async1_cb_called = 0;
-static int async2_cb_called = 0;
+static volatile int async1_cb_called = 0;
+static int async1_closed = 0;
+/* static volatile int async2_cb_called = 0; */
 
 static int close_cb_called = 0;
 
 static uintptr_t thread1_id = 0;
+#if 0
 static uintptr_t thread2_id = 0;
 static uintptr_t thread3_id = 0;
+#endif
 
 
-/* Thread 1 calls oio_async_send on async_handle_1 20 times. */
+/* Thread 1 makes sure that async1_cb_called reaches 3 before exiting. */
 void thread1_entry(void *arg) {
-  int i;
+  int state = 0;
 
-  for (i = 0; i < 20; i++) {
-    oio_async_send(&async1_handle);
-    oio_sleep(50);
+  oio_sleep(50);
+
+  while (1) {
+    switch (async1_cb_called) {
+      case 0:
+        oio_async_send(&async1_handle);
+        break;
+
+      case 1:
+        oio_async_send(&async1_handle);
+        break;
+
+      case 2:
+        oio_async_send(&async1_handle);
+        break;
+
+      default:
+        return;
+    }
   }
 }
 
-
+#if 0
 /* Thread 2 calls oio_async_send on async_handle_2 8 times. */
 void thread2_entry(void *arg) {
   int i;
 
-  for (i = 0; i < 8; i++) {
-    oio_async_send(&async2_handle);
-    oio_sleep(50);
+  while (1) {
+    switch (async1_cb_called) {
+      case 0:
+        oio_async_send(&async2_handle);
+        break;
+
+      case 1:
+        oio_async_send(&async2_handle);
+        break;
+
+      case 2:
+        oio_async_send(&async2_handle);
+        break;
+    }
+    oio_sleep(5);
+  }
+
+  if (async1_cb_called == 20) {
+    oio_close(handle);
   }
 }
 
@@ -70,13 +105,11 @@ void thread2_entry(void *arg) {
 void thread3_entry(void *arg) {
   int i;
 
-  oio_sleep(500);
-
   for (i = 0; i < 8; i++) {
     oio_async_send(&async2_handle);
-    oio_sleep(50);
   }
 }
+#endif
 
 
 static void close_cb(oio_handle_t* handle, int status) {
@@ -101,12 +134,14 @@ static void async1_cb(oio_handle_t* handle, int status) {
   async1_cb_called++;
   printf("async1_cb #%d\n", async1_cb_called);
 
-  if (async1_cb_called == 20) {
+  if (async1_cb_called > 2 && !async1_closed) {
+    async1_closed = 1;
     oio_close(handle);
   }
 }
 
 
+#if 0
 static void async2_cb(oio_handle_t* handle, int status) {
   ASSERT(handle == &async2_handle);
   ASSERT(status == 0);
@@ -118,6 +153,7 @@ static void async2_cb(oio_handle_t* handle, int status) {
     oio_close(handle);
   }
 }
+#endif
 
 
 static void prepare_cb(oio_handle_t* handle, int status) {
@@ -132,6 +168,7 @@ static void prepare_cb(oio_handle_t* handle, int status) {
       ASSERT(thread1_id != 0);
       break;
 
+#if 0
     case 1:
       thread2_id = oio_create_thread(thread2_entry, NULL);
       ASSERT(thread2_id != 0);
@@ -141,13 +178,14 @@ static void prepare_cb(oio_handle_t* handle, int status) {
       thread3_id = oio_create_thread(thread3_entry, NULL);
       ASSERT(thread3_id != 0);
       break;
+#endif
 
-    case 3:
+    case 1:
       r = oio_close(handle);
       ASSERT(r == 0);
       break;
 
-    case 4:
+    default:
       FATAL("Should never get here");
   }
 
@@ -167,23 +205,28 @@ TEST_IMPL(async) {
 
   r = oio_async_init(&async1_handle, async1_cb, close_cb, NULL);
   ASSERT(r == 0);
+
+#if 0
   r = oio_async_init(&async2_handle, async2_cb, close_cb, NULL);
   ASSERT(r == 0);
+#endif
 
   r = oio_run();
   ASSERT(r == 0);
 
   r = oio_wait_thread(thread1_id);
   ASSERT(r == 0);
+#if 0
   r = oio_wait_thread(thread2_id);
   ASSERT(r == 0);
   r = oio_wait_thread(thread3_id);
   ASSERT(r == 0);
+#endif
 
-  ASSERT(prepare_cb_called == 4);
-  ASSERT(async1_cb_called = 20);
-  ASSERT(async2_cb_called = 16);
-  ASSERT(close_cb_called == 3);
+  ASSERT(prepare_cb_called == 2);
+  ASSERT(async1_cb_called > 2);
+  /* ASSERT(async2_cb_called = 16); */
+  ASSERT(close_cb_called == 2);
 
   return 0;
 }

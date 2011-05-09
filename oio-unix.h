@@ -51,7 +51,7 @@ typedef struct {
   int fd; \
   int flags; \
   ev_idle next_watcher; \
-/* TCP */ \
+/* OIO_TCP */ \
   int delayed_error; \
   oio_read_cb read_cb; \
   oio_accept_cb accept_cb; \
@@ -62,15 +62,18 @@ typedef struct {
   ev_io write_watcher; \
   ngx_queue_t write_queue; \
   size_t write_queue_size; \
-/* PREPARE */ \
+/* OIO_PREPARE */ \
   ev_prepare prepare_watcher; \
   oio_loop_cb prepare_cb; \
-/* CHECK */ \
+/* OIO_CHECK */ \
   ev_check check_watcher; \
   oio_loop_cb check_cb; \
-/* IDLE */ \
+/* OIO_IDLE */ \
   ev_idle idle_watcher; \
-  oio_loop_cb idle_cb;
+  oio_loop_cb idle_cb; \
+/* OIO_ASYNC */ \
+  ev_async async_watcher; \
+  oio_loop_cb async_cb;
 
 
 #endif /* OIO_UNIX_H */

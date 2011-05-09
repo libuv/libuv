@@ -145,6 +145,10 @@ int oio_close(oio_handle_t* handle) {
       ev_idle_stop(EV_DEFAULT_ &handle->idle_watcher);
       break;
 
+    case OIO_ASYNC:
+      ev_async_stop(EV_DEFAULT_ &handle->async_watcher);
+      break;
+
     default:
       assert(0);
       return -1;
@@ -416,6 +420,10 @@ void oio__finish_close(oio_handle_t* handle) {
 
     case OIO_IDLE:
       assert(!ev_is_active(&handle->idle_watcher));
+      break;
+
+    case OIO_ASYNC:
+      assert(!ev_is_active(&handle->async_watcher));
       break;
   }
 
@@ -1010,12 +1018,29 @@ int oio_idle_stop(oio_handle_t* handle) {
 }
 
 
+static void oio__async(EV_P_ ev_async* w, int revents) {
+  oio_handle_t* handle = (oio_handle_t*)(w->data);
+
+  if (handle->async_cb) handle->async_cb(handle, 0);
+}
+
+
 int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
     oio_close_cb close_cb, void* data) {
-  assert(0 && "implement me");
+  oio__handle_init(handle, OIO_ASYNC, close_cb, data);
+
+  ev_async_init(&handle->async_watcher, oio__async);
+  handle->async_watcher.data = handle;
+
+  handle->async_cb = async_cb;
+
+  /* Note: This does not have symmetry with the other libev wrappers. */
+  ev_async_start(EV_DEFAULT_UC_ &handle->async_watcher);
+
+  return 0;
 }
 
 
 int oio_async_send(oio_handle_t* handle) {
-  assert(0 && "implement me");
+  ev_async_send(EV_DEFAULT_UC_ &handle->async_watcher);
 }

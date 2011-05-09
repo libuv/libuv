@@ -249,6 +249,9 @@ int oio_idle_stop(oio_handle_t* handle);
  * that the callback function is  called at least once after the call to
  * async_send. Unlike everything else, oio_async_send can be called from
  * another thread.
+ *
+ * QUESTION(ryan) Can OIO_ASYNC just use oio_loop_cb? Same signature on my
+ * side.
  */
 int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
                    oio_close_cb close_cb, void* data);

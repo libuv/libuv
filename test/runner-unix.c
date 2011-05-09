@@ -24,7 +24,7 @@
 
 #include <stdint.h> /* uintptr_t */
 
-#include <unistd.h>
+#include <unistd.h> /* usleep */
 #include <string.h> /* strdup */
 #include <stdio.h>
 #include <stdlib.h>
@@ -304,9 +304,22 @@ void rewind_cursor() {
   fprintf(stderr, "\033[2K\r");
 }
 
+void* oio__thread_start(void* arg) {
+
+}
+
+typedef void* (*oio_thread_cb)(void* arg);
 
 uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
-  assert(0 && "implement me");
+  pthread_t t;
+  oio_thread_cb cb = (oio_thread_cb)entry;
+  int r = pthread_create(&t, NULL, cb, arg);
+
+  if (r) {
+    return 0;
+  }
+
+  return t;
 }
 
 
@@ -314,11 +327,11 @@ uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
  * error.
  */
 int oio_wait_thread(uintptr_t thread_id) {
-  assert(0 && "implement me");
+  return pthread_join((pthread_t)thread_id, NULL);
 }
 
 
 /* Pause the calling thread for a number of milliseconds. */
 void oio_sleep(int msec) {
-  assert(0 && "implement me");
+  usleep(msec);
 }
