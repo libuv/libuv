@@ -89,7 +89,7 @@ typedef struct oio_buf {
 #define oio_handle_private_fields         \
   oio_handle_t* endgame_next;             \
   unsigned int flags;                     \
-  oio_err_t error;                          \
+  oio_err_t error;                        \
   union {                                 \
     struct { oio_tcp_fields  };           \
     struct { oio_loop_fields };           \
