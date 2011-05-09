@@ -44,7 +44,10 @@ typedef struct oio_buf {
 #define oio_req_private_fields            \
   union {                                 \
     /* Used by I/O operations */          \
-    OVERLAPPED overlapped;                \
+    struct {                              \
+      OVERLAPPED overlapped;              \
+      size_t queued_bytes;                \
+    };                                    \
     /* Used by timers */                  \
     struct {                              \
       RB_ENTRY(oio_req_s) tree_entry;     \

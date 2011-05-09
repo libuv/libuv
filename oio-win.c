@@ -137,7 +137,7 @@ static LPFN_TRANSMITFILE            pTransmitFile;
  * Private oio_req flags.
  */
 /* The request is currently queued. */
-#define OIO_REQ_PENDING      0x01
+#define OIO_REQ_PENDING             0x01
 
 
 /* Binary tree used to keep the list of timers sorted. */
@@ -428,6 +428,7 @@ static int oio_tcp_init_socket(oio_handle_t* handle, oio_close_cb close_cb,
   handle->socket = socket;
   handle->close_cb = close_cb;
   handle->data = data;
+  handle->write_queue_size = 0;
   handle->type = OIO_TCP;
   handle->flags = 0;
   handle->reqs_pending = 0;
@@ -925,9 +926,21 @@ int oio_connect(oio_req_t* req, struct sockaddr* addr) {
 }
 
 
+static size_t oio_count_bufs(oio_buf bufs[], int count) {
+  size_t bytes = 0;
+  int i;
+
+  for (i = 0; i < count; i++) {
+    bytes += (size_t)bufs[i].len;
+  }
+
+  return bytes;
+}
+
+
 int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
   int result;
-  DWORD bytes;
+  DWORD bytes, err;
   oio_handle_t* handle = req->handle;
 
   assert(!(req->flags & OIO_REQ_PENDING));
@@ -952,9 +965,22 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
                    0,
                    &req->overlapped,
                    NULL);
-  if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_set_sys_error(WSAGetLastError());
-    return -1;
+  if (result != 0) {
+    err = WSAGetLastError();
+    if (err != WSA_IO_PENDING) {
+      /* Send faild due to an error */
+      oio_set_sys_error(WSAGetLastError());
+      return -1;
+    }
+  }
+
+  if (result == 0) {
+    /* Request completed immediately */
+    req->queued_bytes = 0;
+  } else {
+    /* Request queued by the kernel */
+    req->queued_bytes = oio_count_bufs(bufs, bufcnt);
+    handle->write_queue_size += req->queued_bytes;
   }
 
   req->flags |= OIO_REQ_PENDING;
@@ -1005,6 +1031,7 @@ static void oio_tcp_return_req(oio_handle_t* handle, oio_req_t* req) {
   switch (req->type) {
     case OIO_WRITE:
       success = GetOverlappedResult(handle->handle, &req->overlapped, &bytes, FALSE);
+      handle->write_queue_size -= req->queued_bytes;
       if (!success) {
         oio_set_sys_error(GetLastError());
         oio_close_error(handle, oio_last_error_);

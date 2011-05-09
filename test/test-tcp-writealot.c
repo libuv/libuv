@@ -59,6 +59,9 @@ static void shutdown_cb(oio_req_t* req, int status) {
   ASSERT(req);
   ASSERT(status == 0);
 
+  /* The write buffer should be empty by now. */
+  ASSERT(req->handle->write_queue_size == 0);
+
   /* Now we wait for the EOF */
   shutdown_cb_called++;
 

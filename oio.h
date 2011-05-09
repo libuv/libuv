@@ -150,6 +150,8 @@ struct oio_handle_s {
   /* public */
   oio_close_cb close_cb;
   void* data;
+  /* number of bytes queued for writing */
+  size_t write_queue_size;
   /* private */
   oio_handle_private_fields
 };
