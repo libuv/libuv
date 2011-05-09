@@ -161,7 +161,7 @@ int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
   handle->connect_req = NULL;
   handle->accepted_fd = -1;
   handle->fd = -1;
-
+  handle->delayed_error = 0;
   ngx_queue_init(&handle->write_queue);
   handle->write_queue_size = 0;
 
@@ -213,6 +213,7 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
   }
 
   r = bind(handle->fd, addr, addrsize);
+  handle->delayed_error = 0;
 
   if (r) {
     switch (errno) {
