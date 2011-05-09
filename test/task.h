@@ -23,6 +23,7 @@
 #define TASK_H_
 
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -46,8 +47,8 @@
   } while (0)
 
 
-/*
- * Have our own assert, so we are sure it does not get optimized away in
+
+/* Have our own assert, so we are sure it does not get optimized away in
  * a release build.
  */
 #define ASSERT(expr)                                      \
@@ -72,5 +73,17 @@
 
 #define HELPER_IMPL(name)  \
   int run_helper_##name()
+
+
+/* Create a thread. Returns the thread identifier, or 0 on failure. */
+uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg);
+
+/* Wait for a thread to terminate. Should return 0 if the thread ended, -1 on
+ * error.
+ */
+int oio_wait_thread(uintptr_t thread_id);
+
+/* Pause the calling thread for a number of milliseconds. */
+void oio_sleep(int msec);
 
 #endif /* TASK_H_ */
