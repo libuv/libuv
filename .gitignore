@@ -22,5 +22,7 @@ ev/autom4te.cache
 /build/
 test/run-tests
 test/run-benchmarks
+test/run-tests.exe
+test/run-benchmarks.exe
 test/run-benchmarks.dSYM/
 test/run-tests.dSYM/
