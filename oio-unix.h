@@ -46,9 +46,12 @@ typedef struct {
   int bufcnt;
 
 
+/* TODO: union or classes please! */
 #define oio_handle_private_fields \
   int fd; \
   int flags; \
+  ev_idle next_watcher; \
+/* TCP */ \
   int delayed_error; \
   oio_read_cb read_cb; \
   oio_accept_cb accept_cb; \
@@ -57,9 +60,17 @@ typedef struct {
   oio_req_t *shutdown_req; \
   ev_io read_watcher; \
   ev_io write_watcher; \
-  ev_idle next_watcher; \
   ngx_queue_t write_queue; \
-  size_t write_queue_size;
+  size_t write_queue_size; \
+/* PREPARE */ \
+  ev_prepare prepare_watcher; \
+  oio_loop_cb prepare_cb; \
+/* CHECK */ \
+  ev_check check_watcher; \
+  oio_loop_cb check_cb; \
+/* IDLE */ \
+  ev_idle idle_watcher; \
+  oio_loop_cb idle_cb;
 
 
 #endif /* OIO_UNIX_H */

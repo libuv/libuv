@@ -42,7 +42,7 @@ void oio__tcp_io(EV_P_ ev_io* watcher, int revents);
 void oio__next(EV_P_ ev_idle* watcher, int revents);
 static void oio_tcp_connect(oio_handle_t* handle);
 int oio_tcp_open(oio_handle_t*, int fd);
-void oio_finish_close(oio_handle_t* handle);
+static void oio__finish_close(oio_handle_t* handle);
 
 
 /* flags */
@@ -127,11 +127,32 @@ struct sockaddr_in oio_ip4_addr(char* ip, int port) {
 
 
 int oio_close(oio_handle_t* handle) {
+  switch (handle->type) {
+    case OIO_TCP:
+      ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
+      ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
+      break;
+
+    case OIO_PREPARE:
+      ev_prepare_stop(EV_DEFAULT_ &handle->prepare_watcher);
+      break;
+
+    case OIO_CHECK:
+      ev_check_stop(EV_DEFAULT_ &handle->check_watcher);
+      break;
+
+    case OIO_IDLE:
+      ev_idle_stop(EV_DEFAULT_ &handle->idle_watcher);
+      break;
+
+    default:
+      assert(0);
+      return -1;
+  }
+
   oio_flag_set(handle, OIO_CLOSING);
 
-  ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
-  ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
-
+  /* This is used to call the on_close callback in the next loop. */
   ev_idle_start(EV_DEFAULT_ &handle->next_watcher);
   ev_feed_event(EV_DEFAULT_ &handle->next_watcher, EV_IDLE);
   assert(ev_is_pending(&handle->next_watcher));
@@ -149,24 +170,32 @@ void oio_init(oio_alloc_cb cb) {
 
 int oio_run() {
   ev_run(EV_DEFAULT_ 0);
+  return 0;
+}
+
+
+static void oio__handle_init(oio_handle_t* handle, oio_handle_type type,
+    oio_close_cb close_cb, void* data) {
+  handle->type = type;
+  handle->close_cb = close_cb;
+  handle->data = data;
+  handle->flags = 0;
+
+  ev_init(&handle->next_watcher, oio__next);
+  handle->next_watcher.data = handle;
 }
 
 
 int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
     void* data) {
-  handle->type = OIO_TCP;
-  handle->close_cb = close_cb;
-  handle->data = data;
-  handle->flags = 0;
+  oio__handle_init(handle, OIO_TCP, close_cb, data);
+
   handle->connect_req = NULL;
   handle->accepted_fd = -1;
   handle->fd = -1;
   handle->delayed_error = 0;
   ngx_queue_init(&handle->write_queue);
   handle->write_queue_size = 0;
-
-  ev_init(&handle->next_watcher, oio__next);
-  handle->next_watcher.data = handle;
 
   ev_init(&handle->read_watcher, oio__tcp_io);
   handle->read_watcher.data = handle;
@@ -352,23 +381,45 @@ int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb) {
 }
 
 
-void oio_finish_close(oio_handle_t* handle) {
+void oio__finish_close(oio_handle_t* handle) {
   assert(oio_flag_is_set(handle, OIO_CLOSING));
   assert(!oio_flag_is_set(handle, OIO_CLOSED));
   oio_flag_set(handle, OIO_CLOSED);
 
-  ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
-  ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
-  ev_idle_stop(EV_DEFAULT_ &handle->next_watcher);
+  switch (handle->type) {
+    case OIO_TCP:
+      /* XXX Is it necessary to stop these watchers here? weren't they
+       * supposed to be stopped in oio_close()?
+       */
+      ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
+      ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
 
-  close(handle->fd);
+      assert(!ev_is_active(&handle->read_watcher));
+      assert(!ev_is_active(&handle->write_watcher));
 
-  handle->fd = -1;
+      close(handle->fd);
+      handle->fd = -1;
 
-  if (handle->accepted_fd >= 0) {
-    close(handle->accepted_fd);
-    handle->accepted_fd = -1;
+      if (handle->accepted_fd >= 0) {
+        close(handle->accepted_fd);
+        handle->accepted_fd = -1;
+      }
+      break;
+
+    case OIO_PREPARE:
+      assert(!ev_is_active(&handle->prepare_watcher));
+      break;
+
+    case OIO_CHECK:
+      assert(!ev_is_active(&handle->check_watcher));
+      break;
+
+    case OIO_IDLE:
+      assert(!ev_is_active(&handle->idle_watcher));
+      break;
   }
+
+  ev_idle_stop(EV_DEFAULT_ &handle->next_watcher);
 
   if (handle->close_cb) {
     handle->close_cb(handle, 0);
@@ -402,7 +453,7 @@ void oio__next(EV_P_ ev_idle* watcher, int revents) {
    * put more stuff here later.
    */
   assert(oio_flag_is_set(handle, OIO_CLOSING));
-  oio_finish_close(handle);
+  oio__finish_close(handle);
 }
 
 
@@ -770,6 +821,16 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
 }
 
 
+void oio_ref() {
+  ev_ref(EV_DEFAULT_UC);
+}
+
+
+void oio_unref() {
+  ev_unref(EV_DEFAULT_UC);
+}
+
+
 void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
   oio_req_t* req = watcher->data;
   assert(watcher == &req->timer);
@@ -851,58 +912,101 @@ void oio_req_init(oio_req_t* req, oio_handle_t* handle, void* cb) {
 }
 
 
+static void oio__prepare(EV_P_ ev_prepare* w, int revents) {
+  oio_handle_t* handle = (oio_handle_t*)(w->data);
+
+  if (handle->prepare_cb) handle->prepare_cb(handle, 0);
+}
+
+
 int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  assert(0 && "implement me");
+  oio__handle_init(handle, OIO_PREPARE, close_cb, data);
+
+  ev_prepare_init(&handle->prepare_watcher, oio__prepare);
+  handle->prepare_watcher.data = handle;
+
+  handle->prepare_cb = NULL;
+
+  return 0;
 }
 
 
 int oio_prepare_start(oio_handle_t* handle, oio_loop_cb cb) {
-  assert(0 && "implement me");
+  handle->prepare_cb = cb;
+  ev_prepare_start(EV_DEFAULT_UC_ &handle->prepare_watcher);
+  return 0;
 }
 
 
 int oio_prepare_stop(oio_handle_t* handle) {
-  assert(0 && "implement me");
+  ev_prepare_stop(EV_DEFAULT_UC_ &handle->prepare_watcher);
+  return 0;
+}
+
+
+
+static void oio__check(EV_P_ ev_check* w, int revents) {
+  oio_handle_t* handle = (oio_handle_t*)(w->data);
+
+  if (handle->check_cb) handle->check_cb(handle, 0);
 }
 
 
 int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  assert(0 && "implement me");
+  oio__handle_init(handle, OIO_CHECK, close_cb, data);
+
+  ev_check_init(&handle->check_watcher, oio__check);
+  handle->check_watcher.data = handle;
+
+  handle->check_cb = NULL;
+
+  return 0;
 }
 
 
 int oio_check_start(oio_handle_t* handle, oio_loop_cb cb) {
-  assert(0 && "implement me");
+  handle->check_cb = cb;
+  ev_check_start(EV_DEFAULT_UC_ &handle->check_watcher);
+  return 0;
 }
 
 
 int oio_check_stop(oio_handle_t* handle) {
-  assert(0 && "implement me");
+  ev_prepare_stop(EV_DEFAULT_UC_ &handle->prepare_watcher);
+  return 0;
 }
 
 
-void oio_ref() {
-  assert(0 && "implement me");
+static void oio__idle(EV_P_ ev_idle* w, int revents) {
+  oio_handle_t* handle = (oio_handle_t*)(w->data);
+
+  if (handle->idle_cb) handle->idle_cb(handle, 0);
 }
 
-
-void oio_unref() {
-  assert(0 && "implement me");
-}
 
 
 int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  assert(0 && "implement me");
+  oio__handle_init(handle, OIO_IDLE, close_cb, data);
+
+  ev_idle_init(&handle->idle_watcher, oio__idle);
+  handle->idle_watcher.data = handle;
+
+  handle->idle_cb = NULL;
+
+  return 0;
 }
 
 
 int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb) {
-  assert(0 && "implement me");
+  handle->idle_cb = cb;
+  ev_idle_start(EV_DEFAULT_UC_ &handle->idle_watcher);
+  return 0;
 }
 
 
 int oio_idle_stop(oio_handle_t* handle) {
-  assert(0 && "implement me");
+  ev_idle_stop(EV_DEFAULT_UC_ &handle->idle_watcher);
+  return 0;
 }
 
 

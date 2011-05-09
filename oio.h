@@ -219,21 +219,22 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt);
 /* Timer methods */
 int oio_timeout(oio_req_t* req, int64_t timeout);
 
-/* Every active prepare handle gets its callback called exactly once per loop
- * iteration, just before the system blocks to wait for completed i/o.
+/* libev wrapper. Every active prepare handle gets its callback called
+ * exactly once per loop iteration, just before the system blocks to wait
+ * for completed i/o.
  */
 int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_prepare_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_prepare_stop(oio_handle_t* handle);
 
-/* Every active check handle gets its callback called exactly once per loop
- * iteration, just after the system returns from blocking.
+/* libev wrapper. Every active check handle gets its callback called exactly
+ * once per loop iteration, just after the system returns from blocking.
  */
 int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_check_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_check_stop(oio_handle_t* handle);
 
-/* Every active idle handle gets its callback called repeatedly until it is
+/* libev wrapper. Every active idle handle gets its callback called repeatedly until it is
  * stopped. This happens after all other types of callbacks are processed.
  * When there are multiple "idle" handles active, their callbacks are called
  * in turn.
@@ -242,11 +243,12 @@ int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data);
 int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb);
 int oio_idle_stop(oio_handle_t* handle);
 
-/* oio_async_send wakes up the event loop and calls the async handle's callback
- * There is no guarantee that every oio_async_send call leads to exactly one
- * invocation of the callback; The only guarantee is that the callback function
- * is  called at least once after the call to async_send. Unlike everything
- * else, oio_async_send can be called from another thread.
+/* libev wrapper. oio_async_send wakes up the event loop and calls the async
+ * handle's callback There is no guarantee that every oio_async_send call
+ * leads to exactly one invocation of the callback; The only guarantee is
+ * that the callback function is  called at least once after the call to
+ * async_send. Unlike everything else, oio_async_send can be called from
+ * another thread.
  */
 int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
                    oio_close_cb close_cb, void* data);
