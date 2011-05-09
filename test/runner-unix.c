@@ -304,11 +304,9 @@ void rewind_cursor() {
   fprintf(stderr, "\033[2K\r");
 }
 
-void* oio__thread_start(void* arg) {
-
-}
 
 typedef void* (*oio_thread_cb)(void* arg);
+
 
 uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
   pthread_t t;
