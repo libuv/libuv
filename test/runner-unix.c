@@ -22,6 +22,8 @@
 #include "runner-unix.h"
 #include "runner.h"
 
+#include <stdint.h> /* uintptr_t */
+
 #include <unistd.h>
 #include <string.h> /* strdup */
 #include <stdio.h>
@@ -300,4 +302,23 @@ void process_cleanup(process_info_t *p) {
 /* Move the console cursor one line up and back to the first column. */
 void rewind_cursor() {
   fprintf(stderr, "\033[2K\r");
+}
+
+
+uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
+  assert(0 && "implement me");
+}
+
+
+/* Wait for a thread to terminate. Should return 0 if the thread ended, -1 on
+ * error.
+ */
+int oio_wait_thread(uintptr_t thread_id) {
+  assert(0 && "implement me");
+}
+
+
+/* Pause the calling thread for a number of milliseconds. */
+void oio_sleep(int msec) {
+  assert(0 && "implement me");
 }

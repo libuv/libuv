@@ -903,3 +903,14 @@ int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb) {
 int oio_idle_stop(oio_handle_t* handle) {
   assert(0 && "implement me");
 }
+
+
+int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
+    oio_close_cb close_cb, void* data) {
+  assert(0 && "implement me");
+}
+
+
+int oio_async_send(oio_handle_t* handle) {
+  assert(0 && "implement me");
+}
