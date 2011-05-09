@@ -201,24 +201,27 @@ static char oio_zero_[] = "";
 /* Atomic set operation on char */
 #ifdef _MSC_VER /* MSVC */
 
-/* Supported by MSVC on x32 and x64 */
+/* _InterlockedOr8 is supported by MSVC on x32 and x64. It is  slightly less */
+/* efficient than InterlockedExchange, but InterlockedExchange8 does not */
+/* exist, and interlocked operations on larger targets might require the */
+/* target to be aligned. */
 #pragma intrinsic(_InterlockedOr8)
 
-char __declspec(inline) AtomicExchangeSet(char volatile* target) {
+static char __declspec(inline) oio_atomic_exchange_set(char volatile* target) {
   return _InterlockedOr8(target, 1);
 }
 
 #else /* GCC */
 
 /* Mingw-32 version, hopefully this works for 64-bit gcc as well. */
-inline char AtomicExchangeSet(char volatile* target) {
+static inline char oio_atomic_exchange_set(char volatile* target) {
   const char one = 1;
-  char result;
+  char old_value;
   __asm__ __volatile__ ("lock xchgb %0, %1\n\t"
-                        : "=r"(result), "=m"(*target)
+                        : "=r"(old_value), "=m"(*target)
                         : "0"(one), "m"(*target)
                         : "memory");
-  return result;
+  return old_value;
 }
 
 #endif
@@ -1200,7 +1203,7 @@ int oio_async_send(oio_handle_t* handle) {
   /* or closed handle. */
   assert(!(handle->flags & OIO_HANDLE_CLOSING));
 
-  if (!AtomicExchangeSet(&handle->async_sent)) {
+  if (!oio_atomic_exchange_set(&handle->async_sent)) {
     if (!PostQueuedCompletionStatus(oio_iocp_,
                                     0,
                                     0,
