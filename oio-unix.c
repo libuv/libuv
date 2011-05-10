@@ -40,7 +40,7 @@ static oio_alloc_cb alloc_cb;
 
 void oio__tcp_io(EV_P_ ev_io* watcher, int revents);
 void oio__next(EV_P_ ev_idle* watcher, int revents);
-static void oio_tcp_connect(oio_handle_t* handle);
+static void oio__tcp_connect(oio_handle_t* handle);
 int oio_tcp_open(oio_handle_t*, int fd);
 static void oio__finish_close(oio_handle_t* handle);
 
@@ -682,7 +682,7 @@ void oio__tcp_io(EV_P_ ev_io* watcher, int revents) {
   assert(!oio_flag_is_set(handle, OIO_CLOSING));
 
   if (handle->connect_req) {
-    oio_tcp_connect(handle);
+    oio__tcp_connect(handle);
   } else {
     if (revents & EV_READ) {
       oio__read(handle);
@@ -700,15 +700,26 @@ void oio__tcp_io(EV_P_ ev_io* watcher, int revents) {
  * In order to determine if we've errored out or succeeded must call
  * getsockopt.
  */
-static void oio_tcp_connect(oio_handle_t* handle) {
+static void oio__tcp_connect(oio_handle_t* handle) {
+  int error;
+  socklen_t errorsize = sizeof(int);
+
   assert(handle->fd >= 0);
 
   oio_req_t* req = handle->connect_req;
   assert(req);
 
-  int error;
-  socklen_t errorsize = sizeof(int);
-  getsockopt(handle->fd, SOL_SOCKET, SO_ERROR, &error, &errorsize);
+  if (handle->delayed_error) {
+    /* To smooth over the differences between unixes errors that
+     * were reported synchronously on the first connect can be delayed
+     * until the next tick--which is now.
+     */
+    error = handle->delayed_error;
+    handle->delayed_error = 0;
+  } else {
+    /* Normal situation: we need to get the socket error from the kernel. */
+    getsockopt(handle->fd, SOL_SOCKET, SO_ERROR, &error, &errorsize);
+  }
 
   if (!error) {
     ev_io_start(EV_DEFAULT_ &handle->read_watcher);
@@ -723,8 +734,8 @@ static void oio_tcp_connect(oio_handle_t* handle) {
   } else if (error == EINPROGRESS) {
     /* Still connecting. */
     return;
-
   } else {
+    /* Error */
     oio_err_t err = oio_err_new(handle, error);
 
     handle->connect_req = NULL;
@@ -773,13 +784,30 @@ int oio_connect(oio_req_t* req, struct sockaddr* addr) {
   int addrsize = sizeof(struct sockaddr_in);
 
   int r = connect(handle->fd, addr, addrsize);
+  handle->delayed_error = 0;
+
   if (r != 0 && errno != EINPROGRESS) {
-    oio_err_new(handle, errno);
-    return -1;
+    switch (errno) {
+      /* If we get a ECONNREFUSED wait until the next tick to report the
+       * error. Solaris wants to report immediately--other unixes want to
+       * wait.
+       */
+      case ECONNREFUSED:
+        handle->delayed_error = errno;
+        break;
+
+      default:
+        oio_err_new(handle, errno);
+        return -1;
+    }
   }
 
   assert(handle->write_watcher.data == handle);
   ev_io_start(EV_DEFAULT_ &handle->write_watcher);
+
+  if (handle->delayed_error) {
+    ev_feed_event(EV_DEFAULT_ &handle->write_watcher, EV_WRITE);
+  }
 
   return 0;
 }

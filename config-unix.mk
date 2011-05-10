@@ -26,6 +26,10 @@ LINKFLAGS=-lm
 TESTS=test/echo-server.c test/test-*.c
 BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
+ifeq (SunOS,$(uname_S))
+LINKFLAGS+=-lsocket -lnsl
+endif
+
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
 RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
 RUNNER_LIBS=

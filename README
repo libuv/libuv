@@ -11,6 +11,8 @@ Studio or MingW.
 
 Linux 2.6 and MacOS using the GCC toolchain.
 
+Solaris 121 and later using GCC toolchain.
+
 ## Design
 
 The goal of this library is to provide high-concurrency high-performance I/O

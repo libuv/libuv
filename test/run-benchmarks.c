@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 
   if (argc > 1) {
     /* A specific process was requested. */
-    run_process(argv[1]);
+    return run_process(argv[1]);
 
   } else {
     /* Run all benchmarks. */
