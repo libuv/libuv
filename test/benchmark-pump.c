@@ -30,8 +30,9 @@
 #define WRITE_BUFFER_SIZE           8192
 #define MAX_SIMULTANEOUS_CONNECTS   100
 
+#define PRINT_STATS                 0
 #define STATS_INTERVAL              1000 /* msec */
-#define RUN_TIME                    5000 /* msec */
+#define STATS_COUNT                 5
 
 
 static void do_write(oio_handle_t* handle);
@@ -46,12 +47,16 @@ static void buf_free(oio_buf oio_buf);
 
 static struct sockaddr_in server_addr;
 
+static int64_t start_time;
+
 static int max_connect_socket = 0;
 static int read_sockets = 0;
 static int write_sockets = 0;
 
-static int64_t read_total = 0;
-static int64_t written_total = 0;
+static int64_t nrecv = 0;
+static int64_t nrecv_total = 0;
+static int64_t nsent = 0;
+static int64_t nsent_total = 0;
 
 static int stats_left = 0;
 
@@ -61,27 +66,39 @@ static oio_handle_t read_handles[TARGET_CONNECTIONS];
 static oio_handle_t write_handles[TARGET_CONNECTIONS];
 
 
-static int mbit(int64_t bytes, int64_t passed_milis) {
-  return (int)(bytes / (125 * passed_milis));
+static double gbit(int64_t bytes, int64_t passed_ms) {
+  double gbits = ((double)bytes / (1024 * 1024 * 1024)) * 8;
+  return gbits / ((double)passed_ms / 1000);
 }
 
 
 static void show_stats(oio_req_t *req, int64_t skew, int status) {
   int64_t msec = STATS_INTERVAL + skew;
 
-  LOGF("connections: %d, read: %d mbit/s, write: %d mbit/s\n",
+#if PRINT_STATS
+  LOGF("connections: %d, read: %.1f gbit/s, write: %.1f gbit/s\n",
        read_sockets,
-       mbit(read_total, msec),
-       mbit(written_total, msec));
+       gbit(nrecv, msec),
+       gbit(nsent, msec));
+#endif
 
   /* Exit if the show is over */
   if (!--stats_left) {
+
+    oio_update_time();
+    int64_t diff = oio_now() - start_time;
+
+    LOGF("pump_read_%d: %.1f gbit/s\n", read_sockets,
+        gbit(nrecv_total, diff));
+    LOGF("pump_write_%d: %.1f gbit/s\n", read_sockets,
+        gbit(nsent_total, diff));
+
     exit(0);
   }
 
   /* Reset read and write counters */
-  read_total = 0;
-  written_total = 0;
+  nrecv = 0;
+  nsent = 0;
 
   oio_timeout(req, (STATS_INTERVAL - skew > 0)
                    ? STATS_INTERVAL - skew
@@ -94,7 +111,7 @@ static void start_stats_collection() {
   int r;
 
   /* Show-stats timeout */
-  stats_left = (int)ceil((double)RUN_TIME / (double)STATS_INTERVAL);
+  stats_left = STATS_COUNT;
   oio_req_init(req, NULL, (void*)show_stats);
   r = oio_timeout(req, STATS_INTERVAL);
   ASSERT(r == 0);
@@ -111,7 +128,8 @@ static void read_cb(oio_handle_t* handle, int bytes, oio_buf buf) {
 
   buf_free(buf);
 
-  read_total += bytes;
+  nrecv += bytes;
+  nrecv_total += bytes;
 }
 
 
@@ -122,7 +140,9 @@ static void write_cb(oio_req_t *req, int status) {
 
   req_free(req);
 
-  written_total += sizeof write_buffer;
+  nsent += sizeof write_buffer;
+  nsent_total += sizeof write_buffer;
+
   do_write(req->handle);
 }
 
@@ -227,6 +247,9 @@ BENCHMARK_IMPL(pump) {
   ASSERT(r == 0);
   r = oio_listen(&server, TARGET_CONNECTIONS, accept_cb);
   ASSERT(r == 0);
+
+  oio_update_time();
+  start_time = oio_now();
 
   /* Start making connections */
   maybe_connect_some();
