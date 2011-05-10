@@ -120,8 +120,9 @@ static void write_cb(oio_req_t *req, int status) {
 
   ASSERT(status == 0);
 
-  written_total += sizeof write_buffer;
+  req_free(req);
 
+  written_total += sizeof write_buffer;
   do_write(req->handle);
 }
 
