@@ -152,7 +152,7 @@ finalize:
       break;
 
      default:
-      LOGF("%s: ", test->task_name);
+      //LOGF("%s: ", test->task_name);
       process_copy_output(main_process, fileno(stderr));
       break;
     }

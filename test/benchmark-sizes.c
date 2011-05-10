@@ -22,13 +22,9 @@
 #include "task.h"
 #include "../oio.h"
 
-BENCHMARK_IMPL(size_handle) {
-  LOGF("%lu oio_handle_t\n", sizeof(oio_handle_t));
-  return 0;
-}
 
-
-BENCHMARK_IMPL(size_req) {
-  LOGF("%lu oio_req_t\n", sizeof(oio_req_t));
+BENCHMARK_IMPL(sizes) {
+  LOGF("oio_handle_t: %lu bytes\n", sizeof(oio_handle_t));
+  LOGF("oio_req_t: %lu bytes\n", sizeof(oio_req_t));
   return 0;
 }

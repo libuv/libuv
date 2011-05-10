@@ -84,7 +84,7 @@ static void pinger_close_cb(oio_handle_t* handle, int status) {
   ASSERT(status == 0);
 
   pinger = (pinger_t*)handle->data;
-  printf("%d pings\n", pinger->pongs);
+  printf("ping_pongs: %d pings\n", pinger->pongs);
 
   free(pinger);
 
