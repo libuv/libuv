@@ -88,10 +88,8 @@ static void show_stats(oio_req_t *req, int64_t skew, int status) {
     oio_update_time();
     int64_t diff = oio_now() - start_time;
 
-    LOGF("pump_read_%d: %.1f gbit/s\n", read_sockets,
+    LOGF("pump_%d: %.1f gbit/s\n", read_sockets,
         gbit(nrecv_total, diff));
-    LOGF("pump_write_%d: %.1f gbit/s\n", read_sockets,
-        gbit(nsent_total, diff));
 
     exit(0);
   }
