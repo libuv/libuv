@@ -61,7 +61,6 @@ typedef struct {
   ev_io read_watcher; \
   ev_io write_watcher; \
   ngx_queue_t write_queue; \
-  size_t write_queue_size; \
 /* OIO_PREPARE */ \
   ev_prepare prepare_watcher; \
   oio_loop_cb prepare_cb; \
