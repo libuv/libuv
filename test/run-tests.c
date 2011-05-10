@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   int total, passed, failed;
   task_entry_t* task;
 
-  platform_init();
+  platform_init(argc, argv);
 
   if (argc > 1) {
     /* A specific process was requested. */
