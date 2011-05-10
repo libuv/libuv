@@ -27,7 +27,7 @@
 #include <string.h> /* strlen */
 
 /* Run the benchmark for this many ms */
-#define TIME 1000
+#define TIME 5000
 
 
 typedef struct {
@@ -84,7 +84,7 @@ static void pinger_close_cb(oio_handle_t* handle, int status) {
   ASSERT(status == 0);
 
   pinger = (pinger_t*)handle->data;
-  printf("ping_pongs: %d pings\n", pinger->pongs);
+  LOGF("ping_pongs: %d roundtrips/s\n", (1000 * pinger->pongs) / TIME);
 
   free(pinger);
 
