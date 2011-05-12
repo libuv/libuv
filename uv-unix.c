@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "oio.h"
+#include "uv.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -34,71 +34,71 @@
 #include <arpa/inet.h>
 
 
-static oio_err_t last_err;
-static oio_alloc_cb alloc_cb;
+static uv_err_t last_err;
+static uv_alloc_cb alloc_cb;
 
 
-void oio__tcp_io(EV_P_ ev_io* watcher, int revents);
-void oio__next(EV_P_ ev_idle* watcher, int revents);
-static void oio__tcp_connect(oio_handle_t* handle);
-int oio_tcp_open(oio_handle_t*, int fd);
-static void oio__finish_close(oio_handle_t* handle);
+void uv__tcp_io(EV_P_ ev_io* watcher, int revents);
+void uv__next(EV_P_ ev_idle* watcher, int revents);
+static void uv__tcp_connect(uv_handle_t* handle);
+int uv_tcp_open(uv_handle_t*, int fd);
+static void uv__finish_close(uv_handle_t* handle);
 
 
 /* flags */
 enum {
-  OIO_CLOSING  = 0x00000001, /* oio_close() called but not finished. */
-  OIO_CLOSED   = 0x00000002, /* close(2) finished. */
-  OIO_READING  = 0x00000004, /* oio_read_start() called. */
-  OIO_SHUTTING = 0x00000008, /* oio_shutdown() called but not complete. */
-  OIO_SHUT     = 0x00000010, /* Write side closed. */
+  UV_CLOSING  = 0x00000001, /* uv_close() called but not finished. */
+  UV_CLOSED   = 0x00000002, /* close(2) finished. */
+  UV_READING  = 0x00000004, /* uv_read_start() called. */
+  UV_SHUTTING = 0x00000008, /* uv_shutdown() called but not complete. */
+  UV_SHUT     = 0x00000010, /* Write side closed. */
 };
 
 
-void oio_flag_set(oio_handle_t* handle, int flag) {
+void uv_flag_set(uv_handle_t* handle, int flag) {
   handle->flags |= flag;
 }
 
 
-oio_err_t oio_last_error() {
+uv_err_t uv_last_error() {
   return last_err;
 }
 
 
-char* oio_strerror(oio_err_t err) {
+char* uv_strerror(uv_err_t err) {
   return strerror(err.sys_errno_);
 }
 
 
-void oio_flag_unset(oio_handle_t* handle, int flag) {
+void uv_flag_unset(uv_handle_t* handle, int flag) {
   handle->flags = handle->flags & ~flag;
 }
 
 
-int oio_flag_is_set(oio_handle_t* handle, int flag) {
+int uv_flag_is_set(uv_handle_t* handle, int flag) {
   return (handle->flags & flag) != 0;
 }
 
 
-static oio_err_code oio_translate_sys_error(int sys_errno) {
+static uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
-    case 0: return OIO_OK;
-    case EACCES: return OIO_EACCESS;
-    case EAGAIN: return OIO_EAGAIN;
-    case ECONNRESET: return OIO_ECONNRESET;
-    case EFAULT: return OIO_EFAULT;
-    case EMFILE: return OIO_EMFILE;
-    case EINVAL: return OIO_EINVAL;
-    case ECONNREFUSED: return OIO_ECONNREFUSED;
-    case EADDRINUSE: return OIO_EADDRINUSE;
-    case EADDRNOTAVAIL: return OIO_EADDRNOTAVAIL;
-    default: return OIO_UNKNOWN;
+    case 0: return UV_OK;
+    case EACCES: return UV_EACCESS;
+    case EAGAIN: return UV_EAGAIN;
+    case ECONNRESET: return UV_ECONNRESET;
+    case EFAULT: return UV_EFAULT;
+    case EMFILE: return UV_EMFILE;
+    case EINVAL: return UV_EINVAL;
+    case ECONNREFUSED: return UV_ECONNREFUSED;
+    case EADDRINUSE: return UV_EADDRINUSE;
+    case EADDRNOTAVAIL: return UV_EADDRNOTAVAIL;
+    default: return UV_UNKNOWN;
   }
 }
 
 
-static oio_err_t oio_err_new_artificial(oio_handle_t* handle, int code) {
-  oio_err_t err;
+static uv_err_t uv_err_new_artificial(uv_handle_t* handle, int code) {
+  uv_err_t err;
   err.sys_errno_ = 0;
   err.code = code;
   last_err = err;
@@ -106,16 +106,16 @@ static oio_err_t oio_err_new_artificial(oio_handle_t* handle, int code) {
 }
 
 
-static oio_err_t oio_err_new(oio_handle_t* handle, int sys_error) {
-  oio_err_t err;
+static uv_err_t uv_err_new(uv_handle_t* handle, int sys_error) {
+  uv_err_t err;
   err.sys_errno_ = sys_error;
-  err.code = oio_translate_sys_error(sys_error);
+  err.code = uv_translate_sys_error(sys_error);
   last_err = err;
   return err;
 }
 
 
-struct sockaddr_in oio_ip4_addr(char* ip, int port) {
+struct sockaddr_in uv_ip4_addr(char* ip, int port) {
   struct sockaddr_in addr;
 
   addr.sin_family = AF_INET;
@@ -126,26 +126,26 @@ struct sockaddr_in oio_ip4_addr(char* ip, int port) {
 }
 
 
-int oio_close(oio_handle_t* handle) {
+int uv_close(uv_handle_t* handle) {
   switch (handle->type) {
-    case OIO_TCP:
+    case UV_TCP:
       ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
       ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
       break;
 
-    case OIO_PREPARE:
+    case UV_PREPARE:
       ev_prepare_stop(EV_DEFAULT_ &handle->prepare_watcher);
       break;
 
-    case OIO_CHECK:
+    case UV_CHECK:
       ev_check_stop(EV_DEFAULT_ &handle->check_watcher);
       break;
 
-    case OIO_IDLE:
+    case UV_IDLE:
       ev_idle_stop(EV_DEFAULT_ &handle->idle_watcher);
       break;
 
-    case OIO_ASYNC:
+    case UV_ASYNC:
       ev_async_stop(EV_DEFAULT_ &handle->async_watcher);
       break;
 
@@ -154,7 +154,7 @@ int oio_close(oio_handle_t* handle) {
       return -1;
   }
 
-  oio_flag_set(handle, OIO_CLOSING);
+  uv_flag_set(handle, UV_CLOSING);
 
   /* This is used to call the on_close callback in the next loop. */
   ev_idle_start(EV_DEFAULT_ &handle->next_watcher);
@@ -165,34 +165,34 @@ int oio_close(oio_handle_t* handle) {
 }
 
 
-void oio_init(oio_alloc_cb cb) {
+void uv_init(uv_alloc_cb cb) {
   assert(cb);
   alloc_cb = cb;
   ev_default_loop(0);
 }
 
 
-int oio_run() {
+int uv_run() {
   ev_run(EV_DEFAULT_ 0);
   return 0;
 }
 
 
-static void oio__handle_init(oio_handle_t* handle, oio_handle_type type,
-    oio_close_cb close_cb, void* data) {
+static void uv__handle_init(uv_handle_t* handle, uv_handle_type type,
+    uv_close_cb close_cb, void* data) {
   handle->type = type;
   handle->close_cb = close_cb;
   handle->data = data;
   handle->flags = 0;
 
-  ev_init(&handle->next_watcher, oio__next);
+  ev_init(&handle->next_watcher, uv__next);
   handle->next_watcher.data = handle;
 }
 
 
-int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
+int uv_tcp_init(uv_handle_t* handle, uv_close_cb close_cb,
     void* data) {
-  oio__handle_init(handle, OIO_TCP, close_cb, data);
+  uv__handle_init(handle, UV_TCP, close_cb, data);
 
   handle->connect_req = NULL;
   handle->accepted_fd = -1;
@@ -201,10 +201,10 @@ int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
   ngx_queue_init(&handle->write_queue);
   handle->write_queue_size = 0;
 
-  ev_init(&handle->read_watcher, oio__tcp_io);
+  ev_init(&handle->read_watcher, uv__tcp_io);
   handle->read_watcher.data = handle;
 
-  ev_init(&handle->write_watcher, oio__tcp_io);
+  ev_init(&handle->write_watcher, uv__tcp_io);
   handle->write_watcher.data = handle;
 
   assert(ngx_queue_empty(&handle->write_queue));
@@ -214,7 +214,7 @@ int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
 }
 
 
-int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
+int uv_bind(uv_handle_t* handle, struct sockaddr* addr) {
   int addrsize;
   int domain;
   int r;
@@ -222,11 +222,11 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
   if (handle->fd <= 0) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-      oio_err_new(handle, errno);
+      uv_err_new(handle, errno);
       return -1;
     }
 
-    if (oio_tcp_open(handle, fd)) {
+    if (uv_tcp_open(handle, fd)) {
       close(fd);
       return -2;
     }
@@ -241,7 +241,7 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
     addrsize = sizeof(struct sockaddr_in6);
     domain = AF_INET6;
   } else {
-    oio_err_new(handle, EFAULT);
+    uv_err_new(handle, EFAULT);
     return -1;
   }
 
@@ -255,7 +255,7 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
         return 0;
 
       default:
-        oio_err_new(handle, errno);
+        uv_err_new(handle, errno);
         return -1;
     }
   }
@@ -264,7 +264,7 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
 }
 
 
-int oio_tcp_open(oio_handle_t* handle, int fd) {
+int uv_tcp_open(uv_handle_t* handle, int fd) {
   assert(fd >= 0);
   handle->fd = fd;
 
@@ -281,24 +281,24 @@ int oio_tcp_open(oio_handle_t* handle, int fd) {
   ev_io_set(&handle->read_watcher, fd, EV_READ);
   ev_io_set(&handle->write_watcher, fd, EV_WRITE);
 
-  /* These should have been set up by oio_tcp_init. */
+  /* These should have been set up by uv_tcp_init. */
   assert(handle->next_watcher.data == handle);
   assert(handle->write_watcher.data == handle);
   assert(handle->read_watcher.data == handle);
-  assert(handle->read_watcher.cb == oio__tcp_io);
-  assert(handle->write_watcher.cb == oio__tcp_io);
+  assert(handle->read_watcher.cb == uv__tcp_io);
+  assert(handle->write_watcher.cb == uv__tcp_io);
 
   return 0;
 }
 
 
-void oio__server_io(EV_P_ ev_io* watcher, int revents) {
-  oio_handle_t* handle = watcher->data;
+void uv__server_io(EV_P_ ev_io* watcher, int revents) {
+  uv_handle_t* handle = watcher->data;
   assert(watcher == &handle->read_watcher ||
          watcher == &handle->write_watcher);
   assert(revents == EV_READ);
 
-  assert(!oio_flag_is_set(handle, OIO_CLOSING));
+  assert(!uv_flag_is_set(handle, UV_CLOSING));
 
   if (handle->accepted_fd >= 0) {
     ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
@@ -320,15 +320,15 @@ void oio__server_io(EV_P_ ev_io* watcher, int revents) {
         /* TODO special trick. unlock reserved socket, accept, close. */
         return;
       } else {
-        oio_err_new(handle, errno);
-        oio_close(handle);
+        uv_err_new(handle, errno);
+        uv_close(handle);
       }
 
     } else {
       handle->accepted_fd = fd;
       handle->accept_cb(handle);
       if (handle->accepted_fd >= 0) {
-        /* The user hasn't yet accepted called oio_accept() */
+        /* The user hasn't yet accepted called uv_accept() */
         ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
         return;
       }
@@ -337,17 +337,17 @@ void oio__server_io(EV_P_ ev_io* watcher, int revents) {
 }
 
 
-int oio_accept(oio_handle_t* server, oio_handle_t* client,
-    oio_close_cb close_cb, void* data) {
+int uv_accept(uv_handle_t* server, uv_handle_t* client,
+    uv_close_cb close_cb, void* data) {
   if (server->accepted_fd < 0) {
     return -1;
   }
 
-  if (oio_tcp_init(client, close_cb, data)) {
+  if (uv_tcp_init(client, close_cb, data)) {
     return -1;
   }
 
-  if (oio_tcp_open(client, server->accepted_fd)) {
+  if (uv_tcp_open(client, server->accepted_fd)) {
     /* Ignore error for now */
     server->accepted_fd = -1;
     close(server->accepted_fd);
@@ -360,17 +360,17 @@ int oio_accept(oio_handle_t* server, oio_handle_t* client,
 }
 
 
-int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb) {
+int uv_listen(uv_handle_t* handle, int backlog, uv_accept_cb cb) {
   assert(handle->fd >= 0);
 
   if (handle->delayed_error) {
-    oio_err_new(handle, handle->delayed_error);
+    uv_err_new(handle, handle->delayed_error);
     return -1;
   }
 
   int r = listen(handle->fd, backlog);
   if (r < 0) {
-    oio_err_new(handle, errno);
+    uv_err_new(handle, errno);
     return -1;
   }
 
@@ -378,22 +378,22 @@ int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb) {
 
   /* Start listening for connections. */
   ev_io_set(&handle->read_watcher, handle->fd, EV_READ);
-  ev_set_cb(&handle->read_watcher, oio__server_io);
+  ev_set_cb(&handle->read_watcher, uv__server_io);
   ev_io_start(EV_DEFAULT_ &handle->read_watcher);
 
   return 0;
 }
 
 
-void oio__finish_close(oio_handle_t* handle) {
-  assert(oio_flag_is_set(handle, OIO_CLOSING));
-  assert(!oio_flag_is_set(handle, OIO_CLOSED));
-  oio_flag_set(handle, OIO_CLOSED);
+void uv__finish_close(uv_handle_t* handle) {
+  assert(uv_flag_is_set(handle, UV_CLOSING));
+  assert(!uv_flag_is_set(handle, UV_CLOSED));
+  uv_flag_set(handle, UV_CLOSED);
 
   switch (handle->type) {
-    case OIO_TCP:
+    case UV_TCP:
       /* XXX Is it necessary to stop these watchers here? weren't they
-       * supposed to be stopped in oio_close()?
+       * supposed to be stopped in uv_close()?
        */
       ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
       ev_io_stop(EV_DEFAULT_ &handle->read_watcher);
@@ -410,19 +410,19 @@ void oio__finish_close(oio_handle_t* handle) {
       }
       break;
 
-    case OIO_PREPARE:
+    case UV_PREPARE:
       assert(!ev_is_active(&handle->prepare_watcher));
       break;
 
-    case OIO_CHECK:
+    case UV_CHECK:
       assert(!ev_is_active(&handle->check_watcher));
       break;
 
-    case OIO_IDLE:
+    case UV_IDLE:
       assert(!ev_is_active(&handle->idle_watcher));
       break;
 
-    case OIO_ASYNC:
+    case UV_ASYNC:
       assert(!ev_is_active(&handle->async_watcher));
       break;
   }
@@ -435,7 +435,7 @@ void oio__finish_close(oio_handle_t* handle) {
 }
 
 
-oio_req_t* oio_write_queue_head(oio_handle_t* handle) {
+uv_req_t* uv_write_queue_head(uv_handle_t* handle) {
   if (ngx_queue_empty(&handle->write_queue)) {
     return NULL;
   }
@@ -445,74 +445,74 @@ oio_req_t* oio_write_queue_head(oio_handle_t* handle) {
     return NULL;
   }
 
-  oio_req_t* req = ngx_queue_data(q, struct oio_req_s, queue);
+  uv_req_t* req = ngx_queue_data(q, struct uv_req_s, queue);
   assert(req);
 
   return req;
 }
 
 
-void oio__next(EV_P_ ev_idle* watcher, int revents) {
-  oio_handle_t* handle = watcher->data;
+void uv__next(EV_P_ ev_idle* watcher, int revents) {
+  uv_handle_t* handle = watcher->data;
   assert(watcher == &handle->next_watcher);
   assert(revents == EV_IDLE);
 
   /* For now this function is only to handle the closing event, but we might
    * put more stuff here later.
    */
-  assert(oio_flag_is_set(handle, OIO_CLOSING));
-  oio__finish_close(handle);
+  assert(uv_flag_is_set(handle, UV_CLOSING));
+  uv__finish_close(handle);
 }
 
 
-static void oio__drain(oio_handle_t* handle) {
-  assert(!oio_write_queue_head(handle));
+static void uv__drain(uv_handle_t* handle) {
+  assert(!uv_write_queue_head(handle));
   assert(handle->write_queue_size == 0);
 
   ev_io_stop(EV_DEFAULT_ &handle->write_watcher);
 
   /* Shutdown? */
-  if (oio_flag_is_set(handle, OIO_SHUTTING) &&
-      !oio_flag_is_set(handle, OIO_CLOSING) &&
-      !oio_flag_is_set(handle, OIO_SHUT)) {
+  if (uv_flag_is_set(handle, UV_SHUTTING) &&
+      !uv_flag_is_set(handle, UV_CLOSING) &&
+      !uv_flag_is_set(handle, UV_SHUT)) {
     assert(handle->shutdown_req);
 
-    oio_req_t* req = handle->shutdown_req;
-    oio_shutdown_cb cb = req->cb;
+    uv_req_t* req = handle->shutdown_req;
+    uv_shutdown_cb cb = req->cb;
 
     if (shutdown(handle->fd, SHUT_WR)) {
       /* Error. Nothing we can do, close the handle. */
-      oio_err_new(handle, errno);
-      oio_close(handle);
+      uv_err_new(handle, errno);
+      uv_close(handle);
       if (cb) cb(req, -1);
     } else {
-      oio_err_new(handle, 0);
-      oio_flag_set(handle, OIO_SHUT);
+      uv_err_new(handle, 0);
+      uv_flag_set(handle, UV_SHUT);
       if (cb) cb(req, 0);
     }
   }
 }
 
 
-void oio__write(oio_handle_t* handle) {
+void uv__write(uv_handle_t* handle) {
   assert(handle->fd >= 0);
 
   /* TODO: should probably while(1) here until EAGAIN */
 
   /* Get the request at the head of the queue. */
-  oio_req_t* req = oio_write_queue_head(handle);
+  uv_req_t* req = uv_write_queue_head(handle);
   if (!req) {
     assert(handle->write_queue_size == 0);
-    oio__drain(handle);
+    uv__drain(handle);
     return;
   }
 
   assert(req->handle == handle);
 
-  /* Cast to iovec. We had to have our own oio_buf instead of iovec
+  /* Cast to iovec. We had to have our own uv_buf instead of iovec
    * because Windows's WSABUF is not an iovec.
    */
-  assert(sizeof(oio_buf) == sizeof(struct iovec));
+  assert(sizeof(uv_buf) == sizeof(struct iovec));
   struct iovec* iov = (struct iovec*) &(req->bufs[req->write_index]);
   int iovcnt = req->bufcnt - req->write_index;
 
@@ -522,14 +522,14 @@ void oio__write(oio_handle_t* handle) {
 
   ssize_t n = writev(handle->fd, iov, iovcnt);
 
-  oio_write_cb cb = req->cb;
+  uv_write_cb cb = req->cb;
 
   if (n < 0) {
     if (errno != EAGAIN) {
-      oio_err_t err = oio_err_new(handle, errno);
+      uv_err_t err = uv_err_new(handle, errno);
 
       /* XXX How do we handle the error? Need test coverage here. */
-      oio_close(handle);
+      uv_close(handle);
 
       if (cb) {
         cb(req, -1);
@@ -541,7 +541,7 @@ void oio__write(oio_handle_t* handle) {
 
     /* The loop updates the counters. */
     while (n > 0) {
-      oio_buf* buf = &(req->bufs[req->write_index]);
+      uv_buf* buf = &(req->bufs[req->write_index]);
       size_t len = buf->len;
 
       assert(req->write_index < req->bufcnt);
@@ -583,7 +583,7 @@ void oio__write(oio_handle_t* handle) {
             assert(handle->write_queue_size > 0);
           } else {
             /* Write queue drained. */
-            oio__drain(handle);
+            uv__drain(handle);
           }
 
           return;
@@ -601,13 +601,13 @@ void oio__write(oio_handle_t* handle) {
 }
 
 
-void oio__read(oio_handle_t* handle) {
-  /* XXX: Maybe instead of having OIO_READING we just test if
+void uv__read(uv_handle_t* handle) {
+  /* XXX: Maybe instead of having UV_READING we just test if
    * handle->read_cb is NULL or not?
    */
-  while (handle->read_cb && oio_flag_is_set(handle, OIO_READING)) {
+  while (handle->read_cb && uv_flag_is_set(handle, UV_READING)) {
     assert(alloc_cb);
-    oio_buf buf = alloc_cb(handle, 64 * 1024);
+    uv_buf buf = alloc_cb(handle, 64 * 1024);
 
     assert(buf.len > 0);
     assert(buf.base);
@@ -620,27 +620,27 @@ void oio__read(oio_handle_t* handle) {
       /* Error */
       if (errno == EAGAIN) {
         /* Wait for the next one. */
-        if (oio_flag_is_set(handle, OIO_READING)) {
+        if (uv_flag_is_set(handle, UV_READING)) {
           ev_io_start(EV_DEFAULT_UC_ &handle->read_watcher);
         }
-        oio_err_new(handle, EAGAIN);
+        uv_err_new(handle, EAGAIN);
         handle->read_cb(handle, 0, buf);
         return;
       } else {
-        oio_err_new(handle, errno);
-        oio_close(handle);
+        uv_err_new(handle, errno);
+        uv_close(handle);
         handle->read_cb(handle, -1, buf);
         assert(!ev_is_active(&handle->read_watcher));
         return;
       }
     } else if (nread == 0) {
       /* EOF */
-      oio_err_new_artificial(handle, OIO_EOF);
+      uv_err_new_artificial(handle, UV_EOF);
       ev_io_stop(EV_DEFAULT_UC_ &handle->read_watcher);
       handle->read_cb(handle, -1, buf);
 
-      if (oio_flag_is_set(handle, OIO_SHUT)) {
-        oio_close(handle);
+      if (uv_flag_is_set(handle, UV_SHUT)) {
+        uv_close(handle);
       }
       return;
     } else {
@@ -651,20 +651,20 @@ void oio__read(oio_handle_t* handle) {
 }
 
 
-int oio_shutdown(oio_req_t* req) {
-  oio_handle_t* handle = req->handle;
+int uv_shutdown(uv_req_t* req) {
+  uv_handle_t* handle = req->handle;
   assert(handle->fd >= 0);
 
-  if (oio_flag_is_set(handle, OIO_SHUT) ||
-      oio_flag_is_set(handle, OIO_CLOSED) ||
-      oio_flag_is_set(handle, OIO_CLOSING)) {
+  if (uv_flag_is_set(handle, UV_SHUT) ||
+      uv_flag_is_set(handle, UV_CLOSED) ||
+      uv_flag_is_set(handle, UV_CLOSING)) {
     return -1;
   }
 
   handle->shutdown_req = req;
-  req->type = OIO_SHUTDOWN;
+  req->type = UV_SHUTDOWN;
 
-  oio_flag_set(handle, OIO_SHUTTING);
+  uv_flag_set(handle, UV_SHUTTING);
 
   ev_io_start(EV_DEFAULT_UC_ &handle->write_watcher);
 
@@ -672,24 +672,24 @@ int oio_shutdown(oio_req_t* req) {
 }
 
 
-void oio__tcp_io(EV_P_ ev_io* watcher, int revents) {
-  oio_handle_t* handle = watcher->data;
+void uv__tcp_io(EV_P_ ev_io* watcher, int revents) {
+  uv_handle_t* handle = watcher->data;
   assert(watcher == &handle->read_watcher ||
          watcher == &handle->write_watcher);
 
   assert(handle->fd >= 0);
 
-  assert(!oio_flag_is_set(handle, OIO_CLOSING));
+  assert(!uv_flag_is_set(handle, UV_CLOSING));
 
   if (handle->connect_req) {
-    oio__tcp_connect(handle);
+    uv__tcp_connect(handle);
   } else {
     if (revents & EV_READ) {
-      oio__read(handle);
+      uv__read(handle);
     }
 
     if (revents & EV_WRITE) {
-      oio__write(handle);
+      uv__write(handle);
     }
   }
 }
@@ -700,13 +700,13 @@ void oio__tcp_io(EV_P_ ev_io* watcher, int revents) {
  * In order to determine if we've errored out or succeeded must call
  * getsockopt.
  */
-static void oio__tcp_connect(oio_handle_t* handle) {
+static void uv__tcp_connect(uv_handle_t* handle) {
   int error;
   socklen_t errorsize = sizeof(int);
 
   assert(handle->fd >= 0);
 
-  oio_req_t* req = handle->connect_req;
+  uv_req_t* req = handle->connect_req;
   assert(req);
 
   if (handle->delayed_error) {
@@ -726,7 +726,7 @@ static void oio__tcp_connect(oio_handle_t* handle) {
 
     /* Successful connection */
     handle->connect_req = NULL;
-    oio_connect_cb connect_cb = req->cb;
+    uv_connect_cb connect_cb = req->cb;
     if (connect_cb) {
       connect_cb(req, 0);
     }
@@ -736,46 +736,46 @@ static void oio__tcp_connect(oio_handle_t* handle) {
     return;
   } else {
     /* Error */
-    oio_err_t err = oio_err_new(handle, error);
+    uv_err_t err = uv_err_new(handle, error);
 
     handle->connect_req = NULL;
 
-    oio_connect_cb connect_cb = req->cb;
+    uv_connect_cb connect_cb = req->cb;
     if (connect_cb) {
       connect_cb(req, -1);
     }
 
-    oio_close(handle);
+    uv_close(handle);
   }
 }
 
 
-int oio_connect(oio_req_t* req, struct sockaddr* addr) {
-  oio_handle_t* handle = req->handle;
+int uv_connect(uv_req_t* req, struct sockaddr* addr) {
+  uv_handle_t* handle = req->handle;
 
   if (handle->fd <= 0) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-      oio_err_new(handle, errno);
+      uv_err_new(handle, errno);
       return -1;
     }
 
-    if (oio_tcp_open(handle, fd)) {
+    if (uv_tcp_open(handle, fd)) {
       close(fd);
       return -2;
     }
   }
 
-  req->type = OIO_CONNECT;
+  req->type = UV_CONNECT;
   ngx_queue_init(&req->queue);
 
   if (handle->connect_req) {
-    oio_err_new(handle, EALREADY);
+    uv_err_new(handle, EALREADY);
     return -1;
   }
 
-  if (handle->type != OIO_TCP) {
-    oio_err_new(handle, ENOTSOCK);
+  if (handle->type != UV_TCP) {
+    uv_err_new(handle, ENOTSOCK);
     return -1;
   }
 
@@ -797,7 +797,7 @@ int oio_connect(oio_req_t* req, struct sockaddr* addr) {
         break;
 
       default:
-        oio_err_new(handle, errno);
+        uv_err_new(handle, errno);
         return -1;
     }
   }
@@ -813,7 +813,7 @@ int oio_connect(oio_req_t* req, struct sockaddr* addr) {
 }
 
 
-static size_t oio__buf_count(oio_buf bufs[], int bufcnt) {
+static size_t uv__buf_count(uv_buf bufs[], int bufcnt) {
   size_t total = 0;
   int i;
 
@@ -826,28 +826,28 @@ static size_t oio__buf_count(oio_buf bufs[], int bufcnt) {
 
 
 /* The buffers to be written must remain valid until the callback is called.
- * This is not required for the oio_buf array.
+ * This is not required for the uv_buf array.
  */
-int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
-  oio_handle_t* handle = req->handle;
+int uv_write(uv_req_t* req, uv_buf bufs[], int bufcnt) {
+  uv_handle_t* handle = req->handle;
   assert(handle->fd >= 0);
 
   ngx_queue_init(&req->queue);
-  req->type = OIO_WRITE;
+  req->type = UV_WRITE;
 
   /* TODO: Don't malloc for each write... */
-  req->bufs = malloc(sizeof(oio_buf) * bufcnt);
-  memcpy(req->bufs, bufs, bufcnt * sizeof(oio_buf));
+  req->bufs = malloc(sizeof(uv_buf) * bufcnt);
+  memcpy(req->bufs, bufs, bufcnt * sizeof(uv_buf));
   req->bufcnt = bufcnt;
 
   req->write_index = 0;
-  handle->write_queue_size += oio__buf_count(bufs, bufcnt);
+  handle->write_queue_size += uv__buf_count(bufs, bufcnt);
 
   /* Append the request to write_queue. */
   ngx_queue_insert_tail(&handle->write_queue, &req->queue);
 
   assert(!ngx_queue_empty(&handle->write_queue));
-  assert(handle->write_watcher.cb == oio__tcp_io);
+  assert(handle->write_watcher.cb == uv__tcp_io);
   assert(handle->write_watcher.data == handle);
   assert(handle->write_watcher.fd == handle->fd);
 
@@ -857,18 +857,18 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
 }
 
 
-void oio_ref() {
+void uv_ref() {
   ev_ref(EV_DEFAULT_UC);
 }
 
 
-void oio_unref() {
+void uv_unref() {
   ev_unref(EV_DEFAULT_UC);
 }
 
 
-void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
-  oio_req_t* req = watcher->data;
+void uv__timeout(EV_P_ ev_timer* watcher, int revents) {
+  uv_req_t* req = watcher->data;
   assert(watcher == &req->timer);
   assert(EV_TIMER & revents);
 
@@ -877,36 +877,36 @@ void oio__timeout(EV_P_ ev_timer* watcher, int revents) {
   assert(!ev_is_pending(watcher));
 
   if (req->cb) {
-    oio_timer_cb cb = req->cb;
+    uv_timer_cb cb = req->cb;
     /* TODO skew */
     cb(req, 0, 0);
   }
 }
 
 
-void oio_update_time() {
+void uv_update_time() {
   ev_now_update(EV_DEFAULT_UC);
 }
 
 
-int64_t oio_now() {
+int64_t uv_now() {
   return (int64_t)(ev_now(EV_DEFAULT_UC) * 1000);
 }
 
 
-int oio_timeout(oio_req_t* req, int64_t timeout) {
-  ev_timer_init(&req->timer, oio__timeout, timeout / 1000.0, 0.0);
+int uv_timeout(uv_req_t* req, int64_t timeout) {
+  ev_timer_init(&req->timer, uv__timeout, timeout / 1000.0, 0.0);
   ev_timer_start(EV_DEFAULT_UC_ &req->timer);
   req->timer.data = req;
   return 0;
 }
 
 
-int oio_read_start(oio_handle_t* handle, oio_read_cb cb) {
-  /* The OIO_READING flag is irrelevant of the state of the handle - it just
+int uv_read_start(uv_handle_t* handle, uv_read_cb cb) {
+  /* The UV_READING flag is irrelevant of the state of the handle - it just
    * expresses the desired state of the user.
    */
-  oio_flag_set(handle, OIO_READING);
+  uv_flag_set(handle, UV_READING);
 
   /* TODO: try to do the read inline? */
   /* TODO: keep track of handle state. If we've gotten a EOF then we should
@@ -915,17 +915,17 @@ int oio_read_start(oio_handle_t* handle, oio_read_cb cb) {
   assert(handle->fd >= 0);
   handle->read_cb = cb;
 
-  /* These should have been set by oio_tcp_init. */
+  /* These should have been set by uv_tcp_init. */
   assert(handle->read_watcher.data == handle);
-  assert(handle->read_watcher.cb == oio__tcp_io);
+  assert(handle->read_watcher.cb == uv__tcp_io);
 
   ev_io_start(EV_DEFAULT_UC_ &handle->read_watcher);
   return 0;
 }
 
 
-int oio_read_stop(oio_handle_t* handle) {
-  oio_flag_unset(handle, OIO_READING);
+int uv_read_stop(uv_handle_t* handle) {
+  uv_flag_unset(handle, UV_READING);
 
   ev_io_stop(EV_DEFAULT_UC_ &handle->read_watcher);
   handle->read_cb = NULL;
@@ -933,32 +933,32 @@ int oio_read_stop(oio_handle_t* handle) {
 }
 
 
-void oio_free(oio_handle_t* handle) {
+void uv_free(uv_handle_t* handle) {
   free(handle);
   /* lists? */
   return;
 }
 
 
-void oio_req_init(oio_req_t* req, oio_handle_t* handle, void* cb) {
-  req->type = OIO_UNKNOWN_REQ;
+void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb) {
+  req->type = UV_UNKNOWN_REQ;
   req->cb = cb;
   req->handle = handle;
   ngx_queue_init(&req->queue);
 }
 
 
-static void oio__prepare(EV_P_ ev_prepare* w, int revents) {
-  oio_handle_t* handle = (oio_handle_t*)(w->data);
+static void uv__prepare(EV_P_ ev_prepare* w, int revents) {
+  uv_handle_t* handle = (uv_handle_t*)(w->data);
 
   if (handle->prepare_cb) handle->prepare_cb(handle, 0);
 }
 
 
-int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  oio__handle_init(handle, OIO_PREPARE, close_cb, data);
+int uv_prepare_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  uv__handle_init(handle, UV_PREPARE, close_cb, data);
 
-  ev_prepare_init(&handle->prepare_watcher, oio__prepare);
+  ev_prepare_init(&handle->prepare_watcher, uv__prepare);
   handle->prepare_watcher.data = handle;
 
   handle->prepare_cb = NULL;
@@ -967,31 +967,31 @@ int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
 }
 
 
-int oio_prepare_start(oio_handle_t* handle, oio_loop_cb cb) {
+int uv_prepare_start(uv_handle_t* handle, uv_loop_cb cb) {
   handle->prepare_cb = cb;
   ev_prepare_start(EV_DEFAULT_UC_ &handle->prepare_watcher);
   return 0;
 }
 
 
-int oio_prepare_stop(oio_handle_t* handle) {
+int uv_prepare_stop(uv_handle_t* handle) {
   ev_prepare_stop(EV_DEFAULT_UC_ &handle->prepare_watcher);
   return 0;
 }
 
 
 
-static void oio__check(EV_P_ ev_check* w, int revents) {
-  oio_handle_t* handle = (oio_handle_t*)(w->data);
+static void uv__check(EV_P_ ev_check* w, int revents) {
+  uv_handle_t* handle = (uv_handle_t*)(w->data);
 
   if (handle->check_cb) handle->check_cb(handle, 0);
 }
 
 
-int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  oio__handle_init(handle, OIO_CHECK, close_cb, data);
+int uv_check_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  uv__handle_init(handle, UV_CHECK, close_cb, data);
 
-  ev_check_init(&handle->check_watcher, oio__check);
+  ev_check_init(&handle->check_watcher, uv__check);
   handle->check_watcher.data = handle;
 
   handle->check_cb = NULL;
@@ -1000,31 +1000,31 @@ int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
 }
 
 
-int oio_check_start(oio_handle_t* handle, oio_loop_cb cb) {
+int uv_check_start(uv_handle_t* handle, uv_loop_cb cb) {
   handle->check_cb = cb;
   ev_check_start(EV_DEFAULT_UC_ &handle->check_watcher);
   return 0;
 }
 
 
-int oio_check_stop(oio_handle_t* handle) {
+int uv_check_stop(uv_handle_t* handle) {
   ev_prepare_stop(EV_DEFAULT_UC_ &handle->prepare_watcher);
   return 0;
 }
 
 
-static void oio__idle(EV_P_ ev_idle* w, int revents) {
-  oio_handle_t* handle = (oio_handle_t*)(w->data);
+static void uv__idle(EV_P_ ev_idle* w, int revents) {
+  uv_handle_t* handle = (uv_handle_t*)(w->data);
 
   if (handle->idle_cb) handle->idle_cb(handle, 0);
 }
 
 
 
-int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  oio__handle_init(handle, OIO_IDLE, close_cb, data);
+int uv_idle_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  uv__handle_init(handle, UV_IDLE, close_cb, data);
 
-  ev_idle_init(&handle->idle_watcher, oio__idle);
+  ev_idle_init(&handle->idle_watcher, uv__idle);
   handle->idle_watcher.data = handle;
 
   handle->idle_cb = NULL;
@@ -1033,31 +1033,31 @@ int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
 }
 
 
-int oio_idle_start(oio_handle_t* handle, oio_loop_cb cb) {
+int uv_idle_start(uv_handle_t* handle, uv_loop_cb cb) {
   handle->idle_cb = cb;
   ev_idle_start(EV_DEFAULT_UC_ &handle->idle_watcher);
   return 0;
 }
 
 
-int oio_idle_stop(oio_handle_t* handle) {
+int uv_idle_stop(uv_handle_t* handle) {
   ev_idle_stop(EV_DEFAULT_UC_ &handle->idle_watcher);
   return 0;
 }
 
 
-static void oio__async(EV_P_ ev_async* w, int revents) {
-  oio_handle_t* handle = (oio_handle_t*)(w->data);
+static void uv__async(EV_P_ ev_async* w, int revents) {
+  uv_handle_t* handle = (uv_handle_t*)(w->data);
 
   if (handle->async_cb) handle->async_cb(handle, 0);
 }
 
 
-int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
-    oio_close_cb close_cb, void* data) {
-  oio__handle_init(handle, OIO_ASYNC, close_cb, data);
+int uv_async_init(uv_handle_t* handle, uv_async_cb async_cb,
+    uv_close_cb close_cb, void* data) {
+  uv__handle_init(handle, UV_ASYNC, close_cb, data);
 
-  ev_async_init(&handle->async_watcher, oio__async);
+  ev_async_init(&handle->async_watcher, uv__async);
   handle->async_watcher.data = handle;
 
   handle->async_cb = async_cb;
@@ -1069,6 +1069,6 @@ int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
 }
 
 
-int oio_async_send(oio_handle_t* handle) {
+int uv_async_send(uv_handle_t* handle) {
   ev_async_send(EV_DEFAULT_UC_ &handle->async_watcher);
 }

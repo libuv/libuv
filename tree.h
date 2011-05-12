@@ -23,8 +23,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef  _OIO_TREE_H_
-#define  _OIO_TREE_H_
+#ifndef  _UV_TREE_H_
+#define  _UV_TREE_H_
 
 #define __unused
 
@@ -759,4 +759,4 @@ name##_RB_MINMAX(struct name *head, int val)                                  \
       ((x) != NULL) && ((y) = name##_RB_PREV(x), (x) != NULL);                \
        (x) = (y))
 
-#endif  /* _OIO_TREE_H_ */
+#endif  /* _UV_TREE_H_ */

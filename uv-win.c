@@ -25,7 +25,7 @@
 #include <malloc.h>
 #include <stdio.h>
 
-#include "oio.h"
+#include "uv.h"
 #include "tree.h"
 
 /*
@@ -117,85 +117,85 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 
 
 /*
- * Private oio_handle flags
+ * Private uv_handle flags
  */
-#define OIO_HANDLE_CLOSING          0x0001
-#define OIO_HANDLE_CLOSED           0x0002
-#define OIO_HANDLE_BOUND            0x0004
-#define OIO_HANDLE_LISTENING        0x0008
-#define OIO_HANDLE_CONNECTION       0x0010
-#define OIO_HANDLE_CONNECTED        0x0020
-#define OIO_HANDLE_READING          0x0040
-#define OIO_HANDLE_ACTIVE           0x0040
-#define OIO_HANDLE_EOF              0x0080
-#define OIO_HANDLE_SHUTTING         0x0100
-#define OIO_HANDLE_SHUT             0x0200
-#define OIO_HANDLE_ENDGAME_QUEUED   0x0400
-#define OIO_HANDLE_BIND_ERROR       0x1000
+#define UV_HANDLE_CLOSING          0x0001
+#define UV_HANDLE_CLOSED           0x0002
+#define UV_HANDLE_BOUND            0x0004
+#define UV_HANDLE_LISTENING        0x0008
+#define UV_HANDLE_CONNECTION       0x0010
+#define UV_HANDLE_CONNECTED        0x0020
+#define UV_HANDLE_READING          0x0040
+#define UV_HANDLE_ACTIVE           0x0040
+#define UV_HANDLE_EOF              0x0080
+#define UV_HANDLE_SHUTTING         0x0100
+#define UV_HANDLE_SHUT             0x0200
+#define UV_HANDLE_ENDGAME_QUEUED   0x0400
+#define UV_HANDLE_BIND_ERROR       0x1000
 
 /*
- * Private oio_req flags.
+ * Private uv_req flags.
  */
 /* The request is currently queued. */
-#define OIO_REQ_PENDING             0x01
+#define UV_REQ_PENDING             0x01
 
 
 /* Binary tree used to keep the list of timers sorted. */
-static int oio_timer_compare(oio_req_t* t1, oio_req_t* t2);
-RB_HEAD(oio_timer_s, oio_req_s);
-RB_PROTOTYPE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
+static int uv_timer_compare(uv_req_t* t1, uv_req_t* t2);
+RB_HEAD(uv_timer_s, uv_req_s);
+RB_PROTOTYPE_STATIC(uv_timer_s, uv_req_s, tree_entry, uv_timer_compare);
 
 /* The head of the timers tree */
-static struct oio_timer_s oio_timers_ = RB_INITIALIZER(oio_timers_);
+static struct uv_timer_s uv_timers_ = RB_INITIALIZER(uv_timers_);
 
 
-/* Lists of active oio_prepare / oio_check / oio_idle watchers */
-static oio_handle_t* oio_prepare_handles_ = NULL;
-static oio_handle_t* oio_check_handles_ = NULL;
-static oio_handle_t* oio_idle_handles_ = NULL;
+/* Lists of active uv_prepare / uv_check / uv_idle watchers */
+static uv_handle_t* uv_prepare_handles_ = NULL;
+static uv_handle_t* uv_check_handles_ = NULL;
+static uv_handle_t* uv_idle_handles_ = NULL;
 
 /* This pointer will refer to the prepare/check/idle handle whose callback */
 /* is scheduled to be called next. This is needed to allow safe removal */
 /* from one of the lists above while that list being iterated. */
-static oio_handle_t* oio_next_loop_handle_ = NULL;
+static uv_handle_t* uv_next_loop_handle_ = NULL;
 
 
 /* Head of a single-linked list of closed handles */
-static oio_handle_t* oio_endgame_handles_ = NULL;
+static uv_handle_t* uv_endgame_handles_ = NULL;
 
 
 /* The current time according to the event loop. in msecs. */
-static int64_t oio_now_ = 0;
-static int64_t oio_ticks_per_msec_ = 0;
+static int64_t uv_now_ = 0;
+static int64_t uv_ticks_per_msec_ = 0;
 
 
 /*
  * Global I/O completion port
  */
-static HANDLE oio_iocp_;
+static HANDLE uv_iocp_;
 
 
 /* Global error code */
-static const oio_err_t oio_ok_ = { OIO_OK, ERROR_SUCCESS };
-static oio_err_t oio_last_error_ = { OIO_OK, ERROR_SUCCESS };
+static const uv_err_t uv_ok_ = { UV_OK, ERROR_SUCCESS };
+static uv_err_t uv_last_error_ = { UV_OK, ERROR_SUCCESS };
 
 /* Error message string */
-static char* oio_err_str_ = NULL;
+static char* uv_err_str_ = NULL;
 
 /* Global alloc function */
-oio_alloc_cb oio_alloc_ = NULL;
+uv_alloc_cb uv_alloc_ = NULL;
 
 
 /* Reference count that keeps the event loop alive */
-static int oio_refs_ = 0;
+static int uv_refs_ = 0;
 
 
 /* Ip address used to bind to any port at any interface */
-static struct sockaddr_in oio_addr_ip4_any_;
+static struct sockaddr_in uv_addr_ip4_any_;
 
 
-/* A zero-size buffer for use by oio_read */
-static char oio_zero_[] = "";
+/* A zero-size buffer for use by uv_read */
+static char uv_zero_[] = "";
 
 
 /* Atomic set operation on char */
@@ -207,14 +207,14 @@ static char oio_zero_[] = "";
 /* target to be aligned. */
 #pragma intrinsic(_InterlockedOr8)
 
-static char __declspec(inline) oio_atomic_exchange_set(char volatile* target) {
+static char __declspec(inline) uv_atomic_exchange_set(char volatile* target) {
   return _InterlockedOr8(target, 1);
 }
 
 #else /* GCC */
 
 /* Mingw-32 version, hopefully this works for 64-bit gcc as well. */
-static inline char oio_atomic_exchange_set(char volatile* target) {
+static inline char uv_atomic_exchange_set(char volatile* target) {
   const char one = 1;
   char old_value;
   __asm__ __volatile__ ("lock xchgb %0, %1\n\t"
@@ -230,7 +230,7 @@ static inline char oio_atomic_exchange_set(char volatile* target) {
 /*
  * Display an error message and abort the event loop.
  */
-static void oio_fatal_error(const int errorno, const char* syscall) {
+static void uv_fatal_error(const int errorno, const char* syscall) {
   char* buf = NULL;
   const char* errmsg;
 
@@ -261,68 +261,68 @@ static void oio_fatal_error(const int errorno, const char* syscall) {
 }
 
 
-oio_err_t oio_last_error() {
-  return oio_last_error_;
+uv_err_t uv_last_error() {
+  return uv_last_error_;
 }
 
 
-char* oio_strerror(oio_err_t err) {
-  if (oio_err_str_ != NULL) {
-    LocalFree((void*) oio_err_str_);
+char* uv_strerror(uv_err_t err) {
+  if (uv_err_str_ != NULL) {
+    LocalFree((void*) uv_err_str_);
   }
 
   FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
       FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err.sys_errno_,
-      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&oio_err_str_, 0, NULL);
+      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&uv_err_str_, 0, NULL);
 
-  if (oio_err_str_) {
-    return oio_err_str_;
+  if (uv_err_str_) {
+    return uv_err_str_;
   } else {
     return "Unknown error";
   }
 }
 
 
-static oio_err_code oio_translate_sys_error(int sys_errno) {
+static uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
-    case ERROR_SUCCESS:                     return OIO_OK;
-    case ERROR_NOACCESS:                    return OIO_EACCESS;
-    case WSAEACCES:                         return OIO_EACCESS;
-    case ERROR_ADDRESS_ALREADY_ASSOCIATED:  return OIO_EADDRINUSE;
-    case WSAEADDRINUSE:                     return OIO_EADDRINUSE;
-    case WSAEADDRNOTAVAIL:                  return OIO_EADDRNOTAVAIL;
-    case WSAEWOULDBLOCK:                    return OIO_EAGAIN;
-    case WSAEALREADY:                       return OIO_EALREADY;
-    case ERROR_CONNECTION_REFUSED:          return OIO_ECONNREFUSED;
-    case WSAECONNREFUSED:                   return OIO_ECONNREFUSED;
-    case WSAEFAULT:                         return OIO_EFAULT;
-    case WSAEINVAL:                         return OIO_EINVAL;
-    case ERROR_TOO_MANY_OPEN_FILES:         return OIO_EMFILE;
-    case WSAEMFILE:                         return OIO_EMFILE;
-    case ERROR_OUTOFMEMORY:                 return OIO_ENOMEM;
-    default:                                return OIO_UNKNOWN;
+    case ERROR_SUCCESS:                     return UV_OK;
+    case ERROR_NOACCESS:                    return UV_EACCESS;
+    case WSAEACCES:                         return UV_EACCESS;
+    case ERROR_ADDRESS_ALREADY_ASSOCIATED:  return UV_EADDRINUSE;
+    case WSAEADDRINUSE:                     return UV_EADDRINUSE;
+    case WSAEADDRNOTAVAIL:                  return UV_EADDRNOTAVAIL;
+    case WSAEWOULDBLOCK:                    return UV_EAGAIN;
+    case WSAEALREADY:                       return UV_EALREADY;
+    case ERROR_CONNECTION_REFUSED:          return UV_ECONNREFUSED;
+    case WSAECONNREFUSED:                   return UV_ECONNREFUSED;
+    case WSAEFAULT:                         return UV_EFAULT;
+    case WSAEINVAL:                         return UV_EINVAL;
+    case ERROR_TOO_MANY_OPEN_FILES:         return UV_EMFILE;
+    case WSAEMFILE:                         return UV_EMFILE;
+    case ERROR_OUTOFMEMORY:                 return UV_ENOMEM;
+    default:                                return UV_UNKNOWN;
   }
 }
 
 
-static oio_err_t oio_new_sys_error(int sys_errno) {
-  oio_err_t e;
-  e.code = oio_translate_sys_error(sys_errno);
+static uv_err_t uv_new_sys_error(int sys_errno) {
+  uv_err_t e;
+  e.code = uv_translate_sys_error(sys_errno);
   e.sys_errno_ = sys_errno;
   return e;
 }
 
 
-static void oio_set_sys_error(int sys_errno) {
-  oio_last_error_.code = oio_translate_sys_error(sys_errno);
-  oio_last_error_.sys_errno_ = sys_errno;
+static void uv_set_sys_error(int sys_errno) {
+  uv_last_error_.code = uv_translate_sys_error(sys_errno);
+  uv_last_error_.sys_errno_ = sys_errno;
 }
 
 
 /*
  * Retrieves the pointer to a winsock extension function.
  */
-static void oio_get_extension_function(SOCKET socket, GUID guid,
+static void uv_get_extension_function(SOCKET socket, GUID guid,
     void **target) {
   DWORD result, bytes;
 
@@ -338,13 +338,13 @@ static void oio_get_extension_function(SOCKET socket, GUID guid,
 
   if (result == SOCKET_ERROR) {
     *target = NULL;
-    oio_fatal_error(WSAGetLastError(),
+    uv_fatal_error(WSAGetLastError(),
                     "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
   }
 }
 
 
-void oio_init(oio_alloc_cb alloc_cb) {
+void uv_init(uv_alloc_cb alloc_cb) {
   const GUID wsaid_connectex            = WSAID_CONNECTEX;
   const GUID wsaid_acceptex             = WSAID_ACCEPTEX;
   const GUID wsaid_getacceptexsockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
@@ -356,72 +356,72 @@ void oio_init(oio_alloc_cb alloc_cb) {
   LARGE_INTEGER timer_frequency;
   SOCKET dummy;
 
-  oio_alloc_ = alloc_cb;
+  uv_alloc_ = alloc_cb;
 
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
   if (errorno != 0) {
-    oio_fatal_error(errorno, "WSAStartup");
+    uv_fatal_error(errorno, "WSAStartup");
   }
 
   /* Set implicit binding address used by connectEx */
-  oio_addr_ip4_any_ = oio_ip4_addr("0.0.0.0", 0);
+  uv_addr_ip4_any_ = uv_ip4_addr("0.0.0.0", 0);
 
   /* Retrieve the needed winsock extension function pointers. */
   dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
   if (dummy == INVALID_SOCKET) {
-    oio_fatal_error(WSAGetLastError(), "socket");
+    uv_fatal_error(WSAGetLastError(), "socket");
   }
 
-  oio_get_extension_function(dummy,
+  uv_get_extension_function(dummy,
                              wsaid_connectex,
                              (void**)&pConnectEx);
-  oio_get_extension_function(dummy,
+  uv_get_extension_function(dummy,
                              wsaid_acceptex,
                              (void**)&pAcceptEx);
-  oio_get_extension_function(dummy,
+  uv_get_extension_function(dummy,
                              wsaid_getacceptexsockaddrs,
                              (void**)&pGetAcceptExSockAddrs);
-  oio_get_extension_function(dummy,
+  uv_get_extension_function(dummy,
                              wsaid_disconnectex,
                              (void**)&pDisconnectEx);
-  oio_get_extension_function(dummy,
+  uv_get_extension_function(dummy,
                              wsaid_transmitfile,
                              (void**)&pTransmitFile);
 
   if (closesocket(dummy) == SOCKET_ERROR) {
-    oio_fatal_error(WSAGetLastError(), "closesocket");
+    uv_fatal_error(WSAGetLastError(), "closesocket");
   }
 
   /* Create an I/O completion port */
-  oio_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
-  if (oio_iocp_ == NULL) {
-    oio_fatal_error(GetLastError(), "CreateIoCompletionPort");
+  uv_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
+  if (uv_iocp_ == NULL) {
+    uv_fatal_error(GetLastError(), "CreateIoCompletionPort");
   }
 
   /* Initialize the event loop time */
   if (!QueryPerformanceFrequency(&timer_frequency))
-    oio_fatal_error(GetLastError(), "QueryPerformanceFrequency");
-  oio_ticks_per_msec_ = timer_frequency.QuadPart / 1000;
+    uv_fatal_error(GetLastError(), "QueryPerformanceFrequency");
+  uv_ticks_per_msec_ = timer_frequency.QuadPart / 1000;
 
-  oio_update_time();
+  uv_update_time();
 }
 
 
-void oio_req_init(oio_req_t* req, oio_handle_t* handle, void* cb) {
-  req->type = OIO_UNKNOWN_REQ;
+void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb) {
+  req->type = UV_UNKNOWN_REQ;
   req->flags = 0;
   req->handle = handle;
   req->cb = cb;
 }
 
 
-static oio_req_t* oio_overlapped_to_req(OVERLAPPED* overlapped) {
-  return CONTAINING_RECORD(overlapped, oio_req_t, overlapped);
+static uv_req_t* uv_overlapped_to_req(OVERLAPPED* overlapped) {
+  return CONTAINING_RECORD(overlapped, uv_req_t, overlapped);
 }
 
 
-static int oio_tcp_init_socket(oio_handle_t* handle, oio_close_cb close_cb,
+static int uv_tcp_init_socket(uv_handle_t* handle, uv_close_cb close_cb,
     void* data, SOCKET socket) {
   DWORD yes = 1;
 
@@ -429,58 +429,58 @@ static int oio_tcp_init_socket(oio_handle_t* handle, oio_close_cb close_cb,
   handle->close_cb = close_cb;
   handle->data = data;
   handle->write_queue_size = 0;
-  handle->type = OIO_TCP;
+  handle->type = UV_TCP;
   handle->flags = 0;
   handle->reqs_pending = 0;
-  handle->error = oio_ok_;
+  handle->error = uv_ok_;
   handle->accept_socket = INVALID_SOCKET;
 
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
-    oio_set_sys_error(WSAGetLastError());
+    uv_set_sys_error(WSAGetLastError());
     return -1;
   }
 
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
-    oio_set_sys_error(GetLastError());
+    uv_set_sys_error(GetLastError());
     return -1;
   }
 
   /* Associate it with the I/O completion port. */
-  /* Use oio_handle_t pointer as completion key. */
+  /* Use uv_handle_t pointer as completion key. */
   if (CreateIoCompletionPort((HANDLE)socket,
-                             oio_iocp_,
+                             uv_iocp_,
                              (ULONG_PTR)socket,
                              0) == NULL) {
-    oio_set_sys_error(GetLastError());
+    uv_set_sys_error(GetLastError());
     return -1;
   }
 
-  oio_refs_++;
+  uv_refs_++;
 
   return 0;
 }
 
 
-static void oio_tcp_init_connection(oio_handle_t* handle) {
-  handle->flags |= OIO_HANDLE_CONNECTION;
+static void uv_tcp_init_connection(uv_handle_t* handle) {
+  handle->flags |= UV_HANDLE_CONNECTION;
   handle->write_reqs_pending = 0;
-  oio_req_init(&(handle->read_req), handle, NULL);
+  uv_req_init(&(handle->read_req), handle, NULL);
 }
 
 
-int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
+int uv_tcp_init(uv_handle_t* handle, uv_close_cb close_cb,
     void* data) {
   SOCKET sock;
 
   sock = socket(AF_INET, SOCK_STREAM, 0);
   if (handle->socket == INVALID_SOCKET) {
-    oio_set_sys_error(WSAGetLastError());
+    uv_set_sys_error(WSAGetLastError());
     return -1;
   }
 
-  if (oio_tcp_init_socket(handle, close_cb, data, sock) == -1) {
+  if (uv_tcp_init_socket(handle, close_cb, data, sock) == -1) {
     closesocket(sock);
     return -1;
   }
@@ -489,106 +489,106 @@ int oio_tcp_init(oio_handle_t* handle, oio_close_cb close_cb,
 }
 
 
-static void oio_tcp_endgame(oio_handle_t* handle) {
-  oio_err_t err;
+static void uv_tcp_endgame(uv_handle_t* handle) {
+  uv_err_t err;
   int status;
 
-  if (handle->flags & OIO_HANDLE_SHUTTING &&
-      !(handle->flags & OIO_HANDLE_SHUT) &&
+  if (handle->flags & UV_HANDLE_SHUTTING &&
+      !(handle->flags & UV_HANDLE_SHUT) &&
       handle->write_reqs_pending == 0) {
 
     if (shutdown(handle->socket, SD_SEND) != SOCKET_ERROR) {
       status = 0;
-      handle->flags |= OIO_HANDLE_SHUT;
+      handle->flags |= UV_HANDLE_SHUT;
     } else {
       status = -1;
-      err = oio_new_sys_error(WSAGetLastError());
+      err = uv_new_sys_error(WSAGetLastError());
     }
     if (handle->shutdown_req->cb) {
-      handle->shutdown_req->flags &= ~OIO_REQ_PENDING;
+      handle->shutdown_req->flags &= ~UV_REQ_PENDING;
       if (status == -1) {
-        oio_last_error_ = err;
+        uv_last_error_ = err;
       }
-      ((oio_shutdown_cb)handle->shutdown_req->cb)(handle->shutdown_req, status);
+      ((uv_shutdown_cb)handle->shutdown_req->cb)(handle->shutdown_req, status);
     }
     handle->reqs_pending--;
   }
 
-  if (handle->flags & OIO_HANDLE_EOF &&
-      handle->flags & OIO_HANDLE_SHUT &&
-      !(handle->flags & OIO_HANDLE_CLOSING)) {
-    /* Because oio_close will add the handle to the endgame_handles list, */
+  if (handle->flags & UV_HANDLE_EOF &&
+      handle->flags & UV_HANDLE_SHUT &&
+      !(handle->flags & UV_HANDLE_CLOSING)) {
+    /* Because uv_close will add the handle to the endgame_handles list, */
     /* return here and call the close cb the next time. */
-    oio_close(handle);
+    uv_close(handle);
     return;
   }
 
-  if (handle->flags & OIO_HANDLE_CLOSING &&
+  if (handle->flags & UV_HANDLE_CLOSING &&
       handle->reqs_pending == 0) {
-    assert(!(handle->flags & OIO_HANDLE_CLOSED));
-    handle->flags |= OIO_HANDLE_CLOSED;
+    assert(!(handle->flags & UV_HANDLE_CLOSED));
+    handle->flags |= UV_HANDLE_CLOSED;
 
     if (handle->close_cb) {
-      oio_last_error_ = handle->error;
-      handle->close_cb(handle, handle->error.code == OIO_OK ? 0 : 1);
+      uv_last_error_ = handle->error;
+      handle->close_cb(handle, handle->error.code == UV_OK ? 0 : 1);
     }
 
-    oio_refs_--;
+    uv_refs_--;
   }
 }
 
 
-static void oio_loop_endgame(oio_handle_t* handle) {
-  if (handle->flags & OIO_HANDLE_CLOSING) {
-    assert(!(handle->flags & OIO_HANDLE_CLOSED));
-    handle->flags |= OIO_HANDLE_CLOSED;
+static void uv_loop_endgame(uv_handle_t* handle) {
+  if (handle->flags & UV_HANDLE_CLOSING) {
+    assert(!(handle->flags & UV_HANDLE_CLOSED));
+    handle->flags |= UV_HANDLE_CLOSED;
 
     if (handle->close_cb) {
       handle->close_cb(handle, 0);
     }
 
-    oio_refs_--;
+    uv_refs_--;
   }
 }
 
 
-static void oio_async_endgame(oio_handle_t* handle) {
-  if (handle->flags & OIO_HANDLE_CLOSING &&
+static void uv_async_endgame(uv_handle_t* handle) {
+  if (handle->flags & UV_HANDLE_CLOSING &&
       !handle->async_sent) {
-    assert(!(handle->flags & OIO_HANDLE_CLOSED));
-    handle->flags |= OIO_HANDLE_CLOSED;
+    assert(!(handle->flags & UV_HANDLE_CLOSED));
+    handle->flags |= UV_HANDLE_CLOSED;
 
     if (handle->close_cb) {
       handle->close_cb(handle, 0);
     }
 
-    oio_refs_--;
+    uv_refs_--;
   }
 }
 
 
-static void oio_call_endgames() {
-  oio_handle_t* handle;
+static void uv_call_endgames() {
+  uv_handle_t* handle;
 
-  while (oio_endgame_handles_) {
-    handle = oio_endgame_handles_;
-    oio_endgame_handles_ = handle->endgame_next;
+  while (uv_endgame_handles_) {
+    handle = uv_endgame_handles_;
+    uv_endgame_handles_ = handle->endgame_next;
 
-    handle->flags &= ~OIO_HANDLE_ENDGAME_QUEUED;
+    handle->flags &= ~UV_HANDLE_ENDGAME_QUEUED;
 
     switch (handle->type) {
-      case OIO_TCP:
-        oio_tcp_endgame(handle);
+      case UV_TCP:
+        uv_tcp_endgame(handle);
         break;
 
-      case OIO_PREPARE:
-      case OIO_CHECK:
-      case OIO_IDLE:
-        oio_loop_endgame(handle);
+      case UV_PREPARE:
+      case UV_CHECK:
+      case UV_IDLE:
+        uv_loop_endgame(handle);
         break;
 
-      case OIO_ASYNC:
-        oio_async_endgame(handle);
+      case UV_ASYNC:
+        uv_async_endgame(handle);
         break;
 
       default:
@@ -599,51 +599,51 @@ static void oio_call_endgames() {
 }
 
 
-static void oio_want_endgame(oio_handle_t* handle) {
-  if (!(handle->flags & OIO_HANDLE_ENDGAME_QUEUED)) {
-    handle->flags |= OIO_HANDLE_ENDGAME_QUEUED;
+static void uv_want_endgame(uv_handle_t* handle) {
+  if (!(handle->flags & UV_HANDLE_ENDGAME_QUEUED)) {
+    handle->flags |= UV_HANDLE_ENDGAME_QUEUED;
 
-    handle->endgame_next = oio_endgame_handles_;
-    oio_endgame_handles_ = handle;
+    handle->endgame_next = uv_endgame_handles_;
+    uv_endgame_handles_ = handle;
   }
 }
 
 
-static int oio_close_error(oio_handle_t* handle, oio_err_t e) {
-  if (handle->flags & OIO_HANDLE_CLOSING) {
+static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
+  if (handle->flags & UV_HANDLE_CLOSING) {
     return 0;
   }
 
   handle->error = e;
-  handle->flags |= OIO_HANDLE_CLOSING;
+  handle->flags |= UV_HANDLE_CLOSING;
 
   /* Handle-specific close actions */
   switch (handle->type) {
-    case OIO_TCP:
+    case UV_TCP:
       closesocket(handle->socket);
       if (handle->reqs_pending == 0) {
-        oio_want_endgame(handle);
+        uv_want_endgame(handle);
       }
       return 0;
 
-    case OIO_PREPARE:
-      oio_prepare_stop(handle);
-      oio_want_endgame(handle);
+    case UV_PREPARE:
+      uv_prepare_stop(handle);
+      uv_want_endgame(handle);
       return 0;
 
-    case OIO_CHECK:
-      oio_check_stop(handle);
-      oio_want_endgame(handle);
+    case UV_CHECK:
+      uv_check_stop(handle);
+      uv_want_endgame(handle);
       return 0;
 
-    case OIO_IDLE:
-      oio_idle_stop(handle);
-      oio_want_endgame(handle);
+    case UV_IDLE:
+      uv_idle_stop(handle);
+      uv_want_endgame(handle);
       return 0;
 
-    case OIO_ASYNC:
+    case UV_ASYNC:
       if (!handle->async_sent) {
-        oio_want_endgame(handle);
+        uv_want_endgame(handle);
       }
       return 0;
 
@@ -655,12 +655,12 @@ static int oio_close_error(oio_handle_t* handle, oio_err_t e) {
 }
 
 
-int oio_close(oio_handle_t* handle) {
-  return oio_close_error(handle, oio_ok_);
+int uv_close(uv_handle_t* handle) {
+  return uv_close_error(handle, uv_ok_);
 }
 
 
-struct sockaddr_in oio_ip4_addr(char* ip, int port) {
+struct sockaddr_in uv_ip4_addr(char* ip, int port) {
   struct sockaddr_in addr;
 
   addr.sin_family = AF_INET;
@@ -671,7 +671,7 @@ struct sockaddr_in oio_ip4_addr(char* ip, int port) {
 }
 
 
-int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
+int uv_bind(uv_handle_t* handle, struct sockaddr* addr) {
   int addrsize;
   DWORD err;
 
@@ -680,7 +680,7 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
   } else {
-    oio_set_sys_error(WSAEFAULT);
+    uv_set_sys_error(WSAEFAULT);
     return -1;
   }
 
@@ -688,40 +688,40 @@ int oio_bind(oio_handle_t* handle, struct sockaddr* addr) {
     err = WSAGetLastError();
     if (err == WSAEADDRINUSE) {
       /* Some errors are not to be reported until connect() or listen() */
-      handle->error = oio_new_sys_error(err);
-      handle->flags |= OIO_HANDLE_BIND_ERROR;
+      handle->error = uv_new_sys_error(err);
+      handle->flags |= UV_HANDLE_BIND_ERROR;
     } else {
-      oio_set_sys_error(err);
+      uv_set_sys_error(err);
       return -1;
     }
   }
 
-  handle->flags |= OIO_HANDLE_BOUND;
+  handle->flags |= UV_HANDLE_BOUND;
 
   return 0;
 }
 
 
-static void oio_queue_accept(oio_handle_t* handle) {
-  oio_req_t* req;
+static void uv_queue_accept(uv_handle_t* handle) {
+  uv_req_t* req;
   BOOL success;
   DWORD bytes;
   SOCKET accept_socket;
 
-  assert(handle->flags & OIO_HANDLE_LISTENING);
+  assert(handle->flags & UV_HANDLE_LISTENING);
   assert(handle->accept_socket == INVALID_SOCKET);
 
   accept_socket = socket(AF_INET, SOCK_STREAM, 0);
   if (accept_socket == INVALID_SOCKET) {
-    oio_close_error(handle, oio_new_sys_error(WSAGetLastError()));
+    uv_close_error(handle, uv_new_sys_error(WSAGetLastError()));
     return;
   }
 
-  /* Prepare the oio_req and OVERLAPPED structures. */
+  /* Prepare the uv_req and OVERLAPPED structures. */
   req = &handle->accept_req;
-  assert(!(req->flags & OIO_REQ_PENDING));
-  req->type = OIO_ACCEPT;
-  req->flags |= OIO_REQ_PENDING;
+  assert(!(req->flags & UV_REQ_PENDING));
+  req->type = UV_ACCEPT;
+  req->flags |= UV_REQ_PENDING;
   memset(&(req->overlapped), 0, sizeof(req->overlapped));
 
   success = pAcceptEx(handle->socket,
@@ -734,35 +734,35 @@ static void oio_queue_accept(oio_handle_t* handle) {
                       &req->overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_set_sys_error(WSAGetLastError());
+    uv_set_sys_error(WSAGetLastError());
     /* destroy the preallocated client handle */
     closesocket(accept_socket);
     /* destroy ourselves */
-    oio_close_error(handle, oio_last_error_);
+    uv_close_error(handle, uv_last_error_);
     return;
   }
 
   handle->accept_socket = accept_socket;
 
   handle->reqs_pending++;
-  req->flags |= OIO_REQ_PENDING;
+  req->flags |= UV_REQ_PENDING;
 }
 
 
-static void oio_queue_read(oio_handle_t* handle) {
-  oio_req_t *req;
-  oio_buf buf;
+static void uv_queue_read(uv_handle_t* handle) {
+  uv_req_t *req;
+  uv_buf buf;
   int result;
   DWORD bytes, flags;
 
-  assert(handle->flags & OIO_HANDLE_READING);
+  assert(handle->flags & UV_HANDLE_READING);
 
   req = &handle->read_req;
-  assert(!(req->flags & OIO_REQ_PENDING));
+  assert(!(req->flags & UV_REQ_PENDING));
   memset(&req->overlapped, 0, sizeof(req->overlapped));
-  req->type = OIO_READ;
+  req->type = UV_READ;
 
-  buf.base = (char*) &oio_zero_;
+  buf.base = (char*) &uv_zero_;
   buf.len = 0;
 
   flags = 0;
@@ -774,125 +774,125 @@ static void oio_queue_read(oio_handle_t* handle) {
                    &req->overlapped,
                    NULL);
   if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_set_sys_error(WSAGetLastError());
-    oio_close_error(handle, oio_last_error_);
+    uv_set_sys_error(WSAGetLastError());
+    uv_close_error(handle, uv_last_error_);
     return;
   }
 
-  req->flags |= OIO_REQ_PENDING;
+  req->flags |= UV_REQ_PENDING;
   handle->reqs_pending++;
 }
 
 
-int oio_listen(oio_handle_t* handle, int backlog, oio_accept_cb cb) {
+int uv_listen(uv_handle_t* handle, int backlog, uv_accept_cb cb) {
   assert(backlog > 0);
 
-  if (handle->flags & OIO_HANDLE_BIND_ERROR) {
-    oio_last_error_ = handle->error;
+  if (handle->flags & UV_HANDLE_BIND_ERROR) {
+    uv_last_error_ = handle->error;
     return -1;
   }
 
-  if (handle->flags & OIO_HANDLE_LISTENING ||
-      handle->flags & OIO_HANDLE_READING) {
+  if (handle->flags & UV_HANDLE_LISTENING ||
+      handle->flags & UV_HANDLE_READING) {
     /* Already listening. */
-    oio_set_sys_error(WSAEALREADY);
+    uv_set_sys_error(WSAEALREADY);
     return -1;
   }
 
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
-    oio_set_sys_error(WSAGetLastError());
+    uv_set_sys_error(WSAGetLastError());
     return -1;
   }
 
-  handle->flags |= OIO_HANDLE_LISTENING;
+  handle->flags |= UV_HANDLE_LISTENING;
   handle->accept_cb = cb;
 
-  oio_req_init(&(handle->accept_req), handle, NULL);
-  oio_queue_accept(handle);
+  uv_req_init(&(handle->accept_req), handle, NULL);
+  uv_queue_accept(handle);
 
   return 0;
 }
 
 
-int oio_accept(oio_handle_t* server, oio_handle_t* client,
-    oio_close_cb close_cb, void* data) {
+int uv_accept(uv_handle_t* server, uv_handle_t* client,
+    uv_close_cb close_cb, void* data) {
   int rv = 0;
 
   if (server->accept_socket == INVALID_SOCKET) {
-    oio_set_sys_error(WSAENOTCONN);
+    uv_set_sys_error(WSAENOTCONN);
     return -1;
   }
 
-  if (oio_tcp_init_socket(client, close_cb, data, server->accept_socket) == -1) {
-    oio_fatal_error(oio_last_error_.sys_errno_, "init");
+  if (uv_tcp_init_socket(client, close_cb, data, server->accept_socket) == -1) {
+    uv_fatal_error(uv_last_error_.sys_errno_, "init");
     closesocket(server->accept_socket);
     rv = -1;
   }
 
-  oio_tcp_init_connection(client);
+  uv_tcp_init_connection(client);
 
   server->accept_socket = INVALID_SOCKET;
 
-  if (!(server->flags & OIO_HANDLE_CLOSING)) {
-    oio_queue_accept(server);
+  if (!(server->flags & UV_HANDLE_CLOSING)) {
+    uv_queue_accept(server);
   }
 
   return rv;
 }
 
 
-int oio_read_start(oio_handle_t* handle, oio_read_cb cb) {
-  if (!(handle->flags & OIO_HANDLE_CONNECTION)) {
-    oio_set_sys_error(WSAEINVAL);
+int uv_read_start(uv_handle_t* handle, uv_read_cb cb) {
+  if (!(handle->flags & UV_HANDLE_CONNECTION)) {
+    uv_set_sys_error(WSAEINVAL);
     return -1;
   }
 
-  if (handle->flags & OIO_HANDLE_READING) {
-    oio_set_sys_error(WSAEALREADY);
+  if (handle->flags & UV_HANDLE_READING) {
+    uv_set_sys_error(WSAEALREADY);
     return -1;
   }
 
-  if (handle->flags & OIO_HANDLE_EOF) {
-    oio_set_sys_error(WSAESHUTDOWN);
+  if (handle->flags & UV_HANDLE_EOF) {
+    uv_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
 
-  handle->flags |= OIO_HANDLE_READING;
+  handle->flags |= UV_HANDLE_READING;
   handle->read_cb = cb;
 
   /* If reading was stopped and then started again, there could stell be a */
   /* read request pending. */
-  if (!(handle->read_req.flags & OIO_REQ_PENDING))
-    oio_queue_read(handle);
+  if (!(handle->read_req.flags & UV_REQ_PENDING))
+    uv_queue_read(handle);
 
   return 0;
 }
 
 
-int oio_read_stop(oio_handle_t* handle) {
-  handle->flags &= ~OIO_HANDLE_READING;
+int uv_read_stop(uv_handle_t* handle) {
+  handle->flags &= ~UV_HANDLE_READING;
 
   return 0;
 }
 
 
-int oio_connect(oio_req_t* req, struct sockaddr* addr) {
+int uv_connect(uv_req_t* req, struct sockaddr* addr) {
   int addrsize;
   BOOL success;
   DWORD bytes;
-  oio_handle_t* handle = req->handle;
+  uv_handle_t* handle = req->handle;
 
-  assert(!(req->flags & OIO_REQ_PENDING));
+  assert(!(req->flags & UV_REQ_PENDING));
 
-  if (handle->flags & OIO_HANDLE_BIND_ERROR) {
-    oio_last_error_ = handle->error;
+  if (handle->flags & UV_HANDLE_BIND_ERROR) {
+    uv_last_error_ = handle->error;
     return -1;
   }
 
   if (addr->sa_family == AF_INET) {
     addrsize = sizeof(struct sockaddr_in);
-    if (!(handle->flags & OIO_HANDLE_BOUND) &&
-        oio_bind(handle, (struct sockaddr*)&oio_addr_ip4_any_) < 0)
+    if (!(handle->flags & UV_HANDLE_BOUND) &&
+        uv_bind(handle, (struct sockaddr*)&uv_addr_ip4_any_) < 0)
       return -1;
   } else if (addr->sa_family == AF_INET6) {
     addrsize = sizeof(struct sockaddr_in6);
@@ -904,7 +904,7 @@ int oio_connect(oio_req_t* req, struct sockaddr* addr) {
   }
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
-  req->type = OIO_CONNECT;
+  req->type = UV_CONNECT;
 
   success = pConnectEx(handle->socket,
                        addr,
@@ -915,18 +915,18 @@ int oio_connect(oio_req_t* req, struct sockaddr* addr) {
                        &req->overlapped);
 
   if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
-    oio_set_sys_error(WSAGetLastError());
+    uv_set_sys_error(WSAGetLastError());
     return -1;
   }
 
-  req->flags |= OIO_REQ_PENDING;
+  req->flags |= UV_REQ_PENDING;
   handle->reqs_pending++;
 
   return 0;
 }
 
 
-static size_t oio_count_bufs(oio_buf bufs[], int count) {
+static size_t uv_count_bufs(uv_buf bufs[], int count) {
   size_t bytes = 0;
   int i;
 
@@ -938,25 +938,25 @@ static size_t oio_count_bufs(oio_buf bufs[], int count) {
 }
 
 
-int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
+int uv_write(uv_req_t* req, uv_buf bufs[], int bufcnt) {
   int result;
   DWORD bytes, err;
-  oio_handle_t* handle = req->handle;
+  uv_handle_t* handle = req->handle;
 
-  assert(!(req->flags & OIO_REQ_PENDING));
+  assert(!(req->flags & UV_REQ_PENDING));
 
-  if (!(req->handle->flags & OIO_HANDLE_CONNECTION)) {
-    oio_set_sys_error(WSAEINVAL);
+  if (!(req->handle->flags & UV_HANDLE_CONNECTION)) {
+    uv_set_sys_error(WSAEINVAL);
     return -1;
   }
 
-  if (req->handle->flags & OIO_HANDLE_SHUTTING) {
-    oio_set_sys_error(WSAESHUTDOWN);
+  if (req->handle->flags & UV_HANDLE_SHUTTING) {
+    uv_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
-  req->type = OIO_WRITE;
+  req->type = UV_WRITE;
 
   result = WSASend(handle->socket,
                    (WSABUF*)bufs,
@@ -969,7 +969,7 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
     err = WSAGetLastError();
     if (err != WSA_IO_PENDING) {
       /* Send faild due to an error */
-      oio_set_sys_error(WSAGetLastError());
+      uv_set_sys_error(WSAGetLastError());
       return -1;
     }
   }
@@ -979,11 +979,11 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
     req->queued_bytes = 0;
   } else {
     /* Request queued by the kernel */
-    req->queued_bytes = oio_count_bufs(bufs, bufcnt);
+    req->queued_bytes = uv_count_bufs(bufs, bufcnt);
     handle->write_queue_size += req->queued_bytes;
   }
 
-  req->flags |= OIO_REQ_PENDING;
+  req->flags |= UV_REQ_PENDING;
   handle->reqs_pending++;
   handle->write_reqs_pending++;
 
@@ -991,70 +991,70 @@ int oio_write(oio_req_t* req, oio_buf bufs[], int bufcnt) {
 }
 
 
-int oio_shutdown(oio_req_t* req) {
-  oio_handle_t* handle = req->handle;
+int uv_shutdown(uv_req_t* req) {
+  uv_handle_t* handle = req->handle;
   int status = 0;
 
-  if (!(req->handle->flags & OIO_HANDLE_CONNECTION)) {
-    oio_set_sys_error(WSAEINVAL);
+  if (!(req->handle->flags & UV_HANDLE_CONNECTION)) {
+    uv_set_sys_error(WSAEINVAL);
     return -1;
   }
 
-  if (handle->flags & OIO_HANDLE_SHUTTING) {
-    oio_set_sys_error(WSAESHUTDOWN);
+  if (handle->flags & UV_HANDLE_SHUTTING) {
+    uv_set_sys_error(WSAESHUTDOWN);
     return -1;
   }
 
-  req->type = OIO_SHUTDOWN;
-  req->flags |= OIO_REQ_PENDING;
+  req->type = UV_SHUTDOWN;
+  req->flags |= UV_REQ_PENDING;
 
-  handle->flags |= OIO_HANDLE_SHUTTING;
+  handle->flags |= UV_HANDLE_SHUTTING;
     handle->shutdown_req = req;
   handle->reqs_pending++;
 
-  oio_want_endgame(handle);
+  uv_want_endgame(handle);
 
   return 0;
 }
 
 
-static void oio_tcp_return_req(oio_handle_t* handle, oio_req_t* req) {
+static void uv_tcp_return_req(uv_handle_t* handle, uv_req_t* req) {
   BOOL success;
   DWORD bytes, flags, err;
-  oio_buf buf;
+  uv_buf buf;
 
-  assert(handle->type == OIO_TCP);
+  assert(handle->type == UV_TCP);
 
   /* Mark the request non-pending */
-  req->flags &= ~OIO_REQ_PENDING;
+  req->flags &= ~UV_REQ_PENDING;
 
   switch (req->type) {
-    case OIO_WRITE:
+    case UV_WRITE:
       success = GetOverlappedResult(handle->handle, &req->overlapped, &bytes, FALSE);
       handle->write_queue_size -= req->queued_bytes;
       if (!success) {
-        oio_set_sys_error(GetLastError());
-        oio_close_error(handle, oio_last_error_);
+        uv_set_sys_error(GetLastError());
+        uv_close_error(handle, uv_last_error_);
       }
       if (req->cb) {
-        ((oio_write_cb)req->cb)(req, success ? 0 : -1);
+        ((uv_write_cb)req->cb)(req, success ? 0 : -1);
       }
       handle->write_reqs_pending--;
       if (success &&
           handle->write_reqs_pending == 0 &&
-          handle->flags & OIO_HANDLE_SHUTTING) {
-        oio_want_endgame(handle);
+          handle->flags & UV_HANDLE_SHUTTING) {
+        uv_want_endgame(handle);
       }
       break;
 
-    case OIO_READ:
+    case UV_READ:
       success = GetOverlappedResult(handle->handle, &req->overlapped, &bytes, FALSE);
       if (!success) {
-        oio_set_sys_error(GetLastError());
-        oio_close_error(handle, oio_last_error_);
+        uv_set_sys_error(GetLastError());
+        uv_close_error(handle, uv_last_error_);
       }
-      while (handle->flags & OIO_HANDLE_READING) {
-        buf = oio_alloc_(handle, 65536);
+      while (handle->flags & UV_HANDLE_READING) {
+        buf = uv_alloc_(handle, 65536);
         assert(buf.len > 0);
         flags = 0;
         if (WSARecv(handle->socket,
@@ -1066,44 +1066,44 @@ static void oio_tcp_return_req(oio_handle_t* handle, oio_req_t* req) {
                     NULL) != SOCKET_ERROR) {
           if (bytes > 0) {
             /* Successful read */
-            ((oio_read_cb)handle->read_cb)(handle, bytes, buf);
+            ((uv_read_cb)handle->read_cb)(handle, bytes, buf);
             /* Read again only if bytes == buf.len */
             if (bytes < buf.len) {
               break;
             }
           } else {
             /* Connection closed */
-            handle->flags &= ~OIO_HANDLE_READING;
-            handle->flags |= OIO_HANDLE_EOF;
-            oio_last_error_.code = OIO_EOF;
-            oio_last_error_.sys_errno_ = ERROR_SUCCESS;
-            ((oio_read_cb)handle->read_cb)(handle, -1, buf);
-            oio_want_endgame(handle);
+            handle->flags &= ~UV_HANDLE_READING;
+            handle->flags |= UV_HANDLE_EOF;
+            uv_last_error_.code = UV_EOF;
+            uv_last_error_.sys_errno_ = ERROR_SUCCESS;
+            ((uv_read_cb)handle->read_cb)(handle, -1, buf);
+            uv_want_endgame(handle);
             break;
           }
         } else {
           err = WSAGetLastError();
           if (err == WSAEWOULDBLOCK) {
             /* 0-byte read */
-            oio_set_sys_error(WSAEWOULDBLOCK);
-            ((oio_read_cb)handle->read_cb)(handle, 0, buf);
+            uv_set_sys_error(WSAEWOULDBLOCK);
+            ((uv_read_cb)handle->read_cb)(handle, 0, buf);
           } else {
             /* Ouch! serious error. */
-            oio_set_sys_error(err);
-            oio_close_error(handle, oio_last_error_);
+            uv_set_sys_error(err);
+            uv_close_error(handle, uv_last_error_);
           }
           break;
         }
       }
       /* Post another 0-read if still reading and not closing */
-      if (!(handle->flags & OIO_HANDLE_CLOSING) &&
-          !(handle->flags & OIO_HANDLE_EOF) &&
-          handle->flags & OIO_HANDLE_READING) {
-        oio_queue_read(handle);
+      if (!(handle->flags & UV_HANDLE_CLOSING) &&
+          !(handle->flags & UV_HANDLE_EOF) &&
+          handle->flags & UV_HANDLE_READING) {
+        uv_queue_read(handle);
       }
       break;
 
-    case OIO_ACCEPT:
+    case UV_ACCEPT:
       assert(handle->accept_socket != INVALID_SOCKET);
 
       success = GetOverlappedResult(handle->handle, &req->overlapped, &bytes, FALSE);
@@ -1115,18 +1115,18 @@ static void oio_tcp_return_req(oio_handle_t* handle, oio_req_t* req) {
 
       if (success) {
         if (handle->accept_cb) {
-          ((oio_accept_cb)handle->accept_cb)(handle);
+          ((uv_accept_cb)handle->accept_cb)(handle);
         }
       } else {
         /* Errorneous accept is ignored if the listen socket is still healthy. */
         closesocket(handle->accept_socket);
-        if (!(handle->flags & OIO_HANDLE_CLOSING)) {
-          oio_queue_accept(handle);
+        if (!(handle->flags & UV_HANDLE_CLOSING)) {
+          uv_queue_accept(handle);
         }
       }
       break;
 
-    case OIO_CONNECT:
+    case UV_CONNECT:
       if (req->cb) {
         success = GetOverlappedResult(handle->handle,
                                       &req->overlapped,
@@ -1138,15 +1138,15 @@ static void oio_tcp_return_req(oio_handle_t* handle, oio_req_t* req) {
                           SO_UPDATE_CONNECT_CONTEXT,
                           NULL,
                           0) == 0) {
-            oio_tcp_init_connection(handle);
-            ((oio_connect_cb)req->cb)(req, 0);
+            uv_tcp_init_connection(handle);
+            ((uv_connect_cb)req->cb)(req, 0);
           } else {
-            oio_set_sys_error(WSAGetLastError());
-            ((oio_connect_cb)req->cb)(req, -1);
+            uv_set_sys_error(WSAGetLastError());
+            ((uv_connect_cb)req->cb)(req, -1);
           }
         } else {
-          oio_set_sys_error(WSAGetLastError());
-          ((oio_connect_cb)req->cb)(req, -1);
+          uv_set_sys_error(WSAGetLastError());
+          ((uv_connect_cb)req->cb)(req, -1);
         }
       }
       break;
@@ -1160,14 +1160,14 @@ static void oio_tcp_return_req(oio_handle_t* handle, oio_req_t* req) {
 
   /* Queue the handle's close callback if it is closing and there are no */
   /* more pending requests. */
-  if (handle->flags & OIO_HANDLE_CLOSING &&
+  if (handle->flags & UV_HANDLE_CLOSING &&
       handle->reqs_pending == 0) {
-    oio_want_endgame(handle);
+    uv_want_endgame(handle);
   }
 }
 
 
-static int oio_timer_compare(oio_req_t* a, oio_req_t* b) {
+static int uv_timer_compare(uv_req_t* a, uv_req_t* b) {
   if (a->due < b->due)
     return -1;
   if (a->due > b->due)
@@ -1180,58 +1180,58 @@ static int oio_timer_compare(oio_req_t* a, oio_req_t* b) {
 }
 
 
-RB_GENERATE_STATIC(oio_timer_s, oio_req_s, tree_entry, oio_timer_compare);
+RB_GENERATE_STATIC(uv_timer_s, uv_req_s, tree_entry, uv_timer_compare);
 
 
-int oio_timeout(oio_req_t* req, int64_t timeout) {
-  assert(!(req->flags & OIO_REQ_PENDING));
+int uv_timeout(uv_req_t* req, int64_t timeout) {
+  assert(!(req->flags & UV_REQ_PENDING));
 
-  req->type = OIO_TIMEOUT;
+  req->type = UV_TIMEOUT;
 
-  req->due = oio_now_ + timeout;
-  if (RB_INSERT(oio_timer_s, &oio_timers_, req) != NULL) {
-    oio_set_sys_error(ERROR_INVALID_DATA);
+  req->due = uv_now_ + timeout;
+  if (RB_INSERT(uv_timer_s, &uv_timers_, req) != NULL) {
+    uv_set_sys_error(ERROR_INVALID_DATA);
     return -1;
   }
 
-  oio_refs_++;
-  req->flags |= OIO_REQ_PENDING;
+  uv_refs_++;
+  req->flags |= UV_REQ_PENDING;
   return 0;
 }
 
 
-void oio_update_time() {
+void uv_update_time() {
   LARGE_INTEGER counter;
 
   if (!QueryPerformanceCounter(&counter))
-    oio_fatal_error(GetLastError(), "QueryPerformanceCounter");
+    uv_fatal_error(GetLastError(), "QueryPerformanceCounter");
 
-  oio_now_ = counter.QuadPart / oio_ticks_per_msec_;
+  uv_now_ = counter.QuadPart / uv_ticks_per_msec_;
 }
 
 
-int64_t oio_now() {
-  return oio_now_;
+int64_t uv_now() {
+  return uv_now_;
 }
 
 
-int oio_loop_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
+int uv_loop_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
   handle->close_cb = (void*) close_cb;
   handle->data = data;
   handle->flags = 0;
-  handle->error = oio_ok_;
+  handle->error = uv_ok_;
 
-  oio_refs_++;
+  uv_refs_++;
 
   return 0;
 }
 
 
-static int oio_loop_start(oio_handle_t* handle, oio_loop_cb loop_cb,
-    oio_handle_t** list) {
-  oio_handle_t* old_head;
+static int uv_loop_start(uv_handle_t* handle, uv_loop_cb loop_cb,
+    uv_handle_t** list) {
+  uv_handle_t* old_head;
 
-  if (handle->flags & OIO_HANDLE_ACTIVE)
+  if (handle->flags & UV_HANDLE_ACTIVE)
     return 0;
 
   old_head = *list;
@@ -1246,14 +1246,14 @@ static int oio_loop_start(oio_handle_t* handle, oio_loop_cb loop_cb,
   *list = handle;
 
   handle->loop_cb = loop_cb;
-  handle->flags |= OIO_HANDLE_ACTIVE;
+  handle->flags |= UV_HANDLE_ACTIVE;
 
   return 0;
 }
 
 
-static int oio_loop_stop(oio_handle_t* handle, oio_handle_t** list) {
-  if (!(handle->flags & OIO_HANDLE_ACTIVE))
+static int uv_loop_stop(uv_handle_t* handle, uv_handle_t** list) {
+  if (!(handle->flags & UV_HANDLE_ACTIVE))
     return 0;
 
   /* Update loop head if needed */
@@ -1262,8 +1262,8 @@ static int oio_loop_stop(oio_handle_t* handle, oio_handle_t** list) {
   }
 
   /* Update the iterator-next pointer of needed */
-  if (oio_next_loop_handle_ == handle) {
-    oio_next_loop_handle_ = handle->loop_next;
+  if (uv_next_loop_handle_ == handle) {
+    uv_next_loop_handle_ = handle->loop_next;
   }
 
   if (handle->loop_prev) {
@@ -1273,117 +1273,117 @@ static int oio_loop_stop(oio_handle_t* handle, oio_handle_t** list) {
     handle->loop_next->loop_prev = handle->loop_prev;
   }
 
-  handle->flags &= ~OIO_HANDLE_ACTIVE;
+  handle->flags &= ~UV_HANDLE_ACTIVE;
 
   return 0;
 }
 
 
-static void oio_loop_invoke(oio_handle_t* list) {
-  oio_handle_t *handle;
+static void uv_loop_invoke(uv_handle_t* list) {
+  uv_handle_t *handle;
 
-  oio_next_loop_handle_ = list;
+  uv_next_loop_handle_ = list;
 
-  while (oio_next_loop_handle_ != NULL) {
-    handle = oio_next_loop_handle_;
-    oio_next_loop_handle_ = handle->loop_next;
+  while (uv_next_loop_handle_ != NULL) {
+    handle = uv_next_loop_handle_;
+    uv_next_loop_handle_ = handle->loop_next;
 
-    ((oio_loop_cb)handle->loop_cb)(handle, 0);
+    ((uv_loop_cb)handle->loop_cb)(handle, 0);
   }
 }
 
 
-int oio_prepare_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  handle->type = OIO_PREPARE;
-  return oio_loop_init(handle, close_cb, data);
+int uv_prepare_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  handle->type = UV_PREPARE;
+  return uv_loop_init(handle, close_cb, data);
 }
 
 
-int oio_check_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  handle->type = OIO_CHECK;
-  return oio_loop_init(handle, close_cb, data);
+int uv_check_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  handle->type = UV_CHECK;
+  return uv_loop_init(handle, close_cb, data);
 }
 
 
-int oio_idle_init(oio_handle_t* handle, oio_close_cb close_cb, void* data) {
-  handle->type = OIO_IDLE;
-  return oio_loop_init(handle, close_cb, data);
+int uv_idle_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  handle->type = UV_IDLE;
+  return uv_loop_init(handle, close_cb, data);
 }
 
 
-int oio_prepare_start(oio_handle_t* handle, oio_loop_cb loop_cb) {
-  assert(handle->type == OIO_PREPARE);
-  return oio_loop_start(handle, loop_cb, &oio_prepare_handles_);
+int uv_prepare_start(uv_handle_t* handle, uv_loop_cb loop_cb) {
+  assert(handle->type == UV_PREPARE);
+  return uv_loop_start(handle, loop_cb, &uv_prepare_handles_);
 }
 
 
-int oio_check_start(oio_handle_t* handle, oio_loop_cb loop_cb) {
-  assert(handle->type == OIO_CHECK);
-  return oio_loop_start(handle, loop_cb, &oio_check_handles_);
+int uv_check_start(uv_handle_t* handle, uv_loop_cb loop_cb) {
+  assert(handle->type == UV_CHECK);
+  return uv_loop_start(handle, loop_cb, &uv_check_handles_);
 }
 
 
-int oio_idle_start(oio_handle_t* handle, oio_loop_cb loop_cb) {
-  assert(handle->type == OIO_IDLE);
-  return oio_loop_start(handle, loop_cb, &oio_idle_handles_);
+int uv_idle_start(uv_handle_t* handle, uv_loop_cb loop_cb) {
+  assert(handle->type == UV_IDLE);
+  return uv_loop_start(handle, loop_cb, &uv_idle_handles_);
 }
 
 
-int oio_prepare_stop(oio_handle_t* handle) {
-  assert(handle->type == OIO_PREPARE);
-  return oio_loop_stop(handle, &oio_prepare_handles_);
+int uv_prepare_stop(uv_handle_t* handle) {
+  assert(handle->type == UV_PREPARE);
+  return uv_loop_stop(handle, &uv_prepare_handles_);
 }
 
 
-int oio_check_stop(oio_handle_t* handle) {
-  assert(handle->type == OIO_CHECK);
-  return oio_loop_stop(handle, &oio_check_handles_);
+int uv_check_stop(uv_handle_t* handle) {
+  assert(handle->type == UV_CHECK);
+  return uv_loop_stop(handle, &uv_check_handles_);
 }
 
 
-int oio_idle_stop(oio_handle_t* handle) {
-  assert(handle->type == OIO_IDLE);
-  return oio_loop_stop(handle, &oio_idle_handles_);
+int uv_idle_stop(uv_handle_t* handle) {
+  assert(handle->type == UV_IDLE);
+  return uv_loop_stop(handle, &uv_idle_handles_);
 }
 
 
-int oio_async_init(oio_handle_t* handle, oio_async_cb async_cb,
-                   oio_close_cb close_cb, void* data) {
-  oio_req_t* req;
+int uv_async_init(uv_handle_t* handle, uv_async_cb async_cb,
+                   uv_close_cb close_cb, void* data) {
+  uv_req_t* req;
 
-  handle->type = OIO_ASYNC;
+  handle->type = UV_ASYNC;
   handle->close_cb = (void*) close_cb;
   handle->data = data;
   handle->flags = 0;
   handle->async_sent = 0;
-  handle->error = oio_ok_;
+  handle->error = uv_ok_;
 
   req = &handle->async_req;
-  oio_req_init(req, handle, async_cb);
-  req->type = OIO_WAKEUP;
+  uv_req_init(req, handle, async_cb);
+  req->type = UV_WAKEUP;
 
-  oio_refs_++;
+  uv_refs_++;
 
   return 0;
 }
 
 
-int oio_async_send(oio_handle_t* handle) {
-  if (handle->type != OIO_ASYNC) {
+int uv_async_send(uv_handle_t* handle) {
+  if (handle->type != UV_ASYNC) {
     /* Can't set errno because that's not thread-safe. */
     return -1;
   }
 
-  /* The user should make sure never to call oio_async_send to a closing */
+  /* The user should make sure never to call uv_async_send to a closing */
   /* or closed handle. */
-  assert(!(handle->flags & OIO_HANDLE_CLOSING));
+  assert(!(handle->flags & UV_HANDLE_CLOSING));
 
-  if (!oio_atomic_exchange_set(&handle->async_sent)) {
-    if (!PostQueuedCompletionStatus(oio_iocp_,
+  if (!uv_atomic_exchange_set(&handle->async_sent)) {
+    if (!PostQueuedCompletionStatus(uv_iocp_,
                                     0,
                                     0,
                                     &handle->async_req.overlapped)) {
-      oio_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+      uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
     }
   }
 
@@ -1391,44 +1391,44 @@ int oio_async_send(oio_handle_t* handle) {
 }
 
 
-static void oio_async_return_req(oio_handle_t* handle, oio_req_t* req) {
-  assert(handle->type == OIO_ASYNC);
-  assert(req->type == OIO_WAKEUP);
+static void uv_async_return_req(uv_handle_t* handle, uv_req_t* req) {
+  assert(handle->type == UV_ASYNC);
+  assert(req->type == UV_WAKEUP);
 
   handle->async_sent = 0;
   if (req->cb) {
-    ((oio_async_cb)req->cb)(handle, 0);
+    ((uv_async_cb)req->cb)(handle, 0);
   }
-  if (handle->flags & OIO_HANDLE_CLOSING) {
-    oio_want_endgame(handle);
+  if (handle->flags & UV_HANDLE_CLOSING) {
+    uv_want_endgame(handle);
   }
 }
 
 
-static void oio_poll() {
+static void uv_poll() {
   BOOL success;
   DWORD bytes;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
-  oio_req_t* req;
-  oio_handle_t* handle;
+  uv_req_t* req;
+  uv_handle_t* handle;
   DWORD timeout;
   int64_t delta;
 
   /* Call all pending close callbacks. */
   /* TODO: ugly, fixme. */
-  oio_call_endgames();
-  if (oio_refs_ == 0)
+  uv_call_endgames();
+  if (uv_refs_ == 0)
     return;
 
-  oio_loop_invoke(oio_prepare_handles_);
+  uv_loop_invoke(uv_prepare_handles_);
 
-  oio_update_time();
+  uv_update_time();
 
   /* Check if there are any running timers */
-  req = RB_MIN(oio_timer_s, &oio_timers_);
+  req = RB_MIN(uv_timer_s, &uv_timers_);
   if (req) {
-    delta = req->due - oio_now_;
+    delta = req->due - uv_now_;
     if (delta >= UINT_MAX) {
       /* Can't have a timeout greater than UINT_MAX, and a timeout value of */
       /* UINT_MAX means infinite, so that's no good either. */
@@ -1444,39 +1444,39 @@ static void oio_poll() {
     timeout = INFINITE;
   }
 
-  success = GetQueuedCompletionStatus(oio_iocp_,
+  success = GetQueuedCompletionStatus(uv_iocp_,
                                       &bytes,
                                       &key,
                                       &overlapped,
                                       timeout);
 
-  oio_update_time();
+  uv_update_time();
 
   /* Call check callbacks */
-  oio_loop_invoke(oio_check_handles_);
+  uv_loop_invoke(uv_check_handles_);
 
   /* Call timer callbacks */
-  for (req = RB_MIN(oio_timer_s, &oio_timers_);
-       req != NULL && req->due <= oio_now_;
-       req = RB_MIN(oio_timer_s, &oio_timers_)) {
-    RB_REMOVE(oio_timer_s, &oio_timers_, req);
-    req->flags &= ~OIO_REQ_PENDING;
-    oio_refs_--;
-    ((oio_timer_cb)req->cb)(req, req->due - oio_now_, 0);
+  for (req = RB_MIN(uv_timer_s, &uv_timers_);
+       req != NULL && req->due <= uv_now_;
+       req = RB_MIN(uv_timer_s, &uv_timers_)) {
+    RB_REMOVE(uv_timer_s, &uv_timers_, req);
+    req->flags &= ~UV_REQ_PENDING;
+    uv_refs_--;
+    ((uv_timer_cb)req->cb)(req, req->due - uv_now_, 0);
   }
 
   /* Only if a iocp package was dequeued... */
   if (overlapped) {
-    req = oio_overlapped_to_req(overlapped);
+    req = uv_overlapped_to_req(overlapped);
     handle = req->handle;
 
     switch (handle->type) {
-      case OIO_TCP:
-        oio_tcp_return_req(handle, req);
+      case UV_TCP:
+        uv_tcp_return_req(handle, req);
         break;
 
-      case OIO_ASYNC:
-        oio_async_return_req(handle, req);
+      case UV_ASYNC:
+        uv_async_return_req(handle, req);
         break;
 
       default:
@@ -1485,27 +1485,27 @@ static void oio_poll() {
   } /* if (overlapped) */
 
   /* Call idle callbacks */
-  while (oio_idle_handles_) {
-    oio_call_endgames();
-    oio_loop_invoke(oio_idle_handles_);
+  while (uv_idle_handles_) {
+    uv_call_endgames();
+    uv_loop_invoke(uv_idle_handles_);
   }
 }
 
 
-int oio_run() {
-  while (oio_refs_ > 0) {
-    oio_poll();
+int uv_run() {
+  while (uv_refs_ > 0) {
+    uv_poll();
   }
-  assert(oio_refs_ == 0);
+  assert(uv_refs_ == 0);
   return 0;
 }
 
 
-void oio_ref() {
-  oio_refs_++;
+void uv_ref() {
+  uv_refs_++;
 }
 
 
-void oio_unref() {
-  oio_refs_--;
+void uv_unref() {
+  uv_refs_--;
 }

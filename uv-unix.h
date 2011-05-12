@@ -19,8 +19,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef OIO_UNIX_H
-#define OIO_UNIX_H
+#ifndef UV_UNIX_H
+#define UV_UNIX_H
 
 #include "ngx-queue.h"
 
@@ -35,44 +35,44 @@
 typedef struct {
   char* base;
   size_t len;
-} oio_buf;
+} uv_buf;
 
 
-#define oio_req_private_fields \
+#define uv_req_private_fields \
   int write_index; \
   ev_timer timer; \
   ngx_queue_t queue; \
-  oio_buf* bufs; \
+  uv_buf* bufs; \
   int bufcnt;
 
 
 /* TODO: union or classes please! */
-#define oio_handle_private_fields \
+#define uv_handle_private_fields \
   int fd; \
   int flags; \
   ev_idle next_watcher; \
-/* OIO_TCP */ \
+/* UV_TCP */ \
   int delayed_error; \
-  oio_read_cb read_cb; \
-  oio_accept_cb accept_cb; \
+  uv_read_cb read_cb; \
+  uv_accept_cb accept_cb; \
   int accepted_fd; \
-  oio_req_t *connect_req; \
-  oio_req_t *shutdown_req; \
+  uv_req_t *connect_req; \
+  uv_req_t *shutdown_req; \
   ev_io read_watcher; \
   ev_io write_watcher; \
   ngx_queue_t write_queue; \
-/* OIO_PREPARE */ \
+/* UV_PREPARE */ \
   ev_prepare prepare_watcher; \
-  oio_loop_cb prepare_cb; \
-/* OIO_CHECK */ \
+  uv_loop_cb prepare_cb; \
+/* UV_CHECK */ \
   ev_check check_watcher; \
-  oio_loop_cb check_cb; \
-/* OIO_IDLE */ \
+  uv_loop_cb check_cb; \
+/* UV_IDLE */ \
   ev_idle idle_watcher; \
-  oio_loop_cb idle_cb; \
-/* OIO_ASYNC */ \
+  uv_loop_cb idle_cb; \
+/* UV_ASYNC */ \
   ev_async async_watcher; \
-  oio_loop_cb async_cb;
+  uv_loop_cb async_cb;
 
 
-#endif /* OIO_UNIX_H */
+#endif /* UV_UNIX_H */

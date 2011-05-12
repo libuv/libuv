@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +45,7 @@ static int bytes_received = 0;
 static int bytes_received_done = 0;
 
 
-static void close_cb(oio_handle_t* handle, int status) {
+static void close_cb(uv_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -55,7 +55,7 @@ static void close_cb(oio_handle_t* handle, int status) {
 }
 
 
-static void shutdown_cb(oio_req_t* req, int status) {
+static void shutdown_cb(uv_req_t* req, int status) {
   ASSERT(req);
   ASSERT(status == 0);
 
@@ -72,18 +72,18 @@ static void shutdown_cb(oio_req_t* req, int status) {
 }
 
 
-static void read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
+static void read_cb(uv_handle_t* handle, int nread, uv_buf buf) {
   ASSERT(handle != NULL);
 
   if (nread < 0) {
-    ASSERT(oio_last_error().code == OIO_EOF);
+    ASSERT(uv_last_error().code == UV_EOF);
     printf("GOT EOF\n");
 
     if (buf.base) {
       free(buf.base);
     }
 
-    oio_close(handle);
+    uv_close(handle);
     return;
   }
 
@@ -93,12 +93,12 @@ static void read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
 }
 
 
-static void write_cb(oio_req_t* req, int status) {
+static void write_cb(uv_req_t* req, int status) {
   ASSERT(req != NULL);
 
   if (status) {
-    oio_err_t err = oio_last_error();
-    fprintf(stderr, "oio_write error: %s\n", oio_strerror(err));
+    uv_err_t err = uv_last_error();
+    fprintf(stderr, "uv_write error: %s\n", uv_strerror(err));
     ASSERT(0);
   }
 
@@ -109,9 +109,9 @@ static void write_cb(oio_req_t* req, int status) {
 }
 
 
-static void connect_cb(oio_req_t* req, int status) {
-  oio_buf send_bufs[CHUNKS_PER_WRITE];
-  oio_handle_t* handle;
+static void connect_cb(uv_req_t* req, int status) {
+  uv_buf send_bufs[CHUNKS_PER_WRITE];
+  uv_handle_t* handle;
   int i, j, r;
 
   ASSERT(req != NULL);
@@ -130,33 +130,33 @@ static void connect_cb(oio_req_t* req, int status) {
       bytes_sent += CHUNK_SIZE;
     }
 
-    req = (oio_req_t*)malloc(sizeof *req);
+    req = (uv_req_t*)malloc(sizeof *req);
     ASSERT(req != NULL);
 
-    oio_req_init(req, handle, write_cb);
-    r = oio_write(req, (oio_buf*)&send_bufs, CHUNKS_PER_WRITE);
+    uv_req_init(req, handle, write_cb);
+    r = uv_write(req, (uv_buf*)&send_bufs, CHUNKS_PER_WRITE);
     ASSERT(r == 0);
   }
 
   /* Shutdown on drain. FIXME: dealloc req? */
-  req = (oio_req_t*) malloc(sizeof(oio_req_t));
+  req = (uv_req_t*) malloc(sizeof(uv_req_t));
   ASSERT(req != NULL);
-  oio_req_init(req, handle, shutdown_cb);
-  r = oio_shutdown(req);
+  uv_req_init(req, handle, shutdown_cb);
+  r = uv_shutdown(req);
   ASSERT(r == 0);
 
   /* Start reading */
-  req = (oio_req_t*)malloc(sizeof *req);
+  req = (uv_req_t*)malloc(sizeof *req);
   ASSERT(req != NULL);
 
-  oio_req_init(req, handle, read_cb);
-  r = oio_read_start(handle, read_cb);
+  uv_req_init(req, handle, read_cb);
+  r = uv_read_start(handle, read_cb);
   ASSERT(r == 0);
 }
 
 
-static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
-  oio_buf buf;
+static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
   return buf;
@@ -164,9 +164,9 @@ static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
 
 
 TEST_IMPL(tcp_writealot) {
-  struct sockaddr_in addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
-  oio_handle_t* client = (oio_handle_t*)malloc(sizeof *client);
-  oio_req_t* connect_req = (oio_req_t*)malloc(sizeof *connect_req);
+  struct sockaddr_in addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  uv_handle_t* client = (uv_handle_t*)malloc(sizeof *client);
+  uv_req_t* connect_req = (uv_req_t*)malloc(sizeof *connect_req);
   int r;
 
   ASSERT(client != NULL);
@@ -176,16 +176,16 @@ TEST_IMPL(tcp_writealot) {
 
   ASSERT(send_buffer != NULL);
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_tcp_init(client, close_cb, NULL);
+  r = uv_tcp_init(client, close_cb, NULL);
   ASSERT(r == 0);
 
-  oio_req_init(connect_req, client, connect_cb);
-  r = oio_connect(connect_req, (struct sockaddr*)&addr);
+  uv_req_init(connect_req, client, connect_cb);
+  r = uv_connect(connect_req, (struct sockaddr*)&addr);
   ASSERT(r == 0);
 
-  oio_run();
+  uv_run();
 
   ASSERT(shutdown_cb_called == 1);
   ASSERT(connect_cb_called == 1);

@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio", "liboio.vcxproj", "{301FE650-CD34-14E5-6B63-42E383FA02BC}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libuv", "libuv.vcxproj", "{301FE650-CD34-14E5-6B63-42E383FA02BC}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio-test", "liboio-test.vcxproj", "{1D7C3F6C-A4AF-DD73-2D20-B2FC919B3744}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libuv-test", "libuv-test.vcxproj", "{1D7C3F6C-A4AF-DD73-2D20-B2FC919B3744}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "liboio-benchmark", "liboio-benchmark.vcxproj", "{65312F30-3B19-A87E-E8D1-491D0F4A6536}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libuv-benchmark", "libuv-benchmark.vcxproj", "{65312F30-3B19-A87E-E8D1-491D0F4A6536}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

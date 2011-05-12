@@ -171,7 +171,7 @@
     <ClInclude Include="..\test\task.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="liboio.vcxproj">
+    <ProjectReference Include="libuv.vcxproj">
       <Project>{301fe650-cd34-14e5-6b63-42e383fa02bc}</Project>
     </ProjectReference>
   </ItemGroup>

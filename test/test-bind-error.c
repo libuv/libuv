@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@
 static int close_cb_called = 0;
 
 
-static void close_cb(oio_handle_t* handle, int status) {
+static void close_cb(uv_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -36,41 +36,41 @@ static void close_cb(oio_handle_t* handle, int status) {
 }
 
 
-static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
-  oio_buf buf = {0, 0};
+static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
 }
 
 
 TEST_IMPL(bind_error_addrinuse) {
-  struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", TEST_PORT);
-  oio_handle_t server1, server2;
+  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+  uv_handle_t server1, server2;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_tcp_init(&server1, close_cb, NULL);
+  r = uv_tcp_init(&server1, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_bind(&server1, (struct sockaddr*) &addr);
-  ASSERT(r == 0);
-
-  r = oio_tcp_init(&server2, close_cb, NULL);
-  ASSERT(r == 0);
-  r = oio_bind(&server2, (struct sockaddr*) &addr);
+  r = uv_bind(&server1, (struct sockaddr*) &addr);
   ASSERT(r == 0);
 
-  r = oio_listen(&server1, 128, NULL);
+  r = uv_tcp_init(&server2, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_listen(&server2, 128, NULL);
+  r = uv_bind(&server2, (struct sockaddr*) &addr);
+  ASSERT(r == 0);
+
+  r = uv_listen(&server1, 128, NULL);
+  ASSERT(r == 0);
+  r = uv_listen(&server2, 128, NULL);
   ASSERT(r == -1);
 
-  ASSERT(oio_last_error().code == OIO_EADDRINUSE);
+  ASSERT(uv_last_error().code == UV_EADDRINUSE);
 
-  oio_close(&server1);
-  oio_close(&server2);
+  uv_close(&server1);
+  uv_close(&server2);
 
-  oio_run();
+  uv_run();
 
   ASSERT(close_cb_called == 2);
 
@@ -79,24 +79,24 @@ TEST_IMPL(bind_error_addrinuse) {
 
 
 TEST_IMPL(bind_error_addrnotavail_1) {
-  struct sockaddr_in addr = oio_ip4_addr("127.255.255.255", TEST_PORT);
-  oio_handle_t server;
+  struct sockaddr_in addr = uv_ip4_addr("127.255.255.255", TEST_PORT);
+  uv_handle_t server;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_tcp_init(&server, close_cb, NULL);
+  r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &addr);
+  r = uv_bind(&server, (struct sockaddr*) &addr);
 
   /* It seems that Linux is broken here - bind succeeds. */
   if (r == -1) {
-    ASSERT(oio_last_error().code == OIO_EADDRNOTAVAIL);
+    ASSERT(uv_last_error().code == UV_EADDRNOTAVAIL);
   }
 
-  oio_close(&server);
+  uv_close(&server);
 
-  oio_run();
+  uv_run();
 
   ASSERT(close_cb_called == 1);
 
@@ -105,21 +105,21 @@ TEST_IMPL(bind_error_addrnotavail_1) {
 
 
 TEST_IMPL(bind_error_addrnotavail_2) {
-  struct sockaddr_in addr = oio_ip4_addr("4.4.4.4", TEST_PORT);
-  oio_handle_t server;
+  struct sockaddr_in addr = uv_ip4_addr("4.4.4.4", TEST_PORT);
+  uv_handle_t server;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_tcp_init(&server, close_cb, NULL);
+  r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &addr);
+  r = uv_bind(&server, (struct sockaddr*) &addr);
   ASSERT(r == -1);
-  ASSERT(oio_last_error().code == OIO_EADDRNOTAVAIL);
+  ASSERT(uv_last_error().code == UV_EADDRNOTAVAIL);
 
-  oio_close(&server);
+  uv_close(&server);
 
-  oio_run();
+  uv_run();
 
   ASSERT(close_cb_called == 1);
 
@@ -129,49 +129,49 @@ TEST_IMPL(bind_error_addrnotavail_2) {
 
 TEST_IMPL(bind_error_fault) {
   char garbage[] = "blah blah blah blah blah blah blah blah blah blah blah blah";
-  oio_handle_t server;
+  uv_handle_t server;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_tcp_init(&server, close_cb, NULL);
+  r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &garbage);
+  r = uv_bind(&server, (struct sockaddr*) &garbage);
   ASSERT(r == -1);
 
-  ASSERT(oio_last_error().code == OIO_EFAULT);
+  ASSERT(uv_last_error().code == UV_EFAULT);
 
-  oio_close(&server);
+  uv_close(&server);
 
-  oio_run();
+  uv_run();
 
   ASSERT(close_cb_called == 1);
 
   return 0;
 }
 
-/* Notes: On Linux oio_bind(server, NULL) will segfault the program.  */
+/* Notes: On Linux uv_bind(server, NULL) will segfault the program.  */
 
 TEST_IMPL(bind_error_inval) {
-  struct sockaddr_in addr1 = oio_ip4_addr("0.0.0.0", TEST_PORT);
-  struct sockaddr_in addr2 = oio_ip4_addr("0.0.0.0", TEST_PORT_2);
-  oio_handle_t server;
+  struct sockaddr_in addr1 = uv_ip4_addr("0.0.0.0", TEST_PORT);
+  struct sockaddr_in addr2 = uv_ip4_addr("0.0.0.0", TEST_PORT_2);
+  uv_handle_t server;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_tcp_init(&server, close_cb, NULL);
+  r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &addr1);
+  r = uv_bind(&server, (struct sockaddr*) &addr1);
   ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &addr2);
+  r = uv_bind(&server, (struct sockaddr*) &addr2);
   ASSERT(r == -1);
 
-  ASSERT(oio_last_error().code == OIO_EINVAL);
+  ASSERT(uv_last_error().code == UV_EINVAL);
 
-  oio_close(&server);
+  uv_close(&server);
 
-  oio_run();
+  uv_run();
 
   ASSERT(close_cb_called == 1);
 

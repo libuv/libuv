@@ -76,14 +76,14 @@
 
 
 /* Create a thread. Returns the thread identifier, or 0 on failure. */
-uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg);
+uintptr_t uv_create_thread(void (*entry)(void* arg), void* arg);
 
 /* Wait for a thread to terminate. Should return 0 if the thread ended, -1 on
  * error.
  */
-int oio_wait_thread(uintptr_t thread_id);
+int uv_wait_thread(uintptr_t thread_id);
 
 /* Pause the calling thread for a number of milliseconds. */
-void oio_sleep(int msec);
+void uv_sleep(int msec);
 
 #endif /* TASK_H_ */

@@ -19,33 +19,33 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
 typedef struct {
-  oio_req_t req;
-  oio_buf buf;
+  uv_req_t req;
+  uv_buf buf;
 } write_req_t;
 
 
-static oio_handle_t server;
+static uv_handle_t server;
 
 
-static void after_write(oio_req_t* req, int status);
-static void after_read(oio_handle_t* handle, int nread, oio_buf buf);
-static void on_close(oio_handle_t* peer, int status);
-static void on_accept(oio_handle_t* handle);
+static void after_write(uv_req_t* req, int status);
+static void after_read(uv_handle_t* handle, int nread, uv_buf buf);
+static void on_close(uv_handle_t* peer, int status);
+static void on_accept(uv_handle_t* handle);
 
 
-static void after_write(oio_req_t* req, int status) {
+static void after_write(uv_req_t* req, int status) {
   write_req_t* wr;
 
   if (status) {
-    oio_err_t err = oio_last_error();
-    fprintf(stderr, "oio_write error: %s\n", oio_strerror(err));
+    uv_err_t err = uv_last_error();
+    fprintf(stderr, "uv_write error: %s\n", uv_strerror(err));
     ASSERT(0);
   }
 
@@ -57,26 +57,26 @@ static void after_write(oio_req_t* req, int status) {
 }
 
 
-static void after_shutdown(oio_req_t* req, int status) {
+static void after_shutdown(uv_req_t* req, int status) {
   free(req);
 }
 
 
-static void after_read(oio_handle_t* handle, int nread, oio_buf buf) {
+static void after_read(uv_handle_t* handle, int nread, uv_buf buf) {
   write_req_t *wr;
-  oio_req_t* req;
+  uv_req_t* req;
 
   if (nread < 0) {
     /* Error or EOF */
-    ASSERT (oio_last_error().code == OIO_EOF);
+    ASSERT (uv_last_error().code == UV_EOF);
 
     if (buf.base) {
       free(buf.base);
     }
 
-    req = (oio_req_t*) malloc(sizeof *req);
-    oio_req_init(req, handle, after_shutdown);
-    oio_shutdown(req);
+    req = (uv_req_t*) malloc(sizeof *req);
+    uv_req_init(req, handle, after_shutdown);
+    uv_shutdown(req);
 
     return;
   }
@@ -89,58 +89,58 @@ static void after_read(oio_handle_t* handle, int nread, oio_buf buf) {
 
   wr = (write_req_t*) malloc(sizeof *wr);
 
-  oio_req_init(&wr->req, handle, after_write);
+  uv_req_init(&wr->req, handle, after_write);
   wr->buf.base = buf.base;
   wr->buf.len = nread;
-  if (oio_write(&wr->req, &wr->buf, 1)) {
-    FATAL("oio_write failed");
+  if (uv_write(&wr->req, &wr->buf, 1)) {
+    FATAL("uv_write failed");
   }
 }
 
 
-static void on_close(oio_handle_t* peer, int status) {
+static void on_close(uv_handle_t* peer, int status) {
   if (status != 0) {
     fprintf(stdout, "Socket error\n");
   }
 }
 
 
-static void on_accept(oio_handle_t* server) {
-  oio_handle_t* handle = (oio_handle_t*) malloc(sizeof *handle);
+static void on_accept(uv_handle_t* server) {
+  uv_handle_t* handle = (uv_handle_t*) malloc(sizeof *handle);
 
-  if (oio_accept(server, handle, on_close, NULL)) {
-    FATAL("oio_accept failed");
+  if (uv_accept(server, handle, on_close, NULL)) {
+    FATAL("uv_accept failed");
   }
 
-  oio_read_start(handle, after_read);
+  uv_read_start(handle, after_read);
 }
 
 
-static void on_server_close(oio_handle_t* handle, int status) {
+static void on_server_close(uv_handle_t* handle, int status) {
   ASSERT(handle == &server);
   ASSERT(status == 0);
 }
 
 
 static int echo_start(int port) {
-  struct sockaddr_in addr = oio_ip4_addr("0.0.0.0", port);
+  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
   int r;
 
-  r = oio_tcp_init(&server, on_server_close, NULL);
+  r = uv_tcp_init(&server, on_server_close, NULL);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Socket creation error\n");
     return 1;
   }
 
-  r = oio_bind(&server, (struct sockaddr*) &addr);
+  r = uv_bind(&server, (struct sockaddr*) &addr);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Bind error\n");
     return 1;
   }
 
-  r = oio_listen(&server, 128, on_accept);
+  r = uv_listen(&server, 128, on_accept);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error\n");
@@ -152,12 +152,12 @@ static int echo_start(int port) {
 
 
 static int echo_stop() {
-  return oio_close(&server);
+  return uv_close(&server);
 }
 
 
-static oio_buf echo_alloc(oio_handle_t* handle, size_t suggested_size) {
-  oio_buf buf;
+static uv_buf echo_alloc(uv_handle_t* handle, size_t suggested_size) {
+  uv_buf buf;
   buf.base = (char*) malloc(suggested_size);
   buf.len = suggested_size;
   return buf;
@@ -165,11 +165,11 @@ static oio_buf echo_alloc(oio_handle_t* handle, size_t suggested_size) {
 
 
 HELPER_IMPL(echo_server) {
-  oio_init(echo_alloc);
+  uv_init(echo_alloc);
   if (echo_start(TEST_PORT))
     return 1;
 
   fprintf(stderr, "Listening!\n");
-  oio_run();
+  uv_run();
   return 0;
 }

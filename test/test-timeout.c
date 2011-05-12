@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 
 
@@ -28,7 +28,7 @@ static int timeouts = 0;
 
 static int64_t start_time;
 
-static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
+static void timeout_cb(uv_req_t *req, int64_t skew, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
 
@@ -36,11 +36,11 @@ static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
   timeouts++;
 
   /* Just call this randomly for the code coverage. */
-  oio_update_time();
+  uv_update_time();
 }
 
-static void exit_timeout_cb(oio_req_t *req, int64_t skew, int status) {
-  int64_t now = oio_now();
+static void exit_timeout_cb(uv_req_t *req, int64_t skew, int status) {
+  int64_t now = uv_now();
   ASSERT(req != NULL);
   ASSERT(status == 0);
   ASSERT(timeouts == expected);
@@ -48,57 +48,57 @@ static void exit_timeout_cb(oio_req_t *req, int64_t skew, int status) {
   exit(0);
 }
 
-static void dummy_timeout_cb(oio_req_t *req, int64_t skew, int status) {
+static void dummy_timeout_cb(uv_req_t *req, int64_t skew, int status) {
   /* Should never be called */
   FATAL("dummy_timer_cb should never be called");
 }
 
 
-static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
-  oio_buf buf = {0, 0};
+static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
 }
 
 
 TEST_IMPL(timeout) {
-  oio_req_t *req;
-  oio_req_t exit_req;
-  oio_req_t dummy_req;
+  uv_req_t *req;
+  uv_req_t exit_req;
+  uv_req_t dummy_req;
   int i;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  start_time = oio_now();
+  start_time = uv_now();
   ASSERT(0 < start_time);
 
   /* Let 10 timers time out in 500 ms total. */
   for (i = 0; i < 10; i++) {
-    req = (oio_req_t*)malloc(sizeof(*req));
+    req = (uv_req_t*)malloc(sizeof(*req));
     ASSERT(req != NULL);
 
-    oio_req_init(req, NULL, timeout_cb);
+    uv_req_init(req, NULL, timeout_cb);
 
-    if (oio_timeout(req, i * 50) < 0) {
-      FATAL("oio_timeout failed");
+    if (uv_timeout(req, i * 50) < 0) {
+      FATAL("uv_timeout failed");
     }
 
     expected++;
   }
 
   /* The 11th timer exits the test and runs after 1 s. */
-  oio_req_init(&exit_req, NULL, exit_timeout_cb);
-  if (oio_timeout(&exit_req, 1000) < 0) {
-    FATAL("oio_timeout failed");
+  uv_req_init(&exit_req, NULL, exit_timeout_cb);
+  if (uv_timeout(&exit_req, 1000) < 0) {
+    FATAL("uv_timeout failed");
   }
 
   /* The 12th timer should never run. */
-  oio_req_init(&dummy_req, NULL, dummy_timeout_cb);
-  if (oio_timeout(&dummy_req, 2000)) {
-    FATAL("oio_timeout failed");
+  uv_req_init(&dummy_req, NULL, dummy_timeout_cb);
+  if (uv_timeout(&dummy_req, 2000)) {
+    FATAL("uv_timeout failed");
   }
 
-  oio_run();
+  uv_run();
 
   FATAL("should never get here");
   return 2;

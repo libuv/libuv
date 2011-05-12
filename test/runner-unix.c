@@ -309,12 +309,12 @@ void rewind_cursor() {
 }
 
 
-typedef void* (*oio_thread_cb)(void* arg);
+typedef void* (*uv_thread_cb)(void* arg);
 
 
-uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
+uintptr_t uv_create_thread(void (*entry)(void* arg), void* arg) {
   pthread_t t;
-  oio_thread_cb cb = (oio_thread_cb)entry;
+  uv_thread_cb cb = (uv_thread_cb)entry;
   int r = pthread_create(&t, NULL, cb, arg);
 
   if (r) {
@@ -328,12 +328,12 @@ uintptr_t oio_create_thread(void (*entry)(void* arg), void* arg) {
 /* Wait for a thread to terminate. Should return 0 if the thread ended, -1 on
  * error.
  */
-int oio_wait_thread(uintptr_t thread_id) {
+int uv_wait_thread(uintptr_t thread_id) {
   return pthread_join((pthread_t)thread_id, NULL);
 }
 
 
 /* Pause the calling thread for a number of milliseconds. */
-void oio_sleep(int msec) {
+void uv_sleep(int msec) {
   usleep(msec);
 }

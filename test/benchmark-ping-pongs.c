@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 
 #include <stdlib.h>
@@ -33,13 +33,13 @@
 typedef struct {
   int pongs;
   int state;
-  oio_handle_t handle;
-  oio_req_t connect_req;
-  oio_req_t shutdown_req;
+  uv_handle_t handle;
+  uv_req_t connect_req;
+  uv_req_t shutdown_req;
 } pinger_t;
 
 typedef struct buf_s {
-  oio_buf oio_buf;
+  uv_buf uv_buf;
   struct buf_s* next;
 } buf_t;
 
@@ -52,33 +52,33 @@ static int completed_pingers = 0;
 static int64_t start_time;
 
 
-static oio_buf buf_alloc(oio_handle_t* handle, size_t size) {
+static uv_buf buf_alloc(uv_handle_t* handle, size_t size) {
   buf_t* ab;
 
   ab = buf_freelist;
 
   if (ab != NULL) {
     buf_freelist = ab->next;
-    return ab->oio_buf;
+    return ab->uv_buf;
   }
 
   ab = (buf_t*) malloc(size + sizeof *ab);
-  ab->oio_buf.len = size;
-  ab->oio_buf.base = ((char*) ab) + sizeof *ab;
+  ab->uv_buf.len = size;
+  ab->uv_buf.base = ((char*) ab) + sizeof *ab;
 
-  return ab->oio_buf;
+  return ab->uv_buf;
 }
 
 
-static void buf_free(oio_buf oio_buf) {
-  buf_t* ab = (buf_t*) (oio_buf.base - sizeof *ab);
+static void buf_free(uv_buf uv_buf) {
+  buf_t* ab = (buf_t*) (uv_buf.base - sizeof *ab);
 
   ab->next = buf_freelist;
   buf_freelist = ab;
 }
 
 
-static void pinger_close_cb(oio_handle_t* handle, int status) {
+static void pinger_close_cb(uv_handle_t* handle, int status) {
   pinger_t* pinger;
 
   ASSERT(status == 0);
@@ -92,7 +92,7 @@ static void pinger_close_cb(oio_handle_t* handle, int status) {
 }
 
 
-static void pinger_write_cb(oio_req_t *req, int status) {
+static void pinger_write_cb(uv_req_t *req, int status) {
   ASSERT(status == 0);
 
   free(req);
@@ -100,34 +100,34 @@ static void pinger_write_cb(oio_req_t *req, int status) {
 
 
 static void pinger_write_ping(pinger_t* pinger) {
-  oio_req_t *req;
-  oio_buf buf;
+  uv_req_t *req;
+  uv_buf buf;
 
   buf.base = (char*)&PING;
   buf.len = strlen(PING);
 
-  req = (oio_req_t*)malloc(sizeof(*req));
-  oio_req_init(req, &pinger->handle, pinger_write_cb);
+  req = (uv_req_t*)malloc(sizeof(*req));
+  uv_req_init(req, &pinger->handle, pinger_write_cb);
 
-  if (oio_write(req, &buf, 1)) {
-    FATAL("oio_write failed");
+  if (uv_write(req, &buf, 1)) {
+    FATAL("uv_write failed");
   }
 }
 
 
-static void pinger_shutdown_cb(oio_handle_t* handle, int status) {
+static void pinger_shutdown_cb(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
 }
 
 
-static void pinger_read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
+static void pinger_read_cb(uv_handle_t* handle, int nread, uv_buf buf) {
   unsigned int i;
   pinger_t* pinger;
 
   pinger = (pinger_t*)handle->data;
 
   if (nread < 0) {
-    ASSERT(oio_last_error().code == OIO_EOF);
+    ASSERT(uv_last_error().code == UV_EOF);
 
     if (buf.base) {
       buf_free(buf);
@@ -142,9 +142,9 @@ static void pinger_read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
       pinger->pongs++;
-      if (oio_now() - start_time > TIME) {
-        oio_req_init(&pinger->shutdown_req, handle, pinger_shutdown_cb);
-        oio_shutdown(&pinger->shutdown_req);
+      if (uv_now() - start_time > TIME) {
+        uv_req_init(&pinger->shutdown_req, handle, pinger_shutdown_cb);
+        uv_shutdown(&pinger->shutdown_req);
         break;
         return;
       } else {
@@ -157,23 +157,23 @@ static void pinger_read_cb(oio_handle_t* handle, int nread, oio_buf buf) {
 }
 
 
-static void pinger_connect_cb(oio_req_t *req, int status) {
+static void pinger_connect_cb(uv_req_t *req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   ASSERT(status == 0);
 
   pinger_write_ping(pinger);
 
-  if (oio_read_start(req->handle, pinger_read_cb)) {
-    FATAL("oio_read_start failed");
+  if (uv_read_start(req->handle, pinger_read_cb)) {
+    FATAL("uv_read_start failed");
   }
 }
 
 
 static void pinger_new() {
   int r;
-  struct sockaddr_in client_addr = oio_ip4_addr("0.0.0.0", 0);
-  struct sockaddr_in server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
+  struct sockaddr_in client_addr = uv_ip4_addr("0.0.0.0", 0);
+  struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
   pinger_t *pinger;
 
   pinger = (pinger_t*)malloc(sizeof(*pinger));
@@ -181,25 +181,25 @@ static void pinger_new() {
   pinger->pongs = 0;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = oio_tcp_init(&pinger->handle, pinger_close_cb, (void*)pinger);
+  r = uv_tcp_init(&pinger->handle, pinger_close_cb, (void*)pinger);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  oio_req_init(&pinger->connect_req, &pinger->handle, pinger_connect_cb);
+  uv_req_init(&pinger->connect_req, &pinger->handle, pinger_connect_cb);
 
-  oio_bind(&pinger->handle, (struct sockaddr*)&client_addr);
-  r = oio_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
+  uv_bind(&pinger->handle, (struct sockaddr*)&client_addr);
+  r = uv_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
   ASSERT(!r);
 }
 
 
 BENCHMARK_IMPL(ping_pongs) {
-  oio_init(buf_alloc);
-  start_time = oio_now();
+  uv_init(buf_alloc);
+  start_time = uv_now();
 
   pinger_new();
-  oio_run();
+  uv_run();
 
   ASSERT(completed_pingers == 1);
 

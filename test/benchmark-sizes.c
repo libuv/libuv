@@ -20,11 +20,11 @@
  */
 
 #include "task.h"
-#include "../oio.h"
+#include "../uv.h"
 
 
 BENCHMARK_IMPL(sizes) {
-  LOGF("oio_handle_t: %lu bytes\n", sizeof(oio_handle_t));
-  LOGF("oio_req_t: %lu bytes\n", sizeof(oio_req_t));
+  LOGF("uv_handle_t: %lu bytes\n", sizeof(uv_handle_t));
+  LOGF("uv_req_t: %lu bytes\n", sizeof(uv_req_t));
   return 0;
 }

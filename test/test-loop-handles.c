@@ -64,7 +64,7 @@
  */
 
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 
 #include <math.h>
@@ -75,15 +75,15 @@
 #define TIMEOUT         100
 
 
-static oio_handle_t prepare_1_handle;
-static oio_handle_t prepare_2_handle;
+static uv_handle_t prepare_1_handle;
+static uv_handle_t prepare_2_handle;
 
-static oio_handle_t check_handle;
+static uv_handle_t check_handle;
 
-static oio_handle_t idle_1_handles[IDLE_COUNT];
-static oio_handle_t idle_2_handle;
+static uv_handle_t idle_1_handles[IDLE_COUNT];
+static uv_handle_t idle_2_handle;
 
-static oio_req_t timeout_req;
+static uv_req_t timeout_req;
 
 
 static int loop_iteration = 0;
@@ -109,7 +109,7 @@ static int idle_2_is_active = 0;
 static int timeout_cb_called = 0;
 
 
-static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
+static void timeout_cb(uv_req_t *req, int64_t skew, int status) {
   int r;
 
   ASSERT(req == &timeout_req);
@@ -117,12 +117,12 @@ static void timeout_cb(oio_req_t *req, int64_t skew, int status) {
 
   timeout_cb_called++;
 
-  r = oio_timeout(req, TIMEOUT);
+  r = uv_timeout(req, TIMEOUT);
   ASSERT(r == 0);
 }
 
 
-static void idle_2_cb(oio_handle_t* handle, int status) {
+static void idle_2_cb(uv_handle_t* handle, int status) {
   int r;
 
   LOG("IDLE_2_CB\n");
@@ -132,12 +132,12 @@ static void idle_2_cb(oio_handle_t* handle, int status) {
 
   idle_2_cb_called++;
 
-  r = oio_close(handle);
+  r = uv_close(handle);
   ASSERT(r == 0);
 }
 
 
-static void idle_2_close_cb(oio_handle_t* handle, int status){
+static void idle_2_close_cb(uv_handle_t* handle, int status){
   LOG("IDLE_2_CLOSE_CB\n");
 
   ASSERT(handle == &idle_2_handle);
@@ -150,7 +150,7 @@ static void idle_2_close_cb(oio_handle_t* handle, int status){
 }
 
 
-static void idle_1_cb(oio_handle_t* handle, int status) {
+static void idle_1_cb(uv_handle_t* handle, int status) {
   int r;
 
   LOG("IDLE_1_CB\n");
@@ -162,9 +162,9 @@ static void idle_1_cb(oio_handle_t* handle, int status) {
 
   /* Init idle_2 and make it active */
   if (!idle_2_is_active) {
-    r = oio_idle_init(&idle_2_handle, idle_2_close_cb, NULL);
+    r = uv_idle_init(&idle_2_handle, idle_2_close_cb, NULL);
     ASSERT(r == 0);
-    r = oio_idle_start(&idle_2_handle, idle_2_cb);
+    r = uv_idle_start(&idle_2_handle, idle_2_cb);
     ASSERT(r == 0);
     idle_2_is_active = 1;
     idle_2_cb_started++;
@@ -173,14 +173,14 @@ static void idle_1_cb(oio_handle_t* handle, int status) {
   idle_1_cb_called++;
 
   if (idle_1_cb_called % 5 == 0) {
-    r = oio_idle_stop(handle);
+    r = uv_idle_stop(handle);
     ASSERT(r == 0);
     idles_1_active--;
   }
 }
 
 
-static void idle_1_close_cb(oio_handle_t* handle, int status){
+static void idle_1_close_cb(uv_handle_t* handle, int status){
   LOG("IDLE_1_CLOSE_CB\n");
 
   ASSERT(handle != NULL);
@@ -190,7 +190,7 @@ static void idle_1_close_cb(oio_handle_t* handle, int status){
 }
 
 
-static void check_cb(oio_handle_t* handle, int status) {
+static void check_cb(uv_handle_t* handle, int status) {
   int i, r;
 
   LOG("CHECK_CB\n");
@@ -206,29 +206,29 @@ static void check_cb(oio_handle_t* handle, int status) {
   if (loop_iteration < ITERATIONS) {
     /* Make some idle watchers active */
     for (i = 0; i < 1 + (loop_iteration % IDLE_COUNT); i++) {
-      r = oio_idle_start(&idle_1_handles[i], idle_1_cb);
+      r = uv_idle_start(&idle_1_handles[i], idle_1_cb);
       ASSERT(r == 0);
       idles_1_active++;
     }
 
   } else {
     /* End of the test - close all handles */
-    r = oio_close(&prepare_1_handle);
+    r = uv_close(&prepare_1_handle);
     ASSERT(r == 0);
-    r = oio_close(&check_handle);
+    r = uv_close(&check_handle);
     ASSERT(r == 0);
-    r = oio_close(&prepare_2_handle);
+    r = uv_close(&prepare_2_handle);
     ASSERT(r == 0);
 
     for (i = 0; i < IDLE_COUNT; i++) {
-      r = oio_close(&idle_1_handles[i]);
+      r = uv_close(&idle_1_handles[i]);
       ASSERT(r == 0);
     }
 
     /* This handle is closed/recreated every time, close it only if it is */
     /* active.*/
     if (idle_2_is_active) {
-      r = oio_close(&idle_2_handle);
+      r = uv_close(&idle_2_handle);
       ASSERT(r == 0);
     }
   }
@@ -237,7 +237,7 @@ static void check_cb(oio_handle_t* handle, int status) {
 }
 
 
-static void check_close_cb(oio_handle_t* handle, int status){
+static void check_close_cb(uv_handle_t* handle, int status){
   LOG("CHECK_CLOSE_CB\n");
   ASSERT(handle == &check_handle);
   ASSERT(status == 0);
@@ -246,7 +246,7 @@ static void check_close_cb(oio_handle_t* handle, int status){
 }
 
 
-static void prepare_2_cb(oio_handle_t* handle, int status) {
+static void prepare_2_cb(uv_handle_t* handle, int status) {
   int r;
 
   LOG("PREPARE_2_CB\n");
@@ -263,14 +263,14 @@ static void prepare_2_cb(oio_handle_t* handle, int status) {
   /* (loop_iteration % 2 == 0) cannot be true. */
   ASSERT(loop_iteration % 2 != 0);
 
-  r = oio_prepare_stop(handle);
+  r = uv_prepare_stop(handle);
   ASSERT(r == 0);
 
   prepare_2_cb_called++;
 }
 
 
-static void prepare_2_close_cb(oio_handle_t* handle, int status){
+static void prepare_2_close_cb(uv_handle_t* handle, int status){
   LOG("PREPARE_2_CLOSE_CB\n");
   ASSERT(handle == &prepare_2_handle);
   ASSERT(status == 0);
@@ -279,7 +279,7 @@ static void prepare_2_close_cb(oio_handle_t* handle, int status){
 }
 
 
-static void prepare_1_cb(oio_handle_t* handle, int status) {
+static void prepare_1_cb(uv_handle_t* handle, int status) {
   int r;
 
   LOG("PREPARE_1_CB\n");
@@ -293,7 +293,7 @@ static void prepare_1_cb(oio_handle_t* handle, int status) {
   */
 
   if (loop_iteration % 2 == 0) {
-    r = oio_prepare_start(&prepare_2_handle, prepare_2_cb);
+    r = uv_prepare_start(&prepare_2_handle, prepare_2_cb);
     ASSERT(r == 0);
   }
 
@@ -304,7 +304,7 @@ static void prepare_1_cb(oio_handle_t* handle, int status) {
 }
 
 
-static void prepare_1_close_cb(oio_handle_t* handle, int status){
+static void prepare_1_close_cb(uv_handle_t* handle, int status){
   LOG("PREPARE_1_CLOSE_CB");
   ASSERT(handle == &prepare_1_handle);
   ASSERT(status == 0);
@@ -313,8 +313,8 @@ static void prepare_1_close_cb(oio_handle_t* handle, int status){
 }
 
 
-static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
-  oio_buf rv = { 0, 0 };
+static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf rv = { 0, 0 };
   FATAL("alloc_cb should never be called in this test");
   return rv;
 }
@@ -324,25 +324,25 @@ TEST_IMPL(loop_handles) {
   int i;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_prepare_init(&prepare_1_handle, prepare_1_close_cb, NULL);
+  r = uv_prepare_init(&prepare_1_handle, prepare_1_close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_prepare_start(&prepare_1_handle, prepare_1_cb);
+  r = uv_prepare_start(&prepare_1_handle, prepare_1_cb);
   ASSERT(r == 0);
 
-  r = oio_check_init(&check_handle, check_close_cb, NULL);
+  r = uv_check_init(&check_handle, check_close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_check_start(&check_handle, check_cb);
+  r = uv_check_start(&check_handle, check_cb);
   ASSERT(r == 0);
 
   /* initialize only, prepare_2 is started by prepare_1_cb */
-  r = oio_prepare_init(&prepare_2_handle, prepare_2_close_cb, NULL);
+  r = uv_prepare_init(&prepare_2_handle, prepare_2_close_cb, NULL);
   ASSERT(r == 0);
 
   for (i = 0; i < IDLE_COUNT; i++) {
     /* initialize only, idle_1 handles are started by check_cb */
-    r = oio_idle_init(&idle_1_handles[i], idle_1_close_cb, NULL);
+    r = uv_idle_init(&idle_1_handles[i], idle_1_close_cb, NULL);
     ASSERT(r == 0);
   }
 
@@ -350,12 +350,12 @@ TEST_IMPL(loop_handles) {
 
   /* the timer callback is there to keep the event loop polling */
   /* unref it as it is not supposed to keep the loop alive */
-  oio_req_init(&timeout_req, NULL, timeout_cb);
-  r = oio_timeout(&timeout_req, TIMEOUT);
+  uv_req_init(&timeout_req, NULL, timeout_cb);
+  r = uv_timeout(&timeout_req, TIMEOUT);
   ASSERT(r == 0);
-  oio_unref();
+  uv_unref();
 
-  r = oio_run();
+  r = uv_run();
   ASSERT(r == 0);
 
   ASSERT(loop_iteration == ITERATIONS);

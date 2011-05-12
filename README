@@ -4,6 +4,8 @@ all platform differences in this library.
 
 http://nodejs.org/
 
+(This was previously called liboio)
+
 ## Supported Platforms
 
 Microsoft Windows operating systems since Windows XP sp2. It can be built
@@ -20,7 +22,7 @@ on all operating systems. This is a large undertaking. Some of the API
 decisions may seem arbitrary but are actually borne out of various specific
 platform issues.
 
-## oio_read_start(), oio_read_stop()
+## uv_read_start(), uv_read_stop()
 
 Originally we wanted to provide a asynchronous read function that was
 similar to WSARecv().

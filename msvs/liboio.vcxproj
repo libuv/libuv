@@ -101,24 +101,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\ngx-queue.h" />
-    <ClInclude Include="..\oio-unix.h">
+    <ClInclude Include="..\uv-unix.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\oio-win.h" />
-    <ClInclude Include="..\oio.h" />
+    <ClInclude Include="..\uv-win.h" />
+    <ClInclude Include="..\uv.h" />
     <ClInclude Include="..\tree.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\oio-unix.c">
+    <ClCompile Include="..\uv-unix.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\oio-win.c" />
+    <ClCompile Include="..\uv-win.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\AUTHORS" />

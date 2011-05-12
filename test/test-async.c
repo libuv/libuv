@@ -19,16 +19,16 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
-static oio_handle_t prepare_handle;
+static uv_handle_t prepare_handle;
 
-static oio_handle_t async1_handle;
-/* static oio_handle_t async2_handle; */
+static uv_handle_t async1_handle;
+/* static uv_handle_t async2_handle; */
 
 static int prepare_cb_called = 0;
 
@@ -49,20 +49,20 @@ static uintptr_t thread3_id = 0;
 void thread1_entry(void *arg) {
   int state = 0;
 
-  oio_sleep(50);
+  uv_sleep(50);
 
   while (1) {
     switch (async1_cb_called) {
       case 0:
-        oio_async_send(&async1_handle);
+        uv_async_send(&async1_handle);
         break;
 
       case 1:
-        oio_async_send(&async1_handle);
+        uv_async_send(&async1_handle);
         break;
 
       case 2:
-        oio_async_send(&async1_handle);
+        uv_async_send(&async1_handle);
         break;
 
       default:
@@ -72,47 +72,47 @@ void thread1_entry(void *arg) {
 }
 
 #if 0
-/* Thread 2 calls oio_async_send on async_handle_2 8 times. */
+/* Thread 2 calls uv_async_send on async_handle_2 8 times. */
 void thread2_entry(void *arg) {
   int i;
 
   while (1) {
     switch (async1_cb_called) {
       case 0:
-        oio_async_send(&async2_handle);
+        uv_async_send(&async2_handle);
         break;
 
       case 1:
-        oio_async_send(&async2_handle);
+        uv_async_send(&async2_handle);
         break;
 
       case 2:
-        oio_async_send(&async2_handle);
+        uv_async_send(&async2_handle);
         break;
     }
-    oio_sleep(5);
+    uv_sleep(5);
   }
 
   if (async1_cb_called == 20) {
-    oio_close(handle);
+    uv_close(handle);
   }
 }
 
 
-/* Thread 3 calls oio_async_send on async_handle_2 8 times
+/* Thread 3 calls uv_async_send on async_handle_2 8 times
  * after waiting half a second first.
  */
 void thread3_entry(void *arg) {
   int i;
 
   for (i = 0; i < 8; i++) {
-    oio_async_send(&async2_handle);
+    uv_async_send(&async2_handle);
   }
 }
 #endif
 
 
-static void close_cb(oio_handle_t* handle, int status) {
+static void close_cb(uv_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -120,14 +120,14 @@ static void close_cb(oio_handle_t* handle, int status) {
 }
 
 
-static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
-  oio_buf buf = {0, 0};
+static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
 }
 
 
-static void async1_cb(oio_handle_t* handle, int status) {
+static void async1_cb(uv_handle_t* handle, int status) {
   ASSERT(handle == &async1_handle);
   ASSERT(status == 0);
 
@@ -136,13 +136,13 @@ static void async1_cb(oio_handle_t* handle, int status) {
 
   if (async1_cb_called > 2 && !async1_closed) {
     async1_closed = 1;
-    oio_close(handle);
+    uv_close(handle);
   }
 }
 
 
 #if 0
-static void async2_cb(oio_handle_t* handle, int status) {
+static void async2_cb(uv_handle_t* handle, int status) {
   ASSERT(handle == &async2_handle);
   ASSERT(status == 0);
 
@@ -150,13 +150,13 @@ static void async2_cb(oio_handle_t* handle, int status) {
   printf("async2_cb #%d\n", async2_cb_called);
 
   if (async2_cb_called == 16) {
-    oio_close(handle);
+    uv_close(handle);
   }
 }
 #endif
 
 
-static void prepare_cb(oio_handle_t* handle, int status) {
+static void prepare_cb(uv_handle_t* handle, int status) {
   int r;
 
   ASSERT(handle == &prepare_handle);
@@ -164,24 +164,24 @@ static void prepare_cb(oio_handle_t* handle, int status) {
 
   switch (prepare_cb_called) {
     case 0:
-      thread1_id = oio_create_thread(thread1_entry, NULL);
+      thread1_id = uv_create_thread(thread1_entry, NULL);
       ASSERT(thread1_id != 0);
       break;
 
 #if 0
     case 1:
-      thread2_id = oio_create_thread(thread2_entry, NULL);
+      thread2_id = uv_create_thread(thread2_entry, NULL);
       ASSERT(thread2_id != 0);
       break;
 
     case 2:
-      thread3_id = oio_create_thread(thread3_entry, NULL);
+      thread3_id = uv_create_thread(thread3_entry, NULL);
       ASSERT(thread3_id != 0);
       break;
 #endif
 
     case 1:
-      r = oio_close(handle);
+      r = uv_close(handle);
       ASSERT(r == 0);
       break;
 
@@ -196,30 +196,30 @@ static void prepare_cb(oio_handle_t* handle, int status) {
 TEST_IMPL(async) {
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  r = oio_prepare_init(&prepare_handle, close_cb, NULL);
+  r = uv_prepare_init(&prepare_handle, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_prepare_start(&prepare_handle, prepare_cb);
+  r = uv_prepare_start(&prepare_handle, prepare_cb);
   ASSERT(r == 0);
 
-  r = oio_async_init(&async1_handle, async1_cb, close_cb, NULL);
+  r = uv_async_init(&async1_handle, async1_cb, close_cb, NULL);
   ASSERT(r == 0);
 
 #if 0
-  r = oio_async_init(&async2_handle, async2_cb, close_cb, NULL);
+  r = uv_async_init(&async2_handle, async2_cb, close_cb, NULL);
   ASSERT(r == 0);
 #endif
 
-  r = oio_run();
+  r = uv_run();
   ASSERT(r == 0);
 
-  r = oio_wait_thread(thread1_id);
+  r = uv_wait_thread(thread1_id);
   ASSERT(r == 0);
 #if 0
-  r = oio_wait_thread(thread2_id);
+  r = uv_wait_thread(thread2_id);
   ASSERT(r == 0);
-  r = oio_wait_thread(thread3_id);
+  r = uv_wait_thread(thread3_id);
   ASSERT(r == 0);
 #endif
 

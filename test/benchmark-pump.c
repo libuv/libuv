@@ -20,7 +20,7 @@
  */
 
 #include "task.h"
-#include "../oio.h"
+#include "../uv.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -35,14 +35,14 @@
 #define STATS_COUNT                 5
 
 
-static void do_write(oio_handle_t* handle);
+static void do_write(uv_handle_t* handle);
 static void maybe_connect_some();
 
-static oio_req_t* req_alloc();
-static void req_free(oio_req_t* oio_req);
+static uv_req_t* req_alloc();
+static void req_free(uv_req_t* uv_req);
 
-static oio_buf buf_alloc(oio_handle_t* handle, size_t size);
-static void buf_free(oio_buf oio_buf);
+static uv_buf buf_alloc(uv_handle_t* handle, size_t size);
+static void buf_free(uv_buf uv_buf);
 
 
 static struct sockaddr_in server_addr;
@@ -62,8 +62,8 @@ static int stats_left = 0;
 
 static char write_buffer[WRITE_BUFFER_SIZE];
 
-static oio_handle_t read_handles[TARGET_CONNECTIONS];
-static oio_handle_t write_handles[TARGET_CONNECTIONS];
+static uv_handle_t read_handles[TARGET_CONNECTIONS];
+static uv_handle_t write_handles[TARGET_CONNECTIONS];
 
 
 static double gbit(int64_t bytes, int64_t passed_ms) {
@@ -72,7 +72,7 @@ static double gbit(int64_t bytes, int64_t passed_ms) {
 }
 
 
-static void show_stats(oio_req_t *req, int64_t skew, int status) {
+static void show_stats(uv_req_t *req, int64_t skew, int status) {
   int64_t msec = STATS_INTERVAL + skew;
 
 #if PRINT_STATS
@@ -98,30 +98,30 @@ static void show_stats(oio_req_t *req, int64_t skew, int status) {
   nrecv = 0;
   nsent = 0;
 
-  oio_timeout(req, (STATS_INTERVAL - skew > 0)
+  uv_timeout(req, (STATS_INTERVAL - skew > 0)
                    ? STATS_INTERVAL - skew
                    : 0);
 }
 
 
 static void start_stats_collection() {
-  oio_req_t* req = req_alloc();
+  uv_req_t* req = req_alloc();
   int r;
 
   /* Show-stats timeout */
   stats_left = STATS_COUNT;
-  oio_req_init(req, NULL, (void*)show_stats);
-  r = oio_timeout(req, STATS_INTERVAL);
+  uv_req_init(req, NULL, (void*)show_stats);
+  r = uv_timeout(req, STATS_INTERVAL);
   ASSERT(r == 0);
 }
 
 
-void close_cb(oio_handle_t* handle, int status) {
+void close_cb(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
 }
 
 
-static void read_cb(oio_handle_t* handle, int bytes, oio_buf buf) {
+static void read_cb(uv_handle_t* handle, int bytes, uv_buf buf) {
   ASSERT(bytes >= 0);
 
   buf_free(buf);
@@ -131,8 +131,8 @@ static void read_cb(oio_handle_t* handle, int bytes, oio_buf buf) {
 }
 
 
-static void write_cb(oio_req_t *req, int status) {
-  oio_buf* buf = (oio_buf*) req->data;
+static void write_cb(uv_req_t *req, int status) {
+  uv_buf* buf = (uv_buf*) req->data;
 
   ASSERT(status == 0);
 
@@ -145,9 +145,9 @@ static void write_cb(oio_req_t *req, int status) {
 }
 
 
-static void do_write(oio_handle_t* handle) {
-  oio_req_t* req;
-  oio_buf buf;
+static void do_write(uv_handle_t* handle) {
+  uv_req_t* req;
+  uv_buf buf;
   int r;
 
   buf.base = (char*) &write_buffer;
@@ -155,9 +155,9 @@ static void do_write(oio_handle_t* handle) {
 
   while (handle->write_queue_size == 0) {
     req = req_alloc();
-    oio_req_init(req, handle, write_cb);
+    uv_req_init(req, handle, write_cb);
 
-    r = oio_write(req, &buf, 1);
+    r = uv_write(req, &buf, 1);
     ASSERT(r == 0);
   }
 }
@@ -177,8 +177,8 @@ static void maybe_start_writing() {
 }
 
 
-static void connect_cb(oio_req_t* req, int status) {
-  if (status) LOG(oio_strerror(oio_last_error()));
+static void connect_cb(uv_req_t* req, int status) {
+  if (status) LOG(uv_strerror(uv_last_error()));
   ASSERT(status == 0);
 
   write_sockets++;
@@ -189,16 +189,16 @@ static void connect_cb(oio_req_t* req, int status) {
 }
 
 
-static void do_connect(oio_handle_t* handle, struct sockaddr* addr) {
-  oio_req_t* req;
+static void do_connect(uv_handle_t* handle, struct sockaddr* addr) {
+  uv_req_t* req;
   int r;
 
-  r = oio_tcp_init(handle, close_cb, NULL);
+  r = uv_tcp_init(handle, close_cb, NULL);
   ASSERT(r == 0);
 
   req = req_alloc();
-  oio_req_init(req, handle, connect_cb);
-  r = oio_connect(req, addr);
+  uv_req_init(req, handle, connect_cb);
+  r = uv_connect(req, addr);
   ASSERT(r == 0);
 }
 
@@ -212,17 +212,17 @@ static void maybe_connect_some() {
 }
 
 
-static void accept_cb(oio_handle_t* server) {
-  oio_handle_t* handle;
+static void accept_cb(uv_handle_t* server) {
+  uv_handle_t* handle;
   int r;
 
   ASSERT(read_sockets < TARGET_CONNECTIONS);
   handle = &read_handles[read_sockets];
 
-  r = oio_accept(server, handle, close_cb, NULL);
+  r = uv_accept(server, handle, close_cb, NULL);
   ASSERT(r == 0);
 
-  r = oio_read_start(handle, read_cb);
+  r = uv_read_start(handle, read_cb);
   ASSERT(r == 0);
 
   read_sockets++;
@@ -232,18 +232,18 @@ static void accept_cb(oio_handle_t* server) {
 
 
 BENCHMARK_IMPL(pump) {
-  oio_handle_t server;
+  uv_handle_t server;
   int r;
 
-  oio_init(buf_alloc);
+  uv_init(buf_alloc);
 
   /* Server */
-  server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
-  r = oio_tcp_init(&server, close_cb, NULL);
+  server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = oio_bind(&server, (struct sockaddr*) &server_addr);
+  r = uv_bind(&server, (struct sockaddr*) &server_addr);
   ASSERT(r == 0);
-  r = oio_listen(&server, TARGET_CONNECTIONS, accept_cb);
+  r = uv_listen(&server, TARGET_CONNECTIONS, accept_cb);
   ASSERT(r == 0);
 
   oio_update_time();
@@ -252,7 +252,7 @@ BENCHMARK_IMPL(pump) {
   /* Start making connections */
   maybe_connect_some();
 
-  oio_run();
+  uv_run();
 
   return 0;
 }
@@ -263,7 +263,7 @@ BENCHMARK_IMPL(pump) {
  */
 
 typedef struct req_list_s {
-  oio_req_t oio_req;
+  uv_req_t uv_req;
   struct req_list_s* next;
 } req_list_t;
 
@@ -271,22 +271,22 @@ typedef struct req_list_s {
 static req_list_t* req_freelist = NULL;
 
 
-static oio_req_t* req_alloc() {
+static uv_req_t* req_alloc() {
   req_list_t* req;
 
   req = req_freelist;
   if (req != NULL) {
     req_freelist = req->next;
-    return (oio_req_t*) req;
+    return (uv_req_t*) req;
   }
 
   req = (req_list_t*) malloc(sizeof *req);
-  return (oio_req_t*) req;
+  return (uv_req_t*) req;
 }
 
 
-static void req_free(oio_req_t* oio_req) {
-  req_list_t* req = (req_list_t*) oio_req;
+static void req_free(uv_req_t* uv_req) {
+  req_list_t* req = (req_list_t*) uv_req;
 
   req->next = req_freelist;
   req_freelist = req;
@@ -298,7 +298,7 @@ static void req_free(oio_req_t* oio_req) {
  */
 
 typedef struct buf_list_s {
-  oio_buf oio_buf;
+  uv_buf uv_buf;
   struct buf_list_s* next;
 } buf_list_t;
 
@@ -306,25 +306,25 @@ typedef struct buf_list_s {
 static buf_list_t* buf_freelist = NULL;
 
 
-static oio_buf buf_alloc(oio_handle_t* handle, size_t size) {
+static uv_buf buf_alloc(uv_handle_t* handle, size_t size) {
   buf_list_t* buf;
 
   buf = buf_freelist;
   if (buf != NULL) {
     buf_freelist = buf->next;
-    return buf->oio_buf;
+    return buf->uv_buf;
   }
 
   buf = (buf_list_t*) malloc(size + sizeof *buf);
-  buf->oio_buf.len = (unsigned int)size;
-  buf->oio_buf.base = ((char*) buf) + sizeof *buf;
+  buf->uv_buf.len = (unsigned int)size;
+  buf->uv_buf.base = ((char*) buf) + sizeof *buf;
 
-  return buf->oio_buf;
+  return buf->uv_buf;
 }
 
 
-static void buf_free(oio_buf oio_buf) {
-  buf_list_t* buf = (buf_list_t*) (oio_buf.base - sizeof *buf);
+static void buf_free(uv_buf uv_buf) {
+  buf_list_t* buf = (buf_list_t*) (uv_buf.base - sizeof *buf);
 
   buf->next = buf_freelist;
   buf_freelist = buf;

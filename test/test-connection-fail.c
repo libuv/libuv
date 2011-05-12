@@ -19,35 +19,35 @@
  * IN THE SOFTWARE.
  */
 
-#include "../oio.h"
+#include "../uv.h"
 #include "task.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 
-static oio_handle_t handle;
-static oio_req_t req;
+static uv_handle_t handle;
+static uv_req_t req;
 static int connect_cb_calls;
 static int close_cb_calls;
 
 
-static void on_close(oio_handle_t* handle, int status) {
+static void on_close(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
   close_cb_calls++;
 }
 
 
-static void on_connect(oio_req_t *req, int status) {
+static void on_connect(uv_req_t *req, int status) {
   ASSERT(status == -1);
-  ASSERT(oio_last_error().code == OIO_ECONNREFUSED);
+  ASSERT(uv_last_error().code == UV_ECONNREFUSED);
   connect_cb_calls++;
-  oio_close(req->handle);
+  uv_close(req->handle);
 }
 
 
-static oio_buf alloc_cb(oio_handle_t* handle, size_t size) {
-  oio_buf buf = {0, 0};
+static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
 }
@@ -57,26 +57,26 @@ TEST_IMPL(connection_fail) {
   struct sockaddr_in client_addr, server_addr;
   int r;
 
-  oio_init(alloc_cb);
+  uv_init(alloc_cb);
 
-  client_addr = oio_ip4_addr("0.0.0.0", 0);
+  client_addr = uv_ip4_addr("0.0.0.0", 0);
 
   /* There should be no servers listening on this port. */
-  server_addr = oio_ip4_addr("127.0.0.1", TEST_PORT);
+  server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = oio_tcp_init(&handle, on_close, NULL);
+  r = uv_tcp_init(&handle, on_close, NULL);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  oio_req_init(&req, &handle, on_connect);
+  uv_req_init(&req, &handle, on_connect);
 
-  oio_bind(&handle, (struct sockaddr*)&client_addr);
-  r = oio_connect(&req, (struct sockaddr*)&server_addr);
+  uv_bind(&handle, (struct sockaddr*)&client_addr);
+  r = uv_connect(&req, (struct sockaddr*)&server_addr);
   ASSERT(!r);
 
-  oio_run();
+  uv_run();
 
   ASSERT(connect_cb_calls == 1);
   ASSERT(close_cb_calls == 1);
