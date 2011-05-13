@@ -21,7 +21,7 @@
 CC = $(PREFIX)gcc
 AR = $(PREFIX)ar
 E=
-CFLAGS=--std=gnu89 -g
+CFLAGS=--std=gnu89 -g -DEV_MULTIPLICITY=0
 LINKFLAGS=-lm
 
 ifeq (SunOS,$(uname_S))
@@ -29,7 +29,7 @@ LINKFLAGS+=-lsocket -lnsl
 endif
 
 # Need _GNU_SOURCE for strdup?
-RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE -DEV_MULTIPLICITY=0
+RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
 
 RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
 RUNNER_LIBS=

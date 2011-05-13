@@ -21,6 +21,9 @@
 
 #ifndef UV_H
 #define UV_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define UV_VERSION_MAJOR 0
 #define UV_VERSION_MINOR 1
@@ -268,4 +271,7 @@ int uv_close(uv_handle_t* handle);
 /* Utility */
 struct sockaddr_in uv_ip4_addr(char* ip, int port);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* UV_H */
