@@ -85,8 +85,8 @@ static void show_stats(uv_req_t *req, int64_t skew, int status) {
   /* Exit if the show is over */
   if (!--stats_left) {
 
-    oio_update_time();
-    int64_t diff = oio_now() - start_time;
+    uv_update_time();
+    int64_t diff = uv_now() - start_time;
 
     LOGF("pump_%d: %.1f gbit/s\n", read_sockets,
         gbit(nrecv_total, diff));
@@ -246,8 +246,8 @@ BENCHMARK_IMPL(pump) {
   r = uv_listen(&server, TARGET_CONNECTIONS, accept_cb);
   ASSERT(r == 0);
 
-  oio_update_time();
-  start_time = oio_now();
+  uv_update_time();
+  start_time = uv_now();
 
   /* Start making connections */
   maybe_connect_some();
