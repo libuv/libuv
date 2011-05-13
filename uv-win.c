@@ -751,7 +751,7 @@ static void uv_queue_accept(uv_handle_t* handle) {
 
 static void uv_queue_read(uv_handle_t* handle) {
   uv_req_t *req;
-  uv_buf buf;
+  uv_buf_t buf;
   int result;
   DWORD bytes, flags;
 
@@ -926,7 +926,7 @@ int uv_connect(uv_req_t* req, struct sockaddr* addr) {
 }
 
 
-static size_t uv_count_bufs(uv_buf bufs[], int count) {
+static size_t uv_count_bufs(uv_buf_t bufs[], int count) {
   size_t bytes = 0;
   int i;
 
@@ -938,7 +938,7 @@ static size_t uv_count_bufs(uv_buf bufs[], int count) {
 }
 
 
-int uv_write(uv_req_t* req, uv_buf bufs[], int bufcnt) {
+int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
   int result;
   DWORD bytes, err;
   uv_handle_t* handle = req->handle;
@@ -1021,7 +1021,7 @@ int uv_shutdown(uv_req_t* req) {
 static void uv_tcp_return_req(uv_handle_t* handle, uv_req_t* req) {
   BOOL success;
   DWORD bytes, flags, err;
-  uv_buf buf;
+  uv_buf_t buf;
 
   assert(handle->type == UV_TCP);
 

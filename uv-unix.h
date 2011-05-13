@@ -35,14 +35,14 @@
 typedef struct {
   char* base;
   size_t len;
-} uv_buf;
+} uv_buf_t;
 
 
 #define uv_req_private_fields \
   int write_index; \
   ev_timer timer; \
   ngx_queue_t queue; \
-  uv_buf* bufs; \
+  uv_buf_t* bufs; \
   int bufcnt;
 
 

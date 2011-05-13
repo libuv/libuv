@@ -58,7 +58,7 @@ static void shutdown_cb(uv_req_t* req, int status) {
 }
 
 
-static void read_cb(uv_handle_t* handle, int nread, uv_buf buf) {
+static void read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
   printf("Read. nread == %d\n", nread);
@@ -138,7 +138,7 @@ static void write_cb(uv_req_t* req, int status) {
 
 
 static void connect_cb(uv_req_t* req, int status) {
-  uv_buf buf;
+  uv_buf_t buf;
 
   puts("Connected. Write some data to echo server...");
 
@@ -162,8 +162,8 @@ static void connect_cb(uv_req_t* req, int status) {
 }
 
 
-static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
-  uv_buf buf;
+static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf_t buf;
   buf.len = size;
   buf.base = (char*) malloc(size);
   ASSERT(buf.base);

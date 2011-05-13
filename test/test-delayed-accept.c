@@ -102,7 +102,7 @@ static void start_server() {
 }
 
 
-static void read_cb(uv_handle_t* handle, int nread, uv_buf buf) {
+static void read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
   /* The server will not send anything, it should close gracefully. */
   ASSERT(handle != NULL);
   ASSERT(nread == -1);
@@ -151,8 +151,8 @@ static void client_connect() {
 }
 
 
-static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
-  uv_buf buf;
+static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf_t buf;
   buf.base = (char*)malloc(size);
   buf.len = size;
   return buf;

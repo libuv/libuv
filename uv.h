@@ -48,11 +48,11 @@ typedef struct uv_req_s uv_req_t;
  * For uv_close_cb, -1 means that the handle was closed due to an error.
  * Error details can be obtained by calling uv_last_error().
  *
- * In the case of uv_read_cb the uv_buf returned should be freed by the
+ * In the case of uv_read_cb the uv_buf_t returned should be freed by the
  * user.
  */
-typedef uv_buf (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
-typedef void (*uv_read_cb)(uv_handle_t *handle, int nread, uv_buf buf);
+typedef uv_buf_t (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
+typedef void (*uv_read_cb)(uv_handle_t *handle, int nread, uv_buf_t buf);
 typedef void (*uv_write_cb)(uv_req_t* req, int status);
 typedef void (*uv_connect_cb)(uv_req_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_req_t* req, int status);
@@ -219,7 +219,7 @@ int uv_accept(uv_handle_t* server, uv_handle_t* client,
 int uv_read_start(uv_handle_t* handle, uv_read_cb cb);
 int uv_read_stop(uv_handle_t* handle);
 
-int uv_write(uv_req_t* req, uv_buf bufs[], int bufcnt);
+int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt);
 
 /* Timer methods */
 int uv_timeout(uv_req_t* req, int64_t timeout);

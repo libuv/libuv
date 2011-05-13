@@ -509,10 +509,10 @@ void uv__write(uv_handle_t* handle) {
 
   assert(req->handle == handle);
 
-  /* Cast to iovec. We had to have our own uv_buf instead of iovec
+  /* Cast to iovec. We had to have our own uv_buf_t instead of iovec
    * because Windows's WSABUF is not an iovec.
    */
-  assert(sizeof(uv_buf) == sizeof(struct iovec));
+  assert(sizeof(uv_buf_t) == sizeof(struct iovec));
   struct iovec* iov = (struct iovec*) &(req->bufs[req->write_index]);
   int iovcnt = req->bufcnt - req->write_index;
 
@@ -541,7 +541,7 @@ void uv__write(uv_handle_t* handle) {
 
     /* The loop updates the counters. */
     while (n > 0) {
-      uv_buf* buf = &(req->bufs[req->write_index]);
+      uv_buf_t* buf = &(req->bufs[req->write_index]);
       size_t len = buf->len;
 
       assert(req->write_index < req->bufcnt);
@@ -607,7 +607,7 @@ void uv__read(uv_handle_t* handle) {
    */
   while (handle->read_cb && uv_flag_is_set(handle, UV_READING)) {
     assert(alloc_cb);
-    uv_buf buf = alloc_cb(handle, 64 * 1024);
+    uv_buf_t buf = alloc_cb(handle, 64 * 1024);
 
     assert(buf.len > 0);
     assert(buf.base);
@@ -813,7 +813,7 @@ int uv_connect(uv_req_t* req, struct sockaddr* addr) {
 }
 
 
-static size_t uv__buf_count(uv_buf bufs[], int bufcnt) {
+static size_t uv__buf_count(uv_buf_t bufs[], int bufcnt) {
   size_t total = 0;
   int i;
 
@@ -826,9 +826,9 @@ static size_t uv__buf_count(uv_buf bufs[], int bufcnt) {
 
 
 /* The buffers to be written must remain valid until the callback is called.
- * This is not required for the uv_buf array.
+ * This is not required for the uv_buf_t array.
  */
-int uv_write(uv_req_t* req, uv_buf bufs[], int bufcnt) {
+int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
   uv_handle_t* handle = req->handle;
   assert(handle->fd >= 0);
 
@@ -836,8 +836,8 @@ int uv_write(uv_req_t* req, uv_buf bufs[], int bufcnt) {
   req->type = UV_WRITE;
 
   /* TODO: Don't malloc for each write... */
-  req->bufs = malloc(sizeof(uv_buf) * bufcnt);
-  memcpy(req->bufs, bufs, bufcnt * sizeof(uv_buf));
+  req->bufs = malloc(sizeof(uv_buf_t) * bufcnt);
+  memcpy(req->bufs, bufs, bufcnt * sizeof(uv_buf_t));
   req->bufcnt = bufcnt;
 
   req->write_index = 0;

@@ -33,13 +33,13 @@
 
 
 /**
- * It should be possible to cast uv_buf[] to WSABUF[]
+ * It should be possible to cast uv_buf_t[] to WSABUF[]
  * see http://msdn.microsoft.com/en-us/library/ms741542(v=vs.85).aspx
  */
-typedef struct uv_buf {
+typedef struct uv_buf_t {
   ULONG len;
   char* base;
-} uv_buf;
+} uv_buf_t;
 
 #define uv_req_private_fields            \
   union {                                 \

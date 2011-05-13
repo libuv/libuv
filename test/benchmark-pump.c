@@ -41,8 +41,8 @@ static void maybe_connect_some();
 static uv_req_t* req_alloc();
 static void req_free(uv_req_t* uv_req);
 
-static uv_buf buf_alloc(uv_handle_t* handle, size_t size);
-static void buf_free(uv_buf uv_buf);
+static uv_buf_t buf_alloc(uv_handle_t* handle, size_t size);
+static void buf_free(uv_buf_t uv_buf_t);
 
 
 static struct sockaddr_in server_addr;
@@ -121,7 +121,7 @@ void close_cb(uv_handle_t* handle, int status) {
 }
 
 
-static void read_cb(uv_handle_t* handle, int bytes, uv_buf buf) {
+static void read_cb(uv_handle_t* handle, int bytes, uv_buf_t buf) {
   ASSERT(bytes >= 0);
 
   buf_free(buf);
@@ -132,7 +132,7 @@ static void read_cb(uv_handle_t* handle, int bytes, uv_buf buf) {
 
 
 static void write_cb(uv_req_t *req, int status) {
-  uv_buf* buf = (uv_buf*) req->data;
+  uv_buf_t* buf = (uv_buf_t*) req->data;
 
   ASSERT(status == 0);
 
@@ -147,7 +147,7 @@ static void write_cb(uv_req_t *req, int status) {
 
 static void do_write(uv_handle_t* handle) {
   uv_req_t* req;
-  uv_buf buf;
+  uv_buf_t buf;
   int r;
 
   buf.base = (char*) &write_buffer;
@@ -298,7 +298,7 @@ static void req_free(uv_req_t* uv_req) {
  */
 
 typedef struct buf_list_s {
-  uv_buf uv_buf;
+  uv_buf_t uv_buf_t;
   struct buf_list_s* next;
 } buf_list_t;
 
@@ -306,25 +306,25 @@ typedef struct buf_list_s {
 static buf_list_t* buf_freelist = NULL;
 
 
-static uv_buf buf_alloc(uv_handle_t* handle, size_t size) {
+static uv_buf_t buf_alloc(uv_handle_t* handle, size_t size) {
   buf_list_t* buf;
 
   buf = buf_freelist;
   if (buf != NULL) {
     buf_freelist = buf->next;
-    return buf->uv_buf;
+    return buf->uv_buf_t;
   }
 
   buf = (buf_list_t*) malloc(size + sizeof *buf);
-  buf->uv_buf.len = (unsigned int)size;
-  buf->uv_buf.base = ((char*) buf) + sizeof *buf;
+  buf->uv_buf_t.len = (unsigned int)size;
+  buf->uv_buf_t.base = ((char*) buf) + sizeof *buf;
 
-  return buf->uv_buf;
+  return buf->uv_buf_t;
 }
 
 
-static void buf_free(uv_buf uv_buf) {
-  buf_list_t* buf = (buf_list_t*) (uv_buf.base - sizeof *buf);
+static void buf_free(uv_buf_t uv_buf_t) {
+  buf_list_t* buf = (buf_list_t*) (uv_buf_t.base - sizeof *buf);
 
   buf->next = buf_freelist;
   buf_freelist = buf;

@@ -313,8 +313,8 @@ static void prepare_1_close_cb(uv_handle_t* handle, int status){
 }
 
 
-static uv_buf alloc_cb(uv_handle_t* handle, size_t size) {
-  uv_buf rv = { 0, 0 };
+static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+  uv_buf_t rv = { 0, 0 };
   FATAL("alloc_cb should never be called in this test");
   return rv;
 }
