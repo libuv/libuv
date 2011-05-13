@@ -26,8 +26,6 @@ E=.exe
 
 CFLAGS=-g --std=gnu89
 LINKFLAGS=-lm
-TESTS=test/echo-server.c test/test-*.c
-BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
 RUNNER_LINKFLAGS=$(LINKFLAGS)

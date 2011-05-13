@@ -23,14 +23,14 @@ AR = $(PREFIX)ar
 E=
 CFLAGS=--std=gnu89 -g
 LINKFLAGS=-lm
-TESTS=test/echo-server.c test/test-*.c
-BENCHMARKS=test/echo-server.c test/benchmark-*.c
 
 ifeq (SunOS,$(uname_S))
 LINKFLAGS+=-lsocket -lnsl
 endif
 
-RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
+# Need _GNU_SOURCE for strdup?
+RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE -DEV_MULTIPLICITY=0
+
 RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
@@ -45,7 +45,7 @@ ev/ev.o: ev/config.h ev/ev.c
 	$(MAKE) -C ev
 
 ev/config.h:
-	cd ev && ./configure
+	cd ev && CPPFLAGS=-DEV_MULTIPLICITY=0 ./configure
 
 clean-platform:
 	$(MAKE) -C ev clean
