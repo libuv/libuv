@@ -1347,6 +1347,19 @@ int uv_idle_stop(uv_handle_t* handle) {
 }
 
 
+int uv_is_active(uv_handle_t* handle) {
+  switch (handle->type) {
+    case UV_IDLE:
+    case UV_PREPARE:
+    case UV_CHECK:
+      return (handle->flags & UV_HANDLE_ACTIVE) ? 1 : 0;
+
+    default:
+      return 1;
+  }
+}
+
+
 int uv_async_init(uv_handle_t* handle, uv_async_cb async_cb,
                    uv_close_cb close_cb, void* data) {
   uv_req_t* req;

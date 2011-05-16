@@ -248,6 +248,11 @@ int uv_idle_init(uv_handle_t* handle, uv_close_cb close_cb, void* data);
 int uv_idle_start(uv_handle_t* handle, uv_loop_cb cb);
 int uv_idle_stop(uv_handle_t* handle);
 
+/* Returns 1 if the prepare/check/idle handle has been started, 0 otherwise.
+ * For other handle types this always returns 1.
+ */
+int uv_is_active(uv_handle_t* handle);
+
 /* libev wrapper. uv_async_send wakes up the event loop and calls the async
  * handle's callback There is no guarantee that every uv_async_send call
  * leads to exactly one invocation of the callback; The only guarantee is
