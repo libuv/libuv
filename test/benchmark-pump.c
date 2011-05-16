@@ -65,6 +65,8 @@ static char write_buffer[WRITE_BUFFER_SIZE];
 static uv_handle_t read_handles[TARGET_CONNECTIONS];
 static uv_handle_t write_handles[TARGET_CONNECTIONS];
 
+static uv_handle_t timer_handle;
+
 
 static double gbit(int64_t bytes, int64_t passed_ms) {
   double gbits = ((double)bytes / (1024 * 1024 * 1024)) * 8;
@@ -72,14 +74,12 @@ static double gbit(int64_t bytes, int64_t passed_ms) {
 }
 
 
-static void show_stats(uv_req_t *req, int64_t skew, int status) {
-  int64_t msec = STATS_INTERVAL + skew;
-
+static void show_stats(uv_handle_t *handle, int status) {
 #if PRINT_STATS
   LOGF("connections: %d, read: %.1f gbit/s, write: %.1f gbit/s\n",
        read_sockets,
-       gbit(nrecv, msec),
-       gbit(nsent, msec));
+       gbit(nrecv, STATS_INTERVAL),
+       gbit(nsent, STATS_INTERVAL));
 #endif
 
   /* Exit if the show is over */
@@ -97,10 +97,11 @@ static void show_stats(uv_req_t *req, int64_t skew, int status) {
   /* Reset read and write counters */
   nrecv = 0;
   nsent = 0;
+}
 
-  uv_timeout(req, (STATS_INTERVAL - skew > 0)
-                   ? STATS_INTERVAL - skew
-                   : 0);
+
+void close_cb(uv_handle_t* handle, int status) {
+  ASSERT(status == 0);
 }
 
 
@@ -108,16 +109,12 @@ static void start_stats_collection() {
   uv_req_t* req = req_alloc();
   int r;
 
-  /* Show-stats timeout */
+  /* Show-stats timer */
   stats_left = STATS_COUNT;
-  uv_req_init(req, NULL, (void*)show_stats);
-  r = uv_timeout(req, STATS_INTERVAL);
+  r = uv_timer_init(&timer_handle, close_cb, NULL);
   ASSERT(r == 0);
-}
-
-
-void close_cb(uv_handle_t* handle, int status) {
-  ASSERT(status == 0);
+  r = uv_timer_start(&timer_handle, show_stats, STATS_INTERVAL, STATS_INTERVAL);
+  ASSERT(r == 0);
 }
 
 
