@@ -339,7 +339,7 @@ static void uv_get_extension_function(SOCKET socket, GUID guid,
   if (result == SOCKET_ERROR) {
     *target = NULL;
     uv_fatal_error(WSAGetLastError(),
-                    "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
+                   "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
   }
 }
 
@@ -374,20 +374,20 @@ void uv_init(uv_alloc_cb alloc_cb) {
   }
 
   uv_get_extension_function(dummy,
-                             wsaid_connectex,
-                             (void**)&pConnectEx);
+                            wsaid_connectex,
+                            (void**)&pConnectEx);
   uv_get_extension_function(dummy,
-                             wsaid_acceptex,
-                             (void**)&pAcceptEx);
+                            wsaid_acceptex,
+                            (void**)&pAcceptEx);
   uv_get_extension_function(dummy,
-                             wsaid_getacceptexsockaddrs,
-                             (void**)&pGetAcceptExSockAddrs);
+                            wsaid_getacceptexsockaddrs,
+                            (void**)&pGetAcceptExSockAddrs);
   uv_get_extension_function(dummy,
-                             wsaid_disconnectex,
-                             (void**)&pDisconnectEx);
+                            wsaid_disconnectex,
+                            (void**)&pDisconnectEx);
   uv_get_extension_function(dummy,
-                             wsaid_transmitfile,
-                             (void**)&pTransmitFile);
+                            wsaid_transmitfile,
+                            (void**)&pTransmitFile);
 
   if (closesocket(dummy) == SOCKET_ERROR) {
     uv_fatal_error(WSAGetLastError(), "closesocket");
@@ -1108,10 +1108,10 @@ static void uv_tcp_return_req(uv_handle_t* handle, uv_req_t* req) {
 
       success = GetOverlappedResult(handle->handle, &req->overlapped, &bytes, FALSE);
       success = success && (setsockopt(handle->accept_socket,
-                                        SOL_SOCKET,
-                                        SO_UPDATE_ACCEPT_CONTEXT,
-                                        (char*)&handle->socket,
-                                        sizeof(handle->socket)) == 0);
+                                       SOL_SOCKET,
+                                       SO_UPDATE_ACCEPT_CONTEXT,
+                                       (char*)&handle->socket,
+                                       sizeof(handle->socket)) == 0);
 
       if (success) {
         if (handle->accept_cb) {
@@ -1134,10 +1134,10 @@ static void uv_tcp_return_req(uv_handle_t* handle, uv_req_t* req) {
                                       FALSE);
         if (success) {
           if (setsockopt(handle->socket,
-                          SOL_SOCKET,
-                          SO_UPDATE_CONNECT_CONTEXT,
-                          NULL,
-                          0) == 0) {
+                         SOL_SOCKET,
+                         SO_UPDATE_CONNECT_CONTEXT,
+                         NULL,
+                         0) == 0) {
             uv_tcp_init_connection(handle);
             ((uv_connect_cb)req->cb)(req, 0);
           } else {

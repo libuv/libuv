@@ -41,7 +41,7 @@ typedef struct uv_buf_t {
   char* base;
 } uv_buf_t;
 
-#define uv_req_private_fields            \
+#define uv_req_private_fields             \
   union {                                 \
     /* Used by I/O operations */          \
     struct {                              \
@@ -50,51 +50,51 @@ typedef struct uv_buf_t {
     };                                    \
     /* Used by timers */                  \
     struct {                              \
-      RB_ENTRY(uv_req_s) tree_entry;     \
+      RB_ENTRY(uv_req_s) tree_entry;      \
       int64_t due;                        \
     };                                    \
   };                                      \
   int flags;
 
-#define uv_tcp_connection_fields         \
+#define uv_tcp_connection_fields          \
   void* read_cb;                          \
-  struct uv_req_s read_req;              \
+  struct uv_req_s read_req;               \
   unsigned int write_reqs_pending;        \
   uv_req_t* shutdown_req;
 
-#define uv_tcp_server_fields             \
+#define uv_tcp_server_fields              \
   void *accept_cb;                        \
   SOCKET accept_socket;                   \
-  struct uv_req_s accept_req;            \
+  struct uv_req_s accept_req;             \
   char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];
 
-#define uv_tcp_fields                    \
+#define uv_tcp_fields                     \
   unsigned int reqs_pending;              \
   union {                                 \
     SOCKET socket;                        \
     HANDLE handle;                        \
   };                                      \
   union {                                 \
-    struct { uv_tcp_connection_fields }; \
-    struct { uv_tcp_server_fields     }; \
+    struct { uv_tcp_connection_fields };  \
+    struct { uv_tcp_server_fields     };  \
   };
 
-#define uv_loop_fields                   \
-  uv_handle_t* loop_prev;                \
-  uv_handle_t* loop_next;                \
+#define uv_loop_fields                    \
+  uv_handle_t* loop_prev;                 \
+  uv_handle_t* loop_next;                 \
   void* loop_cb;
 
-#define uv_async_fields                  \
-  struct uv_req_s async_req;             \
+#define uv_async_fields                   \
+  struct uv_req_s async_req;              \
   /* char to avoid alignment issues */    \
   char volatile async_sent;
 
-#define uv_handle_private_fields         \
-  uv_handle_t* endgame_next;             \
+#define uv_handle_private_fields          \
+  uv_handle_t* endgame_next;              \
   unsigned int flags;                     \
-  uv_err_t error;                        \
+  uv_err_t error;                         \
   union {                                 \
-    struct { uv_tcp_fields  };           \
-    struct { uv_loop_fields };           \
-    struct { uv_async_fields };          \
+    struct { uv_tcp_fields  };            \
+    struct { uv_loop_fields };            \
+    struct { uv_async_fields };           \
   };
