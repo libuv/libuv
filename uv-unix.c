@@ -867,23 +867,6 @@ void uv_unref() {
 }
 
 
-void uv__timeout(EV_P_ ev_timer* watcher, int revents) {
-  uv_req_t* req = watcher->data;
-  assert(watcher == &req->timer);
-  assert(EV_TIMER & revents);
-
-  /* This watcher is not repeating. */
-  assert(!ev_is_active(watcher));
-  assert(!ev_is_pending(watcher));
-
-  if (req->cb) {
-    uv_timer_cb cb = req->cb;
-    /* TODO skew */
-    cb(req, 0, 0);
-  }
-}
-
-
 void uv_update_time() {
   ev_now_update(EV_DEFAULT_UC);
 }
@@ -891,14 +874,6 @@ void uv_update_time() {
 
 int64_t uv_now() {
   return (int64_t)(ev_now(EV_DEFAULT_UC) * 1000);
-}
-
-
-int uv_timeout(uv_req_t* req, int64_t timeout) {
-  ev_timer_init(&req->timer, uv__timeout, timeout / 1000.0, 0.0);
-  ev_timer_start(EV_DEFAULT_UC_ &req->timer);
-  req->timer.data = req;
-  return 0;
 }
 
 
@@ -1084,4 +1059,25 @@ int uv_async_init(uv_handle_t* handle, uv_async_cb async_cb,
 
 int uv_async_send(uv_handle_t* handle) {
   ev_async_send(EV_DEFAULT_UC_ &handle->async_watcher);
+}
+
+
+int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  assert(0 && "implement me");
+}
+
+
+int uv_timer_start(uv_handle_t* handle, uv_loop_cb cb, int64_t timeout,
+    int64_t repeat) {
+  assert(0 && "implement me");
+}
+
+
+int uv_timer_stop(uv_handle_t* handle) {
+  assert(0 && "implement me");
+}
+
+
+int uv_timer_again(uv_handle_t* handle) {
+  assert(0 && "implement me");
 }
