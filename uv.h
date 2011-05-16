@@ -58,7 +58,6 @@ typedef void (*uv_connect_cb)(uv_req_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_req_t* req, int status);
 typedef void (*uv_accept_cb)(uv_handle_t* handle);
 typedef void (*uv_close_cb)(uv_handle_t* handle, int status);
-typedef void (*uv_timer_cb)(uv_req_t* req, int64_t skew, int status);
 /* TODO: do loop_cb and async_cb really need a status argument? */
 typedef void (*uv_loop_cb)(uv_handle_t* handle, int status);
 typedef void (*uv_async_cb)(uv_handle_t* handle, int stats);
@@ -222,7 +221,10 @@ int uv_read_stop(uv_handle_t* handle);
 int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt);
 
 /* Timer methods */
-int uv_timeout(uv_req_t* req, int64_t timeout);
+int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data);
+int uv_timer_start(uv_handle_t* handle, uv_loop_cb cb, int64_t timeout, int64_t repeat);
+int uv_timer_stop(uv_handle_t* handle);
+int uv_timer_again(uv_handle_t* handle);
 
 /* libev wrapper. Every active prepare handle gets its callback called
  * exactly once per loop iteration, just before the system blocks to wait
