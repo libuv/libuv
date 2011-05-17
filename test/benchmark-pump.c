@@ -237,7 +237,7 @@ BENCHMARK_IMPL(pump) {
   uv_init(buf_alloc);
 
   /* Server */
-  server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  server_addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
   r = uv_bind(&server, (struct sockaddr*) &server_addr);
