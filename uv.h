@@ -108,6 +108,7 @@ typedef enum {
   UV_NAMED_PIPE,
   UV_TTY,
   UV_FILE,
+  UV_TIMER,
   UV_PREPARE,
   UV_CHECK,
   UV_IDLE,
@@ -122,7 +123,6 @@ typedef enum {
   UV_READ,
   UV_WRITE,
   UV_SHUTDOWN,
-  UV_TIMEOUT,
   UV_WAKEUP
 } uv_req_type;
 
