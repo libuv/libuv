@@ -75,6 +75,8 @@ static double gbit(int64_t bytes, int64_t passed_ms) {
 
 
 static void show_stats(uv_handle_t *handle, int status) {
+  int64_t diff;
+
 #if PRINT_STATS
   LOGF("connections: %d, read: %.1f gbit/s, write: %.1f gbit/s\n",
        read_sockets,
@@ -86,7 +88,7 @@ static void show_stats(uv_handle_t *handle, int status) {
   if (!--stats_left) {
 
     uv_update_time();
-    int64_t diff = uv_now() - start_time;
+    diff = uv_now() - start_time;
 
     LOGF("pump_%d: %.1f gbit/s\n", read_sockets,
         gbit(nrecv_total, diff));
