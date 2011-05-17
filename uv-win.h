@@ -48,11 +48,6 @@ typedef struct uv_buf_t {
       OVERLAPPED overlapped;              \
       size_t queued_bytes;                \
     };                                    \
-    /* Used by timers */                  \
-    struct {                              \
-      RB_ENTRY(uv_req_s) tree_entry;      \
-      int64_t due;                        \
-    };                                    \
   };                                      \
   int flags;
 
@@ -79,6 +74,12 @@ typedef struct uv_buf_t {
     struct { uv_tcp_server_fields     };  \
   };
 
+#define uv_timer_fields                   \
+  RB_ENTRY(uv_handle_s) tree_entry;       \
+  int64_t due;                            \
+  int64_t repeat;                         \
+  void* timer_cb;
+
 #define uv_loop_fields                    \
   uv_handle_t* loop_prev;                 \
   uv_handle_t* loop_next;                 \
@@ -95,6 +96,7 @@ typedef struct uv_buf_t {
   uv_err_t error;                         \
   union {                                 \
     struct { uv_tcp_fields  };            \
+    struct { uv_timer_fields };           \
     struct { uv_loop_fields };            \
     struct { uv_async_fields };           \
   };

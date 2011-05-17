@@ -141,9 +141,9 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 
 
 /* Binary tree used to keep the list of timers sorted. */
-static int uv_timer_compare(uv_req_t* t1, uv_req_t* t2);
-RB_HEAD(uv_timer_s, uv_req_s);
-RB_PROTOTYPE_STATIC(uv_timer_s, uv_req_s, tree_entry, uv_timer_compare);
+static int uv_timer_compare(uv_handle_t* handle1, uv_handle_t* handle2);
+RB_HEAD(uv_timer_s, uv_handle_s);
+RB_PROTOTYPE_STATIC(uv_timer_s, uv_handle_s, tree_entry, uv_timer_compare);
 
 /* The head of the timers tree */
 static struct uv_timer_s uv_timers_ = RB_INITIALIZER(uv_timers_);
@@ -538,6 +538,20 @@ static void uv_tcp_endgame(uv_handle_t* handle) {
 }
 
 
+static void uv_timer_endgame(uv_handle_t* handle) {
+  if (handle->flags & UV_HANDLE_CLOSING) {
+    assert(!(handle->flags & UV_HANDLE_CLOSED));
+    handle->flags |= UV_HANDLE_CLOSED;
+
+    if (handle->close_cb) {
+      handle->close_cb(handle, 0);
+    }
+
+    uv_refs_--;
+  }
+}
+
+
 static void uv_loop_endgame(uv_handle_t* handle) {
   if (handle->flags & UV_HANDLE_CLOSING) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
@@ -579,6 +593,10 @@ static void uv_call_endgames() {
     switch (handle->type) {
       case UV_TCP:
         uv_tcp_endgame(handle);
+        break;
+
+      case UV_TIMER:
+        uv_timer_endgame(handle);
         break;
 
       case UV_PREPARE:
@@ -624,6 +642,11 @@ static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
       if (handle->reqs_pending == 0) {
         uv_want_endgame(handle);
       }
+      return 0;
+
+    case UV_TIMER:
+      uv_timer_stop(handle);
+      uv_want_endgame(handle);
       return 0;
 
     case UV_PREPARE:
@@ -1167,7 +1190,7 @@ static void uv_tcp_return_req(uv_handle_t* handle, uv_req_t* req) {
 }
 
 
-static int uv_timer_compare(uv_req_t* a, uv_req_t* b) {
+static int uv_timer_compare(uv_handle_t* a, uv_handle_t* b) {
   if (a->due < b->due)
     return -1;
   if (a->due > b->due)
@@ -1180,22 +1203,48 @@ static int uv_timer_compare(uv_req_t* a, uv_req_t* b) {
 }
 
 
-RB_GENERATE_STATIC(uv_timer_s, uv_req_s, tree_entry, uv_timer_compare);
+RB_GENERATE_STATIC(uv_timer_s, uv_handle_s, tree_entry, uv_timer_compare);
 
 
-int uv_timeout(uv_req_t* req, int64_t timeout) {
-  assert(!(req->flags & UV_REQ_PENDING));
-
-  req->type = UV_TIMEOUT;
-
-  req->due = uv_now_ + timeout;
-  if (RB_INSERT(uv_timer_s, &uv_timers_, req) != NULL) {
-    uv_set_sys_error(ERROR_INVALID_DATA);
-    return -1;
-  }
+int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+  handle->type = UV_TIMER;
+  handle->close_cb = (void*) close_cb;
+  handle->data = data;
+  handle->flags = 0;
+  handle->error = uv_ok_;
 
   uv_refs_++;
-  req->flags |= UV_REQ_PENDING;
+
+  return 0;
+}
+
+
+int uv_timer_start(uv_handle_t* handle, uv_loop_cb timer_cb, int64_t timeout, int64_t repeat) {
+  if (handle->flags & UV_HANDLE_ACTIVE) {
+    RB_REMOVE(uv_timer_s, &uv_timers_, handle);
+  }
+
+  handle->timer_cb = (void*) timer_cb;
+  handle->due = uv_now_ + timeout;
+  handle->repeat = repeat;
+  handle->flags |= UV_HANDLE_ACTIVE;
+
+  if (RB_INSERT(uv_timer_s, &uv_timers_, handle) != NULL) {
+    uv_fatal_error(ERROR_INVALID_DATA, "RB_INSERT");
+  }
+
+  return 0;
+}
+
+
+int uv_timer_stop(uv_handle_t* handle) {
+  if (!(handle->flags & UV_HANDLE_ACTIVE))
+    return 0;
+
+  RB_REMOVE(uv_timer_s, &uv_timers_, handle);
+
+  handle->flags &= ~UV_HANDLE_ACTIVE;
+
   return 0;
 }
 
@@ -1439,9 +1488,9 @@ static void uv_poll() {
   uv_update_time();
 
   /* Check if there are any running timers */
-  req = RB_MIN(uv_timer_s, &uv_timers_);
-  if (req) {
-    delta = req->due - uv_now_;
+  handle = RB_MIN(uv_timer_s, &uv_timers_);
+  if (handle) {
+    delta = handle->due - uv_now_;
     if (delta >= UINT_MAX) {
       /* Can't have a timeout greater than UINT_MAX, and a timeout value of */
       /* UINT_MAX means infinite, so that's no good either. */
@@ -1469,13 +1518,26 @@ static void uv_poll() {
   uv_loop_invoke(uv_check_handles_);
 
   /* Call timer callbacks */
-  for (req = RB_MIN(uv_timer_s, &uv_timers_);
-       req != NULL && req->due <= uv_now_;
-       req = RB_MIN(uv_timer_s, &uv_timers_)) {
-    RB_REMOVE(uv_timer_s, &uv_timers_, req);
-    req->flags &= ~UV_REQ_PENDING;
-    uv_refs_--;
-    ((uv_timer_cb)req->cb)(req, req->due - uv_now_, 0);
+  for (handle = RB_MIN(uv_timer_s, &uv_timers_);
+       handle != NULL && handle->due <= uv_now_;
+       handle = RB_MIN(uv_timer_s, &uv_timers_)) {
+    RB_REMOVE(uv_timer_s, &uv_timers_, handle);
+
+    if (handle->repeat != 0) {
+      /* If it is a repeating timer, reschedule with repeat timeout. */
+      handle->due += handle->repeat;
+      if (handle->due < uv_now_) {
+        handle->due = uv_now_;
+      }
+      if (RB_INSERT(uv_timer_s, &uv_timers_, handle) != NULL) {
+        uv_fatal_error(ERROR_INVALID_DATA, "RB_INSERT");
+      }
+    } else {
+      /* If non-repeating, mark the timer as inactive. */
+      handle->flags &= ~UV_HANDLE_ACTIVE;
+    }
+
+    ((uv_loop_cb) handle->timer_cb)(handle, 0);
   }
 
   /* Only if a iocp package was dequeued... */
