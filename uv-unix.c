@@ -218,7 +218,13 @@ int uv_close(uv_handle_t* handle) {
 void uv_init(uv_alloc_cb cb) {
   assert(cb);
   alloc_cb = cb;
-  ev_default_loop(0);
+
+  // Initialize the default ev loop.
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+  ev_default_loop(EVBACKEND_KQUEUE);
+#else
+  ev_default_loop(EVFLAG_AUTO);
+#endif
 }
 
 
