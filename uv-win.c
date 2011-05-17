@@ -1249,6 +1249,26 @@ int uv_timer_stop(uv_handle_t* handle) {
 }
 
 
+int uv_timer_again(uv_handle_t* handle) {
+  if (handle->flags & UV_HANDLE_ACTIVE) {
+    RB_REMOVE(uv_timer_s, &uv_timers_, handle);
+    handle->flags &= ~UV_HANDLE_ACTIVE;
+  }
+
+  if (handle->repeat) {
+    handle->due = uv_now_ + handle->repeat;
+
+    if (RB_INSERT(uv_timer_s, &uv_timers_, handle) != NULL) {
+      uv_fatal_error(ERROR_INVALID_DATA, "RB_INSERT");
+    }
+
+    handle->flags |= UV_HANDLE_ACTIVE;
+  }
+
+  return 0;
+}
+
+
 void uv_update_time() {
   LARGE_INTEGER counter;
 
