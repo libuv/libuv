@@ -149,6 +149,10 @@ int uv_close(uv_handle_t* handle) {
       ev_async_stop(EV_DEFAULT_ &handle->async_watcher);
       break;
 
+    case UV_TIMER:
+      ev_timer_stop(EV_DEFAULT_ &handle->timer_watcher);
+      break;
+
     default:
       assert(0);
       return -1;
@@ -187,6 +191,9 @@ static void uv__handle_init(uv_handle_t* handle, uv_handle_type type,
 
   ev_init(&handle->next_watcher, uv__next);
   handle->next_watcher.data = handle;
+
+  /* Ref the loop until this handle is closed. See uv__finish_close. */
+  ev_ref(EV_DEFAULT_UC);
 }
 
 
@@ -425,6 +432,14 @@ void uv__finish_close(uv_handle_t* handle) {
     case UV_ASYNC:
       assert(!ev_is_active(&handle->async_watcher));
       break;
+
+    case UV_TIMER:
+      assert(!ev_is_active(&handle->timer_watcher));
+      break;
+
+    default:
+      assert(0);
+      break;
   }
 
   ev_idle_stop(EV_DEFAULT_ &handle->next_watcher);
@@ -432,6 +447,8 @@ void uv__finish_close(uv_handle_t* handle) {
   if (handle->close_cb) {
     handle->close_cb(handle, 0);
   }
+
+  ev_unref(EV_DEFAULT_UC);
 }
 
 
@@ -1062,22 +1079,39 @@ int uv_async_send(uv_handle_t* handle) {
 }
 
 
+static void uv__timer_cb(EV_P_ ev_timer* w, int revents) {
+  uv_handle_t* handle = (uv_handle_t*)(w->data);
+
+  if (handle->timer_cb) handle->timer_cb(handle, 0);
+}
+
+
 int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
-  assert(0 && "implement me");
+  uv__handle_init(handle, UV_TIMER, close_cb, data);
+
+  ev_init(&handle->timer_watcher, uv__timer_cb);
+  handle->timer_watcher.data = handle;
+
+  return 0;
 }
 
 
 int uv_timer_start(uv_handle_t* handle, uv_loop_cb cb, int64_t timeout,
     int64_t repeat) {
-  assert(0 && "implement me");
+  handle->timer_cb = cb;
+  ev_timer_set(&handle->timer_watcher, timeout / 1000.0, repeat / 1000.0);
+  ev_timer_start(EV_DEFAULT_UC_ &handle->timer_watcher);
+  return 0;
 }
 
 
 int uv_timer_stop(uv_handle_t* handle) {
-  assert(0 && "implement me");
+  ev_timer_stop(EV_DEFAULT_UC_ &handle->timer_watcher);
+  return 0;
 }
 
 
 int uv_timer_again(uv_handle_t* handle) {
-  assert(0 && "implement me");
+  ev_timer_again(EV_DEFAULT_UC_ &handle->timer_watcher);
+  return 0;
 }

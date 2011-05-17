@@ -111,7 +111,8 @@ typedef enum {
   UV_PREPARE,
   UV_CHECK,
   UV_IDLE,
-  UV_ASYNC
+  UV_ASYNC,
+  UV_TIMER
 } uv_handle_type;
 
 typedef enum {

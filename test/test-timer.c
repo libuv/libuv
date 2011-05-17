@@ -32,6 +32,8 @@ static int64_t start_time;
 
 
 static void once_close_cb(uv_handle_t* handle, int status) {
+  printf("ONCE_CLOSE_CB\n");
+
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -42,6 +44,8 @@ static void once_close_cb(uv_handle_t* handle, int status) {
 
 
 static void once_cb(uv_handle_t* handle, int status) {
+  printf("ONCE_CB %d\n", once_cb_called);
+
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -55,6 +59,8 @@ static void once_cb(uv_handle_t* handle, int status) {
 
 
 static void repeat_close_cb(uv_handle_t* handle, int status) {
+  printf("REPEAT_CLOSE_CB\n");
+
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -63,6 +69,8 @@ static void repeat_close_cb(uv_handle_t* handle, int status) {
 
 
 static void repeat_cb(uv_handle_t* handle, int status) {
+  printf("REPEAT_CB\n");
+
   ASSERT(handle != NULL);
   ASSERT(status == 0);
 
@@ -111,7 +119,7 @@ TEST_IMPL(timer) {
     ASSERT(r == 0);
   }
 
-  /* The 11th timer is a repeating timer that runs 5 times */
+  /* The 11th timer is a repeating timer that runs 4 times */
   r = uv_timer_init(&repeat, repeat_close_cb, NULL);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat, repeat_cb, 100, 100);
@@ -130,6 +138,7 @@ TEST_IMPL(timer) {
 
   ASSERT(once_cb_called == 10);
   ASSERT(once_close_cb_called == 10);
+  printf("repeat_cb_called %d\n", repeat_cb_called);
   ASSERT(repeat_cb_called == 5);
   ASSERT(repeat_close_cb_called == 1);
 

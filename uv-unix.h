@@ -72,7 +72,10 @@ typedef struct {
   uv_loop_cb idle_cb; \
 /* UV_ASYNC */ \
   ev_async async_watcher; \
-  uv_loop_cb async_cb;
+  uv_loop_cb async_cb; \
+/* UV_TIMER */ \
+  ev_timer timer_watcher; \
+  uv_loop_cb timer_cb;
 
 
 #endif /* UV_UNIX_H */
