@@ -150,6 +150,9 @@ int uv_close(uv_handle_t* handle) {
       break;
 
     case UV_TIMER:
+      if (ev_is_active(&handle->timer_watcher)) {
+        ev_ref(EV_DEFAULT_UC);
+      }
       ev_timer_stop(EV_DEFAULT_ &handle->timer_watcher);
       break;
 
@@ -1082,6 +1085,10 @@ int uv_async_send(uv_handle_t* handle) {
 static void uv__timer_cb(EV_P_ ev_timer* w, int revents) {
   uv_handle_t* handle = (uv_handle_t*)(w->data);
 
+  if (!ev_is_active(w)) {
+    ev_ref(EV_DEFAULT_UC);
+  }
+
   if (handle->timer_cb) handle->timer_cb(handle, 0);
 }
 
@@ -1098,14 +1105,23 @@ int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
 
 int uv_timer_start(uv_handle_t* handle, uv_loop_cb cb, int64_t timeout,
     int64_t repeat) {
+  if (ev_is_active(&handle->timer_watcher)) {
+    return -1;
+  }
+
   handle->timer_cb = cb;
   ev_timer_set(&handle->timer_watcher, timeout / 1000.0, repeat / 1000.0);
   ev_timer_start(EV_DEFAULT_UC_ &handle->timer_watcher);
+  ev_unref(EV_DEFAULT_UC);
   return 0;
 }
 
 
 int uv_timer_stop(uv_handle_t* handle) {
+  if (ev_is_active(&handle->timer_watcher)) {
+    ev_ref(EV_DEFAULT_UC);
+  }
+
   ev_timer_stop(EV_DEFAULT_UC_ &handle->timer_watcher);
   return 0;
 }
