@@ -155,6 +155,7 @@
     <ClCompile Include="..\test\runner.c" />
     <ClCompile Include="..\test\test-bind-error.c" />
     <ClCompile Include="..\test\test-tcp-writealot.c" />
+    <ClCompile Include="..\test\test-timer-again.c" />
     <ClCompile Include="..\test\test-timer.c" />
     <ClCompile Include="..\test\run-tests.c" />
   </ItemGroup>
