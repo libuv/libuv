@@ -1180,3 +1180,14 @@ int uv_timer_again(uv_handle_t* handle) {
   ev_timer_again(EV_DEFAULT_UC_ &handle->timer_watcher);
   return 0;
 }
+
+void uv_timer_set_repeat(uv_handle_t* handle, int64_t repeat) {
+  assert(handle->type == UV_TIMER);
+  handle->timer_watcher.repeat = repeat / 1000.0;
+}
+
+int64_t uv_timer_get_repeat(uv_handle_t* handle) {
+  assert(handle->type == UV_TIMER);
+  return (int64_t)(1000 * handle->timer_watcher.repeat);
+}
+

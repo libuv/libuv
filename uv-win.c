@@ -1278,13 +1278,14 @@ int uv_timer_again(uv_handle_t* handle) {
 }
 
 
-int uv_timer_set_repeat(uv_handle_t* handle, int64_t repeat) {
+void uv_timer_set_repeat(uv_handle_t* handle, int64_t repeat) {
+  assert(handle->type == UV_TIMER);
   handle->repeat = repeat;
-  return 0;
 }
 
 
 int64_t uv_timer_get_repeat(uv_handle_t* handle) {
+  assert(handle->type == UV_TIMER);
   return handle->repeat;
 }
 
