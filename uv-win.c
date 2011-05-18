@@ -1439,6 +1439,7 @@ int uv_idle_stop(uv_handle_t* handle) {
 
 int uv_is_active(uv_handle_t* handle) {
   switch (handle->type) {
+    case UV_TIMER:
     case UV_IDLE:
     case UV_PREPARE:
     case UV_CHECK:
