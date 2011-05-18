@@ -296,6 +296,7 @@ static uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_CONNECTION_REFUSED:          return UV_ECONNREFUSED;
     case WSAECONNREFUSED:                   return UV_ECONNREFUSED;
     case WSAEFAULT:                         return UV_EFAULT;
+    case ERROR_INVALID_DATA:                return UV_EINVAL;
     case WSAEINVAL:                         return UV_EINVAL;
     case ERROR_TOO_MANY_OPEN_FILES:         return UV_EMFILE;
     case WSAEMFILE:                         return UV_EMFILE;
@@ -1212,6 +1213,8 @@ int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
   handle->data = data;
   handle->flags = 0;
   handle->error = uv_ok_;
+  handle->timer_cb = NULL;
+  handle->repeat = 0;
 
   uv_refs_++;
 
@@ -1250,6 +1253,12 @@ int uv_timer_stop(uv_handle_t* handle) {
 
 
 int uv_timer_again(uv_handle_t* handle) {
+  /* If timer_cb is NULL that means that the timer was never started. */
+  if (!handle->timer_cb) {
+    uv_set_sys_error(ERROR_INVALID_DATA);
+    return -1;
+  }
+
   if (handle->flags & UV_HANDLE_ACTIVE) {
     RB_REMOVE(uv_timer_s, &uv_timers_, handle);
     handle->flags &= ~UV_HANDLE_ACTIVE;
@@ -1266,6 +1275,17 @@ int uv_timer_again(uv_handle_t* handle) {
   }
 
   return 0;
+}
+
+
+int uv_timer_set_repeat(uv_handle_t* handle, int64_t repeat) {
+  handle->repeat = repeat;
+  return 0;
+}
+
+
+int64_t uv_timer_get_repeat(uv_handle_t* handle) {
+  return handle->repeat;
 }
 
 

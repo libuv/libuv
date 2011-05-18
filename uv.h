@@ -224,7 +224,17 @@ int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt);
 int uv_timer_init(uv_handle_t* handle, uv_close_cb close_cb, void* data);
 int uv_timer_start(uv_handle_t* handle, uv_loop_cb cb, int64_t timeout, int64_t repeat);
 int uv_timer_stop(uv_handle_t* handle);
+/* Stop the timer, and if it is repeating restart it using the repeat value 
+ * as the timeout. If the timer has never been started before it returns -1 and
+ * sets the error to UV_EINVAL. */
 int uv_timer_again(uv_handle_t* handle);
+/* Set the repeat value. Note that if the repeat value is set from a timer
+ * callback it does not immediately take effect. If the timer was nonrepeating
+ * before, it will have been stopped. If it was repeating, then the old repeat
+ * value will have been used to schedule the next timeout.
+ */
+int uv_timer_set_repeat(uv_handle_t* handle, int64_t repeat);
+int64_t uv_timer_get_repeat(uv_handle_t* handle);
 
 /* libev wrapper. Every active prepare handle gets its callback called
  * exactly once per loop iteration, just before the system blocks to wait
