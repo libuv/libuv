@@ -50,7 +50,7 @@ static void repeat_1_cb(uv_handle_t* handle, int status) {
 
   ASSERT(uv_timer_get_repeat(handle) == 50);
 
-  LOGF("repeat_1_cb called after %ld ms\n", uv_now() - start_time);
+  LOGF("repeat_1_cb called after %ld ms\n", (long int)(uv_now() - start_time));
 
   repeat_1_cb_called++;
 
@@ -72,7 +72,7 @@ static void repeat_2_cb(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
   ASSERT(repeat_2_cb_allowed);
 
-  LOGF("repeat_2_cb called after %ld ms\n", uv_now() - start_time);
+  LOGF("repeat_2_cb called after %ld ms\n", (long int)(uv_now() - start_time));
 
   repeat_2_cb_called++;
 
@@ -137,7 +137,8 @@ TEST_IMPL(timer_again) {
   ASSERT(repeat_2_cb_called == 2);
   ASSERT(close_cb_called == 2);
 
-  LOGF("Test took %ld ms (expected ~700 ms)\n", uv_now() - start_time);
+  LOGF("Test took %ld ms (expected ~700 ms)\n",
+       (long int)(uv_now() - start_time));
   ASSERT(700 <= uv_now() - start_time);
 
   return 0;
