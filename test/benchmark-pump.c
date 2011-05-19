@@ -45,7 +45,8 @@ static uv_buf_t buf_alloc(uv_handle_t* handle, size_t size);
 static void buf_free(uv_buf_t uv_buf_t);
 
 
-static struct sockaddr_in server_addr;
+static struct sockaddr_in listen_addr;
+static struct sockaddr_in connect_addr;
 
 static int64_t start_time;
 
@@ -206,7 +207,7 @@ static void maybe_connect_some() {
   while (max_connect_socket < TARGET_CONNECTIONS &&
          max_connect_socket < write_sockets + MAX_SIMULTANEOUS_CONNECTS) {
     do_connect(&write_handles[max_connect_socket++],
-               (struct sockaddr*) &server_addr);
+               (struct sockaddr*) &connect_addr);
   }
 }
 
@@ -236,11 +237,13 @@ BENCHMARK_IMPL(pump) {
 
   uv_init(buf_alloc);
 
+  listen_addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+  connect_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+
   /* Server */
-  server_addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &server_addr);
+  r = uv_bind(&server, (struct sockaddr*) &listen_addr);
   ASSERT(r == 0);
   r = uv_listen(&server, TARGET_CONNECTIONS, accept_cb);
   ASSERT(r == 0);
