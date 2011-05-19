@@ -165,7 +165,7 @@ struct uv_handle_s {
  */
 uv_err_t uv_last_error();
 char* uv_strerror(uv_err_t err);
-const char* uv_err_tostr(uv_err_code code);
+const char* uv_err_name(uv_err_t err);
 
 void uv_init(uv_alloc_cb alloc);
 int uv_run();
