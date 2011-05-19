@@ -1177,6 +1177,11 @@ int uv_timer_stop(uv_handle_t* handle) {
 
 
 int uv_timer_again(uv_handle_t* handle) {
+  if (!ev_is_active(&handle->timer_watcher)) {
+    uv_err_new(handle, EINVAL);
+    return -1;
+  }
+
   ev_timer_again(EV_DEFAULT_UC_ &handle->timer_watcher);
   return 0;
 }
