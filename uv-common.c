@@ -22,6 +22,7 @@
 #include "uv.h"
 
 #include <assert.h>
+#include <stddef.h> /* NULL */
 
 
 const char* uv_err_name(uv_err_t err) {
