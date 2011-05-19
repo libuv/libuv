@@ -70,6 +70,7 @@ static void repeat_1_cb(uv_handle_t* handle, int status) {
 static void repeat_2_cb(uv_handle_t* handle, int status) {
   ASSERT(handle == &repeat_2);
   ASSERT(status == 0);
+  ASSERT(repeat_2_cb_allowed);
 
   LOGF("repeat_2_cb called after %ld ms\n", uv_now() - start_time);
 
