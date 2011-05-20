@@ -32,6 +32,11 @@ TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (timer)
 TEST_DECLARE   (timer_again)
 TEST_DECLARE   (loop_handles)
+TEST_DECLARE   (ref)
+TEST_DECLARE   (idle_ref)
+TEST_DECLARE   (async_ref)
+TEST_DECLARE   (prepare_ref)
+TEST_DECLARE   (check_ref)
 TEST_DECLARE   (async)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
@@ -65,6 +70,12 @@ TASK_LIST_START
 
   TEST_ENTRY  (timer_again)
 
+  TEST_ENTRY  (ref)
+  TEST_ENTRY  (idle_ref)
+  TEST_ENTRY  (async_ref)
+  TEST_ENTRY  (prepare_ref)
+  TEST_ENTRY  (check_ref)
+
   TEST_ENTRY  (loop_handles)
 
   TEST_ENTRY  (async)
@@ -75,3 +86,4 @@ TASK_LIST_START
   TEST_ENTRY  (pass_always)
 #endif
 TASK_LIST_END
+

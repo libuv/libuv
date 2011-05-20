@@ -384,3 +384,53 @@ TEST_IMPL(loop_handles) {
 
   return 0;
 }
+
+
+TEST_IMPL(ref) {
+  uv_init(alloc_cb);
+  uv_run();
+  return 0;
+}
+
+
+TEST_IMPL(idle_ref) {
+  uv_handle_t h;
+  uv_init(alloc_cb);
+  uv_idle_init(&h, NULL, NULL);
+  uv_idle_start(&h, NULL);
+  uv_unref(&h);
+  uv_run();
+  return 0;
+}
+
+
+TEST_IMPL(async_ref) {
+  uv_handle_t h;
+  uv_init(alloc_cb);
+  uv_async_init(&h, NULL, NULL, NULL);
+  uv_unref(&h);
+  uv_run();
+  return 0;
+}
+
+
+TEST_IMPL(prepare_ref) {
+  uv_handle_t h;
+  uv_init(alloc_cb);
+  uv_prepare_init(&h, NULL, NULL);
+  uv_prepare_start(&h, NULL);
+  uv_unref(&h);
+  uv_run();
+  return 0;
+}
+
+
+TEST_IMPL(check_ref) {
+  uv_handle_t h;
+  uv_init(alloc_cb);
+  uv_check_init(&h, NULL, NULL);
+  uv_check_start(&h, NULL);
+  uv_unref(&h);
+  uv_run();
+  return 0;
+}
