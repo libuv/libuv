@@ -31,7 +31,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <limits.h> /* PATH_MAX */
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h> /* _NSGetExecutablePath */
+#endif
 
 static uv_err_t last_err;
 static uv_alloc_cb alloc_cb;
@@ -1204,3 +1208,34 @@ int64_t uv_timer_get_repeat(uv_handle_t* handle) {
   return (int64_t)(1000 * handle->timer_watcher.repeat);
 }
 
+int uv_get_exepath(char* buffer, size_t* size) {
+  if (!buffer || !size) {
+    return -1;
+  }
+
+#if defined(__APPLE__)
+  uint32_t usize = *size;
+  int result = _NSGetExecutablePath(buffer, &usize);
+  if (result) return result;
+
+  char *path = (char*)malloc(2 * PATH_MAX);
+  char *fullpath = realpath(buffer, path);
+  if (fullpath == NULL) {
+    free(path);
+    return -1;
+  }
+
+  strncpy(buffer, fullpath, *size);
+  free(fullpath);
+  *size = strlen(buffer);
+  return 0;
+#elif defined(__linux__)
+  *size = readlink("/proc/self/exe", buffer, *size - 1);
+  if (*size <= 0) return -1;
+  buffer[*size] = '\0';
+  return 0;
+#else
+  assert(0 && "implement me");
+  /* Need to return argv[0] */
+#endif
+}

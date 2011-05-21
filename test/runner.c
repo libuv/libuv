@@ -24,6 +24,7 @@
 #include "runner.h"
 #include "task.h"
 
+char executable_path[PATHMAX] = { '\0' };
 
 /* Start a specific process declared by TEST_ENTRY or TEST_HELPER. */
 /* Returns the exit code of the specific process. */

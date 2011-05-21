@@ -291,6 +291,9 @@ int uv_close(uv_handle_t* handle);
 /* Utility */
 struct sockaddr_in uv_ip4_addr(char* ip, int port);
 
+/* Gets the executable path */
+int uv_get_exepath(char* buffer, size_t* size);
+
 #ifdef __cplusplus
 }
 #endif

@@ -37,10 +37,6 @@
 #include <sys/select.h>
 #include <pthread.h>
 
-#define PATHMAX 1024
-static char executable_path[PATHMAX] = { '\0' };
-
-
 #ifdef __APPLE__
 #include <mach-o/dyld.h> /* _NSGetExecutablePath */
 

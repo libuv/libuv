@@ -147,6 +147,7 @@
     <ClCompile Include="..\test\test-delayed-accept.c" />
     <ClCompile Include="..\test\test-callback-stack.c" />
     <ClCompile Include="..\test\test-connection-fail.c" />
+    <ClCompile Include="..\test\test-get-currentexe.c" />
     <ClCompile Include="..\test\test-fail-always.c" />
     <ClCompile Include="..\test\test-loop-handles.c" />
     <ClCompile Include="..\test\test-pass-always.c" />

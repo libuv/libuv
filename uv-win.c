@@ -1626,3 +1626,18 @@ void uv_ref() {
 void uv_unref() {
   uv_refs_--;
 }
+
+int uv_get_exepath(char* buffer, size_t* size) {
+  if (!buffer || !size) {
+    return -1;
+  }
+
+  *size = GetModuleFileName(NULL, buffer, *size - 1);
+  if (*size <= 0) {
+    uv_set_sys_error(GetLastError());
+    return -1;
+  }
+
+  buffer[*size] = '\0';
+  return 0;
+}
