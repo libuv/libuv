@@ -133,19 +133,20 @@ int uv_close(uv_handle_t* handle) {
       break;
 
     case UV_PREPARE:
-      ev_prepare_stop(EV_DEFAULT_ &handle->prepare_watcher);
+      uv_prepare_stop(handle);
       break;
 
     case UV_CHECK:
-      ev_check_stop(EV_DEFAULT_ &handle->check_watcher);
+      uv_check_stop(handle);
       break;
 
     case UV_IDLE:
-      ev_idle_stop(EV_DEFAULT_ &handle->idle_watcher);
+      uv_idle_stop(handle);
       break;
 
     case UV_ASYNC:
       ev_async_stop(EV_DEFAULT_ &handle->async_watcher);
+      ev_ref(EV_DEFAULT_UC);
       break;
 
     case UV_TIMER:
@@ -968,14 +969,28 @@ int uv_prepare_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
 
 
 int uv_prepare_start(uv_handle_t* handle, uv_loop_cb cb) {
+  int was_active = ev_is_active(&handle->prepare_watcher);
+
   handle->prepare_cb = cb;
+
   ev_prepare_start(EV_DEFAULT_UC_ &handle->prepare_watcher);
+
+  if (!was_active) {
+    ev_unref(EV_DEFAULT_UC);
+  }
+
   return 0;
 }
 
 
 int uv_prepare_stop(uv_handle_t* handle) {
+  int was_active = ev_is_active(&handle->prepare_watcher);
+
   ev_prepare_stop(EV_DEFAULT_UC_ &handle->prepare_watcher);
+
+  if (was_active) {
+    ev_ref(EV_DEFAULT_UC);
+  }
   return 0;
 }
 
@@ -1001,14 +1016,29 @@ int uv_check_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
 
 
 int uv_check_start(uv_handle_t* handle, uv_loop_cb cb) {
+  int was_active = ev_is_active(&handle->prepare_watcher);
+
   handle->check_cb = cb;
+
   ev_check_start(EV_DEFAULT_UC_ &handle->check_watcher);
+
+  if (!was_active) {
+    ev_unref(EV_DEFAULT_UC);
+  }
+
   return 0;
 }
 
 
 int uv_check_stop(uv_handle_t* handle) {
-  ev_prepare_stop(EV_DEFAULT_UC_ &handle->prepare_watcher);
+  int was_active = ev_is_active(&handle->check_watcher);
+
+  ev_check_stop(EV_DEFAULT_UC_ &handle->check_watcher);
+
+  if (was_active) {
+    ev_ref(EV_DEFAULT_UC);
+  }
+
   return 0;
 }
 
@@ -1034,14 +1064,28 @@ int uv_idle_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
 
 
 int uv_idle_start(uv_handle_t* handle, uv_loop_cb cb) {
+  int was_active = ev_is_active(&handle->idle_watcher);
+
   handle->idle_cb = cb;
   ev_idle_start(EV_DEFAULT_UC_ &handle->idle_watcher);
+
+  if (!was_active) {
+    ev_unref(EV_DEFAULT_UC);
+  }
+
   return 0;
 }
 
 
 int uv_idle_stop(uv_handle_t* handle) {
+  int was_active = ev_is_active(&handle->idle_watcher);
+
   ev_idle_stop(EV_DEFAULT_UC_ &handle->idle_watcher);
+
+  if (was_active) {
+    ev_ref(EV_DEFAULT_UC);
+  }
+
   return 0;
 }
 
@@ -1077,6 +1121,7 @@ int uv_async_init(uv_handle_t* handle, uv_async_cb async_cb,
 
   /* Note: This does not have symmetry with the other libev wrappers. */
   ev_async_start(EV_DEFAULT_UC_ &handle->async_watcher);
+  ev_unref(EV_DEFAULT_UC);
 
   return 0;
 }

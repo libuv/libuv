@@ -270,7 +270,7 @@ static void prepare_2_cb(uv_handle_t* handle, int status) {
 }
 
 
-static void prepare_2_close_cb(uv_handle_t* handle, int status){
+static void prepare_2_close_cb(uv_handle_t* handle, int status) {
   LOG("PREPARE_2_CLOSE_CB\n");
   ASSERT(handle == &prepare_2_handle);
   ASSERT(status == 0);
