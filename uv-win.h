@@ -100,3 +100,6 @@ typedef struct uv_buf_t {
     struct { uv_loop_fields };            \
     struct { uv_async_fields };           \
   };
+
+
+int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, size_t utf8Size);

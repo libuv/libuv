@@ -1627,17 +1627,50 @@ void uv_unref() {
   uv_refs_--;
 }
 
+
+int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, size_t utf8Size) {
+  return WideCharToMultiByte(CP_UTF8, 0, utf16Buffer, utf16Size, utf8Buffer, utf8Size, NULL, NULL);
+}
+
+
 int uv_get_exepath(char* buffer, size_t* size) {
   if (!buffer || !size) {
     return -1;
   }
 
-  *size = GetModuleFileName(NULL, buffer, *size - 1);
-  if (*size <= 0) {
+  int retVal;
+  size_t utf16Size;
+  wchar_t* utf16Buffer = (wchar_t*)malloc(sizeof(wchar_t) * *size);
+  if (!utf16Buffer) {
+    retVal = -1;
+    goto done;
+  }
+
+  /* Get the path as UTF-16 */
+  utf16Size = GetModuleFileNameW(NULL, utf16Buffer, *size - 1);
+  if (utf16Size <= 0) {
     uv_set_sys_error(GetLastError());
-    return -1;
+    retVal = -1;
+    goto done;
+  }
+
+  utf16Buffer[utf16Size] = L'\0';
+
+  /* Convert to UTF-8 */
+  *size = uv_utf16_to_utf8(utf16Buffer, utf16Size, buffer, *size);
+  if (!*size) {
+    uv_set_sys_error(GetLastError());
+    retVal = -1;
+    goto done;
   }
 
   buffer[*size] = '\0';
-  return 0;
+  retVal = 0;
+
+done:
+  if (utf16Buffer) {
+    free(utf16Buffer);
+  }
+
+  return retVal;
 }
