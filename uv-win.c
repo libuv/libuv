@@ -1634,13 +1634,15 @@ int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, s
 
 
 int uv_get_exepath(char* buffer, size_t* size) {
+  int retVal;
+  size_t utf16Size;
+  wchar_t* utf16Buffer;
+
   if (!buffer || !size) {
     return -1;
   }
 
-  int retVal;
-  size_t utf16Size;
-  wchar_t* utf16Buffer = (wchar_t*)malloc(sizeof(wchar_t) * *size);
+  utf16Buffer = (wchar_t*)malloc(sizeof(wchar_t) * *size);
   if (!utf16Buffer) {
     retVal = -1;
     goto done;
