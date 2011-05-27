@@ -31,6 +31,7 @@ typedef struct {
 } write_req_t;
 
 
+static int server_closed;
 static uv_handle_t server;
 
 
@@ -58,11 +59,13 @@ static void after_write(uv_req_t* req, int status) {
 
 
 static void after_shutdown(uv_req_t* req, int status) {
+  uv_close(req->handle); /* XXX Is the uv_close necessary??? */
   free(req);
 }
 
 
 static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf) {
+  int i;
   write_req_t *wr;
   uv_req_t* req;
 
@@ -85,6 +88,16 @@ static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf) {
     /* Everything OK, but nothing read. */
     free(buf.base);
     return;
+  }
+
+  /* Scan for the letter Q which signals that we should quit. */
+  if (!server_closed) {
+    for (i = 0; i < nread; i++) {
+      if (buf.base[i] == 'Q') {
+        uv_close(&server);
+        server_closed = 1;
+      }
+    }
   }
 
   wr = (write_req_t*) malloc(sizeof *wr);
@@ -151,11 +164,6 @@ static int echo_start(int port) {
 }
 
 
-static int echo_stop() {
-  return uv_close(&server);
-}
-
-
 static uv_buf_t echo_alloc(uv_handle_t* handle, size_t suggested_size) {
   uv_buf_t buf;
   buf.base = (char*) malloc(suggested_size);
@@ -169,7 +177,6 @@ HELPER_IMPL(echo_server) {
   if (echo_start(TEST_PORT))
     return 1;
 
-  fprintf(stderr, "Listening!\n");
   uv_run();
   return 0;
 }
