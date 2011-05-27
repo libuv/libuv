@@ -76,6 +76,9 @@ int run_task(task_entry_t *test, int timeout, int benchmark_output) {
     }
   }
 
+  /* Wait a little bit to allow servers to start. Racy. */
+  usleep(50);
+
   /* Start the main test process. */
   if (process_start(test->process_name, &processes[process_count]) == -1) {
     snprintf((char*)&errmsg, sizeof(errmsg), "process `%s` failed to start.",
