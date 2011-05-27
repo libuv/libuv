@@ -1020,7 +1020,7 @@ int uv_check_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
 
 
 int uv_check_start(uv_handle_t* handle, uv_loop_cb cb) {
-  int was_active = ev_is_active(&handle->prepare_watcher);
+  int was_active = ev_is_active(&handle->check_watcher);
 
   handle->check_cb = cb;
 
