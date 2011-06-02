@@ -59,7 +59,7 @@ static void after_write(uv_req_t* req, int status) {
 
 
 static void after_shutdown(uv_req_t* req, int status) {
-  uv_close(req->handle); /* XXX Is the uv_close necessary??? */
+  uv_close(req->handle);
   free(req);
 }
 

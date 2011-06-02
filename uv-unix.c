@@ -343,7 +343,10 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
         return;
       } else {
         uv_err_new((uv_handle_t*)tcp, errno);
-        uv_close((uv_handle_t*)tcp);
+        /*
+         * XXX TODO how do we report this error to the user?  What errors
+         * are possible here?
+         */
       }
 
     } else {
@@ -516,9 +519,8 @@ static void uv__drain(uv_tcp_t* tcp) {
     uv_shutdown_cb cb = req->cb;
 
     if (shutdown(tcp->fd, SHUT_WR)) {
-      /* Error. Nothing we can do, close the tcp. */
+      /* Error. Report it. User should call uv_close(). */
       uv_err_new((uv_handle_t*)tcp, errno);
-      uv_close((uv_handle_t*)tcp);
       if (cb) cb(req, -1);
     } else {
       uv_err_new((uv_handle_t*)tcp, 0);
@@ -562,9 +564,6 @@ void uv__write(uv_tcp_t* tcp) {
   if (n < 0) {
     if (errno != EAGAIN) {
       uv_err_t err = uv_err_new((uv_handle_t*)tcp, errno);
-
-      /* XXX How do we tcp the error? Need test coverage here. */
-      uv_close((uv_handle_t*)tcp);
 
       if (cb) {
         cb(req, -1);
@@ -662,8 +661,8 @@ void uv__read(uv_tcp_t* tcp) {
         tcp->read_cb(tcp, 0, buf);
         return;
       } else {
+        /* Error. User should call uv_close(). */
         uv_err_new((uv_handle_t*)tcp, errno);
-        uv_close((uv_handle_t*)tcp);
         tcp->read_cb(tcp, -1, buf);
         assert(!ev_is_active(&tcp->read_watcher));
         return;
@@ -673,10 +672,6 @@ void uv__read(uv_tcp_t* tcp) {
       uv_err_new_artificial((uv_handle_t*)tcp, UV_EOF);
       ev_io_stop(EV_DEFAULT_UC_ &tcp->read_watcher);
       tcp->read_cb(tcp, -1, buf);
-
-      if (uv_flag_is_set((uv_handle_t*)tcp, UV_SHUT)) {
-        uv_close((uv_handle_t*)tcp);
-      }
       return;
     } else {
       /* Successful read */
@@ -780,8 +775,6 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
     if (connect_cb) {
       connect_cb(req, -1);
     }
-
-    uv_close((uv_handle_t*)tcp);
   }
 }
 

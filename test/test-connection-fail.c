@@ -31,6 +31,10 @@ static uv_req_t req;
 static int connect_cb_calls;
 static int close_cb_calls;
 
+static uv_timer_t timer;
+static int timer_close_cb_calls;
+static int timer_cb_calls;
+
 
 static void on_close(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
@@ -38,19 +42,56 @@ static void on_close(uv_handle_t* handle, int status) {
 }
 
 
-static void on_connect(uv_req_t *req, int status) {
+static void timer_close_cb(uv_handle_t* handle, int status) {
+  ASSERT(status == 0);
+  timer_close_cb_calls++;
+}
+
+
+static void timer_cb(uv_handle_t* handle, int status) {
+  ASSERT(status == 0);
+  timer_cb_calls++;
+
+  /*
+   * These are the important asserts. The connection callback has been made,
+   * but libuv hasn't automatically closed the socket. The user must
+   * uv_close the handle manually.
+   */
+  ASSERT(close_cb_calls == 0);
+  ASSERT(connect_cb_calls == 1);
+
+  /* Close the tcp handle. */
+  uv_close((uv_handle_t*)&tcp);
+
+  /* Close the timer. */
+  uv_close(handle);
+}
+
+
+static void on_connect_with_close(uv_req_t *req, int status) {
   ASSERT(status == -1);
   ASSERT(uv_last_error().code == UV_ECONNREFUSED);
   connect_cb_calls++;
+
+  ASSERT(close_cb_calls == 0);
   uv_close(req->handle);
 }
 
 
-TEST_IMPL(connection_fail) {
+static void on_connect_without_close(uv_req_t *req, int status) {
+  ASSERT(status == -1);
+  ASSERT(uv_last_error().code == UV_ECONNREFUSED);
+  connect_cb_calls++;
+
+  uv_timer_start(&timer, timer_cb, 100, 0);
+
+  ASSERT(close_cb_calls == 0);
+}
+
+
+void connection_fail(uv_connect_cb connect_cb) {
   struct sockaddr_in client_addr, server_addr;
   int r;
-
-  uv_init();
 
   client_addr = uv_ip4_addr("0.0.0.0", 0);
 
@@ -63,7 +104,7 @@ TEST_IMPL(connection_fail) {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  uv_req_init(&req, (uv_handle_t*)&tcp, on_connect);
+  uv_req_init(&req, (uv_handle_t*)&tcp, connect_cb);
 
   uv_bind(&tcp, client_addr);
   r = uv_connect(&req, server_addr);
@@ -73,6 +114,39 @@ TEST_IMPL(connection_fail) {
 
   ASSERT(connect_cb_calls == 1);
   ASSERT(close_cb_calls == 1);
+}
+
+
+/*
+ * This test attempts to connect to a port where no server is running. We
+ * expect an error.
+ */
+TEST_IMPL(connection_fail) {
+  uv_init();
+
+  connection_fail(on_connect_with_close);
+
+  ASSERT(timer_close_cb_calls == 0);
+  ASSERT(timer_cb_calls == 0);
+
+  return 0;
+}
+
+
+/*
+ * This test is the same as the first except it check that the close
+ * callback of the tcp handle hasn't been made after the failed connection
+ * attempt.
+ */
+TEST_IMPL(connection_fail_doesnt_auto_close) {
+  uv_init();
+
+  uv_timer_init(&timer, timer_close_cb, NULL);
+
+  connection_fail(on_connect_without_close);
+
+  ASSERT(timer_close_cb_calls == 1);
+  ASSERT(timer_cb_calls == 1);
 
   return 0;
 }

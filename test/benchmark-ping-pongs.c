@@ -47,7 +47,7 @@ typedef struct buf_s {
 static char PING[] = "PING\n";
 
 static buf_t* buf_freelist = NULL;
-
+static int pinger_shutdown_cb_called;
 static int completed_pingers = 0;
 static int64_t start_time;
 
@@ -117,6 +117,13 @@ static void pinger_write_ping(pinger_t* pinger) {
 
 static void pinger_shutdown_cb(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
+  pinger_shutdown_cb_called++;
+
+  /*
+   * The close callback has not been triggered yet. We must wait for EOF
+   * until we close the connection.
+   */
+  ASSERT(completed_pingers == 0);
 }
 
 
@@ -133,6 +140,9 @@ static void pinger_read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
       buf_free(buf);
     }
 
+    ASSERT(pinger_shutdown_cb_called == 1);
+    uv_close((uv_handle_t*)tcp);
+
     return;
   }
 
@@ -146,7 +156,6 @@ static void pinger_read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
         uv_req_init(&pinger->shutdown_req, (uv_handle_t*)tcp, pinger_shutdown_cb);
         uv_shutdown(&pinger->shutdown_req);
         break;
-        return;
       } else {
         pinger_write_ping(pinger);
       }
