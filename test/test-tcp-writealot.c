@@ -184,7 +184,7 @@ TEST_IMPL(tcp_writealot) {
   ASSERT(r == 0);
 
   uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);
-  r = uv_connect(connect_req, (struct sockaddr*)&addr);
+  r = uv_connect(connect_req, addr);
   ASSERT(r == 0);
 
   uv_run();

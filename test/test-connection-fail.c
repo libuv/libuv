@@ -72,8 +72,8 @@ TEST_IMPL(connection_fail) {
   /* so these handles can be pre-initialized. */
   uv_req_init(&req, (uv_handle_t*)&tcp, on_connect);
 
-  uv_bind(&tcp, (struct sockaddr*)&client_addr);
-  r = uv_connect(&req, (struct sockaddr*)&server_addr);
+  uv_bind(&tcp, client_addr);
+  r = uv_connect(&req, server_addr);
   ASSERT(!r);
 
   uv_run();

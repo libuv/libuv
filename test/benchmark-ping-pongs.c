@@ -189,8 +189,8 @@ static void pinger_new() {
   uv_req_init(&pinger->connect_req, (uv_handle_t*)&pinger->tcp,
       pinger_connect_cb);
 
-  uv_bind(&pinger->tcp, (struct sockaddr*)&client_addr);
-  r = uv_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
+  uv_bind(&pinger->tcp, client_addr);
+  r = uv_connect(&pinger->connect_req, server_addr);
   ASSERT(!r);
 }
 

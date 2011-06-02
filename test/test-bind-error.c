@@ -52,12 +52,12 @@ TEST_IMPL(bind_error_addrinuse) {
 
   r = uv_tcp_init(&server1, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server1, (struct sockaddr*) &addr);
+  r = uv_bind(&server1, addr);
   ASSERT(r == 0);
 
   r = uv_tcp_init(&server2, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server2, (struct sockaddr*) &addr);
+  r = uv_bind(&server2, addr);
   ASSERT(r == 0);
 
   r = uv_listen(&server1, 128, NULL);
@@ -87,7 +87,7 @@ TEST_IMPL(bind_error_addrnotavail_1) {
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &addr);
+  r = uv_bind(&server, addr);
 
   /* It seems that Linux is broken here - bind succeeds. */
   if (r == -1) {
@@ -113,7 +113,7 @@ TEST_IMPL(bind_error_addrnotavail_2) {
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &addr);
+  r = uv_bind(&server, addr);
   ASSERT(r == -1);
   ASSERT(uv_last_error().code == UV_EADDRNOTAVAIL);
 
@@ -129,14 +129,17 @@ TEST_IMPL(bind_error_addrnotavail_2) {
 
 TEST_IMPL(bind_error_fault) {
   char garbage[] = "blah blah blah blah blah blah blah blah blah blah blah blah";
+  struct sockaddr_in* garbage_addr;
   uv_tcp_t server;
   int r;
+
+  garbage_addr = (struct sockaddr_in*) &garbage;
 
   uv_init(alloc_cb);
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &garbage);
+  r = uv_bind(&server, *garbage_addr);
   ASSERT(r == -1);
 
   ASSERT(uv_last_error().code == UV_EFAULT);
@@ -162,9 +165,9 @@ TEST_IMPL(bind_error_inval) {
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &addr1);
+  r = uv_bind(&server, addr1);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &addr2);
+  r = uv_bind(&server, addr2);
   ASSERT(r == -1);
 
   ASSERT(uv_last_error().code == UV_EINVAL);

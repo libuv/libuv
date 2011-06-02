@@ -193,7 +193,7 @@ TEST_IMPL(callback_stack) {
 
   nested++;
   uv_req_init(&connect_req, (uv_handle_t*)&client, connect_cb);
-  if (uv_connect(&connect_req, (struct sockaddr*) &addr)) {
+  if (uv_connect(&connect_req, addr)) {
     FATAL("uv_connect failed");
   }
   nested--;

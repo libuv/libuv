@@ -244,13 +244,14 @@ int uv_tcp_init(uv_tcp_t* tcp, uv_close_cb close_cb, void* data) {
 }
 
 
-int uv_bind(uv_tcp_t* tcp, struct sockaddr* addr) {
-  int addrsize;
-  int domain;
+int uv_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
+  int addrsize = sizeof(struct sockaddr_in);
+  int domain = AF_INET;
   int r;
 
   if (tcp->fd <= 0) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
+
     if (fd < 0) {
       uv_err_new((uv_handle_t*)tcp, errno);
       return -1;
@@ -264,18 +265,12 @@ int uv_bind(uv_tcp_t* tcp, struct sockaddr* addr) {
 
   assert(tcp->fd >= 0);
 
-  if (addr->sa_family == AF_INET) {
-    addrsize = sizeof(struct sockaddr_in);
-    domain = AF_INET;
-  } else if (addr->sa_family == AF_INET6) {
-    addrsize = sizeof(struct sockaddr_in6);
-    domain = AF_INET6;
-  } else {
+  if (addr.sin_family != AF_INET) {
     uv_err_new((uv_handle_t*)tcp, EFAULT);
     return -1;
   }
 
-  r = bind(tcp->fd, addr, addrsize);
+  r = bind(tcp->fd, (struct sockaddr*) &addr, addrsize);
   tcp->delayed_error = 0;
 
   if (r) {
@@ -794,11 +789,12 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
 }
 
 
-int uv_connect(uv_req_t* req, struct sockaddr* addr) {
+int uv_connect(uv_req_t* req, struct sockaddr_in addr) {
   uv_tcp_t* tcp = (uv_tcp_t*)req->handle;
 
   if (tcp->fd <= 0) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
+
     if (fd < 0) {
       uv_err_new((uv_handle_t*)tcp, errno);
       return -1;
@@ -826,8 +822,9 @@ int uv_connect(uv_req_t* req, struct sockaddr* addr) {
   tcp->connect_req = req;
 
   int addrsize = sizeof(struct sockaddr_in);
+  assert(addr.sin_family == AF_INET);
 
-  int r = connect(tcp->fd, addr, addrsize);
+  int r = connect(tcp->fd, (struct sockaddr*)&addr, addrsize);
   tcp->delayed_error = 0;
 
   if (r != 0 && errno != EINPROGRESS) {

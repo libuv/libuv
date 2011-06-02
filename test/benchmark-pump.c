@@ -244,7 +244,7 @@ static void maybe_connect_some() {
 
     req = req_alloc();
     uv_req_init(req, (uv_handle_t*)tcp, connect_cb);
-    r = uv_connect(req, (struct sockaddr*) &connect_addr);
+    r = uv_connect(req, connect_addr);
     ASSERT(r == 0);
   }
 }
@@ -351,7 +351,7 @@ HELPER_IMPL(pump_server) {
   /* Server */
   r = uv_tcp_init(&server, NULL, NULL);
   ASSERT(r == 0);
-  r = uv_bind(&server, (struct sockaddr*) &listen_addr);
+  r = uv_bind(&server, listen_addr);
   ASSERT(r == 0);
   r = uv_listen(&server, MAX_WRITE_HANDLES, accept_cb);
   ASSERT(r == 0);

@@ -697,20 +697,19 @@ struct sockaddr_in uv_ip4_addr(char* ip, int port) {
 }
 
 
-int uv_bind(uv_tcp_t* handle, struct sockaddr* addr) {
-  int addrsize;
+int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   DWORD err;
+	int r;
+  int addrsize = sizeof(struct sockaddr_in);
 
-  if (addr->sa_family == AF_INET) {
-    addrsize = sizeof(struct sockaddr_in);
-  } else if (addr->sa_family == AF_INET6) {
-    addrsize = sizeof(struct sockaddr_in6);
-  } else {
+  if (addr.sin_family != AF_INET) {
     uv_set_sys_error(WSAEFAULT);
     return -1;
   }
 
-  if (bind(handle->socket, addr, addrsize) == SOCKET_ERROR) {
+	r = bind(handle->socket, (struct sockaddr*) &addr, addrsize);
+
+  if (r == SOCKET_ERROR) {
     err = WSAGetLastError();
     if (err == WSAEADDRINUSE) {
       /* Some errors are not to be reported until connect() or listen() */
@@ -902,8 +901,8 @@ int uv_read_stop(uv_tcp_t* handle) {
 }
 
 
-int uv_connect(uv_req_t* req, struct sockaddr* addr) {
-  int addrsize;
+int uv_connect(uv_req_t* req, struct sockaddr_in addr) {
+  int addrsize = sizeof(struct sockaddr_in);
   BOOL success;
   DWORD bytes;
   uv_tcp_t* handle = (uv_tcp_t*)req->handle;
@@ -915,25 +914,20 @@ int uv_connect(uv_req_t* req, struct sockaddr* addr) {
     return -1;
   }
 
-  if (addr->sa_family == AF_INET) {
-    addrsize = sizeof(struct sockaddr_in);
-    if (!(handle->flags & UV_HANDLE_BOUND) &&
-        uv_bind(handle, (struct sockaddr*)&uv_addr_ip4_any_) < 0)
-      return -1;
-  } else if (addr->sa_family == AF_INET6) {
-    addrsize = sizeof(struct sockaddr_in6);
-    assert(0);
-    return -1;
-  } else {
-    assert(0);
+  if (addr.sin_family != AF_INET) {
+    uv_set_sys_error(WSAEFAULT);
     return -1;
   }
+
+	if (!(handle->flags & UV_HANDLE_BOUND) &&
+			uv_bind(handle, uv_addr_ip4_any_) < 0)
+		return -1;
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = UV_CONNECT;
 
   success = pConnectEx(handle->socket,
-                       addr,
+                       (struct sockaddr*)&addr,
                        addrsize,
                        NULL,
                        0,

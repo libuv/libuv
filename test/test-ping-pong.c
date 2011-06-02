@@ -152,7 +152,7 @@ static void pinger_new() {
   uv_req_init(&pinger->connect_req, (uv_handle_t*)(&pinger->tcp),
       pinger_on_connect);
 
-  r = uv_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
+  r = uv_connect(&pinger->connect_req, server_addr);
   ASSERT(!r);
 }
 

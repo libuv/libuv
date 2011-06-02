@@ -101,7 +101,7 @@ static void start_server() {
   r = uv_tcp_init(server, close_cb, NULL);
   ASSERT(r == 0);
 
-  r = uv_bind(server, (struct sockaddr*) &addr);
+  r = uv_bind(server, addr);
   ASSERT(r == 0);
 
   r = uv_listen(server, 128, accept_cb);
@@ -153,7 +153,7 @@ static void client_connect() {
   ASSERT(r == 0);
 
   uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);
-  r = uv_connect(connect_req, (struct sockaddr*)&addr);
+  r = uv_connect(connect_req, addr);
   ASSERT(r == 0);
 }
 

@@ -146,7 +146,7 @@ static int echo_start(int port) {
     return 1;
   }
 
-  r = uv_bind(&server, (struct sockaddr*) &addr);
+  r = uv_bind(&server, addr);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Bind error\n");
