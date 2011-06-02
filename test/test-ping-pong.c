@@ -48,6 +48,14 @@ typedef struct {
 void pinger_try_read(pinger_t* pinger);
 
 
+static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+  uv_buf_t buf;
+  buf.base = (char*)malloc(size);
+  buf.len = size;
+  return buf;
+}
+
+
 static void pinger_on_close(uv_handle_t* handle, int status) {
   pinger_t* pinger = (pinger_t*)handle->data;
 
@@ -130,7 +138,7 @@ static void pinger_on_connect(uv_req_t *req, int status) {
 
   pinger_write_ping(pinger);
 
-  uv_read_start((uv_tcp_t*)(req->handle), pinger_read_cb);
+  uv_read_start((uv_tcp_t*)(req->handle), alloc_cb, pinger_read_cb);
 }
 
 
@@ -157,16 +165,8 @@ static void pinger_new() {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t buf;
-  buf.base = (char*)malloc(size);
-  buf.len = size;
-  return buf;
-}
-
-
 TEST_IMPL(ping_pong) {
-  uv_init(alloc_cb);
+  uv_init();
 
   pinger_new();
   uv_run();

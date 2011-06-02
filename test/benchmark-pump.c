@@ -261,7 +261,7 @@ static void accept_cb(uv_tcp_t* s) {
   r = uv_accept(s, tcp, read_sockets_close_cb, NULL);
   ASSERT(r == 0);
 
-  r = uv_read_start(tcp, read_cb);
+  r = uv_read_start(tcp, buf_alloc, read_cb);
   ASSERT(r == 0);
 
   read_sockets++;
@@ -345,7 +345,7 @@ static void buf_free(uv_buf_t uv_buf_t) {
 HELPER_IMPL(pump_server) {
   int r;
 
-  uv_init(buf_alloc);
+  uv_init();
   listen_addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
 
   /* Server */
@@ -368,7 +368,7 @@ void pump(int n) {
   ASSERT(n <= MAX_WRITE_HANDLES);
   TARGET_CONNECTIONS = n;
 
-  uv_init(buf_alloc);
+  uv_init();
 
   connect_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 

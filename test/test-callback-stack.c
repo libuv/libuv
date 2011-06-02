@@ -43,6 +43,15 @@ static int bytes_received = 0;
 static int shutdown_cb_called = 0;
 
 
+static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+  uv_buf_t buf;
+  buf.len = size;
+  buf.base = (char*) malloc(size);
+  ASSERT(buf.base);
+  return buf;
+}
+
+
 static void close_cb(uv_handle_t* handle, int status) {
   ASSERT(status == 0);
   ASSERT(nested == 0 && "close_cb must be called from a fresh stack");
@@ -111,7 +120,7 @@ static void timer_cb(uv_handle_t* handle, int status) {
   puts("Timeout complete. Now read data...");
 
   nested++;
-  if (uv_read_start(&client, read_cb)) {
+  if (uv_read_start(&client, alloc_cb, read_cb)) {
     FATAL("uv_read_start failed");
   }
   nested--;
@@ -171,19 +180,10 @@ static void connect_cb(uv_req_t* req, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t buf;
-  buf.len = size;
-  buf.base = (char*) malloc(size);
-  ASSERT(buf.base);
-  return buf;
-}
-
-
 TEST_IMPL(callback_stack) {
   struct sockaddr_in addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
-  uv_init(alloc_cb);
+  uv_init();
 
   if (uv_tcp_init(&client, &close_cb, NULL)) {
     FATAL("uv_tcp_init failed");

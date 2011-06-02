@@ -52,6 +52,7 @@ typedef struct uv_buf_t {
   int flags;
 
 #define uv_tcp_connection_fields          \
+  uv_alloc_cb alloc_cb;                   \
   void* read_cb;                          \
   struct uv_req_s read_req;               \
   unsigned int write_reqs_pending;        \

@@ -33,6 +33,14 @@ static int close_cb_called = 0;
 static int connect_cb_called = 0;
 
 
+static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+  uv_buf_t buf;
+  buf.base = (char*)malloc(size);
+  buf.len = size;
+  return buf;
+}
+
+
 static void close_cb(uv_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
@@ -131,7 +139,7 @@ static void connect_cb(uv_req_t* req, int status) {
 
   /* Not that the server will send anything, but otherwise we'll never know */
   /* when te server closes the connection. */
-  r = uv_read_start((uv_tcp_t*)(req->handle), read_cb);
+  r = uv_read_start((uv_tcp_t*)(req->handle), alloc_cb, read_cb);
   ASSERT(r == 0);
 
   connect_cb_called++;
@@ -158,17 +166,9 @@ static void client_connect() {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t buf;
-  buf.base = (char*)malloc(size);
-  buf.len = size;
-  return buf;
-}
-
-
 
 TEST_IMPL(delayed_accept) {
-  uv_init(alloc_cb);
+  uv_init();
 
   start_server();
 

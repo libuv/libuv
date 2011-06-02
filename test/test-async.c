@@ -120,13 +120,6 @@ static void close_cb(uv_handle_t* handle, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* handle, size_t size) {
-  uv_buf_t buf = {0, 0};
-  FATAL("alloc should not be called");
-  return buf;
-}
-
-
 static void async1_cb(uv_handle_t* handle, int status) {
   ASSERT(handle == (uv_handle_t*)&async1_handle);
   ASSERT(status == 0);
@@ -196,7 +189,7 @@ static void prepare_cb(uv_handle_t* handle, int status) {
 TEST_IMPL(async) {
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_prepare_init(&prepare_handle, close_cb, NULL);
   ASSERT(r == 0);

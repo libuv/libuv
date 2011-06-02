@@ -42,7 +42,6 @@
 #endif
 
 static uv_err_t last_err;
-static uv_alloc_cb alloc_cb;
 
 
 void uv__tcp_io(EV_P_ ev_io* watcher, int revents);
@@ -187,10 +186,7 @@ int uv_close(uv_handle_t* handle) {
 }
 
 
-void uv_init(uv_alloc_cb cb) {
-  assert(cb);
-  alloc_cb = cb;
-
+void uv_init() {
   // Initialize the default ev loop.
 #if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
   ev_default_loop(EVBACKEND_KQUEUE);
@@ -224,6 +220,7 @@ static void uv__handle_init(uv_handle_t* handle, uv_handle_type type,
 int uv_tcp_init(uv_tcp_t* tcp, uv_close_cb close_cb, void* data) {
   uv__handle_init((uv_handle_t*)tcp, UV_TCP, close_cb, data);
 
+  tcp->alloc_cb = NULL;
   tcp->connect_req = NULL;
   tcp->accepted_fd = -1;
   tcp->fd = -1;
@@ -644,8 +641,8 @@ void uv__read(uv_tcp_t* tcp) {
    * tcp->read_cb is NULL or not?
    */
   while (tcp->read_cb && uv_flag_is_set((uv_handle_t*)tcp, UV_READING)) {
-    assert(alloc_cb);
-    uv_buf_t buf = alloc_cb(tcp, 64 * 1024);
+    assert(tcp->alloc_cb);
+    uv_buf_t buf = tcp->alloc_cb(tcp, 64 * 1024);
 
     assert(buf.len > 0);
     assert(buf.base);
@@ -918,7 +915,7 @@ int64_t uv_now() {
 }
 
 
-int uv_read_start(uv_tcp_t* tcp, uv_read_cb cb) {
+int uv_read_start(uv_tcp_t* tcp, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
   /* The UV_READING flag is irrelevant of the state of the tcp - it just
    * expresses the desired state of the user.
    */
@@ -929,7 +926,10 @@ int uv_read_start(uv_tcp_t* tcp, uv_read_cb cb) {
    * not start the IO watcher.
    */
   assert(tcp->fd >= 0);
-  tcp->read_cb = cb;
+  assert(alloc_cb);
+
+  tcp->read_cb = read_cb;
+  tcp->alloc_cb = alloc_cb;
 
   /* These should have been set by uv_tcp_init. */
   assert(tcp->read_watcher.data == tcp);
@@ -945,6 +945,7 @@ int uv_read_stop(uv_tcp_t* tcp) {
 
   ev_io_stop(EV_DEFAULT_UC_ &tcp->read_watcher);
   tcp->read_cb = NULL;
+  tcp->alloc_cb = NULL;
   return 0;
 }
 

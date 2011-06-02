@@ -36,19 +36,12 @@ static void close_cb(uv_handle_t* handle, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* handle, size_t size) {
-  uv_buf_t buf = {0, 0};
-  FATAL("alloc should not be called");
-  return buf;
-}
-
-
 TEST_IMPL(bind_error_addrinuse) {
   struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
   uv_tcp_t server1, server2;
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_tcp_init(&server1, close_cb, NULL);
   ASSERT(r == 0);
@@ -83,7 +76,7 @@ TEST_IMPL(bind_error_addrnotavail_1) {
   uv_tcp_t server;
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
@@ -109,7 +102,7 @@ TEST_IMPL(bind_error_addrnotavail_2) {
   uv_tcp_t server;
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
@@ -135,7 +128,7 @@ TEST_IMPL(bind_error_fault) {
 
   garbage_addr = (struct sockaddr_in*) &garbage;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);
@@ -161,7 +154,7 @@ TEST_IMPL(bind_error_inval) {
   uv_tcp_t server;
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_tcp_init(&server, close_cb, NULL);
   ASSERT(r == 0);

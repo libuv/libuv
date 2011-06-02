@@ -46,18 +46,11 @@ static void on_connect(uv_req_t *req, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t buf = {0, 0};
-  FATAL("alloc should not be called");
-  return buf;
-}
-
-
 TEST_IMPL(connection_fail) {
   struct sockaddr_in client_addr, server_addr;
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   client_addr = uv_ip4_addr("0.0.0.0", 0);
 

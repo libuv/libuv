@@ -45,6 +45,14 @@ static int bytes_received = 0;
 static int bytes_received_done = 0;
 
 
+static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
+  uv_buf_t buf;
+  buf.base = (char*)malloc(size);
+  buf.len = size;
+  return buf;
+}
+
+
 static void close_cb(uv_handle_t* handle, int status) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
@@ -152,16 +160,8 @@ static void connect_cb(uv_req_t* req, int status) {
   ASSERT(req != NULL);
 
   uv_req_init(req, (uv_handle_t*)tcp, read_cb);
-  r = uv_read_start(tcp, read_cb);
+  r = uv_read_start(tcp, alloc_cb, read_cb);
   ASSERT(r == 0);
-}
-
-
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t buf;
-  buf.base = (char*)malloc(size);
-  buf.len = size;
-  return buf;
 }
 
 
@@ -178,7 +178,7 @@ TEST_IMPL(tcp_writealot) {
 
   ASSERT(send_buffer != NULL);
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_tcp_init(client, close_cb, NULL);
   ASSERT(r == 0);

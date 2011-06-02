@@ -313,18 +313,11 @@ static void prepare_1_close_cb(uv_handle_t* handle, int status){
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t rv = { 0, 0 };
-  FATAL("alloc_cb should never be called in this test");
-  return rv;
-}
-
-
 TEST_IMPL(loop_handles) {
   int i;
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   r = uv_prepare_init(&prepare_1_handle, prepare_1_close_cb, NULL);
   ASSERT(r == 0);
@@ -387,7 +380,7 @@ TEST_IMPL(loop_handles) {
 
 
 TEST_IMPL(ref) {
-  uv_init(alloc_cb);
+  uv_init();
   uv_run();
   return 0;
 }
@@ -395,7 +388,7 @@ TEST_IMPL(ref) {
 
 TEST_IMPL(idle_ref) {
   uv_idle_t h;
-  uv_init(alloc_cb);
+  uv_init();
   uv_idle_init(&h, NULL, NULL);
   uv_idle_start(&h, NULL);
   uv_unref();
@@ -406,7 +399,7 @@ TEST_IMPL(idle_ref) {
 
 TEST_IMPL(async_ref) {
   uv_async_t h;
-  uv_init(alloc_cb);
+  uv_init();
   uv_async_init(&h, NULL, NULL, NULL);
   uv_unref();
   uv_run();
@@ -416,7 +409,7 @@ TEST_IMPL(async_ref) {
 
 TEST_IMPL(prepare_ref) {
   uv_prepare_t h;
-  uv_init(alloc_cb);
+  uv_init();
   uv_prepare_init(&h, NULL, NULL);
   uv_prepare_start(&h, NULL);
   uv_unref();
@@ -427,7 +420,7 @@ TEST_IMPL(prepare_ref) {
 
 TEST_IMPL(check_ref) {
   uv_check_t h;
-  uv_init(alloc_cb);
+  uv_init();
   uv_check_init(&h, NULL, NULL);
   uv_check_start(&h, NULL);
   uv_unref();

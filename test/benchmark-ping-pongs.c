@@ -164,7 +164,7 @@ static void pinger_connect_cb(uv_req_t *req, int status) {
 
   pinger_write_ping(pinger);
 
-  if (uv_read_start((uv_tcp_t*)(req->handle), pinger_read_cb)) {
+  if (uv_read_start((uv_tcp_t*)(req->handle), buf_alloc, pinger_read_cb)) {
     FATAL("uv_read_start failed");
   }
 }
@@ -196,7 +196,7 @@ static void pinger_new() {
 
 
 BENCHMARK_IMPL(ping_pongs) {
-  uv_init(buf_alloc);
+  uv_init();
   start_time = uv_now();
 
   pinger_new();

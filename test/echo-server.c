@@ -118,6 +118,14 @@ static void on_close(uv_handle_t* peer, int status) {
 }
 
 
+static uv_buf_t echo_alloc(uv_tcp_t* handle, size_t suggested_size) {
+  uv_buf_t buf;
+  buf.base = (char*) malloc(suggested_size);
+  buf.len = suggested_size;
+  return buf;
+}
+
+
 static void on_accept(uv_tcp_t* server) {
   uv_tcp_t* handle = (uv_tcp_t*) malloc(sizeof *handle);
 
@@ -125,7 +133,7 @@ static void on_accept(uv_tcp_t* server) {
     FATAL("uv_accept failed");
   }
 
-  uv_read_start(handle, after_read);
+  uv_read_start(handle, echo_alloc, after_read);
 }
 
 
@@ -164,16 +172,8 @@ static int echo_start(int port) {
 }
 
 
-static uv_buf_t echo_alloc(uv_tcp_t* handle, size_t suggested_size) {
-  uv_buf_t buf;
-  buf.base = (char*) malloc(suggested_size);
-  buf.len = suggested_size;
-  return buf;
-}
-
-
 HELPER_IMPL(echo_server) {
-  uv_init(echo_alloc);
+  uv_init();
   if (echo_start(TEST_PORT))
     return 1;
 

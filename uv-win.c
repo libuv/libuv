@@ -182,9 +182,6 @@ static uv_err_t uv_last_error_ = { UV_OK, ERROR_SUCCESS };
 /* Error message string */
 static char* uv_err_str_ = NULL;
 
-/* Global alloc function */
-uv_alloc_cb uv_alloc_ = NULL;
-
 
 /* Reference count that keeps the event loop alive */
 static int uv_refs_ = 0;
@@ -345,7 +342,7 @@ static void uv_get_extension_function(SOCKET socket, GUID guid,
 }
 
 
-void uv_init(uv_alloc_cb alloc_cb) {
+void uv_init() {
   const GUID wsaid_connectex            = WSAID_CONNECTEX;
   const GUID wsaid_acceptex             = WSAID_ACCEPTEX;
   const GUID wsaid_getacceptexsockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
@@ -356,8 +353,6 @@ void uv_init(uv_alloc_cb alloc_cb) {
   int errorno;
   LARGE_INTEGER timer_frequency;
   SOCKET dummy;
-
-  uv_alloc_ = alloc_cb;
 
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
@@ -866,7 +861,7 @@ int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
 }
 
 
-int uv_read_start(uv_tcp_t* handle, uv_read_cb cb) {
+int uv_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
   if (!(handle->flags & UV_HANDLE_CONNECTION)) {
     uv_set_sys_error(WSAEINVAL);
     return -1;
@@ -883,7 +878,8 @@ int uv_read_start(uv_tcp_t* handle, uv_read_cb cb) {
   }
 
   handle->flags |= UV_HANDLE_READING;
-  handle->read_cb = cb;
+  handle->read_cb = read_cb;
+  handle->alloc_cb = alloc_cb;
 
   /* If reading was stopped and then started again, there could stell be a */
   /* read request pending. */
@@ -1074,7 +1070,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
         uv_close_error((uv_handle_t*)handle, uv_last_error_);
       }
       while (handle->flags & UV_HANDLE_READING) {
-        buf = uv_alloc_(handle, 65536);
+        buf = handle->alloc_cb(handle, 65536);
         assert(buf.len > 0);
         flags = 0;
         if (WSARecv(handle->socket,

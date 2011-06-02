@@ -217,7 +217,7 @@ int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
  * eof; it happens when libuv requested a buffer through the alloc callback
  * but then decided that it didn't need that buffer.
  */
-int uv_read_start(uv_tcp_t*, uv_read_cb cb);
+int uv_read_start(uv_tcp_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
 int uv_read_stop(uv_tcp_t*);
 
@@ -337,7 +337,7 @@ uv_err_t uv_last_error();
 char* uv_strerror(uv_err_t err);
 const char* uv_err_name(uv_err_t err);
 
-void uv_init(uv_alloc_cb alloc);
+void uv_init();
 int uv_run();
 
 /*

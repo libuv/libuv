@@ -91,17 +91,10 @@ static void repeat_2_cb(uv_handle_t* handle, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
-  uv_buf_t buf = {0, 0};
-  FATAL("alloc should not be called");
-  return buf;
-}
-
-
 TEST_IMPL(timer_again) {
   int r;
 
-  uv_init(alloc_cb);
+  uv_init();
 
   start_time = uv_now();
   ASSERT(0 < start_time);
