@@ -29,6 +29,7 @@ TEST_DECLARE   (bind_error_fault)
 TEST_DECLARE   (bind_error_inval)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
+TEST_DECLARE   (shutdown_eof)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (timer)
 TEST_DECLARE   (timer_again)
@@ -65,6 +66,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (connection_fail)
   TEST_ENTRY  (connection_fail_doesnt_auto_close)
+
+  TEST_ENTRY  (shutdown_eof)
+  TEST_HELPER (shutdown_eof, echo_server)
 
   TEST_ENTRY  (callback_stack)
   TEST_HELPER (callback_stack, echo_server)
