@@ -33,7 +33,7 @@
 typedef struct {
   int pongs;
   int state;
-  uv_handle_t handle;
+  uv_tcp_t tcp;
   uv_req_t connect_req;
   uv_req_t shutdown_req;
 } pinger_t;
@@ -52,7 +52,7 @@ static int completed_pingers = 0;
 static int64_t start_time;
 
 
-static uv_buf_t buf_alloc(uv_handle_t* handle, size_t size) {
+static uv_buf_t buf_alloc(uv_tcp_t* tcp, size_t size) {
   buf_t* ab;
 
   ab = buf_freelist;
@@ -107,7 +107,7 @@ static void pinger_write_ping(pinger_t* pinger) {
   buf.len = strlen(PING);
 
   req = (uv_req_t*)malloc(sizeof(*req));
-  uv_req_init(req, &pinger->handle, pinger_write_cb);
+  uv_req_init(req, (uv_handle_t*)(&pinger->tcp), pinger_write_cb);
 
   if (uv_write(req, &buf, 1)) {
     FATAL("uv_write failed");
@@ -120,11 +120,11 @@ static void pinger_shutdown_cb(uv_handle_t* handle, int status) {
 }
 
 
-static void pinger_read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
+static void pinger_read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
   unsigned int i;
   pinger_t* pinger;
 
-  pinger = (pinger_t*)handle->data;
+  pinger = (pinger_t*)tcp->data;
 
   if (nread < 0) {
     ASSERT(uv_last_error().code == UV_EOF);
@@ -143,7 +143,7 @@ static void pinger_read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
     if (pinger->state == 0) {
       pinger->pongs++;
       if (uv_now() - start_time > TIME) {
-        uv_req_init(&pinger->shutdown_req, handle, pinger_shutdown_cb);
+        uv_req_init(&pinger->shutdown_req, (uv_handle_t*)tcp, pinger_shutdown_cb);
         uv_shutdown(&pinger->shutdown_req);
         break;
         return;
@@ -164,7 +164,7 @@ static void pinger_connect_cb(uv_req_t *req, int status) {
 
   pinger_write_ping(pinger);
 
-  if (uv_read_start(req->handle, pinger_read_cb)) {
+  if (uv_read_start((uv_tcp_t*)(req->handle), pinger_read_cb)) {
     FATAL("uv_read_start failed");
   }
 }
@@ -181,14 +181,15 @@ static void pinger_new() {
   pinger->pongs = 0;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = uv_tcp_init(&pinger->handle, pinger_close_cb, (void*)pinger);
+  r = uv_tcp_init(&pinger->tcp, pinger_close_cb, (void*)pinger);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  uv_req_init(&pinger->connect_req, &pinger->handle, pinger_connect_cb);
+  uv_req_init(&pinger->connect_req, (uv_handle_t*)&pinger->tcp,
+      pinger_connect_cb);
 
-  uv_bind(&pinger->handle, (struct sockaddr*)&client_addr);
+  uv_bind(&pinger->tcp, (struct sockaddr*)&client_addr);
   r = uv_connect(&pinger->connect_req, (struct sockaddr*)&server_addr);
   ASSERT(!r);
 }

@@ -30,7 +30,8 @@
 
 static const char MESSAGE[] = "Failure is for the weak. Everyone dies alone.";
 
-static uv_handle_t client, timer;
+static uv_tcp_t client;
+static uv_timer_t timer;
 static uv_req_t connect_req, write_req, shutdown_req;
 
 static int nested = 0;
@@ -58,7 +59,7 @@ static void shutdown_cb(uv_req_t* req, int status) {
 }
 
 
-static void read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
+static void read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
   printf("Read. nread == %d\n", nread);
@@ -72,7 +73,7 @@ static void read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
     ASSERT(uv_last_error().code == UV_EOF);
 
     nested++;
-    if (uv_close(handle)) {
+    if (uv_close((uv_handle_t*)tcp)) {
       FATAL("uv_close failed");
     }
     nested--;
@@ -88,7 +89,7 @@ static void read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
   /* from a fresh stack. */
   if (bytes_received == sizeof MESSAGE) {
     nested++;
-    uv_req_init(&shutdown_req, handle, shutdown_cb);
+    uv_req_init(&shutdown_req, (uv_handle_t*)tcp, shutdown_cb);
 
     puts("Shutdown");
 
@@ -103,7 +104,7 @@ static void read_cb(uv_handle_t* handle, int nread, uv_buf_t buf) {
 static void timer_cb(uv_handle_t* handle, int status) {
   int r;
 
-  ASSERT(handle == &timer);
+  ASSERT(handle == (uv_handle_t*)&timer);
   ASSERT(status == 0);
   ASSERT(nested == 0 && "timer_cb must be called from a fresh stack");
 
@@ -170,7 +171,7 @@ static void connect_cb(uv_req_t* req, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
   uv_buf_t buf;
   buf.len = size;
   buf.base = (char*) malloc(size);
@@ -191,7 +192,7 @@ TEST_IMPL(callback_stack) {
   puts("Connecting...");
 
   nested++;
-  uv_req_init(&connect_req, &client, connect_cb);
+  uv_req_init(&connect_req, (uv_handle_t*)&client, connect_cb);
   if (uv_connect(&connect_req, (struct sockaddr*) &addr)) {
     FATAL("uv_connect failed");
   }

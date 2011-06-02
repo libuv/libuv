@@ -32,13 +32,13 @@ typedef struct {
 
 
 static int server_closed;
-static uv_handle_t server;
+static uv_tcp_t server;
 
 
 static void after_write(uv_req_t* req, int status);
-static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf);
+static void after_read(uv_tcp_t*, int nread, uv_buf_t buf);
 static void on_close(uv_handle_t* peer, int status);
-static void on_accept(uv_handle_t* handle);
+static void on_accept(uv_tcp_t*);
 
 
 static void after_write(uv_req_t* req, int status) {
@@ -64,7 +64,7 @@ static void after_shutdown(uv_req_t* req, int status) {
 }
 
 
-static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf) {
+static void after_read(uv_tcp_t* handle, int nread, uv_buf_t buf) {
   int i;
   write_req_t *wr;
   uv_req_t* req;
@@ -78,7 +78,7 @@ static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf) {
     }
 
     req = (uv_req_t*) malloc(sizeof *req);
-    uv_req_init(req, handle, after_shutdown);
+    uv_req_init(req, (uv_handle_t*)handle, after_shutdown);
     uv_shutdown(req);
 
     return;
@@ -94,7 +94,7 @@ static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf) {
   if (!server_closed) {
     for (i = 0; i < nread; i++) {
       if (buf.base[i] == 'Q') {
-        uv_close(&server);
+        uv_close((uv_handle_t*)&server);
         server_closed = 1;
       }
     }
@@ -102,7 +102,7 @@ static void after_read(uv_handle_t* handle, int nread, uv_buf_t buf) {
 
   wr = (write_req_t*) malloc(sizeof *wr);
 
-  uv_req_init(&wr->req, handle, after_write);
+  uv_req_init(&wr->req, (uv_handle_t*)handle, after_write);
   wr->buf.base = buf.base;
   wr->buf.len = nread;
   if (uv_write(&wr->req, &wr->buf, 1)) {
@@ -118,8 +118,8 @@ static void on_close(uv_handle_t* peer, int status) {
 }
 
 
-static void on_accept(uv_handle_t* server) {
-  uv_handle_t* handle = (uv_handle_t*) malloc(sizeof *handle);
+static void on_accept(uv_tcp_t* server) {
+  uv_tcp_t* handle = (uv_tcp_t*) malloc(sizeof *handle);
 
   if (uv_accept(server, handle, on_close, NULL)) {
     FATAL("uv_accept failed");
@@ -130,7 +130,7 @@ static void on_accept(uv_handle_t* server) {
 
 
 static void on_server_close(uv_handle_t* handle, int status) {
-  ASSERT(handle == &server);
+  ASSERT(handle == (uv_handle_t*)&server);
   ASSERT(status == 0);
 }
 
@@ -164,7 +164,7 @@ static int echo_start(int port) {
 }
 
 
-static uv_buf_t echo_alloc(uv_handle_t* handle, size_t suggested_size) {
+static uv_buf_t echo_alloc(uv_tcp_t* handle, size_t suggested_size) {
   uv_buf_t buf;
   buf.base = (char*) malloc(suggested_size);
   buf.len = suggested_size;

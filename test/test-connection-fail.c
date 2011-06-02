@@ -26,7 +26,7 @@
 #include <stdio.h>
 
 
-static uv_handle_t handle;
+static uv_tcp_t tcp;
 static uv_req_t req;
 static int connect_cb_calls;
 static int close_cb_calls;
@@ -46,7 +46,7 @@ static void on_connect(uv_req_t *req, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
   uv_buf_t buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
@@ -65,14 +65,14 @@ TEST_IMPL(connection_fail) {
   server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = uv_tcp_init(&handle, on_close, NULL);
+  r = uv_tcp_init(&tcp, on_close, NULL);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  uv_req_init(&req, &handle, on_connect);
+  uv_req_init(&req, (uv_handle_t*)&tcp, on_connect);
 
-  uv_bind(&handle, (struct sockaddr*)&client_addr);
+  uv_bind(&tcp, (struct sockaddr*)&client_addr);
   r = uv_connect(&req, (struct sockaddr*)&server_addr);
   ASSERT(!r);
 

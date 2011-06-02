@@ -35,17 +35,17 @@ static int TARGET_CONNECTIONS;
 #define STATS_COUNT                 5
 
 
-static void do_write(uv_handle_t* handle);
+static void do_write(uv_tcp_t*);
 static void maybe_connect_some();
 
 static uv_req_t* req_alloc();
 static void req_free(uv_req_t* uv_req);
 
-static uv_buf_t buf_alloc(uv_handle_t* handle, size_t size);
+static uv_buf_t buf_alloc(uv_tcp_t*, size_t size);
 static void buf_free(uv_buf_t uv_buf_t);
 
 
-static uv_handle_t server;
+static uv_tcp_t server;
 static struct sockaddr_in listen_addr;
 static struct sockaddr_in connect_addr;
 
@@ -68,9 +68,9 @@ static char write_buffer[WRITE_BUFFER_SIZE];
 /* Make this as large as you need. */
 #define MAX_WRITE_HANDLES 1000
 
-static uv_handle_t write_handles[MAX_WRITE_HANDLES];
+static uv_tcp_t write_handles[MAX_WRITE_HANDLES];
 
-static uv_handle_t timer_handle;
+static uv_timer_t timer_handle;
 
 
 static double gbit(int64_t bytes, int64_t passed_ms) {
@@ -136,7 +136,7 @@ void read_sockets_close_cb(uv_handle_t* handle, int status) {
    */
   if (uv_now() - start_time > 1000 && read_sockets == 0) {
     read_show_stats();
-    uv_close(&server);
+    uv_close((uv_handle_t*)&server);
   }
 }
 
@@ -157,7 +157,7 @@ static void start_stats_collection() {
 }
 
 
-static void read_cb(uv_handle_t* handle, int bytes, uv_buf_t buf) {
+static void read_cb(uv_tcp_t* tcp, int bytes, uv_buf_t buf) {
   if (nrecv_total == 0) {
     ASSERT(start_time == 0);
     uv_update_time();
@@ -165,7 +165,7 @@ static void read_cb(uv_handle_t* handle, int bytes, uv_buf_t buf) {
   }
 
   if (bytes < 0) {
-    uv_close(handle);
+    uv_close((uv_handle_t*)tcp);
     return;
   }
 
@@ -186,11 +186,11 @@ static void write_cb(uv_req_t *req, int status) {
   nsent += sizeof write_buffer;
   nsent_total += sizeof write_buffer;
 
-  do_write(req->handle);
+  do_write((uv_tcp_t*)req->handle);
 }
 
 
-static void do_write(uv_handle_t* handle) {
+static void do_write(uv_tcp_t* tcp) {
   uv_req_t* req;
   uv_buf_t buf;
   int r;
@@ -198,9 +198,9 @@ static void do_write(uv_handle_t* handle) {
   buf.base = (char*) &write_buffer;
   buf.len = sizeof write_buffer;
 
-  while (handle->write_queue_size == 0) {
+  while (tcp->write_queue_size == 0) {
     req = req_alloc();
-    uv_req_init(req, handle, write_cb);
+    uv_req_init(req, (uv_handle_t*)tcp, write_cb);
 
     r = uv_write(req, &buf, 1);
     ASSERT(r == 0);
@@ -232,36 +232,36 @@ static void connect_cb(uv_req_t* req, int status) {
 
 static void maybe_connect_some() {
   uv_req_t* req;
-  uv_handle_t* handle;
+  uv_tcp_t* tcp;
   int r;
 
   while (max_connect_socket < TARGET_CONNECTIONS &&
          max_connect_socket < write_sockets + MAX_SIMULTANEOUS_CONNECTS) {
-    handle = &write_handles[max_connect_socket++];
+    tcp = &write_handles[max_connect_socket++];
 
-    r = uv_tcp_init(handle, write_sockets_close_cb, NULL);
+    r = uv_tcp_init(tcp, write_sockets_close_cb, NULL);
     ASSERT(r == 0);
 
     req = req_alloc();
-    uv_req_init(req, handle, connect_cb);
+    uv_req_init(req, (uv_handle_t*)tcp, connect_cb);
     r = uv_connect(req, (struct sockaddr*) &connect_addr);
     ASSERT(r == 0);
   }
 }
 
 
-static void accept_cb(uv_handle_t* s) {
-  uv_handle_t* handle;
+static void accept_cb(uv_tcp_t* s) {
+  uv_tcp_t* tcp;
   int r;
 
   ASSERT(&server == s);
 
-  handle = malloc(sizeof(uv_handle_t));
+  tcp = malloc(sizeof(uv_tcp_t));
 
-  r = uv_accept(s, handle, read_sockets_close_cb, NULL);
+  r = uv_accept(s, tcp, read_sockets_close_cb, NULL);
   ASSERT(r == 0);
 
-  r = uv_read_start(handle, read_cb);
+  r = uv_read_start(tcp, read_cb);
   ASSERT(r == 0);
 
   read_sockets++;
@@ -317,7 +317,7 @@ typedef struct buf_list_s {
 static buf_list_t* buf_freelist = NULL;
 
 
-static uv_buf_t buf_alloc(uv_handle_t* handle, size_t size) {
+static uv_buf_t buf_alloc(uv_tcp_t* tcp, size_t size) {
   buf_list_t* buf;
 
   buf = buf_freelist;

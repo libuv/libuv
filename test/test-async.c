@@ -25,9 +25,9 @@
 #include <stdlib.h>
 
 
-static uv_handle_t prepare_handle;
+static uv_prepare_t prepare_handle;
 
-static uv_handle_t async1_handle;
+static uv_async_t async1_handle;
 /* static uv_handle_t async2_handle; */
 
 static int prepare_cb_called = 0;
@@ -120,7 +120,7 @@ static void close_cb(uv_handle_t* handle, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+static uv_buf_t alloc_cb(uv_tcp_t* handle, size_t size) {
   uv_buf_t buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
@@ -128,7 +128,7 @@ static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
 
 
 static void async1_cb(uv_handle_t* handle, int status) {
-  ASSERT(handle == &async1_handle);
+  ASSERT(handle == (uv_handle_t*)&async1_handle);
   ASSERT(status == 0);
 
   async1_cb_called++;
@@ -159,7 +159,7 @@ static void async2_cb(uv_handle_t* handle, int status) {
 static void prepare_cb(uv_handle_t* handle, int status) {
   int r;
 
-  ASSERT(handle == &prepare_handle);
+  ASSERT(handle == (uv_handle_t*)&prepare_handle);
   ASSERT(status == 0);
 
   switch (prepare_cb_called) {

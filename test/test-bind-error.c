@@ -36,7 +36,7 @@ static void close_cb(uv_handle_t* handle, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
+static uv_buf_t alloc_cb(uv_tcp_t* handle, size_t size) {
   uv_buf_t buf = {0, 0};
   FATAL("alloc should not be called");
   return buf;
@@ -45,7 +45,7 @@ static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
 
 TEST_IMPL(bind_error_addrinuse) {
   struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
-  uv_handle_t server1, server2;
+  uv_tcp_t server1, server2;
   int r;
 
   uv_init(alloc_cb);
@@ -67,8 +67,8 @@ TEST_IMPL(bind_error_addrinuse) {
 
   ASSERT(uv_last_error().code == UV_EADDRINUSE);
 
-  uv_close(&server1);
-  uv_close(&server2);
+  uv_close((uv_handle_t*)&server1);
+  uv_close((uv_handle_t*)&server2);
 
   uv_run();
 
@@ -80,7 +80,7 @@ TEST_IMPL(bind_error_addrinuse) {
 
 TEST_IMPL(bind_error_addrnotavail_1) {
   struct sockaddr_in addr = uv_ip4_addr("127.255.255.255", TEST_PORT);
-  uv_handle_t server;
+  uv_tcp_t server;
   int r;
 
   uv_init(alloc_cb);
@@ -94,7 +94,7 @@ TEST_IMPL(bind_error_addrnotavail_1) {
     ASSERT(uv_last_error().code == UV_EADDRNOTAVAIL);
   }
 
-  uv_close(&server);
+  uv_close((uv_handle_t*)&server);
 
   uv_run();
 
@@ -106,7 +106,7 @@ TEST_IMPL(bind_error_addrnotavail_1) {
 
 TEST_IMPL(bind_error_addrnotavail_2) {
   struct sockaddr_in addr = uv_ip4_addr("4.4.4.4", TEST_PORT);
-  uv_handle_t server;
+  uv_tcp_t server;
   int r;
 
   uv_init(alloc_cb);
@@ -117,7 +117,7 @@ TEST_IMPL(bind_error_addrnotavail_2) {
   ASSERT(r == -1);
   ASSERT(uv_last_error().code == UV_EADDRNOTAVAIL);
 
-  uv_close(&server);
+  uv_close((uv_handle_t*)&server);
 
   uv_run();
 
@@ -129,7 +129,7 @@ TEST_IMPL(bind_error_addrnotavail_2) {
 
 TEST_IMPL(bind_error_fault) {
   char garbage[] = "blah blah blah blah blah blah blah blah blah blah blah blah";
-  uv_handle_t server;
+  uv_tcp_t server;
   int r;
 
   uv_init(alloc_cb);
@@ -141,7 +141,7 @@ TEST_IMPL(bind_error_fault) {
 
   ASSERT(uv_last_error().code == UV_EFAULT);
 
-  uv_close(&server);
+  uv_close((uv_handle_t*)&server);
 
   uv_run();
 
@@ -155,7 +155,7 @@ TEST_IMPL(bind_error_fault) {
 TEST_IMPL(bind_error_inval) {
   struct sockaddr_in addr1 = uv_ip4_addr("0.0.0.0", TEST_PORT);
   struct sockaddr_in addr2 = uv_ip4_addr("0.0.0.0", TEST_PORT_2);
-  uv_handle_t server;
+  uv_tcp_t server;
   int r;
 
   uv_init(alloc_cb);
@@ -169,7 +169,7 @@ TEST_IMPL(bind_error_inval) {
 
   ASSERT(uv_last_error().code == UV_EINVAL);
 
-  uv_close(&server);
+  uv_close((uv_handle_t*)&server);
 
   uv_run();
 
