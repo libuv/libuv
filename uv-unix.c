@@ -37,6 +37,10 @@
 #include <mach-o/dyld.h> /* _NSGetExecutablePath */
 #endif
 
+#if defined(__FreeBSD__)
+#include <sys/sysctl.h>
+#endif
+
 static uv_err_t last_err;
 static uv_alloc_cb alloc_cb;
 
@@ -1233,6 +1237,22 @@ int uv_get_exepath(char* buffer, size_t* size) {
   *size = readlink("/proc/self/exe", buffer, *size - 1);
   if (*size <= 0) return -1;
   buffer[*size] = '\0';
+  return 0;
+#elif defined(__FreeBSD__)
+  int mib[4];
+
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC;
+  mib[2] = KERN_PROC_PATHNAME;
+  mib[3] = -1;
+
+  size_t cb = *size;
+  if (sysctl(mib, 4, buffer, &cb, NULL, 0) < 0) {
+	  *size = 0;
+	  return -1;
+  }
+  *size = strlen(buffer);
+
   return 0;
 #else
   assert(0 && "implement me");
