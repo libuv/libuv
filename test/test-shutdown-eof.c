@@ -139,7 +139,7 @@ void timer_cb(uv_handle_t* handle, int status) {
  * This test has a client which connects to the echo_server and immediately
  * issues a shutdown. The echo-server, in response, will also shutdown their
  * connection. We check, with a timer, that libuv is not automatically
- * calling uv_close when the client receives the EOF from echo-server. 
+ * calling uv_close when the client receives the EOF from echo-server.
  */
 TEST_IMPL(shutdown_eof) {
   int r;
