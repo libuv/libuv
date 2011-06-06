@@ -142,6 +142,7 @@ void timer_cb(uv_handle_t* handle, int status) {
  * calling uv_close when the client receives the EOF from echo-server.
  */
 TEST_IMPL(shutdown_eof) {
+  struct sockaddr_in server_addr;
   int r;
 
   uv_init();
@@ -152,7 +153,7 @@ TEST_IMPL(shutdown_eof) {
   uv_timer_init(&timer, timer_close_cb, NULL);
   uv_timer_start(&timer, timer_cb, 100, 0);
 
-  struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
   r = uv_tcp_init(&tcp, tcp_close_cb, NULL);
   ASSERT(!r);
 

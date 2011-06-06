@@ -64,10 +64,12 @@ static void close_cb(uv_handle_t* handle, int status) {
 
 
 static void shutdown_cb(uv_req_t* req, int status) {
+  uv_tcp_t* tcp;
+
   ASSERT(req);
   ASSERT(status == 0);
 
-  uv_tcp_t* tcp = (uv_tcp_t*)(req->handle);
+  tcp = (uv_tcp_t*)(req->handle);
 
   /* The write buffer should be empty by now. */
   ASSERT(tcp->write_queue_size == 0);
