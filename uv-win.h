@@ -59,12 +59,12 @@ typedef struct uv_buf_t {
   uv_req_t* shutdown_req;
 
 #define uv_tcp_server_fields              \
-  void *connection_cb;                        \
+  void *connection_cb;                    \
   SOCKET accept_socket;                   \
   struct uv_req_s accept_req;             \
   char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];
 
-#define UV_TCP_PRIVATE_FIELDS		  \
+#define UV_TCP_PRIVATE_FIELDS             \
   unsigned int reqs_pending;              \
   union {                                 \
     SOCKET socket;                        \
@@ -104,7 +104,7 @@ typedef struct uv_buf_t {
   uv_handle_t* endgame_next;              \
   unsigned int flags;                     \
   uv_err_t error;                         \
-  UV_LOOP_PRIVATE_FIELDS                  
+  UV_LOOP_PRIVATE_FIELDS
 
 
 int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, size_t utf8Size);

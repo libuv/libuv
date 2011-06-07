@@ -770,7 +770,7 @@ static void uv_queue_accept(uv_tcp_t* handle) {
 
 
 static void uv_queue_read(uv_tcp_t* handle) {
-  uv_req_t *req;
+  uv_req_t* req;
   uv_buf_t buf;
   int result;
   DWORD bytes, flags;
@@ -844,7 +844,6 @@ int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
   }
 
   if (uv_tcp_init_socket(client, close_cb, data, server->accept_socket) == -1) {
-    uv_fatal_error(uv_last_error_.sys_errno_, "init");
     closesocket(server->accept_socket);
     rv = -1;
   }
@@ -984,17 +983,17 @@ int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
   if (result != 0) {
     err = WSAGetLastError();
     if (err != WSA_IO_PENDING) {
-      /* Send faild due to an error */
+      /* Send failed due to an error. */
       uv_set_sys_error(WSAGetLastError());
       return -1;
     }
   }
 
   if (result == 0) {
-    /* Request completed immediately */
+    /* Request completed immediately. */
     req->queued_bytes = 0;
   } else {
-    /* Request queued by the kernel */
+    /* Request queued by the kernel. */
     req->queued_bytes = uv_count_bufs(bufs, bufcnt);
     handle->write_queue_size += req->queued_bytes;
   }

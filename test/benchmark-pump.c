@@ -363,8 +363,6 @@ HELPER_IMPL(pump_server) {
 
 
 void pump(int n) {
-  int r;
-
   ASSERT(n <= MAX_WRITE_HANDLES);
   TARGET_CONNECTIONS = n;
 

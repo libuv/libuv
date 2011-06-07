@@ -311,7 +311,7 @@ int uv_timer_start(uv_timer_t* timer, uv_loop_cb cb, int64_t timeout, int64_t re
 int uv_timer_stop(uv_timer_t* timer);
 
 /*
- * Stop the timer, and if it is repeating restart it using the repeat value 
+ * Stop the timer, and if it is repeating restart it using the repeat value
  * as the timeout. If the timer has never been started before it returns -1 and
  * sets the error to UV_EINVAL.
  */
