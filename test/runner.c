@@ -121,8 +121,7 @@ finalize:
 
   /* Show error and output from processes if the test failed. */
   if (!success) {
-    LOG("\n=============================================================\n");
-    LOGF("`%s` failed: %s\n", test->task_name, errmsg);
+    LOGF("\n`%s` failed: %s\n", test->task_name, errmsg);
 
     for (i = 0; i < process_count; i++) {
       switch (process_output_size(&processes[i])) {
@@ -142,7 +141,7 @@ finalize:
         break;
       }
     }
-    LOG("\n");
+    LOG("=============================================================\n");
 
   /* In benchmark mode show concise output from the main process. */
   } else if (benchmark_output) {
