@@ -57,7 +57,7 @@ enum {
   UV_CLOSED   = 0x00000002, /* close(2) finished. */
   UV_READING  = 0x00000004, /* uv_read_start() called. */
   UV_SHUTTING = 0x00000008, /* uv_shutdown() called but not complete. */
-  UV_SHUT     = 0x00000010, /* Write side closed. */
+  UV_SHUT     = 0x00000010  /* Write side closed. */
 };
 
 
@@ -187,7 +187,7 @@ int uv_close(uv_handle_t* handle) {
 
 
 void uv_init() {
-  // Initialize the default ev loop.
+  /* Initialize the default ev loop. */
 #if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
   ev_default_loop(EVBACKEND_KQUEUE);
 #else
@@ -287,12 +287,15 @@ int uv_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
 
 
 int uv_tcp_open(uv_tcp_t* tcp, int fd) {
+  int yes;
+  int r;
+
   assert(fd >= 0);
   tcp->fd = fd;
 
   /* Set non-blocking. */
-  int yes = 1;
-  int r = fcntl(fd, F_SETFL, O_NONBLOCK);
+  yes = 1;
+  r = fcntl(fd, F_SETFL, O_NONBLOCK);
   assert(r == 0);
 
   /* Reuse the port address. */
@@ -315,7 +318,11 @@ int uv_tcp_open(uv_tcp_t* tcp, int fd) {
 
 
 void uv__server_io(EV_P_ ev_io* watcher, int revents) {
+  int fd;
+  struct sockaddr addr;
+  socklen_t addrlen;
   uv_tcp_t* tcp = watcher->data;
+
   assert(watcher == &tcp->read_watcher ||
          watcher == &tcp->write_watcher);
   assert(revents == EV_READ);
@@ -328,11 +335,8 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
   }
 
   while (1) {
-    struct sockaddr addr = { 0 };
-    socklen_t addrlen = 0;
-
     assert(tcp->accepted_fd < 0);
-    int fd = accept(tcp->fd, &addr, &addrlen);
+    fd = accept(tcp->fd, &addr, &addrlen);
 
     if (fd < 0) {
       if (errno == EAGAIN) {
@@ -386,6 +390,8 @@ int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
 
 
 int uv_listen(uv_tcp_t* tcp, int backlog, uv_accept_cb cb) {
+  int r;
+
   assert(tcp->fd >= 0);
 
   if (tcp->delayed_error) {
@@ -393,7 +399,7 @@ int uv_listen(uv_tcp_t* tcp, int backlog, uv_accept_cb cb) {
     return -1;
   }
 
-  int r = listen(tcp->fd, backlog);
+  r = listen(tcp->fd, backlog);
   if (r < 0) {
     uv_err_new((uv_handle_t*)tcp, errno);
     return -1;
@@ -474,16 +480,19 @@ void uv__finish_close(uv_handle_t* handle) {
 
 
 uv_req_t* uv_write_queue_head(uv_tcp_t* tcp) {
+  ngx_queue_t* q;
+  uv_req_t* req;
+
   if (ngx_queue_empty(&tcp->write_queue)) {
     return NULL;
   }
 
-  ngx_queue_t* q = ngx_queue_head(&tcp->write_queue);
+  q = ngx_queue_head(&tcp->write_queue);
   if (!q) {
     return NULL;
   }
 
-  uv_req_t* req = ngx_queue_data(q, struct uv_req_s, queue);
+  req = ngx_queue_data(q, struct uv_req_s, queue);
   assert(req);
 
   return req;
@@ -504,6 +513,9 @@ void uv__next(EV_P_ ev_idle* watcher, int revents) {
 
 
 static void uv__drain(uv_tcp_t* tcp) {
+  uv_req_t* req;
+  uv_shutdown_cb cb;
+
   assert(!uv_write_queue_head(tcp));
   assert(tcp->write_queue_size == 0);
 
@@ -515,8 +527,8 @@ static void uv__drain(uv_tcp_t* tcp) {
       !uv_flag_is_set((uv_handle_t*)tcp, UV_SHUT)) {
     assert(tcp->shutdown_req);
 
-    uv_req_t* req = tcp->shutdown_req;
-    uv_shutdown_cb cb = req->cb;
+    req = tcp->shutdown_req;
+    cb = (uv_shutdown_cb)req->cb;
 
     if (shutdown(tcp->fd, SHUT_WR)) {
       /* Error. Report it. User should call uv_close(). */
@@ -532,12 +544,18 @@ static void uv__drain(uv_tcp_t* tcp) {
 
 
 void uv__write(uv_tcp_t* tcp) {
+  uv_req_t* req;
+  struct iovec* iov;
+  int iovcnt;
+  ssize_t n;
+  uv_write_cb cb;
+
   assert(tcp->fd >= 0);
 
   /* TODO: should probably while(1) here until EAGAIN */
 
   /* Get the request at the head of the queue. */
-  uv_req_t* req = uv_write_queue_head(tcp);
+  req = uv_write_queue_head(tcp);
   if (!req) {
     assert(tcp->write_queue_size == 0);
     uv__drain(tcp);
@@ -550,16 +568,16 @@ void uv__write(uv_tcp_t* tcp) {
    * because Windows's WSABUF is not an iovec.
    */
   assert(sizeof(uv_buf_t) == sizeof(struct iovec));
-  struct iovec* iov = (struct iovec*) &(req->bufs[req->write_index]);
-  int iovcnt = req->bufcnt - req->write_index;
+  iov = (struct iovec*) &(req->bufs[req->write_index]);
+  iovcnt = req->bufcnt - req->write_index;
 
   /* Now do the actual writev. Note that we've been updating the pointers
    * inside the iov each time we write. So there is no need to offset it.
    */
 
-  ssize_t n = writev(tcp->fd, iov, iovcnt);
+  n = writev(tcp->fd, iov, iovcnt);
 
-  uv_write_cb cb = req->cb;
+  cb = (uv_write_cb)req->cb;
 
   if (n < 0) {
     if (errno != EAGAIN) {
@@ -636,19 +654,23 @@ void uv__write(uv_tcp_t* tcp) {
 
 
 void uv__read(uv_tcp_t* tcp) {
+  uv_buf_t buf;
+  struct iovec* iov;
+  ssize_t nread;
+
   /* XXX: Maybe instead of having UV_READING we just test if
    * tcp->read_cb is NULL or not?
    */
   while (tcp->read_cb && uv_flag_is_set((uv_handle_t*)tcp, UV_READING)) {
     assert(tcp->alloc_cb);
-    uv_buf_t buf = tcp->alloc_cb(tcp, 64 * 1024);
+    buf = tcp->alloc_cb(tcp, 64 * 1024);
 
     assert(buf.len > 0);
     assert(buf.base);
 
-    struct iovec* iov = (struct iovec*) &buf;
+    iov = (struct iovec*) &buf;
 
-    ssize_t nread = readv(tcp->fd, iov, 1);
+    nread = readv(tcp->fd, iov, 1);
 
     if (nread < 0) {
       /* Error */
@@ -733,11 +755,13 @@ void uv__tcp_io(EV_P_ ev_io* watcher, int revents) {
  */
 static void uv__tcp_connect(uv_tcp_t* tcp) {
   int error;
+  uv_req_t* req;
+  uv_connect_cb connect_cb;
   socklen_t errorsize = sizeof(int);
 
   assert(tcp->fd >= 0);
 
-  uv_req_t* req = tcp->connect_req;
+  req = tcp->connect_req;
   assert(req);
 
   if (tcp->delayed_error) {
@@ -757,7 +781,7 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
 
     /* Successful connection */
     tcp->connect_req = NULL;
-    uv_connect_cb connect_cb = req->cb;
+    connect_cb = (uv_connect_cb) req->cb;
     if (connect_cb) {
       connect_cb(req, 0);
     }
@@ -771,7 +795,7 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
 
     tcp->connect_req = NULL;
 
-    uv_connect_cb connect_cb = req->cb;
+    connect_cb = (uv_connect_cb) req->cb;
     if (connect_cb) {
       connect_cb(req, -1);
     }
@@ -781,6 +805,8 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
 
 int uv_connect(uv_req_t* req, struct sockaddr_in addr) {
   uv_tcp_t* tcp = (uv_tcp_t*)req->handle;
+  int addrsize;
+  int r;
 
   if (tcp->fd <= 0) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -811,10 +837,10 @@ int uv_connect(uv_req_t* req, struct sockaddr_in addr) {
 
   tcp->connect_req = req;
 
-  int addrsize = sizeof(struct sockaddr_in);
+  addrsize = sizeof(struct sockaddr_in);
   assert(addr.sin_family == AF_INET);
 
-  int r = connect(tcp->fd, (struct sockaddr*)&addr, addrsize);
+  r = connect(tcp->fd, (struct sockaddr*)&addr, addrsize);
   tcp->delayed_error = 0;
 
   if (r != 0 && errno != EINPROGRESS) {
@@ -1218,17 +1244,23 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer) {
 
 
 int uv_get_exepath(char* buffer, size_t* size) {
+  uint32_t usize;
+  int result;
+  char* path;
+  char* fullpath;
+
   if (!buffer || !size) {
     return -1;
   }
 
 #if defined(__APPLE__)
-  uint32_t usize = *size;
-  int result = _NSGetExecutablePath(buffer, &usize);
+  usize = *size;
+  result = _NSGetExecutablePath(buffer, &usize);
   if (result) return result;
 
-  char *path = (char*)malloc(2 * PATH_MAX);
-  char *fullpath = realpath(buffer, path);
+  path = (char*)malloc(2 * PATH_MAX);
+  fullpath = realpath(buffer, path);
+
   if (fullpath == NULL) {
     free(path);
     return -1;
