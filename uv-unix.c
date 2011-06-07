@@ -347,15 +347,12 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
         return;
       } else {
         uv_err_new((uv_handle_t*)tcp, errno);
-        /*
-         * XXX TODO how do we report this error to the user?  What errors
-         * are possible here?
-         */
+        tcp->connection_cb(tcp, -1);
       }
 
     } else {
       tcp->accepted_fd = fd;
-      tcp->connection_cb(tcp);
+      tcp->connection_cb(tcp, 0);
       if (tcp->accepted_fd >= 0) {
         /* The user hasn't yet accepted called uv_accept() */
         ev_io_stop(EV_DEFAULT_ &tcp->read_watcher);

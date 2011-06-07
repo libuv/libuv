@@ -38,7 +38,7 @@ static uv_tcp_t server;
 static void after_write(uv_req_t* req, int status);
 static void after_read(uv_tcp_t*, int nread, uv_buf_t buf);
 static void on_close(uv_handle_t* peer, int status);
-static void on_accept(uv_tcp_t*);
+static void on_connection(uv_tcp_t*, int status);
 
 
 static void after_write(uv_req_t* req, int status) {
@@ -126,14 +126,20 @@ static uv_buf_t echo_alloc(uv_tcp_t* handle, size_t suggested_size) {
 }
 
 
-static void on_accept(uv_tcp_t* server) {
-  uv_tcp_t* handle = (uv_tcp_t*) malloc(sizeof *handle);
+static void on_connection(uv_tcp_t* server, int status) {
+  uv_tcp_t* handle;
+  int r;
 
-  if (uv_accept(server, handle, on_close, NULL)) {
-    FATAL("uv_accept failed");
-  }
+  ASSERT(status == 0);
 
-  uv_read_start(handle, echo_alloc, after_read);
+  handle = (uv_tcp_t*) malloc(sizeof *handle);
+  ASSERT(handle != NULL);
+
+  r = uv_accept(server, handle, on_close, NULL);
+  ASSERT(r == 0);
+
+  r = uv_read_start(handle, echo_alloc, after_read);
+  ASSERT(r == 0);
 }
 
 
@@ -161,7 +167,7 @@ static int echo_start(int port) {
     return 1;
   }
 
-  r = uv_listen(&server, 128, on_accept);
+  r = uv_listen(&server, 128, on_connection);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error\n");

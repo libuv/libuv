@@ -250,11 +250,12 @@ static void maybe_connect_some() {
 }
 
 
-static void connection_cb(uv_tcp_t* s) {
+static void connection_cb(uv_tcp_t* s, int status) {
   uv_tcp_t* tcp;
   int r;
 
   ASSERT(&server == s);
+  ASSERT(status == 0);
 
   tcp = malloc(sizeof(uv_tcp_t));
 

@@ -82,9 +82,11 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
 }
 
 
-static void connection_cb(uv_tcp_t* tcp) {
+static void connection_cb(uv_tcp_t* tcp, int status) {
   int r;
   uv_timer_t* timer_handle;
+
+  ASSERT(status == 0);
 
   timer_handle = (uv_timer_t*)malloc(sizeof *timer_handle);
   ASSERT(timer_handle != NULL);
