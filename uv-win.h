@@ -49,7 +49,9 @@ typedef struct uv_buf_t {
       size_t queued_bytes;                \
     };                                    \
   };                                      \
-  int flags;
+  int flags;                              \
+  uv_err_t error;                         \
+  struct uv_req_s* next_req;
 
 #define uv_tcp_connection_fields          \
   uv_alloc_cb alloc_cb;                   \
