@@ -42,7 +42,7 @@ Returns zero on success, -1 on failure. Errors in order of least-seriousness:
 * `UV_EFAULT` Memory of `address` parameter is unintelligible.
 
 
-    int uv_listen(uv_tcp_server_t*, int backlog, uv_accept_cb cb);
+    int uv_listen(uv_tcp_server_t*, int backlog, uv_connection_cb cb);
 
 Begins listening for connections. The accept callback is level-triggered.
 
@@ -58,7 +58,7 @@ used instead of `uv_tcp_init` for server-side `uv_tcp_t` initialization.
 
 Return value 0 indicates success, -1 failure. Possible errors:
 
-* `UV_EAGAIN` There are no connections. Wait for the `uv_accept_cb` callback
+* `UV_EAGAIN` There are no connections. Wait for the `uv_connection_cb` callback
   to be called again.
 
 * `UV_EFAULT` The memory of either `server` is unintelligible.

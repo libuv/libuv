@@ -58,7 +58,7 @@ typedef struct {
   int delayed_error; \
   uv_read_cb read_cb; \
   uv_alloc_cb alloc_cb; \
-  uv_accept_cb accept_cb; \
+  uv_connection_cb connection_cb; \
   int accepted_fd; \
   uv_req_t *connect_req; \
   uv_req_t *shutdown_req; \

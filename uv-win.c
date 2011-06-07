@@ -804,7 +804,7 @@ static void uv_queue_read(uv_tcp_t* handle) {
 }
 
 
-int uv_listen(uv_tcp_t* handle, int backlog, uv_accept_cb cb) {
+int uv_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   assert(backlog > 0);
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
@@ -825,7 +825,7 @@ int uv_listen(uv_tcp_t* handle, int backlog, uv_accept_cb cb) {
   }
 
   handle->flags |= UV_HANDLE_LISTENING;
-  handle->accept_cb = cb;
+  handle->connection_cb = cb;
 
   uv_req_init(&(handle->accept_req), (uv_handle_t*)handle, NULL);
   uv_queue_accept(handle);
@@ -1130,8 +1130,8 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
                                        sizeof(handle->socket)) == 0);
 
       if (success) {
-        if (handle->accept_cb) {
-          ((uv_accept_cb)handle->accept_cb)(handle);
+        if (handle->connection_cb) {
+          ((uv_connection_cb)handle->connection_cb)(handle);
         }
       } else {
         /* Errorneous accept is ignored if the listen socket is still healthy. */

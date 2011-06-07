@@ -355,7 +355,7 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
 
     } else {
       tcp->accepted_fd = fd;
-      tcp->accept_cb(tcp);
+      tcp->connection_cb(tcp);
       if (tcp->accepted_fd >= 0) {
         /* The user hasn't yet accepted called uv_accept() */
         ev_io_stop(EV_DEFAULT_ &tcp->read_watcher);
@@ -389,7 +389,7 @@ int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
 }
 
 
-int uv_listen(uv_tcp_t* tcp, int backlog, uv_accept_cb cb) {
+int uv_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   int r;
 
   assert(tcp->fd >= 0);
@@ -405,7 +405,7 @@ int uv_listen(uv_tcp_t* tcp, int backlog, uv_accept_cb cb) {
     return -1;
   }
 
-  tcp->accept_cb = cb;
+  tcp->connection_cb = cb;
 
   /* Start listening for connections. */
   ev_io_set(&tcp->read_watcher, tcp->fd, EV_READ);

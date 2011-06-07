@@ -59,7 +59,7 @@ typedef struct uv_buf_t {
   uv_req_t* shutdown_req;
 
 #define uv_tcp_server_fields              \
-  void *accept_cb;                        \
+  void *connection_cb;                        \
   SOCKET accept_socket;                   \
   struct uv_req_s accept_req;             \
   char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];

@@ -27,7 +27,7 @@
 
 static char BUFFER[1024];
 
-static int accept_cb_called = 0;
+static int connection_cb_called = 0;
 static int do_accept_called = 0;
 static int close_cb_called = 0;
 static int connect_cb_called = 0;
@@ -82,7 +82,7 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
 }
 
 
-static void accept_cb(uv_tcp_t* tcp) {
+static void connection_cb(uv_tcp_t* tcp) {
   int r;
   uv_timer_t* timer_handle;
 
@@ -95,7 +95,7 @@ static void accept_cb(uv_tcp_t* tcp) {
   r = uv_timer_start(timer_handle, do_accept, 1000, 0);
   ASSERT(r == 0);
 
-  accept_cb_called++;
+  connection_cb_called++;
 }
 
 
@@ -112,7 +112,7 @@ static void start_server() {
   r = uv_bind(server, addr);
   ASSERT(r == 0);
 
-  r = uv_listen(server, 128, accept_cb);
+  r = uv_listen(server, 128, connection_cb);
   ASSERT(r == 0);
 }
 
@@ -177,7 +177,7 @@ TEST_IMPL(delayed_accept) {
 
   uv_run();
 
-  ASSERT(accept_cb_called == 2);
+  ASSERT(connection_cb_called == 2);
   ASSERT(do_accept_called == 2);
   ASSERT(connect_cb_called == 2);
   ASSERT(close_cb_called == 7);

@@ -250,7 +250,7 @@ static void maybe_connect_some() {
 }
 
 
-static void accept_cb(uv_tcp_t* s) {
+static void connection_cb(uv_tcp_t* s) {
   uv_tcp_t* tcp;
   int r;
 
@@ -353,7 +353,7 @@ HELPER_IMPL(pump_server) {
   ASSERT(r == 0);
   r = uv_bind(&server, listen_addr);
   ASSERT(r == 0);
-  r = uv_listen(&server, MAX_WRITE_HANDLES, accept_cb);
+  r = uv_listen(&server, MAX_WRITE_HANDLES, connection_cb);
   ASSERT(r == 0);
 
   uv_run();

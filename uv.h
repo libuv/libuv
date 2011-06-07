@@ -61,7 +61,7 @@ typedef void (*uv_read_cb)(uv_tcp_t* tcp, int nread, uv_buf_t buf);
 typedef void (*uv_write_cb)(uv_req_t* req, int status);
 typedef void (*uv_connect_cb)(uv_req_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_req_t* req, int status);
-typedef void (*uv_accept_cb)(uv_tcp_t* server);
+typedef void (*uv_connection_cb)(uv_tcp_t* server);
 typedef void (*uv_close_cb)(uv_handle_t* handle, int status);
 /* TODO: do loop_cb and async_cb really need a status argument? */
 typedef void (*uv_loop_cb)(uv_handle_t* handle, int status);
@@ -202,9 +202,9 @@ int uv_connect(uv_req_t* req, struct sockaddr_in);
 
 int uv_shutdown(uv_req_t* req);
 
-int uv_listen(uv_tcp_t* handle, int backlog, uv_accept_cb cb);
+int uv_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 
-/* Call this after accept_cb. client does not need to be initialized. */
+/* Call this after connection_cb. client does not need to be initialized. */
 int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
     uv_close_cb close_cb, void* data);
 
