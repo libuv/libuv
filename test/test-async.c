@@ -191,12 +191,12 @@ TEST_IMPL(async) {
 
   uv_init();
 
-  r = uv_prepare_init(&prepare_handle, close_cb, NULL);
+  r = uv_prepare_init(&prepare_handle, close_cb);
   ASSERT(r == 0);
   r = uv_prepare_start(&prepare_handle, prepare_cb);
   ASSERT(r == 0);
 
-  r = uv_async_init(&async1_handle, async1_cb, close_cb, NULL);
+  r = uv_async_init(&async1_handle, async1_cb, close_cb);
   ASSERT(r == 0);
 
 #if 0

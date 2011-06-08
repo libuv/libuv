@@ -61,7 +61,7 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
   ASSERT(accepted_handle != NULL);
 
   server = (uv_tcp_t*)timer_handle->data;
-  r = uv_accept(server, accepted_handle, close_cb, NULL);
+  r = uv_accept(server, accepted_handle, close_cb);
   ASSERT(r == 0);
 
   do_accept_called++;
@@ -92,8 +92,11 @@ static void connection_cb(uv_tcp_t* tcp, int status) {
   ASSERT(timer_handle != NULL);
 
   /* Accept the client after 1 second */
-  r = uv_timer_init(timer_handle, close_cb, (void*)tcp);
+  r = uv_timer_init(timer_handle, close_cb);
   ASSERT(r == 0);
+
+  timer_handle->data = tcp;
+
   r = uv_timer_start(timer_handle, do_accept, 1000, 0);
   ASSERT(r == 0);
 
@@ -108,7 +111,7 @@ static void start_server() {
 
   ASSERT(server != NULL);
 
-  r = uv_tcp_init(server, close_cb, NULL);
+  r = uv_tcp_init(server, close_cb);
   ASSERT(r == 0);
 
   r = uv_bind(server, addr);
@@ -159,7 +162,7 @@ static void client_connect() {
   ASSERT(client != NULL);
   ASSERT(connect_req != NULL);
 
-  r = uv_tcp_init(client, close_cb, NULL);
+  r = uv_tcp_init(client, close_cb);
   ASSERT(r == 0);
 
   uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);

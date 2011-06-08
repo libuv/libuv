@@ -152,7 +152,8 @@ static void pinger_new() {
   pinger->pongs = 0;
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = uv_tcp_init(&pinger->tcp, pinger_on_close, (void*)pinger);
+  r = uv_tcp_init(&pinger->tcp, pinger_on_close);
+  pinger->tcp.data = pinger;
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */

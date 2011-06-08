@@ -182,7 +182,7 @@ TEST_IMPL(tcp_writealot) {
 
   uv_init();
 
-  r = uv_tcp_init(client, close_cb, NULL);
+  r = uv_tcp_init(client, close_cb);
   ASSERT(r == 0);
 
   uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);

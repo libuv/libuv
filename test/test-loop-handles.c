@@ -162,7 +162,7 @@ static void idle_1_cb(uv_handle_t* handle, int status) {
 
   /* Init idle_2 and make it active */
   if (!idle_2_is_active) {
-    r = uv_idle_init(&idle_2_handle, idle_2_close_cb, NULL);
+    r = uv_idle_init(&idle_2_handle, idle_2_close_cb);
     ASSERT(r == 0);
     r = uv_idle_start(&idle_2_handle, idle_2_cb);
     ASSERT(r == 0);
@@ -319,23 +319,23 @@ TEST_IMPL(loop_handles) {
 
   uv_init();
 
-  r = uv_prepare_init(&prepare_1_handle, prepare_1_close_cb, NULL);
+  r = uv_prepare_init(&prepare_1_handle, prepare_1_close_cb);
   ASSERT(r == 0);
   r = uv_prepare_start(&prepare_1_handle, prepare_1_cb);
   ASSERT(r == 0);
 
-  r = uv_check_init(&check_handle, check_close_cb, NULL);
+  r = uv_check_init(&check_handle, check_close_cb);
   ASSERT(r == 0);
   r = uv_check_start(&check_handle, check_cb);
   ASSERT(r == 0);
 
   /* initialize only, prepare_2 is started by prepare_1_cb */
-  r = uv_prepare_init(&prepare_2_handle, prepare_2_close_cb, NULL);
+  r = uv_prepare_init(&prepare_2_handle, prepare_2_close_cb);
   ASSERT(r == 0);
 
   for (i = 0; i < IDLE_COUNT; i++) {
     /* initialize only, idle_1 handles are started by check_cb */
-    r = uv_idle_init(&idle_1_handles[i], idle_1_close_cb, NULL);
+    r = uv_idle_init(&idle_1_handles[i], idle_1_close_cb);
     ASSERT(r == 0);
   }
 
@@ -343,7 +343,7 @@ TEST_IMPL(loop_handles) {
 
   /* the timer callback is there to keep the event loop polling */
   /* unref it as it is not supposed to keep the loop alive */
-  r = uv_timer_init(&timer_handle, timer_close_cb, NULL);
+  r = uv_timer_init(&timer_handle, timer_close_cb);
   ASSERT(r == 0);
   r = uv_timer_start(&timer_handle, timer_cb, TIMEOUT, TIMEOUT);
   ASSERT(r == 0);
@@ -389,7 +389,7 @@ TEST_IMPL(ref) {
 TEST_IMPL(idle_ref) {
   uv_idle_t h;
   uv_init();
-  uv_idle_init(&h, NULL, NULL);
+  uv_idle_init(&h, NULL);
   uv_idle_start(&h, NULL);
   uv_unref();
   uv_run();
@@ -400,7 +400,7 @@ TEST_IMPL(idle_ref) {
 TEST_IMPL(async_ref) {
   uv_async_t h;
   uv_init();
-  uv_async_init(&h, NULL, NULL, NULL);
+  uv_async_init(&h, NULL, NULL);
   uv_unref();
   uv_run();
   return 0;
@@ -410,7 +410,7 @@ TEST_IMPL(async_ref) {
 TEST_IMPL(prepare_ref) {
   uv_prepare_t h;
   uv_init();
-  uv_prepare_init(&h, NULL, NULL);
+  uv_prepare_init(&h, NULL);
   uv_prepare_start(&h, NULL);
   uv_unref();
   uv_run();
@@ -421,7 +421,7 @@ TEST_IMPL(prepare_ref) {
 TEST_IMPL(check_ref) {
   uv_check_t h;
   uv_init();
-  uv_check_init(&h, NULL, NULL);
+  uv_check_init(&h, NULL);
   uv_check_start(&h, NULL);
   uv_unref();
   uv_run();

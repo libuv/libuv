@@ -456,12 +456,11 @@ static uv_req_t* uv_remove_pending_req() {
 
 
 static int uv_tcp_init_socket(uv_tcp_t* handle, uv_close_cb close_cb,
-    void* data, SOCKET socket) {
+    SOCKET socket) {
   DWORD yes = 1;
 
   handle->socket = socket;
   handle->close_cb = close_cb;
-  handle->data = data;
   handle->write_queue_size = 0;
   handle->type = UV_TCP;
   handle->flags = 0;
@@ -504,7 +503,7 @@ static void uv_tcp_init_connection(uv_tcp_t* handle) {
 }
 
 
-int uv_tcp_init(uv_tcp_t* handle, uv_close_cb close_cb, void* data) {
+int uv_tcp_init(uv_tcp_t* handle, uv_close_cb close_cb) {
   SOCKET sock;
 
   sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -513,7 +512,7 @@ int uv_tcp_init(uv_tcp_t* handle, uv_close_cb close_cb, void* data) {
     return -1;
   }
 
-  if (uv_tcp_init_socket(handle, close_cb, data, sock) == -1) {
+  if (uv_tcp_init_socket(handle, close_cb, sock) == -1) {
     closesocket(sock);
     return -1;
   }
@@ -868,8 +867,7 @@ int uv_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
 }
 
 
-int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
-    uv_close_cb close_cb, void* data) {
+int uv_accept(uv_tcp_t* server, uv_tcp_t* client, uv_close_cb close_cb) {
   int rv = 0;
 
   if (server->accept_socket == INVALID_SOCKET) {
@@ -877,7 +875,7 @@ int uv_accept(uv_tcp_t* server, uv_tcp_t* client,
     return -1;
   }
 
-  if (uv_tcp_init_socket(client, close_cb, data, server->accept_socket) == -1) {
+  if (uv_tcp_init_socket(client, close_cb, server->accept_socket) == -1) {
     closesocket(server->accept_socket);
     rv = -1;
   }
@@ -1239,10 +1237,9 @@ static int uv_timer_compare(uv_timer_t* a, uv_timer_t* b) {
 RB_GENERATE_STATIC(uv_timer_tree_s, uv_timer_s, tree_entry, uv_timer_compare);
 
 
-int uv_timer_init(uv_timer_t* handle, uv_close_cb close_cb, void* data) {
+int uv_timer_init(uv_timer_t* handle, uv_close_cb close_cb) {
   handle->type = UV_TIMER;
   handle->close_cb = (void*) close_cb;
-  handle->data = data;
   handle->flags = 0;
   handle->error = uv_ok_;
   handle->timer_cb = NULL;
@@ -1337,9 +1334,8 @@ int64_t uv_now() {
 }
 
 
-int uv_loop_init(uv_handle_t* handle, uv_close_cb close_cb, void* data) {
+int uv_loop_init(uv_handle_t* handle, uv_close_cb close_cb) {
   handle->close_cb = (void*) close_cb;
-  handle->data = data;
   handle->flags = 0;
   handle->error = uv_ok_;
 
@@ -1415,21 +1411,21 @@ static void uv_loop_invoke(uv_handle_t* list) {
 }
 
 
-int uv_prepare_init(uv_prepare_t* handle, uv_close_cb close_cb, void* data) {
+int uv_prepare_init(uv_prepare_t* handle, uv_close_cb close_cb) {
   handle->type = UV_PREPARE;
-  return uv_loop_init((uv_handle_t*)handle, close_cb, data);
+  return uv_loop_init((uv_handle_t*)handle, close_cb);
 }
 
 
-int uv_check_init(uv_check_t* handle, uv_close_cb close_cb, void* data) {
+int uv_check_init(uv_check_t* handle, uv_close_cb close_cb) {
   handle->type = UV_CHECK;
-  return uv_loop_init((uv_handle_t*)handle, close_cb, data);
+  return uv_loop_init((uv_handle_t*)handle, close_cb);
 }
 
 
-int uv_idle_init(uv_idle_t* handle, uv_close_cb close_cb, void* data) {
+int uv_idle_init(uv_idle_t* handle, uv_close_cb close_cb) {
   handle->type = UV_IDLE;
-  return uv_loop_init((uv_handle_t*)handle, close_cb, data);
+  return uv_loop_init((uv_handle_t*)handle, close_cb);
 }
 
 
@@ -1484,12 +1480,11 @@ int uv_is_active(uv_handle_t* handle) {
 
 
 int uv_async_init(uv_async_t* handle, uv_async_cb async_cb,
-                   uv_close_cb close_cb, void* data) {
+                   uv_close_cb close_cb) {
   uv_req_t* req;
 
   handle->type = UV_ASYNC;
   handle->close_cb = (void*) close_cb;
-  handle->data = data;
   handle->flags = 0;
   handle->async_sent = 0;
   handle->error = uv_ok_;

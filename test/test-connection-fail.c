@@ -99,7 +99,7 @@ void connection_fail(uv_connect_cb connect_cb) {
   server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
-  r = uv_tcp_init(&tcp, on_close, NULL);
+  r = uv_tcp_init(&tcp, on_close);
   ASSERT(!r);
 
   /* We are never doing multiple reads/connects at a time anyway. */
@@ -141,7 +141,7 @@ TEST_IMPL(connection_fail) {
 TEST_IMPL(connection_fail_doesnt_auto_close) {
   uv_init();
 
-  uv_timer_init(&timer, timer_close_cb, NULL);
+  uv_timer_init(&timer, timer_close_cb);
 
   connection_fail(on_connect_without_close);
 

@@ -147,7 +147,7 @@ static void start_stats_collection() {
 
   /* Show-stats timer */
   stats_left = STATS_COUNT;
-  r = uv_timer_init(&timer_handle, NULL, NULL);
+  r = uv_timer_init(&timer_handle, NULL);
   ASSERT(r == 0);
   r = uv_timer_start(&timer_handle, show_stats, STATS_INTERVAL, STATS_INTERVAL);
   ASSERT(r == 0);
@@ -239,7 +239,7 @@ static void maybe_connect_some() {
          max_connect_socket < write_sockets + MAX_SIMULTANEOUS_CONNECTS) {
     tcp = &write_handles[max_connect_socket++];
 
-    r = uv_tcp_init(tcp, write_sockets_close_cb, NULL);
+    r = uv_tcp_init(tcp, write_sockets_close_cb);
     ASSERT(r == 0);
 
     req = req_alloc();
@@ -259,7 +259,7 @@ static void connection_cb(uv_tcp_t* s, int status) {
 
   tcp = malloc(sizeof(uv_tcp_t));
 
-  r = uv_accept(s, tcp, read_sockets_close_cb, NULL);
+  r = uv_accept(s, tcp, read_sockets_close_cb);
   ASSERT(r == 0);
 
   r = uv_read_start(tcp, buf_alloc, read_cb);
@@ -350,7 +350,7 @@ HELPER_IMPL(pump_server) {
   listen_addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
 
   /* Server */
-  r = uv_tcp_init(&server, NULL, NULL);
+  r = uv_tcp_init(&server, NULL);
   ASSERT(r == 0);
   r = uv_bind(&server, listen_addr);
   ASSERT(r == 0);

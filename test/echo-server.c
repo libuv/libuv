@@ -135,7 +135,7 @@ static void on_connection(uv_tcp_t* server, int status) {
   handle = (uv_tcp_t*) malloc(sizeof *handle);
   ASSERT(handle != NULL);
 
-  r = uv_accept(server, handle, on_close, NULL);
+  r = uv_accept(server, handle, on_close);
   ASSERT(r == 0);
 
   r = uv_read_start(handle, echo_alloc, after_read);
@@ -153,7 +153,7 @@ static int echo_start(int port) {
   struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
   int r;
 
-  r = uv_tcp_init(&server, on_server_close, NULL);
+  r = uv_tcp_init(&server, on_server_close);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Socket creation error\n");

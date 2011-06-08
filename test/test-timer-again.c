@@ -100,7 +100,7 @@ TEST_IMPL(timer_again) {
   ASSERT(0 < start_time);
 
   /* Verify that it is not possible to uv_timer_again a never-started timer. */
-  r = uv_timer_init(&dummy, NULL, NULL);
+  r = uv_timer_init(&dummy, NULL);
   ASSERT(r == 0);
   r = uv_timer_again(&dummy);
   ASSERT(r == -1);
@@ -108,7 +108,7 @@ TEST_IMPL(timer_again) {
   uv_unref();
 
   /* Start timer repeat_1. */
-  r = uv_timer_init(&repeat_1, close_cb, NULL);
+  r = uv_timer_init(&repeat_1, close_cb);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat_1, repeat_1_cb, 50, 0);
   ASSERT(r == 0);
@@ -122,7 +122,7 @@ TEST_IMPL(timer_again) {
    * Start another repeating timer. It'll be again()ed by the repeat_1 so
    * it should not time out until repeat_1 stops.
    */
-  r = uv_timer_init(&repeat_2, close_cb, NULL);
+  r = uv_timer_init(&repeat_2, close_cb);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat_2, repeat_2_cb, 100, 100);
   ASSERT(r == 0);

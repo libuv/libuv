@@ -150,11 +150,11 @@ TEST_IMPL(shutdown_eof) {
   qbuf.base = "Q";
   qbuf.len = 1;
 
-  uv_timer_init(&timer, timer_close_cb, NULL);
+  uv_timer_init(&timer, timer_close_cb);
   uv_timer_start(&timer, timer_cb, 100, 0);
 
   server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
-  r = uv_tcp_init(&tcp, tcp_close_cb, NULL);
+  r = uv_tcp_init(&tcp, tcp_close_cb);
   ASSERT(!r);
 
   uv_req_init(&connect_req, (uv_handle_t*) &tcp, connect_cb);

@@ -145,7 +145,7 @@ static void write_cb(uv_req_t* req, int status) {
   /* back to our receive buffer when we start reading. This maximizes the */
   /* tempation for the backend to use dirty stack for calling read_cb. */
   nested++;
-  r = uv_timer_init(&timer, close_cb, NULL);
+  r = uv_timer_init(&timer, close_cb);
   ASSERT(r == 0);
   r = uv_timer_start(&timer, timer_cb, 500, 0);
   ASSERT(r == 0);
@@ -185,7 +185,7 @@ TEST_IMPL(callback_stack) {
 
   uv_init();
 
-  if (uv_tcp_init(&client, &close_cb, NULL)) {
+  if (uv_tcp_init(&client, &close_cb)) {
     FATAL("uv_tcp_init failed");
   }
 

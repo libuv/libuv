@@ -106,20 +106,20 @@ TEST_IMPL(timer) {
   for (i = 0; i < 10; i++) {
     once = (uv_timer_t*)malloc(sizeof(*once));
     ASSERT(once != NULL);
-    r = uv_timer_init(once, once_close_cb, NULL);
+    r = uv_timer_init(once, once_close_cb);
     ASSERT(r == 0);
     r = uv_timer_start(once, once_cb, i * 50, 0);
     ASSERT(r == 0);
   }
 
   /* The 11th timer is a repeating timer that runs 4 times */
-  r = uv_timer_init(&repeat, repeat_close_cb, NULL);
+  r = uv_timer_init(&repeat, repeat_close_cb);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat, repeat_cb, 100, 100);
   ASSERT(r == 0);
 
   /* The 12th timer should not do anything. */
-  r = uv_timer_init(&never, never_close_cb, NULL);
+  r = uv_timer_init(&never, never_close_cb);
   ASSERT(r == 0);
   r = uv_timer_start(&never, never_cb, 100, 100);
   ASSERT(r == 0);

@@ -49,8 +49,7 @@ Begins listening for connections. The accept callback is level-triggered.
 
     int uv_accept(uv_tcp_server_t* server,
                   uv_tcp_t* client,
-                  uv_close_cb close_cb,
-                  void* data);
+                  uv_close_cb close_cb);
 
 Accepts a connection. This should be called after the accept callback is
 made. The `client` parameter should be uninitialized memory; `uv_accept` is
@@ -92,8 +91,7 @@ Stops reading from the stream.
                           uv_stream_t*,
                           uv_buf_t bufs[],
                           int butcnf,
-                          uv_close_cb close_cb,
-                          void* data);
+                          uv_close_cb close_cb);
 
 Initiates a write request on a stream.
 
@@ -113,8 +111,7 @@ or a server-side connection (one that was initialized with `uv_accept`)
     int uv_connect_req_init(uv_connect_req_t* req,
                             uv_tcp_t* socket,
                             struct sockaddr* addr,
-                            uv_close_cb close_cb,
-                            void* data);
+                            uv_close_cb close_cb);
 
 Initiates a request to open a connection.
 
@@ -134,8 +131,7 @@ completion of the request.
     int uv_connect_req_init(uv_connect_req_t* req,
                             uv_tcp_t* socket,
                             struct sockaddr* addr,
-                            uv_close_cb close_cb,
-                            void* data);
+                            uv_close_cb close_cb);
 
 Initializes the connection request. Returning 0 indicates success, -1 if
 there was an error. The following values can be retrieved from
@@ -153,8 +149,7 @@ stream will allow no more writes.
 
     int uv_shutdown_req_init(uv_shutdown_req_t*,
                              uv_stream_t* parent,
-                             uv_close_cb close_cb,
-                             void* data);
+                             uv_close_cb close_cb);
 
 Initializes the shutdown request.
 
@@ -165,7 +160,6 @@ Initializes the shutdown request.
                           uv_stream_t*,
                           uv_buf_t bufs[],
                           int butcnf,
-                          uv_close_cb close_cb,
-                          void* data);
+                          uv_close_cb close_cb);
 
 Initiates a write request on a stream.
