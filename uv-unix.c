@@ -132,10 +132,12 @@ struct sockaddr_in uv_ip4_addr(char* ip, int port) {
 }
 
 
-int uv_close(uv_handle_t* handle) {
+int uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   uv_tcp_t* tcp;
   uv_async_t* async;
   uv_timer_t* timer;
+
+  handle->close_cb = close_cb;
 
   switch (handle->type) {
     case UV_TCP:
@@ -202,10 +204,8 @@ int uv_run() {
 }
 
 
-static void uv__handle_init(uv_handle_t* handle, uv_handle_type type,
-    uv_close_cb close_cb) {
+static void uv__handle_init(uv_handle_t* handle, uv_handle_type type) {
   handle->type = type;
-  handle->close_cb = close_cb;
   handle->flags = 0;
 
   ev_init(&handle->next_watcher, uv__next);
@@ -216,8 +216,8 @@ static void uv__handle_init(uv_handle_t* handle, uv_handle_type type,
 }
 
 
-int uv_tcp_init(uv_tcp_t* tcp, uv_close_cb close_cb) {
-  uv__handle_init((uv_handle_t*)tcp, UV_TCP, close_cb);
+int uv_tcp_init(uv_tcp_t* tcp) {
+  uv__handle_init((uv_handle_t*)tcp, UV_TCP);
 
   tcp->alloc_cb = NULL;
   tcp->connect_req = NULL;
@@ -362,12 +362,12 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
 }
 
 
-int uv_accept(uv_tcp_t* server, uv_tcp_t* client, uv_close_cb close_cb) {
+int uv_accept(uv_tcp_t* server, uv_tcp_t* client) {
   if (server->accepted_fd < 0) {
     return -1;
   }
 
-  if (uv_tcp_init(client, close_cb)) {
+  if (uv_tcp_init(client)) {
     return -1;
   }
 
@@ -467,7 +467,7 @@ void uv__finish_close(uv_handle_t* handle) {
   ev_idle_stop(EV_DEFAULT_ &handle->next_watcher);
 
   if (handle->close_cb) {
-    handle->close_cb(handle, 0);
+    handle->close_cb(handle);
   }
 
   ev_unref(EV_DEFAULT_UC);
@@ -981,8 +981,8 @@ static void uv__prepare(EV_P_ ev_prepare* w, int revents) {
 }
 
 
-int uv_prepare_init(uv_prepare_t* prepare, uv_close_cb close_cb) {
-  uv__handle_init((uv_handle_t*)prepare, UV_PREPARE, close_cb);
+int uv_prepare_init(uv_prepare_t* prepare) {
+  uv__handle_init((uv_handle_t*)prepare, UV_PREPARE);
 
   ev_prepare_init(&prepare->prepare_watcher, uv__prepare);
   prepare->prepare_watcher.data = prepare;
@@ -1030,8 +1030,8 @@ static void uv__check(EV_P_ ev_check* w, int revents) {
 }
 
 
-int uv_check_init(uv_check_t* check, uv_close_cb close_cb) {
-  uv__handle_init((uv_handle_t*)check, UV_CHECK, close_cb);
+int uv_check_init(uv_check_t* check) {
+  uv__handle_init((uv_handle_t*)check, UV_CHECK);
 
   ev_check_init(&check->check_watcher, uv__check);
   check->check_watcher.data = check;
@@ -1080,8 +1080,8 @@ static void uv__idle(EV_P_ ev_idle* w, int revents) {
 
 
 
-int uv_idle_init(uv_idle_t* idle, uv_close_cb close_cb) {
-  uv__handle_init((uv_handle_t*)idle, UV_IDLE, close_cb);
+int uv_idle_init(uv_idle_t* idle) {
+  uv__handle_init((uv_handle_t*)idle, UV_IDLE);
 
   ev_idle_init(&idle->idle_watcher, uv__idle);
   idle->idle_watcher.data = idle;
@@ -1148,9 +1148,8 @@ static void uv__async(EV_P_ ev_async* w, int revents) {
 }
 
 
-int uv_async_init(uv_async_t* async, uv_async_cb async_cb,
-    uv_close_cb close_cb) {
-  uv__handle_init((uv_handle_t*)async, UV_ASYNC, close_cb);
+int uv_async_init(uv_async_t* async, uv_async_cb async_cb) {
+  uv__handle_init((uv_handle_t*)async, UV_ASYNC);
 
   ev_async_init(&async->async_watcher, uv__async);
   async->async_watcher.data = async;
@@ -1183,8 +1182,8 @@ static void uv__timer_cb(EV_P_ ev_timer* w, int revents) {
 }
 
 
-int uv_timer_init(uv_timer_t* timer, uv_close_cb close_cb) {
-  uv__handle_init((uv_handle_t*)timer, UV_TIMER, close_cb);
+int uv_timer_init(uv_timer_t* timer) {
+  uv__handle_init((uv_handle_t*)timer, UV_TIMER);
 
   ev_init(&timer->timer_watcher, uv__timer_cb);
   timer->timer_watcher.data = timer;

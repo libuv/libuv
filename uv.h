@@ -62,7 +62,7 @@ typedef void (*uv_write_cb)(uv_req_t* req, int status);
 typedef void (*uv_connect_cb)(uv_req_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_req_t* req, int status);
 typedef void (*uv_connection_cb)(uv_tcp_t* server, int status);
-typedef void (*uv_close_cb)(uv_handle_t* handle, int status);
+typedef void (*uv_close_cb)(uv_handle_t* handle);
 /* TODO: do loop_cb and async_cb really need a status argument? */
 typedef void (*uv_loop_cb)(uv_handle_t* handle, int status);
 typedef void (*uv_async_cb)(uv_handle_t* handle, int stats);
@@ -180,7 +180,7 @@ int uv_is_active(uv_handle_t* handle);
  * Request handle to be closed. close_cb will be called asynchronously after
  * this call. This MUST be called on each handle before memory is released.
  */
-int uv_close(uv_handle_t* handle);
+int uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
 
 /*
@@ -194,7 +194,7 @@ struct uv_tcp_s {
   UV_TCP_PRIVATE_FIELDS
 };
 
-int uv_tcp_init(uv_tcp_t* handle, uv_close_cb close_cb);
+int uv_tcp_init(uv_tcp_t* handle);
 
 int uv_bind(uv_tcp_t* handle, struct sockaddr_in);
 
@@ -205,7 +205,7 @@ int uv_shutdown(uv_req_t* req);
 int uv_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 
 /* Call this after connection_cb. client does not need to be initialized. */
-int uv_accept(uv_tcp_t* server, uv_tcp_t* client, uv_close_cb close_cb);
+int uv_accept(uv_tcp_t* server, uv_tcp_t* client);
 
 /* Read data from an incoming stream. The callback will be made several
  * several times until there is no more data to read or uv_read_stop is
@@ -233,7 +233,7 @@ struct uv_prepare_s {
   UV_PREPARE_PRIVATE_FIELDS
 };
 
-int uv_prepare_init(uv_prepare_t* prepare, uv_close_cb close_cb);
+int uv_prepare_init(uv_prepare_t* prepare);
 
 int uv_prepare_start(uv_prepare_t* prepare, uv_loop_cb cb);
 
@@ -250,7 +250,7 @@ struct uv_check_s {
   UV_CHECK_PRIVATE_FIELDS
 };
 
-int uv_check_init(uv_check_t* check, uv_close_cb close_cb);
+int uv_check_init(uv_check_t* check);
 
 int uv_check_start(uv_check_t* check, uv_loop_cb cb);
 
@@ -268,7 +268,7 @@ struct uv_idle_s {
   UV_IDLE_PRIVATE_FIELDS
 };
 
-int uv_idle_init(uv_idle_t* idle, uv_close_cb close_cb);
+int uv_idle_init(uv_idle_t* idle);
 
 int uv_idle_start(uv_idle_t* idle, uv_loop_cb cb);
 
@@ -288,8 +288,7 @@ typedef struct {
   UV_ASYNC_PRIVATE_FIELDS
 } uv_async_t;
 
-int uv_async_init(uv_async_t* async, uv_async_cb async_cb,
-    uv_close_cb close_cb);
+int uv_async_init(uv_async_t* async, uv_async_cb async_cb);
 
 int uv_async_send(uv_async_t* async);
 
@@ -303,7 +302,7 @@ struct uv_timer_s {
   UV_TIMER_PRIVATE_FIELDS
 };
 
-int uv_timer_init(uv_timer_t* timer, uv_close_cb close_cb);
+int uv_timer_init(uv_timer_t* timer);
 
 int uv_timer_start(uv_timer_t* timer, uv_loop_cb cb, int64_t timeout, int64_t repeat);
 
