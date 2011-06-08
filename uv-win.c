@@ -661,6 +661,7 @@ static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
   switch (handle->type) {
     case UV_TCP:
       tcp = (uv_tcp_t*)handle;
+      tcp->flags &= ~(UV_HANDLE_READING | UV_HANDLE_LISTENING);
       closesocket(tcp->socket);
       if (tcp->reqs_pending == 0) {
         uv_want_endgame(handle);
@@ -1089,6 +1090,10 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
     case UV_READ:
       if (req->error.code != UV_OK) {
         /* An error occurred doing the 0-read. */
+        if (!(handle->flags & UV_HANDLE_READING)) {
+          break;
+        }
+
         /* Stop reading and report error. */
         handle->flags &= ~UV_HANDLE_READING;
         uv_last_error_ = req->error;
@@ -1141,8 +1146,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
         }
       }
       /* Post another 0-read if still reading and not closing. */
-      if (!(handle->flags & UV_HANDLE_CLOSING) &&
-          handle->flags & UV_HANDLE_READING) {
+      if (handle->flags & UV_HANDLE_READING) {
         uv_queue_read(handle);
       }
       break;
@@ -1153,6 +1157,9 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
       /* accepting connections and report this error to the connection */
       /* callback. */
       if (handle->accept_socket == INVALID_SOCKET) {
+        if (!(handle->flags & UV_HANDLE_LISTENING)) {
+          break;
+        }
         handle->flags &= ~UV_HANDLE_LISTENING;
         if (handle->connection_cb) {
           uv_last_error_ = req->error;
@@ -1176,7 +1183,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
         /* socket may still be healthy. If the server socket is broken
         /* uv_queue_accept will detect it. */
         closesocket(handle->accept_socket);
-        if (!(handle->flags & UV_HANDLE_CLOSING)) {
+        if (handle->flags & UV_HANDLE_LISTENING) {
           uv_queue_accept(handle);
         }
       }
