@@ -143,7 +143,7 @@ static LPFN_TRANSMITFILE            pTransmitFile;
 /* Binary tree used to keep the list of timers sorted. */
 static int uv_timer_compare(uv_timer_t* handle1, uv_timer_t* handle2);
 RB_HEAD(uv_timer_tree_s, uv_timer_s);
-RB_PROTOTYPE_STATIC(uv_timer_tree_s, uv_timer_s, tree_entry, uv_timer_compare);
+RB_PROTOTYPE_STATIC(uv_timer_tree_s, uv_timer_s, tree_entry, uv_timer_compare)
 
 /* The head of the timers tree */
 static struct uv_timer_tree_s uv_timers_ = RB_INITIALIZER(uv_timers_);

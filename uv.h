@@ -65,7 +65,7 @@ typedef void (*uv_connection_cb)(uv_tcp_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
 /* TODO: do loop_cb and async_cb really need a status argument? */
 typedef void (*uv_loop_cb)(uv_handle_t* handle, int status);
-typedef void (*uv_async_cb)(uv_handle_t* handle, int stats);
+typedef void (*uv_async_cb)(uv_handle_t* handle, int status);
 
 
 /* Expand this list if necessary. */
