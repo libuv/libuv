@@ -648,7 +648,7 @@ static void uv_want_endgame(uv_handle_t* handle) {
 
 
 static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
-	uv_tcp_t* tcp;
+  uv_tcp_t* tcp;
 
   if (handle->flags & UV_HANDLE_CLOSING) {
     return 0;
@@ -660,7 +660,7 @@ static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
   /* Handle-specific close actions */
   switch (handle->type) {
     case UV_TCP:
-			tcp = (uv_tcp_t*)handle;
+      tcp = (uv_tcp_t*)handle;
       closesocket(tcp->socket);
       if (tcp->reqs_pending == 0) {
         uv_want_endgame(handle);
@@ -720,7 +720,7 @@ struct sockaddr_in uv_ip4_addr(char* ip, int port) {
 
 int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   DWORD err;
-	int r;
+  int r;
   int addrsize = sizeof(struct sockaddr_in);
 
   if (addr.sin_family != AF_INET) {
@@ -728,7 +728,7 @@ int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
     return -1;
   }
 
-	r = bind(handle->socket, (struct sockaddr*) &addr, addrsize);
+  r = bind(handle->socket, (struct sockaddr*) &addr, addrsize);
 
   if (r == SOCKET_ERROR) {
     err = WSAGetLastError();
@@ -944,9 +944,9 @@ int uv_connect(uv_req_t* req, struct sockaddr_in addr) {
     return -1;
   }
 
-	if (!(handle->flags & UV_HANDLE_BOUND) &&
-			uv_bind(handle, uv_addr_ip4_any_) < 0)
-		return -1;
+  if (!(handle->flags & UV_HANDLE_BOUND) &&
+      uv_bind(handle, uv_addr_ip4_any_) < 0)
+    return -1;
 
   memset(&req->overlapped, 0, sizeof(req->overlapped));
   req->type = UV_CONNECT;
