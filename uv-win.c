@@ -1094,7 +1094,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
         uv_last_error_ = req->error;
         buf.base = 0;
         buf.len = 0;
-        ((uv_read_cb)handle->read_cb)(handle, -1, buf);
+        handle->read_cb(handle, -1, buf);
         break;
       }
 
@@ -1112,7 +1112,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
                     NULL) != SOCKET_ERROR) {
           if (bytes > 0) {
             /* Successful read */
-            ((uv_read_cb)handle->read_cb)(handle, bytes, buf);
+            handle->read_cb(handle, bytes, buf);
             /* Read again only if bytes == buf.len */
             if (bytes < buf.len) {
               break;
@@ -1123,7 +1123,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
             handle->flags |= UV_HANDLE_EOF;
             uv_last_error_.code = UV_EOF;
             uv_last_error_.sys_errno_ = ERROR_SUCCESS;
-            ((uv_read_cb)handle->read_cb)(handle, -1, buf);
+            handle->read_cb(handle, -1, buf);
             break;
           }
         } else {
@@ -1131,11 +1131,11 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
           if (err == WSAEWOULDBLOCK) {
             /* Read buffer was completely empty, report a 0-byte read. */
             uv_set_sys_error(WSAEWOULDBLOCK);
-            ((uv_read_cb)handle->read_cb)(handle, 0, buf);
+            handle->read_cb(handle, 0, buf);
           } else {
             /* Ouch! serious error. */
             uv_set_sys_error(err);
-            ((uv_read_cb)handle->read_cb)(handle, -1, buf);
+            handle->read_cb(handle, -1, buf);
           }
           break;
         }
@@ -1156,7 +1156,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
         handle->flags &= ~UV_HANDLE_LISTENING;
         if (handle->connection_cb) {
           uv_last_error_ = req->error;
-          ((uv_connection_cb)handle->connection_cb)(handle, -1);
+          handle->connection_cb(handle, -1);
         }
         break;
       }
@@ -1169,7 +1169,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
                      sizeof(handle->socket)) == 0) {
         /* Accept and SO_UPDATE_ACCEPT_CONTEXT were successful. */
         if (handle->connection_cb) {
-          ((uv_connection_cb)handle->connection_cb)(handle, 0);
+          handle->connection_cb(handle, 0);
         }
       } else {
         /* Error related to accepted socket is ignored because the server */
@@ -1402,7 +1402,7 @@ static void uv_loop_invoke(uv_handle_t* list) {
     handle = uv_next_loop_handle_;
     uv_next_loop_handle_ = handle->loop_next;
 
-    ((uv_loop_cb)handle->loop_cb)(handle, 0);
+    handle->loop_cb(handle, 0);
   }
 }
 
@@ -1576,7 +1576,7 @@ static void uv_process_timers() {
       timer->flags &= ~UV_HANDLE_ACTIVE;
     }
 
-    ((uv_loop_cb) timer->timer_cb)((uv_handle_t*)timer, 0);
+    timer->timer_cb((uv_handle_t*) timer, 0);
   }
 }
 
