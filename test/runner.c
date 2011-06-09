@@ -155,8 +155,9 @@ finalize:
       break;
 
      default:
-      //LOGF("%s: ", test->task_name);
-      process_copy_output(main_process, fileno(stderr));
+      for (i = 0; i < process_count; i++) {
+        process_copy_output(&processes[i], fileno(stderr));
+      }
       break;
     }
   }
