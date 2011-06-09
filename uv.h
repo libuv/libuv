@@ -366,6 +366,16 @@ union uv_any_handle {
   uv_timer_t timer;
 };
 
+/* Diagnostic counters */
+uint64_t uv_cnt_req_init;
+uint64_t uv_cnt_handle_init;
+uint64_t uv_cnt_tcp_init;
+uint64_t uv_cnt_prepare_init;
+uint64_t uv_cnt_check_init;
+uint64_t uv_cnt_idle_init;
+uint64_t uv_cnt_async_init;
+uint64_t uv_cnt_timer_init;
+
 #ifdef __cplusplus
 }
 #endif
