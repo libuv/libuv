@@ -256,6 +256,8 @@ static void connection_cb(uv_tcp_t* s, int status) {
 
   tcp = malloc(sizeof(uv_tcp_t));
 
+  uv_tcp_init(tcp);
+
   r = uv_accept(s, tcp);
   ASSERT(r == 0);
 

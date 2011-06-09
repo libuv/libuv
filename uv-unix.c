@@ -367,10 +367,7 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
 
 int uv_accept(uv_tcp_t* server, uv_tcp_t* client) {
   if (server->accepted_fd < 0) {
-    return -1;
-  }
-
-  if (uv_tcp_init(client)) {
+    uv_err_new((uv_handle_t*) server, EAGAIN);
     return -1;
   }
 

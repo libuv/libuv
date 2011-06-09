@@ -134,6 +134,8 @@ static void on_connection(uv_tcp_t* server, int status) {
   handle = (uv_tcp_t*) malloc(sizeof *handle);
   ASSERT(handle != NULL);
 
+  uv_tcp_init(handle);
+
   r = uv_accept(server, handle);
   ASSERT(r == 0);
 

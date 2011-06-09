@@ -204,7 +204,11 @@ int uv_shutdown(uv_req_t* req);
 
 int uv_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 
-/* Call this after connection_cb. client does not need to be initialized. */
+/* This call is used in conjunction with uv_listen() to accept incoming TCP
+ * connections. Call uv_accept after receiving a uv_connection_cb to accept
+ * the connection. Before calling uv_accept use uv_tcp_init() must be
+ * called on the client. Non-zero return value indicates an error.
+ */
 int uv_accept(uv_tcp_t* server, uv_tcp_t* client);
 
 /* Read data from an incoming stream. The callback will be made several

@@ -60,14 +60,16 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
   ASSERT(status == 0);
   ASSERT(accepted_handle != NULL);
 
-  /* Test to that uv_cnt_tcp_init increases across the uv_accept. */
+  uv_tcp_init(accepted_handle);
+
+  /* Test to that uv_cnt_tcp_init does not increase across the uv_accept. */
   tcpcnt = uv_cnt_tcp_init;
 
   server = (uv_tcp_t*)timer_handle->data;
   r = uv_accept(server, accepted_handle);
   ASSERT(r == 0);
 
-  ASSERT(uv_cnt_tcp_init == tcpcnt + 1);
+  ASSERT(uv_cnt_tcp_init == tcpcnt);
 
   do_accept_called++;
 
