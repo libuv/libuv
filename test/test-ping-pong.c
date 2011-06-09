@@ -92,7 +92,7 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
+static void pinger_read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
   unsigned int i;
   pinger_t* pinger;
 

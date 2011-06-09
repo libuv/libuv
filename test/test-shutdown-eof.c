@@ -45,7 +45,7 @@ static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
 }
 
 
-static void read_cb(uv_tcp_t* t, int nread, uv_buf_t buf) {
+static void read_cb(uv_tcp_t* t, ssize_t nread, uv_buf_t buf) {
   ASSERT(t == &tcp);
 
   if (!got_q) {

@@ -121,7 +121,7 @@ static void start_server() {
 }
 
 
-static void read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
+static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
   /* The server will not send anything, it should close gracefully. */
   ASSERT(tcp != NULL);
   ASSERT(nread == -1);

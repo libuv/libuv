@@ -57,7 +57,7 @@ typedef struct uv_req_s uv_req_t;
  * user.
  */
 typedef uv_buf_t (*uv_alloc_cb)(uv_tcp_t* tcp, size_t suggested_size);
-typedef void (*uv_read_cb)(uv_tcp_t* tcp, int nread, uv_buf_t buf);
+typedef void (*uv_read_cb)(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf);
 typedef void (*uv_write_cb)(uv_req_t* req, int status);
 typedef void (*uv_connect_cb)(uv_req_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_req_t* req, int status);

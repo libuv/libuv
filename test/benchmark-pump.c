@@ -154,7 +154,7 @@ static void start_stats_collection() {
 }
 
 
-static void read_cb(uv_tcp_t* tcp, int bytes, uv_buf_t buf) {
+static void read_cb(uv_tcp_t* tcp, ssize_t bytes, uv_buf_t buf) {
   if (nrecv_total == 0) {
     ASSERT(start_time == 0);
     uv_update_time();

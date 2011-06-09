@@ -125,7 +125,7 @@ static void pinger_shutdown_cb(uv_handle_t* handle, int status) {
 }
 
 
-static void pinger_read_cb(uv_tcp_t* tcp, int nread, uv_buf_t buf) {
+static void pinger_read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
   unsigned int i;
   pinger_t* pinger;
 

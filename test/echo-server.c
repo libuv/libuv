@@ -36,7 +36,7 @@ static uv_tcp_t server;
 
 
 static void after_write(uv_req_t* req, int status);
-static void after_read(uv_tcp_t*, int nread, uv_buf_t buf);
+static void after_read(uv_tcp_t*, ssize_t nread, uv_buf_t buf);
 static void on_close(uv_handle_t* peer);
 static void on_server_close(uv_handle_t* handle);
 static void on_connection(uv_tcp_t*, int status);
@@ -65,7 +65,7 @@ static void after_shutdown(uv_req_t* req, int status) {
 }
 
 
-static void after_read(uv_tcp_t* handle, int nread, uv_buf_t buf) {
+static void after_read(uv_tcp_t* handle, ssize_t nread, uv_buf_t buf) {
   int i;
   write_req_t *wr;
   uv_req_t* req;
