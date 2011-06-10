@@ -41,6 +41,7 @@
 #include <sys/sysctl.h>
 #endif
 
+
 static uv_err_t last_err;
 
 
@@ -205,7 +206,7 @@ int uv_run() {
 
 
 static void uv__handle_init(uv_handle_t* handle, uv_handle_type type) {
-  uv_cnt_handle_init++;
+  uv_counters()->handle_init++;
 
   handle->type = type;
   handle->flags = 0;
@@ -220,7 +221,7 @@ static void uv__handle_init(uv_handle_t* handle, uv_handle_type type) {
 
 int uv_tcp_init(uv_tcp_t* tcp) {
   uv__handle_init((uv_handle_t*)tcp, UV_TCP);
-  uv_cnt_tcp_init++;
+  uv_counters()->tcp_init++;
 
   tcp->alloc_cb = NULL;
   tcp->connect_req = NULL;
@@ -965,7 +966,7 @@ int uv_read_stop(uv_tcp_t* tcp) {
 
 
 void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb) {
-  uv_cnt_req_init++;
+  uv_counters()->req_init++;
   req->type = UV_UNKNOWN_REQ;
   req->cb = cb;
   req->handle = handle;
@@ -984,7 +985,7 @@ static void uv__prepare(EV_P_ ev_prepare* w, int revents) {
 
 int uv_prepare_init(uv_prepare_t* prepare) {
   uv__handle_init((uv_handle_t*)prepare, UV_PREPARE);
-  uv_cnt_prepare_init++;
+  uv_counters()->prepare_init++;
 
   ev_prepare_init(&prepare->prepare_watcher, uv__prepare);
   prepare->prepare_watcher.data = prepare;
@@ -1034,7 +1035,7 @@ static void uv__check(EV_P_ ev_check* w, int revents) {
 
 int uv_check_init(uv_check_t* check) {
   uv__handle_init((uv_handle_t*)check, UV_CHECK);
-  uv_cnt_check_init;
+  uv_counters()->check_init;
 
   ev_check_init(&check->check_watcher, uv__check);
   check->check_watcher.data = check;
@@ -1085,7 +1086,7 @@ static void uv__idle(EV_P_ ev_idle* w, int revents) {
 
 int uv_idle_init(uv_idle_t* idle) {
   uv__handle_init((uv_handle_t*)idle, UV_IDLE);
-  uv_cnt_idle_init++;
+  uv_counters()->idle_init++;
 
   ev_idle_init(&idle->idle_watcher, uv__idle);
   idle->idle_watcher.data = idle;
@@ -1154,7 +1155,7 @@ static void uv__async(EV_P_ ev_async* w, int revents) {
 
 int uv_async_init(uv_async_t* async, uv_async_cb async_cb) {
   uv__handle_init((uv_handle_t*)async, UV_ASYNC);
-  uv_cnt_async_init++;
+  uv_counters()->async_init++;
 
   ev_async_init(&async->async_watcher, uv__async);
   async->async_watcher.data = async;
@@ -1189,7 +1190,7 @@ static void uv__timer_cb(EV_P_ ev_timer* w, int revents) {
 
 int uv_timer_init(uv_timer_t* timer) {
   uv__handle_init((uv_handle_t*)timer, UV_TIMER);
-  uv_cnt_timer_init++;
+  uv_counters()->timer_init++;
 
   ev_init(&timer->timer_watcher, uv__timer_cb);
   timer->timer_watcher.data = timer;

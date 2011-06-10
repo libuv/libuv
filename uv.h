@@ -375,14 +375,18 @@ union uv_any_handle {
 };
 
 /* Diagnostic counters */
-uint64_t uv_cnt_req_init;
-uint64_t uv_cnt_handle_init;
-uint64_t uv_cnt_tcp_init;
-uint64_t uv_cnt_prepare_init;
-uint64_t uv_cnt_check_init;
-uint64_t uv_cnt_idle_init;
-uint64_t uv_cnt_async_init;
-uint64_t uv_cnt_timer_init;
+typedef struct {
+  uint64_t req_init;
+  uint64_t handle_init;
+  uint64_t tcp_init;
+  uint64_t prepare_init;
+  uint64_t check_init;
+  uint64_t idle_init;
+  uint64_t async_init;
+  uint64_t timer_init;
+} uv_counters_t;
+
+uv_counters_t* const uv_counters();
 
 #ifdef __cplusplus
 }

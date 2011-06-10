@@ -410,7 +410,7 @@ void uv_init() {
 
 
 void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb) {
-  uv_cnt_req_init++;
+  uv_counters()->req_init++;
   req->type = UV_UNKNOWN_REQ;
   req->flags = 0;
   req->handle = handle;
@@ -507,8 +507,8 @@ int uv_tcp_init(uv_tcp_t* handle) {
   handle->error = uv_ok_;
   handle->accept_socket = INVALID_SOCKET;
 
-  uv_cnt_handle_init++;
-  uv_cnt_tcp_init++;
+  uv_counters()->handle_init++;
+  uv_counters()->tcp_init++;
 
   uv_refs_++;
 
@@ -1254,8 +1254,8 @@ RB_GENERATE_STATIC(uv_timer_tree_s, uv_timer_s, tree_entry, uv_timer_compare);
 
 
 int uv_timer_init(uv_timer_t* handle) {
-  uv_cnt_handle_init++;
-  uv_cnt_timer_init++;
+  uv_counters()->handle_init++;
+  uv_counters()->timer_init++;
 
   handle->type = UV_TIMER;
   handle->flags = 0;
@@ -1429,24 +1429,24 @@ static void uv_loop_invoke(uv_handle_t* list) {
 
 
 int uv_prepare_init(uv_prepare_t* handle) {
-  uv_cnt_handle_init++;
-  uv_cnt_prepare_init++;
+  uv_counters()->handle_init++;
+  uv_counters()->prepare_init++;
   handle->type = UV_PREPARE;
   return uv_loop_init((uv_handle_t*)handle);
 }
 
 
 int uv_check_init(uv_check_t* handle) {
-  uv_cnt_handle_init++;
-  uv_cnt_check_init++;
+  uv_counters()->handle_init++;
+  uv_counters()->check_init++;
   handle->type = UV_CHECK;
   return uv_loop_init((uv_handle_t*)handle);
 }
 
 
 int uv_idle_init(uv_idle_t* handle) {
-  uv_cnt_handle_init++;
-  uv_cnt_idle_init++;
+  uv_counters()->handle_init++;
+  uv_counters()->idle_init++;
   handle->type = UV_IDLE;
   return uv_loop_init((uv_handle_t*)handle);
 }
@@ -1505,8 +1505,8 @@ int uv_is_active(uv_handle_t* handle) {
 int uv_async_init(uv_async_t* handle, uv_async_cb async_cb) {
   uv_req_t* req;
 
-  uv_cnt_handle_init++;
-  uv_cnt_async_init++;
+  uv_counters()->handle_init++;
+  uv_counters()->async_init++;
 
   handle->type = UV_ASYNC;
   handle->flags = 0;

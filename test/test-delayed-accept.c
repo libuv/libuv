@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 static char BUFFER[1024];
 
 static int connection_cb_called = 0;
@@ -62,14 +61,14 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
 
   uv_tcp_init(accepted_handle);
 
-  /* Test to that uv_cnt_tcp_init does not increase across the uv_accept. */
-  tcpcnt = uv_cnt_tcp_init;
+  /* Test to that uv_counters()->tcp_init does not increase across the uv_accept. */
+  tcpcnt = uv_counters()->tcp_init;
 
   server = (uv_tcp_t*)timer_handle->data;
   r = uv_accept(server, accepted_handle);
   ASSERT(r == 0);
 
-  ASSERT(uv_cnt_tcp_init == tcpcnt);
+  ASSERT(uv_counters()->tcp_init == tcpcnt);
 
   do_accept_called++;
 
@@ -120,8 +119,8 @@ static void start_server() {
 
   r = uv_tcp_init(server);
   ASSERT(r == 0);
-  ASSERT(uv_cnt_tcp_init == 1);
-  ASSERT(uv_cnt_handle_init == 1);
+  ASSERT(uv_counters()->tcp_init == 1);
+  ASSERT(uv_counters()->handle_init == 1);
 
   r = uv_bind(server, addr);
   ASSERT(r == 0);
