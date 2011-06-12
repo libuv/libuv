@@ -31,6 +31,10 @@ extern "C" {
 #include <stdint.h> /* int64_t */
 #include <sys/types.h> /* size_t */
 
+#ifndef ssize_t
+typedef intptr_t ssize_t;
+#endif
+
 typedef struct uv_err_s uv_err_t;
 typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_tcp_s uv_tcp_t;
