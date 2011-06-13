@@ -386,7 +386,7 @@ typedef struct {
   uint64_t timer_init;
 } uv_counters_t;
 
-uv_counters_t* const uv_counters();
+uv_counters_t* uv_counters();
 
 #ifdef __cplusplus
 }

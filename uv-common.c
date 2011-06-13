@@ -28,7 +28,7 @@
 static uv_counters_t counters;
 
 
-uv_counters_t* const uv_counters() {
+uv_counters_t* uv_counters() {
   return &counters;
 }
 
