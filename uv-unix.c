@@ -122,7 +122,7 @@ static uv_err_t uv_err_new(uv_handle_t* handle, int sys_error) {
 }
 
 
-struct sockaddr_in uv_ip4_addr(char* ip, int port) {
+struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
   struct sockaddr_in addr;
 
   addr.sin_family = AF_INET;
