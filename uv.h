@@ -31,7 +31,7 @@ extern "C" {
 #include <stdint.h> /* int64_t */
 #include <sys/types.h> /* size_t */
 
-#ifndef ssize_t
+#ifndef _SSIZE_T_
 typedef intptr_t ssize_t;
 #endif
 
