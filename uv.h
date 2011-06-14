@@ -28,8 +28,12 @@ extern "C" {
 #define UV_VERSION_MAJOR 0
 #define UV_VERSION_MINOR 1
 
+#define CARES_STATICLIB 1
+
 #include <stdint.h> /* int64_t */
 #include <sys/types.h> /* size_t */
+
+#include "c-ares/ares.h"
 
 #ifndef _SSIZE_T_
 typedef intptr_t ssize_t;

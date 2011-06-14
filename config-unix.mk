@@ -35,8 +35,9 @@ RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: uv-unix.o uv-common.o ev/ev.o
+uv.a: uv-unix.o uv-common.o ev/ev.o c-ares/libcares.a
 	$(AR) rcs uv.a uv-unix.o uv-common.o ev/ev.o
+	$(AR) rs uv.a $(shell $(AR) -t c-ares/libcares.a | awk '{print "c-ares/" $$1}')
 
 uv-unix.o: uv-unix.c uv.h uv-unix.h
 	$(CC) $(CFLAGS) -c uv-unix.c -o uv-unix.o
@@ -49,6 +50,9 @@ ev/ev.o: ev/config.h ev/ev.c
 
 ev/config.h:
 	cd ev && ./configure
+
+c-ares/libcares.a:
+	# TODO!
 
 clean-platform:
 	$(MAKE) -C ev clean
