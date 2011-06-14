@@ -212,6 +212,11 @@ int uv_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
  * connections. Call uv_accept after receiving a uv_connection_cb to accept
  * the connection. Before calling uv_accept use uv_tcp_init() must be
  * called on the client. Non-zero return value indicates an error.
+ *
+ * When the uv_connection_cb is called it is guaranteed that uv_accept will
+ * complete successfully the first time. If you attempt to use it more than
+ * once, it may fail. It is suggested to only call uv_accept once per
+ * uv_connection_cb call.
  */
 int uv_accept(uv_tcp_t* server, uv_tcp_t* client);
 
