@@ -1,6 +1,7 @@
 #***************************************************************************
+# $Id$
 #
-# Copyright (C) 2009-2011 by Daniel Stenberg et al
+# Copyright (C) 2009-2010 by Daniel Stenberg et al
 #
 # Permission to use, copy, modify, and distribute this software and its
 # documentation for any purpose and without fee is hereby granted, provided
@@ -15,7 +16,7 @@
 #***************************************************************************
 
 # File version for 'aclocal' use. Keep it a single number.
-# serial 66
+# serial 65
 
 
 dnl CARES_CHECK_COMPILER
@@ -34,8 +35,6 @@ AC_DEFUN([CARES_CHECK_COMPILER], [
   flags_opt_all="unknown"
   flags_opt_yes="unknown"
   flags_opt_off="unknown"
-  #
-  flags_prefer_cppflags="no"
   #
   CARES_CHECK_COMPILER_DEC_C
   CARES_CHECK_COMPILER_HPUX_C
@@ -207,7 +206,6 @@ AC_DEFUN([CARES_CHECK_COMPILER_IBM_C], [
     flags_opt_all="$flags_opt_all -qoptimize=5"
     flags_opt_yes="-O2"
     flags_opt_off="-qnooptimize"
-    flags_prefer_cppflags="yes"
   else
     AC_MSG_RESULT([no])
   fi
@@ -584,15 +582,15 @@ AC_DEFUN([CARES_SET_COMPILER_BASIC_OPTS], [
       IBM_C)
         #
         dnl Ensure that compiler optimizations are always thread-safe.
-        tmp_CPPFLAGS="$tmp_CPPFLAGS -qthreaded"
+        tmp_CFLAGS="$tmp_CFLAGS -qthreaded"
         dnl Disable type based strict aliasing optimizations, using worst
         dnl case aliasing assumptions when compiling. Type based aliasing
         dnl would restrict the lvalues that could be safely used to access
         dnl a data object.
-        tmp_CPPFLAGS="$tmp_CPPFLAGS -qnoansialias"
+        tmp_CFLAGS="$tmp_CFLAGS -qnoansialias"
         dnl Force compiler to stop after the compilation phase, without
         dnl generating an object code file when compilation has errors.
-        tmp_CPPFLAGS="$tmp_CPPFLAGS -qhalt=e"
+        tmp_CFLAGS="$tmp_CFLAGS -qhalt=e"
         ;;
         #
       INTEL_UNIX_C)
@@ -718,13 +716,8 @@ AC_DEFUN([CARES_SET_COMPILER_DEBUG_OPTS], [
       tmp_options="$flags_dbg_off"
     fi
     #
-    if test "$flags_prefer_cppflags" = "yes"; then
-      CPPFLAGS="$tmp_CPPFLAGS $tmp_options"
-      CFLAGS="$tmp_CFLAGS"
-    else
-      CPPFLAGS="$tmp_CPPFLAGS"
-      CFLAGS="$tmp_CFLAGS $tmp_options"
-    fi
+    CPPFLAGS="$tmp_CPPFLAGS"
+    CFLAGS="$tmp_CFLAGS $tmp_options"
     squeeze CPPFLAGS
     squeeze CFLAGS
     CARES_COMPILER_WORKS_IFELSE([
@@ -799,13 +792,8 @@ AC_DEFUN([CARES_SET_COMPILER_OPTIMIZE_OPTS], [
         AC_MSG_CHECKING([if compiler accepts optimizer disabling options])
         tmp_options="$flags_opt_off"
       fi
-      if test "$flags_prefer_cppflags" = "yes"; then
-        CPPFLAGS="$tmp_CPPFLAGS $tmp_options"
-        CFLAGS="$tmp_CFLAGS"
-      else
-        CPPFLAGS="$tmp_CPPFLAGS"
-        CFLAGS="$tmp_CFLAGS $tmp_options"
-      fi
+      CPPFLAGS="$tmp_CPPFLAGS"
+      CFLAGS="$tmp_CFLAGS $tmp_options"
       squeeze CPPFLAGS
       squeeze CFLAGS
       CARES_COMPILER_WORKS_IFELSE([
@@ -955,17 +943,11 @@ AC_DEFUN([CARES_SET_COMPILER_WARNING_OPTS], [
             tmp_CFLAGS="$tmp_CFLAGS -Wdeclaration-after-statement"
           fi
           #
-          dnl Only gcc 4.2 or later
-          if test "$compiler_num" -ge "402"; then
-            tmp_CFLAGS="$tmp_CFLAGS -Wcast-align"
-          fi
-          #
           dnl Only gcc 4.3 or later
           if test "$compiler_num" -ge "403"; then
             tmp_CFLAGS="$tmp_CFLAGS -Wtype-limits -Wold-style-declaration"
             tmp_CFLAGS="$tmp_CFLAGS -Wmissing-parameter-type -Wempty-body"
             tmp_CFLAGS="$tmp_CFLAGS -Wclobbered -Wignored-qualifiers"
-            tmp_CFLAGS="$tmp_CFLAGS -Wconversion -Wno-sign-conversion -Wvla"
           fi
           #
         fi
@@ -1243,12 +1225,12 @@ AC_DEFUN([CARES_CHECK_CURLDEBUG], [
   if test "$want_curldebug" = "yes"; then
     dnl TODO: Verify if the BUILDING_LIBCURL definition is still required.
     AC_DEFINE(BUILDING_LIBCURL, 1, [when building as static part of libcurl])
-    CPPFLAGS="-DCURLDEBUG $CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS -DCURLDEBUG"
     squeeze CPPFLAGS
   fi
   #
   if test "$want_debug" = "yes"; then
-    CPPFLAGS="-DDEBUGBUILD $CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS -DDEBUGBUILD"
     squeeze CPPFLAGS
   fi
 ])

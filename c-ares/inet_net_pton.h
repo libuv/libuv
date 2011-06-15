@@ -1,7 +1,8 @@
-#ifndef HEADER_CARES_INET_NET_PTON_H
-#define HEADER_CARES_INET_NET_PTON_H
+#ifndef __ARES_INET_NET_PTON_H
+#define __ARES_INET_NET_PTON_H
 
-/* Copyright (C) 2005-2010 by Daniel Stenberg et al
+
+/* Copyright (C) 2005 by Daniel Stenberg
  *
  * Permission to use, copy, modify, and distribute this
  * software and its documentation for any purpose and without
@@ -21,11 +22,10 @@
 #else
 int ares_inet_pton(int af, const char *src, void *dst);
 #endif
-
-#ifdef HAVE_INET_NET_PTON
+#if defined(HAVE_INET_NET_PTON) && defined(HAVE_INET_NET_PTON_IPV6)
 #define ares_inet_net_pton(w,x,y,z) inet_net_pton(w,x,y,z)
 #else
 int ares_inet_net_pton(int af, const char *src, void *dst, size_t size);
 #endif
 
-#endif /* HEADER_CARES_INET_NET_PTON_H */
+#endif /* __ARES_INET_NET_PTON_H */

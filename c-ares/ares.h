@@ -1,6 +1,6 @@
 
 /* Copyright 1998, 2009 by the Massachusetts Institute of Technology.
- * Copyright (C) 2007-2011 by Daniel Stenberg
+ * Copyright (C) 2007-2010 by Daniel Stenberg
  *
  * Permission to use, copy, modify, and distribute this
  * software and its documentation for any purpose and without
@@ -48,12 +48,6 @@
 #  include <netinet/in.h>
 #  include <sys/socket.h>
 #  include <tcp.h>
-#elif defined(_WIN32_WCE)
-#  ifndef WIN32_LEAN_AND_MEAN
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  include <windows.h>
-#  include <winsock.h>
 #elif defined(WIN32)
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN

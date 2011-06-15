@@ -59,7 +59,6 @@
 #include "ares_getopt.h"
 #include "inet_net_pton.h"
 #include "inet_ntop.h"
-#include "ares_nowarn.h"
 
 #ifndef HAVE_STRDUP
 #  include "ares_strdup.h"

@@ -103,12 +103,8 @@ AR	= ar
 ARFLAGS	= -cq
 LIBEXT	= a
 RANLIB	= ranlib
-CFLAGS  += -m32
-CFLAGS  += -fno-builtin -fno-strict-aliasing
-ifeq ($(findstring gcc,$(CC)),gcc)
-CFLAGS  += -fpcc-struct-return
-endif
-CFLAGS  += -Wall # -pedantic
+CFLAGS	+= -fno-builtin -fpcc-struct-return -fno-strict-aliasing
+CFLAGS	+= -Wall -Wno-format -Wno-uninitialized # -pedantic
 ifeq ($(LIBARCH),LIBC)
 	PRELUDE = $(SDK_LIBC)/imports/libcpre.gcc.o
 else
@@ -354,10 +350,8 @@ else
 endif
 	@echo $(DL)#define HAVE_ARPA_INET_H 1$(DL) >> $@
 	@echo $(DL)#define HAVE_ASSERT_H 1$(DL) >> $@
-	@echo $(DL)#define HAVE_ERRNO_H 1$(DL) >> $@
 	@echo $(DL)#define HAVE_ERR_H 1$(DL) >> $@
 	@echo $(DL)#define HAVE_FCNTL_H 1$(DL) >> $@
-	@echo $(DL)#define HAVE_GETENV 1$(DL) >> $@
 	@echo $(DL)#define HAVE_GETHOSTBYADDR 1$(DL) >> $@
 	@echo $(DL)#define HAVE_GETHOSTBYNAME 1$(DL) >> $@
 	@echo $(DL)#define HAVE_GETHOSTNAME 1$(DL) >> $@

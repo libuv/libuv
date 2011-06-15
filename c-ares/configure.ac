@@ -1,14 +1,13 @@
 AC_PREREQ(2.57)
 
 dnl Version not hardcoded here. Fetched later from ares_version.h
-AC_INIT([c-ares], [-],
+AC_INIT([c-ares], [1.7.4],
   [c-ares mailing list: http://cool.haxx.se/mailman/listinfo/c-ares])
 
 CARES_OVERRIDE_AUTOCONF
 
 AC_CONFIG_SRCDIR([ares_ipv6.h])
 AM_CONFIG_HEADER([ares_config.h ares_build.h])
-AC_CONFIG_MACRO_DIR([m4])
 AM_MAINTAINER_MODE
 
 CARES_CHECK_OPTION_DEBUG
@@ -67,7 +66,11 @@ if test -f ${srcdir}/ares_build.h; then
   rm -f ${srcdir}/ares_build.h
 fi
 
-AM_INIT_AUTOMAKE
+dnl Fetch c-ares version from ares_version.h
+VERSION=`$SED -ne 's/^#define ARES_VERSION_STR "\(.*\)"/\1/p' ${srcdir}/ares_version.h`
+AM_INIT_AUTOMAKE([c-ares], [$VERSION])
+AC_MSG_CHECKING([c-ares version])
+AC_MSG_RESULT([$VERSION])
 
 dnl
 dnl Detect the canonical host and target build environment
@@ -525,12 +528,10 @@ CARES_CHECK_FUNC_CONNECT
 CARES_CHECK_FUNC_FCNTL
 CARES_CHECK_FUNC_FREEADDRINFO
 CARES_CHECK_FUNC_GETADDRINFO
-CARES_CHECK_FUNC_GETENV
 CARES_CHECK_FUNC_GETHOSTBYADDR
 CARES_CHECK_FUNC_GETHOSTBYNAME
 CARES_CHECK_FUNC_GETHOSTNAME
 CARES_CHECK_FUNC_GETSERVBYPORT_R
-CARES_CHECK_FUNC_INET_NET_PTON
 CARES_CHECK_FUNC_INET_NTOP
 CARES_CHECK_FUNC_INET_PTON
 CARES_CHECK_FUNC_IOCTL
@@ -737,6 +738,37 @@ AC_CHECK_FUNCS([bitncmp \
 ])
 
 
+dnl Check for inet_net_pton
+AC_CHECK_FUNCS(inet_net_pton)
+dnl Again, some systems have it, but not IPv6
+if test "$ac_cv_func_inet_net_pton" = "yes" ; then
+AC_MSG_CHECKING(if inet_net_pton supports IPv6)
+AC_TRY_RUN(
+  [
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+int main()
+  {
+    struct in6_addr addr6;
+    if (inet_net_pton(AF_INET6, "::1", &addr6, sizeof(addr6)) < 1)
+      exit(1);
+    else
+      exit(0);
+  }
+  ], [
+       AC_MSG_RESULT(yes)
+       AC_DEFINE_UNQUOTED(HAVE_INET_NET_PTON_IPV6,1,[Define to 1 if inet_net_pton supports IPv6.])
+     ], AC_MSG_RESULT(no),AC_MSG_RESULT(no))
+fi
+
+
 AC_CHECK_SIZEOF(struct in6_addr, ,
 [
 #undef inline
@@ -838,7 +870,7 @@ CARES_PRIVATE_LIBS="$LIBS"
 AC_SUBST(CARES_PRIVATE_LIBS)
 
 CARES_CFLAG_EXTRAS=""
-if test X"$want_werror" = Xyes; then
+if test X"$want_werror" == Xyes; then
   CARES_CFLAG_EXTRAS="-Werror"
 fi
 AC_SUBST(CARES_CFLAG_EXTRAS)

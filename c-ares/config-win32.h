@@ -2,7 +2,7 @@
 #define __ARES_CONFIG_WIN32_H
 
 
-/* Copyright (C) 2004 - 2011 by Daniel Stenberg et al
+/* Copyright (C) 2004 - 2008 by Daniel Stenberg et al
  *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted, provided
@@ -16,18 +16,12 @@
  */
 
 /* ================================================================ */
-/*   c-ares/config-win32.h - Hand crafted config file for Windows   */
+/*    ares/config-win32.h - Hand crafted config file for Windows    */
 /* ================================================================ */
 
 /* ---------------------------------------------------------------- */
 /*                          HEADER FILES                            */
 /* ---------------------------------------------------------------- */
-
-/* Define if you have the <assert.h> header file.  */
-#define HAVE_ASSERT_H 1
-
-/* Define if you have the <errno.h> header file.  */
-#define HAVE_ERRNO_H 1
 
 /* Define if you have the <getopt.h> header file.  */
 #if defined(__MINGW32__) || defined(__POCC__)
@@ -92,9 +86,6 @@
 
 /* Define if you have the closesocket function.  */
 #define HAVE_CLOSESOCKET 1
-
-/* Define if you have the getenv function.  */
-#define HAVE_GETENV 1
 
 /* Define if you have the gethostname function.  */
 #define HAVE_GETHOSTNAME 1

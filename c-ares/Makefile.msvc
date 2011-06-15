@@ -85,14 +85,10 @@ USE_WATT32 = 0
 CC_VERS_NUM = 60
 !ELSEIF "$(_NMAKE_VER)" == "6.00.9782.0"
 CC_VERS_NUM = 60
-!ELSEIF "$(_NMAKE_VER)" == "7.00.8882"
-CC_VERS_NUM = 70
 !ELSEIF "$(_NMAKE_VER)" == "7.00.9466"
 CC_VERS_NUM = 70
 !ELSEIF "$(_NMAKE_VER)" == "7.00.9955"
 CC_VERS_NUM = 70
-!ELSEIF "$(_NMAKE_VER)" == "7.10.2240.8"
-CC_VERS_NUM = 71
 !ELSEIF "$(_NMAKE_VER)" == "7.10.3077"
 CC_VERS_NUM = 71
 !ELSEIF "$(_NMAKE_VER)" == "8.00.40607.16"
@@ -101,8 +97,6 @@ CC_VERS_NUM = 80
 CC_VERS_NUM = 80
 !ELSEIF "$(_NMAKE_VER)" == "8.00.50727.762"
 CC_VERS_NUM = 80
-!ELSEIF "$(_NMAKE_VER)" == "9.00.20706.01"
-CC_VERS_NUM = 90
 !ELSEIF "$(_NMAKE_VER)" == "9.00.21022.08"
 CC_VERS_NUM = 90
 !ELSEIF "$(_NMAKE_VER)" == "9.00.30729.01"
@@ -110,8 +104,6 @@ CC_VERS_NUM = 90
 !ELSEIF "$(_NMAKE_VER)" == "10.00.20506.01"
 CC_VERS_NUM = 100
 !ELSEIF "$(_NMAKE_VER)" == "10.00.21003.01"
-CC_VERS_NUM = 100
-!ELSEIF "$(_NMAKE_VER)" == "10.00.30128.01"
 CC_VERS_NUM = 100
 !ELSEIF "$(_NMAKE_VER)" == "10.00.30319.01"
 CC_VERS_NUM = 100
@@ -146,22 +138,6 @@ BASE_DIR = .\$(CC_VERS_STR)
 # ----------------------------------------
 
 SRCDIR = .
-
-# -----------------------------
-# Default installation subdirs
-# -----------------------------
-
-!IFNDEF INSTALL_DIR
-INSTALL_DIR = .
-!ENDIF
-
-!IFNDEF INSTALL_DIR_LIB
-INSTALL_DIR_LIB = $(INSTALL_DIR)\lib
-!ENDIF
-
-!IFNDEF INSTALL_DIR_INC
-INSTALL_DIR_INC = $(INSTALL_DIR)\include
-!ENDIF
 
 # -------------------------
 # Configuration validation
@@ -421,12 +397,6 @@ ALL:
 clean:
     @-RMDIR /S /Q $(BASE_DIR) >NUL 2>&1
 
-install:
-    @$(MAKE) /nologo /f .\Makefile.msvc  CFG=lib-release  install
-    @$(MAKE) /nologo /f .\Makefile.msvc  CFG=lib-debug    install
-    @$(MAKE) /nologo /f .\Makefile.msvc  CFG=dll-release  install
-    @$(MAKE) /nologo /f .\Makefile.msvc  CFG=dll-debug    install
-
 !ENDIF
 
 # ---------------------------------------------------------------------
@@ -485,19 +455,6 @@ clean:
     @-RMDIR /S /Q $(PROG1_OUTDIR) >NUL 2>&1
     @-RMDIR /S /Q $(PROG2_OUTDIR) >NUL 2>&1
     @-RMDIR /S /Q $(PROG3_OUTDIR) >NUL 2>&1
-
-install:
-    @if not exist $(CARES_OUTDIR)\$(CARES_TARGET) \
-        $(MAKE) /f .\Makefile.msvc CFG=$(CFG) c-ares
-    @if not exist "$(INSTALL_DIR)"     mkdir "$(INSTALL_DIR)"
-    @if not exist "$(INSTALL_DIR_LIB)" mkdir "$(INSTALL_DIR_LIB)"
-    @if not exist "$(INSTALL_DIR_INC)" mkdir "$(INSTALL_DIR_INC)"
-    @copy /y $(CARES_OUTDIR)\*.*      "$(INSTALL_DIR_LIB)" >NUL
-    @copy /y $(SRCDIR)\ares.h         "$(INSTALL_DIR_INC)" >NUL
-    @copy /y $(SRCDIR)\ares_build.h   "$(INSTALL_DIR_INC)" >NUL
-    @copy /y $(SRCDIR)\ares_rules.h   "$(INSTALL_DIR_INC)" >NUL
-    @copy /y $(SRCDIR)\ares_version.h "$(INSTALL_DIR_INC)" >NUL
-    @echo Installed c-ares $(CFG)
 
 !ENDIF
 

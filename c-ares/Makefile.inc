@@ -11,7 +11,6 @@ CSOURCES = ares__close_sockets.c	\
   ares_fds.c				\
   ares_free_hostent.c			\
   ares_free_string.c			\
-  ares_getenv.c				\
   ares_gethostbyaddr.c			\
   ares_gethostbyname.c			\
   ares_getnameinfo.c			\
@@ -29,7 +28,6 @@ CSOURCES = ares__close_sockets.c	\
   ares_parse_ptr_reply.c		\
   ares_parse_srv_reply.c		\
   ares_parse_txt_reply.c		\
-  ares_platform.c			\
   ares_process.c			\
   ares_query.c				\
   ares_search.c				\
@@ -49,13 +47,10 @@ HHEADERS = ares.h			\
   ares_build.h				\
   ares_data.h				\
   ares_dns.h				\
-  ares_getenv.h				\
-  ares_iphlpapi.h			\
   ares_ipv6.h				\
   ares_library_init.h			\
   ares_llist.h				\
   ares_nowarn.h				\
-  ares_platform.h			\
   ares_private.h			\
   ares_rules.h				\
   ares_strcasecmp.h			\
@@ -187,13 +182,11 @@ PDFPAGES = ares_cancel.pdf		\
   ares_version.pdf
 
 SAMPLESOURCES = ares_getopt.c		\
-  ares_nowarn.c				\
   ares_strcasecmp.c			\
   inet_net_pton.c			\
   inet_ntop.c
 
 SAMPLEHEADERS = ares_getopt.h		\
-  ares_nowarn.h				\
   ares_strcasecmp.h			\
   inet_net_pton.h			\
   inet_ntop.h

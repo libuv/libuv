@@ -147,10 +147,6 @@ SOURCE=..\..\ares_getopt.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\ares_nowarn.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\ares_strcasecmp.c
 # End Source File
 # Begin Source File
@@ -168,22 +164,6 @@ SOURCE=..\..\inet_ntop.c
 # Begin Source File
 
 SOURCE=..\..\ares_getopt.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\..\ares_nowarn.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\..\ares_strcasecmp.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\..\inet_net_pton.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\..\inet_ntop.h
 # End Source File
 # End Group
 # End Target
