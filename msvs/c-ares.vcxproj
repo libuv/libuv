@@ -117,7 +117,6 @@
     <ClCompile Include="..\c-ares\ares_fds.c" />
     <ClCompile Include="..\c-ares\ares_free_hostent.c" />
     <ClCompile Include="..\c-ares\ares_free_string.c" />
-    <ClCompile Include="..\c-ares\ares_getenv.c" />
     <ClCompile Include="..\c-ares\ares_gethostbyaddr.c" />
     <ClCompile Include="..\c-ares\ares_gethostbyname.c" />
     <ClCompile Include="..\c-ares\ares_getnameinfo.c" />
@@ -135,7 +134,6 @@
     <ClCompile Include="..\c-ares\ares_parse_ptr_reply.c" />
     <ClCompile Include="..\c-ares\ares_parse_srv_reply.c" />
     <ClCompile Include="..\c-ares\ares_parse_txt_reply.c" />
-    <ClCompile Include="..\c-ares\ares_platform.c" />
     <ClCompile Include="..\c-ares\ares_process.c" />
     <ClCompile Include="..\c-ares\ares_query.c" />
     <ClCompile Include="..\c-ares\ares_search.c" />
@@ -156,13 +154,11 @@
     <ClInclude Include="..\c-ares\ares_build.h" />
     <ClInclude Include="..\c-ares\ares_data.h" />
     <ClInclude Include="..\c-ares\ares_dns.h" />
-    <ClInclude Include="..\c-ares\ares_getenv.h" />
     <ClInclude Include="..\c-ares\ares_iphlpapi.h" />
     <ClInclude Include="..\c-ares\ares_ipv6.h" />
     <ClInclude Include="..\c-ares\ares_library_init.h" />
     <ClInclude Include="..\c-ares\ares_llist.h" />
     <ClInclude Include="..\c-ares\ares_nowarn.h" />
-    <ClInclude Include="..\c-ares\ares_platform.h" />
     <ClInclude Include="..\c-ares\ares_private.h" />
     <ClInclude Include="..\c-ares\ares_rules.h" />
     <ClInclude Include="..\c-ares\ares_setup.h" />
