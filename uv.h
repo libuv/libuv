@@ -237,6 +237,23 @@ int uv_read_start(uv_tcp_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
 int uv_read_stop(uv_tcp_t*);
 
+/* Write data to stream. Buffers are written in order. Example:
+ *
+ *   uv_buf_t a[] = {
+ *     { .base = "1", .len = 1 },
+ *     { .base = "2", .len = 1 }
+ *   };
+ *
+ *   uv_buf_t b[] = {
+ *     { .base = "3", .len = 1 },
+ *     { .base = "4", .len = 1 }
+ *   };
+ *
+ *   // writes "1234"
+ *   uv_write(req, a, 2);
+ *   uv_write(req, b, 2);
+ *
+ */
 int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt);
 
 
