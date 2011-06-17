@@ -125,6 +125,8 @@ static uv_err_t uv_err_new(uv_handle_t* handle, int sys_error) {
 struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
   struct sockaddr_in addr;
 
+  memset(&addr, 0, sizeof(struct sockaddr_in));
+
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = inet_addr(ip);

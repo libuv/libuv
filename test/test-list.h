@@ -27,6 +27,7 @@ TEST_DECLARE   (bind_error_addrnotavail_1)
 TEST_DECLARE   (bind_error_addrnotavail_2)
 TEST_DECLARE   (bind_error_fault)
 TEST_DECLARE   (bind_error_inval)
+TEST_DECLARE   (bind_localhost_ok)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_eof)
@@ -64,6 +65,8 @@ TASK_LIST_START
   TEST_ENTRY  (bind_error_fault)
 
   TEST_ENTRY  (bind_error_inval)
+
+  TEST_ENTRY  (bind_localhost_ok)
 
   TEST_ENTRY  (connection_fail)
   TEST_ENTRY  (connection_fail_doesnt_auto_close)
