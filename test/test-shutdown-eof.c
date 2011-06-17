@@ -120,9 +120,9 @@ void timer_close_cb(uv_handle_t* handle) {
 }
 
 
-void timer_cb(uv_handle_t* handle, int status) {
-  ASSERT(handle == (uv_handle_t*) &timer);
-  uv_close(handle, timer_close_cb);
+void timer_cb(uv_timer_t* handle, int status) {
+  ASSERT(handle == &timer);
+  uv_close((uv_handle_t*) handle, timer_close_cb);
 
   /*
    * The most important assert of the test: we have not received

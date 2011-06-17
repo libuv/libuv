@@ -49,7 +49,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void do_accept(uv_handle_t* timer_handle, int status) {
+static void do_accept(uv_timer_t* timer_handle, int status) {
   uv_tcp_t* server;
   uv_tcp_t* accepted_handle = (uv_tcp_t*)malloc(sizeof *accepted_handle);
   int r;
@@ -83,7 +83,7 @@ static void do_accept(uv_handle_t* timer_handle, int status) {
   }
 
   /* Dispose the timer. */
-  r = uv_close(timer_handle, close_cb);
+  r = uv_close((uv_handle_t*)timer_handle, close_cb);
   ASSERT(r == 0);
 }
 

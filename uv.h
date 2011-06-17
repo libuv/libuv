@@ -47,6 +47,7 @@ typedef struct uv_prepare_s uv_prepare_t;
 typedef struct uv_check_s uv_check_t;
 typedef struct uv_idle_s uv_idle_t;
 typedef struct uv_req_s uv_req_t;
+typedef struct uv_async_s uv_async_t;
 
 
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
@@ -71,9 +72,12 @@ typedef void (*uv_connect_cb)(uv_req_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_req_t* req, int status);
 typedef void (*uv_connection_cb)(uv_tcp_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
-/* TODO: do loop_cb and async_cb really need a status argument? */
-typedef void (*uv_loop_cb)(uv_handle_t* handle, int status);
-typedef void (*uv_async_cb)(uv_handle_t* handle, int status);
+typedef void (*uv_timer_cb)(uv_timer_t* handle, int status);
+/* TODO: do these really need a status argument? */
+typedef void (*uv_async_cb)(uv_async_t* handle, int status);
+typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
+typedef void (*uv_check_cb)(uv_check_t* handle, int status);
+typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
 
 
 /* Expand this list if necessary. */
@@ -269,7 +273,7 @@ struct uv_prepare_s {
 
 int uv_prepare_init(uv_prepare_t* prepare);
 
-int uv_prepare_start(uv_prepare_t* prepare, uv_loop_cb cb);
+int uv_prepare_start(uv_prepare_t* prepare, uv_prepare_cb cb);
 
 int uv_prepare_stop(uv_prepare_t* prepare);
 
@@ -286,7 +290,7 @@ struct uv_check_s {
 
 int uv_check_init(uv_check_t* check);
 
-int uv_check_start(uv_check_t* check, uv_loop_cb cb);
+int uv_check_start(uv_check_t* check, uv_check_cb cb);
 
 int uv_check_stop(uv_check_t* check);
 
@@ -304,7 +308,7 @@ struct uv_idle_s {
 
 int uv_idle_init(uv_idle_t* idle);
 
-int uv_idle_start(uv_idle_t* idle, uv_loop_cb cb);
+int uv_idle_start(uv_idle_t* idle, uv_idle_cb cb);
 
 int uv_idle_stop(uv_idle_t* idle);
 
@@ -317,10 +321,10 @@ int uv_idle_stop(uv_idle_t* idle);
  * after the call to async_send. Unlike all other libuv functions,
  * uv_async_send can be called from another thread.
  */
-typedef struct {
+struct uv_async_s {
   UV_HANDLE_FIELDS
   UV_ASYNC_PRIVATE_FIELDS
-} uv_async_t;
+};
 
 int uv_async_init(uv_async_t* async, uv_async_cb async_cb);
 
@@ -338,7 +342,7 @@ struct uv_timer_s {
 
 int uv_timer_init(uv_timer_t* timer);
 
-int uv_timer_start(uv_timer_t* timer, uv_loop_cb cb, int64_t timeout, int64_t repeat);
+int uv_timer_start(uv_timer_t* timer, uv_timer_cb cb, int64_t timeout, int64_t repeat);
 
 int uv_timer_stop(uv_timer_t* timer);
 

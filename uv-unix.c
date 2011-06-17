@@ -967,7 +967,7 @@ static void uv__prepare(EV_P_ ev_prepare* w, int revents) {
   uv_prepare_t* prepare = w->data;
 
   if (prepare->prepare_cb) {
-    prepare->prepare_cb((uv_handle_t*)prepare, 0);
+    prepare->prepare_cb(prepare, 0);
   }
 }
 
@@ -985,7 +985,7 @@ int uv_prepare_init(uv_prepare_t* prepare) {
 }
 
 
-int uv_prepare_start(uv_prepare_t* prepare, uv_loop_cb cb) {
+int uv_prepare_start(uv_prepare_t* prepare, uv_prepare_cb cb) {
   int was_active = ev_is_active(&prepare->prepare_watcher);
 
   prepare->prepare_cb = cb;
@@ -1017,7 +1017,7 @@ static void uv__check(EV_P_ ev_check* w, int revents) {
   uv_check_t* check = w->data;
 
   if (check->check_cb) {
-    check->check_cb((uv_handle_t*)check, 0);
+    check->check_cb(check, 0);
   }
 }
 
@@ -1035,7 +1035,7 @@ int uv_check_init(uv_check_t* check) {
 }
 
 
-int uv_check_start(uv_check_t* check, uv_loop_cb cb) {
+int uv_check_start(uv_check_t* check, uv_check_cb cb) {
   int was_active = ev_is_active(&check->check_watcher);
 
   check->check_cb = cb;
@@ -1067,7 +1067,7 @@ static void uv__idle(EV_P_ ev_idle* w, int revents) {
   uv_idle_t* idle = (uv_idle_t*)(w->data);
 
   if (idle->idle_cb) {
-    idle->idle_cb((uv_handle_t*)idle, 0);
+    idle->idle_cb(idle, 0);
   }
 }
 
@@ -1086,7 +1086,7 @@ int uv_idle_init(uv_idle_t* idle) {
 }
 
 
-int uv_idle_start(uv_idle_t* idle, uv_loop_cb cb) {
+int uv_idle_start(uv_idle_t* idle, uv_idle_cb cb) {
   int was_active = ev_is_active(&idle->idle_watcher);
 
   idle->idle_cb = cb;
@@ -1137,7 +1137,7 @@ static void uv__async(EV_P_ ev_async* w, int revents) {
   uv_async_t* async = w->data;
 
   if (async->async_cb) {
-    async->async_cb((uv_handle_t*)async, 0);
+    async->async_cb(async, 0);
   }
 }
 
@@ -1172,7 +1172,7 @@ static void uv__timer_cb(EV_P_ ev_timer* w, int revents) {
   }
 
   if (timer->timer_cb) {
-    timer->timer_cb((uv_handle_t*)timer, 0);
+    timer->timer_cb(timer, 0);
   }
 }
 
@@ -1188,7 +1188,7 @@ int uv_timer_init(uv_timer_t* timer) {
 }
 
 
-int uv_timer_start(uv_timer_t* timer, uv_loop_cb cb, int64_t timeout,
+int uv_timer_start(uv_timer_t* timer, uv_timer_cb cb, int64_t timeout,
     int64_t repeat) {
   if (ev_is_active(&timer->timer_watcher)) {
     return -1;

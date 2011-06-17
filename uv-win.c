@@ -149,17 +149,6 @@ RB_PROTOTYPE_STATIC(uv_timer_tree_s, uv_timer_s, tree_entry, uv_timer_compare)
 static struct uv_timer_tree_s uv_timers_ = RB_INITIALIZER(uv_timers_);
 
 
-/* Lists of active uv_prepare / uv_check / uv_idle watchers */
-static uv_handle_t* uv_prepare_handles_ = NULL;
-static uv_handle_t* uv_check_handles_ = NULL;
-static uv_handle_t* uv_idle_handles_ = NULL;
-
-/* This pointer will refer to the prepare/check/idle handle whose callback */
-/* is scheduled to be called next. This is needed to allow safe removal */
-/* from one of the lists above while that list being iterated. */
-static uv_handle_t* uv_next_loop_handle_ = NULL;
-
-
 /* Head of a single-linked list of closed handles */
 static uv_handle_t* uv_endgame_handles_ = NULL;
 
@@ -569,7 +558,7 @@ static void uv_timer_endgame(uv_timer_t* handle) {
 }
 
 
-static void uv_loop_endgame(uv_handle_t* handle) {
+static void uv_loop_watcher_endgame(uv_handle_t* handle) {
   if (handle->flags & UV_HANDLE_CLOSING) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
     handle->flags |= UV_HANDLE_CLOSED;
@@ -619,7 +608,7 @@ static void uv_process_endgames() {
       case UV_PREPARE:
       case UV_CHECK:
       case UV_IDLE:
-        uv_loop_endgame(handle);
+        uv_loop_watcher_endgame(handle);
         break;
 
       case UV_ASYNC:
@@ -1258,7 +1247,7 @@ int uv_timer_init(uv_timer_t* handle) {
 }
 
 
-int uv_timer_start(uv_timer_t* handle, uv_loop_cb timer_cb, int64_t timeout, int64_t repeat) {
+int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, int64_t timeout, int64_t repeat) {
   if (handle->flags & UV_HANDLE_ACTIVE) {
     RB_REMOVE(uv_timer_tree_s, &uv_timers_, handle);
   }
@@ -1341,140 +1330,103 @@ int64_t uv_now() {
 }
 
 
-int uv_loop_init(uv_handle_t* handle) {
-  handle->flags = 0;
-  handle->error = uv_ok_;
-
-  uv_refs_++;
-
-  return 0;
-}
-
-
-static int uv_loop_start(uv_handle_t* handle, uv_loop_cb loop_cb,
-    uv_handle_t** list) {
-  uv_handle_t* old_head;
-
-  if (handle->flags & UV_HANDLE_ACTIVE)
-    return 0;
-
-  old_head = *list;
-
-  handle->loop_next = old_head;
-  handle->loop_prev = NULL;
-
-  if (old_head) {
-    old_head->loop_prev = handle;
+#define UV_LOOP_WATCHER_DEFINE(name, NAME)                                    \
+  /* Lists of active loop (prepare / check / idle) watchers */                \
+  static uv_##name##_t* uv_##name##_handles_ = NULL;                          \
+                                                                              \
+  /* This pointer will refer to the prepare/check/idle handle whose */        \
+  /* callback is scheduled to be called next. This is needed to allow */      \
+  /* safe removal from one of the lists above while that list being */        \
+  /* iterated over. */                                                        \
+  static uv_##name##_t* uv_next_##name##_handle_ = NULL;                      \
+                                                                              \
+                                                                              \
+  int uv_##name##_init(uv_##name##_t* handle) {                               \
+    handle->type = UV_##NAME;                                                 \
+    handle->flags = 0;                                                        \
+    handle->error = uv_ok_;                                                   \
+                                                                              \
+    uv_refs_++;                                                               \
+                                                                              \
+    uv_counters()->handle_init++;                                             \
+    uv_counters()->prepare_init++;                                            \
+                                                                              \
+    return 0;                                                                 \
+  }                                                                           \
+                                                                              \
+                                                                              \
+  int uv_##name##_start(uv_##name##_t* handle, uv_##name##_cb cb) {           \
+    uv_##name##_t* old_head;                                                  \
+                                                                              \
+    assert(handle->type == UV_##NAME);                                        \
+                                                                              \
+    if (handle->flags & UV_HANDLE_ACTIVE)                                     \
+      return 0;                                                               \
+                                                                              \
+    old_head = uv_##name##_handles_;                                          \
+                                                                              \
+    handle->name##_next = old_head;                                           \
+    handle->name##_prev = NULL;                                               \
+                                                                              \
+    if (old_head) {                                                           \
+      old_head->name##_prev = handle;                                         \
+    }                                                                         \
+                                                                              \
+    uv_##name##_handles_ = handle;                                            \
+                                                                              \
+    handle->name##_cb = cb;                                                   \
+    handle->flags |= UV_HANDLE_ACTIVE;                                        \
+                                                                              \
+    return 0;                                                                 \
+  }                                                                           \
+                                                                              \
+                                                                              \
+  int uv_##name##_stop(uv_##name##_t* handle) {                               \
+    assert(handle->type == UV_##NAME);                                        \
+                                                                              \
+    if (!(handle->flags & UV_HANDLE_ACTIVE))                                  \
+      return 0;                                                               \
+                                                                              \
+    /* Update loop head if needed */                                          \
+    if (uv_##name##_handles_ == handle) {                                     \
+      uv_##name##_handles_ = handle->name##_next;                             \
+    }                                                                         \
+                                                                              \
+    /* Update the iterator-next pointer of needed */                          \
+    if (uv_next_##name##_handle_ == handle) {                                 \
+      uv_next_##name##_handle_ = handle->name##_next;                         \
+    }                                                                         \
+                                                                              \
+    if (handle->name##_prev) {                                                \
+      handle->name##_prev->name##_next = handle->name##_next;                 \
+    }                                                                         \
+    if (handle->name##_next) {                                                \
+      handle->name##_next->name##_prev = handle->name##_prev;                 \
+    }                                                                         \
+                                                                              \
+    handle->flags &= ~UV_HANDLE_ACTIVE;                                       \
+                                                                              \
+    return 0;                                                                 \
+  }                                                                           \
+                                                                              \
+                                                                              \
+  static void uv_##name##_invoke() {                                          \
+    uv_##name##_t* handle;                                                    \
+                                                                              \
+    uv_next_##name##_handle_ = uv_##name##_handles_;                          \
+                                                                              \
+    while (uv_next_##name##_handle_ != NULL) {                                \
+      handle = uv_next_##name##_handle_;                                      \
+      uv_next_##name##_handle_ = handle->name##_next;                         \
+                                                                              \
+      handle->name##_cb(handle, 0);                                           \
+    }                                                                         \
   }
 
-  *list = handle;
 
-  handle->loop_cb = loop_cb;
-  handle->flags |= UV_HANDLE_ACTIVE;
-
-  return 0;
-}
-
-
-static int uv_loop_stop(uv_handle_t* handle, uv_handle_t** list) {
-  if (!(handle->flags & UV_HANDLE_ACTIVE))
-    return 0;
-
-  /* Update loop head if needed */
-  if (*list == handle) {
-    *list = handle->loop_next;
-  }
-
-  /* Update the iterator-next pointer of needed */
-  if (uv_next_loop_handle_ == handle) {
-    uv_next_loop_handle_ = handle->loop_next;
-  }
-
-  if (handle->loop_prev) {
-    handle->loop_prev->loop_next = handle->loop_next;
-  }
-  if (handle->loop_next) {
-    handle->loop_next->loop_prev = handle->loop_prev;
-  }
-
-  handle->flags &= ~UV_HANDLE_ACTIVE;
-
-  return 0;
-}
-
-
-static void uv_loop_invoke(uv_handle_t* list) {
-  uv_handle_t *handle;
-
-  uv_next_loop_handle_ = list;
-
-  while (uv_next_loop_handle_ != NULL) {
-    handle = uv_next_loop_handle_;
-    uv_next_loop_handle_ = handle->loop_next;
-
-    handle->loop_cb(handle, 0);
-  }
-}
-
-
-int uv_prepare_init(uv_prepare_t* handle) {
-  uv_counters()->handle_init++;
-  uv_counters()->prepare_init++;
-  handle->type = UV_PREPARE;
-  return uv_loop_init((uv_handle_t*)handle);
-}
-
-
-int uv_check_init(uv_check_t* handle) {
-  uv_counters()->handle_init++;
-  uv_counters()->check_init++;
-  handle->type = UV_CHECK;
-  return uv_loop_init((uv_handle_t*)handle);
-}
-
-
-int uv_idle_init(uv_idle_t* handle) {
-  uv_counters()->handle_init++;
-  uv_counters()->idle_init++;
-  handle->type = UV_IDLE;
-  return uv_loop_init((uv_handle_t*)handle);
-}
-
-
-int uv_prepare_start(uv_prepare_t* handle, uv_loop_cb loop_cb) {
-  assert(handle->type == UV_PREPARE);
-  return uv_loop_start((uv_handle_t*)handle, loop_cb, &uv_prepare_handles_);
-}
-
-
-int uv_check_start(uv_check_t* handle, uv_loop_cb loop_cb) {
-  assert(handle->type == UV_CHECK);
-  return uv_loop_start((uv_handle_t*)handle, loop_cb, &uv_check_handles_);
-}
-
-
-int uv_idle_start(uv_idle_t* handle, uv_loop_cb loop_cb) {
-  assert(handle->type == UV_IDLE);
-  return uv_loop_start((uv_handle_t*)handle, loop_cb, &uv_idle_handles_);
-}
-
-
-int uv_prepare_stop(uv_prepare_t* handle) {
-  assert(handle->type == UV_PREPARE);
-  return uv_loop_stop((uv_handle_t*)handle, &uv_prepare_handles_);
-}
-
-
-int uv_check_stop(uv_check_t* handle) {
-  assert(handle->type == UV_CHECK);
-  return uv_loop_stop((uv_handle_t*)handle, &uv_check_handles_);
-}
-
-
-int uv_idle_stop(uv_idle_t* handle) {
-  assert(handle->type == UV_IDLE);
-  return uv_loop_stop((uv_handle_t*)handle, &uv_idle_handles_);
-}
+UV_LOOP_WATCHER_DEFINE(prepare, PREPARE)
+UV_LOOP_WATCHER_DEFINE(check, CHECK)
+UV_LOOP_WATCHER_DEFINE(idle, IDLE)
 
 
 int uv_is_active(uv_handle_t* handle) {
@@ -1541,7 +1493,7 @@ static void uv_async_return_req(uv_async_t* handle, uv_req_t* req) {
 
   handle->async_sent = 0;
   if (req->cb) {
-    ((uv_async_cb)req->cb)((uv_handle_t*)handle, 0);
+    ((uv_async_cb)req->cb)((uv_async_t*) handle, 0);
   }
   if (handle->flags & UV_HANDLE_CLOSING) {
     uv_want_endgame((uv_handle_t*)handle);
@@ -1595,7 +1547,7 @@ static void uv_process_timers() {
       timer->flags &= ~UV_HANDLE_ACTIVE;
     }
 
-    timer->timer_cb((uv_handle_t*) timer, 0);
+    timer->timer_cb((uv_timer_t*) timer, 0);
   }
 }
 
@@ -1676,18 +1628,18 @@ int uv_run() {
       }
 
       /* Call idle callbacks */
-      uv_loop_invoke(uv_idle_handles_);
+      uv_idle_invoke();
     }
 
     if (uv_refs_ <= 0) {
       break;
     }
 
-    uv_loop_invoke(uv_prepare_handles_);
+    uv_prepare_invoke();
 
     uv_poll();
 
-    uv_loop_invoke(uv_check_handles_);
+    uv_check_invoke();
   }
 
   assert(uv_refs_ == 0);
