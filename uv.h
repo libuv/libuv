@@ -372,7 +372,6 @@ struct sockaddr_in uv_ip4_addr(const char* ip, int port);
 /* Gets the executable path */
 int uv_get_exepath(char* buffer, size_t* size);
 
-
 /* the presence of this union forces similar struct layout */
 union uv_any_handle {
   uv_tcp_t tcp;
@@ -396,6 +395,33 @@ typedef struct {
 } uv_counters_t;
 
 uv_counters_t* uv_counters();
+
+#ifndef	SEC
+#define	SEC		1
+#endif
+
+#ifndef	MILLISEC
+#define	MILLISEC	1000
+#endif
+
+#ifndef	MICROSEC
+#define	MICROSEC	1000000
+#endif
+
+#ifndef	NANOSEC
+#define	NANOSEC		1000000000
+#endif
+
+/*
+ * Returns the current high-resolution real time. This is expressed in
+ * nanoseconds. It is relative to an arbitrary time in the past. It is not
+ * related to the time of day and therefore not subject to clock drift. The
+ * primary use is for measuring performance between intervals.
+ *
+ * Note not every platform can support nanosecond resolution; however, this
+ * value will always be in nanoseconds.
+ */
+extern uint64_t uv_get_hrtime(void);
 
 #ifdef __cplusplus
 }

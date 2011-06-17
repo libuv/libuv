@@ -26,6 +26,17 @@ LINKFLAGS=-lm
 
 ifeq (SunOS,$(uname_S))
 LINKFLAGS+=-lsocket -lnsl
+UV_OS_FILE=uv-sunos.c
+endif
+
+ifeq (Darwin,$(uname_S))
+LINKFLAGS+=-framework CoreServices
+UV_OS_FILE=uv-darwin.c
+endif
+
+ifeq (Linux,$(uname_S))
+LINKFLAGS+=-lrt
+UV_OS_FILE=uv-linux.c
 endif
 
 # Need _GNU_SOURCE for strdup?
@@ -35,8 +46,11 @@ RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: uv-unix.o uv-common.o ev/ev.o c-ares/ares_query.o
-	$(AR) rcs uv.a uv-unix.o uv-common.o ev/ev.o c-ares/*.o
+uv.a: uv-unix.o uv-common.o uv-platform.o ev/ev.o c-ares/ares_query.o
+	$(AR) rcs uv.a uv-unix.o uv-platform.o uv-common.o ev/ev.o c-ares/*.o
+
+uv-platform.o: $(UV_OS_FILE) uv.h uv-unix.h
+	$(CC) $(CFLAGS) -c $(UV_OS_FILE) -o uv-platform.o
 
 uv-unix.o: uv-unix.c uv.h uv-unix.h
 	$(CC) $(CFLAGS) -c uv-unix.c -o uv-unix.o

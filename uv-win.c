@@ -1764,3 +1764,8 @@ done:
 
   return retVal;
 }
+
+
+uint64_t uv_get_hrtime(void) {
+  assert(0 && "implement me");
+}
