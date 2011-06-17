@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <stddef.h> /* NULL */
+#include <string.h> /* memset */
 
 
 static uv_counters_t counters;
@@ -74,4 +75,17 @@ const char* uv_err_name(uv_err_t err) {
       assert(0);
       return NULL;
   }
+}
+
+
+struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
+  struct sockaddr_in addr;
+
+  memset(&addr, 0, sizeof(struct sockaddr_in));
+
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr.s_addr = inet_addr(ip);
+
+  return addr;
 }

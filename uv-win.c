@@ -705,17 +705,6 @@ int uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 }
 
 
-struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
-  struct sockaddr_in addr;
-
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(port);
-  addr.sin_addr.s_addr = inet_addr(ip);
-
-  return addr;
-}
-
-
 int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   DWORD err;
   int r;
