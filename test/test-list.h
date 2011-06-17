@@ -41,6 +41,7 @@ TEST_DECLARE   (prepare_ref)
 TEST_DECLARE   (check_ref)
 TEST_DECLARE   (async)
 TEST_DECLARE   (get_currentexe)
+TEST_DECLARE   (hrtime)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 HELPER_DECLARE (echo_server)
@@ -88,6 +89,8 @@ TASK_LIST_START
   TEST_ENTRY  (async)
 
   TEST_ENTRY  (get_currentexe)
+
+  TEST_ENTRY  (hrtime)
 
 #if 0
   /* These are for testing the test runner. */
