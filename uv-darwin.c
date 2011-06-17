@@ -25,10 +25,40 @@
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 
+
 uint64_t uv_get_hrtime() {
   uint64_t time;
   Nanoseconds enano;
   time = mach_absolute_time(); 
   enano = AbsoluteToNanoseconds(*(AbsoluteTime *)&time);
   return (*(uint64_t *)&enano);
+}
+
+
+int uv_get_exepath(char* buffer, size_t* size) {
+  uint32_t usize;
+  int result;
+  char* path;
+  char* fullpath;
+
+  if (!buffer || !size) {
+    return -1;
+  }
+
+  usize = *size;
+  result = _NSGetExecutablePath(buffer, &usize);
+  if (result) return result;
+
+  path = (char*)malloc(2 * PATH_MAX);
+  fullpath = realpath(buffer, path);
+
+  if (fullpath == NULL) {
+    free(path);
+    return -1;
+  }
+
+  strncpy(buffer, fullpath, *size);
+  free(fullpath);
+  *size = strlen(buffer);
+  return 0;
 }

@@ -20,17 +20,30 @@
 
 #include "uv.h"
 
-#include <stdint.h>
-#include <sys/time.h>
-
-
-uint64_t uv_get_hrtime() {
-  return (gethrtime());
-}
-
 
 int uv_get_exepath(char* buffer, size_t* size) {
-  assert(0 && "implement me");
-  /* Need to return argv[0] */
-  return -1;
+  uint32_t usize;
+  int result;
+  char* path;
+  char* fullpath;
+
+  if (!buffer || !size) {
+    return -1;
+  }
+
+  int mib[4];
+
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC;
+  mib[2] = KERN_PROC_PATHNAME;
+  mib[3] = -1;
+
+  size_t cb = *size;
+  if (sysctl(mib, 4, buffer, &cb, NULL, 0) < 0) {
+	  *size = 0;
+	  return -1;
+  }
+  *size = strlen(buffer);
+
+  return 0;
 }

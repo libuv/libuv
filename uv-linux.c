@@ -33,3 +33,20 @@ uint64_t uv_get_hrtime() {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (ts.tv_sec * NANOSEC + ts.tv_nsec);
 }
+
+
+int uv_get_exepath(char* buffer, size_t* size) {
+  uint32_t usize;
+  int result;
+  char* path;
+  char* fullpath;
+
+  if (!buffer || !size) {
+    return -1;
+  }
+
+  *size = readlink("/proc/self/exe", buffer, *size - 1);
+  if (*size <= 0) return -1;
+  buffer[*size] = '\0';
+  return 0;
+}

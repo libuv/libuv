@@ -39,6 +39,11 @@ LINKFLAGS+=-lrt
 UV_OS_FILE=uv-linux.c
 endif
 
+ifeq (FreeBSD,$(uname_S))
+LINKFLAGS+=
+UV_OS_FILE=uv-freebsd.c
+endif
+
 # Need _GNU_SOURCE for strdup?
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
 
