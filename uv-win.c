@@ -189,6 +189,27 @@ static struct sockaddr_in uv_addr_ip4_any_;
 static char uv_zero_[] = "";
 
 
+void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req);
+void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req);
+
+/* list used for ares task handles */
+static uv_ares_task_t* uv_ares_handles_ = NULL;
+
+/* memory used per ares_channel */
+struct uv_ares_channel_s {
+  ares_channel channel;
+};
+
+typedef struct uv_ares_channel_s uv_ares_channel_t;
+
+/* static data to hold single ares_channel */
+static uv_ares_channel_t uv_ares_data = { NULL };
+
+/* default timeout per socket request if ares does not specify value */
+/* use 20 sec */
+#define ARES_TIMEOUT_MS            20000
+
+
 /* Atomic set operation on char */
 #ifdef _MSC_VER /* MSVC */
 
@@ -1517,6 +1538,14 @@ static void uv_process_reqs() {
         uv_async_return_req((uv_async_t*)handle, req);
         break;
 
+      case UV_ARES:
+        uv_ares_process((uv_ares_action_t*)handle, req);
+        break;
+
+      case UV_ARES_TASK:
+        uv_ares_task_cleanup((uv_ares_task_t*)handle, req);
+        break;
+
       default:
         assert(0);
     }
@@ -1710,3 +1739,264 @@ done:
 uint64_t uv_get_hrtime(void) {
   assert(0 && "implement me");
 }
+
+/* find matching ares handle in list */
+void uv_add_ares_handle(uv_ares_task_t* handle) {
+  handle->ares_next = uv_ares_handles_;
+  handle->ares_prev = NULL;
+
+  if (uv_ares_handles_) {
+    uv_ares_handles_->ares_prev = handle;
+  }
+  uv_ares_handles_ = handle;
+}
+
+/* find matching ares handle in list */
+/* TODO: faster lookup */
+uv_ares_task_t* uv_find_ares_handle(ares_socket_t sock) {
+  uv_ares_task_t* handle = uv_ares_handles_;
+  while (handle != NULL) {
+    if (handle->sock == sock) {
+      break;
+    }
+    handle = handle->ares_next;
+  }
+
+  return handle;
+}
+
+/* remove ares handle in list */
+void uv_remove_ares_handle(uv_ares_task_t* handle) {
+  if (handle == uv_ares_handles_) {
+    uv_ares_handles_ = handle->ares_next;
+  }
+
+  if (handle->ares_next) {
+    handle->ares_next->ares_prev = handle->ares_prev;
+  }
+
+  if (handle->ares_prev) {
+    handle->ares_prev->ares_next = handle->ares_next;
+  }
+}
+
+/* thread pool callback when socket is signalled */
+VOID CALLBACK uv_ares_socksignal_tp(PVOID parameter,
+                                  BOOLEAN timerfired) {
+  WSANETWORKEVENTS network_events;
+  uv_ares_task_t* sockhandle;
+  uv_ares_action_t* selhandle;
+  uv_req_t* uv_ares_req;
+
+  assert(parameter != NULL);
+
+  if (parameter != NULL) {
+    sockhandle = (uv_ares_task_t*)parameter;
+
+    /* clear socket status for this event */
+    /* do not fail if error, thread may run after socket close */
+    /* The code assumes that c-ares will write all pending data in the callback,
+       unless the socket would block. We can clear the state here to avoid unecessary
+       signals. */
+    WSAEnumNetworkEvents(sockhandle->sock, sockhandle->h_event, &network_events);
+
+    /* setup new handle */
+    selhandle = (uv_ares_action_t*)malloc(sizeof(uv_ares_action_t));
+    if (selhandle == NULL) {
+      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    }
+    selhandle->type = UV_ARES;
+    selhandle->close_cb = NULL;
+    selhandle->data = sockhandle->data;
+    selhandle->sock = sockhandle->sock;
+    selhandle->read = (network_events.lNetworkEvents & (FD_READ | FD_CONNECT)) ? 1 : 0;
+    selhandle->write = (network_events.lNetworkEvents & (FD_WRITE | FD_CONNECT)) ? 1 : 0;
+
+    uv_ares_req = &selhandle->ares_req;
+    uv_req_init(uv_ares_req, (uv_handle_t*)selhandle, NULL);
+    uv_ares_req->type = UV_WAKEUP;
+
+    /* post ares needs to called */
+    if (!PostQueuedCompletionStatus(uv_iocp_,
+                                    0,
+                                    0,
+                                    &uv_ares_req->overlapped)) {
+      uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    }
+  }
+}
+
+/* callback from ares when socket operation is started */
+void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read, int write) {
+  /* look to see if we have a handle for this socket in our list */
+  uv_ares_task_t* uv_handle_ares = uv_find_ares_handle(sock);
+  struct timeval tv;
+  struct timeval* tvptr;
+  int timeoutms = 0;
+
+  if (read == 0 && write == 0) {
+    /* if read and write are 0, cleanup existing data */
+    /* The code assumes that c-ares does a callback with read = 0 and write = 0
+       when the socket is closed. After we recieve this we stop monitoring the socket. */
+    if (uv_handle_ares != NULL) {
+      uv_req_t* uv_ares_req;
+
+      uv_handle_ares->h_close_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+      /* remove Wait */
+      if (uv_handle_ares->h_wait) {
+        UnregisterWaitEx(uv_handle_ares->h_wait, uv_handle_ares->h_close_event);
+        uv_handle_ares->h_wait = NULL;
+      }
+
+      /* detach socket from the event */
+      WSAEventSelect(sock, NULL, 0);
+      if (uv_handle_ares->h_event != WSA_INVALID_EVENT) {
+        WSACloseEvent(uv_handle_ares->h_event);
+        uv_handle_ares->h_event = WSA_INVALID_EVENT;
+      }
+      /* remove handle from list */
+      uv_remove_ares_handle(uv_handle_ares);
+
+      /* Post request to cleanup the Task */
+      uv_ares_req = &uv_handle_ares->ares_req;
+      uv_req_init(uv_ares_req, (uv_handle_t*)uv_handle_ares, NULL);
+      uv_ares_req->type = UV_WAKEUP;
+
+      /* post ares done with socket - finish cleanup when all threads done. */
+      if (!PostQueuedCompletionStatus(uv_iocp_,
+                                      0,
+                                      0,
+                                      &uv_ares_req->overlapped)) {
+        uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+      }
+    } else {
+      assert(0);
+      uv_fatal_error(ERROR_INVALID_DATA, "ares_SockStateCB");
+    }
+  } else {
+    if (uv_handle_ares == NULL) {
+      /* setup new handle */
+      /* The code assumes that c-ares will call us when it has an open socket.
+        We need to call into c-ares when there is something to read,
+        or when it becomes writable. */
+      uv_handle_ares = (uv_ares_task_t*)malloc(sizeof(uv_ares_task_t));
+      if (uv_handle_ares == NULL) {
+        uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+      }
+      uv_handle_ares->type = UV_ARES_TASK;
+      uv_handle_ares->close_cb = NULL;
+      uv_handle_ares->data = ((uv_ares_channel_t*)data)->channel;
+      uv_handle_ares->sock = sock;
+      uv_handle_ares->h_wait = NULL;
+      uv_handle_ares->flags = 0;
+
+      /* create an event to wait on socket signal */
+      uv_handle_ares->h_event = WSACreateEvent();
+      if (uv_handle_ares->h_event == WSA_INVALID_EVENT) {
+        uv_fatal_error(WSAGetLastError(), "WSACreateEvent");
+      }
+
+      /* tie event to socket */
+      if (SOCKET_ERROR == WSAEventSelect(sock, uv_handle_ares->h_event, FD_READ | FD_WRITE | FD_CONNECT)) {
+        uv_fatal_error(WSAGetLastError(), "WSAEventSelect");
+      }
+
+      /* add handle to list */
+      uv_add_ares_handle(uv_handle_ares);
+      uv_refs_++;
+      tv.tv_sec = 0;
+      tvptr = ares_timeout(((uv_ares_channel_t*)data)->channel, NULL, &tv);
+      if (tvptr) {
+        timeoutms = (tvptr->tv_sec * 1000) + (tvptr->tv_usec / 1000);
+      } else {
+        timeoutms = ARES_TIMEOUT_MS;
+      }
+
+      /* specify thread pool function to call when event is signaled */
+      if (RegisterWaitForSingleObject(&uv_handle_ares->h_wait,
+                                  uv_handle_ares->h_event,
+                                  uv_ares_socksignal_tp,
+                                  (void*)uv_handle_ares,
+                                  timeoutms,
+                                  WT_EXECUTEINWAITTHREAD) == 0) {
+        uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
+      }
+    } else {
+      /* found existing handle.  */
+      assert(uv_handle_ares->type == UV_ARES_TASK);
+      assert(uv_handle_ares->data != NULL);
+      assert(uv_handle_ares->h_event != WSA_INVALID_EVENT);
+    }
+  }
+}
+
+/* called via uv_poll when ares completion port signaled */
+void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req) {
+
+  ares_process_fd( (ares_channel)handle->data,
+                    handle->read ? handle->sock : INVALID_SOCKET,
+                    handle->write ?  handle->sock : INVALID_SOCKET);
+
+  /* release handle for select here  */
+  free(handle);
+}
+
+/* called via uv_poll when ares is finished with socket */
+void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req) {
+    /* check for event complete without waiting */
+  unsigned int signaled = WaitForSingleObject(handle->h_close_event, 0);
+
+  if (signaled != WAIT_TIMEOUT) {
+
+    uv_refs_--;
+
+    /* close event handle and free uv handle memory */
+    CloseHandle(handle->h_close_event);
+    free(handle);
+  } else {
+    /* stil busy - repost and try again */
+    if (!PostQueuedCompletionStatus(uv_iocp_,
+                                    0,
+                                    0,
+                                    &req->overlapped)) {
+      uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    }
+  }
+}
+/* set ares SOCK_STATE callback to our handler */
+int uv_ares_init_options(ares_channel *channelptr,
+                        struct ares_options *options,
+                        int optmask) {
+  int rc;
+
+  /* only allow single init at a time */
+  if (uv_ares_data.channel != NULL) {
+    return UV_EALREADY;
+  }
+
+  /* set our callback as an option */
+  options->sock_state_cb = uv_ares_sockstate_cb;
+  options->sock_state_cb_data = &uv_ares_data;
+  optmask |= ARES_OPT_SOCK_STATE_CB;
+
+  /* We do the call to ares_init_option for caller. */
+  rc = ares_init_options(channelptr, options, optmask);
+
+  /* if success, save channel */
+  if (rc == ARES_SUCCESS) {
+    uv_ares_data.channel = *channelptr;
+  }
+
+  return rc;
+}
+
+/* release memory */
+void uv_ares_destroy(ares_channel channel) {
+  /* only allow destroy if did init */
+  if (uv_ares_data.channel != NULL) {
+    ares_destroy(channel);
+    uv_ares_data.channel = NULL;
+  }
+}
+
+

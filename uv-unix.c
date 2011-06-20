@@ -1232,4 +1232,16 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer) {
   return (int64_t)(1000 * timer->timer_watcher.repeat);
 }
 
+/* c-ares integration initialize and terminate */
+int uv_ares_init_options(ares_channel *channelptr,
+                        struct ares_options *options,
+                        int optmask) {
+  rc = ares_init_options(channelptr, options, optmask);
+  return rc;
+}
+
+void uv_ares_destroy(ares_channel channel) {
+  ares_destroy(channel);
+}
+
 

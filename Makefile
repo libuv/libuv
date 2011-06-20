@@ -27,7 +27,7 @@ include config-unix.mk
 endif
 
 TESTS=test/echo-server.c test/test-*.c
-BENCHMARKS=test/echo-server.c test/benchmark-*.c
+BENCHMARKS=test/echo-server.c test/dns-server.c test/benchmark-*.c
 
 all: uv.a test/run-tests test/run-benchmarks
 

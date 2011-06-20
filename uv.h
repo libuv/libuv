@@ -48,6 +48,8 @@ typedef struct uv_check_s uv_check_t;
 typedef struct uv_idle_s uv_idle_t;
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_async_s uv_async_t;
+typedef struct uv_ares_task_s uv_ares_task_t;
+typedef struct uv_ares_action_s uv_ares_action_t;
 
 
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
@@ -129,7 +131,9 @@ typedef enum {
   UV_PREPARE,
   UV_CHECK,
   UV_IDLE,
-  UV_ASYNC
+  UV_ASYNC,
+  UV_ARES,
+  UV_ARES_TASK
 } uv_handle_type;
 
 typedef enum {
@@ -365,6 +369,31 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer);
 
 
 /*
+ * Subclass of uv_handle_t. Used for integration of c-ares.
+ */
+struct uv_ares_task_s {
+  UV_HANDLE_FIELDS
+  UV_ARES_TASK_PRIVATE_FIELDS
+};
+
+
+/*
+ * Subclass of uv_handle_t. Used for integration of c-ares.
+ */
+struct uv_ares_action_s {
+  UV_HANDLE_FIELDS
+  UV_ARES_ACTION_PRIVATE_FIELDS
+};
+
+/* c-ares integration initialize and terminate */
+int uv_ares_init_options(ares_channel *channelptr,
+                        struct ares_options *options,
+                        int optmask);
+
+void uv_ares_destroy(ares_channel channel);
+
+
+/*
  * Most functions return boolean: 0 for success and -1 for failure.
  * On error the user should then call uv_last_error() to determine
  * the error code.
@@ -401,6 +430,8 @@ union uv_any_handle {
   uv_idle_t idle;
   uv_async_t async;
   uv_timer_t timer;
+  uv_ares_task_t arest;
+  uv_ares_action_t aresa;
 };
 
 /* Diagnostic counters */
