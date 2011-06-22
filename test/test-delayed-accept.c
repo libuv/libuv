@@ -132,15 +132,20 @@ static void start_server() {
 
 static void read_cb(uv_tcp_t* tcp, ssize_t nread, uv_buf_t buf) {
   /* The server will not send anything, it should close gracefully. */
-  ASSERT(tcp != NULL);
-  ASSERT(nread == -1);
-  ASSERT(uv_last_error().code == UV_EOF);
 
   if (buf.base) {
     free(buf.base);
   }
 
-  uv_close((uv_handle_t*)tcp, close_cb);
+  if (nread != -1) {
+    ASSERT(nread == 0);
+    ASSERT(uv_last_error().code == UV_EAGAIN);
+  } else {
+    ASSERT(tcp != NULL);
+    ASSERT(nread == -1);
+    ASSERT(uv_last_error().code == UV_EOF);
+    uv_close((uv_handle_t*)tcp, close_cb);
+  }
 }
 
 

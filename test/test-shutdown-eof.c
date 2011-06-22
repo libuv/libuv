@@ -46,7 +46,15 @@ static uv_buf_t alloc_cb(uv_tcp_t* tcp, size_t size) {
 
 
 static void read_cb(uv_tcp_t* t, ssize_t nread, uv_buf_t buf) {
+  uv_err_t err = uv_last_error();
+
   ASSERT(t == &tcp);
+
+  if (nread == 0) {
+    ASSERT(err.code == UV_EAGAIN);
+    free(buf.base);
+    return;
+  }
 
   if (!got_q) {
     ASSERT(nread == 1);
@@ -56,7 +64,7 @@ static void read_cb(uv_tcp_t* t, ssize_t nread, uv_buf_t buf) {
     got_q = 1;
     puts("got Q");
   } else {
-    ASSERT(uv_last_error().code == UV_EOF);
+    ASSERT(err.code == UV_EOF);
     if (buf.base) {
       free(buf.base);
     }
