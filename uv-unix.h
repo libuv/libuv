@@ -64,7 +64,8 @@ typedef struct {
   uv_req_t *shutdown_req; \
   ev_io read_watcher; \
   ev_io write_watcher; \
-  ngx_queue_t write_queue;
+  ngx_queue_t write_queue; \
+  ngx_queue_t write_completed_queue;
 
 
 /* UV_PREPARE */ \
