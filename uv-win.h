@@ -31,7 +31,6 @@
 
 #include "tree.h"
 
-
 /**
  * It should be possible to cast uv_buf_t[] to WSABUF[]
  * see http://msdn.microsoft.com/en-us/library/ms741542(v=vs.85).aspx
@@ -123,4 +122,16 @@ typedef struct uv_buf_t {
   WSAEVENT h_event;                       \
   HANDLE h_close_event;
 
+#define UV_GETADDRINFO_PRIVATE_FIELDS     \
+  struct uv_req_s getadddrinfo_req;       \
+  uv_getaddrinfo_cb getaddrinfo_cb;       \
+  void* alloc;                            \
+  wchar_t* node;                          \
+  wchar_t* service;                       \
+  struct addrinfoW* hints;                \
+  struct addrinfoW* res;                  \
+  int retcode;
+
+
 int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, size_t utf8Size);
+int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer, size_t utf16Size);

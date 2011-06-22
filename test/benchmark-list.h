@@ -24,6 +24,7 @@ BENCHMARK_DECLARE (ping_pongs)
 BENCHMARK_DECLARE (pump100_client)
 BENCHMARK_DECLARE (pump1_client)
 BENCHMARK_DECLARE (gethostbyname)
+BENCHMARK_DECLARE (getaddrinfo)
 HELPER_DECLARE    (pump_server)
 HELPER_DECLARE    (echo_server)
 HELPER_DECLARE    (dns_server)
@@ -43,4 +44,5 @@ TASK_LIST_START
   BENCHMARK_ENTRY  (gethostbyname)
   BENCHMARK_HELPER (gethostbyname, dns_server)
 
+  BENCHMARK_ENTRY  (getaddrinfo)
 TASK_LIST_END

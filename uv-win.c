@@ -107,6 +107,38 @@
 
 
 /*
+ * MinGw is missing this too
+ */
+#ifndef _MSC_VER
+typedef struct addrinfoW { 
+              int ai_flags; 
+              int ai_family; 
+              int ai_socktype; 
+              int ai_protocol; 
+              size_t ai_addrlen; 
+              wchar_t* ai_canonname; 
+              struct sockaddr* ai_addr; 
+              struct addrinfoW* ai_next;
+} ADDRINFOW, *PADDRINFOW;
+
+
+DECLSPEC_IMPORT 
+int 
+WSAAPI
+GetAddrInfoW(const wchar_t*     node,
+            const wchar_t*      service,
+            const ADDRINFOW*    hints,
+            PADDRINFOW*         result);
+
+DECLSPEC_IMPORT 
+void 
+WSAAPI
+FreeAddrInfoW(PADDRINFOW      pAddrInfo);
+
+#endif
+
+
+/*
  * Pointers to winsock extension functions to be retrieved dynamically
  */
 static LPFN_CONNECTEX               pConnectEx;
@@ -208,6 +240,13 @@ static uv_ares_channel_t uv_ares_data = { NULL };
 /* default timeout per socket request if ares does not specify value */
 /* use 20 sec */
 #define ARES_TIMEOUT_MS            20000
+
+
+/* getaddrinfo integration */
+static void uv_getaddrinfo_done(uv_getaddrinfo_t* handle, uv_req_t* req);
+/* adjust size value to be multiple of 4. Use to keep pointer aligned */
+/* Do we need different versions of this for different architectures? */
+#define ALIGNED_SIZE(X)     ((((X) + 3) >> 2) << 2)
 
 
 /* Atomic set operation on char */
@@ -313,6 +352,10 @@ static uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_TOO_MANY_OPEN_FILES:         return UV_EMFILE;
     case WSAEMFILE:                         return UV_EMFILE;
     case ERROR_OUTOFMEMORY:                 return UV_ENOMEM;
+    case ERROR_INSUFFICIENT_BUFFER:         return UV_EINVAL;
+    case ERROR_INVALID_FLAGS:               return UV_EBADF;
+    case ERROR_INVALID_PARAMETER:           return UV_EINVAL;
+    case ERROR_NO_UNICODE_TRANSLATION:      return UV_ECHARSET;
     default:                                return UV_UNKNOWN;
   }
 }
@@ -1546,6 +1589,10 @@ static void uv_process_reqs() {
         uv_ares_task_cleanup((uv_ares_task_t*)handle, req);
         break;
 
+      case UV_GETADDRINFO:
+        uv_getaddrinfo_done((uv_getaddrinfo_t*)handle, req);
+        break;
+
       default:
         assert(0);
     }
@@ -1688,6 +1735,10 @@ void uv_unref() {
 
 int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, size_t utf8Size) {
   return WideCharToMultiByte(CP_UTF8, 0, utf16Buffer, utf16Size, utf8Buffer, utf8Size, NULL, NULL);
+}
+
+int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer, size_t utf16Size) {
+  return MultiByteToWideChar(CP_UTF8, 0, utf8Buffer, -1, utf16Buffer, utf16Size);
 }
 
 
@@ -2000,3 +2051,284 @@ void uv_ares_destroy(ares_channel channel) {
 }
 
 
+/* 
+ * getaddrinfo error code mapping
+ * Falls back to uv_translate_sys_error if no match
+ */
+
+static uv_err_code uv_translate_eai_error(int eai_errno) {
+  switch (eai_errno) {
+    case ERROR_SUCCESS:                   return UV_OK;
+    case EAI_BADFLAGS:                    return UV_EBADF;
+    case EAI_FAIL:                        return UV_EFAULT;
+    case EAI_FAMILY:                      return UV_EAIFAMNOSUPPORT;
+    case EAI_MEMORY:                      return UV_ENOMEM;
+    case EAI_NONAME:                      return UV_EAINONAME;
+    case EAI_AGAIN:                       return UV_EAGAIN;
+    case EAI_SERVICE:                     return UV_EAISERVICE;
+    case EAI_SOCKTYPE:                    return UV_EAISOCKTYPE;
+    default:                              return uv_translate_sys_error(eai_errno);
+  }
+}
+
+/* getaddrinfo worker thread implementation */
+static DWORD WINAPI getaddrinfo_thread_proc(void* parameter) {
+  uv_getaddrinfo_t* handle = (uv_getaddrinfo_t*)parameter;
+  int ret;
+
+  assert(handle != NULL);
+
+  if (handle != NULL) {
+    /* call OS function on this thread */
+    ret = GetAddrInfoW(handle->node, handle->service, handle->hints, &handle->res);
+    handle->retcode = ret;
+
+    /* post getaddrinfo completed */
+    if (!PostQueuedCompletionStatus(uv_iocp_,
+                                  0,
+                                  0,
+                                  &handle->getadddrinfo_req.overlapped)) {
+      uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    }
+  }
+
+  return 0;
+}
+
+/* 
+ * Called from uv_run when complete. Call user specified callback
+ * then free returned addrinfo
+ * Returned addrinfo strings are converted from UTF-16 to UTF-8.
+ *
+ * To minimize allocation we calculate total size required,
+ * and copy all structs and referenced strings into the one block.
+ * Each size calculation is adjusted to avoid unaligned pointers.
+ */
+static void uv_getaddrinfo_done(uv_getaddrinfo_t* handle, uv_req_t* req) {
+  int addrinfo_len = 0;
+  int name_len = 0;
+  size_t addrinfo_struct_len = ALIGNED_SIZE(sizeof(struct addrinfo));
+  struct addrinfoW* addrinfow_ptr;
+  struct addrinfo* addrinfo_ptr;
+  char* alloc_ptr = NULL;
+  char* cur_ptr = NULL;
+  uv_err_code uv_ret;
+
+  /* release input parameter memory */
+  if (handle->alloc != NULL) {
+    free(handle->alloc);
+    handle->alloc = NULL;
+  }
+
+  uv_ret = uv_translate_eai_error(handle->retcode);
+  if (handle->retcode == 0) {
+    /* convert addrinfoW to addrinfo */
+    /* first calculate required length */
+    addrinfow_ptr = handle->res;
+    while (addrinfow_ptr != NULL) {
+      addrinfo_len += addrinfo_struct_len + ALIGNED_SIZE(addrinfow_ptr->ai_addrlen);
+      if (addrinfow_ptr->ai_canonname != NULL) {
+        name_len = uv_utf16_to_utf8(addrinfow_ptr->ai_canonname, -1, NULL, 0);
+        if (name_len == 0) {
+          uv_ret = uv_translate_sys_error(GetLastError());
+          goto complete;
+        }
+        addrinfo_len += ALIGNED_SIZE(name_len);
+      }
+      addrinfow_ptr = addrinfow_ptr->ai_next;
+    }
+
+    /* allocate memory for addrinfo results */
+    alloc_ptr = (char*)malloc(addrinfo_len);
+
+    /* do conversions */
+    if (alloc_ptr != NULL) {
+      cur_ptr = alloc_ptr;
+      addrinfow_ptr = handle->res;
+
+      while (addrinfow_ptr != NULL) {
+        /* copy addrinfo struct data */
+        assert(cur_ptr + addrinfo_struct_len <= alloc_ptr + addrinfo_len);
+        addrinfo_ptr = (struct addrinfo*)cur_ptr;
+        addrinfo_ptr->ai_family = addrinfow_ptr->ai_family;
+        addrinfo_ptr->ai_socktype = addrinfow_ptr->ai_socktype;
+        addrinfo_ptr->ai_protocol = addrinfow_ptr->ai_protocol;
+        addrinfo_ptr->ai_flags = addrinfow_ptr->ai_flags;
+        addrinfo_ptr->ai_addrlen = addrinfow_ptr->ai_addrlen;
+        addrinfo_ptr->ai_canonname = NULL;
+        addrinfo_ptr->ai_addr = NULL;
+        addrinfo_ptr->ai_next = NULL;
+
+        cur_ptr += addrinfo_struct_len;
+
+        /* copy sockaddr */
+        if (addrinfo_ptr->ai_addrlen > 0) {
+          assert(cur_ptr + addrinfo_ptr->ai_addrlen <= alloc_ptr + addrinfo_len);
+          memcpy(cur_ptr, addrinfow_ptr->ai_addr, addrinfo_ptr->ai_addrlen);
+          addrinfo_ptr->ai_addr = (struct sockaddr*)cur_ptr;
+          cur_ptr += ALIGNED_SIZE(addrinfo_ptr->ai_addrlen);
+        }
+
+        /* convert canonical name to UTF-8 */
+        if (addrinfow_ptr->ai_canonname != NULL) {
+          name_len = uv_utf16_to_utf8(addrinfow_ptr->ai_canonname, -1, NULL, 0);
+          assert(name_len > 0);
+          assert(cur_ptr + name_len <= alloc_ptr + addrinfo_len);
+          name_len = uv_utf16_to_utf8(addrinfow_ptr->ai_canonname, -1, cur_ptr, name_len);
+          assert(name_len > 0);
+          addrinfo_ptr->ai_canonname = cur_ptr;
+          cur_ptr += ALIGNED_SIZE(name_len);
+        }
+        assert(cur_ptr <= alloc_ptr + addrinfo_len);
+
+        /* set next ptr */
+        addrinfow_ptr = addrinfow_ptr->ai_next;
+        if (addrinfow_ptr != NULL) {
+          addrinfo_ptr->ai_next = (struct addrinfo*)cur_ptr;
+        }
+      }
+    } else {
+      uv_ret = UV_ENOMEM;
+    }
+
+  }
+
+  /* return memory to system */
+  if (handle->res != NULL) {
+    FreeAddrInfoW(handle->res);
+    handle->res = NULL;
+  }
+
+complete:
+  /* finally do callback with converted result */
+  handle->getaddrinfo_cb(handle, uv_ret, (struct addrinfo*)alloc_ptr);
+
+  /* release copied result memory */
+  if (alloc_ptr != NULL) {
+    free(alloc_ptr);
+  }
+
+  uv_refs_--;
+}
+
+/* 
+ * Entry point for getaddrinfo 
+ * we convert the UTF-8 strings to UNICODE
+ * and save the UNICODE string pointers in the handle
+ * We also copy hints so that caller does not need to keep memory until the callback.
+ * return UV_OK if a callback will be made
+ * return error code if validation fails
+ *
+ * To minimize allocation we calculate total size required,
+ * and copy all structs and referenced strings into the one block.
+ * Each size calculation is adjusted to avoid unaligned pointers.
+ */
+uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
+                         uv_getaddrinfo_cb getaddrinfo_cb,
+                         const char* node,
+                         const char* service,
+                         const struct addrinfo* hints) {
+  uv_err_code ret = UV_OK;
+  int nodesize = 0;
+  int servicesize = 0;
+  int hintssize = 0;
+  char* alloc_ptr = NULL;
+
+  if (handle == NULL || getaddrinfo_cb == NULL ||
+     (node == NULL && service == NULL)) {
+    ret = UV_EINVAL;
+    goto error;
+  }
+
+  handle->getaddrinfo_cb = getaddrinfo_cb;
+  handle->res = NULL;
+  handle->type = UV_GETADDRINFO;
+
+  /* calculate required memory size for all input values */
+  if (node != NULL) {
+    nodesize = ALIGNED_SIZE(uv_utf8_to_utf16(node, NULL, 0) * sizeof(wchar_t));
+    if (nodesize == 0) {
+      ret = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+  }
+
+  if (service != NULL) {
+    servicesize = ALIGNED_SIZE(uv_utf8_to_utf16(service, NULL, 0) * sizeof(wchar_t));
+    if (servicesize == 0) {
+      ret = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+  }
+  if (hints != NULL) {
+    hintssize = ALIGNED_SIZE(sizeof(struct addrinfoW));
+  }
+
+  /* allocate memory for inputs, and partition it as needed */
+  alloc_ptr = (char*)malloc(nodesize + servicesize + hintssize);
+  if (!alloc_ptr) {
+    ret = UV_ENOMEM;
+    goto error;
+  }
+
+  /* save alloc_ptr now so we can free if error */
+  handle->alloc = (void*)alloc_ptr;
+
+  /* convert node string to UTF16 into allocated memory and save pointer in handle */
+  if (node != NULL) {
+    handle->node = (wchar_t*)alloc_ptr;
+    if (uv_utf8_to_utf16(node, (wchar_t*)alloc_ptr, nodesize / sizeof(wchar_t)) == 0) {
+      ret = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+    alloc_ptr += nodesize;
+  } else {
+    handle->node = NULL;
+  }
+
+  /* convert service string to UTF16 into allocated memory and save pointer in handle */
+  if (service != NULL) {
+    handle->service = (wchar_t*)alloc_ptr;
+    if (uv_utf8_to_utf16(service, (wchar_t*)alloc_ptr, servicesize / sizeof(wchar_t)) == 0) {
+      ret = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+    alloc_ptr += servicesize;
+  } else {
+    handle->service = NULL;
+  }
+
+  /* copy hints to allocated memory and save pointer in handle */
+  if (hints != NULL) {
+    handle->hints = (struct addrinfoW*)alloc_ptr;
+    handle->hints->ai_family = hints->ai_family;
+    handle->hints->ai_socktype = hints->ai_socktype;
+    handle->hints->ai_protocol = hints->ai_protocol;
+    handle->hints->ai_flags = hints->ai_flags;
+    handle->hints->ai_addrlen = 0;
+    handle->hints->ai_canonname = NULL;
+    handle->hints->ai_addr = NULL;
+    handle->hints->ai_next = NULL;
+  } else {
+    handle->hints = NULL;
+  }
+
+  /* init request for Post handling */
+  uv_req_init(&handle->getadddrinfo_req, (uv_handle_t*)handle, NULL);
+  handle->getadddrinfo_req.type = UV_WAKEUP;
+
+  /* Ask thread to run. Treat this as a long operation */
+  if (QueueUserWorkItem(&getaddrinfo_thread_proc, handle, WT_EXECUTELONGFUNCTION) == 0) {
+    uv_fatal_error(GetLastError(), "QueueUserWorkItem");
+  }
+
+  uv_refs_++;
+
+  return UV_OK;
+
+error:
+  if (handle != NULL && handle->alloc != NULL) {
+    free(handle->alloc);
+  }
+  return ret;
+}

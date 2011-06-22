@@ -44,6 +44,7 @@ TEST_DECLARE   (async)
 TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (hrtime)
 TEST_DECLARE   (gethostbyname)
+TEST_DECLARE   (getaddrinfo)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 HELPER_DECLARE (echo_server)
@@ -95,6 +96,7 @@ TASK_LIST_START
   TEST_ENTRY  (get_currentexe)
 
   TEST_ENTRY  (hrtime)
+  TEST_ENTRY  (getaddrinfo)
 
   TEST_ENTRY  (gethostbyname)
   TEST_HELPER (gethostbyname, echo_server)

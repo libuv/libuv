@@ -50,6 +50,7 @@ typedef struct uv_req_s uv_req_t;
 typedef struct uv_async_s uv_async_t;
 typedef struct uv_ares_task_s uv_ares_task_t;
 typedef struct uv_ares_action_s uv_ares_action_t;
+typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
 
 
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
@@ -80,6 +81,7 @@ typedef void (*uv_async_cb)(uv_async_t* handle, int status);
 typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
 typedef void (*uv_check_cb)(uv_check_t* handle, int status);
 typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
+typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status, struct addrinfo *res);
 
 
 /* Expand this list if necessary. */
@@ -118,7 +120,12 @@ typedef enum {
   UV_EPROTO,
   UV_EPROTONOSUPPORT,
   UV_EPROTOTYPE,
-  UV_ETIMEDOUT
+  UV_ETIMEDOUT,
+  UV_ECHARSET,
+  UV_EAIFAMNOSUPPORT,
+  UV_EAINONAME,
+  UV_EAISERVICE,
+  UV_EAISOCKTYPE
 } uv_err_code;
 
 typedef enum {
@@ -133,7 +140,8 @@ typedef enum {
   UV_IDLE,
   UV_ASYNC,
   UV_ARES,
-  UV_ARES_TASK
+  UV_ARES_TASK,
+  UV_GETADDRINFO
 } uv_handle_type;
 
 typedef enum {
@@ -394,6 +402,29 @@ void uv_ares_destroy(ares_channel channel);
 
 
 /*
+ * Subclass of uv_handle_t. Used for integration of getaddrinfo.
+ */
+struct uv_getaddrinfo_s {
+  UV_HANDLE_FIELDS
+  UV_GETADDRINFO_PRIVATE_FIELDS
+};
+
+
+/* uv_getaddrinfo 
+ * return code of UV_OK means that request is accepted, 
+ * and callback will be called with result.
+ * Other return codes mean that there will not be a callback.
+ * Input arguments may be released after return from this call.
+ * Callback must not call freeaddrinfo
+ */
+ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
+                          uv_getaddrinfo_cb getaddrinfo_cb,
+                          const char* node,
+                          const char* service,
+                          const struct addrinfo* hints);
+
+
+/*
  * Most functions return boolean: 0 for success and -1 for failure.
  * On error the user should then call uv_last_error() to determine
  * the error code.
@@ -432,6 +463,7 @@ union uv_any_handle {
   uv_timer_t timer;
   uv_ares_task_t arest;
   uv_ares_action_t aresa;
+  uv_getaddrinfo_t getaddrinfo;
 };
 
 /* Diagnostic counters */

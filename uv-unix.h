@@ -102,4 +102,6 @@ typedef struct {
 
 #define UV_ARES_TASK_PRIVATE_FIELDS  /* TODO */
 
+#define UV_GETADDRINFO_PRIVATE_FIELDS /* TODO */
+
 #endif /* UV_UNIX_H */

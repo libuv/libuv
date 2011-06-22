@@ -1303,3 +1303,21 @@ void uv_ares_destroy(ares_channel channel) {
 }
 
 
+/* temporary implementation of uv_getaddrinfo
+* calls getaddrinfo, then invokes callback and frees addrinfo
+*/
+void uv_getaddrinfo(uv_getaddrinfo_t* handle,
+                  uv_getaddrinfo_cb getaddrinfo_cb,
+                  char* node,
+                  char* service,
+                  struct addrinfo* hints) {
+  int ret;
+  struct addrinfo* res = NULL;
+  ret = getaddrinfo(getaddrinfo_cb, node, service, hints, &res);
+
+  /* call user with results */
+  (*getaddrinfo_cb)(handle, uv_translate_sys_error(ret), res);
+  if (ret == 0) {
+    freeaddrinfo(res);
+  }
+}
