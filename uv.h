@@ -48,7 +48,9 @@ typedef struct uv_check_s uv_check_t;
 typedef struct uv_idle_s uv_idle_t;
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_async_s uv_async_t;
+/* TODO: make private */
 typedef struct uv_ares_task_s uv_ares_task_t;
+/* TODO: make private */
 typedef struct uv_ares_action_s uv_ares_action_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
 
@@ -378,6 +380,7 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer);
 
 /*
  * Subclass of uv_handle_t. Used for integration of c-ares.
+ * TODO: make private
  */
 struct uv_ares_task_s {
   UV_HANDLE_FIELDS
@@ -387,6 +390,7 @@ struct uv_ares_task_s {
 
 /*
  * Subclass of uv_handle_t. Used for integration of c-ares.
+ * TODO: make private
  */
 struct uv_ares_action_s {
   UV_HANDLE_FIELDS
