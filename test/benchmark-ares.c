@@ -56,17 +56,13 @@ static void aresbynamecallback( void *arg,
 
 static void prep_tcploopback()
 {
+  /* for test, use echo server - TCP port TEST_PORT on loopback */
+  struct sockaddr_in test_server = uv_ip4_addr("127.0.0.1", 0);
   int rc = 0;
   optmask = 0;
 
-  /* for test, use echo server - TCP port TEST_PORT on loopback */
-  testsrv.S_un.S_un_b.s_b1 = 127;
-  testsrv.S_un.S_un_b.s_b2 = 0;
-  testsrv.S_un.S_un_b.s_b3 = 0;
-  testsrv.S_un.S_un_b.s_b4 = 1;
-
   optmask = ARES_OPT_SERVERS | ARES_OPT_TCP_PORT | ARES_OPT_FLAGS;
-  options.servers = &testsrv;
+  options.servers = &test_server.sin_addr;
   options.nservers = 1;
   options.tcp_port = htons(TEST_PORT_2);
   options.flags = ARES_FLAG_USEVC;
@@ -114,7 +110,7 @@ BENCHMARK_IMPL(gethostbyname) {
   if (ares_errors > 0) {
     printf("There were %d failures\n", ares_errors);
   }
-  LOGF("ares_gethostbyname: %d calls in %ld ms \n", ares_callbacks, (end_time - start_time));
+  LOGF("ares_gethostbyname: %d calls in %d ms \n", ares_callbacks, (int) (end_time - start_time));
 
   return 0;
 }

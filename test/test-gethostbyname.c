@@ -30,8 +30,6 @@ ares_channel channel;
 struct ares_options options;
 int optmask;
 
-struct in_addr testsrv;
-
 int ares_bynamecallbacks;
 int bynamecallbacksig;
 int ares_byaddrcallbacks;
@@ -72,15 +70,12 @@ static void aresbyaddrcallback( void *arg,
 
 static void prep_tcploopback()
 {
-  int rc = 0;
   /* for test, use echo server - TCP port TEST_PORT on loopback */
-  testsrv.S_un.S_un_b.s_b1 = 127;
-  testsrv.S_un.S_un_b.s_b2 = 0;
-  testsrv.S_un.S_un_b.s_b3 = 0;
-  testsrv.S_un.S_un_b.s_b4 = 1;
+  struct sockaddr_in test_server = uv_ip4_addr("127.0.0.1", 0);
+  int rc;
 
   optmask = ARES_OPT_SERVERS | ARES_OPT_TCP_PORT | ARES_OPT_FLAGS;
-  options.servers = &testsrv;
+  options.servers = &test_server.sin_addr;
   options.nservers = 1;
   options.tcp_port = htons(TEST_PORT);
   options.flags = ARES_FLAG_USEVC;
