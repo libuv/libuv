@@ -27,41 +27,43 @@
 #include <string.h> /* strlen */
 
 
+#define CONCURRENT_CALLS 10
+#define TOTAL_CALLS 10000
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
-  uv_buf_t buf;
-  buf.base = (char*)malloc(size);
-  buf.len = size;
-  return buf;
-}
+const char* name = "localhost";
 
+static uv_getaddrinfo_t handles[CONCURRENT_CALLS];
 
-/* data used for running multiple calls concurrently */
-#define CONCURRENT_COUNT    1000
-int callback_counts[CONCURRENT_COUNT];
-uv_getaddrinfo_t getaddrinfo_handles[CONCURRENT_COUNT];
-
-
-static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle, int status, struct addrinfo* res) {
-  int i;
-  for (i = 0; i < CONCURRENT_COUNT; i++) {
-    if (&getaddrinfo_handles[i] == handle) {
-      callback_counts[i]++;
-      break;
-    }
-  }
-
-  ASSERT (i < CONCURRENT_COUNT);
-}
-
+static int calls_initiated = 0;
+static int calls_completed = 0;
 static int64_t start_time;
 static int64_t end_time;
 
 
-BENCHMARK_IMPL(getaddrinfo) {
+static void getaddrinfo_initiate(uv_getaddrinfo_t* handle);
 
-  int rc = 0;
-  char* name = "localhost";
+
+static void getaddrinfo_cb(uv_getaddrinfo_t* handle, int status,
+    struct addrinfo* res) {
+  ASSERT(status == 0);
+  calls_completed++;
+  if (calls_initiated < TOTAL_CALLS) {
+    getaddrinfo_initiate(handle);
+  }
+}
+
+
+static void getaddrinfo_initiate(uv_getaddrinfo_t* handle) {
+  int r;
+
+  calls_initiated++;
+
+  r = uv_getaddrinfo(handle, &getaddrinfo_cb, name, NULL, NULL);
+  ASSERT(r == 0);
+}
+
+
+BENCHMARK_IMPL(getaddrinfo) {
   int i;
 
   uv_init();
@@ -69,28 +71,22 @@ BENCHMARK_IMPL(getaddrinfo) {
   uv_update_time();
   start_time = uv_now();
 
-  for (i = 0; i < CONCURRENT_COUNT; i++) {
-    callback_counts[i] = 0;
-
-    uv_getaddrinfo(&getaddrinfo_handles[i], 
-                   &getaddrinfo_cuncurrent_cb,
-                   name,
-                   NULL,
-                   NULL);
-
+  for (i = 0; i < CONCURRENT_CALLS; i++) {
+    getaddrinfo_initiate(&handles[i]);
   }
 
   uv_run();
 
+  uv_update_time();
   end_time = uv_now();
 
-  for (i = 0; i < CONCURRENT_COUNT; i++) {
-    if (callback_counts[i] != 1) {
-      printf("Not all callbacks were called 1 time\n");
-    }
-  }
+  ASSERT(calls_initiated == TOTAL_CALLS);
+  ASSERT(calls_completed == TOTAL_CALLS);
 
-  LOGF("getaddrinfo: %d calls in %ld ms \n", CONCURRENT_COUNT, (end_time - start_time));
+  LOGF("getaddrinfo: %d calls in %d ms (%.0f requests/second)\n",
+       calls_completed,
+       (int) (end_time - start_time),
+       (double) calls_completed / (double) (end_time - start_time) * 1000.0);
 
   return 0;
 }
