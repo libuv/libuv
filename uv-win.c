@@ -53,49 +53,49 @@
          {0xb5367df0, 0xcbac, 0x11cf,                          \
          {0x95, 0xca, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}}
 
-  typedef BOOL(*LPFN_ACCEPTEX)
-              (SOCKET sListenSocket,
-               SOCKET sAcceptSocket,
-               PVOID lpOutputBuffer,
-               DWORD dwReceiveDataLength,
-               DWORD dwLocalAddressLength,
-               DWORD dwRemoteAddressLength,
-               LPDWORD lpdwBytesReceived,
-               LPOVERLAPPED lpOverlapped);
+  typedef BOOL PASCAL (*LPFN_ACCEPTEX)
+                      (SOCKET sListenSocket,
+                       SOCKET sAcceptSocket,
+                       PVOID lpOutputBuffer,
+                       DWORD dwReceiveDataLength,
+                       DWORD dwLocalAddressLength,
+                       DWORD dwRemoteAddressLength,
+                       LPDWORD lpdwBytesReceived,
+                       LPOVERLAPPED lpOverlapped);
 
-  typedef BOOL(*LPFN_CONNECTEX)
-              (SOCKET s,
-               const struct sockaddr* name,
-               int namelen,
-               PVOID lpSendBuffer,
-               DWORD dwSendDataLength,
-               LPDWORD lpdwBytesSent,
-               LPOVERLAPPED lpOverlapped);
+  typedef BOOL PASCAL (*LPFN_CONNECTEX)
+                      (SOCKET s,
+                       const struct sockaddr* name,
+                       int namelen,
+                       PVOID lpSendBuffer,
+                       DWORD dwSendDataLength,
+                       LPDWORD lpdwBytesSent,
+                       LPOVERLAPPED lpOverlapped);
 
-  typedef void(*LPFN_GETACCEPTEXSOCKADDRS)
-              (PVOID lpOutputBuffer,
-               DWORD dwReceiveDataLength,
-               DWORD dwLocalAddressLength,
-               DWORD dwRemoteAddressLength,
-               LPSOCKADDR* LocalSockaddr,
-               LPINT LocalSockaddrLength,
-               LPSOCKADDR* RemoteSockaddr,
-               LPINT RemoteSockaddrLength);
+  typedef void PASCAL (*LPFN_GETACCEPTEXSOCKADDRS)
+                      (PVOID lpOutputBuffer,
+                       DWORD dwReceiveDataLength,
+                       DWORD dwLocalAddressLength,
+                       DWORD dwRemoteAddressLength,
+                       LPSOCKADDR* LocalSockaddr,
+                       LPINT LocalSockaddrLength,
+                       LPSOCKADDR* RemoteSockaddr,
+                       LPINT RemoteSockaddrLength);
 
-  typedef BOOL(*LPFN_DISCONNECTEX)
-              (SOCKET hSocket,
-               LPOVERLAPPED lpOverlapped,
-               DWORD dwFlags,
-               DWORD reserved);
+  typedef BOOL PASCAL (*LPFN_DISCONNECTEX)
+                      (SOCKET hSocket,
+                       LPOVERLAPPED lpOverlapped,
+                       DWORD dwFlags,
+                       DWORD reserved);
 
-  typedef BOOL(*LPFN_TRANSMITFILE)
-              (SOCKET hSocket,
-               HANDLE hFile,
-               DWORD nNumberOfBytesToWrite,
-               DWORD nNumberOfBytesPerSend,
-               LPOVERLAPPED lpOverlapped,
-               LPTRANSMIT_FILE_BUFFERS lpTransmitBuffers,
-               DWORD dwFlags);
+  typedef BOOL PASCAL (*LPFN_TRANSMITFILE)
+                      (SOCKET hSocket,
+                       HANDLE hFile,
+                       DWORD nNumberOfBytesToWrite,
+                       DWORD nNumberOfBytesPerSend,
+                       LPOVERLAPPED lpOverlapped,
+                       LPTRANSMIT_FILE_BUFFERS lpTransmitBuffers,
+                       DWORD dwFlags);
 #endif
 
 /*
