@@ -81,7 +81,7 @@ typedef void (*uv_async_cb)(uv_async_t* handle, int status);
 typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
 typedef void (*uv_check_cb)(uv_check_t* handle, int status);
 typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
-typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status, struct addrinfo *res);
+typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status, struct addrinfo* res);
 
 
 /* Expand this list if necessary. */
@@ -410,8 +410,8 @@ struct uv_getaddrinfo_s {
 };
 
 
-/* uv_getaddrinfo 
- * return code of UV_OK means that request is accepted, 
+/* uv_getaddrinfo
+ * return code of UV_OK means that request is accepted,
  * and callback will be called with result.
  * Other return codes mean that there will not be a callback.
  * Input arguments may be released after return from this call.
@@ -480,21 +480,23 @@ typedef struct {
 
 uv_counters_t* uv_counters();
 
-#ifndef	SEC
-#define	SEC		1
+
+#ifndef SEC
+# define SEC 1
 #endif
 
-#ifndef	MILLISEC
-#define	MILLISEC	1000
+#ifndef MILLISEC
+# define MILLISEC 1000
 #endif
 
-#ifndef	MICROSEC
-#define	MICROSEC	1000000
+#ifndef MICROSEC
+# define MICROSEC 1000000
 #endif
 
-#ifndef	NANOSEC
-#define	NANOSEC		1000000000
+#ifndef NANOSEC
+# define NANOSEC 1000000000
 #endif
+
 
 /*
  * Returns the current high-resolution real time. This is expressed in

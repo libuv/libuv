@@ -107,34 +107,26 @@
 
 
 /*
- * MinGw is missing this too
+ * MinGW is missing this too
  */
 #ifndef _MSC_VER
-typedef struct addrinfoW { 
-              int ai_flags; 
-              int ai_family; 
-              int ai_socktype; 
-              int ai_protocol; 
-              size_t ai_addrlen; 
-              wchar_t* ai_canonname; 
-              struct sockaddr* ai_addr; 
-              struct addrinfoW* ai_next;
-} ADDRINFOW, *PADDRINFOW;
+  typedef struct addrinfoW {
+    int ai_flags;
+    int ai_family;
+    int ai_socktype;
+    int ai_protocol;
+    size_t ai_addrlen;
+    wchar_t* ai_canonname;
+    struct sockaddr* ai_addr;
+    struct addrinfoW* ai_next;
+  } ADDRINFOW, *PADDRINFOW;
 
+  DECLSPEC_IMPORT int WSAAPI GetAddrInfoW(const wchar_t* node,
+                                          const wchar_t* service,
+                                          const ADDRINFOW* hints,
+                                          PADDRINFOW* result);
 
-DECLSPEC_IMPORT 
-int 
-WSAAPI
-GetAddrInfoW(const wchar_t*     node,
-            const wchar_t*      service,
-            const ADDRINFOW*    hints,
-            PADDRINFOW*         result);
-
-DECLSPEC_IMPORT 
-void 
-WSAAPI
-FreeAddrInfoW(PADDRINFOW      pAddrInfo);
-
+  DECLSPEC_IMPORT void WSAAPI FreeAddrInfoW(PADDRINFOW pAddrInfo);
 #endif
 
 
@@ -1832,8 +1824,7 @@ void uv_remove_ares_handle(uv_ares_task_t* handle) {
 }
 
 /* thread pool callback when socket is signalled */
-VOID CALLBACK uv_ares_socksignal_tp(PVOID parameter,
-                                  BOOLEAN timerfired) {
+VOID CALLBACK uv_ares_socksignal_tp(void* parameter, BOOLEAN timerfired) {
   WSANETWORKEVENTS network_events;
   uv_ares_task_t* sockhandle;
   uv_ares_action_t* selhandle;
@@ -2014,6 +2005,8 @@ void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req) {
     }
   }
 }
+
+
 /* set ares SOCK_STATE callback to our handler */
 int uv_ares_init_options(ares_channel *channelptr,
                         struct ares_options *options,
@@ -2041,6 +2034,7 @@ int uv_ares_init_options(ares_channel *channelptr,
   return rc;
 }
 
+
 /* release memory */
 void uv_ares_destroy(ares_channel channel) {
   /* only allow destroy if did init */
@@ -2051,7 +2045,7 @@ void uv_ares_destroy(ares_channel channel) {
 }
 
 
-/* 
+/*
  * getaddrinfo error code mapping
  * Falls back to uv_translate_sys_error if no match
  */
@@ -2070,6 +2064,7 @@ static uv_err_code uv_translate_eai_error(int eai_errno) {
     default:                              return uv_translate_sys_error(eai_errno);
   }
 }
+
 
 /* getaddrinfo worker thread implementation */
 static DWORD WINAPI getaddrinfo_thread_proc(void* parameter) {
@@ -2095,7 +2090,8 @@ static DWORD WINAPI getaddrinfo_thread_proc(void* parameter) {
   return 0;
 }
 
-/* 
+
+/*
  * Called from uv_run when complete. Call user specified callback
  * then free returned addrinfo
  * Returned addrinfo strings are converted from UTF-16 to UTF-8.
@@ -2211,8 +2207,9 @@ complete:
   uv_refs_--;
 }
 
-/* 
- * Entry point for getaddrinfo 
+
+/*
+ * Entry point for getaddrinfo
  * we convert the UTF-8 strings to UNICODE
  * and save the UNICODE string pointers in the handle
  * We also copy hints so that caller does not need to keep memory until the callback.
@@ -2332,3 +2329,4 @@ error:
   }
   return ret;
 }
+
