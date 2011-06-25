@@ -417,11 +417,11 @@ struct uv_getaddrinfo_s {
  * Input arguments may be released after return from this call.
  * Callback must not call freeaddrinfo
  */
- uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
-                          uv_getaddrinfo_cb getaddrinfo_cb,
-                          const char* node,
-                          const char* service,
-                          const struct addrinfo* hints);
+ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
+                    uv_getaddrinfo_cb getaddrinfo_cb,
+                    const char* node,
+                    const char* service,
+                    const struct addrinfo* hints);
 
 
 /*

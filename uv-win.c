@@ -2220,12 +2220,11 @@ complete:
  * and copy all structs and referenced strings into the one block.
  * Each size calculation is adjusted to avoid unaligned pointers.
  */
-uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
-                         uv_getaddrinfo_cb getaddrinfo_cb,
-                         const char* node,
-                         const char* service,
-                         const struct addrinfo* hints) {
-  uv_err_code ret = UV_OK;
+int uv_getaddrinfo(uv_getaddrinfo_t* handle,
+                   uv_getaddrinfo_cb getaddrinfo_cb,
+                   const char* node,
+                   const char* service,
+                   const struct addrinfo* hints) {
   int nodesize = 0;
   int servicesize = 0;
   int hintssize = 0;
@@ -2233,7 +2232,7 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
 
   if (handle == NULL || getaddrinfo_cb == NULL ||
      (node == NULL && service == NULL)) {
-    ret = UV_EINVAL;
+    uv_set_sys_error(WSAEINVAL);
     goto error;
   }
 
@@ -2245,7 +2244,7 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
   if (node != NULL) {
     nodesize = ALIGNED_SIZE(uv_utf8_to_utf16(node, NULL, 0) * sizeof(wchar_t));
     if (nodesize == 0) {
-      ret = uv_translate_sys_error(GetLastError());
+      uv_set_sys_error(GetLastError());
       goto error;
     }
   }
@@ -2253,7 +2252,7 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
   if (service != NULL) {
     servicesize = ALIGNED_SIZE(uv_utf8_to_utf16(service, NULL, 0) * sizeof(wchar_t));
     if (servicesize == 0) {
-      ret = uv_translate_sys_error(GetLastError());
+      uv_set_sys_error(GetLastError());
       goto error;
     }
   }
@@ -2264,7 +2263,7 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
   /* allocate memory for inputs, and partition it as needed */
   alloc_ptr = (char*)malloc(nodesize + servicesize + hintssize);
   if (!alloc_ptr) {
-    ret = UV_ENOMEM;
+    uv_set_sys_error(WSAENOBUFS);
     goto error;
   }
 
@@ -2275,7 +2274,7 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
   if (node != NULL) {
     handle->node = (wchar_t*)alloc_ptr;
     if (uv_utf8_to_utf16(node, (wchar_t*)alloc_ptr, nodesize / sizeof(wchar_t)) == 0) {
-      ret = uv_translate_sys_error(GetLastError());
+      uv_set_sys_error(GetLastError());
       goto error;
     }
     alloc_ptr += nodesize;
@@ -2287,7 +2286,7 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
   if (service != NULL) {
     handle->service = (wchar_t*)alloc_ptr;
     if (uv_utf8_to_utf16(service, (wchar_t*)alloc_ptr, servicesize / sizeof(wchar_t)) == 0) {
-      ret = uv_translate_sys_error(GetLastError());
+      uv_set_sys_error(GetLastError());
       goto error;
     }
     alloc_ptr += servicesize;
@@ -2316,17 +2315,18 @@ uv_err_code uv_getaddrinfo(uv_getaddrinfo_t* handle,
 
   /* Ask thread to run. Treat this as a long operation */
   if (QueueUserWorkItem(&getaddrinfo_thread_proc, handle, WT_EXECUTELONGFUNCTION) == 0) {
-    uv_fatal_error(GetLastError(), "QueueUserWorkItem");
+    uv_set_sys_error(GetLastError());
+    goto error;
   }
 
   uv_refs_++;
 
-  return UV_OK;
+  return 0;
 
 error:
   if (handle != NULL && handle->alloc != NULL) {
     free(handle->alloc);
   }
-  return ret;
+  return -1;
 }
 
