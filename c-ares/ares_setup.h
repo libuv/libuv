@@ -1,6 +1,7 @@
 #ifndef HEADER_CARES_SETUP_H
 #define HEADER_CARES_SETUP_H
 
+/* $Id$ */
 
 /* Copyright (C) 2004 - 2009 by Daniel Stenberg et al
  *
@@ -86,7 +87,9 @@
  * Compile time sanity checks must also be done when building the library.
  */
 
+#if 0 /* libuv disabled */
 #include <ares_rules.h>
+#endif
 
 /* ================================================================= */
 /* No system header file shall be included in this file before this  */

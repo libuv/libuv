@@ -20,7 +20,10 @@
 
 #include "ares_version.h"  /* c-ares version defines   */
 #include "ares_build.h"    /* c-ares build definitions */
+
+#if 0 /* libuv disabled */
 #include "ares_rules.h"    /* c-ares rules enforcement */
+#endif
 
 /*
  * Define WIN32 when build target is Win32 API

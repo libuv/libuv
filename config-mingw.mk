@@ -27,13 +27,15 @@ E=.exe
 CFLAGS=-g --std=gnu89 -Wno-variadic-macros -D_WIN32_WINNT=0x0501
 LINKFLAGS=-lm
 
+CARES_OBJS += windows_port.c
+
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
 RUNNER_LINKFLAGS=$(LINKFLAGS)
 RUNNER_LIBS=-lws2_32
 RUNNER_SRC=test/runner-win.c
 
-uv.a: uv-win.o uv-common.o c-ares/libcares.a
-	$(AR) rcs uv.a uv-win.o uv-common.o
+uv.a: uv-win.o uv-common.o c-ares/*.o
+	$(AR) rcs uv.a uv-win.o uv-common.o *.o
 	$(AR) rs uv.a $(shell $(AR) -t c-ares/libcares.a | awk '{print "c-ares/" $$1}')
 
 uv-win.o: uv-win.c uv.h uv-win.h
