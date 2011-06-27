@@ -25,6 +25,10 @@
 #include <stddef.h> /* NULL */
 #include <string.h> /* memset */
 
+/* use inet_pton from c-ares if necessary */
+#include "ares_config.h"
+#include "c-ares/inet_net_pton.h"
+
 
 static uv_counters_t counters;
 
@@ -86,6 +90,19 @@ struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = inet_addr(ip);
+
+  return addr;
+}
+
+
+struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
+  struct sockaddr_in6 addr;
+
+  memset(&addr, 0, sizeof(struct sockaddr_in6));
+
+  addr.sin6_family = AF_INET6;
+  addr.sin6_port = htons(port);
+  ares_inet_pton(AF_INET6, ip, &addr.sin6_addr);
 
   return addr;
 }

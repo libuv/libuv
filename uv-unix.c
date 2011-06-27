@@ -235,13 +235,11 @@ int uv_tcp_init(uv_tcp_t* tcp) {
 }
 
 
-int uv_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
-  int addrsize = sizeof(struct sockaddr_in);
-  int domain = AF_INET;
+int uv__bind(uv_tcp_t* tcp, int domain, struct sockaddr* addr, int addrsize) {
   int r;
 
   if (tcp->fd <= 0) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    int fd = socket(domain, SOCK_STREAM, 0);
 
     if (fd < 0) {
       uv_err_new((uv_handle_t*)tcp, errno);
@@ -256,12 +254,7 @@ int uv_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
 
   assert(tcp->fd >= 0);
 
-  if (addr.sin_family != AF_INET) {
-    uv_err_new((uv_handle_t*)tcp, EFAULT);
-    return -1;
-  }
-
-  r = bind(tcp->fd, (struct sockaddr*) &addr, addrsize);
+  r = bind(tcp->fd, addr, addrsize);
   tcp->delayed_error = 0;
 
   if (r) {
@@ -277,6 +270,26 @@ int uv_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
   }
 
   return 0;
+}
+
+
+int uv_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
+  if (addr.sin_family != AF_INET) {
+    uv_err_new((uv_handle_t*)tcp, EFAULT);
+    return -1;
+  }
+
+  return uv__bind(tcp, AF_INET, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+}
+
+
+int uv_bind6(uv_tcp_t* tcp, struct sockaddr_in6 addr) {
+  if (addr.sin6_family != AF_INET6) {
+    uv_err_new((uv_handle_t*)tcp, EFAULT);
+    return -1;
+  }
+
+  return uv__bind(tcp, AF_INET6, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
 }
 
 
@@ -313,8 +326,8 @@ int uv_tcp_open(uv_tcp_t* tcp, int fd) {
 
 void uv__server_io(EV_P_ ev_io* watcher, int revents) {
   int fd;
-  struct sockaddr addr;
-  socklen_t addrlen;
+  struct sockaddr_storage addr;
+  socklen_t addrlen = sizeof(struct sockaddr_storage);
   uv_tcp_t* tcp = watcher->data;
 
   assert(watcher == &tcp->read_watcher ||
@@ -330,7 +343,7 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
 
   while (1) {
     assert(tcp->accepted_fd < 0);
-    fd = accept(tcp->fd, &addr, &addrlen);
+    fd = accept(tcp->fd, (struct sockaddr*)&addr, &addrlen);
 
     if (fd < 0) {
       if (errno == EAGAIN) {

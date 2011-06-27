@@ -748,19 +748,13 @@ int uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 }
 
 
-int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+int uv__bind(uv_tcp_t* handle, int domain, struct sockaddr* addr, int addrsize) {
   DWORD err;
   int r;
   SOCKET sock;
-  int addrsize = sizeof(struct sockaddr_in);
-
-  if (addr.sin_family != AF_INET) {
-    uv_set_sys_error(WSAEFAULT);
-    return -1;
-  }
 
   if (handle->socket == INVALID_SOCKET) {
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(domain, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
       uv_set_sys_error(WSAGetLastError());
       return -1;
@@ -772,7 +766,7 @@ int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
     }
   }
 
-  r = bind(handle->socket, (struct sockaddr*) &addr, addrsize);
+  r = bind(handle->socket, addr, addrsize);
 
   if (r == SOCKET_ERROR) {
     err = WSAGetLastError();
@@ -789,6 +783,26 @@ int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   handle->flags |= UV_HANDLE_BOUND;
 
   return 0;
+}
+
+
+int uv_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+  if (addr.sin_family != AF_INET) {
+    uv_set_sys_error(WSAEFAULT);
+    return -1;
+  }
+
+  return uv__bind(handle, AF_INET, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+}
+
+
+int uv_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
+  if (addr.sin6_family != AF_INET6) {
+    uv_set_sys_error(WSAEFAULT);
+    return -1;
+  }
+
+  return uv__bind(handle, AF_INET6, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
 }
 
 

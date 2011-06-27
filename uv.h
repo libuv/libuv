@@ -223,6 +223,7 @@ struct uv_tcp_s {
 int uv_tcp_init(uv_tcp_t* handle);
 
 int uv_bind(uv_tcp_t* handle, struct sockaddr_in);
+int uv_bind6(uv_tcp_t* handle, struct sockaddr_in6);
 
 int uv_connect(uv_req_t* req, struct sockaddr_in);
 
@@ -453,6 +454,7 @@ int64_t uv_now();
 
 /* Utility */
 struct sockaddr_in uv_ip4_addr(const char* ip, int port);
+struct sockaddr_in6 uv_ip6_addr(const char* ip, int port);
 
 /* Gets the executable path */
 int uv_get_exepath(char* buffer, size_t* size);
