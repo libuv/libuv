@@ -23,6 +23,16 @@
 #include "task.h"
 
 
+#ifndef MICROSEC
+# define MICROSEC 1000000
+#endif
+
+#ifndef NANOSEC
+# define NANOSEC 1000000000
+#endif
+
+
+
 /*
  * We expect the amount of time passed to be at least one us plus two system
  * calls. Therefore checking that at least a microsecond has elapsed is safe.
