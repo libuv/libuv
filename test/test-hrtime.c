@@ -30,9 +30,9 @@
 TEST_IMPL(hrtime) {
   uint64_t a, b, diff;
 
-  a = uv_get_hrtime();
+  a = uv_hrtime();
   uv_sleep(1);
-  b = uv_get_hrtime();
+  b = uv_hrtime();
 
   diff = b - a;
 

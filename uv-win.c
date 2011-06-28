@@ -1746,7 +1746,7 @@ int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer, size_t utf16S
 }
 
 
-int uv_get_exepath(char* buffer, size_t* size) {
+int uv_exepath(char* buffer, size_t* size) {
   int retVal;
   size_t utf16Size;
   wchar_t* utf16Buffer;
@@ -1791,7 +1791,7 @@ done:
 }
 
 
-uint64_t uv_get_hrtime(void) {
+uint64_t uv_hrtime(void) {
   assert(0 && "implement me");
 }
 

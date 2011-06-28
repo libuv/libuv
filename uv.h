@@ -457,7 +457,7 @@ struct sockaddr_in uv_ip4_addr(const char* ip, int port);
 struct sockaddr_in6 uv_ip6_addr(const char* ip, int port);
 
 /* Gets the executable path */
-int uv_get_exepath(char* buffer, size_t* size);
+int uv_exepath(char* buffer, size_t* size);
 
 /* the presence of this union forces similar struct layout */
 union uv_any_handle {
@@ -513,7 +513,7 @@ uv_counters_t* uv_counters();
  * Note not every platform can support nanosecond resolution; however, this
  * value will always be in nanoseconds.
  */
-extern uint64_t uv_get_hrtime(void);
+extern uint64_t uv_hrtime(void);
 
 #ifdef __cplusplus
 }
