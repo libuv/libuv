@@ -107,15 +107,8 @@ typedef struct uv_buf_t {
   unsigned int flags;                     \
   uv_err_t error;
 
-#define UV_ARES_ACTION_PRIVATE_FIELDS     \
-  struct uv_req_s ares_req;               \
-  SOCKET sock;                            \
-  int read;                               \
-  int write;
 
 #define UV_ARES_TASK_PRIVATE_FIELDS       \
-  uv_ares_task_t* ares_prev;              \
-  uv_ares_task_t* ares_next;              \
   struct uv_req_s ares_req;               \
   SOCKET sock;                            \
   HANDLE h_wait;                          \
@@ -132,6 +125,18 @@ typedef struct uv_buf_t {
   struct addrinfoW* res;                  \
   int retcode;
 
+/*
+ * Subclass of uv_handle_t. Used for integration of c-ares.
+ */
+typedef struct uv_ares_action_s uv_ares_action_t;
+
+struct uv_ares_action_s {
+  UV_HANDLE_FIELDS
+  struct uv_req_s ares_req;
+  SOCKET sock;
+  int read;
+  int write;
+};
 
 int uv_utf16_to_utf8(wchar_t* utf16Buffer, size_t utf16Size, char* utf8Buffer, size_t utf8Size);
 int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer, size_t utf16Size);

@@ -20,6 +20,7 @@
  */
 
 #include "uv.h"
+#include "uv-common.h"
 
 #include <assert.h>
 #include <stddef.h> /* NULL */
@@ -28,6 +29,9 @@
 /* use inet_pton from c-ares if necessary */
 #include "ares_config.h"
 #include "c-ares/inet_net_pton.h"
+
+/* list used for ares task handles */
+static uv_ares_task_t* uv_ares_handles_ = NULL;
 
 
 static uv_counters_t counters;
@@ -105,4 +109,51 @@ struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
   ares_inet_pton(AF_INET6, ip, &addr.sin6_addr);
 
   return addr;
+}
+
+
+/* find matching ares handle in list */
+void uv_add_ares_handle(uv_ares_task_t* handle) {
+  handle->ares_next = uv_ares_handles_;
+  handle->ares_prev = NULL;
+
+  if (uv_ares_handles_) {
+    uv_ares_handles_->ares_prev = handle;
+  }
+  uv_ares_handles_ = handle;
+}
+
+/* find matching ares handle in list */
+/* TODO: faster lookup */
+uv_ares_task_t* uv_find_ares_handle(ares_socket_t sock) {
+  uv_ares_task_t* handle = uv_ares_handles_;
+  while (handle != NULL) {
+    if (handle->sock == sock) {
+      break;
+    }
+    handle = handle->ares_next;
+  }
+
+  return handle;
+}
+
+/* remove ares handle in list */
+void uv_remove_ares_handle(uv_ares_task_t* handle) {
+  if (handle == uv_ares_handles_) {
+    uv_ares_handles_ = handle->ares_next;
+  }
+
+  if (handle->ares_next) {
+    handle->ares_next->ares_prev = handle->ares_prev;
+  }
+
+  if (handle->ares_prev) {
+    handle->ares_prev->ares_next = handle->ares_next;
+  }
+}
+
+
+/* Returns 1 if the uv_ares_handles_ list is empty. 0 otherwise. */
+int uv_ares_handles_empty() {
+  return uv_ares_handles_ ? 0 : 1;
 }

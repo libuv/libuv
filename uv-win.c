@@ -26,6 +26,7 @@
 #include <stdio.h>
 
 #include "uv.h"
+#include "uv-common.h"
 #include "tree.h"
 
 /*
@@ -215,9 +216,6 @@ static char uv_zero_[] = "";
 
 void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req);
 void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req);
-
-/* list used for ares task handles */
-static uv_ares_task_t* uv_ares_handles_ = NULL;
 
 /* memory used per ares_channel */
 struct uv_ares_channel_s {
@@ -1795,45 +1793,6 @@ uint64_t uv_hrtime(void) {
   assert(0 && "implement me");
 }
 
-/* find matching ares handle in list */
-void uv_add_ares_handle(uv_ares_task_t* handle) {
-  handle->ares_next = uv_ares_handles_;
-  handle->ares_prev = NULL;
-
-  if (uv_ares_handles_) {
-    uv_ares_handles_->ares_prev = handle;
-  }
-  uv_ares_handles_ = handle;
-}
-
-/* find matching ares handle in list */
-/* TODO: faster lookup */
-uv_ares_task_t* uv_find_ares_handle(ares_socket_t sock) {
-  uv_ares_task_t* handle = uv_ares_handles_;
-  while (handle != NULL) {
-    if (handle->sock == sock) {
-      break;
-    }
-    handle = handle->ares_next;
-  }
-
-  return handle;
-}
-
-/* remove ares handle in list */
-void uv_remove_ares_handle(uv_ares_task_t* handle) {
-  if (handle == uv_ares_handles_) {
-    uv_ares_handles_ = handle->ares_next;
-  }
-
-  if (handle->ares_next) {
-    handle->ares_next->ares_prev = handle->ares_prev;
-  }
-
-  if (handle->ares_prev) {
-    handle->ares_prev->ares_next = handle->ares_next;
-  }
-}
 
 /* thread pool callback when socket is signalled */
 VOID CALLBACK uv_ares_socksignal_tp(void* parameter, BOOLEAN timerfired) {
