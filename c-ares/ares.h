@@ -41,9 +41,6 @@
  * the libuv build process.
  */
 
-#ifndef __CARES_BUILD_H
-#define __CARES_BUILD_H
-
 
 #if defined(WIN32)
 /* Configure process defines this to 1 when it finds out that system  */
@@ -74,8 +71,6 @@
 
 /* Data type definition of ares_socklen_t. */
 typedef int ares_socklen_t;
-
-#endif /* __CARES_BUILD_H */
 
 #if 0 /* libuv disabled */
 #include "ares_rules.h"    /* c-ares rules enforcement */
