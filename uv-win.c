@@ -542,8 +542,6 @@ static void uv_tcp_init_connection(uv_tcp_t* handle) {
 
 
 int uv_tcp_init(uv_tcp_t* handle) {
-  SOCKET sock;
-
   handle->socket = INVALID_SOCKET;
   handle->write_queue_size = 0;
   handle->type = UV_TCP;
