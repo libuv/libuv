@@ -76,6 +76,7 @@
 /*  please, do it beyond the point further indicated in this file.  */
 /* ================================================================ */
 
+#if 0 /* libuv disabled */
 /*
  * c-ares external interface definitions are also used internally,
  * and might also include required system header files to define them.
@@ -87,7 +88,6 @@
  * Compile time sanity checks must also be done when building the library.
  */
 
-#if 0 /* libuv disabled */
 #include <ares_rules.h>
 #endif
 
