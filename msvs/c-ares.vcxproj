@@ -167,7 +167,6 @@
     <ClInclude Include="..\c-ares\ares_writev.h" />
     <ClInclude Include="..\c-ares\bitncmp.h" />
     <ClInclude Include="..\c-ares\config-win32.h" />
-    <ClInclude Include="..\c-ares\config_win32\ares_build.h" />
     <ClInclude Include="..\c-ares\config_win32\ares_config.h" />
     <ClInclude Include="..\c-ares\inet_net_pton.h" />
     <ClInclude Include="..\c-ares\inet_ntop.h" />

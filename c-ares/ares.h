@@ -49,9 +49,9 @@
 /* Configure process defines this to 1 when it finds out that system  */
 /* header file ws2tcpip.h must be included by the external interface. */
 /* #undef CARES_PULL_WS2TCPIP_H */
-# include <windows.h>
 # include <winsock2.h>
 # include <ws2tcpip.h>
+# include <windows.h>
 
 #else /* Not Windows */
 
