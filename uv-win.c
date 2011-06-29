@@ -229,16 +229,19 @@ struct uv_ares_action_s {
 
 void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req);
 void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req);
+void uv_ares_poll(uv_timer_t* handle, int status);
 
 /* memory used per ares_channel */
 struct uv_ares_channel_s {
   ares_channel channel;
+  int activesockets;
+  uv_timer_t pollingtimer;
 };
 
 typedef struct uv_ares_channel_s uv_ares_channel_t;
 
 /* static data to hold single ares_channel */
-static uv_ares_channel_t uv_ares_data = { NULL };
+static uv_ares_channel_t uv_ares_data = { NULL, 0 };
 
 /* default timeout per socket request if ares does not specify value */
 /* use 20 sec */
@@ -1856,6 +1859,8 @@ VOID CALLBACK uv_ares_socksignal_tp(void* parameter, BOOLEAN timerfired) {
 void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read, int write) {
   /* look to see if we have a handle for this socket in our list */
   uv_ares_task_t* uv_handle_ares = uv_find_ares_handle(sock);
+  uv_ares_channel_t* uv_ares_data_ptr = (uv_ares_channel_t*)data;
+
   struct timeval tv;
   struct timeval* tvptr;
   int timeoutms = 0;
@@ -1911,7 +1916,7 @@ void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read, int write) {
       }
       uv_handle_ares->type = UV_ARES_TASK;
       uv_handle_ares->close_cb = NULL;
-      uv_handle_ares->data = ((uv_ares_channel_t*)data)->channel;
+      uv_handle_ares->data = uv_ares_data_ptr;
       uv_handle_ares->sock = sock;
       uv_handle_ares->h_wait = NULL;
       uv_handle_ares->flags = 0;
@@ -1930,20 +1935,24 @@ void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read, int write) {
       /* add handle to list */
       uv_add_ares_handle(uv_handle_ares);
       uv_refs_++;
-      tv.tv_sec = 0;
-      tvptr = ares_timeout(((uv_ares_channel_t*)data)->channel, NULL, &tv);
-      if (tvptr) {
-        timeoutms = (tvptr->tv_sec * 1000) + (tvptr->tv_usec / 1000);
-      } else {
-        timeoutms = ARES_TIMEOUT_MS;
+
+      /* 
+       * we have a single polling timer for all ares sockets.
+       * This is preferred to using ares_timeout. See ares_timeout.c warning.
+       * if timer is not running start it, and keep socket count
+       */
+      if (uv_ares_data_ptr->activesockets == 0) {
+        uv_timer_init(&uv_ares_data_ptr->pollingtimer);
+        uv_timer_start(&uv_ares_data_ptr->pollingtimer, uv_ares_poll, 1000L, 1000L);
       }
+      uv_ares_data_ptr->activesockets++;
 
       /* specify thread pool function to call when event is signaled */
       if (RegisterWaitForSingleObject(&uv_handle_ares->h_wait,
                                   uv_handle_ares->h_event,
                                   uv_ares_socksignal_tp,
                                   (void*)uv_handle_ares,
-                                  timeoutms,
+                                  INFINITE,
                                   WT_EXECUTEINWAITTHREAD) == 0) {
         uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
       }
@@ -1958,8 +1967,9 @@ void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read, int write) {
 
 /* called via uv_poll when ares completion port signaled */
 void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req) {
+  uv_ares_channel_t* uv_ares_data_ptr = (uv_ares_channel_t*)handle->data;
 
-  ares_process_fd( (ares_channel)handle->data,
+  ares_process_fd(uv_ares_data_ptr->channel,
                     handle->read ? handle->sock : INVALID_SOCKET,
                     handle->write ?  handle->sock : INVALID_SOCKET);
 
@@ -1969,16 +1979,25 @@ void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req) {
 
 /* called via uv_poll when ares is finished with socket */
 void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req) {
-    /* check for event complete without waiting */
+  /* check for event complete without waiting */
   unsigned int signaled = WaitForSingleObject(handle->h_close_event, 0);
 
   if (signaled != WAIT_TIMEOUT) {
+    uv_ares_channel_t* uv_ares_data_ptr = (uv_ares_channel_t*)handle->data;
 
     uv_refs_--;
 
     /* close event handle and free uv handle memory */
     CloseHandle(handle->h_close_event);
     free(handle);
+
+    /* decrement active count. if it becomes 0 stop polling */
+    if (uv_ares_data_ptr->activesockets > 0) {
+      uv_ares_data_ptr->activesockets--;
+      if (uv_ares_data_ptr->activesockets == 0) {
+        uv_close((uv_handle_t*)&uv_ares_data_ptr->pollingtimer, NULL);
+      }
+    }
   } else {
     /* stil busy - repost and try again */
     if (!PostQueuedCompletionStatus(uv_iocp_,
@@ -1987,6 +2006,13 @@ void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req) {
                                     &req->overlapped)) {
       uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
     }
+  }
+}
+
+/* periodically call ares to check for timeouts */
+void uv_ares_poll(uv_timer_t* handle, int status) {
+  if (uv_ares_data.channel != NULL && uv_ares_data.activesockets > 0) {
+    ares_process_fd(uv_ares_data.channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
   }
 }
 
