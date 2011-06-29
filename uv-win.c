@@ -214,6 +214,19 @@ static struct sockaddr_in uv_addr_ip4_any_;
 static char uv_zero_[] = "";
 
 
+/*
+ * Subclass of uv_handle_t. Used for integration of c-ares.
+ */
+typedef struct uv_ares_action_s uv_ares_action_t;
+
+struct uv_ares_action_s {
+  UV_HANDLE_FIELDS
+  struct uv_req_s ares_req;
+  SOCKET sock;
+  int read;
+  int write;
+};
+
 void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req);
 void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req);
 
