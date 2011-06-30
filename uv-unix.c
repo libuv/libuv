@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "uv-common.h"
+#include "uv-eio.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -63,7 +64,6 @@ void uv__next(EV_P_ ev_idle* watcher, int revents);
 static void uv__tcp_connect(uv_tcp_t*);
 int uv_tcp_open(uv_tcp_t*, int fd);
 static void uv__finish_close(uv_handle_t* handle);
-
 
 /* flags */
 enum {
@@ -1488,6 +1488,7 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
                    const char* node,
                    const char* service,
                    const struct addrinfo* hints) {
+  uv_eio_init();
   return -1;
 }
 
