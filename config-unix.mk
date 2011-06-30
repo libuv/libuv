@@ -71,7 +71,7 @@ uv-platform.o: $(UV_OS_FILE) uv.h uv-unix.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $(UV_OS_FILE) -o uv-platform.o
 
 uv-unix.o: uv-unix.c uv.h uv-unix.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c uv-unix.c -o uv-unix.o
+	$(CC) $(CPPFLAGS) -Ieio $(CFLAGS) -c uv-unix.c -o uv-unix.o
 
 uv-common.o: uv-common.c uv.h uv-unix.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c uv-common.c -o uv-common.o

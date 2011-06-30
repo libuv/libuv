@@ -104,6 +104,12 @@ typedef struct {
   ev_io read_watcher; \
   ev_io write_watcher;
 
-#define UV_GETADDRINFO_PRIVATE_FIELDS /* TODO */
+#define UV_GETADDRINFO_PRIVATE_FIELDS \
+  uv_getaddrinfo_cb cb; \
+  struct addrinfo hints; \
+  char* hostname; \
+  char* service; \
+  struct addrinfo* res; \
+  int retcode;
 
 #endif /* UV_UNIX_H */

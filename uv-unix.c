@@ -1482,13 +1482,66 @@ void uv_ares_destroy(ares_channel channel) {
 }
 
 
+static int uv_getaddrinfo_done(eio_req* req) {
+  uv_getaddrinfo_t* handle = req->data;
+
+  uv_unref();
+
+  free(handle->service);
+  free(handle->hostname);
+
+  if (handle->retcode != 0) {
+    /* TODO how to display gai error strings? */
+    uv_err_new(NULL, handle->retcode);
+  }
+
+  handle->cb(handle, handle->retcode, handle->res);
+
+  freeaddrinfo(handle->res);
+  handle->res = NULL;
+
+  return 0;
+}
+
+
+static int getaddrinfo_thread_proc(eio_req *req) {
+  uv_getaddrinfo_t* handle = req->data;
+
+  handle->retcode = getaddrinfo(handle->hostname,
+                                handle->service,
+                                &handle->hints,
+                                &handle->res);
+  return 0;
+}
+
+
 /* stub implementation of uv_getaddrinfo */
 int uv_getaddrinfo(uv_getaddrinfo_t* handle,
-                   uv_getaddrinfo_cb getaddrinfo_cb,
-                   const char* node,
+                   uv_getaddrinfo_cb cb,
+                   const char* hostname,
                    const char* service,
                    const struct addrinfo* hints) {
   uv_eio_init();
-  return -1;
+
+  memset(handle, 0, sizeof(uv_getaddrinfo_t));
+  memcpy(&handle->hints, hints, sizeof(struct addrinfo));
+
+  /* TODO security! check lengths, check return values. */
+
+  handle->cb = cb;
+  handle->hostname = strdup(hostname);
+  handle->service = strdup(service);
+
+  /* TODO check handle->hostname == NULL */
+  /* TODO check handle->service == NULL */
+
+  eio_req* req = eio_custom(getaddrinfo_thread_proc, EIO_PRI_DEFAULT,
+      uv_getaddrinfo_done, handle);
+
+  /* TODO check req == NULL ? */
+
+  uv_ref();
+
+  return 0;
 }
 
