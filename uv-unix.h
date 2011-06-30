@@ -99,9 +99,6 @@ typedef struct {
   ev_timer timer_watcher; \
   uv_timer_cb timer_cb;
 
-
-#define UV_ARES_ACTION_PRIVATE_FIELDS /* TODO */
-
 #define UV_ARES_TASK_PRIVATE_FIELDS \
   int sock; \
   ev_io read_watcher; \
