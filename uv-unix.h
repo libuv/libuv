@@ -109,7 +109,7 @@ typedef struct {
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS \
   uv_getaddrinfo_cb cb; \
-  struct addrinfo hints; \
+  struct addrinfo* hints; \
   char* hostname; \
   char* service; \
   struct addrinfo* res; \

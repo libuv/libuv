@@ -1494,6 +1494,7 @@ static int uv_getaddrinfo_done(eio_req* req) {
 
   uv_unref();
 
+  free(handle->hints);
   free(handle->service);
   free(handle->hostname);
 
@@ -1530,14 +1531,26 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
                    const struct addrinfo* hints) {
   uv_eio_init();
 
+  if (handle == NULL || cb == NULL ||
+      (hostname == NULL && service == NULL)) {
+    uv_err_new_artificial(NULL, UV_EINVAL);
+    return -1;
+  }
+
   memset(handle, 0, sizeof(uv_getaddrinfo_t));
-  memcpy(&handle->hints, hints, sizeof(struct addrinfo));
+
+  /* TODO don't alloc so much. */
+
+  if (hints) {
+    handle->hints = malloc(sizeof(struct addrinfo));
+    memcpy(&handle->hints, hints, sizeof(struct addrinfo));
+  }
 
   /* TODO security! check lengths, check return values. */
 
   handle->cb = cb;
-  handle->hostname = strdup(hostname);
-  handle->service = strdup(service);
+  handle->hostname = hostname ? strdup(hostname) : NULL;
+  handle->service = service ? strdup(service) : NULL;
 
   /* TODO check handle->hostname == NULL */
   /* TODO check handle->service == NULL */
