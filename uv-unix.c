@@ -1555,12 +1555,12 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
   /* TODO check handle->hostname == NULL */
   /* TODO check handle->service == NULL */
 
+  uv_ref();
+
   eio_req* req = eio_custom(getaddrinfo_thread_proc, EIO_PRI_DEFAULT,
       uv_getaddrinfo_done, handle);
-
-  /* TODO check req == NULL ? */
-
-  uv_ref();
+  assert(req);
+  assert(req->data == handle);
 
   return 0;
 }

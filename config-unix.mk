@@ -24,6 +24,9 @@ E=
 CFLAGS=--std=gnu89 -Wno-variadic-macros -g
 LINKFLAGS=-lm
 
+CPPFLAGS += -D_LARGEFILE_SOURCE
+CPPFLAGS += -D_FILE_OFFSET_BITS=64
+
 ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
@@ -83,8 +86,6 @@ ev/ev.o: ev/ev.c
 EIO_CPPFLAGS += $(CPPFLAGS)
 EIO_CPPFLAGS += -DEIO_CONFIG_H=\"$(EIO_CONFIG)\"
 EIO_CPPFLAGS += -DEIO_STACKSIZE=65536
-EIO_CPPFLAGS += -D_LARGEFILE_SOURCE
-EIO_CPPFLAGS += -D_FILE_OFFSET_BITS=64
 EIO_CPPFLAGS += -D_GNU_SOURCE
 
 eio/eio.o: eio/eio.c
