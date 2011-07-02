@@ -43,6 +43,7 @@ typedef struct uv_err_s uv_err_t;
 typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_tcp_s uv_tcp_t;
+typedef struct uv_pipe_s uv_pipe_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
 typedef struct uv_check_s uv_check_t;
@@ -124,7 +125,8 @@ typedef enum {
   UV_EAIFAMNOSUPPORT,
   UV_EAINONAME,
   UV_EAISERVICE,
-  UV_EAISOCKTYPE
+  UV_EAISOCKTYPE,
+  UV_ESHUTDOWN
 } uv_err_code;
 
 typedef enum {
@@ -285,6 +287,26 @@ int uv_tcp_connect(uv_req_t* req, struct sockaddr_in);
 int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6);
 
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
+
+
+/*
+ * A subclass of uv_stream_t representing a pipe stream or pipe server.
+ */
+UV_PIPE_PRIVATE_TYPEDEF
+
+struct uv_pipe_s {
+  UV_HANDLE_FIELDS
+  UV_STREAM_FIELDS
+  UV_PIPE_PRIVATE_FIELDS
+};
+
+int uv_pipe_init(uv_pipe_t* handle);
+
+int uv_pipe_create(uv_pipe_t* handle, char* name);
+
+int uv_pipe_listen(uv_pipe_t* handle, int instanceCount, uv_connection_cb cb);
+
+int uv_pipe_connect(uv_req_t* req, char* name);
 
 
 /*
@@ -478,7 +500,9 @@ union uv_any_handle {
 typedef struct {
   uint64_t req_init;
   uint64_t handle_init;
+  uint64_t stream_init;
   uint64_t tcp_init;
+  uint64_t pipe_init;
   uint64_t prepare_init;
   uint64_t check_init;
   uint64_t idle_init;

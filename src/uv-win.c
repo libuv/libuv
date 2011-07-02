@@ -164,6 +164,7 @@ static LPFN_TRANSMITFILE            pTransmitFile6;
 #define UV_HANDLE_ENDGAME_QUEUED   0x0400
 #define UV_HANDLE_BIND_ERROR       0x1000
 #define UV_HANDLE_IPV6             0x2000
+#define UV_HANDLE_PIPESERVER       0x4000
 
 /*
  * Private uv_req flags.
@@ -241,6 +242,8 @@ struct uv_ares_action_s {
 void uv_ares_process(uv_ares_action_t* handle, uv_req_t* req);
 void uv_ares_task_cleanup(uv_ares_task_t* handle, uv_req_t* req);
 void uv_ares_poll(uv_timer_t* handle, int status);
+
+static void close_pipe(uv_pipe_t* handle, int* status, uv_err_t* err);
 
 /* memory used per ares_channel */
 struct uv_ares_channel_s {
@@ -373,6 +376,7 @@ static uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_INVALID_FLAGS:               return UV_EBADF;
     case ERROR_INVALID_PARAMETER:           return UV_EINVAL;
     case ERROR_NO_UNICODE_TRANSLATION:      return UV_ECHARSET;
+    case ERROR_BROKEN_PIPE:                 return UV_EOF;
     default:                                return UV_UNKNOWN;
   }
 }
@@ -527,6 +531,11 @@ static uv_req_t* uv_overlapped_to_req(OVERLAPPED* overlapped) {
 }
 
 
+static uv_pipe_instance_t* uv_req_to_pipeinstance(uv_req_t* req) {
+  return CONTAINING_RECORD(req, uv_pipe_instance_t, accept_req);
+}
+
+
 static void uv_insert_pending_req(uv_req_t* req) {
   req->next_req = NULL;
   if (uv_pending_reqs_tail_) {
@@ -594,26 +603,36 @@ static int uv_tcp_set_socket(uv_tcp_t* handle, SOCKET socket) {
 }
 
 
-static void uv_tcp_init_connection(uv_tcp_t* handle) {
+static void uv_init_connection(uv_stream_t* handle) {
   handle->flags |= UV_HANDLE_CONNECTION;
   handle->write_reqs_pending = 0;
   uv_req_init(&(handle->read_req), (uv_handle_t*)handle, NULL);
 }
 
 
-int uv_tcp_init(uv_tcp_t* handle) {
-  handle->socket = INVALID_SOCKET;
+int uv_stream_init(uv_stream_t* handle) {
   handle->write_queue_size = 0;
-  handle->type = UV_TCP;
   handle->flags = 0;
-  handle->reqs_pending = 0;
   handle->error = uv_ok_;
-  handle->accept_socket = INVALID_SOCKET;
 
   uv_counters()->handle_init++;
-  uv_counters()->tcp_init++;
+  uv_counters()->stream_init++;
 
   uv_refs_++;
+
+  return 0;
+}
+
+
+int uv_tcp_init(uv_tcp_t* handle) {
+  uv_stream_init((uv_stream_t*)handle);
+
+  handle->socket = INVALID_SOCKET;
+  handle->type = UV_TCP;
+  handle->reqs_pending = 0;
+  handle->accept_socket = INVALID_SOCKET;
+
+  uv_counters()->tcp_init++;
 
   return 0;
 }
@@ -634,6 +653,39 @@ static void uv_tcp_endgame(uv_tcp_t* handle) {
       status = -1;
       err = uv_new_sys_error(WSAGetLastError());
     }
+    if (handle->shutdown_req->cb) {
+      handle->shutdown_req->flags &= ~UV_REQ_PENDING;
+      if (status == -1) {
+        uv_last_error_ = err;
+      }
+      ((uv_shutdown_cb)handle->shutdown_req->cb)(handle->shutdown_req, status);
+    }
+    handle->reqs_pending--;
+  }
+
+  if (handle->flags & UV_HANDLE_CLOSING &&
+      handle->reqs_pending == 0) {
+    assert(!(handle->flags & UV_HANDLE_CLOSED));
+    handle->flags |= UV_HANDLE_CLOSED;
+
+    if (handle->close_cb) {
+      handle->close_cb((uv_handle_t*)handle);
+    }
+
+    uv_refs_--;
+  }
+}
+
+
+static void uv_pipe_endgame(uv_pipe_t* handle) {
+  uv_err_t err;
+  int status;
+
+  if (handle->flags & UV_HANDLE_SHUTTING &&
+      !(handle->flags & UV_HANDLE_SHUT) &&
+      handle->write_reqs_pending == 0) {
+    close_pipe(handle, &status, &err);
+
     if (handle->shutdown_req->cb) {
       handle->shutdown_req->flags &= ~UV_REQ_PENDING;
       if (status == -1) {
@@ -714,6 +766,10 @@ static void uv_process_endgames() {
       case UV_TCP:
         uv_tcp_endgame((uv_tcp_t*)handle);
         break;
+    
+      case UV_NAMED_PIPE:
+        uv_pipe_endgame((uv_pipe_t*)handle);
+        break;
 
       case UV_TIMER:
         uv_timer_endgame((uv_timer_t*)handle);
@@ -749,6 +805,7 @@ static void uv_want_endgame(uv_handle_t* handle) {
 
 static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
   uv_tcp_t* tcp;
+  uv_pipe_t* pipe;
 
   if (handle->flags & UV_HANDLE_CLOSING) {
     return 0;
@@ -770,6 +827,15 @@ static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
       tcp->flags &= ~(UV_HANDLE_READING | UV_HANDLE_LISTENING);
       closesocket(tcp->socket);
       if (tcp->reqs_pending == 0) {
+        uv_want_endgame(handle);
+      }
+      return 0;
+    
+    case UV_NAMED_PIPE:
+      pipe = (uv_pipe_t*)handle;
+      pipe->flags &= ~(UV_HANDLE_READING | UV_HANDLE_LISTENING);
+      close_pipe(pipe, NULL, NULL);
+      if (pipe->reqs_pending == 0) {
         uv_want_endgame(handle);
       }
       return 0;
@@ -877,7 +943,7 @@ int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
 }
 
 
-static void uv_queue_accept(uv_tcp_t* handle) {
+static void uv_tcp_queue_accept(uv_tcp_t* handle) {
   uv_req_t* req;
   BOOL success;
   DWORD bytes;
@@ -908,6 +974,7 @@ static void uv_queue_accept(uv_tcp_t* handle) {
   if (accept_socket == INVALID_SOCKET) {
     req->error = uv_new_sys_error(WSAGetLastError());
     uv_insert_pending_req(req);
+    handle->reqs_pending++;
     return;
   }
 
@@ -927,6 +994,7 @@ static void uv_queue_accept(uv_tcp_t* handle) {
     /* Make this req pending reporting an error. */
     req->error = uv_new_sys_error(WSAGetLastError());
     uv_insert_pending_req(req);
+    handle->reqs_pending++;
     /* Destroy the preallocated client socket. */
     closesocket(accept_socket);
     return;
@@ -939,7 +1007,48 @@ static void uv_queue_accept(uv_tcp_t* handle) {
 }
 
 
-static void uv_queue_read(uv_tcp_t* handle) {
+static void uv_pipe_queue_accept(uv_pipe_t* handle) {
+  uv_req_t* req;
+  uv_pipe_instance_t* instance;
+  int i;
+
+  assert(handle->flags & UV_HANDLE_LISTENING);
+
+  /* This loop goes through every pipe instance and calls ConnectNamedPipe for every pending instance.
+   * TODO: Make this faster (we could maintain a linked list of pending instances).
+   */
+  for (i = 0; i < handle->connectionCount; i++) {
+    instance = &handle->connections[i];
+
+    if (instance->state == UV_PIPEINSTANCE_PENDING) {
+      /* Prepare the uv_req structure. */
+      req = &instance->accept_req;
+      uv_req_init(req, (uv_handle_t*)handle, NULL);
+      assert(!(req->flags & UV_REQ_PENDING));
+      req->type = UV_ACCEPT;
+      req->flags |= UV_REQ_PENDING;
+
+      /* Prepare the overlapped structure. */
+      memset(&(req->overlapped), 0, sizeof(req->overlapped));
+
+      if (!ConnectNamedPipe(instance->handle, &req->overlapped) && 
+          GetLastError() != ERROR_IO_PENDING && GetLastError() != ERROR_PIPE_CONNECTED) {
+        /* Make this req pending reporting an error. */
+        req->error = uv_new_sys_error(GetLastError());
+        uv_insert_pending_req(req);
+        handle->reqs_pending++;
+        continue;
+      }
+
+      instance->state = UV_PIPEINSTANCE_WAITING;
+      handle->reqs_pending++;
+      req->flags |= UV_REQ_PENDING;
+    }
+  }
+}
+
+
+static void uv_tcp_queue_read(uv_tcp_t* handle) {
   uv_req_t* req;
   uv_buf_t buf;
   int result;
@@ -967,6 +1076,40 @@ static void uv_queue_read(uv_tcp_t* handle) {
     /* Make this req pending reporting an error. */
     req->error = uv_new_sys_error(WSAGetLastError());
     uv_insert_pending_req(req);
+    handle->reqs_pending++;
+    return;
+  }
+
+  req->flags |= UV_REQ_PENDING;
+  handle->reqs_pending++;
+}
+
+
+static void uv_pipe_queue_read(uv_pipe_t* handle) {
+  uv_req_t* req;
+  int result;
+
+  assert(handle->flags & UV_HANDLE_READING);
+  assert(handle->connection);
+  assert(handle->connection->handle != INVALID_HANDLE_VALUE);
+
+  req = &handle->read_req;
+  assert(!(req->flags & UV_REQ_PENDING));
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
+  req->type = UV_READ;
+
+  /* Do 0-read */
+  result = ReadFile(handle->connection->handle, 
+                    &uv_zero_, 
+                    0, 
+                    NULL, 
+                    &req->overlapped); 
+         
+  if (!result && GetLastError() != ERROR_IO_PENDING) {
+    /* Make this req pending reporting an error. */
+    req->error = uv_new_sys_error(WSAGetLastError());
+    uv_insert_pending_req(req);
+    handle->reqs_pending++;
     return;
   }
 
@@ -999,40 +1142,76 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   handle->connection_cb = cb;
 
   uv_req_init(&(handle->accept_req), (uv_handle_t*)handle, NULL);
-  uv_queue_accept(handle);
+  uv_tcp_queue_accept(handle);
 
   return 0;
 }
 
 
-int uv_accept(uv_handle_t* server, uv_stream_t* client) {
+static int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
   int rv = 0;
-  uv_tcp_t* tcpServer = (uv_tcp_t*)server;
-  uv_tcp_t* tcpClient = (uv_tcp_t*)client;
   
-  if (tcpServer->accept_socket == INVALID_SOCKET) {
+  if (server->accept_socket == INVALID_SOCKET) {
     uv_set_sys_error(WSAENOTCONN);
     return -1;
   }
 
-  if (uv_tcp_set_socket(tcpClient, tcpServer->accept_socket) == -1) {
-    closesocket(tcpServer->accept_socket);
+  if (uv_tcp_set_socket(client, server->accept_socket) == -1) {
+    closesocket(server->accept_socket);
     rv = -1;
   } else {
-    uv_tcp_init_connection(tcpClient);
+    uv_init_connection((uv_stream_t*)client);
   }
 
-  tcpServer->accept_socket = INVALID_SOCKET;
+  server->accept_socket = INVALID_SOCKET;
 
-  if (!(tcpServer->flags & UV_HANDLE_CLOSING)) {
-    uv_queue_accept(tcpServer);
+  if (!(server->flags & UV_HANDLE_CLOSING)) {
+    uv_tcp_queue_accept(server);
   }
 
   return rv;
 }
 
 
-int uv_read_start(uv_stream_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
+static int uv_pipe_accept(uv_pipe_t* server, uv_pipe_t* client) {  
+  assert(server->acceptConnection);
+
+  /* Make the connection instance active */
+  server->acceptConnection->state = UV_PIPEINSTANCE_ACTIVE;
+  
+  /* Move the connection instance from server to client */
+  client->connection = server->acceptConnection;
+  server->acceptConnection = NULL;
+
+  /* Remember the server */
+  client->server = server;
+
+  uv_init_connection((uv_stream_t*)client);
+  client->flags |= UV_HANDLE_PIPESERVER;
+  uv_req_init(&(client->read_req), (uv_handle_t*)client, NULL);
+  
+  if (!(server->flags & UV_HANDLE_CLOSING)) {
+    uv_pipe_queue_accept(server);
+  }
+
+  return 0;
+}
+
+
+int uv_accept(uv_handle_t* server, uv_stream_t* client) {
+  assert(client->type == server->type);
+
+  if (server->type == UV_TCP) {
+    return uv_tcp_accept((uv_tcp_t*)server, (uv_tcp_t*)client);
+  } else if (server->type == UV_NAMED_PIPE) {
+    return uv_pipe_accept((uv_pipe_t*)server, (uv_pipe_t*)client);
+  }
+  
+  return -1;
+}
+
+
+static int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
   if (!(handle->flags & UV_HANDLE_CONNECTION)) {
     uv_set_sys_error(WSAEINVAL);
     return -1;
@@ -1055,9 +1234,49 @@ int uv_read_start(uv_stream_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
   /* If reading was stopped and then started again, there could stell be a */
   /* read request pending. */
   if (!(handle->read_req.flags & UV_REQ_PENDING))
-    uv_queue_read((uv_tcp_t*)handle);
+    uv_tcp_queue_read(handle);
 
   return 0;
+}
+
+
+static int uv_pipe_read_start(uv_pipe_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
+  if (!(handle->flags & UV_HANDLE_CONNECTION)) {
+    uv_set_sys_error(UV_EINVAL);
+    return -1;
+  }
+
+  if (handle->flags & UV_HANDLE_READING) {
+    uv_set_sys_error(UV_EALREADY);
+    return -1;
+  }
+
+  if (handle->flags & UV_HANDLE_EOF) {
+    uv_set_sys_error(UV_EOF);
+    return -1;
+  }
+
+  handle->flags |= UV_HANDLE_READING;
+  handle->read_cb = read_cb;
+  handle->alloc_cb = alloc_cb;
+
+  /* If reading was stopped and then started again, there could stell be a */
+  /* read request pending. */
+  if (!(handle->read_req.flags & UV_REQ_PENDING))
+    uv_pipe_queue_read(handle);
+
+  return 0;
+}
+
+
+int uv_read_start(uv_stream_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
+  if (handle->type == UV_TCP) {
+    return uv_tcp_read_start((uv_tcp_t*)handle, alloc_cb, read_cb);
+  } else if (handle->type == UV_NAMED_PIPE) {
+    return uv_pipe_read_start((uv_pipe_t*)handle, alloc_cb, read_cb);
+  }
+
+  return -1;
 }
 
 
@@ -1175,7 +1394,7 @@ static size_t uv_count_bufs(uv_buf_t bufs[], int count) {
 }
 
 
-int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
+int uv_tcp_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
   int result;
   DWORD bytes, err;
   uv_tcp_t* handle = (uv_tcp_t*) req->handle;
@@ -1228,6 +1447,72 @@ int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
 }
 
 
+int uv_pipe_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
+  int result;
+  uv_pipe_t* handle = (uv_pipe_t*) req->handle;
+
+  assert(!(req->flags & UV_REQ_PENDING));
+  
+  if (bufcnt != 1) {
+    uv_set_sys_error(UV_ENOTSUP);
+    return -1;
+  }
+
+  assert(handle->connection);
+  assert(handle->connection->handle != INVALID_HANDLE_VALUE);
+
+  if (!(req->handle->flags & UV_HANDLE_CONNECTION)) {
+    uv_set_sys_error(UV_EINVAL);
+    return -1;
+  }
+
+  if (req->handle->flags & UV_HANDLE_SHUTTING) {
+    uv_set_sys_error(UV_EOF);
+    return -1;
+  }
+
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
+  req->type = UV_WRITE;
+
+  result = WriteFile(handle->connection->handle,
+                     bufs[0].base,
+                     bufs[0].len,
+                     NULL,
+                     &req->overlapped);
+
+  if (!result && GetLastError() != WSA_IO_PENDING) {
+    uv_set_sys_error(GetLastError());
+    return -1;
+  }
+
+  if (result) {
+    /* Request completed immediately. */
+    req->queued_bytes = 0;
+  } else {
+    /* Request queued by the kernel. */
+    req->queued_bytes = uv_count_bufs(bufs, bufcnt);
+    handle->write_queue_size += req->queued_bytes;
+  }
+
+  req->flags |= UV_REQ_PENDING;
+  handle->reqs_pending++;
+  handle->write_reqs_pending++;
+
+  return 0;
+}
+
+
+int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
+  if (req->handle->type == UV_TCP) {
+    return uv_tcp_write(req, bufs, bufcnt);
+  } else if (req->handle->type == UV_NAMED_PIPE) {
+    return uv_pipe_write(req, bufs, bufcnt);
+  }
+
+  return -1;
+}
+
+
 int uv_shutdown(uv_req_t* req) {
   uv_tcp_t* handle = (uv_tcp_t*) req->handle;
   int status = 0;
@@ -1246,7 +1531,7 @@ int uv_shutdown(uv_req_t* req) {
   req->flags |= UV_REQ_PENDING;
 
   handle->flags |= UV_HANDLE_SHUTTING;
-    handle->shutdown_req = req;
+  handle->shutdown_req = req;
   handle->reqs_pending++;
 
   uv_want_endgame((uv_handle_t*)handle);
@@ -1338,7 +1623,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
       }
       /* Post another 0-read if still reading and not closing. */
       if (handle->flags & UV_HANDLE_READING) {
-        uv_queue_read(handle);
+        uv_tcp_queue_read(handle);
       }
       break;
 
@@ -1375,7 +1660,7 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
         /* uv_queue_accept will detect it. */
         closesocket(handle->accept_socket);
         if (handle->flags & UV_HANDLE_LISTENING) {
-          uv_queue_accept(handle);
+          uv_tcp_queue_accept(handle);
         }
       }
       break;
@@ -1388,12 +1673,167 @@ static void uv_tcp_return_req(uv_tcp_t* handle, uv_req_t* req) {
                          SO_UPDATE_CONNECT_CONTEXT,
                          NULL,
                          0) == 0) {
-            uv_tcp_init_connection(handle);
+            uv_init_connection((uv_stream_t*)handle);
             ((uv_connect_cb)req->cb)(req, 0);
           } else {
             uv_set_sys_error(WSAGetLastError());
             ((uv_connect_cb)req->cb)(req, -1);
           }
+        } else {
+          uv_last_error_ = req->error;
+          ((uv_connect_cb)req->cb)(req, -1);
+        }
+      }
+      break;
+
+    default:
+      assert(0);
+  }
+
+   /* The number of pending requests is now down by one */
+  handle->reqs_pending--;
+
+  /* Queue the handle's close callback if it is closing and there are no */
+  /* more pending requests. */
+  if (handle->flags & UV_HANDLE_CLOSING &&
+      handle->reqs_pending == 0) {
+    uv_want_endgame((uv_handle_t*)handle);
+  }
+}
+
+
+static void uv_pipe_return_req(uv_pipe_t* handle, uv_req_t* req) {
+  DWORD bytes, err, mode;
+  uv_buf_t buf;
+  uv_pipe_instance_t* acceptingConn;
+
+  assert(handle->type == UV_NAMED_PIPE);
+
+  /* Mark the request non-pending */
+  req->flags &= ~UV_REQ_PENDING;
+
+  switch (req->type) {
+    case UV_WRITE:
+      handle->write_queue_size -= req->queued_bytes;
+      if (req->cb) {
+        uv_last_error_ = req->error;
+        ((uv_write_cb)req->cb)(req, uv_last_error_.code == UV_OK ? 0 : -1);
+      }
+      handle->write_reqs_pending--;
+      if (handle->write_reqs_pending == 0 &&
+          handle->flags & UV_HANDLE_SHUTTING) {
+        uv_want_endgame((uv_handle_t*)handle);
+      }
+      break;
+
+    case UV_READ:
+      if (req->error.code != UV_OK) {
+        /* An error occurred doing the 0-read. */
+        if (!(handle->flags & UV_HANDLE_READING)) {
+          break;
+        }
+
+        /* Stop reading and report error. */
+        handle->flags &= ~UV_HANDLE_READING;
+        uv_last_error_ = req->error;
+        buf.base = 0;
+        buf.len = 0;
+        handle->read_cb((uv_stream_t*)handle, -1, buf);
+        break;
+      }
+
+      /* Temporarily switch to non-blocking mode.
+       * This is so that ReadFile doesn't block if the read buffer is empty.
+       */
+      mode = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT;
+      if (!SetNamedPipeHandleState(handle->connection->handle, &mode, NULL, NULL)) {
+        /* We can't continue processing this read. */
+        err = GetLastError();
+        uv_set_sys_error(err);
+        handle->read_cb((uv_stream_t*)handle, -1, buf);
+        break;
+      }
+
+      /* Do non-blocking reads until the buffer is empty */
+      while (handle->flags & UV_HANDLE_READING) {
+        buf = handle->alloc_cb((uv_stream_t*)handle, 65536);
+        assert(buf.len > 0);
+
+        if (ReadFile(handle->connection->handle, 
+                    buf.base, 
+                    buf.len,
+                    &bytes,
+                    NULL)) {
+          if (bytes > 0) {
+            /* Successful read */
+            handle->read_cb((uv_stream_t*)handle, bytes, buf);
+            /* Read again only if bytes == buf.len */
+            if (bytes < buf.len) {
+              break;
+            }
+          } else {
+            /* Connection closed */
+            handle->flags &= ~UV_HANDLE_READING;
+            handle->flags |= UV_HANDLE_EOF;
+            uv_last_error_.code = UV_EOF;
+            uv_last_error_.sys_errno_ = ERROR_SUCCESS;
+            handle->read_cb((uv_stream_t*)handle, -1, buf);
+            break;
+          }
+        } else {
+          err = GetLastError();
+          if (err == ERROR_NO_DATA) {
+            /* Read buffer was completely empty, report a 0-byte read. */
+            uv_set_sys_error(UV_EAGAIN);
+            handle->read_cb((uv_stream_t*)handle, 0, buf);
+          } else {
+            /* Ouch! serious error. */
+            uv_set_sys_error(err);
+            handle->read_cb((uv_stream_t*)handle, -1, buf);
+          }
+          break;
+        }
+      }
+
+      if (handle->flags & UV_HANDLE_READING) {
+        /* Switch back to blocking mode so that we can use IOCP for 0-reads */
+        mode = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
+        if (!SetNamedPipeHandleState(handle->connection->handle, &mode, NULL, NULL)) {
+          /* Report and continue. */
+          err = GetLastError();
+          uv_set_sys_error(err);
+          handle->read_cb((uv_stream_t*)handle, -1, buf);
+          break;
+        }
+
+        /* Post another 0-read if still reading and not closing. */
+        uv_pipe_queue_read(handle);
+      }
+
+      break;
+
+    case UV_ACCEPT:
+      if (req->error.code == UV_OK) {
+        /* Put the connection instance into accept state */
+        handle->acceptConnection = uv_req_to_pipeinstance(req);
+        handle->acceptConnection->state = UV_PIPEINSTANCE_ACCEPTED;
+
+        if (handle->connection_cb) {
+          handle->connection_cb((uv_handle_t*)handle, 0);
+        }
+      } else {
+        /* Ignore errors and continue listening */
+        if (handle->flags & UV_HANDLE_LISTENING) {
+          uv_pipe_queue_accept(handle);
+        }
+      }
+      break;
+
+    case UV_CONNECT:
+      if (req->cb) {
+        if (req->error.code == UV_OK) {
+          uv_init_connection((uv_stream_t*)handle);
+          ((uv_connect_cb)req->cb)(req, 0);
         } else {
           uv_last_error_ = req->error;
           ((uv_connect_cb)req->cb)(req, -1);
@@ -1713,6 +2153,10 @@ static void uv_process_reqs() {
     switch (handle->type) {
       case UV_TCP:
         uv_tcp_return_req((uv_tcp_t*)handle, req);
+        break;
+    
+      case UV_NAMED_PIPE:
+        uv_pipe_return_req((uv_pipe_t*)handle, req);
         break;
 
       case UV_ASYNC:
@@ -2460,3 +2904,253 @@ error:
   return -1;
 }
 
+
+int uv_pipe_init(uv_pipe_t* handle) {
+  uv_stream_init((uv_stream_t*)handle);
+
+  handle->type = UV_NAMED_PIPE;
+  handle->reqs_pending = 0;
+
+  uv_counters()->pipe_init++;
+
+  return 0;
+}
+
+
+/* Creates a pipe server. */
+/* TODO: make this work with UTF8 name */
+int uv_pipe_create(uv_pipe_t* handle, char* name) {
+  if (!name) {
+    return -1;
+  }
+
+  handle->connections = NULL;
+  handle->acceptConnection = NULL;
+  handle->connectionCount = 0;
+
+  /* Make our own copy of the pipe name */
+  handle->name = (char*)malloc(MAX_PIPENAME_LEN);
+  if (!handle->name) {
+    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+  }
+  strcpy(handle->name, name);
+  handle->name[255] = '\0';
+
+  handle->flags |= UV_HANDLE_PIPESERVER;
+  return 0;
+}
+
+
+/* Starts listening for connections for the given pipe. */
+int uv_pipe_listen(uv_pipe_t* handle, int instanceCount, uv_connection_cb cb) {
+  int i, maxInstances, errno;
+  HANDLE pipeHandle;
+  uv_pipe_instance_t* pipeInstance;
+
+  if (handle->flags & UV_HANDLE_LISTENING ||
+      handle->flags & UV_HANDLE_READING) {
+    uv_set_sys_error(UV_EALREADY);
+    return -1;
+  }
+
+  if (!(handle->flags & UV_HANDLE_PIPESERVER)) {
+    uv_set_sys_error(UV_ENOTSUP);
+    return -1;
+  }
+
+  if (instanceCount <= sizeof(handle->connectionsBuffer)) {
+    /* Use preallocated connections buffer */
+    handle->connections = handle->connectionsBuffer;
+  } else {
+    handle->connections = (uv_pipe_instance_t*)malloc(instanceCount * sizeof(uv_pipe_instance_t));
+    if (!handle->connections) {
+      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    }
+  }
+
+  maxInstances = instanceCount >= PIPE_UNLIMITED_INSTANCES ? PIPE_UNLIMITED_INSTANCES : instanceCount;
+  
+  for (i = 0; i < instanceCount; i++) {
+    pipeHandle = CreateNamedPipe(handle->name,
+                                 PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+                                 PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                 maxInstances,
+                                 65536,
+                                 65536,
+                                 0,
+                                 NULL);
+
+    if (pipeHandle == INVALID_HANDLE_VALUE) {
+      errno = GetLastError();
+      goto error;
+    }
+
+    if (CreateIoCompletionPort(pipeHandle,
+                               uv_iocp_,
+                               (ULONG_PTR)handle,
+                               0) == NULL) {
+      errno = GetLastError();
+      goto error;
+    }
+
+    pipeInstance = &handle->connections[i];
+    pipeInstance->handle = pipeHandle;
+    pipeInstance->state = UV_PIPEINSTANCE_PENDING;
+  }
+
+  /* We don't need the pipe name anymore. */
+  free(handle->name);
+  handle->name = NULL;
+
+  handle->connectionCount = instanceCount;
+  handle->flags |= UV_HANDLE_LISTENING;
+  handle->connection_cb = cb;
+
+  uv_pipe_queue_accept(handle);
+  return 0;
+  
+error:
+  close_pipe(handle, NULL, NULL);
+  uv_set_sys_error(errno);
+  return -1;
+}
+
+/* TODO: make this work with UTF8 name */
+int uv_pipe_connect(uv_req_t* req, char* name) {
+  int errno;
+  DWORD mode;
+  uv_pipe_t* handle = (uv_pipe_t*)req->handle;
+
+  assert(!(req->flags & UV_REQ_PENDING));
+  
+  req->type = UV_CONNECT;
+  handle->connection = &handle->clientConnection;
+  handle->server = NULL;
+  memset(&req->overlapped, 0, sizeof(req->overlapped));
+  
+  handle->clientConnection.handle = CreateFile(name,
+                                               GENERIC_READ | GENERIC_WRITE,
+                                               0,
+                                               NULL,
+                                               OPEN_EXISTING,
+                                               FILE_FLAG_OVERLAPPED,
+                                               NULL);
+                
+  if (handle->clientConnection.handle == INVALID_HANDLE_VALUE &&
+      GetLastError() != ERROR_IO_PENDING) {
+    errno = GetLastError();
+    goto error;
+  }
+  
+  mode = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
+
+  if (!SetNamedPipeHandleState(handle->clientConnection.handle, &mode, NULL, NULL)) {
+    errno = GetLastError();
+    goto error;
+  } 
+  
+  if (CreateIoCompletionPort(handle->clientConnection.handle,
+                             uv_iocp_,
+                             (ULONG_PTR)handle,
+                             0) == NULL) {
+    errno = GetLastError();
+    goto error;
+  } 
+
+  req->error = uv_ok_;
+  req->flags |= UV_REQ_PENDING;
+  handle->connection->state = UV_PIPEINSTANCE_ACTIVE;
+  uv_insert_pending_req(req);
+  handle->reqs_pending++;
+  return 0;
+  
+error:
+  close_pipe(handle, NULL, NULL);
+  req->error = uv_new_sys_error(errno);
+  uv_insert_pending_req(req);
+  handle->reqs_pending++;
+  return 0;
+}
+
+
+/* Cleans up uv_pipe_t (server or connection) and all resources associated with it */
+static void close_pipe(uv_pipe_t* handle, int* status, uv_err_t* err) {
+  uv_pipe_instance_t* connection;
+  int i;
+
+  if (handle->flags & UV_HANDLE_PIPESERVER) {
+    if (handle->flags & UV_HANDLE_CONNECTION) {
+      /*
+       * The handle is for a connection instance on the pipe server.
+       * To clean-up, we call DisconnectNamedPipe, and return the instance to pending state,
+       * which will be ready to accept another pipe connection in uv_pipe_queue_accept.
+       */
+      connection = handle->connection;
+      if (connection && connection->state != UV_PIPEINSTANCE_PENDING && connection->handle != INVALID_HANDLE_VALUE) {
+        /* Disconnect the connection intance and return it to pending state */
+        if (DisconnectNamedPipe(connection->handle)) {
+          connection->state = UV_PIPEINSTANCE_PENDING;
+          handle->connection = NULL;
+          if (status) *status = 0;
+        } else {
+          if (status) *status = -1;
+          if (err) *err = uv_new_sys_error(GetLastError());
+        }
+
+        /* Queue accept now that the instance is in pending state. */
+        if (!(handle->server->flags & UV_HANDLE_CLOSING)) {
+          uv_pipe_queue_accept(handle->server);
+        }
+      }
+    } else {
+      /*
+       * The handle is for the pipe server.
+       * To clean-up we close every connection instance that was made in uv_pipe_listen.
+       */
+     
+      if (handle->name) {
+        free(handle->name);
+        handle->name = NULL;
+      }
+
+      if (handle->connections) {
+        /* Go through the list of connections, and close each one with CloseHandle. */
+        for (i = 0; i < handle->connectionCount; i++) {
+          connection = &handle->connections[i];
+          if (connection->state != UV_PIPEINSTANCE_DISCONNECTED && connection->handle != INVALID_HANDLE_VALUE) {
+            CloseHandle(connection->handle);
+            connection->state = UV_PIPEINSTANCE_DISCONNECTED;
+            connection->handle = INVALID_HANDLE_VALUE;
+          }
+        }
+
+        /* Free the connections buffer. */
+        if (handle->connections != handle->connectionsBuffer) {
+          free(handle->connections);
+        }
+
+        handle->connections = NULL;
+      }
+
+      if (status) *status = 0;
+    }
+  } else {
+    /*
+     * The handle is for a connection instance on the pipe client.
+     * To clean-up
+     */
+    connection = handle->connection;
+    if (connection && connection->handle != INVALID_HANDLE_VALUE) {
+      if (CloseHandle(connection->handle)) {
+        connection->state = UV_PIPEINSTANCE_DISCONNECTED;
+        handle->connection = NULL;
+        if (status) *status = 0;
+      } else {
+        if (status) *status = -1;
+        if (err) *err = uv_new_sys_error(GetLastError());
+      }
+    }
+  }
+  
+  handle->flags |= UV_HANDLE_SHUT;
+}

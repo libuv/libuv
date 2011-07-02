@@ -1594,3 +1594,22 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
   return 0;
 }
 
+
+int uv_pipe_init(uv_pipe_t* handle) {
+  assert(0 && "implement me");
+}
+
+
+int uv_pipe_create(uv_pipe_t* handle, char* name) {
+  assert(0 && "implement me");
+}
+
+
+int uv_pipe_listen(uv_pipe_t* handle, int instanceCount, uv_connection_cb cb) {
+  assert(0 && "implement me");
+}
+
+
+int uv_pipe_connect(uv_req_t* req, char* name) {
+  assert(0 && "implement me");
+}
