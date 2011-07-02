@@ -943,6 +943,13 @@ int uv_tcp_connect(uv_req_t* req, struct sockaddr_in addr) {
 }
 
 
+/* TODO: Implement IPv6 Connect for UNIX */
+int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6 addr) {
+  uv_err_new_artificial((uv_handle_t*)req->handle, UV_EAFNOSUPPORT);
+  return -1;
+}
+
+
 static size_t uv__buf_count(uv_buf_t bufs[], int bufcnt) {
   size_t total = 0;
   int i;
