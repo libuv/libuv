@@ -222,6 +222,9 @@ static struct sockaddr_in6 uv_addr_ip6_any_;
 static char uv_zero_[] = "";
 
 
+/* mark if IPv6 sockets are supported */
+static BOOL uv_allow_ipv6 = FALSE;
+
 /*
  * Subclass of uv_handle_t. Used for integration of c-ares.
  */
@@ -392,7 +395,7 @@ static void uv_set_sys_error(int sys_errno) {
 /*
  * Retrieves the pointer to a winsock extension function.
  */
-static void uv_get_extension_function(SOCKET socket, GUID guid,
+static BOOL uv_get_extension_function(SOCKET socket, GUID guid,
     void **target) {
   DWORD result, bytes;
 
@@ -408,8 +411,9 @@ static void uv_get_extension_function(SOCKET socket, GUID guid,
 
   if (result == SOCKET_ERROR) {
     *target = NULL;
-    uv_fatal_error(WSAGetLastError(),
-                   "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
+    return FALSE;
+  } else {
+    return TRUE;
   }
 }
 
@@ -443,52 +447,56 @@ void uv_init() {
     uv_fatal_error(WSAGetLastError(), "socket");
   }
 
-  uv_get_extension_function(dummy,
+  if (!uv_get_extension_function(dummy,
                             wsaid_connectex,
-                            (void**)&pConnectEx);
-  uv_get_extension_function(dummy,
+                            (void**)&pConnectEx) ||
+      !uv_get_extension_function(dummy,
                             wsaid_acceptex,
-                            (void**)&pAcceptEx);
-  uv_get_extension_function(dummy,
+                            (void**)&pAcceptEx) ||
+      !uv_get_extension_function(dummy,
                             wsaid_getacceptexsockaddrs,
-                            (void**)&pGetAcceptExSockAddrs);
-  uv_get_extension_function(dummy,
+                            (void**)&pGetAcceptExSockAddrs) ||
+      !uv_get_extension_function(dummy,
                             wsaid_disconnectex,
-                            (void**)&pDisconnectEx);
-  uv_get_extension_function(dummy,
+                            (void**)&pDisconnectEx) ||
+      !uv_get_extension_function(dummy,
                             wsaid_transmitfile,
-                            (void**)&pTransmitFile);
+                            (void**)&pTransmitFile)) {
+    uv_fatal_error(WSAGetLastError(),
+                   "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER)");
+  }
 
   if (closesocket(dummy) == SOCKET_ERROR) {
     uv_fatal_error(WSAGetLastError(), "closesocket");
   }
 
-/* need IPv6 versions of winsock extension functions */
+/* optional IPv6 versions of winsock extension functions */
   dummy6 = socket(AF_INET6, SOCK_STREAM, IPPROTO_IP);
-  if (dummy == INVALID_SOCKET) {
-    uv_fatal_error(WSAGetLastError(), "socket");
+  if (dummy6 != INVALID_SOCKET) {
+    uv_allow_ipv6 = TRUE;
+
+    if (!uv_get_extension_function(dummy6,
+                              wsaid_connectex,
+                              (void**)&pConnectEx6) ||
+        !uv_get_extension_function(dummy6,
+                              wsaid_acceptex,
+                              (void**)&pAcceptEx6) ||
+        !uv_get_extension_function(dummy6,
+                              wsaid_getacceptexsockaddrs,
+                              (void**)&pGetAcceptExSockAddrs6) ||
+        !uv_get_extension_function(dummy6,
+                              wsaid_disconnectex,
+                              (void**)&pDisconnectEx6) ||
+        !uv_get_extension_function(dummy6,
+                              wsaid_transmitfile,
+                              (void**)&pTransmitFile6)) {
+      uv_allow_ipv6 = FALSE;
+    }
+
+    if (closesocket(dummy6) == SOCKET_ERROR) {
+      uv_fatal_error(WSAGetLastError(), "closesocket");
+    }
   }
-
-  uv_get_extension_function(dummy6,
-                            wsaid_connectex,
-                            (void**)&pConnectEx6);
-  uv_get_extension_function(dummy6,
-                            wsaid_acceptex,
-                            (void**)&pAcceptEx6);
-  uv_get_extension_function(dummy6,
-                            wsaid_getacceptexsockaddrs,
-                            (void**)&pGetAcceptExSockAddrs6);
-  uv_get_extension_function(dummy6,
-                            wsaid_disconnectex,
-                            (void**)&pDisconnectEx6);
-  uv_get_extension_function(dummy6,
-                            wsaid_transmitfile,
-                            (void**)&pTransmitFile6);
-
-  if (closesocket(dummy6) == SOCKET_ERROR) {
-    uv_fatal_error(WSAGetLastError(), "closesocket");
-  }
-
 
   /* Create an I/O completion port */
   uv_iocp_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
@@ -852,8 +860,13 @@ int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
     uv_set_sys_error(WSAEFAULT);
     return -1;
   }
-  handle->flags |= UV_HANDLE_IPV6;
-  return uv__bind(handle, AF_INET6, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
+  if (uv_allow_ipv6) {
+    handle->flags |= UV_HANDLE_IPV6;
+    return uv__bind(handle, AF_INET6, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
+  } else {
+    uv_new_sys_error(UV_EAFNOSUPPORT);
+    return -1;
+  }
 }
 
 
@@ -1098,6 +1111,11 @@ int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6 addr) {
   BOOL success;
   DWORD bytes;
   uv_tcp_t* handle = (uv_tcp_t*)req->handle;
+
+  if (!uv_allow_ipv6) {
+    uv_new_sys_error(UV_EAFNOSUPPORT);
+    return -1;
+  }
 
   assert(!(req->flags & UV_REQ_PENDING));
 
