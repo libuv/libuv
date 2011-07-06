@@ -28,7 +28,7 @@
 
 /* use inet_pton from c-ares if necessary */
 #include "ares_config.h"
-#include "c-ares/inet_net_pton.h"
+#include "ares/inet_net_pton.h"
 
 /* list used for ares task handles */
 static uv_ares_task_t* uv_ares_handles_ = NULL;

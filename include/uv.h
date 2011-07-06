@@ -33,7 +33,7 @@ extern "C" {
 #include <stdint.h> /* int64_t */
 #include <sys/types.h> /* size_t */
 
-#include "c-ares/ares.h"
+#include "ares.h"
 
 #ifndef _SSIZE_T_
 typedef intptr_t ssize_t;
