@@ -878,13 +878,13 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
 }
 
 
-int uv_tcp_connect(uv_req_t* req, struct sockaddr_in addr) {
+static int uv__connect(uv_req_t* req, struct sockaddr* addr,
+    socklen_t addrlen) {
   uv_tcp_t* tcp = (uv_tcp_t*)req->handle;
-  int addrsize;
   int r;
 
   if (tcp->fd <= 0) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    int fd = socket(addr->sa_family, SOCK_STREAM, 0);
 
     if (fd < 0) {
       uv_err_new((uv_handle_t*)tcp, errno);
@@ -912,10 +912,8 @@ int uv_tcp_connect(uv_req_t* req, struct sockaddr_in addr) {
 
   tcp->connect_req = req;
 
-  addrsize = sizeof(struct sockaddr_in);
-  assert(addr.sin_family == AF_INET);
+  r = connect(tcp->fd, addr, addrlen);
 
-  r = connect(tcp->fd, (struct sockaddr*)&addr, addrsize);
   tcp->delayed_error = 0;
 
   if (r != 0 && errno != EINPROGRESS) {
@@ -945,10 +943,17 @@ int uv_tcp_connect(uv_req_t* req, struct sockaddr_in addr) {
 }
 
 
-/* TODO: Implement IPv6 Connect for UNIX */
+int uv_tcp_connect(uv_req_t* req, struct sockaddr_in addr) {
+  assert(addr.sin_family == AF_INET);
+  return uv__connect(req, (struct sockaddr*) &addr,
+      sizeof(struct sockaddr_in));
+}
+
+
 int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6 addr) {
-  uv_err_new_artificial((uv_handle_t*)req->handle, UV_EAFNOSUPPORT);
-  return -1;
+  assert(addr.sin6_family == AF_INET6);
+  return uv__connect(req, (struct sockaddr*) &addr,
+      sizeof(struct sockaddr_in6));
 }
 
 
