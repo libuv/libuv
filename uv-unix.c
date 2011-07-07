@@ -616,7 +616,12 @@ static uv_req_t* uv__write(uv_tcp_t* tcp) {
    * inside the iov each time we write. So there is no need to offset it.
    */
 
-  n = writev(tcp->fd, iov, iovcnt);
+  if (iovcnt == 1) {
+    n = write(tcp->fd, iov[0].iov_base, iov[0].iov_len);
+  }
+  else {
+    n = writev(tcp->fd, iov, iovcnt);
+  }
 
   if (n < 0) {
     if (errno != EAGAIN) {
@@ -735,7 +740,7 @@ void uv__read(uv_tcp_t* tcp) {
 
     iov = (struct iovec*) &buf;
 
-    nread = readv(tcp->fd, iov, 1);
+    nread = read(tcp->fd, buf.base, buf.len);
 
     if (nread < 0) {
       /* Error */
