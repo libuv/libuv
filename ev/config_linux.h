@@ -1,6 +1,11 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+#include <linux/version.h>
+
+#define LINUX_VERSION_CODE_FOR(major, minor, patch) (((major & 255) >> 16) | ((minor & 255) >> 8) | (patch & 255))
+#define LINUX_VERSION_AT_LEAST(major, minor, patch) (LINUX_VERSION_CODE_FOR(major, minor, patch) >= LINUX_VERSION_CODE)
+
 /* Define to 1 if you have the `clock_gettime' function. */
 /* #undef HAVE_CLOCK_GETTIME */
 
@@ -14,10 +19,10 @@
 #define HAVE_EPOLL_CTL 1
 
 /* Define to 1 if you have the `eventfd' function. */
-#define HAVE_EVENTFD 1
+#define HAVE_EVENTFD LINUX_VERSION_AT_LEAST(2, 6, 22)
 
 /* Define to 1 if you have the `inotify_init' function. */
-#define HAVE_INOTIFY_INIT 1
+#define HAVE_INOTIFY_INIT LINUX_VERSION_AT_LEAST(2, 6, 13)
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -53,7 +58,7 @@
 #define HAVE_SELECT 1
 
 /* Define to 1 if you have the `signalfd' function. */
-#define HAVE_SIGNALFD 1
+#define HAVE_SIGNALFD LINUX_VERSION_AT_LEAST(2, 6, 22)
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
