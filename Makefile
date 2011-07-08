@@ -107,7 +107,7 @@ bench: test/run-benchmarks$(E)
 	test/run-benchmarks
 
 clean: clean-platform
-	$(RM) -f *.o *.a test/run-tests$(E) test/run-benchmarks$(E)
+	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
 
 distclean: distclean-platform
-	$(RM) -f *.o *.a test/run-tests$(E) test/run-benchmarks$(E)
+	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
