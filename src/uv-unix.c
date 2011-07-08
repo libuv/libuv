@@ -632,7 +632,7 @@ static uv_req_t* uv__write(uv_tcp_t* tcp) {
     /* Successful write */
 
     /* Update the counters. */
-    while (n > 0) {
+    while (n >= 0) {
       uv_buf_t* buf = &(req->bufs[req->write_index]);
       size_t len = buf->len;
 
