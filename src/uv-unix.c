@@ -99,7 +99,6 @@ static void uv_fatal_error(const int errorno, const char* syscall) {
     fprintf(stderr, "\nlibuv fatal error. (%d) %s\n", errorno, errmsg);
   }
 
-  *((char*)NULL) = 0xff; /* Force debug break */
   abort();
 }
 
