@@ -188,7 +188,7 @@ int uv_shutdown(uv_req_t* req);
   uv_close_cb close_cb; \
   void* data; \
   /* private */ \
-  UV_HANDLE_PRIVATE_FIELDS \
+  UV_HANDLE_PRIVATE_FIELDS
 
 /* The abstract base class of all handles.  */
 struct uv_handle_s {
@@ -212,7 +212,7 @@ int uv_close(uv_handle_t* handle, uv_close_cb close_cb);
   /* number of bytes queued for writing */ \
   size_t write_queue_size; \
   /* private */ \
-  UV_STREAM_PRIVATE_FIELDS \
+  UV_STREAM_PRIVATE_FIELDS
 
 /* The abstract base class for all streams. */
 struct uv_stream_s {
@@ -487,6 +487,18 @@ typedef struct {
 } uv_counters_t;
 
 uv_counters_t* uv_counters();
+
+
+/* Don't export the private CPP symbols. */
+#undef UV_REQ_PRIVATE_FIELDS
+#undef UV_STREAM_PRIVATE_FIELDS
+#undef UV_TCP_PRIVATE_FIELDS
+#undef UV_PREPARE_PRIVATE_FIELDS
+#undef UV_CHECK_PRIVATE_FIELDS
+#undef UV_IDLE_PRIVATE_FIELDS
+#undef UV_ASYNC_PRIVATE_FIELDS
+#undef UV_TIMER_PRIVATE_FIELDS
+#undef UV_GETADDRINFO_PRIVATE_FIELDS
 
 #ifdef __cplusplus
 }
