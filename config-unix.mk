@@ -48,6 +48,7 @@ endif
 ifeq (Linux,$(uname_S))
 EV_CONFIG=config_linux.h
 EIO_CONFIG=config_linux.h
+CSTDFLAG += -D_XOPEN_SOURCE=600
 CPPFLAGS += -Isrc/ares/config_linux
 LINKFLAGS+=-lrt
 UV_OS_FILE=uv-linux.c
