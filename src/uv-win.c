@@ -531,6 +531,7 @@ static void uv_insert_pending_req(uv_req_t* req) {
   req->next_req = NULL;
   if (uv_pending_reqs_tail_) {
     req->next_req = uv_pending_reqs_tail_->next_req;
+    uv_pending_reqs_tail_->next_req = req;
     uv_pending_reqs_tail_ = req;
   } else {
     req->next_req = req;
