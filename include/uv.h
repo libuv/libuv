@@ -167,7 +167,7 @@ struct uv_req_s {
   uv_req_type type;
   /* public */
   uv_handle_t* handle;
-  void* cb;
+  void *(*cb)(void *);
   void* data;
   /* private */
   UV_REQ_PRIVATE_FIELDS
@@ -176,7 +176,7 @@ struct uv_req_s {
 /*
  * Initialize a request for use with uv_write, uv_shutdown, or uv_connect.
  */
-void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb);
+void uv_req_init(uv_req_t* req, uv_handle_t* handle, void *(*cb)(void *));
 
 int uv_shutdown(uv_req_t* req);
 

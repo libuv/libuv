@@ -996,7 +996,9 @@ int uv_write(uv_req_t* req, uv_buf_t bufs[], int bufcnt) {
   memcpy(req->bufs, bufs, bufcnt * sizeof(uv_buf_t));
   req->bufcnt = bufcnt;
 
-  // fprintf(stderr, "cnt: %d bufs: %p bufsml: %p\n", bufcnt, req->bufs, req->bufsml);
+  /*
+   * fprintf(stderr, "cnt: %d bufs: %p bufsml: %p\n", bufcnt, req->bufs, req->bufsml);
+   */
 
   req->write_index = 0;
   tcp->write_queue_size += uv__buf_count(bufs, bufcnt);
@@ -1096,7 +1098,7 @@ int uv_read_stop(uv_stream_t* stream) {
 }
 
 
-void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb) {
+void uv_req_init(uv_req_t* req, uv_handle_t* handle, void *(*cb)(void *)) {
   uv_counters()->req_init++;
   req->type = UV_UNKNOWN_REQ;
   req->cb = cb;
@@ -1556,6 +1558,7 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
                    const char* hostname,
                    const char* service,
                    const struct addrinfo* hints) {
+  eio_req* req;
   uv_eio_init();
 
   if (handle == NULL || cb == NULL ||
@@ -1584,7 +1587,7 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
 
   uv_ref();
 
-  eio_req* req = eio_custom(getaddrinfo_thread_proc, EIO_PRI_DEFAULT,
+  req = eio_custom(getaddrinfo_thread_proc, EIO_PRI_DEFAULT,
       uv_getaddrinfo_done, handle);
   assert(req);
   assert(req->data == handle);

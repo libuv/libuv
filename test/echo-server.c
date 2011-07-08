@@ -82,7 +82,7 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
     }
 
     req = (uv_req_t*) malloc(sizeof *req);
-    uv_req_init(req, (uv_handle_t*)handle, after_shutdown);
+    uv_req_init(req, (uv_handle_t*)handle, (void *(*)(void *))after_shutdown);
     uv_shutdown(req);
 
     return;
@@ -108,7 +108,7 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
 
   wr = (write_req_t*) malloc(sizeof *wr);
 
-  uv_req_init(&wr->req, (uv_handle_t*)handle, after_write);
+  uv_req_init(&wr->req, (uv_handle_t*)handle, (void *(*)(void *))after_write);
   wr->buf.base = buf.base;
   wr->buf.len = nread;
   if (uv_write(&wr->req, &wr->buf, 1)) {
@@ -135,7 +135,7 @@ static void on_connection(uv_handle_t* server, int status) {
   int r;
 
   if (status != 0) {
-    fprintf(stderr, "Connect error %d\n", uv_last_error());
+    fprintf(stderr, "Connect error %d\n", uv_last_error().code);
   }
   ASSERT(status == 0);
 

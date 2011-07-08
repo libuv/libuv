@@ -513,7 +513,7 @@ void uv_init() {
 }
 
 
-void uv_req_init(uv_req_t* req, uv_handle_t* handle, void* cb) {
+void uv_req_init(uv_req_t* req, uv_handle_t* handle, void *(*cb)(void *)) {
   uv_counters()->req_init++;
   req->type = UV_UNKNOWN_REQ;
   req->flags = 0;

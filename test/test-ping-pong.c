@@ -82,7 +82,8 @@ static void pinger_write_ping(pinger_t* pinger) {
   buf.len = strlen(PING);
 
   req = (uv_req_t*)malloc(sizeof(*req));
-  uv_req_init(req, (uv_handle_t*)(&pinger->tcp), pinger_after_write);
+  uv_req_init(req, (uv_handle_t*)(&pinger->tcp),
+      (void *(*)(void *))pinger_after_write);
 
   if (uv_write(req, &buf, 1)) {
     FATAL("uv_write failed");
@@ -158,7 +159,7 @@ static void pinger_new() {
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
   uv_req_init(&pinger->connect_req, (uv_handle_t*)(&pinger->tcp),
-      pinger_on_connect);
+      (void *(*)(void *))pinger_on_connect);
 
   r = uv_tcp_connect(&pinger->connect_req, server_addr);
   ASSERT(!r);
@@ -195,7 +196,7 @@ static void pinger_v6_new() {
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
   uv_req_init(&pinger->connect_req, (uv_handle_t*)(&pinger->tcp),
-      pinger_on_connect);
+      (void *(*)(void *))pinger_on_connect);
 
   r = uv_tcp_connect6(&pinger->connect_req, server_addr);
   ASSERT(!r);

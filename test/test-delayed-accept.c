@@ -178,7 +178,7 @@ static void client_connect() {
   r = uv_tcp_init(client);
   ASSERT(r == 0);
 
-  uv_req_init(connect_req, (uv_handle_t*)client, connect_cb);
+  uv_req_init(connect_req, (uv_handle_t*)client, (void *(*)(void *))connect_cb);
   r = uv_tcp_connect(connect_req, addr);
   ASSERT(r == 0);
 }
