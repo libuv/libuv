@@ -1544,7 +1544,7 @@ static int getaddrinfo_thread_proc(eio_req *req) {
 
   handle->retcode = getaddrinfo(handle->hostname,
                                 handle->service,
-                                &handle->hints,
+                                handle->hints,
                                 &handle->res);
   return 0;
 }
