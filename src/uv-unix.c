@@ -168,8 +168,8 @@ int uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   switch (handle->type) {
     case UV_TCP:
       tcp = (uv_tcp_t*) handle;
+      uv_read_stop((uv_stream_t*)tcp);
       ev_io_stop(EV_DEFAULT_ &tcp->write_watcher);
-      ev_io_stop(EV_DEFAULT_ &tcp->read_watcher);
       break;
 
     case UV_PREPARE:
