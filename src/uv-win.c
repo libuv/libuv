@@ -761,6 +761,12 @@ static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
   switch (handle->type) {
     case UV_TCP:
       tcp = (uv_tcp_t*)handle;
+      /* If we don't shutdown before calling closesocket, windows will */
+      /* silently discard the kernel send buffer and reset the connection. */
+      if (!(tcp->flags & UV_HANDLE_SHUT)) {
+        shutdown(tcp->socket, SD_SEND);
+        tcp->flags |= UV_HANDLE_SHUT;
+      }
       tcp->flags &= ~(UV_HANDLE_READING | UV_HANDLE_LISTENING);
       closesocket(tcp->socket);
       if (tcp->reqs_pending == 0) {
