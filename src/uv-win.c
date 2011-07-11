@@ -1382,6 +1382,29 @@ int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6 addr) {
 }
 
 
+int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen) {
+  int result;
+
+  if (!(handle->flags & UV_HANDLE_CONNECTION)) {
+    uv_set_sys_error(WSAEINVAL);
+    return -1;
+  }
+
+  if (handle->flags & UV_HANDLE_SHUTTING) {
+    uv_set_sys_error(WSAESHUTDOWN);
+    return -1;
+  }
+
+  result = getsockname(handle->socket, name, namelen);
+  if (result != 0) {
+    uv_set_sys_error(WSAGetLastError());
+    return -1;
+  }
+
+  return 0;
+}
+
+
 static size_t uv_count_bufs(uv_buf_t bufs[], int count) {
   size_t bytes = 0;
   int i;

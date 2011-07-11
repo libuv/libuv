@@ -961,6 +961,11 @@ int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6 addr) {
 }
 
 
+int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen) {
+  assert(0 && "implement me");
+}
+
+
 static size_t uv__buf_count(uv_buf_t bufs[], int bufcnt) {
   size_t total = 0;
   int i;

@@ -288,6 +288,8 @@ int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6);
 
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 
+int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
+
 
 /*
  * A subclass of uv_stream_t representing a pipe stream or pipe server.

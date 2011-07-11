@@ -53,6 +53,7 @@ TEST_DECLARE   (hrtime)
 TEST_DECLARE   (getaddrinfo_basic)
 TEST_DECLARE   (getaddrinfo_concurrent)
 TEST_DECLARE   (gethostbyname)
+TEST_DECLARE   (getsockname)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 HELPER_DECLARE (tcp4_echo_server)
@@ -120,6 +121,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (gethostbyname)
   TEST_HELPER (gethostbyname, tcp4_echo_server)
+
+  TEST_ENTRY  (getsockname)
 
 #if 0
   /* These are for testing the test runner. */
