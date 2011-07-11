@@ -1600,7 +1600,7 @@ int uv_pipe_init(uv_pipe_t* handle) {
 }
 
 
-int uv_pipe_create(uv_pipe_t* handle, char* name) {
+int uv_pipe_bind(uv_pipe_t* handle, char* name) {
   assert(0 && "implement me");
 }
 

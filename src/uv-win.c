@@ -2919,7 +2919,7 @@ int uv_pipe_init(uv_pipe_t* handle) {
 
 /* Creates a pipe server. */
 /* TODO: make this work with UTF8 name */
-int uv_pipe_create(uv_pipe_t* handle, char* name) {
+int uv_pipe_bind(uv_pipe_t* handle, char* name) {
   if (!name) {
     return -1;
   }

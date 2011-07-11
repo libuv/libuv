@@ -240,7 +240,7 @@ static int pipe_echo_start(char* pipeName) {
     return 1;
   }
 
-  r = uv_pipe_create(&pipeServer, pipeName);
+  r = uv_pipe_bind(&pipeServer, pipeName);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "create error\n");

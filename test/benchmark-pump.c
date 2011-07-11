@@ -401,7 +401,7 @@ HELPER_IMPL(pipe_pump_server) {
   server = (uv_handle_t*)&pipeServer;
   r = uv_pipe_init(&pipeServer);
   ASSERT(r == 0);
-  r = uv_pipe_create(&pipeServer, TEST_PIPENAME);
+  r = uv_pipe_bind(&pipeServer, TEST_PIPENAME);
   ASSERT(r == 0);
   r = uv_pipe_listen(&pipeServer, MAX_WRITE_HANDLES, connection_cb);
   ASSERT(r == 0);

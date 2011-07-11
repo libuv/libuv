@@ -302,7 +302,7 @@ struct uv_pipe_s {
 
 int uv_pipe_init(uv_pipe_t* handle);
 
-int uv_pipe_create(uv_pipe_t* handle, char* name);
+int uv_pipe_bind(uv_pipe_t* handle, char* name);
 
 int uv_pipe_listen(uv_pipe_t* handle, int instanceCount, uv_connection_cb cb);
 
