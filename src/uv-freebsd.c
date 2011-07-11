@@ -21,8 +21,20 @@
 #include "uv.h"
 
 #include <string.h>
+#include <time.h>
+
 #include <sys/types.h>
 #include <sys/sysctl.h>
+
+#undef NANOSEC
+#define NANOSEC 1000000000
+
+uint64_t uv_hrtime(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (ts.tv_sec * NANOSEC + ts.tv_nsec);
+}
+
 
 int uv_exepath(char* buffer, size_t* size) {
   uint32_t usize;
