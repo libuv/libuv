@@ -44,8 +44,8 @@ int uv_exepath(char* buffer, size_t* size) {
 
   cb = *size;
   if (sysctl(mib, 4, buffer, &cb, NULL, 0) < 0) {
-	  *size = 0;
-	  return -1;
+    *size = 0;
+    return -1;
   }
   *size = strlen(buffer);
 
