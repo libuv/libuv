@@ -304,11 +304,11 @@ struct uv_pipe_s {
 
 int uv_pipe_init(uv_pipe_t* handle);
 
-int uv_pipe_bind(uv_pipe_t* handle, char* name);
+int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 
 int uv_pipe_listen(uv_pipe_t* handle, int instanceCount, uv_connection_cb cb);
 
-int uv_pipe_connect(uv_req_t* req, char* name);
+int uv_pipe_connect(uv_req_t* req, const char* name);
 
 
 /*

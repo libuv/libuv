@@ -2937,7 +2937,7 @@ int uv_pipe_init(uv_pipe_t* handle) {
 
 /* Creates a pipe server. */
 /* TODO: make this work with UTF8 name */
-int uv_pipe_bind(uv_pipe_t* handle, char* name) {
+int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   if (!name) {
     return -1;
   }
@@ -3034,7 +3034,7 @@ error:
 }
 
 /* TODO: make this work with UTF8 name */
-int uv_pipe_connect(uv_req_t* req, char* name) {
+int uv_pipe_connect(uv_req_t* req, const char* name) {
   int errno;
   DWORD mode;
   uv_pipe_t* handle = (uv_pipe_t*)req->handle;
