@@ -962,7 +962,23 @@ int uv_tcp_connect6(uv_req_t* req, struct sockaddr_in6 addr) {
 
 
 int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen) {
-  assert(0 && "implement me");
+  socklen_t socklen;
+  int saved_errno;
+
+  /* Don't clobber errno. */
+  saved_errno = errno;
+
+  /* sizeof(socklen_t) != sizeof(int) on some systems. */
+  socklen = (socklen_t)*namelen;
+
+  if (getsockname(handle->fd, name, &socklen) == -1) {
+    uv_err_new((uv_handle_t*)handle, errno);
+  } else {
+    *namelen = (int)socklen;
+  }
+
+  errno = saved_errno;
+  return 0;
 }
 
 
