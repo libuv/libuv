@@ -91,7 +91,7 @@ static void on_connection(uv_handle_t* server, int status) {
 
   status = uv_getsockname((uv_tcp_t*)handle, &sockname, &namelen);
   if (status != 0) {
-    fprintf(stderr, "uv_getsockname error (listener) %d\n", uv_last_error().code);
+    fprintf(stderr, "uv_getsockname error (accepted) %d\n", uv_last_error().code);
   }
   ASSERT(status == 0);
 
@@ -122,6 +122,8 @@ static void* on_connect(void* req) {
 
 static int tcp_listener(int port) {
   struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
+  struct sockaddr sockname;
+  int namelen = sizeof(sockname);
   int r;
   
   r = uv_tcp_init(&tcpServer);
@@ -141,6 +143,13 @@ static int tcp_listener(int port) {
     fprintf(stderr, "Listen error\n");
     return 1;
   }
+
+  r = uv_getsockname(&tcpServer, &sockname, &namelen);
+  if (r != 0) {
+    fprintf(stderr, "uv_getsockname error (listening) %d\n", uv_last_error().code);
+  }
+  ASSERT(r == 0);
+  getsocknamecount++;
 
   return 0;
 }
@@ -171,7 +180,7 @@ TEST_IMPL(getsockname) {
 
   uv_run();
 
-  ASSERT(getsocknamecount == 2);
+  ASSERT(getsocknamecount == 3);
 
   return 0;
 }
