@@ -24,8 +24,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static char BUFFER[1024];
-
 static int connection_cb_called = 0;
 static int do_accept_called = 0;
 static int close_cb_called = 0;
