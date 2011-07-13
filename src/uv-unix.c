@@ -1325,6 +1325,7 @@ int uv_async_init(uv_async_t* async, uv_async_cb async_cb) {
 
 int uv_async_send(uv_async_t* async) {
   ev_async_send(EV_DEFAULT_UC_ &async->async_watcher);
+  return 0;
 }
 
 
