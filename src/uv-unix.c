@@ -1188,7 +1188,7 @@ static void uv__check(EV_P_ ev_check* w, int revents) {
 
 int uv_check_init(uv_check_t* check) {
   uv__handle_init((uv_handle_t*)check, UV_CHECK);
-  uv_counters()->check_init;
+  uv_counters()->check_init++;
 
   ev_check_init(&check->check_watcher, uv__check);
   check->check_watcher.data = check;
