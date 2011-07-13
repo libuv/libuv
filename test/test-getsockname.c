@@ -102,7 +102,7 @@ static void on_connection(uv_handle_t* server, int status) {
 }
 
 
-static void* on_connect(void* req) {
+static void on_connect(void* req) {
   struct sockaddr sockname;
   int namelen = sizeof(sockname);
   int status;
@@ -162,7 +162,7 @@ static void tcp_connector() {
   tcp.data = &connect_req;
   ASSERT(!r);
 
-  uv_req_init(&connect_req, (uv_handle_t*)(&tcp), on_connect);
+  uv_req_init(&connect_req, (uv_handle_t*)(&tcp), (void *(*)(void *))on_connect);
 
   r = uv_tcp_connect(&connect_req, server_addr);
   ASSERT(!r);
