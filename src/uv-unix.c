@@ -1435,6 +1435,8 @@ static uv_ares_task_t* uv__ares_task_create(int fd) {
 
   h->read_watcher.data = h;
   h->write_watcher.data = h;
+
+  return h;
 }
 
 
