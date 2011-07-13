@@ -298,19 +298,17 @@ int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
 /*
  * A subclass of uv_stream_t representing a pipe stream or pipe server.
  */
-UV_PIPE_PRIVATE_TYPEDEF
-
-struct uv_pipe_s {
-  UV_HANDLE_FIELDS
-  UV_STREAM_FIELDS
-  UV_PIPE_PRIVATE_FIELDS
+struct uv_pipe_s { 
+  UV_HANDLE_FIELDS 
+  UV_STREAM_FIELDS 
+  UV_PIPE_PRIVATE_FIELDS 
 };
 
 int uv_pipe_init(uv_pipe_t* handle);
 
 int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 
-int uv_pipe_listen(uv_pipe_t* handle, int instanceCount, uv_connection_cb cb);
+int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb);
 
 int uv_pipe_connect(uv_req_t* req, const char* name);
 
@@ -494,6 +492,7 @@ extern uint64_t uv_hrtime(void);
 /* the presence of this union forces similar struct layout */
 union uv_any_handle {
   uv_tcp_t tcp;
+  uv_pipe_t pipe;
   uv_prepare_t prepare;
   uv_check_t check;
   uv_idle_t idle;

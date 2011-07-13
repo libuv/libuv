@@ -265,6 +265,13 @@ static void maybe_connect_some() {
       uv_req_init(req, (uv_handle_t*)pipe, connect_cb);
       r = uv_pipe_connect(req, TEST_PIPENAME);
       ASSERT(r == 0);
+
+#ifdef _WIN32
+      /* HACK: This is temporary to give the pipes server enough time to create new handles.
+       * This will go away once uv_pipe_connect can deal with UV_EBUSY.
+       */
+      Sleep(1);
+#endif
     }
   }
 }
@@ -403,7 +410,7 @@ HELPER_IMPL(pipe_pump_server) {
   ASSERT(r == 0);
   r = uv_pipe_bind(&pipeServer, TEST_PIPENAME);
   ASSERT(r == 0);
-  r = uv_pipe_listen(&pipeServer, MAX_WRITE_HANDLES, connection_cb);
+  r = uv_pipe_listen(&pipeServer, connection_cb);
   ASSERT(r == 0);
 
   uv_run();

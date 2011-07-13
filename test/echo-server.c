@@ -247,7 +247,7 @@ static int pipe_echo_start(char* pipeName) {
     return 1;
   }
 
-  r = uv_pipe_listen(&pipeServer, 1, on_connection);
+  r = uv_pipe_listen(&pipeServer, on_connection);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error on IPv6\n");

@@ -46,12 +46,17 @@ typedef struct uv_buf_t {
  * Private uv_pipe_instance state.
  */
 typedef enum {
-  UV_PIPEINSTANCE_DISCONNECTED = 0,
-  UV_PIPEINSTANCE_PENDING,
-  UV_PIPEINSTANCE_WAITING,
-  UV_PIPEINSTANCE_ACCEPTED,
+  UV_PIPEINSTANCE_CONNECTED = 0,
+  UV_PIPEINSTANCE_DISCONNECTED,
   UV_PIPEINSTANCE_ACTIVE
 } uv_pipeinstance_state;
+
+/* Used to store active pipe instances inside a linked list. */
+typedef struct uv_pipe_instance_s {
+  HANDLE handle;
+  uv_pipeinstance_state state;
+  struct uv_pipe_instance_s* next;
+} uv_pipe_instance_t;
 
 #define UV_REQ_PRIVATE_FIELDS             \
   union {                                 \
@@ -93,22 +98,13 @@ typedef enum {
 
 #define uv_pipe_server_fields             \
     char* name;                           \
-    int connectionCount;                  \
     uv_pipe_instance_t* connections;      \
-    uv_pipe_instance_t* acceptConnection; \
-    uv_pipe_instance_t  connectionsBuffer[4];
+    struct uv_req_s accept_reqs[4];
 
 #define uv_pipe_connection_fields         \
     uv_pipe_t* server;                    \
     uv_pipe_instance_t* connection;       \
     uv_pipe_instance_t clientConnection;
-
-#define UV_PIPE_PRIVATE_TYPEDEF           \
-  typedef struct uv_pipe_instance_s {     \
-    HANDLE handle;                        \
-    uv_pipeinstance_state state;          \
-    uv_req_t accept_req;                  \
-  } uv_pipe_instance_t;
 
 #define UV_PIPE_PRIVATE_FIELDS            \
   union {                                 \
