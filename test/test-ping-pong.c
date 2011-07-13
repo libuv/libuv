@@ -187,7 +187,7 @@ static void tcp_pinger_new() {
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
   uv_req_init(&pinger->connect_req, (uv_handle_t*)(&pinger->tcp),
-      pinger_on_connect);
+      (void *(*)(void *))pinger_on_connect);
 
   r = uv_tcp_connect(&pinger->connect_req, server_addr);
   ASSERT(!r);
