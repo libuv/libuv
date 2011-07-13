@@ -97,14 +97,20 @@ test/echo.o: test/echo.c test/echo.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c test/echo.c -o test/echo.o
 
 
-.PHONY: clean clean-platform distclean distclean-platform test benchmark
+.PHONY: clean clean-platform distclean distclean-platform test bench
 
 
 test: test/run-tests$(E)
 	test/run-tests
 
+test-%:	test/run-tests$(E)
+	test/run-tests $(@:test-%=%)
+
 bench: test/run-benchmarks$(E)
 	test/run-benchmarks
+
+bench-%:	test/run-benchmarks$(E)
+	test/run-benchmarks $(@:bench-%=%)
 
 clean: clean-platform
 	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
