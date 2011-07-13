@@ -150,6 +150,7 @@
     <ClCompile Include="..\test\test-fail-always.c" />
     <ClCompile Include="..\test\test-gethostbyname.c" />
     <ClCompile Include="..\test\test-getaddrinfo.c" />
+    <ClCompile Include="..\test\test-getsockname.c" />
     <ClCompile Include="..\test\test-hrtime.c" />
     <ClCompile Include="..\test\test-loop-handles.c" />
     <ClCompile Include="..\test\test-pass-always.c" />
