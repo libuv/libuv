@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <unistd.h>
 #include <time.h>
 
 #undef NANOSEC
