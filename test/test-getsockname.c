@@ -54,7 +54,6 @@ static void after_shutdown(uv_req_t* req, int status) {
 
 
 static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
-  int i;
   uv_req_t* req;
 
   if (buf.base) {
@@ -64,8 +63,8 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
   req = (uv_req_t*) malloc(sizeof *req);
   uv_req_init(req, (uv_handle_t*)handle, (void *(*)(void *))after_shutdown);
   uv_shutdown(req);
-
 }
+
 
 static void on_connection(uv_handle_t* server, int status) {
   struct sockaddr sockname;
@@ -125,7 +124,7 @@ static int tcp_listener(int port) {
   struct sockaddr sockname;
   int namelen = sizeof(sockname);
   int r;
-  
+
   r = uv_tcp_init(&tcpServer);
   if (r) {
     fprintf(stderr, "Socket creation error\n");
