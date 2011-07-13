@@ -870,7 +870,7 @@ static void uv__tcp_connect(uv_tcp_t* tcp) {
     return;
   } else {
     /* Error */
-    uv_err_t err = uv_err_new((uv_handle_t*)tcp, error);
+    uv_err_new((uv_handle_t*)tcp, error);
 
     tcp->connect_req = NULL;
 
