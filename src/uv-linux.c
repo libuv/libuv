@@ -40,11 +40,6 @@ uint64_t uv_hrtime() {
 
 
 int uv_exepath(char* buffer, size_t* size) {
-  uint32_t usize;
-  int result;
-  char* path;
-  char* fullpath;
-
   if (!buffer || !size) {
     return -1;
   }
