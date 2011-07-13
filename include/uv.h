@@ -140,8 +140,8 @@ typedef enum {
   UV_CHECK,
   UV_IDLE,
   UV_ASYNC,
-  UV_ARES,
   UV_ARES_TASK,
+  UV_ARES_EVENT,
   UV_GETADDRINFO
 } uv_handle_type;
 
@@ -152,7 +152,11 @@ typedef enum {
   UV_READ,
   UV_WRITE,
   UV_SHUTDOWN,
-  UV_WAKEUP
+  UV_WAKEUP,
+  /* TODO: remove the req suffix */
+  UV_ARES_EVENT_REQ,
+  UV_ARES_CLEANUP_REQ,
+  UV_GETADDRINFO_REQ
 } uv_req_type;
 
 
