@@ -195,6 +195,29 @@ out:
       }
     }
     LOG("=============================================================\n");
+
+  /* In benchmark mode show concise output from the main process. */
+  } else if (benchmark_output) {
+    switch (process_output_size(main_proc)) {
+     case -1:
+      LOGF("%s: (unavailabe)\n", test);
+      break;
+
+     case 0:
+      LOGF("%s: (no output)\n", test);
+      break;
+
+     default:
+      for (i = 0; i < process_count; i++) {
+        process_copy_output(&processes[i], fileno(stderr));
+      }
+      break;
+    }
+  }
+
+  /* Clean up all process handles. */
+  for (i = 0; i < process_count; i++) {
+    process_cleanup(&processes[i]);
   }
 
   return status;
