@@ -158,7 +158,7 @@ static void tcp_pinger_v6_new() {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  r = uv_tcp_connect(&pinger->connect_req, &pinger->tcp, server_addr,
+  r = uv_tcp_connect6(&pinger->connect_req, &pinger->tcp, server_addr,
       pinger_on_connect);
   ASSERT(!r);
 }
@@ -180,10 +180,7 @@ static void tcp_pinger_new() {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  uv_req_init(&pinger->connect_req, (uv_handle_t*)(&pinger->tcp),
-      (void *(*)(void *))pinger_on_connect);
-
-  r = uv_tcp_connect(&pinger->connect_req, server_addr);
+  r = uv_tcp_connect(&pinger->connect_req, &pinger->tcp, server_addr, pinger_on_connect);
   ASSERT(!r);
 }
 
@@ -204,8 +201,7 @@ static void pipe_pinger_new() {
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
 
-  r = uv_tcp_connect6(&pinger->connect_req, &pinger->tcp, server_addr,
-      pinger_on_connect);
+  r = uv_pipe_connect(&pinger->connect_req, &pinger->pipe, TEST_PIPENAME, pinger_on_connect);
   ASSERT(!r);
 }
 

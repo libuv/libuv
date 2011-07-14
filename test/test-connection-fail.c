@@ -67,7 +67,7 @@ static void timer_cb(uv_timer_t* handle, int status) {
 
 
 static void on_connect_with_close(uv_connect_t *req, int status) {
-  ASSERT(&tcp == req->handle);
+  ASSERT((uv_stream_t*) &tcp == req->handle);
   ASSERT(status == -1);
   ASSERT(uv_last_error().code == UV_ECONNREFUSED);
   connect_cb_calls++;

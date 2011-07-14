@@ -291,7 +291,7 @@ struct uv_write_s {
 };
 
 int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
-    uv_write_cb);
+    uv_write_cb cb);
 
 
 /*
@@ -310,7 +310,7 @@ int uv_tcp_init(uv_tcp_t* handle);
 int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in);
 int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6);
 
-/* 
+/*
  * uv_tcp_connect, uv_tcp_connect6
  * These functions establish IPv4 and IPv6 TCP connections. Provide an
  * initialized TCP handle and an uninitialized uv_connect_t*. The callback
@@ -319,7 +319,7 @@ int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6);
 struct uv_connect_s {
   UV_REQ_FIELDS
   uv_connect_cb cb;
-  uv_tcp_t* handle;
+  uv_stream_t* handle;
   UV_CONNECT_PRIVATE_FIELDS
 };
 
@@ -336,10 +336,10 @@ int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
 /*
  * A subclass of uv_stream_t representing a pipe stream or pipe server.
  */
-struct uv_pipe_s { 
-  UV_HANDLE_FIELDS 
-  UV_STREAM_FIELDS 
-  UV_PIPE_PRIVATE_FIELDS 
+struct uv_pipe_s {
+  UV_HANDLE_FIELDS
+  UV_STREAM_FIELDS
+  UV_PIPE_PRIVATE_FIELDS
 };
 
 int uv_pipe_init(uv_pipe_t* handle);
@@ -348,7 +348,8 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 
 int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb);
 
-int uv_pipe_connect(uv_req_t* req, const char* name);
+int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
+    const char* name, uv_connect_cb cb);
 
 
 /*
