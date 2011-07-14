@@ -165,10 +165,10 @@ static void on_server_close(uv_handle_t* handle) {
 static int tcp4_echo_start(int port) {
   struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
   int r;
-  
+
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
-  
+
   r = uv_tcp_init(&tcpServer);
   if (r) {
     /* TODO: Error codes */
@@ -197,7 +197,7 @@ static int tcp4_echo_start(int port) {
 static int tcp6_echo_start(int port) {
   struct sockaddr_in6 addr6 = uv_ip6_addr("::1", port);
   int r;
-  
+
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
 
@@ -229,7 +229,7 @@ static int tcp6_echo_start(int port) {
 
 static int pipe_echo_start(char* pipeName) {
   int r;
-  
+
   server = (uv_handle_t*)&pipeServer;
   serverType = PIPE;
 

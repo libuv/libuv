@@ -64,7 +64,7 @@ typedef enum {
   int flags;                              \
   uv_err_t error;                         \
   struct uv_req_s* next_req;
-  
+
 #define uv_stream_connection_fields       \
   unsigned int write_reqs_pending;        \
   uv_req_t* shutdown_req;
