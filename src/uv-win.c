@@ -1642,9 +1642,6 @@ static void uv_process_tcp_read_req(uv_tcp_t* handle, uv_req_t* req) {
 
 
 static void uv_process_tcp_write_req(uv_tcp_t* handle, uv_req_t* req) {
-  DWORD bytes, flags, err;
-  uv_buf_t buf;
-
   assert(handle->type == UV_TCP);
 
   /* Mark the request non-pending */
@@ -1668,9 +1665,6 @@ static void uv_process_tcp_write_req(uv_tcp_t* handle, uv_req_t* req) {
 
 
 static void uv_process_tcp_accept_req(uv_tcp_t* handle, uv_req_t* req) {
-  DWORD bytes, flags, err;
-  uv_buf_t buf;
-
   assert(handle->type == UV_TCP);
 
   /* Mark the request non-pending */
@@ -1713,9 +1707,6 @@ static void uv_process_tcp_accept_req(uv_tcp_t* handle, uv_req_t* req) {
 
 
 static void uv_process_tcp_connect_req(uv_tcp_t* handle, uv_req_t* req) {
-  DWORD bytes, flags, err;
-  uv_buf_t buf;
-
   assert(handle->type == UV_TCP);
 
   /* Mark the request non-pending */
@@ -1747,7 +1738,6 @@ static void uv_process_tcp_connect_req(uv_tcp_t* handle, uv_req_t* req) {
 static void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req) {
   DWORD bytes, err, mode;
   uv_buf_t buf;
-  uv_pipe_instance_t* acceptingConn;
 
   assert(handle->type == UV_NAMED_PIPE);
 
@@ -1845,10 +1835,6 @@ static void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req) {
 
 
 static void uv_process_pipe_write_req(uv_pipe_t* handle, uv_req_t* req) {
-  DWORD bytes, err, mode;
-  uv_buf_t buf;
-  uv_pipe_instance_t* acceptingConn;
-
   assert(handle->type == UV_NAMED_PIPE);
 
   /* Mark the request non-pending */
@@ -1872,10 +1858,6 @@ static void uv_process_pipe_write_req(uv_pipe_t* handle, uv_req_t* req) {
 
 
 static void uv_process_pipe_accept_req(uv_pipe_t* handle, uv_req_t* req) {
-  DWORD bytes, err, mode;
-  uv_buf_t buf;
-  uv_pipe_instance_t* acceptingConn;
-
   assert(handle->type == UV_NAMED_PIPE);
 
   /* Mark the request non-pending */
@@ -1901,10 +1883,6 @@ static void uv_process_pipe_accept_req(uv_pipe_t* handle, uv_req_t* req) {
 
 
 static void uv_process_pipe_connect_req(uv_pipe_t* handle, uv_req_t* req) {
-  DWORD bytes, err, mode;
-  uv_buf_t buf;
-  uv_pipe_instance_t* acceptingConn;
-
   assert(handle->type == UV_NAMED_PIPE);
 
   /* Mark the request non-pending */
@@ -2514,8 +2492,6 @@ void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read, int write) {
   uv_ares_task_t* uv_handle_ares = uv_find_ares_handle(sock);
   uv_ares_channel_t* uv_ares_data_ptr = (uv_ares_channel_t*)data;
 
-  struct timeval tv;
-  struct timeval* tvptr;
   int timeoutms = 0;
 
   if (read == 0 && write == 0) {
