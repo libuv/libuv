@@ -528,7 +528,7 @@ int uv_exepath(char* buffer, size_t* size);
 extern uint64_t uv_hrtime(void);
 
 
-/* the presence of this union forces similar struct layout */
+/* the presence of these unions force similar struct layout */
 union uv_any_handle {
   uv_tcp_t tcp;
   uv_pipe_t pipe;
@@ -539,6 +539,14 @@ union uv_any_handle {
   uv_timer_t timer;
   uv_getaddrinfo_t getaddrinfo;
 };
+
+union uv_any_req {
+  uv_req_t req;
+  uv_write_t write;
+  uv_connect_t connect;
+  uv_shutdown_t shutdown;
+};
+
 
 /* Diagnostic counters */
 typedef struct {
