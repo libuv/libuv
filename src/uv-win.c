@@ -3088,7 +3088,7 @@ error:
   req->error = uv_new_sys_error(errno);
   uv_insert_pending_req((uv_req_t*) req);
   handle->reqs_pending++;
-  return -1;
+  return 0;
 }
 
 
