@@ -1125,6 +1125,10 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     return -1;
   }
 
+  if (!(handle->flags & UV_HANDLE_BOUND) &&
+      uv_tcp_bind(handle, uv_addr_ip4_any_) < 0)
+    return -1;
+
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
     uv_set_sys_error(WSAGetLastError());
     return -1;
