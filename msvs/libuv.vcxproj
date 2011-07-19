@@ -135,6 +135,10 @@
     <ClInclude Include="..\include\uv.h" />
     <ClInclude Include="..\src\uv-common.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\config-mingw.mk" />
+    <None Include="..\Makefile" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
