@@ -1751,7 +1751,7 @@ int uv_getaddrinfo(uv_getaddrinfo_t* handle,
 
 
 int uv_pipe_init(uv_pipe_t* handle) {
-  memset(handle, 0, sizeof handle);
+  memset(handle, 0, sizeof *handle);
 
   uv__handle_init((uv_handle_t*)handle, UV_NAMED_PIPE);
   uv_counters()->pipe_init++;
