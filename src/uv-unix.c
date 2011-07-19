@@ -494,7 +494,7 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
       return -1;
     }
 
-    if (uv__stream_open(tcp, fd)) {
+    if (uv__stream_open((uv_stream_t*)tcp, fd)) {
       close(fd);
       return -1;
     }
