@@ -18,11 +18,11 @@
  * IN THE SOFTWARE.
  */
 
+#define _GNU_SOURCE /* O_CLOEXEC, accept4(), etc. */
+
 #include "uv.h"
 #include "uv-common.h"
 #include "uv-eio.h"
-
-#define _GNU_SOURCE /* O_CLOEXEC */
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
