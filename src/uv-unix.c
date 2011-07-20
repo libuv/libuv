@@ -877,6 +877,8 @@ static void uv__stream_io(EV_P_ ev_io* watcher, int revents) {
   if (stream->connect_req) {
     uv__stream_connect(stream);
   } else {
+    assert(revents & (EV_READ | EV_WRITE));
+
     if (revents & EV_READ) {
       uv__read((uv_stream_t*)stream);
     }
@@ -1909,15 +1911,16 @@ int uv_pipe_connect(uv_connect_t* req,
   status = 0;
 
 out:
-  uv__req_init((uv_req_t*)req);
+  handle->delayed_error = status; /* Passed to callback. */
+  handle->connect_req = req;
   req->handle = (uv_stream_t*)handle;
   req->type = UV_CONNECT;
   req->cb = cb;
   ngx_queue_init(&req->queue);
 
-  if (cb) {
-    cb(req, status);
-  }
+  /* Run callback on next tick. */
+  ev_feed_event(EV_DEFAULT_ &handle->read_watcher, EV_CUSTOM);
+  assert(ev_is_pending(&handle->read_watcher));
 
   /* Mimic the Windows pipe implementation, always
    * return 0 and let the callback handle errors.
