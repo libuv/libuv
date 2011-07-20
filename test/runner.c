@@ -168,8 +168,10 @@ int run_test(const char* test, int timeout, int benchmark_output) {
     goto out;
   }
 
-  /* Give the helpers time to clean up their act. */
-  uv_sleep(1000);
+  if (benchmark_output) {
+    /* Give the helpers time to clean up their act. */
+    uv_sleep(1000);
+  }
 
 out:
   /* Reap running processes except the main process, it's already dead. */
