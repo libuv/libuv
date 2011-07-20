@@ -54,7 +54,9 @@ int run_tests(int timeout, int benchmark_output) {
     }
 
     rewind_cursor();
-    log_progress(total, passed, failed, task->task_name);
+    if (!benchmark_output) {
+      log_progress(total, passed, failed, task->task_name);
+    }
 
     if (run_test(task->task_name, timeout, benchmark_output) == 0) {
       passed++;
@@ -64,7 +66,10 @@ int run_tests(int timeout, int benchmark_output) {
   }
 
   rewind_cursor();
-  log_progress(total, passed, failed, "Done.\n");
+
+  if (!benchmark_output) {
+    log_progress(total, passed, failed, "Done.\n");
+  }
 
   return 0;
 }
