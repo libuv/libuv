@@ -18,7 +18,9 @@
  * IN THE SOFTWARE.
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* O_CLOEXEC, accept4(), etc. */
+#endif
 
 #include "uv.h"
 #include "uv-common.h"
