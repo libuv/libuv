@@ -97,9 +97,8 @@ void uv_pipe_endgame(uv_pipe_t* handle) {
 
 
 /* Creates a pipe server. */
-/* TODO: make this work with UTF8 name */
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
-  int i, errno;
+  int i, errno, nameSize;
   uv_pipe_accept_t* req;
 
   if (handle->flags & UV_HANDLE_BOUND) {
@@ -107,10 +106,9 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     return -1;
   }
 
-  /* Make our own copy of the pipe name */
-  handle->name = _strdup(name);
-  if (!handle->name) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+  if (!name) {
+    uv_set_sys_error(WSAEINVAL);
+    return -1;
   }
 
   for (i = 0; i < COUNTOF(handle->accept_reqs); i++) {
@@ -122,18 +120,30 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     req->next_pending = NULL;
   }
 
+  /* Convert name to UTF16. */
+  nameSize = uv_utf8_to_utf16(name, NULL, 0) * sizeof(wchar_t);
+  handle->name = (wchar_t*)malloc(nameSize);
+  if (!handle->name) {
+    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+  }
+
+  if (!uv_utf8_to_utf16(name, handle->name, nameSize / sizeof(wchar_t))) {
+    uv_set_sys_error(GetLastError());
+    return -1;
+  }
+
   /*
    * Attempt to create the first pipe with FILE_FLAG_FIRST_PIPE_INSTANCE.
    * If this fails then there's already a pipe server for the given pipe name.
    */
-  handle->accept_reqs[0].pipeHandle = CreateNamedPipe(name,
-                                                      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
-                                                      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                                                      PIPE_UNLIMITED_INSTANCES,
-                                                      65536,
-                                                      65536,
-                                                      0,
-                                                      NULL);
+  handle->accept_reqs[0].pipeHandle = CreateNamedPipeW(handle->name,
+                                                       PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
+                                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                                       PIPE_UNLIMITED_INSTANCES,
+                                                       65536,
+                                                       65536,
+                                                       0,
+                                                       NULL);
 
   if (handle->accept_reqs[0].pipeHandle == INVALID_HANDLE_VALUE) {
     errno = GetLastError();
@@ -146,26 +156,31 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     } else {
       uv_set_sys_error(errno);
     }
-    return -1;
+    goto error;
   }
 
   if (uv_set_pipe_handle(handle, handle->accept_reqs[0].pipeHandle)) {
-    CloseHandle(handle->accept_reqs[0].pipeHandle);
-    handle->accept_reqs[0].pipeHandle = INVALID_HANDLE_VALUE;
     uv_set_sys_error(GetLastError());
-    return -1;
-  }
-
-  /* Make our own copy of the pipe name */
-  handle->name = _strdup(name);
-  if (!handle->name) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    goto error;
   }
 
   handle->flags |= UV_HANDLE_PIPESERVER;
   handle->flags |= UV_HANDLE_BOUND;
 
   return 0;
+
+error:
+  if (handle->name) {
+    free(handle->name);
+    handle->name = NULL;
+  }
+
+  if (handle->accept_reqs[0].pipeHandle != INVALID_HANDLE_VALUE) {
+    CloseHandle(handle->accept_reqs[0].pipeHandle);
+    handle->accept_reqs[0].pipeHandle = INVALID_HANDLE_VALUE;
+  }
+
+  return -1;
 }
 
 
@@ -181,9 +196,9 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   assert(handle);
 
   /* We're here because CreateFile on a pipe returned ERROR_PIPE_BUSY.  We wait for the pipe to become available with WaitNamedPipe. */
-  while (WaitNamedPipe(handle->name, 30000)) {
+  while (WaitNamedPipeW(handle->name, 30000)) {
     /* The pipe is now available, try to connect. */
-    pipeHandle = CreateFile(handle->name,
+    pipeHandle = CreateFileW(handle->name,
                             GENERIC_READ | GENERIC_WRITE,
                             0,
                             NULL,
@@ -217,10 +232,9 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
 }
 
 
-/* TODO: make this work with UTF8 name */
 int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     const char* name, uv_connect_cb cb) {
-  int errno;
+  int errno, nameSize;
   HANDLE pipeHandle;
 
   handle->handle = INVALID_HANDLE_VALUE;
@@ -230,7 +244,19 @@ int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
 
-  pipeHandle = CreateFile(name,
+  /* Convert name to UTF16. */
+  nameSize = uv_utf8_to_utf16(name, NULL, 0) * sizeof(wchar_t);
+  handle->name = (wchar_t*)malloc(nameSize);
+  if (!handle->name) {
+    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+  }
+
+  if (!uv_utf8_to_utf16(name, handle->name, nameSize / sizeof(wchar_t))) {
+    errno = GetLastError();
+    goto error;
+  }
+
+  pipeHandle = CreateFileW(handle->name,
                           GENERIC_READ | GENERIC_WRITE,
                           0,
                           NULL,
@@ -241,11 +267,6 @@ int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   if (pipeHandle == INVALID_HANDLE_VALUE) {
     if (GetLastError() == ERROR_PIPE_BUSY) {
       /* Wait for the server to make a pipe instance available. */
-      handle->name = _strdup(name);
-      if (!handle->name) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-      }
-
       if (!QueueUserWorkItem(&pipe_connect_thread_proc, req, WT_EXECUTELONGFUNCTION)) {
         errno = GetLastError();
         goto error;
@@ -271,6 +292,11 @@ int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   return 0;
 
 error:
+  if (handle->name) {
+    free(handle->name);
+    handle->name = NULL;
+  }
+
   if (pipeHandle != INVALID_HANDLE_VALUE) {
     CloseHandle(pipeHandle);
   }
@@ -313,14 +339,14 @@ static void uv_pipe_queue_accept(uv_pipe_t* handle, uv_pipe_accept_t* req, BOOL 
   if (!firstInstance) {
     assert(req->pipeHandle == INVALID_HANDLE_VALUE);
 
-    req->pipeHandle = CreateNamedPipe(handle->name,
-                                      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-                                      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                                      PIPE_UNLIMITED_INSTANCES,
-                                      65536,
-                                      65536,
-                                      0,
-                                      NULL);
+    req->pipeHandle = CreateNamedPipeW(handle->name,
+                                       PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+                                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                       PIPE_UNLIMITED_INSTANCES,
+                                       65536,
+                                       65536,
+                                       0,
+                                       NULL);
 
     if (req->pipeHandle == INVALID_HANDLE_VALUE) {
       req->error = uv_new_sys_error(GetLastError());
