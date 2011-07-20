@@ -1136,7 +1136,11 @@ int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
       && "uv_write (unix) does not yet support other types of streams");
 
   empty_queue = (stream->write_queue_size == 0);
-  assert(stream->fd >= 0);
+
+  if (stream->fd < 0) {
+    uv_err_new((uv_handle_t*)stream, EBADF);
+    return -1;
+  }
 
   ngx_queue_init(&req->queue);
   req->type = UV_WRITE;
