@@ -42,8 +42,17 @@ typedef enum {
 } stream_type;
 
 /* Log to stderr. */
-#define LOG(...)    fprintf(stderr, "%s", __VA_ARGS__)
-#define LOGF(...)   fprintf(stderr, __VA_ARGS__)
+#define LOG(...)                        \
+  do {                                  \
+    fprintf(stderr, "%s", __VA_ARGS__); \
+    fflush(stderr);                     \
+  } while (0)
+
+#define LOGF(...)                       \
+  do {                                  \
+    fprintf(stderr, __VA_ARGS__);       \
+    fflush(stderr);                     \
+  } while (0)
 
 /* Die with fatal error. */
 #define FATAL(msg)                                        \
@@ -53,6 +62,7 @@ typedef enum {
             __FILE__,                                     \
             __LINE__,                                     \
             msg);                                         \
+    fflush(stderr);                                       \
     abort();                                              \
   } while (0)
 
