@@ -41,9 +41,10 @@ static void timer_cb(uv_timer_t* handle, int status) {
   ASSERT(status == 0);
 
   uv_close((uv_handle_t*) &idle_handle, close_cb);
-  uv_close((uv_handle_t*) &idle_handle, close_cb);
+  uv_close((uv_handle_t*) &timer_handle, close_cb);
 
   timer_cb_called++;
+  LOGF("timer_cb %d\n", timer_cb_called);
 }
 
 
@@ -52,7 +53,7 @@ static void idle_cb(uv_idle_t* handle, int status) {
   ASSERT(status == 0);
 
   idle_cb_called++;
-  ASSERT(idle_cb_called <= 1);
+  LOGF("idle_cb %d\n", idle_cb_called);
 }
 
 
@@ -68,13 +69,13 @@ TEST_IMPL(idle_starvation) {
 
   r = uv_timer_init(&timer_handle);
   ASSERT(r == 0);
-  r = uv_timer_start(&timer_handle, timer_cb, 100, 0);
+  r = uv_timer_start(&timer_handle, timer_cb, 50, 0);
   ASSERT(r == 0);
 
   r = uv_run();
   ASSERT(r == 0);
 
-  ASSERT(idle_cb_called == 1);
+  ASSERT(idle_cb_called > 0);
   ASSERT(timer_cb_called == 1);
   ASSERT(close_cb_called == 2);
 
