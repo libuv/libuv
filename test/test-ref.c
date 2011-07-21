@@ -71,3 +71,21 @@ TEST_IMPL(check_ref) {
   uv_run();
   return 0;
 }
+
+
+static void prepare_cb(uv_prepare_t* handle, int status) {
+  ASSERT(handle != NULL);
+  ASSERT(status == 0);
+
+  uv_unref();
+}
+
+
+TEST_IMPL(unref_in_prepare_cb) {
+  uv_prepare_t h;
+  uv_init();
+  uv_prepare_init(&h);
+  uv_prepare_start(&h, prepare_cb);
+  uv_run();
+  return 0;
+}
