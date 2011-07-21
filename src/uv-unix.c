@@ -1831,7 +1831,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
      * on EADDRINUSE. Unlinking and trying to bind again opens
      * a window for races with other threads and processes.
      */
-    uv_err_new((uv_handle_t*)handle, errno);
+    uv_err_new((uv_handle_t*)handle, (errno == ENOENT) ? EACCES : errno);
     goto out;
 #else
     /*
@@ -1840,7 +1840,8 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     if (errno != EADDRINUSE
         || unlink(pipe_fname) == -1
         || bind(sockfd, (struct sockaddr*)&sun, sizeof sun) == -1) {
-      uv_err_new((uv_handle_t*)handle, errno);
+      /* Convert ENOENT to EACCES for compatibility with Windows. */
+      uv_err_new((uv_handle_t*)handle, (errno == ENOENT) ? EACCES : errno);
       goto out;
     }
 #endif
