@@ -45,7 +45,7 @@ static void uv_close_error(uv_handle_t* handle, uv_err_t e) {
   uv_pipe_t* pipe;
 
   if (handle->flags & UV_HANDLE_CLOSING) {
-    return 0;
+    return;
   }
 
   handle->error = e;
