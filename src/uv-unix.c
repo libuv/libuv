@@ -51,6 +51,14 @@
 #endif
 
 
+# ifdef __APPLE__
+# include <crt_externs.h>
+# define environ (*_NSGetEnviron())
+# else
+extern char **environ;
+# endif
+
+
 static uv_err_t last_err;
 
 struct uv_ares_data_s {
@@ -194,6 +202,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   uv_pipe_t* pipe;
   uv_async_t* async;
   uv_timer_t* timer;
+  uv_process_t* process;
 
   handle->close_cb = close_cb;
 
@@ -244,6 +253,11 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
       }
       uv_read_stop((uv_stream_t*)pipe);
       ev_io_stop(EV_DEFAULT_ &pipe->write_watcher);
+      break;
+
+    case UV_PROCESS:
+      process = (uv_process_t*)handle;
+      ev_child_stop(EV_DEFAULT_UC_ &process->child_watcher);
       break;
 
     default:
@@ -582,6 +596,10 @@ void uv__finish_close(uv_handle_t* handle) {
       }
       break;
     }
+
+    case UV_PROCESS:
+      assert(!ev_is_active(&((uv_process_t*)handle)->child_watcher));
+      break;
 
     default:
       assert(0);
@@ -1562,7 +1580,7 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer) {
 
 
 /*
- * This is called once per second by ares_data.timer. It is used to 
+ * This is called once per second by ares_data.timer. It is used to
  * constantly callback into c-ares for possibly processing timeouts.
  */
 static void uv__ares_timeout(EV_P_ struct ev_timer* watcher, int revents) {
@@ -2136,4 +2154,157 @@ size_t uv__strlcpy(char* dst, const char* src, size_t size) {
 
 uv_stream_t* uv_std_handle(uv_std_type type) {
   assert(0 && "implement me");
+}
+
+
+static void uv__chld(EV_P_ ev_child* watcher, int revents) {
+  int status = watcher->rstatus;
+  int exit_status = 0;
+  int term_signal = 0;
+  uv_process_t *process = watcher->data;
+
+  assert(&process->child_watcher == watcher);
+  assert(revents & EV_CHILD);
+
+  ev_child_stop(EV_A_ &process->child_watcher);
+
+  if (WIFEXITED(status)) {
+    exit_status = WEXITSTATUS(status);
+  }
+
+  if (WIFSIGNALED(status)) {
+    term_signal = WTERMSIG(status);
+  }
+
+  if (process->exit_cb) {
+    process->exit_cb(process, exit_status, term_signal);
+  }
+}
+
+
+int uv_spawn(uv_process_t* process, uv_process_options_t options) {
+  /*
+   * Save environ in the case that we get it clobbered
+   * by the child process.
+   */
+  char** save_our_env = environ;
+  int stdin_pipe[2] = { -1, -1 };
+  int stdout_pipe[2] = { -1, -1 };
+  int stderr_pipe[2] = { -1, -1 };
+  pid_t pid;
+
+  uv__handle_init((uv_handle_t*)process, UV_PROCESS);
+  uv_counters()->process_init++;
+
+  process->exit_cb = options.exit_cb;
+
+
+  if (options.stdin_stream && pipe(stdin_pipe) < 0) {
+    goto error;
+  }
+
+  if (options.stdout_stream && pipe(stdout_pipe) < 0) {
+    goto error;
+  }
+
+  if (options.stderr_stream && pipe(stderr_pipe) < 0) {
+    goto error;
+  }
+
+  pid = fork();
+
+  if (pid == 0) {
+    if (stdin_pipe[0] >= 0) {
+      close(stdin_pipe[1]);
+      dup2(stdin_pipe[0],  STDIN_FILENO);
+    }
+
+    if (stdout_pipe[1] >= 0) {
+      close(stdout_pipe[0]);
+      dup2(stdout_pipe[1], STDOUT_FILENO);
+    }
+
+    if (stderr_pipe[1] >= 0) {
+      close(stderr_pipe[0]);
+      dup2(stderr_pipe[1], STDERR_FILENO);
+    }
+
+    if (options.cwd && chdir(options.cwd)) {
+      perror("chdir()");
+      _exit(127);
+    }
+
+    environ = options.env;
+
+    execvp(options.file, options.args);
+    perror("execvp()");
+    _exit(127);
+    /* Execution never reaches here. */
+  } else if (pid == -1) {
+    /* Restore environment. */
+    environ = save_our_env;
+    goto error;
+  }
+
+  /* Parent. */
+
+  /* Restore environment. */
+  environ = save_our_env;
+
+  process->pid = pid;
+
+  ev_child_init(&process->child_watcher, uv__chld, pid, 0);
+  ev_child_start(EV_DEFAULT_UC_ &process->child_watcher);
+  process->child_watcher.data = process;
+
+  if (stdin_pipe[1] >= 0) {
+    assert(options.stdin_stream);
+    assert(stdin_pipe[0] >= 0);
+    close(stdin_pipe[0]);
+    uv__nonblock(stdin_pipe[1], 1);
+    uv_pipe_init(options.stdin_stream);
+    uv__stream_open(options.stdin_stream, stdin_pipe[1]);
+  }
+
+  if (stdout_pipe[0] >= 0) {
+    assert(options.stdout_stream);
+    assert(stdout_pipe[1] >= 0);
+    close(stdout_pipe[1]);
+    uv__nonblock(stdout_pipe[0], 1);
+    uv_pipe_init(options.stdout_stream);
+    uv__stream_open(options.stdout_stream, stdout_pipe[0]);
+  }
+
+  if (stderr_pipe[0] >= 0) {
+    assert(options.stderr_stream);
+    assert(stderr_pipe[1] >= 0);
+    close(stderr_pipe[1]);
+    uv__nonblock(stderr_pipe[0], 1);
+    uv_pipe_init(options.stderr_stream);
+    uv__stream_open(options.stderr_stream, stderr_pipe[0]);
+  }
+
+  return 0;
+
+error:
+  uv_err_new((uv_handle_t*)process, errno);
+  close(stdin_pipe[0]);
+  close(stdin_pipe[1]);
+  close(stdout_pipe[0]);
+  close(stdout_pipe[1]);
+  close(stderr_pipe[0]);
+  close(stderr_pipe[1]);
+  return -1;
+}
+
+
+int uv_process_kill(uv_process_t* process, int signum) {
+  int r = kill(process->pid, signum);
+
+  if (r) {
+    uv_err_new((uv_handle_t*)process, errno);
+    return -1;
+  } else {
+    return 0;
+  }
 }

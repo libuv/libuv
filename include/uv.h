@@ -50,6 +50,7 @@ typedef struct uv_check_s uv_check_t;
 typedef struct uv_idle_s uv_idle_t;
 typedef struct uv_async_s uv_async_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
+typedef struct uv_process_s uv_process_t;
 /* Request types */
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_shutdown_s uv_shutdown_t;
@@ -85,6 +86,7 @@ typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
 typedef void (*uv_check_cb)(uv_check_t* handle, int status);
 typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
 typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status, struct addrinfo* res);
+typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
 
 
 /* Expand this list if necessary. */
@@ -145,7 +147,8 @@ typedef enum {
   UV_ASYNC,
   UV_ARES_TASK,
   UV_ARES_EVENT,
-  UV_GETADDRINFO
+  UV_GETADDRINFO,
+  UV_PROCESS
 } uv_handle_type;
 
 typedef enum {
@@ -495,6 +498,41 @@ struct uv_getaddrinfo_s {
                     const char* service,
                     const struct addrinfo* hints);
 
+/*
+ * Child process. Subclass of uv_handle_t.
+ */
+typedef struct uv_process_options_s {
+  uv_exit_cb exit_cb;
+  const char* file;
+  char** args;
+  char** env;
+  char* cwd;
+  /*
+   * The user should supply pointers to uninitialized uv_pipe_t structs for
+   * stdio. They will be initialized by uv_spawn. The user is reponsible for
+   * calling uv_close on them.
+   */
+  uv_pipe_t* stdin_stream;
+  uv_pipe_t* stdout_stream;
+  uv_pipe_t* stderr_stream;
+} uv_process_options_t;
+
+struct uv_process_s {
+  UV_HANDLE_FIELDS
+  uv_exit_cb exit_cb;
+  int pid;
+  UV_PROCESS_PRIVATE_FIELDS
+};
+
+/* Initializes uv_process_t and starts the process. */
+int uv_spawn(uv_process_t*, uv_process_options_t options);
+
+/*
+ * Kills the process with the specified signal. The user must still
+ * call uv_close on the process.
+ */
+int uv_process_kill(uv_process_t*, int signum);
+
 
 /*
  * Most functions return boolean: 0 for success and -1 for failure.
@@ -576,6 +614,7 @@ typedef struct {
   uint64_t idle_init;
   uint64_t async_init;
   uint64_t timer_init;
+  uint64_t process_init;
 } uv_counters_t;
 
 uv_counters_t* uv_counters();
