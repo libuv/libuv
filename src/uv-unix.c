@@ -405,7 +405,6 @@ static int uv__stream_open(uv_stream_t* stream, int fd) {
 void uv__server_io(EV_P_ ev_io* watcher, int revents) {
   int fd;
   struct sockaddr_storage addr;
-  socklen_t addrlen = sizeof(struct sockaddr_storage);
   uv_stream_t* stream = watcher->data;
 
   assert(watcher == &stream->read_watcher ||
@@ -421,7 +420,7 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
 
   while (1) {
     assert(stream->accepted_fd < 0);
-    fd = accept(stream->fd, (struct sockaddr*)&addr, &addrlen);
+    fd = uv__accept(stream->fd, (struct sockaddr*)&addr, sizeof addr);
 
     if (fd < 0) {
       if (errno == EAGAIN) {
