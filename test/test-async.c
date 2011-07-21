@@ -146,8 +146,6 @@ static void async2_cb(uv_handle_t* handle, int status) {
 
 
 static void prepare_cb(uv_prepare_t* handle, int status) {
-  int r;
-
   ASSERT(handle == &prepare_handle);
   ASSERT(status == 0);
 
