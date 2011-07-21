@@ -314,7 +314,8 @@ int uv_tcp_init(uv_tcp_t* tcp) {
 }
 
 
-int uv__bind(uv_tcp_t* tcp, int domain, struct sockaddr* addr, int addrsize) {
+static int uv__bind(uv_tcp_t* tcp, int domain, struct sockaddr* addr,
+    int addrsize) {
   int saved_errno;
   int status;
   int fd;
@@ -360,7 +361,8 @@ int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
     return -1;
   }
 
-  return uv__bind(tcp, AF_INET, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+  return uv__bind(tcp, AF_INET, (struct sockaddr*)&addr,
+      sizeof(struct sockaddr_in));
 }
 
 
@@ -370,7 +372,8 @@ int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6 addr) {
     return -1;
   }
 
-  return uv__bind(tcp, AF_INET6, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
+  return uv__bind(tcp, AF_INET6, (struct sockaddr*)&addr,
+      sizeof(struct sockaddr_in6));
 }
 
 
