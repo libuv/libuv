@@ -1788,21 +1788,32 @@ int uv_pipe_init(uv_pipe_t* handle) {
 
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   struct sockaddr_un sun;
+  const char* pipe_fname;
   int saved_errno;
   int sockfd;
   int status;
   int bound;
 
   saved_errno = errno;
+  pipe_fname = NULL;
   sockfd = -1;
   status = -1;
   bound = 0;
 
+  /* Already bound? */
+  if (handle->fd >= 0) {
+    uv_err_new_artificial((uv_handle_t*)handle, UV_EINVAL);
+    goto out;
+  }
+
   /* Make a copy of the file name, it outlives this function's scope. */
-  if ((name = (const char*)strdup(name)) == NULL) {
+  if ((pipe_fname = strdup(name)) == NULL) {
     uv_err_new((uv_handle_t*)handle, ENOMEM);
     goto out;
   }
+
+  /* We've got a copy, don't touch the original any more. */
+  name = NULL;
 
   if ((sockfd = uv__socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
     uv_err_new((uv_handle_t*)handle, errno);
@@ -1810,7 +1821,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   }
 
   memset(&sun, 0, sizeof sun);
-  uv__strlcpy(sun.sun_path, name, sizeof(sun.sun_path));
+  uv__strlcpy(sun.sun_path, pipe_fname, sizeof(sun.sun_path));
   sun.sun_family = AF_UNIX;
 
   if (bind(sockfd, (struct sockaddr*)&sun, sizeof sun) == -1) {
@@ -1827,7 +1838,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
      * Try to re-purpose the socket. This is a potential race window.
      */
     if (errno != EADDRINUSE
-        || unlink(name) == -1
+        || unlink(pipe_fname) == -1
         || bind(sockfd, (struct sockaddr*)&sun, sizeof sun) == -1) {
       uv_err_new((uv_handle_t*)handle, errno);
       goto out;
@@ -1837,7 +1848,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   bound = 1;
 
   /* Success. */
-  handle->pipe_fname = name; /* Is a strdup'ed copy. */
+  handle->pipe_fname = pipe_fname; /* Is a strdup'ed copy. */
   handle->fd = sockfd;
   status = 0;
 
@@ -1846,10 +1857,11 @@ out:
   if (status) {
     if (bound) {
       /* unlink() before close() to avoid races. */
-      unlink(name);
+      assert(pipe_fname != NULL);
+      unlink(pipe_fname);
     }
     uv__close(sockfd);
-    free((void*)name);
+    free((void*)pipe_fname);
   }
 
   errno = saved_errno;
