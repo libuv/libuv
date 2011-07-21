@@ -1862,6 +1862,13 @@ int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb) {
   int status;
 
   saved_errno = errno;
+  status = -1;
+
+  if (handle->fd == -1) {
+    uv_err_new_artificial((uv_handle_t*)handle, UV_ENOTCONN);
+    goto out;
+  }
+  assert(handle->fd >= 0);
 
   if ((status = listen(handle->fd, SOMAXCONN)) == -1) {
     uv_err_new((uv_handle_t*)handle, errno);
@@ -1871,6 +1878,7 @@ int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb) {
     ev_io_start(EV_DEFAULT_ &handle->read_watcher);
   }
 
+out:
   errno = saved_errno;
   return status;
 }
