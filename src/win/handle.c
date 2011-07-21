@@ -111,9 +111,9 @@ static int uv_close_error(uv_handle_t* handle, uv_err_t e) {
 }
 
 
-int uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
+void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   handle->close_cb = close_cb;
-  return uv_close_error(handle, uv_ok_);
+  uv_close_error(handle, uv_ok_);
 }
 
 

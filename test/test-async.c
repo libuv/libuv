@@ -170,8 +170,7 @@ static void prepare_cb(uv_prepare_t* handle, int status) {
 #endif
 
     case 1:
-      r = uv_close((uv_handle_t*)handle, close_cb);
-      ASSERT(r == 0);
+      uv_close((uv_handle_t*)handle, close_cb);
       break;
 
     default:
