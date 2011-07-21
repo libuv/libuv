@@ -704,7 +704,7 @@ static uv_write_t* uv__write(uv_stream_t* stream) {
 
       assert(req->write_index < req->bufcnt);
 
-      if (n < len) {
+      if ((size_t)n < len) {
         buf->base += n;
         buf->len -= n;
         stream->write_queue_size -= n;
@@ -717,7 +717,7 @@ static uv_write_t* uv__write(uv_stream_t* stream) {
         /* Finished writing the buf at index req->write_index. */
         req->write_index++;
 
-        assert(n >= len);
+        assert((size_t)n >= len);
         n -= len;
 
         assert(stream->write_queue_size >= len);
