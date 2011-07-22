@@ -399,7 +399,6 @@ int uv_pipe_accept(uv_pipe_t* server, uv_pipe_t* client) {
   }
 
   /* Initialize the client handle and copy the pipeHandle to the client */
-  uv_pipe_init(client);
   uv_connection_init((uv_stream_t*) client);
   client->handle = req->pipeHandle;
 
