@@ -144,6 +144,7 @@ void uv_winsock_startup();
 
 void uv_tcp_endgame(uv_tcp_t* handle);
 
+int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client);
 int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb);
@@ -162,6 +163,7 @@ void uv_process_tcp_connect_req(uv_tcp_t* handle, uv_connect_t* req);
 void close_pipe(uv_pipe_t* handle, int* status, uv_err_t* err);
 void uv_pipe_endgame(uv_pipe_t* handle);
 
+int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 int uv_pipe_accept(uv_pipe_t* server, uv_pipe_t* client);
 int uv_pipe_read_start(uv_pipe_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb);

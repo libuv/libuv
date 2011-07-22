@@ -72,6 +72,8 @@ static int uv__stream_open(uv_stream_t*, int fd);
 static void uv__finish_close(uv_handle_t* handle);
 static uv_err_t uv_err_new(uv_handle_t* handle, int sys_error);
 
+static int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
+static int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 static uv_write_t* uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
 static void uv__stream_connect(uv_stream_t*);
@@ -432,12 +434,12 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
         return;
       } else {
         uv_err_new((uv_handle_t*)stream, errno);
-        stream->connection_cb((uv_handle_t*)stream, -1);
+        stream->connection_cb((uv_stream_t*)stream, -1);
       }
 
     } else {
       stream->accepted_fd = fd;
-      stream->connection_cb((uv_handle_t*)stream, 0);
+      stream->connection_cb((uv_stream_t*)stream, 0);
       if (stream->accepted_fd >= 0) {
         /* The user hasn't yet accepted called uv_accept() */
         ev_io_stop(EV_DEFAULT_ &stream->read_watcher);
@@ -448,7 +450,7 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
 }
 
 
-int uv_accept(uv_handle_t* server, uv_stream_t* client) {
+int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   uv_stream_t* streamServer;
   uv_stream_t* streamClient;
   int saved_errno;
@@ -461,7 +463,7 @@ int uv_accept(uv_handle_t* server, uv_stream_t* client) {
   streamClient = (uv_stream_t*)client;
 
   if (streamServer->accepted_fd < 0) {
-    uv_err_new(server, EAGAIN);
+    uv_err_new((uv_handle_t*)server, EAGAIN);
     goto out;
   }
 
@@ -482,7 +484,20 @@ out:
 }
 
 
-int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
+int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
+  switch (stream->type) {
+    case UV_TCP:
+      return uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+    case UV_NAMED_PIPE:
+      return uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
+    default:
+      assert(0);
+      return -1;
+  }
+}
+
+
+static int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   int r;
   int fd;
 
@@ -1873,7 +1888,7 @@ out:
 }
 
 
-int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb) {
+static int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   int saved_errno;
   int status;
 
@@ -1886,7 +1901,7 @@ int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb) {
   }
   assert(handle->fd >= 0);
 
-  if ((status = listen(handle->fd, SOMAXCONN)) == -1) {
+  if ((status = listen(handle->fd, backlog)) == -1) {
     uv_err_new((uv_handle_t*)handle, errno);
   } else {
     handle->connection_cb = cb;
@@ -1987,7 +2002,7 @@ static void uv__pipe_accept(EV_P_ ev_io* watcher, int revents) {
     }
   } else {
     pipe->accepted_fd = sockfd;
-    pipe->connection_cb((uv_handle_t*)pipe, 0);
+    pipe->connection_cb((uv_stream_t*)pipe, 0);
     if (pipe->accepted_fd == sockfd) {
       /* The user hasn't yet accepted called uv_accept() */
       ev_io_stop(EV_DEFAULT_ &pipe->read_watcher);

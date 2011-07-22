@@ -76,7 +76,7 @@ typedef void (*uv_read_cb)(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
-typedef void (*uv_connection_cb)(uv_handle_t* server, int status);
+typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
 typedef void (*uv_timer_cb)(uv_timer_t* handle, int status);
 /* TODO: do these really need a status argument? */
@@ -244,6 +244,8 @@ struct uv_stream_s {
   UV_STREAM_FIELDS
 };
 
+int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb);
+
 /* This call is used in conjunction with uv_listen() to accept incoming
  * connections. Call uv_accept after receiving a uv_connection_cb to accept
  * the connection. Before calling uv_accept use uv_*_init() must be
@@ -254,7 +256,7 @@ struct uv_stream_s {
  * once, it may fail. It is suggested to only call uv_accept once per
  * uv_connection_cb call.
  */
-int uv_accept(uv_handle_t* server, uv_stream_t* client);
+int uv_accept(uv_stream_t* server, uv_stream_t* client);
 
 /* Read data from an incoming stream. The callback will be made several
  * several times until there is no more data to read or uv_read_stop is
@@ -332,8 +334,6 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
 int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
     struct sockaddr_in6 address, uv_connect_cb cb);
 
-int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
-
 int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
 
 
@@ -349,8 +349,6 @@ struct uv_pipe_s {
 int uv_pipe_init(uv_pipe_t* handle);
 
 int uv_pipe_bind(uv_pipe_t* handle, const char* name);
-
-int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb);
 
 int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     const char* name, uv_connect_cb cb);

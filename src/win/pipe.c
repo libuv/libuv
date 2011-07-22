@@ -416,7 +416,7 @@ int uv_pipe_accept(uv_pipe_t* server, uv_pipe_t* client) {
 
 
 /* Starts listening for connections for the given pipe. */
-int uv_pipe_listen(uv_pipe_t* handle, uv_connection_cb cb) {
+int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   int i, errno;
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
@@ -678,7 +678,7 @@ void uv_process_pipe_accept_req(uv_pipe_t* handle, uv_req_t* raw_req) {
     handle->pending_accepts = req;
 
     if (handle->connection_cb) {
-      handle->connection_cb((uv_handle_t*)handle, 0);
+      handle->connection_cb((uv_stream_t*)handle, 0);
     }
   } else {
     if (req->pipeHandle != INVALID_HANDLE_VALUE) {
