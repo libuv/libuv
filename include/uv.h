@@ -271,6 +271,14 @@ int uv_read_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
 int uv_read_stop(uv_stream_t*);
 
+typedef enum {
+  UV_STDIN = 0,
+  UV_STDOUT,
+  UV_STDERR
+} uv_std_type;
+
+uv_stream_t* uv_std_handle(uv_std_type type);
+
 /*
  * Write data to stream. Buffers are written in order. Example:
  *

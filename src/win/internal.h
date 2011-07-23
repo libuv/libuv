@@ -102,6 +102,8 @@ extern uv_loop_t uv_main_loop_;
 #define UV_HANDLE_IPV6             0x2000
 #define UV_HANDLE_PIPESERVER       0x4000
 #define UV_HANDLE_READ_PENDING     0x8000
+#define UV_HANDLE_GIVEN_OS_HANDLE  0x10000
+#define UV_HANDLE_UV_ALLOCED       0x20000
 
 void uv_want_endgame(uv_handle_t* handle);
 void uv_process_endgames();
@@ -160,6 +162,7 @@ void uv_process_tcp_connect_req(uv_tcp_t* handle, uv_connect_t* req);
 /*
  * Pipes
  */
+int uv_pipe_init_with_handle(uv_pipe_t* handle, HANDLE pipeHandle);
 void close_pipe(uv_pipe_t* handle, int* status, uv_err_t* err);
 void uv_pipe_endgame(uv_pipe_t* handle);
 

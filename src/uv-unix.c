@@ -2132,3 +2132,8 @@ size_t uv__strlcpy(char* dst, const char* src, size_t size) {
 
   return src - org;
 }
+
+
+uv_stream_t* uv_std_handle(uv_std_type type) {
+  assert(0 && "implement me");
+}
