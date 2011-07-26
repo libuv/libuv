@@ -38,13 +38,20 @@ int main(int argc, char **argv) {
 
   platform_init(argc, argv);
 
-  if (argc == 2 && strcmp(argv[1], "spawn_helper1") == 0) {
-    return 1;
-  }
-
   switch (argc) {
   case 1: return run_tests(TEST_TIMEOUT, 0);
-  case 2: return run_test(argv[1], TEST_TIMEOUT, 0);
+  case 2: {
+    if (strcmp(argv[1], "spawn_helper1") == 0) {
+      return 1;
+    }
+
+    if (strcmp(argv[1], "spawn_helper2") == 0) {
+      printf("hello world\n");
+      return 1;
+    }
+
+    return run_test(argv[1], TEST_TIMEOUT, 0);
+  }
   case 3: return run_test_part(argv[1], argv[2]);
   default:
     LOGF("Too many arguments.\n");

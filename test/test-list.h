@@ -64,6 +64,7 @@ TEST_DECLARE   (getsockname)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 TEST_DECLARE   (spawn_exit_code)
+TEST_DECLARE   (spawn_stdout)
 HELPER_DECLARE (tcp4_echo_server)
 HELPER_DECLARE (tcp6_echo_server)
 HELPER_DECLARE (pipe_echo_server)
@@ -142,6 +143,7 @@ TASK_LIST_START
   TEST_ENTRY  (getsockname)
 
   TEST_ENTRY  (spawn_exit_code)
+  TEST_ENTRY  (spawn_stdout)
 
 #if 0
   /* These are for testing the test runner. */
