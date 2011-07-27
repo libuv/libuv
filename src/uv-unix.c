@@ -2263,7 +2263,7 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     close(stdin_pipe[0]);
     uv__nonblock(stdin_pipe[1], 1);
     uv_pipe_init(options.stdin_stream);
-    uv__stream_open(options.stdin_stream, stdin_pipe[1]);
+    uv__stream_open((uv_stream_t*)options.stdin_stream, stdin_pipe[1]);
   }
 
   if (stdout_pipe[0] >= 0) {
@@ -2272,7 +2272,7 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     close(stdout_pipe[1]);
     uv__nonblock(stdout_pipe[0], 1);
     uv_pipe_init(options.stdout_stream);
-    uv__stream_open(options.stdout_stream, stdout_pipe[0]);
+    uv__stream_open((uv_stream_t*)options.stdout_stream, stdout_pipe[0]);
   }
 
   if (stderr_pipe[0] >= 0) {
@@ -2281,7 +2281,7 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     close(stderr_pipe[1]);
     uv__nonblock(stderr_pipe[0], 1);
     uv_pipe_init(options.stderr_stream);
-    uv__stream_open(options.stderr_stream, stderr_pipe[0]);
+    uv__stream_open((uv_stream_t*)options.stderr_stream, stderr_pipe[0]);
   }
 
   return 0;
