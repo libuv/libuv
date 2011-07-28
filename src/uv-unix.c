@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -78,6 +79,29 @@ struct uv_ares_data_s {
 
 static struct uv_ares_data_s ares_data;
 
+typedef struct {
+  const char* lockfile;
+  int lockfd;
+} uv_flock_t;
+
+
+/* Create a new advisory file lock for `filename`.
+ * Call `uv_flock_acquire()` to actually acquire the lock.
+ */
+int uv_flock_init(uv_flock_t* lock, const char* filename);
+
+/* Try to acquire the file lock. Returns 0 on success, -1 on error.
+ * Does not wait for the lock to be released if it is held by another process.
+ */
+int uv_flock_acquire(uv_flock_t* lock);
+
+/* Release the file lock. Returns 0 on success, -1 on error.
+ */
+int uv_flock_release(uv_flock_t* lock);
+
+/* Destroy the file lock. Releases the file lock and associated resources.
+ */
+int uv_flock_destroy(uv_flock_t* lock);
 
 void uv__req_init(uv_req_t*);
 void uv__next(EV_P_ ev_idle* watcher, int revents);
@@ -2312,4 +2336,119 @@ int uv_process_kill(uv_process_t* process, int signum) {
   } else {
     return 0;
   }
+}
+
+
+#define LOCKFILE_SUFFIX ".lock"
+int uv_flock_init(uv_flock_t* lock, const char* filename) {
+  int saved_errno;
+  int status;
+  char* lockfile;
+
+  saved_errno = errno;
+  status = -1;
+
+  lock->lockfd = -1;
+  lock->lockfile = NULL;
+
+  if ((lockfile = malloc(strlen(filename) + sizeof LOCKFILE_SUFFIX)) == NULL) {
+    goto out;
+  }
+
+  strcpy(lockfile, filename);
+  strcat(lockfile, LOCKFILE_SUFFIX);
+  lock->lockfile = lockfile;
+  status = 0;
+
+out:
+  errno = saved_errno;
+  return status;
+}
+#undef LOCKFILE_SUFFIX
+
+
+int uv_flock_acquire(uv_flock_t* lock) {
+  char buf[32];
+  int saved_errno;
+  int status;
+  int lockfd;
+
+  saved_errno = errno;
+  status = -1;
+  lockfd = -1;
+
+  do {
+    lockfd = open(lock->lockfile, O_WRONLY | O_CREAT, 0666);
+  }
+  while (lockfd == -1 && errno == EINTR);
+
+  if (lockfd == -1) {
+    goto out;
+  }
+
+  do {
+    status = flock(lockfd, LOCK_EX | LOCK_NB);
+  }
+  while (status == -1 && errno == EINTR);
+
+  if (status == -1) {
+    goto out;
+  }
+
+  snprintf(buf, sizeof buf, "%d\n", getpid());
+  do {
+    status = write(lockfd, buf, strlen(buf));
+  }
+  while (status == -1 && errno == EINTR);
+
+  lock->lockfd = lockfd;
+  status = 0;
+
+out:
+  if (status) {
+    uv__close(lockfd);
+  }
+
+  errno = saved_errno;
+  return status;
+}
+
+
+int uv_flock_release(uv_flock_t* lock) {
+  int saved_errno;
+  int status;
+
+  saved_errno = errno;
+  status = -1;
+
+  if (unlink(lock->lockfile) == -1) {
+    /* Now what? */
+    goto out;
+  }
+
+  uv__close(lock->lockfd);
+  lock->lockfd = -1;
+  status = 0;
+
+out:
+  errno = saved_errno;
+  return status;
+}
+
+
+int uv_flock_destroy(uv_flock_t* lock) {
+  int saved_errno;
+  int status;
+
+  saved_errno = errno;
+  status = unlink(lock->lockfile);
+
+  uv__close(lock->lockfd);
+  lock->lockfd = -1;
+
+  free((void*)lock->lockfile);
+  lock->lockfile = NULL;
+
+  errno = saved_errno;
+  return status;
 }
