@@ -42,6 +42,11 @@
 #include <arpa/inet.h>
 #include <limits.h> /* PATH_MAX */
 
+#ifdef __sun
+# include <sys/types.h>
+# include <sys/wait.h>
+#endif
+
 #if defined(__APPLE__)
 #include <mach-o/dyld.h> /* _NSGetExecutablePath */
 #endif
