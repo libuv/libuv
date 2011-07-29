@@ -40,7 +40,7 @@
 #include "eio.h"
 
 #ifdef EIO_STACKSIZE
-# define XTHREAD_STACKSIZE EIO_STACKSIZE
+# define X_STACKSIZE EIO_STACKSIZE
 #endif
 
 // For statically-linked pthreads-w32, use:
