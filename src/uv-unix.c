@@ -2271,17 +2271,37 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
 
   process->exit_cb = options.exit_cb;
 
+  if (options.stdin_stream) {
+    if (options.stdin_stream->type != UV_NAMED_PIPE) {
+      errno = EINVAL;
+      goto error;
+    }
 
-  if (options.stdin_stream && pipe(stdin_pipe) < 0) {
-    goto error;
+    if (pipe(stdin_pipe) < 0) {
+      goto error;
+    }
   }
 
-  if (options.stdout_stream && pipe(stdout_pipe) < 0) {
-    goto error;
+  if (options.stdout_stream) {
+    if (options.stdout_stream->type != UV_NAMED_PIPE) {
+      errno = EINVAL;
+      goto error;
+    }
+
+    if (pipe(stdout_pipe) < 0) {
+      goto error;
+    }
   }
 
-  if (options.stderr_stream && pipe(stderr_pipe) < 0) {
-    goto error;
+  if (options.stderr_stream) {
+    if (options.stderr_stream->type != UV_NAMED_PIPE) {
+      errno = EINVAL;
+      goto error;
+    }
+
+    if (pipe(stderr_pipe) < 0) {
+      goto error;
+    }
   }
 
   pid = fork();
@@ -2335,7 +2355,6 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     assert(stdin_pipe[0] >= 0);
     close(stdin_pipe[0]);
     uv__nonblock(stdin_pipe[1], 1);
-    uv_pipe_init(options.stdin_stream);
     uv__stream_open((uv_stream_t*)options.stdin_stream, stdin_pipe[1]);
   }
 
@@ -2344,7 +2363,6 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     assert(stdout_pipe[1] >= 0);
     close(stdout_pipe[1]);
     uv__nonblock(stdout_pipe[0], 1);
-    uv_pipe_init(options.stdout_stream);
     uv__stream_open((uv_stream_t*)options.stdout_stream, stdout_pipe[0]);
   }
 
@@ -2353,7 +2371,6 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     assert(stderr_pipe[1] >= 0);
     close(stderr_pipe[1]);
     uv__nonblock(stderr_pipe[0], 1);
-    uv_pipe_init(options.stderr_stream);
     uv__stream_open((uv_stream_t*)options.stderr_stream, stderr_pipe[0]);
   }
 
