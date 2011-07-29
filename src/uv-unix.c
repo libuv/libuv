@@ -1956,7 +1956,7 @@ static int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   status = -1;
 
   if (handle->fd == -1) {
-    uv_err_new_artificial((uv_handle_t*)handle, UV_ENOTCONN);
+    uv_err_new_artificial((uv_handle_t*)handle, UV_EINVAL);
     goto out;
   }
   assert(handle->fd >= 0);
