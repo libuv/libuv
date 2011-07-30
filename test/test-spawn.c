@@ -142,6 +142,7 @@ TEST_IMPL(spawn_stdout) {
 
   ASSERT(exit_cb_called == 1);
   ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
+  printf("output is: %s", output);
   ASSERT(strcmp("hello world\n", output) == 0 || strcmp("hello world\r\n", output) == 0);
 
   return 0;
