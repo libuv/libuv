@@ -570,6 +570,7 @@ static int uv_create_stdio_pipe_pair(uv_pipe_t* server_pipe, HANDLE* child_pipe,
   int err;
   SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
   char pipe_name[64];
+  DWORD mode = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
 
   if (server_pipe->type != UV_NAMED_PIPE) { 
     uv_set_error(UV_EINVAL, 0);
@@ -593,6 +594,12 @@ static int uv_create_stdio_pipe_pair(uv_pipe_t* server_pipe, HANDLE* child_pipe,
                             NULL);
 
   if (*child_pipe == INVALID_HANDLE_VALUE) {
+    uv_set_sys_error(GetLastError());
+    err = -1;
+    goto done;
+  }
+
+  if (!SetNamedPipeHandleState(*child_pipe, &mode, NULL, NULL)) {
     uv_set_sys_error(GetLastError());
     err = -1;
     goto done;
@@ -673,7 +680,7 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
 
   /* Create stdio pipes. */
   if (options.stdin_stream) {
-    err = uv_create_stdio_pipe_pair(options.stdin_stream, &process->stdio_pipes[0].child_pipe, PIPE_ACCESS_OUTBOUND, GENERIC_READ);
+    err = uv_create_stdio_pipe_pair(options.stdin_stream, &process->stdio_pipes[0].child_pipe, PIPE_ACCESS_OUTBOUND, GENERIC_READ | FILE_WRITE_ATTRIBUTES);
     if (err) {
       goto done;
     }
