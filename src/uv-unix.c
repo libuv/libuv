@@ -1838,6 +1838,7 @@ int uv_pipe_init(uv_pipe_t* handle) {
   ev_init(&handle->read_watcher, uv__stream_io);
   handle->write_watcher.data = handle;
   handle->read_watcher.data = handle;
+  handle->accepted_fd = -1;
   handle->fd = -1;
 
   ngx_queue_init(&handle->write_completed_queue);
