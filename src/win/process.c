@@ -41,6 +41,9 @@
   }
 
 
+static const wchar_t DEFAULT_PATH_EXT[10] = L".COM;.EXE";
+
+
 static void uv_process_init(uv_process_t* handle) {
   handle->type = UV_PROCESS;
   handle->flags = 0;
@@ -404,10 +407,8 @@ static wchar_t* make_program_args(char** args) {
   * The way windows takes environment variables is different than what C does;
   * Windows wants a contiguous block of null-terminated strings, terminated
   * with an additional null.
-  * Get a pointer to the pathext and path environment variables as well,
-  * because search_path needs it. These are just pointers into env_win.
   */
-wchar_t* make_program_env(char** env_block, const wchar_t **path,  const wchar_t **path_ext) {
+wchar_t* make_program_env(char** env_block) {
   wchar_t* dst;
   wchar_t* ptr;
   char** env;
@@ -430,14 +431,6 @@ wchar_t* make_program_env(char** env_block, const wchar_t **path,  const wchar_t
     if (!len) {
       free(dst);
       return NULL;
-    }
-
-    /* Try to get a pointer to PATH and PATHEXT */
-    if (_wcsnicmp(L"PATH=", ptr, 5) == 0) {
-      *path = ptr + 5;
-    }
-    if (_wcsnicmp(L"PATHEXT=", ptr, 8) == 0) {
-      *path_ext = ptr + 8;
     }
   }
 
@@ -632,10 +625,7 @@ done:
 
 int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   int err, i;
-  wchar_t* path = NULL;
-  wchar_t* path_ext = NULL;
-  BOOL path_alloced = FALSE;
-  BOOL path_ext_alloced = FALSE;
+  wchar_t* path;
   int size;
   wchar_t* application_path, *application, *arguments, *env, *cwd;
   STARTUPINFOW startup;
@@ -646,7 +636,7 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   process->exit_cb = options.exit_cb;
   UTF8_TO_UTF16(options.file, application);
   arguments = options.args ? make_program_args(options.args) : NULL;
-  env = options.env ? make_program_env(options.env, &path, &path_ext) : NULL;
+  env = options.env ? make_program_env(options.env) : NULL;
 
   if (options.cwd) {
     UTF8_TO_UTF16(options.cwd, cwd);
@@ -665,32 +655,19 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     }
   }
 
+  /* Get PATH env. variable. */
+  size = GetEnvironmentVariableW(L"PATH", NULL, 0) + 1;
+  path = (wchar_t*)malloc(size * sizeof(wchar_t));
   if (!path) {
-    size = GetEnvironmentVariableW(L"PATH", NULL, 0) + 1;
-    path = (wchar_t*)malloc(size * sizeof(wchar_t));
-    if (!path) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-    }
-    GetEnvironmentVariableW(L"PATH", path, size * sizeof(wchar_t));
-    path[size - 1] = L'\0';
-    path_alloced = TRUE;
+    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
-
-  if (!path_ext) {
-    size = GetEnvironmentVariableW(L"PATHEXT", NULL, 0) + 1;
-    path_ext = (wchar_t*)malloc(size * sizeof(wchar_t));
-    if (!path_ext) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-    }
-    GetEnvironmentVariableW(L"PATHEXT", path_ext, size * sizeof(wchar_t));
-    path_ext[size - 1] = L'\0';
-    path_ext_alloced = TRUE;
-  }
+  GetEnvironmentVariableW(L"PATH", path, size * sizeof(wchar_t));
+  path[size - 1] = L'\0';
 
   application_path = search_path(application, 
                                  cwd,
                                  path,
-                                 path_ext);
+                                 DEFAULT_PATH_EXT);
 
   if (!application_path) {
     uv_set_error(UV_EINVAL, 0);
@@ -773,12 +750,7 @@ done:
   free(arguments);
   free(cwd);
   free(env);
-  if (path_alloced) {
-    free(path);
-  }
-  if (path_ext_alloced) {
-    free(path_ext);
-  }
+  free(path);
 
   if (err) {
     for (i = 0; i < COUNTOF(process->stdio_pipes); i++) {
