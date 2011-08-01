@@ -71,7 +71,7 @@ static int maybe_run_test(int argc, char **argv) {
 
   if (strcmp(argv[1], "spawn_helper4") == 0) {
     uv_sleep(10000);
-    return 100;
+    return 1;
   }
 
   return run_test(argv[1], TEST_TIMEOUT, 0);
