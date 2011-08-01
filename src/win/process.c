@@ -41,10 +41,6 @@
   }
 
 
-static const wchar_t DEFAULT_PATH[1] = L"";
-static const wchar_t DEFAULT_PATH_EXT[20] = L".COM;.EXE;.BAT;.CMD";
-
-
 static void uv_process_init(uv_process_t* handle) {
   handle->type = UV_PROCESS;
   handle->flags = 0;
@@ -636,8 +632,10 @@ done:
 
 int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   int err, i;
-  const wchar_t* path = NULL;
-  const wchar_t* path_ext = NULL;
+  wchar_t* path = NULL;
+  wchar_t* path_ext = NULL;
+  BOOL path_alloced = FALSE;
+  BOOL path_ext_alloced = FALSE;
   int size;
   wchar_t* application_path, *application, *arguments, *env, *cwd;
   STARTUPINFOW startup;
@@ -667,10 +665,32 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     }
   }
 
+  if (!path) {
+    size = GetEnvironmentVariableW(L"PATH", NULL, 0) + 1;
+    path = (wchar_t*)malloc(size * sizeof(wchar_t));
+    if (!path) {
+      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    }
+    GetEnvironmentVariableW(L"PATH", path, size * sizeof(wchar_t));
+    path[size - 1] = L'\0';
+    path_alloced = TRUE;
+  }
+
+  if (!path_ext) {
+    size = GetEnvironmentVariableW(L"PATHEXT", NULL, 0) + 1;
+    path_ext = (wchar_t*)malloc(size * sizeof(wchar_t));
+    if (!path_ext) {
+      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    }
+    GetEnvironmentVariableW(L"PATHEXT", path_ext, size * sizeof(wchar_t));
+    path_ext[size - 1] = L'\0';
+    path_ext_alloced = TRUE;
+  }
+
   application_path = search_path(application, 
                                  cwd,
-                                 path ? path : DEFAULT_PATH,
-                                 path_ext ? path_ext : DEFAULT_PATH_EXT);
+                                 path,
+                                 path_ext);
 
   if (!application_path) {
     uv_set_error(UV_EINVAL, 0);
@@ -753,6 +773,12 @@ done:
   free(arguments);
   free(cwd);
   free(env);
+  if (path_alloced) {
+    free(path);
+  }
+  if (path_ext_alloced) {
+    free(path_ext);
+  }
 
   if (err) {
     for (i = 0; i < COUNTOF(process->stdio_pipes); i++) {
