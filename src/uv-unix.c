@@ -65,6 +65,7 @@
 extern char **environ;
 # endif
 
+#define LOCKFILE_SUFFIX ".lock"
 
 static uv_err_t last_err;
 
@@ -2236,6 +2237,7 @@ size_t uv__strlcpy(char* dst, const char* src, size_t size) {
 
 uv_stream_t* uv_std_handle(uv_std_type type) {
   assert(0 && "implement me");
+  return NULL;
 }
 
 
@@ -2412,7 +2414,6 @@ int uv_process_kill(uv_process_t* process, int signum) {
 }
 
 
-#define LOCKFILE_SUFFIX ".lock"
 int uv_flock_init(uv_flock_t* lock, const char* filename) {
   int saved_errno;
   int status;
@@ -2437,10 +2438,10 @@ out:
   errno = saved_errno;
   return status;
 }
-#undef LOCKFILE_SUFFIX
 
 
 int uv_flock_acquire(uv_flock_t* lock, int* locked_p) {
+  struct flock fl;
   char buf[32];
   int saved_errno;
   int status;
@@ -2461,8 +2462,15 @@ int uv_flock_acquire(uv_flock_t* lock, int* locked_p) {
     goto out;
   }
 
+
+  fl.l_type = F_WRLCK;
+  fl.l_whence = SEEK_SET;
+  fl.l_start  = 0;
+  fl.l_len = 0;
+  fl.l_pid = getpid();
+
   do {
-    status = flock(lockfd, LOCK_EX | LOCK_NB);
+    status = fcntl(lockfd, F_SETLKW, &fl);
   }
   while (status == -1 && errno == EINTR);
 
