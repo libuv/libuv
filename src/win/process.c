@@ -423,13 +423,9 @@ static wchar_t* make_program_args(char** args) {
     arg_count++;
   }
 
-  /* Adjust for potential quotes. */
-  size *= 2;
-
-  /* Arguments are separated with a space. */
-  if (arg_count > 0) {
-    size += arg_count - 1;
-  }
+  /* Adjust for potential quotes. Also assume the worst-case scenario 
+  /* that every character needs escaping, so we need twice as much space. */
+  size = size * 2 + arg_count * 2;
 
   dst = (wchar_t*)malloc(size);
   if (!dst) {
