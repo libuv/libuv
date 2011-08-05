@@ -62,6 +62,7 @@
 
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
+#include <sys/wait.h>
 #endif
 
 
