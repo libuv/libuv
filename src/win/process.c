@@ -404,9 +404,9 @@ wchar_t* quote_cmd_arg(const wchar_t *source, wchar_t *target) {
    *   input : hello""world
    *   output: "hello\"\"world"
    *   input : hello\world
-   *   output: "hello\world"
+   *   output: hello\world
    *   input : hello\\world
-   *   output: "hello\\world"
+   *   output: hello\\world
    *   input : hello\"world
    *   output: "hello\\\"world"
    *   input : hello\\"world
