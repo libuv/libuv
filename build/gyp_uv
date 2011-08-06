@@ -13,7 +13,7 @@ import gyp
 
 # Directory within which we want all generated files (including Makefiles)
 # to be written.
-output_dir = os.path.join(uv_root, 'out')
+output_dir = os.path.join(os.path.abspath(uv_root), 'out')
 
 
 def run_gyp(args):
