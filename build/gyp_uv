@@ -26,6 +26,7 @@ if __name__ == '__main__':
   args = sys.argv[1:]
 
   args.append(os.path.join(script_dir, 'all.gyp'))
+  args.append('-I' + os.path.join(script_dir, 'common.gypi'))
 
   args.append('--depth=' + uv_root)
 
