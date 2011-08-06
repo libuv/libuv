@@ -1756,14 +1756,13 @@ static int uv_getaddrinfo_done(eio_req* req) {
 }
 
 
-static int getaddrinfo_thread_proc(eio_req *req) {
+static void getaddrinfo_thread_proc(eio_req *req) {
   uv_getaddrinfo_t* handle = req->data;
 
   handle->retcode = getaddrinfo(handle->hostname,
                                 handle->service,
                                 handle->hints,
                                 &handle->res);
-  return 0;
 }
 
 
