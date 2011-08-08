@@ -101,7 +101,7 @@ static void close_cb(uv_handle_t* handle) {
 
   if (closed_streams == concurrency) {
     uv_update_time();
-    end_time = uv_now();
+    end_time = uv_hrtime();
   }
 }
 
@@ -196,7 +196,7 @@ static int pound_it(int concurrency,
   ASSERT(state != NULL);
 
   uv_update_time();
-  start_time = uv_now();
+  start_time = uv_hrtime();
 
   r = do_connect(concurrency, state, arg);
   ASSERT(!r);
@@ -204,8 +204,7 @@ static int pound_it(int concurrency,
   uv_run();
 
   LOGF("%s-conn-pound-%d: %.0f accepts/s\n",
-       type, concurrency, 
-       (double) concurrency / (double) (end_time - start_time) * 1000.0);
+       type, concurrency, closed_streams / ((end_time - start_time) / 10e8));
 
   return 0;
 }
