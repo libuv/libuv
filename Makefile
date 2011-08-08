@@ -3,6 +3,9 @@ BUILDTYPE ?= Release
 all: out/Makefile
 	$(MAKE) -C out BUILDTYPE=$(BUILDTYPE)
 
+debug:	BUILDTYPE=Debug
+debug:	all
+
 out/Makefile: build/gyp
 	build/gyp_uv -f make
 
