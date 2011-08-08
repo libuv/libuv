@@ -121,11 +121,6 @@ static void* tcp_do_setup(int num, void* arg) {
   for (p = conns, pe = p + num; p < pe; p++) {
     r = uv_tcp_init(&p->stream);
     ASSERT(r == 0);
-    p->stream.data = p;
-    p->conn_req.data = p;
-    p->write_req.data = p;
-    p->conn_req.handle = (uv_stream_t*)&p->stream;
-    p->write_req.handle = (uv_stream_t*)&p->stream;
   }
 
   return conns;
@@ -147,11 +142,6 @@ static void* pipe_do_setup(int num, void* arg) {
   for (p = conns, pe = p + num; p < pe; p++) {
     r = uv_pipe_init(&p->stream);
     ASSERT(r == 0);
-    p->stream.data = p;
-    p->conn_req.data = p;
-    p->write_req.data = p;
-    p->conn_req.handle = (uv_stream_t*)&p->stream;
-    p->write_req.handle = (uv_stream_t*)&p->stream;
   }
 
   return conns;
@@ -168,6 +158,8 @@ static int tcp_do_connect(int num, void* conns, void* arg) {
   for (p = conns, pe = p + num; p < pe; p++) {
     r = uv_tcp_connect(&p->conn_req, &p->stream, addr, connect_cb);
     ASSERT(r == 0);
+
+    p->conn_req.data = p;
   }
 
   return 0;
@@ -182,6 +174,8 @@ static int pipe_do_connect(int num, void* conns, void* arg) {
   for (p = conns, pe = p + num; p < pe; p++) {
     r = uv_pipe_connect(&p->conn_req, &p->stream, TEST_PIPENAME, connect_cb);
     ASSERT(r == 0);
+
+    p->conn_req.data = p;
   }
 
   return 0;
