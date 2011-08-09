@@ -50,15 +50,13 @@ typedef struct {
 
 static char buffer[] = "QS";
 
-static conn_rec conns[MAX_CONNS];
-static tcp_conn_rec* tcp_conns = (tcp_conn_rec*)conns;
-static pipe_conn_rec* pipe_conns = (pipe_conn_rec*)conns;
+static tcp_conn_rec tcp_conns[MAX_CONNS];
+static pipe_conn_rec pipe_conns[MAX_CONNS];
 
 static uint64_t start_time;
 static uint64_t end_time;
 static int closed_streams;
 static int conns_failed;
-static int concurrency;
 
 typedef void *(*setup_fn)(int num, void* arg);
 typedef int (*connect_fn)(int num, void* handles, void* arg);
@@ -129,7 +127,7 @@ static void* tcp_do_setup(int num, void* arg) {
     ASSERT(r == 0);
   }
 
-  return conns;
+  return tcp_conns;
 }
 
 
@@ -143,7 +141,7 @@ static void* pipe_do_setup(int num, void* arg) {
     ASSERT(r == 0);
   }
 
-  return conns;
+  return pipe_conns;
 }
 
 
