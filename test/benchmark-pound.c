@@ -22,6 +22,11 @@
 #include "task.h"
 #include "uv.h"
 
+/* Update this is you're going to run > 1000 concurrent requests. */
+#define MAX_CONNS 1000
+
+#define NANOSEC ((uint64_t)10e8)
+
 /* Base class for tcp_conn_rec and pipe_conn_rec.
  * The ordering of fields matters!
  */
@@ -45,8 +50,15 @@ typedef struct {
 
 static char buffer[] = "QS";
 
-static int64_t start_time, end_time;
-static int closed_streams, concurrency;
+static conn_rec conns[MAX_CONNS];
+static tcp_conn_rec* tcp_conns = (tcp_conn_rec*)conns;
+static pipe_conn_rec* pipe_conns = (pipe_conn_rec*)conns;
+
+static uint64_t start_time;
+static uint64_t end_time;
+static int closed_streams;
+static int conns_failed;
+static int concurrency;
 
 typedef void *(*setup_fn)(int num, void* arg);
 typedef int (*connect_fn)(int num, void* handles, void* arg);
@@ -70,6 +82,12 @@ static void connect_cb(uv_connect_t* req, int status) {
   conn_rec* conn;
   uv_buf_t buf;
   int r;
+
+  if (status != 0) {
+    uv_close((uv_handle_t*)req->handle, close_cb);
+    conns_failed++;
+    return;
+  }
 
   ASSERT(req != NULL);
   ASSERT(status == 0);
@@ -98,27 +116,15 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
 static void close_cb(uv_handle_t* handle) {
   ASSERT(handle != NULL);
   closed_streams++;
-
-  if (closed_streams == concurrency) {
-    uv_update_time();
-    end_time = uv_hrtime();
-  }
 }
 
 
 static void* tcp_do_setup(int num, void* arg) {
-  tcp_conn_rec* conns;
   tcp_conn_rec* pe;
   tcp_conn_rec* p;
   int r;
 
-  concurrency = num;
-  closed_streams = 0;
-
-  conns = calloc(num, sizeof(tcp_conn_rec));
-  ASSERT(conns != NULL);
-
-  for (p = conns, pe = p + num; p < pe; p++) {
+  for (p = tcp_conns, pe = p + num; p < pe; p++) {
     r = uv_tcp_init(&p->stream);
     ASSERT(r == 0);
   }
@@ -128,18 +134,11 @@ static void* tcp_do_setup(int num, void* arg) {
 
 
 static void* pipe_do_setup(int num, void* arg) {
-  pipe_conn_rec* conns;
   pipe_conn_rec* pe;
   pipe_conn_rec* p;
   int r;
 
-  concurrency = num;
-  closed_streams = 0;
-
-  conns = calloc(num, sizeof(pipe_conn_rec));
-  ASSERT(conns != NULL);
-
-  for (p = conns, pe = p + num; p < pe; p++) {
+  for (p = pipe_conns, pe = p + num; p < pe; p++) {
     r = uv_pipe_init(&p->stream);
     ASSERT(r == 0);
   }
@@ -155,7 +154,7 @@ static int tcp_do_connect(int num, void* conns, void* arg) {
   int r;
 
   addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
-  for (p = conns, pe = p + num; p < pe; p++) {
+  for (p = tcp_conns, pe = p + num; p < pe; p++) {
     r = uv_tcp_connect(&p->conn_req, &p->stream, addr, connect_cb);
     ASSERT(r == 0);
 
@@ -171,7 +170,7 @@ static int pipe_do_connect(int num, void* conns, void* arg) {
   pipe_conn_rec* p;
   int r;
 
-  for (p = conns, pe = p + num; p < pe; p++) {
+  for (p = pipe_conns, pe = p + num; p < pe; p++) {
     r = uv_pipe_connect(&p->conn_req, &p->stream, TEST_PIPENAME, connect_cb);
     ASSERT(r == 0);
 
@@ -187,24 +186,35 @@ static int pound_it(int concurrency,
                     setup_fn do_setup,
                     connect_fn do_connect,
                     void* arg) {
+  double secs;
   void* state;
   int r;
 
   uv_init();
 
-  state = do_setup(concurrency, arg);
-  ASSERT(state != NULL);
-
-  uv_update_time();
+  /* Run benchmark for at least five seconds. */
   start_time = uv_hrtime();
+  do {
+    state = do_setup(concurrency, arg);
+    ASSERT(state != NULL);
 
-  r = do_connect(concurrency, state, arg);
-  ASSERT(!r);
+    r = do_connect(concurrency, state, arg);
+    ASSERT(!r);
 
-  uv_run();
+    uv_run();
 
-  LOGF("%s-conn-pound-%d: %.0f accepts/s\n",
-       type, concurrency, closed_streams / ((end_time - start_time) / 10e8));
+    end_time = uv_hrtime();
+  }
+  while ((end_time - start_time) < 5 * NANOSEC);
+
+  /* Number of fractional seconds it took to run the benchmark. */
+  secs = (double)(end_time - start_time) / NANOSEC;
+
+  LOGF("%s-conn-pound-%d: %.0f accepts/s (%d failed)\n",
+       type,
+       concurrency,
+       closed_streams / secs,
+       conns_failed);
 
   return 0;
 }
