@@ -865,10 +865,10 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
          "uv_shutdown (unix) only supports uv_handle_t right now");
   assert(stream->fd >= 0);
 
-  if (!(((uv_handle_t*)stream)->flags & UV_WRITABLE) ||
-      ((uv_handle_t*)stream)->flags & UV_SHUT ||
-      ((uv_handle_t*)stream)->flags & UV_CLOSED ||
-      ((uv_handle_t*)stream)->flags & UV_CLOSING) {
+  if (!(stream->flags & UV_WRITABLE) ||
+      stream->flags & UV_SHUT ||
+      stream->flags & UV_CLOSED ||
+      stream->flags & UV_CLOSING) {
     uv_err_new((uv_handle_t*)stream, EINVAL);
     return -1;
   }
