@@ -1981,9 +1981,8 @@ int uv_pipe_connect(uv_connect_t* req,
     goto out;
   }
 
-  handle->fd = sockfd;
-  ev_io_init(&handle->read_watcher, uv__stream_io, sockfd, EV_READ);
-  ev_io_init(&handle->write_watcher, uv__stream_io, sockfd, EV_WRITE);
+  uv__stream_open((uv_stream_t*)handle, sockfd, UV_READABLE | UV_WRITABLE);
+
   ev_io_start(EV_DEFAULT_ &handle->read_watcher);
   ev_io_start(EV_DEFAULT_ &handle->write_watcher);
 
