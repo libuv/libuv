@@ -985,10 +985,6 @@ static int uv__connect(uv_connect_t* req,
 
   if (stream->fd <= 0) {
     if ((sockfd = uv__socket(addr->sa_family, SOCK_STREAM, 0)) == -1) {
-
-    }
-
-    if (sockfd < 0) {
       uv_err_new((uv_handle_t*)stream, errno);
       return -1;
     }
