@@ -9,6 +9,6 @@ svn co http://gyp.googlecode.com/svn/trunk@983 build/gyp
 
 :WINDIR
 
-@python build\gyp_uv
+@python gyp_uv
 
 
