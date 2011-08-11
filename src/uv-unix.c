@@ -647,9 +647,9 @@ static void uv__drain(uv_stream_t* stream) {
   ev_io_stop(EV_DEFAULT_ &stream->write_watcher);
 
   /* Shutdown? */
-  if ((((uv_handle_t*)stream)->flags & UV_SHUTTING) &&
-      !(((uv_handle_t*)stream)->flags & UV_CLOSING) &&
-      !(((uv_handle_t*)stream)->flags & UV_SHUT)) {
+  if ((stream->flags & UV_SHUTTING) &&
+      !(stream->flags & UV_CLOSING) &&
+      !(stream->flags & UV_SHUT)) {
     assert(stream->shutdown_req);
 
     req = stream->shutdown_req;
