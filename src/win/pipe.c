@@ -144,23 +144,58 @@ static int uv_set_pipe_handle(uv_pipe_t* handle, HANDLE pipeHandle) {
 }
 
 
+static DWORD WINAPI pipe_shutdown_thread_proc(void* parameter) {
+  int errno;
+  uv_pipe_t* handle;
+  uv_shutdown_t* req;
+
+  req = (uv_shutdown_t*) parameter;
+  assert(req);
+  handle = (uv_pipe_t*) req->handle;
+  assert(handle);
+
+  FlushFileBuffers(handle->handle);
+
+  /* Post completed */
+  if (!PostQueuedCompletionStatus(LOOP->iocp,
+                                0,
+                                0,
+                                &req->overlapped)) {
+    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+  }
+
+  return 0;
+}
+
+
 void uv_pipe_endgame(uv_pipe_t* handle) {
   uv_err_t err;
   int status;
   unsigned int uv_alloced;
+  DWORD result;
 
   if (handle->flags & UV_HANDLE_SHUTTING &&
       !(handle->flags & UV_HANDLE_SHUT) &&
       handle->write_reqs_pending == 0) {
-    close_pipe(handle, &status, &err);
 
-    if (handle->shutdown_req->cb) {
-      if (status == -1) {
-        LOOP->last_error = err;
-      }
-      handle->shutdown_req->cb(handle->shutdown_req, status);
+    /* TODO: Try to avoid using the thread pool. Maybe we can somehow figure */
+    /* out how much data is left in the kernel buffer? */
+    result = QueueUserWorkItem(pipe_shutdown_thread_proc,
+                               handle->shutdown_req,
+                               WT_EXECUTELONGFUNCTION);
+    if (result) {
+      /* Mark the handle as shut now to avoid going through this again. */
+      handle->flags |= UV_HANDLE_SHUT;
+
+    } else {
+      /* Failure. */
+      uv_set_sys_error(GetLastError());
+      handle->shutdown_req->cb(handle->shutdown_req, -1);
+      handle->flags &= ~UV_HANDLE_SHUTTING;
+      DECREASE_PENDING_REQ_COUNT(handle);
     }
-    handle->reqs_pending--;
+
+    return;
   }
 
   if (handle->flags & UV_HANDLE_CLOSING &&
@@ -718,7 +753,10 @@ void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req) {
         break;
       }
 
-      /* TODO: do we need to check avail > 0? */
+      if (avail == 0) {
+        // Nothing to read after all
+        break;
+      }
 
       buf = handle->alloc_cb((uv_stream_t*)handle, avail);
       assert(buf.len > 0);
@@ -728,20 +766,10 @@ void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req) {
                    buf.len,
                    &bytes,
                    NULL)) {
-        if (bytes > 0) {
-          /* Successful read */
-          handle->read_cb((uv_stream_t*)handle, bytes, buf);
-          /* Read again only if bytes == buf.len */
-          if (bytes <= buf.len) {
-            break;
-          }
-        } else {
-          /* Connection closed */
-          handle->flags &= ~UV_HANDLE_READING;
-          handle->flags |= UV_HANDLE_EOF;
-          LOOP->last_error.code = UV_EOF;
-          LOOP->last_error.sys_errno_ = ERROR_SUCCESS;
-          handle->read_cb((uv_stream_t*)handle, -1, buf);
+        /* Successful read */
+        handle->read_cb((uv_stream_t*)handle, bytes, buf);
+        /* Read again only if bytes == buf.len */
+        if (bytes <= buf.len) {
           break;
         }
       } else {
@@ -822,6 +850,20 @@ void uv_process_pipe_connect_req(uv_pipe_t* handle, uv_connect_t* req) {
       LOOP->last_error = req->error;
       ((uv_connect_cb)req->cb)(req, -1);
     }
+  }
+
+  DECREASE_PENDING_REQ_COUNT(handle);
+}
+
+
+void uv_process_pipe_shutdown_req(uv_pipe_t* handle, uv_shutdown_t* req) {
+  assert(handle->type == UV_NAMED_PIPE);
+
+  CloseHandle(handle->handle);
+  handle->handle = INVALID_HANDLE_VALUE;
+
+  if (req->cb) {
+    ((uv_shutdown_cb) req->cb)(req, 0);
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
