@@ -2227,6 +2227,8 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     if (pipe(stdin_pipe) < 0) {
       goto error;
     }
+    uv__cloexec(stdin_pipe[0], 1);
+    uv__cloexec(stdin_pipe[1], 1);
   }
 
   if (options.stdout_stream) {
@@ -2238,6 +2240,8 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     if (pipe(stdout_pipe) < 0) {
       goto error;
     }
+    uv__cloexec(stdout_pipe[0], 1);
+    uv__cloexec(stdout_pipe[1], 1);
   }
 
   if (options.stderr_stream) {
@@ -2249,6 +2253,8 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
     if (pipe(stderr_pipe) < 0) {
       goto error;
     }
+    uv__cloexec(stderr_pipe[0], 1);
+    uv__cloexec(stderr_pipe[1], 1);
   }
 
   /* This pipe is used by the parent to wait until
