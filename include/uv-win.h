@@ -75,7 +75,13 @@ typedef struct uv_buf_t {
     UV_REQ_FIELDS                         \
     HANDLE pipeHandle;                    \
     struct uv_pipe_accept_s* next_pending; \
-  } uv_pipe_accept_t;
+  } uv_pipe_accept_t;                     \
+  typedef struct uv_tcp_accept_s {        \
+    UV_REQ_FIELDS                         \
+    SOCKET accept_socket;                 \
+    char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32]; \
+    struct uv_tcp_accept_s* next_pending; \
+  } uv_tcp_accept_t;
 
 #define uv_stream_connection_fields       \
   unsigned int write_reqs_pending;        \
@@ -95,9 +101,8 @@ typedef struct uv_buf_t {
   };
 
 #define uv_tcp_server_fields              \
-  SOCKET accept_socket;                   \
-  char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32]; \
-  struct uv_req_s accept_req;
+  uv_tcp_accept_t* accept_reqs;           \
+  uv_tcp_accept_t* pending_accepts;
 
 #define uv_tcp_connection_fields          \
   uv_buf_t read_buffer;
