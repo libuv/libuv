@@ -2193,6 +2193,9 @@ static void uv__chld(EV_P_ ev_child* watcher, int revents) {
   }
 }
 
+#ifndef SPAWN_WAIT_EXEC
+# define SPAWN_WAIT_EXEC 1
+#endif
 
 int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   /*
@@ -2203,8 +2206,10 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   int stdin_pipe[2] = { -1, -1 };
   int stdout_pipe[2] = { -1, -1 };
   int stderr_pipe[2] = { -1, -1 };
+#if SPAWN_WAIT_EXEC
   int signal_pipe[2] = { -1, -1 };
   struct pollfd pfd;
+#endif
   int status;
   pid_t pid;
 
@@ -2266,11 +2271,12 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
    * marked close-on-exec. Then, after the call to `fork()`,
    * the parent polls the read end until it sees POLLHUP.
    */
-#ifdef HAVE_PIPE2
+#if SPAWN_WAIT_EXEC
+# ifdef HAVE_PIPE2
   if (pipe2(signal_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
     goto error;
   }
-#else
+# else
   if (pipe(signal_pipe) < 0) {
     goto error;
   }
@@ -2278,13 +2284,16 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   uv__cloexec(signal_pipe[1], 1);
   uv__nonblock(signal_pipe[0], 1);
   uv__nonblock(signal_pipe[1], 1);
+# endif
 #endif
 
   pid = fork();
 
   if (pid == -1) {
+#if SPAWN_WAIT_EXEC
     uv__close(signal_pipe[0]);
     uv__close(signal_pipe[1]);
+#endif
     environ = save_our_env;
     goto error;
   }
@@ -2323,6 +2332,7 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   /* Restore environment. */
   environ = save_our_env;
 
+#if SPAWN_WAIT_EXEC
   /* POLLHUP signals child has exited or execve()'d. */
   uv__close(signal_pipe[1]);
   do {
@@ -2334,11 +2344,13 @@ int uv_spawn(uv_process_t* process, uv_process_options_t options) {
   while (status == -1 && (errno == EINTR || errno == ENOMEM));
 
   uv__close(signal_pipe[0]);
+  uv__close(signal_pipe[1]);
 
   assert((status == 1)
       && "poll() on pipe read end failed");
   assert((pfd.revents & POLLHUP) == POLLHUP
       && "no POLLHUP on pipe read end");
+#endif
 
   process->pid = pid;
 
