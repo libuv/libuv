@@ -56,9 +56,9 @@ int uv_pipe_init_with_handle(uv_pipe_t* handle, HANDLE pipeHandle) {
   int err = uv_pipe_init(handle);
 
   if (!err) {
-    /* 
+    /*
      * At this point we don't know whether the pipe will be used as a client
-     * or a server.  So, we assume that it will be a client until 
+     * or a server.  So, we assume that it will be a client until
      * uv_listen is called.
      */
     handle->handle = pipeHandle;
@@ -518,7 +518,7 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     return -1;
   }
 
-  if (!(handle->flags & UV_HANDLE_BOUND) && 
+  if (!(handle->flags & UV_HANDLE_BOUND) &&
       !(handle->flags & UV_HANDLE_GIVEN_OS_HANDLE)) {
     uv_set_error(UV_EINVAL, 0);
     return -1;
@@ -530,7 +530,7 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     return -1;
   }
 
-  if (!(handle->flags & UV_HANDLE_PIPESERVER) && 
+  if (!(handle->flags & UV_HANDLE_PIPESERVER) &&
       !(handle->flags & UV_HANDLE_GIVEN_OS_HANDLE)) {
     uv_set_error(UV_ENOTSUP, 0);
     return -1;
