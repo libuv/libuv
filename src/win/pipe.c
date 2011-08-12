@@ -367,6 +367,8 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
     if (pipeHandle != INVALID_HANDLE_VALUE) {
       break;
     }
+
+    SwitchToThread();
   }
 
   if (pipeHandle != INVALID_HANDLE_VALUE && !uv_set_pipe_handle(handle, pipeHandle)) {
