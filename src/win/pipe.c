@@ -754,7 +754,7 @@ void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req) {
       }
 
       if (avail == 0) {
-        // Nothing to read after all
+        /* There is nothing to read after all. */
         break;
       }
 
@@ -863,7 +863,7 @@ void uv_process_pipe_shutdown_req(uv_pipe_t* handle, uv_shutdown_t* req) {
   handle->handle = INVALID_HANDLE_VALUE;
 
   if (req->cb) {
-    ((uv_shutdown_cb) req->cb)(req, 0);
+    req->cb(req, 0);
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
