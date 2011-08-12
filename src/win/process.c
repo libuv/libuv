@@ -611,15 +611,8 @@ static void CALLBACK exit_wait_callback(void* data, BOOLEAN didTimeout) {
   assert(didTimeout == FALSE);
   assert(process);
 
-  memset(&process->exit_req.overlapped, 0, sizeof(process->exit_req.overlapped));
-
   /* Post completed */
-  if (!PostQueuedCompletionStatus(LOOP->iocp,
-                                  0,
-                                  0,
-                                  &process->exit_req.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
-  }
+  POST_COMPLETION_FOR_REQ(&process->exit_req);
 }
 
 
@@ -633,15 +626,8 @@ static void CALLBACK close_wait_callback(void* data, BOOLEAN didTimeout) {
   assert(didTimeout == FALSE);
   assert(process);
 
-  memset(&process->close_req.overlapped, 0, sizeof(process->close_req.overlapped));
-
   /* Post completed */
-  if (!PostQueuedCompletionStatus(LOOP->iocp,
-                                  0,
-                                  0,
-                                  &process->close_req.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
-  }
+  POST_COMPLETION_FOR_REQ(&process->close_req);
 }
 
 
@@ -679,15 +665,8 @@ static DWORD WINAPI spawn_failure(void* data) {
 
   FlushFileBuffers(child_stderr);
 
-  memset(&process->exit_req.overlapped, 0, sizeof(process->exit_req.overlapped));
-
   /* Post completed */
-  if (!PostQueuedCompletionStatus(LOOP->iocp,
-                                  0,
-                                  0,
-                                  &process->exit_req.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
-  }
+  POST_COMPLETION_FOR_REQ(&process->exit_req);
 
   return 0;
 }

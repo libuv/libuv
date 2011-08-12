@@ -27,6 +27,7 @@
 
 #include "tree.h"
 #include "ntdll.h"
+#include "kernel32.h"
 
 
 /*
@@ -131,6 +132,15 @@ uv_req_t* uv_overlapped_to_req(OVERLAPPED* overlapped);
 
 void uv_insert_pending_req(uv_req_t* req);
 void uv_process_reqs();
+
+#define POST_COMPLETION_FOR_REQ(req)                                    \
+  memset(&((req)->overlapped), 0, sizeof((req)->overlapped));           \
+  if (!PostQueuedCompletionStatus(LOOP->iocp,                           \
+                                  0,                                    \
+                                  0,                                    \
+                                  &((req)->overlapped))) {              \
+    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");       \
+  }
 
 
 /*
@@ -243,6 +253,7 @@ void uv_winapi_init();
 
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtQueryInformationFile pNtQueryInformationFile;
+extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 
 
 #endif /* UV_WIN_INTERNAL_H_ */

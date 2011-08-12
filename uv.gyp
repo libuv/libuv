@@ -101,6 +101,7 @@
             'src/win/getaddrinfo.c',
             'src/win/handle.c',
             'src/win/internal.h',
+            'src/win/kernel32.h',
             'src/win/loop-watcher.c',
             'src/win/ntdll.h',
             'src/win/pipe.c',
