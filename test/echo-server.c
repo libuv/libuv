@@ -195,7 +195,7 @@ static int tcp4_echo_start(int port) {
   r = uv_listen((uv_stream_t*)&tcpServer, SOMAXCONN, on_connection);
   if (r) {
     /* TODO: Error codes */
-    fprintf(stderr, "Listen error\n");
+    fprintf(stderr, "Listen error %s\n", uv_err_name(uv_last_error()));
     return 1;
   }
 
