@@ -265,6 +265,16 @@ static int uv_tcp_set_socket(uv_tcp_t* handle, SOCKET socket) {
     return -1;
   }
 
+  if (pSetFileCompletionNotificationModes) {
+    if (!pSetFileCompletionNotificationModes((HANDLE)socket, FILE_SKIP_SET_EVENT_ON_HANDLE | 
+       FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
+      uv_set_sys_error(GetLastError());
+      return -1;
+    }
+
+    handle->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
+  }
+
   handle->socket = socket;
 
   return 0;
@@ -430,19 +440,23 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle) {
                           &bytes,
                           &req->overlapped);
 
-  if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
+  if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
+    /* Process the req without IOCP. */
+    handle->accept_socket = accept_socket;
+    handle->reqs_pending++;
+    uv_insert_pending_req((uv_req_t*)req);
+  } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
+    /* The req will be processed with IOCP. */
+    handle->accept_socket = accept_socket;
+    handle->reqs_pending++;
+  } else {
     /* Make this req pending reporting an error. */
     req->error = uv_new_sys_error(WSAGetLastError());
     uv_insert_pending_req(req);
     handle->reqs_pending++;
     /* Destroy the preallocated client socket. */
     closesocket(accept_socket);
-    return;
   }
-
-  handle->accept_socket = accept_socket;
-
-  handle->reqs_pending++;
 }
 
 
@@ -469,16 +483,22 @@ static void uv_tcp_queue_read(uv_tcp_t* handle) {
                    &flags,
                    &req->overlapped,
                    NULL);
-  if (result != 0 && WSAGetLastError() != ERROR_IO_PENDING) {
+
+  if (UV_SUCCEEDED_WITHOUT_IOCP(result == 0)) {
+    /* Process the req without IOCP. */
+    handle->flags |= UV_HANDLE_READ_PENDING;
+    handle->reqs_pending++;
+    uv_insert_pending_req(req);
+  } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
+    /* The req will be processed with IOCP. */
+    handle->flags |= UV_HANDLE_READ_PENDING;
+    handle->reqs_pending++;
+  } else {
     /* Make this req pending reporting an error. */
     req->error = uv_new_sys_error(WSAGetLastError());
     uv_insert_pending_req(req);
     handle->reqs_pending++;
-    return;
-  }
-
-  handle->flags |= UV_HANDLE_READ_PENDING;
-  handle->reqs_pending++;
+  } 
 }
 
 
@@ -606,12 +626,17 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
                        &bytes,
                        &req->overlapped);
 
-  if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
+  if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
+    /* Process the req without IOCP. */
+    handle->reqs_pending++;
+    uv_insert_pending_req((uv_req_t*)req);
+  } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
+    /* The req will be processed with IOCP. */
+    handle->reqs_pending++;
+  } else {
     uv_set_sys_error(WSAGetLastError());
     return -1;
   }
-
-  handle->reqs_pending++;
 
   return 0;
 }
@@ -656,12 +681,15 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
                        &bytes,
                        &req->overlapped);
 
-  if (!success && WSAGetLastError() != ERROR_IO_PENDING) {
+  if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
+    handle->reqs_pending++;
+    uv_insert_pending_req((uv_req_t*)req);
+  } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
+    handle->reqs_pending++;
+  } else {
     uv_set_sys_error(WSAGetLastError());
     return -1;
   }
-
-  handle->reqs_pending++;
 
   return 0;
 }
@@ -688,7 +716,7 @@ int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen) {
 int uv_tcp_write(uv_write_t* req, uv_tcp_t* handle, uv_buf_t bufs[], int bufcnt,
     uv_write_cb cb) {
   int result;
-  DWORD bytes, err;
+  DWORD bytes;
 
   if (!(handle->flags & UV_HANDLE_CONNECTION)) {
     uv_set_sys_error(WSAEINVAL);
@@ -713,26 +741,24 @@ int uv_tcp_write(uv_write_t* req, uv_tcp_t* handle, uv_buf_t bufs[], int bufcnt,
                    0,
                    &req->overlapped,
                    NULL);
-  if (result != 0) {
-    err = WSAGetLastError();
-    if (err != WSA_IO_PENDING) {
-      /* Send failed due to an error. */
-      uv_set_sys_error(WSAGetLastError());
-      return -1;
-    }
-  }
 
-  if (result == 0) {
+  if (UV_SUCCEEDED_WITHOUT_IOCP(result == 0)) {
     /* Request completed immediately. */
     req->queued_bytes = 0;
-  } else {
+    handle->reqs_pending++;
+    handle->write_reqs_pending++;
+    uv_insert_pending_req((uv_req_t*)req);
+  } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
     req->queued_bytes = uv_count_bufs(bufs, bufcnt);
+    handle->reqs_pending++;
+    handle->write_reqs_pending++;
     handle->write_queue_size += req->queued_bytes;
+  } else {
+    /* Send failed due to an error. */
+    uv_set_sys_error(WSAGetLastError());
+    return -1;
   }
-
-  handle->reqs_pending++;
-  handle->write_reqs_pending++;
 
   return 0;
 }

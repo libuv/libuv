@@ -25,6 +25,10 @@
 #include <windows.h>
 
 
+#define FILE_SKIP_COMPLETION_PORT_ON_SUCCESS    0x1
+#define FILE_SKIP_SET_EVENT_ON_HANDLE           0x2
+
+
 #ifndef _MSC_VER
   typedef struct _OVERLAPPED_ENTRY {
       ULONG_PTR lpCompletionKey;
@@ -42,5 +46,9 @@ typedef BOOL (WINAPI *sGetQueuedCompletionStatusEx)
               PULONG ulNumEntriesRemoved,
               DWORD dwMilliseconds,
               BOOL fAlertable);
+
+typedef BOOL (WINAPI* sSetFileCompletionNotificationModes)
+             (HANDLE FileHandle,
+              UCHAR Flags);
 
 #endif /* UV_WIN_KERNEL32_H_ */

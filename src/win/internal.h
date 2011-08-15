@@ -107,6 +107,7 @@ extern uv_loop_t uv_main_loop_;
 #define UV_HANDLE_READ_PENDING     0x8000
 #define UV_HANDLE_GIVEN_OS_HANDLE  0x10000
 #define UV_HANDLE_UV_ALLOCED       0x20000
+#define UV_HANDLE_SYNC_BYPASS_IOCP 0x40000
 
 void uv_want_endgame(uv_handle_t* handle);
 void uv_process_endgames();
@@ -121,6 +122,12 @@ void uv_process_endgames();
       uv_want_endgame((uv_handle_t*)handle);  \
     }                                         \
   } while (0)
+
+#define UV_SUCCEEDED_WITHOUT_IOCP(result)                     \
+  ((result) && (handle->flags & UV_HANDLE_SYNC_BYPASS_IOCP))
+
+#define UV_SUCCEEDED_WITH_IOCP(result)                        \
+  ((result) || (GetLastError() == ERROR_IO_PENDING))
 
 
 /*
@@ -254,6 +261,7 @@ void uv_winapi_init();
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
+extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
 
 
 #endif /* UV_WIN_INTERNAL_H_ */

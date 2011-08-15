@@ -29,6 +29,7 @@
 sRtlNtStatusToDosError pRtlNtStatusToDosError;
 sNtQueryInformationFile pNtQueryInformationFile;
 sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
+sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
 
 
 void uv_winapi_init() {
@@ -62,4 +63,7 @@ void uv_winapi_init() {
   pGetQueuedCompletionStatusEx = (sGetQueuedCompletionStatusEx) GetProcAddress(
       kernel32_module,
       "GetQueuedCompletionStatusEx");
+
+  pSetFileCompletionNotificationModes = (sSetFileCompletionNotificationModes) 
+    GetProcAddress(kernel32_module, "SetFileCompletionNotificationModes");
 }
