@@ -380,7 +380,7 @@ int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
     handle->flags |= UV_HANDLE_IPV6;
     return uv__bind(handle, AF_INET6, (struct sockaddr*)&addr, sizeof(struct sockaddr_in6));
   } else {
-    uv_new_sys_error(UV_EAFNOSUPPORT);
+    uv_new_sys_error(WSAEAFNOSUPPORT);
     return -1;
   }
 }
@@ -624,7 +624,7 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
   DWORD bytes;
 
   if (!uv_allow_ipv6) {
-    uv_new_sys_error(UV_EAFNOSUPPORT);
+    uv_new_sys_error(WSAEAFNOSUPPORT);
     return -1;
   }
 
