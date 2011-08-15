@@ -108,6 +108,7 @@ extern uv_loop_t uv_main_loop_;
 #define UV_HANDLE_GIVEN_OS_HANDLE  0x10000
 #define UV_HANDLE_UV_ALLOCED       0x20000
 #define UV_HANDLE_SYNC_BYPASS_IOCP 0x40000
+#define UV_HANDLE_TCP_ZERO_READ    0x80000
 
 void uv_want_endgame(uv_handle_t* handle);
 void uv_process_endgames();

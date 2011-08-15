@@ -94,14 +94,20 @@ typedef struct uv_buf_t {
     struct { uv_stream_server_fields     };  \
   };
 
-#define UV_TCP_PRIVATE_FIELDS             \
-  union {                                 \
-    SOCKET socket;                        \
-    HANDLE handle;                        \
-  };                                      \
+#define uv_tcp_server_fields              \
   SOCKET accept_socket;                   \
   char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32]; \
-  struct uv_req_s accept_req;             \
+  struct uv_req_s accept_req;
+
+#define uv_tcp_connection_fields          \
+  uv_buf_t read_buffer;
+
+#define UV_TCP_PRIVATE_FIELDS             \
+  SOCKET socket;                          \
+  union {                                 \
+    struct { uv_tcp_server_fields };      \
+    struct { uv_tcp_connection_fields };  \
+  };
 
 #define uv_pipe_server_fields             \
     uv_pipe_accept_t accept_reqs[4];      \
