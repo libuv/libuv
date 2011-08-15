@@ -41,11 +41,11 @@ if defined noprojgen goto msbuild
 @rem Generate the VS project.
 call create-msvs-files.bat
 if errorlevel 1 goto create-msvs-files-failed
-if not exist all.sln goto create-msvs-files-failed
+if not exist uv.sln goto create-msvs-files-failed
 
 :msbuild
 @rem Build the sln with msbuild.
-msbuild all.sln /t:%target% /p:Configuration=%config% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
+msbuild uv.sln /t:%target% /p:Configuration=%config% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
 if errorlevel 1 goto exit
 
 :run
