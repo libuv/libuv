@@ -198,6 +198,7 @@ void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req);
 void uv_process_pipe_write_req(uv_pipe_t* handle, uv_write_t* req);
 void uv_process_pipe_accept_req(uv_pipe_t* handle, uv_req_t* raw_req);
 void uv_process_pipe_connect_req(uv_pipe_t* handle, uv_connect_t* req);
+void uv_process_pipe_shutdown_req(uv_pipe_t* handle, uv_shutdown_t* req);
 
 /*
  * Loop watchers
