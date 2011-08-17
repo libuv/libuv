@@ -22,7 +22,6 @@
 #include "internal.h"
 
 #include <stdint.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -34,17 +33,6 @@
 
 #undef NANOSEC
 #define NANOSEC 1000000000
-
-#define container_of(ptr, type, member) \
-  ((type *) ((char *) (ptr) - offsetof(type, member)))
-
-#define SAVE_ERRNO(block) \
-  do { \
-    int _saved_errno = errno; \
-    do { block; } while (0); \
-    errno = _saved_errno; \
-  } \
-  while (0);
 
 
 /* Don't look aghast, this is exactly how glibc's basename() works. */

@@ -25,6 +25,8 @@
 #include "uv-common.h"
 #include "uv-eio.h"
 
+#include <stddef.h> /* offsetof */
+
 #if defined(__linux__)
 
 #include <linux/version.h>
@@ -58,6 +60,17 @@
 #ifdef __FreeBSD__
 # define HAVE_FUTIMES
 #endif
+
+#define container_of(ptr, type, member) \
+  ((type *) ((char *) (ptr) - offsetof(type, member)))
+
+#define SAVE_ERRNO(block) \
+  do { \
+    int _saved_errno = errno; \
+    do { block; } while (0); \
+    errno = _saved_errno; \
+  } \
+  while (0);
 
 /* flags */
 enum {
