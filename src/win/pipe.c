@@ -164,8 +164,6 @@ static DWORD WINAPI pipe_shutdown_thread_proc(void* parameter) {
 
 
 void uv_pipe_endgame(uv_pipe_t* handle) {
-  uv_err_t err;
-  int status;
   unsigned int uv_alloced;
   DWORD result;
   uv_shutdown_t* req;
