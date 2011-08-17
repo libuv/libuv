@@ -130,7 +130,7 @@ static void uv_poll_ex(int block) {
   uv_req_t* req;
   OVERLAPPED_ENTRY overlappeds[64];
   ULONG count;
-  int i;
+  ULONG i;
 
   if (block) {
     timeout = uv_get_poll_timeout();
