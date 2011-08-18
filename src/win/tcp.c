@@ -935,6 +935,7 @@ void uv_process_tcp_accept_req(uv_tcp_t* handle, uv_req_t* req) {
     /* socket may still be healthy. If the server socket is broken
     /* uv_queue_accept will detect it. */
     closesocket(handle->accept_socket);
+    handle->accept_socket = INVALID_SOCKET;
     if (handle->flags & UV_HANDLE_LISTENING) {
       uv_tcp_queue_accept(handle);
     }
