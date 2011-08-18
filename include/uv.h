@@ -578,7 +578,7 @@ struct uv_getaddrinfo_s {
 };
 
 
-/* 
+/*
  * Asynchronous getaddrinfo(3).
  *
  * Return code 0 means that request is accepted and callback will be called

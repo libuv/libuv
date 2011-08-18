@@ -64,6 +64,6 @@ void uv_winapi_init() {
       kernel32_module,
       "GetQueuedCompletionStatusEx");
 
-  pSetFileCompletionNotificationModes = (sSetFileCompletionNotificationModes) 
+  pSetFileCompletionNotificationModes = (sSetFileCompletionNotificationModes)
     GetProcAddress(kernel32_module, "SetFileCompletionNotificationModes");
 }

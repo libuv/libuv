@@ -281,7 +281,7 @@ static int uv_tcp_set_socket(uv_tcp_t* handle, SOCKET socket) {
   }
 
   if (pSetFileCompletionNotificationModes) {
-    if (!pSetFileCompletionNotificationModes((HANDLE)socket, FILE_SKIP_SET_EVENT_ON_HANDLE | 
+    if (!pSetFileCompletionNotificationModes((HANDLE)socket, FILE_SKIP_SET_EVENT_ON_HANDLE |
        FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
       uv_set_sys_error(GetLastError());
       return -1;
@@ -492,7 +492,7 @@ static void uv_tcp_queue_read(uv_tcp_t* handle) {
   req = &handle->read_req;
   memset(&req->overlapped, 0, sizeof(req->overlapped));
 
-  /* 
+  /*
    * Preallocate a read buffer if the number of active streams is below
    * the threshold.
   */
@@ -531,7 +531,7 @@ static void uv_tcp_queue_read(uv_tcp_t* handle) {
     req->error = uv_new_sys_error(WSAGetLastError());
     uv_insert_pending_req(req);
     handle->reqs_pending++;
-  } 
+  }
 }
 
 
