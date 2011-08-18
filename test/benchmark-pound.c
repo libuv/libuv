@@ -103,7 +103,9 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
   if (status != 0) {
+#if DEBUG
     fprintf(stderr, "connect error %s\n", uv_err_name(uv_last_error()));
+#endif
     uv_close((uv_handle_t*)req->handle, close_cb);
     conns_failed++;
     return;
