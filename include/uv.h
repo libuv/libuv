@@ -285,7 +285,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
 
 /*
- * Construtor for uv_buf_t.
+ * Constructor for uv_buf_t.
  * Due to platform differences the user cannot rely on the ordering of the
  * base and len members of the uv_buf_t struct. The user is responsible for
  * freeing base after the uv_buf_t is done. Return struct passed by value.
