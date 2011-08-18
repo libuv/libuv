@@ -111,8 +111,7 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
 
   wr = (write_req_t*) malloc(sizeof *wr);
 
-  wr->buf.base = buf.base;
-  wr->buf.len = nread;
+  wr->buf = uv_buf_init(buf.base, nread);
   if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
     FATAL("uv_write failed");
   }
@@ -125,10 +124,7 @@ static void on_close(uv_handle_t* peer) {
 
 
 static uv_buf_t echo_alloc(uv_stream_t* handle, size_t suggested_size) {
-  uv_buf_t buf;
-  buf.base = (char*) malloc(suggested_size);
-  buf.len = suggested_size;
-  return buf;
+  return uv_buf_init(malloc(suggested_size), suggested_size);
 }
 
 
