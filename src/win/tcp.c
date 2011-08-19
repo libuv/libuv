@@ -627,8 +627,8 @@ void uv_process_tcp_read_req(uv_tcp_t* handle, uv_req_t* req) {
     if ((handle->flags & UV_HANDLE_READING)) {
       handle->flags &= ~UV_HANDLE_READING;
       LOOP->last_error = req->error;
-      buf.base = 0;
-      buf.len = 0;
+      buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
+            uv_buf_init(NULL, 0) : handle->read_buffer;
       handle->read_cb((uv_stream_t*)handle, -1, buf);
     }
   } else {
