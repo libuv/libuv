@@ -39,6 +39,8 @@ typedef struct {
   size_t len;
 } uv_buf_t;
 
+typedef int uv_file;
+
 #define UV_REQ_BUFSML_SIZE (4)
 
 #define UV_REQ_PRIVATE_FIELDS  /* empty */
@@ -154,5 +156,8 @@ typedef struct {
 
 #define UV_PROCESS_PRIVATE_FIELDS \
   ev_child child_watcher;
+
+#define UV_FS_PRIVATE_FIELDS \
+#define UV_WORK_PRIVATE_FIELDS \
 
 #endif /* UV_UNIX_H */
