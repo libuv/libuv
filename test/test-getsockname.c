@@ -33,7 +33,7 @@ static uv_connect_t connect_req;
 static uv_tcp_t tcpServer;
 
 
-static uv_buf_t alloc(uv_stream_t* handle, size_t suggested_size) {
+static uv_buf_t alloc(uv_handle_t* handle, size_t suggested_size) {
   uv_buf_t buf;
   buf.base = (char*) malloc(suggested_size);
   buf.len = suggested_size;

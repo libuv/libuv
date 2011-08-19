@@ -773,7 +773,7 @@ void uv_process_pipe_read_req(uv_pipe_t* handle, uv_req_t* req) {
         break;
       }
 
-      buf = handle->alloc_cb((uv_stream_t*)handle, avail);
+      buf = handle->alloc_cb((uv_handle_t*) handle, avail);
       assert(buf.len > 0);
 
       if (ReadFile(handle->handle,

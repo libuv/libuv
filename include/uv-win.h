@@ -114,6 +114,8 @@ typedef struct uv_buf_t {
     struct { uv_tcp_connection_fields };  \
   };
 
+#define UV_UDP_PRIVATE_FIELDS
+
 #define uv_pipe_server_fields             \
     uv_pipe_accept_t accept_reqs[4];      \
     uv_pipe_accept_t* pending_accepts;
