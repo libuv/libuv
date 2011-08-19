@@ -287,12 +287,12 @@ static void uv_tcp_queue_read(uv_tcp_t* handle) {
    * the threshold.
   */
   if (active_tcp_streams < uv_active_tcp_streams_threshold) {
-    handle->flags &= ~UV_HANDLE_TCP_ZERO_READ;
+    handle->flags &= ~UV_HANDLE_ZERO_READ;
     handle->read_buffer = handle->alloc_cb((uv_stream_t*)handle, 65536);
     assert(handle->read_buffer.len > 0);
     buf = handle->read_buffer;
   } else {
-    handle->flags |= UV_HANDLE_TCP_ZERO_READ;
+    handle->flags |= UV_HANDLE_ZERO_READ;
     buf.base = (char*) &uv_zero_;
     buf.len = 0;
   }
@@ -632,7 +632,7 @@ void uv_process_tcp_read_req(uv_tcp_t* handle, uv_req_t* req) {
       handle->read_cb((uv_stream_t*)handle, -1, buf);
     }
   } else {
-    if (!(handle->flags & UV_HANDLE_TCP_ZERO_READ)) {
+    if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
       /* The read was done with a non-zero buffer length. */
       if (req->overlapped.InternalHigh > 0) {
         /* Successful read */
