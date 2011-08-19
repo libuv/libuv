@@ -163,8 +163,6 @@ size_t uv_count_bufs(uv_buf_t bufs[], int count);
 /*
  * TCP
  */
-void uv_tcp_endgame(uv_tcp_t* handle);
-
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client);
 int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
@@ -176,6 +174,8 @@ void uv_process_tcp_read_req(uv_tcp_t* handle, uv_req_t* req);
 void uv_process_tcp_write_req(uv_tcp_t* handle, uv_write_t* req);
 void uv_process_tcp_accept_req(uv_tcp_t* handle, uv_req_t* req);
 void uv_process_tcp_connect_req(uv_tcp_t* handle, uv_connect_t* req);
+
+void uv_tcp_endgame(uv_tcp_t* handle);
 
 
 /*
