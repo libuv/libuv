@@ -112,6 +112,8 @@
             'src/win/util.c',
             'src/win/winapi.c',
             'src/win/winapi.h',
+            'src/win/winsock.c',
+            'src/win/winsock.h',
           ],
           'link_settings': {
             'libraries': [

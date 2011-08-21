@@ -27,6 +27,7 @@
 
 #include "tree.h"
 #include "winapi.h"
+#include "winsock.h"
 
 
 /*
@@ -162,8 +163,6 @@ size_t uv_count_bufs(uv_buf_t bufs[], int count);
 /*
  * TCP
  */
-void uv_winsock_startup();
-
 void uv_tcp_endgame(uv_tcp_t* handle);
 
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
@@ -258,6 +257,7 @@ void uv_set_error(uv_err_code code, int sys_errno);
  * Initialization for the windows and winsock api
  */
 void uv_winapi_init();
+void uv_winsock_init();
 
 
 #endif /* UV_WIN_INTERNAL_H_ */
