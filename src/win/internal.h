@@ -26,8 +26,7 @@
 #include "../uv-common.h"
 
 #include "tree.h"
-#include "ntdll.h"
-#include "kernel32.h"
+#include "winapi.h"
 
 
 /*
@@ -256,14 +255,9 @@ void uv_set_error(uv_err_code code, int sys_errno);
 
 
 /*
- * Windows api functions that we need to retrieve dynamically
+ * Initialization for the windows and winsock api
  */
 void uv_winapi_init();
-
-extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
-extern sNtQueryInformationFile pNtQueryInformationFile;
-extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
-extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
 
 
 #endif /* UV_WIN_INTERNAL_H_ */
