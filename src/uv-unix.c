@@ -1811,7 +1811,6 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   struct sockaddr_un sun;
   const char* pipe_fname;
   int saved_errno;
-  int locked;
   int sockfd;
   int status;
   int bound;
