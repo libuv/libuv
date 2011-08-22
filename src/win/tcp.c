@@ -28,8 +28,11 @@
 
 /*
  * Threshold of active tcp streams for which to preallocate tcp read buffers.
+ * (Due to node slab allocator performing poorly under this pattern,
+ *  the optimization is temporarily disabled (threshold=0).  This will be
+ *  revisited once node allocator is improved.)
  */
-const unsigned int uv_active_tcp_streams_threshold = 50;
+const unsigned int uv_active_tcp_streams_threshold = 0;
 
 /* 
  * Number of simultaneous pending AcceptEx calls.
