@@ -96,17 +96,6 @@ void uv_unref();
 void uv_update_time();
 int64_t uv_now();
 
-/*
- * Most functions return boolean: 0 for success and -1 for failure.
- * On error the user should then call uv_last_error() to determine
- * the error code.
- */
-uv_err_t uv_last_error();
-char* uv_strerror(uv_err_t err);
-const char* uv_err_name(uv_err_t err);
-
-
-
 
 /*
  * The status parameter is 0 if the request completed successfully,
@@ -215,6 +204,16 @@ struct uv_err_s {
   /* private */
   int sys_errno_;
 };
+
+
+/*
+ * Most functions return boolean: 0 for success and -1 for failure.
+ * On error the user should then call uv_last_error() to determine
+ * the error code.
+ */
+uv_err_t uv_last_error();
+char* uv_strerror(uv_err_t err);
+const char* uv_err_name(uv_err_t err);
 
 
 #define UV_REQ_FIELDS \
