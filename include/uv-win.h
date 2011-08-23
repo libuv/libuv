@@ -58,7 +58,6 @@ typedef struct uv_buf_t {
       size_t queued_bytes;                \
     };                                    \
   };                                      \
-  uv_err_t error;                         \
   struct uv_req_s* next_req;
 
 #define UV_WRITE_PRIVATE_FIELDS           \
@@ -109,6 +108,7 @@ typedef struct uv_buf_t {
 
 #define UV_TCP_PRIVATE_FIELDS             \
   SOCKET socket;                          \
+  uv_err_t bind_error;                    \
   union {                                 \
     struct { uv_tcp_server_fields };      \
     struct { uv_tcp_connection_fields };  \

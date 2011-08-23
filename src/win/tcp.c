@@ -174,7 +174,7 @@ static int uv__bind(uv_tcp_t* handle, int domain, struct sockaddr* addr, int add
     err = WSAGetLastError();
     if (err == WSAEADDRINUSE) {
       /* Some errors are not to be reported until connect() or listen() */
-      handle->error = uv_new_sys_error(err);
+      handle->bind_error = uv_new_sys_error(err);
       handle->flags |= UV_HANDLE_BIND_ERROR;
     } else {
       uv_set_sys_error(err);
@@ -335,7 +335,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   assert(backlog > 0);
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    LOOP->last_error = handle->error;
+    LOOP->last_error = handle->bind_error;
     return -1;
   }
 
@@ -452,7 +452,7 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
   DWORD bytes;
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    LOOP->last_error = handle->error;
+    LOOP->last_error = handle->bind_error;
     return -1;
   }
 
@@ -507,7 +507,7 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
   }
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    LOOP->last_error = handle->error;
+    LOOP->last_error = handle->bind_error;
     return -1;
   }
 
