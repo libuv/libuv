@@ -34,7 +34,7 @@
  */
 const unsigned int uv_active_tcp_streams_threshold = 0;
 
-/* 
+/*
  * Number of simultaneous pending AcceptEx calls.
  */
 const unsigned int uv_simultaneous_server_accepts = 32;
