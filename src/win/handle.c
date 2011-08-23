@@ -39,8 +39,7 @@ int uv_is_active(uv_handle_t* handle) {
 }
 
 
-/* TODO: integrate this with uv_close. */
-static void uv_close_error(uv_handle_t* handle, uv_err_t e) {
+void uv_close(uv_handle_t* handle, uv_close_cb cb) {
   uv_tcp_t* tcp;
   uv_pipe_t* pipe;
   uv_process_t* process;
@@ -49,8 +48,8 @@ static void uv_close_error(uv_handle_t* handle, uv_err_t e) {
     return;
   }
 
-  handle->error = e;
   handle->flags |= UV_HANDLE_CLOSING;
+  handle->close_cb = cb;
 
   /* Handle-specific close actions */
   switch (handle->type) {
@@ -113,12 +112,6 @@ static void uv_close_error(uv_handle_t* handle, uv_err_t e) {
       /* Not supported */
       abort();
   }
-}
-
-
-void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
-  handle->close_cb = close_cb;
-  uv_close_error(handle, uv_ok_);
 }
 
 
