@@ -548,7 +548,7 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
 }
 
 
-int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen) {
+int uv_getsockname(uv_handle_t* handle, struct sockaddr* name, int* namelen) {
   int result;
 
   if (handle->flags & UV_HANDLE_SHUTTING) {

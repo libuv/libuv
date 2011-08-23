@@ -1116,7 +1116,7 @@ out:
 }
 
 
-int uv_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen) {
+int uv_getsockname(uv_handle_t* handle, struct sockaddr* name, int* namelen) {
   socklen_t socklen;
   int saved_errno;
 
