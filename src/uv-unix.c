@@ -1255,6 +1255,11 @@ int64_t uv_now() {
 int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE);
 
+  if (stream->flags & UV_CLOSING) {
+    uv_err_new((uv_handle_t*)stream, EINVAL);
+    return -1;
+  }
+
   /* The UV_READING flag is irrelevant of the state of the tcp - it just
    * expresses the desired state of the user.
    */
