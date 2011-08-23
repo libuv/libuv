@@ -226,6 +226,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
         uv__close(stream->accepted_fd);
         stream->accepted_fd = -1;
       }
+
+      assert(!ev_is_active(&stream->read_watcher));
+      assert(!ev_is_active(&stream->write_watcher));
       break;
 
     case UV_PREPARE:
@@ -824,17 +827,18 @@ static void uv__read(uv_stream_t* stream) {
 
     assert(buf.len > 0);
     assert(buf.base);
+    assert(stream->fd >= 0);
 
     do {
       nread = read(stream->fd, buf.base, buf.len);
     }
-    while (nread == -1 && errno == EINTR);
+    while (nread < 0 && errno == EINTR);
 
     if (nread < 0) {
       /* Error */
       if (errno == EAGAIN) {
         /* Wait for the next one. */
-        if (((uv_handle_t*)stream)->flags & UV_READING) {
+        if (stream->flags & UV_READING) {
           ev_io_start(EV_DEFAULT_UC_ &stream->read_watcher);
         }
         uv_err_new((uv_handle_t*)stream, EAGAIN);
