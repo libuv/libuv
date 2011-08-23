@@ -258,6 +258,7 @@ void uv_set_error(uv_err_code code, int sys_errno);
  */
 void uv_winapi_init();
 void uv_winsock_init();
+int uv_ntstatus_to_winsock_error(NTSTATUS status);
 
 
 #endif /* UV_WIN_INTERNAL_H_ */
