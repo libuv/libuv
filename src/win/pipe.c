@@ -300,8 +300,6 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     errno = GetLastError();
     if (errno == ERROR_ACCESS_DENIED) {
       uv_set_error(UV_EADDRINUSE, errno);
-      handle->error = LOOP->last_error;
-      handle->flags |= UV_HANDLE_BIND_ERROR;
     } else if (errno == ERROR_PATH_NOT_FOUND || errno == ERROR_INVALID_NAME) {
       uv_set_error(UV_EACCESS, errno);
     } else {
@@ -569,11 +567,6 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   int i, errno;
   uv_pipe_accept_t* req;
   HANDLE pipeHandle;
-
-  if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    uv_set_error(UV_EINVAL, 0);
-    return -1;
-  }
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
       !(handle->flags & UV_HANDLE_GIVEN_OS_HANDLE)) {
