@@ -142,7 +142,6 @@ void uv_insert_pending_req(uv_req_t* req);
 void uv_process_reqs();
 
 #define POST_COMPLETION_FOR_REQ(req)                                    \
-  memset(&((req)->overlapped), 0, sizeof((req)->overlapped));           \
   if (!PostQueuedCompletionStatus(LOOP->iocp,                           \
                                   0,                                    \
                                   0,                                    \
@@ -251,6 +250,33 @@ uv_err_code uv_translate_sys_error(int sys_errno);
 uv_err_t uv_new_sys_error(int sys_errno);
 void uv_set_sys_error(int sys_errno);
 void uv_set_error(uv_err_code code, int sys_errno);
+
+#define SET_REQ_STATUS(req, status)                                     \
+   (req)->overlapped.Internal = (ULONG_PTR) (status)
+
+#define SET_REQ_ERROR(req, error)                                       \
+  SET_REQ_STATUS((req), NTSTATUS_FROM_WIN32((error)))
+
+#define SET_REQ_SUCCESS(req)                                            \
+  SET_REQ_STATUS((req), STATUS_SUCCESS)
+
+#define GET_REQ_STATUS(req)                                             \
+  ((req)->overlapped.Internal)
+
+#define REQ_SUCCESS(req)                                                \
+  (NT_SUCCESS(GET_REQ_STATUS((req))))
+
+#define GET_REQ_ERROR(req)                                              \
+  (pRtlNtStatusToDosError(GET_REQ_STATUS((req))))
+
+#define GET_REQ_SOCK_ERROR(req)                                         \
+  (uv_ntstatus_to_winsock_error(GET_REQ_STATUS((req))))
+
+#define GET_REQ_UV_ERROR(req)                                           \
+  (uv_new_sys_error(GET_REQ_ERROR((req))))
+
+#define GET_REQ_UV_SOCK_ERROR(req)                                      \
+  (uv_new_sys_error(GET_REQ_SOCK_ERROR((req))))
 
 
 /*
