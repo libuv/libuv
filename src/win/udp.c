@@ -200,6 +200,24 @@ int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned int flags)
 }
 
 
+int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen) {
+  int result;
+
+  if (handle->flags & UV_HANDLE_SHUTTING) {
+    uv_set_sys_error(WSAESHUTDOWN);
+    return -1;
+  }
+
+  result = getsockname(handle->socket, name, namelen);
+  if (result != 0) {
+    uv_set_sys_error(WSAGetLastError());
+    return -1;
+  }
+
+  return 0;
+}
+
+
 static void uv_udp_queue_recv(uv_udp_t* handle) {
   uv_req_t* req;
   uv_buf_t buf;

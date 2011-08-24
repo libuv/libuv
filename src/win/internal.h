@@ -168,6 +168,7 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb);
 int uv_tcp_write(uv_write_t* req, uv_tcp_t* handle, uv_buf_t bufs[],
     int bufcnt, uv_write_cb cb);
+int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
 
 void uv_process_tcp_read_req(uv_tcp_t* handle, uv_req_t* req);
 void uv_process_tcp_write_req(uv_tcp_t* handle, uv_write_t* req);
@@ -180,10 +181,12 @@ void uv_tcp_endgame(uv_tcp_t* handle);
 /*
  * UDP
  */
-void uv_udp_endgame(uv_udp_t* handle);
+int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen);
 
 void uv_process_udp_recv_req(uv_udp_t* handle, uv_req_t* req);
 void uv_process_udp_send_req(uv_udp_t* handle, uv_udp_send_t* req);
+
+void uv_udp_endgame(uv_udp_t* handle);
 
 
 /*
