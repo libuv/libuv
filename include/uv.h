@@ -491,6 +491,7 @@ struct uv_udp_s {
 struct uv_udp_send_s {
   UV_REQ_FIELDS
   uv_udp_t* handle;
+  uv_udp_send_cb cb;
   UV_UDP_SEND_PRIVATE_FIELDS
 };
 

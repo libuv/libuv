@@ -42,6 +42,7 @@ int uv_is_active(uv_handle_t* handle) {
 void uv_close(uv_handle_t* handle, uv_close_cb cb) {
   uv_tcp_t* tcp;
   uv_pipe_t* pipe;
+  uv_udp_t* udp;
   uv_process_t* process;
 
   if (handle->flags & UV_HANDLE_CLOSING) {
@@ -73,6 +74,15 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       pipe->flags &= ~(UV_HANDLE_READING | UV_HANDLE_LISTENING);
       close_pipe(pipe, NULL, NULL);
       if (pipe->reqs_pending == 0) {
+        uv_want_endgame(handle);
+      }
+      return;
+
+    case UV_UDP:
+      udp = (uv_udp_t*) handle;
+      uv_udp_recv_stop(udp);
+      closesocket(udp->socket);
+      if (udp->reqs_pending == 0) {
         uv_want_endgame(handle);
       }
       return;
@@ -141,6 +151,10 @@ void uv_process_endgames() {
 
       case UV_NAMED_PIPE:
         uv_pipe_endgame((uv_pipe_t*)handle);
+        break;
+
+      case UV_UDP:
+        uv_udp_endgame((uv_udp_t*) handle);
         break;
 
       case UV_TIMER:

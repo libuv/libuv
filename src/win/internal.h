@@ -178,6 +178,15 @@ void uv_tcp_endgame(uv_tcp_t* handle);
 
 
 /*
+ * UDP
+ */
+void uv_udp_endgame(uv_udp_t* handle);
+
+void uv_process_udp_recv_req(uv_udp_t* handle, uv_req_t* req);
+void uv_process_udp_send_req(uv_udp_t* handle, uv_udp_send_t* req);
+
+
+/*
  * Pipes
  */
 int uv_pipe_init_with_handle(uv_pipe_t* handle, HANDLE pipeHandle);

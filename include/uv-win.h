@@ -48,7 +48,8 @@ typedef struct uv_buf_t {
   UV_ARES_CLEANUP_REQ,                    \
   UV_GETADDRINFO_REQ,                     \
   UV_PROCESS_EXIT,                        \
-  UV_PROCESS_CLOSE
+  UV_PROCESS_CLOSE,                       \
+  UV_UDP_RECV
 
 #define UV_REQ_PRIVATE_FIELDS             \
   union {                                 \
@@ -67,6 +68,9 @@ typedef struct uv_buf_t {
   /* empty */
 
 #define UV_SHUTDOWN_PRIVATE_FIELDS        \
+  /* empty */
+
+#define UV_UDP_SEND_PRIVATE_FIELDS        \
   /* empty */
 
 #define UV_PRIVATE_REQ_TYPES              \
@@ -114,7 +118,15 @@ typedef struct uv_buf_t {
     struct { uv_tcp_connection_fields };  \
   };
 
-#define UV_UDP_PRIVATE_FIELDS
+#define UV_UDP_PRIVATE_FIELDS             \
+  SOCKET socket;                          \
+  unsigned int reqs_pending;              \
+  uv_req_t recv_req;                      \
+  uv_buf_t recv_buffer;                   \
+  struct sockaddr_storage recv_from;      \
+  int recv_from_len;                      \
+  uv_udp_recv_cb recv_cb;                 \
+  uv_alloc_cb alloc_cb;
 
 #define uv_pipe_server_fields             \
     uv_pipe_accept_t accept_reqs[4];      \
