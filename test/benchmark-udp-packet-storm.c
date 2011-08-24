@@ -46,6 +46,7 @@ static uv_buf_t bufs[5];
 static int send_cb_called;
 static int recv_cb_called;
 static int close_cb_called;
+static int stopping = 0;
 
 typedef struct {
   struct sockaddr_in addr;
@@ -63,8 +64,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
   sender_state_t* ss;
   int r;
 
-  if (status == -1) {
-    ASSERT(uv_last_error().code == UV_EINTR); /* FIXME change error code */
+  if (stopping) {
     return;
   }
 
@@ -110,6 +110,8 @@ static void close_cb(uv_handle_t* handle) {
 
 static void timeout_cb(uv_timer_t* timer, int status) {
   int i;
+
+  stopping = 1;
 
   for (i = 0; i < n_senders_; i++)
     uv_close((uv_handle_t*)&senders[i], close_cb);
@@ -175,7 +177,7 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     req = malloc(sizeof(*req) + sizeof(*ss));
 
     ss = (void*)(req + 1);
-    ss->addr = uv_ip4_addr("0.0.0.0", BASE_PORT + (i % n_receivers));
+    ss->addr = uv_ip4_addr("127.0.0.1", BASE_PORT + (i % n_receivers));
 
     r = uv_udp_send(req, handle, bufs, ARRAY_SIZE(bufs), ss->addr, send_cb);
     ASSERT(r == 0);
