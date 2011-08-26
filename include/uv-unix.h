@@ -157,7 +157,8 @@ typedef int uv_file;
 #define UV_PROCESS_PRIVATE_FIELDS \
   ev_child child_watcher;
 
-#define UV_FS_PRIVATE_FIELDS \
-#define UV_WORK_PRIVATE_FIELDS \
+#define UV_FS_PRIVATE_FIELDS
+
+#define UV_WORK_PRIVATE_FIELDS 
 
 #endif /* UV_UNIX_H */

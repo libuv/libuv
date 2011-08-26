@@ -19,12 +19,19 @@
  * IN THE SOFTWARE.
  */
 
+/* FIXME we shouldnt need to branch in this file */
+#define UNIX (defined(__unix__) || defined(__POSIX__) || defined(__APPLE__))
+
 #include "uv.h"
 #include "task.h"
 
-#include <direct.h>
+#if !UNIX
+# include <direct.h>
+# include <io.h>
+#endif
+
+#include <string.h> /* memset */
 #include <fcntl.h>
-#include <io.h>
 #include <sys/stat.h>
 
 static int close_cb_count;
@@ -233,8 +240,12 @@ TEST_IMPL(fs_file_async) {
   int r;
 
   /* Setup. */
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   _unlink("test_file");
   _unlink("test_file2");
+#endif
 
   uv_init();
 
@@ -282,9 +293,13 @@ TEST_IMPL(fs_file_async) {
   ASSERT(write_cb_count == 1);
   ASSERT(ftruncate_cb_count == 1);
 
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   /* Cleanup. */
   _unlink("test_file");
   _unlink("test_file2");
+#endif
 
   return 0;
 }
@@ -293,9 +308,13 @@ TEST_IMPL(fs_file_async) {
 TEST_IMPL(fs_file_sync) {
   int r;
 
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   /* Setup. */
   _unlink("test_file");
   _unlink("test_file2");
+#endif
 
   uv_init();
   
@@ -363,8 +382,12 @@ TEST_IMPL(fs_file_sync) {
   uv_fs_req_cleanup(&unlink_req);
 
   /* Cleanup */
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   _unlink("test_file");
   _unlink("test_file2");
+#endif
 
   return 0;
 }
@@ -374,9 +397,13 @@ TEST_IMPL(fs_async_dir) {
   int r;
 
   /* Setup */
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   _unlink("test_dir/file1");
   _unlink("test_dir/file2");
   _rmdir("test_dir");
+#endif
 
   uv_init();
 
@@ -432,9 +459,13 @@ TEST_IMPL(fs_async_dir) {
   ASSERT(rmdir_cb_count == 1);
 
   /* Cleanup */
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   _unlink("test_dir/file1");
   _unlink("test_dir/file2");
   _rmdir("test_dir");
+#endif
 
   return 0;
 }
@@ -442,9 +473,13 @@ TEST_IMPL(fs_async_dir) {
 
 TEST_IMPL(fs_async_sendfile) {
   int f, r;
-  struct _stat s1, s2;
 
   /* Setup. */
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
+  struct _stat s1, s2;
+
   _unlink("test_file");
   _unlink("test_file2");
 
@@ -462,6 +497,7 @@ TEST_IMPL(fs_async_sendfile) {
 
   r = _close(f);
   ASSERT(r == 0);
+#endif
 
   /* Test starts here. */
   uv_init();
@@ -489,6 +525,9 @@ TEST_IMPL(fs_async_sendfile) {
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
+#if UNIX
+  ASSERT(0 && "implement me");
+#else
   _stat("test_file", &s1);
   _stat("test_file2", &s2);
   ASSERT(65548 == s2.st_size && s1.st_size == s2.st_size);
@@ -496,6 +535,7 @@ TEST_IMPL(fs_async_sendfile) {
   /* Cleanup. */
   _unlink("test_file");
   _unlink("test_file2");
+#endif
 
   return 0;
 }

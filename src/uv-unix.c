@@ -3116,3 +3116,10 @@ int uv_fs_fchown(uv_fs_t* req, uv_file file, int uid, int gid, uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
+
+
+int uv_queue_work(uv_work_t* req, uv_work_cb work_cb,
+    uv_after_work_cb after_work_cb) {
+  assert(0 && "implement me");
+  return -1;
+}
