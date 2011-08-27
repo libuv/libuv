@@ -848,6 +848,8 @@ typedef enum {
   UV_FS_LINK,
   UV_FS_SYMLINK,
   UV_FS_READLINK,
+  UV_FS_CHOWN,
+  UV_FS_FCHOWN,
 } uv_fs_type;
 
 /*
