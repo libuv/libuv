@@ -409,17 +409,6 @@ static DWORD WINAPI uv_fs_thread_proc(void* parameter) {
       assert(!"bad uv_fs_type");
   }
 
-  /* Free stashed arguments; we no longer need them. */
-  if (req->flags & UV_FS_FREE_ARG0) {
-    free(req->arg0);
-    req->arg0 = NULL;
-  }
-
-  if (req->flags & UV_FS_FREE_ARG1) {
-    free(req->arg1);
-    req->arg1 = NULL;
-  }
-
   POST_COMPLETION_FOR_REQ(req);
 
   return 0;
@@ -721,6 +710,16 @@ void uv_process_fs_req(uv_fs_t* req) {
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
+  if (req->flags & UV_FS_FREE_ARG0) {
+    free(req->arg0);
+    req->arg0 = NULL;
+  }
+
+  if (req->flags & UV_FS_FREE_ARG1) {
+    free(req->arg1);
+    req->arg1 = NULL;
+  }
+
   if (req->flags & UV_FS_FREE_PTR) {
     free(req->ptr);
     req->ptr = NULL;
