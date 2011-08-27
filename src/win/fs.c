@@ -31,10 +31,11 @@
 #include "uv.h"
 #include "internal.h"
 
-#define UV_FS_ASYNC              0x0001
+#define UV_FS_ASYNC_QUEUED       0x0001
 #define UV_FS_FREE_ARG0          0x0002
 #define UV_FS_FREE_ARG1          0x0004
 #define UV_FS_FREE_PTR           0x0008
+#define UV_FS_CLEANEDUP          0x0010
 
 #define SET_REQ_RESULT(req, result)                                         \
   req->result = result;                                                     \
@@ -69,6 +70,7 @@
     uv_set_sys_error(GetLastError());                                       \
     return -1;                                                              \
   }                                                                         \
+  req->flags |= UV_FS_ASYNC_QUEUED;                                         \
   uv_ref();
 
 
@@ -80,7 +82,7 @@ void uv_fs_init() {
 static void uv_fs_req_init_async(uv_fs_t* req, uv_fs_type fs_type, uv_fs_cb cb) {
   uv_req_init((uv_req_t*) req);
   req->type = UV_FS;
-  req->flags = UV_FS_ASYNC;
+  req->flags = 0;
   req->fs_type = fs_type;
   req->cb = cb;
   req->result = 0;
@@ -710,22 +712,28 @@ void uv_process_fs_req(uv_fs_t* req) {
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
-  if (req->flags & UV_FS_FREE_ARG0) {
+  if (req->flags & UV_FS_CLEANEDUP) {
+    return;
+  }
+
+  if (req->flags & UV_FS_FREE_ARG0 && req->arg0) {
     free(req->arg0);
     req->arg0 = NULL;
   }
 
-  if (req->flags & UV_FS_FREE_ARG1) {
+  if (req->flags & UV_FS_FREE_ARG1 && req->arg1) {
     free(req->arg1);
     req->arg1 = NULL;
   }
 
-  if (req->flags & UV_FS_FREE_PTR) {
+  if (req->flags & UV_FS_FREE_PTR && req->ptr) {
     free(req->ptr);
     req->ptr = NULL;
   }
 
-  if (req->flags & UV_FS_ASYNC) {
+  if (req->flags & UV_FS_ASYNC_QUEUED) {
     uv_unref();
   }
+
+  req->flags |= UV_FS_CLEANEDUP;
 }
