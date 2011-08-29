@@ -401,6 +401,16 @@ static xmutex_t reslock;
 static xmutex_t reqlock;
 static xcond_t  reqwait;
 
+/* Fix for test-fs-sir-writes-alot */
+/* Apple's OSX can't safely write() concurrently from 2 threads */
+/* for more info see the thread "fs.write Data Munging" in the nodejs google group */
+/* http://groups.google.com/group/nodejs/browse_thread/thread/c11f8b683f37cef/b18ad9e0a15314c5 */
+/* And the thread "write()s and pwrite()s from multiple threads in OSX" in libev@lists.schmorp.de */
+/* http://lists.schmorp.de/pipermail/libev/2010q4/001185.html */
+#if defined (__APPLE__)
+static xmutex_t apple_bug_writelock = X_MUTEX_INIT;
+#endif
+
 #if !HAVE_PREADWRITE
 /*
  * make our pread/pwrite emulation safe against themselves, but not against
@@ -2153,9 +2163,20 @@ eio_execute (etp_worker *self, eio_req *req)
                           req->result = req->offs >= 0
                                       ? pread     (req->int1, req->ptr2, req->size, req->offs)
                                       : read      (req->int1, req->ptr2, req->size); break;
-      case EIO_WRITE:     req->result = req->offs >= 0
+
+      case EIO_WRITE:
+#if defined (__APPLE__)
+                          pthread_mutex_lock (&apple_bug_writelock);
+#endif
+
+                          req->result = req->offs >= 0
                                       ? pwrite    (req->int1, req->ptr2, req->size, req->offs)
-                                      : write     (req->int1, req->ptr2, req->size); break;
+                                      : write     (req->int1, req->ptr2, req->size);
+
+#if defined (__APPLE__)
+                          pthread_mutex_unlock (&apple_bug_writelock);
+#endif
+                          break;
 
       case EIO_READAHEAD: req->result = readahead     (req->int1, req->offs, req->size); break;
       case EIO_SENDFILE:  req->result = eio__sendfile (req->int1, req->int2, req->offs, req->size); break;
