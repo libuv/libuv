@@ -3,7 +3,10 @@
     {
       'target_name': 'uv',
       'type': '<(library)',
-      'include_dirs': [ 'include' ],
+      'include_dirs': [
+        'include',
+        'src/',
+      ],
       'direct_dependent_settings': {
         'include_dirs': [ 'include' ],
       },
@@ -167,9 +170,7 @@
             'src/ev/config_linux.h',
             'src/ev/config_sunos.h',
           ],
-          'include_dirs': [
-            'src/ev'
-          ],
+          'include_dirs': [ 'src/ev', ],
           'defines': [
             '_LARGEFILE_SOURCE',
             '_FILE_OFFSET_BITS=64',
