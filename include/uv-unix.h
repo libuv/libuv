@@ -25,6 +25,7 @@
 #include "ngx-queue.h"
 
 #include "ev.h"
+#include "eio.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -157,7 +158,8 @@ typedef int uv_file;
 #define UV_PROCESS_PRIVATE_FIELDS \
   ev_child child_watcher;
 
-#define UV_FS_PRIVATE_FIELDS
+#define UV_FS_PRIVATE_FIELDS \
+  eio_req* eio;
 
 #define UV_WORK_PRIVATE_FIELDS 
 

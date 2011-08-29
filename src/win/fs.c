@@ -37,12 +37,6 @@
 #define UV_FS_FREE_PTR           0x0008
 #define UV_FS_CLEANEDUP          0x0010
 
-#define SET_REQ_RESULT(req, result)                                         \
-  req->result = result;                                                     \
-  if (result == -1) {                                                       \
-    req->errorno = errno;                                                   \
-  }
-
 #define STRDUP_ARG(req, i)                                                  \
   req->arg##i = (void*)strdup((const char*)req->arg##i);                    \
   if (!req->arg##i) {                                                       \
