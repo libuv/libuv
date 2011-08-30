@@ -398,7 +398,7 @@ TEST_IMPL(fs_async_dir) {
 
   uv_init();
 
-  r = uv_fs_mkdir(&mkdir_req, "test_dir", 0, mkdir_cb);
+  r = uv_fs_mkdir(&mkdir_req, "test_dir", 0755, mkdir_cb);
   ASSERT(r == 0);
 
   uv_run();

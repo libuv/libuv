@@ -159,6 +159,7 @@ typedef int uv_file;
   ev_child child_watcher;
 
 #define UV_FS_PRIVATE_FIELDS \
+  struct stat statbuf; \
   eio_req* eio;
 
 #define UV_WORK_PRIVATE_FIELDS 
