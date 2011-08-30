@@ -253,8 +253,8 @@ TEST_IMPL(fs_file_async) {
 
   uv_init();
 
-  r = uv_fs_open(&open_req1, "test_file", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR,
-      create_cb);
+  r = uv_fs_open(&open_req1, "test_file", O_WRONLY | O_CREAT,
+      S_IREAD | S_IWRITE, create_cb);
   ASSERT(r == 0);
   uv_run();
 
