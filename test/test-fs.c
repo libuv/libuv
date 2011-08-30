@@ -497,12 +497,14 @@ TEST_IMPL(fs_async_sendfile) {
   ASSERT(open_req1.result != -1);
   uv_fs_req_cleanup(&open_req1);
 
-  r = uv_fs_open(&open_req2, "test_file2", O_WRONLY | O_CREAT, S_IWRITE | S_IREAD, NULL);
+  r = uv_fs_open(&open_req2, "test_file2", O_WRONLY | O_CREAT,
+      S_IWRITE | S_IREAD, NULL);
   ASSERT(r == 0);
   ASSERT(open_req2.result != -1);
   uv_fs_req_cleanup(&open_req2);
 
-  r = uv_fs_sendfile(&sendfile_req, open_req2.result, open_req1.result, 0, 131072, sendfile_cb);
+  r = uv_fs_sendfile(&sendfile_req, open_req2.result, open_req1.result, 0,
+      131072, sendfile_cb);
   ASSERT(r == 0);
   uv_run();
 
