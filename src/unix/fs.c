@@ -567,8 +567,42 @@ int uv_fs_fchown(uv_fs_t* req, uv_file file, int uid, int gid, uv_fs_cb cb) {
 }
 
 
+static void uv__work(eio_req* eio) {
+  uv_work_t* req = eio->data;
+  if (req->work_cb) {
+    req->work_cb(req);
+  }
+}
+
+
+static int uv__after_work(eio_req *eio) {
+  uv_work_t* req = eio->data;
+  uv_unref();
+  if (req->after_work_cb) {
+    req->after_work_cb(req);
+  }
+  return 0;
+}
+
+
 int uv_queue_work(uv_work_t* req, uv_work_cb work_cb,
     uv_after_work_cb after_work_cb) {
-  assert(0 && "implement me");
-  return -1;
+  void* data = req->data;
+
+  uv_eio_init();
+
+  uv__req_init((uv_req_t*) req);
+  uv_ref();
+  req->data = data;
+  req->work_cb = work_cb;
+  req->after_work_cb = after_work_cb;
+
+  req->eio = eio_custom(uv__work, EIO_PRI_DEFAULT, uv__after_work, req);
+
+  if (!req->eio) {
+    uv_err_new(NULL, ENOMEM);
+    return -1;
+  }
+
+  return 0;
 }

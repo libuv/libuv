@@ -162,6 +162,7 @@ typedef int uv_file;
   struct stat statbuf; \
   eio_req* eio;
 
-#define UV_WORK_PRIVATE_FIELDS 
+#define UV_WORK_PRIVATE_FIELDS \
+  eio_req* eio;
 
 #endif /* UV_UNIX_H */
