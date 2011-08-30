@@ -501,9 +501,31 @@ int uv_fs_ftruncate(uv_fs_t* req, uv_file file, off_t offset, uv_fs_cb cb) {
 }
 
 
-int uv_fs_sendfile(uv_fs_t* req, uv_file out_fd, uv_file in_fd, off_t in_offset, size_t length, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+int uv_fs_sendfile(uv_fs_t* req, uv_file out_fd, uv_file in_fd,
+    off_t in_offset, size_t length, uv_fs_cb cb) {
+  uv_fs_req_init(req, UV_FS_SENDFILE, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_sendfile(out_fd, in_fd, in_offset, length, EIO_PRI_DEFAULT,
+        uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = eio_sendfile_sync(out_fd, in_fd, in_offset, length);
+
+    if (req->result) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 

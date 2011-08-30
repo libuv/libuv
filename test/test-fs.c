@@ -35,6 +35,11 @@
 # include <io.h>
 # define unlink _unlink
 # define rmdir _rmdir
+# define stat _stat
+# define open _open
+# define write _write
+# define lseek _lseek
+# define close _close
 #endif
 
 static int close_cb_count;
@@ -238,7 +243,7 @@ static void stat_cb(uv_fs_t* req) {
 static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
   ASSERT(req->fs_type == UV_FS_SENDFILE);
-  ASSERT(req->result == 65548);
+  ASSERT(req->result == 65546);
   sendfile_cb_count++;
   uv_fs_req_cleanup(req);
 }
@@ -464,29 +469,25 @@ TEST_IMPL(fs_async_sendfile) {
   int f, r;
 
   /* Setup. */
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
-  struct _stat s1, s2;
+  struct stat s1, s2;
 
-  _unlink("test_file");
-  _unlink("test_file2");
+  unlink("test_file");
+  unlink("test_file2");
 
-  f = _open("test_file", O_WRONLY | O_CREAT, S_IWRITE | S_IREAD);
+  f = open("test_file", O_WRONLY | O_CREAT, S_IWRITE | S_IREAD);
   ASSERT(f != -1);
   
-  r = _write(f, "begin\n", 6);
+  r = write(f, "begin\n", 6);
+  ASSERT(r == 6);
+
+  r = lseek(f, 65536, SEEK_CUR);
+  ASSERT(r == 65542);
+
+  r = write(f, "end\n", 4);
   ASSERT(r != -1);
 
-  r = _lseek(f, 65536, SEEK_CUR);
-  ASSERT(r == 65543);
-
-  r = _write(f, "end\n", 4);
-  ASSERT(r != -1);
-
-  r = _close(f);
+  r = close(f);
   ASSERT(r == 0);
-#endif
 
   /* Test starts here. */
   uv_init();
@@ -514,17 +515,13 @@ TEST_IMPL(fs_async_sendfile) {
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
-  _stat("test_file", &s1);
-  _stat("test_file2", &s2);
-  ASSERT(65548 == s2.st_size && s1.st_size == s2.st_size);
+  stat("test_file", &s1);
+  stat("test_file2", &s2);
+  ASSERT(65546 == s2.st_size && s1.st_size == s2.st_size);
 
   /* Cleanup. */
-  _unlink("test_file");
-  _unlink("test_file2");
-#endif
+  unlink("test_file");
+  unlink("test_file2");
 
   return 0;
 }
