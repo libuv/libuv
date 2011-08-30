@@ -231,7 +231,7 @@ static void readdir_cb(uv_fs_t* req) {
 
 static void stat_cb(uv_fs_t* req) {
   ASSERT(req == &stat_req);
-  ASSERT(req->fs_type == UV_FS_STAT);
+  ASSERT(req->fs_type == UV_FS_STAT || req->fs_type == UV_FS_LSTAT);
   ASSERT(req->result != -1);
   ASSERT(req->ptr);
   stat_cb_count++;
@@ -435,11 +435,20 @@ TEST_IMPL(fs_async_dir) {
   r = uv_fs_stat(&stat_req, "test_dir", stat_cb);
   ASSERT(r == 0);
   uv_run();
+
   r = uv_fs_stat(&stat_req, "test_dir\\", stat_cb);
   ASSERT(r == 0);
   uv_run();
 
-  ASSERT(stat_cb_count == 2);
+  r = uv_fs_lstat(&stat_req, "test_dir", stat_cb);
+  ASSERT(r == 0);
+  uv_run();
+
+  r = uv_fs_lstat(&stat_req, "test_dir\\", stat_cb);
+  ASSERT(r == 0);
+  uv_run();
+
+  ASSERT(stat_cb_count == 4);
 
   r = uv_fs_unlink(&unlink_req, "test_dir/file1", unlink_cb);
   ASSERT(r == 0);

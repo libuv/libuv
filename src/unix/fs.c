@@ -57,6 +57,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
       break;
 
     case UV_FS_STAT:
+    case UV_FS_LSTAT:
       req->ptr = NULL;
       break;
 
@@ -98,7 +99,7 @@ static int uv__fs_after(eio_req* eio) {
     }
     req->ptr = malloc(buflen);
     memcpy(req->ptr, req->eio->ptr2, buflen);
-  } else if (req->fs_type == UV_FS_STAT) {
+  } else if (req->fs_type == UV_FS_STAT || req->fs_type == UV_FS_LSTAT) {
     req->ptr = req->eio->ptr2;
   }
 
@@ -548,12 +549,53 @@ int uv_fs_futime(uv_fs_t* req, uv_file file, double atime, double mtime, uv_fs_c
 
 
 int uv_fs_lstat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+  char* pathdup = path;
+  int pathlen;
+
+  uv_fs_req_init(req, UV_FS_LSTAT, cb);
+
+  /* TODO do this without duplicating the string. */
+  /* TODO security */
+  pathdup = strdup(path);
+  pathlen = strlen(path);
+
+  if (pathlen > 0 && path[pathlen - 1] == '\\') {
+    /* TODO do not modify input string */
+    pathdup[pathlen - 1] = '\0';
+  }
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_lstat(pathdup, EIO_PRI_DEFAULT, uv__fs_after, req);
+
+    free(pathdup);
+
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = lstat(pathdup, &req->statbuf);
+
+    free(pathdup);
+
+    if (req->result < 0) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+
+    req->ptr = &req->statbuf;
+  }
+
+  return 0;
 }
 
 
-int uv_fs_link(uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb) {
+int uv_fs_link(uv_fs_t* req, const char* path, const char* new_path,
+    uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
