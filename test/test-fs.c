@@ -25,14 +25,17 @@
 #include "uv.h"
 #include "task.h"
 
-#if !UNIX
-# include <direct.h>
-# include <io.h>
-#endif
-
 #include <string.h> /* memset */
 #include <fcntl.h>
 #include <sys/stat.h>
+
+
+#if !UNIX
+# include <direct.h>
+# include <io.h>
+# define unlink _unlink
+# define rmdir _rmdir
+#endif
 
 static int close_cb_count;
 static int create_cb_count;
@@ -124,7 +127,11 @@ static void open_cb(uv_fs_t* req) {
   int r;
   ASSERT(req == &open_req1);
   ASSERT(req->fs_type == UV_FS_OPEN);
-  ASSERT(req->result != -1);
+  if (req->result < 0) { 
+    /* TODO get error with uv_last_error() */
+    fprintf(stderr, "async open error: %d\n", req->errorno);
+    ASSERT(0);
+  }
   open_cb_count++;
   uv_fs_req_cleanup(req);
   memset(buf, 0, sizeof(buf));
@@ -172,7 +179,8 @@ static void create_cb(uv_fs_t* req) {
   ASSERT(req->result != -1);
   create_cb_count++;
   uv_fs_req_cleanup(req);
-  r = uv_fs_write(&write_req, req->result, test_buf, sizeof(test_buf), -1, write_cb);
+  r = uv_fs_write(&write_req, req->result, test_buf, sizeof(test_buf), -1,
+      write_cb);
 }
 
 
@@ -240,16 +248,13 @@ TEST_IMPL(fs_file_async) {
   int r;
 
   /* Setup. */
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
-  _unlink("test_file");
-  _unlink("test_file2");
-#endif
+  unlink("test_file");
+  unlink("test_file2");
 
   uv_init();
 
-  r = uv_fs_open(&open_req1, "test_file", O_WRONLY | O_CREAT, S_IWRITE, create_cb);
+  r = uv_fs_open(&open_req1, "test_file", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR,
+      create_cb);
   ASSERT(r == 0);
   uv_run();
 
@@ -293,13 +298,9 @@ TEST_IMPL(fs_file_async) {
   ASSERT(write_cb_count == 1);
   ASSERT(ftruncate_cb_count == 1);
 
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
   /* Cleanup. */
-  _unlink("test_file");
-  _unlink("test_file2");
-#endif
+  unlink("test_file");
+  unlink("test_file2");
 
   return 0;
 }
@@ -308,22 +309,20 @@ TEST_IMPL(fs_file_async) {
 TEST_IMPL(fs_file_sync) {
   int r;
 
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
   /* Setup. */
-  _unlink("test_file");
-  _unlink("test_file2");
-#endif
+  unlink("test_file");
+  unlink("test_file2");
 
   uv_init();
   
-  r = uv_fs_open(&open_req1, "test_file", O_WRONLY | O_CREAT, S_IWRITE | S_IREAD, NULL);
+  r = uv_fs_open(&open_req1, "test_file", O_WRONLY | O_CREAT,
+      S_IWRITE | S_IREAD, NULL);
   ASSERT(r == 0);
   ASSERT(open_req1.result != -1);
   uv_fs_req_cleanup(&open_req1);
   
-  r = uv_fs_write(&write_req, open_req1.result, test_buf, sizeof(test_buf), -1, NULL);
+  r = uv_fs_write(&write_req, open_req1.result, test_buf, sizeof(test_buf), -1,
+      NULL);
   ASSERT(r == 0);
   ASSERT(write_req.result != -1);
   uv_fs_req_cleanup(&write_req);
@@ -382,12 +381,8 @@ TEST_IMPL(fs_file_sync) {
   uv_fs_req_cleanup(&unlink_req);
 
   /* Cleanup */
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
-  _unlink("test_file");
-  _unlink("test_file2");
-#endif
+  unlink("test_file");
+  unlink("test_file2");
 
   return 0;
 }
@@ -397,13 +392,9 @@ TEST_IMPL(fs_async_dir) {
   int r;
 
   /* Setup */
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
-  _unlink("test_dir/file1");
-  _unlink("test_dir/file2");
-  _rmdir("test_dir");
-#endif
+  unlink("test_dir/file1");
+  unlink("test_dir/file2");
+  rmdir("test_dir");
 
   uv_init();
 
@@ -414,14 +405,16 @@ TEST_IMPL(fs_async_dir) {
   ASSERT(mkdir_cb_count == 1);
 
   /* Create 2 files synchronously. */
-  r = uv_fs_open(&open_req1, "test_dir/file1", O_WRONLY | O_CREAT, S_IWRITE | S_IREAD, NULL);
+  r = uv_fs_open(&open_req1, "test_dir/file1", O_WRONLY | O_CREAT,
+      S_IWRITE | S_IREAD, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&open_req1);
   r = uv_fs_close(&close_req, open_req1.result, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
-  r = uv_fs_open(&open_req1, "test_dir/file2", O_WRONLY | O_CREAT, S_IWRITE | S_IREAD, NULL);
+  r = uv_fs_open(&open_req1, "test_dir/file2", O_WRONLY | O_CREAT,
+      S_IWRITE | S_IREAD, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&open_req1);
   r = uv_fs_close(&close_req, open_req1.result, NULL);
@@ -459,13 +452,9 @@ TEST_IMPL(fs_async_dir) {
   ASSERT(rmdir_cb_count == 1);
 
   /* Cleanup */
-#if UNIX
-  ASSERT(0 && "implement me");
-#else
-  _unlink("test_dir/file1");
-  _unlink("test_dir/file2");
-  _rmdir("test_dir");
-#endif
+  unlink("test_dir/file1");
+  unlink("test_dir/file2");
+  rmdir("test_dir");
 
   return 0;
 }

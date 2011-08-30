@@ -23,6 +23,7 @@
 #include "internal.h"
 #include "eio.h"
 
+#include <stdio.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -30,6 +31,9 @@
 
 
 static void uv_fs_req_init(uv_fs_t* req, uv_fs_type fs_type, uv_fs_cb cb) {
+  /* Make sure the thread pool is initialized. */
+  uv_eio_init();
+
   uv__req_init((uv_req_t*) req);
   req->type = UV_FS;
   req->fs_type = fs_type;
@@ -42,7 +46,6 @@ static void uv_fs_req_init(uv_fs_t* req, uv_fs_type fs_type, uv_fs_cb cb) {
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
-  assert(0 && "implement me");
 }
 
 
@@ -51,6 +54,9 @@ static int uv__fs_after(eio_req* eio) {
   assert(req->cb);
 
   req->result = req->eio->result;
+  req->errorno = req->eio->errorno;
+
+  uv_unref();
   req->eio = NULL; /* Freed by libeio */
 
   req->cb(req);
@@ -62,6 +68,7 @@ int uv_fs_close(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   uv_fs_req_init(req, UV_FS_CLOSE, cb);
   if (cb) {
     /* async */
+    uv_ref();
     req->eio = eio_close(file, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -85,6 +92,7 @@ int uv_fs_open(uv_fs_t* req, const char* path, int flags, int mode,
 
   if (cb) {
     /* async */
+    uv_ref();
     req->eio = eio_open(path, flags, mode, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -112,6 +120,7 @@ int uv_fs_read(uv_fs_t* req, uv_file fd, void* buf, size_t length,
 
   if (cb) {
     /* async */
+    uv_ref();
     req->eio = eio_read(fd, buf, length, offset, EIO_PRI_DEFAULT,
         uv__fs_after, req);
 
@@ -141,6 +150,7 @@ int uv_fs_unlink(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
   if (cb) {
     /* async */
+    uv_ref();
     req->eio = eio_unlink(path, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -161,9 +171,33 @@ int uv_fs_unlink(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 }
 
 
-int uv_fs_write(uv_fs_t* req, uv_file file, void* buf, size_t length, off_t offset, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+int uv_fs_write(uv_fs_t* req, uv_file file, void* buf, size_t length,
+    off_t offset, uv_fs_cb cb) {
+  uv_fs_req_init(req, UV_FS_WRITE, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_write(file, buf, length, offset, EIO_PRI_DEFAULT,
+        uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = offset < 0 ?
+        write(file, buf, length) :
+        pwrite(file, buf, length, offset);
+
+    if (req->result < 0) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
@@ -197,27 +231,108 @@ int uv_fs_fstat(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 }
 
 
-int uv_fs_rename(uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+int uv_fs_rename(uv_fs_t* req, const char* path, const char* new_path,
+    uv_fs_cb cb) {
+  uv_fs_req_init(req, UV_FS_RENAME, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_rename(path, new_path, EIO_PRI_DEFAULT, uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = rename(path, new_path);
+
+    if (req->result) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
 int uv_fs_fsync(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+  uv_fs_req_init(req, UV_FS_FSYNC, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_fsync(file, EIO_PRI_DEFAULT, uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = fsync(file);
+
+    if (req->result) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
 int uv_fs_fdatasync(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+  uv_fs_req_init(req, UV_FS_FDATASYNC, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_fdatasync(file, EIO_PRI_DEFAULT, uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = fdatasync(file);
+
+    if (req->result) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
 int uv_fs_ftruncate(uv_fs_t* req, uv_file file, off_t offset, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+  uv_fs_req_init(req, UV_FS_FTRUNCATE, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref();
+    req->eio = eio_ftruncate(file, offset, EIO_PRI_DEFAULT, uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(NULL, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = ftruncate(file, offset);
+
+    if (req->result) {
+      uv_err_new(NULL, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
