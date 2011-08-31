@@ -27,25 +27,29 @@
 #include <stdlib.h>
 
 
-#define container_of ngx_queue_data
-
 /*
  * This is called once per second by loop->timer. It is used to
  * constantly callback into c-ares for possibly processing timeouts.
  */
 static void uv__ares_timeout(struct ev_loop* ev, struct ev_timer* watcher,
     int revents) {
-  uv_loop_t* loop = container_of(ev, uv_loop_t, ev);
+  uv_loop_t* loop = ev_userdata(ev);
+
+  assert(ev == loop->ev);
+  assert((uv_loop_t*)watcher->data == loop);
   assert(watcher == &loop->timer);
   assert(revents == EV_TIMER);
   assert(!uv_ares_handles_empty(loop));
+
   ares_process_fd(loop->channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
 }
 
 
 static void uv__ares_io(struct ev_loop* ev, struct ev_io* watcher,
     int revents) {
-  uv_loop_t* loop = container_of(ev, uv_loop_t, ev);
+  uv_loop_t* loop = ev_userdata(ev);
+
+  assert(ev == loop->ev);
 
   /* Reset the idle timer */
   ev_timer_again(ev, &loop->timer);
@@ -82,6 +86,8 @@ static void uv__ares_sockstate_cb(void* data, ares_socket_t sock,
     int read, int write) {
   uv_loop_t* loop = data;
   uv_ares_task_t* h;
+
+  assert((uv_loop_t*)loop->timer.data == loop);
 
   h = uv_find_ares_handle(loop, sock);
 
@@ -155,14 +161,14 @@ int uv_ares_init_options(uv_loop_t* loop, ares_channel *channelptr,
   /* if success, save channel */
   if (rc == ARES_SUCCESS) {
     loop->channel = *channelptr;
-  }
+  } 
 
   /*
    * Initialize the timeout timer. The timer won't be started until the
    * first socket is opened.
    */
-  ev_init(&loop->timer, uv__ares_timeout);
-  loop->timer.repeat = 1.0;
+  ev_timer_init(&loop->timer, uv__ares_timeout, 1., 1.);
+  loop->timer.data = loop;
 
   return rc;
 }
@@ -171,7 +177,7 @@ int uv_ares_init_options(uv_loop_t* loop, ares_channel *channelptr,
 /* TODO share this with windows? */
 void uv_ares_destroy(uv_loop_t* loop, ares_channel channel) {
   /* only allow destroy if did init */
-  if (loop->channel != NULL) {
+  if (loop->channel) {
     ev_timer_stop(loop->ev, &loop->timer);
     ares_destroy(channel);
     loop->channel = NULL;
