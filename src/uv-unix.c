@@ -90,9 +90,6 @@ extern char **environ;
 static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
 
-static struct uv_ares_data_s ares_data;
-
-void uv__req_init(uv_loop_t*, uv_req_t*);
 void uv__next(EV_P_ ev_idle* watcher, int revents);
 static int uv__stream_open(uv_stream_t*, int fd, int flags);
 static void uv__finish_close(uv_handle_t* handle);
@@ -149,6 +146,16 @@ enum {
   UV_READABLE = 0x00000020, /* The stream is readable */
   UV_WRITABLE = 0x00000040  /* The stream is writable */
 };
+
+
+void uv_init() {
+  default_loop_ptr = &default_loop_struct;
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+  default_loop_struct.ev = ev_default_loop(EVBACKEND_KQUEUE);
+#else
+  default_loop_struct.ev = ev_default_loop(EVFLAG_AUTO);
+#endif
+}
 
 
 /* TODO Share this code with Windows. */
@@ -213,7 +220,7 @@ static uv_err_t uv_err_new_artificial(uv_loop_t* loop, int code) {
 }
 
 
-static uv_err_t uv_err_new(uv_loop_t* loop, int sys_error) {
+uv_err_t uv_err_new(uv_loop_t* loop, int sys_error) {
   uv_err_t err;
   err.sys_errno_ = sys_error;
   err.code = uv_translate_sys_error(sys_error);
@@ -321,14 +328,6 @@ void uv_loop_delete(uv_loop_t* loop) {
 
 
 uv_loop_t* uv_default_loop() {
-  default_loop_ptr = &default_loop_struct;
-
-#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
-  default_loop_struct.ev = ev_default_loop(EVBACKEND_KQUEUE);
-#else
-  default_loop_struct.ev = ev_default_loop(EVFLAG_AUTO);
-#endif
-
   return default_loop_ptr;
 }
 
@@ -1433,7 +1432,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   }
 
   /* Initialize request */
-  uv__req_init(stream->loop, (uv_req_t*)req);
+  uv__req_init((uv_req_t*)req);
   req->handle = stream;
   req->cb = cb;
 
@@ -1554,7 +1553,7 @@ static int uv__connect(uv_connect_t* req,
     }
   }
 
-  uv__req_init(stream->loop, (uv_req_t*)req);
+  uv__req_init((uv_req_t*)req);
   req->cb = cb;
   req->handle = stream;
   req->type = UV_CONNECT;
@@ -1714,7 +1713,7 @@ int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
   stream = (uv_stream_t*)handle;
 
   /* Initialize the req */
-  uv__req_init(handle->loop, (uv_req_t*) req);
+  uv__req_init((uv_req_t*) req);
   req->cb = cb;
   req->handle = handle;
   ngx_queue_init(&req->queue);
@@ -1810,7 +1809,7 @@ int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE);
 
   if (stream->flags & UV_CLOSING) {
-    uv_err_new((uv_handle_t*)stream, EINVAL);
+    uv_err_new(stream->loop, EINVAL);
     return -1;
   }
 
@@ -1849,10 +1848,9 @@ int uv_read_stop(uv_stream_t* stream) {
 }
 
 
-void uv__req_init(uv_loop_t* loop, uv_req_t* req) {
-  loop->counters.req_init++;
+void uv__req_init(uv_req_t* req) {
+  /* loop->counters.req_init++; */
   req->type = UV_UNKNOWN_REQ;
-  req->loop = loop;
   req->data = NULL;
 }
 

@@ -22,7 +22,13 @@
 
 #include "uv.h"
 #include "eio.h"
+
 #include <assert.h>
+#include <stdio.h>
+
+
+/* TODO remove me! */
+static uv_loop_t* main_loop;
 
 
 static void uv_eio_do_poll(uv_idle_t* watcher, int status) {
@@ -76,14 +82,12 @@ static void uv_eio_done_poll_notifier_cb(uv_async_t* watcher, int revents) {
 static void uv_eio_want_poll(void) {
   /* Signal the main thread that eio_poll need to be processed. */
 
-#if 0
   /*
    * TODO need to select the correct uv_loop_t and async_send to
    * uv_eio_want_poll_notifier.
    */
 
-  uv_async_send(&uv_eio_want_poll_notifier);
-#endif
+  uv_async_send(&main_loop->uv_eio_want_poll_notifier);
 }
 
 
@@ -92,10 +96,7 @@ static void uv_eio_done_poll(void) {
    * Signal the main thread that we should stop calling eio_poll().
    * from the idle watcher.
    */
-
-#if 0
-  uv_async_send(&uv_eio_done_poll_notifier);
-#endif
+  uv_async_send(&main_loop->uv_eio_done_poll_notifier);
 }
 
 
@@ -103,9 +104,12 @@ void uv_eio_init(uv_loop_t* loop) {
   if (loop->counters.eio_init == 0) {
     loop->counters.eio_init++;
 
+    main_loop = loop;
+
     uv_idle_init(loop, &loop->uv_eio_poller);
     uv_idle_start(&loop->uv_eio_poller, uv_eio_do_poll);
 
+    loop->uv_eio_want_poll_notifier.data = loop;
     uv_async_init(loop, &loop->uv_eio_want_poll_notifier,
         uv_eio_want_poll_notifier_cb);
     uv_unref(loop);
@@ -120,5 +124,11 @@ void uv_eio_init(uv_loop_t* loop) {
      * race conditions. See Node's test/simple/test-eio-race.js
      */
     eio_set_max_poll_reqs(10);
+  } else {
+    /*
+     * If this assertion breaks then Ryan hasn't implemented support for
+     * receiving thread pool requests back to multiple threads.
+     */
+    assert(main_loop == loop);
   }
 }

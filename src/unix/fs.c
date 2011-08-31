@@ -33,12 +33,14 @@
 #include <unistd.h>
 
 
-static void uv_fs_req_init(uv_fs_t* req, uv_fs_type fs_type, uv_fs_cb cb) {
+static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req, uv_fs_type fs_type,
+    uv_fs_cb cb) {
   /* Make sure the thread pool is initialized. */
-  uv_eio_init();
+  uv_eio_init(loop);
 
   uv__req_init((uv_req_t*) req);
   req->type = UV_FS;
+  req->loop = loop;
   req->fs_type = fs_type;
   req->cb = cb;
   req->result = 0;
@@ -103,7 +105,7 @@ static int uv__fs_after(eio_req* eio) {
     req->ptr = req->eio->ptr2;
   }
 
-  uv_unref();
+  uv_unref(req->loop);
   req->eio = NULL; /* Freed by libeio */
 
   req->cb(req);
@@ -111,11 +113,11 @@ static int uv__fs_after(eio_req* eio) {
 }
 
 
-int uv_fs_close(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_CLOSE, cb);
+int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_CLOSE, cb);
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_close(file, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -133,13 +135,13 @@ int uv_fs_close(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 }
 
 
-int uv_fs_open(uv_fs_t* req, const char* path, int flags, int mode,
-    uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_OPEN, cb);
+int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+    int mode, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_OPEN, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_open(path, flags, mode, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -161,13 +163,13 @@ int uv_fs_open(uv_fs_t* req, const char* path, int flags, int mode,
 }
 
 
-int uv_fs_read(uv_fs_t* req, uv_file fd, void* buf, size_t length,
-    off_t offset, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_READ, cb);
+int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
+    size_t length, off_t offset, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_READ, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_read(fd, buf, length, offset, EIO_PRI_DEFAULT,
         uv__fs_after, req);
 
@@ -192,12 +194,12 @@ int uv_fs_read(uv_fs_t* req, uv_file fd, void* buf, size_t length,
 }
 
 
-int uv_fs_unlink(uv_fs_t* req, const char* path, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_UNLINK, cb);
+int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_UNLINK, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_unlink(path, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -218,13 +220,13 @@ int uv_fs_unlink(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 }
 
 
-int uv_fs_write(uv_fs_t* req, uv_file file, void* buf, size_t length,
-    off_t offset, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_WRITE, cb);
+int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
+    size_t length, off_t offset, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_WRITE, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_write(file, buf, length, offset, EIO_PRI_DEFAULT,
         uv__fs_after, req);
     if (!req->eio) {
@@ -248,12 +250,13 @@ int uv_fs_write(uv_fs_t* req, uv_file file, void* buf, size_t length,
 }
 
 
-int uv_fs_mkdir(uv_fs_t* req, const char* path, int mode, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_MKDIR, cb);
+int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
+    uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_MKDIR, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_mkdir(path, mode, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -274,12 +277,12 @@ int uv_fs_mkdir(uv_fs_t* req, const char* path, int mode, uv_fs_cb cb) {
 }
 
 
-int uv_fs_rmdir(uv_fs_t* req, const char* path, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_RMDIR, cb);
+int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_RMDIR, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_rmdir(path, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -300,17 +303,18 @@ int uv_fs_rmdir(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 }
 
 
-int uv_fs_readdir(uv_fs_t* req, const char* path, int flags, uv_fs_cb cb) {
+int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+    uv_fs_cb cb) {
   int r;
   struct dirent* entry;
   size_t size = 0;
   size_t d_namlen = 0;
 
-  uv_fs_req_init(req, UV_FS_READDIR, cb);
+  uv_fs_req_init(loop, req, UV_FS_READDIR, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_readdir(path, flags, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -347,11 +351,11 @@ int uv_fs_readdir(uv_fs_t* req, const char* path, int flags, uv_fs_cb cb) {
 }
 
 
-int uv_fs_stat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
+int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   char* pathdup = path;
   int pathlen;
 
-  uv_fs_req_init(req, UV_FS_STAT, cb);
+  uv_fs_req_init(loop, req, UV_FS_STAT, cb);
 
   /* TODO do this without duplicating the string. */
   /* TODO security */
@@ -365,7 +369,7 @@ int uv_fs_stat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_stat(pathdup, EIO_PRI_DEFAULT, uv__fs_after, req);
 
     free(pathdup);
@@ -393,19 +397,19 @@ int uv_fs_stat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 }
 
 
-int uv_fs_fstat(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_rename(uv_fs_t* req, const char* path, const char* new_path,
+int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path,
     uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_RENAME, cb);
+  uv_fs_req_init(loop, req, UV_FS_RENAME, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_rename(path, new_path, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -426,12 +430,12 @@ int uv_fs_rename(uv_fs_t* req, const char* path, const char* new_path,
 }
 
 
-int uv_fs_fsync(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_FSYNC, cb);
+int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_FSYNC, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_fsync(file, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -452,12 +456,12 @@ int uv_fs_fsync(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 }
 
 
-int uv_fs_fdatasync(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_FDATASYNC, cb);
+int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_FDATASYNC, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_fdatasync(file, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -478,12 +482,13 @@ int uv_fs_fdatasync(uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 }
 
 
-int uv_fs_ftruncate(uv_fs_t* req, uv_file file, off_t offset, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_FTRUNCATE, cb);
+int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, off_t offset,
+    uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_FTRUNCATE, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_ftruncate(file, offset, EIO_PRI_DEFAULT, uv__fs_after, req);
     if (!req->eio) {
       uv_err_new(NULL, ENOMEM);
@@ -504,13 +509,13 @@ int uv_fs_ftruncate(uv_fs_t* req, uv_file file, off_t offset, uv_fs_cb cb) {
 }
 
 
-int uv_fs_sendfile(uv_fs_t* req, uv_file out_fd, uv_file in_fd,
+int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd, uv_file in_fd,
     off_t in_offset, size_t length, uv_fs_cb cb) {
-  uv_fs_req_init(req, UV_FS_SENDFILE, cb);
+  uv_fs_req_init(loop, req, UV_FS_SENDFILE, cb);
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_sendfile(out_fd, in_fd, in_offset, length, EIO_PRI_DEFAULT,
         uv__fs_after, req);
     if (!req->eio) {
@@ -532,29 +537,32 @@ int uv_fs_sendfile(uv_fs_t* req, uv_file out_fd, uv_file in_fd,
 }
 
 
-int uv_fs_chmod(uv_fs_t* req, const char* path, int mode, uv_fs_cb cb) {
+int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
+    uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_utime(uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb) {
+int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
+    double mtime, uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_futime(uv_fs_t* req, uv_file file, double atime, double mtime, uv_fs_cb cb) {
+int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime,
+    double mtime, uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_lstat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
+int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   char* pathdup = path;
   int pathlen;
 
-  uv_fs_req_init(req, UV_FS_LSTAT, cb);
+  uv_fs_req_init(loop, req, UV_FS_LSTAT, cb);
 
   /* TODO do this without duplicating the string. */
   /* TODO security */
@@ -568,7 +576,7 @@ int uv_fs_lstat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
   if (cb) {
     /* async */
-    uv_ref();
+    uv_ref(loop);
     req->eio = eio_lstat(pathdup, EIO_PRI_DEFAULT, uv__fs_after, req);
 
     free(pathdup);
@@ -596,38 +604,43 @@ int uv_fs_lstat(uv_fs_t* req, const char* path, uv_fs_cb cb) {
 }
 
 
-int uv_fs_link(uv_fs_t* req, const char* path, const char* new_path,
+int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
+    const char* new_path, uv_fs_cb cb) {
+  assert(0 && "implement me");
+  return -1;
+}
+
+
+int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
+    const char* new_path, uv_fs_cb cb) {
+  assert(0 && "implement me");
+  return -1;
+}
+
+
+int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_symlink(uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb) {
+int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode,
+    uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_readlink(uv_fs_t* req, const char* path, uv_fs_cb cb) {
+int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, int uid,
+    int gid, uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
 
 
-int uv_fs_fchmod(uv_fs_t* req, uv_file file, int mode, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
-}
-
-
-int uv_fs_chown(uv_fs_t* req, const char* path, int uid, int gid, uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
-}
-
-
-int uv_fs_fchown(uv_fs_t* req, uv_file file, int uid, int gid, uv_fs_cb cb) {
+int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, int uid, int gid,
+    uv_fs_cb cb) {
   assert(0 && "implement me");
   return -1;
 }
@@ -643,7 +656,7 @@ static void uv__work(eio_req* eio) {
 
 static int uv__after_work(eio_req *eio) {
   uv_work_t* req = eio->data;
-  uv_unref();
+  uv_unref(req->loop);
   if (req->after_work_cb) {
     req->after_work_cb(req);
   }
@@ -651,14 +664,15 @@ static int uv__after_work(eio_req *eio) {
 }
 
 
-int uv_queue_work(uv_work_t* req, uv_work_cb work_cb,
+int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb,
     uv_after_work_cb after_work_cb) {
   void* data = req->data;
 
-  uv_eio_init();
+  uv_eio_init(loop);
 
   uv__req_init((uv_req_t*) req);
-  uv_ref();
+  uv_ref(loop);
+  req->loop = loop;
   req->data = data;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
