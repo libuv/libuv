@@ -238,7 +238,7 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 
   init_process_options("spawn_helper2", exit_cb);
 
-  uv_pipe_init(&out);
+  uv_pipe_init(uv_default_loop(), &out);
   options.stdout_stream = &out;
 
   /* Create a pipe that'll cause a collision. */
@@ -253,13 +253,13 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
                                 NULL);
   ASSERT(pipe_handle != INVALID_HANDLE_VALUE);
 
-  r = uv_spawn(&process, options);
+  r = uv_spawn(uv_default_loop(), &process, options);
   ASSERT(r == 0);
 
   r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
   ASSERT(r == 0);
 
-  r = uv_run();
+  r = uv_run(uv_default_loop());
   ASSERT(r == 0);
 
   ASSERT(exit_cb_called == 1);
