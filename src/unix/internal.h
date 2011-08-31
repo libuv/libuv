@@ -36,6 +36,8 @@ enum {
   UV_WRITABLE = 0x00000040  /* The stream is writable */
 };
 
+size_t uv__strlcpy(char* dst, const char* src, size_t size);
+
 int uv__close(int fd);
 void uv__req_init(uv_req_t*);
 void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle, uv_handle_type type);
@@ -54,9 +56,15 @@ void uv_fatal_error(const int errorno, const char* syscall);
 int uv__stream_open(uv_stream_t*, int fd, int flags);
 void uv__stream_io(EV_P_ ev_io* watcher, int revents);
 void uv__server_io(EV_P_ ev_io* watcher, int revents);
+int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t len);
 
 /* tcp */
 int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
+
+/* pipe */
+int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
+void uv__pipe_accept(EV_P_ ev_io* watcher, int revents);
+int uv_pipe_cleanup(uv_pipe_t* handle);
 
 /* udp */
 void uv__udp_destroy(uv_udp_t* handle);
