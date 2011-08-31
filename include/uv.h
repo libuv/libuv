@@ -86,7 +86,7 @@ uv_loop_t* uv_loop_new();
 
 void uv_loop_delete(uv_loop_t*);
 
-/* 
+/*
  * Returns the default loop.
  */
 uv_loop_t* uv_default_loop();
@@ -130,7 +130,8 @@ typedef void (*uv_async_cb)(uv_async_t* handle, int status);
 typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
 typedef void (*uv_check_cb)(uv_check_t* handle, int status);
 typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
-typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status, struct addrinfo* res);
+typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status,
+    struct addrinfo* res);
 typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
@@ -237,7 +238,6 @@ const char* uv_err_name(uv_err_t err);
 
 #define UV_REQ_FIELDS \
   /* read-only */ \
-  uv_loop_t* loop; \
   uv_req_type type; \
   /* public */ \
   void* data; \
@@ -825,13 +825,14 @@ int uv_process_kill(uv_process_t*, int signum);
  */
 struct uv_work_s {
   UV_REQ_FIELDS
+  uv_loop_t* loop;
   uv_work_cb work_cb;
   uv_after_work_cb after_work_cb;
   UV_WORK_PRIVATE_FIELDS
 };
 
 /* Queues a work request to execute asynchronously on the thread pool. */
-int uv_queue_work(uv_work_t* req, uv_work_cb work_cb,
+int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb,
     uv_after_work_cb after_work_cb);
 
 
@@ -870,6 +871,7 @@ typedef enum {
  */
 struct uv_fs_s {
   UV_REQ_FIELDS
+  uv_loop_t* loop;
   uv_fs_type fs_type;
   uv_fs_cb cb;
   ssize_t result;
@@ -879,31 +881,48 @@ struct uv_fs_s {
 };
 
 void uv_fs_req_cleanup(uv_fs_t* req);
-int uv_fs_close(uv_fs_t* req, uv_file file, uv_fs_cb cb);
-int uv_fs_open(uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb);
-int uv_fs_read(uv_fs_t* req, uv_file file, void* buf, size_t length, off_t offset, uv_fs_cb cb);
-int uv_fs_unlink(uv_fs_t* req, const char* path, uv_fs_cb cb);
-int uv_fs_write(uv_fs_t* req, uv_file file, void* buf, size_t length, off_t offset, uv_fs_cb cb);
-int uv_fs_mkdir(uv_fs_t* req, const char* path, int mode, uv_fs_cb cb);
-int uv_fs_rmdir(uv_fs_t* req, const char* path, uv_fs_cb cb);
-int uv_fs_readdir(uv_fs_t* req, const char* path, int flags, uv_fs_cb cb);
-int uv_fs_stat(uv_fs_t* req, const char* path, uv_fs_cb cb);
-int uv_fs_fstat(uv_fs_t* req, uv_file file, uv_fs_cb cb);
-int uv_fs_rename(uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb);
-int uv_fs_fsync(uv_fs_t* req, uv_file file, uv_fs_cb cb);
-int uv_fs_fdatasync(uv_fs_t* req, uv_file file, uv_fs_cb cb);
-int uv_fs_ftruncate(uv_fs_t* req, uv_file file, off_t offset, uv_fs_cb cb);
-int uv_fs_sendfile(uv_fs_t* req, uv_file out_fd, uv_file in_fd, off_t in_offset, size_t length, uv_fs_cb cb);
-int uv_fs_chmod(uv_fs_t* req, const char* path, int mode, uv_fs_cb cb);
-int uv_fs_utime(uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb);
-int uv_fs_futime(uv_fs_t* req, uv_file file, double atime, double mtime, uv_fs_cb cb);
-int uv_fs_lstat(uv_fs_t* req, const char* path, uv_fs_cb cb);
-int uv_fs_link(uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb);
-int uv_fs_symlink(uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb);
-int uv_fs_readlink(uv_fs_t* req, const char* path, uv_fs_cb cb);
-int uv_fs_fchmod(uv_fs_t* req, uv_file file, int mode, uv_fs_cb cb);
-int uv_fs_chown(uv_fs_t* req, const char* path, int uid, int gid, uv_fs_cb cb);
-int uv_fs_fchown(uv_fs_t* req, uv_file file, int uid, int gid, uv_fs_cb cb);
+int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
+int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+    int mode, uv_fs_cb cb);
+int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
+    size_t length, off_t offset, uv_fs_cb cb);
+int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
+int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
+    size_t length, off_t offset, uv_fs_cb cb);
+int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
+    uv_fs_cb cb);
+int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
+int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+    uv_fs_cb cb);
+int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
+int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
+int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
+    const char* new_path, uv_fs_cb cb);
+int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
+int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb);
+int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file,
+    off_t offset, uv_fs_cb cb);
+int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd,
+    uv_file in_fd, off_t in_offset, size_t length, uv_fs_cb cb);
+int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
+    uv_fs_cb cb);
+int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
+    double mtime, uv_fs_cb cb);
+int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime,
+    double mtime, uv_fs_cb cb);
+int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
+int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
+    const char* new_path, uv_fs_cb cb);
+int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
+    const char* new_path, uv_fs_cb cb);
+int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
+    uv_fs_cb cb);
+int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode,
+    uv_fs_cb cb);
+int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, int uid,
+    int gid, uv_fs_cb cb);
+int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, int uid,
+    int gid, uv_fs_cb cb);
 
 
 /* Utility */
