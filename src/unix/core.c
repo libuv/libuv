@@ -41,7 +41,6 @@
 #include <arpa/inet.h>
 #include <limits.h> /* PATH_MAX */
 #include <sys/uio.h> /* writev */
-#include <poll.h>
 
 #if defined(__linux__)
 
@@ -77,19 +76,10 @@
 #include <sys/wait.h>
 #endif
 
-
-# ifdef __APPLE__
-# include <crt_externs.h>
-# define environ (*_NSGetEnviron())
-# else
-extern char **environ;
-# endif
-
 static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
 
 void uv__next(EV_P_ ev_idle* watcher, int revents);
-static int uv__stream_open(uv_stream_t*, int fd, int flags);
 static void uv__finish_close(uv_handle_t* handle);
 
 static int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
@@ -112,16 +102,6 @@ static int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t len);
 size_t uv__strlcpy(char* dst, const char* src, size_t size);
 
 
-/* flags */
-enum {
-  UV_CLOSING  = 0x00000001, /* uv_close() called but not finished. */
-  UV_CLOSED   = 0x00000002, /* close(2) finished. */
-  UV_READING  = 0x00000004, /* uv_read_start() called. */
-  UV_SHUTTING = 0x00000008, /* uv_shutdown() called but not complete. */
-  UV_SHUT     = 0x00000010, /* Write side closed. */
-  UV_READABLE = 0x00000020, /* The stream is readable */
-  UV_WRITABLE = 0x00000040  /* The stream is writable */
-};
 
 
 void uv_init() {
@@ -357,7 +337,7 @@ int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6 addr) {
 }
 
 
-static int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
+int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
   socklen_t yes;
 
   assert(fd >= 0);
@@ -2006,254 +1986,5 @@ size_t uv__strlcpy(char* dst, const char* src, size_t size) {
 uv_stream_t* uv_std_handle(uv_loop_t* loop, uv_std_type type) {
   assert(0 && "implement me");
   return NULL;
-}
-
-
-static void uv__chld(EV_P_ ev_child* watcher, int revents) {
-  int status = watcher->rstatus;
-  int exit_status = 0;
-  int term_signal = 0;
-  uv_process_t *process = watcher->data;
-
-  assert(&process->child_watcher == watcher);
-  assert(revents & EV_CHILD);
-
-  ev_child_stop(EV_A_ &process->child_watcher);
-
-  if (WIFEXITED(status)) {
-    exit_status = WEXITSTATUS(status);
-  }
-
-  if (WIFSIGNALED(status)) {
-    term_signal = WTERMSIG(status);
-  }
-
-  if (process->exit_cb) {
-    process->exit_cb(process, exit_status, term_signal);
-  }
-}
-
-#ifndef SPAWN_WAIT_EXEC
-# define SPAWN_WAIT_EXEC 1
-#endif
-
-int uv_spawn(uv_loop_t* loop, uv_process_t* process,
-    uv_process_options_t options) {
-  /*
-   * Save environ in the case that we get it clobbered
-   * by the child process.
-   */
-  char** save_our_env = environ;
-  int stdin_pipe[2] = { -1, -1 };
-  int stdout_pipe[2] = { -1, -1 };
-  int stderr_pipe[2] = { -1, -1 };
-#if SPAWN_WAIT_EXEC
-  int signal_pipe[2] = { -1, -1 };
-  struct pollfd pfd;
-#endif
-  int status;
-  pid_t pid;
-
-  uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
-  loop->counters.process_init++;
-
-  process->exit_cb = options.exit_cb;
-
-  if (options.stdin_stream) {
-    if (options.stdin_stream->type != UV_NAMED_PIPE) {
-      errno = EINVAL;
-      goto error;
-    }
-
-    if (pipe(stdin_pipe) < 0) {
-      goto error;
-    }
-    uv__cloexec(stdin_pipe[0], 1);
-    uv__cloexec(stdin_pipe[1], 1);
-  }
-
-  if (options.stdout_stream) {
-    if (options.stdout_stream->type != UV_NAMED_PIPE) {
-      errno = EINVAL;
-      goto error;
-    }
-
-    if (pipe(stdout_pipe) < 0) {
-      goto error;
-    }
-    uv__cloexec(stdout_pipe[0], 1);
-    uv__cloexec(stdout_pipe[1], 1);
-  }
-
-  if (options.stderr_stream) {
-    if (options.stderr_stream->type != UV_NAMED_PIPE) {
-      errno = EINVAL;
-      goto error;
-    }
-
-    if (pipe(stderr_pipe) < 0) {
-      goto error;
-    }
-    uv__cloexec(stderr_pipe[0], 1);
-    uv__cloexec(stderr_pipe[1], 1);
-  }
-
-  /* This pipe is used by the parent to wait until
-   * the child has called `execve()`. We need this
-   * to avoid the following race condition:
-   *
-   *    if ((pid = fork()) > 0) {
-   *      kill(pid, SIGTERM);
-   *    }
-   *    else if (pid == 0) {
-   *      execve("/bin/cat", argp, envp);
-   *    }
-   *
-   * The parent sends a signal immediately after forking.
-   * Since the child may not have called `execve()` yet,
-   * there is no telling what process receives the signal,
-   * our fork or /bin/cat.
-   *
-   * To avoid ambiguity, we create a pipe with both ends
-   * marked close-on-exec. Then, after the call to `fork()`,
-   * the parent polls the read end until it sees POLLHUP.
-   */
-#if SPAWN_WAIT_EXEC
-# ifdef HAVE_PIPE2
-  if (pipe2(signal_pipe, O_CLOEXEC | O_NONBLOCK) < 0) {
-    goto error;
-  }
-# else
-  if (pipe(signal_pipe) < 0) {
-    goto error;
-  }
-  uv__cloexec(signal_pipe[0], 1);
-  uv__cloexec(signal_pipe[1], 1);
-  uv__nonblock(signal_pipe[0], 1);
-  uv__nonblock(signal_pipe[1], 1);
-# endif
-#endif
-
-  pid = fork();
-
-  if (pid == -1) {
-#if SPAWN_WAIT_EXEC
-    uv__close(signal_pipe[0]);
-    uv__close(signal_pipe[1]);
-#endif
-    environ = save_our_env;
-    goto error;
-  }
-
-  if (pid == 0) {
-    if (stdin_pipe[0] >= 0) {
-      uv__close(stdin_pipe[1]);
-      dup2(stdin_pipe[0],  STDIN_FILENO);
-    }
-
-    if (stdout_pipe[1] >= 0) {
-      uv__close(stdout_pipe[0]);
-      dup2(stdout_pipe[1], STDOUT_FILENO);
-    }
-
-    if (stderr_pipe[1] >= 0) {
-      uv__close(stderr_pipe[0]);
-      dup2(stderr_pipe[1], STDERR_FILENO);
-    }
-
-    if (options.cwd && chdir(options.cwd)) {
-      perror("chdir()");
-      _exit(127);
-    }
-
-    environ = options.env;
-
-    execvp(options.file, options.args);
-    perror("execvp()");
-    _exit(127);
-    /* Execution never reaches here. */
-  }
-
-  /* Parent. */
-
-  /* Restore environment. */
-  environ = save_our_env;
-
-#if SPAWN_WAIT_EXEC
-  /* POLLHUP signals child has exited or execve()'d. */
-  uv__close(signal_pipe[1]);
-  do {
-    pfd.fd = signal_pipe[0];
-    pfd.events = POLLIN|POLLHUP;
-    pfd.revents = 0;
-    errno = 0, status = poll(&pfd, 1, -1);
-  }
-  while (status == -1 && (errno == EINTR || errno == ENOMEM));
-
-  uv__close(signal_pipe[0]);
-  uv__close(signal_pipe[1]);
-
-  assert((status == 1)
-      && "poll() on pipe read end failed");
-  assert((pfd.revents & POLLHUP) == POLLHUP
-      && "no POLLHUP on pipe read end");
-#endif
-
-  process->pid = pid;
-
-  ev_child_init(&process->child_watcher, uv__chld, pid, 0);
-  ev_child_start(process->loop->ev, &process->child_watcher);
-  process->child_watcher.data = process;
-
-  if (stdin_pipe[1] >= 0) {
-    assert(options.stdin_stream);
-    assert(stdin_pipe[0] >= 0);
-    uv__close(stdin_pipe[0]);
-    uv__nonblock(stdin_pipe[1], 1);
-    uv__stream_open((uv_stream_t*)options.stdin_stream, stdin_pipe[1],
-        UV_WRITABLE);
-  }
-
-  if (stdout_pipe[0] >= 0) {
-    assert(options.stdout_stream);
-    assert(stdout_pipe[1] >= 0);
-    uv__close(stdout_pipe[1]);
-    uv__nonblock(stdout_pipe[0], 1);
-    uv__stream_open((uv_stream_t*)options.stdout_stream, stdout_pipe[0],
-        UV_READABLE);
-  }
-
-  if (stderr_pipe[0] >= 0) {
-    assert(options.stderr_stream);
-    assert(stderr_pipe[1] >= 0);
-    uv__close(stderr_pipe[1]);
-    uv__nonblock(stderr_pipe[0], 1);
-    uv__stream_open((uv_stream_t*)options.stderr_stream, stderr_pipe[0],
-        UV_READABLE);
-  }
-
-  return 0;
-
-error:
-  uv_err_new(process->loop, errno);
-  uv__close(stdin_pipe[0]);
-  uv__close(stdin_pipe[1]);
-  uv__close(stdout_pipe[0]);
-  uv__close(stdout_pipe[1]);
-  uv__close(stderr_pipe[0]);
-  uv__close(stderr_pipe[1]);
-  return -1;
-}
-
-
-int uv_process_kill(uv_process_t* process, int signum) {
-  int r = kill(process->pid, signum);
-
-  if (r) {
-    uv_err_new(process->loop, errno);
-    return -1;
-  } else {
-    return 0;
-  }
 }
 
