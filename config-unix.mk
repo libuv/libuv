@@ -35,6 +35,7 @@ OBJS += src/unix/cares.o
 OBJS += src/unix/udp.o
 OBJS += src/unix/error.o
 OBJS += src/unix/process.o
+OBJS += src/unix/tcp.o
 
 ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h

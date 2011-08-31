@@ -52,6 +52,11 @@ void uv_fatal_error(const int errorno, const char* syscall);
 
 /* stream */
 int uv__stream_open(uv_stream_t*, int fd, int flags);
+void uv__stream_io(EV_P_ ev_io* watcher, int revents);
+void uv__server_io(EV_P_ ev_io* watcher, int revents);
+
+/* tcp */
+int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
 
 /* udp */
 void uv__udp_destroy(uv_udp_t* handle);

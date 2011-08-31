@@ -146,6 +146,7 @@
             'src/unix/uv-eio.h',
             'src/unix/fs.c',
             'src/unix/udp.c',
+            'src/unix/tcp.c',
             'src/unix/cares.c',
             'src/unix/error.c',
             'src/unix/process.c',
