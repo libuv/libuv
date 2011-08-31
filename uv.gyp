@@ -148,6 +148,7 @@
             'src/unix/udp.c',
             'src/unix/tcp.c',
             'src/unix/pipe.c',
+            'src/unix/stream.c',
             'src/unix/cares.c',
             'src/unix/error.c',
             'src/unix/process.c',
