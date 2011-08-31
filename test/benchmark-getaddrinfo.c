@@ -66,7 +66,7 @@ static void getaddrinfo_initiate(uv_getaddrinfo_t* handle) {
 BENCHMARK_IMPL(getaddrinfo) {
   int i;
 
-  uv_init();
+
 
   uv_update_time();
   start_time = uv_now();

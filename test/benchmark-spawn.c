@@ -130,7 +130,7 @@ BENCHMARK_IMPL(spawn) {
   int r;
   static int64_t start_time, end_time;
 
-  uv_init();
+
 
   r = uv_exepath(exepath, &exepath_size);
   ASSERT(r == 0);

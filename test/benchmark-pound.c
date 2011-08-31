@@ -275,7 +275,7 @@ static int pound_it(int concurrency,
   uint64_t start_time; /* in ns */
   uint64_t end_time;
 
-  uv_init();
+
 
   uv_update_time();
   start = uv_now();

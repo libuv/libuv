@@ -67,16 +67,17 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
 TEST_IMPL(getaddrinfo_basic) {
   int r;
 
-  uv_init();
 
-  r = uv_getaddrinfo(&getaddrinfo_handle,
+
+  r = uv_getaddrinfo(uv_default_loop(),
+                     &getaddrinfo_handle,
                      &getaddrinfo_basic_cb,
                      name,
                      NULL,
                      NULL);
   ASSERT(r == 0);
 
-  uv_run();
+  uv_run(uv_default_loop());
 
   ASSERT(getaddrinfo_cbs == 1);
 
@@ -87,20 +88,21 @@ TEST_IMPL(getaddrinfo_basic) {
 TEST_IMPL(getaddrinfo_concurrent) {
   int i, r;
 
-  uv_init();
+
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     callback_counts[i] = 0;
 
-    r = uv_getaddrinfo(&getaddrinfo_handles[i],
-                   &getaddrinfo_cuncurrent_cb,
-                   name,
-                   NULL,
-                   NULL);
+    r = uv_getaddrinfo(uv_default_loop(),
+                       &getaddrinfo_handles[i],
+                       &getaddrinfo_cuncurrent_cb,
+                       name,
+                       NULL,
+                       NULL);
     ASSERT(r == 0);
   }
 
-  uv_run();
+  uv_run(uv_default_loop());
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     ASSERT(callback_counts[i] == 1);

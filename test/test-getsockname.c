@@ -78,14 +78,15 @@ static void on_connection(uv_stream_t* server, int status) {
   int r;
 
   if (status != 0) {
-    fprintf(stderr, "Connect error %d\n", uv_last_error().code);
+    fprintf(stderr, "Connect error %d\n",
+        uv_last_error(uv_default_loop()).code);
   }
   ASSERT(status == 0);
 
   handle = (uv_handle_t*) malloc(sizeof(uv_tcp_t));
   ASSERT(handle != NULL);
 
-  uv_tcp_init((uv_tcp_t*)handle);
+  uv_tcp_init(uv_default_loop(), (uv_tcp_t*)handle);
 
   /* associate server with stream */
   handle->data = server;
@@ -95,7 +96,8 @@ static void on_connection(uv_stream_t* server, int status) {
 
   status = uv_getsockname(handle, &sockname, &namelen);
   if (status != 0) {
-    fprintf(stderr, "uv_getsockname error (accepted) %d\n", uv_last_error().code);
+    fprintf(stderr, "uv_getsockname error (accepted) %d\n",
+        uv_last_error(uv_default_loop()).code);
   }
   ASSERT(status == 0);
 
@@ -115,7 +117,8 @@ static void on_connect(uv_connect_t* req, int status) {
 
   r = uv_getsockname((uv_handle_t*)&tcp, &sockname, &namelen);
   if (r != 0) {
-    fprintf(stderr, "uv_getsockname error (connector) %d\n", uv_last_error().code);
+    fprintf(stderr, "uv_getsockname error (connector) %d\n",
+        uv_last_error(uv_default_loop()).code);
   }
   ASSERT(r == 0);
 
@@ -132,7 +135,7 @@ static int tcp_listener(int port) {
   char ip[20];
   int r;
 
-  r = uv_tcp_init(&tcpServer);
+  r = uv_tcp_init(uv_default_loop(), &tcpServer);
   if (r) {
     fprintf(stderr, "Socket creation error\n");
     return 1;
@@ -154,7 +157,8 @@ static int tcp_listener(int port) {
 
   r = uv_getsockname((uv_handle_t*)&tcpServer, &sockname, &namelen);
   if (r != 0) {
-    fprintf(stderr, "uv_getsockname error (listening) %d\n", uv_last_error().code);
+    fprintf(stderr, "uv_getsockname error (listening) %d\n",
+        uv_last_error(uv_default_loop()).code);
   }
   ASSERT(r == 0);
 
@@ -175,7 +179,7 @@ static void tcp_connector() {
   int r;
   struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
-  r = uv_tcp_init(&tcp);
+  r = uv_tcp_init(uv_default_loop(), &tcp);
   tcp.data = &connect_req;
   ASSERT(!r);
 
@@ -284,14 +288,14 @@ static void udp_sender(void) {
 
 
 TEST_IMPL(getsockname_tcp) {
-  uv_init();
+
 
   if (tcp_listener(TEST_PORT))
     return 1;
 
   tcp_connector();
 
-  uv_run();
+  uv_run(uv_default_loop());
 
   ASSERT(getsocknamecount == 3);
 

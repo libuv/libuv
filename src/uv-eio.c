@@ -25,48 +25,46 @@
 #include <assert.h>
 
 
-static uv_async_t uv_eio_want_poll_notifier;
-static uv_async_t uv_eio_done_poll_notifier;
-static uv_idle_t uv_eio_poller;
-static int uv_eio_init_count;
-
-
 static void uv_eio_do_poll(uv_idle_t* watcher, int status) {
-  assert(watcher == &uv_eio_poller);
+  assert(watcher == &(watcher->loop->uv_eio_poller));
 
   /* printf("uv_eio_poller\n"); */
 
-  if (eio_poll() != -1 && uv_is_active((uv_handle_t*) &uv_eio_poller)) {
+  if (eio_poll() != -1 && uv_is_active((uv_handle_t*) watcher)) {
     /* printf("uv_eio_poller stop\n"); */
-    uv_idle_stop(&uv_eio_poller);
-    uv_unref();
+    uv_idle_stop(watcher);
+    uv_unref(watcher->loop);
   }
 }
 
 
 /* Called from the main thread. */
 static void uv_eio_want_poll_notifier_cb(uv_async_t* watcher, int status) {
-  assert(watcher == &uv_eio_want_poll_notifier);
+  uv_loop_t* loop = watcher->loop;
+
+  assert(watcher == &loop->uv_eio_want_poll_notifier);
 
   /* printf("want poll notifier\n"); */
 
-  if (eio_poll() == -1 && !uv_is_active((uv_handle_t*) &uv_eio_poller)) {
+  if (eio_poll() == -1 && !uv_is_active((uv_handle_t*) &loop->uv_eio_poller)) {
     /* printf("uv_eio_poller start\n"); */
-    uv_idle_start(&uv_eio_poller, uv_eio_do_poll);
-    uv_ref();
+    uv_idle_start(&loop->uv_eio_poller, uv_eio_do_poll);
+    uv_ref(loop);
   }
 }
 
 
 static void uv_eio_done_poll_notifier_cb(uv_async_t* watcher, int revents) {
-  assert(watcher == &uv_eio_done_poll_notifier);
+  uv_loop_t* loop = watcher->loop;
+
+  assert(watcher == &loop->uv_eio_done_poll_notifier);
 
   /* printf("done poll notifier\n"); */
 
-  if (eio_poll() != -1 && uv_is_active((uv_handle_t*) &uv_eio_poller)) {
+  if (eio_poll() != -1 && uv_is_active((uv_handle_t*) &loop->uv_eio_poller)) {
     /* printf("uv_eio_poller stop\n"); */
-    uv_idle_stop(&uv_eio_poller);
-    uv_unref();
+    uv_idle_stop(&loop->uv_eio_poller);
+    uv_unref(loop);
   }
 }
 
@@ -77,7 +75,15 @@ static void uv_eio_done_poll_notifier_cb(uv_async_t* watcher, int revents) {
  */
 static void uv_eio_want_poll(void) {
   /* Signal the main thread that eio_poll need to be processed. */
+
+#if 0
+  /*
+   * TODO need to select the correct uv_loop_t and async_send to
+   * uv_eio_want_poll_notifier.
+   */
+
   uv_async_send(&uv_eio_want_poll_notifier);
+#endif
 }
 
 
@@ -86,22 +92,27 @@ static void uv_eio_done_poll(void) {
    * Signal the main thread that we should stop calling eio_poll().
    * from the idle watcher.
    */
+
+#if 0
   uv_async_send(&uv_eio_done_poll_notifier);
+#endif
 }
 
 
-void uv_eio_init() {
-  if (uv_eio_init_count == 0) {
-    uv_eio_init_count++;
+void uv_eio_init(uv_loop_t* loop) {
+  if (loop->counters.eio_init == 0) {
+    loop->counters.eio_init++;
 
-    uv_idle_init(&uv_eio_poller);
-    uv_idle_start(&uv_eio_poller, uv_eio_do_poll);
+    uv_idle_init(loop, &loop->uv_eio_poller);
+    uv_idle_start(&loop->uv_eio_poller, uv_eio_do_poll);
 
-    uv_async_init(&uv_eio_want_poll_notifier, uv_eio_want_poll_notifier_cb);
-    uv_unref();
+    uv_async_init(loop, &loop->uv_eio_want_poll_notifier,
+        uv_eio_want_poll_notifier_cb);
+    uv_unref(loop);
 
-    uv_async_init(&uv_eio_done_poll_notifier, uv_eio_done_poll_notifier_cb);
-    uv_unref();
+    uv_async_init(loop, &loop->uv_eio_done_poll_notifier,
+        uv_eio_done_poll_notifier_cb);
+    uv_unref(loop);
 
     eio_init(uv_eio_want_poll, uv_eio_done_poll);
     /*
