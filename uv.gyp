@@ -145,6 +145,7 @@
             'src/unix/uv-eio.c',
             'src/unix/uv-eio.h',
             'src/unix/fs.c',
+            'src/unix/udp.c',
             'src/unix/internal.h',
             'src/unix/eio/ecb.h',
             'src/unix/eio/eio.c',

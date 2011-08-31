@@ -28,7 +28,14 @@
 int uv__close(int fd);
 void uv__req_init(uv_req_t*);
 uv_err_t uv_err_new(uv_loop_t* loop, int sys_error);
+uv_err_t uv_err_new_artificial(uv_loop_t* loop, int code);
 int uv__nonblock(int fd, int set) __attribute__((unused));
 int uv__cloexec(int fd, int set) __attribute__((unused));
+int uv__socket(int domain, int type, int protocol);
+void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle, uv_handle_type type);
+
+/* udp */
+void uv__udp_destroy(uv_udp_t* handle);
+void uv__udp_watcher_stop(uv_udp_t* handle, ev_io* w);
 
 #endif /* UV_UNIX_INTERNAL_H_ */
