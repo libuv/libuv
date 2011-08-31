@@ -23,7 +23,7 @@ AR = $(PREFIX)ar
 E=
 CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS=-g
-CPPFLAGS += -Isrc/ev
+CPPFLAGS += -Isrc/unix/ev
 LINKFLAGS=-lm
 
 CPPFLAGS += -D_LARGEFILE_SOURCE
@@ -85,8 +85,8 @@ endif
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: src/uv-unix.o src/unix/fs.o src/uv-common.o src/uv-platform.o src/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o $(CARES_OBJS)
-	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/ev/ev.o \
+uv.a: src/uv-unix.o src/unix/fs.o src/uv-common.o src/uv-platform.o src/unix/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o $(CARES_OBJS)
+	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/unix/ev/ev.o \
 		src/unix/eio/eio.o $(CARES_OBJS)
 
 src/uv-platform.o: src/unix/$(UV_OS_FILE) include/uv.h include/uv-unix.h
@@ -101,8 +101,8 @@ src/unix/fs.o: src/unix/fs.c include/uv.h include/uv-unix.h src/unix/internal.h
 src/uv-common.o: src/uv-common.c include/uv.h include/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/uv-common.c -o src/uv-common.o
 
-src/ev/ev.o: src/ev/ev.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c src/ev/ev.c -o src/ev/ev.o -DEV_CONFIG_H=\"$(EV_CONFIG)\"
+src/unix/ev/ev.o: src/unix/ev/ev.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c src/unix/ev/ev.c -o src/unix/ev/ev.o -DEV_CONFIG_H=\"$(EV_CONFIG)\"
 
 
 EIO_CPPFLAGS += $(CPPFLAGS)
@@ -119,14 +119,14 @@ src/unix/uv-eio.o: src/unix/uv-eio.c
 
 clean-platform:
 	-rm -f src/ares/*.o
-	-rm -f src/ev/*.o
+	-rm -f src/unix/ev/*.o
 	-rm -f src/unix/eio/*.o
 	-rm -f src/unix/*.o
 	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
 
 distclean-platform:
 	-rm -f src/ares/*.o
-	-rm -f src/ev/*.o
+	-rm -f src/unix/ev/*.o
 	-rm -f src/unix/*.o
 	-rm -f src/unix/eio/*.o
 	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
