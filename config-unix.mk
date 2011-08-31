@@ -85,9 +85,9 @@ endif
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: src/uv-unix.o src/unix/fs.o src/uv-common.o src/uv-platform.o src/ev/ev.o src/uv-eio.o src/eio/eio.o $(CARES_OBJS)
-	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/uv-platform.o src/uv-common.o src/uv-eio.o src/ev/ev.o \
-		src/eio/eio.o $(CARES_OBJS)
+uv.a: src/uv-unix.o src/unix/fs.o src/uv-common.o src/uv-platform.o src/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o $(CARES_OBJS)
+	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/ev/ev.o \
+		src/unix/eio/eio.o $(CARES_OBJS)
 
 src/uv-platform.o: src/$(UV_OS_FILE) include/uv.h include/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/$(UV_OS_FILE) -o src/uv-platform.o
@@ -110,21 +110,23 @@ EIO_CPPFLAGS += -DEIO_CONFIG_H=\"$(EIO_CONFIG)\"
 EIO_CPPFLAGS += -DEIO_STACKSIZE=262144
 EIO_CPPFLAGS += -D_GNU_SOURCE
 
-src/eio/eio.o: src/eio/eio.c
-	$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c src/eio/eio.c -o src/eio/eio.o
+src/unix/eio/eio.o: src/unix/eio/eio.c
+	$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c src/unix/eio/eio.c -o src/unix/eio/eio.o
 
-src/uv-eio.o: src/uv-eio.c
-	$(CC) $(CPPFLAGS) -Isrc/eio/ $(CSTDFLAG) $(CFLAGS) -c src/uv-eio.c -o src/uv-eio.o
+src/unix/uv-eio.o: src/unix/uv-eio.c
+	$(CC) $(CPPFLAGS) -Isrc/unix/eio/ $(CSTDFLAG) $(CFLAGS) -c src/unix/uv-eio.c -o src/unix/uv-eio.o
 
 
 clean-platform:
 	-rm -f src/ares/*.o
 	-rm -f src/ev/*.o
-	-rm -f src/eio/*.o
+	-rm -f src/unix/eio/*.o
+	-rm -f src/unix/*.o
 	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
 
 distclean-platform:
 	-rm -f src/ares/*.o
 	-rm -f src/ev/*.o
-	-rm -f src/eio/*.o
+	-rm -f src/unix/*.o
+	-rm -f src/unix/eio/*.o
 	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
