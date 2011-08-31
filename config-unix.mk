@@ -89,16 +89,16 @@ uv.a: src/uv-unix.o src/unix/fs.o src/uv-common.o src/uv-platform.o src/unix/ev/
 	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/unix/ev/ev.o \
 		src/unix/eio/eio.o $(CARES_OBJS)
 
-src/uv-platform.o: src/unix/$(UV_OS_FILE) include/uv.h include/uv-unix.h
+src/uv-platform.o: src/unix/$(UV_OS_FILE) include/uv.h include/uv-private/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/unix/$(UV_OS_FILE) -o src/uv-platform.o
 
-src/uv-unix.o: src/uv-unix.c include/uv.h include/uv-unix.h src/unix/internal.h
+src/uv-unix.o: src/uv-unix.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) -Isrc  $(CFLAGS) -c src/uv-unix.c -o src/uv-unix.o
 
-src/unix/fs.o: src/unix/fs.c include/uv.h include/uv-unix.h src/unix/internal.h
+src/unix/fs.o: src/unix/fs.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) -Isrc/ $(CFLAGS) -c src/unix/fs.c -o src/unix/fs.o
 
-src/uv-common.o: src/uv-common.c include/uv.h include/uv-unix.h
+src/uv-common.o: src/uv-common.c include/uv.h include/uv-private/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/uv-common.c -o src/uv-common.o
 
 src/unix/ev/ev.o: src/unix/ev/ev.c

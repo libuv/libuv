@@ -5,6 +5,7 @@
       'type': '<(library)',
       'include_dirs': [
         'include',
+        'include/uv-private',
         'src/',
       ],
       'direct_dependent_settings': {
@@ -94,8 +95,8 @@
             '_GNU_SOURCE',
           ],
           'sources': [
-            'include/tree.h',
-            'include/uv-win.h',
+            'include/uv-private/tree.h',
+            'include/uv-private/uv-win.h',
             'src/ares/config_win32/ares_config.h',
             'src/win/async.c',
             'src/win/cares.c',
@@ -136,10 +137,10 @@
             '-Wno-unused-parameter'
           ],
           'sources': [
-            'include/eio.h',
-            'include/ev.h',
-            'include/ngx-queue.h',
-            'include/uv-unix.h',
+            'include/uv-private/eio.h',
+            'include/uv-private/ev.h',
+            'include/uv-private/ngx-queue.h',
+            'include/uv-private/uv-unix.h',
             'src/uv-unix.c',
             'src/unix/uv-eio.c',
             'src/unix/uv-eio.h',

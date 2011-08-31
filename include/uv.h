@@ -67,9 +67,9 @@ typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_work_s uv_work_t;
 
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
-# include "uv-unix.h"
+# include "uv-private/uv-unix.h"
 #else
-# include "uv-win.h"
+# include "uv-private/uv-win.h"
 #endif
 
 
