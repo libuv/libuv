@@ -67,6 +67,7 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
 TEST_IMPL(getaddrinfo_basic) {
   int r;
 
+  uv_init();
 
 
   r = uv_getaddrinfo(uv_default_loop(),
@@ -88,7 +89,7 @@ TEST_IMPL(getaddrinfo_basic) {
 TEST_IMPL(getaddrinfo_concurrent) {
   int i, r;
 
-
+  uv_init();
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     callback_counts[i] = 0;

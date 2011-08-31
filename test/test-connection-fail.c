@@ -119,7 +119,7 @@ void connection_fail(uv_connect_cb connect_cb) {
  * expect an error.
  */
 TEST_IMPL(connection_fail) {
-
+  uv_init();
 
   connection_fail(on_connect_with_close);
 
@@ -136,6 +136,7 @@ TEST_IMPL(connection_fail) {
  * attempt.
  */
 TEST_IMPL(connection_fail_doesnt_auto_close) {
+  uv_init();
 
 
   uv_timer_init(uv_default_loop(), &timer);

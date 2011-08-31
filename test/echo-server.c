@@ -270,6 +270,7 @@ static int pipe_echo_start(char* pipeName) {
 
 
 HELPER_IMPL(tcp4_echo_server) {
+  uv_init();
   uv_loop_t* loop = uv_default_loop();
 
   if (tcp4_echo_start(TEST_PORT))
@@ -281,6 +282,7 @@ HELPER_IMPL(tcp4_echo_server) {
 
 
 HELPER_IMPL(tcp6_echo_server) {
+  uv_init();
   uv_loop_t* loop = uv_default_loop();
 
   if (tcp6_echo_start(TEST_PORT))
@@ -292,6 +294,7 @@ HELPER_IMPL(tcp6_echo_server) {
 
 
 HELPER_IMPL(pipe_echo_server) {
+  uv_init();
   uv_loop_t* loop = uv_default_loop();
 
   if (pipe_echo_start(TEST_PIPENAME))

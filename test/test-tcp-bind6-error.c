@@ -39,6 +39,7 @@ TEST_IMPL(tcp_bind6_error_addrinuse) {
   uv_tcp_t server1, server2;
   int r;
 
+  uv_init();
 
 
   r = uv_tcp_init(uv_default_loop(), &server1);
@@ -74,6 +75,7 @@ TEST_IMPL(tcp_bind6_error_addrnotavail) {
   uv_tcp_t server;
   int r;
 
+  uv_init();
 
 
   r = uv_tcp_init(uv_default_loop(), &server);
@@ -100,6 +102,7 @@ TEST_IMPL(tcp_bind6_error_fault) {
 
   garbage_addr = (struct sockaddr_in6*) &garbage;
 
+  uv_init();
 
 
   r = uv_tcp_init(uv_default_loop(), &server);
@@ -126,6 +129,7 @@ TEST_IMPL(tcp_bind6_error_inval) {
   uv_tcp_t server;
   int r;
 
+  uv_init();
 
 
   r = uv_tcp_init(uv_default_loop(), &server);
@@ -153,6 +157,7 @@ TEST_IMPL(tcp_bind6_localhost_ok) {
   uv_tcp_t server;
   int r;
 
+  uv_init();
 
 
   r = uv_tcp_init(uv_default_loop(), &server);

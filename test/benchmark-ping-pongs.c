@@ -198,7 +198,7 @@ static void pinger_new() {
 
 
 BENCHMARK_IMPL(ping_pongs) {
-
+  uv_init();
   start_time = uv_now();
 
   pinger_new();

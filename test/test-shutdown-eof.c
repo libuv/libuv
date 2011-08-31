@@ -153,7 +153,7 @@ TEST_IMPL(shutdown_eof) {
   struct sockaddr_in server_addr;
   int r;
 
-
+  uv_init();
 
   qbuf.base = "Q";
   qbuf.len = 1;

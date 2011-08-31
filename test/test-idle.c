@@ -60,6 +60,7 @@ static void idle_cb(uv_idle_t* handle, int status) {
 TEST_IMPL(idle_starvation) {
   int r;
 
+  uv_init();
 
 
   r = uv_idle_init(uv_default_loop(), &idle_handle);

@@ -91,7 +91,7 @@ TEST_IMPL(gethostbyname) {
     return 1;
   }
 
-
+  uv_init();
 
   printf("Start basic gethostbyname test\n");
   prep_tcploopback();

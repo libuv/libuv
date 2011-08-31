@@ -221,7 +221,7 @@ static void pipe_pinger_new() {
 
 
 TEST_IMPL(tcp_ping_pong) {
-
+  uv_init();
 
   tcp_pinger_new();
   uv_run(uv_default_loop());
@@ -233,7 +233,7 @@ TEST_IMPL(tcp_ping_pong) {
 
 
 TEST_IMPL(tcp_ping_pong_v6) {
-
+  uv_init();
 
   tcp_pinger_v6_new();
   uv_run(uv_default_loop());
@@ -245,7 +245,7 @@ TEST_IMPL(tcp_ping_pong_v6) {
 
 
 TEST_IMPL(pipe_ping_pong) {
-
+  uv_init();
 
   pipe_pinger_new();
   uv_run(uv_default_loop());

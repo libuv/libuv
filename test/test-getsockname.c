@@ -288,7 +288,7 @@ static void udp_sender(void) {
 
 
 TEST_IMPL(getsockname_tcp) {
-
+  uv_init();
 
   if (tcp_listener(TEST_PORT))
     return 1;

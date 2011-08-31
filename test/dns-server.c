@@ -314,7 +314,7 @@ static int dns_start(int port) {
 
 
 HELPER_IMPL(dns_server) {
-
+  uv_init();
   if (dns_start(TEST_PORT_2))
     return 1;
 

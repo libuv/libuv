@@ -95,6 +95,7 @@ static void repeat_2_cb(uv_timer_t* handle, int status) {
 TEST_IMPL(timer_again) {
   int r;
 
+  uv_init();
 
 
   start_time = uv_now(uv_default_loop());

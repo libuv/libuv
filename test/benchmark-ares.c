@@ -84,7 +84,7 @@ BENCHMARK_IMPL(gethostbyname) {
     return 1;
   }
 
-
+  uv_init();
   ares_callbacks = 0;
   ares_errors = 0;
 
