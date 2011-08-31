@@ -181,7 +181,7 @@
         }],
         [ 'OS=="mac"', {
           'include_dirs': [ 'src/ares/config_darwin' ],
-          'sources': [ 'src/uv-darwin.c' ],
+          'sources': [ 'src/unix/darwin.c' ],
           'direct_dependent_settings': {
             'libraries': [ '-framework CoreServices' ],
           },
@@ -192,7 +192,7 @@
         }],
         [ 'OS=="linux"', {
           'include_dirs': [ 'src/ares/config_linux' ],
-          'sources': [ 'src/uv-linux.c' ],
+          'sources': [ 'src/unix/linux.c' ],
           'defines': [
             'EV_CONFIG_H="config_linux.h"',
             'EIO_CONFIG_H="config_linux.h"',

@@ -34,7 +34,7 @@ EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
 CPPFLAGS += -Isrc/ares/config_sunos -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 LINKFLAGS+=-lsocket -lnsl
-UV_OS_FILE=uv-sunos.c
+UV_OS_FILE=sunos.c
 endif
 
 ifeq (Darwin,$(uname_S))
@@ -42,7 +42,7 @@ EV_CONFIG=config_darwin.h
 EIO_CONFIG=config_darwin.h
 CPPFLAGS += -Isrc/ares/config_darwin
 LINKFLAGS+=-framework CoreServices
-UV_OS_FILE=uv-darwin.c
+UV_OS_FILE=darwin.c
 endif
 
 ifeq (Linux,$(uname_S))
@@ -51,7 +51,7 @@ EIO_CONFIG=config_linux.h
 CSTDFLAG += -D_XOPEN_SOURCE=600
 CPPFLAGS += -Isrc/ares/config_linux
 LINKFLAGS+=-lrt
-UV_OS_FILE=uv-linux.c
+UV_OS_FILE=linux.c
 endif
 
 ifeq (FreeBSD,$(uname_S))
@@ -59,7 +59,7 @@ EV_CONFIG=config_freebsd.h
 EIO_CONFIG=config_freebsd.h
 CPPFLAGS += -Isrc/ares/config_freebsd
 LINKFLAGS+=
-UV_OS_FILE=uv-freebsd.c
+UV_OS_FILE=freebsd.c
 endif
 
 ifneq (,$(findstring CYGWIN,$(uname_S)))
@@ -69,7 +69,7 @@ EIO_CONFIG=config_cygwin.h
 CSTDFLAG = -D_GNU_SOURCE
 CPPFLAGS += -Isrc/ares/config_cygwin
 LINKFLAGS+=
-UV_OS_FILE=uv-cygwin.c
+UV_OS_FILE=cygwin.c
 endif
 
 # Need _GNU_SOURCE for strdup?
@@ -89,8 +89,8 @@ uv.a: src/uv-unix.o src/unix/fs.o src/uv-common.o src/uv-platform.o src/ev/ev.o 
 	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/ev/ev.o \
 		src/unix/eio/eio.o $(CARES_OBJS)
 
-src/uv-platform.o: src/$(UV_OS_FILE) include/uv.h include/uv-unix.h
-	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/$(UV_OS_FILE) -o src/uv-platform.o
+src/uv-platform.o: src/unix/$(UV_OS_FILE) include/uv.h include/uv-unix.h
+	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/unix/$(UV_OS_FILE) -o src/uv-platform.o
 
 src/uv-unix.o: src/uv-unix.c include/uv.h include/uv-unix.h src/unix/internal.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) -Isrc  $(CFLAGS) -c src/uv-unix.c -o src/uv-unix.o
