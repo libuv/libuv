@@ -147,6 +147,7 @@
             'src/unix/fs.c',
             'src/unix/udp.c',
             'src/unix/cares.c',
+            'src/unix/error.c',
             'src/unix/internal.h',
             'src/unix/eio/ecb.h',
             'src/unix/eio/eio.c',

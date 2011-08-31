@@ -85,9 +85,8 @@ endif
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: src/uv-unix.o src/unix/fs.o src/unix/udp.o src/unix/cares.o src/uv-common.o src/uv-platform.o src/unix/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o $(CARES_OBJS)
-	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/unix/udp.o src/unix/cares.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/unix/ev/ev.o \
-		src/unix/eio/eio.o $(CARES_OBJS)
+uv.a: src/uv-unix.o src/unix/fs.o src/unix/udp.o src/unix/cares.o src/unix/error.o src/uv-common.o src/uv-platform.o src/unix/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o $(CARES_OBJS)
+	$(AR) rcs uv.a src/uv-unix.o src/unix/fs.o src/unix/udp.o src/unix/cares.o src/unix/error.o src/uv-platform.o src/uv-common.o src/unix/uv-eio.o src/unix/ev/ev.o src/unix/eio/eio.o $(CARES_OBJS)
 
 src/uv-platform.o: src/unix/$(UV_OS_FILE) include/uv.h include/uv-private/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/unix/$(UV_OS_FILE) -o src/uv-platform.o
@@ -103,6 +102,9 @@ src/unix/cares.o: src/unix/cares.c include/uv.h include/uv-private/uv-unix.h src
 
 src/unix/udp.o: src/unix/udp.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) -Isrc/ $(CFLAGS) -c src/unix/udp.c -o src/unix/udp.o
+
+src/unix/error.o: src/unix/error.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
+	$(CC) $(CSTDFLAG) $(CPPFLAGS) -Isrc/ $(CFLAGS) -c src/unix/error.c -o src/unix/error.o
 
 src/uv-common.o: src/uv-common.c include/uv.h include/uv-private/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c src/uv-common.c -o src/uv-common.o
