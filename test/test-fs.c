@@ -486,10 +486,10 @@ TEST_IMPL(fs_async_dir) {
 
 TEST_IMPL(fs_async_sendfile) {
   int f, r;
-
-  /* Setup. */
   struct stat s1, s2;
 
+  /* Setup. */
+  uv_init();
   unlink("test_file");
   unlink("test_file2");
 
@@ -509,7 +509,6 @@ TEST_IMPL(fs_async_sendfile) {
   ASSERT(r == 0);
 
   /* Test starts here. */
-  uv_init();
   loop = uv_default_loop();
 
   r = uv_fs_open(loop, &open_req1, "test_file", O_RDWR, 0, NULL);
