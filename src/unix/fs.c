@@ -570,8 +570,28 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd, uv_file in_fd,
 
 int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
     uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+  uv_fs_req_init(loop, req, UV_FS_CHMOD, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref(loop);
+    req->eio = eio_chmod(path, mode, EIO_PRI_DEFAULT, uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(loop, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = chmod(path, mode);
+
+    if (req->result) {
+      uv_err_new(loop, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
@@ -658,8 +678,28 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
 int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode,
     uv_fs_cb cb) {
-  assert(0 && "implement me");
-  return -1;
+  uv_fs_req_init(loop, req, UV_FS_FCHMOD, cb);
+
+  if (cb) {
+    /* async */
+    uv_ref(loop);
+    req->eio = eio_fchmod(file, mode, EIO_PRI_DEFAULT, uv__fs_after, req);
+    if (!req->eio) {
+      uv_err_new(loop, ENOMEM);
+      return -1;
+    }
+
+  } else {
+    /* sync */
+    req->result = fchmod(file, mode);
+
+    if (req->result) {
+      uv_err_new(loop, errno);
+      return -1;
+    }
+  }
+
+  return 0;
 }
 
 
