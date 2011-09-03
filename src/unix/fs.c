@@ -490,7 +490,7 @@ int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
 
 int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
-    const char* new_path, uv_fs_cb cb) {
+    const char* new_path, int flags, uv_fs_cb cb) {
   WRAP_EIO(UV_FS_SYMLINK, eio_symlink, symlink, ARGS2(path, new_path))
 }
 

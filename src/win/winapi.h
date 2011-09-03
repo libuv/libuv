@@ -4186,6 +4186,8 @@ typedef NTSTATUS (NTAPI *sNtSetInformationFile)
 #define FILE_SKIP_COMPLETION_PORT_ON_SUCCESS    0x1
 #define FILE_SKIP_SET_EVENT_ON_HANDLE           0x2
 
+#define SYMBOLIC_LINK_FLAG_DIRECTORY            0x1
+
 #ifdef __MINGW32__
   typedef struct _OVERLAPPED_ENTRY {
       ULONG_PTR lpCompletionKey;
@@ -4207,6 +4209,11 @@ typedef BOOL (WINAPI* sSetFileCompletionNotificationModes)
              (HANDLE FileHandle,
               UCHAR Flags);
 
+typedef BOOLEAN (WINAPI* sCreateSymbolicLinkA)
+                (LPCSTR lpSymlinkFileName,
+                 LPCSTR lpTargetFileName,
+                 DWORD dwFlags);
+
 
 /* Ntapi function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
@@ -4217,5 +4224,6 @@ extern sNtSetInformationFile pNtSetInformationFile;
 /* Kernel32 function pointers */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
+extern sCreateSymbolicLinkA pCreateSymbolicLinkA;
 
 #endif /* UV_WIN_WINAPI_H_ */
