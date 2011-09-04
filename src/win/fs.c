@@ -430,15 +430,93 @@ void fs__symlink(uv_fs_t* req, const char* path, const char* new_path,
 
 void fs__readlink(uv_fs_t* req, const char* path) {
   int result = -1;
-  assert(0 && "implement me");
+  BOOL rv;
+  HANDLE symlink;
+  void* buffer;
+  DWORD bytes_returned;
+  REPARSE_DATA_BUFFER* reparse_data;
+  int utf8size;
 
-  /* TODO: the link path must be returned in a req->ptr buffer,
-   *       which need to be alloce'd here.
-   *        Just do this (it'll take care of freeing the buffer).
-   *          req->ptr = malloc(...);
-   *          req->flags |= UV_FS_FREE_PTR;
-   *       Also result needs to contain the length of the string.
-   */
+  symlink = CreateFileA(path,
+                        0,
+                        0,
+                        NULL,
+                        OPEN_EXISTING,
+                        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                        NULL);
+
+  if (INVALID_HANDLE_VALUE == symlink) {
+    result = -1;
+    SET_REQ_LAST_ERROR(req, GetLastError());
+    goto done;
+  }
+
+  buffer = malloc(MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
+  if (!buffer) {
+    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+  }
+
+  rv = DeviceIoControl(symlink,
+                       FSCTL_GET_REPARSE_POINT,
+                       NULL,
+                       0,
+                       buffer, 
+                       MAXIMUM_REPARSE_DATA_BUFFER_SIZE,
+                       &bytes_returned,
+                       NULL);
+
+  if (!rv) {
+    result = -1;
+    SET_REQ_LAST_ERROR(req, GetLastError());
+    goto done;
+  }
+
+  reparse_data = buffer;
+  if (reparse_data->ReparseTag != IO_REPARSE_TAG_SYMLINK) {
+    result = -1;
+    /* something is seriously wrong */
+    SET_REQ_LAST_ERROR(req, GetLastError());
+    goto done;
+  }
+
+  utf8size = uv_utf16_to_utf8(reparse_data->SymbolicLinkReparseBuffer.PathBuffer + (reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t)),
+                              reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(wchar_t),
+                              NULL,
+                              0);
+  if (!utf8size) {
+    result = -1;
+    SET_REQ_LAST_ERROR(req, GetLastError());
+    goto done;
+  }
+
+  req->ptr = malloc(utf8size + 1);
+  if (!req->ptr) {
+    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+  }
+
+  req->flags |= UV_FS_FREE_PTR;
+
+  utf8size = uv_utf16_to_utf8(reparse_data->SymbolicLinkReparseBuffer.PathBuffer + (reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t)),
+                              reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(wchar_t),
+                              req->ptr,
+                              utf8size);
+  if (!utf8size) {
+    result = -1;
+    SET_REQ_LAST_ERROR(req, GetLastError());
+    goto done;
+  }
+
+  ((char*)req->ptr)[utf8size] = '\0';
+  result = 0;
+
+done:
+  if (buffer) {
+    free(buffer);
+  }
+
+  if (symlink != INVALID_HANDLE_VALUE) {
+    CloseHandle(symlink);
+  }
 
   SET_REQ_RESULT(req, result);
 }

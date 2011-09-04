@@ -65,6 +65,7 @@ static int chown_cb_count;
 static int fchown_cb_count;
 static int link_cb_count;
 static int symlink_cb_count;
+static int readlink_cb_count;
 
 static uv_loop_t* loop;
 
@@ -127,6 +128,13 @@ static void symlink_cb(uv_fs_t* req) {
   uv_fs_req_cleanup(req);
 }
 
+static void readlink_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_READLINK);
+  ASSERT(req->result == 0);
+  ASSERT(strcmp(req->ptr, "test_file_symlink2") == 0);
+  readlink_cb_count++;
+  uv_fs_req_cleanup(req);
+}
 
 static void fchmod_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_FCHMOD);
@@ -936,6 +944,8 @@ TEST_IMPL(fs_symlink) {
   unlink("test_file");
   unlink("test_file_symlink");
   unlink("test_file_symlink2");
+  unlink("test_file_symlink_symlink");
+  unlink("test_file_symlink2_symlink");
 
   uv_init();
 
@@ -992,6 +1002,13 @@ TEST_IMPL(fs_symlink) {
 
   close(link);
 
+  r = uv_fs_symlink(loop, &req, "test_file_symlink", "test_file_symlink_symlink", 0, NULL);
+  ASSERT(r == 0);
+  r = uv_fs_readlink(loop, &req, "test_file_symlink_symlink", NULL);
+  ASSERT(r == 0);
+  ASSERT(strcmp(req.ptr, "test_file_symlink") == 0);
+  uv_fs_req_cleanup(&req);
+
   /* async link */
   r = uv_fs_symlink(loop, &req, "test_file", "test_file_symlink2", 0, symlink_cb);
   ASSERT(r == 0);
@@ -1012,6 +1029,13 @@ TEST_IMPL(fs_symlink) {
 
   close(link);
 
+  r = uv_fs_symlink(loop, &req, "test_file_symlink2", "test_file_symlink2_symlink", 0, NULL);
+  ASSERT(r == 0);
+  r = uv_fs_readlink(loop, &req, "test_file_symlink2_symlink", readlink_cb);
+  ASSERT(r == 0);
+  uv_run(loop);
+  ASSERT(readlink_cb_count == 1);
+
   /*
    * Run the loop just to check we don't have make any extraneous uv_ref()
    * calls. This should drop out immediately.
@@ -1021,7 +1045,9 @@ TEST_IMPL(fs_symlink) {
   /* Cleanup. */
   unlink("test_file");
   unlink("test_file_symlink");
+  unlink("test_file_symlink_symlink");
   unlink("test_file_symlink2");
+  unlink("test_file_symlink2_symlink");
 
   return 0;
 }
