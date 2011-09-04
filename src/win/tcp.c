@@ -573,8 +573,9 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
 }
 
 
-int uv_tcp_getsockname(uv_loop_t* loop, uv_tcp_t* handle,
-    struct sockaddr* name, int* namelen) {
+int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
+    int* namelen) {
+  uv_loop_t* loop = handle->loop;
   int result;
 
   if (handle->flags & UV_HANDLE_SHUTTING) {
@@ -583,6 +584,26 @@ int uv_tcp_getsockname(uv_loop_t* loop, uv_tcp_t* handle,
   }
 
   result = getsockname(handle->socket, name, namelen);
+  if (result != 0) {
+    uv_set_sys_error(loop, WSAGetLastError());
+    return -1;
+  }
+
+  return 0;
+}
+
+
+int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
+    int* namelen) {
+  uv_loop_t* loop = handle->loop;
+  int result;
+
+  if (handle->flags & UV_HANDLE_SHUTTING) {
+    uv_set_sys_error(loop, WSAESHUTDOWN);
+    return -1;
+  }
+
+  result = getpeername(handle->socket, name, namelen);
   if (result != 0) {
     uv_set_sys_error(loop, WSAGetLastError());
     return -1;
