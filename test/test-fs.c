@@ -760,6 +760,7 @@ TEST_IMPL(fs_chmod) {
   ASSERT(r == 0);
   uv_run(loop);
   ASSERT(chmod_cb_count == 1);
+  chmod_cb_count = 0; /* reset for the next test */
 #endif
 
   /* async chmod */
