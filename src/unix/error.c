@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 /* TODO Expose callback to user to handle fatal error like V8 does. */
