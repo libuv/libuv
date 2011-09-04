@@ -324,9 +324,8 @@ static void readdir_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_READDIR);
   ASSERT(req->result == 2);
   ASSERT(req->ptr);
-  ASSERT(strcmp((const char*)req->ptr, "file1") == 0);
-  ASSERT(strcmp((char*)req->ptr + strlen((const char*)req->ptr) + 1,
-                "file2") == 0);
+  ASSERT(memcmp(req->ptr, "file1\0file2\0", 12) == 0
+      || memcmp(req->ptr, "file2\0file1\0", 12) == 0);
   readdir_cb_count++;
   uv_fs_req_cleanup(req);
   ASSERT(!req->ptr);
