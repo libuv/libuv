@@ -419,6 +419,8 @@ int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
     rv = -1;
   } else {
     uv_connection_init((uv_stream_t*) client);
+    /* AcceptEx() implicitly binds the accepted socket. */
+    client->flags |= UV_HANDLE_BOUND;
   }
 
   /* Prepare the req to pick up a new connection */
@@ -578,8 +580,13 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
   uv_loop_t* loop = handle->loop;
   int result;
 
-  if (handle->flags & UV_HANDLE_SHUTTING) {
-    uv_set_sys_error(loop, WSAESHUTDOWN);
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    uv_set_sys_error(loop, WSAEINVAL);
+    return -1;
+  }
+
+  if (handle->flags & UV_HANDLE_BIND_ERROR) {
+    loop->last_error = handle->bind_error;
     return -1;
   }
 
@@ -598,8 +605,13 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
   uv_loop_t* loop = handle->loop;
   int result;
 
-  if (handle->flags & UV_HANDLE_SHUTTING) {
-    uv_set_sys_error(loop, WSAESHUTDOWN);
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    uv_set_sys_error(loop, WSAEINVAL);
+    return -1;
+  }
+
+  if (handle->flags & UV_HANDLE_BIND_ERROR) {
+    loop->last_error = handle->bind_error;
     return -1;
   }
 

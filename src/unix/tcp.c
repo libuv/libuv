@@ -131,6 +131,18 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
   /* Don't clobber errno. */
   saved_errno = errno;
 
+  if (handle->delayed_error) {
+    uv_err_new(handle->loop, handle->delayed_error);
+    rv = -1;
+    goto out;
+  }
+
+  if (handle->fd < 0) {
+    uv_err_new(handle->loop, EINVAL);
+    rv = -1;
+    goto out;
+  }
+
   /* sizeof(socklen_t) != sizeof(int) on some systems. */
   socklen = (socklen_t)*namelen;
 
@@ -141,6 +153,7 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
     *namelen = (int)socklen;
   }
 
+out:
   errno = saved_errno;
   return rv;
 }
@@ -155,6 +168,18 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
   /* Don't clobber errno. */
   saved_errno = errno;
 
+  if (handle->delayed_error) {
+    uv_err_new(handle->loop, handle->delayed_error);
+    rv = -1;
+    goto out;
+  }
+
+  if (handle->fd < 0) {
+    uv_err_new(handle->loop, EINVAL);
+    rv = -1;
+    goto out;
+  }
+
   /* sizeof(socklen_t) != sizeof(int) on some systems. */
   socklen = (socklen_t)*namelen;
 
@@ -165,6 +190,7 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
     *namelen = (int)socklen;
   }
 
+out:
   errno = saved_errno;
   return rv;
 }

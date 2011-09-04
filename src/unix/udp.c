@@ -469,6 +469,12 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
   /* Don't clobber errno. */
   saved_errno = errno;
 
+  if (handle->fd < 0) {
+    uv_err_new(handle->loop, EINVAL);
+    rv = -1;
+    goto out;
+  }
+
   /* sizeof(socklen_t) != sizeof(int) on some systems. */
   socklen = (socklen_t)*namelen;
 
@@ -479,6 +485,7 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
     *namelen = (int)socklen;
   }
 
+out:
   errno = saved_errno;
   return rv;
 }

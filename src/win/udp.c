@@ -45,6 +45,11 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
   uv_loop_t* loop = handle->loop;
   int result;
 
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    uv_set_sys_error(loop, WSAEINVAL);
+    return -1;
+  }
+
   result = getsockname(handle->socket, name, namelen);
   if (result != 0) {
     uv_set_sys_error(loop, WSAGetLastError());
