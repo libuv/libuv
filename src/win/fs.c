@@ -356,7 +356,7 @@ done:
 void fs__stat(uv_fs_t* req, const char* path) {
   int result;
 
-  result = _stat(path, &req->stat);
+  result = _stati64(path, &req->stat);
   if (result == -1) {
     req->ptr = NULL;
   } else {
@@ -370,7 +370,7 @@ void fs__stat(uv_fs_t* req, const char* path) {
 void fs__fstat(uv_fs_t* req, uv_file file) {
   int result;
 
-  result = _fstat(file, &req->stat);
+  result = _fstati64(file, &req->stat);
   if (result == -1) {
     req->ptr = NULL;
   } else {
