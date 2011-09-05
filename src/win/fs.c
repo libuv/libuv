@@ -97,6 +97,7 @@ static void uv_fs_req_init_async(uv_loop_t* loop, uv_fs_t* req,
   req->cb = cb;
   req->result = 0;
   req->ptr = NULL;
+  req->path = NULL; /* TODO https://github.com/joyent/libuv/issues/177 */
   req->errorno = 0;
   req->last_error = 0;
   memset(&req->overlapped, 0, sizeof(req->overlapped));
