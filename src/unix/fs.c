@@ -61,7 +61,7 @@
 
 
 static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req, uv_fs_type fs_type,
-    char* path, uv_fs_cb cb) {
+    const char* path, uv_fs_cb cb) {
   /* Make sure the thread pool is initialized. */
   uv_eio_init(loop);
 
@@ -344,7 +344,7 @@ int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
 
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
-  char* pathdup = path;
+  char* pathdup;
   int pathlen;
 
   uv_fs_req_init(loop, req, UV_FS_STAT, path, cb);
@@ -479,7 +479,7 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime,
 
 
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
-  char* pathdup = path;
+  char* pathdup;
   int pathlen;
 
   uv_fs_req_init(loop, req, UV_FS_LSTAT, path, cb);
