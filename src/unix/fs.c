@@ -111,7 +111,7 @@ static int uv__fs_after(eio_req* eio) {
   assert(req->cb);
 
   req->result = req->eio->result;
-  req->errorno = req->eio->errorno;
+  req->errorno = uv_translate_sys_error(req->eio->errorno);
 
   switch (req->fs_type) {
     case UV_FS_READDIR:
