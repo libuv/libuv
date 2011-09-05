@@ -43,12 +43,12 @@
   uv_fs_req_init(loop, req, type, path, cb); \
   if (cb) { \
     /* async */ \
-    uv_ref(loop); \
     req->eio = eiofunc(args, EIO_PRI_DEFAULT, uv__fs_after, req); \
     if (!req->eio) { \
       uv_err_new(loop, ENOMEM); \
       return -1; \
     } \
+    uv_ref(loop); \
   } else { \
     /* sync */ \
     req->result = func(args); \
