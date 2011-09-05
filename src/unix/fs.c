@@ -538,7 +538,7 @@ int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
 int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb) {
-  size_t size;
+  ssize_t size;
   int status;
   char* buf;
 
