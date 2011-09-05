@@ -69,6 +69,7 @@ char* uv_strerror(uv_err_t err) {
 uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
     case 0: return UV_OK;
+    case ENOENT: return UV_ENOENT;
     case EACCES: return UV_EACCESS;
     case EBADF: return UV_EBADF;
     case EPIPE: return UV_EPIPE;
