@@ -43,6 +43,14 @@
 # define close _close
 #endif
 
+
+typedef struct {
+  const char* path;
+  double atime;
+  double mtime;
+} utime_check_t;
+
+
 static int close_cb_count;
 static int create_cb_count;
 static int open_cb_count;
@@ -66,6 +74,8 @@ static int fchown_cb_count;
 static int link_cb_count;
 static int symlink_cb_count;
 static int readlink_cb_count;
+static int utime_cb_count;
+static int futime_cb_count;
 
 static uv_loop_t* loop;
 
@@ -84,6 +94,8 @@ static uv_fs_t fsync_req;
 static uv_fs_t fdatasync_req;
 static uv_fs_t ftruncate_req;
 static uv_fs_t sendfile_req;
+static uv_fs_t utime_req;
+static uv_fs_t futime_req;
 
 static char buf[32];
 static char test_buf[] = "test-buffer\n";
@@ -392,6 +404,40 @@ TEST_IMPL(fs_file_noent) {
   /* TODO add EACCES test */
 
   return 0;
+}
+
+
+static void check_utime(uv_fs_t* req) {
+  utime_check_t* checkme;
+  int r;
+
+  ASSERT(req->result == 0);
+
+  checkme = req->data;
+  uv_fs_req_cleanup(req);
+
+  r = uv_fs_stat(loop, req, checkme->path, NULL);
+  ASSERT(r == 0);
+  ASSERT(req->result == 0);
+  ASSERT(req->statbuf.st_atim.tv_sec  == checkme->atime);
+  ASSERT(req->statbuf.st_atim.tv_nsec == 0); /* FIXME check sub-second precision */
+  ASSERT(req->statbuf.st_mtim.tv_sec  == checkme->mtime);
+  ASSERT(req->statbuf.st_mtim.tv_nsec == 0); /* FIXME check sub-second precision */
+  uv_fs_req_cleanup(req);
+}
+
+
+static void utime_cb(uv_fs_t* req) {
+  ASSERT(req == &utime_req);
+  ASSERT(req->fs_type == UV_FS_UTIME);
+  utime_cb_count++;
+}
+
+
+static void futime_cb(uv_fs_t* req) {
+  ASSERT(req == &futime_req);
+  ASSERT(req->fs_type == UV_FS_FUTIME);
+  futime_cb_count++;
 }
 
 
@@ -1100,6 +1146,99 @@ TEST_IMPL(fs_symlink) {
   unlink("test_file_symlink_symlink");
   unlink("test_file_symlink2");
   unlink("test_file_symlink2_symlink");
+
+  return 0;
+}
+
+
+TEST_IMPL(fs_utime) {
+  utime_check_t checkme;
+  const char* path = ".";
+  double atime;
+  double mtime;
+  uv_fs_t req;
+  int r;
+
+  uv_init();
+  loop = uv_default_loop();
+
+  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
+
+  r = uv_fs_utime(loop, &req, path, atime, mtime, NULL);
+  ASSERT(r == 0);
+  ASSERT(utime_req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(loop, &req, path, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  ASSERT(req.statbuf.st_atim.tv_sec  == atime);
+  ASSERT(req.statbuf.st_atim.tv_nsec == 0);
+  ASSERT(req.statbuf.st_mtim.tv_sec  == mtime);
+  ASSERT(req.statbuf.st_mtim.tv_nsec == 0);
+  uv_fs_req_cleanup(&req);
+
+  atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
+  checkme.path = path;
+  checkme.atime = atime;
+  checkme.mtime = mtime;
+
+  /* async utime */
+  utime_req.data = &checkme;
+  r = uv_fs_utime(loop, &utime_req, path, atime, mtime, utime_cb);
+  ASSERT(r == 0);
+  uv_run(loop);
+  ASSERT(utime_cb_count == 1);
+
+  return 0;
+}
+
+
+TEST_IMPL(fs_futime) {
+  utime_check_t checkme;
+  const char* path = ".";
+  double atime;
+  double mtime;
+  uv_file file;
+  uv_fs_t req;
+  int r;
+
+  uv_init();
+  loop = uv_default_loop();
+
+  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
+
+  r = uv_fs_open(loop, &req, path, O_RDONLY, 0, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result != -1);
+  file = req.result; /* FIXME probably not how it's supposed to be used */
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_futime(loop, &req, file, atime, mtime, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(loop, &req, path, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  ASSERT(req.statbuf.st_atim.tv_sec  == atime);
+  ASSERT(req.statbuf.st_atim.tv_nsec == 0); /* FIXME check sub-second precision */
+  ASSERT(req.statbuf.st_mtim.tv_sec  == mtime);
+  ASSERT(req.statbuf.st_mtim.tv_nsec == 0); /* FIXME check sub-second precision */
+  uv_fs_req_cleanup(&req);
+
+  atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
+  checkme.path = path;
+  checkme.atime = atime;
+  checkme.mtime = mtime;
+
+  /* async futime */
+  futime_req.data = &checkme;
+  r = uv_fs_futime(loop, &futime_req, file, atime, mtime, futime_cb);
+  ASSERT(r == 0);
+  uv_run(loop);
+  ASSERT(futime_cb_count == 1);
 
   return 0;
 }
