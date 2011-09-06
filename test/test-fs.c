@@ -407,36 +407,57 @@ TEST_IMPL(fs_file_noent) {
 }
 
 
-static void check_utime(uv_fs_t* req) {
-  utime_check_t* checkme;
+static void check_utime(const char* path, double atime, double mtime) {
+  struct stat* s;
+  uv_fs_t req;
   int r;
 
-  ASSERT(req->result == 0);
-
-  checkme = req->data;
-  uv_fs_req_cleanup(req);
-
-  r = uv_fs_stat(loop, req, checkme->path, NULL);
+  r = uv_fs_stat(loop, &req, path, NULL);
   ASSERT(r == 0);
-  ASSERT(req->result == 0);
-  ASSERT(req->statbuf.st_atim.tv_sec  == checkme->atime);
-  ASSERT(req->statbuf.st_atim.tv_nsec == 0); /* FIXME check sub-second precision */
-  ASSERT(req->statbuf.st_mtim.tv_sec  == checkme->mtime);
-  ASSERT(req->statbuf.st_mtim.tv_nsec == 0); /* FIXME check sub-second precision */
-  uv_fs_req_cleanup(req);
+
+  ASSERT(req.result == 0);
+  s = req.ptr;
+
+#if _WIN32
+  ASSERT(s->st_atime == atime);
+  ASSERT(s->st_mtime == mtime);
+#else
+  ASSERT(s->st_atim.tv_sec  == atime);
+  ASSERT(s->st_atim.tv_nsec == 0); /* FIXME check sub-second precision */
+  ASSERT(s->st_mtim.tv_sec  == mtime);
+  ASSERT(s->st_mtim.tv_nsec == 0); /* FIXME check sub-second precision */
+#endif
+
+  uv_fs_req_cleanup(&req);
 }
 
 
 static void utime_cb(uv_fs_t* req) {
+  utime_check_t* c;
+
   ASSERT(req == &utime_req);
+  ASSERT(req->result == 0);
   ASSERT(req->fs_type == UV_FS_UTIME);
+
+  c = req->data;
+  check_utime(c->path, c->atime, c->mtime);
+
+  uv_fs_req_cleanup(req);
   utime_cb_count++;
 }
 
 
 static void futime_cb(uv_fs_t* req) {
+  utime_check_t* c;
+
   ASSERT(req == &futime_req);
+  ASSERT(req->result == 0);
   ASSERT(req->fs_type == UV_FS_FUTIME);
+
+  c = req->data;
+  check_utime(c->path, c->atime, c->mtime);
+
+  uv_fs_req_cleanup(req);
   futime_cb_count++;
 }
 
@@ -1172,10 +1193,7 @@ TEST_IMPL(fs_utime) {
   r = uv_fs_stat(loop, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  ASSERT(req.statbuf.st_atim.tv_sec  == atime);
-  ASSERT(req.statbuf.st_atim.tv_nsec == 0);
-  ASSERT(req.statbuf.st_mtim.tv_sec  == mtime);
-  ASSERT(req.statbuf.st_mtim.tv_nsec == 0);
+  check_utime(path, atime, mtime);
   uv_fs_req_cleanup(&req);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
@@ -1222,16 +1240,14 @@ TEST_IMPL(fs_futime) {
   r = uv_fs_stat(loop, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  ASSERT(req.statbuf.st_atim.tv_sec  == atime);
-  ASSERT(req.statbuf.st_atim.tv_nsec == 0); /* FIXME check sub-second precision */
-  ASSERT(req.statbuf.st_mtim.tv_sec  == mtime);
-  ASSERT(req.statbuf.st_mtim.tv_nsec == 0); /* FIXME check sub-second precision */
+  check_utime(path, atime, mtime);
   uv_fs_req_cleanup(&req);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
-  checkme.path = path;
+
   checkme.atime = atime;
   checkme.mtime = mtime;
+  checkme.path = path;
 
   /* async futime */
   futime_req.data = &checkme;
