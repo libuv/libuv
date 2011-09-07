@@ -31,7 +31,9 @@
 #include <sys/stat.h>
 
 
-#if !UNIX
+#if UNIX
+#include <unistd.h> /* unlink, rmdir, etc. */
+#else
 # include <direct.h>
 # include <io.h>
 # define unlink _unlink
