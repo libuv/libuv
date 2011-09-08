@@ -114,6 +114,7 @@
             'src/win/stream.c',
             'src/win/tcp.c',
             'src/win/threadpool.c',
+            'src/win/threads.c',
             'src/win/timer.c',
             'src/win/udp.c',
             'src/win/util.c',
