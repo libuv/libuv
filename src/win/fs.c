@@ -589,7 +589,7 @@ void fs__readlink(uv_fs_t* req, const char* path) {
   int result = -1;
   BOOL rv;
   HANDLE symlink;
-  void* buffer;
+  void* buffer = NULL;
   DWORD bytes_returned;
   REPARSE_DATA_BUFFER* reparse_data;
   int utf8size;
