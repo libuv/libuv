@@ -96,6 +96,7 @@ char* uv_strerror(uv_err_t err) {
 uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
     case ERROR_SUCCESS:                     return UV_OK;
+    case ERROR_FILE_NOT_FOUND:              return UV_ENOENT;
     case ERROR_NOACCESS:                    return UV_EACCESS;
     case WSAEACCES:                         return UV_EACCESS;
     case ERROR_ADDRESS_ALREADY_ASSOCIATED:  return UV_EADDRINUSE;
