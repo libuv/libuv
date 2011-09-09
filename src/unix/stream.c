@@ -103,6 +103,39 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 }
 
 
+void uv__stream_destroy(uv_stream_t* stream) {
+  uv_write_t* req;
+  ngx_queue_t* q;
+
+  assert(stream->flags & UV_CLOSED);
+
+  while (!ngx_queue_empty(&stream->write_queue)) {
+    q = ngx_queue_head(&stream->write_queue);
+    ngx_queue_remove(q);
+
+    req = ngx_queue_data(q, uv_write_t, queue);
+    if (req->bufs != req->bufsml)
+      free(req->bufs);
+
+    if (req->cb) {
+      uv_err_new_artificial(req->handle->loop, UV_EINTR);
+      req->cb(req, -1);
+    }
+  }
+
+  while (!ngx_queue_empty(&stream->write_completed_queue)) {
+    q = ngx_queue_head(&stream->write_completed_queue);
+    ngx_queue_remove(q);
+
+    req = ngx_queue_data(q, uv_write_t, queue);
+    if (req->cb) {
+      uv_err_new_artificial(req->handle->loop, UV_OK);
+      req->cb(req, 0);
+    }
+  }
+}
+
+
 void uv__server_io(EV_P_ ev_io* watcher, int revents) {
   int fd;
   struct sockaddr_storage addr;
