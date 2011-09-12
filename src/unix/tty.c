@@ -23,9 +23,12 @@
 #include "internal.h"
 
 #include <assert.h>
+#include <termios.h>
+#include <errno.h>
 
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd) {
+  uv__nonblock(fd, 1);
   uv__stream_init(loop, (uv_stream_t*)tty, UV_TTY);
   uv__stream_open((uv_stream_t*)tty, fd, UV_READABLE | UV_WRITABLE);
   loop->counters.tty_init++;
@@ -34,6 +37,33 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd) {
 
 
 int uv_tty_set_mode(uv_tty_t* tty, int mode) {
-  assert(0 && "implement me");
+  int fd = tty->fd;
+  struct termios orig_termios; /* in order to restore at exit */
+  struct termios raw;
+
+  if (tcgetattr(fd, &orig_termios) == -1) goto fatal;
+
+  raw = orig_termios;  /* modify the original mode */
+  /* input modes: no break, no CR to NL, no parity check, no strip char,
+   * no start/stop output control. */
+  raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+  /* output modes */
+  raw.c_oflag |= (ONLCR);
+  /* control modes - set 8 bit chars */
+  raw.c_cflag |= (CS8);
+  /* local modes - echoing off, canonical off, no extended functions,
+   * no signal chars (^Z,^C) */
+  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+  /* control chars - set return condition: min number of bytes and timer.
+   * We want read to return every single byte, without timeout. */
+  raw.c_cc[VMIN] = 1; raw.c_cc[VTIME] = 0; /* 1 byte, no timer */
+
+  /* put terminal in raw mode after flushing */
+  if (tcsetattr(fd, TCSAFLUSH, &raw) < 0) goto fatal;
+  return 0;
+
+fatal:
+  uv_err_new(tty->loop, ENOTTY);
   return -1;
 }
+
