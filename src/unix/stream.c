@@ -642,6 +642,7 @@ int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
   uv__req_init((uv_req_t*) req);
   req->cb = cb;
   req->handle = handle;
+  req->type = UV_WRITE;
   ngx_queue_init(&req->queue);
 
   assert((handle->type == UV_TCP || handle->type == UV_NAMED_PIPE)
@@ -653,10 +654,6 @@ int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
     uv_err_new(stream->loop, EBADF);
     return -1;
   }
-
-  ngx_queue_init(&req->queue);
-  req->type = UV_WRITE;
-
 
   if (bufcnt < UV_REQ_BUFSML_SIZE) {
     req->bufs = req->bufsml;
