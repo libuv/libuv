@@ -631,21 +631,18 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
 /* The buffers to be written must remain valid until the callback is called.
  * This is not required for the uv_buf_t array.
  */
-int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
+int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
     uv_write_cb cb) {
-  uv_stream_t* stream;
   int empty_queue;
-
-  stream = (uv_stream_t*)handle;
 
   /* Initialize the req */
   uv__req_init((uv_req_t*) req);
   req->cb = cb;
-  req->handle = handle;
+  req->handle = stream;
   req->type = UV_WRITE;
   ngx_queue_init(&req->queue);
 
-  assert((handle->type == UV_TCP || handle->type == UV_NAMED_PIPE)
+  assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE)
       && "uv_write (unix) does not yet support other types of streams");
 
   empty_queue = (stream->write_queue_size == 0);
