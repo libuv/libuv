@@ -31,7 +31,7 @@
 
 
 static void uv__stream_connect(uv_stream_t*);
-static uv_write_t* uv__write(uv_stream_t* stream);
+static void uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
 
 
@@ -254,10 +254,28 @@ static void uv__drain(uv_stream_t* stream) {
 }
 
 
+static void uv__write_req_finish(uv_write_t* req) {
+  uv_stream_t* stream = req->handle;
+
+  /* Pop the req off tcp->write_queue. */
+  ngx_queue_remove(&req->queue);
+  if (req->bufs != req->bufsml) {
+    free(req->bufs);
+  }
+  req->bufs = NULL;
+
+  /* Add it to the write_completed_queue where it will have its
+   * callback called in the near future.
+   */
+  ngx_queue_insert_tail(&stream->write_completed_queue, &req->queue);
+  ev_feed_event(stream->loop->ev, &stream->write_watcher, EV_WRITE);
+}
+
+
 /* On success returns NULL. On error returns a pointer to the write request
  * which had the error.
  */
-static uv_write_t* uv__write(uv_stream_t* stream) {
+static void uv__write(uv_stream_t* stream) {
   uv_write_t* req;
   struct iovec* iov;
   int iovcnt;
@@ -271,7 +289,7 @@ static uv_write_t* uv__write(uv_stream_t* stream) {
   req = uv_write_queue_head(stream);
   if (!req) {
     assert(stream->write_queue_size == 0);
-    return NULL;
+    return;
   }
 
   assert(req->handle == stream);
@@ -299,8 +317,9 @@ static uv_write_t* uv__write(uv_stream_t* stream) {
   if (n < 0) {
     if (errno != EAGAIN) {
       /* Error */
-      uv_err_new(stream->loop, errno);
-      return req;
+      req->error = errno;
+      uv__write_req_finish(req);
+      return;
     }
   } else {
     /* Successful write */
@@ -334,21 +353,9 @@ static uv_write_t* uv__write(uv_stream_t* stream) {
         if (req->write_index == req->bufcnt) {
           /* Then we're done! */
           assert(n == 0);
-
-          /* Pop the req off tcp->write_queue. */
-          ngx_queue_remove(&req->queue);
-          if (req->bufs != req->bufsml) {
-            free(req->bufs);
-          }
-          req->bufs = NULL;
-
-          /* Add it to the write_completed_queue where it will have its
-           * callback called in the near future.
-           * TODO: start trying to write the next request.
-           */
-          ngx_queue_insert_tail(&stream->write_completed_queue, &req->queue);
-          ev_feed_event(stream->loop->ev, &stream->write_watcher, EV_WRITE);
-          return NULL;
+          uv__write_req_finish(req);
+          /* TODO: start trying to write the next request. */
+          return;
         }
       }
     }
@@ -359,8 +366,6 @@ static uv_write_t* uv__write(uv_stream_t* stream) {
 
   /* We're not done. */
   ev_io_start(stream->loop->ev, &stream->write_watcher);
-
-  return NULL;
 }
 
 
@@ -378,7 +383,8 @@ static void uv__write_callbacks(uv_stream_t* stream) {
 
     /* NOTE: call callback AFTER freeing the request data. */
     if (req->cb) {
-      req->cb(req, 0);
+      uv_err_new_artificial(stream->loop, req->error);
+      req->cb(req, req->error ? -1 : 0);
     }
 
     callbacks_made++;
@@ -495,15 +501,8 @@ void uv__stream_io(EV_P_ ev_io* watcher, int revents) {
     }
 
     if (revents & EV_WRITE) {
-      uv_write_t* req = uv__write(stream);
-      if (req) {
-        /* Error. Notify the user. */
-        if (req->cb) {
-          req->cb(req, -1);
-        }
-      } else {
-        uv__write_callbacks(stream);
-      }
+      uv__write(stream);
+      uv__write_callbacks(stream);
     }
   }
 }
@@ -649,6 +648,7 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
   uv__req_init((uv_req_t*) req);
   req->cb = cb;
   req->handle = stream;
+  req->error = 0;
   req->type = UV_WRITE;
   ngx_queue_init(&req->queue);
 
@@ -682,22 +682,8 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
    * for the fd to become writable.
    */
   if (empty_queue) {
-    if (uv__write(stream)) {
-      /* Error. uv_last_error has been set. */
-      return -1;
-    }
-  }
-
-  /* If the queue is now empty - we've flushed the request already. That
-   * means we need to make the callback. The callback can only be done on a
-   * fresh stack so we feed the event loop in order to service it.
-   */
-  if (ngx_queue_empty(&stream->write_queue)) {
-    ev_feed_event(stream->loop->ev, &stream->write_watcher, EV_WRITE);
+    uv__write(stream);
   } else {
-    /* Otherwise there is data to write - so we should wait for the file
-     * descriptor to become writable.
-     */
     ev_io_start(stream->loop->ev, &stream->write_watcher);
   }
 
