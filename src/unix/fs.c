@@ -116,6 +116,9 @@ static int uv__fs_after(eio_req* eio) {
 
   switch (req->fs_type) {
     case UV_FS_READDIR:
+      if (req->eio->result == -1)
+        break; /* opendir() or readdir() operation failed. */
+
       /*
        * XXX This is pretty bad.
        * We alloc and copy the large null terminated string list from libeio.
