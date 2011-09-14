@@ -605,6 +605,8 @@ void fs__readlink(uv_fs_t* req, const char* path) {
   DWORD bytes_returned;
   REPARSE_DATA_BUFFER* reparse_data;
   int utf8size;
+  wchar_t* substitute_name;
+  int substitute_name_length;
 
   symlink = CreateFileA(path,
                         0,
@@ -648,8 +650,17 @@ void fs__readlink(uv_fs_t* req, const char* path) {
     goto done;
   }
 
-  utf8size = uv_utf16_to_utf8(reparse_data->SymbolicLinkReparseBuffer.PathBuffer + (reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t)),
-                              reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(wchar_t),
+  substitute_name = reparse_data->SymbolicLinkReparseBuffer.PathBuffer + (reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t));
+  substitute_name_length = reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(wchar_t);
+
+  /* Strip off the leading \??\ from the substitute name buffer.*/
+  if (memcmp(substitute_name, L"\\??\\", 8) == 0) {
+    substitute_name += 4;
+    substitute_name_length -= 4;
+  }
+
+  utf8size = uv_utf16_to_utf8(substitute_name,
+                              substitute_name_length,
                               NULL,
                               0);
   if (!utf8size) {
@@ -663,10 +674,8 @@ void fs__readlink(uv_fs_t* req, const char* path) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
 
-  req->flags |= UV_FS_FREE_PTR;
-
-  utf8size = uv_utf16_to_utf8(reparse_data->SymbolicLinkReparseBuffer.PathBuffer + (reparse_data->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(wchar_t)),
-                              reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(wchar_t),
+  utf8size = uv_utf16_to_utf8(substitute_name,
+                              substitute_name_length,
                               req->ptr,
                               utf8size);
   if (!utf8size) {
@@ -675,6 +684,7 @@ void fs__readlink(uv_fs_t* req, const char* path) {
     goto done;
   }
 
+  req->flags |= UV_FS_FREE_PTR;
   ((char*)req->ptr)[utf8size] = '\0';
   result = 0;
 
