@@ -685,7 +685,7 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
   req->type = UV_WRITE;
   ngx_queue_init(&req->queue);
 
-  if (bufcnt < UV_REQ_BUFSML_SIZE) {
+  if (bufcnt <= UV_REQ_BUFSML_SIZE) {
     req->bufs = req->bufsml;
   }
   else {
