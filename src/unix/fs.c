@@ -55,8 +55,8 @@
     req->result = func(args); \
     if (req->result) { \
       uv_err_new(loop, errno); \
-      return -1; \
     }  \
+    return req->result; \
   } \
   return 0;
 
@@ -204,6 +204,8 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     }
 
     uv__cloexec(req->result, 1);
+
+    return req->result;
   }
 
   return 0;
@@ -235,6 +237,8 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
       uv_err_new(loop, errno);
       return -1;
     }
+
+    return req->result;
   }
 
   return 0;
@@ -270,6 +274,8 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
       uv_err_new(loop, errno);
       return -1;
     }
+
+    return req->result;
   }
 
   return 0;
@@ -342,6 +348,8 @@ int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
       req->result = -1;
       return -1;
     }
+
+    return req->result;
   }
 
   return 0;
@@ -388,6 +396,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
     }
 
     req->ptr = &req->statbuf;
+    return req->result;
   }
 
   return 0;
@@ -417,6 +426,7 @@ int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
     }
 
     req->ptr = &req->statbuf;
+    return req->result;
   }
 
   return 0;
@@ -547,6 +557,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
     }
 
     req->ptr = &req->statbuf;
+    return req->result;
   }
 
   return 0;
@@ -612,7 +623,7 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
       req->ptr = buf;
     }
 
-    return 0;
+    return req->result;
   }
 
   assert(0 && "unreachable");

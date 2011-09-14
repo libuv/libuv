@@ -805,6 +805,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     uv_fs_req_init_sync(loop, req, UV_FS_OPEN);
     fs__open(req, path, flags, mode);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -820,6 +821,7 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
     uv_fs_req_init_sync(loop, req, UV_FS_CLOSE);
     fs__close(req, file);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -836,6 +838,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
     uv_fs_req_init_sync(loop, req, UV_FS_READ);
     fs__read(req, file, buf, length, offset);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -852,6 +855,7 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
     uv_fs_req_init_sync(loop, req, UV_FS_WRITE);
     fs__write(req, file, buf, length, offset);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -867,6 +871,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_req_init_sync(loop, req, UV_FS_UNLINK);
     fs__unlink(req, path);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -883,6 +888,7 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
     uv_fs_req_init_sync(loop, req, UV_FS_MKDIR);
     fs__mkdir(req, path, mode);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -897,6 +903,7 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
     uv_fs_req_init_sync(loop, req, UV_FS_RMDIR);
     fs__rmdir(req, path);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -913,6 +920,7 @@ int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     uv_fs_req_init_sync(loop, req, UV_FS_READDIR);
     fs__readdir(req, path, flags);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -930,6 +938,7 @@ int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_req_init_sync(loop, req, UV_FS_LINK);
     fs__link(req, path, new_path);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -947,6 +956,7 @@ int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_req_init_sync(loop, req, UV_FS_SYMLINK);
     fs__symlink(req, path, new_path, flags);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -962,6 +972,7 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_req_init_sync(loop, req, UV_FS_READLINK);
     fs__readlink(req, path);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -978,6 +989,7 @@ int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, int uid,
     uv_fs_req_init_sync(loop, req, UV_FS_CHOWN);
     fs__nop(req);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -994,6 +1006,7 @@ int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, int uid,
     uv_fs_req_init_sync(loop, req, UV_FS_FCHOWN);
     fs__nop(req);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1030,6 +1043,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
       free(path2);
     }
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1067,6 +1081,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
       free(path2);
     }
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1082,6 +1097,7 @@ int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
     uv_fs_req_init_sync(loop, req, UV_FS_FSTAT);
     fs__fstat(req, file);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1099,6 +1115,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_req_init_sync(loop, req, UV_FS_RENAME);
     fs__rename(req, path, new_path);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1114,6 +1131,7 @@ int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
     uv_fs_req_init_sync(loop, req, UV_FS_FDATASYNC);
     fs__fsync(req, file);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1129,6 +1147,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
     uv_fs_req_init_sync(loop, req, UV_FS_FSYNC);
     fs__fsync(req, file);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1145,6 +1164,7 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file,
     uv_fs_req_init_sync(loop, req, UV_FS_FTRUNCATE);
     fs__ftruncate(req, file, offset);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1161,6 +1181,7 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd,
     uv_fs_req_init_sync(loop, req, UV_FS_SENDFILE);
     fs__sendfile(req, out_fd, in_fd, in_offset, length);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1177,6 +1198,7 @@ int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
     uv_fs_req_init_sync(loop, req, UV_FS_CHMOD);
     fs__chmod(req, path, mode);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1193,6 +1215,7 @@ int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode,
     uv_fs_req_init_sync(loop, req, UV_FS_FCHMOD);
     fs__fchmod(req, file, mode);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1210,6 +1233,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
     uv_fs_req_init_sync(loop, req, UV_FS_UTIME);
     fs__utime(req, path, atime, mtime);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
@@ -1228,6 +1252,7 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime,
     uv_fs_req_init_sync(loop, req, UV_FS_FUTIME);
     fs__futime(req, file, atime, mtime);
     SET_UV_LAST_ERROR_FROM_REQ(req);
+    return req->result;
   }
 
   return 0;
