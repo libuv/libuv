@@ -133,7 +133,6 @@ static void uv_fs_req_init_sync(uv_loop_t* loop, uv_fs_t* req,
 void fs__open(uv_fs_t* req, const char* path, int flags, int mode) {
   DWORD access;
   DWORD share;
-  SECURITY_ATTRIBUTES sa;
   DWORD disposition;
   DWORD attributes;
   HANDLE file;
@@ -167,14 +166,6 @@ void fs__open(uv_fs_t* req, const char* path, int flags, int mode) {
    * be deleted even whilst it's open, fixing issue #1449.
    */
   share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-
-  sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-  sa.lpSecurityDescriptor = NULL;
-  if (flags & _O_NOINHERIT) {
-    sa.bInheritHandle = FALSE;
-  } else {
-    sa.bInheritHandle = TRUE;
-  }
 
   switch (flags & (_O_CREAT | _O_EXCL | _O_TRUNC)) {
   case 0:
@@ -233,7 +224,7 @@ void fs__open(uv_fs_t* req, const char* path, int flags, int mode) {
   file = CreateFileA(path,
                      access,
                      share,
-                     &sa,
+                     NULL,
                      disposition,
                      attributes,
                      NULL);
@@ -407,7 +398,6 @@ void fs__readdir(uv_fs_t* req, const char* path, int flags) {
   req->ptr = buf;
   req->flags |= UV_FS_FREE_PTR;
 
-done:
   SET_REQ_RESULT(req, result);
 }
 
