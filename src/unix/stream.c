@@ -129,8 +129,8 @@ void uv__stream_destroy(uv_stream_t* stream) {
 
     req = ngx_queue_data(q, uv_write_t, queue);
     if (req->cb) {
-      uv_err_new_artificial(req->handle->loop, UV_OK);
-      req->cb(req, 0);
+      uv_err_new_artificial(stream->loop, req->error);
+      req->cb(req, req->error ? -1 : 0);
     }
   }
 }
