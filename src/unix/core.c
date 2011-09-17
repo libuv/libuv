@@ -575,6 +575,8 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer) {
 
 static int uv_getaddrinfo_done(eio_req* req) {
   uv_getaddrinfo_t* handle = req->data;
+  struct addrinfo *res = handle->res;
+  handle->res = NULL;
 
   uv_unref(handle->loop);
 
@@ -587,10 +589,9 @@ static int uv_getaddrinfo_done(eio_req* req) {
     uv_err_new(handle->loop, handle->retcode);
   }
 
-  handle->cb(handle, handle->retcode, handle->res);
+  handle->cb(handle, handle->retcode, res);
 
-  freeaddrinfo(handle->res);
-  handle->res = NULL;
+  freeaddrinfo(res);
 
   return 0;
 }
