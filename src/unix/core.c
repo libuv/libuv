@@ -634,6 +634,9 @@ int uv_getaddrinfo(uv_loop_t* loop,
     handle->hints = malloc(sizeof(struct addrinfo));
     memcpy(&handle->hints, hints, sizeof(struct addrinfo));
   }
+  else {
+    handle->hints = NULL;
+  }
 
   /* TODO security! check lengths, check return values. */
 
