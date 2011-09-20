@@ -79,6 +79,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
       uv_pipe_cleanup((uv_pipe_t*)handle);
       /* Fall through. */
 
+    case UV_TTY:
     case UV_TCP:
       stream = (uv_stream_t*)handle;
 
@@ -231,6 +232,7 @@ void uv__finish_close(uv_handle_t* handle) {
 
     case UV_NAMED_PIPE:
     case UV_TCP:
+    case UV_TTY:
       assert(!ev_is_active(&((uv_stream_t*)handle)->read_watcher));
       assert(!ev_is_active(&((uv_stream_t*)handle)->write_watcher));
       assert(((uv_stream_t*)handle)->fd == -1);
