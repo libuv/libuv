@@ -27,6 +27,10 @@
 #include "ev.h"
 #include "eio.h"
 
+#if defined(__linux__)
+#include "uv-private/uv-linux.h"
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>

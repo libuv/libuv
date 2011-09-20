@@ -110,4 +110,7 @@ int uv_pipe_cleanup(uv_pipe_t* handle);
 void uv__udp_destroy(uv_udp_t* handle);
 void uv__udp_watcher_stop(uv_udp_t* handle, ev_io* w);
 
+/* fs */
+void uv__fs_event_destroy(uv_fs_event_t* handle);
+
 #endif /* UV_UNIX_INTERNAL_H_ */

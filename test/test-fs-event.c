@@ -21,6 +21,8 @@
 
 #include "uv.h"
 #include "task.h"
+
+#include <string.h>
 #include <fcntl.h>
 
 uv_fs_event_t fs_event;
