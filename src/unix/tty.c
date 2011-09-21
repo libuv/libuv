@@ -23,6 +23,7 @@
 #include "internal.h"
 
 #include <assert.h>
+#include <unistd.h>
 #include <termios.h>
 #include <errno.h>
 
