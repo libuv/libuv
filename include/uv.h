@@ -807,8 +807,10 @@ struct uv_getaddrinfo_s {
  *
  * Return code 0 means that request is accepted and callback will be called
  * with result. Other return codes mean that there will not be a callback.
- * Input arguments may be released after return from this call. Callback
- * must not call freeaddrinfo.
+ * Input arguments may be released after return from this call.
+ *
+ * uv_freeaddrinfo() must be called after completion to free the addrinfo
+ * structure.
  */
  int uv_getaddrinfo(uv_loop_t*,
                     uv_getaddrinfo_t* handle,
@@ -816,6 +818,8 @@ struct uv_getaddrinfo_s {
                     const char* node,
                     const char* service,
                     const struct addrinfo* hints);
+
+void uv_freeaddrinfo(struct addrinfo* ai);
 
 /* uv_spawn() options */
 typedef struct uv_process_options_s {
