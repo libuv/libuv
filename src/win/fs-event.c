@@ -268,9 +268,11 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
   assert(handle->req_pending);
   handle->req_pending = 0;
 
+  file_info = (FILE_NOTIFY_INFORMATION*)(handle->buffer + offset);
+
   if (REQ_SUCCESS(req) && req->overlapped.InternalHigh > 0) {
     do {
-      file_info = (FILE_NOTIFY_INFORMATION*)(handle->buffer + offset);
+      file_info = (FILE_NOTIFY_INFORMATION*)((char*)file_info + offset);
 
       /* 
        * Fire the event only if we were asked to watch a directory,
