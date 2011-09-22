@@ -110,16 +110,3 @@ double uv_get_total_memory(void) {
 
   return (double) info;
 }
-
-int uv_fs_event_init(uv_loop_t* loop,
-                     uv_fs_event_t* handle,
-                     const char* filename,
-                     uv_fs_event_cb cb) {
-  uv__set_sys_error(loop, ENOSYS);
-  return -1;
-}
-
-
-void uv__fs_event_destroy(uv_fs_event_t* handle) {
-  assert(0 && "implement me");
-}

@@ -54,6 +54,7 @@ EIO_CONFIG=config_darwin.h
 CPPFLAGS += -Isrc/ares/config_darwin
 LINKFLAGS+=-framework CoreServices
 OBJS += src/unix/darwin.o
+OBJS += src/unix/kqueue.o
 endif
 
 ifeq (Linux,$(uname_S))
@@ -71,6 +72,7 @@ EIO_CONFIG=config_freebsd.h
 CPPFLAGS += -Isrc/ares/config_freebsd
 LINKFLAGS+=
 OBJS += src/unix/freebsd.o
+OBJS += src/unix/kqueue.o
 endif
 
 ifeq (NetBSD,$(uname_S))
@@ -79,6 +81,7 @@ EIO_CONFIG=config_netbsd.h
 CPPFLAGS += -Isrc/ares/config_netbsd
 LINKFLAGS+=
 OBJS += src/unix/netbsd.o
+OBJS += src/unix/kqueue.o
 endif
 
 ifneq (,$(findstring CYGWIN,$(uname_S)))

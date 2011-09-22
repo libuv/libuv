@@ -229,6 +229,9 @@
             'EIO_CONFIG_H="config_freebsd.h"',
           ],
         }],
+        [ 'OS=="mac" or OS=="freebsd" or OS=="openbsd" or OS=="netbsd"', {
+          'sources': [ 'src/unix/kqueue.c' ],
+        }],
       ]
     },
 

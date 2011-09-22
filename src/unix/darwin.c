@@ -106,16 +106,3 @@ void uv_loadavg(double avg[3]) {
   avg[1] = (double) info.ldavg[1] / info.fscale;
   avg[2] = (double) info.ldavg[2] / info.fscale;
 }
-
-int uv_fs_event_init(uv_loop_t* loop,
-                     uv_fs_event_t* handle,
-                     const char* filename,
-                     uv_fs_event_cb cb) {
-  uv__set_sys_error(loop, ENOSYS);
-  return -1;
-}
-
-
-void uv__fs_event_destroy(uv_fs_event_t* handle) {
-  assert(0 && "implement me");
-}
