@@ -270,68 +270,68 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
 
   file_info = (FILE_NOTIFY_INFORMATION*)(handle->buffer + offset);
 
-  if (REQ_SUCCESS(req) && req->overlapped.InternalHigh > 0) {
-    do {
-      file_info = (FILE_NOTIFY_INFORMATION*)((char*)file_info + offset);
+  if (REQ_SUCCESS(req)) {
+    if (req->overlapped.InternalHigh > 0) {
+      do {
+        file_info = (FILE_NOTIFY_INFORMATION*)((char*)file_info + offset);
 
-      /* 
-       * Fire the event only if we were asked to watch a directory,
-       * or if the filename filter matches.
-       */
-      if (handle->is_path_dir || _wcsnicmp(handle->filew, file_info->FileName,
-        file_info->FileNameLength / sizeof(wchar_t)) == 0) {
+        /* 
+         * Fire the event only if we were asked to watch a directory,
+         * or if the filename filter matches.
+         */
+        if (handle->is_path_dir || _wcsnicmp(handle->filew, file_info->FileName,
+          file_info->FileNameLength / sizeof(wchar_t)) == 0) {
         
-        /* Convert the filename to utf8. */
-        utf8size = uv_utf16_to_utf8(file_info->FileName,
-                                    file_info->FileNameLength / 
-                                      sizeof(wchar_t),
-                                    NULL,
-                                    0);
-        if (utf8size) {
-          filename = (char*)malloc(utf8size + 1);
-          if (!filename) {
-            uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-          }
-
+          /* Convert the filename to utf8. */
           utf8size = uv_utf16_to_utf8(file_info->FileName,
-                                      file_info->FileNameLength /
+                                      file_info->FileNameLength / 
                                         sizeof(wchar_t),
-                                      filename,
-                                      utf8size);
+                                      NULL,
+                                      0);
           if (utf8size) {
-            filename[utf8size] = L'\0';
-          } else {
-            free(filename);
-            filename = NULL;
+            filename = (char*)malloc(utf8size + 1);
+            if (!filename) {
+              uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+            }
+
+            utf8size = uv_utf16_to_utf8(file_info->FileName,
+                                        file_info->FileNameLength /
+                                          sizeof(wchar_t),
+                                        filename,
+                                        utf8size);
+            if (utf8size) {
+              filename[utf8size] = L'\0';
+            } else {
+              free(filename);
+              filename = NULL;
+            }
           }
+
+          switch (file_info->Action) {
+            case FILE_ACTION_ADDED:
+            case FILE_ACTION_REMOVED:
+            case FILE_ACTION_RENAMED_OLD_NAME:
+            case FILE_ACTION_RENAMED_NEW_NAME:
+              handle->cb(handle, filename, UV_RENAME, 0);
+              break;
+
+            case FILE_ACTION_MODIFIED:
+              handle->cb(handle, filename, UV_CHANGE, 0);
+              break;
+          }
+
+          free(filename);
+          filename = NULL;
         }
 
-        switch (file_info->Action) {
-          case FILE_ACTION_ADDED:
-          case FILE_ACTION_REMOVED:
-          case FILE_ACTION_RENAMED_OLD_NAME:
-          case FILE_ACTION_RENAMED_NEW_NAME:
-            handle->cb(handle, filename, UV_RENAME, 0);
-            break;
-
-          case FILE_ACTION_MODIFIED:
-            handle->cb(handle, filename, UV_CHANGE, 0);
-            break;
-        }
-
-        free(filename);
-        filename = NULL;
-      }
-
-      offset = file_info->NextEntryOffset;
-    } while(offset);
+        offset = file_info->NextEntryOffset;
+      } while(offset);
+    } else {
+      handle->cb(handle, NULL, UV_CHANGE, 0);
+    }
   } else {
-    /* 
-     * TODO: InternalHigh == 0 indicates overflow.
-     * Fire the appropriate event once we figure out the api.
-     */
     loop->last_error = GET_REQ_UV_ERROR(req);
-    handle->cb(handle, NULL, -1, -1);
+    handle->cb(handle, NULL, 0, -1);
   }
 
   if (!(handle->flags & UV_HANDLE_CLOSING)) {
