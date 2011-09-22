@@ -46,6 +46,11 @@ typedef struct {
 
 typedef int uv_file;
 
+/* Stub. Remove it once all platforms support the file watcher API. */
+#ifndef UV_FS_EVENT_PRIVATE_FIELDS
+#define UV_FS_EVENT_PRIVATE_FIELDS /* empty */
+#endif
+
 #define UV_LOOP_PRIVATE_FIELDS \
   ares_channel channel; \
   /* \
