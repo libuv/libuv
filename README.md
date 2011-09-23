@@ -4,6 +4,11 @@ all platform differences in this library.
 
 http://nodejs.org/
 
+= Documentation
+
+See `include/uv.h`.
+
+
 = Build Instructions
 
 For GCC (including MinGW) there are two methods building: via normal
