@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd) {
