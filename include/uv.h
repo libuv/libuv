@@ -624,6 +624,17 @@ int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd);
  */
 int uv_tty_set_mode(uv_tty_t*, int mode);
 
+/*
+ * Gets the current Window size. On success zero is returned.
+ */
+int uv_tty_get_winsize(uv_tty_t*, int* width, int* height);
+
+/*
+ * Used to detect what type of stream should be used with a given file
+ * descriptor. Usually this will be used during initialization to guess the
+ * type of the stdio streams.
+ */
+uv_handle_type uv_guess_handle(uv_file file);
 
 /*
  * uv_pipe_t is a subclass of uv_stream_t
