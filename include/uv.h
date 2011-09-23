@@ -612,11 +612,6 @@ struct uv_tty_s {
   UV_TTY_PRIVATE_FIELDS
 };
 
-/*
- * Returns 1 if file is associated with a Console/TTY 0 otherwise.
- */
-int uv_is_tty(uv_file file);
-
 int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd);
 
 /*
@@ -633,6 +628,7 @@ int uv_tty_get_winsize(uv_tty_t*, int* width, int* height);
  * Used to detect what type of stream should be used with a given file
  * descriptor. Usually this will be used during initialization to guess the
  * type of the stdio streams.
+ * For isatty() functionality use this function and test for UV_TTY.
  */
 uv_handle_type uv_guess_handle(uv_file file);
 

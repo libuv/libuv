@@ -70,11 +70,6 @@ fatal:
 }
 
 
-int uv_is_tty(uv_file file) {
-  return isatty(file);
-}
-
-
 int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   struct winsize ws;
 
