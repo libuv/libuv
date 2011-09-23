@@ -6,6 +6,38 @@ platform differences in this library.
 
 http://nodejs.org/
 
+## Features
+
+Implemented Features:
+
+ * Non-blocking sockets and pipes
+
+ * Timers
+
+ * UDP
+
+ * Child process spawning
+
+ * Asynchronous DNS via c-ares or getaddrinfo.
+
+ * Asynchronous file system APIs (uv_fs_*)
+
+ * High resolution time (uv_hrtime)
+
+ * Current executable path look up (uv_exepath)
+
+ * Thread pool scheduling (uv_queue_work)
+
+Work in progress:
+
+ * File system events (Currently supports inotify, ReadDirectoryChangesW and
+   will support kqueue and event ports in the near future.)
+
+ * TTY support (with VT100 emulation on Windows - work in progress) 
+
+ * Socket sharing between processes
+
+
 ## Documentation
 
 See `include/uv.h`.
