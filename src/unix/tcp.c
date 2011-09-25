@@ -226,12 +226,7 @@ int uv_tcp_connect(uv_connect_t* req,
   saved_errno = errno;
   status = -1;
 
-  if (handle->type != UV_TCP) {
-    uv_err_new(handle->loop, EINVAL);
-    goto out;
-  }
-
-  if (address.sin_family != AF_INET) {
+  if (handle->type != UV_TCP || address.sin_family != AF_INET) {
     uv_err_new(handle->loop, EINVAL);
     goto out;
   }
@@ -258,12 +253,7 @@ int uv_tcp_connect6(uv_connect_t* req,
   saved_errno = errno;
   status = -1;
 
-  if (handle->type != UV_TCP) {
-    uv_err_new(handle->loop, EINVAL);
-    goto out;
-  }
-
-  if (address.sin6_family != AF_INET6) {
+  if (handle->type != UV_TCP || address.sin6_family != AF_INET6) {
     uv_err_new(handle->loop, EINVAL);
     goto out;
   }

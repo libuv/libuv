@@ -484,7 +484,7 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
     return -1;
   }
 
-  if (address.sin_family != AF_INET) {
+  if (handle->type != UV_TCP || address.sin_family != AF_INET) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
@@ -540,7 +540,7 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
     return -1;
   }
 
-  if (address.sin6_family != AF_INET6) {
+  if (handle->type != UV_TCP || address.sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
