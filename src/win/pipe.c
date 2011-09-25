@@ -678,6 +678,8 @@ static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
     /* Make this req pending reporting an error. */
     SET_REQ_ERROR(req, WSAGetLastError());
     uv_insert_pending_req(loop, req);
+
+    handle->flags |= UV_HANDLE_READ_PENDING;
     handle->reqs_pending++;
     return;
   }
