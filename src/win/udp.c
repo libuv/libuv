@@ -198,7 +198,7 @@ int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
     unsigned int flags) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin_family != AF_INET) {
+  if (handle->type != UV_UDP || addr.sin_family != AF_INET) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
@@ -215,7 +215,7 @@ int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
     unsigned int flags) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin6_family != AF_INET6) {
+  if (handle->type != UV_UDP || addr.sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }

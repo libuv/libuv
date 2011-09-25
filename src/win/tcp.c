@@ -196,7 +196,7 @@ static int uv__bind(uv_loop_t* loop, uv_tcp_t* handle, int domain,
 int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin_family != AF_INET) {
+  if (handle->type != UV_TCP || addr.sin_family != AF_INET) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
@@ -212,7 +212,7 @@ int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
 int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin6_family != AF_INET6) {
+  if (handle->type != UV_TCP || addr.sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }

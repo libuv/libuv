@@ -76,26 +76,26 @@ out:
 }
 
 
-int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
-  if (addr.sin_family != AF_INET) {
-    uv_err_new(tcp->loop, EFAULT);
+int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+  if (handle->type != UV_TCP || addr.sin_family != AF_INET) {
+    uv_err_new(handle->loop, EFAULT);
     return -1;
   }
 
-  return uv__tcp_bind(tcp,
+  return uv__tcp_bind(handle,
                       AF_INET,
                       (struct sockaddr*)&addr,
                       sizeof(struct sockaddr_in));
 }
 
 
-int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6 addr) {
-  if (addr.sin6_family != AF_INET6) {
-    uv_err_new(tcp->loop, EFAULT);
+int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
+  if (handle->type != UV_TCP || addr.sin6_family != AF_INET6) {
+    uv_err_new(handle->loop, EFAULT);
     return -1;
   }
 
-  return uv__tcp_bind(tcp,
+  return uv__tcp_bind(handle,
                       AF_INET6,
                       (struct sockaddr*)&addr,
                       sizeof(struct sockaddr_in6));

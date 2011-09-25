@@ -444,6 +444,11 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
 
 
 int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags) {
+  if (handle->type != UV_UDP || addr.sin_family != AF_INET) {
+    uv_err_new(handle->loop, EFAULT);
+    return -1;
+  }
+
   return uv__udp_bind(handle,
                       AF_INET,
                       (struct sockaddr*)&addr,
@@ -453,6 +458,11 @@ int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags) {
 
 
 int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags) {
+  if (handle->type != UV_UDP || addr.sin6_family != AF_INET6) {
+    uv_err_new(handle->loop, EFAULT);
+    return -1;
+  }
+
   return uv__udp_bind(handle,
                       AF_INET6,
                       (struct sockaddr*)&addr,
