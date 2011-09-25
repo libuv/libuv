@@ -117,6 +117,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
     HANDLE pipeHandle;                    \
     struct uv_pipe_accept_s* next_pending; \
   } uv_pipe_accept_t;                     \
+                                          \
   typedef struct uv_tcp_accept_s {        \
     UV_REQ_FIELDS                         \
     SOCKET accept_socket;                 \
