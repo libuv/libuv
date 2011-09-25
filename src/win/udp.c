@@ -363,55 +363,6 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 }
 
 
-int uv_udp_connect6(uv_connect_t* req, uv_udp_t* handle,
-    struct sockaddr_in6 address, uv_connect_cb cb) {
-  uv_loop_t* loop = handle->loop;
-  int addrsize = sizeof(struct sockaddr_in6);
-  BOOL success;
-  DWORD bytes;
-
-  if (!uv_allow_ipv6) {
-    uv_new_sys_error(WSAEAFNOSUPPORT);
-    return -1;
-  }
-
-  if (address.sin6_family != AF_INET6) {
-    uv_set_sys_error(loop, WSAEFAULT);
-    return -1;
-  }
-
-  if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_udp_bind6(handle, uv_addr_ip6_any_, 0) < 0)
-    return -1;
-
-  uv_req_init(loop, (uv_req_t*) req);
-  req->type = UV_CONNECT;
-  req->handle = (uv_stream_t*) handle;
-  req->cb = cb;
-  memset(&req->overlapped, 0, sizeof(req->overlapped));
-
-  success = pConnectEx6(handle->socket,
-                       (struct sockaddr*) &address,
-                       addrsize,
-                       NULL,
-                       0,
-                       &bytes,
-                       &req->overlapped);
-
-  if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
-    handle->reqs_pending++;
-    uv_insert_pending_req(loop, (uv_req_t*)req);
-  } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
-    handle->reqs_pending++;
-  } else {
-    uv_set_sys_error(loop, WSAGetLastError());
-    return -1;
-  }
-
-  return 0;
-}
-
-
 static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     int bufcnt, struct sockaddr* addr, int addr_len, uv_udp_send_cb cb) {
   uv_loop_t* loop = handle->loop;
