@@ -20,9 +20,34 @@
  */
 
 #include <assert.h>
+#include <io.h>
 
 #include "uv.h"
 #include "internal.h"
+
+
+uv_handle_type uv_guess_handle(uv_file file) {
+  HANDLE handle = (HANDLE) _get_osfhandle(file);
+  DWORD mode;
+
+  switch (GetFileType(handle)) {
+    case FILE_TYPE_CHAR:
+      if (GetConsoleMode(handle, &mode)) {
+        return UV_TTY;
+      } else {
+        return UV_UNKNOWN_HANDLE;
+      }
+
+    case FILE_TYPE_PIPE:
+      return UV_NAMED_PIPE;
+
+    case FILE_TYPE_DISK:
+      return UV_FILE;
+
+    default:
+      return UV_UNKNOWN_HANDLE;
+  }
+}
 
 
 int uv_is_active(uv_handle_t* handle) {
