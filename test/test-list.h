@@ -20,6 +20,7 @@
  */
 
 TEST_DECLARE   (tty)
+TEST_DECLARE   (ipc)
 TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_v6)
 TEST_DECLARE   (tcp_ref)
@@ -110,6 +111,7 @@ HELPER_DECLARE (pipe_echo_server)
 
 TASK_LIST_START
   TEST_ENTRY  (tty)
+  TEST_ENTRY  (ipc)
 
 
   TEST_ENTRY  (tcp_ref)

@@ -24,6 +24,7 @@
 
 #include "runner.h"
 #include "task.h"
+#include "uv.h"
 
 /* Actual tests and helpers are defined in test-list.h */
 #include "test-list.h"
@@ -48,10 +49,42 @@ int main(int argc, char **argv) {
 }
 
 
+static int ipc_helper() {
+  /*
+   * This is launched from test-ipc.c. stdin is a duplex channel that we
+   * over which a handle will be transmitted. In this initial version only
+   * data is transfered over the channel. XXX edit this comment after handle
+   * transfer is added.
+   */
+  uv_pipe_t channel;
+  uv_write_t write_req;
+  int r;
+  uv_buf_t buf;
+
+  r = uv_pipe_init(uv_default_loop(), &channel, 1);
+  ASSERT(r == 0);
+
+  uv_pipe_open(&channel, 0);
+
+  buf = uv_buf_init("hello\n", 6);
+  r = uv_write(&write_req, (uv_stream_t*)&channel, &buf, 1, NULL);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop());
+  ASSERT(r == 0);
+
+  return 0;
+}
+
+
 static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "--list") == 0) {
     print_tests(stdout);
     return 0;
+  }
+
+  if (strcmp(argv[1], "ipc_helper") == 0) {
+    return ipc_helper();
   }
 
   if (strcmp(argv[1], "spawn_helper1") == 0) {

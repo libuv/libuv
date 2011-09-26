@@ -648,9 +648,14 @@ struct uv_pipe_s {
   UV_HANDLE_FIELDS
   UV_STREAM_FIELDS
   UV_PIPE_PRIVATE_FIELDS
+  int ipc; /* non-zero if this pipe is used for passing handles */
 };
 
-int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle);
+/*
+ * Initialize a pipe. The last argument is a boolean to indicate if
+ * this pipe will be used for handle passing between processes.
+ */
+int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 
 /*
  * Opens an existing file descriptor or HANDLE as a pipe.
