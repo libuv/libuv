@@ -52,6 +52,8 @@ TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_eof)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (timer)
+TEST_DECLARE   (timer_ref)
+TEST_DECLARE   (timer_ref2)
 TEST_DECLARE   (timer_again)
 TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
@@ -154,6 +156,8 @@ TASK_LIST_START
   TEST_HELPER (callback_stack, tcp4_echo_server)
 
   TEST_ENTRY  (timer)
+  TEST_ENTRY  (timer_ref)
+  TEST_ENTRY  (timer_ref2)
 
   TEST_ENTRY  (timer_again)
 
