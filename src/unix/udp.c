@@ -26,6 +26,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 
 static void uv__udp_run_completed(uv_udp_t* handle);
