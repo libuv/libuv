@@ -223,7 +223,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     free(*cpu_infos);
     return uv__new_sys_error(errno);
   }
-  // kern.cp_times on FreeBSD i386 gives an array up to maxcpus instead of ncpu
+  /* kern.cp_times on FreeBSD i386 gives an array up to maxcpus instead of ncpu */
   size = sizeof(maxcpus);
   if (sysctlbyname("kern.smp.maxcpus", &maxcpus, &size, NULL, 0) < 0) {
     free(*cpu_infos);
