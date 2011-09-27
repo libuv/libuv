@@ -78,7 +78,7 @@ static int uv_tty_virtual_offset = -1;
 static int uv_tty_virtual_height = -1;
 static int uv_tty_virtual_width = -1;
 
-CRITICAL_SECTION uv_tty_output_lock;
+static CRITICAL_SECTION uv_tty_output_lock;
 
 
 void uv_console_init() {
@@ -731,7 +731,8 @@ void uv_process_tty_read_req(uv_loop_t* loop, uv_tty_t* handle,
 }
 
 
-int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
+int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
+    uv_read_cb read_cb) {
   uv_loop_t* loop = handle->loop;
 
   handle->flags |= UV_HANDLE_READING;
@@ -748,7 +749,8 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb, uv_read_cb read_cb
   /* Short-circuit if this could be the case. */
   if (handle->last_key_len > 0) {
     SET_REQ_SUCCESS(&handle->read_req);
-    POST_COMPLETION_FOR_REQ(handle->loop, &handle->read_req);
+    uv_insert_pending_req(handle->loop, (uv_req_t*) &handle->read_req);
+    return -1;
   }
 
   uv_tty_queue_read(loop, handle);
@@ -797,8 +799,8 @@ static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info) {
              uv_tty_virtual_height + 1) {
     /* If suddenly find the cursor outside of the virtual window, it must */
     /* have somehow scrolled. Update the virtual window offset. */
-    uv_tty_virtual_offset = uv_tty_virtual_offset =
-        info->dwCursorPosition.Y - uv_tty_virtual_height + 1;
+    uv_tty_virtual_offset = info->dwCursorPosition.Y -
+                            uv_tty_virtual_height + 1;
   }
   if (uv_tty_virtual_offset + uv_tty_virtual_height > info->dwSize.Y) {
     uv_tty_virtual_offset = info->dwSize.Y - uv_tty_virtual_height;
@@ -867,8 +869,8 @@ static int uv_tty_emit_text(uv_tty_t* handle, WCHAR buffer[], DWORD length,
 }
 
 
-static int uv_tty_move_caret(uv_tty_t* handle, int x, unsigned char x_relative, int y,
-    unsigned char y_relative, DWORD* error) {
+static int uv_tty_move_caret(uv_tty_t* handle, int x, unsigned char x_relative,
+    int y, unsigned char y_relative, DWORD* error) {
   CONSOLE_SCREEN_BUFFER_INFO info;
   COORD pos;
 
@@ -897,7 +899,8 @@ static int uv_tty_move_caret(uv_tty_t* handle, int x, unsigned char x_relative, 
 }
 
 
-static int uv_tty_clear(uv_tty_t* handle, int dir, char entire_screen, DWORD* error) {
+static int uv_tty_clear(uv_tty_t* handle, int dir, char entire_screen,
+    DWORD* error) {
   unsigned short argc = handle->ansi_csi_argc;
   unsigned short* argv = handle->ansi_csi_argv;
 
@@ -987,6 +990,14 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
 
   char fg_color = -1, bg_color = -1;
   char fg_bright = -1, bg_bright = -1;
+
+  if (argc == 0) {
+    /* Reset mode */
+    fg_color = 7;
+    bg_color = 0;
+    fg_bright = 0;
+    bg_bright = 0;
+  }
 
   for (i = 0; i < argc; i++) {
     short arg = argv[i];
@@ -1168,7 +1179,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle, uv_buf_t bufs[], int bufcnt,
             ansi_parser_state = ANSI_ESCAPE_SEEN;
             continue;
 
-          case '\0233':
+          case 0233:
             ansi_parser_state = ANSI_CSI;
             handle->ansi_csi_argc = 0;
             continue;
