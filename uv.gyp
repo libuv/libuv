@@ -102,6 +102,8 @@
             'src/ares/config_win32/ares_config.h',
             'src/ares/windows_port.c',
             'src/ares/ares_getenv.c',
+            'src/ares/ares_iphlpapi.h',
+            'src/ares/ares_platform.c',
             'src/win/async.c',
             'src/win/cares.c',
             'src/win/core.c',
