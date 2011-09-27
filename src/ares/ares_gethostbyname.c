@@ -48,7 +48,6 @@
 #include "ares.h"
 #include "inet_net_pton.h"
 #include "bitncmp.h"
-#include "ares_platform.h"
 #include "ares_private.h"
 
 #ifdef WATT32
@@ -194,11 +193,11 @@ static void host_callback(void *arg, int status, int timeouts,
       else if (hquery->sent_family == AF_INET6)
         {
           status = ares_parse_aaaa_reply(abuf, alen, &host, NULL, NULL);
-          if ((status == ARES_ENODATA || status == ARES_EBADRESP) &&
-               hquery->want_family == AF_UNSPEC) {
+          if (status == ARES_ENODATA || status == ARES_EBADRESP) {
             /* The query returned something but either there were no AAAA
                records (e.g. just CNAME) or the response was malformed.  Try
-               looking up A instead. */
+               looking up A instead.  We should possibly limit this
+               attempt-next logic to AF_UNSPEC lookups only. */
             hquery->sent_family = AF_INET;
             ares_search(hquery->channel, hquery->name, C_IN, T_A,
                         host_callback, hquery);
@@ -210,10 +209,11 @@ static void host_callback(void *arg, int status, int timeouts,
       end_hquery(hquery, status, host);
     }
   else if ((status == ARES_ENODATA || status == ARES_EBADRESP ||
-            status == ARES_ETIMEOUT) && (hquery->sent_family == AF_INET6 &&
-            hquery->want_family == AF_UNSPEC))
+            status == ARES_ETIMEOUT) && hquery->sent_family == AF_INET6)
     {
-      /* The AAAA query yielded no useful result.  Now look up an A instead. */
+      /* The AAAA query yielded no useful result.  Now look up an A instead.
+         We should possibly limit this attempt-next logic to AF_UNSPEC lookups
+         only. */
       hquery->sent_family = AF_INET;
       ares_search(hquery->channel, hquery->name, C_IN, T_A, host_callback,
                   hquery);
@@ -344,13 +344,7 @@ static int file_lookup(const char *name, int family, struct hostent **host)
 
 #ifdef WIN32
   char PATH_HOSTS[MAX_PATH];
-  win_platform platform;
-
-  PATH_HOSTS[0] = '\0';
-
-  platform = ares__getplatform();
-
-  if (platform == WIN_NT) {
+  if (IS_NT()) {
     char tmp[MAX_PATH];
     HKEY hkeyHosts;
 
@@ -364,10 +358,8 @@ static int file_lookup(const char *name, int family, struct hostent **host)
       RegCloseKey(hkeyHosts);
     }
   }
-  else if (platform == WIN_9X)
-    GetWindowsDirectory(PATH_HOSTS, MAX_PATH);
   else
-    return ARES_ENOTFOUND;
+    GetWindowsDirectory(PATH_HOSTS, MAX_PATH);
 
   strcat(PATH_HOSTS, WIN_PATH_HOSTS);
 

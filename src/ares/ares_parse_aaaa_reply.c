@@ -132,7 +132,6 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
       aptr += len;
       if (aptr + RRFIXEDSZ > abuf + alen)
         {
-          free(rr_name);
           status = ARES_EBADRESP;
           break;
         }
@@ -150,7 +149,6 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
             {
               if (aptr + sizeof(struct ares_in6_addr) > abuf + alen)
               {
-                free(rr_name);
                 status = ARES_EBADRESP;
                 break;
               }
@@ -161,7 +159,6 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
               struct ares_addr6ttl * const at = &addrttls[naddrs];
               if (aptr + sizeof(struct ares_in6_addr) > abuf + alen)
               {
-                free(rr_name);
                 status = ARES_EBADRESP;
                 break;
               }

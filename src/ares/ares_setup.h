@@ -1,6 +1,7 @@
 #ifndef HEADER_CARES_SETUP_H
 #define HEADER_CARES_SETUP_H
 
+/* $Id$ */
 
 /* Copyright (C) 2004 - 2009 by Daniel Stenberg et al
  *
@@ -30,12 +31,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include "ares_config.h"
-#else
-
-#ifdef WIN32
-#include "config-win32.h"
-#endif
-
 #endif /* HAVE_CONFIG_H */
 
 /* ================================================================ */
@@ -75,7 +70,7 @@
 /*  please, do it beyond the point further indicated in this file.  */
 /* ================================================================ */
 
-#if 0 /* libuv hack */
+#if 0 /* libuv disabled */
 /*
  * c-ares external interface definitions are also used internally,
  * and might also include required system header files to define them.
@@ -88,7 +83,7 @@
  */
 
 #include <ares_rules.h>
-#endif /* libuv hack */
+#endif
 
 /* ================================================================= */
 /* No system header file shall be included in this file before this  */
@@ -107,10 +102,6 @@
  */
 
 #ifdef HAVE_WINDOWS_H
-#  ifndef WIN32_LEAN_AND_MEAN
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  include <windows.h>
 #  ifdef HAVE_WINSOCK2_H
 #    include <winsock2.h>
 #    ifdef HAVE_WS2TCPIP_H
@@ -121,6 +112,7 @@
 #      include <winsock.h>
 #    endif
 #  endif
+#  include <windows.h>
 #endif
 
 /*

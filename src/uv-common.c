@@ -26,10 +26,6 @@
 #include <stddef.h> /* NULL */
 #include <string.h> /* memset */
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
 /* use inet_pton from c-ares if necessary */
 #include "ares_config.h"
 #include "ares/inet_net_pton.h"
