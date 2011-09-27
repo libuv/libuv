@@ -275,9 +275,6 @@ extern const uv_err_t uv_ok_;
 void uv_fatal_error(const int errorno, const char* syscall);
 
 uv_err_code uv_translate_sys_error(int sys_errno);
-uv_err_t uv_new_sys_error(int sys_errno);
-void uv_set_sys_error(uv_loop_t* loop, int sys_errno);
-void uv_set_error(uv_loop_t* loop, uv_err_code code, int sys_errno);
 
 #define SET_REQ_STATUS(req, status)                                     \
    (req)->overlapped.Internal = (ULONG_PTR) (status)

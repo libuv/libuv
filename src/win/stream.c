@@ -115,7 +115,7 @@ int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
       return uv_tty_write(loop, req, (uv_tty_t*) handle, bufs, bufcnt, cb);
     default:
       assert(0);
-      uv_set_sys_error(loop, WSAEINVAL);
+      uv__set_sys_error(loop, WSAEINVAL);
       return -1;
   }
 }
@@ -125,12 +125,12 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   uv_loop_t* loop = handle->loop;
 
   if (!(handle->flags & UV_HANDLE_CONNECTION)) {
-    uv_set_sys_error(loop, WSAEINVAL);
+    uv__set_sys_error(loop, WSAEINVAL);
     return -1;
   }
 
   if (handle->flags & UV_HANDLE_SHUTTING) {
-    uv_set_sys_error(loop, WSAESHUTDOWN);
+    uv__set_sys_error(loop, WSAESHUTDOWN);
     return -1;
   }
 

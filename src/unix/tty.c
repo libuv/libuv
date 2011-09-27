@@ -65,7 +65,7 @@ int uv_tty_set_mode(uv_tty_t* tty, int mode) {
   return 0;
 
 fatal:
-  uv_err_new(tty->loop, ENOTTY);
+  uv__set_sys_error(tty->loop, ENOTTY);
   return -1;
 }
 
@@ -74,7 +74,7 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   struct winsize ws;
 
   if (ioctl(tty->fd, TIOCGWINSZ, &ws) < 0) {
-    uv_err_new(tty->loop, errno);
+    uv__set_sys_error(tty->loop, errno);
     return -1;
   }
 
@@ -89,7 +89,7 @@ uv_handle_type uv_guess_handle(uv_file file) {
   struct stat s;
 
   if (file < 0) {
-    uv_err_new(NULL, EINVAL); /* XXX Need loop? */
+    uv__set_sys_error(NULL, EINVAL); /* XXX Need loop? */
     return -1;
   }
 
@@ -98,7 +98,7 @@ uv_handle_type uv_guess_handle(uv_file file) {
   }
 
   if (fstat(file, &s)) {
-    uv_err_new(NULL, errno); /* XXX Need loop? */
+    uv__set_sys_error(NULL, errno); /* XXX Need loop? */
     return -1;
   }
 

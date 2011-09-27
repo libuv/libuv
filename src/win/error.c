@@ -143,15 +143,3 @@ uv_err_t uv_new_sys_error(int sys_errno) {
   e.sys_errno_ = sys_errno;
   return e;
 }
-
-
-void uv_set_sys_error(uv_loop_t* loop, int sys_errno) {
-  loop->last_error.code = uv_translate_sys_error(sys_errno);
-  loop->last_error.sys_errno_ = sys_errno;
-}
-
-
-void uv_set_error(uv_loop_t* loop, uv_err_code code, int sys_errno) {
-  loop->last_error.code = code;
-  loop->last_error.sys_errno_ = sys_errno;
-}

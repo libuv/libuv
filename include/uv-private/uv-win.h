@@ -151,7 +151,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_TCP_PRIVATE_FIELDS             \
   SOCKET socket;                          \
-  uv_err_t bind_error;                    \
+  int bind_error;                         \
   union {                                 \
     struct { uv_tcp_server_fields };      \
     struct { uv_tcp_connection_fields };  \

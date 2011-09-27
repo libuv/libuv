@@ -144,7 +144,7 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle,
 
   if (!uv_utf8_to_utf16(filename, filenamew, 
       name_size / sizeof(wchar_t))) {
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     return -1;
   }
 
@@ -252,7 +252,7 @@ error:
     handle->buffer = NULL;
   }
 
-  uv_set_sys_error(loop, last_error);
+  uv__set_sys_error(loop, last_error);
   return -1;
 }
 

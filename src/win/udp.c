@@ -46,13 +46,13 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    uv_set_sys_error(loop, WSAEINVAL);
+    uv__set_sys_error(loop, WSAEINVAL);
     return -1;
   }
 
   result = getsockname(handle->socket, name, namelen);
   if (result != 0) {
-    uv_set_sys_error(loop, WSAGetLastError());
+    uv__set_sys_error(loop, WSAGetLastError());
     return -1;
   }
 
@@ -68,13 +68,13 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle,
 
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
-    uv_set_sys_error(loop, WSAGetLastError());
+    uv__set_sys_error(loop, WSAGetLastError());
     return -1;
   }
 
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     return -1;
   }
 
@@ -84,14 +84,14 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle,
                              loop->iocp,
                              (ULONG_PTR)socket,
                              0) == NULL) {
-    uv_set_sys_error(loop, GetLastError());
+    uv__set_sys_error(loop, GetLastError());
     return -1;
   }
 
   if (pSetFileCompletionNotificationModes) {
     if (!pSetFileCompletionNotificationModes((HANDLE)socket,
        FILE_SKIP_SET_EVENT_ON_HANDLE | FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
-      uv_set_sys_error(loop, GetLastError());
+      uv__set_sys_error(loop, GetLastError());
       return -1;
     }
 
@@ -148,14 +148,14 @@ static int uv__bind(uv_udp_t* handle, int domain, struct sockaddr* addr,
 
   if ((flags & UV_UDP_IPV6ONLY) && domain != AF_INET6) {
     /* UV_UDP_IPV6ONLY is supported only for IPV6 sockets */
-    uv_set_sys_error(loop, UV_EINVAL);
+    uv__set_sys_error(loop, UV_EINVAL);
     return -1;
   }
 
   if (handle->socket == INVALID_SOCKET) {
     sock = socket(domain, SOCK_DGRAM, 0);
     if (sock == INVALID_SOCKET) {
-      uv_set_sys_error(loop, WSAGetLastError());
+      uv__set_sys_error(loop, WSAGetLastError());
       return -1;
     }
 
@@ -184,7 +184,7 @@ static int uv__bind(uv_udp_t* handle, int domain, struct sockaddr* addr,
 
   if (r == SOCKET_ERROR) {
     err = WSAGetLastError();
-    uv_set_sys_error(loop, WSAGetLastError());
+    uv__set_sys_error(loop, WSAGetLastError());
     return -1;
   }
 
@@ -199,7 +199,7 @@ int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
   uv_loop_t* loop = handle->loop;
 
   if (handle->type != UV_UDP || addr.sin_family != AF_INET) {
-    uv_set_sys_error(loop, WSAEFAULT);
+    uv__set_sys_error(loop, WSAEFAULT);
     return -1;
   }
 
@@ -216,7 +216,7 @@ int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
   uv_loop_t* loop = handle->loop;
 
   if (handle->type != UV_UDP || addr.sin6_family != AF_INET6) {
-    uv_set_sys_error(loop, WSAEFAULT);
+    uv__set_sys_error(loop, WSAEFAULT);
     return -1;
   }
 
@@ -330,7 +330,7 @@ int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
   uv_loop_t* loop = handle->loop;
 
   if (handle->flags & UV_HANDLE_READING) {
-    uv_set_sys_error(loop, WSAEALREADY);
+    uv__set_sys_error(loop, WSAEALREADY);
     return -1;
   }
 
@@ -396,7 +396,7 @@ static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     handle->reqs_pending++;
   } else {
     /* Send failed due to an error. */
-    uv_set_sys_error(loop, WSAGetLastError());
+    uv__set_sys_error(loop, WSAGetLastError());
     return -1;
   }
 
@@ -510,11 +510,11 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     } else {
       err = WSAGetLastError();
       if (err == WSAEWOULDBLOCK) {
-        uv_set_sys_error(loop, WSAEWOULDBLOCK);
+        uv__set_sys_error(loop, WSAEWOULDBLOCK);
         handle->recv_cb(handle, 0, buf, NULL, 0);
       } else {
         /* Ouch! serious error. */
-        uv_set_sys_error(loop, err);
+        uv__set_sys_error(loop, err);
         handle->recv_cb(handle, -1, buf, NULL, 0);
       }
     }

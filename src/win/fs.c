@@ -66,7 +66,7 @@
   if (!QueueUserWorkItem(&uv_fs_thread_proc,                                \
                          req,                                               \
                          WT_EXECUTELONGFUNCTION)) {                         \
-    uv_set_sys_error((loop), GetLastError());                               \
+    uv__set_sys_error((loop), GetLastError());                              \
     return -1;                                                              \
   }                                                                         \
   req->flags |= UV_FS_ASYNC_QUEUED;                                         \
@@ -75,7 +75,7 @@
 
 #define SET_UV_LAST_ERROR_FROM_REQ(req)                                     \
   if (req->flags & UV_FS_LAST_ERROR_SET) {                                  \
-    uv_set_sys_error(req->loop, req->last_error);                           \
+    uv__set_sys_error(req->loop, req->last_error);                          \
   }
 
 #define SET_REQ_LAST_ERROR(req, error)                                      \
