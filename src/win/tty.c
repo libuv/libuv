@@ -1319,13 +1319,21 @@ static int uv_tty_write_bufs(uv_tty_t* handle, uv_buf_t bufs[], int bufcnt,
                 uv_tty_move_caret(handle, 0, 0, y, 1, error);
                 break;
 
-              case 'H':
-              case 'f':
-                /* Cursor absolute */
+              case 'G':
+                /* cursor horizontal move absolute */
                 FLUSH_TEXT();
                 x = (handle->ansi_csi_argc >= 1 && handle->ansi_csi_argv[0])
                   ? handle->ansi_csi_argv[0] - 1 : 0;
-                y = (handle->ansi_csi_argc >= 2 && handle->ansi_csi_argv[1])
+                uv_tty_move_caret(handle, x, 0, 0, 1, error);
+                break;
+
+              case 'H':
+              case 'f':
+                /* cursor move absolute */
+                FLUSH_TEXT();
+                y = (handle->ansi_csi_argc >= 1 && handle->ansi_csi_argv[0])
+                  ? handle->ansi_csi_argv[0] - 1 : 0;
+                x = (handle->ansi_csi_argc >= 2 && handle->ansi_csi_argv[1])
                   ? handle->ansi_csi_argv[1] - 1 : 0;
                 uv_tty_move_caret(handle, x, 0, y, 0, error);
                 break;
