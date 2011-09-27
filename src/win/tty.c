@@ -1481,6 +1481,12 @@ int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
     uv_buf_t bufs[], int bufcnt, uv_write_cb cb) {
   DWORD error;
 
+  if ((handle->flags & UV_HANDLE_SHUTTING) ||
+      (handle->flags & UV_HANDLE_CLOSING)) {
+    uv_set_sys_error(loop, WSAESHUTDOWN);
+    return -1;
+  }
+
   uv_req_init(loop, (uv_req_t*) req);
   req->type = UV_WRITE;
   req->handle = (uv_stream_t*) handle;
@@ -1520,6 +1526,54 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+}
+
+
+void uv_tty_close(uv_tty_t* handle) {
+  uv_tty_read_stop(handle);
+  CloseHandle(handle->handle);
+
+  if (handle->reqs_pending == 0) {
+    uv_want_endgame(handle->loop, (uv_handle_t*) handle);
+  }
+}
+
+
+void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
+  if (handle->flags & UV_HANDLE_CONNECTION &&
+      handle->flags & UV_HANDLE_SHUTTING &&
+      !(handle->flags & UV_HANDLE_SHUT) &&
+      handle->write_reqs_pending == 0) {
+    handle->flags |= UV_HANDLE_SHUT;
+
+    /* TTY shutdown is really just a no-op */
+    if (handle->shutdown_req->cb) {
+      handle->shutdown_req->cb(handle->shutdown_req, 0);
+    }
+
+    DECREASE_PENDING_REQ_COUNT(handle);
+    return;
+  }
+
+  if (handle->flags & UV_HANDLE_CLOSING &&
+      handle->reqs_pending == 0) {
+    /* The console handle duplicate used for line reading should be destroyed */
+    /* by uv_tty_read_stop. */
+    assert(handle->read_line_handle == NULL);
+
+    /* The wait handle used for raw reading should be unregistered when the */
+    /* wait callback runs. */
+    assert(handle->read_raw_wait == NULL);
+
+    assert(!(handle->flags & UV_HANDLE_CLOSED));
+    handle->flags |= UV_HANDLE_CLOSED;
+
+    if (handle->close_cb) {
+      handle->close_cb((uv_handle_t*)handle);
+    }
+
+    uv_unref(loop);
+  }
 }
 
 

@@ -185,6 +185,7 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
 int uv_tty_read_stop(uv_tty_t* handle);
 int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
     uv_buf_t bufs[], int bufcnt, uv_write_cb cb);
+void uv_tty_close(uv_tty_t* handle);
 
 void uv_process_tty_read_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req);
@@ -196,6 +197,8 @@ void uv_process_tty_accept_req(uv_loop_t* loop, uv_tty_t* handle,
 /* TODO: remove me */
 void uv_process_tty_connect_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_connect_t* req);
+
+void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle);
 
 
 /*

@@ -105,6 +105,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       }
       return;
 
+    case UV_TTY:
+      uv_tty_close((uv_tty_t*) handle);
+      return;
+
     case UV_UDP:
       udp = (uv_udp_t*) handle;
       uv_udp_recv_stop(udp);
@@ -182,6 +186,10 @@ void uv_process_endgames(uv_loop_t* loop) {
 
       case UV_NAMED_PIPE:
         uv_pipe_endgame(loop, (uv_pipe_t*) handle);
+        break;
+
+      case UV_TTY:
+        uv_tty_endgame(loop, (uv_tty_t*) handle);
         break;
 
       case UV_UDP:
