@@ -22,6 +22,8 @@
 TEST_DECLARE   (tty)
 TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_v6)
+TEST_DECLARE   (tcp_ref)
+TEST_DECLARE   (tcp_ref2)
 TEST_DECLARE   (pipe_ping_pong)
 TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (tcp_writealot)
@@ -105,6 +107,12 @@ HELPER_DECLARE (pipe_echo_server)
 
 TASK_LIST_START
   TEST_ENTRY  (tty)
+
+
+  TEST_ENTRY  (tcp_ref)
+
+  TEST_ENTRY  (tcp_ref2)
+  TEST_HELPER (tcp_ref2, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_ping_pong)
   TEST_HELPER (tcp_ping_pong, tcp4_echo_server)
