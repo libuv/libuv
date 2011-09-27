@@ -325,8 +325,7 @@ static void uv_tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
 
   /* Duplicate the console handle, so if we want to cancel the read, we can */
   /* just close this handle duplicate. */
-  if (handle->read_line_handle == NULL ||
-      handle->read_line_handle == INVALID_HANDLE_VALUE) {
+  if (handle->read_line_handle == NULL) {
     HANDLE this_process = GetCurrentProcess();
     r = DuplicateHandle(this_process,
                         handle->handle,
@@ -336,6 +335,7 @@ static void uv_tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
                         0,
                         DUPLICATE_SAME_ACCESS);
     if (!r) {
+      handle->read_line_handle = NULL;
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, req);
       goto out;
@@ -776,11 +776,10 @@ int uv_tty_read_stop(uv_tty_t* handle) {
   }
 
   /* Cancel line-buffered read */
-  if (handle->read_line_handle != NULL &&
-      handle->read_line_handle != INVALID_HANDLE_VALUE) {
+  if (handle->read_line_handle != NULL) {
     /* Closing this handle will cancel the ReadConsole operation */
     CloseHandle(handle->read_line_handle);
-    handle->read_line_handle = INVALID_HANDLE_VALUE;
+    handle->read_line_handle = NULL;
   }
 
 
