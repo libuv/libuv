@@ -231,6 +231,7 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
     if (result) {
       /* Mark the handle as shut now to avoid going through this again. */
       handle->flags |= UV_HANDLE_SHUT;
+      return;
 
     } else {
       /* Failure. */
