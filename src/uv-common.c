@@ -206,3 +206,27 @@ void uv_remove_ares_handle(uv_ares_task_t* handle) {
 int uv_ares_handles_empty(uv_loop_t* loop) {
   return loop->uv_ares_handles_ ? 0 : 1;
 }
+
+int uv_tcp_connect(uv_connect_t* req,
+                   uv_tcp_t* handle,
+                   struct sockaddr_in address,
+                   uv_connect_cb cb) {
+  if (handle->type != UV_TCP || address.sin_family != AF_INET) {
+    uv__set_artificial_error(handle->loop, UV_EINVAL);
+    return -1;
+  }
+
+  return uv__tcp_connect(req, handle, address, cb);
+}
+
+int uv_tcp_connect6(uv_connect_t* req,
+                    uv_tcp_t* handle,
+                    struct sockaddr_in6 address,
+                    uv_connect_cb cb) {
+  if (handle->type != UV_TCP || address.sin6_family != AF_INET6) {
+    uv__set_artificial_error(handle->loop, UV_EINVAL);
+    return -1;
+  }
+
+  return uv__tcp_connect6(req, handle, address, cb);
+}

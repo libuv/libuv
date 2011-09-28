@@ -216,20 +216,12 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 }
 
 
-int uv_tcp_connect(uv_connect_t* req,
+int uv__tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
                    struct sockaddr_in address,
                    uv_connect_cb cb) {
-  int saved_errno;
+  int saved_errno = errno;
   int status;
-
-  saved_errno = errno;
-  status = -1;
-
-  if (handle->type != UV_TCP || address.sin_family != AF_INET) {
-    uv__set_sys_error(handle->loop, EINVAL);
-    goto out;
-  }
 
   status = uv__connect(req,
                        (uv_stream_t*)handle,
@@ -237,26 +229,17 @@ int uv_tcp_connect(uv_connect_t* req,
                        sizeof address,
                        cb);
 
-out:
   errno = saved_errno;
   return status;
 }
 
 
-int uv_tcp_connect6(uv_connect_t* req,
+int uv__tcp_connect6(uv_connect_t* req,
                     uv_tcp_t* handle,
                     struct sockaddr_in6 address,
                     uv_connect_cb cb) {
-  int saved_errno;
+  int saved_errno = errno;
   int status;
-
-  saved_errno = errno;
-  status = -1;
-
-  if (handle->type != UV_TCP || address.sin6_family != AF_INET6) {
-    uv__set_sys_error(handle->loop, EINVAL);
-    goto out;
-  }
 
   status = uv__connect(req,
                        (uv_stream_t*)handle,
@@ -264,7 +247,6 @@ int uv_tcp_connect6(uv_connect_t* req,
                        sizeof address,
                        cb);
 
-out:
   errno = saved_errno;
   return status;
 }

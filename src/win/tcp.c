@@ -472,8 +472,10 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
 }
 
 
-int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in address, uv_connect_cb cb) {
+int uv__tcp_connect(uv_connect_t* req,
+                    uv_tcp_t* handle,
+                    struct sockaddr_in address,
+                    uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int addrsize = sizeof(struct sockaddr_in);
   BOOL success;
@@ -481,11 +483,6 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
     uv__set_sys_error(loop, handle->bind_error);
-    return -1;
-  }
-
-  if (handle->type != UV_TCP || address.sin_family != AF_INET) {
-    uv__set_sys_error(loop, WSAEINVAL);
     return -1;
   }
 
@@ -523,8 +520,10 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
 }
 
 
-int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in6 address, uv_connect_cb cb) {
+int uv__tcp_connect6(uv_connect_t* req,
+                     uv_tcp_t* handle,
+                     struct sockaddr_in6 address,
+                     uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int addrsize = sizeof(struct sockaddr_in6);
   BOOL success;
@@ -537,11 +536,6 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
     uv__set_sys_error(loop, handle->bind_error);
-    return -1;
-  }
-
-  if (handle->type != UV_TCP || address.sin6_family != AF_INET6) {
-    uv__set_sys_error(loop, WSAEINVAL);
     return -1;
   }
 
