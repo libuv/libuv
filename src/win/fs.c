@@ -77,7 +77,7 @@
   if (req->flags & UV_FS_LAST_ERROR_SET) {                                  \
     uv__set_sys_error(req->loop, req->last_error);                          \
   } else if (req->result == -1) {                                           \
-    uv__set_error(req->loop, req->errorno, req->last_error);                \
+    uv__set_error(req->loop, (uv_err_code)req->errorno, req->last_error);   \
   }
 
 #define SET_REQ_LAST_ERROR(req, error)                                      \
@@ -1022,9 +1022,9 @@ int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, int uid,
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   int len = strlen(path);
   char* path2 = NULL;
-  int has_backslash = (path[len - 1] == '\\' || path[len - 1] == '/');
 
-  if (path[len - 1] == '\\' || path[len - 1] == '/') {
+  if (len > 1 && path[len - 2] != ':' &&
+      (path[len - 1] == '\\' || path[len - 1] == '/')) {
     path2 = strdup(path);
     if (!path2) {
       uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
@@ -1060,9 +1060,9 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   int len = strlen(path);
   char* path2 = NULL;
-  int has_backslash = (path[len - 1] == '\\' || path[len - 1] == '/');
 
-  if (path[len - 1] == '\\' || path[len - 1] == '/') {
+  if (len > 1 && path[len - 2] != ':' &&
+      (path[len - 1] == '\\' || path[len - 1] == '/')) {
     path2 = strdup(path);
     if (!path2) {
       uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");

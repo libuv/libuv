@@ -1077,7 +1077,7 @@ TEST_IMPL(fs_symlink) {
   r = uv_fs_symlink(loop, &req, "test_file", "test_file_symlink", 0, NULL);
 #ifdef _WIN32
   if (r == -1) {
-    if (req.errorno == ENOSYS) {
+    if (uv_last_error(loop).code == UV_ENOTSUP) {
       /*
        * Windows doesn't support symlinks on older versions.
        * We just pass the test and bail out early if we get ENOTSUP.
