@@ -113,6 +113,11 @@ void uv__set_artificial_error(uv_loop_t* loop, uv_err_code code) {
 }
 
 
+uv_err_t uv_last_error(uv_loop_t* loop) {
+  return loop->last_err;
+}
+
+
 struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
   struct sockaddr_in addr;
 

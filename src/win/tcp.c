@@ -124,7 +124,7 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
     }
     if (handle->shutdown_req->cb) {
       if (status == -1) {
-        uv__set_sys_error(sys_error);
+        uv__set_sys_error(loop, sys_error);
       }
       handle->shutdown_req->cb(handle->shutdown_req, status);
     }
@@ -356,7 +356,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   assert(backlog > 0);
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    uv__set_sys_error(handle->bind_error);
+    uv__set_sys_error(loop, handle->bind_error);
     return -1;
   }
 
@@ -480,7 +480,7 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
   DWORD bytes;
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    uv__set_sys_error(handle->bind_error);
+    uv__set_sys_error(loop, handle->bind_error);
     return -1;
   }
 
@@ -531,12 +531,12 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
   DWORD bytes;
 
   if (!uv_allow_ipv6) {
-    uv_new_sys_error(WSAEAFNOSUPPORT);
+    uv__set_sys_error(loop, WSAEAFNOSUPPORT);
     return -1;
   }
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    uv__set_sys_error(handle->bind_error);
+    uv__set_sys_error(loop, handle->bind_error);
     return -1;
   }
 
@@ -588,7 +588,7 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
   }
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    uv__set_sys_error(handle->bind_error);
+    uv__set_sys_error(loop, handle->bind_error);
     return -1;
   }
 
@@ -613,7 +613,7 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
   }
 
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    uv__set_sys_error(handle->bind_error);
+    uv__set_sys_error(loop, handle->bind_error);
     return -1;
   }
 
@@ -691,7 +691,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
     /* An error occurred doing the read. */
     if ((handle->flags & UV_HANDLE_READING)) {
       handle->flags &= ~UV_HANDLE_READING;
-      loop->last_error = GET_REQ_UV_SOCK_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_SOCK_ERROR(req));
       buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
             uv_buf_init(NULL, 0) : handle->read_buffer;
       handle->read_cb((uv_stream_t*)handle, -1, buf);
@@ -712,8 +712,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
         /* Connection closed */
         handle->flags &= ~UV_HANDLE_READING;
         handle->flags |= UV_HANDLE_EOF;
-        loop->last_error.code = UV_EOF;
-        loop->last_error.sys_errno_ = ERROR_SUCCESS;
+        uv__set_error(loop, UV_EOF, ERROR_SUCCESS);
         buf.base = 0;
         buf.len = 0;
         handle->read_cb((uv_stream_t*)handle, -1, handle->read_buffer);
@@ -744,8 +743,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
           /* Connection closed */
           handle->flags &= ~UV_HANDLE_READING;
           handle->flags |= UV_HANDLE_EOF;
-          loop->last_error.code = UV_EOF;
-          loop->last_error.sys_errno_ = ERROR_SUCCESS;
+          uv__set_error(loop, UV_EOF, ERROR_SUCCESS);
           handle->read_cb((uv_stream_t*)handle, -1, buf);
           break;
         }
@@ -784,8 +782,8 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   handle->write_queue_size -= req->queued_bytes;
 
   if (req->cb) {
-    loop->last_error = GET_REQ_UV_SOCK_ERROR(req);
-    ((uv_write_cb)req->cb)(req, loop->last_error.code == UV_OK ? 0 : -1);
+    uv__set_sys_error(loop, GET_REQ_SOCK_ERROR(req));
+    ((uv_write_cb)req->cb)(req, loop->last_err.code == UV_OK ? 0 : -1);
   }
 
   handle->write_reqs_pending--;
@@ -812,7 +810,7 @@ void uv_process_tcp_accept_req(uv_loop_t* loop, uv_tcp_t* handle,
     if (handle->flags & UV_HANDLE_LISTENING) {
       handle->flags &= ~UV_HANDLE_LISTENING;
       if (handle->connection_cb) {
-        loop->last_error = GET_REQ_UV_SOCK_ERROR(req);
+        uv__set_sys_error(loop, GET_REQ_SOCK_ERROR(req));
         handle->connection_cb((uv_stream_t*)handle, -1);
       }
     }
@@ -863,7 +861,7 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
         ((uv_connect_cb)req->cb)(req, -1);
       }
     } else {
-      loop->last_error = GET_REQ_UV_SOCK_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_SOCK_ERROR(req));
       ((uv_connect_cb)req->cb)(req, -1);
     }
   }

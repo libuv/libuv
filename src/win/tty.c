@@ -452,7 +452,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
     /* An error occurred while waiting for the event. */
     if ((handle->flags & UV_HANDLE_READING)) {
       handle->flags &= ~UV_HANDLE_READING;
-      loop->last_error = GET_REQ_UV_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_ERROR(req));
       handle->read_cb((uv_stream_t*)handle, -1, uv_null_buf_);
     }
     goto out;
@@ -689,7 +689,7 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
         !(handle->flags & UV_HANDLE_TTY_RAW)) {
       /* Real error */
       handle->flags &= ~UV_HANDLE_READING;
-      loop->last_error = GET_REQ_UV_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_ERROR(req));
       handle->read_cb((uv_stream_t*) handle, -1, buf);
     } else {
       /* The read was cancelled, or whatever we don't care */
@@ -1483,7 +1483,7 @@ int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
 
   if ((handle->flags & UV_HANDLE_SHUTTING) ||
       (handle->flags & UV_HANDLE_CLOSING)) {
-    uv_set_sys_error(loop, WSAESHUTDOWN);
+    uv__set_sys_error(loop, WSAESHUTDOWN);
     return -1;
   }
 
@@ -1515,8 +1515,8 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   handle->write_queue_size -= req->queued_bytes;
 
   if (req->cb) {
-    loop->last_error = GET_REQ_UV_ERROR(req);
-    ((uv_write_cb)req->cb)(req, loop->last_error.code == UV_OK ? 0 : -1);
+    uv__set_sys_error(loop, GET_REQ_ERROR(req));
+    ((uv_write_cb)req->cb)(req, loop->last_err.code == UV_OK ? 0 : -1);
   }
 
   handle->write_reqs_pending--;

@@ -56,11 +56,6 @@ void uv_fatal_error(const int errorno, const char* syscall) {
 }
 
 
-uv_err_t uv_last_error(uv_loop_t* loop) {
-  return loop->last_err;
-}
-
-
 char* uv_strerror(uv_err_t err) {
   return strerror(err.sys_errno_);
 }

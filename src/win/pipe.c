@@ -891,7 +891,7 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   if (req->cb) {
     if (!REQ_SUCCESS(req)) {
-      loop->last_error = GET_REQ_UV_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_ERROR(req));
       ((uv_write_cb)req->cb)(req, -1);
     } else {
       ((uv_write_cb)req->cb)(req, 0);
@@ -946,7 +946,7 @@ void uv_process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
       uv_pipe_connection_init(handle);
       ((uv_connect_cb)req->cb)(req, 0);
     } else {
-      loop->last_error = GET_REQ_UV_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_ERROR(req));
       ((uv_connect_cb)req->cb)(req, -1);
     }
   }

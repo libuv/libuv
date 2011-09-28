@@ -330,7 +330,7 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
       handle->cb(handle, NULL, UV_CHANGE, 0);
     }
   } else {
-    loop->last_error = GET_REQ_UV_ERROR(req);
+    uv__set_sys_error(loop, GET_REQ_ERROR(req));
     handle->cb(handle, NULL, 0, -1);
   }
 

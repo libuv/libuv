@@ -75,9 +75,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_idle_t* next_idle_handle;                                                \
   ares_channel ares_chan;                                                     \
   int ares_active_sockets;                                                    \
-  uv_timer_t ares_polling_timer;                                              \
-  /* Last error code */                                                       \
-  uv_err_t last_error;
+  uv_timer_t ares_polling_timer;
 
 #define UV_REQ_TYPE_PRIVATE               \
   /* TODO: remove the req suffix */       \

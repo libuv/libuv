@@ -228,7 +228,7 @@ int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
                     sizeof(struct sockaddr_in6),
                     flags);
   } else {
-    uv_new_sys_error(WSAEAFNOSUPPORT);
+    uv__set_sys_error(loop, WSAEAFNOSUPPORT);
     return -1;
   }
 }
@@ -453,7 +453,7 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
       GET_REQ_STATUS(req) != STATUS_RECEIVE_EXPEDITED) {
     /* An error occurred doing the read. */
     if ((handle->flags & UV_HANDLE_READING)) {
-      loop->last_error = GET_REQ_UV_SOCK_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_SOCK_ERROR(req));      
       uv_udp_recv_stop(handle);
 #if 0
       buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
@@ -540,7 +540,7 @@ void uv_process_udp_send_req(uv_loop_t* loop, uv_udp_t* handle,
     if (REQ_SUCCESS(req)) {
       req->cb(req, 0);
     } else {
-      loop->last_error = GET_REQ_UV_SOCK_ERROR(req);
+      uv__set_sys_error(loop, GET_REQ_SOCK_ERROR(req));
       req->cb(req, -1);
     }
   }

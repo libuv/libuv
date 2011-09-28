@@ -297,12 +297,6 @@ uv_err_code uv_translate_sys_error(int sys_errno);
 #define GET_REQ_SOCK_ERROR(req)                                         \
   (uv_ntstatus_to_winsock_error(GET_REQ_STATUS((req))))
 
-#define GET_REQ_UV_ERROR(req)                                           \
-  (uv_new_sys_error(GET_REQ_ERROR((req))))
-
-#define GET_REQ_UV_SOCK_ERROR(req)                                      \
-  (uv_new_sys_error(GET_REQ_SOCK_ERROR((req))))
-
 
 /*
  * Initialization for the windows and winsock api
