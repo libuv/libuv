@@ -148,7 +148,7 @@ static int uv__bind(uv_udp_t* handle, int domain, struct sockaddr* addr,
 
   if ((flags & UV_UDP_IPV6ONLY) && domain != AF_INET6) {
     /* UV_UDP_IPV6ONLY is supported only for IPV6 sockets */
-    uv__set_sys_error(loop, UV_EINVAL);
+    uv__set_artificial_error(loop, UV_EINVAL);
     return -1;
   }
 
