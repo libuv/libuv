@@ -639,7 +639,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   if (hints) {
     handle->hints = malloc(sizeof(struct addrinfo));
-    memcpy(&handle->hints, hints, sizeof(struct addrinfo));
+    memcpy(handle->hints, hints, sizeof(struct addrinfo));
   }
   else {
     handle->hints = NULL;
