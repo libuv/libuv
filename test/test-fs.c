@@ -1245,3 +1245,19 @@ TEST_IMPL(fs_futime) {
 
   return 0;
 }
+
+
+TEST_IMPL(fs_stat_missing_path) {
+  uv_fs_t req;
+  int r;
+
+  loop = uv_default_loop();
+
+  r = uv_fs_stat(loop, &req, "non_existent_file", NULL);
+  ASSERT(r == -1);
+  ASSERT(req.result == -1);
+  ASSERT(uv_last_error(loop).code == UV_ENOENT);
+  uv_fs_req_cleanup(&req);
+
+  return 0;
+}
