@@ -207,6 +207,44 @@ int uv_ares_handles_empty(uv_loop_t* loop) {
   return loop->uv_ares_handles_ ? 0 : 1;
 }
 
+int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+  if (handle->type != UV_TCP || addr.sin_family != AF_INET) {
+    uv__set_artificial_error(handle->loop, UV_EFAULT);
+    return -1;
+  }
+
+  return uv__tcp_bind(handle, addr);
+}
+
+int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
+  if (handle->type != UV_TCP || addr.sin6_family != AF_INET6) {
+    uv__set_artificial_error(handle->loop, UV_EFAULT);
+    return -1;
+  }
+
+  return uv__tcp_bind6(handle, addr);
+}
+
+int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
+    unsigned int flags) {
+  if (handle->type != UV_UDP || addr.sin_family != AF_INET) {
+    uv__set_artificial_error(handle->loop, UV_EFAULT);
+    return -1;
+  }
+
+  return uv__udp_bind(handle, addr, flags);
+}
+
+int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
+    unsigned int flags) {
+  if (handle->type != UV_UDP || addr.sin6_family != AF_INET6) {
+    uv__set_artificial_error(handle->loop, UV_EFAULT);
+    return -1;
+  }
+
+  return uv__udp_bind6(handle, addr, flags);
+}
+
 int uv_tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
                    struct sockaddr_in address,

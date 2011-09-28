@@ -33,10 +33,10 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 }
 
 
-static int uv__tcp_bind(uv_tcp_t* tcp,
-                        int domain,
-                        struct sockaddr* addr,
-                        int addrsize) {
+static int uv__bind(uv_tcp_t* tcp,
+                    int domain,
+                    struct sockaddr* addr,
+                    int addrsize) {
   int saved_errno;
   int status;
 
@@ -76,29 +76,19 @@ out:
 }
 
 
-int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
-  if (handle->type != UV_TCP || addr.sin_family != AF_INET) {
-    uv__set_sys_error(handle->loop, EFAULT);
-    return -1;
-  }
-
-  return uv__tcp_bind(handle,
-                      AF_INET,
-                      (struct sockaddr*)&addr,
-                      sizeof(struct sockaddr_in));
+int uv__tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+  return uv__bind(handle,
+                  AF_INET,
+                  (struct sockaddr*)&addr,
+                  sizeof(struct sockaddr_in));
 }
 
 
-int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
-  if (handle->type != UV_TCP || addr.sin6_family != AF_INET6) {
-    uv__set_sys_error(handle->loop, EFAULT);
-    return -1;
-  }
-
-  return uv__tcp_bind(handle,
-                      AF_INET6,
-                      (struct sockaddr*)&addr,
-                      sizeof(struct sockaddr_in6));
+int uv__tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
+  return uv__bind(handle,
+                  AF_INET6,
+                  (struct sockaddr*)&addr,
+                  sizeof(struct sockaddr_in6));
 }
 
 
