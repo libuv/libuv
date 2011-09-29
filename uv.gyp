@@ -285,6 +285,7 @@
         'test/test-udp-dgram-too-big.c',
         'test/test-udp-ipv6.c',
         'test/test-udp-send-and-recv.c',
+        'test/test-udp-multicast-join.c',
       ],
       'conditions': [
         [ 'OS=="win"', {
