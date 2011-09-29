@@ -349,14 +349,41 @@ static void uv__write(uv_stream_t* stream) {
    * inside the iov each time we write. So there is no need to offset it.
    */
 
-  do {
-    if (iovcnt == 1) {
-      n = write(stream->fd, iov[0].iov_base, iov[0].iov_len);
-    } else {
-      n = writev(stream->fd, iov, iovcnt);
+  if (req->send_handle) {
+    struct msghdr msg;
+    char scratch[64];
+    struct cmsghdr *cmsg;
+    int fd_to_send = req->send_handle->fd;
+
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = iovcnt;
+    msg.msg_flags = 0;
+
+    msg.msg_control = (void*) scratch;
+    msg.msg_controllen = CMSG_LEN(sizeof(fd_to_send));
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = msg.msg_controllen;
+    *(int*) CMSG_DATA(cmsg) = fd_to_send;
+
+    do {
+      n = sendmsg(stream->fd, &msg, 0);
     }
+    while (n == -1 && errno == EINTR);
+  } else {
+    do {
+      if (iovcnt == 1) {
+        n = write(stream->fd, iov[0].iov_base, iov[0].iov_len);
+      } else {
+        n = writev(stream->fd, iov, iovcnt);
+      }
+    }
+    while (n == -1 && errno == EINTR);
   }
-  while (n == -1 && errno == EINTR);
 
   if (n < 0) {
     if (errno != EAGAIN) {
@@ -672,11 +699,8 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
 }
 
 
-/* The buffers to be written must remain valid until the callback is called.
- * This is not required for the uv_buf_t array.
- */
-int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
-    uv_write_cb cb) {
+int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
+    uv_stream_t* send_handle, uv_write_cb cb) {
   int empty_queue;
 
   assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
@@ -688,6 +712,13 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
     return -1;
   }
 
+  if (send_handle) {
+    if (stream->type != UV_NAMED_PIPE || !((uv_pipe_t*)stream)->ipc) {
+      uv__set_sys_error(stream->loop, EOPNOTSUPP);
+      return -1;
+    }
+  }
+
   empty_queue = (stream->write_queue_size == 0);
 
   /* Initialize the req */
@@ -695,6 +726,7 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
   req->cb = cb;
   req->handle = stream;
   req->error = 0;
+  req->send_handle = send_handle;
   req->type = UV_WRITE;
   ngx_queue_init(&req->queue);
 
@@ -734,6 +766,15 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
   }
 
   return 0;
+}
+
+
+/* The buffers to be written must remain valid until the callback is called.
+ * This is not required for the uv_buf_t array.
+ */
+int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
+    uv_write_cb cb) {
+  return uv_write2(req, stream, bufs, bufcnt, NULL, cb);
 }
 
 

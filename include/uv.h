@@ -426,6 +426,7 @@ struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
   uv_stream_t* handle;
+  uv_stream_t* send_handle;
   UV_WRITE_PRIVATE_FIELDS
 };
 
