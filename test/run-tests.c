@@ -49,6 +49,13 @@ int main(int argc, char **argv) {
 }
 
 
+static uv_tcp_t server;
+
+
+static void ipc_on_connection(uv_stream_t* server, int status) {
+}
+
+
 static int ipc_helper() {
   /*
    * This is launched from test-ipc.c. stdin is a duplex channel that we
@@ -65,6 +72,15 @@ static int ipc_helper() {
   ASSERT(r == 0);
 
   uv_pipe_open(&channel, 0);
+
+  r = uv_tcp_init(uv_default_loop(), &server);
+  ASSERT(r == 0);
+
+  r = uv_tcp_bind(&server, uv_ip4_addr("0.0.0.0", TEST_PORT));
+  ASSERT(r == 0);
+
+  r = uv_listen((uv_stream_t*)&server, 12, ipc_on_connection);
+  ASSERT(r == 0);
 
   buf = uv_buf_init("hello\n", 6);
   r = uv_write(&write_req, (uv_stream_t*)&channel, &buf, 1, NULL);
