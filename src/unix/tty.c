@@ -29,6 +29,10 @@
 #include <sys/ioctl.h>
 
 
+static int orig_termios_fd = -1;
+static struct termios orig_termios;
+
+
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd) {
   uv__nonblock(fd, 1);
   uv__stream_init(loop, (uv_stream_t*)tty, UV_TTY);
@@ -48,6 +52,12 @@ int uv_tty_set_mode(uv_tty_t* tty, int mode) {
 
     if (tcgetattr(fd, &tty->orig_termios)) {
       goto fatal;
+    }
+
+    /* This is used for uv_tty_reset_mode() */
+    if (orig_termios_fd == -1) {
+      orig_termios = tty->orig_termios;
+      orig_termios_fd = fd;
     }
 
     raw = tty->orig_termios;
@@ -120,4 +130,11 @@ uv_handle_type uv_guess_handle(uv_file file) {
   }
 
   return UV_NAMED_PIPE;
+}
+
+
+void uv_tty_reset_mode() {
+  if (orig_termios_fd >= 0) {
+    tcsetattr(orig_termios_fd, TCSANOW, &orig_termios);
+  }
 }
