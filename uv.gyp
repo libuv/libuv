@@ -117,7 +117,6 @@
             'src/win/pipe.c',
             'src/win/process.c',
             'src/win/req.c',
-            'src/win/stdio.c',
             'src/win/stream.c',
             'src/win/tcp.c',
             'src/win/tty.c',

@@ -22,9 +22,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "uv.h"
 #include "runner.h"
 #include "task.h"
-#include "uv.h"
 
 /* Actual tests and helpers are defined in test-list.h */
 #include "test-list.h"
@@ -49,10 +49,61 @@ int main(int argc, char **argv) {
 }
 
 
-static uv_tcp_t server;
+static uv_pipe_t channel;
+static uv_tcp_t tcp_server;
+static uv_write_t conn_notify_req;
+static int close_cb_called;
+static int connection_accepted;
+
+
+static void close_cb(uv_handle_t* handle) {
+  close_cb_called++;
+}
+
+
+static void close_conn_cb(uv_handle_t* handle) {
+  free(handle);
+  close_cb_called++;
+}
+
+
+void conn_notify_write_cb(uv_write_t* req, int status) {
+  uv_close((uv_handle_t*)&tcp_server, close_cb);
+  uv_close((uv_handle_t*)&channel, close_cb);
+}
 
 
 static void ipc_on_connection(uv_stream_t* server, int status) {
+  int r;
+  uv_buf_t buf;
+  uv_tcp_t* conn;
+
+  if (!connection_accepted) {
+    /* 
+     * Accept the connection and close it.  Also let the other
+     * side know.
+     */
+    ASSERT(status == 0);
+    ASSERT((uv_stream_t*)&tcp_server == server);
+
+    conn = malloc(sizeof(*conn));
+    ASSERT(conn);
+
+    r = uv_tcp_init(server->loop, conn);
+    ASSERT(r == 0);
+
+    r = uv_accept(server, (uv_stream_t*)conn);
+    ASSERT(r == 0);
+
+    uv_close((uv_handle_t*)conn, close_conn_cb);
+
+    buf = uv_buf_init("accepted_connection\n", 20);
+    r = uv_write2(&conn_notify_req, (uv_stream_t*)&channel, &buf, 1,
+      NULL, conn_notify_write_cb);
+    ASSERT(r == 0);
+
+    connection_accepted = 1;
+  }
 }
 
 
@@ -63,7 +114,7 @@ static int ipc_helper() {
    * data is transfered over the channel. XXX edit this comment after handle
    * transfer is added.
    */
-  uv_pipe_t channel;
+  
   uv_write_t write_req;
   int r;
   uv_buf_t buf;
@@ -73,22 +124,25 @@ static int ipc_helper() {
 
   uv_pipe_open(&channel, 0);
 
-  r = uv_tcp_init(uv_default_loop(), &server);
+  r = uv_tcp_init(uv_default_loop(), &tcp_server);
   ASSERT(r == 0);
 
-  r = uv_tcp_bind(&server, uv_ip4_addr("0.0.0.0", TEST_PORT));
+  r = uv_tcp_bind(&tcp_server, uv_ip4_addr("0.0.0.0", TEST_PORT));
   ASSERT(r == 0);
 
-  r = uv_listen((uv_stream_t*)&server, 12, ipc_on_connection);
+  r = uv_listen((uv_stream_t*)&tcp_server, 12, ipc_on_connection);
   ASSERT(r == 0);
 
   buf = uv_buf_init("hello\n", 6);
   r = uv_write2(&write_req, (uv_stream_t*)&channel, &buf, 1,
-      (uv_stream_t*)&server, NULL);
+      (uv_stream_t*)&tcp_server, NULL);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop());
   ASSERT(r == 0);
+
+  ASSERT(connection_accepted == 1);
+  ASSERT(close_cb_called == 3);
 
   return 0;
 }

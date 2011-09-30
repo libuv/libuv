@@ -41,6 +41,12 @@ extern "C" {
 typedef intptr_t ssize_t;
 #endif
 
+#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
+# include "uv-private/uv-unix.h"
+#else
+# include "uv-private/uv-win.h"
+#endif
+
 /* Expand this list if necessary. */
 typedef enum {
   UV_UNKNOWN = -1,
@@ -152,12 +158,6 @@ typedef struct uv_fs_s uv_fs_t;
 /* uv_fs_event_t is a subclass of uv_handle_t. */
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_work_s uv_work_t;
-
-#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
-# include "uv-private/uv-unix.h"
-#else
-# include "uv-private/uv-win.h"
-#endif
 
 
 /*
@@ -392,13 +392,6 @@ int uv_read_stop(uv_stream_t*);
  */
 int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read2_cb read_cb);
 
-typedef enum {
-  UV_STDIN = 0,
-  UV_STDOUT,
-  UV_STDERR
-} uv_std_type;
-
-uv_stream_t* uv_std_handle(uv_loop_t*, uv_std_type type);
 
 /*
  * Write data to stream. Buffers are written in order. Example:
