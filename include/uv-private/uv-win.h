@@ -132,8 +132,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_STREAM_PRIVATE_FIELDS          \
   unsigned int reqs_pending;              \
-  uv_alloc_cb alloc_cb;                   \
-  uv_read_cb read_cb;                     \
   uv_req_t read_req;                      \
   union {                                 \
     struct { uv_stream_connection_fields };  \

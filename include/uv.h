@@ -338,6 +338,9 @@ uv_buf_t uv_buf_init(char* base, size_t len);
 #define UV_STREAM_FIELDS \
   /* number of bytes queued for writing */ \
   size_t write_queue_size; \
+  uv_alloc_cb alloc_cb; \
+  uv_read_cb read_cb; \
+  uv_read2_cb read2_cb; \
   /* private */ \
   UV_STREAM_PRIVATE_FIELDS
 
@@ -425,8 +428,8 @@ int uv_write2(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
 struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
-  uv_stream_t* handle;
   uv_stream_t* send_handle;
+  uv_stream_t* handle;
   UV_WRITE_PRIVATE_FIELDS
 };
 

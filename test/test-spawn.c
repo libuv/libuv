@@ -229,7 +229,7 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 
   init_process_options("spawn_helper2", exit_cb);
 
-  uv_pipe_init(uv_default_loop(), &out);
+  uv_pipe_init(uv_default_loop(), &out, 0);
   options.stdout_stream = &out;
 
   /* Create a pipe that'll cause a collision. */

@@ -83,7 +83,8 @@ static int ipc_helper() {
   ASSERT(r == 0);
 
   buf = uv_buf_init("hello\n", 6);
-  r = uv_write(&write_req, (uv_stream_t*)&channel, &buf, 1, NULL);
+  r = uv_write2(&write_req, (uv_stream_t*)&channel, &buf, 1,
+      (uv_stream_t*)&server, NULL);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop());

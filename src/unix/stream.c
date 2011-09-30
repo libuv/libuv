@@ -355,6 +355,8 @@ static void uv__write(uv_stream_t* stream) {
     struct cmsghdr *cmsg;
     int fd_to_send = req->send_handle->fd;
 
+    assert(fd_to_send >= 0);
+
     msg.msg_name = NULL;
     msg.msg_namelen = 0;
     msg.msg_iov = iov;
@@ -778,7 +780,8 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
 }
 
 
-int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb) {
+int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
+    uv_read_cb read_cb) {
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
       stream->type == UV_TTY);
 
@@ -810,6 +813,16 @@ int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
 }
 
 
+int uv_read2_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
+    uv_read2_cb read_cb) {
+  int r;
+  r = uv_read_start(stream, alloc_cb, NULL);
+  assert(stream->read_cb == NULL);
+  stream->read2_cb = read_cb;
+  return r;
+}
+
+
 int uv_read_stop(uv_stream_t* stream) {
   uv_tcp_t* tcp = (uv_tcp_t*)stream;
 
@@ -817,6 +830,7 @@ int uv_read_stop(uv_stream_t* stream) {
 
   ev_io_stop(tcp->loop->ev, &tcp->read_watcher);
   tcp->read_cb = NULL;
+  tcp->read2_cb = NULL;
   tcp->alloc_cb = NULL;
   return 0;
 }
