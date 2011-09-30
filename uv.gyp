@@ -271,6 +271,8 @@
         'test/test-tcp-bind-error.c',
         'test/test-tcp-bind6-error.c',
         'test/test-tcp-close.c',
+        'test/test-tcp-connect-error.c',
+        'test/test-tcp-connect6-error.c',
         'test/test-tcp-write-error.c',
         'test/test-tcp-writealot.c',
         'test/test-threadpool.c',
