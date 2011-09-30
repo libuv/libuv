@@ -34,38 +34,51 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd) {
   uv__stream_init(loop, (uv_stream_t*)tty, UV_TTY);
   uv__stream_open((uv_stream_t*)tty, fd, UV_READABLE | UV_WRITABLE);
   loop->counters.tty_init++;
+  tty->mode = 0;
   return 0;
 }
 
 
 int uv_tty_set_mode(uv_tty_t* tty, int mode) {
   int fd = tty->fd;
-  struct termios orig_termios; /* in order to restore at exit */
   struct termios raw;
 
-  if (tcgetattr(fd, &orig_termios) == -1) goto fatal;
+  if (mode && tty->mode == 0) {
+    /* on */
 
-  raw = orig_termios;  /* modify the original mode */
-  /* input modes: no break, no CR to NL, no parity check, no strip char,
-   * no start/stop output control. */
-  raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-  /* output modes */
-  raw.c_oflag |= (ONLCR);
-  /* control modes - set 8 bit chars */
-  raw.c_cflag |= (CS8);
-  /* local modes - echoing off, canonical off, no extended functions,
-   * no signal chars (^Z,^C) */
-  raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-  /* control chars - set return condition: min number of bytes and timer.
-   * We want read to return every single byte, without timeout. */
-  raw.c_cc[VMIN] = 1; raw.c_cc[VTIME] = 0; /* 1 byte, no timer */
+    if (tcgetattr(fd, &tty->orig_termios)) {
+      goto fatal;
+    }
 
-  /* put terminal in raw mode after flushing */
-  if (tcsetattr(fd, TCSAFLUSH, &raw) < 0) goto fatal;
-  return 0;
+    raw = tty->orig_termios;
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    raw.c_oflag |= (ONLCR);
+    raw.c_cflag |= (CS8);
+    raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+
+    /* Put terminal in raw mode after flushing */
+    if (tcsetattr(fd, TCSAFLUSH, &raw)) {
+      goto fatal;
+    }
+
+    tty->mode = 1;
+    return 0;
+  } else if (mode == 0 && tty->mode) {
+    /* off */
+
+    /* Put terminal in original mode after flushing */
+    if (tcsetattr(fd, TCSAFLUSH, &tty->orig_termios)) {
+      goto fatal;
+    }
+
+    tty->mode = 0;
+    return 0;
+  }
 
 fatal:
-  uv__set_sys_error(tty->loop, ENOTTY);
+  uv__set_sys_error(tty->loop, errno);
   return -1;
 }
 
