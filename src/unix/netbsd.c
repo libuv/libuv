@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
@@ -40,6 +41,17 @@ uint64_t uv_hrtime(void) {
   return (ts.tv_sec * NANOSEC + ts.tv_nsec);
 }
 
+void uv_loadavg(double avg[3]) {
+  struct loadavg info;
+  size_t size = sizeof(info);
+  int which[] = {CTL_VM, VM_LOADAVG};
+
+  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) return;
+
+  avg[0] = (double) info.ldavg[0] / info.fscale;
+  avg[1] = (double) info.ldavg[1] / info.fscale;
+  avg[2] = (double) info.ldavg[2] / info.fscale;
+}
 
 int uv_exepath(char* buffer, size_t* size) {
   uint32_t usize;

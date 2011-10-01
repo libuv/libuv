@@ -27,6 +27,7 @@
 #include <errno.h>
 
 #include <sys/time.h>
+#include <sys/loadavg.h>
 #include <unistd.h>
 #include <kstat.h>
 
@@ -91,6 +92,10 @@ double uv_get_free_memory(void) {
 
 double uv_get_total_memory(void) {
   return (double) sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
+}
+
+void uv_loadavg(double avg[3]) {
+  (void) getloadavg(avg, 3);
 }
 
 

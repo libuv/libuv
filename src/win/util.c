@@ -95,6 +95,11 @@ done:
   return retVal;
 }
 
+void uv_loadavg(double avg[3]) {
+  /* Can't be implemented */
+  avg[0] = avg[1] = avg[2] = 0;
+}
+
 double uv_get_free_memory(void) {
   MEMORYSTATUSEX memory_status;
   memory_status.dwLength = sizeof(memory_status);

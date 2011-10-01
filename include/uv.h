@@ -1044,6 +1044,9 @@ struct uv_fs_event_s {
 };
 
 
+/* Gets load avg */
+void uv_loadavg(double avg[3]);
+
 /*
 * If filename is a directory then we will watch for all events in that
 * directory. If filename is a file - we will only get events from that
