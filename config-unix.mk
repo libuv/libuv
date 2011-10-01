@@ -44,7 +44,7 @@ ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
 CPPFLAGS += -Isrc/ares/config_sunos -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
-LINKFLAGS+=-lsocket -lnsl
+LINKFLAGS+=-lsocket -lnsl -lkstat
 OBJS += src/unix/sunos.o
 endif
 

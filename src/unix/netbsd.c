@@ -70,6 +70,34 @@ int uv_exepath(char* buffer, size_t* size) {
   return 0;
 }
 
+double uv_get_free_memory(void) {
+  struct uvmexp info;
+  size_t size = sizeof(info);
+  int which[] = {CTL_VM, VM_UVMEXP};
+
+  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) {
+    return -1;
+  }
+
+  return (double) info.free * psysconf(_SC_PAGESIZE);
+}
+
+double uv_get_total_memory(void) {
+#if defined(HW_PHYSMEM64)
+  uint64_t info;
+  int which[] = {CTL_HW, HW_PHYSMEM64};
+#else
+  unsigned int info;
+  int which[] = {CTL_HW, HW_PHYSMEM};
+#endif
+  size_t size = sizeof(info);
+
+  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) {
+    return -1;
+  }
+
+  return (double) info;
+}
 
 int uv_fs_event_init(uv_loop_t* loop,
                      uv_fs_event_t* handle,

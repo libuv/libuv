@@ -250,6 +250,7 @@
         'test/test-fs.c',
         'test/test-fs-event.c',
         'test/test-get-currentexe.c',
+        'test/test-get-memory.c',
         'test/test-getaddrinfo.c',
         'test/test-gethostbyname.c',
         'test/test-getsockname.c',

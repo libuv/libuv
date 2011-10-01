@@ -68,6 +68,30 @@ int uv_exepath(char* buffer, size_t* size) {
   return 0;
 }
 
+double uv_get_free_memory(void) {
+  vm_statistics_data_t info;
+  mach_msg_type_number_t count = sizeof(info) / sizeof(integer_t);
+
+  if (host_statistics(mach_host_self(), HOST_VM_INFO,
+                      (host_info_t)&info, &count) != KERN_SUCCESS) {
+    return -1;
+  }
+
+  return (double) info.free_count * sysconf(_SC_PAGESIZE);
+}
+
+double uv_get_total_memory(void) {
+  uint64_t info;
+  int which[] = {CTL_HW, HW_MEMSIZE};
+  size_t size = sizeof(info);
+
+  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) {
+    return -1;
+  }
+
+  return (double) info;
+}
+
 
 int uv_fs_event_init(uv_loop_t* loop,
                      uv_fs_event_t* handle,
