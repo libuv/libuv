@@ -215,7 +215,10 @@
             'EIO_CONFIG_H="config_sunos.h"',
           ],
           'direct_dependent_settings': {
-            'libraries': [ '-lrt' ],
+            'libraries': [
+              '-lsocket',
+              '-lnsl',
+            ],
           },
         }],
         [ 'OS=="freebsd"', {
@@ -287,7 +290,13 @@
             'test/runner-unix.c',
             'test/runner-unix.h',
           ]
-        }]
+        }],
+        [ 'OS=="solaris"', { # make test-fs.c compile, needs _POSIX_C_SOURCE
+          'defines': [
+            '__EXTENSIONS__',
+            '_XOPEN_SOURCE=500',
+          ],
+        }],
       ],
       'msvs-settings': {
         'VCLinkerTool': {
