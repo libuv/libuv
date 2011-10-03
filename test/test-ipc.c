@@ -45,8 +45,7 @@ static void ipc_on_connection(uv_stream_t* server, int status) {
 static void exit_cb(uv_process_t* process, int exit_status, int term_signal) {
   printf("exit_cb\n");
   exit_cb_called++;
-  ASSERT(exit_status == 1);
-  ASSERT(term_signal == 0);
+  ASSERT(exit_status == 0);
   uv_close((uv_handle_t*)process, NULL);
 }
 
@@ -60,11 +59,23 @@ static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
     uv_handle_type pending) {
   int r;
   uv_buf_t outbuf;
+  uv_err_t err;
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
     free(buf.base);
     return;
+  }
+
+  if (nread < 0) {
+    err = uv_last_error(pipe->loop);
+    if (err.code == UV_EOF) {
+      free(buf.base);
+      return;
+    }
+
+    printf("error recving on channel: %s\n", uv_strerror(err));
+    abort();
   }
 
   ASSERT(nread > 0 && buf.base && pending != UV_UNKNOWN_HANDLE);
@@ -82,7 +93,7 @@ static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
   ASSERT(r == 0);
 
   /* Make sure that the expected data is correctly multiplexed. */
-  ASSERT(memcmp("hello\n", buf.base, buf.len) == 0);
+  ASSERT(memcmp("hello\n", buf.base, nread) == 0);
   fprintf(stderr, "got %d bytes\n", (int)nread);
 
   outbuf = uv_buf_init("world\n", 6);
