@@ -29,9 +29,9 @@
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 #include <mach-o/dyld.h> /* _NSGetExecutablePath */
-
 #include <sys/resource.h>
 #include <sys/sysctl.h>
+#include <unistd.h>  /* sysconf */
 
 
 uint64_t uv_hrtime() {
