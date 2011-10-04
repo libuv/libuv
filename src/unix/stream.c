@@ -593,7 +593,12 @@ static void uv__read(uv_stream_t* stream) {
           }
         }
 
-        stream->read2_cb((uv_pipe_t*)stream, nread, buf, UV_TCP);
+
+        if (stream->accepted_fd >= 0) {
+          stream->read2_cb((uv_pipe_t*)stream, nread, buf, UV_TCP);
+        } else {
+          stream->read2_cb((uv_pipe_t*)stream, nread, buf, UV_UNKNOWN_HANDLE);
+        }
       }
     }
   }
