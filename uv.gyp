@@ -247,6 +247,7 @@
         'test/test-get-loadavg.c',
         'test/task.h',
         'test/test-async.c',
+        'test/test-error.c',
         'test/test-callback-stack.c',
         'test/test-connection-fail.c',
         'test/test-delayed-accept.c',
