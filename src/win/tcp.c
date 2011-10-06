@@ -103,6 +103,8 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
   handle->socket = INVALID_SOCKET;
   handle->type = UV_TCP;
   handle->reqs_pending = 0;
+  handle->func_acceptex = NULL;
+  handle->func_connectex = NULL;
 
   loop->counters.tcp_init++;
 
@@ -410,12 +412,11 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       uv_tcp_bind(handle, uv_addr_ip4_any_) < 0)
     return -1;
 
-  if (!(handle->flags & UV_HANDLE_WINSOCK_EXT_INIT)) {
+  if (!handle->func_acceptex) {
     if(!uv_get_acceptex_function(handle->socket, &handle->func_acceptex)) {
       uv__set_sys_error(loop, WSAEAFNOSUPPORT);
       return -1;
     }
-    handle->flags |= UV_HANDLE_WINSOCK_EXT_INIT;
   }
 
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
@@ -548,12 +549,11 @@ int uv__tcp_connect(uv_connect_t* req,
       uv_tcp_bind(handle, uv_addr_ip4_any_) < 0)
     return -1;
 
-  if (!(handle->flags & UV_HANDLE_WINSOCK_EXT_INIT)) {
+  if (!handle->func_connectex) {
     if(!uv_get_connectex_function(handle->socket, &handle->func_connectex)) {
       uv__set_sys_error(loop, WSAEAFNOSUPPORT);
       return -1;
     }
-    handle->flags |= UV_HANDLE_WINSOCK_EXT_INIT;
   }
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -609,12 +609,11 @@ int uv__tcp_connect6(uv_connect_t* req,
       uv_tcp_bind6(handle, uv_addr_ip6_any_) < 0)
     return -1;
 
-  if (!(handle->flags & UV_HANDLE_WINSOCK_EXT_INIT)) {
+  if (!handle->func_connectex) {
     if(!uv_get_connectex_function(handle->socket, &handle->func_connectex)) {
       uv__set_sys_error(loop, WSAEAFNOSUPPORT);
       return -1;
     }
-    handle->flags |= UV_HANDLE_WINSOCK_EXT_INIT;
   }
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -952,7 +951,6 @@ int uv_tcp_import(uv_tcp_t* tcp, WSAPROTOCOL_INFOW* socket_protocol_info) {
   }
 
   tcp->flags |= UV_HANDLE_BOUND;
-  tcp->flags |= UV_HANDLE_DUPLICATED_SOCKET;
 
   return uv_tcp_set_socket(tcp->loop, tcp, socket, 1);
 }

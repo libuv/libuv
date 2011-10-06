@@ -66,8 +66,6 @@ void uv_process_timers(uv_loop_t* loop);
 #define UV_HANDLE_TTY_RAW                 0x80000
 #define UV_HANDLE_USE_IPC_PROTOCOL        0x100000
 #define UV_HANDLE_EMULATE_IOCP            0x200000
-#define UV_HANDLE_DUPLICATED_SOCKET       0x400000
-#define UV_HANDLE_WINSOCK_EXT_INIT        0x800000
 
 void uv_want_endgame(uv_loop_t* loop, uv_handle_t* handle);
 void uv_process_endgames(uv_loop_t* loop);

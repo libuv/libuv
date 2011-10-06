@@ -43,11 +43,6 @@ typedef struct uv_buf_t {
   char* base;
 } uv_buf_t;
 
-typedef struct uv_duplicate_socket_info_s {
-  WSAPROTOCOL_INFOW socket_info;
-  struct uv_duplicate_socket_info_s* next;
-} uv_duplicate_socket_info_t;
-
 typedef int uv_file;
 
 RB_HEAD(uv_timer_tree_s, uv_timer_s);
@@ -103,7 +98,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   struct uv_req_s* next_req;
 
 #define UV_WRITE_PRIVATE_FIELDS           \
-  /* empty */
+  int ipc_header;
 
 #define UV_CONNECT_PRIVATE_FIELDS         \
   /* empty */
@@ -181,7 +176,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_write_t ipc_header_write_req;        \
   int ipc_pid;                            \
   uint64_t remaining_ipc_rawdata_bytes;   \
-  uv_duplicate_socket_info_t* pending_ipc_sockets;
+  WSAPROTOCOL_INFOW* pending_socket_info;
 
 #define UV_PIPE_PRIVATE_FIELDS            \
   HANDLE handle;                          \
