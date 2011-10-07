@@ -563,6 +563,7 @@ static void uv__read(uv_stream_t* stream) {
       return;
     } else {
       /* Successful read */
+      size_t buflen = buf.len;
 
       if (stream->read_cb) {
         stream->read_cb(stream, nread, buf);
@@ -599,6 +600,11 @@ static void uv__read(uv_stream_t* stream) {
         } else {
           stream->read2_cb((uv_pipe_t*)stream, nread, buf, UV_UNKNOWN_HANDLE);
         }
+      }
+
+      /* Return if we didn't fill the buffer, there is no more data to read. */
+      if (nread < buflen) {
+        return;
       }
     }
   }
