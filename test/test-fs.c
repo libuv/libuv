@@ -155,7 +155,7 @@ static void fchmod_cb(uv_fs_t* req) {
   ASSERT(req->result == 0);
   fchmod_cb_count++;
   uv_fs_req_cleanup(req);
-  check_permission("test_file", (int)req->data);
+  check_permission("test_file", *(int*)req->data);
 }
 
 
@@ -164,7 +164,7 @@ static void chmod_cb(uv_fs_t* req) {
   ASSERT(req->result == 0);
   chmod_cb_count++;
   uv_fs_req_cleanup(req);
-  check_permission("test_file", (int)req->data);
+  check_permission("test_file", *(int*)req->data);
 }
 
 
@@ -869,7 +869,10 @@ TEST_IMPL(fs_chmod) {
 
 #ifndef _WIN32
   /* async chmod */
-  req.data = (void*)0200;
+  {
+    static int mode = 0200;
+    req.data = &mode;
+  }
   r = uv_fs_chmod(loop, &req, "test_file", 0200, chmod_cb);
   ASSERT(r == 0);
   uv_run(loop);
@@ -878,14 +881,20 @@ TEST_IMPL(fs_chmod) {
 #endif
 
   /* async chmod */
-  req.data = (void*)0400;
+  {
+    static int mode = 0400;
+    req.data = &mode;
+  }
   r = uv_fs_chmod(loop, &req, "test_file", 0400, chmod_cb);
   ASSERT(r == 0);
   uv_run(loop);
   ASSERT(chmod_cb_count == 1);
 
   /* async fchmod */
-  req.data = (void*)0600;
+  {
+    static int mode = 0600;
+    req.data = &mode;
+  }
   r = uv_fs_fchmod(loop, &req, file, 0600, fchmod_cb);
   ASSERT(r == 0);
   uv_run(loop);
