@@ -227,7 +227,7 @@ int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
   const char* interface_addr, uv_membership membership) {
 
   /* not implemented yet */
-  uv__set_sys_error(handle->loop, ENOSYS);
+  uv__set_artificial_error(handle->loop, UV_ENOSYS);
   return -1;
 }
 
