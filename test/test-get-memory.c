@@ -28,7 +28,6 @@ TEST_IMPL(get_memory) {
 
   ASSERT(free_mem > 0);
   ASSERT(total_mem > 0);
-  ASSERT(total_mem > free_mem);
 
   return 0;
 }
