@@ -342,7 +342,7 @@ void fs__rmdir(uv_fs_t* req, const char* path) {
 
 void fs__readdir(uv_fs_t* req, const char* path, int flags) {
   int result;
-  char* buf, *ptr, *name;
+  char* buf = NULL, *ptr, *name;
   HANDLE dir;
   WIN32_FIND_DATAA ent = {0};
   size_t len = strlen(path);
@@ -365,12 +365,6 @@ void fs__readdir(uv_fs_t* req, const char* path, int flags) {
     return;
   }
 
-  buf = (char*)malloc(buf_size);
-  if (!buf) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-  }
-
-  ptr = buf;
   result = 0;
 
   do {
@@ -378,6 +372,15 @@ void fs__readdir(uv_fs_t* req, const char* path, int flags) {
 
     if (name[0] != '.' || (name[1] && (name[1] != '.' || name[2]))) {
       len = strlen(name);
+
+      if (!buf) {
+        buf = (char*)malloc(buf_size);
+        if (!buf) {
+          uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+        }
+
+        ptr = buf;
+      }
 
       while ((ptr - buf) + len + 1 > buf_size) {
         buf_size *= 2;
