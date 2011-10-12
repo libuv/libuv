@@ -231,6 +231,11 @@ void fs__open(uv_fs_t* req, const char* path, int flags, int mode) {
     goto end;
   }
 
+  /* Figure out whether path is a file or a directory. */
+  if (GetFileAttributesW(path) & FILE_ATTRIBUTE_DIRECTORY) {
+    attributes |= FILE_FLAG_BACKUP_SEMANTICS;
+  }
+
   file = CreateFileA(path,
                      access,
                      share,
