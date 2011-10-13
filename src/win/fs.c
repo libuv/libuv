@@ -40,6 +40,7 @@
 #define UV_FS_CLEANEDUP          0x0010
 #define UV_FS_LAST_ERROR_SET     0x0020
 
+
 #define UTF8_TO_UTF16(s, t)                                                 \
   size = uv_utf8_to_utf16(s, NULL, 0) * sizeof(wchar_t);                    \
   t = (wchar_t*)malloc(size);                                               \
@@ -400,10 +401,12 @@ void fs__readdir(uv_fs_t* req, const wchar_t* path, int flags) {
   if (!path2) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
-#pragma warning(push)
-#pragma warning(disable:4996)
-  _swprintf(path2, fmt, path);
-#pragma warning(pop)
+
+#ifdef _MSC_VER
+  swprintf(path2, len + 3, fmt, path);
+#else
+  swprintf(path2, fmt, path);
+#endif
   dir = FindFirstFileW(path2, &ent);
   free(path2);
 
