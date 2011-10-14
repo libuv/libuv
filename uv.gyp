@@ -235,6 +235,7 @@
             'EV_CONFIG_H="config_freebsd.h"',
             'EIO_CONFIG_H="config_freebsd.h"',
           ],
+        }],
         [ 'OS=="openbsd"', {
           'include_dirs': [ 'src/ares/config_openbsd' ],
           'sources': [ 'src/unix/openbsd.c' ],
