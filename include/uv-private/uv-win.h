@@ -191,10 +191,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_WRITE_PRIVATE_FIELDS           \
   int ipc_header;                         \
-  uv_buf_t* write_buffer;                 \
+  uv_buf_t write_buffer;                  \
   HANDLE event_handle;                    \
-  HANDLE wait_handle;                     \
-  uv_write_t* next_non_overlapped_write;
+  HANDLE wait_handle;
 
 #define UV_CONNECT_PRIVATE_FIELDS         \
   /* empty */

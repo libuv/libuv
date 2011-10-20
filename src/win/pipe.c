@@ -726,11 +726,11 @@ static DWORD WINAPI uv_pipe_writefile_thread_proc(void* parameter) {
   assert(req != NULL);
   assert(req->type == UV_WRITE);
   assert(handle->type == UV_NAMED_PIPE);
-  assert(req->write_buffer);
+  assert(req->write_buffer.base);
 
   result = WriteFile(handle->handle,
-                     req->write_buffer->base,
-                     req->write_buffer->len,
+                     req->write_buffer.base,
+                     req->write_buffer.len,
                      &bytes,
                      NULL);
 
@@ -897,14 +897,14 @@ int uv_pipe_read2_start(uv_pipe_t* handle, uv_alloc_cb alloc_cb,
 
 static void uv_insert_non_overlapped_write_req(uv_pipe_t* handle,
     uv_write_t* req) {
-  req->next_non_overlapped_write = NULL;
+  req->next_req = NULL;
   if (handle->non_overlapped_writes_tail) {
-    req->next_non_overlapped_write =
-      handle->non_overlapped_writes_tail->next_non_overlapped_write;
-    handle->non_overlapped_writes_tail->next_non_overlapped_write = req;
+    req->next_req =
+      handle->non_overlapped_writes_tail->next_req;
+    handle->non_overlapped_writes_tail->next_req = (uv_req_t*)req;
     handle->non_overlapped_writes_tail = req;
   } else {
-    req->next_non_overlapped_write = req;
+    req->next_req = (uv_req_t*)req;
     handle->non_overlapped_writes_tail = req;
   }
 }
@@ -914,13 +914,13 @@ static uv_write_t* uv_remove_non_overlapped_write_req(uv_pipe_t* handle) {
   uv_write_t* req;
 
   if (handle->non_overlapped_writes_tail) {
-    req = handle->non_overlapped_writes_tail->next_non_overlapped_write;
+    req = (uv_write_t*)handle->non_overlapped_writes_tail->next_req;
 
     if (req == handle->non_overlapped_writes_tail) {
       handle->non_overlapped_writes_tail = NULL;
     } else {
-      handle->non_overlapped_writes_tail->next_non_overlapped_write =
-        req->next_non_overlapped_write;
+      handle->non_overlapped_writes_tail->next_req =
+        req->next_req;
     }
 
     return req;
@@ -1054,6 +1054,10 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
       handle->write_queue_size += req->queued_bytes;
     }
 
+    if (handle->write_reqs_pending == 0) {
+      uv_ref(loop);
+    }
+
     handle->reqs_pending++;
     handle->write_reqs_pending++;
 
@@ -1064,7 +1068,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
   }
 
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
-    req->write_buffer = &bufs[0];
+    req->write_buffer = bufs[0];
     uv_insert_non_overlapped_write_req(handle, req);
     if (handle->write_reqs_pending == 0) {
       uv_queue_non_overlapped_write(handle);
@@ -1106,6 +1110,10 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
         return -1;
       }
     }
+  }
+
+  if (handle->write_reqs_pending == 0) {
+    uv_ref(loop);
   }
 
   handle->reqs_pending++;
@@ -1360,6 +1368,10 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
       handle->non_overlapped_writes_tail) {
     assert(handle->write_reqs_pending > 0);
     uv_queue_non_overlapped_write(handle);
+  }
+
+  if (handle->write_reqs_pending == 0) {
+    uv_unref(loop);
   }
 
   if (handle->write_reqs_pending == 0 &&
