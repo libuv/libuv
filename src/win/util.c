@@ -26,7 +26,7 @@
 
 #include "uv.h"
 #include "internal.h"
-#include "Tlhelp32.h"
+#include "tlhelp32.h"
 
 
 int uv_utf16_to_utf8(const wchar_t* utf16Buffer, size_t utf16Size,
