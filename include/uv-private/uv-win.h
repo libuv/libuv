@@ -104,6 +104,27 @@
                        DWORD dwFlags);
 #endif
 
+typedef int (WSAAPI* LPFN_WSARECV)
+            (SOCKET socket,
+             LPWSABUF buffers,
+             DWORD buffer_count,
+             LPDWORD bytes,
+             LPDWORD flags,
+             LPWSAOVERLAPPED overlapped,
+             LPWSAOVERLAPPED_COMPLETION_ROUTINE
+             completion_routine);
+
+typedef int (WSAAPI* LPFN_WSARECVFROM)
+            (SOCKET socket,
+             LPWSABUF buffers,
+             DWORD buffer_count,
+             LPDWORD bytes,
+             LPDWORD flags,
+             struct sockaddr* addr,
+             LPINT addr_len,
+             LPWSAOVERLAPPED overlapped,
+             LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
+
 
 /**
  * It should be possible to cast uv_buf_t[] to WSABUF[]
@@ -236,7 +257,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   struct sockaddr_storage recv_from;      \
   int recv_from_len;                      \
   uv_udp_recv_cb recv_cb;                 \
-  uv_alloc_cb alloc_cb;
+  uv_alloc_cb alloc_cb;                   \
+  LPFN_WSARECV func_wsarecv;              \
+  LPFN_WSARECVFROM func_wsarecvfrom;
 
 #define uv_pipe_server_fields             \
   uv_pipe_accept_t accept_reqs[4];        \

@@ -4270,8 +4270,25 @@ typedef enum _FILE_INFORMATION_CLASS {
                                              FILE_SPECIAL_ACCESS)
 #endif
 
+typedef VOID (NTAPI *PIO_APC_ROUTINE)
+             (PVOID ApcContext,
+              PIO_STATUS_BLOCK IoStatusBlock,
+              ULONG Reserved);
+
 typedef ULONG (NTAPI *sRtlNtStatusToDosError)
               (NTSTATUS Status);
+
+typedef NTSTATUS (NTAPI *sNtDeviceIoControlFile)
+                 (HANDLE FileHandle,
+                  HANDLE Event,
+                  PIO_APC_ROUTINE ApcRoutine,
+                  PVOID ApcContext,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  ULONG IoControlCode,
+                  PVOID InputBuffer,
+                  ULONG InputBufferLength,
+                  PVOID OutputBuffer,
+                  ULONG OutputBufferLength);
 
 typedef NTSTATUS (NTAPI *sNtQueryInformationFile)
                  (HANDLE FileHandle,
@@ -4325,6 +4342,7 @@ typedef BOOLEAN (WINAPI* sCreateSymbolicLinkW)
 
 /* Ntapi function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
+extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sNtSetInformationFile pNtSetInformationFile;
 

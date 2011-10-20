@@ -1061,7 +1061,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
 int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
     const char* new_path, uv_fs_cb cb);
 
-/* 
+/*
  * This flag can be used with uv_fs_symlink on Windows
  * to specify whether path argument points to a directory.
  */
