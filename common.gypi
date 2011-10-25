@@ -114,6 +114,9 @@
         ],
       }],
       [ 'OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris"', {
+        'variables': {
+          'gcc_version%': '<!(python build/gcc_version.py)>)',
+        },
         'cflags': [ '-Wall', '-pthread', ],
         'cflags_cc': [ '-fno-rtti', '-fno-exceptions' ],
         'ldflags': [ '-pthread', ],
@@ -125,7 +128,7 @@
           [ 'OS=="linux"', {
             'cflags': [ '-ansi' ],
           }],
-          [ 'visibility=="hidden"', {
+          [ 'visibility=="hidden" and gcc_version >= "4.0.0"', {
             'cflags': [ '-fvisibility=hidden' ],
           }],
         ],
