@@ -117,9 +117,8 @@
         'variables': {
           'gcc_version%': '<!(python build/gcc_version.py)>)',
         },
-        'cflags': [ '-Wall', '-pthread', ],
+        'cflags': [ '-Wall' ],
         'cflags_cc': [ '-fno-rtti', '-fno-exceptions' ],
-        'ldflags': [ '-pthread', ],
         'conditions': [
           [ 'host_arch != target_arch and target_arch=="ia32"', {
             'cflags': [ '-m32' ],
@@ -127,6 +126,13 @@
           }],
           [ 'OS=="linux"', {
             'cflags': [ '-ansi' ],
+          }],
+          [ 'OS=="solaris"', {
+            'cflags': [ '-pthreads' ],
+            'ldflags': [ '-pthreads' ],
+          }, {
+            'cflags': [ '-pthread' ],
+            'ldflags': [ '-pthread' ],
           }],
           [ 'visibility=="hidden" and gcc_version >= "4.0.0"', {
             'cflags': [ '-fvisibility=hidden' ],

@@ -8,6 +8,15 @@
           '_GNU_SOURCE',
           'EIO_STACKSIZE=262144'
         ],
+        'conditions': [
+          ['OS=="solaris"', {
+            'cflags': ['-pthreads'],
+            'ldlags': ['-pthreads'],
+          }, {
+            'cflags': ['-pthread'],
+            'ldlags': ['-pthread'],
+          }],
+        ],
       }],
     ],
   },
@@ -313,11 +322,10 @@
           'libraries': [ 'ws2_32.lib' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
-          'ldflags': [ '-pthread' ],
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
-          ]
+          ],
         }],
         [ 'OS=="solaris"', { # make test-fs.c compile, needs _POSIX_C_SOURCE
           'defines': [
@@ -365,7 +373,6 @@
           'libraries': [ 'ws2_32.lib' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
-          'ldflags': [ '-pthread' ],
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
