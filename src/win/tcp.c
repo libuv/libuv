@@ -449,13 +449,6 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     return -1;
   }
 
-  if (handle->flags & UV_HANDLE_LISTENING ||
-      handle->flags & UV_HANDLE_READING) {
-    /* Already listening. */
-    uv__set_sys_error(loop, WSAEALREADY);
-    return -1;
-  }
-
   if (!(handle->flags & UV_HANDLE_BOUND) &&
       uv_tcp_bind(handle, uv_addr_ip4_any_) < 0)
     return -1;
@@ -476,31 +469,32 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   handle->flags |= UV_HANDLE_LISTENING;
   handle->connection_cb = cb;
 
-  assert(!handle->accept_reqs);
-  handle->accept_reqs = (uv_tcp_accept_t*)
-    malloc(uv_simultaneous_server_accepts * sizeof(uv_tcp_accept_t));
-  if (!handle->accept_reqs) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-  }
-
-  for (i = 0; i < uv_simultaneous_server_accepts; i++) {
-    req = &handle->accept_reqs[i];
-    uv_req_init(loop, (uv_req_t*)req);
-    req->type = UV_ACCEPT;
-    req->accept_socket = INVALID_SOCKET;
-    req->data = handle;
-
-    req->wait_handle = INVALID_HANDLE_VALUE;
-    if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
-      req->event_handle = CreateEvent(NULL, 0, 0, NULL);
-      if (!req->event_handle) {
-        uv_fatal_error(GetLastError(), "CreateEvent");
-      }
-    } else {
-      req->event_handle = NULL;
+  if(!handle->accept_reqs) {
+    handle->accept_reqs = (uv_tcp_accept_t*)
+      malloc(uv_simultaneous_server_accepts * sizeof(uv_tcp_accept_t));
+    if (!handle->accept_reqs) {
+      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
     }
 
-    uv_tcp_queue_accept(handle, req);
+    for (i = 0; i < uv_simultaneous_server_accepts; i++) {
+      req = &handle->accept_reqs[i];
+      uv_req_init(loop, (uv_req_t*)req);
+      req->type = UV_ACCEPT;
+      req->accept_socket = INVALID_SOCKET;
+      req->data = handle;
+
+      req->wait_handle = INVALID_HANDLE_VALUE;
+      if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
+        req->event_handle = CreateEvent(NULL, 0, 0, NULL);
+        if (!req->event_handle) {
+          uv_fatal_error(GetLastError(), "CreateEvent");
+        }
+      } else {
+        req->event_handle = NULL;
+      }
+
+      uv_tcp_queue_accept(handle, req);
+    }
   }
 
   return 0;
