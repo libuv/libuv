@@ -52,6 +52,7 @@ typedef enum {
   UV_UNKNOWN = -1,
   UV_OK = 0,
   UV_EOF,
+  UV_EADDRINFO,
   UV_EACCESS,
   UV_EAGAIN,
   UV_EADDRINUSE,
@@ -261,7 +262,7 @@ struct uv_err_s {
  * the error code.
  */
 uv_err_t uv_last_error(uv_loop_t*);
-char* uv_strerror(uv_err_t err);
+const char* uv_strerror(uv_err_t err);
 const char* uv_err_name(uv_err_t err);
 
 
