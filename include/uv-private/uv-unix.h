@@ -43,6 +43,10 @@ typedef struct {
 
 typedef int uv_file;
 
+/* Platform-specific definitions for uv_dlopen support. */
+typedef void* uv_lib_t;
+#define UV_DYNAMIC /* empty */
+
 #define UV_LOOP_PRIVATE_FIELDS \
   ares_channel channel; \
   /* \
