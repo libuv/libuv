@@ -71,7 +71,7 @@ static int uv__tcp_keepalive(uv_tcp_t* handle, SOCKET socket, int enable, unsign
 
   if (enable && setsockopt(socket,
                            IPPROTO_TCP,
-                           TCP_KEEPALIVE,
+                           SO_KEEPALIVE,
                            (const char*)&delay,
                            sizeof delay) == -1) {
     uv__set_sys_error(handle->loop, errno);
