@@ -38,6 +38,7 @@
         'HAVE_CONFIG_H'
       ],
       'sources': [
+        'common.gypi',
         'include/ares.h',
         'include/ares_version.h',
         'include/uv.h',
