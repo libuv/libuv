@@ -38,18 +38,22 @@
 #include <limits.h> /* PATH_MAX */
 #include <sys/uio.h> /* writev */
 
+#ifdef __linux__
+# include <sys/ioctl.h>
+#endif
+
 #ifdef __sun
 # include <sys/types.h>
 # include <sys/wait.h>
 #endif
 
-#if defined(__APPLE__)
-#include <mach-o/dyld.h> /* _NSGetExecutablePath */
+#ifdef __APPLE__
+# include <mach-o/dyld.h> /* _NSGetExecutablePath */
 #endif
 
-#if defined(__FreeBSD__)
-#include <sys/sysctl.h>
-#include <sys/wait.h>
+#ifdef __FreeBSD__
+# include <sys/sysctl.h>
+# include <sys/wait.h>
 #endif
 
 static uv_loop_t default_loop_struct;
@@ -734,6 +738,9 @@ int uv__close(int fd) {
 
 
 int uv__nonblock(int fd, int set) {
+#if FIONBIO
+  return ioctl(fd, FIONBIO, &set);
+#else
   int flags;
 
   if ((flags = fcntl(fd, F_GETFL)) == -1) {
@@ -751,6 +758,7 @@ int uv__nonblock(int fd, int set) {
   }
 
   return 0;
+#endif
 }
 
 
