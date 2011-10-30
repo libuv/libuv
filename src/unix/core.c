@@ -597,7 +597,11 @@ static int uv_getaddrinfo_done(eio_req* req) {
   free(handle->service);
   free(handle->hostname);
 
-  if (handle->retcode != 0) {
+  if (handle->retcode == 0) {
+    /* OK */
+  } else if (handle->retcode == EAI_NONAME || handle->retcode == EAI_NODATA) {
+    uv__set_sys_error(handle->loop, ENOENT); /* FIXME compatibility hack */
+  } else {
     handle->loop->last_err.code = UV_EADDRINFO;
     handle->loop->last_err.sys_errno_ = handle->retcode;
   }
