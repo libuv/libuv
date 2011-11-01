@@ -1094,7 +1094,7 @@ int uv_tcp_duplicate_socket(uv_tcp_t* handle, int pid,
 }
 
 
-int uv_tcp_multiple_simultaneous_accepts(uv_tcp_t* handle, int enable) {
+int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
   if (handle->flags & UV_HANDLE_CONNECTION) {
     uv__set_artificial_error(handle->loop, UV_EINVAL);
     return -1;

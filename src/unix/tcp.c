@@ -321,6 +321,6 @@ int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
 }
 
 
-int uv_tcp_multiple_simultaneous_accepts(uv_tcp_t* handle, int enable) {
+int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
   return 0;
 }
