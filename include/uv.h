@@ -763,7 +763,7 @@ UV_EXTERN void uv_pipe_open(uv_pipe_t*, uv_file file);
 
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 
-UV_EXTERN int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
+UV_EXTERN void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     const char* name, uv_connect_cb cb);
 
 
