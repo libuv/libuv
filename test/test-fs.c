@@ -1435,7 +1435,7 @@ TEST_IMPL(fs_file_open_append) {
   ASSERT(close_req.result != -1);
   uv_fs_req_cleanup(&close_req);
 
-  r = uv_fs_open(loop, &open_req1, "test_file", _O_RDWR | O_APPEND, 0, NULL);
+  r = uv_fs_open(loop, &open_req1, "test_file", O_RDWR | O_APPEND, 0, NULL);
   ASSERT(r != -1);
   ASSERT(open_req1.result != -1);
   uv_fs_req_cleanup(&open_req1);
