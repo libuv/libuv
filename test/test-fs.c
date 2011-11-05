@@ -1461,7 +1461,9 @@ TEST_IMPL(fs_file_open_append) {
   printf("read = %d\n", r);
   ASSERT(r == 26);
   ASSERT(read_req.result == 26);
-  ASSERT(memcmp(buf, "test-buffer\n\0test-buffer\n\0", sizeof(buf)) == 0);
+  ASSERT(memcmp(buf,
+                "test-buffer\n\0test-buffer\n\0",
+                sizeof("test-buffer\n\0test-buffer\n\0") - 1) == 0);
   uv_fs_req_cleanup(&read_req);
 
   r = uv_fs_close(loop, &close_req, open_req1.result, NULL);
