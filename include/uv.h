@@ -190,14 +190,14 @@ typedef struct uv_work_s uv_work_t;
  * All callbacks in libuv are made asynchronously. That is they are never
  * made by the function that takes them as a parameter.
  */
-UV_EXTERN uv_loop_t* uv_loop_new();
+UV_EXTERN uv_loop_t* uv_loop_new(void);
 UV_EXTERN void uv_loop_delete(uv_loop_t*);
 
 
 /*
  * Returns the default loop.
  */
-UV_EXTERN uv_loop_t* uv_default_loop();
+UV_EXTERN uv_loop_t* uv_default_loop(void);
 
 /*
  * This function starts the event loop. It blocks until the reference count
