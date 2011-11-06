@@ -105,6 +105,17 @@ uv_loop_t* uv_default_loop(void) {
 }
 
 
+uv_loop_t* uv_loop_new(void) {
+  assert(0 && "implement me");
+  return NULL;
+}
+
+
+void uv_loop_delete(uv_loop_t* loop) {
+  assert(0 && "implement me");
+}
+
+
 void uv_ref(uv_loop_t* loop) {
   loop->refs++;
 }
