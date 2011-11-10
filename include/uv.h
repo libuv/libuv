@@ -99,7 +99,6 @@ typedef intptr_t ssize_t;
   XX( 27, ENOTDIR, "not a directory") \
   XX( 28, EISDIR, "illegal operation on a directory") \
   XX( 29, ENONET, "machine is not on the network") \
-  XX( 30, ENOPROTOOPT, "bad proocol option") \
   XX( 31, ENOTCONN, "socket is not connected") \
   XX( 32, ENOTSOCK, "socket operation on non-socket") \
   XX( 33, ENOTSUP, "operation not supported on socket") \
