@@ -122,6 +122,7 @@ typedef intptr_t ssize_t;
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
 typedef enum {
   UV_ERRNO_MAP(UV_ERRNO_GEN)
+  UV_MAX_ERRORS
 } uv_err_code;
 #undef UV_ERRNO_GEN
 
