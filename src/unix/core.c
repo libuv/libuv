@@ -589,6 +589,10 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer) {
 static int uv_getaddrinfo_done(eio_req* req) {
   uv_getaddrinfo_t* handle = req->data;
   struct addrinfo *res = handle->res;
+#if __sun
+  size_t hostlen = strlen(handle->hostname);
+#endif
+
   handle->res = NULL;
 
   uv_unref(handle->loop);
@@ -605,6 +609,10 @@ static int uv_getaddrinfo_done(eio_req* req) {
   } else if (handle->retcode == EAI_NONAME) {
 #endif
     uv__set_sys_error(handle->loop, ENOENT); /* FIXME compatibility hack */
+#if __sun
+  } else if (handle->retcode == EAI_MEMORY && hostlen >= MAXHOSTNAMELEN) {
+    uv__set_sys_error(handle->loop, ENOENT);
+#endif
   } else {
     handle->loop->last_err.code = UV_EADDRINFO;
     handle->loop->last_err.sys_errno_ = handle->retcode;
