@@ -62,6 +62,17 @@ const char* uv_err_name(uv_err_t err) {
 #undef UV_ERR_NAME_GEN
 
 
+#define UV_STRERROR_GEN(val, name, s) case UV_##name : return s;
+const char* uv_strerror(uv_err_t err) {
+  switch (err.code) {
+    UV_ERRNO_MAP(UV_STRERROR_GEN)
+    default:
+      return "Unknown system error";
+  }
+}
+#undef UV_STRERROR_GEN
+
+
 void uv__set_error(uv_loop_t* loop, uv_err_code code, int sys_error) {
   loop->last_err.code = code;
   loop->last_err.sys_errno_ = sys_error;

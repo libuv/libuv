@@ -120,24 +120,3 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
   assert(0 && "unreachable");
   return -1;
 }
-
-
-/* TODO Pull in error messages so we don't have to
- *  a) rely on what the system provides us
- *  b) reverse-map the error codes
- */
-#define UV_STRERROR_GEN(val, name, s) case UV_##name : return s;
-const char* uv_strerror(uv_err_t err) {
-  int errorno;
-
-  if (err.code == UV_EADDRINFO) {
-    return gai_strerror(errorno);
-  }
-
-  switch (err.code) {
-    UV_ERRNO_MAP(UV_STRERROR_GEN)
-    default:
-      return strerror(err.sys_errno_);
-  }
-}
-#undef UV_STRERROR_GEN

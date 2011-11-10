@@ -64,20 +64,6 @@ void uv_fatal_error(const int errorno, const char* syscall) {
 }
 
 
-/* TODO: thread safety */
-static char* last_err_str_ = NULL;
-
-#define UV_STRERROR_GEN(val, name, s) case UV_##name : return s;
-const char* uv_strerror(uv_err_t err) {
-  switch (err.code) {
-    UV_ERRNO_MAP(UV_STRERROR_GEN)
-    default:
-      return "Unknown system error";
-  }
-}
-#undef UV_STRERROR_GEN
-
-
 uv_err_code uv_translate_sys_error(int sys_errno) {
   switch (sys_errno) {
     case ERROR_SUCCESS:                     return UV_OK;
