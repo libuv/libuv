@@ -126,19 +126,18 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
  *  a) rely on what the system provides us
  *  b) reverse-map the error codes
  */
+#define UV_STRERROR_GEN(val, name, s) case UV_##name : return s;
 const char* uv_strerror(uv_err_t err) {
   int errorno;
 
-  if (err.sys_errno_)
-    errorno = err.sys_errno_;
-  else
-    errorno = uv__translate_lib_error(err.code);
-
-  if (err.code == UV_EADDRINFO)
+  if (err.code == UV_EADDRINFO) {
     return gai_strerror(errorno);
+  }
 
-  if (errorno == -1)
-    return "Unknown error";
-  else
-    return strerror(errorno);
+  switch (err.code) {
+    UV_ERRNO_MAP(UV_STRERROR_GEN)
+    default:
+      return strerror(err.sys_errno_);
+  }
 }
+#undef UV_STRERROR_GEN
