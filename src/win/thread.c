@@ -24,6 +24,7 @@
 #include "internal.h"
 #include <assert.h>
 
+#define HAVE_SRWLOCK_API() (pTryAcquireSRWLockShared != NULL)
 
 #ifdef _MSC_VER /* msvc */
 # define inline __inline
@@ -34,23 +35,23 @@
 #endif
 
 
-inline static int uv__rwlock_init_native(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_destroy_native(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_rdlock_native(uv_rwlock_t* rwlock);
-inline static int uv__rwlock_tryrdlock_native(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_rdunlock_native(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_wrlock_native(uv_rwlock_t* rwlock);
-inline static int uv__rwlock_trywrlock_native(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_wrunlock_native(uv_rwlock_t* rwlock);
+inline static int uv__rwlock_srwlock_init(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_srwlock_destroy(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_srwlock_rdlock(uv_rwlock_t* rwlock);
+inline static int uv__rwlock_srwlock_tryrdlock(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_srwlock_rdunlock(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_srwlock_wrlock(uv_rwlock_t* rwlock);
+inline static int uv__rwlock_srwlock_trywrlock(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_srwlock_wrunlock(uv_rwlock_t* rwlock);
 
-inline static int uv__rwlock_init_fallback(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_destroy_fallback(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_rdlock_fallback(uv_rwlock_t* rwlock);
-inline static int uv__rwlock_tryrdlock_fallback(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_rdunlock_fallback(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_wrlock_fallback(uv_rwlock_t* rwlock);
-inline static int uv__rwlock_trywrlock_fallback(uv_rwlock_t* rwlock);
-inline static void uv__rwlock_wrunlock_fallback(uv_rwlock_t* rwlock);
+inline static int uv__rwlock_fallback_init(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_fallback_destroy(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_fallback_rdlock(uv_rwlock_t* rwlock);
+inline static int uv__rwlock_fallback_tryrdlock(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_fallback_rdunlock(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_fallback_wrlock(uv_rwlock_t* rwlock);
+inline static int uv__rwlock_fallback_trywrlock(uv_rwlock_t* rwlock);
+inline static void uv__rwlock_fallback_wrunlock(uv_rwlock_t* rwlock);
 
 
 static NOINLINE void uv__once_inner(uv_once_t* guard,
@@ -130,86 +131,86 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
 
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    return uv__rwlock_init_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    return uv__rwlock_srwlock_init(rwlock);
   else
-    return uv__rwlock_init_fallback(rwlock);
+    return uv__rwlock_fallback_init(rwlock);
 }
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    uv__rwlock_destroy_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    uv__rwlock_srwlock_destroy(rwlock);
   else
-    uv__rwlock_destroy_fallback(rwlock);
+    uv__rwlock_fallback_destroy(rwlock);
 }
 
 
 void uv_rwlock_rdlock(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    uv__rwlock_rdlock_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    uv__rwlock_srwlock_rdlock(rwlock);
   else
-    uv__rwlock_rdlock_fallback(rwlock);
+    uv__rwlock_fallback_rdlock(rwlock);
 }
 
 
 int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    return uv__rwlock_tryrdlock_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    return uv__rwlock_srwlock_tryrdlock(rwlock);
   else
-    return uv__rwlock_tryrdlock_fallback(rwlock);
+    return uv__rwlock_fallback_tryrdlock(rwlock);
 }
 
 
 void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    uv__rwlock_rdunlock_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    uv__rwlock_srwlock_rdunlock(rwlock);
   else
-    uv__rwlock_rdunlock_fallback(rwlock);
+    uv__rwlock_fallback_rdunlock(rwlock);
 }
 
 
 void uv_rwlock_wrlock(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    uv__rwlock_wrlock_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    uv__rwlock_srwlock_wrlock(rwlock);
   else
-    uv__rwlock_wrlock_fallback(rwlock);
+    uv__rwlock_fallback_wrlock(rwlock);
 }
 
 
 int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    return uv__rwlock_trywrlock_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    return uv__rwlock_srwlock_trywrlock(rwlock);
   else
-    return uv__rwlock_trywrlock_fallback(rwlock);
+    return uv__rwlock_fallback_trywrlock(rwlock);
 }
 
 
 void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
-  if (pTryAcquireSRWLockShared)
-    uv__rwlock_wrunlock_native(rwlock);
+  if (HAVE_SRWLOCK_API())
+    uv__rwlock_srwlock_wrunlock(rwlock);
   else
-    uv__rwlock_wrunlock_fallback(rwlock);
+    uv__rwlock_fallback_wrunlock(rwlock);
 }
 
 
-inline static int uv__rwlock_init_native(uv_rwlock_t* rwlock) {
+inline static int uv__rwlock_srwlock_init(uv_rwlock_t* rwlock) {
   pInitializeSRWLock(&rwlock->srwlock_);
   return 0;
 }
 
 
-inline static void uv__rwlock_destroy_native(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_srwlock_destroy(uv_rwlock_t* rwlock) {
   (void) rwlock;
 }
 
 
-inline static void uv__rwlock_rdlock_native(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_srwlock_rdlock(uv_rwlock_t* rwlock) {
   pAcquireSRWLockShared(&rwlock->srwlock_);
 }
 
 
-inline static int uv__rwlock_tryrdlock_native(uv_rwlock_t* rwlock) {
+inline static int uv__rwlock_srwlock_tryrdlock(uv_rwlock_t* rwlock) {
   if (pTryAcquireSRWLockShared(&rwlock->srwlock_))
     return 0;
   else
@@ -217,17 +218,17 @@ inline static int uv__rwlock_tryrdlock_native(uv_rwlock_t* rwlock) {
 }
 
 
-inline static void uv__rwlock_rdunlock_native(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_srwlock_rdunlock(uv_rwlock_t* rwlock) {
   pReleaseSRWLockShared(&rwlock->srwlock_);
 }
 
 
-inline static void uv__rwlock_wrlock_native(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_srwlock_wrlock(uv_rwlock_t* rwlock) {
   pAcquireSRWLockExclusive(&rwlock->srwlock_);
 }
 
 
-inline static int uv__rwlock_trywrlock_native(uv_rwlock_t* rwlock) {
+inline static int uv__rwlock_srwlock_trywrlock(uv_rwlock_t* rwlock) {
   if (pTryAcquireSRWLockExclusive(&rwlock->srwlock_))
     return 0;
   else
@@ -235,12 +236,12 @@ inline static int uv__rwlock_trywrlock_native(uv_rwlock_t* rwlock) {
 }
 
 
-inline static void uv__rwlock_wrunlock_native(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_srwlock_wrunlock(uv_rwlock_t* rwlock) {
   pReleaseSRWLockExclusive(&rwlock->srwlock_);
 }
 
 
-inline static int uv__rwlock_init_fallback(uv_rwlock_t* rwlock) {
+inline static int uv__rwlock_fallback_init(uv_rwlock_t* rwlock) {
   if (uv_mutex_init(&rwlock->fallback_.read_mutex_))
     return -1;
 
@@ -255,13 +256,13 @@ inline static int uv__rwlock_init_fallback(uv_rwlock_t* rwlock) {
 }
 
 
-inline static void uv__rwlock_destroy_fallback(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_fallback_destroy(uv_rwlock_t* rwlock) {
   uv_mutex_destroy(&rwlock->fallback_.read_mutex_);
   uv_mutex_destroy(&rwlock->fallback_.write_mutex_);
 }
 
 
-inline static void uv__rwlock_rdlock_fallback(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_fallback_rdlock(uv_rwlock_t* rwlock) {
   uv_mutex_lock(&rwlock->fallback_.read_mutex_);
 
   if (++rwlock->fallback_.num_readers_ == 1)
@@ -271,7 +272,7 @@ inline static void uv__rwlock_rdlock_fallback(uv_rwlock_t* rwlock) {
 }
 
 
-inline static int uv__rwlock_tryrdlock_fallback(uv_rwlock_t* rwlock) {
+inline static int uv__rwlock_fallback_tryrdlock(uv_rwlock_t* rwlock) {
   int ret;
 
   ret = -1;
@@ -294,7 +295,7 @@ out:
 }
 
 
-inline static void uv__rwlock_rdunlock_fallback(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_fallback_rdunlock(uv_rwlock_t* rwlock) {
   uv_mutex_lock(&rwlock->fallback_.read_mutex_);
 
   if (--rwlock->fallback_.num_readers_ == 0)
@@ -304,16 +305,16 @@ inline static void uv__rwlock_rdunlock_fallback(uv_rwlock_t* rwlock) {
 }
 
 
-inline static void uv__rwlock_wrlock_fallback(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_fallback_wrlock(uv_rwlock_t* rwlock) {
   uv_mutex_lock(&rwlock->fallback_.write_mutex_);
 }
 
 
-inline static int uv__rwlock_trywrlock_fallback(uv_rwlock_t* rwlock) {
+inline static int uv__rwlock_fallback_trywrlock(uv_rwlock_t* rwlock) {
   return uv_mutex_trylock(&rwlock->fallback_.write_mutex_);
 }
 
 
-inline static void uv__rwlock_wrunlock_fallback(uv_rwlock_t* rwlock) {
+inline static void uv__rwlock_fallback_wrunlock(uv_rwlock_t* rwlock) {
   uv_mutex_unlock(&rwlock->fallback_.write_mutex_);
 }
