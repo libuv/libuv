@@ -363,6 +363,7 @@
         'test/benchmark-pump.c',
         'test/benchmark-sizes.c',
         'test/benchmark-spawn.c',
+        'test/benchmark-thread.c',
         'test/benchmark-tcp-write-batch.c',
         'test/benchmark-udp-packet-storm.c',
         'test/dns-server.c',
