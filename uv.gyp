@@ -313,6 +313,7 @@
         'test/test-tcp-writealot.c',
         'test/test-threadpool.c',
         'test/test-mutexes.c',
+        'test/test-thread.c',
         'test/test-timer-again.c',
         'test/test-timer.c',
         'test/test-tty.c',

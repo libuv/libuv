@@ -137,6 +137,8 @@ typedef struct uv_buf_t {
 
 typedef int uv_file;
 
+typedef HANDLE uv_thread_t;
+
 typedef CRITICAL_SECTION uv_mutex_t;
 
 typedef union {

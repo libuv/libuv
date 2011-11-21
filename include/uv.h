@@ -1243,12 +1243,19 @@ UV_EXTERN uv_err_t uv_dlclose(uv_lib_t library);
  */
 UV_EXTERN uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr);
 
+/*
+ * The mutex functions return 0 on success, -1 on error
+ * (unless the return type is void, of course).
+ */
 UV_EXTERN int uv_mutex_init(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_destroy(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_lock(uv_mutex_t* handle);
 UV_EXTERN int uv_mutex_trylock(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_unlock(uv_mutex_t* handle);
 
+/*
+ * Same goes for the read/write lock functions.
+ */
 UV_EXTERN int uv_rwlock_init(uv_rwlock_t* rwlock);
 UV_EXTERN void uv_rwlock_destroy(uv_rwlock_t* rwlock);
 UV_EXTERN void uv_rwlock_rdlock(uv_rwlock_t* rwlock);
@@ -1257,6 +1264,10 @@ UV_EXTERN void uv_rwlock_rdunlock(uv_rwlock_t* rwlock);
 UV_EXTERN void uv_rwlock_wrlock(uv_rwlock_t* rwlock);
 UV_EXTERN int uv_rwlock_trywrlock(uv_rwlock_t* rwlock);
 UV_EXTERN void uv_rwlock_wrunlock(uv_rwlock_t* rwlock);
+
+UV_EXTERN int uv_thread_create(uv_thread_t *tid,
+    void (*entry)(void *arg), void *arg);
+UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 
 /* the presence of these unions force similar struct layout */
 union uv_any_handle {

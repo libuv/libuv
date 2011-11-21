@@ -117,6 +117,7 @@ TEST_DECLARE   (fs_open_dir)
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (thread_mutex)
 TEST_DECLARE   (thread_rwlock)
+TEST_DECLARE   (thread_create)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
 TEST_DECLARE   (argument_escaping)
@@ -271,6 +272,7 @@ TASK_LIST_START
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (thread_mutex)
   TEST_ENTRY  (thread_rwlock)
+  TEST_ENTRY  (thread_create)
 
 #if 0
   /* These are for testing the test runner. */

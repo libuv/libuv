@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <stddef.h> /* NULL */
+#include <stdlib.h> /* malloc */
 #include <string.h> /* memset */
 
 /* use inet_pton from c-ares if necessary */
@@ -260,4 +261,54 @@ int uv_tcp_connect6(uv_connect_t* req,
   }
 
   return uv__tcp_connect6(req, handle, address, cb);
+}
+
+
+#ifdef _WIN32
+static DWORD __stdcall uv__thread_start(void *ctx_v)
+#else
+static void *uv__thread_start(void *ctx_v)
+#endif
+{
+  void (*entry)(void *arg);
+  void *arg;
+
+  struct {
+    void (*entry)(void *arg);
+    void *arg;
+  } *ctx;
+
+  ctx = ctx_v;
+  arg = ctx->arg;
+  entry = ctx->entry;
+  free(ctx);
+  entry(arg);
+
+  return 0;
+}
+
+
+int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
+  struct {
+    void (*entry)(void *arg);
+    void *arg;
+  } *ctx;
+
+  if ((ctx = malloc(sizeof *ctx)) == NULL)
+    return -1;
+
+  ctx->entry = entry;
+  ctx->arg = arg;
+
+#ifdef _WIN32
+  *tid = (HANDLE) _beginthreadex(NULL, 0, uv__thread_start, ctx, 0, NULL);
+  if (*tid == 0) {
+#else
+  if (pthread_create(tid, NULL, uv__thread_start, ctx)) {
+#endif
+    free(ctx);
+    return -1;
+  }
+
+  return 0;
 }
