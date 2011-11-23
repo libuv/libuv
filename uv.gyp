@@ -278,6 +278,7 @@
         'test/runner.h',
         'test/test-get-loadavg.c',
         'test/task.h',
+        'test/test-util.c',
         'test/test-async.c',
         'test/test-error.c',
         'test/test-callback-stack.c',

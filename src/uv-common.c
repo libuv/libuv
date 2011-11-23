@@ -41,6 +41,41 @@ uv_counters_t* uv_counters() {
 }
 
 
+size_t uv_strlcpy(char* dst, const char* src, size_t size) {
+  size_t n;
+
+  if (size == 0)
+    return 0;
+
+  for (n = 0; n < (size - 1) && *src != '\0'; n++)
+    *dst++ = *src++;
+
+  *dst = '\0';
+
+  return n;
+}
+
+
+size_t uv_strlcat(char* dst, const char* src, size_t size) {
+  size_t n;
+
+  if (size == 0)
+    return 0;
+
+  for (n = 0; n < size && *dst != '\0'; n++, dst++);
+
+  if (n == size)
+    return n;
+
+  while (n < (size - 1) && *src != '\0')
+    n++, *dst++ = *src++;
+
+  *dst = '\0';
+
+  return n;
+}
+
+
 uv_buf_t uv_buf_init(char* base, size_t len) {
   uv_buf_t buf;
   buf.base = base;

@@ -138,8 +138,6 @@ enum {
   UV_TCP_KEEPALIVE = 0x100   /* Turn on keep-alive. */
 };
 
-size_t uv__strlcpy(char* dst, const char* src, size_t size);
-
 int uv__close(int fd);
 void uv__req_init(uv_req_t*);
 void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle, uv_handle_type type);
