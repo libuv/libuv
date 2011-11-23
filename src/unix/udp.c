@@ -334,6 +334,12 @@ static int uv__bind(uv_udp_t* handle,
     goto out;
   }
 
+  yes = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    goto out;
+  }
+
   if (flags & UV_UDP_IPV6ONLY) {
 #ifdef IPV6_V6ONLY
     yes = 1;
