@@ -206,7 +206,8 @@ int uv_ntstatus_to_winsock_error(NTSTATUS status) {
       return WSAEACCES;
 
     default:
-      if (status & ((FACILITY_NTWIN32 << 16) | ERROR_SEVERITY_ERROR)) {
+      if ((status & (FACILITY_NTWIN32 << 16)) == (FACILITY_NTWIN32 << 16) &&
+          (status & (ERROR_SEVERITY_ERROR | ERROR_SEVERITY_WARNING))) {
         /* It's a windows error that has been previously mapped to an */
         /* ntstatus code. */
         return (DWORD) (status & 0xffff);
