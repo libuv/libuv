@@ -144,6 +144,7 @@ int uv_ntstatus_to_winsock_error(NTSTATUS status) {
     case STATUS_LINK_FAILED:
     case STATUS_CONNECTION_DISCONNECTED:
     case STATUS_PORT_UNREACHABLE:
+    case STATUS_HOPLIMIT_EXCEEDED:
       return WSAECONNRESET;
 
     case STATUS_LOCAL_DISCONNECT:
