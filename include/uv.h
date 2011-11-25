@@ -345,8 +345,8 @@ struct uv_handle_s {
 };
 
 /*
- * Returns 1 if the prepare/check/idle handle has been started, 0 otherwise.
- * For other handle types this always returns 1.
+ * Returns 1 if the prepare/check/idle/timer handle has been started, 0
+ * otherwise. For other handle types this always returns 1.
  */
 UV_EXTERN int uv_is_active(uv_handle_t* handle);
 
