@@ -1213,6 +1213,12 @@ UV_EXTERN int uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size);
 /* Gets the executable path */
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
 
+/* Gets the current working directory */
+UV_EXTERN uv_err_t uv_cwd(char* buffer, size_t size);
+
+/* Changes the current working directory */
+UV_EXTERN uv_err_t uv_chdir(const char* dir);
+
 /* Gets memory info in bytes */
 UV_EXTERN uint64_t uv_get_free_memory(void);
 UV_EXTERN uint64_t uv_get_total_memory(void);
