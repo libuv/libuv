@@ -1258,7 +1258,8 @@ static int uv_tty_write_bufs(uv_tty_t* handle, uv_buf_t bufs[], int bufcnt,
 #ifdef _MSC_VER /* msvc */
         if (_BitScanReverse(&first_zero_bit, not_c)) {
 #else /* assume gcc */
-        if (first_zero_bit = __builtin_clzl(not_c), c != 0) {
+        if (c != 0) {
+          first_zero_bit = (sizeof(int) * 8) - 1 - __builtin_clz(not_c);
 #endif
           if (first_zero_bit == 7) {
             /* Ascii - pass right through */
