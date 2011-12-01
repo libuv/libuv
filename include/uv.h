@@ -226,7 +226,6 @@ UV_EXTERN int64_t uv_now(uv_loop_t*);
 /*
  * The status parameter is 0 if the request completed successfully,
  * and should be -1 if the request was cancelled or failed.
- * For uv_close_cb, -1 means that the handle was closed due to an error.
  * Error details can be obtained by calling uv_last_error().
  *
  * In the case of uv_read_cb the uv_buf_t returned should be freed by the
