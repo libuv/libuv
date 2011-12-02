@@ -827,3 +827,43 @@ int uv__cloexec(int fd, int set) {
   return 0;
 #endif
 }
+
+
+/* TODO move to uv-common.c? */
+size_t uv__strlcpy(char* dst, const char* src, size_t size) {
+  const char *org;
+
+  if (size == 0) {
+    return 0;
+  }
+
+  org = src;
+  while (--size && *src) {
+    *dst++ = *src++;
+  }
+  *dst = '\0';
+
+  return src - org;
+}
+
+
+uv_err_t uv_cwd(char* buffer, size_t size) {
+  if (!buffer || !size) {
+    return uv__new_artificial_error(UV_EINVAL);
+  }
+
+  if (getcwd(buffer, size)) {
+    return uv_ok_;
+  } else {
+    return uv__new_sys_error(errno);
+  }
+}
+
+
+uv_err_t uv_chdir(const char* dir) {
+  if (chdir(dir) == 0) {
+    return uv_ok_;
+  } else {
+    return uv__new_sys_error(errno);
+  }
+}

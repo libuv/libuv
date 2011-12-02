@@ -739,7 +739,7 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
   handle->read_cb = read_cb;
   handle->alloc_cb = alloc_cb;
 
-  /* If reading was stopped and then started again, there could stell be a */
+  /* If reading was stopped and then started again, there could still be a */
   /* read request pending. */
   if (handle->flags & UV_HANDLE_READ_PENDING) {
     return 0;

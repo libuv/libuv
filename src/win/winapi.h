@@ -4394,6 +4394,7 @@ typedef VOID (WINAPI* sReleaseSRWLockExclusive)
              (PSRWLOCK SRWLock);
 
 
+
 /* Ntapi function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
