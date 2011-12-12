@@ -161,6 +161,8 @@ int uv_fs_event_init(uv_loop_t* loop,
   int events;
   int fd;
 
+  loop->counters.fs_event_init++;
+
   /* We don't support any flags yet. */
   assert(!flags);
 
