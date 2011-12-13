@@ -177,6 +177,8 @@ typedef struct uv_async_s uv_async_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
 typedef struct uv_process_s uv_process_t;
 typedef struct uv_counters_s uv_counters_t;
+typedef struct uv_cpu_info_s uv_cpu_info_t;
+typedef struct uv_interface_address_s uv_interface_address_t;
 /* Request types */
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_shutdown_s uv_shutdown_t;
@@ -1036,7 +1038,48 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop, uv_work_t* req,
     uv_work_cb work_cb, uv_after_work_cb after_work_cb);
 
 
+struct uv_cpu_info_s {
+  char* model;
+  int speed;
+  struct uv_cpu_times_s {
+    uint64_t user;
+    uint64_t nice;
+    uint64_t sys;
+    uint64_t idle;
+    uint64_t irq;
+  } cpu_times;
+};
 
+struct uv_interface_address_s {
+  char* name;
+  int is_internal;
+  union {
+    struct sockaddr_in address4;
+    struct sockaddr_in6 address6;
+  } address;
+};
+
+UV_EXTERN char** uv_setup_args(int argc, char** argv);
+UV_EXTERN uv_err_t uv_get_process_title(char* buffer, size_t size);
+UV_EXTERN uv_err_t uv_set_process_title(const char* title);
+UV_EXTERN uv_err_t uv_resident_set_memory(size_t* rss);
+UV_EXTERN uv_err_t uv_uptime(double* uptime);
+
+/*
+ * This allocates cpu_infos array, and sets count.  The array
+ * is freed using uv_free_cpu_info().
+ */
+UV_EXTERN uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
+UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
+
+/*
+ * This allocates addresses array, and sets count.  The array
+ * is freed using uv_free_interface_addresses().
+ */
+UV_EXTERN uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
+  int* count);
+UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
+  int count);
 
 /*
  * File System Methods.

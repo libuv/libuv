@@ -157,6 +157,8 @@
           'link_settings': {
             'libraries': [
               '-lws2_32.lib',
+              '-lpsapi.lib',
+              '-liphlpapi.lib'
             ],
           },
         }, { # Not Windows i.e. POSIX
@@ -300,6 +302,8 @@
         'test/test-ping-pong.c',
         'test/test-pipe-bind-error.c',
         'test/test-pipe-connect-error.c',
+        'test/test-platform-output.c',
+        'test/test-process-title.c',
         'test/test-ref.c',
         'test/test-shutdown-eof.c',
         'test/test-spawn.c',

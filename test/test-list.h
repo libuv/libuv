@@ -19,6 +19,7 @@
  * IN THE SOFTWARE.
  */
 
+TEST_DECLARE   (platform_output)
 TEST_DECLARE   (tty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -77,6 +78,7 @@ TEST_DECLARE   (check_ref)
 TEST_DECLARE   (unref_in_prepare_cb)
 TEST_DECLARE   (async)
 TEST_DECLARE   (get_currentexe)
+TEST_DECLARE   (process_title)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
 TEST_DECLARE   (hrtime)
@@ -136,6 +138,8 @@ HELPER_DECLARE (pipe_echo_server)
 
 
 TASK_LIST_START
+  TEST_OUTPUT_ENTRY  (platform_output)
+
   TEST_ENTRY  (pipe_connect_bad_name)
 
   TEST_ENTRY  (tty)
@@ -223,6 +227,8 @@ TASK_LIST_START
   TEST_ENTRY  (async)
 
   TEST_ENTRY  (get_currentexe)
+
+  TEST_ENTRY  (process_title)
 
   TEST_ENTRY  (cwd_and_chdir)
 
