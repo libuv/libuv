@@ -202,6 +202,12 @@ int uv_run(uv_loop_t* loop) {
 }
 
 
+int uv_run_once(uv_loop_t* loop) {
+  ev_run(loop->ev, EVRUN_NOWAIT);
+  return 0;
+}
+
+
 void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle,
     uv_handle_type type) {
   loop->counters.handle_init++;
