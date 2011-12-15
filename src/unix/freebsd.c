@@ -19,17 +19,23 @@
  */
 
 #include "uv.h"
+#include "internal.h"
 
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
 
+#include <kvm.h>
+#include <paths.h>
+#include <sys/user.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
 #include <vm/vm_param.h> /* VM_LOADAVG */
 #include <time.h>
+#include <stdlib.h>
 #include <unistd.h> /* sysconf */
+#include <fcntl.h>
 
 #undef NANOSEC
 #define NANOSEC 1000000000
@@ -182,7 +188,7 @@ uv_err_t uv_uptime(double* uptime) {
 
   now = time(NULL);
 
-  *uptime = (double*)(now - info.tv_sec);
+  *uptime = (double)(now - info.tv_sec);
   return uv_ok_;
 }
 
@@ -233,11 +239,11 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   for (int i = 0; i < numcpus; i++) {
     cpu_info = &(*cpu_infos)[i];
     
-    cpu_info->cpu_times.user = (uint64_t)(cp_times[CP_USER+cur]) * multiplier);
-    cpu_info->cpu_times.nice = (uint64_t)(cp_times[CP_NICE+cur]) * multiplier);
-    cpu_info->cpu_times.sys = (uint64_t)(cp_times[CP_SYS+cur]) * multiplier);
-    cpu_info->cpu_times.idle = (uint64_t)(cp_times[CP_IDLE+cur]) * multiplier);
-    cpu_info->cpu_times.irq = (uint64_t)(cp_times[CP_INTR+cur]) * multiplier);
+    cpu_info->cpu_times.user = (uint64_t)(cp_times[CP_USER+cur]) * multiplier;
+    cpu_info->cpu_times.nice = (uint64_t)(cp_times[CP_NICE+cur]) * multiplier;
+    cpu_info->cpu_times.sys = (uint64_t)(cp_times[CP_SYS+cur]) * multiplier;
+    cpu_info->cpu_times.idle = (uint64_t)(cp_times[CP_IDLE+cur]) * multiplier;
+    cpu_info->cpu_times.irq = (uint64_t)(cp_times[CP_INTR+cur]) * multiplier;
 
     cpu_info->model = strdup(model);
     cpu_info->speed = cpuspeed;
@@ -253,7 +259,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    free(cpu_infos[i].brand);
+    free(cpu_infos[i].model);
   }
 
   free(cpu_infos);
