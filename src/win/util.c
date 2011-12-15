@@ -475,9 +475,11 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
   unsigned long size = 0;
   IP_ADAPTER_ADDRESSES* adapter_addresses;
   IP_ADAPTER_ADDRESSES* adapter_address;
+  IP_ADAPTER_UNICAST_ADDRESS_XP* unicast_address;
   uv_interface_address_t* address;
   struct sockaddr* sock_addr;
   int length;
+  char* name;
 
   if (GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &size)
       != ERROR_BUFFER_OVERFLOW) {
@@ -500,7 +502,11 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
   for (adapter_address = adapter_addresses;
        adapter_address != NULL;
        adapter_address = adapter_address->Next) {
-    (*count)++;
+    unicast_address = adapter_address->FirstUnicastAddress;
+    while (unicast_address) {
+      (*count)++;
+      unicast_address = unicast_address->Next;
+    }
   }
 
   *addresses = (uv_interface_address_t*)
@@ -513,41 +519,44 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
 
   for (adapter_address = adapter_addresses;
        adapter_address != NULL;
-       adapter_address = adapter_address->Next,
-       address++) {
+       adapter_address = adapter_address->Next) {
+    name = NULL;
+    unicast_address = adapter_address->FirstUnicastAddress;
 
-    /* Convert FriendlyName to utf8 */
-    length = uv_utf16_to_utf8(adapter_address->FriendlyName, -1, NULL, 0);
-    if (!length) {
-      address->name = NULL;
-      address->address.address4 = uv_addr_ip4_any_;
-      continue;
-    }
-
-    address->name = (char*)malloc(length);
-    if (!address->name) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-    }
-
-    if (!uv_utf16_to_utf8(adapter_address->FriendlyName, -1, address->name,
-        length)) {
-      free(address->name);
-      address->name = NULL;
-      address->address.address4 = uv_addr_ip4_any_;
-      continue;
-    }
-
-    if (adapter_address->FirstUnicastAddress) {
-      sock_addr = adapter_address->FirstUnicastAddress->Address.lpSockaddr;
+    while (unicast_address) {
+      sock_addr = unicast_address->Address.lpSockaddr;
       if (sock_addr->sa_family == AF_INET6) {
         address->address.address6 = *((struct sockaddr_in6 *)sock_addr);
       } else {
         address->address.address4 = *((struct sockaddr_in *)sock_addr);
       }
-    }
 
-    address->is_internal =
-      adapter_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK ? 1 : 0;
+      address->is_internal =
+        adapter_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK ? 1 : 0;
+
+      if (!name) {
+        /* Convert FriendlyName to utf8 */
+        length = uv_utf16_to_utf8(adapter_address->FriendlyName, -1, NULL, 0);
+        if (length) {
+          name = (char*)malloc(length);
+          if (!name) {
+            uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+          }
+
+          if (!uv_utf16_to_utf8(adapter_address->FriendlyName, -1, name,
+              length)) {
+            free(name);
+            name = NULL;
+          }
+        }
+      }
+      
+      assert(name);
+      address->name = name;
+
+      unicast_address = unicast_address->Next;
+      address++;
+    }
   }
 
   free(adapter_addresses);
@@ -559,9 +568,13 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
 void uv_free_interface_addresses(uv_interface_address_t* addresses,
     int count) {
   int i;
+  char* freed_name = NULL;
 
   for (i = 0; i < count; i++) {
-    free(addresses[i].name);
+    if (freed_name != addresses[i].name) {
+      freed_name = addresses[i].name;
+      free(freed_name);
+    }
   }
 
   free(addresses);
