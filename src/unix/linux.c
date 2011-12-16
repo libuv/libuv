@@ -254,6 +254,7 @@ uv_err_t uv_resident_set_memory(size_t* rss) {
   FILE* f;
   int itmp;
   char ctmp;
+  unsigned int utmp;
   size_t page_size = getpagesize();
   char *cbuf;
   int foundExeEnd;
@@ -291,15 +292,15 @@ uv_err_t uv_resident_set_memory(size_t* rss) {
   /* TTY owner process group */
   if (fscanf (f, "%d ", &itmp) == 0) goto error; /* coverity[secure_coding] */
   /* Flags */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* Minor faults (no memory page) */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* Minor faults, children */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* Major faults (memory page faults) */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* Major faults, children */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* utime */
   if (fscanf (f, "%d ", &itmp) == 0) goto error; /* coverity[secure_coding] */
   /* stime */
@@ -313,27 +314,27 @@ uv_err_t uv_resident_set_memory(size_t* rss) {
   /* 'nice' value */
   if (fscanf (f, "%d ", &itmp) == 0) goto error; /* coverity[secure_coding] */
   /* jiffies until next timeout */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* jiffies until next SIGALRM */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* start time (jiffies since system boot) */
   if (fscanf (f, "%d ", &itmp) == 0) goto error; /* coverity[secure_coding] */
 
   /* Virtual memory size */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
 
   /* Resident set size */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
-  *rss = (size_t) itmp * page_size;
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
+  *rss = (size_t) utmp * page_size;
 
   /* rlim */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* Start of text */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* End of text */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
   /* Start of stack */
-  if (fscanf (f, "%u ", &itmp) == 0) goto error; /* coverity[secure_coding] */
+  if (fscanf (f, "%u ", &utmp) == 0) goto error; /* coverity[secure_coding] */
 
   fclose (f);
   return uv_ok_;
@@ -368,7 +369,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   unsigned int ticks = (unsigned int)sysconf(_SC_CLK_TCK),
                multiplier = ((uint64_t)1000L / ticks), cpuspeed;
   int numcpus = 0, i = 0;
-  unsigned long long ticks_user, ticks_sys, ticks_idle, ticks_nice, ticks_intr;
+  unsigned long ticks_user, ticks_sys, ticks_idle, ticks_nice, ticks_intr;
   char line[512], speedPath[256], model[512];
   FILE *fpStat = fopen("/proc/stat", "r");
   FILE *fpModel = fopen("/proc/cpuinfo", "r");
@@ -410,7 +411,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
         break;
       }
 
-      sscanf(line, "%*s %llu %llu %llu %llu %*llu %llu",
+      sscanf(line, "%*s %lu %lu %lu %lu %*s %lu",
              &ticks_user, &ticks_nice, &ticks_sys, &ticks_idle, &ticks_intr);
       snprintf(speedPath, sizeof(speedPath),
                "/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_max_freq", i);
