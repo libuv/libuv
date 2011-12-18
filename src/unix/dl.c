@@ -53,8 +53,14 @@ uv_err_t uv_dlclose(uv_lib_t library) {
 
 
 uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr) {
-  void* address = dlsym(library, name);
-  if (address == NULL) {
+  void* address;
+
+  /* Reset error status. */
+  dlerror();
+
+  address = dlsym(library, name);
+
+  if (dlerror()) {
     return uv_inval_;
   }
 
