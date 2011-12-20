@@ -151,3 +151,8 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
   CHECK(pthread_rwlock_unlock(rwlock));
 }
+
+
+void uv_once(uv_once_t* guard, void (*callback)(void)) {
+  CHECK(pthread_once(guard, callback));
+}
