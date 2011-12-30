@@ -115,6 +115,7 @@ TEST_DECLARE   (fs_event_immediate_close)
 TEST_DECLARE   (fs_readdir_empty_dir)
 TEST_DECLARE   (fs_readdir_file)
 TEST_DECLARE   (fs_open_dir)
+TEST_DECLARE   (fs_rename_to_existing_file)
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (counters_init)
 #ifdef _WIN32
@@ -270,6 +271,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_readdir_empty_dir)
   TEST_ENTRY  (fs_readdir_file)
   TEST_ENTRY  (fs_open_dir)
+  TEST_ENTRY  (fs_rename_to_existing_file)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (counters_init)
 
