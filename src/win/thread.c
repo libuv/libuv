@@ -114,7 +114,7 @@ int uv_thread_join(uv_thread_t *tid) {
 
 
 uv_thread_t uv_thread_self(void) {
-  return GetCurrentThreadId();
+  return GetCurrentThread();
 }
 
 
