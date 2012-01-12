@@ -332,7 +332,7 @@ static int uv__bind(uv_udp_t* handle,
       goto out;
     }
 #else
-    uv__set_sys_error((uv_handle_t*)handle, ENOTSUP);
+    uv__set_sys_error(handle->loop, ENOTSUP);
     goto out;
 #endif
   }
