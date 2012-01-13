@@ -175,6 +175,11 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
+int uv_loop_refcount(const uv_loop_t* loop) {
+  return ev_loop_refcount(loop->ev);
+}
+
+
 uv_loop_t* uv_default_loop(void) {
   if (!default_loop_ptr) {
     default_loop_ptr = &default_loop_struct;
