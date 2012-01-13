@@ -128,6 +128,7 @@ TEST_DECLARE   (listen_no_simultaneous_accepts)
 #endif
 HELPER_DECLARE (tcp4_echo_server)
 HELPER_DECLARE (tcp6_echo_server)
+HELPER_DECLARE (udp4_echo_server)
 HELPER_DECLARE (pipe_echo_server)
 
 
