@@ -790,23 +790,6 @@ int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t slen) {
 }
 
 
-int uv__close(int fd) {
-  int status;
-
-  /*
-   * Retry on EINTR. You may think this is academic but on linux
-   * and probably other Unices too, close(2) is interruptible.
-   * Failing to handle EINTR is a common source of fd leaks.
-   */
-  do {
-    status = close(fd);
-  }
-  while (status == -1 && errno == EINTR);
-
-  return status;
-}
-
-
 int uv__nonblock(int fd, int set) {
 #if FIONBIO
   return ioctl(fd, FIONBIO, &set);
