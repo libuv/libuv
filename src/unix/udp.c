@@ -79,9 +79,21 @@ void uv__udp_watcher_stop(uv_udp_t* handle, ev_io* w) {
 }
 
 
-void uv__udp_destroy(uv_udp_t* handle) {
+void uv__udp_start_close(uv_udp_t* handle) {
+  uv__udp_watcher_stop(handle, &handle->read_watcher);
+  uv__udp_watcher_stop(handle, &handle->write_watcher);
+  uv__close(handle->fd);
+  handle->fd = -1;
+}
+
+
+void uv__udp_finish_close(uv_udp_t* handle) {
   uv_udp_send_t* req;
   ngx_queue_t* q;
+
+  assert(!ev_is_active(&handle->write_watcher));
+  assert(!ev_is_active(&handle->read_watcher));
+  assert(handle->fd == -1);
 
   uv__udp_run_completed(handle);
 
@@ -102,14 +114,6 @@ void uv__udp_destroy(uv_udp_t* handle) {
   handle->recv_cb = NULL;
   handle->alloc_cb = NULL;
   /* but _do not_ touch close_cb */
-
-  if (handle->fd != -1) {
-    uv__close(handle->fd);
-    handle->fd = -1;
-  }
-
-  uv__udp_watcher_stop(handle, &handle->read_watcher);
-  uv__udp_watcher_stop(handle, &handle->write_watcher);
 }
 
 

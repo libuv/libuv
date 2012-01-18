@@ -196,8 +196,8 @@ void uv__pipe_accept(EV_P_ ev_io* watcher, int revents);
 int uv_pipe_cleanup(uv_pipe_t* handle);
 
 /* udp */
-void uv__udp_destroy(uv_udp_t* handle);
-void uv__udp_watcher_stop(uv_udp_t* handle, ev_io* w);
+void uv__udp_start_close(uv_udp_t* handle);
+void uv__udp_finish_close(uv_udp_t* handle);
 
 /* fs */
 void uv__fs_event_destroy(uv_fs_event_t* handle);
