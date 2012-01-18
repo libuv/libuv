@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> /* memset */
 
 struct getaddrinfo_req {
   uv_thread_t thread_id;
