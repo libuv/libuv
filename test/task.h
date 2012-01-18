@@ -22,9 +22,9 @@
 #ifndef TASK_H_
 #define TASK_H_
 
-
-#include <stdint.h>
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #define TEST_PORT 9123
@@ -39,6 +39,9 @@
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+#define container_of(ptr, type, member) \
+  ((type *) ((char *) (ptr) - offsetof(type, member)))
 
 typedef enum {
   TCP = 0,
