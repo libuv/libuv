@@ -966,3 +966,13 @@ int uv_read_stop(uv_stream_t* stream) {
 }
 
 
+int uv_export(uv_stream_t* stream, uv_stream_info_t* info) {
+  /* Implement me */
+  return uv__new_artificial_error(UV_ENOSYS);
+}
+
+
+int uv_import(uv_stream_t* stream, uv_stream_info_t* info) {
+  /* Implement me */
+  return uv__new_artificial_error(UV_ENOSYS);
+}
