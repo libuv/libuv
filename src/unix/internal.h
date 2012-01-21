@@ -25,6 +25,8 @@
 #include "uv-common.h"
 #include "uv-eio.h"
 
+#include <assert.h>
+#include <stdlib.h> /* abort */
 #include <stddef.h> /* offsetof */
 
 #if __STRICT_ANSI__
@@ -133,13 +135,20 @@ inline static int sys_accept4(int fd,
 #define container_of(ptr, type, member) \
   ((type *) ((char *) (ptr) - offsetof(type, member)))
 
-#define SAVE_ERRNO(block) \
-  do { \
-    int _saved_errno = errno; \
-    do { block; } while (0); \
-    errno = _saved_errno; \
-  } \
-  while (0);
+#define UNREACHABLE()                                                         \
+  do {                                                                        \
+    assert(0 && "unreachable code");                                          \
+    abort();                                                                  \
+  }                                                                           \
+  while (0)
+
+#define SAVE_ERRNO(block)                                                     \
+  do {                                                                        \
+    int _saved_errno = errno;                                                 \
+    do { block; } while (0);                                                  \
+    errno = _saved_errno;                                                     \
+  }                                                                           \
+  while (0)
 
 /* flags */
 enum {
