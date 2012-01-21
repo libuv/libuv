@@ -57,7 +57,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void on_connection(uv_stream_t* server, int status) {
   int r;
-  worker_t* worker = CONTAINING_RECORD(server, worker_t, server);
+  worker_t* worker = container_of(server, worker_t, server);
 
   if (!worker->connection_accepted) {
     /*
