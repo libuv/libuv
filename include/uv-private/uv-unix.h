@@ -193,9 +193,7 @@ typedef void* uv_lib_t;
   int mode;
 
 #define UV_STREAM_INFO_PRIVATE_FIELDS \
-  union {                             \
-    int fd;                           \
-  };
+  int fd;
 
 /* UV_FS_EVENT_PRIVATE_FIELDS */
 #if defined(__linux__)

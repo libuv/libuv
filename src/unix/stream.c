@@ -967,12 +967,39 @@ int uv_read_stop(uv_stream_t* stream) {
 
 
 int uv_export(uv_stream_t* stream, uv_stream_info_t* info) {
-  /* Implement me */
-  return uv__new_artificial_error(UV_ENOSYS);
+  int fd;
+
+  if (stream->type != UV_TCP) {
+    uv__set_artificial_error(stream->loop, UV_EINVAL);
+    return -1;
+  }
+
+  fd = uv__dup(stream->fd);
+
+  if (fd == -1) {
+    uv__set_sys_error(stream->loop, errno);
+    return -1;
+  }
+
+  info->type = stream->type;
+  info->fd = fd;
+
+  return 0;
 }
 
 
 int uv_import(uv_stream_t* stream, uv_stream_info_t* info) {
-  /* Implement me */
-  return uv__new_artificial_error(UV_ENOSYS);
+  if (info->type != UV_TCP) {
+    uv__set_artificial_error(stream->loop, UV_EINVAL);
+    return -1;
+  }
+
+  if (stream->fd != -1) {
+    uv__set_artificial_error(stream->loop, UV_EALREADY);
+    return -1;
+  }
+
+  stream->fd = info->fd;
+
+  return 0;
 }
