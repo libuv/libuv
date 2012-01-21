@@ -168,6 +168,7 @@ void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle, uv_handle_type type);
 int uv__nonblock(int fd, int set) __attribute__((unused));
 int uv__cloexec(int fd, int set) __attribute__((unused));
 int uv__socket(int domain, int type, int protocol);
+int uv__dup(int fd);
 
 /* We used to handle EINTR in uv__close() but linux 2.6 will have closed the
  * file descriptor anyway, even on EINTR. Retrying in that case isn't merely
