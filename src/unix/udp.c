@@ -337,6 +337,12 @@ static int uv__bind(uv_udp_t* handle,
     goto out;
   }
 
+  yes = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    goto out;
+  }
+
   if (flags & UV_UDP_IPV6ONLY) {
 #ifdef IPV6_V6ONLY
     yes = 1;
@@ -499,6 +505,24 @@ int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
   }
 
   if (setsockopt(handle->fd, IPPROTO_IP, optname, (void*) &mreq, sizeof mreq) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+
+  return 0;
+}
+
+int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl) {
+  if (setsockopt(handle->fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof ttl) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+
+  return 0;
+}
+
+int uv_udp_set_broadcast(uv_udp_t* handle, int on) {
+  if (setsockopt(handle->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof on) == -1) {
     uv__set_sys_error(handle->loop, errno);
     return -1;
   }
