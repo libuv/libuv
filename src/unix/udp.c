@@ -528,6 +528,16 @@ int uv_udp_set_broadcast(uv_udp_t* handle, int on) {
 }
 
 
+int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
+  if (setsockopt(handle->fd, IPPROTO_IP, IP_TTL, &ttl, sizeof ttl)) {
+    uv__set_sys_error(handle->loop, errno);
+    return -1;
+  }
+
+  return 0;
+}
+
+
 int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
     int* namelen) {
   socklen_t socklen;
