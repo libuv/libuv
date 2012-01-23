@@ -633,6 +633,20 @@ UV_EXTERN int uv_udp_set_membership(uv_udp_t* handle,
     uv_membership membership);
 
 /*
+ * Set IP multicast loop flag. Makes multicast packets loop back to
+ * local sockets.
+ *
+ * Arguments:
+ *  handle              UDP handle. Should have been initialized with
+ *                      `uv_udp_init`.
+ *  on                  1 for on, 0 for off
+ *
+ * Returns:
+ *  0 on success, -1 on error.
+ */
+UV_EXTERN int uv_udp_set_multicast_loop(uv_udp_t* handle, int on);
+
+/*
  * Set the multicast ttl
  *
  * Arguments:
