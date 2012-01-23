@@ -643,7 +643,7 @@ UV_EXTERN int uv_udp_set_membership(uv_udp_t* handle,
  * Returns:
  *  0 on success, -1 on error.
  */
-int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
+UV_EXTERN int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
 
 /*
  * Set broadcast on or off
@@ -656,7 +656,7 @@ int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
  * Returns:
  *  0 on success, -1 on error.
  */
-int uv_udp_set_broadcast(uv_udp_t* handle, int on);
+UV_EXTERN int uv_udp_set_broadcast(uv_udp_t* handle, int on);
 
 /*
  * Send data. If the socket has not previously been bound with `uv_udp_bind`
