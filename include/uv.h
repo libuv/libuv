@@ -117,7 +117,8 @@ typedef intptr_t ssize_t;
   XX( 47, EEXIST, "file already exists") \
   XX( 48, ESRCH, "no such process") \
   XX( 49, ENAMETOOLONG, "name too long") \
-  XX( 50, EPERM, "operation not permitted")
+  XX( 50, EPERM, "operation not permitted") \
+  XX( 51, ELOOP, "too many symbolic links encountered")
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
