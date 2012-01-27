@@ -453,10 +453,10 @@ TEST_IMPL(fs_file_noent) {
 TEST_IMPL(fs_file_nametoolong) {
   uv_fs_t req;
   int r;
+  char name[TOO_LONG_NAME_LENGTH + 1];
 
   loop = uv_default_loop();
 
-  char name[TOO_LONG_NAME_LENGTH + 1];
   memset(name, 'a', TOO_LONG_NAME_LENGTH);
   name[TOO_LONG_NAME_LENGTH] = 0;
 
