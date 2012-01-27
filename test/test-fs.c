@@ -1288,6 +1288,20 @@ TEST_IMPL(fs_utime) {
 }
 
 
+#ifdef _WIN32
+TEST_IMPL(fs_stat_root) {
+  int r;
+  uv_loop_t* loop = uv_default_loop();
+
+  r = uv_fs_stat(loop, &stat_req, "c:\\", NULL);
+  ASSERT(r == 0);
+
+  r = uv_fs_stat(loop, &stat_req, "\\\\?\\C:\\", NULL);
+  ASSERT(r == 0);
+}
+#endif
+
+
 TEST_IMPL(fs_futime) {
   utime_check_t checkme;
   const char* path = "test_file";
