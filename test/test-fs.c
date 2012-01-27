@@ -1298,6 +1298,8 @@ TEST_IMPL(fs_stat_root) {
 
   r = uv_fs_stat(loop, &stat_req, "\\\\?\\C:\\", NULL);
   ASSERT(r == 0);
+
+  return 0;
 }
 #endif
 
