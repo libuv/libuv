@@ -29,15 +29,18 @@
 typedef struct {
   uv_loop_t* loop;
   uv_thread_t thread;
-  uv_async_t recv_channel;
-  uv_async_t send_channel;
+  uv_async_t* recv_channel;
+  uv_async_t* send_channel;
   uv_tcp_t server;
   uv_tcp_t conn;
   int connection_accepted;
   int close_cb_called;
 } worker_t;
 
-static worker_t parent, child;
+static uv_async_t send_channel;
+static uv_async_t recv_channel;
+static worker_t parent;
+static worker_t child;
 
 static volatile uv_stream_info_t dup_stream;
 
@@ -75,8 +78,8 @@ static void on_connection(uv_stream_t* server, int status) {
 
     worker->connection_accepted = 1;
 
+    uv_close((uv_handle_t*)worker->recv_channel, close_cb);
     uv_close((uv_handle_t*)&worker->conn, close_cb);
-    uv_close((uv_handle_t*)&worker->recv_channel, close_cb);
     uv_close((uv_handle_t*)server, close_cb);
   }
 }
@@ -145,7 +148,7 @@ void on_child_msg(uv_async_t* handle, int status) {
 
 static void child_thread_entry(void* arg) {
   int r;
-  int listen_after_write = (int)arg;
+  int listen_after_write = *(int*) arg;
 
   r = uv_tcp_init(child.loop, &child.server);
   ASSERT(r == 0);
@@ -164,7 +167,7 @@ static void child_thread_entry(void* arg) {
     (uv_stream_info_t*)&dup_stream);
   ASSERT(r == 0);
 
-  r = uv_async_send(&child.send_channel);
+  r = uv_async_send(child.send_channel);
   ASSERT(r == 0);
 
   if (listen_after_write) {
@@ -183,22 +186,24 @@ static void child_thread_entry(void* arg) {
 static void run_ipc_threads_test(int listen_after_write) {
   int r;
 
+  parent.send_channel = &send_channel;
+  parent.recv_channel = &recv_channel;
+  child.send_channel = &recv_channel;
+  child.recv_channel = &send_channel;
+
   parent.loop = uv_default_loop();
   child.loop = uv_loop_new();
   ASSERT(child.loop);
 
-  r = uv_async_init(parent.loop, &parent.recv_channel, on_parent_msg);
+  r = uv_async_init(parent.loop, parent.recv_channel, on_parent_msg);
   ASSERT(r == 0);
-  parent.recv_channel.data = &parent;
+  parent.recv_channel->data = &parent;
 
-  r = uv_async_init(child.loop, &parent.send_channel, on_child_msg);
+  r = uv_async_init(child.loop, child.recv_channel, on_child_msg);
   ASSERT(r == 0);
-  parent.send_channel.data = &child;
+  child.recv_channel->data = &child;
 
-  child.send_channel = parent.recv_channel;
-  child.recv_channel = parent.send_channel;
-
-  r = uv_thread_create(&child.thread, child_thread_entry, (void*)listen_after_write);
+  r = uv_thread_create(&child.thread, child_thread_entry, &listen_after_write);
   ASSERT(r == 0);
 
   r = uv_run(parent.loop);
@@ -209,6 +214,12 @@ static void run_ipc_threads_test(int listen_after_write) {
 
   r = uv_thread_join(&child.thread);
   ASSERT(r == 0);
+
+  /* Satisfy valgrind. Maybe we should delete the default loop from the
+   * test runner.
+   */
+  uv_loop_delete(child.loop);
+  uv_loop_delete(uv_default_loop());
 }
 
 
