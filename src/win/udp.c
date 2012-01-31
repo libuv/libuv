@@ -166,9 +166,9 @@ static int uv__bind(uv_udp_t* handle,
                     struct sockaddr* addr,
                     int addrsize,
                     unsigned int flags) {
-  DWORD err;
   int r;
   SOCKET sock;
+  DWORD no = 0, yes = 1;
 
   if ((flags & UV_UDP_IPV6ONLY) && domain != AF_INET6) {
     /* UV_UDP_IPV6ONLY is supported only for IPV6 sockets */
@@ -190,7 +190,6 @@ static int uv__bind(uv_udp_t* handle,
   }
 
   if (domain == AF_INET6 && !(flags & UV_UDP_IPV6ONLY)) {
-    DWORD off = 0;
     /* On windows IPV6ONLY is on by default. */
     /* If the user doesn't specify it libuv turns it off. */
 
@@ -200,14 +199,22 @@ static int uv__bind(uv_udp_t* handle,
     setsockopt(sock,
                IPPROTO_IPV6,
                IPV6_V6ONLY,
-               (const char*) &off,
-               sizeof off);
+               (char*) &no,
+               sizeof no);
+  }
+
+  r = setsockopt(sock,
+                 SOL_SOCKET,
+                 SO_REUSEADDR,
+                 (char*) &yes,
+                 sizeof yes);
+  if (r == SOCKET_ERROR) {
+    uv__set_sys_error(handle->loop, WSAGetLastError());
+    return -1;
   }
 
   r = bind(handle->socket, addr, addrsize);
-
   if (r == SOCKET_ERROR) {
-    err = WSAGetLastError();
     uv__set_sys_error(handle->loop, WSAGetLastError());
     return -1;
   }
