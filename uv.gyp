@@ -115,7 +115,7 @@
             'src/ares/config_win32'
           ],
           'defines': [
-            '_WIN32_WINNT=0x0502',
+            '_WIN32_WINNT=0x0600',
             'EIO_STACKSIZE=262144',
             '_GNU_SOURCE',
           ],
