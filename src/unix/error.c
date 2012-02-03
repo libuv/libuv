@@ -74,6 +74,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case EMSGSIZE: return UV_EMSGSIZE;
     case ENAMETOOLONG: return UV_ENAMETOOLONG;
     case EINVAL: return UV_EINVAL;
+    case ECONNABORTED: return UV_ECONNABORTED;
     case ECONNREFUSED: return UV_ECONNREFUSED;
     case EADDRINUSE: return UV_EADDRINUSE;
     case EADDRNOTAVAIL: return UV_EADDRNOTAVAIL;

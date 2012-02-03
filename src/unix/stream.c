@@ -802,6 +802,8 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
       /* If we get a ECONNREFUSED wait until the next tick to report the
        * error. Solaris wants to report immediately--other unixes want to
        * wait.
+       *
+       * XXX: do the same for ECONNABORTED?
        */
       case ECONNREFUSED:
         stream->delayed_error = errno;
