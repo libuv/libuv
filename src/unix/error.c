@@ -87,6 +87,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case EAI_NONAME: return UV_ENOENT;
     case ESRCH: return UV_ESRCH;
     case ETIMEDOUT: return UV_ETIMEDOUT;
+    case EXDEV: return UV_EXDEV;
     default: return UV_UNKNOWN;
   }
 
