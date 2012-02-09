@@ -498,7 +498,8 @@ TEST_IMPL(fs_file_loop) {
   loop = uv_default_loop();
 
   unlink("test_symlink");
-  symlink("test_symlink", "test_symlink");
+  uv_fs_symlink(loop, &req, "test_symlink", "test_symlink", 0, NULL);
+  uv_fs_req_cleanup(&req);
 
   r = uv_fs_open(loop, &req, "test_symlink", O_RDONLY, 0, NULL);
   ASSERT(r == -1);
