@@ -84,6 +84,8 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case WSAECONNREFUSED:                   return UV_ECONNREFUSED;
     case ERROR_NETNAME_DELETED:             return UV_ECONNRESET;
     case WSAECONNRESET:                     return UV_ECONNRESET;
+    case ERROR_ALREADY_EXISTS:              return UV_EEXIST;
+    case ERROR_FILE_EXISTS:                 return UV_EEXIST;
     case WSAEFAULT:                         return UV_EFAULT;
     case ERROR_HOST_UNREACHABLE:            return UV_EHOSTUNREACH;
     case WSAEHOSTUNREACH:                   return UV_EHOSTUNREACH;
@@ -108,7 +110,6 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_PIPE_BUSY:                   return UV_EBUSY;
     case ERROR_SEM_TIMEOUT:                 return UV_ETIMEDOUT;
     case WSAETIMEDOUT:                      return UV_ETIMEDOUT;
-    case ERROR_ALREADY_EXISTS:              return UV_EEXIST;
     case WSAHOST_NOT_FOUND:                 return UV_ENOENT;
     default:                                return UV_UNKNOWN;
   }
