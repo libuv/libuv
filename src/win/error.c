@@ -95,6 +95,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_TOO_MANY_OPEN_FILES:         return UV_EMFILE;
     case WSAEMFILE:                         return UV_EMFILE;
     case WSAEMSGSIZE:                       return UV_EMSGSIZE;
+    case ERROR_FILENAME_EXCED_RANGE:        return UV_ENAMETOOLONG;
     case ERROR_NETWORK_UNREACHABLE:         return UV_ENETUNREACH;
     case WSAENETUNREACH:                    return UV_ENETUNREACH;
     case WSAENOBUFS:                        return UV_ENOBUFS;
