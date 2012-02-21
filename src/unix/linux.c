@@ -171,13 +171,17 @@ void uv_loadavg(double avg[3]) {
 
 
 int uv_exepath(char* buffer, size_t* size) {
+  ssize_t n;
+
   if (!buffer || !size) {
     return -1;
   }
 
-  *size = readlink("/proc/self/exe", buffer, *size - 1);
-  if (*size <= 0) return -1;
-  buffer[*size] = '\0';
+  n = readlink("/proc/self/exe", buffer, *size - 1);
+  if (n <= 0) return -1;
+  buffer[n] = '\0';
+  *size = n;
+
   return 0;
 }
 
