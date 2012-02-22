@@ -157,6 +157,7 @@ static int uv__loop_init(uv_loop_t* loop,
 #endif
   ev_set_userdata(loop->ev, loop);
   eio_channel_init(&loop->uv_eio_channel, loop);
+  uv__loop_platform_init(loop);
   return 0;
 }
 
@@ -179,11 +180,10 @@ uv_loop_t* uv_loop_new(void) {
 void uv_loop_delete(uv_loop_t* loop) {
   uv_ares_destroy(loop, loop->channel);
   ev_loop_destroy(loop->ev);
-
+  uv__loop_platform_delete(loop);
 #ifndef NDEBUG
-  memset(loop, 0, sizeof *loop);
+  memset(loop, -1, sizeof *loop);
 #endif
-
   if (loop == default_loop_ptr)
     default_loop_ptr = NULL;
   else
