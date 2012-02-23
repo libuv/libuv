@@ -239,7 +239,6 @@ void uv__finish_close(uv_handle_t* handle) {
   uv_loop_t* loop = handle->loop;
 
   assert(handle->flags & UV_CLOSING);
-  assert(!(handle->flags & UV_CLOSED));
   handle->flags |= UV_CLOSED;
 
   switch (handle->type) {
