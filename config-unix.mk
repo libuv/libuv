@@ -116,6 +116,8 @@ endif
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
 RUNNER_LINKFLAGS=$(LINKFLAGS)
 
+RUNNER_LINKFLAGS += -ldl
+
 ifeq (SunOS,$(uname_S))
 RUNNER_LINKFLAGS += -pthreads
 else
