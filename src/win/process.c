@@ -859,6 +859,9 @@ static int duplicate_std_handle(uv_loop_t* loop, DWORD id, HANDLE* dup) {
   return 0;
 }
 
+void _detach_cb(uv_handle_t *handle) {
+  /* TODO: something here? */
+}
 
 int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     uv_process_options_t options) {
@@ -871,6 +874,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   HANDLE* child_stdio = process->child_stdio;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
+  DWORD process_flags;
 
   if (!options.file) {
     uv__set_artificial_error(loop, UV_EINVAL);
@@ -900,6 +904,25 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
       err = -1;
       goto done;
     }
+  }
+
+  if (options.detached) {
+    if (options.stdin_stream) {
+      uv_close((uv_handle_t*)options.stdin_stream, _detach_cb);
+      options.stdin_stream = NULL;
+    }
+    if (options.stdout_stream) {
+      uv_close((uv_handle_t*)options.stdout_stream, _detach_cb);
+      options.stdout_stream = NULL;
+    }
+    if (options.stderr_stream) {
+      uv_close((uv_handle_t*)options.stderr_stream, _detach_cb);
+      options.stderr_stream = NULL;
+    }
+    process_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW |
+            CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS;
+  } else {
+    process_flags = CREATE_UNICODE_ENVIRONMENT;
   }
 
   /* Get PATH env. variable. */
@@ -940,7 +963,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
           GENERIC_READ | FILE_WRITE_ATTRIBUTES,
           0);
     }
-  } else {
+  } else if (!options.detached) {
     err = duplicate_std_handle(loop, STD_INPUT_HANDLE, &child_stdio[0]);
   }
   if (err) {
@@ -954,7 +977,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
         PIPE_ACCESS_INBOUND,
         GENERIC_WRITE,
         0);
-  } else {
+  } else if (!options.detached) {
     err = duplicate_std_handle(loop, STD_OUTPUT_HANDLE, &child_stdio[1]);
   }
   if (err) {
@@ -969,7 +992,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
         PIPE_ACCESS_INBOUND,
         GENERIC_WRITE,
         0);
-  } else {
+  } else if (!options.detached) {
     err = duplicate_std_handle(loop, STD_ERROR_HANDLE, &child_stdio[2]);
   }
   if (err) {
@@ -980,19 +1003,23 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   startup.lpReserved = NULL;
   startup.lpDesktop = NULL;
   startup.lpTitle = NULL;
-  startup.dwFlags = STARTF_USESTDHANDLES;
+  if (options.detached) {
+    startup.dwFlags = NULL;
+  } else {
+    startup.dwFlags = STARTF_USESTDHANDLES;
+  }
   startup.cbReserved2 = 0;
   startup.lpReserved2 = NULL;
-  startup.hStdInput = child_stdio[0];
-  startup.hStdOutput = child_stdio[1];
-  startup.hStdError = child_stdio[2];
+  startup.hStdInput = options.detached ? NULL : child_stdio[0];
+  startup.hStdOutput = options.detached ? NULL : child_stdio[1];
+  startup.hStdError = options.detached ? NULL : child_stdio[2];
 
   if (CreateProcessW(application_path,
                      arguments,
                      NULL,
                      NULL,
-                     1,
-                     CREATE_UNICODE_ENVIRONMENT,
+                     options.detached ? 0 : 1,
+                     process_flags,
                      env,
                      cwd,
                      &startup,
@@ -1006,15 +1033,19 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
       options.stdin_stream->ipc_pid = info.dwProcessId;
     }
 
-    /* Setup notifications for when the child process exits. */
-    result = RegisterWaitForSingleObject(&process->wait_handle,
-        process->process_handle, exit_wait_callback, (void*)process, INFINITE,
-        WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
-    if (!result) {
-      uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
+    if (!options.detached) {
+      result = RegisterWaitForSingleObject(&process->wait_handle,
+          process->process_handle, exit_wait_callback, (void*)process, INFINITE,
+          WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
+      if (!result) {
+	    uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
+      }
     }
-
-    CloseHandle(info.hThread);
+	  CloseHandle(info.hThread);
+    if (options.detached) {
+      CloseHandle(info.hProcess);
+      exit_wait_callback((void*)process, FALSE);
+    }
 
   } else {
     /* CreateProcessW failed, but this failure should be delivered */
