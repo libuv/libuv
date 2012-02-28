@@ -1064,12 +1064,6 @@ typedef struct uv_process_options_s {
   char* cwd;
 
   /*
-   * If set, this flag indicates that the child should be spawned in a detached
-   * state.
-   */
-  int detached;
-
-  /*
    * TODO describe how this works.
    */
   int windows_verbatim_arguments;
