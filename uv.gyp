@@ -32,6 +32,11 @@
       ],
       'direct_dependent_settings': {
         'include_dirs': [ 'include' ],
+        'conditions': [
+          ['OS=="linux"', {
+            'libraries': [ '-ldl' ],
+          }],
+        ],
       },
 
       'defines': [

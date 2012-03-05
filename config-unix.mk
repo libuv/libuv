@@ -62,7 +62,7 @@ EV_CONFIG=config_linux.h
 EIO_CONFIG=config_linux.h
 CSTDFLAG += -D_GNU_SOURCE
 CPPFLAGS += -Isrc/ares/config_linux
-LINKFLAGS+=-lrt
+LINKFLAGS+=-ldl -lrt
 OBJS += src/unix/linux/core.o src/unix/linux/inotify.o
 endif
 
@@ -115,8 +115,6 @@ endif
 # Need _GNU_SOURCE for strdup?
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
 RUNNER_LINKFLAGS=$(LINKFLAGS)
-
-RUNNER_LINKFLAGS += -ldl
 
 ifeq (SunOS,$(uname_S))
 RUNNER_LINKFLAGS += -pthreads
