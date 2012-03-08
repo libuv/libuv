@@ -27,8 +27,14 @@
 
 
 uv_handle_type uv_guess_handle(uv_file file) {
-  HANDLE handle = (HANDLE) _get_osfhandle(file);
+  HANDLE handle;
   DWORD mode;
+
+  if (file < 0) {
+    return UV_UNKNOWN_HANDLE;
+  }
+
+  handle = (HANDLE) _get_osfhandle(file);
 
   switch (GetFileType(handle)) {
     case FILE_TYPE_CHAR:
