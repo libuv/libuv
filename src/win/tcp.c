@@ -552,7 +552,7 @@ int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
 
       if (server->processed_accepts >= uv_simultaneous_server_accepts) {
         server->processed_accepts = 0;
-        /* 
+        /*
          * All previously queued accept requests are now processed.
          * We now switch to queueing just a single accept.
          */
@@ -835,7 +835,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
       err = GET_REQ_SOCK_ERROR(req);
 
       if (err == WSAECONNABORTED) {
-        /* 
+        /*
          * Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with Unix.
          */
         uv__set_error(loop, UV_ECONNRESET, err);
@@ -904,7 +904,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
           handle->read_cb((uv_stream_t*)handle, 0, buf);
         } else {
           if (err == WSAECONNABORTED) {
-            /* 
+            /*
              * Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with Unix.
              */
             uv__set_error(loop, UV_ECONNRESET, err);
@@ -1090,7 +1090,7 @@ int uv_tcp_duplicate_socket(uv_tcp_t* handle, int pid,
     LPWSAPROTOCOL_INFOW protocol_info) {
   assert(!(handle->flags & UV_HANDLE_CONNECTION));
 
-  /* 
+  /*
    * We're about to share the socket with another process.  Because
    * this is a listening socket, we assume that the other process will
    * be accepting connections on it.  So, before sharing the socket

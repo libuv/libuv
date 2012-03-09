@@ -115,7 +115,7 @@ void check_permission(const char* filename, int mode) {
 
   s = req.ptr;
 #ifdef _WIN32
-  /* 
+  /*
    * On Windows, chmod can only modify S_IWUSR (_S_IWRITE) bit,
    * so only testing for the specified flags.
    */
@@ -1210,7 +1210,7 @@ TEST_IMPL(fs_symlink) {
        */
       return 0;
     } else if (uv_last_error(loop).sys_errno_ == ERROR_PRIVILEGE_NOT_HELD) {
-      /* 
+      /*
        * Creating a symlink is only allowed when running elevated.
        * We pass the test and bail out early if we get ERROR_PRIVILEGE_NOT_HELD.
        */

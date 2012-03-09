@@ -338,7 +338,7 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
         free(handle->pending_socket_info);
         handle->pending_socket_info = NULL;
       }
-      
+
       if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
         if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
           UnregisterWait(handle->read_req.wait_handle);
@@ -866,7 +866,7 @@ static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
       /* Make this req pending reporting an error. */
       SET_REQ_ERROR(req, GetLastError());
       goto error;
-    } 
+    }
   } else {
     memset(&req->overlapped, 0, sizeof(req->overlapped));
     if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
@@ -1071,7 +1071,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
       ipc_frame.header.raw_data_length = bufs[0].len;
     }
 
-    /* 
+    /*
      * Use the provided req if we're only doing a single write.
      * If we're doing multiple writes, use ipc_header_write_req to do
      * the first write, and then use the provided req for the second write.
@@ -1079,7 +1079,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
     if (!(ipc_frame.header.flags & UV_IPC_RAW_DATA)) {
       ipc_header_req = req;
     } else {
-      /* 
+      /*
        * Try to use the preallocated write req if it's available.
        * Otherwise allocate a new one.
        */
@@ -1359,7 +1359,7 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
         /* Successful read */
         if (handle->ipc) {
           assert(handle->remaining_ipc_rawdata_bytes >= bytes);
-          handle->remaining_ipc_rawdata_bytes = 
+          handle->remaining_ipc_rawdata_bytes =
             handle->remaining_ipc_rawdata_bytes - bytes;
           if (handle->read2_cb) {
             handle->read2_cb(handle, bytes, buf,
