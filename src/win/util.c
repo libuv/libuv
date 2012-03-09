@@ -490,11 +490,13 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
   unsigned long size = 0;
   IP_ADAPTER_ADDRESSES* adapter_addresses;
   IP_ADAPTER_ADDRESSES* adapter_address;
-  IP_ADAPTER_UNICAST_ADDRESS_XP* unicast_address;
   uv_interface_address_t* address;
   struct sockaddr* sock_addr;
   int length;
   char* name;
+  /* Use IP_ADAPTER_UNICAST_ADDRESS_XP to retain backwards compatibility */
+  /* with Windows XP */
+  IP_ADAPTER_UNICAST_ADDRESS_XP* unicast_address;
 
   if (GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &size)
       != ERROR_BUFFER_OVERFLOW) {
@@ -517,7 +519,8 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
   for (adapter_address = adapter_addresses;
        adapter_address != NULL;
        adapter_address = adapter_address->Next) {
-    unicast_address = adapter_address->FirstUnicastAddress;
+    unicast_address = (IP_ADAPTER_UNICAST_ADDRESS_XP*)
+                      adapter_address->FirstUnicastAddress;
     while (unicast_address) {
       (*count)++;
       unicast_address = unicast_address->Next;
@@ -536,7 +539,8 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
        adapter_address != NULL;
        adapter_address = adapter_address->Next) {
     name = NULL;
-    unicast_address = adapter_address->FirstUnicastAddress;
+    unicast_address = (IP_ADAPTER_UNICAST_ADDRESS_XP*)
+                      adapter_address->FirstUnicastAddress;
 
     while (unicast_address) {
       sock_addr = unicast_address->Address.lpSockaddr;
