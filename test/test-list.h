@@ -59,6 +59,8 @@ TEST_DECLARE   (pipe_listen_without_bind)
 TEST_DECLARE   (pipe_connect_bad_name)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
+TEST_DECLARE   (shutdown_close_tcp)
+TEST_DECLARE   (shutdown_close_pipe)
 TEST_DECLARE   (shutdown_eof)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (error_message)
@@ -205,6 +207,11 @@ TASK_LIST_START
 
   TEST_ENTRY  (connection_fail)
   TEST_ENTRY  (connection_fail_doesnt_auto_close)
+
+  TEST_ENTRY  (shutdown_close_tcp)
+  TEST_HELPER (shutdown_close_tcp, tcp4_echo_server)
+  TEST_ENTRY  (shutdown_close_pipe)
+  TEST_HELPER (shutdown_close_pipe, pipe_echo_server)
 
   TEST_ENTRY  (shutdown_eof)
   TEST_HELPER (shutdown_eof, tcp4_echo_server)
