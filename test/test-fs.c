@@ -186,8 +186,14 @@ static void chown_cb(uv_fs_t* req) {
 
 static void chown_root_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_CHOWN);
+#ifdef _WIN32
+  /* On windows, chown is a no-op and always succeeds. */
+  ASSERT(req->result == 0);
+#else
+  /* On unix, chown'ing the root directory is not allowed. */
   ASSERT(req->result == -1);
   ASSERT(req->errorno == UV_EPERM);
+#endif
   chown_cb_count++;
   uv_fs_req_cleanup(req);
 }
