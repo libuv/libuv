@@ -171,11 +171,13 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
   uv_tcp_accept_t* req;
 
   if (handle->flags & UV_HANDLE_CONNECTION &&
-      handle->flags & UV_HANDLE_SHUTTING &&
-      !(handle->flags & UV_HANDLE_SHUT) &&
+      handle->shutdown_req != NULL &&
       handle->write_reqs_pending == 0) {
 
-    if (shutdown(handle->socket, SD_SEND) != SOCKET_ERROR) {
+    if (handle->flags & UV_HANDLE_CLOSING) {
+      status = -1;
+      sys_error = WSAEINTR;
+    } else if (shutdown(handle->socket, SD_SEND) != SOCKET_ERROR) {
       status = 0;
       handle->flags |= UV_HANDLE_SHUT;
     } else {
@@ -188,6 +190,8 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
       }
       handle->shutdown_req->cb(handle->shutdown_req, status);
     }
+
+    handle->shutdown_req = NULL;
 
     uv_unref(loop);
     DECREASE_PENDING_REQ_COUNT(handle);

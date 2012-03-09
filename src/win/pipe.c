@@ -281,10 +281,24 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
   IO_STATUS_BLOCK io_status;
   FILE_PIPE_LOCAL_INFORMATION pipe_info;
 
-  if (handle->flags & UV_HANDLE_SHUTTING &&
-      !(handle->flags & UV_HANDLE_SHUT) &&
+  if ((handle->flags & UV_HANDLE_CONNECTION) &&
+      handle->shutdown_req != NULL &&
       handle->write_reqs_pending == 0) {
     req = handle->shutdown_req;
+
+    /* Clear the shutdown_req field so we don't go here again. */
+    handle->shutdown_req = NULL;
+
+    if (handle->flags & UV_HANDLE_CLOSING) {
+      /* Already closing. Cancel the shutdown. */
+      if (req->cb) {
+        uv__set_sys_error(loop, WSAEINTR);
+        req->cb(req, -1);
+      }
+      uv_unref(loop);
+      DECREASE_PENDING_REQ_COUNT(handle);
+      return;
+    }
 
     /* Try to avoid flushing the pipe buffer in the thread pool. */
     nt_status = pNtQueryInformationFile(handle->handle,
@@ -306,8 +320,6 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
     }
 
     if (pipe_info.OutboundQuota == pipe_info.WriteQuotaAvailable) {
-      handle->flags |= UV_HANDLE_SHUT;
-
       /* Short-circuit, no need to call FlushFileBuffers. */
       uv_insert_pending_req(loop, (uv_req_t*) req);
       return;
@@ -318,8 +330,6 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
                                req,
                                WT_EXECUTELONGFUNCTION);
     if (result) {
-      /* Mark the handle as shut now to avoid going through this again. */
-      handle->flags |= UV_HANDLE_SHUT;
       return;
 
     } else {
@@ -625,6 +635,7 @@ void close_pipe(uv_pipe_t* handle, int* status, uv_err_t* err) {
   }
 
   if (handle->flags & UV_HANDLE_CONNECTION) {
+    handle->flags |= UV_HANDLE_SHUTTING;
     eof_timer_destroy(handle);
   }
 
@@ -633,8 +644,6 @@ void close_pipe(uv_pipe_t* handle, int* status, uv_err_t* err) {
     CloseHandle(handle->handle);
     handle->handle = INVALID_HANDLE_VALUE;
   }
-
-  handle->flags |= UV_HANDLE_SHUT;
 }
 
 

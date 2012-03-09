@@ -91,9 +91,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       tcp = (uv_tcp_t*)handle;
       /* If we don't shutdown before calling closesocket, windows will */
       /* silently discard the kernel send buffer and reset the connection. */
-      if (!(tcp->flags & UV_HANDLE_SHUT)) {
+      if ((tcp->flags & UV_HANDLE_CONNECTION) &&
+          !(tcp->flags & UV_HANDLE_SHUT)) {
         shutdown(tcp->socket, SD_SEND);
-        tcp->flags |= UV_HANDLE_SHUT;
+        tcp->flags |= UV_HANDLE_SHUTTING | UV_HANDLE_SHUT;
       }
       tcp->flags &= ~(UV_HANDLE_READING | UV_HANDLE_LISTENING);
       closesocket(tcp->socket);
