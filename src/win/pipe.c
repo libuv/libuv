@@ -98,59 +98,61 @@ static void uv_pipe_connection_init(uv_pipe_t* handle) {
 }
 
 
-static int open_named_pipe(uv_pipe_t* handle) {
-  /* 
-   * Assume that we have a duplex pipe first, so attempt to 
+static HANDLE open_named_pipe(WCHAR* name, DWORD* duplex_flags) {
+  HANDLE pipeHandle;
+
+  /*
+   * Assume that we have a duplex pipe first, so attempt to
    * connect with GENERIC_READ | GENERIC_WRITE.
    */
-  handle->handle = CreateFileW(handle->name,
-                               GENERIC_READ | GENERIC_WRITE,
-                               0,
-                               NULL,
-                               OPEN_EXISTING,
-                               FILE_FLAG_OVERLAPPED,
-                               NULL);
-
-  if (handle->handle != INVALID_HANDLE_VALUE) {
-    return 0;
+  pipeHandle = CreateFileW(name,
+                           GENERIC_READ | GENERIC_WRITE,
+                           0,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_FLAG_OVERLAPPED,
+                           NULL);
+  if (pipeHandle != INVALID_HANDLE_VALUE) {
+    *duplex_flags = 0;
+    return pipeHandle;
   }
 
-  /* 
-   * If the pipe is not duplex CreateFileW fails with 
+  /*
+   * If the pipe is not duplex CreateFileW fails with
    * ERROR_ACCESS_DENIED.  In that case try to connect
    * as a read-only or write-only.
    */
   if (GetLastError() == ERROR_ACCESS_DENIED) {
-    handle->handle = CreateFileW(handle->name,
-                                 GENERIC_READ | FILE_WRITE_ATTRIBUTES,
-                                 0,
-                                 NULL,
-                                 OPEN_EXISTING,
-                                 FILE_FLAG_OVERLAPPED,
-                                 NULL);
+    pipeHandle = CreateFileW(name,
+                             GENERIC_READ | FILE_WRITE_ATTRIBUTES,
+                             0,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_OVERLAPPED,
+                             NULL);
 
-    if (handle->handle != INVALID_HANDLE_VALUE) {
-      handle->flags |= UV_HANDLE_SHUT;
-      return 0;
+    if (pipeHandle != INVALID_HANDLE_VALUE) {
+      *duplex_flags = UV_HANDLE_SHUTTING;
+      return pipeHandle;
     }
   }
 
   if (GetLastError() == ERROR_ACCESS_DENIED) {
-    handle->handle = CreateFileW(handle->name,
-                                 GENERIC_WRITE | FILE_READ_ATTRIBUTES,
-                                 0,
-                                 NULL,
-                                 OPEN_EXISTING,
-                                 FILE_FLAG_OVERLAPPED,
-                                 NULL);
+    pipeHandle = CreateFileW(name,
+                             GENERIC_WRITE | FILE_READ_ATTRIBUTES,
+                             0,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_OVERLAPPED,
+                             NULL);
 
-    if (handle->handle != INVALID_HANDLE_VALUE) {
-      handle->flags |= UV_HANDLE_EOF;
-      return 0;
+    if (pipeHandle != INVALID_HANDLE_VALUE) {
+      *duplex_flags = UV_HANDLE_EOF;
+      return pipeHandle;
     }
   }
 
-  return -1;
+  return INVALID_HANDLE_VALUE;
 }
 
 
@@ -208,7 +210,7 @@ done:
 
 
 static int uv_set_pipe_handle(uv_loop_t* loop, uv_pipe_t* handle,
-    HANDLE pipeHandle) {
+    HANDLE pipeHandle, DWORD duplex_flags) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_MODE_INFORMATION mode_info;
@@ -241,6 +243,9 @@ static int uv_set_pipe_handle(uv_loop_t* loop, uv_pipe_t* handle,
       handle->flags |= UV_HANDLE_EMULATE_IOCP;
     }
   }
+
+  handle->handle = pipeHandle;
+  handle->flags |= duplex_flags;
 
   return 0;
 }
@@ -449,7 +454,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     goto error;
   }
 
-  if (uv_set_pipe_handle(loop, handle, handle->accept_reqs[0].pipeHandle)) {
+  if (uv_set_pipe_handle(loop, handle, handle->accept_reqs[0].pipeHandle, 0)) {
     uv__set_sys_error(loop, GetLastError());
     goto error;
   }
@@ -476,11 +481,12 @@ error:
 
 
 static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
-  HANDLE pipeHandle = INVALID_HANDLE_VALUE;
   int errno;
   uv_loop_t* loop;
   uv_pipe_t* handle;
   uv_connect_t* req;
+  HANDLE pipeHandle = INVALID_HANDLE_VALUE;
+  DWORD duplex_flags;
 
   req = (uv_connect_t*) parameter;
   assert(req);
@@ -493,7 +499,8 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   /* We wait for the pipe to become available with WaitNamedPipe. */
   while (WaitNamedPipeW(handle->name, 30000)) {
     /* The pipe is now available, try to connect. */
-    if (open_named_pipe(handle) == 0) {
+    pipeHandle = open_named_pipe(handle->name, &duplex_flags);
+    if (pipeHandle != INVALID_HANDLE_VALUE) {
       break;
     }
 
@@ -501,8 +508,7 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   }
 
   if (pipeHandle != INVALID_HANDLE_VALUE &&
-      !uv_set_pipe_handle(loop, handle, pipeHandle)) {
-    handle->handle = pipeHandle;
+      !uv_set_pipe_handle(loop, handle, pipeHandle, duplex_flags)) {
     SET_REQ_SUCCESS(req);
   } else {
     SET_REQ_ERROR(req, GetLastError());
@@ -519,8 +525,8 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     const char* name, uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int errno, nameSize;
-
-  handle->handle = INVALID_HANDLE_VALUE;
+  HANDLE pipeHandle = INVALID_HANDLE_VALUE;
+  DWORD duplex_flags;
 
   uv_req_init(loop, (uv_req_t*) req);
   req->type = UV_CONNECT;
@@ -539,7 +545,8 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     goto error;
   }
 
-  if (open_named_pipe(handle) != 0) {
+  pipeHandle = open_named_pipe(handle->name, &duplex_flags);
+  if (pipeHandle == INVALID_HANDLE_VALUE) {
     if (GetLastError() == ERROR_PIPE_BUSY) {
       /* Wait for the server to make a pipe instance available. */
       if (!QueueUserWorkItem(&pipe_connect_thread_proc,
@@ -558,9 +565,12 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     goto error;
   }
 
-  assert(handle->handle != INVALID_HANDLE_VALUE);
+  assert(pipeHandle != INVALID_HANDLE_VALUE);
 
-  if (uv_set_pipe_handle(loop, (uv_pipe_t*)req->handle, handle->handle)) {
+  if (uv_set_pipe_handle(loop,
+                         (uv_pipe_t*) req->handle,
+                         pipeHandle,
+                         duplex_flags)) {
     errno = GetLastError();
     goto error;
   }
@@ -576,9 +586,8 @@ error:
     handle->name = NULL;
   }
 
-  if (handle->handle != INVALID_HANDLE_VALUE) {
-    CloseHandle(handle->handle);
-    handle->handle = INVALID_HANDLE_VALUE;
+  if (pipeHandle != INVALID_HANDLE_VALUE) {
+    CloseHandle(pipeHandle);
   }
 
   /* Make this req pending reporting an error. */
@@ -643,7 +652,7 @@ static void uv_pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
       return;
     }
 
-    if (uv_set_pipe_handle(loop, handle, req->pipeHandle)) {
+    if (uv_set_pipe_handle(loop, handle, req->pipeHandle, 0)) {
       CloseHandle(req->pipeHandle);
       req->pipeHandle = INVALID_HANDLE_VALUE;
       SET_REQ_ERROR(req, GetLastError());
@@ -1612,7 +1621,7 @@ void uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   HANDLE os_handle = (HANDLE)_get_osfhandle(file);
 
   if (os_handle == INVALID_HANDLE_VALUE ||
-      uv_set_pipe_handle(pipe->loop, pipe, os_handle) == -1) {
+      uv_set_pipe_handle(pipe->loop, pipe, os_handle, 0) == -1) {
     return;
   }
 

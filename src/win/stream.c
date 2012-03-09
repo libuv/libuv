@@ -194,5 +194,5 @@ int uv_is_readable(uv_stream_t* handle) {
 
 
 int uv_is_writable(uv_stream_t* handle) {
-  return !(handle->flags & UV_HANDLE_SHUT);
+  return !(handle->flags & UV_HANDLE_SHUTTING);
 }
