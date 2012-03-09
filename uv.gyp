@@ -319,6 +319,7 @@
         'test/test-platform-output.c',
         'test/test-process-title.c',
         'test/test-ref.c',
+        'test/test-shutdown-close.c',
         'test/test-shutdown-eof.c',
         'test/test-spawn.c',
         'test/test-stdio-over-pipes.c',
