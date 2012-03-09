@@ -300,6 +300,7 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
         uv__set_sys_error(loop, pRtlNtStatusToDosError(nt_status));
         req->cb(req, -1);
       }
+      uv_unref(loop);
       DECREASE_PENDING_REQ_COUNT(handle);
       return;
     }
@@ -328,6 +329,7 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
         uv__set_sys_error(loop, GetLastError());
         req->cb(req, -1);
       }
+      uv_unref(loop);
       DECREASE_PENDING_REQ_COUNT(handle);
       return;
     }
@@ -556,6 +558,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
         goto error;
       }
 
+      uv_ref(loop);
       handle->reqs_pending++;
 
       return;
@@ -578,6 +581,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   SET_REQ_SUCCESS(req);
   uv_insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
+  uv_ref(loop);
   return;
 
 error:
@@ -594,6 +598,7 @@ error:
   SET_REQ_ERROR(req, errno);
   uv_insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
+  uv_ref(loop);
   return;
 }
 
@@ -1132,10 +1137,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
       handle->write_queue_size += req->queued_bytes;
     }
 
-    if (handle->write_reqs_pending == 0) {
-      uv_ref(loop);
-    }
-
+    uv_ref(loop);
     handle->reqs_pending++;
     handle->write_reqs_pending++;
 
@@ -1190,10 +1192,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
     }
   }
 
-  if (handle->write_reqs_pending == 0) {
-    uv_ref(loop);
-  }
-
+  uv_ref(loop);
   handle->reqs_pending++;
   handle->write_reqs_pending++;
 
@@ -1449,15 +1448,12 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_queue_non_overlapped_write(handle);
   }
 
-  if (handle->write_reqs_pending == 0) {
-    uv_unref(loop);
-  }
-
   if (handle->write_reqs_pending == 0 &&
       handle->flags & UV_HANDLE_SHUTTING) {
     uv_want_endgame(loop, (uv_handle_t*)handle);
   }
 
+  uv_unref(loop);
   DECREASE_PENDING_REQ_COUNT(handle);
 }
 
@@ -1504,6 +1500,7 @@ void uv_process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
     }
   }
 
+  uv_unref(loop);
   DECREASE_PENDING_REQ_COUNT(handle);
 }
 
@@ -1528,6 +1525,7 @@ void uv_process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
     req->cb(req, 0);
   }
 
+  uv_unref(loop);
   DECREASE_PENDING_REQ_COUNT(handle);
 }
 
@@ -1543,6 +1541,7 @@ static void eof_timer_init(uv_pipe_t* pipe) {
   r = uv_timer_init(pipe->loop, pipe->eof_timer);
   assert(r == 0); /* timers can't fail */
   pipe->eof_timer->data = pipe;
+  uv_unref(pipe->loop);
 }
 
 
@@ -1605,6 +1604,7 @@ static void eof_timer_destroy(uv_pipe_t* pipe) {
   assert(pipe->flags && UV_HANDLE_CONNECTION);
 
   if (pipe->eof_timer) {
+    uv_ref(pipe->loop);
     uv_close((uv_handle_t*) pipe->eof_timer, eof_timer_close_cb);
     pipe->eof_timer = NULL;
   }

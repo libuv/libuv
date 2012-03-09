@@ -179,7 +179,7 @@ void uv_want_endgame(uv_loop_t* loop, uv_handle_t* handle) {
 void uv_process_endgames(uv_loop_t* loop) {
   uv_handle_t* handle;
 
-  while (loop->endgame_handles) {
+  while (loop->endgame_handles && loop->refs > 0) {
     handle = loop->endgame_handles;
     loop->endgame_handles = handle->endgame_next;
 

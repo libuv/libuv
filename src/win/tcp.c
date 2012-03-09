@@ -189,6 +189,7 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
       handle->shutdown_req->cb(handle->shutdown_req, status);
     }
 
+    uv_unref(loop);
     DECREASE_PENDING_REQ_COUNT(handle);
     return;
   }
@@ -643,10 +644,12 @@ int uv__tcp_connect(uv_connect_t* req,
   if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
     /* Process the req without IOCP. */
     handle->reqs_pending++;
+    uv_ref(loop);
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
     /* The req will be processed with IOCP. */
     handle->reqs_pending++;
+    uv_ref(loop);
   } else {
     uv__set_sys_error(loop, WSAGetLastError());
     return -1;
@@ -702,9 +705,11 @@ int uv__tcp_connect6(uv_connect_t* req,
 
   if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
     handle->reqs_pending++;
+    uv_ref(loop);
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
     handle->reqs_pending++;
+    uv_ref(loop);
   } else {
     uv__set_sys_error(loop, WSAGetLastError());
     return -1;
@@ -799,12 +804,14 @@ int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
     handle->reqs_pending++;
     handle->write_reqs_pending++;
     uv_insert_pending_req(loop, (uv_req_t*) req);
+    uv_ref(loop);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
     req->queued_bytes = uv_count_bufs(bufs, bufcnt);
     handle->reqs_pending++;
     handle->write_reqs_pending++;
     handle->write_queue_size += req->queued_bytes;
+    uv_ref(loop);
   } else {
     /* Send failed due to an error. */
     uv__set_sys_error(loop, WSAGetLastError());
@@ -950,6 +957,7 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+  uv_unref(loop);
 }
 
 
@@ -1024,6 +1032,7 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+  uv_unref(loop);
 }
 
 

@@ -1683,6 +1683,7 @@ int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
 
   handle->reqs_pending++;
   handle->write_reqs_pending++;
+  uv_ref(loop);
 
   req->queued_bytes = 0;
 
@@ -1715,6 +1716,7 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+  uv_unref(loop);
 }
 
 
@@ -1740,6 +1742,7 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
       handle->shutdown_req->cb(handle->shutdown_req, 0);
     }
 
+    uv_unref(loop);
     DECREASE_PENDING_REQ_COUNT(handle);
     return;
   }
