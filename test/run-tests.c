@@ -271,6 +271,11 @@ static int maybe_run_test(int argc, char **argv) {
     return ipc_helper(1);
   }
 
+  if (strcmp(argv[1], "ipc_send_recv_helper") == 0) {
+    int ipc_send_recv_helper(void); /* See test-ipc-send-recv.c */
+    return ipc_send_recv_helper();
+  }
+
   if (strcmp(argv[1], "stdio_over_pipes_helper") == 0) {
     return stdio_over_pipes_helper();
   }
