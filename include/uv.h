@@ -1482,8 +1482,8 @@ struct uv_counters_s {
 
 struct uv_loop_s {
   UV_LOOP_PRIVATE_FIELDS
-  /* list used for ares task handles */
-  uv_ares_task_t* uv_ares_handles_;
+  /* RB_HEAD(uv__ares_tasks, uv_ares_task_t) */
+  struct uv__ares_tasks { uv_ares_task_t* rbh_root; } uv_ares_handles_;
   /* Various thing for libeio. */
   uv_async_t uv_eio_want_poll_notifier;
   uv_async_t uv_eio_done_poll_notifier;

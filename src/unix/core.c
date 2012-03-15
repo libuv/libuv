@@ -145,6 +145,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 static int uv__loop_init(uv_loop_t* loop,
                          struct ev_loop *(ev_loop_new)(unsigned int flags)) {
   memset(loop, 0, sizeof(*loop));
+  RB_INIT(&loop->uv_ares_handles_);
 #if HAVE_KQUEUE
   loop->ev = ev_loop_new(EVBACKEND_KQUEUE);
 #else
