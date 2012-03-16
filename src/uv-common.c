@@ -32,10 +32,6 @@
 #include "ares/inet_net_pton.h"
 #include "ares/inet_ntop.h"
 
-#if !defined(__GNUC__) && !defined(__clang__)
-# define __attribute__(x)
-#endif
-
 
 size_t uv_strlcpy(char* dst, const char* src, size_t size) {
   size_t n;
@@ -191,8 +187,7 @@ static int cmp_ares_tasks(const uv_ares_task_t* a, const uv_ares_task_t* b) {
 }
 
 
-RB_GENERATE_INTERNAL(uv__ares_tasks, uv_ares_task_s, node, cmp_ares_tasks,
-  inline static __attribute__((unused)))
+RB_GENERATE_STATIC(uv__ares_tasks, uv_ares_task_s, node, cmp_ares_tasks)
 
 
 /* add ares handle to list */

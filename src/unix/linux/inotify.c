@@ -132,8 +132,7 @@ static int compare_watchers(const uv_fs_event_t* a, const uv_fs_event_t* b) {
 }
 
 
-RB_GENERATE_INTERNAL(uv__inotify_watchers, uv_fs_event_s, node, compare_watchers,
-  inline static __attribute__((unused)))
+RB_GENERATE_STATIC(uv__inotify_watchers, uv_fs_event_s, node, compare_watchers)
 
 
 void uv__inotify_loop_init(uv_loop_t* loop) {
