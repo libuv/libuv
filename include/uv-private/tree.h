@@ -26,7 +26,11 @@
 #ifndef  UV_TREE_H_
 #define  UV_TREE_H_
 
-#define __unused
+#if __GNUC__
+# define __unused __attribute__((unused))
+#else
+# define __unused
+#endif
 
 /*
  * This file defines data structures for different types of trees:
