@@ -225,7 +225,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   if (uv__stream_open(streamClient, streamServer->accepted_fd,
         UV_READABLE | UV_WRITABLE)) {
     /* TODO handle error */
-    uv__close(streamServer->accepted_fd);
+    close(streamServer->accepted_fd);
     streamServer->accepted_fd = -1;
     goto out;
   }
@@ -793,7 +793,7 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
     }
 
     if (uv__stream_open(stream, sockfd, UV_READABLE | UV_WRITABLE)) {
-      uv__close(sockfd);
+      close(sockfd);
       return -2;
     }
   }
