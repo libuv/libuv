@@ -340,3 +340,63 @@ TEST_IMPL(fs_event_close_with_pending_event) {
 
   return 0;
 }
+
+
+static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
+    int events, int status) {
+  ASSERT(status == 0);
+
+  ASSERT(fs_event_cb_called < 3);
+  ++fs_event_cb_called;
+
+  if (fs_event_cb_called == 3) {
+    uv_close((uv_handle_t*) handle, close_cb);
+  }
+}
+
+
+TEST_IMPL(fs_event_close_in_callback) {
+  uv_loop_t* loop;
+  uv_fs_t fs_req;
+  int r;
+
+  loop = uv_default_loop();
+
+  create_dir(loop, "watch_dir");
+  create_file(loop, "watch_dir/file1");
+  create_file(loop, "watch_dir/file2");
+  create_file(loop, "watch_dir/file3");
+  create_file(loop, "watch_dir/file4");
+  create_file(loop, "watch_dir/file5");
+
+  r = uv_fs_event_init(loop, &fs_event, "watch_dir", fs_event_cb_close, 0);
+  ASSERT(r == 0);
+
+  /* Generate a couple of fs events. */
+  touch_file(loop, "watch_dir/file1");
+  touch_file(loop, "watch_dir/file2");
+  touch_file(loop, "watch_dir/file3");
+  touch_file(loop, "watch_dir/file4");
+  touch_file(loop, "watch_dir/file5");
+
+  uv_run(loop);
+
+  ASSERT(close_cb_called == 1);
+  ASSERT(fs_event_cb_called == 3);
+
+  /* Clean up */
+  r = uv_fs_unlink(loop, &fs_req, "watch_dir/file1", NULL);
+  ASSERT(r == 0);
+  r = uv_fs_unlink(loop, &fs_req, "watch_dir/file2", NULL);
+  ASSERT(r == 0);
+  r = uv_fs_unlink(loop, &fs_req, "watch_dir/file3", NULL);
+  ASSERT(r == 0);
+  r = uv_fs_unlink(loop, &fs_req, "watch_dir/file4", NULL);
+  ASSERT(r == 0);
+  r = uv_fs_unlink(loop, &fs_req, "watch_dir/file5", NULL);
+  ASSERT(r == 0);
+  r = uv_fs_rmdir(loop, &fs_req, "watch_dir", NULL);
+  ASSERT(r == 0);
+
+  return 0;
+}
