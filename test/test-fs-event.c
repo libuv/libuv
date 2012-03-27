@@ -36,7 +36,7 @@ static void create_dir(uv_loop_t* loop, const char* name) {
   int r;
   uv_fs_t req;
   r = uv_fs_mkdir(loop, &req, name, 0755, NULL);
-  ASSERT(r == 0);
+  ASSERT(r == 0 || uv_last_error(loop).code == UV_EEXIST);
   uv_fs_req_cleanup(&req);
 }
 
