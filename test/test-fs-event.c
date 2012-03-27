@@ -27,10 +27,10 @@
 
 static uv_fs_event_t fs_event;
 static uv_timer_t timer;
-static int timer_cb_called;
-static int close_cb_called;
-static int fs_event_cb_called;
-static int timer_cb_touch_called;
+static int timer_cb_called = 0;
+static int close_cb_called = 0;
+static int fs_event_cb_called = 0;
+static int timer_cb_touch_called = 0;
 
 static void create_dir(uv_loop_t* loop, const char* name) {
   int r;
@@ -117,7 +117,7 @@ static void timer_cb_dir(uv_timer_t* handle, int status) {
 
 static void timer_cb_file(uv_timer_t* handle, int status) {
   ++timer_cb_called;
-  
+
   if (timer_cb_called == 1) {
     touch_file(handle->loop, "watch_dir/file1");
   } else {
@@ -271,7 +271,7 @@ TEST_IMPL(fs_event_no_callback_on_close) {
 
 
 static void fs_event_fail(uv_fs_event_t* handle, const char* filename,
-  int events, int status) {
+    int events, int status) {
   ASSERT(0 && "should never be called");
 }
 
