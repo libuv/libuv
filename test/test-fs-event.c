@@ -308,3 +308,35 @@ TEST_IMPL(fs_event_immediate_close) {
 
   return 0;
 }
+
+
+TEST_IMPL(fs_event_close_with_pending_event) {
+  uv_loop_t* loop;
+  uv_fs_t fs_req;
+  int r;
+
+  loop = uv_default_loop();
+
+  create_dir(loop, "watch_dir");
+  create_file(loop, "watch_dir/file");
+
+  r = uv_fs_event_init(loop, &fs_event, "watch_dir", fs_event_fail, 0);
+  ASSERT(r == 0);
+
+  /* Generate an fs event. */
+  touch_file(loop, "watch_dir/file");
+
+  uv_close((uv_handle_t*)&fs_event, close_cb);
+
+  uv_run(loop);
+
+  ASSERT(close_cb_called == 1);
+
+  /* Clean up */
+  r = uv_fs_unlink(loop, &fs_req, "watch_dir/file", NULL);
+  ASSERT(r == 0);
+  r = uv_fs_rmdir(loop, &fs_req, "watch_dir", NULL);
+  ASSERT(r == 0);
+
+  return 0;
+}
