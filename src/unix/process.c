@@ -34,7 +34,7 @@
 # include <TargetConditionals.h>
 #endif
 
-#if defined(__APPLE__) && !defined(TARGET_OS_IPHONE)
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <crt_externs.h>
 # define environ (*_NSGetEnviron())
 #else
