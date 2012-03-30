@@ -26,10 +26,12 @@
 #ifndef  UV_TREE_H_
 #define  UV_TREE_H_
 
-#if __GNUC__
-# define __unused __attribute__((unused))
-#else
-# define __unused
+#ifndef __unused
+# if __GNUC__
+#  define __unused __attribute__((unused))
+# else
+#  define __unused
+# endif
 #endif
 
 /*
