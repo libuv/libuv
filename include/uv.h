@@ -495,6 +495,13 @@ UV_EXTERN int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb,
 UV_EXTERN int uv_write(uv_write_t* req, uv_stream_t* handle,
     uv_buf_t bufs[], int bufcnt, uv_write_cb cb);
 
+/*
+ * Extended write function for sending handles over a pipe. The pipe must be
+ * initialized with ipc == 1.
+ * send_handle must be a TCP socket or pipe, which is a server or a connection
+ * (listening or connected state).  Bound sockets or pipes will be assumed to
+ * be servers.
+ */
 UV_EXTERN int uv_write2(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[],
     int bufcnt, uv_stream_t* send_handle, uv_write_cb cb);
 

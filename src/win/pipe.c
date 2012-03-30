@@ -1055,7 +1055,9 @@ static int uv_pipe_write_impl(uv_loop_t* loop, uv_write_t* req,
   }
 
   /* Only TCP handles are supported for sharing. */
-  if (send_handle && send_handle->type != UV_TCP) {
+  if (send_handle && ((send_handle->type != UV_TCP) ||
+      (!(send_handle->flags & UV_HANDLE_BOUND) &&
+       !(send_handle->flags & UV_HANDLE_CONNECTION)))) {
     uv__set_artificial_error(loop, UV_ENOTSUP);
     return -1;
   }
