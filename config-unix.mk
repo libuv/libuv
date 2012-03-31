@@ -63,7 +63,7 @@ EIO_CONFIG=config_linux.h
 CSTDFLAG += -D_GNU_SOURCE
 CPPFLAGS += -Isrc/ares/config_linux
 LINKFLAGS+=-ldl -lrt
-OBJS += src/unix/linux/core.o src/unix/linux/inotify.o
+OBJS += src/unix/linux/core.o src/unix/linux/inotify.o src/unix/linux/syscalls.o
 endif
 
 ifeq (FreeBSD,$(uname_S))

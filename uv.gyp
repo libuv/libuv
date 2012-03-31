@@ -224,6 +224,8 @@
           'sources': [
             'src/unix/linux/core.c',
             'src/unix/linux/inotify.c',
+            'src/unix/linux/syscalls.c',
+            'src/unix/linux/syscalls.h',
           ],
           'defines': [
             'EV_CONFIG_H="config_linux.h"',

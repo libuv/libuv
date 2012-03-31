@@ -767,9 +767,8 @@ int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t slen) {
   assert(sockfd >= 0);
 
   while (1) {
-#if HAVE_SYS_ACCEPT4
-    peerfd = sys_accept4(sockfd, saddr, &slen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-
+#if __linux__
+    peerfd = uv__accept4(sockfd, saddr, &slen, UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
     if (peerfd != -1)
       break;
 

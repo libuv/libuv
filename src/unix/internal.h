@@ -37,79 +37,9 @@
 #undef HAVE_KQUEUE
 #undef HAVE_PORTS_FS
 
-#if defined(__linux__)
-
-# undef HAVE_SYS_UTIMESAT
-# undef HAVE_SYS_PIPE2
-# undef HAVE_SYS_ACCEPT4
-
-# undef _GNU_SOURCE
-# define _GNU_SOURCE
-
-# include <linux/version.h>
-# include <sys/syscall.h>
-# include <features.h>
-# include <unistd.h>
-
-# if __NR_utimensat
-#  define HAVE_SYS_UTIMESAT 1
-# endif
-# if __NR_pipe2
-#  define HAVE_SYS_PIPE2 1
-# endif
-# if __NR_accept4
-#  define HAVE_SYS_ACCEPT4 1
-# endif
-
-# ifndef O_CLOEXEC
-#  define O_CLOEXEC 02000000
-# endif
-
-# ifndef SOCK_CLOEXEC
-#  define SOCK_CLOEXEC O_CLOEXEC
-# endif
-
-# ifndef SOCK_NONBLOCK
-#  define SOCK_NONBLOCK O_NONBLOCK
-# endif
-
-# if HAVE_SYS_UTIMESAT
-inline static int sys_utimesat(int dirfd,
-                               const char* path,
-                               const struct timespec times[2],
-                               int flags)
-{
-  return syscall(__NR_utimensat, dirfd, path, times, flags);
-}
-inline static int sys_futimes(int fd, const struct timeval times[2])
-{
-  struct timespec ts[2];
-  ts[0].tv_sec = times[0].tv_sec, ts[0].tv_nsec = times[0].tv_usec * 1000;
-  ts[1].tv_sec = times[1].tv_sec, ts[1].tv_nsec = times[1].tv_usec * 1000;
-  return sys_utimesat(fd, NULL, ts, 0);
-}
-#  undef HAVE_FUTIMES
-#  define HAVE_FUTIMES 1
-#  define futimes(fd, times) sys_futimes(fd, times)
-# endif /* HAVE_SYS_FUTIMESAT */
-
-# if HAVE_SYS_PIPE2
-inline static int sys_pipe2(int pipefd[2], int flags)
-{
-  return syscall(__NR_pipe2, pipefd, flags);
-}
-# endif /* HAVE_SYS_PIPE2 */
-
-# if HAVE_SYS_ACCEPT4
-inline static int sys_accept4(int fd,
-                              struct sockaddr* addr,
-                              socklen_t* addrlen,
-                              int flags)
-{
-  return syscall(__NR_accept4, fd, addr, addrlen, flags);
-}
-# endif /* HAVE_SYS_ACCEPT4 */
-
+#if __linux__
+# include "linux/syscalls.h"
+# define HAVE_FUTIMES 1 /* emulated with utimesat() */
 #endif /* __linux__ */
 
 #if defined(__sun)
@@ -118,6 +48,8 @@ inline static int sys_accept4(int fd,
 # ifdef PORT_SOURCE_FILE
 #  define HAVE_PORTS_FS 1
 # endif
+# define HAVE_FUTIMES 1
+# define futimes(fd, tv) futimesat(fd, (void*)0, tv)
 #endif /* __sun */
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__sun)
