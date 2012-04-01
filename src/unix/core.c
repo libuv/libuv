@@ -142,6 +142,11 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 }
 
 
+int uv_is_closing(uv_handle_t* handle) {
+  return handle->flags & (UV_CLOSING | UV_CLOSED);
+}
+
+
 static int uv__loop_init(uv_loop_t* loop,
                          struct ev_loop *(ev_loop_new)(unsigned int flags)) {
   memset(loop, 0, sizeof(*loop));

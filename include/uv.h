@@ -523,6 +523,16 @@ UV_EXTERN int uv_is_writable(uv_stream_t* handle);
 
 
 /*
+ * Used to determine whether a stream is closing or closed.
+ *
+ * N.B. is only valid between the initialization of the handle
+ *      and the arrival of the close callback, and cannot be used
+ *      to validate the handle.
+ */
+UV_EXTERN int uv_is_closing(uv_handle_t* handle);
+
+
+/*
  * uv_tcp_t is a subclass of uv_stream_t
  *
  * Represents a TCP stream or TCP server.
