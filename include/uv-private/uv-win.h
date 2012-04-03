@@ -390,13 +390,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_handle_t* endgame_next;              \
   unsigned int flags;
 
-#define UV_ARES_TASK_PRIVATE_FIELDS       \
-  struct uv_req_s ares_req;               \
-  SOCKET sock;                            \
-  HANDLE h_wait;                          \
-  WSAEVENT h_event;                       \
-  HANDLE h_close_event;
-
 #define UV_GETADDRINFO_PRIVATE_FIELDS     \
   struct uv_req_s getadddrinfo_req;       \
   uv_getaddrinfo_cb getaddrinfo_cb;       \

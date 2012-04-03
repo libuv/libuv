@@ -182,11 +182,6 @@ typedef void* uv_lib_t;
   ev_timer timer_watcher; \
   uv_timer_cb timer_cb;
 
-#define UV_ARES_TASK_PRIVATE_FIELDS \
-  int sock; \
-  ev_io read_watcher; \
-  ev_io write_watcher;
-
 #define UV_GETADDRINFO_PRIVATE_FIELDS \
   uv_getaddrinfo_cb cb; \
   struct addrinfo* hints; \
