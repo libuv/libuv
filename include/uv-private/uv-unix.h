@@ -74,7 +74,7 @@ typedef void* uv_lib_t;
    * sure that we're always calling ares_process. See the warning above the \
    * definition of ares_timeout(). \
    */ \
-  ev_timer timer; \
+  uv_timer_t timer; \
   /* Poll result queue */ \
   eio_channel uv_eio_channel; \
   struct ev_loop* ev; \
