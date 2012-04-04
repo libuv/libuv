@@ -194,6 +194,7 @@
             'src/unix/ev/ev_wrap.h',
             'src/unix/ev/event.h',
             'src/unix/fs.c',
+            'src/unix/idle.c',
             'src/unix/internal.h',
             'src/unix/pipe.c',
             'src/unix/prepare.c',

@@ -338,53 +338,6 @@ void uv__req_init(uv_loop_t* loop, uv_req_t* req) {
 }
 
 
-static void uv__idle(EV_P_ ev_idle* w, int revents) {
-  uv_idle_t* idle = container_of(w, uv_idle_t, idle_watcher);
-
-  if (idle->idle_cb) {
-    idle->idle_cb(idle, 0);
-  }
-}
-
-
-int uv_idle_init(uv_loop_t* loop, uv_idle_t* idle) {
-  uv__handle_init(loop, (uv_handle_t*)idle, UV_IDLE);
-  loop->counters.idle_init++;
-
-  ev_idle_init(&idle->idle_watcher, uv__idle);
-  idle->idle_cb = NULL;
-
-  return 0;
-}
-
-
-int uv_idle_start(uv_idle_t* idle, uv_idle_cb cb) {
-  int was_active = ev_is_active(&idle->idle_watcher);
-
-  idle->idle_cb = cb;
-  ev_idle_start(idle->loop->ev, &idle->idle_watcher);
-
-  if (!was_active) {
-    ev_unref(idle->loop->ev);
-  }
-
-  return 0;
-}
-
-
-int uv_idle_stop(uv_idle_t* idle) {
-  int was_active = ev_is_active(&idle->idle_watcher);
-
-  ev_idle_stop(idle->loop->ev, &idle->idle_watcher);
-
-  if (was_active) {
-    ev_ref(idle->loop->ev);
-  }
-
-  return 0;
-}
-
-
 int uv_is_active(uv_handle_t* handle) {
   switch (handle->type) {
     case UV_TIMER:
