@@ -34,6 +34,7 @@ OBJS += src/unix/dl.o
 OBJS += src/unix/error.o
 OBJS += src/unix/fs.o
 OBJS += src/unix/pipe.o
+OBJS += src/unix/prepare.o
 OBJS += src/unix/process.o
 OBJS += src/unix/stream.o
 OBJS += src/unix/tcp.o

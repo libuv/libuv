@@ -338,53 +338,6 @@ void uv__req_init(uv_loop_t* loop, uv_req_t* req) {
 }
 
 
-static void uv__prepare(EV_P_ ev_prepare* w, int revents) {
-  uv_prepare_t* prepare = container_of(w, uv_prepare_t, prepare_watcher);
-
-  if (prepare->prepare_cb) {
-    prepare->prepare_cb(prepare, 0);
-  }
-}
-
-
-int uv_prepare_init(uv_loop_t* loop, uv_prepare_t* prepare) {
-  uv__handle_init(loop, (uv_handle_t*)prepare, UV_PREPARE);
-  loop->counters.prepare_init++;
-
-  ev_prepare_init(&prepare->prepare_watcher, uv__prepare);
-  prepare->prepare_cb = NULL;
-
-  return 0;
-}
-
-
-int uv_prepare_start(uv_prepare_t* prepare, uv_prepare_cb cb) {
-  int was_active = ev_is_active(&prepare->prepare_watcher);
-
-  prepare->prepare_cb = cb;
-
-  ev_prepare_start(prepare->loop->ev, &prepare->prepare_watcher);
-
-  if (!was_active) {
-    ev_unref(prepare->loop->ev);
-  }
-
-  return 0;
-}
-
-
-int uv_prepare_stop(uv_prepare_t* prepare) {
-  int was_active = ev_is_active(&prepare->prepare_watcher);
-
-  ev_prepare_stop(prepare->loop->ev, &prepare->prepare_watcher);
-
-  if (was_active) {
-    ev_ref(prepare->loop->ev);
-  }
-  return 0;
-}
-
-
 
 static void uv__check(EV_P_ ev_check* w, int revents) {
   uv_check_t* check = container_of(w, uv_check_t, check_watcher);

@@ -195,6 +195,7 @@
             'src/unix/fs.c',
             'src/unix/internal.h',
             'src/unix/pipe.c',
+            'src/unix/prepare.c',
             'src/unix/process.c',
             'src/unix/stream.c',
             'src/unix/tcp.c',
