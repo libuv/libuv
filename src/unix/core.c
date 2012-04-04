@@ -123,20 +123,14 @@ int uv_is_closing(uv_handle_t* handle) {
 }
 
 
-static int uv__loop_init(uv_loop_t* loop,
-                         struct ev_loop *(ev_loop_new)(unsigned int flags)) {
-  memset(loop, 0, sizeof(*loop));
-  RB_INIT(&loop->uv_ares_handles_);
-  loop->endgame_handles = NULL;
-#if HAVE_KQUEUE
-  loop->ev = ev_loop_new(EVBACKEND_KQUEUE);
-#else
-  loop->ev = ev_loop_new(EVFLAG_AUTO);
-#endif
-  ev_set_userdata(loop->ev, loop);
-  eio_channel_init(&loop->uv_eio_channel, loop);
-  uv__loop_platform_init(loop);
-  return 0;
+uv_loop_t* uv_default_loop(void) {
+  if (default_loop_ptr)
+    return default_loop_ptr;
+
+  if (uv__loop_init(&default_loop_struct, /* default_loop? */ 1))
+    return NULL;
+
+  return (default_loop_ptr = &default_loop_struct);
 }
 
 
@@ -146,7 +140,7 @@ uv_loop_t* uv_loop_new(void) {
   if ((loop = malloc(sizeof(*loop))) == NULL)
     return NULL;
 
-  if (uv__loop_init(loop, ev_loop_new)) {
+  if (uv__loop_init(loop, /* default_loop? */ 0)) {
     free(loop);
     return NULL;
   }
@@ -156,9 +150,7 @@ uv_loop_t* uv_loop_new(void) {
 
 
 void uv_loop_delete(uv_loop_t* loop) {
-  uv_ares_destroy(loop, loop->channel);
-  ev_loop_destroy(loop->ev);
-  uv__loop_platform_delete(loop);
+  uv__loop_delete(loop);
 #ifndef NDEBUG
   memset(loop, -1, sizeof *loop);
 #endif
@@ -171,18 +163,6 @@ void uv_loop_delete(uv_loop_t* loop) {
 
 int uv_loop_refcount(const uv_loop_t* loop) {
   return ev_loop_refcount(loop->ev);
-}
-
-
-uv_loop_t* uv_default_loop(void) {
-  if (default_loop_ptr)
-    return default_loop_ptr;
-
-  if (uv__loop_init(&default_loop_struct, ev_default_loop))
-    return NULL;
-
-  default_loop_ptr = &default_loop_struct;
-  return default_loop_ptr;
 }
 
 

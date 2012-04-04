@@ -104,6 +104,10 @@ int uv__cloexec(int fd, int set) __attribute__((unused));
 int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);
 
+/* loop */
+int uv__loop_init(uv_loop_t* loop, int default_loop);
+void uv__loop_delete(uv_loop_t* loop);
+
 /* error */
 uv_err_code uv_translate_sys_error(int sys_errno);
 void uv_fatal_error(const int errorno, const char* syscall);

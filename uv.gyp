@@ -196,6 +196,7 @@
             'src/unix/fs.c',
             'src/unix/idle.c',
             'src/unix/internal.h',
+            'src/unix/loop.c',
             'src/unix/pipe.c',
             'src/unix/prepare.c',
             'src/unix/process.c',
