@@ -338,55 +338,6 @@ void uv__req_init(uv_loop_t* loop, uv_req_t* req) {
 }
 
 
-
-static void uv__check(EV_P_ ev_check* w, int revents) {
-  uv_check_t* check = container_of(w, uv_check_t, check_watcher);
-
-  if (check->check_cb) {
-    check->check_cb(check, 0);
-  }
-}
-
-
-int uv_check_init(uv_loop_t* loop, uv_check_t* check) {
-  uv__handle_init(loop, (uv_handle_t*)check, UV_CHECK);
-  loop->counters.check_init++;
-
-  ev_check_init(&check->check_watcher, uv__check);
-  check->check_cb = NULL;
-
-  return 0;
-}
-
-
-int uv_check_start(uv_check_t* check, uv_check_cb cb) {
-  int was_active = ev_is_active(&check->check_watcher);
-
-  check->check_cb = cb;
-
-  ev_check_start(check->loop->ev, &check->check_watcher);
-
-  if (!was_active) {
-    ev_unref(check->loop->ev);
-  }
-
-  return 0;
-}
-
-
-int uv_check_stop(uv_check_t* check) {
-  int was_active = ev_is_active(&check->check_watcher);
-
-  ev_check_stop(check->loop->ev, &check->check_watcher);
-
-  if (was_active) {
-    ev_ref(check->loop->ev);
-  }
-
-  return 0;
-}
-
-
 static void uv__idle(EV_P_ ev_idle* w, int revents) {
   uv_idle_t* idle = container_of(w, uv_idle_t, idle_watcher);
 
@@ -394,7 +345,6 @@ static void uv__idle(EV_P_ ev_idle* w, int revents) {
     idle->idle_cb(idle, 0);
   }
 }
-
 
 
 int uv_idle_init(uv_loop_t* loop, uv_idle_t* idle) {

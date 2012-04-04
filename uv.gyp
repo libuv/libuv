@@ -182,6 +182,7 @@
             'include/uv-private/uv-unix.h',
             'src/unix/async.c',
             'src/unix/cares.c',
+            'src/unix/check.c',
             'src/unix/core.c',
             'src/unix/dl.c',
             'src/unix/eio/ecb.h',
