@@ -72,3 +72,8 @@ int uv_prepare_stop(uv_prepare_t* prepare) {
 int uv__prepare_active(const uv_prepare_t* handle) {
   return ev_is_active(&handle->prepare_watcher);
 }
+
+
+void uv__prepare_close(uv_prepare_t* handle) {
+  uv_prepare_stop(handle);
+}

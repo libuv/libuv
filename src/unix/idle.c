@@ -72,3 +72,8 @@ int uv_idle_stop(uv_idle_t* idle) {
 int uv__idle_active(const uv_idle_t* handle) {
   return ev_is_active(&handle->idle_watcher);
 }
+
+
+void uv__idle_close(uv_idle_t* handle) {
+  uv_idle_stop(handle);
+}

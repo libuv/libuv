@@ -50,3 +50,9 @@ int uv_async_send(uv_async_t* async) {
   ev_async_send(async->loop->ev, &async->async_watcher);
   return 0;
 }
+
+
+void uv__async_close(uv_async_t* handle) {
+  ev_async_stop(handle->loop->ev, &handle->async_watcher);
+  ev_ref(handle->loop->ev);
+}

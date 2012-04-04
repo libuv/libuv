@@ -130,19 +130,23 @@ int uv__tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay);
 /* pipe */
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 void uv__pipe_accept(EV_P_ ev_io* watcher, int revents);
-int uv_pipe_cleanup(uv_pipe_t* handle);
 
-/* udp */
-void uv__udp_start_close(uv_udp_t* handle);
-void uv__udp_finish_close(uv_udp_t* handle);
-
-/* fs */
-void uv__fs_event_destroy(uv_fs_event_t* handle);
-
+/* various */
 int uv__check_active(const uv_check_t* handle);
 int uv__idle_active(const uv_idle_t* handle);
 int uv__prepare_active(const uv_prepare_t* handle);
 int uv__timer_active(const uv_timer_t* handle);
+
+void uv__async_close(uv_async_t* handle);
+void uv__check_close(uv_check_t* handle);
+void uv__fs_event_close(uv_fs_event_t* handle);
+void uv__idle_close(uv_idle_t* handle);
+void uv__pipe_close(uv_pipe_t* handle);
+void uv__prepare_close(uv_prepare_t* handle);
+void uv__process_close(uv_process_t* handle);
+void uv__stream_close(uv_stream_t* handle);
+void uv__timer_close(uv_timer_t* handle);
+void uv__udp_close(uv_udp_t* handle);
 
 #define UV__F_IPC        (1 << 0)
 #define UV__F_NONBLOCK   (1 << 1)

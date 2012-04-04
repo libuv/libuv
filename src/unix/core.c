@@ -63,73 +63,52 @@ static void uv__finish_close(uv_handle_t* handle);
 
 
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
-  uv_async_t* async;
-  uv_stream_t* stream;
-  uv_process_t* process;
-
   handle->close_cb = close_cb;
 
   switch (handle->type) {
-    case UV_NAMED_PIPE:
-      uv_pipe_cleanup((uv_pipe_t*)handle);
-      /* Fall through. */
+  case UV_NAMED_PIPE:
+    uv__pipe_close((uv_pipe_t*)handle);
+    break;
 
-    case UV_TTY:
-    case UV_TCP:
-      stream = (uv_stream_t*)handle;
+  case UV_TTY:
+  case UV_TCP:
+    uv__stream_close((uv_stream_t*)handle);
+    break;
 
-      uv_read_stop(stream);
-      ev_io_stop(stream->loop->ev, &stream->write_watcher);
+  case UV_UDP:
+    uv__udp_close((uv_udp_t*)handle);
+    break;
 
-      close(stream->fd);
-      stream->fd = -1;
+  case UV_PREPARE:
+    uv__prepare_close((uv_prepare_t*)handle);
+    break;
 
-      if (stream->accepted_fd >= 0) {
-        close(stream->accepted_fd);
-        stream->accepted_fd = -1;
-      }
+  case UV_CHECK:
+    uv__check_close((uv_check_t*)handle);
+    break;
 
-      assert(!ev_is_active(&stream->read_watcher));
-      assert(!ev_is_active(&stream->write_watcher));
-      break;
+  case UV_IDLE:
+    uv__idle_close((uv_idle_t*)handle);
+    break;
 
-    case UV_UDP:
-      uv__udp_start_close((uv_udp_t*)handle);
-      break;
+  case UV_ASYNC:
+    uv__async_close((uv_async_t*)handle);
+    break;
 
-    case UV_PREPARE:
-      uv_prepare_stop((uv_prepare_t*) handle);
-      break;
+  case UV_TIMER:
+    uv__timer_close((uv_timer_t*)handle);
+    break;
 
-    case UV_CHECK:
-      uv_check_stop((uv_check_t*) handle);
-      break;
+  case UV_PROCESS:
+    uv__process_close((uv_process_t*)handle);
+    break;
 
-    case UV_IDLE:
-      uv_idle_stop((uv_idle_t*) handle);
-      break;
+  case UV_FS_EVENT:
+    uv__fs_event_close((uv_fs_event_t*)handle);
+    break;
 
-    case UV_ASYNC:
-      async = (uv_async_t*)handle;
-      ev_async_stop(async->loop->ev, &async->async_watcher);
-      ev_ref(async->loop->ev);
-      break;
-
-    case UV_TIMER:
-      uv_timer_stop((uv_timer_t*)handle);
-      break;
-
-    case UV_PROCESS:
-      process = (uv_process_t*)handle;
-      ev_child_stop(process->loop->ev, &process->child_watcher);
-      break;
-
-    case UV_FS_EVENT:
-      uv__fs_event_destroy((uv_fs_event_t*)handle);
-      break;
-
-    default:
-      assert(0);
+  default:
+    assert(0);
   }
 
   handle->flags |= UV_CLOSING;

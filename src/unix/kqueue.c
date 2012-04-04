@@ -121,7 +121,7 @@ int uv_fs_event_init(uv_loop_t* loop,
 }
 
 
-void uv__fs_event_destroy(uv_fs_event_t* handle) {
+void uv__fs_event_close(uv_fs_event_t* handle) {
   uv__fs_event_stop(handle);
   free(handle->filename);
   close(handle->fd);
@@ -141,7 +141,7 @@ int uv_fs_event_init(uv_loop_t* loop,
 }
 
 
-void uv__fs_event_destroy(uv_fs_event_t* handle) {
+void uv__fs_event_close(uv_fs_event_t* handle) {
   UNREACHABLE();
 }
 

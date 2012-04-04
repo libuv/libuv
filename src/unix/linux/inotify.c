@@ -215,7 +215,7 @@ int uv_fs_event_init(uv_loop_t* loop,
 }
 
 
-void uv__fs_event_destroy(uv_fs_event_t* handle) {
+void uv__fs_event_close(uv_fs_event_t* handle) {
   uv__inotify_rm_watch(handle->loop->inotify_fd, handle->fd);
   remove_watcher(handle);
   handle->fd = -1;

@@ -73,3 +73,8 @@ int uv_check_stop(uv_check_t* check) {
 int uv__check_active(const uv_check_t* handle) {
   return ev_is_active(&handle->check_watcher);
 }
+
+
+void uv__check_close(uv_check_t* handle) {
+  uv_check_stop(handle);
+}

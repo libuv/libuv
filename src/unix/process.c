@@ -362,3 +362,8 @@ uv_err_t uv_kill(int pid, int signum) {
     return uv_ok_;
   }
 }
+
+
+void uv__process_close(uv_process_t* handle) {
+  ev_child_stop(handle->loop->ev, &handle->child_watcher);
+}

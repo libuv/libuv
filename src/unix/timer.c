@@ -120,3 +120,8 @@ int64_t uv_timer_get_repeat(uv_timer_t* timer) {
 int uv__timer_active(const uv_timer_t* timer) {
   return timer->flags & UV_TIMER_ACTIVE;
 }
+
+
+void uv__timer_close(uv_timer_t* handle) {
+  uv_timer_stop(handle);
+}
