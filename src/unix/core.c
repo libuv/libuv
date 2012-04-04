@@ -502,36 +502,6 @@ int uv_is_active(uv_handle_t* handle) {
 }
 
 
-static void uv__async(EV_P_ ev_async* w, int revents) {
-  uv_async_t* async = container_of(w, uv_async_t, async_watcher);
-
-  if (async->async_cb) {
-    async->async_cb(async, 0);
-  }
-}
-
-
-int uv_async_init(uv_loop_t* loop, uv_async_t* async, uv_async_cb async_cb) {
-  uv__handle_init(loop, (uv_handle_t*)async, UV_ASYNC);
-  loop->counters.async_init++;
-
-  ev_async_init(&async->async_watcher, uv__async);
-  async->async_cb = async_cb;
-
-  /* Note: This does not have symmetry with the other libev wrappers. */
-  ev_async_start(loop->ev, &async->async_watcher);
-  ev_unref(loop->ev);
-
-  return 0;
-}
-
-
-int uv_async_send(uv_async_t* async) {
-  ev_async_send(async->loop->ev, &async->async_watcher);
-  return 0;
-}
-
-
 static int uv_getaddrinfo_done(eio_req* req) {
   uv_getaddrinfo_t* handle = req->data;
   struct addrinfo *res = handle->res;

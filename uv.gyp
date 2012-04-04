@@ -180,6 +180,7 @@
             'include/uv-private/ev.h',
             'include/uv-private/ngx-queue.h',
             'include/uv-private/uv-unix.h',
+            'src/unix/async.c',
             'src/unix/cares.c',
             'src/unix/core.c',
             'src/unix/dl.c',

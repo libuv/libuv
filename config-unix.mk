@@ -27,6 +27,7 @@ LINKFLAGS=-lm
 CPPFLAGS += -D_LARGEFILE_SOURCE
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
+OBJS += src/unix/async.o
 OBJS += src/unix/cares.o
 OBJS += src/unix/core.o
 OBJS += src/unix/dl.o
