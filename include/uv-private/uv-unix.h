@@ -82,6 +82,7 @@ typedef void* uv_lib_t;
   uv_async_t uv_eio_want_poll_notifier; \
   uv_async_t uv_eio_done_poll_notifier; \
   uv_idle_t uv_eio_poller; \
+  uv_handle_t* endgame_handles; \
   UV_LOOP_PRIVATE_PLATFORM_FIELDS
 
 #define UV_REQ_BUFSML_SIZE (4)
@@ -118,7 +119,7 @@ typedef void* uv_lib_t;
 #define UV_HANDLE_PRIVATE_FIELDS \
   int fd; \
   int flags; \
-  ev_idle next_watcher;
+  uv_handle_t* endgame_next; /* that's what uv-win calls it */ \
 
 
 #define UV_STREAM_PRIVATE_FIELDS \

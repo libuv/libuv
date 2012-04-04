@@ -59,7 +59,6 @@
 static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
 
-void uv__next(EV_P_ ev_idle* watcher, int revents);
 static void uv__finish_close(uv_handle_t* handle);
 
 
@@ -134,11 +133,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   }
 
   handle->flags |= UV_CLOSING;
-
-  /* This is used to call the on_close callback in the next loop. */
-  ev_idle_start(handle->loop->ev, &handle->next_watcher);
-  ev_feed_event(handle->loop->ev, &handle->next_watcher, EV_IDLE);
-  assert(ev_is_pending(&handle->next_watcher));
+  handle->endgame_next = handle->loop->endgame_handles;
+  handle->loop->endgame_handles = handle;
+  uv_unref(handle->loop);
 }
 
 
@@ -151,6 +148,7 @@ static int uv__loop_init(uv_loop_t* loop,
                          struct ev_loop *(ev_loop_new)(unsigned int flags)) {
   memset(loop, 0, sizeof(*loop));
   RB_INIT(&loop->uv_ares_handles_);
+  loop->endgame_handles = NULL;
 #if HAVE_KQUEUE
   loop->ev = ev_loop_new(EVBACKEND_KQUEUE);
 #else
@@ -209,14 +207,25 @@ uv_loop_t* uv_default_loop(void) {
 }
 
 
+void uv__run(uv_loop_t* loop) {
+  ev_run(loop->ev, EVRUN_ONCE);
+
+  while (loop->endgame_handles)
+    uv__finish_close(loop->endgame_handles);
+}
+
+
 int uv_run(uv_loop_t* loop) {
-  ev_run(loop->ev, 0);
+  do
+    uv__run(loop);
+  while (uv_loop_refcount(loop) > 0);
+
   return 0;
 }
 
 
 int uv_run_once(uv_loop_t* loop) {
-  ev_run(loop->ev, EVRUN_ONCE);
+  uv__run(loop);
   return 0;
 }
 
@@ -228,11 +237,8 @@ void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle,
   handle->loop = loop;
   handle->type = type;
   handle->flags = 0;
-
-  ev_init(&handle->next_watcher, uv__next);
-
-  /* Ref the loop until this handle is closed. See uv__finish_close. */
-  ev_ref(loop->ev);
+  handle->endgame_next = NULL;
+  uv_ref(loop); /* unref'd in uv_close() */
 }
 
 
@@ -289,26 +295,12 @@ void uv__finish_close(uv_handle_t* handle) {
       break;
   }
 
-  ev_idle_stop(loop->ev, &handle->next_watcher);
+
+  loop->endgame_handles = handle->endgame_next;
 
   if (handle->close_cb) {
     handle->close_cb(handle);
   }
-
-  ev_unref(loop->ev);
-}
-
-
-void uv__next(EV_P_ ev_idle* w, int revents) {
-  uv_handle_t* handle = container_of(w, uv_handle_t, next_watcher);
-
-  assert(revents == EV_IDLE);
-
-  /* For now this function is only to handle the closing event, but we might
-   * put more stuff here later.
-   */
-  assert(handle->flags & UV_CLOSING);
-  uv__finish_close(handle);
 }
 
 
