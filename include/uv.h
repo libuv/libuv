@@ -383,6 +383,18 @@ struct uv_handle_s {
 };
 
 /*
+ * Returns size of various handle types, useful for FFI
+ * bindings to allocate correct memory without copying struct
+ * definitions
+ */
+UV_EXTERN size_t uv_handle_size(uv_handle_type type);
+
+/*
+ * Returns size of request types, useful for dynamic lookup with FFI
+ */
+UV_EXTERN size_t uv_req_size(uv_req_type type);
+
+/*
  * Returns 1 if the prepare/check/idle/timer handle has been started, 0
  * otherwise. For other handle types this always returns 1.
  */
