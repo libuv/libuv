@@ -27,18 +27,18 @@ LINKFLAGS=-lm
 CPPFLAGS += -D_LARGEFILE_SOURCE
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
+OBJS += src/unix/cares.o
 OBJS += src/unix/core.o
 OBJS += src/unix/dl.o
-OBJS += src/unix/fs.o
-OBJS += src/unix/cares.o
-OBJS += src/unix/udp.o
 OBJS += src/unix/error.o
-OBJS += src/unix/thread.o
-OBJS += src/unix/process.o
-OBJS += src/unix/tcp.o
+OBJS += src/unix/fs.o
 OBJS += src/unix/pipe.o
-OBJS += src/unix/tty.o
+OBJS += src/unix/process.o
 OBJS += src/unix/stream.o
+OBJS += src/unix/tcp.o
+OBJS += src/unix/thread.o
+OBJS += src/unix/tty.o
+OBJS += src/unix/udp.o
 
 ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
