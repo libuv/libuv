@@ -55,6 +55,9 @@ typedef pthread_rwlock_t uv_rwlock_t;
 typedef void* uv_lib_t;
 #define UV_DYNAMIC /* empty */
 
+#define UV_HANDLE_TYPE_PRIVATE /* empty */
+#define UV_REQ_TYPE_PRIVATE /* empty */
+
 #if __linux__
 # define UV_LOOP_PRIVATE_PLATFORM_FIELDS              \
   /* RB_HEAD(uv__inotify_watchers, uv_fs_event_s) */  \

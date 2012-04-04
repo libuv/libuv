@@ -133,11 +133,9 @@ typedef enum {
 #undef UV_ERRNO_GEN
 
 #define UV_HANDLE_TYPE_MAP(XX)  \
-  XX(ARES_EVENT, ares_event)    \
   XX(ARES_TASK, ares_task)      \
   XX(ASYNC, async)              \
   XX(CHECK, check)              \
-  XX(FILE, file)                \
   XX(FS_EVENT, fs_event)        \
   XX(IDLE, idle)                \
   XX(NAMED_PIPE, pipe)          \
@@ -150,11 +148,8 @@ typedef enum {
 
 #define UV_REQ_TYPE_MAP(XX)     \
   XX(CONNECT, connect)          \
-  XX(ACCEPT, accept)            \
-  XX(READ, read)                \
   XX(WRITE, write)              \
   XX(SHUTDOWN, shutdown)        \
-  XX(WAKEUP, wakeup)            \
   XX(UDP_SEND, udp_send)        \
   XX(FS, fs)                    \
   XX(WORK, work)                \
@@ -165,6 +160,8 @@ typedef enum {
 #define XX(uc, lc) UV_##uc,
   UV_HANDLE_TYPE_MAP(XX)
 #undef XX
+  UV_FILE,
+  UV_HANDLE_TYPE_PRIVATE
   UV_HANDLE_TYPE_MAX
 } uv_handle_type;
 
@@ -173,7 +170,7 @@ typedef enum {
 #define XX(uc, lc) UV_##uc,
   UV_REQ_TYPE_MAP(XX)
 #undef XX
-  UV_REQ_TYPE_PRIVATE,
+  UV_REQ_TYPE_PRIVATE
   UV_REQ_TYPE_MAX
 } uv_req_type;
 
@@ -1523,6 +1520,7 @@ struct uv_loop_s {
 
 
 /* Don't export the private CPP symbols. */
+#undef UV_HANDLE_TYPE_PRIVATE
 #undef UV_REQ_TYPE_PRIVATE
 #undef UV_REQ_PRIVATE_FIELDS
 #undef UV_STREAM_PRIVATE_FIELDS
