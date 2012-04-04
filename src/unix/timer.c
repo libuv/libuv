@@ -23,11 +23,6 @@
 #include <assert.h>
 
 
-static int uv__timer_active(const uv_timer_t* timer) {
-  return timer->flags & UV_TIMER_ACTIVE;
-}
-
-
 static int uv__timer_repeating(const uv_timer_t* timer) {
   return timer->flags & UV_TIMER_REPEAT;
 }
@@ -119,4 +114,9 @@ void uv_timer_set_repeat(uv_timer_t* timer, int64_t repeat) {
 int64_t uv_timer_get_repeat(uv_timer_t* timer) {
   assert(timer->type == UV_TIMER);
   return (int64_t)(1000 * timer->timer_watcher.repeat);
+}
+
+
+int uv__timer_active(const uv_timer_t* timer) {
+  return timer->flags & UV_TIMER_ACTIVE;
 }

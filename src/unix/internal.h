@@ -139,6 +139,11 @@ void uv__udp_finish_close(uv_udp_t* handle);
 /* fs */
 void uv__fs_event_destroy(uv_fs_event_t* handle);
 
+int uv__check_active(const uv_check_t* handle);
+int uv__idle_active(const uv_idle_t* handle);
+int uv__prepare_active(const uv_prepare_t* handle);
+int uv__timer_active(const uv_timer_t* handle);
+
 #define UV__F_IPC        (1 << 0)
 #define UV__F_NONBLOCK   (1 << 1)
 int uv__make_socketpair(int fds[2], int flags);

@@ -67,3 +67,8 @@ int uv_prepare_stop(uv_prepare_t* prepare) {
   }
   return 0;
 }
+
+
+int uv__prepare_active(const uv_prepare_t* handle) {
+  return ev_is_active(&handle->prepare_watcher);
+}
