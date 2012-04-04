@@ -132,37 +132,49 @@ typedef enum {
 } uv_err_code;
 #undef UV_ERRNO_GEN
 
+#define UV_HANDLE_TYPE_MAP(XX)  \
+  XX(ARES_EVENT, ares_event)    \
+  XX(ARES_TASK, ares_task)      \
+  XX(ASYNC, async)              \
+  XX(CHECK, check)              \
+  XX(FILE, file)                \
+  XX(FS_EVENT, fs_event)        \
+  XX(IDLE, idle)                \
+  XX(NAMED_PIPE, pipe)          \
+  XX(PREPARE, prepare)          \
+  XX(PROCESS, process)          \
+  XX(TCP, tcp)                  \
+  XX(TIMER, timer)              \
+  XX(TTY, tty)                  \
+  XX(UDP, udp)                  \
+
+#define UV_REQ_TYPE_MAP(XX)     \
+  XX(CONNECT, connect)          \
+  XX(ACCEPT, accept)            \
+  XX(READ, read)                \
+  XX(WRITE, write)              \
+  XX(SHUTDOWN, shutdown)        \
+  XX(WAKEUP, wakeup)            \
+  XX(UDP_SEND, udp_send)        \
+  XX(FS, fs)                    \
+  XX(WORK, work)                \
+  XX(GETADDRINFO, getaddrinfo)  \
+
 typedef enum {
   UV_UNKNOWN_HANDLE = 0,
-  UV_TCP,
-  UV_UDP,
-  UV_NAMED_PIPE,
-  UV_TTY,
-  UV_FILE,
-  UV_TIMER,
-  UV_PREPARE,
-  UV_CHECK,
-  UV_IDLE,
-  UV_ASYNC,
-  UV_ARES_TASK,
-  UV_ARES_EVENT,
-  UV_PROCESS,
-  UV_FS_EVENT
+#define XX(uc, lc) UV_##uc,
+  UV_HANDLE_TYPE_MAP(XX)
+#undef XX
+  UV_HANDLE_TYPE_MAX
 } uv_handle_type;
 
 typedef enum {
   UV_UNKNOWN_REQ = 0,
-  UV_CONNECT,
-  UV_ACCEPT,
-  UV_READ,
-  UV_WRITE,
-  UV_SHUTDOWN,
-  UV_WAKEUP,
-  UV_UDP_SEND,
-  UV_FS,
-  UV_WORK,
-  UV_GETADDRINFO,
-  UV_REQ_TYPE_PRIVATE
+#define XX(uc, lc) UV_##uc,
+  UV_REQ_TYPE_MAP(XX)
+#undef XX
+  UV_REQ_TYPE_PRIVATE,
+  UV_REQ_TYPE_MAX
 } uv_req_type;
 
 
