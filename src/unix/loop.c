@@ -24,6 +24,7 @@
 #include "internal.h"
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 
 int uv__loop_init(uv_loop_t* loop, int default_loop) {
