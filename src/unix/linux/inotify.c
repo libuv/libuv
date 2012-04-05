@@ -51,20 +51,6 @@ static int compare_watchers(const uv_fs_event_t* a, const uv_fs_event_t* b) {
 RB_GENERATE_STATIC(uv__inotify_watchers, uv_fs_event_s, node, compare_watchers)
 
 
-void uv__inotify_loop_init(uv_loop_t* loop) {
-  RB_INIT(&loop->inotify_watchers);
-  loop->inotify_fd = -1;
-}
-
-
-void uv__inotify_loop_delete(uv_loop_t* loop) {
-  if (loop->inotify_fd == -1) return;
-  ev_io_stop(loop->ev, &loop->inotify_read_watcher);
-  close(loop->inotify_fd);
-  loop->inotify_fd = -1;
-}
-
-
 static void uv__inotify_read(EV_P_ ev_io* w, int revents);
 
 

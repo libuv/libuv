@@ -37,7 +37,10 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   loop->ev = (default_loop ? ev_default_loop : ev_loop_new)(flags);
   ev_set_userdata(loop->ev, loop);
   eio_channel_init(&loop->uv_eio_channel, loop);
-  uv__loop_platform_init(loop);
+#if __linux__
+  RB_INIT(&loop->inotify_watchers);
+  loop->inotify_fd = -1;
+#endif
   return 0;
 }
 
@@ -45,5 +48,10 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
 void uv__loop_delete(uv_loop_t* loop) {
   uv_ares_destroy(loop, loop->channel);
   ev_loop_destroy(loop->ev);
-  uv__loop_platform_delete(loop);
+#if __linux__
+  if (loop->inotify_fd == -1) return;
+  ev_io_stop(loop->ev, &loop->inotify_read_watcher);
+  close(loop->inotify_fd);
+  loop->inotify_fd = -1;
+#endif
 }

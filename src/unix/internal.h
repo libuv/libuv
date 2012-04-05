@@ -157,14 +157,4 @@ void uv__udp_close(uv_udp_t* handle);
 int uv__make_socketpair(int fds[2], int flags);
 int uv__make_pipe(int fds[2], int flags);
 
-#if __linux__
-void uv__inotify_loop_init(uv_loop_t* loop);
-void uv__inotify_loop_delete(uv_loop_t* loop);
-# define uv__loop_platform_init(loop)   uv__inotify_loop_init(loop)
-# define uv__loop_platform_delete(loop) uv__inotify_loop_delete(loop)
-#else
-# define uv__loop_platform_init(loop)
-# define uv__loop_platform_delete(loop)
-#endif
-
 #endif /* UV_UNIX_INTERNAL_H_ */
