@@ -289,16 +289,16 @@ void uv__req_init(uv_loop_t* loop, uv_req_t* req) {
 }
 
 
-int uv_is_active(uv_handle_t* handle) {
+int uv_is_active(const uv_handle_t* handle) {
   switch (handle->type) {
   case UV_CHECK:
-    return uv__check_active((uv_check_t*)handle);
+    return uv__check_active((const uv_check_t*)handle);
   case UV_IDLE:
-    return uv__idle_active((uv_idle_t*)handle);
+    return uv__idle_active((const uv_idle_t*)handle);
   case UV_PREPARE:
-    return uv__prepare_active((uv_prepare_t*)handle);
+    return uv__prepare_active((const uv_prepare_t*)handle);
   case UV_TIMER:
-    return uv__timer_active((uv_timer_t*)handle);
+    return uv__timer_active((const uv_timer_t*)handle);
   default:
     return 1;
   }

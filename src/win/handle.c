@@ -56,7 +56,7 @@ uv_handle_type uv_guess_handle(uv_file file) {
 }
 
 
-int uv_is_active(uv_handle_t* handle) {
+int uv_is_active(const uv_handle_t* handle) {
   switch (handle->type) {
     case UV_TIMER:
     case UV_IDLE:

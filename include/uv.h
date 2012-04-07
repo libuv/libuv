@@ -400,7 +400,7 @@ UV_EXTERN size_t uv_req_size(uv_req_type type);
  * Returns 1 if the prepare/check/idle/timer handle has been started, 0
  * otherwise. For other handle types this always returns 1.
  */
-UV_EXTERN int uv_is_active(uv_handle_t* handle);
+UV_EXTERN int uv_is_active(const uv_handle_t* handle);
 
 /*
  * Request handle to be closed. close_cb will be called asynchronously after
