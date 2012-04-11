@@ -530,21 +530,6 @@ int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
 }
 
 
-#define X(name, level, option)                                                \
-  int uv_udp_set_##name(uv_udp_t* handle, int flag) {                         \
-    if (setsockopt(handle->fd, level, option, &flag, sizeof(flag))) {         \
-      uv__set_sys_error(handle->loop, errno);                                 \
-      return -1;                                                              \
-    }                                                                         \
-    return 0;                                                                 \
-  }
-
-X(broadcast, SOL_SOCKET, SO_BROADCAST)
-X(ttl, IPPROTO_IP, IP_TTL)
-
-#undef X
-
-
 static int uv__setsockopt_maybe_char(uv_udp_t* handle, int option, int val) {
 #if __sun
   char arg = val;
@@ -552,17 +537,30 @@ static int uv__setsockopt_maybe_char(uv_udp_t* handle, int option, int val) {
   int arg = val;
 #endif
 
-#if __sun
-  if (val < 0 || val > 255) {
-    uv__set_sys_error(handle->loop, EINVAL);
-    return -1;
-  }
-#endif
+  if (val < 0 || val > 255)
+    return uv__set_sys_error(handle->loop, EINVAL);
 
-  if (setsockopt(handle->fd, IPPROTO_IP, option, &arg, sizeof(arg))) {
-    uv__set_sys_error(handle->loop, errno);
-    return -1;
-  }
+  if (setsockopt(handle->fd, IPPROTO_IP, option, &arg, sizeof(arg)))
+    return uv__set_sys_error(handle->loop, errno);
+
+  return 0;
+}
+
+
+int uv_udp_set_broadcast(uv_udp_t* handle, int on) {
+  if (setsockopt(handle->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)))
+    return uv__set_sys_error(handle->loop, errno);
+
+  return 0;
+}
+
+
+int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
+  if (ttl < 1 || ttl > 255)
+    return uv__set_sys_error(handle->loop, EINVAL);
+
+  if (setsockopt(handle->fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)))
+    return uv__set_sys_error(handle->loop, errno);
 
   return 0;
 }
