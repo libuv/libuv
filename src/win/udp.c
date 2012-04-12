@@ -647,9 +647,14 @@ int uv_udp_set_broadcast(uv_udp_t* handle, int value) {
 }
 
 
-#define SOCKOPT_SETTER(name, option4, option6)                                \
+#define SOCKOPT_SETTER(name, option4, option6, validate)                      \
   int uv_udp_set_##name(uv_udp_t* handle, int value) {                        \
     DWORD optval = (DWORD) value;                                             \
+                                                                              \
+    if (!(validate(value))) {                                                 \
+      uv__set_artificial_error(handle->loop, UV_EINVAL);                      \
+      return -1;                                                              \
+    }                                                                         \
                                                                               \
     /* If the socket is unbound, bind to inaddr_any. */                       \
     if (!(handle->flags & UV_HANDLE_BOUND) &&                                 \
@@ -681,8 +686,24 @@ int uv_udp_set_broadcast(uv_udp_t* handle, int value) {
     return 0;                                                                 \
   }
 
-SOCKOPT_SETTER(multicast_loop, IP_MULTICAST_LOOP, IPV6_MULTICAST_LOOP)
-SOCKOPT_SETTER(multicast_ttl, IP_MULTICAST_TTL, IPV6_MULTICAST_HOPS)
-SOCKOPT_SETTER(ttl, IP_TTL, IPV6_HOPLIMIT)
+#define VALIDATE_TTL(value) ((value) >= 1 && (value) <= 255)
+#define VALIDATE_MULTICAST_TTL(value) ((value) >= -1 && (value) <= 255)
+#define VALIDATE_MULTICAST_LOOP(value) (1)
+
+SOCKOPT_SETTER(ttl,
+               IP_TTL,
+               IPV6_HOPLIMIT,
+               VALIDATE_TTL)
+SOCKOPT_SETTER(multicast_ttl,
+               IP_MULTICAST_TTL,
+               IPV6_MULTICAST_HOPS,
+               VALIDATE_MULTICAST_TTL)
+SOCKOPT_SETTER(multicast_loop,
+               IP_MULTICAST_LOOP,
+               IPV6_MULTICAST_LOOP,
+               VALIDATE_MULTICAST_LOOP)
 
 #undef SOCKOPT_SETTER
+#undef VALIDATE_TTL
+#undef VALIDATE_MULTICAST_TTL
+#undef VALIDATE_MULTICAST_LOOP
