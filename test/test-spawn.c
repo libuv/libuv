@@ -92,9 +92,8 @@ void on_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
   if (nread > 0) {
     output_used += nread;
   } else if (nread < 0) {
-    if (err.code == UV_EOF) {
-      uv_close((uv_handle_t*)tcp, close_cb);
-    }
+    ASSERT(err.code == UV_EOF);
+    uv_close((uv_handle_t*)tcp, close_cb);
   }
 }
 
@@ -233,17 +232,38 @@ TEST_IMPL(spawn_and_kill) {
 
 TEST_IMPL(spawn_and_kill_with_std) {
   int r;
-  uv_pipe_t out;
-  uv_pipe_t in;
+  uv_pipe_t in, out, err;
+  uv_write_t write;
+  char message[] = "Nancy's joining me because the message this evening is "
+                   "not my message but ours.";
+  uv_buf_t buf;
 
   init_process_options("spawn_helper4", kill_cb);
 
-  uv_pipe_init(uv_default_loop(), &out, 0);
-  uv_pipe_init(uv_default_loop(), &in, 0);
-  options.stdout_stream = &out;
+  r = uv_pipe_init(uv_default_loop(), &in, 0);
+  ASSERT(r == 0);
+
+  r = uv_pipe_init(uv_default_loop(), &out, 0);
+  ASSERT(r == 0);
+
+  r = uv_pipe_init(uv_default_loop(), &err, 0);
+  ASSERT(r == 0);
+
   options.stdin_stream = &in;
+  options.stdout_stream = &out;
+  options.stderr_stream = &err;
 
   r = uv_spawn(uv_default_loop(), &process, options);
+  ASSERT(r == 0);
+
+  buf = uv_buf_init(message, sizeof message);
+  r = uv_write(&write, (uv_stream_t*) &in, &buf, 1, write_cb);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*) &err, on_alloc, on_read);
   ASSERT(r == 0);
 
   r = uv_timer_init(uv_default_loop(), &timer);
@@ -256,7 +276,7 @@ TEST_IMPL(spawn_and_kill_with_std) {
   ASSERT(r == 0);
 
   ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* Once for process and once for timer. */
+  ASSERT(close_cb_called == 5); /* process x 1, timer x 1, stdio x 3. */
 
   return 0;
 }
@@ -485,7 +505,7 @@ TEST_IMPL(environment_creation) {
   ptr += GetEnvironmentVariableW(L"SYSTEMDRIVE", ptr, expected + sizeof(expected) - ptr);
   ++ptr;
   *ptr = '\0';
-  
+
   result = make_program_env(environment);
 
   for (str = result; *str; str += wcslen(str) + 1) {
@@ -493,7 +513,7 @@ TEST_IMPL(environment_creation) {
   }
 
   ASSERT(wcscmp(expected, result) == 0);
- 
+
   return 0;
 }
 #endif
