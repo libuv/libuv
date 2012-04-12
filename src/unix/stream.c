@@ -152,6 +152,14 @@ void uv__stream_destroy(uv_stream_t* stream) {
       req->cb(req, req->error ? -1 : 0);
     }
   }
+
+  if (stream->flags & UV_SHUTTING) {
+    uv_shutdown_t* req = stream->shutdown_req;
+    if (req && req->cb) {
+      uv__set_artificial_error(stream->loop, UV_EINTR);
+      req->cb(req, -1);
+    }
+  }
 }
 
 
@@ -291,6 +299,7 @@ static void uv__drain(uv_stream_t* stream) {
     assert(stream->shutdown_req);
 
     req = stream->shutdown_req;
+    stream->shutdown_req = NULL;
 
     if (shutdown(stream->fd, SHUT_WR)) {
       /* Error. Report it. User should call uv_close(). */
