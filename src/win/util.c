@@ -359,9 +359,9 @@ uv_err_t uv_get_process_title(char* buffer, size_t size) {
   if (!process_title && uv__get_process_title() == -1) {
     return uv__new_sys_error(GetLastError());
   }
-  
+
   assert(process_title);
-  strncpy(buffer, process_title, size);  
+  strncpy(buffer, process_title, size);
   LeaveCriticalSection(&process_title_lock);
 
   return uv_ok_;
@@ -474,7 +474,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   *count = 0;
 
-  for (i = 0; i < system_info.dwNumberOfProcessors; i++) {    
+  for (i = 0; i < system_info.dwNumberOfProcessors; i++) {
     _snprintf(key, sizeof(key), "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\%d", i);
 
     if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, key, 0, KEY_QUERY_VALUE,
@@ -503,7 +503,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
     RegCloseKey(processor_key);
     processor_key = NULL;
-    
+
     cpu_info = &(*cpu_infos)[i];
 
     /* $TODO: find times on windows */
@@ -631,7 +631,7 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
           }
         }
       }
-      
+
       assert(name);
       address->name = name;
 
