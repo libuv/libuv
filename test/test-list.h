@@ -24,7 +24,9 @@ TEST_DECLARE   (tty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ipc_listen_before_write)
 TEST_DECLARE   (ipc_listen_after_write)
+#ifndef _WIN32
 TEST_DECLARE   (ipc_send_recv_pipe)
+#endif
 TEST_DECLARE   (ipc_send_recv_tcp)
 TEST_DECLARE   (ipc_tcp_connection)
 TEST_DECLARE   (tcp_ping_pong)
@@ -179,7 +181,9 @@ TASK_LIST_START
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ipc_listen_before_write)
   TEST_ENTRY  (ipc_listen_after_write)
+#ifndef _WIN32
   TEST_ENTRY  (ipc_send_recv_pipe)
+#endif
   TEST_ENTRY  (ipc_send_recv_tcp)
   TEST_ENTRY  (ipc_tcp_connection)
 
