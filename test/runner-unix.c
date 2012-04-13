@@ -100,13 +100,12 @@ typedef struct {
 static void* dowait(void* data) {
   dowait_args* args = data;
 
-  int i, status, r;
+  int i, r;
   process_info_t* p;
 
   for (i = 0; i < args->n; i++) {
     p = (process_info_t*)(args->vec + i * sizeof(process_info_t));
     if (p->terminated) continue;
-    status = 0;
     r = waitpid(p->pid, &p->status, 0);
     if (r < 0) {
       perror("waitpid");
