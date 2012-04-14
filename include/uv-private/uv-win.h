@@ -421,20 +421,26 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   HANDLE close_handle;
 
 #define UV_FS_PRIVATE_FIELDS              \
-  wchar_t* pathw;                         \
   int flags;                              \
   DWORD sys_errno_;                       \
-  struct _stati64 stat;                   \
-  void* arg0;                             \
+  union {                                 \
+    wchar_t* pathw;                       \
+    int file;                             \
+  };                                      \
   union {                                 \
     struct {                              \
-      void* arg1;                         \
-      void* arg2;                         \
-      void* arg3;                         \
+      int mode;                           \
+      wchar_t* new_pathw;                 \
+      int file_flags;                     \
+      int file_out;                       \
+      void* buf;                          \
+      size_t length;                      \
+      int64_t offset;                     \
     };                                    \
+    struct _stati64 stat;                 \
     struct {                              \
-      ssize_t arg4;                       \
-      ssize_t arg5;                       \
+      double atime;                       \
+      double mtime;                       \
     };                                    \
   };
 

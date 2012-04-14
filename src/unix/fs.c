@@ -215,7 +215,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
 
 int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
-    size_t length, off_t offset, uv_fs_cb cb) {
+    size_t length, int64_t offset, uv_fs_cb cb) {
   uv_fs_req_init(loop, req, UV_FS_READ, NULL, cb);
 
   if (cb) {
@@ -253,7 +253,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
 
 int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, void* buf,
-    size_t length, off_t offset, uv_fs_cb cb) {
+    size_t length, int64_t offset, uv_fs_cb cb) {
   uv_fs_req_init(loop, req, UV_FS_WRITE, NULL, cb);
 
   if (cb) {
@@ -461,7 +461,7 @@ int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 }
 
 
-int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, off_t offset,
+int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset,
     uv_fs_cb cb) {
   char* path = NULL;
   WRAP_EIO(UV_FS_FTRUNCATE, eio_ftruncate, ftruncate, ARGS2(file, offset))
@@ -469,7 +469,7 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, off_t offset,
 
 
 int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd, uv_file in_fd,
-    off_t in_offset, size_t length, uv_fs_cb cb) {
+    int64_t in_offset, size_t length, uv_fs_cb cb) {
   char* path = NULL;
   WRAP_EIO(UV_FS_SENDFILE, eio_sendfile, eio_sendfile_sync,
       ARGS4(out_fd, in_fd, in_offset, length))
