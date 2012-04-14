@@ -123,7 +123,8 @@ typedef intptr_t ssize_t;
   XX( 52, EXDEV, "cross-device link not permitted") \
   XX( 53, ENOTEMPTY, "directory not empty") \
   XX( 54, ENOSPC, "no space left on device") \
-  XX( 55, EIO, "i/o error")
+  XX( 55, EIO, "i/o error") \
+  XX( 56, EROFS, "read-only file system" )
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,

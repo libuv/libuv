@@ -92,6 +92,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case EBUSY: return UV_EBUSY;
     case ENOTEMPTY: return UV_ENOTEMPTY;
     case ENOSPC: return UV_ENOSPC;
+    case EROFS: return UV_EROFS;
     default: return UV_UNKNOWN;
   }
   UNREACHABLE();
