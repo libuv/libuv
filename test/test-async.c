@@ -39,16 +39,20 @@ void thread_cb(void *arg) {
   int n;
   int r;
 
-  do {
+  for (;;) {
     uv_mutex_lock(&mutex);
     n = async_cb_called;
     uv_mutex_unlock(&mutex);
 
+    if (n == 3) {
+      break;
+    }
+
     r = uv_async_send(&async);
     ASSERT(r == 0);
   }
-  while (n < 3);
 }
+
 
 static void close_cb(uv_handle_t* handle) {
   ASSERT(handle != NULL);
