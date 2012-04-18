@@ -97,6 +97,15 @@ enum {
   UV_TIMER_REPEAT  = 0x100
 };
 
+inline static void uv__req_init(uv_loop_t* loop,
+                                uv_req_t* req,
+                                uv_req_type type) {
+  loop->counters.req_init++;
+  req->type = type;
+}
+#define uv__req_init(loop, req, type) \
+  uv__req_init((loop), (uv_req_t*)(req), (type))
+
 /* core */
 void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle, uv_handle_type type);
 int uv__nonblock(int fd, int set) __attribute__((unused));
@@ -111,9 +120,6 @@ void uv__loop_delete(uv_loop_t* loop);
 /* error */
 uv_err_code uv_translate_sys_error(int sys_errno);
 void uv_fatal_error(const int errorno, const char* syscall);
-
-/* requests */
-void uv__req_init(uv_loop_t* loop, uv_req_t*);
 
 /* stream */
 void uv__stream_init(uv_loop_t* loop, uv_stream_t* stream,

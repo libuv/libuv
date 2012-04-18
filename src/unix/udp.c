@@ -437,14 +437,13 @@ static int uv__udp_send(uv_udp_send_t* req,
   if (uv__udp_maybe_deferred_bind(handle, addr->sa_family))
     return -1;
 
-  uv__req_init(handle->loop, (uv_req_t*)req);
+  uv__req_init(handle->loop, req, UV_UDP_SEND);
 
   memcpy(&req->addr, addr, addrlen);
   req->addrlen = addrlen;
   req->send_cb = send_cb;
   req->handle = handle;
   req->bufcnt = bufcnt;
-  req->type = UV_UDP_SEND;
 
   if (bufcnt <= UV_REQ_BUFSML_SIZE) {
     req->bufs = req->bufsml;

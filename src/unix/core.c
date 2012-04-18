@@ -283,12 +283,6 @@ int64_t uv_now(uv_loop_t* loop) {
 }
 
 
-void uv__req_init(uv_loop_t* loop, uv_req_t* req) {
-  loop->counters.req_init++;
-  req->type = UV_UNKNOWN_REQ;
-}
-
-
 int uv_is_active(const uv_handle_t* handle) {
   switch (handle->type) {
   case UV_CHECK:
@@ -369,8 +363,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     return -1;
   }
 
-  uv__req_init(loop, (uv_req_t*)handle);
-  handle->type = UV_GETADDRINFO;
+  uv__req_init(loop, handle, UV_GETADDRINFO);
   handle->loop = loop;
   handle->cb = cb;
 

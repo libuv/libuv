@@ -700,12 +700,10 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   }
 
   /* Initialize request */
-  uv__req_init(stream->loop, (uv_req_t*)req);
+  uv__req_init(stream->loop, req, UV_SHUTDOWN);
   req->handle = stream;
   req->cb = cb;
-
   stream->shutdown_req = req;
-  req->type = UV_SHUTDOWN;
 
   ((uv_handle_t*)stream)->flags |= UV_SHUTTING;
 
@@ -810,10 +808,9 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
     }
   }
 
-  uv__req_init(stream->loop, (uv_req_t*)req);
+  uv__req_init(stream->loop, req, UV_CONNECT);
   req->cb = cb;
   req->handle = stream;
-  req->type = UV_CONNECT;
   ngx_queue_init(&req->queue);
 
   if (stream->connect_req) {
@@ -887,12 +884,11 @@ int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
   empty_queue = (stream->write_queue_size == 0);
 
   /* Initialize the req */
-  uv__req_init(stream->loop, (uv_req_t*)req);
+  uv__req_init(stream->loop, req, UV_WRITE);
   req->cb = cb;
   req->handle = stream;
   req->error = 0;
   req->send_handle = send_handle;
-  req->type = UV_WRITE;
   ngx_queue_init(&req->queue);
 
   if (bufcnt <= UV_REQ_BUFSML_SIZE) {
