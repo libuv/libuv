@@ -1059,7 +1059,7 @@ UV_EXTERN void uv_ares_destroy(uv_loop_t*, ares_channel channel);
 struct uv_getaddrinfo_s {
   UV_REQ_FIELDS
   /* read-only */
-  uv_loop_t* loop; \
+  uv_loop_t* loop;
   UV_GETADDRINFO_PRIVATE_FIELDS
 };
 
