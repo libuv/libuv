@@ -552,7 +552,7 @@ UV_EXTERN int uv_is_writable(uv_stream_t* handle);
  *      and the arrival of the close callback, and cannot be used
  *      to validate the handle.
  */
-UV_EXTERN int uv_is_closing(uv_handle_t* handle);
+UV_EXTERN int uv_is_closing(const uv_handle_t* handle);
 
 
 /*
