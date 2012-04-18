@@ -541,8 +541,8 @@ struct uv_write_s {
 /*
  * Used to determine whether a stream is readable or writable.
  */
-UV_EXTERN int uv_is_readable(uv_stream_t* handle);
-UV_EXTERN int uv_is_writable(uv_stream_t* handle);
+UV_EXTERN int uv_is_readable(const uv_stream_t* handle);
+UV_EXTERN int uv_is_writable(const uv_stream_t* handle);
 
 
 /*
