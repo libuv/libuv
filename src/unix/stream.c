@@ -428,7 +428,7 @@ start:
   }
 
   if (n < 0) {
-    if (errno != EAGAIN) {
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
       /* Error */
       req->error = errno;
       stream->write_queue_size -= uv__write_req_size(req);
