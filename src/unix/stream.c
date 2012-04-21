@@ -176,7 +176,7 @@ void uv__server_io(EV_P_ ev_io* watcher, int revents) {
     fd = uv__accept(stream->fd, (struct sockaddr*)&addr, sizeof addr);
 
     if (fd < 0) {
-      if (errno == EAGAIN) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* No problem. */
         return;
       } else if (errno == EMFILE) {
