@@ -596,7 +596,7 @@ static void uv__read(uv_stream_t* stream) {
 
     if (nread < 0) {
       /* Error */
-      if (errno == EAGAIN) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* Wait for the next one. */
         if (stream->flags & UV_READING) {
           ev_io_start(ev, &stream->read_watcher);
