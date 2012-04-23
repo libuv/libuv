@@ -97,11 +97,6 @@ int uv_fs_event_init(uv_loop_t* loop,
   /* We don't support any flags yet. */
   assert(!flags);
 
-  if (cb == NULL) {
-    uv__set_sys_error(loop, EINVAL);
-    return -1;
-  }
-
   /* TODO open asynchronously - but how do we report back errors? */
   if ((fd = open(filename, O_RDONLY)) == -1) {
     uv__set_sys_error(loop, errno);
