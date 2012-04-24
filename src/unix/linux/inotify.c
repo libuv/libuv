@@ -185,6 +185,7 @@ int uv_fs_event_init(uv_loop_t* loop,
          | UV__IN_MODIFY
          | UV__IN_DELETE
          | UV__IN_DELETE_SELF
+         | UV__IN_MOVE_SELF
          | UV__IN_MOVED_FROM
          | UV__IN_MOVED_TO;
 
