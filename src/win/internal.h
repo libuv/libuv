@@ -43,37 +43,47 @@ void uv_process_timers(uv_loop_t* loop);
  * Handles
  */
 
-/* Private uv_handle flags */
+/* Used by all handles. */
 #define UV_HANDLE_CLOSING                       0x00000001
 #define UV_HANDLE_CLOSED                        0x00000002
-#define UV_HANDLE_BOUND                         0x00000004
-#define UV_HANDLE_LISTENING                     0x00000008
-#define UV_HANDLE_CONNECTION                    0x00000010
-#define UV_HANDLE_CONNECTED                     0x00000020
-#define UV_HANDLE_READING                       0x00000040
-#define UV_HANDLE_ACTIVE                        0x00000040
-#define UV_HANDLE_EOF                           0x00000080
-#define UV_HANDLE_SHUTTING                      0x00000100
-#define UV_HANDLE_SHUT                          0x00000200
-#define UV_HANDLE_ENDGAME_QUEUED                0x00000400
-#define UV_HANDLE_BIND_ERROR                    0x00001000
-#define UV_HANDLE_IPV6                          0x00002000
-#define UV_HANDLE_PIPESERVER                    0x00004000
-#define UV_HANDLE_READ_PENDING                  0x00008000
-#define UV_HANDLE_UV_ALLOCED                    0x00010000
-#define UV_HANDLE_SYNC_BYPASS_IOCP              0x00020000
-#define UV_HANDLE_ZERO_READ                     0x00040000
-#define UV_HANDLE_TTY_RAW                       0x00080000
+#define UV_HANDLE_ENDGAME_QUEUED                0x00000004
+#define UV_HANDLE_UV_ALLOCED                    0x00000008
+#define UV_HANDLE_ACTIVE                        0x00000010
+
+/* Used by streams. */
+#define UV_HANDLE_READING                       0x00000100
+#define UV_HANDLE_BOUND                         0x00000200
+#define UV_HANDLE_BIND_ERROR                    0x00000400
+#define UV_HANDLE_LISTENING                     0x00000800
+#define UV_HANDLE_CONNECTION                    0x00001000
+#define UV_HANDLE_CONNECTED                     0x00002000
+#define UV_HANDLE_EOF                           0x00004000
+#define UV_HANDLE_SHUTTING                      0x00008000
+#define UV_HANDLE_SHUT                          0x00010000
+#define UV_HANDLE_READ_PENDING                  0x00020000
+#define UV_HANDLE_SYNC_BYPASS_IOCP              0x00040000
+#define UV_HANDLE_ZERO_READ                     0x00080000
 #define UV_HANDLE_EMULATE_IOCP                  0x00100000
-#define UV_HANDLE_NON_OVERLAPPED_PIPE           0x00200000
-#define UV_HANDLE_TTY_SAVED_POSITION            0x00400000
-#define UV_HANDLE_TTY_SAVED_ATTRIBUTES          0x00800000
-#define UV_HANDLE_SHARED_TCP_SOCKET             0x01000000
+
+/* Only used by uv_tcp_t handles. */
+#define UV_HANDLE_IPV6                          0x01000000
 #define UV_HANDLE_TCP_NODELAY                   0x02000000
 #define UV_HANDLE_TCP_KEEPALIVE                 0x04000000
 #define UV_HANDLE_TCP_SINGLE_ACCEPT             0x08000000
 #define UV_HANDLE_TCP_ACCEPT_STATE_CHANGING     0x10000000
 #define UV_HANDLE_TCP_SOCKET_CLOSED             0x20000000
+#define UV_HANDLE_SHARED_TCP_SERVER             0x40000000
+#define UV_HANDLE_SHARED_TCP_SOCKET             0x80000000
+
+/* Only used by uv_pipe_t handles. */
+#define UV_HANDLE_NON_OVERLAPPED_PIPE           0x01000000
+#define UV_HANDLE_PIPESERVER                    0x02000000
+
+/* Only used by uv_tty_t handles. */
+#define UV_HANDLE_TTY_RAW                       0x01000000
+#define UV_HANDLE_TTY_SAVED_POSITION            0x02000000
+#define UV_HANDLE_TTY_SAVED_ATTRIBUTES          0x04000000
+
 
 void uv_want_endgame(uv_loop_t* loop, uv_handle_t* handle);
 void uv_process_endgames(uv_loop_t* loop);
