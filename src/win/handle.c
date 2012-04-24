@@ -64,6 +64,9 @@ int uv_is_active(const uv_handle_t* handle) {
     case UV_CHECK:
       return (handle->flags & UV_HANDLE_ACTIVE) ? 1 : 0;
 
+    case UV_POLL:
+      return ((uv_poll_t*) handle)->events != 0;
+
     default:
       return 1;
   }
@@ -110,6 +113,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       if (udp->reqs_pending == 0) {
         uv_want_endgame(loop, handle);
       }
+      return;
+
+    case UV_POLL:
+      uv_poll_close(handle->loop, (uv_poll_t*) handle);
       return;
 
     case UV_TIMER:
@@ -193,6 +200,10 @@ void uv_process_endgames(uv_loop_t* loop) {
 
       case UV_UDP:
         uv_udp_endgame(loop, (uv_udp_t*) handle);
+        break;
+
+      case UV_POLL:
+        uv_poll_endgame(loop, (uv_poll_t*) handle);
         break;
 
       case UV_TIMER:

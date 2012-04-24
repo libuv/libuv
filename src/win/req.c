@@ -135,6 +135,10 @@ void uv_process_reqs(uv_loop_t* loop) {
         uv_process_async_wakeup_req(loop, (uv_async_t*) req->data, req);
         break;
 
+      case UV_POLL_REQ:
+        uv_process_poll_req(loop, (uv_poll_t*) req->data, req);
+        break;
+
       case UV_ARES_EVENT_REQ:
         uv_process_ares_event_req(loop, (uv_ares_action_t*) req->data, req);
         break;

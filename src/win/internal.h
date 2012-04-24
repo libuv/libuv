@@ -84,6 +84,9 @@ void uv_process_timers(uv_loop_t* loop);
 #define UV_HANDLE_TTY_SAVED_POSITION            0x02000000
 #define UV_HANDLE_TTY_SAVED_ATTRIBUTES          0x04000000
 
+/* Only used by uv_poll_t handles. */
+#define UV_HANDLE_POLL_SLOW                     0x02000000
+
 
 void uv_want_endgame(uv_loop_t* loop, uv_handle_t* handle);
 void uv_process_endgames(uv_loop_t* loop);
@@ -228,6 +231,16 @@ void uv_process_tty_connect_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_connect_t* req);
 
 void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle);
+
+
+/*
+ * Poll watchers
+ */
+void uv_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
+    uv_req_t* req);
+
+void uv_poll_close(uv_loop_t* loop, uv_poll_t* handle);
+void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle);
 
 
 /*

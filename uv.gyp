@@ -145,6 +145,7 @@
             'src/win/loop-watcher.c',
             'src/win/pipe.c',
             'src/win/thread.c',
+            'src/win/poll.c',
             'src/win/process.c',
             'src/win/req.c',
             'src/win/stream.c',
