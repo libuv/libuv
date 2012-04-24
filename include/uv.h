@@ -164,6 +164,7 @@ typedef enum {
 #define XX(uc, lc) UV_##uc,
   UV_HANDLE_TYPE_MAP(XX)
 #undef XX
+  UV_POLL,
   UV_FILE,
   UV_HANDLE_TYPE_PRIVATE
   UV_HANDLE_TYPE_MAX
@@ -189,6 +190,7 @@ typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
 typedef struct uv_pipe_s uv_pipe_t;
 typedef struct uv_tty_s uv_tty_t;
+typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
 typedef struct uv_check_s uv_check_t;
@@ -288,6 +290,7 @@ typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
 typedef void (*uv_connection_cb)(uv_stream_t* server, int status);
 typedef void (*uv_close_cb)(uv_handle_t* handle);
+typedef void (*uv_poll_cb)(uv_poll_t* handle, int status, int events);
 typedef void (*uv_timer_cb)(uv_timer_t* handle, int status);
 /* TODO: do these really need a status argument? */
 typedef void (*uv_async_cb)(uv_async_t* handle, int status);
@@ -927,6 +930,74 @@ UV_EXTERN void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
 
 
 /*
+ * uv_poll_t is a subclass of uv_handle_t.
+ *
+ * The uv_poll watcher is used to watch file descriptors for readability and
+ * writability, similar to the purpose of poll(2).
+ *
+ * The purpose of uv_poll is to enable integrating external libraries that
+ * rely on the event loop to signal it about the socket status changes, like
+ * c-ares or libssh2. Using uv_poll_t for any other other purpose is not
+ * recommended; uv_tcp_t, uv_udp_t, etc. provide an implementation that is
+ * much faster and more scalable than what can be achieved with uv_poll_t,
+ * especially on Windows.
+ *
+ * It is possible that uv_poll occasionally signals that a file descriptor is
+ * readable or writable even when it isn't. The user should therefore always
+ * be prepared to handle EAGAIN or equivalent when it attempts to read from or
+ * write to the fd.
+ *
+ * It is not okay to have multiple active uv_poll watchers for the same socket.
+ * This can cause libuv to busyloop or otherwise malfunction.
+ *
+ * The user should not close a file descriptor while it is being polled by an
+ * active uv_poll watcher. This can cause the poll watcher to report an error,
+ * but it might also start polling another socket. However the fd can be safely
+ * closed immediately after a call to uv_poll_stop() or uv_close().
+ *
+ * On windows only sockets can be polled with uv_poll. On unix any file
+ * descriptor that would be accepted by poll(2) can be used with uv_poll.
+ */
+struct uv_poll_s {
+  UV_HANDLE_FIELDS
+  uv_poll_cb poll_cb;
+  UV_POLL_PRIVATE_FIELDS
+};
+
+enum uv_poll_event {
+  UV_READABLE = 1,
+  UV_WRITABLE = 2
+};
+
+/* Initialize the poll watcher using a file descriptor. */
+UV_EXTERN int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd);
+
+/* Initialize the poll watcher using a socket descriptor. On unix this is */
+/* identical to uv_poll_init. On windows it takes a SOCKET handle. */
+UV_EXTERN int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
+    uv_platform_socket_t socket);
+
+/*
+ * Starts polling the file descriptor. `events` is a bitmask consisting made up
+ * of UV_READABLE and UV_WRITABLE. As soon as an event is detected the callback
+ * will be called with `status` set to 0, and the detected events set en the
+ * `events` field.
+ *
+ * If an error happens while polling status may be set to -1 and the error
+ * code can be retrieved with uv_last_error. The user should not close the
+ * socket while uv_poll is active. If the user does that anyway, the callback
+ * *may* be called reporting an error status, but this is not guaranteed.
+ *
+ * Calling uv_poll_start on an uv_poll watcher that is already active is fine.
+ * Doing so will update the events mask that is being watched for.
+ */
+UV_EXTERN int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb);
+
+/* Stops polling the file descriptor. */
+UV_EXTERN int uv_poll_stop(uv_poll_t* handle);
+
+
+/*
  * uv_prepare_t is a subclass of uv_handle_t.
  *
  * libev wrapper. Every active prepare handle gets its callback called
@@ -1543,6 +1614,7 @@ struct uv_counters_s {
   uint64_t udp_init;
   uint64_t pipe_init;
   uint64_t tty_init;
+  uint64_t poll_init;
   uint64_t prepare_init;
   uint64_t check_init;
   uint64_t idle_init;
