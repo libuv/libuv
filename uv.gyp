@@ -328,6 +328,7 @@
         'test/test-pipe-bind-error.c',
         'test/test-pipe-connect-error.c',
         'test/test-platform-output.c',
+        'test/test-poll.c',
         'test/test-process-title.c',
         'test/test-ref.c',
         'test/test-shutdown-close.c',
