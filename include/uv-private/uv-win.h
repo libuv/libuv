@@ -128,6 +128,24 @@ typedef int (WSAAPI* LPFN_WSARECVFROM)
              LPWSAOVERLAPPED overlapped,
              LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
 
+#ifndef _NTDEF_
+  typedef LONG NTSTATUS;
+  typedef NTSTATUS *PNTSTATUS;
+#endif
+
+typedef struct _AFD_POLL_HANDLE_INFO {
+  HANDLE Handle;
+  ULONG Events;
+  NTSTATUS Status;
+} AFD_POLL_HANDLE_INFO, *PAFD_POLL_HANDLE_INFO;
+
+typedef struct _AFD_POLL_INFO {
+  LARGE_INTEGER Timeout;
+  ULONG NumberOfHandles;
+  ULONG Exclusive;
+  AFD_POLL_HANDLE_INFO Handles[1];
+} AFD_POLL_INFO, *PAFD_POLL_INFO;
+
 
 /**
  * It should be possible to cast uv_buf_t[] to WSABUF[]
