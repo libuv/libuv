@@ -281,7 +281,8 @@ void uv_process_work_req(uv_loop_t* loop, uv_work_t* req);
 /*
  * FS Event
  */
-void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req, uv_fs_event_t* handle);
+void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
+    uv_fs_event_t* handle);
 void uv_fs_event_close(uv_loop_t* loop, uv_fs_event_t* handle);
 void uv_fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle);
 

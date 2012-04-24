@@ -115,8 +115,7 @@ typedef int (WSAAPI* LPFN_WSARECV)
              LPDWORD bytes,
              LPDWORD flags,
              LPWSAOVERLAPPED overlapped,
-             LPWSAOVERLAPPED_COMPLETION_ROUTINE
-             completion_routine);
+             LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
 
 typedef int (WSAAPI* LPFN_WSARECVFROM)
             (SOCKET socket,
