@@ -103,7 +103,7 @@ ifeq (OpenBSD,$(uname_S))
 EV_CONFIG=config_openbsd.h
 EIO_CONFIG=config_openbsd.h
 CPPFLAGS += -Isrc/ares/config_openbsd
-LINKFLAGS+=
+LINKFLAGS+=-lkvm
 OBJS += src/unix/openbsd.o
 OBJS += src/unix/kqueue.o
 endif
