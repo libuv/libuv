@@ -19,6 +19,8 @@
 #define ARES__H
 
 #include "ares_version.h"  /* c-ares version defines   */
+#include "ares_build.h"    /* c-ares build definitions */
+#include "ares_rules.h"    /* c-ares rules enforcement */
 
 /*
  * Define WIN32 when build target is Win32 API
@@ -29,63 +31,14 @@
 #  define WIN32
 #endif
 
-/*************************** libuv patch ***************/
-
-/*
- * We want to avoid autoconf altogether since there are a finite number of
- * operating systems and simply build c-ares. Therefore we do not want the
- * configurations provided by ares_build.h since we are always statically
- * linking c-ares into libuv. Having a system dependent ares_build.h forces
- * all users of ares.h to include the correct ares_build.h.  We do not care
- * about the linking checks provided by ares_rules.h. This would complicate
- * the libuv build process.
- */
-
-
-#if defined(WIN32)
-/* Configure process defines this to 1 when it finds out that system  */
-/* header file ws2tcpip.h must be included by the external interface. */
-/* #undef CARES_PULL_WS2TCPIP_H */
-# include <winsock2.h>
-# include <ws2tcpip.h>
-# include <windows.h>
-
-#else /* Not Windows */
-
-# include <sys/time.h>
-# include <sys/types.h>
-# include <sys/socket.h>
-#endif
-
-#if 0
-/* The size of `long', as computed by sizeof. */
-#define CARES_SIZEOF_LONG 4
-#endif
-
-/* Integral data type used for ares_socklen_t. */
-#define CARES_TYPEOF_ARES_SOCKLEN_T socklen_t
-
-#if 0
-/* The size of `ares_socklen_t', as computed by sizeof. */
-#define CARES_SIZEOF_ARES_SOCKLEN_T 4
-#endif
-
-/* Data type definition of ares_socklen_t. */
-typedef int ares_socklen_t;
-
-#if 0 /* libuv disabled */
-#include "ares_rules.h"    /* c-ares rules enforcement */
-#endif
-
-/*********************** end libuv patch ***************/
-
 #include <sys/types.h>
 
 /* HP-UX systems version 9, 10 and 11 lack sys/select.h and so does oldish
    libc5-based Linux systems. Only include it on system that are known to
    require it! */
 #if defined(_AIX) || defined(__NOVELL_LIBC__) || defined(__NetBSD__) || \
-    defined(__minix) || defined(__SYMBIAN32__) || defined(__INTEGRITY)
+    defined(__minix) || defined(__SYMBIAN32__) || defined(__INTEGRITY) || \
+    defined(ANDROID) || defined(__ANDROID__)
 #include <sys/select.h>
 #endif
 #if (defined(NETWARE) && !defined(__NOVELL_LIBC__))
@@ -513,6 +466,26 @@ struct ares_txt_reply {
   size_t                  length;  /* length excludes null termination */
 };
 
+struct ares_naptr_reply {
+  struct ares_naptr_reply *next;
+  unsigned char           *flags;
+  unsigned char           *service;
+  unsigned char           *regexp;
+  char                    *replacement;
+  unsigned short           order;
+  unsigned short           preference;
+};
+
+struct ares_soa_reply {
+  char        *nsname;
+  char        *hostmaster;
+  unsigned int serial;
+  unsigned int refresh;
+  unsigned int retry;
+  unsigned int expire;
+  unsigned int minttl;
+};
+
 /*
 ** Parse the buffer, starting at *abuf and of length alen bytes, previously
 ** obtained from an ares_search call.  Put the results in *host, if nonnull.
@@ -556,9 +529,19 @@ CARES_EXTERN int ares_parse_txt_reply(const unsigned char* abuf,
                                       int alen,
                                       struct ares_txt_reply** txt_out);
 
+CARES_EXTERN int ares_parse_naptr_reply(const unsigned char* abuf,
+                                        int alen,
+                                        struct ares_naptr_reply** naptr_out);
+
+CARES_EXTERN int ares_parse_soa_reply(const unsigned char* abuf,
+				      int alen,
+				      struct ares_soa_reply** soa_out);
+
 CARES_EXTERN void ares_free_string(void *str);
 
 CARES_EXTERN void ares_free_hostent(struct hostent *host);
+
+CARES_EXTERN void ares_free_soa(struct ares_soa_reply *soa);
 
 CARES_EXTERN void ares_free_data(void *dataptr);
 
