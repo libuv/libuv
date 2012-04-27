@@ -33,6 +33,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <pwd.h>
 #include <termios.h>
 #include <pthread.h>
 
@@ -50,6 +51,10 @@ typedef pthread_once_t uv_once_t;
 typedef pthread_t uv_thread_t;
 typedef pthread_mutex_t uv_mutex_t;
 typedef pthread_rwlock_t uv_rwlock_t;
+
+/* Platform-specific definitions for uv_spawn support. */
+typedef gid_t uv_gid_t;
+typedef uid_t uv_uid_t;
 
 /* Platform-specific definitions for uv_dlopen support. */
 typedef void* uv_lib_t;

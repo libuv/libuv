@@ -174,6 +174,12 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   pid_t pid;
   int flags;
 
+  assert(options.file != NULL);
+  assert(!(options.flags & ~(UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                             UV_PROCESS_SETGID |
+                             UV_PROCESS_SETUID)));
+
+
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
 
@@ -260,6 +266,16 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
     if (options.cwd && chdir(options.cwd)) {
       perror("chdir()");
+      _exit(127);
+    }
+
+    if ((options.flags & UV_PROCESS_SETGID) && setgid(options.gid)) {
+      perror("setgid()");
+      _exit(127);
+    }
+
+    if ((options.flags & UV_PROCESS_SETUID) && setuid(options.uid)) {
+      perror("setuid()");
       _exit(127);
     }
 

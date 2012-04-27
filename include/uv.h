@@ -1105,12 +1105,18 @@ typedef struct uv_process_options_s {
    * in. Stands for current working directory.
    */
   char* cwd;
-
   /*
-   * TODO describe how this works.
+   * Various flags that control how uv_spawn() behaves. See the definition of
+   * `enum uv_process_flags` below.
    */
-  int windows_verbatim_arguments;
-
+  unsigned int flags;
+  /*
+   * Libuv can change the child process' user/group id. This happens only when
+   * the appropriate bits are set in the flags fields. This is not supported on
+   * windows; uv_spawn() will fail and set the error to UV_ENOTSUP.
+   */
+  uv_uid_t uid;
+  uv_gid_t gid;
   /*
    * The user should supply pointers to initialized uv_pipe_t structs for
    * stdio. This is used to to send or receive input from the subprocess.
@@ -1120,6 +1126,30 @@ typedef struct uv_process_options_s {
   uv_pipe_t* stdout_stream;
   uv_pipe_t* stderr_stream;
 } uv_process_options_t;
+
+/*
+ * These are the flags that can be used for the uv_process_options.flags field.
+ */
+enum uv_process_flags {
+  /*
+   * Set the child process' user id. The user id is supplied in the `uid` field
+   * of the options struct. This does not work on windows; setting this flag
+   * will cause uv_spawn() to fail.
+   */
+  UV_PROCESS_SETUID = (1 << 0),
+  /*
+   * Set the child process' group id. The user id is supplied in the `gid`
+   * field of the options struct. This does not work on windows; setting this
+   * flag will cause uv_spawn() to fail.
+   */
+  UV_PROCESS_SETGID = (1 << 1),
+  /*
+   * Do not wrap any arguments in quotes, or perform any other escaping, when
+   * converting the argument list into a command line string. This option is
+   * only meaningful on Windows systems. On unix it is silently ignored.
+   */
+  UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS = (1 << 2)
+};
 
 /*
  * uv_process_t is a subclass of uv_handle_t
@@ -1134,6 +1164,7 @@ struct uv_process_s {
 /* Initializes uv_process_t and starts the process. */
 UV_EXTERN int uv_spawn(uv_loop_t*, uv_process_t*,
     uv_process_options_t options);
+
 
 /*
  * Kills the process with the specified signal. The user must still
