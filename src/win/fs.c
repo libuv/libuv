@@ -573,12 +573,28 @@ void fs__fsync(uv_fs_t* req, uv_file file) {
 
 
 void fs__ftruncate(uv_fs_t* req, uv_file file, int64_t offset) {
-  int result;
+  HANDLE handle;
+  NTSTATUS status;
+  IO_STATUS_BLOCK io_status;
+  FILE_END_OF_FILE_INFORMATION eof_info;
 
   VERIFY_UV_FILE(file, req);
 
-  result = _chsize_s(file, offset);
-  SET_REQ_RESULT(req, result);
+  handle = (HANDLE)_get_osfhandle(file);
+
+  eof_info.EndOfFile.QuadPart = offset;
+
+  status = pNtSetInformationFile(handle,
+                                 &io_status,
+                                 &eof_info,
+                                 sizeof eof_info,
+                                 FileEndOfFileInformation);
+
+  if (NT_SUCCESS(status)) {
+    SET_REQ_RESULT(req, 0);
+  } else {
+    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
+  }
 }
 
 
