@@ -59,8 +59,11 @@ typedef gid_t uv_gid_t;
 typedef uid_t uv_uid_t;
 
 /* Platform-specific definitions for uv_dlopen support. */
-typedef void* uv_lib_t;
 #define UV_DYNAMIC /* empty */
+typedef struct {
+  void* handle;
+  char* errmsg;
+} uv_lib_t;
 
 #define UV_HANDLE_TYPE_PRIVATE /* empty */
 #define UV_REQ_TYPE_PRIVATE /* empty */

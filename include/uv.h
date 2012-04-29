@@ -1532,23 +1532,26 @@ UV_EXTERN extern uint64_t uv_hrtime(void);
 
 
 /*
- * Opens a shared library. The filename is in utf-8. On success, -1 is returned
- * and the variable pointed by library receives a handle to the library.
+ * Opens a shared library. The filename is in utf-8. Returns 0 on success and
+ * -1 on error. Call `uv_dlerror(uv_lib_t*)` to get the error message.
  */
-UV_EXTERN uv_err_t uv_dlopen(const char* filename, uv_lib_t* library);
-UV_EXTERN uv_err_t uv_dlclose(uv_lib_t library);
+UV_EXTERN int uv_dlopen(const char* filename, uv_lib_t* lib);
+
+/*
+ * Close the shared libary.
+ */
+UV_EXTERN void uv_dlclose(uv_lib_t* lib);
 
 /*
  * Retrieves a data pointer from a dynamic library. It is legal for a symbol to
- * map to NULL.
+ * map to NULL. Returns 0 on success and -1 if the symbol was not found.
  */
-UV_EXTERN uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr);
+UV_EXTERN int uv_dlsym(uv_lib_t* lib, const char* name, void** ptr);
 
 /*
- * Retrieves and frees an error message of dynamic linking loaders.
+ * Returns the last uv_dlopen() or uv_dlsym() error message.
  */
-UV_EXTERN const char *uv_dlerror(uv_lib_t library);
-UV_EXTERN void uv_dlerror_free(uv_lib_t library, const char *msg);
+UV_EXTERN const char* uv_dlerror(uv_lib_t* lib);
 
 /*
  * The mutex functions return 0 on success, -1 on error

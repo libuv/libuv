@@ -27,65 +27,61 @@
 #include <string.h>
 #include <locale.h>
 
-/* The dl family of functions don't set errno. We need a good way to communicate
- * errors to the caller but there is only dlerror() and that returns a string -
- * a string that may or may not be safe to keep a reference to...
- */
-static const uv_err_t uv_err_ = { UV_ENOENT, ENOENT };
+static int uv__dlerror(uv_lib_t* lib);
 
 
-uv_err_t uv_dlopen(const char* filename, uv_lib_t* library) {
-  void* handle = dlopen(filename, RTLD_LAZY);
-  if (handle == NULL) {
-    return uv_err_;
-  }
-
-  *library = handle;
-  return uv_ok_;
+int uv_dlopen(const char* filename, uv_lib_t* lib) {
+  lib->errmsg = NULL;
+  lib->handle = dlopen(filename, RTLD_LAZY);
+  return uv__dlerror(lib);
 }
 
 
-uv_err_t uv_dlclose(uv_lib_t library) {
-  if (dlclose(library) != 0) {
-    return uv_err_;
+void uv_dlclose(uv_lib_t* lib) {
+  if (lib->errmsg) {
+    free(lib->errmsg);
+    lib->errmsg = NULL;
   }
 
-  return uv_ok_;
+  if (lib->handle) {
+    /* Ignore errors. No good way to signal them without leaking memory. */
+    dlclose(lib->handle);
+    lib->handle = NULL;
+  }
 }
 
 
-uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr) {
-  void* address;
-
-  /* Reset error status. */
-  dlerror();
-
-  address = dlsym(library, name);
-
-  if (dlerror()) {
-    return uv_err_;
-  }
-
-  *ptr = (void*) address;
-  return uv_ok_;
+int uv_dlsym(uv_lib_t* lib, const char* name, void** ptr) {
+  dlerror(); /* Reset error status. */
+  *ptr = dlsym(lib->handle, name);
+  return uv__dlerror(lib);
 }
 
 
-const char *uv_dlerror(uv_lib_t library) {
-  const char* buf = NULL;
-  /* Make uv_dlerror() be independent of locale */
-  char* loc = setlocale(LC_MESSAGES, NULL);
-  if(strcmp(loc, "C") == 0) {
-    return strdup(dlerror());
+const char* uv_dlerror(uv_lib_t* lib) {
+  return lib->errmsg ? lib->errmsg : "no error";
+}
+
+
+static int uv__dlerror(uv_lib_t* lib) {
+  char* errmsg;
+  char* locale;
+
+  /* Make error message independent of locale. */
+  locale = setlocale(LC_MESSAGES, NULL);
+  if (strcmp(locale, "C") == 0) {
+    errmsg = dlerror();
   } else {
     setlocale(LC_MESSAGES, "C");
-    buf = dlerror();
-    setlocale(LC_MESSAGES, loc);
-    return strdup(buf);
+    errmsg = dlerror();
+    setlocale(LC_MESSAGES, locale);
   }
-}
 
+  if (lib->errmsg)
+    free(lib->errmsg);
 
-void uv_dlerror_free(uv_lib_t library, const char *msg) {
-  free((void*)msg);
+  if (errmsg)
+    return lib->errmsg = strdup(errmsg), -1;
+  else
+    return lib->errmsg = NULL, 0;
 }

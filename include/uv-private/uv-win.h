@@ -192,8 +192,11 @@ typedef unsigned char uv_uid_t;
 typedef unsigned char uv_gid_t;
 
 /* Platform-specific definitions for uv_dlopen support. */
-typedef HMODULE uv_lib_t;
 #define UV_DYNAMIC FAR WINAPI
+typedef struct {
+  HMODULE handle;
+  char* errmsg;
+} uv_lib_t;
 
 RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
