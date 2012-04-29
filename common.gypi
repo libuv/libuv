@@ -57,9 +57,6 @@
             'OmitFramePointers': 'true',
             'EnableFunctionLevelLinking': 'true',
             'EnableIntrinsicFunctions': 'true',
-            'AdditionalOptions': [
-              '/MP', # compile across multiple CPUs
-            ],
           },
           'VCLibrarianTool': {
             'AdditionalOptions': [
@@ -84,6 +81,9 @@
         'ExceptionHandling': 1, # /EHsc
         'SuppressStartupBanner': 'true',
         'WarnAsError': 'false',
+        'AdditionalOptions': [
+           '/MP', # compile across multiple CPUs
+         ],
       },
       'VCLibrarianTool': {
       },
