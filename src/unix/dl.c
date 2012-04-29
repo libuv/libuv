@@ -31,13 +31,13 @@
  * errors to the caller but there is only dlerror() and that returns a string -
  * a string that may or may not be safe to keep a reference to...
  */
-static const uv_err_t uv_inval_ = { UV_EINVAL, EINVAL };
+static const uv_err_t uv_err_ = { UV_ENOENT, ENOENT };
 
 
 uv_err_t uv_dlopen(const char* filename, uv_lib_t* library) {
   void* handle = dlopen(filename, RTLD_LAZY);
   if (handle == NULL) {
-    return uv_inval_;
+    return uv_err_;
   }
 
   *library = handle;
@@ -47,7 +47,7 @@ uv_err_t uv_dlopen(const char* filename, uv_lib_t* library) {
 
 uv_err_t uv_dlclose(uv_lib_t library) {
   if (dlclose(library) != 0) {
-    return uv_inval_;
+    return uv_err_;
   }
 
   return uv_ok_;
@@ -63,7 +63,7 @@ uv_err_t uv_dlsym(uv_lib_t library, const char* name, void** ptr) {
   address = dlsym(library, name);
 
   if (dlerror()) {
-    return uv_inval_;
+    return uv_err_;
   }
 
   *ptr = (void*) address;
