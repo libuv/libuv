@@ -129,6 +129,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case WSAETIMEDOUT:                      return UV_ETIMEDOUT;
     case WSAHOST_NOT_FOUND:                 return UV_ENOENT;
     case WSAENOTSOCK:                       return UV_ENOTSOCK;
+    case ERROR_NOT_SAME_DEVICE:             return UV_EXDEV;
     default:                                return UV_UNKNOWN;
   }
 }
