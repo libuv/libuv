@@ -199,6 +199,7 @@
             'src/unix/internal.h',
             'src/unix/loop.c',
             'src/unix/pipe.c',
+            'src/unix/poll.c',
             'src/unix/prepare.c',
             'src/unix/process.c',
             'src/unix/stream.c',

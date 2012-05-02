@@ -37,6 +37,7 @@ OBJS += src/unix/fs.o
 OBJS += src/unix/idle.o
 OBJS += src/unix/loop.o
 OBJS += src/unix/pipe.o
+OBJS += src/unix/poll.o
 OBJS += src/unix/prepare.o
 OBJS += src/unix/process.o
 OBJS += src/unix/stream.o
