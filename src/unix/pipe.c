@@ -163,7 +163,9 @@ void uv__pipe_close(uv_pipe_t* handle) {
 
 
 void uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
-  uv__stream_open((uv_stream_t*)handle, fd, UV_READABLE | UV_WRITABLE);
+  uv__stream_open((uv_stream_t*)handle,
+                  fd,
+                  UV_STREAM_READABLE | UV_STREAM_WRITABLE);
 }
 
 
@@ -204,7 +206,9 @@ void uv_pipe_connect(uv_connect_t* req,
     goto out;
   }
 
-  uv__stream_open((uv_stream_t*)handle, sockfd, UV_READABLE | UV_WRITABLE);
+  uv__stream_open((uv_stream_t*)handle,
+                  sockfd,
+                  UV_STREAM_READABLE | UV_STREAM_WRITABLE);
 
   ev_io_start(handle->loop->ev, &handle->read_watcher);
   ev_io_start(handle->loop->ev, &handle->write_watcher);
