@@ -25,7 +25,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/wait.h>
-#include <fcntl.h> /* O_CLOEXEC, O_NONBLOCK */
 #include <poll.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -108,10 +107,10 @@ int uv__make_pipe(int fds[2], int flags) {
 #if __linux__
   int fl;
 
-  fl = O_CLOEXEC;
+  fl = UV__O_CLOEXEC;
 
   if (flags & UV__F_NONBLOCK)
-    fl |= O_NONBLOCK;
+    fl |= UV__O_NONBLOCK;
 
   if (uv__pipe2(fds, fl) == 0)
     return 0;
