@@ -474,7 +474,7 @@ int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
 
 
 int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
-    uv_platform_socket_t socket) {
+    uv_os_sock_t socket) {
   WSAPROTOCOL_INFOW protocol_info;
   int len;
   SOCKET peer_socket, base_socket;

@@ -160,7 +160,7 @@ typedef struct uv_buf_t {
 
 typedef int uv_file;
 
-typedef SOCKET uv_platform_socket_t;
+typedef SOCKET uv_os_sock_t;
 
 typedef HANDLE uv_thread_t;
 

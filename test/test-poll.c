@@ -46,7 +46,7 @@ typedef enum {
 typedef struct connection_context_s {
   uv_poll_t poll_handle;
   uv_timer_t timer_handle;
-  uv_platform_socket_t sock;
+  uv_os_sock_t sock;
   size_t read, sent;
   int is_server_connection;
   int open_handles;
@@ -56,7 +56,7 @@ typedef struct connection_context_s {
 
 typedef struct server_context_s {
   uv_poll_t poll_handle;
-  uv_platform_socket_t sock;
+  uv_os_sock_t sock;
   int connections;
 } server_context_t;
 
@@ -86,7 +86,7 @@ static int got_eagain() {
 }
 
 
-static void set_nonblocking(uv_platform_socket_t sock) {
+static void set_nonblocking(uv_os_sock_t sock) {
   int r;
 #ifdef _WIN32
   unsigned long on = 1;
@@ -101,9 +101,9 @@ static void set_nonblocking(uv_platform_socket_t sock) {
 }
 
 
-static uv_platform_socket_t create_nonblocking_bound_socket(
+static uv_os_sock_t create_nonblocking_bound_socket(
     struct sockaddr_in bind_addr) {
-  uv_platform_socket_t sock;
+  uv_os_sock_t sock;
   int r;
 
   sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -131,7 +131,7 @@ static uv_platform_socket_t create_nonblocking_bound_socket(
 }
 
 
-static void close_socket(uv_platform_socket_t sock) {
+static void close_socket(uv_os_sock_t sock) {
   int r;
 #ifdef _WIN32
   r = closesocket(sock);
@@ -143,7 +143,7 @@ static void close_socket(uv_platform_socket_t sock) {
 
 
 static connection_context_t* create_connection_context(
-    uv_platform_socket_t sock, int is_server_connection) {
+    uv_os_sock_t sock, int is_server_connection) {
   int r;
   connection_context_t* context;
 
@@ -433,7 +433,7 @@ static void delay_timer_cb(uv_timer_t* timer, int status) {
 
 
 static server_context_t* create_server_context(
-    uv_platform_socket_t sock) {
+    uv_os_sock_t sock) {
   int r;
   server_context_t* context;
 
@@ -468,7 +468,7 @@ static void server_poll_cb(uv_poll_t* handle, int status, int events) {
   connection_context_t* connection_context;
   struct sockaddr_in addr;
   socklen_t addr_len;
-  uv_platform_socket_t sock;
+  uv_os_sock_t sock;
   int r;
 
   addr_len = sizeof addr;
@@ -496,7 +496,7 @@ static void server_poll_cb(uv_poll_t* handle, int status, int events) {
 
 
 static void start_server() {
-  uv_platform_socket_t sock;
+  uv_os_sock_t sock;
   server_context_t* context;
   int r;
 
@@ -512,7 +512,7 @@ static void start_server() {
 
 
 static void start_client() {
-  uv_platform_socket_t sock;
+  uv_os_sock_t sock;
   connection_context_t* context;
   struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
   int r;

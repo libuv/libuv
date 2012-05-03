@@ -975,7 +975,7 @@ UV_EXTERN int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd);
 /* Initialize the poll watcher using a socket descriptor. On unix this is */
 /* identical to uv_poll_init. On windows it takes a SOCKET handle. */
 UV_EXTERN int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
-    uv_platform_socket_t socket);
+    uv_os_sock_t socket);
 
 /*
  * Starts polling the file descriptor. `events` is a bitmask consisting made up

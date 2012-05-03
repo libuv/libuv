@@ -45,7 +45,7 @@ typedef struct {
 
 typedef int uv_file;
 
-typedef int uv_platform_socket_t;
+typedef int uv_os_sock_t;
 
 #define UV_ONCE_INIT PTHREAD_ONCE_INIT
 
