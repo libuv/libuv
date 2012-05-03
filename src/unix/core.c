@@ -107,6 +107,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     uv__fs_event_close((uv_fs_event_t*)handle);
     break;
 
+  case UV_POLL:
+    uv__poll_close((uv_poll_t*)handle);
+    break;
+
   default:
     assert(0);
   }
@@ -249,6 +253,9 @@ void uv__finish_close(uv_handle_t* handle) {
     case UV_FS_EVENT:
       break;
 
+    case UV_POLL:
+      break;
+
     default:
       assert(0);
       break;
@@ -285,6 +292,8 @@ int64_t uv_now(uv_loop_t* loop) {
 
 int uv_is_active(const uv_handle_t* handle) {
   switch (handle->type) {
+  case UV_POLL:
+    return uv__poll_active((const uv_poll_t*)handle);
   case UV_CHECK:
     return uv__check_active((const uv_check_t*)handle);
   case UV_IDLE:

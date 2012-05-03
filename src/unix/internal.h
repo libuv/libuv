@@ -141,6 +141,10 @@ int uv__tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay);
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 void uv__pipe_accept(EV_P_ ev_io* watcher, int revents);
 
+/* poll */
+void uv__poll_close(uv_poll_t* handle);
+int uv__poll_active(const uv_poll_t* handle);
+
 /* various */
 int uv__check_active(const uv_check_t* handle);
 int uv__idle_active(const uv_idle_t* handle);

@@ -45,6 +45,8 @@ typedef struct {
 
 typedef int uv_file;
 
+typedef int uv_os_sock_t;
+
 #define UV_ONCE_INIT PTHREAD_ONCE_INIT
 
 typedef pthread_once_t uv_once_t;
@@ -160,6 +162,11 @@ typedef void* uv_lib_t;
 /* UV_NAMED_PIPE */
 #define UV_PIPE_PRIVATE_FIELDS \
   const char* pipe_fname; /* strdup'ed */
+
+
+/* UV_POLL */
+#define UV_POLL_PRIVATE_FIELDS        \
+  ev_io io_watcher;
 
 
 /* UV_PREPARE */ \
