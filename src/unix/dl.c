@@ -65,23 +65,18 @@ const char* uv_dlerror(uv_lib_t* lib) {
 
 static int uv__dlerror(uv_lib_t* lib) {
   char* errmsg;
-  char* locale;
-
-  /* Make error message independent of locale. */
-  locale = setlocale(LC_MESSAGES, NULL);
-  if (strcmp(locale, "C") == 0) {
-    errmsg = dlerror();
-  } else {
-    setlocale(LC_MESSAGES, "C");
-    errmsg = dlerror();
-    setlocale(LC_MESSAGES, locale);
-  }
 
   if (lib->errmsg)
     free(lib->errmsg);
 
-  if (errmsg)
-    return lib->errmsg = strdup(errmsg), -1;
-  else
-    return lib->errmsg = NULL, 0;
+  errmsg = dlerror();
+
+  if (errmsg) {
+    lib->errmsg = strdup(errmsg);
+    return -1;
+  }
+  else {
+    lib->errmsg = NULL;
+    return 0;
+  }
 }
