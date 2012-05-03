@@ -960,9 +960,6 @@ static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
 
 static int uv_tty_clear(uv_tty_t* handle, int dir, char entire_screen,
     DWORD* error) {
-  unsigned short argc = handle->ansi_csi_argc;
-  unsigned short* argv = handle->ansi_csi_argv;
-
   CONSOLE_SCREEN_BUFFER_INFO info;
   COORD start, end;
   DWORD count, written;

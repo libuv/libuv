@@ -108,8 +108,6 @@ static void uv_ares_sockstate_cb(void *data, ares_socket_t sock, int read,
   uv_loop_t* loop = (uv_loop_t*) data;
   uv_ares_task_t* uv_handle_ares = uv_find_ares_handle(loop, sock);
 
-  int timeoutms = 0;
-
   if (read == 0 && write == 0) {
     /* if read and write are 0, cleanup existing data */
     /* The code assumes that c-ares does a callback with read = 0 and */

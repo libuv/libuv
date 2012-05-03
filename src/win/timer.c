@@ -31,7 +31,6 @@
 
 
 /* The resolution of the high-resolution clock. */
-static int64_t uv_ticks_per_msec_ = 0;
 static uint64_t uv_hrtime_frequency_ = 0;
 static uv_once_t uv_hrtime_init_guard_ = UV_ONCE_INIT;
 
