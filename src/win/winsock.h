@@ -43,11 +43,15 @@
 #endif
 
 #ifndef IPV6_V6ONLY
-  #define IPV6_V6ONLY 27
+# define IPV6_V6ONLY 27
 #endif
 
 #ifndef IPV6_HOPLIMIT
-  #define IPV6_HOPLIMIT 21
+# define IPV6_HOPLIMIT 21
+#endif
+
+#ifndef SIO_BASE_HANDLE
+# define SIO_BASE_HANDLE 0x48000022
 #endif
 
 /*
