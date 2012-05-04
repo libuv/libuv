@@ -310,12 +310,31 @@ int uv__tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
 
 
 static void CALLBACK post_completion(void* context, BOOLEAN timed_out) {
-  uv_tcp_accept_t* req;
+  uv_req_t* req;
   uv_tcp_t* handle;
 
-  req = (uv_tcp_accept_t*) context;
+  req = (uv_req_t*) context;
   assert(req != NULL);
   handle = (uv_tcp_t*)req->data;
+  assert(handle != NULL);
+  assert(!timed_out);
+
+  if (!PostQueuedCompletionStatus(handle->loop->iocp,
+                                  req->overlapped.InternalHigh,
+                                  0,
+                                  &req->overlapped)) {
+    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+  }
+}
+
+
+static void CALLBACK post_write_completion(void* context, BOOLEAN timed_out) {
+  uv_write_t* req;
+  uv_tcp_t* handle;
+
+  req = (uv_write_t*) context;
+  assert(req != NULL);
+  handle = (uv_tcp_t*)req->handle;
   assert(handle != NULL);
   assert(!timed_out);
 
@@ -381,7 +400,7 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
-          req->overlapped.hEvent, post_completion, (void*) req,
+          req->event_handle, post_completion, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
@@ -460,7 +479,7 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
-          req->overlapped.hEvent, post_completion, (void*) req,
+          req->event_handle, post_completion, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
@@ -837,6 +856,7 @@ int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
       uv_fatal_error(GetLastError(), "CreateEvent");
     }
     req->overlapped.hEvent = (HANDLE) ((ULONG_PTR) req->event_handle | 1);
+    req->wait_handle = INVALID_HANDLE_VALUE;
   }
 
   result = WSASend(handle->socket,
@@ -862,10 +882,9 @@ int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
     handle->write_queue_size += req->queued_bytes;
     uv_ref(loop);
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
-        req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
-          req->overlapped.hEvent, post_completion, (void*) req,
-          INFINITE, WT_EXECUTEINWAITTHREAD)) {
+          req->event_handle, post_write_completion, (void*) req,
+          INFINITE, WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE)) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
     }
@@ -1005,11 +1024,9 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     if (req->wait_handle != INVALID_HANDLE_VALUE) {
       UnregisterWait(req->wait_handle);
-      req->wait_handle = INVALID_HANDLE_VALUE;
     }
     if (req->event_handle) {
       CloseHandle(req->event_handle);
-      req->event_handle = NULL;
     }
   }
 
