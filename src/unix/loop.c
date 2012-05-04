@@ -33,8 +33,10 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
 #else
   int flags = EVFLAG_AUTO;
 #endif
+  memset(loop, 0, sizeof(*loop));
   RB_INIT(&loop->uv_ares_handles_);
   loop->endgame_handles = NULL;
+  loop->channel = NULL;
   loop->ev = (default_loop ? ev_default_loop : ev_loop_new)(flags);
   ev_set_userdata(loop->ev, loop);
   eio_channel_init(&loop->uv_eio_channel, loop);
