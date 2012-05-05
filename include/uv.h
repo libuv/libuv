@@ -143,6 +143,7 @@ typedef enum {
   XX(FS_EVENT, fs_event)        \
   XX(IDLE, idle)                \
   XX(NAMED_PIPE, pipe)          \
+  XX(POLL, poll)                \
   XX(PREPARE, prepare)          \
   XX(PROCESS, process)          \
   XX(TCP, tcp)                  \
@@ -164,7 +165,6 @@ typedef enum {
 #define XX(uc, lc) UV_##uc,
   UV_HANDLE_TYPE_MAP(XX)
 #undef XX
-  UV_POLL,
   UV_FILE,
   UV_HANDLE_TYPE_PRIVATE
   UV_HANDLE_TYPE_MAX
