@@ -37,6 +37,11 @@
 #include <termios.h>
 #include <pthread.h>
 
+#if __sun
+# include <sys/port.h>
+# include <port.h>
+#endif
+
 /* Note: May be cast to struct iovec. See writev(2). */
 typedef struct {
   char* base;
@@ -76,6 +81,10 @@ typedef struct {
   } inotify_watchers;                                 \
   ev_io inotify_read_watcher;                         \
   int inotify_fd;
+#elif defined(PORT_SOURCE_FILE)
+# define UV_LOOP_PRIVATE_PLATFORM_FIELDS              \
+  ev_io fs_event_watcher;                             \
+  int fs_fd;
 #else
 # define UV_LOOP_PRIVATE_PLATFORM_FIELDS
 #endif
@@ -248,9 +257,6 @@ typedef struct {
   int fflags; \
 
 #elif defined(__sun)
-
-#include <sys/port.h>
-#include <port.h>
 
 #ifdef PORT_SOURCE_FILE
 # define UV_FS_EVENT_PRIVATE_FIELDS \

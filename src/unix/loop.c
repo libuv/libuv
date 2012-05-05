@@ -44,6 +44,9 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   RB_INIT(&loop->inotify_watchers);
   loop->inotify_fd = -1;
 #endif
+#if HAVE_PORTS_FS
+  loop->fs_fd = -1;
+#endif
   return 0;
 }
 
@@ -56,5 +59,9 @@ void uv__loop_delete(uv_loop_t* loop) {
   ev_io_stop(loop->ev, &loop->inotify_read_watcher);
   close(loop->inotify_fd);
   loop->inotify_fd = -1;
+#endif
+#if HAVE_PORTS_FS
+  if (loop->fs_fd != -1)
+    close(loop->fs_fd);
 #endif
 }
