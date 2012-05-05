@@ -222,7 +222,6 @@ typedef void* uv_lib_t;
 
 #ifdef PORT_SOURCE_FILE
 # define UV_FS_EVENT_PRIVATE_FIELDS \
-  ev_io event_watcher; \
   uv_fs_event_cb cb; \
   file_obj_t fo;
 #else /* !PORT_SOURCE_FILE */
