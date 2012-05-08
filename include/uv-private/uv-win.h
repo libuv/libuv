@@ -36,6 +36,10 @@
 
 #define MAX_PIPENAME_LEN 256
 
+#ifndef S_IFLNK
+# define S_IFLNK          0xA000
+#endif
+
 /*
  * Guids and typedefs for winsock extension functions
  * Mingw32 doesn't have these :-(

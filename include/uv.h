@@ -1441,6 +1441,12 @@ UV_EXTERN int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
  */
 #define UV_FS_SYMLINK_DIR          0x0001
 
+/*
+ * This flag can be used with uv_fs_symlink on Windows
+ * to specify whether the symlink is to be created using junction points.
+ */
+#define UV_FS_SYMLINK_JUNCTION     0x0002
+
 UV_EXTERN int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     const char* new_path, int flags, uv_fs_cb cb);
 
