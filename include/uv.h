@@ -1156,6 +1156,27 @@ UV_EXTERN int uv_getaddrinfo(uv_loop_t*, uv_getaddrinfo_t* handle,
 UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
 /* uv_spawn() options */
+typedef enum {
+  UV_IGNORE        = 0x00,
+  UV_CREATE_PIPE   = 0x01,
+  /*
+   * UV_READABLE_PIPE and UV_WRITABLE_PIPE flags are set from
+   * the child process perspective.
+   */
+  UV_READABLE_PIPE = 0x02,
+  UV_WRITABLE_PIPE = 0x04,
+  UV_RAW_FD        = 0x08
+} uv_stdio_flags;
+
+typedef struct uv_stdio_container_s {
+  uv_stdio_flags flags;
+
+  union {
+    uv_stream_t* stream;
+    int fd;
+  } data;
+} uv_stdio_container_t;
+
 typedef struct uv_process_options_s {
   uv_exit_cb exit_cb; /* Called after the process exits. */
   const char* file; /* Path to program to execute. */
@@ -1188,14 +1209,12 @@ typedef struct uv_process_options_s {
    */
   uv_uid_t uid;
   uv_gid_t gid;
+
   /*
-   * The user should supply pointers to initialized uv_pipe_t structs for
-   * stdio. This is used to to send or receive input from the subprocess.
-   * The user is responsible for calling uv_close on them.
+   * A container of stdio streams (stdin/stdout/stderr)
    */
-  uv_pipe_t* stdin_stream;
-  uv_pipe_t* stdout_stream;
-  uv_pipe_t* stderr_stream;
+  uv_stdio_container_t* stdio;
+  int stdio_count;
 } uv_process_options_t;
 
 /*
