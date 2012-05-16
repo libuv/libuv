@@ -480,7 +480,7 @@ int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t slen) {
 
 
 int uv__nonblock(int fd, int set) {
-#if FIONBIO
+#ifdef FIONBIO
   return ioctl(fd, FIONBIO, &set);
 #else
   int flags;
