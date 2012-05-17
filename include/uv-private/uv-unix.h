@@ -198,6 +198,7 @@ typedef struct {
 
 /* UV_IDLE */
 #define UV_IDLE_PRIVATE_FIELDS \
+  ev_idle idle_watcher; \
   uv_idle_cb idle_cb; \
   ngx_queue_t queue;
 

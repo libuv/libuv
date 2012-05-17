@@ -204,14 +204,16 @@ static void uv__poll(uv_loop_t* loop, int block) {
 
 
 static int uv__run(uv_loop_t* loop) {
+  /*
   if (!uv__has_pending_handles(loop) && !uv__has_active_reqs(loop))
     uv__run_idle(loop);
+  */
 
   uv__run_pending(loop);
   uv__run_prepare(loop);
 
   if (uv__has_active_handles(loop) || uv__has_active_reqs(loop))
-    uv__poll(loop, 0);
+    uv__poll(loop, 1);
 
   uv__run_check(loop);
 
