@@ -62,6 +62,7 @@ void uv__stream_init(uv_loop_t* loop,
   stream->close_cb = NULL;
   stream->connection_cb = NULL;
   stream->connect_req = NULL;
+  stream->shutdown_req = NULL;
   stream->accepted_fd = -1;
   stream->fd = -1;
   stream->delayed_error = 0;
@@ -123,7 +124,6 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 
 
 void uv__stream_destroy(uv_stream_t* stream) {
-  uv_shutdown_t* shutdown_req;
   uv_write_t* req;
   ngx_queue_t* q;
 
@@ -158,19 +158,11 @@ void uv__stream_destroy(uv_stream_t* stream) {
     }
   }
 
-  if (!(stream->flags & UV_STREAM_SHUTTING))
-    return;
-
-  if (!stream->shutdown_req)
-    return;
-
-  shutdown_req = stream->shutdown_req;
-  stream->shutdown_req = NULL;
-  uv__req_unregister(stream->loop, shutdown_req);
-
-  if (shutdown_req->cb) {
+  if (stream->shutdown_req) {
+    uv__req_unregister(stream->loop, stream->shutdown_req);
     uv__set_artificial_error(stream->loop, UV_EINTR);
-    shutdown_req->cb(shutdown_req, -1);
+    stream->shutdown_req->cb(stream->shutdown_req, -1);
+    stream->shutdown_req = NULL;
   }
 }
 
