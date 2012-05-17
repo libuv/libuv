@@ -129,6 +129,13 @@ void uv__stream_destroy(uv_stream_t* stream) {
 
   assert(stream->flags & UV_CLOSED);
 
+  if (stream->connect_req) {
+    uv__req_unregister(stream->loop, stream->connect_req);
+    uv__set_artificial_error(stream->loop, UV_EINTR);
+    stream->connect_req->cb(stream->connect_req, -1);
+    stream->connect_req = NULL;
+  }
+
   while (!ngx_queue_empty(&stream->write_queue)) {
     q = ngx_queue_head(&stream->write_queue);
     ngx_queue_remove(q);
