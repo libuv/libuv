@@ -337,6 +337,7 @@
         'test/test-tcp-close.c',
         'test/test-tcp-flags.c',
         'test/test-tcp-connect-error.c',
+        'test/test-tcp-connect-timeout.c',
         'test/test-tcp-connect6-error.c',
         'test/test-tcp-write-error.c',
         'test/test-tcp-write-to-half-open-connection.c',
