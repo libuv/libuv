@@ -224,10 +224,6 @@ typedef struct uv_work_s uv_work_t;
 UV_EXTERN uv_loop_t* uv_loop_new(void);
 UV_EXTERN void uv_loop_delete(uv_loop_t*);
 
-/* This is a debugging tool. It's NOT part of the official API. */
-UV_EXTERN int uv_loop_refcount(const uv_loop_t*);
-
-
 /*
  * Returns the default loop.
  */
@@ -248,8 +244,8 @@ UV_EXTERN int uv_run_once (uv_loop_t*);
  * Manually modify the event loop's reference count. Useful if the user wants
  * to have a handle or timeout that doesn't keep the loop alive.
  */
-UV_EXTERN void uv_ref(uv_loop_t*);
-UV_EXTERN void uv_unref(uv_loop_t*);
+UV_EXTERN void uv_ref(uv_handle_t*);
+UV_EXTERN void uv_unref(uv_handle_t*);
 
 UV_EXTERN void uv_update_time(uv_loop_t*);
 UV_EXTERN int64_t uv_now(uv_loop_t*);
@@ -336,12 +332,18 @@ UV_EXTERN uv_err_t uv_last_error(uv_loop_t*);
 UV_EXTERN const char* uv_strerror(uv_err_t err);
 UV_EXTERN const char* uv_err_name(uv_err_t err);
 
+#ifndef UV_LEAN_AND_MEAN
+# define UV_REQ_EXTRA_FIELDS ngx_queue_t active_queue;
+#else
+# define UV_REQ_EXTRA_FIELDS
+#endif
 
 #define UV_REQ_FIELDS \
   /* read-only */ \
   uv_req_type type; \
   /* public */ \
   void* data; \
+  UV_REQ_EXTRA_FIELDS \
   /* private */ \
   UV_REQ_PRIVATE_FIELDS
 
@@ -374,6 +376,12 @@ struct uv_shutdown_s {
 };
 
 
+#ifndef UV_LEAN_AND_MEAN
+# define UV_HANDLE_EXTRA_FIELDS ngx_queue_t active_queue;
+#else
+# define UV_HANDLE_EXTRA_FIELDS
+#endif
+
 #define UV_HANDLE_FIELDS \
   /* read-only */ \
   uv_loop_t* loop; \
@@ -381,6 +389,7 @@ struct uv_shutdown_s {
   /* public */ \
   uv_close_cb close_cb; \
   void* data; \
+  UV_HANDLE_EXTRA_FIELDS \
   /* private */ \
   UV_HANDLE_PRIVATE_FIELDS
 
@@ -1638,6 +1647,13 @@ struct uv_loop_s {
   uv_err_t last_err;
   /* User data - use this for whatever. */
   void* data;
+#ifndef UV_LEAN_AND_MEAN
+  ngx_queue_t active_reqs;
+  ngx_queue_t active_handles;
+#else
+  unsigned int active_reqs;
+  unsigned int active_handles;
+#endif
 };
 
 

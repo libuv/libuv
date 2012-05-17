@@ -181,6 +181,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
+  uv__handle_start(process);
 
   process->exit_cb = options.exit_cb;
 
@@ -384,4 +385,5 @@ uv_err_t uv_kill(int pid, int signum) {
 
 void uv__process_close(uv_process_t* handle) {
   ev_child_stop(handle->loop->ev, &handle->child_watcher);
+  uv__handle_stop(handle);
 }

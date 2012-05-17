@@ -20,12 +20,11 @@
  */
 
 
+#include "uv.h"
+#include "internal.h"
+
 #include <assert.h>
 #include <io.h>
-
-#include "uv.h"
-#include "../uv-common.h"
-#include "internal.h"
 
 
 static const GUID uv_msafd_provider_ids[UV_MSAFD_PROVIDER_COUNT] = {
@@ -202,6 +201,13 @@ static int uv__fast_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
   assert((events & ~(UV_READABLE | UV_WRITABLE)) == 0);
 
   handle->events = events;
+
+  if (handle->events != 0) {
+    uv__handle_start(handle);
+  } else {
+    uv__handle_stop(handle);
+  }
+
   if ((handle->events & ~(handle->submitted_events_1 |
       handle->submitted_events_2)) != 0) {
     uv__fast_poll_submit_poll_req(handle->loop, handle);
@@ -213,6 +219,7 @@ static int uv__fast_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
 
 static void uv__fast_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   handle->events = 0;
+  uv__handle_start(handle);
 
   if (handle->submitted_events_1 == 0 &&
       handle->submitted_events_2 == 0) {
@@ -449,6 +456,13 @@ static int uv__slow_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
   assert((events & ~(UV_READABLE | UV_WRITABLE)) == 0);
 
   handle->events = events;
+
+  if (handle->events != 0) {
+    uv__handle_start(handle);
+  } else {
+    uv__handle_stop(handle);
+  }
+
   if ((handle->events &
       ~(handle->submitted_events_1 | handle->submitted_events_2)) != 0) {
     uv__slow_poll_submit_poll_req(handle->loop, handle);
@@ -460,6 +474,7 @@ static int uv__slow_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
 
 static void uv__slow_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   handle->events = 0;
+  uv__handle_start(handle);
 
   if (handle->submitted_events_1 == 0 &&
       handle->submitted_events_2 == 0) {
@@ -501,10 +516,9 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
     socket = base_socket;
   }
 
+  uv_handle_init(loop, (uv_handle_t*) handle);
   handle->type = UV_POLL;
   handle->socket = socket;
-  handle->loop = loop;
-  handle->flags = 0;
   handle->events = 0;
 
   /* Obtain protocol information about the socket. */
@@ -542,9 +556,6 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
   handle->poll_req_2.type = UV_POLL_REQ;
   handle->poll_req_2.data = handle;
 
-  uv_ref(loop);
-
-  loop->counters.handle_init++;
   loop->counters.poll_init++;
 
   return 0;
@@ -561,6 +572,7 @@ int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb) {
   }
 
   handle->poll_cb = cb;
+
   return 0;
 }
 
@@ -600,10 +612,9 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle) {
   assert(handle->submitted_events_2 == 0);
 
   handle->flags |= UV_HANDLE_CLOSED;
+  uv__handle_stop(handle);
 
   if (handle->close_cb) {
     handle->close_cb((uv_handle_t*)handle);
   }
-
-  uv_unref(loop);
 }

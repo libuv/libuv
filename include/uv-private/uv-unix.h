@@ -104,7 +104,10 @@ typedef struct {
   uv_async_t uv_eio_want_poll_notifier; \
   uv_async_t uv_eio_done_poll_notifier; \
   uv_idle_t uv_eio_poller; \
-  uv_handle_t* endgame_handles; \
+  uv_handle_t* pending_handles; \
+  ngx_queue_t prepare_handles; \
+  ngx_queue_t check_handles; \
+  ngx_queue_t idle_handles; \
   UV_LOOP_PRIVATE_PLATFORM_FIELDS
 
 #define UV_REQ_BUFSML_SIZE (4)
@@ -141,7 +144,7 @@ typedef struct {
 #define UV_HANDLE_PRIVATE_FIELDS \
   int fd; \
   int flags; \
-  uv_handle_t* endgame_next; /* that's what uv-win calls it */ \
+  uv_handle_t* next_pending; \
 
 
 #define UV_STREAM_PRIVATE_FIELDS \
@@ -183,20 +186,20 @@ typedef struct {
 
 /* UV_PREPARE */ \
 #define UV_PREPARE_PRIVATE_FIELDS \
-  ev_prepare prepare_watcher; \
-  uv_prepare_cb prepare_cb;
+  uv_prepare_cb prepare_cb; \
+  ngx_queue_t queue;
 
 
 /* UV_CHECK */
 #define UV_CHECK_PRIVATE_FIELDS \
-  ev_check check_watcher; \
-  uv_check_cb check_cb;
+  uv_check_cb check_cb; \
+  ngx_queue_t queue;
 
 
 /* UV_IDLE */
 #define UV_IDLE_PRIVATE_FIELDS \
-  ev_idle idle_watcher; \
-  uv_idle_cb idle_cb;
+  uv_idle_cb idle_cb; \
+  ngx_queue_t queue;
 
 
 /* UV_ASYNC */

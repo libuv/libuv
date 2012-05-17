@@ -27,7 +27,6 @@
 #include <string.h>
 
 #include "uv.h"
-#include "../uv-common.h"
 #include "internal.h"
 
 
@@ -65,9 +64,15 @@ static void uv_loop_init(uv_loop_t* loop) {
     uv_fatal_error(GetLastError(), "CreateIoCompletionPort");
   }
 
-  loop->refs = 0;
-
   uv_update_time(loop);
+
+#ifndef UV_LEAN_AND_MEAN
+  ngx_queue_init(&loop->active_handles);
+  ngx_queue_init(&loop->active_reqs);
+#else
+  loop->active_handles = 0;
+  loop->active_reqs = 0;
+#endif
 
   loop->pending_reqs_tail = NULL;
 
@@ -145,21 +150,6 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
-int uv_loop_refcount(const uv_loop_t* loop) {
-  return loop->refs;
-}
-
-
-void uv_ref(uv_loop_t* loop) {
-  loop->refs++;
-}
-
-
-void uv_unref(uv_loop_t* loop) {
-  loop->refs--;
-}
-
-
 static void uv_poll(uv_loop_t* loop, int block) {
   BOOL success;
   DWORD bytes, timeout;
@@ -226,6 +216,19 @@ static void uv_poll_ex(uv_loop_t* loop, int block) {
   }
 }
 
+#ifndef UV_LEAN_AND_MEAN
+# define UV_LOOP_ALIVE(loop)                                                  \
+      (!ngx_queue_empty(&(loop)->active_handles) ||                           \
+       !ngx_queue_empty(&(loop)->active_reqs) ||                              \
+       (loop)->endgame_handles != NULL)
+#else
+# define UV_LOOP_ALIVE(loop)                                                  \
+      ((loop)->active_handles > 0 &&                                          \
+       (loop)->active_reqs > 0 &&                                             \
+       (loop)->endgame_handles != NULL)
+#endif
+
+
 #define UV_LOOP_ONCE(loop, poll)                                              \
   do {                                                                        \
     uv_update_time((loop));                                                   \
@@ -240,7 +243,7 @@ static void uv_poll_ex(uv_loop_t* loop, int block) {
     uv_process_reqs((loop));                                                  \
     uv_process_endgames((loop));                                              \
                                                                               \
-    if ((loop)->refs <= 0) {                                                  \
+    if (!UV_LOOP_ALIVE((loop))) {                                             \
       break;                                                                  \
     }                                                                         \
                                                                               \
@@ -249,13 +252,13 @@ static void uv_poll_ex(uv_loop_t* loop, int block) {
     poll((loop), (loop)->idle_handles == NULL &&                              \
                  (loop)->pending_reqs_tail == NULL &&                         \
                  (loop)->endgame_handles == NULL &&                           \
-                 (loop)->refs > 0);                                           \
+                 UV_LOOP_ALIVE((loop)));                                      \
                                                                               \
     uv_check_invoke((loop));                                                  \
   } while (0);
 
 #define UV_LOOP(loop, poll)                                                   \
-  while ((loop)->refs > 0) {                                                  \
+  while (UV_LOOP_ALIVE((loop))) {                                             \
     UV_LOOP_ONCE(loop, poll)                                                  \
   }
 
@@ -277,6 +280,6 @@ int uv_run(uv_loop_t* loop) {
     UV_LOOP(loop, uv_poll);
   }
 
-  assert(loop->refs == 0);
+  assert(!UV_LOOP_ALIVE((loop)));
   return 0;
 }

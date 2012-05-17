@@ -59,7 +59,7 @@
     return -1;                                                              \
   }                                                                         \
   req->flags |= UV_FS_ASYNC_QUEUED;                                         \
-  uv_ref((loop));
+  uv__req_register(loop, req);
 
 #define SET_UV_LAST_ERROR_FROM_REQ(req)                                     \
   uv__set_error(req->loop, req->errorno, req->sys_errno_);
@@ -1519,6 +1519,7 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime,
 
 void uv_process_fs_req(uv_loop_t* loop, uv_fs_t* req) {
   assert(req->cb);
+  uv__req_unregister(loop, req);
   SET_UV_LAST_ERROR_FROM_REQ(req);
   req->cb(req);
 }
@@ -1550,10 +1551,6 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->path) {
     free(req->path);
     req->path = NULL;
-  }
-
-  if (req->flags & UV_FS_ASYNC_QUEUED) {
-    uv_unref(loop);
   }
 
   req->flags |= UV_FS_CLEANEDUP;

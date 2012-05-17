@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 
 #include "tree.h"
+#include "ngx-queue.h"
 
 #define MAX_PIPENAME_LEN 256
 
@@ -203,8 +204,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 #define UV_LOOP_PRIVATE_FIELDS                                                \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
-  /* Reference count that keeps the event loop alive */                       \
-  int refs;                                                                   \
   /* The current time according to the event loop. in msecs. */               \
   int64_t time;                                                               \
   /* Tail of a single-linked circular queue of pending reqs. If the queue */  \
@@ -246,7 +245,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   UV_ARES_EVENT_REQ,                      \
   UV_ARES_CLEANUP_REQ,                    \
   UV_FS_EVENT_REQ,                        \
-  UV_GETADDRINFO_REQ,                     \
   UV_POLL_REQ,                            \
   UV_PROCESS_EXIT,                        \
   UV_PROCESS_CLOSE,                       \
@@ -310,6 +308,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_STREAM_PRIVATE_FIELDS          \
   unsigned int reqs_pending;              \
+  int activecnt;                          \
   uv_read_t read_req;                     \
   union {                                 \
     struct { uv_stream_connection_fields };  \
@@ -337,6 +336,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 #define UV_UDP_PRIVATE_FIELDS             \
   SOCKET socket;                          \
   unsigned int reqs_pending;              \
+  int activecnt;                          \
   uv_req_t recv_req;                      \
   uv_buf_t recv_buffer;                   \
   struct sockaddr_storage recv_from;      \
@@ -444,7 +444,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   unsigned int flags;
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS     \
-  struct uv_req_s getadddrinfo_req;       \
   uv_getaddrinfo_cb getaddrinfo_cb;       \
   void* alloc;                            \
   wchar_t* node;                          \

@@ -34,7 +34,7 @@ static void uv__poll_io(EV_P_ ev_io* watcher, int ev_events) {
   if (ev_events & EV_ERROR) {
     /* An error happened. Libev has implicitly stopped the watcher, but we */
     /* need to fix the refcount. */
-    uv_ref(handle->loop);
+    uv__handle_stop(handle);
     uv__set_sys_error(handle->loop, EBADF);
     handle->poll_cb(handle, -1, 0);
     return;
@@ -74,10 +74,8 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
 
 
 static void uv__poll_stop(uv_poll_t* handle) {
-  if (ev_is_active(&handle->io_watcher)) {
-    ev_io_stop(handle->loop->ev, &handle->io_watcher);
-    uv_ref(handle->loop);
-  }
+  ev_io_stop(handle->loop->ev, &handle->io_watcher);
+  uv__handle_stop(handle);
 }
 
 
@@ -111,10 +109,8 @@ int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb poll_cb) {
   ev_io_set(&handle->io_watcher, handle->fd, ev_events);
   ev_io_start(handle->loop->ev, &handle->io_watcher);
 
-  if (!was_active)
-    uv_unref(handle->loop);
-
   handle->poll_cb = poll_cb;
+  uv__handle_start(handle);
 
   return 0;
 }

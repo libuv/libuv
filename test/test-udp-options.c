@@ -38,7 +38,7 @@ TEST_IMPL(udp_options) {
   r = uv_udp_init(loop, &h);
   ASSERT(r == 0);
 
-  uv_unref(loop); /* don't keep the loop alive */
+  uv_unref((uv_handle_t*)&h); /* don't keep the loop alive */
 
   r = uv_udp_bind(&h, uv_ip4_addr("0.0.0.0", TEST_PORT), 0);
   ASSERT(r == 0);
