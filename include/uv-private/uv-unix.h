@@ -252,6 +252,7 @@ typedef struct {
 
 #elif defined(__APPLE__)  \
   || defined(__FreeBSD__) \
+  || defined(__DragonFly__) \
   || defined(__OpenBSD__) \
   || defined(__NetBSD__)
 
