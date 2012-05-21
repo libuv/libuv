@@ -212,7 +212,7 @@ RB_GENERATE_STATIC(uv__ares_tasks, uv_ares_task_s, node, cmp_ares_tasks)
 /* add ares handle to list */
 void uv_add_ares_handle(uv_loop_t* loop, uv_ares_task_t* handle) {
   assert(loop == handle->loop);
-  RB_INSERT(uv__ares_tasks, &loop->uv_ares_handles_, handle);
+  RB_INSERT(uv__ares_tasks, &loop->ares_handles, handle);
 }
 
 
@@ -220,19 +220,19 @@ void uv_add_ares_handle(uv_loop_t* loop, uv_ares_task_t* handle) {
 uv_ares_task_t* uv_find_ares_handle(uv_loop_t* loop, ares_socket_t sock) {
   uv_ares_task_t handle;
   handle.sock = sock;
-  return RB_FIND(uv__ares_tasks, &loop->uv_ares_handles_, &handle);
+  return RB_FIND(uv__ares_tasks, &loop->ares_handles, &handle);
 }
 
 
 /* remove ares handle in list */
 void uv_remove_ares_handle(uv_ares_task_t* handle) {
-  RB_REMOVE(uv__ares_tasks, &handle->loop->uv_ares_handles_, handle);
+  RB_REMOVE(uv__ares_tasks, &handle->loop->ares_handles, handle);
 }
 
 
-/* Returns 1 if the uv_ares_handles_ list is empty. 0 otherwise. */
+/* Returns 1 if the ares_handles list is empty. 0 otherwise. */
 int uv_ares_handles_empty(uv_loop_t* loop) {
-  return RB_EMPTY(&loop->uv_ares_handles_);
+  return RB_EMPTY(&loop->ares_handles);
 }
 
 

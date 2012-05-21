@@ -90,13 +90,6 @@ typedef struct {
 #endif
 
 #define UV_LOOP_PRIVATE_FIELDS \
-  ares_channel channel; \
-  /* \
-   * While the channel is active this timer is called once per second to be \
-   * sure that we're always calling ares_process. See the warning above the \
-   * definition of ares_timeout(). \
-   */ \
-  uv_timer_t timer; \
   /* Poll result queue */ \
   eio_channel uv_eio_channel; \
   struct ev_loop* ev; \

@@ -28,12 +28,17 @@
 #define UV_COMMON_H_
 
 #include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "uv.h"
 #include "tree.h"
 
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+#define container_of(ptr, type, member) \
+  ((type *) ((char *) (ptr) - offsetof(type, member)))
 
 #ifdef _MSC_VER
 # define UNUSED /* empty */
@@ -54,17 +59,8 @@ enum {
 
 struct uv_ares_task_s {
   UV_HANDLE_FIELDS
-#if _WIN32
-  struct uv_req_s ares_req;
-  SOCKET sock;
-  HANDLE h_wait;
-  WSAEVENT h_event;
-  HANDLE h_close_event;
-#else
-  int sock;
-  ev_io read_watcher;
-  ev_io write_watcher;
-#endif
+  ares_socket_t sock;
+  uv_poll_t poll_watcher;
   RB_ENTRY(uv_ares_task_s) node;
 };
 
