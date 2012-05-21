@@ -210,12 +210,12 @@ static int uv__run(uv_loop_t* loop) {
   */
 
   uv__run_pending(loop);
-  uv__run_prepare(loop);
 
-  if (uv__has_active_handles(loop) || uv__has_active_reqs(loop))
-    uv__poll(loop, 1);
-
-  uv__run_check(loop);
+  if (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) {
+    uv__run_prepare(loop);
+    uv__poll(loop, uv__has_active_handles(loop));
+    uv__run_check(loop);
+  }
 
   return uv__has_pending_handles(loop)
       || uv__has_active_handles(loop)
