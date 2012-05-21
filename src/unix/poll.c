@@ -88,7 +88,6 @@ int uv_poll_stop(uv_poll_t* handle) {
 
 int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb poll_cb) {
   int ev_events;
-  int was_active;
 
   assert((events & ~(UV_READABLE | UV_WRITABLE)) == 0);
   assert(!(handle->flags & (UV_CLOSING | UV_CLOSED)));
@@ -103,8 +102,6 @@ int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb poll_cb) {
     ev_events |= EV_READ;
   if (events & UV_WRITABLE)
     ev_events |= EV_WRITE;
-
-  was_active = ev_is_active(&handle->io_watcher);
 
   ev_io_set(&handle->io_watcher, handle->fd, ev_events);
   ev_io_start(handle->loop->ev, &handle->io_watcher);
