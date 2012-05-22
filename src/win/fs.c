@@ -855,7 +855,7 @@ void fs__create_junction(uv_fs_t* req, const wchar_t* path, const wchar_t* new_p
 
   if (!is_absolute) {
     /* Not supporting relative paths */
-    SET_REQ_UV_ERROR(req, EINVAL, ERROR_NOT_SUPPORTED);
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_NOT_SUPPORTED);
     return;
   }
 
