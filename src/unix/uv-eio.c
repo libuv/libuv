@@ -61,13 +61,8 @@ static void uv_eio_done_poll_notifier_cb(uv_async_t* watcher, int revents) {
  */
 static void uv_eio_want_poll(eio_channel *channel) {
   /* Signal the main thread that eio_poll need to be processed. */
-
-  /*
-   * TODO need to select the correct uv_loop_t and async_send to
-   * uv_eio_want_poll_notifier.
-   */
-
-  uv_async_send(&((uv_loop_t *)channel->data)->uv_eio_want_poll_notifier);
+  uv_loop_t* loop = channel->data;
+  uv_async_send(&loop->uv_eio_want_poll_notifier);
 }
 
 
@@ -76,7 +71,8 @@ static void uv_eio_done_poll(eio_channel *channel) {
    * Signal the main thread that we should stop calling eio_poll().
    * from the idle watcher.
    */
-  uv_async_send(&((uv_loop_t *)channel->data)->uv_eio_done_poll_notifier);
+  uv_loop_t* loop = channel->data;
+  uv_async_send(&loop->uv_eio_done_poll_notifier);
 }
 
 
