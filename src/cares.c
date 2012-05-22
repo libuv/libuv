@@ -20,12 +20,58 @@
  */
 
 #include "uv.h"
+#include "tree.h"
 #include "uv-common.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+
+
+struct uv_ares_task_s {
+  UV_HANDLE_FIELDS
+  ares_socket_t sock;
+  uv_poll_t poll_watcher;
+  RB_ENTRY(uv_ares_task_s) node;
+};
+
+
+static int cmp_ares_tasks(const uv_ares_task_t* a, const uv_ares_task_t* b) {
+  if (a->sock < b->sock) return -1;
+  if (a->sock > b->sock) return 1;
+  return 0;
+}
+
+
+RB_GENERATE_STATIC(uv__ares_tasks, uv_ares_task_s, node, cmp_ares_tasks)
+
+
+/* Add ares handle to list. */
+static void uv_add_ares_handle(uv_loop_t* loop, uv_ares_task_t* handle) {
+  assert(loop == handle->loop);
+  RB_INSERT(uv__ares_tasks, &loop->ares_handles, handle);
+}
+
+
+/* Find matching ares handle in list. */
+static uv_ares_task_t* uv_find_ares_handle(uv_loop_t* loop, ares_socket_t sock) {
+  uv_ares_task_t handle;
+  handle.sock = sock;
+  return RB_FIND(uv__ares_tasks, &loop->ares_handles, &handle);
+}
+
+
+/* Remove ares handle from list. */
+static void uv_remove_ares_handle(uv_ares_task_t* handle) {
+  RB_REMOVE(uv__ares_tasks, &handle->loop->ares_handles, handle);
+}
+
+
+/* Returns 1 if the ares_handles list is empty, 0 otherwise. */
+static int uv_ares_handles_empty(uv_loop_t* loop) {
+  return RB_EMPTY(&loop->ares_handles);
+}
 
 
 /* This is called once per second by loop->timer. It is used to constantly */

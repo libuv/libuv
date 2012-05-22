@@ -57,22 +57,6 @@ enum {
 # define UV__ACTIVE  0x00000040
 #endif
 
-struct uv_ares_task_s {
-  UV_HANDLE_FIELDS
-  ares_socket_t sock;
-  uv_poll_t poll_watcher;
-  RB_ENTRY(uv_ares_task_s) node;
-};
-
-
-void uv_remove_ares_handle(uv_ares_task_t* handle);
-uv_ares_task_t* uv_find_ares_handle(uv_loop_t*, ares_socket_t sock);
-
-/* TODO Rename to uv_ares_task_init? */
-void uv_add_ares_handle(uv_loop_t* loop, uv_ares_task_t* handle);
-
-int uv_ares_handles_empty(uv_loop_t* loop);
-
 extern const uv_err_t uv_ok_;
 
 uv_err_code uv_translate_sys_error(int sys_errno);

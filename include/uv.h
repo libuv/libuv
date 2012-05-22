@@ -137,7 +137,6 @@ typedef enum {
 #undef UV_ERRNO_GEN
 
 #define UV_HANDLE_TYPE_MAP(XX)  \
-  XX(ARES_TASK, ares_task)      \
   XX(ASYNC, async)              \
   XX(CHECK, check)              \
   XX(FS_EVENT, fs_event)        \
@@ -165,6 +164,7 @@ typedef enum {
 #define XX(uc, lc) UV_##uc,
   UV_HANDLE_TYPE_MAP(XX)
 #undef XX
+  UV_ARES_TASK,
   UV_FILE,
   UV_HANDLE_TYPE_PRIVATE
   UV_HANDLE_TYPE_MAX
