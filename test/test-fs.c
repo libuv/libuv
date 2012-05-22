@@ -1342,7 +1342,11 @@ TEST_IMPL(fs_symlink_dir) {
   r = uv_fs_lstat(loop, &req, "test_dir_symlink", NULL);
   ASSERT(r == 0);
   ASSERT(((struct stat*)req.ptr)->st_mode & S_IFLNK);
-  ASSERT(((struct stat*)req.ptr)->st_size == 22);
+#ifdef _WIN32
+  ASSERT(((struct stat*)req.ptr)->st_size == strlen(test_dir + 4));
+#else
+  ASSERT(((struct stat*)req.ptr)->st_size == strlen(test_dir));
+#endif
   uv_fs_req_cleanup(&req);
 
   r = uv_fs_readlink(loop, &req, "test_dir_symlink", NULL);
