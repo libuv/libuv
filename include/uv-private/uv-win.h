@@ -236,9 +236,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   /* Counter to keep track of active udp streams */                           \
   unsigned int active_udp_streams;
 
-#define UV_HANDLE_TYPE_PRIVATE            \
-  /* empty */
-
 #define UV_REQ_TYPE_PRIVATE               \
   /* TODO: remove the req suffix */       \
   UV_ACCEPT,                              \

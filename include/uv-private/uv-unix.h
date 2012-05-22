@@ -70,7 +70,6 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
-#define UV_HANDLE_TYPE_PRIVATE /* empty */
 #define UV_REQ_TYPE_PRIVATE /* empty */
 
 #if __linux__

@@ -166,7 +166,6 @@ typedef enum {
 #undef XX
   UV_ARES_TASK,
   UV_FILE,
-  UV_HANDLE_TYPE_PRIVATE
   UV_HANDLE_TYPE_MAX
 } uv_handle_type;
 
