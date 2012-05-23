@@ -594,22 +594,31 @@ uv_err_t uv_chdir(const char* dir) {
 }
 
 
+static void uv__io_set_cb(uv__io_t* handle, uv__io_cb cb) {
+  union { void* data; uv__io_cb cb; } u;
+  u.cb = cb;
+  handle->io_watcher.data = u.data;
+}
+
+
 static void uv__io_rw(struct ev_loop* ev, ev_io* w, int events) {
+  union { void* data; uv__io_cb cb; } u;
   uv_loop_t* loop = ev_userdata(ev);
   uv__io_t* handle = container_of(w, uv__io_t, io_watcher);
-  handle->cb(loop, handle, events & (EV_READ|EV_WRITE|EV_ERROR));
+  u.data = handle->io_watcher.data;
+  u.cb(loop, handle, events & (EV_READ|EV_WRITE|EV_ERROR));
 }
 
 
 void uv__io_init(uv__io_t* handle, uv__io_cb cb, int fd, int events) {
   ev_io_init(&handle->io_watcher, uv__io_rw, fd, events & (EV_READ|EV_WRITE));
-  handle->cb = cb;
+  uv__io_set_cb(handle, cb);
 }
 
 
 void uv__io_set(uv__io_t* handle, uv__io_cb cb, int fd, int events) {
   ev_io_set(&handle->io_watcher, fd, events);
-  handle->cb = cb;
+  uv__io_set_cb(handle, cb);
 }
 
 

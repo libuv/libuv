@@ -918,7 +918,6 @@ int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
   ngx_queue_insert_tail(&stream->write_queue, &req->queue);
 
   assert(!ngx_queue_empty(&stream->write_queue));
-  assert(stream->write_watcher.cb == uv__stream_io);
 
   /* If the queue was empty when this function began, we should attempt to
    * do the write immediately. Otherwise start the write_watcher and wait
@@ -975,9 +974,6 @@ int uv__read_start_common(uv_stream_t* stream, uv_alloc_cb alloc_cb,
   stream->read_cb = read_cb;
   stream->read2_cb = read2_cb;
   stream->alloc_cb = alloc_cb;
-
-  /* These should have been set by uv_tcp_init. */
-  assert(stream->read_watcher.cb == uv__stream_io);
 
   uv__io_start(stream->loop, &stream->read_watcher);
   uv__handle_start(stream);

@@ -78,7 +78,6 @@ typedef void (*uv__io_cb)(struct uv_loop_s* loop, uv__io_t* handle, int events);
 
 struct uv__io_s {
   ev_io io_watcher;
-  uv__io_cb cb;
 };
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
