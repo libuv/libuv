@@ -394,6 +394,7 @@
         'test/benchmark-ares.c',
         'test/benchmark-getaddrinfo.c',
         'test/benchmark-list.h',
+        'test/benchmark-loop-count.c',
         'test/benchmark-ping-pongs.c',
         'test/benchmark-pound.c',
         'test/benchmark-pump.c',
