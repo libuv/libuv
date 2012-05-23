@@ -224,7 +224,7 @@ static void uv__udp_recvmsg(uv_loop_t* loop, uv__io_t* w, int revents) {
 
   handle = container_of(w, uv_udp_t, read_watcher);
   assert(handle->type == UV_UDP);
-  assert(revents & EV_READ);
+  assert(revents & UV__IO_READ);
 
   assert(handle->recv_cb != NULL);
   assert(handle->alloc_cb != NULL);
@@ -281,7 +281,7 @@ static void uv__udp_sendmsg(uv_loop_t* loop, uv__io_t* w, int revents) {
 
   handle = container_of(w, uv_udp_t, write_watcher);
   assert(handle->type == UV_UDP);
-  assert(revents & EV_WRITE);
+  assert(revents & UV__IO_WRITE);
 
   assert(!ngx_queue_empty(&handle->write_queue)
       || !ngx_queue_empty(&handle->write_completed_queue));
