@@ -328,6 +328,7 @@
         'test/test-poll.c',
         'test/test-process-title.c',
         'test/test-ref.c',
+        'test/test-run-once.c',
         'test/test-shutdown-close.c',
         'test/test-shutdown-eof.c',
         'test/test-spawn.c',

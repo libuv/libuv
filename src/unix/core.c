@@ -235,8 +235,7 @@ int uv_run(uv_loop_t* loop) {
 
 
 int uv_run_once(uv_loop_t* loop) {
-  uv__run(loop);
-  return 0;
+  return uv__run(loop);
 }
 
 

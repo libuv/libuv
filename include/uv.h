@@ -230,14 +230,17 @@ UV_EXTERN uv_loop_t* uv_default_loop(void);
 
 /*
  * This function starts the event loop. It blocks until the reference count
- * of the loop drops to zero.
+ * of the loop drops to zero. Always returns zero.
  */
-UV_EXTERN int uv_run (uv_loop_t*);
+UV_EXTERN int uv_run(uv_loop_t*);
 
 /*
- * This function polls for new events without blocking.
+ * Poll for new events once. Note that this function blocks if there are no
+ * pending events. Returns zero when done (no active handles or requests left),
+ * or non-zero if more events are expected (meaning you should call
+ * uv_run_once() again sometime in the future).
  */
-UV_EXTERN int uv_run_once (uv_loop_t*);
+UV_EXTERN int uv_run_once(uv_loop_t*);
 
 /*
  * Manually modify the event loop's reference count. Useful if the user wants
