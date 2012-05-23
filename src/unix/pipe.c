@@ -81,22 +81,10 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   uv_strlcpy(saddr.sun_path, pipe_fname, sizeof(saddr.sun_path));
   saddr.sun_family = AF_UNIX;
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr) == -1) {
-    /* On EADDRINUSE:
-     *
-     * We hold the file lock so there is no other process listening
-     * on the socket. Ergo, it's stale - remove it.
-     *
-     * This assumes that the other process uses locking too
-     * but that's a good enough assumption for now.
-     */
-    if (errno != EADDRINUSE
-        || unlink(pipe_fname) == -1
-        || bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr) == -1) {
-      /* Convert ENOENT to EACCES for compatibility with Windows. */
-      uv__set_sys_error(handle->loop, (errno == ENOENT) ? EACCES : errno);
-      goto out;
-    }
+  if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
+    /* Convert ENOENT to EACCES for compatibility with Windows. */
+    uv__set_sys_error(handle->loop, (errno == ENOENT) ? EACCES : errno);
+    goto out;
   }
   bound = 1;
 
