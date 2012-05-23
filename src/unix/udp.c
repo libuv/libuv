@@ -116,7 +116,8 @@ static void uv__udp_run_pending(uv_udp_t* handle) {
 
     memset(&h, 0, sizeof h);
     h.msg_name = &req->addr;
-    h.msg_namelen = req->addrlen;
+    h.msg_namelen = (req->addr.sin6_family == AF_INET6 ?
+      sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
     h.msg_iov = (struct iovec*)req->bufs;
     h.msg_iovlen = req->bufcnt;
 
@@ -415,8 +416,8 @@ static int uv__udp_send(uv_udp_send_t* req,
 
   uv__req_init(handle->loop, req, UV_UDP_SEND);
 
+  assert(addrlen <= sizeof(req->addr));
   memcpy(&req->addr, addr, addrlen);
-  req->addrlen = addrlen;
   req->send_cb = send_cb;
   req->handle = handle;
   req->bufcnt = bufcnt;

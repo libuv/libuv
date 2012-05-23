@@ -131,8 +131,7 @@ struct uv__io_s {
 
 #define UV_UDP_SEND_PRIVATE_FIELDS  \
   ngx_queue_t queue;                \
-  struct sockaddr_storage addr;     \
-  socklen_t addrlen;                \
+  struct sockaddr_in6 addr;         \
   uv_buf_t* bufs;                   \
   int bufcnt;                       \
   ssize_t status;                   \
