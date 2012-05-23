@@ -268,8 +268,8 @@ void uv__finish_close(uv_handle_t* handle) {
     case UV_NAMED_PIPE:
     case UV_TCP:
     case UV_TTY:
-      assert(!ev_is_active(&((uv_stream_t*)handle)->read_watcher));
-      assert(!ev_is_active(&((uv_stream_t*)handle)->write_watcher));
+      assert(!uv__io_active(&((uv_stream_t*)handle)->read_watcher));
+      assert(!uv__io_active(&((uv_stream_t*)handle)->write_watcher));
       assert(((uv_stream_t*)handle)->fd == -1);
       uv__stream_destroy((uv_stream_t*)handle);
       break;

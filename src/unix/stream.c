@@ -626,7 +626,7 @@ static void uv__read(uv_stream_t* stream) {
           stream->read2_cb((uv_pipe_t*)stream, -1, buf, UV_UNKNOWN_HANDLE);
         }
 
-        assert(!ev_is_active(&stream->read_watcher));
+        assert(!uv__io_active(&stream->read_watcher));
         return;
       }
 
@@ -634,7 +634,7 @@ static void uv__read(uv_stream_t* stream) {
       /* EOF */
       uv__set_artificial_error(stream->loop, UV_EOF);
       uv__io_stop(stream->loop, &stream->read_watcher);
-      if (!ev_is_active(&stream->write_watcher))
+      if (!uv__io_active(&stream->write_watcher))
         uv__handle_stop(stream);
 
       if (stream->read_cb) {
@@ -1027,6 +1027,6 @@ void uv__stream_close(uv_stream_t* handle) {
     handle->accepted_fd = -1;
   }
 
-  assert(!ev_is_active(&handle->read_watcher));
-  assert(!ev_is_active(&handle->write_watcher));
+  assert(!uv__io_active(&handle->read_watcher));
+  assert(!uv__io_active(&handle->write_watcher));
 }
