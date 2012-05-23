@@ -61,35 +61,9 @@ static void uv__udp_stop_watcher(uv_udp_t* handle, uv__io_t* w) {
 }
 
 
-static void uv__udp_start_read_watcher(uv_udp_t* handle) {
-  uv__udp_start_watcher(handle,
-                        &handle->read_watcher,
-                        uv__udp_recvmsg,
-                        UV__IO_READ);
-}
-
-
-static void uv__udp_start_write_watcher(uv_udp_t* handle) {
-  uv__udp_start_watcher(handle,
-                        &handle->write_watcher,
-                        uv__udp_sendmsg,
-                        UV__IO_WRITE);
-}
-
-
-static void uv__udp_stop_read_watcher(uv_udp_t* handle) {
-  uv__udp_stop_watcher(handle, &handle->read_watcher);
-}
-
-
-static void uv__udp_stop_write_watcher(uv_udp_t* handle) {
-  uv__udp_stop_watcher(handle, &handle->write_watcher);
-}
-
-
 void uv__udp_close(uv_udp_t* handle) {
-  uv__udp_stop_write_watcher(handle);
-  uv__udp_stop_read_watcher(handle);
+  uv__udp_stop_watcher(handle, &handle->write_watcher);
+  uv__udp_stop_watcher(handle, &handle->read_watcher);
   close(handle->fd);
   handle->fd = -1;
 }
@@ -298,7 +272,7 @@ static void uv__udp_sendmsg(uv_loop_t* loop, uv__io_t* w, int revents) {
   }
   else if (ngx_queue_empty(&handle->write_queue)) {
     /* Pending queue and completion queue empty, stop watcher. */
-    uv__udp_stop_write_watcher(handle);
+    uv__udp_stop_watcher(handle, &handle->write_watcher);
   }
 }
 
@@ -457,7 +431,11 @@ static int uv__udp_send(uv_udp_send_t* req,
   memcpy(req->bufs, bufs, bufcnt * sizeof(bufs[0]));
 
   ngx_queue_insert_tail(&handle->write_queue, &req->queue);
-  uv__udp_start_write_watcher(handle);
+
+  uv__udp_start_watcher(handle,
+                        &handle->write_watcher,
+                        uv__udp_sendmsg,
+                        UV__IO_WRITE);
 
   return 0;
 }
@@ -657,14 +635,18 @@ int uv_udp_recv_start(uv_udp_t* handle,
 
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
-  uv__udp_start_read_watcher(handle);
+
+  uv__udp_start_watcher(handle,
+                        &handle->read_watcher,
+                        uv__udp_recvmsg,
+                        UV__IO_READ);
 
   return 0;
 }
 
 
 int uv_udp_recv_stop(uv_udp_t* handle) {
-  uv__udp_stop_read_watcher(handle);
+  uv__udp_stop_watcher(handle, &handle->read_watcher);
   handle->alloc_cb = NULL;
   handle->recv_cb = NULL;
   return 0;
