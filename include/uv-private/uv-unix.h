@@ -159,7 +159,6 @@ struct uv__io_s {
   int delayed_error; \
   uv_connection_cb connection_cb; \
   int accepted_fd; \
-  int blocking;
 
 
 /* UV_TCP */
