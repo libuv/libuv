@@ -195,6 +195,7 @@
             'src/unix/fs.c',
             'src/unix/internal.h',
             'src/unix/loop.c',
+            'src/unix/loop-watcher.c',
             'src/unix/pipe.c',
             'src/unix/poll.c',
             'src/unix/process.c',
