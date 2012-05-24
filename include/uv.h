@@ -341,13 +341,13 @@ UV_EXTERN const char* uv_err_name(uv_err_t err);
 #endif
 
 #define UV_REQ_FIELDS \
-  /* read-only */ \
-  uv_req_type type; \
   /* public */ \
   void* data; \
   UV_REQ_EXTRA_FIELDS \
   /* private */ \
-  UV_REQ_PRIVATE_FIELDS
+  UV_REQ_PRIVATE_FIELDS \
+  /* read-only */ \
+  uv_req_type type; \
 
 /* Abstract base class of all requests. */
 struct uv_req_s {
@@ -384,16 +384,17 @@ struct uv_shutdown_s {
 # define UV_HANDLE_EXTRA_FIELDS
 #endif
 
-#define UV_HANDLE_FIELDS \
-  /* read-only */ \
-  uv_loop_t* loop; \
-  uv_handle_type type; \
-  /* public */ \
-  uv_close_cb close_cb; \
-  void* data; \
-  UV_HANDLE_EXTRA_FIELDS \
-  /* private */ \
-  UV_HANDLE_PRIVATE_FIELDS
+#define UV_HANDLE_FIELDS                                                      \
+  /* read-only */                                                             \
+  uv_loop_t* loop;                                                            \
+  /* public */                                                                \
+  uv_close_cb close_cb;                                                       \
+  void* data;                                                                 \
+  /* read-only */                                                             \
+  uv_handle_type type;                                                        \
+  /* private */                                                               \
+  UV_HANDLE_PRIVATE_FIELDS                                                    \
+  UV_HANDLE_EXTRA_FIELDS                                                      \
 
 /* The abstract base class of all handles.  */
 struct uv_handle_s {
@@ -1365,8 +1366,8 @@ typedef enum {
 /* uv_fs_t is a subclass of uv_req_t */
 struct uv_fs_s {
   UV_REQ_FIELDS
-  uv_loop_t* loop;
   uv_fs_type fs_type;
+  uv_loop_t* loop;
   uv_fs_cb cb;
   ssize_t result;
   void* ptr;
