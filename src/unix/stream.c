@@ -165,7 +165,6 @@ void uv__stream_destroy(uv_stream_t* stream) {
 
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, int events) {
   int fd;
-  struct sockaddr_storage addr;
   uv_stream_t* stream = container_of(w, uv_stream_t, read_watcher);
 
   assert(events == UV__IO_READ);
@@ -181,7 +180,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, int events) {
    */
   while (stream->fd != -1) {
     assert(stream->accepted_fd < 0);
-    fd = uv__accept(stream->fd, (struct sockaddr*)&addr, sizeof addr);
+    fd = uv__accept(stream->fd);
 
     if (fd < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {

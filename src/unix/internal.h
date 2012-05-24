@@ -156,7 +156,7 @@ void uv__stream_init(uv_loop_t* loop, uv_stream_t* stream,
 int uv__stream_open(uv_stream_t*, int fd, int flags);
 void uv__stream_destroy(uv_stream_t* stream);
 void uv__server_io(uv_loop_t* loop, uv__io_t* watcher, int events);
-int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t len);
+int uv__accept(int sockfd);
 int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
     socklen_t addrlen, uv_connect_cb cb);
 

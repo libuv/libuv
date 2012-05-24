@@ -445,14 +445,18 @@ out:
 }
 
 
-int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t slen) {
+int uv__accept(int sockfd) {
   int peerfd;
 
   assert(sockfd >= 0);
 
   while (1) {
 #if __linux__
-    peerfd = uv__accept4(sockfd, saddr, &slen, UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
+    peerfd = uv__accept4(sockfd,
+                         NULL,
+                         NULL,
+                         UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
+
     if (peerfd != -1)
       break;
 
@@ -463,7 +467,9 @@ int uv__accept(int sockfd, struct sockaddr* saddr, socklen_t slen) {
       break;
 #endif
 
-    if ((peerfd = accept(sockfd, saddr, &slen)) == -1) {
+    peerfd = accept(sockfd, NULL, NULL);
+
+    if (peerfd == -1) {
       if (errno == EINTR)
         continue;
       else

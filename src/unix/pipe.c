@@ -229,7 +229,6 @@ out:
 
 /* TODO merge with uv__server_io()? */
 static void uv__pipe_accept(uv_loop_t* loop, uv__io_t* w, int events) {
-  struct sockaddr_un saddr;
   uv_pipe_t* pipe;
   int saved_errno;
   int sockfd;
@@ -239,7 +238,7 @@ static void uv__pipe_accept(uv_loop_t* loop, uv__io_t* w, int events) {
 
   assert(pipe->type == UV_NAMED_PIPE);
 
-  sockfd = uv__accept(pipe->fd, (struct sockaddr *)&saddr, sizeof saddr);
+  sockfd = uv__accept(pipe->fd);
   if (sockfd == -1) {
     if (errno != EAGAIN && errno != EWOULDBLOCK) {
       uv__set_sys_error(pipe->loop, errno);
