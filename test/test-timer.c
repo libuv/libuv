@@ -131,3 +131,22 @@ TEST_IMPL(timer) {
 
   return 0;
 }
+
+
+TEST_IMPL(timer_start_twice) {
+  uv_timer_t once;
+  int r;
+
+  r = uv_timer_init(uv_default_loop(), &once);
+  ASSERT(r == 0);
+  r = uv_timer_start(&once, never_cb, 86400 * 1000, 0);
+  ASSERT(r == 0);
+  r = uv_timer_start(&once, once_cb, 10, 0);
+  ASSERT(r == 0);
+  r = uv_run(uv_default_loop());
+  ASSERT(r == 0);
+
+  ASSERT(once_cb_called == 1);
+
+  return 0;
+}
