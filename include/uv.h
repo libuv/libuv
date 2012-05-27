@@ -334,17 +334,12 @@ UV_EXTERN uv_err_t uv_last_error(uv_loop_t*);
 UV_EXTERN const char* uv_strerror(uv_err_t err);
 UV_EXTERN const char* uv_err_name(uv_err_t err);
 
-#ifndef UV_LEAN_AND_MEAN
-# define UV_REQ_EXTRA_FIELDS ngx_queue_t active_queue;
-#else
-# define UV_REQ_EXTRA_FIELDS
-#endif
 
 #define UV_REQ_FIELDS \
   /* public */ \
   void* data; \
-  UV_REQ_EXTRA_FIELDS \
   /* private */ \
+  ngx_queue_t active_queue; \
   UV_REQ_PRIVATE_FIELDS \
   /* read-only */ \
   uv_req_type type; \
@@ -378,12 +373,6 @@ struct uv_shutdown_s {
 };
 
 
-#ifndef UV_LEAN_AND_MEAN
-# define UV_HANDLE_EXTRA_FIELDS ngx_queue_t active_queue;
-#else
-# define UV_HANDLE_EXTRA_FIELDS
-#endif
-
 #define UV_HANDLE_FIELDS                                                      \
   /* read-only */                                                             \
   uv_loop_t* loop;                                                            \
@@ -394,7 +383,6 @@ struct uv_shutdown_s {
   uv_handle_type type;                                                        \
   /* private */                                                               \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
-  UV_HANDLE_EXTRA_FIELDS                                                      \
 
 /* The abstract base class of all handles.  */
 struct uv_handle_s {
@@ -1659,15 +1647,11 @@ struct uv_loop_s {
   uv_counters_t counters;
   /* The last error */
   uv_err_t last_err;
+  /* Loop reference counting */
+  unsigned int active_handles;
+  ngx_queue_t active_reqs;
   /* User data - use this for whatever. */
   void* data;
-#ifndef UV_LEAN_AND_MEAN
-  ngx_queue_t active_reqs;
-  ngx_queue_t active_handles;
-#else
-  unsigned int active_reqs;
-  unsigned int active_handles;
-#endif
 };
 
 
