@@ -831,37 +831,6 @@ done:
 }
 
 
-static int duplicate_std_handle(uv_loop_t* loop, DWORD id, HANDLE* dup) {
-  HANDLE handle;
-  HANDLE current_process = GetCurrentProcess();
-
-  handle = GetStdHandle(id);
-
-  if (handle == NULL) {
-    *dup = NULL;
-    return 0;
-  } else if (handle == INVALID_HANDLE_VALUE) {
-    *dup = INVALID_HANDLE_VALUE;
-    uv__set_sys_error(loop, GetLastError());
-    return -1;
-  }
-
-  if (!DuplicateHandle(current_process,
-                       handle,
-                       current_process,
-                       dup,
-                       0,
-                       TRUE,
-                       DUPLICATE_SAME_ACCESS)) {
-    *dup = INVALID_HANDLE_VALUE;
-    uv__set_sys_error(loop, GetLastError());
-    return -1;
-  }
-
-  return 0;
-}
-
-
 static int duplicate_handle(uv_loop_t* loop, HANDLE handle, HANDLE* dup) {
   HANDLE current_process;
 
