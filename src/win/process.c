@@ -640,26 +640,28 @@ static DWORD WINAPI spawn_failure(void* data) {
   char* buf = NULL;
   DWORD count, written;
 
-  WriteFile(child_stderr, syscall, sizeof(syscall) - 1, &written, NULL);
+  if (child_stderr != INVALID_HANDLE_VALUE) {
+    WriteFile(child_stderr, syscall, sizeof(syscall) - 1, &written, NULL);
 
-  count = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                         FORMAT_MESSAGE_FROM_SYSTEM |
-                         FORMAT_MESSAGE_IGNORE_INSERTS,
-                         NULL,
-                         process->spawn_errno,
-                         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                         (LPSTR) &buf,
-                         0,
-                         NULL);
+    count = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                           FORMAT_MESSAGE_FROM_SYSTEM |
+                           FORMAT_MESSAGE_IGNORE_INSERTS,
+                           NULL,
+                           process->spawn_errno,
+                           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                           (LPSTR) &buf,
+                           0,
+                           NULL);
 
-  if (buf != NULL && count > 0) {
-    WriteFile(child_stderr, buf, count, &written, NULL);
-    LocalFree(buf);
-  } else {
-    WriteFile(child_stderr, unknown, sizeof(unknown) - 1, &written, NULL);
+    if (buf != NULL && count > 0) {
+      WriteFile(child_stderr, buf, count, &written, NULL);
+      LocalFree(buf);
+    } else {
+      WriteFile(child_stderr, unknown, sizeof(unknown) - 1, &written, NULL);
+    }
+
+    FlushFileBuffers(child_stderr);
   }
-
-  FlushFileBuffers(child_stderr);
 
   /* Post completed */
   POST_COMPLETION_FOR_REQ(loop, &process->exit_req);
@@ -674,7 +676,7 @@ static void close_child_stdio(uv_process_t* process) {
 
   for (i = 0; i < ARRAY_SIZE(process->child_stdio); i++) {
     handle = process->child_stdio[i];
-    if (handle != NULL && handle != INVALID_HANDLE_VALUE) {
+    if (handle != INVALID_HANDLE_VALUE) {
       CloseHandle(handle);
       process->child_stdio[i] = INVALID_HANDLE_VALUE;
     }
@@ -940,8 +942,10 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     application_path = application;
   }
 
-  for (i = 0; i < options.stdio_count; i++) {
-    if (options.stdio[i].flags == UV_IGNORE) {
+  for (i = 0; i < options.stdio_count || i < 3; i++) {
+    if (i >= options.stdio_count ||
+        options.stdio[i].flags == UV_IGNORE) {
+      child_stdio[i] = INVALID_HANDLE_VALUE;
       continue;
     }
 
@@ -989,27 +993,6 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
       uv__set_artificial_error(loop, UV_ENOTSUP);
     }
 
-    if (err) {
-      goto done;
-    }
-  }
-
-  if (child_stdio[0] == INVALID_HANDLE_VALUE) {
-    err = duplicate_std_handle(loop, STD_INPUT_HANDLE, &child_stdio[0]);
-    if (err) {
-      goto done;
-    }
-  }
-
-  if (child_stdio[1] == INVALID_HANDLE_VALUE) {
-    err = duplicate_std_handle(loop, STD_OUTPUT_HANDLE, &child_stdio[1]);
-    if (err) {
-      goto done;
-    }
-  }
-
-  if (child_stdio[2] == INVALID_HANDLE_VALUE) {
-    err = duplicate_std_handle(loop, STD_ERROR_HANDLE, &child_stdio[2]);
     if (err) {
       goto done;
     }
