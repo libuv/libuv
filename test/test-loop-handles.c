@@ -148,7 +148,7 @@ static void idle_1_cb(uv_idle_t* handle, int status) {
   ASSERT(idles_1_active > 0);
 
   /* Init idle_2 and make it active */
-  if (!idle_2_is_active) {
+  if (!idle_2_is_active && !uv_is_closing((uv_handle_t*)&idle_2_handle)) {
     r = uv_idle_init(uv_default_loop(), &idle_2_handle);
     ASSERT(r == 0);
     r = uv_idle_start(&idle_2_handle, idle_2_cb);
