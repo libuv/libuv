@@ -276,7 +276,7 @@ void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle,
 
   handle->loop = loop;
   handle->type = type;
-  handle->flags = UV__REF; /* ref the loop when active */
+  handle->flags = UV__HANDLE_REF; /* ref the loop when active */
   handle->next_closing = NULL;
 }
 
