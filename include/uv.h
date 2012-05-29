@@ -301,6 +301,7 @@ typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
 typedef void (*uv_after_work_cb)(uv_work_t* req);
+typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
 
 /*
 * This will be called repeatedly after the uv_fs_event_t is initialized.
@@ -382,6 +383,7 @@ struct uv_shutdown_s {
   /* read-only */                                                             \
   uv_handle_type type;                                                        \
   /* private */                                                               \
+  ngx_queue_t handle_queue;                                                   \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
 /* The abstract base class of all handles.  */
@@ -406,6 +408,12 @@ UV_EXTERN size_t uv_req_size(uv_req_type type);
  * otherwise. For other handle types this always returns 1.
  */
 UV_EXTERN int uv_is_active(const uv_handle_t* handle);
+
+/*
+ * Walk the list of open handles.
+ */
+UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
+
 
 /*
  * Request handle to be closed. close_cb will be called asynchronously after
@@ -1668,6 +1676,7 @@ struct uv_loop_s {
   uv_err_t last_err;
   /* Loop reference counting */
   unsigned int active_handles;
+  ngx_queue_t handle_queue;
   ngx_queue_t active_reqs;
   /* User data - use this for whatever. */
   void* data;

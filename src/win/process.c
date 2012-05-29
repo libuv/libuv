@@ -743,7 +743,6 @@ void uv_process_close(uv_loop_t* loop, uv_process_t* handle) {
 void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   if (handle->flags & UV_HANDLE_CLOSING) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
-    handle->flags |= UV_HANDLE_CLOSED;
     uv__handle_stop(handle);
 
     /* Clean-up the process handle. */
@@ -751,10 +750,7 @@ void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle) {
 
     /* Clean up the child stdio ends that may have been left open. */
     close_child_stdio(handle);
-
-    if (handle->close_cb) {
-      handle->close_cb((uv_handle_t*)handle);
-    }
+    uv__handle_close(handle);
   }
 }
 

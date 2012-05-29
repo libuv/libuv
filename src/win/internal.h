@@ -130,6 +130,14 @@ void uv_process_endgames(uv_loop_t* loop);
     uv__req_unregister((loop), (req));                                  \
   } while (0)
 
+#define uv__handle_close(handle)                                        \
+  do {                                                                  \
+    ngx_queue_remove(&(handle)->handle_queue);                          \
+    (handle)->flags |= UV_HANDLE_CLOSED;                                \
+    if ((handle)->close_cb) {                                           \
+      (handle)->close_cb((uv_handle_t*)(handle));                       \
+    }                                                                   \
+  } while (0)
 
 /*
  * Handles

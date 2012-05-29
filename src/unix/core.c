@@ -159,12 +159,12 @@ static void uv__finish_close(uv_handle_t* handle) {
       break;
   }
 
+  uv__handle_unref(handle);
+  ngx_queue_remove(&handle->handle_queue);
 
   if (handle->close_cb) {
     handle->close_cb(handle);
   }
-
-  uv__handle_unref(handle);
 }
 
 
@@ -278,6 +278,7 @@ void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle,
   handle->type = type;
   handle->flags = UV__HANDLE_REF; /* ref the loop when active */
   handle->next_closing = NULL;
+  ngx_queue_insert_tail(&loop->handle_queue, &handle->handle_queue);
 }
 
 

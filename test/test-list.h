@@ -81,6 +81,7 @@ TEST_DECLARE   (timer_start_twice)
 TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
+TEST_DECLARE   (walk_handles)
 TEST_DECLARE   (ref)
 TEST_DECLARE   (idle_ref)
 TEST_DECLARE   (async_ref)
@@ -300,6 +301,7 @@ TASK_LIST_START
   TEST_ENTRY  (process_ref)
 
   TEST_ENTRY  (loop_handles)
+  TEST_ENTRY  (walk_handles)
 
   TEST_ENTRY  (async)
 

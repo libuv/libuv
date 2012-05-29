@@ -20,57 +20,58 @@
  */
 
 #include "uv.h"
-#include "tree.h"
-#include "internal.h"
+#include "task.h"
+
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+
+static char magic_cookie[] = "magic cookie";
+static int seen_timer_handle;
+static uv_timer_t timer;
 
 
-int uv__loop_init(uv_loop_t* loop, int default_loop) {
-#if HAVE_KQUEUE
-  int flags = EVBACKEND_KQUEUE;
-#else
-  int flags = EVFLAG_AUTO;
-#endif
+static void walk_cb(uv_handle_t* handle, void* arg) {
+  ASSERT(arg == (void*)magic_cookie);
 
-  memset(loop, 0, sizeof(*loop));
-
-  RB_INIT(&loop->ares_handles);
-  ngx_queue_init(&loop->active_reqs);
-  ngx_queue_init(&loop->idle_handles);
-  ngx_queue_init(&loop->check_handles);
-  ngx_queue_init(&loop->prepare_handles);
-  ngx_queue_init(&loop->handle_queue);
-  loop->closing_handles = NULL;
-  loop->channel = NULL;
-  loop->ev = (default_loop ? ev_default_loop : ev_loop_new)(flags);
-  ev_set_userdata(loop->ev, loop);
-  eio_channel_init(&loop->uv_eio_channel, loop);
-
-#if __linux__
-  RB_INIT(&loop->inotify_watchers);
-  loop->inotify_fd = -1;
-#endif
-#if HAVE_PORTS_FS
-  loop->fs_fd = -1;
-#endif
-  return 0;
+  if (handle == (uv_handle_t*)&timer) {
+    seen_timer_handle++;
+  } else {
+    ASSERT(0 && "unexpected handle");
+  }
 }
 
 
-void uv__loop_delete(uv_loop_t* loop) {
-  uv_ares_destroy(loop, loop->channel);
-  ev_loop_destroy(loop->ev);
-#if __linux__
-  if (loop->inotify_fd != -1) {
-    uv__io_stop(loop, &loop->inotify_read_watcher);
-    close(loop->inotify_fd);
-    loop->inotify_fd = -1;
-  }
-#endif
-#if HAVE_PORTS_FS
-  if (loop->fs_fd != -1)
-    close(loop->fs_fd);
-#endif
+static void timer_cb(uv_timer_t* handle, int status) {
+  ASSERT(handle == &timer);
+  ASSERT(status == 0);
+
+  uv_walk(handle->loop, walk_cb, magic_cookie);
+  uv_close((uv_handle_t*)handle, NULL);
+}
+
+
+TEST_IMPL(walk_handles) {
+  uv_loop_t* loop;
+  int r;
+
+  loop = uv_default_loop();
+
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+
+  r = uv_timer_start(&timer, timer_cb, 1, 0);
+  ASSERT(r == 0);
+
+  /* Start event loop, expect to see the timer handle in walk_cb. */
+  ASSERT(seen_timer_handle == 0);
+  r = uv_run(loop);
+  ASSERT(r == 0);
+  ASSERT(seen_timer_handle == 1);
+
+  /* Loop is finished, walk_cb should not see our timer handle. */
+  seen_timer_handle = 0;
+  uv_walk(loop, walk_cb, magic_cookie);
+  ASSERT(seen_timer_handle == 0);
+
+  return 0;
 }

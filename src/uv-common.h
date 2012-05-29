@@ -49,12 +49,14 @@
 
 #ifndef _WIN32
 enum {
-  UV__HANDLE_ACTIVE = 0x4000,
-  UV__HANDLE_REF    = 0x8000
+  UV__HANDLE_INTERNAL = 0x8000,
+  UV__HANDLE_ACTIVE   = 0x4000,
+  UV__HANDLE_REF      = 0x2000
 };
 #else
-# define UV__HANDLE_ACTIVE  0x40
-# define UV__HANDLE_REF     0x20
+# define UV__HANDLE_INTERNAL  0x80
+# define UV__HANDLE_ACTIVE    0x40
+# define UV__HANDLE_REF       0x20
 #endif
 
 extern const uv_err_t uv_ok_;

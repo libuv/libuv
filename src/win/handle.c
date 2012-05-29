@@ -65,6 +65,7 @@ int uv_is_active(const uv_handle_t* handle) {
 void uv_handle_init(uv_loop_t* loop, uv_handle_t* handle) {
   handle->loop = loop;
   handle->flags = UV__HANDLE_REF;
+  ngx_queue_insert_tail(&loop->handle_queue, &handle->handle_queue);
 
   loop->counters.handle_init++;
 }
