@@ -41,7 +41,7 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   ngx_queue_init(&loop->idle_handles);
   ngx_queue_init(&loop->check_handles);
   ngx_queue_init(&loop->prepare_handles);
-  loop->pending_handles = NULL;
+  loop->closing_handles = NULL;
   loop->channel = NULL;
   loop->ev = (default_loop ? ev_default_loop : ev_loop_new)(flags);
   ev_set_userdata(loop->ev, loop);

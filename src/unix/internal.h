@@ -98,18 +98,6 @@ enum {
   UV__PENDING         = 0x800
 };
 
-inline static int uv__has_pending_handles(const uv_loop_t* loop) {
-  return loop->pending_handles != NULL;
-}
-
-inline static void uv__make_pending(uv_handle_t* h) {
-  if (h->flags & UV__PENDING) return;
-  h->next_pending = h->loop->pending_handles;
-  h->loop->pending_handles = h;
-  h->flags |= UV__PENDING;
-}
-#define uv__make_pending(h) uv__make_pending((uv_handle_t*)(h))
-
 inline static void uv__req_init(uv_loop_t* loop,
                                 uv_req_t* req,
                                 uv_req_type type) {
@@ -179,8 +167,6 @@ void uv__stream_close(uv_stream_t* handle);
 void uv__timer_close(uv_timer_t* handle);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
-
-void uv__stream_pending(uv_stream_t* handle);
 
 #define UV__F_IPC        (1 << 0)
 #define UV__F_NONBLOCK   (1 << 1)

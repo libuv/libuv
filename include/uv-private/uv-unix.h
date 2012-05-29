@@ -106,7 +106,7 @@ struct uv__io_s {
   uv_async_t uv_eio_want_poll_notifier; \
   uv_async_t uv_eio_done_poll_notifier; \
   uv_idle_t uv_eio_poller; \
-  uv_handle_t* pending_handles; \
+  uv_handle_t* closing_handles; \
   ngx_queue_t prepare_handles; \
   ngx_queue_t check_handles; \
   ngx_queue_t idle_handles; \
@@ -144,7 +144,7 @@ struct uv__io_s {
 /* TODO: union or classes please! */
 #define UV_HANDLE_PRIVATE_FIELDS \
   int flags; \
-  uv_handle_t* next_pending; \
+  uv_handle_t* next_closing; \
 
 
 #define UV_STREAM_PRIVATE_FIELDS \

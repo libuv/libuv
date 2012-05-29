@@ -59,8 +59,6 @@
 static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
 
-static void uv__finish_close(uv_handle_t* handle);
-
 
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   handle->close_cb = close_cb;
@@ -116,7 +114,72 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   }
 
   handle->flags |= UV_CLOSING;
-  uv__make_pending(handle);
+
+  handle->next_closing = handle->loop->closing_handles;
+  handle->loop->closing_handles = handle;
+}
+
+
+static void uv__finish_close(uv_handle_t* handle) {
+  assert(!uv__is_active(handle));
+  assert(handle->flags & UV_CLOSING);
+  assert(!(handle->flags & UV_CLOSED));
+  handle->flags |= UV_CLOSED;
+
+  switch (handle->type) {
+    case UV_PREPARE:
+    case UV_CHECK:
+    case UV_IDLE:
+    case UV_ASYNC:
+    case UV_TIMER:
+    case UV_PROCESS:
+      break;
+
+    case UV_NAMED_PIPE:
+    case UV_TCP:
+    case UV_TTY:
+      assert(!uv__io_active(&((uv_stream_t*)handle)->read_watcher));
+      assert(!uv__io_active(&((uv_stream_t*)handle)->write_watcher));
+      assert(((uv_stream_t*)handle)->fd == -1);
+      uv__stream_destroy((uv_stream_t*)handle);
+      break;
+
+    case UV_UDP:
+      uv__udp_finish_close((uv_udp_t*)handle);
+      break;
+
+    case UV_FS_EVENT:
+      break;
+
+    case UV_POLL:
+      break;
+
+    default:
+      assert(0);
+      break;
+  }
+
+
+  if (handle->close_cb) {
+    handle->close_cb(handle);
+  }
+
+  uv__handle_unref(handle);
+}
+
+
+static void uv__run_closing_handles(uv_loop_t* loop) {
+  uv_handle_t* p;
+  uv_handle_t* q;
+
+  p = loop->closing_handles;
+  loop->closing_handles = NULL;
+
+  while (p) {
+    q = p->next_closing;
+    uv__finish_close(p);
+    p = q;
+  }
 }
 
 
@@ -163,36 +226,6 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
-static void uv__run_pending(uv_loop_t* loop) {
-  uv_handle_t* p;
-  uv_handle_t* q;
-
-  if (!loop->pending_handles)
-    return;
-
-  for (p = loop->pending_handles, loop->pending_handles = NULL; p; p = q) {
-    q = p->next_pending;
-    p->next_pending = NULL;
-    p->flags &= ~UV__PENDING;
-
-    if (p->flags & UV_CLOSING) {
-      uv__finish_close(p);
-      continue;
-    }
-
-    switch (p->type) {
-    case UV_NAMED_PIPE:
-    case UV_TCP:
-    case UV_TTY:
-      uv__stream_pending((uv_stream_t*)p);
-      break;
-    default:
-      abort();
-    }
-  }
-}
-
-
 static void uv__poll(uv_loop_t* loop, int block) {
   /* bump the loop's refcount, otherwise libev does
    * a zero timeout poll and we end up busy looping
@@ -210,7 +243,6 @@ static int uv__should_block(uv_loop_t* loop) {
 
 static int uv__run(uv_loop_t* loop) {
   uv__run_idle(loop);
-  uv__run_pending(loop);
 
   if (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) {
     uv__run_prepare(loop);
@@ -221,9 +253,9 @@ static int uv__run(uv_loop_t* loop) {
     uv__run_check(loop);
   }
 
-  return uv__has_pending_handles(loop)
-      || uv__has_active_handles(loop)
-      || uv__has_active_reqs(loop);
+  uv__run_closing_handles(loop);
+
+  return uv__has_active_handles(loop) || uv__has_active_reqs(loop);
 }
 
 
@@ -245,55 +277,7 @@ void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle,
   handle->loop = loop;
   handle->type = type;
   handle->flags = UV__REF; /* ref the loop when active */
-  handle->next_pending = NULL;
-}
-
-
-void uv__finish_close(uv_handle_t* handle) {
-  assert(!uv__is_active(handle));
-  assert(handle->flags & UV_CLOSING);
-  assert(!(handle->flags & UV_CLOSED));
-  handle->flags |= UV_CLOSED;
-
-  switch (handle->type) {
-    case UV_PREPARE:
-    case UV_CHECK:
-    case UV_IDLE:
-    case UV_ASYNC:
-    case UV_TIMER:
-    case UV_PROCESS:
-      break;
-
-    case UV_NAMED_PIPE:
-    case UV_TCP:
-    case UV_TTY:
-      assert(!uv__io_active(&((uv_stream_t*)handle)->read_watcher));
-      assert(!uv__io_active(&((uv_stream_t*)handle)->write_watcher));
-      assert(((uv_stream_t*)handle)->fd == -1);
-      uv__stream_destroy((uv_stream_t*)handle);
-      break;
-
-    case UV_UDP:
-      uv__udp_finish_close((uv_udp_t*)handle);
-      break;
-
-    case UV_FS_EVENT:
-      break;
-
-    case UV_POLL:
-      break;
-
-    default:
-      assert(0);
-      break;
-  }
-
-
-  if (handle->close_cb) {
-    handle->close_cb(handle);
-  }
-
-  uv__handle_unref(handle);
+  handle->next_closing = NULL;
 }
 
 
