@@ -94,8 +94,7 @@ enum {
   UV_STREAM_BLOCKING  = 0x80,   /* Synchronous writes. */
   UV_TCP_NODELAY      = 0x100,  /* Disable Nagle. */
   UV_TCP_KEEPALIVE    = 0x200,  /* Turn on keep-alive. */
-  UV_TIMER_REPEAT     = 0x100,
-  UV__PENDING         = 0x800
+  UV_TIMER_REPEAT     = 0x100
 };
 
 inline static void uv__req_init(uv_loop_t* loop,
