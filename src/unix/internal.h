@@ -93,8 +93,7 @@ enum {
   UV_STREAM_WRITABLE  = 0x40,   /* The stream is writable */
   UV_STREAM_BLOCKING  = 0x80,   /* Synchronous writes. */
   UV_TCP_NODELAY      = 0x100,  /* Disable Nagle. */
-  UV_TCP_KEEPALIVE    = 0x200,  /* Turn on keep-alive. */
-  UV_TIMER_REPEAT     = 0x100
+  UV_TCP_KEEPALIVE    = 0x200   /* Turn on keep-alive. */
 };
 
 inline static void uv__req_init(uv_loop_t* loop,
@@ -151,8 +150,9 @@ int uv__tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay);
 /* pipe */
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 
-/* poll */
-void uv__poll_close(uv_poll_t* handle);
+/* timer */
+void uv__run_timers(uv_loop_t* loop);
+unsigned int uv__next_timeout(uv_loop_t* loop);
 
 /* various */
 void uv__async_close(uv_async_t* handle);
@@ -160,6 +160,7 @@ void uv__check_close(uv_check_t* handle);
 void uv__fs_event_close(uv_fs_event_t* handle);
 void uv__idle_close(uv_idle_t* handle);
 void uv__pipe_close(uv_pipe_t* handle);
+void uv__poll_close(uv_poll_t* handle);
 void uv__prepare_close(uv_prepare_t* handle);
 void uv__process_close(uv_process_t* handle);
 void uv__stream_close(uv_stream_t* handle);

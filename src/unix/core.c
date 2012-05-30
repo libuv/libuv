@@ -226,22 +226,30 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
-static void uv__poll(uv_loop_t* loop, int block) {
+static void uv__poll(uv_loop_t* loop, unsigned int timeout) {
   /* bump the loop's refcount, otherwise libev does
    * a zero timeout poll and we end up busy looping
    */
   ev_ref(loop->ev);
-  ev_run(loop->ev, block ? EVRUN_ONCE : EVRUN_NOWAIT);
+  ev_run(loop->ev, timeout / 1000.);
   ev_unref(loop->ev);
 }
 
 
-static int uv__should_block(uv_loop_t* loop) {
-  return loop->active_handles && ngx_queue_empty(&loop->idle_handles);
+static unsigned int uv__poll_timeout(uv_loop_t* loop) {
+  if (!uv__has_active_handles(loop))
+    return 0;
+
+  if (!ngx_queue_empty(&loop->idle_handles))
+    return 0;
+
+  return uv__next_timeout(loop);
 }
 
 
 static int uv__run(uv_loop_t* loop) {
+  uv_update_time(loop);
+  uv__run_timers(loop);
   uv__run_idle(loop);
 
   if (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) {
@@ -249,7 +257,7 @@ static int uv__run(uv_loop_t* loop) {
     /* Need to poll even if there are no active handles left, otherwise
      * uv_work_t reqs won't complete...
      */
-    uv__poll(loop, uv__should_block(loop));
+    uv__poll(loop, uv__poll_timeout(loop));
     uv__run_check(loop);
   }
 
@@ -283,12 +291,12 @@ void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle,
 
 
 void uv_update_time(uv_loop_t* loop) {
-  ev_now_update(loop->ev);
+  loop->time = uv_hrtime() / 1000000;
 }
 
 
 int64_t uv_now(uv_loop_t* loop) {
-  return (int64_t)(ev_now(loop->ev) * 1000);
+  return loop->time;
 }
 
 
