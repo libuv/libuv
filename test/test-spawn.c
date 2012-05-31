@@ -221,7 +221,7 @@ TEST_IMPL(spawn_stdout_to_file) {
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
-  options.stdio[1].flags = UV_RAW_FD;
+  options.stdio[1].flags = UV_INHERIT_FD;
   options.stdio[1].data.fd = file;
   options.stdio_count = 2;
 

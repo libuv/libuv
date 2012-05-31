@@ -947,7 +947,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
       continue;
     }
 
-    if (options.stdio[i].flags & UV_RAW_FD) {
+    if (options.stdio[i].flags & UV_INHERIT_FD) {
       err = duplicate_fd(loop, options.stdio[i].data.fd, &child_stdio[i]);
     } else if (options.stdio[i].data.stream->type == UV_NAMED_PIPE) {
       pipe = (uv_pipe_t*)options.stdio[i].data.stream;

@@ -1165,15 +1165,17 @@ UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
 /* uv_spawn() options */
 typedef enum {
-  UV_IGNORE        = 0x00,
-  UV_CREATE_PIPE   = 0x01,
-  /*
-   * UV_READABLE_PIPE and UV_WRITABLE_PIPE flags are set from
-   * the child process perspective.
+  UV_IGNORE         = 0x00,
+  UV_CREATE_PIPE    = 0x01,
+  UV_INHERIT_FD     = 0x02,
+  UV_INHERIT_STREAM = 0x04,
+
+  /* When UV_CREATE_PIPE is specified, UV_READABLE_PIPE and UV_WRITABLE_PIPE
+   * determine the direction of flow, from the child process' perspective. Both
+   * flags may be specified to create a duplex data stream.
    */
-  UV_READABLE_PIPE = 0x02,
-  UV_WRITABLE_PIPE = 0x04,
-  UV_RAW_FD        = 0x08
+  UV_READABLE_PIPE  = 0x10,
+  UV_WRITABLE_PIPE  = 0x20,
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {
