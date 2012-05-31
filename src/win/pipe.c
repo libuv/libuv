@@ -164,7 +164,7 @@ int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
   int err;
   char* ptr = (char*)handle;
 
-  while (TRUE) {
+  for (;;) {
     uv_unique_pipe_name(ptr, name, nameSize);
 
     pipeHandle = CreateNamedPipeA(name,
