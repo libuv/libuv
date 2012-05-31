@@ -104,5 +104,17 @@ static int maybe_run_test(int argc, char **argv) {
     while (1) uv_sleep(10000);
   }
 
+  if (strcmp(argv[1], "spawn_helper5") == 0) {
+    const char* out = "fourth stdio!\n\0";
+#ifdef _WIN32
+    DWORD bytes;
+    WriteFile((HANDLE) _get_osfhandle(3), out, strlen(out), &bytes, NULL);
+#else
+    write(3, out, strlen(out));
+    fsync(3);
+#endif
+    return 1;
+  }
+
   return run_test(argv[1], TEST_TIMEOUT, 0);
 }
