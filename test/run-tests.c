@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _WIN32
+# include <io.h>
+#endif
+
 #include "uv.h"
 #include "runner.h"
 #include "task.h"
