@@ -869,7 +869,8 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   int err = 0, keep_child_stdio_open = 0;
   wchar_t* path = NULL;
   int size, i, overlapped;
-  DWORD server_access, child_access;
+  DWORD server_access, child_access,
+        process_flags = CREATE_UNICODE_ENVIRONMENT;
   BOOL result;
   wchar_t* application_path = NULL, *application = NULL, *arguments = NULL,
     *env = NULL, *cwd = NULL;
@@ -891,6 +892,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   assert(options.file != NULL);
   assert(!(options.flags & ~(UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                             UV_PROCESS_DETACHED |
                              UV_PROCESS_SETGID |
                              UV_PROCESS_SETUID)));
 
@@ -1005,12 +1007,16 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   startup.hStdOutput = child_stdio[1];
   startup.hStdError = child_stdio[2];
 
+  if (options.flags & UV_PROCESS_DETACHED) {
+    process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+  }
+
   if (CreateProcessW(application_path,
                      arguments,
                      NULL,
                      NULL,
                      1,
-                     CREATE_UNICODE_ENVIRONMENT,
+                     process_flags,
                      env,
                      cwd,
                      &startup,

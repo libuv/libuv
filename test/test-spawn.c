@@ -99,6 +99,11 @@ static void kill_cb(uv_process_t* process, int exit_status, int term_signal) {
   ASSERT(err.code == UV_ESRCH);
 }
 
+static void detach_failure_cb(uv_process_t* process, int exit_status, int term_signal) {
+  uv_err_t err;
+  printf("detach_cb\n");
+  exit_cb_called++;
+}
 
 static uv_buf_t on_alloc(uv_handle_t* handle, size_t suggested_size) {
   uv_buf_t buf;
@@ -314,6 +319,32 @@ TEST_IMPL(spawn_and_kill) {
   return 0;
 }
 
+TEST_IMPL(spawn_detached) {
+  int r;
+  uv_err_t err;
+
+  init_process_options("spawn_helper4", detach_failure_cb);
+
+  options.flags |= UV_PROCESS_DETACHED;
+
+  r = uv_spawn(uv_default_loop(), &process, options);
+  ASSERT(r == 0);
+
+  uv_unref((uv_handle_t*)&process);
+
+  r = uv_run(uv_default_loop());
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 0);
+
+  err = uv_kill(process.pid, 0);
+  ASSERT(err.code == 0);
+
+  err = uv_kill(process.pid, 15);
+  ASSERT(err.code == 0);
+
+  return 0;
+}
 
 TEST_IMPL(spawn_and_kill_with_std) {
   int r;

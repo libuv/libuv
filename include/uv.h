@@ -1246,7 +1246,15 @@ enum uv_process_flags {
    * converting the argument list into a command line string. This option is
    * only meaningful on Windows systems. On unix it is silently ignored.
    */
-  UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS = (1 << 2)
+  UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS = (1 << 2),
+  /*
+   * Spawn the child process in a detached state - this will make it a process
+   * group leader, and will effectively enable the child to keep running after
+   * the parent exits.  Note that the child process will still keep the
+   * parent's event loop alive unless the parent process calls uv_unref() on
+   * the child's process handle.
+   */
+  UV_PROCESS_DETACHED = (1 << 3)
 };
 
 /*

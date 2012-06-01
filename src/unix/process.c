@@ -240,6 +240,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   assert(options.file != NULL);
   assert(!(options.flags & ~(UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                             UV_PROCESS_DETACHED |
                              UV_PROCESS_SETGID |
                              UV_PROCESS_SETUID)));
 
@@ -301,6 +302,9 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   if (pid == 0) {
     /* Child */
+    if (options.flags & UV_PROCESS_DETACHED) {
+      setsid();
+    }
 
     /* Dup fds */
     for (i = 0; i < options.stdio_count; i++) {
