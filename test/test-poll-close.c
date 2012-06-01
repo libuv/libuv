@@ -47,7 +47,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 TEST_IMPL(poll_close) {
-  SOCKET sockets[NUM_SOCKETS];
+  uv_os_sock_t sockets[NUM_SOCKETS];
   uv_poll_t poll_handles[NUM_SOCKETS];
   int i;
 
