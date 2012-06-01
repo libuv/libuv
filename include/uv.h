@@ -1175,7 +1175,7 @@ typedef enum {
    * flags may be specified to create a duplex data stream.
    */
   UV_READABLE_PIPE  = 0x10,
-  UV_WRITABLE_PIPE  = 0x20,
+  UV_WRITABLE_PIPE  = 0x20
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {
@@ -1221,10 +1221,16 @@ typedef struct uv_process_options_s {
   uv_gid_t gid;
 
   /*
-   * A container of stdio streams (stdin/stdout/stderr)
+   * The `stdio` field points to an array of uv_stdio_container_t structs that
+   * describe the file descriptors that will be made available to the child
+   * process. The convention is that stdio[0] points to stdin, fd 1 is used for
+   * stdout, and fd 2 is stderr.
+   *
+   * Note that on windows file descriptors greater than 2 are available to the
+   * child process only if the child processes uses the MSVCRT runtime.
    */
-  uv_stdio_container_t* stdio;
   int stdio_count;
+  uv_stdio_container_t* stdio;
 } uv_process_options_t;
 
 /*
