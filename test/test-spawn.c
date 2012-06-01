@@ -100,7 +100,6 @@ static void kill_cb(uv_process_t* process, int exit_status, int term_signal) {
 }
 
 static void detach_failure_cb(uv_process_t* process, int exit_status, int term_signal) {
-  uv_err_t err;
   printf("detach_cb\n");
   exit_cb_called++;
 }
