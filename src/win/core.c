@@ -43,11 +43,12 @@ static void uv_init(void) {
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
     SEM_NOOPENFILEERRORBOX);
 
+  /* Fetch winapi function pointers. This must be done first because other */
+  /* intialization code might need these function pointers to be loaded. */
+  uv_winapi_init();
+
   /* Initialize winsock */
   uv_winsock_init();
-
-  /* Fetch winapi function pointers */
-  uv_winapi_init();
 
   /* Initialize FS */
   uv_fs_init();
