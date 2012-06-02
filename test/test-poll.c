@@ -550,10 +550,10 @@ static void start_poll_test() {
   r = uv_run(uv_default_loop());
   ASSERT(r == 0);
 
-  /* Assert that at most one percent of the writable wakeups was spurious. */
+  /* Assert that at most five percent of the writable wakeups was spurious. */
   ASSERT(spurious_writable_wakeups == 0 ||
          (valid_writable_wakeups + spurious_writable_wakeups) /
-         spurious_writable_wakeups > 100);
+         spurious_writable_wakeups > 20);
 
   ASSERT(closed_connections == NUM_CLIENTS * 2);
 }
