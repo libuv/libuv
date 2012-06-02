@@ -47,10 +47,17 @@
  */
 #define MAX_TITLE_LENGTH 8192
 
+/* The number of nanoseconds in one second. */
+#undef NANOSEC
+#define NANOSEC 1000000000
+
 
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
+
+/* The tick frequency of the high-resolution clock. */
+static uint64_t hrtime_frequency_ = 0;
 
 
 /*
@@ -59,6 +66,10 @@ static CRITICAL_SECTION process_title_lock;
 void uv__util_init() {
   /* Initialize process title access mutex. */
   InitializeCriticalSection(&process_title_lock);
+
+  /* Retrieve high-resolution timer frequency. */
+  if (!QueryPerformanceFrequency((LARGE_INTEGER*) &hrtime_frequency_))
+    hrtime_frequency_ = 0;
 }
 
 
@@ -372,6 +383,31 @@ uv_err_t uv_get_process_title(char* buffer, size_t size) {
   LeaveCriticalSection(&process_title_lock);
 
   return uv_ok_;
+}
+
+
+uint64_t uv_hrtime(void) {
+  LARGE_INTEGER counter;
+
+  uv__once_init();
+
+  /* If the performance frequency is zero, there's no support. */
+  if (!hrtime_frequency_) {
+    /* uv__set_sys_error(loop, ERROR_NOT_SUPPORTED); */
+    return 0;
+  }
+
+  if (!QueryPerformanceCounter(&counter)) {
+    /* uv__set_sys_error(loop, GetLastError()); */
+    return 0;
+  }
+
+  /* Because we have no guarantee about the order of magnitude of the */
+  /* performance counter frequency, and there may not be much headroom to */
+  /* multiply by NANOSEC without overflowing, we use 128-bit math instead. */
+  return ((uint64_t) counter.LowPart * NANOSEC / hrtime_frequency_) +
+         (((uint64_t) counter.HighPart * NANOSEC / hrtime_frequency_)
+         << 32);
 }
 
 

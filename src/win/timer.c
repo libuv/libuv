@@ -27,15 +27,6 @@
 #include "tree.h"
 
 
-#undef NANOSEC
-#define NANOSEC 1000000000
-
-
-/* The resolution of the high-resolution clock. */
-static uint64_t uv_hrtime_frequency_ = 0;
-static uv_once_t uv_hrtime_init_guard_ = UV_ONCE_INIT;
-
-
 void uv_update_time(uv_loop_t* loop) {
   DWORD ticks = GetTickCount();
 
@@ -55,43 +46,6 @@ void uv_update_time(uv_loop_t* loop) {
 
 int64_t uv_now(uv_loop_t* loop) {
   return loop->time;
-}
-
-
-static void uv_hrtime_init(void) {
-  LARGE_INTEGER frequency;
-
-  if (!QueryPerformanceFrequency(&frequency)) {
-    uv_hrtime_frequency_ = 0;
-    return;
-  }
-
-  uv_hrtime_frequency_ = frequency.QuadPart;
-}
-
-
-uint64_t uv_hrtime(void) {
-  LARGE_INTEGER counter;
-
-  uv_once(&uv_hrtime_init_guard_, uv_hrtime_init);
-
-  /* If the performance frequency is zero, there's no support. */
-  if (!uv_hrtime_frequency_) {
-    /* uv__set_sys_error(loop, ERROR_NOT_SUPPORTED); */
-    return 0;
-  }
-
-  if (!QueryPerformanceCounter(&counter)) {
-    /* uv__set_sys_error(loop, GetLastError()); */
-    return 0;
-  }
-
-  /* Because we have no guarantee about the order of magnitude of the */
-  /* performance counter frequency, and there may not be much headroom to */
-  /* multiply by NANOSEC without overflowing, we use 128-bit math instead. */
-  return ((uint64_t) counter.LowPart * NANOSEC / uv_hrtime_frequency_) +
-         (((uint64_t) counter.HighPart * NANOSEC / uv_hrtime_frequency_)
-         << 32);
 }
 
 
