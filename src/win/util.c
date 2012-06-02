@@ -47,9 +47,20 @@
  */
 #define MAX_TITLE_LENGTH 8192
 
+
+/* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
-static uv_once_t uv_process_title_init_guard_ = UV_ONCE_INIT;
 static CRITICAL_SECTION process_title_lock;
+
+
+/*
+ * One-time intialization code for functionality defined in util.c.
+ */
+void uv__util_init() {
+  /* Initialize process title access mutex. */
+  InitializeCriticalSection(&process_title_lock);
+}
+
 
 int uv_utf16_to_utf8(const wchar_t* utf16Buffer, size_t utf16Size,
     char* utf8Buffer, size_t utf8Size) {
@@ -265,17 +276,12 @@ char** uv_setup_args(int argc, char** argv) {
 }
 
 
-static void uv_process_title_init(void) {
-  InitializeCriticalSection(&process_title_lock);
-}
-
-
 uv_err_t uv_set_process_title(const char* title) {
   uv_err_t err;
   int length;
   wchar_t* title_w = NULL;
 
-  uv_once(&uv_process_title_init_guard_, uv_process_title_init);
+  uv__once_init();
 
   /* Find out how big the buffer for the wide-char title must be */
   length = uv_utf8_to_utf16(title, NULL, 0);
@@ -350,7 +356,7 @@ static int uv__get_process_title() {
 
 
 uv_err_t uv_get_process_title(char* buffer, size_t size) {
-  uv_once(&uv_process_title_init_guard_, uv_process_title_init);
+  uv__once_init();
 
   EnterCriticalSection(&process_title_lock);
   /*

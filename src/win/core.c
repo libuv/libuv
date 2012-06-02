@@ -55,6 +55,9 @@ static void uv_init(void) {
 
   /* Initialize console */
   uv_console_init();
+
+  /* Initialize utilities */
+  uv__util_init();
 }
 
 
