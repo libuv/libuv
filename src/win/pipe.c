@@ -26,6 +26,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "req-inl.h"
 
 
 /* A zero-size buffer for use by uv_pipe_read */

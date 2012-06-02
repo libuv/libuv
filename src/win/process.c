@@ -19,15 +19,15 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
-#include "internal.h"
-
 #include <assert.h>
 #include <io.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <windows.h>
+
+#include "uv.h"
+#include "internal.h"
+#include "req-inl.h"
 
 
 #define SIGKILL         9

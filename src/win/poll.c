@@ -19,12 +19,12 @@
  * IN THE SOFTWARE.
  */
 
+#include <assert.h>
+#include <io.h>
 
 #include "uv.h"
 #include "internal.h"
-
-#include <assert.h>
-#include <io.h>
+#include "req-inl.h"
 
 
 static const GUID uv_msafd_provider_ids[UV_MSAFD_PROVIDER_COUNT] = {

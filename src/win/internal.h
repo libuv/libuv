@@ -146,15 +146,8 @@ void uv_handle_init(uv_loop_t* loop, uv_handle_t* handle);
 
 
 /*
- * Requests
+ * Requests (also see req-inl.h)
  */
-void uv_req_init(uv_loop_t* loop, uv_req_t* req);
-
-uv_req_t* uv_overlapped_to_req(OVERLAPPED* overlapped);
-
-void uv_insert_pending_req(uv_loop_t* loop, uv_req_t* req);
-void uv_process_reqs(uv_loop_t* loop);
-
 #define POST_COMPLETION_FOR_REQ(loop, req)                              \
   if (!PostQueuedCompletionStatus((loop)->iocp,                         \
                                   0,                                    \

@@ -23,6 +23,8 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "req-inl.h"
+
 
 
 /*

@@ -28,6 +28,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "req-inl.h"
 
 
 /* The only event loop we support right now */
