@@ -690,7 +690,7 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
   if (!REQ_SUCCESS(req)) {
     /* Read was not successful */
     if ((handle->flags & UV_HANDLE_READING) &&
-        !(handle->flags & UV_HANDLE_TTY_RAW)) {
+        handle->read_line_handle != NULL) {
       /* Real error */
       handle->flags &= ~UV_HANDLE_READING;
       DECREASE_ACTIVE_COUNT(loop, handle);
