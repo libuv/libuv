@@ -100,10 +100,15 @@ static void uv_loop_init(uv_loop_t* loop) {
 
 static void uv_default_loop_init(void) {
   /* Initialize libuv itself first */
-  uv_once(&uv_init_guard_, uv_init);
+  uv__once_init();
 
   /* Initialize the main loop */
   uv_loop_init(&uv_default_loop_);
+}
+
+
+void uv__once_init(void) {
+  uv_once(&uv_init_guard_, uv_init);
 }
 
 
@@ -117,7 +122,7 @@ uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
   /* Initialize libuv itself first */
-  uv_once(&uv_init_guard_, uv_init);
+  uv__once_init();
 
   loop = (uv_loop_t*)malloc(sizeof(uv_loop_t));
 

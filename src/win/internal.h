@@ -299,6 +299,8 @@ void uv_prepare_invoke(uv_loop_t* loop);
 void uv_check_invoke(uv_loop_t* loop);
 void uv_idle_invoke(uv_loop_t* loop);
 
+void uv__once_init();
+
 
 /*
  * Async watcher
