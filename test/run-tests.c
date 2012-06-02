@@ -120,5 +120,17 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 
+  if (strcmp(argv[1], "spawn_helper6") == 0) {
+    int r;
+
+    r = fprintf(stdout, "hello world\n");
+    ASSERT(r > 0);
+
+    r = fprintf(stderr, "hello errworld\n");
+    ASSERT(r > 0);
+
+    return 1;
+  }
+
   return run_test(argv[1], TEST_TIMEOUT, 0);
 }
