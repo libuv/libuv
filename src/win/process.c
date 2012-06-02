@@ -1077,6 +1077,7 @@ static int init_child_stdio(uv_loop_t* loop, uv_process_options_t* options,
 
         CHILD_STDIO_HANDLE(buffer, i) = child_handle;
         CHILD_STDIO_CRT_FLAGS(buffer, i) = crt_flags;
+        break;
       }
 
       default:
