@@ -756,6 +756,32 @@ static int duplicate_fd(uv_loop_t* loop, int fd, HANDLE* dup) {
 }
 
 
+static int create_nul_handle(uv_loop_t* loop, HANDLE* handle_ptr,
+    DWORD access) {
+  HANDLE handle;
+  SECURITY_ATTRIBUTES sa;
+
+  sa.nLength = sizeof sa;
+  sa.lpSecurityDescriptor = NULL;
+  sa.bInheritHandle = TRUE;
+
+  handle = CreateFileW(L"NUL",
+                       access,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       &sa,
+                       OPEN_EXISTING,
+                       0,
+                       NULL);
+  if (handle == INVALID_HANDLE_VALUE) {
+    uv__set_sys_error(loop, GetLastError());
+    return -1;
+  }
+
+  *handle_ptr = handle;
+  return 0;
+}
+
+
 static void set_child_stdio_noinherit(void* buffer) {
   int i, count;
 
@@ -965,16 +991,34 @@ static int init_child_stdio(uv_loop_t* loop, uv_process_options_t* options,
     CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
   }
 
-  for (i = 0; i < options->stdio_count; i++) {
-    uv_stdio_container_t fdopt = options->stdio[i];
+  for (i = 0; i < count; i++) {
+    uv_stdio_container_t fdopt;
+    if (i < options->stdio_count) {
+      fdopt = options->stdio[i];
+    } else {
+      fdopt.flags = UV_IGNORE;
+    }
 
     switch (fdopt.flags & (UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD |
             UV_INHERIT_STREAM)) {
       case UV_IGNORE:
-        /* The child is not supposed to inherit this handle. It has already */
-        /* been initialized to INVALID_HANDLE_VALUE, so just keep it like */
-        /* that. */
-        continue;
+        /* Starting a process with no stdin/stout/stderr can confuse it. */
+        /* So no matter what the user specified, we make sure the first */
+        /* three FDs are always open in their typical modes, e.g. stdin */
+        /* be readable and stdout/err should be writable. For FDs > 2, don't */
+        /* do anything - all handles in the stdio buffer are initialized with */
+        /* INVALID_HANDLE_VALUE, which should be okay. */
+        if (i <= 2) {
+          DWORD access = (i == 0) ? FILE_GENERIC_READ :
+                                    FILE_GENERIC_WRITE | FILE_READ_ATTRIBUTES;
+          if (create_nul_handle(loop,
+                                &CHILD_STDIO_HANDLE(buffer, i),
+                                access) < 0) {
+            goto error;
+          }
+          CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FDEV;
+        }
+        break;
 
       case UV_CREATE_PIPE: {
         /* Create a pair of two connected pipe ends; one end is turned into */
