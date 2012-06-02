@@ -32,6 +32,7 @@
 
 /*
  * Handles
+ * (also see handle-inl.h)
  */
 
 /* Used by all handles. */
@@ -80,9 +81,6 @@
 /* Only used by uv_poll_t handles. */
 #define UV_HANDLE_POLL_SLOW                     0x02000000
 
-
-void uv_want_endgame(uv_loop_t* loop, uv_handle_t* handle);
-void uv_process_endgames(uv_loop_t* loop);
 
 #define DECREASE_PENDING_REQ_COUNT(handle)    \
   do {                                        \
@@ -138,11 +136,6 @@ void uv_process_endgames(uv_loop_t* loop);
       (handle)->close_cb((uv_handle_t*)(handle));                       \
     }                                                                   \
   } while (0)
-
-/*
- * Handles
- */
-void uv_handle_init(uv_loop_t* loop, uv_handle_t* handle);
 
 
 /*

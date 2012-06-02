@@ -25,6 +25,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "tree.h"
+#include "handle-inl.h"
 
 
 void uv_update_time(uv_loop_t* loop) {

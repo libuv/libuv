@@ -142,6 +142,7 @@
             'src/win/fs-event.c',
             'src/win/getaddrinfo.c',
             'src/win/handle.c',
+            'src/win/handle-inl.h',
             'src/win/internal.h',
             'src/win/loop-watcher.c',
             'src/win/pipe.c',
