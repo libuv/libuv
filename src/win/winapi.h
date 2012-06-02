@@ -28,11 +28,6 @@
 /*
  * Ntdll headers
  */
-#ifndef _NTDEF_
-  typedef LONG NTSTATUS;
-  typedef NTSTATUS *PNTSTATUS;
-#endif
-
 #ifndef STATUS_SEVERITY_SUCCESS
 # define STATUS_SEVERITY_SUCCESS 0x0
 #endif
