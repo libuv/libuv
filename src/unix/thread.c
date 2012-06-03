@@ -26,19 +26,6 @@
 #include <assert.h>
 #include <errno.h>
 
-#ifdef NDEBUG
-# define CHECK(r) ((void) (r))
-#else
-# include <stdio.h>
-# include <stdlib.h>
-# define CHECK(r)                                 \
-    do {                                          \
-      int __r = (r);                              \
-      if (__r) errno = __r, perror(#r), abort();  \
-    }                                             \
-    while (0)
-#endif
-
 
 int uv_thread_join(uv_thread_t *tid) {
   if (pthread_join(*tid, NULL))
@@ -75,12 +62,14 @@ int uv_mutex_init(uv_mutex_t* mutex) {
 
 
 void uv_mutex_destroy(uv_mutex_t* mutex) {
-  CHECK(pthread_mutex_destroy(mutex));
+  if (pthread_mutex_destroy(mutex))
+    abort();
 }
 
 
 void uv_mutex_lock(uv_mutex_t* mutex) {
-  CHECK(pthread_mutex_lock(mutex));
+  if (pthread_mutex_lock(mutex))
+    abort();
 }
 
 
@@ -90,7 +79,7 @@ int uv_mutex_trylock(uv_mutex_t* mutex) {
   r = pthread_mutex_trylock(mutex);
 
   if (r && r != EAGAIN)
-    CHECK(r);
+    abort();
 
   if (r)
     return -1;
@@ -100,7 +89,8 @@ int uv_mutex_trylock(uv_mutex_t* mutex) {
 
 
 void uv_mutex_unlock(uv_mutex_t* mutex) {
-  CHECK(pthread_mutex_unlock(mutex));
+  if (pthread_mutex_unlock(mutex))
+    abort();
 }
 
 
@@ -113,12 +103,14 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  CHECK(pthread_rwlock_destroy(rwlock));
+  if (pthread_rwlock_destroy(rwlock))
+    abort();
 }
 
 
 void uv_rwlock_rdlock(uv_rwlock_t* rwlock) {
-  CHECK(pthread_rwlock_rdlock(rwlock));
+  if (pthread_rwlock_rdlock(rwlock))
+    abort();
 }
 
 
@@ -128,7 +120,7 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
   r = pthread_rwlock_tryrdlock(rwlock);
 
   if (r && r != EAGAIN)
-    CHECK(r);
+    abort();
 
   if (r)
     return -1;
@@ -138,12 +130,14 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) {
-  CHECK(pthread_rwlock_unlock(rwlock));
+  if (pthread_rwlock_unlock(rwlock))
+    abort();
 }
 
 
 void uv_rwlock_wrlock(uv_rwlock_t* rwlock) {
-  CHECK(pthread_rwlock_wrlock(rwlock));
+  if (pthread_rwlock_wrlock(rwlock))
+    abort();
 }
 
 
@@ -153,7 +147,7 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
   r = pthread_rwlock_trywrlock(rwlock);
 
   if (r && r != EAGAIN)
-    CHECK(r);
+    abort();
 
   if (r)
     return -1;
@@ -163,10 +157,12 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
-  CHECK(pthread_rwlock_unlock(rwlock));
+  if (pthread_rwlock_unlock(rwlock))
+    abort();
 }
 
 
 void uv_once(uv_once_t* guard, void (*callback)(void)) {
-  CHECK(pthread_once(guard, callback));
+  if (pthread_once(guard, callback))
+    abort();
 }
