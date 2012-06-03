@@ -49,10 +49,28 @@ int uv_thread_join(uv_thread_t *tid) {
 
 
 int uv_mutex_init(uv_mutex_t* mutex) {
+#ifdef NDEBUG
   if (pthread_mutex_init(mutex, NULL))
     return -1;
   else
     return 0;
+#else
+  pthread_mutexattr_t attr;
+  int r;
+
+  if (pthread_mutexattr_init(&attr))
+    abort();
+
+  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK))
+    abort();
+
+  r = pthread_mutex_init(mutex, &attr);
+
+  if (pthread_mutexattr_destroy(&attr))
+    abort();
+
+  return r ? -1 : 0;
+#endif
 }
 
 
