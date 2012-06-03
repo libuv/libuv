@@ -1624,6 +1624,15 @@ UV_EXTERN void uv_rwlock_wrlock(uv_rwlock_t* rwlock);
 UV_EXTERN int uv_rwlock_trywrlock(uv_rwlock_t* rwlock);
 UV_EXTERN void uv_rwlock_wrunlock(uv_rwlock_t* rwlock);
 
+/*
+ * Same goes for the semaphore functions.
+ */
+UV_EXTERN int uv_sem_init(uv_sem_t* sem, unsigned int value);
+UV_EXTERN void uv_sem_destroy(uv_sem_t* sem);
+UV_EXTERN void uv_sem_post(uv_sem_t* sem);
+UV_EXTERN void uv_sem_wait(uv_sem_t* sem);
+UV_EXTERN int uv_sem_trywait(uv_sem_t* sem);
+
 /* Runs a function once and only once. Concurrent calls to uv_once() with the
  * same guard will block all callers except one (it's unspecified which one).
  * The guard should be initialized statically with the UV_ONCE_INIT macro.

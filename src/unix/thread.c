@@ -166,3 +166,46 @@ void uv_once(uv_once_t* guard, void (*callback)(void)) {
   if (pthread_once(guard, callback))
     abort();
 }
+
+
+int uv_sem_init(uv_sem_t* sem, unsigned int value) {
+  return sem_init(sem, 0, value);
+}
+
+
+void uv_sem_destroy(uv_sem_t* sem) {
+  if (sem_destroy(sem))
+    abort();
+}
+
+
+void uv_sem_post(uv_sem_t* sem) {
+  if (sem_post(sem))
+    abort();
+}
+
+
+void uv_sem_wait(uv_sem_t* sem) {
+  int r;
+
+  do
+    r = sem_wait(sem);
+  while (r == -1 && errno == EINTR);
+
+  if (r)
+    abort();
+}
+
+
+int uv_sem_trywait(uv_sem_t* sem) {
+  int r;
+
+  do
+    r = sem_trywait(sem);
+  while (r == -1 && errno == EINTR);
+
+  if (r && errno != EAGAIN)
+    abort();
+
+  return r;
+}

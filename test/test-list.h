@@ -22,6 +22,9 @@
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (run_once)
+TEST_DECLARE   (semaphore_1)
+TEST_DECLARE   (semaphore_2)
+TEST_DECLARE   (semaphore_3)
 TEST_DECLARE   (tty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -193,6 +196,9 @@ TASK_LIST_START
   TEST_ENTRY  (callback_order)
 #endif
   TEST_ENTRY  (run_once)
+  TEST_ENTRY  (semaphore_1)
+  TEST_ENTRY  (semaphore_2)
+  TEST_ENTRY  (semaphore_3)
 
   TEST_ENTRY  (pipe_connect_bad_name)
   TEST_ENTRY  (pipe_connect_to_file)
