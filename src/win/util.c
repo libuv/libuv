@@ -97,48 +97,58 @@ int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer,
 }
 
 
-int uv_exepath(char* buffer, size_t* size) {
-  int retVal;
-  size_t utf16Size;
-  wchar_t* utf16Buffer;
+int uv_exepath(char* buffer, size_t* size_ptr) {
+  int utf8_len, utf16_buffer_len, utf16_len;
+  WCHAR* utf16_buffer;
 
-  if (!buffer || !size) {
+  if (buffer == NULL || size_ptr == NULL || *size_ptr == 0) {
     return -1;
   }
 
-  utf16Buffer = (wchar_t*)malloc(sizeof(wchar_t) * *size);
-  if (!utf16Buffer) {
-    retVal = -1;
-    goto done;
+  if (*size_ptr > 32768) {
+    /* Windows paths can never be longer than this. */
+    utf16_buffer_len = 32768;
+  } else {
+    utf16_buffer_len = (int) *size_ptr;
   }
 
-  /* Get the path as UTF-16 */
-  utf16Size = GetModuleFileNameW(NULL, utf16Buffer, *size - 1);
-  if (utf16Size <= 0) {
-    /* uv__set_sys_error(loop, GetLastError()); */
-    retVal = -1;
-    goto done;
+  utf16_buffer = (wchar_t*) malloc(sizeof(WCHAR) * utf16_buffer_len);
+  if (!utf16_buffer) {
+    return -1;
   }
 
-  utf16Buffer[utf16Size] = L'\0';
+  /* Get the path as UTF-16. */
+  utf16_len = GetModuleFileNameW(NULL, utf16_buffer, utf16_buffer_len);
+  if (utf16_len <= 0) {
+    goto error;
+  }
+
+  /* utf16_len contains the length, *not* including the terminating null. */
+  utf16_buffer[utf16_len] = L'\0';
 
   /* Convert to UTF-8 */
-  *size = uv_utf16_to_utf8(utf16Buffer, utf16Size, buffer, *size);
-  if (!*size) {
-    /* uv__set_sys_error(loop, GetLastError()); */
-    retVal = -1;
-    goto done;
+  utf8_len = WideCharToMultiByte(CP_UTF8,
+                                 0,
+                                 utf16_buffer,
+                                 -1,
+                                 buffer,
+                                 *size_ptr > INT_MAX ? INT_MAX : (int) *size_ptr,
+                                 NULL,
+                                 NULL);
+  if (utf8_len == 0) {
+    goto error;
   }
 
-  buffer[*size] = '\0';
-  retVal = 0;
+  free(utf16_buffer);
 
-done:
-  if (utf16Buffer) {
-    free(utf16Buffer);
-  }
+  /* utf8_len *does* include the terminating null at this point, but the */
+  /* returned size shouldn't. */
+  *size_ptr = utf8_len - 1;
+  return 0;
 
-  return retVal;
+ error:
+  free(utf16_buffer);
+  return -1;
 }
 
 
