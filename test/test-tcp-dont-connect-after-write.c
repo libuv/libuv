@@ -62,6 +62,12 @@ TEST_IMPL(tcp_dont_connect_after_write) {
   uv_buf_t buf;
   int r;
 
+#ifdef _WIN32
+  fprintf(stderr, "This test is disabled on Windows for now.\n");
+  fprintf(stderr, "See https://github.com/joyent/libuv/issues/444\n");
+  return 0; /* windows slackers... */
+#endif
+
   addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
   buf = uv_buf_init("TEST", 4);
 
