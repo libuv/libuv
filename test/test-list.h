@@ -41,6 +41,7 @@ TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (multiple_listen)
 TEST_DECLARE   (tcp_writealot)
 TEST_DECLARE   (tcp_connect_error_after_write)
+TEST_DECLARE   (tcp_shutdown_after_write)
 TEST_DECLARE   (tcp_bind_error_addrinuse)
 TEST_DECLARE   (tcp_bind_error_addrnotavail_1)
 TEST_DECLARE   (tcp_bind_error_addrnotavail_2)
@@ -228,6 +229,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (tcp_writealot)
   TEST_HELPER (tcp_writealot, tcp4_echo_server)
+
+  TEST_ENTRY  (tcp_shutdown_after_write)
+  TEST_HELPER (tcp_shutdown_after_write, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_connect_error_after_write)
   TEST_ENTRY  (tcp_bind_error_addrinuse)
