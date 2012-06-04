@@ -152,6 +152,7 @@
             'src/win/req.c',
             'src/win/req-inl.h',
             'src/win/stream.c',
+            'src/win/stream-inl.h',
             'src/win/tcp.c',
             'src/win/tty.c',
             'src/win/threadpool.c',

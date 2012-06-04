@@ -88,12 +88,8 @@
 
 
 /*
- * Streams
+ * Streams: see stream-inl.h
  */
-void uv_stream_init(uv_loop_t* loop, uv_stream_t* handle);
-void uv_connection_init(uv_stream_t* handle);
-
-size_t uv_count_bufs(uv_buf_t bufs[], int count);
 
 
 /*
