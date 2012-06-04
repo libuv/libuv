@@ -143,44 +143,44 @@ done:
 
 
 uv_err_t uv_cwd(char* buffer, size_t size) {
-  uv_err_t err;
-  size_t utf8Size;
-  wchar_t* utf16Buffer = NULL;
+  DWORD utf16_len;
+  WCHAR utf16_buffer[MAX_PATH + 1];
+  int r;
 
-  if (!buffer || !size) {
-    err.code = UV_EINVAL;
-    goto done;
+  if (buffer == NULL || size == 0) {
+    return uv__new_artificial_error(UV_EINVAL);
   }
 
-  utf16Buffer = (wchar_t*)malloc(sizeof(wchar_t) * size);
-  if (!utf16Buffer) {
-    err.code = UV_ENOMEM;
-    goto done;
+  utf16_len = GetCurrentDirectoryW(MAX_PATH, utf16_buffer);
+  if (utf16_len == 0) {
+    return uv__new_sys_error(GetLastError());
   }
 
-  if (!_wgetcwd(utf16Buffer, size - 1)) {
-    err = uv__new_sys_error(_doserrno);
-    goto done;
-  }
+  /* utf16_len contains the length, *not* including the terminating null. */
+  utf16_buffer[utf16_len] = L'\0';
 
-  utf16Buffer[size - 1] = L'\0';
+  /* The returned directory should not have a trailing slash, unless it */
+  /* points at a drive root, like c:\. Remove it if needed.*/
+  if (utf16_buffer[utf16_len - 1] == L'\\' &&
+      !(utf16_len == 3 && utf16_buffer[1] == L':')) {
+    utf16_len--;
+    utf16_buffer[utf16_len] = L'\0';
+  }
 
   /* Convert to UTF-8 */
-  utf8Size = uv_utf16_to_utf8(utf16Buffer, -1, buffer, size);
-  if (utf8Size == 0) {
-    err = uv__new_sys_error(GetLastError());
-    goto done;
+  r = WideCharToMultiByte(CP_UTF8,
+                          0,
+                          utf16_buffer,
+                          -1,
+                          buffer,
+                          size > INT_MAX ? INT_MAX : (int) size,
+                          NULL,
+                          NULL);
+  if (r == 0) {
+    return uv__new_sys_error(GetLastError());
   }
 
-  buffer[utf8Size] = '\0';
-  err = uv_ok_;
-
-done:
-  if (utf16Buffer) {
-    free(utf16Buffer);
-  }
-
-  return err;
+  return uv_ok_;
 }
 
 
