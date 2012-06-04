@@ -242,6 +242,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
     return -1;
 
   abort();
+  return -1; /* Satisfy the compiler. */
 }
 
 
