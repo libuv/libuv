@@ -82,35 +82,9 @@
 #define UV_HANDLE_POLL_SLOW                     0x02000000
 
 
-#define UV_SUCCEEDED_WITHOUT_IOCP(result)                     \
-  ((result) && (handle->flags & UV_HANDLE_SYNC_BYPASS_IOCP))
-
-#define UV_SUCCEEDED_WITH_IOCP(result)                        \
-  ((result) || (GetLastError() == ERROR_IO_PENDING))
-
-#define REGISTER_HANDLE_REQ(loop, handle, req)                          \
-  do {                                                                  \
-    INCREASE_ACTIVE_COUNT((loop), (handle));                            \
-    uv__req_register((loop), (req));                                    \
-  } while (0)
-
-#define UNREGISTER_HANDLE_REQ(loop, handle, req)                        \
-  do {                                                                  \
-    DECREASE_ACTIVE_COUNT((loop), (handle));                            \
-    uv__req_unregister((loop), (req));                                  \
-  } while (0)
-
-
 /*
- * Requests (also see req-inl.h)
+ * Requests: see req-inl.h
  */
-#define POST_COMPLETION_FOR_REQ(loop, req)                              \
-  if (!PostQueuedCompletionStatus((loop)->iocp,                         \
-                                  0,                                    \
-                                  0,                                    \
-                                  &((req)->overlapped))) {              \
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");       \
-  }
 
 
 /*
@@ -307,27 +281,6 @@ int uv_parent_pid();
 void uv_filetime_to_time_t(FILETIME* file_time,  time_t* stat_time);
 void uv_fatal_error(const int errorno, const char* syscall);
 uv_err_code uv_translate_sys_error(int sys_errno);
-
-#define SET_REQ_STATUS(req, status)                                     \
-   (req)->overlapped.Internal = (ULONG_PTR) (status)
-
-#define SET_REQ_ERROR(req, error)                                       \
-  SET_REQ_STATUS((req), NTSTATUS_FROM_WIN32((error)))
-
-#define SET_REQ_SUCCESS(req)                                            \
-  SET_REQ_STATUS((req), STATUS_SUCCESS)
-
-#define GET_REQ_STATUS(req)                                             \
-  ((req)->overlapped.Internal)
-
-#define REQ_SUCCESS(req)                                                \
-  (NT_SUCCESS(GET_REQ_STATUS((req))))
-
-#define GET_REQ_ERROR(req)                                              \
-  (pRtlNtStatusToDosError(GET_REQ_STATUS((req))))
-
-#define GET_REQ_SOCK_ERROR(req)                                         \
-  (uv_ntstatus_to_winsock_error(GET_REQ_STATUS((req))))
 
 
 /*
