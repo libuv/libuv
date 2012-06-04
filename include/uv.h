@@ -432,7 +432,7 @@ UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
  * base and len members of the uv_buf_t struct. The user is responsible for
  * freeing base after the uv_buf_t is done. Return struct passed by value.
  */
-UV_EXTERN uv_buf_t uv_buf_init(char* base, size_t len);
+UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
 
 /*
