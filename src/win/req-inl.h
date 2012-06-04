@@ -19,6 +19,9 @@
  * IN THE SOFTWARE.
  */
 
+#ifndef UV_WIN_REQ_INL_H_
+#define UV_WIN_REQ_INL_H_
+
 #include <assert.h>
 
 #include "uv.h"
@@ -167,3 +170,5 @@ INLINE static void uv_process_reqs(uv_loop_t* loop) {
     }
   }
 }
+
+#endif /* UV_WIN_REQ_INL_H_ */
