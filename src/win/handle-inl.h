@@ -28,6 +28,47 @@
 #include "internal.h"
 
 
+#define DECREASE_ACTIVE_COUNT(loop, handle)                             \
+  do {                                                                  \
+    if (--(handle)->activecnt == 0 &&                                   \
+        !((handle)->flags & UV_HANDLE_CLOSING)) {                       \
+      uv__handle_stop((handle));                                        \
+    }                                                                   \
+    assert((handle)->activecnt >= 0);                                   \
+  } while (0)
+
+
+#define INCREASE_ACTIVE_COUNT(loop, handle)                             \
+  do {                                                                  \
+    if ((handle)->activecnt++ == 0) {                                   \
+      uv__handle_start((handle));                                       \
+    }                                                                   \
+    assert((handle)->activecnt > 0);                                    \
+  } while (0)
+
+
+#define DECREASE_PENDING_REQ_COUNT(handle)                              \
+  do {                                                                  \
+    assert(handle->reqs_pending > 0);                                   \
+    handle->reqs_pending--;                                             \
+                                                                        \
+    if (handle->flags & UV_HANDLE_CLOSING &&                            \
+        handle->reqs_pending == 0) {                                    \
+      uv_want_endgame(loop, (uv_handle_t*)handle);                      \
+    }                                                                   \
+  } while (0)
+
+
+#define uv__handle_close(handle)                                        \
+  do {                                                                  \
+    ngx_queue_remove(&(handle)->handle_queue);                          \
+    (handle)->flags |= UV_HANDLE_CLOSED;                                \
+    if ((handle)->close_cb) {                                           \
+      (handle)->close_cb((uv_handle_t*)(handle));                       \
+    }                                                                   \
+  } while (0)
+
+
 INLINE static void uv_handle_init(uv_loop_t* loop, uv_handle_t* handle) {
   handle->loop = loop;
   handle->flags = UV__HANDLE_REF;
