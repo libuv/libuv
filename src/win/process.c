@@ -87,7 +87,7 @@ typedef struct env_var {
     ((LPBYTE) (buffer))
 
 #define CHILD_STDIO_CBRESERVED2(buffer)             \
-    CHILD_STDIO_SIZE(CHILD_STDIO_COUNT((buffer)))
+    ((WORD) CHILD_STDIO_SIZE(CHILD_STDIO_COUNT((buffer))))
 
 #define CHILD_STDIO_CRT_FLAGS(buffer, fd)           \
     *((unsigned char*) (buffer) + sizeof(int) + fd)
