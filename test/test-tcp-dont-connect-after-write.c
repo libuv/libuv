@@ -74,6 +74,10 @@ TEST_IMPL(tcp_dont_connect_after_write) {
   r = uv_tcp_init(uv_default_loop(), &conn);
   ASSERT(r == 0);
 
+  r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
+  ASSERT(r == -1);
+  ASSERT(uv_last_error(uv_default_loop()).code == UV_EBADF);
+
   r = uv_tcp_connect(&connect_req, &conn, addr, connect_cb);
   ASSERT(r == 0);
 
