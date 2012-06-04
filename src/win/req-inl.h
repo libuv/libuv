@@ -38,7 +38,7 @@
   SET_REQ_STATUS((req), STATUS_SUCCESS)
 
 #define GET_REQ_STATUS(req)                                             \
-  ((req)->overlapped.Internal)
+  ((NTSTATUS) (req)->overlapped.Internal)
 
 #define REQ_SUCCESS(req)                                                \
   (NT_SUCCESS(GET_REQ_STATUS((req))))
