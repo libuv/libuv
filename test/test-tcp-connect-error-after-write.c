@@ -54,7 +54,7 @@ static void write_cb(uv_write_t* req, int status) {
  * (uv errno 12) and get connect_cb() called once with status != 0.
  * Related issue: https://github.com/joyent/libuv/issues/443
  */
-TEST_IMPL(tcp_dont_connect_after_write) {
+TEST_IMPL(tcp_connect_error_after_write) {
   uv_connect_t connect_req;
   struct sockaddr_in addr;
   uv_write_t write_req;

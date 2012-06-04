@@ -341,7 +341,7 @@
         'test/test-tcp-bind-error.c',
         'test/test-tcp-bind6-error.c',
         'test/test-tcp-close.c',
-        'test/test-tcp-dont-connect-after-write.c',
+        'test/test-tcp-connect-error-after-write.c',
         'test/test-tcp-flags.c',
         'test/test-tcp-connect-error.c',
         'test/test-tcp-connect-timeout.c',
