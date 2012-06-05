@@ -210,14 +210,15 @@ static void uv__udp_recvmsg(uv_loop_t* loop, uv__io_t* w, int revents) {
    */
   count = 32;
 
+  memset(&h, 0, sizeof(h));
+  h.msg_name = &peer;
+
   do {
     buf = handle->alloc_cb((uv_handle_t*)handle, 64 * 1024);
     assert(buf.len > 0);
     assert(buf.base != NULL);
 
-    memset(&h, 0, sizeof h);
-    h.msg_name = &peer;
-    h.msg_namelen = sizeof peer;
+    h.msg_namelen = sizeof(peer);
     h.msg_iov = (struct iovec*)&buf;
     h.msg_iovlen = 1;
 
