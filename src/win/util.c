@@ -154,7 +154,7 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 
 uv_err_t uv_cwd(char* buffer, size_t size) {
   DWORD utf16_len;
-  WCHAR utf16_buffer[MAX_PATH + 1];
+  WCHAR utf16_buffer[MAX_PATH];
   int r;
 
   if (buffer == NULL || size == 0) {
@@ -164,6 +164,10 @@ uv_err_t uv_cwd(char* buffer, size_t size) {
   utf16_len = GetCurrentDirectoryW(MAX_PATH, utf16_buffer);
   if (utf16_len == 0) {
     return uv__new_sys_error(GetLastError());
+  } else if (utf16_len > MAX_PATH) {
+    /* This should be impossible;  however the CRT has a code path to deal */
+    /* with this scenario, so I added a check anyway. */
+    return uv__new_artificial_error(UV_EIO);
   }
 
   /* utf16_len contains the length, *not* including the terminating null. */
