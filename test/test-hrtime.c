@@ -27,7 +27,7 @@
 #endif
 
 #ifndef NANOSEC
-# define NANOSEC 1000000000
+# define NANOSEC ((uint64_t) 1e9)
 #endif
 
 
