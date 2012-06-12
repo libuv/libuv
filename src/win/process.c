@@ -1092,7 +1092,7 @@ static int init_child_stdio(uv_loop_t* loop, uv_process_options_t* options,
         uv_stream_t* stream = fdopt.data.stream;
 
         /* Leech the handle out of the stream. */
-        if (stream->type = UV_TTY) {
+        if (stream->type == UV_TTY) {
           stream_handle = ((uv_tty_t*) stream)->handle;
           crt_flags = FOPEN | FDEV;
         } else if (stream->type == UV_NAMED_PIPE &&
