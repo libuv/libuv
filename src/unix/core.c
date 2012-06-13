@@ -462,26 +462,34 @@ int uv__accept(int sockfd) {
 
 
 int uv__nonblock(int fd, int set) {
+  int r;
+
 #if FIONBIO
-  return ioctl(fd, FIONBIO, &set);
+  do
+    r = ioctl(fd, FIONBIO, &set);
+  while (r == -1 && errno == EINTR);
+
+  return r;
 #else
   int flags;
 
-  if ((flags = fcntl(fd, F_GETFL)) == -1) {
+  do
+    r = fcntl(fd, F_GETFL);
+  while (r == -1 && errno == EINTR);
+
+  if (r == -1)
     return -1;
-  }
 
-  if (set) {
-    flags |= O_NONBLOCK;
-  } else {
-    flags &= ~O_NONBLOCK;
-  }
+  if (set)
+    flags = r | O_NONBLOCK;
+  else
+    flags = r & ~O_NONBLOCK;
 
-  if (fcntl(fd, F_SETFL, flags) == -1) {
-    return -1;
-  }
+  do
+    r = fcntl(fd, F_SETFL, flags);
+  while (r == -1 && errno == EINTR);
 
-  return 0;
+  return r;
 #endif
 }
 
