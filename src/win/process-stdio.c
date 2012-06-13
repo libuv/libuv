@@ -64,6 +64,36 @@
 #define FTEXT       0x80
 
 
+/*
+ * Clear the HANDLE_FLAG_INHERIT flag from all HANDLEs that were inherited
+ * the parent process. Don't check for errors - the stdio handles may not be
+ * valid, or may be closed already. There is no guarantee that this function
+ * does a perfect job.
+ */
+void uv_disable_stdio_inheritance(void) {
+  HANDLE handle;
+  STARTUPINFOW si;
+
+  /* Make the windows stdio handles non-inheritable. */
+  handle = GetStdHandle(STD_INPUT_HANDLE);
+  if (handle != NULL && handle != INVALID_HANDLE_VALUE)
+    SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
+
+  handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (handle != NULL && handle != INVALID_HANDLE_VALUE)
+    SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
+
+  handle = GetStdHandle(STD_ERROR_HANDLE);
+  if (handle != NULL && handle != INVALID_HANDLE_VALUE)
+    SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
+
+  /* Make inherited CRT FDs non-inheritable. */
+  GetStartupInfoW(&si);
+  if (uv__stdio_verify(si.lpReserved2, si.cbReserved2))
+    uv__stdio_noinherit(si.lpReserved2);
+}
+
+
 static int uv__create_stdio_pipe_pair(uv_loop_t* loop, uv_pipe_t* server_pipe,
     HANDLE* child_pipe_ptr, unsigned int flags) {
   char pipe_name[64];
@@ -412,6 +442,30 @@ void uv__stdio_noinherit(BYTE* buffer) {
       SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
     }
   }
+}
+
+
+int uv__stdio_verify(BYTE* buffer, WORD size) {
+  unsigned int count;
+
+  /* Check the buffer pointer. */
+  if (buffer == NULL)
+    return 0;
+
+  /* Verify that the buffer is at least big enough to hold the count. */
+  if (size < CHILD_STDIO_SIZE(0))
+    return 0;
+
+  /* Verify if the count is within range. */
+  count = CHILD_STDIO_COUNT(buffer);
+  if (count > 256)
+    return 0;
+
+  /* Verify that the buffer size is big enough to hold info for N FDs. */
+  if (size < CHILD_STDIO_SIZE(count))
+    return 0;
+
+  return 1;
 }
 
 

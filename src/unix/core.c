@@ -586,6 +586,10 @@ uv_err_t uv_chdir(const char* dir) {
 }
 
 
+void uv_disable_stdio_inheritance(void) {
+}
+
+
 static void uv__io_set_cb(uv__io_t* handle, uv__io_cb cb) {
   union { void* data; uv__io_cb cb; } u;
   u.cb = cb;
