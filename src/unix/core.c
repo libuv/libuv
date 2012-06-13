@@ -587,6 +587,14 @@ uv_err_t uv_chdir(const char* dir) {
 
 
 void uv_disable_stdio_inheritance(void) {
+  int fd;
+
+  /* Set the CLOEXEC flag on all open descriptors. Unconditionally try the
+   * first 16 file descriptors. After that, bail out after the first error.
+   */
+  for (fd = 0; ; fd++)
+    if (uv__cloexec(fd, 1) && fd > 15)
+      break;
 }
 
 
