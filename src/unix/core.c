@@ -487,30 +487,36 @@ int uv__nonblock(int fd, int set) {
 
 
 int uv__cloexec(int fd, int set) {
+  int flags;
+  int r;
+
 #if __linux__
   /* Linux knows only FD_CLOEXEC so we can safely omit the fcntl(F_GETFD)
    * syscall. CHECKME: That's probably true for other Unices as well.
    */
-  return fcntl(fd, F_SETFD, set ? FD_CLOEXEC : 0);
+  if (set)
+    flags = FD_CLOEXEC;
+  else
+    flags = 0;
 #else
-  int flags;
+  do
+    r = fcntl(fd, F_GETFD);
+  while (r == -1 && errno == EINTR);
 
-  if ((flags = fcntl(fd, F_GETFD)) == -1) {
+  if (r == -1)
     return -1;
-  }
 
-  if (set) {
-    flags |= FD_CLOEXEC;
-  } else {
-    flags &= ~FD_CLOEXEC;
-  }
-
-  if (fcntl(fd, F_SETFD, flags) == -1) {
-    return -1;
-  }
-
-  return 0;
+  if (set)
+    flags = r | FD_CLOEXEC;
+  else
+    flags = r & ~FD_CLOEXEC;
 #endif
+
+  do
+    r = fcntl(fd, F_SETFD, flags);
+  while (r == -1 && errno == EINTR);
+
+  return r;
 }
 
 
