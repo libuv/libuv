@@ -487,6 +487,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
     };                                    \
   };
 
+#define UV_FS_POLL_PRIVATE_FIELDS         \
+  struct _stati64 statbuf;
+
 #define UV_WORK_PRIVATE_FIELDS            \
 
 #define UV_FS_EVENT_PRIVATE_FIELDS        \

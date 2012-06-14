@@ -249,6 +249,9 @@ struct uv__io_s {
   struct stat statbuf; \
   eio_req* eio;
 
+#define UV_FS_POLL_PRIVATE_FIELDS                                             \
+  struct stat statbuf;
+
 #define UV_WORK_PRIVATE_FIELDS \
   eio_req* eio;
 
