@@ -206,6 +206,17 @@ static int statbuf_eq(const uv__statbuf_t* a, const uv__statbuf_t* b) {
 #  endif
 # endif
 
+  /* Jump through different hoops on OS X. */
+# if __APPLE__
+#  if !defined(_POSIX_C_SOURCE) || defined(_DARWIN_C_SOURCE)
+  if (a->st_ctimespec.tv_nsec != b->st_ctimespec.tv_nsec) return 0;
+  if (a->st_mtimespec.tv_nsec != b->st_mtimespec.tv_nsec) return 0;
+#  else
+  if (a->st_ctimensec != b->st_ctimensec) return 0;
+  if (a->st_mtimensec != b->st_mtimensec) return 0;
+#  endif
+# endif
+
   /* TODO(bnoordhuis) Other Unices have st_ctim and friends too, provided
    * the stars and compiler flags are right...
    */
