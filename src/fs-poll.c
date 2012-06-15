@@ -194,6 +194,22 @@ static int statbuf_eq(const uv__statbuf_t* a, const uv__statbuf_t* b) {
       && a->st_size == b->st_size
       && a->st_mode == b->st_mode;
 #else
+
+  /* Jump through a few hoops to get sub-second granularity on Linux. */
+# if __linux__
+#  if __USE_MISC /* _BSD_SOURCE || _SVID_SOURCE */
+  if (a->st_ctim.tv_nsec != b->st_ctim.tv_nsec) return 0;
+  if (a->st_mtim.tv_nsec != b->st_mtim.tv_nsec) return 0;
+#  else
+  if (a->st_ctimensec != b->st_ctimensec) return 0;
+  if (a->st_mtimensec != b->st_mtimensec) return 0;
+#  endif
+# endif
+
+  /* TODO(bnoordhuis) Other Unices have st_ctim and friends too, provided
+   * the stars and compiler flags are right...
+   */
+
   return a->st_ctime == b->st_ctime
       && a->st_mtime == b->st_mtime
       && a->st_size == b->st_size
