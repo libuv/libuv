@@ -22,14 +22,16 @@
 #include "uv.h"
 #include "task.h"
 
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <string.h>
 
 #define FIXTURE "testfile"
 
-static void poll_cb(uv_fs_poll_t* handle, int status);
 static void timer_cb(uv_timer_t* handle, int status);
 static void close_cb(uv_handle_t* handle);
+static void poll_cb(uv_fs_poll_t* handle,
+                    int status,
+                    uv_statbuf_t* prev,
+                    uv_statbuf_t* curr);
 
 static uv_fs_poll_t poll_handle;
 static uv_timer_t timer_handle;
@@ -70,34 +72,52 @@ static void timer_cb(uv_timer_t* handle, int status) {
 }
 
 
-static void poll_cb(uv_fs_poll_t* handle, int status) {
+static void poll_cb(uv_fs_poll_t* handle,
+                    int status,
+                    uv_statbuf_t* prev,
+                    uv_statbuf_t* curr) {
   ASSERT(handle == &poll_handle);
   ASSERT(uv_is_active((uv_handle_t*)handle));
 
   switch (poll_cb_called++) {
   case 0:
     ASSERT(status == -1);
+    ASSERT(prev == NULL);
+    ASSERT(curr == NULL);
     ASSERT(uv_last_error(loop).code == UV_ENOENT);
     touch_file(FIXTURE);
     break;
 
   case 1:
     ASSERT(status == 0);
+    ASSERT(prev != NULL);
+    ASSERT(curr != NULL);
+    {
+      uv_statbuf_t buf;
+      memset(&buf, 0, sizeof(buf));
+      ASSERT(0 == memcmp(&buf, prev, sizeof(buf)));
+    }
     ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 20, 0));
     break;
 
   case 2:
     ASSERT(status == 0);
+    ASSERT(prev != NULL);
+    ASSERT(curr != NULL);
     ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 200, 0));
     break;
 
   case 3:
     ASSERT(status == 0);
+    ASSERT(prev != NULL);
+    ASSERT(curr != NULL);
     remove(FIXTURE);
     break;
 
   case 4:
     ASSERT(status == -1);
+    ASSERT(prev == NULL);
+    ASSERT(curr == NULL);
     ASSERT(uv_last_error(loop).code == UV_ENOENT);
     uv_close((uv_handle_t*)handle, close_cb);
     break;

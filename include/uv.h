@@ -297,7 +297,6 @@ typedef void (*uv_async_cb)(uv_async_t* handle, int status);
 typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
 typedef void (*uv_check_cb)(uv_check_t* handle, int status);
 typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
-typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle, int status);
 typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status,
     struct addrinfo* res);
 typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
@@ -314,6 +313,11 @@ typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
 */
 typedef void (*uv_fs_event_cb)(uv_fs_event_t* handle, const char* filename,
     int events, int status);
+
+typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
+                              int status,
+                              uv_statbuf_t* prev,
+                              uv_statbuf_t* curr);
 
 typedef enum {
   UV_LEAVE_GROUP = 0,
@@ -1526,7 +1530,7 @@ struct uv_fs_poll_s {
   uv_fs_poll_cb poll_cb;
   uv_timer_t timer_handle;
   uv_fs_t* fs_req;
-  UV_FS_POLL_PRIVATE_FIELDS
+  uv_statbuf_t statbuf;
 };
 
 UV_EXTERN int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle);
@@ -1534,9 +1538,14 @@ UV_EXTERN int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle);
 /*
  * Check the file at `path` for changes every `interval` milliseconds.
  *
- * Your callback gets invoked repeatedly with `status == -1` if `path`
- * does not exist or is inaccessible. The watcher is *not* stopped. This
- * lets you monitor a path until the resource becomes available (again).
+ * Your callback i invoked with `status == -1` if `path` does not exist
+ * or is inaccessible. The watcher is *not* stopped but your callback is
+ * not called again until something changes (e.g. when the file is created
+ * or the error reason changes).
+ *
+ * When `status == 0`, your callback receives pointers to the old and new
+ * `uv_statbuf_t` structs. They are valid for the duration of the callback
+ * only!
  *
  * For maximum portability, use multi-second intervals. Sub-second intervals
  * will not detect all changes on many file systems.

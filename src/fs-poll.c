@@ -26,13 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _WIN32
-typedef struct _stati64 uv__statbuf_t;
-#else
-typedef struct stat uv__statbuf_t;
-#endif
-
-static int statbuf_eq(const uv__statbuf_t* a, const uv__statbuf_t* b);
+static int statbuf_eq(const uv_statbuf_t* a, const uv_statbuf_t* b);
 static void timer_cb(uv_timer_t* timer, int status);
 static void poll_cb(uv_fs_t* req);
 
@@ -75,6 +69,7 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
   handle->interval = interval ? interval : 1;
   handle->start_time = uv_now(handle->loop);
   handle->busy_polling = 0;
+  memset(&handle->statbuf, 0, sizeof(handle->statbuf));
 
   if (uv_fs_stat(handle->loop, handle->fs_req, handle->path, poll_cb))
     abort();
@@ -132,7 +127,7 @@ static void timer_cb(uv_timer_t* timer, int status) {
 
 
 static void poll_cb(uv_fs_t* req) {
-  uv__statbuf_t* statbuf;
+  uv_statbuf_t* statbuf;
   uv_fs_poll_t* handle;
   uint64_t interval;
 
@@ -144,30 +139,22 @@ static void poll_cb(uv_fs_t* req) {
   assert(req == handle->fs_req);
 
   if (req->result != 0) {
-    /* TODO(bnoordhuis) Only signal the error the first time? What if the
-     * error reason changes?
-     */
-    uv__set_artificial_error(handle->loop, req->errorno);
-    handle->poll_cb(handle, -1);
-    handle->busy_polling = -1;
+    if (handle->busy_polling != -req->errorno) {
+      uv__set_artificial_error(handle->loop, req->errorno);
+      handle->poll_cb(handle, -1, NULL, NULL);
+      handle->busy_polling = -req->errorno;
+    }
     goto out;
   }
 
   statbuf = req->ptr;
 
-  if (handle->busy_polling == 0) {
-    handle->statbuf = *statbuf;
-    handle->busy_polling = 1;
-  }
-  else if (handle->busy_polling == -1) {
-    handle->statbuf = *statbuf;
-    handle->busy_polling = 1;
-    handle->poll_cb(handle, 0); /* Error went away. */
-  }
-  else if (!statbuf_eq(statbuf, &handle->statbuf)) {
-    handle->statbuf = *statbuf;
-    handle->poll_cb(handle, 0);
-  }
+  if (handle->busy_polling != 0)
+    if (handle->busy_polling < 0 || !statbuf_eq(&handle->statbuf, statbuf))
+      handle->poll_cb(handle, 0, &handle->statbuf, statbuf);
+
+  handle->statbuf = *statbuf;
+  handle->busy_polling = 1;
 
 out:
   uv_fs_req_cleanup(req);
@@ -188,7 +175,7 @@ out:
 }
 
 
-static int statbuf_eq(const uv__statbuf_t* a, const uv__statbuf_t* b) {
+static int statbuf_eq(const uv_statbuf_t* a, const uv_statbuf_t* b) {
 #ifdef _WIN32
   return a->st_mtime == b->st_mtime
       && a->st_size == b->st_size

@@ -165,6 +165,8 @@ typedef struct uv_buf_t {
 
 typedef int uv_file;
 
+typedef struct _stati64 uv_statbuf_t;
+
 typedef SOCKET uv_os_sock_t;
 
 typedef HANDLE uv_thread_t;
@@ -486,9 +488,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
       double mtime;                       \
     };                                    \
   };
-
-#define UV_FS_POLL_PRIVATE_FIELDS         \
-  struct _stati64 statbuf;
 
 #define UV_WORK_PRIVATE_FIELDS            \
 
