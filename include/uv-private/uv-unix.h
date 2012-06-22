@@ -102,7 +102,7 @@ struct uv__io_s {
   int inotify_fd;
 #elif defined(PORT_SOURCE_FILE)
 # define UV_LOOP_PRIVATE_PLATFORM_FIELDS              \
-  ev_io fs_event_watcher;                             \
+  uv__io_t fs_event_watcher;                          \
   int fs_fd;
 #else
 # define UV_LOOP_PRIVATE_PLATFORM_FIELDS
