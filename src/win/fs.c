@@ -87,7 +87,7 @@
   if (file == -1) {                                                         \
     req->result = -1;                                                       \
     req->errorno = UV_EBADF;                                                \
-    req->sys_errno_ = ERROR_SUCCESS;                                        \
+    req->sys_errno_ = ERROR_INVALID_HANDLE;                                 \
     return;                                                                 \
   }
 
