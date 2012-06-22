@@ -299,13 +299,14 @@ typedef void (*uv_async_cb)(uv_async_t* handle, int status);
 typedef void (*uv_prepare_cb)(uv_prepare_t* handle, int status);
 typedef void (*uv_check_cb)(uv_check_t* handle, int status);
 typedef void (*uv_idle_cb)(uv_idle_t* handle, int status);
-typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle, int status,
-    struct addrinfo* res);
 typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
 typedef void (*uv_after_work_cb)(uv_work_t* req);
 typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
+typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* handle,
+                                  int status,
+                                  struct addrinfo* res);
 
 /*
 * This will be called repeatedly after the uv_fs_event_t is initialized.
@@ -1157,19 +1158,33 @@ struct uv_getaddrinfo_s {
 /*
  * Asynchronous getaddrinfo(3).
  *
- * Return code 0 means that request is accepted and callback will be called
- * with result. Other return codes mean that there will not be a callback.
- * Input arguments may be released after return from this call.
+ * Either node or service may be NULL but not both.
  *
- * uv_freeaddrinfo() must be called after completion to free the addrinfo
- * structure.
+ * hints is a pointer to a struct addrinfo with additional address type
+ * constraints, or NULL. Consult `man -s 3 getaddrinfo` for details.
  *
- * On error NXDOMAIN the status code will be non-zero and UV_ENOENT returned.
+ * Returns 0 on success, -1 on error. Call uv_last_error() to get the error.
+ *
+ * If successful, your callback gets called sometime in the future with the
+ * lookup result, which is either:
+ *
+ *  a) status == 0, the res argument points to a valid struct addrinfo, or
+ *  b) status == -1, the res argument is NULL.
+ *
+ * On NXDOMAIN, the status code is -1 and uv_last_error() returns UV_ENOENT.
+ *
+ * Call uv_freeaddrinfo() to free the addrinfo structure.
  */
-UV_EXTERN int uv_getaddrinfo(uv_loop_t*, uv_getaddrinfo_t* handle,
-    uv_getaddrinfo_cb getaddrinfo_cb, const char* node, const char* service,
-    const struct addrinfo* hints);
+UV_EXTERN int uv_getaddrinfo(uv_loop_t* loop,
+                             uv_getaddrinfo_t* req,
+                             uv_getaddrinfo_cb getaddrinfo_cb,
+                             const char* node,
+                             const char* service,
+                             const struct addrinfo* hints);
 
+/*
+ * Free the struct addrinfo. Passing NULL is allowed and is a no-op.
+ */
 UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
 /* uv_spawn() options */
