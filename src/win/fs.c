@@ -145,7 +145,7 @@ static void uv_fs_req_init_sync(uv_loop_t* loop, uv_fs_t* req,
 
 static int is_path_dir(const wchar_t* path) {
   DWORD attr = GetFileAttributesW(path);
-  
+
   if (attr != INVALID_FILE_ATTRIBUTES) {
     return attr & FILE_ATTRIBUTE_DIRECTORY ? 1 : 0;
   } else {
@@ -178,7 +178,7 @@ static int get_reparse_point(HANDLE handle, int* target_length) {
   }
 
   reparse_data = (REPARSE_DATA_BUFFER*)buffer;
-  
+
   if (reparse_data->ReparseTag == IO_REPARSE_TAG_SYMLINK) {
     rv = 1;
     if (target_length) {
