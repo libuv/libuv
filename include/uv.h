@@ -49,7 +49,7 @@ extern "C" {
 
 
 #define UV_VERSION_MAJOR 0
-#define UV_VERSION_MINOR 6
+#define UV_VERSION_MINOR 9
 
 
 #include <stdint.h> /* int64_t */
