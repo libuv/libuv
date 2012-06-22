@@ -180,7 +180,7 @@ typedef enum {
 } uv_req_type;
 
 
-
+/* Handle types. */
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_ares_task_s uv_ares_task_t;
 typedef struct uv_err_s uv_err_t;
@@ -196,22 +196,24 @@ typedef struct uv_prepare_s uv_prepare_t;
 typedef struct uv_check_s uv_check_t;
 typedef struct uv_idle_s uv_idle_t;
 typedef struct uv_async_s uv_async_t;
-typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
 typedef struct uv_process_s uv_process_t;
-typedef struct uv_counters_s uv_counters_t;
-typedef struct uv_cpu_info_s uv_cpu_info_t;
-typedef struct uv_interface_address_s uv_interface_address_t;
-/* Request types */
+typedef struct uv_fs_event_s uv_fs_event_t;
+typedef struct uv_fs_poll_s uv_fs_poll_t;
+
+/* Request types. */
 typedef struct uv_req_s uv_req_t;
+typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
 typedef struct uv_shutdown_s uv_shutdown_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_udp_send_s uv_udp_send_t;
 typedef struct uv_fs_s uv_fs_t;
-/* uv_fs_event_t is a subclass of uv_handle_t. */
-typedef struct uv_fs_event_s uv_fs_event_t;
-typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_work_s uv_work_t;
+
+/* None of the above. */
+typedef struct uv_counters_s uv_counters_t;
+typedef struct uv_cpu_info_s uv_cpu_info_t;
+typedef struct uv_interface_address_s uv_interface_address_t;
 
 
 /*
@@ -1715,7 +1717,6 @@ union uv_any_handle {
   uv_idle_t idle;
   uv_async_t async;
   uv_timer_t timer;
-  uv_getaddrinfo_t getaddrinfo;
   uv_fs_event_t fs_event;
 };
 

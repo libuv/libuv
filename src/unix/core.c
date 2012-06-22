@@ -325,60 +325,62 @@ static int uv_getaddrinfo_done(eio_req* req_) {
 }
 
 
-static void getaddrinfo_thread_proc(eio_req *req) {
-  uv_getaddrinfo_t* handle = req->data;
+static void getaddrinfo_thread_proc(eio_req *req_) {
+  uv_getaddrinfo_t* req = req_->data;
 
-  handle->retcode = getaddrinfo(handle->hostname,
-                                handle->service,
-                                handle->hints,
-                                &handle->res);
+  req->retcode = getaddrinfo(req->hostname,
+                             req->service,
+                             req->hints,
+                             &req->res);
 }
 
 
 /* stub implementation of uv_getaddrinfo */
 int uv_getaddrinfo(uv_loop_t* loop,
-                   uv_getaddrinfo_t* handle,
+                   uv_getaddrinfo_t* req,
                    uv_getaddrinfo_cb cb,
                    const char* hostname,
                    const char* service,
                    const struct addrinfo* hints) {
-  eio_req* req;
+  eio_req* req_;
+
   uv_eio_init(loop);
 
-  if (handle == NULL || cb == NULL ||
-      (hostname == NULL && service == NULL)) {
+  if (req == NULL || cb == NULL || (hostname == NULL && service == NULL)) {
     uv__set_artificial_error(loop, UV_EINVAL);
     return -1;
   }
 
-  uv__req_init(loop, handle, UV_GETADDRINFO);
-  handle->loop = loop;
-  handle->cb = cb;
+  uv__req_init(loop, req, UV_GETADDRINFO);
+  req->loop = loop;
+  req->cb = cb;
 
   /* TODO don't alloc so much. */
 
   if (hints) {
-    handle->hints = malloc(sizeof(struct addrinfo));
-    memcpy(handle->hints, hints, sizeof(struct addrinfo));
+    req->hints = malloc(sizeof(struct addrinfo));
+    memcpy(req->hints, hints, sizeof(struct addrinfo));
   }
   else {
-    handle->hints = NULL;
+    req->hints = NULL;
   }
 
   /* TODO security! check lengths, check return values. */
 
-  handle->hostname = hostname ? strdup(hostname) : NULL;
-  handle->service = service ? strdup(service) : NULL;
-  handle->res = NULL;
-  handle->retcode = 0;
+  req->hostname = hostname ? strdup(hostname) : NULL;
+  req->service = service ? strdup(service) : NULL;
+  req->res = NULL;
+  req->retcode = 0;
 
   /* TODO check handle->hostname == NULL */
   /* TODO check handle->service == NULL */
 
-  req = eio_custom(getaddrinfo_thread_proc, EIO_PRI_DEFAULT,
-      uv_getaddrinfo_done, handle, &loop->uv_eio_channel);
-  assert(req);
-  assert(req->data == handle);
+  req_ = eio_custom(getaddrinfo_thread_proc,
+                    EIO_PRI_DEFAULT,
+                    uv_getaddrinfo_done,
+                    req,
+                    &loop->uv_eio_channel);
+  assert(req_);
 
   return 0;
 }
