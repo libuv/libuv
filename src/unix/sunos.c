@@ -75,7 +75,6 @@ uint64_t uv_hrtime() {
  */
 int uv_exepath(char* buffer, size_t* size) {
   ssize_t res;
-  pid_t pid;
   char buf[128];
 
   if (buffer == NULL)
@@ -84,8 +83,7 @@ int uv_exepath(char* buffer, size_t* size) {
   if (size == NULL)
     return (-1);
 
-  pid = getpid();
-  (void) snprintf(buf, sizeof (buf), "/proc/%d/path/a.out", pid);
+  (void) snprintf(buf, sizeof(buf), "/proc/%lu/path/a.out", (unsigned long) getpid());
   res = readlink(buf, buffer, *size - 1);
 
   if (res < 0)
