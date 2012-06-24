@@ -487,17 +487,34 @@ int uv__accept(int sockfd) {
 }
 
 
+#if __linux__
+
 int uv__nonblock(int fd, int set) {
   int r;
 
-#if FIONBIO
   do
     r = ioctl(fd, FIONBIO, &set);
   while (r == -1 && errno == EINTR);
 
   return r;
-#else
+}
+
+
+int uv__cloexec(int fd, int set) {
+  int r;
+
+  do
+    r = ioctl(fd, set ? FIOCLEX : FIONCLEX);
+  while (r == -1 && errno == EINTR);
+
+  return r;
+}
+
+#else /* !__linux__ */
+
+int uv__nonblock(int fd, int set) {
   int flags;
+  int r;
 
   do
     r = fcntl(fd, F_GETFL);
@@ -516,7 +533,6 @@ int uv__nonblock(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   return r;
-#endif
 }
 
 
@@ -524,15 +540,6 @@ int uv__cloexec(int fd, int set) {
   int flags;
   int r;
 
-#if __linux__
-  /* Linux knows only FD_CLOEXEC so we can safely omit the fcntl(F_GETFD)
-   * syscall. CHECKME: That's probably true for other Unices as well.
-   */
-  if (set)
-    flags = FD_CLOEXEC;
-  else
-    flags = 0;
-#else
   do
     r = fcntl(fd, F_GETFD);
   while (r == -1 && errno == EINTR);
@@ -544,7 +551,6 @@ int uv__cloexec(int fd, int set) {
     flags = r | FD_CLOEXEC;
   else
     flags = r & ~FD_CLOEXEC;
-#endif
 
   do
     r = fcntl(fd, F_SETFD, flags);
@@ -552,6 +558,8 @@ int uv__cloexec(int fd, int set) {
 
   return r;
 }
+
+#endif /* __linux__ */
 
 
 /* This function is not execve-safe, there is a race window
