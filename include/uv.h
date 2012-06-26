@@ -1725,6 +1725,8 @@ UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 
 /* the presence of these unions force similar struct layout */
 union uv_any_handle {
+  uv_handle_t handle;
+  uv_stream_t stream;
   uv_tcp_t tcp;
   uv_pipe_t pipe;
   uv_prepare_t prepare;
@@ -1733,6 +1735,11 @@ union uv_any_handle {
   uv_async_t async;
   uv_timer_t timer;
   uv_fs_event_t fs_event;
+  uv_fs_poll_t fs_poll;
+  uv_poll_t poll;
+  uv_process_t process;
+  uv_tty_t tty;
+  uv_udp_t udp;
 };
 
 union uv_any_req {
@@ -1742,6 +1749,8 @@ union uv_any_req {
   uv_shutdown_t shutdown;
   uv_fs_t fs_req;
   uv_work_t work_req;
+  uv_udp_send_t udp_send_req;
+  uv_getaddrinfo_t getaddrinfo_req;
 };
 
 
