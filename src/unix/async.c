@@ -50,6 +50,9 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 int uv_async_send(uv_async_t* handle) {
   int r;
 
+  if (handle->pending)
+    return 0;
+
   handle->pending = 1; /* XXX needs a memory barrier? */
 
   do
