@@ -342,7 +342,6 @@ TASK_LIST_START
   TEST_ENTRY  (getaddrinfo_concurrent)
 
   TEST_ENTRY  (gethostbyname)
-  TEST_HELPER (gethostbyname, tcp4_echo_server)
 
   TEST_ENTRY  (getsockname_tcp)
   TEST_ENTRY  (getsockname_udp)
