@@ -79,6 +79,67 @@ out:
 }
 
 
+static int uv__connect(uv_connect_t* req,
+                       uv_tcp_t* handle,
+                       struct sockaddr* addr,
+                       socklen_t addrlen,
+                       uv_connect_cb cb) {
+  int sockfd;
+  int r;
+
+  assert(handle->type == UV_TCP);
+
+  if (handle->connect_req)
+    return uv__set_sys_error(handle->loop, EALREADY);
+
+  if (handle->fd <= 0) {
+    sockfd = uv__socket(addr->sa_family, SOCK_STREAM, 0);
+
+    if (sockfd == -1)
+      return uv__set_sys_error(handle->loop, errno);
+
+    if (uv__stream_open((uv_stream_t*)handle,
+                        sockfd,
+                        UV_STREAM_READABLE | UV_STREAM_WRITABLE)) {
+      close(sockfd);
+      return -1;
+    }
+  }
+
+  handle->delayed_error = 0;
+
+  do
+    r = connect(handle->fd, addr, addrlen);
+  while (r == -1 && errno == EINTR);
+
+  if (r == -1) {
+    if (errno == EINPROGRESS)
+      ; /* not an error */
+    else if (errno == ECONNREFUSED)
+    /* If we get a ECONNREFUSED wait until the next tick to report the
+     * error. Solaris wants to report immediately--other unixes want to
+     * wait.
+     */
+      handle->delayed_error = errno;
+    else
+      return uv__set_sys_error(handle->loop, errno);
+  }
+
+  uv__req_init(handle->loop, req, UV_CONNECT);
+  req->cb = cb;
+  req->handle = (uv_stream_t*) handle;
+  ngx_queue_init(&req->queue);
+  handle->connect_req = req;
+
+  uv__io_start(handle->loop, &handle->write_watcher);
+
+  if (handle->delayed_error)
+    uv__io_feed(handle->loop, &handle->write_watcher, UV__IO_WRITE);
+
+  return 0;
+}
+
+
 int uv__tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   return uv__bind(handle,
                   AF_INET,
@@ -209,37 +270,31 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
 
 int uv__tcp_connect(uv_connect_t* req,
-                   uv_tcp_t* handle,
-                   struct sockaddr_in address,
-                   uv_connect_cb cb) {
-  int saved_errno = errno;
+                    uv_tcp_t* handle,
+                    struct sockaddr_in addr,
+                    uv_connect_cb cb) {
+  int saved_errno;
   int status;
 
-  status = uv__connect(req,
-                       (uv_stream_t*)handle,
-                       (struct sockaddr*)&address,
-                       sizeof address,
-                       cb);
-
+  saved_errno = errno;
+  status = uv__connect(req, handle, (struct sockaddr*)&addr, sizeof addr, cb);
   errno = saved_errno;
+
   return status;
 }
 
 
 int uv__tcp_connect6(uv_connect_t* req,
-                    uv_tcp_t* handle,
-                    struct sockaddr_in6 address,
-                    uv_connect_cb cb) {
-  int saved_errno = errno;
+                     uv_tcp_t* handle,
+                     struct sockaddr_in6 addr,
+                     uv_connect_cb cb) {
+  int saved_errno;
   int status;
 
-  status = uv__connect(req,
-                       (uv_stream_t*)handle,
-                       (struct sockaddr*)&address,
-                       sizeof address,
-                       cb);
-
+  saved_errno = errno;
+  status = uv__connect(req, handle, (struct sockaddr*)&addr, sizeof addr, cb);
   errno = saved_errno;
+
   return status;
 }
 
