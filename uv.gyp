@@ -405,6 +405,7 @@
       'sources': [
         'test/benchmark-ares.c',
         'test/benchmark-async.c',
+        'test/benchmark-async-pummel.c',
         'test/benchmark-fs-stat.c',
         'test/benchmark-getaddrinfo.c',
         'test/benchmark-list.h',
