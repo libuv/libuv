@@ -784,9 +784,6 @@ static void uv__stream_connect(uv_stream_t* stream) {
   if (error == EINPROGRESS)
     return;
 
-  if (error == 0)
-    uv__io_start(stream->loop, &stream->read_watcher);
-
   stream->connect_req = NULL;
   uv__req_unregister(stream->loop, req);
 
