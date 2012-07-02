@@ -43,13 +43,19 @@ static void pummel(void* arg) {
 }
 
 
-BENCHMARK_IMPL(async_pummel) {
+static int test_async_pummel(int nthreads) {
+  uv_thread_t* tids;
   uv_async_t handle;
-  uv_thread_t tid;
   uint64_t time;
+  int i;
+
+  tids = calloc(nthreads, sizeof(tids[0]));
+  ASSERT(tids != NULL);
 
   ASSERT(0 == uv_async_init(uv_default_loop(), &handle, async_cb));
-  ASSERT(0 == uv_thread_create(&tid, pummel, &handle));
+
+  for (i = 0; i < nthreads; i++)
+    ASSERT(0 == uv_thread_create(tids + i, pummel, &handle));
 
   time = uv_hrtime();
 
@@ -58,12 +64,33 @@ BENCHMARK_IMPL(async_pummel) {
   time = uv_hrtime() - time;
   done = 1;
 
-  ASSERT(0 == uv_thread_join(&tid));
+  for (i = 0; i < nthreads; i++)
+    ASSERT(0 == uv_thread_join(tids + i));
 
   printf("%s callbacks in %.2f seconds (%s/sec)\n",
          fmt(callbacks),
          time / 1e9,
          fmt(callbacks / (time / 1e9)));
 
-  return 0;
+  free(tids);
+}
+
+
+BENCHMARK_IMPL(async_pummel_1) {
+  return test_async_pummel(1);
+}
+
+
+BENCHMARK_IMPL(async_pummel_2) {
+  return test_async_pummel(2);
+}
+
+
+BENCHMARK_IMPL(async_pummel_4) {
+  return test_async_pummel(4);
+}
+
+
+BENCHMARK_IMPL(async_pummel_8) {
+  return test_async_pummel(8);
 }
