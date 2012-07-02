@@ -53,7 +53,17 @@ int uv_async_send(uv_async_t* handle) {
   if (handle->pending)
     return 0;
 
-  handle->pending = 1; /* XXX needs a memory barrier? */
+  /* Micro-optimization: use atomic compare-and-swap to detect if we've been
+   * preempted by another thread and don't have to make an expensive syscall.
+   * This speeds up the heavily contended case by about 1-2% and has little
+   * if any impact on the non-contended case.
+   */
+#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 1 /* gcc >= 4.1 */
+  if (__sync_val_compare_and_swap(&handle->pending, 0, 1))
+    return 0;
+#else
+  handle->pending = 1;
+#endif
 
   do
     r = write(handle->loop->async_pipefd[1], "x", 1);
