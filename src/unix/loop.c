@@ -44,6 +44,7 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   ngx_queue_init(&loop->prepare_handles);
   ngx_queue_init(&loop->handle_queue);
   loop->closing_handles = NULL;
+  loop->signal_ctx = NULL;
   loop->time = uv_hrtime() / 1000000;
   loop->async_pipefd[0] = -1;
   loop->async_pipefd[1] = -1;
@@ -63,7 +64,9 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
 
 
 void uv__loop_delete(uv_loop_t* loop) {
+  uv__signal_unregister(loop);
   ev_loop_destroy(loop->ev);
+
 #if __linux__
   if (loop->inotify_fd != -1) {
     uv__io_stop(loop, &loop->inotify_read_watcher);
@@ -71,8 +74,11 @@ void uv__loop_delete(uv_loop_t* loop) {
     loop->inotify_fd = -1;
   }
 #endif
+
 #if HAVE_PORTS_FS
-  if (loop->fs_fd != -1)
+  if (loop->fs_fd != -1) {
     close(loop->fs_fd);
+    loop->fs_fd = -1;
+  }
 #endif
 }

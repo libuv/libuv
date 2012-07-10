@@ -511,6 +511,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   wchar_t* dirw;                                                              \
   char* buffer;
 
+#define UV_SIGNAL_PRIVATE_FIELDS                                              \
+  /* empty */
+
 int uv_utf16_to_utf8(const wchar_t* utf16Buffer, size_t utf16Size,
     char* utf8Buffer, size_t utf8Size);
 int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer,

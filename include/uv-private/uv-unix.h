@@ -134,6 +134,7 @@ struct uv__io_s {
   /* RB_HEAD(uv__timers, uv_timer_s) */                                       \
   struct uv__timers { struct uv_timer_s* rbh_root; } timer_handles;           \
   uint64_t time;                                                              \
+  void* signal_ctx;                                                           \
   UV_LOOP_PRIVATE_PLATFORM_FIELDS
 
 #define UV_REQ_BUFSML_SIZE (4)
@@ -271,6 +272,10 @@ struct uv__io_s {
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   struct termios orig_termios;                                                \
   int mode;
+
+#define UV_SIGNAL_PRIVATE_FIELDS                                              \
+  ngx_queue_t queue;                                                          \
+  unsigned int signum;                                                        \
 
 /* UV_FS_EVENT_PRIVATE_FIELDS */
 #if defined(__linux__)

@@ -275,6 +275,13 @@ void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
 
 
 /*
+ * Signals.
+ */
+void uv_signal_close(uv_loop_t* loop, uv_signal_t* handle);
+void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle);
+
+
+/*
  * Utilities.
  */
 void uv__util_init();

@@ -146,6 +146,7 @@ typedef enum {
   XX(TIMER, timer)                                                            \
   XX(TTY, tty)                                                                \
   XX(UDP, udp)                                                                \
+  XX(SIGNAL, signal)                                                          \
 
 #define UV_REQ_TYPE_MAP(XX)                                                   \
   XX(CONNECT, connect)                                                        \
@@ -193,6 +194,7 @@ typedef struct uv_async_s uv_async_t;
 typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
+typedef struct uv_signal_s uv_signal_t;
 
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
@@ -315,6 +317,9 @@ typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
                               int status,
                               const uv_statbuf_t* prev,
                               const uv_statbuf_t* curr);
+
+typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
+
 
 typedef enum {
   UV_LEAVE_GROUP = 0,
@@ -1567,6 +1572,27 @@ UV_EXTERN int uv_fs_poll_start(uv_fs_poll_t* handle,
 
 UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
 
+
+/*
+ * UNIX signal handling on a per-event loop basis. The implementation is not
+ * ultra efficient so don't go creating a million event loops with a million
+ * signal watchers.
+ *
+ * TODO(bnoordhuis) As of 2012-08-10 only the default event loop supports
+ *                  signals. That will be fixed.
+ */
+struct uv_signal_s {
+  UV_HANDLE_FIELDS
+  uv_signal_cb signal_cb;
+  UV_SIGNAL_PRIVATE_FIELDS
+};
+
+/* These functions are no-ops on Windows. */
+int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
+int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
+int uv_signal_stop(uv_signal_t* handle);
+
+
 /*
  * Gets load avg
  * See: http://en.wikipedia.org/wiki/Load_(computing)
@@ -1804,6 +1830,7 @@ struct uv_loop_s {
 #undef UV_FS_REQ_PRIVATE_FIELDS
 #undef UV_WORK_PRIVATE_FIELDS
 #undef UV_FS_EVENT_PRIVATE_FIELDS
+#undef UV_SIGNAL_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_PLATFORM_FIELDS
 

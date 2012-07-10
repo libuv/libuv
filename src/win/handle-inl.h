@@ -135,6 +135,10 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
         uv__fs_poll_endgame(loop, (uv_fs_poll_t*) handle);
         break;
 
+      case UV_SIGNAL:
+        uv_signal_endgame(loop, (uv_signal_t*) handle);
+        break;
+
       default:
         assert(0);
         break;

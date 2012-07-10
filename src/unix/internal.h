@@ -153,6 +153,10 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 void uv__run_timers(uv_loop_t* loop);
 unsigned int uv__next_timeout(uv_loop_t* loop);
 
+/* signal */
+void uv__signal_close(uv_signal_t* handle);
+void uv__signal_unregister(uv_loop_t* loop);
+
 /* various */
 void uv__async_close(uv_async_t* handle);
 void uv__check_close(uv_check_t* handle);

@@ -138,6 +138,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       uv_want_endgame(loop, handle);
       return;
 
+    case UV_SIGNAL:
+      uv_signal_close(loop, (uv_signal_t*) handle);
+      return;
+
     default:
       /* Not supported */
       abort();
