@@ -81,22 +81,12 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 uv_err_t uv_set_process_title(const char* title) {
-  /* No need to terminate, last char is always '\0'. */
-  if (process_title.len)
-    strncpy(process_title.str, title, process_title.len - 1);
-
+  uv_strlcpy(process_title.str, title, process_title.len);
   return uv_ok_;
 }
 
 
 uv_err_t uv_get_process_title(char* buffer, size_t size) {
-  if (process_title.str) {
-    strncpy(buffer, process_title.str, size);
-  } else {
-    if (size > 0) {
-      buffer[0] = '\0';
-    }
-  }
-
+  uv_strlcpy(buffer, process_title.str ? process_title.str : "", size);
   return uv_ok_;
 }
