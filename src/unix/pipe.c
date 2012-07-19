@@ -171,17 +171,15 @@ void uv_pipe_connect(uv_connect_t* req,
   struct sockaddr_un saddr;
   int saved_errno;
   int sockfd;
-  int status;
+  int err;
   int r;
 
   saved_errno = errno;
   sockfd = -1;
-  status = -1;
+  err = -1;
 
-  if ((sockfd = uv__socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-    uv__set_sys_error(handle->loop, errno);
+  if ((sockfd = uv__socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     goto out;
-  }
 
   memset(&saddr, 0, sizeof saddr);
   uv_strlcpy(saddr.sun_path, name, sizeof(saddr.sun_path));
@@ -196,7 +194,7 @@ void uv_pipe_connect(uv_connect_t* req,
   while (r == -1 && errno == EINTR);
 
   if (r == -1) {
-    status = errno;
+    err = errno;
     close(sockfd);
     goto out;
   }
@@ -206,10 +204,10 @@ void uv_pipe_connect(uv_connect_t* req,
                   UV_STREAM_READABLE | UV_STREAM_WRITABLE);
   uv__io_start(handle->loop, &handle->read_watcher);
   uv__io_start(handle->loop, &handle->write_watcher);
-  status = 0;
+  err = 0;
 
 out:
-  handle->delayed_error = status; /* Passed to callback. */
+  handle->delayed_error = err ? errno : 0; /* Passed to callback. */
   handle->connect_req = req;
 
   uv__req_init(handle->loop, req, UV_CONNECT);
