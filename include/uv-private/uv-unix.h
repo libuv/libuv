@@ -267,7 +267,8 @@ struct uv__io_s {
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
   struct stat statbuf;                                                        \
-  eio_req* eio;
+  uv_file file;                                                               \
+  eio_req* eio;                                                               \
 
 #define UV_WORK_PRIVATE_FIELDS                                                \
   eio_req* eio;
