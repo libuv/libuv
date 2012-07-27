@@ -127,7 +127,8 @@ extern "C" {
   XX( 54, ENOSPC, "no space left on device") \
   XX( 55, EIO, "i/o error") \
   XX( 56, EROFS, "read-only file system" ) \
-  XX( 57, ENODEV, "no such device" )
+  XX( 57, ENODEV, "no such device" ) \
+  XX( 58, ECANCELED, "operation canceled" )
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
@@ -436,7 +437,7 @@ UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
  *
  * In-progress requests, like uv_connect_t or uv_write_t, are cancelled and
  * have their callbacks called asynchronously with status=-1 and the error code
- * set to UV_EINTR.
+ * set to UV_ECANCELED.
  */
 UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 

@@ -120,7 +120,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
 
   if (stream->connect_req) {
     uv__req_unregister(stream->loop, stream->connect_req);
-    uv__set_artificial_error(stream->loop, UV_EINTR);
+    uv__set_artificial_error(stream->loop, UV_ECANCELED);
     stream->connect_req->cb(stream->connect_req, -1);
     stream->connect_req = NULL;
   }
@@ -136,7 +136,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
       free(req->bufs);
 
     if (req->cb) {
-      uv__set_artificial_error(req->handle->loop, UV_EINTR);
+      uv__set_artificial_error(req->handle->loop, UV_ECANCELED);
       req->cb(req, -1);
     }
   }
@@ -156,7 +156,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
 
   if (stream->shutdown_req) {
     uv__req_unregister(stream->loop, stream->shutdown_req);
-    uv__set_artificial_error(stream->loop, UV_EINTR);
+    uv__set_artificial_error(stream->loop, UV_ECANCELED);
     stream->shutdown_req->cb(stream->shutdown_req, -1);
     stream->shutdown_req = NULL;
   }
