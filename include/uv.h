@@ -539,9 +539,12 @@ UV_EXTERN int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb,
  *     { .base = "4", .len = 1 }
  *   };
  *
+ *   uv_write_t req1;
+ *   uv_write_t req2;
+ *
  *   // writes "1234"
- *   uv_write(req, stream, a, 2);
- *   uv_write(req, stream, b, 2);
+ *   uv_write(&req1, stream, a, 2);
+ *   uv_write(&req2, stream, b, 2);
  *
  */
 UV_EXTERN int uv_write(uv_write_t* req, uv_stream_t* handle,
