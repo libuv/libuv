@@ -433,6 +433,10 @@ UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
  * Note that handles that wrap file descriptors are closed immediately but
  * close_cb will still be deferred to the next iteration of the event loop.
  * It gives you a chance to free up any resources associated with the handle.
+ *
+ * In-progress requests, like uv_connect_t or uv_write_t, are cancelled and
+ * have their callbacks called asynchronously with status=-1 and the error code
+ * set to UV_EINTR.
  */
 UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
