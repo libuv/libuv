@@ -39,5 +39,6 @@ BENCHMARK_IMPL(sizes) {
   LOGF("uv_fs_event_t: %u bytes\n", (unsigned int) sizeof(uv_fs_event_t));
   LOGF("uv_process_t: %u bytes\n", (unsigned int) sizeof(uv_process_t));
   LOGF("uv_poll_t: %u bytes\n", (unsigned int) sizeof(uv_poll_t));
+  LOGF("uv_loop_t: %u bytes\n", (unsigned int) sizeof(uv_loop_t));
   return 0;
 }
