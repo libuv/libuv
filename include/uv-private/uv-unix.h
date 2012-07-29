@@ -184,8 +184,9 @@ struct uv__io_s {
   int fd; \
 
 
-/* UV_TCP */
-#define UV_TCP_PRIVATE_FIELDS
+/* UV_TCP, idle_handle is for UV_TCP_SINGLE_ACCEPT handles */
+#define UV_TCP_PRIVATE_FIELDS         \
+  uv_idle_t* idle_handle;             \
 
 
 /* UV_UDP */

@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "internal.h"
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
@@ -30,6 +31,7 @@
 int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
   uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
   loop->counters.tcp_init++;
+  tcp->idle_handle = NULL;
   return 0;
 }
 
@@ -227,9 +229,29 @@ out:
 
 
 int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
+  static int single_accept = -1;
+
   if (tcp->delayed_error)
     return uv__set_sys_error(tcp->loop, tcp->delayed_error);
 
+  if (single_accept == -1) {
+    const char* val = getenv("UV_TCP_SINGLE_ACCEPT");
+    single_accept = (val == NULL) || (atoi(val) != 0); /* on by default */
+  }
+
+  if (!single_accept)
+    goto no_single_accept;
+
+  tcp->idle_handle = malloc(sizeof(*tcp->idle_handle));
+  if (tcp->idle_handle == NULL)
+    return uv__set_sys_error(tcp->loop, ENOMEM);
+
+  if (uv_idle_init(tcp->loop, tcp->idle_handle))
+    abort();
+
+  tcp->flags |= UV_TCP_SINGLE_ACCEPT;
+
+no_single_accept:
   if (maybe_new_socket(tcp, AF_INET, UV_STREAM_READABLE))
     return -1;
 
@@ -356,5 +378,17 @@ int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
 
 
 int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
+  if (enable)
+    handle->flags |= UV_TCP_SINGLE_ACCEPT;
+  else
+    handle->flags &= ~UV_TCP_SINGLE_ACCEPT;
   return 0;
+}
+
+
+void uv__tcp_close(uv_tcp_t* handle) {
+  if (handle->idle_handle)
+    uv_close((uv_handle_t*)handle->idle_handle, (uv_close_cb)free);
+
+  uv__stream_close((uv_stream_t*)handle);
 }
