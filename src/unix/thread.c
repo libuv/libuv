@@ -78,7 +78,7 @@ int uv_mutex_trylock(uv_mutex_t* mutex) {
 
   r = pthread_mutex_trylock(mutex);
 
-  if (r && r != EAGAIN)
+  if (r && r != EBUSY && r != EAGAIN)
     abort();
 
   if (r)
@@ -119,7 +119,7 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
 
   r = pthread_rwlock_tryrdlock(rwlock);
 
-  if (r && r != EAGAIN)
+  if (r && r != EBUSY && r != EAGAIN)
     abort();
 
   if (r)
@@ -146,7 +146,7 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 
   r = pthread_rwlock_trywrlock(rwlock);
 
-  if (r && r != EAGAIN)
+  if (r && r != EBUSY && r != EAGAIN)
     abort();
 
   if (r)
@@ -167,6 +167,44 @@ void uv_once(uv_once_t* guard, void (*callback)(void)) {
     abort();
 }
 
+#if defined(__APPLE__) && defined(__MACH__)
+
+int uv_sem_init(uv_sem_t* sem, unsigned int value) {
+  return semaphore_create(mach_task_self(), sem, SYNC_POLICY_FIFO, value);
+}
+
+
+void uv_sem_destroy(uv_sem_t* sem) {
+  if (semaphore_destroy(mach_task_self(), *sem))
+    abort();
+}
+
+
+void uv_sem_post(uv_sem_t* sem) {
+  if (semaphore_signal(*sem))
+    abort();
+}
+
+
+void uv_sem_wait(uv_sem_t* sem) {
+  if (semaphore_wait(*sem))
+    abort();
+}
+
+
+int uv_sem_trywait(uv_sem_t* sem) {
+  mach_timespec_t interval;
+
+  interval.tv_sec = 0;
+  interval.tv_nsec = 0;
+
+  if (semaphore_timedwait(*sem, interval) == KERN_SUCCESS)
+    return 0;
+  else
+    return -1;
+}
+
+#else /* !(defined(__APPLE__) && defined(__MACH__)) */
 
 int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   return sem_init(sem, 0, value);
@@ -209,3 +247,5 @@ int uv_sem_trywait(uv_sem_t* sem) {
 
   return r;
 }
+
+#endif /* defined(__APPLE__) && defined(__MACH__) */
