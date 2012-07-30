@@ -57,12 +57,6 @@ extern "C" {
 
 #include "ares.h"
 
-#if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
-  typedef intptr_t ssize_t;
-# define _SSIZE_T_
-# define _SSIZE_T_DEFINED
-#endif
-
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
 # include "uv-private/uv-unix.h"
 #else
