@@ -1410,8 +1410,8 @@ struct uv_fs_s {
   uv_fs_cb cb;
   ssize_t result;
   void* ptr;
-  char* path;
-  int errorno;
+  const char* path;
+  uv_err_code errorno;
   UV_FS_PRIVATE_FIELDS
 };
 
