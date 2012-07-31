@@ -1134,7 +1134,7 @@ static void fs__futime(uv_fs_t* req) {
 
 
 static void fs__link(uv_fs_t* req) {
-  DWORD r = CreateHardLinkW(req->pathw, req->new_pathw, NULL);
+  DWORD r = CreateHardLinkW(req->new_pathw, req->pathw, NULL);
   if (r == 0) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
   } else {
