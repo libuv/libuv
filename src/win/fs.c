@@ -338,17 +338,20 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
     return -1;
   }
 
-  /* Compute the length of the target. */
-  target_len = WideCharToMultiByte(CP_UTF8,
-                                   0,
-                                   w_target,
-                                   w_target_len,
-                                   NULL,
-                                   0,
-                                   NULL,
-                                   NULL);
-  if (target_len == 0) {
-    return -1;
+  /* If needed, compute the length of the target. */
+  if (target_ptr != NULL || target_len_ptr != NULL) {
+    /* Compute the length of the target. */
+    target_len = WideCharToMultiByte(CP_UTF8,
+                                     0,
+                                     w_target,
+                                     w_target_len,
+                                     NULL,
+                                     0,
+                                     NULL,
+                                     NULL);
+    if (target_len == 0) {
+      return -1;
+    }
   }
 
   /* If requested, allocate memory and convert to UTF8. */
@@ -615,14 +618,15 @@ void fs__rmdir(uv_fs_t* req) {
 
 void fs__unlink(uv_fs_t* req) {
   const WCHAR* pathw = req->pathw;
-  int result;
   HANDLE handle;
   BY_HANDLE_FILE_INFORMATION info;
-  int is_dir_symlink;
+  FILE_DISPOSITION_INFORMATION disposition;
+  IO_STATUS_BLOCK iosb;
+  NTSTATUS status;
 
   handle = CreateFileW(pathw,
-                       0,
-                       0,
+                       FILE_READ_ATTRIBUTES | DELETE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL,
                        OPEN_EXISTING,
                        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
@@ -639,19 +643,44 @@ void fs__unlink(uv_fs_t* req) {
     return;
   }
 
-  is_dir_symlink = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-                   (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT);
+  if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    /* Do not allow deletion of directories, unless it is a symlink. When */
+    /* the path refers to a non-symlink directory, report EPERM as mandated */
+    /* by POSIX.1. */
+
+    /* Check if it is a reparse point. If it's not, it's a normal directory. */
+    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+      SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
+      CloseHandle(handle);
+      return;
+    }
+
+    /* Read the reparse point and check if it is a valid symlink. */
+    /* If not, don't unlink. */
+    if (fs__readlink_handle(handle, NULL, NULL) < 0) {
+      DWORD error = GetLastError();
+      if (error == ERROR_SYMLINK_NOT_SUPPORTED)
+        error = ERROR_ACCESS_DENIED;
+      SET_REQ_WIN32_ERROR(req, error);
+      CloseHandle(handle);
+      return;
+    }
+  }
+
+  /* Try to set the delete flag. */
+  disposition.DeleteFile = TRUE;
+  status = pNtSetInformationFile(handle,
+                                 &iosb,
+                                 &disposition,
+                                 sizeof disposition,
+                                 FileDispositionInformation);
+  if (NT_SUCCESS(status)) {
+    SET_REQ_SUCCESS(req);
+  } else {
+    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
+  }
 
   CloseHandle(handle);
-
-  /* Todo: very inefficient; fix this. */
-  if (is_dir_symlink) {
-    int result = _wrmdir(req->pathw);
-    SET_REQ_RESULT(req, result);
-  } else {
-    result = _wunlink(pathw);
-    SET_REQ_RESULT(req, result);
-  }
 }
 
 
