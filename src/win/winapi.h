@@ -4379,6 +4379,11 @@ typedef NTSTATUS (NTAPI *sNtQuerySystemInformation)
 # define ENABLE_EXTENDED_FLAGS 0x80
 #endif
 
+/* from winerror.h */
+#ifndef ERROR_SYMLINK_NOT_SUPPORTED
+# define ERROR_SYMLINK_NOT_SUPPORTED 1464
+#endif
+
 typedef BOOL (WINAPI *sGetQueuedCompletionStatusEx)
              (HANDLE CompletionPort,
               LPOVERLAPPED_ENTRY lpCompletionPortEntries,
