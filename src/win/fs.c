@@ -219,6 +219,7 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
   req->result = 0;
   req->ptr = NULL;
   req->errorno = UV_OK;
+  req->path = NULL;
 
   if (cb != NULL) {
     req->cb = cb;
