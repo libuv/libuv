@@ -476,15 +476,16 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   int flags;                              \
   DWORD sys_errno_;                       \
   union {                                 \
-    wchar_t* pathw;                       \
-    int file;                             \
+    /* TODO: remove me in 0.9. */         \
+    WCHAR* pathw;                         \
+    int fd;                               \
   };                                      \
   union {                                 \
     struct {                              \
       int mode;                           \
-      wchar_t* new_pathw;                 \
+      WCHAR* new_pathw;                   \
       int file_flags;                     \
-      int file_out;                       \
+      int fd_out;                         \
       void* buf;                          \
       size_t length;                      \
       int64_t offset;                     \
