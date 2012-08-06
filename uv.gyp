@@ -52,6 +52,7 @@
         'include/uv-private/tree.h',
         'src/cares.c',
         'src/fs-poll.c',
+        'src/inet.c',
         'src/uv-common.c',
         'src/uv-common.h',
         'src/ares/ares_cancel.c',
