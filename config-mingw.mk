@@ -46,16 +46,10 @@ src/%.o: src/%.c include/uv.h include/uv-private/uv-win.h
 src/win/%.o: src/win/%.c include/uv.h include/uv-private/uv-win.h src/win/internal.h
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-EIO_CPPFLAGS += $(CPPFLAGS)
-EIO_CPPFLAGS += -DEIO_STACKSIZE=65536
-EIO_CPPFLAGS += -D_GNU_SOURCE
-
 clean-platform:
 	-rm -f src/ares/*.o
-	-rm -f src/eio/*.o
 	-rm -f src/win/*.o
 
 distclean-platform:
 	-rm -f src/ares/*.o
-	-rm -f src/eio/*.o
 	-rm -f src/win/*.o
