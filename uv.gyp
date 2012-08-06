@@ -320,7 +320,6 @@
         'test/test-get-currentexe.c',
         'test/test-get-memory.c',
         'test/test-getaddrinfo.c',
-        'test/test-gethostbyname.c',
         'test/test-getsockname.c',
         'test/test-hrtime.c',
         'test/test-idle.c',
@@ -408,7 +407,6 @@
       'type': 'executable',
       'dependencies': [ 'uv' ],
       'sources': [
-        'test/benchmark-ares.c',
         'test/benchmark-async.c',
         'test/benchmark-async-pummel.c',
         'test/benchmark-fs-stat.c',
