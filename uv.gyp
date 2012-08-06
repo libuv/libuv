@@ -50,7 +50,6 @@
         'include/uv.h',
         'include/uv-private/ngx-queue.h',
         'include/uv-private/tree.h',
-        'src/cares.c',
         'src/fs-poll.c',
         'src/inet.c',
         'src/uv-common.c',
