@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-/* See uv_loop_new for an introduction. */
+/* See http://nikhilm.github.com/uvbook/ for an introduction. */
 
 #ifndef UV_H
 #define UV_H
