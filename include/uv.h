@@ -53,6 +53,10 @@ extern "C" {
 #include <stdint.h> /* int64_t */
 #include <sys/types.h> /* size_t */
 
+#if defined(__SVR4) && !defined(__unix__)
+# define __unix__
+#endif
+
 #if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__)
 # include "uv-private/uv-unix.h"
 #else
