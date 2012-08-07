@@ -51,7 +51,7 @@
 # include <semaphore.h>
 #endif
 
-#if __sun
+#if defined(__sun)
 # include <sys/port.h>
 # include <port.h>
 #endif
@@ -103,7 +103,7 @@ struct uv__io_s {
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
 
-#if __linux__
+#if defined(__linux__)
 # define UV_LOOP_PRIVATE_PLATFORM_FIELDS                                      \
   uv__io_t inotify_read_watcher;                                              \
   void* inotify_watchers;                                                     \
