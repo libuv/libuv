@@ -60,64 +60,64 @@ extern "C" {
 #endif
 
 /* Expand this list if necessary. */
-#define UV_ERRNO_MAP(XX) \
-  XX( -1, UNKNOWN, "unknown error") \
-  XX(  0, OK, "success") \
-  XX(  1, EOF, "end of file") \
-  XX(  2, EADDRINFO, "getaddrinfo error") \
-  XX(  3, EACCES, "permission denied") \
-  XX(  4, EAGAIN, "no more processes") \
-  XX(  5, EADDRINUSE, "address already in use") \
-  XX(  6, EADDRNOTAVAIL, "") \
-  XX(  7, EAFNOSUPPORT, "") \
-  XX(  8, EALREADY, "") \
-  XX(  9, EBADF, "bad file descriptor") \
-  XX( 10, EBUSY, "resource busy or locked") \
-  XX( 11, ECONNABORTED, "software caused connection abort") \
-  XX( 12, ECONNREFUSED, "connection refused") \
-  XX( 13, ECONNRESET, "connection reset by peer") \
-  XX( 14, EDESTADDRREQ, "destination address required") \
-  XX( 15, EFAULT, "bad address in system call argument") \
-  XX( 16, EHOSTUNREACH, "host is unreachable") \
-  XX( 17, EINTR, "interrupted system call") \
-  XX( 18, EINVAL, "invalid argument") \
-  XX( 19, EISCONN, "socket is already connected") \
-  XX( 20, EMFILE, "too many open files") \
-  XX( 21, EMSGSIZE, "message too long") \
-  XX( 22, ENETDOWN, "network is down") \
-  XX( 23, ENETUNREACH, "network is unreachable") \
-  XX( 24, ENFILE, "file table overflow") \
-  XX( 25, ENOBUFS, "no buffer space available") \
-  XX( 26, ENOMEM, "not enough memory") \
-  XX( 27, ENOTDIR, "not a directory") \
-  XX( 28, EISDIR, "illegal operation on a directory") \
-  XX( 29, ENONET, "machine is not on the network") \
-  XX( 31, ENOTCONN, "socket is not connected") \
-  XX( 32, ENOTSOCK, "socket operation on non-socket") \
-  XX( 33, ENOTSUP, "operation not supported on socket") \
-  XX( 34, ENOENT, "no such file or directory") \
-  XX( 35, ENOSYS, "function not implemented") \
-  XX( 36, EPIPE, "broken pipe") \
-  XX( 37, EPROTO, "protocol error") \
-  XX( 38, EPROTONOSUPPORT, "protocol not supported") \
-  XX( 39, EPROTOTYPE, "protocol wrong type for socket") \
-  XX( 40, ETIMEDOUT, "connection timed out") \
-  XX( 41, ECHARSET, "") \
-  XX( 42, EAIFAMNOSUPPORT, "") \
-  XX( 44, EAISERVICE, "") \
-  XX( 45, EAISOCKTYPE, "") \
-  XX( 46, ESHUTDOWN, "") \
-  XX( 47, EEXIST, "file already exists") \
-  XX( 48, ESRCH, "no such process") \
-  XX( 49, ENAMETOOLONG, "name too long") \
-  XX( 50, EPERM, "operation not permitted") \
-  XX( 51, ELOOP, "too many symbolic links encountered") \
-  XX( 52, EXDEV, "cross-device link not permitted") \
-  XX( 53, ENOTEMPTY, "directory not empty") \
-  XX( 54, ENOSPC, "no space left on device") \
-  XX( 55, EIO, "i/o error") \
-  XX( 56, EROFS, "read-only file system" ) \
-  XX( 57, ENODEV, "no such device" ) \
+#define UV_ERRNO_MAP(XX)                                                      \
+  XX( -1, UNKNOWN, "unknown error")                                           \
+  XX(  0, OK, "success")                                                      \
+  XX(  1, EOF, "end of file")                                                 \
+  XX(  2, EADDRINFO, "getaddrinfo error")                                     \
+  XX(  3, EACCES, "permission denied")                                        \
+  XX(  4, EAGAIN, "no more processes")                                        \
+  XX(  5, EADDRINUSE, "address already in use")                               \
+  XX(  6, EADDRNOTAVAIL, "")                                                  \
+  XX(  7, EAFNOSUPPORT, "")                                                   \
+  XX(  8, EALREADY, "")                                                       \
+  XX(  9, EBADF, "bad file descriptor")                                       \
+  XX( 10, EBUSY, "resource busy or locked")                                   \
+  XX( 11, ECONNABORTED, "software caused connection abort")                   \
+  XX( 12, ECONNREFUSED, "connection refused")                                 \
+  XX( 13, ECONNRESET, "connection reset by peer")                             \
+  XX( 14, EDESTADDRREQ, "destination address required")                       \
+  XX( 15, EFAULT, "bad address in system call argument")                      \
+  XX( 16, EHOSTUNREACH, "host is unreachable")                                \
+  XX( 17, EINTR, "interrupted system call")                                   \
+  XX( 18, EINVAL, "invalid argument")                                         \
+  XX( 19, EISCONN, "socket is already connected")                             \
+  XX( 20, EMFILE, "too many open files")                                      \
+  XX( 21, EMSGSIZE, "message too long")                                       \
+  XX( 22, ENETDOWN, "network is down")                                        \
+  XX( 23, ENETUNREACH, "network is unreachable")                              \
+  XX( 24, ENFILE, "file table overflow")                                      \
+  XX( 25, ENOBUFS, "no buffer space available")                               \
+  XX( 26, ENOMEM, "not enough memory")                                        \
+  XX( 27, ENOTDIR, "not a directory")                                         \
+  XX( 28, EISDIR, "illegal operation on a directory")                         \
+  XX( 29, ENONET, "machine is not on the network")                            \
+  XX( 31, ENOTCONN, "socket is not connected")                                \
+  XX( 32, ENOTSOCK, "socket operation on non-socket")                         \
+  XX( 33, ENOTSUP, "operation not supported on socket")                       \
+  XX( 34, ENOENT, "no such file or directory")                                \
+  XX( 35, ENOSYS, "function not implemented")                                 \
+  XX( 36, EPIPE, "broken pipe")                                               \
+  XX( 37, EPROTO, "protocol error")                                           \
+  XX( 38, EPROTONOSUPPORT, "protocol not supported")                          \
+  XX( 39, EPROTOTYPE, "protocol wrong type for socket")                       \
+  XX( 40, ETIMEDOUT, "connection timed out")                                  \
+  XX( 41, ECHARSET, "")                                                       \
+  XX( 42, EAIFAMNOSUPPORT, "")                                                \
+  XX( 44, EAISERVICE, "")                                                     \
+  XX( 45, EAISOCKTYPE, "")                                                    \
+  XX( 46, ESHUTDOWN, "")                                                      \
+  XX( 47, EEXIST, "file already exists")                                      \
+  XX( 48, ESRCH, "no such process")                                           \
+  XX( 49, ENAMETOOLONG, "name too long")                                      \
+  XX( 50, EPERM, "operation not permitted")                                   \
+  XX( 51, ELOOP, "too many symbolic links encountered")                       \
+  XX( 52, EXDEV, "cross-device link not permitted")                           \
+  XX( 53, ENOTEMPTY, "directory not empty")                                   \
+  XX( 54, ENOSPC, "no space left on device")                                  \
+  XX( 55, EIO, "i/o error")                                                   \
+  XX( 56, EROFS, "read-only file system" )                                    \
+  XX( 57, ENODEV, "no such device" )                                          \
   XX( 58, ECANCELED, "operation canceled" )
 
 
@@ -128,29 +128,29 @@ typedef enum {
 } uv_err_code;
 #undef UV_ERRNO_GEN
 
-#define UV_HANDLE_TYPE_MAP(XX)  \
-  XX(ASYNC, async)              \
-  XX(CHECK, check)              \
-  XX(FS_EVENT, fs_event)        \
-  XX(FS_POLL, fs_poll)          \
-  XX(IDLE, idle)                \
-  XX(NAMED_PIPE, pipe)          \
-  XX(POLL, poll)                \
-  XX(PREPARE, prepare)          \
-  XX(PROCESS, process)          \
-  XX(TCP, tcp)                  \
-  XX(TIMER, timer)              \
-  XX(TTY, tty)                  \
-  XX(UDP, udp)                  \
+#define UV_HANDLE_TYPE_MAP(XX)                                                \
+  XX(ASYNC, async)                                                            \
+  XX(CHECK, check)                                                            \
+  XX(FS_EVENT, fs_event)                                                      \
+  XX(FS_POLL, fs_poll)                                                        \
+  XX(IDLE, idle)                                                              \
+  XX(NAMED_PIPE, pipe)                                                        \
+  XX(POLL, poll)                                                              \
+  XX(PREPARE, prepare)                                                        \
+  XX(PROCESS, process)                                                        \
+  XX(TCP, tcp)                                                                \
+  XX(TIMER, timer)                                                            \
+  XX(TTY, tty)                                                                \
+  XX(UDP, udp)                                                                \
 
-#define UV_REQ_TYPE_MAP(XX)     \
-  XX(CONNECT, connect)          \
-  XX(WRITE, write)              \
-  XX(SHUTDOWN, shutdown)        \
-  XX(UDP_SEND, udp_send)        \
-  XX(FS, fs)                    \
-  XX(WORK, work)                \
-  XX(GETADDRINFO, getaddrinfo)  \
+#define UV_REQ_TYPE_MAP(XX)                                                   \
+  XX(CONNECT, connect)                                                        \
+  XX(WRITE, write)                                                            \
+  XX(SHUTDOWN, shutdown)                                                      \
+  XX(UDP_SEND, udp_send)                                                      \
+  XX(FS, fs)                                                                  \
+  XX(WORK, work)                                                              \
+  XX(GETADDRINFO, getaddrinfo)                                                \
 
 typedef enum {
   UV_UNKNOWN_HANDLE = 0,
@@ -336,14 +336,14 @@ UV_EXTERN const char* uv_strerror(uv_err_t err);
 UV_EXTERN const char* uv_err_name(uv_err_t err);
 
 
-#define UV_REQ_FIELDS \
-  /* public */ \
-  void* data; \
-  /* private */ \
-  ngx_queue_t active_queue; \
-  UV_REQ_PRIVATE_FIELDS \
-  /* read-only */ \
-  uv_req_type type; \
+#define UV_REQ_FIELDS                                                         \
+  /* public */                                                                \
+  void* data;                                                                 \
+  /* private */                                                               \
+  ngx_queue_t active_queue;                                                   \
+  UV_REQ_PRIVATE_FIELDS                                                       \
+  /* read-only */                                                             \
+  uv_req_type type;                                                           \
 
 /* Abstract base class of all requests. */
 struct uv_req_s {
@@ -454,13 +454,13 @@ UV_EXTERN size_t uv_strlcpy(char* dst, const char* src, size_t size);
 UV_EXTERN size_t uv_strlcat(char* dst, const char* src, size_t size);
 
 
-#define UV_STREAM_FIELDS \
-  /* number of bytes queued for writing */ \
-  size_t write_queue_size; \
-  uv_alloc_cb alloc_cb; \
-  uv_read_cb read_cb; \
-  uv_read2_cb read2_cb; \
-  /* private */ \
+#define UV_STREAM_FIELDS                                                      \
+  /* number of bytes queued for writing */                                    \
+  size_t write_queue_size;                                                    \
+  uv_alloc_cb alloc_cb;                                                       \
+  uv_read_cb read_cb;                                                         \
+  uv_read2_cb read2_cb;                                                       \
+  /* private */                                                               \
   UV_STREAM_PRIVATE_FIELDS
 
 /*

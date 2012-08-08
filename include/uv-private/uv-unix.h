@@ -104,13 +104,13 @@ struct uv__io_s {
 #define UV_REQ_TYPE_PRIVATE /* empty */
 
 #if __linux__
-# define UV_LOOP_PRIVATE_PLATFORM_FIELDS              \
-  uv__io_t inotify_read_watcher;                      \
-  void* inotify_watchers;                             \
+# define UV_LOOP_PRIVATE_PLATFORM_FIELDS                                      \
+  uv__io_t inotify_read_watcher;                                              \
+  void* inotify_watchers;                                                     \
   int inotify_fd;
 #elif defined(PORT_SOURCE_FILE)
-# define UV_LOOP_PRIVATE_PLATFORM_FIELDS              \
-  uv__io_t fs_event_watcher;                          \
+# define UV_LOOP_PRIVATE_PLATFORM_FIELDS                                      \
+  uv__io_t fs_event_watcher;                                                  \
   int fs_fd;
 #else
 # define UV_LOOP_PRIVATE_PLATFORM_FIELDS
@@ -140,92 +140,92 @@ struct uv__io_s {
 
 #define UV_REQ_PRIVATE_FIELDS  /* empty */
 
-#define UV_WRITE_PRIVATE_FIELDS \
-  ngx_queue_t queue; \
-  int write_index; \
-  uv_buf_t* bufs; \
-  int bufcnt; \
-  int error; \
+#define UV_WRITE_PRIVATE_FIELDS                                               \
+  ngx_queue_t queue;                                                          \
+  int write_index;                                                            \
+  uv_buf_t* bufs;                                                             \
+  int bufcnt;                                                                 \
+  int error;                                                                  \
   uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];
 
 #define UV_SHUTDOWN_PRIVATE_FIELDS /* empty */
 
-#define UV_CONNECT_PRIVATE_FIELDS \
+#define UV_CONNECT_PRIVATE_FIELDS                                             \
   ngx_queue_t queue;
 
-#define UV_UDP_SEND_PRIVATE_FIELDS  \
-  ngx_queue_t queue;                \
-  struct sockaddr_in6 addr;         \
-  int bufcnt;                       \
-  uv_buf_t* bufs;                   \
-  ssize_t status;                   \
-  uv_udp_send_cb send_cb;           \
-  uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];  \
+#define UV_UDP_SEND_PRIVATE_FIELDS                                            \
+  ngx_queue_t queue;                                                          \
+  struct sockaddr_in6 addr;                                                   \
+  int bufcnt;                                                                 \
+  uv_buf_t* bufs;                                                             \
+  ssize_t status;                                                             \
+  uv_udp_send_cb send_cb;                                                     \
+  uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];                                        \
 
 #define UV_PRIVATE_REQ_TYPES /* empty */
 
 
 /* TODO: union or classes please! */
-#define UV_HANDLE_PRIVATE_FIELDS \
-  int flags; \
-  uv_handle_t* next_closing; \
+#define UV_HANDLE_PRIVATE_FIELDS                                              \
+  int flags;                                                                  \
+  uv_handle_t* next_closing;                                                  \
 
 
-#define UV_STREAM_PRIVATE_FIELDS \
-  uv_connect_t *connect_req; \
-  uv_shutdown_t *shutdown_req; \
-  uv__io_t read_watcher; \
-  uv__io_t write_watcher; \
-  ngx_queue_t write_queue; \
-  ngx_queue_t write_completed_queue; \
-  uv_connection_cb connection_cb; \
-  int delayed_error; \
-  int accepted_fd; \
-  int fd; \
+#define UV_STREAM_PRIVATE_FIELDS                                              \
+  uv_connect_t *connect_req;                                                  \
+  uv_shutdown_t *shutdown_req;                                                \
+  uv__io_t read_watcher;                                                      \
+  uv__io_t write_watcher;                                                     \
+  ngx_queue_t write_queue;                                                    \
+  ngx_queue_t write_completed_queue;                                          \
+  uv_connection_cb connection_cb;                                             \
+  int delayed_error;                                                          \
+  int accepted_fd;                                                            \
+  int fd;                                                                     \
 
 
 /* UV_TCP, idle_handle is for UV_TCP_SINGLE_ACCEPT handles */
-#define UV_TCP_PRIVATE_FIELDS         \
-  uv_idle_t* idle_handle;             \
+#define UV_TCP_PRIVATE_FIELDS                                                 \
+  uv_idle_t* idle_handle;                                                     \
 
 
 /* UV_UDP */
-#define UV_UDP_PRIVATE_FIELDS         \
-  int fd;                             \
-  uv_alloc_cb alloc_cb;               \
-  uv_udp_recv_cb recv_cb;             \
-  uv__io_t read_watcher;              \
-  uv__io_t write_watcher;             \
-  ngx_queue_t write_queue;            \
-  ngx_queue_t write_completed_queue;  \
+#define UV_UDP_PRIVATE_FIELDS                                                 \
+  int fd;                                                                     \
+  uv_alloc_cb alloc_cb;                                                       \
+  uv_udp_recv_cb recv_cb;                                                     \
+  uv__io_t read_watcher;                                                      \
+  uv__io_t write_watcher;                                                     \
+  ngx_queue_t write_queue;                                                    \
+  ngx_queue_t write_completed_queue;                                          \
 
 
 /* UV_NAMED_PIPE */
-#define UV_PIPE_PRIVATE_FIELDS \
+#define UV_PIPE_PRIVATE_FIELDS                                                \
   const char* pipe_fname; /* strdup'ed */
 
 
 /* UV_POLL */
-#define UV_POLL_PRIVATE_FIELDS        \
-  int fd;                             \
+#define UV_POLL_PRIVATE_FIELDS                                                \
+  int fd;                                                                     \
   uv__io_t io_watcher;
 
 
 /* UV_PREPARE */
-#define UV_PREPARE_PRIVATE_FIELDS \
-  uv_prepare_cb prepare_cb; \
+#define UV_PREPARE_PRIVATE_FIELDS                                             \
+  uv_prepare_cb prepare_cb;                                                   \
   ngx_queue_t queue;
 
 
 /* UV_CHECK */
-#define UV_CHECK_PRIVATE_FIELDS \
-  uv_check_cb check_cb; \
+#define UV_CHECK_PRIVATE_FIELDS                                               \
+  uv_check_cb check_cb;                                                       \
   ngx_queue_t queue;
 
 
 /* UV_IDLE */
-#define UV_IDLE_PRIVATE_FIELDS \
-  uv_idle_cb idle_cb; \
+#define UV_IDLE_PRIVATE_FIELDS                                                \
+  uv_idle_cb idle_cb;                                                         \
   ngx_queue_t queue;
 
 
@@ -249,56 +249,56 @@ struct uv__io_s {
   uint64_t timeout;                                                           \
   uint64_t repeat;
 
-#define UV_GETADDRINFO_PRIVATE_FIELDS \
-  uv_getaddrinfo_cb cb; \
-  struct addrinfo* hints; \
-  char* hostname; \
-  char* service; \
-  struct addrinfo* res; \
+#define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
+  uv_getaddrinfo_cb cb;                                                       \
+  struct addrinfo* hints;                                                     \
+  char* hostname;                                                             \
+  char* service;                                                              \
+  struct addrinfo* res;                                                       \
   int retcode;
 
-#define UV_PROCESS_PRIVATE_FIELDS \
+#define UV_PROCESS_PRIVATE_FIELDS                                             \
   ev_child child_watcher;
 
-#define UV_FS_PRIVATE_FIELDS \
-  struct stat statbuf; \
+#define UV_FS_PRIVATE_FIELDS                                                  \
+  struct stat statbuf;                                                        \
   eio_req* eio;
 
-#define UV_WORK_PRIVATE_FIELDS \
+#define UV_WORK_PRIVATE_FIELDS                                                \
   eio_req* eio;
 
-#define UV_TTY_PRIVATE_FIELDS \
-  struct termios orig_termios; \
+#define UV_TTY_PRIVATE_FIELDS                                                 \
+  struct termios orig_termios;                                                \
   int mode;
 
 /* UV_FS_EVENT_PRIVATE_FIELDS */
 #if defined(__linux__)
 
-#define UV_FS_EVENT_PRIVATE_FIELDS    \
-  ngx_queue_t watchers;               \
-  uv_fs_event_cb cb;                  \
-  int wd;                             \
-  void* pad0;                         \
-  void* pad1;                         \
+#define UV_FS_EVENT_PRIVATE_FIELDS                                            \
+  ngx_queue_t watchers;                                                       \
+  uv_fs_event_cb cb;                                                          \
+  int wd;                                                                     \
+  void* pad0;                                                                 \
+  void* pad1;                                                                 \
 
-#elif defined(__APPLE__)  \
-  || defined(__FreeBSD__) \
-  || defined(__DragonFly__) \
-  || defined(__OpenBSD__) \
+#elif defined(__APPLE__)                                                      \
+  || defined(__FreeBSD__)                                                     \
+  || defined(__DragonFly__)                                                   \
+  || defined(__OpenBSD__)                                                     \
   || defined(__NetBSD__)
 
-#define UV_FS_EVENT_PRIVATE_FIELDS \
-  ev_io event_watcher; \
-  uv_fs_event_cb cb; \
-  int fflags; \
+#define UV_FS_EVENT_PRIVATE_FIELDS                                            \
+  ev_io event_watcher;                                                        \
+  uv_fs_event_cb cb;                                                          \
+  int fflags;                                                                 \
   int fd;
 
 #elif defined(__sun)
 
 #ifdef PORT_SOURCE_FILE
-# define UV_FS_EVENT_PRIVATE_FIELDS \
-  uv_fs_event_cb cb; \
-  file_obj_t fo; \
+# define UV_FS_EVENT_PRIVATE_FIELDS                                           \
+  uv_fs_event_cb cb;                                                          \
+  file_obj_t fo;                                                              \
   int fd;
 #else /* !PORT_SOURCE_FILE */
 # define UV_FS_EVENT_PRIVATE_FIELDS
