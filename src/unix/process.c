@@ -53,17 +53,19 @@ static void uv__chld(EV_P_ ev_child* watcher, int revents) {
 
   ev_child_stop(EV_A_ &process->child_watcher);
 
-  if (WIFEXITED(status)) {
+  if (process->exit_cb == NULL)
+    return;
+
+  if (WIFEXITED(status))
     exit_status = WEXITSTATUS(status);
-  }
 
-  if (WIFSIGNALED(status)) {
+  if (WIFSIGNALED(status))
     term_signal = WTERMSIG(status);
-  }
 
-  if (process->exit_cb) {
-    process->exit_cb(process, exit_status, term_signal);
-  }
+  if (process->errorno)
+    uv__set_sys_error(process->loop, process->errorno);
+
+  process->exit_cb(process, exit_status, term_signal);
 }
 
 
@@ -202,9 +204,37 @@ static void uv__process_close_stream(uv_stdio_container_t* container) {
 }
 
 
+static int uv__read_int(int fd) {
+  ssize_t n;
+  int val;
+
+  do
+    n = read(fd, &val, sizeof(val));
+  while (n == -1 && errno == EINTR);
+
+  assert(n == sizeof(val));
+  return val;
+}
+
+
+static void uv__write_int(int fd, int val) {
+  ssize_t n;
+
+  do
+    n = write(fd, &val, sizeof(val));
+  while (n == -1 && errno == EINTR);
+
+  if (n == -1 && errno == EPIPE)
+    return; /* parent process has quit */
+
+  assert(n == sizeof(val));
+}
+
+
 static void uv__process_child_init(uv_process_options_t options,
                                    int stdio_count,
-                                   int* pipes) {
+                                   int* pipes,
+                                   int error_fd) {
   int i;
 
   if (options.flags & UV_PROCESS_DETACHED) {
@@ -227,6 +257,7 @@ static void uv__process_child_init(uv_process_options_t options,
       use_fd = open("/dev/null", i == 0 ? O_RDONLY : O_RDWR);
 
       if (use_fd < 0) {
+        uv__write_int(error_fd, errno);
         perror("failed to open stdio");
         _exit(127);
       }
@@ -243,16 +274,19 @@ static void uv__process_child_init(uv_process_options_t options,
   }
 
   if (options.cwd && chdir(options.cwd)) {
+    uv__write_int(error_fd, errno);
     perror("chdir()");
     _exit(127);
   }
 
   if ((options.flags & UV_PROCESS_SETGID) && setgid(options.gid)) {
+    uv__write_int(error_fd, errno);
     perror("setgid()");
     _exit(127);
   }
 
   if ((options.flags & UV_PROCESS_SETUID) && setuid(options.uid)) {
+    uv__write_int(error_fd, errno);
     perror("setuid()");
     _exit(127);
   }
@@ -260,6 +294,7 @@ static void uv__process_child_init(uv_process_options_t options,
   environ = options.env;
 
   execvp(options.file, options.args);
+  uv__write_int(error_fd, errno);
   perror("execvp()");
   _exit(127);
 }
@@ -277,9 +312,9 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   int* pipes = malloc(2 * stdio_count * sizeof(int));
   int signal_pipe[2] = { -1, -1 };
   struct pollfd pfd;
-  int status;
   pid_t pid;
   int i;
+  int r;
 
   if (pipes == NULL) {
     errno = ENOMEM;
@@ -295,9 +330,6 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
-  uv__handle_start(process);
-
-  process->exit_cb = options.exit_cb;
 
   /* Init pipe pairs */
   for (i = 0; i < stdio_count; i++) {
@@ -345,35 +377,38 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   }
 
   if (pid == 0) {
-    /* Child */
-    uv__process_child_init(options, stdio_count, pipes);
-
-    /* Execution never reaches here. */
+    uv__process_child_init(options, stdio_count, pipes, signal_pipe[1]);
+    abort();
   }
-
-  /* Parent. */
 
   /* Restore environment. */
   environ = save_our_env;
 
   /* POLLHUP signals child has exited or execve()'d. */
   close(signal_pipe[1]);
-  do {
-    pfd.fd = signal_pipe[0];
-    pfd.events = POLLIN|POLLHUP;
-    pfd.revents = 0;
-    errno = 0, status = poll(&pfd, 1, -1);
-  }
-  while (status == -1 && (errno == EINTR || errno == ENOMEM));
+  pfd.revents = 0;
+  pfd.events = POLLIN|POLLHUP;
+  pfd.fd = signal_pipe[0];
 
-  assert((status == 1) && "poll() on pipe read end failed");
+  do
+    r = poll(&pfd, 1, -1);
+  while (r == -1 && errno == EINTR);
+
+  assert((r == 1) && "poll()_on read end of pipe failed");
+  assert((pfd.revents & (POLLIN|POLLHUP)) && "unexpected poll() revents");
+
+  if (pfd.revents & POLLIN)
+    process->errorno = uv__read_int(signal_pipe[0]);
+  else /* POLLHUP */
+    process->errorno = 0;
+
   close(signal_pipe[0]);
-
-  process->pid = pid;
 
   ev_child_init(&process->child_watcher, uv__chld, pid, 0);
   ev_child_start(process->loop->ev, &process->child_watcher);
   process->child_watcher.data = process;
+  process->exit_cb = options.exit_cb;
+  process->pid = pid;
 
   for (i = 0; i < options.stdio_count; i++) {
     if (uv__process_open_stream(&options.stdio[i], pipes + i * 2, i == 0)) {
@@ -387,6 +422,7 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     }
   }
 
+  uv__handle_start(process);
   free(pipes);
 
   return 0;

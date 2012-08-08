@@ -258,7 +258,8 @@ struct uv__io_s {
   int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
-  ev_child child_watcher;
+  ev_child child_watcher;                                                     \
+  int errorno;                                                                \
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
   struct stat statbuf;                                                        \

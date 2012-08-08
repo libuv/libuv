@@ -145,6 +145,17 @@ static void timer_cb(uv_timer_t* handle, int status) {
 }
 
 
+TEST_IMPL(spawn_fails) {
+  init_process_options("", exit_cb_failure_expected);
+  options.file = options.args[0] = "program-that-had-better-not-exist";
+  ASSERT(0 == uv_spawn(uv_default_loop(), &process, options));
+  ASSERT(0 != uv_is_active((uv_handle_t*)&process));
+  ASSERT(0 == uv_run(uv_default_loop()));
+  ASSERT(uv_last_error(uv_default_loop()).code == UV_ENOENT);
+  return 0;
+}
+
+
 TEST_IMPL(spawn_exit_code) {
   int r;
 
