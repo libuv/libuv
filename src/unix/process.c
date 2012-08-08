@@ -22,13 +22,16 @@
 #include "uv.h"
 #include "internal.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
+
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <poll.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #ifdef __APPLE__
 # include <TargetConditionals.h>
@@ -42,30 +45,71 @@ extern char **environ;
 #endif
 
 
-static void uv__chld(EV_P_ ev_child* watcher, int revents) {
-  int status = watcher->rstatus;
-  int exit_status = 0;
-  int term_signal = 0;
-  uv_process_t *process = watcher->data;
+static ngx_queue_t* uv__process_queue(uv_loop_t* loop, int pid) {
+  assert(pid > 0);
+  return loop->process_handles + pid % ARRAY_SIZE(loop->process_handles);
+}
 
-  assert(&process->child_watcher == watcher);
-  assert(revents & EV_CHILD);
 
-  ev_child_stop(EV_A_ &process->child_watcher);
+static uv_process_t* uv__process_find(uv_loop_t* loop, int pid) {
+  uv_process_t* handle;
+  ngx_queue_t* h;
+  ngx_queue_t* q;
 
-  if (process->exit_cb == NULL)
-    return;
+  h = uv__process_queue(loop, pid);
 
-  if (WIFEXITED(status))
-    exit_status = WEXITSTATUS(status);
+  ngx_queue_foreach(q, h) {
+    handle = ngx_queue_data(q, uv_process_t, queue);
+    if (handle->pid == pid) return handle;
+  }
 
-  if (WIFSIGNALED(status))
-    term_signal = WTERMSIG(status);
+  return NULL;
+}
 
-  if (process->errorno)
-    uv__set_sys_error(process->loop, process->errorno);
 
-  process->exit_cb(process, exit_status, term_signal);
+static void uv__chld(uv_signal_t* handle, int signum) {
+  uv_process_t* process;
+  int exit_status;
+  int term_signal;
+  int status;
+  pid_t pid;
+
+  assert(signum == SIGCHLD);
+
+  for (;;) {
+    pid = waitpid(-1, &status, WNOHANG);
+
+    if (pid == 0)
+      return;
+
+    if (pid == -1) {
+      if (errno == ECHILD)
+        return; /* XXX stop signal watcher? */
+      else
+        abort();
+    }
+
+    process = uv__process_find(handle->loop, pid);
+    if (process == NULL)
+      continue; /* XXX bug? abort? */
+
+    if (process->exit_cb == NULL)
+      continue;
+
+    exit_status = 0;
+    term_signal = 0;
+
+    if (WIFEXITED(status))
+      exit_status = WEXITSTATUS(status);
+
+    if (WIFSIGNALED(status))
+      term_signal = WTERMSIG(status);
+
+    if (process->errorno)
+      uv__set_sys_error(process->loop, process->errorno);
+
+    process->exit_cb(process, exit_status, term_signal);
+  }
 }
 
 
@@ -306,6 +350,7 @@ int uv_spawn(uv_loop_t* loop,
   struct pollfd pfd;
   int (*pipes)[2];
   int stdio_count;
+  ngx_queue_t* q;
   pid_t pid;
   int i;
   int r;
@@ -318,6 +363,7 @@ int uv_spawn(uv_loop_t* loop,
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
+  ngx_queue_init(&process->queue);
 
   stdio_count = options.stdio_count;
   if (stdio_count < 3)
@@ -402,12 +448,6 @@ int uv_spawn(uv_loop_t* loop,
 
   close(signal_pipe[0]);
 
-  ev_child_init(&process->child_watcher, uv__chld, pid, 0);
-  ev_child_start(process->loop->ev, &process->child_watcher);
-  process->child_watcher.data = process;
-  process->exit_cb = options.exit_cb;
-  process->pid = pid;
-
   for (i = 0; i < options.stdio_count; i++) {
     if (uv__process_open_stream(options.stdio + i, pipes[i], i == 0)) {
       while (i--) uv__process_close_stream(options.stdio + i);
@@ -415,9 +455,15 @@ int uv_spawn(uv_loop_t* loop,
     }
   }
 
-  uv__handle_start(process);
-  free(pipes);
+  q = uv__process_queue(loop, pid);
+  ngx_queue_insert_tail(q, &process->queue);
+  uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 
+  process->pid = pid;
+  process->exit_cb = options.exit_cb;
+  uv__handle_start(process);
+
+  free(pipes);
   return 0;
 
 error:
@@ -457,6 +503,7 @@ uv_err_t uv_kill(int pid, int signum) {
 
 
 void uv__process_close(uv_process_t* handle) {
-  ev_child_stop(handle->loop->ev, &handle->child_watcher);
+  /* TODO stop signal watcher when this is the last handle */
+  ngx_queue_remove(&handle->queue);
   uv__handle_stop(handle);
 }

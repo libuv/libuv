@@ -28,10 +28,13 @@
 
 
 int uv__loop_init(uv_loop_t* loop, int default_loop) {
+  unsigned int i;
+  int flags;
+
 #if HAVE_KQUEUE
-  int flags = EVBACKEND_KQUEUE;
+  flags = EVBACKEND_KQUEUE;
 #else
-  int flags = EVFLAG_AUTO;
+  flags = EVFLAG_AUTO;
 #endif
 
   memset(loop, 0, sizeof(*loop));
@@ -51,6 +54,13 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   loop->ev = (default_loop ? ev_default_loop : ev_loop_new)(flags);
   ev_set_userdata(loop->ev, loop);
   eio_channel_init(&loop->uv_eio_channel, loop);
+
+  uv_signal_init(loop, &loop->child_watcher);
+  uv__handle_unref(&loop->child_watcher);
+  loop->child_watcher.flags |= UV__HANDLE_INTERNAL;
+
+  for (i = 0; i < ARRAY_SIZE(loop->process_handles); i++)
+    ngx_queue_init(loop->process_handles + i);
 
 #if __linux__
   loop->inotify_watchers = NULL;

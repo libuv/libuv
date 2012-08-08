@@ -125,6 +125,7 @@ struct uv__io_s {
   uv_async_t uv_eio_done_poll_notifier;                                       \
   uv_idle_t uv_eio_poller;                                                    \
   uv_handle_t* closing_handles;                                               \
+  ngx_queue_t process_handles[1];                                             \
   ngx_queue_t prepare_handles;                                                \
   ngx_queue_t check_handles;                                                  \
   ngx_queue_t idle_handles;                                                   \
@@ -135,6 +136,7 @@ struct uv__io_s {
   struct uv__timers { struct uv_timer_s* rbh_root; } timer_handles;           \
   uint64_t time;                                                              \
   void* signal_ctx;                                                           \
+  uv_signal_t child_watcher;                                                  \
   UV_LOOP_PRIVATE_PLATFORM_FIELDS
 
 #define UV_REQ_BUFSML_SIZE (4)
@@ -259,7 +261,7 @@ struct uv__io_s {
   int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
-  ev_child child_watcher;                                                     \
+  ngx_queue_t queue;                                                          \
   int errorno;                                                                \
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
