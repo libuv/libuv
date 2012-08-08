@@ -265,10 +265,6 @@ static void uv__process_child_init(uv_process_options_t options,
 }
 
 
-#ifndef SPAWN_WAIT_EXEC
-# define SPAWN_WAIT_EXEC 1
-#endif
-
 int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     uv_process_options_t options) {
   /*
@@ -279,11 +275,8 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   int stdio_count = options.stdio_count < 3 ? 3 : options.stdio_count;
   int* pipes = malloc(2 * stdio_count * sizeof(int));
-
-#if SPAWN_WAIT_EXEC
   int signal_pipe[2] = { -1, -1 };
   struct pollfd pfd;
-#endif
   int status;
   pid_t pid;
   int i;
@@ -339,18 +332,14 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
    * marked close-on-exec. Then, after the call to `fork()`,
    * the parent polls the read end until it sees POLLHUP.
    */
-#if SPAWN_WAIT_EXEC
   if (uv__make_pipe(signal_pipe, UV__F_NONBLOCK))
     goto error;
-#endif
 
   pid = fork();
 
   if (pid == -1) {
-#if SPAWN_WAIT_EXEC
     close(signal_pipe[0]);
     close(signal_pipe[1]);
-#endif
     environ = save_our_env;
     goto error;
   }
@@ -367,7 +356,6 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   /* Restore environment. */
   environ = save_our_env;
 
-#if SPAWN_WAIT_EXEC
   /* POLLHUP signals child has exited or execve()'d. */
   close(signal_pipe[1]);
   do {
@@ -380,7 +368,6 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
 
   assert((status == 1) && "poll() on pipe read end failed");
   close(signal_pipe[0]);
-#endif
 
   process->pid = pid;
 
