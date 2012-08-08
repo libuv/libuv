@@ -124,8 +124,7 @@ int uv__make_pipe(int fds[2], int flags) {
  * Used for initializing stdio streams like options.stdin_stream. Returns
  * zero on success.
  */
-static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2],
-                                  int writable) {
+static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int fd = -1;
   switch (container->flags & (UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD |
                               UV_INHERIT_STREAM)) {
@@ -153,7 +152,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2],
         return -1;
       }
 
-      fds[writable ? 1 : 0] = fd;
+      fds[1] = fd;
 
       return 0;
     default:
@@ -176,16 +175,19 @@ static int uv__process_stdio_flags(uv_stdio_container_t* container,
 }
 
 
-static int uv__process_open_stream(uv_stdio_container_t* container, int fds[2],
+static int uv__process_open_stream(uv_stdio_container_t* container,
+                                   int fds[2],
                                    int writable) {
-  int fd = fds[writable ? 1 : 0];
-  int child_fd = fds[writable ? 0 : 1];
+  int child_fd;
   int flags;
+  int fd;
+
+  fd = fds[0];
+  child_fd = fds[1];
 
   /* No need to create stream */
-  if (!(container->flags & UV_CREATE_PIPE) || fd < 0) {
+  if (!(container->flags & UV_CREATE_PIPE) || fd < 0)
     return 0;
-  }
 
   assert(child_fd >= 0);
   close(child_fd);
@@ -199,7 +201,6 @@ static int uv__process_open_stream(uv_stdio_container_t* container, int fds[2],
 
 static void uv__process_close_stream(uv_stdio_container_t* container) {
   if (!(container->flags & UV_CREATE_PIPE)) return;
-
   uv__stream_close((uv_stream_t*)container->data.stream);
 }
 
@@ -233,43 +234,41 @@ static void uv__write_int(int fd, int val) {
 
 static void uv__process_child_init(uv_process_options_t options,
                                    int stdio_count,
-                                   int* pipes,
+                                   int (*pipes)[2],
                                    int error_fd) {
+  int close_fd;
+  int use_fd;
   int i;
 
-  if (options.flags & UV_PROCESS_DETACHED) {
+  if (options.flags & UV_PROCESS_DETACHED)
     setsid();
-  }
 
-  /* Dup fds */
   for (i = 0; i < stdio_count; i++) {
-    /*
-     * stdin has swapped ends of pipe
-     * (it's the only one readable stream)
-     */
-    int close_fd = i == 0 ? pipes[i * 2 + 1] : pipes[i * 2];
-    int use_fd = i == 0 ? pipes[i * 2] : pipes[i * 2 + 1];
+    close_fd = pipes[i][0];
+    use_fd = pipes[i][1];
 
-    if (use_fd >= 0) {
+    if (use_fd >= 0)
       close(close_fd);
-    } else if (i < 3) {
-      /* `/dev/null` stdin, stdout, stderr even if they've flag UV_IGNORE */
+    else if (i >= 3)
+      continue;
+    else {
+      /* redirect stdin, stdout and stderr to /dev/null even if UV_IGNORE is
+       * set
+       */
       use_fd = open("/dev/null", i == 0 ? O_RDONLY : O_RDWR);
 
-      if (use_fd < 0) {
+      if (use_fd == -1) {
         uv__write_int(error_fd, errno);
         perror("failed to open stdio");
         _exit(127);
       }
-    } else {
-      continue;
     }
 
-    if (i != use_fd) {
+    if (i == use_fd)
+      uv__cloexec(use_fd, 0);
+    else {
       dup2(use_fd, i);
       close(use_fd);
-    } else {
-      uv__cloexec(use_fd, 0);
     }
   }
 
@@ -300,26 +299,17 @@ static void uv__process_child_init(uv_process_options_t options,
 }
 
 
-int uv_spawn(uv_loop_t* loop, uv_process_t* process,
-    uv_process_options_t options) {
-  /*
-   * Save environ in the case that we get it clobbered
-   * by the child process.
-   */
-  char** save_our_env = environ;
-
-  int stdio_count = options.stdio_count < 3 ? 3 : options.stdio_count;
-  int* pipes = malloc(2 * stdio_count * sizeof(int));
+int uv_spawn(uv_loop_t* loop,
+             uv_process_t* process,
+             const uv_process_options_t options) {
   int signal_pipe[2] = { -1, -1 };
+  char** save_our_env;
   struct pollfd pfd;
+  int (*pipes)[2];
+  int stdio_count;
   pid_t pid;
   int i;
   int r;
-
-  if (pipes == NULL) {
-    errno = ENOMEM;
-    goto error;
-  }
 
   assert(options.file != NULL);
   assert(!(options.flags & ~(UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
@@ -327,21 +317,37 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
                              UV_PROCESS_SETGID |
                              UV_PROCESS_SETUID)));
 
-
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
 
-  /* Init pipe pairs */
-  for (i = 0; i < stdio_count; i++) {
-    pipes[i * 2] = -1;
-    pipes[i * 2 + 1] = -1;
+  /* Save environ in case it gets clobbered by the child process. */
+  save_our_env = environ;
+
+  stdio_count = options.stdio_count;
+  if (stdio_count < 3)
+    stdio_count = 3;
+
+  pipes = malloc(stdio_count * sizeof(*pipes));
+  if (pipes == NULL) {
+    errno = ENOMEM;
+    goto error;
   }
 
-  /* Create socketpairs/pipes, or use raw fd */
-  for (i = 0; i < options.stdio_count; i++) {
-    if (uv__process_init_stdio(&options.stdio[i], pipes + i * 2, i != 0)) {
+  for (i = 0; i < stdio_count; i++) {
+    pipes[i][0] = -1;
+    pipes[i][1] = -1;
+  }
+
+  for (i = 0; i < options.stdio_count; i++)
+    if (uv__process_init_stdio(options.stdio + i, pipes[i]))
       goto error;
-    }
+
+  /* swap stdin file descriptors, it's the only writable stream */
+  {
+    int* p = pipes[0];
+    int t = p[0];
+    p[0] = p[1];
+    p[1] = t;
   }
 
   /* This pipe is used by the parent to wait until
@@ -411,13 +417,8 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
   process->pid = pid;
 
   for (i = 0; i < options.stdio_count; i++) {
-    if (uv__process_open_stream(&options.stdio[i], pipes + i * 2, i == 0)) {
-      int j;
-      /* Close all opened streams */
-      for (j = 0; j < i; j++) {
-        uv__process_close_stream(&options.stdio[j]);
-      }
-
+    if (uv__process_open_stream(options.stdio + i, pipes[i], i == 0)) {
+      while (i--) uv__process_close_stream(options.stdio + i);
       goto error;
     }
   }
@@ -431,10 +432,9 @@ error:
   uv__set_sys_error(process->loop, errno);
 
   for (i = 0; i < stdio_count; i++) {
-    close(pipes[i * 2]);
-    close(pipes[i * 2 + 1]);
+    close(pipes[i][0]);
+    close(pipes[i][1]);
   }
-
   free(pipes);
 
   return -1;
