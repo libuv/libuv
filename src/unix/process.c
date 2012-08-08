@@ -303,7 +303,6 @@ int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t options) {
   int signal_pipe[2] = { -1, -1 };
-  char** save_our_env;
   struct pollfd pfd;
   int (*pipes)[2];
   int stdio_count;
@@ -319,9 +318,6 @@ int uv_spawn(uv_loop_t* loop,
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   loop->counters.process_init++;
-
-  /* Save environ in case it gets clobbered by the child process. */
-  save_our_env = environ;
 
   stdio_count = options.stdio_count;
   if (stdio_count < 3)
@@ -378,7 +374,6 @@ int uv_spawn(uv_loop_t* loop,
   if (pid == -1) {
     close(signal_pipe[0]);
     close(signal_pipe[1]);
-    environ = save_our_env;
     goto error;
   }
 
@@ -386,9 +381,6 @@ int uv_spawn(uv_loop_t* loop,
     uv__process_child_init(options, stdio_count, pipes, signal_pipe[1]);
     abort();
   }
-
-  /* Restore environment. */
-  environ = save_our_env;
 
   /* POLLHUP signals child has exited or execve()'d. */
   close(signal_pipe[1]);
