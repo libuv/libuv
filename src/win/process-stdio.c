@@ -208,7 +208,7 @@ static int uv__duplicate_fd(uv_loop_t* loop, int fd, HANDLE* dup) {
     return -1;
   }
 
-  handle = (HANDLE)_get_osfhandle(fd);
+  handle = (HANDLE) _get_osfhandle(fd);
   return uv__duplicate_handle(loop, handle, dup);
 }
 
@@ -355,7 +355,7 @@ int uv__stdio_create(uv_loop_t* loop, uv_process_options_t* options,
             break;
 
           case FILE_TYPE_UNKNOWN:
-            if (GetLastError != 0) {
+            if (GetLastError() != 0) {
               uv__set_sys_error(loop, GetLastError());
               CloseHandle(child_handle);
               goto error;
