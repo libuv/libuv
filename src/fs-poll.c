@@ -36,8 +36,6 @@ static uv_statbuf_t zero_statbuf;
 int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle) {
   /* TODO(bnoordhuis) Mark fs_req internal. */
   uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_POLL);
-  loop->counters.fs_poll_init++;
-
   if (uv_timer_init(loop, &handle->timer_handle))
     return -1;
 

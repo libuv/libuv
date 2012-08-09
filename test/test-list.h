@@ -175,7 +175,6 @@ TEST_DECLARE   (thread_rwlock)
 TEST_DECLARE   (thread_create)
 TEST_DECLARE   (strlcpy)
 TEST_DECLARE   (strlcat)
-TEST_DECLARE   (counters_init)
 TEST_DECLARE   (dlerror)
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
@@ -419,7 +418,6 @@ TASK_LIST_START
   TEST_ENTRY  (thread_create)
   TEST_ENTRY  (strlcpy)
   TEST_ENTRY  (strlcat)
-  TEST_ENTRY  (counters_init)
   TEST_ENTRY  (dlerror)
 #if 0
   /* These are for testing the test runner. */

@@ -287,7 +287,6 @@
         'test/test-udp-options.c',
         'test/test-udp-send-and-recv.c',
         'test/test-udp-multicast-join.c',
-        'test/test-counters-init.c',
         'test/test-dlerror.c',
         'test/test-udp-multicast-ttl.c',
       ],

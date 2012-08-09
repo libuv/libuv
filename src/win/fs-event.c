@@ -55,8 +55,6 @@ static void uv_fs_event_init_handle(uv_loop_t* loop, uv_fs_event_t* handle,
   }
 
   uv__handle_start(handle);
-
-  loop->counters.fs_event_init++;
 }
 
 

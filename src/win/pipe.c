@@ -88,8 +88,6 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 
   uv_req_init(loop, (uv_req_t*) &handle->ipc_header_write_req);
 
-  loop->counters.pipe_init++;
-
   return 0;
 }
 

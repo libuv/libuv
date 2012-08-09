@@ -74,9 +74,6 @@ static void uv_process_init(uv_loop_t* loop, uv_process_t* handle) {
   uv_req_init(loop, (uv_req_t*)&handle->close_req);
   handle->close_req.type = UV_PROCESS_CLOSE;
   handle->close_req.data = handle;
-
-  loop->counters.handle_init++;
-  loop->counters.process_init++;
 }
 
 

@@ -453,8 +453,6 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
   memset(handle, 0, sizeof *handle);
 
   uv__handle_init(loop, (uv_handle_t*)handle, UV_UDP);
-  loop->counters.udp_init++;
-
   handle->fd = -1;
   ngx_queue_init(&handle->write_queue);
   ngx_queue_init(&handle->write_completed_queue);

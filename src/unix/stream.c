@@ -57,8 +57,6 @@ void uv__stream_init(uv_loop_t* loop,
                      uv_stream_t* stream,
                      uv_handle_type type) {
   uv__handle_init(loop, (uv_handle_t*)stream, type);
-  loop->counters.stream_init++;
-
   stream->alloc_cb = NULL;
   stream->close_cb = NULL;
   stream->connection_cb = NULL;
@@ -489,7 +487,6 @@ start:
   } else {
     /* Successful write */
 
-    /* Update the counters. */
     while (n >= 0) {
       uv_buf_t* buf = &(req->bufs[req->write_index]);
       size_t len = buf->len;

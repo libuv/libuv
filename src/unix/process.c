@@ -362,7 +362,6 @@ int uv_spawn(uv_loop_t* loop,
                              UV_PROCESS_SETUID)));
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
-  loop->counters.process_init++;
   ngx_queue_init(&process->queue);
 
   stdio_count = options.stdio_count;

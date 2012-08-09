@@ -78,8 +78,6 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   req->type = UV_WAKEUP;
   req->data = handle;
 
-  loop->counters.async_init++;
-
   uv__handle_start(handle);
 
   return 0;

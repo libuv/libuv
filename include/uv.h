@@ -1802,8 +1802,6 @@ struct uv_counters_s {
 
 struct uv_loop_s {
   UV_LOOP_PRIVATE_FIELDS
-  /* Diagnostic counters */
-  uv_counters_t counters;
   /* The last error */
   uv_err_t last_err;
   /* Loop reference counting */
