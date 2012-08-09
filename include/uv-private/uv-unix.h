@@ -117,6 +117,7 @@ struct uv__io_s {
 #endif
 
 #define UV_LOOP_PRIVATE_FIELDS                                                \
+  unsigned long flags;                                                        \
   /* Poll result queue */                                                     \
   eio_channel uv_eio_channel;                                                 \
   struct ev_loop* ev;                                                         \

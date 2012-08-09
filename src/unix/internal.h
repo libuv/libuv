@@ -82,7 +82,7 @@
 #define UV__IO_WRITE EV_WRITE
 #define UV__IO_ERROR EV_ERROR
 
-/* flags */
+/* handle flags */
 enum {
   UV_CLOSING          = 0x01,   /* uv_close() called but not finished. */
   UV_CLOSED           = 0x02,   /* close(2) finished. */
@@ -95,6 +95,11 @@ enum {
   UV_TCP_NODELAY      = 0x100,  /* Disable Nagle. */
   UV_TCP_KEEPALIVE    = 0x200,  /* Turn on keep-alive. */
   UV_TCP_SINGLE_ACCEPT = 0x400  /* Only accept() when idle. */
+};
+
+/* loop flags */
+enum {
+  UV_LOOP_EIO_INITIALIZED = 1
 };
 
 inline static void uv__req_init(uv_loop_t* loop,
