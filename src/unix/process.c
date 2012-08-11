@@ -249,19 +249,6 @@ static void uv__process_close_stream(uv_stdio_container_t* container) {
 }
 
 
-static int uv__read_int(int fd) {
-  ssize_t n;
-  int val;
-
-  do
-    n = read(fd, &val, sizeof(val));
-  while (n == -1 && errno == EINTR);
-
-  assert(n == sizeof(val));
-  return val;
-}
-
-
 static void uv__write_int(int fd, int val) {
   ssize_t n;
 
@@ -347,13 +334,12 @@ int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t options) {
   int signal_pipe[2] = { -1, -1 };
-  struct pollfd pfd;
   int (*pipes)[2];
   int stdio_count;
   ngx_queue_t* q;
+  ssize_t r;
   pid_t pid;
   int i;
-  int r;
 
   assert(options.file != NULL);
   assert(!(options.flags & ~(UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
@@ -409,9 +395,9 @@ int uv_spawn(uv_loop_t* loop,
    *
    * To avoid ambiguity, we create a pipe with both ends
    * marked close-on-exec. Then, after the call to `fork()`,
-   * the parent polls the read end until it sees POLLHUP.
+   * the parent polls the read end until it EOFs or errors with EPIPE.
    */
-  if (uv__make_pipe(signal_pipe, UV__F_NONBLOCK))
+  if (uv__make_pipe(signal_pipe, 0))
     goto error;
 
   pid = fork();
@@ -427,23 +413,21 @@ int uv_spawn(uv_loop_t* loop,
     abort();
   }
 
-  /* POLLHUP signals child has exited or execve()'d. */
   close(signal_pipe[1]);
-  pfd.revents = 0;
-  pfd.events = POLLIN|POLLHUP;
-  pfd.fd = signal_pipe[0];
 
+  process->errorno = 0;
   do
-    r = poll(&pfd, 1, -1);
+    r = read(signal_pipe[0], &process->errorno, sizeof(process->errorno));
   while (r == -1 && errno == EINTR);
 
-  assert((r == 1) && "poll()_on read end of pipe failed");
-  assert((pfd.revents & (POLLIN|POLLHUP)) && "unexpected poll() revents");
-
-  if (pfd.revents & POLLIN)
-    process->errorno = uv__read_int(signal_pipe[0]);
-  else /* POLLHUP */
-    process->errorno = 0;
+  if (r == 0)
+    ; /* okay, EOF */
+  else if (r == sizeof(process->errorno))
+    ; /* okay, read errorno */
+  else if (r == -1 && errno == EPIPE)
+    ; /* okay, got EPIPE */
+  else
+    abort();
 
   close(signal_pipe[0]);
 
