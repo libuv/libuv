@@ -430,13 +430,13 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   }
 
   /* Convert name to UTF16. */
-  nameSize = uv_utf8_to_utf16(name, NULL, 0) * sizeof(wchar_t);
-  handle->name = (wchar_t*)malloc(nameSize);
+  nameSize = uv_utf8_to_utf16(name, NULL, 0) * sizeof(WCHAR);
+  handle->name = (WCHAR*)malloc(nameSize);
   if (!handle->name) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
 
-  if (!uv_utf8_to_utf16(name, handle->name, nameSize / sizeof(wchar_t))) {
+  if (!uv_utf8_to_utf16(name, handle->name, nameSize / sizeof(WCHAR))) {
     uv__set_sys_error(loop, GetLastError());
     return -1;
   }
@@ -542,13 +542,13 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   req->cb = cb;
 
   /* Convert name to UTF16. */
-  nameSize = uv_utf8_to_utf16(name, NULL, 0) * sizeof(wchar_t);
-  handle->name = (wchar_t*)malloc(nameSize);
+  nameSize = uv_utf8_to_utf16(name, NULL, 0) * sizeof(WCHAR);
+  handle->name = (WCHAR*)malloc(nameSize);
   if (!handle->name) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
 
-  if (!uv_utf8_to_utf16(name, handle->name, nameSize / sizeof(wchar_t))) {
+  if (!uv_utf8_to_utf16(name, handle->name, nameSize / sizeof(WCHAR))) {
     errorno = GetLastError();
     goto error;
   }

@@ -36,7 +36,7 @@
 
 typedef struct env_var {
   const char* narrow;
-  const wchar_t* wide;
+  const WCHAR* wide;
   int len; /* including null or '=' */
   int supplied;
   int value_len;
@@ -101,15 +101,15 @@ static void uv_process_init(uv_loop_t* loop, uv_process_t* handle) {
 /*
  * Helper function for search_path
  */
-static wchar_t* search_path_join_test(const wchar_t* dir,
+static WCHAR* search_path_join_test(const WCHAR* dir,
                                       int dir_len,
-                                      const wchar_t* name,
+                                      const WCHAR* name,
                                       int name_len,
-                                      const wchar_t* ext,
+                                      const WCHAR* ext,
                                       int ext_len,
-                                      const wchar_t* cwd,
+                                      const WCHAR* cwd,
                                       int cwd_len) {
-  wchar_t *result, *result_pos;
+  WCHAR *result, *result_pos;
   DWORD attrs;
 
   if (dir_len >= 1 && (dir[0] == L'/' || dir[0] == L'\\')) {
@@ -135,7 +135,7 @@ static wchar_t* search_path_join_test(const wchar_t* dir,
   }
 
   /* Allocate buffer for output */
-  result = result_pos = (wchar_t*)malloc(sizeof(wchar_t) *
+  result = result_pos = (WCHAR*)malloc(sizeof(WCHAR) *
       (cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1));
 
   /* Copy cwd */
@@ -192,14 +192,14 @@ static wchar_t* search_path_join_test(const wchar_t* dir,
 /*
  * Helper function for search_path
  */
-static wchar_t* path_search_walk_ext(const wchar_t *dir,
+static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                      int dir_len,
-                                     const wchar_t *name,
+                                     const WCHAR *name,
                                      int name_len,
-                                     wchar_t *cwd,
+                                     WCHAR *cwd,
                                      int cwd_len,
                                      int name_has_ext) {
-  wchar_t* result;
+  WCHAR* result;
 
   /* If the name itself has a nonempty extension, try this extension first */
   if (name_has_ext) {
@@ -273,14 +273,14 @@ static wchar_t* path_search_walk_ext(const wchar_t *dir,
  *
  * TODO: correctly interpret UNC paths
  */
-static wchar_t* search_path(const wchar_t *file,
-                            wchar_t *cwd,
-                            const wchar_t *path) {
+static WCHAR* search_path(const WCHAR *file,
+                            WCHAR *cwd,
+                            const WCHAR *path) {
   int file_has_dir;
-  wchar_t* result = NULL;
-  wchar_t *file_name_start;
-  wchar_t *dot;
-  const wchar_t *dir_start, *dir_end, *dir_path;
+  WCHAR* result = NULL;
+  WCHAR *file_name_start;
+  WCHAR *dot;
+  const WCHAR *dir_start, *dir_end, *dir_path;
   int dir_len;
   int name_has_ext;
 
@@ -297,7 +297,7 @@ static wchar_t* search_path(const wchar_t *file,
 
   /* Find the start of the filename so we can split the directory from the */
   /* name. */
-  for (file_name_start = (wchar_t*)file + file_len;
+  for (file_name_start = (WCHAR*)file + file_len;
        file_name_start > file
            && file_name_start[-1] != L'\\'
            && file_name_start[-1] != L'/'
@@ -379,10 +379,10 @@ static wchar_t* search_path(const wchar_t *file,
  * Quotes command line arguments
  * Returns a pointer to the end (next char to be written) of the buffer
  */
-wchar_t* quote_cmd_arg(const wchar_t *source, wchar_t *target) {
+WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
   int len = wcslen(source),
       i, quote_hit;
-  wchar_t* start;
+  WCHAR* start;
 
   /*
    * Check if the string must be quoted;
@@ -571,11 +571,11 @@ static void check_required_vars_contains_var(env_var_t* required, int size,
  * these get defined if the input environment block does not contain any
  * values for them.
  */
-wchar_t* make_program_env(char** env_block) {
-  wchar_t* dst;
-  wchar_t* ptr;
+WCHAR* make_program_env(char** env_block) {
+  WCHAR* dst;
+  WCHAR* ptr;
   char** env;
-  int env_len = 1 * sizeof(wchar_t); /* room for closing null */
+  int env_len = 1 * sizeof(WCHAR); /* room for closing null */
   int len;
   int i;
   DWORD var_size;
@@ -590,18 +590,18 @@ wchar_t* make_program_env(char** env_block) {
     check_required_vars_contains_var(required_vars,
                                      ARRAY_SIZE(required_vars),
                                      *env);
-    env_len += (uv_utf8_to_utf16(*env, NULL, 0) * sizeof(wchar_t));
+    env_len += (uv_utf8_to_utf16(*env, NULL, 0) * sizeof(WCHAR));
   }
 
   for (i = 0; i < ARRAY_SIZE(required_vars); ++i) {
     if (!required_vars[i].supplied) {
-      env_len += required_vars[i].len * sizeof(wchar_t);
+      env_len += required_vars[i].len * sizeof(WCHAR);
       var_size = GetEnvironmentVariableW(required_vars[i].wide, NULL, 0);
       if (var_size == 0) {
         uv_fatal_error(GetLastError(), "GetEnvironmentVariableW");
       }
       required_vars[i].value_len = (int)var_size;
-      env_len += (int)var_size * sizeof(wchar_t);
+      env_len += (int)var_size * sizeof(WCHAR);
     }
   }
 
@@ -738,9 +738,9 @@ int uv_spawn(uv_loop_t* loop, uv_process_t* process,
     uv_process_options_t options) {
   int i;
   uv_err_t err = uv_ok_;
-  wchar_t* path = NULL;
+  WCHAR* path = NULL;
   BOOL result;
-  wchar_t* application_path = NULL, *application = NULL, *arguments = NULL,
+  WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
            *env = NULL, *cwd = NULL;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;

@@ -369,7 +369,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
-  wchar_t* name;                                                              \
+  WCHAR* name;                                                              \
   union {                                                                     \
     struct { uv_pipe_server_fields };                                         \
     struct { uv_pipe_connection_fields };                                     \
@@ -451,8 +451,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
   uv_getaddrinfo_cb getaddrinfo_cb;                                           \
   void* alloc;                                                                \
-  wchar_t* node;                                                              \
-  wchar_t* service;                                                           \
+  WCHAR* node;                                                                \
+  WCHAR* service;                                                             \
   struct addrinfoW* hints;                                                    \
   struct addrinfoW* res;                                                      \
   int retcode;
@@ -502,15 +502,14 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   HANDLE dir_handle;                                                          \
   int req_pending;                                                            \
   uv_fs_event_cb cb;                                                          \
-  wchar_t* filew;                                                             \
-  wchar_t* short_filew;                                                       \
-  wchar_t* dirw;                                                              \
+  WCHAR* filew;                                                               \
+  WCHAR* short_filew;                                                         \
+  WCHAR* dirw;                                                                \
   char* buffer;
 
 #define UV_SIGNAL_PRIVATE_FIELDS                                              \
   /* empty */
 
-int uv_utf16_to_utf8(const wchar_t* utf16Buffer, size_t utf16Size,
-    char* utf8Buffer, size_t utf8Size);
-int uv_utf8_to_utf16(const char* utf8Buffer, wchar_t* utf16Buffer,
+int uv_utf16_to_utf8(const WCHAR* utf16Buffer, size_t utf16Size,
+    char* utf8Buffer, size_t utf8Size);int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
     size_t utf16Size);
