@@ -199,10 +199,6 @@ INLINE static void uv_process_reqs(uv_loop_t* loop) {
         uv_process_proc_exit(loop, (uv_process_t*) req->data);
         break;
 
-      case UV_PROCESS_CLOSE:
-        uv_process_proc_close(loop, (uv_process_t*) req->data);
-        break;
-
       case UV_FS:
         uv_process_fs_req(loop, (uv_fs_t*) req);
         break;

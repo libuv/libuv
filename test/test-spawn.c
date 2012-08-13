@@ -589,8 +589,8 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 }
 
 
-wchar_t* make_program_args(char** args, int verbatim_arguments);
-wchar_t* quote_cmd_arg(const wchar_t *source, wchar_t *target);
+uv_err_t make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr);
+WCHAR* quote_cmd_arg(const wchar_t *source, wchar_t *target);
 
 TEST_IMPL(argument_escaping) {
   const wchar_t* test_str[] = {
@@ -611,6 +611,7 @@ TEST_IMPL(argument_escaping) {
   size_t total_size = 0;
   int i;
   int num_args;
+  uv_err_t result;
 
   char* verbatim[] = {
     "cmd.exe",
@@ -649,8 +650,10 @@ TEST_IMPL(argument_escaping) {
     free(test_output[i]);
   }
 
-  verbatim_output = make_program_args(verbatim, 1);
-  non_verbatim_output = make_program_args(verbatim, 0);
+  result = make_program_args(verbatim, 1, &verbatim_output);
+  ASSERT(result.code == UV_OK);
+  result = make_program_args(verbatim, 0, &non_verbatim_output);
+  ASSERT(result.code == UV_OK);
 
   wprintf(L"    verbatim_output: %s\n", verbatim_output);
   wprintf(L"non_verbatim_output: %s\n", non_verbatim_output);

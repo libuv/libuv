@@ -157,11 +157,11 @@ static HANDLE open_named_pipe(WCHAR* name, DWORD* duplex_flags) {
 }
 
 
-int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
+uv_err_t uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
     char* name, size_t nameSize) {
   HANDLE pipeHandle;
   int errorno;
-  int err;
+  uv_err_t err;
   char* ptr = (char*)handle;
 
   for (;;) {
@@ -179,9 +179,8 @@ int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
 
     errorno = GetLastError();
     if (errorno != ERROR_PIPE_BUSY && errorno != ERROR_ACCESS_DENIED) {
-      uv__set_sys_error(loop, errorno);
-      err = -1;
-      goto done;
+      err = uv__new_sys_error(errorno);
+      goto error;
     }
 
     /* Pipe name collision.  Increment the pointer and try again. */
@@ -192,17 +191,17 @@ int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
                              loop->iocp,
                              (ULONG_PTR)handle,
                              0) == NULL) {
-    uv__set_sys_error(loop, GetLastError());
-    err = -1;
-    goto done;
+    err = uv__new_sys_error(GetLastError());
+    goto error;
   }
 
   uv_pipe_connection_init(handle);
   handle->handle = pipeHandle;
-  err = 0;
 
-done:
-  if (err && pipeHandle != INVALID_HANDLE_VALUE) {
+  return uv_ok_;
+
+ error:
+  if (pipeHandle != INVALID_HANDLE_VALUE) {
     CloseHandle(pipeHandle);
   }
 

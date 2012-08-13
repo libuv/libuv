@@ -134,7 +134,7 @@ void uv_udp_endgame(uv_loop_t* loop, uv_udp_t* handle);
 /*
  * Pipes
  */
-int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
+uv_err_t uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
     char* name, size_t nameSize);
 
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
@@ -235,7 +235,6 @@ void uv_process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
  * Spawn
  */
 void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle);
-void uv_process_proc_close(uv_loop_t* loop, uv_process_t* handle);
 void uv_process_close(uv_loop_t* loop, uv_process_t* handle);
 void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle);
 
@@ -294,7 +293,7 @@ uv_err_code uv_translate_sys_error(int sys_errno);
 /*
  * Process stdio handles.
  */
-int uv__stdio_create(uv_loop_t* loop, uv_process_options_t* options,
+uv_err_t uv__stdio_create(uv_loop_t* loop, uv_process_options_t* options,
     BYTE** buffer_ptr);
 void uv__stdio_destroy(BYTE* buffer);
 void uv__stdio_noinherit(BYTE* buffer);

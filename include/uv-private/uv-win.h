@@ -252,7 +252,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   UV_FS_EVENT_REQ,                                                            \
   UV_POLL_REQ,                                                                \
   UV_PROCESS_EXIT,                                                            \
-  UV_PROCESS_CLOSE,                                                           \
   UV_READ,                                                                    \
   UV_UDP_RECV,                                                                \
   UV_WAKEUP,
@@ -462,15 +461,12 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  struct uv_process_close_s {                                                 \
-    UV_REQ_FIELDS                                                             \
-  } close_req;                                                                \
   BYTE* child_stdio_buffer;                                                   \
+  uv_err_t spawn_error;                                                       \
   int exit_signal;                                                            \
-  DWORD spawn_errno;                                                          \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \
-  HANDLE close_handle;
+  volatile char exit_cb_pending;
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
   int flags;                                                                  \
