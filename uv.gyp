@@ -59,6 +59,7 @@
           'sources': [
             'include/uv-private/uv-win.h',
             'src/win/async.c',
+            'src/win/atomicops-inl.h',
             'src/win/core.c',
             'src/win/dl.c',
             'src/win/error.c',
