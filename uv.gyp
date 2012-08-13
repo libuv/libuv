@@ -278,6 +278,7 @@
         'test/test-tcp-unexpected-read.c',
         'test/test-threadpool.c',
         'test/test-mutexes.c',
+        'test/test-signal.c',
         'test/test-thread.c',
         'test/test-timer-again.c',
         'test/test-timer.c',

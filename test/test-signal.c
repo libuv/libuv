@@ -28,6 +28,11 @@ TEST_IMPL(we_get_signal) {
   return 0;
 }
 
+
+TEST_IMPL(we_get_signals) {
+  return 0;
+}
+
 #else /* !_WIN32 */
 
 #include <stdio.h>
