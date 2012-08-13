@@ -65,7 +65,7 @@ static void exit_cb_failure_expected(uv_process_t* process, int exit_status,
     int term_signal) {
   printf("exit_cb\n");
   exit_cb_called++;
-  ASSERT(exit_status == 127);
+  ASSERT(exit_status == -1);
   ASSERT(term_signal == 0);
   uv_close((uv_handle_t*)process, close_cb);
 }
