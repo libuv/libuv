@@ -400,6 +400,8 @@ int uv_spawn(uv_loop_t* loop,
   if (uv__make_pipe(signal_pipe, 0))
     goto error;
 
+  uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
+
   pid = fork();
 
   if (pid == -1) {
@@ -440,7 +442,6 @@ int uv_spawn(uv_loop_t* loop,
 
   q = uv__process_queue(loop, pid);
   ngx_queue_insert_tail(q, &process->queue);
-  uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 
   process->pid = pid;
   process->exit_cb = options.exit_cb;
