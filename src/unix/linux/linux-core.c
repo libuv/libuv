@@ -64,10 +64,6 @@ static struct {
 } process_title;
 
 
-/*
- * There's probably some way to get time from Linux than gettimeofday(). What
- * it is, I don't know.
- */
 uint64_t uv_hrtime() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
