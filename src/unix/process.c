@@ -105,8 +105,10 @@ static void uv__chld(uv_signal_t* handle, int signum) {
     if (WIFSIGNALED(status))
       term_signal = WTERMSIG(status);
 
-    if (process->errorno)
+    if (process->errorno) {
       uv__set_sys_error(process->loop, process->errorno);
+      exit_status = -1; /* execve() failed */
+    }
 
     process->exit_cb(process, exit_status, term_signal);
   }
