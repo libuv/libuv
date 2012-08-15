@@ -124,6 +124,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       uv_async_close(loop, (uv_async_t*) handle);
       return;
 
+    case UV_SIGNAL:
+      uv_signal_close(loop, (uv_signal_t*) handle);
+      return;
+
     case UV_PROCESS:
       uv_process_close(loop, (uv_process_t*) handle);
       return;
@@ -136,10 +140,6 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       uv__fs_poll_close((uv_fs_poll_t*) handle);
       uv__handle_start(handle);
       uv_want_endgame(loop, handle);
-      return;
-
-    case UV_SIGNAL:
-      uv_signal_close(loop, (uv_signal_t*) handle);
       return;
 
     default:

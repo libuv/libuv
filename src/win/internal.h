@@ -233,6 +233,19 @@ void uv_process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
 
 
 /*
+ * Signal watcher
+ */
+void uv_signals_init();
+int uv__signal_dispatch(int signum);
+
+void uv_signal_close(uv_loop_t* loop, uv_signal_t* handle);
+void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle);
+
+void uv_process_signal_req(uv_loop_t* loop, uv_signal_t* handle,
+    uv_req_t* req);
+
+
+/*
  * Spawn
  */
 void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle);
@@ -272,13 +285,6 @@ void uv_fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle);
  * Stat poller.
  */
 void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
-
-
-/*
- * Signals.
- */
-void uv_signal_close(uv_loop_t* loop, uv_signal_t* handle);
-void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle);
 
 
 /*

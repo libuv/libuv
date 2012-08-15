@@ -35,6 +35,7 @@ typedef intptr_t ssize_t;
 #include <windows.h>
 
 #include <process.h>
+#include <signal.h>
 #include <stdint.h>
 #include <sys/stat.h>
 
@@ -46,6 +47,24 @@ typedef intptr_t ssize_t;
 #ifndef S_IFLNK
 # define S_IFLNK 0xA000
 #endif
+
+/* Additional signals supported by uv_signal and or uv_kill. The CRT defines
+ * the following signals already:
+ *
+ *   #define SIGINT           2
+ *   #define SIGILL           4
+ *   #define SIGABRT_COMPAT   6
+ *   #define SIGFPE           8
+ *   #define SIGSEGV         11
+ *   #define SIGTERM         15
+ *   #define SIGBREAK        21
+ *   #define SIGABRT         22
+ *
+ * The additional signals have values that are common on other Unix
+ * variants (Linux and Darwin)
+ */
+#define SIGHUP                1
+#define SIGKILL               9
 
 /*
  * Guids and typedefs for winsock extension functions
@@ -255,7 +274,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   UV_PROCESS_EXIT,                                                            \
   UV_READ,                                                                    \
   UV_UDP_RECV,                                                                \
-  UV_WAKEUP,
+  UV_WAKEUP,                                                                  \
+  UV_SIGNAL_REQ,
 
 #define UV_REQ_PRIVATE_FIELDS                                                 \
   union {                                                                     \
@@ -516,7 +536,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   char* buffer;
 
 #define UV_SIGNAL_PRIVATE_FIELDS                                              \
-  /* empty */
+  RB_ENTRY(uv_signal_s) tree_entry;                                           \
+  struct uv_req_s signal_req;                                                 \
+  unsigned long pending_signum;
 
 int uv_utf16_to_utf8(const WCHAR* utf16Buffer, size_t utf16Size,
     char* utf8Buffer, size_t utf8Size);

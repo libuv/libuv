@@ -1580,11 +1580,30 @@ UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
  *
  * TODO(bnoordhuis) As of 2012-08-10 only the default event loop supports
  *                  signals. That will be fixed.
+ *
+ * Some signal support is available on Windows:
+ *
+ *   SIGINT is normally delivered when the user presses CTRL+C. However, like
+ *   on Unix, it is not generated when terminal raw mode is enabled.
+ *
+ *   SIGBREAK is delivered when the user pressed CTRL+BREAK.
+ *
+ *   SIGHUP is generated when the user closes the console window. On SIGHUP the
+ *   program is given approximately 10 seconds to perform cleanup. After that
+ *   Windows will unconditionally terminate it.
+ *
+ * Watchers for other signals can be successfully created, but these signals
+ * are never generated. These signals are: SIGILL, SIGABRT, SIGFPE, SIGSEGV,
+ * SIGTERM and SIGKILL.
+ *
+ * Note that calls to raise() or abort() to programmatically raise a signal are
+ * not detected by libuv; these will not trigger a signal watcher.
  */
 struct uv_signal_s {
   UV_HANDLE_FIELDS
   uv_signal_cb signal_cb;
   UV_SIGNAL_PRIVATE_FIELDS
+  int signum;
 };
 
 /* These functions are no-ops on Windows. */

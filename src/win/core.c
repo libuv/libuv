@@ -55,6 +55,9 @@ static void uv_init(void) {
   /* Initialize FS */
   uv_fs_init();
 
+  /* Initialize signal stuff */
+  uv_signals_init();
+
   /* Initialize console */
   uv_console_init();
 
