@@ -29,12 +29,13 @@ typedef intptr_t ssize_t;
 # define _SSIZE_T_DEFINED
 #endif
 
-#include <process.h>
-#include <stdint.h>
 #include <winsock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+
+#include <process.h>
+#include <stdint.h>
 #include <sys/stat.h>
 
 #include "tree.h"
@@ -43,7 +44,7 @@ typedef intptr_t ssize_t;
 #define MAX_PIPENAME_LEN 256
 
 #ifndef S_IFLNK
-# define S_IFLNK          0xA000
+# define S_IFLNK 0xA000
 #endif
 
 /*
