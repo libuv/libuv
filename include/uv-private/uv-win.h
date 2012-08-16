@@ -380,28 +380,35 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 /* half-duplex so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   HANDLE handle;                                                              \
-  HANDLE read_line_handle;                                                    \
-  uv_buf_t read_line_buffer;                                                  \
-  HANDLE read_raw_wait;                                                       \
-  DWORD original_console_mode;                                                \
-  /* Fields used for translating win */                                       \
-  /* keystrokes into vt100 characters */                                      \
-  char last_key[8];                                                           \
-  unsigned char last_key_offset;                                              \
-  unsigned char last_key_len;                                                 \
-  INPUT_RECORD last_input_record;                                             \
-  WCHAR last_utf16_high_surrogate;                                            \
-  /* utf8-to-utf16 conversion state */                                        \
-  unsigned char utf8_bytes_left;                                              \
-  unsigned int utf8_codepoint;                                                \
-  /* eol conversion state */                                                  \
-  unsigned char previous_eol;                                                 \
-  /* ansi parser state */                                                     \
-  unsigned char ansi_parser_state;                                            \
-  unsigned char ansi_csi_argc;                                                \
-  unsigned short ansi_csi_argv[4];                                            \
-  COORD saved_position;                                                       \
-  WORD saved_attributes;
+  union {                                                                     \
+    struct {                                                                  \
+      /* Used for readable TTY handles */                                     \
+      HANDLE read_line_handle;                                                \
+      uv_buf_t read_line_buffer;                                              \
+      HANDLE read_raw_wait;                                                   \
+      DWORD original_console_mode;                                            \
+      /* Fields used for translating win keystrokes into vt100 characters */  \
+      char last_key[8];                                                       \
+      unsigned char last_key_offset;                                          \
+      unsigned char last_key_len;                                             \
+      WCHAR last_utf16_high_surrogate;                                        \
+      INPUT_RECORD last_input_record;                                         \
+    };                                                                        \
+    struct {                                                                  \
+      /* Used for writable TTY handles */                                     \
+      /* utf8-to-utf16 conversion state */                                    \
+      unsigned int utf8_codepoint;                                            \
+      unsigned char utf8_bytes_left;                                          \
+      /* eol conversion state */                                              \
+      unsigned char previous_eol;                                             \
+      /* ansi parser state */                                                 \
+      unsigned char ansi_parser_state;                                        \
+      unsigned char ansi_csi_argc;                                            \
+      unsigned short ansi_csi_argv[4];                                        \
+      COORD saved_position;                                                   \
+      WORD saved_attributes;                                                  \
+    };                                                                        \
+  };
 
 #define UV_POLL_PRIVATE_FIELDS                                                \
   SOCKET socket;                                                              \

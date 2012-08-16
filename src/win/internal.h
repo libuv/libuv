@@ -74,9 +74,10 @@
 #define UV_HANDLE_PIPESERVER                    0x02000000
 
 /* Only used by uv_tty_t handles. */
-#define UV_HANDLE_TTY_RAW                       0x01000000
-#define UV_HANDLE_TTY_SAVED_POSITION            0x02000000
-#define UV_HANDLE_TTY_SAVED_ATTRIBUTES          0x04000000
+#define UV_HANDLE_TTY_READABLE                  0x01000000
+#define UV_HANDLE_TTY_RAW                       0x02000000
+#define UV_HANDLE_TTY_SAVED_POSITION            0x04000000
+#define UV_HANDLE_TTY_SAVED_ATTRIBUTES          0x08000000
 
 /* Only used by uv_poll_t handles. */
 #define UV_HANDLE_POLL_SLOW                     0x02000000
