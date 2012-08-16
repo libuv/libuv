@@ -370,7 +370,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
-  WCHAR* name;                                                              \
+  WCHAR* name;                                                                \
   union {                                                                     \
     struct { uv_pipe_server_fields };                                         \
     struct { uv_pipe_connection_fields };                                     \
