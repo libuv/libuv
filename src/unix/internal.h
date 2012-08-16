@@ -197,6 +197,13 @@ void uv__timer_close(uv_timer_t* handle);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 
+#if defined(__APPLE__)
+int uv___stream_fd(uv_stream_t* handle);
+#define uv__stream_fd(handle) (uv___stream_fd((uv_stream_t*) (handle)))
+#else
+#define uv__stream_fd(handle) ((handle)->io_watcher.fd)
+#endif /* defined(__APPLE__) */
+
 #ifdef UV__O_NONBLOCK
 # define UV__F_NONBLOCK UV__O_NONBLOCK
 #else

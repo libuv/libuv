@@ -37,7 +37,7 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 static int maybe_new_socket(uv_tcp_t* handle, int domain, int flags) {
   int sockfd;
 
-  if (handle->io_watcher.fd != -1)
+  if (uv__stream_fd(handle) != -1)
     return 0;
 
   sockfd = uv__socket(domain, SOCK_STREAM, 0);
@@ -97,7 +97,7 @@ static int uv__connect(uv_connect_t* req,
   handle->delayed_error = 0;
 
   do
-    r = connect(handle->io_watcher.fd, addr, addrlen);
+    r = connect(uv__stream_fd(handle), addr, addrlen);
   while (r == -1 && errno == EINTR);
 
   if (r == -1) {
@@ -166,7 +166,7 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
     goto out;
   }
 
-  if (handle->io_watcher.fd < 0) {
+  if (uv__stream_fd(handle) < 0) {
     uv__set_sys_error(handle->loop, EINVAL);
     rv = -1;
     goto out;
@@ -175,7 +175,7 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
   /* sizeof(socklen_t) != sizeof(int) on some systems. */
   socklen = (socklen_t)*namelen;
 
-  if (getsockname(handle->io_watcher.fd, name, &socklen) == -1) {
+  if (getsockname(uv__stream_fd(handle), name, &socklen) == -1) {
     uv__set_sys_error(handle->loop, errno);
     rv = -1;
   } else {
@@ -203,7 +203,7 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
     goto out;
   }
 
-  if (handle->io_watcher.fd < 0) {
+  if (uv__stream_fd(handle) < 0) {
     uv__set_sys_error(handle->loop, EINVAL);
     rv = -1;
     goto out;
@@ -212,7 +212,7 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
   /* sizeof(socklen_t) != sizeof(int) on some systems. */
   socklen = (socklen_t)*namelen;
 
-  if (getpeername(handle->io_watcher.fd, name, &socklen) == -1) {
+  if (getpeername(uv__stream_fd(handle), name, &socklen) == -1) {
     uv__set_sys_error(handle->loop, errno);
     rv = -1;
   } else {
@@ -312,8 +312,8 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
 
 
 int uv_tcp_nodelay(uv_tcp_t* handle, int on) {
-  if (handle->io_watcher.fd != -1)
-    if (uv__tcp_nodelay(handle->io_watcher.fd, on))
+  if (uv__stream_fd(handle) != -1)
+    if (uv__tcp_nodelay(uv__stream_fd(handle), on))
       return -1;
 
   if (on)
@@ -326,8 +326,8 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int on) {
 
 
 int uv_tcp_keepalive(uv_tcp_t* handle, int on, unsigned int delay) {
-  if (handle->io_watcher.fd != -1)
-    if (uv__tcp_keepalive(handle->io_watcher.fd, on, delay))
+  if (uv__stream_fd(handle) != -1)
+    if (uv__tcp_keepalive(uv__stream_fd(handle), on, delay))
       return -1;
 
   if (on)
@@ -335,7 +335,7 @@ int uv_tcp_keepalive(uv_tcp_t* handle, int on, unsigned int delay) {
   else
     handle->flags &= ~UV_TCP_KEEPALIVE;
 
-  /* TODO Store delay if handle->io_watcher.fd == -1 but don't want to enlarge
+  /* TODO Store delay if uv__stream_fd(handle) == -1 but don't want to enlarge
    *      uv_tcp_t with an int that's almost never used...
    */
 
