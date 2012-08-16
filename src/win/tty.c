@@ -90,6 +90,7 @@ void uv_console_init() {
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
   HANDLE handle = INVALID_HANDLE_VALUE;
+  HANDLE output_handle = INVALID_HANDLE_VALUE;
   DWORD original_console_mode = 0;
   CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
 
@@ -106,20 +107,41 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
       return -1;
     }
 
+    /* Both readable and writable handles need access to the console output. */
+    /* If the given fd is readable then we need to open the output handle */
+    /* separately. */
+    output_handle = CreateFileW(L"CONOUT$",
+                                GENERIC_READ | GENERIC_WRITE,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                NULL,
+                                OPEN_EXISTING,
+                                0,
+                                NULL);
+    if (output_handle == INVALID_HANDLE_VALUE) {
+      uv__set_sys_error(loop, GetLastError());
+      return -1;
+    }
+
+    /* Obtain the screen buffer info with the output handle. */
+    if (!GetConsoleScreenBufferInfo(output_handle, &screen_buffer_info)) {
+      uv__set_sys_error(loop, GetLastError());
+      CloseHandle(output_handle);
+      return -1;
+    }
+
   } else {
     /* Obtain the screen buffer info with the output handle. */
     if (!GetConsoleScreenBufferInfo(handle, &screen_buffer_info)) {
       uv__set_sys_error(loop, GetLastError());
       return -1;
     }
-
-    /* Update the virtual window. We must hold the tty_output_lock because the */
-    /* virtual window state is shared between all uv_tty handles. */
-    EnterCriticalSection(&uv_tty_output_lock);
-    uv_tty_update_virtual_window(&screen_buffer_info);
-    LeaveCriticalSection(&uv_tty_output_lock);
   }
 
+  /* Update the virtual window. We must hold the tty_output_lock because the */
+  /* virtual window state is shared between all uv_tty handles. */
+  EnterCriticalSection(&uv_tty_output_lock);
+  uv_tty_update_virtual_window(&screen_buffer_info);
+  LeaveCriticalSection(&uv_tty_output_lock);
 
   uv_stream_init(loop, (uv_stream_t*) tty, UV_TTY);
   uv_connection_init((uv_stream_t*) tty);
@@ -130,6 +152,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
 
   if (readable) {
     /* Initialize TTY input specific fields. */
+    tty->output_handle = output_handle;
     tty->original_console_mode = original_console_mode;
     tty->flags |= UV_HANDLE_TTY_READABLE;
     tty->read_line_handle = NULL;
@@ -1773,6 +1796,7 @@ void uv_tty_close(uv_tty_t* handle) {
   if (handle->flags & UV_HANDLE_TTY_READABLE) {
     /* Readable TTY handle */
     uv_tty_read_stop(handle);
+    CloseHandle(handle->output_handle);
   } else {
     /* Writable TTY handle */
     handle->flags |= UV_HANDLE_SHUTTING;
