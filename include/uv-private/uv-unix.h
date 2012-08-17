@@ -252,8 +252,7 @@ typedef struct {
   int mode;
 
 #define UV_SIGNAL_PRIVATE_FIELDS                                              \
-  ngx_queue_t queue;                                                          \
-  unsigned int signum;                                                        \
+  ngx_queue_t queue;
 
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
   uv_fs_event_cb cb;                                                          \
