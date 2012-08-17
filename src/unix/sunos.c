@@ -63,6 +63,19 @@
 #endif
 
 
+int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
+  loop->fs_fd = -1;
+  return 0;
+}
+
+
+void uv__platform_loop_delete(uv_loop_t* loop) {
+  if (loop->fs_fd == -1) return;
+  close(loop->fs_fd);
+  loop->fs_fd = -1;
+}
+
+
 uint64_t uv_hrtime() {
   return (gethrtime());
 }

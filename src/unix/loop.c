@@ -62,33 +62,15 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   for (i = 0; i < ARRAY_SIZE(loop->process_handles); i++)
     ngx_queue_init(loop->process_handles + i);
 
-#if __linux__
-  loop->inotify_watchers = NULL;
-  loop->inotify_fd = -1;
-#endif
-#if HAVE_PORTS_FS
-  loop->fs_fd = -1;
-#endif
+  if (uv__platform_loop_init(loop, default_loop))
+    return -1;
+
   return 0;
 }
 
 
 void uv__loop_delete(uv_loop_t* loop) {
+  uv__platform_loop_delete(loop);
   uv__signal_unregister(loop);
   ev_loop_destroy(loop->ev);
-
-#if __linux__
-  if (loop->inotify_fd != -1) {
-    uv__io_stop(loop, &loop->inotify_read_watcher);
-    close(loop->inotify_fd);
-    loop->inotify_fd = -1;
-  }
-#endif
-
-#if HAVE_PORTS_FS
-  if (loop->fs_fd != -1) {
-    close(loop->fs_fd);
-    loop->fs_fd = -1;
-  }
-#endif
 }

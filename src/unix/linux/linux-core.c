@@ -69,6 +69,21 @@ static void read_times(unsigned int numcpus, uv_cpu_info_t* ci);
 static unsigned long read_cpufreq(unsigned int cpunum);
 
 
+int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
+  loop->inotify_watchers = NULL;
+  loop->inotify_fd = -1;
+  return 0;
+}
+
+
+void uv__platform_loop_delete(uv_loop_t* loop) {
+  if (loop->inotify_fd == -1) return;
+  uv__io_stop(loop, &loop->inotify_read_watcher);
+  close(loop->inotify_fd);
+  loop->inotify_fd = -1;
+}
+
+
 uint64_t uv_hrtime() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);

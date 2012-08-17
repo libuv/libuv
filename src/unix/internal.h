@@ -161,6 +161,10 @@ unsigned int uv__next_timeout(uv_loop_t* loop);
 void uv__signal_close(uv_signal_t* handle);
 void uv__signal_unregister(uv_loop_t* loop);
 
+/* platform specific */
+int uv__platform_loop_init(uv_loop_t* loop, int default_loop);
+void uv__platform_loop_delete(uv_loop_t* loop);
+
 /* various */
 void uv__async_close(uv_async_t* handle);
 void uv__check_close(uv_check_t* handle);

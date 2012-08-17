@@ -43,6 +43,15 @@
 static char *process_title;
 
 
+int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
+  return 0;
+}
+
+
+void uv__platform_loop_delete(uv_loop_t* loop) {
+}
+
+
 uint64_t uv_hrtime(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
