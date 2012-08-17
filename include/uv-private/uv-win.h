@@ -383,7 +383,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   union {                                                                     \
     struct {                                                                  \
       /* Used for readable TTY handles */                                     \
-      HANDLE output_handle;                                                   \
       HANDLE read_line_handle;                                                \
       uv_buf_t read_line_buffer;                                              \
       HANDLE read_raw_wait;                                                   \
