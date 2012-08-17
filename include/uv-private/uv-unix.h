@@ -140,8 +140,6 @@ struct uv__io_s {
   uv_signal_t child_watcher;                                                  \
   UV_LOOP_PRIVATE_PLATFORM_FIELDS
 
-#define UV_REQ_BUFSML_SIZE (4)
-
 #define UV_REQ_PRIVATE_FIELDS  /* empty */
 
 #define UV_WRITE_PRIVATE_FIELDS                                               \
@@ -150,7 +148,7 @@ struct uv__io_s {
   uv_buf_t* bufs;                                                             \
   int bufcnt;                                                                 \
   int error;                                                                  \
-  uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];
+  uv_buf_t bufsml[4];                                                         \
 
 #define UV_SHUTDOWN_PRIVATE_FIELDS /* empty */
 
@@ -164,7 +162,7 @@ struct uv__io_s {
   uv_buf_t* bufs;                                                             \
   ssize_t status;                                                             \
   uv_udp_send_cb send_cb;                                                     \
-  uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];                                        \
+  uv_buf_t bufsml[4];                                                         \
 
 #define UV_PRIVATE_REQ_TYPES /* empty */
 

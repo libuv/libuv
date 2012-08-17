@@ -418,6 +418,8 @@ static int uv__udp_send(uv_udp_send_t* req,
                         struct sockaddr* addr,
                         socklen_t addrlen,
                         uv_udp_send_cb send_cb) {
+  assert(bufcnt > 0);
+
   if (uv__udp_maybe_deferred_bind(handle, addr->sa_family))
     return -1;
 
@@ -429,7 +431,7 @@ static int uv__udp_send(uv_udp_send_t* req,
   req->handle = handle;
   req->bufcnt = bufcnt;
 
-  if (bufcnt <= UV_REQ_BUFSML_SIZE) {
+  if (bufcnt <= (int) ARRAY_SIZE(req->bufsml)) {
     req->bufs = req->bufsml;
   }
   else if ((req->bufs = malloc(bufcnt * sizeof(bufs[0]))) == NULL) {
