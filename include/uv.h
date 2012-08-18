@@ -1107,8 +1107,7 @@ UV_EXTERN int uv_async_send(uv_async_t* async);
 /*
  * uv_timer_t is a subclass of uv_handle_t.
  *
- * Wraps libev's ev_timer watcher. Used to get woken up at a specified time
- * in the future.
+ * Used to get woken up at a specified time in the future.
  */
 struct uv_timer_s {
   UV_HANDLE_FIELDS
@@ -1117,8 +1116,22 @@ struct uv_timer_s {
 
 UV_EXTERN int uv_timer_init(uv_loop_t*, uv_timer_t* timer);
 
-UV_EXTERN int uv_timer_start(uv_timer_t* timer, uv_timer_cb cb,
-    int64_t timeout, int64_t repeat);
+/*
+ * Start the timer. `timeout` and `repeat` are in milliseconds.
+ *
+ * If timeout is zero, the callback fires on the next tick of the event loop.
+ *
+ * If repeat is non-zero, the callback fires first after timeout milliseconds
+ * and then repeatedly after repeat milliseconds.
+ *
+ * timeout and repeat are signed integers but that will change in a future
+ * version of libuv. Don't pass in negative values, you'll get a nasty surprise
+ * when that change becomes effective.
+ */
+UV_EXTERN int uv_timer_start(uv_timer_t* timer,
+                             uv_timer_cb cb,
+                             int64_t timeout,
+                             int64_t repeat);
 
 UV_EXTERN int uv_timer_stop(uv_timer_t* timer);
 
@@ -1130,10 +1143,10 @@ UV_EXTERN int uv_timer_stop(uv_timer_t* timer);
 UV_EXTERN int uv_timer_again(uv_timer_t* timer);
 
 /*
- * Set the repeat value. Note that if the repeat value is set from a timer
- * callback it does not immediately take effect. If the timer was non-repeating
- * before, it will have been stopped. If it was repeating, then the old repeat
- * value will have been used to schedule the next timeout.
+ * Set the repeat value in milliseconds. Note that if the repeat value is set
+ * from a timer callback it does not immediately take effect. If the timer was
+ * non-repeating before, it will have been stopped. If it was repeating, then
+ * the old repeat value will have been used to schedule the next timeout.
  */
 UV_EXTERN void uv_timer_set_repeat(uv_timer_t* timer, int64_t repeat);
 
