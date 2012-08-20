@@ -125,6 +125,7 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
 
       case UV_SIGNAL:
         uv_signal_endgame(loop, (uv_signal_t*) handle);
+        break;
 
       case UV_PROCESS:
         uv_process_endgame(loop, (uv_process_t*) handle);

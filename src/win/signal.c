@@ -318,8 +318,8 @@ void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle) {
   assert(handle->flags & UV_HANDLE_CLOSING);
   assert(!(handle->flags & UV_HANDLE_CLOSED));
 
-  assert(handle->signum = 0);
-  assert(handle->pending_signum = 0);
+  assert(handle->signum == 0);
+  assert(handle->pending_signum == 0);
 
   handle->flags |= UV_HANDLE_CLOSED;
 
