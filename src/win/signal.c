@@ -169,9 +169,18 @@ static uv_err_t uv__signal_register(int signum) {
     case SIGHUP:
       return uv__signal_register_control_handler();
 
+    case SIGILL:
+    case SIGABRT_COMPAT:
+    case SIGFPE:
+    case SIGSEGV:
+    case SIGTERM:
+    case SIGABRT:
+      /* Signal is never raised. */
+      return uv_ok_;
+
     default:
-      /* Unsupported signal */
-      return uv__new_artificial_error(UV_ENOTSUP);
+      /* Invalid signal. */
+      return uv__new_artificial_error(UV_EINVAL);
   }
 }
 
@@ -183,9 +192,18 @@ static uv_err_t uv__signal_unregister(int signum) {
     case SIGHUP:
       return uv__signal_unregister_control_handler();
 
+    case SIGILL:
+    case SIGABRT_COMPAT:
+    case SIGFPE:
+    case SIGSEGV:
+    case SIGTERM:
+    case SIGABRT:
+      /* Nothing is registered for this signal. */
+      return uv_ok_;
+
     default:
-      /* Unsupported signal */
-      return uv__new_artificial_error(UV_ENOTSUP);
+      /* Invalid signal. */
+      return uv__new_artificial_error(UV_EINVAL);
   }
 }
 
@@ -242,6 +260,13 @@ int uv_signal_stop(uv_signal_t* handle) {
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
   uv_err_t err;
 
+  /* If the user supplies signum == 0, then return an error already. If the */
+  /* signum is otherwise invalid then uv__signal_register will find out */
+  /* eventually. */
+  if (signum == 0) {
+    uv__set_artificial_error(handle->loop, UV_EINVAL);
+    return -1;
+  }
 
   /* Short circuit: if the signal watcher is already watching {signum} don't */
   /* go through the process of deregistering and registering the handler. */
