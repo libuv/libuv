@@ -67,6 +67,9 @@ static void uv_loop_init(uv_loop_t* loop) {
 
   loop->refs = 0;
 
+  /* To prevent uninitialized memory access, loop->time must be intialized */
+  /* to zero before calling uv_update_time for the first time. */
+  loop->time = 0;
   uv_update_time(loop);
 
   loop->pending_reqs_tail = NULL;
