@@ -38,7 +38,7 @@ RB_HEAD(uv__signal_tree_s, uv_signal_s);
 
 
 static int uv__signal_unlock();
-static void uv__signal_event(uv_loop_t* loop, uv__io_t* watcher, int events);
+static void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2);
 static void uv__signal_stop(uv_signal_t* handle);
 
@@ -212,9 +212,8 @@ static int uv__signal_loop_once_init(uv_loop_t* loop) {
 
   uv__io_init(&loop->signal_io_watcher,
               uv__signal_event,
-              loop->signal_pipefd[0],
-              UV__IO_READ);
-  uv__io_start(loop, &loop->signal_io_watcher);
+              loop->signal_pipefd[0]);
+  uv__io_start(loop, &loop->signal_io_watcher, UV__IO_READ);
 
   return 0;
 }
@@ -329,7 +328,7 @@ int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 }
 
 
-static void uv__signal_event(uv_loop_t* loop, uv__io_t* watcher, int events) {
+static void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   uv__signal_msg_t* msg;
   uv_signal_t* handle;
   char buf[sizeof(uv__signal_msg_t) * 32];
