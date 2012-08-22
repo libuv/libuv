@@ -187,7 +187,13 @@ void uv_sem_post(uv_sem_t* sem) {
 
 
 void uv_sem_wait(uv_sem_t* sem) {
-  if (semaphore_wait(*sem))
+  int r;
+
+  do
+    r = semaphore_wait(*sem);
+  while (r == KERN_ABORTED);
+
+  if (r != KERN_SUCCESS)
     abort();
 }
 
