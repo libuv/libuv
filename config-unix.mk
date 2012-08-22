@@ -21,7 +21,7 @@
 E=
 CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -g
-CPPFLAGS += -Isrc -Isrc/unix/ev
+CPPFLAGS += -Isrc
 LINKFLAGS=-lm
 
 CPPFLAGS += -D_LARGEFILE_SOURCE
@@ -50,7 +50,6 @@ OBJS += src/unix/threadpool.o
 OBJS += src/unix/timer.o
 OBJS += src/unix/tty.o
 OBJS += src/unix/udp.o
-OBJS += src/unix/ev/ev.o
 OBJS += src/fs-poll.o
 OBJS += src/uv-common.o
 OBJS += src/inet.o
@@ -146,17 +145,12 @@ src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
 src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/unix/ev/ev.o: src/unix/ev/ev.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c src/unix/ev/ev.c -o src/unix/ev/ev.o -DEV_CONFIG_H=\"$(EV_CONFIG)\"
-
 clean-platform:
 	-rm -f src/unix/*.o
-	-rm -f src/unix/ev/*.o
 	-rm -f src/unix/linux/*.o
 	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
 
 distclean-platform:
 	-rm -f src/unix/*.o
-	-rm -f src/unix/ev/*.o
 	-rm -f src/unix/linux/*.o
 	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
