@@ -375,7 +375,7 @@ out:
 
 
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
-  struct sockaddr_storage taddr;
+  unsigned char taddr[sizeof(struct sockaddr_in6)];
   socklen_t addrlen;
 
   assert(domain == AF_INET || domain == AF_INET6);
