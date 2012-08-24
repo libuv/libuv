@@ -231,8 +231,6 @@ int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
   req->type = UV_SIGNAL_REQ;
   req->data = handle;
 
-  uv__handle_start(handle);
-
   return 0;
 }
 
