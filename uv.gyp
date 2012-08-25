@@ -343,7 +343,7 @@
         'test/benchmark-spawn.c',
         'test/benchmark-thread.c',
         'test/benchmark-tcp-write-batch.c',
-        'test/benchmark-udp-packet-storm.c',
+        'test/benchmark-udp-pummel.c',
         'test/dns-server.c',
         'test/echo-server.c',
         'test/blackhole-server.c',
