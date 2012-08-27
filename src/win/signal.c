@@ -333,9 +333,9 @@ void uv_process_signal_req(uv_loop_t* loop, uv_signal_t* handle,
 
 void uv_signal_close(uv_loop_t* loop, uv_signal_t* handle) {
   uv_signal_stop(handle);
+  uv__handle_closing(handle);
 
   if (handle->pending_signum == 0) {
-    uv__handle_start(handle);
     uv_want_endgame(loop, (uv_handle_t*) handle);
   }
 }
@@ -350,6 +350,5 @@ void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle) {
 
   handle->flags |= UV_HANDLE_CLOSED;
 
-  uv__handle_stop(handle);
   uv__handle_close(handle);
 }

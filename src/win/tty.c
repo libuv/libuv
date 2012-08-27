@@ -1816,7 +1816,7 @@ void uv_tty_close(uv_tty_t* handle) {
     handle->flags |= UV_HANDLE_SHUTTING;
   }
 
-  uv__handle_start(handle);
+  uv__handle_closing(handle);
 
   if (handle->reqs_pending == 0) {
     uv_want_endgame(handle->loop, (uv_handle_t*) handle);
@@ -1859,7 +1859,6 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
            handle->read_raw_wait == NULL);
 
     assert(!(handle->flags & UV_HANDLE_CLOSED));
-    uv__handle_stop(handle);
     uv__handle_close(handle);
   }
 }
