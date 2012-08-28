@@ -102,13 +102,13 @@ static void uv_process_init(uv_loop_t* loop, uv_process_t* handle) {
  * Helper function for search_path
  */
 static WCHAR* search_path_join_test(const WCHAR* dir,
-                                      int dir_len,
-                                      const WCHAR* name,
-                                      int name_len,
-                                      const WCHAR* ext,
-                                      int ext_len,
-                                      const WCHAR* cwd,
-                                      int cwd_len) {
+                                    size_t dir_len,
+                                    const WCHAR* name,
+                                    size_t name_len,
+                                    const WCHAR* ext,
+                                    size_t ext_len,
+                                    const WCHAR* cwd,
+                                    size_t cwd_len) {
   WCHAR *result, *result_pos;
   DWORD attrs;
 
@@ -193,12 +193,12 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
  * Helper function for search_path
  */
 static WCHAR* path_search_walk_ext(const WCHAR *dir,
-                                     int dir_len,
-                                     const WCHAR *name,
-                                     int name_len,
-                                     WCHAR *cwd,
-                                     int cwd_len,
-                                     int name_has_ext) {
+                                   size_t dir_len,
+                                   const WCHAR *name,
+                                   size_t name_len,
+                                   WCHAR *cwd,
+                                   size_t cwd_len,
+                                   int name_has_ext) {
   WCHAR* result;
 
   /* If the name itself has a nonempty extension, try this extension first */
@@ -281,11 +281,11 @@ static WCHAR* search_path(const WCHAR *file,
   WCHAR *file_name_start;
   WCHAR *dot;
   const WCHAR *dir_start, *dir_end, *dir_path;
-  int dir_len;
+  size_t dir_len;
   int name_has_ext;
 
-  int file_len = wcslen(file);
-  int cwd_len = wcslen(cwd);
+  size_t file_len = wcslen(file);
+  size_t cwd_len = wcslen(cwd);
 
   /* If the caller supplies an empty filename,
    * we're not gonna return c:\windows\.exe -- GFY!
@@ -380,8 +380,9 @@ static WCHAR* search_path(const WCHAR *file,
  * Returns a pointer to the end (next char to be written) of the buffer
  */
 WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
-  int len = wcslen(source),
-      i, quote_hit;
+  size_t len = wcslen(source);
+  size_t i;
+  int quote_hit;
   WCHAR* start;
 
   /*
@@ -512,7 +513,7 @@ uv_err_t make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr)
                                   *arg,
                                   -1,
                                   temp_buffer,
-                                  dst + dst_len - pos);
+                                  (int) (dst + dst_len - pos));
     if (arg_len == 0) {
       goto error;
     }
