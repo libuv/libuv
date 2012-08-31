@@ -31,11 +31,8 @@
 #if defined(__GNUC__)
 # define __read_mostly __attribute__((__section__(".data.read_mostly")))
 #else
+# define __attribute__(v)
 # define __read_mostly
-#endif
-
-#if defined(__STRICT_ANSI__)
-# define inline __inline
 #endif
 
 #undef HAVE_FUTIMES
@@ -108,9 +105,9 @@ enum {
   UV_LOOP_EIO_INITIALIZED = 1
 };
 
-inline static void uv__req_init(uv_loop_t* loop,
-                                uv_req_t* req,
-                                uv_req_type type) {
+__attribute__((unused))
+__attribute__((always_inline))
+static void uv__req_init(uv_loop_t* loop, uv_req_t* req, uv_req_type type) {
   req->type = type;
   uv__req_register(loop, req);
 }
