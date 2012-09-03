@@ -54,7 +54,6 @@
 #define UV_HANDLE_CONNECTED                     0x00002000
 #define UV_HANDLE_EOF                           0x00004000
 #define UV_HANDLE_SHUTTING                      0x00008000
-#define UV_HANDLE_SHUT                          0x00010000
 #define UV_HANDLE_READ_PENDING                  0x00020000
 #define UV_HANDLE_SYNC_BYPASS_IOCP              0x00040000
 #define UV_HANDLE_ZERO_READ                     0x00080000

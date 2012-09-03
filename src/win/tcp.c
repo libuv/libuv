@@ -169,7 +169,6 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
       uv__set_artificial_error(loop, UV_ECANCELED);
     } else if (shutdown(handle->socket, SD_SEND) != SOCKET_ERROR) {
       status = 0;
-      handle->flags |= UV_HANDLE_SHUT;
     } else {
       status = -1;
       uv__set_sys_error(loop, WSAGetLastError());
@@ -1342,7 +1341,6 @@ void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
     if (!(tcp->flags & UV_HANDLE_SHARED_TCP_SOCKET)) {
       /* Just do shutdown on non-shared sockets, which ensures graceful close. */
       shutdown(tcp->socket, SD_SEND);
-      tcp->flags |= UV_HANDLE_SHUT;
 
     } else if (uv_tcp_try_cancel_io(tcp) == 0) {
       /* In case of a shared socket, we try to cancel all outstanding I/O, */
