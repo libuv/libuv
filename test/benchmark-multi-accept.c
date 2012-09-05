@@ -91,6 +91,8 @@ static uv_buf_t ipc_alloc_cb(uv_handle_t* handle, size_t suggested_size);
 
 static void sv_async_cb(uv_async_t* handle, int status);
 static void sv_connection_cb(uv_stream_t* server_handle, int status);
+static void sv_read_cb(uv_stream_t* handle, ssize_t nread, uv_buf_t buf);
+static uv_buf_t sv_alloc_cb(uv_handle_t* handle, size_t suggested_size);
 
 static void cl_connect_cb(uv_connect_t* req, int status);
 static void cl_idle_cb(uv_idle_t* handle, int status);
@@ -292,8 +294,21 @@ static void sv_connection_cb(uv_stream_t* server_handle, int status) {
     ASSERT(0);
 
   ASSERT(0 == uv_accept(server_handle, (uv_stream_t*) storage));
-  uv_close((uv_handle_t*) storage, (uv_close_cb) free);
+  ASSERT(0 == uv_read_start((uv_stream_t*) storage, sv_alloc_cb, sv_read_cb));
   ctx->num_connects++;
+}
+
+
+static uv_buf_t sv_alloc_cb(uv_handle_t* handle, size_t suggested_size) {
+  static char buf[32];
+  return uv_buf_init(buf, sizeof(buf));
+}
+
+
+static void sv_read_cb(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
+  ASSERT(nread == -1);
+  ASSERT(uv_last_error(handle->loop).code == UV_EOF);
+  uv_close((uv_handle_t*) handle, (uv_close_cb) free);
 }
 
 
