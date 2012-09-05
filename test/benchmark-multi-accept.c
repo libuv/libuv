@@ -76,6 +76,7 @@ struct client_ctx {
   handle_storage_t client_handle;
   unsigned int num_connects;
   uv_connect_t connect_req;
+  uv_idle_t idle_handle;
 };
 
 static void ipc_connection_cb(uv_stream_t* ipc_pipe, int status);
@@ -92,6 +93,7 @@ static void sv_async_cb(uv_async_t* handle, int status);
 static void sv_connection_cb(uv_stream_t* server_handle, int status);
 
 static void cl_connect_cb(uv_connect_t* req, int status);
+static void cl_idle_cb(uv_idle_t* handle, int status);
 static void cl_close_cb(uv_handle_t* handle);
 
 static struct sockaddr_in listen_addr;
@@ -297,8 +299,15 @@ static void sv_connection_cb(uv_stream_t* server_handle, int status) {
 
 static void cl_connect_cb(uv_connect_t* req, int status) {
   struct client_ctx* ctx = container_of(req, struct client_ctx, connect_req);
+  uv_idle_start(&ctx->idle_handle, cl_idle_cb);
+  ASSERT(0 == status);
+}
+
+
+static void cl_idle_cb(uv_idle_t* handle, int status) {
+  struct client_ctx* ctx = container_of(handle, struct client_ctx, idle_handle);
   uv_close((uv_handle_t*) &ctx->client_handle, cl_close_cb);
-  ASSERT(status == 0);
+  uv_idle_stop(&ctx->idle_handle);
 }
 
 
@@ -307,8 +316,10 @@ static void cl_close_cb(uv_handle_t* handle) {
 
   ctx = container_of(handle, struct client_ctx, client_handle);
 
-  if (--ctx->num_connects == 0)
+  if (--ctx->num_connects == 0) {
+    uv_close((uv_handle_t*) &ctx->idle_handle, NULL);
     return;
+  }
 
   ASSERT(0 == uv_tcp_init(handle->loop, (uv_tcp_t*) &ctx->client_handle));
   ASSERT(0 == uv_tcp_connect(&ctx->connect_req,
@@ -356,6 +367,7 @@ static int test_tcp(unsigned int num_servers, unsigned int num_clients) {
                                handle,
                                listen_addr,
                                cl_connect_cb));
+    ASSERT(0 == uv_idle_init(loop, &ctx->idle_handle));
   }
 
   {
