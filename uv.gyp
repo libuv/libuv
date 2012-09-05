@@ -372,6 +372,7 @@
         'test/benchmark-list.h',
         'test/benchmark-loop-count.c',
         'test/benchmark-million-timers.c',
+        'test/benchmark-multi-accept.c',
         'test/benchmark-ping-pongs.c',
         'test/benchmark-pound.c',
         'test/benchmark-pump.c',
