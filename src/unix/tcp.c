@@ -247,6 +247,7 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
   if (uv_idle_init(tcp->loop, tcp->idle_handle))
     abort();
+  tcp->idle_handle->flags |= UV__HANDLE_INTERNAL;
 
   tcp->flags |= UV_TCP_SINGLE_ACCEPT;
 
