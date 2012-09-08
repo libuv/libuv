@@ -91,7 +91,7 @@ endif
 ifeq (NetBSD,$(uname_S))
 EV_CONFIG=config_netbsd.h
 EIO_CONFIG=config_netbsd.h
-LINKFLAGS+=
+LINKFLAGS+=-lkvm
 OBJS += src/unix/netbsd.o
 OBJS += src/unix/kqueue.o
 endif

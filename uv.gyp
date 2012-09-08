@@ -209,6 +209,18 @@
             'EIO_CONFIG_H="config_openbsd.h"',
           ],
         }],
+        [ 'OS=="netbsd"', {
+          'sources': [ 'src/unix/netbsd.c' ],
+          'defines': [
+            'EV_CONFIG_H="config_netbsd.h"',
+            'EIO_CONFIG_H="config_netbsd.h"',
+          ],
+          'direct_dependent_settings': {
+            'libraries': [
+              '-lkvm',
+            ],
+          },
+        }],
         [ 'OS=="mac" or OS=="freebsd" or OS=="openbsd" or OS=="netbsd"', {
           'sources': [ 'src/unix/kqueue.c' ],
         }],
