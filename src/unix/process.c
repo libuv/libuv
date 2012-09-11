@@ -240,6 +240,9 @@ static void uv__process_child_init(uv_process_options_t options,
     } else {
       uv__cloexec(use_fd, 0);
     }
+
+    if (fd <= 2)
+      uv__nonblock(fd, 0);
   }
 
   if (options.cwd && chdir(options.cwd)) {
