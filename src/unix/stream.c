@@ -440,7 +440,7 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
 
 
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, int events) {
-  static __read_mostly int use_emfile_trick = -1;
+  static int use_emfile_trick = -1;
   uv_stream_t* stream;
   int fd;
   int r;
