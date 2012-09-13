@@ -940,7 +940,7 @@ UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 /*
  * Opens an existing file descriptor or HANDLE as a pipe.
  */
-UV_EXTERN void uv_pipe_open(uv_pipe_t*, uv_file file);
+UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 
