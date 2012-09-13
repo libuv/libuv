@@ -1813,7 +1813,7 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
 
     /* TTY shutdown is really just a no-op */
     if (handle->shutdown_req->cb) {
-      if (handle->flags & UV_HANDLE_CLOSING) {
+      if (handle->flags & UV__HANDLE_CLOSING) {
         uv__set_artificial_error(loop, UV_ECANCELED);
         handle->shutdown_req->cb(handle->shutdown_req, -1);
       } else {
@@ -1827,7 +1827,7 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
     return;
   }
 
-  if (handle->flags & UV_HANDLE_CLOSING &&
+  if (handle->flags & UV__HANDLE_CLOSING &&
       handle->reqs_pending == 0) {
     /* The console handle duplicate used for line reading should be destroyed */
     /* by uv_tty_read_stop. */
