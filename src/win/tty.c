@@ -1011,10 +1011,10 @@ static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
   count = info.dwSize.X * info.dwSize.Y;
 
   if (!(FillConsoleOutputCharacterW(handle->handle,
-                              L'\x20',
-                              count,
-                              origin,
-                              &written) &&
+                                    L'\x20',
+                                    count,
+                                    origin,
+                                    &written) &&
         FillConsoleOutputAttribute(handle->handle,
                                    char_attrs,
                                    written,
