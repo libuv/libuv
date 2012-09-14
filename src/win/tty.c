@@ -152,7 +152,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
     memset(&tty->last_input_record, 0, sizeof tty->last_input_record);
   } else {
     /* TTY output specific fields. */
-    tty->flags |= UV_HANDLE_READABLE;
+    tty->flags |= UV_HANDLE_WRITABLE;
 
     /* Init utf8-to-utf16 conversion state. */
     tty->utf8_bytes_left = 0;
