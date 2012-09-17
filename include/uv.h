@@ -1675,7 +1675,14 @@ enum uv_fs_event_flags {
    * regular interval.
    * This flag is currently not implemented yet on any backend.
    */
-  UV_FS_EVENT_STAT = 2
+  UV_FS_EVENT_STAT = 2,
+
+  /*
+   * By default, event watcher, when watching directory, is not registering
+   * (is ignoring) changes in it's subdirectories.
+   * This flag will override this behaviour on platforms that support it.
+   */
+  UV_FS_EVENT_RECURSIVE = 3
 };
 
 
