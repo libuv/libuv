@@ -30,7 +30,6 @@
 
 int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
   uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
-  tcp->idle_handle = NULL;
   return 0;
 }
 
@@ -245,20 +244,9 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
     single_accept = (val == NULL) || (atoi(val) != 0); /* on by default */
   }
 
-  if (!single_accept)
-    goto no_single_accept;
+  if (single_accept)
+    tcp->flags |= UV_TCP_SINGLE_ACCEPT;
 
-  tcp->idle_handle = malloc(sizeof(*tcp->idle_handle));
-  if (tcp->idle_handle == NULL)
-    return uv__set_sys_error(tcp->loop, ENOMEM);
-
-  if (uv_idle_init(tcp->loop, tcp->idle_handle))
-    abort();
-  tcp->idle_handle->flags |= UV__HANDLE_INTERNAL;
-
-  tcp->flags |= UV_TCP_SINGLE_ACCEPT;
-
-no_single_accept:
   if (maybe_new_socket(tcp, AF_INET, UV_STREAM_READABLE))
     return -1;
 
@@ -397,8 +385,5 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 
 
 void uv__tcp_close(uv_tcp_t* handle) {
-  if (handle->idle_handle)
-    uv_close((uv_handle_t*)handle->idle_handle, (uv_close_cb)free);
-
   uv__stream_close((uv_stream_t*)handle);
 }
