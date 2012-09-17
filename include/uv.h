@@ -599,6 +599,11 @@ struct uv_tcp_s {
 
 UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
 
+/*
+ * Opens an existing file descriptor or SOCKET as a tcp handle.
+ */
+UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
+
 /* Enable/disable Nagle's algorithm. */
 UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
 
@@ -702,6 +707,11 @@ struct uv_udp_send_s {
  * Returns 0 on success.
  */
 UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
+
+/*
+ * Opens an existing file descriptor or SOCKET as a udp handle.
+ */
+UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 
 /*
  * Bind to a IPv4 address and port.

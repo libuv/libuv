@@ -153,6 +153,13 @@ int uv__tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
 }
 
 
+int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
+  return uv__stream_open((uv_stream_t*)handle,
+                         sock,
+                         UV_STREAM_READABLE | UV_STREAM_WRITABLE);
+}
+
+
 int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
     int* namelen) {
   socklen_t socklen;
