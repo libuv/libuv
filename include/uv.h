@@ -139,11 +139,13 @@ typedef enum {
   XX(CHECK, check)                                                            \
   XX(FS_EVENT, fs_event)                                                      \
   XX(FS_POLL, fs_poll)                                                        \
+  XX(HANDLE, handle)                                                          \
   XX(IDLE, idle)                                                              \
   XX(NAMED_PIPE, pipe)                                                        \
   XX(POLL, poll)                                                              \
   XX(PREPARE, prepare)                                                        \
   XX(PROCESS, process)                                                        \
+  XX(STREAM, stream)                                                          \
   XX(TCP, tcp)                                                                \
   XX(TIMER, timer)                                                            \
   XX(TTY, tty)                                                                \
@@ -151,6 +153,7 @@ typedef enum {
   XX(SIGNAL, signal)                                                          \
 
 #define UV_REQ_TYPE_MAP(XX)                                                   \
+  XX(REQ, req)                                                                \
   XX(CONNECT, connect)                                                        \
   XX(WRITE, write)                                                            \
   XX(SHUTDOWN, shutdown)                                                      \
@@ -386,12 +389,11 @@ struct uv_shutdown_s {
 
 
 #define UV_HANDLE_FIELDS                                                      \
-  /* read-only */                                                             \
-  uv_loop_t* loop;                                                            \
   /* public */                                                                \
   uv_close_cb close_cb;                                                       \
   void* data;                                                                 \
   /* read-only */                                                             \
+  uv_loop_t* loop;                                                            \
   uv_handle_type type;                                                        \
   /* private */                                                               \
   ngx_queue_t handle_queue;                                                   \
@@ -937,8 +939,8 @@ UV_EXTERN uv_handle_type uv_guess_handle(uv_file file);
 struct uv_pipe_s {
   UV_HANDLE_FIELDS
   UV_STREAM_FIELDS
-  UV_PIPE_PRIVATE_FIELDS
   int ipc; /* non-zero if this pipe is used for passing handles */
+  UV_PIPE_PRIVATE_FIELDS
 };
 
 /*
@@ -1637,8 +1639,8 @@ UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
 struct uv_signal_s {
   UV_HANDLE_FIELDS
   uv_signal_cb signal_cb;
-  UV_SIGNAL_PRIVATE_FIELDS
   int signum;
+  UV_SIGNAL_PRIVATE_FIELDS
 };
 
 /* These functions are no-ops on Windows. */
@@ -1863,15 +1865,15 @@ struct uv_counters_s {
 
 
 struct uv_loop_s {
-  UV_LOOP_PRIVATE_FIELDS
+  /* User data - use this for whatever. */
+  void* data;
   /* The last error */
   uv_err_t last_err;
   /* Loop reference counting */
   unsigned int active_handles;
   ngx_queue_t handle_queue;
   ngx_queue_t active_reqs;
-  /* User data - use this for whatever. */
-  void* data;
+  UV_LOOP_PRIVATE_FIELDS
 };
 
 
