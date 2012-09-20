@@ -239,6 +239,9 @@
         [ 'OS=="mac" or OS=="freebsd" or OS=="openbsd" or OS=="netbsd"', {
           'sources': [ 'src/unix/kqueue.c' ],
         }],
+        ['library=="shared_library"', {
+          'defines': [ 'BUILDING_UV_SHARED=1' ]
+        }]
       ]
     },
 
