@@ -36,6 +36,9 @@ http://nodejs.org/
 
  * IPC and socket sharing between processes `uv_write2`
 
+## Community
+
+ * [Mailing list](http://groups.google.com/group/libuv)
 
 ## Documentation
 
