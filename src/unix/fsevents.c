@@ -89,6 +89,17 @@ void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
   uv_fs_event_t* handle;
   uv__fsevents_event_t* event;
   ngx_queue_t add_list;
+  int kFSEventsModified;
+  int kFSEventsRenamed;
+
+  kFSEventsModified = kFSEventStreamEventFlagItemFinderInfoMod |
+                      kFSEventStreamEventFlagItemModified |
+                      kFSEventStreamEventFlagItemInodeMetaMod |
+                      kFSEventStreamEventFlagItemChangeOwner |
+                      kFSEventStreamEventFlagItemXattrMod;
+  kFSEventsRenamed = kFSEventStreamEventFlagItemCreated |
+                     kFSEventStreamEventFlagItemRemoved |
+                     kFSEventStreamEventFlagItemRenamed;
 
   handle = info;
   paths = eventPaths;
@@ -146,7 +157,8 @@ void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
 
     memcpy(event->path, path, len + 1);
 
-    if (eventFlags[i] & kFSEventStreamEventFlagItemModified)
+    if ((eventFlags[i] & kFSEventsModified) != 0 &&
+        (eventFlags[i] & kFSEventsRenamed) == 0)
       event->events = UV_CHANGE;
     else
       event->events = UV_RENAME;
