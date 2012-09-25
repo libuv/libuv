@@ -20,6 +20,7 @@ set run=
 set target_arch=ia32
 set vs_toolset=x86
 set platform=WIN32
+set library=static_library
 
 :next-arg
 if "%1"=="" goto args-done
@@ -77,7 +78,7 @@ if errorlevel 1 goto gyp_install_failed
 goto have_gyp
 
 :gyp_install_failed
-echo Failed to download gyp. Make sure you have subversion installed, or 
+echo Failed to download gyp. Make sure you have subversion installed, or
 echo manually install gyp into %~dp0build\gyp.
 goto exit
 
@@ -113,7 +114,7 @@ echo running '%config%\%run%'
 goto exit
 
 :create-msvs-files-failed
-echo Failed to create vc project files. 
+echo Failed to create vc project files.
 goto exit
 
 :help
