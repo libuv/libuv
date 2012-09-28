@@ -212,7 +212,6 @@ typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_work_s uv_work_t;
 
 /* None of the above. */
-typedef struct uv_counters_s uv_counters_t;
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 
@@ -1840,27 +1839,6 @@ union uv_any_req {
   uv_work_t work_req;
   uv_udp_send_t udp_send_req;
   uv_getaddrinfo_t getaddrinfo_req;
-};
-
-
-struct uv_counters_s {
-  uint64_t async_init;
-  uint64_t check_init;
-  uint64_t eio_init;
-  uint64_t fs_event_init;
-  uint64_t fs_poll_init;
-  uint64_t handle_init;
-  uint64_t idle_init;
-  uint64_t pipe_init;
-  uint64_t poll_init;
-  uint64_t prepare_init;
-  uint64_t process_init;
-  uint64_t req_init;
-  uint64_t stream_init;
-  uint64_t tcp_init;
-  uint64_t timer_init;
-  uint64_t tty_init;
-  uint64_t udp_init;
 };
 
 
