@@ -75,6 +75,16 @@ void uv__loop_delete(uv_loop_t* loop) {
   uv__signal_unregister(loop);
   ev_loop_destroy(loop->ev);
 
+  if (loop->async_pipefd[0] != -1) {
+    close(loop->async_pipefd[0]);
+    loop->async_pipefd[0] = -1;
+  }
+
+  if (loop->async_pipefd[1] != -1) {
+    close(loop->async_pipefd[1]);
+    loop->async_pipefd[1] = -1;
+  }
+
   if (loop->emfile_fd != -1) {
     close(loop->emfile_fd);
     loop->emfile_fd = -1;
