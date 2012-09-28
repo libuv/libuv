@@ -127,6 +127,7 @@
             'src/unix/ev/ev_wrap.h',
             'src/unix/ev/event.h',
             'src/unix/fs.c',
+            'src/unix/getaddrinfo.c',
             'src/unix/internal.h',
             'src/unix/loop.c',
             'src/unix/loop-watcher.c',
