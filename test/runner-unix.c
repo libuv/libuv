@@ -68,7 +68,7 @@ int process_start(char* name, char* part, process_info_t* p) {
   pid_t pid = fork();
 
   if (pid < 0) {
-    perror("vfork");
+    perror("fork");
     return -1;
   }
 
