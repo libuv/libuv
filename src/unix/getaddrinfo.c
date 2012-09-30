@@ -27,8 +27,8 @@
 #include <string.h>
 
 
-static void uv__getaddrinfo_work(eio_req *req_) {
-  uv_getaddrinfo_t* req = req_->data;
+static void uv__getaddrinfo_work(struct uv__work* w) {
+  uv_getaddrinfo_t* req = container_of(w, uv_getaddrinfo_t, work_req);
 
   req->retcode = getaddrinfo(req->hostname,
                              req->service,
@@ -37,8 +37,8 @@ static void uv__getaddrinfo_work(eio_req *req_) {
 }
 
 
-static int uv__getaddrinfo_done(eio_req* req_) {
-  uv_getaddrinfo_t* req = req_->data;
+static void uv__getaddrinfo_done(struct uv__work* w) {
+  uv_getaddrinfo_t* req = container_of(w, uv_getaddrinfo_t, work_req);
   struct addrinfo *res = req->res;
 #if __sun
   size_t hostlen = strlen(req->hostname);
@@ -76,8 +76,6 @@ static int uv__getaddrinfo_done(eio_req* req_) {
   }
 
   req->cb(req, req->retcode, res);
-
-  return 0;
 }
 
 
@@ -90,14 +88,11 @@ int uv_getaddrinfo(uv_loop_t* loop,
   size_t hostname_len;
   size_t service_len;
   size_t hints_len;
-  eio_req* req_;
   size_t len;
   char* buf;
 
   if (req == NULL || cb == NULL || (hostname == NULL && service == NULL))
     return uv__set_artificial_error(loop, UV_EINVAL);
-
-  uv_eio_init(loop);
 
   hostname_len = hostname ? strlen(hostname) + 1 : 0;
   service_len = service ? strlen(service) + 1 : 0;
@@ -134,18 +129,12 @@ int uv_getaddrinfo(uv_loop_t* loop,
     len += hostname_len;
   }
 
-  req_ = eio_custom(uv__getaddrinfo_work,
-                    EIO_PRI_DEFAULT,
-                    uv__getaddrinfo_done,
-                    req,
-                    &loop->uv_eio_channel);
+  uv__work_submit(loop,
+                  &req->work_req,
+                  uv__getaddrinfo_work,
+                  uv__getaddrinfo_done);
 
-  if (req_)
-    return 0;
-
-  free(buf);
-
-  return uv__set_artificial_error(loop, UV_ENOMEM);
+  return 0;
 }
 
 

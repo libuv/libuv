@@ -243,6 +243,7 @@ typedef struct {
   uint64_t repeat;
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
+  struct uv__work work_req;                                                   \
   uv_getaddrinfo_cb cb;                                                       \
   struct addrinfo* hints;                                                     \
   char* hostname;                                                             \
