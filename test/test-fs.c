@@ -53,6 +53,7 @@ typedef struct {
 } utime_check_t;
 
 
+static int dummy_cb_count;
 static int close_cb_count;
 static int create_cb_count;
 static int open_cb_count;
@@ -124,6 +125,12 @@ void check_permission(const char* filename, int mode) {
 #endif
 
   uv_fs_req_cleanup(&req);
+}
+
+
+static void dummy_cb(uv_fs_t* req) {
+  (void) req;
+  dummy_cb_count++;
 }
 
 
@@ -1178,6 +1185,28 @@ TEST_IMPL(fs_link) {
   unlink("test_file");
   unlink("test_file_link");
   unlink("test_file_link2");
+
+  return 0;
+}
+
+
+TEST_IMPL(fs_readlink) {
+  uv_fs_t req;
+
+  loop = uv_default_loop();
+  ASSERT(0 == uv_fs_readlink(loop, &req, "no_such_file", dummy_cb));
+  ASSERT(0 == uv_run(loop));
+  ASSERT(dummy_cb_count == 1);
+  ASSERT(req.ptr == NULL);
+  ASSERT(req.result == -1);
+  ASSERT(req.errorno == UV_ENOENT);
+  uv_fs_req_cleanup(&req);
+
+  ASSERT(-1 == uv_fs_readlink(loop, &req, "no_such_file", NULL));
+  ASSERT(req.ptr == NULL);
+  ASSERT(req.result == -1);
+  ASSERT(req.errorno == UV_ENOENT);
+  uv_fs_req_cleanup(&req);
 
   return 0;
 }
