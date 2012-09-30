@@ -54,7 +54,6 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   loop->emfile_fd = -1;
   loop->ev = (default_loop ? ev_default_loop : ev_loop_new)(flags);
   ev_set_userdata(loop->ev, loop);
-  eio_channel_init(&loop->uv_eio_channel, loop);
 
   uv_signal_init(loop, &loop->child_watcher);
   uv__handle_unref(&loop->child_watcher);

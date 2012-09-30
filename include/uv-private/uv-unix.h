@@ -25,7 +25,6 @@
 #include "ngx-queue.h"
 
 #include "ev.h"
-#include "eio.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -122,13 +121,7 @@ typedef struct {
 
 #define UV_LOOP_PRIVATE_FIELDS                                                \
   unsigned long flags;                                                        \
-  /* Poll result queue */                                                     \
-  eio_channel uv_eio_channel;                                                 \
   struct ev_loop* ev;                                                         \
-  /* Various thing for libeio. */                                             \
-  uv_async_t uv_eio_want_poll_notifier;                                       \
-  uv_async_t uv_eio_done_poll_notifier;                                       \
-  uv_idle_t uv_eio_poller;                                                    \
   ngx_queue_t wq;                                                             \
   uv_mutex_t wq_mutex;                                                        \
   uv_async_t wq_async;                                                        \
@@ -256,12 +249,22 @@ typedef struct {
   int errorno;                                                                \
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
-  struct stat statbuf;                                                        \
+  const char *new_path;                                                       \
   uv_file file;                                                               \
-  eio_req* eio;                                                               \
+  int flags;                                                                  \
+  mode_t mode;                                                                \
+  void* buf;                                                                  \
+  size_t len;                                                                 \
+  off_t off;                                                                  \
+  uid_t uid;                                                                  \
+  gid_t gid;                                                                  \
+  double atime;                                                               \
+  double mtime;                                                               \
+  struct uv__work work_req;                                                   \
+  struct stat statbuf;                                                        \
 
 #define UV_WORK_PRIVATE_FIELDS                                                \
-  eio_req* eio;
+  struct uv__work work_req;
 
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   struct termios orig_termios;                                                \

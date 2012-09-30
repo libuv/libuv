@@ -51,7 +51,7 @@ ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
 CPPFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
-LINKFLAGS+=-lsocket -lnsl -lkstat
+LINKFLAGS+=-lkstat -lnsl -lsendfile -lsocket
 OBJS += src/unix/sunos.o
 endif
 
@@ -137,7 +137,7 @@ endif
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-uv.a: $(OBJS) src/fs-poll.o src/inet.o src/uv-common.o src/unix/ev/ev.o src/unix/uv-eio.o src/unix/eio/eio.o
+uv.a: $(OBJS) src/fs-poll.o src/inet.o src/uv-common.o src/unix/ev/ev.o src/unix/eio/eio.o
 	$(AR) rcs uv.a $^
 
 src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
@@ -157,10 +157,6 @@ EIO_CPPFLAGS += -D_GNU_SOURCE
 
 src/unix/eio/eio.o: src/unix/eio/eio.c
 	$(CC) $(EIO_CPPFLAGS) $(CFLAGS) -c src/unix/eio/eio.c -o src/unix/eio/eio.o
-
-src/unix/uv-eio.o: src/unix/uv-eio.c
-	$(CC) $(CPPFLAGS) -Isrc/unix/eio/ $(CSTDFLAG) $(CFLAGS) -c src/unix/uv-eio.c -o src/unix/uv-eio.o
-
 
 clean-platform:
 	-rm -f src/unix/*.o

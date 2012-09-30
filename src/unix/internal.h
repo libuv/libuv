@@ -23,7 +23,6 @@
 #define UV_UNIX_INTERNAL_H_
 
 #include "uv-common.h"
-#include "uv-eio.h"
 
 #include <assert.h>
 #include <stdlib.h> /* abort */
@@ -99,11 +98,6 @@ enum {
   UV_TCP_NODELAY      = 0x100,  /* Disable Nagle. */
   UV_TCP_KEEPALIVE    = 0x200,  /* Turn on keep-alive. */
   UV_TCP_SINGLE_ACCEPT = 0x400  /* Only accept() when idle. */
-};
-
-/* loop flags */
-enum {
-  UV_LOOP_EIO_INITIALIZED = 1
 };
 
 __attribute__((unused))

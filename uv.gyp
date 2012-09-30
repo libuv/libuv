@@ -142,8 +142,6 @@
             'src/unix/timer.c',
             'src/unix/tty.c',
             'src/unix/udp.c',
-            'src/unix/uv-eio.c',
-            'src/unix/uv-eio.h',
           ],
           'include_dirs': [ 'src/unix/ev', ],
           'libraries': [ '-lm' ]
@@ -187,8 +185,9 @@
           'direct_dependent_settings': {
             'libraries': [
               '-lkstat',
-              '-lsocket',
               '-lnsl',
+              '-lsendfile',
+              '-lsocket',
             ],
           },
         }],
