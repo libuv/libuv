@@ -54,6 +54,13 @@ struct uv__io_s {
   ev_io io_watcher;
 };
 
+struct uv__work {
+  void (*work)(struct uv__work *w);
+  void (*done)(struct uv__work *w);
+  struct uv_loop_s* loop;
+  ngx_queue_t wq;
+};
+
 #if defined(__linux__)
 # include "uv-linux.h"
 #elif defined(__sun)
@@ -122,6 +129,9 @@ typedef struct {
   uv_async_t uv_eio_want_poll_notifier;                                       \
   uv_async_t uv_eio_done_poll_notifier;                                       \
   uv_idle_t uv_eio_poller;                                                    \
+  ngx_queue_t wq;                                                             \
+  uv_mutex_t wq_mutex;                                                        \
+  uv_async_t wq_async;                                                        \
   uv_handle_t* closing_handles;                                               \
   ngx_queue_t process_handles[1];                                             \
   ngx_queue_t prepare_handles;                                                \

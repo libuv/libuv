@@ -42,6 +42,7 @@ OBJS += src/unix/signal.o
 OBJS += src/unix/stream.o
 OBJS += src/unix/tcp.o
 OBJS += src/unix/thread.o
+OBJS += src/unix/threadpool.o
 OBJS += src/unix/timer.o
 OBJS += src/unix/tty.o
 OBJS += src/unix/udp.o
