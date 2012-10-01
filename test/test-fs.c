@@ -1280,6 +1280,8 @@ TEST_IMPL(fs_symlink) {
 
   r = uv_fs_symlink(loop, &req, "test_file_symlink", "test_file_symlink_symlink", 0, NULL);
   ASSERT(r != -1);
+  uv_fs_req_cleanup(&req);
+
   r = uv_fs_readlink(loop, &req, "test_file_symlink_symlink", NULL);
   ASSERT(r != -1);
   ASSERT(strcmp(req.ptr, "test_file_symlink") == 0);
@@ -1307,6 +1309,8 @@ TEST_IMPL(fs_symlink) {
 
   r = uv_fs_symlink(loop, &req, "test_file_symlink2", "test_file_symlink2_symlink", 0, NULL);
   ASSERT(r != -1);
+  uv_fs_req_cleanup(&req);
+
   r = uv_fs_readlink(loop, &req, "test_file_symlink2_symlink", readlink_cb);
   ASSERT(r != -1);
   uv_run(loop);
