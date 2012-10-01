@@ -69,13 +69,13 @@
     size_t path_len;                                                          \
     size_t new_path_len;                                                      \
                                                                               \
-    path_len = strlen(path) + 1;                                              \
-    new_path_len = strlen(new_path) + 1;                                      \
+    path_len = strlen((path)) + 1;                                            \
+    new_path_len = strlen((new_path)) + 1;                                    \
                                                                               \
     if (NULL == ((req)->path = malloc(path_len + new_path_len)))              \
       return uv__set_sys_error((loop), ENOMEM);                               \
                                                                               \
-    (req)->new_path = (req)->path + new_path_len;                             \
+    (req)->new_path = (req)->path + path_len;                                 \
     memcpy((void*) (req)->path, (path), path_len);                            \
     memcpy((void*) (req)->new_path, (new_path), new_path_len);                \
   }                                                                           \
