@@ -81,16 +81,6 @@
   }                                                                           \
   while (0)
 
-#define PATH_STAT_FIXUP                                                       \
-  do {                                                                        \
-    size_t len;                                                               \
-    PATH;                                                                     \
-    len = strlen((req)->path);                                                \
-    if (len != 0 && (req)->path[len - 1] == '\\')                             \
-      ((char*) (req)->path)[len - 1] = '\0'; /* Windows compatibility... */   \
-  }                                                                           \
-  while (0)
-
 #define POST                                                                  \
   do {                                                                        \
     if ((cb) != NULL)                                                         \
@@ -474,7 +464,7 @@ int uv_fs_futime(uv_loop_t* loop,
 
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(LSTAT);
-  PATH_STAT_FIXUP;
+  PATH;
   POST;
 }
 
@@ -589,7 +579,7 @@ int uv_fs_sendfile(uv_loop_t* loop,
 
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(STAT);
-  PATH_STAT_FIXUP;
+  PATH;
   POST;
 }
 

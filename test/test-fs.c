@@ -794,7 +794,7 @@ TEST_IMPL(fs_async_dir) {
   ASSERT(r == 0);
   uv_run(loop);
 
-  r = uv_fs_stat(loop, &stat_req, "test_dir\\", stat_cb);
+  r = uv_fs_stat(loop, &stat_req, "test_dir/", stat_cb);
   ASSERT(r == 0);
   uv_run(loop);
 
@@ -802,7 +802,7 @@ TEST_IMPL(fs_async_dir) {
   ASSERT(r == 0);
   uv_run(loop);
 
-  r = uv_fs_lstat(loop, &stat_req, "test_dir\\", stat_cb);
+  r = uv_fs_lstat(loop, &stat_req, "test_dir/", stat_cb);
   ASSERT(r == 0);
   uv_run(loop);
 
