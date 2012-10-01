@@ -1565,16 +1565,6 @@ struct uv_fs_poll_s {
   UV_HANDLE_FIELDS
   /* Private, don't touch. */
   void* poll_ctx;
-  /* v0.8 ABI compatibility */
-  char padding[sizeof(int)
-             + sizeof(unsigned int)
-             + sizeof(uint64_t)
-             + sizeof(char*)
-             + sizeof(uv_fs_poll_cb)
-             + sizeof(uv_timer_t)
-             + sizeof(uv_fs_t*)
-             + sizeof(uv_statbuf_t)
-             - sizeof(void*)];
 };
 
 UV_EXTERN int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle);
