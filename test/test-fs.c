@@ -1641,6 +1641,7 @@ TEST_IMPL(fs_readdir_file) {
   r = uv_fs_readdir(loop, &readdir_req, path, 0, NULL);
   ASSERT(r == -1);
   ASSERT(uv_last_error(loop).code == UV_ENOTDIR);
+  uv_fs_req_cleanup(&readdir_req);
 
   r = uv_fs_readdir(loop, &readdir_req, path, 0, file_readdir_cb);
   ASSERT(r == 0);
