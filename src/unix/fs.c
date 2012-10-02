@@ -35,6 +35,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <utime.h>
+#include <poll.h>
 
 #if defined(__linux__) || defined(__sun)
 # include <sys/sendfile.h>
@@ -249,21 +250,186 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
 }
 
 
+static ssize_t uv__fs_sendfile_emul(uv_fs_t* req) {
+  struct pollfd pfd;
+  int use_pread;
+  off_t offset;
+  ssize_t nsent;
+  ssize_t nread;
+  ssize_t nwritten;
+  size_t buflen;
+  size_t len;
+  ssize_t n;
+  int in_fd;
+  int out_fd;
+  char buf[8192];
+
+  len = req->len;
+  in_fd = req->flags;
+  out_fd = req->file;
+  offset = req->off;
+  use_pread = 1;
+
+  /* Here are the rules regarding errors:
+   *
+   * 1. Read errors are reported only if nsent==0, otherwise we return nsent.
+   *    The user needs to know that some data has already been sent, to stop
+   *    him from sending it twice.
+   *
+   * 2. Write errors are always reported. Write errors are bad because they
+   *    mean data loss: we've read data but now we can't write it out.
+   *
+   * We try to use pread() and fall back to regular read() if the source fd
+   * doesn't support positional reads, for example when it's a pipe fd.
+   *
+   * If we get EAGAIN when writing to the target fd, we poll() on it until
+   * it becomes writable again.
+   *
+   * FIXME: If we get a write error when use_pread==1, it should be safe to
+   *        return the number of sent bytes instead of an error because pread()
+   *        is, in theory, idempotent. However, special files in /dev or /proc
+   *        may support pread() but not necessarily return the same data on
+   *        successive reads.
+   *
+   * FIXME: There is no way now to signal that we managed to send *some* data
+   *        before a write error.
+   */
+  for (nsent = 0; (size_t) nsent < len; ) {
+    buflen = len - nsent;
+
+    if (buflen > sizeof(buf))
+      buflen = sizeof(buf);
+
+    do
+      if (use_pread)
+        nread = pread(in_fd, buf, buflen, offset);
+      else
+        nread = read(in_fd, buf, buflen);
+    while (nread == -1 && errno == EINTR);
+
+    if (nread == 0)
+      goto out;
+
+    if (nread == -1) {
+      if (use_pread && nsent == 0 && (errno == EIO || errno == ESPIPE)) {
+        use_pread = 0;
+        continue;
+      }
+
+      if (nsent == 0)
+        nsent = -1;
+
+      goto out;
+    }
+
+    for (nwritten = 0; nwritten < nread; ) {
+      do
+        n = write(out_fd, buf + nwritten, nread - nwritten);
+      while (n == -1 && errno == EINTR);
+
+      if (n != -1) {
+        nwritten += n;
+        continue;
+      }
+
+      if (errno != EAGAIN && errno != EWOULDBLOCK) {
+        nsent = -1;
+        goto out;
+      }
+
+      pfd.fd = out_fd;
+      pfd.events = POLLOUT;
+      pfd.revents = 0;
+
+      do
+        n = poll(&pfd, 1, -1);
+      while (n == -1 && errno == EINTR);
+
+      if (n == -1 || (pfd.revents & ~POLLOUT) != 0) {
+        nsent = -1;
+        goto out;
+      }
+    }
+
+    offset += nread;
+    nsent += nread;
+  }
+
+out:
+  if (nsent != -1)
+    req->off = offset;
+
+  return nsent;
+}
+
+
 static ssize_t uv__fs_sendfile(uv_fs_t* req) {
-  /* req->file is the out_fd, req->flags the in_fd */
+  int in_fd;
+  int out_fd;
+
+  in_fd = req->flags;
+  out_fd = req->file;
+
 #if defined(__linux__) || defined(__sun)
-  return sendfile(req->file, req->flags, &req->off, req->len);
-#elif defined(__APPLE__) || defined(__FreeBSD__)
-  return sendfile(req->flags,
-                  req->file,
-                  req->off,
-                  req->len,
-                  NULL,
-                  &req->off,
-                  0);
+  {
+    off_t off;
+    ssize_t r;
+
+    off = req->off;
+    r = sendfile(out_fd, in_fd, &off, req->len);
+
+    /* sendfile() on SunOS returns EINVAL if the target fd is not a socket but
+     * it still writes out data. Fortunately, we can detect it by checking if
+     * the offset has been updated.
+     */
+    if (r != -1 || off > req->off) {
+      r = off - req->off;
+      req->off = off;
+      return r;
+    }
+
+    if (errno == EINVAL ||
+        errno == EIO ||
+        errno == ENOTSOCK ||
+        errno == EXDEV) {
+      return uv__fs_sendfile_emul(req);
+    }
+
+    return -1;
+  }
+#elif defined(__FreeBSD__) || defined(__APPLE__)
+  {
+    off_t len;
+    ssize_t r;
+
+    /* sendfile() on FreeBSD and Darwin returns EAGAIN if the target fd is in
+     * non-blocking mode and not all data could be written. If a non-zero
+     * number of bytes have been sent, we don't consider it an error.
+     */
+    len = 0;
+
+#if defined(__FreeBSD__)
+    r = sendfile(in_fd, out_fd, req->off, req->len, NULL, &len, 0);
 #else
-  errno = ENOSYS;
-  return -1;
+    r = sendfile(in_fd, out_fd, req->off, &len, NULL, 0);
+#endif
+
+    if (r != -1 || len != 0) {
+      req->off += len;
+      return (ssize_t) len;
+    }
+
+    if (errno == EINVAL ||
+        errno == EIO ||
+        errno == ENOTSOCK ||
+        errno == EXDEV) {
+      return uv__fs_sendfile_emul(req);
+    }
+
+    return -1;
+  }
+#else
+  return uv__fs_sendfile_emul(req);
 #endif
 }
 
