@@ -84,13 +84,15 @@
 
 #define POST                                                                  \
   do {                                                                        \
-    if ((cb) != NULL)                                                         \
+    if ((cb) != NULL) {                                                       \
       uv__work_submit((loop), &(req)->work_req, uv__fs_work, uv__fs_done);    \
+      return 0;                                                               \
+    }                                                                         \
     else {                                                                    \
       uv__fs_work(&(req)->work_req);                                          \
       uv__fs_done(&(req)->work_req);                                          \
+      return (req)->result;                                                   \
     }                                                                         \
-    return (req)->result;                                                     \
   }                                                                           \
   while (0)
 
