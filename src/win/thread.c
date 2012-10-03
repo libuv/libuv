@@ -140,6 +140,8 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
 
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
+  uv__once_init();
+
   if (HAVE_SRWLOCK_API())
     return uv__rwlock_srwlock_init(rwlock);
   else
