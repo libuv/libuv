@@ -24,7 +24,6 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <process.h>
-#include <windows.h>
 
 #include "task.h"
 #include "runner.h"
