@@ -815,34 +815,3 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
     free(req->ptr);
   req->ptr = NULL;
 }
-
-
-static void uv__queue_work(struct uv__work* w) {
-  uv_work_t* req = container_of(w, uv_work_t, work_req);
-
-  if (req->work_cb)
-    req->work_cb(req);
-}
-
-
-static void uv__queue_done(struct uv__work* w) {
-  uv_work_t* req = container_of(w, uv_work_t, work_req);
-
-  uv__req_unregister(req->loop, req);
-
-  if (req->after_work_cb)
-    req->after_work_cb(req);
-}
-
-
-int uv_queue_work(uv_loop_t* loop,
-                  uv_work_t* req,
-                  uv_work_cb work_cb,
-                  uv_after_work_cb after_work_cb) {
-  uv__req_init(loop, req, UV_WORK);
-  req->loop = loop;
-  req->work_cb = work_cb;
-  req->after_work_cb = after_work_cb;
-  uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
-  return 0;
-}
