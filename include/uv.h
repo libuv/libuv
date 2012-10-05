@@ -352,11 +352,11 @@ UV_EXTERN const char* uv_err_name(uv_err_t err);
 #define UV_REQ_FIELDS                                                         \
   /* public */                                                                \
   void* data;                                                                 \
+  /* read-only */                                                             \
+  uv_req_type type;                                                           \
   /* private */                                                               \
   ngx_queue_t active_queue;                                                   \
   UV_REQ_PRIVATE_FIELDS                                                       \
-  /* read-only */                                                             \
-  uv_req_type type;                                                           \
 
 /* Abstract base class of all requests. */
 struct uv_req_s {
