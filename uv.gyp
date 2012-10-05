@@ -305,6 +305,7 @@
         'test/test-mutexes.c',
         'test/test-signal.c',
         'test/test-thread.c',
+        'test/test-condvar.c',
         'test/test-timer-again.c',
         'test/test-timer.c',
         'test/test-tty.c',
