@@ -608,12 +608,14 @@ UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
 /* Enable/disable Nagle's algorithm. */
 UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
 
-/* Enable/disable TCP keep-alive.
+/*
+ * Enable/disable TCP keep-alive.
  *
- * `ms` is the initial delay in seconds, ignored when `enable` is zero.
+ * `delay` is the initial delay in seconds, ignored when `enable` is zero.
  */
-UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle, int enable,
-    unsigned int delay);
+UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
+                               int enable,
+                               unsigned int delay);
 
 /*
  * This setting applies to Windows only.
