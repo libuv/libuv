@@ -101,11 +101,8 @@ static void cleanup(void) {
 
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     err = pthread_join(threads[i], NULL);
-
-    if (err == 0 || err == ESRCH)
-      continue;
-
-    abort();
+    assert(err == 0 || err == EINVAL || err == ESRCH);
+    (void) err; /* Silence compiler warning in release builds. */
   }
 }
 
