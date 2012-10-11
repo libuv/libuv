@@ -192,8 +192,6 @@ TEST_DECLARE   (dlerror)
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
-TEST_DECLARE   (we_get_signal)
-TEST_DECLARE   (we_get_signals)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
 TEST_DECLARE   (argument_escaping)
@@ -203,6 +201,8 @@ TEST_DECLARE   (listen_no_simultaneous_accepts)
 TEST_DECLARE   (fs_stat_root)
 #else
 TEST_DECLARE   (spawn_setuid_setgid)
+TEST_DECLARE   (we_get_signal)
+TEST_DECLARE   (we_get_signals)
 #endif
 HELPER_DECLARE (tcp4_echo_server)
 HELPER_DECLARE (tcp6_echo_server)
@@ -398,9 +398,6 @@ TASK_LIST_START
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (kill)
 
-  TEST_ENTRY  (we_get_signal)
-  TEST_ENTRY  (we_get_signals)
-
 #ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
   TEST_ENTRY  (argument_escaping)
@@ -410,6 +407,8 @@ TASK_LIST_START
   TEST_ENTRY  (fs_stat_root)
 #else
   TEST_ENTRY  (spawn_setuid_setgid)
+  TEST_ENTRY  (we_get_signal)
+  TEST_ENTRY  (we_get_signals)
 #endif
 
   TEST_ENTRY  (fs_file_noent)
