@@ -134,7 +134,7 @@ BENCHMARK_IMPL(tcp_write_batch) {
 
   printf("%ld write requests in %.2fs.\n",
          (long)NUM_WRITE_REQS,
-         (stop - start) / 10e8);
+         (stop - start) / 1e9);
 
   return 0;
 }
