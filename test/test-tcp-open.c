@@ -170,5 +170,6 @@ TEST_IMPL(tcp_open) {
   ASSERT(write_cb_called == 1);
   ASSERT(close_cb_called == 1);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

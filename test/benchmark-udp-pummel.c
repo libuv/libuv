@@ -204,6 +204,7 @@ static int do_packet_storm(int n_senders,
          send_cb_called,
          duration / 1000.0);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 

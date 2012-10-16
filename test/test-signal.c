@@ -119,6 +119,7 @@ TEST_IMPL(we_get_signal) {
   ASSERT(tc.ncalls == NSIGNALS);
   ASSERT(sc.ncalls == NSIGNALS);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
@@ -144,6 +145,7 @@ TEST_IMPL(we_get_signals) {
   for (i = 0; i < ARRAY_SIZE(tc); i++)
     ASSERT(tc[i].ncalls == NSIGNALS);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
