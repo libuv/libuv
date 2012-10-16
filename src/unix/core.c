@@ -65,6 +65,9 @@ static uv_loop_t* default_loop_ptr;
 
 
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
+  assert(!(handle->flags & (UV_CLOSING | UV_CLOSED)));
+
+  handle->flags |= UV_CLOSING;
   handle->close_cb = close_cb;
 
   switch (handle->type) {
@@ -128,8 +131,13 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     assert(0);
   }
 
-  handle->flags |= UV_CLOSING;
+  uv__make_close_pending(handle);
+}
 
+
+void uv__make_close_pending(uv_handle_t* handle) {
+  assert(handle->flags & UV_CLOSING);
+  assert(!(handle->flags & UV_CLOSED));
   handle->next_closing = handle->loop->closing_handles;
   handle->loop->closing_handles = handle;
 }

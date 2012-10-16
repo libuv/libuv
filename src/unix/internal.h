@@ -115,6 +115,7 @@ int uv__cloexec(int fd, int set);
 int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);
 int uv_async_stop(uv_async_t* handle);
+void uv__make_close_pending(uv_handle_t* handle);
 
 void uv__io_init(uv__io_t* handle, uv__io_cb cb, int fd, int events);
 void uv__io_set(uv__io_t* handle, uv__io_cb cb, int fd, int events);
