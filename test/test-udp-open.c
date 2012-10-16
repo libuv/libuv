@@ -46,7 +46,6 @@ static void startup(void) {
 
 static uv_os_sock_t create_udp_socket(void) {
   uv_os_sock_t sock;
-  int r;
 
   sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 #ifdef _WIN32
@@ -59,7 +58,7 @@ static uv_os_sock_t create_udp_socket(void) {
   {
     /* Allow reuse of the port. */
     int yes = 1;
-    r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+    int r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     ASSERT(r == 0);
   }
 #endif
