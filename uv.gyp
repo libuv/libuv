@@ -283,6 +283,7 @@
         'test/test-shutdown-close.c',
         'test/test-shutdown-eof.c',
         'test/test-signal.c',
+        'test/test-signal-multiple-loops.c',
         'test/test-spawn.c',
         'test/test-fs-poll.c',
         'test/test-stdio-over-pipes.c',

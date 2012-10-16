@@ -157,7 +157,8 @@ unsigned int uv__next_timeout(uv_loop_t* loop);
 
 /* signal */
 void uv__signal_close(uv_signal_t* handle);
-void uv__signal_unregister(uv_loop_t* loop);
+void uv__signal_global_once_init(void);
+void uv__signal_loop_cleanup();
 
 /* thread pool */
 void uv__work_submit(uv_loop_t* loop,

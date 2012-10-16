@@ -203,6 +203,7 @@ TEST_DECLARE   (fs_stat_root)
 TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
+TEST_DECLARE   (signal_multiple_loops)
 #endif
 HELPER_DECLARE (tcp4_echo_server)
 HELPER_DECLARE (tcp6_echo_server)
@@ -409,6 +410,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_setuid_setgid)
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
+  TEST_ENTRY  (signal_multiple_loops)
 #endif
 
   TEST_ENTRY  (fs_file_noent)
