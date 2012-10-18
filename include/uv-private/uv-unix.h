@@ -151,6 +151,7 @@ typedef struct {
   ngx_queue_t async_handles;                                                  \
   uv__io_t async_watcher;                                                     \
   int async_pipefd[2];                                                        \
+  volatile sig_atomic_t async_sweep_needed;                                   \
   /* RB_HEAD(uv__timers, uv_timer_s) */                                       \
   struct uv__timers {                                                         \
     struct uv_timer_s* rbh_root;                                              \
