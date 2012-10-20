@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static int uv__async_init(uv_loop_t* loop);
