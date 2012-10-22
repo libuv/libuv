@@ -30,6 +30,7 @@
 
 #include <net/if.h>
 #include <sys/param.h>
+#include <sys/prctl.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -166,6 +167,10 @@ uv_err_t uv_set_process_title(const char* title) {
   /* No need to terminate, last char is always '\0'. */
   if (process_title.len)
     strncpy(process_title.str, title, process_title.len - 1);
+
+#if defined(PR_SET_NAME)
+  prctl(PR_SET_NAME, title);
+#endif
 
   return uv_ok_;
 }
