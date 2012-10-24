@@ -52,7 +52,6 @@ int uv__loop_init(uv_loop_t* loop, int default_loop) {
   loop->time = uv_hrtime() / 1000000;
   loop->async_pipefd[0] = -1;
   loop->async_pipefd[1] = -1;
-  loop->async_sweep_needed = 0;
   loop->signal_pipefd[0] = -1;
   loop->signal_pipefd[1] = -1;
   loop->emfile_fd = -1;
