@@ -76,7 +76,7 @@ extern "C" {
   XX(  1, EOF, "end of file")                                                 \
   XX(  2, EADDRINFO, "getaddrinfo error")                                     \
   XX(  3, EACCES, "permission denied")                                        \
-  XX(  4, EAGAIN, "no more processes")                                        \
+  XX(  4, EAGAIN, "resource temporarily unavailable")                         \
   XX(  5, EADDRINUSE, "address already in use")                               \
   XX(  6, EADDRNOTAVAIL, "")                                                  \
   XX(  7, EAFNOSUPPORT, "")                                                   \
