@@ -1639,9 +1639,11 @@ struct uv_signal_s {
 };
 
 /* These functions are no-ops on Windows. */
-int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
-int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum);
-int uv_signal_stop(uv_signal_t* handle);
+UV_EXTERN int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
+UV_EXTERN int uv_signal_start(uv_signal_t* handle,
+                              uv_signal_cb signal_cb,
+                              int signum);
+UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
 
 
 /*

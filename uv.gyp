@@ -144,7 +144,12 @@
             'src/unix/udp.c',
           ],
           'include_dirs': [ 'src/unix/ev', ],
-          'libraries': [ '-lm' ]
+          'libraries': [ '-lm' ],
+          'conditions': [
+            ['"<(library)" == "shared_library"', {
+              'cflags': [ '-fPIC' ],
+            }],
+          ],
         }],
         [ 'OS=="mac"', {
           'sources': [ 'src/unix/darwin.c', 'src/unix/fsevents.c' ],
