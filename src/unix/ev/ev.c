@@ -179,6 +179,7 @@
 #else
 # include "ev.h"
 #endif
+#include "ev-proto.h"
 
 EV_CPP(extern "C" {)
 

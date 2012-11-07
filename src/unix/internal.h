@@ -23,6 +23,7 @@
 #define UV_UNIX_INTERNAL_H_
 
 #include "uv-common.h"
+#include "ev-proto.h"
 
 #include <assert.h>
 #include <stdlib.h> /* abort */
