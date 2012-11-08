@@ -46,6 +46,10 @@ OBJS += src/unix/threadpool.o
 OBJS += src/unix/timer.o
 OBJS += src/unix/tty.o
 OBJS += src/unix/udp.o
+OBJS += src/unix/ev/ev.o
+OBJS += src/fs-poll.o
+OBJS += src/uv-common.o
+OBJS += src/inet.o
 
 ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
@@ -128,8 +132,12 @@ endif
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
-libuv.a: $(OBJS) src/fs-poll.o src/inet.o src/uv-common.o src/unix/ev/ev.o
+libuv.a: $(OBJS)
 	$(AR) rcs $@ $^
+
+libuv.so:	CFLAGS += -fPIC
+libuv.so:	$(OBJS)
+	$(CC) -shared -o $@ $^
 
 src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
