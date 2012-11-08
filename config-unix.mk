@@ -120,8 +120,8 @@ OBJS += src/unix/cygwin.o
 endif
 
 # Need _GNU_SOURCE for strdup?
-RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
-RUNNER_LINKFLAGS=$(LINKFLAGS)
+RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE -Itest
+RUNNER_LINKFLAGS=$(LINKFLAGS) -L"$(PWD)" -luv
 
 ifeq (SunOS,$(uname_S))
 RUNNER_LINKFLAGS += -pthreads

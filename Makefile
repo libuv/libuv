@@ -37,23 +37,20 @@ BENCHMARKS=test/blackhole-server.c test/echo-server.c test/dns-server.c test/ben
 
 all: libuv.a
 
-test/run-tests$(E): test/*.h test/run-tests.c $(RUNNER_SRC) test/runner-unix.c $(TESTS) libuv.a
-	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o test/run-tests test/run-tests.c \
-		test/runner.c $(RUNNER_SRC) $(TESTS) libuv.a $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
+test/run-tests$(E): test/run-tests.c test/runner.c $(RUNNER_SRC) $(TESTS) libuv.so
+	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o $@ $^ $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
 
-test/run-benchmarks$(E): test/*.h test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) libuv.a
-	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o test/run-benchmarks test/run-benchmarks.c \
-		 test/runner.c $(RUNNER_SRC) $(BENCHMARKS) libuv.a $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
+test/run-benchmarks$(E): test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) libuv.so
+	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o $@ $^ $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
 
 test/echo.o: test/echo.c test/echo.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c test/echo.c -o test/echo.o
 
 
 .PHONY: clean clean-platform distclean distclean-platform test bench
 
 
 test: test/run-tests$(E)
-	test/run-tests
+	LD_LIBRARY_PATH="$(LD_LIBRARY_PATH):." test/run-tests
 
 #test-%:	test/run-tests$(E)
 #	test/run-tests $(@:test-%=%)

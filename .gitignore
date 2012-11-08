@@ -1,8 +1,8 @@
 *.swp
-*.o
+*.[oa]
+*.so
 *.lo
 *.la
-*.a
 *.opensdf
 *.orig
 *.sdf
