@@ -189,17 +189,16 @@ static uv_err_t uv__signal_register_handler(int signum) {
 static void uv__signal_unregister_handler(int signum) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
-  int r;
 
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = SIG_DFL;
 
-  r = sigaction(signum, &sa, NULL);
   /* sigaction can only fail with EINVAL or EFAULT; an attempt to deregister a
    * signal implies that it was successfully registered earlier, so EINVAL
    * should never happen.
    */
-  assert(r == 0);
+  if (sigaction(signum, &sa, NULL))
+    abort();
 }
 
 
@@ -439,6 +438,7 @@ static void uv__signal_stop(uv_signal_t* handle) {
 
   removed_handle = RB_REMOVE(uv__signal_tree_s, &uv__signal_tree, handle);
   assert(removed_handle == handle);
+  (void) removed_handle;
 
   /* Check if there are other active signal watchers observing this signal. If
    * not, unregister the signal handler.
