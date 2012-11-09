@@ -121,7 +121,7 @@ endif
 
 # Need _GNU_SOURCE for strdup?
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE -Itest
-RUNNER_LINKFLAGS=$(LINKFLAGS) -L"$(PWD)" -luv
+RUNNER_LINKFLAGS=$(LINKFLAGS) -Wl,-rpath="$(PWD)" -L"$(PWD)" -luv
 
 ifeq (SunOS,$(uname_S))
 RUNNER_LINKFLAGS += -pthreads

@@ -50,16 +50,10 @@ test/echo.o: test/echo.c test/echo.h
 
 
 test: test/run-tests$(E)
-	LD_LIBRARY_PATH="$(LD_LIBRARY_PATH):." test/run-tests
-
-#test-%:	test/run-tests$(E)
-#	test/run-tests $(@:test-%=%)
+	$<
 
 bench: test/run-benchmarks$(E)
-	test/run-benchmarks
-
-#bench-%:	test/run-benchmarks$(E)
-#	test/run-benchmarks $(@:bench-%=%)
+	$<
 
 clean: clean-platform
 	$(RM) -f src/*.o *.a test/run-tests$(E) test/run-benchmarks$(E)
