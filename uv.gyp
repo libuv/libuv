@@ -9,11 +9,9 @@
         ],
         'conditions': [
           ['OS=="solaris"', {
-            'cflags': ['-pthreads'],
-            'ldlags': ['-pthreads'],
+            'cflags': [ '-pthreads' ],
           }, {
-            'cflags': ['-pthread'],
-            'ldlags': ['-pthread'],
+            'cflags': [ '-pthread' ],
           }],
         ],
       }],
@@ -38,12 +36,11 @@
           ['OS == "mac"', {
             'defines': [ '_DARWIN_USE_64_BIT_INODE=1' ],
           }],
-          ['OS == "linux"', {
-            'libraries': [ '-ldl' ],
-          }],
         ],
       },
-
+      'defines': [
+        'HAVE_CONFIG_H'
+      ],
       'sources': [
         'common.gypi',
         'include/uv.h',
@@ -144,7 +141,16 @@
             'src/unix/udp.c',
           ],
           'include_dirs': [ 'src/unix/ev', ],
-          'libraries': [ '-lm' ],
+          'link_settings': {
+            'libraries': [ '-lm' ],
+            'conditions': [
+              ['OS=="solaris"', {
+                'ldflags': [ '-pthreads' ],
+              }, {
+                'ldflags': [ '-pthread' ],
+              }],
+            ],
+          },
           'conditions': [
             ['"<(library)" == "shared_library"', {
               'cflags': [ '-fPIC' ],
@@ -153,7 +159,7 @@
         }],
         [ 'OS=="mac"', {
           'sources': [ 'src/unix/darwin.c', 'src/unix/fsevents.c' ],
-          'direct_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '$(SDKROOT)/System/Library/Frameworks/CoreServices.framework',
             ],
@@ -173,8 +179,8 @@
           'defines': [
             'EV_CONFIG_H="config_linux.h"',
           ],
-          'direct_dependent_settings': {
-            'libraries': [ '-lrt' ],
+          'link_settings': {
+            'libraries': [ '-ldl', '-lrt' ],
           },
         }],
         [ 'OS=="solaris"', {
@@ -184,7 +190,7 @@
             '_XOPEN_SOURCE=500',
             'EV_CONFIG_H="config_sunos.h"',
           ],
-          'direct_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-lkstat',
               '-lnsl',
@@ -201,7 +207,7 @@
             '_XOPEN_SOURCE=500',
             'EV_CONFIG_H="config_aix.h"',
           ],
-          'direct_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-lperfstat',
             ],
@@ -212,7 +218,7 @@
           'defines': [
             'EV_CONFIG_H="config_freebsd.h"',
           ],
-          'direct_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-lkvm',
             ],
@@ -229,7 +235,7 @@
           'defines': [
             'EV_CONFIG_H="config_netbsd.h"',
           ],
-          'direct_dependent_settings': {
+          'link_settings': {
             'libraries': [
               '-lkvm',
             ],
