@@ -27,6 +27,10 @@ LINKFLAGS=-lm
 CPPFLAGS += -D_LARGEFILE_SOURCE
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
+RUNNER_SRC=test/runner-unix.c
+RUNNER_CFLAGS=$(CFLAGS) -Itest
+RUNNER_LINKFLAGS=-L"$(PWD)" -luv -Xlinker -rpath -Xlinker "$(PWD)"
+
 OBJS += src/unix/async.o
 OBJS += src/unix/core.o
 OBJS += src/unix/dl.o
@@ -55,6 +59,8 @@ ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 CPPFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 LINKFLAGS+=-lkstat -lnsl -lsendfile -lsocket
+# Library dependencies are not transitive.
+RUNNER_LINKFLAGS += $(LINKFLAGS)
 OBJS += src/unix/sunos.o
 endif
 
@@ -68,7 +74,8 @@ endif
 ifeq (Darwin,$(uname_S))
 EV_CONFIG=config_darwin.h
 CPPFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
-LINKFLAGS+=-framework CoreServices
+LINKFLAGS+=-framework CoreServices -dynamiclib -install_name "@rpath/libuv.dylib"
+SOEXT = dylib
 OBJS += src/unix/darwin.o
 OBJS += src/unix/kqueue.o
 OBJS += src/unix/fsevents.o
@@ -78,6 +85,7 @@ ifeq (Linux,$(uname_S))
 EV_CONFIG=config_linux.h
 CSTDFLAG += -D_GNU_SOURCE
 LINKFLAGS+=-ldl -lrt
+RUNNER_CFLAGS += -D_GNU_SOURCE
 OBJS += src/unix/linux/linux-core.o \
         src/unix/linux/inotify.o    \
         src/unix/linux/syscalls.o
@@ -119,25 +127,18 @@ LINKFLAGS+=
 OBJS += src/unix/cygwin.o
 endif
 
-# Need _GNU_SOURCE for strdup?
-RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE -Itest
-RUNNER_LINKFLAGS=$(LINKFLAGS) -Wl,-rpath="$(PWD)" -L"$(PWD)" -luv
-
 ifeq (SunOS,$(uname_S))
 RUNNER_LINKFLAGS += -pthreads
 else
 RUNNER_LINKFLAGS += -pthread
 endif
 
-RUNNER_LIBS=
-RUNNER_SRC=test/runner-unix.c
-
 libuv.a: $(OBJS)
 	$(AR) rcs $@ $^
 
-libuv.so:	CFLAGS += -fPIC
-libuv.so:	$(OBJS)
-	$(CC) -shared -o $@ $^
+libuv.$(SOEXT):	CFLAGS += -fPIC
+libuv.$(SOEXT):	$(OBJS)
+	$(CC) -shared -o $@ $^ $(LINKFLAGS)
 
 src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@

@@ -26,6 +26,12 @@ endif
 
 CPPFLAGS += -Iinclude -Iinclude/uv-private
 
+ifeq (Darwin,$(uname_S))
+SOEXT = dylib
+else
+SOEXT = so
+endif
+
 ifneq (,$(findstring MINGW,$(uname_S)))
 include config-mingw.mk
 else
@@ -37,10 +43,10 @@ BENCHMARKS=test/blackhole-server.c test/echo-server.c test/dns-server.c test/ben
 
 all: libuv.a
 
-test/run-tests$(E): test/run-tests.c test/runner.c $(RUNNER_SRC) $(TESTS) libuv.so
+test/run-tests$(E): test/run-tests.c test/runner.c $(RUNNER_SRC) $(TESTS) libuv.$(SOEXT)
 	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o $@ $^ $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
 
-test/run-benchmarks$(E): test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) libuv.so
+test/run-benchmarks$(E): test/run-benchmarks.c test/runner.c $(RUNNER_SRC) $(BENCHMARKS) libuv.$(SOEXT)
 	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o $@ $^ $(RUNNER_LIBS) $(RUNNER_LINKFLAGS)
 
 test/echo.o: test/echo.c test/echo.h
