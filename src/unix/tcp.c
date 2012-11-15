@@ -127,7 +127,7 @@ static int uv__connect(uv_connect_t* req,
   ngx_queue_init(&req->queue);
   handle->connect_req = req;
 
-  uv__io_start(handle->loop, &handle->io_watcher, UV__IO_WRITE);
+  uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
 
   if (handle->delayed_error)
     uv__io_feed(handle->loop, &handle->io_watcher);
@@ -257,7 +257,7 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
   /* Start listening for connections. */
   tcp->io_watcher.cb = uv__server_io;
-  uv__io_start(tcp->loop, &tcp->io_watcher, UV__IO_READ);
+  uv__io_start(tcp->loop, &tcp->io_watcher, UV__POLLIN);
 
   return 0;
 }

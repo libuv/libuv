@@ -83,33 +83,33 @@
   while (0)
 
 #if defined(__linux__)
-# define UV__IO_READ  UV__EPOLLIN
-# define UV__IO_WRITE UV__EPOLLOUT
-# define UV__IO_ERROR UV__EPOLLERR
-# define UV__IO_HUP   UV__EPOLLHUP
+# define UV__POLLIN   UV__EPOLLIN
+# define UV__POLLOUT  UV__EPOLLOUT
+# define UV__POLLERR  UV__EPOLLERR
+# define UV__POLLHUP  UV__EPOLLHUP
 #endif
 
 #if defined(__sun)
-# define UV__IO_READ  POLLIN
-# define UV__IO_WRITE POLLOUT
-# define UV__IO_ERROR POLLERR
-# define UV__IO_HUP   POLLHUP
+# define UV__POLLIN   POLLIN
+# define UV__POLLOUT  POLLOUT
+# define UV__POLLERR  POLLERR
+# define UV__POLLHUP  POLLHUP
 #endif
 
-#ifndef UV__IO_READ
-# define UV__IO_READ  1
+#ifndef UV__POLLIN
+# define UV__POLLIN   1
 #endif
 
-#ifndef UV__IO_WRITE
-# define UV__IO_WRITE 2
+#ifndef UV__POLLOUT
+# define UV__POLLOUT  2
 #endif
 
-#ifndef UV__IO_ERROR
-# define UV__IO_ERROR 4
+#ifndef UV__POLLERR
+# define UV__POLLERR  4
 #endif
 
-#ifndef UV__IO_HUP
-# define UV__IO_HUP   8
+#ifndef UV__POLLHUP
+# define UV__POLLHUP  8
 #endif
 
 /* handle flags */

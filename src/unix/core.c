@@ -536,7 +536,7 @@ static void uv__run_pending(uv_loop_t* loop) {
     ngx_queue_init(q);
 
     w = ngx_queue_data(q, uv__io_t, pending_queue);
-    w->cb(loop, w, UV__IO_WRITE);
+    w->cb(loop, w, UV__POLLOUT);
   }
 }
 
@@ -595,7 +595,7 @@ void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
 
 
 void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(UV__IO_READ | UV__IO_WRITE)));
+  assert(0 == (events & ~(UV__POLLIN | UV__POLLOUT)));
   assert(0 != events);
   assert(w->fd >= 0);
   assert(w->fd < INT_MAX);
@@ -614,7 +614,7 @@ void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(UV__IO_READ | UV__IO_WRITE)));
+  assert(0 == (events & ~(UV__POLLIN | UV__POLLOUT)));
   assert(0 != events);
 
   if (w->fd == -1)
@@ -655,7 +655,7 @@ void uv__io_feed(uv_loop_t* loop, uv__io_t* w) {
 
 
 int uv__io_active(const uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(UV__IO_READ | UV__IO_WRITE)));
+  assert(0 == (events & ~(UV__POLLIN | UV__POLLOUT)));
   assert(0 != events);
   return 0 != (w->pevents & events);
 }

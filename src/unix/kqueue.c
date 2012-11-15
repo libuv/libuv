@@ -90,7 +90,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (w->events == w->pevents)
       continue;
 
-    if ((w->events & UV__IO_READ) == 0 && (w->pevents & UV__IO_READ) != 0) {
+    if ((w->events & UV__POLLIN) == 0 && (w->pevents & UV__POLLIN) != 0) {
       filter = EVFILT_READ;
       fflags = 0;
       op = EV_ADD;
@@ -111,7 +111,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
     }
 
-    if ((w->events & UV__IO_WRITE) == 0 && (w->pevents & UV__IO_WRITE) != 0) {
+    if ((w->events & UV__POLLOUT) == 0 && (w->pevents & UV__POLLOUT) != 0) {
       EV_SET(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
@@ -181,8 +181,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       if (ev->filter == EVFILT_VNODE) {
-        assert(w->events == UV__IO_READ);
-        assert(w->pevents == UV__IO_READ);
+        assert(w->events == UV__POLLIN);
+        assert(w->pevents == UV__POLLIN);
         w->cb(loop, w, ev->fflags); /* XXX always uv__fs_event() */
         nevents++;
         continue;
@@ -191,8 +191,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       revents = 0;
 
       if (ev->filter == EVFILT_READ) {
-        if (w->events & UV__IO_READ)
-          revents |= UV__IO_READ;
+        if (w->events & UV__POLLIN)
+          revents |= UV__POLLIN;
         else {
           /* TODO batch up */
           struct kevent events[1];
@@ -202,8 +202,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       if (ev->filter == EVFILT_WRITE) {
-        if (w->events & UV__IO_WRITE)
-          revents |= UV__IO_WRITE;
+        if (w->events & UV__POLLOUT)
+          revents |= UV__POLLOUT;
         else {
           /* TODO batch up */
           struct kevent events[1];
@@ -213,7 +213,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       if (ev->flags & EV_ERROR)
-        revents |= UV__IO_ERROR;
+        revents |= UV__POLLERR;
 
       if (revents == 0)
         continue;
@@ -320,7 +320,7 @@ int uv_fs_event_init(uv_loop_t* loop,
 fallback:
 #endif /* defined(__APPLE__) */
 
-  uv__io_start(loop, &handle->event_watcher, UV__IO_READ);
+  uv__io_start(loop, &handle->event_watcher, UV__POLLIN);
 
   return 0;
 }
@@ -329,9 +329,9 @@ fallback:
 void uv__fs_event_close(uv_fs_event_t* handle) {
 #if defined(__APPLE__)
   if (uv__fsevents_close(handle))
-    uv__io_stop(handle->loop, &handle->event_watcher, UV__IO_READ);
+    uv__io_stop(handle->loop, &handle->event_watcher, UV__POLLIN);
 #else
-  uv__io_stop(handle->loop, &handle->event_watcher, UV__IO_READ);
+  uv__io_stop(handle->loop, &handle->event_watcher, UV__POLLIN);
 #endif /* defined(__APPLE__) */
 
   uv__handle_stop(handle);

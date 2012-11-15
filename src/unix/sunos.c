@@ -368,7 +368,7 @@ int uv_fs_event_init(uv_loop_t* loop,
 
   if (first_run) {
     uv__io_init(&loop->fs_event_watcher, uv__fs_event_read, portfd);
-    uv__io_start(loop, &loop->fs_event_watcher, UV__IO_READ);
+    uv__io_start(loop, &loop->fs_event_watcher, UV__POLLIN);
   }
 
   return 0;

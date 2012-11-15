@@ -105,7 +105,7 @@ int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
 
 void uv__platform_loop_delete(uv_loop_t* loop) {
   if (loop->inotify_fd == -1) return;
-  uv__io_stop(loop, &loop->inotify_read_watcher, UV__IO_READ);
+  uv__io_stop(loop, &loop->inotify_read_watcher, UV__POLLIN);
   close(loop->inotify_fd);
   loop->inotify_fd = -1;
 }

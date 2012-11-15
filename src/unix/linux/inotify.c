@@ -101,7 +101,7 @@ static int init_inotify(uv_loop_t* loop) {
   }
 
   uv__io_init(&loop->inotify_read_watcher, uv__inotify_read, loop->inotify_fd);
-  uv__io_start(loop, &loop->inotify_read_watcher, UV__IO_READ);
+  uv__io_start(loop, &loop->inotify_read_watcher, UV__POLLIN);
 
   return 0;
 }

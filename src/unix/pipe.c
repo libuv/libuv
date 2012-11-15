@@ -128,7 +128,7 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   } else {
     handle->connection_cb = cb;
     handle->io_watcher.cb = uv__pipe_accept;
-    uv__io_start(handle->loop, &handle->io_watcher, UV__IO_READ);
+    uv__io_start(handle->loop, &handle->io_watcher, UV__POLLIN);
   }
 
 out:
@@ -200,7 +200,7 @@ void uv_pipe_connect(uv_connect_t* req,
                         UV_STREAM_READABLE | UV_STREAM_WRITABLE))
       goto out;
 
-  uv__io_start(handle->loop, &handle->io_watcher, UV__IO_READ|UV__IO_WRITE);
+  uv__io_start(handle->loop, &handle->io_watcher, UV__POLLIN | UV__POLLOUT);
   err = 0;
 
 out:
@@ -244,7 +244,7 @@ static void uv__pipe_accept(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     pipe->connection_cb((uv_stream_t*)pipe, 0);
     if (pipe->accepted_fd == sockfd) {
       /* The user hasn't called uv_accept() yet */
-      uv__io_stop(pipe->loop, &pipe->io_watcher, UV__IO_READ);
+      uv__io_stop(pipe->loop, &pipe->io_watcher, UV__POLLIN);
     }
   }
 

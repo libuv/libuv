@@ -40,7 +40,7 @@ static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
 
 
 void uv__udp_close(uv_udp_t* handle) {
-  uv__io_stop(handle->loop, &handle->io_watcher, UV__IO_READ|UV__IO_WRITE);
+  uv__io_stop(handle->loop, &handle->io_watcher, UV__POLLIN | UV__POLLOUT);
   uv__handle_stop(handle);
   close(handle->io_watcher.fd);
   handle->io_watcher.fd = -1;
@@ -51,7 +51,7 @@ void uv__udp_finish_close(uv_udp_t* handle) {
   uv_udp_send_t* req;
   ngx_queue_t* q;
 
-  assert(!uv__io_active(&handle->io_watcher, UV__IO_READ|UV__IO_WRITE));
+  assert(!uv__io_active(&handle->io_watcher, UV__POLLIN | UV__POLLOUT));
   assert(handle->io_watcher.fd == -1);
 
   uv__udp_run_completed(handle);
@@ -172,10 +172,10 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
 
 
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
-  if (revents & UV__IO_READ)
+  if (revents & UV__POLLIN)
     uv__udp_recvmsg(loop, w, revents);
 
-  if (revents & UV__IO_WRITE)
+  if (revents & UV__POLLOUT)
     uv__udp_sendmsg(loop, w, revents);
 }
 
@@ -193,7 +193,7 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
 
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
-  assert(revents & UV__IO_READ);
+  assert(revents & UV__POLLIN);
 
   assert(handle->recv_cb != NULL);
   assert(handle->alloc_cb != NULL);
@@ -258,7 +258,7 @@ static void uv__udp_sendmsg(uv_loop_t* loop,
 
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
-  assert(revents & UV__IO_WRITE);
+  assert(revents & UV__POLLOUT);
 
   assert(!ngx_queue_empty(&handle->write_queue)
       || !ngx_queue_empty(&handle->write_completed_queue));
@@ -275,9 +275,9 @@ static void uv__udp_sendmsg(uv_loop_t* loop,
   }
   else if (ngx_queue_empty(&handle->write_queue)) {
     /* Pending queue and completion queue empty, stop watcher. */
-    uv__io_stop(loop, &handle->io_watcher, UV__IO_WRITE);
+    uv__io_stop(loop, &handle->io_watcher, UV__POLLOUT);
 
-    if (!uv__io_active(&handle->io_watcher, UV__IO_READ))
+    if (!uv__io_active(&handle->io_watcher, UV__POLLIN))
       uv__handle_stop(handle);
   }
 }
@@ -439,7 +439,7 @@ static int uv__udp_send(uv_udp_send_t* req,
 
   memcpy(req->bufs, bufs, bufcnt * sizeof(bufs[0]));
   ngx_queue_insert_tail(&handle->write_queue, &req->queue);
-  uv__io_start(handle->loop, &handle->io_watcher, UV__IO_WRITE);
+  uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
   uv__handle_start(handle);
 
   return 0;
@@ -674,7 +674,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
     return -1;
   }
 
-  if (uv__io_active(&handle->io_watcher, UV__IO_READ)) {
+  if (uv__io_active(&handle->io_watcher, UV__POLLIN)) {
     uv__set_artificial_error(handle->loop, UV_EALREADY);
     return -1;
   }
@@ -685,7 +685,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
 
-  uv__io_start(handle->loop, &handle->io_watcher, UV__IO_READ);
+  uv__io_start(handle->loop, &handle->io_watcher, UV__POLLIN);
   uv__handle_start(handle);
 
   return 0;
@@ -693,9 +693,9 @@ int uv_udp_recv_start(uv_udp_t* handle,
 
 
 int uv_udp_recv_stop(uv_udp_t* handle) {
-  uv__io_stop(handle->loop, &handle->io_watcher, UV__IO_READ);
+  uv__io_stop(handle->loop, &handle->io_watcher, UV__POLLIN);
 
-  if (!uv__io_active(&handle->io_watcher, UV__IO_WRITE))
+  if (!uv__io_active(&handle->io_watcher, UV__POLLOUT))
     uv__handle_stop(handle);
 
   handle->alloc_cb = NULL;

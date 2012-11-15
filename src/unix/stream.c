@@ -131,7 +131,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
   uv_write_t* req;
   ngx_queue_t* q;
 
-  assert(!uv__io_active(&stream->io_watcher, UV__IO_READ | UV__IO_WRITE));
+  assert(!uv__io_active(&stream->io_watcher, UV__POLLIN | UV__POLLOUT));
   assert(stream->flags & UV_CLOSED);
 
   if (stream->connect_req) {
@@ -229,12 +229,12 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   int r;
 
   stream = container_of(w, uv_stream_t, io_watcher);
-  assert(events == UV__IO_READ);
+  assert(events == UV__POLLIN);
   assert(stream->accepted_fd == -1);
   assert(!(stream->flags & UV_CLOSING));
 
   if (stream->accepted_fd == -1)
-    uv__io_start(stream->loop, &stream->io_watcher, UV__IO_READ);
+    uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
 
   /* connection_cb can close the server socket while we're
    * in the loop so check it on each iteration.
@@ -281,7 +281,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     if (stream->accepted_fd != -1) {
       /* The user hasn't yet accepted called uv_accept() */
-      uv__io_stop(loop, &stream->io_watcher, UV__IO_READ);
+      uv__io_stop(loop, &stream->io_watcher, UV__POLLIN);
       return;
     }
 
@@ -322,7 +322,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
     goto out;
   }
 
-  uv__io_start(streamServer->loop, &streamServer->io_watcher, UV__IO_READ);
+  uv__io_start(streamServer->loop, &streamServer->io_watcher, UV__POLLIN);
   streamServer->accepted_fd = -1;
   status = 0;
 
@@ -382,7 +382,7 @@ static void uv__drain(uv_stream_t* stream) {
   assert(!uv_write_queue_head(stream));
   assert(stream->write_queue_size == 0);
 
-  uv__io_stop(stream->loop, &stream->io_watcher, UV__IO_WRITE);
+  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
 
   /* Shutdown? */
   if ((stream->flags & UV_STREAM_SHUTTING) &&
@@ -592,7 +592,7 @@ start:
   assert(!(stream->flags & UV_STREAM_BLOCKING));
 
   /* We're not done. */
-  uv__io_start(stream->loop, &stream->io_watcher, UV__IO_WRITE);
+  uv__io_start(stream->loop, &stream->io_watcher, UV__POLLOUT);
 }
 
 
@@ -700,7 +700,7 @@ static void uv__read(uv_stream_t* stream) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* Wait for the next one. */
         if (stream->flags & UV_STREAM_READING) {
-          uv__io_start(stream->loop, &stream->io_watcher, UV__IO_READ);
+          uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
         }
         uv__set_sys_error(stream->loop, EAGAIN);
 
@@ -721,16 +721,16 @@ static void uv__read(uv_stream_t* stream) {
           stream->read2_cb((uv_pipe_t*)stream, -1, buf, UV_UNKNOWN_HANDLE);
         }
 
-        assert(!uv__io_active(&stream->io_watcher, UV__IO_READ));
+        assert(!uv__io_active(&stream->io_watcher, UV__POLLIN));
         return;
       }
 
     } else if (nread == 0) {
       /* EOF */
       uv__set_artificial_error(stream->loop, UV_EOF);
-      uv__io_stop(stream->loop, &stream->io_watcher, UV__IO_READ);
+      uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
 
-      if (!uv__io_active(&stream->io_watcher, UV__IO_WRITE))
+      if (!uv__io_active(&stream->io_watcher, UV__POLLOUT))
         uv__handle_stop(stream);
 
       if (stream->read_cb) {
@@ -815,7 +815,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   stream->shutdown_req = req;
   stream->flags |= UV_STREAM_SHUTTING;
 
-  uv__io_start(stream->loop, &stream->io_watcher, UV__IO_WRITE);
+  uv__io_start(stream->loop, &stream->io_watcher, UV__POLLOUT);
 
   return 0;
 }
@@ -836,7 +836,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     return;
   }
 
-  if (events & UV__IO_READ) {
+  if (events & UV__POLLIN) {
     assert(stream->io_watcher.fd >= 0);
 
     uv__read(stream);
@@ -845,7 +845,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       return; /* read_cb closed stream. */
   }
 
-  if (events & UV__IO_WRITE) {
+  if (events & UV__POLLOUT) {
     assert(stream->io_watcher.fd >= 0);
     uv__write(stream);
     uv__write_callbacks(stream);
@@ -958,7 +958,7 @@ int uv_write2(uv_write_t* req,
      * sufficiently flushed in uv__write.
      */
     assert(!(stream->flags & UV_STREAM_BLOCKING));
-    uv__io_start(stream->loop, &stream->io_watcher, UV__IO_WRITE);
+    uv__io_start(stream->loop, &stream->io_watcher, UV__POLLOUT);
   }
 
   return 0;
@@ -1000,7 +1000,7 @@ int uv__read_start_common(uv_stream_t* stream, uv_alloc_cb alloc_cb,
   stream->read2_cb = read2_cb;
   stream->alloc_cb = alloc_cb;
 
-  uv__io_start(stream->loop, &stream->io_watcher, UV__IO_READ);
+  uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
   uv__handle_start(stream);
 
   return 0;
@@ -1020,7 +1020,7 @@ int uv_read2_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
 
 
 int uv_read_stop(uv_stream_t* stream) {
-  uv__io_stop(stream->loop, &stream->io_watcher, UV__IO_READ);
+  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
   uv__handle_stop(stream);
   stream->flags &= ~UV_STREAM_READING;
   stream->read_cb = NULL;
@@ -1042,7 +1042,7 @@ int uv_is_writable(const uv_stream_t* stream) {
 
 void uv__stream_close(uv_stream_t* handle) {
   uv_read_stop(handle);
-  uv__io_stop(handle->loop, &handle->io_watcher, UV__IO_WRITE);
+  uv__io_stop(handle->loop, &handle->io_watcher, UV__POLLOUT);
 
   close(handle->io_watcher.fd);
   handle->io_watcher.fd = -1;
@@ -1052,5 +1052,5 @@ void uv__stream_close(uv_stream_t* handle) {
     handle->accepted_fd = -1;
   }
 
-  assert(!uv__io_active(&handle->io_watcher, UV__IO_READ|UV__IO_WRITE));
+  assert(!uv__io_active(&handle->io_watcher, UV__POLLIN | UV__POLLOUT));
 }

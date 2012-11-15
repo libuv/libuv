@@ -105,7 +105,7 @@ static int uv__async_init(uv_loop_t* loop) {
     return -1;
 
   uv__io_init(&loop->async_watcher, uv__async_io, loop->async_pipefd[0]);
-  uv__io_start(loop, &loop->async_watcher, UV__IO_READ);
+  uv__io_start(loop, &loop->async_watcher, UV__POLLIN);
 
   return 0;
 }
