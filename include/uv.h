@@ -1701,8 +1701,8 @@ UV_EXTERN int uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size);
 /* Cross-platform IPv6-capable implementation of the 'standard' inet_ntop */
 /* and inet_pton functions. On success they return UV_OK. If an error */
 /* the target of the `dst` pointer is unmodified. */
-uv_err_t uv_inet_ntop(int af, const void* src, char* dst, size_t size);
-uv_err_t uv_inet_pton(int af, const char* src, void* dst);
+UV_EXTERN uv_err_t uv_inet_ntop(int af, const void* src, char* dst, size_t size);
+UV_EXTERN uv_err_t uv_inet_pton(int af, const char* src, void* dst);
 
 /* Gets the executable path */
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
