@@ -86,7 +86,8 @@ static int test_async_pummel(int nthreads) {
   for (i = 0; i < nthreads; i++)
     ASSERT(0 == uv_thread_join(tids + i));
 
-  printf("%s callbacks in %.2f seconds (%s/sec)\n",
+  printf("async_pummel_%d: %s callbacks in %.2f seconds (%s/sec)\n",
+         nthreads,
          fmt(callbacks),
          time / 1e9,
          fmt(callbacks / (time / 1e9)));
