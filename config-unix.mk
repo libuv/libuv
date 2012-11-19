@@ -93,7 +93,7 @@ OBJS += src/unix/kqueue.o
 endif
 
 ifeq (DragonFly,$(uname_S))
-LINKFLAGS+=
+LINKFLAGS+=-lkvm
 OBJS += src/unix/freebsd.o
 OBJS += src/unix/kqueue.o
 endif
