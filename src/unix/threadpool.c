@@ -66,8 +66,8 @@ static void* worker(void* arg) {
 
     uv_mutex_lock(&w->loop->wq_mutex);
     ngx_queue_insert_tail(&w->loop->wq, &w->wq);
-    uv_mutex_unlock(&w->loop->wq_mutex);
     uv_async_send(&w->loop->wq_async);
+    uv_mutex_unlock(&w->loop->wq_mutex);
   }
 
   return NULL;
