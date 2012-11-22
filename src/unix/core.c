@@ -325,6 +325,13 @@ int uv__socket(int domain, int type, int protocol) {
     sockfd = -1;
   }
 
+#if defined(SO_NOSIGPIPE)
+  {
+    int on = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+  }
+#endif
+
 out:
   return sockfd;
 }
