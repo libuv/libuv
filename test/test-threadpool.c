@@ -56,3 +56,21 @@ TEST_IMPL(threadpool_queue_work_simple) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+TEST_IMPL(threadpool_queue_work_einval) {
+  int r;
+
+  work_req.data = &data;
+  r = uv_queue_work(uv_default_loop(), &work_req, NULL, after_work_cb);
+  ASSERT(r == -1);
+
+  uv_run(uv_default_loop());
+  ASSERT(uv_last_error(uv_default_loop()).code == UV_EINVAL);
+
+  ASSERT(work_cb_count == 0);
+  ASSERT(after_work_cb_count == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
