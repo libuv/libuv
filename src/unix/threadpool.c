@@ -30,6 +30,9 @@ static ngx_queue_t wq;
 static volatile int initialized;
 
 
+/* To avoid deadlock with uv_cancel() it's crucial that the worker
+ * never holds the global mutex and the loop-local mutex at the same time.
+ */
 static void worker(void* arg) {
   struct uv__work* w;
   ngx_queue_t* q;
@@ -46,8 +49,11 @@ static void worker(void* arg) {
 
     if (q == &exit_message)
       uv_cond_signal(&cond);
-    else
+    else {
       ngx_queue_remove(q);
+      ngx_queue_init(q);  /* Signal uv_cancel() that the work req is
+                             executing. */
+    }
 
     uv_mutex_unlock(&mutex);
 
@@ -58,6 +64,8 @@ static void worker(void* arg) {
     w->work(w);
 
     uv_mutex_lock(&w->loop->wq_mutex);
+    w->work = NULL;  /* Signal uv_cancel() that the work req is done
+                        executing. */
     ngx_queue_insert_tail(&w->loop->wq, &w->wq);
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
@@ -116,12 +124,35 @@ static void cleanup(void) {
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      void (*work)(struct uv__work* w),
-                     void (*done)(struct uv__work* w)) {
+                     void (*done)(struct uv__work* w, int status)) {
   uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
   w->done = done;
   post(&w->wq);
+}
+
+
+int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
+  int cancelled;
+
+  uv_mutex_lock(&mutex);
+  uv_mutex_lock(&w->loop->wq_mutex);
+
+  cancelled = !ngx_queue_empty(&w->wq) && w->work != NULL;
+  if (cancelled)
+    ngx_queue_remove(&w->wq);
+
+  uv_mutex_unlock(&w->loop->wq_mutex);
+  uv_mutex_unlock(&mutex);
+
+  if (!cancelled)
+    return -1;
+
+  ngx_queue_init(&w->wq);
+  w->done(w, -UV_ECANCELED);
+
+  return 0;
 }
 
 
@@ -146,7 +177,7 @@ void uv__work_done(uv_async_t* handle, int status) {
     ngx_queue_remove(q);
 
     w = container_of(q, struct uv__work, wq);
-    w->done(w);
+    w->done(w, 0);
   }
 }
 
@@ -158,10 +189,13 @@ static void uv__queue_work(struct uv__work* w) {
 }
 
 
-static void uv__queue_done(struct uv__work* w) {
+static void uv__queue_done(struct uv__work* w, int status) {
   uv_work_t* req = container_of(w, uv_work_t, work_req);
 
   uv__req_unregister(req->loop, req);
+
+  if (status != 0)
+    return;
 
   if (req->after_work_cb)
     req->after_work_cb(req);
@@ -181,4 +215,29 @@ int uv_queue_work(uv_loop_t* loop,
   req->after_work_cb = after_work_cb;
   uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
   return 0;
+}
+
+
+int uv_cancel(uv_req_t* req) {
+  struct uv__work* wreq;
+  uv_loop_t* loop;
+
+  switch (req->type) {
+  case UV_FS:
+    loop =  ((uv_fs_t*) req)->loop;
+    wreq = &((uv_fs_t*) req)->work_req;
+    break;
+  case UV_GETADDRINFO:
+    loop =  ((uv_getaddrinfo_t*) req)->loop;
+    wreq = &((uv_getaddrinfo_t*) req)->work_req;
+    break;
+  case UV_WORK:
+    loop =  ((uv_work_t*) req)->loop;
+    wreq = &((uv_work_t*) req)->work_req;
+    break;
+  default:
+    return -1;
+  }
+
+  return uv__work_cancel(loop, req, wreq);
 }

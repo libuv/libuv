@@ -300,6 +300,7 @@
         'test/test-tcp-writealot.c',
         'test/test-tcp-unexpected-read.c',
         'test/test-threadpool.c',
+        'test/test-threadpool-cancel.c',
         'test/test-mutexes.c',
         'test/test-thread.c',
         'test/test-barrier.c',

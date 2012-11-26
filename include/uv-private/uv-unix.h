@@ -60,7 +60,7 @@ struct uv__io_s {
 
 struct uv__work {
   void (*work)(struct uv__work *w);
-  void (*done)(struct uv__work *w);
+  void (*done)(struct uv__work *w, int status);
   struct uv_loop_s* loop;
   ngx_queue_t wq;
 };

@@ -1386,6 +1386,19 @@ struct uv_work_s {
 UV_EXTERN int uv_queue_work(uv_loop_t* loop, uv_work_t* req,
     uv_work_cb work_cb, uv_after_work_cb after_work_cb);
 
+/* Cancel a pending request. Fails if the request is executing or has finished
+ * executing.
+ *
+ * Returns 0 on success, -1 on error. The loop error code is not touched.
+ *
+ * Only cancellation of uv_fs_t, uv_getaddrinfo_t and uv_work_t requests is
+ * currently supported.
+ *
+ * This function is currently only implemented on UNIX platforms. On Windows,
+ * it always returns -1.
+ */
+UV_EXTERN int uv_cancel(uv_req_t* req);
+
 
 struct uv_cpu_info_s {
   char* model;

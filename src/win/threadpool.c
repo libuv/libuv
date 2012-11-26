@@ -70,6 +70,11 @@ int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb,
 }
 
 
+int uv_cancel(uv_req_t* req) {
+  return -1;
+}
+
+
 void uv_process_work_req(uv_loop_t* loop, uv_work_t* req) {
   uv__req_unregister(loop, req);
   if(req->after_work_cb)

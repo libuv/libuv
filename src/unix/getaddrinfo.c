@@ -37,7 +37,7 @@ static void uv__getaddrinfo_work(struct uv__work* w) {
 }
 
 
-static void uv__getaddrinfo_done(struct uv__work* w) {
+static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   uv_getaddrinfo_t* req = container_of(w, uv_getaddrinfo_t, work_req);
   struct addrinfo *res = req->res;
 #if __sun
@@ -62,6 +62,13 @@ static void uv__getaddrinfo_done(struct uv__work* w) {
     free(req->hostname);
   else
     assert(0);
+
+  req->hints = NULL;
+  req->service = NULL;
+  req->hostname = NULL;
+
+  if (status != 0)
+    return;
 
   if (req->retcode == 0) {
     /* OK */

@@ -174,7 +174,7 @@ void uv__signal_loop_cleanup();
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
                      void (*work)(struct uv__work *w),
-                     void (*done)(struct uv__work *w));
+                     void (*done)(struct uv__work *w, int status));
 void uv__work_done(uv_async_t* handle, int status);
 
 /* platform specific */

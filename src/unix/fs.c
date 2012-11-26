@@ -90,7 +90,7 @@
     }                                                                         \
     else {                                                                    \
       uv__fs_work(&(req)->work_req);                                          \
-      uv__fs_done(&(req)->work_req);                                          \
+      uv__fs_done(&(req)->work_req, 0);                                       \
       return (req)->result;                                                   \
     }                                                                         \
   }                                                                           \
@@ -516,11 +516,16 @@ static void uv__fs_work(struct uv__work* w) {
 }
 
 
-static void uv__fs_done(struct uv__work* w) {
+static void uv__fs_done(struct uv__work* w, int status) {
   uv_fs_t* req;
 
   req = container_of(w, uv_fs_t, work_req);
   uv__req_unregister(req->loop, req);
+
+  if (status != 0) {
+    uv_fs_req_cleanup(req);
+    return;
+  }
 
   if (req->errorno != 0) {
     req->errorno = uv_translate_sys_error(req->errorno);
