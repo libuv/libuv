@@ -261,6 +261,18 @@ UV_EXTERN void uv_unref(uv_handle_t*);
 UV_EXTERN void uv_update_time(uv_loop_t*);
 UV_EXTERN int64_t uv_now(uv_loop_t*);
 
+/*
+ * Get backend file descriptor and get polling timeout for it.
+ * (only kqueue, epoll and event ports are supported).
+ *
+ * This can be used in conjuction with uv_run_once() to poll in one thread and
+ * run the event loop's event callbacks in another.
+ *
+ * Useful for embedding libuv's event loop in another event loop.
+ */
+UV_EXTERN int uv_backend_fd(const uv_loop_t*);
+UV_EXTERN unsigned int uv_backend_timeout(uv_loop_t*);
+
 
 /*
  * Should return a buffer that libuv can use to read data into.

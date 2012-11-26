@@ -124,6 +124,7 @@ TEST_DECLARE   (pipe_ref3)
 TEST_DECLARE   (pipe_ref4)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (active)
+TEST_DECLARE   (embed)
 TEST_DECLARE   (async)
 TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (process_title)
@@ -362,6 +363,8 @@ TASK_LIST_START
   TEST_ENTRY  (walk_handles)
 
   TEST_ENTRY  (active)
+
+  TEST_ENTRY  (embed)
 
   TEST_ENTRY  (async)
 

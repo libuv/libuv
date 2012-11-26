@@ -248,7 +248,12 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
-static unsigned int uv__poll_timeout(uv_loop_t* loop) {
+int uv_backend_fd(const uv_loop_t* loop) {
+  return loop->backend_fd;
+}
+
+
+unsigned int uv_backend_timeout(uv_loop_t* loop) {
   if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
     return 0;
 
@@ -268,7 +273,7 @@ static int uv__run(uv_loop_t* loop) {
   uv__run_idle(loop);
   uv__run_prepare(loop);
   uv__run_pending(loop);
-  uv__io_poll(loop, uv__poll_timeout(loop));
+  uv__io_poll(loop, uv_backend_timeout(loop));
   uv__run_check(loop);
   uv__run_closing_handles(loop);
   return uv__has_active_handles(loop) || uv__has_active_reqs(loop);

@@ -250,6 +250,7 @@
         'test/test-cwd-and-chdir.c',
         'test/test-delayed-accept.c',
         'test/test-error.c',
+        'test/test-embed.c',
         'test/test-fail-always.c',
         'test/test-fs.c',
         'test/test-fs-event.c',

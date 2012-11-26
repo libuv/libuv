@@ -171,6 +171,16 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
+int uv_backend_fd(const uv_loop_t* loop) {
+  return uv__new_artificial_error(UV_ENOSYS);
+}
+
+
+unsigned int uv_backend_timeout(uv_loop_t* loop) {
+  return 0;
+}
+
+
 static void uv_poll(uv_loop_t* loop, int block) {
   BOOL success;
   DWORD bytes, timeout;
