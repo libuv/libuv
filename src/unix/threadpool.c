@@ -21,42 +21,35 @@
 
 #include "internal.h"
 
-#include <errno.h>
-#include <pthread.h>
-
-/* TODO add condvar support to libuv */
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-static pthread_once_t once = PTHREAD_ONCE_INIT;
-static pthread_t threads[4];
+static uv_once_t once = UV_ONCE_INIT;
+static uv_cond_t cond;
+static uv_mutex_t mutex;
+static uv_thread_t threads[4];
 static ngx_queue_t exit_message;
 static ngx_queue_t wq = { &wq, &wq };
 static volatile int initialized;
 
 
-static void* worker(void* arg) {
+static void worker(void* arg) {
   struct uv__work* w;
   ngx_queue_t* q;
 
   (void) arg;
 
   for (;;) {
-    if (pthread_mutex_lock(&mutex))
-      abort();
+    uv_mutex_lock(&mutex);
 
     while (ngx_queue_empty(&wq))
-      if (pthread_cond_wait(&cond, &mutex))
-        abort();
+      uv_cond_wait(&cond, &mutex);
 
     q = ngx_queue_head(&wq);
 
     if (q == &exit_message)
-      pthread_cond_signal(&cond);
+      uv_cond_signal(&cond);
     else
       ngx_queue_remove(q);
 
-    if (pthread_mutex_unlock(&mutex))
-      abort();
+    uv_mutex_unlock(&mutex);
 
     if (q == &exit_message)
       break;
@@ -69,16 +62,14 @@ static void* worker(void* arg) {
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
   }
-
-  return NULL;
 }
 
 
 static void post(ngx_queue_t* q) {
-  pthread_mutex_lock(&mutex);
+  uv_mutex_lock(&mutex);
   ngx_queue_insert_tail(&wq, q);
-  pthread_cond_signal(&cond);
-  pthread_mutex_unlock(&mutex);
+  uv_cond_signal(&cond);
+  uv_mutex_unlock(&mutex);
 }
 
 
@@ -88,13 +79,14 @@ static void init_once(void) {
   ngx_queue_init(&wq);
 
   for (i = 0; i < ARRAY_SIZE(threads); i++)
-    if (pthread_create(threads + i, NULL, worker, NULL))
+    if (uv_thread_create(threads + i, worker, NULL))
       abort();
 
   initialized = 1;
 }
 
 
+#if defined(__GNUC__)
 __attribute__((destructor))
 static void cleanup(void) {
   unsigned int i;
@@ -105,18 +97,19 @@ static void cleanup(void) {
   post(&exit_message);
 
   for (i = 0; i < ARRAY_SIZE(threads); i++)
-    if (pthread_join(threads[i], NULL))
+    if (uv_thread_join(threads + i))
       abort();
 
   initialized = 0;
 }
+#endif
 
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      void (*work)(struct uv__work* w),
                      void (*done)(struct uv__work* w)) {
-  pthread_once(&once, init_once);
+  uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
   w->done = done;
