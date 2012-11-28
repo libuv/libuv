@@ -61,7 +61,7 @@ static int embed_timer_called;
 static void embed_thread_runner(void* arg) {
   int r;
   int fd;
-  unsigned int timeout;
+  int timeout;
 
   while (!embed_closed) {
     fd = uv_backend_fd(uv_default_loop());

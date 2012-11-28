@@ -163,7 +163,7 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 
 /* timer */
 void uv__run_timers(uv_loop_t* loop);
-unsigned int uv__next_timeout(uv_loop_t* loop);
+int uv__next_timeout(const uv_loop_t* loop);
 
 /* signal */
 void uv__signal_close(uv_signal_t* handle);

@@ -253,7 +253,7 @@ int uv_backend_fd(const uv_loop_t* loop) {
 }
 
 
-unsigned int uv_backend_timeout(uv_loop_t* loop) {
+int uv_backend_timeout(const uv_loop_t* loop) {
   if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
     return 0;
 
