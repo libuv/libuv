@@ -58,6 +58,11 @@ static void fail_cb(void) {
 }
 
 
+static void fail_cb2() {
+  ASSERT(0 && "fail_cb2 should not have been called");
+}
+
+
 static void req_cb(uv_handle_t* req, int status) {
   req_cb_called++;
 }
@@ -104,7 +109,7 @@ TEST_IMPL(ref) {
 TEST_IMPL(idle_ref) {
   uv_idle_t h;
   uv_idle_init(uv_default_loop(), &h);
-  uv_idle_start(&h, NULL);
+  uv_idle_start(&h, fail_cb2);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop());
   do_close(&h);
@@ -127,7 +132,7 @@ TEST_IMPL(async_ref) {
 TEST_IMPL(prepare_ref) {
   uv_prepare_t h;
   uv_prepare_init(uv_default_loop(), &h);
-  uv_prepare_start(&h, NULL);
+  uv_prepare_start(&h, fail_cb2);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop());
   do_close(&h);
@@ -139,7 +144,7 @@ TEST_IMPL(prepare_ref) {
 TEST_IMPL(check_ref) {
   uv_check_t h;
   uv_check_init(uv_default_loop(), &h);
-  uv_check_start(&h, NULL);
+  uv_check_start(&h, fail_cb2);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop());
   do_close(&h);
