@@ -26,7 +26,7 @@ static uv_cond_t cond;
 static uv_mutex_t mutex;
 static uv_thread_t threads[4];
 static ngx_queue_t exit_message;
-static ngx_queue_t wq = { &wq, &wq };
+static ngx_queue_t wq;
 static volatile int initialized;
 
 
