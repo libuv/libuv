@@ -172,7 +172,7 @@ void uv_loop_delete(uv_loop_t* loop) {
 
 
 int uv_backend_fd(const uv_loop_t* loop) {
-  return uv__new_artificial_error(UV_ENOSYS);
+  return -1;
 }
 
 
