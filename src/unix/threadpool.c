@@ -76,6 +76,12 @@ static void post(ngx_queue_t* q) {
 static void init_once(void) {
   unsigned int i;
 
+  if (uv_cond_init(&cond))
+    abort();
+
+  if (uv_mutex_init(&mutex))
+    abort();
+
   ngx_queue_init(&wq);
 
   for (i = 0; i < ARRAY_SIZE(threads); i++)
@@ -100,6 +106,8 @@ static void cleanup(void) {
     if (uv_thread_join(threads + i))
       abort();
 
+  uv_mutex_destroy(&mutex);
+  uv_cond_destroy(&cond);
   initialized = 0;
 }
 #endif
