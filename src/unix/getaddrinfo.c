@@ -41,7 +41,12 @@ static void uv__getaddrinfo_done(struct uv__work* w) {
   uv_getaddrinfo_t* req = container_of(w, uv_getaddrinfo_t, work_req);
   struct addrinfo *res = req->res;
 #if __sun
-  size_t hostlen = strlen(req->hostname);
+  size_t hostlen;
+
+  if (req->hostname)
+    hostlen = strlen(req->hostname);
+  else
+    hostlen = 0;
 #endif
 
   req->res = NULL;
