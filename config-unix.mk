@@ -126,7 +126,7 @@ endif
 libuv.a: $(OBJS)
 	$(AR) rcs $@ $^
 
-libuv.$(SOEXT):	CFLAGS += -fPIC
+libuv.$(SOEXT):	override CFLAGS += -fPIC
 libuv.$(SOEXT):	$(OBJS)
 	$(CC) -shared -o $@ $^ $(LINKFLAGS)
 
