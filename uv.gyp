@@ -265,6 +265,7 @@
         'test/test-get-memory.c',
         'test/test-getaddrinfo.c',
         'test/test-getsockname.c',
+        'test/test-guess-handle.c',
         'test/test-hrtime.c',
         'test/test-idle.c',
         'test/test-ipc.c',
