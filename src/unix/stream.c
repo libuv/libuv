@@ -101,18 +101,10 @@ void uv__stream_init(uv_loop_t* loop,
 
 
 int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
-  socklen_t yes;
-
   assert(fd >= 0);
   stream->flags |= flags;
 
   if (stream->type == UV_TCP) {
-    /* Reuse the port address if applicable. */
-    yes = 1;
-
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1)
-      return uv__set_sys_error(stream->loop, errno);
-
     if ((stream->flags & UV_TCP_NODELAY) && uv__tcp_nodelay(fd, 1))
       return uv__set_sys_error(stream->loop, errno);
 

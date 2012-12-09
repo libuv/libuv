@@ -58,29 +58,21 @@ static int uv__bind(uv_tcp_t* tcp,
                     int domain,
                     struct sockaddr* addr,
                     int addrsize) {
-  int saved_errno;
-  int status;
-
-  saved_errno = errno;
-  status = -1;
+  int on;
 
   if (maybe_new_socket(tcp, domain, UV_STREAM_READABLE|UV_STREAM_WRITABLE))
     return -1;
 
-  tcp->delayed_error = 0;
-  if (bind(tcp->io_watcher.fd, addr, addrsize) == -1) {
-    if (errno == EADDRINUSE) {
-      tcp->delayed_error = errno;
-    } else {
-      uv__set_sys_error(tcp->loop, errno);
-      goto out;
-    }
-  }
-  status = 0;
+  on = 1;
+  if (setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
+    return uv__set_sys_error(tcp->loop, errno);
 
-out:
-  errno = saved_errno;
-  return status;
+  errno = 0;
+  if (bind(tcp->io_watcher.fd, addr, addrsize) && errno != EADDRINUSE)
+    return uv__set_sys_error(tcp->loop, errno);
+
+  tcp->delayed_error = errno;
+  return 0;
 }
 
 
