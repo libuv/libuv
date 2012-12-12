@@ -20,6 +20,7 @@
  */
 
 #include "internal.h"
+#include <stdlib.h>
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
@@ -28,6 +29,11 @@ static uv_thread_t threads[4];
 static ngx_queue_t exit_message;
 static ngx_queue_t wq;
 static volatile int initialized;
+
+
+static void uv__cancelled(struct uv__work* w) {
+  abort();
+}
 
 
 /* To avoid deadlock with uv_cancel() it's crucial that the worker
@@ -149,8 +155,10 @@ int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   if (!cancelled)
     return -1;
 
-  ngx_queue_init(&w->wq);
-  w->done(w, -UV_ECANCELED);
+  w->work = uv__cancelled;
+  uv_mutex_lock(&loop->wq_mutex);
+  ngx_queue_insert_tail(&loop->wq, &w->wq);
+  uv_mutex_unlock(&loop->wq_mutex);
 
   return 0;
 }
@@ -161,6 +169,7 @@ void uv__work_done(uv_async_t* handle, int status) {
   uv_loop_t* loop;
   ngx_queue_t* q;
   ngx_queue_t wq;
+  int err;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   ngx_queue_init(&wq);
@@ -177,7 +186,8 @@ void uv__work_done(uv_async_t* handle, int status) {
     ngx_queue_remove(q);
 
     w = container_of(q, struct uv__work, wq);
-    w->done(w, 0);
+    err = (w->work == uv__cancelled) ? -UV_ECANCELED : 0;
+    w->done(w, err);
   }
 }
 
@@ -190,15 +200,18 @@ static void uv__queue_work(struct uv__work* w) {
 
 
 static void uv__queue_done(struct uv__work* w, int status) {
-  uv_work_t* req = container_of(w, uv_work_t, work_req);
+  uv_work_t* req;
 
+  req = container_of(w, uv_work_t, work_req);
   uv__req_unregister(req->loop, req);
 
-  if (status != 0)
+  if (req->after_work_cb == NULL)
     return;
 
-  if (req->after_work_cb)
-    req->after_work_cb(req);
+  if (status == -UV_ECANCELED)
+    uv__set_artificial_error(req->loop, UV_ECANCELED);
+
+  req->after_work_cb(req, status ? -1 : 0);
 }
 
 

@@ -78,5 +78,5 @@ int uv_cancel(uv_req_t* req) {
 void uv_process_work_req(uv_loop_t* loop, uv_work_t* req) {
   uv__req_unregister(loop, req);
   if(req->after_work_cb)
-    req->after_work_cb(req);
+    req->after_work_cb(req, 0);
 }

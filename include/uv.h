@@ -330,7 +330,7 @@ typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
 typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
-typedef void (*uv_after_work_cb)(uv_work_t* req);
+typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
 typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req,
                                   int status,
                                   struct addrinfo* res);
@@ -1393,6 +1393,17 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop, uv_work_t* req,
  *
  * Only cancellation of uv_fs_t, uv_getaddrinfo_t and uv_work_t requests is
  * currently supported.
+ *
+ * Cancelled requests have their callbacks invoked some time in the future.
+ * It's _not_ safe to free the memory associated with the request until your
+ * callback is called.
+ *
+ * Here is how cancellation is reported to your callback:
+ *
+ * - A uv_fs_t request has its req->errorno field set to UV_ECANCELED.
+ *
+ * - A uv_work_t or uv_getaddrinfo_t request has its callback invoked with
+ *   status == -1 and uv_last_error(loop).code == UV_ECANCELED.
  *
  * This function is currently only implemented on UNIX platforms. On Windows,
  * it always returns -1.

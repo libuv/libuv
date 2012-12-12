@@ -67,9 +67,6 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   req->service = NULL;
   req->hostname = NULL;
 
-  if (status != 0)
-    return;
-
   if (req->retcode == 0) {
     /* OK */
 #if EAI_NODATA /* FreeBSD deprecated EAI_NODATA */
@@ -85,6 +82,12 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   } else {
     req->loop->last_err.code = UV_EADDRINFO;
     req->loop->last_err.sys_errno_ = req->retcode;
+  }
+
+  if (status == -UV_ECANCELED) {
+    assert(req->retcode == 0);
+    req->retcode = UV_ECANCELED;
+    uv__set_artificial_error(req->loop, UV_ECANCELED);
   }
 
   req->cb(req, req->retcode, res);

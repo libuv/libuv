@@ -41,8 +41,12 @@ static uv_cond_t signal_cond;
 static uv_mutex_t signal_mutex;
 static uv_mutex_t wait_mutex;
 static unsigned num_threads;
+static unsigned fs_cb_called;
+static unsigned work_cb_called;
 static unsigned done_cb_called;
+static unsigned done2_cb_called;
 static unsigned timer_cb_called;
+static unsigned getaddrinfo_cb_called;
 
 
 static void work_cb(uv_work_t* req) {
@@ -52,10 +56,12 @@ static void work_cb(uv_work_t* req) {
 
   uv_mutex_lock(&wait_mutex);
   uv_mutex_unlock(&wait_mutex);
+
+  work_cb_called++;
 }
 
 
-static void done_cb(uv_work_t* req) {
+static void done_cb(uv_work_t* req, int status) {
   done_cb_called++;
   free(req);
 }
@@ -82,7 +88,6 @@ static void saturate_threadpool(void) {
      */
     if (uv_cond_timedwait(&signal_cond, &signal_mutex, 350 * 1e6)) {
       ASSERT(0 == uv_cancel((uv_req_t*) req));
-      free(req);
       break;
     }
   }
@@ -96,15 +101,40 @@ static void unblock_threadpool(void) {
 
 
 static void cleanup_threadpool(void) {
-  ASSERT(done_cb_called == num_threads);
+  ASSERT(done_cb_called == num_threads + 1);  /* +1 == cancelled work req. */
+  ASSERT(work_cb_called == num_threads);
+
   uv_cond_destroy(&signal_cond);
   uv_mutex_destroy(&signal_mutex);
   uv_mutex_destroy(&wait_mutex);
 }
 
 
-static void fail_cb(/* empty */) {
-  ASSERT(0 && "fail_cb called");
+static void fs_cb(uv_fs_t* req) {
+  ASSERT(req->errorno == UV_ECANCELED);
+  uv_fs_req_cleanup(req);
+  fs_cb_called++;
+}
+
+
+static void getaddrinfo_cb(uv_getaddrinfo_t* req,
+                           int status,
+                           struct addrinfo* res) {
+  ASSERT(UV_ECANCELED == uv_last_error(req->loop).code);
+  ASSERT(UV_ECANCELED == status);
+  getaddrinfo_cb_called++;
+}
+
+
+static void work2_cb(uv_work_t* req) {
+  ASSERT(0 && "work2_cb called");
+}
+
+
+static void done2_cb(uv_work_t* req, int status) {
+  ASSERT(uv_last_error(req->loop).code == UV_ECANCELED);
+  ASSERT(status == -1);
+  done2_cb_called++;
 }
 
 
@@ -131,15 +161,23 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   struct cancel_info ci;
   struct addrinfo hints;
   uv_loop_t* loop;
+  int r;
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
   saturate_threadpool();
 
-  ASSERT(0 == uv_getaddrinfo(loop, reqs + 0, fail_cb, "fail", NULL, NULL));
-  ASSERT(0 == uv_getaddrinfo(loop, reqs + 1, fail_cb, NULL, "fail", NULL));
-  ASSERT(0 == uv_getaddrinfo(loop, reqs + 2, fail_cb, "fail", "fail", NULL));
-  ASSERT(0 == uv_getaddrinfo(loop, reqs + 3, fail_cb, "fail", NULL, &hints));
+  r = uv_getaddrinfo(loop, reqs + 0, getaddrinfo_cb, "fail", NULL, NULL);
+  ASSERT(r == 0);
+
+  r = uv_getaddrinfo(loop, reqs + 1, getaddrinfo_cb, NULL, "fail", NULL);
+  ASSERT(r == 0);
+
+  r = uv_getaddrinfo(loop, reqs + 2, getaddrinfo_cb, "fail", "fail", NULL);
+  ASSERT(r == 0);
+
+  r = uv_getaddrinfo(loop, reqs + 3, getaddrinfo_cb, "fail", NULL, &hints);
+  ASSERT(r == 0);
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
@@ -163,12 +201,13 @@ TEST_IMPL(threadpool_cancel_work) {
   saturate_threadpool();
 
   for (i = 0; i < ARRAY_SIZE(reqs); i++)
-    ASSERT(0 == uv_queue_work(loop, reqs + i, fail_cb, NULL));
+    ASSERT(0 == uv_queue_work(loop, reqs + i, work2_cb, done2_cb));
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop));
   ASSERT(1 == timer_cb_called);
+  ASSERT(ARRAY_SIZE(reqs) == done2_cb_called);
 
   cleanup_threadpool();
 
@@ -188,36 +227,37 @@ TEST_IMPL(threadpool_cancel_fs) {
 
   /* Needs to match ARRAY_SIZE(fs_reqs). */
   n = 0;
-  ASSERT(0 == uv_fs_chmod(loop, reqs + n++, "/", 0, fail_cb));
-  ASSERT(0 == uv_fs_chown(loop, reqs + n++, "/", 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_close(loop, reqs + n++, 0, fail_cb));
-  ASSERT(0 == uv_fs_fchmod(loop, reqs + n++, 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_fchown(loop, reqs + n++, 0, 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_fdatasync(loop, reqs + n++, 0, fail_cb));
-  ASSERT(0 == uv_fs_fstat(loop, reqs + n++, 0, fail_cb));
-  ASSERT(0 == uv_fs_fsync(loop, reqs + n++, 0, fail_cb));
-  ASSERT(0 == uv_fs_ftruncate(loop, reqs + n++, 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_futime(loop, reqs + n++, 0, 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_link(loop, reqs + n++, "/", "/", fail_cb));
-  ASSERT(0 == uv_fs_lstat(loop, reqs + n++, "/", fail_cb));
-  ASSERT(0 == uv_fs_mkdir(loop, reqs + n++, "/", 0, fail_cb));
-  ASSERT(0 == uv_fs_open(loop, reqs + n++, "/", 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_read(loop, reqs + n++, 0, NULL, 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_readdir(loop, reqs + n++, "/", 0, fail_cb));
-  ASSERT(0 == uv_fs_readlink(loop, reqs + n++, "/", fail_cb));
-  ASSERT(0 == uv_fs_rename(loop, reqs + n++, "/", "/", fail_cb));
-  ASSERT(0 == uv_fs_mkdir(loop, reqs + n++, "/", 0, fail_cb));
-  ASSERT(0 == uv_fs_sendfile(loop, reqs + n++, 0, 0, 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_stat(loop, reqs + n++, "/", fail_cb));
-  ASSERT(0 == uv_fs_symlink(loop, reqs + n++, "/", "/", 0, fail_cb));
-  ASSERT(0 == uv_fs_unlink(loop, reqs + n++, "/", fail_cb));
-  ASSERT(0 == uv_fs_utime(loop, reqs + n++, "/", 0, 0, fail_cb));
-  ASSERT(0 == uv_fs_write(loop, reqs + n++, 0, NULL, 0, 0, fail_cb));
+  ASSERT(0 == uv_fs_chmod(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT(0 == uv_fs_chown(loop, reqs + n++, "/", 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_close(loop, reqs + n++, 0, fs_cb));
+  ASSERT(0 == uv_fs_fchmod(loop, reqs + n++, 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_fchown(loop, reqs + n++, 0, 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_fdatasync(loop, reqs + n++, 0, fs_cb));
+  ASSERT(0 == uv_fs_fstat(loop, reqs + n++, 0, fs_cb));
+  ASSERT(0 == uv_fs_fsync(loop, reqs + n++, 0, fs_cb));
+  ASSERT(0 == uv_fs_ftruncate(loop, reqs + n++, 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_futime(loop, reqs + n++, 0, 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_link(loop, reqs + n++, "/", "/", fs_cb));
+  ASSERT(0 == uv_fs_lstat(loop, reqs + n++, "/", fs_cb));
+  ASSERT(0 == uv_fs_mkdir(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT(0 == uv_fs_open(loop, reqs + n++, "/", 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_read(loop, reqs + n++, 0, NULL, 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_readdir(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT(0 == uv_fs_readlink(loop, reqs + n++, "/", fs_cb));
+  ASSERT(0 == uv_fs_rename(loop, reqs + n++, "/", "/", fs_cb));
+  ASSERT(0 == uv_fs_mkdir(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT(0 == uv_fs_sendfile(loop, reqs + n++, 0, 0, 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_stat(loop, reqs + n++, "/", fs_cb));
+  ASSERT(0 == uv_fs_symlink(loop, reqs + n++, "/", "/", 0, fs_cb));
+  ASSERT(0 == uv_fs_unlink(loop, reqs + n++, "/", fs_cb));
+  ASSERT(0 == uv_fs_utime(loop, reqs + n++, "/", 0, 0, fs_cb));
+  ASSERT(0 == uv_fs_write(loop, reqs + n++, 0, NULL, 0, 0, fs_cb));
   ASSERT(n == ARRAY_SIZE(reqs));
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop));
+  ASSERT(n == fs_cb_called);
   ASSERT(1 == timer_cb_called);
 
   cleanup_threadpool();
