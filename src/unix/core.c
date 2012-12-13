@@ -641,9 +641,6 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   w->pevents &= ~events;
 
   if (w->pevents == 0) {
-    ngx_queue_remove(&w->pending_queue);
-    ngx_queue_init(&w->pending_queue);
-
     ngx_queue_remove(&w->watcher_queue);
     ngx_queue_init(&w->watcher_queue);
 
@@ -657,6 +654,12 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   }
   else if (ngx_queue_empty(&w->watcher_queue))
     ngx_queue_insert_tail(&loop->watcher_queue, &w->watcher_queue);
+}
+
+
+void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
+  uv__io_stop(loop, w, UV__POLLIN | UV__POLLOUT);
+  ngx_queue_remove(&w->pending_queue);
 }
 
 

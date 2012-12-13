@@ -130,6 +130,7 @@ void uv__make_close_pending(uv_handle_t* handle);
 void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd);
 void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__io_close(uv_loop_t* loop, uv__io_t* w);
 void uv__io_feed(uv_loop_t* loop, uv__io_t* w);
 int uv__io_active(const uv__io_t* w, unsigned int events);
 void uv__io_poll(uv_loop_t* loop, int timeout); /* in milliseconds or -1 */
