@@ -112,16 +112,16 @@ static int maybe_run_test(int argc, char **argv) {
   }
 
   if (strcmp(argv[1], "spawn_helper5") == 0) {
-    const char* out = "fourth stdio!\n\0";
+    const char out[] = "fourth stdio!\n";
 #ifdef _WIN32
     DWORD bytes;
-    WriteFile((HANDLE) _get_osfhandle(3), out, strlen(out), &bytes, NULL);
+    WriteFile((HANDLE) _get_osfhandle(3), out, sizeof(out) - 1, &bytes, NULL);
 #else
     {
       ssize_t r;
 
       do
-        r = write(3, out, strlen(out));
+        r = write(3, out, sizeof(out) - 1);
       while (r == -1 && errno == EINTR);
 
       fsync(3);
