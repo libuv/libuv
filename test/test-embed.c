@@ -84,7 +84,7 @@ static void embed_thread_runner(void* arg) {
 
 
 static void embed_cb(uv_async_t* async, int status) {
-  uv_run_once(uv_default_loop());
+  uv_run2(uv_default_loop(), UV_RUN_ONCE);
 
   uv_sem_post(&embed_sem);
 }

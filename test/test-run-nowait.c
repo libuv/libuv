@@ -22,28 +22,25 @@
 #include "uv.h"
 #include "task.h"
 
-#define NUM_TICKS 64
-
-static uv_idle_t idle_handle;
-static int idle_counter;
+static uv_timer_t timer_handle;
+static int timer_called = 0;
 
 
-static void idle_cb(uv_idle_t* handle, int status) {
-  ASSERT(handle == &idle_handle);
+static void timer_cb(uv_timer_t* handle, int status) {
+  ASSERT(handle == &timer_handle);
   ASSERT(status == 0);
-
-  if (++idle_counter == NUM_TICKS)
-    uv_idle_stop(handle);
+  timer_called = 1;
 }
 
 
-TEST_IMPL(run_once) {
-  uv_idle_init(uv_default_loop(), &idle_handle);
-  uv_idle_start(&idle_handle, idle_cb);
+TEST_IMPL(run_nowait) {
+  int r;
+  uv_timer_init(uv_default_loop(), &timer_handle);
+  uv_timer_start(&timer_handle, timer_cb, 100, 100);
 
-  while (uv_run2(uv_default_loop(), UV_RUN_ONCE));
-  ASSERT(idle_counter == NUM_TICKS);
+  r = uv_run2(uv_default_loop(), UV_RUN_NOWAIT);
+  ASSERT(r != 0);
+  ASSERT(timer_called == 0);
 
-  MAKE_VALGRIND_HAPPY();
   return 0;
 }

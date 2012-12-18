@@ -267,27 +267,25 @@ int uv_backend_timeout(const uv_loop_t* loop) {
 }
 
 
-static int uv__run(uv_loop_t* loop) {
-  uv_update_time(loop);
-  uv__run_timers(loop);
-  uv__run_idle(loop);
-  uv__run_prepare(loop);
-  uv__run_pending(loop);
-  uv__io_poll(loop, uv_backend_timeout(loop));
-  uv__run_check(loop);
-  uv__run_closing_handles(loop);
-  return uv__has_active_handles(loop) || uv__has_active_reqs(loop);
+int uv_run2(uv_loop_t* loop, uv_run_mode mode) {
+  int r;
+  do {
+    uv_update_time(loop);
+    uv__run_timers(loop);
+    uv__run_idle(loop);
+    uv__run_prepare(loop);
+    uv__run_pending(loop);
+    uv__io_poll(loop, (mode & UV_RUN_NOWAIT ? 0 : uv_backend_timeout(loop)));
+    uv__run_check(loop);
+    uv__run_closing_handles(loop);
+    r = uv__has_active_handles(loop) || uv__has_active_reqs(loop);
+  } while (r && !(mode & (UV_RUN_ONCE | UV_RUN_NOWAIT)));
+  return r;
 }
 
 
 int uv_run(uv_loop_t* loop) {
-  while (uv__run(loop));
-  return 0;
-}
-
-
-int uv_run_once(uv_loop_t* loop) {
-  return uv__run(loop);
+  return uv_run2(loop, UV_RUN_DEFAULT);
 }
 
 

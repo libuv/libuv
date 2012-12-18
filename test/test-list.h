@@ -22,6 +22,7 @@
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (run_once)
+TEST_DECLARE   (run_nowait)
 TEST_DECLARE   (barrier_1)
 TEST_DECLARE   (barrier_2)
 TEST_DECLARE   (barrier_3)
@@ -227,6 +228,7 @@ TASK_LIST_START
   TEST_ENTRY  (callback_order)
 #endif
   TEST_ENTRY  (run_once)
+  TEST_ENTRY  (run_nowait)
   TEST_ENTRY  (barrier_1)
   TEST_ENTRY  (barrier_2)
   TEST_ENTRY  (barrier_3)

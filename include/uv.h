@@ -221,6 +221,13 @@ typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 
 
+typedef enum {
+  UV_RUN_DEFAULT = 0,
+  UV_RUN_ONCE,
+  UV_RUN_NOWAIT
+} uv_run_mode;
+
+
 /*
  * This function must be called before any other functions in libuv.
  *
@@ -244,12 +251,18 @@ UV_EXTERN uv_loop_t* uv_default_loop(void);
 UV_EXTERN int uv_run(uv_loop_t*);
 
 /*
- * Poll for new events once. Note that this function blocks if there are no
- * pending events. Returns zero when done (no active handles or requests left),
- * or non-zero if more events are expected (meaning you should call
- * uv_run_once() again sometime in the future).
+ * This function runs the event loop. It will act differently depending on the
+ * specified mode:
+ *  - UV_RUN_DEFAULT: Runs the event loop until the reference count drops to
+ *    zero. Always returns zero.
+ *  - UV_RUN_ONCE: Poll for new events once. Note that this function blocks if
+ *    there are no pending events. Returns zero when done (no active handles
+ *    or requests left), or non-zero if more events are expected (meaning you
+ *    should run the event loop again sometime in the future).
+ *  - UV_RUN_NOWAIT: Poll for new events once but don't block if there are no
+ *    pending events.
  */
-UV_EXTERN int uv_run_once(uv_loop_t*);
+UV_EXTERN int uv_run2(uv_loop_t*, uv_run_mode mode);
 
 /*
  * Manually modify the event loop's reference count. Useful if the user wants
