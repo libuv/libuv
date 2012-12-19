@@ -31,7 +31,11 @@
         'include_dirs': [ 'include' ],
         'conditions': [
           ['OS != "win"', {
-            'defines': [ '_LARGEFILE_SOURCE', '_FILE_OFFSET_BITS=64' ],
+            'defines': [
+              '_LARGEFILE_SOURCE',
+              '_FILE_OFFSET_BITS=64',
+              '_POSIX_C_SOURCE=200112',
+            ],
           }],
           ['OS == "mac"', {
             'defines': [ '_DARWIN_USE_64_BIT_INODE=1' ],
