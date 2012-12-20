@@ -550,11 +550,13 @@ static void read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   static const char model_marker[] = "";
   static const char speed_marker[] = "";
 #endif
+  static const char bogus_model[] = "unknown";
   unsigned int model_idx;
   unsigned int speed_idx;
   char buf[1024];
   char* model;
   FILE* fp;
+  char* inferred_model;
 
   fp = fopen("/proc/cpuinfo", "r");
   if (fp == NULL)
@@ -583,6 +585,26 @@ static void read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     }
   }
   fclose(fp);
+
+  /* Now we want to make sure that all the models contain *something*:
+   * it's not safe to leave them as null.
+   */
+  if (model_idx == 0) {
+    /* No models at all: fake up the first one. */
+    ci[0].model = strndup(bogus_model, sizeof(bogus_model) - 1);
+    model_idx = 1;
+  }
+
+  /* Not enough models, but we do have at least one.  So we'll just
+   * copy the rest down: it might be better to indicate somehow that
+   * the remaining ones have been guessed.
+   */
+  inferred_model = ci[model_idx - 1].model;
+
+  while (model_idx < numcpus) {
+    ci[model_idx].model = strndup(inferred_model, strlen(inferred_model));
+    model_idx++;
+  }
 }
 
 
