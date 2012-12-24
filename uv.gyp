@@ -369,6 +369,7 @@
         'test/benchmark-getaddrinfo.c',
         'test/benchmark-list.h',
         'test/benchmark-loop-count.c',
+        'test/benchmark-million-async.c',
         'test/benchmark-million-timers.c',
         'test/benchmark-multi-accept.c',
         'test/benchmark-ping-pongs.c',
