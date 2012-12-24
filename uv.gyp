@@ -38,7 +38,10 @@
             ],
           }],
           ['OS == "mac"', {
-            'defines': [ '_DARWIN_USE_64_BIT_INODE=1' ],
+            'defines': [
+              '_DARWIN_USE_64_BIT_INODE=1',
+              '_DARWIN_C_SOURCE',  # _POSIX_C_SOURCE hides SysV definitions.
+            ],
           }],
         ],
       },
