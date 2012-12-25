@@ -1666,9 +1666,6 @@ UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
  * ultra efficient so don't go creating a million event loops with a million
  * signal watchers.
  *
- * TODO(bnoordhuis) As of 2012-08-10 only the default event loop supports
- *                  signals. That will be fixed.
- *
  * Some signal support is available on Windows:
  *
  *   SIGINT is normally delivered when the user presses CTRL+C. However, like
@@ -1701,11 +1698,12 @@ struct uv_signal_s {
   UV_SIGNAL_PRIVATE_FIELDS
 };
 
-/* These functions are no-ops on Windows. */
 UV_EXTERN int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
+
 UV_EXTERN int uv_signal_start(uv_signal_t* handle,
                               uv_signal_cb signal_cb,
                               int signum);
+
 UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
 
 
