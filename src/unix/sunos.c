@@ -39,15 +39,13 @@
 #include <kstat.h>
 #include <fcntl.h>
 
-#if HAVE_PORTS_FS
-# include <sys/port.h>
-# include <port.h>
+#include <sys/port.h>
+#include <port.h>
 
-# define PORT_FIRED 0x69
-# define PORT_UNUSED 0x0
-# define PORT_LOADED 0x99
-# define PORT_DELETED -1
-#endif
+#define PORT_FIRED 0x69
+#define PORT_UNUSED 0x0
+#define PORT_LOADED 0x99
+#define PORT_DELETED -1
 
 #if (!defined(_LP64)) && (_FILE_OFFSET_BITS - 0 == 64)
 #define PROCFS_FILE_OFFSET_BITS_HACK 1
@@ -272,7 +270,8 @@ void uv_loadavg(double avg[3]) {
 }
 
 
-#if HAVE_PORTS_FS
+#if defined(PORT_SOURCE_FILE)
+
 static void uv__fs_event_rearm(uv_fs_event_t *handle) {
   if (handle->fd == -1)
     return;
@@ -386,7 +385,7 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
   uv__handle_stop(handle);
 }
 
-#else /* !HAVE_PORTS_FS */
+#else /* !defined(PORT_SOURCE_FILE) */
 
 int uv_fs_event_init(uv_loop_t* loop,
                      uv_fs_event_t* handle,
@@ -402,7 +401,7 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
   UNREACHABLE();
 }
 
-#endif /* HAVE_PORTS_FS */
+#endif /* defined(PORT_SOURCE_FILE) */
 
 
 char** uv_setup_args(int argc, char** argv) {

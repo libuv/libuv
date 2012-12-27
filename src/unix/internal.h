@@ -31,8 +31,6 @@
 # define inline __inline
 #endif
 
-#undef HAVE_PORTS_FS
-
 #if __linux__
 # include "linux/syscalls.h"
 #endif /* __linux__ */
@@ -40,9 +38,6 @@
 #if defined(__sun)
 # include <sys/port.h>
 # include <port.h>
-# ifdef PORT_SOURCE_FILE
-#  define HAVE_PORTS_FS 1
-# endif
 # define futimes(fd, tv) futimesat(fd, (void*)0, tv)
 #endif /* __sun */
 
