@@ -1666,6 +1666,11 @@ UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
  * ultra efficient so don't go creating a million event loops with a million
  * signal watchers.
  *
+ * Note to Linux users: SIGRT0 and SIGRT1 (signals 32 and 33) are used by the
+ * NPTL pthreads library to manage threads. Installing watchers for those
+ * signals will lead to unpredictable behavior and is strongly discouraged.
+ * Future versions of libuv may simply reject them.
+ *
  * Some signal support is available on Windows:
  *
  *   SIGINT is normally delivered when the user presses CTRL+C. However, like
