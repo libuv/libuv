@@ -683,9 +683,6 @@ static void uv__write_req_finish(uv_write_t* req) {
 }
 
 
-/* On success returns NULL. On error returns a pointer to the write request
- * which had the error.
- */
 static void uv__write(uv_stream_t* stream) {
   uv_write_t* req;
   struct iovec* iov;
