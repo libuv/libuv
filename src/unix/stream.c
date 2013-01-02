@@ -128,10 +128,10 @@ void uv__stream_init(uv_loop_t* loop,
 void uv__stream_osx_select(void* arg) {
   uv_stream_t* stream;
   uv__stream_select_t* s;
-  fd_set read;
-  fd_set write;
-  fd_set error;
-  struct timeval timeout;
+  char buf[1024];
+  fd_set sread;
+  fd_set swrite;
+  fd_set serror;
   int events;
   int fd;
   int r;
@@ -152,20 +152,19 @@ void uv__stream_osx_select(void* arg) {
       break;
 
     /* Watch fd using select(2) */
-    FD_ZERO(&read);
-    FD_ZERO(&write);
-    FD_ZERO(&error);
+    FD_ZERO(&sread);
+    FD_ZERO(&swrite);
+    FD_ZERO(&serror);
 
     if (uv_is_readable(stream))
-      FD_SET(fd, &read);
+      FD_SET(fd, &sread);
     if (uv_is_writable(stream))
-      FD_SET(fd, &write);
-    FD_SET(fd, &error);
-    FD_SET(s->int_fd, &read);
+      FD_SET(fd, &swrite);
+    FD_SET(fd, &serror);
+    FD_SET(s->int_fd, &sread);
 
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 250000; /* 250 ms timeout */
-    r = select(max_fd + 1, &read, &write, &error, &timeout);
+    /* Wait indefinitely for fd events */
+    r = select(max_fd + 1, &sread, &swrite, &serror, NULL);
     if (r == -1) {
       if (errno == EINTR)
         continue;
@@ -178,13 +177,33 @@ void uv__stream_osx_select(void* arg) {
     if (r == 0)
       continue;
 
+    /* Empty socketpair's buffer in case of interruption */
+    if (FD_ISSET(s->int_fd, &sread))
+      while (1) {
+        r = read(s->int_fd, buf, sizeof(buf));
+
+        if (r == sizeof(buf))
+          continue;
+
+        if (r != -1)
+          break;
+
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+          break;
+
+        if (errno == EINTR)
+          continue;
+
+        abort();
+      }
+
     /* Handle events */
     events = 0;
-    if (FD_ISSET(fd, &read))
+    if (FD_ISSET(fd, &sread))
       events |= UV__POLLIN;
-    if (FD_ISSET(fd, &write))
+    if (FD_ISSET(fd, &swrite))
       events |= UV__POLLOUT;
-    if (FD_ISSET(fd, &error))
+    if (FD_ISSET(fd, &serror))
       events |= UV__POLLERR;
 
     uv_mutex_lock(&s->mutex);
