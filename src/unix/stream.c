@@ -599,30 +599,10 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 }
 
 
-uv_write_t* uv_write_queue_head(uv_stream_t* stream) {
-  ngx_queue_t* q;
-  uv_write_t* req;
-
-  if (ngx_queue_empty(&stream->write_queue)) {
-    return NULL;
-  }
-
-  q = ngx_queue_head(&stream->write_queue);
-  if (!q) {
-    return NULL;
-  }
-
-  req = ngx_queue_data(q, struct uv_write_s, queue);
-  assert(req);
-
-  return req;
-}
-
-
 static void uv__drain(uv_stream_t* stream) {
   uv_shutdown_t* req;
 
-  assert(!uv_write_queue_head(stream));
+  assert(ngx_queue_empty(&stream->write_queue));
   assert(stream->write_queue_size == 0);
 
   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
@@ -684,8 +664,9 @@ static void uv__write_req_finish(uv_write_t* req) {
 
 
 static void uv__write(uv_stream_t* stream) {
-  uv_write_t* req;
   struct iovec* iov;
+  ngx_queue_t* q;
+  uv_write_t* req;
   int iovcnt;
   ssize_t n;
 
@@ -700,13 +681,13 @@ start:
 
   assert(uv__stream_fd(stream) >= 0);
 
-  /* Get the request at the head of the queue. */
-  req = uv_write_queue_head(stream);
-  if (!req) {
+  if (ngx_queue_empty(&stream->write_queue)) {
     assert(stream->write_queue_size == 0);
     return;
   }
 
+  q = ngx_queue_head(&stream->write_queue);
+  req = ngx_queue_data(q, uv_write_t, queue);
   assert(req->handle == stream);
 
   /*
@@ -857,9 +838,8 @@ static void uv__write_callbacks(uv_stream_t* stream) {
   assert(ngx_queue_empty(&stream->write_completed_queue));
 
   /* Write queue drained. */
-  if (!uv_write_queue_head(stream)) {
+  if (ngx_queue_empty(&stream->write_queue))
     uv__drain(stream);
-  }
 }
 
 
