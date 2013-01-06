@@ -58,7 +58,7 @@ static void fail_cb(void) {
 }
 
 
-static void fail_cb2() {
+static void fail_cb2(void) {
   ASSERT(0 && "fail_cb2 should not have been called");
 }
 
@@ -109,7 +109,7 @@ TEST_IMPL(ref) {
 TEST_IMPL(idle_ref) {
   uv_idle_t h;
   uv_idle_init(uv_default_loop(), &h);
-  uv_idle_start(&h, fail_cb2);
+  uv_idle_start(&h, (uv_idle_cb) fail_cb2);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop());
   do_close(&h);
@@ -132,7 +132,7 @@ TEST_IMPL(async_ref) {
 TEST_IMPL(prepare_ref) {
   uv_prepare_t h;
   uv_prepare_init(uv_default_loop(), &h);
-  uv_prepare_start(&h, fail_cb2);
+  uv_prepare_start(&h, (uv_prepare_cb) fail_cb2);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop());
   do_close(&h);
@@ -144,7 +144,7 @@ TEST_IMPL(prepare_ref) {
 TEST_IMPL(check_ref) {
   uv_check_t h;
   uv_check_init(uv_default_loop(), &h);
-  uv_check_start(&h, fail_cb2);
+  uv_check_start(&h, (uv_check_cb) fail_cb2);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop());
   do_close(&h);

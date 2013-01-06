@@ -117,7 +117,7 @@ static void show_stats(uv_timer_t* handle, int status) {
 }
 
 
-static void read_show_stats() {
+static void read_show_stats(void) {
   int64_t diff;
 
   uv_update_time(loop);
@@ -149,7 +149,7 @@ void read_sockets_close_cb(uv_handle_t* handle) {
 }
 
 
-static void start_stats_collection() {
+static void start_stats_collection(void) {
   int r;
 
   /* Show-stats timer */
@@ -231,7 +231,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 }
 
 
-static void maybe_connect_some() {
+static void maybe_connect_some(void) {
   uv_connect_t* req;
   uv_tcp_t* tcp;
   uv_pipe_t* pipe;
@@ -302,7 +302,7 @@ typedef struct req_list_s {
 static req_list_t* req_freelist = NULL;
 
 
-static uv_req_t* req_alloc() {
+static uv_req_t* req_alloc(void) {
   req_list_t* req;
 
   req = req_freelist;

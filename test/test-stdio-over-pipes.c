@@ -182,7 +182,7 @@ static uv_buf_t on_read_alloc(uv_handle_t* handle, size_t suggested_size) {
 }
 
 
-int stdio_over_pipes_helper() {
+int stdio_over_pipes_helper(void) {
   /* Write several buffers to test that the write order is preserved. */
   char* buffers[] = {
     "he",

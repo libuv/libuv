@@ -100,7 +100,7 @@ void on_read(uv_stream_t* pipe, ssize_t nread, uv_buf_t buf) {
 }
 
 
-static void spawn() {
+static void spawn(void) {
   uv_stdio_container_t stdio[2];
   int r;
 
