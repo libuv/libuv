@@ -47,8 +47,6 @@ typedef struct {
   char read_buffer[BUFSIZE];
 } pinger_t;
 
-void pinger_try_read(pinger_t* pinger);
-
 
 static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
   return uv_buf_init(malloc(size), size);
