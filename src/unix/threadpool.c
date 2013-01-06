@@ -139,7 +139,7 @@ void uv__work_submit(uv_loop_t* loop,
 }
 
 
-int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
+static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
   uv_mutex_lock(&mutex);
