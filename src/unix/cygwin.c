@@ -19,7 +19,7 @@
  */
 
 #include "uv.h"
-#include "../uv-common.h"
+#include "internal.h"
 
 #include <assert.h>
 #include <stdint.h>
