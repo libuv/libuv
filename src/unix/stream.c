@@ -1210,8 +1210,10 @@ int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
 }
 
 
-int uv__read_start_common(uv_stream_t* stream, uv_alloc_cb alloc_cb,
-    uv_read_cb read_cb, uv_read2_cb read2_cb) {
+static int uv__read_start_common(uv_stream_t* stream,
+                                 uv_alloc_cb alloc_cb,
+                                 uv_read_cb read_cb,
+                                 uv_read2_cb read2_cb) {
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
       stream->type == UV_TTY);
 
