@@ -26,7 +26,11 @@
 #include <errno.h>
 
 #ifndef HAVE_KQUEUE
-# if __APPLE__ || __DragonFly__ || __FreeBSD__ || __OpenBSD__ || __NetBSD__
+# if defined(__APPLE__) ||                                                    \
+     defined(__DragonFly__) ||                                                \
+     defined(__FreeBSD__) ||                                                  \
+     defined(__OpenBSD__) ||                                                  \
+     defined(__NetBSD__)
 #  define HAVE_KQUEUE 1
 # endif
 #endif
