@@ -105,14 +105,6 @@ enum {
   UV_TCP_SINGLE_ACCEPT = 0x400  /* Only accept() when idle. */
 };
 
-__attribute__((unused))
-static void uv__req_init(uv_loop_t* loop, uv_req_t* req, uv_req_type type) {
-  req->type = type;
-  uv__req_register(loop, req);
-}
-#define uv__req_init(loop, req, type) \
-  uv__req_init((loop), (uv_req_t*)(req), (type))
-
 /* core */
 void uv__handle_init(uv_loop_t* loop, uv_handle_t* handle, uv_handle_type type);
 int uv__nonblock(int fd, int set);
@@ -237,5 +229,18 @@ static const int kFSEventStreamEventFlagItemIsSymlink = 0x00040000;
 #endif /* __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070 */
 
 #endif /* defined(__APPLE__) */
+
+__attribute__((unused))
+static void uv__req_init(uv_loop_t* loop, uv_req_t* req, uv_req_type type) {
+  req->type = type;
+  uv__req_register(loop, req);
+}
+#define uv__req_init(loop, req, type) \
+  uv__req_init((loop), (uv_req_t*)(req), (type))
+
+__attribute__((unused))
+static void uv__update_time(uv_loop_t* loop) {
+  loop->time = uv__hrtime() / 1000000;
+}
 
 #endif /* UV_UNIX_INTERNAL_H_ */

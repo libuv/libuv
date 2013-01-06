@@ -286,7 +286,7 @@ int uv_run2(uv_loop_t* loop, uv_run_mode mode) {
     return 0;
 
   do {
-    uv_update_time(loop);
+    uv__update_time(loop);
     uv__run_timers(loop);
     uv__run_idle(loop);
     uv__run_prepare(loop);
@@ -307,7 +307,7 @@ int uv_run(uv_loop_t* loop) {
 
 
 void uv_update_time(uv_loop_t* loop) {
-  loop->time = uv__hrtime() / 1000000;
+  uv__update_time(loop);
 }
 
 

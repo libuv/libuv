@@ -182,6 +182,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
                           ARRAY_SIZE(events),
                           timeout);
 
+    /* Update loop->time unconditionally. It's tempting to skip the update when
+     * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
+     * operating system didn't reschedule our process while in the syscall.
+     */
+    SAVE_ERRNO(uv__update_time(loop));
+
     if (nfds == 0) {
       assert(timeout != -1);
       return;
@@ -243,10 +249,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    diff = uv__hrtime() / 1000000;
-    assert(diff >= base);
-    diff -= base;
-
+    diff = loop->time - base;
     if (diff >= (uint64_t) timeout)
       return;
 
