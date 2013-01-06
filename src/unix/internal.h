@@ -174,6 +174,7 @@ void uv__work_submit(uv_loop_t* loop,
 void uv__work_done(uv_async_t* handle, int status);
 
 /* platform specific */
+uint64_t uv__hrtime(void);
 int uv__kqueue_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop, int default_loop);
 void uv__platform_loop_delete(uv_loop_t* loop);

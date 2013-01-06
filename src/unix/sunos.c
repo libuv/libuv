@@ -211,7 +211,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    diff = uv_hrtime() / 1000000;
+    diff = uv__hrtime() / 1000000;
     assert(diff >= base);
     diff -= base;
 
@@ -223,8 +223,8 @@ update_timeout:
 }
 
 
-uint64_t uv_hrtime() {
-  return (gethrtime());
+uint64_t uv__hrtime(void) {
+  return gethrtime();
 }
 
 

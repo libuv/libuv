@@ -66,6 +66,11 @@ static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
 
 
+uint64_t uv_hrtime(void) {
+  return uv__hrtime();
+}
+
+
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   assert(!(handle->flags & (UV_CLOSING | UV_CLOSED)));
 
@@ -302,7 +307,7 @@ int uv_run(uv_loop_t* loop) {
 
 
 void uv_update_time(uv_loop_t* loop) {
-  loop->time = uv_hrtime() / 1000000;
+  loop->time = uv__hrtime() / 1000000;
 }
 
 

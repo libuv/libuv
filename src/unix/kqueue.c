@@ -244,7 +244,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    diff = uv_hrtime() / 1000000;
+    diff = uv__hrtime() / 1000000;
     assert(diff >= base);
     diff -= base;
 

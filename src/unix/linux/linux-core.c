@@ -243,7 +243,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    diff = uv_hrtime() / 1000000;
+    diff = uv__hrtime() / 1000000;
     assert(diff >= base);
     diff -= base;
 
@@ -255,7 +255,7 @@ update_timeout:
 }
 
 
-uint64_t uv_hrtime() {
+uint64_t uv__hrtime(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (((uint64_t) ts.tv_sec) * NANOSEC + ts.tv_nsec);
