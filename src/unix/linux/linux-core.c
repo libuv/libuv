@@ -57,7 +57,6 @@
 # define CLOCK_BOOTTIME 7
 #endif
 
-static char buf[MAXPATHLEN + 1];
 static void* args_mem;
 
 static struct {
@@ -382,6 +381,7 @@ uv_err_t uv_resident_set_memory(size_t* rss) {
   size_t page_size = getpagesize();
   char *cbuf;
   int foundExeEnd;
+  char buf[PATH_MAX + 1];
 
   f = fopen("/proc/self/stat", "r");
   if (!f) return uv__new_sys_error(errno);
