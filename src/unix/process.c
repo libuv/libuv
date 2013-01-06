@@ -112,7 +112,7 @@ static void uv__chld(uv_signal_t* handle, int signum) {
 
 
 int uv__make_socketpair(int fds[2], int flags) {
-#if __linux__
+#if defined(__linux__)
   static int no_cloexec;
 
   if (no_cloexec)
@@ -148,7 +148,7 @@ skip:
 
 
 int uv__make_pipe(int fds[2], int flags) {
-#if __linux__
+#if defined(__linux__)
   static int no_pipe2;
 
   if (no_pipe2)

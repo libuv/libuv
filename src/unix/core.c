@@ -363,7 +363,7 @@ int uv__accept(int sockfd) {
   assert(sockfd >= 0);
 
   while (1) {
-#if __linux__
+#if defined(__linux__)
     static int no_accept4;
 
     if (no_accept4)

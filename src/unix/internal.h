@@ -31,7 +31,7 @@
 # define inline __inline
 #endif
 
-#if __linux__
+#if defined(__linux__)
 # include "linux/syscalls.h"
 #endif /* __linux__ */
 
