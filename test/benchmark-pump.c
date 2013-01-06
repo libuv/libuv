@@ -129,13 +129,7 @@ static void read_show_stats(void) {
 
 
 
-void write_sockets_close_cb(uv_handle_t* handle) {
-  /* If any client closes, the process is done. */
-  exit(0);
-}
-
-
-void read_sockets_close_cb(uv_handle_t* handle) {
+static void read_sockets_close_cb(uv_handle_t* handle) {
   free(handle);
   read_sockets--;
 
@@ -407,7 +401,7 @@ HELPER_IMPL(pipe_pump_server) {
 }
 
 
-void tcp_pump(int n) {
+static void tcp_pump(int n) {
   ASSERT(n <= MAX_WRITE_HANDLES);
   TARGET_CONNECTIONS = n;
   type = TCP;
@@ -425,7 +419,7 @@ void tcp_pump(int n) {
 }
 
 
-void pipe_pump(int n) {
+static void pipe_pump(int n) {
   ASSERT(n <= MAX_WRITE_HANDLES);
   TARGET_CONNECTIONS = n;
   type = PIPE;

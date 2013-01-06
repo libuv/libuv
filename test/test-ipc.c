@@ -406,7 +406,7 @@ TEST_IMPL(listen_no_simultaneous_accepts) {
 
 /* Everything here runs in a child process. */
 
-tcp_conn conn;
+static tcp_conn conn;
 
 
 static void close_cb(uv_handle_t* handle) {
