@@ -240,19 +240,12 @@ TEST_IMPL(tcp_ref2) {
 }
 
 
-static void tcp_ref2b_close_cb(uv_handle_t* handle) {
-  (*(int*) handle->data)++;
-}
-
-
 TEST_IMPL(tcp_ref2b) {
-  int close_cb_called = 0;
   uv_tcp_t h;
-  h.data = &close_cb_called;
   uv_tcp_init(uv_default_loop(), &h);
   uv_listen((uv_stream_t*)&h, 128, (uv_connection_cb)fail_cb);
   uv_unref((uv_handle_t*)&h);
-  uv_close((uv_handle_t*)&h, tcp_ref2b_close_cb);
+  uv_close((uv_handle_t*)&h, close_cb);
   uv_run(uv_default_loop());
   ASSERT(close_cb_called == 1);
   MAKE_VALGRIND_HAPPY();
