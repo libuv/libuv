@@ -25,7 +25,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <features.h>
 
 static int uv__async_init(uv_loop_t* loop);
 static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
@@ -51,7 +50,7 @@ static int uv__async_make_pending(volatile sig_atomic_t* ptr) {
     __asm__ __volatile__("xchgl %0, %1" : "+r" (val) : "m" (*ptr));
     return val != 0;
   }
-#elif defined(__GNUC_PREREQ) && __GNUC_PREREQ(4, 1)
+#elif defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ > 0)
   return __sync_val_compare_and_swap(ptr, 0, 1) != 0;
 #else
   *ptr = 1;
