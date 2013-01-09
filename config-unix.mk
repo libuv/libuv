@@ -147,8 +147,8 @@ $(OBJDIR)/src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
 
 clean-platform:
 	-rm -rf $(OBJDIR)
-	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
+	-rm -f libuv.a libuv.$(SOEXT) test/run-{tests,benchmarks}.dSYM
 
 distclean-platform:
 	-rm -rf $(OBJDIR)
-	-rm -rf test/run-tests.dSYM run-benchmarks.dSYM
+	-rm -f libuv.a libuv.$(SOEXT) test/run-{tests,benchmarks}.dSYM
