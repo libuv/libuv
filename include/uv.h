@@ -278,7 +278,7 @@ UV_EXTERN int64_t uv_now(uv_loop_t*);
  * Get backend file descriptor. Only kqueue, epoll and event ports are
  * supported.
  *
- * This can be used in conjuction with uv_run_once() to poll in one thread and
+ * This can be used in conjunction with uv_run_once() to poll in one thread and
  * run the event loop's event callbacks in another.
  *
  * Useful for embedding libuv's event loop in another event loop.
@@ -1798,7 +1798,7 @@ UV_EXTERN extern uint64_t uv_hrtime(void);
 /*
  * Disables inheritance for file descriptors / handles that this process
  * inherited from its parent. The effect is that child processes spawned by
- * this proces don't accidently inherit these handles.
+ * this process don't accidentally inherit these handles.
  *
  * It is recommended to call this function as early in your program as possible,
  * before the inherited file descriptors can be closed or duplicated.
@@ -1818,7 +1818,7 @@ UV_EXTERN void uv_disable_stdio_inheritance(void);
 UV_EXTERN int uv_dlopen(const char* filename, uv_lib_t* lib);
 
 /*
- * Close the shared libary.
+ * Close the shared library.
  */
 UV_EXTERN void uv_dlclose(uv_lib_t* lib);
 
