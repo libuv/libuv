@@ -444,6 +444,10 @@ int uv__nonblock(int fd, int set) {
   if (r == -1)
     return -1;
 
+  /* Bail out now if already set/clear. */
+  if (!!(r & O_NONBLOCK) == !!set)
+    return 0;
+
   if (set)
     flags = r | O_NONBLOCK;
   else
@@ -467,6 +471,10 @@ int uv__cloexec(int fd, int set) {
 
   if (r == -1)
     return -1;
+
+  /* Bail out now if already set/clear. */
+  if (!!(r & FD_CLOEXEC) == !!set)
+    return 0;
 
   if (set)
     flags = r | FD_CLOEXEC;
