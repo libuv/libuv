@@ -185,77 +185,66 @@ skip:
  * zero on success.
  */
 static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
-  int fd = -1;
-  switch (container->flags & (UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD |
-                              UV_INHERIT_STREAM)) {
-    case UV_IGNORE:
-      return 0;
-    case UV_CREATE_PIPE:
-      assert(container->data.stream != NULL);
+  int mask;
+  int fd;
 
-      if (container->data.stream->type != UV_NAMED_PIPE) {
-        errno = EINVAL;
-        return -1;
-      }
+  mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM;
 
-      return uv__make_socketpair(fds, 0);
-    case UV_INHERIT_FD:
-    case UV_INHERIT_STREAM:
-      if (container->flags & UV_INHERIT_FD) {
-        fd = container->data.fd;
-      } else {
-        fd = uv__stream_fd(container->data.stream);
-      }
+  switch (container->flags & mask) {
+  case UV_IGNORE:
+    return 0;
 
-      if (fd == -1) {
-        errno = EINVAL;
-        return -1;
-      }
-
-      fds[1] = fd;
-
-      return 0;
-    default:
-      assert(0 && "Unexpected flags");
+  case UV_CREATE_PIPE:
+    assert(container->data.stream != NULL);
+    if (container->data.stream->type != UV_NAMED_PIPE) {
+      errno = EINVAL;
       return -1;
-  }
-}
+    }
+    return uv__make_socketpair(fds, 0);
 
+  case UV_INHERIT_FD:
+  case UV_INHERIT_STREAM:
+    if (container->flags & UV_INHERIT_FD)
+      fd = container->data.fd;
+    else
+      fd = uv__stream_fd(container->data.stream);
 
-static int uv__process_stdio_flags(uv_stdio_container_t* container,
-                                   int writable) {
-  if (container->data.stream->type == UV_NAMED_PIPE &&
-      ((uv_pipe_t*)container->data.stream)->ipc) {
-    return UV_STREAM_READABLE | UV_STREAM_WRITABLE;
-  } else if (writable) {
-    return UV_STREAM_WRITABLE;
-  } else {
-    return UV_STREAM_READABLE;
+    if (fd == -1) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    fds[1] = fd;
+    return 0;
+
+  default:
+    assert(0 && "Unexpected flags");
+    return -1;
   }
 }
 
 
 static int uv__process_open_stream(uv_stdio_container_t* container,
-                                   int fds[2],
+                                   int pipefds[2],
                                    int writable) {
-  int child_fd;
   int flags;
-  int fd;
 
-  fd = fds[0];
-  child_fd = fds[1];
-
-  /* No need to create stream */
-  if (!(container->flags & UV_CREATE_PIPE) || fd < 0)
+  if (!(container->flags & UV_CREATE_PIPE) || pipefds[0] < 0)
     return 0;
 
-  assert(child_fd >= 0);
-  close(child_fd);
+  assert(pipefds[1] >= 0);
+  close(pipefds[1]);
+  uv__nonblock(pipefds[0], 1);
 
-  uv__nonblock(fd, 1);
-  flags = uv__process_stdio_flags(container, writable);
+  if (container->data.stream->type == UV_NAMED_PIPE &&
+      ((uv_pipe_t*)container->data.stream)->ipc)
+    flags = UV_STREAM_READABLE | UV_STREAM_WRITABLE;
+  else if (writable)
+    flags = UV_STREAM_WRITABLE;
+  else
+    flags = UV_STREAM_READABLE;
 
-  return uv__stream_open((uv_stream_t*)container->data.stream, fd, flags);
+  return uv__stream_open(container->data.stream, pipefds[0], flags);
 }
 
 
