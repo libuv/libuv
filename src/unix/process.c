@@ -391,14 +391,6 @@ int uv_spawn(uv_loop_t* loop,
     if (uv__process_init_stdio(options.stdio + i, pipes[i]))
       goto error;
 
-  /* swap stdin file descriptors, it's the only writable stream */
-  {
-    int* p = pipes[0];
-    int t = p[0];
-    p[0] = p[1];
-    p[1] = t;
-  }
-
   /* This pipe is used by the parent to wait until
    * the child has called `execve()`. We need this
    * to avoid the following race condition:
