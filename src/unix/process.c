@@ -232,8 +232,11 @@ static int uv__process_open_stream(uv_stdio_container_t* container,
   if (!(container->flags & UV_CREATE_PIPE) || pipefds[0] < 0)
     return 0;
 
-  assert(pipefds[1] >= 0);
-  close(pipefds[1]);
+  if (close(pipefds[1]))
+    if (errno != EINTR && errno != EINPROGRESS)
+      abort();
+
+  pipefds[1] = -1;
   uv__nonblock(pipefds[0], 1);
 
   if (container->data.stream->type == UV_NAMED_PIPE &&
