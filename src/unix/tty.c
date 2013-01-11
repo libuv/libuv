@@ -27,7 +27,7 @@
 #include <termios.h>
 #include <errno.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
+
 
 static int orig_termios_fd = -1;
 static struct termios orig_termios;
@@ -118,10 +118,7 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
 
 
 uv_handle_type uv_guess_handle(uv_file file) {
-  struct stat st;
-  struct sockaddr sa;
-  socklen_t len;
-  int sock_type;
+  struct stat s;
 
   if (file < 0) {
     return UV_UNKNOWN_HANDLE;
@@ -131,46 +128,15 @@ uv_handle_type uv_guess_handle(uv_file file) {
     return UV_TTY;
   }
 
-  if (fstat(file, &st)) {
+  if (fstat(file, &s)) {
     return UV_UNKNOWN_HANDLE;
   }
 
-  if (S_ISFIFO(st.st_mode)) {
-    return UV_NAMED_PIPE;
-  }
-
-  if (S_ISREG(st.st_mode)) {
+  if (!S_ISSOCK(s.st_mode) && !S_ISFIFO(s.st_mode)) {
     return UV_FILE;
   }
 
-  if (!S_ISSOCK(st.st_mode)) {
-    return UV_UNKNOWN_HANDLE;
-  }
-
-  len = sizeof sock_type;
-  if (getsockopt(file, SOL_SOCKET, SO_TYPE, &sock_type, &len)) {
-    return UV_UNKNOWN_HANDLE;
-  }
-
-  len = sizeof sa;
-  if (getsockname(file, &sa, &len)) {
-    return UV_UNKNOWN_HANDLE;
-  }
-
-  if (sock_type == SOCK_STREAM && sa.sa_family == AF_UNIX) {
-    return UV_NAMED_PIPE;
-  }
-  else if (sock_type == SOCK_STREAM &&
-           (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)) {
-    return UV_TCP;
-  }
-  else if (sock_type == SOCK_DGRAM &&
-           (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)) {
-    return UV_UDP;
-  }
-  else {
-    return UV_UNKNOWN_HANDLE;
-  }
+  return UV_NAMED_PIPE;
 }
 
 
