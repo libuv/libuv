@@ -280,18 +280,26 @@ static int uv__loop_alive(uv_loop_t* loop) {
 
 
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
-  int r;
+  int r, timeout;
 
   if (!uv__loop_alive(loop))
     return 0;
 
   do {
+    if (loop->stop_flag) {
+      loop->stop_flag = 0;
+      return uv__loop_alive(loop);
+    }
     uv__update_time(loop);
     uv__run_timers(loop);
     uv__run_idle(loop);
     uv__run_prepare(loop);
     uv__run_pending(loop);
-    uv__io_poll(loop, (mode & UV_RUN_NOWAIT ? 0 : uv_backend_timeout(loop)));
+    if (mode & UV_RUN_NOWAIT || loop->stop_flag)
+      timeout = 0;
+    else
+      timeout = uv_backend_timeout(loop);
+    uv__io_poll(loop, timeout);
     uv__run_check(loop);
     uv__run_closing_handles(loop);
     r = uv__loop_alive(loop);

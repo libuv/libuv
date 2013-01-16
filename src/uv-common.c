@@ -377,3 +377,8 @@ void uv_ref(uv_handle_t* handle) {
 void uv_unref(uv_handle_t* handle) {
   uv__handle_unref(handle);
 }
+
+
+void uv_stop(uv_loop_t* loop) {
+  loop->stop_flag = 1;
+}

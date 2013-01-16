@@ -270,6 +270,10 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     return 0;
 
   do {
+    if (loop->stop_flag) {
+      loop->stop_flag = 0;
+      return uv__loop_alive(loop);
+    }
     uv_update_time(loop);
     uv_process_timers(loop);
 
@@ -287,6 +291,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     (*poll)(loop, loop->idle_handles == NULL &&
                   loop->pending_reqs_tail == NULL &&
                   loop->endgame_handles == NULL &&
+                  !loop->stop_flag &&
                   (loop->active_handles > 0 ||
                    !ngx_queue_empty(&loop->active_reqs)) &&
                   !(mode & UV_RUN_NOWAIT));
