@@ -144,7 +144,23 @@ skip:
   tv[1].tv_usec = (unsigned long)(req->mtime * 1000000) % 1000000;
   snprintf(path, sizeof(path), "/proc/self/fd/%d", (int) req->file);
 
-  return utimes(path, tv);
+  r = utimes(path, tv);
+  if (r == 0)
+    return r;
+
+  switch (errno) {
+  case ENOENT:
+    if (fcntl(req->file, F_GETFL) == -1 && errno == EBADF)
+      break;
+    /* Fall through. */
+
+  case EACCES:
+  case ENOTDIR:
+    errno = ENOSYS;
+    break;
+  }
+
+  return r;
 
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
