@@ -978,6 +978,20 @@ UV_EXTERN int uv_udp_set_multicast_loop(uv_udp_t* handle, int on);
  */
 UV_EXTERN int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
 
+
+/*
+ * Set the multicast interface to send on
+ *
+ * Arguments:
+ *  handle              UDP handle. Should have been initialized with
+ *                      `uv_udp_init`.
+ *  interface_addr      interface address
+ *
+ * Returns:
+ *  0 on success, or an error code < 0 on failure.
+ */
+UV_EXTERN int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr);
+
 /*
  * Set broadcast on or off
  *
