@@ -99,6 +99,8 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_INVALID_PARAMETER:           return UV_EINVAL;
     case ERROR_SYMLINK_NOT_SUPPORTED:       return UV_EINVAL;
     case WSAEINVAL:                         return UV_EINVAL;
+    case WSAEPFNOSUPPORT:                   return UV_EINVAL;
+    case WSAESOCKTNOSUPPORT:                return UV_EINVAL;
     case ERROR_BEGINNING_OF_MEDIA:          return UV_EIO;
     case ERROR_BUS_RESET:                   return UV_EIO;
     case ERROR_CRC:                         return UV_EIO;
@@ -150,6 +152,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case ERROR_NO_DATA:                     return UV_EPIPE;
     case ERROR_PIPE_NOT_CONNECTED:          return UV_EPIPE;
     case WSAESHUTDOWN:                      return UV_EPIPE;
+    case WSAEPROTONOSUPPORT:                return UV_EPROTONOSUPPORT;
     case ERROR_WRITE_PROTECT:               return UV_EROFS;
     case ERROR_SEM_TIMEOUT:                 return UV_ETIMEDOUT;
     case WSAETIMEDOUT:                      return UV_ETIMEDOUT;
