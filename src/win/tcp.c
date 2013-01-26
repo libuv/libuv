@@ -769,11 +769,6 @@ int uv__tcp_connect6(uv_connect_t* req,
   BOOL success;
   DWORD bytes;
 
-  if (!uv_allow_ipv6) {
-    uv__set_sys_error(loop, WSAEAFNOSUPPORT);
-    return -1;
-  }
-
   if (handle->flags & UV_HANDLE_BIND_ERROR) {
     uv__set_sys_error(loop, handle->bind_error);
     return -1;

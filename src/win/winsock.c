@@ -25,9 +25,6 @@
 #include "internal.h"
 
 
-/* Whether ipv6 is supported */
-int uv_allow_ipv6;
-
 /* Whether there are any non-IFS LSPs stacked on TCP */
 int uv_tcp_non_ifs_lsp_ipv4;
 int uv_tcp_non_ifs_lsp_ipv6;
@@ -131,8 +128,6 @@ void uv_winsock_init() {
   dummy = socket(AF_INET6, SOCK_STREAM, IPPROTO_IP);
 
   if (dummy != INVALID_SOCKET) {
-    uv_allow_ipv6 = TRUE;
-
     opt_len = (int) sizeof protocol_info;
     if (!getsockopt(dummy,
                     SOL_SOCKET,
