@@ -93,7 +93,7 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     /* if the user is using the default UDP driver (AFD) and has no other */
     /* LSPs stacked on top. Here we check whether that is the case. */
     opt_len = (int) sizeof info;
-    if (!getsockopt(socket,
+    if (getsockopt(socket,
                    SOL_SOCKET,
                    SO_PROTOCOL_INFOW,
                    (char*) &info,
