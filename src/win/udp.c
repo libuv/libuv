@@ -64,6 +64,16 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
 
   assert(handle->socket == INVALID_SOCKET);
 
+  /* Set SO_REUSEADDR on the socket. */
+  if (setsockopt(socket,
+                 SOL_SOCKET,
+                 SO_REUSEADDR,
+                 (char*) &yes,
+                 sizeof yes) == SOCKET_ERROR) {
+    uv__set_sys_error(loop, WSAGetLastError());
+    return -1;
+  }
+
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
     uv__set_sys_error(loop, WSAGetLastError());
@@ -208,16 +218,6 @@ static int uv__bind(uv_udp_t* handle,
                IPV6_V6ONLY,
                (char*) &no,
                sizeof no);
-  }
-
-  r = setsockopt(handle->socket,
-                 SOL_SOCKET,
-                 SO_REUSEADDR,
-                 (char*) &yes,
-                 sizeof yes);
-  if (r == SOCKET_ERROR) {
-    uv__set_sys_error(handle->loop, WSAGetLastError());
-    return -1;
   }
 
   r = bind(handle->socket, addr, addrsize);
@@ -656,7 +656,6 @@ int uv_udp_set_broadcast(uv_udp_t* handle, int value) {
 
 
 int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
-  int r;
   WSAPROTOCOL_INFOW protocol_info;
   int opt_len;
   DWORD yes = 1;
@@ -676,16 +675,6 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
                         handle,
                         sock,
                         protocol_info.iAddressFamily) < 0) {
-    return -1;
-  }
-
-  r = setsockopt(handle->socket,
-                 SOL_SOCKET,
-                 SO_REUSEADDR,
-                 (char*) &yes,
-                 sizeof yes);
-  if (r == SOCKET_ERROR) {
-    uv__set_sys_error(handle->loop, WSAGetLastError());
     return -1;
   }
 
