@@ -21,15 +21,15 @@
 E=
 CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -g
-CPPFLAGS += -Isrc
+CPPFLAGS += -I$(SRCDIR)/src
 LDFLAGS=-lm
 
 CPPFLAGS += -D_LARGEFILE_SOURCE
 CPPFLAGS += -D_FILE_OFFSET_BITS=64
 
 RUNNER_SRC=test/runner-unix.c
-RUNNER_CFLAGS=$(CFLAGS) -Itest
-RUNNER_LDFLAGS=-L"$(PWD)" -luv -Xlinker -rpath -Xlinker "$(PWD)"
+RUNNER_CFLAGS=$(CFLAGS) -I$(SRCDIR)/test
+RUNNER_LDFLAGS=-L"$(CURDIR)" -luv -Xlinker -rpath -Xlinker "$(CURDIR)"
 
 OBJS += src/unix/async.o
 OBJS += src/unix/core.o
@@ -63,7 +63,7 @@ OBJS += src/unix/sunos.o
 endif
 
 ifeq (aix,$(OS))
-CPPFLAGS += -Isrc/ares/config_aix -D_ALL_SOURCE -D_XOPEN_SOURCE=500
+CPPFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500
 LDFLAGS+= -lperfstat
 OBJS += src/unix/aix.o
 endif
@@ -123,13 +123,6 @@ else
 RUNNER_LDFLAGS += -pthread
 endif
 
-OBJDIR := out
-ifeq ($(MAKECMDGOALS), test)
-	OBJDIR := $(OBJDIR)/test
-endif
-
-OBJS := $(addprefix $(OBJDIR)/,$(OBJS))
-
 libuv.a: $(OBJS)
 	$(AR) rcs $@ $^
 
@@ -137,18 +130,16 @@ libuv.$(SOEXT):	override CFLAGS += -fPIC
 libuv.$(SOEXT):	$(OBJS)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
-$(OBJDIR)/src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
+src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-$(OBJDIR)/src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
+src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean-platform:
-	-rm -rf $(OBJDIR)
 	-rm -f libuv.a libuv.$(SOEXT) test/run-{tests,benchmarks}.dSYM
 
 distclean-platform:
-	-rm -rf $(OBJDIR)
 	-rm -f libuv.a libuv.$(SOEXT) test/run-{tests,benchmarks}.dSYM

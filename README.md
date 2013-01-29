@@ -66,6 +66,10 @@ MinGW users should run this instead:
 
     make OS=mingw
 
+Out-of-tree builds are supported:
+
+    make builddir_name=/path/to/builddir
+
 To build with Visual Studio run the vcbuild.bat file which will
 checkout the GYP code into build/gyp and generate the uv.sln and
 related files.
