@@ -81,9 +81,9 @@ ifeq (linux,$(OS))
 CSTDFLAG += -D_GNU_SOURCE
 LDFLAGS+=-ldl -lrt
 RUNNER_CFLAGS += -D_GNU_SOURCE
-OBJS += src/unix/linux/linux-core.o \
-        src/unix/linux/inotify.o    \
-        src/unix/linux/syscalls.o
+OBJS += src/unix/linux-core.o \
+        src/unix/linux-inotify.o \
+        src/unix/linux-syscalls.o
 endif
 
 ifeq (freebsd,$(OS))
@@ -129,6 +129,14 @@ libuv.a: $(OBJS)
 libuv.$(SOEXT):	override CFLAGS += -fPIC
 libuv.$(SOEXT):	$(OBJS)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
+
+include/uv-private/uv-unix.h: \
+	include/uv-private/uv-bsd.h \
+	include/uv-private/uv-darwin.h \
+	include/uv-private/uv-linux.h \
+	include/uv-private/uv-sunos.h
+
+src/unix/internal.h: src/unix/linux-syscalls.h
 
 src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
 	@mkdir -p $(dir $@)

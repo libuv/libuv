@@ -19,7 +19,7 @@
  */
 
 #include "uv.h"
-#include "../internal.h"
+#include "internal.h"
 
 #include <stdint.h>
 #include <stdio.h>
