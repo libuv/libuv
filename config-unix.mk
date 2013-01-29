@@ -138,12 +138,17 @@ include/uv-private/uv-unix.h: \
 
 src/unix/internal.h: src/unix/linux-syscalls.h
 
-src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h
-	@mkdir -p $(dir $@)
+src/.buildstamp src/unix/.buildstamp test/.buildstamp:
+	mkdir -p $(dir $@)
+	touch $@
+
+src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h src/unix/.buildstamp
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h
-	@mkdir -p $(dir $@)
+src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h src/.buildstamp
+	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+test/%.o: test/%.c include/uv.h test/.buildstamp
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean-platform:
