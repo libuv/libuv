@@ -62,7 +62,11 @@ To build via Makefile simply execute:
 
     make
 
-To build with Visual Studio run the vcbuilds.bat file which will
+MinGW users should run this instead:
+
+    make OS=mingw
+
+To build with Visual Studio run the vcbuild.bat file which will
 checkout the GYP code into build/gyp and generate the uv.sln and
 related files.
 

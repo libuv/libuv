@@ -18,21 +18,17 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-
-ifdef MSVC
-uname_S := MINGW
-endif
+OS ?= $(shell sh -c 'uname -s | tr "[A-Z]" "[a-z]"')
 
 CPPFLAGS += -Iinclude -Iinclude/uv-private
 
-ifeq (Darwin,$(uname_S))
+ifeq (darwin,$(OS))
 SOEXT = dylib
 else
 SOEXT = so
 endif
 
-ifneq (,$(findstring MINGW,$(uname_S)))
+ifneq (,$(findstring mingw,$(OS)))
 include config-mingw.mk
 else
 include config-unix.mk
