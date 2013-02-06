@@ -1878,12 +1878,6 @@ UV_EXTERN void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex);
  * 1. callers should be prepared to deal with spurious wakeups.
  * 2. the granularity of timeout on Windows is never less than one millisecond.
  * 3. uv_cond_timedwait takes a relative timeout, not an absolute time.
- * 4. the precision of timeout on OSX is never less than one microsecond.
- *    Here is the reason.
- *    OSX doesn't support CLOCK_MONOTONIC nor pthread_condattr_setclock()
- *    (see man pthread_cond_init on OSX).
- *    An example in man pthread_cond_timedwait on OSX uses gettimeofday()
- *    and its resolution is a microsecond.
  */
 UV_EXTERN int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex,
     uint64_t timeout);

@@ -327,21 +327,18 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
 int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
   int r;
   struct timespec ts;
-  uint64_t abstime;
 
 #if defined(__APPLE__) && defined(__MACH__)
-  {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    abstime = tv.tv_sec * 1e9 + tv.tv_usec * 1e3 + timeout;
-  }
+  ts.tv_sec = timeout / NANOSEC;
+  ts.tv_nsec = timeout % NANOSEC;
+  r = pthread_cond_timedwait_relative_np(cond, mutex, &ts);
 #else
-  abstime = uv__hrtime() + timeout;
+  timeout += uv__hrtime();
+  ts.tv_sec = timeout / NANOSEC;
+  ts.tv_nsec = timeout % NANOSEC;
+  r = pthread_cond_timedwait(cond, mutex, &ts);
 #endif
 
-  ts.tv_sec = abstime / NANOSEC;
-  ts.tv_nsec = abstime % NANOSEC;
-  r = pthread_cond_timedwait(cond, mutex, &ts);
 
   if (r == 0)
     return 0;
