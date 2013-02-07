@@ -27,9 +27,13 @@ static int uv__timer_cmp(const uv_timer_t* a, const uv_timer_t* b) {
     return -1;
   if (a->timeout > b->timeout)
     return 1;
-  if (a < b)
+  /*
+   *  compare start_id when both has the same timeout. start_id is
+   *  allocated with loop->timer_counter in uv_timer_start().
+   */
+  if (a->start_id < b->start_id)
     return -1;
-  if (a > b)
+  if (a->start_id > b->start_id)
     return 1;
   return 0;
 }
@@ -59,6 +63,8 @@ int uv_timer_start(uv_timer_t* handle,
   handle->timer_cb = cb;
   handle->timeout = handle->loop->time + timeout;
   handle->repeat = repeat;
+  /* start_id is the second index to be compared in uv__timer_cmp() */
+  handle->start_id = handle->loop->timer_counter++;
 
   RB_INSERT(uv__timers, &handle->loop->timer_handles, handle);
   uv__handle_start(handle);

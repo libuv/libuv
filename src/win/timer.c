@@ -55,9 +55,13 @@ static int uv_timer_compare(uv_timer_t* a, uv_timer_t* b) {
     return -1;
   if (a->due > b->due)
     return 1;
-  if ((intptr_t)a < (intptr_t)b)
+  /*
+   *  compare start_id when both has the same due. start_id is
+   *  allocated with loop->timer_counter in uv_timer_start().
+   */
+  if (a->start_id < b->start_id)
     return -1;
-  if ((intptr_t)a > (intptr_t)b)
+  if (a->start_id > b->start_id)
     return 1;
   return 0;
 }
@@ -97,6 +101,9 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, int64_t timeout,
   handle->repeat = repeat;
   handle->flags |= UV_HANDLE_ACTIVE;
   uv__handle_start(handle);
+
+  /* start_id is the second index to be compared in uv__timer_cmp() */
+  handle->start_id = handle->loop->timer_counter++;
 
   old = RB_INSERT(uv_timer_tree_s, &loop->timers, handle);
   assert(old == NULL);

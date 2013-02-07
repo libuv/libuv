@@ -178,6 +178,7 @@ typedef struct {
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
   int emfile_fd;                                                              \
+  uint64_t timer_counter;                                                     \
   UV_PLATFORM_LOOP_FIELDS                                                     \
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
@@ -265,7 +266,8 @@ typedef struct {
   } tree_entry;                                                               \
   uv_timer_cb timer_cb;                                                       \
   uint64_t timeout;                                                           \
-  uint64_t repeat;
+  uint64_t repeat;                                                            \
+  uint64_t start_id;
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
   struct uv__work work_req;                                                   \

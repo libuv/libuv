@@ -302,7 +302,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   /* Counter to keep track of active tcp streams */                           \
   unsigned int active_tcp_streams;                                            \
   /* Counter to keep track of active udp streams */                           \
-  unsigned int active_udp_streams;
+  unsigned int active_udp_streams;                                            \
+  /* Counter to started timer */                                              \
+  uint64_t timer_counter;
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \
@@ -487,6 +489,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   RB_ENTRY(uv_timer_s) tree_entry;                                            \
   int64_t due;                                                                \
   int64_t repeat;                                                             \
+  uint64_t start_id;                                                          \
   uv_timer_cb timer_cb;
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
