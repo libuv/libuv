@@ -31,6 +31,7 @@
 #include "uv.h"
 #include "internal.h"
 
+#include <Winsock2.h>
 #include <iphlpapi.h>
 #include <psapi.h>
 #include <tlhelp32.h>
@@ -765,7 +766,7 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     /* ERROR_BUFFER_OVERFLOW, and the required buffer size will be stored in */
     /* win_address_buf_size. */
     r = GetAdaptersAddresses(AF_UNSPEC,
-                             0,
+                             GAA_FLAG_INCLUDE_PREFIX,
                              NULL,
                              win_address_buf,
                              &win_address_buf_size);
@@ -882,6 +883,7 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses_ptr,
        win_address != NULL;
        win_address = win_address->Next) {
     IP_ADAPTER_UNICAST_ADDRESS_XP* unicast_address;
+    IP_ADAPTER_PREFIX* prefix;
     int name_size;
     size_t max_name_size;
 
@@ -907,20 +909,54 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses_ptr,
       return uv__new_sys_error(GetLastError());
     }
 
+    prefix = win_address->FirstPrefix;
+
     /* Add an uv_interface_address_t element for every unicast address. */
     for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS_XP*)
                            win_address->FirstUnicastAddress;
          unicast_address != NULL;
          unicast_address = unicast_address->Next) {
       struct sockaddr* sa;
+      int prefixlen;
 
       uv_address->name = name_buf;
 
+      /* Walk the prefix list in sync with the address list and extract
+         the prefixlen for each address.  On Vista and newer, we could
+         instead just use: unicast_address->OnLinkPrefixLength */
+      if (prefix != NULL) {
+        prefixlen = prefix->PrefixLength;
+        prefix = prefix->Next;
+      } else {
+        prefixlen = 0;
+      }
+
       sa = unicast_address->Address.lpSockaddr;
-      if (sa->sa_family == AF_INET6)
+      if (sa->sa_family == AF_INET6) {
+        int i;
+
         uv_address->address.address6 = *((struct sockaddr_in6 *) sa);
-      else
+
+        uv_address->netmask.netmask6.sin6_family = AF_INET6;
+        prefixlen = prefixlen > 0 ? prefixlen : 128;
+        for (i = 0; i < 16; ++i) {
+          int bits;
+          uint8_t byte_val;
+
+          bits = prefixlen < 8 ? prefixlen : 8;
+          byte_val = ~(0xff >> bits);
+          prefixlen -= bits;
+
+          uv_address->netmask.netmask6.sin6_addr.s6_addr[i] = byte_val;
+        }
+      } else {
         uv_address->address.address4 = *((struct sockaddr_in *) sa);
+
+        uv_address->netmask.netmask4.sin_family = AF_INET;
+        prefixlen = prefixlen > 0 ? prefixlen : 32;
+        uv_address->netmask.netmask4.sin_addr.s_addr =
+          htonl(0xffffffff << (32 - prefixlen));
+      }
 
       uv_address->is_internal =
           (win_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK);

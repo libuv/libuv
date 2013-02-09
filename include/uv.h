@@ -1479,6 +1479,10 @@ struct uv_interface_address_s {
     struct sockaddr_in address4;
     struct sockaddr_in6 address6;
   } address;
+  union {
+    struct sockaddr_in netmask4;
+    struct sockaddr_in6 netmask6;
+  } netmask;
 };
 
 UV_EXTERN char** uv_setup_args(int argc, char** argv);

@@ -369,6 +369,8 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
       address->address.address4 = *((struct sockaddr_in *)&p->ifr_addr);
     }
 
+    /* TODO: Retrieve netmask using SIOCGIFNETMASK ioctl */
+
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
 
     address++;
