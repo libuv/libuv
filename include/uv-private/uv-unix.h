@@ -295,7 +295,6 @@ typedef struct {
   double atime;                                                               \
   double mtime;                                                               \
   struct uv__work work_req;                                                   \
-  struct stat statbuf;                                                        \
 
 #define UV_WORK_PRIVATE_FIELDS                                                \
   struct uv__work work_req;

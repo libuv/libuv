@@ -1515,6 +1515,7 @@ struct uv_fs_s {
   void* ptr;
   const char* path;
   uv_err_code errorno;
+  uv_statbuf_t statbuf;  /* Stores the result of uv_fs_stat and uv_fs_fstat. */
   UV_FS_PRIVATE_FIELDS
 };
 

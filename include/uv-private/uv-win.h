@@ -555,7 +555,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
       size_t length;                                                          \
       int64_t offset;                                                         \
     };                                                                        \
-    struct _stati64 stat;                                                     \
     struct {                                                                  \
       double atime;                                                           \
       double mtime;                                                           \
