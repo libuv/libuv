@@ -158,9 +158,7 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   if ((flags & UV_TCP_IPV6ONLY) && addr->sa_family != AF_INET6)
     return -EINVAL;
 
-  err = maybe_new_socket(tcp,
-                         addr->sa_family,
-                         UV_STREAM_READABLE | UV_STREAM_WRITABLE);
+  err = maybe_new_socket(tcp, addr->sa_family, 0);
   if (err)
     return err;
 
@@ -335,14 +333,14 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   if (single_accept)
     tcp->flags |= UV_TCP_SINGLE_ACCEPT;
 
-  flags = UV_STREAM_READABLE;
+  flags = 0;
 #if defined(__MVS__)
   /* on zOS the listen call does not bind automatically
      if the socket is unbound. Hence the manual binding to
      an arbitrary port is required to be done manually
   */
   flags |= UV_HANDLE_BOUND;
-#endif  
+#endif
   err = maybe_new_socket(tcp, AF_INET, flags);
   if (err)
     return err;
