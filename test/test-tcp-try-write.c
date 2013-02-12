@@ -43,11 +43,45 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
+static void bad_write_cb(uv_write_t *req, int status) {
+  ASSERT(0); // should be unreachable
+}
+
+
+static void bad_shutdown_cb(uv_shutdown_t *req, int status) {
+  ASSERT(0); // should be unreachable
+}
+
+
+static void bad_alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  ASSERT(0); // should be unreachable
+}
+
+
+static void bad_read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+  ASSERT(0); // should be unreachable
+}
+
+
 static void connect_cb(uv_connect_t* req, int status) {
+  static uv_write_t write_req;
+  static uv_shutdown_t shutdown_req;
   int r;
   uv_buf_t buf;
   ASSERT(status == 0);
   connect_cb_called++;
+
+  buf = uv_buf_init("PING", 4);
+  r = uv_write(&write_req, (uv_stream_t*) &server, &buf, 1, bad_write_cb);
+  ASSERT(r == UV_EPIPE);
+  r = uv_shutdown(&shutdown_req, (uv_stream_t*) &server, bad_shutdown_cb);
+#ifdef _WIN32
+  ASSERT(r == UV_EPIPE);
+#else
+  ASSERT(r == -ENOTCONN);
+#endif
+  r = uv_read_start((uv_stream_t*) &server, bad_alloc_cb, bad_read_cb);
+  ASSERT(r == UV_ENOTCONN);
 
   do {
     buf = uv_buf_init("PING", 4);
@@ -105,6 +139,8 @@ static void start_server(void) {
   ASSERT(0 == uv_tcp_init(uv_default_loop(), &server));
   ASSERT(0 == uv_tcp_bind(&server, (struct sockaddr*) &addr, 0));
   ASSERT(0 == uv_listen((uv_stream_t*) &server, 128, connection_cb));
+  ASSERT(0 == uv_is_writable((uv_stream_t*) &server));
+  ASSERT(0 == uv_is_readable((uv_stream_t*) &server));
 }
 
 
