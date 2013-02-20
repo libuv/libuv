@@ -1170,15 +1170,11 @@ UV_EXTERN int uv_timer_init(uv_loop_t*, uv_timer_t* handle);
  *
  * If repeat is non-zero, the callback fires first after timeout milliseconds
  * and then repeatedly after repeat milliseconds.
- *
- * timeout and repeat are signed integers but that will change in a future
- * version of libuv. Don't pass in negative values, you'll get a nasty surprise
- * when that change becomes effective.
  */
 UV_EXTERN int uv_timer_start(uv_timer_t* handle,
                              uv_timer_cb cb,
-                             int64_t timeout,
-                             int64_t repeat);
+                             uint64_t timeout,
+                             uint64_t repeat);
 
 UV_EXTERN int uv_timer_stop(uv_timer_t* handle);
 
@@ -1195,9 +1191,9 @@ UV_EXTERN int uv_timer_again(uv_timer_t* handle);
  * non-repeating before, it will have been stopped. If it was repeating, then
  * the old repeat value will have been used to schedule the next timeout.
  */
-UV_EXTERN void uv_timer_set_repeat(uv_timer_t* handle, int64_t repeat);
+UV_EXTERN void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat);
 
-UV_EXTERN int64_t uv_timer_get_repeat(uv_timer_t* handle);
+UV_EXTERN uint64_t uv_timer_get_repeat(uv_timer_t* handle);
 
 
 /*

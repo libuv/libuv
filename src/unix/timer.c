@@ -52,11 +52,8 @@ int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
 
 int uv_timer_start(uv_timer_t* handle,
                    uv_timer_cb cb,
-                   int64_t timeout,
-                   int64_t repeat) {
-  assert(timeout >= 0);
-  assert(repeat >= 0);
-
+                   uint64_t timeout,
+                   uint64_t repeat) {
   if (uv__is_active(handle))
     uv_timer_stop(handle);
 
@@ -97,13 +94,12 @@ int uv_timer_again(uv_timer_t* handle) {
 }
 
 
-void uv_timer_set_repeat(uv_timer_t* handle, int64_t repeat) {
-  assert(repeat >= 0);
+void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat) {
   handle->repeat = repeat;
 }
 
 
-int64_t uv_timer_get_repeat(uv_timer_t* handle) {
+uint64_t uv_timer_get_repeat(uv_timer_t* handle) {
   return handle->repeat;
 }
 

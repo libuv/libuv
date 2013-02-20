@@ -87,8 +87,8 @@ void uv_timer_endgame(uv_loop_t* loop, uv_timer_t* handle) {
 }
 
 
-int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, int64_t timeout,
-    int64_t repeat) {
+int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
+    uint64_t repeat) {
   uv_loop_t* loop = handle->loop;
   uv_timer_t* old;
 
@@ -157,13 +157,13 @@ int uv_timer_again(uv_timer_t* handle) {
 }
 
 
-void uv_timer_set_repeat(uv_timer_t* handle, int64_t repeat) {
+void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat) {
   assert(handle->type == UV_TIMER);
   handle->repeat = repeat;
 }
 
 
-int64_t uv_timer_get_repeat(uv_timer_t* handle) {
+uint64_t uv_timer_get_repeat(uv_timer_t* handle) {
   assert(handle->type == UV_TIMER);
   return handle->repeat;
 }

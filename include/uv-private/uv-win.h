@@ -487,8 +487,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
   RB_ENTRY(uv_timer_s) tree_entry;                                            \
-  int64_t due;                                                                \
-  int64_t repeat;                                                             \
+  uint64_t due;                                                               \
+  uint64_t repeat;                                                            \
   uint64_t start_id;                                                          \
   uv_timer_cb timer_cb;
 
