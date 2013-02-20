@@ -163,7 +163,7 @@ void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat) {
 }
 
 
-uint64_t uv_timer_get_repeat(uv_timer_t* handle) {
+uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
   assert(handle->type == UV_TIMER);
   return handle->repeat;
 }
