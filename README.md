@@ -99,6 +99,9 @@ Macintosh users run
     ./gyp_uv -f xcode
     xcodebuild -project uv.xcodeproj -configuration Release -target All
 
+Note for UNIX users: compile your project with `-D_LARGEFILE_SOURCE` and
+`-D_FILE_OFFSET_BITS=64`. GYP builds take care of that automatically.
+
 Note for Linux users: compile your project with `-D_GNU_SOURCE` when you
 include `uv.h`. GYP builds take care of that automatically. If you use
 autotools, add a `AC_GNU_SOURCE` declaration to your `configure.ac`.
