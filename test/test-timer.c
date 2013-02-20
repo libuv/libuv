@@ -29,7 +29,7 @@ static int repeat_cb_called = 0;
 static int repeat_close_cb_called = 0;
 static int order_cb_called = 0;
 
-static int64_t start_time;
+static uint64_t start_time;
 
 
 static void once_close_cb(uv_handle_t* handle) {
