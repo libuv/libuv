@@ -127,7 +127,7 @@ libuv.a: $(OBJS)
 	$(AR) rcs $@ $^
 
 libuv.$(SOEXT):	override CFLAGS += -fPIC
-libuv.$(SOEXT):	$(OBJS)
+libuv.$(SOEXT):	$(OBJS:%.o=%.pic.o)
 	$(CC) -shared -o $@ $^ $(LDFLAGS)
 
 include/uv-private/uv-unix.h: \
@@ -142,10 +142,10 @@ src/.buildstamp src/unix/.buildstamp test/.buildstamp:
 	mkdir -p $(dir $@)
 	touch $@
 
-src/unix/%.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h src/unix/.buildstamp
+src/unix/%.o src/unix/%.pic.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h src/unix/.buildstamp
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-src/%.o: src/%.c include/uv.h include/uv-private/uv-unix.h src/.buildstamp
+src/%.o src/%.pic.o: src/%.c include/uv.h include/uv-private/uv-unix.h src/.buildstamp
 	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 test/%.o: test/%.c include/uv.h test/.buildstamp
