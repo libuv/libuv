@@ -40,6 +40,10 @@
 
 /* Do platform-specific initialization. */
 void platform_init(int argc, char **argv) {
+  const char* tap = getenv("UV_TAP_OUTPUT");
+
+  tap_output = (tap != NULL && atoi(tap) > 0);
+
   /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
@@ -227,19 +231,26 @@ int process_copy_output(process_info_t *p, int fd) {
     return -1;
   }
 
-  ssize_t nread, nwritten;
+  ssize_t nwritten;
   char buf[1024];
 
-  while ((nread = read(fileno(p->stdout_file), buf, 1024)) > 0) {
-    nwritten = write(fd, buf, nread);
-    /* TODO: what if write doesn't write the whole buffer... */
+  /* TODO: what if the line is longer than buf */
+  while (fgets(buf, sizeof(buf), p->stdout_file) != NULL) {
+   /* TODO: what if write doesn't write the whole buffer... */
+    nwritten = 0;
+
+    if (tap_output)
+      nwritten += write(fd, "#", 1);
+
+    nwritten += write(fd, buf, strlen(buf));
+
     if (nwritten < 0) {
       perror("write");
       return -1;
     }
   }
 
-  if (nread < 0) {
+  if (ferror(p->stdout_file)) {
     perror("read");
     return -1;
   }

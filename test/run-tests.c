@@ -147,5 +147,5 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 
-  return run_test(argv[1], TEST_TIMEOUT, 0);
+  return run_test(argv[1], TEST_TIMEOUT, 0, 1);
 }
