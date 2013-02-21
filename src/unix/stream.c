@@ -1203,6 +1203,8 @@ int uv_write2(uv_write_t* req,
       uv__set_sys_error(stream->loop, EOPNOTSUPP);
       return -1;
     }
+    if (uv__stream_fd(send_handle) < 0)
+      return uv__set_sys_error(stream->loop, EBADF);
   }
 
   empty_queue = (stream->write_queue_size == 0);
