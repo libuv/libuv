@@ -140,12 +140,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->fd >= 0);
     assert(w->fd < (int) loop->nwatchers);
 
-    /* Filter out no-op changes. This is for compatibility with the event ports
-     * backend, see the comment in uv__io_start().
-     */
-    if (w->events == w->pevents)
-      continue;
-
     e.events = w->pevents;
     e.data = w->fd;
 
