@@ -157,6 +157,9 @@
             }],
           ],
         }],
+        [ 'OS=="linux" or OS=="mac"', {
+          'sources': [ 'src/unix/proctitle.c' ],
+        }],
         [ 'OS=="mac"', {
           'sources': [
             'src/unix/darwin.c',

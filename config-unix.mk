@@ -78,6 +78,7 @@ SOEXT = dylib
 OBJS += src/unix/darwin.o
 OBJS += src/unix/kqueue.o
 OBJS += src/unix/fsevents.o
+OBJS += src/unix/proctitle.o
 OBJS += src/unix/darwin-proctitle.o
 endif
 
@@ -87,7 +88,8 @@ LDFLAGS+=-ldl -lrt
 RUNNER_CFLAGS += -D_GNU_SOURCE
 OBJS += src/unix/linux-core.o \
         src/unix/linux-inotify.o \
-        src/unix/linux-syscalls.o
+        src/unix/linux-syscalls.o \
+        src/unix/proctitle.o
 endif
 
 ifeq (freebsd,$(OS))
