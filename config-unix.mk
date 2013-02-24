@@ -70,11 +70,15 @@ endif
 
 ifeq (darwin,$(OS))
 CPPFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
-LDFLAGS+=-framework CoreServices -dynamiclib -install_name "@rpath/libuv.dylib"
+LDFLAGS += -framework Foundation \
+           -framework CoreServices \
+           -framework ApplicationServices \
+           -dynamiclib -install_name "@rpath/libuv.dylib"
 SOEXT = dylib
 OBJS += src/unix/darwin.o
 OBJS += src/unix/kqueue.o
 OBJS += src/unix/fsevents.o
+OBJS += src/unix/darwin-proctitle.o
 endif
 
 ifeq (linux,$(OS))
@@ -156,3 +160,6 @@ clean-platform:
 
 distclean-platform:
 	-rm -f libuv.a libuv.$(SOEXT) test/run-{tests,benchmarks}.dSYM
+
+%.pic.o %.o:  %.m
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@

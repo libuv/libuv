@@ -261,8 +261,20 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 uv_err_t uv_set_process_title(const char* title) {
-  /* TODO implement me */
-  return uv__new_artificial_error(UV_ENOSYS);
+  int uv__set_process_title(const char*);
+
+  if (process_title != NULL)
+    free(process_title);
+
+  process_title = strdup(title);
+
+  if (process_title == NULL)
+    return uv__new_artificial_error(UV_ENOMEM);
+
+  if (uv__set_process_title(title))
+    return uv__new_artificial_error(UV_ENOSYS);
+
+  return uv_ok_;
 }
 
 
