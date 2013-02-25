@@ -269,11 +269,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   if (!uv__loop_alive(loop))
     return 0;
 
-  do {
-    if (loop->stop_flag) {
-      loop->stop_flag = 0;
-      return uv__loop_alive(loop);
-    }
+  r = uv__loop_alive(loop);
+  while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
     uv_process_timers(loop);
 
@@ -298,7 +295,15 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
     uv_check_invoke(loop);
     r = uv__loop_alive(loop);
-  } while (r && !(mode & (UV_RUN_ONCE | UV_RUN_NOWAIT)));
+    if (mode & (UV_RUN_ONCE | UV_RUN_NOWAIT))
+      break;
+  }
+
+  /* The if statement lets the compiler compile it to a conditional store.
+   * Avoids dirtying a cache line.
+   */
+  if (loop->stop_flag != 0)
+    loop->stop_flag = 0;
 
   return r;
 }

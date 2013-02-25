@@ -22,9 +22,20 @@
 #include "uv.h"
 #include "task.h"
 
+static uv_prepare_t prepare_handle;
 static uv_timer_t timer_handle;
+static int prepare_called = 0;
 static int timer_called = 0;
 static int num_ticks = 10;
+
+
+static void prepare_cb(uv_prepare_t* handle, int status) {
+  ASSERT(handle == &prepare_handle);
+  ASSERT(status == 0);
+  prepare_called++;
+  if (prepare_called == num_ticks)
+    uv_prepare_stop(handle);
+}
 
 
 static void timer_cb(uv_timer_t* handle, int status) {
@@ -40,6 +51,8 @@ static void timer_cb(uv_timer_t* handle, int status) {
 
 TEST_IMPL(loop_stop) {
   int r;
+  uv_prepare_init(uv_default_loop(), &prepare_handle);
+  uv_prepare_start(&prepare_handle, prepare_cb);
   uv_timer_init(uv_default_loop(), &timer_handle);
   uv_timer_start(&timer_handle, timer_cb, 100, 100);
 
@@ -47,9 +60,14 @@ TEST_IMPL(loop_stop) {
   ASSERT(r != 0);
   ASSERT(timer_called == 1);
 
+  r = uv_run(uv_default_loop(), UV_RUN_NOWAIT);
+  ASSERT(r != 0);
+  ASSERT(prepare_called == 3);
+
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
   ASSERT(timer_called == 10);
+  ASSERT(prepare_called == 10);
 
   return 0;
 }
