@@ -28,12 +28,14 @@
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static void uv__async_event(uv_loop_t* loop,
                             struct uv__async* w,
                             unsigned int nevents);
 static int uv__async_make_pending(int* pending);
+static int uv__async_eventfd(void);
 
 
 int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
@@ -140,18 +142,45 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   }
 
   wa = container_of(w, struct uv__async, io_watcher);
+
+#if defined(__linux__)
+  if (wa->wfd == -1) {
+    uint64_t val;
+    assert(n == sizeof(val));
+    memcpy(&val, buf, sizeof(val));  /* Avoid alignment issues. */
+    wa->cb(loop, wa, val);
+    return;
+  }
+#endif
+
   wa->cb(loop, wa, n);
 }
 
 
 void uv__async_send(struct uv__async* wa) {
+  const void* buf;
+  ssize_t len;
+  int fd;
   int r;
 
+  buf = "";
+  len = 1;
+  fd = wa->wfd;
+
+#if defined(__linux__)
+  if (fd == -1) {
+    static const uint64_t val = 1;
+    buf = &val;
+    len = sizeof(val);
+    fd = wa->io_watcher.fd;  /* eventfd */
+  }
+#endif
+
   do
-    r = write(wa->wfd, "", 1);
+    r = write(fd, buf, len);
   while (r == -1 && errno == EINTR);
 
-  if (r == 1)
+  if (r == len)
     return;
 
   if (r == -1)
@@ -170,11 +199,19 @@ void uv__async_init(struct uv__async* wa) {
 
 int uv__async_start(uv_loop_t* loop, struct uv__async* wa, uv__async_cb cb) {
   int pipefd[2];
+  int fd;
 
   if (wa->io_watcher.fd != -1)
     return 0;
 
-  if (uv__make_pipe(pipefd, UV__F_NONBLOCK))
+  fd = uv__async_eventfd();
+  if (fd >= 0) {
+    pipefd[0] = fd;
+    pipefd[1] = -1;
+  }
+  else if (fd != -ENOSYS)
+    return -1;
+  else if (uv__make_pipe(pipefd, UV__F_NONBLOCK))
     return -1;
 
   uv__io_init(&wa->io_watcher, uv__async_io, pipefd[0]);
@@ -192,8 +229,53 @@ void uv__async_stop(uv_loop_t* loop, struct uv__async* wa) {
 
   uv__io_stop(loop, &wa->io_watcher, UV__POLLIN);
   close(wa->io_watcher.fd);
-  close(wa->wfd);
-
   wa->io_watcher.fd = -1;
-  wa->wfd = -1;
+
+  if (wa->wfd != -1) {
+    close(wa->wfd);
+    wa->wfd = -1;
+  }
+}
+
+
+static int uv__async_eventfd() {
+#if defined(__linux__)
+  static int no_eventfd2;
+  static int no_eventfd;
+  int fd;
+
+  if (no_eventfd2)
+    goto skip_eventfd2;
+
+  fd = uv__eventfd2(0, UV__EFD_CLOEXEC | UV__EFD_NONBLOCK);
+  if (fd != -1)
+    return fd;
+
+  if (errno != ENOSYS)
+    return -errno;
+
+  no_eventfd2 = 1;
+
+skip_eventfd2:
+
+  if (no_eventfd)
+    goto skip_eventfd;
+
+  fd = uv__eventfd(0);
+  if (fd != -1) {
+    uv__cloexec(fd, 1);
+    uv__nonblock(fd, 1);
+    return fd;
+  }
+
+  if (errno != ENOSYS)
+    return -errno;
+
+  no_eventfd = 1;
+
+skip_eventfd:
+
+#endif
+
+  return -ENOSYS;
 }
