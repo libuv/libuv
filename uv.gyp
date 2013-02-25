@@ -112,7 +112,8 @@
             '-pedantic',
             '-Wall',
             '-Wextra',
-            '-Wno-unused-parameter'
+            '-Wstrict-aliasing',
+            '-Wno-unused-parameter',
           ],
           'sources': [
             'include/uv-private/uv-unix.h',
