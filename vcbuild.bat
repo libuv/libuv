@@ -82,7 +82,8 @@ echo manually install gyp into %~dp0build\gyp.
 goto exit
 
 :have_gyp
-python gyp_uv -Dtarget_arch=%target_arch% -Dlibrary=%library%
+if not defined PYTHON set PYTHON="python"
+%PYTHON% gyp_uv -Dtarget_arch=%target_arch% -Dlibrary=%library%
 if errorlevel 1 goto create-msvs-files-failed
 if not exist uv.sln goto create-msvs-files-failed
 echo Project files generated.
