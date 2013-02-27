@@ -125,7 +125,7 @@ void uv__stream_init(uv_loop_t* loop,
 
 
 #if defined(__APPLE__)
-void uv__stream_osx_select(void* arg) {
+static void uv__stream_osx_select(void* arg) {
   uv_stream_t* stream;
   uv__stream_select_t* s;
   char buf[1024];
@@ -216,7 +216,7 @@ void uv__stream_osx_select(void* arg) {
 }
 
 
-void uv__stream_osx_interrupt_select(uv_stream_t* stream) {
+static void uv__stream_osx_interrupt_select(uv_stream_t* stream) {
   /* Notify select() thread about state change */
   uv__stream_select_t* s;
   int r;
@@ -235,7 +235,7 @@ void uv__stream_osx_interrupt_select(uv_stream_t* stream) {
 }
 
 
-void uv__stream_osx_select_cb(uv_async_t* handle, int status) {
+static void uv__stream_osx_select_cb(uv_async_t* handle, int status) {
   uv__stream_select_t* s;
   uv_stream_t* stream;
   int events;
@@ -260,7 +260,7 @@ void uv__stream_osx_select_cb(uv_async_t* handle, int status) {
 }
 
 
-void uv__stream_osx_cb_close(uv_handle_t* async) {
+static void uv__stream_osx_cb_close(uv_handle_t* async) {
   uv__stream_select_t* s;
 
   s = container_of(async, uv__stream_select_t, async);
@@ -268,7 +268,7 @@ void uv__stream_osx_cb_close(uv_handle_t* async) {
 }
 
 
-int uv__stream_try_select(uv_stream_t* stream, int fd) {
+static int uv__stream_try_select(uv_stream_t* stream, int fd) {
   /*
    * kqueue doesn't work with some files from /dev mount on osx.
    * select(2) in separate thread for those fds
