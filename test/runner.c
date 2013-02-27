@@ -257,7 +257,7 @@ out:
 
   /* Show error and output from processes if the test failed. */
   if (status != 0 || task->show_output) {
-    if (tap_output) {
+    if (tap_output && status != 0) {
       LOGF("not ok %d - %s\n#", test_count, test);
     } else if (status != 0) {
       LOGF("\n`%s` failed: %s\n", test, errmsg);
