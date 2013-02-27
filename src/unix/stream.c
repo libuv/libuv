@@ -300,7 +300,7 @@ static int uv__stream_try_select(uv_stream_t* stream, int fd) {
   if (ret == -1)
     return uv__set_sys_error(stream->loop, errno);
 
-  if ((events[0].flags & EV_ERROR) == 0 || events[0].data != EINVAL)
+  if (ret == 0 || (events[0].flags & EV_ERROR) == 0 || events[0].data != EINVAL)
     return 0;
 
   /* At this point we definitely know that this fd won't work with kqueue */
