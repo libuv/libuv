@@ -1200,7 +1200,13 @@ int uv_write2(uv_write_t* req,
     if (stream->type != UV_NAMED_PIPE || !((uv_pipe_t*)stream)->ipc)
       return uv__set_artificial_error(stream->loop, UV_EINVAL);
 
-    if (uv__stream_fd(send_handle) < 0)
+    /* XXX We abuse uv_write2() to send over UDP handles to child processes.
+     * Don't call uv__stream_fd() on those handles, it's a macro that on OS X
+     * evaluates to a function that operates on a uv_stream_t with a couple of
+     * OS X specific fields. On other Unices it does (handle)->io_watcher.fd,
+     * which works but only by accident.
+     */
+    if (uv__handle_fd((uv_handle_t*) send_handle) < 0)
       return uv__set_artificial_error(stream->loop, UV_EBADF);
   }
 
@@ -1342,6 +1348,10 @@ int uv_is_writable(const uv_stream_t* stream) {
 #if defined(__APPLE__)
 int uv___stream_fd(uv_stream_t* handle) {
   uv__stream_select_t* s;
+
+  assert(handle->type == UV_TCP ||
+         handle->type == UV_TTY ||
+         handle->type == UV_NAMED_PIPE);
 
   s = handle->select;
   if (s != NULL)
