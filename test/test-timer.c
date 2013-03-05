@@ -156,6 +156,18 @@ TEST_IMPL(timer_start_twice) {
 }
 
 
+TEST_IMPL(timer_init) {
+  uv_timer_t handle;
+
+  ASSERT(0 == uv_timer_init(uv_default_loop(), &handle));
+  ASSERT(0 == uv_timer_get_repeat(&handle));
+  ASSERT(!uv_is_active((uv_handle_t*)&handle));
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
 static void order_cb_a(uv_timer_t *handle, int status) {
   ASSERT(order_cb_called++ == *(int*)handle->data);
 }
