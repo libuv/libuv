@@ -22,14 +22,14 @@
 #include "internal.h"
 #include <stdlib.h>
 
-#define DEFAULT_THREADPOOL_SIZE 4
 #define MAX_THREADPOOL_SIZE 128
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
-static uv_thread_t* threads;
 static unsigned int nthreads;
+static uv_thread_t* threads;
+static uv_thread_t default_threads[4];
 static ngx_queue_t exit_message;
 static ngx_queue_t wq;
 static volatile int initialized;
@@ -95,7 +95,7 @@ static void init_once(void) {
   unsigned int i;
   const char* val;
 
-  nthreads = DEFAULT_THREADPOOL_SIZE;
+  nthreads = ARRAY_SIZE(default_threads);
   val = getenv("UV_THREADPOOL_SIZE");
   if (val != NULL)
     nthreads = atoi(val);
@@ -104,11 +104,13 @@ static void init_once(void) {
   if (nthreads > MAX_THREADPOOL_SIZE)
     nthreads = MAX_THREADPOOL_SIZE;
 
-  threads = malloc(nthreads * sizeof(threads[0]));
-  if (threads == NULL) {
-    static uv_thread_t spare_threads[1];
-    nthreads = ARRAY_SIZE(spare_threads);
-    threads = spare_threads;
+  threads = default_threads;
+  if (nthreads > ARRAY_SIZE(default_threads)) {
+    threads = malloc(nthreads * sizeof(threads[0]));
+    if (threads == NULL) {
+      nthreads = ARRAY_SIZE(default_threads);
+      threads = default_threads;
+    }
   }
 
   if (uv_cond_init(&cond))
@@ -141,8 +143,14 @@ static void cleanup(void) {
     if (uv_thread_join(threads + i))
       abort();
 
+  if (threads != default_threads)
+    free(threads);
+
   uv_mutex_destroy(&mutex);
   uv_cond_destroy(&cond);
+
+  threads = NULL;
+  nthreads = 0;
   initialized = 0;
 }
 #endif
