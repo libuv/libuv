@@ -100,11 +100,6 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
     return -1;
   }
 
-  if (!GetConsoleMode(win_handle, &tty->original_console_mode)) {
-    uv__set_sys_error(loop, GetLastError());
-    return -1;
-  }
-
   /* Initialize virtual window size; if it fails, assume that this is stdin. */
   if (GetConsoleScreenBufferInfo(win_handle, &info)) {
     EnterCriticalSection(&uv_tty_output_lock);
@@ -143,7 +138,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
 
 
 int uv_tty_set_mode(uv_tty_t* tty, int mode) {
-  DWORD flags = 0;
+  DWORD flags;
   unsigned char was_reading;
   uv_alloc_cb alloc_cb;
   uv_read_cb read_cb;
@@ -152,17 +147,12 @@ int uv_tty_set_mode(uv_tty_t* tty, int mode) {
     return 0;
   }
 
-  if (tty->original_console_mode & ENABLE_QUICK_EDIT_MODE) {
-    flags = ENABLE_QUICK_EDIT_MODE | ENABLE_EXTENDED_FLAGS;
-  }
-
   if (mode) {
     /* Raw input */
-    flags |= ENABLE_WINDOW_INPUT;
+    flags = ENABLE_WINDOW_INPUT;
   } else {
     /* Line-buffered mode. */
-    flags |= ENABLE_ECHO_INPUT | ENABLE_INSERT_MODE | ENABLE_LINE_INPUT |
-        ENABLE_EXTENDED_FLAGS | ENABLE_PROCESSED_INPUT;
+    flags = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
   }
 
   if (!SetConsoleMode(tty->handle, flags)) {
