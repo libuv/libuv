@@ -350,6 +350,29 @@ typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req,
                                   int status,
                                   struct addrinfo* res);
 
+typedef struct {
+  long tv_sec;
+  long tv_nsec;
+} uv_timespec_t;
+
+
+typedef struct {
+  uint64_t st_dev;
+  uint64_t st_mode;
+  uint64_t st_nlink;
+  uint64_t st_uid;
+  uint64_t st_gid;
+  uint64_t st_rdev;
+  uint64_t st_ino;
+  uint64_t st_size;
+  uint64_t st_blksize;
+  uint64_t st_blocks;
+  uv_timespec_t st_atim;
+  uv_timespec_t st_mtim;
+  uv_timespec_t st_ctim;
+} uv_stat_t;
+
+
 /*
 * This will be called repeatedly after the uv_fs_event_t is initialized.
 * If uv_fs_event_t was initialized with a directory the filename parameter
@@ -361,8 +384,8 @@ typedef void (*uv_fs_event_cb)(uv_fs_event_t* handle, const char* filename,
 
 typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
                               int status,
-                              const uv_statbuf_t* prev,
-                              const uv_statbuf_t* curr);
+                              const uv_stat_t* prev,
+                              const uv_stat_t* curr);
 
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
 
@@ -1519,7 +1542,7 @@ struct uv_fs_s {
   void* ptr;
   const char* path;
   uv_err_code errorno;
-  uv_statbuf_t statbuf;  /* Stores the result of uv_fs_stat and uv_fs_fstat. */
+  uv_stat_t statbuf;  /* Stores the result of uv_fs_stat and uv_fs_fstat. */
   UV_FS_PRIVATE_FIELDS
 };
 
@@ -1646,7 +1669,7 @@ UV_EXTERN int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle);
  * or the error reason changes).
  *
  * When `status == 0`, your callback receives pointers to the old and new
- * `uv_statbuf_t` structs. They are valid for the duration of the callback
+ * `uv_stat_t` structs. They are valid for the duration of the callback
  * only!
  *
  * For maximum portability, use multi-second intervals. Sub-second intervals
