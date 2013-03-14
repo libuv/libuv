@@ -28,6 +28,9 @@
 #include <stdlib.h> /* malloc */
 #include <string.h> /* memset */
 
+#if defined(UV_PLATFORM_HAS_IP6_LINK_LOCAL_ADDRESS) && !defined(_WIN32)
+# include <net/if.h> /* if_nametoindex */
+#endif
 
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
@@ -173,11 +176,36 @@ struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
 
 struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
   struct sockaddr_in6 addr;
+  char address_part[40];
+  size_t address_part_size;
+  const char* zone_index;
 
   memset(&addr, 0, sizeof(struct sockaddr_in6));
 
   addr.sin6_family = AF_INET6;
   addr.sin6_port = htons(port);
+
+#if defined(UV_PLATFORM_HAS_IP6_LINK_LOCAL_ADDRESS)
+  zone_index = strchr(ip, '%');
+  if (zone_index != NULL) {
+    address_part_size = sizeof(address_part);
+    assert((unsigned)(zone_index - ip) < address_part_size);
+    strncpy(address_part, ip, zone_index - ip);
+    address_part[address_part_size - 1] = '\0';
+
+    ip = address_part;
+
+    zone_index++; /* skip '%' */
+    /* NOTE: unknown interface (id=0) is silently ignored */
+#ifdef _WIN32
+    addr.sin6_scope_id = atoi(zone_index);
+#else
+    addr.sin6_scope_id = if_nametoindex(zone_index);
+#endif
+  }
+#endif
+
+  /* result code is ignored - we assume ip is a valid IPv6 address */
   uv_inet_pton(AF_INET6, ip, &addr.sin6_addr);
 
   return addr;

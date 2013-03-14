@@ -85,6 +85,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-getsockname.c \
                          test/test-hrtime.c \
                          test/test-idle.c \
+                         test/test-ip6-addr.c \
                          test/test-ipc-send-recv.c \
                          test/test-ipc.c \
                          test/test-list.h \

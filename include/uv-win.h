@@ -582,3 +582,5 @@ int uv_utf16_to_utf8(const WCHAR* utf16Buffer, size_t utf16Size,
     char* utf8Buffer, size_t utf8Size);
 int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
     size_t utf16Size);
+
+#define UV_PLATFORM_HAS_IP6_LINK_LOCAL_ADDRESS
