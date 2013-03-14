@@ -47,7 +47,7 @@ extern "C" {
 
 
 #define UV_VERSION_MAJOR 0
-#define UV_VERSION_MINOR 9
+#define UV_VERSION_MINOR 10
 
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
