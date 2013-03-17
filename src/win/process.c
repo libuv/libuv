@@ -171,8 +171,10 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
                                     size_t cwd_len) {
   WCHAR *result, *result_pos;
   DWORD attrs;
-
-  if (dir_len >= 1 && (dir[0] == L'/' || dir[0] == L'\\')) {
+  if (dir_len > 2 && dir[0] == L'\\' && dir[1] == L'\\') {
+    /* It's a UNC path so ignore cwd */
+    cwd_len = 0;
+  } else if (dir_len >= 1 && (dir[0] == L'/' || dir[0] == L'\\')) {
     /* It's a full path without drive letter, use cwd's drive letter only */
     cwd_len = 2;
   } else if (dir_len >= 2 && dir[1] == L':' &&
@@ -331,7 +333,11 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  *   file that is not readable/executable; if the spawn fails it will not
  *   continue searching.
  *
- * TODO: correctly interpret UNC paths
+ * UNC path support: we are dealing with UNC paths in both the path and the
+ * filename. This is a deviation from what cmd.exe does (it does not let you
+ * start a program by specifying an UNC path on the command line) but this is
+ * really a pointless restriction.
+ *
  */
 static WCHAR* search_path(const WCHAR *file,
                             WCHAR *cwd,
