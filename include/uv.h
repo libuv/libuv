@@ -1902,35 +1902,16 @@ UV_EXTERN int uv_thread_create(uv_thread_t *tid,
 UV_EXTERN unsigned long uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 
-/* the presence of these unions force similar struct layout */
+/* The presence of these unions force similar struct layout. */
+#define XX(_, name) uv_ ## name ## _t name;
 union uv_any_handle {
-  uv_handle_t handle;
-  uv_stream_t stream;
-  uv_tcp_t tcp;
-  uv_pipe_t pipe;
-  uv_prepare_t prepare;
-  uv_check_t check;
-  uv_idle_t idle;
-  uv_async_t async;
-  uv_timer_t timer;
-  uv_fs_event_t fs_event;
-  uv_fs_poll_t fs_poll;
-  uv_poll_t poll;
-  uv_process_t process;
-  uv_tty_t tty;
-  uv_udp_t udp;
+  UV_HANDLE_TYPE_MAP(XX)
 };
 
 union uv_any_req {
-  uv_req_t req;
-  uv_write_t write;
-  uv_connect_t connect;
-  uv_shutdown_t shutdown;
-  uv_fs_t fs_req;
-  uv_work_t work_req;
-  uv_udp_send_t udp_send_req;
-  uv_getaddrinfo_t getaddrinfo_req;
+  UV_REQ_TYPE_MAP(XX)
 };
+#undef XX
 
 
 struct uv_loop_s {
