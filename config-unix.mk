@@ -18,6 +18,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+OBJC ?= $(CC)
+
 E=
 CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -g
@@ -161,4 +163,4 @@ clean-platform:
 	$(RM) test/run-{tests,benchmarks}.dSYM $(OBJS) $(OBJS:%.o=%.pic.o)
 
 %.pic.o %.o:  %.m
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
+	$(OBJC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
