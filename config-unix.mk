@@ -55,6 +55,7 @@ OBJS += src/unix/udp.o
 OBJS += src/fs-poll.o
 OBJS += src/uv-common.o
 OBJS += src/inet.o
+OBJS += src/version.o
 
 ifeq (sunos,$(PLATFORM))
 CPPFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500

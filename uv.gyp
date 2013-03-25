@@ -56,6 +56,7 @@
         'src/inet.c',
         'src/uv-common.c',
         'src/uv-common.h',
+        'src/version.c'
       ],
       'conditions': [
         [ 'OS=="win"', {
