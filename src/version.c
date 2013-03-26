@@ -50,7 +50,7 @@
 #endif
 
 
-const unsigned int uv_version(void) {
+unsigned int uv_version(void) {
   return UV_VERSION;
 }
 
