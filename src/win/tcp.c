@@ -434,7 +434,11 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
   if (loop->active_tcp_streams < uv_active_tcp_streams_threshold) {
     handle->flags &= ~UV_HANDLE_ZERO_READ;
     handle->read_buffer = handle->alloc_cb((uv_handle_t*) handle, 65536);
-    assert(handle->read_buffer.len > 0);
+    if (handle->read_buffer.len == 0) {
+      handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, buf);
+      return;
+    }
+    assert(handle->read_buffer.base != NULL);
     buf = handle->read_buffer;
   } else {
     handle->flags |= UV_HANDLE_ZERO_READ;
@@ -943,7 +947,12 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
     /* Do nonblocking reads until the buffer is empty */
     while (handle->flags & UV_HANDLE_READING) {
       buf = handle->alloc_cb((uv_handle_t*) handle, 65536);
-      assert(buf.len > 0);
+      if (buf.len == 0) {
+        handle->read_cb(handle, UV_ENOBUFS, buf);
+        break;
+      }
+      assert(buf.base != NULL);
+
       flags = 0;
       if (WSARecv(handle->socket,
                   (WSABUF*)&buf,

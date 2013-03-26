@@ -342,6 +342,12 @@ UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
  *
  * `suggested_size` is a hint. Returning a buffer that is smaller is perfectly
  * okay as long as `buf.len > 0`.
+ *
+ * If you return a buffer with `buf.len == 0`, libuv skips the read and calls
+ * your read or recv callback with nread=UV_ENOBUFS.
+ *
+ * Note that returning a zero-length buffer does not stop the handle, call
+ * uv_read_stop() or uv_udp_recv_stop() for that.
  */
 typedef uv_buf_t (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
 
