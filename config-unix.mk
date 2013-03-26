@@ -148,7 +148,7 @@ include/uv-private/uv-unix.h: \
 src/unix/internal.h: src/unix/linux-syscalls.h
 
 src/.buildstamp src/unix/.buildstamp test/.buildstamp:
-	mkdir -p $(dir $@)
+	mkdir -p $(@D)
 	touch $@
 
 src/unix/%.o src/unix/%.pic.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h src/unix/.buildstamp
