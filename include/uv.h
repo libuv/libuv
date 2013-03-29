@@ -45,11 +45,6 @@ extern "C" {
 # define UV_EXTERN /* nothing */
 #endif
 
-
-#define UV_VERSION_MAJOR 0
-#define UV_VERSION_MINOR 10
-
-
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "uv-private/stdint-msvc2008.h"
 #else
