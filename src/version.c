@@ -19,6 +19,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "uv.h"
 
  /*
  * Versions with an even minor version (e.g. 0.6.1 or 1.0.4) are API and ABI
