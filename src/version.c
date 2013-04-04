@@ -19,12 +19,16 @@
  * IN THE SOFTWARE.
  */
 
+#include "uv.h"
 
  /*
  * Versions with an even minor version (e.g. 0.6.1 or 1.0.4) are API and ABI
  * stable. When the minor version is odd, the API can change between patch
  * releases.
  */
+
+#undef UV_VERSION_MAJOR   /* TODO(bnoordhuis) Remove in v0.11. */
+#undef UV_VERSION_MINOR   /* TODO(bnoordhuis) Remove in v0.11. */
 
 #define UV_VERSION_MAJOR 0
 #define UV_VERSION_MINOR 10
