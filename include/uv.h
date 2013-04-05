@@ -787,6 +787,12 @@ UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
 
 /*
  * Opens an existing file descriptor or SOCKET as a udp handle.
+ *
+ * Unix only:
+ *  The only requirement of the sock argument is that it follows the
+ *  datagram contract (works in unconnected mode, supports sendmsg()/recvmsg(),
+ *  etc.). In other words, other datagram-type sockets like raw sockets or
+ *  netlink sockets can also be passed to this function.
  */
 UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 
