@@ -484,8 +484,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(stream->accepted_fd == -1);
   assert(!(stream->flags & UV_CLOSING));
 
-  if (stream->accepted_fd == -1)
-    uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
+  uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
 
   /* connection_cb can close the server socket while we're
    * in the loop so check it on each iteration.
