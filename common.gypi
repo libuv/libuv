@@ -132,6 +132,11 @@
       [ 'OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris"', {
         'cflags': [ '-Wall' ],
         'cflags_cc': [ '-fno-rtti', '-fno-exceptions' ],
+        'target_conditions': [
+          ['_type=="static_library"', {
+            'standalone_static_library': 1, # disable thin archive which needs binutils >= 2.19
+          }],
+        ],
         'conditions': [
           [ 'host_arch != target_arch and target_arch=="ia32"', {
             'cflags': [ '-m32' ],
