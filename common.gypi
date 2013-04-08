@@ -197,6 +197,11 @@
           }],
         ],
       }],
+     ['OS=="solaris"', {
+       'cflags': [ '-fno-omit-frame-pointer' ],
+       # pull in V8's postmortem metadata
+       'ldflags': [ '-Wl,-z,allextract' ]
+     }],
     ],
   },
 }
