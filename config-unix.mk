@@ -142,7 +142,8 @@ RUNNER_LDFLAGS += -pthread
 endif
 
 ifeq ($(HAVE_DTRACE), 1)
-DTRACE_HEADER=src/unix/uv-dtrace.h
+DTRACE_HEADER = src/unix/uv-dtrace.h
+CPPFLAGS += -Isrc/unix
 CFLAGS += -DHAVE_DTRACE
 endif
 
@@ -181,7 +182,7 @@ clean-platform:
 	$(OBJC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
 
 src/unix/uv-dtrace.h: src/unix/uv-dtrace.d
-	dtrace -h -xnolibs -s src/unix/uv-dtrace.d -o $@
+	dtrace -h -xnolibs -s $< -o $@
 
 src/unix/dtrace.o: src/unix/uv-dtrace.d $(DTRACE_OBJS)
 	dtrace -G -s $^ -o $@
