@@ -364,9 +364,9 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
     address->name = strdup(p->ifr_name);
 
     if (p->ifr_addr.sa_family == AF_INET6) {
-      address->address.address6 = *((struct sockaddr_in6 *)&p->ifr_addr);
+      address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);
     } else {
-      address->address.address4 = *((struct sockaddr_in *)&p->ifr_addr);
+      address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
     }
 
     /* TODO: Retrieve netmask using SIOCGIFNETMASK ioctl */

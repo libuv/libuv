@@ -966,7 +966,7 @@ static void uv__read(uv_stream_t* stream) {
       msg.msg_namelen = 0;
       /* Set up to receive a descriptor even if one isn't in the message */
       msg.msg_controllen = 64;
-      msg.msg_control = (void *) cmsg_space;
+      msg.msg_control = (void*)  cmsg_space;
 
       do {
         nread = recvmsg(uv__stream_fd(stream), &msg, 0);
