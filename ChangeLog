@@ -1,4 +1,4 @@
-2013.04.11, Version 0.11.1 (Unstable)
+2013.04.11, Version 0.11.1 (Unstable), 5c10e82ae0bc99eff86d4b9baff1f1aa0bf84c0a
 
 This is the first versioned release from the current unstable libuv branch.
 
@@ -36,7 +36,7 @@ Changes since Node.js v0.11.0:
 * build: add support for Visual Studio 2012 (Nicholas Vavilov)
 
 
-2013.02.04, Version 0.10.3 (Stable)
+2013.02.04, Version 0.10.3 (Stable), 31ebe23973dd98fd8a24c042b606f37a794e99d0
 
 Changes since version 0.10.2:
 
@@ -53,7 +53,7 @@ Changes since version 0.10.2:
 * unix: don't clear flags after closing UDP handle (Saúl Ibarra Corretgé)
 
 
-2013.03.25, Version 0.10.2 (Stable)
+2013.03.25, Version 0.10.2 (Stable), 0f36a00568f3e7608f97f6c6cdb081f4800a50c9
 
 This is the first officially versioned release of libuv. Starting now
 libuv will make releases independently of Node.js.
