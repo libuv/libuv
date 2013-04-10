@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <stdlib.h> /* abort */
+#include <string.h> /* strrchr */
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
@@ -255,6 +256,18 @@ __attribute__((unused))
 static void uv__update_time(uv_loop_t* loop) {
   loop->time = uv__hrtime() / 1000000;
 }
+
+__attribute__((unused))
+static char* uv__basename_r(const char* path) {
+  char* s;
+
+  s = strrchr(path, '/');
+  if (s == NULL)
+    return (char*) path;
+
+  return s + 1;
+}
+
 
 #ifdef HAVE_DTRACE
 #include "uv-dtrace.h"
