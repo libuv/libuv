@@ -912,54 +912,38 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     prefix = win_address->FirstPrefix;
 
     /* Add an uv_interface_address_t element for every unicast address. */
+    /* Walk the prefix list in tandem with the address list. */
     for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS_XP*)
                            win_address->FirstUnicastAddress;
-         unicast_address != NULL;
-         unicast_address = unicast_address->Next) {
+         unicast_address != NULL && prefix != NULL;
+         unicast_address = unicast_address->Next, prefix = prefix->Next) {
       struct sockaddr* sa;
-      int prefixlen;
-
-      uv_address->name = name_buf;
-
-      /* Walk the prefix list in sync with the address list and extract
-         the prefixlen for each address.  On Vista and newer, we could
-         instead just use: unicast_address->OnLinkPrefixLength */
-      if (prefix != NULL) {
-        prefixlen = prefix->PrefixLength;
-        prefix = prefix->Next;
-      } else {
-        prefixlen = 0;
-      }
+      ULONG prefix_len;
 
       sa = unicast_address->Address.lpSockaddr;
-      if (sa->sa_family == AF_INET6) {
-        int i;
+      prefix_len = prefix->PrefixLength;
 
+      memset(uv_address, 0, sizeof *uv_address);
+
+      uv_address->name = name_buf;
+      uv_address->is_internal =
+          (win_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK);
+
+      if (sa->sa_family == AF_INET6) {
         uv_address->address.address6 = *((struct sockaddr_in6 *) sa);
 
         uv_address->netmask.netmask6.sin6_family = AF_INET6;
-        prefixlen = prefixlen > 0 ? prefixlen : 128;
-        for (i = 0; i < 16; ++i) {
-          int bits;
-          uint8_t byte_val;
+        memset(uv_address->netmask.netmask6.sin6_addr.s6_addr, 0xff, prefix_len >> 3);
+        uv_address->netmask.netmask6.sin6_addr.s6_addr[prefix_len >> 3] =
+            0xff << (8 - prefix_len % 8);
 
-          bits = prefixlen < 8 ? prefixlen : 8;
-          byte_val = ~(0xff >> bits);
-          prefixlen -= bits;
-
-          uv_address->netmask.netmask6.sin6_addr.s6_addr[i] = byte_val;
-        }
       } else {
         uv_address->address.address4 = *((struct sockaddr_in *) sa);
 
         uv_address->netmask.netmask4.sin_family = AF_INET;
-        prefixlen = prefixlen > 0 ? prefixlen : 32;
         uv_address->netmask.netmask4.sin_addr.s_addr =
-          htonl(0xffffffff << (32 - prefixlen));
+            htonl(0xffffffff << (32 - prefix_len));
       }
-
-      uv_address->is_internal =
-          (win_address->IfType == IF_TYPE_SOFTWARE_LOOPBACK);
 
       uv_address++;
     }
