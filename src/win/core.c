@@ -55,7 +55,7 @@ static void uv_init(void) {
 
   /* Tell the CRT to not exit the application when an invalid parameter is */
   /* passed. The main issue is that invalid FDs will trigger this behavior. */
-#ifdef _WRITE_ABORT_MSG
+#if !defined(__MINGW32__) || __MSVCRT_VERSION__ >= 0x800
   _set_invalid_parameter_handler(uv__crt_invalid_parameter_handler);
 #endif
 
