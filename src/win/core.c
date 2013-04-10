@@ -185,7 +185,6 @@ int uv_backend_timeout(const uv_loop_t* loop) {
 
 
 static void uv_poll(uv_loop_t* loop, int block) {
-  BOOL success;
   DWORD bytes, timeout;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
@@ -197,11 +196,11 @@ static void uv_poll(uv_loop_t* loop, int block) {
     timeout = 0;
   }
 
-  success = GetQueuedCompletionStatus(loop->iocp,
-                                      &bytes,
-                                      &key,
-                                      &overlapped,
-                                      timeout);
+  GetQueuedCompletionStatus(loop->iocp,
+                            &bytes,
+                            &key,
+                            &overlapped,
+                            timeout);
 
   if (overlapped) {
     /* Package was dequeued */
