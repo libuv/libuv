@@ -80,8 +80,12 @@ endif
 
 ifeq (darwin,$(PLATFORM))
 HAVE_DTRACE=1
-# dtrace(1) probes contain dollar signs.
+# dtrace(1) probes contain dollar signs on OS X. Mute the warnings they
+# generate but only when CC=clang, -Wno-dollar-in-identifier-extension
+# is a clang extension.
+ifeq (__clang__,$(shell sh -c "$(CC) -dM -E - </dev/null | grep -ow __clang__"))
 CFLAGS += -Wno-dollar-in-identifier-extension
+endif
 CPPFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 LDFLAGS += -framework Foundation \
            -framework CoreServices \

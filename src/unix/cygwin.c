@@ -55,8 +55,6 @@ void uv_loadavg(double avg[3]) {
 
 
 int uv_exepath(char* buffer, size_t* size) {
-  uint32_t usize;
-
   if (!buffer || !size) {
     return -1;
   }
