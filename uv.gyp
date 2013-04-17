@@ -5,7 +5,8 @@
     # this is only relevant when dtrace is enabled and libuv is a child project
     # as it's necessary to correctly locate the object files for post
     # processing.
-    'uv_parent_path': '',
+    # XXX gyp is quite sensitive about paths with double / they don't normalize
+    'uv_parent_path': '/',
   },
 
   'target_defaults': {
@@ -475,10 +476,10 @@
               'action_name': 'uv_dtrace_o',
               'inputs': [
                 'src/unix/uv-dtrace.d',
-                '<(PRODUCT_DIR)/obj.target/libuv/<(uv_parent_path)/src/unix/core.o',
+                '<(PRODUCT_DIR)/obj.target/libuv<(uv_parent_path)src/unix/core.o',
               ],
               'outputs': [
-                '<(PRODUCT_DIR)/obj.target/libuv/<(uv_parent_path)/src/unix/dtrace.o',
+                '<(PRODUCT_DIR)/obj.target/libuv<(uv_parent_path)src/unix/dtrace.o',
               ],
               'action': [ 'dtrace', '-G', '-xnolibs', '-s', '<@(_inputs)',
                 '-o', '<@(_outputs)' ]
