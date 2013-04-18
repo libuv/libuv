@@ -1755,9 +1755,9 @@ UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
 
 
 /*
- * Gets load avg
+ * Gets load average.
  * See: http://en.wikipedia.org/wiki/Load_(computing)
- * (Returns [0,0,0] for windows and cygwin)
+ * Returns [0,0,0] on Windows.
  */
 UV_EXTERN void uv_loadavg(double avg[3]);
 

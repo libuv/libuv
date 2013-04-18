@@ -134,13 +134,6 @@ OBJS += src/unix/openbsd.o
 OBJS += src/unix/kqueue.o
 endif
 
-ifneq (,$(findstring cygwin,$(PLATFORM)))
-# We drop the --std=c89, it hides CLOCK_MONOTONIC on cygwin
-CSTDFLAG = -D_GNU_SOURCE
-LDFLAGS+=
-OBJS += src/unix/cygwin.o
-endif
-
 ifeq (sunos,$(PLATFORM))
 RUNNER_LDFLAGS += -pthreads
 else
