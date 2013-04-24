@@ -580,9 +580,9 @@ UV_EXTERN int uv_accept(uv_stream_t* server, uv_stream_t* client);
 
 /*
  * Read data from an incoming stream. The callback will be made several
- * several times until there is no more data to read or uv_read_stop is
- * called. When we've reached EOF nread will be set to -1 and the error is
- * set to UV_EOF. When nread == -1 the buf parameter might not point to a
+ * times until there is no more data to read or uv_read_stop is called.
+ * When we've reached EOF nread will be set to -1 and the error is set
+ * to UV_EOF. When nread == -1 the buf parameter might not point to a
  * valid buffer; in that case buf.len and buf.base are both set to 0.
  * Note that nread might also be 0, which does *not* indicate an error or
  * eof; it happens when libuv requested a buffer through the alloc callback
