@@ -139,7 +139,7 @@ static void uv__stream_osx_select(void* arg) {
 
   stream = arg;
   s = stream->select;
-  fd = stream->io_watcher.fd;
+  fd = s->fd;
 
   if (fd > s->int_fd)
     max_fd = fd;
@@ -305,6 +305,7 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   if (s == NULL)
     return uv__set_artificial_error(stream->loop, UV_ENOMEM);
 
+  s->events = 0;
   s->fd = *fd;
 
   if (uv_async_init(stream->loop, &s->async, uv__stream_osx_select_cb)) {
