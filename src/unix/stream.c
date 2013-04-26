@@ -202,12 +202,14 @@ static void uv__stream_osx_select(void* arg) {
     if (FD_ISSET(fd, &swrite))
       events |= UV__POLLOUT;
 
-    uv_mutex_lock(&s->mutex);
-    s->events |= events;
-    uv_mutex_unlock(&s->mutex);
+    assert(events != 0 || FD_ISSET(s->int_fd, &sread));
+    if (events != 0) {
+      uv_mutex_lock(&s->mutex);
+      s->events |= events;
 
-    if (events != 0)
       uv_async_send(&s->async);
+      uv_mutex_unlock(&s->mutex);
+    }
   }
 }
 

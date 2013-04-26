@@ -309,6 +309,7 @@
         'test/test-loop-stop.c',
         'test/test-walk-handles.c',
         'test/test-multiple-listen.c',
+        'test/test-osx-select.c',
         'test/test-pass-always.c',
         'test/test-ping-pong.c',
         'test/test-pipe-bind-error.c',
