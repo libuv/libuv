@@ -441,7 +441,6 @@ void uv__stream_destroy(uv_stream_t* stream) {
  */
 static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
   int fd;
-  int r;
 
   if (loop->emfile_fd == -1)
     return -1;
@@ -459,14 +458,8 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
     if (errno == EINTR)
       continue;
 
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-      r = 0;
-    else
-      r = -1;
-
-    loop->emfile_fd = uv__open_cloexec("/", O_RDONLY);
-
-    return r;
+    SAVE_ERRNO(loop->emfile_fd = uv__open_cloexec("/", O_RDONLY));
+    return errno;
   }
 }
 
@@ -479,10 +472,9 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
 
 
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  static int use_emfile_trick = -1;
   uv_stream_t* stream;
+  int err;
   int fd;
-  int r;
 
   stream = container_of(w, uv_stream_t, io_watcher);
   assert(events == UV__POLLIN);
@@ -497,50 +489,32 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    */
   while (uv__stream_fd(stream) != -1) {
     assert(stream->accepted_fd == -1);
+
 #if defined(UV_HAVE_KQUEUE)
     if (w->rcount <= 0)
       return;
 #endif /* defined(UV_HAVE_KQUEUE) */
+
     fd = uv__accept(uv__stream_fd(stream));
-
     if (fd == -1) {
-      switch (errno) {
-#if EWOULDBLOCK != EAGAIN
-      case EWOULDBLOCK:
-#endif
-      case EAGAIN:
-        return; /* Not an error. */
+      if (errno == EAGAIN || errno == EWOULDBLOCK)
+        return;  /* Not an error. */
 
-      case ECONNABORTED:
-        UV_DEC_BACKLOG(w)
-        continue; /* Ignore. */
+      if (errno == ECONNABORTED)
+        continue;  /* Ignore. Nothing we can do about that. */
 
-      case EMFILE:
-      case ENFILE:
-        if (use_emfile_trick == -1) {
-          const char* val = getenv("UV_ACCEPT_EMFILE_TRICK");
-          use_emfile_trick = (val == NULL || atoi(val) != 0);
-        }
-
-        if (use_emfile_trick) {
-          SAVE_ERRNO(r = uv__emfile_trick(loop, uv__stream_fd(stream)));
-          if (r == 0) {
-            UV_DEC_BACKLOG(w)
-            continue;
-          }
-        }
-
-        /* Fall through. */
-
-      default:
-        uv__set_sys_error(loop, errno);
-        stream->connection_cb(stream, -1);
-        continue;
+      if (errno == EMFILE || errno == ENFILE) {
+        SAVE_ERRNO(err = uv__emfile_trick(loop, uv__stream_fd(stream)));
+        if (err == EAGAIN || err == EWOULDBLOCK)
+          break;
       }
+
+      uv__set_sys_error(loop, errno);
+      stream->connection_cb(stream, -1);
+      continue;
     }
 
     UV_DEC_BACKLOG(w)
-
     stream->accepted_fd = fd;
     stream->connection_cb(stream, 0);
 
