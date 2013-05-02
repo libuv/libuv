@@ -236,21 +236,16 @@
         }],
         [ 'OS=="freebsd" or OS=="dragonflybsd"', {
           'sources': [ 'src/unix/freebsd.c' ],
-          'link_settings': {
-            'libraries': [
-              '-lkvm',
-            ],
-          },
         }],
         [ 'OS=="openbsd"', {
           'sources': [ 'src/unix/openbsd.c' ],
         }],
         [ 'OS=="netbsd"', {
           'sources': [ 'src/unix/netbsd.c' ],
+        }],
+        [ 'OS in "freebsd dragonflybsd openbsd netbsd".split()', {
           'link_settings': {
-            'libraries': [
-              '-lkvm',
-            ],
+            'libraries': [ '-lkvm' ],
           },
         }],
         [ 'OS in "mac freebsd dragonflybsd openbsd netbsd".split()', {
@@ -310,6 +305,7 @@
         'test/test-loop-stop.c',
         'test/test-walk-handles.c',
         'test/test-multiple-listen.c',
+        'test/test-osx-select.c',
         'test/test-pass-always.c',
         'test/test-ping-pong.c',
         'test/test-pipe-bind-error.c',
