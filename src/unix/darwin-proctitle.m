@@ -18,7 +18,7 @@
  * IN THE SOFTWARE.
  */
 
-#include <Cocoa/Cocoa.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 
 int uv__set_process_title(const char* title) {
