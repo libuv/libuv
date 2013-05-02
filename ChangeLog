@@ -48,7 +48,7 @@ Changes since version 0.10.3:
 * build: -Wno-dollar-in-identifier-extension is clang only (Ben Noordhuis)
 
 
-2013.02.04, Version 0.10.3 (Stable), 31ebe23973dd98fd8a24c042b606f37a794e99d0
+2013.03.28, Version 0.10.3 (Stable), 31ebe23973dd98fd8a24c042b606f37a794e99d0
 
 Changes since version 0.10.2:
 
