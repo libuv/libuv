@@ -176,7 +176,7 @@
           'sources': [
             'src/unix/darwin.c',
             'src/unix/fsevents.c',
-            'src/unix/darwin-proctitle.m',
+            'src/unix/darwin-proctitle.c',
           ],
           'link_settings': {
             'libraries': [

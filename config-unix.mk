@@ -18,8 +18,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-OBJC ?= $(CC)
-
 E=
 CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -g
@@ -183,9 +181,6 @@ test/%.o: test/%.c include/uv.h test/.buildstamp
 
 clean-platform:
 	$(RM) test/run-{tests,benchmarks}.dSYM $(OBJS) $(OBJS:%.o=%.pic.o) src/unix/uv-dtrace.h
-
-%.pic.o %.o:  %.m
-	$(OBJC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
 
 src/unix/uv-dtrace.h: src/unix/uv-dtrace.d
 	dtrace -h -xnolibs -s $< -o $@
