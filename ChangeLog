@@ -84,7 +84,9 @@ Changes since Node.js v0.11.0:
 * build: gyp disable thin archives (Timothy J. Fontaine)
 
 * build: add support for Visual Studio 2012 (Nicholas Vavilov)
-2013.02.04, Version 0.10.3 (Stable), 31ebe23973dd98fd8a24c042b606f37a794e99d0
+
+
+2013.03.28, Version 0.10.3 (Stable), 31ebe23973dd98fd8a24c042b606f37a794e99d0
 
 Changes since version 0.10.2:
 
