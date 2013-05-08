@@ -37,6 +37,9 @@
 
 #include <semaphore.h>
 #include <pthread.h>
+#ifdef ANDROID
+#include "pthread-fixes.h"
+#endif
 #include <signal.h>
 
 #if defined(__linux__)
