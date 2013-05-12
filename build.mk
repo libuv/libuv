@@ -144,10 +144,10 @@ TESTS= \
 
 all: libuv.a
 
-run-tests$(E): test/run-tests.o test/runner.o $(RUNNER_SRC) $(TESTS) libuv.$(SOEXT)
+run-tests$(E): test/run-tests.o test/runner.o $(RUNNER_SRC) $(TESTS) libuv.a
 	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o $@ $^ $(RUNNER_LIBS) $(RUNNER_LDFLAGS)
 
-run-benchmarks$(E): test/run-benchmarks.o test/runner.o $(RUNNER_SRC) $(BENCHMARKS) libuv.$(SOEXT)
+run-benchmarks$(E): test/run-benchmarks.o test/runner.o $(RUNNER_SRC) $(BENCHMARKS) libuv.a
 	$(CC) $(CPPFLAGS) $(RUNNER_CFLAGS) -o $@ $^ $(RUNNER_LIBS) $(RUNNER_LDFLAGS)
 
 test/echo.o: test/echo.c test/echo.h
