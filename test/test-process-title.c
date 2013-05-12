@@ -43,7 +43,7 @@ static void set_title(const char* title) {
 
 TEST_IMPL(process_title) {
   /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
+  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
   set_title("new title");
   return 0;
 }

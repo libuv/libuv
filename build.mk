@@ -18,7 +18,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-PLATFORM ?= $(shell sh -c 'uname -s | tr "[A-Z]" "[a-z]"')
+ifdef PLATFORM
+override PLATFORM := $(shell echo $(PLATFORM) | tr "[A-Z]" "[a-z]")
+else
+PLATFORM = $(shell sh -c 'uname -s | tr "[A-Z]" "[a-z]"')
+endif
 
 CPPFLAGS += -I$(SRCDIR)/include -I$(SRCDIR)/include/uv-private
 

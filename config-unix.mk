@@ -144,6 +144,11 @@ CPPFLAGS += -Isrc/unix
 CFLAGS += -DHAVE_DTRACE
 endif
 
+ifneq (darwin,$(PLATFORM))
+# Must correspond with UV_VERSION_MAJOR and UV_VERSION_MINOR in src/version.c
+LDFLAGS += -Wl,-soname,libuv.so.0.11
+endif
+
 libuv.a: $(OBJS)
 	$(AR) rcs $@ $^
 
