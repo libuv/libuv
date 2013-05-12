@@ -536,19 +536,11 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
-  int saved_errno;
-  int status;
-
   /* TODO document this */
   assert(server->loop == client->loop);
 
-  saved_errno = errno;
-  status = -1;
-
-  if (server->accepted_fd < 0) {
-    uv__set_sys_error(server->loop, EAGAIN);
-    goto out;
-  }
+  if (server->accepted_fd == -1)
+    return uv__set_sys_error(server->loop, EAGAIN);
 
   switch (client->type) {
     case UV_NAMED_PIPE:
@@ -559,7 +551,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
         /* TODO handle error */
         close(server->accepted_fd);
         server->accepted_fd = -1;
-        goto out;
+        return -1;
       }
       break;
 
@@ -567,7 +559,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
       if (uv_udp_open((uv_udp_t*) client, server->accepted_fd)) {
         close(server->accepted_fd);
         server->accepted_fd = -1;
-        goto out;
+        return -1;
       }
       break;
 
@@ -577,11 +569,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
 
   uv__io_start(server->loop, &server->io_watcher, UV__POLLIN);
   server->accepted_fd = -1;
-  status = 0;
-
-out:
-  errno = saved_errno;
-  return status;
+  return 0;
 }
 
 
