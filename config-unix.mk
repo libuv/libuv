@@ -144,7 +144,7 @@ endif
 
 ifneq (darwin,$(PLATFORM))
 # Must correspond with UV_VERSION_MAJOR and UV_VERSION_MINOR in src/version.c
-LDFLAGS += -Wl,-soname,libuv.so.0.11
+SO_LDFLAGS = -Wl,-soname,libuv.so.0.11
 endif
 
 RUNNER_LDFLAGS += $(LDFLAGS)
@@ -154,7 +154,7 @@ libuv.a: $(OBJS)
 
 libuv.$(SOEXT):	override CFLAGS += -fPIC
 libuv.$(SOEXT):	$(OBJS:%.o=%.pic.o)
-	$(CC) -shared -o $@ $^ $(LDFLAGS)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(SO_LDFLAGS)
 
 include/uv-private/uv-unix.h: \
 	include/uv-private/uv-bsd.h \
