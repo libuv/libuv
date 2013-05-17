@@ -323,6 +323,7 @@
         'test/test-ipc-send-recv.c',
         'test/test-list.h',
         'test/test-loop-handles.c',
+        'test/test-loop-alive.c',
         'test/test-loop-stop.c',
         'test/test-loop-time.c',
         'test/test-walk-handles.c',
