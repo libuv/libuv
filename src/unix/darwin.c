@@ -38,8 +38,8 @@
 #include <unistd.h>  /* sysconf */
 
 /* Forward declarations */
-void uv__cf_loop_runner(void* arg);
-void uv__cf_loop_cb(void* arg);
+static void uv__cf_loop_runner(void* arg);
+static void uv__cf_loop_cb(void* arg);
 
 typedef struct uv__cf_loop_signal_s uv__cf_loop_signal_t;
 struct uv__cf_loop_signal_s {
@@ -102,7 +102,7 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
 
-void uv__cf_loop_runner(void* arg) {
+static void uv__cf_loop_runner(void* arg) {
   uv_loop_t* loop;
 
   loop = arg;
@@ -124,7 +124,7 @@ void uv__cf_loop_runner(void* arg) {
 }
 
 
-void uv__cf_loop_cb(void* arg) {
+static void uv__cf_loop_cb(void* arg) {
   uv_loop_t* loop;
   ngx_queue_t* item;
   ngx_queue_t split_head;
