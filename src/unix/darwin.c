@@ -84,9 +84,8 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
   uv__cf_loop_signal_t* s;
 
   assert(loop->cf_loop != NULL);
-  CFRunLoopStop(loop->cf_loop);
+  uv__cf_loop_signal(loop, NULL, NULL);
   uv_thread_join(&loop->cf_thread);
-  loop->cf_loop = NULL;
 
   uv_sem_destroy(&loop->cf_sem);
   uv_mutex_destroy(&loop->cf_mutex);
@@ -145,7 +144,12 @@ void uv__cf_loop_cb(void* arg) {
     item = QUEUE_HEAD(&split_head);
 
     s = QUEUE_DATA(item, uv__cf_loop_signal_t, member);
-    s->cb(s->arg);
+
+    /* This was a termination signal */
+    if (s->cb == NULL)
+      CFRunLoopStop(loop->cf_loop);
+    else
+      s->cb(s->arg);
 
     QUEUE_REMOVE(item);
     free(s);
