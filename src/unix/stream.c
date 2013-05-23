@@ -1160,6 +1160,7 @@ static void uv__stream_connect(uv_stream_t* stream) {
 
   stream->connect_req = NULL;
   uv__req_unregister(stream->loop, req);
+  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
 
   if (req->cb) {
     uv__set_sys_error(stream->loop, error);
@@ -1307,6 +1308,16 @@ int uv_read2_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
 
 
 int uv_read_stop(uv_stream_t* stream) {
+  /* Sanity check. We're going to stop the handle unless it's primed for
+   * writing but that means there should be some kind of write action in
+   * progress.
+   */
+  assert(!uv__io_active(&stream->io_watcher, UV__POLLOUT) ||
+         !ngx_queue_empty(&stream->write_completed_queue) ||
+         !ngx_queue_empty(&stream->write_queue) ||
+         stream->shutdown_req != NULL ||
+         stream->connect_req != NULL);
+
   stream->flags &= ~UV_STREAM_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
   if (!uv__io_active(&stream->io_watcher, UV__POLLOUT))
