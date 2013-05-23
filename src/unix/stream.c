@@ -429,6 +429,11 @@ void uv__stream_destroy(uv_stream_t* stream) {
   }
 
   if (stream->shutdown_req) {
+    /* The UV_ECANCELED error code is a lie, the shutdown(2) syscall is a
+     * fait accompli at this point. Maybe we should revisit this in v0.11.
+     * A possible reason for leaving it unchanged is that it informs the
+     * callee that the handle has been destroyed.
+     */
     uv__req_unregister(stream->loop, stream->shutdown_req);
     uv__set_artificial_error(stream->loop, UV_ECANCELED);
     stream->shutdown_req->cb(stream->shutdown_req, -1);
@@ -1318,9 +1323,10 @@ int uv_read_stop(uv_stream_t* stream) {
          stream->shutdown_req != NULL ||
          stream->connect_req != NULL);
 
-  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
-  uv__handle_stop(stream);
   stream->flags &= ~UV_STREAM_READING;
+  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
+  if (!uv__io_active(&stream->io_watcher, UV__POLLOUT))
+    uv__handle_stop(stream);
 
 #if defined(__APPLE__)
   /* Notify select() thread about state change */

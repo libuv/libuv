@@ -162,7 +162,12 @@ void uv__make_close_pending(uv_handle_t* handle) {
 
 
 static void uv__finish_close(uv_handle_t* handle) {
-  assert(!uv__is_active(handle));
+  /* Note: while the handle is in the UV_CLOSING state now, it's still possible
+   * for it to be active in the sense that uv__is_active() returns true.
+   * A good example is when the user calls uv_shutdown(), immediately followed
+   * by uv_close(). The handle is considered active at this point because the
+   * completion of the shutdown req is still pending.
+   */
   assert(handle->flags & UV_CLOSING);
   assert(!(handle->flags & UV_CLOSED));
   handle->flags |= UV_CLOSED;
