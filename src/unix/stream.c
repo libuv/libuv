@@ -1318,10 +1318,9 @@ int uv_read_stop(uv_stream_t* stream) {
          stream->shutdown_req != NULL ||
          stream->connect_req != NULL);
 
-  stream->flags &= ~UV_STREAM_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
-  if (!uv__io_active(&stream->io_watcher, UV__POLLOUT))
-    uv__handle_stop(stream);
+  uv__handle_stop(stream);
+  stream->flags &= ~UV_STREAM_READING;
 
 #if defined(__APPLE__)
   /* Notify select() thread about state change */
