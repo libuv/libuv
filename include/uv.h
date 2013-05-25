@@ -349,6 +349,8 @@ typedef uv_buf_t (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
  * Trying to read from the stream again is undefined.
  *
  * The callee is responsible for freeing the buffer, libuv does not reuse it.
+ * The buffer may be a null buffer (where buf.base=NULL and buf.len=0) on EOF
+ * or error.
  */
 typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
 
