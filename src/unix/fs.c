@@ -497,7 +497,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
   return r;
 }
 
-static inline void uv__to_stat(struct stat* src, uv_stat_t* dst) {
+static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_dev = src->st_dev;
   dst->st_mode = src->st_mode;
   dst->st_nlink = src->st_nlink;
