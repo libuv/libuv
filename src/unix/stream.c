@@ -798,6 +798,9 @@ start:
       /* Error */
       req->error = errno;
       uv__write_req_finish(req);
+      uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
+      if (!uv__io_active(&stream->io_watcher, UV__POLLIN))
+        uv__handle_stop(stream);
       return;
     } else if (stream->flags & UV_STREAM_BLOCKING) {
       /* If this is a blocking stream, try again. */
