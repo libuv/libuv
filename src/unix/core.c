@@ -225,7 +225,7 @@ static void uv__run_closing_handles(uv_loop_t* loop) {
 
 
 int uv_is_closing(const uv_handle_t* handle) {
-  return handle->flags & (UV_CLOSING | UV_CLOSED);
+  return uv__is_closing(handle);
 }
 
 
