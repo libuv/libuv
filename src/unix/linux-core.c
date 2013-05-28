@@ -414,6 +414,8 @@ static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci) {
 
 /* Also reads the CPU frequency on x86. The other architectures only have
  * a BogoMIPS field, which may not be very accurate.
+ *
+ * Note: Simply returns on error, uv_cpu_info() takes care of the cleanup.
  */
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   static const char model_marker[] = "model name\t: ";
@@ -446,6 +448,10 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
       if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
         model = buf + sizeof(model_marker) - 1;
         model = strndup(model, strlen(model) - 1);  /* Strip newline. */
+        if (model == NULL) {
+          fclose(fp);
+          return -1;
+        }
         ci[model_idx++].model = model;
         continue;
       }
@@ -457,6 +463,10 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
       if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
         model = buf + sizeof(model_marker) - 1;
         model = strndup(model, strlen(model) - 1);  /* Strip newline. */
+        if (model == NULL) {
+          fclose(fp);
+          return -1;
+        }
         ci[model_idx++].model = model;
         continue;
       }
@@ -482,8 +492,12 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   if (model_idx > 0)
     inferred_model = ci[model_idx - 1].model;
 
-  while (model_idx < numcpus)
-    ci[model_idx++].model = strndup(inferred_model, strlen(inferred_model));
+  while (model_idx < numcpus) {
+    model = strndup(inferred_model, strlen(inferred_model));
+    if (model == NULL)
+      return -1;
+    ci[model_idx++].model = model;
+  }
 
   return 0;
 }
