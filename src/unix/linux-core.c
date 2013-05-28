@@ -382,12 +382,12 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return uv__new_sys_error(ENOMEM);
 
   if (read_models(numcpus, ci)) {
-    SAVE_ERRNO(free(ci));
+    SAVE_ERRNO(uv_free_cpu_info(ci, numcpus));
     return uv__new_sys_error(errno);
   }
 
   if (read_times(numcpus, ci)) {
-    SAVE_ERRNO(free(ci));
+    SAVE_ERRNO(uv_free_cpu_info(ci, numcpus));
     return uv__new_sys_error(errno);
   }
 
