@@ -38,8 +38,8 @@
 #include <unistd.h>  /* sysconf */
 
 /* Forward declarations */
-void uv__cf_loop_runner(void* arg);
-void uv__cf_loop_cb(void* arg);
+static void uv__cf_loop_runner(void* arg);
+static void uv__cf_loop_cb(void* arg);
 
 typedef struct uv__cf_loop_signal_s uv__cf_loop_signal_t;
 struct uv__cf_loop_signal_s {
@@ -102,7 +102,7 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
 
-void uv__cf_loop_runner(void* arg) {
+static void uv__cf_loop_runner(void* arg) {
   uv_loop_t* loop;
 
   loop = arg;
@@ -124,7 +124,7 @@ void uv__cf_loop_runner(void* arg) {
 }
 
 
-void uv__cf_loop_cb(void* arg) {
+static void uv__cf_loop_cb(void* arg) {
   uv_loop_t* loop;
   QUEUE* item;
   QUEUE split_head;
@@ -257,19 +257,21 @@ void uv_loadavg(double avg[3]) {
 
 
 uv_err_t uv_resident_set_memory(size_t* rss) {
-  struct task_basic_info t_info;
-  mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+  mach_msg_type_number_t count;
+  task_basic_info_data_t info;
+  kern_return_t err;
 
-  int r = task_info(mach_task_self(),
-                    TASK_BASIC_INFO,
-                    (task_info_t)&t_info,
-                    &t_info_count);
-
-  if (r != KERN_SUCCESS) {
-    return uv__new_sys_error(errno);
-  }
-
-  *rss = t_info.resident_size;
+  count = TASK_BASIC_INFO_COUNT;
+  err = task_info(mach_task_self(),
+                  TASK_BASIC_INFO,
+                  (task_info_t) &info,
+                  &count);
+  (void) &err;
+  /* task_info(TASK_BASIC_INFO) cannot really fail. Anything other than
+   * KERN_SUCCESS implies a libuv bug.
+   */
+  assert(err == KERN_SUCCESS);
+  *rss = info.resident_size;
 
   return uv_ok_;
 }
