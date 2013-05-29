@@ -282,14 +282,10 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_update_time(loop);
     uv_process_timers(loop);
 
-    /* Call idle callbacks if nothing to do. */
-    if (loop->pending_reqs_tail == NULL &&
-        loop->endgame_handles == NULL) {
-      uv_idle_invoke(loop);
-    }
-
     uv_process_reqs(loop);
     uv_process_endgames(loop);
+
+    uv_idle_invoke(loop);
 
     uv_prepare_invoke(loop);
 
