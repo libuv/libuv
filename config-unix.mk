@@ -19,8 +19,7 @@
 # IN THE SOFTWARE.
 
 E=
-CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
-CFLAGS += -g
+CFLAGS += -g -Wall -Wextra -Wno-unused-parameter -std=c89
 CPPFLAGS += -I$(SRCDIR)/src
 LDFLAGS=-lm
 
@@ -96,7 +95,7 @@ OBJS += src/unix/darwin-proctitle.o
 endif
 
 ifeq (linux,$(PLATFORM))
-CSTDFLAG += -D_GNU_SOURCE
+CFLAGS += -D_GNU_SOURCE
 LDFLAGS+=-ldl -lrt
 RUNNER_CFLAGS += -D_GNU_SOURCE
 OBJS += src/unix/linux-core.o \
@@ -170,13 +169,13 @@ src/.buildstamp src/unix/.buildstamp test/.buildstamp:
 	touch $@
 
 src/unix/%.o src/unix/%.pic.o: src/unix/%.c include/uv.h include/uv-private/uv-unix.h src/unix/internal.h src/unix/.buildstamp $(DTRACE_HEADER)
-	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 src/%.o src/%.pic.o: src/%.c include/uv.h include/uv-private/uv-unix.h src/.buildstamp
-	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 test/%.o: test/%.c include/uv.h test/.buildstamp
-	$(CC) $(CSTDFLAG) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean-platform:
 	$(RM) test/run-{tests,benchmarks}.dSYM $(OBJS) $(OBJS:%.o=%.pic.o) src/unix/uv-dtrace.h
