@@ -1840,8 +1840,6 @@ UV_EXTERN extern uint64_t uv_hrtime(void);
  * Note that this function works on a best-effort basis: there is no guarantee
  * that libuv can discover all file descriptors that were inherited. In general
  * it does a better job on Windows than it does on unix.
- *
- * TODO(bb): insert snarky remark to annoy bnoordhuis and the folks at joyent.
  */
 UV_EXTERN void uv_disable_stdio_inheritance(void);
 
