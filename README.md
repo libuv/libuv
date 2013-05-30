@@ -110,6 +110,16 @@ Note for Linux users: compile your project with `-D_GNU_SOURCE` when you
 include `uv.h`. GYP builds take care of that automatically. If you use
 autotools, add a `AC_GNU_SOURCE` declaration to your `configure.ac`.
 
+To build for android, locate your android NDK path, then run:
+
+    source ./android-configure NDK_PATH
+    make
+
+To build for android with gyp, add "gyp" to the configuration:
+
+    source ./android-configure NDK_PATH gyp
+    make -C out
+
 ## Supported Platforms
 
 Microsoft Windows operating systems since Windows XP SP2. It can be built

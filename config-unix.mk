@@ -19,7 +19,7 @@
 # IN THE SOFTWARE.
 
 E=
-CFLAGS += -g -Wall -Wextra -Wno-unused-parameter -std=c89
+CFLAGS += -g -Wall -Wextra -Wno-unused-parameter
 CPPFLAGS += -I$(SRCDIR)/src
 LDFLAGS=-lm
 
@@ -104,6 +104,18 @@ OBJS += src/unix/linux-core.o \
         src/unix/proctitle.o
 endif
 
+ifeq (android,$(PLATFORM))
+CFLAGS += -D_GNU_SOURCE
+LDFLAGS+=-ldl -lrt
+RUNNER_CFLAGS += -D_GNU_SOURCE
+OBJS += src/unix/linux-core.o \
+        src/unix/linux-inotify.o \
+        src/unix/linux-syscalls.o \
+        src/unix/proctitle.o
+else
+CFLAGS += -std=c89
+endif
+
 ifeq (freebsd,$(PLATFORM))
 HAVE_DTRACE=1
 LDFLAGS+=-lkvm
@@ -132,7 +144,9 @@ endif
 ifeq (sunos,$(PLATFORM))
 RUNNER_LDFLAGS += -pthreads
 else
+ifneq (android, $(PLATFORM))
 RUNNER_LDFLAGS += -pthread
+endif
 endif
 
 ifeq ($(HAVE_DTRACE), 1)

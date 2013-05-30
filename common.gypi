@@ -8,6 +8,13 @@
     'msvs_multi_core_compile': '0',  # we do enable multicore compiles, but not using the V8 way
     'gcc_version%': 'unknown',
     'clang%': 0,
+
+    'conditions': [
+      # Workaround for the legacy handling of android in gyp
+      ['android_build == 1', {
+        'OS': 'android',
+      }],
+    ],
   },
 
   'target_defaults': {
@@ -148,7 +155,8 @@
           [ 'OS=="solaris"', {
             'cflags': [ '-pthreads' ],
             'ldflags': [ '-pthreads' ],
-          }, {
+          }],
+          [ 'OS not in "android solaris"', {
             'cflags': [ '-pthread' ],
             'ldflags': [ '-pthread' ],
           }],

@@ -36,7 +36,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-#ifndef ANDROID
+#ifndef __ANDROID__
 #define HAVE_IFADDRS_H 1
 #endif
 
