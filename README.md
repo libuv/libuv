@@ -70,6 +70,10 @@ Out-of-tree builds are supported:
 
     make builddir_name=/path/to/builddir
 
+To build a shared object:
+
+    make libuv.so  # libuv.dylib on OS X
+
 To build with Visual Studio run the vcbuild.bat file which will
 checkout the GYP code into build/gyp and generate the uv.sln and
 related files.
