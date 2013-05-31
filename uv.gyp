@@ -1,5 +1,6 @@
 {
   'variables': {
+    'android_build%': 0,
     'uv_use_dtrace%': 'false',
     # uv_parent_path is the relative path to libuv in the parent project
     # this is only relevant when dtrace is enabled and libuv is a child project
@@ -21,7 +22,7 @@
           ['OS=="solaris"', {
             'cflags': [ '-pthreads' ],
           }],
-          ['OS not in "android solaris"', {
+          ['OS != "solaris" and android_build == 0', {
             'cflags': [ '-pthread' ],
           }],
         ],
@@ -161,7 +162,7 @@
               ['OS=="solaris"', {
                 'ldflags': [ '-pthreads' ],
               }],
-              ['OS not in "android solaris"', {
+              ['OS != "solaris" and android_build == 0', {
                 'ldflags': [ '-pthread' ],
               }],
             ],
@@ -179,7 +180,7 @@
             }],
           ],
         }],
-        [ 'OS in "android linux mac"', {
+        [ 'OS in "linux mac" or android_build == 1', {
           'sources': [ 'src/unix/proctitle.c' ],
         }],
         [ 'OS=="mac"', {
@@ -215,7 +216,7 @@
             'libraries': [ '-ldl', '-lrt' ],
           },
         }],
-        [ 'OS=="android"', {
+        [ 'android_build == 1', {
           'sources': [
             'src/unix/linux-core.c',
             'src/unix/linux-inotify.c',

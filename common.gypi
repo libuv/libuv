@@ -1,5 +1,6 @@
 {
   'variables': {
+    'android_build%': 0,
     'visibility%': 'hidden',         # V8's visibility setting
     'target_arch%': 'ia32',          # set v8's target architecture
     'host_arch%': 'ia32',            # set v8's host architecture
@@ -8,13 +9,6 @@
     'msvs_multi_core_compile': '0',  # we do enable multicore compiles, but not using the V8 way
     'gcc_version%': 'unknown',
     'clang%': 0,
-
-    'conditions': [
-      # Workaround for the legacy handling of android in gyp
-      ['android_build == 1', {
-        'OS': 'android',
-      }],
-    ],
   },
 
   'target_defaults': {
@@ -136,7 +130,7 @@
           }]
         ]
       }],
-      ['OS in "android freebsd linux openbsd solaris"', {
+      ['OS in "freebsd linux openbsd solaris" or android_build == 1', {
         'cflags': [ '-Wall' ],
         'cflags_cc': [ '-fno-rtti', '-fno-exceptions' ],
         'target_conditions': [
@@ -156,7 +150,7 @@
             'cflags': [ '-pthreads' ],
             'ldflags': [ '-pthreads' ],
           }],
-          [ 'OS not in "android solaris"', {
+          [ 'OS != "solaris" and android_build == 0', {
             'cflags': [ '-pthread' ],
             'ldflags': [ '-pthread' ],
           }],
