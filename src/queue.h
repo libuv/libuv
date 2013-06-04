@@ -29,7 +29,7 @@ typedef void *QUEUE[2];
   ((type *) ((char *) (ptr) - ((long) &((type *) 0)->field)))
 
 #define QUEUE_FOREACH(q, h)                                                   \
-  for ((q) = (*(h))[0]; (q) != (h); (q) = (*(q))[0])
+  for ((q) = (QUEUE *) (*(h))[0]; (q) != (h); (q) = (QUEUE *) (*(q))[0])
 
 #define QUEUE_EMPTY(q)                                                        \
   (QUEUE_NEXT(q) == (q))
