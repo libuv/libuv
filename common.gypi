@@ -1,6 +1,5 @@
 {
   'variables': {
-    'android_build%': 0,
     'visibility%': 'hidden',         # V8's visibility setting
     'target_arch%': 'ia32',          # set v8's target architecture
     'host_arch%': 'ia32',            # set v8's host architecture
@@ -130,7 +129,7 @@
           }]
         ]
       }],
-      ['OS in "freebsd linux openbsd solaris" or android_build == 1', {
+      ['OS in "freebsd linux openbsd solaris android"', {
         'cflags': [ '-Wall' ],
         'cflags_cc': [ '-fno-rtti', '-fno-exceptions' ],
         'target_conditions': [
@@ -150,7 +149,7 @@
             'cflags': [ '-pthreads' ],
             'ldflags': [ '-pthreads' ],
           }],
-          [ 'OS != "solaris" and android_build == 0', {
+          [ 'OS not in "solaris android"', {
             'cflags': [ '-pthread' ],
             'ldflags': [ '-pthread' ],
           }],
