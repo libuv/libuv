@@ -69,7 +69,7 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
   ctx = calloc(1, sizeof(*ctx) + len);
 
   if (ctx == NULL)
-    return uv__set_artificial_error(loop, UV_ENOMEM);
+    return UV_ENOMEM;
 
   ctx->loop = loop;
   ctx->poll_cb = cb;
@@ -150,10 +150,12 @@ static void poll_cb(uv_fs_t* req) {
   }
 
   if (req->result != 0) {
-    if (ctx->busy_polling != -req->errorno) {
-      uv__set_artificial_error(ctx->loop, req->errorno);
-      ctx->poll_cb(ctx->parent_handle, -1, &ctx->statbuf, &zero_statbuf);
-      ctx->busy_polling = -req->errorno;
+    if (ctx->busy_polling != req->result) {
+      ctx->poll_cb(ctx->parent_handle,
+                   req->result,
+                   &ctx->statbuf,
+                   &zero_statbuf);
+      ctx->busy_polling = req->result;
     }
     goto out;
   }

@@ -35,7 +35,6 @@ src/queue.h
 src/unix/async.c
 src/unix/core.c
 src/unix/dl.c
-src/unix/error.c
 src/unix/fs.c
 src/unix/getaddrinfo.c
 src/unix/internal.h

@@ -37,25 +37,20 @@ void call_iface_info_cb(iface_info_cb iface_cb,
                         char const* iface_name,
                         struct sockaddr_in6 const* address) {
   char string_address[INET6_ADDRSTRLEN];
-  uv_err_t result;
 
-  result = uv_inet_ntop(AF_INET6,
-                        &address->sin6_addr,
-                        string_address,
-                        INET6_ADDRSTRLEN);
-  ASSERT(result.code == UV_OK);
-
+  ASSERT(0 == uv_inet_ntop(AF_INET6,
+                           &address->sin6_addr,
+                           string_address,
+                           INET6_ADDRSTRLEN));
   iface_cb(string_address, iface_name, address->sin6_scope_id);
 }
 
 
 void foreach_ip6_interface(iface_info_cb iface_cb) {
-  uv_err_t result;
   int count, ix;
   uv_interface_address_t* addresses;
 
-  result = uv_interface_addresses(&addresses, &count);
-  ASSERT(result.code == UV_OK);
+  ASSERT(0 == uv_interface_addresses(&addresses, &count));
 
   for (ix = 0; ix < count; ix++) {
     if (addresses[ix].address.address4.sin_family != AF_INET6)

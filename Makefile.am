@@ -18,7 +18,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include \
               -I$(top_srcdir)/src/unix \
               -I$(top_srcdir)/src
 
-include_HEADERS=include/uv.h include/uv-unix.h
+include_HEADERS=include/uv.h include/uv-errno.h include/uv-unix.h
 
 CLEANFILES =
 
@@ -33,7 +33,6 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/unix/async.c \
                    src/unix/core.c \
                    src/unix/dl.c \
-                   src/unix/error.c \
                    src/unix/fs.c \
                    src/unix/getaddrinfo.c \
                    src/unix/internal.h \

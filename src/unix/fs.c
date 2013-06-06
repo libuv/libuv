@@ -19,6 +19,13 @@
  * IN THE SOFTWARE.
  */
 
+/* Caveat emptor: this file deviates from the libuv convention of returning
+ * negated errno codes. Most uv_fs_*() functions map directly to the system
+ * call of the same name. For more complex wrappers, it's easier to just
+ * return -1 with errno set. The dispatcher in uv__fs_work() takes care of
+ * getting the errno to the right place (req->result or as the return value.)
+ */
+
 #include "uv.h"
 #include "internal.h"
 
@@ -48,7 +55,6 @@
   do {                                                                        \
     uv__req_init((loop), (req), UV_FS);                                       \
     (req)->fs_type = UV_FS_ ## type;                                          \
-    (req)->errorno = 0;                                                       \
     (req)->result = 0;                                                        \
     (req)->ptr = NULL;                                                        \
     (req)->loop = loop;                                                       \
@@ -60,8 +66,9 @@
 
 #define PATH                                                                  \
   do {                                                                        \
-    if (NULL == ((req)->path = strdup((path))))                               \
-      return uv__set_sys_error((loop), ENOMEM);                               \
+    (req)->path = strdup(path);                                               \
+    if ((req)->path == NULL)                                                  \
+      return -ENOMEM;                                                         \
   }                                                                           \
   while (0)
 
@@ -69,13 +76,11 @@
   do {                                                                        \
     size_t path_len;                                                          \
     size_t new_path_len;                                                      \
-                                                                              \
     path_len = strlen((path)) + 1;                                            \
     new_path_len = strlen((new_path)) + 1;                                    \
-                                                                              \
-    if (NULL == ((req)->path = malloc(path_len + new_path_len)))              \
-      return uv__set_sys_error((loop), ENOMEM);                               \
-                                                                              \
+    (req)->path = malloc(path_len + new_path_len);                            \
+    if ((req)->path == NULL)                                                  \
+      return -ENOMEM;                                                         \
     (req)->new_path = (req)->path + path_len;                                 \
     memcpy((void*) (req)->path, (path), path_len);                            \
     memcpy((void*) (req)->new_path, (new_path), new_path_len);                \
@@ -635,8 +640,10 @@ static void uv__fs_work(struct uv__work* w) {
   }
   while (r == -1 && errno == EINTR && retry_on_eintr);
 
-  req->errorno = errno;
-  req->result = r;
+  if (r == -1)
+    req->result = -errno;
+  else
+    req->result = r;
 
   if (r == 0 && (req->fs_type == UV_FS_STAT ||
                  req->fs_type == UV_FS_FSTAT ||
@@ -652,15 +659,9 @@ static void uv__fs_done(struct uv__work* w, int status) {
   req = container_of(w, uv_fs_t, work_req);
   uv__req_unregister(req->loop, req);
 
-  if (req->errorno != 0) {
-    req->errorno = uv_translate_sys_error(req->errorno);
-    uv__set_artificial_error(req->loop, req->errorno);
-  }
-
-  if (status == -UV_ECANCELED) {
-    assert(req->errorno == 0);
-    req->errorno = UV_ECANCELED;
-    uv__set_artificial_error(req->loop, UV_ECANCELED);
+  if (status == -ECANCELED) {
+    assert(req->result == 0);
+    req->result = -ECANCELED;
   }
 
   if (req->cb != NULL)
