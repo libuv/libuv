@@ -144,7 +144,6 @@ void uv__run_prepare(uv_loop_t* loop);
 
 /* error */
 uv_err_code uv_translate_sys_error(int sys_errno);
-void uv_fatal_error(const int errorno, const char* syscall);
 
 /* stream */
 void uv__stream_init(uv_loop_t* loop, uv_stream_t* stream,
