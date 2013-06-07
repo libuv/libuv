@@ -1419,8 +1419,9 @@ void uv__stream_close(uv_stream_t* handle) {
   }
 #endif /* defined(__APPLE__) */
 
-  uv_read_stop(handle);
   uv__io_close(handle->loop, &handle->io_watcher);
+  uv_read_stop(handle);
+  uv__handle_stop(handle);
 
   close(handle->io_watcher.fd);
   handle->io_watcher.fd = -1;
