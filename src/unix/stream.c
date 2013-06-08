@@ -1118,7 +1118,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       return; /* read_cb closed stream. */
   }
 
-  if (events & UV__POLLOUT) {
+  if (events & (UV__POLLOUT | UV__POLLERR | UV__POLLHUP)) {
     assert(uv__stream_fd(stream) >= 0);
     uv__write(stream);
     uv__write_callbacks(stream);
