@@ -613,6 +613,7 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 
 static void uv__drain(uv_stream_t* stream) {
   uv_shutdown_t* req;
+  int status;
 
   assert(QUEUE_EMPTY(&stream->write_queue));
   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
@@ -625,21 +626,17 @@ static void uv__drain(uv_stream_t* stream) {
 
     req = stream->shutdown_req;
     stream->shutdown_req = NULL;
+    stream->flags &= ~UV_STREAM_SHUTTING;
     uv__req_unregister(stream->loop, req);
 
-    if (shutdown(uv__stream_fd(stream), SHUT_WR)) {
-      /* Error. Report it. User should call uv_close(). */
+    status = shutdown(uv__stream_fd(stream), SHUT_WR);
+    if (status)
       uv__set_sys_error(stream->loop, errno);
-      if (req->cb) {
-        req->cb(req, -1);
-      }
-    } else {
-      uv__set_sys_error(stream->loop, 0);
-      ((uv_handle_t*) stream)->flags |= UV_STREAM_SHUT;
-      if (req->cb) {
-        req->cb(req, 0);
-      }
-    }
+    else
+      stream->flags |= UV_STREAM_SHUT;
+
+    if (req->cb != NULL)
+      req->cb(req, status);
   }
 }
 
@@ -1146,7 +1143,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (uv__stream_fd(stream) == -1)
     return;  /* read_cb closed stream. */
 
-  if (events & UV__POLLOUT) {
+  if (events & (UV__POLLOUT | UV__POLLERR | UV__POLLHUP)) {
     uv__write(stream);
     uv__write_callbacks(stream);
   }
