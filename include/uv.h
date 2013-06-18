@@ -676,6 +676,31 @@ UV_EXTERN int uv_is_writable(const uv_stream_t* handle);
 
 
 /*
+ * Enable or disable blocking mode for a stream.
+ *
+ * When blocking mode is enabled all writes complete synchronously. The
+ * interface remains unchanged otherwise, e.g. completion or failure of the
+ * operation will still be reported through a callback which is made
+ * asychronously.
+ *
+ * Relying too much on this API is not recommended. It is likely to change
+ * significantly in the future.
+ *
+ * On windows this currently works only for uv_pipe_t instances. On unix it
+ * works for tcp, pipe and tty instances. Be aware that changing the blocking
+ * mode on unix sets or clears the O_NONBLOCK bit. If you are sharing a handle
+ * with another process, the other process is affected by the change too,
+ * which can lead to unexpected results.
+ *
+ * Also libuv currently makes no ordering guarantee when the blocking mode
+ * is changed after write requests have already been submitted. Therefore it is
+ * recommended to set the blocking mode immediately after opening or creating
+ * the stream.
+ */
+UV_EXTERN int uv_stream_set_blocking(uv_stream_t* handle, int blocking);
+
+
+/*
  * Used to determine whether a stream is closing or closed.
  *
  * N.B. is only valid between the initialization of the handle
