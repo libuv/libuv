@@ -166,7 +166,7 @@ static wchar_t* search_path_join_test(const wchar_t* dir,
   attrs = GetFileAttributesW(result);
 
   if (attrs != INVALID_FILE_ATTRIBUTES &&
-     !(attrs & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) {
+      !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
     return result;
   }
 
