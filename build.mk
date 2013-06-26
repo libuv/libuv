@@ -130,6 +130,7 @@ TESTS= \
 	test/test-threadpool.o \
 	test/test-threadpool-cancel.o \
 	test/test-timer-again.o \
+	test/test-timer-from-check.o \
 	test/test-timer.o \
 	test/test-tty.o \
 	test/test-udp-dgram-too-big.o \
