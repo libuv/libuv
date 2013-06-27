@@ -46,7 +46,7 @@ extern "C" {
 #endif
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv-private/stdint-msvc2008.h"
+# include "stdint-msvc2008.h"
 #else
 # include <stdint.h>
 #endif
@@ -59,9 +59,9 @@ extern "C" {
 
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(_AIX)
-# include "uv-private/uv-unix.h"
+# include "uv-unix.h"
 #else
-# include "uv-private/uv-win.h"
+# include "uv-win.h"
 #endif
 
 /* Expand this list if necessary. */

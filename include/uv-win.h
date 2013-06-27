@@ -39,7 +39,7 @@ typedef intptr_t ssize_t;
 #include <sys/stat.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv-private/stdint-msvc2008.h"
+# include "stdint-msvc2008.h"
 #else
 # include <stdint.h>
 #endif

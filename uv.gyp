@@ -35,7 +35,6 @@
       'type': '<(library)',
       'include_dirs': [
         'include',
-        'include/uv-private',
         'src/',
       ],
       'direct_dependent_settings': {
@@ -61,7 +60,7 @@
       'sources': [
         'common.gypi',
         'include/uv.h',
-        'include/uv-private/tree.h',
+        'include/tree.h',
         'src/fs-poll.c',
         'src/inet.c',
         'src/queue.h',
@@ -76,7 +75,7 @@
             '_GNU_SOURCE',
           ],
           'sources': [
-            'include/uv-private/uv-win.h',
+            'include/uv-win.h',
             'src/win/async.c',
             'src/win/atomicops-inl.h',
             'src/win/core.c',
@@ -129,11 +128,11 @@
             '-Wno-unused-parameter',
           ],
           'sources': [
-            'include/uv-private/uv-unix.h',
-            'include/uv-private/uv-linux.h',
-            'include/uv-private/uv-sunos.h',
-            'include/uv-private/uv-darwin.h',
-            'include/uv-private/uv-bsd.h',
+            'include/uv-unix.h',
+            'include/uv-linux.h',
+            'include/uv-sunos.h',
+            'include/uv-darwin.h',
+            'include/uv-bsd.h',
             'src/unix/async.c',
             'src/unix/core.c',
             'src/unix/dl.c',

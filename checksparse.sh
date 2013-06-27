@@ -22,13 +22,12 @@ SPARSE_FLAGS=${SPARSE_FLAGS:-"
 -Wno-do-while
 -Wno-transparent-union
 -Iinclude
--Iinclude/uv-private
 -Isrc
 "}
 
 SOURCES="
-include/uv-private/tree.h
-include/uv-private/uv-unix.h
+include/tree.h
+include/uv-unix.h
 include/uv.h
 src/fs-poll.c
 src/inet.c
@@ -172,7 +171,7 @@ AIX)
 Darwin)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__APPLE__=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-bsd.h
+           include/uv-bsd.h
            src/unix/darwin.c
            src/unix/kqueue.c
            src/unix/fsevents.c"
@@ -180,21 +179,21 @@ Darwin)
 DragonFly)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__DragonFly__=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-bsd.h
+           include/uv-bsd.h
            src/unix/kqueue.c
            src/unix/freebsd.c"
   ;;
 FreeBSD)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__FreeBSD__=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-bsd.h
+           include/uv-bsd.h
            src/unix/kqueue.c
            src/unix/freebsd.c"
   ;;
 Linux)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__linux__=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-linux.h
+           include/uv-linux.h
            src/unix/linux-inotify.c
            src/unix/linux-core.c
            src/unix/linux-syscalls.c
@@ -203,21 +202,21 @@ Linux)
 NetBSD)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__NetBSD__=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-bsd.h
+           include/uv-bsd.h
            src/unix/kqueue.c
            src/unix/netbsd.c"
   ;;
 OpenBSD)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__OpenBSD__=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-bsd.h
+           include/uv-bsd.h
            src/unix/kqueue.c
            src/unix/openbsd.c"
   ;;
 SunOS)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__sun=1"
   SOURCES="$SOURCES
-           include/uv-private/uv-sunos.h
+           include/uv-sunos.h
            src/unix/sunos.c"
   ;;
 esac
