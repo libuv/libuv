@@ -839,6 +839,9 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
   statbuf->st_blksize = 0;
   statbuf->st_blocks = 0;
 
+  statbuf->st_flags = 0;
+  statbuf->st_gen = 0;
+
   if (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
     if (fs__readlink_handle(handle, NULL, &statbuf->st_size) != 0) {
       return -1;
@@ -863,6 +866,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
   FILETIME_TO_TIMESPEC(statbuf->st_mtim, info.ftLastWriteTime);
   FILETIME_TO_TIMESPEC(statbuf->st_atim, info.ftLastAccessTime);
   FILETIME_TO_TIMESPEC(statbuf->st_ctim, info.ftCreationTime);
+  FILETIME_TO_TIMESPEC(statbuf->st_birthtim, info.ftCreationTime);
 
   statbuf->st_nlink = (info.nNumberOfLinks <= SHRT_MAX) ?
                       (short) info.nNumberOfLinks : SHRT_MAX;

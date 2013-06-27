@@ -400,9 +400,12 @@ typedef struct {
   uint64_t st_size;
   uint64_t st_blksize;
   uint64_t st_blocks;
+  uint64_t st_flags;
+  uint64_t st_gen;
   uv_timespec_t st_atim;
   uv_timespec_t st_mtim;
   uv_timespec_t st_ctim;
+  uv_timespec_t st_birthtim;
 } uv_stat_t;
 
 

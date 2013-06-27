@@ -192,14 +192,18 @@ static void timer_close_cb(uv_handle_t* handle) {
 static int statbuf_eq(const uv_stat_t* a, const uv_stat_t* b) {
   return a->st_ctim.tv_nsec == b->st_ctim.tv_nsec
       && a->st_mtim.tv_nsec == b->st_mtim.tv_nsec
+      && a->st_birthtim.tv_nsec == b->st_birthtim.tv_nsec
       && a->st_ctim.tv_sec == b->st_ctim.tv_sec
       && a->st_mtim.tv_sec == b->st_mtim.tv_sec
+      && a->st_birthtim.tv_sec == b->st_birthtim.tv_sec
       && a->st_size == b->st_size
       && a->st_mode == b->st_mode
       && a->st_uid == b->st_uid
       && a->st_gid == b->st_gid
       && a->st_ino == b->st_ino
-      && a->st_dev == b->st_dev;
+      && a->st_dev == b->st_dev
+      && a->st_flags == b->st_flags
+      && a->st_gen == b->st_gen;
 }
 
 

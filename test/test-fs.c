@@ -947,6 +947,10 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_mtim.tv_nsec == t.st_mtimespec.tv_nsec);
   ASSERT(s->st_ctim.tv_sec == t.st_ctimespec.tv_sec);
   ASSERT(s->st_ctim.tv_nsec == t.st_ctimespec.tv_nsec);
+  ASSERT(s->st_birthtim.tv_sec == t.st_birthtimespec.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == t.st_birthtimespec.tv_nsec);
+  ASSERT(s->st_flags == t.st_flags);
+  ASSERT(s->st_gen == t.st_gen);
 #elif defined(_BSD_SOURCE) || defined(_SVID_SOURCE) || defined(_XOPEN_SOURCE)
   ASSERT(s->st_atim.tv_sec == t.st_atim.tv_sec);
   ASSERT(s->st_atim.tv_nsec == t.st_atim.tv_nsec);
@@ -954,6 +958,15 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_mtim.tv_nsec == t.st_mtim.tv_nsec);
   ASSERT(s->st_ctim.tv_sec == t.st_ctim.tv_sec);
   ASSERT(s->st_ctim.tv_nsec == t.st_ctim.tv_nsec);
+# if defined(__DragonFly__)  || \
+      defined(__FreeBSD__)    || \
+      defined(__OpenBSD__)    || \
+      defined(__NetBSD__)
+  ASSERT(s->st_birthtim.tv_sec == t.st_birthtim.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == t.st_birthtim.tv_nsec);
+  ASSERT(s->st_flags == t.st_flags);
+  ASSERT(s->st_gen == t.st_gen);
+# endif
 #else
   ASSERT(s->st_atim.tv_sec == t.st_atime);
   ASSERT(s->st_atim.tv_nsec == 0);
