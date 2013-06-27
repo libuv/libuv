@@ -32,6 +32,10 @@ else
 SOEXT = so
 endif
 
+ifndef PREFIX
+PREFIX=/usr/local
+endif
+
 ifneq (,$(findstring mingw,$(PLATFORM)))
 include $(SRCDIR)/config-mingw.mk
 else
@@ -164,3 +168,18 @@ clean distclean: clean-platform
 		test/run-tests.o test/run-benchmarks.o \
 		test/runner.o run-tests$(E) test/run-benchmarks$(E) \
 		$(BENCHMARKS) $(TESTS) $(RUNNER_LIBS)
+
+install: all
+	install -m 644 libuv.a $(PREFIX)/lib
+	install -m 755 libuv.$(SOEXT) $(PREFIX)/lib
+	install -m 644 $(SRCDIR)/include/uv.h $(PREFIX)/include
+	install -m 755 -d $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/pthread-fixes.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/stdint-msvc2008.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/tree.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/uv-bsd.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/uv-darwin.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/uv-linux.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/uv-sunos.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/uv-unix.h $(PREFIX)/include/uv-private
+	install -m 644 $(SRCDIR)/include/uv-private/uv-win.h $(PREFIX)/include/uv-private
