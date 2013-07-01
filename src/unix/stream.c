@@ -1232,9 +1232,10 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  /* Ignore POLLHUP here. Even if it's set, there may still be data to read. */
-  if (events & (POLLIN | POLLERR | POLLHUP))
+  if (events & (POLLIN | POLLERR))
     uv__read(stream);
+  else
+    stream->flags |= UV_HANDLE_READ_PARTIAL;
 
   if (uv__stream_fd(stream) == -1)
     return;  /* read_cb closed stream. */
@@ -1245,18 +1246,17 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    * have to do anything. If the partial read flag is not set, we can't
    * report the EOF yet because there is still data to read.
    */
-  if ((events & POLLHUP) &&
+  if ((events & (POLLHUP | UV__POLLRDHUP)) &&
       (stream->flags & UV_HANDLE_READING) &&
       (stream->flags & UV_HANDLE_READ_PARTIAL) &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
     uv__stream_eof(stream, &buf);
+    if (uv__stream_fd(stream) == -1)
+      return;  /* read_cb closed stream. */
   }
 
-  if (uv__stream_fd(stream) == -1)
-    return;  /* read_cb closed stream. */
-
-  if (events & (POLLOUT | POLLERR | POLLHUP)) {
+  if (events & (POLLOUT | POLLHUP | POLLERR)) {
     uv__write(stream);
     uv__write_callbacks(stream);
 

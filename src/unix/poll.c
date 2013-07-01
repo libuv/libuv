@@ -61,6 +61,19 @@ static void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (events & UV__POLLRDHUP)
     pevents |= UV_DISCONNECT;
 
+  /* Work around an epoll quirk where it sometimes reports just the EPOLLERR or
+   * EPOLLHUP event. But our tests expect to hear about the events they are
+   * interested in even in this case, so merge those in also.
+   *
+   * Note to self: happens when epoll reports EPOLLIN|EPOLLHUP, the user reads
+   * the available data, calls uv_poll_stop(), then sometime later calls
+   * uv_poll_start() again. By then, libuv has forgotten about the hangup and
+   * the kernel won't report EPOLLIN again because there's nothing left to read.
+   */
+  if (events & (POLLERR | POLLHUP))
+    pevents |=
+      w->pevents & (UV_READABLE | UV_PRIORITIZED | UV_WRITABLE | UV_DISCONNECT);
+
   handle->poll_cb(handle, 0, pevents);
 }
 

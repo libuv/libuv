@@ -144,10 +144,10 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
 
-  if (revents & POLLIN)
+  if (revents & (POLLIN | POLLERR))
     uv__udp_recvmsg(handle);
 
-  if (revents & POLLOUT) {
+  if (revents & (POLLOUT | POLLERR)) {
     uv__udp_sendmsg(handle);
     uv__udp_run_completed(handle);
   }
