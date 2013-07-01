@@ -178,7 +178,11 @@ void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
 
-  if (revents & POLLIN)
+  /* Trigger a recv and send to find out what POLLERR occurred. */
+  if (revents & POLLERR)
+    revents |= POLLIN | POLLOUT;
+
+  if (revents & (POLLIN | POLLERR))
     uv__udp_recvmsg(handle, 0);
 
   /* Just Linux support for now. */
