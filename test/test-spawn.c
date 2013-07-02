@@ -815,14 +815,14 @@ TEST_IMPL(spawn_setuid_fails) {
     struct passwd* pw;
     pw = getpwnam("nobody");
     ASSERT(pw != NULL);
-    r = setuid(pw->pw_uid);
-    ASSERT(r == 0);
+    ASSERT(0 == setgid(pw->pw_gid));
+    ASSERT(0 == setuid(pw->pw_uid));
   }
 
   init_process_options("spawn_helper1", exit_cb_failure_expected);
 
   options.flags |= UV_PROCESS_SETUID;
-  options.uid = (uv_uid_t) -42424242;
+  options.uid = 0;
 
   r = uv_spawn(uv_default_loop(), &process, options);
   ASSERT(r == 0);
@@ -847,14 +847,14 @@ TEST_IMPL(spawn_setgid_fails) {
     struct passwd* pw;
     pw = getpwnam("nobody");
     ASSERT(pw != NULL);
-    r = setuid(pw->pw_uid);
-    ASSERT(r == 0);
+    ASSERT(0 == setgid(pw->pw_gid));
+    ASSERT(0 == setuid(pw->pw_uid));
   }
 
   init_process_options("spawn_helper1", exit_cb_failure_expected);
 
   options.flags |= UV_PROCESS_SETGID;
-  options.gid = (uv_gid_t) -42424242;
+  options.gid = 0;
 
   r = uv_spawn(uv_default_loop(), &process, options);
   ASSERT(r == 0);
