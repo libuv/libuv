@@ -21,7 +21,8 @@ AC_CANONICAL_HOST
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 AC_PROG_CC
-AM_PROG_AR
+# AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 # TODO(bnoordhuis) Check for -pthread vs. -pthreads
 AC_CHECK_LIB([dl], [dlopen])
