@@ -42,5 +42,6 @@ AM_CONDITIONAL([LINUX],   [AS_CASE([$host_os], [linux*],   [true], [false])])
 AM_CONDITIONAL([NETBSD],  [AS_CASE([$host_os], [netbsd*],  [true], [false])])
 AM_CONDITIONAL([OPENBSD], [AS_CASE([$host_os], [openbsd*], [true], [false])])
 AM_CONDITIONAL([SUNOS],   [AS_CASE([$host_os], [solaris*], [true], [false])])
+PANDORA_ENABLE_DTRACE
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

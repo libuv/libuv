@@ -20,6 +20,6 @@ fi
 
 set -ex
 ${LIBTOOLIZE:-libtoolize}
-${ACLOCAL:-aclocal}
+${ACLOCAL:-aclocal -I m4}
 ${AUTOCONF:-autoconf}
 ${AUTOMAKE:-automake} --add-missing
