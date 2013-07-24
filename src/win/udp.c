@@ -38,7 +38,6 @@ static char uv_zero_[] = "";
 
 int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
     int* namelen) {
-  uv_loop_t* loop = handle->loop;
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {

@@ -782,7 +782,6 @@ int uv__tcp_connect6(uv_connect_t* req,
 
 int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
     int* namelen) {
-  uv_loop_t* loop = handle->loop;
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
@@ -804,7 +803,6 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
 
 int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
     int* namelen) {
-  uv_loop_t* loop = handle->loop;
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
