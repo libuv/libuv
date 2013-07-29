@@ -1521,12 +1521,12 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
 }
 
 
-int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
+int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file fd, const void* buf,
     size_t length, int64_t offset, uv_fs_cb cb) {
   uv_fs_req_init(loop, req, UV_FS_WRITE, cb);
 
   req->fd = fd;
-  req->buf = buf;
+  req->buf = (void*) buf;
   req->length = length;
   req->offset = offset;
 

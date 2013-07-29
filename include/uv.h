@@ -1632,7 +1632,7 @@ UV_EXTERN int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb);
 
 UV_EXTERN int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file,
-    void* buf, size_t length, int64_t offset, uv_fs_cb cb);
+    const void* buf, size_t length, int64_t offset, uv_fs_cb cb);
 
 UV_EXTERN int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path,
     int mode, uv_fs_cb cb);
