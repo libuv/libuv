@@ -580,8 +580,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 #ifdef SUNOS_NO_IFADDRS
   return -ENOSYS;
 #else
-  struct ifaddrs *addrs, *ent;
   uv_interface_address_t* address;
+  struct sockaddr_dl* sa_addr;
+  struct ifaddrs* addrs;
+  struct ifaddrs* ent;
+  int i;
 
   if (getifaddrs(&addrs))
     return -errno;
