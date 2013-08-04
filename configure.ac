@@ -14,7 +14,7 @@
 
 AC_PREREQ(2.57)
 AC_INIT([libuv], [0.11.5], [https://github.com/joyent/libuv/issues])
-AM_INIT_AUTOMAKE([foreign subdir-objects -Wall -Werror])
+AM_INIT_AUTOMAKE([foreign serial-tests subdir-objects -Wall -Werror])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_HOST
 AC_ENABLE_SHARED
