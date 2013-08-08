@@ -14,9 +14,9 @@
 
 AC_PREREQ(2.57)
 AC_INIT([libuv], [0.11.5], [https://github.com/joyent/libuv/issues])
-# Use AM_SILENT_RULES as an ad-hoc version check to find out if it's safe
-# to use the serial-tests directive. Both were added in automake v0.11.
-AM_INIT_AUTOMAKE(m4_ifdef([AM_SILENT_RULES],
+# Use AM_PROG_AR as an ad-hoc version check to find out if it's safe
+# to use the serial-tests directive. Both were added in automake v0.12.
+AM_INIT_AUTOMAKE(m4_ifdef([AM_PROG_AR],
                           [-Wall -Werror foreign subdir-objects serial-tests],
                           [-Wall -Werror foreign subdir-objects]))
 AC_CONFIG_MACRO_DIR([m4])
