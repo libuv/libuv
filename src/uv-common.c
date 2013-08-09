@@ -473,4 +473,5 @@ int uv__getaddrinfo_translate_error(int sys_err) {
   }
   assert(!"unknown EAI_* error code");
   abort();
+  return 0;  /* Pacify compiler. */
 }
