@@ -39,7 +39,6 @@
 #if defined(__sun)
 # include <sys/port.h>
 # include <port.h>
-# define futimes(fd, tv) futimesat(fd, (void*)0, tv)
 #endif /* __sun */
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
