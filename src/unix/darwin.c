@@ -180,12 +180,12 @@ void uv__cf_loop_signal(uv_loop_t* loop, cf_loop_signal_cb cb, void* arg) {
 
 
 uint64_t uv__hrtime(void) {
-    mach_timebase_info_data_t info;
+  mach_timebase_info_data_t info;
 
-    if (mach_timebase_info(&info) != KERN_SUCCESS)
-      abort();
+  if (mach_timebase_info(&info) != KERN_SUCCESS)
+    abort();
 
-    return mach_absolute_time() * info.numer / info.denom;
+  return mach_absolute_time() * info.numer / info.denom;
 }
 
 
