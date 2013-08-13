@@ -43,6 +43,8 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 
 #include <assert.h>
 #include <stdlib.h>
+#include <pthread.h>
+
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreServices/CoreServices.h>
 
@@ -64,7 +66,7 @@ struct uv__fsevents_event_s {
 
 /* Forward declarations */
 static void uv__cf_loop_cb(void* arg);
-static void uv__cf_loop_runner(void* arg);
+static void* uv__cf_loop_runner(void* arg);
 static void uv__cf_loop_signal(uv_loop_t* loop,
                                cf_loop_signal_cb cb,
                                void* arg);
@@ -224,6 +226,8 @@ static void uv__fsevents_schedule(void* arg) {
 
 static int uv__fsevents_loop_init(uv_loop_t* loop) {
   CFRunLoopSourceContext ctx;
+  pthread_attr_t attr_storage;
+  pthread_attr_t* attr;
   int err;
 
   if (loop->cf_loop != NULL)
@@ -243,7 +247,24 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   ctx.perform = uv__cf_loop_cb;
   loop->cf_cb = CFRunLoopSourceCreate(NULL, 0, &ctx);
 
-  err = uv_thread_create(&loop->cf_thread, uv__cf_loop_runner, loop);
+  /* In the unlikely event that pthread_attr_init() fails, create the thread
+   * with the default stack size. We'll use a little more address space but
+   * that in itself is not a fatal error.
+   */
+  attr = &attr_storage;
+  if (pthread_attr_init(attr))
+    attr = NULL;
+
+  if (attr != NULL)
+    if (pthread_attr_setstacksize(attr, 3 * PTHREAD_STACK_MIN))
+      abort();
+
+  /* uv_thread_t is an alias for pthread_t. */
+  err = -pthread_create(&loop->cf_thread, attr, uv__cf_loop_runner, loop);
+
+  if (attr != NULL)
+    pthread_attr_destroy(attr);
+
   if (err)
     goto fail_thread_create;
 
@@ -283,7 +304,7 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 }
 
 
-static void uv__cf_loop_runner(void* arg) {
+static void* uv__cf_loop_runner(void* arg) {
   uv_loop_t* loop;
 
   loop = arg;
@@ -299,6 +320,8 @@ static void uv__cf_loop_runner(void* arg) {
   CFRunLoopRemoveSource(loop->cf_loop,
                         loop->cf_cb,
                         kCFRunLoopDefaultMode);
+
+  return NULL;
 }
 
 
