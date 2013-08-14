@@ -213,12 +213,67 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
 
 static void uv__fsevents_schedule(void* arg) {
   uv_fs_event_t* handle;
+  FSEventStreamContext ctx;
+  FSEventStreamRef ref;
+  CFStringRef path;
+  CFArrayRef paths;
+  CFAbsoluteTime latency;
+  FSEventStreamCreateFlags flags;
 
   handle = arg;
+
+  /* Initialize context */
+  ctx.version = 0;
+  ctx.info = handle;
+  ctx.retain = NULL;
+  ctx.release = NULL;
+  ctx.copyDescription = NULL;
+
+  /* Initialize paths array */
+  path = CFStringCreateWithCString(NULL,
+                                   handle->filename,
+                                   CFStringGetSystemEncoding());
+  assert(path != NULL);
+  paths = CFArrayCreate(NULL, (const void**)&path, 1, NULL);
+  assert(paths != NULL);
+
+  latency = 0.15;
+
+  /* Set appropriate flags */
+  flags = kFSEventStreamCreateFlagFileEvents;
+
+  ref = FSEventStreamCreate(NULL,
+                            &uv__fsevents_event_cb,
+                            &ctx,
+                            paths,
+                            kFSEventStreamEventIdSinceNow,
+                            latency,
+                            flags);
+  assert(ref != NULL);
+  handle->cf_eventstream = ref;
+
   FSEventStreamScheduleWithRunLoop(handle->cf_eventstream,
                                    handle->loop->cf_loop,
                                    kCFRunLoopDefaultMode);
-  FSEventStreamStart(handle->cf_eventstream);
+  if (!FSEventStreamStart(handle->cf_eventstream))
+    abort();
+}
+
+
+static void uv__fsevents_unschedule(void* arg) {
+  uv_fs_event_t* handle;
+
+  handle = arg;
+
+  /* Stop emitting events */
+  FSEventStreamStop(handle->cf_eventstream);
+
+  /* Release stream */
+  FSEventStreamInvalidate(handle->cf_eventstream);
+  FSEventStreamRelease(handle->cf_eventstream);
+  handle->cf_eventstream = NULL;
+
+  /* Notify main thread that we're done here */
   uv_sem_post(&handle->cf_sem);
 }
 
@@ -379,50 +434,18 @@ void uv__cf_loop_signal(uv_loop_t* loop, cf_loop_signal_cb cb, void* arg) {
 
 
 int uv__fsevents_init(uv_fs_event_t* handle) {
-  FSEventStreamContext ctx;
-  FSEventStreamRef ref;
-  CFStringRef path;
-  CFArrayRef paths;
-  CFAbsoluteTime latency;
-  FSEventStreamCreateFlags flags;
   int err;
 
   err = uv__fsevents_loop_init(handle->loop);
   if (err)
     return err;
 
-  /* Initialize context */
-  ctx.version = 0;
-  ctx.info = handle;
-  ctx.retain = NULL;
-  ctx.release = NULL;
-  ctx.copyDescription = NULL;
-
   /* Get absolute path to file */
   handle->realpath = realpath(handle->filename, NULL);
   if (handle->realpath != NULL)
     handle->realpath_len = strlen(handle->realpath);
 
-  /* Initialize paths array */
-  path = CFStringCreateWithCString(NULL,
-                                   handle->filename,
-                                   CFStringGetSystemEncoding());
-  paths = CFArrayCreate(NULL, (const void**)&path, 1, NULL);
-
-  latency = 0.15;
-
-  /* Set appropriate flags */
-  flags = kFSEventStreamCreateFlagFileEvents;
-
-  ref = FSEventStreamCreate(NULL,
-                            &uv__fsevents_event_cb,
-                            &ctx,
-                            paths,
-                            kFSEventStreamEventIdSinceNow,
-                            latency,
-                            flags);
-  handle->cf_eventstream = ref;
-
+  handle->cf_eventstream = NULL;
   /*
    * Events will occur in other thread.
    * Initialize callback for getting them back into event loop's thread
@@ -447,21 +470,16 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
 
 
 int uv__fsevents_close(uv_fs_event_t* handle) {
-  if (handle->cf_eventstream == NULL)
+  if (handle->cf_cb == NULL)
     return -EINVAL;
 
-  /* Ensure that event stream was scheduled */
+  uv__cf_loop_signal(handle->loop, uv__fsevents_unschedule, handle);
+
+  /* Wait for deinitialization */
   uv_sem_wait(&handle->cf_sem);
 
-  /* Stop emitting events */
-  FSEventStreamStop(handle->cf_eventstream);
-
-  /* Release stream */
-  FSEventStreamInvalidate(handle->cf_eventstream);
-  FSEventStreamRelease(handle->cf_eventstream);
-  handle->cf_eventstream = NULL;
-
   uv_close((uv_handle_t*) handle->cf_cb, (uv_close_cb) free);
+  handle->cf_cb = NULL;
 
   /* Free data in queue */
   UV__FSEVENTS_WALK(handle, {
