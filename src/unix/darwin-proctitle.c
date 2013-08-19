@@ -18,8 +18,11 @@
  * IN THE SOFTWARE.
  */
 
-#include <TargetConditionals.h>
 #include <dlfcn.h>
+#include <errno.h>
+#include <stdlib.h>
+
+#include <TargetConditionals.h>
 
 #if !TARGET_OS_IPHONE
 # include <CoreFoundation/CoreFoundation.h>
