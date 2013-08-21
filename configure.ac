@@ -12,16 +12,52 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+m4_include([m4/libuv-check-flags.m4])
+m4_include([m4/libuv-extra-automake-flags.m4])
 AC_PREREQ(2.57)
 AC_INIT([libuv], [0.11.23], [https://github.com/joyent/libuv/issues])
 AC_CONFIG_MACRO_DIR([m4])
-m4_include([m4/libuv-extra-automake-flags.m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects] UV_EXTRA_AUTOMAKE_FLAGS)
 AC_CANONICAL_HOST
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 AC_PROG_CC
 AM_PROG_CC_C_O
+CC_CHECK_CFLAGS_APPEND([ \
+  -Waggregate-return \
+  -Wall \
+  -Wcast-align \
+  -Wcast-qual \
+  -Wconversion \
+  -Wdeclaration-after-statement \
+  -Wextra \
+  -Wfloat-equal \
+  -Wformat=2 \
+  -Wimplicit \
+  -Winit-self \
+  -Wmissing-declarations \
+  -Wmissing-field-initializers \
+  -Wmissing-format-attribute \
+  -Wmissing-include-dirs \
+  -Wmissing-noreturn \
+  -Wmissing-prototypes \
+  -Wnested-externs \
+  -Wno-unused-parameter \
+  -Wold-style-definition \
+  -Wpacked \
+  -Wpointer-arith \
+  -Wredundant-decls \
+  -Wshadow \
+  -Wsign-compare \
+  -Wstrict-aliasing=2 \
+  -Wstrict-prototypes \
+  -Wswitch-enum \
+  -Wundef \
+  -Wuninitialized \
+  -Wunsafe-loop-optimizations \
+  -Wwrite-strings \
+  -fno-common \
+  -fvisibility=hidden])
 # AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
