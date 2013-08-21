@@ -186,13 +186,6 @@
             'src/unix/fsevents.c',
             'src/unix/darwin-proctitle.c',
           ],
-          'link_settings': {
-            'libraries': [
-              '$(SDKROOT)/System/Library/Frameworks/Foundation.framework',
-              '$(SDKROOT)/System/Library/Frameworks/CoreServices.framework',
-              '$(SDKROOT)/System/Library/Frameworks/ApplicationServices.framework',
-            ],
-          },
           'defines': [
             '_DARWIN_USE_64_BIT_INODE=1',
           ]

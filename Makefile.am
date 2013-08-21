@@ -197,9 +197,6 @@ libuv_la_SOURCES += src/unix/darwin.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
                     src/unix/proctitle.c
-libuv_la_LDFLAGS += -framework ApplicationServices \
-                    -framework CoreServices \
-                    -framework Foundation
 endif
 
 if FREEBSD
