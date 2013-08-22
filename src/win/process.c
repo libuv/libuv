@@ -758,9 +758,6 @@ void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   } else if (!GetExitCodeProcess(handle->process_handle, &status)) {
     /* Unable to to obtain the exit code. This should never happen. */
     exit_code = uv_translate_sys_error(GetLastError());
-  } else {
-    /* Make sure the exit code is >= 0. */
-    exit_code = status & INT_MAX;
   }
 
   /* Fire the exit callback. */
