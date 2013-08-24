@@ -1069,7 +1069,6 @@ static void fs__chmod(uv_fs_t* req) {
 
 static void fs__fchmod(uv_fs_t* req) {
   int fd = req->fd;
-  int result;
   HANDLE handle;
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
@@ -1077,7 +1076,7 @@ static void fs__fchmod(uv_fs_t* req) {
 
   VERIFY_FD(fd, req);
 
-  handle = (HANDLE)_get_osfhandle(fd);
+  handle = (HANDLE) _get_osfhandle(fd);
 
   nt_status = pNtQueryInformationFile(handle,
                                       &io_status,
@@ -1085,9 +1084,9 @@ static void fs__fchmod(uv_fs_t* req) {
                                       sizeof file_info,
                                       FileBasicInformation);
 
-  if (nt_status != STATUS_SUCCESS) {
-    result = -1;
-    goto done;
+  if (!NT_SUCCESS(nt_status)) {
+    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+    return;
   }
 
   if (req->mode & _S_IWRITE) {
@@ -1102,15 +1101,12 @@ static void fs__fchmod(uv_fs_t* req) {
                                     sizeof file_info,
                                     FileBasicInformation);
 
-  if (nt_status != STATUS_SUCCESS) {
-    result = -1;
-    goto done;
+  if (!NT_SUCCESS(nt_status)) {
+    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+    return;
   }
 
-  result = 0;
-
-done:
-  SET_REQ_RESULT(req, result);
+  SET_REQ_SUCCESS(req);
 }
 
 
