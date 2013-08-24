@@ -52,6 +52,18 @@
 # define NT_SUCCESS(status) (((NTSTATUS) (status)) >= 0)
 #endif
 
+#ifndef NT_INFORMATION
+# define NT_INFORMATION(status) ((((ULONG) (status)) >> 30) == 1)
+#endif
+
+#ifndef NT_WARNING
+# define NT_WARNING(status) ((((ULONG) (status)) >> 30) == 2)
+#endif
+
+#ifndef NT_ERROR
+# define NT_ERROR(status) ((((ULONG) (status)) >> 30) == 3)
+#endif
+
 #ifndef STATUS_SUCCESS
 # define STATUS_SUCCESS ((NTSTATUS) 0x00000000L)
 #endif
