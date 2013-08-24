@@ -4282,6 +4282,94 @@ typedef struct _FILE_PIPE_LOCAL_INFORMATION {
 #define FILE_SYNCHRONOUS_IO_ALERT               0x00000010
 #define FILE_SYNCHRONOUS_IO_NONALERT            0x00000020
 
+typedef enum _FS_INFORMATION_CLASS {
+  FileFsVolumeInformation       = 1,
+  FileFsLabelInformation        = 2,
+  FileFsSizeInformation         = 3,
+  FileFsDeviceInformation       = 4,
+  FileFsAttributeInformation    = 5,
+  FileFsControlInformation      = 6,
+  FileFsFullSizeInformation     = 7,
+  FileFsObjectIdInformation     = 8,
+  FileFsDriverPathInformation   = 9,
+  FileFsVolumeFlagsInformation  = 10,
+  FileFsSectorSizeInformation   = 11
+} FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
+
+typedef struct _FILE_FS_VOLUME_INFORMATION {
+  LARGE_INTEGER VolumeCreationTime;
+  ULONG         VolumeSerialNumber;
+  ULONG         VolumeLabelLength;
+  BOOLEAN       SupportsObjects;
+  WCHAR         VolumeLabel[1];
+} FILE_FS_VOLUME_INFORMATION, *PFILE_FS_VOLUME_INFORMATION;
+
+typedef struct _FILE_FS_LABEL_INFORMATION {
+  ULONG VolumeLabelLength;
+  WCHAR VolumeLabel[1];
+} FILE_FS_LABEL_INFORMATION, *PFILE_FS_LABEL_INFORMATION;
+
+typedef struct _FILE_FS_SIZE_INFORMATION {
+  LARGE_INTEGER TotalAllocationUnits;
+  LARGE_INTEGER AvailableAllocationUnits;
+  ULONG         SectorsPerAllocationUnit;
+  ULONG         BytesPerSector;
+} FILE_FS_SIZE_INFORMATION, *PFILE_FS_SIZE_INFORMATION;
+
+typedef struct _FILE_FS_DEVICE_INFORMATION {
+  DEVICE_TYPE DeviceType;
+  ULONG       Characteristics;
+} FILE_FS_DEVICE_INFORMATION, *PFILE_FS_DEVICE_INFORMATION;
+
+typedef struct _FILE_FS_ATTRIBUTE_INFORMATION {
+  ULONG FileSystemAttributes;
+  LONG  MaximumComponentNameLength;
+  ULONG FileSystemNameLength;
+  WCHAR FileSystemName[1];
+} FILE_FS_ATTRIBUTE_INFORMATION, *PFILE_FS_ATTRIBUTE_INFORMATION;
+
+typedef struct _FILE_FS_CONTROL_INFORMATION {
+  LARGE_INTEGER FreeSpaceStartFiltering;
+  LARGE_INTEGER FreeSpaceThreshold;
+  LARGE_INTEGER FreeSpaceStopFiltering;
+  LARGE_INTEGER DefaultQuotaThreshold;
+  LARGE_INTEGER DefaultQuotaLimit;
+  ULONG         FileSystemControlFlags;
+} FILE_FS_CONTROL_INFORMATION, *PFILE_FS_CONTROL_INFORMATION;
+
+typedef struct _FILE_FS_FULL_SIZE_INFORMATION {
+  LARGE_INTEGER TotalAllocationUnits;
+  LARGE_INTEGER CallerAvailableAllocationUnits;
+  LARGE_INTEGER ActualAvailableAllocationUnits;
+  ULONG         SectorsPerAllocationUnit;
+  ULONG         BytesPerSector;
+} FILE_FS_FULL_SIZE_INFORMATION, *PFILE_FS_FULL_SIZE_INFORMATION;
+
+typedef struct _FILE_FS_OBJECTID_INFORMATION {
+  UCHAR ObjectId[16];
+  UCHAR ExtendedInfo[48];
+} FILE_FS_OBJECTID_INFORMATION, *PFILE_FS_OBJECTID_INFORMATION;
+
+typedef struct _FILE_FS_DRIVER_PATH_INFORMATION {
+  BOOLEAN DriverInPath;
+  ULONG   DriverNameLength;
+  WCHAR   DriverName[1];
+} FILE_FS_DRIVER_PATH_INFORMATION, *PFILE_FS_DRIVER_PATH_INFORMATION;
+
+typedef struct _FILE_FS_VOLUME_FLAGS_INFORMATION {
+  ULONG Flags;
+} FILE_FS_VOLUME_FLAGS_INFORMATION, *PFILE_FS_VOLUME_FLAGS_INFORMATION;
+
+typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION {
+  ULONG LogicalBytesPerSector;
+  ULONG PhysicalBytesPerSectorForAtomicity;
+  ULONG PhysicalBytesPerSectorForPerformance;
+  ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;
+  ULONG Flags;
+  ULONG ByteOffsetForSectorAlignment;
+  ULONG ByteOffsetForPartitionAlignment;
+} FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
+
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
     LARGE_INTEGER KernelTime;
@@ -4411,6 +4499,13 @@ typedef NTSTATUS (NTAPI *sNtSetInformationFile)
                   ULONG Length,
                   FILE_INFORMATION_CLASS FileInformationClass);
 
+typedef NTSTATUS (NTAPI *sNtQueryVolumeInformationFile)
+                 (HANDLE FileHandle,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  PVOID FsInformation,
+                  ULONG Length,
+                  FS_INFORMATION_CLASS FsInformationClass);
+
 typedef NTSTATUS (NTAPI *sNtQuerySystemInformation)
                  (UINT SystemInformationClass,
                   PVOID SystemInformation,
@@ -4528,6 +4623,7 @@ extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sNtSetInformationFile pNtSetInformationFile;
+extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 
