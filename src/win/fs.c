@@ -82,8 +82,8 @@
 
 #define FILETIME_TO_TIMESPEC(ts, filetime)                                  \
    do {                                                                     \
-     (ts).tv_sec = FILETIME_TO_TIME_T(filetime);                            \
-     (ts).tv_nsec = FILETIME_TO_TIME_NS(filetime, (ts).tv_sec);             \
+     (ts).tv_sec = (long) FILETIME_TO_TIME_T(filetime);                     \
+     (ts).tv_nsec = (long) FILETIME_TO_TIME_NS(filetime, (ts).tv_sec);      \
    } while(0)
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
