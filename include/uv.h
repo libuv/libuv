@@ -2012,6 +2012,18 @@ UV_EXTERN void uv_barrier_wait(uv_barrier_t* barrier);
  */
 UV_EXTERN void uv_once(uv_once_t* guard, void (*callback)(void));
 
+/* Thread-local storage.  These functions largely follow the semantics of
+ * pthread_key_create(), pthread_key_delete(), pthread_getspecific() and
+ * pthread_setspecific().
+ *
+ * Note that the total thread-local storage size may be limited.
+ * That is, it may not be possible to create many TLS keys.
+ */
+UV_EXTERN int uv_key_create(uv_key_t* key);
+UV_EXTERN void uv_key_delete(uv_key_t* key);
+UV_EXTERN void* uv_key_get(uv_key_t* key);
+UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
+
 UV_EXTERN int uv_thread_create(uv_thread_t *tid,
     void (*entry)(void *arg), void *arg);
 UV_EXTERN unsigned long uv_thread_self(void);
