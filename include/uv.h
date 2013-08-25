@@ -845,6 +845,14 @@ UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
  *  datagram contract (works in unconnected mode, supports sendmsg()/recvmsg(),
  *  etc.). In other words, other datagram-type sockets like raw sockets or
  *  netlink sockets can also be passed to this function.
+ *
+ * This sets the SO_REUSEPORT socket flag on the BSDs and OS X. On other
+ * UNIX platforms, it sets the SO_REUSEADDR flag.  What that means is that
+ * multiple threads or processes can bind to the same address without error
+ * (provided they all set the flag) but only the last one to bind will receive
+ * any traffic, in effect "stealing" the port from the previous listener.
+ * This behavior is something of an anomaly and may be replaced by an explicit
+ * opt-in mechanism in future versions of libuv.
  */
 UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 
@@ -858,6 +866,14 @@ UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
  *
  * Returns:
  *  0 on success, or an error code < 0 on failure.
+ *
+ * This sets the SO_REUSEPORT socket flag on the BSDs and OS X. On other
+ * UNIX platforms, it sets the SO_REUSEADDR flag.  What that means is that
+ * multiple threads or processes can bind to the same address without error
+ * (provided they all set the flag) but only the last one to bind will receive
+ * any traffic, in effect "stealing" the port from the previous listener.
+ * This behavior is something of an anomaly and may be replaced by an explicit
+ * opt-in mechanism in future versions of libuv.
  */
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
     unsigned flags);
