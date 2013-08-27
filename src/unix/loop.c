@@ -101,6 +101,7 @@ void uv__loop_delete(uv_loop_t* loop) {
 
   uv_mutex_lock(&loop->wq_mutex);
   assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
+  assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
   uv_mutex_destroy(&loop->wq_mutex);
 
