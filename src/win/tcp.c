@@ -1030,7 +1030,7 @@ void uv_process_tcp_accept_req(uv_loop_t* loop, uv_tcp_t* handle,
     }
   } else {
     /* Error related to accepted socket is ignored because the server */
-    /* socket may still be healthy. If the server socket is broken
+    /* socket may still be healthy. If the server socket is broken */
     /* uv_queue_accept will detect it. */
     closesocket(req->accept_socket);
     req->accept_socket = INVALID_SOCKET;
