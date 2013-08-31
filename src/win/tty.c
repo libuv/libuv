@@ -830,10 +830,8 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
 
 
 int uv_tty_read_stop(uv_tty_t* handle) {
-  uv_loop_t* loop = handle->loop;
-
   handle->flags &= ~UV_HANDLE_READING;
-  DECREASE_ACTIVE_COUNT(loop, handle);
+  DECREASE_ACTIVE_COUNT(handle->loop, handle);
 
   /* Cancel raw read */
   if ((handle->flags & UV_HANDLE_READ_PENDING) &&
