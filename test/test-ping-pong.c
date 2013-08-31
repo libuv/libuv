@@ -163,8 +163,10 @@ static void tcp_pinger_v6_new(void) {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  r = uv_tcp_connect6(&pinger->connect_req, &pinger->stream.tcp, server_addr,
-      pinger_on_connect);
+  r = uv_tcp_connect6(&pinger->connect_req,
+                      &pinger->stream.tcp,
+                      &server_addr,
+                      pinger_on_connect);
   ASSERT(!r);
 
   /* Synchronous connect callbacks are not allowed. */
@@ -189,8 +191,10 @@ static void tcp_pinger_new(void) {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  r = uv_tcp_connect(&pinger->connect_req, &pinger->stream.tcp, server_addr,
-      pinger_on_connect);
+  r = uv_tcp_connect(&pinger->connect_req,
+                     &pinger->stream.tcp,
+                     &server_addr,
+                     pinger_on_connect);
   ASSERT(!r);
 
   /* Synchronous connect callbacks are not allowed. */

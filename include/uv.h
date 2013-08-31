@@ -773,10 +773,15 @@ UV_EXTERN int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
  * initialized TCP handle and an uninitialized uv_connect_t*. The callback
  * will be made when the connection is established.
  */
-UV_EXTERN int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in address, uv_connect_cb cb);
-UV_EXTERN int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in6 address, uv_connect_cb cb);
+UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
+                             uv_tcp_t* handle,
+                             const struct sockaddr_in* addr,
+                             uv_connect_cb cb);
+
+UV_EXTERN int uv_tcp_connect6(uv_connect_t* req,
+                              uv_tcp_t* handle,
+                              const struct sockaddr_in6* addr,
+                              uv_connect_cb cb);
 
 /* uv_connect_t is a subclass of uv_req_t */
 struct uv_connect_s {

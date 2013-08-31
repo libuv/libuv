@@ -81,11 +81,11 @@ int uv__tcp_bind(uv_tcp_t* tcp,
 }
 
 
-static int uv__connect(uv_connect_t* req,
-                       uv_tcp_t* handle,
-                       struct sockaddr* addr,
-                       socklen_t addrlen,
-                       uv_connect_cb cb) {
+int uv__tcp_connect(uv_connect_t* req,
+                    uv_tcp_t* handle,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen,
+                    uv_connect_cb cb) {
   int err;
   int r;
 
@@ -214,22 +214,6 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   uv__io_start(tcp->loop, &tcp->io_watcher, UV__POLLIN);
 
   return 0;
-}
-
-
-int uv__tcp_connect(uv_connect_t* req,
-                    uv_tcp_t* handle,
-                    struct sockaddr_in addr,
-                    uv_connect_cb cb) {
-  return uv__connect(req, handle, (struct sockaddr*) &addr, sizeof addr, cb);
-}
-
-
-int uv__tcp_connect6(uv_connect_t* req,
-                     uv_tcp_t* handle,
-                     struct sockaddr_in6 addr,
-                     uv_connect_cb cb) {
-  return uv__connect(req, handle, (struct sockaddr*) &addr, sizeof addr, cb);
 }
 
 

@@ -160,7 +160,7 @@ TEST_IMPL(shutdown_eof) {
   r = uv_tcp_init(uv_default_loop(), &tcp);
   ASSERT(!r);
 
-  r = uv_tcp_connect(&connect_req, &tcp, server_addr, connect_cb);
+  r = uv_tcp_connect(&connect_req, &tcp, &server_addr, connect_cb);
   ASSERT(!r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

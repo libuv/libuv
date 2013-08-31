@@ -222,23 +222,31 @@ int uv_udp_bind6(uv_udp_t* handle,
 
 int uv_tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
-                   struct sockaddr_in address,
+                   const struct sockaddr_in* addr,
                    uv_connect_cb cb) {
-  if (handle->type != UV_TCP || address.sin_family != AF_INET)
-    return UV_EINVAL;
-  else
-    return uv__tcp_connect(req, handle, address, cb);
+  if (handle->type == UV_TCP && addr->sin_family == AF_INET) {
+    return uv__tcp_connect(req,
+                           handle,
+                           (const struct sockaddr*) addr,
+                           sizeof(*addr),
+                           cb);
+  }
+  return UV_EINVAL;
 }
 
 
 int uv_tcp_connect6(uv_connect_t* req,
                     uv_tcp_t* handle,
-                    struct sockaddr_in6 address,
+                    const struct sockaddr_in6* addr,
                     uv_connect_cb cb) {
-  if (handle->type != UV_TCP || address.sin6_family != AF_INET6)
-    return UV_EINVAL;
-  else
-    return uv__tcp_connect6(req, handle, address, cb);
+  if (handle->type == UV_TCP && addr->sin6_family == AF_INET6) {
+    return uv__tcp_connect(req,
+                           handle,
+                           (const struct sockaddr*) addr,
+                           sizeof(*addr),
+                           cb);
+  }
+  return UV_EINVAL;
 }
 
 

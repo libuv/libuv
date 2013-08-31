@@ -102,7 +102,7 @@ static void connection_fail(uv_connect_cb connect_cb) {
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
   uv_tcp_bind(&tcp, &client_addr);
-  r = uv_tcp_connect(&req, &tcp, server_addr, connect_cb);
+  r = uv_tcp_connect(&req, &tcp, &server_addr, connect_cb);
   ASSERT(!r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -240,7 +240,7 @@ static void maybe_connect_some(void) {
       ASSERT(r == 0);
 
       req = (uv_connect_t*) req_alloc();
-      r = uv_tcp_connect(req, tcp, connect_addr, connect_cb);
+      r = uv_tcp_connect(req, tcp, &connect_addr, connect_cb);
       ASSERT(r == 0);
     } else {
       pipe = &pipe_write_handles[max_connect_socket++];

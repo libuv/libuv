@@ -346,7 +346,7 @@ static void cl_close_cb(uv_handle_t* handle) {
   ASSERT(0 == uv_tcp_init(handle->loop, (uv_tcp_t*) &ctx->client_handle));
   ASSERT(0 == uv_tcp_connect(&ctx->connect_req,
                              (uv_tcp_t*) &ctx->client_handle,
-                             listen_addr,
+                             &listen_addr,
                              cl_connect_cb));
 }
 
@@ -387,7 +387,7 @@ static int test_tcp(unsigned int num_servers, unsigned int num_clients) {
     ASSERT(0 == uv_tcp_init(loop, handle));
     ASSERT(0 == uv_tcp_connect(&ctx->connect_req,
                                handle,
-                               listen_addr,
+                               &listen_addr,
                                cl_connect_cb));
     ASSERT(0 == uv_idle_init(loop, &ctx->idle_handle));
   }

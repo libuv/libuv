@@ -193,7 +193,10 @@ static void pinger_new(void) {
 
   uv_tcp_bind(&pinger->tcp, &client_addr);
 
-  r = uv_tcp_connect(&pinger->connect_req, &pinger->tcp, server_addr, pinger_connect_cb);
+  r = uv_tcp_connect(&pinger->connect_req,
+                     &pinger->tcp,
+                     &server_addr,
+                     pinger_connect_cb);
   ASSERT(!r);
 }
 

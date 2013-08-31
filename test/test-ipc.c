@@ -129,7 +129,7 @@ static void make_many_connections(void) {
 
     r = uv_tcp_connect(&conn->conn_req,
                        (uv_tcp_t*) &conn->conn,
-                       addr,
+                       &addr,
                        connect_cb);
     ASSERT(r == 0);
 
@@ -632,7 +632,7 @@ int ipc_helper_tcp_connection(void) {
 
   r = uv_tcp_connect(&conn.conn_req,
                      (uv_tcp_t*) &conn.conn,
-                     addr,
+                     &addr,
                      connect_child_process_cb);
   ASSERT(r == 0);
 

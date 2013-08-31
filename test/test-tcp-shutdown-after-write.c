@@ -118,7 +118,7 @@ TEST_IMPL(tcp_shutdown_after_write) {
   r = uv_tcp_init(loop, &conn);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req, &conn, addr, connect_cb);
+  r = uv_tcp_connect(&connect_req, &conn, &addr, connect_cb);
   ASSERT(r == 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);

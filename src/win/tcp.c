@@ -662,12 +662,13 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
 }
 
 
-int uv__tcp_connect(uv_connect_t* req,
-                    uv_tcp_t* handle,
-                    struct sockaddr_in address,
-                    uv_connect_cb cb) {
+static int uv_tcp_try_connect(uv_connect_t* req,
+                              uv_tcp_t* handle,
+                              const struct sockaddr* addr,
+                              unsigned int addrlen,
+                              uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
-  int addrsize = sizeof(struct sockaddr_in);
+  const struct sockaddr* bind_addr;
   BOOL success;
   DWORD bytes;
   int err;
@@ -677,9 +678,14 @@ int uv__tcp_connect(uv_connect_t* req,
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_tcp_try_bind(handle,
-                          (const struct sockaddr*) &uv_addr_ip4_any_,
-                          sizeof(uv_addr_ip4_any_));
+    if (addrlen == sizeof(uv_addr_ip4_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip4_any_;
+    } else if (addrlen == sizeof(uv_addr_ip6_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
+    } else {
+      abort();
+    }
+    err = uv_tcp_try_bind(handle, bind_addr, addrlen);
     if (err)
       return err;
   }
@@ -697,8 +703,8 @@ int uv__tcp_connect(uv_connect_t* req,
   memset(&req->overlapped, 0, sizeof(req->overlapped));
 
   success = handle->func_connectex(handle->socket,
-                                   (struct sockaddr*) &address,
-                                   addrsize,
+                                   addr,
+                                   addrlen,
                                    NULL,
                                    0,
                                    &bytes,
@@ -711,63 +717,6 @@ int uv__tcp_connect(uv_connect_t* req,
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
     /* The req will be processed with IOCP. */
-    handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
-  } else {
-    return WSAGetLastError();
-  }
-
-  return 0;
-}
-
-
-int uv__tcp_connect6(uv_connect_t* req,
-                     uv_tcp_t* handle,
-                     struct sockaddr_in6 address,
-                     uv_connect_cb cb) {
-  uv_loop_t* loop = handle->loop;
-  int addrsize = sizeof(struct sockaddr_in6);
-  BOOL success;
-  DWORD bytes;
-  int err;
-
-  if (handle->flags & UV_HANDLE_BIND_ERROR) {
-    return handle->bind_error;
-  }
-
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_tcp_try_bind(handle,
-                          (const struct sockaddr*) &uv_addr_ip6_any_,
-                          sizeof(uv_addr_ip6_any_));
-    if (err)
-      return err;
-  }
-
-  if (!handle->func_connectex) {
-    if (!uv_get_connectex_function(handle->socket, &handle->func_connectex)) {
-      return WSAEAFNOSUPPORT;
-    }
-  }
-
-  uv_req_init(loop, (uv_req_t*) req);
-  req->type = UV_CONNECT;
-  req->handle = (uv_stream_t*) handle;
-  req->cb = cb;
-  memset(&req->overlapped, 0, sizeof(req->overlapped));
-
-  success = handle->func_connectex(handle->socket,
-                                   (struct sockaddr*) &address,
-                                   addrsize,
-                                   NULL,
-                                   0,
-                                   &bytes,
-                                   &req->overlapped);
-
-  if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
-    handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
-    uv_insert_pending_req(loop, (uv_req_t*)req);
-  } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
     handle->reqs_pending++;
     REGISTER_HANDLE_REQ(loop, handle, req);
   } else {
@@ -1417,6 +1366,24 @@ int uv__tcp_bind(uv_tcp_t* handle,
   int err;
 
   err = uv_tcp_try_bind(handle, addr, addrlen);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  return 0;
+}
+
+
+/* This function is an egress point, i.e. it returns libuv errors rather than
+ * system errors.
+ */
+int uv__tcp_connect(uv_connect_t* req,
+                    uv_tcp_t* handle,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen,
+                    uv_connect_cb cb) {
+  int err;
+
+  err = uv_tcp_try_connect(req, handle, addr, addrlen, cb);
   if (err)
     return uv_translate_sys_error(err);
 

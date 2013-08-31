@@ -68,13 +68,9 @@ int uv__udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags);
 
 int uv__tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
-                   struct sockaddr_in address,
+                   const struct sockaddr* addr,
+                   unsigned int addrlen,
                    uv_connect_cb cb);
-
-int uv__tcp_connect6(uv_connect_t* req,
-                    uv_tcp_t* handle,
-                    struct sockaddr_in6 address,
-                    uv_connect_cb cb);
 
 int uv__udp_send(uv_udp_send_t* req,
                  uv_udp_t* handle,
