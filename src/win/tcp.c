@@ -235,15 +235,14 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
 }
 
 
-static int uv__bind(uv_tcp_t* handle,
-                    int family,
-                    struct sockaddr* addr,
-                    int addrsize) {
+static int uv_tcp_try_bind(uv_tcp_t* handle,
+                           const struct sockaddr* addr,
+                           unsigned int addrlen) {
   DWORD err;
   int r;
 
   if (handle->socket == INVALID_SOCKET) {
-    SOCKET sock = socket(family, SOCK_STREAM, 0);
+    SOCKET sock = socket(addr->sa_family, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();
     }
@@ -255,14 +254,14 @@ static int uv__bind(uv_tcp_t* handle,
       return err;
     }
 
-    err = uv_tcp_set_socket(handle->loop, handle, sock, family, 0);
+    err = uv_tcp_set_socket(handle->loop, handle, sock, addr->sa_family, 0);
     if (err) {
       closesocket(sock);
       return err;
     }
   }
 
-  r = bind(handle->socket, addr, addrsize);
+  r = bind(handle->socket, addr, addrlen);
 
   if (r == SOCKET_ERROR) {
     err = WSAGetLastError();
@@ -278,18 +277,6 @@ static int uv__bind(uv_tcp_t* handle,
   handle->flags |= UV_HANDLE_BOUND;
 
   return 0;
-}
-
-
-int uv__tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
-  return uv_translate_sys_error(
-      uv__bind(handle, AF_INET, (struct sockaddr*) &addr, sizeof(addr)));
-}
-
-
-int uv__tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
-  return uv_translate_sys_error(
-      uv__bind(handle, AF_INET6, (struct sockaddr*) &addr, sizeof(addr)));
 }
 
 
@@ -511,7 +498,9 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_tcp_bind(handle, uv_addr_ip4_any_);
+    err = uv_tcp_try_bind(handle,
+                          (const struct sockaddr*) &uv_addr_ip4_any_,
+                          sizeof(uv_addr_ip4_any_));
     if (err)
       return err;
   }
@@ -688,7 +677,9 @@ int uv__tcp_connect(uv_connect_t* req,
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_tcp_bind(handle, uv_addr_ip4_any_);
+    err = uv_tcp_try_bind(handle,
+                          (const struct sockaddr*) &uv_addr_ip4_any_,
+                          sizeof(uv_addr_ip4_any_));
     if (err)
       return err;
   }
@@ -745,7 +736,9 @@ int uv__tcp_connect6(uv_connect_t* req,
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_tcp_bind6(handle, uv_addr_ip6_any_);
+    err = uv_tcp_try_bind(handle,
+                          (const struct sockaddr*) &uv_addr_ip6_any_,
+                          sizeof(uv_addr_ip6_any_));
     if (err)
       return err;
   }
@@ -1410,6 +1403,22 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
   if (err) {
     return uv_translate_sys_error(err);
   }
+
+  return 0;
+}
+
+
+/* This function is an egress point, i.e. it returns libuv errors rather than
+ * system errors.
+ */
+int uv__tcp_bind(uv_tcp_t* handle,
+                 const struct sockaddr* addr,
+                 unsigned int addrlen) {
+  int err;
+
+  err = uv_tcp_try_bind(handle, addr, addrlen);
+  if (err)
+    return uv_translate_sys_error(err);
 
   return 0;
 }

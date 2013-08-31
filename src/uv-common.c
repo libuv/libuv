@@ -184,19 +184,19 @@ int uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
 }
 
 
-int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
-  if (handle->type != UV_TCP || addr.sin_family != AF_INET)
-    return UV_EINVAL;
+int uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr_in* addr) {
+  if (handle->type == UV_TCP && addr->sin_family == AF_INET)
+    return uv__tcp_bind(handle, (const struct sockaddr*) addr, sizeof(*addr));
   else
-    return uv__tcp_bind(handle, addr);
+    return UV_EINVAL;
 }
 
 
-int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
-  if (handle->type != UV_TCP || addr.sin6_family != AF_INET6)
-    return UV_EINVAL;
+int uv_tcp_bind6(uv_tcp_t* handle, const struct sockaddr_in6* addr) {
+  if (handle->type == UV_TCP && addr->sin6_family == AF_INET6)
+    return uv__tcp_bind(handle, (const struct sockaddr*) addr, sizeof(*addr));
   else
-    return uv__tcp_bind6(handle, addr);
+    return UV_EINVAL;
 }
 
 

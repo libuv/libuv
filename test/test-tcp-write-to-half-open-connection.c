@@ -115,7 +115,7 @@ TEST_IMPL(tcp_write_to_half_open_connection) {
   r = uv_tcp_init(loop, &tcp_server);
   ASSERT(r == 0);
 
-  r = uv_tcp_bind(&tcp_server, addr);
+  r = uv_tcp_bind(&tcp_server, &addr);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 1, connection_cb);

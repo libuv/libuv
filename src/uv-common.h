@@ -59,8 +59,9 @@ enum {
 # define UV__HANDLE_CLOSING   0x01
 #endif
 
-int uv__tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr);
-int uv__tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr);
+int uv__tcp_bind(uv_tcp_t* tcp,
+                 const struct sockaddr* addr,
+                 unsigned int addrlen);
 
 int uv__udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags);
 int uv__udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags);
