@@ -42,11 +42,9 @@ static uv_udp_t udpServer;
 static uv_udp_send_t send_req;
 
 
-static uv_buf_t alloc(uv_handle_t* handle, size_t suggested_size) {
-  uv_buf_t buf;
-  buf.base = (char*) malloc(suggested_size);
-  buf.len = suggested_size;
-  return buf;
+static void alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+  buf->base = malloc(suggested_size);
+  buf->len = suggested_size;
 }
 
 

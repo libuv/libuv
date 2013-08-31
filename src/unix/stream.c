@@ -979,7 +979,7 @@ static void uv__read(uv_stream_t* stream) {
       && (count-- > 0)) {
     assert(stream->alloc_cb != NULL);
 
-    buf = stream->alloc_cb((uv_handle_t*)stream, 64 * 1024);
+    stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
     if (buf.len == 0) {
       /* User indicates it can't or won't handle the read. */
       uv__stream_read_cb(stream, UV_ENOBUFS, buf, UV_UNKNOWN_HANDLE);

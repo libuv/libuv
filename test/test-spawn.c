@@ -118,11 +118,11 @@ static void detach_failure_cb(uv_process_t* process, int64_t exit_status, int te
   exit_cb_called++;
 }
 
-static uv_buf_t on_alloc(uv_handle_t* handle, size_t suggested_size) {
-  uv_buf_t buf;
-  buf.base = output + output_used;
-  buf.len = OUTPUT_SIZE - output_used;
-  return buf;
+static void on_alloc(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf) {
+  buf->base = output + output_used;
+  buf->len = OUTPUT_SIZE - output_used;
 }
 
 

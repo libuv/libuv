@@ -50,10 +50,13 @@ static struct echo_ctx ctx;
 static int num_recv_handles;
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t suggested_size) {
+static void alloc_cb(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf) {
   /* we're not actually reading anything so a small buffer is okay */
-  static char buf[8];
-  return uv_buf_init(buf, sizeof(buf));
+  static char slab[8];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 

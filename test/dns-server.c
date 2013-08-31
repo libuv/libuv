@@ -255,11 +255,11 @@ static void on_close(uv_handle_t* peer) {
 }
 
 
-static uv_buf_t buf_alloc(uv_handle_t* handle, size_t suggested_size) {
-  uv_buf_t buf;
-  buf.base = (char*) malloc(suggested_size);
-  buf.len = suggested_size;
-  return buf;
+static void buf_alloc(uv_handle_t* handle,
+                      size_t suggested_size,
+                      uv_buf_t* buf) {
+  buf->base = malloc(suggested_size);
+  buf->len = suggested_size;
 }
 
 

@@ -39,11 +39,9 @@ static int called_timer_close_cb;
 static int called_timer_cb;
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
-  uv_buf_t buf;
-  buf.base = (char*)malloc(size);
-  buf.len = size;
-  return buf;
+static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  buf->base = malloc(size);
+  buf->len = size;
 }
 
 

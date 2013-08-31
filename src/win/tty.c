@@ -347,7 +347,7 @@ static void uv_tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
   req = &handle->read_req;
   memset(&req->overlapped, 0, sizeof(req->overlapped));
 
-  handle->read_line_buffer = handle->alloc_cb((uv_handle_t*) handle, 8192);
+  handle->alloc_cb((uv_handle_t*) handle, 8192, &handle->read_line_buffer);
   if (handle->read_line_buffer.len == 0) {
     handle->read_cb(handle, UV_ENOBUFS, handle->read_line_buffer);
     return;
@@ -684,7 +684,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
       if (handle->last_key_offset < handle->last_key_len) {
         /* Allocate a buffer if needed */
         if (buf_used == 0) {
-          buf = handle->alloc_cb((uv_handle_t*) handle, 1024);
+          handle->alloc_cb((uv_handle_t*) handle, 1024, &buf);
           if (buf.len == 0) {
             handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, buf);
             goto out;

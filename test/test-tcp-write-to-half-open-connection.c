@@ -30,7 +30,7 @@ static void connection_cb(uv_stream_t* server, int status);
 static void connect_cb(uv_connect_t* req, int status);
 static void write_cb(uv_write_t* req, int status);
 static void read_cb(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t suggested_size);
+static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 
 static uv_tcp_t tcp_server;
 static uv_tcp_t tcp_client;
@@ -65,9 +65,12 @@ static void connection_cb(uv_stream_t* server, int status) {
 }
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t suggested_size) {
+static void alloc_cb(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf) {
   static char slab[1024];
-  return uv_buf_init(slab, sizeof slab);
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 

@@ -45,12 +45,10 @@ static int bytes_received = 0;
 static int shutdown_cb_called = 0;
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
-  uv_buf_t buf;
-  buf.len = size;
-  buf.base = (char*) malloc(size);
-  ASSERT(buf.base);
-  return buf;
+static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  buf->len = size;
+  buf->base = malloc(size);
+  ASSERT(buf->base != NULL);
 }
 
 

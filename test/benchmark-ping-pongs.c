@@ -53,21 +53,19 @@ static int completed_pingers = 0;
 static int64_t start_time;
 
 
-static uv_buf_t buf_alloc(uv_handle_t* tcp, size_t size) {
+static void buf_alloc(uv_handle_t* tcp, size_t size, uv_buf_t* buf) {
   buf_t* ab;
 
   ab = buf_freelist;
-
-  if (ab != NULL) {
+  if (ab != NULL)
     buf_freelist = ab->next;
-    return ab->uv_buf_t;
+  else {
+    ab = malloc(size + sizeof(*ab));
+    ab->uv_buf_t.len = size;
+    ab->uv_buf_t.base = (char*) (ab + 1);
   }
 
-  ab = (buf_t*) malloc(size + sizeof *ab);
-  ab->uv_buf_t.len = size;
-  ab->uv_buf_t.base = ((char*) ab) + sizeof *ab;
-
-  return ab->uv_buf_t;
+  *buf = ab->uv_buf_t;
 }
 
 

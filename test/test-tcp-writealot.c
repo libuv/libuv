@@ -46,8 +46,9 @@ static uv_shutdown_t shutdown_req;
 static uv_write_t write_reqs[WRITES];
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t size) {
-  return uv_buf_init(malloc(size), size);
+static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  buf->base = malloc(size);
+  buf->len = size;
 }
 
 

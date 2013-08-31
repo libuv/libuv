@@ -338,7 +338,7 @@ UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
 
 
 /*
- * Should return a buffer that libuv can use to read data into.
+ * Should prepare a buffer that libuv can use to read data into.
  *
  * `suggested_size` is a hint. Returning a buffer that is smaller is perfectly
  * okay as long as `buf.len > 0`.
@@ -349,7 +349,9 @@ UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
  * Note that returning a zero-length buffer does not stop the handle, call
  * uv_read_stop() or uv_udp_recv_stop() for that.
  */
-typedef uv_buf_t (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
+typedef void (*uv_alloc_cb)(uv_handle_t* handle,
+                            size_t suggested_size,
+                            uv_buf_t* buf);
 
 /*
  * `nread` is > 0 if there is data available, 0 if libuv is done reading for

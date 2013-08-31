@@ -1429,7 +1429,7 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
         }
       }
 
-      buf = handle->alloc_cb((uv_handle_t*) handle, avail);
+      handle->alloc_cb((uv_handle_t*) handle, avail, &buf);
       if (buf.len == 0) {
         if (handle->read2_cb) {
           handle->read2_cb(handle, UV_ENOBUFS, buf, UV_UNKNOWN_HANDLE);

@@ -74,8 +74,11 @@ static void init_process_options(char* test, uv_exit_cb exit_cb) {
 }
 
 
-static uv_buf_t on_alloc(uv_handle_t* handle, size_t suggested_size) {
-  return uv_buf_init(output + output_used, OUTPUT_SIZE - output_used);
+static void on_alloc(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf) {
+  buf->base = output + output_used;
+  buf->len = OUTPUT_SIZE - output_used;
 }
 
 
@@ -179,8 +182,11 @@ static void after_pipe_write(uv_write_t* req, int status) {
 }
 
 
-static uv_buf_t on_read_alloc(uv_handle_t* handle, size_t suggested_size) {
-  return uv_buf_init(malloc(suggested_size), suggested_size);
+static void on_read_alloc(uv_handle_t* handle,
+                          size_t suggested_size,
+                          uv_buf_t* buf) {
+  buf->base = malloc(suggested_size);
+  buf->len = suggested_size;
 }
 
 

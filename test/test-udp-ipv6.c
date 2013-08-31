@@ -44,10 +44,13 @@ static int recv_cb_called;
 static int close_cb_called;
 
 
-static uv_buf_t alloc_cb(uv_handle_t* handle, size_t suggested_size) {
+static void alloc_cb(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf) {
   static char slab[65536];
   CHECK_HANDLE(handle);
-  return uv_buf_init(slab, sizeof slab);
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 
