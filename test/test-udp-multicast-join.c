@@ -68,8 +68,8 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
 
 static void cl_recv_cb(uv_udp_t* handle,
                        ssize_t nread,
-                       uv_buf_t buf,
-                       struct sockaddr* addr,
+                       const uv_buf_t* buf,
+                       const struct sockaddr* addr,
                        unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT(flags == 0);
@@ -89,7 +89,7 @@ static void cl_recv_cb(uv_udp_t* handle,
 
   ASSERT(addr != NULL);
   ASSERT(nread == 4);
-  ASSERT(!memcmp("PING", buf.base, nread));
+  ASSERT(!memcmp("PING", buf->base, nread));
 
   /* we are done with the client handle, we can close it */
   uv_close((uv_handle_t*) &client, close_cb);

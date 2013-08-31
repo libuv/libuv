@@ -61,8 +61,8 @@ static void close_cb(uv_handle_t* handle) {
 
 static void cl_recv_cb(uv_udp_t* handle,
                        ssize_t nread,
-                       uv_buf_t buf,
-                       struct sockaddr* addr,
+                       const uv_buf_t* buf,
+                       const struct sockaddr* addr,
                        unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT(flags == 0);
@@ -80,7 +80,7 @@ static void cl_recv_cb(uv_udp_t* handle,
 
   ASSERT(addr != NULL);
   ASSERT(nread == 4);
-  ASSERT(!memcmp("PONG", buf.base, nread));
+  ASSERT(!memcmp("PONG", buf->base, nread));
 
   cl_recv_cb_called++;
 
@@ -116,10 +116,11 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
 
 static void sv_recv_cb(uv_udp_t* handle,
                        ssize_t nread,
-                       uv_buf_t buf,
-                       struct sockaddr* addr,
+                       const uv_buf_t* rcvbuf,
+                       const struct sockaddr* addr,
                        unsigned flags) {
   uv_udp_send_t* req;
+  uv_buf_t sndbuf;
   int r;
 
   if (nread < 0) {
@@ -138,7 +139,7 @@ static void sv_recv_cb(uv_udp_t* handle,
 
   ASSERT(addr != NULL);
   ASSERT(nread == 4);
-  ASSERT(!memcmp("PING", buf.base, nread));
+  ASSERT(!memcmp("PING", rcvbuf->base, nread));
 
   /* FIXME? `uv_udp_recv_stop` does what it says: recv_cb is not called
     * anymore. That's problematic because the read buffer won't be returned
@@ -150,13 +151,12 @@ static void sv_recv_cb(uv_udp_t* handle,
   req = malloc(sizeof *req);
   ASSERT(req != NULL);
 
-  buf = uv_buf_init("PONG", 4);
-
+  sndbuf = uv_buf_init("PONG", 4);
   r = uv_udp_send(req,
                   handle,
-                  &buf,
+                  &sndbuf,
                   1,
-                  *(struct sockaddr_in*)addr,
+                  *(const struct sockaddr_in*) addr,
                   sv_send_cb);
   ASSERT(r == 0);
 

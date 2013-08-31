@@ -190,10 +190,11 @@ static void on_send(uv_udp_send_t* req, int status);
 
 static void on_recv(uv_udp_t* handle,
                     ssize_t nread,
-                    uv_buf_t buf,
-                    struct sockaddr* addr,
+                    const uv_buf_t* rcvbuf,
+                    const struct sockaddr* addr,
                     unsigned flags) {
   uv_udp_send_t* req;
+  uv_buf_t sndbuf;
   int r;
 
   ASSERT(nread > 0);
@@ -202,7 +203,13 @@ static void on_recv(uv_udp_t* handle,
   req = malloc(sizeof(*req));
   ASSERT(req != NULL);
 
-  r = uv_udp_send(req, handle, &buf, 1, *(struct sockaddr_in*)addr, on_send);
+  sndbuf = *rcvbuf;
+  r = uv_udp_send(req,
+                  handle,
+                  &sndbuf,
+                  1,
+                  *(const struct sockaddr_in*) addr,
+                  on_send);
   ASSERT(r == 0);
 }
 

@@ -234,15 +234,15 @@ static void tcp_connector(void) {
 
 static void udp_recv(uv_udp_t* handle,
                      ssize_t nread,
-                     uv_buf_t buf,
-                     struct sockaddr* addr,
+                     const uv_buf_t* buf,
+                     const struct sockaddr* addr,
                      unsigned flags) {
   struct sockaddr sockname;
   int namelen;
   int r;
 
   ASSERT(nread >= 0);
-  free(buf.base);
+  free(buf->base);
 
   if (nread == 0) {
     return;

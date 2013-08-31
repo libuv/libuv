@@ -70,8 +70,8 @@ static void send_cb(uv_udp_send_t* req, int status) {
 
 static void ipv6_recv_fail(uv_udp_t* handle,
                            ssize_t nread,
-                           uv_buf_t buf,
-                           struct sockaddr* addr,
+                           const uv_buf_t* buf,
+                           const struct sockaddr* addr,
                            unsigned flags) {
   ASSERT(0 && "this function should not have been called");
 }
@@ -79,8 +79,8 @@ static void ipv6_recv_fail(uv_udp_t* handle,
 
 static void ipv6_recv_ok(uv_udp_t* handle,
                          ssize_t nread,
-                         uv_buf_t buf,
-                         struct sockaddr* addr,
+                         const uv_buf_t* buf,
+                         const struct sockaddr* addr,
                          unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT(nread >= 0);

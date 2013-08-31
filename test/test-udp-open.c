@@ -85,8 +85,8 @@ static void close_cb(uv_handle_t* handle) {
 
 static void recv_cb(uv_udp_t* handle,
                        ssize_t nread,
-                       uv_buf_t buf,
-                       struct sockaddr* addr,
+                       const uv_buf_t* buf,
+                       const struct sockaddr* addr,
                        unsigned flags) {
   int r;
 
@@ -105,7 +105,7 @@ static void recv_cb(uv_udp_t* handle,
 
   ASSERT(addr != NULL);
   ASSERT(nread == 4);
-  ASSERT(memcmp("PING", buf.base, nread) == 0);
+  ASSERT(memcmp("PING", buf->base, nread) == 0);
 
   r = uv_udp_recv_stop(handle);
   ASSERT(r == 0);

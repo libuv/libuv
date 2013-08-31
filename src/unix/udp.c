@@ -207,7 +207,7 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
   do {
     handle->alloc_cb((uv_handle_t*) handle, 64 * 1024, &buf);
     if (buf.len == 0) {
-      handle->recv_cb(handle, UV_ENOBUFS, buf, NULL, 0);
+      handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
       return;
     }
     assert(buf.base != NULL);
@@ -223,9 +223,9 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
 
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK)
-        handle->recv_cb(handle, 0, buf, NULL, 0);
+        handle->recv_cb(handle, 0, &buf, NULL, 0);
       else
-        handle->recv_cb(handle, -errno, buf, NULL, 0);
+        handle->recv_cb(handle, -errno, &buf, NULL, 0);
     }
     else {
       flags = 0;
@@ -235,8 +235,8 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
 
       handle->recv_cb(handle,
                       nread,
-                      buf,
-                      (struct sockaddr*)&peer,
+                      &buf,
+                      (const struct sockaddr*) &peer,
                       flags);
     }
   }

@@ -826,8 +826,11 @@ typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
  *  flags   One or more OR'ed UV_UDP_* constants.
  *          Right now only UV_UDP_PARTIAL is used.
  */
-typedef void (*uv_udp_recv_cb)(uv_udp_t* handle, ssize_t nread, uv_buf_t buf,
-    struct sockaddr* addr, unsigned flags);
+typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
+                               ssize_t nread,
+                               const uv_buf_t* buf,
+                               const struct sockaddr* addr,
+                               unsigned flags);
 
 /* uv_udp_t is a subclass of uv_handle_t */
 struct uv_udp_s {

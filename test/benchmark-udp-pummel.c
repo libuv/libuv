@@ -108,8 +108,8 @@ send:
 
 static void recv_cb(uv_udp_t* handle,
                     ssize_t nread,
-                    uv_buf_t buf,
-                    struct sockaddr* addr,
+                    const uv_buf_t* buf,
+                    const struct sockaddr* addr,
                     unsigned flags) {
   if (nread == 0)
     return;
@@ -120,7 +120,7 @@ static void recv_cb(uv_udp_t* handle,
   }
 
   ASSERT(addr->sa_family == AF_INET);
-  ASSERT(!memcmp(buf.base, EXPECTED, nread));
+  ASSERT(!memcmp(buf->base, EXPECTED, nread));
 
   recv_cb_called++;
 }
