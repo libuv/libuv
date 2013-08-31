@@ -63,14 +63,16 @@ int uv__tcp_bind(uv_tcp_t* tcp,
                  const struct sockaddr* addr,
                  unsigned int addrlen);
 
-int uv__udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags);
-int uv__udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags);
-
 int uv__tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
                    const struct sockaddr* addr,
                    unsigned int addrlen,
                    uv_connect_cb cb);
+
+int uv__udp_bind(uv_udp_t* handle,
+                 const struct sockaddr* addr,
+                 unsigned int  addrlen,
+                 unsigned int flags);
 
 int uv__udp_send(uv_udp_send_t* req,
                  uv_udp_t* handle,

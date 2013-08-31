@@ -305,11 +305,10 @@ static int uv__set_reuse(int fd) {
 }
 
 
-static int uv__bind(uv_udp_t* handle,
-                    int domain,
-                    struct sockaddr* addr,
-                    socklen_t len,
-                    unsigned flags) {
+int uv__udp_bind(uv_udp_t* handle,
+                 const struct sockaddr* addr,
+                 unsigned int addrlen,
+                 unsigned int flags) {
   int err;
   int yes;
   int fd;
@@ -322,12 +321,12 @@ static int uv__bind(uv_udp_t* handle,
     return -EINVAL;
 
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
-  if ((flags & UV_UDP_IPV6ONLY) && domain != AF_INET6)
+  if ((flags & UV_UDP_IPV6ONLY) && addr->sa_family != AF_INET6)
     return -EINVAL;
 
   fd = handle->io_watcher.fd;
   if (fd == -1) {
-    fd = uv__socket(domain, SOCK_DGRAM, 0);
+    fd = uv__socket(addr->sa_family, SOCK_DGRAM, 0);
     if (fd == -1)
       return -errno;
     handle->io_watcher.fd = fd;
@@ -350,7 +349,7 @@ static int uv__bind(uv_udp_t* handle,
 #endif
   }
 
-  if (bind(fd, addr, len) == -1) {
+  if (bind(fd, addr, addrlen)) {
     err = -errno;
     goto out;
   }
@@ -397,7 +396,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
     abort();
   }
 
-  return uv__bind(handle, domain, (struct sockaddr*)&taddr, addrlen, 0);
+  return uv__udp_bind(handle, (const struct sockaddr*) &taddr, addrlen, 0);
 }
 
 
@@ -449,24 +448,6 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
   QUEUE_INIT(&handle->write_queue);
   QUEUE_INIT(&handle->write_completed_queue);
   return 0;
-}
-
-
-int uv__udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags) {
-  return uv__bind(handle,
-                  AF_INET,
-                  (struct sockaddr*)&addr,
-                  sizeof addr,
-                  flags);
-}
-
-
-int uv__udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags) {
-  return uv__bind(handle,
-                  AF_INET6,
-                  (struct sockaddr*)&addr,
-                  sizeof addr,
-                  flags);
 }
 
 

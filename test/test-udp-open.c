@@ -140,7 +140,7 @@ TEST_IMPL(udp_open) {
   r = uv_udp_open(&client, sock);
   ASSERT(r == 0);
 
-  r = uv_udp_bind(&client, addr, 0);
+  r = uv_udp_bind(&client, &addr, 0);
   ASSERT(r == 0);
 
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);

@@ -890,8 +890,9 @@ UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
  * This behavior is something of an anomaly and may be replaced by an explicit
  * opt-in mechanism in future versions of libuv.
  */
-UV_EXTERN int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
-    unsigned flags);
+UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
+                          const struct sockaddr_in* addr,
+                          unsigned flags);
 
 /*
  * Bind to a IPv6 address and port.
@@ -904,8 +905,9 @@ UV_EXTERN int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
  * Returns:
  *  0 on success, or an error code < 0 on failure.
  */
-UV_EXTERN int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
-    unsigned flags);
+UV_EXTERN int uv_udp_bind6(uv_udp_t* handle,
+                           const struct sockaddr_in6* addr,
+                           unsigned flags);
 
 UV_EXTERN int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
     int* namelen);

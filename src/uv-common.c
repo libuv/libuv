@@ -201,22 +201,28 @@ int uv_tcp_bind6(uv_tcp_t* handle, const struct sockaddr_in6* addr) {
 
 
 int uv_udp_bind(uv_udp_t* handle,
-                struct sockaddr_in addr,
+                const struct sockaddr_in* addr,
                 unsigned int flags) {
-  if (handle->type != UV_UDP || addr.sin_family != AF_INET)
-    return UV_EINVAL;
-  else
-    return uv__udp_bind(handle, addr, flags);
+  if (handle->type == UV_UDP && addr->sin_family == AF_INET) {
+    return uv__udp_bind(handle,
+                        (const struct sockaddr*) addr,
+                        sizeof(*addr),
+                        flags);
+  }
+  return UV_EINVAL;
 }
 
 
 int uv_udp_bind6(uv_udp_t* handle,
-                 struct sockaddr_in6 addr,
+                 const struct sockaddr_in6* addr,
                  unsigned int flags) {
-  if (handle->type != UV_UDP || addr.sin6_family != AF_INET6)
-    return UV_EINVAL;
-  else
-    return uv__udp_bind6(handle, addr, flags);
+  if (handle->type == UV_UDP && addr->sin6_family == AF_INET6) {
+    return uv__udp_bind(handle,
+                        (const struct sockaddr*) addr,
+                        sizeof(*addr),
+                        flags);
+  }
+  return UV_EINVAL;
 }
 
 

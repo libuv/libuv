@@ -175,7 +175,7 @@ TEST_IMPL(udp_send_and_recv) {
   r = uv_udp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
 
-  r = uv_udp_bind(&server, addr, 0);
+  r = uv_udp_bind(&server, &addr, 0);
   ASSERT(r == 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);

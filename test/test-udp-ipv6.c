@@ -108,7 +108,7 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   r = uv_udp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
 
-  r = uv_udp_bind6(&server, addr6, bind_flags);
+  r = uv_udp_bind6(&server, &addr6, bind_flags);
   ASSERT(r == 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, recv_cb);
