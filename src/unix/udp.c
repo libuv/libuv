@@ -35,13 +35,6 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_sendmsg(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain);
-static int uv__send(uv_udp_send_t* req,
-                    uv_udp_t* handle,
-                    uv_buf_t bufs[],
-                    int bufcnt,
-                    struct sockaddr* addr,
-                    socklen_t addrlen,
-                    uv_udp_send_cb send_cb);
 
 
 void uv__udp_close(uv_udp_t* handle) {
@@ -100,8 +93,8 @@ static void uv__udp_run_pending(uv_udp_t* handle) {
     h.msg_name = &req->addr;
     h.msg_namelen = (req->addr.sin6_family == AF_INET6 ?
       sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
-    h.msg_iov = (struct iovec*)req->bufs;
-    h.msg_iovlen = req->bufcnt;
+    h.msg_iov = (struct iovec*) req->bufs;
+    h.msg_iovlen = req->nbufs;
 
     do {
       size = sendmsg(handle->io_watcher.fd, &h, 0);
@@ -115,19 +108,6 @@ static void uv__udp_run_pending(uv_udp_t* handle) {
       break;
 
     req->status = (size == -1 ? -errno : size);
-
-#ifndef NDEBUG
-    /* Sanity check. */
-    if (size != -1) {
-      ssize_t nbytes;
-      int i;
-
-      for (nbytes = i = 0; i < req->bufcnt; i++)
-        nbytes += req->bufs[i].len;
-
-      assert(size == nbytes);
-    }
-#endif
 
     /* Sending a datagram is an atomic operation: either all data
      * is written or nothing is (and EMSGSIZE is raised). That is
@@ -400,16 +380,16 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
 }
 
 
-static int uv__send(uv_udp_send_t* req,
-                    uv_udp_t* handle,
-                    uv_buf_t bufs[],
-                    int bufcnt,
-                    struct sockaddr* addr,
-                    socklen_t addrlen,
-                    uv_udp_send_cb send_cb) {
+int uv__udp_send(uv_udp_send_t* req,
+                 uv_udp_t* handle,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 const struct sockaddr* addr,
+                 unsigned int addrlen,
+                 uv_udp_send_cb send_cb) {
   int err;
 
-  assert(bufcnt > 0);
+  assert(nbufs > 0);
 
   err = uv__udp_maybe_deferred_bind(handle, addr->sa_family);
   if (err)
@@ -421,17 +401,16 @@ static int uv__send(uv_udp_send_t* req,
   memcpy(&req->addr, addr, addrlen);
   req->send_cb = send_cb;
   req->handle = handle;
-  req->bufcnt = bufcnt;
+  req->nbufs = nbufs;
 
-  if (bufcnt <= (int) ARRAY_SIZE(req->bufsml))
-    req->bufs = req->bufsml;
-  else
-    req->bufs = malloc(bufcnt * sizeof(*bufs));
+  req->bufs = req->bufsml;
+  if (nbufs > ARRAY_SIZE(req->bufsml))
+    req->bufs = malloc(nbufs * sizeof(bufs[0]));
 
   if (req->bufs == NULL)
     return -ENOMEM;
 
-  memcpy(req->bufs, bufs, bufcnt * sizeof(bufs[0]));
+  memcpy(req->bufs, bufs, nbufs * sizeof(bufs[0]));
   QUEUE_INSERT_TAIL(&handle->write_queue, &req->queue);
   uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
   uv__handle_start(handle);
@@ -572,38 +551,6 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen) {
 
   *namelen = (int) socklen;
   return 0;
-}
-
-
-int uv__udp_send(uv_udp_send_t* req,
-                 uv_udp_t* handle,
-                 uv_buf_t bufs[],
-                 int bufcnt,
-                 struct sockaddr_in addr,
-                 uv_udp_send_cb send_cb) {
-  return uv__send(req,
-                  handle,
-                  bufs,
-                  bufcnt,
-                  (struct sockaddr*)&addr,
-                  sizeof addr,
-                  send_cb);
-}
-
-
-int uv__udp_send6(uv_udp_send_t* req,
-                  uv_udp_t* handle,
-                  uv_buf_t bufs[],
-                  int bufcnt,
-                  struct sockaddr_in6 addr,
-                  uv_udp_send_cb send_cb) {
-  return uv__send(req,
-                  handle,
-                  bufs,
-                  bufcnt,
-                  (struct sockaddr*)&addr,
-                  sizeof addr,
-                  send_cb);
 }
 
 

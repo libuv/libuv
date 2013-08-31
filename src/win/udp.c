@@ -359,8 +359,13 @@ int uv__udp_recv_stop(uv_udp_t* handle) {
 }
 
 
-static int uv__send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr* addr, int addr_len, uv_udp_send_cb cb) {
+static int uv__send(uv_udp_send_t* req,
+                    uv_udp_t* handle,
+                    const uv_buf_t bufs[],
+                    unsigned int nbufs,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen,
+                    uv_udp_send_cb cb) {
   uv_loop_t* loop = handle->loop;
   DWORD result, bytes;
 
@@ -372,11 +377,11 @@ static int uv__send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
 
   result = WSASendTo(handle->socket,
                      (WSABUF*)bufs,
-                     bufcnt,
+                     nbufs,
                      &bytes,
                      0,
                      addr,
-                     addr_len,
+                     addrlen,
                      &req->overlapped,
                      NULL);
 
@@ -388,7 +393,7 @@ static int uv__send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
-    req->queued_bytes = uv_count_bufs(bufs, bufcnt);
+    req->queued_bytes = uv_count_bufs(bufs, nbufs);
     handle->reqs_pending++;
     REGISTER_HANDLE_REQ(loop, handle, req);
   } else {
@@ -397,52 +402,6 @@ static int uv__send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
   }
 
   return 0;
-}
-
-
-int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in addr, uv_udp_send_cb cb) {
-  int err;
-
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
-                          (const struct sockaddr*) &uv_addr_ip4_any_,
-                          sizeof(uv_addr_ip4_any_),
-                          0);
-    if (err)
-      return err;
-  }
-
-  return uv__send(req,
-                  handle,
-                  bufs,
-                  bufcnt,
-                  (struct sockaddr*) &addr,
-                  sizeof addr,
-                  cb);
-}
-
-
-int uv__udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in6 addr, uv_udp_send_cb cb) {
-  int err;
-
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
-                          (const struct sockaddr*) &uv_addr_ip6_any_,
-                          sizeof(uv_addr_ip6_any_),
-                          0);
-    if (err)
-      return err;
-  }
-
-  return uv__send(req,
-                  handle,
-                  bufs,
-                  bufcnt,
-                  (struct sockaddr*) &addr,
-                  sizeof addr,
-                  cb);
 }
 
 
@@ -748,6 +707,40 @@ int uv__udp_bind(uv_udp_t* handle,
   int err;
 
   err = uv_udp_try_bind(handle, addr, addrlen, flags);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  return 0;
+}
+
+
+/* This function is an egress point, i.e. it returns libuv errors rather than
+ * system errors.
+ */
+int uv__udp_send(uv_udp_send_t* req,
+                 uv_udp_t* handle,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 const struct sockaddr* addr,
+                 unsigned int addrlen,
+                 uv_udp_send_cb send_cb) {
+  const struct sockaddr* bind_addr;
+  int err;
+
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    if (addrlen == sizeof(uv_addr_ip4_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip4_any_;
+    } else if (addrlen == sizeof(uv_addr_ip6_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
+    } else {
+      abort();
+    }
+    err = uv_udp_try_bind(handle, bind_addr, addrlen, 0);
+    if (err)
+      return uv_translate_sys_error(err);
+  }
+
+  err = uv__send(req, handle, bufs, nbufs, addr, addrlen, send_cb);
   if (err)
     return uv_translate_sys_error(err);
 

@@ -320,7 +320,7 @@ TEST_IMPL(udp_ref3) {
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_udp_init(uv_default_loop(), &h);
-  uv_udp_send(&req, &h, &buf, 1, addr, (uv_udp_send_cb)req_cb);
+  uv_udp_send(&req, &h, &buf, 1, &addr, (uv_udp_send_cb)req_cb);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(req_cb_called == 1);

@@ -991,16 +991,19 @@ UV_EXTERN int uv_udp_set_ttl(uv_udp_t* handle, int ttl);
  *  req       UDP request handle. Need not be initialized.
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
  *  bufs      List of buffers to send.
- *  bufcnt    Number of buffers in `bufs`.
+ *  nbufs     Number of buffers in `bufs`.
  *  addr      Address of the remote peer. See `uv_ip4_addr`.
  *  send_cb   Callback to invoke when the data has been sent out.
  *
  * Returns:
  *  0 on success, or an error code < 0 on failure.
  */
-UV_EXTERN int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle,
-    uv_buf_t bufs[], int bufcnt, struct sockaddr_in addr,
-    uv_udp_send_cb send_cb);
+UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
+                          uv_udp_t* handle,
+                          const uv_buf_t bufs[],
+                          unsigned int nbufs,
+                          const struct sockaddr_in* addr,
+                          uv_udp_send_cb send_cb);
 
 /*
  * Send data. If the socket has not previously been bound with `uv_udp_bind6`,
@@ -1010,16 +1013,19 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle,
  *  req       UDP request handle. Need not be initialized.
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
  *  bufs      List of buffers to send.
- *  bufcnt    Number of buffers in `bufs`.
+ *  nbufs     Number of buffers in `bufs`.
  *  addr      Address of the remote peer. See `uv_ip6_addr`.
  *  send_cb   Callback to invoke when the data has been sent out.
  *
  * Returns:
  *  0 on success, or an error code < 0 on failure.
  */
-UV_EXTERN int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle,
-    uv_buf_t bufs[], int bufcnt, struct sockaddr_in6 addr,
-    uv_udp_send_cb send_cb);
+UV_EXTERN int uv_udp_send6(uv_udp_send_t* req,
+                           uv_udp_t* handle,
+                           const uv_buf_t bufs[],
+                           unsigned int nbufs,
+                           const struct sockaddr_in6* addr,
+                           uv_udp_send_cb send_cb);
 
 /*
  * Receive data. If the socket has not previously been bound with `uv_udp_bind`

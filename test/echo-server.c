@@ -208,7 +208,7 @@ static void on_recv(uv_udp_t* handle,
                   handle,
                   &sndbuf,
                   1,
-                  *(const struct sockaddr_in*) addr,
+                  (const struct sockaddr_in*) addr,
                   on_send);
   ASSERT(r == 0);
 }

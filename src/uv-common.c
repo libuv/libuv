@@ -258,27 +258,39 @@ int uv_tcp_connect6(uv_connect_t* req,
 
 int uv_udp_send(uv_udp_send_t* req,
                 uv_udp_t* handle,
-                uv_buf_t bufs[],
-                int bufcnt,
-                struct sockaddr_in addr,
+                const uv_buf_t bufs[],
+                unsigned int nbufs,
+                const struct sockaddr_in* addr,
                 uv_udp_send_cb send_cb) {
-  if (handle->type != UV_UDP || addr.sin_family != AF_INET)
-    return UV_EINVAL;
-  else
-    return uv__udp_send(req, handle, bufs, bufcnt, addr, send_cb);
+  if (handle->type == UV_UDP && addr->sin_family == AF_INET) {
+    return uv__udp_send(req,
+                        handle,
+                        bufs,
+                        nbufs,
+                        (const struct sockaddr*) addr,
+                        sizeof(*addr),
+                        send_cb);
+  }
+  return UV_EINVAL;
 }
 
 
 int uv_udp_send6(uv_udp_send_t* req,
                  uv_udp_t* handle,
-                 uv_buf_t bufs[],
-                 int bufcnt,
-                 struct sockaddr_in6 addr,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 const struct sockaddr_in6* addr,
                  uv_udp_send_cb send_cb) {
-  if (handle->type != UV_UDP || addr.sin6_family != AF_INET6)
-    return UV_EINVAL;
-  else
-    return uv__udp_send6(req, handle, bufs, bufcnt, addr, send_cb);
+  if (handle->type == UV_UDP && addr->sin6_family == AF_INET6) {
+    return uv__udp_send(req,
+                        handle,
+                        bufs,
+                        nbufs,
+                        (const struct sockaddr*) addr,
+                        sizeof(*addr),
+                        send_cb);
+  }
+  return UV_EINVAL;
 }
 
 
