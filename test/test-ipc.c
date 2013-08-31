@@ -125,9 +125,12 @@ static void make_many_connections(void) {
     r = uv_tcp_init(uv_default_loop(), &conn->conn);
     ASSERT(r == 0);
 
-    addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+    ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-    r = uv_tcp_connect(&conn->conn_req, (uv_tcp_t*)&conn->conn, addr, connect_cb);
+    r = uv_tcp_connect(&conn->conn_req,
+                       (uv_tcp_t*) &conn->conn,
+                       addr,
+                       connect_cb);
     ASSERT(r == 0);
 
     conn->conn.data = conn;
@@ -365,7 +368,9 @@ TEST_IMPL(ipc_tcp_connection) {
 TEST_IMPL(listen_with_simultaneous_accepts) {
   uv_tcp_t server;
   int r;
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+  struct sockaddr_in addr;
+
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
@@ -388,7 +393,9 @@ TEST_IMPL(listen_with_simultaneous_accepts) {
 TEST_IMPL(listen_no_simultaneous_accepts) {
   uv_tcp_t server;
   int r;
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+  struct sockaddr_in addr;
+
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
@@ -540,10 +547,12 @@ int ipc_helper(int listen_after_write) {
    * This is launched from test-ipc.c. stdin is a duplex channel that we
    * over which a handle will be transmitted.
    */
-
+  struct sockaddr_in addr;
   uv_write_t write_req;
   int r;
   uv_buf_t buf;
+
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT(r == 0);
@@ -557,7 +566,7 @@ int ipc_helper(int listen_after_write) {
   r = uv_tcp_init(uv_default_loop(), &tcp_server);
   ASSERT(r == 0);
 
-  r = uv_tcp_bind(&tcp_server, uv_ip4_addr("0.0.0.0", TEST_PORT));
+  r = uv_tcp_bind(&tcp_server, addr);
   ASSERT(r == 0);
 
   if (!listen_after_write) {
@@ -607,7 +616,9 @@ int ipc_helper_tcp_connection(void) {
   r = uv_tcp_init(uv_default_loop(), &tcp_server);
   ASSERT(r == 0);
 
-  r = uv_tcp_bind(&tcp_server, uv_ip4_addr("0.0.0.0", TEST_PORT));
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+
+  r = uv_tcp_bind(&tcp_server, addr);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 12, ipc_on_connection_tcp_conn);
@@ -617,8 +628,12 @@ int ipc_helper_tcp_connection(void) {
   r = uv_tcp_init(uv_default_loop(), &conn.conn);
   ASSERT(r == 0);
 
-  addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
-  r = uv_tcp_connect(&conn.conn_req, (uv_tcp_t*)&conn.conn, addr, connect_child_process_cb);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  r = uv_tcp_connect(&conn.conn_req,
+                     (uv_tcp_t*) &conn.conn,
+                     addr,
+                     connect_child_process_cb);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);

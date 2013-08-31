@@ -64,7 +64,7 @@ TEST_IMPL(tcp_connect_timeout) {
   struct sockaddr_in addr;
   int r;
 
-  addr = uv_ip4_addr("8.8.8.8", 9999);
+  ASSERT(0 == uv_ip4_addr("8.8.8.8", 9999, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
   ASSERT(r == 0);

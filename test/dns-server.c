@@ -293,8 +293,10 @@ static void on_connection(uv_stream_t* server, int status) {
 
 
 static int dns_start(int port) {
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
+  struct sockaddr_in addr;
   int r;
+
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", port, &addr));
 
   r = uv_tcp_init(loop, &server);
   if (r) {

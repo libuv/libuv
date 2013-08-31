@@ -135,14 +135,17 @@ TEST_IMPL(ipc_send_recv_pipe) {
 
 
 TEST_IMPL(ipc_send_recv_tcp) {
+  struct sockaddr_in addr;
   int r;
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   ctx.expected_type = UV_TCP;
 
   r = uv_tcp_init(uv_default_loop(), &ctx.send.tcp);
   ASSERT(r == 0);
 
-  r = uv_tcp_bind(&ctx.send.tcp, uv_ip4_addr("127.0.0.1", TEST_PORT));
+  r = uv_tcp_bind(&ctx.send.tcp, addr);
   ASSERT(r == 0);
 
   r = run_test();

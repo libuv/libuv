@@ -214,8 +214,10 @@ static void on_send(uv_udp_send_t* req, int status) {
 
 
 static int tcp4_echo_start(int port) {
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
+  struct sockaddr_in addr;
   int r;
+
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", port, &addr));
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
@@ -246,8 +248,10 @@ static int tcp4_echo_start(int port) {
 
 
 static int tcp6_echo_start(int port) {
-  struct sockaddr_in6 addr6 = uv_ip6_addr("::1", port);
+  struct sockaddr_in6 addr6;
   int r;
+
+  ASSERT(0 == uv_ip6_addr("::1", port, &addr6));
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;

@@ -60,9 +60,8 @@ TEST_IMPL(tcp_close_while_connecting) {
   struct sockaddr_in addr;
   uv_loop_t* loop;
 
-  addr = uv_ip4_addr("1.2.3.4", TEST_PORT);
   loop = uv_default_loop();
-
+  ASSERT(0 == uv_ip4_addr("1.2.3.4", TEST_PORT, &addr));
   ASSERT(0 == uv_tcp_init(loop, &tcp_handle));
   ASSERT(0 == uv_tcp_connect(&connect_req, &tcp_handle, addr, connect_cb));
   ASSERT(0 == uv_timer_init(loop, &timer1_handle));

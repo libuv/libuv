@@ -360,7 +360,7 @@ HELPER_IMPL(tcp_pump_server) {
   type = TCP;
   loop = uv_default_loop();
 
-  listen_addr = uv_ip4_addr("0.0.0.0", TEST_PORT);
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &listen_addr));
 
   /* Server */
   server = (uv_stream_t*)&tcpServer;
@@ -406,7 +406,7 @@ static void tcp_pump(int n) {
 
   loop = uv_default_loop();
 
-  connect_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &connect_addr));
 
   /* Start making connections */
   maybe_connect_some();

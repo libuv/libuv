@@ -171,7 +171,8 @@ static int pummel(unsigned int n_senders,
 
   for (i = 0; i < n_receivers; i++) {
     struct receiver_state* s = receivers + i;
-    struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", BASE_PORT + i);
+    struct sockaddr_in addr;
+    ASSERT(0 == uv_ip4_addr("0.0.0.0", BASE_PORT + i, &addr));
     ASSERT(0 == uv_udp_init(loop, &s->udp_handle));
     ASSERT(0 == uv_udp_bind(&s->udp_handle, addr, 0));
     ASSERT(0 == uv_udp_recv_start(&s->udp_handle, alloc_cb, recv_cb));
@@ -186,7 +187,9 @@ static int pummel(unsigned int n_senders,
 
   for (i = 0; i < n_senders; i++) {
     struct sender_state* s = senders + i;
-    s->addr = uv_ip4_addr("127.0.0.1", BASE_PORT + (i % n_receivers));
+    ASSERT(0 == uv_ip4_addr("127.0.0.1",
+                            BASE_PORT + (i % n_receivers),
+                            &s->addr));
     ASSERT(0 == uv_udp_init(loop, &s->udp_handle));
     ASSERT(0 == uv_udp_send(&s->send_req,
                             &s->udp_handle,

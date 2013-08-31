@@ -1878,8 +1878,8 @@ UV_EXTERN int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle,
 /* Utility */
 
 /* Convert string ip addresses to binary structures */
-UV_EXTERN struct sockaddr_in uv_ip4_addr(const char* ip, int port);
-UV_EXTERN struct sockaddr_in6 uv_ip6_addr(const char* ip, int port);
+UV_EXTERN int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
+UV_EXTERN int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
 
 /* Convert binary addresses to strings */
 UV_EXTERN int uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size);

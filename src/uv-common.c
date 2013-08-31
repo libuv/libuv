@@ -125,31 +125,26 @@ const char* uv_strerror(int err) {
 #undef UV_STRERROR_GEN
 
 
-struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
-  struct sockaddr_in addr;
-
-  memset(&addr, 0, sizeof(struct sockaddr_in));
-
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(port);
-  addr.sin_addr.s_addr = inet_addr(ip);
-
-  return addr;
+int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
+  memset(addr, 0, sizeof(*addr));
+  addr->sin_family = AF_INET;
+  addr->sin_port = htons(port);
+  /* TODO(bnoordhuis) Don't use inet_addr(), no good way to detect errors. */
+  addr->sin_addr.s_addr = inet_addr(ip);
+  return 0;
 }
 
 
-struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
-  struct sockaddr_in6 addr;
+int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
 #if defined(UV_PLATFORM_HAS_IP6_LINK_LOCAL_ADDRESS)
   char address_part[40];
   size_t address_part_size;
   const char* zone_index;
 #endif
 
-  memset(&addr, 0, sizeof(struct sockaddr_in6));
-
-  addr.sin6_family = AF_INET6;
-  addr.sin6_port = htons(port);
+  memset(addr, 0, sizeof(*addr));
+  addr->sin6_family = AF_INET6;
+  addr->sin6_port = htons(port);
 
 #if defined(UV_PLATFORM_HAS_IP6_LINK_LOCAL_ADDRESS)
   zone_index = strchr(ip, '%');
@@ -165,17 +160,17 @@ struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
     zone_index++; /* skip '%' */
     /* NOTE: unknown interface (id=0) is silently ignored */
 #ifdef _WIN32
-    addr.sin6_scope_id = atoi(zone_index);
+    addr->sin6_scope_id = atoi(zone_index);
 #else
-    addr.sin6_scope_id = if_nametoindex(zone_index);
+    addr->sin6_scope_id = if_nametoindex(zone_index);
 #endif
   }
 #endif
 
-  /* result code is ignored - we assume ip is a valid IPv6 address */
-  uv_inet_pton(AF_INET6, ip, &addr.sin6_addr);
+  /* TODO(bnoordhuis) Return an error when the address is bad. */
+  uv_inet_pton(AF_INET6, ip, &addr->sin6_addr);
 
-  return addr;
+  return 0;
 }
 
 

@@ -106,7 +106,7 @@ TEST_IMPL(tcp_shutdown_after_write) {
   uv_loop_t* loop;
   int r;
 
-  addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   loop = uv_default_loop();
 
   r = uv_timer_init(loop, &timer);

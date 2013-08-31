@@ -103,8 +103,11 @@ static void write_cb(uv_write_t* req, int status) {
 
 
 TEST_IMPL(tcp_write_to_half_open_connection) {
+  struct sockaddr_in addr;
   uv_loop_t* loop;
   int r;
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   loop = uv_default_loop();
   ASSERT(loop != NULL);
@@ -112,7 +115,7 @@ TEST_IMPL(tcp_write_to_half_open_connection) {
   r = uv_tcp_init(loop, &tcp_server);
   ASSERT(r == 0);
 
-  r = uv_tcp_bind(&tcp_server, uv_ip4_addr("127.0.0.1", TEST_PORT));
+  r = uv_tcp_bind(&tcp_server, addr);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 1, connection_cb);
@@ -121,10 +124,7 @@ TEST_IMPL(tcp_write_to_half_open_connection) {
   r = uv_tcp_init(loop, &tcp_client);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req,
-                     &tcp_client,
-                     uv_ip4_addr("127.0.0.1", TEST_PORT),
-                     connect_cb);
+  r = uv_tcp_connect(&connect_req, &tcp_client, addr, connect_cb);
   ASSERT(r == 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);

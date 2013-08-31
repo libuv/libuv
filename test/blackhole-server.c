@@ -103,7 +103,7 @@ HELPER_IMPL(tcp4_blackhole_server) {
   int r;
 
   loop = uv_default_loop();
-  addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(loop, &tcp_server);
   ASSERT(r == 0);

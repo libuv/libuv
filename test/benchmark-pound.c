@@ -199,7 +199,7 @@ static void tcp_make_connect(conn_rec* p) {
   r = uv_tcp_init(loop, (uv_tcp_t*)&p->stream);
   ASSERT(r == 0);
 
-  addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_connect(&((tcp_conn_rec*)p)->conn_req, (uv_tcp_t*)&p->stream, addr, connect_cb);
   if (r) {

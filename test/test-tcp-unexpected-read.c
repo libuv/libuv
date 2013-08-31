@@ -88,7 +88,7 @@ TEST_IMPL(tcp_unexpected_read) {
   struct sockaddr_in addr;
   uv_loop_t* loop;
 
-  addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   loop = uv_default_loop();
 
   ASSERT(0 == uv_timer_init(loop, &timer_handle));
