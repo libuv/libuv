@@ -93,15 +93,15 @@ static int uv__open_cloexec(const char* path, int flags) {
 }
 
 
-static size_t uv__buf_count(uv_buf_t bufs[], int bufcnt) {
-  size_t total = 0;
-  int i;
+static size_t uv_count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
+  unsigned int i;
+  size_t bytes;
 
-  for (i = 0; i < bufcnt; i++) {
-    total += bufs[i].len;
-  }
+  bytes = 0;
+  for (i = 0; i < nbufs; i++)
+    bytes += bufs[i].len;
 
-  return total;
+  return bytes;
 }
 
 
@@ -656,8 +656,8 @@ static size_t uv__write_req_size(uv_write_t* req) {
   size_t size;
 
   assert(req->bufs != NULL);
-  size = uv__buf_count(req->bufs + req->write_index,
-                       req->bufcnt - req->write_index);
+  size = uv_count_bufs(req->bufs + req->write_index,
+                       req->nbufs - req->write_index);
   assert(req->handle->write_queue_size >= size);
 
   return size;
@@ -742,7 +742,7 @@ start:
    */
   assert(sizeof(uv_buf_t) == sizeof(struct iovec));
   iov = (struct iovec*) &(req->bufs[req->write_index]);
-  iovcnt = req->bufcnt - req->write_index;
+  iovcnt = req->nbufs - req->write_index;
 
   iovmax = uv__getiovmax();
 
@@ -819,7 +819,7 @@ start:
       uv_buf_t* buf = &(req->bufs[req->write_index]);
       size_t len = buf->len;
 
-      assert(req->write_index < req->bufcnt);
+      assert(req->write_index < req->nbufs);
 
       if ((size_t)n < len) {
         buf->base += n;
@@ -849,7 +849,7 @@ start:
         assert(stream->write_queue_size >= len);
         stream->write_queue_size -= len;
 
-        if (req->write_index == req->bufcnt) {
+        if (req->write_index == req->nbufs) {
           /* Then we're done! */
           assert(n == 0);
           uv__write_req_finish(req);
@@ -1207,13 +1207,13 @@ static void uv__stream_connect(uv_stream_t* stream) {
 
 int uv_write2(uv_write_t* req,
               uv_stream_t* stream,
-              uv_buf_t bufs[],
-              int bufcnt,
+              const uv_buf_t bufs[],
+              unsigned int nbufs,
               uv_stream_t* send_handle,
               uv_write_cb cb) {
   int empty_queue;
 
-  assert(bufcnt > 0);
+  assert(nbufs > 0);
   assert((stream->type == UV_TCP ||
           stream->type == UV_NAMED_PIPE ||
           stream->type == UV_TTY) &&
@@ -1252,15 +1252,17 @@ int uv_write2(uv_write_t* req,
   req->send_handle = send_handle;
   QUEUE_INIT(&req->queue);
 
-  if (bufcnt <= (int) ARRAY_SIZE(req->bufsml))
-    req->bufs = req->bufsml;
-  else
-    req->bufs = malloc(sizeof(uv_buf_t) * bufcnt);
+  req->bufs = req->bufsml;
+  if (nbufs > ARRAY_SIZE(req->bufsml))
+    req->bufs = malloc(nbufs * sizeof(bufs[0]));
 
-  memcpy(req->bufs, bufs, bufcnt * sizeof(uv_buf_t));
-  req->bufcnt = bufcnt;
+  if (req->bufs == NULL)
+    return -ENOMEM;
+
+  memcpy(req->bufs, bufs, nbufs * sizeof(bufs[0]));
+  req->nbufs = nbufs;
   req->write_index = 0;
-  stream->write_queue_size += uv__buf_count(bufs, bufcnt);
+  stream->write_queue_size += uv_count_bufs(bufs, nbufs);
 
   /* Append the request to write_queue. */
   QUEUE_INSERT_TAIL(&stream->write_queue, &req->queue);
@@ -1292,9 +1294,12 @@ int uv_write2(uv_write_t* req,
 /* The buffers to be written must remain valid until the callback is called.
  * This is not required for the uv_buf_t array.
  */
-int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
-    uv_write_cb cb) {
-  return uv_write2(req, stream, bufs, bufcnt, NULL, cb);
+int uv_write(uv_write_t* req,
+             uv_stream_t* handle,
+             const uv_buf_t bufs[],
+             unsigned int nbufs,
+             uv_write_cb cb) {
+  return uv_write2(req, handle, bufs, nbufs, NULL, cb);
 }
 
 

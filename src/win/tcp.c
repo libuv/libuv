@@ -769,8 +769,12 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
 }
 
 
-int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
-    uv_buf_t bufs[], int bufcnt, uv_write_cb cb) {
+int uv_tcp_write(uv_loop_t* loop,
+                 uv_write_t* req,
+                 uv_tcp_t* handle,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 uv_write_cb cb) {
   int result;
   DWORD bytes;
 
@@ -792,8 +796,8 @@ int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
   }
 
   result = WSASend(handle->socket,
-                   (WSABUF*)bufs,
-                   bufcnt,
+                   (WSABUF*) bufs,
+                   nbufs,
                    &bytes,
                    0,
                    &req->overlapped,
@@ -808,7 +812,7 @@ int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
     uv_insert_pending_req(loop, (uv_req_t*) req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
-    req->queued_bytes = uv_count_bufs(bufs, bufcnt);
+    req->queued_bytes = uv_count_bufs(bufs, nbufs);
     handle->reqs_pending++;
     handle->write_reqs_pending++;
     REGISTER_HANDLE_REQ(loop, handle, req);

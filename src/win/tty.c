@@ -1318,13 +1318,15 @@ static int uv_tty_restore_state(uv_tty_t* handle,
 }
 
 
-static int uv_tty_write_bufs(uv_tty_t* handle, uv_buf_t bufs[], int bufcnt,
-    DWORD* error) {
+static int uv_tty_write_bufs(uv_tty_t* handle,
+                             const uv_buf_t bufs[],
+                             unsigned int nbufs,
+                             DWORD* error) {
   /* We can only write 8k characters at a time. Windows can't handle */
   /* much more characters in a single console write anyway. */
   WCHAR utf16_buf[8192];
   DWORD utf16_buf_used = 0;
-  int i;
+  unsigned int i;
 
 #define FLUSH_TEXT()                                                \
   do {                                                              \
@@ -1347,7 +1349,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle, uv_buf_t bufs[], int bufcnt,
 
   EnterCriticalSection(&uv_tty_output_lock);
 
-  for (i = 0; i < bufcnt; i++) {
+  for (i = 0; i < nbufs; i++) {
     uv_buf_t buf = bufs[i];
     unsigned int j;
 
@@ -1745,8 +1747,12 @@ static int uv_tty_write_bufs(uv_tty_t* handle, uv_buf_t bufs[], int bufcnt,
 }
 
 
-int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
-    uv_buf_t bufs[], int bufcnt, uv_write_cb cb) {
+int uv_tty_write(uv_loop_t* loop,
+                 uv_write_t* req,
+                 uv_tty_t* handle,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 uv_write_cb cb) {
   DWORD error;
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -1760,7 +1766,7 @@ int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
 
   req->queued_bytes = 0;
 
-  if (!uv_tty_write_bufs(handle, bufs, bufcnt, &error)) {
+  if (!uv_tty_write_bufs(handle, bufs, nbufs, &error)) {
     SET_REQ_SUCCESS(req);
   } else {
     SET_REQ_ERROR(req, error);

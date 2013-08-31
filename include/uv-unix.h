@@ -199,9 +199,9 @@ typedef struct {
 
 #define UV_WRITE_PRIVATE_FIELDS                                               \
   void* queue[2];                                                             \
-  int write_index;                                                            \
+  unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
-  int bufcnt;                                                                 \
+  unsigned int nbufs;                                                         \
   int error;                                                                  \
   uv_buf_t bufsml[4];                                                         \
 

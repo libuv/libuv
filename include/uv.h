@@ -654,8 +654,11 @@ UV_EXTERN int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb,
  *   uv_write(&req2, stream, b, 2);
  *
  */
-UV_EXTERN int uv_write(uv_write_t* req, uv_stream_t* handle,
-    uv_buf_t bufs[], int bufcnt, uv_write_cb cb);
+UV_EXTERN int uv_write(uv_write_t* req,
+                       uv_stream_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs,
+                       uv_write_cb cb);
 
 /*
  * Extended write function for sending handles over a pipe. The pipe must be
@@ -664,8 +667,12 @@ UV_EXTERN int uv_write(uv_write_t* req, uv_stream_t* handle,
  * (listening or connected state).  Bound sockets or pipes will be assumed to
  * be servers.
  */
-UV_EXTERN int uv_write2(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[],
-    int bufcnt, uv_stream_t* send_handle, uv_write_cb cb);
+UV_EXTERN int uv_write2(uv_write_t* req,
+                        uv_stream_t* handle,
+                        const uv_buf_t bufs[],
+                        unsigned int nbufs,
+                        uv_stream_t* send_handle,
+                        uv_write_cb cb);
 
 /* uv_write_t is a subclass of uv_req_t */
 struct uv_write_s {
