@@ -54,7 +54,7 @@ static void alloc_cb(uv_handle_t* handle,
 }
 
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(0 && "read_cb should not have been called");
 }
 

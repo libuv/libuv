@@ -69,9 +69,8 @@ static void buf_alloc(uv_handle_t* tcp, size_t size, uv_buf_t* buf) {
 }
 
 
-static void buf_free(uv_buf_t uv_buf_t) {
-  buf_t* ab = (buf_t*) (uv_buf_t.base - sizeof *ab);
-
+static void buf_free(const uv_buf_t* buf) {
+  buf_t* ab = (buf_t*) buf->base - 1;
   ab->next = buf_freelist;
   buf_freelist = ab;
 }
@@ -121,7 +120,9 @@ static void pinger_shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 
-static void pinger_read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void pinger_read_cb(uv_stream_t* tcp,
+                           ssize_t nread,
+                           const uv_buf_t* buf) {
   ssize_t i;
   pinger_t* pinger;
 
@@ -130,7 +131,7 @@ static void pinger_read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
   if (nread < 0) {
     ASSERT(nread == UV_EOF);
 
-    if (buf.base) {
+    if (buf->base) {
       buf_free(buf);
     }
 
@@ -142,7 +143,7 @@ static void pinger_read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
 
   /* Now we count the pings */
   for (i = 0; i < nread; i++) {
-    ASSERT(buf.base[i] == PING[pinger->state]);
+    ASSERT(buf->base[i] == PING[pinger->state]);
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
       pinger->pongs++;

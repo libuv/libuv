@@ -1296,9 +1296,9 @@ static void uv_pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
   uv_read_stop((uv_stream_t*) handle);
 
   if (handle->read2_cb) {
-    handle->read2_cb(handle, UV_EOF, uv_null_buf_, UV_UNKNOWN_HANDLE);
+    handle->read2_cb(handle, UV_EOF, &uv_null_buf_, UV_UNKNOWN_HANDLE);
   } else {
-    handle->read_cb((uv_stream_t*) handle, UV_EOF, uv_null_buf_);
+    handle->read_cb((uv_stream_t*) handle, UV_EOF, &uv_null_buf_);
   }
 }
 
@@ -1314,10 +1314,10 @@ static void uv_pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
   if (handle->read2_cb) {
     handle->read2_cb(handle,
                      uv_translate_sys_error(error),
-                     buf,
+                     &buf,
                      UV_UNKNOWN_HANDLE);
   } else {
-    handle->read_cb((uv_stream_t*)handle, uv_translate_sys_error(error), buf);
+    handle->read_cb((uv_stream_t*)handle, uv_translate_sys_error(error), &buf);
   }
 }
 
@@ -1432,9 +1432,9 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
       handle->alloc_cb((uv_handle_t*) handle, avail, &buf);
       if (buf.len == 0) {
         if (handle->read2_cb) {
-          handle->read2_cb(handle, UV_ENOBUFS, buf, UV_UNKNOWN_HANDLE);
+          handle->read2_cb(handle, UV_ENOBUFS, &buf, UV_UNKNOWN_HANDLE);
         } else if (handle->read_cb) {
-          handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, buf);
+          handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, &buf);
         }
         break;
       }
@@ -1451,10 +1451,10 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
           handle->remaining_ipc_rawdata_bytes =
             handle->remaining_ipc_rawdata_bytes - bytes;
           if (handle->read2_cb) {
-            handle->read2_cb(handle, bytes, buf,
+            handle->read2_cb(handle, bytes, &buf,
               handle->pending_ipc_info.socket_info ? UV_TCP : UV_UNKNOWN_HANDLE);
           } else if (handle->read_cb) {
-            handle->read_cb((uv_stream_t*)handle, bytes, buf);
+            handle->read_cb((uv_stream_t*)handle, bytes, &buf);
           }
 
           if (handle->pending_ipc_info.socket_info) {
@@ -1462,7 +1462,7 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
             handle->pending_ipc_info.socket_info = NULL;
           }
         } else {
-          handle->read_cb((uv_stream_t*)handle, bytes, buf);
+          handle->read_cb((uv_stream_t*)handle, bytes, &buf);
         }
 
         /* Read again only if bytes == buf.len */

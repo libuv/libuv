@@ -42,7 +42,7 @@ static uv_req_t* req_alloc();
 static void req_free(uv_req_t* uv_req);
 
 static void buf_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf);
-static void buf_free(uv_buf_t uv_buf_t);
+static void buf_free(const uv_buf_t* buf);
 
 static uv_loop_t* loop;
 
@@ -158,7 +158,7 @@ static void start_stats_collection(void) {
 }
 
 
-static void read_cb(uv_stream_t* stream, ssize_t bytes, uv_buf_t buf) {
+static void read_cb(uv_stream_t* stream, ssize_t bytes, const uv_buf_t* buf) {
   if (nrecv_total == 0) {
     ASSERT(start_time == 0);
     uv_update_time(loop);
@@ -347,11 +347,10 @@ static void buf_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 
-static void buf_free(uv_buf_t uv_buf_t) {
-  buf_list_t* buf = (buf_list_t*) (uv_buf_t.base - sizeof *buf);
-
-  buf->next = buf_freelist;
-  buf_freelist = buf;
+static void buf_free(const uv_buf_t* buf) {
+  buf_list_t* ab = (buf_list_t*) buf->base - 1;
+  ab->next = buf_freelist;
+  buf_freelist = ab;
 }
 
 

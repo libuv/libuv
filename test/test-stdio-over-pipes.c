@@ -95,7 +95,7 @@ static void after_write(uv_write_t* req, int status) {
 }
 
 
-static void on_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t rdbuf) {
+static void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* rdbuf) {
   uv_write_t* req;
   uv_buf_t wrbuf;
   int r;
@@ -164,12 +164,12 @@ static int after_write_called;
 static uv_pipe_t stdin_pipe;
 static uv_pipe_t stdout_pipe;
 
-static void on_pipe_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void on_pipe_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nread > 0);
-  ASSERT(memcmp("hello world\n", buf.base, nread) == 0);
+  ASSERT(memcmp("hello world\n", buf->base, nread) == 0);
   on_pipe_read_called++;
 
-  free(buf.base);
+  free(buf->base);
 
   uv_close((uv_handle_t*)&stdin_pipe, close_cb);
   uv_close((uv_handle_t*)&stdout_pipe, close_cb);
@@ -242,8 +242,7 @@ int stdio_over_pipes_helper(void) {
   uv_ref((uv_handle_t*)&stdout_pipe);
   uv_ref((uv_handle_t*)&stdin_pipe);
 
-  r = uv_read_start((uv_stream_t*)&stdin_pipe, on_read_alloc,
-    on_pipe_read);
+  r = uv_read_start((uv_stream_t*)&stdin_pipe, on_read_alloc, on_pipe_read);
   ASSERT(r == 0);
 
   uv_run(loop, UV_RUN_DEFAULT);

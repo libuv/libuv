@@ -39,7 +39,7 @@ static uv_pipe_t pipeServer;
 static uv_handle_t* server;
 
 static void after_write(uv_write_t* req, int status);
-static void after_read(uv_stream_t*, ssize_t nread, uv_buf_t buf);
+static void after_read(uv_stream_t*, ssize_t nread, const uv_buf_t* buf);
 static void on_close(uv_handle_t* peer);
 static void on_server_close(uv_handle_t* handle);
 static void on_connection(uv_stream_t*, int status);
@@ -72,7 +72,9 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 }
 
 
-static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
+static void after_read(uv_stream_t* handle,
+                       ssize_t nread,
+                       const uv_buf_t* buf) {
   int i;
   write_req_t *wr;
   uv_shutdown_t* req;
@@ -81,8 +83,8 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
     /* Error or EOF */
     ASSERT(nread == UV_EOF);
 
-    if (buf.base) {
-      free(buf.base);
+    if (buf->base) {
+      free(buf->base);
     }
 
     req = (uv_shutdown_t*) malloc(sizeof *req);
@@ -93,7 +95,7 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf.base);
+    free(buf->base);
     return;
   }
 
@@ -103,9 +105,9 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
    */
   if (!server_closed) {
     for (i = 0; i < nread; i++) {
-      if (buf.base[i] == 'Q') {
-        if (i + 1 < nread && buf.base[i + 1] == 'S') {
-          free(buf.base);
+      if (buf->base[i] == 'Q') {
+        if (i + 1 < nread && buf->base[i + 1] == 'S') {
+          free(buf->base);
           uv_close((uv_handle_t*)handle, on_close);
           return;
         } else {
@@ -118,7 +120,7 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
 
   wr = (write_req_t*) malloc(sizeof *wr);
 
-  wr->buf = uv_buf_init(buf.base, nread);
+  wr->buf = uv_buf_init(buf->base, nread);
   if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
     FATAL("uv_write failed");
   }

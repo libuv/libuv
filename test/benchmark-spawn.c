@@ -88,7 +88,7 @@ static void pipe_close_cb(uv_handle_t* pipe) {
 }
 
 
-static void on_read(uv_stream_t* pipe, ssize_t nread, uv_buf_t buf) {
+static void on_read(uv_stream_t* pipe, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
     ASSERT(pipe_open == 1);
     output_used += nread;

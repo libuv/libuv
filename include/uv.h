@@ -361,18 +361,22 @@ typedef void (*uv_alloc_cb)(uv_handle_t* handle,
  * Trying to read from the stream again is undefined.
  *
  * The callee is responsible for freeing the buffer, libuv does not reuse it.
- * The buffer may be a null buffer (where buf.base=NULL and buf.len=0) on EOF
- * or error.
+ * The buffer may be a null buffer (where buf->base=NULL and buf->len=0) on
+ * EOF or error.
  */
-typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
+typedef void (*uv_read_cb)(uv_stream_t* stream,
+                           ssize_t nread,
+                           const uv_buf_t* buf);
 
 /*
  * Just like the uv_read_cb except that if the pending parameter is true
  * then you can use uv_accept() to pull the new handle into the process.
  * If no handle is pending then pending will be UV_UNKNOWN_HANDLE.
  */
-typedef void (*uv_read2_cb)(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
-    uv_handle_type pending);
+typedef void (*uv_read2_cb)(uv_pipe_t* pipe,
+                            ssize_t nread,
+                            const uv_buf_t* buf,
+                            uv_handle_type pending);
 
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);

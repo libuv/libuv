@@ -34,7 +34,7 @@ static uv_tcp_t tcp_server;
 
 static void connection_cb(uv_stream_t* stream, int status);
 static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-static void read_cb(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
+static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 static void shutdown_cb(uv_shutdown_t* req, int status);
 static void close_cb(uv_handle_t* handle);
 
@@ -69,7 +69,7 @@ static void alloc_cb(uv_handle_t* handle,
 }
 
 
-static void read_cb(uv_stream_t* stream, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   conn_rec* conn;
   int r;
 

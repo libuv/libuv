@@ -938,7 +938,7 @@ static uv_handle_type uv__handle_type(int fd) {
 
 static void uv__stream_read_cb(uv_stream_t* stream,
                                int status,
-                               uv_buf_t buf,
+                               const uv_buf_t* buf,
                                uv_handle_type type) {
   if (stream->read_cb != NULL)
     stream->read_cb(stream, status, buf);
@@ -947,7 +947,7 @@ static void uv__stream_read_cb(uv_stream_t* stream,
 }
 
 
-static void uv__stream_eof(uv_stream_t* stream, uv_buf_t buf) {
+static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags |= UV_STREAM_READ_EOF;
   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
   if (!uv__io_active(&stream->io_watcher, UV__POLLOUT))
@@ -982,7 +982,7 @@ static void uv__read(uv_stream_t* stream) {
     stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
     if (buf.len == 0) {
       /* User indicates it can't or won't handle the read. */
-      uv__stream_read_cb(stream, UV_ENOBUFS, buf, UV_UNKNOWN_HANDLE);
+      uv__stream_read_cb(stream, UV_ENOBUFS, &buf, UV_UNKNOWN_HANDLE);
       return;
     }
 
@@ -1019,23 +1019,23 @@ static void uv__read(uv_stream_t* stream) {
         if (stream->flags & UV_STREAM_READING) {
           uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
         }
-        uv__stream_read_cb(stream, 0, buf, UV_UNKNOWN_HANDLE);
+        uv__stream_read_cb(stream, 0, &buf, UV_UNKNOWN_HANDLE);
       } else {
         /* Error. User should call uv_close(). */
-        uv__stream_read_cb(stream, -errno, buf, UV_UNKNOWN_HANDLE);
+        uv__stream_read_cb(stream, -errno, &buf, UV_UNKNOWN_HANDLE);
         assert(!uv__io_active(&stream->io_watcher, UV__POLLIN) &&
                "stream->read_cb(status=-1) did not call uv_close()");
       }
       return;
     } else if (nread == 0) {
-      uv__stream_eof(stream, buf);
+      uv__stream_eof(stream, &buf);
       return;
     } else {
       /* Successful read */
       ssize_t buflen = buf.len;
 
       if (stream->read_cb) {
-        stream->read_cb(stream, nread, buf);
+        stream->read_cb(stream, nread, &buf);
       } else {
         assert(stream->read2_cb);
 
@@ -1070,10 +1070,12 @@ static void uv__read(uv_stream_t* stream) {
 
 
         if (stream->accepted_fd >= 0) {
-          stream->read2_cb((uv_pipe_t*)stream, nread, buf,
-              uv__handle_type(stream->accepted_fd));
+          stream->read2_cb((uv_pipe_t*) stream,
+                           nread,
+                           &buf,
+                           uv__handle_type(stream->accepted_fd));
         } else {
-          stream->read2_cb((uv_pipe_t*)stream, nread, buf, UV_UNKNOWN_HANDLE);
+          stream->read2_cb((uv_pipe_t*) stream, nread, &buf, UV_UNKNOWN_HANDLE);
         }
       }
 
@@ -1147,7 +1149,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       (stream->flags & UV_STREAM_READ_PARTIAL) &&
       !(stream->flags & UV_STREAM_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
-    uv__stream_eof(stream, buf);
+    uv__stream_eof(stream, &buf);
   }
 
   if (uv__stream_fd(stream) == -1)

@@ -62,7 +62,7 @@ static void alloc_cb(uv_handle_t* handle,
 
 static void recv_cb(uv_pipe_t* handle,
                     ssize_t nread,
-                    uv_buf_t buf,
+                    const uv_buf_t* buf,
                     uv_handle_type pending) {
   int r;
 
@@ -164,15 +164,16 @@ static void write2_cb(uv_write_t* req, int status) {
 
 static void read2_cb(uv_pipe_t* handle,
                      ssize_t nread,
-                     uv_buf_t buf,
+                     const uv_buf_t* rdbuf,
                      uv_handle_type pending) {
+  uv_buf_t wrbuf;
   int r;
 
   ASSERT(pending == UV_NAMED_PIPE || pending == UV_TCP);
   ASSERT(handle == &ctx.channel);
   ASSERT(nread >= 0);
 
-  buf = uv_buf_init(".", 1);
+  wrbuf = uv_buf_init(".", 1);
 
   if (pending == UV_NAMED_PIPE)
     r = uv_pipe_init(ctx.channel.loop, &ctx.recv.pipe, 0);
@@ -187,7 +188,8 @@ static void read2_cb(uv_pipe_t* handle,
 
   r = uv_write2(&ctx.write_req,
                 (uv_stream_t*)&ctx.channel,
-                &buf, 1,
+                &wrbuf,
+                1,
                 &ctx.recv.stream,
                 write2_cb);
   ASSERT(r == 0);

@@ -60,12 +60,14 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 }
 
 
-static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
+static void after_read(uv_stream_t* handle,
+                       ssize_t nread,
+                       const uv_buf_t* buf) {
   uv_shutdown_t* req;
   int r;
 
-  if (buf.base) {
-    free(buf.base);
+  if (buf->base) {
+    free(buf->base);
   }
 
   req = (uv_shutdown_t*) malloc(sizeof *req);

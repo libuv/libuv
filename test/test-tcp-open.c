@@ -96,12 +96,12 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(tcp != NULL);
 
   if (nread >= 0) {
     ASSERT(nread == 4);
-    ASSERT(memcmp("PING", buf.base, nread) == 0);
+    ASSERT(memcmp("PING", buf->base, nread) == 0);
   }
   else {
     ASSERT(nread == UV_EOF);

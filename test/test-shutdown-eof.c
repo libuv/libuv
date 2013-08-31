@@ -45,25 +45,25 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 
-static void read_cb(uv_stream_t* t, ssize_t nread, uv_buf_t buf) {
+static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   ASSERT((uv_tcp_t*)t == &tcp);
 
   if (nread == 0) {
-    free(buf.base);
+    free(buf->base);
     return;
   }
 
   if (!got_q) {
     ASSERT(nread == 1);
     ASSERT(!got_eof);
-    ASSERT(buf.base[0] == 'Q');
-    free(buf.base);
+    ASSERT(buf->base[0] == 'Q');
+    free(buf->base);
     got_q = 1;
     puts("got Q");
   } else {
     ASSERT(nread == UV_EOF);
-    if (buf.base) {
-      free(buf.base);
+    if (buf->base) {
+      free(buf->base);
     }
     got_eof = 1;
     puts("got EOF");

@@ -135,20 +135,22 @@ static void make_many_connections(void) {
 }
 
 
-static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
-    uv_handle_type pending) {
+static void on_read(uv_pipe_t* pipe,
+                    ssize_t nread,
+                    const uv_buf_t* buf,
+                    uv_handle_type pending) {
   int r;
   uv_buf_t outbuf;
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf.base);
+    free(buf->base);
     return;
   }
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf.base);
+      free(buf->base);
       return;
     }
 
@@ -159,7 +161,7 @@ static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
   fprintf(stderr, "got %d bytes\n", (int)nread);
 
   if (!tcp_server_listening) {
-    ASSERT(nread > 0 && buf.base && pending != UV_UNKNOWN_HANDLE);
+    ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_HANDLE);
     read2_cb_called++;
 
     /* Accept the pending TCP server, and start listening on it. */
@@ -176,7 +178,7 @@ static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
     tcp_server_listening = 1;
 
     /* Make sure that the expected data is correctly multiplexed. */
-    ASSERT(memcmp("hello\n", buf.base, nread) == 0);
+    ASSERT(memcmp("hello\n", buf->base, nread) == 0);
 
     outbuf = uv_buf_init("world\n", 6);
     r = uv_write(&write_req, (uv_stream_t*)pipe, &outbuf, 1, NULL);
@@ -184,14 +186,14 @@ static void on_read(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
 
     /* Create a bunch of connections to get both servers to accept. */
     make_many_connections();
-  } else if (memcmp("accepted_connection\n", buf.base, nread) == 0) {
+  } else if (memcmp("accepted_connection\n", buf->base, nread) == 0) {
     /* Remote server has accepted a connection.  Close the channel. */
     ASSERT(pending == UV_UNKNOWN_HANDLE);
     remote_conn_accepted = 1;
     uv_close((uv_handle_t*)&channel, NULL);
   }
 
-  free(buf.base);
+  free(buf->base);
 }
 
 
@@ -249,11 +251,11 @@ static void on_read_alloc(uv_handle_t* handle,
 }
 
 
-static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nread > 0);
-  ASSERT(memcmp("hello again\n", buf.base, nread) == 0);
+  ASSERT(memcmp("hello again\n", buf->base, nread) == 0);
   ASSERT(tcp == (uv_stream_t*)&tcp_connection);
-  free(buf.base);
+  free(buf->base);
 
   tcp_read_cb_called++;
 
@@ -262,20 +264,22 @@ static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
 }
 
 
-static void on_read_connection(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
-    uv_handle_type pending) {
+static void on_read_connection(uv_pipe_t* pipe,
+                               ssize_t nread,
+                               const uv_buf_t* buf,
+                               uv_handle_type pending) {
   int r;
   uv_buf_t outbuf;
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf.base);
+    free(buf->base);
     return;
   }
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf.base);
+      free(buf->base);
       return;
     }
 
@@ -285,7 +289,7 @@ static void on_read_connection(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
 
   fprintf(stderr, "got %d bytes\n", (int)nread);
 
-  ASSERT(nread > 0 && buf.base && pending != UV_UNKNOWN_HANDLE);
+  ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_HANDLE);
   read2_cb_called++;
 
   /* Accept the pending TCP connection */
@@ -297,7 +301,7 @@ static void on_read_connection(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
   ASSERT(r == 0);
 
   /* Make sure that the expected data is correctly multiplexed. */
-  ASSERT(memcmp("hello\n", buf.base, nread) == 0);
+  ASSERT(memcmp("hello\n", buf->base, nread) == 0);
 
   /* Write/read to/from the connection */
   outbuf = uv_buf_init("world\n", 6);
@@ -308,7 +312,7 @@ static void on_read_connection(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
   r = uv_read_start((uv_stream_t*)&tcp_connection, on_read_alloc, on_tcp_read);
   ASSERT(r == 0);
 
-  free(buf.base);
+  free(buf->base);
 }
 
 
@@ -430,13 +434,15 @@ static void tcp_connection_write_cb(uv_write_t* req, int status) {
 }
 
 
-static void on_tcp_child_process_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
+static void on_tcp_child_process_read(uv_stream_t* tcp,
+                                      ssize_t nread,
+                                      const uv_buf_t* buf) {
   uv_buf_t outbuf;
   int r;
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf.base);
+      free(buf->base);
       return;
     }
 
@@ -445,9 +451,9 @@ static void on_tcp_child_process_read(uv_stream_t* tcp, ssize_t nread, uv_buf_t 
   }
 
   ASSERT(nread > 0);
-  ASSERT(memcmp("world\n", buf.base, nread) == 0);
+  ASSERT(memcmp("world\n", buf->base, nread) == 0);
   on_pipe_read_called++;
-  free(buf.base);
+  free(buf->base);
 
   /* Write to the socket */
   outbuf = uv_buf_init("hello again\n", 12);
@@ -520,7 +526,9 @@ static void ipc_on_connection_tcp_conn(uv_stream_t* server, int status) {
     (uv_stream_t*)conn, NULL);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)conn, on_read_alloc, on_tcp_child_process_read);
+  r = uv_read_start((uv_stream_t*) conn,
+                    on_read_alloc,
+                    on_tcp_child_process_read);
   ASSERT(r == 0);
 
   uv_close((uv_handle_t*)conn, close_cb);
