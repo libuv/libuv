@@ -234,7 +234,7 @@ void spawn_helper(uv_pipe_t* channel,
   options.stdio[0].data.stream = (uv_stream_t*)channel;
   options.stdio_count = 1;
 
-  r = uv_spawn(uv_default_loop(), process, options);
+  r = uv_spawn(uv_default_loop(), process, &options);
   ASSERT(r == 0);
 }
 

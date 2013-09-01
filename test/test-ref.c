@@ -403,7 +403,7 @@ TEST_IMPL(process_ref) {
   options.args = argv;
   options.exit_cb = NULL;
 
-  r = uv_spawn(uv_default_loop(), &h, options);
+  r = uv_spawn(uv_default_loop(), &h, &options);
   ASSERT(r == 0);
 
   uv_unref((uv_handle_t*)&h);

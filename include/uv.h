@@ -1502,8 +1502,9 @@ struct uv_process_s {
 };
 
 /* Initializes uv_process_t and starts the process. */
-UV_EXTERN int uv_spawn(uv_loop_t*, uv_process_t*,
-    uv_process_options_t options);
+UV_EXTERN int uv_spawn(uv_loop_t* loop,
+                       uv_process_t* handle,
+                       const uv_process_options_t* options);
 
 
 /*

@@ -136,7 +136,7 @@ TEST_IMPL(stdio_over_pipes) {
   options.stdio[1].data.stream = (uv_stream_t*)&out;
   options.stdio_count = 2;
 
-  r = uv_spawn(loop, &process, options);
+  r = uv_spawn(loop, &process, &options);
   ASSERT(r == 0);
 
   r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);

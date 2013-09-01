@@ -311,8 +311,9 @@ void uv_fatal_error(const int errorno, const char* syscall);
 /*
  * Process stdio handles.
  */
-int uv__stdio_create(uv_loop_t* loop, uv_process_options_t* options,
-    BYTE** buffer_ptr);
+int uv__stdio_create(uv_loop_t* loop,
+                     const uv_process_options_t* options,
+                     BYTE** buffer_ptr);
 void uv__stdio_destroy(BYTE* buffer);
 void uv__stdio_noinherit(BYTE* buffer);
 int uv__stdio_verify(BYTE* buffer, WORD size);

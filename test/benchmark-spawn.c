@@ -122,7 +122,7 @@ static void spawn(void) {
   options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
   options.stdio[1].data.stream = (uv_stream_t*)&out;
 
-  r = uv_spawn(loop, &process, options);
+  r = uv_spawn(loop, &process, &options);
   ASSERT(r == 0);
 
   process_open = 1;
