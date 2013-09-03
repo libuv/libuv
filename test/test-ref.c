@@ -258,7 +258,10 @@ TEST_IMPL(tcp_ref3) {
   uv_tcp_t h;
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_tcp_init(uv_default_loop(), &h);
-  uv_tcp_connect(&connect_req, &h, &addr, connect_and_shutdown);
+  uv_tcp_connect(&connect_req,
+                 &h,
+                 (const struct sockaddr*) &addr,
+                 connect_and_shutdown);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(connect_cb_called == 1);
@@ -274,7 +277,10 @@ TEST_IMPL(tcp_ref4) {
   uv_tcp_t h;
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_tcp_init(uv_default_loop(), &h);
-  uv_tcp_connect(&connect_req, &h, &addr, connect_and_write);
+  uv_tcp_connect(&connect_req,
+                 &h,
+                 (const struct sockaddr*) &addr,
+                 connect_and_write);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(connect_cb_called == 1);

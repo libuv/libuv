@@ -103,7 +103,10 @@ static void connection_fail(uv_connect_cb connect_cb) {
   /* so these handles can be pre-initialized. */
   ASSERT(0 == uv_tcp_bind(&tcp, (const struct sockaddr*) &client_addr));
 
-  r = uv_tcp_connect(&req, &tcp, &server_addr, connect_cb);
+  r = uv_tcp_connect(&req,
+                     &tcp,
+                     (const struct sockaddr*) &server_addr,
+                     connect_cb);
   ASSERT(!r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -219,7 +219,10 @@ static void tcp_connector(void) {
   tcp.data = &connect_req;
   ASSERT(!r);
 
-  r = uv_tcp_connect(&connect_req, &tcp, &server_addr, on_connect);
+  r = uv_tcp_connect(&connect_req,
+                     &tcp,
+                     (const struct sockaddr*) &server_addr,
+                     on_connect);
   ASSERT(!r);
 
   /* Fetch the actual port used by the connecting socket. */

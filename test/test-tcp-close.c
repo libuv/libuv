@@ -114,7 +114,10 @@ TEST_IMPL(tcp_close) {
   r = uv_tcp_init(loop, &tcp_handle);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req, &tcp_handle, &addr, connect_cb);
+  r = uv_tcp_connect(&connect_req,
+                     &tcp_handle,
+                     (const struct sockaddr*) &addr,
+                     connect_cb);
   ASSERT(r == 0);
 
   ASSERT(write_cb_called == 0);

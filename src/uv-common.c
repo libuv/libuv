@@ -236,31 +236,21 @@ int uv_udp_bind6(uv_udp_t* handle,
 
 int uv_tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
-                   const struct sockaddr_in* addr,
+                   const struct sockaddr* addr,
                    uv_connect_cb cb) {
-  if (handle->type == UV_TCP && addr->sin_family == AF_INET) {
-    return uv__tcp_connect(req,
-                           handle,
-                           (const struct sockaddr*) addr,
-                           sizeof(*addr),
-                           cb);
-  }
-  return UV_EINVAL;
-}
+  unsigned int addrlen;
 
+  if (handle->type != UV_TCP)
+    return UV_EINVAL;
 
-int uv_tcp_connect6(uv_connect_t* req,
-                    uv_tcp_t* handle,
-                    const struct sockaddr_in6* addr,
-                    uv_connect_cb cb) {
-  if (handle->type == UV_TCP && addr->sin6_family == AF_INET6) {
-    return uv__tcp_connect(req,
-                           handle,
-                           (const struct sockaddr*) addr,
-                           sizeof(*addr),
-                           cb);
-  }
-  return UV_EINVAL;
+  if (addr->sa_family == AF_INET)
+    addrlen = sizeof(struct sockaddr_in);
+  else if (addr->sa_family == AF_INET6)
+    addrlen = sizeof(struct sockaddr_in6);
+  else
+    return UV_EINVAL;
+
+  return uv__tcp_connect(req, handle, addr, addrlen, cb);
 }
 
 

@@ -778,20 +778,17 @@ UV_EXTERN int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
     int* namelen);
 
 /*
- * uv_tcp_connect, uv_tcp_connect6
- * These functions establish IPv4 and IPv6 TCP connections. Provide an
- * initialized TCP handle and an uninitialized uv_connect_t*. The callback
- * will be made when the connection is established.
+ * Establish an IPv4 or IPv6 TCP connection.  Provide an initialized TCP handle
+ * and an uninitialized uv_connect_t*.  `addr` should point to an initialized
+ * struct sockaddr_in or struct sockaddr_in6.
+ *
+ * The callback is made when the connection has been established or when a
+ * connection error happened.
  */
 UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
-                             const struct sockaddr_in* addr,
+                             const struct sockaddr* addr,
                              uv_connect_cb cb);
-
-UV_EXTERN int uv_tcp_connect6(uv_connect_t* req,
-                              uv_tcp_t* handle,
-                              const struct sockaddr_in6* addr,
-                              uv_connect_cb cb);
 
 /* uv_connect_t is a subclass of uv_req_t */
 struct uv_connect_s {

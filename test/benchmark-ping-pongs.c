@@ -195,7 +195,7 @@ static void pinger_new(void) {
 
   r = uv_tcp_connect(&pinger->connect_req,
                      &pinger->tcp,
-                     &server_addr,
+                     (const struct sockaddr*) &server_addr,
                      pinger_connect_cb);
   ASSERT(!r);
 }
