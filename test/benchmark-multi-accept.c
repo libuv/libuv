@@ -209,7 +209,8 @@ static void send_listen_handles(uv_handle_type type,
 
   if (type == UV_TCP) {
     ASSERT(0 == uv_tcp_init(loop, (uv_tcp_t*) &ctx.server_handle));
-    ASSERT(0 == uv_tcp_bind((uv_tcp_t*) &ctx.server_handle, &listen_addr));
+    ASSERT(0 == uv_tcp_bind((uv_tcp_t*) &ctx.server_handle,
+                            (const struct sockaddr*) &listen_addr));
   }
   else
     ASSERT(0);

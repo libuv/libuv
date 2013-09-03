@@ -236,7 +236,7 @@ static int tcp4_echo_start(int port) {
     return 1;
   }
 
-  r = uv_tcp_bind(&tcpServer, &addr);
+  r = uv_tcp_bind(&tcpServer, (const struct sockaddr*) &addr);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Bind error\n");
@@ -271,7 +271,7 @@ static int tcp6_echo_start(int port) {
   }
 
   /* IPv6 is optional as not all platforms support it */
-  r = uv_tcp_bind6(&tcpServer, &addr6);
+  r = uv_tcp_bind(&tcpServer, (const struct sockaddr*) &addr6);
   if (r) {
     /* show message but return OK */
     fprintf(stderr, "IPv6 not supported\n");

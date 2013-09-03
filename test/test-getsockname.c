@@ -180,7 +180,7 @@ static int tcp_listener(void) {
     return 1;
   }
 
-  r = uv_tcp_bind(&tcpServer, &addr);
+  r = uv_tcp_bind(&tcpServer, (const struct sockaddr*) &addr);
   if (r) {
     fprintf(stderr, "Bind error\n");
     return 1;

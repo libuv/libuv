@@ -191,7 +191,7 @@ static void pinger_new(void) {
 
   pinger->tcp.data = pinger;
 
-  uv_tcp_bind(&pinger->tcp, &client_addr);
+  ASSERT(0 == uv_tcp_bind(&pinger->tcp, (const struct sockaddr*) &client_addr));
 
   r = uv_tcp_connect(&pinger->connect_req,
                      &pinger->tcp,

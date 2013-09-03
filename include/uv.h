@@ -766,8 +766,11 @@ UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
  */
 UV_EXTERN int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable);
 
-UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr_in* addr);
-UV_EXTERN int uv_tcp_bind6(uv_tcp_t* handle, const struct sockaddr_in6* addr);
+/*
+ * Bind the handle to an address and port.  `addr` should point to an
+ * initialized struct sockaddr_in or struct sockaddr_in6.
+ */
+UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr);
 
 UV_EXTERN int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
     int* namelen);
