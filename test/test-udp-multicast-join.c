@@ -111,7 +111,7 @@ TEST_IMPL(udp_multicast_join) {
   ASSERT(r == 0);
 
   /* bind to the desired port */
-  r = uv_udp_bind(&client, &addr, 0);
+  r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
   /* join the multicast channel */

@@ -282,7 +282,7 @@ static int udp_listener(void) {
     return 1;
   }
 
-  r = uv_udp_bind(&udpServer, &addr, 0);
+  r = uv_udp_bind(&udpServer, (const struct sockaddr*) &addr, 0);
   if (r) {
     fprintf(stderr, "Bind error\n");
     return 1;

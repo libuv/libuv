@@ -804,7 +804,7 @@ struct uv_connect_s {
  */
 
 enum uv_udp_flags {
-  /* Disables dual stack mode. Used with uv_udp_bind6(). */
+  /* Disables dual stack mode. */
   UV_UDP_IPV6ONLY = 1,
   /*
    * Indicates message was truncated because read buffer was too small. The
@@ -883,7 +883,8 @@ UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
  *
  * Arguments:
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
- *  addr      struct sockaddr_in with the address and port to bind to.
+ *  addr      struct sockaddr_in or struct sockaddr_in6 with the address and
+ *            port to bind to.
  *  flags     Unused.
  *
  * Returns:
@@ -898,23 +899,8 @@ UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
  * opt-in mechanism in future versions of libuv.
  */
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
-                          const struct sockaddr_in* addr,
-                          unsigned flags);
-
-/*
- * Bind to a IPv6 address and port.
- *
- * Arguments:
- *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
- *  addr      struct sockaddr_in with the address and port to bind to.
- *  flags     Should be 0 or UV_UDP_IPV6ONLY.
- *
- * Returns:
- *  0 on success, or an error code < 0 on failure.
- */
-UV_EXTERN int uv_udp_bind6(uv_udp_t* handle,
-                           const struct sockaddr_in6* addr,
-                           unsigned flags);
+                          const struct sockaddr* addr,
+                          unsigned int flags);
 
 UV_EXTERN int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
     int* namelen);

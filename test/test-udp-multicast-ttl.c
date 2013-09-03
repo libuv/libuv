@@ -63,7 +63,7 @@ TEST_IMPL(udp_multicast_ttl) {
   ASSERT(r == 0);
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", 0, &addr));
-  r = uv_udp_bind(&server, &addr, 0);
+  r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
   r = uv_udp_set_multicast_ttl(&server, 32);
