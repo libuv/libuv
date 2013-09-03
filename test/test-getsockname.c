@@ -313,7 +313,12 @@ static void udp_sender(void) {
   buf = uv_buf_init("PING", 4);
   ASSERT(0 == uv_ip4_addr("127.0.0.1", server_port, &server_addr));
 
-  r = uv_udp_send(&send_req, &udp, &buf, 1, &server_addr, udp_send);
+  r = uv_udp_send(&send_req,
+                  &udp,
+                  &buf,
+                  1,
+                  (const struct sockaddr*) &server_addr,
+                  udp_send);
   ASSERT(!r);
 }
 

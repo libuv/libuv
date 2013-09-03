@@ -124,7 +124,12 @@ TEST_IMPL(udp_multicast_join) {
   buf = uv_buf_init("PING", 4);
 
   /* server sends "PING" */
-  r = uv_udp_send(&req, &server, &buf, 1, &addr, sv_send_cb);
+  r = uv_udp_send(&req,
+                  &server,
+                  &buf,
+                  1,
+                  (const struct sockaddr*) &addr,
+                  sv_send_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);

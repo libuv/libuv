@@ -195,7 +195,6 @@ static void on_recv(uv_udp_t* handle,
                     unsigned flags) {
   uv_udp_send_t* req;
   uv_buf_t sndbuf;
-  int r;
 
   ASSERT(nread > 0);
   ASSERT(addr->sa_family == AF_INET);
@@ -204,13 +203,7 @@ static void on_recv(uv_udp_t* handle,
   ASSERT(req != NULL);
 
   sndbuf = *rcvbuf;
-  r = uv_udp_send(req,
-                  handle,
-                  &sndbuf,
-                  1,
-                  (const struct sockaddr_in*) addr,
-                  on_send);
-  ASSERT(r == 0);
+  ASSERT(0 == uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
 }
 
 
