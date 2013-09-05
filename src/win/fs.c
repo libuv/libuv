@@ -400,7 +400,7 @@ void fs__open(uv_fs_t* req) {
   DWORD disposition;
   DWORD attributes = 0;
   HANDLE file;
-  int result, current_umask;
+  int fd, current_umask;
   int flags = req->file_flags;
 
   /* Obtain the active umask. umask() never fails and returns the previous */
@@ -512,8 +512,23 @@ void fs__open(uv_fs_t* req) {
     }
     return;
   }
-  result = _open_osfhandle((intptr_t) file, flags);
-  SET_REQ_RESULT(req, result);
+
+  fd = _open_osfhandle((intptr_t) file, flags);
+  if (fd < 0) {
+    /* The only known failure mode for _open_osfhandle() is EMFILE, in which
+     * case GetLastError() will return zero. However we'll try to handle other
+     * errors as well, should they ever occur.
+     */
+    if (errno == EMFILE)
+      SET_REQ_UV_ERROR(req, UV_EMFILE, ERROR_TOO_MANY_OPEN_FILES);
+    else if (GetLastError() != ERROR_SUCCESS)
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+    else
+      SET_REQ_WIN32_ERROR(req, UV_UNKNOWN);
+    return;
+  }
+
+  SET_REQ_RESULT(req, fd);
   return;
 
  einval:
