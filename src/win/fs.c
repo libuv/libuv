@@ -411,8 +411,7 @@ void fs__open(uv_fs_t* req) {
     access = FILE_GENERIC_READ | FILE_GENERIC_WRITE;
     break;
   default:
-    result  = -1;
-    goto end;
+    goto einval;
   }
 
   if (flags & _O_APPEND) {
@@ -449,8 +448,7 @@ void fs__open(uv_fs_t* req) {
     disposition = CREATE_ALWAYS;
     break;
   default:
-    result = -1;
-    goto end;
+    goto einval;
   }
 
   attributes |= FILE_ATTRIBUTE_NORMAL;
@@ -479,8 +477,7 @@ void fs__open(uv_fs_t* req) {
     attributes |= FILE_FLAG_RANDOM_ACCESS;
     break;
   default:
-    result = -1;
-    goto end;
+    goto einval;
   }
 
   /* Setting this flag makes it possible to open a directory. */
@@ -506,8 +503,11 @@ void fs__open(uv_fs_t* req) {
     return;
   }
   result = _open_osfhandle((intptr_t) file, flags);
-end:
   SET_REQ_RESULT(req, result);
+  return;
+
+ einval:
+  SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
 }
 
 void fs__close(uv_fs_t* req) {
