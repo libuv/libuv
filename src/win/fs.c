@@ -41,33 +41,41 @@
 
 
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
-  if (!QueueUserWorkItem(&uv_fs_thread_proc,                                \
-                         req,                                               \
-                         WT_EXECUTEDEFAULT)) {                              \
-    uv__set_sys_error((loop), GetLastError());                              \
-    return -1;                                                              \
-  }                                                                         \
-  uv__req_register(loop, req);
+  do {                                                                      \
+    if (!QueueUserWorkItem(&uv_fs_thread_proc,                              \
+                           req,                                             \
+                           WT_EXECUTEDEFAULT)) {                            \
+      uv__set_sys_error((loop), GetLastError());                            \
+      return -1;                                                            \
+    }                                                                       \
+    uv__req_register(loop, req);                                            \
+  } while (0)
 
 #define SET_UV_LAST_ERROR_FROM_REQ(req)                                     \
-  uv__set_error(req->loop, req->errorno, req->sys_errno_);
+  uv__set_error(req->loop, req->errorno, req->sys_errno_)
 
 #define SET_REQ_RESULT(req, result_value)                                   \
-  req->result = (result_value);                                             \
-  if (req->result == -1) {                                                  \
-    req->sys_errno_ = _doserrno;                                            \
-    req->errorno = uv_translate_sys_error(req->sys_errno_);                 \
-  }
+  do {                                                                      \
+    req->result = (result_value);                                           \
+    if (req->result == -1) {                                                \
+      req->sys_errno_ = _doserrno;                                          \
+      req->errorno = uv_translate_sys_error(req->sys_errno_);               \
+    }                                                                       \
+  } while (0)
 
 #define SET_REQ_WIN32_ERROR(req, sys_errno)                                 \
-  req->result = -1;                                                         \
-  req->sys_errno_ = (sys_errno);                                            \
-  req->errorno = uv_translate_sys_error(req->sys_errno_);
+  do {                                                                      \
+    req->result = -1;                                                       \
+    req->sys_errno_ = (sys_errno);                                          \
+    req->errorno = uv_translate_sys_error(req->sys_errno_);                 \
+  } while (0)
 
 #define SET_REQ_UV_ERROR(req, uv_errno, sys_errno)                          \
-  req->result = -1;                                                         \
-  req->sys_errno_ = (sys_errno);                                            \
-  req->errorno = (uv_errno);
+  do {                                                                      \
+    req->result = -1;                                                       \
+    req->sys_errno_ = (sys_errno);                                          \
+    req->errorno = (uv_errno);                                              \
+  } while (0)
 
 #define VERIFY_FD(fd, req)                                                  \
   if (fd == -1) {                                                           \
@@ -78,7 +86,7 @@
   }
 
 #define FILETIME_TO_TIME_T(filetime)                                        \
-   ((*((uint64_t*) &(filetime)) - 116444736000000000ULL) / 10000000ULL);
+   ((*((uint64_t*) &(filetime)) - 116444736000000000ULL) / 10000000ULL)
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
@@ -511,6 +519,7 @@ void fs__open(uv_fs_t* req) {
 end:
   SET_REQ_RESULT(req, result);
 }
+
 
 void fs__close(uv_fs_t* req) {
   int fd = req->fd;
