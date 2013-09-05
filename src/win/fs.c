@@ -42,27 +42,35 @@
 
 
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
-  if (!QueueUserWorkItem(&uv_fs_thread_proc,                                \
-                         req,                                               \
-                         WT_EXECUTEDEFAULT)) {                              \
-    return uv_translate_sys_error(GetLastError());                          \
-  }                                                                         \
-  uv__req_register(loop, req);
+  do {                                                                      \
+    if (!QueueUserWorkItem(&uv_fs_thread_proc,                              \
+                           req,                                             \
+                           WT_EXECUTEDEFAULT)) {                            \
+      return uv_translate_sys_error(GetLastError());                        \
+    }                                                                       \
+    uv__req_register(loop, req);                                            \
+  } while (0)
 
 #define SET_REQ_RESULT(req, result_value)                                   \
-  req->result = (result_value);                                             \
-  if (req->result == -1) {                                                  \
-    req->sys_errno_ = _doserrno;                                            \
-    req->result = uv_translate_sys_error(req->sys_errno_);                  \
-  }
+  do {                                                                      \
+    req->result = (result_value);                                           \
+    if (req->result == -1) {                                                \
+      req->sys_errno_ = _doserrno;                                          \
+      req->result = uv_translate_sys_error(req->sys_errno_);                \
+    }                                                                       \
+  } while (0)
 
 #define SET_REQ_WIN32_ERROR(req, sys_errno)                                 \
-  req->sys_errno_ = (sys_errno);                                            \
-  req->result = uv_translate_sys_error(req->sys_errno_);                    \
+  do {                                                                      \
+    req->sys_errno_ = (sys_errno);                                          \
+    req->result = uv_translate_sys_error(req->sys_errno_);                  \
+  } while (0)
 
 #define SET_REQ_UV_ERROR(req, uv_errno, sys_errno)                          \
-  req->result = (uv_errno);                                                 \
-  req->sys_errno_ = (sys_errno);                                            \
+  do {                                                                      \
+    req->result = (uv_errno);                                               \
+    req->sys_errno_ = (sys_errno);                                          \
+  } while (0)
 
 #define VERIFY_FD(fd, req)                                                  \
   if (fd == -1) {                                                           \
@@ -75,10 +83,10 @@
    (*((uint64_t*) &(filetime)) - 116444736000000000ULL)
 
 #define FILETIME_TO_TIME_T(filetime)                                        \
-   (FILETIME_TO_UINT(filetime) / 10000000ULL);
+   (FILETIME_TO_UINT(filetime) / 10000000ULL)
 
 #define FILETIME_TO_TIME_NS(filetime, secs)                                 \
-   ((FILETIME_TO_UINT(filetime) - (secs * 10000000ULL)) * 100);
+   ((FILETIME_TO_UINT(filetime) - (secs * 10000000ULL)) * 100)
 
 #define FILETIME_TO_TIMESPEC(ts, filetime)                                  \
    do {                                                                     \
