@@ -769,6 +769,12 @@ UV_EXTERN int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable);
 /*
  * Bind the handle to an address and port.  `addr` should point to an
  * initialized struct sockaddr_in or struct sockaddr_in6.
+ *
+ * When the port is already taken, you can expect to see an UV_EADDRINUSE
+ * error from either uv_tcp_bind(), uv_listen() or uv_tcp_connect().
+ *
+ * That is, a successful call to uv_tcp_bind() does not guarantee that
+ * the call to uv_listen() or uv_tcp_connect() will succeed as well.
  */
 UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle, const struct sockaddr* addr);
 
