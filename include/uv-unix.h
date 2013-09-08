@@ -59,9 +59,6 @@
 # define UV_IO_PRIVATE_PLATFORM_FIELDS /* empty */
 #endif
 
-#define UV_IO_PRIVATE_FIELDS                                                  \
-  UV_IO_PRIVATE_PLATFORM_FIELDS                                               \
-
 struct uv__io_s;
 struct uv__async;
 struct uv_loop_s;
@@ -78,7 +75,7 @@ struct uv__io_s {
   unsigned int pevents; /* Pending event mask i.e. mask at next tick. */
   unsigned int events;  /* Current event mask. */
   int fd;
-  UV_IO_PRIVATE_FIELDS
+  UV_IO_PRIVATE_PLATFORM_FIELDS
 };
 
 typedef void (*uv__async_cb)(struct uv_loop_s* loop,
