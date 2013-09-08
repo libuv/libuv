@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #include "uv-errno.h"
+#include <stddef.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "stdint-msvc2008.h"
@@ -53,17 +54,10 @@ extern "C" {
 # include <stdint.h>
 #endif
 
-#include <sys/types.h> /* size_t */
-
-#if defined(__SVR4) && !defined(__unix__)
-# define __unix__
-#endif
-
-#if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(_AIX)
-# include "uv-unix.h"
-#else
+#if defined(_WIN32)
 # include "uv-win.h"
+#else
+# include "uv-unix.h"
 #endif
 
 /* Expand this list if necessary. */
