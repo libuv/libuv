@@ -304,7 +304,7 @@ UV_EXTERN void uv_update_time(uv_loop_t*);
  * Don't make assumptions about the starting point, you will only get
  * disappointed.
  *
- * Use uv_hrtime() if you need sub-milliseond granularity.
+ * Use uv_hrtime() if you need sub-millisecond granularity.
  */
 UV_EXTERN uint64_t uv_now(uv_loop_t*);
 
