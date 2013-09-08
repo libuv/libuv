@@ -516,8 +516,27 @@ UV_EXTERN size_t uv_handle_size(uv_handle_type type);
 UV_EXTERN size_t uv_req_size(uv_req_type type);
 
 /*
- * Returns 1 if the prepare/check/idle/timer handle has been started, 0
- * otherwise. For other handle types this always returns 1.
+ * Returns non-zero if the handle is active, zero if it's inactive.
+ *
+ * What "active" means depends on the type of handle:
+ *
+ *  - A uv_async_t handle is always active and cannot be deactivated, except
+ *    by closing it with uv_close().
+ *
+ *  - A uv_pipe_t, uv_tcp_t, uv_udp_t, etc. handle - basically any handle that
+ *    deals with I/O - is active when it is doing something that involves I/O,
+ *    like reading, writing, connecting, accepting new connections, etc.
+ *
+ *  - A uv_check_t, uv_idle_t, uv_timer_t, etc. handle is active when it has
+ *    been started with a call to uv_check_start(), uv_idle_start(), etc.
+ *
+ *      Rule of thumb: if a handle of type uv_foo_t has a uv_foo_start()
+ *      function, then it's active from the moment that function is called.
+ *      Likewise, uv_foo_stop() deactivates the handle again.
+ *
+ *  - A uv_fs_event_t handle is currently always active.  Future versions
+ *    of libuv may add uv_fs_event_start() and uv_fs_event_stop() functions.
+ *
  */
 UV_EXTERN int uv_is_active(const uv_handle_t* handle);
 
