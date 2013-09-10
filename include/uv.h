@@ -1417,7 +1417,7 @@ typedef struct uv_process_options_s {
    * If non-null this represents a directory the subprocess should execute
    * in. Stands for current working directory.
    */
-  char* cwd;
+  const char* cwd;
   /*
    * Various flags that control how uv_spawn() behaves. See the definition of
    * `enum uv_process_flags` below.
