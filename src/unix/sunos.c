@@ -256,7 +256,7 @@ int uv_exepath(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL)
     return -EINVAL;
 
-  (void) snprintf(buf, sizeof(buf), "/proc/%lu/path/a.out", (unsigned long) getpid());
+  snprintf(buf, sizeof(buf), "/proc/%lu/path/a.out", (unsigned long) getpid());
   res = readlink(buf, buffer, *size - 1);
   if (res == -1)
     return -errno;
@@ -389,7 +389,9 @@ int uv_fs_event_init(uv_loop_t* loop,
 
 void uv__fs_event_close(uv_fs_event_t* handle) {
   if (handle->fd == PORT_FIRED || handle->fd == PORT_LOADED) {
-    port_dissociate(handle->loop->fs_fd, PORT_SOURCE_FILE, (uintptr_t)&handle->fo);
+    port_dissociate(handle->loop->fs_fd,
+                    PORT_SOURCE_FILE,
+                    (uintptr_t) &handle->fo);
   }
   handle->fd = PORT_DELETED;
   free(handle->filename);
@@ -511,13 +513,13 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
       cpu_info->speed = 0;
       cpu_info->model = NULL;
     } else {
-      knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "clock_MHz");
+      knp = kstat_data_lookup(ksp, (char*) "clock_MHz");
       assert(knp->data_type == KSTAT_DATA_INT32 ||
              knp->data_type == KSTAT_DATA_INT64);
       cpu_info->speed = (knp->data_type == KSTAT_DATA_INT32) ? knp->value.i32
                                                              : knp->value.i64;
 
-      knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "brand");
+      knp = kstat_data_lookup(ksp, (char*) "brand");
       assert(knp->data_type == KSTAT_DATA_STRING);
       cpu_info->model = strdup(KSTAT_NAMED_STR_PTR(knp));
     }
@@ -528,7 +530,11 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   cpu_info = *cpu_infos;
   lookup_instance = 0;
-  while ((ksp = kstat_lookup(kc, (char*) "cpu", lookup_instance, (char*) "sys"))){
+  for (;;) {
+    ksp = kstat_lookup(kc, (char*) "cpu", lookup_instance, (char*) "sys");
+
+    if (ksp == NULL)
+      break;
 
     if (kstat_read(kc, ksp, NULL) == -1) {
       cpu_info->cpu_times.user = 0;
@@ -537,19 +543,19 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
       cpu_info->cpu_times.idle = 0;
       cpu_info->cpu_times.irq = 0;
     } else {
-      knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "cpu_ticks_user");
+      knp = kstat_data_lookup(ksp, (char*) "cpu_ticks_user");
       assert(knp->data_type == KSTAT_DATA_UINT64);
       cpu_info->cpu_times.user = knp->value.ui64;
 
-      knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "cpu_ticks_kernel");
+      knp = kstat_data_lookup(ksp, (char*) "cpu_ticks_kernel");
       assert(knp->data_type == KSTAT_DATA_UINT64);
       cpu_info->cpu_times.sys = knp->value.ui64;
 
-      knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "cpu_ticks_idle");
+      knp = kstat_data_lookup(ksp, (char*) "cpu_ticks_idle");
       assert(knp->data_type == KSTAT_DATA_UINT64);
       cpu_info->cpu_times.idle = knp->value.ui64;
 
-      knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "intr");
+      knp = kstat_data_lookup(ksp, (char*) "intr");
       assert(knp->data_type == KSTAT_DATA_UINT64);
       cpu_info->cpu_times.irq = knp->value.ui64;
       cpu_info->cpu_times.nice = 0;

@@ -335,7 +335,9 @@ int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 }
 
 
-static void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+static void uv__signal_event(uv_loop_t* loop,
+                             uv__io_t* w,
+                             unsigned int events) {
   uv__signal_msg_t* msg;
   uv_signal_t* handle;
   char buf[sizeof(uv__signal_msg_t) * 32];
