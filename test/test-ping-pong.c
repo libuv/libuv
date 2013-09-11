@@ -78,7 +78,11 @@ static void pinger_write_ping(pinger_t* pinger) {
   buf = uv_buf_init(PING, sizeof(PING) - 1);
 
   req = malloc(sizeof(*req));
-  if (uv_write(req, (uv_stream_t*)&pinger->stream.tcp, &buf, 1, pinger_after_write)) {
+  if (uv_write(req,
+               (uv_stream_t*) &pinger->stream.tcp,
+               &buf,
+               1,
+               pinger_after_write)) {
     FATAL("uv_write failed");
   }
 
