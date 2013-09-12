@@ -169,7 +169,7 @@ TEST_IMPL(spawn_fails) {
   init_process_options("", exit_cb_expect_enoent);
   options.file = options.args[0] = "program-that-had-better-not-exist";
   ASSERT(0 == uv_spawn(uv_default_loop(), &process, &options));
-  ASSERT(0 != uv_is_active((uv_handle_t*)&process));
+  ASSERT(1 == uv_is_active((uv_handle_t*) &process));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(1 == exit_cb_called);
 
@@ -962,7 +962,7 @@ TEST_IMPL(spawn_auto_unref) {
   ASSERT(0 == uv_is_closing((uv_handle_t*) &process));
   uv_close((uv_handle_t*) &process, NULL);
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT(0 != uv_is_closing((uv_handle_t*) &process));
+  ASSERT(1 == uv_is_closing((uv_handle_t*) &process));
   MAKE_VALGRIND_HAPPY();
   return 0;
 }

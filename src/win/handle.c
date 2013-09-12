@@ -149,5 +149,5 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
 
 
 int uv_is_closing(const uv_handle_t* handle) {
-  return handle->flags & (UV__HANDLE_CLOSING | UV_HANDLE_CLOSED);
+  return !!(handle->flags & (UV__HANDLE_CLOSING | UV_HANDLE_CLOSED));
 }

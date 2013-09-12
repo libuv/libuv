@@ -1384,12 +1384,12 @@ int uv_read_stop(uv_stream_t* stream) {
 
 
 int uv_is_readable(const uv_stream_t* stream) {
-  return stream->flags & UV_STREAM_READABLE;
+  return !!(stream->flags & UV_STREAM_READABLE);
 }
 
 
 int uv_is_writable(const uv_stream_t* stream) {
-  return stream->flags & UV_STREAM_WRITABLE;
+  return !!(stream->flags & UV_STREAM_WRITABLE);
 }
 
 

@@ -78,7 +78,7 @@ static void repeat_2_cb(uv_timer_t* handle, int status) {
   repeat_2_cb_called++;
 
   if (uv_timer_get_repeat(&repeat_2) == 0) {
-    ASSERT(!uv_is_active((uv_handle_t*)handle));
+    ASSERT(0 == uv_is_active((uv_handle_t*) handle));
     uv_close((uv_handle_t*)handle, close_cb);
     return;
   }
