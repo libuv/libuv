@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "tree.h"
 #include "internal.h"
+#include "heap-inl.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -80,7 +81,7 @@ static int uv__loop_init(uv_loop_t* loop, int default_loop) {
   uv__signal_global_once_init();
 
   memset(loop, 0, sizeof(*loop));
-  RB_INIT(&loop->timer_handles);
+  heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->active_reqs);
   QUEUE_INIT(&loop->idle_handles);

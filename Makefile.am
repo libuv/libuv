@@ -25,6 +25,7 @@ lib_LTLIBRARIES = libuv.la
 libuv_la_CFLAGS = @CFLAGS@
 libuv_la_LDFLAGS = -no-undefined -version-info 11:0:0
 libuv_la_SOURCES = src/fs-poll.c \
+                   src/heap-inl.h \
                    src/inet.c \
                    src/queue.h \
                    src/uv-common.c \

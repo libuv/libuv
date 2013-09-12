@@ -29,6 +29,7 @@ INCLUDES = include/stdint-msvc2008.h \
            include/uv-version.h \
            include/uv-win.h \
            include/uv.h \
+           src/heap-inl.h \
            src/queue.h \
            src/uv-common.h \
            src/win/atomicops-inl.h \
