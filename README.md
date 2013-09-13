@@ -1,37 +1,37 @@
 # libuv
 
-libuv is a platform layer for [node.js][]. Its purpose is to abstract IOCP
-on Windows and epoll/kqueue/event ports/etc. on Unix systems. We intend to
-eventually contain all platform differences in this library.
+libuv is a multi-platform support library with a focus on asynchronous I/O. It
+was primarily developed for use by [Node.js](http://node.js.org), but it's also
+used by Mozilla's [Rust language](http://www.rust-lang.org/),
+[Luvit](http://luvit.io/), [Julia](http://julialang.org/),
+[pyuv](https://crate.io/packages/pyuv/), and others.
 
-## Features
+## Feature highlights
 
- * Non-blocking TCP sockets
+ * Full-featured event loop backed by epoll, kqueue, IOCP, event ports.
 
- * Non-blocking named pipes
+ * Asynchronous TCP and UDP sockets
 
- * UDP
+ * Asynchronous DNS resolution
 
- * Timers
+ * Asynchronous file and file system operations
 
- * Child process spawning
+ * File system events
 
- * Asynchronous DNS via `uv_getaddrinfo`.
+ * ANSI escape code controlled TTY
 
- * Asynchronous file system APIs `uv_fs_*`
+ * IPC with socket sharing, using Unix domain sockets or named pipes (Windows)
 
- * High resolution time `uv_hrtime`
+ * Child processes
 
- * Current executable path look up `uv_exepath`
+ * Thread pool
 
- * Thread pool scheduling `uv_queue_work`
+ * Signal handling
 
- * ANSI escape code controlled TTY `uv_tty_t`
+ * High resolution clock
 
- * File system events using inotify, kqueue, event ports,
-   FSEvents and `ReadDirectoryChangesW`
+ * Threading and synchronization primitives
 
- * IPC and socket sharing between processes `uv_write2`
 
 ## Community
 
