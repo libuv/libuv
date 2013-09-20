@@ -31,6 +31,10 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/uv-common.h \
                    src/version.c
 
+if SUNOS
+libuv_la_CFLAGS += -pthread
+endif
+
 if WINNT
 
 include_HEADERS += include/uv-win.h include/tree.h
