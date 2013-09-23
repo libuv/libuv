@@ -534,9 +534,6 @@ UV_EXTERN size_t uv_req_size(uv_req_type type);
  *      function, then it's active from the moment that function is called.
  *      Likewise, uv_foo_stop() deactivates the handle again.
  *
- *  - A uv_fs_event_t handle is currently always active.  Future versions
- *    of libuv may add uv_fs_event_start() and uv_fs_event_stop() functions.
- *
  */
 UV_EXTERN int uv_is_active(const uv_handle_t* handle);
 
@@ -1850,7 +1847,7 @@ UV_EXTERN void uv_loadavg(double avg[3]);
 
 
 /*
- * Flags to be passed to uv_fs_event_init.
+ * Flags to be passed to uv_fs_event_start.
  */
 enum uv_fs_event_flags {
   /*
@@ -1880,8 +1877,15 @@ enum uv_fs_event_flags {
 };
 
 
-UV_EXTERN int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle,
-    const char* filename, uv_fs_event_cb cb, int flags);
+UV_EXTERN int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle);
+
+UV_EXTERN int uv_fs_event_start(uv_fs_event_t* handle,
+                                uv_fs_event_cb cb,
+                                const char* filename,
+                                unsigned int flags);
+
+UV_EXTERN int uv_fs_event_stop(uv_fs_event_t* handle);
+
 
 /* Utility */
 

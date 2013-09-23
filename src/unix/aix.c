@@ -128,12 +128,20 @@ void uv_loadavg(double avg[3]) {
 }
 
 
-int uv_fs_event_init(uv_loop_t* loop,
-                     uv_fs_event_t* handle,
-                     const char* filename,
-                     uv_fs_event_cb cb,
-                     int flags) {
-  loop->counters.fs_event_init++;
+int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+  return -ENOSYS;
+}
+
+
+int uv_fs_event_start(uv_fs_event_t* handle,
+                      uv_fs_event_cb cb,
+                      const char* filename,
+                      unsigned int flags) {
+  return -ENOSYS;
+}
+
+
+int uv_fs_event_stop(uv_fs_event_t* handle) {
   return -ENOSYS;
 }
 

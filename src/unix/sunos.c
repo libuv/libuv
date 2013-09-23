@@ -352,24 +352,32 @@ static void uv__fs_event_read(uv_loop_t* loop,
 }
 
 
-int uv_fs_event_init(uv_loop_t* loop,
-                     uv_fs_event_t* handle,
-                     const char* filename,
-                     uv_fs_event_cb cb,
-                     int flags) {
-  int portfd;
-  int first_run = 0;
+int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
+  return 0;
+}
 
-  if (loop->fs_fd == -1) {
+
+int uv_fs_event_start(uv_fs_event_t* handle,
+                      uv_fs_event_cb cb,
+                      const char* filename,
+                      unsigned int flags) {
+  int portfd;
+  int first_run;
+
+  if (uv__is_active(handle))
+    return -EINVAL;
+
+  first_run = 0;
+  if (handle->loop->fs_fd == -1) {
     portfd = port_create();
     if (portfd == -1)
       return -errno;
-    loop->fs_fd = portfd;
+    handle->loop->fs_fd = portfd;
     first_run = 1;
   }
 
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
-  uv__handle_start(handle); /* FIXME shouldn't start automatically */
+  uv__handle_start(handle);
   handle->filename = strdup(filename);
   handle->fd = PORT_UNUSED;
   handle->cb = cb;
@@ -379,34 +387,53 @@ int uv_fs_event_init(uv_loop_t* loop,
   uv__fs_event_rearm(handle);  /* FIXME(bnoordhuis) Check return code. */
 
   if (first_run) {
-    uv__io_init(&loop->fs_event_watcher, uv__fs_event_read, portfd);
-    uv__io_start(loop, &loop->fs_event_watcher, UV__POLLIN);
+    uv__io_init(&handle->loop->fs_event_watcher, uv__fs_event_read, portfd);
+    uv__io_start(handle->loop, &handle->loop->fs_event_watcher, UV__POLLIN);
   }
 
   return 0;
 }
 
 
-void uv__fs_event_close(uv_fs_event_t* handle) {
+int uv_fs_event_stop(uv_fs_event_t* handle) {
+  if (!uv__is_active(handle))
+    return -EINVAL;
+
   if (handle->fd == PORT_FIRED || handle->fd == PORT_LOADED) {
     port_dissociate(handle->loop->fs_fd,
                     PORT_SOURCE_FILE,
                     (uintptr_t) &handle->fo);
   }
+
   handle->fd = PORT_DELETED;
   free(handle->filename);
   handle->filename = NULL;
   handle->fo.fo_name = NULL;
   uv__handle_stop(handle);
+
+  return 0;
+}
+
+void uv__fs_event_close(uv_fs_event_t* handle) {
+  uv_fs_event_stop(handle);
 }
 
 #else /* !defined(PORT_SOURCE_FILE) */
 
-int uv_fs_event_init(uv_loop_t* loop,
-                     uv_fs_event_t* handle,
-                     const char* filename,
-                     uv_fs_event_cb cb,
-                     int flags) {
+int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+  return -ENOSYS;
+}
+
+
+int uv_fs_event_start(uv_fs_event_t* handle,
+                      uv_fs_event_cb cb,
+                      const char* filename,
+                      unsigned int flags) {
+  return -ENOSYS;
+}
+
+
+int uv_fs_event_stop(uv_fs_event_t* handle) {
   return -ENOSYS;
 }
 

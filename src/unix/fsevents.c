@@ -410,7 +410,7 @@ final:
    *
    * NOTE: This is coupled with `uv_sem_wait()` in `uv__fsevents_close`
    */
-  if (uv__is_closing(handle))
+  if (!uv__is_active(handle))
     uv_sem_post(&state->fsevent_sem);
 }
 
