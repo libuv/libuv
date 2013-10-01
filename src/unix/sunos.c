@@ -75,7 +75,7 @@ int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
 
   err = uv__cloexec(fd, 1);
   if (err) {
-    close(fd);
+    uv__close(fd);
     return err;
   }
   loop->backend_fd = fd;
@@ -86,12 +86,12 @@ int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
 
 void uv__platform_loop_delete(uv_loop_t* loop) {
   if (loop->fs_fd != -1) {
-    close(loop->fs_fd);
+    uv__close(loop->fs_fd);
     loop->fs_fd = -1;
   }
 
   if (loop->backend_fd != -1) {
-    close(loop->backend_fd);
+    uv__close(loop->backend_fd);
     loop->backend_fd = -1;
   }
 }
@@ -451,7 +451,7 @@ int uv_resident_set_memory(size_t* rss) {
     *rss = (size_t)psinfo.pr_rssize * 1024;
     err = 0;
   }
-  close(fd);
+  uv__close(fd);
 
   return err;
 }

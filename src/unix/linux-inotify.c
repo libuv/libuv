@@ -81,7 +81,7 @@ static int new_inotify_fd(void) {
     err = uv__nonblock(fd, 1);
 
   if (err) {
-    close(fd);
+    uv__close(fd);
     return err;
   }
 

@@ -354,6 +354,6 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
   free(handle->filename);
   handle->filename = NULL;
 
-  close(handle->event_watcher.fd);
+  uv__close(handle->event_watcher.fd);
   handle->event_watcher.fd = -1;
 }
