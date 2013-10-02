@@ -463,11 +463,13 @@ int uv_spawn(uv_loop_t* loop,
 error:
   uv__set_sys_error(process->loop, errno);
 
-  for (i = 0; i < stdio_count; i++) {
-    close(pipes[i][0]);
-    close(pipes[i][1]);
+  if (pipes != NULL) {
+    for (i = 0; i < stdio_count; i++) {
+      close(pipes[i][0]);
+      close(pipes[i][1]);
+    }
+    free(pipes);
   }
-  free(pipes);
 
   return -1;
 }
