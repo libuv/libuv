@@ -502,3 +502,31 @@ TEST_IMPL(fs_event_close_in_callback) {
 }
 
 #endif /* HAVE_KQUEUE */
+
+TEST_IMPL(fs_event_start_and_close) {
+  uv_loop_t* loop;
+  uv_fs_event_t fs_event1;
+  uv_fs_event_t fs_event2;
+  int r;
+
+  loop = uv_default_loop();
+
+  create_dir(loop, "watch_dir");
+
+  r = uv_fs_event_init(loop, &fs_event1, "watch_dir", fs_event_cb_dir, 0);
+  ASSERT(r == 0);
+
+  r = uv_fs_event_init(loop, &fs_event2, "watch_dir", fs_event_cb_dir, 0);
+  ASSERT(r == 0);
+
+  uv_close((uv_handle_t*) &fs_event2, close_cb);
+  uv_close((uv_handle_t*) &fs_event1, close_cb);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(close_cb_called == 2);
+
+  remove("watch_dir/");
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
