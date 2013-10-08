@@ -368,7 +368,6 @@ int uv_uptime(double* uptime) {
     return -errno;
 
   *uptime = now.tv_sec;
-  *uptime += (double)now.tv_nsec / 1000000000.0;
   return 0;
 }
 
