@@ -41,7 +41,7 @@ include_HEADERS += include/uv-win.h include/tree.h
 AM_CPPFLAGS += -I$(top_srcdir)/src/win \
                -DWIN32_LEAN_AND_MEAN \
                -D_WIN32_WINNT=0x0600
-LIBS += -lws2_32 -lpsapi -lphlpapi2
+LIBS += -lws2_32 -lpsapi -liphlpapi -lshell32
 libuv_la_SOURCES += src/win/async.c \
                     src/win/atomicops-inl.h \
                     src/win/core.c \
@@ -109,8 +109,6 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
                          test/echo-server.c \
                          test/run-tests.c \
-                         test/runner-unix.c \
-                         test/runner-unix.h \
                          test/runner.c \
                          test/runner.h \
                          test/task.h \
@@ -198,6 +196,16 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-util.c \
                          test/test-walk-handles.c
 test_run_tests_LDADD = libuv.la
+
+if WINNT
+test_run_tests_SOURCES += test/runner-win.c \
+                          test/runner-win.h
+else
+test_run_tests_SOURCES += test/runner-unix.c \
+                          test/runner-unix.h
+endif
+
+
 
 if AIX
 libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500
