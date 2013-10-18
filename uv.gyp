@@ -146,6 +146,7 @@
             'src/unix/poll.c',
             'src/unix/process.c',
             'src/unix/signal.c',
+            'src/unix/spinlock.h',
             'src/unix/stream.c',
             'src/unix/tcp.c',
             'src/unix/thread.c',
