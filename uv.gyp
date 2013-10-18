@@ -133,6 +133,7 @@
             'include/uv-private/uv-darwin.h',
             'include/uv-private/uv-bsd.h',
             'src/unix/async.c',
+            'src/unix/atomic-ops.h',
             'src/unix/core.c',
             'src/unix/dl.c',
             'src/unix/error.c',
