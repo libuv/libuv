@@ -1074,8 +1074,11 @@ UV_EXTERN int uv_tty_set_mode(uv_tty_t*, int mode);
 /*
  * To be called when the program exits. Resets TTY settings to default
  * values for the next process to take over.
+ *
+ * This function is async signal-safe on UNIX platforms but can fail with error
+ * code UV_EBUSY if you call it when execution is inside uv_tty_set_mode().
  */
-UV_EXTERN void uv_tty_reset_mode(void);
+UV_EXTERN int uv_tty_reset_mode(void);
 
 /*
  * Gets the current Window size. On success zero is returned.
