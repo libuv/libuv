@@ -64,12 +64,9 @@ int uv_tty_set_mode(uv_tty_t* tty, int mode) {
 
   fd = uv__stream_fd(tty);
 
-  if (mode && tty->mode == 0) {
-    /* on */
-
-    if (tcgetattr(fd, &tty->orig_termios)) {
-      goto fatal;
-    }
+  if (mode && tty->mode == 0) {  /* on */
+    if (tcgetattr(fd, &tty->orig_termios))
+      return -errno;
 
     /* This is used for uv_tty_reset_mode() */
     if (orig_termios_fd == -1) {
@@ -86,26 +83,18 @@ int uv_tty_set_mode(uv_tty_t* tty, int mode) {
     raw.c_cc[VTIME] = 0;
 
     /* Put terminal in raw mode after draining */
-    if (tcsetattr(fd, TCSADRAIN, &raw)) {
-      goto fatal;
-    }
+    if (tcsetattr(fd, TCSADRAIN, &raw))
+      return -errno;
 
     tty->mode = 1;
-    return 0;
-  } else if (mode == 0 && tty->mode) {
-    /* off */
-
+  } else if (mode == 0 && tty->mode) {  /* off */
     /* Put terminal in original mode after flushing */
-    if (tcsetattr(fd, TCSAFLUSH, &tty->orig_termios)) {
-      goto fatal;
-    }
-
+    if (tcsetattr(fd, TCSAFLUSH, &tty->orig_termios))
+      return -errno;
     tty->mode = 0;
-    return 0;
   }
 
-fatal:
-  return -errno;
+  return 0;
 }
 
 
