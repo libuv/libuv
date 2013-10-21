@@ -62,6 +62,7 @@ extern "C" {
 
 /* Expand this list if necessary. */
 #define UV_ERRNO_MAP(XX)                                                      \
+  XX(E2BIG, "argument list too long")                                         \
   XX(EACCES, "permission denied")                                             \
   XX(EADDRINUSE, "address already in use")                                    \
   XX(EADDRNOTAVAIL, "address not available")                                  \
