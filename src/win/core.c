@@ -272,9 +272,6 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   else
     poll = &uv_poll;
 
-  if (!uv__loop_alive(loop))
-    return 0;
-
   r = uv__loop_alive(loop);
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
