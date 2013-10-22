@@ -1118,8 +1118,20 @@ UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
  */
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 
+/*
+ * Bind the pipe to a file path (UNIX) or a name (Windows.)
+ *
+ * Paths on UNIX get truncated to `sizeof(sockaddr_un.sun_path)` bytes,
+ * typically between 92 and 108 bytes.
+ */
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 
+/*
+ * Connect to the UNIX domain socket or the named pipe.
+ *
+ * Paths on UNIX get truncated to `sizeof(sockaddr_un.sun_path)` bytes,
+ * typically between 92 and 108 bytes.
+ */
 UV_EXTERN void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     const char* name, uv_connect_cb cb);
 
