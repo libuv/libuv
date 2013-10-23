@@ -552,7 +552,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
     attr = NULL;
 
   if (attr != NULL)
-    if (pthread_attr_setstacksize(attr, 3 * PTHREAD_STACK_MIN))
+    if (pthread_attr_setstacksize(attr, 4 * PTHREAD_STACK_MIN))
       abort();
 
   loop->cf_state = state;
