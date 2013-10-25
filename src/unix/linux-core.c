@@ -105,6 +105,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   uv__io_t* w;
   uint64_t base;
   uint64_t diff;
+  unsigned int masked_events;
   int nevents;
   int count;
   int nfds;
@@ -208,7 +209,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
       }
 
-      w->cb(loop, w, pe->events);
+      /*
+       * Give users only events they're interested in. Prevents spurious
+       * callbacks when previous callback invocation in this loop has stopped
+       * the current watcher. Also, filters out events that users has not
+       * requested us to watch.
+       */
+      masked_events = pe->events & w->pevents;
+      if (masked_events != 0)
+        w->cb(loop, w, masked_events);
       nevents++;
     }
 
