@@ -114,6 +114,7 @@ TESTS= \
 	test/test-tcp-bind6-error.o \
 	test/test-tcp-bind-error.o \
 	test/test-tcp-close.o \
+	test/test-tcp-close-accept.o \
 	test/test-tcp-close-while-connecting.o \
 	test/test-tcp-connect6-error.o \
 	test/test-tcp-connect-error-after-write.o \
