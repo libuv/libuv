@@ -1092,7 +1092,6 @@ static void uv__read(uv_stream_t* stream) {
 int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) &&
          "uv_shutdown (unix) only supports uv_handle_t right now");
-  assert(uv__stream_fd(stream) >= 0);
 
   if (!(stream->flags & UV_STREAM_WRITABLE) ||
       stream->flags & UV_STREAM_SHUT ||
@@ -1100,6 +1099,8 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
       stream->flags & UV_CLOSING) {
     return -ENOTCONN;
   }
+
+  assert(uv__stream_fd(stream) >= 0);
 
   /* Initialize request */
   uv__req_init(stream->loop, req, UV_SHUTDOWN);
