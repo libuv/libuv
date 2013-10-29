@@ -1,3 +1,112 @@
+2013.10.30, Version 0.11.14 (Unstable)
+
+Changes since version 0.11.13:
+
+* darwin: create fsevents thread on demand (Ben Noordhuis)
+
+* fsevents: FSEvents is most likely not thread-safe (Fedor Indutny)
+
+* fsevents: use shared FSEventStream (Fedor Indutny)
+
+* windows: make uv_fs_chmod() report errors correctly (Bert Belder)
+
+* windows: make uv_shutdown() for write-only pipes work (Bert Belder)
+
+* windows/fs: wrap multi-statement macros in do..while block (Bert Belder)
+
+* windows/fs: make uv_fs_open() report EINVAL correctly (Bert Belder)
+
+* windows/fs: handle _open_osfhandle() failure correctly (Bert Belder)
+
+* windows/fs: wrap multi-statement macros in do..while block (Bert Belder)
+
+* windows/fs: make uv_fs_open() report EINVAL correctly (Bert Belder)
+
+* windows/fs: handle _open_osfhandle() failure correctly (Bert Belder)
+
+* build: clarify instructions for Windows (Brian Kaisner)
+
+* build: remove GCC_WARN_ABOUT_MISSING_NEWLINE (Ben Noordhuis)
+
+* darwin: fix 10.6 build error in fsevents.c (Ben Noordhuis)
+
+* windows: run close callbacks after polling for i/o (Saúl Ibarra Corretgé)
+
+* include: clarify uv_tcp_bind() behavior (Ben Noordhuis)
+
+* include: clean up includes in uv.h (Ben Noordhuis)
+
+* include: remove UV_IO_PRIVATE_FIELDS macro (Ben Noordhuis)
+
+* include: fix typo in comment in uv.h (Ben Noordhuis)
+
+* include: update uv_is_active() documentation (Ben Noordhuis)
+
+* include: make uv_process_options_t.cwd const (Ben Noordhuis)
+
+* unix: wrap long lines at 80 columns (Ben Noordhuis)
+
+* unix, windows: make uv_is_*() always return 0 or 1 (Ben Noordhuis)
+
+* bench: measure total/init/dispatch/cleanup times (Ben Noordhuis)
+
+* build: use -pthread on sunos (Timothy J. Fontaine)
+
+* windows: remove duplicate check in stream.c (Ben Noordhuis)
+
+* unix: sanity-check fds before closing (Ben Noordhuis)
+
+* unix: remove uv__pipe_accept() (Ben Noordhuis)
+
+* unix: fix uv_spawn() NULL pointer deref on ENOMEM (Ben Noordhuis)
+
+* unix: don't close inherited fds on uv_spawn() fail (Ben Noordhuis)
+
+* unix: revert recent FSEvent changes (Ben Noordhuis)
+
+* fsevents: fix clever rescheduling (Fedor Indutny)
+
+* linux: ignore fractional time in uv_uptime() (Ben Noordhuis)
+
+* unix: fix SIGCHLD waitpid() race in process.c (Ben Noordhuis)
+
+* unix, windows: add uv_fs_event_start/stop functions (Saúl Ibarra Corretgé)
+
+* unix: fix non-synchronized access in signal.c (Ben Noordhuis)
+
+* unix: add atomic-ops.h (Ben Noordhuis)
+
+* unix: add spinlock.h (Ben Noordhuis)
+
+* unix: clean up uv_tty_set_mode() a little (Ben Noordhuis)
+
+* unix: make uv_tty_reset_mode() async signal-safe (Ben Noordhuis)
+
+* include: add E2BIG status code mapping (Ben Noordhuis)
+
+* windows: fix duplicate case build error (Ben Noordhuis)
+
+* windows: remove unneeded check (Saúl Ibarra Corretgé)
+
+* include: document pipe path truncation behavior (Ben Noordhuis)
+
+* fsevents: increase stack size for OSX 10.9 (Fedor Indutny)
+
+* windows: _snprintf expected wrong parameter type in string (Maks Naumov)
+
+* windows: "else" keyword is missing (Maks Naumov)
+
+* windows: incorrect check for SOCKET_ERROR (Maks Naumov)
+
+* windows: add stdlib.h to satisfy reference to abort (Sean Farrell)
+
+* build: fix check target for mingw (Sean Farrell)
+
+* unix: move uv_shutdown() assertion (Keno Fischer)
+
+* darwin: avoid calling GetCurrentProcess (Fedor Indutny)
+
+
 2013.10.19, Version 0.10.18 (Stable), 9ec52963b585e822e87bdc5de28d6143aff0d2e5
 
 Changes since version 0.10.17:
