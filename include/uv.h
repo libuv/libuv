@@ -1873,7 +1873,7 @@ enum uv_fs_event_flags {
    * flag does not affect individual files watched.
    * This flag is currently not implemented yet on any backend.
    */
- UV_FS_EVENT_WATCH_ENTRY = 1,
+  UV_FS_EVENT_WATCH_ENTRY = 1,
 
   /*
    * By default uv_fs_event will try to use a kernel interface such as inotify
@@ -1889,7 +1889,7 @@ enum uv_fs_event_flags {
    * (is ignoring) changes in it's subdirectories.
    * This flag will override this behaviour on platforms that support it.
    */
-  UV_FS_EVENT_RECURSIVE = 3
+  UV_FS_EVENT_RECURSIVE = 4
 };
 
 
