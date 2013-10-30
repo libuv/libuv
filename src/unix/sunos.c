@@ -239,7 +239,7 @@ update_timeout:
 }
 
 
-uint64_t uv__hrtime(void) {
+uint64_t uv__hrtime(uv_clocktype_t type) {
   return gethrtime();
 }
 

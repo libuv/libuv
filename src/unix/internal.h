@@ -128,6 +128,11 @@ enum {
   UV_TCP_SINGLE_ACCEPT    = 0x1000  /* Only accept() when idle. */
 };
 
+typedef enum {
+  UV_CLOCK_PRECISE = 0,  /* Use the highest resolution clock available. */
+  UV_CLOCK_FAST = 1      /* Use the fastest clock with <= 1ms granularity. */
+} uv_clocktype_t;
+
 /* core */
 int uv__nonblock(int fd, int set);
 int uv__close(int fd);
@@ -191,7 +196,7 @@ void uv__work_submit(uv_loop_t* loop,
 void uv__work_done(uv_async_t* handle, int status);
 
 /* platform specific */
-uint64_t uv__hrtime(void);
+uint64_t uv__hrtime(uv_clocktype_t type);
 int uv__kqueue_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop, int default_loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
@@ -263,7 +268,9 @@ UV_UNUSED(static void uv__req_init(uv_loop_t* loop,
   uv__req_init((loop), (uv_req_t*)(req), (type))
 
 UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
-  loop->time = uv__hrtime() / 1000000;
+  /* Use a fast time source if available.  We only need millisecond precision.
+   */
+  loop->time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
 }
 
 UV_UNUSED(static char* uv__basename_r(const char* path)) {

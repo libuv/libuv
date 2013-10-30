@@ -73,7 +73,7 @@ STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
 
 
 uint64_t uv_hrtime(void) {
-  return uv__hrtime();
+  return uv__hrtime(UV_CLOCK_PRECISE);
 }
 
 
