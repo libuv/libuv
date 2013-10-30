@@ -142,6 +142,7 @@ TESTS= \
 	test/test-udp-send-and-recv.o \
 	test/test-util.o \
 	test/test-walk-handles.o \
+	test/test-watcher-cross-stop.o \
 
 .PHONY: all bench clean clean-platform distclean test
 

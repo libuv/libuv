@@ -106,6 +106,7 @@ TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
 TEST_DECLARE   (walk_handles)
+TEST_DECLARE   (watcher_cross_stop)
 TEST_DECLARE   (ref)
 TEST_DECLARE   (idle_ref)
 TEST_DECLARE   (async_ref)
@@ -384,6 +385,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (loop_handles)
   TEST_ENTRY  (walk_handles)
+
+  TEST_ENTRY  (watcher_cross_stop)
 
   TEST_ENTRY  (active)
 

@@ -310,6 +310,7 @@
         'test/test-loop-handles.c',
         'test/test-loop-stop.c',
         'test/test-walk-handles.c',
+        'test/test-watcher-cross-stop.c',
         'test/test-multiple-listen.c',
         'test/test-osx-select.c',
         'test/test-pass-always.c',
