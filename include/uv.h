@@ -1489,7 +1489,17 @@ struct uv_process_s {
   UV_PROCESS_PRIVATE_FIELDS
 };
 
-/* Initializes uv_process_t and starts the process. */
+/*
+ * Initializes the uv_process_t and starts the process. If the process is
+ * successfully spawned, then this function will return 0. Otherwise, the
+ * negative error code corresponding to the reason it couldn't spawn is
+ * returned.
+ *
+ * Possible reasons for failing to spawn would include (but not be limited to)
+ * the file to execute not existing, not having permissions to use the setuid or
+ * setgid specified, or not having enough memory to allocate for the new
+ * process.
+ */
 UV_EXTERN int uv_spawn(uv_loop_t* loop,
                        uv_process_t* handle,
                        const uv_process_options_t* options);
