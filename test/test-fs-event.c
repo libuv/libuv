@@ -36,11 +36,21 @@
 #endif
 
 static uv_fs_event_t fs_event;
+static const char file_prefix[] = "fsevent-";
 static uv_timer_t timer;
-static int timer_cb_called = 0;
-static int close_cb_called = 0;
-static int fs_event_cb_called = 0;
-static int timer_cb_touch_called = 0;
+static int timer_cb_called;
+static int close_cb_called;
+static const int fs_event_file_count = 128;
+static int fs_event_created;
+static int fs_event_cb_called;
+#if defined(PATH_MAX)
+static char fs_event_filename[PATH_MAX];
+#else
+static char fs_event_filename[1024];
+#endif  /* defined(PATH_MAX) */
+static int timer_cb_touch_called;
+
+static void fs_event_unlink_files(uv_timer_t* handle, int status);
 
 static void create_dir(uv_loop_t* loop, const char* name) {
   int r;
@@ -107,6 +117,69 @@ static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   uv_close((uv_handle_t*)handle, close_cb);
 }
 
+static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
+                                       const char* filename,
+                                       int events,
+                                       int status) {
+  fs_event_cb_called++;
+  ASSERT(handle == &fs_event);
+  ASSERT(status == 0);
+  ASSERT(events == UV_RENAME);
+  ASSERT(filename == NULL ||
+         strncmp(filename, file_prefix, sizeof(file_prefix) - 1) == 0);
+
+  /* Stop watching dir when received events about all files:
+   * both create and close events */
+  if (fs_event_cb_called == 2 * fs_event_file_count) {
+    ASSERT(0 == uv_fs_event_stop(handle));
+    uv_close((uv_handle_t*) handle, close_cb);
+  }
+}
+
+static const char* fs_event_get_filename(int i) {
+  snprintf(fs_event_filename,
+           sizeof(fs_event_filename),
+           "watch_dir/%s%d",
+           file_prefix,
+           i);
+  return fs_event_filename;
+}
+
+static void fs_event_create_files(uv_timer_t* handle, int status) {
+  int i;
+
+  /* Already created all files */
+  if (fs_event_created == fs_event_file_count) {
+    uv_close((uv_handle_t*) &timer, close_cb);
+    return;
+  }
+
+  /* Create all files */
+  for (i = 0; i < 16; i++, fs_event_created++)
+    create_file(handle->loop, fs_event_get_filename(i));
+
+  /* And unlink them */
+  ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files, 50, 0));
+}
+
+void fs_event_unlink_files(uv_timer_t* handle, int status) {
+  int r;
+  int i;
+
+  /* NOTE: handle might be NULL if invoked not as timer callback */
+
+  /* Unlink all files */
+  for (i = 0; i < 16; i++) {
+    r = remove(fs_event_get_filename(i));
+    if (handle != NULL)
+      ASSERT(r == 0);
+  }
+
+  /* And create them again */
+  if (handle != NULL)
+    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files, 50, 0));
+}
+
 static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   int events, int status) {
   ++fs_event_cb_called;
@@ -148,12 +221,6 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
   }
 }
 
-static void timer_cb_dir(uv_timer_t* handle, int status) {
-  ++timer_cb_called;
-  create_file(handle->loop, "watch_dir/file1");
-  uv_close((uv_handle_t*)handle, close_cb);
-}
-
 static void timer_cb_file(uv_timer_t* handle, int status) {
   ++timer_cb_called;
 
@@ -184,6 +251,7 @@ TEST_IMPL(fs_event_watch_dir) {
   int r;
 
   /* Setup */
+  fs_event_unlink_files(NULL, 0);
   remove("watch_dir/file2");
   remove("watch_dir/file1");
   remove("watch_dir/");
@@ -191,20 +259,21 @@ TEST_IMPL(fs_event_watch_dir) {
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT(r == 0);
-  r = uv_fs_event_start(&fs_event, fs_event_cb_dir, "watch_dir", 0);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_dir_multi_file, "watch_dir", 0);
   ASSERT(r == 0);
   r = uv_timer_init(loop, &timer);
   ASSERT(r == 0);
-  r = uv_timer_start(&timer, timer_cb_dir, 100, 0);
+  r = uv_timer_start(&timer, fs_event_create_files, 100, 0);
   ASSERT(r == 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_event_cb_called == 1);
-  ASSERT(timer_cb_called == 1);
+  ASSERT(fs_event_cb_called == 2 * fs_event_file_count);
+  ASSERT(fs_event_created == fs_event_file_count);
   ASSERT(close_cb_called == 2);
 
   /* Cleanup */
+  fs_event_unlink_files(NULL, 0);
   remove("watch_dir/file2");
   remove("watch_dir/file1");
   remove("watch_dir/");

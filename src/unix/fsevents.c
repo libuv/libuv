@@ -316,10 +316,21 @@ static int uv__fsevents_create_stream(uv_loop_t* loop, CFArrayRef paths) {
   ctx.release = NULL;
   ctx.copyDescription = NULL;
 
-  latency = 0.15;
+  latency = 0.05;
 
-  /* Set appropriate flags */
-  flags = kFSEventStreamCreateFlagFileEvents;
+  /* Explanation of selected flags:
+   * 1. NoDefer - without this flag, events that are happening continuously
+   *    (i.e. each event is happening after time interval less than `latency`,
+   *    counted from previous event), will be deferred and passed to callback
+   *    once they'll either fill whole OS buffer, or when this continuous stream
+   *    will stop (i.e. there'll be delay between events, bigger than
+   *    `latency`).
+   *    Specifying this flag will invoke callback after `latency` time passed
+   *    since event.
+   * 2. FileEvents - fire callback for file changes too (by default it is firing
+   *    it only for directory changes).
+   */
+  flags = kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents;
 
   /*
    * NOTE: It might sound like a good idea to remember last seen StreamEventId,
