@@ -25,11 +25,6 @@
 #include <string.h>
 #include <errno.h>
 
-#if !defined(_WIN32)
-#include <sys/time.h>
-#include <sys/resource.h>  /* setrlimit() */
-#endif
-
 /* NOTE: Number should be big enough to trigger this problem */
 static uv_udp_t sockets[2500];
 static uv_udp_send_t reqs[ARRAY_SIZE(sockets)];
@@ -70,15 +65,7 @@ TEST_IMPL(watcher_cross_stop) {
   uv_buf_t buf;
   char big_string[1024];
 
-#if !defined(_WIN32)
-  {
-    struct rlimit lim;
-    lim.rlim_cur = ARRAY_SIZE(sockets) + 32;
-    lim.rlim_max = ARRAY_SIZE(sockets) + 32;
-    if (setrlimit(RLIMIT_NOFILE, &lim))
-      RETURN_SKIP("File descriptor limit too low.");
-  }
-#endif
+  TEST_FILE_LIMIT(ARRAY_SIZE(sockets) + 32);
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   memset(big_string, 'A', sizeof(big_string));

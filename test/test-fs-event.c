@@ -625,3 +625,106 @@ TEST_IMPL(fs_event_start_and_close) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+#if defined(__APPLE__)
+
+static int fs_event_error_reported;
+
+static void fs_event_error_report_cb(uv_fs_event_t* handle,
+                                     const char* filename,
+                                     int events,
+                                     int status) {
+  if (status != 0)
+    fs_event_error_reported = status;
+}
+
+static void timer_cb_nop(uv_timer_t* handle, int status) {
+  ++timer_cb_called;
+  uv_close((uv_handle_t*) handle, close_cb);
+}
+
+static void fs_event_error_report_close_cb(uv_handle_t* handle) {
+  ASSERT(handle != NULL);
+  close_cb_called++;
+
+  /* handle is allocated on-stack, no need to free it */
+}
+
+
+TEST_IMPL(fs_event_error_reporting) {
+  unsigned int i;
+  uv_loop_t* loops[1024];
+  uv_fs_event_t events[ARRAY_SIZE(loops)];
+  uv_loop_t* loop;
+  uv_fs_event_t* event;
+
+  TEST_FILE_LIMIT(ARRAY_SIZE(loops) * 3);
+
+  remove("watch_dir/");
+  create_dir(uv_default_loop(), "watch_dir");
+
+  /* Create a lot of loops, and start FSEventStream in each of them.
+   * Eventually, this should create enough streams to make FSEventStreamStart()
+   * fail.
+   */
+  for (i = 0; i < ARRAY_SIZE(loops); i++) {
+    loop = uv_loop_new();
+    event = &events[i];
+    ASSERT(loop != NULL);
+
+    loops[i] = loop;
+    timer_cb_called = 0;
+    close_cb_called = 0;
+    ASSERT(0 == uv_fs_event_init(loop, event));
+    ASSERT(0 == uv_fs_event_start(event,
+                                  fs_event_error_report_cb,
+                                  "watch_dir",
+                                  0));
+    uv_unref((uv_handle_t*) event);
+
+    /* Let loop run for some time */
+    ASSERT(0 == uv_timer_init(loop, &timer));
+    ASSERT(0 == uv_timer_start(&timer, timer_cb_nop, 2, 0));
+    uv_run(loop, UV_RUN_DEFAULT);
+    ASSERT(1 == timer_cb_called);
+    ASSERT(1 == close_cb_called);
+    if (fs_event_error_reported != 0)
+      break;
+  }
+
+  /* At least one loop should fail */
+  ASSERT(fs_event_error_reported == UV_EMFILE);
+
+  /* Stop and close all events, and destroy loops */
+  do {
+    loop = loops[i];
+    event = &events[i];
+
+    ASSERT(0 == uv_fs_event_stop(event));
+    uv_ref((uv_handle_t*) event);
+    uv_close((uv_handle_t*) event, fs_event_error_report_close_cb);
+
+    close_cb_called = 0;
+    uv_run(loop, UV_RUN_DEFAULT);
+    ASSERT(close_cb_called == 1);
+
+    uv_loop_delete(loop);
+
+    loops[i] = NULL;
+  } while (i-- != 0);
+
+  remove("watch_dir/");
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+#else  /* !defined(__APPLE__) */
+
+TEST_IMPL(fs_event_error_reporting) {
+  /* No-op, needed only for FSEvents backend */
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+#endif  /* defined(__APPLE__) */
