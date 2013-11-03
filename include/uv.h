@@ -567,21 +567,6 @@ UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
 
-/*
- * Utility function. Copies up to `size` characters from `src` to `dst`
- * and ensures that `dst` is properly NUL terminated unless `size` is zero.
- */
-UV_EXTERN size_t uv_strlcpy(char* dst, const char* src, size_t size);
-
-/*
- * Utility function. Appends `src` to `dst` and ensures that `dst` is
- * properly NUL terminated unless `size` is zero or `dst` does not
- * contain a NUL byte. `size` is the total length of `dst` so at most
- * `size - strlen(dst) - 1` characters will be copied from `src`.
- */
-UV_EXTERN size_t uv_strlcat(char* dst, const char* src, size_t size);
-
-
 #define UV_STREAM_FIELDS                                                      \
   /* number of bytes queued for writing */                                    \
   size_t write_queue_size;                                                    \

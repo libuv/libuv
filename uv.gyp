@@ -297,7 +297,6 @@
         'test/runner.h',
         'test/test-get-loadavg.c',
         'test/task.h',
-        'test/test-util.c',
         'test/test-active.c',
         'test/test-async.c',
         'test/test-async-null-cb.c',
