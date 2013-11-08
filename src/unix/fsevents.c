@@ -120,9 +120,9 @@ static CFRunLoopSourceRef (*pCFRunLoopSourceCreate)(CFAllocatorRef,
 static void (*pCFRunLoopSourceSignal)(CFRunLoopSourceRef);
 static void (*pCFRunLoopStop)(CFRunLoopRef);
 static void (*pCFRunLoopWakeUp)(CFRunLoopRef);
-static CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
-                                                 const char*,
-                                                 CFStringEncoding);
+static CFStringRef (*pCFStringCreateWithFileSystemRepresentation)(
+    CFAllocatorRef,
+    const char*);
 static CFStringEncoding (*pCFStringGetSystemEncoding)(void);
 static CFStringRef (*pkCFRunLoopDefaultMode);
 static FSEventStreamRef (*pFSEventStreamCreate)(CFAllocatorRef,
@@ -425,9 +425,8 @@ static void uv__fsevents_reschedule(uv_fs_event_t* handle) {
       curr = QUEUE_DATA(q, uv_fs_event_t, cf_member);
 
       assert(curr->realpath != NULL);
-      paths[i] = pCFStringCreateWithCString(NULL,
-                                            curr->realpath,
-                                            pCFStringGetSystemEncoding());
+      paths[i] =
+          pCFStringCreateWithFileSystemRepresentation(NULL, curr->realpath);
       if (paths[i] == NULL) {
         uv_mutex_unlock(&state->fsevent_mutex);
         goto final;
@@ -528,7 +527,7 @@ static int uv__fsevents_global_init(void) {
   V(core_foundation_handle, CFRunLoopSourceSignal);
   V(core_foundation_handle, CFRunLoopStop);
   V(core_foundation_handle, CFRunLoopWakeUp);
-  V(core_foundation_handle, CFStringCreateWithCString);
+  V(core_foundation_handle, CFStringCreateWithFileSystemRepresentation);
   V(core_foundation_handle, CFStringGetSystemEncoding);
   V(core_foundation_handle, kCFRunLoopDefaultMode);
   V(core_services_handle, FSEventStreamCreate);
