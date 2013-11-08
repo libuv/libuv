@@ -302,6 +302,7 @@
         'test/test-async-null-cb.c',
         'test/test-callback-stack.c',
         'test/test-callback-order.c',
+        'test/test-close-fd.c',
         'test/test-close-order.c',
         'test/test-connection-fail.c',
         'test/test-cwd-and-chdir.c',
