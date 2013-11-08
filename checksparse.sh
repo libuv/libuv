@@ -159,6 +159,7 @@ test/test-udp-open.c
 test/test-udp-options.c
 test/test-udp-send-and-recv.c
 test/test-walk-handles.c
+test/test-watcher-cross-stop.c
 "
 
 case `uname -s` in

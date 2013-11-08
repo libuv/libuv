@@ -190,7 +190,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       revents = 0;
 
       if (ev->filter == EVFILT_READ) {
-        if (w->events & UV__POLLIN) {
+        if (w->pevents & UV__POLLIN) {
           revents |= UV__POLLIN;
           w->rcount = ev->data;
         } else {
@@ -204,7 +204,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       if (ev->filter == EVFILT_WRITE) {
-        if (w->events & UV__POLLOUT) {
+        if (w->pevents & UV__POLLOUT) {
           revents |= UV__POLLOUT;
           w->wcount = ev->data;
         } else {
