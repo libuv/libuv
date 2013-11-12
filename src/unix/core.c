@@ -603,21 +603,21 @@ static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   if (len <= loop->nwatchers)
     return;
 
+  /* Preserve fake watcher list and count at the end of the watchers */
+  if (loop->watchers != NULL) {
+    fake_watcher_list = loop->watchers[loop->nwatchers];
+    fake_watcher_count = loop->watchers[loop->nwatchers + 1];
+  } else {
+    fake_watcher_list = NULL;
+    fake_watcher_count = NULL;
+  }
+
   nwatchers = next_power_of_two(len + 2) - 2;
   watchers = realloc(loop->watchers,
                      (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     abort();
-
-  /* Copy watchers, preserving fake one in the end */
-  if (loop->watchers == NULL) {
-    fake_watcher_list = watchers[loop->nwatchers];
-    fake_watcher_count = watchers[loop->nwatchers + 1];
-  } else {
-    fake_watcher_list = NULL;
-    fake_watcher_count = NULL;
-  }
   for (i = loop->nwatchers; i < nwatchers; i++)
     watchers[i] = NULL;
   watchers[nwatchers] = fake_watcher_list;
