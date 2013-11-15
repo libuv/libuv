@@ -1007,7 +1007,7 @@ static void uv__read(uv_stream_t* stream) {
       msg.msg_control = (void*)  cmsg_space;
 
       do {
-        nread = recvmsg(uv__stream_fd(stream), &msg, 0);
+        nread = uv__recvmsg(uv__stream_fd(stream), &msg, 0);
       }
       while (nread < 0 && errno == EINTR);
     }
