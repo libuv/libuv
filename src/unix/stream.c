@@ -298,7 +298,7 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
 
   kq = kqueue();
   if (kq == -1) {
-    fprintf(stderr, "(libuv) Failed to create kqueue (%d)\n", errno);
+    perror("(libuv) kqueue()");
     return -errno;
   }
 
