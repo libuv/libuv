@@ -404,6 +404,9 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 #if defined(EAI_BADFLAGS)
   case EAI_BADFLAGS: return UV_EAI_BADFLAGS;
 #endif
+#if defined(EAI_BADHINTS)
+  case EAI_BADHINTS: return UV_EAI_BADHINTS;
+#endif
 #if defined(EAI_CANCELED)
   case EAI_CANCELED: return UV_EAI_CANCELED;
 #endif
@@ -423,6 +426,12 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 # if !defined(EAI_NODATA) || EAI_NODATA != EAI_NONAME
   case EAI_NONAME: return UV_EAI_NONAME;
 # endif
+#endif
+#if defined(EAI_OVERFLOW)
+  case EAI_OVERFLOW: return UV_EAI_OVERFLOW;
+#endif
+#if defined(EAI_PROTOCOL)
+  case EAI_PROTOCOL: return UV_EAI_PROTOCOL;
 #endif
 #if defined(EAI_SERVICE)
   case EAI_SERVICE: return UV_EAI_SERVICE;

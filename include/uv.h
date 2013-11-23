@@ -71,12 +71,15 @@ extern "C" {
   XX(EAI_ADDRFAMILY, "address family not supported")                          \
   XX(EAI_AGAIN, "temporary failure")                                          \
   XX(EAI_BADFLAGS, "bad ai_flags value")                                      \
+  XX(EAI_BADHINTS, "invalid value for hints")                                 \
   XX(EAI_CANCELED, "request canceled")                                        \
   XX(EAI_FAIL, "permanent failure")                                           \
   XX(EAI_FAMILY, "ai_family not supported")                                   \
   XX(EAI_MEMORY, "out of memory")                                             \
   XX(EAI_NODATA, "no address")                                                \
   XX(EAI_NONAME, "unknown node or service")                                   \
+  XX(EAI_OVERFLOW, "argument buffer overflow")                                \
+  XX(EAI_PROTOCOL, "resolved protocol is unknown")                            \
   XX(EAI_SERVICE, "service not available for socket type")                    \
   XX(EAI_SOCKTYPE, "socket type not supported")                               \
   XX(EAI_SYSTEM, "system error")                                              \
