@@ -462,27 +462,22 @@ void uv__stream_destroy(uv_stream_t* stream) {
  * calling close() and accept().
  */
 static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
-  int fd;
+  int err;
 
   if (loop->emfile_fd == -1)
     return -EMFILE;
 
   uv__close(loop->emfile_fd);
+  loop->emfile_fd = -1;
 
-  for (;;) {
-    fd = uv__accept(accept_fd);
+  do {
+    err = uv__accept(accept_fd);
+    if (err >= 0)
+      uv__close(err);
+  } while (err >= 0 || err == -EINTR);
 
-    if (fd != -1) {
-      uv__close(fd);
-      continue;
-    }
-
-    if (errno == EINTR)
-      continue;
-
-    SAVE_ERRNO(loop->emfile_fd = uv__open_cloexec("/", O_RDONLY));
-    return -errno;
-  }
+  SAVE_ERRNO(loop->emfile_fd = uv__open_cloexec("/", O_RDONLY));
+  return err;
 }
 
 
