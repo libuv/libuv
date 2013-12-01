@@ -1,7 +1,7 @@
 # libuv
 
 libuv is a multi-platform support library with a focus on asynchronous I/O. It
-was primarily developed for use by [Node.js](http://node.js.org), but it's also
+was primarily developed for use by [Node.js](http://nodejs.org), but it's also
 used by Mozilla's [Rust language](http://www.rust-lang.org/),
 [Luvit](http://luvit.io/), [Julia](http://julialang.org/),
 [pyuv](https://crate.io/packages/pyuv/), and others.
