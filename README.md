@@ -116,6 +116,11 @@ OS X using the GCC or XCode toolchain.
 
 Solaris 121 and later using GCC toolchain.
 
+## patches
+
+See the [guidelines for contributing][].
+
 [node.js]: http://nodejs.org/
 [GYP]: http://code.google.com/p/gyp/
 [Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
+[guidelines for contributing]: https://github.com/joyent/libuv/blob/master/CONTRIBUTING.md
