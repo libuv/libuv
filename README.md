@@ -103,6 +103,14 @@ Run:
 Note for UNIX users: compile your project with `-D_LARGEFILE_SOURCE` and
 `-D_FILE_OFFSET_BITS=64`. GYP builds take care of that automatically.
 
+### Running tests
+
+Run:
+
+    $ ./gyp_uv.py -f make
+    $ make -C out
+    $ ./out/Debug/run-tests
+
 ## Supported Platforms
 
 Microsoft Windows operating systems since Windows XP SP2. It can be built
