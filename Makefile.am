@@ -267,6 +267,11 @@ libuv_la_LIBADD = uv-dtrace.lo
 CLEANFILES += src/unix/uv-dtrace.o src/unix/uv-dtrace.lo
 endif
 
+if HAVE_PKG_CONFIG
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = @PACKAGE_NAME@.pc
+endif
+
 SUFFIXES = .d
 
 include/uv-dtrace.h: src/unix/uv-dtrace.d

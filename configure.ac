@@ -45,6 +45,12 @@ AM_CONDITIONAL([NETBSD],  [AS_CASE([$host_os], [netbsd*],  [true], [false])])
 AM_CONDITIONAL([OPENBSD], [AS_CASE([$host_os], [openbsd*], [true], [false])])
 AM_CONDITIONAL([SUNOS],   [AS_CASE([$host_os], [solaris*], [true], [false])])
 AM_CONDITIONAL([WINNT],   [AS_CASE([$host_os], [mingw*],   [true], [false])])
+PKG_PROG_PKG_CONFIG([0.20])
+AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
+AC_SUBST(HAVE_PKG_CONFIG)
 PANDORA_ENABLE_DTRACE
+AS_IF([test "x$PKG_CONFIG" != "x"], [
+	AC_CONFIG_FILES([libuv.pc])
+])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
