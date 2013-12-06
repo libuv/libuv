@@ -590,7 +590,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
 
   err = uv_mutex_init(&loop->cf_mutex);
   if (err)
-    return err;
+    goto fail_mutex_init;
 
   err = uv_sem_init(&loop->cf_sem, 0);
   if (err)
@@ -660,6 +660,8 @@ fail_fsevent_sem_init:
 
 fail_sem_init:
   uv_mutex_destroy(&loop->cf_mutex);
+
+fail_mutex_init:
   free(state);
   return err;
 }
