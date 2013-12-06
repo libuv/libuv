@@ -362,6 +362,7 @@
         'test/test-tcp-open.c',
         'test/test-tcp-write-to-half-open-connection.c',
         'test/test-tcp-writealot.c',
+        'test/test-tcp-try-write.c',
         'test/test-tcp-unexpected-read.c',
         'test/test-tcp-read-stop.c',
         'test/test-threadpool.c',

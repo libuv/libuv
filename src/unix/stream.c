@@ -1299,6 +1299,55 @@ int uv_write(uv_write_t* req,
 }
 
 
+void uv_try_write_cb(uv_write_t* req, int status) {
+  /* Should not be called */
+  abort();
+}
+
+
+int uv_try_write(uv_stream_t* stream, const char* buf, size_t size) {
+  int r;
+  int has_pollout;
+  size_t written;
+  size_t req_size;
+  uv_write_t req;
+  uv_buf_t bufstruct;
+
+  /* Connecting or already writing some data */
+  if (stream->connect_req != NULL || stream->write_queue_size != 0)
+    return 0;
+
+  has_pollout = uv__io_active(&stream->io_watcher, UV__POLLOUT);
+
+  bufstruct = uv_buf_init((char*) buf, size);
+  r = uv_write(&req, stream, &bufstruct, 1, uv_try_write_cb);
+  if (r != 0)
+    return r;
+
+  /* Remove not written bytes from write queue size */
+  written = size;
+  if (req.bufs != NULL)
+    req_size = uv__write_req_size(&req);
+  else
+    req_size = 0;
+  written -= req_size;
+  stream->write_queue_size -= req_size;
+
+  /* Unqueue request, regardless of immediateness */
+  QUEUE_REMOVE(&req.queue);
+  uv__req_unregister(stream->loop, &req);
+  if (req.bufs != req.bufsml)
+    free(req.bufs);
+  req.bufs = NULL;
+
+  /* Do not poll for writable, if we wasn't before calling this */
+  if (!has_pollout)
+    uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
+
+  return (int) written;
+}
+
+
 static int uv__read_start_common(uv_stream_t* stream,
                                  uv_alloc_cb alloc_cb,
                                  uv_read_cb read_cb,

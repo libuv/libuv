@@ -673,6 +673,16 @@ UV_EXTERN int uv_write2(uv_write_t* req,
                         uv_stream_t* send_handle,
                         uv_write_cb cb);
 
+/*
+ * Same as `uv_write()`, but won't queue write request if it can't be completed
+ * immediately.
+ * Will return either:
+ * - positive number of bytes written
+ * - zero - if queued write is needed
+ * - negative error code
+ */
+UV_EXTERN int uv_try_write(uv_stream_t* handle, const char* buf, size_t length);
+
 /* uv_write_t is a subclass of uv_req_t */
 struct uv_write_s {
   UV_REQ_FIELDS

@@ -52,6 +52,7 @@ TEST_DECLARE   (pipe_ping_pong)
 TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (multiple_listen)
 TEST_DECLARE   (tcp_writealot)
+TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_open)
 TEST_DECLARE   (tcp_connect_error_after_write)
 TEST_DECLARE   (tcp_shutdown_after_write)
@@ -293,6 +294,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (tcp_writealot)
   TEST_HELPER (tcp_writealot, tcp4_echo_server)
+
+  TEST_ENTRY  (tcp_try_write)
 
   TEST_ENTRY  (tcp_open)
   TEST_HELPER (tcp_open, tcp4_echo_server)
