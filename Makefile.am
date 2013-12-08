@@ -272,10 +272,13 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = @PACKAGE_NAME@.pc
 endif
 
-SUFFIXES = .d
-
+if HAVE_DTRACE
 include/uv-dtrace.h: src/unix/uv-dtrace.d
 	$(AM_V_GEN)$(DTRACE) $(DTRACEFLAGS) -h -xnolibs -s $< -o $(top_srcdir)/$@
+endif
+
+if DTRACE_NEEDS_OBJECTS
+SUFFIXES = .d
 
 src/unix/uv-dtrace.o: src/unix/uv-dtrace.d ${libuv_la_OBJECTS}
 
@@ -291,3 +294,4 @@ src/unix/uv-dtrace.o: src/unix/uv-dtrace.d ${libuv_la_OBJECTS}
 		"pic_object='uv-dtrace.o'" \
 		"non_pic_object='uv-dtrace.o'" \
 	> ${top_builddir}/uv-dtrace.lo
+endif
