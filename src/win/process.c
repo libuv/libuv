@@ -1034,7 +1034,7 @@ int uv_spawn(uv_loop_t* loop,
     uv__handle_start(process);
   }
 
-  return err;
+  return uv_translate_sys_error(err);
 
   /* This code path is taken when we run into an error that we want to */
   /* report immediately. */
