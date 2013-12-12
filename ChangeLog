@@ -1,3 +1,12 @@
+2013.12.13, Version 0.10.20 (Stable), 04141464dd0fba90ace9aa6f7003ce139b888a40
+
+Changes since version 0.10.19:
+
+* linux: fix up SO_REUSEPORT back-port (Ben Noordhuis)
+
+* fs-event: fix invalid memory access (huxingyi)
+
+
 2013.11.21, Version 0.11.15 (Unstable), bfe645ed7e99ca5670d9279ad472b604c129d2e5
 
 Changes since version 0.11.14:
