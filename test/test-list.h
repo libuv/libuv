@@ -217,6 +217,7 @@ TEST_DECLARE   (dlerror)
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
+TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
@@ -517,6 +518,7 @@ TASK_LIST_START
   TEST_ENTRY  (thread_rwlock)
   TEST_ENTRY  (thread_create)
   TEST_ENTRY  (dlerror)
+  TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)
 #if 0
   /* These are for testing the test runner. */

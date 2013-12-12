@@ -102,9 +102,7 @@ int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
   memset(addr, 0, sizeof(*addr));
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
-  /* TODO(bnoordhuis) Don't use inet_addr(), no good way to detect errors. */
-  addr->sin_addr.s_addr = inet_addr(ip);
-  return 0;
+  return uv_inet_pton(AF_INET, ip, &(addr->sin_addr.s_addr));
 }
 
 
@@ -140,10 +138,7 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
   }
 #endif
 
-  /* TODO(bnoordhuis) Return an error when the address is bad. */
-  uv_inet_pton(AF_INET6, ip, &addr->sin6_addr);
-
-  return 0;
+  return uv_inet_pton(AF_INET6, ip, &addr->sin6_addr);
 }
 
 

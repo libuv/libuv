@@ -382,6 +382,7 @@
         'test/test-udp-multicast-join.c',
         'test/test-dlerror.c',
         'test/test-udp-multicast-ttl.c',
+        'test/test-ip4-addr.c',
         'test/test-ip6-addr.c',
       ],
       'conditions': [
