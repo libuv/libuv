@@ -1305,13 +1305,14 @@ void uv_try_write_cb(uv_write_t* req, int status) {
 }
 
 
-int uv_try_write(uv_stream_t* stream, const char* buf, size_t size) {
+int uv_try_write(uv_stream_t* stream,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs) {
   int r;
   int has_pollout;
   size_t written;
   size_t req_size;
   uv_write_t req;
-  uv_buf_t bufstruct;
 
   /* Connecting or already writing some data */
   if (stream->connect_req != NULL || stream->write_queue_size != 0)
@@ -1319,13 +1320,12 @@ int uv_try_write(uv_stream_t* stream, const char* buf, size_t size) {
 
   has_pollout = uv__io_active(&stream->io_watcher, UV__POLLOUT);
 
-  bufstruct = uv_buf_init((char*) buf, size);
-  r = uv_write(&req, stream, &bufstruct, 1, uv_try_write_cb);
+  r = uv_write(&req, stream, bufs, nbufs, uv_try_write_cb);
   if (r != 0)
     return r;
 
   /* Remove not written bytes from write queue size */
-  written = size;
+  written = uv_count_bufs(bufs, nbufs);
   if (req.bufs != NULL)
     req_size = uv__write_req_size(&req);
   else

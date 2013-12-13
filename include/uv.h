@@ -681,7 +681,9 @@ UV_EXTERN int uv_write2(uv_write_t* req,
  * - zero - if queued write is needed
  * - negative error code
  */
-UV_EXTERN int uv_try_write(uv_stream_t* handle, const char* buf, size_t length);
+UV_EXTERN int uv_try_write(uv_stream_t* handle,
+                           const uv_buf_t bufs[],
+                           unsigned int nbufs);
 
 /* uv_write_t is a subclass of uv_req_t */
 struct uv_write_s {
