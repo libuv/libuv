@@ -1,3 +1,34 @@
+2013.12.14, Version 0.11.16 (Unstable)
+
+Changes since version 0.11.15:
+
+* fsevents: remove kFSEventStreamCreateFlagNoDefer polyfill (ci-innoq)
+
+* libuv: add more getaddrinfo errors (Steven Kabbes)
+
+* unix: fix accept() EMFILE error handling (Ben Noordhuis)
+
+* linux: fix up SO_REUSEPORT back-port (Ben Noordhuis)
+
+* fsevents: fix subfolder check (Fedor Indutny)
+
+* fsevents: fix invalid memory access (huxingyi)
+
+* windows/timer: fix uv_hrtime discontinuity (Bert Belder)
+
+* unix: fix various memory leaks and undef behavior (Fedor Indutny)
+
+* unix, windows: always update loop time (Saúl Ibarra Corretgé)
+
+* windows: translate system errors in uv_spawn (Alexis Campailla)
+
+* windows: uv_spawn code refactor (Alexis Campailla)
+
+* unix, windows: detect errors in uv_ip4/6_addr (Yorkie)
+
+* stream: introduce uv_try_write(...) (Fedor Indutny)
+
+
 2013.12.13, Version 0.10.20 (Stable), 04141464dd0fba90ace9aa6f7003ce139b888a40
 
 Changes since version 0.10.19:
