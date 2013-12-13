@@ -37,7 +37,7 @@ TEST_IMPL(ip4_addr) {
   ASSERT(UV_EINVAL == uv_ip4_addr("2555.0.0.0", TEST_PORT, &addr));
   ASSERT(UV_EINVAL == uv_ip4_addr("255", TEST_PORT, &addr));
 
-  // for broken address family
+  /* for broken address family */
   ASSERT(UV_EAFNOSUPPORT == uv_inet_pton(42, "127.0.0.1",
     &addr.sin_addr.s_addr));
 
