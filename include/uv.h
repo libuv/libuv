@@ -1196,6 +1196,15 @@ UV_EXTERN void uv_pipe_connect(uv_connect_t* req,
                                uv_connect_cb cb);
 
 /*
+ * Get the name of the UNIX domain socket or the named pipe.
+ *
+ * A preallocated buffer must be provided. The len parameter holds the
+ * length of the buffer and it's set to the number of bytes written to the
+ * buffer on output.
+ */
+UV_EXTERN int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len);
+
+/*
  * This setting applies to Windows only.
  * Set the number of pending pipe instance handles when the pipe server
  * is waiting for connections.
