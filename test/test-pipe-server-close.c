@@ -53,7 +53,10 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
 
 
 static void pipe_server_connection_cb(uv_stream_t* handle, int status) {
-  ASSERT(0 && "pipe_server_connection_cb should never be called");
+  /* This function *may* be called, depending on whether accept or the
+   * connection callback is called first.
+   */
+  ASSERT(status == 0);
 }
 
 
