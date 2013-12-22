@@ -398,17 +398,6 @@ typedef void (*uv_alloc_cb)(uv_handle_t* handle,
 typedef void (*uv_read_cb)(uv_stream_t* stream,
                            ssize_t nread,
                            const uv_buf_t* buf);
-
-/*
- * Just like the uv_read_cb except that if the pending parameter is true
- * then you can use uv_accept() to pull the new handle into the process.
- * If no handle is pending then pending will be UV_UNKNOWN_HANDLE.
- */
-typedef void (*uv_read2_cb)(uv_pipe_t* pipe,
-                            ssize_t nread,
-                            const uv_buf_t* buf,
-                            uv_handle_type pending);
-
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
@@ -611,7 +600,6 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
   size_t write_queue_size;                                                    \
   uv_alloc_cb alloc_cb;                                                       \
   uv_read_cb read_cb;                                                         \
-  uv_read2_cb read2_cb;                                                       \
   /* private */                                                               \
   UV_STREAM_PRIVATE_FIELDS
 
@@ -659,13 +647,6 @@ UV_EXTERN int uv_read_start(uv_stream_t*,
                             uv_read_cb read_cb);
 
 UV_EXTERN int uv_read_stop(uv_stream_t*);
-
-/*
- * Extended read methods for receiving handles over a pipe. The pipe must be
- * initialized with ipc == 1.
- */
-UV_EXTERN int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb,
-    uv_read2_cb read_cb);
 
 
 /*
@@ -1213,6 +1194,15 @@ UV_EXTERN int uv_pipe_getsockname(const uv_pipe_t* handle,
  */
 UV_EXTERN void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
 
+/*
+ * Used to receive handles over ipc pipes.
+ *
+ * First - call `uv_pipe_pending_count`, if it is > 0 - initialize handle
+ * using type, returned by `uv_pipe_pending_type` and call
+ * `uv_accept(pipe, handle)`.
+ */
+UV_EXTERN int uv_pipe_pending_count(uv_pipe_t* handle);
+UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
 
 /*
  * uv_poll_t is a subclass of uv_handle_t.
