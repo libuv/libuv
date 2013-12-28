@@ -138,6 +138,31 @@ void uv__stream_init(uv_loop_t* loop,
 }
 
 
+static void uv__stream_osx_interrupt_select(uv_stream_t* stream) {
+#if defined(__APPLE__)
+  /* Notify select() thread about state change */
+  uv__stream_select_t* s;
+  int r;
+
+  s = stream->select;
+  if (s == NULL)
+    return;
+
+  /* Interrupt select() loop
+   * NOTE: fake_fd and int_fd are socketpair(), thus writing to one will
+   * emit read event on other side
+   */
+  do
+    r = write(s->fake_fd, "x", 1);
+  while (r == -1 && errno == EINTR);
+
+  assert(r == 1);
+#else  /* !defined(__APPLE__) */
+  /* No-op on any other platform */
+#endif  /* !defined(__APPLE__) */
+}
+
+
 #if defined(__APPLE__)
 static void uv__stream_osx_select(void* arg) {
   uv_stream_t* stream;
@@ -226,31 +251,6 @@ static void uv__stream_osx_select(void* arg) {
       assert((s->events == 0) || (stream->flags & UV_CLOSING));
     }
   }
-}
-
-
-static void uv__stream_osx_interrupt_select(uv_stream_t* stream) {
-#if defined(__APPLE__)
-  /* Notify select() thread about state change */
-  uv__stream_select_t* s;
-  int r;
-
-  s = stream->select;
-  if (s == NULL)
-    return;
-
-  /* Interrupt select() loop
-   * NOTE: fake_fd and int_fd are socketpair(), thus writing to one will
-   * emit read event on other side
-   */
-  do
-    r = write(s->fake_fd, "x", 1);
-  while (r == -1 && errno == EINTR);
-
-  assert(r == 1);
-#else  /* !defined(__APPLE__) */
-  /* No-op on any other platform */
-#endif  /* !defined(__APPLE__) */
 }
 
 
