@@ -1549,11 +1549,27 @@ UV_EXTERN int uv_spawn(uv_loop_t* loop,
 /*
  * Kills the process with the specified signal. The user must still
  * call uv_close on the process.
+ *
+ * Emulates some aspects of Unix exit status on Windows, in that while the
+ * underlying process will be terminated with a status of `1`,
+ * `uv_process_t.exit_signal` will be set to signum, so the process will appear
+ * to have been killed by `signum`.
  */
 UV_EXTERN int uv_process_kill(uv_process_t*, int signum);
 
 
-/* Kills the process with the specified signal. */
+/* Kills the process with the specified signal.
+ *
+ * Emulates some aspects of Unix signals on Windows:
+ * - SIGTERM, SIGKILL, and SIGINT call TerminateProcess() to unconditionally
+ *   cause the target to exit with status 1. Unlike Unix, this cannot be caught
+ *   or ignored (but see uv_process_kill() and uv_signal_start()).
+ * - Signal number `0` causes a check for target existence, as in Unix. Return
+ *   value is 0 on existence, UV_ESRCH on non-existence.
+ *
+ * Returns 0 on success, or an error code on failure. UV_ESRCH is portably used
+ * for non-existence of target process, other errors may be system specific.
+ */
 UV_EXTERN int uv_kill(int pid, int signum);
 
 
@@ -1849,7 +1865,7 @@ UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
  * signals will lead to unpredictable behavior and is strongly discouraged.
  * Future versions of libuv may simply reject them.
  *
- * Some signal support is available on Windows:
+ * Reception of some signals is emulated on Windows:
  *
  *   SIGINT is normally delivered when the user presses CTRL+C. However, like
  *   on Unix, it is not generated when terminal raw mode is enabled.
@@ -1868,11 +1884,14 @@ UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
  *   the console buffer will also trigger a SIGWINCH signal.
  *
  * Watchers for other signals can be successfully created, but these signals
- * are never generated. These signals are: SIGILL, SIGABRT, SIGFPE, SIGSEGV,
+ * are never received. These signals are: SIGILL, SIGABRT, SIGFPE, SIGSEGV,
  * SIGTERM and SIGKILL.
  *
  * Note that calls to raise() or abort() to programmatically raise a signal are
  * not detected by libuv; these will not trigger a signal watcher.
+ *
+ * See uv_process_kill() and uv_kill() for information about support for sending
+ * signals.
  */
 struct uv_signal_s {
   UV_HANDLE_FIELDS
