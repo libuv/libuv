@@ -1171,6 +1171,12 @@ int uv_tcp_duplicate_socket(uv_tcp_t* handle, int pid,
       if (!(handle->flags & UV_HANDLE_BOUND)) {
         return ERROR_INVALID_PARAMETER;
       }
+
+      /* Report any deferred bind errors now. */
+      if (handle->flags & UV_HANDLE_BIND_ERROR) {
+        return handle->bind_error;
+      }
+
       if (listen(handle->socket, SOMAXCONN) == SOCKET_ERROR) {
         return WSAGetLastError();
       }
