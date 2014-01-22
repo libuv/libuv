@@ -635,7 +635,7 @@ static int read_times(unsigned int numcpus, uv_cpu_info_t* ci) {
 
     /* skip "cpu<num> " marker */
     {
-      unsigned int n;
+      unsigned int n = 0;
       assert(sscanf(buf, "cpu%u ", &n) == 1);
       for (len = sizeof("cpu0"); n /= 10; len++);
     }
