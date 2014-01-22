@@ -292,7 +292,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
   options.stdio[2].data.fd = file;
   options.stdio_count = 3;
 
-  r = uv_spawn(uv_default_loop(), &process, options);
+  r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -638,7 +638,7 @@ TEST_IMPL(spawn_same_stdout_stderr) {
   options.stdio[1].data.stream = (uv_stream_t*)&out;
   options.stdio_count = 2;
 
-  r = uv_spawn(uv_default_loop(), &process, options);
+  r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
   /* Sending signum == 0 should check if the
