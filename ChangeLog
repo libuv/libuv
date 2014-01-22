@@ -1,3 +1,10 @@
+2014.01.08, Version 0.10.22 (Stable), f526c90eeff271d9323a9107b9a64a4671fd3103
+
+Changes since version 0.10.21:
+
+* windows: avoid assertion failure when pipe server is closed (Bert Belder)
+
+
 2013.12.32, Version 0.11.17 (Unstable), 589c224d4c2e79fec65db01d361948f1e4976858
 
 Changes since version 0.11.16:
