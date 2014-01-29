@@ -604,7 +604,7 @@ static int read_times(unsigned int numcpus, uv_cpu_info_t* ci) {
       unsigned int n;
       int r = sscanf(buf, "cpu%u ", &n);
       assert(r == 1);
-      (void) r;  // silence build warning
+      (void) r;  /* silence build warning */
       for (len = sizeof("cpu0"); n /= 10; len++);
     }
 
