@@ -422,10 +422,13 @@ int uv_spawn(uv_loop_t* loop,
 
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 
+  /* Acquire write lock to prevent opening new fds in worker threads */
+  uv_rwlock_wrlock(&loop->cloexec_lock);
   pid = fork();
 
   if (pid == -1) {
     err = -errno;
+    uv_rwlock_wrunlock(&loop->cloexec_lock);
     uv__close(signal_pipe[0]);
     uv__close(signal_pipe[1]);
     goto error;
@@ -436,6 +439,8 @@ int uv_spawn(uv_loop_t* loop,
     abort();
   }
 
+  /* Release lock in parent process */
+  uv_rwlock_wrunlock(&loop->cloexec_lock);
   uv__close(signal_pipe[1]);
 
   process->status = 0;

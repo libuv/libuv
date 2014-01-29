@@ -117,6 +117,9 @@ static int uv__loop_init(uv_loop_t* loop, int default_loop) {
   for (i = 0; i < ARRAY_SIZE(loop->process_handles); i++)
     QUEUE_INIT(loop->process_handles + i);
 
+  if (uv_rwlock_init(&loop->cloexec_lock))
+    abort();
+
   if (uv_mutex_init(&loop->wq_mutex))
     abort();
 
@@ -150,6 +153,12 @@ static void uv__loop_delete(uv_loop_t* loop) {
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
   uv_mutex_destroy(&loop->wq_mutex);
+
+  /*
+   * Note that all thread pool stuff is finished at this point and
+   * it is safe to just destroy rw lock
+   */
+  uv_rwlock_destroy(&loop->cloexec_lock);
 
 #if 0
   assert(QUEUE_EMPTY(&loop->pending_queue));

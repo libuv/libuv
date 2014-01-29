@@ -152,5 +152,16 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 
+#ifndef _WIN32
+  if (strcmp(argv[1], "spawn_helper8") == 0) {
+    int fd;
+    ASSERT(sizeof(fd) == read(0, &fd, sizeof(fd)));
+    ASSERT(fd > 2);
+    ASSERT(-1 == write(fd, "x", 1));
+
+    return 1;
+  }
+#endif  /* !_WIN32 */
+
   return run_test(argv[1], 0, 1);
 }

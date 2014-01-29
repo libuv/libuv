@@ -1049,3 +1049,41 @@ TEST_IMPL(spawn_auto_unref) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+#ifndef _WIN32
+TEST_IMPL(spawn_fs_open) {
+  int fd;
+  uv_fs_t fs_req;
+  uv_pipe_t in;
+  uv_write_t write_req;
+  uv_buf_t buf;
+  uv_stdio_container_t stdio[1];
+
+  fd = uv_fs_open(uv_default_loop(), &fs_req, "/dev/null", O_RDWR, 0, NULL);
+  ASSERT(fd >= 0);
+
+  init_process_options("spawn_helper8", exit_cb);
+
+  ASSERT(0 == uv_pipe_init(uv_default_loop(), &in, 0));
+
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE;
+  options.stdio[0].data.stream = (uv_stream_t*) &in;
+  options.stdio_count = 1;
+
+  ASSERT(0 == uv_spawn(uv_default_loop(), &process, &options));
+
+  buf = uv_buf_init((char*) &fd, sizeof(fd));
+  ASSERT(0 == uv_write(&write_req, (uv_stream_t*) &in, &buf, 1, write_cb));
+
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT(0 == uv_fs_close(uv_default_loop(), &fs_req, fd, NULL));
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 2);  /* One for `in`, one for process */
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif  /* !_WIN32 */
