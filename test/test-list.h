@@ -248,7 +248,7 @@ HELPER_DECLARE (pipe_echo_server)
 
 
 TASK_LIST_START
-  TEST_OUTPUT_ENTRY  (platform_output)
+  TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
 #if 0
   TEST_ENTRY  (callback_order)
