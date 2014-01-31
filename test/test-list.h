@@ -432,7 +432,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (hrtime)
 
-  TEST_ENTRY  (getaddrinfo_fail)
+  TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
+
   TEST_ENTRY  (getaddrinfo_basic)
   TEST_ENTRY  (getaddrinfo_concurrent)
 
