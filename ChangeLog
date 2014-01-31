@@ -7,6 +7,15 @@ Changes since version 0.11.18:
 * linux: fix C99/C++ comment (Fedor Indutny)
 
 
+2014.01.30, Version 0.10.24 (Stable), aecd296b6bce9b40f06a61c5c94e43d45ac7308a
+
+Changes since version 0.10.23:
+
+* linux: move sscanf() out of the assert() (Trevor Norris)
+
+* linux: fix C99/C++ comment (Fedor Indutny)
+
+
 2014.01.23, Version 0.11.18 (Unstable), d47962e9d93d4a55a9984623feaf546406c9cdbb
 
 Changes since version 0.11.17:
