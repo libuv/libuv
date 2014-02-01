@@ -155,7 +155,6 @@ TEST_DECLARE   (getsockname_udp)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 TEST_DECLARE   (spawn_fails)
-TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (spawn_exit_code)
 TEST_DECLARE   (spawn_stdout)
 TEST_DECLARE   (spawn_stdin)
@@ -226,6 +225,7 @@ TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
+TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (argument_escaping)
 TEST_DECLARE   (environment_creation)
 TEST_DECLARE   (listen_with_simultaneous_accepts)
@@ -446,7 +446,6 @@ TASK_LIST_START
   TEST_ENTRY  (poll_close)
 
   TEST_ENTRY  (spawn_fails)
-  TEST_ENTRY  (spawn_fs_open)
   TEST_ENTRY  (spawn_exit_code)
   TEST_ENTRY  (spawn_stdout)
   TEST_ENTRY  (spawn_stdin)
@@ -467,6 +466,7 @@ TASK_LIST_START
 
 #ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
+  TEST_ENTRY  (spawn_fs_open)
   TEST_ENTRY  (argument_escaping)
   TEST_ENTRY  (environment_creation)
   TEST_ENTRY  (listen_with_simultaneous_accepts)
