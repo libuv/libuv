@@ -37,7 +37,7 @@ $(BUILDDIR)/$(BUILDTYPE)/s5-proxy: $(BUILDDIR)/Makefile $(SOURCES)
 
 $(BUILDDIR)/Makefile: ../../common.gypi build.gyp
 	$(GYP)	\
-		-Dlibrary=static_library \
+		-Duv_library=static_library \
 		-Goutput_dir=. \
 		-I../../common.gypi \
 		-f make \

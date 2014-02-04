@@ -31,7 +31,7 @@
   'targets': [
     {
       'target_name': 'libuv',
-      'type': '<(library)',
+      'type': '<(uv_library)',
       'include_dirs': [
         'include',
         'src/',
@@ -167,10 +167,10 @@
             ],
           },
           'conditions': [
-            ['library=="shared_library"', {
+            ['uv_library=="shared_library"', {
               'cflags': [ '-fPIC' ],
             }],
-            ['library=="shared_library" and OS!="mac"', {
+            ['uv_library=="shared_library" and OS!="mac"', {
               'link_settings': {
                 # Must correspond with UV_VERSION_MAJOR and UV_VERSION_MINOR
                 # in src/version.c
@@ -265,7 +265,7 @@
         [ 'OS in "mac freebsd dragonflybsd openbsd netbsd".split()', {
           'sources': [ 'src/unix/kqueue.c' ],
         }],
-        ['library=="shared_library"', {
+        ['uv_library=="shared_library"', {
           'defines': [ 'BUILDING_UV_SHARED=1' ]
         }],
         # FIXME(bnoordhuis or tjfontaine) Unify this, it's extremely ugly.
