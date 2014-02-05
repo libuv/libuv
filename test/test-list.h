@@ -240,6 +240,7 @@ TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
 TEST_DECLARE   (signal_multiple_loops)
+TEST_DECLARE   (closed_fd_events)
 #endif
 #ifdef __APPLE__
 TEST_DECLARE   (osx_select)
@@ -484,6 +485,7 @@ TASK_LIST_START
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
   TEST_ENTRY  (signal_multiple_loops)
+  TEST_ENTRY  (closed_fd_events)
 #endif
 
 #ifdef __APPLE__
