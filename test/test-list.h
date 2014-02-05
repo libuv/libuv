@@ -225,7 +225,6 @@ TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
-TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (argument_escaping)
 TEST_DECLARE   (environment_creation)
 TEST_DECLARE   (listen_with_simultaneous_accepts)
@@ -234,6 +233,7 @@ TEST_DECLARE   (fs_stat_root)
 #else
 TEST_DECLARE   (emfile)
 TEST_DECLARE   (close_fd)
+TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
@@ -466,7 +466,6 @@ TASK_LIST_START
 
 #ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
-  TEST_ENTRY  (spawn_fs_open)
   TEST_ENTRY  (argument_escaping)
   TEST_ENTRY  (environment_creation)
   TEST_ENTRY  (listen_with_simultaneous_accepts)
@@ -475,6 +474,7 @@ TASK_LIST_START
 #else
   TEST_ENTRY  (emfile)
   TEST_ENTRY  (close_fd)
+  TEST_ENTRY  (spawn_fs_open)
   TEST_ENTRY  (spawn_setuid_setgid)
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
