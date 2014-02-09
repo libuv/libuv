@@ -546,6 +546,8 @@ void fs__read(uv_fs_t* req) {
   LARGE_INTEGER offset_;
   DWORD bytes;
   DWORD error;
+  int result;
+  unsigned int index;
 
   VERIFY_FD(fd, req);
 
@@ -573,7 +575,20 @@ void fs__read(uv_fs_t* req) {
     overlapped_ptr = NULL;
   }
 
-  if (ReadFile(handle, req->buf, req->length, &bytes, overlapped_ptr)) {
+  index = 0;
+  bytes = 0;
+  do {
+    DWORD incremental_bytes;
+    result = ReadFile(handle,
+                      req->bufs[index].base,
+                      req->bufs[index].len,
+                      &incremental_bytes,
+                      overlapped_ptr);
+    bytes += incremental_bytes;
+    ++index;
+  } while (result && index < req->nbufs);
+
+  if (result || bytes > 0) {
     SET_REQ_RESULT(req, bytes);
   } else {
     error = GetLastError();
@@ -594,6 +609,8 @@ void fs__write(uv_fs_t* req) {
   OVERLAPPED overlapped, *overlapped_ptr;
   LARGE_INTEGER offset_;
   DWORD bytes;
+  int result;
+  unsigned int index;
 
   VERIFY_FD(fd, req);
 
@@ -620,7 +637,20 @@ void fs__write(uv_fs_t* req) {
     overlapped_ptr = NULL;
   }
 
-  if (WriteFile(handle, req->buf, length, &bytes, overlapped_ptr)) {
+  index = 0;
+  bytes = 0;
+  do {
+    DWORD incremental_bytes;
+    result = WriteFile(handle,
+                       req->bufs[index].base,
+                       req->bufs[index].len,
+                       &incremental_bytes,
+                       overlapped_ptr);
+    bytes += incremental_bytes;
+    ++index;
+  } while (result && index < req->nbufs);
+
+  if (result || bytes > 0) {
     SET_REQ_RESULT(req, bytes);
   } else {
     SET_REQ_WIN32_ERROR(req, GetLastError());
@@ -1569,13 +1599,27 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
 }
 
 
-int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file fd, void* buf,
-    size_t length, int64_t offset, uv_fs_cb cb) {
+int uv_fs_read(uv_loop_t* loop,
+               uv_fs_t* req,
+               uv_file fd,
+               const uv_buf_t bufs[],
+               unsigned int nbufs,
+               int64_t offset,
+               uv_fs_cb cb) {
   uv_fs_req_init(loop, req, UV_FS_READ, cb);
 
   req->fd = fd;
-  req->buf = buf;
-  req->length = length;
+
+  req->nbufs = nbufs;
+  req->bufs = req->bufsml;
+  if (nbufs > ARRAY_SIZE(req->bufsml))
+    req->bufs = malloc(nbufs * sizeof(*bufs));
+
+  if (req->bufs == NULL)
+    return UV_ENOMEM;
+
+  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+
   req->offset = offset;
 
   if (cb) {
@@ -1593,8 +1637,17 @@ int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file fd, const void* buf,
   uv_fs_req_init(loop, req, UV_FS_WRITE, cb);
 
   req->fd = fd;
-  req->buf = (void*) buf;
-  req->length = length;
+
+  req->nbufs = nbufs;
+  req->bufs = req->bufsml;
+  if (nbufs > ARRAY_SIZE(req->bufsml))
+    req->bufs = malloc(nbufs * sizeof(*bufs));
+
+  if (req->bufs == NULL)
+    return UV_ENOMEM;
+
+  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+
   req->offset = offset;
 
   if (cb) {
