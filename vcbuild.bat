@@ -41,6 +41,8 @@ shift
 goto next-arg
 :args-done
 
+if defined VCINSTALLDIR goto select-target
+
 @rem Look for Visual Studio 2013
 if not defined VS120COMNTOOLS goto vc-set-2012
 if not exist "%VS120COMNTOOLS%\..\..\vc\vcvarsall.bat" goto vc-set-2012
