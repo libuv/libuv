@@ -499,12 +499,12 @@ struct uv_shutdown_s {
 
 #define UV_HANDLE_FIELDS                                                      \
   /* public */                                                                \
-  uv_close_cb close_cb;                                                       \
   void* data;                                                                 \
   /* read-only */                                                             \
   uv_loop_t* loop;                                                            \
   uv_handle_type type;                                                        \
   /* private */                                                               \
+  uv_close_cb close_cb;                                                       \
   void* handle_queue[2];                                                      \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
