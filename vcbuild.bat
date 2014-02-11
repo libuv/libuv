@@ -41,6 +41,16 @@ shift
 goto next-arg
 :args-done
 
+if defined WindowsSDKDir goto select-target
+if defined VCINSTALLDIR goto select-target
+
+@rem Look for Visual Studio 2013
+if not defined VS120COMNTOOLS goto vc-set-2012
+if not exist "%VS120COMNTOOLS%\..\..\vc\vcvarsall.bat" goto vc-set-2012
+call "%VS120COMNTOOLS%\..\..\vc\vcvarsall.bat" %vs_toolset%
+set GYP_MSVS_VERSION=2013
+goto select-target
+
 @rem Look for Visual Studio 2012
 if not defined VS110COMNTOOLS goto vc-set-2010
 if not exist "%VS110COMNTOOLS%\..\..\vc\vcvarsall.bat" goto vc-set-2010
@@ -101,10 +111,8 @@ echo Project files generated.
 if defined nobuild goto run
 
 @rem Check if VS build env is available
-if not defined VCINSTALLDIR goto msbuild-not-found
-goto msbuild-found
-
-:msbuild-not-found
+if defined VCINSTALLDIR goto msbuild-found
+if defined WindowsSDKDir goto msbuild-found
 echo Build skipped. To build, this file needs to run from VS cmd prompt.
 goto run
 
