@@ -41,6 +41,7 @@ shift
 goto next-arg
 :args-done
 
+if defined WindowsSDKDir goto select-target
 if defined VCINSTALLDIR goto select-target
 
 @rem Look for Visual Studio 2013
@@ -111,10 +112,8 @@ echo Project files generated.
 if defined nobuild goto run
 
 @rem Check if VS build env is available
-if not defined VCINSTALLDIR goto msbuild-not-found
-goto msbuild-found
-
-:msbuild-not-found
+if defined VCINSTALLDIR goto msbuild-found
+if defined WindowsSDKDir goto msbuild-found
 echo Build skipped. To build, this file needs to run from VS cmd prompt.
 goto run
 
