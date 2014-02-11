@@ -33,7 +33,7 @@ if /i "%1"=="noprojgen"    set noprojgen=1&goto arg-ok
 if /i "%1"=="nobuild"      set nobuild=1&goto arg-ok
 if /i "%1"=="x86"          set target_arch=ia32&set platform=WIN32&set vs_toolset=x86&goto arg-ok
 if /i "%1"=="ia32"         set target_arch=ia32&set platform=WIN32&set vs_toolset=x86&goto arg-ok
-if /i "%1"=="x64"          set target_arch=x64&set platform=amd64&set vs_toolset=x64&goto arg-ok
+if /i "%1"=="x64"          set target_arch=x64&set platform=x64&set vs_toolset=x64&goto arg-ok
 if /i "%1"=="shared"       set library=shared_library&goto arg-ok
 if /i "%1"=="static"       set library=static_library&goto arg-ok
 :arg-ok
