@@ -46,6 +46,7 @@ extern "C" {
 #endif
 
 #include "uv-errno.h"
+#include "uv-version.h"
 #include <stddef.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600

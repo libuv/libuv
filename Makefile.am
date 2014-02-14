@@ -17,7 +17,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -I$(top_srcdir)/include \
               -I$(top_srcdir)/src
 
-include_HEADERS=include/uv.h include/uv-errno.h
+include_HEADERS=include/uv.h include/uv-errno.h include/uv-version.h
 
 CLEANFILES =
 

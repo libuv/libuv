@@ -26,6 +26,7 @@ CFLAGS += -Wall \
 INCLUDES = include/stdint-msvc2008.h \
            include/tree.h \
            include/uv-errno.h \
+           include/uv-version.h \
            include/uv-win.h \
            include/uv.h \
            src/queue.h \

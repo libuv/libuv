@@ -61,6 +61,7 @@
         'include/uv.h',
         'include/tree.h',
         'include/uv-errno.h',
+        'include/uv-version.h',
         'src/fs-poll.c',
         'src/inet.c',
         'src/queue.h',
