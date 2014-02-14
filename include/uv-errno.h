@@ -370,4 +370,10 @@
 # define UV__EXDEV (-4037)
 #endif
 
+#if defined(EFBIG) && !defined(_WIN32)
+# define UV__EFBIG (-EFBIG)
+#else
+# define UV__EFBIG (-4036)
+#endif
+
 #endif /* UV_ERRNO_H_ */

@@ -94,6 +94,7 @@ extern "C" {
   XX(EDESTADDRREQ, "destination address required")                            \
   XX(EEXIST, "file already exists")                                           \
   XX(EFAULT, "bad address in system call argument")                           \
+  XX(EFBIG, "file too large")                                                 \
   XX(EHOSTUNREACH, "host is unreachable")                                     \
   XX(EINTR, "interrupted system call")                                        \
   XX(EINVAL, "invalid argument")                                              \
