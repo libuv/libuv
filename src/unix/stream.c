@@ -1080,6 +1080,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
 
   if (!(stream->flags & UV_STREAM_WRITABLE) ||
       stream->flags & UV_STREAM_SHUT ||
+      stream->flags & UV_STREAM_SHUTTING ||
       stream->flags & UV_CLOSED ||
       stream->flags & UV_CLOSING) {
     uv__set_artificial_error(stream->loop, UV_ENOTCONN);
