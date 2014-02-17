@@ -147,6 +147,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-list.h \
                          test/test-loop-handles.c \
                          test/test-loop-alive.c \
+                         test/test-loop-close.c \
                          test/test-loop-stop.c \
                          test/test-loop-time.c \
                          test/test-multiple-listen.c \

@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 static int uv__loop_init(uv_loop_t* loop, int default_loop);
-static void uv__loop_delete(uv_loop_t* loop);
+static void uv__loop_close(uv_loop_t* loop);
 
 static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
@@ -46,6 +46,31 @@ uv_loop_t* uv_default_loop(void) {
 }
 
 
+int uv_loop_init(uv_loop_t* loop) {
+  return uv__loop_init(loop, /* default_loop? */ 0);
+}
+
+
+int uv_loop_close(uv_loop_t* loop) {
+  QUEUE* q;
+  uv_handle_t* h;
+  if (!QUEUE_EMPTY(&(loop)->active_reqs))
+    return -EBUSY;
+  QUEUE_FOREACH(q, &loop->handle_queue) {
+    h = QUEUE_DATA(q, uv_handle_t, handle_queue);
+    if (!(h->flags & UV__HANDLE_INTERNAL))
+      return -EBUSY;
+  }
+  uv__loop_close(loop);
+#ifndef NDEBUG
+  memset(loop, -1, sizeof(*loop));
+#endif
+  if (loop == default_loop_ptr)
+    default_loop_ptr = NULL;
+  return 0;
+}
+
+
 uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
@@ -53,7 +78,7 @@ uv_loop_t* uv_loop_new(void) {
   if (loop == NULL)
     return NULL;
 
-  if (uv__loop_init(loop, /* default_loop? */ 0)) {
+  if (uv_loop_init(loop)) {
     free(loop);
     return NULL;
   }
@@ -63,13 +88,10 @@ uv_loop_t* uv_loop_new(void) {
 
 
 void uv_loop_delete(uv_loop_t* loop) {
-  uv__loop_delete(loop);
-#ifndef NDEBUG
-  memset(loop, -1, sizeof(*loop));
-#endif
-  if (loop == default_loop_ptr)
-    default_loop_ptr = NULL;
-  else
+  uv_loop_t* default_loop;
+  default_loop = default_loop_ptr;
+  uv_loop_close(loop);
+  if (loop != default_loop)
     free(loop);
 }
 
@@ -134,7 +156,7 @@ static int uv__loop_init(uv_loop_t* loop, int default_loop) {
 }
 
 
-static void uv__loop_delete(uv_loop_t* loop) {
+static void uv__loop_close(uv_loop_t* loop) {
   uv__signal_loop_cleanup(loop);
   uv__platform_loop_delete(loop);
   uv__async_stop(loop, &loop->async_watcher);

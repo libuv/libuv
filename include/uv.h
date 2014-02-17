@@ -245,20 +245,42 @@ UV_EXTERN const char* uv_version_string(void);
 
 
 /*
- * This function must be called before any other functions in libuv.
- *
  * All functions besides uv_run() are non-blocking.
  *
  * All callbacks in libuv are made asynchronously. That is they are never
  * made by the function that takes them as a parameter.
  */
-UV_EXTERN uv_loop_t* uv_loop_new(void);
-UV_EXTERN void uv_loop_delete(uv_loop_t*);
 
 /*
  * Returns the default loop.
  */
 UV_EXTERN uv_loop_t* uv_default_loop(void);
+
+/*
+ * Initializes a uv_loop_t structure.
+ */
+UV_EXTERN int uv_loop_init(uv_loop_t* loop);
+
+/*
+ * Closes all internal loop resources.  This function must only be called once
+ * the loop has finished it's execution or it will return UV_EBUSY.  After this
+ * function returns the user shall free the memory allocated for the loop.
+ */
+UV_EXTERN int uv_loop_close(uv_loop_t* loop);
+
+/*
+ * Allocates and initializes a new loop.
+ * NOTE: This function is DEPRECATED (to be removed after 0.12), users should
+ * allocate the loop and use uv_loop_init instead.
+ */
+UV_EXTERN uv_loop_t* uv_loop_new(void);
+
+/*
+ * Cleans up a loop once it has finished executio and frees its memory.
+ * NOTE: This function is DEPRECATED. Users should use uv_loop_close and free
+ * the memory themselves instead.
+ */
+UV_EXTERN void uv_loop_delete(uv_loop_t*);
 
 /*
  * This function runs the event loop. It will act differently depending on the

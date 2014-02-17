@@ -653,7 +653,7 @@ static void fs_event_error_report_close_cb(uv_handle_t* handle) {
 
 TEST_IMPL(fs_event_error_reporting) {
   unsigned int i;
-  uv_loop_t* loops[1024];
+  uv_loop_t loops[1024];
   uv_fs_event_t events[ARRAY_SIZE(loops)];
   uv_loop_t* loop;
   uv_fs_event_t* event;
@@ -668,11 +668,10 @@ TEST_IMPL(fs_event_error_reporting) {
    * fail.
    */
   for (i = 0; i < ARRAY_SIZE(loops); i++) {
-    loop = uv_loop_new();
+    loop = &loops[i];
+    ASSERT(0 == uv_loop_init(loop));
     event = &events[i];
-    ASSERT(loop != NULL);
 
-    loops[i] = loop;
     timer_cb_called = 0;
     close_cb_called = 0;
     ASSERT(0 == uv_fs_event_init(loop, event));
@@ -697,7 +696,7 @@ TEST_IMPL(fs_event_error_reporting) {
 
   /* Stop and close all events, and destroy loops */
   do {
-    loop = loops[i];
+    loop = &loops[i];
     event = &events[i];
 
     ASSERT(0 == uv_fs_event_stop(event));
@@ -708,9 +707,7 @@ TEST_IMPL(fs_event_error_reporting) {
     uv_run(loop, UV_RUN_DEFAULT);
     ASSERT(close_cb_called == 1);
 
-    uv_loop_delete(loop);
-
-    loops[i] = NULL;
+    uv_loop_close(loop);
   } while (i-- != 0);
 
   remove("watch_dir/");
