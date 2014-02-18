@@ -271,7 +271,11 @@ static int uv_tcp_try_bind(uv_tcp_t* handle,
     /* TODO: how to handle errors? This may fail if there is no ipv4 stack */
     /* available, or when run on XP/2003 which have no support for dualstack */
     /* sockets. For now we're silently ignoring the error. */
-    setsockopt(handle->socket, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof on);
+    setsockopt(handle->socket,
+               IPPROTO_IPV6,
+               IPV6_V6ONLY,
+               (const char*)&on,
+               sizeof on);
   }
 #endif
 
