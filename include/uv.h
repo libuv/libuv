@@ -1669,6 +1669,36 @@ UV_EXTERN int uv_set_process_title(const char* title);
 UV_EXTERN int uv_resident_set_memory(size_t* rss);
 UV_EXTERN int uv_uptime(double* uptime);
 
+typedef struct {
+  long tv_sec;
+  long tv_usec;
+} uv_timeval_t;
+
+typedef struct {
+   uv_timeval_t ru_utime; /* user CPU time used */
+   uv_timeval_t ru_stime; /* system CPU time used */
+   uint64_t ru_maxrss;    /* maximum resident set size */
+   uint64_t ru_ixrss;     /* integral shared memory size */
+   uint64_t ru_idrss;     /* integral unshared data size */
+   uint64_t ru_isrss;     /* integral unshared stack size */
+   uint64_t ru_minflt;    /* page reclaims (soft page faults) */
+   uint64_t ru_majflt;    /* page faults (hard page faults) */
+   uint64_t ru_nswap;     /* swaps */
+   uint64_t ru_inblock;   /* block input operations */
+   uint64_t ru_oublock;   /* block output operations */
+   uint64_t ru_msgsnd;    /* IPC messages sent */
+   uint64_t ru_msgrcv;    /* IPC messages received */
+   uint64_t ru_nsignals;  /* signals received */
+   uint64_t ru_nvcsw;     /* voluntary context switches */
+   uint64_t ru_nivcsw;    /* involuntary context switches */
+} uv_rusage_t;
+
+/*
+ * Get information about OS resource utilization for the current process.
+ * Please note that not all uv_rusage_t struct fields will be filled on Windows.
+ */
+UV_EXTERN int uv_getrusage(uv_rusage_t* rusage);
+
 /*
  * This allocates cpu_infos array, and sets count.  The array
  * is freed using uv_free_cpu_info().
