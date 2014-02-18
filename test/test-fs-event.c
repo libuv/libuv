@@ -79,15 +79,13 @@ static void touch_file(uv_loop_t* loop, const char* name) {
   int r;
   uv_file file;
   uv_fs_t req;
-  uv_buf_t buf;
 
   r = uv_fs_open(loop, &req, name, O_RDWR, 0, NULL);
   ASSERT(r >= 0);
   file = r;
   uv_fs_req_cleanup(&req);
 
-  buf = uv_buf_init("foo", 4);
-  r = uv_fs_write(loop, &req, file, &buf, 1, -1, NULL);
+  r = uv_fs_write(loop, &req, file, "foo", 4, -1, NULL);
   ASSERT(r >= 0);
   uv_fs_req_cleanup(&req);
 

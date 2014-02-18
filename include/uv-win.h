@@ -552,10 +552,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
       WCHAR* new_pathw;                                                       \
       int file_flags;                                                         \
       int fd_out;                                                             \
-      unsigned int nbufs;                                                     \
-      uv_buf_t* bufs;                                                         \
+      void* buf;                                                              \
+      size_t length;                                                          \
       int64_t offset;                                                         \
-      uv_buf_t bufsml[4];                                                     \
     };                                                                        \
     struct {                                                                  \
       double atime;                                                           \

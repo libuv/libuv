@@ -295,15 +295,14 @@ typedef struct {
   uv_file file;                                                               \
   int flags;                                                                  \
   mode_t mode;                                                                \
-  unsigned int nbufs;                                                         \
-  uv_buf_t* bufs;                                                             \
+  void* buf;                                                                  \
+  size_t len;                                                                 \
   off_t off;                                                                  \
   uv_uid_t uid;                                                               \
   uv_gid_t gid;                                                               \
   double atime;                                                               \
   double mtime;                                                               \
   struct uv__work work_req;                                                   \
-  uv_buf_t bufsml[4];                                                         \
 
 #define UV_WORK_PRIVATE_FIELDS                                                \
   struct uv__work work_req;

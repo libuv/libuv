@@ -44,22 +44,10 @@
 #include <utime.h>
 #include <poll.h>
 
-#if defined(__DragonFly__)  ||                                            \
-    defined(__FreeBSD__)    ||                                            \
-    defined(__OpenBSD__)    ||                                            \
-    defined(__NetBSD__)
-# define HAVE_PREADV 1
-#else
-# define HAVE_PREADV 0
-#endif
-
 #if defined(__linux__) || defined(__sun)
 # include <sys/sendfile.h>
 #elif defined(__APPLE__) || defined(__FreeBSD__)
 # include <sys/socket.h>
-#endif
-
-#if HAVE_PREADV || defined(__APPLE__)
 # include <sys/uio.h>
 #endif
 
@@ -203,59 +191,10 @@ skip:
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-  ssize_t result;
-
   if (req->off < 0)
-    result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
-  else {
-#if HAVE_PREADV
-    result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    static int no_preadv;
-    if (no_preadv)
-# endif
-    {
-      off_t nread;
-      size_t index;
-
-# if defined(__linux__)
-    retry:
-# endif
-      nread = 0;
-      index = 0;
-      result = 1;
-      do {
-        if (req->bufs[index].len > 0) {
-          result = pread(req->file,
-                         req->bufs[index].base,
-                         req->bufs[index].len,
-                         req->off + nread);
-          if (result > 0)
-            nread += result;
-        }
-        index++;
-      } while (index < req->nbufs && result > 0);
-      if (nread > 0)
-        result = nread;
-    }
-# if defined(__linux__)
-    else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
-      if (result == -1 && errno == ENOSYS) {
-        no_preadv = 1;
-        goto retry;
-      }
-    }
-# endif
-#endif
-  }
-  if (req->bufs != req->bufsml)
-    free(req->bufs);
-  return result;
+    return read(req->file, req->buf, req->len);
+  else
+    return pread(req->file, req->buf, req->len, req->off);
 }
 
 
@@ -367,7 +306,7 @@ static ssize_t uv__fs_sendfile_emul(uv_fs_t* req) {
   int out_fd;
   char buf[8192];
 
-  len = req->bufsml[0].len;
+  len = req->len;
   in_fd = req->flags;
   out_fd = req->file;
   offset = req->off;
@@ -480,7 +419,7 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
     ssize_t r;
 
     off = req->off;
-    r = sendfile(out_fd, in_fd, &off, req->bufsml[0].len);
+    r = sendfile(out_fd, in_fd, &off, req->len);
 
     /* sendfile() on SunOS returns EINVAL if the target fd is not a socket but
      * it still writes out data. Fortunately, we can detect it by checking if
@@ -514,11 +453,11 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
 #if defined(__FreeBSD__)
     len = 0;
-    r = sendfile(in_fd, out_fd, req->off, req->bufsml[0].len, NULL, &len, 0);
+    r = sendfile(in_fd, out_fd, req->off, req->len, NULL, &len, 0);
 #else
     /* The darwin sendfile takes len as an input for the length to send,
      * so make sure to initialize it with the caller's value. */
-    len = req->bufsml[0].len;
+    len = req->len;
     r = sendfile(in_fd, out_fd, req->off, &len, NULL, 0);
 #endif
 
@@ -568,60 +507,13 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
 #endif
 
   if (req->off < 0)
-    r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
-  else {
-#if HAVE_PREADV
-    r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    static int no_pwritev;
-    if (no_pwritev)
-# endif
-    {
-      off_t written;
-      size_t index;
-
-# if defined(__linux__)
-    retry:
-# endif
-      written = 0;
-      index = 0;
-      r = 1;
-      do {
-        if (req->bufs[index].len > 0) {
-          r = pwrite(req->file,
-                     req->bufs[index].base,
-                     req->bufs[index].len,
-                     req->off + written);
-          if (r > 0)
-            written += r;
-        }
-        index++;
-      } while (index < req->nbufs && r > 0);
-      if (written > 0)
-        r = written;
-    }
-# if defined(__linux__)
-    else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
-        goto retry;
-      }
-    }
-# endif
-#endif
-  }
+    r = write(req->file, req->buf, req->len);
+  else
+    r = pwrite(req->file, req->buf, req->len, req->off);
 
 #if defined(__APPLE__)
   pthread_mutex_unlock(&lock);
 #endif
-
-  if (req->bufs != req->bufsml)
-    free(req->bufs);
 
   return r;
 }
@@ -973,23 +865,14 @@ int uv_fs_open(uv_loop_t* loop,
 
 int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
                uv_file file,
-               const uv_buf_t bufs[],
-               unsigned int nbufs,
+               void* buf,
+               size_t len,
                int64_t off,
                uv_fs_cb cb) {
   INIT(READ);
   req->file = file;
-
-  req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = malloc(nbufs * sizeof(*bufs));
-
-  if (req->bufs == NULL)
-    return -ENOMEM;
-
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
-
+  req->buf = buf;
+  req->len = len;
   req->off = off;
   POST;
 }
@@ -1046,7 +929,7 @@ int uv_fs_sendfile(uv_loop_t* loop,
   req->flags = in_fd; /* hack */
   req->file = out_fd;
   req->off = off;
-  req->bufsml[0].len = len;
+  req->len = len;
   POST;
 }
 
@@ -1095,23 +978,14 @@ int uv_fs_utime(uv_loop_t* loop,
 int uv_fs_write(uv_loop_t* loop,
                 uv_fs_t* req,
                 uv_file file,
-                const uv_buf_t bufs[],
-                unsigned int nbufs,
+                const void* buf,
+                size_t len,
                 int64_t off,
                 uv_fs_cb cb) {
   INIT(WRITE);
   req->file = file;
-
-  req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = malloc(nbufs * sizeof(*bufs));
-
-  if (req->bufs == NULL)
-    return -ENOMEM;
-
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
-
+  req->buf = (void*) buf;
+  req->len = len;
   req->off = off;
   POST;
 }
