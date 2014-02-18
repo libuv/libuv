@@ -372,11 +372,14 @@ static void uv__fs_event_read(uv_loop_t* loop,
     assert(events != 0);
     handle->fd = PORT_FIRED;
     handle->cb(handle, NULL, events, 0);
+
+    if (handle->fd != PORT_DELETED) {
+      r = uv__fs_event_rearm(handle);
+      if (r != 0)
+        handle->cb(handle, NULL, 0, r);
+    }
   }
   while (handle->fd != PORT_DELETED);
-
-  if (handle != NULL && handle->fd != PORT_DELETED)
-    uv__fs_event_rearm(handle);  /* FIXME(bnoordhuis) Check return code. */
 }
 
 
@@ -392,6 +395,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       unsigned int flags) {
   int portfd;
   int first_run;
+  int err;
 
   if (uv__is_active(handle))
     return -EINVAL;
@@ -412,7 +416,9 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   memset(&handle->fo, 0, sizeof handle->fo);
   handle->fo.fo_name = handle->filename;
-  uv__fs_event_rearm(handle);  /* FIXME(bnoordhuis) Check return code. */
+  err = uv__fs_event_rearm(handle);
+  if (err != 0)
+    return err;
 
   if (first_run) {
     uv__io_init(&handle->loop->fs_event_watcher, uv__fs_event_read, portfd);
