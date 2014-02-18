@@ -39,10 +39,18 @@ provider Example {
   probe increment(int);
 };
 _ACEOF
-          $DTRACE -G -o conftest.d.o -s conftest.d 2>/dev/zero
+          cat > conftest.c <<_ACEOF
+#include "conftest.h"
+void foo() {
+  EXAMPLE_INCREMENT(1);
+}
+_ACEOF
+          $DTRACE -h -o conftest.h -s conftest.d 2>/dev/zero
+          $CC -c -o conftest.o conftest.c
+          $DTRACE -G -o conftest.d.o -s conftest.d conftest.o 2>/dev/zero
           AS_IF([test $? -eq 0],[ac_cv_dtrace_needs_objects=yes],
             [ac_cv_dtrace_needs_objects=no])
-          rm -f conftest.d.o conftest.d
+          rm -f conftest.d.o conftest.d conftest.h conftest.o conftest.c
       ])
       AC_SUBST(DTRACEFLAGS) dnl TODO: test for -G on OSX
       ac_cv_have_dtrace=yes
