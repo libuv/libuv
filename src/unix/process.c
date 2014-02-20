@@ -40,6 +40,10 @@
 extern char **environ;
 #endif
 
+#ifdef __linux__
+# include <grp.h>
+#endif
+
 
 static QUEUE* uv__process_queue(uv_loop_t* loop, int pid) {
   assert(pid > 0);
