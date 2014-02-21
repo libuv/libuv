@@ -1174,6 +1174,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
                        NULL);
 
     if (!result) {
+      err = GetLastError();
       return err;
     } else {
       /* Request completed immediately. */
