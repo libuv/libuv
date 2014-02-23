@@ -1283,23 +1283,23 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
     return;
   }
 
-  // Do a pessimistic calculation of the required buffer size
+  /* Do a pessimistic calculation of the required buffer size */
   needed_buf_size =
       FIELD_OFFSET(REPARSE_DATA_BUFFER, MountPointReparseBuffer.PathBuffer) +
       JUNCTION_PREFIX_LEN * sizeof(WCHAR) +
       2 * (target_len + 2) * sizeof(WCHAR);
 
-  // Allocate the buffer
+  /* Allocate the buffer */
   buffer = (REPARSE_DATA_BUFFER*)malloc(needed_buf_size);
   if (!buffer) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
 
-  // Grab a pointer to the part of the buffer where filenames go
+  /* Grab a pointer to the part of the buffer where filenames go */
   path_buf = (WCHAR*)&(buffer->MountPointReparseBuffer.PathBuffer);
   path_buf_len = 0;
 
-  // Copy the substitute (internal) target path
+  /* Copy the substitute (internal) target path */
   start = path_buf_len;
 
   wcsncpy((WCHAR*)&path_buf[path_buf_len], JUNCTION_PREFIX,
@@ -1323,14 +1323,14 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
   path_buf[path_buf_len++] = L'\\';
   len = path_buf_len - start;
 
-  // Set the info about the substitute name
+  /* Set the info about the substitute name */
   buffer->MountPointReparseBuffer.SubstituteNameOffset = start * sizeof(WCHAR);
   buffer->MountPointReparseBuffer.SubstituteNameLength = len * sizeof(WCHAR);
 
-  // Insert null terminator
+  /* Insert null terminator */
   path_buf[path_buf_len++] = L'\0';
 
-  // Copy the print name of the target path
+  /* Copy the print name of the target path */
   start = path_buf_len;
   add_slash = 0;
   for (i = is_long_path ? LONG_PATH_PREFIX_LEN : 0; path[i] != L'\0'; i++) {
@@ -1352,32 +1352,32 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
     len++;
   }
 
-  // Set the info about the print name
+  /* Set the info about the print name */
   buffer->MountPointReparseBuffer.PrintNameOffset = start * sizeof(WCHAR);
   buffer->MountPointReparseBuffer.PrintNameLength = len * sizeof(WCHAR);
 
-  // Insert another null terminator
+  /* Insert another null terminator */
   path_buf[path_buf_len++] = L'\0';
 
-  // Calculate how much buffer space was actually used
+  /* Calculate how much buffer space was actually used */
   used_buf_size = FIELD_OFFSET(REPARSE_DATA_BUFFER, MountPointReparseBuffer.PathBuffer) +
     path_buf_len * sizeof(WCHAR);
   used_data_size = used_buf_size -
     FIELD_OFFSET(REPARSE_DATA_BUFFER, MountPointReparseBuffer);
 
-  // Put general info in the data buffer
+  /* Put general info in the data buffer */
   buffer->ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
   buffer->ReparseDataLength = used_data_size;
   buffer->Reserved = 0;
 
-  // Create a new directory
+  /* Create a new directory */
   if (!CreateDirectoryW(new_path, NULL)) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     goto error;
   }
   created = 1;
 
-  // Open the directory
+  /* Open the directory */
   handle = CreateFileW(new_path,
                        GENERIC_ALL,
                        0,
@@ -1391,7 +1391,7 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
     goto error;
   }
 
-  // Create the actual reparse point
+  /* Create the actual reparse point */
   if (!DeviceIoControl(handle,
                        FSCTL_SET_REPARSE_POINT,
                        buffer,
@@ -1404,7 +1404,7 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
     goto error;
   }
 
-  // Clean up
+  /* Clean up */
   CloseHandle(handle);
   free(buffer);
 
