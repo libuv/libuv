@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-/* See http://nikhilm.github.com/uvbook/ for an introduction. */
+/* See https://github.com/joyent/libuv#documentation for documentation. */
 
 #ifndef UV_H
 #define UV_H
@@ -271,14 +271,14 @@ UV_EXTERN int uv_loop_close(uv_loop_t* loop);
 /*
  * Allocates and initializes a new loop.
  * NOTE: This function is DEPRECATED (to be removed after 0.12), users should
- * allocate the loop and use uv_loop_init instead.
+ * allocate the loop manually and use uv_loop_init instead.
  */
 UV_EXTERN uv_loop_t* uv_loop_new(void);
 
 /*
  * Cleans up a loop once it has finished executio and frees its memory.
- * NOTE: This function is DEPRECATED. Users should use uv_loop_close and free
- * the memory themselves instead.
+ * NOTE: This function is DEPRECATED (to be removed after 0.12). Users should use
+ * uv_loop_close and free the memory manually instead.
  */
 UV_EXTERN void uv_loop_delete(uv_loop_t*);
 
@@ -459,8 +459,10 @@ typedef struct {
 * will be a relative path to a file contained in the directory.
 * The events parameter is an ORed mask of enum uv_fs_event elements.
 */
-typedef void (*uv_fs_event_cb)(uv_fs_event_t* handle, const char* filename,
-    int events, int status);
+typedef void (*uv_fs_event_cb)(uv_fs_event_t* handle,
+                               const char* filename,
+                               int events,
+                               int status);
 
 typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
                               int status,
@@ -510,8 +512,9 @@ UV_PRIVATE_REQ_TYPES
  * initialized stream. req should be an uninitialized shutdown request
  * struct. The cb is called after shutdown is complete.
  */
-UV_EXTERN int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle,
-    uv_shutdown_cb cb);
+UV_EXTERN int uv_shutdown(uv_shutdown_t* req,
+                          uv_stream_t* handle,
+                          uv_shutdown_cb cb);
 
 struct uv_shutdown_s {
   UV_REQ_FIELDS
@@ -614,8 +617,7 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
  *
  * uv_stream is an abstract class.
  *
- * uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t, and
- * soon uv_file_t.
+ * uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t and uv_tty_t.
  */
 struct uv_stream_s {
   UV_HANDLE_FIELDS
@@ -649,8 +651,9 @@ UV_EXTERN int uv_accept(uv_stream_t* server, uv_stream_t* client);
  * eof; it happens when libuv requested a buffer through the alloc callback
  * but then decided that it didn't need that buffer.
  */
-UV_EXTERN int uv_read_start(uv_stream_t*, uv_alloc_cb alloc_cb,
-    uv_read_cb read_cb);
+UV_EXTERN int uv_read_start(uv_stream_t*,
+                            uv_alloc_cb alloc_cb,
+                            uv_read_cb read_cb);
 
 UV_EXTERN int uv_read_stop(uv_stream_t*);
 
@@ -867,7 +870,7 @@ enum uv_udp_flags {
 };
 
 /*
- * Called after a uv_udp_send() or uv_udp_send6(). status 0 indicates
+ * Called after uv_udp_send(). status 0 indicates
  * success otherwise error.
  */
 typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
@@ -932,7 +935,7 @@ UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
 UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 
 /*
- * Bind to a IPv4 address and port.
+ * Bind to an IP address and port.
  *
  * Arguments:
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
@@ -955,8 +958,9 @@ UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
                           const struct sockaddr* addr,
                           unsigned int flags);
 
-UV_EXTERN int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
-    int* namelen);
+UV_EXTERN int uv_udp_getsockname(uv_udp_t* handle,
+                                 struct sockaddr* name,
+                                 int* namelen);
 
 /*
  * Set membership for a multicast address
@@ -972,8 +976,9 @@ UV_EXTERN int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
  *  0 on success, or an error code < 0 on failure.
  */
 UV_EXTERN int uv_udp_set_membership(uv_udp_t* handle,
-    const char* multicast_addr, const char* interface_addr,
-    uv_membership membership);
+                                    const char* multicast_addr,
+                                    const char* interface_addr,
+                                    uv_membership membership);
 
 /*
  * Set IP multicast loop flag. Makes multicast packets loop back to
@@ -1014,7 +1019,8 @@ UV_EXTERN int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
  * Returns:
  *  0 on success, or an error code < 0 on failure.
  */
-UV_EXTERN int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr);
+UV_EXTERN int uv_udp_set_multicast_interface(uv_udp_t* handle,
+                                             const char* interface_addr);
 
 /*
  * Set broadcast on or off
@@ -1043,16 +1049,17 @@ UV_EXTERN int uv_udp_set_broadcast(uv_udp_t* handle, int on);
 UV_EXTERN int uv_udp_set_ttl(uv_udp_t* handle, int ttl);
 
 /*
- * Send data. If the socket has not previously been bound with `uv_udp_bind`
- * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
- * and a random port number.
+ * Send data. If the socket has not previously been bound with `uv_udp_bind,`
+ * it is bound to 0.0.0.0 (the "all interfaces" address) and a random
+ * port number.
  *
  * Arguments:
  *  req       UDP request handle. Need not be initialized.
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
  *  bufs      List of buffers to send.
  *  nbufs     Number of buffers in `bufs`.
- *  addr      Address of the remote peer. See `uv_ip4_addr`.
+ *  addr      struct sockaddr_in or struct sockaddr_in6 with the address and
+ *            port of the remote peer.
  *  send_cb   Callback to invoke when the data has been sent out.
  *
  * Returns:
@@ -1067,8 +1074,8 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
 
 /*
  * Receive data. If the socket has not previously been bound with `uv_udp_bind`
- * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
- * and a random port number.
+ * it is bound to 0.0.0.0 (the "all interfaces" address) and a random
+ * port number.
  *
  * Arguments:
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
@@ -1078,8 +1085,9 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
  * Returns:
  *  0 on success, or an error code < 0 on failure.
  */
-UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
-    uv_udp_recv_cb recv_cb);
+UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
+                                uv_alloc_cb alloc_cb,
+                                uv_udp_recv_cb recv_cb);
 
 /*
  * Stop listening for incoming datagrams.
@@ -1182,8 +1190,10 @@ UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
  * Paths on UNIX get truncated to `sizeof(sockaddr_un.sun_path)` bytes,
  * typically between 92 and 108 bytes.
  */
-UV_EXTERN void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
-    const char* name, uv_connect_cb cb);
+UV_EXTERN void uv_pipe_connect(uv_connect_t* req,
+                               uv_pipe_t* handle,
+                               const char* name,
+                               uv_connect_cb cb);
 
 /*
  * This setting applies to Windows only.
@@ -1238,8 +1248,9 @@ UV_EXTERN int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd);
 
 /* Initialize the poll watcher using a socket descriptor. On unix this is */
 /* identical to uv_poll_init. On windows it takes a SOCKET handle. */
-UV_EXTERN int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
-    uv_os_sock_t socket);
+UV_EXTERN int uv_poll_init_socket(uv_loop_t* loop,
+                                  uv_poll_t* handle,
+                                  uv_os_sock_t socket);
 
 /*
  * Starts polling the file descriptor. `events` is a bitmask consisting made up
@@ -1337,13 +1348,12 @@ struct uv_async_s {
  * Note that uv_async_init(), unlike other libuv functions, immediately
  * starts the handle. To stop the handle again, close it with uv_close().
  */
-UV_EXTERN int uv_async_init(uv_loop_t*, uv_async_t* async,
-    uv_async_cb async_cb);
+UV_EXTERN int uv_async_init(uv_loop_t*,
+                            uv_async_t* async,
+                            uv_async_cb async_cb);
 
 /*
  * This can be called from other threads to wake up a libuv thread.
- *
- * libuv is single threaded at the moment.
  */
 UV_EXTERN int uv_async_send(uv_async_t* async);
 
@@ -1463,7 +1473,7 @@ typedef struct uv_stdio_container_s {
 
 typedef struct uv_process_options_s {
   uv_exit_cb exit_cb; /* Called after the process exits. */
-  const char* file; /* Path to program to execute. */
+  const char* file;   /* Path to program to execute. */
   /*
    * Command line arguments. args[0] should be the path to the program. On
    * Windows this uses CreateProcess which concatenates the arguments into a
@@ -1609,8 +1619,10 @@ struct uv_work_s {
 };
 
 /* Queues a work request to execute asynchronously on the thread pool. */
-UV_EXTERN int uv_queue_work(uv_loop_t* loop, uv_work_t* req,
-    uv_work_cb work_cb, uv_after_work_cb after_work_cb);
+UV_EXTERN int uv_queue_work(uv_loop_t* loop,
+                            uv_work_t* req,
+                            uv_work_cb work_cb,
+                            uv_after_work_cb after_work_cb);
 
 /* Cancel a pending request. Fails if the request is executing or has finished
  * executing.
