@@ -628,6 +628,38 @@ TEST_IMPL(fs_event_start_and_close) {
   return 0;
 }
 
+TEST_IMPL(fs_event_getpath) {
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+  char buf[1024];
+  size_t len;
+
+  create_dir(loop, "watch_dir");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  len = sizeof buf;
+  r = uv_fs_event_getpath(&fs_event, buf, &len);
+  ASSERT(r == UV_EINVAL);
+  r = uv_fs_event_start(&fs_event, fail_cb, "watch_dir", 0);
+  ASSERT(r == 0);
+  len = sizeof buf;
+  r = uv_fs_event_getpath(&fs_event, buf, &len);
+  ASSERT(r == 0);
+  ASSERT(memcmp(buf, "watch_dir", len) == 0);
+  r = uv_fs_event_stop(&fs_event);
+  ASSERT(r == 0);
+  uv_close((uv_handle_t*) &fs_event, close_cb);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(close_cb_called == 1);
+
+  remove("watch_dir/");
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 #if defined(__APPLE__)
 
 static int fs_event_error_reported;

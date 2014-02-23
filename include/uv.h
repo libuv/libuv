@@ -2035,6 +2035,15 @@ UV_EXTERN int uv_fs_event_start(uv_fs_event_t* handle,
 
 UV_EXTERN int uv_fs_event_stop(uv_fs_event_t* handle);
 
+/*
+ * Get the path befing monitored by the handle. The buffer must be preallocated
+ * by the user. Returns 0 on success or an error code < 0 in case of failure.
+ * On sucess, `buf` will contain the path and `len` its length.
+ */
+UV_EXTERN int uv_fs_event_getpath(uv_fs_event_t* handle,
+                                  char* buf,
+                                  size_t* len);
+
 
 /* Utility */
 
