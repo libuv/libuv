@@ -391,7 +391,7 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
 
 int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
-                      const char* filename,
+                      const char* path,
                       unsigned int flags) {
   int portfd;
   int first_run;
@@ -410,12 +410,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   }
 
   uv__handle_start(handle);
-  handle->filename = strdup(filename);
+  handle->path = strdup(path);
   handle->fd = PORT_UNUSED;
   handle->cb = cb;
 
   memset(&handle->fo, 0, sizeof handle->fo);
-  handle->fo.fo_name = handle->filename;
+  handle->fo.fo_name = handle->path;
   err = uv__fs_event_rearm(handle);
   if (err != 0)
     return err;
@@ -440,8 +440,8 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   }
 
   handle->fd = PORT_DELETED;
-  free(handle->filename);
-  handle->filename = NULL;
+  free(handle->path);
+  handle->path = NULL;
   handle->fo.fo_name = NULL;
   uv__handle_stop(handle);
 

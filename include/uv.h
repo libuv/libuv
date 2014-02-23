@@ -1893,7 +1893,8 @@ enum uv_fs_event {
 
 struct uv_fs_event_s {
   UV_HANDLE_FIELDS
-  char* filename;
+  /* private */
+  char* path;
   UV_FS_EVENT_PRIVATE_FIELDS
 };
 
@@ -2029,7 +2030,7 @@ UV_EXTERN int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle);
 
 UV_EXTERN int uv_fs_event_start(uv_fs_event_t* handle,
                                 uv_fs_event_cb cb,
-                                const char* filename,
+                                const char* path,
                                 unsigned int flags);
 
 UV_EXTERN int uv_fs_event_stop(uv_fs_event_t* handle);
