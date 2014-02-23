@@ -219,9 +219,9 @@ HEAP_EXPORT(void heap_remove(struct heap* heap,
    */
   for (;;) {
     smallest = child;
-    if (child->left != NULL && less_than(smallest, child))
+    if (child->left != NULL && less_than(child->left, smallest))
       smallest = child->left;
-    if (child->right != NULL && less_than(smallest, child))
+    if (child->right != NULL && less_than(child->right, smallest))
       smallest = child->right;
     if (smallest == child)
       break;
