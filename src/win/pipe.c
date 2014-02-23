@@ -1077,7 +1077,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
   int err;
   int result;
   uv_tcp_t* tcp_send_handle;
-  uv_write_t* ipc_header_req;
+  uv_write_t* ipc_header_req = NULL;
   uv_ipc_frame_uv_stream ipc_frame;
 
   if (nbufs != 1 && (nbufs != 0 || !send_handle)) {
@@ -1256,6 +1256,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       /* Request completed immediately. */
       req->queued_bytes = 0;
     } else {
+      assert(ipc_header_req != NULL);
       /* Request queued by the kernel. */
       if (WaitForSingleObject(ipc_header_req->overlapped.hEvent, INFINITE) !=
           WAIT_OBJECT_0) {

@@ -340,7 +340,7 @@ int uv_parent_pid() {
   int parent_pid = -1;
   HANDLE handle;
   PROCESSENTRY32 pe;
-  int current_pid = GetCurrentProcessId();
+  DWORD current_pid = GetCurrentProcessId();
 
   pe.dwSize = sizeof(PROCESSENTRY32);
   handle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -655,7 +655,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
     DWORD cpu_speed_size = sizeof(cpu_speed);
     WCHAR cpu_brand[256];
     DWORD cpu_brand_size = sizeof(cpu_brand);
-    int len;
+    size_t len;
 
     len = _snwprintf(key_name,
                      ARRAY_SIZE(key_name),

@@ -40,7 +40,8 @@ struct sockaddr_in6 uv_addr_ip6_any_;
  */
 static BOOL uv_get_extension_function(SOCKET socket, GUID guid,
     void **target) {
-  DWORD result, bytes;
+  int result;
+  DWORD bytes;
 
   result = WSAIoctl(socket,
                     SIO_GET_EXTENSION_FUNCTION_POINTER,
