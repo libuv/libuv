@@ -1105,11 +1105,7 @@ TEST_IMPL(spawn_fs_open) {
 
 #ifndef _WIN32
 TEST_IMPL(closed_fd_events) {
-  uv_stdio_container_t stdio[3] = {
-    { UV_INHERIT_FD },
-    { UV_IGNORE },
-    { UV_IGNORE }
-  };
+  uv_stdio_container_t stdio[3];
   uv_pipe_t pipe_handle;
   int fd[2];
 
@@ -1121,7 +1117,10 @@ TEST_IMPL(closed_fd_events) {
   init_process_options("spawn_helper4", exit_cb);
   options.stdio_count = 3;
   options.stdio = stdio;
-  stdio[0].data.fd = fd[0];
+  options.stdio[0].flags = UV_INHERIT_FD;
+  options.stdio[0].data.fd = fd[0];
+  options.stdio[1].flags = UV_IGNORE;
+  options.stdio[2].flags = UV_IGNORE;
 
   ASSERT(0 == uv_spawn(uv_default_loop(), &process, &options));
   uv_unref((uv_handle_t*) &process);
