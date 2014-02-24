@@ -36,7 +36,6 @@
 
 
 static int close_cb_called = 0;
-static char abstract_pipe[] = "\0test-pipe";
 
 
 static void close_cb(uv_handle_t* handle) {
@@ -82,6 +81,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
   int sock;
   struct sockaddr_un sun;
   socklen_t sun_len;
+  char abstract_pipe[] = "\0test-pipe";
 
   sock = socket(AF_LOCAL, SOCK_STREAM, 0);
   ASSERT(sock != -1);
