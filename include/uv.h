@@ -114,6 +114,7 @@ extern "C" {
   XX(ENOENT, "no such file or directory")                                     \
   XX(ENOMEM, "not enough memory")                                             \
   XX(ENONET, "machine is not on the network")                                 \
+  XX(ENOPROTOOPT, "protocol not available")                                   \
   XX(ENOSPC, "no space left on device")                                       \
   XX(ENOSYS, "function not implemented")                                      \
   XX(ENOTCONN, "socket is not connected")                                     \

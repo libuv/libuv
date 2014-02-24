@@ -376,4 +376,10 @@
 # define UV__EFBIG (-4036)
 #endif
 
+#if defined(ENOPROTOOPT) && !defined(_WIN32)
+# define UV__ENOPROTOOPT (-ENOPROTOOPT)
+#else
+# define UV__ENOPROTOOPT (-4035)
+#endif
+
 #endif /* UV_ERRNO_H_ */
