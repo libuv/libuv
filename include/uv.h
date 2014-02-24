@@ -130,6 +130,9 @@ extern "C" {
   XX( 57, ENODEV, "no such device")                                           \
   XX( 58, ESPIPE, "invalid seek")                                             \
   XX( 59, ECANCELED, "operation canceled")                                    \
+  XX( 60, EFBIG, "file too large")                                            \
+  XX( 61, ENOPROTOOPT, "protocol not available")                              \
+  XX( 62, ETXTBSY, "text file is busy")                                       \
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
