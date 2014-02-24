@@ -132,6 +132,7 @@ extern "C" {
   XX(ESPIPE, "invalid seek")                                                  \
   XX(ESRCH, "no such process")                                                \
   XX(ETIMEDOUT, "connection timed out")                                       \
+  XX(ETXTBSY, "text file is busy")                                            \
   XX(EXDEV, "cross-device link not permitted")                                \
   XX(UNKNOWN, "unknown error")                                                \
   XX(EOF, "end of file")                                                      \

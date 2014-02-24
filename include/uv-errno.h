@@ -364,6 +364,12 @@
 # define UV__ETIMEDOUT (-4039)
 #endif
 
+#if defined(ETXTBSY) && !defined(_WIN32)
+# define UV__ETXTBSY (-ETXTBSY)
+#else
+# define UV__ETXTBSY (-4038)
+#endif
+
 #if defined(EXDEV) && !defined(_WIN32)
 # define UV__EXDEV (-EXDEV)
 #else
