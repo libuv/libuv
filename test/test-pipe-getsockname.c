@@ -30,6 +30,10 @@
   #include <sys/un.h>
 #endif
 
+#ifndef _WIN32
+# include <unistd.h>  /* close */
+#endif
+
 
 static int close_cb_called = 0;
 static char abstract_pipe[] = "\0test-pipe";
