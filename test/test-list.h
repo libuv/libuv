@@ -176,6 +176,7 @@ TEST_DECLARE   (spawn_stdout_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file)
 TEST_DECLARE   (spawn_auto_unref)
 TEST_DECLARE   (fs_poll)
+TEST_DECLARE   (fs_poll_getpath)
 TEST_DECLARE   (kill)
 TEST_DECLARE   (fs_file_noent)
 TEST_DECLARE   (fs_file_nametoolong)
@@ -475,6 +476,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file)
   TEST_ENTRY  (spawn_auto_unref)
   TEST_ENTRY  (fs_poll)
+  TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (kill)
 
 #ifdef _WIN32

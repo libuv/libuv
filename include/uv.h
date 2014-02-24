@@ -1932,6 +1932,13 @@ UV_EXTERN int uv_fs_poll_start(uv_fs_poll_t* handle,
 
 UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
 
+/*
+ * Get the path befing monitored by the handle. The buffer must be preallocated
+ * by the user. Returns 0 on success or an error code < 0 in case of failure.
+ * On sucess, `buf` will contain the path and `len` its length.
+ */
+UV_EXTERN int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buf, size_t* len);
+
 
 /*
  * UNIX signal handling on a per-event loop basis. The implementation is not
