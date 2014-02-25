@@ -388,4 +388,10 @@
 # define UV__ENOPROTOOPT (-4035)
 #endif
 
+#if defined(ERANGE) && !defined(_WIN32)
+# define UV__ERANGE (-ERANGE)
+#else
+# define UV__ERANGE (-4034)
+#endif
+
 #endif /* UV_ERRNO_H_ */

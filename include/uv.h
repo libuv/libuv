@@ -127,6 +127,7 @@ extern "C" {
   XX(EPROTO, "protocol error")                                                \
   XX(EPROTONOSUPPORT, "protocol not supported")                               \
   XX(EPROTOTYPE, "protocol wrong type for socket")                            \
+  XX(ERANGE, "result too large")                                              \
   XX(EROFS, "read-only file system")                                          \
   XX(ESHUTDOWN, "cannot send after transport endpoint shutdown")              \
   XX(ESPIPE, "invalid seek")                                                  \
