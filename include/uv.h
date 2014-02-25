@@ -1203,9 +1203,12 @@ UV_EXTERN void uv_pipe_connect(uv_connect_t* req,
  *
  * A preallocated buffer must be provided. The len parameter holds the
  * length of the buffer and it's set to the number of bytes written to the
- * buffer on output.
+ * buffer on output. If the buffer is not big enough UV_ENOBUFS will be
+ * returned and len will contain the required size.
  */
-UV_EXTERN int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len);
+UV_EXTERN int uv_pipe_getsockname(const uv_pipe_t* handle,
+                                  char* buf,
+                                  size_t* len);
 
 /*
  * This setting applies to Windows only.
@@ -1934,9 +1937,11 @@ UV_EXTERN int uv_fs_poll_start(uv_fs_poll_t* handle,
 UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
 
 /*
- * Get the path befing monitored by the handle. The buffer must be preallocated
+ * Get the path being monitored by the handle. The buffer must be preallocated
  * by the user. Returns 0 on success or an error code < 0 in case of failure.
- * On sucess, `buf` will contain the path and `len` its length.
+ * On sucess, `buf` will contain the path and `len` its length. If the buffer
+ * is not big enough UV_ENOBUFS will be returned and len will be set to the
+ * required size.
  */
 UV_EXTERN int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buf, size_t* len);
 
@@ -2044,9 +2049,11 @@ UV_EXTERN int uv_fs_event_start(uv_fs_event_t* handle,
 UV_EXTERN int uv_fs_event_stop(uv_fs_event_t* handle);
 
 /*
- * Get the path befing monitored by the handle. The buffer must be preallocated
+ * Get the path being monitored by the handle. The buffer must be preallocated
  * by the user. Returns 0 on success or an error code < 0 in case of failure.
- * On sucess, `buf` will contain the path and `len` its length.
+ * On sucess, `buf` will contain the path and `len` its length. If the buffer
+ * is not big enough UV_ENOBUFS will be returned and len will be set to the
+ * required size.
  */
 UV_EXTERN int uv_fs_event_getpath(uv_fs_event_t* handle,
                                   char* buf,

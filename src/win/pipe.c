@@ -1779,8 +1779,10 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   if (nt_status == STATUS_BUFFER_OVERFLOW) {
     name_size = sizeof(*name_info) + tmp_name_info.FileNameLength;
     name_info = malloc(name_size);
-    if (!name_info)
-      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    if (!name_info) {
+      *len = 0;
+      return UV_ENOMEM;
+    }
 
     nt_status = pNtQueryInformationFile(handle->handle,
                                         &io_status,
@@ -1790,6 +1792,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   }
 
   if (nt_status != STATUS_SUCCESS) {
+    *len = 0;
     err = uv_translate_sys_error(pRtlNtStatusToDosError(nt_status));
     goto error;
   }
@@ -1804,6 +1807,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   }
 
   if (name_len == 0) {
+    *len = 0;
     err = 0;
     goto error;
   }
@@ -1820,10 +1824,12 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
                                 NULL,
                                 NULL);
   if (!addrlen) {
+    *len = 0;
     err = uv_translate_sys_error(GetLastError());
     goto error;
   } else if (pipe_prefix_len + addrlen + 1 > *len) {
     /* "\\\\.\\pipe" + name + '\0' */
+    *len = pipe_prefix_len + addrlen + 1;
     err = UV_ENOBUFS;
     goto error;
   }
@@ -1838,6 +1844,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
                                 NULL,
                                 NULL);
   if (!addrlen) {
+    *len = 0;
     err = uv_translate_sys_error(GetLastError());
     goto error;
   }
@@ -1850,6 +1857,5 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
 
 error:
   free(name_info);
-  *len = 0;
   return err;
 }

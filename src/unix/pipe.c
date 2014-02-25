@@ -233,7 +233,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
 
 
   if (addrlen > *len) {
-    *len = 0;
+    *len = addrlen;
     return UV_ENOBUFS;
   }
 
