@@ -133,6 +133,7 @@ extern "C" {
   XX( 60, EFBIG, "file too large")                                            \
   XX( 61, ENOPROTOOPT, "protocol not available")                              \
   XX( 62, ETXTBSY, "text file is busy")                                       \
+  XX( 63, ERANGE, "result too large")                                         \
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
