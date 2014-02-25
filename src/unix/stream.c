@@ -1511,7 +1511,5 @@ void uv__stream_close(uv_stream_t* handle) {
 
 
 int uv_stream_set_blocking(uv_stream_t* handle, int blocking) {
-  assert(0 && "implement me");
-  abort();
-  return 0;
+  return UV_ENOSYS;
 }

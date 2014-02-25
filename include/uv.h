@@ -749,11 +749,7 @@ UV_EXTERN int uv_is_writable(const uv_stream_t* handle);
  * Relying too much on this API is not recommended. It is likely to change
  * significantly in the future.
  *
- * On windows this currently works only for uv_pipe_t instances. On unix it
- * works for tcp, pipe and tty instances. Be aware that changing the blocking
- * mode on unix sets or clears the O_NONBLOCK bit. If you are sharing a handle
- * with another process, the other process is affected by the change too,
- * which can lead to unexpected results.
+ * Currently this only works on Windows and only for uv_pipe_t handles.
  *
  * Also libuv currently makes no ordering guarantee when the blocking mode
  * is changed after write requests have already been submitted. Therefore it is
