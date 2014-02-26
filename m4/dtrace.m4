@@ -30,11 +30,10 @@ _ACEOF
       ])
       AS_IF([test "x$ac_cv_dtrace_works" = "xyes"],[
         AC_DEFINE([HAVE_DTRACE], [1], [Enables DTRACE Support])
-      ])
-      AC_CACHE_CHECK([if dtrace should instrument object files],
-        [ac_cv_dtrace_needs_objects],[
-          dnl DTrace on MacOSX does not use -G option
-          cat >conftest.d <<_ACEOF
+        AC_CACHE_CHECK([if dtrace should instrument object files],
+          [ac_cv_dtrace_needs_objects],[
+            dnl DTrace on MacOSX does not use -G option
+            cat >conftest.d <<_ACEOF
 provider Example {
   probe increment(int);
 };
@@ -45,12 +44,13 @@ void foo() {
   EXAMPLE_INCREMENT(1);
 }
 _ACEOF
-          $DTRACE -h -o conftest.h -s conftest.d 2>/dev/zero
-          $CC -c -o conftest.o conftest.c
-          $DTRACE -G -o conftest.d.o -s conftest.d conftest.o 2>/dev/zero
-          AS_IF([test $? -eq 0],[ac_cv_dtrace_needs_objects=yes],
-            [ac_cv_dtrace_needs_objects=no])
-          rm -f conftest.d.o conftest.d conftest.h conftest.o conftest.c
+            $DTRACE -h -o conftest.h -s conftest.d 2>/dev/zero
+            $CC -c -o conftest.o conftest.c
+            $DTRACE -G -o conftest.d.o -s conftest.d conftest.o 2>/dev/zero
+            AS_IF([test $? -eq 0],[ac_cv_dtrace_needs_objects=yes],
+              [ac_cv_dtrace_needs_objects=no])
+            rm -f conftest.d.o conftest.d conftest.h conftest.o conftest.c
+        ])
       ])
       AC_SUBST(DTRACEFLAGS) dnl TODO: test for -G on OSX
       ac_cv_have_dtrace=yes
