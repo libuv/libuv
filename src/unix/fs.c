@@ -49,6 +49,18 @@
     defined(__OpenBSD__)    ||                                            \
     defined(__NetBSD__)
 # define HAVE_PREADV 1
+#elif defined(__linux__)
+# include <linux/version.h>
+# if defined(__GLIBC_PREREQ)
+#   if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,30) &&                    \
+       __GLIBC_PREREQ(2,10)
+#    define HAVE_PREADV 1
+#   else
+#    define HAVE_PREADV 0
+#   endif
+# else
+#  define HAVE_PREADV 0
+# endif
 #else
 # define HAVE_PREADV 0
 #endif
