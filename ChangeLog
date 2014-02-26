@@ -1,3 +1,77 @@
+2014.02.27, Version 0.11.20 (Unstable)
+
+Changes since version 0.11.19:
+
+* stream: start thread after assignments (Oguz Bastemur)
+
+* fs: `uv__cloexec()` opened fd (Fedor Indutny)
+
+* gyp: qualify `library` variable (Fedor Indutny)
+
+* unix, win: add uv_udp_set_multicast_interface() (Austin Foxley)
+
+* unix: fix uv_tcp_nodelay return value in case of error (Saúl Ibarra Corretgé)
+
+* unix: call setgoups before calling setuid/setgid (Saúl Ibarra Corretgé)
+
+* include: mark close_cb field as private (Saúl Ibarra Corretgé)
+
+* unix, windows: map EFBIG errno (Saúl Ibarra Corretgé)
+
+* unix: correct error when calling uv_shutdown twice (Keno Fischer)
+
+* windows: fix building on MinGW (Alex Crichton)
+
+* windows: always initialize uv_process_t (Alex Crichton)
+
+* include: expose libuv version in header files (Saúl Ibarra Corretgé)
+
+* fs: vectored IO API for filesystem read/write (Benjamin Saunders)
+
+* windows: freeze in uv_tcp_endgame (Alexis Campailla)
+
+* sunos: handle rearm errors (Fedor Indutny)
+
+* unix: use a heap for timers (Ben Noordhuis)
+
+* linux: always deregister closing fds from epoll (Geoffry Song)
+
+* linux: include grp.h for setgroups() (William Light)
+
+* unix, windows: add uv_loop_init and uv_loop_close (Saúl Ibarra Corretgé)
+
+* unix, windows: add uv_getrusage() function (Oleg Efimov)
+
+* win: minor error handle fix to uv_pipe_write_impl (Rasmus Pedersen)
+
+* heap: fix node removal (Keno Fischer)
+
+* win: fix C99/C++ comment (Rasmus Pedersen)
+
+* fs: vectored IO API for filesystem read/write (Benjamin Saunders)
+
+* unix, windows: add uv_pipe_getsockname (Saúl Ibarra Corretgé)
+
+* unix, windows: map ENOPROTOOPT errno (Saúl Ibarra Corretgé)
+
+* errno: add ETXTBSY (Fedor Indutny)
+
+* fsevent: rename filename field to path (Saúl Ibarra Corretgé)
+
+* unix, windows: add uv_fs_event_getpath (Saúl Ibarra Corretgé)
+
+* unix, windows: add uv_fs_poll_getpath (Saúl Ibarra Corretgé)
+
+* unix, windows: map ERANGE errno (Saúl Ibarra Corretgé)
+
+* unix, windows: set required size on UV_ENOBUFS (Saúl Ibarra Corretgé)
+
+* unix, windows: clarify what uv_stream_set_blocking does (Saúl Ibarra
+  Corretgé)
+
+* fs: use preadv on Linux if available (Brian White)
+
+
 2014.01.30, Version 0.11.19 (Unstable), 336a1825309744f920230ec3e427e78571772347
 
 Changes since version 0.11.18:
