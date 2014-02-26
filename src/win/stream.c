@@ -244,7 +244,7 @@ int uv_is_writable(const uv_stream_t* handle) {
 
 
 int uv_stream_set_blocking(uv_stream_t* handle, int blocking) {
-  if (stream->type != UV_NAMED_PIPE)
+  if (handle->type != UV_NAMED_PIPE)
     return UV_EINVAL;
 
   if (blocking != 0)
