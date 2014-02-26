@@ -735,6 +735,38 @@ TEST_IMPL(fs_file_sync) {
 }
 
 
+TEST_IMPL(fs_file_write_null_buffer) {
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_open(loop, &open_req1, "test_file", O_WRONLY | O_CREAT,
+      S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req1.result >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_write(loop, &write_req, open_req1.result, &iov, 1, -1, NULL);
+  ASSERT(r == 0);
+  ASSERT(write_req.result == 0);
+  uv_fs_req_cleanup(&write_req);
+
+  r = uv_fs_close(loop, &close_req, open_req1.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
 TEST_IMPL(fs_async_dir) {
   int r;
 

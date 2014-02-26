@@ -598,7 +598,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
 # endif
       written = 0;
       index = 0;
-      r = 1;
+      r = 0;
       do {
         if (req->bufs[index].len > 0) {
           r = pwrite(req->file,
@@ -609,7 +609,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
             written += r;
         }
         index++;
-      } while (index < req->nbufs && r > 0);
+      } while (index < req->nbufs && r >= 0);
       if (written > 0)
         r = written;
     }
