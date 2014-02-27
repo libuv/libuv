@@ -32,7 +32,7 @@
 
 #define UV_VERSION_MAJOR 0
 #define UV_VERSION_MINOR 11
-#define UV_VERSION_PATCH 20
+#define UV_VERSION_PATCH 21
 #define UV_VERSION_IS_RELEASE 0
 
 #endif /* UV_VERSION_H */
