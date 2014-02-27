@@ -2076,7 +2076,7 @@ UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
 
 /* Gets the current working directory */
-UV_EXTERN int uv_cwd(char* buffer, size_t size);
+UV_EXTERN int uv_cwd(char* buffer, size_t* size);
 
 /* Changes the current working directory */
 UV_EXTERN int uv_chdir(const char* dir);

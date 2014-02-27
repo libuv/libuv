@@ -163,12 +163,12 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 }
 
 
-int uv_cwd(char* buffer, size_t size) {
+int uv_cwd(char* buffer, size_t* size) {
   DWORD utf16_len;
   WCHAR utf16_buffer[MAX_PATH];
   int r;
 
-  if (buffer == NULL || size == 0) {
+  if (buffer == NULL || size == NULL) {
     return UV_EINVAL;
   }
 
@@ -192,19 +192,36 @@ int uv_cwd(char* buffer, size_t size) {
     utf16_buffer[utf16_len] = L'\0';
   }
 
+  /* Check how much space we need */
+  r = WideCharToMultiByte(CP_UTF8,
+                          0,
+                          utf16_buffer,
+                          -1,
+                          NULL,
+                          0,
+                          NULL,
+                          NULL);
+  if (r == 0) {
+    return uv_translate_sys_error(GetLastError());
+  } else if (r > (int) *size) {
+    *size = r;
+    return UV_ENOBUFS;
+  }
+
   /* Convert to UTF-8 */
   r = WideCharToMultiByte(CP_UTF8,
                           0,
                           utf16_buffer,
                           -1,
                           buffer,
-                          size > INT_MAX ? INT_MAX : (int) size,
+                          *size > INT_MAX ? INT_MAX : (int) *size,
                           NULL,
                           NULL);
   if (r == 0) {
     return uv_translate_sys_error(GetLastError());
   }
 
+  *size = r;
   return 0;
 }
 
