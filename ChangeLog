@@ -1,3 +1,12 @@
+2014.02.28, Version 0.11.21 (Unstable)
+
+Changes since version 0.11.20:
+
+* unix: fix uv_fs_write when using an empty buffer (Saúl Ibarra Corretgé)
+
+* unix, windows: add assertion in uv_loop_delete (Saúl Ibarra Corretgé)
+
+
 2014.02.27, Version 0.11.20 (Unstable), 88355e081b51c69ee1e2b6b0015a4e3d38bd0579
 
 Changes since version 0.11.19:
