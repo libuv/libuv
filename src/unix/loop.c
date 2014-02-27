@@ -90,7 +90,7 @@ uv_loop_t* uv_loop_new(void) {
 void uv_loop_delete(uv_loop_t* loop) {
   uv_loop_t* default_loop;
   default_loop = default_loop_ptr;
-  uv_loop_close(loop);
+  assert(uv_loop_close(loop) == 0);
   if (loop != default_loop)
     free(loop);
 }
