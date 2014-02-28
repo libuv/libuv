@@ -47,8 +47,8 @@ AM_CONDITIONAL([SUNOS],   [AS_CASE([$host_os], [solaris*], [true], [false])])
 AM_CONDITIONAL([WINNT],   [AS_CASE([$host_os], [mingw*],   [true], [false])])
 PANDORA_ENABLE_DTRACE
 AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)
-AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" = "xyes"])
-AS_IF([test "x$PKG_CONFIG" = "xyes"], [
+AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
+AS_IF([test "x$PKG_CONFIG" != "x"], [
     AC_CONFIG_FILES([libuv.pc])
 ])
 AC_CONFIG_FILES([Makefile])
