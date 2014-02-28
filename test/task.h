@@ -22,6 +22,8 @@
 #ifndef TASK_H_
 #define TASK_H_
 
+#include "uv.h"
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -112,8 +114,11 @@ typedef enum {
 /* This macro cleans up the main loop. This is used to avoid valgrind
  * warnings about memory being "leaked" by the main event loop.
  */
-#define MAKE_VALGRIND_HAPPY()  \
-  uv_loop_delete(uv_default_loop())
+#define MAKE_VALGRIND_HAPPY()           \
+  do {                                  \
+    close_loop(uv_default_loop());      \
+    uv_loop_delete(uv_default_loop());  \
+  } while (0)
 
 /* Just sugar for wrapping the main() for a task or helper. */
 #define TEST_IMPL(name)                                                       \
@@ -203,5 +208,16 @@ static int snprintf(char* buf, size_t len, const char* fmt, ...) {
 }
 
 #endif
+
+/* Fully close a loop */
+static void close_walk_cb(uv_handle_t* handle, void* arg) {
+  if (!uv_is_closing(handle))
+    uv_close(handle, NULL);
+}
+
+static void close_loop(uv_loop_t* loop) {
+  uv_walk(loop, close_walk_cb, NULL);
+  uv_run(loop, UV_RUN_DEFAULT);
+}
 
 #endif /* TASK_H_ */
