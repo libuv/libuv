@@ -209,13 +209,22 @@ static int snprintf(char* buf, size_t len, const char* fmt, ...) {
 
 #endif
 
+#if defined(__clang__) ||                                \
+    defined(__GNUC__) ||                                 \
+    defined(__INTEL_COMPILER) ||                         \
+    defined(__SUNPRO_C)
+# define UNUSED __attribute__((unused))
+#else
+# define UNUSED
+#endif
+
 /* Fully close a loop */
 static void close_walk_cb(uv_handle_t* handle, void* arg) {
   if (!uv_is_closing(handle))
     uv_close(handle, NULL);
 }
 
-static void close_loop(uv_loop_t* loop) {
+UNUSED static void close_loop(uv_loop_t* loop) {
   uv_walk(loop, close_walk_cb, NULL);
   uv_run(loop, UV_RUN_DEFAULT);
 }
