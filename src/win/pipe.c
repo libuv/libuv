@@ -1375,7 +1375,6 @@ static void uv_pipe_read_error_or_eof(uv_loop_t* loop, uv_pipe_t* handle,
 void uv__pipe_insert_pending_socket(uv_pipe_t* handle,
                                     WSAPROTOCOL_INFOW* info,
                                     int tcp_connection) {
-  WSAPROTOCOL_INFOW* socket_info;
   uv__ipc_queue_item_t* item;
 
   item = (uv__ipc_queue_item_t*) malloc(sizeof(*item));
