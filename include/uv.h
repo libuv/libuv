@@ -137,6 +137,7 @@ extern "C" {
   XX(EXDEV, "cross-device link not permitted")                                \
   XX(UNKNOWN, "unknown error")                                                \
   XX(EOF, "end of file")                                                      \
+  XX(ENXIO, "no such device or address")                                      \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \

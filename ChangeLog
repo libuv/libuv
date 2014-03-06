@@ -90,6 +90,14 @@ Changes since version 0.11.18:
 * linux: fix C99/C++ comment (Fedor Indutny)
 
 
+2014.02.19, Version 0.10.25 (Stable), d778dc588507588b12b9f9d2905078db542ed751
+
+Changes since version 0.10.24:
+
+* stream: start thread after assignments (Oguz Bastemur)
+
+* unix: correct error when calling uv_shutdown twice (Saúl Ibarra Corretgé)
+
 2014.01.30, Version 0.10.24 (Stable), aecd296b6bce9b40f06a61c5c94e43d45ac7308a
 
 Changes since version 0.10.23:
