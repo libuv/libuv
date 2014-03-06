@@ -108,6 +108,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case ENOPROTOOPT: return UV_ENOPROTOOPT;
     case ETXTBSY: return UV_ETXTBSY;
     case ERANGE: return UV_ERANGE;
+    case ENXIO: return UV_ENXIO;
     default: return UV_UNKNOWN;
   }
   UNREACHABLE();

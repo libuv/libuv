@@ -134,6 +134,7 @@ extern "C" {
   XX( 61, ENOPROTOOPT, "protocol not available")                              \
   XX( 62, ETXTBSY, "text file is busy")                                       \
   XX( 63, ERANGE, "result too large")                                         \
+  XX( 64, ENXIO, "no such device or address")                                 \
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
