@@ -79,4 +79,4 @@ libuv.a: $(OBJS)
 	$(AR) crs $@ $^
 
 $(OBJS): %.o : %.c $(INCLUDES)
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
