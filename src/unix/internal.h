@@ -189,6 +189,8 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd);
 #endif /* defined(__APPLE__) */
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 int uv__accept(int sockfd);
+int uv__dup2_cloexec(int oldfd, int newfd);
+int uv__open_cloexec(const char* path, int flags);
 
 /* tcp */
 int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);

@@ -63,36 +63,6 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 static size_t uv__write_req_size(uv_write_t* req);
 
 
-/* Used by the accept() EMFILE party trick. */
-static int uv__open_cloexec(const char* path, int flags) {
-  int err;
-  int fd;
-
-#if defined(__linux__)
-  fd = open(path, flags | UV__O_CLOEXEC);
-  if (fd != -1)
-    return fd;
-
-  if (errno != EINVAL)
-    return -errno;
-
-  /* O_CLOEXEC not supported. */
-#endif
-
-  fd = open(path, flags);
-  if (fd == -1)
-    return -errno;
-
-  err = uv__cloexec(fd, 1);
-  if (err) {
-    uv__close(fd);
-    return err;
-  }
-
-  return fd;
-}
-
-
 static size_t uv_count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
   unsigned int i;
   size_t bytes;
