@@ -269,6 +269,9 @@ endif
 if HAVE_DTRACE
 BUILT_SOURCES = include/uv-dtrace.h
 CLEANFILES += include/uv-dtrace.h
+if FREEBSD
+libuv_la_LDFLAGS += -lelf
+endif
 endif
 
 if DTRACE_NEEDS_OBJECTS
