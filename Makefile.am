@@ -234,6 +234,11 @@ libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500
 libuv_la_SOURCES += src/unix/aix.c
 endif
 
+if ANDROID
+include_HEADERS += include/android-ifaddrs.h
+libuv_la_SOURCES += src/unix/android-ifaddrs.c
+endif
+
 if DARWIN
 include_HEADERS += include/uv-darwin.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1

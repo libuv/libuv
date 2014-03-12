@@ -217,6 +217,7 @@
             'src/unix/linux-syscalls.c',
             'src/unix/linux-syscalls.h',
             'src/unix/pthread-fixes.c',
+            'src/unix/android-ifaddrs.c'
           ],
           'link_settings': {
             'libraries': [ '-ldl' ],
