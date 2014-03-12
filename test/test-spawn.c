@@ -26,8 +26,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef _WIN32
-#include <unistd.h>
+#ifdef _WIN32
+# if defined(__MINGW32__)
+#  include <basetyps.h>
+# endif
+# include <shellapi.h>
+#else
+# include <unistd.h>
 #endif
 
 
