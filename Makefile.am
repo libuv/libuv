@@ -106,6 +106,7 @@ endif  # WINNT
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
+test_run_tests_CFLAGS =
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
                          test/echo-server.c \
@@ -219,6 +220,13 @@ test_run_tests_SOURCES += test/runner-unix.c \
                           test/runner-unix.h
 endif
 
+if AIX
+test_run_tests_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500
+endif
+
+if SUNOS
+test_run_tests_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
+endif
 
 
 if AIX
