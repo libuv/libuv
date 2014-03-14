@@ -238,7 +238,6 @@
           },
         }],
         [ 'OS=="aix"', {
-          'include_dirs': [ 'src/ares/config_aix' ],
           'sources': [ 'src/unix/aix.c' ],
           'defines': [
             '_ALL_SOURCE',
