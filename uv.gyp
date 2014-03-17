@@ -389,6 +389,7 @@
         'test/test-udp-options.c',
         'test/test-udp-send-and-recv.c',
         'test/test-udp-multicast-join.c',
+        'test/test-udp-multicast-join6.c',
         'test/test-dlerror.c',
         'test/test-udp-multicast-ttl.c',
         'test/test-ip4-addr.c',

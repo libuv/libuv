@@ -28,6 +28,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
+# define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
+#endif
+
+#if defined(IPV6_LEAVE_GROUP) && !defined(IPV6_DROP_MEMBERSHIP)
+# define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
+#endif
+
 
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_run_pending(uv_udp_t* handle);
@@ -422,6 +430,92 @@ int uv__udp_send(uv_udp_send_t* req,
 }
 
 
+static int uv__udp_set_membership4(uv_udp_t* handle,
+                                   const struct sockaddr_in* multicast_addr,
+                                   const char* interface_addr,
+                                   uv_membership membership) {
+  struct ip_mreq mreq;
+  int optname;
+  int err;
+
+  memset(&mreq, 0, sizeof mreq);
+
+  if (interface_addr) {
+    err = uv_inet_pton(AF_INET, interface_addr, &mreq.imr_interface.s_addr);
+    if (err)
+      return err;
+  } else {
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+  }
+
+  mreq.imr_multiaddr.s_addr = multicast_addr->sin_addr.s_addr;
+
+  switch (membership) {
+  case UV_JOIN_GROUP:
+    optname = IP_ADD_MEMBERSHIP;
+    break;
+  case UV_LEAVE_GROUP:
+    optname = IP_DROP_MEMBERSHIP;
+    break;
+  default:
+    return -EINVAL;
+  }
+
+  if (setsockopt(handle->io_watcher.fd,
+                 IPPROTO_IP,
+                 optname,
+                 &mreq,
+                 sizeof(mreq))) {
+    return -errno;
+  }
+
+  return 0;
+}
+
+
+static int uv__udp_set_membership6(uv_udp_t* handle,
+                                   const struct sockaddr_in6* multicast_addr,
+                                   const char* interface_addr,
+                                   uv_membership membership) {
+  int optname;
+  struct ipv6_mreq mreq;
+  struct sockaddr_in6 addr6;
+
+  memset(&mreq, 0, sizeof mreq);
+
+  if (interface_addr) {
+    if (uv_ip6_addr(interface_addr, 0, &addr6))
+      return -EINVAL;
+    mreq.ipv6mr_interface = addr6.sin6_scope_id;
+  } else {
+    mreq.ipv6mr_interface = 0;
+  }
+
+  mreq.ipv6mr_multiaddr = multicast_addr->sin6_addr;
+
+  switch (membership) {
+  case UV_JOIN_GROUP:
+    optname = IPV6_ADD_MEMBERSHIP;
+    break;
+  case UV_LEAVE_GROUP:
+    optname = IPV6_DROP_MEMBERSHIP;
+    break;
+  default:
+    return -EINVAL;
+  }
+
+  if (setsockopt(handle->io_watcher.fd,
+                 IPPROTO_IPV6,
+                 optname,
+                 &mreq,
+                 sizeof(mreq))) {
+    return -errno;
+  }
+
+  return 0;
+}
+
+
 int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_UDP);
   handle->alloc_cb = NULL;
@@ -453,39 +547,15 @@ int uv_udp_set_membership(uv_udp_t* handle,
                           const char* multicast_addr,
                           const char* interface_addr,
                           uv_membership membership) {
-  struct ip_mreq mreq;
-  int optname;
+  struct sockaddr_in addr4;
+  struct sockaddr_in6 addr6;
 
-  memset(&mreq, 0, sizeof mreq);
-
-  if (interface_addr) {
-    mreq.imr_interface.s_addr = inet_addr(interface_addr);
-  } else {
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-  }
-
-  mreq.imr_multiaddr.s_addr = inet_addr(multicast_addr);
-
-  switch (membership) {
-  case UV_JOIN_GROUP:
-    optname = IP_ADD_MEMBERSHIP;
-    break;
-  case UV_LEAVE_GROUP:
-    optname = IP_DROP_MEMBERSHIP;
-    break;
-  default:
+  if (uv_ip4_addr(multicast_addr, 0, &addr4) == 0)
+    return uv__udp_set_membership4(handle, &addr4, interface_addr, membership);
+  else if (uv_ip6_addr(multicast_addr, 0, &addr6) == 0)
+    return uv__udp_set_membership6(handle, &addr6, interface_addr, membership);
+  else
     return -EINVAL;
-  }
-
-  if (setsockopt(handle->io_watcher.fd,
-                 IPPROTO_IP,
-                 optname,
-                 &mreq,
-                 sizeof(mreq))) {
-    return -errno;
-  }
-
-  return 0;
 }
 
 
