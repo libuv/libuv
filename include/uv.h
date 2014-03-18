@@ -135,6 +135,7 @@ extern "C" {
   XX( 62, ETXTBSY, "text file is busy")                                       \
   XX( 63, ERANGE, "result too large")                                         \
   XX( 64, ENXIO, "no such device or address")                                 \
+  XX( 65, EMLINK, "too many links")                                           \
 
 
 #define UV_ERRNO_GEN(val, name, s) UV_##name = val,
