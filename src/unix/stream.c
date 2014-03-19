@@ -224,7 +224,7 @@ static void uv__stream_osx_select(void* arg) {
 }
 
 
-static void uv__stream_osx_select_cb(uv_async_t* handle, int status) {
+static void uv__stream_osx_select_cb(uv_async_t* handle) {
   uv__stream_select_t* s;
   uv_stream_t* stream;
   int events;
