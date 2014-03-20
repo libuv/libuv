@@ -56,8 +56,8 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   if (isatty(fd)) {
     newfd = uv__open_cloexec("/dev/tty", O_RDWR);
 
-    if (newfd == -1)
-      return -errno;
+    if (newfd < 0)
+      return newfd;    /* returned value is the error */
 
     r = uv__dup2_cloexec(newfd, fd);
     if (r < 0 && r != -EINVAL) {
