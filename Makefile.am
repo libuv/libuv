@@ -203,6 +203,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-dgram-too-big.c \
                          test/test-udp-ipv6.c \
                          test/test-udp-multicast-interface.c \
+                         test/test-udp-multicast-interface6.c \
                          test/test-udp-multicast-join.c \
                          test/test-udp-multicast-join6.c \
                          test/test-udp-multicast-ttl.c \

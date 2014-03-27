@@ -660,14 +660,10 @@ int uv_udp_set_membership(uv_udp_t* handle,
 
 
 int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr) {
-  struct in_addr addr;
   int err;
-
-  memset(&addr, 0, sizeof addr);
-
-  if (handle->flags & UV_HANDLE_IPV6) {
-    return UV_ENOSYS;
-  }
+  struct sockaddr_storage addr_st;
+  struct sockaddr_in* addr4;
+  struct sockaddr_in6* addr6;
 
   /* If the socket is unbound, bind to inaddr_any. */
   if (!(handle->flags & UV_HANDLE_BOUND)) {
@@ -679,20 +675,45 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
       return uv_translate_sys_error(err);
   }
 
-  if (interface_addr) {
-    err = uv_inet_pton(AF_INET, interface_addr, &addr.s_addr);
-    if (err)
-      return err;
+  addr4 = (struct sockaddr_in*) &addr_st;
+  addr6 = (struct sockaddr_in6*) &addr_st;
+
+  if (!interface_addr) {
+    memset(&addr_st, 0, sizeof addr_st);
+    if (handle->flags & UV_HANDLE_IPV6) {
+      addr_st.ss_family = AF_INET6;
+      addr6->sin6_scope_id = 0;
+    } else {
+      addr_st.ss_family = AF_INET;
+      addr4->sin_addr.s_addr = htonl(INADDR_ANY);
+    }
+  } else if (uv_ip4_addr(interface_addr, 0, addr4) == 0) {
+    /* nothing, address was parsed */
+  } else if (uv_ip6_addr(interface_addr, 0, addr6) == 0) {
+    /* nothing, address was parsed */
   } else {
-    addr.s_addr = htonl(INADDR_ANY);
+    return UV_EINVAL;
   }
 
-  if (setsockopt(handle->socket,
-                 IPPROTO_IP,
-                 IP_MULTICAST_IF,
-                 (char*) &addr,
-                 sizeof addr) == SOCKET_ERROR) {
-    return uv_translate_sys_error(WSAGetLastError());
+  if (addr_st.ss_family == AF_INET) {
+    if (setsockopt(handle->socket,
+                   IPPROTO_IP,
+                   IP_MULTICAST_IF,
+                   (char*) &addr4->sin_addr,
+                   sizeof(addr4->sin_addr)) == SOCKET_ERROR) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  } else if (addr_st.ss_family == AF_INET6) {
+    if (setsockopt(handle->socket,
+                   IPPROTO_IPV6,
+                   IPV6_MULTICAST_IF,
+                   (char*) &addr6->sin6_scope_id,
+                   sizeof(addr6->sin6_scope_id)) == SOCKET_ERROR) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  } else {
+    assert(0 && "unexpected address family");
+    abort();
   }
 
   return 0;

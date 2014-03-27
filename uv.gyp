@@ -395,6 +395,7 @@
         'test/test-ip4-addr.c',
         'test/test-ip6-addr.c',
         'test/test-udp-multicast-interface.c',
+        'test/test-udp-multicast-interface6.c',
       ],
       'conditions': [
         [ 'OS=="win"', {
