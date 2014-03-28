@@ -72,7 +72,7 @@ TEST_IMPL(udp_multicast_interface6) {
 #if defined(__APPLE__)
   r = uv_udp_set_multicast_interface(&server, "::1%lo0");
 #else
-  r = uv_udp_set_multicast_interface(&server, "::1");
+  r = uv_udp_set_multicast_interface(&server, NULL);
 #endif
   ASSERT(r == 0);
 

@@ -349,6 +349,9 @@ int uv__udp_bind(uv_udp_t* handle,
     goto out;
   }
 
+  if (addr->sa_family == AF_INET6)
+    handle->flags |= UV_HANDLE_IPV6;
+
   return 0;
 
 out:
@@ -634,8 +637,13 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
 
   if (!interface_addr) {
     memset(&addr_st, 0, sizeof addr_st);
-    addr_st.ss_family = AF_INET;
-    addr4->sin_addr.s_addr = htonl(INADDR_ANY);
+    if (handle->flags & UV_HANDLE_IPV6) {
+      addr_st.ss_family = AF_INET6;
+      addr6->sin6_scope_id = 0;
+    } else {
+      addr_st.ss_family = AF_INET;
+      addr4->sin_addr.s_addr = htonl(INADDR_ANY);
+    }
   } else if (uv_ip4_addr(interface_addr, 0, addr4) == 0) {
     /* nothing, address was parsed */
   } else if (uv_ip6_addr(interface_addr, 0, addr6) == 0) {

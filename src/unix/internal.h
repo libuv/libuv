@@ -136,7 +136,8 @@ enum {
   UV_STREAM_READ_EOF      = 0x200,  /* read(2) read EOF. */
   UV_TCP_NODELAY          = 0x400,  /* Disable Nagle. */
   UV_TCP_KEEPALIVE        = 0x800,  /* Turn on keep-alive. */
-  UV_TCP_SINGLE_ACCEPT    = 0x1000  /* Only accept() when idle. */
+  UV_TCP_SINGLE_ACCEPT    = 0x1000, /* Only accept() when idle. */
+  UV_HANDLE_IPV6          = 0x2000  /* Handle is bound to a IPv6 socket. */
 };
 
 typedef enum {
