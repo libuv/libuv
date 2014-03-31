@@ -935,6 +935,28 @@ TEST_IMPL(environment_creation) {
 
   return 0;
 }
+
+// Regression test for issue #909
+TEST_IMPL(spawn_with_an_odd_path) {
+  int r;
+
+  char newpath[2048];
+  char *path = getenv("PATH");
+  ASSERT(path != NULL);
+  snprintf(newpath, 2048, ";.;%s", path);
+  SetEnvironmentVariable("PATH", path);
+
+  init_process_options("", exit_cb);
+  options.file = options.args[0] = "program-that-had-better-not-exist";
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == UV_ENOENT || r == UV_EACCES);
+  ASSERT(0 == uv_is_active((uv_handle_t*) &process));
+  uv_close((uv_handle_t*) &process, NULL);
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
 #endif
 
 #ifndef _WIN32
