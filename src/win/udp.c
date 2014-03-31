@@ -62,15 +62,6 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
 
   assert(handle->socket == INVALID_SOCKET);
 
-  /* Set SO_REUSEADDR on the socket. */
-  if (setsockopt(socket,
-                 SOL_SOCKET,
-                 SO_REUSEADDR,
-                 (char*) &yes,
-                 sizeof yes) == SOCKET_ERROR) {
-    return WSAGetLastError();
-  }
-
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
     return WSAGetLastError();
@@ -168,13 +159,16 @@ void uv_udp_endgame(uv_loop_t* loop, uv_udp_t* handle) {
 }
 
 
-static int uv_udp_try_bind(uv_udp_t* handle,
-                           const struct sockaddr* addr,
-                           unsigned int addrlen,
-                           unsigned int flags) {
+static int uv_udp_maybe_bind(uv_udp_t* handle,
+                             const struct sockaddr* addr,
+                             unsigned int addrlen,
+                             unsigned int flags) {
   int r;
   int err;
   DWORD no = 0;
+
+  if (handle->flags & UV_HANDLE_BOUND)
+    return 0;
 
   if ((flags & UV_UDP_IPV6ONLY) && addr->sa_family != AF_INET6) {
     /* UV_UDP_IPV6ONLY is supported only for IPV6 sockets */
@@ -191,6 +185,20 @@ static int uv_udp_try_bind(uv_udp_t* handle,
     if (err) {
       closesocket(sock);
       return err;
+    }
+
+    if (flags & UV_UDP_REUSEADDR) {
+      DWORD yes = 1;
+      /* Set SO_REUSEADDR on the socket. */
+      if (setsockopt(sock,
+                     SOL_SOCKET,
+                     SO_REUSEADDR,
+                     (char*) &yes,
+                     sizeof yes) == SOCKET_ERROR) {
+        err = WSAGetLastError();
+        closesocket(sock);
+        return err;
+      }
     }
 
     if (addr->sa_family == AF_INET6)
@@ -324,14 +332,12 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
     return WSAEALREADY;
   }
 
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
+  err = uv_udp_maybe_bind(handle,
                           (const struct sockaddr*) &uv_addr_ip4_any_,
                           sizeof(uv_addr_ip4_any_),
                           0);
-    if (err)
-      return err;
-  }
+  if (err)
+    return err;
 
   handle->flags |= UV_HANDLE_READING;
   INCREASE_ACTIVE_COUNT(loop, handle);
@@ -544,14 +550,12 @@ static int uv__udp_set_membership4(uv_udp_t* handle,
     return UV_EINVAL;
 
   /* If the socket is unbound, bind to inaddr_any. */
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
+  err = uv_udp_maybe_bind(handle,
                           (const struct sockaddr*) &uv_addr_ip4_any_,
                           sizeof(uv_addr_ip4_any_),
-                          0);
-    if (err)
-      return uv_translate_sys_error(err);
-  }
+                          UV_UDP_REUSEADDR);
+  if (err)
+    return uv_translate_sys_error(err);
 
   memset(&mreq, 0, sizeof mreq);
 
@@ -598,15 +602,13 @@ int uv__udp_set_membership6(uv_udp_t* handle,
   if ((handle->flags & UV_HANDLE_BOUND) && !(handle->flags & UV_HANDLE_IPV6))
     return UV_EINVAL;
 
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
+  err = uv_udp_maybe_bind(handle,
                           (const struct sockaddr*) &uv_addr_ip6_any_,
                           sizeof(uv_addr_ip6_any_),
-                          0);
+                          UV_UDP_REUSEADDR);
 
-    if (err)
-      return uv_translate_sys_error(err);
-  }
+  if (err)
+    return uv_translate_sys_error(err);
 
   memset(&mreq, 0, sizeof(mreq));
 
@@ -665,16 +667,6 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
   struct sockaddr_in* addr4;
   struct sockaddr_in6* addr6;
 
-  /* If the socket is unbound, bind to inaddr_any. */
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
-                          (const struct sockaddr*) &uv_addr_ip4_any_,
-                          sizeof(uv_addr_ip4_any_),
-                          0);
-    if (err)
-      return uv_translate_sys_error(err);
-  }
-
   addr4 = (struct sockaddr_in*) &addr_st;
   addr6 = (struct sockaddr_in6*) &addr_st;
 
@@ -696,6 +688,12 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
   }
 
   if (addr_st.ss_family == AF_INET) {
+    err = uv_udp_maybe_bind(handle,
+                            (const struct sockaddr*) &uv_addr_ip4_any_,
+                            sizeof(uv_addr_ip4_any_),
+                            UV_UDP_REUSEADDR);
+    if (err)
+      return uv_translate_sys_error(err);
     if (setsockopt(handle->socket,
                    IPPROTO_IP,
                    IP_MULTICAST_IF,
@@ -704,6 +702,12 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
       return uv_translate_sys_error(WSAGetLastError());
     }
   } else if (addr_st.ss_family == AF_INET6) {
+    err = uv_udp_maybe_bind(handle,
+                            (const struct sockaddr*) &uv_addr_ip6_any_,
+                            sizeof(uv_addr_ip6_any_),
+                            UV_UDP_REUSEADDR);
+    if (err)
+      return uv_translate_sys_error(err);
     if (setsockopt(handle->socket,
                    IPPROTO_IPV6,
                    IPV6_MULTICAST_IF,
@@ -725,14 +729,12 @@ int uv_udp_set_broadcast(uv_udp_t* handle, int value) {
   int err;
 
   /* If the socket is unbound, bind to inaddr_any. */
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_udp_try_bind(handle,
+  err = uv_udp_maybe_bind(handle,
                           (const struct sockaddr*) &uv_addr_ip4_any_,
                           sizeof(uv_addr_ip4_any_),
                           0);
-    if (err)
-      return uv_translate_sys_error(err);
-  }
+  if (err)
+    return uv_translate_sys_error(err);
 
   if (setsockopt(handle->socket,
                  SOL_SOCKET,
@@ -779,14 +781,12 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
     }                                                                         \
                                                                               \
     /* If the socket is unbound, bind to inaddr_any. */                       \
-    if (!(handle->flags & UV_HANDLE_BOUND)) {                                 \
-      err = uv_udp_try_bind(handle,                                           \
+    err = uv_udp_maybe_bind(handle,                                           \
                             (const struct sockaddr*) &uv_addr_ip4_any_,       \
                             sizeof(uv_addr_ip4_any_),                         \
                             0);                                               \
-      if (err)                                                                \
-        return uv_translate_sys_error(err);                                   \
-    }                                                                         \
+    if (err)                                                                  \
+      return uv_translate_sys_error(err);                                     \
                                                                               \
     if (!(handle->flags & UV_HANDLE_IPV6)) {                                  \
       /* Set IPv4 socket option */                                            \
@@ -842,7 +842,7 @@ int uv__udp_bind(uv_udp_t* handle,
                  unsigned int flags) {
   int err;
 
-  err = uv_udp_try_bind(handle, addr, addrlen, flags);
+  err = uv_udp_maybe_bind(handle, addr, addrlen, flags);
   if (err)
     return uv_translate_sys_error(err);
 
@@ -871,7 +871,7 @@ int uv__udp_send(uv_udp_send_t* req,
     } else {
       abort();
     }
-    err = uv_udp_try_bind(handle, bind_addr, addrlen, 0);
+    err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
     if (err)
       return uv_translate_sys_error(err);
   }

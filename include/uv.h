@@ -846,7 +846,15 @@ enum uv_udp_flags {
    * Indicates message was truncated because read buffer was too small. The
    * remainder was discarded by the OS. Used in uv_udp_recv_cb.
    */
-  UV_UDP_PARTIAL = 2
+  UV_UDP_PARTIAL = 2,
+  /* Indicates if SO_REUSEADDR will be set when binding the handle.
+   * This sets the SO_REUSEPORT socket flag on the BSDs and OS X. On other
+   * UNIX platforms, it sets the SO_REUSEADDR flag.  What that means is that
+   * multiple threads or processes can bind to the same address without error
+   * (provided they all set the flag) but only the last one to bind will receive
+   * any traffic, in effect "stealing" the port from the previous listener.
+   */
+  UV_UDP_REUSEADDR = 4
 };
 
 /*
@@ -921,18 +929,11 @@ UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
  *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
  *  addr      struct sockaddr_in or struct sockaddr_in6 with the address and
  *            port to bind to.
- *  flags     Unused.
+ *  flags     Indicate how the socket will be bound, UV_UDP_IPV6ONLY and
+ *            UV_UDP_REUSEADDR are supported.
  *
  * Returns:
  *  0 on success, or an error code < 0 on failure.
- *
- * This sets the SO_REUSEPORT socket flag on the BSDs and OS X. On other
- * UNIX platforms, it sets the SO_REUSEADDR flag.  What that means is that
- * multiple threads or processes can bind to the same address without error
- * (provided they all set the flag) but only the last one to bind will receive
- * any traffic, in effect "stealing" the port from the previous listener.
- * This behavior is something of an anomaly and may be replaced by an explicit
- * opt-in mechanism in future versions of libuv.
  */
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
                           const struct sockaddr* addr,

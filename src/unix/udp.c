@@ -42,7 +42,9 @@ static void uv__udp_run_pending(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_sendmsg(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
-static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain);
+static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
+                                       int domain,
+                                       unsigned int flags);
 
 
 void uv__udp_close(uv_udp_t* handle) {
@@ -308,7 +310,7 @@ int uv__udp_bind(uv_udp_t* handle,
   fd = -1;
 
   /* Check for bad flags. */
-  if (flags & ~UV_UDP_IPV6ONLY)
+  if (flags & ~(UV_UDP_IPV6ONLY | UV_UDP_REUSEADDR))
     return -EINVAL;
 
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
@@ -323,9 +325,11 @@ int uv__udp_bind(uv_udp_t* handle,
     handle->io_watcher.fd = fd;
   }
 
-  err = uv__set_reuse(fd);
-  if (err)
-    goto out;
+  if (flags & UV_UDP_REUSEADDR) {
+    err = uv__set_reuse(fd);
+    if (err)
+      goto out;
+  }
 
   if (flags & UV_UDP_IPV6ONLY) {
 #ifdef IPV6_V6ONLY
@@ -354,7 +358,9 @@ out:
 }
 
 
-static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
+static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
+                                       int domain,
+                                       unsigned int flags) {
   unsigned char taddr[sizeof(struct sockaddr_in6)];
   socklen_t addrlen;
 
@@ -387,7 +393,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
     abort();
   }
 
-  return uv__udp_bind(handle, (const struct sockaddr*) &taddr, addrlen, 0);
+  return uv__udp_bind(handle, (const struct sockaddr*) &taddr, addrlen, flags);
 }
 
 
@@ -402,7 +408,7 @@ int uv__udp_send(uv_udp_send_t* req,
 
   assert(nbufs > 0);
 
-  err = uv__udp_maybe_deferred_bind(handle, addr->sa_family);
+  err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
   if (err)
     return err;
 
@@ -547,15 +553,23 @@ int uv_udp_set_membership(uv_udp_t* handle,
                           const char* multicast_addr,
                           const char* interface_addr,
                           uv_membership membership) {
+  int err;
   struct sockaddr_in addr4;
   struct sockaddr_in6 addr6;
 
-  if (uv_ip4_addr(multicast_addr, 0, &addr4) == 0)
+  if (uv_ip4_addr(multicast_addr, 0, &addr4) == 0) {
+    err = uv__udp_maybe_deferred_bind(handle, AF_INET, UV_UDP_REUSEADDR);
+    if (err)
+      return err;
     return uv__udp_set_membership4(handle, &addr4, interface_addr, membership);
-  else if (uv_ip6_addr(multicast_addr, 0, &addr6) == 0)
+  } else if (uv_ip6_addr(multicast_addr, 0, &addr6) == 0) {
+    err = uv__udp_maybe_deferred_bind(handle, AF_INET6, UV_UDP_REUSEADDR);
+    if (err)
+      return err;
     return uv__udp_set_membership6(handle, &addr6, interface_addr, membership);
-  else
+  } else {
     return -EINVAL;
+  }
 }
 
 
@@ -610,6 +624,7 @@ int uv_udp_set_multicast_loop(uv_udp_t* handle, int on) {
 }
 
 int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr) {
+  int err;
   struct sockaddr_storage addr_st;
   struct sockaddr_in* addr4;
   struct sockaddr_in6* addr6;
@@ -630,6 +645,9 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
   }
 
   if (addr_st.ss_family == AF_INET) {
+    err = uv__udp_maybe_deferred_bind(handle, AF_INET, UV_UDP_REUSEADDR);
+    if (err)
+      return err;
     if (setsockopt(handle->io_watcher.fd,
                    IPPROTO_IP,
                    IP_MULTICAST_IF,
@@ -638,6 +656,9 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
       return -errno;
     }
   } else if (addr_st.ss_family == AF_INET6) {
+    err = uv__udp_maybe_deferred_bind(handle, AF_INET6, UV_UDP_REUSEADDR);
+    if (err)
+      return err;
     if (setsockopt(handle->io_watcher.fd,
                    IPPROTO_IPV6,
                    IPV6_MULTICAST_IF,
@@ -682,7 +703,7 @@ int uv__udp_recv_start(uv_udp_t* handle,
   if (uv__io_active(&handle->io_watcher, UV__POLLIN))
     return -EALREADY;  /* FIXME(bnoordhuis) Should be -EBUSY. */
 
-  err = uv__udp_maybe_deferred_bind(handle, AF_INET);
+  err = uv__udp_maybe_deferred_bind(handle, AF_INET, 0);
   if (err)
     return err;
 
