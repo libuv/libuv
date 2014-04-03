@@ -138,6 +138,7 @@ extern "C" {
   XX(UNKNOWN, "unknown error")                                                \
   XX(EOF, "end of file")                                                      \
   XX(ENXIO, "no such device or address")                                      \
+  XX(EMLINK, "too many links")                                                \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
