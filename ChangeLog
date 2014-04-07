@@ -1,3 +1,22 @@
+2014.04.07, Version 0.10.26 (Stable)
+
+Changes since version 0.10.25:
+
+* process: don't close stdio fds during spawn (Tonis Tiigi)
+
+* build, windows: do not fail on Windows SDK Prompt (Marc Schlaich)
+
+* build, windows: fix x64 configuration issue (Marc Schlaich)
+
+* win: fix buffer leak on error in pipe.c (Fedor Indutny)
+
+* kqueue: invalidate fd in uv_fs_event_t (Fedor Indutny)
+
+* linux: always deregister closing fds from epoll (Geoffry Song)
+
+* error: add ENXIO for O_NONBLOCK FIFO open() (Fedor Indutny)
+
+
 2014.02.19, Version 0.10.25 (Stable), d778dc588507588b12b9f9d2905078db542ed751
 
 Changes since version 0.10.24:
