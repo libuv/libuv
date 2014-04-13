@@ -37,6 +37,7 @@ TEST_DECLARE   (semaphore_2)
 TEST_DECLARE   (semaphore_3)
 TEST_DECLARE   (tty)
 TEST_DECLARE   (stdio_over_pipes)
+TEST_DECLARE   (ip6_pton)
 TEST_DECLARE   (ipc_listen_before_write)
 TEST_DECLARE   (ipc_listen_after_write)
 #ifndef _WIN32
@@ -265,6 +266,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_server_close)
   TEST_ENTRY  (tty)
   TEST_ENTRY  (stdio_over_pipes)
+  TEST_ENTRY  (ip6_pton)
   TEST_ENTRY  (ipc_listen_before_write)
   TEST_ENTRY  (ipc_listen_after_write)
 #ifndef _WIN32

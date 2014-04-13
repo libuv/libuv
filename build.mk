@@ -87,6 +87,7 @@ TESTS= \
 	test/test-getsockname.o \
 	test/test-hrtime.o \
 	test/test-idle.o \
+	test/test-ip6-addr.o \
 	test/test-ipc.o \
 	test/test-ipc-send-recv.o \
 	test/test-loop-handles.o \
