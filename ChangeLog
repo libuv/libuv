@@ -1,3 +1,22 @@
+2014.04.15, Version 0.11.24 (Unstable)
+
+Changes since version 0.11.23:
+
+* linux: reduce file descriptor count of async pipe (Ben Noordhuis)
+
+* sunos: support IPv6 qualified link-local addresses (Saúl Ibarra Corretgé)
+
+* windows: fix opening of read-only stdin pipes (Alexis Campailla)
+
+* windows: Fix an infinite loop in uv_spawn (Alex Crichton)
+
+* windows: fix console signal handler refcount (李港平)
+
+* inet: allow scopeid in uv_inet_pton (Fedor Indutny)
+
+* win: always leave crit section in get_proc_title (Fedor Indutny)
+
+
 2014.04.07, Version 0.11.23 (Unstable)
 
 Changes since version 0.11.22:
