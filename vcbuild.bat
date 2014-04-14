@@ -51,6 +51,7 @@ call "%VS120COMNTOOLS%\..\..\vc\vcvarsall.bat" %vs_toolset%
 set GYP_MSVS_VERSION=2013
 goto select-target
 
+:vc-set-2012
 @rem Look for Visual Studio 2012
 if not defined VS110COMNTOOLS goto vc-set-2010
 if not exist "%VS110COMNTOOLS%\..\..\vc\vcvarsall.bat" goto vc-set-2010
