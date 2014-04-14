@@ -305,7 +305,6 @@
         'test/test-getsockname.c',
         'test/test-hrtime.c',
         'test/test-idle.c',
-        'test/test-ip6-addr.c',
         'test/test-ipc.c',
         'test/test-ipc-send-recv.c',
         'test/test-list.h',

@@ -229,7 +229,7 @@ static uv_err_t inet_pton6(const char *src, unsigned char *dst) {
   curtok = src;
   seen_xdigits = 0;
   val = 0;
-  while ((ch = *src++) != '\0' && ch != '%') {
+  while ((ch = *src++) != '\0') {
     const char *pch;
 
     if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
@@ -260,18 +260,7 @@ static uv_err_t inet_pton6(const char *src, unsigned char *dst) {
       continue;
     }
     if (ch == '.' && ((tp + sizeof(struct in_addr)) <= endp)) {
-      uv_err_t err;
-
-      /* Scope id present, parse ipv4 addr without it */
-      pch = strchr(curtok, '%');
-      if (pch != NULL) {
-        char tmp[sizeof "255.255.255.255"];
-
-        memcpy(tmp, curtok, pch - curtok);
-        curtok = tmp;
-        src = pch;
-      }
-      err = inet_pton4(curtok, tp);
+      uv_err_t err = inet_pton4(curtok, tp);
       if (err.code == 0) {
         tp += sizeof(struct in_addr);
         seen_xdigits = 0;
