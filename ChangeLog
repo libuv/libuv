@@ -1,4 +1,4 @@
-2014.04.15, Version 0.11.24 (Unstable)
+2014.04.15, Version 0.11.24 (Unstable), ed948c29f6e8c290f79325a6f0bc9ef35bcde644
 
 Changes since version 0.11.23:
 
@@ -17,7 +17,7 @@ Changes since version 0.11.23:
 * win: always leave crit section in get_proc_title (Fedor Indutny)
 
 
-2014.04.07, Version 0.11.23 (Unstable)
+2014.04.07, Version 0.11.23 (Unstable), e54de537efcacd593f36fcaaf8b4cb9e64313275
 
 Changes since version 0.11.22:
 
