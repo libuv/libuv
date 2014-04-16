@@ -119,8 +119,9 @@ static void after_read(uv_stream_t* handle,
   }
 
   wr = (write_req_t*) malloc(sizeof *wr);
-
+  ASSERT(wr != NULL);
   wr->buf = uv_buf_init(buf->base, nread);
+
   if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
     FATAL("uv_write failed");
   }

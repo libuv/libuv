@@ -837,6 +837,7 @@ TEST_IMPL(argument_escaping) {
   WCHAR* non_verbatim_output;
 
   test_output = calloc(count, sizeof(WCHAR*));
+  ASSERT(test_output != NULL);
   for (i = 0; i < count; ++i) {
     test_output[i] = calloc(2 * (wcslen(test_str[i]) + 2), sizeof(WCHAR));
     quote_cmd_arg(test_str[i], test_output[i]);
@@ -845,6 +846,7 @@ TEST_IMPL(argument_escaping) {
     total_size += wcslen(test_output[i]) + 1;
   }
   command_line = calloc(total_size + 1, sizeof(WCHAR));
+  ASSERT(command_line != NULL);
   for (i = 0; i < count; ++i) {
     wcscat(command_line, test_output[i]);
     wcscat(command_line, L" ");
