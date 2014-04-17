@@ -158,7 +158,7 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
 }
 
 
-int uv_tcp_getsockname(uv_tcp_t* handle,
+int uv_tcp_getsockname(const uv_tcp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
   socklen_t socklen;
@@ -180,7 +180,7 @@ int uv_tcp_getsockname(uv_tcp_t* handle,
 }
 
 
-int uv_tcp_getpeername(uv_tcp_t* handle,
+int uv_tcp_getpeername(const uv_tcp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
   socklen_t socklen;

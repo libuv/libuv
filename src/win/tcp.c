@@ -747,8 +747,9 @@ static int uv_tcp_try_connect(uv_connect_t* req,
 }
 
 
-int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
-    int* namelen) {
+int uv_tcp_getsockname(const uv_tcp_t* handle,
+                       struct sockaddr* name,
+                       int* namelen) {
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
@@ -768,8 +769,9 @@ int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name,
 }
 
 
-int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name,
-    int* namelen) {
+int uv_tcp_getpeername(const uv_tcp_t* handle,
+                       struct sockaddr* name,
+                       int* namelen) {
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
