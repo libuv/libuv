@@ -2057,8 +2057,8 @@ UV_EXTERN int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
 UV_EXTERN int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
 
 /* Convert binary addresses to strings */
-UV_EXTERN int uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size);
-UV_EXTERN int uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size);
+UV_EXTERN int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size);
+UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size);
 
 /* Cross-platform IPv6-capable implementation of the 'standard' inet_ntop */
 /* and inet_pton functions. On success they return 0. If an error */
