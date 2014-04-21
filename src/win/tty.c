@@ -1117,6 +1117,14 @@ static int uv_tty_clear(uv_tty_t* handle, int dir, char entire_screen,
   return 0;
 }
 
+#define FLIP_FGBG                                                             \
+    do {                                                                      \
+      WORD fg = info.wAttributes & 0xF;                                       \
+      WORD bg = info.wAttributes & 0xF0;                                      \
+      info.wAttributes &= 0xFF00;                                             \
+      info.wAttributes |= fg << 4;                                            \
+      info.wAttributes |= bg >> 4;                                            \
+    } while (0)
 
 static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
   unsigned short argc = handle->ansi_csi_argc;
@@ -1126,6 +1134,7 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
 
   char fg_color = -1, bg_color = -1;
   char fg_bright = -1, bg_bright = -1;
+  char inverse = -1;
 
   if (argc == 0) {
     /* Reset mode */
@@ -1133,6 +1142,7 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
     bg_color = 0;
     fg_bright = 0;
     bg_bright = 0;
+    inverse = 0;
   }
 
   for (i = 0; i < argc; i++) {
@@ -1144,6 +1154,7 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
       bg_color = 0;
       fg_bright = 0;
       bg_bright = 0;
+      inverse = 0;
 
     } else if (arg == 1) {
       /* Foreground bright on */
@@ -1158,6 +1169,10 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
       /* Background bright on */
       bg_bright = 1;
 
+    } else if (arg == 7) {
+      /* Inverse: on */
+      inverse = 1;
+
     } else if (arg == 21 || arg == 22) {
       /* Foreground bright off */
       fg_bright = 0;
@@ -1165,6 +1180,10 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
     } else if (arg == 25) {
       /* Background bright off */
       bg_bright = 0;
+
+    } else if (arg == 27) {
+      /* Inverse: off */
+      inverse = 0;
 
     } else if (arg >= 30 && arg <= 37) {
       /* Set foreground color */
@@ -1198,7 +1217,7 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
   }
 
   if (fg_color == -1 && bg_color == -1 && fg_bright == -1 &&
-      bg_bright == -1) {
+      bg_bright == -1 && inverse == -1) {
     /* Nothing changed */
     return 0;
   }
@@ -1206,6 +1225,10 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
   if (!GetConsoleScreenBufferInfo(handle->handle, &info)) {
     *error = GetLastError();
     return -1;
+  }
+
+  if ((info.wAttributes & COMMON_LVB_REVERSE_VIDEO) > 0) {
+    FLIP_FGBG;
   }
 
   if (fg_color != -1) {
@@ -1236,6 +1259,18 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
     } else {
       info.wAttributes &= ~BACKGROUND_INTENSITY;
     }
+  }
+
+  if (inverse != -1) {
+    if (inverse) {
+      info.wAttributes |= COMMON_LVB_REVERSE_VIDEO;
+    } else {
+      info.wAttributes &= ~COMMON_LVB_REVERSE_VIDEO;
+    }
+  }
+
+  if ((info.wAttributes & COMMON_LVB_REVERSE_VIDEO) > 0) {
+    FLIP_FGBG;
   }
 
   if (!SetConsoleTextAttribute(handle->handle, info.wAttributes)) {
