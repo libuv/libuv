@@ -243,6 +243,10 @@ static int uv_tcp_try_bind(uv_tcp_t* handle,
   int r;
 
   if (handle->socket == INVALID_SOCKET) {
+    /* Cannot set IPv6-only mode on non-IPv6 socket. */
+    if ((flags & UV_TCP_IPV6ONLY) && addr->sa_family != AF_INET6)
+      return ERROR_INVALID_PARAMETER;
+
     SOCKET sock = socket(addr->sa_family, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();

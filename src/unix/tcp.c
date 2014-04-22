@@ -63,6 +63,10 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   int err;
   int on;
 
+  /* Cannot set IPv6-only mode on non-IPv6 socket. */
+  if ((flags & UV_TCP_IPV6ONLY) && addr->sa_family != AF_INET6)
+    return -EINVAL;
+
   err = maybe_new_socket(tcp,
                          addr->sa_family,
                          UV_STREAM_READABLE | UV_STREAM_WRITABLE);
