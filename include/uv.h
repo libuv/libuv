@@ -695,9 +695,8 @@ UV_EXTERN int uv_write2(uv_write_t* req,
  * Same as `uv_write()`, but won't queue write request if it can't be completed
  * immediately.
  * Will return either:
- * - positive number of bytes written
- * - zero - if queued write is needed
- * - negative error code
+ * - >= 0: number of bytes written (can be less than the supplied buffer size)
+ * - < 0: negative error code
  */
 UV_EXTERN int uv_try_write(uv_stream_t* handle,
                            const uv_buf_t bufs[],
