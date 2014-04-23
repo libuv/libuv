@@ -874,8 +874,8 @@ typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
  *          discard or repurpose the read buffer.
  *          < 0 if a transmission error was detected.
  *  buf     uv_buf_t with the received data.
- *  addr    struct sockaddr_in or struct sockaddr_in6.
- *          Valid for the duration of the callback only.
+ *  addr    struct sockaddr* containing the address of the sender.
+ *          Can be NULL. Valid for the duration of the callback only.
  *  flags   One or more OR'ed UV_UDP_* constants.
  *          Right now only UV_UDP_PARTIAL is used.
  */
