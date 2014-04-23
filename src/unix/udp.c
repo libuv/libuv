@@ -604,7 +604,7 @@ int uv_udp_set_membership(uv_udp_t* handle,
 
 
 static int uv__setsockopt_maybe_char(uv_udp_t* handle, int option, int val) {
-#if defined(__sun)
+#if defined(__sun) || defined(_AIX)
   char arg = val;
 #else
   int arg = val;

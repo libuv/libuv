@@ -137,6 +137,7 @@
             'include/uv-sunos.h',
             'include/uv-darwin.h',
             'include/uv-bsd.h',
+            'include/uv-aix.h',
             'src/unix/async.c',
             'src/unix/atomic-ops.h',
             'src/unix/core.c',
@@ -245,6 +246,7 @@
           'defines': [
             '_ALL_SOURCE',
             '_XOPEN_SOURCE=500',
+            '_LINUX_SOURCE_COMPAT',
           ],
           'link_settings': {
             'libraries': [

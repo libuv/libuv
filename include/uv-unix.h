@@ -46,6 +46,8 @@
 
 #if defined(__linux__)
 # include "uv-linux.h"
+#elif defined(_AIX)
+# include "uv-aix.h"
 #elif defined(__sun)
 # include "uv-sunos.h"
 #elif defined(__APPLE__)
