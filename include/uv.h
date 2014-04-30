@@ -2204,8 +2204,14 @@ UV_EXTERN void uv_key_delete(uv_key_t* key);
 UV_EXTERN void* uv_key_get(uv_key_t* key);
 UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
 
-UV_EXTERN int uv_thread_create(uv_thread_t *tid,
-    void (*entry)(void *arg), void *arg);
+/*
+ * Callback that is invoked to initialize thread execution.
+ *
+ * `arg` is the same value that was passed to uv_thread_create().
+ */
+typedef void (*uv_thread_cb)(void* arg);
+
+UV_EXTERN int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg);
 UV_EXTERN unsigned long uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 
