@@ -1316,6 +1316,25 @@ static int uv_tty_restore_state(uv_tty_t* handle,
   return 0;
 }
 
+static int uv_tty_set_cursor_visibility(uv_tty_t* handle,
+                                        BOOL visible,
+                                        DWORD* error) {
+  CONSOLE_CURSOR_INFO cursor_info;
+
+  if (!GetConsoleCursorInfo(handle->handle, &cursor_info)) {
+    *error = GetLastError();
+    return -1;
+  }
+
+  cursor_info.bVisible = visible;
+
+  if (!SetConsoleCursorInfo(handle->handle, &cursor_info)) {
+    *error = GetLastError();
+    return -1;
+  }
+
+  return 0;
+}
 
 static int uv_tty_write_bufs(uv_tty_t* handle,
                              const uv_buf_t bufs[],
@@ -1527,6 +1546,13 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
               continue;
             }
 
+          } else if (utf8_codepoint == '?' && !(ansi_parser_state & ANSI_IN_ARG) &&
+                     handle->ansi_csi_argc == 0) {
+            /* Ignores '?' if it is the first character after CSI[ */
+            /* This is an extension character from the VT100 codeset */
+            /* that is supported and used by most ANSI terminals today. */
+            continue;
+
           } else if (utf8_codepoint >= '@' && utf8_codepoint <= '~' &&
                      (handle->ansi_csi_argc > 0 || utf8_codepoint != '[')) {
             int x, y, d;
@@ -1628,6 +1654,24 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
                 /* Restore the cursor position */
                 FLUSH_TEXT();
                 uv_tty_restore_state(handle, 0, error);
+                break;
+
+              case 'l':
+                /* Hide the cursor */
+                if (handle->ansi_csi_argc == 1 &&
+                    handle->ansi_csi_argv[0] == 25) {
+                  FLUSH_TEXT();
+                  uv_tty_set_cursor_visibility(handle, 0, error);
+                }
+                break;
+
+              case 'h':
+                /* Show the cursor */
+                if (handle->ansi_csi_argc == 1 &&
+                    handle->ansi_csi_argv[0] == 25) {
+                  FLUSH_TEXT();
+                  uv_tty_set_cursor_visibility(handle, 1, error);
+                }
                 break;
             }
 
