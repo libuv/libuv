@@ -430,11 +430,10 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
   int quote_hit;
   WCHAR* start;
 
-  /*
-   * Check if the string must be quoted;
-   * if unnecessary, don't do it, it may only confuse older programs.
-   */
   if (len == 0) {
+    /* Need double quotation for empty argument */
+    *(target++) = L'"';
+    *(target++) = L'"';
     return target;
   }
 
