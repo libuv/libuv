@@ -320,9 +320,10 @@ int uv__udp_bind(uv_udp_t* handle,
 
   fd = handle->io_watcher.fd;
   if (fd == -1) {
-    fd = uv__socket(addr->sa_family, SOCK_DGRAM, 0);
-    if (fd == -1)
-      return -errno;
+    err = uv__socket(addr->sa_family, SOCK_DGRAM, 0);
+    if (err < 0)
+      return err;
+    fd = err;
     handle->io_watcher.fd = fd;
   }
 
