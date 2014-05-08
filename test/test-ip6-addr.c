@@ -32,7 +32,6 @@
 
 
 TEST_IMPL(ip6_addr_link_local) {
-#ifdef UV_PLATFORM_HAS_IP6_LINK_LOCAL_ADDRESS
   char string_address[INET6_ADDRSTRLEN];
   uv_interface_address_t* addresses;
   uv_interface_address_t* address;
@@ -93,9 +92,6 @@ TEST_IMPL(ip6_addr_link_local) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-#else
-  RETURN_SKIP("Qualified link-local addresses are not supported.");
-#endif
 }
 
 
