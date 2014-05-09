@@ -2124,7 +2124,7 @@ UV_EXTERN int uv_dlsym(uv_lib_t* lib, const char* name, void** ptr);
 /*
  * Returns the last uv_dlopen() or uv_dlsym() error message.
  */
-UV_EXTERN const char* uv_dlerror(uv_lib_t* lib);
+UV_EXTERN const char* uv_dlerror(const uv_lib_t* lib);
 
 /*
  * The mutex functions return 0 on success or an error code < 0
