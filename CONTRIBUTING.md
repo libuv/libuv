@@ -142,11 +142,8 @@ Bug fixes and features should come with tests.  Add your tests in the
 Look at other tests to see how they should be structured (license boilerplate,
 the way entry points are declared, etc.).
 
-```
-$ make test
-```
-
-Make sure that there are no test regressions.
+Check README.md file to find out how to run the test suite and make sure that
+there are no test regressions.
 
 ### PUSH
 
