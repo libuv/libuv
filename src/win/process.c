@@ -616,6 +616,11 @@ static void check_required_vars_contains_var(env_var_t* required, int count,
  * TEMP. SYSTEMDRIVE is probably also important. We therefore ensure that
  * these get defined if the input environment block does not contain any
  * values for them.
+ *
+ * Also add variables known to Cygwin to be required for correct
+ * subprocess operation in many cases:
+ * https://github.com/Alexpux/Cygwin/blob/b266b04fbbd3a595f02ea149e4306d3ab9b1fe3d/winsup/cygwin/environ.cc#L955
+ *
  */
 int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   WCHAR* dst;
@@ -630,6 +635,14 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
     E_V("SYSTEMROOT"),
     E_V("SYSTEMDRIVE"),
     E_V("TEMP"),
+    E_V("HOMEDRIVE"),
+    E_V("HOMEPATH"),
+    E_V("USERDOMAIN"),
+    E_V("USERNAME"),
+    E_V("USERPROFILE"),
+    E_V("WINDIR"),
+    E_V("PATH"),
+    E_V("LOGONSERVER"),
   };
 
   for (env = env_block; *env; env++) {
@@ -653,13 +666,12 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
 
   for (i = 0; i < ARRAY_SIZE(required_vars); ++i) {
     if (!required_vars[i].supplied) {
-      env_len += required_vars[i].len;
       var_size = GetEnvironmentVariableW(required_vars[i].wide, NULL, 0);
-      if (var_size == 0) {
-        return GetLastError();
-      }
       required_vars[i].value_len = var_size;
-      env_len += var_size;
+      if (var_size != 0) {
+        env_len += required_vars[i].len;
+        env_len += var_size;
+      }
     }
   }
 
@@ -684,7 +696,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   }
 
   for (i = 0; i < ARRAY_SIZE(required_vars); ++i) {
-    if (!required_vars[i].supplied) {
+    if (!required_vars[i].supplied && required_vars[i].value_len!=0) {
       wcscpy(ptr, required_vars[i].wide);
       ptr += required_vars[i].len - 1;
       *ptr++ = L'=';
