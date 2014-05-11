@@ -281,6 +281,15 @@ typedef struct {
   struct addrinfo* res;                                                       \
   int retcode;
 
+#define UV_GETNAMEINFO_PRIVATE_FIELDS                                         \
+  struct uv__work work_req;                                                   \
+  uv_getnameinfo_cb getnameinfo_cb;                                           \
+  struct sockaddr_storage storage;                                            \
+  int flags;                                                                  \
+  char host[NI_MAXHOST];                                                      \
+  char service[NI_MAXSERV];                                                   \
+  int retcode;
+
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
   void* queue[2];                                                             \
   int status;                                                                 \

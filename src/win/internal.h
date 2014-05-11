@@ -292,6 +292,12 @@ void uv_process_getaddrinfo_req(uv_loop_t* loop, uv_getaddrinfo_t* req);
 
 
 /*
+* Getnameinfo
+*/
+void uv_process_getnameinfo_req(uv_loop_t* loop, uv_getnameinfo_t* req);
+
+
+/*
  * FS
  */
 void uv_fs_init();

@@ -167,6 +167,7 @@ extern "C" {
   XX(FS, fs)                                                                  \
   XX(WORK, work)                                                              \
   XX(GETADDRINFO, getaddrinfo)                                                \
+  XX(GETNAMEINFO, getnameinfo)                                                \
 
 typedef enum {
 #define XX(code, _) UV_ ## code = UV__ ## code,
@@ -216,6 +217,7 @@ typedef struct uv_signal_s uv_signal_t;
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
+typedef struct uv_getnameinfo_s uv_getnameinfo_t;
 typedef struct uv_shutdown_s uv_shutdown_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
@@ -419,6 +421,10 @@ typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
 typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req,
                                   int status,
                                   struct addrinfo* res);
+typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
+                                  int status,
+                                  char* hostname,
+                                  char* service);
 
 typedef struct {
   long tv_sec;
@@ -1451,6 +1457,33 @@ UV_EXTERN int uv_getaddrinfo(uv_loop_t* loop,
 UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
 
+/*
+* uv_getnameinfo_t is a subclass of uv_req_t
+*
+* Request object for uv_getnameinfo.
+*/
+struct uv_getnameinfo_s {
+  UV_REQ_FIELDS
+  /* read-only */
+  uv_loop_t* loop;
+  UV_GETNAMEINFO_PRIVATE_FIELDS
+};
+
+/*
+ * Asynchronous getnameinfo.
+ *
+ * Returns 0 on success or an error code < 0 on failure.
+ *
+ * If successful, your callback gets called sometime in the future with the
+ * lookup result.
+ */
+UV_EXTERN int uv_getnameinfo(uv_loop_t* loop,
+                             uv_getnameinfo_t* req,
+                             uv_getnameinfo_cb getnameinfo_cb,
+                             const struct sockaddr* addr,
+                             int flags);
+
+
 /* uv_spawn() options */
 typedef enum {
   UV_IGNORE         = 0x00,
@@ -2252,6 +2285,7 @@ struct uv_loop_s {
 #undef UV_ASYNC_PRIVATE_FIELDS
 #undef UV_TIMER_PRIVATE_FIELDS
 #undef UV_GETADDRINFO_PRIVATE_FIELDS
+#undef UV_GETNAMEINFO_PRIVATE_FIELDS
 #undef UV_FS_REQ_PRIVATE_FIELDS
 #undef UV_WORK_PRIVATE_FIELDS
 #undef UV_FS_EVENT_PRIVATE_FIELDS

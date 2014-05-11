@@ -51,6 +51,7 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/fs-event.c \
                     src/win/fs.c \
                     src/win/getaddrinfo.c \
+                    src/win/getnameinfo.c \
                     src/win/handle.c \
                     src/win/handle-inl.h \
                     src/win/internal.h \
@@ -86,6 +87,7 @@ libuv_la_SOURCES += src/unix/async.c \
                    src/unix/dl.c \
                    src/unix/fs.c \
                    src/unix/getaddrinfo.c \
+                   src/unix/getnameinfo.c \
                    src/unix/internal.h \
                    src/unix/loop-watcher.c \
                    src/unix/loop.c \
@@ -138,6 +140,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-get-loadavg.c \
                          test/test-get-memory.c \
                          test/test-getaddrinfo.c \
+                         test/test-getnameinfo.c \
                          test/test-getsockname.c \
                          test/test-hrtime.c \
                          test/test-idle.c \
