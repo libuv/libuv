@@ -347,6 +347,7 @@
         'test/test-platform-output.c',
         'test/test-poll.c',
         'test/test-poll-close.c',
+        'test/test-poll-closesocket.c',
         'test/test-process-title.c',
         'test/test-ref.c',
         'test/test-run-nowait.c',

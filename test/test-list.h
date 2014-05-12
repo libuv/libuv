@@ -240,6 +240,9 @@ TEST_DECLARE   (dlerror)
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
+#ifdef _WIN32
+TEST_DECLARE   (poll_closesocket)
+#endif
 TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
 #ifdef _WIN32
@@ -483,6 +486,9 @@ TASK_LIST_START
   TEST_ENTRY  (poll_duplex)
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
+#ifdef _WIN32
+  TEST_ENTRY  (poll_closesocket)
+#endif
 
   TEST_ENTRY  (spawn_fails)
   TEST_ENTRY  (spawn_exit_code)

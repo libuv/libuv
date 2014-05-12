@@ -166,6 +166,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-server-close.c \
                          test/test-platform-output.c \
                          test/test-poll-close.c \
+                         test/test-poll-closesocket.c \
                          test/test-poll.c \
                          test/test-process-title.c \
                          test/test-ref.c \
