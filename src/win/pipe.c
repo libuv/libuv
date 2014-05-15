@@ -230,7 +230,7 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_MODE_INFORMATION mode_info;
-  DWORD mode = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT;
+  DWORD mode = PIPE_READMODE_BYTE | PIPE_WAIT;
   DWORD current_mode = 0;
   DWORD err = 0;
 
@@ -246,11 +246,9 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
       if (!GetNamedPipeHandleState(pipeHandle, &current_mode, NULL, NULL,
                                    NULL, NULL, 0)) {
         return -1;
-      } else if (current_mode != mode) {
+      } else if (current_mode & PIPE_NOWAIT) {
         SetLastError(ERROR_ACCESS_DENIED);
         return -1;
-      } else {
-        duplex_flags &= ~UV_HANDLE_WRITABLE;
       }
     } else {
       /* If this returns ERROR_INVALID_PARAMETER we probably opened
@@ -1772,7 +1770,34 @@ static void eof_timer_close_cb(uv_handle_t* handle) {
 
 int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   HANDLE os_handle = uv__get_osfhandle(file);
-  DWORD duplex_flags = UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
+  NTSTATUS nt_status;
+  IO_STATUS_BLOCK io_status;
+  FILE_ACCESS_INFORMATION access;
+  DWORD duplex_flags = 0;
+
+  /* Determine what kind of permissions we have on this handle.
+   * Cygwin opens the pipe in message mode, but we can support it,
+   * just query the access flags and set the stream flags accordingly.
+   */
+  nt_status = pNtQueryInformationFile(os_handle,
+                                      &io_status,
+                                      &access,
+                                      sizeof(access),
+                                      FileAccessInformation);
+  if (nt_status != STATUS_SUCCESS)
+    return UV_EINVAL;
+
+  if (pipe->ipc) {
+    if (!(access.AccessFlags & FILE_WRITE_DATA) ||
+        !(access.AccessFlags & FILE_READ_DATA)) {
+      return UV_EINVAL;
+    }
+  }
+
+  if (access.AccessFlags & FILE_WRITE_DATA)
+    duplex_flags |= UV_HANDLE_WRITABLE;
+  if (access.AccessFlags & FILE_READ_DATA)
+    duplex_flags |= UV_HANDLE_READABLE;
 
   if (os_handle == INVALID_HANDLE_VALUE ||
       uv_set_pipe_handle(pipe->loop, pipe, os_handle, duplex_flags) == -1) {
