@@ -27,6 +27,9 @@
 #include "uv.h"
 #include "uv-common.h"
 
+#define UV__INET_ADDRSTRLEN         16
+#define UV__INET6_ADDRSTRLEN        46
+
 
 static int inet_ntop4(const unsigned char *src, char *dst, size_t size);
 static int inet_ntop6(const unsigned char *src, char *dst, size_t size);
@@ -49,7 +52,7 @@ int uv_inet_ntop(int af, const void* src, char* dst, size_t size) {
 
 static int inet_ntop4(const unsigned char *src, char *dst, size_t size) {
   static const char fmt[] = "%u.%u.%u.%u";
-  char tmp[sizeof "255.255.255.255"];
+  char tmp[UV__INET_ADDRSTRLEN];
   int l;
 
 #ifndef _WIN32
@@ -74,7 +77,7 @@ static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
    * Keep this in mind if you think this function should have been coded
    * to use pointer overlays.  All the world's not a VAX.
    */
-  char tmp[sizeof "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255"], *tp;
+  char tmp[UV__INET6_ADDRSTRLEN], *tp;
   struct { int base, len; } best, cur;
   unsigned int words[sizeof(struct in6_addr) / sizeof(uint16_t)];
   int i;
