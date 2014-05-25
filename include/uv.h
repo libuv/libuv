@@ -299,7 +299,9 @@ UV_EXTERN void uv_loop_delete(uv_loop_t*);
  *    or requests left), or non-zero if more events are expected (meaning you
  *    should run the event loop again sometime in the future).
  *  - UV_RUN_NOWAIT: Poll for new events once but don't block if there are no
- *    pending events.
+ *    pending events. Returns zero when done (no active handles
+ *    or requests left), or non-zero if more events are expected (meaning you
+ *    should run the event loop again sometime in the future).
  */
 UV_EXTERN int uv_run(uv_loop_t*, uv_run_mode mode);
 
