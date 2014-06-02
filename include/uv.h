@@ -2219,7 +2219,7 @@ UV_EXTERN int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex,
 
 UV_EXTERN int uv_barrier_init(uv_barrier_t* barrier, unsigned int count);
 UV_EXTERN void uv_barrier_destroy(uv_barrier_t* barrier);
-UV_EXTERN void uv_barrier_wait(uv_barrier_t* barrier);
+UV_EXTERN int uv_barrier_wait(uv_barrier_t* barrier);
 
 /* Runs a function once and only once. Concurrent calls to uv_once() with the
  * same guard will block all callers except one (it's unspecified which one).
