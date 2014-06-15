@@ -114,11 +114,11 @@
           ],
           'link_settings': {
             'libraries': [
-              '-ladvapi32.lib',
-              '-liphlpapi.lib',
-              '-lpsapi.lib',
-              '-lshell32.lib',
-              '-lws2_32.lib'
+              '-ladvapi32',
+              '-liphlpapi',
+              '-lpsapi',
+              '-lshell32',
+              '-lws2_32'
             ],
           },
         }, { # Not Windows i.e. POSIX
@@ -409,7 +409,7 @@
             'test/runner-win.c',
             'test/runner-win.h'
           ],
-          'libraries': [ 'ws2_32.lib' ]
+          'libraries': [ '-lws2_32' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
           'sources': [
@@ -473,7 +473,7 @@
             'test/runner-win.c',
             'test/runner-win.h',
           ],
-          'libraries': [ 'ws2_32.lib' ]
+          'libraries': [ '-lws2_32' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
           'sources': [
