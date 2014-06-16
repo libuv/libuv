@@ -433,7 +433,7 @@ int uv__getaddrinfo_translate_error(int sys_err) {
   case EAI_SOCKTYPE: return UV_EAI_SOCKTYPE;
 #endif
 #if defined(EAI_SYSTEM)
-  case EAI_SYSTEM: return UV_EAI_SYSTEM;
+  case EAI_SYSTEM: return -errno;
 #endif
   }
   assert(!"unknown EAI_* error code");
