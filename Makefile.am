@@ -17,7 +17,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -I$(top_srcdir)/include \
               -I$(top_srcdir)/src
 
-include_HEADERS=include/uv.h include/uv-errno.h include/uv-version.h
+include_HEADERS=include/uv.h include/uv-errno.h include/uv-threadpool.h include/uv-version.h
 
 CLEANFILES =
 
@@ -28,6 +28,7 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
                    src/inet.c \
                    src/queue.h \
+                   src/threadpool.c \
                    src/uv-common.c \
                    src/uv-common.h \
                    src/version.c
@@ -67,7 +68,6 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/stream-inl.h \
                     src/win/tcp.c \
                     src/win/thread.c \
-                    src/win/threadpool.c \
                     src/win/timer.c \
                     src/win/tty.c \
                     src/win/udp.c \
@@ -99,7 +99,6 @@ libuv_la_SOURCES += src/unix/async.c \
                    src/unix/stream.c \
                    src/unix/tcp.c \
                    src/unix/thread.c \
-                   src/unix/threadpool.c \
                    src/unix/timer.c \
                    src/unix/tty.c \
                    src/unix/udp.c

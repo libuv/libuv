@@ -44,12 +44,8 @@
 
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
   do {                                                                      \
-    if (!QueueUserWorkItem(&uv_fs_thread_proc,                              \
-                           req,                                             \
-                           WT_EXECUTEDEFAULT)) {                            \
-      return uv_translate_sys_error(GetLastError());                        \
-    }                                                                       \
     uv__req_register(loop, req);                                            \
+    uv__work_submit((loop), &(req)->work_req, uv__fs_work, uv__fs_done);    \
   } while (0)
 
 #define SET_REQ_RESULT(req, result_value)                                   \
@@ -232,11 +228,7 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
   req->result = 0;
   req->ptr = NULL;
   req->path = NULL;
-
-  if (cb != NULL) {
-    req->cb = cb;
-    memset(&req->overlapped, 0, sizeof(req->overlapped));
-  }
+  req->cb = cb;
 }
 
 
@@ -1510,11 +1502,10 @@ static void fs__fchown(uv_fs_t* req) {
 }
 
 
-static DWORD WINAPI uv_fs_thread_proc(void* parameter) {
-  uv_fs_t* req = (uv_fs_t*) parameter;
-  uv_loop_t* loop = req->loop;
+static void uv__fs_work(struct uv__work* w) {
+  uv_fs_t* req;
 
-  assert(req != NULL);
+  req = container_of(w, uv_fs_t, work_req);
   assert(req->type == UV_FS);
 
 #define XX(uc, lc)  case UV_FS_##uc: fs__##lc(req); break;
@@ -1547,9 +1538,41 @@ static DWORD WINAPI uv_fs_thread_proc(void* parameter) {
     default:
       assert(!"bad uv_fs_type");
   }
+}
 
-  POST_COMPLETION_FOR_REQ(loop, req);
-  return 0;
+
+static void uv__fs_done(struct uv__work* w, int status) {
+  uv_fs_t* req;
+
+  req = container_of(w, uv_fs_t, work_req);
+  uv__req_unregister(req->loop, req);
+
+  if (status == UV_ECANCELED) {
+    assert(req->result == 0);
+    req->result = UV_ECANCELED;
+  }
+
+  if (req->cb != NULL)
+    req->cb(req);
+}
+
+
+void uv_fs_req_cleanup(uv_fs_t* req) {
+  if (req->flags & UV_FS_CLEANEDUP)
+    return;
+
+  if (req->flags & UV_FS_FREE_PATHS)
+    free(req->pathw);
+
+  if (req->flags & UV_FS_FREE_PTR)
+    free(req->ptr);
+
+  req->path = NULL;
+  req->pathw = NULL;
+  req->new_pathw = NULL;
+  req->ptr = NULL;
+
+  req->flags |= UV_FS_CLEANEDUP;
 }
 
 
@@ -2064,30 +2087,3 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file fd, double atime,
     return req->result;
   }
 }
-
-
-void uv_process_fs_req(uv_loop_t* loop, uv_fs_t* req) {
-  assert(req->cb);
-  uv__req_unregister(loop, req);
-  req->cb(req);
-}
-
-
-void uv_fs_req_cleanup(uv_fs_t* req) {
-  if (req->flags & UV_FS_CLEANEDUP)
-    return;
-
-  if (req->flags & UV_FS_FREE_PATHS)
-    free(req->pathw);
-
-  if (req->flags & UV_FS_FREE_PTR)
-    free(req->ptr);
-
-  req->path = NULL;
-  req->pathw = NULL;
-  req->new_pathw = NULL;
-  req->ptr = NULL;
-
-  req->flags |= UV_FS_CLEANEDUP;
-}
-

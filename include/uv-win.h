@@ -45,6 +45,7 @@ typedef intptr_t ssize_t;
 #endif
 
 #include "tree.h"
+#include "uv-threadpool.h"
 
 #define MAX_PIPENAME_LEN 256
 
@@ -307,7 +308,11 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   /* Counter to keep track of active udp streams */                           \
   unsigned int active_udp_streams;                                            \
   /* Counter to started timer */                                              \
-  uint64_t timer_counter;
+  uint64_t timer_counter;                                                     \
+  /* Threadpool */                                                            \
+  void* wq[2];                                                                \
+  uv_mutex_t wq_mutex;                                                        \
+  uv_async_t wq_async;
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \
@@ -520,6 +525,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   unsigned int flags;
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
+  struct uv__work work_req;                                                   \
   uv_getaddrinfo_cb getaddrinfo_cb;                                           \
   void* alloc;                                                                \
   WCHAR* node;                                                                \
@@ -529,6 +535,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   int retcode;
 
 #define UV_GETNAMEINFO_PRIVATE_FIELDS                                         \
+  struct uv__work work_req;                                                   \
   uv_getnameinfo_cb getnameinfo_cb;                                           \
   struct sockaddr_storage storage;                                            \
   int flags;                                                                  \
@@ -547,6 +554,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   volatile char exit_cb_pending;
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
+  struct uv__work work_req;                                                   \
   int flags;                                                                  \
   DWORD sys_errno_;                                                           \
   union {                                                                     \
@@ -572,6 +580,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   };
 
 #define UV_WORK_PRIVATE_FIELDS                                                \
+  struct uv__work work_req;
 
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
   struct uv_fs_event_req_s {                                                  \

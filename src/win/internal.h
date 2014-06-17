@@ -289,28 +289,9 @@ int uv_translate_sys_error(int sys_errno);
 
 
 /*
- * Getaddrinfo
- */
-void uv_process_getaddrinfo_req(uv_loop_t* loop, uv_getaddrinfo_t* req);
-
-
-/*
-* Getnameinfo
-*/
-void uv_process_getnameinfo_req(uv_loop_t* loop, uv_getnameinfo_t* req);
-
-
-/*
  * FS
  */
 void uv_fs_init();
-void uv_process_fs_req(uv_loop_t* loop, uv_fs_t* req);
-
-
-/*
- * Threadpool
- */
-void uv_process_work_req(uv_loop_t* loop, uv_work_t* req);
 
 
 /*

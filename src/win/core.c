@@ -131,6 +131,7 @@ int uv_loop_init(uv_loop_t* loop) {
   loop->last_tick_count = 0;
   uv_update_time(loop);
 
+  QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->handle_queue);
   QUEUE_INIT(&loop->active_reqs);
   loop->active_handles = 0;
@@ -156,6 +157,15 @@ int uv_loop_init(uv_loop_t* loop) {
 
   loop->timer_counter = 0;
   loop->stop_flag = 0;
+
+  if (uv_mutex_init(&loop->wq_mutex))
+    abort();
+
+  if (uv_async_init(loop, &loop->wq_async, uv__work_done))
+    abort();
+
+  uv__handle_unref(&loop->wq_async);
+  loop->wq_async.flags |= UV__HANDLE_INTERNAL;
 
   return 0;
 }

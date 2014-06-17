@@ -42,6 +42,8 @@
 #endif
 #include <signal.h>
 
+#include "uv-threadpool.h"
+
 #if defined(__linux__)
 # include "uv-linux.h"
 #elif defined(__sun)
@@ -94,13 +96,6 @@ struct uv__async {
   uv__async_cb cb;
   uv__io_t io_watcher;
   int wfd;
-};
-
-struct uv__work {
-  void (*work)(struct uv__work *w);
-  void (*done)(struct uv__work *w, int status);
-  struct uv_loop_s* loop;
-  void* wq[2];
 };
 
 #ifndef UV_PLATFORM_SEM_T

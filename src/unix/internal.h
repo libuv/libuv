@@ -210,13 +210,6 @@ void uv__signal_close(uv_signal_t* handle);
 void uv__signal_global_once_init(void);
 void uv__signal_loop_cleanup(uv_loop_t* loop);
 
-/* thread pool */
-void uv__work_submit(uv_loop_t* loop,
-                     struct uv__work *w,
-                     void (*work)(struct uv__work *w),
-                     void (*done)(struct uv__work *w, int status));
-void uv__work_done(uv_async_t* handle);
-
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
 int uv__kqueue_init(uv_loop_t* loop);

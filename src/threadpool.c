@@ -19,7 +19,24 @@
  * IN THE SOFTWARE.
  */
 
-#include "internal.h"
+#include "uv-common.h"
+
+#if !defined(_WIN32)
+# include "unix/internal.h"
+#else
+# include "win/req-inl.h"
+/* TODO(saghul): unify internal req functions */
+static void uv__req_init(uv_loop_t* loop,
+                         uv_req_t* req,
+                         uv_req_type type) {
+  uv_req_init(loop, req);
+  req->type = type;
+  uv__req_register(loop, req);
+}
+# define uv__req_init(loop, req, type) \
+    uv__req_init((loop), (uv_req_t*)(req), (type))
+#endif
+
 #include <stdlib.h>
 
 #define MAX_THREADPOOL_SIZE 128
@@ -91,6 +108,30 @@ static void post(QUEUE* q) {
 }
 
 
+static void cleanup(void) {
+  unsigned int i;
+
+  if (initialized == 0)
+    return;
+
+  post(&exit_message);
+
+  for (i = 0; i < nthreads; i++)
+    if (uv_thread_join(threads + i))
+      abort();
+
+  if (threads != default_threads)
+    free(threads);
+
+  uv_mutex_destroy(&mutex);
+  uv_cond_destroy(&cond);
+
+  threads = NULL;
+  nthreads = 0;
+  initialized = 0;
+}
+
+
 static void init_once(void) {
   unsigned int i;
   const char* val;
@@ -126,30 +167,7 @@ static void init_once(void) {
       abort();
 
   initialized = 1;
-}
-
-
-UV_DESTRUCTOR(static void cleanup(void)) {
-  unsigned int i;
-
-  if (initialized == 0)
-    return;
-
-  post(&exit_message);
-
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_join(threads + i))
-      abort();
-
-  if (threads != default_threads)
-    free(threads);
-
-  uv_mutex_destroy(&mutex);
-  uv_cond_destroy(&cond);
-
-  threads = NULL;
-  nthreads = 0;
-  initialized = 0;
+  atexit(cleanup);
 }
 
 
@@ -179,7 +197,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_unlock(&mutex);
 
   if (!cancelled)
-    return -EBUSY;
+    return UV_EBUSY;
 
   w->work = uv__cancelled;
   uv_mutex_lock(&loop->wq_mutex);
@@ -213,7 +231,7 @@ void uv__work_done(uv_async_t* handle) {
     QUEUE_REMOVE(q);
 
     w = container_of(q, struct uv__work, wq);
-    err = (w->work == uv__cancelled) ? -ECANCELED : 0;
+    err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     w->done(w, err);
   }
 }
@@ -244,7 +262,7 @@ int uv_queue_work(uv_loop_t* loop,
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
   if (work_cb == NULL)
-    return -EINVAL;
+    return UV_EINVAL;
 
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
@@ -277,7 +295,7 @@ int uv_cancel(uv_req_t* req) {
     wreq = &((uv_work_t*) req)->work_req;
     break;
   default:
-    return -EINVAL;
+    return UV_EINVAL;
   }
 
   return uv__work_cancel(loop, req, wreq);
