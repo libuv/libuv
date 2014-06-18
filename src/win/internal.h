@@ -31,13 +31,16 @@
 
 #ifdef _MSC_VER
 # define INLINE __inline
+# define UV_THREAD_LOCAL __declspec( thread )
 #else
 # define INLINE inline
+# define UV_THREAD_LOCAL __thread
 #endif
 
 
 #ifdef _DEBUG
-extern __declspec( thread ) int uv__crt_assert_enabled;
+
+extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 
 #define UV_BEGIN_DISABLE_CRT_ASSERT()                           \
   {                                                             \

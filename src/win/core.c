@@ -26,9 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if !defined(__MINGW32__)
 #include <crtdbg.h>
-#endif
 
 #include "uv.h"
 #include "internal.h"
@@ -44,11 +42,11 @@ static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 static uv_once_t uv_default_loop_init_guard_ = UV_ONCE_INIT;
 
 
-#if defined(_DEBUG) && !defined(__MINGW32__)
+#if defined(_DEBUG)
 /* Our crt debug report handler allows us to temporarily disable asserts */
 /* just for the current thread. */
 
-__declspec( thread ) int uv__crt_assert_enabled = TRUE;
+UV_THREAD_LOCAL int uv__crt_assert_enabled = TRUE;
 
 static int uv__crt_dbg_report_handler(int report_type, char *message, int *ret_val) {
   if (uv__crt_assert_enabled || report_type != _CRT_ASSERT)
