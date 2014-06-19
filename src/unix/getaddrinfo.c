@@ -71,7 +71,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
 
   if (req->retcode < 0) {
     /* EAI_SYSTEM error */
-    uv__set_sys_error(req->loop, -req->result);
+    uv__set_sys_error(req->loop, -req->retcode);
   } else if (req->retcode == 0) {
     /* OK */
 #if defined(EAI_NODATA) /* FreeBSD deprecated EAI_NODATA */
