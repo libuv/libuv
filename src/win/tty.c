@@ -48,6 +48,8 @@
 #define ANSI_IN_STRING        0x40
 #define ANSI_BACKSLASH_SEEN   0x80
 
+#define MAX_INPUT_BUFFER_LENGTH 8192
+
 
 static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info);
 
@@ -303,6 +305,8 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   uv_tty_t* handle;
   uv_req_t* req;
   DWORD bytes, read_bytes;
+  WCHAR utf16[MAX_INPUT_BUFFER_LENGTH / 3];
+  DWORD chars, read_chars;
 
   assert(data);
 
@@ -314,18 +318,29 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   assert(handle->read_line_buffer.len > 0);
 
   /* ReadConsole can't handle big buffers. */
-  if (handle->read_line_buffer.len < 8192) {
+  if (handle->read_line_buffer.len < MAX_INPUT_BUFFER_LENGTH) {
     bytes = handle->read_line_buffer.len;
   } else {
-    bytes = 8192;
+    bytes = MAX_INPUT_BUFFER_LENGTH;
   }
 
-  /* Todo: Unicode */
-  if (ReadConsoleA(handle->read_line_handle,
-                   (void*) handle->read_line_buffer.base,
-                   bytes,
-                   &read_bytes,
+  /* At last, unicode! */
+  /* One utf-16 codeunit never takes more than 3 utf-8 codeunits to encode */
+  chars = bytes / 3;
+
+  if (ReadConsoleW(handle->read_line_handle,
+                   (void*) utf16,
+                   chars,
+                   &read_chars,
                    NULL)) {
+    read_bytes = WideCharToMultiByte(CP_UTF8,
+                                     0,
+                                     utf16,
+                                     read_chars,
+                                     handle->read_line_buffer.base,
+                                     bytes,
+                                     NULL,
+                                     NULL);
     SET_REQ_SUCCESS(req);
     req->overlapped.InternalHigh = read_bytes;
   } else {
