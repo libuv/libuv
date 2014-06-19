@@ -242,8 +242,10 @@ libuv_la_SOURCES += src/unix/aix.c
 endif
 
 if ANDROID
-include_HEADERS += include/android-ifaddrs.h
-libuv_la_SOURCES += src/unix/android-ifaddrs.c
+include_HEADERS += include/android-ifaddrs.h \
+                   include/pthread-fixes.h
+libuv_la_SOURCES += src/unix/android-ifaddrs.c \
+                    src/unix/pthread-fixes.c
 endif
 
 if DARWIN
