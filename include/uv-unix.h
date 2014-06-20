@@ -55,6 +55,14 @@
 # include "uv-bsd.h"
 #endif
 
+#ifndef NI_MAXHOST
+# define NI_MAXHOST 1025
+#endif
+
+#ifndef NI_MAXSERV
+# define NI_MAXSERV 32
+#endif
+
 #ifndef UV_IO_PRIVATE_PLATFORM_FIELDS
 # define UV_IO_PRIVATE_PLATFORM_FIELDS /* empty */
 #endif
