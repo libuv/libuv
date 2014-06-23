@@ -43,7 +43,7 @@ extern __declspec( thread ) int uv__crt_assert_enabled;
   {                                                             \
     int uv__saved_crt_assert_enabled = uv__crt_assert_enabled;  \
     uv__crt_assert_enabled = FALSE;
-  
+
 
 #define UV_END_DISABLE_CRT_ASSERT()                             \
     uv__crt_assert_enabled = uv__saved_crt_assert_enabled;      \

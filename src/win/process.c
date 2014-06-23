@@ -964,7 +964,7 @@ int uv_spawn(uv_loop_t* loop,
 
   /* Spawn succeeded */
   /* Beyond this point, failure is reported asynchronously. */
-  
+
   process->process_handle = info.hProcess;
   process->pid = info.dwProcessId;
 
@@ -1010,8 +1010,8 @@ int uv_spawn(uv_loop_t* loop,
 
   CloseHandle(info.hThread);
 
-  assert(!err);  
-  
+  assert(!err);
+
   /* Make the handle active. It will remain active until the exit callback */
   /* iis made or the handle is closed, whichever happens first. */
   uv__handle_start(process);
