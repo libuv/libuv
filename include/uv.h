@@ -289,6 +289,11 @@ UV_EXTERN uv_loop_t* uv_loop_new(void);
 UV_EXTERN void uv_loop_delete(uv_loop_t*);
 
 /*
+ * Returns size of the loop struct, useful for dynamic lookup with FFI
+ */
+UV_EXTERN size_t uv_loop_size(void);
+
+/*
  * This function runs the event loop. It will act differently depending on the
  * specified mode:
  *  - UV_RUN_DEFAULT: Runs the event loop until the reference count drops to

@@ -67,6 +67,11 @@ size_t uv_req_size(uv_req_type type) {
 #undef XX
 
 
+size_t uv_loop_size(void) {
+  return sizeof(uv_loop_t);
+}
+
+
 uv_buf_t uv_buf_init(char* base, unsigned int len) {
   uv_buf_t buf;
   buf.base = base;
