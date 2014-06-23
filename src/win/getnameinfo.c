@@ -27,6 +27,17 @@
 #include "internal.h"
 #include "req-inl.h"
 
+#ifndef GetNameInfo
+int WSAAPI GetNameInfoW(
+  const SOCKADDR *pSockaddr,
+  socklen_t SockaddrLength,
+  PWCHAR pNodeBuffer,
+  DWORD NodeBufferSize,
+  PWCHAR pServiceBuffer,
+  DWORD ServiceBufferSize,
+  INT Flags
+);
+#endif
 
 static void uv__getnameinfo_work(struct uv__work* w) {
   uv_getnameinfo_t* req;
