@@ -206,6 +206,9 @@ TEST_IMPL(udp_send_and_recv) {
   ASSERT(sv_recv_cb_called == 1);
   ASSERT(close_cb_called == 2);
 
+  ASSERT(client.send_queue_size == 0);
+  ASSERT(server.send_queue_size == 0);
+
   MAKE_VALGRIND_HAPPY();
   return 0;
 }

@@ -82,6 +82,9 @@ void uv__udp_finish_close(uv_udp_t* handle) {
       req->send_cb(req, -ECANCELED);
   }
 
+  handle->send_queue_size = 0;
+  handle->send_queue_count = 0;
+
   /* Now tear down the handle. */
   handle->recv_cb = NULL;
   handle->alloc_cb = NULL;
@@ -127,6 +130,8 @@ static void uv__udp_run_pending(uv_udp_t* handle) {
      * why we don't handle partial writes. Just pop the request
      * off the write queue and onto the completed queue, done.
      */
+    handle->send_queue_size -= uv__count_bufs(req->bufs, req->nbufs);
+    handle->send_queue_count--;
     QUEUE_REMOVE(&req->queue);
     QUEUE_INSERT_TAIL(&handle->write_completed_queue, &req->queue);
   }
@@ -433,6 +438,8 @@ int uv__udp_send(uv_udp_send_t* req,
     return -ENOMEM;
 
   memcpy(req->bufs, bufs, nbufs * sizeof(bufs[0]));
+  handle->send_queue_size += uv__count_bufs(req->bufs, req->nbufs);
+  handle->send_queue_count++;
   QUEUE_INSERT_TAIL(&handle->write_queue, &req->queue);
   uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
   uv__handle_start(handle);
@@ -531,6 +538,8 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_UDP);
   handle->alloc_cb = NULL;
   handle->recv_cb = NULL;
+  handle->send_queue_size = 0;
+  handle->send_queue_count = 0;
   uv__io_init(&handle->io_watcher, uv__udp_io, -1);
   QUEUE_INIT(&handle->write_queue);
   QUEUE_INIT(&handle->write_completed_queue);

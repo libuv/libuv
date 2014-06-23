@@ -900,6 +900,15 @@ typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
 /* uv_udp_t is a subclass of uv_handle_t */
 struct uv_udp_s {
   UV_HANDLE_FIELDS
+  /* read-only */
+  /* Total size of buffers queued for sending. May send
+   * actually less since udp packets are truncated to the MTU size.
+   */
+  size_t send_queue_size;
+  /* Total count of sends currently in the queue awaiting to
+   * be processed.
+   */
+  size_t send_queue_count;
   UV_UDP_PRIVATE_FIELDS
 };
 

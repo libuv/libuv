@@ -129,6 +129,8 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
   handle->activecnt = 0;
   handle->func_wsarecv = WSARecv;
   handle->func_wsarecvfrom = WSARecvFrom;
+  handle->send_queue_size = 0;
+  handle->send_queue_count = 0;
 
   uv_req_init(loop, (uv_req_t*) &(handle->recv_req));
   handle->recv_req.type = UV_UDP_RECV;
@@ -402,6 +404,8 @@ static int uv__send(uv_udp_send_t* req,
     /* Request queued by the kernel. */
     req->queued_bytes = uv__count_bufs(bufs, nbufs);
     handle->reqs_pending++;
+    handle->send_queue_size += req->queued_bytes;
+    handle->send_queue_count++;
     REGISTER_HANDLE_REQ(loop, handle, req);
   } else {
     /* Send failed due to an error. */
@@ -523,6 +527,11 @@ void uv_process_udp_send_req(uv_loop_t* loop, uv_udp_t* handle,
   int err;
 
   assert(handle->type == UV_UDP);
+
+  assert(handle->send_queue_size >= req->queued_bytes);
+  assert(handle->send_queue_count >= 1);
+  handle->send_queue_size -= req->queued_bytes;
+  handle->send_queue_count--;
 
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
