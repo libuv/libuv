@@ -63,18 +63,6 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 static size_t uv__write_req_size(uv_write_t* req);
 
 
-static size_t uv_count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
-  unsigned int i;
-  size_t bytes;
-
-  bytes = 0;
-  for (i = 0; i < nbufs; i++)
-    bytes += bufs[i].len;
-
-  return bytes;
-}
-
-
 void uv__stream_init(uv_loop_t* loop,
                      uv_stream_t* stream,
                      uv_handle_type type) {
@@ -660,8 +648,8 @@ static size_t uv__write_req_size(uv_write_t* req) {
   size_t size;
 
   assert(req->bufs != NULL);
-  size = uv_count_bufs(req->bufs + req->write_index,
-                       req->nbufs - req->write_index);
+  size = uv__count_bufs(req->bufs + req->write_index,
+                        req->nbufs - req->write_index);
   assert(req->handle->write_queue_size >= size);
 
   return size;
@@ -1327,7 +1315,7 @@ int uv_write2(uv_write_t* req,
   memcpy(req->bufs, bufs, nbufs * sizeof(bufs[0]));
   req->nbufs = nbufs;
   req->write_index = 0;
-  stream->write_queue_size += uv_count_bufs(bufs, nbufs);
+  stream->write_queue_size += uv__count_bufs(bufs, nbufs);
 
   /* Append the request to write_queue. */
   QUEUE_INSERT_TAIL(&stream->write_queue, &req->queue);
@@ -1395,7 +1383,7 @@ int uv_try_write(uv_stream_t* stream,
     return r;
 
   /* Remove not written bytes from write queue size */
-  written = uv_count_bufs(bufs, nbufs);
+  written = uv__count_bufs(bufs, nbufs);
   if (req.bufs != NULL)
     req_size = uv__write_req_size(&req);
   else

@@ -53,15 +53,4 @@ INLINE static void uv_connection_init(uv_stream_t* handle) {
 }
 
 
-INLINE static size_t uv_count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
-  unsigned int i;
-  size_t bytes;
-
-  bytes = 0;
-  for (i = 0; i < nbufs; i++)
-    bytes += (size_t) bufs[i].len;
-
-  return bytes;
-}
-
 #endif /* UV_WIN_STREAM_INL_H_ */

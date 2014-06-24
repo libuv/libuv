@@ -99,6 +99,8 @@ void uv__work_submit(uv_loop_t* loop,
 
 void uv__work_done(uv_async_t* handle);
 
+size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
+
 #define uv__has_active_reqs(loop)                                             \
   (QUEUE_EMPTY(&(loop)->active_reqs) == 0)
 

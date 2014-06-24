@@ -446,6 +446,19 @@ int uv__getaddrinfo_translate_error(int sys_err) {
   return 0;  /* Pacify compiler. */
 }
 
+
+size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
+  unsigned int i;
+  size_t bytes;
+
+  bytes = 0;
+  for (i = 0; i < nbufs; i++)
+    bytes += (size_t) bufs[i].len;
+
+  return bytes;
+}
+
+
 int uv_fs_event_getpath(uv_fs_event_t* handle, char* buf, size_t* len) {
   size_t required_len;
 

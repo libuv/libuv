@@ -839,7 +839,7 @@ int uv_tcp_write(uv_loop_t* loop,
     uv_insert_pending_req(loop, (uv_req_t*) req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
-    req->queued_bytes = uv_count_bufs(bufs, nbufs);
+    req->queued_bytes = uv__count_bufs(bufs, nbufs);
     handle->reqs_pending++;
     handle->write_reqs_pending++;
     REGISTER_HANDLE_REQ(loop, handle, req);
