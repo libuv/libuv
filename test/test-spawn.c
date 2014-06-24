@@ -1291,3 +1291,38 @@ TEST_IMPL(closed_fd_events) {
   return 0;
 }
 #endif  /* !_WIN32 */
+
+TEST_IMPL(spawn_reads_child_path) {
+  int r;
+  int len;
+  char path[1024];
+  char *env[2] = {path, NULL};
+
+  /* Set up the process, but make sure that the file to run is relative and */
+  /* requires a lookup into PATH */
+  init_process_options("spawn_helper1", exit_cb);
+  options.file = "run-tests";
+  args[0] = "run-tests";
+
+  /* Set up the PATH env variable */
+  for (len = strlen(exepath);
+       exepath[len - 1] != '/' && exepath[len - 1] != '\\';
+       len--);
+  exepath[len] = 0;
+  strcpy(path, "PATH=");
+  strcpy(path + 5, exepath);
+
+  options.env = env;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

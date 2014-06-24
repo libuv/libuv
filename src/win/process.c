@@ -813,6 +813,20 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   return 0;
 }
 
+/*
+ * Attempt to find the value of the PATH environment variable in the child's
+ * preprocessed environment.
+ *
+ * If found, a pointer into `env` is returned. If not found, NULL is returned.
+ */
+static WCHAR* find_path(WCHAR *env) {
+  for (; env != NULL && *env != 0; env += wcslen(env) + 1) {
+    if (wcsncmp(env, L"PATH=", 5) == 0)
+      return &env[5];
+  }
+
+  return NULL;
+}
 
 /*
  * Called on Windows thread-pool thread to indicate that
@@ -910,7 +924,7 @@ int uv_spawn(uv_loop_t* loop,
              const uv_process_options_t* options) {
   int i;
   int err = 0;
-  WCHAR* path = NULL;
+  WCHAR* path = NULL, *alloc_path = NULL;
   BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
          *env = NULL, *cwd = NULL;
@@ -984,7 +998,8 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   /* Get PATH environment variable. */
-  {
+  path = find_path(env);
+  if (path == NULL) {
     DWORD path_len, r;
 
     path_len = GetEnvironmentVariableW(L"PATH", NULL, 0);
@@ -993,11 +1008,12 @@ int uv_spawn(uv_loop_t* loop,
       goto done;
     }
 
-    path = (WCHAR*) malloc(path_len * sizeof(WCHAR));
-    if (path == NULL) {
+    alloc_path = (WCHAR*) malloc(path_len * sizeof(WCHAR));
+    if (alloc_path == NULL) {
       err = ERROR_OUTOFMEMORY;
       goto done;
     }
+    path = alloc_path;
 
     r = GetEnvironmentVariableW(L"PATH", path, path_len);
     if (r == 0 || r >= path_len) {
@@ -1131,7 +1147,7 @@ int uv_spawn(uv_loop_t* loop,
   free(arguments);
   free(cwd);
   free(env);
-  free(path);
+  free(alloc_path);
 
   if (process->child_stdio_buffer != NULL) {
     /* Clean up child stdio handles. */
