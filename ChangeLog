@@ -33,8 +33,6 @@ Changes since version 0.11.23:
 
 * inet: allow scopeid in uv_inet_pton (Fedor Indutny)
 
-* win: always leave crit section in get_proc_title (Fedor Indutny)
-
 
 2014.04.07, Version 0.11.23 (Unstable), e54de537efcacd593f36fcaaf8b4cb9e64313275
 
@@ -75,25 +73,6 @@ Changes since version 0.11.22:
 * stream: do not leak `alloc_cb` buffers on error (Fedor Indutny)
 
 * unix: fix setting written size on uv_wd (Saúl Ibarra Corretgé)
-
-
-2014.04.07, Version 0.10.26 (Stable), d864907611c25ec986c5e77d4d6d6dee88f26926
-
-Changes since version 0.10.25:
-
-* process: don't close stdio fds during spawn (Tonis Tiigi)
-
-* build, windows: do not fail on Windows SDK Prompt (Marc Schlaich)
-
-* build, windows: fix x64 configuration issue (Marc Schlaich)
-
-* win: fix buffer leak on error in pipe.c (Fedor Indutny)
-
-* kqueue: invalidate fd in uv_fs_event_t (Fedor Indutny)
-
-* linux: always deregister closing fds from epoll (Geoffry Song)
-
-* error: add ENXIO for O_NONBLOCK FIFO open() (Fedor Indutny)
 
 
 2014.03.11, Version 0.11.22 (Unstable), cd0c19b1d3c56acf0ade7687006e12e75fbda36d
@@ -223,6 +202,34 @@ Changes since version 0.11.18:
 * linux: move sscanf() out of the assert() (Trevor Norris)
 
 * linux: fix C99/C++ comment (Fedor Indutny)
+
+
+2014.05.02, Version 0.10.27 (Stable), 6e24ce23b1e7576059f85a608eca13b766458a01
+
+Changes since version 0.10.26:
+
+* windows: fix console signal handler refcount (Saúl Ibarra Corretgé)
+
+* win: always leave crit section in get_proc_title (Fedor Indutny)
+
+
+2014.04.07, Version 0.10.26 (Stable), d864907611c25ec986c5e77d4d6d6dee88f26926
+
+Changes since version 0.10.25:
+
+* process: don't close stdio fds during spawn (Tonis Tiigi)
+
+* build, windows: do not fail on Windows SDK Prompt (Marc Schlaich)
+
+* build, windows: fix x64 configuration issue (Marc Schlaich)
+
+* win: fix buffer leak on error in pipe.c (Fedor Indutny)
+
+* kqueue: invalidate fd in uv_fs_event_t (Fedor Indutny)
+
+* linux: always deregister closing fds from epoll (Geoffry Song)
+
+* error: add ENXIO for O_NONBLOCK FIFO open() (Fedor Indutny)
 
 
 2014.02.19, Version 0.10.25 (Stable), d778dc588507588b12b9f9d2905078db542ed751
