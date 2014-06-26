@@ -429,8 +429,8 @@ typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req,
                                   struct addrinfo* res);
 typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
-                                  char* hostname,
-                                  char* service);
+                                  const char* hostname,
+                                  const char* service);
 
 typedef struct {
   long tv_sec;

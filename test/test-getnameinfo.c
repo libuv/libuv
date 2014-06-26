@@ -36,8 +36,8 @@ static uv_getnameinfo_t req;
 
 static void getnameinfo_req(uv_getnameinfo_t* handle,
                             int status,
-                            char* hostname,
-                            char* service) {
+                            const char* hostname,
+                            const char* service) {
   ASSERT(handle != NULL);
   ASSERT(status == 0);
   ASSERT(hostname != NULL);

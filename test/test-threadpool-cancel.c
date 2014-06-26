@@ -129,8 +129,8 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* req,
 
 static void getnameinfo_cb(uv_getnameinfo_t* handle,
                            int status,
-                           char* hostname,
-                           char* service) {
+                           const char* hostname,
+                           const char* service) {
   ASSERT(status == UV_EAI_CANCELED);
   ASSERT(hostname == NULL);
   ASSERT(service == NULL);
