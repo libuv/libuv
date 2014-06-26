@@ -1227,10 +1227,10 @@ UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
  *
  * The purpose of uv_poll is to enable integrating external libraries that
  * rely on the event loop to signal it about the socket status changes, like
- * c-ares or libssh2. Using uv_poll_t for any other other purpose is not
- * recommended; uv_tcp_t, uv_udp_t, etc. provide an implementation that is
- * much faster and more scalable than what can be achieved with uv_poll_t,
- * especially on Windows.
+ * c-ares or libssh2. Using uv_poll_t for any other purpose is not recommended;
+ * uv_tcp_t, uv_udp_t, etc. provide an implementation that is much faster and
+ * more scalable than what can be achieved with uv_poll_t, especially on
+ * Windows.
  *
  * It is possible that uv_poll occasionally signals that a file descriptor is
  * readable or writable even when it isn't. The user should therefore always
