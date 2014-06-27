@@ -26,7 +26,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
 #include <crtdbg.h>
+#endif
 
 #include "uv.h"
 #include "internal.h"
@@ -42,7 +44,7 @@ static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 static uv_once_t uv_default_loop_init_guard_ = UV_ONCE_INIT;
 
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
 /* Our crt debug report handler allows us to temporarily disable asserts */
 /* just for the current thread. */
 
@@ -65,6 +67,8 @@ static int uv__crt_dbg_report_handler(int report_type, char *message, int *ret_v
   /* Don't call _CrtDbgReport. */
   return TRUE;
 }
+#else
+UV_THREAD_LOCAL int uv__crt_assert_enabled = FALSE;
 #endif
 
 
@@ -91,7 +95,7 @@ static void uv_init(void) {
   /* We also need to setup our debug report handler because some CRT */
   /* functions (eg _get_osfhandle) raise an assert when called with invalid */
   /* FDs even though they return the proper error code in the release build. */
-#if defined(_DEBUG) && !defined(__MINGW32__)
+#if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
   _CrtSetReportHook(uv__crt_dbg_report_handler);
 #endif
 
