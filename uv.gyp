@@ -402,6 +402,7 @@
         'test/test-ip6-addr.c',
         'test/test-udp-multicast-interface.c',
         'test/test-udp-multicast-interface6.c',
+        'test/test-udp-try-send.c',
       ],
       'conditions': [
         [ 'OS=="win"', {

@@ -869,3 +869,12 @@ int uv__udp_send(uv_udp_send_t* req,
 
   return 0;
 }
+
+
+int uv__udp_try_send(uv_udp_t* handle,
+                     const uv_buf_t bufs[],
+                     unsigned int nbufs,
+                     const struct sockaddr* addr,
+                     unsigned int addrlen) {
+  return UV_ENOSYS;
+}

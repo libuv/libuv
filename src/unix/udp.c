@@ -448,6 +448,46 @@ int uv__udp_send(uv_udp_send_t* req,
 }
 
 
+int uv__udp_try_send(uv_udp_t* handle,
+                     const uv_buf_t bufs[],
+                     unsigned int nbufs,
+                     const struct sockaddr* addr,
+                     unsigned int addrlen) {
+  int err;
+  struct msghdr h;
+  ssize_t size;
+
+  assert(nbufs > 0);
+
+  /* already sending a message */
+  if (handle->send_queue_count != 0)
+    return -EAGAIN;
+
+  err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
+  if (err)
+    return err;
+
+  memset(&h, 0, sizeof h);
+  h.msg_name = (struct sockaddr*) addr;
+  h.msg_namelen = addrlen;
+  h.msg_iov = (struct iovec*) bufs;
+  h.msg_iovlen = nbufs;
+
+  do {
+    size = sendmsg(handle->io_watcher.fd, &h, 0);
+  } while (size == -1 && errno == EINTR);
+
+  if (size == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+      return -EAGAIN;
+    else
+      return -errno;
+  }
+
+  return size;
+}
+
+
 static int uv__udp_set_membership4(uv_udp_t* handle,
                                    const struct sockaddr_in* multicast_addr,
                                    const char* interface_addr,

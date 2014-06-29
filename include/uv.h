@@ -901,12 +901,12 @@ typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
 struct uv_udp_s {
   UV_HANDLE_FIELDS
   /* read-only */
-  /* Total size of buffers queued for sending. May send
-   * actually less since udp packets are truncated to the MTU size.
+  /* number of bytes queued for sending, ay send
+   * actually less since udp packets are truncated to the MTU size
    */
   size_t send_queue_size;
-  /* Total count of sends currently in the queue awaiting to
-   * be processed.
+  /* number of send requests currently in the queue awaiting to
+   * be processed
    */
   size_t send_queue_count;
   UV_UDP_PRIVATE_FIELDS
@@ -1076,6 +1076,19 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
                           const struct sockaddr* addr,
                           uv_udp_send_cb send_cb);
 
+/*
+ * Same as `uv_udp_send()`, but won't queue a send request if it can't be completed
+ * immediately.
+ * Will return either:
+ * - >= 0: number of bytes written (can be less than the supplied buffer size if the
+ *         packet is truncated)
+ * - < 0: negative error code (UV_EAGAIN is returned when the message can't be sent
+ *        immediately)
+ */
+UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
+                              const uv_buf_t bufs[],
+                              unsigned int nbufs,
+                              const struct sockaddr* addr);
 /*
  * Receive data. If the socket has not previously been bound with `uv_udp_bind`
  * it is bound to 0.0.0.0 (the "all interfaces" address) and a random
