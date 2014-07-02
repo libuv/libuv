@@ -1079,6 +1079,11 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
  *
  * Returns:
  *  0 on success, or an error code < 0 on failure.
+ *
+ * Note: The receive callback will be called with nread == 0
+ *       and addr == NULL when the there was nothing to read and
+ *       with nread == 0 and addr != NULL when an empty udp
+ *       packet is received.
  */
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
