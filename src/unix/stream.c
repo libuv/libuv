@@ -1374,7 +1374,7 @@ int uv_try_write(uv_stream_t* stream,
 
   /* Connecting or already writing some data */
   if (stream->connect_req != NULL || stream->write_queue_size != 0)
-    return 0;
+    return -EAGAIN;
 
   has_pollout = uv__io_active(&stream->io_watcher, UV__POLLOUT);
 
@@ -1404,7 +1404,10 @@ int uv_try_write(uv_stream_t* stream,
     uv__stream_osx_interrupt_select(stream);
   }
 
-  return (int) written;
+  if (written == 0)
+    return -EAGAIN;
+  else
+    return written;
 }
 
 

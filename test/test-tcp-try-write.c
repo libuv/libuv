@@ -63,12 +63,14 @@ static void connect_cb(uv_connect_t* req, int status) {
   do {
     buf = uv_buf_init(zeroes, sizeof(zeroes));
     r = uv_try_write((uv_stream_t*) &client, &buf, 1);
-    ASSERT(r >= 0);
-    bytes_written += r;
+    ASSERT(r > 0 || r == UV_EAGAIN);
+    if (r > 0) {
+      bytes_written += r;
 
-    /* Partial write */
-    if (r != (int) sizeof(zeroes))
-      break;
+      /* Partial write */
+      if (r != (int) sizeof(zeroes))
+        break;
+    }
   } while (1);
   uv_close((uv_handle_t*) &client, close_cb);
 }
