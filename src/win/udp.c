@@ -398,6 +398,8 @@ static int uv__send(uv_udp_send_t* req,
     /* Request completed immediately. */
     req->queued_bytes = 0;
     handle->reqs_pending++;
+    handle->send_queue_size += req->queued_bytes;
+    handle->send_queue_count++;
     REGISTER_HANDLE_REQ(loop, handle, req);
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
