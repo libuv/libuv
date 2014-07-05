@@ -902,12 +902,12 @@ typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
 struct uv_udp_s {
   UV_HANDLE_FIELDS
   /* read-only */
-  /* number of bytes queued for sending, ay send
-   * actually less since udp packets are truncated to the MTU size
+  /* Number of bytes queued for sending. This field strictly shows
+   * how much information is currently queued.
    */
   size_t send_queue_size;
   /* number of send requests currently in the queue awaiting to
-   * be processed
+   * be processed.
    */
   size_t send_queue_count;
   UV_UDP_PRIVATE_FIELDS
@@ -1104,7 +1104,7 @@ UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
  *  0 on success, or an error code < 0 on failure.
  *
  * Note: The receive callback will be called with nread == 0
- *       and addr == NULL when the there was nothing to read and
+ *       and addr == NULL when there is nothing to read and
  *       with nread == 0 and addr != NULL when an empty udp
  *       packet is received.
  */
