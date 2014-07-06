@@ -378,6 +378,7 @@
         'test/test-tcp-try-write.c',
         'test/test-tcp-unexpected-read.c',
         'test/test-tcp-read-stop.c',
+        'test/test-tcp-write-queue-order.c',
         'test/test-threadpool.c',
         'test/test-threadpool-cancel.c',
         'test/test-mutexes.c',

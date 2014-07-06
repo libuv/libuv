@@ -60,6 +60,7 @@ static void uv__stream_connect(uv_stream_t*);
 static void uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
 static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+static void uv__write_callbacks(uv_stream_t* stream);
 static size_t uv__write_req_size(uv_write_t* req);
 
 
@@ -378,33 +379,12 @@ void uv__stream_destroy(uv_stream_t* stream) {
     QUEUE_REMOVE(q);
 
     req = QUEUE_DATA(q, uv_write_t, queue);
-    uv__req_unregister(stream->loop, req);
+    req->error = -ECANCELED;
 
-    if (req->bufs != req->bufsml)
-      free(req->bufs);
-    req->bufs = NULL;
-
-    if (req->cb != NULL)
-      req->cb(req, -ECANCELED);
+    QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
   }
 
-  while (!QUEUE_EMPTY(&stream->write_completed_queue)) {
-    q = QUEUE_HEAD(&stream->write_completed_queue);
-    QUEUE_REMOVE(q);
-
-    req = QUEUE_DATA(q, uv_write_t, queue);
-    uv__req_unregister(stream->loop, req);
-
-    if (req->bufs != NULL) {
-      stream->write_queue_size -= uv__write_req_size(req);
-      if (req->bufs != req->bufsml)
-        free(req->bufs);
-      req->bufs = NULL;
-    }
-
-    if (req->cb)
-      req->cb(req, req->error);
-  }
+  uv__write_callbacks(stream);
 
   if (stream->shutdown_req) {
     /* The ECANCELED error code is a lie, the shutdown(2) syscall is a
@@ -416,6 +396,8 @@ void uv__stream_destroy(uv_stream_t* stream) {
     stream->shutdown_req->cb(stream->shutdown_req, -ECANCELED);
     stream->shutdown_req = NULL;
   }
+
+  assert(stream->write_queue_size == 0);
 }
 
 
@@ -891,10 +873,6 @@ static void uv__write_callbacks(uv_stream_t* stream) {
   }
 
   assert(QUEUE_EMPTY(&stream->write_completed_queue));
-
-  /* Write queue drained. */
-  if (QUEUE_EMPTY(&stream->write_queue))
-    uv__drain(stream);
 }
 
 
@@ -1211,6 +1189,10 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (events & (UV__POLLOUT | UV__POLLERR | UV__POLLHUP)) {
     uv__write(stream);
     uv__write_callbacks(stream);
+
+    /* Write queue drained. */
+    if (QUEUE_EMPTY(&stream->write_queue))
+      uv__drain(stream);
   }
 }
 
