@@ -107,6 +107,8 @@ void uv__work_done(uv_async_t* handle);
 
 size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
 
+int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
+
 #define uv__has_active_reqs(loop)                                             \
   (QUEUE_EMPTY(&(loop)->active_reqs) == 0)
 

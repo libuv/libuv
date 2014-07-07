@@ -428,3 +428,31 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
   return r;
 }
+
+int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
+  int r;
+  int len;
+  SOCKET socket;
+
+  if (handle == NULL || value == NULL)
+    return UV_EINVAL;
+
+  if (handle->type == UV_TCP)
+    socket = ((uv_tcp_t*) handle)->socket;
+  else if (handle->type == UV_UDP)
+    socket = ((uv_udp_t*) handle)->socket;
+  else
+    return UV_ENOTSUP;
+
+  len = sizeof(*value);
+
+  if (*value == 0)
+    r = getsockopt(socket, SOL_SOCKET, optname, (char*) value, &len);
+  else
+    r = setsockopt(socket, SOL_SOCKET, optname, (const char*) value, len);
+
+  if (r == SOCKET_ERROR)
+    return uv_translate_sys_error(WSAGetLastError());
+
+  return 0;
+}

@@ -422,6 +422,13 @@ size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
   return bytes;
 }
 
+int uv_recv_buffer_size(uv_handle_t* handle, int* value) {
+  return uv__socket_sockopt(handle, SO_RCVBUF, value);
+}
+
+int uv_send_buffer_size(uv_handle_t* handle, int *value) {
+  return uv__socket_sockopt(handle, SO_SNDBUF, value);
+}
 
 int uv_fs_event_getpath(uv_fs_event_t* handle, char* buf, size_t* len) {
   size_t required_len;

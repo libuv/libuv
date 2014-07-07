@@ -602,6 +602,30 @@ UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
  */
 UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
+/*
+ * Returns or sets the size of the receive buffer that the operating
+ * system uses for the socket.
+ *
+ * If *value == 0, it will return the current receive buffer size,
+ * otherwise it will use *value to set the new receive buffer size.
+ *
+ * NOTE: linux will set double the size and return double the size
+ *       of the original set value.
+ */
+UV_EXTERN int uv_recv_buffer_size(uv_handle_t* handle, int* value);
+
+/*
+ * Returns or sets the size of the send buffer that the operating
+ * system uses for the socket.
+ *
+ * If *value == 0, it will return the current send buffer size,
+ * otherwise it will use *value to set the new send buffer size.
+ *
+ * NOTE: linux will set double the size and return double the size
+ *       of the original set value.
+ */
+UV_EXTERN int uv_send_buffer_size(uv_handle_t* handle, int* value);
+
 
 /*
  * Constructor for uv_buf_t.

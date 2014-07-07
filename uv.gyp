@@ -360,6 +360,7 @@
         'test/test-shutdown-twice.c',
         'test/test-signal.c',
         'test/test-signal-multiple-loops.c',
+        'test/test-socket-buffer-size.c',
         'test/test-spawn.c',
         'test/test-fs-poll.c',
         'test/test-stdio-over-pipes.c',

@@ -177,6 +177,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-shutdown-twice.c \
                          test/test-signal-multiple-loops.c \
                          test/test-signal.c \
+                         test/test-socket-buffer-size.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
                          test/test-tcp-bind-error.c \

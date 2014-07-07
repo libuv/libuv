@@ -176,6 +176,7 @@ TEST_DECLARE   (getsockname_tcp)
 TEST_DECLARE   (getsockname_udp)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
+TEST_DECLARE   (socket_buffer_size)
 TEST_DECLARE   (spawn_fails)
 TEST_DECLARE   (spawn_exit_code)
 TEST_DECLARE   (spawn_stdout)
@@ -505,6 +506,8 @@ TASK_LIST_START
   TEST_ENTRY  (poll_duplex)
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
+
+  TEST_ENTRY  (socket_buffer_size)
 
   TEST_ENTRY  (spawn_fails)
   TEST_ENTRY  (spawn_exit_code)
