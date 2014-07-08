@@ -235,6 +235,17 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
 }
 
 
+/* Unlike on Unix, here we don't set SO_REUSEADDR, because it doesn't just
+ * allow binding to addresses that are in use by sockets in TIME_WAIT, it
+ * effectively allows 'stealing' a port which is in use by another application.
+ *
+ * SO_EXCLUSIVEADDRUSE is also not good here because it does cehck all sockets,
+ * regardless of state, so we'd get an error even if the port is in use by a
+ * socket in TIME_WAIT state.
+ *
+ * See issue #1360.
+ *
+ */
 static int uv_tcp_try_bind(uv_tcp_t* handle,
                            const struct sockaddr* addr,
                            unsigned int addrlen,
