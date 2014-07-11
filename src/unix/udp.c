@@ -210,9 +210,6 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   struct msghdr h;
   ssize_t size;
 
-  assert(!QUEUE_EMPTY(&handle->write_queue)
-      || !QUEUE_EMPTY(&handle->write_completed_queue));
-
   while (!QUEUE_EMPTY(&handle->write_queue)) {
     q = QUEUE_HEAD(&handle->write_queue);
     assert(q != NULL);
