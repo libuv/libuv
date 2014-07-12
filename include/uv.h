@@ -258,7 +258,8 @@ UV_EXTERN const char* uv_version_string(void);
  */
 
 /*
- * Returns the default loop.
+ * Returns the initialized default loop. It may return NULL in case of
+ * allocation failture.
  */
 UV_EXTERN uv_loop_t* uv_default_loop(void);
 
