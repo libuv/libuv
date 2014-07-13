@@ -721,6 +721,78 @@ void fs__mkdir(uv_fs_t* req) {
 }
 
 
+/* Some parts of the implementation were borrowed from glibc. */
+void fs__mkdtemp(uv_fs_t* req) {
+  static const WCHAR letters[] =
+    L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  size_t len;
+  WCHAR* template_part;
+  static uint64_t value;
+  unsigned int count;
+  int fd;
+
+  /* A lower bound on the number of temporary files to attempt to
+     generate. The maximum total number of temporary file names that
+     can exist for a given template is 62**6. It should never be
+     necessary to try all these combinations. Instead if a reasonable
+     number of names is tried (we define reasonable as 62**3) fail to
+     give the system administrator the chance to remove the problems. */
+#define ATTEMPTS_MIN (62 * 62 * 62)
+
+  /* The number of times to attempt to generate a temporary file. To
+     conform to POSIX, this must be no smaller than TMP_MAX. */
+#if ATTEMPTS_MIN < TMP_MAX
+  unsigned int attempts = TMP_MAX;
+#else
+  unsigned int attempts = ATTEMPTS_MIN;
+#endif
+
+  len = wcslen(req->pathw);
+  if (len < 6 || wcsncmp(&req->pathw[len - 6], L"XXXXXX", 6)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return;
+  }
+
+  /* This is where the Xs start. */
+  template_part = &req->pathw[len - 6];
+
+  /* Get some random data. */
+  value += uv_hrtime() ^ _getpid();
+
+  for (count = 0; count < attempts; value += 7777, ++count) {
+    uint64_t v = value;
+
+    /* Fill in the random bits. */
+    template_part[0] = letters[v % 62];
+    v /= 62;
+    template_part[1] = letters[v % 62];
+    v /= 62;
+    template_part[2] = letters[v % 62];
+    v /= 62;
+    template_part[3] = letters[v % 62];
+    v /= 62;
+    template_part[4] = letters[v % 62];
+    v /= 62;
+    template_part[5] = letters[v % 62];
+
+    fd = _wmkdir(req->pathw);
+
+    if (fd >= 0) {
+      len = strlen(req->path);
+      wcstombs((char*) req->path + len - 6, template_part, 6);
+      SET_REQ_RESULT(req, 0);
+      return;
+    } else if (errno != EEXIST) {
+      SET_REQ_RESULT(req, -1);
+      return;
+    }
+  }
+
+  /* We got out of the loop because we ran out of combinations to try. */
+  SET_REQ_RESULT(req, -1);
+}
+
+
 void fs__readdir(uv_fs_t* req) {
   WCHAR* pathw = req->pathw;
   size_t len = wcslen(pathw);
@@ -1528,6 +1600,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(UNLINK, unlink)
     XX(RMDIR, rmdir)
     XX(MKDIR, mkdir)
+    XX(MKDTEMP, mkdtemp)
     XX(RENAME, rename)
     XX(READDIR, readdir)
     XX(LINK, link)
@@ -1719,6 +1792,26 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
     return 0;
   } else {
     fs__mkdir(req);
+    return req->result;
+  }
+}
+
+
+int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* template,
+    uv_fs_cb cb) {
+  int err;
+
+  uv_fs_req_init(loop, req, UV_FS_MKDTEMP, cb);
+
+  err = fs__capture_path(loop, req, template, NULL, TRUE);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  if (cb) {
+    QUEUE_FS_TP_JOB(loop, req);
+    return 0;
+  } else {
+    fs__mkdtemp(req);
     return req->result;
   }
 }

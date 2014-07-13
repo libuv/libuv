@@ -214,6 +214,11 @@ skip:
 }
 
 
+static ssize_t uv__fs_mkdtemp(uv_fs_t* req) {
+  return mkdtemp((char*) req->path) ? 0 : -1;
+}
+
+
 static ssize_t uv__fs_read(uv_fs_t* req) {
   ssize_t result;
 
@@ -789,6 +794,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(LSTAT, uv__fs_lstat(req->path, &req->statbuf));
     X(LINK, link(req->path, req->new_path));
     X(MKDIR, mkdir(req->path, req->mode));
+    X(MKDTEMP, uv__fs_mkdtemp(req));
     X(READ, uv__fs_read(req));
     X(READDIR, uv__fs_readdir(req));
     X(READLINK, uv__fs_readlink(req));
@@ -997,6 +1003,18 @@ int uv_fs_mkdir(uv_loop_t* loop,
   INIT(MKDIR);
   PATH;
   req->mode = mode;
+  POST;
+}
+
+
+int uv_fs_mkdtemp(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char* template,
+                  uv_fs_cb cb) {
+  INIT(MKDTEMP);
+  req->path = strdup(template);
+  if (req->path == NULL)
+    return -ENOMEM;
   POST;
 }
 
