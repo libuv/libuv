@@ -537,7 +537,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
       break;
 
     default:
-      assert(0);
+      return -EINVAL;
   }
 
 done:
@@ -573,7 +573,6 @@ done:
 int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
 
-  err = -EINVAL;
   switch (stream->type) {
   case UV_TCP:
     err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
@@ -584,7 +583,7 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
     break;
 
   default:
-    assert(0);
+    err = -EINVAL;
   }
 
   if (err == 0)
