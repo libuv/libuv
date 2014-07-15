@@ -100,6 +100,7 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 /* Only used by uv_pipe_t handles. */
 #define UV_HANDLE_NON_OVERLAPPED_PIPE           0x01000000
 #define UV_HANDLE_PIPESERVER                    0x02000000
+#define UV_HANDLE_PIPE_READ_CANCELABLE          0x04000000
 
 /* Only used by uv_tty_t handles. */
 #define UV_HANDLE_TTY_READABLE                  0x01000000
@@ -181,6 +182,9 @@ int uv_pipe_write(uv_loop_t* loop, uv_write_t* req, uv_pipe_t* handle,
 int uv_pipe_write2(uv_loop_t* loop, uv_write_t* req, uv_pipe_t* handle,
     const uv_buf_t bufs[], unsigned int nbufs, uv_stream_t* send_handle,
     uv_write_cb cb);
+void uv__pipe_pause_read(uv_pipe_t* handle);
+void uv__pipe_unpause_read(uv_pipe_t* handle);
+void uv__pipe_stop_read(uv_pipe_t* handle);
 
 void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_req_t* req);
