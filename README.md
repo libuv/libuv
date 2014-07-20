@@ -1,4 +1,6 @@
-# libuv
+![libuv][libuv_banner]
+
+## Overview
 
 libuv is a multi-platform support library with a focus on asynchronous I/O. It
 was primarily developed for use by [Node.js](http://nodejs.org), but it's also
@@ -141,3 +143,4 @@ See the [guidelines for contributing][].
 [Python]: https://www.python.org/downloads/
 [Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
 [guidelines for contributing]: https://github.com/joyent/libuv/blob/master/CONTRIBUTING.md
+[libuv_banner]: https://raw.githubusercontent.com/joyent/libuv/master/img/banner.png
