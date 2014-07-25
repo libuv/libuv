@@ -539,6 +539,8 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
                           0);
     if (err)
       return err;
+    if (handle->flags & UV_HANDLE_BIND_ERROR)
+      return handle->bind_error;
   }
 
   if (!handle->func_acceptex) {
@@ -725,6 +727,8 @@ static int uv_tcp_try_connect(uv_connect_t* req,
     err = uv_tcp_try_bind(handle, bind_addr, addrlen, 0);
     if (err)
       return err;
+    if (handle->flags & UV_HANDLE_BIND_ERROR)
+      return handle->bind_error;
   }
 
   if (!handle->func_connectex) {
