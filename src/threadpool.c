@@ -108,7 +108,8 @@ static void post(QUEUE* q) {
 }
 
 
-static void cleanup(void) {
+#ifndef _WIN32
+UV_DESTRUCTOR(static void cleanup(void)) {
   unsigned int i;
 
   if (initialized == 0)
@@ -130,6 +131,7 @@ static void cleanup(void) {
   nthreads = 0;
   initialized = 0;
 }
+#endif
 
 
 static void init_once(void) {
@@ -167,7 +169,6 @@ static void init_once(void) {
       abort();
 
   initialized = 1;
-  atexit(cleanup);
 }
 
 
