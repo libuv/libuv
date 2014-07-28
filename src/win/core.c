@@ -195,6 +195,31 @@ uv_loop_t* uv_default_loop(void) {
 }
 
 
+static void uv__loop_close(uv_loop_t* loop) {
+  /* close the async handle without needeing an extra loop iteration */
+  assert(!loop->wq_async.async_sent);
+  loop->wq_async.close_cb = NULL;
+  uv__handle_closing(&loop->wq_async);
+  uv__handle_close(&loop->wq_async);
+
+  if (loop != &uv_default_loop_) {
+    size_t i;
+    for (i = 0; i < ARRAY_SIZE(loop->poll_peer_sockets); i++) {
+      SOCKET sock = loop->poll_peer_sockets[i];
+      if (sock != 0 && sock != INVALID_SOCKET)
+        closesocket(sock);
+    }
+  }
+  /* TODO: cleanup default loop*/
+
+  uv_mutex_lock(&loop->wq_mutex);
+  assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
+  assert(!uv__has_active_reqs(loop));
+  uv_mutex_unlock(&loop->wq_mutex);
+  uv_mutex_destroy(&loop->wq_mutex);
+}
+
+
 int uv_loop_close(uv_loop_t* loop) {
   QUEUE* q;
   uv_handle_t* h;
@@ -205,15 +230,13 @@ int uv_loop_close(uv_loop_t* loop) {
     if (!(h->flags & UV__HANDLE_INTERNAL))
       return UV_EBUSY;
   }
-  if (loop != &uv_default_loop_) {
-    size_t i;
-    for (i = 0; i < ARRAY_SIZE(loop->poll_peer_sockets); i++) {
-      SOCKET sock = loop->poll_peer_sockets[i];
-      if (sock != 0 && sock != INVALID_SOCKET)
-        closesocket(sock);
-    }
-  }
-  /* TODO: cleanup default loop*/
+
+  uv__loop_close(loop);
+
+#ifndef NDEBUG
+  memset(loop, -1, sizeof(*loop));
+#endif
+
   return 0;
 }
 
