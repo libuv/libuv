@@ -75,7 +75,6 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 /* Used by streams and UDP handles. */
 #define UV_HANDLE_READING                       0x00000100
 #define UV_HANDLE_BOUND                         0x00000200
-#define UV_HANDLE_BIND_ERROR                    0x00000400
 #define UV_HANDLE_LISTENING                     0x00000800
 #define UV_HANDLE_CONNECTION                    0x00001000
 #define UV_HANDLE_CONNECTED                     0x00002000
@@ -125,6 +124,12 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 /*
  * TCP
  */
+
+typedef struct {
+  WSAPROTOCOL_INFOW socket_info;
+  int delayed_error;
+} uv__ipc_socket_info_ex;
+
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client);
 int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
@@ -143,7 +148,7 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
 void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp);
 void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle);
 
-int uv_tcp_import(uv_tcp_t* tcp, WSAPROTOCOL_INFOW* socket_protocol_info,
+int uv_tcp_import(uv_tcp_t* tcp, uv__ipc_socket_info_ex* socket_info_ex,
     int tcp_connection);
 
 int uv_tcp_duplicate_socket(uv_tcp_t* handle, int pid,
