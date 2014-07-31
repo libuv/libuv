@@ -1024,8 +1024,12 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   }
 
   if (req->cb) {
-    err = GET_REQ_SOCK_ERROR(req);
-    req->cb(req, uv_translate_sys_error(err));
+    err = uv_translate_sys_error(GET_REQ_SOCK_ERROR(req));
+    if (err == UV_ECONNABORTED) {
+      /* use UV_ECANCELED for consistency with Unix */
+      err = UV_ECANCELED;
+    }
+    req->cb(req, err);
   }
 
   handle->write_reqs_pending--;
