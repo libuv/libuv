@@ -1465,7 +1465,7 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
 
   /* Open the directory */
   handle = CreateFileW(new_path,
-                       GENERIC_ALL,
+                       GENERIC_WRITE,
                        0,
                        NULL,
                        OPEN_EXISTING,
