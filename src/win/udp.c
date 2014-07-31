@@ -37,8 +37,9 @@ const unsigned int uv_active_udp_streams_threshold = 0;
 /* A zero-size buffer for use by uv_udp_read */
 static char uv_zero_[] = "";
 
-int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name,
-    int* namelen) {
+int uv_udp_getsockname(const uv_udp_t* handle,
+                       struct sockaddr* name,
+                       int* namelen) {
   int result;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {

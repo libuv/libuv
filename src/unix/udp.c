@@ -703,7 +703,9 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
 }
 
 
-int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen) {
+int uv_udp_getsockname(const uv_udp_t* handle,
+                       struct sockaddr* name,
+                       int* namelen) {
   socklen_t socklen;
 
   if (handle->io_watcher.fd == -1)
