@@ -259,7 +259,8 @@ uv_loop_t* uv_loop_new(void) {
 
 
 void uv_loop_delete(uv_loop_t* loop) {
-  assert(uv_loop_close(loop) == 0);
+  int err = uv_loop_close(loop);
+  assert(err == 0);
   if (loop != &uv_default_loop_)
     free(loop);
 }
