@@ -45,8 +45,9 @@ static uv_once_t uv_default_loop_init_guard_ = UV_ONCE_INIT;
 
 
 #if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
-/* Our crt debug report handler allows us to temporarily disable asserts */
-/* just for the current thread. */
+/* Our crt debug report handler allows us to temporarily disable asserts
+ * just for the current thread.
+ */
 
 UV_THREAD_LOCAL int uv__crt_assert_enabled = TRUE;
 
@@ -55,8 +56,9 @@ static int uv__crt_dbg_report_handler(int report_type, char *message, int *ret_v
     return FALSE;
 
   if (ret_val) {
-    /* Set ret_val to 0 to continue with normal execution. */
-    /* Set ret_val to 1 to trigger a breakpoint. */
+    /* Set ret_val to 0 to continue with normal execution.
+     * Set ret_val to 1 to trigger a breakpoint.
+    */
 
     if(IsDebuggerPresent())
       *ret_val = 1;
@@ -86,21 +88,24 @@ static void uv_init(void) {
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
                SEM_NOOPENFILEERRORBOX);
 
-  /* Tell the CRT to not exit the application when an invalid parameter is */
-  /* passed. The main issue is that invalid FDs will trigger this behavior. */
+  /* Tell the CRT to not exit the application when an invalid parameter is
+   * passed. The main issue is that invalid FDs will trigger this behavior.
+   */
 #if !defined(__MINGW32__) || __MSVCRT_VERSION__ >= 0x800
   _set_invalid_parameter_handler(uv__crt_invalid_parameter_handler);
 #endif
 
-  /* We also need to setup our debug report handler because some CRT */
-  /* functions (eg _get_osfhandle) raise an assert when called with invalid */
-  /* FDs even though they return the proper error code in the release build. */
+  /* We also need to setup our debug report handler because some CRT
+   * functions (eg _get_osfhandle) raise an assert when called with invalid
+   * FDs even though they return the proper error code in the release build.
+   */
 #if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
   _CrtSetReportHook(uv__crt_dbg_report_handler);
 #endif
 
-  /* Fetch winapi function pointers. This must be done first because other */
-  /* intialization code might need these function pointers to be loaded. */
+  /* Fetch winapi function pointers. This must be done first because other
+   * intialization code might need these function pointers to be loaded.
+   */
   uv_winapi_init();
 
   /* Initialize winsock */
@@ -129,8 +134,9 @@ int uv_loop_init(uv_loop_t* loop) {
   if (loop->iocp == NULL)
     return uv_translate_sys_error(GetLastError());
 
-  /* To prevent uninitialized memory access, loop->time must be intialized */
-  /* to zero before calling uv_update_time for the first time. */
+  /* To prevent uninitialized memory access, loop->time must be intialized
+   * to zero before calling uv_update_time for the first time.
+   */
   loop->time = 0;
   loop->last_tick_count = 0;
   uv_update_time(loop);
@@ -272,21 +278,30 @@ int uv_backend_fd(const uv_loop_t* loop) {
 
 
 int uv_backend_timeout(const uv_loop_t* loop) {
-  return 0;
+  if (loop->stop_flag != 0)
+    return 0;
+
+  if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
+    return 0;
+
+  if (loop->pending_reqs_tail)
+    return 0;
+
+  if (loop->endgame_handles)
+    return 0;
+
+  if (loop->idle_handles)
+    return 0;
+
+  return uv__next_timeout(loop);
 }
 
 
-static void uv_poll(uv_loop_t* loop, int block) {
-  DWORD bytes, timeout;
+static void uv_poll(uv_loop_t* loop, DWORD timeout) {
+  DWORD bytes;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
   uv_req_t* req;
-
-  if (block) {
-    timeout = uv_get_poll_timeout(loop);
-  } else {
-    timeout = 0;
-  }
 
   GetQueuedCompletionStatus(loop->iocp,
                             &bytes,
@@ -302,27 +317,21 @@ static void uv_poll(uv_loop_t* loop, int block) {
     /* Serious error */
     uv_fatal_error(GetLastError(), "GetQueuedCompletionStatus");
   } else {
-    /* We're sure that at least `timeout` milliseconds have expired, but */
-    /* this may not be reflected yet in the GetTickCount() return value. */
-    /* Therefore we ensure it's taken into account here. */
+    /* We're sure that at least `timeout` milliseconds have expired, but
+     * this may not be reflected yet in the GetTickCount() return value.
+     * Therefore we ensure it's taken into account here.
+     */
     uv__time_forward(loop, timeout);
   }
 }
 
 
-static void uv_poll_ex(uv_loop_t* loop, int block) {
+static void uv_poll_ex(uv_loop_t* loop, DWORD timeout) {
   BOOL success;
-  DWORD timeout;
   uv_req_t* req;
   OVERLAPPED_ENTRY overlappeds[128];
   ULONG count;
   ULONG i;
-
-  if (block) {
-    timeout = uv_get_poll_timeout(loop);
-  } else {
-    timeout = 0;
-  }
 
   success = pGetQueuedCompletionStatusEx(loop->iocp,
                                          overlappeds,
@@ -341,9 +350,10 @@ static void uv_poll_ex(uv_loop_t* loop, int block) {
     /* Serious error */
     uv_fatal_error(GetLastError(), "GetQueuedCompletionStatusEx");
   } else if (timeout > 0) {
-    /* We're sure that at least `timeout` milliseconds have expired, but */
-    /* this may not be reflected yet in the GetTickCount() return value. */
-    /* Therefore we ensure it's taken into account here. */
+    /* We're sure that at least `timeout` milliseconds have expired, but
+     * this may not be reflected yet in the GetTickCount() return value.
+     * Therefore we ensure it's taken into account here.
+     */
     uv__time_forward(loop, timeout);
   }
 }
@@ -362,8 +372,9 @@ int uv_loop_alive(const uv_loop_t* loop) {
 
 
 int uv_run(uv_loop_t *loop, uv_run_mode mode) {
+  DWORD timeout;
   int r;
-  void (*poll)(uv_loop_t* loop, int block);
+  void (*poll)(uv_loop_t* loop, DWORD timeout);
 
   if (pGetQueuedCompletionStatusEx)
     poll = &uv_poll_ex;
@@ -382,13 +393,11 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_idle_invoke(loop);
     uv_prepare_invoke(loop);
 
-    (*poll)(loop, loop->idle_handles == NULL &&
-                  loop->pending_reqs_tail == NULL &&
-                  loop->endgame_handles == NULL &&
-                  !loop->stop_flag &&
-                  (loop->active_handles > 0 ||
-                   !QUEUE_EMPTY(&loop->active_reqs)) &&
-                  !(mode & UV_RUN_NOWAIT));
+    timeout = 0;
+    if ((mode & UV_RUN_NOWAIT) == 0)
+      timeout = uv_backend_timeout(loop);
+
+    (*poll)(loop, timeout);
 
     uv_check_invoke(loop);
     uv_process_endgames(loop);
