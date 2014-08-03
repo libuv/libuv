@@ -49,9 +49,9 @@ static void uv__getnameinfo_work(struct uv__work* w) {
   ret = GetNameInfoW((struct sockaddr*)&req->storage,
                      sizeof(req->storage),
                      host,
-                     sizeof(host),
+                     ARRAY_SIZE(host),
                      service,
-                     sizeof(service),
+                     ARRAY_SIZE(service),
                      req->flags);
   req->retcode = uv__getaddrinfo_translate_error(ret);
 
