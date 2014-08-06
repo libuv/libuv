@@ -1797,13 +1797,13 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
 }
 
 
-int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* template,
+int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
     uv_fs_cb cb) {
   int err;
 
   uv_fs_req_init(loop, req, UV_FS_MKDTEMP, cb);
 
-  err = fs__capture_path(loop, req, template, NULL, TRUE);
+  err = fs__capture_path(loop, req, tpl, NULL, TRUE);
   if (err)
     return uv_translate_sys_error(err);
 

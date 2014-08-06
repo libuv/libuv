@@ -1009,10 +1009,10 @@ int uv_fs_mkdir(uv_loop_t* loop,
 
 int uv_fs_mkdtemp(uv_loop_t* loop,
                   uv_fs_t* req,
-                  const char* template,
+                  const char* tpl,
                   uv_fs_cb cb) {
   INIT(MKDTEMP);
-  req->path = strdup(template);
+  req->path = strdup(tpl);
   if (req->path == NULL)
     return -ENOMEM;
   POST;
