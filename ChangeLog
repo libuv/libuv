@@ -1,3 +1,31 @@
+2014.08.08, Version 0.11.28 (Unstable)
+
+Changes since version 0.11.27:
+
+* unix, windows: const-ify handle in uv_udp_getsockname (Rasmus Pedersen)
+
+* windows: use UV_ECANCELED for aborted TCP writes (Saúl Ibarra Corretgé)
+
+* windows: add more required environment variables (Jameson Nash)
+
+* windows: sort environment variables before calling CreateProcess (Jameson
+  Nash)
+
+* unix, windows: move uv_loop_close out of assert (John Firebaugh)
+
+* windows: fix buffer overflow on uv__getnameinfo_work() (lilohuang)
+
+* windows: add uv_backend_timeout (Jameson Nash)
+
+* test: disable tcp_close_accept on Windows (Saúl Ibarra Corretgé)
+
+* windows: read the PATH env var of the child (Alex Crichton)
+
+* include: avoid using C++ 'template' reserved word (Iñaki Baz Castillo)
+
+* include: fix version number (Saúl Ibarra Corretgé)
+
+
 2014.07.32, Version 0.11.27 (Unstable), ffe24f955032d060968ea0289af365006afed55e
 
 Changes since version 0.11.26:
