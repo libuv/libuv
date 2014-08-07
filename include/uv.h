@@ -1916,6 +1916,12 @@ UV_EXTERN int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file,
 UV_EXTERN int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path,
     int mode, uv_fs_cb cb);
 
+/*
+ * Generates a uniquely named temporary directory from tpl. The last six
+ * characters of tpl must be XXXXXX and these are replaced with a string that
+ * makes the directory name unique. On success the name of created directory
+ * will be stored in req->path.
+ */
 UV_EXTERN int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
     uv_fs_cb cb);
 
