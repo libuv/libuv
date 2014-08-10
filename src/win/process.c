@@ -800,10 +800,8 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
       i++;
     } else {
       /* copy var from env_block */
-      DWORD r;
       len = wcslen(*ptr_copy) + 1;
-      r = wmemcpy_s(ptr, (env_len - (ptr - dst)), *ptr_copy, len);
-      assert(!r);
+      wmemcpy(ptr, *ptr_copy, len);
       ptr_copy++;
       if (cmp == 0)
         i++;
