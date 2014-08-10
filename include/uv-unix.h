@@ -117,7 +117,7 @@ struct uv__async {
 #endif
 
 /* Note: May be cast to struct iovec. See writev(2). */
-typedef struct {
+typedef struct uv_buf_t {
   char* base;
   size_t len;
 } uv_buf_t;
