@@ -572,7 +572,9 @@ static int uv__udp_set_membership4(uv_udp_t* handle,
   memset(&mreq, 0, sizeof mreq);
 
   if (interface_addr) {
-    mreq.imr_interface.s_addr = inet_addr(interface_addr);
+    err = uv_inet_pton(AF_INET, interface_addr, &mreq.imr_interface.s_addr);
+    if (err)
+      return err;
   } else {
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
   }
