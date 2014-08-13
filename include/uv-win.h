@@ -289,6 +289,14 @@ typedef struct uv_once_s {
 typedef unsigned char uv_uid_t;
 typedef unsigned char uv_gid_t;
 
+typedef struct uv__dirent_s {
+  int d_type;
+  char d_name[1];
+} uv__dirent_t;
+
+#define UV__DT_DIR  UV_DIRENT_DIR
+#define UV__DT_FILE UV_DIRENT_FILE
+
 /* Platform-specific definitions for uv_dlopen support. */
 #define UV_DYNAMIC FAR WINAPI
 typedef struct {

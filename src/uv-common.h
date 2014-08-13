@@ -109,6 +109,8 @@ size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
 
 int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
 
+void uv__fs_readdir_cleanup(uv_fs_t* req);
+
 #define uv__has_active_reqs(loop)                                             \
   (QUEUE_EMPTY(&(loop)->active_reqs) == 0)
 

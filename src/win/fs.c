@@ -43,6 +43,8 @@
 #define UV_FS_FREE_PTR           0x0008
 #define UV_FS_CLEANEDUP          0x0010
 
+static const int uv__fs_dirent_slide = 0x20;
+
 
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
   do {                                                                      \
@@ -784,13 +786,14 @@ void fs__mkdtemp(uv_fs_t* req) {
 void fs__readdir(uv_fs_t* req) {
   WCHAR* pathw = req->pathw;
   size_t len = wcslen(pathw);
-  int result, size;
-  WCHAR* buf = NULL, *ptr, *name;
+  int result;
+  WCHAR* name;
   HANDLE dir;
   WIN32_FIND_DATAW ent = { 0 };
-  size_t buf_char_len = 4096;
   WCHAR* path2;
   const WCHAR* fmt;
+  uv__dirent_t** dents;
+  int dent_size;
 
   if (len == 0) {
     fmt = L"./*";
@@ -809,7 +812,8 @@ void fs__readdir(uv_fs_t* req) {
 
   path2 = (WCHAR*)malloc(sizeof(WCHAR) * (len + 4));
   if (!path2) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+    return;
   }
 
   _snwprintf(path2, len + 3, fmt, pathw);
@@ -822,71 +826,79 @@ void fs__readdir(uv_fs_t* req) {
   }
 
   result = 0;
+  dents = NULL;
+  dent_size = 0;
 
   do {
+    uv__dirent_t* dent;
+    int utf8_len;
+
     name = ent.cFileName;
 
-    if (name[0] != L'.' || (name[1] && (name[1] != L'.' || name[2]))) {
-      len = wcslen(name);
+    if (!(name[0] != L'.' || (name[1] && (name[1] != L'.' || name[2]))))
+      continue;
 
-      if (!buf) {
-        buf = (WCHAR*)malloc(buf_char_len * sizeof(WCHAR));
-        if (!buf) {
-          uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-        }
+    /* Grow dents buffer, if needed */
+    if (result >= dent_size) {
+      uv__dirent_t** tmp;
 
-        ptr = buf;
+      dent_size += uv__fs_dirent_slide;
+      tmp = realloc(dents, dent_size * sizeof(*dents));
+      if (tmp == NULL) {
+        SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+        goto fatal;
       }
-
-      while ((ptr - buf) + len + 1 > buf_char_len) {
-        buf_char_len *= 2;
-        path2 = buf;
-        buf = (WCHAR*)realloc(buf, buf_char_len * sizeof(WCHAR));
-        if (!buf) {
-          uv_fatal_error(ERROR_OUTOFMEMORY, "realloc");
-        }
-
-        ptr = buf + (ptr - path2);
-      }
-
-      wcscpy(ptr, name);
-      ptr += len + 1;
-      result++;
+      dents = tmp;
     }
+
+    /* Allocate enough space to fit utf8 encoding of file name */
+    len = wcslen(name);
+    utf8_len = uv_utf16_to_utf8(name, len, NULL, 0);
+    if (!utf8_len) {
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      goto fatal;
+    }
+
+    dent = malloc(sizeof(*dent) + utf8_len + 1);
+    if (dent == NULL) {
+      SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+      goto fatal;
+    }
+
+    /* Copy file name */
+    utf8_len = uv_utf16_to_utf8(name, len, dent->d_name, utf8_len);
+    if (!utf8_len) {
+      free(dent);
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      goto fatal;
+    }
+    dent->d_name[utf8_len] = '\0';
+
+    /* Copy file type */
+    if ((ent.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+      dent->d_type = UV__DT_DIR;
+    else
+      dent->d_type = UV__DT_FILE;
+
+    dents[result++] = dent;
   } while(FindNextFileW(dir, &ent));
 
   FindClose(dir);
 
-  if (buf) {
-    /* Convert result to UTF8. */
-    size = uv_utf16_to_utf8(buf, buf_char_len, NULL, 0);
-    if (!size) {
-      SET_REQ_WIN32_ERROR(req, GetLastError());
-      return;
-    }
-
-    req->ptr = (char*)malloc(size + 1);
-    if (!req->ptr) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
-    }
-
-    size = uv_utf16_to_utf8(buf, buf_char_len, (char*)req->ptr, size);
-    if (!size) {
-      free(buf);
-      free(req->ptr);
-      req->ptr = NULL;
-      SET_REQ_WIN32_ERROR(req, GetLastError());
-      return;
-    }
-    free(buf);
-
-    ((char*)req->ptr)[size] = '\0';
+  if (dents != NULL)
     req->flags |= UV_FS_FREE_PTR;
-  } else {
-    req->ptr = NULL;
-  }
 
+  /* NOTE: nbufs will be used as index */
+  req->nbufs = 0;
+  req->ptr = dents;
   SET_REQ_RESULT(req, result);
+  return;
+
+fatal:
+  /* Deallocate dents */
+  for (result--; result >= 0; result--)
+    free(dents[result]);
+  free(dents);
 }
 
 

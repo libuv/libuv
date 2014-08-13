@@ -227,6 +227,7 @@ typedef struct uv_work_s uv_work_t;
 /* None of the above. */
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
+typedef struct uv_dirent_s uv_dirent_t;
 
 
 typedef enum {
@@ -1786,6 +1787,16 @@ struct uv_interface_address_s {
   } netmask;
 };
 
+typedef enum {
+  UV_DIRENT_FILE,
+  UV_DIRENT_DIR
+} uv_dirent_type_t;
+
+struct uv_dirent_s {
+  const char* name;
+  uv_dirent_type_t type;
+};
+
 UV_EXTERN char** uv_setup_args(int argc, char** argv);
 UV_EXTERN int uv_get_process_title(char* buffer, size_t size);
 UV_EXTERN int uv_set_process_title(const char* title);
@@ -1930,6 +1941,15 @@ UV_EXTERN int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
 UV_EXTERN int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req,
     const char* path, int flags, uv_fs_cb cb);
+
+/*
+ * Call this after `uv_fs_readdir` cb's invocation, this function should be
+ * called until it returns `UV_EOF`.
+ *
+ * The data that is put into `ent` is managed by libuv and should not be
+ * deallocated by the user.
+ */
+UV_EXTERN int uv_fs_readdir_next(uv_fs_t* req, uv_dirent_t* ent);
 
 UV_EXTERN int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb);

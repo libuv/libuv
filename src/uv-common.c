@@ -449,3 +449,43 @@ int uv_fs_event_getpath(uv_fs_event_t* handle, char* buf, size_t* len) {
 
   return 0;
 }
+
+
+void uv__fs_readdir_cleanup(uv_fs_t* req) {
+  uv__dirent_t** dents;
+
+  dents = req->ptr;
+  if (req->nbufs > 0 && req->nbufs != (unsigned int) req->result)
+    req->nbufs--;
+  for (; req->nbufs < (unsigned int) req->result; req->nbufs++)
+    free(dents[req->nbufs]);
+}
+
+
+int uv_fs_readdir_next(uv_fs_t* req, uv_dirent_t* ent) {
+  uv__dirent_t** dents;
+  uv__dirent_t* dent;
+
+  dents = req->ptr;
+
+  /* Free previous entity */
+  if (req->nbufs > 0)
+    free(dents[req->nbufs - 1]);
+
+  /* End was already reached */
+  if (req->nbufs == (unsigned int) req->result) {
+    free(dents);
+    req->ptr = NULL;
+    return UV_EOF;
+  }
+
+  dent = dents[req->nbufs++];
+
+  ent->name = dent->d_name;
+  if (dent->d_type == UV__DT_DIR)
+    ent->type = UV_DIRENT_DIR;
+  else
+    ent->type = UV_DIRENT_FILE;
+
+  return 0;
+}

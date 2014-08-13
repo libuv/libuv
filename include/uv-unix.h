@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -154,6 +155,10 @@ typedef pthread_barrier_t uv_barrier_t;
 /* Platform-specific definitions for uv_spawn support. */
 typedef gid_t uv_gid_t;
 typedef uid_t uv_uid_t;
+
+typedef struct dirent uv__dirent_t;
+
+#define UV__DT_DIR DT_DIR
 
 /* Platform-specific definitions for uv_dlopen support. */
 #define UV_DYNAMIC /* empty */
