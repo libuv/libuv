@@ -294,8 +294,13 @@ typedef struct uv__dirent_s {
   char d_name[1];
 } uv__dirent_t;
 
-#define UV__DT_DIR  UV_DIRENT_DIR
-#define UV__DT_FILE UV_DIRENT_FILE
+#define UV__DT_DIR     UV_DIRENT_DIR
+#define UV__DT_FILE    UV_DIRENT_FILE
+#define UV__DT_LINK    UV_DIRENT_LINK
+#define UV__DT_FIFO    UV_DIRENT_FIFO
+#define UV__DT_SOCKET  UV_DIRENT_SOCKET
+#define UV__DT_CHAR    UV_DIRENT_CHAR
+#define UV__DT_BLOCK   UV_DIRENT_BLOCK
 
 /* Platform-specific definitions for uv_dlopen support. */
 #define UV_DYNAMIC FAR WINAPI

@@ -1788,8 +1788,14 @@ struct uv_interface_address_s {
 };
 
 typedef enum {
+  UV_DIRENT_UNKNOWN,
   UV_DIRENT_FILE,
-  UV_DIRENT_DIR
+  UV_DIRENT_DIR,
+  UV_DIRENT_LINK,
+  UV_DIRENT_FIFO,
+  UV_DIRENT_SOCKET,
+  UV_DIRENT_CHAR,
+  UV_DIRENT_BLOCK
 } uv_dirent_type_t;
 
 struct uv_dirent_s {

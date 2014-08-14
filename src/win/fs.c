@@ -877,6 +877,8 @@ void fs__readdir(uv_fs_t* req) {
     /* Copy file type */
     if ((ent.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
       dent->d_type = UV__DT_DIR;
+    else if ((ent.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+      dent->d_type = UV__DT_LINK;
     else
       dent->d_type = UV__DT_FILE;
 

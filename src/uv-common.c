@@ -482,10 +482,35 @@ int uv_fs_readdir_next(uv_fs_t* req, uv_dirent_t* ent) {
   dent = dents[req->nbufs++];
 
   ent->name = dent->d_name;
-  if (dent->d_type == UV__DT_DIR)
-    ent->type = UV_DIRENT_DIR;
-  else
-    ent->type = UV_DIRENT_FILE;
+#ifdef HAVE_DIRENT_TYPES
+  switch (dent->d_type) {
+    case UV__DT_DIR:
+      ent->type = UV_DIRENT_DIR;
+      break;
+    case UV__DT_FILE:
+      ent->type = UV_DIRENT_FILE;
+      break;
+    case UV__DT_LINK:
+      ent->type = UV_DIRENT_LINK;
+      break;
+    case UV__DT_FIFO:
+      ent->type = UV_DIRENT_FIFO;
+      break;
+    case UV__DT_SOCKET:
+      ent->type = UV_DIRENT_SOCKET;
+      break;
+    case UV__DT_CHAR:
+      ent->type = UV_DIRENT_CHAR;
+      break;
+    case UV__DT_BLOCK:
+      ent->type = UV_DIRENT_BLOCK;
+      break;
+    default:
+      ent->type = UV_DIRENT_UNKNOWN;
+  }
+#else
+  ent->type = UV_DIRENT_UNKNOWN;
+#endif
 
   return 0;
 }

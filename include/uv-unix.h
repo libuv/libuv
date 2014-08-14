@@ -158,7 +158,44 @@ typedef uid_t uv_uid_t;
 
 typedef struct dirent uv__dirent_t;
 
-#define UV__DT_DIR DT_DIR
+#if defined(DT_UNKNOWN)
+# define HAVE_DIRENT_TYPES
+# if defined(DT_REG)
+#  define UV__DT_FILE DT_REG
+# else
+#  define UV__DT_FILE -1
+# endif
+# if defined(DT_DIR)
+#  define UV__DT_DIR DT_DIR
+# else
+#  define UV__DT_DIR -2
+# endif
+# if defined(DT_LNK)
+#  define UV__DT_LINK DT_LNK
+# else
+#  define UV__DT_LINK -3
+# endif
+# if defined(DT_FIFO)
+#  define UV__DT_FIFO DT_FIFO
+# else
+#  define UV__DT_FIFO -4
+# endif
+# if defined(DT_SOCK)
+#  define UV__DT_SOCKET DT_SOCK
+# else
+#  define UV__DT_SOCKET -5
+# endif
+# if defined(DT_CHR)
+#  define UV__DT_CHAR DT_CHR
+# else
+#  define UV__DT_CHAR -6
+# endif
+# if defined(DT_BLK)
+#  define UV__DT_BLOCK DT_BLK
+# else
+#  define UV__DT_BLOCK -7
+# endif
+#endif
 
 /* Platform-specific definitions for uv_dlopen support. */
 #define UV_DYNAMIC /* empty */
