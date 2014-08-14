@@ -163,6 +163,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-getsockname.c \
                          test/test-pipe-sendmsg.c \
                          test/test-pipe-server-close.c \
+                         test/test-pipe-close-stdout-read-stdin.c \
                          test/test-platform-output.c \
                          test/test-poll-close.c \
                          test/test-poll-closesocket.c \

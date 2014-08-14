@@ -156,6 +156,9 @@ TEST_DECLARE   (pipe_ref)
 TEST_DECLARE   (pipe_ref2)
 TEST_DECLARE   (pipe_ref3)
 TEST_DECLARE   (pipe_ref4)
+#ifndef _WIN32
+TEST_DECLARE   (pipe_close_stdout_read_stdin)
+#endif
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
@@ -314,6 +317,9 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_connect_to_file)
 
   TEST_ENTRY  (pipe_server_close)
+#ifndef _WIN32
+  TEST_ENTRY  (pipe_close_stdout_read_stdin)
+#endif
   TEST_ENTRY  (tty)
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ip6_pton)

@@ -1162,7 +1162,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(uv__stream_fd(stream) >= 0);
 
   /* Ignore POLLHUP here. Even it it's set, there may still be data to read. */
-  if (events & (UV__POLLIN | UV__POLLERR))
+  if (events & (UV__POLLIN | UV__POLLERR | UV__POLLHUP))
     uv__read(stream);
 
   if (uv__stream_fd(stream) == -1)
