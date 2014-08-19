@@ -1,3 +1,33 @@
+2014.08.20, Version 0.11.29 (Unstable)
+
+Changes since version 0.11.28:
+
+* windows: make uv_read_stop immediately stop reading (Jameson Nash)
+
+* windows: fix uv__getaddrinfo_translate_error (Alexis Campailla)
+
+* netbsd: fix build (Saúl Ibarra Corretgé)
+
+* unix, windows: add uv_recv_buffer_size and uv_send_buffer_size (Andrius
+  Bentkus)
+
+* windows: add support for UNC paths on uv_spawn (Paul Goldsmith)
+
+* windows: replace use of inet_addr with uv_inet_pton (Saúl Ibarra Corretgé)
+
+* unix: replace some asserts with returning errors (Andrius Bentkus)
+
+* windows: use OpenBSD implementation for uv_fs_mkdtemp (Pavel Platto)
+
+* windows: fix GetNameInfoW error handling (Alexis Campailla)
+
+* fs: introduce uv_readdir_next() and report types (Fedor Indutny)
+
+* fs: extend reported types in uv_fs_readdir_next (Saúl Ibarra Corretgé)
+
+* unix: read on stream even when UV__POLLHUP set. (Julien Gilli)
+
+
 2014.08.08, Version 0.11.28 (Unstable), fc9e2a0bc487b299c0cd3b2c9a23aeb554b5d8d1
 
 Changes since version 0.11.27:
