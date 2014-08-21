@@ -26,6 +26,9 @@
 #include "internal.h"
 #include "req-inl.h"
 
+/* EAI_* constants. */
+#include <winsock2.h>
+
 
 int uv__getaddrinfo_translate_error(int sys_err) {
   switch (sys_err) {

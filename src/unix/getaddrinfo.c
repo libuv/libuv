@@ -33,6 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* EAI_* constants. */
+#include <netdb.h>
+
 
 int uv__getaddrinfo_translate_error(int sys_err) {
   switch (sys_err) {

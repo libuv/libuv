@@ -32,13 +32,6 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
-/* EAI_* constants. */
-#if !defined(_WIN32)
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <netdb.h>
-#endif
-
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
