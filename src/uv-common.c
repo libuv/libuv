@@ -19,13 +19,6 @@
  * IN THE SOFTWARE.
  */
 
-/* Expose glibc-specific EAI_* error codes. Needs to be defined before we
- * include any headers.
- */
-#ifndef _GNU_SOURCE
-# define _GNU_SOURCE
-#endif
-
 #include "uv.h"
 #include "uv-common.h"
 
