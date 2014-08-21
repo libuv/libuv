@@ -55,6 +55,9 @@ TEST_DECLARE   (tcp_ping_pong_v6)
 TEST_DECLARE   (pipe_ping_pong)
 TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (multiple_listen)
+#ifndef _WIN32
+TEST_DECLARE   (tcp_write_after_connect)
+#endif
 TEST_DECLARE   (tcp_writealot)
 TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_queue_order)
@@ -342,6 +345,10 @@ TASK_LIST_START
 
   TEST_ENTRY  (delayed_accept)
   TEST_ENTRY  (multiple_listen)
+
+#ifndef _WIN32
+  TEST_ENTRY  (tcp_write_after_connect)
+#endif
 
   TEST_ENTRY  (tcp_writealot)
   TEST_HELPER (tcp_writealot, tcp4_echo_server)

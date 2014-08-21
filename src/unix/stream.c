@@ -361,10 +361,22 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 }
 
 
-void uv__stream_destroy(uv_stream_t* stream) {
+void uv__stream_flush_write_queue(uv_stream_t* stream, int error) {
   uv_write_t* req;
   QUEUE* q;
+  while (!QUEUE_EMPTY(&stream->write_queue)) {
+    q = QUEUE_HEAD(&stream->write_queue);
+    QUEUE_REMOVE(q);
 
+    req = QUEUE_DATA(q, uv_write_t, queue);
+    req->error = error;
+
+    QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
+  }
+}
+
+
+void uv__stream_destroy(uv_stream_t* stream) {
   assert(!uv__io_active(&stream->io_watcher, UV__POLLIN | UV__POLLOUT));
   assert(stream->flags & UV_CLOSED);
 
@@ -374,16 +386,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
     stream->connect_req = NULL;
   }
 
-  while (!QUEUE_EMPTY(&stream->write_queue)) {
-    q = QUEUE_HEAD(&stream->write_queue);
-    QUEUE_REMOVE(q);
-
-    req = QUEUE_DATA(q, uv_write_t, queue);
-    req->error = -ECANCELED;
-
-    QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
-  }
-
+  uv__stream_flush_write_queue(stream, -ECANCELED);
   uv__write_callbacks(stream);
 
   if (stream->shutdown_req) {
@@ -1232,10 +1235,21 @@ static void uv__stream_connect(uv_stream_t* stream) {
 
   stream->connect_req = NULL;
   uv__req_unregister(stream->loop, req);
-  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
+
+  if (error < 0 || QUEUE_EMPTY(&stream->write_queue)) {
+    uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
+  }
 
   if (req->cb)
     req->cb(req, error);
+
+  if (uv__stream_fd(stream) == -1)
+    return;
+
+  if (error < 0) {
+    uv__stream_flush_write_queue(stream, -ECANCELED);
+    uv__write_callbacks(stream);
+  }
 }
 
 
