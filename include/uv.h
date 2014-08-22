@@ -615,6 +615,8 @@ UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
  */
 UV_EXTERN int uv_recv_buffer_size(uv_handle_t* handle, int* value);
 
+UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
+
 /*
  * Returns or sets the size of the send buffer that the operating
  * system uses for the socket.

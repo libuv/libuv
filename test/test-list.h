@@ -172,6 +172,7 @@ TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (process_title)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
+TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (hrtime)
 TEST_DECLARE   (getaddrinfo_fail)
 TEST_DECLARE   (getaddrinfo_basic)
@@ -502,6 +503,8 @@ TASK_LIST_START
   TEST_ENTRY  (get_memory)
 
   TEST_ENTRY  (get_loadavg)
+
+  TEST_ENTRY  (handle_fileno)
 
   TEST_ENTRY  (hrtime)
 
