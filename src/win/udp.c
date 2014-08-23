@@ -144,6 +144,7 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
 void uv_udp_close(uv_loop_t* loop, uv_udp_t* handle) {
   uv_udp_recv_stop(handle);
   closesocket(handle->socket);
+  handle->socket = INVALID_SOCKET;
 
   uv__handle_closing(handle);
 
