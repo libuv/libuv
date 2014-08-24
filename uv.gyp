@@ -53,9 +53,6 @@
           }],
         ],
       },
-      'defines': [
-        'HAVE_CONFIG_H'
-      ],
       'sources': [
         'common.gypi',
         'include/uv.h',
