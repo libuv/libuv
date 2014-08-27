@@ -506,9 +506,13 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
       } else if (err == WSAEWOULDBLOCK) {
         /* Kernel buffer empty */
         handle->recv_cb(handle, 0, &buf, NULL, 0);
-      } else if (err != WSAECONNRESET && err != WSAENETRESET) {
-        /* Serious error. WSAECONNRESET/WSANETRESET is ignored because this */
-        /* just indicates that a previous sendto operation failed. */
+      } else if (err == WSAECONNRESET || err == WSAENETRESET) {
+        /* WSAECONNRESET/WSANETRESET is ignored because this just indicates
+         * that a previous sendto operation failed.
+         */
+        handle->recv_cb(handle, 0, &buf, NULL, 0);
+      } else {
+        /* Any other error that we want to report back to the user. */
         uv_udp_recv_stop(handle);
         handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
       }

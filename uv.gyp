@@ -399,6 +399,7 @@
         'test/test-udp-options.c',
         'test/test-udp-send-and-recv.c',
         'test/test-udp-send-immediate.c',
+        'test/test-udp-send-unreachable.c',
         'test/test-udp-multicast-join.c',
         'test/test-udp-multicast-join6.c',
         'test/test-dlerror.c',
