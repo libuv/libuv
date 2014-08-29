@@ -34,6 +34,11 @@ used by Mozilla's [Rust language](http://www.rust-lang.org/),
 
  * Threading and synchronization primitives
 
+## Versioning
+
+Starting with version 1.0.0 libuv follows the [semantic versioning](http://semver.org/)
+scheme. The API change and backwards compatiblity rules are those indicated by
+SemVer. libuv will keel a stable ABI across major releases.
 
 ## Community
 
