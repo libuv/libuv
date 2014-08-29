@@ -503,6 +503,7 @@ UV_EXTERN const char* uv_err_name(int err);
   uv_req_type type;                                                           \
   /* private */                                                               \
   void* active_queue[2];                                                      \
+  void* reserved[4];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
 /* Abstract base class of all requests. */
@@ -544,6 +545,7 @@ struct uv_shutdown_s {
   /* private */                                                               \
   uv_close_cb close_cb;                                                       \
   void* handle_queue[2];                                                      \
+  void* reserved[4];                                                          \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
 /* The abstract base class of all handles. */
