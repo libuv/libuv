@@ -176,7 +176,7 @@
               'link_settings': {
                 # Must correspond with UV_VERSION_MAJOR and UV_VERSION_MINOR
                 # in src/version.c
-                'libraries': [ '-Wl,-soname,libuv.so.0.11' ],
+                'libraries': [ '-Wl,-soname,libuv.so.1.0' ],
               },
             }],
           ],
