@@ -155,28 +155,14 @@ int uv_timer_stop(uv_timer_t* handle) {
 
 
 int uv_timer_again(uv_timer_t* handle) {
-  uv_loop_t* loop = handle->loop;
-
   /* If timer_cb is NULL that means that the timer was never started. */
   if (!handle->timer_cb) {
     return UV_EINVAL;
   }
 
-  if (handle->flags & UV_HANDLE_ACTIVE) {
-    RB_REMOVE(uv_timer_tree_s, &loop->timers, handle);
-    handle->flags &= ~UV_HANDLE_ACTIVE;
-    uv__handle_stop(handle);
-  }
-
   if (handle->repeat) {
-    handle->due = get_clamped_due_time(loop->time, handle->repeat);
-
-    if (RB_INSERT(uv_timer_tree_s, &loop->timers, handle) != NULL) {
-      uv_fatal_error(ERROR_INVALID_DATA, "RB_INSERT");
-    }
-
-    handle->flags |= UV_HANDLE_ACTIVE;
-    uv__handle_start(handle);
+    uv_timer_stop(handle);
+    uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
   }
 
   return 0;
