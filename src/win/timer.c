@@ -119,6 +119,9 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
   uv_loop_t* loop = handle->loop;
   uv_timer_t* old;
 
+  if (timer_cb == NULL)
+    return UV_EINVAL;
+
   if (handle->flags & UV_HANDLE_ACTIVE) {
     RB_REMOVE(uv_timer_tree_s, &loop->timers, handle);
   }
