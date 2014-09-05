@@ -122,14 +122,12 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
   if (timer_cb == NULL)
     return UV_EINVAL;
 
-  if (handle->flags & UV_HANDLE_ACTIVE) {
-    RB_REMOVE(uv_timer_tree_s, &loop->timers, handle);
-  }
+  if (uv__is_active(handle))
+    uv_timer_stop(handle);
 
   handle->timer_cb = timer_cb;
   handle->due = get_clamped_due_time(loop->time, timeout);
   handle->repeat = repeat;
-  handle->flags |= UV_HANDLE_ACTIVE;
   uv__handle_start(handle);
 
   /* start_id is the second index to be compared in uv__timer_cmp() */
@@ -145,12 +143,10 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
 int uv_timer_stop(uv_timer_t* handle) {
   uv_loop_t* loop = handle->loop;
 
-  if (!(handle->flags & UV_HANDLE_ACTIVE))
+  if (!uv__is_active(handle))
     return 0;
 
   RB_REMOVE(uv_timer_tree_s, &loop->timers, handle);
-
-  handle->flags &= ~UV_HANDLE_ACTIVE;
   uv__handle_stop(handle);
 
   return 0;
@@ -225,23 +221,9 @@ void uv_process_timers(uv_loop_t* loop) {
   for (timer = RB_MIN(uv_timer_tree_s, &loop->timers);
        timer != NULL && timer->due <= loop->time;
        timer = RB_MIN(uv_timer_tree_s, &loop->timers)) {
-    RB_REMOVE(uv_timer_tree_s, &loop->timers, timer);
 
-    if (timer->repeat != 0) {
-      /* If it is a repeating timer, reschedule with repeat timeout. */
-      timer->due = get_clamped_due_time(timer->due, timer->repeat);
-      if (timer->due < loop->time) {
-        timer->due = loop->time;
-      }
-      if (RB_INSERT(uv_timer_tree_s, &loop->timers, timer) != NULL) {
-        uv_fatal_error(ERROR_INVALID_DATA, "RB_INSERT");
-      }
-    } else {
-      /* If non-repeating, mark the timer as inactive. */
-      timer->flags &= ~UV_HANDLE_ACTIVE;
-      uv__handle_stop(timer);
-    }
-
+    uv_timer_stop(timer);
+    uv_timer_again(timer);
     timer->timer_cb((uv_timer_t*) timer);
   }
 }
