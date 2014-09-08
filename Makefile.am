@@ -127,6 +127,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-condvar.c \
                          test/test-connection-fail.c \
                          test/test-cwd-and-chdir.c \
+                         test/test-default-loop-close.c \
                          test/test-delayed-accept.c \
                          test/test-dlerror.c \
                          test/test-embed.c \
