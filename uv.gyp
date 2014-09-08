@@ -46,10 +46,7 @@
             ],
           }],
           ['OS == "mac"', {
-            'defines': [
-              '_DARWIN_USE_64_BIT_INODE=1',
-              '_DARWIN_UNLIMITED_SELECT=1',
-            ],
+            'defines': [ '_DARWIN_USE_64_BIT_INODE=1' ],
           }],
           ['OS == "linux"', {
             'defines': [ '_POSIX_C_SOURCE=200112' ],
