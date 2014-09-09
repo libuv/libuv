@@ -28,38 +28,16 @@
 #include "handle-inl.h"
 
 
+/* The number of milliseconds in one second. */
+#define UV__MILLISEC 1000
+
+
 void uv_update_time(uv_loop_t* loop) {
-  DWORD ticks;
-  ULARGE_INTEGER time;
-
-  ticks = GetTickCount();
-
-  time.QuadPart = loop->time;
-
-  /* GetTickCount() can conceivably wrap around, so when the current tick
-   * count is lower than the last tick count, we'll assume it has wrapped.
-   * uv_poll must make sure that the timer can never overflow more than
-   * once between two subsequent uv_update_time calls.
-   */
-  time.LowPart = ticks;
-  if (ticks < loop->last_tick_count)
-    time.HighPart++;
-
-  /* Remember the last tick count. */
-  loop->last_tick_count = ticks;
-
-  /* The GetTickCount() resolution isn't too good. Sometimes it'll happen
-   * that GetQueuedCompletionStatus() or GetQueuedCompletionStatusEx() has
-   * waited for a couple of ms but this is not reflected in the GetTickCount
-   * result yet. Therefore whenever GetQueuedCompletionStatus times out
-   * we'll add the number of ms that it has waited to the current loop time.
-   * When that happened the loop time might be a little ms farther than what
-   * we've just computed, and we shouldn't update the loop time.
-   */
-  if (loop->time < time.QuadPart)
-    loop->time = time.QuadPart;
+  uint64_t new_time = uv__hrtime(UV__MILLISEC);
+  if (new_time > loop->time) {
+    loop->time = new_time;
+  }
 }
-
 
 void uv__time_forward(uv_loop_t* loop, uint64_t msecs) {
   loop->time += msecs;
@@ -191,16 +169,9 @@ DWORD uv__next_timeout(const uv_loop_t* loop) {
   timer = RB_MIN(uv_timer_tree_s, &((uv_loop_t*)loop)->timers);
   if (timer) {
     delta = timer->due - loop->time;
-    if (delta >= UINT_MAX >> 1) {
-      /* A timeout value of UINT_MAX means infinite, so that's no good. But
-       * more importantly, there's always the risk that GetTickCount wraps.
-       * uv_update_time can detect this, but we must make sure that the
-       * tick counter never overflows twice between two subsequent
-       * uv_update_time calls. We do this by never sleeping more than half
-       * the time it takes to wrap  the counter - which is huge overkill,
-       * but hey, it's not so bad to wake up every 25 days.
-       */
-      return UINT_MAX >> 1;
+    if (delta >= UINT_MAX - 1) {
+      /* A timeout value of UINT_MAX means infinite, so that's no good. */
+      return UINT_MAX - 1;
     } else if (delta < 0) {
       /* Negative timeout values are not allowed */
       return 0;

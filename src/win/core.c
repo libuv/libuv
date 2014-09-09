@@ -137,7 +137,6 @@ int uv_loop_init(uv_loop_t* loop) {
    * to zero before calling uv_update_time for the first time.
    */
   loop->time = 0;
-  loop->last_tick_count = 0;
   uv_update_time(loop);
 
   QUEUE_INIT(&loop->wq);
@@ -314,13 +313,17 @@ static void uv_poll(uv_loop_t* loop, DWORD timeout) {
     /* Package was dequeued */
     req = uv_overlapped_to_req(overlapped);
     uv_insert_pending_req(loop, req);
+
+    /* Some time might have passed waiting for I/O,
+     * so update the loop time here.
+     */
+    uv_update_time(loop);
   } else if (GetLastError() != WAIT_TIMEOUT) {
     /* Serious error */
     uv_fatal_error(GetLastError(), "GetQueuedCompletionStatus");
-  } else {
-    /* We're sure that at least `timeout` milliseconds have expired, but
-     * this may not be reflected yet in the GetTickCount() return value.
-     * Therefore we ensure it's taken into account here.
+  } else if (timeout > 0) {
+    /* GetQueuedCompletionStatus can occasionally return a little early.
+     * Make sure that the desired timeout is reflected in the loop time.
      */
     uv__time_forward(loop, timeout);
   }
@@ -347,13 +350,17 @@ static void uv_poll_ex(uv_loop_t* loop, DWORD timeout) {
       req = uv_overlapped_to_req(overlappeds[i].lpOverlapped);
       uv_insert_pending_req(loop, req);
     }
+
+    /* Some time might have passed waiting for I/O,
+     * so update the loop time here.
+     */
+    uv_update_time(loop);
   } else if (GetLastError() != WAIT_TIMEOUT) {
     /* Serious error */
     uv_fatal_error(GetLastError(), "GetQueuedCompletionStatusEx");
   } else if (timeout > 0) {
-    /* We're sure that at least `timeout` milliseconds have expired, but
-     * this may not be reflected yet in the GetTickCount() return value.
-     * Therefore we ensure it's taken into account here.
+    /* GetQueuedCompletionStatus can occasionally return a little early.
+     * Make sure that the desired timeout is reflected in the loop time.
      */
     uv__time_forward(loop, timeout);
   }
@@ -412,7 +419,6 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
        * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
        * the check.
        */
-      uv_update_time(loop);
       uv_process_timers(loop);
     }
 
