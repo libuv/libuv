@@ -34,5 +34,6 @@
 #define UV_VERSION_MINOR 0
 #define UV_VERSION_PATCH 0
 #define UV_VERSION_IS_RELEASE 0
+#define UV_VERSION_SUFFIX "dev"
 
 #endif /* UV_VERSION_H */

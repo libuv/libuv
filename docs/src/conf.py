@@ -29,7 +29,9 @@ def get_libuv_version():
         patch = int(m.group(1))
         m = re.search(r"""^#define UV_VERSION_IS_RELEASE (\d)$""", data, re.MULTILINE)
         is_release = int(m.group(1))
-        return '%d.%d.%d%s' % (major, minor, patch, '-pre' if not is_release else '')
+        m = re.search(r"""^#define UV_VERSION_SUFFIX \"(\w*)\"$""", data, re.MULTILINE)
+        suffix = m.group(1)
+        return '%d.%d.%d%s' % (major, minor, patch, '-%s' % suffix if not is_release else '')
     except Exception:
         return 'unknown'
 
