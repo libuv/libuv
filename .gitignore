@@ -64,3 +64,6 @@ ipch
 
 # sphinx generated files
 /docs/build/
+
+*.xcodeproj
+*.xcworkspace
