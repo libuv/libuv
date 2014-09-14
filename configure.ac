@@ -17,6 +17,7 @@ AC_INIT([libuv], [1.0.0], [https://github.com/joyent/libuv/issues])
 AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/libuv-extra-automake-flags.m4])
 m4_include([m4/as_case.m4])
+m4_include([m4/libuv-check-flags.m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects] UV_EXTRA_AUTOMAKE_FLAGS)
 AC_CANONICAL_HOST
 AC_ENABLE_SHARED
