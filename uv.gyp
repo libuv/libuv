@@ -26,6 +26,30 @@
         ],
       }],
     ],
+    'xcode_settings': {
+        'conditions': [
+          [ 'clang==1', {
+            'WARNING_CFLAGS': [
+              '-Wall',
+              '-Wextra',
+              '-Wno-unused-parameter',
+              '-Wno-dollar-in-identifier-extension'
+            ]}, {
+           'WARNING_CFLAGS': [
+             '-Wall',
+             '-Wextra',
+             '-Wno-unused-parameter'
+          ]}
+        ]
+      ],
+      'OTHER_LDFLAGS': [
+      ],
+      'OTHER_CFLAGS': [
+        '-g',
+        '--std=gnu89',
+        '-pedantic'
+      ],
+    }
   },
 
   'targets': [
