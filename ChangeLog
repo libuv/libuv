@@ -1,5 +1,7 @@
 2014.09.18, Version 1.0.0-rc1 (Unstable), 0c28bbf7b42882853d1799ab96ff68b07f7f8d49
 
+Changes since version 0.11.29:
+
 * windows: improve timer precision (Alexis Campailla)
 
 * build, gyp: set xcode flags (Recep ASLANTAS)
