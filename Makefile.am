@@ -106,6 +106,9 @@ libuv_la_SOURCES += src/unix/async.c \
 
 endif  # WINNT
 
+EXTRA_DIST = test/fixtures/empty_file \
+             test/fixtures/load_error.node
+
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
 test_run_tests_CFLAGS =
