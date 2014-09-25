@@ -783,7 +783,7 @@ void fs__mkdtemp(uv_fs_t* req) {
 }
 
 
-void fs__readdir(uv_fs_t* req) {
+void fs__scandir(uv_fs_t* req) {
   WCHAR* pathw = req->pathw;
   size_t len = wcslen(pathw);
   int result;
@@ -1604,7 +1604,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(MKDIR, mkdir)
     XX(MKDTEMP, mkdtemp)
     XX(RENAME, rename)
-    XX(READDIR, readdir)
+    XX(SCANDIR, scandir)
     XX(LINK, link)
     XX(SYMLINK, symlink)
     XX(READLINK, readlink)
@@ -1839,11 +1839,11 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 }
 
 
-int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
+int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_READDIR, cb);
+  uv_fs_req_init(loop, req, UV_FS_SCANDIR, cb);
 
   err = fs__capture_path(loop, req, path, NULL, cb != NULL);
   if (err) {
@@ -1856,7 +1856,7 @@ int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     QUEUE_FS_TP_JOB(loop, req);
     return 0;
   } else {
-    fs__readdir(req);
+    fs__scandir(req);
     return req->result;
   }
 }

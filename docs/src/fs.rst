@@ -74,7 +74,7 @@ Data types
             UV_FS_MKDIR,
             UV_FS_MKDTEMP,
             UV_FS_RENAME,
-            UV_FS_READDIR,
+            UV_FS_SCANDIR,
             UV_FS_LINK,
             UV_FS_SYMLINK,
             UV_FS_READLINK,
@@ -85,7 +85,7 @@ Data types
 .. c:type:: uv_dirent_t
 
     Cross platform (reduced) equivalent of ``struct dirent``.
-    Used in :c:func:`uv_fs_readdir_next`.
+    Used in :c:func:`uv_fs_scandir_next`.
 
     ::
 
@@ -183,11 +183,11 @@ API
 
     Equivalent to ``rmdir(2)``.
 
-.. c:function:: int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
-.. c:function:: int uv_fs_readdir_next(uv_fs_t* req, uv_dirent_t* ent)
+.. c:function:: int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
+.. c:function:: int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
 
-    Equivalent to ``readdir(2)``, with a slightly different API. Once the callback
-    for the request is called, the user can use :c:func:`uv_fs_readdir_next` to
+    Equivalent to ``scandir(3)``, with a slightly different API. Once the callback
+    for the request is called, the user can use :c:func:`uv_fs_scandir_next` to
     get `ent` populated with the next directory entry data. When there are no
     more entries ``UV_EOF`` will be returned.
 

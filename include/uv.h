@@ -1031,7 +1031,7 @@ typedef enum {
   UV_FS_MKDIR,
   UV_FS_MKDTEMP,
   UV_FS_RENAME,
-  UV_FS_READDIR,
+  UV_FS_SCANDIR,
   UV_FS_LINK,
   UV_FS_SYMLINK,
   UV_FS_READLINK,
@@ -1094,12 +1094,12 @@ UV_EXTERN int uv_fs_rmdir(uv_loop_t* loop,
                           uv_fs_t* req,
                           const char* path,
                           uv_fs_cb cb);
-UV_EXTERN int uv_fs_readdir(uv_loop_t* loop,
+UV_EXTERN int uv_fs_scandir(uv_loop_t* loop,
                             uv_fs_t* req,
                             const char* path,
                             int flags,
                             uv_fs_cb cb);
-UV_EXTERN int uv_fs_readdir_next(uv_fs_t* req,
+UV_EXTERN int uv_fs_scandir_next(uv_fs_t* req,
                                  uv_dirent_t* ent);
 UV_EXTERN int uv_fs_stat(uv_loop_t* loop,
                          uv_fs_t* req,
