@@ -744,6 +744,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     return -errno;
 
   *count = 0;
+  *addresses = NULL;
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
@@ -755,6 +756,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
     (*count)++;
   }
+
+  if (*count == 0)
+    return 0;
 
   *addresses = malloc(*count * sizeof(**addresses));
   if (!(*addresses))
