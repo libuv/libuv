@@ -549,7 +549,6 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   if (server->accepted_fd == -1)
     return -EAGAIN;
 
-  err = 0;
   switch (client->type) {
     case UV_NAMED_PIPE:
     case UV_TCP:
