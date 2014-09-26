@@ -271,6 +271,11 @@ libuv_la_SOURCES += src/unix/darwin.c \
                     src/unix/proctitle.c
 endif
 
+if DRAGONFLY
+include_HEADERS += include/uv-bsd.h
+libuv_la_SOURCES += src/unix/kqueue.c src/unix/freebsd.c
+endif
+
 if FREEBSD
 include_HEADERS += include/uv-bsd.h
 libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
