@@ -20,9 +20,20 @@ Data types
 
     Filesystem request type.
 
+.. c:type:: uv_timespec_t
+
+    Portable equivalent of ``struct timespec``.
+
+    ::
+
+        typedef struct {
+            long tv_sec;
+            long tv_nsec;
+        } uv_timespec_t;
+
 .. c:type:: uv_stat_t
 
-    Portable equivalent of `struct stat`.
+    Portable equivalent of ``struct stat``.
 
     ::
 
