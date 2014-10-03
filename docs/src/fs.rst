@@ -76,6 +76,7 @@ Data types
             UV_FS_FTRUNCATE,
             UV_FS_UTIME,
             UV_FS_FUTIME,
+            UV_FS_ACCESS,
             UV_FS_CHMOD,
             UV_FS_FCHMOD,
             UV_FS_FSYNC,
@@ -227,6 +228,10 @@ API
 .. c:function:: int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd, uv_file in_fd, int64_t in_offset, size_t length, uv_fs_cb cb)
 
     Limited equivalent to ``sendfile(2)``.
+
+.. c:function:: int uv_fs_access(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
+
+    Equivalent to ``access(2)`` on Unix. Windows uses ``GetFileAttributesW()``.
 
 .. c:function:: int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 .. c:function:: int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode, uv_fs_cb cb)

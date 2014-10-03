@@ -75,6 +75,7 @@ static int fdatasync_cb_count;
 static int ftruncate_cb_count;
 static int sendfile_cb_count;
 static int fstat_cb_count;
+static int access_cb_count;
 static int chmod_cb_count;
 static int fchmod_cb_count;
 static int chown_cb_count;
@@ -163,6 +164,14 @@ static void readlink_cb(uv_fs_t* req) {
   readlink_cb_count++;
   uv_fs_req_cleanup(req);
 }
+
+
+static void access_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_ACCESS);
+  access_cb_count++;
+  uv_fs_req_cleanup(req);
+}
+
 
 static void fchmod_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_FCHMOD);
@@ -1100,6 +1109,70 @@ TEST_IMPL(fs_fstat) {
   ASSERT(fstat_cb_count == 1);
 
 
+  r = uv_fs_close(loop, &req, file, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /*
+   * Run the loop just to check we don't have make any extraneous uv_ref()
+   * calls. This should drop out immediately.
+   */
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  /* Cleanup. */
+  unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(fs_access) {
+  int r;
+  uv_fs_t req;
+  uv_file file;
+
+  /* Setup. */
+  unlink("test_file");
+
+  loop = uv_default_loop();
+
+  /* File should not exist */
+  r = uv_fs_access(loop, &req, "test_file", F_OK, NULL);
+  ASSERT(r < 0);
+  ASSERT(req.result < 0);
+  uv_fs_req_cleanup(&req);
+
+  /* File should not exist */
+  r = uv_fs_access(loop, &req, "test_file", F_OK, access_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(access_cb_count == 1);
+  access_cb_count = 0; /* reset for the next test */
+
+  /* Create file */
+  r = uv_fs_open(loop, &req, "test_file", O_RDWR | O_CREAT,
+                 S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r >= 0);
+  ASSERT(req.result >= 0);
+  file = req.result;
+  uv_fs_req_cleanup(&req);
+
+  /* File should exist */
+  r = uv_fs_access(loop, &req, "test_file", F_OK, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /* File should exist */
+  r = uv_fs_access(loop, &req, "test_file", F_OK, access_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(access_cb_count == 1);
+  access_cb_count = 0; /* reset for the next test */
+
+  /* Close file */
   r = uv_fs_close(loop, &req, file, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);

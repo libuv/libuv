@@ -763,6 +763,7 @@ static void uv__fs_work(struct uv__work* w) {
     break;
 
     switch (req->fs_type) {
+    X(ACCESS, access(req->path, req->flags));
     X(CHMOD, chmod(req->path, req->mode));
     X(CHOWN, chown(req->path, req->uid, req->gid));
     X(CLOSE, close(req->file));
@@ -850,6 +851,18 @@ static void uv__fs_done(struct uv__work* w, int status) {
 
   if (req->cb != NULL)
     req->cb(req);
+}
+
+
+int uv_fs_access(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 int flags,
+                 uv_fs_cb cb) {
+  INIT(ACCESS);
+  PATH;
+  req->flags = flags;
+  POST;
 }
 
 

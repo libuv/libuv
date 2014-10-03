@@ -1220,6 +1220,25 @@ static void fs__sendfile(uv_fs_t* req) {
 }
 
 
+static void fs__access(uv_fs_t* req) {
+  DWORD attr = GetFileAttributesW(req->pathw);
+
+  if (attr == INVALID_FILE_ATTRIBUTES) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
+  }
+
+  if ((req->flags & W_OK) &&
+      ((attr & FILE_ATTRIBUTE_READONLY) ||
+      (attr & FILE_ATTRIBUTE_DIRECTORY))) {
+    SET_REQ_WIN32_ERROR(req, UV_EPERM);
+    return;
+  }
+
+  SET_REQ_RESULT(req, 0);
+}
+
+
 static void fs__chmod(uv_fs_t* req) {
   int result = _wchmod(req->pathw, req->mode);
   SET_REQ_RESULT(req, result);
@@ -1595,6 +1614,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(FTRUNCATE, ftruncate)
     XX(UTIME, utime)
     XX(FUTIME, futime)
+    XX(ACCESS, access)
     XX(CHMOD, chmod)
     XX(FCHMOD, fchmod)
     XX(FSYNC, fsync)
@@ -2099,6 +2119,31 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file fd_out,
     fs__sendfile(req);
     return req->result;
   }
+}
+
+
+int uv_fs_access(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 int flags,
+                 uv_fs_cb cb) {
+  int err;
+
+  uv_fs_req_init(loop, req, UV_FS_ACCESS, cb);
+
+  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  req->flags = flags;
+
+  if (cb) {
+    QUEUE_FS_TP_JOB(loop, req);
+    return 0;
+  }
+
+  fs__access(req);
+  return req->result;
 }
 
 
