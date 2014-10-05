@@ -306,11 +306,11 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
 }
 
 
-unsigned long uv_thread_self(void) {
+uv_thread_t uv_thread_self(void) {
 #ifdef _WIN32
-  return (unsigned long) GetCurrentThreadId();
+  return GetCurrentThreadId();
 #else
-  return (unsigned long) pthread_self();
+  return pthread_self();
 #endif
 }
 
