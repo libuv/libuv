@@ -38,11 +38,6 @@
           'GCC_OPTIMIZATION_LEVEL': '0',
           'OTHER_CFLAGS': [ '-Wno-strict-aliasing' ],
         },
-        'conditions': [
-          ['OS != "win"', {
-            'defines': [ 'EV_VERIFY=2' ],
-          }],
-        ]
       },
       'Release': {
         'defines': [ 'NDEBUG' ],
