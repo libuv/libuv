@@ -97,6 +97,8 @@ To build with autotools:
     $ make check
     $ make install
 
+Run `./configure --host=x86_64-x32-linux` to build [x32][] binaries.
+
 ### Windows
 
 First, [Python][] 2.6 or 2.7 must be installed as it is required by [GYP][].
@@ -175,3 +177,4 @@ See the [guidelines for contributing][].
 [Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
 [guidelines for contributing]: https://github.com/joyent/libuv/blob/master/CONTRIBUTING.md
 [libuv_banner]: https://raw.githubusercontent.com/joyent/libuv/master/img/banner.png
+[x32]: http://en.wikipedia.org/wiki/X32_ABI

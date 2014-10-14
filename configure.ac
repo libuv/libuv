@@ -56,5 +56,6 @@ AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
 AS_IF([test "x$PKG_CONFIG" != "x"], [
     AC_CONFIG_FILES([libuv.pc])
 ])
+AS_CASE([$host], [x86_64-x32-*], [CC_CHECK_CFLAGS_APPEND([-mx32])])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
