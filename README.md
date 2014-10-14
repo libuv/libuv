@@ -121,6 +121,8 @@ Run:
     $ ./gyp_uv.py -f make
     $ make -C out
 
+Run `./gyp_uv.py -f make -Dtarget_arch=x32` to build [x32][] binaries.
+
 ### OS X
 
 Run:
