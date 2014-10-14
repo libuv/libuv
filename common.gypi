@@ -138,6 +138,10 @@
             'cflags': [ '-m32' ],
             'ldflags': [ '-m32' ],
           }],
+          [ 'target_arch=="x32"', {
+            'cflags': [ '-mx32' ],
+            'ldflags': [ '-mx32' ],
+          }],
           [ 'OS=="linux"', {
             'cflags': [ '-ansi' ],
           }],
