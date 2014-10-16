@@ -206,7 +206,7 @@ int uv_cwd(char* buffer, size_t* size) {
   if (r == 0) {
     return uv_translate_sys_error(GetLastError());
   } else if (r > (int) *size) {
-    *size = r;
+    *size = r -1;
     return UV_ENOBUFS;
   }
 
@@ -223,7 +223,7 @@ int uv_cwd(char* buffer, size_t* size) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  *size = r;
+  *size = r - 1;
   return 0;
 }
 
