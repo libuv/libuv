@@ -26,6 +26,30 @@
         ],
       }],
     ],
+    'xcode_settings': {
+        'conditions': [
+          [ 'clang==1', {
+            'WARNING_CFLAGS': [
+              '-Wall',
+              '-Wextra',
+              '-Wno-unused-parameter',
+              '-Wno-dollar-in-identifier-extension'
+            ]}, {
+           'WARNING_CFLAGS': [
+             '-Wall',
+             '-Wextra',
+             '-Wno-unused-parameter'
+          ]}
+        ]
+      ],
+      'OTHER_LDFLAGS': [
+      ],
+      'OTHER_CFLAGS': [
+        '-g',
+        '--std=gnu89',
+        '-pedantic'
+      ],
+    }
   },
 
   'targets': [
@@ -192,6 +216,7 @@
           ],
           'defines': [
             '_DARWIN_USE_64_BIT_INODE=1',
+            '_DARWIN_UNLIMITED_SELECT=1',
           ]
         }],
         [ 'OS!="mac"', {
@@ -309,6 +334,7 @@
         'test/test-close-order.c',
         'test/test-connection-fail.c',
         'test/test-cwd-and-chdir.c',
+        'test/test-default-loop-close.c',
         'test/test-delayed-accept.c',
         'test/test-error.c',
         'test/test-embed.c',
@@ -384,6 +410,7 @@
         'test/test-tcp-write-queue-order.c',
         'test/test-threadpool.c',
         'test/test-threadpool-cancel.c',
+        'test/test-thread-equal.c',
         'test/test-mutexes.c',
         'test/test-thread.c',
         'test/test-barrier.c',

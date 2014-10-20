@@ -316,8 +316,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   HANDLE iocp;                                                                \
   /* The current time according to the event loop. in msecs. */               \
   uint64_t time;                                                              \
-  /* GetTickCount() result when the event loop time was last updated. */      \
-  DWORD last_tick_count;                                                      \
   /* Tail of a single-linked circular queue of pending reqs. If the queue */  \
   /* is empty, tail_ is NULL. If there is only one item, */                   \
   /* tail_->next_req == tail_ */                                              \
@@ -641,3 +639,15 @@ int uv_utf16_to_utf8(const WCHAR* utf16Buffer, size_t utf16Size,
 int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
     size_t utf16Size);
 
+#ifndef F_OK
+#define F_OK 0
+#endif
+#ifndef R_OK
+#define R_OK 4
+#endif
+#ifndef W_OK
+#define W_OK 2
+#endif
+#ifndef X_OK
+#define X_OK 1
+#endif

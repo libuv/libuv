@@ -65,7 +65,6 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 /* Used by all handles. */
 #define UV_HANDLE_CLOSED                        0x00000002
 #define UV_HANDLE_ENDGAME_QUEUED                0x00000004
-#define UV_HANDLE_ACTIVE                        0x00000010
 
 /* uv-common.h: #define UV__HANDLE_CLOSING      0x00000001 */
 /* uv-common.h: #define UV__HANDLE_ACTIVE       0x00000040 */
@@ -323,6 +322,7 @@ void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
  */
 void uv__util_init();
 
+uint64_t uv__hrtime(double scale);
 int uv_parent_pid();
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
 

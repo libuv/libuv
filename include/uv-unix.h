@@ -219,7 +219,7 @@ typedef struct {
   uv_async_t wq_async;                                                        \
   uv_rwlock_t cloexec_lock;                                                   \
   uv_handle_t* closing_handles;                                               \
-  void* process_handles[1][2];                                                \
+  void* process_handles[2];                                                   \
   void* prepare_handles[2];                                                   \
   void* check_handles[2];                                                     \
   void* idle_handles[2];                                                      \

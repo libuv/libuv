@@ -38,7 +38,7 @@ used by Mozilla's [Rust language](http://www.rust-lang.org/),
 
 Starting with version 1.0.0 libuv follows the [semantic versioning](http://semver.org/)
 scheme. The API change and backwards compatiblity rules are those indicated by
-SemVer. libuv will keel a stable ABI across major releases.
+SemVer. libuv will keep a stable ABI across major releases.
 
 ## Community
 
@@ -46,8 +46,34 @@ SemVer. libuv will keel a stable ABI across major releases.
 
 ## Documentation
 
- * [include/uv.h](https://github.com/joyent/libuv/blob/master/include/uv.h)
-   &mdash; API documentation in the form of detailed header comments.
+### Official API documentation
+
+Located in the docs/ subdirectory. It uses the [Sphinx](http://sphinx-doc.org/)
+framework, which makes it possible to build the documentation in multiple
+formats.
+
+Show different supported building options:
+
+    $ make help
+
+Build documentation as HTML:
+
+    $ make html
+
+Build documentation as man pages:
+
+    $ make man
+
+Build documentation as ePub:
+
+    $ make epub
+
+NOTE: Windows users need to use make.bat instead of plain 'make'.
+
+Documentation can be browsed online [here](http://docs.libuv.org).
+
+### Other resources
+
  * [An Introduction to libuv](http://nikhilm.github.com/uvbook/)
    &mdash; An overview of libuv with tutorials.
  * [LXJS 2012 talk](http://www.youtube.com/watch?v=nGn60vDSxQ4)
@@ -59,7 +85,7 @@ SemVer. libuv will keel a stable ABI across major releases.
 
 ## Build Instructions
 
-For GCC there are two methods building: via autotools or via [GYP][].
+For GCC there are two build methods: via autotools or via [GYP][].
 GYP is a meta-build system which can generate MSVS, Makefile, and XCode
 backends. It is best used for integration into other projects.
 
@@ -74,7 +100,7 @@ To build with autotools:
 ### Windows
 
 First, [Python][] 2.6 or 2.7 must be installed as it is required by [GYP][].
-If python is not in your path set the environment variable `PYTHON` to its
+If python is not in your path, set the environment variable `PYTHON` to its
 location. For example: `set PYTHON=C:\Python27\python.exe`
 
 To build with Visual Studio, launch a git shell (e.g. Cmd or PowerShell)
