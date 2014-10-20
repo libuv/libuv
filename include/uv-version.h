@@ -33,7 +33,7 @@
 #define UV_VERSION_MAJOR 1
 #define UV_VERSION_MINOR 0
 #define UV_VERSION_PATCH 0
-#define UV_VERSION_IS_RELEASE 1
-#define UV_VERSION_SUFFIX "rc2"
+#define UV_VERSION_IS_RELEASE 0
+#define UV_VERSION_SUFFIX "rc3"
 
 #endif /* UV_VERSION_H */
