@@ -613,11 +613,6 @@ void fs__write(uv_fs_t* req) {
 
   if (offset != -1) {
     memset(&overlapped, 0, sizeof overlapped);
-
-    offset_.QuadPart = offset;
-    overlapped.Offset = offset_.LowPart;
-    overlapped.OffsetHigh = offset_.HighPart;
-
     overlapped_ptr = &overlapped;
   } else {
     overlapped_ptr = NULL;
@@ -627,6 +622,14 @@ void fs__write(uv_fs_t* req) {
   bytes = 0;
   do {
     DWORD incremental_bytes;
+
+    /* WriteFile() does not advance overlapped as ReadFile() does. */
+    if (offset != -1) {
+      offset_.QuadPart = offset + bytes;
+      overlapped.Offset = offset_.LowPart;
+      overlapped.OffsetHigh = offset_.HighPart;
+    }
+
     result = WriteFile(handle,
                        req->bufs[index].base,
                        req->bufs[index].len,
