@@ -38,11 +38,6 @@
           'GCC_OPTIMIZATION_LEVEL': '0',
           'OTHER_CFLAGS': [ '-Wno-strict-aliasing' ],
         },
-        'conditions': [
-          ['OS != "win"', {
-            'defines': [ 'EV_VERIFY=2' ],
-          }],
-        ]
       },
       'Release': {
         'defines': [ 'NDEBUG' ],
@@ -142,6 +137,10 @@
           [ 'host_arch != target_arch and target_arch=="ia32"', {
             'cflags': [ '-m32' ],
             'ldflags': [ '-m32' ],
+          }],
+          [ 'target_arch=="x32"', {
+            'cflags': [ '-mx32' ],
+            'ldflags': [ '-mx32' ],
           }],
           [ 'OS=="linux"', {
             'cflags': [ '-ansi' ],
