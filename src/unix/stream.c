@@ -1471,15 +1471,8 @@ int uv_read_start(uv_stream_t* stream,
 
 
 int uv_read_stop(uv_stream_t* stream) {
-  /* Sanity check. We're going to stop the handle unless it's primed for
-   * writing but that means there should be some kind of write action in
-   * progress.
-   */
-  assert(!uv__io_active(&stream->io_watcher, UV__POLLOUT) ||
-         !QUEUE_EMPTY(&stream->write_completed_queue) ||
-         !QUEUE_EMPTY(&stream->write_queue) ||
-         stream->shutdown_req != NULL ||
-         stream->connect_req != NULL);
+  if (!(stream->flags & UV_STREAM_READING))
+    return 0;
 
   stream->flags &= ~UV_STREAM_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLIN);
