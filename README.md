@@ -110,8 +110,9 @@ generate uv.sln as well as related project files.
 To have GYP generate build script for another system, checkout GYP into the
 project tree manually:
 
-    $ mkdir -p build
-    $ git clone https://git.chromium.org/external/gyp.git build/gyp
+    $ git clone https://chromium.googlesource.com/external/gyp.git build/gyp
+    OR
+    $ svn co http://gyp.googlecode.com/svn/trunk build/gyp
 
 ### Unix
 
