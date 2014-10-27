@@ -129,6 +129,10 @@ Run:
     $ xcodebuild -ARCHS="x86_64" -project uv.xcodeproj \
          -configuration Release -target All
 
+Using Homebrew:
+
+    $ brew install --HEAD libuv
+
 Note to OS X users:
 
 Make sure that you specify the architecture you wish to build for in the
