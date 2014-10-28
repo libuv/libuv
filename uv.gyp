@@ -1,5 +1,8 @@
 {
   'variables': {
+    'clang%': 0,
+    # Allow override to 'shared_library' for DLL/.so builds.
+    'uv_library%': 'static_library',
     'uv_use_dtrace%': 'false',
     # uv_parent_path is the relative path to libuv in the parent project
     # this is only relevant when dtrace is enabled and libuv is a child project
