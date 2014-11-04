@@ -82,6 +82,8 @@ Documentation can be browsed online [here](http://docs.libuv.org).
    &mdash; API specification and usage examples.
  * [libuv-dox](https://github.com/thlorenz/libuv-dox)
    &mdash; Documenting types and methods of libuv, mostly by reading uv.h.
+ * [learnuv](https://github.com/thlorenz/learnuv)
+   &mdash; Learn uv for fun and profit, a self guided workshop to libuv.
 
 ## Build Instructions
 
