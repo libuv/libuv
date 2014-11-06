@@ -1,14 +1,4 @@
 {
-  'variables': {
-    'uv_use_dtrace%': 'false',
-    # uv_parent_path is the relative path to libuv in the parent project
-    # this is only relevant when dtrace is enabled and libuv is a child project
-    # as it's necessary to correctly locate the object files for post
-    # processing.
-    # XXX gyp is quite sensitive about paths with double / they don't normalize
-    'uv_parent_path': '/',
-  },
-
   'target_defaults': {
     'conditions': [
       ['OS != "win"', {
@@ -296,20 +286,6 @@
         ['uv_library=="shared_library"', {
           'defines': [ 'BUILDING_UV_SHARED=1' ]
         }],
-        # FIXME(bnoordhuis or tjfontaine) Unify this, it's extremely ugly.
-        ['uv_use_dtrace=="true"', {
-          'defines': [ 'HAVE_DTRACE=1' ],
-          'dependencies': [ 'uv_dtrace_header' ],
-          'include_dirs': [ '<(SHARED_INTERMEDIATE_DIR)' ],
-          'conditions': [
-            [ 'OS not in "mac linux"', {
-              'sources': [ 'src/unix/dtrace.c' ],
-            }],
-            [ 'OS=="linux"', {
-              'sources': [ '<(SHARED_INTERMEDIATE_DIR)/dtrace.o' ]
-            }],
-          ],
-        }],
       ]
     },
 
@@ -522,60 +498,5 @@
         },
       },
     },
-
-    {
-      'target_name': 'uv_dtrace_header',
-      'type': 'none',
-      'conditions': [
-        [ 'uv_use_dtrace=="true"', {
-          'actions': [
-            {
-              'action_name': 'uv_dtrace_header',
-              'inputs': [ 'src/unix/uv-dtrace.d' ],
-              'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/uv-dtrace.h' ],
-              'action': [ 'dtrace', '-h', '-xnolibs', '-s', '<@(_inputs)',
-                '-o', '<@(_outputs)' ],
-            },
-          ],
-        }],
-      ],
-    },
-
-    # FIXME(bnoordhuis or tjfontaine) Unify this, it's extremely ugly.
-    {
-      'target_name': 'uv_dtrace_provider',
-      'type': 'none',
-      'conditions': [
-        [ 'uv_use_dtrace=="true" and OS not in "mac linux"', {
-          'actions': [
-            {
-              'action_name': 'uv_dtrace_o',
-              'inputs': [
-                'src/unix/uv-dtrace.d',
-                '<(PRODUCT_DIR)/obj.target/libuv<(uv_parent_path)src/unix/core.o',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/obj.target/libuv<(uv_parent_path)src/unix/dtrace.o',
-              ],
-              'action': [ 'dtrace', '-G', '-xnolibs', '-s', '<@(_inputs)',
-                '-o', '<@(_outputs)' ]
-            }
-          ]
-        }],
-        [ 'uv_use_dtrace=="true" and OS=="linux"', {
-          'actions': [
-            {
-              'action_name': 'uv_dtrace_o',
-              'inputs': [ 'src/unix/uv-dtrace.d' ],
-              'outputs': [ '<(SHARED_INTERMEDIATE_DIR)/dtrace.o' ],
-              'action': [
-                'dtrace', '-C', '-G', '-s', '<@(_inputs)', '-o', '<@(_outputs)'
-              ],
-            }
-          ]
-        }],
-      ]
-    },
-
   ]
 }
