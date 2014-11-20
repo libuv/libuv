@@ -189,7 +189,7 @@
             ['uv_library=="shared_library" and OS!="mac"', {
               'link_settings': {
                 # Must correspond with UV_VERSION_MAJOR and UV_VERSION_MINOR
-                # in src/version.c
+                # in include/uv-version.h
                 'libraries': [ '-Wl,-soname,libuv.so.1.0' ],
               },
             }],
