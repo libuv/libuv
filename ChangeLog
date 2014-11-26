@@ -1,4 +1,4 @@
-2014.11.27, Version 1.0.1 (Stable)
+2014.11.27, Version 1.0.1 (Stable), 0a8e81374e861d425b56c45c8599595d848911d2
 
 Changes since version 1.0.0:
 
@@ -13,7 +13,7 @@ Changes since version 1.0.0:
 * win: replace non-ansi characters in source file (Bert Belder)
 
 
-2014.11.21, Version 1.0.0 (Stable)
+2014.11.21, Version 1.0.0 (Stable), feb2a9e6947d892f449b2770c4090f7d8c88381b
 
 Changes since version 1.0.0-rc2:
 
