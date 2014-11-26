@@ -77,7 +77,7 @@ Documentation can be browsed online [here](http://docs.libuv.org).
    &mdash; An overview of libuv with tutorials.
  * [LXJS 2012 talk](http://www.youtube.com/watch?v=nGn60vDSxQ4)
    &mdash; High-level introductory talk about libuv.
- * [Tests and benchmarks](https://github.com/joyent/libuv/tree/master/test)
+ * [Tests and benchmarks](https://github.com/libuv/libuv/tree/master/test)
    &mdash; API specification and usage examples.
  * [libuv-dox](https://github.com/thlorenz/libuv-dox)
    &mdash; Documenting types and methods of libuv, mostly by reading uv.h.
@@ -181,5 +181,5 @@ See the [guidelines for contributing][].
 [GYP]: http://code.google.com/p/gyp/
 [Python]: https://www.python.org/downloads/
 [Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
-[guidelines for contributing]: https://github.com/joyent/libuv/blob/master/CONTRIBUTING.md
-[libuv_banner]: https://raw.githubusercontent.com/joyent/libuv/master/img/banner.png
+[guidelines for contributing]: https://github.com/libuv/libuv/blob/master/CONTRIBUTING.md
+[libuv_banner]: https://raw.githubusercontent.com/libuv/libuv/master/img/banner.png
