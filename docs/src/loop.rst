@@ -59,7 +59,7 @@ API
 .. c:function:: uv_loop_t* uv_default_loop(void)
 
     Returns the initialized default loop. It may return NULL in case of
-    allocation failture.
+    allocation failure.
 
 .. c:function:: int uv_run(uv_loop_t* loop, uv_run_mode mode)
 
