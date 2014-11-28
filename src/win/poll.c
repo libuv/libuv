@@ -546,7 +546,7 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
     handle->flags |= UV_HANDLE_POLL_SLOW;
   }
 
-  /* Intialize 2 poll reqs. */
+  /* Initialize 2 poll reqs. */
   handle->submitted_events_1 = 0;
   uv_req_init(loop, (uv_req_t*) &(handle->poll_req_1));
   handle->poll_req_1.type = UV_POLL_REQ;
