@@ -36,7 +36,7 @@ used by [Luvit](http://luvit.io/), [Julia](http://julialang.org/),
 ## Versioning
 
 Starting with version 1.0.0 libuv follows the [semantic versioning](http://semver.org/)
-scheme. The API change and backwards compatiblity rules are those indicated by
+scheme. The API change and backwards compatibility rules are those indicated by
 SemVer. libuv will keep a stable ABI across major releases.
 
 ## Community
