@@ -24,6 +24,9 @@ AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 AC_PROG_CC
 AM_PROG_CC_C_O
+CC_CHECK_CFLAGS_APPEND([-Wall])
+CC_CHECK_CFLAGS_APPEND([-Wextra])
+CC_CHECK_CFLAGS_APPEND([-Wno-unused-parameter])
 CC_CHECK_CFLAGS_APPEND([-Wno-dollar-in-identifier-extension])
 # AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
