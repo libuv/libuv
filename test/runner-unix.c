@@ -43,7 +43,6 @@
 /* Do platform-specific initialization. */
 int platform_init(int argc, char **argv) {
   const char* tap;
-  ssize_t n;
 
   tap = getenv("UV_TAP_OUTPUT");
   tap_output = (tap != NULL && atoi(tap) > 0);
