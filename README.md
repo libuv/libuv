@@ -42,6 +42,7 @@ SemVer. libuv will keep a stable ABI across major releases.
 ## Community
 
  * [Mailing list](http://groups.google.com/group/libuv)
+ * [IRC chatroom (#libuv@irc.freenode.org)](http://webchat.freenode.net?channels=libuv&uio=d4)
 
 ## Documentation
 
