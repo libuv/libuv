@@ -1319,7 +1319,7 @@ int uv_write2(uv_write_t* req,
   /* It's legal for write_queue_size > 0 even when the write_queue is empty;
    * it means there are error-state requests in the write_completed_queue that
    * will touch up write_queue_size later, see also uv__write_req_finish().
-   * We chould check that write_queue is empty instead but that implies making
+   * We could check that write_queue is empty instead but that implies making
    * a write() syscall when we know that the handle is in error mode.
    */
   empty_queue = (stream->write_queue_size == 0);

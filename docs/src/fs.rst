@@ -258,7 +258,7 @@ API
             * ``UV_FS_SYMLINK_DIR``: indicates that `path` points to a directory.
 
             * ``UV_FS_SYMLINK_JUNCTION``: request that the symlink is created
-              using junktion points.
+              using junction points.
 
 .. c:function:: int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
