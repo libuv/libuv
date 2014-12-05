@@ -190,6 +190,9 @@ API
 .. c:function:: int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb)
 
     Equivalent to ``mkdtemp(3)``.
+    
+    .. note::
+        The result can be found as a null terminated string at `req->path`.
 
 .. c:function:: int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
