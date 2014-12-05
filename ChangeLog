@@ -85,6 +85,17 @@ Changes since version 1.0.0-rc1:
 * windows: fix fs_write with nbufs > 1 and offset (Unknown W. Brackets)
 
 
+2014.10.21, Version 0.10.29 (Stable), 2d728542d3790183417f8f122a110693cd85db14
+
+Changes since version 0.10.28:
+
+* darwin: allocate enough space for select() hack (Fedor Indutny)
+
+* linux: try epoll_pwait if epoll_wait is missing (Michael Hudson-Doyle)
+
+* windows: map ERROR_INVALID_DRIVE to UV_ENOENT (Saúl Ibarra Corretgé)
+
+
 2014.09.18, Version 1.0.0-rc1 (Unstable), 0c28bbf7b42882853d1799ab96ff68b07f7f8d49
 
 Changes since version 0.11.29:
@@ -271,6 +282,20 @@ Changes since version 0.11.26:
   Kelman)
 
 * windows: relay TCP bind errors via ipc (Alexis Campailla)
+
+
+2014.07.32, Version 0.10.28 (Stable), 9c14b616f5fb84bfd7d45707bab4bbb85894443e
+
+Changes since version 0.10.27:
+
+* windows: fix handling closed socket while poll handle is closing (Saúl Ibarra
+  Corretgé)
+
+* unix: return system error on EAI_SYSTEM (Saúl Ibarra Corretgé)
+
+* unix: fix bogus structure field name (Saúl Ibarra Corretgé)
+
+* darwin: invoke `mach_timebase_info` only once (Fedor Indutny)
 
 
 2014.06.28, Version 0.11.26 (Unstable), 115281a1058c4034d5c5ccedacb667fe3f6327ea
