@@ -43,8 +43,49 @@ typedef struct uv_single_fd_set_s {
 } uv_single_fd_set_t;
 
 
+typedef struct _afd_container_s {
+  AFD_POLL_INFO afd_poll_info;
+  uv_poll_t* handle;
+  struct _afd_container_s* next;
+} _afd_container_t;
+
+static _afd_container_t* _afd_container_root = NULL;
+
 static OVERLAPPED overlapped_dummy_;
 static uv_once_t overlapped_dummy_init_guard_ = UV_ONCE_INIT;
+
+
+static AFD_POLL_INFO* uv__allocate_afd_poll_info(uv_poll_t* handle) {
+	_afd_container_t* curr;
+
+	if (!_afd_container_root) {
+		_afd_container_root = (_afd_container_t*)malloc(sizeof(_afd_container_t));
+		_afd_container_root->next = NULL;
+		return &_afd_container_root->afd_poll_info;
+	}
+
+	curr = _afd_container_root;
+	while (curr->next) {
+		curr = curr->next;
+	}
+	curr->next = (_afd_container_t*)malloc(sizeof(_afd_container_t));
+	curr->next->next = NULL;
+	return &curr->next->afd_poll_info;
+}
+
+
+static void uv__deallocate_afd_poll_infos(uv_poll_t* handle) {
+	_afd_container_t* curr = _afd_container_root;
+	_afd_container_t* next;
+
+	while (curr) {
+		next = curr->next;
+		if (curr->handle == handle) {
+			free(curr);
+		}
+		curr = next;
+	}
+}
 
 
 static void uv__init_overlapped_dummy(void) {
@@ -119,18 +160,19 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 
 
 static int uv__fast_poll_cancel_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
-  AFD_POLL_INFO afd_poll_info;
+  AFD_POLL_INFO* afd_poll_info;
   int result;
 
-  afd_poll_info.Exclusive = TRUE;
-  afd_poll_info.NumberOfHandles = 1;
-  afd_poll_info.Timeout.QuadPart = INT64_MAX;
-  afd_poll_info.Handles[0].Handle = (HANDLE) handle->socket;
-  afd_poll_info.Handles[0].Status = 0;
-  afd_poll_info.Handles[0].Events = AFD_POLL_ALL;
+  afd_poll_info = uv__allocate_afd_poll_info(handle);
+  afd_poll_info->Exclusive = TRUE;
+  afd_poll_info->NumberOfHandles = 1;
+  afd_poll_info->Timeout.QuadPart = INT64_MAX;
+  afd_poll_info->Handles[0].Handle = (HANDLE) handle->socket;
+  afd_poll_info->Handles[0].Status = 0;
+  afd_poll_info->Handles[0].Events = AFD_POLL_ALL;
 
   result = uv_msafd_poll(handle->socket,
-                         &afd_poll_info,
+                         afd_poll_info,
                          uv__get_overlapped_dummy());
 
   if (result == SOCKET_ERROR) {
@@ -618,5 +660,6 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle) {
   assert(handle->submitted_events_1 == 0);
   assert(handle->submitted_events_2 == 0);
 
+  uv__deallocate_afd_poll_infos(handle);
   uv__handle_close(handle);
 }
