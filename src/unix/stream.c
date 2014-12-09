@@ -951,6 +951,7 @@ static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
     uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
   stream->read_cb(stream, UV_EOF, buf);
+  stream->flags &= ~UV_STREAM_READING;
 }
 
 
