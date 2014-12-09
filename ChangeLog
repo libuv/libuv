@@ -1,3 +1,22 @@
+2014.12.10, Version 0.10.30 (Stable), 5a63f5e9546dca482eeebc3054139b21f509f21f
+
+Changes since version 0.10.29:
+
+* linux: fix sigmask size arg in epoll_pwait() call (Ben Noordhuis)
+
+* linux: handle O_NONBLOCK != SOCK_NONBLOCK case (Helge Deller)
+
+* doc: update project links (Ben Noordhuis)
+
+* windows: fix compilation of tests (Marc Schlaich)
+
+* unix: add flag for blocking SIGPROF during poll (Ben Noordhuis)
+
+* unix, windows: add uv_loop_configure() function (Ben Noordhuis)
+
+* win: keep a reference to AFD_POLL_INFO in cancel poll (Marc Schlaich)
+
+
 2014.11.27, Version 1.0.1 (Stable), 0a8e81374e861d425b56c45c8599595d848911d2
 
 Changes since version 1.0.0:
