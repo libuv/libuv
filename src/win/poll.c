@@ -46,6 +46,8 @@ typedef struct uv_single_fd_set_s {
 static OVERLAPPED overlapped_dummy_;
 static uv_once_t overlapped_dummy_init_guard_ = UV_ONCE_INIT;
 
+static AFD_POLL_INFO afd_poll_info_dummy_;
+
 
 static void uv__init_overlapped_dummy(void) {
   HANDLE event;
@@ -62,6 +64,11 @@ static void uv__init_overlapped_dummy(void) {
 static OVERLAPPED* uv__get_overlapped_dummy() {
   uv_once(&overlapped_dummy_init_guard_, uv__init_overlapped_dummy);
   return &overlapped_dummy_;
+}
+
+
+static AFD_POLL_INFO* uv__get_afd_poll_info_dummy() {
+  return &afd_poll_info_dummy_;
 }
 
 
@@ -108,6 +115,7 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 
   result = uv_msafd_poll((SOCKET) handle->peer_socket,
                          afd_poll_info,
+                         afd_poll_info,
                          &req->overlapped);
   if (result != 0 && WSAGetLastError() != WSA_IO_PENDING) {
     /* Queue this req, reporting an error. */
@@ -130,6 +138,7 @@ static int uv__fast_poll_cancel_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 
   result = uv_msafd_poll(handle->socket,
                          &afd_poll_info,
+                         uv__get_afd_poll_info_dummy(),
                          uv__get_overlapped_dummy());
 
   if (result == SOCKET_ERROR) {
