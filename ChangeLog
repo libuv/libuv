@@ -1,3 +1,48 @@
+2014.12.10, Version 1.0.2 (Stable)
+
+Changes since version 1.0.1:
+
+* linux: fix sigmask size arg in epoll_pwait() call (Ben Noordhuis)
+
+* linux: handle O_NONBLOCK != SOCK_NONBLOCK case (Helge Deller)
+
+* doc: fix spelling (Joey Geralnik)
+
+* unix, windows: fix typos in comments (Joey Geralnik)
+
+* test: canonicalize test runner path (Ben Noordhuis)
+
+* test: fix compilation warnings (Saúl Ibarra Corretgé)
+
+* test: skip tty test if detected width and height are 0 (Saúl Ibarra Corretgé)
+
+* doc: update README with IRC channel (Saúl Ibarra Corretgé)
+
+* Revert "unix: use cfmakeraw() for setting raw TTY mode" (Ben Noordhuis)
+
+* doc: document how to get result of uv_fs_mkdtemp (Tim Caswell)
+
+* unix: add flag for blocking SIGPROF during poll (Ben Noordhuis)
+
+* unix, windows: add uv_loop_configure() function (Ben Noordhuis)
+
+* win: keep a reference to AFD_POLL_INFO in cancel poll (Marc Schlaich)
+
+* test: raise fd limit for OSX select test (Saúl Ibarra Corretgé)
+
+* unix: remove overzealous assert in uv_read_stop (Saúl Ibarra Corretgé)
+
+* unix: reset the reading flag when a stream gets EOF (Saúl Ibarra Corretgé)
+
+* unix: stop reading if an error is produced (Saúl Ibarra Corretgé)
+
+* cleanup: remove all dead assignments (Maciej Małecki)
+
+* linux: return early if we have no interfaces (Maciej Małecki)
+
+* cleanup: remove a dead increment (Maciej Małecki)
+
+
 2014.12.10, Version 0.10.30 (Stable), 5a63f5e9546dca482eeebc3054139b21f509f21f
 
 Changes since version 0.10.29:
