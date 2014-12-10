@@ -29,12 +29,12 @@ extern char executable_path[];
 TEST_IMPL(cwd_and_chdir) {
   char buffer_orig[PATHMAX];
   char buffer_new[PATHMAX];
-  size_t size;
+  size_t size1, size2;
   char* last_slash;
   int err;
 
-  size = sizeof(buffer_orig);
-  err = uv_cwd(buffer_orig, &size);
+  size1 = sizeof buffer_orig;
+  err = uv_cwd(buffer_orig, &size1);
   ASSERT(err == 0);
 
   /* Remove trailing slash unless at a root directory. */
@@ -55,9 +55,11 @@ TEST_IMPL(cwd_and_chdir) {
   err = uv_chdir(buffer_orig);
   ASSERT(err == 0);
 
-  err = uv_cwd(buffer_new, &size);
+  size2 = sizeof buffer_new;
+  err = uv_cwd(buffer_new, &size2);
   ASSERT(err == 0);
 
+  ASSERT(size1 == size2);
   ASSERT(strcmp(buffer_orig, buffer_new) == 0);
 
   return 0;
