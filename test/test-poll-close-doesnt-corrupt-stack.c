@@ -53,6 +53,7 @@ static void poll_cb(uv_poll_t* h, int status, int events) {
 static void NO_INLINE close_socket_and_verify_stack() {
   const uint32_t MARKER = 0xDEADBEEF;
   const int VERIFY_AFTER = 10; /* ms */
+  int r;
 
   volatile uint32_t data[65536];
   size_t i;
@@ -60,7 +61,7 @@ static void NO_INLINE close_socket_and_verify_stack() {
   for (i = 0; i < ARRAY_SIZE(data); i++)
     data[i] = MARKER;
 
-  int r = closesocket(sock);
+  r = closesocket(sock);
   ASSERT(r == 0);
 
   uv_sleep(VERIFY_AFTER);
