@@ -27,7 +27,10 @@ vgcore.*
 /run-benchmarks.dSYM
 
 *.sln
+*.sln.cache
+*.ncb
 *.vcproj
+*.vcproj*.user
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
