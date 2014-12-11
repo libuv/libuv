@@ -53,7 +53,7 @@ TEST_IMPL(getnameinfo_basic_ip4) {
   r = uv_getnameinfo(uv_default_loop(),
                      &req,
                      &getnameinfo_req,
-                     (const struct sockaddr*)&addr4,
+                     (const struct sockaddr*) &addr4,
                      0);
   ASSERT(r == 0);
 
@@ -72,7 +72,7 @@ TEST_IMPL(getnameinfo_basic_ip6) {
   r = uv_getnameinfo(uv_default_loop(),
                      &req,
                      &getnameinfo_req,
-                     (const struct sockaddr*)&addr6,
+                     (const struct sockaddr*) &addr6,
                      0);
   ASSERT(r == 0);
 

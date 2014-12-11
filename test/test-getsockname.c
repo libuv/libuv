@@ -50,7 +50,7 @@ static void alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
 
 static void on_close(uv_handle_t* peer) {
   free(peer);
-  uv_close((uv_handle_t*)&tcpServer, NULL);
+  uv_close((uv_handle_t*) &tcpServer, NULL);
 }
 
 
@@ -76,8 +76,10 @@ static void after_read(uv_stream_t* handle,
 }
 
 
-static void check_sockname(struct sockaddr* addr, const char* compare_ip,
-  int compare_port, const char* context) {
+static void check_sockname(struct sockaddr* addr,
+                           const char* compare_ip,
+                           int compare_port,
+                           const char* context) {
   struct sockaddr_in check_addr = *(struct sockaddr_in*) addr;
   struct sockaddr_in compare_addr;
   char check_ip[17];
@@ -91,8 +93,8 @@ static void check_sockname(struct sockaddr* addr, const char* compare_ip,
 
   /* Check if the ip matches */
   ASSERT(memcmp(&check_addr.sin_addr,
-         &compare_addr.sin_addr,
-         sizeof compare_addr.sin_addr) == 0);
+                &compare_addr.sin_addr,
+                sizeof compare_addr.sin_addr) == 0);
 
   /* Check if the port matches. If port == 0 anything goes. */
   ASSERT(compare_port == 0 || check_addr.sin_port == compare_addr.sin_port);
@@ -124,7 +126,7 @@ static void on_connection(uv_stream_t* server, int status) {
   /* associate server with stream */
   handle->data = server;
 
-  r = uv_accept(server, (uv_stream_t*)handle);
+  r = uv_accept(server, (uv_stream_t*) handle);
   ASSERT(r == 0);
 
   namelen = sizeof sockname;
@@ -139,7 +141,7 @@ static void on_connection(uv_stream_t* server, int status) {
   check_sockname(&peername, "127.0.0.1", connect_port, "accepted socket peer");
   getpeernamecount++;
 
-  r = uv_read_start((uv_stream_t*)handle, alloc, after_read);
+  r = uv_read_start((uv_stream_t*) handle, alloc, after_read);
   ASSERT(r == 0);
 }
 
@@ -162,7 +164,7 @@ static void on_connect(uv_connect_t* req, int status) {
   check_sockname(&peername, "127.0.0.1", server_port, "connected socket peer");
   getpeernamecount++;
 
-  uv_close((uv_handle_t*)&tcp, NULL);
+  uv_close((uv_handle_t*) &tcp, NULL);
 }
 
 
@@ -186,7 +188,7 @@ static int tcp_listener(void) {
     return 1;
   }
 
-  r = uv_listen((uv_stream_t*)&tcpServer, 128, on_connection);
+  r = uv_listen((uv_stream_t*) &tcpServer, 128, on_connection);
   if (r) {
     fprintf(stderr, "Listen error\n");
     return 1;
@@ -219,10 +221,8 @@ static void tcp_connector(void) {
   tcp.data = &connect_req;
   ASSERT(!r);
 
-  r = uv_tcp_connect(&connect_req,
-                     &tcp,
-                     (const struct sockaddr*) &server_addr,
-                     on_connect);
+  r = uv_tcp_connect(
+      &connect_req, &tcp, (const struct sockaddr*) &server_addr, on_connect);
   ASSERT(!r);
 
   /* Fetch the actual port used by the connecting socket. */
@@ -264,7 +264,6 @@ static void udp_recv(uv_udp_t* handle,
 
 
 static void udp_send(uv_udp_send_t* req, int status) {
-
 }
 
 

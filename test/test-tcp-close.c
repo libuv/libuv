@@ -48,25 +48,25 @@ static void connect_cb(uv_connect_t* conn_req, int status) {
     req = malloc(sizeof *req);
     ASSERT(req != NULL);
 
-    r = uv_write(req, (uv_stream_t*)&tcp_handle, &buf, 1, write_cb);
+    r = uv_write(req, (uv_stream_t*) &tcp_handle, &buf, 1, write_cb);
     ASSERT(r == 0);
   }
 
-  uv_close((uv_handle_t*)&tcp_handle, close_cb);
+  uv_close((uv_handle_t*) &tcp_handle, close_cb);
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
   /* write callbacks should run before the close callback */
   ASSERT(close_cb_called == 0);
-  ASSERT(req->handle == (uv_stream_t*)&tcp_handle);
+  ASSERT(req->handle == (uv_stream_t*) &tcp_handle);
   write_cb_called++;
   free(req);
 }
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*)&tcp_handle);
+  ASSERT(handle == (uv_handle_t*) &tcp_handle);
   close_cb_called++;
 }
 
@@ -88,10 +88,10 @@ static void start_server(uv_loop_t* loop, uv_tcp_t* handle) {
   r = uv_tcp_bind(handle, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
-  r = uv_listen((uv_stream_t*)handle, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) handle, 128, connection_cb);
   ASSERT(r == 0);
 
-  uv_unref((uv_handle_t*)handle);
+  uv_unref((uv_handle_t*) handle);
 }
 
 
@@ -114,10 +114,8 @@ TEST_IMPL(tcp_close) {
   r = uv_tcp_init(loop, &tcp_handle);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req,
-                     &tcp_handle,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &connect_req, &tcp_handle, (const struct sockaddr*) &addr, connect_cb);
   ASSERT(r == 0);
 
   ASSERT(write_cb_called == 0);

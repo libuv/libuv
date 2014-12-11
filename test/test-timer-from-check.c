@@ -51,7 +51,7 @@ static void timer_cb(uv_timer_t* handle) {
 
 static void check_cb(uv_check_t* handle) {
   ASSERT(0 == uv_check_stop(&check_handle));
-  ASSERT(0 == uv_timer_stop(&timer_handle));  /* Runs before timer_cb. */
+  ASSERT(0 == uv_timer_stop(&timer_handle)); /* Runs before timer_cb. */
   ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));
   ASSERT(0 == uv_prepare_start(&prepare_handle, prepare_cb));
   ASSERT(0 == prepare_cb_called);

@@ -26,8 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle) \
-  ASSERT((uv_udp_t*)(handle) == &client)
+#define CHECK_HANDLE(handle) ASSERT((uv_udp_t*)(handle) == &client)
 
 static uv_udp_t client;
 static uv_timer_t timer;
@@ -66,10 +65,10 @@ static void send_cb(uv_udp_send_t* req, int status) {
 
 
 static void recv_cb(uv_udp_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* rcvbuf,
-                       const struct sockaddr* addr,
-                       unsigned flags) {
+                    ssize_t nread,
+                    const uv_buf_t* rcvbuf,
+                    const struct sockaddr* addr,
+                    unsigned flags) {
   CHECK_HANDLE(handle);
   recv_cb_called++;
 
@@ -102,10 +101,10 @@ TEST_IMPL(udp_send_unreachable) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT_2, &addr2));
 
-  r = uv_timer_init( uv_default_loop(), &timer );
+  r = uv_timer_init(uv_default_loop(), &timer);
   ASSERT(r == 0);
 
-  r = uv_timer_start( &timer, timer_cb, 1000, 0 );
+  r = uv_timer_start(&timer, timer_cb, 1000, 0);
   ASSERT(r == 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
@@ -120,22 +119,14 @@ TEST_IMPL(udp_send_unreachable) {
   /* client sends "PING", then "PANG" */
   buf = uv_buf_init("PING", 4);
 
-  r = uv_udp_send(&req1,
-                  &client,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  send_cb);
+  r = uv_udp_send(
+      &req1, &client, &buf, 1, (const struct sockaddr*) &addr, send_cb);
   ASSERT(r == 0);
 
   buf = uv_buf_init("PANG", 4);
 
-  r = uv_udp_send(&req2,
-                  &client,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  send_cb);
+  r = uv_udp_send(
+      &req2, &client, &buf, 1, (const struct sockaddr*) &addr, send_cb);
   ASSERT(r == 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

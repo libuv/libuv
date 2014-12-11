@@ -56,7 +56,8 @@ BENCHMARK_IMPL(million_timers) {
 
   before_all = uv_hrtime();
   for (i = 0; i < NUM_TIMERS; i++) {
-    if (i % 1000 == 0) timeout++;
+    if (i % 1000 == 0)
+      timeout++;
     ASSERT(0 == uv_timer_init(loop, timers + i));
     ASSERT(0 == uv_timer_start(timers + i, timer_cb, timeout, 0));
   }

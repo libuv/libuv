@@ -23,7 +23,6 @@
 #include "task.h"
 
 TEST_IMPL(get_loadavg) {
-
   double avg[3];
   uv_loadavg(avg);
 

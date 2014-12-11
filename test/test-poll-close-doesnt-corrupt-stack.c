@@ -27,10 +27,10 @@
 #include "uv.h"
 #include "task.h"
 
-#ifdef _MSC_VER  /* msvc */
-# define NO_INLINE __declspec(noinline)
-#else  /* gcc */
-# define NO_INLINE __attribute__ ((noinline))
+#ifdef _MSC_VER /* msvc */
+#define NO_INLINE __declspec(noinline)
+#else /* gcc */
+#define NO_INLINE __attribute__((noinline))
 #endif
 
 
@@ -111,4 +111,4 @@ TEST_IMPL(poll_close_doesnt_corrupt_stack) {
   return 0;
 }
 
-#endif  /* _WIN32 */
+#endif /* _WIN32 */

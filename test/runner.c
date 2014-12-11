@@ -80,10 +80,14 @@ const char* fmt(double d) {
     *--p = '0';
 
   while (v) {
-    if (v) *--p = '0' + (v % 10), v /= 10;
-    if (v) *--p = '0' + (v % 10), v /= 10;
-    if (v) *--p = '0' + (v % 10), v /= 10;
-    if (v) *--p = ',';
+    if (v)
+      *--p = '0' + (v % 10), v /= 10;
+    if (v)
+      *--p = '0' + (v % 10), v /= 10;
+    if (v)
+      *--p = '0' + (v % 10), v /= 10;
+    if (v)
+      *--p = ',';
   }
 
   return p;
@@ -132,10 +136,17 @@ int run_tests(int benchmark_output) {
 
     test_result = run_test(task->task_name, benchmark_output, current);
     switch (test_result) {
-    case TEST_OK: passed++; break;
-    case TEST_TODO: todos++; break;
-    case TEST_SKIP: skipped++; break;
-    default: failed++;
+      case TEST_OK:
+        passed++;
+        break;
+      case TEST_TODO:
+        todos++;
+        break;
+      case TEST_SKIP:
+        skipped++;
+        break;
+      default:
+        failed++;
     }
     current++;
   }
@@ -160,21 +171,21 @@ void log_tap_result(int test_count,
   char reason[1024];
 
   switch (status) {
-  case TEST_OK:
-    result = "ok";
-    directive = "";
-    break;
-  case TEST_TODO:
-    result = "not ok";
-    directive = " # TODO ";
-    break;
-  case TEST_SKIP:
-    result = "ok";
-    directive = " # SKIP ";
-    break;
-  default:
-    result = "not ok";
-    directive = "";
+    case TEST_OK:
+      result = "ok";
+      directive = "";
+      break;
+    case TEST_TODO:
+      result = "not ok";
+      directive = " # TODO ";
+      break;
+    case TEST_SKIP:
+      result = "ok";
+      directive = " # SKIP ";
+      break;
+    default:
+      result = "not ok";
+      directive = "";
   }
 
   if ((status == TEST_SKIP || status == TEST_TODO) &&
@@ -188,12 +199,10 @@ void log_tap_result(int test_count,
 }
 
 
-int run_test(const char* test,
-             int benchmark_output,
-             int test_count) {
+int run_test(const char* test, int benchmark_output, int test_count) {
   char errmsg[1024] = "no error";
   process_info_t processes[1024];
-  process_info_t *main_proc;
+  process_info_t* main_proc;
   task_entry_t* task;
   int process_count;
   int result;
@@ -271,10 +280,7 @@ int run_test(const char* test,
   }
 
   if (main_proc == NULL) {
-    snprintf(errmsg,
-             sizeof errmsg,
-             "No test with that name: %s",
-             test);
+    snprintf(errmsg, sizeof errmsg, "No test with that name: %s", test);
     goto out;
   }
 
@@ -283,18 +289,13 @@ int run_test(const char* test,
     FATAL("process_wait failed");
   } else if (result == -2) {
     /* Don't have to clean up the process, process_wait() has killed it. */
-    snprintf(errmsg,
-             sizeof errmsg,
-             "timeout");
+    snprintf(errmsg, sizeof errmsg, "timeout");
     goto out;
   }
 
   status = process_reap(main_proc);
   if (status != TEST_OK) {
-    snprintf(errmsg,
-             sizeof errmsg,
-             "exit code %d",
-             status);
+    snprintf(errmsg, sizeof errmsg, "exit code %d", status);
     goto out;
   }
 
@@ -333,20 +334,20 @@ out:
 
     for (i = 0; i < process_count; i++) {
       switch (process_output_size(&processes[i])) {
-       case -1:
-        LOGF("Output from process `%s`: (unavailable)\n",
-             process_get_name(&processes[i]));
-        break;
+        case -1:
+          LOGF("Output from process `%s`: (unavailable)\n",
+               process_get_name(&processes[i]));
+          break;
 
-       case 0:
-        LOGF("Output from process `%s`: (no output)\n",
-             process_get_name(&processes[i]));
-        break;
+        case 0:
+          LOGF("Output from process `%s`: (no output)\n",
+               process_get_name(&processes[i]));
+          break;
 
-       default:
-        LOGF("Output from process `%s`:\n", process_get_name(&processes[i]));
-        process_copy_output(&processes[i], fileno(stderr));
-        break;
+        default:
+          LOGF("Output from process `%s`:\n", process_get_name(&processes[i]));
+          process_copy_output(&processes[i], fileno(stderr));
+          break;
       }
     }
 
@@ -354,22 +355,22 @@ out:
       LOG("=============================================================\n");
     }
 
-  /* In benchmark mode show concise output from the main process. */
+    /* In benchmark mode show concise output from the main process. */
   } else if (benchmark_output) {
     switch (process_output_size(main_proc)) {
-     case -1:
-      LOGF("%s: (unavailable)\n", test);
-      break;
+      case -1:
+        LOGF("%s: (unavailable)\n", test);
+        break;
 
-     case 0:
-      LOGF("%s: (no output)\n", test);
-      break;
+      case 0:
+        LOGF("%s: (no output)\n", test);
+        break;
 
-     default:
-      for (i = 0; i < process_count; i++) {
-        process_copy_output(&processes[i], fileno(stderr));
-      }
-      break;
+      default:
+        for (i = 0; i < process_count; i++) {
+          process_copy_output(&processes[i], fileno(stderr));
+        }
+        break;
     }
   }
 
@@ -432,7 +433,8 @@ void print_tests(FILE* stream) {
   int n_tasks;
   int i;
 
-  for (n_tasks = 0, task = TASKS; task->main; n_tasks++, task++);
+  for (n_tasks = 0, task = TASKS; task->main; n_tasks++, task++)
+    ;
   qsort(TASKS, n_tasks, sizeof(TASKS[0]), compare_task);
 
   for (task = TASKS; task->main; task++) {

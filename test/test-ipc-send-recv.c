@@ -60,9 +60,7 @@ static void alloc_cb(uv_handle_t* handle,
 }
 
 
-static void recv_cb(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* buf) {
+static void recv_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   uv_handle_type pending;
   uv_pipe_t* pipe;
   int r;
@@ -86,7 +84,7 @@ static void recv_cb(uv_stream_t* handle,
   r = uv_accept(handle, &ctx.recv.stream);
   ASSERT(r == 0);
 
-  uv_close((uv_handle_t*)&ctx.channel, NULL);
+  uv_close((uv_handle_t*) &ctx.channel, NULL);
   uv_close(&ctx.send.handle, NULL);
   uv_close(&ctx.recv.handle, NULL);
   num_recv_handles++;
@@ -102,13 +100,14 @@ static int run_test(void) {
 
   buf = uv_buf_init(".", 1);
   r = uv_write2(&ctx.write_req,
-                (uv_stream_t*)&ctx.channel,
-                &buf, 1,
+                (uv_stream_t*) &ctx.channel,
+                &buf,
+                1,
                 &ctx.send.stream,
                 NULL);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&ctx.channel, alloc_cb, recv_cb);
+  r = uv_read_start((uv_stream_t*) &ctx.channel, alloc_cb, recv_cb);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -166,7 +165,7 @@ TEST_IMPL(ipc_send_recv_tcp) {
 static void write2_cb(uv_write_t* req, int status) {
   ASSERT(status == 0);
   uv_close(&ctx.recv.handle, NULL);
-  uv_close((uv_handle_t*)&ctx.channel, NULL);
+  uv_close((uv_handle_t*) &ctx.channel, NULL);
 }
 
 
@@ -200,7 +199,7 @@ static void read_cb(uv_stream_t* handle,
   ASSERT(r == 0);
 
   r = uv_write2(&ctx.write_req,
-                (uv_stream_t*)&ctx.channel,
+                (uv_stream_t*) &ctx.channel,
                 &wrbuf,
                 1,
                 &ctx.recv.stream,
@@ -221,11 +220,11 @@ int ipc_send_recv_helper(void) {
   ASSERT(r == 0);
 
   uv_pipe_open(&ctx.channel, 0);
-  ASSERT(1 == uv_is_readable((uv_stream_t*)&ctx.channel));
-  ASSERT(1 == uv_is_writable((uv_stream_t*)&ctx.channel));
-  ASSERT(0 == uv_is_closing((uv_handle_t*)&ctx.channel));
+  ASSERT(1 == uv_is_readable((uv_stream_t*) &ctx.channel));
+  ASSERT(1 == uv_is_writable((uv_stream_t*) &ctx.channel));
+  ASSERT(0 == uv_is_closing((uv_handle_t*) &ctx.channel));
 
-  r = uv_read_start((uv_stream_t*)&ctx.channel, alloc_cb, read_cb);
+  r = uv_read_start((uv_stream_t*) &ctx.channel, alloc_cb, read_cb);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);

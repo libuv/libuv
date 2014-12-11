@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <process.h>
 #if !defined(__MINGW32__)
-# include <crtdbg.h>
+#include <crtdbg.h>
 #endif
 
 
@@ -37,21 +37,20 @@
  * Define the stuff that MinGW doesn't have
  */
 #ifndef GetFileSizeEx
-  WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile,
-                                       PLARGE_INTEGER lpFileSize);
+WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize);
 #endif
 
 
 /* Do platform-specific initialization. */
 int platform_init(int argc, char **argv) {
-  const char* tap;
+  const char *tap;
 
   tap = getenv("UV_TAP_OUTPUT");
   tap_output = (tap != NULL && atoi(tap) > 0);
 
   /* Disable the "application crashed" popup. */
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
-      SEM_NOOPENFILEERRORBOX);
+               SEM_NOOPENFILEERRORBOX);
 #if !defined(__MINGW32__)
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
   _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
@@ -81,12 +80,12 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
   PROCESS_INFORMATION pi;
   DWORD result;
 
-  if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR*)&path) == 0)
+  if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR *) &path) == 0)
     goto error;
-  if (GetTempFileNameW((WCHAR*)&path, L"uv", 0, (WCHAR*)&filename) == 0)
+  if (GetTempFileNameW((WCHAR *) &path, L"uv", 0, (WCHAR *) &filename) == 0)
     goto error;
 
-  file = CreateFileW((WCHAR*)filename,
+  file = CreateFileW((WCHAR *) filename,
                      GENERIC_READ | GENERIC_WRITE,
                      0,
                      NULL,
@@ -112,14 +111,13 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
   if (!SetHandleInformation(nul, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
     goto error;
 
-  result = GetModuleFileNameW(NULL,
-                              (WCHAR*) &image,
-                              sizeof(image) / sizeof(WCHAR));
+  result = GetModuleFileNameW(
+      NULL, (WCHAR *) &image, sizeof(image) / sizeof(WCHAR));
   if (result == 0 || result == sizeof(image))
     goto error;
 
   if (part) {
-    if (_snwprintf((WCHAR*)args,
+    if (_snwprintf((WCHAR *) args,
                    sizeof(args) / sizeof(WCHAR),
                    L"\"%s\" %S %S",
                    image,
@@ -128,7 +126,7 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
       goto error;
     }
   } else {
-    if (_snwprintf((WCHAR*)args,
+    if (_snwprintf((WCHAR *) args,
                    sizeof(args) / sizeof(WCHAR),
                    L"\"%s\" %S",
                    image,
@@ -137,15 +135,14 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
     }
   }
 
-  memset((void*)&si, 0, sizeof(si));
+  memset((void *) &si, 0, sizeof(si));
   si.cb = sizeof(si);
   si.dwFlags = STARTF_USESTDHANDLES;
   si.hStdInput = nul;
   si.hStdOutput = file;
   si.hStdError = file;
 
-  if (!CreateProcessW(image, args, NULL, NULL, TRUE,
-                      0, NULL, NULL, &si, &pi))
+  if (!CreateProcessW(image, args, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
     goto error;
 
   CloseHandle(pi.hThread);
@@ -187,7 +184,7 @@ int process_wait(process_info_t *vec, int n, int timeout) {
     handles[i] = vec[i].process;
 
   if (timeout >= 0) {
-    timeout_api = (DWORD)timeout;
+    timeout_api = (DWORD) timeout;
   } else {
     timeout_api = INFINITE;
   }
@@ -209,7 +206,7 @@ long int process_output_size(process_info_t *p) {
   LARGE_INTEGER size;
   if (!GetFileSizeEx(p->stdio_out, &size))
     return -1;
-  return (long int)size.QuadPart;
+  return (long int) size.QuadPart;
 }
 
 
@@ -218,17 +215,15 @@ int process_copy_output(process_info_t *p, int fd) {
   char buf[1024];
   char *line, *start;
 
-  if (SetFilePointer(p->stdio_out,
-                     0,
-                     0,
-                     FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+  if (SetFilePointer(p->stdio_out, 0, 0, FILE_BEGIN) ==
+      INVALID_SET_FILE_POINTER) {
     return -1;
   }
 
   if (tap_output)
     write(fd, "#", 1);
 
-  while (ReadFile(p->stdio_out, (void*)&buf, sizeof(buf), &read, NULL) &&
+  while (ReadFile(p->stdio_out, (void *) &buf, sizeof(buf), &read, NULL) &&
          read > 0) {
     if (tap_output) {
       start = buf;
@@ -257,7 +252,7 @@ int process_copy_output(process_info_t *p, int fd) {
 
 
 int process_read_last_line(process_info_t *p,
-                           char * buffer,
+                           char *buffer,
                            size_t buffer_len) {
   DWORD size;
   DWORD read;
@@ -296,7 +291,7 @@ int process_read_last_line(process_info_t *p,
 }
 
 
-char* process_get_name(process_info_t *p) {
+char *process_get_name(process_info_t *p) {
   return p->name;
 }
 
@@ -312,7 +307,7 @@ int process_reap(process_info_t *p) {
   DWORD exitCode;
   if (!GetExitCodeProcess(p->process, &exitCode))
     return -1;
-  return (int)exitCode;
+  return (int) exitCode;
 }
 
 
@@ -329,7 +324,7 @@ static int clear_line() {
   COORD coord;
   DWORD written;
 
-  handle = (HANDLE)_get_osfhandle(fileno(stderr));
+  handle = (HANDLE) _get_osfhandle(fileno(stderr));
   if (handle == INVALID_HANDLE_VALUE)
     return -1;
 
@@ -345,11 +340,8 @@ static int clear_line() {
   if (!SetConsoleCursorPosition(handle, coord))
     return -1;
 
-  if (!FillConsoleOutputCharacterW(handle,
-                                   0x20,
-                                   info.dwSize.X,
-                                   coord,
-                                   &written)) {
+  if (!FillConsoleOutputCharacterW(
+          handle, 0x20, info.dwSize.X, coord, &written)) {
     return -1;
   }
 

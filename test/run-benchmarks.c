@@ -37,12 +37,15 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
 
   switch (argc) {
-  case 1: return run_tests(1);
-  case 2: return maybe_run_test(argc, argv);
-  case 3: return run_test_part(argv[1], argv[2]);
-  default:
-    LOGF("Too many arguments.\n");
-    return EXIT_FAILURE;
+    case 1:
+      return run_tests(1);
+    case 2:
+      return maybe_run_test(argc, argv);
+    case 3:
+      return run_test_part(argv[1], argv[2]);
+    default:
+      LOGF("Too many arguments.\n");
+      return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;

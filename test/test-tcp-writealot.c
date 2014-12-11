@@ -25,11 +25,11 @@
 #include <stdlib.h>
 
 
-#define WRITES            3
-#define CHUNKS_PER_WRITE  4096
-#define CHUNK_SIZE        10024 /* 10 kb */
+#define WRITES 3
+#define CHUNKS_PER_WRITE 4096
+#define CHUNK_SIZE 10024 /* 10 kb */
 
-#define TOTAL_BYTES       (WRITES * CHUNKS_PER_WRITE * CHUNK_SIZE)
+#define TOTAL_BYTES (WRITES * CHUNKS_PER_WRITE * CHUNK_SIZE)
 
 static char* send_buffer;
 
@@ -64,7 +64,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT(req == &shutdown_req);
   ASSERT(status == 0);
 
-  tcp = (uv_tcp_t*)(req->handle);
+  tcp = (uv_tcp_t*) (req->handle);
 
   /* The write buffer should be empty by now. */
   ASSERT(tcp->write_queue_size == 0);
@@ -82,11 +82,10 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
   if (nread >= 0) {
     bytes_received_done += nread;
-  }
-  else {
+  } else {
     ASSERT(nread == UV_EOF);
     printf("GOT EOF\n");
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*) tcp, close_cb);
   }
 
   free(buf->base);
@@ -153,10 +152,8 @@ TEST_IMPL(tcp_writealot) {
   r = uv_tcp_init(uv_default_loop(), &client);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req,
-                     &client,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &connect_req, &client, (const struct sockaddr*) &addr, connect_cb);
   ASSERT(r == 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

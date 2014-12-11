@@ -41,7 +41,7 @@
 
 
 /* Do platform-specific initialization. */
-int platform_init(int argc, char **argv) {
+int platform_init(int argc, char** argv) {
   const char* tap;
 
   tap = getenv("UV_TAP_OUTPUT");
@@ -91,7 +91,8 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
     n = 0;
 
     /* Disable valgrind for helpers, it complains about helpers leaking memory.
-     * They're killed after the test and as such never get a chance to clean up.
+     * They're killed after the test and as such never get a chance to clean
+     * up.
      */
     if (is_helper == 0 && arg != NULL && atoi(arg) != 0) {
       args[n++] = "valgrind";
@@ -139,8 +140,9 @@ static void* dowait(void* data) {
   process_info_t* p;
 
   for (i = 0; i < args->n; i++) {
-    p = (process_info_t*)(args->vec + i * sizeof(process_info_t));
-    if (p->terminated) continue;
+    p = (process_info_t*) (args->vec + i * sizeof(process_info_t));
+    if (p->terminated)
+      continue;
     r = waitpid(p->pid, &p->status, 0);
     if (r < 0) {
       perror("waitpid");
@@ -189,7 +191,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   pthread_t tid;
   int retval;
 
-  int r = pipe((int*)&(args.pipe));
+  int r = pipe((int*) &(args.pipe));
   if (r) {
     perror("pipe()");
     return -1;
@@ -223,7 +225,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   } else {
     /* Timeout. Kill all the children. */
     for (i = 0; i < n; i++) {
-      p = (process_info_t*)(vec + i * sizeof(process_info_t));
+      p = (process_info_t*) (vec + i * sizeof(process_info_t));
       kill(p->pid, SIGTERM);
     }
     retval = -2;
@@ -244,7 +246,7 @@ terminate:
 
 
 /* Returns the number of bytes in the stdio output buffer for process `p`. */
-long int process_output_size(process_info_t *p) {
+long int process_output_size(process_info_t* p) {
   /* Size of the p->stdout_file */
   struct stat buf;
 
@@ -253,12 +255,12 @@ long int process_output_size(process_info_t *p) {
     return -1;
   }
 
-  return (long)buf.st_size;
+  return (long) buf.st_size;
 }
 
 
 /* Copy the contents of the stdio output buffer to `fd`. */
-int process_copy_output(process_info_t *p, int fd) {
+int process_copy_output(process_info_t* p, int fd) {
   int r = fseek(p->stdout_file, 0, SEEK_SET);
   if (r < 0) {
     perror("fseek");
@@ -270,7 +272,7 @@ int process_copy_output(process_info_t *p, int fd) {
 
   /* TODO: what if the line is longer than buf */
   while (fgets(buf, sizeof(buf), p->stdout_file) != NULL) {
-   /* TODO: what if write doesn't write the whole buffer... */
+    /* TODO: what if write doesn't write the whole buffer... */
     nwritten = 0;
 
     if (tap_output)
@@ -294,7 +296,7 @@ int process_copy_output(process_info_t *p, int fd) {
 
 
 /* Copy the last line of the stdio output buffer to `buffer` */
-int process_read_last_line(process_info_t *p,
+int process_read_last_line(process_info_t* p,
                            char* buffer,
                            size_t buffer_len) {
   char* ptr;
@@ -308,7 +310,8 @@ int process_read_last_line(process_info_t *p,
   buffer[0] = '\0';
 
   while (fgets(buffer, buffer_len, p->stdout_file) != NULL) {
-    for (ptr = buffer; *ptr && *ptr != '\r' && *ptr != '\n'; ptr++);
+    for (ptr = buffer; *ptr && *ptr != '\r' && *ptr != '\n'; ptr++)
+      ;
     *ptr = '\0';
   }
 
@@ -322,30 +325,31 @@ int process_read_last_line(process_info_t *p,
 
 
 /* Return the name that was specified when `p` was started by process_start */
-char* process_get_name(process_info_t *p) {
+char* process_get_name(process_info_t* p) {
   return p->name;
 }
 
 
 /* Terminate process `p`. */
-int process_terminate(process_info_t *p) {
+int process_terminate(process_info_t* p) {
   return kill(p->pid, SIGTERM);
 }
 
 
 /* Return the exit code of process p. */
 /* On error, return -1. */
-int process_reap(process_info_t *p) {
+int process_reap(process_info_t* p) {
   if (WIFEXITED(p->status)) {
     return WEXITSTATUS(p->status);
-  } else  {
+  } else {
     return p->status; /* ? */
   }
 }
 
 
-/* Clean up after terminating process `p` (e.g. free the output buffer etc.). */
-void process_cleanup(process_info_t *p) {
+/* Clean up after terminating process `p` (e.g. free the output buffer etc.).
+ */
+void process_cleanup(process_info_t* p) {
   fclose(p->stdout_file);
   free(p->name);
 }

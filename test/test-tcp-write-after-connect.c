@@ -28,12 +28,12 @@ uv_loop_t loop;
 uv_tcp_t tcp_client;
 uv_connect_t connection_request;
 uv_write_t write_request;
-uv_buf_t buf = { "HELLO", 4 };
+uv_buf_t buf = {"HELLO", 4};
 
 
 static void write_cb(uv_write_t *req, int status) {
   ASSERT(status == UV_ECANCELED);
-  uv_close((uv_handle_t*) req->handle, NULL);
+  uv_close((uv_handle_t *) req->handle, NULL);
 }
 
 
@@ -50,14 +50,12 @@ TEST_IMPL(tcp_write_after_connect) {
 
   ASSERT(0 == uv_tcp_connect(&connection_request,
                              &tcp_client,
-                             (const struct sockaddr *)
-                             &sa,
+                             (const struct sockaddr *) &sa,
                              connect_cb));
 
-  ASSERT(0 == uv_write(&write_request,
-                       (uv_stream_t *)&tcp_client,
-                       &buf, 1,
-                       write_cb));
+  ASSERT(0 ==
+         uv_write(
+             &write_request, (uv_stream_t *) &tcp_client, &buf, 1, write_cb));
 
   uv_run(&loop, UV_RUN_DEFAULT);
 

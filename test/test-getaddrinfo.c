@@ -23,7 +23,7 @@
 #include "task.h"
 #include <stdlib.h>
 
-#define CONCURRENT_COUNT    10
+#define CONCURRENT_COUNT 10
 
 static const char* name = "localhost";
 
@@ -42,7 +42,7 @@ static void getaddrinfo_fail_cb(uv_getaddrinfo_t* req,
   ASSERT(fail_cb_called == 0);
   ASSERT(status < 0);
   ASSERT(res == NULL);
-  uv_freeaddrinfo(res);  /* Should not crash. */
+  uv_freeaddrinfo(res); /* Should not crash. */
   fail_cb_called++;
 }
 
@@ -61,7 +61,7 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
                                       int status,
                                       struct addrinfo* res) {
   int i;
-  int* data = (int*)handle->data;
+  int* data = (int*) handle->data;
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     if (&getaddrinfo_handles[i] == handle) {
@@ -71,7 +71,7 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
       break;
     }
   }
-  ASSERT (i < CONCURRENT_COUNT);
+  ASSERT(i < CONCURRENT_COUNT);
 
   free(data);
   uv_freeaddrinfo(res);
@@ -99,7 +99,7 @@ TEST_IMPL(getaddrinfo_fail) {
 
 TEST_IMPL(getaddrinfo_basic) {
   int r;
-  getaddrinfo_handle = (uv_getaddrinfo_t*)malloc(sizeof(uv_getaddrinfo_t));
+  getaddrinfo_handle = (uv_getaddrinfo_t*) malloc(sizeof(uv_getaddrinfo_t));
 
   r = uv_getaddrinfo(uv_default_loop(),
                      getaddrinfo_handle,
@@ -125,7 +125,7 @@ TEST_IMPL(getaddrinfo_concurrent) {
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     callback_counts[i] = 0;
 
-    data = (int*)malloc(sizeof(int));
+    data = (int*) malloc(sizeof(int));
     ASSERT(data != NULL);
     *data = i;
     getaddrinfo_handles[i].data = data;

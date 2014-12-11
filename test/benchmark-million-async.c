@@ -101,10 +101,10 @@ BENCHMARK_IMPL(million_async) {
   ASSERT(0 == uv_thread_create(&thread_id, thread_cb, NULL));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   printf("%s async events in %.1f seconds (%s/s, %s unique handles seen)\n",
-          fmt(container->async_events),
-          timeout / 1000.,
-          fmt(container->async_events / (timeout / 1000.)),
-          fmt(container->handles_seen));
+         fmt(container->async_events),
+         timeout / 1000.,
+         fmt(container->async_events / (timeout / 1000.)),
+         fmt(container->handles_seen));
   free(container);
 
   MAKE_VALGRIND_HAPPY();

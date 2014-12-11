@@ -73,7 +73,7 @@ static void after_read(uv_stream_t* handle,
                        ssize_t nread,
                        const uv_buf_t* buf) {
   int i;
-  write_req_t *wr;
+  write_req_t* wr;
   uv_shutdown_t* sreq;
 
   if (nread < 0) {
@@ -81,7 +81,7 @@ static void after_read(uv_stream_t* handle,
     ASSERT(nread == UV_EOF);
 
     free(buf->base);
-    sreq = malloc(sizeof* sreq);
+    sreq = malloc(sizeof *sreq);
     ASSERT(0 == uv_shutdown(sreq, handle, after_shutdown));
     return;
   }
@@ -101,7 +101,7 @@ static void after_read(uv_stream_t* handle,
       if (buf->base[i] == 'Q') {
         if (i + 1 < nread && buf->base[i + 1] == 'S') {
           free(buf->base);
-          uv_close((uv_handle_t*)handle, on_close);
+          uv_close((uv_handle_t*) handle, on_close);
           return;
         } else {
           uv_close(server, on_server_close);
@@ -144,23 +144,23 @@ static void on_connection(uv_stream_t* server, int status) {
   ASSERT(status == 0);
 
   switch (serverType) {
-  case TCP:
-    stream = malloc(sizeof(uv_tcp_t));
-    ASSERT(stream != NULL);
-    r = uv_tcp_init(loop, (uv_tcp_t*)stream);
-    ASSERT(r == 0);
-    break;
+    case TCP:
+      stream = malloc(sizeof(uv_tcp_t));
+      ASSERT(stream != NULL);
+      r = uv_tcp_init(loop, (uv_tcp_t*) stream);
+      ASSERT(r == 0);
+      break;
 
-  case PIPE:
-    stream = malloc(sizeof(uv_pipe_t));
-    ASSERT(stream != NULL);
-    r = uv_pipe_init(loop, (uv_pipe_t*)stream, 0);
-    ASSERT(r == 0);
-    break;
+    case PIPE:
+      stream = malloc(sizeof(uv_pipe_t));
+      ASSERT(stream != NULL);
+      r = uv_pipe_init(loop, (uv_pipe_t*) stream, 0);
+      ASSERT(r == 0);
+      break;
 
-  default:
-    ASSERT(0 && "Bad serverType");
-    abort();
+    default:
+      ASSERT(0 && "Bad serverType");
+      abort();
   }
 
   /* associate server with stream */
@@ -213,7 +213,7 @@ static int tcp4_echo_start(int port) {
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", port, &addr));
 
-  server = (uv_handle_t*)&tcpServer;
+  server = (uv_handle_t*) &tcpServer;
   serverType = TCP;
 
   r = uv_tcp_init(loop, &tcpServer);
@@ -230,7 +230,7 @@ static int tcp4_echo_start(int port) {
     return 1;
   }
 
-  r = uv_listen((uv_stream_t*)&tcpServer, SOMAXCONN, on_connection);
+  r = uv_listen((uv_stream_t*) &tcpServer, SOMAXCONN, on_connection);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error %s\n", uv_err_name(r));
@@ -247,7 +247,7 @@ static int tcp6_echo_start(int port) {
 
   ASSERT(0 == uv_ip6_addr("::1", port, &addr6));
 
-  server = (uv_handle_t*)&tcpServer;
+  server = (uv_handle_t*) &tcpServer;
   serverType = TCP;
 
   r = uv_tcp_init(loop, &tcpServer);
@@ -265,7 +265,7 @@ static int tcp6_echo_start(int port) {
     return 0;
   }
 
-  r = uv_listen((uv_stream_t*)&tcpServer, SOMAXCONN, on_connection);
+  r = uv_listen((uv_stream_t*) &tcpServer, SOMAXCONN, on_connection);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error\n");
@@ -279,7 +279,7 @@ static int tcp6_echo_start(int port) {
 static int udp4_echo_start(int port) {
   int r;
 
-  server = (uv_handle_t*)&udpServer;
+  server = (uv_handle_t*) &udpServer;
   serverType = UDP;
 
   r = uv_udp_init(loop, &udpServer);
@@ -309,7 +309,7 @@ static int pipe_echo_start(char* pipeName) {
   }
 #endif
 
-  server = (uv_handle_t*)&pipeServer;
+  server = (uv_handle_t*) &pipeServer;
   serverType = PIPE;
 
   r = uv_pipe_init(loop, &pipeServer, 0);
@@ -324,7 +324,7 @@ static int pipe_echo_start(char* pipeName) {
     return 1;
   }
 
-  r = uv_listen((uv_stream_t*)&pipeServer, SOMAXCONN, on_connection);
+  r = uv_listen((uv_stream_t*) &pipeServer, SOMAXCONN, on_connection);
   if (r) {
     fprintf(stderr, "uv_pipe_listen: %s\n", uv_strerror(r));
     return 1;

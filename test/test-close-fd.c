@@ -36,16 +36,16 @@ static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
 
 static void read_cb(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
   switch (++read_cb_called) {
-  case 1:
-    ASSERT(nread == 1);
-    uv_read_stop(handle);
-    break;
-  case 2:
-    ASSERT(nread == UV_EOF);
-    uv_close((uv_handle_t *) handle, NULL);
-    break;
-  default:
-    ASSERT(!"read_cb_called > 2");
+    case 1:
+      ASSERT(nread == 1);
+      uv_read_stop(handle);
+      break;
+    case 2:
+      ASSERT(nread == UV_EOF);
+      uv_close((uv_handle_t *) handle, NULL);
+      break;
+    default:
+      ASSERT(!"read_cb_called > 2");
   }
 }
 
@@ -57,7 +57,7 @@ TEST_IMPL(close_fd) {
   ASSERT(0 == fcntl(fd[0], F_SETFL, O_NONBLOCK));
   ASSERT(0 == uv_pipe_init(uv_default_loop(), &pipe_handle, 0));
   ASSERT(0 == uv_pipe_open(&pipe_handle, fd[0]));
-  fd[0] = -1;  /* uv_pipe_open() takes ownership of the file descriptor. */
+  fd[0] = -1; /* uv_pipe_open() takes ownership of the file descriptor. */
   ASSERT(1 == write(fd[1], "", 1));
   ASSERT(0 == close(fd[1]));
   fd[1] = -1;
@@ -74,4 +74,4 @@ TEST_IMPL(close_fd) {
   return 0;
 }
 
-#endif  /* !defined(_WIN32) */
+#endif /* !defined(_WIN32) */

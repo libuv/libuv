@@ -29,18 +29,16 @@
 #include "uv.h"
 #include "task.h"
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t* buf)
-{
+void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   static char buffer[1024];
 
   buf->base = buffer;
   buf->len = sizeof(buffer);
 }
 
-void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t* buf)
-{
+void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
   if (nread < 0) {
-    uv_close((uv_handle_t*)stream, NULL);
+    uv_close((uv_handle_t *) stream, NULL);
     return;
   }
 }
@@ -70,13 +68,13 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
     /* Create a stream that reads from the pipe. */
     uv_pipe_t stdin_pipe;
 
-    r = uv_pipe_init(uv_default_loop(), (uv_pipe_t *)&stdin_pipe, 0);
+    r = uv_pipe_init(uv_default_loop(), (uv_pipe_t *) &stdin_pipe, 0);
     ASSERT(r == 0);
 
-    r = uv_pipe_open((uv_pipe_t *)&stdin_pipe, 0);
+    r = uv_pipe_open((uv_pipe_t *) &stdin_pipe, 0);
     ASSERT(r == 0);
 
-    r = uv_read_start((uv_stream_t *)&stdin_pipe, alloc_buffer, read_stdin);
+    r = uv_read_start((uv_stream_t *) &stdin_pipe, alloc_buffer, read_stdin);
     ASSERT(r == 0);
 
     /*
@@ -91,8 +89,8 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
      * get a POLLHUP event when it tries to read from
      * the other end.
      */
-     close(fd[1]);
-     close(fd[0]);
+    close(fd[1]);
+    close(fd[0]);
 
     waitpid(pid, &status, 0);
     ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0);

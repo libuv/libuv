@@ -22,13 +22,12 @@
 #include "uv.h"
 #include "task.h"
 
-#define INIT_CANCEL_INFO(ci, what)                                            \
-  do {                                                                        \
-    (ci)->reqs = (what);                                                      \
-    (ci)->nreqs = ARRAY_SIZE(what);                                           \
-    (ci)->stride = sizeof((what)[0]);                                         \
-  }                                                                           \
-  while (0)
+#define INIT_CANCEL_INFO(ci, what)    \
+  do {                                \
+    (ci)->reqs = (what);              \
+    (ci)->nreqs = ARRAY_SIZE(what);   \
+    (ci)->stride = sizeof((what)[0]); \
+  } while (0)
 
 struct cancel_info {
   void* reqs;
@@ -85,9 +84,8 @@ static void saturate_threadpool(void) {
      * the thread pool is saturated. As with any timing dependent test,
      * this is obviously not ideal.
      */
-    if (uv_cond_timedwait(&signal_cond,
-                          &signal_mutex,
-                          (uint64_t) (350 * 1e6))) {
+    if (uv_cond_timedwait(
+            &signal_cond, &signal_mutex, (uint64_t)(350 * 1e6))) {
       ASSERT(0 == uv_cancel((uv_req_t*) req));
       break;
     }
@@ -102,7 +100,7 @@ static void unblock_threadpool(void) {
 
 
 static void cleanup_threadpool(void) {
-  ASSERT(done_cb_called == num_threads + 1);  /* +1 == cancelled work req. */
+  ASSERT(done_cb_called == num_threads + 1); /* +1 == cancelled work req. */
   ASSERT(work_cb_called == num_threads);
 
   uv_cond_destroy(&signal_cond);
@@ -123,7 +121,7 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* req,
                            struct addrinfo* res) {
   ASSERT(status == UV_EAI_CANCELED);
   ASSERT(res == NULL);
-  uv_freeaddrinfo(res);  /* Should not crash. */
+  uv_freeaddrinfo(res); /* Should not crash. */
 }
 
 
@@ -224,16 +222,20 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   loop = uv_default_loop();
   saturate_threadpool();
 
-  r = uv_getnameinfo(loop, reqs + 0, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(
+      loop, reqs + 0, getnameinfo_cb, (const struct sockaddr*) &addr4, 0);
   ASSERT(r == 0);
 
-  r = uv_getnameinfo(loop, reqs + 1, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(
+      loop, reqs + 1, getnameinfo_cb, (const struct sockaddr*) &addr4, 0);
   ASSERT(r == 0);
 
-  r = uv_getnameinfo(loop, reqs + 2, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(
+      loop, reqs + 2, getnameinfo_cb, (const struct sockaddr*) &addr4, 0);
   ASSERT(r == 0);
 
-  r = uv_getnameinfo(loop, reqs + 3, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(
+      loop, reqs + 3, getnameinfo_cb, (const struct sockaddr*) &addr4, 0);
   ASSERT(r == 0);
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
@@ -352,7 +354,7 @@ TEST_IMPL(threadpool_cancel_single) {
 
   ASSERT(req.data == NULL);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(req.data != NULL);  /* Should have been updated by nop_done_cb(). */
+  ASSERT(req.data != NULL); /* Should have been updated by nop_done_cb(). */
 
   MAKE_VALGRIND_HAPPY();
   return 0;

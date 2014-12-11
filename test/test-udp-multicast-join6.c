@@ -28,7 +28,7 @@
 
 
 #define CHECK_HANDLE(handle) \
-  ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client)
+  ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*) (handle) == &client)
 
 static uv_udp_t server;
 static uv_udp_t client;
@@ -115,7 +115,7 @@ TEST_IMPL(udp_multicast_join6) {
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
-  /* join the multicast channel */
+/* join the multicast channel */
 #if defined(__APPLE__)
   r = uv_udp_set_membership(&client, "ff02::1", "::1%lo0", UV_JOIN_GROUP);
 #else
@@ -129,12 +129,8 @@ TEST_IMPL(udp_multicast_join6) {
   buf = uv_buf_init("PING", 4);
 
   /* server sends "PING" */
-  r = uv_udp_send(&req,
-                  &server,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  sv_send_cb);
+  r = uv_udp_send(
+      &req, &server, &buf, 1, (const struct sockaddr*) &addr, sv_send_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);

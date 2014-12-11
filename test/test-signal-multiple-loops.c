@@ -43,11 +43,7 @@
 #define NUM_SIGNAL_HANDLING_THREADS 24
 #define NUM_LOOP_CREATING_THREADS 10
 
-enum signal_action {
-  ONLY_SIGUSR1,
-  ONLY_SIGUSR2,
-  SIGUSR1_AND_SIGUSR2
-};
+enum signal_action { ONLY_SIGUSR1, ONLY_SIGUSR2, SIGUSR1_AND_SIGUSR2 };
 
 static uv_sem_t sem;
 static uv_mutex_t counter_lock;
@@ -87,7 +83,7 @@ static void signal_handling_worker(void* context) {
   uv_loop_t loop;
   int r;
 
-  action = (enum signal_action) (uintptr_t) context;
+  action = (enum signal_action)(uintptr_t) context;
 
   ASSERT(0 == uv_loop_init(&loop));
 
@@ -165,7 +161,7 @@ static void loop_creating_worker(void* context) {
   (void) context;
 
   do {
-    uv_loop_t *loop;
+    uv_loop_t* loop;
     uv_signal_t signal;
     int r;
 
@@ -207,18 +203,23 @@ TEST_IMPL(signal_multiple_loops) {
 
   /* Create a couple of threads that create a destroy loops continuously. */
   for (i = 0; i < NUM_LOOP_CREATING_THREADS; i++) {
-    r = uv_thread_create(&loop_creating_threads[i],
-                         loop_creating_worker,
-                         NULL);
+    r = uv_thread_create(
+        &loop_creating_threads[i], loop_creating_worker, NULL);
     ASSERT(r == 0);
   }
 
   /* Create a couple of threads that actually handle signals. */
   for (i = 0; i < NUM_SIGNAL_HANDLING_THREADS; i++) {
     switch (i % 3) {
-      case 0: action = ONLY_SIGUSR1; break;
-      case 1: action = ONLY_SIGUSR2; break;
-      case 2: action = SIGUSR1_AND_SIGUSR2; break;
+      case 0:
+        action = ONLY_SIGUSR1;
+        break;
+      case 1:
+        action = ONLY_SIGUSR2;
+        break;
+      case 2:
+        action = SIGUSR1_AND_SIGUSR2;
+        break;
     }
 
     r = uv_thread_create(&signal_handling_threads[i],
@@ -286,4 +287,4 @@ TEST_IMPL(signal_multiple_loops) {
   return 0;
 }
 
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */

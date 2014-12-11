@@ -25,8 +25,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define WRITE_REQ_DATA  "Hello, world."
-#define NUM_WRITE_REQS  (1000 * 1000)
+#define WRITE_REQ_DATA "Hello, world."
+#define NUM_WRITE_REQS (1000 * 1000)
 
 typedef struct {
   uv_write_t req;
@@ -55,7 +55,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   int i;
   int r;
 
-  ASSERT(req->handle == (uv_stream_t*)&tcp_client);
+  ASSERT(req->handle == (uv_stream_t*) &tcp_client);
 
   for (i = 0; i < NUM_WRITE_REQS; i++) {
     w = &write_reqs[i];
@@ -78,10 +78,10 @@ static void write_cb(uv_write_t* req, int status) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(req->handle == (uv_stream_t*)&tcp_client);
+  ASSERT(req->handle == (uv_stream_t*) &tcp_client);
   ASSERT(req->handle->write_queue_size == 0);
 
-  uv_close((uv_handle_t*)req->handle, close_cb);
+  uv_close((uv_handle_t*) req->handle, close_cb);
   free(write_reqs);
 
   shutdown_cb_called++;
@@ -89,7 +89,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*)&tcp_client);
+  ASSERT(handle == (uv_handle_t*) &tcp_client);
   close_cb_called++;
 }
 
@@ -107,8 +107,8 @@ BENCHMARK_IMPL(tcp_write_batch) {
 
   /* Prepare the data to write out. */
   for (i = 0; i < NUM_WRITE_REQS; i++) {
-    write_reqs[i].buf = uv_buf_init(WRITE_REQ_DATA,
-                                    sizeof(WRITE_REQ_DATA) - 1);
+    write_reqs[i].buf =
+        uv_buf_init(WRITE_REQ_DATA, sizeof(WRITE_REQ_DATA) - 1);
   }
 
   loop = uv_default_loop();
@@ -117,10 +117,8 @@ BENCHMARK_IMPL(tcp_write_batch) {
   r = uv_tcp_init(loop, &tcp_client);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req,
-                     &tcp_client,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &connect_req, &tcp_client, (const struct sockaddr*) &addr, connect_cb);
   ASSERT(r == 0);
 
   start = uv_hrtime();
@@ -136,7 +134,7 @@ BENCHMARK_IMPL(tcp_write_batch) {
   ASSERT(close_cb_called == 1);
 
   printf("%ld write requests in %.2fs.\n",
-         (long)NUM_WRITE_REQS,
+         (long) NUM_WRITE_REQS,
          (stop - start) / 1e9);
 
   MAKE_VALGRIND_HAPPY();

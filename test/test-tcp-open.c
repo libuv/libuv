@@ -26,7 +26,7 @@
 #include <string.h>
 
 #ifndef _WIN32
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
 static int shutdown_cb_called = 0;
@@ -41,9 +41,9 @@ static uv_write_t write_req;
 
 static void startup(void) {
 #ifdef _WIN32
-    struct WSAData wsa_data;
-    int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT(r == 0);
+  struct WSAData wsa_data;
+  int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+  ASSERT(r == 0);
 #endif
 }
 
@@ -102,11 +102,10 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   if (nread >= 0) {
     ASSERT(nread == 4);
     ASSERT(memcmp("PING", buf->base, nread) == 0);
-  }
-  else {
+  } else {
     ASSERT(nread == UV_EOF);
     printf("GOT EOF\n");
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*) tcp, close_cb);
   }
 }
 
@@ -164,10 +163,8 @@ TEST_IMPL(tcp_open) {
   r = uv_tcp_open(&client, sock);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req,
-                     &client,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &connect_req, &client, (const struct sockaddr*) &addr, connect_cb);
   ASSERT(r == 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

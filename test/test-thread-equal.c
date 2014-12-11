@@ -26,7 +26,7 @@ uv_thread_t main_thread_id;
 uv_thread_t subthreads[2];
 
 static void check_thread(void* arg) {
-  uv_thread_t *thread_id = arg;
+  uv_thread_t* thread_id = arg;
   uv_thread_t self_id = uv_thread_self();
   ASSERT(uv_thread_equal(&main_thread_id, &self_id) == 0);
   *thread_id = uv_thread_self();

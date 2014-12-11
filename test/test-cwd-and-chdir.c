@@ -38,7 +38,7 @@ TEST_IMPL(cwd_and_chdir) {
   err = uv_cwd(buffer_orig, &size1);
   ASSERT(err == 0);
 
-  /* Remove trailing slash unless at a root directory. */
+/* Remove trailing slash unless at a root directory. */
 #ifdef _WIN32
   last_slash = strrchr(buffer_orig, '\\');
   ASSERT(last_slash);

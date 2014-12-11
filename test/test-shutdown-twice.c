@@ -33,7 +33,6 @@ static uv_shutdown_t req2;
 static int shutdown_cb_called = 0;
 
 static void close_cb(uv_handle_t* handle) {
-
 }
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
@@ -52,7 +51,6 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(r == 0);
   r = uv_shutdown(&req2, req->handle, shutdown_cb);
   ASSERT(r != 0);
-
 }
 
 TEST_IMPL(shutdown_twice) {
@@ -68,10 +66,8 @@ TEST_IMPL(shutdown_twice) {
 
   r = uv_tcp_init(loop, &h);
 
-  r = uv_tcp_connect(&connect_req,
-                     &h,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &connect_req, &h, (const struct sockaddr*) &addr, connect_cb);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);

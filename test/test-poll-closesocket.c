@@ -48,7 +48,6 @@ static void poll_cb(uv_poll_t* h, int status, int events) {
 
   closesocket(sock);
   uv_close((uv_handle_t*) &handle, close_cb);
-
 }
 
 

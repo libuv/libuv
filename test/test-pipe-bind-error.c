@@ -26,9 +26,9 @@
 
 
 #ifdef _WIN32
-# define BAD_PIPENAME "bad-pipe"
+#define BAD_PIPENAME "bad-pipe"
 #else
-# define BAD_PIPENAME "/path/to/unix/socket/that/really/should/not/be/there"
+#define BAD_PIPENAME "/path/to/unix/socket/that/really/should/not/be/there"
 #endif
 
 
@@ -55,13 +55,13 @@ TEST_IMPL(pipe_bind_error_addrinuse) {
   r = uv_pipe_bind(&server2, TEST_PIPENAME);
   ASSERT(r == UV_EADDRINUSE);
 
-  r = uv_listen((uv_stream_t*)&server1, SOMAXCONN, NULL);
+  r = uv_listen((uv_stream_t*) &server1, SOMAXCONN, NULL);
   ASSERT(r == 0);
-  r = uv_listen((uv_stream_t*)&server2, SOMAXCONN, NULL);
+  r = uv_listen((uv_stream_t*) &server2, SOMAXCONN, NULL);
   ASSERT(r == UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server1, close_cb);
-  uv_close((uv_handle_t*)&server2, close_cb);
+  uv_close((uv_handle_t*) &server1, close_cb);
+  uv_close((uv_handle_t*) &server2, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -82,7 +82,7 @@ TEST_IMPL(pipe_bind_error_addrnotavail) {
   r = uv_pipe_bind(&server, BAD_PIPENAME);
   ASSERT(r == UV_EACCES);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -104,7 +104,7 @@ TEST_IMPL(pipe_bind_error_inval) {
   r = uv_pipe_bind(&server, TEST_PIPENAME_2);
   ASSERT(r == UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -122,10 +122,10 @@ TEST_IMPL(pipe_listen_without_bind) {
   r = uv_pipe_init(uv_default_loop(), &server, 0);
   ASSERT(r == 0);
 
-  r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
+  r = uv_listen((uv_stream_t*) &server, SOMAXCONN, NULL);
   ASSERT(r == UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

@@ -53,13 +53,11 @@ TEST_IMPL(tcp_connect6_error_fault) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
-  r = uv_tcp_connect(&req,
-                     &server,
-                     (const struct sockaddr*) garbage_addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &req, &server, (const struct sockaddr*) garbage_addr, connect_cb);
   ASSERT(r == UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

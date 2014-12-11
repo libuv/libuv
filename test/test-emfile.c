@@ -65,7 +65,8 @@ TEST_IMPL(emfile) {
   while (first_fd == -1 && errno == EINTR);
   ASSERT(first_fd > 0);
 
-  while (dup(0) != -1 || errno == EINTR);
+  while (dup(0) != -1 || errno == EINTR)
+    ;
   ASSERT(errno == EMFILE);
   close(maxfd);
 
@@ -108,4 +109,4 @@ static void connect_cb(uv_connect_t* req, int status) {
   uv_close((uv_handle_t*) &client_handle, NULL);
 }
 
-#endif  /* !defined(_WIN32) */
+#endif /* !defined(_WIN32) */

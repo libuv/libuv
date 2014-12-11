@@ -26,13 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle)                \
-  ASSERT((uv_udp_t*)(handle) == &server     \
-      || (uv_udp_t*)(handle) == &client     \
-      || (uv_timer_t*)(handle) == &timeout)
+#define CHECK_HANDLE(handle)                                                  \
+  ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*) (handle) == &client || \
+         (uv_timer_t*) (handle) == &timeout)
 
-#define CHECK_REQ(req) \
-  ASSERT((req) == &req_);
+#define CHECK_REQ(req) ASSERT((req) == &req_);
 
 static uv_udp_t client;
 static uv_udp_t server;
@@ -91,9 +89,9 @@ static void ipv6_recv_ok(uv_udp_t* handle,
 
 
 static void timeout_cb(uv_timer_t* timer) {
-  uv_close((uv_handle_t*)&server, close_cb);
-  uv_close((uv_handle_t*)&client, close_cb);
-  uv_close((uv_handle_t*)&timeout, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
+  uv_close((uv_handle_t*) &client, close_cb);
+  uv_close((uv_handle_t*) &timeout, close_cb);
 }
 
 
@@ -120,12 +118,8 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   buf = uv_buf_init("PING", 4);
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-  r = uv_udp_send(&req_,
-                  &client,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  send_cb);
+  r = uv_udp_send(
+      &req_, &client, &buf, 1, (const struct sockaddr*) &addr, send_cb);
   ASSERT(r == 0);
 
   r = uv_timer_init(uv_default_loop(), &timeout);
@@ -147,9 +141,7 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
 
 
 TEST_IMPL(udp_dual_stack) {
-#if defined(__DragonFly__)  || \
-    defined(__FreeBSD__)    || \
-    defined(__OpenBSD__)    || \
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__OpenBSD__) || \
     defined(__NetBSD__)
   RETURN_SKIP("dual stack not enabled by default in this OS.");
 #else

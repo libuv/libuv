@@ -27,7 +27,6 @@
 
 
 TEST_IMPL(ip4_addr) {
-
   struct sockaddr_in addr;
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
@@ -38,8 +37,8 @@ TEST_IMPL(ip4_addr) {
   ASSERT(UV_EINVAL == uv_ip4_addr("255", TEST_PORT, &addr));
 
   /* for broken address family */
-  ASSERT(UV_EAFNOSUPPORT == uv_inet_pton(42, "127.0.0.1",
-    &addr.sin_addr.s_addr));
+  ASSERT(UV_EAFNOSUPPORT ==
+         uv_inet_pton(42, "127.0.0.1", &addr.sin_addr.s_addr));
 
   MAKE_VALGRIND_HAPPY();
   return 0;
