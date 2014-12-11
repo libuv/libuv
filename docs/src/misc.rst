@@ -2,7 +2,7 @@
 .. _misc:
 
 Miscellaneous utilities
-======================
+=======================
 
 This section contains miscellaneous functions that don't really belong in any
 other section.
