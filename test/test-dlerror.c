@@ -31,6 +31,12 @@ TEST_IMPL(dlerror) {
   uv_lib_t lib;
   int r;
 
+  lib.errmsg = NULL;
+  lib.handle = NULL;
+  msg = uv_dlerror(&lib);
+  ASSERT(msg != NULL);
+  ASSERT(strstr(msg, dlerror_no_error) != NULL);
+
   r = uv_dlopen(path, &lib);
   ASSERT(r == -1);
 
