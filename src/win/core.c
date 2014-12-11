@@ -407,7 +407,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_prepare_invoke(loop);
 
     timeout = 0;
-    if ((mode & UV_RUN_NOWAIT) == 0)
+    if (mode != UV_RUN_NOWAIT)
       timeout = uv_backend_timeout(loop);
 
     (*poll)(loop, timeout);
@@ -428,7 +428,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     }
 
     r = uv__loop_alive(loop);
-    if (mode & (UV_RUN_ONCE | UV_RUN_NOWAIT))
+    if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
   }
 
