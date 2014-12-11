@@ -97,6 +97,13 @@ static int uv__dlerror(uv_lib_t* lib, int errorno) {
                          FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorno,
                          MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
                          (LPSTR) &lib->errmsg, 0, NULL);
+    if (!res && GetLastError() == ERROR_MUI_FILE_NOT_FOUND) {
+      res = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                           FORMAT_MESSAGE_FROM_SYSTEM |
+                           FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorno,
+                           0, (LPSTR) &lib->errmsg, 0, NULL);
+    }
+
     if (!res) {
       uv__format_fallback_error(lib, errorno);
     }
