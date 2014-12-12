@@ -23,11 +23,11 @@
 #include "task.h"
 
 #ifndef MILLISEC
-# define MILLISEC 1000
+#define MILLISEC 1000
 #endif
 
 #ifndef NANOSEC
-# define NANOSEC ((uint64_t) 1e9)
+#define NANOSEC ((uint64_t) 1e9)
 #endif
 
 
@@ -44,7 +44,8 @@ TEST_IMPL(hrtime) {
     /*  printf("i= %d diff = %llu\n", i, (unsigned long long int) diff); */
 
     /* The windows Sleep() function has only a resolution of 10-20 ms. */
-    /* Check that the difference between the two hrtime values is somewhat in */
+    /* Check that the difference between the two hrtime values is somewhat in
+     */
     /* the range we expect it to be. */
     ASSERT(diff > (uint64_t) 25 * NANOSEC / MILLISEC);
     ASSERT(diff < (uint64_t) 80 * NANOSEC / MILLISEC);

@@ -26,9 +26,9 @@
 
 
 #ifdef _WIN32
-# define BAD_PIPENAME "bad-pipe"
+#define BAD_PIPENAME "bad-pipe"
 #else
-# define BAD_PIPENAME "/path/to/unix/socket/that/really/should/not/be/there"
+#define BAD_PIPENAME "/path/to/unix/socket/that/really/should/not/be/there"
 #endif
 
 
@@ -44,14 +44,14 @@ static void close_cb(uv_handle_t* handle) {
 
 static void connect_cb(uv_connect_t* connect_req, int status) {
   ASSERT(status == UV_ENOENT);
-  uv_close((uv_handle_t*)connect_req->handle, close_cb);
+  uv_close((uv_handle_t*) connect_req->handle, close_cb);
   connect_cb_called++;
 }
 
 
 static void connect_cb_file(uv_connect_t* connect_req, int status) {
   ASSERT(status == UV_ENOTSOCK || status == UV_ECONNREFUSED);
-  uv_close((uv_handle_t*)connect_req->handle, close_cb);
+  uv_close((uv_handle_t*) connect_req->handle, close_cb);
   connect_cb_called++;
 }
 

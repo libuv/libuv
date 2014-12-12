@@ -55,8 +55,6 @@ static void set_nonblocking(uv_os_sock_t sock) {
 }
 
 
-
-
 static void close_cb(uv_handle_t* handle) {
   close_called++;
 }
@@ -70,9 +68,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 
-static void read_cb(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   uv_pipe_t* p;
   uv_pipe_t* inc;
   uv_handle_type pending;
@@ -108,7 +104,7 @@ TEST_IMPL(pipe_sendmsg) {
   int send_fds[ARRAY_SIZE(incoming)];
   struct msghdr msg;
   char scratch[64];
-  struct cmsghdr *cmsg;
+  struct cmsghdr* cmsg;
   unsigned int i;
   uv_buf_t buf;
 
@@ -159,11 +155,11 @@ TEST_IMPL(pipe_sendmsg) {
   return 0;
 }
 
-#else  /* !_WIN32 */
+#else /* !_WIN32 */
 
 TEST_IMPL(pipe_sendmsg) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
-#endif  /* _WIN32 */
+#endif /* _WIN32 */

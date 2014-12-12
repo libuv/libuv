@@ -25,16 +25,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_SYNC_REQS         (10 * 1e5)
-#define NUM_ASYNC_REQS        (1 * (int) 1e5)
-#define MAX_CONCURRENT_REQS   32
+#define NUM_SYNC_REQS (10 * 1e5)
+#define NUM_ASYNC_REQS (1 * (int) 1e5)
+#define MAX_CONCURRENT_REQS 32
 
-#define sync_stat(req, path)                                                  \
-  do {                                                                        \
-    uv_fs_stat(uv_default_loop(), (req), (path), NULL);                       \
-    uv_fs_req_cleanup((req));                                                 \
-  }                                                                           \
-  while (0)
+#define sync_stat(req, path)                            \
+  do {                                                  \
+    uv_fs_stat(uv_default_loop(), (req), (path), NULL); \
+    uv_fs_req_cleanup((req));                           \
+  } while (0)
 
 struct async_req {
   const char* path;
@@ -84,7 +83,8 @@ static void sync_bench(const char* path) {
 static void stat_cb(uv_fs_t* fs_req) {
   struct async_req* req = container_of(fs_req, struct async_req, fs_req);
   uv_fs_req_cleanup(&req->fs_req);
-  if (*req->count == 0) return;
+  if (*req->count == 0)
+    return;
   uv_fs_stat(uv_default_loop(), &req->fs_req, req->path, stat_cb);
   (*req->count)--;
 }

@@ -33,7 +33,9 @@ typedef struct {
 static uv_tcp_t tcp_server;
 
 static void connection_cb(uv_stream_t* stream, int status);
-static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+static void alloc_cb(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf);
 static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 static void shutdown_cb(uv_shutdown_t* req, int status);
 static void close_cb(uv_handle_t* handle);
@@ -44,7 +46,7 @@ static void connection_cb(uv_stream_t* stream, int status) {
   int r;
 
   ASSERT(status == 0);
-  ASSERT(stream == (uv_stream_t*)&tcp_server);
+  ASSERT(stream == (uv_stream_t*) &tcp_server);
 
   conn = malloc(sizeof *conn);
   ASSERT(conn != NULL);
@@ -52,10 +54,10 @@ static void connection_cb(uv_stream_t* stream, int status) {
   r = uv_tcp_init(stream->loop, &conn->handle);
   ASSERT(r == 0);
 
-  r = uv_accept(stream, (uv_stream_t*)&conn->handle);
+  r = uv_accept(stream, (uv_stream_t*) &conn->handle);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&conn->handle, alloc_cb, read_cb);
+  r = uv_read_start((uv_stream_t*) &conn->handle, alloc_cb, read_cb);
   ASSERT(r == 0);
 }
 
@@ -87,7 +89,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   conn_rec* conn = container_of(req, conn_rec, shutdown_req);
-  uv_close((uv_handle_t*)&conn->handle, close_cb);
+  uv_close((uv_handle_t*) &conn->handle, close_cb);
 }
 
 
@@ -111,7 +113,7 @@ HELPER_IMPL(tcp4_blackhole_server) {
   r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
-  r = uv_listen((uv_stream_t*)&tcp_server, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &tcp_server, 128, connection_cb);
   ASSERT(r == 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);

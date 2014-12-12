@@ -22,9 +22,9 @@
 #include <errno.h>
 
 #ifndef _WIN32
-# include <fcntl.h>
-# include <sys/socket.h>
-# include <unistd.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #endif
 
 #include "uv.h"
@@ -38,10 +38,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b));
 
 
-typedef enum {
-  UNIDIRECTIONAL,
-  DUPLEX
-} test_mode_t;
+typedef enum { UNIDIRECTIONAL, DUPLEX } test_mode_t;
 
 typedef struct connection_context_s {
   uv_poll_t poll_handle;
@@ -76,12 +73,11 @@ static int got_eagain(void) {
 #ifdef _WIN32
   return WSAGetLastError() == WSAEWOULDBLOCK;
 #else
-  return errno == EAGAIN
-      || errno == EINPROGRESS
+  return errno == EAGAIN || errno == EINPROGRESS
 #ifdef EWOULDBLOCK
-      || errno == EWOULDBLOCK;
+         || errno == EWOULDBLOCK;
 #endif
-      ;
+  ;
 #endif
 }
 
@@ -341,7 +337,8 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
 
             r = send(context->sock, buffer, send_bytes, 0);
 
-            if (r <= 0) break;
+            if (r <= 0)
+              break;
             context->sent += r;
           }
           ASSERT(r > 0 || got_eagain());
@@ -350,7 +347,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
 
         case 4:
           /* Ignore. */
-         break;
+          break;
 
         case 5:
           /* Stop sending for a while. Restart in timer callback. */
@@ -365,12 +362,10 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
 
         case 6:
           /* Fudge with the event mask. */
-          uv_poll_start(&context->poll_handle,
-                        UV_READABLE,
-                        connection_poll_cb);
-          uv_poll_start(&context->poll_handle,
-                        UV_WRITABLE,
-                        connection_poll_cb);
+          uv_poll_start(
+              &context->poll_handle, UV_READABLE, connection_poll_cb);
+          uv_poll_start(
+              &context->poll_handle, UV_WRITABLE, connection_poll_cb);
           context->events = UV_WRITABLE;
           break;
 
@@ -425,15 +420,13 @@ static void delay_timer_cb(uv_timer_t* timer) {
   context->events |= context->delayed_events;
   context->delayed_events = 0;
 
-  r = uv_poll_start(&context->poll_handle,
-                    context->events,
-                    connection_poll_cb);
+  r = uv_poll_start(
+      &context->poll_handle, context->events, connection_poll_cb);
   ASSERT(r == 0);
 }
 
 
-static server_context_t* create_server_context(
-    uv_os_sock_t sock) {
+static server_context_t* create_server_context(uv_os_sock_t sock) {
   int r;
   server_context_t* context;
 
@@ -463,8 +456,7 @@ static void destroy_server_context(server_context_t* context) {
 
 
 static void server_poll_cb(uv_poll_t* handle, int status, int events) {
-  server_context_t* server_context = (server_context_t*)
-                                          handle->data;
+  server_context_t* server_context = (server_context_t*) handle->data;
   connection_context_t* connection_context;
   struct sockaddr_in addr;
   socklen_t addr_len;
@@ -527,9 +519,8 @@ static void start_client(void) {
   context = create_connection_context(sock, 0);
 
   context->events = UV_READABLE | UV_WRITABLE;
-  r = uv_poll_start(&context->poll_handle,
-                    UV_READABLE | UV_WRITABLE,
-                    connection_poll_cb);
+  r = uv_poll_start(
+      &context->poll_handle, UV_READABLE | UV_WRITABLE, connection_poll_cb);
   ASSERT(r == 0);
 
   r = connect(sock, (struct sockaddr*) &server_addr, sizeof server_addr);
@@ -559,7 +550,8 @@ static void start_poll_test(void) {
   /* Assert that at most five percent of the writable wakeups was spurious. */
   ASSERT(spurious_writable_wakeups == 0 ||
          (valid_writable_wakeups + spurious_writable_wakeups) /
-         spurious_writable_wakeups > 20);
+                 spurious_writable_wakeups >
+             20);
 
   ASSERT(closed_connections == NUM_CLIENTS * 2);
 

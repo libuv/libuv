@@ -34,7 +34,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define NSIGNALS  10
+#define NSIGNALS 10
 
 struct timer_ctx {
   unsigned int ncalls;
@@ -58,7 +58,7 @@ static void signal_cb(uv_signal_t* handle, int signum) {
     if (ctx->stop_or_close == STOP)
       uv_signal_stop(handle);
     else if (ctx->stop_or_close == CLOSE)
-      uv_close((uv_handle_t*)handle, NULL);
+      uv_close((uv_handle_t*) handle, NULL);
     else
       ASSERT(0);
   }
@@ -71,11 +71,13 @@ static void timer_cb(uv_timer_t* handle) {
   raise(ctx->signum);
 
   if (++ctx->ncalls == NSIGNALS)
-    uv_close((uv_handle_t*)handle, NULL);
+    uv_close((uv_handle_t*) handle, NULL);
 }
 
 
-static void start_watcher(uv_loop_t* loop, int signum, struct signal_ctx* ctx) {
+static void start_watcher(uv_loop_t* loop,
+                          int signum,
+                          struct signal_ctx* ctx) {
   ctx->ncalls = 0;
   ctx->signum = signum;
   ctx->stop_or_close = CLOSE;

@@ -32,9 +32,9 @@ TEST_IMPL(dlerror) {
 
 #ifdef __linux__
   const char* dlerror_desc = "file too short";
-#elif defined (__sun__)
+#elif defined(__sun__)
   const char* dlerror_desc = "unknown file type";
-#elif defined (_WIN32)
+#elif defined(_WIN32)
   const char* dlerror_desc = "%1 is not a valid Win32 application";
 #else
   const char* dlerror_desc = "";

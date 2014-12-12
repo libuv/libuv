@@ -58,23 +58,20 @@ static void after_read(uv_stream_t*, ssize_t nread, const uv_buf_t* buf);
 static void on_close(uv_handle_t* peer);
 static void on_connection(uv_stream_t*, int status);
 
-#define WRITE_BUF_LEN   (64*1024)
-#define DNSREC_LEN      (4)
+#define WRITE_BUF_LEN (64 * 1024)
+#define DNSREC_LEN (4)
 
 #define LEN_OFFSET 0
 #define QUERYID_OFFSET 2
 
 static unsigned char DNSRsp[] = {
-  0, 43, 0, 0, 0x81, 0x80, 0, 1, 0, 1, 0, 0, 0, 0
-};
+    0, 43, 0, 0, 0x81, 0x80, 0, 1, 0, 1, 0, 0, 0, 0};
 
 static unsigned char qrecord[] = {
-  5, 'e', 'c', 'h', 'o', 's', 3, 's', 'r', 'v', 0, 0, 1, 0, 1
-};
+    5, 'e', 'c', 'h', 'o', 's', 3, 's', 'r', 'v', 0, 0, 1, 0, 1};
 
 static unsigned char arecord[] = {
-  0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 5, 0xbd, 0, 4, 10, 0, 1, 1
-};
+    0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 5, 0xbd, 0, 4, 10, 0, 1, 1};
 
 
 static void after_write(uv_write_t* req, int status) {
@@ -100,13 +97,13 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 
 
 static void addrsp(write_req_t* wr, char* hdr) {
-  char * dnsrsp;
+  char* dnsrsp;
   short int rsplen;
   short int* reclen;
 
   rsplen = sizeof(DNSRsp) + sizeof(qrecord) + sizeof(arecord);
 
-  ASSERT (rsplen + wr->buf.len < WRITE_BUF_LEN);
+  ASSERT(rsplen + wr->buf.len < WRITE_BUF_LEN);
 
   dnsrsp = wr->buf.base + wr->buf.len;
 
@@ -116,10 +113,10 @@ static void addrsp(write_req_t* wr, char* hdr) {
   memcpy(dnsrsp + sizeof(DNSRsp) + sizeof(qrecord), arecord, sizeof(arecord));
 
   /* overwrite with network order length and id from request header */
-  reclen = (short int*)dnsrsp;
-  *reclen = htons(rsplen-2);
+  reclen = (short int*) dnsrsp;
+  *reclen = htons(rsplen - 2);
   dnsrsp[QUERYID_OFFSET] = hdr[QUERYID_OFFSET];
-  dnsrsp[QUERYID_OFFSET+1] = hdr[QUERYID_OFFSET+1];
+  dnsrsp[QUERYID_OFFSET + 1] = hdr[QUERYID_OFFSET + 1];
 
   wr->buf.len += rsplen;
 }
@@ -128,7 +125,7 @@ static void process_req(uv_stream_t* handle,
                         ssize_t nread,
                         const uv_buf_t* buf) {
   write_req_t* wr;
-  dnshandle* dns = (dnshandle*)handle;
+  dnshandle* dns = (dnshandle*) handle;
   char hdrbuf[DNSREC_LEN];
   int hdrbuf_remaining = DNSREC_LEN;
   int rec_remaining = 0;
@@ -138,7 +135,7 @@ static void process_req(uv_stream_t* handle,
   int usingprev = 0;
 
   wr = (write_req_t*) malloc(sizeof *wr);
-  wr->buf.base = (char*)malloc(WRITE_BUF_LEN);
+  wr->buf.base = (char*) malloc(WRITE_BUF_LEN);
   wr->buf.len = 0;
 
   if (dns->state.prevbuf_ptr != NULL) {
@@ -287,13 +284,13 @@ static void on_connection(uv_stream_t* server, int status) {
   handle->state.prevbuf_pos = 0;
   handle->state.prevbuf_rem = 0;
 
-  r = uv_tcp_init(loop, (uv_tcp_t*)handle);
+  r = uv_tcp_init(loop, (uv_tcp_t*) handle);
   ASSERT(r == 0);
 
-  r = uv_accept(server, (uv_stream_t*)handle);
+  r = uv_accept(server, (uv_stream_t*) handle);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)handle, buf_alloc, after_read);
+  r = uv_read_start((uv_stream_t*) handle, buf_alloc, after_read);
   ASSERT(r == 0);
 }
 
@@ -318,7 +315,7 @@ static int dns_start(int port) {
     return 1;
   }
 
-  r = uv_listen((uv_stream_t*)&server, 128, on_connection);
+  r = uv_listen((uv_stream_t*) &server, 128, on_connection);
   if (r) {
     /* TODO: Error codes */
     fprintf(stderr, "Listen error\n");

@@ -27,7 +27,7 @@
 #include <string.h>
 
 #define CHECK_HANDLE(handle) \
-  ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client)
+  ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*) (handle) == &client)
 
 static uv_udp_t server;
 static uv_udp_t client;
@@ -184,12 +184,8 @@ TEST_IMPL(udp_send_and_recv) {
   /* client sends "PING", expects "PONG" */
   buf = uv_buf_init("PING", 4);
 
-  r = uv_udp_send(&req,
-                  &client,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  cl_send_cb);
+  r = uv_udp_send(
+      &req, &client, &buf, 1, (const struct sockaddr*) &addr, cl_send_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);

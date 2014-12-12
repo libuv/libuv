@@ -26,7 +26,7 @@
 #include <string.h>
 
 #ifndef _WIN32
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
 static int send_cb_called = 0;
@@ -37,9 +37,9 @@ static uv_udp_send_t send_req;
 
 static void startup(void) {
 #ifdef _WIN32
-    struct WSAData wsa_data;
-    int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT(r == 0);
+  struct WSAData wsa_data;
+  int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+  ASSERT(r == 0);
 #endif
 }
 
@@ -84,10 +84,10 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void recv_cb(uv_udp_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* buf,
-                       const struct sockaddr* addr,
-                       unsigned flags) {
+                    ssize_t nread,
+                    const uv_buf_t* buf,
+                    const struct sockaddr* addr,
+                    unsigned flags) {
   int r;
 
   if (nread < 0) {
@@ -146,12 +146,8 @@ TEST_IMPL(udp_open) {
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
   ASSERT(r == 0);
 
-  r = uv_udp_send(&send_req,
-                  &client,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  send_cb);
+  r = uv_udp_send(
+      &send_req, &client, &buf, 1, (const struct sockaddr*) &addr, send_cb);
   ASSERT(r == 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

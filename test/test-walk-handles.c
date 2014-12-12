@@ -31,9 +31,9 @@ static uv_timer_t timer;
 
 
 static void walk_cb(uv_handle_t* handle, void* arg) {
-  ASSERT(arg == (void*)magic_cookie);
+  ASSERT(arg == (void*) magic_cookie);
 
-  if (handle == (uv_handle_t*)&timer) {
+  if (handle == (uv_handle_t*) &timer) {
     seen_timer_handle++;
   } else {
     ASSERT(0 && "unexpected handle");
@@ -45,7 +45,7 @@ static void timer_cb(uv_timer_t* handle) {
   ASSERT(handle == &timer);
 
   uv_walk(handle->loop, walk_cb, magic_cookie);
-  uv_close((uv_handle_t*)handle, NULL);
+  uv_close((uv_handle_t*) handle, NULL);
 }
 
 

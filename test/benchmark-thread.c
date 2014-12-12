@@ -30,7 +30,7 @@
 static volatile int num_threads;
 
 
-static void thread_entry(void* arg) {
+static void thread_entry(void *arg) {
   ASSERT(arg == (void *) 42);
   num_threads++;
   /* FIXME write barrier? */
@@ -58,7 +58,9 @@ BENCHMARK_IMPL(thread_create) {
   ASSERT(num_threads == NUM_THREADS);
 
   printf("%d threads created in %.2f seconds (%.0f/s)\n",
-      NUM_THREADS, duration, NUM_THREADS / duration);
+         NUM_THREADS,
+         duration,
+         NUM_THREADS / duration);
 
   return 0;
 }

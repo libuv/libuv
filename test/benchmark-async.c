@@ -30,8 +30,8 @@
 struct ctx {
   uv_loop_t loop;
   uv_thread_t thread;
-  uv_async_t main_async;    /* wake up main thread */
-  uv_async_t worker_async;  /* wake up worker */
+  uv_async_t main_async;   /* wake up main thread */
+  uv_async_t worker_async; /* wake up worker */
   unsigned int nthreads;
   unsigned int main_sent;
   unsigned int main_seen;
@@ -85,10 +85,10 @@ static int test_async(int nthreads) {
     ctx = threads + i;
     ctx->nthreads = nthreads;
     ASSERT(0 == uv_loop_init(&ctx->loop));
-    ASSERT(0 == uv_async_init(&ctx->loop, &ctx->worker_async, worker_async_cb));
-    ASSERT(0 == uv_async_init(uv_default_loop(),
-                              &ctx->main_async,
-                              main_async_cb));
+    ASSERT(0 ==
+           uv_async_init(&ctx->loop, &ctx->worker_async, worker_async_cb));
+    ASSERT(0 ==
+           uv_async_init(uv_default_loop(), &ctx->main_async, main_async_cb));
     ASSERT(0 == uv_thread_create(&ctx->thread, worker, ctx));
   }
 

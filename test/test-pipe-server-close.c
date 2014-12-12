@@ -79,7 +79,8 @@ TEST_IMPL(pipe_server_close) {
   r = uv_pipe_init(loop, &pipe_client, 0);
   ASSERT(r == 0);
 
-  uv_pipe_connect(&connect_req, &pipe_client, TEST_PIPENAME, pipe_client_connect_cb);
+  uv_pipe_connect(
+      &connect_req, &pipe_client, TEST_PIPENAME, pipe_client_connect_cb);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(r == 0);

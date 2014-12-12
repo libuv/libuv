@@ -61,12 +61,8 @@ static uv_key_t tls_key;
 static void getaddrinfo_do(struct getaddrinfo_req* req) {
   int r;
 
-  r = uv_getaddrinfo(req->loop,
-                     &req->handle,
-                     getaddrinfo_cb,
-                     "localhost",
-                     NULL,
-                     NULL);
+  r = uv_getaddrinfo(
+      req->loop, &req->handle, getaddrinfo_cb, "localhost", NULL, NULL);
   ASSERT(r == 0);
 }
 
@@ -140,7 +136,7 @@ static void do_work(void* arg) {
 
 
 static void thread_entry(void* arg) {
-  ASSERT(arg == (void *) 42);
+  ASSERT(arg == (void*) 42);
   thread_called++;
 }
 
@@ -149,7 +145,7 @@ TEST_IMPL(thread_create) {
   uv_thread_t tid;
   int r;
 
-  r = uv_thread_create(&tid, thread_entry, (void *) 42);
+  r = uv_thread_create(&tid, thread_entry, (void*) 42);
   ASSERT(r == 0);
 
   r = uv_thread_join(&tid);

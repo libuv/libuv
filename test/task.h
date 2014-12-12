@@ -29,47 +29,43 @@
 #include <stdlib.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
-# include "stdint-msvc2008.h"
+#include "stdint-msvc2008.h"
 #else
-# include <stdint.h>
+#include <stdint.h>
 #endif
 
 #if !defined(_WIN32)
-# include <sys/time.h>
-# include <sys/resource.h>  /* setrlimit() */
+#include <sys/time.h>
+#include <sys/resource.h> /* setrlimit() */
 #endif
 
 #define TEST_PORT 9123
 #define TEST_PORT_2 9124
 
 #ifdef _WIN32
-# define TEST_PIPENAME "\\\\?\\pipe\\uv-test"
-# define TEST_PIPENAME_2 "\\\\?\\pipe\\uv-test2"
+#define TEST_PIPENAME "\\\\?\\pipe\\uv-test"
+#define TEST_PIPENAME_2 "\\\\?\\pipe\\uv-test2"
 #else
-# define TEST_PIPENAME "/tmp/uv-test-sock"
-# define TEST_PIPENAME_2 "/tmp/uv-test-sock2"
+#define TEST_PIPENAME "/tmp/uv-test-sock"
+#define TEST_PIPENAME_2 "/tmp/uv-test-sock2"
 #endif
 
 #ifdef _WIN32
-# include <io.h>
-# ifndef S_IRUSR
-#  define S_IRUSR _S_IREAD
-# endif
-# ifndef S_IWUSR
-#  define S_IWUSR _S_IWRITE
-# endif
+#include <io.h>
+#ifndef S_IRUSR
+#define S_IRUSR _S_IREAD
+#endif
+#ifndef S_IWUSR
+#define S_IWUSR _S_IWRITE
+#endif
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 #define container_of(ptr, type, member) \
-  ((type *) ((char *) (ptr) - offsetof(type, member)))
+  ((type*) ((char*) (ptr) -offsetof(type, member)))
 
-typedef enum {
-  TCP = 0,
-  UDP,
-  PIPE
-} stream_type;
+typedef enum { TCP = 0, UDP, PIPE } stream_type;
 
 /* Log to stderr. */
 #define LOG(...)                        \
@@ -78,59 +74,59 @@ typedef enum {
     fflush(stderr);                     \
   } while (0)
 
-#define LOGF(...)                       \
-  do {                                  \
-    fprintf(stderr, __VA_ARGS__);       \
-    fflush(stderr);                     \
+#define LOGF(...)                 \
+  do {                            \
+    fprintf(stderr, __VA_ARGS__); \
+    fflush(stderr);               \
   } while (0)
 
 /* Die with fatal error. */
-#define FATAL(msg)                                        \
-  do {                                                    \
-    fprintf(stderr,                                       \
-            "Fatal error in %s on line %d: %s\n",         \
-            __FILE__,                                     \
-            __LINE__,                                     \
-            msg);                                         \
-    fflush(stderr);                                       \
-    abort();                                              \
+#define FATAL(msg)                                \
+  do {                                            \
+    fprintf(stderr,                               \
+            "Fatal error in %s on line %d: %s\n", \
+            __FILE__,                             \
+            __LINE__,                             \
+            msg);                                 \
+    fflush(stderr);                               \
+    abort();                                      \
   } while (0)
 
 /* Have our own assert, so we are sure it does not get optimized away in
  * a release build.
  */
-#define ASSERT(expr)                                      \
- do {                                                     \
-  if (!(expr)) {                                          \
-    fprintf(stderr,                                       \
-            "Assertion failed in %s on line %d: %s\n",    \
-            __FILE__,                                     \
-            __LINE__,                                     \
-            #expr);                                       \
-    abort();                                              \
-  }                                                       \
- } while (0)
+#define ASSERT(expr)                                     \
+  do {                                                   \
+    if (!(expr)) {                                       \
+      fprintf(stderr,                                    \
+              "Assertion failed in %s on line %d: %s\n", \
+              __FILE__,                                  \
+              __LINE__,                                  \
+              #expr);                                    \
+      abort();                                           \
+    }                                                    \
+  } while (0)
 
 /* This macro cleans up the main loop. This is used to avoid valgrind
  * warnings about memory being "leaked" by the main event loop.
  */
-#define MAKE_VALGRIND_HAPPY()           \
-  do {                                  \
-    close_loop(uv_default_loop());      \
-    uv_loop_delete(uv_default_loop());  \
+#define MAKE_VALGRIND_HAPPY()          \
+  do {                                 \
+    close_loop(uv_default_loop());     \
+    uv_loop_delete(uv_default_loop()); \
   } while (0)
 
 /* Just sugar for wrapping the main() for a task or helper. */
-#define TEST_IMPL(name)                                                       \
-  int run_test_##name(void);                                                  \
+#define TEST_IMPL(name)      \
+  int run_test_##name(void); \
   int run_test_##name(void)
 
-#define BENCHMARK_IMPL(name)                                                  \
-  int run_benchmark_##name(void);                                             \
+#define BENCHMARK_IMPL(name)      \
+  int run_benchmark_##name(void); \
   int run_benchmark_##name(void)
 
-#define HELPER_IMPL(name)                                                     \
-  int run_helper_##name(void);                                                \
+#define HELPER_IMPL(name)      \
+  int run_helper_##name(void); \
   int run_helper_##name(void)
 
 /* Pause the calling thread for a number of milliseconds. */
@@ -140,48 +136,46 @@ void uv_sleep(int msec);
 const char* fmt(double d);
 
 /* Reserved test exit codes. */
-enum test_status {
-  TEST_OK = 0,
-  TEST_TODO,
-  TEST_SKIP
-};
+enum test_status { TEST_OK = 0, TEST_TODO, TEST_SKIP };
 
-#define RETURN_OK()                                                           \
-  do {                                                                        \
-    return TEST_OK;                                                           \
+#define RETURN_OK() \
+  do {              \
+    return TEST_OK; \
   } while (0)
 
-#define RETURN_TODO(explanation)                                              \
-  do {                                                                        \
-    LOGF("%s\n", explanation);                                                \
-    return TEST_TODO;                                                         \
+#define RETURN_TODO(explanation) \
+  do {                           \
+    LOGF("%s\n", explanation);   \
+    return TEST_TODO;            \
   } while (0)
 
-#define RETURN_SKIP(explanation)                                              \
-  do {                                                                        \
-    LOGF("%s\n", explanation);                                                \
-    return TEST_SKIP;                                                         \
+#define RETURN_SKIP(explanation) \
+  do {                           \
+    LOGF("%s\n", explanation);   \
+    return TEST_SKIP;            \
   } while (0)
 
 #if !defined(_WIN32)
 
-# define TEST_FILE_LIMIT(num)                                                 \
-    do {                                                                      \
-      struct rlimit lim;                                                      \
-      lim.rlim_cur = (num);                                                   \
-      lim.rlim_max = lim.rlim_cur;                                            \
-      if (setrlimit(RLIMIT_NOFILE, &lim))                                     \
-        RETURN_SKIP("File descriptor limit too low.");                        \
-    } while (0)
+#define TEST_FILE_LIMIT(num)                         \
+  do {                                               \
+    struct rlimit lim;                               \
+    lim.rlim_cur = (num);                            \
+    lim.rlim_max = lim.rlim_cur;                     \
+    if (setrlimit(RLIMIT_NOFILE, &lim))              \
+      RETURN_SKIP("File descriptor limit too low."); \
+  } while (0)
 
-#else  /* defined(_WIN32) */
+#else /* defined(_WIN32) */
 
-# define TEST_FILE_LIMIT(num) do {} while (0)
+#define TEST_FILE_LIMIT(num) \
+  do {                       \
+  } while (0)
 
 #endif
 
 
-#if defined _WIN32 && ! defined __GNUC__
+#if defined _WIN32 && !defined __GNUC__
 
 #include <stdarg.h>
 
@@ -209,13 +203,11 @@ static int snprintf(char* buf, size_t len, const char* fmt, ...) {
 
 #endif
 
-#if defined(__clang__) ||                                \
-    defined(__GNUC__) ||                                 \
-    defined(__INTEL_COMPILER) ||                         \
+#if defined(__clang__) || defined(__GNUC__) || defined(__INTEL_COMPILER) || \
     defined(__SUNPRO_C)
-# define UNUSED __attribute__((unused))
+#define UNUSED __attribute__((unused))
 #else
-# define UNUSED
+#define UNUSED
 #endif
 
 /* Fully close a loop */

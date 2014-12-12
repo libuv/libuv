@@ -31,12 +31,11 @@
 #ifdef _WIN32
 
 TEST_IMPL(tcp_try_write) {
-
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
-#else  /* !_WIN32 */
+#else /* !_WIN32 */
 
 static uv_tcp_t server;
 static uv_tcp_t client;
@@ -122,10 +121,9 @@ TEST_IMPL(tcp_try_write) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   ASSERT(0 == uv_tcp_init(uv_default_loop(), &client));
-  ASSERT(0 == uv_tcp_connect(&connect_req,
-                             &client,
-                             (struct sockaddr*) &addr,
-                             connect_cb));
+  ASSERT(0 ==
+         uv_tcp_connect(
+             &connect_req, &client, (struct sockaddr*) &addr, connect_cb));
 
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
@@ -139,4 +137,4 @@ TEST_IMPL(tcp_try_write) {
   return 0;
 }
 
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */

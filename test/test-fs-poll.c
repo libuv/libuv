@@ -99,43 +99,43 @@ static void poll_cb(uv_fs_poll_t* handle,
   ASSERT(curr != NULL);
 
   switch (poll_cb_called++) {
-  case 0:
-    ASSERT(status == UV_ENOENT);
-    ASSERT(0 == memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 == memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
-    touch_file(FIXTURE);
-    break;
+    case 0:
+      ASSERT(status == UV_ENOENT);
+      ASSERT(0 == memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 == memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
+      touch_file(FIXTURE);
+      break;
 
-  case 1:
-    ASSERT(status == 0);
-    ASSERT(0 == memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 20, 0));
-    break;
+    case 1:
+      ASSERT(status == 0);
+      ASSERT(0 == memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 20, 0));
+      break;
 
-  case 2:
-    ASSERT(status == 0);
-    ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 200, 0));
-    break;
+    case 2:
+      ASSERT(status == 0);
+      ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 200, 0));
+      break;
 
-  case 3:
-    ASSERT(status == 0);
-    ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
-    remove(FIXTURE);
-    break;
+    case 3:
+      ASSERT(status == 0);
+      ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
+      remove(FIXTURE);
+      break;
 
-  case 4:
-    ASSERT(status == UV_ENOENT);
-    ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
-    ASSERT(0 == memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
-    uv_close((uv_handle_t*)handle, close_cb);
-    break;
+    case 4:
+      ASSERT(status == UV_ENOENT);
+      ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
+      ASSERT(0 == memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
+      uv_close((uv_handle_t*) handle, close_cb);
+      break;
 
-  default:
-    ASSERT(0);
+    default:
+      ASSERT(0);
   }
 }
 

@@ -70,7 +70,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
-  printf("Read. nread == %d\n", (int)nread);
+  printf("Read. nread == %d\n", (int) nread);
   free(buf->base);
 
   if (nread == 0) {
@@ -80,7 +80,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ASSERT(nread == UV_EOF);
 
     nested++;
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*) tcp, close_cb);
     nested--;
 
     return;
@@ -97,7 +97,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
     puts("Shutdown");
 
-    if (uv_shutdown(&shutdown_req, (uv_stream_t*)tcp, shutdown_cb)) {
+    if (uv_shutdown(&shutdown_req, (uv_stream_t*) tcp, shutdown_cb)) {
       FATAL("uv_shutdown failed");
     }
     nested--;
@@ -112,14 +112,14 @@ static void timer_cb(uv_timer_t* handle) {
   puts("Timeout complete. Now read data...");
 
   nested++;
-  if (uv_read_start((uv_stream_t*)&client, alloc_cb, read_cb)) {
+  if (uv_read_start((uv_stream_t*) &client, alloc_cb, read_cb)) {
     FATAL("uv_read_start failed");
   }
   nested--;
 
   timer_cb_called++;
 
-  uv_close((uv_handle_t*)handle, close_cb);
+  uv_close((uv_handle_t*) handle, close_cb);
 }
 
 
@@ -159,7 +159,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   buf.base = (char*) &MESSAGE;
   buf.len = sizeof MESSAGE;
 
-  if (uv_write(&write_req, (uv_stream_t*)req->handle, &buf, 1, write_cb)) {
+  if (uv_write(&write_req, (uv_stream_t*) req->handle, &buf, 1, write_cb)) {
     FATAL("uv_write failed");
   }
 
@@ -182,10 +182,8 @@ TEST_IMPL(callback_stack) {
 
   nested++;
 
-  if (uv_tcp_connect(&connect_req,
-                     &client,
-                     (const struct sockaddr*) &addr,
-                     connect_cb)) {
+  if (uv_tcp_connect(
+          &connect_req, &client, (const struct sockaddr*) &addr, connect_cb)) {
     FATAL("uv_tcp_connect failed");
   }
   nested--;

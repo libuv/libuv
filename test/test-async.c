@@ -35,7 +35,7 @@ static int prepare_cb_called;
 static int close_cb_called;
 
 
-static void thread_cb(void *arg) {
+static void thread_cb(void* arg) {
   int n;
   int r;
 
@@ -85,8 +85,8 @@ static void async_cb(uv_async_t* handle) {
   uv_mutex_unlock(&mutex);
 
   if (n == 3) {
-    uv_close((uv_handle_t*)&async, close_cb);
-    uv_close((uv_handle_t*)&prepare, close_cb);
+    uv_close((uv_handle_t*) &async, close_cb);
+    uv_close((uv_handle_t*) &prepare, close_cb);
   }
 }
 

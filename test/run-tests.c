@@ -24,9 +24,9 @@
 #include <string.h>
 
 #ifdef _WIN32
-# include <io.h>
+#include <io.h>
 #else
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
 #include "uv.h"
@@ -52,12 +52,15 @@ int main(int argc, char **argv) {
   argv = uv_setup_args(argc, argv);
 
   switch (argc) {
-  case 1: return run_tests(0);
-  case 2: return maybe_run_test(argc, argv);
-  case 3: return run_test_part(argv[1], argv[2]);
-  default:
-    LOGF("Too many arguments.\n");
-    return EXIT_FAILURE;
+    case 1:
+      return run_tests(0);
+    case 2:
+      return maybe_run_test(argc, argv);
+    case 3:
+      return run_test_part(argv[1], argv[2]);
+    default:
+      LOGF("Too many arguments.\n");
+      return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
@@ -113,7 +116,8 @@ static int maybe_run_test(int argc, char **argv) {
 
   if (strcmp(argv[1], "spawn_helper4") == 0) {
     /* Never surrender, never return! */
-    while (1) uv_sleep(10000);
+    while (1)
+      uv_sleep(10000);
   }
 
   if (strcmp(argv[1], "spawn_helper5") == 0) {
@@ -169,7 +173,7 @@ static int maybe_run_test(int argc, char **argv) {
 
     return 1;
   }
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */
 
   return run_test(argv[1], 0, 1);
 }

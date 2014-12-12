@@ -26,31 +26,28 @@
 #include <errno.h>
 
 #ifndef HAVE_KQUEUE
-# if defined(__APPLE__) ||                                                    \
-     defined(__DragonFly__) ||                                                \
-     defined(__FreeBSD__) ||                                                  \
-     defined(__OpenBSD__) ||                                                  \
-     defined(__NetBSD__)
-#  define HAVE_KQUEUE 1
-# endif
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || \
+    defined(__OpenBSD__) || defined(__NetBSD__)
+#define HAVE_KQUEUE 1
+#endif
 #endif
 
 #ifndef HAVE_EPOLL
-# if defined(__linux__)
-#  define HAVE_EPOLL 1
-# endif
+#if defined(__linux__)
+#define HAVE_EPOLL 1
+#endif
 #endif
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_EPOLL)
 
 #if defined(HAVE_KQUEUE)
-# include <sys/types.h>
-# include <sys/event.h>
-# include <sys/time.h>
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
 #endif
 
 #if defined(HAVE_EPOLL)
-# include <sys/epoll.h>
+#include <sys/epoll.h>
 #endif
 
 static uv_thread_t embed_thread;

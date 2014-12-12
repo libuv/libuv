@@ -23,11 +23,11 @@
 #include "task.h"
 
 #ifdef _WIN32
-# include <io.h>
-# include <windows.h>
+#include <io.h>
+#include <windows.h>
 #else /*  Unix */
-# include <fcntl.h>
-# include <unistd.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include <string.h>
@@ -40,7 +40,7 @@ TEST_IMPL(tty) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop = uv_default_loop();
 
-  /* Make sure we have an FD that refers to a tty */
+/* Make sure we have an FD that refers to a tty */
 #ifdef _WIN32
   HANDLE handle;
   handle = CreateFileA("conin$",
@@ -85,10 +85,10 @@ TEST_IMPL(tty) {
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
   ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
 
-  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
+  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1); /* Readable. */
   ASSERT(r == 0);
 
-  r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0);  /* Writable. */
+  r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0); /* Writable. */
   ASSERT(r == 0);
 
   r = uv_tty_get_winsize(&tty_out, &width, &height);
@@ -97,8 +97,8 @@ TEST_IMPL(tty) {
   printf("width=%d height=%d\n", width, height);
 
   if (width == 0 && height == 0) {
-   /* Some environments such as containers or Jenkins behave like this
-    * sometimes */
+    /* Some environments such as containers or Jenkins behave like this
+     * sometimes */
     MAKE_VALGRIND_HAPPY();
     return TEST_SKIP;
   }

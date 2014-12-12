@@ -144,7 +144,8 @@ TEST_IMPL(tcp_close_accept) {
    * We'll create server and connect to it using two clients, each writing one
    * byte once connected.
    *
-   * When all clients will be accepted by server - we'll start reading from them
+   * When all clients will be accepted by server - we'll start reading from
+   *them
    * and, on first client's first byte, will close second client and server.
    * After that, we'll immediately initiate new connection to server using
    * tcp_check handle (thus, reusing fd from second client).
@@ -185,4 +186,4 @@ TEST_IMPL(tcp_close_accept) {
   return 0;
 }
 
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */

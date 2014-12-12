@@ -39,7 +39,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT(status == 0);
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
   connection_cb_called++;
 }
 
@@ -56,10 +56,10 @@ static void start_server(void) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
-  r = uv_listen((uv_stream_t*)&server, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &server, 128, connection_cb);
   ASSERT(r == 0);
 
-  r = uv_listen((uv_stream_t*)&server, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &server, 128, connection_cb);
   ASSERT(r == 0);
 }
 
@@ -68,7 +68,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
   free(req);
-  uv_close((uv_handle_t*)&client, close_cb);
+  uv_close((uv_handle_t*) &client, close_cb);
   connect_cb_called++;
 }
 
@@ -84,13 +84,10 @@ static void client_connect(void) {
   r = uv_tcp_init(uv_default_loop(), &client);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(connect_req,
-                     &client,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      connect_req, &client, (const struct sockaddr*) &addr, connect_cb);
   ASSERT(r == 0);
 }
-
 
 
 TEST_IMPL(multiple_listen) {

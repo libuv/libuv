@@ -35,11 +35,11 @@ TEST_IMPL(loop_update_time) {
 }
 
 static void cb(uv_timer_t* timer) {
-  uv_close((uv_handle_t*)timer, NULL);
+  uv_close((uv_handle_t*) timer, NULL);
 }
 
 TEST_IMPL(loop_backend_timeout) {
-  uv_loop_t *loop = uv_default_loop();
+  uv_loop_t* loop = uv_default_loop();
   uv_timer_t timer;
   int r;
 
@@ -51,7 +51,7 @@ TEST_IMPL(loop_backend_timeout) {
 
   r = uv_timer_start(&timer, cb, 1000, 0); /* 1 sec */
   ASSERT(r == 0);
-  ASSERT(uv_backend_timeout(loop) > 100); /* 0.1 sec */
+  ASSERT(uv_backend_timeout(loop) > 100);   /* 0.1 sec */
   ASSERT(uv_backend_timeout(loop) <= 1000); /* 1 sec */
 
   r = uv_run(loop, UV_RUN_DEFAULT);

@@ -24,7 +24,7 @@
 
 
 static int get_tty_fd(void) {
-  /* Make sure we have an FD that refers to a tty */
+/* Make sure we have an FD that refers to a tty */
 #ifdef _WIN32
   HANDLE handle;
   handle = CreateFileA("conout$",

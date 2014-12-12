@@ -63,9 +63,10 @@ TEST_IMPL(osx_select) {
   uv_read_start((uv_stream_t*) &tty, alloc_cb, read_cb);
 
   /* Emulate user-input */
-  str = "got some input\n"
-        "with a couple of lines\n"
-        "feel pretty happy\n";
+  str =
+      "got some input\n"
+      "with a couple of lines\n"
+      "feel pretty happy\n";
   for (i = 0, len = strlen(str); i < len; i++) {
     r = ioctl(fd, TIOCSTI, str + i);
     ASSERT(r == 0);
@@ -98,7 +99,7 @@ TEST_IMPL(osx_select_many_fds) {
   for (i = 0; i < ARRAY_SIZE(tcps); i++) {
     r = uv_tcp_init(uv_default_loop(), &tcps[i]);
     ASSERT(r == 0);
-    r = uv_tcp_bind(&tcps[i], (const struct sockaddr *) &addr, 0);
+    r = uv_tcp_bind(&tcps[i], (const struct sockaddr*) &addr, 0);
     ASSERT(r == 0);
     uv_unref((uv_handle_t*) &tcps[i]);
   }
@@ -113,9 +114,10 @@ TEST_IMPL(osx_select_many_fds) {
   ASSERT(r == 0);
 
   /* Emulate user-input */
-  str = "got some input\n"
-        "with a couple of lines\n"
-        "feel pretty happy\n";
+  str =
+      "got some input\n"
+      "with a couple of lines\n"
+      "feel pretty happy\n";
   for (i = 0, len = strlen(str); i < len; i++) {
     r = ioctl(fd, TIOCSTI, str + i);
     ASSERT(r == 0);

@@ -79,7 +79,7 @@ static void buf_free(const uv_buf_t* buf) {
 static void pinger_close_cb(uv_handle_t* handle) {
   pinger_t* pinger;
 
-  pinger = (pinger_t*)handle->data;
+  pinger = (pinger_t*) handle->data;
   LOGF("ping_pongs: %d roundtrips/s\n", (1000 * pinger->pongs) / TIME);
 
   free(pinger);
@@ -126,7 +126,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
   ssize_t i;
   pinger_t* pinger;
 
-  pinger = (pinger_t*)tcp->data;
+  pinger = (pinger_t*) tcp->data;
 
   if (nread < 0) {
     ASSERT(nread == UV_EOF);
@@ -136,7 +136,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
     }
 
     ASSERT(pinger_shutdown_cb_called == 1);
-    uv_close((uv_handle_t*)tcp, pinger_close_cb);
+    uv_close((uv_handle_t*) tcp, pinger_close_cb);
 
     return;
   }
@@ -148,9 +148,8 @@ static void pinger_read_cb(uv_stream_t* tcp,
     if (pinger->state == 0) {
       pinger->pongs++;
       if (uv_now(loop) - start_time > TIME) {
-        uv_shutdown(&pinger->shutdown_req,
-                    (uv_stream_t*) tcp,
-                    pinger_shutdown_cb);
+        uv_shutdown(
+            &pinger->shutdown_req, (uv_stream_t*) tcp, pinger_shutdown_cb);
         break;
       } else {
         pinger_write_ping(pinger);
@@ -163,7 +162,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
 
 
 static void pinger_connect_cb(uv_connect_t* req, int status) {
-  pinger_t *pinger = (pinger_t*)req->handle->data;
+  pinger_t* pinger = (pinger_t*) req->handle->data;
 
   ASSERT(status == 0);
 
@@ -178,7 +177,7 @@ static void pinger_connect_cb(uv_connect_t* req, int status) {
 static void pinger_new(void) {
   struct sockaddr_in client_addr;
   struct sockaddr_in server_addr;
-  pinger_t *pinger;
+  pinger_t* pinger;
   int r;
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", 0, &client_addr));
@@ -193,9 +192,8 @@ static void pinger_new(void) {
 
   pinger->tcp.data = pinger;
 
-  ASSERT(0 == uv_tcp_bind(&pinger->tcp,
-                          (const struct sockaddr*) &client_addr,
-                          0));
+  ASSERT(0 ==
+         uv_tcp_bind(&pinger->tcp, (const struct sockaddr*) &client_addr, 0));
 
   r = uv_tcp_connect(&pinger->connect_req,
                      &pinger->tcp,

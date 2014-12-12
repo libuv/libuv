@@ -29,12 +29,10 @@ static int connect_cb_called = 0;
 static int close_cb_called = 0;
 
 
-
 static void connect_cb(uv_connect_t* handle, int status) {
   ASSERT(handle != NULL);
   connect_cb_called++;
 }
-
 
 
 static void close_cb(uv_handle_t* handle) {
@@ -55,13 +53,11 @@ TEST_IMPL(tcp_connect_error_fault) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
-  r = uv_tcp_connect(&req,
-                     &server,
-                     (const struct sockaddr*) garbage_addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &req, &server, (const struct sockaddr*) garbage_addr, connect_cb);
   ASSERT(r == UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

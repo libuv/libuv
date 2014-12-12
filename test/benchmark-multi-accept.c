@@ -23,7 +23,7 @@
 #include "uv.h"
 
 #define IPC_PIPE_NAME TEST_PIPENAME
-#define NUM_CONNECTS  (250 * 1000)
+#define NUM_CONNECTS (250 * 1000)
 
 union stream_handle {
   uv_pipe_t pipe;
@@ -92,7 +92,9 @@ static void ipc_alloc_cb(uv_handle_t* handle,
 
 static void sv_async_cb(uv_async_t* handle);
 static void sv_connection_cb(uv_stream_t* server_handle, int status);
-static void sv_read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf);
+static void sv_read_cb(uv_stream_t* handle,
+                       ssize_t nread,
+                       const uv_buf_t* buf);
 static void sv_alloc_cb(uv_handle_t* handle,
                         size_t suggested_size,
                         uv_buf_t* buf);
@@ -154,9 +156,8 @@ static void ipc_connect_cb(uv_connect_t* req, int status) {
   struct ipc_client_ctx* ctx;
   ctx = container_of(req, struct ipc_client_ctx, connect_req);
   ASSERT(0 == status);
-  ASSERT(0 == uv_read_start((uv_stream_t*) &ctx->ipc_pipe,
-                            ipc_alloc_cb,
-                            ipc_read_cb));
+  ASSERT(0 == uv_read_start(
+                  (uv_stream_t*) &ctx->ipc_pipe, ipc_alloc_cb, ipc_read_cb));
 }
 
 
@@ -215,8 +216,7 @@ static void send_listen_handles(uv_handle_type type,
     ASSERT(0 == uv_tcp_bind((uv_tcp_t*) &ctx.server_handle,
                             (const struct sockaddr*) &listen_addr,
                             0));
-  }
-  else
+  } else
     ASSERT(0);
 
   ASSERT(0 == uv_pipe_init(loop, &ctx.ipc_pipe, 1));
@@ -242,16 +242,14 @@ static void get_listen_handle(uv_loop_t* loop, uv_stream_t* server_handle) {
   ctx.server_handle->data = "server handle";
 
   ASSERT(0 == uv_pipe_init(loop, &ctx.ipc_pipe, 1));
-  uv_pipe_connect(&ctx.connect_req,
-                  &ctx.ipc_pipe,
-                  IPC_PIPE_NAME,
-                  ipc_connect_cb);
+  uv_pipe_connect(
+      &ctx.connect_req, &ctx.ipc_pipe, IPC_PIPE_NAME, ipc_connect_cb);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 }
 
 
-static void server_cb(void *arg) {
-  struct server_ctx *ctx;
+static void server_cb(void* arg) {
+  struct server_ctx* ctx;
   uv_loop_t loop;
 
   ctx = arg;
@@ -266,9 +264,8 @@ static void server_cb(void *arg) {
   uv_sem_post(&ctx->semaphore);
 
   /* Now start the actual benchmark. */
-  ASSERT(0 == uv_listen((uv_stream_t*) &ctx->server_handle,
-                        128,
-                        sv_connection_cb));
+  ASSERT(0 ==
+         uv_listen((uv_stream_t*) &ctx->server_handle, 128, sv_connection_cb));
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
 
   uv_loop_close(&loop);
@@ -331,7 +328,8 @@ static void cl_connect_cb(uv_connect_t* req, int status) {
 
 
 static void cl_idle_cb(uv_idle_t* handle) {
-  struct client_ctx* ctx = container_of(handle, struct client_ctx, idle_handle);
+  struct client_ctx* ctx =
+      container_of(handle, struct client_ctx, idle_handle);
   uv_close((uv_handle_t*) &ctx->client_handle, cl_close_cb);
   uv_idle_stop(&ctx->idle_handle);
 }

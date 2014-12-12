@@ -23,7 +23,7 @@
 #define RUNNER_H_
 
 #include <limits.h> /* PATH_MAX */
-#include <stdio.h> /* FILE */
+#include <stdio.h>  /* FILE */
 
 
 /*
@@ -53,36 +53,36 @@ typedef struct {
 /*
  * Macros used by test-list.h and benchmark-list.h.
  */
-#define TASK_LIST_START                             \
-  task_entry_t TASKS[] = {
+#define TASK_LIST_START task_entry_t TASKS[] = {
+#define TASK_LIST_END  \
+  { 0, 0, 0, 0, 0, 0 } \
+  }                    \
+  ;
 
-#define TASK_LIST_END                               \
-    { 0, 0, 0, 0, 0, 0 }                               \
-  };
+#define TEST_DECLARE(name) int run_test_##name(void);
 
-#define TEST_DECLARE(name)                          \
-  int run_test_##name(void);
+#define TEST_ENTRY(name)                         \
+  { #name, #name, &run_test_##name, 0, 0, 5000 } \
+  ,
 
-#define TEST_ENTRY(name)                            \
-    { #name, #name, &run_test_##name, 0, 0, 5000 },
+#define TEST_ENTRY_CUSTOM(name, is_helper, show_output, timeout)      \
+  { #name, #name, &run_test_##name, is_helper, show_output, timeout } \
+  ,
 
-#define TEST_ENTRY_CUSTOM(name, is_helper, show_output, timeout) \
-    { #name, #name, &run_test_##name, is_helper, show_output, timeout },
+#define BENCHMARK_DECLARE(name) int run_benchmark_##name(void);
 
-#define BENCHMARK_DECLARE(name)                     \
-  int run_benchmark_##name(void);
+#define BENCHMARK_ENTRY(name)                          \
+  { #name, #name, &run_benchmark_##name, 0, 0, 60000 } \
+  ,
 
-#define BENCHMARK_ENTRY(name)                       \
-    { #name, #name, &run_benchmark_##name, 0, 0, 60000 },
+#define HELPER_DECLARE(name) int run_helper_##name(void);
 
-#define HELPER_DECLARE(name)                        \
-  int run_helper_##name(void);
+#define HELPER_ENTRY(task_name, name)                \
+  { #task_name, #name, &run_helper_##name, 1, 0, 0 } \
+  ,
 
-#define HELPER_ENTRY(task_name, name)               \
-    { #task_name, #name, &run_helper_##name, 1, 0, 0 },
-
-#define TEST_HELPER       HELPER_ENTRY
-#define BENCHMARK_HELPER  HELPER_ENTRY
+#define TEST_HELPER HELPER_ENTRY
+#define BENCHMARK_HELPER HELPER_ENTRY
 
 #ifdef PATH_MAX
 extern char executable_path[PATH_MAX];
@@ -94,9 +94,9 @@ extern char executable_path[4096];
  * Include platform-dependent definitions
  */
 #ifdef _WIN32
-# include "runner-win.h"
+#include "runner-win.h"
 #else
-# include "runner-unix.h"
+#include "runner-unix.h"
 #endif
 
 
@@ -111,20 +111,18 @@ int run_tests(int benchmark_output);
 /*
  * Run a single test. Starts up any helpers.
  */
-int run_test(const char* test,
-             int benchmark_output,
-             int test_count);
+int run_test(const char *test, int benchmark_output, int test_count);
 
 /*
  * Run a test part, i.e. the test or one of its helpers.
  */
-int run_test_part(const char* test, const char* part);
+int run_test_part(const char *test, const char *part);
 
 
 /*
  * Print tests in sorted order to `stream`. Used by `./run-tests --list`.
  */
-void print_tests(FILE* stream);
+void print_tests(FILE *stream);
 
 
 /*
@@ -134,11 +132,11 @@ void print_tests(FILE* stream);
  */
 
 /* Do platform-specific initialization. */
-int platform_init(int argc, char** argv);
+int platform_init(int argc, char **argv);
 
 /* Invoke "argv[0] test-name [test-part]". Store process info in *p. */
 /* Make sure that all stdio output of the processes is buffered up. */
-int process_start(char *name, char* part, process_info_t *p, int is_helper);
+int process_start(char *name, char *part, process_info_t *p, int is_helper);
 
 /* Wait for all `n` processes in `vec` to terminate. */
 /* Time out after `timeout` msec, or never if timeout == -1 */
@@ -152,12 +150,10 @@ long int process_output_size(process_info_t *p);
 int process_copy_output(process_info_t *p, int fd);
 
 /* Copy the last line of the stdio output buffer to `buffer` */
-int process_read_last_line(process_info_t *p,
-                           char * buffer,
-                           size_t buffer_len);
+int process_read_last_line(process_info_t *p, char *buffer, size_t buffer_len);
 
 /* Return the name that was specified when `p` was started by process_start */
-char* process_get_name(process_info_t *p);
+char *process_get_name(process_info_t *p);
 
 /* Terminate process `p`. */
 int process_terminate(process_info_t *p);
@@ -166,7 +162,8 @@ int process_terminate(process_info_t *p);
 /* On error, return -1. */
 int process_reap(process_info_t *p);
 
-/* Clean up after terminating process `p` (e.g. free the output buffer etc.). */
+/* Clean up after terminating process `p` (e.g. free the output buffer etc.).
+ */
 void process_cleanup(process_info_t *p);
 
 /* Move the console cursor one line up and back to the first column. */

@@ -46,7 +46,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 
 static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT((uv_tcp_t*)t == &tcp);
+  ASSERT((uv_tcp_t*) t == &tcp);
 
   if (nread == 0) {
     free(buf->base);
@@ -71,7 +71,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
 }
 
 
-static void shutdown_cb(uv_shutdown_t *req, int status) {
+static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT(req == &shutdown_req);
 
   ASSERT(called_connect_cb == 1);
@@ -84,12 +84,12 @@ static void shutdown_cb(uv_shutdown_t *req, int status) {
 }
 
 
-static void connect_cb(uv_connect_t *req, int status) {
+static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(status == 0);
   ASSERT(req == &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
-  uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb);
+  uv_read_start((uv_stream_t*) &tcp, alloc_cb, read_cb);
 
   /*
    * Write the letter 'Q' to gracefully kill the echo-server. This will not
@@ -160,10 +160,8 @@ TEST_IMPL(shutdown_eof) {
   r = uv_tcp_init(uv_default_loop(), &tcp);
   ASSERT(!r);
 
-  r = uv_tcp_connect(&connect_req,
-                     &tcp,
-                     (const struct sockaddr*) &server_addr,
-                     connect_cb);
+  r = uv_tcp_connect(
+      &connect_req, &tcp, (const struct sockaddr*) &server_addr, connect_cb);
   ASSERT(!r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -179,4 +177,3 @@ TEST_IMPL(shutdown_eof) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
-

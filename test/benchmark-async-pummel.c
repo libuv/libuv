@@ -25,14 +25,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_PINGS               (1000 * 1000)
-#define ACCESS_ONCE(type, var)  (*(volatile type*) &(var))
+#define NUM_PINGS (1000 * 1000)
+#define ACCESS_ONCE(type, var) (*(volatile type*) &(var))
 
 static unsigned int callbacks;
 static volatile int done;
 
 static const char running[] = "running";
-static const char stop[]    = "stop";
+static const char stop[] = "stop";
 static const char stopped[] = "stopped";
 
 
