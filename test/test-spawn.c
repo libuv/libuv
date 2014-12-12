@@ -1051,6 +1051,9 @@ TEST_IMPL(spawn_setuid_setgid) {
   options.flags = UV_PROCESS_SETUID | UV_PROCESS_SETGID;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
+  if (r == UV_EACCES)
+    RETURN_SKIP("user 'nobody' cannot access the test runner");
+
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
