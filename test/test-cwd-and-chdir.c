@@ -31,27 +31,11 @@ TEST_IMPL(cwd_and_chdir) {
   char buffer_new[PATHMAX];
   size_t size1;
   size_t size2;
-  char* last_slash;
   int err;
 
   size1 = sizeof buffer_orig;
   err = uv_cwd(buffer_orig, &size1);
   ASSERT(err == 0);
-
-  /* Remove trailing slash unless at a root directory. */
-#ifdef _WIN32
-  last_slash = strrchr(buffer_orig, '\\');
-  ASSERT(last_slash);
-  if (last_slash > buffer_orig && *(last_slash - 1) != ':') {
-    *last_slash = '\0';
-  }
-#else /* Unix */
-  last_slash = strrchr(buffer_orig, '/');
-  ASSERT(last_slash);
-  if (last_slash != buffer_orig) {
-    *last_slash = '\0';
-  }
-#endif
 
   err = uv_chdir(buffer_orig);
   ASSERT(err == 0);
