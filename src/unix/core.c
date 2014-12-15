@@ -635,6 +635,11 @@ int uv_cwd(char* buffer, size_t* size) {
     return -errno;
 
   *size = strlen(buffer);
+  if (*size > 1 && buffer[*size - 1] == '/') {
+    buffer[*size-1] = '\0';
+    (*size)--;
+  }
+
   return 0;
 }
 
