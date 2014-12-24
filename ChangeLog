@@ -1,3 +1,30 @@
+2014.12.25, Version 0.10.31 (Stable), 4dbd27e2219069a6daa769fb37f98673b77b4261
+
+Changes since version 0.10.30:
+
+* test: test that closing a poll handle doesn't corrupt the stack (Bert Belder)
+
+* win: fix compilation of tests (Marc Schlaich)
+
+* Revert "win: keep a reference to AFD_POLL_INFO in cancel poll" (Bert Belder)
+
+* win: avoid stack corruption when closing a poll handle (Bert Belder)
+
+* gitignore: ignore Visual Studio files (Marc Schlaich)
+
+* win: set fallback message if FormatMessage fails (Marc Schlaich)
+
+* win: fall back to default language in uv_dlerror (Marc Schlaich)
+
+* test: improve compatibility for dlerror test (Marc Schlaich)
+
+* test: check dlerror is "no error" in no error case (Marc Schlaich)
+
+* build: link against -pthread (Logan Rosen)
+
+* win: scandir use 'ls' for formatting long strings (Kenneth Perry)
+
+
 2014.12.10, Version 1.0.2 (Stable), eec671f0059953505f9a3c9aeb7f9f31466dd7cd
 
 Changes since version 1.0.1:
