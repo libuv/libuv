@@ -146,6 +146,11 @@ static void init_once(void) {
 #if defined(BUILDING_UV_SHARED)
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+  #if defined(_MSC_VER) && defined(_MT) && defined(_DLL)
+    if (reason == DLL_THREAD_ATTACH)
+      DisableThreadLibraryCalls(instance);
+  #endif
+
   if ((reason == DLL_PROCESS_DETACH) && (reserved == NULL))
     cleanup();
 
