@@ -146,7 +146,7 @@ static void init_once(void) {
 #if defined(BUILDING_UV_SHARED)
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
-  if (reason == DLL_PROCESS_DETACH)
+  if ((reason == DLL_PROCESS_DETACH) && (reserved == NULL))
     cleanup();
 
   return TRUE;
