@@ -134,8 +134,8 @@ static uv_once_t once = UV_ONCE_INIT;
 static uv_key_t uv__current_thread;
 static volatile int initialized = 0;
 
-static void cleanup(void){
-  if(!initialized)
+static void cleanup(void) {
+  if (initialized == 0)
     return;
 
   uv_key_delete(&uv__current_thread);
@@ -144,15 +144,16 @@ static void cleanup(void){
 }
 
 static void init_once(void) {
-  if(uv_key_create(&uv__current_thread))
+  if (uv_key_create(&uv__current_thread))
     abort();
+
   initialized = 1;
 }
 
 #if defined(BUILDING_UV_SHARED)
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
-  if(reason == DLL_PROCESS_DETACH)
+  if (reason == DLL_PROCESS_DETACH)
     cleanup();
 
   return TRUE;
@@ -174,8 +175,7 @@ struct thread_ctx {
 };
 
 
-static UINT __stdcall uv__thread_start(void* arg)
-{
+static UINT __stdcall uv__thread_start(void* arg) {
   struct thread_ctx *ctx_p;
   struct thread_ctx ctx;
 
