@@ -159,6 +159,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-loop-close.c \
                          test/test-loop-stop.c \
                          test/test-loop-time.c \
+                         test/test-loop-configure.c \
                          test/test-multiple-listen.c \
                          test/test-mutexes.c \
                          test/test-osx-select.c \
