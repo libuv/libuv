@@ -117,7 +117,55 @@ void uv_once(uv_once_t* guard, void (*callback)(void)) {
   uv__once_inner(guard, callback);
 }
 
+
+#ifndef _WIN32_WINNT_VISTA
+# define _WIN32_WINNT_VISTA 0x0600
+#endif
+
+
+#if _WIN32_WINNT < _WIN32_WINNT_VISTA
+
+#ifndef STATIC_ASSERT
+# define STATIC_ASSERT(expr)                                                   \
+    void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
+#endif
+
+static uv_once_t once = UV_ONCE_INIT;
+static uv_key_t uv__current_thread;
+static volatile int initialized = 0;
+
+static void cleanup(void){
+  if(!initialized)
+    return;
+
+  uv_key_delete(&uv__current_thread);
+
+  initialized = 0;
+}
+
+static void init_once(void) {
+  if(uv_key_create(&uv__current_thread))
+    abort();
+  initialized = 1;
+}
+
+#if defined(BUILDING_UV_SHARED)
+
+UV_EXTERN BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+  if(reason == DLL_PROCESS_DETACH)
+    cleanup();
+
+  return TRUE;
+}
+
+#endif
+
+#else
+
 static UV_THREAD_LOCAL uv_thread_t uv__current_thread = NULL;
+
+#endif
+
 
 struct thread_ctx {
   void (*entry)(void* arg);
@@ -135,7 +183,16 @@ static UINT __stdcall uv__thread_start(void* arg)
   ctx = *ctx_p;
   free(ctx_p);
 
+#if _WIN32_WINNT < _WIN32_WINNT_VISTA
+  uv_once(&once, init_once);
+
+  {STATIC_ASSERT(sizeof(uv_thread_t) == sizeof(void*));}
+
+  uv_key_set(&uv__current_thread, (void*)ctx.self);
+#else
   uv__current_thread = ctx.self;
+#endif
+
   ctx.entry(ctx.arg);
 
   return 0;
@@ -177,8 +234,13 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
 
 
 uv_thread_t uv_thread_self(void) {
+#if _WIN32_WINNT < _WIN32_WINNT_VISTA
+  return (uv_thread_t) uv_key_get(&uv__current_thread);
+#else
   return uv__current_thread;
+#endif
 }
+
 
 int uv_thread_join(uv_thread_t *tid) {
   if (WaitForSingleObject(*tid, INFINITE))
@@ -233,6 +295,7 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
   else
     return uv__rwlock_fallback_init(rwlock);
 }
+
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
