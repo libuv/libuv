@@ -118,17 +118,10 @@ void uv_once(uv_once_t* guard, void (*callback)(void)) {
 }
 
 
-#ifndef _WIN32_WINNT_VISTA
-# define _WIN32_WINNT_VISTA 0x0600
-#endif
-
-
 #if _WIN32_WINNT < _WIN32_WINNT_VISTA
 
-#ifndef STATIC_ASSERT
-# define STATIC_ASSERT(expr)                                                   \
-    void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
-#endif
+/* Verify that uv_thread_t can be stored as uv_key_t */
+STATIC_ASSERT(sizeof(uv_thread_t) == sizeof(void*));
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_key_t uv__current_thread;
@@ -185,9 +178,6 @@ static UINT __stdcall uv__thread_start(void* arg) {
 
 #if _WIN32_WINNT < _WIN32_WINNT_VISTA
   uv_once(&once, init_once);
-
-  {STATIC_ASSERT(sizeof(uv_thread_t) == sizeof(void*));}
-
   uv_key_set(&uv__current_thread, (void*)ctx.self);
 #else
   uv__current_thread = ctx.self;

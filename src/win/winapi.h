@@ -24,6 +24,9 @@
 
 #include <windows.h>
 
+#ifndef _WIN32_WINNT_VISTA
+# define _WIN32_WINNT_VISTA 0x0600
+#endif
 
 /*
  * Ntdll headers
