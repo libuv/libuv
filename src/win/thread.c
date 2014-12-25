@@ -151,7 +151,7 @@ static void init_once(void) {
 
 #if defined(BUILDING_UV_SHARED)
 
-UV_EXTERN BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
   if(reason == DLL_PROCESS_DETACH)
     cleanup();
 
@@ -295,7 +295,6 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
   else
     return uv__rwlock_fallback_init(rwlock);
 }
-
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
