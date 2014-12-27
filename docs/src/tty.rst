@@ -18,6 +18,8 @@ Data types
 
 .. c:type:: uv_tty_mode_t
 
+    .. versionadded:: 1.1.1
+
     TTY mode type:
 
     ::
@@ -60,6 +62,9 @@ API
         TTY streams which are not readable have blocking writes.
 
 .. c:function:: int uv_tty_set_mode(uv_tty_t*, uv_tty_mode_t mode)
+
+    .. versionchanged:: 1.1.1: the mode is specified as a :c:type:`uv_tty_mode_t`
+                        value.
 
     Set the TTY using the specified terminal mode.
 
