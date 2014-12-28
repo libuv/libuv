@@ -1300,7 +1300,16 @@ TEST_IMPL(spawn_reads_child_path) {
   int len;
   char file[64];
   char path[1024];
-  char *env[2] = {path, NULL};
+  char* env[3];
+
+  /* Need to carry over the dynamic linker path when the test runner is
+   * linked against libuv.so, see https://github.com/libuv/libuv/issues/85.
+   */
+#if defined(__APPLE__)
+  static const char dyld_path_var[] = "DYLD_LIBRARY_PATH";
+#else
+  static const char dyld_path_var[] = "LD_LIBRARY_PATH";
+#endif
 
   /* Set up the process, but make sure that the file to run is relative and */
   /* requires a lookup into PATH */
@@ -1314,6 +1323,16 @@ TEST_IMPL(spawn_reads_child_path) {
   exepath[len] = 0;
   strcpy(path, "PATH=");
   strcpy(path + 5, exepath);
+
+  env[0] = path;
+  env[1] = getenv(dyld_path_var);
+  env[2] = NULL;
+
+  if (env[1] != NULL) {
+    static char buf[1024 + sizeof(dyld_path_var)];
+    snprintf(buf, sizeof(buf), "%s=%s", dyld_path_var, env[1]);
+    env[1] = buf;
+  }
 
   options.file = file;
   options.args[0] = file;
