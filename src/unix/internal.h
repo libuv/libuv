@@ -58,12 +58,46 @@
 #define ACCESS_ONCE(type, var)                                                \
   (*(volatile type*) &(var))
 
-#define UNREACHABLE()                                                         \
+
+/*
+  Macro to test version of gcc
+  To test for GCC > 4.5.0:
+  #if GCC_VERSION > 40500
+  #endif
+*/
+#if defined(__GNUC__)
+#define GCC_VERSION (__GNUC__ * 10000                                         \
+                     + __GNUC_MINOR__ * 100                                   \
+                     + __GNUC_PATCHLEVEL__)
+#endif
+
+/*clang has support for __builtin_unreachable starting from version 3.0
+ * Hence it's assumed that it will be available by default and not checked
+*/
+#if defined(__clang__)
+#define UNREACHABLE(CODE)                                                     \
+  do {                                                                        \
+    __builtin_unreachable();                                                  \
+  }                                                                           \
+  while (0)
+#elif defined(GCC_VERSION)
+# if(GCC_VERSION) >= 40500 /*__builtin_unreachable supported for gcc>=4.5*/
+#  define UNREACHABLE(CODE)                                                   \
+    do {                                                                      \
+      __builtin_unreachable();                                                \
+    }                                                                         \
+    while (0)
+# else
+#  define UNREACHABLE(CODE) CODE                                              \
+# endif
+#else
+# define UNREACHABLE(CODE)                                                    \
   do {                                                                        \
     assert(0 && "unreachable code");                                          \
     abort();                                                                  \
   }                                                                           \
   while (0)
+#endif
 
 #define SAVE_ERRNO(block)                                                     \
   do {                                                                        \
