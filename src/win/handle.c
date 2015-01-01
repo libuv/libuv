@@ -68,7 +68,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
   uv_loop_t* loop = handle->loop;
 
   if (handle->flags & UV__HANDLE_CLOSING) {
-    assert(0);
+    UNREACHABLE();
     return;
   }
 

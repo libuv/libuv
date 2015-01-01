@@ -80,16 +80,12 @@
     __builtin_unreachable();                                                  \
   }                                                                           \
   while (0)
-#elif defined(GCC_VERSION)
-# if(GCC_VERSION) >= 40500 /*__builtin_unreachable supported for gcc>=4.5*/
+#elif defined(GCC_VERSION) && GCC_VERSION >= 40500
 #  define UNREACHABLE(CODE)                                                   \
     do {                                                                      \
       __builtin_unreachable();                                                \
     }                                                                         \
     while (0)
-# else
-#  define UNREACHABLE(CODE) CODE                                              \
-# endif
 #else
 # define UNREACHABLE(CODE)                                                    \
   do {                                                                        \

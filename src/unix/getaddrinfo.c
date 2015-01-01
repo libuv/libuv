@@ -122,7 +122,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   else if (req->hostname)
     free(req->hostname);
   else
-    assert(0);
+    UNREACHABLE(assert(0));
 
   req->hints = NULL;
   req->service = NULL;

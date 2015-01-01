@@ -360,8 +360,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
     break;
   }
   default:
-    assert(0 && "unsupported address family");
-    abort();
+    UNREACHABLE(assert(0 && "unsupported address family"));
   }
 
   return uv__udp_bind(handle, (const struct sockaddr*) &taddr, addrlen, flags);
@@ -690,8 +689,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
       return -errno;
     }
   } else {
-    assert(0 && "unexpected address family");
-    abort();
+    UNREACHABLE(assert(0 && "unexpected address family"));
   }
 
   return 0;

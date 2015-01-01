@@ -38,6 +38,14 @@
 #endif
 
 
+#ifndef UNREACHABLE
+# define UNREACHABLE(CODE) __assume(0)
+#else
+#  define UNREACHABLE(CODE) CODE
+# endif
+
+
+
 #ifdef _DEBUG
 
 extern UV_THREAD_LOCAL int uv__crt_assert_enabled;

@@ -725,8 +725,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
       return uv_translate_sys_error(WSAGetLastError());
     }
   } else {
-    assert(0 && "unexpected address family");
-    abort();
+    UNREACHABLE();
   }
 
   return 0;

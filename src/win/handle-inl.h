@@ -156,7 +156,7 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
         break;
 
       default:
-        assert(0);
+        UNREACHABLE();
         break;
     }
   }
