@@ -40,9 +40,7 @@
 
 #ifndef UNREACHABLE
 # define UNREACHABLE(CODE) __assume(0)
-#else
-#  define UNREACHABLE(CODE) CODE
-# endif
+#endif
 
 
 
