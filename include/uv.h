@@ -160,6 +160,7 @@ extern "C" {
 #define UV_REQ_TYPE_MAP(XX)                                                   \
   XX(REQ, req)                                                                \
   XX(CONNECT, connect)                                                        \
+  XX(READ, read)                                                              \
   XX(WRITE, write)                                                            \
   XX(SHUTDOWN, shutdown)                                                      \
   XX(UDP_SEND, udp_send)                                                      \
@@ -218,6 +219,7 @@ typedef struct uv_req_s uv_req_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
 typedef struct uv_getnameinfo_s uv_getnameinfo_t;
 typedef struct uv_shutdown_s uv_shutdown_t;
+typedef struct uv_read_s uv_read_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_udp_send_s uv_udp_send_t;
@@ -278,9 +280,7 @@ UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
 typedef void (*uv_alloc_cb)(uv_handle_t* handle,
                             size_t suggested_size,
                             uv_buf_t* buf);
-typedef void (*uv_read_cb)(uv_stream_t* stream,
-                           ssize_t nread,
-                           const uv_buf_t* buf);
+typedef void (*uv_read_cb)(uv_read_t* req, int status);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
@@ -423,8 +423,6 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 #define UV_STREAM_FIELDS                                                      \
   /* number of bytes queued for writing */                                    \
   size_t write_queue_size;                                                    \
-  uv_alloc_cb alloc_cb;                                                       \
-  uv_read_cb read_cb;                                                         \
   /* private */                                                               \
   UV_STREAM_PRIVATE_FIELDS
 
@@ -443,10 +441,23 @@ struct uv_stream_s {
 UV_EXTERN int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb);
 UV_EXTERN int uv_accept(uv_stream_t* server, uv_stream_t* client);
 
-UV_EXTERN int uv_read_start(uv_stream_t*,
-                            uv_alloc_cb alloc_cb,
-                            uv_read_cb read_cb);
-UV_EXTERN int uv_read_stop(uv_stream_t*);
+
+/* uv_read_t is a subclass of uv_req_t. */
+struct uv_read_s {
+  UV_REQ_FIELDS
+  uv_read_cb cb;
+  uv_stream_t* handle;
+  UV_READ_PRIVATE_FIELDS
+};
+
+UV_EXTERN int uv_read(uv_read_t* req,
+                      uv_stream_t* handle,
+                      const uv_buf_t bufs[],
+                      unsigned int nbufs,
+                      uv_read_cb cb);
+UV_EXTERN int uv_try_read(uv_stream_t* handle,
+                          const uv_buf_t bufs[],
+                          unsigned int nbufs);
 
 UV_EXTERN int uv_write(uv_write_t* req,
                        uv_stream_t* handle,
