@@ -70,7 +70,7 @@ int uv_exepath(char* buffer, size_t* size) {
   char* path;
   char* fullpath;
 
-  if (buffer == NULL || size == NULL)
+  if (buffer == NULL || size == NULL || *size == 0)
     return -EINVAL;
 
   usize = *size;

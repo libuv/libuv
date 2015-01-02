@@ -85,7 +85,7 @@ int uv_exepath(char* buffer, size_t* size) {
   pid_t mypid;
   int err;
 
-  if (buffer == NULL || size == NULL)
+  if (buffer == NULL || size == NULL || *size == 0)
     return -EINVAL;
 
   mypid = getpid();

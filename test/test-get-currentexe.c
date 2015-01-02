@@ -61,5 +61,9 @@ TEST_IMPL(get_currentexe) {
   r = uv_exepath(buffer, NULL);
   ASSERT(r == UV_EINVAL);
 
+  size = 0;
+  r = uv_exepath(buffer, &size);
+  ASSERT(r == UV_EINVAL);
+
   return 0;
 }
