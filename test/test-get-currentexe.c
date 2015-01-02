@@ -65,5 +65,13 @@ TEST_IMPL(get_currentexe) {
   r = uv_exepath(buffer, &size);
   ASSERT(r == UV_EINVAL);
 
+  memset(buffer, -1, sizeof(buffer));
+
+  size = 1;
+  r = uv_exepath(buffer, &size);
+  ASSERT(r == 0);
+  ASSERT(size == 0);
+  ASSERT(buffer[0] == '\0');
+
   return 0;
 }
