@@ -75,19 +75,19 @@
  * Hence it's assumed that it will be available by default and not checked
 */
 #if defined(__clang__)
-#define UNREACHABLE(CODE)                                                     \
+#define UNREACHABLE()                                                     \
   do {                                                                        \
     __builtin_unreachable();                                                  \
   }                                                                           \
   while (0)
 #elif defined(GCC_VERSION) && GCC_VERSION >= 40500
-#  define UNREACHABLE(CODE)                                                   \
+#  define UNREACHABLE()                                                   \
     do {                                                                      \
       __builtin_unreachable();                                                \
     }                                                                         \
     while (0)
 #else
-# define UNREACHABLE(CODE)                                                    \
+# define UNREACHABLE()                                                    \
   do {                                                                        \
     assert(0 && "unreachable code");                                          \
     abort();                                                                  \
