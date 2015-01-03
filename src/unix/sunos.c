@@ -304,7 +304,11 @@ int uv_exepath(char* buffer, size_t* size) {
     return -EINVAL;
 
   snprintf(buf, sizeof(buf), "/proc/%lu/path/a.out", (unsigned long) getpid());
-  res = readlink(buf, buffer, *size - 1);
+
+  res = *size - 1;
+  if (res > 0)
+    res = readlink(buf, buffer, res);
+
   if (res == -1)
     return -errno;
 
