@@ -4104,12 +4104,14 @@
 # define JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE          0x00002000
 #endif
 
+/* from ntifs.h */
 #ifndef DEVICE_TYPE
 # define DEVICE_TYPE DWORD
 #endif
 
-/* from ntifs.h */
-/* MinGW already has it, mingw-w64 does not. */
+/* MinGW already has a definition for REPARSE_DATA_BUFFER, but mingw-w64 does
+ * not.
+ */
 #if defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
   typedef struct _REPARSE_DATA_BUFFER {
     ULONG  ReparseTag;
