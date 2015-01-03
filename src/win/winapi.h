@@ -4104,6 +4104,15 @@
 # define JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE          0x00002000
 #endif
 
+/* from winternl.h */
+typedef struct _UNICODE_STRING {
+  USHORT Length;
+  USHORT MaximumLength;
+  PWSTR  Buffer;
+} UNICODE_STRING, *PUNICODE_STRING;
+
+typedef const UNICODE_STRING *PCUNICODE_STRING;
+
 /* from ntifs.h */
 #ifndef DEVICE_TYPE
 # define DEVICE_TYPE DWORD
@@ -4514,6 +4523,19 @@ typedef NTSTATUS (NTAPI *sNtQuerySystemInformation)
                   ULONG SystemInformationLength,
                   PULONG ReturnLength);
 
+typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
+                 (HANDLE FileHandle,
+                  HANDLE Event,
+                  PIO_APC_ROUTINE ApcRoutine,
+                  PVOID ApcContext,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  PVOID FileInformation,
+                  ULONG Length,
+                  FILE_INFORMATION_CLASS FileInformationClass,
+                  BOOLEAN ReturnSingleEntry,
+                  PUNICODE_STRING FileName,
+                  BOOLEAN RestartScan
+                );
 
 /*
  * Kernel32 headers
@@ -4628,6 +4650,7 @@ extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
+extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 
