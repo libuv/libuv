@@ -381,7 +381,10 @@ int uv_exepath(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return -EINVAL;
 
-  n = readlink("/proc/self/exe", buffer, *size - 1);
+  n = *size - 1;
+  if (n > 0)
+    n = readlink("/proc/self/exe", buffer, n);
+
   if (n == -1)
     return -errno;
 
