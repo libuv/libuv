@@ -1391,17 +1391,6 @@ UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
 
-/* The presence of these unions force similar struct layout. */
-#define XX(_, name) uv_ ## name ## _t name;
-union uv_any_handle {
-  UV_HANDLE_TYPE_MAP(XX)
-};
-
-union uv_any_req {
-  UV_REQ_TYPE_MAP(XX)
-};
-#undef XX
-
 
 struct uv_loop_s {
   UV_OBJECT_FIELDS
