@@ -206,6 +206,8 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
+#define UV_OBJECT_PRIVATE_FIELDS /* empty */
+
 #define UV_LOOP_PRIVATE_FIELDS                                                \
   unsigned long flags;                                                        \
   int backend_fd;                                                             \

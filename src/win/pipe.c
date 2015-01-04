@@ -1661,7 +1661,7 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   if (req->ipc_header) {
     if (req == &handle->ipc_header_write_req) {
-      req->type = UV_UNKNOWN_REQ;
+      req->type = UV_UNKNOWN_OBJECT;
     } else {
       free(req);
     }
@@ -2031,12 +2031,11 @@ int uv_pipe_pending_count(uv_pipe_t* handle) {
   return handle->pending_ipc_info.queue_len;
 }
 
-
-uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
+uv_object_type uv_pipe_pending_type(uv_pipe_t* handle) {
   if (!handle->ipc)
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
   if (handle->pending_ipc_info.queue_len == 0)
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
   else
     return UV_TCP;
 }

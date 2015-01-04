@@ -80,7 +80,7 @@ TEST_IMPL(tty) {
   ASSERT(ttyin_fd >= 0);
   ASSERT(ttyout_fd >= 0);
 
-  ASSERT(UV_UNKNOWN_HANDLE == uv_guess_handle(-1));
+  ASSERT(UV_UNKNOWN_OBJECT == uv_guess_handle(-1));
 
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
   ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));

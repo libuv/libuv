@@ -41,7 +41,7 @@ union handles {
 struct echo_ctx {
   uv_pipe_t channel;
   uv_write_t write_req;
-  uv_handle_type expected_type;
+  uv_object_type expected_type;
   union handles send;
   union handles recv;
 };
@@ -63,7 +63,7 @@ static void alloc_cb(uv_handle_t* handle,
 static void recv_cb(uv_stream_t* handle,
                     ssize_t nread,
                     const uv_buf_t* buf) {
-  uv_handle_type pending;
+  uv_object_type pending;
   uv_pipe_t* pipe;
   int r;
 
@@ -175,7 +175,7 @@ static void read_cb(uv_stream_t* handle,
                     const uv_buf_t* rdbuf) {
   uv_buf_t wrbuf;
   uv_pipe_t* pipe;
-  uv_handle_type pending;
+  uv_object_type pending;
   int r;
 
   pipe = (uv_pipe_t*) handle;

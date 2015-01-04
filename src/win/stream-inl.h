@@ -32,7 +32,7 @@
 
 INLINE static void uv_stream_init(uv_loop_t* loop,
                                   uv_stream_t* handle,
-                                  uv_handle_type type) {
+                                  uv_object_type type) {
   uv__handle_init(loop, (uv_handle_t*) handle, type);
   handle->write_queue_size = 0;
   handle->activecnt = 0;

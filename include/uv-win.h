@@ -311,6 +311,8 @@ typedef struct {
 
 RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
+#define UV_OBJECT_PRIVATE_FIELDS /* empty */
+
 #define UV_LOOP_PRIVATE_FIELDS                                                \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
