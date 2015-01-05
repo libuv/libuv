@@ -96,6 +96,9 @@ TEST_IMPL(udp_options) {
 TEST_IMPL(udp_options6) {
   struct sockaddr_in6 addr;
 
+  if (!can_ipv6())
+    RETURN_SKIP("IPv6 not supported");
+
   ASSERT(0 == uv_ip6_addr("::", TEST_PORT, &addr));
   return udp_options_test((const struct sockaddr*) &addr);
 }
