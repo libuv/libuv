@@ -109,6 +109,8 @@ int uv__tcp_connect(uv_connect_t* req,
                     uv_connect_cb cb) {
   int err;
   int r;
+  int i;    /* counter for handle EADDRNOTAVAIL */
+  int t;    /* backoff time for handle EADDRNOTAVAIL */
 
   assert(handle->type == UV_TCP);
 
@@ -123,9 +125,17 @@ int uv__tcp_connect(uv_connect_t* req,
 
   handle->delayed_error = 0;
 
-  do
+  i = 0;    /* init counter */
+  t = 30;   /* init backoff time */
+
+  do {
+    if (i > 0) {
+        usleep(t);
+        t *= 2;
+    }
     r = connect(uv__stream_fd(handle), addr, addrlen);
-  while (r == -1 && errno == EINTR);
+    i++;
+  } while (r == -1 && (errno == EINTR || (errno == EADDRNOTAVAIL && i < 3)));
 
   if (r == -1) {
     if (errno == EINPROGRESS)
