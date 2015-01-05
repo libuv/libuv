@@ -27,6 +27,8 @@ AM_PROG_CC_C_O
 CC_CHECK_CFLAGS_APPEND([-Wno-dollar-in-identifier-extension])
 # AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+# autoconf complains if AC_PROG_LIBTOOL precedes AM_PROG_AR.
+AC_PROG_LIBTOOL
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_INIT
 # TODO(bnoordhuis) Check for -pthread vs. -pthreads
