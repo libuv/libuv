@@ -1,3 +1,10 @@
+2015.01.06, Version 0.10.32 (Stable), 378de30c59aef5fdb6d130fa5cfcb0a68fce571c
+
+Changes since version 0.10.31:
+
+* linux: fix epoll_pwait() sigmask size calculation (Ben Noordhuis)
+
+
 2014.12.25, Version 1.1.0 (Stable), 9572f3e74a167f59a8017e57ca3ebe91ffd88e18
 
 Changes since version 1.0.2:
