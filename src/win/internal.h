@@ -136,6 +136,8 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb);
 int uv_tcp_write(uv_loop_t* loop, uv_write_t* req, uv_tcp_t* handle,
     const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb);
+int uv__tcp_try_write(uv_tcp_t* handle, const uv_buf_t bufs[],
+    unsigned int nbufs);
 
 void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle, uv_req_t* req);
 void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
