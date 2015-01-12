@@ -213,6 +213,8 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
 int uv_tty_read_stop(uv_tty_t* handle);
 int uv_tty_write(uv_loop_t* loop, uv_write_t* req, uv_tty_t* handle,
     const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb);
+int uv__tty_try_write(uv_tty_t* handle, const uv_buf_t bufs[],
+    unsigned int nbufs);
 void uv_tty_close(uv_tty_t* handle);
 
 void uv_process_tty_read_req(uv_loop_t* loop, uv_tty_t* handle,
