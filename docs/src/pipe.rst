@@ -38,9 +38,6 @@ API
 
     Open an existing file descriptor or HANDLE as a pipe.
 
-    .. note::
-        The user is responsible for setting the file descriptor in non-blocking mode.
-
 .. c:function:: int uv_pipe_bind(uv_pipe_t* handle, const char* name)
 
     Bind the pipe to a file path (Unix) or a name (Windows).

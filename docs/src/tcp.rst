@@ -36,10 +36,6 @@ API
 
     Open an existing file descriptor or SOCKET as a TCP handle.
 
-    .. note::
-        The user is responsible for setting the file descriptor in
-        non-blocking mode.
-
 .. c:function:: int uv_tcp_nodelay(uv_tcp_t* handle, int enable)
 
     Enable / disable Nagle's algorithm.
