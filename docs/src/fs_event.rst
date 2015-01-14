@@ -87,6 +87,9 @@ API
     Start the handle with the given callback, which will watch the specified
     `path` for changes. `flags` can be an ORed mask of :c:type:`uv_fs_event_flags`.
 
+    .. note:: Currently the only supported flag is ``UV_FS_EVENT_RECURSIVE`` and
+              only on OSX.
+
 .. c:function:: int uv_fs_event_stop(uv_fs_event_t* handle)
 
     Stop the handle, the callback will no longer be called.
