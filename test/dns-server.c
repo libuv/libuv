@@ -27,6 +27,11 @@
 
 
 typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+typedef struct {
   uv_write_t req;
   uv_buf_t buf;
 } write_req_t;
@@ -54,10 +59,11 @@ static uv_tcp_t server;
 
 
 static void after_write(uv_write_t* req, int status);
-static void after_read(uv_stream_t*, ssize_t nread, const uv_buf_t* buf);
+static void after_read(uv_read_t*, int status);
 static void on_close(uv_handle_t* peer);
 static void on_connection(uv_stream_t*, int status);
 
+#define READ_BUF_LEN   (64*1024)
 #define WRITE_BUF_LEN   (64*1024)
 #define DNSREC_LEN      (4)
 
@@ -124,9 +130,7 @@ static void addrsp(write_req_t* wr, char* hdr) {
   wr->buf.len += rsplen;
 }
 
-static void process_req(uv_stream_t* handle,
-                        ssize_t nread,
-                        const uv_buf_t* buf) {
+static void process_req(uv_stream_t* handle, read_req_t* req, int nread) {
   write_req_t* wr;
   dnshandle* dns = (dnshandle*)handle;
   char hdrbuf[DNSREC_LEN];
@@ -136,9 +140,13 @@ static void process_req(uv_stream_t* handle,
   char* dnsreq;
   char* hdrstart;
   int usingprev = 0;
+  int r;
+  uv_buf_t* buf;
 
-  wr = (write_req_t*) malloc(sizeof *wr);
-  wr->buf.base = (char*)malloc(WRITE_BUF_LEN);
+  buf = &req->buf;
+
+  wr = malloc(sizeof *wr);
+  wr->buf.base = malloc(WRITE_BUF_LEN);
   wr->buf.len = 0;
 
   if (dns->state.prevbuf_ptr != NULL) {
@@ -229,34 +237,37 @@ static void process_req(uv_stream_t* handle,
     dns->state.prevbuf_rem = 0;
     free(buf->base);
   }
+
+  /* Rearm read request */
+  req->buf.base = malloc(READ_BUF_LEN);
+  req->buf.len = READ_BUF_LEN;
+
+  r = uv_read(&req->req, handle, &req->buf, 1, after_read);
+  ASSERT(r == 0);
 }
 
-static void after_read(uv_stream_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* buf) {
-  uv_shutdown_t* req;
+static void after_read(uv_read_t* req, int status) {
+  read_req_t* rr;
+  uv_shutdown_t* shutdown_req;
+  uv_stream_t* stream;
 
-  if (nread < 0) {
+  rr = (read_req_t*) req;
+  stream = req->handle;
+
+  if (status < 0) {
     /* Error or EOF */
-    ASSERT(nread == UV_EOF);
+    ASSERT(status == UV_EOF);
+    free(rr->buf.base);
+    free(rr);
 
-    if (buf->base) {
-      free(buf->base);
-    }
-
-    req = malloc(sizeof *req);
-    uv_shutdown(req, handle, after_shutdown);
+    shutdown_req = malloc(sizeof *shutdown_req);
+    uv_shutdown(shutdown_req, stream, after_shutdown);
 
     return;
   }
 
-  if (nread == 0) {
-    /* Everything OK, but nothing read. */
-    free(buf->base);
-    return;
-  }
   /* process requests and send responses */
-  process_req(handle, nread, buf);
+  process_req(stream, rr, status);
 }
 
 
@@ -265,17 +276,10 @@ static void on_close(uv_handle_t* peer) {
 }
 
 
-static void buf_alloc(uv_handle_t* handle,
-                      size_t suggested_size,
-                      uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
-}
-
-
 static void on_connection(uv_stream_t* server, int status) {
   dnshandle* handle;
   int r;
+  read_req_t* read_req;
 
   ASSERT(status == 0);
 
@@ -293,7 +297,13 @@ static void on_connection(uv_stream_t* server, int status) {
   r = uv_accept(server, (uv_stream_t*)handle);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)handle, buf_alloc, after_read);
+  read_req = malloc(sizeof *read_req);
+  ASSERT(read_req != NULL);
+
+  read_req->buf.base = malloc(READ_BUF_LEN);
+  read_req->buf.len = READ_BUF_LEN;
+
+  r = uv_read(&read_req->req, (uv_stream_t*) handle, &read_req->buf, 1, after_read);
   ASSERT(r == 0);
 }
 

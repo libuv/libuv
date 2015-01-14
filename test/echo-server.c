@@ -25,9 +25,16 @@
 #include <stdlib.h>
 
 typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+typedef struct {
   uv_write_t req;
   uv_buf_t buf;
 } write_req_t;
+
+#define READ_BUF_LEN (64*1024)
 
 static uv_loop_t* loop;
 
@@ -39,7 +46,7 @@ static uv_pipe_t pipeServer;
 static uv_handle_t* server;
 
 static void after_write(uv_write_t* req, int status);
-static void after_read(uv_stream_t*, ssize_t nread, const uv_buf_t* buf);
+static void after_read(uv_read_t* req, int status);
 static void on_close(uv_handle_t* peer);
 static void on_server_close(uv_handle_t* handle);
 static void on_connection(uv_stream_t*, int status);
@@ -69,26 +76,27 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 }
 
 
-static void after_read(uv_stream_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* buf) {
+static void after_read(uv_read_t* req, int status) {
   int i;
+  int r;
+  read_req_t *rr;
   write_req_t *wr;
   uv_shutdown_t* sreq;
+  uv_stream_t* handle;
+  uv_buf_t* buf;
 
-  if (nread < 0) {
+  rr = (read_req_t*) req;
+  buf = &rr->buf;
+  handle = req->handle;
+
+  if (status < 0) {
     /* Error or EOF */
-    ASSERT(nread == UV_EOF);
+    ASSERT(status == UV_EOF);
 
     free(buf->base);
+    free(rr);
     sreq = malloc(sizeof* sreq);
     ASSERT(0 == uv_shutdown(sreq, handle, after_shutdown));
-    return;
-  }
-
-  if (nread == 0) {
-    /* Everything OK, but nothing read. */
-    free(buf->base);
     return;
   }
 
@@ -97,10 +105,11 @@ static void after_read(uv_stream_t* handle,
    * If we get QS it means close the stream.
    */
   if (!server_closed) {
-    for (i = 0; i < nread; i++) {
+    for (i = 0; i < status; i++) {
       if (buf->base[i] == 'Q') {
-        if (i + 1 < nread && buf->base[i + 1] == 'S') {
+        if (i + 1 < status && buf->base[i + 1] == 'S') {
           free(buf->base);
+          free(rr);
           uv_close((uv_handle_t*)handle, on_close);
           return;
         } else {
@@ -113,11 +122,19 @@ static void after_read(uv_stream_t* handle,
 
   wr = (write_req_t*) malloc(sizeof *wr);
   ASSERT(wr != NULL);
-  wr->buf = uv_buf_init(buf->base, nread);
+  wr->buf = uv_buf_init(buf->base, status);
 
   if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
     FATAL("uv_write failed");
   }
+
+  /* Rearm read request */
+  rr->buf.base = malloc(READ_BUF_LEN);
+  ASSERT(rr->buf.base != NULL);
+  rr->buf.len = READ_BUF_LEN;
+
+  r = uv_read(&rr->req, handle, &rr->buf, 1, after_read);
+  ASSERT(r == 0);
 }
 
 
@@ -136,6 +153,7 @@ static void echo_alloc(uv_handle_t* handle,
 
 static void on_connection(uv_stream_t* server, int status) {
   uv_stream_t* stream;
+  read_req_t* rr;
   int r;
 
   if (status != 0) {
@@ -169,7 +187,13 @@ static void on_connection(uv_stream_t* server, int status) {
   r = uv_accept(server, stream);
   ASSERT(r == 0);
 
-  r = uv_read_start(stream, echo_alloc, after_read);
+  rr = malloc(sizeof *rr);
+  ASSERT(rr != NULL);
+  rr->buf.base = malloc(READ_BUF_LEN);
+  ASSERT(rr->buf.base != NULL);
+  rr->buf.len = READ_BUF_LEN;
+
+  r = uv_read(&rr->req, stream, &rr->buf, 1, after_read);
   ASSERT(r == 0);
 }
 
