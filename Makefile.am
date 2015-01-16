@@ -49,6 +49,7 @@ LIBS += -lws2_32 -lpsapi -liphlpapi -lshell32
 libuv_la_SOURCES += src/win/async.c \
                     src/win/atomicops-inl.h \
                     src/win/core.c \
+                    src/win/device.c \
                     src/win/dl.c \
                     src/win/error.c \
                     src/win/fs-event.c \
@@ -86,6 +87,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/src/unix
 libuv_la_SOURCES += src/unix/async.c \
                    src/unix/atomic-ops.h \
                    src/unix/core.c \
+                   src/unix/device.c \
                    src/unix/dl.c \
                    src/unix/fs.c \
                    src/unix/getaddrinfo.c \
@@ -150,6 +152,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-cwd-and-chdir.c \
                          test/test-default-loop-close.c \
                          test/test-delayed-accept.c \
+                         test/test-device-tun-echo.c \
                          test/test-dlerror.c \
                          test/test-embed.c \
                          test/test-emfile.c \
