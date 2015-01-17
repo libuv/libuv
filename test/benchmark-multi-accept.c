@@ -175,7 +175,7 @@ static void ipc_read_cb(uv_stream_t* handle,
                         const uv_buf_t* buf) {
   struct ipc_client_ctx* ctx;
   uv_loop_t* loop;
-  uv_handle_type type;
+  uv_object_type type;
   uv_pipe_t* ipc_pipe;
 
   ipc_pipe = (uv_pipe_t*) handle;
@@ -200,7 +200,7 @@ static void ipc_read_cb(uv_stream_t* handle,
  * threads. It's kind of cumbersome for such a simple operation, maybe we
  * should revive uv_import() and uv_export().
  */
-static void send_listen_handles(uv_handle_type type,
+static void send_listen_handles(uv_object_type type,
                                 unsigned int num_servers,
                                 struct server_ctx* servers) {
   struct ipc_server_ctx ctx;

@@ -128,6 +128,8 @@ int uv_loop_init(uv_loop_t* loop) {
   /* Initialize libuv itself first */
   uv__once_init();
 
+  loop->type = UV_LOOP;
+
   /* Create an I/O completion port */
   loop->iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
   if (loop->iocp == NULL)

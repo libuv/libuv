@@ -80,7 +80,7 @@
 
 
 INLINE static void uv_req_init(uv_loop_t* loop, uv_req_t* req) {
-  req->type = UV_UNKNOWN_REQ;
+  req->type = UV_UNKNOWN_OBJECT;
   SET_REQ_SUCCESS(req);
 }
 

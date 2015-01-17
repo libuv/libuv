@@ -142,7 +142,7 @@ static void on_read(uv_stream_t* handle,
                     const uv_buf_t* buf) {
   int r;
   uv_pipe_t* pipe;
-  uv_handle_type pending;
+  uv_object_type pending;
   uv_buf_t outbuf;
 
   pipe = (uv_pipe_t*) handle;
@@ -168,7 +168,7 @@ static void on_read(uv_stream_t* handle,
   pending = uv_pipe_pending_type(pipe);
   if (!tcp_server_listening) {
     ASSERT(1 == uv_pipe_pending_count(pipe));
-    ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_HANDLE);
+    ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_OBJECT);
     read_cb_called++;
 
     /* Accept the pending TCP server, and start listening on it. */
@@ -196,7 +196,7 @@ static void on_read(uv_stream_t* handle,
   } else if (memcmp("accepted_connection\n", buf->base, nread) == 0) {
     /* Remote server has accepted a connection.  Close the channel. */
     ASSERT(0 == uv_pipe_pending_count(pipe));
-    ASSERT(pending == UV_UNKNOWN_HANDLE);
+    ASSERT(pending == UV_UNKNOWN_OBJECT);
     remote_conn_accepted = 1;
     uv_close((uv_handle_t*)&channel, NULL);
   }
@@ -210,7 +210,7 @@ static void on_read_listen_after_bound_twice(uv_stream_t* handle,
                                              const uv_buf_t* buf) {
   int r;
   uv_pipe_t* pipe;
-  uv_handle_type pending;
+  uv_object_type pending;
 
   pipe = (uv_pipe_t*) handle;
 
@@ -234,7 +234,7 @@ static void on_read_listen_after_bound_twice(uv_stream_t* handle,
 
   ASSERT(uv_pipe_pending_count(pipe) > 0);
   pending = uv_pipe_pending_type(pipe);
-  ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_HANDLE);
+  ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_OBJECT);
   read_cb_called++;
 
   if (read_cb_called == 1) {
@@ -343,7 +343,7 @@ static void on_read_connection(uv_stream_t* handle,
   int r;
   uv_buf_t outbuf;
   uv_pipe_t* pipe;
-  uv_handle_type pending;
+  uv_object_type pending;
 
   pipe = (uv_pipe_t*) handle;
   if (nread == 0) {
@@ -367,7 +367,7 @@ static void on_read_connection(uv_stream_t* handle,
   ASSERT(1 == uv_pipe_pending_count(pipe));
   pending = uv_pipe_pending_type(pipe);
 
-  ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_HANDLE);
+  ASSERT(nread > 0 && buf->base && pending != UV_UNKNOWN_OBJECT);
   read_cb_called++;
 
   /* Accept the pending TCP connection */

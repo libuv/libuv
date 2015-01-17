@@ -109,7 +109,7 @@ API
 
     See :ref:`refcount`.
 
-.. c:function:: size_t uv_handle_size(uv_handle_type type)
+.. c:function:: size_t uv_object_size(uv_object_type type)
 
     Returns the size of the given handle type. Useful for FFI binding writers
     who don't want to know the structure layout.

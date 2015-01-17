@@ -301,7 +301,10 @@ static void connection_cb(uv_stream_t* s, int status) {
  */
 
 typedef struct req_list_s {
-  union uv_any_req uv_req;
+  union {
+    uv_connect_t connect_req;
+    uv_write_t write_req;
+  } req;
   struct req_list_s* next;
 } req_list_t;
 

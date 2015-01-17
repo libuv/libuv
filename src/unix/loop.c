@@ -113,6 +113,7 @@ static int uv__loop_init(uv_loop_t* loop, int default_loop) {
   QUEUE_INIT(&loop->prepare_handles);
   QUEUE_INIT(&loop->handle_queue);
 
+  loop->type = UV_LOOP;
   loop->nfds = 0;
   loop->watchers = NULL;
   loop->nwatchers = 0;

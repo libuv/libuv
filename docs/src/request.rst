@@ -29,28 +29,6 @@ Public members
 
     Space for user-defined arbitrary data. libuv does not use this field.
 
-.. c:member:: uv_req_type uv_req_t.type
-
-    Indicated the type of request. Readonly.
-
-    ::
-
-        typedef enum {
-            UV_UNKNOWN_REQ = 0,
-            UV_REQ,
-            UV_CONNECT,
-            UV_WRITE,
-            UV_SHUTDOWN,
-            UV_UDP_SEND,
-            UV_FS,
-            UV_WORK,
-            UV_GETADDRINFO,
-            UV_GETNAMEINFO,
-            UV_REQ_TYPE_PRIVATE,
-            UV_REQ_TYPE_MAX,
-        } uv_req_type;
-
-
 API
 ---
 
@@ -76,7 +54,7 @@ API
     * A :c:type:`uv_work_t`, :c:type:`uv_getaddrinfo_t` or c:type:`uv_getnameinfo_t`
       request has its callback invoked with status == `UV_ECANCELED`.
 
-.. c:function:: size_t uv_req_size(uv_req_type type)
+.. c:function:: size_t uv_object_size(uv_object_type type)
 
     Returns the size of the given request type. Useful for FFI binding writers
     who don't want to know the structure layout.

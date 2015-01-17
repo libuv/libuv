@@ -75,7 +75,7 @@ static void read_cb(uv_stream_t* handle,
                     const uv_buf_t* buf) {
   uv_pipe_t* p;
   uv_pipe_t* inc;
-  uv_handle_type pending;
+  uv_object_type pending;
   unsigned int i;
 
   p = (uv_pipe_t*) handle;

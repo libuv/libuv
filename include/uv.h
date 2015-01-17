@@ -176,23 +176,18 @@ typedef enum {
 } uv_errno_t;
 
 typedef enum {
-  UV_UNKNOWN_HANDLE = 0,
+  UV_UNKNOWN_OBJECT = 0,
+  UV_FILE,
+  UV_LOOP,
 #define XX(uc, lc) UV_##uc,
   UV_HANDLE_TYPE_MAP(XX)
 #undef XX
-  UV_FILE,
-  UV_HANDLE_TYPE_MAX
-} uv_handle_type;
-
-typedef enum {
-  UV_UNKNOWN_REQ = 0,
 #define XX(uc, lc) UV_##uc,
   UV_REQ_TYPE_MAP(XX)
 #undef XX
   UV_REQ_TYPE_PRIVATE
-  UV_REQ_TYPE_MAX
-} uv_req_type;
-
+  UV_OBJECT_TYPE_MAX
+} uv_object_type;
 
 /* Handle types. */
 typedef struct uv_loop_s uv_loop_t;
@@ -353,16 +348,19 @@ typedef enum {
 UV_EXTERN const char* uv_strerror(int err);
 UV_EXTERN const char* uv_err_name(int err);
 
-
-#define UV_REQ_FIELDS                                                         \
+#define UV_OBJECT_FIELDS                                                      \
   /* public */                                                                \
   void* data;                                                                 \
   /* read-only */                                                             \
-  uv_req_type type;                                                           \
+  uv_object_type type;                                                        \
+  UV_OBJECT_PRIVATE_FIELDS
+
+#define UV_REQ_FIELDS                                                         \
+  UV_OBJECT_FIELDS                                                            \
   /* private */                                                               \
   void* active_queue[2];                                                      \
   void* reserved[4];                                                          \
-  UV_REQ_PRIVATE_FIELDS                                                       \
+  UV_REQ_PRIVATE_FIELDS
 
 /* Abstract base class of all requests. */
 struct uv_req_s {
@@ -387,24 +385,21 @@ struct uv_shutdown_s {
 
 
 #define UV_HANDLE_FIELDS                                                      \
-  /* public */                                                                \
-  void* data;                                                                 \
+  UV_OBJECT_FIELDS                                                            \
   /* read-only */                                                             \
   uv_loop_t* loop;                                                            \
-  uv_handle_type type;                                                        \
   /* private */                                                               \
   uv_close_cb close_cb;                                                       \
   void* handle_queue[2];                                                      \
   void* reserved[4];                                                          \
-  UV_HANDLE_PRIVATE_FIELDS                                                    \
+  UV_HANDLE_PRIVATE_FIELDS
 
 /* The abstract base class of all handles. */
 struct uv_handle_s {
   UV_HANDLE_FIELDS
 };
 
-UV_EXTERN size_t uv_handle_size(uv_handle_type type);
-UV_EXTERN size_t uv_req_size(uv_req_type type);
+UV_EXTERN size_t uv_object_size(uv_object_type type);
 
 UV_EXTERN int uv_is_active(const uv_handle_t* handle);
 
@@ -652,7 +647,7 @@ inline int uv_tty_set_mode(uv_tty_t* handle, int mode) {
 extern "C" {
 #endif
 
-UV_EXTERN uv_handle_type uv_guess_handle(uv_file file);
+UV_EXTERN uv_object_type uv_guess_handle(uv_file file);
 
 /*
  * uv_pipe_t is a subclass of uv_stream_t.
@@ -679,7 +674,7 @@ UV_EXTERN int uv_pipe_getsockname(const uv_pipe_t* handle,
                                   size_t* len);
 UV_EXTERN void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
 UV_EXTERN int uv_pipe_pending_count(uv_pipe_t* handle);
-UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
+UV_EXTERN uv_object_type uv_pipe_pending_type(uv_pipe_t* handle);
 
 
 struct uv_poll_s {
@@ -1396,21 +1391,9 @@ UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
 
-/* The presence of these unions force similar struct layout. */
-#define XX(_, name) uv_ ## name ## _t name;
-union uv_any_handle {
-  UV_HANDLE_TYPE_MAP(XX)
-};
-
-union uv_any_req {
-  UV_REQ_TYPE_MAP(XX)
-};
-#undef XX
-
 
 struct uv_loop_s {
-  /* User data - use this for whatever. */
-  void* data;
+  UV_OBJECT_FIELDS
   /* Loop reference counting. */
   unsigned int active_handles;
   void* handle_queue[2];

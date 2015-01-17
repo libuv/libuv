@@ -70,7 +70,7 @@ static size_t uv__write_req_size(uv_write_t* req);
 
 void uv__stream_init(uv_loop_t* loop,
                      uv_stream_t* stream,
-                     uv_handle_type type) {
+                     uv_object_type type) {
   int err;
 
   uv__handle_init(loop, (uv_handle_t*)stream, type);
@@ -909,7 +909,7 @@ static void uv__write_callbacks(uv_stream_t* stream) {
 }
 
 
-uv_handle_type uv__handle_type(int fd) {
+uv_object_type uv__handle_type(int fd) {
   struct sockaddr_storage ss;
   socklen_t len;
   int type;
@@ -918,12 +918,12 @@ uv_handle_type uv__handle_type(int fd) {
   len = sizeof(ss);
 
   if (getsockname(fd, (struct sockaddr*)&ss, &len))
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   len = sizeof type;
 
   if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &len))
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   if (type == SOCK_STREAM) {
     switch (ss.ss_family) {
@@ -939,7 +939,7 @@ uv_handle_type uv__handle_type(int fd) {
       (ss.ss_family == AF_INET || ss.ss_family == AF_INET6))
     return UV_UDP;
 
-  return UV_UNKNOWN_HANDLE;
+  return UV_UNKNOWN_OBJECT;
 }
 
 

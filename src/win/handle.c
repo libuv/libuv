@@ -28,12 +28,12 @@
 #include "handle-inl.h"
 
 
-uv_handle_type uv_guess_handle(uv_file file) {
+uv_object_type uv_guess_handle(uv_file file) {
   HANDLE handle;
   DWORD mode;
 
   if (file < 0) {
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
   }
 
   handle = uv__get_osfhandle(file);
@@ -53,7 +53,7 @@ uv_handle_type uv_guess_handle(uv_file file) {
       return UV_FILE;
 
     default:
-      return UV_UNKNOWN_HANDLE;
+      return UV_UNKNOWN_OBJECT;
   }
 }
 

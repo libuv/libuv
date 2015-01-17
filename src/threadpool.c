@@ -26,9 +26,7 @@
 #else
 # include "win/req-inl.h"
 /* TODO(saghul): unify internal req functions */
-static void uv__req_init(uv_loop_t* loop,
-                         uv_req_t* req,
-                         uv_req_type type) {
+static void uv__req_init(uv_loop_t* loop, uv_req_t* req, uv_object_type type) {
   uv_req_init(loop, req);
   req->type = type;
   uv__req_register(loop, req);

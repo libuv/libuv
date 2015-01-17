@@ -74,7 +74,7 @@ API
         This setting applies to Windows only.
 
 .. c:function:: int uv_pipe_pending_count(uv_pipe_t* handle)
-.. c:function:: uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle)
+.. c:function:: uv_object_type uv_pipe_pending_type(uv_pipe_t* handle)
 
     Used to receive handles over IPC pipes.
 

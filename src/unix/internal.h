@@ -190,7 +190,7 @@ void uv__run_prepare(uv_loop_t* loop);
 
 /* stream */
 void uv__stream_init(uv_loop_t* loop, uv_stream_t* stream,
-    uv_handle_type type);
+    uv_object_type type);
 int uv__stream_open(uv_stream_t*, int fd, int flags);
 void uv__stream_destroy(uv_stream_t* stream);
 #if defined(__APPLE__)
@@ -239,7 +239,7 @@ void uv__tcp_close(uv_tcp_t* handle);
 void uv__timer_close(uv_timer_t* handle);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
-uv_handle_type uv__handle_type(int fd);
+uv_object_type uv__handle_type(int fd);
 
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);
@@ -285,7 +285,7 @@ static const int kFSEventStreamEventFlagItemIsSymlink = 0x00040000;
 
 UV_UNUSED(static void uv__req_init(uv_loop_t* loop,
                                    uv_req_t* req,
-                                   uv_req_type type)) {
+                                   uv_object_type type)) {
   req->type = type;
   uv__req_register(loop, req);
 }

@@ -259,12 +259,12 @@ int uv_pipe_pending_count(uv_pipe_t* handle) {
 }
 
 
-uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
+uv_object_type uv_pipe_pending_type(uv_pipe_t* handle) {
   if (!handle->ipc)
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   if (handle->accepted_fd == -1)
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
   else
     return uv__handle_type(handle->accepted_fd);
 }

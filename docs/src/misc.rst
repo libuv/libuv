@@ -95,7 +95,7 @@ Data types
 API
 ---
 
-.. c:function:: uv_handle_type uv_guess_handle(uv_file file)
+.. c:function:: uv_object_type uv_guess_handle(uv_file file)
 
     Used to detect what type of stream should be used with a given file
     descriptor. Usually this will be used during initialization to guess the

@@ -164,20 +164,20 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
 }
 
 
-uv_handle_type uv_guess_handle(uv_file file) {
+uv_object_type uv_guess_handle(uv_file file) {
   struct sockaddr sa;
   struct stat s;
   socklen_t len;
   int type;
 
   if (file < 0)
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   if (isatty(file))
     return UV_TTY;
 
   if (fstat(file, &s))
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   if (S_ISREG(s.st_mode))
     return UV_FILE;
@@ -189,15 +189,15 @@ uv_handle_type uv_guess_handle(uv_file file) {
     return UV_NAMED_PIPE;
 
   if (!S_ISSOCK(s.st_mode))
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   len = sizeof(type);
   if (getsockopt(file, SOL_SOCKET, SO_TYPE, &type, &len))
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   len = sizeof(sa);
   if (getsockname(file, &sa, &len))
-    return UV_UNKNOWN_HANDLE;
+    return UV_UNKNOWN_OBJECT;
 
   if (type == SOCK_DGRAM)
     if (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)
@@ -210,7 +210,7 @@ uv_handle_type uv_guess_handle(uv_file file) {
       return UV_NAMED_PIPE;
   }
 
-  return UV_UNKNOWN_HANDLE;
+  return UV_UNKNOWN_OBJECT;
 }
 
 
