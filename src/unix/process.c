@@ -255,24 +255,10 @@ static void uv__process_close_stream(uv_stdio_container_t* container) {
 }
 
 
-static void uv__write_int(int fd, int val) {
-  ssize_t n;
-
-  do
-    n = write(fd, &val, sizeof(val));
-  while (n == -1 && errno == EINTR);
-
-  if (n == -1 && errno == EPIPE)
-    return; /* parent process has quit */
-
-  assert(n == sizeof(val));
-}
-
-
 static void uv__process_child_init(const uv_process_options_t* options,
                                    int stdio_count,
                                    int (*pipes)[2],
-                                   int error_fd) {
+                                   int* error) {
   int close_fd;
   int use_fd;
   int fd;
@@ -295,7 +281,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
         close_fd = use_fd;
 
         if (use_fd == -1) {
-          uv__write_int(error_fd, -errno);
+          *error = -errno;
           _exit(127);
         }
       }
@@ -321,7 +307,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   if (options->cwd != NULL && chdir(options->cwd)) {
-    uv__write_int(error_fd, -errno);
+    *error = -errno;
     _exit(127);
   }
 
@@ -337,12 +323,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid)) {
-    uv__write_int(error_fd, -errno);
+    *error = -errno;
     _exit(127);
   }
 
   if ((options->flags & UV_PROCESS_SETUID) && setuid(options->uid)) {
-    uv__write_int(error_fd, -errno);
+    *error = -errno;
     _exit(127);
   }
 
@@ -351,7 +337,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   execvp(options->file, options->args);
-  uv__write_int(error_fd, -errno);
+  *error = -errno;
   _exit(127);
 }
 
@@ -359,10 +345,8 @@ static void uv__process_child_init(const uv_process_options_t* options,
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t* options) {
-  int signal_pipe[2] = { -1, -1 };
   int (*pipes)[2];
   int stdio_count;
-  ssize_t r;
   pid_t pid;
   int err;
   int exec_errorno;
@@ -398,69 +382,30 @@ int uv_spawn(uv_loop_t* loop,
       goto error;
   }
 
-  /* This pipe is used by the parent to wait until
-   * the child has called `execve()`. We need this
-   * to avoid the following race condition:
-   *
-   *    if ((pid = fork()) > 0) {
-   *      kill(pid, SIGTERM);
-   *    }
-   *    else if (pid == 0) {
-   *      execve("/bin/cat", argp, envp);
-   *    }
-   *
-   * The parent sends a signal immediately after forking.
-   * Since the child may not have called `execve()` yet,
-   * there is no telling what process receives the signal,
-   * our fork or /bin/cat.
-   *
-   * To avoid ambiguity, we create a pipe with both ends
-   * marked close-on-exec. Then, after the call to `fork()`,
-   * the parent polls the read end until it EOFs or errors with EPIPE.
-   */
-  err = uv__make_pipe(signal_pipe, 0);
-  if (err)
-    goto error;
-
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
+
+  exec_errorno = 0;
 
   /* Acquire write lock to prevent opening new fds in worker threads */
   uv_rwlock_wrlock(&loop->cloexec_lock);
-  pid = fork();
+
+  pid = vfork();
 
   if (pid == -1) {
     err = -errno;
     uv_rwlock_wrunlock(&loop->cloexec_lock);
-    uv__close(signal_pipe[0]);
-    uv__close(signal_pipe[1]);
     goto error;
   }
 
   if (pid == 0) {
-    uv__process_child_init(options, stdio_count, pipes, signal_pipe[1]);
+    uv__process_child_init(options, stdio_count, pipes, &exec_errorno);
     abort();
   }
 
   /* Release lock in parent process */
   uv_rwlock_wrunlock(&loop->cloexec_lock);
-  uv__close(signal_pipe[1]);
 
   process->status = 0;
-  exec_errorno = 0;
-  do
-    r = read(signal_pipe[0], &exec_errorno, sizeof(exec_errorno));
-  while (r == -1 && errno == EINTR);
-
-  if (r == 0)
-    ; /* okay, EOF */
-  else if (r == sizeof(exec_errorno))
-    ; /* okay, read errorno */
-  else if (r == -1 && errno == EPIPE)
-    ; /* okay, got EPIPE */
-  else
-    abort();
-
-  uv__close(signal_pipe[0]);
 
   for (i = 0; i < options->stdio_count; i++) {
     err = uv__process_open_stream(options->stdio + i, pipes[i], i == 0);
