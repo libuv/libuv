@@ -211,7 +211,8 @@ complete:
   uv__req_unregister(req->loop, req);
 
   /* finally do callback with converted result */
-  req->getaddrinfo_cb(req, req->retcode, (struct addrinfo*)alloc_ptr);
+  if (req->getaddrinfo_cb)
+    req->getaddrinfo_cb(req, req->retcode, (struct addrinfo*)alloc_ptr);
 }
 
 
@@ -250,8 +251,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   char* alloc_ptr = NULL;
   int err;
 
-  if (req == NULL || getaddrinfo_cb == NULL ||
-     (node == NULL && service == NULL)) {
+  if (req == NULL || (node == NULL && service == NULL)) {
     err = WSAEINVAL;
     goto error;
   }
@@ -340,14 +340,19 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->hints = NULL;
   }
 
-  uv__work_submit(loop,
-                  &req->work_req,
-                  uv__getaddrinfo_work,
-                  uv__getaddrinfo_done);
-
   uv__req_register(loop, req);
 
-  return 0;
+  if (getaddrinfo_cb) {
+    uv__work_submit(loop,
+                    &req->work_req,
+                    uv__getaddrinfo_work,
+                    uv__getaddrinfo_done);
+    return 0;
+  } else {
+    uv__getaddrinfo_work(&req->work_req);
+    uv__getaddrinfo_done(&req->work_req, 0);
+    return req->retcode;
+  }
 
 error:
   if (req != NULL && req->alloc != NULL) {
