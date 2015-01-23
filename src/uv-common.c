@@ -359,22 +359,22 @@ int uv_send_buffer_size(uv_handle_t* handle, int *value) {
   return uv__socket_sockopt(handle, SO_SNDBUF, value);
 }
 
-int uv_fs_event_getpath(uv_fs_event_t* handle, char* buf, size_t* len) {
+int uv_fs_event_getpath(uv_fs_event_t* handle, char* buffer, size_t* size) {
   size_t required_len;
 
   if (!uv__is_active(handle)) {
-    *len = 0;
+    *size = 0;
     return UV_EINVAL;
   }
 
   required_len = strlen(handle->path);
-  if (required_len > *len) {
-    *len = required_len;
+  if (required_len > *size) {
+    *size = required_len;
     return UV_ENOBUFS;
   }
 
-  memcpy(buf, handle->path, required_len);
-  *len = required_len;
+  memcpy(buffer, handle->path, required_len);
+  *size = required_len;
 
   return 0;
 }

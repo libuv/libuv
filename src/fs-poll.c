@@ -125,12 +125,12 @@ int uv_fs_poll_stop(uv_fs_poll_t* handle) {
 }
 
 
-int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buf, size_t* len) {
+int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buffer, size_t* size) {
   struct poll_ctx* ctx;
   size_t required_len;
 
   if (!uv__is_active(handle)) {
-    *len = 0;
+    *size = 0;
     return UV_EINVAL;
   }
 
@@ -138,13 +138,13 @@ int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buf, size_t* len) {
   assert(ctx != NULL);
 
   required_len = strlen(ctx->path);
-  if (required_len > *len) {
-    *len = required_len;
+  if (required_len > *size) {
+    *size = required_len;
     return UV_ENOBUFS;
   }
 
-  memcpy(buf, ctx->path, required_len);
-  *len = required_len;
+  memcpy(buffer, ctx->path, required_len);
+  *size = required_len;
 
   return 0;
 }

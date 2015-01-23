@@ -1910,7 +1910,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
 }
 
 
-int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
+int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_NAME_INFORMATION tmp_name_info;
@@ -1924,7 +1924,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   name_info = NULL;
 
   if (handle->handle == INVALID_HANDLE_VALUE) {
-    *len = 0;
+    *size = 0;
     return UV_EINVAL;
   }
 
@@ -1939,7 +1939,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
     name_size = sizeof(*name_info) + tmp_name_info.FileNameLength;
     name_info = malloc(name_size);
     if (!name_info) {
-      *len = 0;
+      *size = 0;
       err = UV_ENOMEM;
       goto cleanup;
     }
@@ -1952,7 +1952,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   }
 
   if (nt_status != STATUS_SUCCESS) {
-    *len = 0;
+    *size = 0;
     err = uv_translate_sys_error(pRtlNtStatusToDosError(nt_status));
     goto error;
   }
@@ -1967,7 +1967,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   }
 
   if (name_len == 0) {
-    *len = 0;
+    *size = 0;
     err = 0;
     goto error;
   }
@@ -1984,33 +1984,33 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
                                 NULL,
                                 NULL);
   if (!addrlen) {
-    *len = 0;
+    *size = 0;
     err = uv_translate_sys_error(GetLastError());
     goto error;
-  } else if (pipe_prefix_len + addrlen > *len) {
+  } else if (pipe_prefix_len + addrlen > *size) {
     /* "\\\\.\\pipe" + name */
-    *len = pipe_prefix_len + addrlen;
+    *size = pipe_prefix_len + addrlen;
     err = UV_ENOBUFS;
     goto error;
   }
 
-  memcpy(buf, pipe_prefix, pipe_prefix_len);
+  memcpy(buffer, pipe_prefix, pipe_prefix_len);
   addrlen = WideCharToMultiByte(CP_UTF8,
                                 0,
                                 name_buf,
                                 name_len,
-                                buf+pipe_prefix_len,
-                                *len-pipe_prefix_len,
+                                buffer+pipe_prefix_len,
+                                *size-pipe_prefix_len,
                                 NULL,
                                 NULL);
   if (!addrlen) {
-    *len = 0;
+    *size = 0;
     err = uv_translate_sys_error(GetLastError());
     goto error;
   }
 
   addrlen += pipe_prefix_len;
-  *len = addrlen;
+  *size = addrlen;
 
   err = 0;
   goto cleanup;
