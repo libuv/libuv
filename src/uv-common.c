@@ -367,7 +367,7 @@ int uv_fs_event_getpath(uv_fs_event_t* handle, char* buf, size_t* len) {
     return UV_EINVAL;
   }
 
-  required_len = strlen(handle->path) + 1;
+  required_len = strlen(handle->path);
   if (required_len > *len) {
     *len = required_len;
     return UV_ENOBUFS;

@@ -65,6 +65,8 @@ API
     output. If the buffer is not big enough ``UV_ENOBUFS`` will be returned and
     len will contain the required size.
 
+    .. versionchanged:: 1.3.0 the returned length no longer includes the terminating null byte
+
 .. c:function:: void uv_pipe_pending_instances(uv_pipe_t* handle, int count)
 
     Set the number of pending pipe instance handles when the pipe server is
