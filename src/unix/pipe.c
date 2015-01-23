@@ -206,7 +206,7 @@ out:
 }
 
 
-int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
+int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
   struct sockaddr_un sa;
   socklen_t addrlen;
   int err;
@@ -215,7 +215,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   memset(&sa, 0, addrlen);
   err = getsockname(uv__stream_fd(handle), (struct sockaddr*) &sa, &addrlen);
   if (err < 0) {
-    *len = 0;
+    *size = 0;
     return -errno;
   }
 
@@ -226,13 +226,13 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
     addrlen = strlen(sa.sun_path);
 
 
-  if (addrlen > *len) {
-    *len = addrlen;
+  if (addrlen > *size) {
+    *size = addrlen;
     return UV_ENOBUFS;
   }
 
-  memcpy(buf, sa.sun_path, addrlen);
-  *len = addrlen;
+  memcpy(buffer, sa.sun_path, addrlen);
+  *size = addrlen;
 
   return 0;
 }
