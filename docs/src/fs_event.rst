@@ -102,4 +102,7 @@ API
     is not big enough UV_ENOBUFS will be returned and len will be set to the
     required size.
 
+    .. versionchanged:: 1.3.0 the returned length no longer includes the terminating null byte,
+                        and the buffer is not null terminated.
+
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

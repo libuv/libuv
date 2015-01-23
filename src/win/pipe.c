@@ -1987,9 +1987,9 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
     *len = 0;
     err = uv_translate_sys_error(GetLastError());
     goto error;
-  } else if (pipe_prefix_len + addrlen + 1 > *len) {
-    /* "\\\\.\\pipe" + name + '\0' */
-    *len = pipe_prefix_len + addrlen + 1;
+  } else if (pipe_prefix_len + addrlen > *len) {
+    /* "\\\\.\\pipe" + name */
+    *len = pipe_prefix_len + addrlen;
     err = UV_ENOBUFS;
     goto error;
   }
@@ -2010,7 +2010,6 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
   }
 
   addrlen += pipe_prefix_len;
-  buf[addrlen++] = '\0';
   *len = addrlen;
 
   err = 0;

@@ -223,7 +223,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buf, size_t* len) {
     /* Linux abstract namespace */
     addrlen -= offsetof(struct sockaddr_un, sun_path);
   else
-    addrlen = strlen(sa.sun_path) + 1;
+    addrlen = strlen(sa.sun_path);
 
 
   if (addrlen > *len) {

@@ -137,7 +137,7 @@ int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buf, size_t* len) {
   ctx = handle->poll_ctx;
   assert(ctx != NULL);
 
-  required_len = strlen(ctx->path) + 1;
+  required_len = strlen(ctx->path);
   if (required_len > *len) {
     *len = required_len;
     return UV_ENOBUFS;
