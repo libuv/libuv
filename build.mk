@@ -91,6 +91,7 @@ TESTS= \
 	test/test-ipc-send-recv.o \
 	test/test-loop-handles.o \
 	test/test-loop-stop.o \
+	test/test-loop-configure.o \
 	test/test-multiple-listen.o \
 	test/test-mutexes.o \
 	test/test-osx-select.o \

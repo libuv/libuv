@@ -311,6 +311,7 @@
         'test/test-list.h',
         'test/test-loop-handles.c',
         'test/test-loop-stop.c',
+        'test/test-loop-configure.c',
         'test/test-walk-handles.c',
         'test/test-watcher-cross-stop.c',
         'test/test-multiple-listen.c',
