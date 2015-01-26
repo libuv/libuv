@@ -1910,7 +1910,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
 }
 
 
-int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
+static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_NAME_INFORMATION tmp_name_info;
@@ -2028,6 +2028,32 @@ int uv_pipe_pending_count(uv_pipe_t* handle) {
   if (!handle->ipc)
     return 0;
   return handle->pending_ipc_info.queue_len;
+}
+
+
+int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
+  if (handle->flags & UV_HANDLE_BOUND)
+    return uv__pipe_getname(handle, buffer, size);
+
+  if (handle->flags & UV_HANDLE_CONNECTION ||
+      handle->handle != INVALID_HANDLE_VALUE) {
+    *size = 0;
+    return 0;
+  }
+
+  return UV_EBADF;
+}
+
+
+int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
+  /* emulate unix behaviour */
+  if (handle->flags & UV_HANDLE_BOUND)
+    return UV_ENOTCONN;
+
+  if (handle->handle != INVALID_HANDLE_VALUE)
+    return uv__pipe_getname(handle, buffer, size);
+
+  return UV_EBADF;
 }
 
 
