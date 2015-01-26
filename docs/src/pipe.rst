@@ -68,6 +68,18 @@ API
     .. versionchanged:: 1.3.0 the returned length no longer includes the terminating null byte,
                         and the buffer is not null terminated.
 
+.. c:function:: int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size)
+
+    Get the name of the Unix domain socket or the named pipe to which the handle
+    is connected.
+
+    A preallocated buffer must be provided. The size parameter holds the length
+    of the buffer and it's set to the number of bytes written to the buffer on
+    output. If the buffer is not big enough ``UV_ENOBUFS`` will be returned and
+    len will contain the required size.
+
+    .. versionadded:: 1.3.0
+
 .. c:function:: void uv_pipe_pending_instances(uv_pipe_t* handle, int count)
 
     Set the number of pending pipe instance handles when the pipe server is
