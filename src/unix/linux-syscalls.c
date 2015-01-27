@@ -20,6 +20,7 @@
  */
 
 #include "linux-syscalls.h"
+#include "internal.h"
 #include <unistd.h>
 #include <signal.h>
 #include <sys/syscall.h>
@@ -310,7 +311,21 @@ int uv__epoll_wait(int epfd,
                    int nevents,
                    int timeout) {
 #if defined(__NR_epoll_wait)
-  return syscall(__NR_epoll_wait, epfd, events, nevents, timeout);
+  int64_t starthr = 0;
+  int r;
+
+  if (timeout > 0)
+    starthr = uv__hrtime(UV_CLOCK_FAST);
+
+  while ((r = syscall(__NR_epoll_wait, epfd, events, nevents, timeout)) == 0 &&
+         timeout > 0) {
+
+    timeout -= (uv__hrtime(UV_CLOCK_FAST) - starthr) / 1000000;
+
+    if (timeout <= 0)
+     break;
+  }
+  return r;
 #else
   return errno = ENOSYS, -1;
 #endif
