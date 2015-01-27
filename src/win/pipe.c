@@ -1848,7 +1848,7 @@ static void eof_timer_cb(uv_timer_t* timer) {
 
 
 static void eof_timer_destroy(uv_pipe_t* pipe) {
-  assert(pipe->flags && UV_HANDLE_CONNECTION);
+  assert(pipe->flags & UV_HANDLE_CONNECTION);
 
   if (pipe->eof_timer) {
     uv_close((uv_handle_t*) pipe->eof_timer, eof_timer_close_cb);
