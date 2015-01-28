@@ -201,13 +201,13 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
     }
   }
 
-complete:
   /* return memory to system */
   if (req->addrinfow != NULL) {
     FreeAddrInfoW(req->addrinfow);
     req->addrinfow = NULL;
   }
 
+complete:
   uv__req_unregister(req->loop, req);
 
   /* finally do callback with converted result */
