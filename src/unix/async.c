@@ -75,8 +75,22 @@ static void uv__async_event(uv_loop_t* loop,
 
   ngx_queue_foreach(q, &loop->async_handles) {
     h = ngx_queue_data(q, uv_async_t, queue);
-    if (!h->pending) continue;
-    h->pending = 0;
+
+#if defined(__i386__) || defined(__x86_64__)
+    {
+      unsigned int val = 0;
+      __asm__ __volatile__ ("xchgl %0, %1"
+                           : "+r" (val)
+                           : "m"  (h->pending)
+                           : "memory");
+      if (val != 1)
+        continue;
+    }
+#elif defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ > 0)
+    if (__sync_val_compare_and_swap(&h->pending, 1, 0) == 0)
+      continue;
+#endif
+
     h->async_cb(h, 0);
   }
 }
@@ -101,14 +115,12 @@ static int uv__async_make_pending(int* pending) {
     unsigned int val = 1;
     __asm__ __volatile__ ("xchgl %0, %1"
                          : "+r" (val)
-                         : "m"  (*pending));
+                         : "m"  (*pending)
+                         : "memory");
     return val != 0;
   }
 #elif defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ > 0)
   return __sync_val_compare_and_swap(pending, 0, 1) != 0;
-#else
-  ACCESS_ONCE(int, *pending) = 1;
-  return 0;
 #endif
 }
 
