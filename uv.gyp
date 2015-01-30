@@ -299,6 +299,7 @@
         'test/test-fail-always.c',
         'test/test-fs.c',
         'test/test-fs-event.c',
+        'test/test-fs-readdir.c',
         'test/test-get-currentexe.c',
         'test/test-get-memory.c',
         'test/test-getaddrinfo.c',

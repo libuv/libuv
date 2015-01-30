@@ -411,37 +411,58 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
   dent = dents[req->nbufs++];
 
   ent->name = dent->d_name;
+  ent->type = uv__fs_get_dirent_type(dent);
+
+  return 0;
+}
+
+uv_dirent_type_t uv__fs_get_dirent_type(uv__dirent_t* dent) {
+  uv_dirent_type_t type;
+
 #ifdef HAVE_DIRENT_TYPES
   switch (dent->d_type) {
     case UV__DT_DIR:
-      ent->type = UV_DIRENT_DIR;
+      type = UV_DIRENT_DIR;
       break;
     case UV__DT_FILE:
-      ent->type = UV_DIRENT_FILE;
+      type = UV_DIRENT_FILE;
       break;
     case UV__DT_LINK:
-      ent->type = UV_DIRENT_LINK;
+      type = UV_DIRENT_LINK;
       break;
     case UV__DT_FIFO:
-      ent->type = UV_DIRENT_FIFO;
+      type = UV_DIRENT_FIFO;
       break;
     case UV__DT_SOCKET:
-      ent->type = UV_DIRENT_SOCKET;
+      type = UV_DIRENT_SOCKET;
       break;
     case UV__DT_CHAR:
-      ent->type = UV_DIRENT_CHAR;
+      type = UV_DIRENT_CHAR;
       break;
     case UV__DT_BLOCK:
-      ent->type = UV_DIRENT_BLOCK;
+      type = UV_DIRENT_BLOCK;
       break;
     default:
-      ent->type = UV_DIRENT_UNKNOWN;
+      type = UV_DIRENT_UNKNOWN;
   }
 #else
-  ent->type = UV_DIRENT_UNKNOWN;
+  type = UV_DIRENT_UNKNOWN;
 #endif
 
-  return 0;
+  return type;
+}
+
+void uv__fs_readdir_cleanup(uv_fs_t* req) {
+  unsigned int dirent_idx;
+
+  if (req && req->ptr) {
+    uv_dirent_t* dirents = req->ptr;
+    for (dirent_idx = 0; dirent_idx < req->nentries; ++dirent_idx) {
+      if (dirents[dirent_idx].name)
+        free((char*)dirents[dirent_idx].name);
+      dirents[dirent_idx].name = NULL;
+    }
+  }
 }
 
 

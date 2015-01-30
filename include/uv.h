@@ -197,6 +197,7 @@ typedef enum {
 /* Handle types. */
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_handle_s uv_handle_t;
+typedef struct uv_dir_s uv_dir_t;
 typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
@@ -1060,12 +1061,19 @@ typedef enum {
   UV_FS_MKDTEMP,
   UV_FS_RENAME,
   UV_FS_SCANDIR,
+  UV_FS_OPENDIR,
+  UV_FS_READDIR,
+  UV_FS_CLOSEDIR,
   UV_FS_LINK,
   UV_FS_SYMLINK,
   UV_FS_READLINK,
   UV_FS_CHOWN,
   UV_FS_FCHOWN
 } uv_fs_type;
+
+struct uv_dir_s {
+  UV_DIR_PRIVATE_FIELDS
+};
 
 /* uv_fs_t is a subclass of uv_req_t. */
 struct uv_fs_s {
@@ -1077,6 +1085,9 @@ struct uv_fs_s {
   void* ptr;
   const char* path;
   uv_stat_t statbuf;  /* Stores the result of uv_fs_stat() and uv_fs_fstat(). */
+  const uv_dir_t* dir; /* Stores the result of uv_fs_opendir() */
+  uv_dirent_t* dirents;
+  size_t nentries;
   UV_FS_PRIVATE_FIELDS
 };
 
@@ -1129,6 +1140,22 @@ UV_EXTERN int uv_fs_scandir(uv_loop_t* loop,
                             uv_fs_cb cb);
 UV_EXTERN int uv_fs_scandir_next(uv_fs_t* req,
                                  uv_dirent_t* ent);
+
+UV_EXTERN int uv_fs_opendir(uv_loop_t* loop,
+                            uv_fs_t* req,
+                            const char* path,
+                            uv_fs_cb cb);
+UV_EXTERN int uv_fs_readdir(uv_loop_t* loop,
+                            uv_fs_t* req,
+                            const uv_dir_t* dir,
+                            uv_dirent_t dirents[],
+                            size_t nentries,
+                            uv_fs_cb cb);
+UV_EXTERN int uv_fs_closedir(uv_loop_t* loop,
+                             uv_fs_t* req,
+                             const uv_dir_t* dir,
+                             uv_fs_cb cb);
+
 UV_EXTERN int uv_fs_stat(uv_loop_t* loop,
                          uv_fs_t* req,
                          const char* path,
