@@ -32,6 +32,7 @@
         'test-fail-always.c',
         'test-fork.c',
         'test-fs.c',
+        'test-fs-readdir.c',
         'test-fs-copyfile.c',
         'test-fs-event.c',
         'test-fs-poll.c',
