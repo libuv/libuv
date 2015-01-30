@@ -421,6 +421,91 @@ static ssize_t uv__fs_scandir(uv_fs_t* req) {
   return n;
 }
 
+static int uv__fs_opendir(uv_fs_t* req) {
+  DIR* dir_stream;
+  uv_dir_t *dir;
+
+  assert(req);
+
+  dir_stream = opendir(req->path);
+  if (dir_stream == NULL)
+    return -1;
+
+  dir = uv__malloc(sizeof(*dir));
+  if (dir == NULL) {
+    errno = ENOMEM;
+    goto failed;
+  }
+
+  dir->dir = dir_stream;
+
+  req->dir = dir;
+  req->ptr = (void*)req->dir;
+
+  return 0;
+
+failed:
+  if (errno == ENOMEM) {
+    if (dir != NULL)
+      uv__free(dir);
+  }
+
+  return -1;
+}
+
+static int uv__fs_readdir(uv_fs_t* req) {
+  uv_dirent_t *dirents;
+  struct dirent *res;
+  unsigned int dirent_idx;
+
+  assert(req);
+
+  assert(req->dir);
+  assert(req->dir->dir);
+
+  assert(req->dirents);
+  assert(req->nentries > 0);
+
+  dirents = req->dirents;
+  req->ptr = req->dirents;
+
+  for (dirent_idx = 0; dirent_idx < req->nentries; ++dirent_idx) {
+    errno = 0;
+    res = readdir(req->dir->dir);
+
+    if (errno == 0) {
+      if (res != NULL) {
+        dirents[dirent_idx].name = uv__strdup(res->d_name);
+        if (dirents[dirent_idx].name != NULL) {
+          dirents[dirent_idx].type = uv__fs_get_dirent_type(res);
+        } else {
+          errno = ENOMEM;
+          return -1;
+        }
+      } else {
+        return dirent_idx;
+      }
+    }
+  }
+
+  return dirent_idx;
+}
+
+static int uv__fs_closedir(uv_fs_t* req) {
+  assert(req);
+  assert(req->dir);
+
+  if (req->dir) {
+    if (req->dir->dir) {
+      closedir(req->dir->dir);
+      ((uv_dir_t*)req->dir)->dir = NULL;
+    }
+  }
+
+  req->ptr = NULL;
+  return 0;
+}
+
 
 static ssize_t uv__fs_pathmax_size(const char* path) {
   ssize_t pathmax;
@@ -1098,6 +1183,9 @@ static void uv__fs_work(struct uv__work* w) {
     X(OPEN, uv__fs_open(req));
     X(READ, uv__fs_buf_iter(req, uv__fs_read));
     X(SCANDIR, uv__fs_scandir(req));
+    X(OPENDIR, uv__fs_opendir(req));
+    X(READDIR, uv__fs_readdir(req));
+    X(CLOSEDIR, uv__fs_closedir(req));
     X(READLINK, uv__fs_readlink(req));
     X(REALPATH, uv__fs_realpath(req));
     X(RENAME, rename(req->path, req->new_path));
@@ -1354,6 +1442,40 @@ int uv_fs_scandir(uv_loop_t* loop,
   POST;
 }
 
+int uv_fs_opendir(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char* path,
+                  uv_fs_cb cb) {
+
+  INIT(OPENDIR);
+  PATH;
+  POST;
+}
+
+int uv_fs_readdir(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const uv_dir_t* dir,
+                  uv_dirent_t dirents[],
+                  size_t nentries,
+                  uv_fs_cb cb) {
+  INIT(READDIR);
+
+  req->dir = dir;
+  req->dirents = dirents;
+  req->nentries = nentries;
+
+  POST;
+}
+
+int uv_fs_closedir(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   const uv_dir_t* dir,
+                   uv_fs_cb cb) {
+  INIT(CLOSEDIR);
+  req->dir = dir;
+
+  POST;
+}
 
 int uv_fs_readlink(uv_loop_t* loop,
                    uv_fs_t* req,
@@ -1501,7 +1623,17 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
     uv__free(req->bufs);
   req->bufs = NULL;
 
-  if (req->ptr != &req->statbuf)
+  if (req->fs_type == UV_FS_READDIR)
+    uv__fs_readdir_cleanup(req);
+
+  /*
+   * Do not free the results of OPENDIR or READDIR requests,
+   * as they point to data that needs to be reused for subsequent
+   * calls.
+   */
+  if (req->fs_type != UV_FS_READDIR &&
+      req->fs_type != UV_FS_OPENDIR &&
+      req->ptr != &req->statbuf)
     uv__free(req->ptr);
   req->ptr = NULL;
 }
