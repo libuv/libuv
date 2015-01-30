@@ -191,6 +191,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-fs-event.c \
                          test/test-fs-poll.c \
                          test/test-fs.c \
+                         test/test-fs-readdir.c \
                          test/test-fork.c \
                          test/test-getters-setters.c \
                          test/test-get-currentexe.c \
