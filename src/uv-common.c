@@ -33,6 +33,44 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
+#define ALIGN_VALUE(v, a)  ( ((v) + (a) - 1) & ~((a) - 1) )
+#define ALIGN_PTR(p, a)    (void *)ALIGN_VALUE((ptrdiff_t) ((char *) (p) + 1), (a))
+
+static uv_malloc_cb replaced_malloc;
+static uv_free_cb replaced_free;
+
+void * uv_malloc(size_t size) {
+  return replaced_malloc ? (*replaced_malloc)(size) : malloc(size);
+}
+
+void uv_free(void *ptr) {
+  replaced_free ? (*replaced_free)(ptr) : free(ptr);
+}
+
+void uv_replace_allocator(uv_malloc_cb malloc_cb, uv_free_cb free_cb) {
+  replaced_malloc = malloc_cb;
+  replaced_free = free_cb;
+}
+
+void * uv_aligned_malloc(size_t size, size_t align) {
+  void *basePtr, *ptr;
+  if (align < sizeof(ptrdiff_t))
+    align = sizeof(ptrdiff_t);
+  basePtr = uv_malloc(size + align);
+  ptr = ALIGN_PTR(basePtr, align);
+  ((ptrdiff_t *) ptr)[-1] = (ptrdiff_t) basePtr;
+  return ptr;
+}
+
+void uv_aligned_free(void *ptr) {
+  void *basePtr;
+  basePtr = ((void **) ptr)[-1];
+  uv_free(basePtr);
+}
+
+#undef ALIGN_VALUE
+#undef ALIGN_PTR
+
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
@@ -42,6 +80,7 @@ size_t uv_handle_size(uv_handle_type type) {
       return -1;
   }
 }
+
 
 size_t uv_req_size(uv_req_type type) {
   switch(type) {
@@ -387,7 +426,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req) {
   if (req->nbufs > 0 && req->nbufs != (unsigned int) req->result)
     req->nbufs--;
   for (; req->nbufs < (unsigned int) req->result; req->nbufs++)
-    free(dents[req->nbufs]);
+    uv_free(dents[req->nbufs]);
 }
 
 
@@ -399,11 +438,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 
   /* Free previous entity */
   if (req->nbufs > 0)
-    free(dents[req->nbufs - 1]);
+    uv_free(dents[req->nbufs - 1]);
 
   /* End was already reached */
   if (req->nbufs == (unsigned int) req->result) {
-    free(dents);
+    uv_free(dents);
     req->ptr = NULL;
     return UV_EOF;
   }
@@ -477,12 +516,12 @@ uv_loop_t* uv_default_loop(void) {
 uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
-  loop = malloc(sizeof(*loop));
+  loop = uv_malloc(sizeof(*loop));
   if (loop == NULL)
     return NULL;
 
   if (uv_loop_init(loop)) {
-    free(loop);
+    uv_free(loop);
     return NULL;
   }
 
@@ -524,5 +563,5 @@ void uv_loop_delete(uv_loop_t* loop) {
   err = uv_loop_close(loop);
   assert(err == 0);
   if (loop != default_loop)
-    free(loop);
+    uv_free(loop);
 }

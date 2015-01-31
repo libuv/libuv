@@ -63,6 +63,10 @@ enum {
 # define UV__HANDLE_CLOSING   0x01
 #endif
 
+void * uv_aligned_malloc(size_t size, size_t align);
+void uv_aligned_free(void *ptr);
+
+
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
 void uv__loop_close(uv_loop_t* loop);

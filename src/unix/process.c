@@ -383,7 +383,7 @@ int uv_spawn(uv_loop_t* loop,
     stdio_count = 3;
 
   err = -ENOMEM;
-  pipes = malloc(stdio_count * sizeof(*pipes));
+  pipes = uv_malloc(stdio_count * sizeof(*pipes));
   if (pipes == NULL)
     goto error;
 
@@ -482,7 +482,7 @@ int uv_spawn(uv_loop_t* loop,
   process->pid = pid;
   process->exit_cb = options->exit_cb;
 
-  free(pipes);
+  uv_free(pipes);
   return exec_errorno;
 
 error:
@@ -496,7 +496,7 @@ error:
       if (pipes[i][1] != -1)
         close(pipes[i][1]);
     }
-    free(pipes);
+    uv_free(pipes);
   }
 
   return err;
