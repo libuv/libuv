@@ -134,7 +134,7 @@ static UINT __stdcall uv__thread_start(void* arg) {
 
   ctx_p = arg;
   ctx = *ctx_p;
-  free(ctx_p);
+  uv_free(ctx_p);
 
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
   uv_key_set(&uv__current_thread_key, (void*) ctx.self);
@@ -150,7 +150,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   int err;
   HANDLE thread;
 
-  ctx = malloc(sizeof(*ctx));
+  ctx = uv_malloc(sizeof(*ctx));
   if (ctx == NULL)
     return UV_ENOMEM;
 
@@ -158,7 +158,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   ctx->arg = arg;
 
   /* Create the thread in suspended state so we have a chance to pass
-   * its own creation handle to it */   
+   * its own creation handle to it */
   thread = (HANDLE) _beginthreadex(NULL,
                                    0,
                                    uv__thread_start,
@@ -167,7 +167,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
                                    NULL);
   if (thread == NULL) {
     err = errno;
-    free(ctx);
+    uv_free(ctx);
   } else {
     err = 0;
     *tid = thread;

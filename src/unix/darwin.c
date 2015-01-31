@@ -198,7 +198,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return -EINVAL;  /* FIXME(bnoordhuis) Translate error. */
   }
 
-  *cpu_infos = malloc(numcpus * sizeof(**cpu_infos));
+  *cpu_infos = uv_malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos))
     return -ENOMEM;  /* FIXME(bnoordhuis) Deallocate info? */
 
@@ -226,10 +226,10 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    free(cpu_infos[i].model);
+    uv_free(cpu_infos[i].model);
   }
 
-  free(cpu_infos);
+  uv_free(cpu_infos);
 }
 
 
@@ -255,7 +255,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  *addresses = malloc(*count * sizeof(**addresses));
+  *addresses = uv_malloc(*count * sizeof(**addresses));
   if (!(*addresses))
     return -ENOMEM;
 
@@ -324,8 +324,8 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   int i;
 
   for (i = 0; i < count; i++) {
-    free(addresses[i].name);
+    uv_free(addresses[i].name);
   }
 
-  free(addresses);
+  uv_free(addresses);
 }

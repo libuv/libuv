@@ -96,7 +96,7 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
   return 0;
 
 error:
-  free(ctx);
+  uv_free(ctx);
   return err;
 }
 
@@ -219,7 +219,7 @@ out:
 
 
 static void timer_close_cb(uv_handle_t* handle) {
-  free(container_of(handle, struct poll_ctx, timer_handle));
+  uv_free(container_of(handle, struct poll_ctx, timer_handle));
 }
 
 
