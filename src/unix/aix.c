@@ -1085,7 +1085,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     idx++;
   }
 
-  uv__free(ps_cpus);
+  free(ps_cpus);
   return 0;
 }
 
@@ -1094,10 +1094,10 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; ++i) {
-    uv__free(cpu_infos[i].model);
+    free(cpu_infos[i].model);
   }
 
-  uv__free(cpu_infos);
+  free(cpu_infos);
 }
 
 
@@ -1119,7 +1119,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     return -ENOSYS;
   }
 
-  ifc.ifc_req = (struct ifreq*)uv__malloc(size);
+  ifc.ifc_req = (struct ifreq*)malloc(size);
   ifc.ifc_len = size;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
     uv__close(sockfd);
@@ -1153,7 +1153,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
   /* Alloc the return interface structs */
   *addresses = (uv_interface_address_t*)
-    uv__malloc(*count * sizeof(uv_interface_address_t));
+    malloc(*count * sizeof(uv_interface_address_t));
   if (!(*addresses)) {
     uv__close(sockfd);
     return -ENOMEM;
@@ -1208,10 +1208,10 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   int i;
 
   for (i = 0; i < count; ++i) {
-    uv__free(addresses[i].name);
+    free(addresses[i].name);
   }
 
-  uv__free(addresses);
+  free(addresses);
 }
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
