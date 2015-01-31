@@ -243,6 +243,14 @@ typedef enum {
 UV_EXTERN unsigned int uv_version(void);
 UV_EXTERN const char* uv_version_string(void);
 
+typedef void * (*uv_malloc_cb)(size_t size);
+typedef void (*uv_free_cb)(void *ptr);
+
+UV_EXTERN void uv_replace_allocator(uv_malloc_cb malloc_cb, uv_free_cb free_cb);
+
+UV_EXTERN void * uv_malloc(size_t size);
+UV_EXTERN void uv_free(void *ptr);
+
 UV_EXTERN uv_loop_t* uv_default_loop(void);
 UV_EXTERN int uv_loop_init(uv_loop_t* loop);
 UV_EXTERN int uv_loop_close(uv_loop_t* loop);

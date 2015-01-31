@@ -45,8 +45,8 @@ typedef struct pollfd {
 
 #ifndef _malloca
 # if defined(_DEBUG)
-#  define _malloca(size) malloc(size)
-#  define _freea(ptr) free(ptr)
+#  define _malloca(size) uv_malloc(size)
+#  define _freea(ptr) uv_free(ptr)
 # else
 #  define _malloca(size) alloca(size)
 #  define _freea(ptr)

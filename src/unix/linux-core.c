@@ -750,10 +750,10 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    free(cpu_infos[i].model);
+    uv_free(cpu_infos[i].model);
   }
 
-  free(cpu_infos);
+  uv_free(cpu_infos);
 }
 
 
@@ -787,7 +787,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   if (*count == 0)
     return 0;
 
-  *addresses = malloc(*count * sizeof(**addresses));
+  *addresses = uv_malloc(*count * sizeof(**addresses));
   if (!(*addresses))
     return -ENOMEM;
 
@@ -857,10 +857,10 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   int i;
 
   for (i = 0; i < count; i++) {
-    free(addresses[i].name);
+    uv_free(addresses[i].name);
   }
 
-  free(addresses);
+  uv_free(addresses);
 }
 
 
