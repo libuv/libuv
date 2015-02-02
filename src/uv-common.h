@@ -65,7 +65,7 @@ enum {
 
 void* uv_malloc(size_t size);
 
-void uv_free(void *ptr);
+void uv_free(void* ptr);
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
