@@ -58,9 +58,6 @@ void uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func) {
   replaced_free = free_func;
 }
 
-#undef ALIGN_VALUE
-#undef ALIGN_PTR
-
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
