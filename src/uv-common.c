@@ -51,6 +51,8 @@ void uv_free(void* ptr) {
 
 
 void uv_replace_allocator(uv_malloc_cb malloc_cb, uv_free_cb free_cb) {
+  assert(replaced_malloc == NULL);
+  assert(replaced_free == NULL);
   replaced_malloc = malloc_cb;
   replaced_free = free_cb;
 }
