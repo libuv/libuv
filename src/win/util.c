@@ -802,8 +802,8 @@ static int is_windows_version_or_greater(DWORD os_major,
 
   /* Perform the test. */
   return (int) VerifyVersionInfo(
-    &osvi,
-    VER_MAJORVERSION | VER_MINORVERSION |
+    &osvi, 
+    VER_MAJORVERSION | VER_MINORVERSION | 
     VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
     condition_mask);
 }
@@ -871,7 +871,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
       GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
   }
-
 
   /* Fetch the size of the adapters reported by windows, and then get the */
   /* list itself. */
@@ -1054,7 +1053,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
               prefix->PrefixLength <= prefix_len)
             continue;
 
-          if (address_prefix_match(sa->sa_family, sa,
+          if (address_prefix_match(sa->sa_family, sa, 
               prefix->Address.lpSockaddr, prefix->PrefixLength)) {
             prefix_len = prefix->PrefixLength;
           }
