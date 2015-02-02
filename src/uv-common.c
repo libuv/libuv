@@ -33,43 +33,28 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
-#define ALIGN_VALUE(v, a)  ( ((v) + (a) - 1) & ~((a) - 1) )
-#define ALIGN_PTR(p, a)    (void *)ALIGN_VALUE((ptrdiff_t) ((char *) (p) + 1), (a))
-
 static uv_malloc_cb replaced_malloc;
 static uv_free_cb replaced_free;
 
-void * uv_malloc(size_t size) {
+
+void* uv_malloc(size_t size) {
   return replaced_malloc ? (*replaced_malloc)(size) : malloc(size);
 }
 
-void uv_free(void *ptr) {
-  replaced_free ? (*replaced_free)(ptr) : free(ptr);
+
+void uv_free(void* ptr) {
+  if (replaced_free)
+    (*replaced_free)(ptr);
+  else
+    free(ptr);
 }
+
 
 void uv_replace_allocator(uv_malloc_cb malloc_cb, uv_free_cb free_cb) {
   replaced_malloc = malloc_cb;
   replaced_free = free_cb;
 }
 
-void * uv_aligned_malloc(size_t size, size_t align) {
-  void *basePtr, *ptr;
-  if (align < sizeof(ptrdiff_t))
-    align = sizeof(ptrdiff_t);
-  basePtr = uv_malloc(size + align);
-  ptr = ALIGN_PTR(basePtr, align);
-  ((ptrdiff_t *) ptr)[-1] = (ptrdiff_t) basePtr;
-  return ptr;
-}
-
-void uv_aligned_free(void *ptr) {
-  void *basePtr;
-  basePtr = ((void **) ptr)[-1];
-  uv_free(basePtr);
-}
-
-#undef ALIGN_VALUE
-#undef ALIGN_PTR
 
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 

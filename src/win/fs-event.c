@@ -225,8 +225,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   }
 
   if (!handle->buffer) {
-    handle->buffer = (char*)uv_aligned_malloc(uv_directory_watcher_buffer_size,
-                                              sizeof(DWORD));
+    handle->buffer = (char*)uv_malloc(uv_directory_watcher_buffer_size);
   }
   if (!handle->buffer) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv_malloc");
@@ -280,7 +279,7 @@ error:
   }
 
   if (handle->buffer) {
-    uv_aligned_free(handle->buffer);
+    uv_free(handle->buffer);
     handle->buffer = NULL;
   }
 
@@ -518,7 +517,7 @@ void uv_fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
 
     if (handle->buffer) {
-      uv_aligned_free(handle->buffer);
+      uv_free(handle->buffer);
       handle->buffer = NULL;
     }
 
