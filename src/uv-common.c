@@ -33,28 +33,29 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
-static uv_malloc_cb replaced_malloc;
-static uv_free_cb replaced_free;
+static uv_malloc_func replaced_malloc;
+static uv_free_func replaced_free;
 
 
-void* uv_malloc(size_t size) {
-  return replaced_malloc ? (*replaced_malloc)(size) : malloc(size);
+void* uv__malloc(size_t size) {
+  if (replaced_malloc)
+    return (*replaced_malloc)(size);
+  return malloc(size);
 }
 
 
-void uv_free(void* ptr) {
+void uv__free(void* ptr) {
   if (replaced_free)
     (*replaced_free)(ptr);
-  else
-    free(ptr);
+  free(ptr);
 }
 
 
-void uv_replace_allocator(uv_malloc_cb malloc_cb, uv_free_cb free_cb) {
+void uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func) {
   assert(replaced_malloc == NULL);
   assert(replaced_free == NULL);
-  replaced_malloc = malloc_cb;
-  replaced_free = free_cb;
+  replaced_malloc = malloc_func;
+  replaced_free = free_func;
 }
 
 
@@ -413,7 +414,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req) {
   if (req->nbufs > 0 && req->nbufs != (unsigned int) req->result)
     req->nbufs--;
   for (; req->nbufs < (unsigned int) req->result; req->nbufs++)
-    uv_free(dents[req->nbufs]);
+    uv__free(dents[req->nbufs]);
 }
 
 
@@ -425,11 +426,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 
   /* Free previous entity */
   if (req->nbufs > 0)
-    uv_free(dents[req->nbufs - 1]);
+    uv__free(dents[req->nbufs - 1]);
 
   /* End was already reached */
   if (req->nbufs == (unsigned int) req->result) {
-    uv_free(dents);
+    uv__free(dents);
     req->ptr = NULL;
     return UV_EOF;
   }
@@ -503,12 +504,12 @@ uv_loop_t* uv_default_loop(void) {
 uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
-  loop = uv_malloc(sizeof(*loop));
+  loop = uv__malloc(sizeof(*loop));
   if (loop == NULL)
     return NULL;
 
   if (uv_loop_init(loop)) {
-    uv_free(loop);
+    uv__free(loop);
     return NULL;
   }
 
@@ -550,5 +551,5 @@ void uv_loop_delete(uv_loop_t* loop) {
   err = uv_loop_close(loop);
   assert(err == 0);
   if (loop != default_loop)
-    uv_free(loop);
+    uv__free(loop);
 }
