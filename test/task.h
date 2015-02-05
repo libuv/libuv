@@ -145,13 +145,13 @@ enum test_status {
 
 #define RETURN_TODO(explanation)                                              \
   do {                                                                        \
-    LOGF("%s\n", explanation);                                                \
+    fprintf("%s\n", explanation);                                                \
     return TEST_TODO;                                                         \
   } while (0)
 
 #define RETURN_SKIP(explanation)                                              \
   do {                                                                        \
-    LOGF("%s\n", explanation);                                                \
+    fprintf("%s\n", explanation);                                                \
     return TEST_SKIP;                                                         \
   } while (0)
 
