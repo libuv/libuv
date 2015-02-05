@@ -76,19 +76,6 @@ typedef enum {
   PIPE
 } stream_type;
 
-/* Log to stderr. */
-#define LOG(...)                        \
-  do {                                  \
-    fprintf(stderr, "%s", __VA_ARGS__); \
-    fflush(stderr);                     \
-  } while (0)
-
-#define LOGF(...)                       \
-  do {                                  \
-    fprintf(stderr, __VA_ARGS__);       \
-    fflush(stderr);                     \
-  } while (0)
-
 /* Die with fatal error. */
 #define FATAL(msg)                                        \
   do {                                                    \
