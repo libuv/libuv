@@ -158,6 +158,13 @@ typedef gid_t uv_gid_t;
 typedef uid_t uv_uid_t;
 
 typedef struct dirent uv__dirent_t;
+/*
+ * "dirent" is used to hold a buffer large enough for any dirent in the
+ * directory being read. Avoids allocating for each directory entry.
+ */
+#define UV_DIR_PRIVATE_FIELDS \
+  uv__dirent_t* dirent; \
+  DIR* dir;
 
 #if defined(DT_UNKNOWN)
 # define HAVE_DIRENT_TYPES

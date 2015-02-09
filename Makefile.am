@@ -158,6 +158,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-fs-event.c \
                          test/test-fs-poll.c \
                          test/test-fs.c \
+                         test/test-fs-readdir.c \
                          test/test-get-currentexe.c \
                          test/test-get-loadavg.c \
                          test/test-get-memory.c \

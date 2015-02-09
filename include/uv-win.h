@@ -294,6 +294,29 @@ typedef struct uv__dirent_s {
   char d_name[1];
 } uv__dirent_t;
 
+/*
+ * "handle" is the actual directory handle that is used to perform calls
+ * to FindFirstFile/FindNextFile.
+ *
+ * "find_data" is needed to store the result of the FindFirstFile call that
+ * happened in uv_fs_opendir so that it can be used in the subsequent
+ * uv_fs_readdir call.
+ *
+ * "need_find_call" is a boolean determining if the next call to uv_fs_readdir
+ * must call FindNextFile. In uv_fs_opendir, FindFirstFile reads the first
+ * entry of the directory, and thus the subsequent call to uv_fs_readdir must
+ * not call FindNextFile, or otherwise it would miss the first directory entry.
+ * The next uv_fs_readdir calls after the first one will use FindNextFile.
+ *
+ * "dirent" is used to hold a buffer large enough for any dirent in the
+ * directory being read. It avoids allocating for each directory entry.
+ */
+#define UV_DIR_PRIVATE_FIELDS \
+  HANDLE dir_handle; \
+  WIN32_FIND_DATAW find_data; \
+  BOOL need_find_call; \
+  uv__dirent_t* dirent;
+
 #define UV__DT_DIR     UV_DIRENT_DIR
 #define UV__DT_FILE    UV_DIRENT_FILE
 #define UV__DT_LINK    UV_DIRENT_LINK
