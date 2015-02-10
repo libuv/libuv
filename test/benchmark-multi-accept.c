@@ -60,6 +60,7 @@ struct ipc_client_ctx {
   uv_connect_t connect_req;
   uv_stream_t* server_handle;
   uv_pipe_t ipc_pipe;
+  uv_read_t read_req;
   char scratch[16];
 };
 
@@ -79,23 +80,22 @@ struct client_ctx {
   uv_idle_t idle_handle;
 };
 
+struct connection_ctx {
+  handle_storage_t connection_handle;
+  uv_read_t read_req;
+  char scratch[32];
+};
+
 static void ipc_connection_cb(uv_stream_t* ipc_pipe, int status);
 static void ipc_write_cb(uv_write_t* req, int status);
 static void ipc_close_cb(uv_handle_t* handle);
 static void ipc_connect_cb(uv_connect_t* req, int status);
-static void ipc_read_cb(uv_stream_t* handle,
-                        ssize_t nread,
-                        const uv_buf_t* buf);
-static void ipc_alloc_cb(uv_handle_t* handle,
-                         size_t suggested_size,
-                         uv_buf_t* buf);
+static void ipc_read_cb(uv_read_t* req, int status);
 
 static void sv_async_cb(uv_async_t* handle);
 static void sv_connection_cb(uv_stream_t* server_handle, int status);
-static void sv_read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf);
-static void sv_alloc_cb(uv_handle_t* handle,
-                        size_t suggested_size,
-                        uv_buf_t* buf);
+static void sv_read_cb(uv_read_t* req, int status);
+static void sv_close_cb(uv_handle_t* handle);
 
 static void cl_connect_cb(uv_connect_t* req, int status);
 static void cl_idle_cb(uv_idle_t* handle);
@@ -152,34 +152,26 @@ static void ipc_close_cb(uv_handle_t* handle) {
 
 static void ipc_connect_cb(uv_connect_t* req, int status) {
   struct ipc_client_ctx* ctx;
+  uv_buf_t buf;
   ctx = container_of(req, struct ipc_client_ctx, connect_req);
   ASSERT(0 == status);
-  ASSERT(0 == uv_read_start((uv_stream_t*) &ctx->ipc_pipe,
-                            ipc_alloc_cb,
-                            ipc_read_cb));
+  buf = uv_buf_init(ctx->scratch, sizeof ctx->scratch);
+  ASSERT(0 == uv_read(&ctx->read_req,
+                      (uv_stream_t*) &ctx->ipc_pipe,
+                      &buf,
+                      1,
+                      ipc_read_cb));
 }
 
 
-static void ipc_alloc_cb(uv_handle_t* handle,
-                         size_t suggested_size,
-                         uv_buf_t* buf) {
-  struct ipc_client_ctx* ctx;
-  ctx = container_of(handle, struct ipc_client_ctx, ipc_pipe);
-  buf->base = ctx->scratch;
-  buf->len = sizeof(ctx->scratch);
-}
-
-
-static void ipc_read_cb(uv_stream_t* handle,
-                        ssize_t nread,
-                        const uv_buf_t* buf) {
+static void ipc_read_cb(uv_read_t* req, int status) {
   struct ipc_client_ctx* ctx;
   uv_loop_t* loop;
   uv_handle_type type;
   uv_pipe_t* ipc_pipe;
 
-  ipc_pipe = (uv_pipe_t*) handle;
-  ctx = container_of(ipc_pipe, struct ipc_client_ctx, ipc_pipe);
+  ctx = container_of(req, struct ipc_client_ctx, read_req);
+  ipc_pipe = &ctx->ipc_pipe;
   loop = ipc_pipe->loop;
 
   ASSERT(1 == uv_pipe_pending_count(ipc_pipe));
@@ -191,7 +183,7 @@ static void ipc_read_cb(uv_stream_t* handle,
   else
     ASSERT(0);
 
-  ASSERT(0 == uv_accept(handle, ctx->server_handle));
+  ASSERT(0 == uv_accept((uv_stream_t*)ipc_pipe, ctx->server_handle));
   uv_close((uv_handle_t*) &ctx->ipc_pipe, NULL);
 }
 
@@ -286,12 +278,15 @@ static void sv_async_cb(uv_async_t* handle) {
 static void sv_connection_cb(uv_stream_t* server_handle, int status) {
   handle_storage_t* storage;
   struct server_ctx* ctx;
+  struct connection_ctx* conn_ctx;
+  uv_buf_t buf;
 
   ctx = container_of(server_handle, struct server_ctx, server_handle);
   ASSERT(status == 0);
 
-  storage = malloc(sizeof(*storage));
-  ASSERT(storage != NULL);
+  conn_ctx = malloc(sizeof(*conn_ctx));
+  ASSERT(conn_ctx != NULL);
+  storage = &conn_ctx->connection_handle;
 
   if (server_handle->type == UV_TCP)
     ASSERT(0 == uv_tcp_init(server_handle->loop, (uv_tcp_t*) storage));
@@ -301,25 +296,29 @@ static void sv_connection_cb(uv_stream_t* server_handle, int status) {
     ASSERT(0);
 
   ASSERT(0 == uv_accept(server_handle, (uv_stream_t*) storage));
-  ASSERT(0 == uv_read_start((uv_stream_t*) storage, sv_alloc_cb, sv_read_cb));
+  buf = uv_buf_init(conn_ctx->scratch, sizeof(conn_ctx->scratch));
+  ASSERT(0 == uv_read(&conn_ctx->read_req,
+                      (uv_stream_t*) storage,
+                      &buf,
+                      1,
+                      sv_read_cb));
   ctx->num_connects++;
 }
 
 
-static void sv_alloc_cb(uv_handle_t* handle,
-                        size_t suggested_size,
-                        uv_buf_t* buf) {
-  static char slab[32];
-  buf->base = slab;
-  buf->len = sizeof(slab);
+static void sv_read_cb(uv_read_t* req, int status) {
+  struct connection_ctx* ctx;
+
+  ctx = container_of(req, struct connection_ctx, read_req);
+  ASSERT(status == UV_EOF);
+  uv_close((uv_handle_t*) &ctx->connection_handle, sv_close_cb);
 }
 
 
-static void sv_read_cb(uv_stream_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* buf) {
-  ASSERT(nread == UV_EOF);
-  uv_close((uv_handle_t*) handle, (uv_close_cb) free);
+static void sv_close_cb(uv_handle_t* handle) {
+  struct connection_ctx* ctx;
+  ctx = container_of(handle, struct connection_ctx, connection_handle);
+  free(ctx);
 }
 
 
