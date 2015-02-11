@@ -35,45 +35,18 @@ typedef struct {
   uv_tcp_t tcp;
   uv_connect_t connect_req;
   uv_shutdown_t shutdown_req;
+  uv_read_t read_req;
+  char buf[32];
 } pinger_t;
-
-typedef struct buf_s {
-  uv_buf_t uv_buf_t;
-  struct buf_s* next;
-} buf_t;
 
 
 static char PING[] = "PING\n";
 
 static uv_loop_t* loop;
 
-static buf_t* buf_freelist = NULL;
 static int pinger_shutdown_cb_called;
 static int completed_pingers = 0;
 static int64_t start_time;
-
-
-static void buf_alloc(uv_handle_t* tcp, size_t size, uv_buf_t* buf) {
-  buf_t* ab;
-
-  ab = buf_freelist;
-  if (ab != NULL)
-    buf_freelist = ab->next;
-  else {
-    ab = malloc(size + sizeof(*ab));
-    ab->uv_buf_t.len = size;
-    ab->uv_buf_t.base = (char*) (ab + 1);
-  }
-
-  *buf = ab->uv_buf_t;
-}
-
-
-static void buf_free(const uv_buf_t* buf) {
-  buf_t* ab = (buf_t*) buf->base - 1;
-  ab->next = buf_freelist;
-  buf_freelist = ab;
-}
 
 
 static void pinger_close_cb(uv_handle_t* handle) {
@@ -120,37 +93,31 @@ static void pinger_shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 
-static void pinger_read_cb(uv_stream_t* tcp,
-                           ssize_t nread,
-                           const uv_buf_t* buf) {
+static void pinger_read_cb(uv_read_t* req, int status) {
   ssize_t i;
   pinger_t* pinger;
+  int rearm_read = 1;
 
-  pinger = (pinger_t*)tcp->data;
+  pinger = req->handle->data;
 
-  if (nread < 0) {
-    ASSERT(nread == UV_EOF);
-
-    if (buf->base) {
-      buf_free(buf);
-    }
-
+  if (status < 0) {
+    ASSERT(status == UV_EOF);
     ASSERT(pinger_shutdown_cb_called == 1);
-    uv_close((uv_handle_t*)tcp, pinger_close_cb);
-
+    uv_close((uv_handle_t*)req->handle, pinger_close_cb);
     return;
   }
 
   /* Now we count the pings */
-  for (i = 0; i < nread; i++) {
-    ASSERT(buf->base[i] == PING[pinger->state]);
+  for (i = 0; i < status; i++) {
+    ASSERT(pinger->buf[i] == PING[pinger->state]);
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
       pinger->pongs++;
       if (uv_now(loop) - start_time > TIME) {
         uv_shutdown(&pinger->shutdown_req,
-                    (uv_stream_t*) tcp,
+                    req->handle,
                     pinger_shutdown_cb);
+        rearm_read = 0;
         break;
       } else {
         pinger_write_ping(pinger);
@@ -158,20 +125,23 @@ static void pinger_read_cb(uv_stream_t* tcp,
     }
   }
 
-  buf_free(buf);
+  if (rearm_read) {
+    uv_buf_t buf = uv_buf_init(pinger->buf, sizeof(pinger->buf));
+    ASSERT(0 == uv_read(&pinger->read_req, req->handle, &buf, 1, pinger_read_cb));
+  }
 }
 
 
 static void pinger_connect_cb(uv_connect_t* req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
+  uv_buf_t buf;
 
   ASSERT(status == 0);
 
   pinger_write_ping(pinger);
 
-  if (uv_read_start(req->handle, buf_alloc, pinger_read_cb)) {
-    FATAL("uv_read_start failed");
-  }
+  buf = uv_buf_init(pinger->buf, sizeof(pinger->buf));
+  ASSERT(0 == uv_read(&pinger->read_req, req->handle, &buf, 1, pinger_read_cb));
 }
 
 
