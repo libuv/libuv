@@ -369,7 +369,8 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
             /*
              * We attempt to convert the file name to its long form for
              * events that still point to valid files on disk.
-             * For removed and renamed events, we do not provide the file name.
+             * For removed and renamed from events, we do not provide the
+             * long file name.
              */
             if (file_info->Action != FILE_ACTION_REMOVED &&
               file_info->Action != FILE_ACTION_RENAMED_OLD_NAME) {
@@ -420,18 +421,15 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
                   long_filenamew = NULL;
                 }
               }
+            }
 
-              /*
-               * If we couldn't get the long name - just use the name
-               * provided by ReadDirectoryChangesW.
-               */
-              if (!long_filenamew) {
-                filenamew = file_info->FileName;
-                sizew = file_info->FileNameLength / sizeof(WCHAR);
-              }
-            } else {
-              /* Removed or renamed callbacks don't provide filename. */
-              filenamew = NULL;
+            /*
+             * If we couldn't get the long name - just use the name
+             * provided by ReadDirectoryChangesW.
+             */
+            if (!long_filenamew) {
+              filenamew = file_info->FileName;
+              sizew = file_info->FileNameLength / sizeof(WCHAR);
             }
           } else {
             /* We already have the long name of the file, so just use it. */
