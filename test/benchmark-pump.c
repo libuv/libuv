@@ -41,7 +41,7 @@ static void maybe_connect_some();
 static uv_req_t* req_alloc();
 static void req_free(uv_req_t* uv_req);
 
-static void buf_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf);
+static void buf_alloc(size_t size, uv_buf_t* buf);
 static void buf_free(const uv_buf_t* buf);
 
 static uv_loop_t* loop;
@@ -165,7 +165,7 @@ static void start_stats_collection(void) {
 }
 
 
-static void read_cb(uv_stream_t* stream, ssize_t bytes, const uv_buf_t* buf) {
+static void read_cb(uv_read_t* req, int bytes) {
   if (nrecv_total == 0) {
     ASSERT(start_time == 0);
     uv_update_time(loop);
@@ -173,11 +173,11 @@ static void read_cb(uv_stream_t* stream, ssize_t bytes, const uv_buf_t* buf) {
   }
 
   if (bytes < 0) {
-    uv_close((uv_handle_t*)stream, read_sockets_close_cb);
+    uv_close((uv_handle_t*)req->handle, read_sockets_close_cb);
     return;
   }
 
-  buf_free(buf);
+  buf_free(req->data);
 
   nrecv += bytes;
   nrecv_total += bytes;
@@ -270,6 +270,8 @@ static void maybe_connect_some(void) {
 
 static void connection_cb(uv_stream_t* s, int status) {
   uv_stream_t* stream;
+  uv_read_t* read_req;
+  uv_buf_t* buf;
   int r;
 
   ASSERT(server == s);
@@ -288,8 +290,13 @@ static void connection_cb(uv_stream_t* s, int status) {
   r = uv_accept(s, stream);
   ASSERT(r == 0);
 
-  r = uv_read_start(stream, buf_alloc, read_cb);
-  ASSERT(r == 0);
+  read_req = (uv_read_t*) req_alloc();
+  ASSERT(read_req != NULL);
+
+  buf = malloc(sizeof *buf);
+  buf_alloc(65536, buf);
+  read_req->data = buf;
+  ASSERT(0 == uv_read(read_req, stream, buf, 1, read_cb));
 
   read_sockets++;
   max_read_sockets++;
@@ -344,7 +351,7 @@ typedef struct buf_list_s {
 static buf_list_t* buf_freelist = NULL;
 
 
-static void buf_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+static void buf_alloc(size_t size, uv_buf_t* buf) {
   buf_list_t* ab;
 
   ab = buf_freelist;

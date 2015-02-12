@@ -44,6 +44,7 @@ typedef struct conn_rec_s {
   int i;
   uv_connect_t conn_req;
   uv_write_t write_req;
+  uv_read_t read_req;
   make_connect_fn make_connect;
   uv_stream_t stream;
 } conn_rec;
@@ -75,19 +76,11 @@ static uint64_t start; /* in ms  */
 static int closed_streams;
 static int conns_failed;
 
-static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+static char slab[65536];
+
 static void connect_cb(uv_connect_t* conn_req, int status);
-static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+static void read_cb(uv_read_t* req, int status);
 static void close_cb(uv_handle_t* handle);
-
-
-static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
-                     uv_buf_t* buf) {
-  static char slab[65536];
-  buf->base = slab;
-  buf->len = sizeof(slab);
-}
 
 
 static void after_write(uv_write_t* req, int status) {
@@ -124,8 +117,8 @@ static void connect_cb(uv_connect_t* req, int status) {
   printf("connect_cb %d\n", conn->i);
 #endif
 
-  r = uv_read_start(&conn->stream, alloc_cb, read_cb);
-  ASSERT(r == 0);
+  buf = uv_buf_init(slab, sizeof(slab));
+  ASSERT(0 == uv_read(&conn->read_req, &conn->stream, &buf, 1, read_cb));
 
   buf.base = buffer;
   buf.len = sizeof(buffer) - 1;
@@ -135,23 +128,20 @@ static void connect_cb(uv_connect_t* req, int status) {
 }
 
 
-static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-
-  ASSERT(stream != NULL);
-
+static void read_cb(uv_read_t* req, int status) {
 #if DEBUG
   printf("read_cb %d\n", p->i);
 #endif
 
-  uv_close((uv_handle_t*)stream, close_cb);
+  uv_close((uv_handle_t*)req->handle, close_cb);
 
-  if (nread < 0) {
-    if (nread == UV_EOF) {
+  if (status < 0) {
+    if (status == UV_EOF) {
       ;
-    } else if (nread == UV_ECONNRESET) {
+    } else if (status == UV_ECONNRESET) {
       conns_failed++;
     } else {
-      fprintf(stderr, "read error %s\n", uv_err_name(nread));
+      fprintf(stderr, "read error %s\n", uv_err_name(status));
       ASSERT(0);
     }
   }
