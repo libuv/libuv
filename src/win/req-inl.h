@@ -125,7 +125,7 @@ INLINE static void uv_insert_pending_req(uv_loop_t* loop, uv_req_t* req) {
         break;                                                                \
                                                                               \
       default:                                                                \
-        assert(0);                                                            \
+        UNREACHABLE();                                                        \
     }                                                                         \
   } while (0)
 
@@ -203,7 +203,7 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
         break;
 
       default:
-        assert(0);
+        UNREACHABLE();
     }
   }
 

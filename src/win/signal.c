@@ -215,7 +215,7 @@ static void uv__signal_unregister(int signum) {
 
     default:
       /* Libuv bug. */
-      assert(0 && "Invalid signum");
+      UNREACHABLE();
       return;
   }
 }

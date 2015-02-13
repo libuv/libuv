@@ -157,7 +157,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     return;
 
   default:
-    assert(0);
+    UNREACHABLE(assert(0));
   }
 
   uv__make_close_pending(handle);
@@ -234,7 +234,7 @@ static void uv__finish_close(uv_handle_t* handle) {
       break;
 
     default:
-      assert(0);
+      UNREACHABLE(assert(0));
       break;
   }
 

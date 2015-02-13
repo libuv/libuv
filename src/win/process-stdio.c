@@ -388,7 +388,7 @@ int uv__stdio_create(uv_loop_t* loop,
             break;
 
           default:
-            assert(0);
+            UNREACHABLE();
             return -1;
         }
 
@@ -434,7 +434,7 @@ int uv__stdio_create(uv_loop_t* loop,
       }
 
       default:
-        assert(0);
+        UNREACHABLE();
         return -1;
     }
   }

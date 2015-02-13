@@ -39,7 +39,7 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
       err = uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
       break;
     default:
-      assert(0);
+      UNREACHABLE();
   }
 
   return uv_translate_sys_error(err);
@@ -58,7 +58,7 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
       err = uv_pipe_accept((uv_pipe_t*)server, client);
       break;
     default:
-      assert(0);
+      UNREACHABLE();
   }
 
   return uv_translate_sys_error(err);
@@ -89,7 +89,7 @@ int uv_read_start(uv_stream_t* handle, uv_alloc_cb alloc_cb,
       err = uv_tty_read_start((uv_tty_t*) handle, alloc_cb, read_cb);
       break;
     default:
-      assert(0);
+      UNREACHABLE();
   }
 
   return uv_translate_sys_error(err);
@@ -142,7 +142,7 @@ int uv_write(uv_write_t* req,
       err = uv_tty_write(loop, req, (uv_tty_t*) handle, bufs, nbufs, cb);
       break;
     default:
-      assert(0);
+    UNREACHABLE();
   }
 
   return uv_translate_sys_error(err);
@@ -174,7 +174,7 @@ int uv_write2(uv_write_t* req,
                            cb);
       break;
     default:
-      assert(0);
+      UNREACHABLE();
   }
 
   return uv_translate_sys_error(err);

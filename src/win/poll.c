@@ -91,7 +91,7 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
     handle->mask_events_1 = handle->events;
     handle->mask_events_2 = 0;
   } else {
-    assert(0);
+    UNREACHABLE();
     return;
   }
 
@@ -166,7 +166,7 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
     handle->submitted_events_2 = 0;
     mask_events = handle->mask_events_2;
   } else {
-    assert(0);
+    UNREACHABLE();
     return;
   }
 
@@ -402,7 +402,7 @@ static void uv__slow_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
     handle->mask_events_1 = handle->events;
     handle->mask_events_2 = 0;
   } else {
-    assert(0);
+    UNREACHABLE();
     return;
   }
 
@@ -429,7 +429,7 @@ static void uv__slow_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
     handle->submitted_events_2 = 0;
     mask_events = handle->mask_events_2;
   } else {
-    assert(0);
+    UNREACHABLE();
     return;
   }
 
