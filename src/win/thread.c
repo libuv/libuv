@@ -175,7 +175,18 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
     ResumeThread(thread);
   }
 
-  return err;
+  switch (err) {
+    case 0:
+      return 0;
+    case EACCES:
+      return UV_EACCES;
+    case EAGAIN:
+      return UV_EAGAIN;
+    case EINVAL:
+      return UV_EINVAL;
+  }
+
+  return UV_EIO;
 }
 
 
