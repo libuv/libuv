@@ -68,7 +68,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   if (err)
     uv__free(ctx);
 
-  return err ? -1 : 0;
+  return -err;
 }
 
 
