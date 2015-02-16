@@ -47,7 +47,8 @@ void* uv__malloc(size_t size) {
 void uv__free(void* ptr) {
   if (replaced_free)
     (*replaced_free)(ptr);
-  free(ptr);
+  else
+    free(ptr);
 }
 
 
