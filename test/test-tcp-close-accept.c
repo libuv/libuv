@@ -41,6 +41,18 @@ static unsigned int close_cb_called;
 static unsigned int write_cb_called;
 static unsigned int read_cb_called;
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+static void read_init(read_req_t** req, char* base, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
+}
+
 static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
@@ -74,19 +86,21 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(0 == uv_write(&write_reqs[i], outgoing, &buf, 1, write_cb));
 }
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  static char slab[1];
-  buf->base = slab;
-  buf->len = sizeof(slab);
-}
+static char slab[1];
 
-static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_read_t* req, int nread) {
+  read_req_t* read_req;
+  uv_stream_t* stream;
+  const uv_buf_t* buf;
   uv_loop_t* loop;
   unsigned int i;
 
+  read_req = (uv_read_t*) req;
+  stream = req->handle;
+  buf = &read_req->buf;
   /* Only first stream should receive read events */
   ASSERT(stream == (uv_stream_t*) &tcp_incoming[0]);
-  ASSERT(0 == uv_read_stop(stream));
+  /*ASSERT(0 == uv_read_stop(stream));*/
   ASSERT(1 == nread);
 
   loop = stream->loop;
@@ -102,7 +116,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
                              &tcp_check,
                              (const struct sockaddr*) &addr,
                              connect_cb));
-  ASSERT(0 == uv_read_start((uv_stream_t*) &tcp_check, alloc_cb, read_cb));
+  /*ASSERT(0 == uv_read_start((uv_stream_t*) &tcp_check, alloc_cb, read_cb));*/
 
   /* Close server, so no one will connect to it */
   uv_close((uv_handle_t*) &tcp_server, close_cb);
@@ -111,6 +125,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 static void connection_cb(uv_stream_t* server, int status) {
   unsigned int i;
   uv_tcp_t* incoming;
+  read_req_t* read_req;
 
   ASSERT(server == (uv_stream_t*) &tcp_server);
 
@@ -129,7 +144,8 @@ static void connection_cb(uv_stream_t* server, int status) {
   /* Once all clients are accepted - start reading */
   for (i = 0; i < ARRAY_SIZE(tcp_incoming); i++) {
     incoming = &tcp_incoming[i];
-    ASSERT(0 == uv_read_start((uv_stream_t*) incoming, alloc_cb, read_cb));
+    read_init(&read_req, slab, sizeof(slab));
+    ASSERT(0 == uv_read(&read_req->req, (uv_stream_t*) incoming, &read_req->buf, 1, read_cb));
   }
 }
 
