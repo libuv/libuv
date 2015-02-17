@@ -42,6 +42,26 @@ static uv_udp_t udpServer;
 static uv_udp_send_t send_req;
 
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+static void read_alloc(read_req_t** req, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = malloc(size);
+  (*req)->buf.len = size;
+}
+
+
+static void read_free(read_req_t* req) {
+  free(req->buf.base);
+  req->buf.base = NULL;
+  free(req);
+}
+
+
 static void alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
   buf->base = malloc(suggested_size);
   buf->len = suggested_size;
@@ -60,18 +80,15 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 }
 
 
-static void after_read(uv_stream_t* handle,
-                       ssize_t nread,
-                       const uv_buf_t* buf) {
+static void after_read(uv_read_t* read_req,
+                       int nread) {
   uv_shutdown_t* req;
   int r;
 
-  if (buf->base) {
-    free(buf->base);
-  }
+  read_free((read_req_t*) read_req);
 
   req = (uv_shutdown_t*) malloc(sizeof *req);
-  r = uv_shutdown(req, handle, after_shutdown);
+  r = uv_shutdown(req, read_req->handle, after_shutdown);
   ASSERT(r == 0);
 }
 
@@ -139,7 +156,9 @@ static void on_connection(uv_stream_t* server, int status) {
   check_sockname(&peername, "127.0.0.1", connect_port, "accepted socket peer");
   getpeernamecount++;
 
-  r = uv_read_start((uv_stream_t*)handle, alloc, after_read);
+  read_req_t* req;
+  read_alloc(&req, 64 * 1024);
+  r = uv_read(&req->req, (uv_stream_t*)handle, &req->buf, 1, after_read);
   ASSERT(r == 0);
 }
 
