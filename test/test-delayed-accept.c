@@ -30,11 +30,24 @@ static int close_cb_called = 0;
 static int connect_cb_called = 0;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->base = malloc(size);
-  buf->len = size;
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+static void read_alloc(read_req_t** req, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = malloc(size);
+  (*req)->buf.len = size;
 }
 
+
+static void read_free(read_req_t* req) {
+  free(req->buf.base);
+  req->buf.base = NULL;
+  free(req);
+}
 
 static void close_cb(uv_handle_t* handle) {
   ASSERT(handle != NULL);
@@ -115,32 +128,34 @@ static void start_server(void) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_read_t* req, int nread) {
   /* The server will not send anything, it should close gracefully. */
+  int r;
+  read_req_t* read_req = (read_req_t*)req;
 
-  if (buf->base) {
-    free(buf->base);
-  }
-
-  if (nread >= 0) {
+  if (nread > 0) {
     ASSERT(nread == 0);
+    r = uv_read(&read_req->req, (uv_stream_t*) req->handle, &read_req->buf, 1, read_cb);
+    ASSERT(r == 0);
   } else {
-    ASSERT(tcp != NULL);
-    ASSERT(nread == UV_EOF);
-    uv_close((uv_handle_t*)tcp, close_cb);
+    /* nread = 0 means it is completed? */
+    ASSERT(nread == 0 || nread == UV_EOF);
+    uv_close((uv_handle_t*) req->handle, close_cb);
   }
 }
 
 
 static void connect_cb(uv_connect_t* req, int status) {
   int r;
+  read_req_t* read_req;
 
   ASSERT(req != NULL);
   ASSERT(status == 0);
 
+  read_alloc(&read_req, 64 * 1024);
   /* Not that the server will send anything, but otherwise we'll never know */
   /* when the server closes the connection. */
-  r = uv_read_start((uv_stream_t*)(req->handle), alloc_cb, read_cb);
+  r = uv_read(&read_req->req, (uv_stream_t*) req->handle, &read_req->buf, 1, read_cb);
   ASSERT(r == 0);
 
   connect_cb_called++;
