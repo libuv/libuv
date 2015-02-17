@@ -53,6 +53,20 @@ typedef struct {
 
 #define CONN_COUNT 100
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+static void read_init(read_req_t** req, char* base, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
+}
+
+static void read_malloc(read_req_t** req, int size) {
+  read_init(req, malloc(size), size);
+}
 
 static void close_server_conn_cb(uv_handle_t* handle) {
   free(handle);
@@ -93,14 +107,6 @@ static void exit_cb(uv_process_t* process,
 }
 
 
-static void on_alloc(uv_handle_t* handle,
-                     size_t suggested_size,
-                     uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
-}
-
-
 static void close_client_conn_cb(uv_handle_t* handle) {
   tcp_conn* p = (tcp_conn*)handle->data;
   free(p);
@@ -137,9 +143,11 @@ static void make_many_connections(void) {
 }
 
 
-static void on_read(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* buf) {
+static void on_read(uv_read_t* req,
+                    int nread) {
+  read_req_t* read_req = (read_req_t*) req;
+  uv_buf_t* buf = &read_req->buf;
+  uv_stream_t* handle = req->handle;
   int r;
   uv_pipe_t* pipe;
   uv_handle_type pending;
@@ -316,15 +324,10 @@ static void on_tcp_write(uv_write_t* req, int status) {
 }
 
 
-static void on_read_alloc(uv_handle_t* handle,
-                          size_t suggested_size,
-                          uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
-}
-
-
-static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void on_tcp_read(uv_read_t* req, int nread) {
+  read_req_t* read_req = (read_req_t*) req;
+  uv_tcp_t* tcp = (uv_tcp_t*)req->handle;
+  uv_buf_t* buf = &read_req->buf;
   ASSERT(nread > 0);
   ASSERT(memcmp("hello again\n", buf->base, nread) == 0);
   ASSERT(tcp == (uv_stream_t*)&tcp_connection);
@@ -337,9 +340,11 @@ static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 }
 
 
-static void on_read_connection(uv_stream_t* handle,
-                               ssize_t nread,
-                               const uv_buf_t* buf) {
+static void on_read_connection(uv_read_t* req,
+                               int nread) {
+  read_req_t* read_req = (read_req_t*) req;
+  uv_buf_t* buf = &read_req->buf;
+  uv_stream_t* handle = req->handle;
   int r;
   uv_buf_t outbuf;
   uv_pipe_t* pipe;
@@ -387,7 +392,8 @@ static void on_read_connection(uv_stream_t* handle,
     on_tcp_write);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&tcp_connection, on_read_alloc, on_tcp_read);
+  read_malloc(&read_req, 64 * 1024);
+  r = uv_read(&read_req->req, (uv_stream_t*)&tcp_connection, &read_req->buf, 1, on_tcp_read);
   ASSERT(r == 0);
 
   free(buf->base);
@@ -396,10 +402,12 @@ static void on_read_connection(uv_stream_t* handle,
 
 static int run_ipc_test(const char* helper, uv_read_cb read_cb) {
   uv_process_t process;
+  read_req_t* read_req;
   int r;
 
   spawn_helper(&channel, &process, helper);
-  uv_read_start((uv_stream_t*)&channel, on_alloc, read_cb);
+  read_malloc(&read_req, 64 * 1024);
+  r = uv_read(&read_req->req, (uv_stream_t*)&channel, &read_req->buf, 1, read_cb);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
@@ -523,9 +531,11 @@ static void tcp_connection_write_cb(uv_write_t* req, int status) {
 }
 
 
-static void on_tcp_child_process_read(uv_stream_t* tcp,
-                                      ssize_t nread,
-                                      const uv_buf_t* buf) {
+static void on_tcp_child_process_read(uv_read_t* req,
+                                      int nread) {
+  read_req_t* read_req = (read_req_t*) req;
+  uv_stream_t* tcp = (uv_stream_t*)req->handle;
+  uv_buf_t* buf = &read_req->buf;
   uv_buf_t outbuf;
   int r;
 
@@ -554,10 +564,12 @@ static void on_tcp_child_process_read(uv_stream_t* tcp,
 
 
 static void connect_child_process_cb(uv_connect_t* req, int status) {
+  read_req_t* read_req;
   int r;
 
   ASSERT(status == 0);
-  r = uv_read_start(req->handle, on_read_alloc, on_tcp_child_process_read);
+  read_malloc(&read_req, 64 * 1024);
+  r = uv_read(&read_req->req, (uv_stream_t*)req->handle, &read_req->buf, 1, on_tcp_child_process_read);
   ASSERT(r == 0);
 }
 
@@ -593,6 +605,7 @@ static void ipc_on_connection(uv_stream_t* server, int status) {
 
 
 static void ipc_on_connection_tcp_conn(uv_stream_t* server, int status) {
+  read_req_t* read_req;
   int r;
   uv_buf_t buf;
   uv_tcp_t* conn;
@@ -615,9 +628,8 @@ static void ipc_on_connection_tcp_conn(uv_stream_t* server, int status) {
     (uv_stream_t*)conn, NULL);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) conn,
-                    on_read_alloc,
-                    on_tcp_child_process_read);
+  read_malloc(&read_req, 64 * 1024);
+  r = uv_read(&read_req->req, (uv_stream_t*)conn, &read_req->buf, 1, on_tcp_child_process_read);
   ASSERT(r == 0);
 
   uv_close((uv_handle_t*)conn, close_cb);
