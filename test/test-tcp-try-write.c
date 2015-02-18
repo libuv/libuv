@@ -98,7 +98,7 @@ static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT(0 == uv_accept(tcp, (uv_stream_t*) &incoming));
 
   connection_cb_called++;
-  ASSERT(0 == uv_read_start((uv_stream_t*) &incoming, alloc_cb, read_cb));
+  /*ASSERT(0 == uv_read_start((uv_stream_t*) &incoming, alloc_cb, read_cb));*/
 }
 
 

@@ -138,8 +138,8 @@ TEST_IMPL(stdio_over_pipes) {
   r = uv_spawn(loop, &process, &options);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT(r == 0);*/
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
@@ -241,8 +241,8 @@ int stdio_over_pipes_helper(void) {
   uv_ref((uv_handle_t*)&stdout_pipe);
   uv_ref((uv_handle_t*)&stdin_pipe);
 
-  r = uv_read_start((uv_stream_t*)&stdin_pipe, on_read_alloc, on_pipe_read);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*)&stdin_pipe, on_read_alloc, on_pipe_read);
+  ASSERT(r == 0);*/
 
   uv_run(loop, UV_RUN_DEFAULT);
 

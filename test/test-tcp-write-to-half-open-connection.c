@@ -54,8 +54,8 @@ static void connection_cb(uv_stream_t* server, int status) {
   r = uv_accept(server, (uv_stream_t*)&tcp_peer);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&tcp_peer, alloc_cb, read_cb);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*)&tcp_peer, alloc_cb, read_cb);
+  ASSERT(r == 0);*/
 
   buf.base = "hello\n";
   buf.len = 6;

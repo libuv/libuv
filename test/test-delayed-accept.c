@@ -138,8 +138,7 @@ static void read_cb(uv_read_t* req, int nread) {
     r = uv_read(&read_req->req, (uv_stream_t*) req->handle, &read_req->buf, 1, read_cb);
     ASSERT(r == 0);
   } else {
-    /* nread = 0 means it is completed? */
-    ASSERT(nread == 0 || nread == UV_EOF);
+    ASSERT(nread == UV_EOF);
     uv_close((uv_handle_t*) req->handle, close_cb);
   }
 }

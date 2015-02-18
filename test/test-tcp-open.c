@@ -142,7 +142,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(r == 0);
 
   /* Start reading */
-  r = uv_read_start(stream, alloc_cb, read_cb);
+  /*r = uv_read_start(stream, alloc_cb, read_cb);*/
   ASSERT(r == 0);
 }
 
