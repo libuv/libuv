@@ -1144,6 +1144,7 @@ static void uv__read(uv_stream_t* stream) {
         uv__handle_stop(stream);
       uv__stream_osx_interrupt_select(stream);
     } else {
+      uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
       return;
     }
   } else if (nread == 0) {
