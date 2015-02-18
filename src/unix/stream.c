@@ -1143,6 +1143,8 @@ static void uv__read(uv_stream_t* stream) {
       if (!uv__io_active(&stream->io_watcher, UV__POLLOUT))
         uv__handle_stop(stream);
       uv__stream_osx_interrupt_select(stream);
+    } else {
+      return;
     }
   } else if (nread == 0) {
     req->error = UV_EOF;
