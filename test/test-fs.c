@@ -1094,7 +1094,8 @@ TEST_IMPL(fs_fstat) {
 #elif defined(__sun) || \
       defined(_BSD_SOURCE) || \
       defined(_SVID_SOURCE) || \
-      defined(_XOPEN_SOURCE)
+      defined(_XOPEN_SOURCE) || \
+      defined(_DEFAULT_SOURCE)
   ASSERT(s->st_atim.tv_sec == t.st_atim.tv_sec);
   ASSERT(s->st_atim.tv_nsec == t.st_atim.tv_nsec);
   ASSERT(s->st_mtim.tv_sec == t.st_mtim.tv_sec);
