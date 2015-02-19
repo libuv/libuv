@@ -1144,7 +1144,7 @@ static void uv__read(uv_stream_t* stream) {
         uv__handle_stop(stream);
       uv__stream_osx_interrupt_select(stream);
     } else {
-      uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
+      assert(uv__io_active(&stream->io_watcher, UV__POLLIN));
       return;
     }
   } else if (nread == 0) {
@@ -1298,6 +1298,8 @@ static void uv__stream_connect(uv_stream_t* stream) {
     uv__stream_flush_read_queue(stream, -ECANCELED);
     uv__stream_flush_write_queue(stream, -ECANCELED);
     uv__write_callbacks(stream);
+  } else if (!QUEUE_EMPTY(&stream->read_queue)) {
+    uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
   }
 }
 
@@ -1460,8 +1462,6 @@ int uv_read(uv_read_t* req,
             const uv_buf_t bufs[],
             unsigned int nbufs,
             uv_read_cb cb) {
-  int empty_queue;
-
   assert(stream->type == UV_TCP ||
          stream->type == UV_NAMED_PIPE ||
          stream->type == UV_TTY);
@@ -1477,8 +1477,6 @@ int uv_read(uv_read_t* req,
    * expresses the desired state of the user.
    */
   stream->flags |= UV_STREAM_READING;
-
-  empty_queue = !!QUEUE_EMPTY(&stream->read_queue);
 
   /* Initialize the req */
   uv__req_init(stream->loop, req, UV_READ);
@@ -1499,21 +1497,13 @@ int uv_read(uv_read_t* req,
 
   QUEUE_INSERT_TAIL(&stream->read_queue, &req->queue);
 
-  /* If the queue was empty when this function began, we should attempt to
-   * do the read immediately. Otherwise start the io watcher and wait
-   * for the fd to become readable.
-   */
-  if (stream->connect_req) {
-    /* Still connecting, do nothing. */
-  }
-  else if (empty_queue) {
-    uv__read(stream);
-  }
-  else {
+  /* TODO: try to read inline if the read queue was empty */
+
+  if (!stream->connect_req)
     uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
-    uv__handle_start(stream);
-    uv__stream_osx_interrupt_select(stream);
-  }
+
+  uv__handle_start(stream);
+  uv__stream_osx_interrupt_select(stream);
 
   return 0;
 }
