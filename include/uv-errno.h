@@ -399,4 +399,10 @@
 # define UV__EMLINK (-4032)
 #endif
 
+#if defined(EHOSTDOWN) && !defined(_WIN32)
+# define UV__EHOSTDOWN (-EHOSTDOWN)
+#else
+# define UV__EHOSTDOWN (-4031)
+#endif
+
 #endif /* UV_ERRNO_H_ */
