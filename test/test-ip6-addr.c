@@ -33,8 +33,8 @@
 
 TEST_IMPL(ip6_addr_link_local) {
   char string_address[INET6_ADDRSTRLEN];
-  uv_interface_address_t* addresses;
-  uv_interface_address_t* address;
+  uv_network_interface_t* interfaces;
+  uv_network_interface_t* interface;
   struct sockaddr_in6 addr;
   unsigned int iface_index;
   const char* device_name;
@@ -43,25 +43,25 @@ TEST_IMPL(ip6_addr_link_local) {
   int count;
   int ix;
 
-  ASSERT(0 == uv_interface_addresses(&addresses, &count));
+  ASSERT(0 == uv_network_interfaces(&interfaces, &count));
 
   for (ix = 0; ix < count; ix++) {
-    address = addresses + ix;
+    interface = interfaces + ix;
 
-    if (address->address.address6.sin6_family != AF_INET6)
+    if (interface->address.address6.sin6_family != AF_INET6)
       continue;
 
     ASSERT(0 == uv_inet_ntop(AF_INET6,
-                             &address->address.address6.sin6_addr,
+                             &interface->address.address6.sin6_addr,
                              string_address,
                              sizeof(string_address)));
 
-    /* Skip addresses that are not link-local. */
+    /* Skip interfaces that are not link-local. */
     if (strncmp(string_address, "fe80::", 6) != 0)
       continue;
 
-    iface_index = address->address.address6.sin6_scope_id;
-    device_name = address->name;
+    iface_index = interface->address.address6.sin6_scope_id;
+    device_name = interface->name;
 
 #ifdef _WIN32
     snprintf(scoped_addr,
@@ -88,7 +88,7 @@ TEST_IMPL(ip6_addr_link_local) {
     ASSERT(iface_index == addr.sin6_scope_id);
   }
 
-  uv_free_interface_addresses(addresses, count);
+  uv_free_network_interfaces(interfaces, count);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
