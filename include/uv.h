@@ -1060,6 +1060,11 @@ UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
 UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
                                            int count);
 
+UV_EXTERN int uv_network_interfaces(uv_network_interface_t** interfaces,
+                                    int* count);
+UV_EXTERN void uv_free_network_interfaces(uv_network_interface_t* interfaces,
+                                          int count);
+
 
 typedef enum {
   UV_FS_UNKNOWN = -1,
