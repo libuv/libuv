@@ -864,6 +864,134 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 }
 
 
+int uv_network_interfaces(uv_network_interface_t** interfaces, int* count) {
+#ifndef HAVE_IFADDRS_H
+  return -ENOSYS;
+#else
+  uv_network_interface_t* interface;
+  struct ifaddrs *addrs, *ent;
+  struct sockaddr_ll *sll_addr;
+  int i;
+
+  if (getifaddrs(&addrs))
+    return -errno;
+
+  *count = 0;
+  *interfaces = NULL;
+
+  /* Count the number of interfaces. */
+  for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
+    if (ent->ifa_addr->sa_family != AF_INET6 &&
+        ent->ifa_addr->sa_family != AF_INET &&
+        ent->ifa_addr->sa_family != PF_PACKET) {
+      continue;
+    }
+    (*count)++;
+  }
+
+  if ((*count) == 0)
+    return 0;
+
+  *interfaces = malloc((*count) * sizeof(**interfaces));
+  if (!(*interfaces))
+    return -ENOMEM;
+
+  interface = *interfaces;
+  for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
+    if (ent->ifa_addr->sa_family != AF_INET6 &&
+        ent->ifa_addr->sa_family != AF_INET &&
+        ent->ifa_addr->sa_family != PF_PACKET) {
+      continue;
+    }
+
+  /* Meta. */
+    interface->name = strdup(ent->ifa_name);
+    interface->is_loopback       = !!(ent->ifa_flags & IFF_LOOPBACK);
+    interface->is_up_and_running = !!(ent->ifa_flags & (IFF_UP|IFF_RUNNING));
+    interface->is_point_to_point = !!(ent->ifa_flags & IFF_POINTOPOINT);
+    interface->is_promiscuous    = !!(ent->ifa_flags & IFF_PROMISC);
+    interface->has_broadcast     = !!(ent->ifa_flags & IFF_BROADCAST);
+    interface->has_multicast     = !!(ent->ifa_flags & IFF_MULTICAST);
+
+  /* Address. */
+    if (ent->ifa_addr != NULL) {
+      if (ent->ifa_addr->sa_family == AF_INET6) {
+        interface->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);
+      } else if (ent->ifa_addr->sa_family == AF_INET) {
+        interface->address.address4 = *((struct sockaddr_in*) ent->ifa_addr);
+      } else {
+        interface->address.address4.sin_family = AF_UNSPEC;
+      }
+    }
+
+  /* Broadcast or point-to-point. */
+    if (ent->ifa_broadaddr != NULL) {
+      if (ent->ifa_broadaddr->sa_family == AF_INET6) {
+        interface->broadcast.broadcast6 = *((struct sockaddr_in6*) ent->ifa_broadaddr);
+      } else if (ent->ifa_broadaddr->sa_family == AF_INET) {
+        interface->broadcast.broadcast4 = *((struct sockaddr_in*) ent->ifa_broadaddr);
+      } else {
+        interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
+      }
+    } else if (ent->ifa_dstaddr != NULL) {
+      if (ent->ifa_dstaddr->sa_family == AF_INET6) {
+        interface->broadcast.broadcast6 = *((struct sockaddr_in6*) ent->ifa_dstaddr);
+      } else if (ent->ifa_dstaddr->sa_family == AF_INET) {
+        interface->broadcast.broadcast4 = *((struct sockaddr_in*) ent->ifa_dstaddr);
+      } else {
+        interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
+      }
+    }
+
+  /* Netmask. */
+    if (ent->ifa_netmask != NULL) {
+      if (ent->ifa_netmask->sa_family == AF_INET6) {
+        interface->netmask.netmask6 = *((struct sockaddr_in6*) ent->ifa_netmask);
+      } else if (ent->ifa_netmask->sa_family == AF_INET) {
+        interface->netmask.netmask4 = *((struct sockaddr_in*) ent->ifa_netmask);
+      } else {
+        interface->netmask.netmask4.sin_family = AF_UNSPEC;
+      }
+    }
+
+    interface++;
+  }
+
+  /* Fill in physical interfaces for each interface */
+  for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
+    if (ent->ifa_addr->sa_family != PF_PACKET) {
+      continue;
+    }
+    interface = *interfaces;
+    for (i = 0; i < (*count); i++) {
+      if (strcmp(interface->name, ent->ifa_name) == 0) {
+        sll_addr = (struct sockaddr_ll*)(ent->ifa_addr);
+        interface->phys_addr_len = sll_addr->sll_halen;
+        /* Clamp size to sizeof(interface) */
+        if (interface->phys_addr_len > sizeof(interface->phys_addr)) {
+          interface->phys_addr_len = sizeof(interface->phys_addr);
+        }
+        memcpy(interface->phys_addr, sll_addr->sll_addr, interface->phys_addr_len);
+      }
+      interface++;
+    }
+  }
+
+  return 0;
+#endif
+}
+
+void uv_free_network_interfaces(uv_network_interface_t* interfaces, int count) {
+  int i;
+
+  for (i = 0; i < count; i++) {
+    free(interfaces[i].name);
+  }
+
+  free(interfaces);
+}
+
+
 void uv__set_process_title(const char* title) {
 #if defined(PR_SET_NAME)
   prctl(PR_SET_NAME, title);  /* Only copies first 16 characters. */
