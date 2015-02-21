@@ -37,24 +37,34 @@ TEST_IMPL(platform_output) {
   int i;
   int err;
 
+
+/* uv_get_process_title */
   err = uv_get_process_title(buffer, sizeof(buffer));
   ASSERT(err == 0);
   printf("uv_get_process_title: %s\n", buffer);
 
+
+/* uv_cwd */
   size = sizeof(buffer);
   err = uv_cwd(buffer, &size);
   ASSERT(err == 0);
   printf("uv_cwd: %s\n", buffer);
 
+
+/* uv_resident_set_memory */
   err = uv_resident_set_memory(&rss);
   ASSERT(err == 0);
   printf("uv_resident_set_memory: %llu\n", (unsigned long long) rss);
 
+
+/* uv_uptime */
   err = uv_uptime(&uptime);
   ASSERT(err == 0);
   ASSERT(uptime > 0);
   printf("uv_uptime: %f\n", uptime);
 
+
+/* uv_getrusage */
   err = uv_getrusage(&rusage);
   ASSERT(err == 0);
   ASSERT(rusage.ru_utime.tv_sec >= 0);
@@ -69,6 +79,8 @@ TEST_IMPL(platform_output) {
          (unsigned long long) rusage.ru_stime.tv_sec,
          (unsigned long long) rusage.ru_stime.tv_usec);
 
+
+/* uv_cpu_info */
   err = uv_cpu_info(&cpus, &count);
   ASSERT(err == 0);
 
@@ -87,6 +99,8 @@ TEST_IMPL(platform_output) {
   }
   uv_free_cpu_info(cpus, count);
 
+
+/* uv_interface_addresses */
   err = uv_interface_addresses(&interfaces, &count);
   ASSERT(err == 0);
 
