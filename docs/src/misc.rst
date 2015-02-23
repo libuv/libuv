@@ -114,6 +114,12 @@ API
     Returns the libuv version number as a string. For non-release versions
     "-pre" is appended, so the version number could be "1.2.3-pre".
 
+.. c:function:: void uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func)
+
+    Override the use of the standard library's malloc and free functions for
+    memory allocation. If used, this function must be called before any
+    other libuv function is called.
+
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 
     Constructor for :c:type:`uv_buf_t`.
