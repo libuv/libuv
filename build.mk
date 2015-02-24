@@ -127,6 +127,7 @@ TESTS= \
 	test/test-tcp-connect-timeout.o \
 	test/test-tcp-flags.o \
 	test/test-tcp-open.o \
+	test/test-tcp-oob.o \
 	test/test-tcp-read-stop.o \
 	test/test-tcp-shutdown-after-write.o \
 	test/test-tcp-unexpected-read.o \
