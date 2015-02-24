@@ -1,3 +1,10 @@
+2015.02.25, Version 0.10.35 (Stable)
+
+Changes since version 0.10.34:
+
+* stream: use SO_OOBINLINE on OS X (Fedor Indutny)
+
+
 2015.02.21, Version 0.10.34 (Stable), 37aa4aa9b9712c778d7b249563e868cabfdb8332
 
 Changes since version 0.10.33:
