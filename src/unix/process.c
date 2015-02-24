@@ -316,8 +316,8 @@ static void uv__process_child_init(const uv_process_options_t* options,
   for (fd = 0; fd < stdio_count; fd++) {
     use_fd = pipes[fd][1];
 
-    if (use_fd >= 0 && fd != use_fd)
-      close(use_fd);
+    if (use_fd >= stdio_count)
+      uv__close(use_fd);
   }
 
   if (options->cwd != NULL && chdir(options->cwd)) {
