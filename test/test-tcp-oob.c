@@ -80,6 +80,9 @@ static void connection_cb(uv_stream_t* handle, int status) {
 
   ASSERT(0 == uv_stream_set_blocking((uv_stream_t*) &client_handle, 1));
 
+  /* The problem triggers only on a second message, it seem that xnu is not
+   * triggering `kevent()` for the first one
+   */
   do {
     r = send(fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
