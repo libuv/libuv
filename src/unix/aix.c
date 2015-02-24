@@ -1226,10 +1226,10 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
 
   if (events != NULL)
-  /* Invalidate events with same file descriptor */
-  for (i = 0; i < nfds; i++)
-    if ((int) events[i].fd == fd)
-      events[i].fd = -1;
+    /* Invalidate events with same file descriptor */
+    for (i = 0; i < nfds; i++)
+      if ((int) events[i].fd == fd)
+        events[i].fd = -1;
 
   /* Remove the file descriptor from the poll set */
   pc.events = 0;
