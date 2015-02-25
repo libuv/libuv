@@ -276,9 +276,31 @@ static void uv__process_child_init(const uv_process_options_t* options,
   int close_fd;
   int use_fd;
   int fd;
+  int next_save_fd = stdio_count;
 
   if (options->flags & UV_PROCESS_DETACHED)
     setsid();
+
+  /* Its not safe to dup a lower numbered descriptor to the current fd, because
+   * numbers below the current have been over-duped already: they are not what
+   * they once were. Replace low-numbered fds with higher-numbered, to protect
+   * them.
+   */
+  for (fd = 0; fd < stdio_count; fd++) {
+    use_fd = pipes[fd][1];
+
+    if (use_fd >= fd)
+      continue;
+
+    while(isatty(next_save_fd) == 0 && errno != EBADF)
+      next_save_fd++;
+
+    dup2(use_fd, next_save_fd);
+
+    /* Mutating arguments is OK, this function doesn't return. */
+    pipes[fd][1] = next_save_fd++;
+  }
+
 
   for (fd = 0; fd < stdio_count; fd++) {
     close_fd = pipes[fd][0];
