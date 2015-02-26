@@ -1,3 +1,10 @@
+2015.02.27, Version 0.10.36 (Stable)
+
+Changes since version 0.10.35:
+
+* stream: ignore EINVAL for SO_OOBINLINE on OS X (Fedor Indutny)
+
+
 2015.02.25, Version 0.10.35 (Stable), 4dc978825d870643bbaa4660f71d22975efba29e
 
 Changes since version 0.10.34:
