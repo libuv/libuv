@@ -43,16 +43,6 @@ typedef struct pollfd {
 # define LOCALE_INVARIANT 0x007f
 #endif
 
-#ifndef _malloca
-# if defined(_DEBUG)
-#  define _malloca(size) malloc(size)
-#  define _freea(ptr) free(ptr)
-# else
-#  define _malloca(size) alloca(size)
-#  define _freea(ptr)
-# endif
-#endif
-
 #include <mswsock.h>
 #include <ws2tcpip.h>
 #include <windows.h>
