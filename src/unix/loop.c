@@ -74,12 +74,12 @@ int uv_loop_close(uv_loop_t* loop) {
 uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
-  loop = malloc(sizeof(*loop));
+  loop = uv__malloc(sizeof(*loop));
   if (loop == NULL)
     return NULL;
 
   if (uv_loop_init(loop)) {
-    free(loop);
+    uv__free(loop);
     return NULL;
   }
 
@@ -94,7 +94,7 @@ void uv_loop_delete(uv_loop_t* loop) {
   err = uv_loop_close(loop);
   assert(err == 0);
   if (loop != default_loop)
-    free(loop);
+    uv__free(loop);
 }
 
 
@@ -188,7 +188,7 @@ static void uv__loop_close(uv_loop_t* loop) {
   assert(loop->nfds == 0);
 #endif
 
-  free(loop->watchers);
+  uv__free(loop->watchers);
   loop->watchers = NULL;
   loop->nwatchers = 0;
 }
