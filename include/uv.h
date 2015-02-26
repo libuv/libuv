@@ -250,7 +250,7 @@ typedef void (*uv_free_func)(void* ptr);
  * If used, uv_replace_allocator must be called before any other uv 
  * function.
  */
-UV_EXTERN void uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func);
+UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func);
 
 UV_EXTERN uv_loop_t* uv_default_loop(void);
 UV_EXTERN int uv_loop_init(uv_loop_t* loop);

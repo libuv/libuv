@@ -118,7 +118,7 @@ API
 
     Override the use of the standard library's malloc and free functions for
     memory allocation. If used, this function must be called before any
-    other libuv function is called.
+    other libuv function is called. It may not be called more than once.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 

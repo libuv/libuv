@@ -52,11 +52,12 @@ void uv__free(void* ptr) {
 }
 
 
-void uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func) {
-  assert(replaced_malloc == NULL);
-  assert(replaced_free == NULL);
+int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func) {
+  if (replaced_malloc || replaced_free)
+    return UV_EINVAL;
   replaced_malloc = malloc_func;
   replaced_free = free_func;
+  return 0;
 }
 
 
