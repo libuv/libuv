@@ -799,6 +799,7 @@ struct uv_getnameinfo_s {
   UV_REQ_FIELDS
   /* read-only */
   uv_loop_t* loop;
+  /* host and service are marked as private, but they really aren't. */
   UV_GETNAMEINFO_PRIVATE_FIELDS
 };
 

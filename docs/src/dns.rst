@@ -51,6 +51,18 @@ Public members
     Loop that started this getnameinfo request and where completion will be
     reported. Readonly.
 
+.. c:member:: char[NI_MAXHOST] uv_getnameinfo_t.host
+
+    Char array containing the resulting host. It's null terminated.
+
+    .. versionchanged:: 1.3.0 the field is declared as public.
+
+.. c:member:: char[NI_MAXSERV] uv_getnameinfo_t.service
+
+    Char array containing the resulting service. It's null terminated.
+
+    .. versionchanged:: 1.3.0 the field is declared as public.
+
 .. seealso:: The :c:type:`uv_req_t` members also apply.
 
 
