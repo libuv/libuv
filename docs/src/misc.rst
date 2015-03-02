@@ -101,7 +101,8 @@ API
     descriptor. Usually this will be used during initialization to guess the
     type of the stdio streams.
 
-    For ``isatty()`` functionality use this function and test for ``UV_TTY``.
+    For :man:`isatty(3)` equivalent functionality use this function and test
+    for ``UV_TTY``.
 
 .. c:function:: unsigned int uv_version(void)
 
@@ -195,8 +196,8 @@ API
 .. c:function:: int uv_inet_ntop(int af, const void* src, char* dst, size_t size)
 .. c:function:: int uv_inet_pton(int af, const char* src, void* dst)
 
-    Cross-platform IPv6-capable implementation of the 'standard' ``inet_ntop()``
-    and ``inet_pton()`` functions. On success they return 0. In case of error
+    Cross-platform IPv6-capable implementation of :man:`inet_ntop(3)`
+    and :man:`inet_pton(3)`. On success they return 0. In case of error
     the target `dst` pointer is unmodified.
 
 .. c:function:: int uv_exepath(char* buffer, size_t* size)
