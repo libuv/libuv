@@ -81,13 +81,7 @@ To have GYP generate build script for another system, make sure that
 you have Python 2.6 or 2.7 installed, then checkout GYP into the
 project tree manually:
 
-    mkdir -p build
-    svn co http://gyp.googlecode.com/svn/trunk build/gyp
-
-Or:
-
-    mkdir -p build
-    git clone https://git.chromium.org/external/gyp.git build/gyp
+    git clone https://chromium.googlesource.com/external/gyp.git build/gyp
 
 Unix users run
 
