@@ -113,8 +113,6 @@ To have GYP generate build script for another system, checkout GYP into the
 project tree manually:
 
     $ git clone https://chromium.googlesource.com/external/gyp.git build/gyp
-    OR
-    $ svn co http://gyp.googlecode.com/svn/trunk build/gyp
 
 ### Unix
 
