@@ -39,7 +39,8 @@ static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
   assert(handle->dir_handle != INVALID_HANDLE_VALUE);
   assert(!handle->req_pending);
 
-  memset(&(handle->req.overlapped), 0, sizeof(handle->req.overlapped));
+  memset(&(handle->req.u.io.overlapped), 0,
+         sizeof(handle->req.u.io.overlapped));
   if (!ReadDirectoryChangesW(handle->dir_handle,
                              handle->buffer,
                              uv_directory_watcher_buffer_size,
@@ -53,7 +54,7 @@ static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
                                FILE_NOTIFY_CHANGE_CREATION     |
                                FILE_NOTIFY_CHANGE_SECURITY,
                              NULL,
-                             &handle->req.overlapped,
+                             &handle->req.u.io.overlapped,
                              NULL)) {
     /* Make this req pending reporting an error. */
     SET_REQ_ERROR(&handle->req, GetLastError());
@@ -232,7 +233,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
   }
 
-  memset(&(handle->req.overlapped), 0, sizeof(handle->req.overlapped));
+  memset(&(handle->req.u.io.overlapped), 0,
+         sizeof(handle->req.u.io.overlapped));
 
   if (!ReadDirectoryChangesW(handle->dir_handle,
                              handle->buffer,
@@ -247,7 +249,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                                FILE_NOTIFY_CHANGE_CREATION     |
                                FILE_NOTIFY_CHANGE_SECURITY,
                              NULL,
-                             &handle->req.overlapped,
+                             &handle->req.u.io.overlapped,
                              NULL)) {
     last_error = GetLastError();
     goto error;
@@ -349,7 +351,7 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
   file_info = (FILE_NOTIFY_INFORMATION*)(handle->buffer + offset);
 
   if (REQ_SUCCESS(req)) {
-    if (req->overlapped.InternalHigh > 0) {
+    if (req->u.io.overlapped.InternalHigh > 0) {
       do {
         file_info = (FILE_NOTIFY_INFORMATION*)((char*)file_info + offset);
         assert(!filename);
