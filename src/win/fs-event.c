@@ -73,13 +73,13 @@ static int uv_split_path(const WCHAR* filename, WCHAR** dir,
 
   if (i == 0) {
     if (dir) {
-      *dir = (WCHAR*)malloc((MAX_PATH + 1) * sizeof(WCHAR));
+      *dir = (WCHAR*)uv__malloc((MAX_PATH + 1) * sizeof(WCHAR));
       if (!*dir) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
       }
 
       if (!GetCurrentDirectoryW(MAX_PATH, *dir)) {
-        free(*dir);
+        uv__free(*dir);
         *dir = NULL;
         return -1;
       }
@@ -88,17 +88,17 @@ static int uv_split_path(const WCHAR* filename, WCHAR** dir,
     *file = wcsdup(filename);
   } else {
     if (dir) {
-      *dir = (WCHAR*)malloc((i + 1) * sizeof(WCHAR));
+      *dir = (WCHAR*)uv__malloc((i + 1) * sizeof(WCHAR));
       if (!*dir) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
       }
       wcsncpy(*dir, filename, i);
       (*dir)[i] = L'\0';
     }
 
-    *file = (WCHAR*)malloc((len - i) * sizeof(WCHAR));
+    *file = (WCHAR*)uv__malloc((len - i) * sizeof(WCHAR));
     if (!*file) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+      uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
     }
     wcsncpy(*file, filename + i + 1, len - i - 1);
     (*file)[len - i - 1] = L'\0';
@@ -140,16 +140,16 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->cb = cb;
   handle->path = strdup(path);
   if (!handle->path) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
   uv__handle_start(handle);
 
   /* Convert name to UTF16. */
   name_size = uv_utf8_to_utf16(path, NULL, 0) * sizeof(WCHAR);
-  pathw = (WCHAR*)malloc(name_size);
+  pathw = (WCHAR*)uv__malloc(name_size);
   if (!pathw) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
   if (!uv_utf8_to_utf16(path, pathw,
@@ -193,7 +193,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     }
 
     dir_to_watch = dir;
-    free(pathw);
+    uv__free(pathw);
     pathw = NULL;
   }
 
@@ -208,7 +208,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                                    NULL);
 
   if (dir) {
-    free(dir);
+    uv__free(dir);
     dir = NULL;
   }
 
@@ -226,11 +226,10 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   }
 
   if (!handle->buffer) {
-    handle->buffer = (char*)_aligned_malloc(uv_directory_watcher_buffer_size,
-                                            sizeof(DWORD));
+    handle->buffer = (char*)uv__malloc(uv_directory_watcher_buffer_size);
   }
   if (!handle->buffer) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
   memset(&(handle->req.u.io.overlapped), 0,
@@ -260,21 +259,21 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
 error:
   if (handle->path) {
-    free(handle->path);
+    uv__free(handle->path);
     handle->path = NULL;
   }
 
   if (handle->filew) {
-    free(handle->filew);
+    uv__free(handle->filew);
     handle->filew = NULL;
   }
 
   if (handle->short_filew) {
-    free(handle->short_filew);
+    uv__free(handle->short_filew);
     handle->short_filew = NULL;
   }
 
-  free(pathw);
+  uv__free(pathw);
 
   if (handle->dir_handle != INVALID_HANDLE_VALUE) {
     CloseHandle(handle->dir_handle);
@@ -282,7 +281,7 @@ error:
   }
 
   if (handle->buffer) {
-    _aligned_free(handle->buffer);
+    uv__free(handle->buffer);
     handle->buffer = NULL;
   }
 
@@ -302,22 +301,22 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   uv__handle_stop(handle);
 
   if (handle->filew) {
-    free(handle->filew);
+    uv__free(handle->filew);
     handle->filew = NULL;
   }
 
   if (handle->short_filew) {
-    free(handle->short_filew);
+    uv__free(handle->short_filew);
     handle->short_filew = NULL;
   }
 
   if (handle->path) {
-    free(handle->path);
+    uv__free(handle->path);
     handle->path = NULL;
   }
 
   if (handle->dirw) {
-    free(handle->dirw);
+    uv__free(handle->dirw);
     handle->dirw = NULL;
   }
 
@@ -379,9 +378,9 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
               size = wcslen(handle->dirw) +
                 file_info->FileNameLength / sizeof(WCHAR) + 2;
 
-              filenamew = (WCHAR*)malloc(size * sizeof(WCHAR));
+              filenamew = (WCHAR*)uv__malloc(size * sizeof(WCHAR));
               if (!filenamew) {
-                uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+                uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
               }
 
               _snwprintf(filenamew, size, L"%s\\%.*s", handle->dirw,
@@ -394,26 +393,26 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
               size = GetLongPathNameW(filenamew, NULL, 0);
 
               if (size) {
-                long_filenamew = (WCHAR*)malloc(size * sizeof(WCHAR));
+                long_filenamew = (WCHAR*)uv__malloc(size * sizeof(WCHAR));
                 if (!long_filenamew) {
-                  uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+                  uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
                 }
 
                 size = GetLongPathNameW(filenamew, long_filenamew, size);
                 if (size) {
                   long_filenamew[size] = '\0';
                 } else {
-                  free(long_filenamew);
+                  uv__free(long_filenamew);
                   long_filenamew = NULL;
                 }
               }
 
-              free(filenamew);
+              uv__free(filenamew);
 
               if (long_filenamew) {
                 /* Get the file name out of the long path. */
                 result = uv_split_path(long_filenamew, NULL, &filenamew);
-                free(long_filenamew);
+                uv__free(long_filenamew);
 
                 if (result == 0) {
                   long_filenamew = filenamew;
@@ -448,9 +447,9 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
                                     NULL,
                                     0);
             if (size) {
-              filename = (char*)malloc(size + 1);
+              filename = (char*)uv__malloc(size + 1);
               if (!filename) {
-                uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+                uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
               }
 
               size = uv_utf16_to_utf8(filenamew,
@@ -460,7 +459,7 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
               if (size) {
                 filename[size] = '\0';
               } else {
-                free(filename);
+                uv__free(filename);
                 filename = NULL;
               }
             }
@@ -479,9 +478,9 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
               break;
           }
 
-          free(filename);
+          uv__free(filename);
           filename = NULL;
-          free(long_filenamew);
+          uv__free(long_filenamew);
           long_filenamew = NULL;
         }
 
@@ -520,7 +519,7 @@ void uv_fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
 
     if (handle->buffer) {
-      _aligned_free(handle->buffer);
+      uv__free(handle->buffer);
       handle->buffer = NULL;
     }
 

@@ -15,6 +15,16 @@ Data types
 
     Buffer data type.
 
+.. c:type:: uv_malloc_func
+
+    Function pointer type for the malloc override used by
+    uv_replace_allocator.
+
+.. c:type:: uv_free_func
+
+    Function pointer type for the free override used by
+    uv_replace_allocator.
+
 .. c:type:: uv_file
 
     Cross platform representation of a file handle.
@@ -26,7 +36,7 @@ Data types
 .. c:type:: uv_os_fd_t
 
     Abstract representation of a file descriptor. On Unix systems this is a
-    `typedef` of `int` and on Windows fa `HANDLE`.
+    `typedef` of `int` and on Windows a `HANDLE`.
 
 .. c:type:: uv_rusage_t
 
@@ -114,6 +124,16 @@ API
 
     Returns the libuv version number as a string. For non-release versions
     "-pre" is appended, so the version number could be "1.2.3-pre".
+
+.. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func)
+
+    .. versionadded:: 1.5.0
+
+    Override the use of the standard library's malloc and free functions for
+    memory allocation. If used, this function must be called before any
+    other libuv function is called. On success, it returns 0. If called more
+    than once, the replacement request is ignored and the function returns
+    UV_EINVAL.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 
