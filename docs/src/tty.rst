@@ -66,6 +66,10 @@ API
         If opening ``/dev/tty`` fails, libuv falls back to blocking writes for
         non-readable TTY streams.
 
+    .. versionchanged:: 1.5.0: trying to initialize a TTY stream with a file
+                        descriptor that refers to a file returns `UV_EINVAL`
+                        on UNIX.
+
 .. c:function:: int uv_tty_set_mode(uv_tty_t*, uv_tty_mode_t mode)
 
     .. versionchanged:: 1.2.0: the mode is specified as a

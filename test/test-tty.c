@@ -135,3 +135,45 @@ TEST_IMPL(tty) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+TEST_IMPL(tty_file) {
+#ifndef _WIN32
+  uv_loop_t loop;
+  uv_tty_t tty;
+  int fd;
+
+  ASSERT(0 == uv_loop_init(&loop));
+
+  fd = open("test/fixtures/empty_file", O_RDONLY);
+  if (fd != -1) {
+    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT(0 == close(fd));
+  }
+
+  fd = open("/dev/random", O_RDONLY);
+  if (fd != -1) {
+    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT(0 == close(fd));
+  }
+
+  fd = open("/dev/zero", O_RDONLY);
+  if (fd != -1) {
+    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT(0 == close(fd));
+  }
+
+  fd = open("/dev/tty", O_RDONLY);
+  if (fd != -1) {
+    ASSERT(0 == uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT(0 == close(fd));
+  }
+
+  uv_close((uv_handle_t*) &tty, NULL);
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT(0 == uv_loop_close(&loop));
+
+  MAKE_VALGRIND_HAPPY();
+#endif
+  return 0;
+}

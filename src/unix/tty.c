@@ -35,9 +35,18 @@ static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
 
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
+  uv_handle_type type;
   int flags;
   int newfd;
   int r;
+
+  /* File descriptors that refer to files cannot be monitored with epoll.
+   * That restriction also applies to character devices like /dev/random
+   * (but obviously not /dev/tty.)
+   */
+  type = uv_guess_handle(fd);
+  if (type == UV_FILE || type == UV_UNKNOWN_HANDLE)
+    return -EINVAL;
 
   flags = 0;
   newfd = -1;
@@ -54,7 +63,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
    * different struct file, hence changing its properties doesn't affect
    * other processes.
    */
-  if (isatty(fd)) {
+  if (type == UV_TTY) {
     r = uv__open_cloexec("/dev/tty", O_RDWR);
 
     if (r < 0) {
