@@ -111,11 +111,11 @@ TEST_IMPL(tty) {
   ASSERT(height > 10);
 
   /* Turn on raw mode. */
-  r = uv_tty_set_mode(&tty_in, 1);
+  r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
   ASSERT(r == 0);
 
   /* Turn off raw mode. */
-  r = uv_tty_set_mode(&tty_in, 0);
+  r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_NORMAL);
   ASSERT(r == 0);
 
   /* TODO check the actual mode! */
