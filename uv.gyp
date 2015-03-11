@@ -39,7 +39,7 @@
               '_FILE_OFFSET_BITS=64',
             ],
           }],
-          ['OS == "mac"', {
+          ['OS in "mac ios"', {
             'defines': [ '_DARWIN_USE_64_BIT_INODE=1' ],
           }],
           ['OS == "linux"', {
@@ -175,10 +175,10 @@
             }],
           ],
         }],
-        [ 'OS in "linux mac android"', {
+        [ 'OS in "linux mac ios android"', {
           'sources': [ 'src/unix/proctitle.c' ],
         }],
-        [ 'OS=="mac"', {
+        [ 'OS in "mac ios"', {
           'sources': [
             'src/unix/darwin.c',
             'src/unix/fsevents.c',
@@ -261,7 +261,7 @@
             'libraries': [ '-lkvm' ],
           },
         }],
-        [ 'OS in "mac freebsd dragonflybsd openbsd netbsd".split()', {
+        [ 'OS in "ios mac freebsd dragonflybsd openbsd netbsd".split()', {
           'sources': [ 'src/unix/kqueue.c' ],
         }],
         ['uv_library=="shared_library"', {
