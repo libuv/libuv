@@ -118,6 +118,13 @@ TEST_IMPL(tty) {
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_NORMAL);
   ASSERT(r == 0);
 
+  /* Calling uv_tty_reset_mode() repeatedly should not clobber errno. */
+  errno = 0;
+  ASSERT(0 == uv_tty_reset_mode());
+  ASSERT(0 == uv_tty_reset_mode());
+  ASSERT(0 == uv_tty_reset_mode());
+  ASSERT(0 == errno);
+
   /* TODO check the actual mode! */
 
   uv_close((uv_handle_t*) &tty_in, NULL);

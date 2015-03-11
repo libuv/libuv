@@ -237,8 +237,10 @@ uv_handle_type uv_guess_handle(uv_file file) {
  * critical section when the signal was raised.
  */
 int uv_tty_reset_mode(void) {
+  int saved_errno;
   int err;
 
+  saved_errno = errno;
   if (!uv_spinlock_trylock(&termios_spinlock))
     return -EBUSY;  /* In uv_tty_set_mode(). */
 
@@ -248,5 +250,7 @@ int uv_tty_reset_mode(void) {
       err = -errno;
 
   uv_spinlock_unlock(&termios_spinlock);
+  errno = saved_errno;
+
   return err;
 }
