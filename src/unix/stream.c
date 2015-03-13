@@ -661,7 +661,11 @@ static void uv__drain(uv_stream_t* stream) {
 
     err = 0;
     if (shutdown(uv__stream_fd(stream), SHUT_WR))
+#if defined(_AIX)
+      err = errno == ENOTCONN ? 0 : -errno;
+#else
       err = -errno;
+#endif /* defined(_AIX) */
 
     if (err == 0)
       stream->flags |= UV_STREAM_SHUT;
