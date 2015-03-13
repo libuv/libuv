@@ -35,7 +35,10 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <limits.h> /* INT_MAX, PATH_MAX */
+#ifndef __need_IOV_MAX
+#define __need_IOV_MAX
+#endif
+#include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
 
@@ -196,6 +199,19 @@ void uv__make_close_pending(uv_handle_t* handle) {
   assert(!(handle->flags & UV_CLOSED));
   handle->next_closing = handle->loop->closing_handles;
   handle->loop->closing_handles = handle;
+}
+
+int uv__getiovmax() {
+#if defined(IOV_MAX)
+  return IOV_MAX;
+#elif defined(_SC_IOV_MAX)
+  static int iovmax = -1;
+  if (iovmax == -1)
+    iovmax = sysconf(_SC_IOV_MAX);
+  return iovmax;
+#else
+  return 1024;
+#endif
 }
 
 
