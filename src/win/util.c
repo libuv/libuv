@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <direct.h>
 #include <limits.h>
-#include <malloc.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
