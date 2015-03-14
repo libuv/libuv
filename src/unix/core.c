@@ -35,9 +35,6 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#ifndef __need_IOV_MAX
-#define __need_IOV_MAX
-#endif
 #include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
