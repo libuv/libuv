@@ -736,26 +736,35 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
 
 typedef ssize_t (*uv__fs_buf_iter_yield)(uv_fs_t* req);
 static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_yield yield) {
-  unsigned int iovmax=uv__getiovmax();
-  unsigned int nbufs=req->nbufs;
-  uv_buf_t *bufs=req->bufs;
-  ssize_t total=0;
+  unsigned int iovmax;
+  unsigned int nbufs;
+  uv_buf_t* bufs;
+  ssize_t total;
   ssize_t result;
 
-  while(nbufs) {
-    req->nbufs=nbufs;
-    if(req->nbufs>iovmax) req->nbufs=iovmax;
+  iovmax = uv__getiovmax();
+  nbufs = req->nbufs;
+  bufs = req->bufs;
+  total = 0;
 
-    result=yield(req);
-    if(result<=0) {
-      total=result;
+  while (nbufs) {
+    req->nbufs = nbufs;
+    if (req->nbufs > iovmax) {
+      req->nbufs = iovmax;
+    }
+
+    result = yield(req);
+    if (result <= 0) {
+      total = result;
       break;
     }
 
-    if(req->off>0) req->off+=result;
-    req->bufs+=req->nbufs;
-    nbufs-=req->nbufs;
-    total+=result;
+    if (req->off > 0) {
+      req->off += result;
+    }
+    req->bufs += req->nbufs;
+    nbufs -= req->nbufs;
+    total += result;
   }
 
   if (bufs != req->bufsml)

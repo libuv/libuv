@@ -2271,8 +2271,12 @@ TEST_IMPL(fs_write_alotof_bufs) {
 
   loop = uv_default_loop();
 
-  r = uv_fs_open(loop, &open_req1, "test_file", O_WRONLY | O_CREAT,
-      S_IWUSR | S_IRUSR, NULL);
+  r = uv_fs_open(loop,
+                 &open_req1,
+                 "test_file",
+                 O_WRONLY | O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
   ASSERT(r >= 0);
   ASSERT(open_req1.result >= 0);
   uv_fs_req_cleanup(&open_req1);

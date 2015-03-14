@@ -201,7 +201,7 @@ void uv__make_close_pending(uv_handle_t* handle) {
   handle->loop->closing_handles = handle;
 }
 
-int uv__getiovmax() {
+int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
