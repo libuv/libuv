@@ -747,21 +747,21 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_yield yield) {
   bufs = req->bufs;
   total = 0;
 
-  while (nbufs) {
+  while (nbufs > 0) {
     req->nbufs = nbufs;
-    if (req->nbufs > iovmax) {
+    if (req->nbufs > iovmax)
       req->nbufs = iovmax;
-    }
 
     result = yield(req);
     if (result <= 0) {
-      total = result;
+      if(total == 0)
+        total = result;
       break;
     }
 
-    if (req->off > 0) {
+    if (req->off >= 0)
       req->off += result;
-    }
+
     req->bufs += req->nbufs;
     nbufs -= req->nbufs;
     total += result;
@@ -769,6 +769,7 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_yield yield) {
 
   if (bufs != req->bufsml)
     uv__free(bufs);
+
   return total;
 }
 

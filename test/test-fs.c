@@ -2260,9 +2260,9 @@ TEST_IMPL(fs_write_multiple_bufs) {
 
 
 TEST_IMPL(fs_write_alotof_bufs) {
-  const size_t iovcount=54321;
-  uv_buf_t *iovs=malloc(sizeof(*iovs)*iovcount);
-  char *buffer;
+  const size_t iovcount = 54321;
+  uv_buf_t* iovs;
+  char* buffer;
   size_t index;
   int r;
 
@@ -2271,52 +2271,58 @@ TEST_IMPL(fs_write_alotof_bufs) {
 
   loop = uv_default_loop();
 
+  iovs = malloc(sizeof(*iovs) * iovcount);
+
   r = uv_fs_open(loop,
                  &open_req1,
                  "test_file",
-                 O_WRONLY | O_CREAT,
+                 O_RDWR | O_CREAT,
                  S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT(r >= 0);
   ASSERT(open_req1.result >= 0);
   uv_fs_req_cleanup(&open_req1);
 
-  for(index=0;index<iovcount;++index) {
+  for (index = 0;index < iovcount;++index) {
     iovs[index] = uv_buf_init(test_buf, sizeof(test_buf));
   }
-  r = uv_fs_write(loop, &write_req, open_req1.result, iovs, iovcount, 0, NULL);
+  r = uv_fs_write(loop,
+                  &write_req,
+                  open_req1.result,
+                  iovs,
+                  iovcount,
+                  -1,
+                  NULL);
   ASSERT(r >= 0);
-  ASSERT(write_req.result >= 0);
+  ASSERT((size_t)write_req.result == sizeof(test_buf) * iovcount);
   uv_fs_req_cleanup(&write_req);
 
-  r = uv_fs_close(loop, &close_req, open_req1.result, NULL);
-  ASSERT(r == 0);
-  ASSERT(close_req.result == 0);
-  uv_fs_req_cleanup(&close_req);
-
-  r = uv_fs_open(loop, &open_req1, "test_file", O_RDONLY, 0, NULL);
-  ASSERT(r >= 0);
-  ASSERT(open_req1.result >= 0);
-  uv_fs_req_cleanup(&open_req1);
-
   /* Read the strings back to separate buffers. */
-  buffer=malloc(sizeof(test_buf)*iovcount);
-  for(index=0;index<iovcount;++index) {
-    iovs[index]=uv_buf_init(buffer+index*sizeof(test_buf), sizeof(test_buf));
+  buffer = malloc(sizeof(test_buf) * iovcount);
+  for (index = 0;index < iovcount;++index) {
+    iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf),
+                              sizeof(test_buf));
   }
 
   r = uv_fs_read(loop, &read_req, open_req1.result, iovs, iovcount, 0, NULL);
   ASSERT(r >= 0);
-  ASSERT(read_req.result >= 0);
-  for(index=0;index<iovcount;++index) {
-    ASSERT(strncmp(buffer+index*sizeof(test_buf), test_buf, sizeof(test_buf)) == 0);
+  ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
+  for (index = 0;index < iovcount;++index) {
+    ASSERT(strncmp(buffer + index * sizeof(test_buf),
+                   test_buf,
+                   sizeof(test_buf)) == 0);
   }
   uv_fs_req_cleanup(&read_req);
   free(buffer);
 
   iov = uv_buf_init(buf, sizeof(buf));
-  r = uv_fs_read(loop, &read_req, open_req1.result, &iov, 1,
-                 read_req.result, NULL);
+  r = uv_fs_read(loop,
+                 &read_req,
+                 open_req1.result,
+                 &iov,
+                 1,
+                 read_req.result,
+                 NULL);
   ASSERT(r == 0);
   ASSERT(read_req.result == 0);
   uv_fs_req_cleanup(&read_req);
