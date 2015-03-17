@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "task.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +35,7 @@
 # include <wchar.h>
 #else
 # include <unistd.h>
+# include <sys/wait.h>
 #endif
 
 
@@ -178,6 +180,37 @@ TEST_IMPL(spawn_fails) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+#ifndef _WIN32
+TEST_IMPL(spawn_fails_check_for_waitpid_cleanup) {
+  int r;
+  int status;
+  int err;
+
+  init_process_options("", fail_cb);
+  options.file = options.args[0] = "program-that-had-better-not-exist";
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == UV_ENOENT || r == UV_EACCES);
+  ASSERT(0 == uv_is_active((uv_handle_t*) &process));
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  /* verify the child is successfully cleaned up within libuv */
+  do
+    err = waitpid(process.pid, &status, 0);
+  while (err == -1 && errno == EINTR);
+
+  ASSERT(err == -1);
+  ASSERT(errno == ECHILD);
+
+  uv_close((uv_handle_t*) &process, NULL);
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
 
 
 TEST_IMPL(spawn_exit_code) {
