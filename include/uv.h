@@ -1392,6 +1392,12 @@ UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
 typedef void (*uv_thread_cb)(void* arg);
 
 UV_EXTERN int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg);
+UV_EXTERN int uv_thread_create_on(int proc_num,
+                                  uv_thread_t* tid,
+                                  uv_thread_cb entry,
+                                  void *arg);
+UV_EXTERN int uv_thread_setaffinity(uv_thread_t* tid, int proc_num);
+UV_EXTERN int uv_thread_detach(uv_thread_t* tid);
 UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
