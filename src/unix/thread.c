@@ -23,6 +23,7 @@
 #include "internal.h"
 
 #include <pthread.h>
+#include <sched.h>
 #include <assert.h>
 #include <errno.h>
 
@@ -72,9 +73,56 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
 }
 
 
+int uv_thread_setaffinity(uv_thread_t *tid,
+                          char *cpumask,
+                          char *oldmask,
+                          size_t mask_size) {
+  int i, r;
+  cpu_set_t cpuset;
+
+  assert(mask_size >= UV_CPU_SETSIZE);
+
+  if (oldmask) {
+    r = uv_thread_getaffinity(tid, oldmask, mask_size);
+    if (!r)
+      return r;
+  }
+
+  CPU_ZERO(&cpuset);
+  for (i = 0;  i < UV_CPU_SETSIZE;  i++)
+    if (cpumask[i])
+        CPU_SET(i, &cpuset);
+
+  return -pthread_setaffinity_np(*tid, sizeof(cpu_set_t), &cpuset);
+}
+
+
+int uv_thread_getaffinity(uv_thread_t *tid,
+                          char *cpumask,
+                          size_t mask_size) {
+  int i;
+  cpu_set_t cpuset;
+
+  assert(mask_size >= UV_CPU_SETSIZE);
+
+  CPU_ZERO(&cpuset);
+  pthread_getaffinity_np(*tid, sizeof(cpu_set_t), &cpuset);
+  for (i = 0;  i < UV_CPU_SETSIZE;  i++)
+    cpumask[i] = CPU_ISSET(i, &cpuset);
+
+  return 0;
+}
+
+
+int uv_thread_detach(uv_thread_t *tid) {
+  return -pthread_detach(*tid);
+}
+
+
 uv_thread_t uv_thread_self(void) {
   return pthread_self();
 }
+
 
 int uv_thread_join(uv_thread_t *tid) {
   return -pthread_join(*tid, NULL);
