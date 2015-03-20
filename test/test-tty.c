@@ -167,9 +167,9 @@ TEST_IMPL(tty_file) {
   if (fd != -1) {
     ASSERT(0 == uv_tty_init(&loop, &tty, fd, 1));
     ASSERT(0 == close(fd));
+    uv_close((uv_handle_t*) &tty, NULL);
   }
 
-  uv_close((uv_handle_t*) &tty, NULL);
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
   ASSERT(0 == uv_loop_close(&loop));
 
