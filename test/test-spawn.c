@@ -375,6 +375,72 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 }
 
 
+TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
+#ifndef _WIN32
+  int r;
+  uv_file file;
+  uv_fs_t fs_req;
+  uv_stdio_container_t stdio[3];
+  uv_buf_t buf;
+
+  /* Setup. */
+  unlink("stdout_file");
+
+  init_process_options("spawn_helper6", exit_cb);
+
+  /* Replace stderr with our file */
+  r = uv_fs_open(uv_default_loop(),
+                 &fs_req,
+                 "stdout_file",
+                 O_CREAT | O_RDWR,
+                 S_IRUSR | S_IWUSR,
+                 NULL);
+  ASSERT(r != -1);
+  uv_fs_req_cleanup(&fs_req);
+  file = dup2(r, STDERR_FILENO);
+  ASSERT(file != -1);
+
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_IGNORE;
+  options.stdio[1].flags = UV_INHERIT_FD;
+  options.stdio[1].data.fd = file;
+  options.stdio[2].flags = UV_INHERIT_FD;
+  options.stdio[2].data.fd = file;
+  options.stdio_count = 3;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  buf = uv_buf_init(output, sizeof(output));
+  r = uv_fs_read(uv_default_loop(), &fs_req, file, &buf, 1, 0, NULL);
+  ASSERT(r == 27);
+  uv_fs_req_cleanup(&fs_req);
+
+  r = uv_fs_close(uv_default_loop(), &fs_req, file, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&fs_req);
+
+  printf("output is: %s", output);
+  ASSERT(strcmp("hello world\nhello errworld\n", output) == 0);
+
+  /* Cleanup. */
+  unlink("stdout_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#else
+  RETURN_SKIP("Unix only test");
+#endif
+}
+#endif
+
+
 TEST_IMPL(spawn_stdin) {
   int r;
   uv_pipe_t out;
