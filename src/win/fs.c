@@ -511,6 +511,7 @@ void fs__open(uv_fs_t* req) {
       SET_REQ_WIN32_ERROR(req, GetLastError());
     else
       SET_REQ_WIN32_ERROR(req, UV_UNKNOWN);
+    CloseHandle(file);
     return;
   }
 
