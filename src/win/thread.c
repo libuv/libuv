@@ -170,6 +170,45 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
 }
 
 
+int uv_thread_setaffinity(uv_thread_t *tid,
+                          char *cpumask,
+                          char *oldmask,
+                          size_t mask_size) {
+  int i;
+  DWORD cs = 0, oldcs;
+
+  assert(mask_size >= UV_CPU_SETSIZE);
+
+  for (i = 0;  i < UV_CPU_SETSIZE;  i++)
+    if (cpumask[i])
+        cs |= 1 << i;
+
+  oldcs = SetThreadAffinityMask(*tid, cs);
+  if (!oldcs)
+    return uv_translate_sys_error(GetLastError());
+
+  if (oldmask) {
+    for (i = 0;  i < UV_CPU_SETSIZE;  i++)
+      oldmask[i] = (oldcs & (1 << i));
+  }
+
+  return 0;
+}
+
+
+int uv_thread_getaffinity(uv_thread_t *tid,
+                          char *cpumask,
+                          size_t mask_size) {
+  return -EUNSUPP;
+}
+
+
+int uv_thread_detach(uv_thread_t *tid) {
+  CloseHandle(*tid);
+  return 0;
+}
+
+
 uv_thread_t uv_thread_self(void) {
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
   return (uv_thread_t) uv_key_get(&uv__current_thread_key);

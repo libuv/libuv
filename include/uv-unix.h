@@ -38,6 +38,7 @@
 
 #include <semaphore.h>
 #include <pthread.h>
+#include <sched.h>
 #ifdef __ANDROID__
 #include "pthread-fixes.h"
 #endif
