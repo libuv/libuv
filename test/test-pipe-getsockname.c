@@ -38,6 +38,7 @@
 
 static uv_pipe_t pipe_client;
 static uv_pipe_t pipe_server;
+static uv_pipe_t pipe_connection;
 static uv_connect_t connect_req;
 
 static int pipe_close_cb_called = 0;
@@ -46,7 +47,8 @@ static int pipe_client_connect_cb_called = 0;
 
 static void pipe_close_cb(uv_handle_t* handle) {
   ASSERT(handle == (uv_handle_t*) &pipe_client ||
-         handle == (uv_handle_t*) &pipe_server);
+         handle == (uv_handle_t*) &pipe_server ||
+         handle == (uv_handle_t*) &pipe_connection);
   pipe_close_cb_called++;
 }
 
@@ -74,15 +76,26 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
 
 
   uv_close((uv_handle_t*) &pipe_client, pipe_close_cb);
-  uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
 }
 
 
 static void pipe_server_connection_cb(uv_stream_t* handle, int status) {
-  /* This function *may* be called, depending on whether accept or the
-   * connection callback is called first.
-   */
+  int r;
+  char buf[1024];
+  size_t len;
+
   ASSERT(status == 0);
+  ASSERT(0 == uv_accept(handle, (uv_stream_t*) &pipe_connection));
+
+  len = sizeof buf;
+  r = uv_pipe_getpeername(&pipe_client, buf, &len);
+  ASSERT(r == 0);
+
+  ASSERT(buf[len - 1] != 0);
+  ASSERT(memcmp(buf, TEST_PIPENAME, len) == 0);
+
+  uv_close((uv_handle_t*) &pipe_connection, pipe_close_cb);
+  uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
 }
 
 
@@ -94,6 +107,9 @@ TEST_IMPL(pipe_getsockname) {
 
   loop = uv_default_loop();
   ASSERT(loop != NULL);
+
+  r = uv_pipe_init(loop, &pipe_connection, 0);
+  ASSERT(r == 0);
 
   r = uv_pipe_init(loop, &pipe_server, 0);
   ASSERT(r == 0);
@@ -150,7 +166,7 @@ TEST_IMPL(pipe_getsockname) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(r == 0);
   ASSERT(pipe_client_connect_cb_called == 1);
-  ASSERT(pipe_close_cb_called == 2);
+  ASSERT(pipe_close_cb_called == 3);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
