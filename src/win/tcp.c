@@ -1435,6 +1435,9 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
     return uv_translate_sys_error(err);
   }
 
+  if (uv__is_stdio_handle((HANDLE)sock))
+    handle->flags |= UV_HANDLE_SHARED_TCP_SOCKET;
+
   return 0;
 }
 

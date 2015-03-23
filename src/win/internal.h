@@ -330,6 +330,7 @@ uint64_t uv__hrtime(double scale);
 int uv_parent_pid();
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
 
+int uv__is_stdio_handle(HANDLE handle);
 
 /*
  * Process stdio handles.

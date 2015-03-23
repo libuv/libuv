@@ -738,7 +738,8 @@ void uv_pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
 
   if ((handle->flags & UV_HANDLE_CONNECTION)
       && handle->handle != INVALID_HANDLE_VALUE) {
-    CloseHandle(handle->handle);
+    if (!uv__is_stdio_handle(handle->handle))
+      CloseHandle(handle->handle);
     handle->handle = INVALID_HANDLE_VALUE;
   }
 

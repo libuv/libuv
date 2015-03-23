@@ -358,6 +358,13 @@ int uv_parent_pid() {
 }
 
 
+int uv__is_stdio_handle(HANDLE handle) {
+  return handle == GetStdHandle(STD_INPUT_HANDLE) ||
+         handle == GetStdHandle(STD_OUTPUT_HANDLE) ||
+         handle == GetStdHandle(STD_ERROR_HANDLE);
+}
+
+
 char** uv_setup_args(int argc, char** argv) {
   return argv;
 }
