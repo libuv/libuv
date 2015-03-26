@@ -155,6 +155,15 @@ Run:
 Note for UNIX users: compile your project with `-D_LARGEFILE_SOURCE` and
 `-D_FILE_OFFSET_BITS=64`. GYP builds take care of that automatically.
 
+### Using Ninja
+
+To use ninja for build on ninja supported platforms, run:
+
+    $ ./gyp_uv.py -f ninja
+    $ ninja -C out/Debug     #for debug build OR
+    $ ninja -C out/Release
+
+
 ### Running tests
 
 Run:
