@@ -107,34 +107,58 @@ int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
 
 
 int uv_exepath(char* buffer, size_t* size_ptr) {
-  int utf8_len, utf16_buffer_len, utf16_len;
-  WCHAR* utf16_buffer;
+  WCHAR* utf16_buffer = 0;
+  DWORD utf16_buffer_len;
+  DWORD utf16_len;
+  int utf8_len;
+  HANDLE exe_handle = INVALID_HANDLE_VALUE;
   int err;
 
   if (buffer == NULL || size_ptr == NULL || *size_ptr == 0) {
     return UV_EINVAL;
   }
 
-  if (*size_ptr > 32768) {
-    /* Windows paths can never be longer than this. */
-    utf16_buffer_len = 32768;
-  } else {
-    utf16_buffer_len = (int) *size_ptr;
-  }
-
-  utf16_buffer = (WCHAR*) uv__malloc(sizeof(WCHAR) * utf16_buffer_len);
+  /* Windows paths can never be longer than 32768 characters. */
+  utf16_buffer_len = (DWORD)(*size_ptr < 32768 ? *size_ptr : 32768);
+  utf16_buffer = uv__malloc(sizeof(WCHAR) * utf16_buffer_len);
   if (!utf16_buffer) {
     return UV_ENOMEM;
   }
 
   /* Get the path as UTF-16. */
   utf16_len = GetModuleFileNameW(NULL, utf16_buffer, utf16_buffer_len);
-  if (utf16_len <= 0) {
+  if (utf16_len == 0) {
     err = GetLastError();
     goto error;
   }
 
   /* utf16_len contains the length, *not* including the terminating null. */
+  utf16_buffer[utf16_len] = L'\0';
+
+  /* Open the executable at that path in read mode to fully resolve it. */
+  exe_handle = CreateFileW(utf16_buffer,
+                           GENERIC_READ,
+                           FILE_SHARE_READ,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL,
+                           NULL);
+  if (exe_handle == INVALID_HANDLE_VALUE) {
+    err = GetLastError();
+    goto error;
+  }
+
+  /* Resolve the path to a full path (dereferencing any symlinks). Might
+   * as well use the same utf16_buffer here since it's no longer used. */
+  utf16_len = GetFinalPathNameByHandleW(exe_handle, utf16_buffer, utf16_buffer_len,
+                                        FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+  if (utf16_len == 0) {
+    err = GetLastError();
+    goto error;
+  }
+
+  /* According to MSDN the unicode version of the function returns the length
+   * of the resulting string *not* including the terminating null on success. */
   utf16_buffer[utf16_len] = L'\0';
 
   /* Convert to UTF-8 */
@@ -151,6 +175,7 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     goto error;
   }
 
+  CloseHandle(exe_handle);
   uv__free(utf16_buffer);
 
   /* utf8_len *does* include the terminating null at this point, but the */
@@ -159,6 +184,10 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
   return 0;
 
  error:
+  if (exe_handle != INVALID_HANDLE_VALUE) {
+    CloseHandle(exe_handle);
+  }
+
   uv__free(utf16_buffer);
   return uv_translate_sys_error(err);
 }
