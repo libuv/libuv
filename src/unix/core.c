@@ -247,7 +247,7 @@ static void uv__finish_close(uv_handle_t* handle) {
 }
 
 
-static void uv__run_closing_handles(uv_loop_t* loop) {
+void uv__loop_run_closing_handles(uv_loop_t* loop) {
   uv_handle_t* p;
   uv_handle_t* q;
 
@@ -323,7 +323,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     uv__io_poll(loop, timeout);
     uv__run_check(loop);
-    uv__run_closing_handles(loop);
+    uv__loop_run_closing_handles(loop);
 
     if (mode == UV_RUN_ONCE) {
       /* UV_RUN_ONCE implies forward progress: at least one callback must have
