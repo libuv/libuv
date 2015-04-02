@@ -107,36 +107,49 @@ int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
 
 
 int uv_exepath(char* buffer, size_t* size_ptr) {
-  WCHAR* utf16_buffer = 0;
-  DWORD utf16_buffer_len;
-  DWORD utf16_len;
+
+  /* According to MSDN the maximum (unicode) length of an NT-style file path */
+  /* is 32767 characters, excluding the null character. Apparently it can be */
+  /* a bit larger due to \\?\, but this probably won't be an issue here. */
+  WCHAR full_path[32768];
+  DWORD result_len;
   int utf8_len;
-  HANDLE exe_handle = INVALID_HANDLE_VALUE;
+  HANDLE exe_handle;
   int err;
 
   if (buffer == NULL || size_ptr == NULL || *size_ptr == 0) {
     return UV_EINVAL;
   }
 
-  /* Windows paths can never be longer than 32768 characters. */
-  utf16_buffer_len = (DWORD)(*size_ptr < 32768 ? *size_ptr : 32768);
-  utf16_buffer = uv__malloc(sizeof(WCHAR) * utf16_buffer_len);
-  if (!utf16_buffer) {
-    return UV_ENOMEM;
+  /* We're going to be working on lengths of at most 32768 characters anyway, */
+  /* so truncate the input size to that length. Note that since size_t is */
+  /* guaranteed to be able to hold values 0 through 65535, this is safe. */
+  if (*size_ptr > ARRAY_SIZE(full_path)) {
+      *size_ptr = ARRAY_SIZE(full_path);
   }
 
-  /* Get the path as UTF-16. */
-  utf16_len = GetModuleFileNameW(NULL, utf16_buffer, utf16_buffer_len);
-  if (utf16_len == 0) {
-    err = GetLastError();
+  /* Get the path to the module as UTF-16. Normally this should not fail due */
+  /* to the full_path buffer being too short, so if it actually is, return */
+  /* UV_EIO defensively to indicate an internal error. */
+  result_len = GetModuleFileNameW(NULL, full_path, ARRAY_SIZE(full_path));
+  if (result_len == ARRAY_SIZE(full_path)) {
+    err = UV_EIO;
     goto error;
+  } else if (result_len == 0) {
+    if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+      err = UV_EIO;
+      goto error;
+    } else {
+      err = GetLastError();
+      goto error;
+    }
   }
 
-  /* utf16_len contains the length, *not* including the terminating null. */
-  utf16_buffer[utf16_len] = L'\0';
+  /* The path should be null-terminated on success, but take no chances. */
+  full_path[result_len] = L'\0';
 
   /* Open the executable at that path in read mode to fully resolve it. */
-  exe_handle = CreateFileW(utf16_buffer,
+  exe_handle = CreateFileW(full_path,
                            GENERIC_READ,
                            FILE_SHARE_READ,
                            NULL,
@@ -148,26 +161,35 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     goto error;
   }
 
-  /* Resolve the path to a full path (dereferencing any symlinks). Might
-   * as well use the same utf16_buffer here since it's no longer used. */
-  utf16_len = GetFinalPathNameByHandleW(exe_handle, utf16_buffer, utf16_buffer_len,
-                                        FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
-  if (utf16_len == 0) {
+  /* Resolve the path to a full path (dereferencing any symlinks). The second */
+  /* parameter takes the size of the destination buffer not including the null */
+  /* termination character. Again, this shouldn't fail due to full_path being */
+  /* too short, but check it anyway just in case. */
+  result_len = GetFinalPathNameByHandleW(exe_handle, full_path,
+                                        ARRAY_SIZE(full_path) - 1,
+                                        VOLUME_NAME_DOS);
+  CloseHandle(exe_handle); /* We're done with the handle at this point */
+  if (result_len >= ARRAY_SIZE(full_path)) {
+    err = UV_EIO;
+    goto error;
+  } else if (result_len == 0) {
     err = GetLastError();
     goto error;
   }
 
-  /* According to MSDN the unicode version of the function returns the length
-   * of the resulting string *not* including the terminating null on success. */
-  utf16_buffer[utf16_len] = L'\0';
+  /* On success again append the null-termination character, and also truncate */
+  /* the full_path to the number of characters available in the (UTF-8) input */
+  /* buffer, i.e. put a \0 at either result_len or *size_ptr - 1, whichever */
+  /* comes first. This way len(full_path) <= capacity(buffer) always. */
+  full_path[*size_ptr - 1 < result_len ? *size_ptr - 1 : result_len] = L'\0';
 
   /* Convert to UTF-8 */
   utf8_len = WideCharToMultiByte(CP_UTF8,
                                  0,
-                                 utf16_buffer,
+                                 full_path,
                                  -1,
                                  buffer,
-                                 *size_ptr > INT_MAX ? INT_MAX : (int) *size_ptr,
+                                 (int)*size_ptr,
                                  NULL,
                                  NULL);
   if (utf8_len == 0) {
@@ -175,20 +197,12 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     goto error;
   }
 
-  CloseHandle(exe_handle);
-  uv__free(utf16_buffer);
-
   /* utf8_len *does* include the terminating null at this point, but the */
   /* returned size shouldn't. */
   *size_ptr = utf8_len - 1;
   return 0;
 
  error:
-  if (exe_handle != INVALID_HANDLE_VALUE) {
-    CloseHandle(exe_handle);
-  }
-
-  uv__free(utf16_buffer);
   return uv_translate_sys_error(err);
 }
 
