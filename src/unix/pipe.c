@@ -54,7 +54,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     return -EINVAL;
 
   /* Make a copy of the file name, it outlives this function's scope. */
-  pipe_fname = strdup(name);
+  pipe_fname = uv__strdup(name);
   if (pipe_fname == NULL)
     return -ENOMEM;
 

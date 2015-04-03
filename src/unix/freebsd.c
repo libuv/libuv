@@ -151,7 +151,7 @@ void uv_loadavg(double avg[3]) {
 
 
 char** uv_setup_args(int argc, char** argv) {
-  process_title = argc ? strdup(argv[0]) : NULL;
+  process_title = argc ? uv__strdup(argv[0]) : NULL;
   return argv;
 }
 
@@ -160,7 +160,7 @@ int uv_set_process_title(const char* title) {
   int oid[4];
 
   if (process_title) uv__free(process_title);
-  process_title = strdup(title);
+  process_title = uv__strdup(title);
 
   oid[0] = CTL_KERN;
   oid[1] = KERN_PROC;
@@ -315,7 +315,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->cpu_times.idle = (uint64_t)(cp_times[CP_IDLE+cur]) * multiplier;
     cpu_info->cpu_times.irq = (uint64_t)(cp_times[CP_INTR+cur]) * multiplier;
 
-    cpu_info->model = strdup(model);
+    cpu_info->model = uv__strdup(model);
     cpu_info->speed = cpuspeed;
 
     cur+=CPUSTATES;
@@ -379,7 +379,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     if (ent->ifa_addr->sa_family == AF_LINK)
       continue;
 
-    address->name = strdup(ent->ifa_name);
+    address->name = uv__strdup(ent->ifa_name);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);

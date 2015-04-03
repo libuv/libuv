@@ -26,15 +26,23 @@ Data types
         .. note::
             On Windows this field is ULONG.
 
-.. c:type:: uv_malloc_func
+.. c:type:: uv_allocator_t
 
-    Function pointer type for the malloc override used by
-    :c:func:`uv_replace_allocator`.
+    Struct type containing the replacement allocator functions.
+    Used as the argument to :c:func:`uv_replace_allocator`
+    when overriding system default allocator.
 
-.. c:type:: uv_free_func
+    .. c:member:: void* (*local_malloc)(size_t size)
 
-    Function pointer type for the free override used by
-    :c:func:`uv_replace_allocator`.
+        Replacement function for :man:`malloc(3)`.
+
+    .. c:member:: void* (*local_realloc)(void* ptr, size_t size)
+
+        Replacement function for :man:`realloc(3)`.
+
+    .. c:member void (*local_free)(void* ptr)
+
+        Replacement function for :man:`free(3)`.
 
 .. c:type:: uv_file
 
@@ -136,15 +144,16 @@ API
     Returns the libuv version number as a string. For non-release versions
     "-pre" is appended, so the version number could be "1.2.3-pre".
 
-.. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func)
+.. c:function:: int uv_replace_allocator(const uv_allocator_t* allocator)
 
     .. versionadded:: 1.5.0
 
-    Override the use of the standard library's malloc and free functions for
-    memory allocation. If used, this function must be called before any
-    other libuv function is called. On success, it returns 0. If called more
-    than once, the replacement request is ignored and the function returns
-    ``UV_EINVAL``.
+    Override the use of the standard library's :man:`malloc(3)`,
+    :man:`calloc(3)`, :man:`realloc(3)`, :man:`free(3)`,
+    :man:`strdup(3)`, and :man:`strndup(3)` memory allocation functions.
+    This function must be called before any other libuv function is called.
+    On success, it returns 0. If called more than once or if called after
+    :c:func:`uv_loop_init`, if fails with ``UV_EINVAL``.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 

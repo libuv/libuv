@@ -73,7 +73,7 @@ static int uv__dlerror(uv_lib_t* lib) {
   errmsg = dlerror();
 
   if (errmsg) {
-    lib->errmsg = strdup(errmsg);
+    lib->errmsg = uv__strdup(errmsg);
     return -1;
   }
   else {

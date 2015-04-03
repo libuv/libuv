@@ -363,7 +363,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   uv__handle_start(handle);
   uv__io_init(&handle->event_watcher, uv__fs_event, fd);
-  handle->path = strdup(path);
+  handle->path = uv__strdup(path);
   handle->cb = cb;
 
 #if defined(__APPLE__)
