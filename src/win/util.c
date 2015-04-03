@@ -401,7 +401,7 @@ int uv_set_process_title(const char* title) {
 
   EnterCriticalSection(&process_title_lock);
   uv__free(process_title);
-  process_title = strdup(title);
+  process_title = uv__strdup(title);
   LeaveCriticalSection(&process_title_lock);
 
   err = 0;
@@ -625,7 +625,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   GetSystemInfo(&system_info);
   cpu_count = system_info.dwNumberOfProcessors;
 
-  cpu_infos = calloc(cpu_count, sizeof *cpu_infos);
+  cpu_infos = uv__calloc(cpu_count, sizeof *cpu_infos);
   if (cpu_infos == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;

@@ -523,7 +523,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   assert(numcpus != (unsigned int) -1);
   assert(numcpus != 0);
 
-  ci = calloc(numcpus, sizeof(*ci));
+  ci = uv__calloc(numcpus, sizeof(*ci));
   if (ci == NULL)
     return -ENOMEM;
 
@@ -595,7 +595,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     if (model_idx < numcpus) {
       if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
         model = buf + sizeof(model_marker) - 1;
-        model = strndup(model, strlen(model) - 1);  /* Strip newline. */
+        model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
         if (model == NULL) {
           fclose(fp);
           return -ENOMEM;
@@ -614,7 +614,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 #endif
       if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
         model = buf + sizeof(model_marker) - 1;
-        model = strndup(model, strlen(model) - 1);  /* Strip newline. */
+        model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
         if (model == NULL) {
           fclose(fp);
           return -ENOMEM;
@@ -645,7 +645,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     inferred_model = ci[model_idx - 1].model;
 
   while (model_idx < numcpus) {
-    model = strndup(inferred_model, strlen(inferred_model));
+    model = uv__strndup(inferred_model, strlen(inferred_model));
     if (model == NULL)
       return -ENOMEM;
     ci[model_idx++].model = model;
@@ -812,7 +812,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     if (ent->ifa_addr->sa_family == PF_PACKET)
       continue;
 
-    address->name = strdup(ent->ifa_name);
+    address->name = uv__strdup(ent->ifa_name);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);

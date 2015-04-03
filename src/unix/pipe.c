@@ -54,7 +54,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     return -EINVAL;
 
   /* Make a copy of the file name, it outlives this function's scope. */
-  pipe_fname = strdup(name);
+  pipe_fname = uv__strdup(name);
   if (pipe_fname == NULL)
     return -ENOMEM;
 
@@ -80,7 +80,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   }
 
   /* Success. */
-  handle->pipe_fname = pipe_fname; /* Is a strdup'ed copy. */
+  handle->pipe_fname = pipe_fname; /* Is a uv__strdup'ed copy. */
   handle->io_watcher.fd = sockfd;
   return 0;
 

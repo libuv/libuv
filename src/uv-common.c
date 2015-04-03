@@ -33,33 +33,49 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
-static uv_malloc_func replaced_malloc;
-static uv_free_func replaced_free;
+uv_allocator_t uv__malloc_config = {
+  malloc,
+  realloc,
+  free,
+};
 
-
-void* uv__malloc(size_t size) {
-  if (replaced_malloc)
-    return (*replaced_malloc)(size);
-  return malloc(size);
+void *uv__calloc(size_t count, size_t sz) {
+    /* Note: the multiplcation is not safe if
+     * the result overflows a 'size_t' */
+    size_t total = count * sz;
+    void *m = uv__malloc(total);
+    if (m == NULL)
+        return NULL;
+    return memset(m, 0, total);
 }
 
-
-void uv__free(void* ptr) {
-  if (replaced_free)
-    (*replaced_free)(ptr);
-  else
-    free(ptr);
+char *uv__strdup(const char *s) {
+    size_t len = strlen(s) + 1;
+    char *m = uv__malloc(len);
+    if (m == NULL)
+        return NULL;
+    return memcpy(m, s, len);
 }
 
+char *uv__strndup(const char *s, size_t n) {
+    size_t len = strnlen(s, n);
+    char *m = uv__malloc(len + 1);
+    if (m == NULL)
+        return NULL;
+    m[len] = '\0';
+    return memcpy(m, s, len);
+}
 
-int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func) {
-  if (replaced_malloc || replaced_free)
+int uv_replace_allocator(uv_allocator_t *config) {
+  static int allocator_assigned = 0;
+
+  if (allocator_assigned)
     return UV_EINVAL;
-  replaced_malloc = malloc_func;
-  replaced_free = free_func;
+
+  uv__malloc_config = *config;
+  allocator_assigned = 1;
   return 0;
 }
-
 
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 

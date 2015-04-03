@@ -63,10 +63,6 @@ enum {
 # define UV__HANDLE_CLOSING   0x01
 #endif
 
-void* uv__malloc(size_t size);
-
-void uv__free(void* ptr);
-
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
 void uv__loop_close(uv_loop_t* loop);
@@ -214,5 +210,18 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
     uv__handle_platform_init(h);                                              \
   }                                                                           \
   while (0)
+
+/* Allocator configuration */
+UV_EXTERN extern uv_allocator_t uv__malloc_config;
+
+/* Allocator prototypes */
+void *uv__calloc(size_t count, size_t sz);
+char *uv__strdup(const char *s);
+char *uv__strndup(const char *s, size_t n);
+
+/* Allocator wrappers */
+#define uv__malloc(sz) (uv__malloc_config.local_malloc(sz))
+#define uv__realloc(ptr, sz) (uv__malloc_config.local_realloc((ptr), (sz)))
+#define uv__free(ptr) (uv__malloc_config.local_free(ptr))
 
 #endif /* UV_COMMON_H_ */

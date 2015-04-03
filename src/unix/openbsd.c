@@ -91,7 +91,7 @@ int uv_exepath(char* buffer, size_t* size) {
   mypid = getpid();
   for (;;) {
     err = -ENOMEM;
-    argsbuf_tmp = realloc(argsbuf, argsbuf_size);
+    argsbuf_tmp = uv__realloc(argsbuf, argsbuf_size);
     if (argsbuf_tmp == NULL)
       goto out;
     argsbuf = argsbuf_tmp;
@@ -155,14 +155,14 @@ uint64_t uv_get_total_memory(void) {
 
 
 char** uv_setup_args(int argc, char** argv) {
-  process_title = argc ? strdup(argv[0]) : NULL;
+  process_title = argc ? uv__strdup(argv[0]) : NULL;
   return argv;
 }
 
 
 int uv_set_process_title(const char* title) {
   if (process_title) uv__free(process_title);
-  process_title = strdup(title);
+  process_title = uv__strdup(title);
   setproctitle(title);
   return 0;
 }
@@ -270,7 +270,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->cpu_times.idle = (uint64_t)(info[CP_IDLE]) * multiplier;
     cpu_info->cpu_times.irq = (uint64_t)(info[CP_INTR]) * multiplier;
 
-    cpu_info->model = strdup(model);
+    cpu_info->model = uv__strdup(model);
     cpu_info->speed = cpuspeed;
   }
 
@@ -328,7 +328,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     if (ent->ifa_addr->sa_family != PF_INET)
       continue;
 
-    address->name = strdup(ent->ifa_name);
+    address->name = uv__strdup(ent->ifa_name);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);
