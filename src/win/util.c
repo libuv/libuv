@@ -150,8 +150,10 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 
   /* Open the executable at that path in read mode to fully resolve it. */
   exe_handle = CreateFileW(full_path,
-                           GENERIC_READ,
-                           FILE_SHARE_READ,
+                           FILE_READ_ATTRIBUTES,
+                           FILE_SHARE_READ |
+                           FILE_SHARE_WRITE |
+                           FILE_SHARE_DELETE,
                            NULL,
                            OPEN_EXISTING,
                            FILE_ATTRIBUTE_NORMAL,
