@@ -1111,19 +1111,19 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   *count = 0;
 
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
-    return -ENOSYS;
+    return -errno;
   }
 
   if (ioctl(sockfd, SIOCGSIZIFCONF, &size) == -1) {
-    uv__close(sockfd);
-    return -ENOSYS;
+    SAVE_ERRNO(uv__close(sockfd));
+    return -errno;
   }
 
   ifc.ifc_req = (struct ifreq*)malloc(size);
   ifc.ifc_len = size;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
-    uv__close(sockfd);
-    return -ENOSYS;
+    SAVE_ERRNO(uv__close(sockfd));
+    return -errno;
   }
 
 #define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
@@ -1141,8 +1141,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
-      uv__close(sockfd);
-      return -ENOSYS;
+      SAVE_ERRNO(uv__close(sockfd));
+      return -errno;
     }
 
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
