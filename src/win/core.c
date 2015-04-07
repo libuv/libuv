@@ -86,6 +86,9 @@ static void uv_init(void) {
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
                SEM_NOOPENFILEERRORBOX);
 
+  /* Mark allocator functions as configured to prevent further remapping. */
+  uv_replace_allocator(&uv__malloc_config);
+
   /* Tell the CRT to not exit the application when an invalid parameter is
    * passed. The main issue is that invalid FDs will trigger this behavior.
    */

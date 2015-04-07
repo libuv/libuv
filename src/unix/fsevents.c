@@ -584,7 +584,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   if (err)
     return err;
 
-  state = calloc(1, sizeof(*state));
+  state = uv__calloc(1, sizeof(*state));
   if (state == NULL)
     return -ENOMEM;
 
@@ -880,7 +880,8 @@ int uv__fsevents_close(uv_fs_event_t* handle) {
   /* Wait for deinitialization */
   uv_sem_wait(&state->fsevent_sem);
 
-  uv_close((uv_handle_t*) handle->cf_cb, (uv_close_cb) uv__free);
+  uv_close((uv_handle_t*) handle->cf_cb,
+           (uv_close_cb) uv__malloc_config.local_free);
   handle->cf_cb = NULL;
 
   /* Free data in queue */

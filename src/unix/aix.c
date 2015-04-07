@@ -781,7 +781,7 @@ static int uv__parse_data(char *buf, int *events, uv_fs_event_t* handle) {
 
         /* Scan out the name of the file that triggered the event*/
         if (sscanf(p, "BEGIN_EVPROD_INFO\n%sEND_EVPROD_INFO", filename) == 1) {
-          handle->dir_filename = strdup((const char*)&filename);
+          handle->dir_filename = uv__strdup((const char*)&filename);
         } else
           return -1;
         }
@@ -931,7 +931,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   /* Setup/Initialize all the libuv routines */
   uv__handle_start(handle);
   uv__io_init(&handle->event_watcher, uv__ahafs_event, fd);
-  handle->path = strdup((const char*)&absolute_path);
+  handle->path = uv__strdup((const char*)&absolute_path);
   handle->cb = cb;
 
   uv__io_start(handle->loop, &handle->event_watcher, UV__POLLIN);
@@ -1075,7 +1075,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   cpu_info = *cpu_infos;
   while (idx < ncpus) {
     cpu_info->speed = (int)(ps_total.processorHZ / 1000000);
-    cpu_info->model = strdup(ps_total.description);
+    cpu_info->model = uv__strdup(ps_total.description);
     cpu_info->cpu_times.user = ps_cpus[idx].user;
     cpu_info->cpu_times.sys = ps_cpus[idx].sys;
     cpu_info->cpu_times.idle = ps_cpus[idx].idle;
@@ -1181,7 +1181,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
     /* All conditions above must match count loop */
 
-    address->name = strdup(p->ifr_name);
+    address->name = uv__strdup(p->ifr_name);
 
     if (p->ifr_addr.sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);

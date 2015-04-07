@@ -137,7 +137,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     return UV_EINVAL;
 
   handle->cb = cb;
-  handle->path = strdup(path);
+  handle->path = uv__strdup(path);
   if (!handle->path) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }

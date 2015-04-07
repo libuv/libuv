@@ -15,15 +15,12 @@ Data types
 
     Buffer data type.
 
-.. c:type:: uv_malloc_func
+.. c:type:: uv_malloc_config
 
-    Function pointer type for the malloc override used by
-    :c:func:`uv_replace_allocator`.
-
-.. c:type:: uv_free_func
-
-    Function pointer type for the free override used by
-    :c:func:`uv_replace_allocator`.
+    Struct type containing three function pointers in the order of:
+    malloc, realloc, free.
+    Used as the argument to :c:func:`uv_replace_allocator`
+    when overriding system default allocator functions.
 
 .. c:type:: uv_file
 
@@ -125,15 +122,16 @@ API
     Returns the libuv version number as a string. For non-release versions
     "-pre" is appended, so the version number could be "1.2.3-pre".
 
-.. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func)
+.. c:function:: int uv_replace_allocator(uv_malloc_config *config)
 
     .. versionadded:: 1.5.0
 
-    Override the use of the standard library's malloc and free functions for
-    memory allocation. If used, this function must be called before any
+    Override the use of the standard library's malloc, calloc, realloc, free,
+    strdup, and strndup memory allocation functions.
+    If used, this function must be called before any
     other libuv function is called. On success, it returns 0. If called more
-    than once, the replacement request is ignored and the function returns
-    ``UV_EINVAL``.
+    than once or if called after `uv_loop_init()`, the replacement request
+    is ignored and the function returns ``UV_EINVAL``.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 

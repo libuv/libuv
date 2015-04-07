@@ -67,7 +67,7 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
 
   loop = handle->loop;
   len = strlen(path);
-  ctx = calloc(1, sizeof(*ctx) + len);
+  ctx = uv__calloc(1, sizeof(*ctx) + len);
 
   if (ctx == NULL)
     return UV_ENOMEM;

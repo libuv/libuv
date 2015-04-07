@@ -433,7 +433,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   }
 
   uv__handle_start(handle);
-  handle->path = strdup(path);
+  handle->path = uv__strdup(path);
   handle->fd = PORT_UNUSED;
   handle->cb = cb;
 
@@ -605,7 +605,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
       knp = kstat_data_lookup(ksp, (char*) "brand");
       assert(knp->data_type == KSTAT_DATA_STRING);
-      cpu_info->model = strdup(KSTAT_NAMED_STR_PTR(knp));
+      cpu_info->model = uv__strdup(KSTAT_NAMED_STR_PTR(knp));
     }
 
     lookup_instance++;
@@ -705,7 +705,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     if (ent->ifa_addr == NULL)
       continue;
 
-    address->name = strdup(ent->ifa_name);
+    address->name = uv__strdup(ent->ifa_name);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);

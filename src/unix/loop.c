@@ -32,6 +32,9 @@ int uv_loop_init(uv_loop_t* loop) {
 
   uv__signal_global_once_init();
 
+  /* Mark allocator functions as configured to prevent further remapping. */
+  uv_replace_allocator(&uv__malloc_config);
+
   memset(loop, 0, sizeof(*loop));
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
