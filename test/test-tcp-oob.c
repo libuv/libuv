@@ -84,14 +84,14 @@ static void connection_cb(uv_stream_t* handle, int status) {
    * triggering `kevent()` for the first one
    */
   do {
-    r = send(fd, "x", 1, MSG_OOB);
+    r = send(fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
-  ASSERT(1 == r);
+  ASSERT(5 == r);
 
   do {
-    r = send(fd, "x", 1, MSG_OOB);
+    r = send(fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
-  ASSERT(1 == r);
+  ASSERT(5 == r);
 
   ASSERT(0 == uv_stream_set_blocking((uv_stream_t*) &client_handle, 0));
 }
