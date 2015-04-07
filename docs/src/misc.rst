@@ -15,6 +15,17 @@ Data types
 
     Buffer data type.
 
+    .. c:member:: char* uv_buf_t.base
+
+        Pointer to the base of the buffer. Readonly.
+
+    .. c:member:: size_t uv_buf_t.len
+
+        Total bytes in the buffer. Readonly.
+
+        .. note::
+            On Windows this field is ULONG.
+
 .. c:type:: uv_malloc_func
 
     Function pointer type for the malloc override used by
