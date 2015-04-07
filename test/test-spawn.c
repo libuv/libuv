@@ -438,7 +438,98 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   RETURN_SKIP("Unix only test");
 #endif
 }
+
+
+TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
+#ifndef _WIN32
+  int r;
+  uv_file stdout_file;
+  uv_file stderr_file;
+  uv_fs_t fs_req;
+  uv_stdio_container_t stdio[3];
+  uv_buf_t buf;
+
+  /* Setup. */
+  unlink("stdout_file");
+  unlink("stderr_file");
+
+  init_process_options("spawn_helper6", exit_cb);
+
+  /* open 'stdout_file' and replace STDOUT_FILENO with it */
+  r = uv_fs_open(uv_default_loop(),
+                 &fs_req,
+                 "stdout_file",
+                 O_CREAT | O_RDWR,
+                 S_IRUSR | S_IWUSR,
+                 NULL);
+  ASSERT(r != -1);
+  uv_fs_req_cleanup(&fs_req);
+  stdout_file = dup2(r, STDOUT_FILENO);
+  ASSERT(stdout_file != -1);
+
+  /* open 'stderr_file' and replace STDERR_FILENO with it */
+  r = uv_fs_open(uv_default_loop(), &fs_req, "stderr_file", O_CREAT | O_RDWR,
+      S_IRUSR | S_IWUSR, NULL);
+  ASSERT(r != -1);
+  uv_fs_req_cleanup(&fs_req);
+  stderr_file = dup2(r, STDERR_FILENO);
+  ASSERT(stderr_file != -1);
+
+  /* now we're going to swap them: the child process' stdout will be our
+   * stderr_file and vice versa */
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_IGNORE;
+  options.stdio[1].flags = UV_INHERIT_FD;
+  options.stdio[1].data.fd = stderr_file;
+  options.stdio[2].flags = UV_INHERIT_FD;
+  options.stdio[2].data.fd = stdout_file;
+  options.stdio_count = 3;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  buf = uv_buf_init(output, sizeof(output));
+
+  /* check the content of stdout_file */
+  r = uv_fs_read(uv_default_loop(), &fs_req, stdout_file, &buf, 1, 0, NULL);
+  ASSERT(r >= 15);
+  uv_fs_req_cleanup(&fs_req);
+
+  r = uv_fs_close(uv_default_loop(), &fs_req, stdout_file, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&fs_req);
+
+  printf("output is: %s", output);
+  ASSERT(strncmp("hello errworld\n", output, 15) == 0);
+
+  /* check the content of stderr_file */
+  r = uv_fs_read(uv_default_loop(), &fs_req, stderr_file, &buf, 1, 0, NULL);
+  ASSERT(r >= 12);
+  uv_fs_req_cleanup(&fs_req);
+
+  r = uv_fs_close(uv_default_loop(), &fs_req, stderr_file, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&fs_req);
+
+  printf("output is: %s", output);
+  ASSERT(strncmp("hello world\n", output, 12) == 0);
+
+  /* Cleanup. */
+  unlink("stdout_file");
+  unlink("stderr_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#else
+  RETURN_SKIP("Unix only test");
 #endif
+}
 
 
 TEST_IMPL(spawn_stdin) {
