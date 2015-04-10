@@ -319,7 +319,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (fd == use_fd)
       uv__cloexec(use_fd, 0);
     else
-      dup2(use_fd, fd);
+      fd = dup2(use_fd, fd);
+
+    if (fd == -1) {
+      uv__write_int(error_fd, -errno);
+      _exit(127);
+    }
 
     if (fd <= 2)
       uv__nonblock(fd, 0);
