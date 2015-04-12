@@ -1156,6 +1156,7 @@ TEST_IMPL(fs_access) {
 
   /* Setup. */
   unlink("test_file");
+  rmdir("test_dir");
 
   loop = uv_default_loop();
 
@@ -1199,6 +1200,16 @@ TEST_IMPL(fs_access) {
   ASSERT(req.result == 0);
   uv_fs_req_cleanup(&req);
 
+  /* Directory access */
+  r = uv_fs_mkdir(loop, &req, "test_dir", 0777, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_access(loop, &req, "test_dir", W_OK, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
   /*
    * Run the loop just to check we don't have make any extraneous uv_ref()
    * calls. This should drop out immediately.
@@ -1207,6 +1218,7 @@ TEST_IMPL(fs_access) {
 
   /* Cleanup. */
   unlink("test_file");
+  rmdir("test_dir");
 
   MAKE_VALGRIND_HAPPY();
   return 0;
