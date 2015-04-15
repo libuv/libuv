@@ -41,16 +41,19 @@ static void uv__req_init(uv_loop_t* loop,
 
 #define MAX_THREADPOOL_SIZE 128
 
-static uv_once_t once = UV_ONCE_INIT;
-static uv_cond_t cond;
-static uv_mutex_t mutex;
-static unsigned int nthreads;
-static uv_thread_t* threads;
-static uv_thread_t default_threads[4];
-static QUEUE exit_message;
-static QUEUE wq;
-static volatile int initialized;
+struct uv_threadpool_s {
+  uv_once_t once;
+  uv_cond_t cond;
+  uv_mutex_t mutex;
+  unsigned int nthreads;
+  uv_thread_t* threads;
+  uv_thread_t default_threads[4];
+  QUEUE exit_message;
+  QUEUE wq;
+  volatile int initialized;
+};
 
+static uv_threadpool_t default_pool = { .once = UV_ONCE_INIT };
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -64,27 +67,27 @@ static void worker(void* arg) {
   struct uv__work* w;
   QUEUE* q;
 
-  (void) arg;
+  uv_threadpool_t *tp = arg;
 
   for (;;) {
-    uv_mutex_lock(&mutex);
+    uv_mutex_lock(&tp->mutex);
 
-    while (QUEUE_EMPTY(&wq))
-      uv_cond_wait(&cond, &mutex);
+    while (QUEUE_EMPTY(&tp->wq))
+      uv_cond_wait(&tp->cond, &tp->mutex);
 
-    q = QUEUE_HEAD(&wq);
+    q = QUEUE_HEAD(&tp->wq);
 
-    if (q == &exit_message)
-      uv_cond_signal(&cond);
+    if (q == &tp->exit_message)
+      uv_cond_signal(&tp->cond);
     else {
       QUEUE_REMOVE(q);
       QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
                              executing. */
     }
 
-    uv_mutex_unlock(&mutex);
+    uv_mutex_unlock(&tp->mutex);
 
-    if (q == &exit_message)
+    if (q == &tp->exit_message)
       break;
 
     w = QUEUE_DATA(q, struct uv__work, wq);
@@ -100,94 +103,115 @@ static void worker(void* arg) {
 }
 
 
-static void post(QUEUE* q) {
-  uv_mutex_lock(&mutex);
-  QUEUE_INSERT_TAIL(&wq, q);
-  uv_cond_signal(&cond);
-  uv_mutex_unlock(&mutex);
+static void post(uv_threadpool_t *tp, QUEUE* q) {
+  uv_mutex_lock(&tp->mutex);
+  QUEUE_INSERT_TAIL(&tp->wq, q);
+  uv_cond_signal(&tp->cond);
+  uv_mutex_unlock(&tp->mutex);
 }
 
 
-#ifndef _WIN32
-UV_DESTRUCTOR(static void cleanup(void)) {
+static void uv_threadpool_destroy(uv_threadpool_t *tp) {
   unsigned int i;
 
-  if (initialized == 0)
+  if (tp->initialized == 0)
     return;
 
-  post(&exit_message);
+  post(tp, &tp->exit_message);
 
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_join(threads + i))
+  for (i = 0; i < tp->nthreads; i++)
+    if (uv_thread_join(tp->threads + i))
       abort();
 
-  if (threads != default_threads)
-    uv__free(threads);
+  if (tp->threads != tp->default_threads)
+    uv__free(tp->threads);
 
-  uv_mutex_destroy(&mutex);
-  uv_cond_destroy(&cond);
+  uv_mutex_destroy(&tp->mutex);
+  uv_cond_destroy(&tp->cond);
 
-  threads = NULL;
-  nthreads = 0;
-  initialized = 0;
+  tp->threads = NULL;
+  tp->nthreads = 0;
+  tp->initialized = 0;
+}
+
+#ifndef _WIN32
+UV_DESTRUCTOR(static void cleanup(void)) {
+  uv_threadpool_destroy(&default_pool);
 }
 #endif
 
 
-static void init_once(void) {
+void uv_tp_init_once(uv_threadpool_t *tp) {
   unsigned int i;
   const char* val;
 
-  nthreads = ARRAY_SIZE(default_threads);
+  tp->nthreads = ARRAY_SIZE(tp->default_threads);
   val = getenv("UV_THREADPOOL_SIZE");
   if (val != NULL)
-    nthreads = atoi(val);
-  if (nthreads == 0)
-    nthreads = 1;
-  if (nthreads > MAX_THREADPOOL_SIZE)
-    nthreads = MAX_THREADPOOL_SIZE;
+    tp->nthreads = atoi(val);
+  if (tp->nthreads == 0)
+    tp->nthreads = 1;
+  if (tp->nthreads > MAX_THREADPOOL_SIZE)
+    tp->nthreads = MAX_THREADPOOL_SIZE;
 
-  threads = default_threads;
-  if (nthreads > ARRAY_SIZE(default_threads)) {
-    threads = uv__malloc(nthreads * sizeof(threads[0]));
-    if (threads == NULL) {
-      nthreads = ARRAY_SIZE(default_threads);
-      threads = default_threads;
+  tp->threads = tp->default_threads;
+  if (tp->nthreads > ARRAY_SIZE(tp->default_threads)) {
+    tp->threads = uv__malloc(tp->nthreads * sizeof(tp->threads[0]));
+    if (tp->threads == NULL) {
+      tp->nthreads = ARRAY_SIZE(tp->default_threads);
+      tp->threads = tp->default_threads;
     }
   }
 
-  if (uv_cond_init(&cond))
+  if (uv_cond_init(&tp->cond))
     abort();
 
-  if (uv_mutex_init(&mutex))
+  if (uv_mutex_init(&tp->mutex))
     abort();
 
-  QUEUE_INIT(&wq);
+  QUEUE_INIT(&tp->wq);
 
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_create(threads + i, worker, NULL))
+  for (i = 0; i < tp->nthreads; i++)
+    if (uv_thread_create(tp->threads + i, worker, NULL))
       abort();
 
-  initialized = 1;
+  tp->initialized = 1;
 }
 
+static void init_once(void) {
+  uv_tp_init_once(&default_pool);
+}
+
+
+void uv__work_tp_submit(uv_loop_t* loop,
+                     uv_threadpool_t *tp,
+                     struct uv__work* w,
+                     void (*work)(struct uv__work* w),
+                     void (*done)(struct uv__work* w, int status)) {
+  if (tp == NULL || tp == &default_pool) {
+    tp = &default_pool;
+    uv_once(&tp->once, init_once);
+  }
+  w->loop = loop;
+  w->threadpool = tp;
+  w->work = work;
+  w->done = done;
+  post(tp, &w->wq);
+}
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      void (*work)(struct uv__work* w),
                      void (*done)(struct uv__work* w, int status)) {
-  uv_once(&once, init_once);
-  w->loop = loop;
-  w->work = work;
-  w->done = done;
-  post(&w->wq);
+  uv__work_tp_submit(loop, NULL, w, work, done);
 }
 
 
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
-  uv_mutex_lock(&mutex);
+  uv_threadpool_t *tp = w->threadpool;
+  uv_mutex_lock(&tp->mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
 
   cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL;
@@ -195,7 +219,7 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
     QUEUE_REMOVE(&w->wq);
 
   uv_mutex_unlock(&w->loop->wq_mutex);
-  uv_mutex_unlock(&mutex);
+  uv_mutex_unlock(&tp->mutex);
 
   if (!cancelled)
     return UV_EBUSY;
@@ -258,7 +282,8 @@ static void uv__queue_done(struct uv__work* w, int err) {
 }
 
 
-int uv_queue_work(uv_loop_t* loop,
+int uv_queue_tp_work(uv_loop_t* loop,
+                  uv_threadpool_t *tp,
                   uv_work_t* req,
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
@@ -269,8 +294,15 @@ int uv_queue_work(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
-  uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
+  uv__work_tp_submit(loop, tp, &req->work_req, uv__queue_work, uv__queue_done);
   return 0;
+}
+
+int uv_queue_work(uv_loop_t* loop,
+                  uv_work_t* req,
+                  uv_work_cb work_cb,
+                  uv_after_work_cb after_work_cb) {
+  return uv_queue_tp_work(loop, &default_pool, req, work_cb, after_work_cb);
 }
 
 

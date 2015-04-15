@@ -31,6 +31,7 @@ struct uv__work {
   void (*work)(struct uv__work *w);
   void (*done)(struct uv__work *w, int status);
   struct uv_loop_s* loop;
+  struct uv_threadpool_s* threadpool;
   void* wq[2];
 };
 
