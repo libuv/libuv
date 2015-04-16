@@ -125,7 +125,12 @@ void uv__pipe_close(uv_pipe_t* handle) {
 
 
 int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
+  uv_handle_type type;
   int err;
+
+  type = uv_guess_handle(fd);
+  if (type != UV_NAMED_PIPE)
+    return -EINVAL;
 
   err = uv__nonblock(fd, 1);
   if (err)
