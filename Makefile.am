@@ -16,6 +16,12 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -I$(top_srcdir)/include \
               -I$(top_srcdir)/src
+AM_LDFLAGS =
+
+if COND_GCOV
+   AM_CPPFLAGS += -fprofile-arcs -ftest-coverage
+   AM_LDFLAGS += -fprofile-arcs -ftest-coverage
+endif
 
 include_HEADERS=include/uv.h include/uv-errno.h include/uv-threadpool.h include/uv-version.h
 
@@ -24,6 +30,9 @@ CLEANFILES =
 lib_LTLIBRARIES = libuv.la
 libuv_la_CFLAGS = @CFLAGS@
 libuv_la_LDFLAGS = -no-undefined -version-info 1:0:0
+if COND_GCOV
+   libuv_la_LDFLAGS += -fprofile-arcs -ftest-coverage
+endif
 libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
                    src/inet.c \

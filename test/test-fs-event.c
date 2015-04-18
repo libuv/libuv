@@ -263,7 +263,7 @@ TEST_IMPL(fs_event_watch_dir) {
   ASSERT(r == 0);
   r = uv_timer_init(loop, &timer);
   ASSERT(r == 0);
-  r = uv_timer_start(&timer, fs_event_create_files, 100, 0);
+  r = uv_timer_start(&timer, fs_event_create_files, 250, 0);
   ASSERT(r == 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
@@ -362,7 +362,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   r = uv_timer_init(loop, &timer);
   ASSERT(r == 0);
 
-  r = uv_timer_start(&timer, timer_cb_touch, 1, 0);
+  r = uv_timer_start(&timer, timer_cb_touch, 2, 0);
   ASSERT(r == 0);
 
   ASSERT(timer_cb_touch_called == 0);

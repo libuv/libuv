@@ -70,3 +70,8 @@ ipch
 
 # make dist output
 libuv-*.tar.*
+
+# coverage files
+*.gcda
+*.gcno
+*.gcov
