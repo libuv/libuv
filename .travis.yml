@@ -1,3 +1,4 @@
+language: objective-c
 install: git clone https://chromium.googlesource.com/external/gyp.git build/gyp
 before_script:
   - ./gyp_uv.py -f make
