@@ -1,0 +1,10 @@
+language: objective-c
+install:
+  - sudo pip install cpp-coveralls
+before_script:
+  - sh autogen.sh
+  - ./configure --enable-gcov
+  - make
+script: make check
+after_success:
+  - coveralls --exclude test --gcov-options '\-lp'
