@@ -534,13 +534,13 @@ int uv_uptime(double* uptime) {
       return uv_translate_sys_error(result);
     }
 
-    uv__free(malloced_buffer);
-
     buffer_size *= 2;
     /* Don't let the buffer grow infinitely. */
     if (buffer_size > 1 << 20) {
       goto internalError;
     }
+
+    uv__free(malloced_buffer);
 
     buffer = malloced_buffer = (BYTE*) uv__malloc(buffer_size);
     if (malloced_buffer == NULL) {
