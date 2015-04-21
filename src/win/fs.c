@@ -661,7 +661,7 @@ void fs__unlink(uv_fs_t* req) {
   NTSTATUS status;
 
   handle = CreateFileW(pathw,
-                       FILE_READ_ATTRIBUTES | DELETE,
+                       FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES | DELETE,
                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL,
                        OPEN_EXISTING,
@@ -698,6 +698,24 @@ void fs__unlink(uv_fs_t* req) {
       if (error == ERROR_SYMLINK_NOT_SUPPORTED)
         error = ERROR_ACCESS_DENIED;
       SET_REQ_WIN32_ERROR(req, error);
+      CloseHandle(handle);
+      return;
+    }
+  }
+
+  if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+    /* Remove read-only attribute */
+    FILE_BASIC_INFORMATION basic = { 0 };
+
+    basic.FileAttributes = info.dwFileAttributes & ~(FILE_ATTRIBUTE_READONLY);
+
+    status = pNtSetInformationFile(handle,
+                                   &iosb,
+                                   &basic,
+                                   sizeof basic,
+                                   FileBasicInformation);
+    if (!NT_SUCCESS(status)) {
+      SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
       CloseHandle(handle);
       return;
     }
