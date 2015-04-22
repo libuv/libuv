@@ -167,11 +167,10 @@
               'cflags': [ '-fPIC' ],
             }],
             ['uv_library=="shared_library" and OS!="mac"', {
-              'link_settings': {
-                # Must correspond with UV_VERSION_MAJOR and UV_VERSION_MINOR
-                # in include/uv-version.h
-                'libraries': [ '-Wl,-soname,libuv.so.1.0' ],
-              },
+              # This will cause gyp to set soname
+              # Must correspond with UV_VERSION_MAJOR
+              # in include/uv-version.h
+              'product_extension': 'so.1',
             }],
           ],
         }],
