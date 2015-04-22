@@ -179,10 +179,15 @@ enum test_status {
 
 #include <stdarg.h>
 
+/* Define inline for MSVC */
+# ifdef _MSC_VER
+#  define inline __inline
+# endif
+
 /* Emulate snprintf() on Windows, _snprintf() doesn't zero-terminate the buffer
  * on overflow...
  */
-static int snprintf(char* buf, size_t len, const char* fmt, ...) {
+inline int snprintf(char* buf, size_t len, const char* fmt, ...) {
   va_list ap;
   int n;
 
