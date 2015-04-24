@@ -271,8 +271,6 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   }
 
 done:
-  if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
   return result;
 }
 
@@ -632,9 +630,6 @@ done:
   pthread_mutex_unlock(&lock);
 #endif
 
-  if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
-
   return r;
 }
 
@@ -739,6 +734,46 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
 }
 
 
+typedef ssize_t (*uv__fs_buf_iter_yield)(uv_fs_t* req);
+static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_yield yield) {
+  unsigned int iovmax;
+  unsigned int nbufs;
+  uv_buf_t* bufs;
+  ssize_t total;
+  ssize_t result;
+
+  iovmax = uv__getiovmax();
+  nbufs = req->nbufs;
+  bufs = req->bufs;
+  total = 0;
+
+  while (nbufs > 0) {
+    req->nbufs = nbufs;
+    if (req->nbufs > iovmax)
+      req->nbufs = iovmax;
+
+    result = yield(req);
+    if (result <= 0) {
+      if(total == 0)
+        total = result;
+      break;
+    }
+
+    if (req->off >= 0)
+      req->off += result;
+
+    req->bufs += req->nbufs;
+    nbufs -= req->nbufs;
+    total += result;
+  }
+
+  if (bufs != req->bufsml)
+    uv__free(bufs);
+
+  return total;
+}
+
+
 static void uv__fs_work(struct uv__work* w) {
   int retry_on_eintr;
   uv_fs_t* req;
@@ -774,7 +809,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(LINK, link(req->path, req->new_path));
     X(MKDIR, mkdir(req->path, req->mode));
     X(MKDTEMP, uv__fs_mkdtemp(req));
-    X(READ, uv__fs_read(req));
+    X(READ, uv__fs_buf_iter(req, uv__fs_read));
     X(SCANDIR, uv__fs_scandir(req));
     X(READLINK, uv__fs_readlink(req));
     X(RENAME, rename(req->path, req->new_path));
@@ -784,7 +819,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(SYMLINK, symlink(req->path, req->new_path));
     X(UNLINK, unlink(req->path));
     X(UTIME, uv__fs_utime(req));
-    X(WRITE, uv__fs_write(req));
+    X(WRITE, uv__fs_buf_iter(req, uv__fs_write));
     case UV_FS_OPEN:
 #ifdef O_CLOEXEC
       /* Try O_CLOEXEC before entering locks */
