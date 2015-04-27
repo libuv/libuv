@@ -175,21 +175,31 @@ int uv_thread_setaffinity(uv_thread_t *tid,
                           char *oldmask,
                           size_t mask_size) {
   int i;
-  DWORD cs = 0, oldcs;
+  HANDLE hproc;
+  DWORD pam, sam, tam = 0, oldtam;
 
   assert(mask_size >= UV_CPU_SETSIZE);
 
-  for (i = 0;  i < UV_CPU_SETSIZE;  i++)
-    if (cpumask[i])
-        cs |= 1 << i;
+  hproc = GetCurrentProcess();
+  if (!GetProcessAffinityMask(hproc, &pam, &sam))
+    return uv_translate_sys_error(GetLastError());
 
-  oldcs = SetThreadAffinityMask(*tid, cs);
-  if (!oldcs)
+  for (i = 0;  i < UV_CPU_SETSIZE;  i++) {
+    if (cpumask[i]) {
+      if (pam & (1 << i))
+        tam |= 1 << i;
+      else
+        return UV_EINVAL;
+    }
+  }
+
+  oldtam = SetThreadAffinityMask(*tid, tam);
+  if (!oldtam)
     return uv_translate_sys_error(GetLastError());
 
   if (oldmask) {
     for (i = 0;  i < UV_CPU_SETSIZE;  i++)
-      oldmask[i] = (oldcs & (1 << i));
+      oldmask[i] = (oldtam & (1 << i));
   }
 
   return 0;
@@ -199,7 +209,25 @@ int uv_thread_setaffinity(uv_thread_t *tid,
 int uv_thread_getaffinity(uv_thread_t *tid,
                           char *cpumask,
                           size_t mask_size) {
-  return -EUNSUPP;
+  int i;
+  HANDLE hproc;
+  DWORD_PTR pam, sam, tam;
+
+  assert(mask_size >= UV_CPU_SETSIZE);
+
+  hproc = GetCurrentProcess();
+  if (!GetProcessAffinityMask(hproc, &pam, &sam))
+    return uv_translate_sys_error(GetLastError());
+
+  tam = SetThreadAffinityMask(*tid, pam);
+  if (!tam)
+    return uv_translate_sys_error(GetLastError());
+  SetThreadAffinityMask(*tid, tam);
+
+  for (i = 0;  i < UV_CPU_SETSIZE;  i++)
+    cpumask[i] = (tam & (1 << i));
+
+  return 0;
 }
 
 

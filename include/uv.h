@@ -1422,9 +1422,13 @@ UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
  * CPU masks for thread affinity must be at least UV_CPU_SETSIZE bytes long.
  */
 #if defined(_WIN32)
-# define UV_CPU_SETSIZE  64
+# if defined(_WIN64)
+#  define UV_CPU_SETSIZE        64
+# else
+#  define UV_CPU_SETSIZE        32
+# endif
 #else
-# define UV_CPU_SETSIZE  CPU_SETSIZE
+# define UV_CPU_SETSIZE         CPU_SETSIZE
 #endif
 
 typedef void (*uv_thread_cb)(void* arg);
