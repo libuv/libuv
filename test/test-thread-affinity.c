@@ -22,6 +22,8 @@
 #include "uv.h"
 #include "task.h"
 
+#include <string.h>
+
 char cpumask[4 * UV_CPU_SETSIZE];
 
 static void check_affinity(void* arg) {
