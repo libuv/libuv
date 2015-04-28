@@ -41,6 +41,12 @@ static uv_loop_t* default_loop_ptr;
 /* uv_once initialization guards */
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
+static uv_allocator_t uv__default_allocator = {
+  malloc,
+  realloc,
+  free,
+};
+
 
 #if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
 /* Our crt debug report handler allows us to temporarily disable asserts
@@ -85,6 +91,9 @@ static void uv_init(void) {
   /* Tell Windows that we will handle critical errors. */
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
                SEM_NOOPENFILEERRORBOX);
+
+  /* Mark allocator functions as configured to prevent further remapping. */
+  uv_replace_allocator(&uv__default_allocator);
 
   /* Tell the CRT to not exit the application when an invalid parameter is
    * passed. The main issue is that invalid FDs will trigger this behavior.

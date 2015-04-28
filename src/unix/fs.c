@@ -73,7 +73,7 @@
 
 #define PATH                                                                  \
   do {                                                                        \
-    (req)->path = strdup(path);                                               \
+    (req)->path = uv__strdup(path);                                           \
     if ((req)->path == NULL)                                                  \
       return -ENOMEM;                                                         \
   }                                                                           \
@@ -1003,7 +1003,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
                   const char* tpl,
                   uv_fs_cb cb) {
   INIT(MKDTEMP);
-  req->path = strdup(tpl);
+  req->path = uv__strdup(tpl);
   if (req->path == NULL)
     return -ENOMEM;
   POST;

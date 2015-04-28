@@ -27,10 +27,20 @@
 #include <string.h>
 #include <unistd.h>
 
+static uv_allocator_t uv__default_allocator = {
+  malloc,
+  realloc,
+  free,
+};
+
+
 int uv_loop_init(uv_loop_t* loop) {
   int err;
 
   uv__signal_global_once_init();
+
+  /* Mark allocator functions as configured to prevent further remapping. */
+  uv_replace_allocator(&uv__default_allocator);
 
   memset(loop, 0, sizeof(*loop));
   heap_init((struct heap*) &loop->timer_heap);

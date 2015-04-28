@@ -213,7 +213,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->cpu_times.idle = (uint64_t)(info[i].cpu_ticks[2]) * multiplier;
     cpu_info->cpu_times.irq = 0;
 
-    cpu_info->model = strdup(model);
+    cpu_info->model = uv__strdup(model);
     cpu_info->speed = cpuspeed/1000000;
   }
   vm_deallocate(mach_task_self(), (vm_address_t)info, msg_type);
@@ -275,7 +275,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     if (ent->ifa_addr->sa_family == AF_LINK)
       continue;
 
-    address->name = strdup(ent->ifa_name);
+    address->name = uv__strdup(ent->ifa_name);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);

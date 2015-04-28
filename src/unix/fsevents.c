@@ -584,7 +584,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   if (err)
     return err;
 
-  state = calloc(1, sizeof(*state));
+  state = uv__calloc(1, sizeof(*state));
   if (state == NULL)
     return -ENOMEM;
 
