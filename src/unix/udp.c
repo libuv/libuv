@@ -100,7 +100,7 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
     handle->send_queue_count--;
 
     if (req->bufs != req->bufsml)
-      uv__free(req->bufs);
+      free(req->bufs);
     req->bufs = NULL;
 
     if (req->send_cb == NULL)
@@ -399,7 +399,7 @@ int uv__udp_send(uv_udp_send_t* req,
 
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(bufs[0]));
+    req->bufs = malloc(nbufs * sizeof(bufs[0]));
 
   if (req->bufs == NULL)
     return -ENOMEM;

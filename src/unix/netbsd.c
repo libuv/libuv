@@ -137,7 +137,7 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 int uv_set_process_title(const char* title) {
-  if (process_title) uv__free(process_title);
+  if (process_title) free(process_title);
 
   process_title = strdup(title);
   setproctitle("%s", title);
@@ -234,17 +234,17 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpuspeed = 0;
 
   size = numcpus * CPUSTATES * sizeof(*cp_times);
-  cp_times = uv__malloc(size);
+  cp_times = malloc(size);
   if (cp_times == NULL)
     return -ENOMEM;
 
   if (sysctlbyname("kern.cp_time", cp_times, &size, NULL, 0))
     return -errno;
 
-  *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
+  *cpu_infos = malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos)) {
-    uv__free(cp_times);
-    uv__free(*cpu_infos);
+    free(cp_times);
+    free(*cpu_infos);
     return -ENOMEM;
   }
 
@@ -259,7 +259,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->speed = (int)(cpuspeed/(uint64_t) 1e6);
     cur += CPUSTATES;
   }
-  uv__free(cp_times);
+  free(cp_times);
   return 0;
 }
 
@@ -268,10 +268,10 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
+    free(cpu_infos[i].model);
   }
 
-  uv__free(cpu_infos);
+  free(cpu_infos);
 }
 
 
@@ -296,7 +296,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  *addresses = uv__malloc(*count * sizeof(**addresses));
+  *addresses = malloc(*count * sizeof(**addresses));
 
   if (!(*addresses))
     return -ENOMEM;
@@ -361,8 +361,8 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    uv__free(addresses[i].name);
+    free(addresses[i].name);
   }
 
-  uv__free(addresses);
+  free(addresses);
 }

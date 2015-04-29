@@ -85,7 +85,7 @@
     size_t new_path_len;                                                      \
     path_len = strlen((path)) + 1;                                            \
     new_path_len = strlen((new_path)) + 1;                                    \
-    (req)->path = uv__malloc(path_len + new_path_len);                        \
+    (req)->path = malloc(path_len + new_path_len);                            \
     if ((req)->path == NULL)                                                  \
       return -ENOMEM;                                                         \
     (req)->new_path = (req)->path + path_len;                                 \
@@ -272,7 +272,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 
 done:
   if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
+    free(req->bufs);
   return result;
 }
 
@@ -312,8 +312,8 @@ out:
     int i;
 
     for (i = 0; i < n; i++)
-      uv__free(dents[i]);
-    uv__free(dents);
+      free(dents[i]);
+    free(dents);
   }
   errno = saved_errno;
 
@@ -337,7 +337,7 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
 #endif
   }
 
-  buf = uv__malloc(len + 1);
+  buf = malloc(len + 1);
 
   if (buf == NULL) {
     errno = ENOMEM;
@@ -347,7 +347,7 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   len = readlink(req->path, buf, len);
 
   if (len == -1) {
-    uv__free(buf);
+    free(buf);
     return -1;
   }
 
@@ -633,7 +633,7 @@ done:
 #endif
 
   if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
+    free(req->bufs);
 
   return r;
 }
@@ -1036,7 +1036,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   req->nbufs = nbufs;
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->bufs = malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL)
     return -ENOMEM;
@@ -1158,7 +1158,7 @@ int uv_fs_write(uv_loop_t* loop,
   req->nbufs = nbufs;
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->bufs = malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL)
     return -ENOMEM;
@@ -1171,7 +1171,7 @@ int uv_fs_write(uv_loop_t* loop,
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
-  uv__free((void*)req->path);
+  free((void*) req->path);
   req->path = NULL;
   req->new_path = NULL;
 
@@ -1179,6 +1179,6 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
     uv__fs_scandir_cleanup(req);
 
   if (req->ptr != &req->statbuf)
-    uv__free(req->ptr);
+    free(req->ptr);
   req->ptr = NULL;
 }

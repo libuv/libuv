@@ -33,34 +33,6 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
-static uv_malloc_func replaced_malloc;
-static uv_free_func replaced_free;
-
-
-void* uv__malloc(size_t size) {
-  if (replaced_malloc)
-    return (*replaced_malloc)(size);
-  return malloc(size);
-}
-
-
-void uv__free(void* ptr) {
-  if (replaced_free)
-    (*replaced_free)(ptr);
-  else
-    free(ptr);
-}
-
-
-int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func) {
-  if (replaced_malloc || replaced_free)
-    return UV_EINVAL;
-  replaced_malloc = malloc_func;
-  replaced_free = free_func;
-  return 0;
-}
-
-
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
@@ -428,7 +400,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req) {
   if (*nbufs > 0 && *nbufs != (unsigned int) req->result)
     (*nbufs)--;
   for (; *nbufs < (unsigned int) req->result; (*nbufs)++)
-    uv__free(dents[*nbufs]);
+    free(dents[*nbufs]);
 }
 
 
@@ -442,11 +414,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 
   /* Free previous entity */
   if (*nbufs > 0)
-    uv__free(dents[*nbufs - 1]);
+    free(dents[*nbufs - 1]);
 
   /* End was already reached */
   if (*nbufs == (unsigned int) req->result) {
-    uv__free(dents);
+    free(dents);
     req->ptr = NULL;
     return UV_EOF;
   }
@@ -520,12 +492,12 @@ uv_loop_t* uv_default_loop(void) {
 uv_loop_t* uv_loop_new(void) {
   uv_loop_t* loop;
 
-  loop = uv__malloc(sizeof(*loop));
+  loop = malloc(sizeof(*loop));
   if (loop == NULL)
     return NULL;
 
   if (uv_loop_init(loop)) {
-    uv__free(loop);
+    free(loop);
     return NULL;
   }
 
@@ -567,5 +539,5 @@ void uv_loop_delete(uv_loop_t* loop) {
   err = uv_loop_close(loop);
   assert(err == 0);
   if (loop != default_loop)
-    uv__free(loop);
+    free(loop);
 }
