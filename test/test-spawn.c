@@ -1197,7 +1197,7 @@ TEST_IMPL(environment_creation) {
   return 0;
 }
 
-// Regression test for issue #909
+/* Regression test for issue #909 */
 TEST_IMPL(spawn_with_an_odd_path) {
   int r;
 
