@@ -868,8 +868,13 @@ int uv_tcp_write(uv_loop_t* loop,
       uv_insert_pending_req(loop, (uv_req_t*)req);
     }
   } else {
-    /* Send failed due to an error. */
-    return WSAGetLastError();
+    /* Send failed due to an error, report it later */
+    req->u.io.queued_bytes = 0;
+    handle->reqs_pending++;
+    handle->stream.conn.write_reqs_pending++;
+    REGISTER_HANDLE_REQ(loop, handle, req);
+    SET_REQ_ERROR(req, WSAGetLastError());
+    uv_insert_pending_req(loop, (uv_req_t*) req);
   }
 
   return 0;
