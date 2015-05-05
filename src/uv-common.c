@@ -537,6 +537,7 @@ void uv_loop_delete(uv_loop_t* loop) {
   default_loop = default_loop_ptr;
 
   err = uv_loop_close(loop);
+  (void) err;    /* Squelch compiler warnings. */
   assert(err == 0);
   if (loop != default_loop)
     free(loop);
