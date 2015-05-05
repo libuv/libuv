@@ -363,6 +363,7 @@
         'test/test-tcp-write-to-half-open-connection.c',
         'test/test-tcp-write-after-connect.c',
         'test/test-tcp-writealot.c',
+        'test/test-tcp-write-fail.c',
         'test/test-tcp-try-write.c',
         'test/test-tcp-unexpected-read.c',
         'test/test-tcp-oob.c',
