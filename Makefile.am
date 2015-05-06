@@ -189,6 +189,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-sendmsg.c \
                          test/test-pipe-server-close.c \
                          test/test-pipe-close-stdout-read-stdin.c \
+                         test/test-pipe-set-non-blocking.c \
                          test/test-platform-output.c \
                          test/test-poll-close.c \
                          test/test-poll-close-doesnt-corrupt-stack.c \
@@ -221,9 +222,11 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-read-stop.c \
                          test/test-tcp-shutdown-after-write.c \
                          test/test-tcp-unexpected-read.c \
+                         test/test-tcp-oob.c \
                          test/test-tcp-write-to-half-open-connection.c \
                          test/test-tcp-write-after-connect.c \
                          test/test-tcp-writealot.c \
+                         test/test-tcp-write-fail.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-write-queue-order.c \
                          test/test-thread-equal.c \
@@ -303,6 +306,7 @@ endif
 
 if LINUX
 include_HEADERS += include/uv-linux.h
+libuv_la_CFLAGS += -D_GNU_SOURCE
 libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/linux-inotify.c \
                     src/unix/linux-syscalls.c \

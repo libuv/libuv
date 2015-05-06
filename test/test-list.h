@@ -43,6 +43,7 @@ TEST_DECLARE   (semaphore_1)
 TEST_DECLARE   (semaphore_2)
 TEST_DECLARE   (semaphore_3)
 TEST_DECLARE   (tty)
+TEST_DECLARE   (tty_file)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ip6_pton)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -61,6 +62,7 @@ TEST_DECLARE   (multiple_listen)
 TEST_DECLARE   (tcp_write_after_connect)
 #endif
 TEST_DECLARE   (tcp_writealot)
+TEST_DECLARE   (tcp_write_fail)
 TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_queue_order)
 TEST_DECLARE   (tcp_open)
@@ -80,6 +82,7 @@ TEST_DECLARE   (tcp_close_while_connecting)
 TEST_DECLARE   (tcp_close)
 #ifndef _WIN32
 TEST_DECLARE   (tcp_close_accept)
+TEST_DECLARE   (tcp_oob)
 #endif
 TEST_DECLARE   (tcp_flags)
 TEST_DECLARE   (tcp_write_to_half_open_connection)
@@ -167,6 +170,7 @@ TEST_DECLARE   (pipe_ref4)
 #ifndef _WIN32
 TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
+TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
@@ -180,9 +184,12 @@ TEST_DECLARE   (get_memory)
 TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (hrtime)
 TEST_DECLARE   (getaddrinfo_fail)
+TEST_DECLARE   (getaddrinfo_fail_sync)
 TEST_DECLARE   (getaddrinfo_basic)
+TEST_DECLARE   (getaddrinfo_basic_sync)
 TEST_DECLARE   (getaddrinfo_concurrent)
 TEST_DECLARE   (getnameinfo_basic_ip4)
+TEST_DECLARE   (getnameinfo_basic_ip4_sync)
 TEST_DECLARE   (getnameinfo_basic_ip6)
 TEST_DECLARE   (getsockname_tcp)
 TEST_DECLARE   (getsockname_udp)
@@ -190,6 +197,9 @@ TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 TEST_DECLARE   (socket_buffer_size)
 TEST_DECLARE   (spawn_fails)
+#ifndef _WIN32
+TEST_DECLARE   (spawn_fails_check_for_waitpid_cleanup)
+#endif
 TEST_DECLARE   (spawn_exit_code)
 TEST_DECLARE   (spawn_stdout)
 TEST_DECLARE   (spawn_stdin)
@@ -204,6 +214,8 @@ TEST_DECLARE   (spawn_setuid_fails)
 TEST_DECLARE   (spawn_setgid_fails)
 TEST_DECLARE   (spawn_stdout_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file)
+TEST_DECLARE   (spawn_stdout_and_stderr_to_file2)
+TEST_DECLARE   (spawn_stdout_and_stderr_to_file_swap)
 TEST_DECLARE   (spawn_auto_unref)
 TEST_DECLARE   (spawn_closed_process_io)
 TEST_DECLARE   (spawn_reads_child_path)
@@ -222,6 +234,7 @@ TEST_DECLARE   (fs_mkdtemp)
 TEST_DECLARE   (fs_fstat)
 TEST_DECLARE   (fs_access)
 TEST_DECLARE   (fs_chmod)
+TEST_DECLARE   (fs_unlink_readonly)
 TEST_DECLARE   (fs_chown)
 TEST_DECLARE   (fs_link)
 TEST_DECLARE   (fs_readlink)
@@ -336,7 +349,9 @@ TASK_LIST_START
 #ifndef _WIN32
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif
+  TEST_ENTRY  (pipe_set_non_blocking)
   TEST_ENTRY  (tty)
+  TEST_ENTRY  (tty_file)
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ip6_pton)
   TEST_ENTRY  (ipc_listen_before_write)
@@ -366,6 +381,9 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_writealot)
   TEST_HELPER (tcp_writealot, tcp4_echo_server)
 
+  TEST_ENTRY  (tcp_write_fail)
+  TEST_HELPER (tcp_write_fail, tcp4_echo_server)
+
   TEST_ENTRY  (tcp_try_write)
 
   TEST_ENTRY  (tcp_write_queue_order)
@@ -391,6 +409,7 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_close)
 #ifndef _WIN32
   TEST_ENTRY  (tcp_close_accept)
+  TEST_ENTRY  (tcp_oob)
 #endif
   TEST_ENTRY  (tcp_flags)
   TEST_ENTRY  (tcp_write_to_half_open_connection)
@@ -524,11 +543,14 @@ TASK_LIST_START
   TEST_ENTRY  (hrtime)
 
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
+  TEST_ENTRY  (getaddrinfo_fail_sync)
 
   TEST_ENTRY  (getaddrinfo_basic)
+  TEST_ENTRY  (getaddrinfo_basic_sync)
   TEST_ENTRY  (getaddrinfo_concurrent)
 
   TEST_ENTRY  (getnameinfo_basic_ip4)
+  TEST_ENTRY  (getnameinfo_basic_ip4_sync)
   TEST_ENTRY  (getnameinfo_basic_ip6)
 
   TEST_ENTRY  (getsockname_tcp)
@@ -541,6 +563,9 @@ TASK_LIST_START
   TEST_ENTRY  (socket_buffer_size)
 
   TEST_ENTRY  (spawn_fails)
+#ifndef _WIN32
+  TEST_ENTRY  (spawn_fails_check_for_waitpid_cleanup)
+#endif
   TEST_ENTRY  (spawn_exit_code)
   TEST_ENTRY  (spawn_stdout)
   TEST_ENTRY  (spawn_stdin)
@@ -555,6 +580,8 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_setgid_fails)
   TEST_ENTRY  (spawn_stdout_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file)
+  TEST_ENTRY  (spawn_stdout_and_stderr_to_file2)
+  TEST_ENTRY  (spawn_stdout_and_stderr_to_file_swap)
   TEST_ENTRY  (spawn_auto_unref)
   TEST_ENTRY  (spawn_closed_process_io)
   TEST_ENTRY  (spawn_reads_child_path)
@@ -601,6 +628,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_fstat)
   TEST_ENTRY  (fs_access)
   TEST_ENTRY  (fs_chmod)
+  TEST_ENTRY  (fs_unlink_readonly)
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
   TEST_ENTRY  (fs_futime)

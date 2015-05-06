@@ -55,6 +55,9 @@
 #define ACCESS_ONCE(type, var)                                                \
   (*(volatile type*) &(var))
 
+#define ROUND_UP(a, b)                                                        \
+  ((a) % (b) ? ((a) + (b)) - ((a) % (b)) : (a))
+
 #define UNREACHABLE()                                                         \
   do {                                                                        \
     assert(0 && "unreachable code");                                          \
@@ -221,7 +224,7 @@ void uv__signal_loop_cleanup(uv_loop_t* loop);
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
 int uv__kqueue_init(uv_loop_t* loop);
-int uv__platform_loop_init(uv_loop_t* loop, int default_loop);
+int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);
 
