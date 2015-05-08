@@ -324,6 +324,7 @@
         'test/test-ping-pong.c',
         'test/test-pipe-bind-error.c',
         'test/test-pipe-connect-error.c',
+        'test/test-pipe-connect-prepare.c',
         'test/test-pipe-getsockname.c',
         'test/test-pipe-sendmsg.c',
         'test/test-pipe-server-close.c',
