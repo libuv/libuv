@@ -58,10 +58,6 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 
 
 int uv_async_send(uv_async_t* handle) {
-  /* Do a cheap read first. */
-  if (ACCESS_ONCE(int, handle->pending) != 0)
-    return 0;
-
   if (cmpxchgi(&handle->pending, 0, 1) == 0)
     uv__async_send(&handle->loop->async_watcher);
 
