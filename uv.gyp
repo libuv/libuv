@@ -108,6 +108,7 @@
             'libraries': [
               '-ladvapi32',
               '-liphlpapi',
+              '-lole32',
               '-lpsapi',
               '-lshell32',
               '-lws2_32'
@@ -304,6 +305,7 @@
         'test/test-getnameinfo.c',
         'test/test-getsockname.c',
         'test/test-handle-fileno.c',
+        'test/test-homedir.c',
         'test/test-hrtime.c',
         'test/test-idle.c',
         'test/test-ip6-addr.c',

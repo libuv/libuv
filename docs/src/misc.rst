@@ -227,6 +227,23 @@ API
 
     Changes the current working directory.
 
+.. c:function:: int uv_os_homedir(char* buffer, size_t* size)
+
+    Gets the current user's home directory. On Windows, `uv_os_homedir()` first
+    checks the `USERPROFILE` environment variable using
+    `GetEnvironmentVariableW()`. If `USERPROFILE` is not set,
+    `SHGetKnownFolderPath()` is called. On all other operating systems,
+    `uv_os_homedir()` first checks the `HOME` environment variable using
+    :man:`getenv(3)`. If `HOME` is not set, :man:`getpwuid_r(3)` is called. The
+    user's home directory is stored in `buffer`. When `uv_os_homedir()` is
+    called, `size` indicates the maximum size of `buffer`. On success or
+    `UV_ENOBUFS` failure, `size` is set to the string length of `buffer`.
+
+    .. warning::
+        `uv_os_homedir()` is not thread safe.
+
+    .. versionadded:: 1.6.0
+
 .. uint64_t uv_get_free_memory(void)
 .. c:function:: uint64_t uv_get_total_memory(void)
 
