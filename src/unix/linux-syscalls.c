@@ -117,16 +117,6 @@
 # endif
 #endif /* __NR_epoll_wait */
 
-#ifndef __NR_epoll_pwait
-# if defined(__x86_64__)
-#  define __NR_epoll_pwait 281
-# elif defined(__i386__)
-#  define __NR_epoll_pwait 319
-# elif defined(__arm__)
-#  define __NR_epoll_pwait (UV_SYSCALL_BASE + 346)
-# endif
-#endif /* __NR_epoll_pwait */
-
 #ifndef __NR_inotify_init
 # if defined(__x86_64__)
 #  define __NR_inotify_init 253
@@ -319,31 +309,6 @@ int uv__epoll_wait(int epfd,
 #if defined(__NR_epoll_wait)
   int result;
   result = syscall(__NR_epoll_wait, epfd, events, nevents, timeout);
-#if MSAN_ACTIVE
-  if (result > 0)
-    __msan_unpoison(events, sizeof(events[0]) * result);
-#endif
-  return result;
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__epoll_pwait(int epfd,
-                    struct uv__epoll_event* events,
-                    int nevents,
-                    int timeout,
-                    uint64_t sigmask) {
-#if defined(__NR_epoll_pwait)
-  int result;
-  result = syscall(__NR_epoll_pwait,
-                   epfd,
-                   events,
-                   nevents,
-                   timeout,
-                   &sigmask,
-                   sizeof(sigmask));
 #if MSAN_ACTIVE
   if (result > 0)
     __msan_unpoison(events, sizeof(events[0]) * result);
