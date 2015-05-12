@@ -36,6 +36,8 @@
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <windows.h>
+#include <shlobj.h>
+#include <objbase.h>
 
 
 /*
@@ -72,7 +74,7 @@ void uv__util_init() {
   InitializeCriticalSection(&process_title_lock);
 
   /* Retrieve high-resolution timer frequency
-   * and precompute its reciprocal. 
+   * and precompute its reciprocal.
    */
   if (QueryPerformanceFrequency(&perf_frequency)) {
     hrtime_interval_ = 1.0 / perf_frequency.QuadPart;
@@ -801,8 +803,8 @@ static int is_windows_version_or_greater(DWORD os_major,
 
   /* Perform the test. */
   return (int) VerifyVersionInfo(
-    &osvi, 
-    VER_MAJORVERSION | VER_MINORVERSION | 
+    &osvi,
+    VER_MAJORVERSION | VER_MINORVERSION |
     VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
     condition_mask);
 }
@@ -870,7 +872,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
       GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
   }
-  
+
 
   /* Fetch the size of the adapters reported by windows, and then get the */
   /* list itself. */
@@ -1053,14 +1055,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
               prefix->PrefixLength <= prefix_len)
             continue;
 
-          if (address_prefix_match(sa->sa_family, sa, 
+          if (address_prefix_match(sa->sa_family, sa,
               prefix->Address.lpSockaddr, prefix->PrefixLength)) {
             prefix_len = prefix->PrefixLength;
           }
         }
 
         /* If there is no matching prefix information, return a single-host
-         * subnet mask (e.g. 255.255.255.255 for IPv4). 
+         * subnet mask (e.g. 255.255.255.255 for IPv4).
          */
         if (!prefix_len)
           prefix_len = (sa->sa_family == AF_INET6) ? 128 : 32;
@@ -1150,6 +1152,70 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
                                kernelSystemTime.wMinute * 60 +
                                kernelSystemTime.wSecond;
   uv_rusage->ru_stime.tv_usec = kernelSystemTime.wMilliseconds * 1000;
+
+  return 0;
+}
+
+
+int uv_os_homedir(char* buffer, size_t* size) {
+  wchar_t* path;
+  size_t bufsize;
+  size_t len;
+  int r;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
+
+  /* Check if the USERPROFILE environment variable is set first */
+  path = malloc(*size * sizeof(WCHAR));
+
+  if (path == NULL)
+    return UV_ENOMEM;
+
+  len = GetEnvironmentVariableW(L"USERPROFILE", path, *size);
+
+  if (len == 0) {
+    r = GetLastError();
+    free(path);
+
+    if (r != ERROR_ENVVAR_NOT_FOUND)
+      return uv_translate_sys_error(r);
+  } else {
+    if (len > *size) {
+      free(path);
+      *size = len - 1;
+      return UV_ENOBUFS;
+    }
+
+    bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
+    assert(len + 1 == bufsize);
+    free(path);
+    *size = len;
+
+    return 0;
+  }
+
+  /* USERPROFILE is not set, so call SHGetKnownFolderPath() */
+  if (SHGetKnownFolderPath(&FOLDERID_Profile, 0, NULL, &path) != S_OK)
+    return uv_translate_sys_error(GetLastError());
+
+  bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
+
+  if (bufsize == 0) {
+    r = GetLastError();
+
+    if (r == ERROR_INSUFFICIENT_BUFFER) {
+      *size = wcslen(path);
+      CoTaskMemFree(path);
+      return UV_ENOBUFS;
+    }
+
+    CoTaskMemFree(path);
+    return uv_translate_sys_error(r);
+  }
+
+  CoTaskMemFree(path);
+  *size = bufsize - 1;
 
   return 0;
 }

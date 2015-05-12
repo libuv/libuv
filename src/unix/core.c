@@ -38,6 +38,7 @@
 #include <limits.h> /* INT_MAX, PATH_MAX */
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
+#include <pwd.h>
 
 #ifdef __linux__
 # include <sys/ioctl.h>
@@ -982,4 +983,83 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
 
     return r;
   }
+}
+
+
+int uv_os_homedir(char* buffer, size_t* size) {
+  struct passwd pw;
+  struct passwd* result;
+  char* buf;
+  uid_t uid;
+  size_t bufsize;
+  size_t len;
+  int r;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return -EINVAL;
+
+  /* Check if the HOME environment variable is set first */
+  buf = getenv("HOME");
+
+  if (buf != NULL) {
+    len = strlen(buf);
+
+    if (len >= *size) {
+      *size = len;
+      return -ENOBUFS;
+    }
+
+    memcpy(buffer, buf, len + 1);
+    *size = len;
+
+    return 0;
+  }
+
+  /* HOME is not set, so call getpwuid() */
+  bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+
+  if (bufsize <= 0)
+    return -EIO;
+
+  uid = getuid();
+  buf = NULL;
+
+  for (;;) {
+    free(buf);
+    buf = malloc(bufsize);
+
+    if (buf == NULL)
+      return -ENOMEM;
+
+    r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+
+    if (r != ERANGE)
+      break;
+
+    bufsize *= 2;
+  }
+
+  if (r != 0) {
+    free(buf);
+    return -r;
+  }
+
+  if (result == NULL) {
+    free(buf);
+    return -ENOENT;
+  }
+
+  len = strlen(pw.pw_dir);
+
+  if (len >= *size) {
+    *size = len;
+    free(buf);
+    return -ENOBUFS;
+  }
+
+  memcpy(buffer, pw.pw_dir, len + 1);
+  *size = len;
+  free(buf);
+
+  return 0;
 }
