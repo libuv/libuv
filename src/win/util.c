@@ -58,8 +58,8 @@
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
 
-/* Interval (in seconds) of the high-resolution clock. */
-static double hrtime_interval_ = 0;
+/* Interval of the high-resolution clock. */
+static uint64_t hrtime_interval_ = 0;
 
 
 /*
@@ -71,11 +71,9 @@ void uv__util_init() {
   /* Initialize process title access mutex. */
   InitializeCriticalSection(&process_title_lock);
 
-  /* Retrieve high-resolution timer frequency
-   * and precompute its reciprocal. 
-   */
+  /* Retrieve high-resolution timer frequency */
   if (QueryPerformanceFrequency(&perf_frequency)) {
-    hrtime_interval_ = 1.0 / perf_frequency.QuadPart;
+    hrtime_interval_ = perf_frequency.QuadPart;
   } else {
     hrtime_interval_= 0;
   }
@@ -484,7 +482,7 @@ uint64_t uv__hrtime(double scale) {
    * performance counter interval, integer math could cause this computation
    * to overflow. Therefore we resort to floating point math.
    */
-  return (uint64_t) ((double) counter.QuadPart * hrtime_interval_ * scale);
+  return (uint64_t) ((counter.QuadPart / hrtime_interval_) * scale);
 }
 
 
