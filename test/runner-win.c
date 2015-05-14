@@ -261,7 +261,7 @@ int process_read_last_line(process_info_t *p,
                            size_t buffer_len) {
   DWORD size;
   DWORD read;
-  DWORD start;
+  int start;
   OVERLAPPED overlapped;
 
   ASSERT(buffer_len > 0);
