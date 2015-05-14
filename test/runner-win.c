@@ -287,6 +287,11 @@ int process_read_last_line(process_info_t *p,
       break;
   }
 
+  if (start < 0) {
+	  /* In case of no CRLF */
+	  start = 0;
+  }
+
   if (start > 0)
     memmove(buffer, buffer + start, read - start);
 
