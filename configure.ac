@@ -63,5 +63,9 @@ AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
 AS_IF([test "x$PKG_CONFIG" != "x"], [
     AC_CONFIG_FILES([libuv.pc])
 ])
+AM_COND_IF([LINUX], [
+    AC_CHECK_HEADERS([sys/epoll.h], , [AC_MSG_ERROR([Could not find sys/epoll.h])])
+    AC_CHECK_FUNCS([epoll_pwait], , [AC_MSG_ERROR([Could not find epoll_pwait()])])
+])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

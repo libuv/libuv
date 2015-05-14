@@ -29,10 +29,12 @@
 #include <errno.h>
 
 #include <net/if.h>
+#include <sys/epoll.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <time.h>
 
@@ -141,7 +143,6 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
-  static int no_epoll_pwait;
   static int no_epoll_wait;
   struct uv__epoll_event events[1024];
   struct uv__epoll_event* pe;
@@ -149,9 +150,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   QUEUE* q;
   uv__io_t* w;
   sigset_t sigset;
-  uint64_t sigmask;
   uint64_t base;
   uint64_t diff;
+  int is_sigmasked;
   int nevents;
   int count;
   int nfds;
@@ -199,11 +200,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w->events = w->pevents;
   }
 
-  sigmask = 0;
+  is_sigmasked = 0;
   if (loop->flags & UV_LOOP_BLOCK_SIGPROF) {
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGPROF);
-    sigmask |= 1 << (SIGPROF - 1);
+    is_sigmasked = 1;
   }
 
   assert(timeout >= -1);
@@ -211,18 +212,16 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   count = 48; /* Benchmarks suggest this gives the best throughput. */
 
   for (;;) {
-    if (sigmask != 0 && no_epoll_pwait != 0)
+    if (is_sigmasked != 0)
       if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
         abort();
 
-    if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
-      nfds = uv__epoll_pwait(loop->backend_fd,
-                             events,
+    if (no_epoll_wait != 0 || is_sigmasked != 0) {
+      nfds = epoll_pwait(loop->backend_fd,
+                             (struct epoll_event *) events,
                              ARRAY_SIZE(events),
                              timeout,
-                             sigmask);
-      if (nfds == -1 && errno == ENOSYS)
-        no_epoll_pwait = 1;
+                             &sigset);
     } else {
       nfds = uv__epoll_wait(loop->backend_fd,
                             events,
@@ -232,7 +231,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         no_epoll_wait = 1;
     }
 
-    if (sigmask != 0 && no_epoll_pwait != 0)
+    if (is_sigmasked != 0)
       if (pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
         abort();
 
@@ -249,8 +248,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (nfds == -1) {
       if (errno == ENOSYS) {
-        /* epoll_wait() or epoll_pwait() failed, try the other system call. */
-        assert(no_epoll_wait == 0 || no_epoll_pwait == 0);
+        /* epoll_wait() failed, try epoll_pwait(). */
+        assert(no_epoll_wait != 0);
         continue;
       }
 

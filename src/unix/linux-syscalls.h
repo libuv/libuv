@@ -127,11 +127,6 @@ int uv__epoll_wait(int epfd,
                    struct uv__epoll_event* events,
                    int nevents,
                    int timeout);
-int uv__epoll_pwait(int epfd,
-                    struct uv__epoll_event* events,
-                    int nevents,
-                    int timeout,
-                    uint64_t sigmask);
 int uv__eventfd2(unsigned int count, int flags);
 int uv__inotify_init(void);
 int uv__inotify_init1(int flags);
