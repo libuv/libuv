@@ -141,17 +141,26 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
+  /* A bug in kernels < 2.6.37 makes timeouts larger than ~30 minutes
+   * effectively infinite on 32 bits architectures.  To avoid blocking
+   * indefinitely, we cap the timeout and poll again if necessary.
+   *
+   * Note that "30 minutes" is a simplification because it depends on
+   * the value of CONFIG_HZ.  The magic constant assumes CONFIG_HZ=1200,
+   * that being the largest value I have seen in the wild (and only once.)
+   */
+  static const int max_safe_timeout = 1789569;
   static int no_epoll_pwait;
   static int no_epoll_wait;
   struct uv__epoll_event events[1024];
   struct uv__epoll_event* pe;
   struct uv__epoll_event e;
+  int real_timeout;
   QUEUE* q;
   uv__io_t* w;
   sigset_t sigset;
   uint64_t sigmask;
   uint64_t base;
-  uint64_t diff;
   int nevents;
   int count;
   int nfds;
@@ -209,8 +218,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   assert(timeout >= -1);
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
+  real_timeout = timeout;
 
   for (;;) {
+    /* See the comment for max_safe_timeout for an explanation of why
+     * this is necessary.  Executive summary: kernel bug workaround.
+     */
+    if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
+      timeout = max_safe_timeout;
+
     if (sigmask != 0 && no_epoll_pwait != 0)
       if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
         abort();
@@ -244,6 +260,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (nfds == 0) {
       assert(timeout != -1);
+
+      timeout = real_timeout - timeout;
+      if (timeout > 0)
+        continue;
+
       return;
     }
 
@@ -346,11 +367,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    diff = loop->time - base;
-    if (diff >= (uint64_t) timeout)
+    real_timeout -= (loop->time - base);
+    if (real_timeout <= 0)
       return;
 
-    timeout -= diff;
+    timeout = real_timeout;
   }
 }
 
