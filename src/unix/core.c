@@ -309,11 +309,6 @@ int uv_pending(const uv_loop_t* loop) {
 }
 
 
-int uv_pending(const v_loop_t* loop) {
-  return !QUEUE_EMPTY(&loop->pending_queue);
-}
-
-
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
