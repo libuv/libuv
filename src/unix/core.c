@@ -308,7 +308,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
-  int active_handles;
+  unsigned int active_handles;
 
   r = uv__loop_alive(loop);
   if (!r)
