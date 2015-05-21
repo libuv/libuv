@@ -28,7 +28,9 @@
 #include <assert.h>
 #include <errno.h>
 
-#ifndef SUNOS_NO_IFADDRS
+#ifdef SUNOS_NO_IFADDRS
+# include <sys/sockio.h>
+#else
 # include <ifaddrs.h>
 #endif
 #include <net/if.h>
@@ -667,10 +669,236 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
 
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+  uv_interface_address_t* addr;
+  uv_network_interface_t* interfaces = NULL, *interface;
+  int ninterfaces = 0, i, j;
+
+  uv_network_interfaces(&interfaces, &ninterfaces);
+
+  /* Count the number of up and running interfaces */
+  *count = 0;
+  for (i = 0; i < ninterfaces; ++i) {
+    interface = &interfaces[i];
+    if (interface->is_up_and_running) {
+      ++(*count);
+    }
+  }
+  if (!*count) {
+    *addresses = NULL;
+    uv_free_network_interfaces(interfaces, ninterfaces);
+    return 0;
+  }
+
+  /* Alloc the return interface structs */
+  *addresses = (uv_interface_address_t*)
+    malloc(*count * sizeof(uv_interface_address_t));
+  if (!(*addresses)) {
+    uv_free_network_interfaces(interfaces, ninterfaces);
+    return -ENOMEM;
+  }
+
+  /* Populate the return structs */
+  for (i = 0, j = 0; i < ninterfaces; ++i) {
+    interface = &interfaces[i];
+    if (interface->is_up_and_running) {
+      addr = &(*addresses)[j++];
+      /* Meta. */
+      addr->name = strdup(interface->name);
+      addr->is_internal = interface->is_loopback;
+      if (!addr->name) {
+        uv_free_network_interfaces(interfaces, ninterfaces);
+        return -ENOMEM;
+      }
+      /* Address. */
+      if (interface->address.address4.sin_family == AF_INET6) {
+        addr->address.address6 = interface->address.address6;
+      } else {
+        addr->address.address4 = interface->address.address4;
+      }
+      /* Netmask. */
+      if (interface->netmask.netmask4.sin_family == AF_INET6) {
+        addr->netmask.netmask6 = interface->netmask.netmask6;
+      } else {
+        addr->netmask.netmask4 = interface->netmask.netmask4;
+      }
+      /* Physical address. */
+      memcpy(addr->phys_addr, interface->phys_addr, sizeof(addr->phys_addr));
+    }
+  }
+
+  uv_free_network_interfaces(interfaces, ninterfaces);
+  return 0;
+}
+
+
+void uv_free_interface_addresses(uv_interface_address_t* addresses, int count) {
+  int i;
+
+  for (i = 0; i < count; i++) {
+    free(addresses[i].name);
+  }
+
+  free(addresses);
+}
+
+
+int uv_network_interfaces(uv_network_interface_t** interfaces, int* count) {
 #ifdef SUNOS_NO_IFADDRS
-  return -ENOSYS;
+  /* ioctl() implementation for Solaris/SPARC, which does not have
+   * the getifaddrs() implementation used for Solaris/X86_64. */
+  uv_network_interface_t* interface;
+  int sockfd, size = 1;
+  struct lifconf lifc;
+  struct lifreq *lifr, *p, req;
+
+  *count = 0;
+
+  if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
+    return -ENOSYS;
+  }
+
+  if (ioctl(sockfd, sizeof(lifc), &size) == -1) {
+    close(sockfd);
+    return -ENOSYS;
+  }
+
+  lifc.lifc_req = (struct lifreq*)malloc(size);
+  lifc.lifc_len = size;
+  if (ioctl(sockfd, SIOCGLIFCONF, &lifc) == -1) {
+    close(sockfd);
+    return -ENOSYS;
+  }
+
+  /* Count the number of interfaces. */
+  lifr = lifc.lifc_req;
+  while ((char*)lifr < (char*)lifc.lifc_req + lifc.lifc_len) {
+    p = lifr;
+    lifr = (struct lifreq*)
+      ((char*)lifr + sizeof(lifr->lifr_name) + sizeof(lifr->lifr_addr));
+
+    if (p->lifr_addr.ss_family != AF_INET6 &&
+        p->lifr_addr.ss_family != AF_INET &&
+        p->lifr_addr.ss_family != AF_LINK) {
+      continue;
+    }
+
+    memset(&req, 0, sizeof(req));
+    memcpy(req.lifr_name, p->lifr_name, sizeof(req.lifr_name));
+    if (ioctl(sockfd, SIOCGIFFLAGS, &req) == -1) {
+      close(sockfd);
+      return -ENOSYS;
+    }
+
+    (*count)++;
+  }
+
+  *interfaces = malloc(*count * sizeof(**interfaces));
+  if (!(*interfaces)) {
+    close(sockfd);
+    return -ENOMEM;
+  }
+  interface = *interfaces;
+
+  lifr = lifc.lifc_req;
+  while ((char*)lifr < (char*)lifc.lifc_req + lifc.lifc_len) {
+    p = lifr;
+    lifr = (struct lifreq*)
+      ((char*)lifr + sizeof(lifr->lifr_name) + sizeof(lifr->lifr_addr));
+
+    if (p->lifr_addr.ss_family != AF_INET6 &&
+        p->lifr_addr.ss_family != AF_INET &&
+        p->lifr_addr.ss_family != AF_LINK)
+      continue;
+
+    memset(&req, 0, sizeof(req));
+    memcpy(req.lifr_name, p->lifr_name, sizeof(req.lifr_name));
+    if (ioctl(sockfd, SIOCGLIFFLAGS, &req) == -1) {
+      close(sockfd);
+      return -ENOSYS;
+    }
+
+    /* Meta. */
+    interface->name = strdup(p->lifr_name);
+    interface->is_loopback       = !!(req.lifr_flags & IFF_LOOPBACK);
+    interface->is_up_and_running = !!(req.lifr_flags & IFF_UP|IFF_RUNNING);
+    interface->is_point_to_point = !!(req.lifr_flags & IFF_POINTOPOINT);
+    interface->is_promiscuous    = !!(req.lifr_flags & IFF_PROMISC);
+    interface->has_broadcast     = !!(req.lifr_flags & IFF_BROADCAST);
+    interface->has_multicast     = !!(req.lifr_flags & IFF_MULTICAST);
+
+    /* Address. */
+    if (p->lifr_addr != NULL) {
+      if (p->lifr_addr.ss_family == AF_INET6) {
+        interface->address.address6 = *((struct sockaddr_in6*) &p->lifr_addr);
+      } else if (p->lifr_addr.ss_family == AF_INET) {
+        interface->address.address4 = *((struct sockaddr_in*) &p->lifr_addr);
+      } else {
+        interface->address.address4.sin_family = AF_UNSPEC;
+      }
+    }
+
+    /* Broadcast or point-to-point. */
+    memset(&req, 0, sizeof(req));
+    memcpy(req.lifr_name, p->lifr_name, sizeof(req.lifr_name));
+    if (ioctl(sockfd, SIOCGLIFBRDADDR, &req) != -1) {
+      if (req.lifr_broadaddr.ss_family == AF_INET6) {
+        interface->broadcast.broadcast6 =
+          *((struct sockaddr_in6*) &req.lifr_broadaddr;
+      } else if (req.lifr_broadaddr.ss_family == AF_INET) {
+        interface->broadcast.broadcast4 =
+          *((struct sockaddr_in*) &req.lifr_broadaddr;
+      } else {
+        interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
+      }
+    } else {
+      memset(&req, 0, sizeof(req));
+      memcpy(req.lifr_name, p->lifr_name, sizeof(req.lifr_name));
+      if (ioctl(sockfd, SIOCGLIFDSTADDR, &req) != -1) {
+        if (req.lifr_dstaddr.ss_family == AF_INET6) {
+          interface->broadcast.broadcast6 =
+            *((struct sockaddr_in6*) &req.lifr_dstaddr;
+        } else if (req.lifr_dstaddr.ss_family == AF_INET) {
+          interface->broadcast.broadcast4 =
+            *((struct sockaddr_in*) &req.lifr_dstaddr;
+        } else {
+          interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
+        }
+      }
+    }
+
+    /* Netmask. */
+    memset(&req, 0, sizeof(req));
+    memcpy(req.lifr_name, p->lifr_name, sizeof(req.lifr_name));
+    if (ioctl(sockfd, SIOCGLIFNETMASK, &req) != -1) {
+      if (req.lifr_addr.ss_family == AF_INET6) {
+        interface->netmask.netmask6 = *((struct sockaddr_in6*) &req.lifr_addr);
+      } else if (req.lifr_addr.ss_family == AF_INET) {
+        interface->netmask.netmask4 = *((struct sockaddr_in*) &req.lifr_addr);
+      } else {
+        interface->netmask.netmask4.sin_family = AF_UNSPEC;
+      }
+    }
+
+    /* Physical address. */
+    memset(&req, 0, sizeof(req));
+    memcpy(req.lifr_name, p->lifr_name, sizeof(req.lifr_name));
+    if (ioctl(sockfd, SIOCGLIFHWADDR, &req) != -1) {
+      sa_addr = (struct sockaddr_dl*)(&req.lifr_addr);
+      interface->phys_addr_len = sa_addr->sdl_alen;
+      /* Clamp size to sizeof(interface) */
+      if (interface->phys_addr_len > sizeof(interface->phys_addr)) {
+        interface->phys_addr_len = sizeof(interface->phys_addr);
+      }
+      memcpy(interface->phys_addr, LLADDR(sa_addr), interface->phys_addr_len);
+    }
+
+    interface++;
+  }
+
+  close(sockfd);
+  return 0;
 #else
-  uv_interface_address_t* address;
+  uv_network_interface_t* interface;
   struct sockaddr_dl* sa_addr;
   struct ifaddrs* addrs;
   struct ifaddrs* ent;
@@ -683,64 +911,104 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)) ||
-        (ent->ifa_addr == NULL) ||
-        (ent->ifa_addr->sa_family == PF_PACKET)) {
+    if (ent->ifa_addr->sa_family != AF_INET6 &&
+        ent->ifa_addr->sa_family != AF_INET &&
+        ent->ifa_addr->sa_family != AF_LINK) {
       continue;
     }
 
     (*count)++;
   }
 
-  *addresses = malloc(*count * sizeof(**addresses));
-  if (!(*addresses))
+  *interfaces = malloc(*count * sizeof(**interfaces));
+  if (!(*interfaces))
     return -ENOMEM;
 
-  address = *addresses;
-
+  interface = *interfaces;
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
+    if(ent->ifa_addr->sa_family != AF_INET6 &&
+       ent->ifa_addr->sa_family != AF_INET &&
+       ent->ifa_addr->sa_family != AF_LINK) {
       continue;
-
-    if (ent->ifa_addr == NULL)
-      continue;
-
-    address->name = strdup(ent->ifa_name);
-
-    if (ent->ifa_addr->sa_family == AF_INET6) {
-      address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);
-    } else {
-      address->address.address4 = *((struct sockaddr_in*) ent->ifa_addr);
     }
 
-    if (ent->ifa_netmask->sa_family == AF_INET6) {
-      address->netmask.netmask6 = *((struct sockaddr_in6*) ent->ifa_netmask);
-    } else {
-      address->netmask.netmask4 = *((struct sockaddr_in*) ent->ifa_netmask);
+    interface->name = strdup(ent->ifa_name);
+    interface->is_loopback = !!(ent->ifa_flags & IFF_LOOPBACK);
+    interface->is_up_and_running = !!(ent->ifa_flags & (IFF_UP|IFF_RUNNING));
+    interface->is_point_to_point = !!(ent->ifa_flags & IFF_POINTOPOINT);
+    interface->is_promiscuous    = !!(ent->ifa_flags & IFF_PROMISC);
+    interface->has_broadcast     = !!(ent->ifa_flags & IFF_BROADCAST);
+    interface->has_multicast     = !!(ent->ifa_flags & IFF_MULTICAST);
+
+    /* Address. */
+    if (ent->ifa_addr != NULL) {
+        if (ent->ifa_addr->sa_family == AF_INET6) {
+            interface->address.address6 =
+                *((struct sockaddr_in6*) ent->ifa_addr);
+        } else if (ent->ifa_addr->sa_family == AF_INET) {
+            interface->address.address4 =
+                *((struct sockaddr_in*) ent->ifa_addr);
+        } else {
+            interface->address.address4.sin_family = AF_UNSPEC;
+        }
     }
 
-    address->is_internal = !!((ent->ifa_flags & IFF_PRIVATE) ||
-                           (ent->ifa_flags & IFF_LOOPBACK));
+    /* Broadcast or point-to-point. */
+    if (ent->ifa_broadaddr != NULL) {
+      if (ent->ifa_broadaddr->sa_family == AF_INET6) {
+        interface->broadcast.broadcast6 =
+          *((struct sockaddr_in6*) ent->ifa_broadaddr);
+      } else if (ent->ifa_broadaddr->sa_family == AF_INET) {
+        interface->broadcast.broadcast4 =
+          *((struct sockaddr_in*) ent->ifa_broadaddr);
+      } else {
+        interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
+      }
+    } else if (ent->ifa_dstaddr != NULL) {
+      if (ent->ifa_dstaddr->sa_family == AF_INET6) {
+        interface->broadcast.broadcast6 =
+          *((struct sockaddr_in6*) ent->ifa_dstaddr);
+      } else if (ent->ifa_dstaddr->sa_family == AF_INET) {
+        interface->broadcast.broadcast4 =
+          *((struct sockaddr_in*) ent->ifa_dstaddr);
+      } else {
+        interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
+      }
+    }
 
-    address++;
+    /* Netmask. */
+    if (ent->ifa_netmask != NULL) {
+      if (ent->ifa_netmask->sa_family == AF_INET6) {
+        interface->netmask.netmask6 =
+          *((struct sockaddr_in6*) ent->ifa_netmask);
+      } else if (ent->ifa_netmask->sa_family == AF_INET) {
+        interface->netmask.netmask4 =
+          *((struct sockaddr_in*) ent->ifa_netmask);
+      } else {
+        interface->netmask.netmask4.sin_family = AF_UNSPEC;
+      }
+    }
+
+    interface++;
   }
 
   /* Fill in physical addresses for each interface */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)) ||
-        (ent->ifa_addr == NULL) ||
-        (ent->ifa_addr->sa_family != AF_LINK)) {
+    if (ent->ifa_addr->sa_family != AF_LINK) {
       continue;
     }
-
-    address = *addresses;
-
+    interface = *interfaces;
     for (i = 0; i < (*count); i++) {
-      if (strcmp(address->name, ent->ifa_name) == 0) {
+      if (strcmp(interface->name, ent->ifa_name) == 0) {
         sa_addr = (struct sockaddr_dl*)(ent->ifa_addr);
-        memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
+        interface->phys_addr_len = sa_addr->sdl_alen;
+        /* Clamp size to sizeof(interface) */
+        if (interface->phys_addr_len > sizeof(interface->phys_addr)) {
+          interface->phys_addr_len = sizeof(interface->phys_addr);
+        }
+        memcpy(interface->phys_addr, LLADDR(sa_addr), interface->phys_addr_len);
       }
-      address++;
+      interface++;
     }
   }
 
@@ -751,13 +1019,12 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
+void uv_free_network_interfaces(uv_network_interface_t* interfaces, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    free(addresses[i].name);
+    free(interfaces[i].name);
   }
 
-  free(addresses);
+  free(interfaces);
 }
