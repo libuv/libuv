@@ -34,7 +34,7 @@
 TEST_IMPL(ip6_addr_link_local) {
   char string_address[INET6_ADDRSTRLEN];
   uv_network_interface_t* interfaces;
-  uv_network_interface_t* interface;
+  uv_network_interface_t* intf; /* `interface` name reserved on Win */
   struct sockaddr_in6 addr;
   unsigned int iface_index;
   const char* device_name;
@@ -46,13 +46,13 @@ TEST_IMPL(ip6_addr_link_local) {
   ASSERT(0 == uv_network_interfaces(&interfaces, &count));
 
   for (ix = 0; ix < count; ix++) {
-    interface = interfaces + ix;
+    intf = interfaces + ix;
 
-    if (interface->address.address6.sin6_family != AF_INET6)
+    if (intf->address.address6.sin6_family != AF_INET6)
       continue;
 
     ASSERT(0 == uv_inet_ntop(AF_INET6,
-                             &interface->address.address6.sin6_addr,
+                             &intf->address.address6.sin6_addr,
                              string_address,
                              sizeof(string_address)));
 
@@ -60,8 +60,8 @@ TEST_IMPL(ip6_addr_link_local) {
     if (strncmp(string_address, "fe80::", 6) != 0)
       continue;
 
-    iface_index = interface->address.address6.sin6_scope_id;
-    device_name = interface->name;
+    iface_index = intf->address.address6.sin6_scope_id;
+    device_name = intf->name;
 
 #ifdef _WIN32
     snprintf(scoped_addr,
