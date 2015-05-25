@@ -231,7 +231,6 @@ static void uv__stream_osx_select_cb(uv_async_t* handle) {
   /* Get and reset stream's events */
   events = s->events;
   ACCESS_ONCE(int, s->events) = 0;
-  uv_sem_post(&s->async_sem);
 
   assert(events != 0);
   assert(events == (events & (UV__POLLIN | UV__POLLOUT)));
@@ -242,6 +241,14 @@ static void uv__stream_osx_select_cb(uv_async_t* handle) {
 
   if ((events & UV__POLLOUT) && uv__io_active(&stream->io_watcher, UV__POLLOUT))
     uv__stream_io(stream->loop, &stream->io_watcher, UV__POLLOUT);
+
+  if (stream->flags & UV_CLOSING)
+    return;
+
+  /* NOTE: It is important to do it here, otherwise `select()` might be called
+   * before the actual `uv__read()`, leading to the blocking syscall
+   */
+  uv_sem_post(&s->async_sem);
 }
 
 
