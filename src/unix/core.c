@@ -753,8 +753,8 @@ static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = realloc(loop->watchers,
-                     (nwatchers + 2) * sizeof(loop->watchers[0]));
+  watchers = uv__realloc(loop->watchers,
+                         (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     abort();
@@ -1032,8 +1032,8 @@ int uv_os_homedir(char* buffer, size_t* size) {
   buf = NULL;
 
   for (;;) {
-    free(buf);
-    buf = malloc(bufsize);
+    uv__free(buf);
+    buf = uv__malloc(bufsize);
 
     if (buf == NULL)
       return -ENOMEM;
@@ -1047,12 +1047,12 @@ int uv_os_homedir(char* buffer, size_t* size) {
   }
 
   if (r != 0) {
-    free(buf);
+    uv__free(buf);
     return -r;
   }
 
   if (result == NULL) {
-    free(buf);
+    uv__free(buf);
     return -ENOENT;
   }
 
@@ -1060,13 +1060,13 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
   if (len >= *size) {
     *size = len;
-    free(buf);
+    uv__free(buf);
     return -ENOBUFS;
   }
 
   memcpy(buffer, pw.pw_dir, len + 1);
   *size = len;
-  free(buf);
+  uv__free(buf);
 
   return 0;
 }

@@ -124,7 +124,7 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     utf16_buffer_len = (int) *size_ptr;
   }
 
-  utf16_buffer = (WCHAR*) malloc(sizeof(WCHAR) * utf16_buffer_len);
+  utf16_buffer = (WCHAR*) uv__malloc(sizeof(WCHAR) * utf16_buffer_len);
   if (!utf16_buffer) {
     return UV_ENOMEM;
   }
@@ -153,7 +153,7 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     goto error;
   }
 
-  free(utf16_buffer);
+  uv__free(utf16_buffer);
 
   /* utf8_len *does* include the terminating null at this point, but the */
   /* returned size shouldn't. */
@@ -161,7 +161,7 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
   return 0;
 
  error:
-  free(utf16_buffer);
+  uv__free(utf16_buffer);
   return uv_translate_sys_error(err);
 }
 
@@ -380,9 +380,9 @@ int uv_set_process_title(const char* title) {
   }
 
   /* Convert to wide-char string */
-  title_w = (WCHAR*)malloc(sizeof(WCHAR) * length);
+  title_w = (WCHAR*)uv__malloc(sizeof(WCHAR) * length);
   if (!title_w) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
   length = uv_utf8_to_utf16(title, title_w, length);
@@ -402,14 +402,14 @@ int uv_set_process_title(const char* title) {
   }
 
   EnterCriticalSection(&process_title_lock);
-  free(process_title);
-  process_title = strdup(title);
+  uv__free(process_title);
+  process_title = uv__strdup(title);
   LeaveCriticalSection(&process_title_lock);
 
   err = 0;
 
 done:
-  free(title_w);
+  uv__free(title_w);
   return uv_translate_sys_error(err);
 }
 
@@ -429,14 +429,14 @@ static int uv__get_process_title() {
   }
 
   assert(!process_title);
-  process_title = (char*)malloc(length);
+  process_title = (char*)uv__malloc(length);
   if (!process_title) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "malloc");
+    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
   /* Do utf16 -> utf8 conversion here */
   if (!uv_utf16_to_utf8(title_w, -1, process_title, length)) {
-    free(process_title);
+    uv__free(process_title);
     return -1;
   }
 
@@ -542,9 +542,9 @@ int uv_uptime(double* uptime) {
       goto internalError;
     }
 
-    free(malloced_buffer);
+    uv__free(malloced_buffer);
 
-    buffer = malloced_buffer = (BYTE*) malloc(buffer_size);
+    buffer = malloced_buffer = (BYTE*) uv__malloc(buffer_size);
     if (malloced_buffer == NULL) {
       *uptime = 0;
       return UV_ENOMEM;
@@ -586,7 +586,7 @@ int uv_uptime(double* uptime) {
         uint64_t value = *((uint64_t*) address);
         *uptime = (double) (object_type->PerfTime.QuadPart - value) /
                   (double) object_type->PerfFreq.QuadPart;
-        free(malloced_buffer);
+        uv__free(malloced_buffer);
         return 0;
       }
     }
@@ -596,12 +596,12 @@ int uv_uptime(double* uptime) {
   }
 
   /* If we get here, the uptime value was not found. */
-  free(malloced_buffer);
+  uv__free(malloced_buffer);
   *uptime = 0;
   return UV_ENOSYS;
 
  internalError:
-  free(malloced_buffer);
+  uv__free(malloced_buffer);
   *uptime = 0;
   return UV_EIO;
 }
@@ -627,14 +627,14 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   GetSystemInfo(&system_info);
   cpu_count = system_info.dwNumberOfProcessors;
 
-  cpu_infos = calloc(cpu_count, sizeof *cpu_infos);
+  cpu_infos = uv__calloc(cpu_count, sizeof *cpu_infos);
   if (cpu_infos == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;
   }
 
   sppi_size = cpu_count * sizeof(*sppi);
-  sppi = malloc(sppi_size);
+  sppi = uv__malloc(sppi_size);
   if (sppi == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;
@@ -727,7 +727,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
     assert(len > 0);
 
     /* Allocate 1 extra byte for the null terminator. */
-    cpu_info->model = malloc(len + 1);
+    cpu_info->model = uv__malloc(len + 1);
     if (cpu_info->model == NULL) {
       err = ERROR_OUTOFMEMORY;
       goto error;
@@ -749,7 +749,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
     cpu_info->model[len] = '\0';
   }
 
-  free(sppi);
+  uv__free(sppi);
 
   *cpu_count_ptr = cpu_count;
   *cpu_infos_ptr = cpu_infos;
@@ -759,10 +759,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
  error:
   /* This is safe because the cpu_infos array is zeroed on allocation. */
   for (i = 0; i < cpu_count; i++)
-    free(cpu_infos[i].model);
+    uv__free(cpu_infos[i].model);
 
-  free(cpu_infos);
-  free(sppi);
+  uv__free(cpu_infos);
+  uv__free(sppi);
 
   return uv_translate_sys_error(err);
 }
@@ -772,10 +772,10 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++) {
-    free(cpu_infos[i].model);
+    uv__free(cpu_infos[i].model);
   }
 
-  free(cpu_infos);
+  uv__free(cpu_infos);
 }
 
 
@@ -894,13 +894,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     if (r == ERROR_SUCCESS)
       break;
 
-    free(win_address_buf);
+    uv__free(win_address_buf);
 
     switch (r) {
       case ERROR_BUFFER_OVERFLOW:
         /* This happens when win_address_buf is NULL or too small to hold */
         /* all adapters. */
-        win_address_buf = malloc(win_address_buf_size);
+        win_address_buf = uv__malloc(win_address_buf_size);
         if (win_address_buf == NULL)
           return UV_ENOMEM;
 
@@ -908,7 +908,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
       case ERROR_NO_DATA: {
         /* No adapters were found. */
-        uv_address_buf = malloc(1);
+        uv_address_buf = uv__malloc(1);
         if (uv_address_buf == NULL)
           return UV_ENOMEM;
 
@@ -968,7 +968,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
                                     NULL,
                                     FALSE);
     if (name_size <= 0) {
-      free(win_address_buf);
+      uv__free(win_address_buf);
       return uv_translate_sys_error(GetLastError());
     }
     uv_address_buf_size += name_size;
@@ -985,9 +985,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   }
 
   /* Allocate space to store interface data plus adapter names. */
-  uv_address_buf = malloc(uv_address_buf_size);
+  uv_address_buf = uv__malloc(uv_address_buf_size);
   if (uv_address_buf == NULL) {
-    free(win_address_buf);
+    uv__free(win_address_buf);
     return UV_ENOMEM;
   }
 
@@ -1021,8 +1021,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
                                     NULL,
                                     FALSE);
     if (name_size <= 0) {
-      free(win_address_buf);
-      free(uv_address_buf);
+      uv__free(win_address_buf);
+      uv__free(uv_address_buf);
       return uv_translate_sys_error(GetLastError());
     }
 
@@ -1106,7 +1106,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     name_buf += name_size;
   }
 
-  free(win_address_buf);
+  uv__free(win_address_buf);
 
   *addresses_ptr = uv_address_buf;
   *count_ptr = count;
@@ -1117,7 +1117,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
 void uv_free_interface_addresses(uv_interface_address_t* addresses,
     int count) {
-  free(addresses);
+  uv__free(addresses);
 }
 
 
@@ -1167,7 +1167,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
     return UV_EINVAL;
 
   /* Check if the USERPROFILE environment variable is set first */
-  path = malloc(*size * sizeof(WCHAR));
+  path = uv__malloc(*size * sizeof(WCHAR));
 
   if (path == NULL)
     return UV_ENOMEM;
@@ -1176,20 +1176,20 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
   if (len == 0) {
     r = GetLastError();
-    free(path);
+    uv__free(path);
 
     if (r != ERROR_ENVVAR_NOT_FOUND)
       return uv_translate_sys_error(r);
   } else {
     if (len > *size) {
-      free(path);
+      uv__free(path);
       *size = len - 1;
       return UV_ENOBUFS;
     }
 
     bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
     assert(len + 1 == bufsize);
-    free(path);
+    uv__free(path);
     *size = len;
 
     return 0;
