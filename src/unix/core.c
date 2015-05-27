@@ -700,16 +700,20 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
 
 static int uv__run_pending(uv_loop_t* loop) {
   QUEUE* q;
+  QUEUE pq;
   uv__io_t* w;
 
   if (QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
-  while (!QUEUE_EMPTY(&loop->pending_queue)) {
-    q = QUEUE_HEAD(&loop->pending_queue);
+  QUEUE_INIT(&pq);
+  q = QUEUE_HEAD(&loop->pending_queue);
+  QUEUE_SPLIT(&loop->pending_queue, q, &pq);
+
+  while (!QUEUE_EMPTY(&pq)) {
+    q = QUEUE_HEAD(&pq);
     QUEUE_REMOVE(q);
     QUEUE_INIT(q);
-
     w = QUEUE_DATA(q, uv__io_t, pending_queue);
     w->cb(loop, w, UV__POLLOUT);
   }
