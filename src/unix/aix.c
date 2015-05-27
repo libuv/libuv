@@ -50,7 +50,9 @@
 
 #include <sys/pollset.h>
 #include <ctype.h>
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
 #include <sys/ahafs_evProds.h>
+#endif
 
 #include <sys/mntctl.h>
 #include <sys/vmount.h>
@@ -501,6 +503,7 @@ void uv_loadavg(double avg[3]) {
 }
 
 
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
 static char *uv__rawname(char *cp) {
   static char rawbuf[FILENAME_MAX+1];
   char *dp = rindex(cp, '/');
@@ -859,11 +862,16 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
   else /* Call the actual JavaScript callback function */
     handle->cb(handle, (const char*)&fname, events, 0);
 }
+#endif
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
   return 0;
+#else
+  return -ENOSYS;
+#endif
 }
 
 
@@ -871,6 +879,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
                       const char* filename,
                       unsigned int flags) {
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   int  fd, rc, i = 0, res = 0;
   char cwd[PATH_MAX];
   char absolute_path[PATH_MAX];
@@ -937,11 +946,14 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   uv__io_start(handle->loop, &handle->event_watcher, UV__POLLIN);
 
   return 0;
+#else
+  return -ENOSYS;
+#endif
 }
 
 
 int uv_fs_event_stop(uv_fs_event_t* handle) {
-
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   if (!uv__is_active(handle))
     return 0;
 
@@ -959,11 +971,18 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   handle->event_watcher.fd = -1;
 
   return 0;
+#else
+  return -ENOSYS;
+#endif
 }
 
 
 void uv__fs_event_close(uv_fs_event_t* handle) {
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   uv_fs_event_stop(handle);
+#else
+  UNREACHABLE();
+#endif
 }
 
 
