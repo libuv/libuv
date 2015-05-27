@@ -73,7 +73,7 @@ void uv__util_init() {
   InitializeCriticalSection(&process_title_lock);
 
   /* Retrieve high-resolution timer frequency
-   * and precompute its reciprocal. 
+   * and precompute its reciprocal.
    */
   if (QueryPerformanceFrequency(&perf_frequency)) {
     hrtime_interval_ = 1.0 / perf_frequency.QuadPart;
@@ -802,8 +802,8 @@ static int is_windows_version_or_greater(DWORD os_major,
 
   /* Perform the test. */
   return (int) VerifyVersionInfo(
-    &osvi, 
-    VER_MAJORVERSION | VER_MINORVERSION | 
+    &osvi,
+    VER_MAJORVERSION | VER_MINORVERSION |
     VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
     condition_mask);
 }
@@ -871,7 +871,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
       GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
   }
-  
+
 
   /* Fetch the size of the adapters reported by windows, and then get the */
   /* list itself. */
@@ -1054,14 +1054,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
               prefix->PrefixLength <= prefix_len)
             continue;
 
-          if (address_prefix_match(sa->sa_family, sa, 
+          if (address_prefix_match(sa->sa_family, sa,
               prefix->Address.lpSockaddr, prefix->PrefixLength)) {
             prefix_len = prefix->PrefixLength;
           }
         }
 
         /* If there is no matching prefix information, return a single-host
-         * subnet mask (e.g. 255.255.255.255 for IPv4). 
+         * subnet mask (e.g. 255.255.255.255 for IPv4).
          */
         if (!prefix_len)
           prefix_len = (sa->sa_family == AF_INET6) ? 128 : 32;
@@ -1117,6 +1117,356 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 void uv_free_interface_addresses(uv_interface_address_t* addresses,
     int count) {
   free(addresses);
+}
+
+
+int uv_network_interfaces(uv_network_interface_t** interfaces_ptr,
+    int* count_ptr) {
+  IP_ADAPTER_ADDRESSES* win_adapter_buf;
+  ULONG win_adapter_buf_size;
+  IP_ADAPTER_ADDRESSES* adapter;
+
+  uv_network_interface_t* uv_interface;
+  uv_network_interface_t* uv_adapter_buf;
+  size_t uv_adapter_buf_size;
+  char* name_buf;
+  int count;
+
+  int is_vista_or_greater;
+  is_vista_or_greater = is_windows_version_or_greater(6, 0, 0, 0);
+  ULONG flags;
+
+  if (is_vista_or_greater) {
+    flags = GAA_FLAG_SKIP_DNS_SERVER
+          | GAA_FLAG_INCLUDE_PREFIX;
+  } else {
+    /* We need at least XP SP1. */
+    if (!is_windows_version_or_greater(5, 1, 1, 0))
+      return UV_ENOTSUP;
+    flags = GAA_FLAG_SKIP_DNS_SERVER
+          | GAA_FLAG_INCLUDE_PREFIX;
+  }
+
+  /* Fetch the size of the adapters reported by windows, and then get the
+   * list itself.
+   */
+  win_adapter_buf_size = 0;
+  win_adapter_buf = NULL;
+
+  for (;;) {
+    ULONG r;
+
+    /* If win_adapter_buf is 0, then GetAdaptersAddresses will fail with
+     * ERROR_BUFFER_OVERFLOW, and the required buffer size will be stored in
+     * win_adapter_buf_size.
+     */
+    r = GetAdaptersAddresses(AF_UNSPEC,
+                             flags,
+                             NULL,
+                             win_adapter_buf,
+                             &win_adapter_buf_size);
+
+    if (r == ERROR_SUCCESS)
+      break;
+
+    free(win_adapter_buf);
+
+    switch (r) {
+      case ERROR_BUFFER_OVERFLOW:
+        /* This happens when win_adapter_buf is NULL or too small to hold
+         * all adapters.
+         */
+        win_adapter_buf = malloc(win_adapter_buf_size);
+        if (win_adapter_buf == NULL)
+          return UV_ENOMEM;
+
+        continue;
+
+      case ERROR_NO_DATA: {
+        /* No adapters were found. */
+        uv_adapter_buf = malloc(1);
+        if (uv_adapter_buf == NULL)
+          return UV_ENOMEM;
+
+        *count_ptr = 0;
+        *interfaces_ptr = uv_adapter_buf;
+
+        return 0;
+      }
+
+      case ERROR_INVALID_PARAMETER:
+        /* MSDN says:
+         *   "This error is returned for any of the following conditions: the
+         *   SizePointer parameter is NULL, the Address parameter is not
+         *   AF_INET, AF_INET6, or AF_UNSPEC, or the address information for
+         *   the parameters requested is greater than ULONG_MAX."
+         * Since the first two conditions are not met, it must be that the
+         * adapter data is too big.
+         */
+        return UV_ENOBUFS;
+
+      default:
+        /* Other (unspecified) errors can happen, but we don't have any
+         * special meaning for them.
+         */
+        assert(r != ERROR_SUCCESS);
+        return uv_translate_sys_error(r);
+    }
+  }
+
+  /* Count the number of enabled interfaces and compute how much space is
+   * needed to store their info.
+   */
+  count = 0;
+  uv_adapter_buf_size = 0;
+
+  for (adapter = win_adapter_buf;
+       adapter != NULL;
+       adapter = adapter->Next)
+  {
+    IP_ADAPTER_UNICAST_ADDRESS* unicast_address;
+    int name_size;
+
+    /* Filter out unwanted interface types. */
+    if (adapter->IfType != IF_TYPE_ETHERNET_CSMACD &&
+        adapter->IfType != IF_TYPE_SOFTWARE_LOOPBACK &&
+        adapter->IfType != IF_TYPE_IEEE80211 &&
+        adapter->IfType != IF_TYPE_TUNNEL &&
+        adapter->IfType != IF_TYPE_IEEE1394)
+    {
+      continue;
+    }
+
+    /* Compute the size of the interface name. */
+    name_size = WideCharToMultiByte(CP_UTF8,
+                                    0,
+                                    adapter->FriendlyName,
+                                    -1,
+                                    NULL,
+                                    0,
+                                    NULL,
+                                    FALSE);
+
+    if (name_size <= 0) {
+      free(win_adapter_buf);
+      return uv_translate_sys_error(GetLastError());
+    }
+
+    uv_adapter_buf_size += name_size;
+
+    /* Count the number of addresses associated with this interface, and
+     * compute the size.
+     */
+    for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS*)
+                           adapter->FirstUnicastAddress;
+         unicast_address != NULL;
+         unicast_address = unicast_address->Next)
+    {
+      count++;
+      uv_adapter_buf_size += sizeof(uv_network_interface_t);
+    }
+
+    /* If no addresses have been found, still allocate one entry for
+     * each adapter to store the physical address.
+     */
+    if (count == 0) {
+      count = 1;
+      uv_adapter_buf_size += sizeof(uv_network_interface_t);
+    }
+  }
+
+  /* Allocate space to store interface data plus adapter names. */
+  uv_adapter_buf = malloc(uv_adapter_buf_size);
+  if (uv_adapter_buf == NULL) {
+    free(win_adapter_buf);
+    return UV_ENOMEM;
+  }
+
+  /* Compute the start of the uv_network_interface_t array, and the
+   * place in the buffer where the interface names will be stored.
+   */
+  uv_interface = uv_adapter_buf;
+  name_buf = (char*) (uv_adapter_buf + count);
+
+  /* Fill out the output buffer. */
+  for (adapter = win_adapter_buf;
+       adapter != NULL;
+       adapter = adapter->Next)
+  {
+    IP_ADAPTER_UNICAST_ADDRESS* unicast_address;
+    int name_size;
+    size_t max_name_size;
+
+    /* Filter out unwanted interface types. */
+    if (adapter->IfType != IF_TYPE_ETHERNET_CSMACD &&
+        adapter->IfType != IF_TYPE_SOFTWARE_LOOPBACK &&
+        adapter->IfType != IF_TYPE_IEEE80211 &&
+        adapter->IfType != IF_TYPE_TUNNEL &&
+        adapter->IfType != IF_TYPE_IEEE1394)
+    {
+      continue;
+    }
+
+    /* Convert the interface name to UTF8. */
+    max_name_size = (char*) uv_adapter_buf + uv_adapter_buf_size - name_buf;
+    if (max_name_size > (size_t) INT_MAX) {
+      max_name_size = INT_MAX;
+    }
+    name_size = WideCharToMultiByte(CP_UTF8,
+                                    0,
+                                    adapter->FriendlyName,
+                                    -1,
+                                    name_buf,
+                                    (int) max_name_size,
+                                    NULL,
+                                    FALSE);
+
+    if (name_size <= 0) {
+      free(win_adapter_buf);
+      free(uv_adapter_buf);
+      return uv_translate_sys_error(GetLastError());
+    }
+
+    int address_index = 0;
+    /* Add an uv_network_interface_t element for every unicast address. */
+    for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS*)
+                           adapter->FirstUnicastAddress;
+         unicast_address != NULL
+                         || address_index == 0; /* Loop at least once */
+         unicast_address = unicast_address != NULL
+                         ? unicast_address->Next
+                         : NULL)
+    {
+      struct sockaddr* sa;
+      ULONG prefix_len;
+
+      memset(uv_interface, 0, sizeof *uv_interface);
+
+      uv_interface->name = name_buf;
+
+      /* Flags */
+      uv_interface->is_up_and_running
+        = (adapter->OperStatus == IfOperStatusUp);
+      uv_interface->is_loopback
+        = (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK);
+      /* Assume that an interface that has broadcast has also multicast,
+       * and otherwise is a point-to-point interface. Note that this
+       * refers to interface capabilities and not to addresses.
+       */
+      uv_interface->has_multicast
+        = !(adapter->Flags & IP_ADAPTER_NO_MULTICAST);
+      uv_interface->has_broadcast
+        = uv_interface->has_multicast;
+      uv_interface->is_point_to_point
+        = !uv_interface->has_broadcast;
+      /* Promiscuous mode is not available under Windows. */
+      uv_interface->is_promiscuous
+        = 0;
+
+      /* Physical layer */
+      uv_interface->phys_addr_len = adapter->PhysicalAddressLength;
+      /* Clamp size to prevent overflowing. */
+      if (uv_interface->phys_addr_len > sizeof(uv_interface->phys_addr)) {
+        uv_interface->phys_addr_len = sizeof(uv_interface->phys_addr);
+      }
+      memcpy(uv_interface->phys_addr,
+             adapter->PhysicalAddress,
+             uv_interface->phys_addr_len);
+
+      /* Retrieve addresses if the adapter has any */
+      if (unicast_address != NULL) {
+        sa = unicast_address->Address.lpSockaddr;
+
+        if (sa->sa_family == AF_INET6) {
+          uv_interface->address.address6 = *((struct sockaddr_in6 *) sa);
+        } else {
+          uv_interface->address.address4 = *((struct sockaddr_in *) sa);
+        }
+
+        IP_ADAPTER_PREFIX* prefix = adapter->FirstPrefix;
+
+        /* Order of FirstPrefix does not match order of FirstUnicastAddress,
+         * so we need to find corresponding prefix.
+         */
+        while (prefix &&
+              (prefix->Address.lpSockaddr->sa_family != sa->sa_family ||
+              !address_prefix_match(sa->sa_family, sa,
+                                    prefix->Address.lpSockaddr,
+                                    prefix->PrefixLength)))
+        {
+          prefix = prefix->Next;
+        }
+
+        /* If there is no matching prefix information, use a single-host
+         * subnet mask (e.g. 255.255.255.255 for IPv4).
+         */
+        if (prefix != NULL && prefix->PrefixLength) {
+          prefix_len = prefix->PrefixLength;
+        } else {
+          prefix_len = (sa->sa_family == AF_INET6) ? 128 : 32;
+        }
+          
+        /* Netmask: The prefix we just matched is either the subnet, or
+         * the point-to-point address. Both work well as subnet prefix. 
+         */
+        if (sa->sa_family == AF_INET6) {
+          uv_interface->netmask.netmask6.sin6_family = AF_INET6;
+          memset(uv_interface->netmask.netmask6.sin6_addr.s6_addr,
+                 0xff,
+                 prefix_len >> 3);
+          /* Ensure that we don't write past the size of the data. */
+          if (prefix_len % 8) {
+            uv_interface->netmask.netmask6.sin6_addr.s6_addr[prefix_len >> 3]
+              = 0xff << (8 - prefix_len % 8);
+          }
+        } else {
+          uv_interface->netmask.netmask4.sin_family = AF_INET;
+          uv_interface->netmask.netmask4.sin_addr.s_addr = (prefix_len > 0)
+            ? htonl(0xffffffff << (32 - prefix_len))
+            : 0;
+        }
+
+        /* Broadcast: If the subnet isn't a point-to-point, this means 
+         * that the third prefix from here is the multicast/broadcast.
+         * If it is, it's actually a network address that we matched
+         * in place of the subnet, so it's only one cell after, not two.
+         */
+        if (prefix_len != 32 && prefix_len != 128) {
+          (prefix = prefix->Next) && (prefix = prefix->Next);
+        } else {
+          (prefix = prefix->Next);
+        }
+
+        if (prefix != NULL) {
+          if (sa->sa_family == AF_INET6) {
+            uv_interface->broadcast.broadcast6
+              = *((struct sockaddr_in6 *) prefix->Address.lpSockaddr);
+          } else {
+            uv_interface->broadcast.broadcast4
+              = *((struct sockaddr_in *) prefix->Address.lpSockaddr);
+          }
+        }
+      }
+
+      uv_interface++;
+      address_index++;
+    }
+
+    name_buf += name_size;
+  }
+
+  free(win_adapter_buf);
+
+  *interfaces_ptr = uv_adapter_buf;
+  *count_ptr = count;
+
+  return 0;
+}
+
+
+void uv_free_network_interfaces(uv_network_interface_t* interfaces,
+    int count) {
+  free(interfaces);
 }
 
 
