@@ -1364,17 +1364,20 @@ int uv_network_interfaces(uv_network_interface_t** interfaces_ptr,
         = 0;
 
       /* Physical layer */
-      uv_interface->phys_addr_len = adapter->PhysicalAddressLength;
-      /* Clamp size to prevent overflowing. */
-      if (uv_interface->phys_addr_len > sizeof(uv_interface->phys_addr)) {
-        uv_interface->phys_addr_len = sizeof(uv_interface->phys_addr);
+      if (uv_interface->phys_addr_len = adapter->PhysicalAddressLength) {
+        /* Clamp size to prevent overflowing. */
+        if (uv_interface->phys_addr_len > sizeof(uv_interface->phys_addr)) {
+          uv_interface->phys_addr_len = sizeof(uv_interface->phys_addr);
+        }
+        memcpy(uv_interface->phys_addr,
+               adapter->PhysicalAddress,
+               uv_interface->phys_addr_len);
       }
-      memcpy(uv_interface->phys_addr,
-             adapter->PhysicalAddress,
-             uv_interface->phys_addr_len);
 
-      /* Retrieve addresses if the adapter has any */
-      if (unicast_address != NULL) {
+      /* Stop here if the adapter has no addresses. */
+      if (unicast_address == NULL) {
+        uv_interface->address.address4.sin_family = AF_UNSPEC;
+      } else {
         sa = unicast_address->Address.lpSockaddr;
 
         if (sa->sa_family == AF_INET6) {
@@ -1426,25 +1429,16 @@ int uv_network_interfaces(uv_network_interface_t** interfaces_ptr,
             : 0;
         }
 
-        /* Broadcast: If the subnet isn't a point-to-point, this means 
-         * that the third prefix from here is the multicast/broadcast.
-         * If it is, it's actually a network address that we matched
-         * in place of the subnet, so it's only one cell after, not two.
+        /* Broadcast address is calculated from the netmask, except
+         * for single-host and IPv6 addresses that don't have one.
          */
-        if (prefix_len != 32 && prefix_len != 128) {
-          (prefix = prefix->Next) && (prefix = prefix->Next);
+        if (sa->sa_family == AF_INET && prefix_len != 32) {
+          uv_interface->broadcast.broadcast4.sin_family = AF_INET;
+          uv_interface->broadcast.broadcast4.sin_addr.s_addr
+            = uv_interface->address.address4.sin_addr.s_addr
+            | (~uv_interface->netmask.netmask4.sin_addr.s_addr);
         } else {
-          (prefix = prefix->Next);
-        }
-
-        if (prefix != NULL) {
-          if (sa->sa_family == AF_INET6) {
-            uv_interface->broadcast.broadcast6
-              = *((struct sockaddr_in6 *) prefix->Address.lpSockaddr);
-          } else {
-            uv_interface->broadcast.broadcast4
-              = *((struct sockaddr_in *) prefix->Address.lpSockaddr);
-          }
+          uv_interface->broadcast.broadcast4.sin_family = AF_UNSPEC;
         }
       }
 
