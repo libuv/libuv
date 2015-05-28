@@ -32,28 +32,39 @@ TEST_IMPL(platform_output) {
   uv_rusage_t rusage;
   uv_cpu_info_t* cpus;
   uv_interface_address_t* interfaces;
+  uv_network_interface_t* network_interfaces;
   int count;
   int i;
   int err;
 
+
+/* uv_get_process_title */
   err = uv_get_process_title(buffer, sizeof(buffer));
   ASSERT(err == 0);
   printf("uv_get_process_title: %s\n", buffer);
 
+
+/* uv_cwd */
   size = sizeof(buffer);
   err = uv_cwd(buffer, &size);
   ASSERT(err == 0);
   printf("uv_cwd: %s\n", buffer);
 
+
+/* uv_resident_set_memory */
   err = uv_resident_set_memory(&rss);
   ASSERT(err == 0);
   printf("uv_resident_set_memory: %llu\n", (unsigned long long) rss);
 
+
+/* uv_uptime */
   err = uv_uptime(&uptime);
   ASSERT(err == 0);
   ASSERT(uptime > 0);
   printf("uv_uptime: %f\n", uptime);
 
+
+/* uv_getrusage */
   err = uv_getrusage(&rusage);
   ASSERT(err == 0);
   ASSERT(rusage.ru_utime.tv_sec >= 0);
@@ -68,6 +79,8 @@ TEST_IMPL(platform_output) {
          (unsigned long long) rusage.ru_stime.tv_sec,
          (unsigned long long) rusage.ru_stime.tv_usec);
 
+
+/* uv_cpu_info */
   err = uv_cpu_info(&cpus, &count);
   ASSERT(err == 0);
 
@@ -86,6 +99,8 @@ TEST_IMPL(platform_output) {
   }
   uv_free_cpu_info(cpus, count);
 
+
+/* uv_interface_addresses */
   err = uv_interface_addresses(&interfaces, &count);
   ASSERT(err == 0);
 
@@ -121,6 +136,85 @@ TEST_IMPL(platform_output) {
     }
   }
   uv_free_interface_addresses(interfaces, count);
+
+
+/* uv_network_interfaces */
+  err = uv_network_interfaces(&network_interfaces, &count);
+  ASSERT(err == 0);
+
+  printf("uv_network_interfaces:\n");
+  for (i = 0; i < count; i++) {
+
+    /* Meta & flags */
+    printf("  name: %s\n", network_interfaces[i].name);
+    printf("    is_up_and_running: %d\n", network_interfaces[i].is_up_and_running);
+    printf("    is_loopback: %d\n", network_interfaces[i].is_loopback);
+    printf("    is_point_to_point: %d\n", network_interfaces[i].is_point_to_point);
+    printf("    is_promiscuous: %d\n", network_interfaces[i].is_promiscuous);
+    printf("    has_broadcast: %d\n", network_interfaces[i].has_broadcast);
+    printf("    has_multicast: %d\n", network_interfaces[i].has_multicast);
+
+    /* Address */
+    if (network_interfaces[i].address.address4.sin_family == AF_INET6) {
+      uv_ip6_name(&network_interfaces[i].address.address6, buffer, sizeof(buffer));
+      printf("    address: inet6 %s\n", buffer);
+    } else if (network_interfaces[i].address.address4.sin_family == AF_INET) {
+      uv_ip4_name(&network_interfaces[i].address.address4, buffer, sizeof(buffer));
+      printf("    address: inet4 %s\n", buffer);
+    } else {
+      printf("    address: none\n");
+    }
+
+    /* Broadcast */
+    if (network_interfaces[i].broadcast.broadcast4.sin_family == AF_INET6) {
+      uv_ip6_name(&network_interfaces[i].broadcast.broadcast6, buffer, sizeof(buffer));
+      printf("    broadcast: inet6 %s\n", buffer);
+    } else if (network_interfaces[i].broadcast.broadcast4.sin_family == AF_INET) {
+      uv_ip4_name(&network_interfaces[i].broadcast.broadcast4, buffer, sizeof(buffer));
+      printf("    broadcast: inet4 %s\n", buffer);
+    } else {
+      printf("    broadcast: none\n");
+    }
+
+    /* Netmask */
+    if (network_interfaces[i].netmask.netmask4.sin_family == AF_INET6) {
+      uv_ip6_name(&network_interfaces[i].netmask.netmask6, buffer, sizeof(buffer));
+      printf("    netmask: inet6 %s\n", buffer);
+    } else if (network_interfaces[i].netmask.netmask4.sin_family == AF_INET) {
+      uv_ip4_name(&network_interfaces[i].netmask.netmask4, buffer, sizeof(buffer));
+      printf("    netmask: inet4 %s\n", buffer);
+    } else {
+      printf("    netmask: none\n");
+    }
+
+    /* Physical layer */
+    ASSERT(network_interfaces[i].phys_addr_len == 0 ||
+           network_interfaces[i].phys_addr_len == 6 ||
+           network_interfaces[i].phys_addr_len == 8);
+    if (network_interfaces[i].phys_addr_len == 6) {
+      printf("    physical address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+             (unsigned char)network_interfaces[i].phys_addr[0],
+             (unsigned char)network_interfaces[i].phys_addr[1],
+             (unsigned char)network_interfaces[i].phys_addr[2],
+             (unsigned char)network_interfaces[i].phys_addr[3],
+             (unsigned char)network_interfaces[i].phys_addr[4],
+             (unsigned char)network_interfaces[i].phys_addr[5]);
+    } else if (network_interfaces[i].phys_addr_len == 8) {
+      printf("    physical address: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+             (unsigned char)network_interfaces[i].phys_addr[0],
+             (unsigned char)network_interfaces[i].phys_addr[1],
+             (unsigned char)network_interfaces[i].phys_addr[2],
+             (unsigned char)network_interfaces[i].phys_addr[3],
+             (unsigned char)network_interfaces[i].phys_addr[4],
+             (unsigned char)network_interfaces[i].phys_addr[5],
+             (unsigned char)network_interfaces[i].phys_addr[6],
+             (unsigned char)network_interfaces[i].phys_addr[7]);
+    } else {
+      printf("    physical address: none\n");
+    }
+  }
+
+  uv_free_network_interfaces(network_interfaces, count);
 
   return 0;
 }

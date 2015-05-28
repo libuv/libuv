@@ -231,19 +231,19 @@ UNUSED static void close_loop(uv_loop_t* loop) {
 }
 
 UNUSED static int can_ipv6(void) {
-  uv_interface_address_t* addr;
+  uv_network_interface_t* interfaces;
   int supported;
   int count;
   int i;
 
-  if (uv_interface_addresses(&addr, &count))
+  if (uv_network_interfaces(&interfaces, &count))
     return 1;  /* Assume IPv6 support on failure. */
 
   supported = 0;
   for (i = 0; supported == 0 && i < count; i += 1)
-    supported = (AF_INET6 == addr[i].address.address6.sin6_family);
+    supported = (AF_INET6 == interfaces[i].address.address6.sin6_family);
 
-  uv_free_interface_addresses(addr, count);
+  uv_free_network_interfaces(interfaces, count);
   return supported;
 }
 

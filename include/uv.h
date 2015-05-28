@@ -228,6 +228,7 @@ typedef struct uv_work_s uv_work_t;
 /* None of the above. */
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
+typedef struct uv_network_interface_s uv_network_interface_t;
 typedef struct uv_dirent_s uv_dirent_t;
 
 typedef enum {
@@ -980,6 +981,30 @@ struct uv_interface_address_s {
   } netmask;
 };
 
+typedef struct uv_network_interface_s {
+  char* name;
+  int is_up_and_running;
+  int is_loopback;
+  int is_point_to_point;
+  int is_promiscuous;
+  int has_broadcast;
+  int has_multicast;
+  char phys_addr[8]; /* Enough to store a firewire address. */
+  unsigned int phys_addr_len;
+  union {
+    struct sockaddr_in address4;
+    struct sockaddr_in6 address6;
+  } address;
+  union {
+    struct sockaddr_in broadcast4;
+    struct sockaddr_in6 broadcast6;
+  } broadcast;
+  union {
+    struct sockaddr_in netmask4;
+    struct sockaddr_in6 netmask6;
+  } netmask;
+} uv_network_interface_s;
+
 typedef enum {
   UV_DIRENT_UNKNOWN,
   UV_DIRENT_FILE,
@@ -1037,6 +1062,11 @@ UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
                                      int* count);
 UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
                                            int count);
+
+UV_EXTERN int uv_network_interfaces(uv_network_interface_t** interfaces,
+                                    int* count);
+UV_EXTERN void uv_free_network_interfaces(uv_network_interface_t* interfaces,
+                                          int count);
 
 
 typedef enum {
