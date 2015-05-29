@@ -40,13 +40,18 @@ static void uv__req_init(uv_loop_t* loop,
 #include <stdlib.h>
 
 #define MAX_THREADPOOL_SIZE 128
+#define IDLE_THREAD_TIMEOUT 5e9  /* 5 seconds in nanoseconds. */
+
+enum { EMPTY, ACTIVE, DEAD };
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
-static unsigned int nthreads;
-static uv_thread_t* threads;
-static uv_thread_t default_threads[4];
+static unsigned int busy_threads;
+static unsigned int num_threads;
+static unsigned int max_threads;
+static char threads_bitmap[MAX_THREADPOOL_SIZE];
+static uv_thread_t threads[MAX_THREADPOOL_SIZE];
 static QUEUE exit_message;
 static QUEUE wq;
 static volatile int initialized;
@@ -61,36 +66,55 @@ static void uv__cancelled(struct uv__work* w) {
  * never holds the global mutex and the loop-local mutex at the same time.
  */
 static void worker(void* arg) {
+  uintptr_t thread_idx;
   struct uv__work* w;
   QUEUE* q;
 
-  (void) arg;
+  thread_idx = (uintptr_t) arg;
 
   for (;;) {
     uv_mutex_lock(&mutex);
 
-    while (QUEUE_EMPTY(&wq))
-      uv_cond_wait(&cond, &mutex);
+    while (QUEUE_EMPTY(&wq)) {
+      /* If we are the first thread, just wait, don't terminate; it might not
+       * be possible to spin up a new thread again due to resource restrictions
+       * like RLIMIT_NPROC.
+       */
+      if (thread_idx == 0) {
+        uv_cond_wait(&cond, &mutex);
+        continue;
+      }
+
+      if (uv_cond_timedwait(&cond, &mutex, IDLE_THREAD_TIMEOUT)) {
+        threads_bitmap[thread_idx] = DEAD;
+        num_threads -= 1;
+        uv_mutex_unlock(&mutex);
+        return;
+      }
+    }
 
     q = QUEUE_HEAD(&wq);
 
-    if (q == &exit_message)
+    if (q == &exit_message) {
+      threads_bitmap[thread_idx] = DEAD;
+      num_threads -= 1;
       uv_cond_signal(&cond);
-    else {
+    } else {
       QUEUE_REMOVE(q);
-      QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
-                             executing. */
+      QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is executing. */
+      busy_threads += 1;
     }
 
     uv_mutex_unlock(&mutex);
 
     if (q == &exit_message)
-      break;
+      return;
 
     w = QUEUE_DATA(q, struct uv__work, wq);
     w->work(w);
 
     uv_mutex_lock(&w->loop->wq_mutex);
+    busy_threads -= 1;
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
     QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
@@ -100,10 +124,74 @@ static void worker(void* arg) {
 }
 
 
-static void post(QUEUE* q) {
+/* Only call when you hold the global mutex.  maybe_resize_threadpool() can
+ * drop the lock when executing but it will be locked again on return.
+ */
+static void maybe_resize_threadpool(void) {
+  uintptr_t thread_idx;
+  int join_thread;
+  int err;
+
+  if (busy_threads < num_threads)
+    return;
+
+  if (max_threads == num_threads)
+    return;
+
+  /* Find the first available slot in the threads array.  Skip checking
+   * the first slot in the normal case because the first thread doesn't
+   * terminate when it's idle like the other threads do, it's always active.
+   */
+  thread_idx = (num_threads > 0);
+  for (; threads_bitmap[thread_idx] == ACTIVE; thread_idx += 1) {
+    /* Can't happen because max_threads <= ARRAY_SIZE(threads_bitmap). */
+    assert(thread_idx < ARRAY_SIZE(threads_bitmap));
+  }
+
+  /* Do we need to reap the thread before we can reuse the slot? */
+  join_thread = (threads_bitmap[thread_idx] == DEAD);
+
+  /* Mark the thread as active now so another thread won't also try to join
+   * it when we drop the lock.  And we need to drop the lock because thread
+   * cleanup can be slow.
+   */
+  threads_bitmap[thread_idx] = ACTIVE;
+  num_threads += 1;
+
+  /* Drop the lock for a second, joining and creating threads can be slow. */
+  uv_mutex_unlock(&mutex);
+
+  if (join_thread)
+    if (uv_thread_join(threads + thread_idx))
+      abort();
+
+  err = uv_thread_create(threads + thread_idx, worker, (void*) thread_idx);
   uv_mutex_lock(&mutex);
+
+  if (err == 0)
+    return;
+
+  threads_bitmap[thread_idx] = EMPTY;
+  num_threads -= 1;
+
+  if (num_threads == 0)
+    abort();  /* No forward progress, couldn't start the first thread. */
+}
+
+
+/* Only call when you hold the global mutex.  post_unlocked() can
+ * drop the lock when executing but it will be locked again on return.
+ */
+static void post_unlocked(QUEUE* q) {
+  maybe_resize_threadpool();
   QUEUE_INSERT_TAIL(&wq, q);
   uv_cond_signal(&cond);
+}
+
+
+static void post(QUEUE* q) {
+  uv_mutex_lock(&mutex);
+  post_unlocked(q);
   uv_mutex_unlock(&mutex);
 }
 
@@ -115,46 +203,50 @@ UV_DESTRUCTOR(static void cleanup(void)) {
   if (initialized == 0)
     return;
 
-  post(&exit_message);
+  uv_mutex_lock(&mutex);
 
-  for (i = 0; i < nthreads; i++)
+  /* Tell threads to terminate. */
+  if (num_threads > 0)
+    post_unlocked(&exit_message);
+
+  /* Wait for threads to terminate. */
+  while (num_threads > 0) {
+    uv_cond_wait(&cond, &mutex);
+    uv_cond_signal(&cond);
+  }
+
+  for (i = 0; i < ARRAY_SIZE(threads); i += 1) {
+    assert(threads_bitmap[i] != ACTIVE);
+
+    if (threads_bitmap[i] != DEAD)
+      continue;
+
     if (uv_thread_join(threads + i))
       abort();
 
-  if (threads != default_threads)
-    uv__free(threads);
+    threads_bitmap[i] = EMPTY;
+  }
 
+  uv_mutex_unlock(&mutex);
   uv_mutex_destroy(&mutex);
   uv_cond_destroy(&cond);
 
-  threads = NULL;
-  nthreads = 0;
   initialized = 0;
 }
 #endif
 
 
 static void init_once(void) {
-  unsigned int i;
   const char* val;
 
-  nthreads = ARRAY_SIZE(default_threads);
+  max_threads = 8;  /* FIXME(bnoordhuis) Arbitrary default. */
   val = getenv("UV_THREADPOOL_SIZE");
   if (val != NULL)
-    nthreads = atoi(val);
-  if (nthreads == 0)
-    nthreads = 1;
-  if (nthreads > MAX_THREADPOOL_SIZE)
-    nthreads = MAX_THREADPOOL_SIZE;
-
-  threads = default_threads;
-  if (nthreads > ARRAY_SIZE(default_threads)) {
-    threads = uv__malloc(nthreads * sizeof(threads[0]));
-    if (threads == NULL) {
-      nthreads = ARRAY_SIZE(default_threads);
-      threads = default_threads;
-    }
-  }
+    max_threads = atoi(val);
+  if (max_threads == 0)
+    max_threads = 1;
+  if (max_threads > ARRAY_SIZE(threads))
+    max_threads = ARRAY_SIZE(threads);
 
   if (uv_cond_init(&cond))
     abort();
@@ -163,10 +255,6 @@ static void init_once(void) {
     abort();
 
   QUEUE_INIT(&wq);
-
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_create(threads + i, worker, NULL))
-      abort();
 
   initialized = 1;
 }
