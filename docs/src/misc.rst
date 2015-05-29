@@ -272,7 +272,7 @@ API
     Gets the current user's home directory. On Windows, `uv_os_homedir()` first
     checks the `USERPROFILE` environment variable using
     `GetEnvironmentVariableW()`. If `USERPROFILE` is not set,
-    `SHGetKnownFolderPath()` is called. On all other operating systems,
+    `GetUserProfileDirectoryW()` is called. On all other operating systems,
     `uv_os_homedir()` first checks the `HOME` environment variable using
     :man:`getenv(3)`. If `HOME` is not set, :man:`getpwuid_r(3)` is called. The
     user's home directory is stored in `buffer`. When `uv_os_homedir()` is
