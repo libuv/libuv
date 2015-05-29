@@ -36,8 +36,7 @@
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <windows.h>
-#include <shlobj.h>
-#include <objbase.h>
+#include <userenv.h>
 
 
 /*
@@ -1158,6 +1157,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 
 int uv_os_homedir(char* buffer, size_t* size) {
+  HANDLE hToken;
   wchar_t* path;
   size_t bufsize;
   size_t len;
@@ -1166,19 +1166,19 @@ int uv_os_homedir(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  /* Check if the USERPROFILE environment variable is set first */
   path = malloc(*size * sizeof(WCHAR));
 
   if (path == NULL)
     return UV_ENOMEM;
 
+  /* Check if the USERPROFILE environment variable is set first */
   len = GetEnvironmentVariableW(L"USERPROFILE", path, *size);
 
   if (len == 0) {
     r = GetLastError();
-    free(path);
 
     if (r != ERROR_ENVVAR_NOT_FOUND)
+      free(path);
       return uv_translate_sys_error(r);
   } else {
     if (len > *size) {
@@ -1195,27 +1195,44 @@ int uv_os_homedir(char* buffer, size_t* size) {
     return 0;
   }
 
-  /* USERPROFILE is not set, so call SHGetKnownFolderPath() */
-  if (SHGetKnownFolderPath(&FOLDERID_Profile, 0, NULL, &path) != S_OK)
-    return uv_translate_sys_error(GetLastError());
+  /* USERPROFILE is not set, so call GetUserProfileDirectoryW() */
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &hToken) == 0) {
+    r = GetLastError();
+    free(path);
+    return uv_translate_sys_error(r);
+  }
 
+  if (!GetUserProfileDirectoryW(hToken, path, size)) {
+    r = GetLastError();
+    free(path);
+    CloseHandle(hToken);
+
+    if (r == ERROR_INSUFFICIENT_BUFFER) {
+      *size = *size - 1;
+      return UV_ENOBUFS;
+    }
+
+    return uv_translate_sys_error(r);
+  }
+
+  CloseHandle(hToken);
   bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
 
   if (bufsize == 0) {
     r = GetLastError();
+    free(path);
 
     if (r == ERROR_INSUFFICIENT_BUFFER) {
-      *size = wcslen(path);
-      CoTaskMemFree(path);
+      *size = *size - 1;
       return UV_ENOBUFS;
     }
 
-    CoTaskMemFree(path);
     return uv_translate_sys_error(r);
   }
 
-  CoTaskMemFree(path);
-  *size = bufsize - 1;
+  free(path);
+  assert(*size == bufsize);
+  *size = *size - 1;
 
   return 0;
 }
