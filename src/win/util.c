@@ -1157,7 +1157,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 
 int uv_os_homedir(char* buffer, size_t* size) {
-  HANDLE hToken;
+  HANDLE token;
   wchar_t* path;
   size_t bufsize;
   size_t len;
@@ -1188,24 +1188,23 @@ int uv_os_homedir(char* buffer, size_t* size) {
     }
 
     bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
-    assert(len + 1 == bufsize);
     free(path);
-    *size = len;
+    *size = bufsize - 1;
 
     return 0;
   }
 
   /* USERPROFILE is not set, so call GetUserProfileDirectoryW() */
-  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &hToken) == 0) {
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0) {
     r = GetLastError();
     free(path);
     return uv_translate_sys_error(r);
   }
 
-  if (!GetUserProfileDirectoryW(hToken, path, size)) {
+  if (!GetUserProfileDirectoryW(token, path, size)) {
     r = GetLastError();
     free(path);
-    CloseHandle(hToken);
+    CloseHandle(token);
 
     if (r == ERROR_INSUFFICIENT_BUFFER) {
       *size = *size - 1;
@@ -1215,7 +1214,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
     return uv_translate_sys_error(r);
   }
 
-  CloseHandle(hToken);
+  CloseHandle(token);
   bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
 
   if (bufsize == 0) {
@@ -1231,8 +1230,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
   }
 
   free(path);
-  assert(*size == bufsize);
-  *size = *size - 1;
+  *size = bufsize - 1;
 
   return 0;
 }
