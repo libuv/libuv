@@ -156,6 +156,7 @@ extern "C" {
   XX(PROCESS, process)                                                        \
   XX(STREAM, stream)                                                          \
   XX(TCP, tcp)                                                                \
+  XX(DEVICE, device)                                                          \
   XX(TIMER, timer)                                                            \
   XX(TTY, tty)                                                                \
   XX(UDP, udp)                                                                \
@@ -206,6 +207,7 @@ typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
 typedef struct uv_pipe_s uv_pipe_t;
 typedef struct uv_tty_s uv_tty_t;
+typedef struct uv_device_s uv_device_t;
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
@@ -657,6 +659,28 @@ UV_EXTERN int uv_udp_recv_stop(uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_size(const uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_count(const uv_udp_t* handle);
 
+
+/*
+ * uv_device_t is a subclass of uv_stream_t.
+ *
+ * Represents a device stream.
+ */
+struct uv_device_s {
+  UV_HANDLE_FIELDS
+  UV_STREAM_FIELDS
+  UV_DEVICE_PRIVATE_FIELDS
+};
+
+UV_EXTERN int uv_device_open(uv_loop_t* loop,
+                             uv_device_t* device,
+                             uv_os_fd_t fd);
+UV_EXTERN int uv_device_init(uv_loop_t* loop,
+                             uv_device_t* device,
+                             const char* path,
+                             int flags);
+UV_EXTERN int uv_device_ioctl(uv_device_t* device,
+                              unsigned int cmd,
+                              uv_ioargs_t* args);
 
 /*
  * uv_tty_t is a subclass of uv_stream_t.

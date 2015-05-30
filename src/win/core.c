@@ -564,6 +564,10 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
     fd_out = (uv_os_fd_t)((uv_poll_t*) handle)->socket;
     break;
 
+  case UV_DEVICE:
+    fd_out = (uv_os_fd_t)((uv_device_t*) handle)->handle;
+    break;
+
   default:
     return UV_EINVAL;
   }

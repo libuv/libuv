@@ -192,6 +192,12 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
+
+/* struct parameters for uv_device_ioctl, need to extend */
+typedef struct uv_ioargs_s {
+  void* arg;
+} uv_ioargs_t; 
+
 #define UV_LOOP_PRIVATE_FIELDS                                                \
   unsigned long flags;                                                        \
   int backend_fd;                                                             \
@@ -270,6 +276,8 @@ typedef struct {
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
 #define UV_TCP_PRIVATE_FIELDS /* empty */
+
+#define UV_DEVICE_PRIVATE_FIELDS /* empty */
 
 #define UV_UDP_PRIVATE_FIELDS                                                 \
   uv_alloc_cb alloc_cb;                                                       \
