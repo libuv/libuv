@@ -160,6 +160,12 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
 #define uv__is_active(h)                                                      \
   (((h)->flags & UV__HANDLE_ACTIVE) != 0)
 
+#define uv__is_stream(h)                                                      \
+  ((h)->type == UV_TCP ||                                                     \
+   (h)->type == UV_TTY ||                                                     \
+   (h)->type == UV_DEVICE ||                                                  \
+   (h)->type == UV_NAMED_PIPE)
+
 #define uv__is_closing(h)                                                     \
   (((h)->flags & (UV_CLOSING |  UV_CLOSED)) != 0)
 

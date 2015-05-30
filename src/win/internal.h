@@ -167,6 +167,25 @@ void uv_process_udp_send_req(uv_loop_t* loop, uv_udp_t* handle,
 void uv_udp_close(uv_loop_t* loop, uv_udp_t* handle);
 void uv_udp_endgame(uv_loop_t* loop, uv_udp_t* handle);
 
+/*
+ * Device
+ */
+int uv_device_read_start(uv_device_t* handle, uv_alloc_cb alloc_cb,
+    uv_read_cb read_cb);
+int uv_device_write(uv_loop_t* loop, uv_write_t* req, uv_device_t* handle,
+    const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb);
+
+void uv_process_device_read_req(uv_loop_t* loop, uv_device_t* handle,
+    uv_req_t* req);
+void uv_process_device_write_req(uv_loop_t* loop, uv_device_t* handle,
+    uv_write_t* req);
+void uv_process_device_accept_req(uv_loop_t* loop, uv_device_t* handle,
+    uv_req_t* raw_req);
+void uv_process_device_connect_req(uv_loop_t* loop, uv_device_t* handle,
+    uv_connect_t* req);
+
+void uv_device_close(uv_loop_t* loop, uv_device_t* device);
+void uv_device_endgame(uv_loop_t* loop, uv_device_t* handle);
 
 /*
  * Pipes
