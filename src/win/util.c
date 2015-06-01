@@ -1166,10 +1166,8 @@ int uv_os_homedir(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  bufsize = MAX_PATH;
-
   /* Check if the USERPROFILE environment variable is set first */
-  len = GetEnvironmentVariableW(L"USERPROFILE", path, bufsize);
+  len = GetEnvironmentVariableW(L"USERPROFILE", path, MAX_PATH);
 
   if (len == 0) {
     r = GetLastError();
@@ -1204,6 +1202,8 @@ int uv_os_homedir(char* buffer, size_t* size) {
   /* USERPROFILE is not set, so call GetUserProfileDirectoryW() */
   if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
     return uv_translate_sys_error(GetLastError());
+
+  bufsize = MAX_PATH;
 
   if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
     r = GetLastError();
