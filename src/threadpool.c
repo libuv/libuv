@@ -50,8 +50,6 @@ static uv_mutex_t mutex;
 static unsigned int busy_threads;
 static unsigned int num_threads;
 static unsigned int max_threads;
-static char threads_bitmap[MAX_THREADPOOL_SIZE];
-static uv_thread_t threads[MAX_THREADPOOL_SIZE];
 static QUEUE exit_message;
 static QUEUE wq;
 static volatile int initialized;
@@ -65,12 +63,16 @@ static void uv__cancelled(struct uv__work* w) {
 /* To avoid deadlock with uv_cancel() it's crucial that the worker
  * never holds the global mutex and the loop-local mutex at the same time.
  */
-static void worker(void* arg) {
-  uintptr_t thread_idx;
+#ifdef _WIN32
+static unsigned __stdcall worker(void* arg) {
+#else
+static void* worker(void* arg) {
+#endif
   struct uv__work* w;
+  int first_thread;
   QUEUE* q;
 
-  thread_idx = (uintptr_t) arg;
+  first_thread = (intptr_t) arg;
 
   for (;;) {
     uv_mutex_lock(&mutex);
@@ -80,23 +82,21 @@ static void worker(void* arg) {
        * be possible to spin up a new thread again due to resource restrictions
        * like RLIMIT_NPROC.
        */
-      if (thread_idx == 0) {
+      if (first_thread) {
         uv_cond_wait(&cond, &mutex);
         continue;
       }
 
       if (uv_cond_timedwait(&cond, &mutex, IDLE_THREAD_TIMEOUT)) {
-        threads_bitmap[thread_idx] = DEAD;
         num_threads -= 1;
         uv_mutex_unlock(&mutex);
-        return;
+        goto out;
       }
     }
 
     q = QUEUE_HEAD(&wq);
 
     if (q == &exit_message) {
-      threads_bitmap[thread_idx] = DEAD;
       num_threads -= 1;
       uv_cond_signal(&cond);
     } else {
@@ -108,7 +108,7 @@ static void worker(void* arg) {
     uv_mutex_unlock(&mutex);
 
     if (q == &exit_message)
-      return;
+      goto out;
 
     w = QUEUE_DATA(q, struct uv__work, wq);
     w->work(w);
@@ -121,6 +121,41 @@ static void worker(void* arg) {
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
   }
+
+out:
+  return 0;
+}
+
+
+static int new_detached_thread(int first_thread) {
+#ifdef _WIN32
+  HANDLE thread;
+  void* arg;
+
+  arg = (void*) (intptr_t) first_thread;
+  thread = (HANDLE) _beginthreadex(NULL, 0, worker, arg, 0, NULL);
+  if (thread == NULL)
+    return -errno;
+
+  if (CloseHandle(thread))
+    abort();
+
+  return 0;
+#else
+  pthread_t thread;
+  void* arg;
+  int err;
+
+  arg = (void*) (intptr_t) first_thread;
+  err = pthread_create(&thread, NULL, worker, arg);
+  if (err)
+    return -err;
+
+  if (pthread_detach(thread))
+    abort();
+
+  return 0;
+#endif
 }
 
 
@@ -128,8 +163,7 @@ static void worker(void* arg) {
  * drop the lock when executing but it will be locked again on return.
  */
 static void maybe_resize_threadpool(void) {
-  uintptr_t thread_idx;
-  int join_thread;
+  int first_thread;
   int err;
 
   if (busy_threads < num_threads)
@@ -138,41 +172,15 @@ static void maybe_resize_threadpool(void) {
   if (max_threads == num_threads)
     return;
 
-  /* Find the first available slot in the threads array.  Skip checking
-   * the first slot in the normal case because the first thread doesn't
-   * terminate when it's idle like the other threads do, it's always active.
-   */
-  thread_idx = (num_threads > 0);
-  for (; threads_bitmap[thread_idx] == ACTIVE; thread_idx += 1) {
-    /* Can't happen because max_threads <= ARRAY_SIZE(threads_bitmap). */
-    assert(thread_idx < ARRAY_SIZE(threads_bitmap));
-  }
+  first_thread = (num_threads == 0);
 
-  /* Do we need to reap the thread before we can reuse the slot? */
-  join_thread = (threads_bitmap[thread_idx] == DEAD);
-
-  /* Mark the thread as active now so another thread won't also try to join
-   * it when we drop the lock.  And we need to drop the lock because thread
-   * cleanup can be slow.
-   */
-  threads_bitmap[thread_idx] = ACTIVE;
-  num_threads += 1;
-
-  /* Drop the lock for a second, joining and creating threads can be slow. */
+  /* Drop the lock for a second, creating threads can be slow. */
   uv_mutex_unlock(&mutex);
-
-  if (join_thread)
-    if (uv_thread_join(threads + thread_idx))
-      abort();
-
-  err = uv_thread_create(threads + thread_idx, worker, (void*) thread_idx);
+  err = new_detached_thread(first_thread);
   uv_mutex_lock(&mutex);
 
   if (err == 0)
-    return;
-
-  threads_bitmap[thread_idx] = EMPTY;
-  num_threads -= 1;
+    num_threads += 1;
 
   if (num_threads == 0)
     abort();  /* No forward progress, couldn't start the first thread. */
@@ -198,8 +206,6 @@ static void post(QUEUE* q) {
 
 #ifndef _WIN32
 UV_DESTRUCTOR(static void cleanup(void)) {
-  unsigned int i;
-
   if (initialized == 0)
     return;
 
@@ -213,18 +219,6 @@ UV_DESTRUCTOR(static void cleanup(void)) {
   while (num_threads > 0) {
     uv_cond_wait(&cond, &mutex);
     uv_cond_signal(&cond);
-  }
-
-  for (i = 0; i < ARRAY_SIZE(threads); i += 1) {
-    assert(threads_bitmap[i] != ACTIVE);
-
-    if (threads_bitmap[i] != DEAD)
-      continue;
-
-    if (uv_thread_join(threads + i))
-      abort();
-
-    threads_bitmap[i] = EMPTY;
   }
 
   uv_mutex_unlock(&mutex);
@@ -245,8 +239,8 @@ static void init_once(void) {
     max_threads = atoi(val);
   if (max_threads == 0)
     max_threads = 1;
-  if (max_threads > ARRAY_SIZE(threads))
-    max_threads = ARRAY_SIZE(threads);
+  if (max_threads > MAX_THREADPOOL_SIZE)
+    max_threads = MAX_THREADPOOL_SIZE;
 
   if (uv_cond_init(&cond))
     abort();
