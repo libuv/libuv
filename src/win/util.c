@@ -1158,7 +1158,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 int uv_os_homedir(char* buffer, size_t* size) {
   HANDLE token;
-  wchar_t* path;
+  wchar_t path[MAX_PATH];
   size_t bufsize;
   size_t len;
   int r;
@@ -1166,71 +1166,74 @@ int uv_os_homedir(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  path = malloc(*size * sizeof(WCHAR));
-
-  if (path == NULL)
-    return UV_ENOMEM;
+  bufsize = MAX_PATH;
 
   /* Check if the USERPROFILE environment variable is set first */
-  len = GetEnvironmentVariableW(L"USERPROFILE", path, *size);
+  len = GetEnvironmentVariableW(L"USERPROFILE", path, bufsize);
 
   if (len == 0) {
     r = GetLastError();
 
+    /* Don't return an error if USERPROFILE was not found */
     if (r != ERROR_ENVVAR_NOT_FOUND)
-      free(path);
       return uv_translate_sys_error(r);
+  } else if (len > MAX_PATH) {
+    /* This should not be possible */
+    return UV_EIO;
   } else {
-    if (len > *size) {
-      free(path);
-      *size = len - 1;
+    /* Check how much space we need */
+    bufsize = uv_utf16_to_utf8(path, -1, NULL, 0);
+
+    if (bufsize == 0) {
+      return uv_translate_sys_error(GetLastError());
+    } else if (bufsize > *size) {
+      *size = bufsize - 1;
       return UV_ENOBUFS;
     }
 
+    /* Convert to UTF-8 */
     bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
-    free(path);
-    *size = bufsize - 1;
 
+    if (bufsize == 0)
+      return uv_translate_sys_error(GetLastError());
+
+    *size = bufsize - 1;
     return 0;
   }
 
   /* USERPROFILE is not set, so call GetUserProfileDirectoryW() */
-  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0) {
-    r = GetLastError();
-    free(path);
-    return uv_translate_sys_error(r);
-  }
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
+    return uv_translate_sys_error(GetLastError());
 
-  if (!GetUserProfileDirectoryW(token, path, size)) {
+  if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
     r = GetLastError();
-    free(path);
     CloseHandle(token);
 
-    if (r == ERROR_INSUFFICIENT_BUFFER) {
-      *size = *size - 1;
-      return UV_ENOBUFS;
-    }
+    /* This should not be possible */
+    if (r == ERROR_INSUFFICIENT_BUFFER)
+      return UV_EIO;
 
     return uv_translate_sys_error(r);
   }
 
   CloseHandle(token);
-  bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
+
+  /* Check how much space we need */
+  bufsize = uv_utf16_to_utf8(path, -1, NULL, 0);
 
   if (bufsize == 0) {
-    r = GetLastError();
-    free(path);
-
-    if (r == ERROR_INSUFFICIENT_BUFFER) {
-      *size = *size - 1;
-      return UV_ENOBUFS;
-    }
-
-    return uv_translate_sys_error(r);
+    return uv_translate_sys_error(GetLastError());
+  } else if (bufsize > *size) {
+    *size = bufsize - 1;
+    return UV_ENOBUFS;
   }
 
-  free(path);
-  *size = bufsize - 1;
+  /* Convert to UTF-8 */
+  bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
 
+  if (bufsize == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  *size = bufsize - 1;
   return 0;
 }
