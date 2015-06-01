@@ -36,8 +36,7 @@
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <windows.h>
-#include <shlobj.h>
-#include <objbase.h>
+#include <userenv.h>
 
 
 /*
@@ -1158,7 +1157,8 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 
 int uv_os_homedir(char* buffer, size_t* size) {
-  wchar_t* path;
+  HANDLE token;
+  wchar_t path[MAX_PATH];
   size_t bufsize;
   size_t len;
   int r;
@@ -1167,55 +1167,73 @@ int uv_os_homedir(char* buffer, size_t* size) {
     return UV_EINVAL;
 
   /* Check if the USERPROFILE environment variable is set first */
-  path = malloc(*size * sizeof(WCHAR));
-
-  if (path == NULL)
-    return UV_ENOMEM;
-
-  len = GetEnvironmentVariableW(L"USERPROFILE", path, *size);
+  len = GetEnvironmentVariableW(L"USERPROFILE", path, MAX_PATH);
 
   if (len == 0) {
     r = GetLastError();
-    free(path);
 
+    /* Don't return an error if USERPROFILE was not found */
     if (r != ERROR_ENVVAR_NOT_FOUND)
       return uv_translate_sys_error(r);
+  } else if (len > MAX_PATH) {
+    /* This should not be possible */
+    return UV_EIO;
   } else {
-    if (len > *size) {
-      free(path);
-      *size = len - 1;
+    /* Check how much space we need */
+    bufsize = uv_utf16_to_utf8(path, -1, NULL, 0);
+
+    if (bufsize == 0) {
+      return uv_translate_sys_error(GetLastError());
+    } else if (bufsize > *size) {
+      *size = bufsize - 1;
       return UV_ENOBUFS;
     }
 
+    /* Convert to UTF-8 */
     bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
-    assert(len + 1 == bufsize);
-    free(path);
-    *size = len;
 
+    if (bufsize == 0)
+      return uv_translate_sys_error(GetLastError());
+
+    *size = bufsize - 1;
     return 0;
   }
 
-  /* USERPROFILE is not set, so call SHGetKnownFolderPath() */
-  if (SHGetKnownFolderPath(&FOLDERID_Profile, 0, NULL, &path) != S_OK)
+  /* USERPROFILE is not set, so call GetUserProfileDirectoryW() */
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
     return uv_translate_sys_error(GetLastError());
 
-  bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
+  bufsize = MAX_PATH;
 
-  if (bufsize == 0) {
+  if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
     r = GetLastError();
+    CloseHandle(token);
 
-    if (r == ERROR_INSUFFICIENT_BUFFER) {
-      *size = wcslen(path);
-      CoTaskMemFree(path);
-      return UV_ENOBUFS;
-    }
+    /* This should not be possible */
+    if (r == ERROR_INSUFFICIENT_BUFFER)
+      return UV_EIO;
 
-    CoTaskMemFree(path);
     return uv_translate_sys_error(r);
   }
 
-  CoTaskMemFree(path);
-  *size = bufsize - 1;
+  CloseHandle(token);
 
+  /* Check how much space we need */
+  bufsize = uv_utf16_to_utf8(path, -1, NULL, 0);
+
+  if (bufsize == 0) {
+    return uv_translate_sys_error(GetLastError());
+  } else if (bufsize > *size) {
+    *size = bufsize - 1;
+    return UV_ENOBUFS;
+  }
+
+  /* Convert to UTF-8 */
+  bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
+
+  if (bufsize == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  *size = bufsize - 1;
   return 0;
 }

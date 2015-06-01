@@ -108,9 +108,9 @@
             'libraries': [
               '-ladvapi32',
               '-liphlpapi',
-              '-lole32',
               '-lpsapi',
               '-lshell32',
+              '-luserenv',
               '-lws2_32'
             ],
           },
