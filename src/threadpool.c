@@ -182,6 +182,9 @@ static void init_once(void) {
     max_threads = 1;
   if (max_threads > MAX_THREADPOOL_SIZE)
     max_threads = MAX_THREADPOOL_SIZE;
+  /* Allow forcing synchronous mode for testing purposes. */
+  if (val != NULL && strcmp(val, "really-zero") == 0)
+    max_threads = 0;
 
   if (uv_cond_init(&cond))
     abort();
