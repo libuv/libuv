@@ -26,6 +26,7 @@
 #include <signal.h>
 #include <limits.h>
 #include <wchar.h>
+#include <malloc.h>    /* alloca */
 
 #include "uv.h"
 #include "internal.h"
