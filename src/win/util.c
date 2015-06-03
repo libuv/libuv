@@ -1159,7 +1159,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 int uv_os_homedir(char* buffer, size_t* size) {
   HANDLE token;
   wchar_t path[MAX_PATH];
-  size_t bufsize;
+  DWORD bufsize;
   size_t len;
   int r;
 
