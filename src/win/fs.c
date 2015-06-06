@@ -528,7 +528,7 @@ void fs__close(uv_fs_t* req) {
 
   VERIFY_FD(fd, req);
 
-  result = _close(fd);
+  result = fd <= 2 ? 0 : _close(fd);
   SET_REQ_RESULT(req, result);
 }
 

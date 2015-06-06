@@ -1916,7 +1916,8 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 
 void uv_tty_close(uv_tty_t* handle) {
-  CloseHandle(handle->handle);
+  if (!uv__is_stdio_handle(handle->handle))
+    CloseHandle(handle->handle);
 
   if (handle->flags & UV_HANDLE_READING)
     uv_tty_read_stop(handle);
