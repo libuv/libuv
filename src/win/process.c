@@ -445,13 +445,11 @@ static WCHAR* search_path(const WCHAR *file,
  * Quotes command line arguments
  * Returns a pointer to the end (next char to be written) of the buffer
  */
-WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target, BOOL isFilePath) {
+WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
   size_t len = wcslen(source);
   size_t i;
   int quote_hit;
   WCHAR* start;
-  BOOL needEscapeChar;
-  BOOL needQuote;
 
   if (len == 0) {
     /* Need double quotation for empty argument */
@@ -460,18 +458,14 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target, BOOL isFilePath) {
     return target;
   }
 
-  needEscapeChar = (isFilePath && (NULL != wcspbrk(source, L"(")))
-				|| (NULL != wcspbrk(source, L"\"\\"));
-  needQuote = (NULL != wcspbrk(source, L" \t\""));
-
-  if (!needQuote && !needEscapeChar) {
+  if (NULL == wcspbrk(source, L" \t\"")) {
     /* No quotation needed */
     wcsncpy(target, source, len);
     target += len;
     return target;
   }
 
-  if (needQuote && !needEscapeChar) {
+  if (NULL == wcspbrk(source, L"\"\\")) {
     /*
      * No embedded double quotes or backlashes, so I can just wrap
      * quote marks around the whole thing.
@@ -501,8 +495,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target, BOOL isFilePath) {
    *   output: "hello world\"
    */
 
-  if (needQuote)
-	*(target++) = L'"';
+  *(target++) = L'"';
   start = target;
   quote_hit = 1;
 
@@ -514,17 +507,13 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target, BOOL isFilePath) {
     } else if(source[i - 1] == L'"') {
       quote_hit = 1;
       *(target++) = L'\\';
-	} else if (isFilePath && source[i - 1] == L'(') {
-		quote_hit = 0;
-		*(target++) = L'^';
-	} else {
+    } else {
       quote_hit = 0;
     }
   }
   target[0] = L'\0';
   wcsrev(start);
-  if (needQuote)
-	  *(target++) = L'"';
+  *(target++) = L'"';
   return target;
 }
 
@@ -601,7 +590,7 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
       pos += arg_len - 1;
     } else {
       /* Quote/escape, if needed. */
-      pos = quote_cmd_arg(temp_buffer, pos, arg==args);
+      pos = quote_cmd_arg(temp_buffer, pos);
     }
 
     *pos++ = *(arg + 1) ? L' ' : L'\0';
