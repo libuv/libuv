@@ -993,9 +993,73 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   return 0;
 }
 
+TEST_IMPL(spawn_left_bracket_filepath) {
+  int r;
+  static uv_fs_t open_req, write_req, close_req;
+  uv_buf_t buf;
+  // batch file name and content.
+  char filename[] = "left(bracket.bat";
+  char filecontent[1024] = "";  
+
+  init_process_options("", exit_cb);
+  strcat(filecontent,"\"");
+  strcat(filecontent,exepath);
+  strcat(filecontent,"\" spawn_helper2");
+
+  // create the batch file and write content to it.
+  unlink(filename);
+  r = uv_fs_open(uv_default_loop(), &open_req, filename, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req.result >= 0);
+  uv_fs_req_cleanup(&open_req);
+
+
+  buf.base = filecontent;
+  buf.len = sizeof(filecontent);
+  r = uv_fs_write(uv_default_loop(), &write_req, open_req.result, &buf, 1, -1, NULL);
+  ASSERT(r >= 0);
+  ASSERT(write_req.result >= 0);
+  uv_fs_req_cleanup(&write_req);
+
+  r = uv_fs_close(uv_default_loop(), &close_req, open_req.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  // spawn the batch file
+  uv_pipe_t out;
+  uv_stdio_container_t stdio[2];
+
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_IGNORE;
+  options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  options.stdio[1].data.stream = (uv_stream_t*)&out;
+  options.stdio_count = 2;
+  options.file = options.args[0]  = filename;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
+  printf("output is: %s", output);
+  ASSERT(strstr(output,"hello world\n") != NULL);
+  unlink(filename);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 
 int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr);
-WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target);
+WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target, BOOL isFilePath);
 
 TEST_IMPL(argument_escaping) {
   const WCHAR* test_str[] = {
@@ -1032,7 +1096,7 @@ TEST_IMPL(argument_escaping) {
   ASSERT(test_output != NULL);
   for (i = 0; i < count; ++i) {
     test_output[i] = calloc(2 * (wcslen(test_str[i]) + 2), sizeof(WCHAR));
-    quote_cmd_arg(test_str[i], test_output[i]);
+    quote_cmd_arg(test_str[i], test_output[i], FALSE);
     wprintf(L"input : %s\n", test_str[i]);
     wprintf(L"output: %s\n", test_output[i]);
     total_size += wcslen(test_output[i]) + 1;
