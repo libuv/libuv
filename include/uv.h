@@ -199,10 +199,7 @@ typedef enum {
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_stream_s uv_stream_t;
-typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
-typedef struct uv_pipe_s uv_pipe_t;
-typedef struct uv_tty_s uv_tty_t;
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
@@ -493,15 +490,28 @@ UV_EXTERN int uv_is_closing(const uv_handle_t* handle);
 
 
 /*
+ * Stream type generator macro
+ *
+ * To generate tcp stream
+ *typedef UV_STREAM_TYPE(tcp, TCP) uv_tcp_t;
+ *
+ */
+
+#define UV_STREAM_TYPE(type, TYPE)                                            \
+  struct uv_##type##_s {                                                      \
+    UV_HANDLE_FIELDS                                                          \
+    UV_STREAM_FIELDS                                                          \
+    UV_##TYPE##_PRIVATE_FIELDS                                                \
+  }                                                                           \
+
+
+/*
  * uv_tcp_t is a subclass of uv_stream_t.
  *
  * Represents a TCP stream or TCP server.
  */
-struct uv_tcp_s {
-  UV_HANDLE_FIELDS
-  UV_STREAM_FIELDS
-  UV_TCP_PRIVATE_FIELDS
-};
+typedef UV_STREAM_TYPE(tcp, TCP) uv_tcp_t;
+
 
 UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
 UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
@@ -633,11 +643,8 @@ UV_EXTERN int uv_udp_recv_stop(uv_udp_t* handle);
  *
  * Representing a stream for the console.
  */
-struct uv_tty_s {
-  UV_HANDLE_FIELDS
-  UV_STREAM_FIELDS
-  UV_TTY_PRIVATE_FIELDS
-};
+
+typedef UV_STREAM_TYPE(tty, TTY) uv_tty_t;
 
 typedef enum {
   /* Initial/normal terminal mode */
@@ -671,12 +678,8 @@ UV_EXTERN uv_handle_type uv_guess_handle(uv_file file);
  * Representing a pipe stream or pipe server. On Windows this is a Named
  * Pipe. On Unix this is a Unix domain socket.
  */
-struct uv_pipe_s {
-  UV_HANDLE_FIELDS
-  UV_STREAM_FIELDS
-  int ipc; /* non-zero if this pipe is used for passing handles */
-  UV_PIPE_PRIVATE_FIELDS
-};
+
+typedef UV_STREAM_TYPE(pipe, PIPE) uv_pipe_t;
 
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);

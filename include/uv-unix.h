@@ -291,6 +291,7 @@ typedef struct {
   void* write_completed_queue[2];                                             \
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
+  int ipc; /* non-zero if this pipe is used for passing handles */            \
   const char* pipe_fname; /* strdup'ed */
 
 #define UV_POLL_PRIVATE_FIELDS                                                \
