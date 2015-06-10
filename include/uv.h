@@ -406,7 +406,10 @@ struct uv_shutdown_s {
   /* private */                                                               \
   uv_close_cb close_cb;                                                       \
   void* handle_queue[2];                                                      \
-  void* reserved[4];                                                          \
+  union {                                                                     \
+    int fd;                                                                   \
+    void* reserved[4];                                                        \
+  } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
 /* The abstract base class of all handles. */
