@@ -995,6 +995,10 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 
 
 int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr);
+int make_program_args_ex(const WCHAR* script_file,
+                         char** args,
+                         int verbatim_arguments,
+                         WCHAR** dst_ptr);
 WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target);
 
 TEST_IMPL(argument_escaping) {
@@ -1076,6 +1080,60 @@ TEST_IMPL(argument_escaping) {
   free(verbatim_output);
   free(non_verbatim_output);
 
+  return 0;
+}
+
+TEST_IMPL(spawn_batch_args) {
+  int r, i;
+  char* test_args[] = {
+    "IGNORED",
+    "Arg1",
+    "Arg 2",
+    "Arg3^",
+    "$ &",
+    NULL
+  };
+  const int arg_count = sizeof(test_args) / sizeof(*test_args) -1;
+  int parsed_arg_count;
+  WCHAR** wchar_args;
+  WCHAR** parsed_argv;
+  WCHAR* cmd_line;
+  const WCHAR* batch_script = L"C:\\program files\\script.bat";
+
+  wchar_args = (WCHAR**) calloc(arg_count, sizeof(WCHAR*));
+  ASSERT(wchar_args != NULL);
+
+  /* Make a copy of the args converted to a WCHAR string.
+     This makes it possible to do a string comparison later */
+  for (i = 0; i < arg_count; ++i) {
+    size_t len = mbstowcs(NULL, test_args[i], INT_MAX);
+    ASSERT(len != (size_t)-1);
+    wchar_args[i] = (WCHAR*) calloc(len+1, sizeof(WCHAR));
+    ASSERT(wchar_args[i] != NULL);
+    ASSERT(mbstowcs(wchar_args[i], test_args[i], len + 1) == len);
+  }
+
+  /* Build command line string, and then use windows to parse it*/
+  r = make_program_args_ex(batch_script, test_args, 0, &cmd_line);
+  ASSERT(r == 0);
+  wprintf(L"Cmdline = %s\n", cmd_line);
+  parsed_argv = CommandLineToArgvW(cmd_line, &parsed_arg_count);
+  ASSERT(parsed_argv != NULL);
+  ASSERT(parsed_arg_count == arg_count + 2);
+  ASSERT(wcscmp(parsed_argv[0], L"cmd") == 0);
+  ASSERT(wcscmp(parsed_argv[1], L"/c") == 0);
+  ASSERT(wcscmp(parsed_argv[2], batch_script) == 0);
+
+  for (i = 3; i < parsed_arg_count; ++i) {
+    wprintf(L"Arg %d = %s\n", i ,parsed_argv[i]);
+    ASSERT(wcscmp(parsed_argv[i], wchar_args[i-2]) == 0);
+  }
+
+  LocalFree(parsed_argv);
+  for (i = 0; i < arg_count; ++i) {
+    free(wchar_args[i]);
+  }
+  free(wchar_args);
   return 0;
 }
 
