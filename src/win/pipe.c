@@ -180,6 +180,17 @@ static HANDLE open_named_pipe(const WCHAR* name, DWORD* duplex_flags) {
 }
 
 
+static void close_pipe(uv_pipe_t* pipe) {
+  if (pipe->u.fd == -1)
+    CloseHandle(pipe->handle);
+  else
+    close(pipe->u.fd);
+
+  pipe->u.fd = -1;
+  pipe->handle = INVALID_HANDLE_VALUE;
+}
+
+
 int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
     char* name, size_t nameSize) {
   HANDLE pipeHandle;
@@ -233,6 +244,7 @@ int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
 static int uv_set_pipe_handle(uv_loop_t* loop,
                               uv_pipe_t* handle,
                               HANDLE pipeHandle,
+                              int fd,
                               DWORD duplex_flags) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
@@ -292,6 +304,7 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
   }
 
   handle->handle = pipeHandle;
+  handle->u.fd = fd;
   handle->flags |= duplex_flags;
 
   return 0;
@@ -527,6 +540,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   if (uv_set_pipe_handle(loop,
                          handle,
                          handle->pipe.serv.accept_reqs[0].pipeHandle,
+                         -1,
                          0)) {
     err = GetLastError();
     goto error;
@@ -580,7 +594,7 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   }
 
   if (pipeHandle != INVALID_HANDLE_VALUE &&
-      !uv_set_pipe_handle(loop, handle, pipeHandle, duplex_flags)) {
+      !uv_set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags)) {
     SET_REQ_SUCCESS(req);
   } else {
     SET_REQ_ERROR(req, GetLastError());
@@ -643,6 +657,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   if (uv_set_pipe_handle(loop,
                          (uv_pipe_t*) req->handle,
                          pipeHandle,
+                         -1,
                          duplex_flags)) {
     err = GetLastError();
     goto error;
@@ -737,11 +752,8 @@ void uv_pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
   }
 
   if ((handle->flags & UV_HANDLE_CONNECTION)
-      && handle->handle != INVALID_HANDLE_VALUE) {
-    CloseHandle(handle->handle);
-    handle->handle = INVALID_HANDLE_VALUE;
-  }
-
+      && handle->handle != INVALID_HANDLE_VALUE)
+    close_pipe(handle);
 }
 
 
@@ -786,7 +798,7 @@ static void uv_pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
       return;
     }
 
-    if (uv_set_pipe_handle(loop, handle, req->pipeHandle, 0)) {
+    if (uv_set_pipe_handle(loop, handle, req->pipeHandle, -1, 0)) {
       CloseHandle(req->pipeHandle);
       req->pipeHandle = INVALID_HANDLE_VALUE;
       SET_REQ_ERROR(req, GetLastError());
@@ -1770,8 +1782,7 @@ void uv_process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
   } else {
     /* This pipe is not readable. We can just close it to let the other end */
     /* know that we're done writing. */
-    CloseHandle(handle->handle);
-    handle->handle = INVALID_HANDLE_VALUE;
+    close_pipe(handle);
   }
 
   if (req->cb) {
@@ -1838,8 +1849,7 @@ static void eof_timer_cb(uv_timer_t* timer) {
   }
 
   /* Force both ends off the pipe. */
-  CloseHandle(pipe->handle);
-  pipe->handle = INVALID_HANDLE_VALUE;
+  close_pipe(pipe);
 
   /* Stop reading, so the pending read that is going to fail will */
   /* not be reported to the user. */
@@ -1899,7 +1909,11 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
     duplex_flags |= UV_HANDLE_READABLE;
 
   if (os_handle == INVALID_HANDLE_VALUE ||
-      uv_set_pipe_handle(pipe->loop, pipe, os_handle, duplex_flags) == -1) {
+      uv_set_pipe_handle(pipe->loop,
+                         pipe,
+                         os_handle,
+                         file,
+                         duplex_flags) == -1) {
     return UV_EINVAL;
   }
 
