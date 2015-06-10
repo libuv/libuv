@@ -29,7 +29,9 @@
 #include <stdlib.h> /* malloc */
 #include <string.h> /* memset */
 
-#if !defined(_WIN32)
+#if defined(_WIN32)
+# include <malloc.h> /* malloc */
+#else
 # include <net/if.h> /* if_nametoindex */
 #endif
 
