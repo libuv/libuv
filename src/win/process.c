@@ -250,6 +250,30 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   return NULL;
 }
 
+/*
+ * Gets a string which contains the full path to cmd.exe
+ * caller responsible for freeing memory on success
+ * returns non-zero on error
+ */
+static int get_cmd_path(WCHAR **path) {
+  int r;
+  int len;
+  WCHAR *alloc_str;
+  len = GetEnvironmentVariableW(L"ComSpec", NULL, 0);
+  alloc_str = (WCHAR*) uv__malloc(len * sizeof(WCHAR));
+  if (alloc_str == NULL) {
+    return ERROR_OUTOFMEMORY;
+  }
+
+  r = GetEnvironmentVariableW(L"ComSpec", alloc_str, len);
+  if (r == 0 || r >= len) {
+    r = GetLastError();
+    uv__free(alloc_str);
+    return r;
+  }
+  *path = alloc_str;
+  return 0;
+}
 
 /*
  * Helper function for search_path
@@ -260,7 +284,8 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                    size_t name_len,
                                    WCHAR *cwd,
                                    size_t cwd_len,
-                                   int name_has_ext) {
+                                   int name_has_ext,
+                                   int *isScript) {
   WCHAR* result;
 
   /* If the name itself has a nonempty extension, try this extension first */
@@ -280,6 +305,7 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                  L"com", 3,
                                  cwd, cwd_len);
   if (result != NULL) {
+    *isScript = FALSE;
     return result;
   }
 
@@ -289,6 +315,27 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                  L"exe", 3,
                                  cwd, cwd_len);
   if (result != NULL) {
+    *isScript = FALSE;
+    return result;
+  }
+
+  /* Try .cmd extension */
+  result = search_path_join_test(dir, dir_len,
+                                 name, name_len,
+                                 L"cmd", 3,
+                                 cwd, cwd_len);
+  if (result != NULL) {
+    *isScript = TRUE;
+    return result;
+  }
+
+  /* Try .bat extension */
+  result = search_path_join_test(dir, dir_len,
+                                 name, name_len,
+                                 L"bat", 3,
+                                 cwd, cwd_len);
+  if (result != NULL) {
+    *isScript = TRUE;
     return result;
   }
 
@@ -305,7 +352,7 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  *
  * Furthermore, it tries to follow the semantics that cmd.exe, with this
  * exception that PATHEXT environment variable isn't used. Since CreateProcess
- * can start only .com and .exe files, only those extensions are tried. This
+ * can start only .com, .exe, .bat, and .cmd files, only those extensions are tried. This
  * behavior equals that of msvcrt's spawn functions.
  *
  * - Do not search the path if the filename already contains a path (either
@@ -318,7 +365,7 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  *   specified extension first.
  *
  * - If the literal filename is not found in a directory, try *appending*
- *   (not replacing) .com first and then .exe.
+ *   (not replacing) .com first then .exe, .bat, and .cmd.
  *
  * - The path variable may contain relative paths; relative paths are relative
  *   to the cwd.
@@ -341,7 +388,8 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  */
 static WCHAR* search_path(const WCHAR *file,
                             WCHAR *cwd,
-                            const WCHAR *path) {
+                            const WCHAR *path,
+                            int *isScript) {
   int file_has_dir;
   WCHAR* result = NULL;
   WCHAR *file_name_start;
@@ -375,6 +423,9 @@ static WCHAR* search_path(const WCHAR *file,
   /* Check if the filename includes an extension */
   dot = wcschr(file_name_start, L'.');
   name_has_ext = (dot != NULL && dot[1] != L'\0');
+  if (name_has_ext) {
+    *isScript = (_wcsicmp(dot, L".bat") == 0 )||(_wcsicmp(dot, L".cmd") == 0);
+  }
 
   if (file_has_dir) {
     /* The file has a path inside, don't use path */
@@ -382,7 +433,7 @@ static WCHAR* search_path(const WCHAR *file,
         file, file_name_start - file,
         file_name_start, file_len - (file_name_start - file),
         cwd, cwd_len,
-        name_has_ext);
+        name_has_ext, isScript);
 
   } else {
     dir_end = path;
@@ -391,7 +442,7 @@ static WCHAR* search_path(const WCHAR *file,
     result = path_search_walk_ext(L"", 0,
                                   file, file_len,
                                   cwd, cwd_len,
-                                  name_has_ext);
+                                  name_has_ext, isScript);
 
     while (result == NULL) {
       if (*dir_end == L'\0') {
@@ -433,7 +484,7 @@ static WCHAR* search_path(const WCHAR *file,
       result = path_search_walk_ext(dir_path, dir_len,
                                     file, file_len,
                                     cwd, cwd_len,
-                                    name_has_ext);
+                                    name_has_ext, isScript);
     }
   }
 
@@ -518,12 +569,16 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
 }
 
 
-int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
+int make_program_args_ex(const WCHAR *script_file,
+                         char** args,
+                         int verbatim_arguments,
+                         WCHAR** dst_ptr) {
   char** arg;
   WCHAR* dst = NULL;
   WCHAR* temp_buffer = NULL;
   size_t dst_len = 0;
   size_t temp_buffer_len = 0;
+  size_t script_len;
   WCHAR* pos;
   int arg_count = 0;
   int err = 0;
@@ -550,6 +605,13 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
     arg_count++;
   }
 
+  /* Account for script file args if necessary */
+  if (script_file != NULL) {
+    arg_count += 2; // '/C ' + scriptname
+    script_len = wcslen(script_file);
+    dst_len += 2 + script_len;
+  }
+
   /* Adjust for potential quotes. Also assume the worst-case scenario */
   /* that every character needs escaping, so we need twice as much space. */
   dst_len = dst_len * 2 + arg_count * 2;
@@ -569,7 +631,20 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
   }
 
   pos = dst;
-  for (arg = args; *arg; arg++) {
+  arg = args;
+  /* If launching script file, add 'cmd /C scriptname',
+     and ignore first arg */
+  if (script_file != NULL) {
+    /* advance arg pointer if args[0] was set properly */
+    if(*arg != NULL) arg++;
+    wcscpy(pos, L"cmd /c");
+    pos += 6;
+    *pos++ = L' ';
+    pos = quote_cmd_arg(script_file, pos);
+    *pos++ = *arg ? L' ' : L'\0';
+  }
+
+  for (; *arg; arg++) {
     DWORD arg_len;
 
     /* Convert argument to wide char. */
@@ -607,6 +682,9 @@ error:
   return err;
 }
 
+int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
+  return make_program_args_ex(NULL, args, verbatim_arguments, dst_ptr);
+}
 
 int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   wchar_t* a_eq;
@@ -928,6 +1006,7 @@ int uv_spawn(uv_loop_t* loop,
              const uv_process_options_t* options) {
   int i;
   int err = 0;
+  int is_script;
   WCHAR* path = NULL, *alloc_path = NULL;
   BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
@@ -956,13 +1035,6 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
 
   err = uv_utf8_to_utf16_alloc(options->file, &application);
-  if (err)
-    goto done;
-
-  err = make_program_args(
-      options->args,
-      options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
-      &arguments);
   if (err)
     goto done;
 
@@ -1032,11 +1104,27 @@ int uv_spawn(uv_loop_t* loop,
 
   application_path = search_path(application,
                                  cwd,
-                                 path);
+                                 path,
+                                 &is_script);
   if (application_path == NULL) {
     /* Not found. */
     err = ERROR_FILE_NOT_FOUND;
     goto done;
+  }
+  err = make_program_args_ex(
+      is_script ? application_path : NULL,
+      options->args,
+      options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
+      &arguments);
+  if (err)
+    goto done;
+
+  if (is_script) {
+    uv__free(application_path);
+    application_path = NULL;
+    err = get_cmd_path(&application_path);
+    if(err)
+      goto done;
   }
 
   startup.cb = sizeof(startup);
