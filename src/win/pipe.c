@@ -181,6 +181,7 @@ static HANDLE open_named_pipe(const WCHAR* name, DWORD* duplex_flags) {
 
 
 static void close_pipe(uv_pipe_t* pipe) {
+  assert(pipe->u.fd == -1 || pipe->u.fd > 2);
   if (pipe->u.fd == -1)
     CloseHandle(pipe->handle);
   else
@@ -1883,6 +1884,27 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   IO_STATUS_BLOCK io_status;
   FILE_ACCESS_INFORMATION access;
   DWORD duplex_flags = 0;
+
+  if (os_handle == INVALID_HANDLE_VALUE)
+    return UV_EBADF;
+
+  /* In order to avoid closing a stdio file descriptor 0-2, duplicate the
+   * underlying OS handle and forget about the original fd.
+   * We could also opt to use the original OS handle and just never close it,
+   * but then there would be no reliable way to cancel pending read operations
+   * upon close.
+   */
+  if (file <= 2) {
+    if (!DuplicateHandle(INVALID_HANDLE_VALUE,
+                         os_handle,
+                         INVALID_HANDLE_VALUE,
+                         &os_handle,
+                         0,
+                         FALSE,
+                         DUPLICATE_SAME_ACCESS))
+      return uv_translate_sys_error(GetLastError());
+    file = -1;
+  }
 
   /* Determine what kind of permissions we have on this handle.
    * Cygwin opens the pipe in message mode, but we can support it,
