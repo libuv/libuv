@@ -135,6 +135,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
   uv_connection_init((uv_stream_t*) tty);
 
   tty->handle = handle;
+  tty->u.fd = fd;
   tty->reqs_pending = 0;
   tty->flags |= UV_HANDLE_BOUND;
 
@@ -1915,11 +1916,15 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 
 void uv_tty_close(uv_tty_t* handle) {
-  CloseHandle(handle->handle);
+  if (handle->u.fd == -1)
+    CloseHandle(handle->handle);
+  else
+    close(handle->u.fd);
 
   if (handle->flags & UV_HANDLE_READING)
     uv_tty_read_stop(handle);
 
+  handle->u.fd = -1;
   handle->handle = INVALID_HANDLE_VALUE;
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   uv__handle_closing(handle);
