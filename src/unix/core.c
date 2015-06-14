@@ -55,13 +55,13 @@
 # include <sys/ioctl.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/ioctl.h>
 # include <sys/wait.h>
 # define UV__O_CLOEXEC O_CLOEXEC
-# if __FreeBSD__ >= 10
+# if defined(__FreeBSD__) && __FreeBSD__ >= 10
 #  define uv__accept4 accept4
 #  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
 #  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
@@ -477,7 +477,7 @@ int uv__close(int fd) {
 
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-    defined(_AIX)
+    defined(_AIX) || defined(__DragonFly__)
 
 int uv__nonblock(int fd, int set) {
   int r;
@@ -506,7 +506,8 @@ int uv__cloexec(int fd, int set) {
   return 0;
 }
 
-#else /* !(defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)) */
+#else /* !(defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
+	   defined(_AIX) || defined(__DragonFly__)) */
 
 int uv__nonblock(int fd, int set) {
   int flags;
@@ -569,7 +570,8 @@ int uv__cloexec(int fd, int set) {
   return 0;
 }
 
-#endif /* defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) */
+#endif /* defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
+	  defined(_AIX) || defined(__DragonFly__) */
 
 
 /* This function is not execve-safe, there is a race window
@@ -907,7 +909,8 @@ int uv__open_cloexec(const char* path, int flags) {
   int err;
   int fd;
 
-#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9)
+#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9) || \
+    defined(__DragonFly__)
   static int no_cloexec;
 
   if (!no_cloexec) {
