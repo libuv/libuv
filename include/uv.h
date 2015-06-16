@@ -507,6 +507,7 @@ struct uv_tcp_s {
 };
 
 UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
+UV_EXTERN int uv_tcp_init_ex(uv_loop_t*, uv_tcp_t* handle, unsigned int flags);
 UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
 UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
 UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
@@ -597,6 +598,7 @@ struct uv_udp_send_s {
 };
 
 UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
+UV_EXTERN int uv_udp_init_ex(uv_loop_t*, uv_udp_t* handle, unsigned int flags);
 UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
                           const struct sockaddr* addr,

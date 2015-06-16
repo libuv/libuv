@@ -154,9 +154,18 @@ static int uv_tcp_set_socket(uv_loop_t* loop,
 }
 
 
-int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
-  uv_stream_init(loop, (uv_stream_t*) handle, UV_TCP);
+int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
+  int domain;
 
+  /* Use the lower 8 bits for the domain */
+  domain = flags & 0xFF;
+  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+    return UV_EINVAL;
+
+  if (flags & ~0xFF)
+    return UV_EINVAL;
+
+  uv_stream_init(loop, (uv_stream_t*) handle, UV_TCP);
   handle->tcp.serv.accept_reqs = NULL;
   handle->tcp.serv.pending_accepts = NULL;
   handle->socket = INVALID_SOCKET;
@@ -166,7 +175,36 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
   handle->tcp.serv.processed_accepts = 0;
   handle->delayed_error = 0;
 
+  /* If anything fails beyond this point we need to remove the handle from
+   * the handle queue, since it was added by uv__handle_init in uv_stream_init.
+   */
+
+  if (domain != AF_UNSPEC) {
+    SOCKET sock;
+    DWORD err;
+
+    sock = socket(domain, SOCK_STREAM, 0);
+    if (sock == INVALID_SOCKET) {
+      err = WSAGetLastError();
+      QUEUE_REMOVE(&handle->handle_queue);
+      return uv_translate_sys_error(err);
+    }
+
+    err = uv_tcp_set_socket(handle->loop, handle, sock, domain, 0);
+    if (err) {
+      closesocket(sock);
+      QUEUE_REMOVE(&handle->handle_queue);
+      return uv_translate_sys_error(err);
+    }
+
+  }
+
   return 0;
+}
+
+
+int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
+  return uv_tcp_init_ex(loop, handle, AF_UNSPEC);
 }
 
 
@@ -766,7 +804,7 @@ int uv_tcp_getsockname(const uv_tcp_t* handle,
                        int* namelen) {
   int result;
 
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
+  if (handle->socket == INVALID_SOCKET) {
     return UV_EINVAL;
   }
 
@@ -788,7 +826,7 @@ int uv_tcp_getpeername(const uv_tcp_t* handle,
                        int* namelen) {
   int result;
 
-  if (!(handle->flags & UV_HANDLE_BOUND)) {
+  if (handle->socket == INVALID_SOCKET) {
     return UV_EINVAL;
   }
 
