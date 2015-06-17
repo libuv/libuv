@@ -66,6 +66,7 @@ TEST_DECLARE   (tcp_write_fail)
 TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_queue_order)
 TEST_DECLARE   (tcp_open)
+TEST_DECLARE   (tcp_open_twice)
 TEST_DECLARE   (tcp_connect_error_after_write)
 TEST_DECLARE   (tcp_shutdown_after_write)
 TEST_DECLARE   (tcp_bind_error_addrinuse)
@@ -110,6 +111,7 @@ TEST_DECLARE   (udp_options)
 TEST_DECLARE   (udp_options6)
 TEST_DECLARE   (udp_no_autobind)
 TEST_DECLARE   (udp_open)
+TEST_DECLARE   (udp_open_twice)
 TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
@@ -393,6 +395,7 @@ TASK_LIST_START
 
   TEST_ENTRY  (tcp_open)
   TEST_HELPER (tcp_open, tcp4_echo_server)
+  TEST_ENTRY  (tcp_open_twice)
 
   TEST_ENTRY  (tcp_shutdown_after_write)
   TEST_HELPER (tcp_shutdown_after_write, tcp4_echo_server)
@@ -447,6 +450,7 @@ TASK_LIST_START
 
   TEST_ENTRY  (udp_open)
   TEST_HELPER (udp_open, udp4_echo_server)
+  TEST_ENTRY  (udp_open_twice)
 
   TEST_ENTRY  (pipe_bind_error_addrinuse)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)

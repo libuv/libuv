@@ -391,6 +391,9 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
   int enable;
 #endif
 
+  if (!(stream->io_watcher.fd == -1 || stream->io_watcher.fd == fd))
+    return -EBUSY;
+
   assert(fd >= 0);
   stream->flags |= flags;
 

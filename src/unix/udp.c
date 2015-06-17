@@ -569,7 +569,7 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
 
   /* Check for already active socket. */
   if (handle->io_watcher.fd != -1)
-    return -EALREADY;  /* FIXME(bnoordhuis) Should be -EBUSY. */
+    return -EBUSY;
 
   err = uv__nonblock(sock, 1);
   if (err)

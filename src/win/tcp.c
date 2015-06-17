@@ -84,7 +84,8 @@ static int uv_tcp_set_socket(uv_loop_t* loop, uv_tcp_t* handle,
   int non_ifs_lsp;
   int err;
 
-  assert(handle->socket == INVALID_SOCKET);
+  if (handle->socket != INVALID_SOCKET)
+    return UV_EBUSY;
 
   /* Set the socket to nonblocking mode */
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
