@@ -41,7 +41,7 @@ static void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   }
 
   pevents = 0;
-  if (events & UV__POLLIN)
+  if (events & (UV__POLLIN | UV__POLLRDHUP))
     pevents |= UV_READABLE;
   if (events & UV__POLLOUT)
     pevents |= UV_WRITABLE;

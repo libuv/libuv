@@ -89,10 +89,11 @@
 #endif
 
 #if defined(__linux__)
-# define UV__POLLIN   UV__EPOLLIN
-# define UV__POLLOUT  UV__EPOLLOUT
-# define UV__POLLERR  UV__EPOLLERR
-# define UV__POLLHUP  UV__EPOLLHUP
+# define UV__POLLIN     UV__EPOLLIN
+# define UV__POLLOUT    UV__EPOLLOUT
+# define UV__POLLERR    UV__EPOLLERR
+# define UV__POLLHUP    UV__EPOLLHUP
+# define UV__POLLRDHUP  UV__EPOLLRDHUP
 #endif
 
 #if defined(__sun) || defined(_AIX)
@@ -116,6 +117,10 @@
 
 #ifndef UV__POLLHUP
 # define UV__POLLHUP  8
+#endif
+
+#ifndef UV__POLLRDHUP
+# define UV__POLLRDHUP  0x200
 #endif
 
 #if !defined(O_CLOEXEC) && defined(__FreeBSD__)
@@ -143,6 +148,7 @@ enum {
   UV_TCP_NODELAY          = 0x400,  /* Disable Nagle. */
   UV_TCP_KEEPALIVE        = 0x800,  /* Turn on keep-alive. */
   UV_TCP_SINGLE_ACCEPT    = 0x1000, /* Only accept() when idle. */
+  UV_STREAM_DISCONNECT    = 0x2000, /* Remote end is forcibly closed */
   UV_HANDLE_IPV6          = 0x10000, /* Handle is bound to a IPv6 socket. */
   UV_UDP_PROCESSING       = 0x20000  /* Handle is running the send callback queue. */
 };
