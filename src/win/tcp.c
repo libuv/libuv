@@ -78,8 +78,11 @@ static int uv__tcp_keepalive(uv_tcp_t* handle, SOCKET socket, int enable, unsign
 }
 
 
-static int uv_tcp_set_socket(uv_loop_t* loop, uv_tcp_t* handle,
-    SOCKET socket, int family, int imported) {
+static int uv_tcp_set_socket(uv_loop_t* loop,
+                             uv_tcp_t* handle,
+                             SOCKET socket,
+                             int family,
+                             int imported) {
   DWORD yes = 1;
   int non_ifs_lsp;
   int err;
@@ -91,6 +94,10 @@ static int uv_tcp_set_socket(uv_loop_t* loop, uv_tcp_t* handle,
   if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR) {
     return WSAGetLastError();
   }
+
+  /* Make the socket non-inheritable */
+  if (!SetHandleInformation((HANDLE) socket, HANDLE_FLAG_INHERIT, 0))
+    return GetLastError();
 
   /* Associate it with the I/O completion port. */
   /* Use uv_handle_t pointer as completion key. */
@@ -268,13 +275,6 @@ static int uv_tcp_try_bind(uv_tcp_t* handle,
       return WSAGetLastError();
     }
 
-    /* Make the socket non-inheritable */
-    if (!SetHandleInformation((HANDLE) sock, HANDLE_FLAG_INHERIT, 0)) {
-      err = GetLastError();
-      closesocket(sock);
-      return err;
-    }
-
     err = uv_tcp_set_socket(handle->loop, handle, sock, addr->sa_family, 0);
     if (err) {
       closesocket(sock);
@@ -378,15 +378,6 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     SET_REQ_ERROR(req, WSAGetLastError());
     uv_insert_pending_req(loop, (uv_req_t*)req);
     handle->reqs_pending++;
-    return;
-  }
-
-  /* Make the socket non-inheritable */
-  if (!SetHandleInformation((HANDLE) accept_socket, HANDLE_FLAG_INHERIT, 0)) {
-    SET_REQ_ERROR(req, GetLastError());
-    uv_insert_pending_req(loop, (uv_req_t*)req);
-    handle->reqs_pending++;
-    closesocket(accept_socket);
     return;
   }
 
@@ -1166,12 +1157,6 @@ int uv_tcp_import(uv_tcp_t* tcp, uv__ipc_socket_info_ex* socket_info_ex,
     return WSAGetLastError();
   }
 
-  if (!SetHandleInformation((HANDLE) socket, HANDLE_FLAG_INHERIT, 0)) {
-    err = GetLastError();
-    closesocket(socket);
-    return err;
-  }
-
   err = uv_tcp_set_socket(tcp->loop,
                           tcp,
                           socket,
@@ -1424,11 +1409,6 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
                  SO_PROTOCOL_INFOW,
                  (char*) &protocol_info,
                  &opt_len) == SOCKET_ERROR) {
-    return uv_translate_sys_error(GetLastError());
-  }
-
-  /* Make the socket non-inheritable */
-  if (!SetHandleInformation((HANDLE) sock, HANDLE_FLAG_INHERIT, 0)) {
     return uv_translate_sys_error(GetLastError());
   }
 
