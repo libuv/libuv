@@ -168,6 +168,11 @@ API
 
     Equivalent to :man:`open(2)`.
 
+    .. note::
+        On Windows libuv uses `CreateFileW` and thus the file is always opened
+        in binary mode. Because of this the O_BINARY and O_TEXT flags are not
+        supported.
+
 .. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`preadv(2)`.
