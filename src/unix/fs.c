@@ -565,7 +565,12 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
     r = sendfile(in_fd, out_fd, req->off, &len, NULL, 0);
 #endif
 
-    if (r != -1 || len != 0) {
+    /*
+     * Do NOT rely on the assumption that the value of 'len' is not being
+     * modified by the operating system during the system call in case of an
+     * error, unless explicitly specified for the error (EAGAIN, EINTR).
+     */
+    if (r == 0 || ((errno == EAGAIN || errno == EINTR) && len != 0)) {
       req->off += len;
       return (ssize_t) len;
     }
