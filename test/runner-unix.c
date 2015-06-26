@@ -37,6 +37,7 @@
 #include <assert.h>
 
 #include <sys/select.h>
+#include <sys/time.h>
 #include <pthread.h>
 
 
@@ -173,6 +174,8 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   process_info_t* p;
   dowait_args args;
   pthread_t tid;
+  unsigned int elapsed_ms;
+  struct timeval timebase;
   struct timeval tv;
   fd_set fds;
 
@@ -206,13 +209,37 @@ int process_wait(process_info_t* vec, int n, int timeout) {
     goto terminate;
   }
 
-  tv.tv_sec = timeout / 1000;
-  tv.tv_usec = 0;
+  if (gettimeofday(&timebase, NULL))
+    abort();
 
-  FD_ZERO(&fds);
-  FD_SET(args.pipe[0], &fds);
+  tv = timebase;
+  for (;;) {
+    /* Check that gettimeofday() doesn't jump back in time. */
+    assert(tv.tv_sec == timebase.tv_sec ||
+           (tv.tv_sec == timebase.tv_sec && tv.tv_usec >= timebase.tv_usec));
 
-  r = select(args.pipe[0] + 1, &fds, NULL, NULL, &tv);
+    elapsed_ms =
+        (tv.tv_sec - timebase.tv_sec) * 1000 +
+        (tv.tv_usec / 1000) -
+        (timebase.tv_usec / 1000);
+
+    r = 0;  /* Timeout. */
+    if (elapsed_ms >= (unsigned) timeout)
+      break;
+
+    tv.tv_sec = (timeout - elapsed_ms) / 1000;
+    tv.tv_usec = (timeout - elapsed_ms) % 1000 * 1000;
+
+    FD_ZERO(&fds);
+    FD_SET(args.pipe[0], &fds);
+
+    r = select(args.pipe[0] + 1, &fds, NULL, NULL, &tv);
+    if (!(r == -1 && errno == EINTR))
+      break;
+
+    if (gettimeofday(&tv, NULL))
+      abort();
+  }
 
   if (r == -1) {
     perror("select()");
