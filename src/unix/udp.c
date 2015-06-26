@@ -321,6 +321,10 @@ int uv__udp_bind(uv_udp_t* handle,
 
   if (bind(fd, addr, addrlen)) {
     err = -errno;
+    if (errno == EAFNOSUPPORT)
+      /* OSX, other BSDs and SunoS fail with EAFNOSUPPORT when binding a
+       * socket created with AF_INET to an AF_INET6 address or vice versa. */
+      err = -EINVAL;
     goto out;
   }
 
