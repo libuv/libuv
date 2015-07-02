@@ -685,11 +685,9 @@ TASK_LIST_START
   TEST_ENTRY  (udp_try_send)
 
   TEST_ENTRY  (udp_open)
-  TEST_HELPER (udp_open, udp4_echo_server)
   TEST_ENTRY  (udp_open_twice)
   TEST_ENTRY  (udp_open_bound)
   TEST_ENTRY  (udp_open_connect)
-  TEST_HELPER (udp_open_connect, udp4_echo_server)
 #ifndef _WIN32
   TEST_ENTRY  (udp_send_unix)
 #endif
