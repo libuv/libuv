@@ -240,6 +240,7 @@
         'benchmark-million-timers.c',
         'benchmark-multi-accept.c',
         'benchmark-ping-pongs.c',
+        'benchmark-ping-udp.c',
         'benchmark-pound.c',
         'benchmark-pump.c',
         'benchmark-sizes.c',
