@@ -1540,3 +1540,168 @@ TEST_IMPL(spawn_reads_child_path) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+#ifndef _WIN32
+static int mpipe(int *fds) {
+  if (pipe(fds) == -1) {
+    return -1;
+  }
+  if (fcntl(fds[0], F_SETFD, FD_CLOEXEC) == -1 ||
+      fcntl(fds[1], F_SETFD, FD_CLOEXEC) == -1) {
+    close(fds[0]);
+    close(fds[1]);
+    return -1;
+  }
+  return 0;
+}
+#else
+static int mpipe(int *fds) {
+  SECURITY_ATTRIBUTES attr;
+  HANDLE readh, writeh;
+  attr.nLength = sizeof(attr);
+  attr.lpSecurityDescriptor = NULL;
+  attr.bInheritHandle = FALSE;
+  if (!CreatePipe(&readh, &writeh, &attr, 0)) {
+    return -1;
+  }
+  fds[0] = _open_osfhandle((intptr_t)readh, 0);
+  fds[1] = _open_osfhandle((intptr_t)writeh, 0);
+  if (fds[0] == -1 || fds[1] == -1) {
+    CloseHandle(readh);
+    CloseHandle(writeh);
+    return -1;
+  }
+  return 0;
+}
+#endif /* !_WIN32 */
+
+TEST_IMPL(spawn_inherit_streams) {
+  uv_process_t child_req;
+  uv_stdio_container_t child_stdio[2];
+  int fds_stdin[2];
+  int fds_stdout[2];
+  uv_pipe_t pipe_stdin_child;
+  uv_pipe_t pipe_stdout_child;
+  uv_pipe_t pipe_stdin_parent;
+  uv_pipe_t pipe_stdout_parent;
+  unsigned char ubuf[OUTPUT_SIZE - 1];
+  uv_buf_t buf;
+  unsigned int i;
+  int r;
+  uv_write_t write_req;
+  uv_loop_t * l = uv_default_loop();
+
+  init_process_options("spawn_helper9", exit_cb);
+
+  ASSERT(l);
+
+  ASSERT(uv_pipe_init(l, &pipe_stdin_child, 0) == 0);
+  ASSERT(uv_pipe_init(l, &pipe_stdout_child, 0) == 0);
+  ASSERT(uv_pipe_init(l, &pipe_stdin_parent, 0) == 0);
+  ASSERT(uv_pipe_init(l, &pipe_stdout_parent, 0) == 0);
+
+  ASSERT(mpipe(fds_stdin) != -1);
+  ASSERT(mpipe(fds_stdout) != -1);
+
+  ASSERT(uv_pipe_open(&pipe_stdin_child, fds_stdin[0]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdout_child, fds_stdout[1]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdin_parent, fds_stdin[1]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdout_parent, fds_stdout[0]) == 0);
+
+  child_stdio[0].flags = UV_INHERIT_STREAM;
+  child_stdio[0].data.stream = (uv_stream_t *)&pipe_stdin_child;
+
+  child_stdio[1].flags = UV_INHERIT_STREAM;
+  child_stdio[1].data.stream = (uv_stream_t *)&pipe_stdout_child;
+
+  options.stdio = child_stdio;
+  options.stdio_count = 2;
+
+  ASSERT (uv_spawn(l, &child_req, &options) == 0);
+
+  uv_close((uv_handle_t*)&pipe_stdin_child, NULL);
+  uv_close((uv_handle_t*)&pipe_stdout_child, NULL);
+
+  buf = uv_buf_init((char*)ubuf, sizeof ubuf);
+  for (i = 0 ; i < sizeof ubuf; ++i) {
+    ubuf[i] = i & 255u;
+  }
+  memset(output, 0, sizeof ubuf);
+
+  r = uv_write(&write_req,
+               (uv_stream_t*)&pipe_stdin_parent,
+               &buf,
+               1,
+               write_cb);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*)&pipe_stdout_parent, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  r = uv_run(l, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 3);
+
+  r = memcmp(ubuf, output, sizeof ubuf);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+/* Helper for child process of spawn_inherit_streams */
+#ifndef _WIN32
+int spawn_stdin_stdout(void) {
+  char buf[1024];
+  char *pbuf;
+  for (;;) {
+    ssize_t r, w, c;
+    do {
+      r = read(0, buf, sizeof buf);
+    } while (r == -1 && errno == EINTR);
+    if (r == 0) {
+      return 1;
+    }
+    ASSERT(r > 0);
+    c = r;
+    pbuf = buf;
+    while (c) {
+      do {
+        w = write(1, pbuf, (size_t)c);
+      } while (w == -1 && errno == EINTR);
+      ASSERT(w >= 0);
+      pbuf = pbuf + w;
+      c = c - w;
+    }
+  }
+  return 2;
+}
+#else
+int spawn_stdin_stdout(void) {
+  char buf[1024];
+  char *pbuf;
+  HANDLE h_stdin = GetStdHandle(STD_INPUT_HANDLE);
+  HANDLE h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+  ASSERT(h_stdin != INVALID_HANDLE_VALUE);
+  ASSERT(h_stdout != INVALID_HANDLE_VALUE);
+  for (;;) {
+    DWORD n_read;
+    DWORD n_written;
+    DWORD to_write;
+    if (!ReadFile(h_stdin, buf, sizeof buf, &n_read, NULL)) {
+      ASSERT(GetLastError() == ERROR_BROKEN_PIPE);
+      return 1;
+    }
+    to_write = n_read;
+    pbuf = buf;
+    while (to_write) {
+      ASSERT(WriteFile(h_stdout, pbuf, to_write, &n_written, NULL));
+      to_write -= n_written;
+      pbuf += n_written;
+    }
+  }
+  return 2;
+}
+#endif /* !_WIN32 */
