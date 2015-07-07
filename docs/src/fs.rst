@@ -211,6 +211,9 @@ API
     get `ent` populated with the next directory entry data. When there are no
     more entries ``UV_EOF`` will be returned.
 
+    .. note::
+        Unlike `scandir(3)`, this function does not return the "." and ".." entries.
+
 .. c:function:: int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 .. c:function:: int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 .. c:function:: int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
