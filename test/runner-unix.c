@@ -174,6 +174,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   process_info_t* p;
   dowait_args args;
   pthread_t tid;
+  pthread_attr_t attr;
   unsigned int elapsed_ms;
   struct timeval timebase;
   struct timeval tv;
@@ -202,7 +203,17 @@ int process_wait(process_info_t* vec, int n, int timeout) {
     return -1;
   }
 
-  r = pthread_create(&tid, NULL, dowait, &args);
+  if (pthread_attr_init(&attr))
+    abort();
+
+  if (pthread_attr_setstacksize(&attr, 256 * 1024))
+    abort();
+
+  r = pthread_create(&tid, &attr, dowait, &args);
+
+  if (pthread_attr_destroy(&attr))
+    abort();
+
   if (r) {
     perror("pthread_create()");
     retval = -1;
