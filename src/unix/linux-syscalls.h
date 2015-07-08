@@ -61,20 +61,6 @@ struct uv__statx {
   uint64_t unused1[14];
 };
 
-struct uv__mmsghdr {
-  struct msghdr msg_hdr;
-  unsigned int msg_len;
-};
-
-int uv__recvmmsg(int fd,
-                 struct uv__mmsghdr* mmsg,
-                 unsigned int vlen,
-                 unsigned int flags,
-                 struct timespec* timeout);
-int uv__sendmmsg(int fd,
-                 struct uv__mmsghdr* mmsg,
-                 unsigned int vlen,
-                 unsigned int flags);
 ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 int uv__dup3(int oldfd, int newfd, int flags);
