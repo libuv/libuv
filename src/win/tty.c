@@ -96,6 +96,8 @@ static CRITICAL_SECTION uv_tty_output_lock;
 
 static HANDLE uv_tty_output_handle = INVALID_HANDLE_VALUE;
 
+static WORD uv_tty_default_text_attributes = 0;
+
 
 void uv_console_init() {
   InitializeCriticalSection(&uv_tty_output_lock);
@@ -137,6 +139,10 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
     /* Obtain the the tty_output_lock because the virtual window state is */
     /* shared between all uv_tty_t handles. */
     EnterCriticalSection(&uv_tty_output_lock);
+
+    /* Remember the original console text attributes. */
+    if (uv_tty_default_text_attributes == 0)
+      uv_tty_default_text_attributes = screen_buffer_info.wAttributes;
 
     /* Store the global tty output handle. This handle is used by TTY read */
     /* streams to update the virtual window when a CONSOLE_BUFFER_SIZE_EVENT */
@@ -1022,7 +1028,7 @@ static int uv_tty_move_caret(uv_tty_t* handle, int x, unsigned char x_relative,
 
 static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
   const COORD origin = {0, 0};
-  const WORD char_attrs = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+  const WORD char_attrs = (uv_tty_default_text_attributes != 0) ? uv_tty_default_text_attributes : (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
   CONSOLE_SCREEN_BUFFER_INFO info;
   DWORD count, written;
 
@@ -1176,13 +1182,35 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
   char fg_bright = -1, bg_bright = -1;
   char inverse = -1;
 
+  char default_fg_color = 7, default_bg_color = 0;
+  char default_fg_bright = 0, default_bg_bright = 0;
+  char default_inverse = 0;
+
+  if (uv_tty_default_text_attributes != 0) {
+    default_fg_color = 0;
+    if (uv_tty_default_text_attributes & FOREGROUND_RED)   default_fg_color |= 1;
+    if (uv_tty_default_text_attributes & FOREGROUND_GREEN) default_fg_color |= 2;
+    if (uv_tty_default_text_attributes & FOREGROUND_BLUE)  default_fg_color |= 4;
+
+    default_fg_bright = (uv_tty_default_text_attributes & FOREGROUND_INTENSITY) != 0;
+
+    default_bg_color = 0;
+    if (uv_tty_default_text_attributes & BACKGROUND_RED)   default_bg_color |= 1;
+    if (uv_tty_default_text_attributes & BACKGROUND_GREEN) default_bg_color |= 2;
+    if (uv_tty_default_text_attributes & BACKGROUND_BLUE)  default_bg_color |= 4;
+
+    default_bg_bright = (uv_tty_default_text_attributes & BACKGROUND_INTENSITY) != 0;
+
+    default_inverse = (uv_tty_default_text_attributes & COMMON_LVB_REVERSE_VIDEO) != 0;
+  }
+
   if (argc == 0) {
     /* Reset mode */
-    fg_color = 7;
-    bg_color = 0;
-    fg_bright = 0;
-    bg_bright = 0;
-    inverse = 0;
+    fg_color = default_fg_color;
+    bg_color = default_bg_color;
+    fg_bright = default_fg_bright;
+    bg_bright = default_bg_bright;
+    inverse = default_inverse;
   }
 
   for (i = 0; i < argc; i++) {
@@ -1190,11 +1218,11 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
 
     if (arg == 0) {
       /* Reset mode */
-      fg_color = 7;
-      bg_color = 0;
-      fg_bright = 0;
-      bg_bright = 0;
-      inverse = 0;
+      fg_color = default_fg_color;
+      bg_color = default_bg_color;
+      fg_bright = default_fg_bright;
+      bg_bright = default_bg_bright;
+      inverse = default_inverse;
 
     } else if (arg == 1) {
       /* Foreground bright on */
@@ -1231,8 +1259,8 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
 
     } else if (arg == 39) {
       /* Default text color */
-      fg_color = 7;
-      fg_bright = 0;
+      fg_color = default_fg_color;
+      fg_bright = default_fg_bright;
 
     } else if (arg >= 40 && arg <= 47) {
       /* Set background color */
@@ -1240,8 +1268,8 @@ static int uv_tty_set_style(uv_tty_t* handle, DWORD* error) {
 
     } else if (arg ==  49) {
       /* Default background color */
-      bg_color = 0;
-      bg_bright = 0;
+      bg_color = default_bg_color;
+      bg_bright = default_bg_bright;
 
     } else if (arg >= 90 && arg <= 97) {
       /* Set bold foreground color */
