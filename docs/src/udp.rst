@@ -105,12 +105,12 @@ Public members
 API
 ---
 
-.. c:function:: int uv_udp_init(uv_loop_t*, uv_udp_t* handle)
+.. c:function:: int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle)
 
     Initialize a new UDP handle. The actual socket is created lazily.
     Returns 0 on success.
 
-.. c:function:: int uv_udp_init_ex(uv_loop_t*, uv_udp_t* handle, unsigned int flags)
+.. c:function:: int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned int flags)
 
     Initialize the handle with the specified flags. At the moment the lower 8 bits
     of the `flags` parameter are used as the socket domain. A socket will be created
