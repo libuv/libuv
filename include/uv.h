@@ -231,7 +231,11 @@ typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 
 typedef enum {
-  UV_LOOP_BLOCK_SIGNAL
+  UV_LOOP_BLOCK_SIGNAL,
+  /* Embedding is important. Enable uv_backend_fd on Windows
+   * for a small performance hit.
+   */
+  UV_LOOP_EMBED
 } uv_loop_option;
 
 typedef enum {
@@ -283,7 +287,11 @@ UV_EXTERN int uv_has_ref(const uv_handle_t*);
 UV_EXTERN void uv_update_time(uv_loop_t*);
 UV_EXTERN uint64_t uv_now(const uv_loop_t*);
 
+#ifdef _WIN32
+UV_EXTERN HANDLE uv_backend_fd(const uv_loop_t*);
+#else
 UV_EXTERN int uv_backend_fd(const uv_loop_t*);
+#endif
 UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
 
 typedef void (*uv_alloc_cb)(uv_handle_t* handle,
