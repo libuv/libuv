@@ -1028,7 +1028,10 @@ static int uv_tty_move_caret(uv_tty_t* handle, int x, unsigned char x_relative,
 
 static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
   const COORD origin = {0, 0};
-  const WORD char_attrs = (uv_tty_default_text_attributes != 0) ? uv_tty_default_text_attributes : (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+  const WORD char_attrs =
+    (uv_tty_default_text_attributes != 0) ?
+    (uv_tty_default_text_attributes) :
+    (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
   CONSOLE_SCREEN_BUFFER_INFO info;
   DWORD count, written;
 
