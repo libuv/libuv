@@ -123,7 +123,7 @@ API
     .. note::
         `server` and `client` must be handles running on the same loop.
 
-.. c:function:: int uv_read_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
+.. c:function:: int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
 
     Read data from an incoming stream. The callback will be made several
     times until there is no more data to read or :c:func:`uv_read_stop` is called.
