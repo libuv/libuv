@@ -140,10 +140,11 @@ static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
   }
 }
 
+#if defined(__APPLE__) || defined(_WIN32)
 static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
-                                       const char* filename,
-                                       int events,
-                                       int status) {
+                                                 const char* filename,
+                                                 int events,
+                                                 int status) {
   fs_event_cb_called++;
   ASSERT(handle == &fs_event);
   ASSERT(status == 0);
@@ -158,6 +159,7 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
     uv_close((uv_handle_t*) handle, close_cb);
   }
 }
+#endif
 
 static const char* fs_event_get_filename(int i) {
   snprintf(fs_event_filename,
