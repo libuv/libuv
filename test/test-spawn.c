@@ -994,6 +994,7 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 }
 
 
+#if !defined(USING_UV_SHARED)
 int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr);
 WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target);
 
@@ -1196,6 +1197,7 @@ TEST_IMPL(environment_creation) {
 
   return 0;
 }
+#endif
 
 /* Regression test for issue #909 */
 TEST_IMPL(spawn_with_an_odd_path) {

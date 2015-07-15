@@ -430,6 +430,9 @@
             '_XOPEN_SOURCE=500',
           ],
         }],
+        ['uv_library=="shared_library"', {
+          'defines': [ 'USING_UV_SHARED=1' ]
+        }],
       ],
       'msvs-settings': {
         'VCLinkerTool': {
@@ -481,7 +484,10 @@
             'test/runner-unix.c',
             'test/runner-unix.h',
           ]
-        }]
+        }],
+        ['uv_library=="shared_library"', {
+          'defines': [ 'USING_UV_SHARED=1' ]
+        }],
       ],
       'msvs-settings': {
         'VCLinkerTool': {
