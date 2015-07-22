@@ -37,7 +37,9 @@
 
 static uv_fs_event_t fs_event;
 static const char file_prefix[] = "fsevent-";
+#if defined(__APPLE__) || defined(_WIN32)
 static const char file_prefix_in_subdir[] = "subdir";
+#endif
 static uv_timer_t timer;
 static int timer_cb_called;
 static int close_cb_called;
