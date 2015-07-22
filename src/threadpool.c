@@ -101,9 +101,13 @@ static void worker(void* arg) {
 
 
 static void post(QUEUE* q) {
+  int should_send_signal = 0;
   uv_mutex_lock(&mutex);
+  if (QUEUE_EMPTY(&wq))
+    should_send_signal = 1;
   QUEUE_INSERT_TAIL(&wq, q);
-  uv_cond_signal(&cond);
+  if (should_send_signal)
+    uv_cond_signal(&cond);
   uv_mutex_unlock(&mutex);
 }
 
