@@ -213,6 +213,7 @@ typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
+typedef struct uv_threadpool_s uv_threadpool_t;
 
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
@@ -960,6 +961,12 @@ struct uv_work_s {
   uv_after_work_cb after_work_cb;
   UV_WORK_PRIVATE_FIELDS
 };
+
+UV_EXTERN int uv_queue_tp_work(uv_loop_t* loop,
+                            uv_threadpool_t *tp,
+                            uv_work_t* req,
+                            uv_work_cb work_cb,
+                            uv_after_work_cb after_work_cb);
 
 UV_EXTERN int uv_queue_work(uv_loop_t* loop,
                             uv_work_t* req,
