@@ -42,6 +42,7 @@
 #ifdef __clang__
 # pragma clang diagnostic ignored "-Wvariadic-macros"
 # pragma clang diagnostic ignored "-Wc99-extensions"
+# pragma clang diagnostic ignored "-Wlong-long"
 #endif
 
 #define TEST_PORT 9123
