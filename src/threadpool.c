@@ -37,16 +37,18 @@ static void uv__req_init(uv_loop_t* loop,
     uv__req_init((loop), (uv_req_t*)(req), (type))
 #endif
 
+#include <limits.h>
 #include <stdlib.h>
 
 #define MAX_THREADPOOL_SIZE 128
+#define IDLE_THREAD_TIMEOUT 5e9  /* 5 seconds in nanoseconds. */
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
-static unsigned int nthreads;
-static uv_thread_t* threads;
-static uv_thread_t default_threads[4];
+static int busy_threads;
+static int num_threads;
+static int max_threads;
 static QUEUE exit_message;
 static QUEUE wq;
 static volatile int initialized;
@@ -57,104 +59,132 @@ static void uv__cancelled(struct uv__work* w) {
 }
 
 
-/* To avoid deadlock with uv_cancel() it's crucial that the worker
- * never holds the global mutex and the loop-local mutex at the same time.
- */
-static void worker(void* arg) {
-  struct uv__work* w;
-  QUEUE* q;
-
-  (void) arg;
-
-  for (;;) {
-    uv_mutex_lock(&mutex);
-
-    while (QUEUE_EMPTY(&wq))
-      uv_cond_wait(&cond, &mutex);
-
-    q = QUEUE_HEAD(&wq);
-
-    if (q == &exit_message)
-      uv_cond_signal(&cond);
-    else {
-      QUEUE_REMOVE(q);
-      QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
-                             executing. */
-    }
-
-    uv_mutex_unlock(&mutex);
-
-    if (q == &exit_message)
-      break;
-
-    w = QUEUE_DATA(q, struct uv__work, wq);
-    w->work(w);
-
-    uv_mutex_lock(&w->loop->wq_mutex);
-    w->work = NULL;  /* Signal uv_cancel() that the work req is done
-                        executing. */
-    QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
-    uv_async_send(&w->loop->wq_async);
-    uv_mutex_unlock(&w->loop->wq_mutex);
-  }
+/* Only call when you hold NO locks. */
+static void do_work(struct uv__work* w) {
+  w->work(w);
+  uv_mutex_lock(&w->loop->wq_mutex);
+  w->work = NULL;  /* Signal uv_cancel() that the work req is done executing. */
+  QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
+  uv_async_send(&w->loop->wq_async);
+  uv_mutex_unlock(&w->loop->wq_mutex);
 }
 
 
-static void post(QUEUE* q) {
+/* To avoid deadlock with uv_cancel() it's crucial that the worker
+ * never holds the global mutex and the loop-local mutex at the same time.
+ */
+#ifdef _WIN32
+static unsigned __stdcall worker(void* arg) {
+#else
+static void* worker(void* arg) {
+#endif
+  QUEUE* q;
+
+  (void) &arg;
   uv_mutex_lock(&mutex);
-  QUEUE_INSERT_TAIL(&wq, q);
-  uv_cond_signal(&cond);
+
+  for (;;) {
+    if (QUEUE_EMPTY(&wq))
+      uv_cond_timedwait(&cond, &mutex, IDLE_THREAD_TIMEOUT);
+
+    if (QUEUE_EMPTY(&wq))
+      break;  /* Timed out, nothing to do, exit thread. */
+
+    q = QUEUE_HEAD(&wq);
+
+    if (q == &exit_message) {
+      uv_cond_signal(&cond);  /* Propagate exit message to next thread. */
+      break;
+    }
+
+    QUEUE_REMOVE(q);
+    QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is executing. */
+
+    busy_threads += 1;
+    uv_mutex_unlock(&mutex);
+    do_work(QUEUE_DATA(q, struct uv__work, wq));
+    uv_mutex_lock(&mutex);
+    busy_threads -= 1;
+  }
+
+  assert(num_threads > INT_MIN);  /* Extremely paranoid sanity check. */
+  num_threads -= 1;
   uv_mutex_unlock(&mutex);
+
+  return 0;
+}
+
+
+static int new_detached_thread(void) {
+#ifdef _WIN32
+  HANDLE thread;
+
+  thread = (HANDLE) _beginthreadex(NULL, 0, worker, NULL, 0, NULL);
+  if (thread == NULL)
+    return -errno;
+
+  if (CloseHandle(thread))
+    abort();
+
+  return 0;
+#else
+  pthread_t thread;
+  int err;
+
+  err = pthread_create(&thread, NULL, worker, NULL);
+  if (err)
+    return -err;
+
+  if (pthread_detach(thread))
+    abort();
+
+  return 0;
+#endif
 }
 
 
 #ifndef _WIN32
 UV_DESTRUCTOR(static void cleanup(void)) {
-  unsigned int i;
-
   if (initialized == 0)
     return;
 
-  post(&exit_message);
+  uv_mutex_lock(&mutex);
 
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_join(threads + i))
-      abort();
+  /* Tell threads to terminate. */
+  if (num_threads > 0) {
+    QUEUE_INSERT_TAIL(&wq, &exit_message);
+    uv_cond_signal(&cond);
+  }
 
-  if (threads != default_threads)
-    uv__free(threads);
+  /* Wait for threads to terminate. */
+  while (num_threads > 0) {
+    uv_cond_wait(&cond, &mutex);
+    uv_cond_signal(&cond);
+  }
 
+  uv_mutex_unlock(&mutex);
   uv_mutex_destroy(&mutex);
   uv_cond_destroy(&cond);
 
-  threads = NULL;
-  nthreads = 0;
   initialized = 0;
 }
 #endif
 
 
 static void init_once(void) {
-  unsigned int i;
   const char* val;
 
-  nthreads = ARRAY_SIZE(default_threads);
+  max_threads = 8;  /* FIXME(bnoordhuis) Arbitrary default. */
   val = getenv("UV_THREADPOOL_SIZE");
   if (val != NULL)
-    nthreads = atoi(val);
-  if (nthreads == 0)
-    nthreads = 1;
-  if (nthreads > MAX_THREADPOOL_SIZE)
-    nthreads = MAX_THREADPOOL_SIZE;
-
-  threads = default_threads;
-  if (nthreads > ARRAY_SIZE(default_threads)) {
-    threads = uv__malloc(nthreads * sizeof(threads[0]));
-    if (threads == NULL) {
-      nthreads = ARRAY_SIZE(default_threads);
-      threads = default_threads;
-    }
-  }
+    max_threads = atoi(val);
+  if (max_threads < 1)
+    max_threads = 1;
+  if (max_threads > MAX_THREADPOOL_SIZE)
+    max_threads = MAX_THREADPOOL_SIZE;
+  /* Allow forcing synchronous mode for testing purposes. */
+  if (val != NULL && strcmp(val, "really-zero") == 0)
+    max_threads = 0;
 
   if (uv_cond_init(&cond))
     abort();
@@ -164,10 +194,6 @@ static void init_once(void) {
 
   QUEUE_INIT(&wq);
 
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_create(threads + i, worker, NULL))
-      abort();
-
   initialized = 1;
 }
 
@@ -176,11 +202,43 @@ void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      void (*work)(struct uv__work* w),
                      void (*done)(struct uv__work* w, int status)) {
+  int err;
+
   uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
   w->done = done;
-  post(&w->wq);
+
+  uv_mutex_lock(&mutex);
+
+  if (busy_threads >= num_threads && num_threads < max_threads) {
+    /* Drop the lock for a moment, starting a thread can be slow. */
+    uv_mutex_unlock(&mutex);
+    err = new_detached_thread();
+    uv_mutex_lock(&mutex);
+
+    /* There is technically a race window between new_detached_thread() where
+     * the new thread exits and decrements num_threads before we increment it
+     * here.  It's a benign race, though; worst case, num_threads is less than
+     * zero for a short time.  We just take that in stride, the important part
+     * is that num_threads > 0 means there is a thread to service the work item.
+     */
+    if (err == 0)
+      num_threads += 1;
+  }
+
+  if (num_threads > 0) {
+    QUEUE_INSERT_TAIL(&wq, &w->wq);
+    uv_cond_signal(&cond);
+    uv_mutex_unlock(&mutex);
+  } else {
+    /* If we can't start a thread, fall back to doing the work synchronously.
+     * Performance will be degraded but at least we make forward progress.
+     */
+    QUEUE_INIT(&w->wq);
+    uv_mutex_unlock(&mutex);
+    do_work(w);
+  }
 }
 
 

@@ -22,6 +22,9 @@
 #include "uv.h"
 #include "task.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 #define INIT_CANCEL_INFO(ci, what)                                            \
   do {                                                                        \
     (ci)->reqs = (what);                                                      \
@@ -46,6 +49,12 @@ static unsigned work_cb_called;
 static unsigned done_cb_called;
 static unsigned done2_cb_called;
 static unsigned timer_cb_called;
+
+
+static int no_threadpool(void) {
+  const char* val = getenv("UV_THREADPOOL_SIZE");
+  return val != NULL && strcmp(val, "really-zero") == 0;
+}
 
 
 static void work_cb(uv_work_t* req) {
@@ -182,6 +191,10 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   uv_loop_t* loop;
   int r;
 
+  /* Work requests are executed synchronously when there is no threadpool. */
+  if (no_threadpool())
+    RETURN_SKIP("Cancellation doesn't work in synchronous work mode.");
+
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
   saturate_threadpool();
@@ -216,6 +229,10 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   struct cancel_info ci;
   uv_loop_t* loop;
   int r;
+
+  /* Work requests are executed synchronously when there is no threadpool. */
+  if (no_threadpool())
+    RETURN_SKIP("Cancellation doesn't work in synchronous work mode.");
 
   r = uv_ip4_addr("127.0.0.1", 80, &addr4);
   ASSERT(r == 0);
@@ -254,6 +271,10 @@ TEST_IMPL(threadpool_cancel_work) {
   uv_loop_t* loop;
   unsigned i;
 
+  /* Work requests are executed synchronously when there is no threadpool. */
+  if (no_threadpool())
+    RETURN_SKIP("Cancellation doesn't work in synchronous work mode.");
+
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
   saturate_threadpool();
@@ -279,6 +300,10 @@ TEST_IMPL(threadpool_cancel_fs) {
   uv_fs_t reqs[25];
   uv_loop_t* loop;
   unsigned n;
+
+  /* Work requests are executed synchronously when there is no threadpool. */
+  if (no_threadpool())
+    RETURN_SKIP("Cancellation doesn't work in synchronous work mode.");
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
@@ -331,6 +356,10 @@ TEST_IMPL(threadpool_cancel_single) {
   uv_work_t req;
   int cancelled;
   int i;
+
+  /* Work requests are executed synchronously when there is no threadpool. */
+  if (no_threadpool())
+    RETURN_SKIP("Cancellation doesn't work in synchronous work mode.");
 
   loop = uv_default_loop();
   for (i = 0; i < 5000; i++) {
