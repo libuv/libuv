@@ -103,7 +103,7 @@ static void worker(void* arg) {
 static void post(QUEUE* q) {
   int empty_queue;
   uv_mutex_lock(&mutex);
-  empty_queue = QUEUE_EMPTY(&wq) ? 1 : 0;
+  empty_queue = QUEUE_EMPTY(&wq);
   QUEUE_INSERT_TAIL(&wq, q);
   if (empty_queue)
     uv_cond_signal(&cond);
