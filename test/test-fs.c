@@ -2328,3 +2328,189 @@ TEST_IMPL(fs_write_multiple_bufs) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+TEST_IMPL(fs_write_alotof_bufs) {
+  const size_t iovcount = 54321;
+  uv_buf_t* iovs;
+  char* buffer;
+  size_t index;
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  loop = uv_default_loop();
+
+  iovs = malloc(sizeof(*iovs) * iovcount);
+  ASSERT(iovs != NULL);
+
+  r = uv_fs_open(loop,
+                 &open_req1,
+                 "test_file",
+                 O_RDWR | O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req1.result >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  for (index = 0; index < iovcount; ++index)
+    iovs[index] = uv_buf_init(test_buf, sizeof(test_buf));
+
+  r = uv_fs_write(loop,
+                  &write_req,
+                  open_req1.result,
+                  iovs,
+                  iovcount,
+                  -1,
+                  NULL);
+  ASSERT(r >= 0);
+  ASSERT((size_t)write_req.result == sizeof(test_buf) * iovcount);
+  uv_fs_req_cleanup(&write_req);
+
+  /* Read the strings back to separate buffers. */
+  buffer = malloc(sizeof(test_buf) * iovcount);
+  ASSERT(buffer != NULL);
+
+  for (index = 0; index < iovcount; ++index)
+    iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf),
+                              sizeof(test_buf));
+
+  r = uv_fs_read(loop, &read_req, open_req1.result, iovs, iovcount, 0, NULL);
+  ASSERT(r >= 0);
+  ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
+
+  for (index = 0; index < iovcount; ++index)
+    ASSERT(strncmp(buffer + index * sizeof(test_buf),
+                   test_buf,
+                   sizeof(test_buf)) == 0);
+
+  uv_fs_req_cleanup(&read_req);
+  free(buffer);
+
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(loop,
+                 &read_req,
+                 open_req1.result,
+                 &iov,
+                 1,
+                 read_req.result,
+                 NULL);
+  ASSERT(r == 0);
+  ASSERT(read_req.result == 0);
+  uv_fs_req_cleanup(&read_req);
+
+  r = uv_fs_close(loop, &close_req, open_req1.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  unlink("test_file");
+  free(iovs);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(fs_write_alotof_bufs_with_offset) {
+  const size_t iovcount = 54321;
+  uv_buf_t* iovs;
+  char* buffer;
+  size_t index;
+  int r;
+  int64_t offset;
+  char* filler = "0123456789";
+  int filler_len = strlen(filler);
+
+  /* Setup. */
+  unlink("test_file");
+
+  loop = uv_default_loop();
+
+  iovs = malloc(sizeof(*iovs) * iovcount);
+  ASSERT(iovs != NULL);
+
+  r = uv_fs_open(loop,
+                 &open_req1,
+                 "test_file",
+                 O_RDWR | O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req1.result >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  iov = uv_buf_init(filler, filler_len);
+  r = uv_fs_write(loop, &write_req, open_req1.result, &iov, 1, -1, NULL);
+  ASSERT(r == filler_len);
+  ASSERT(write_req.result == filler_len);
+  uv_fs_req_cleanup(&write_req);
+  offset = (int64_t)r;
+
+  for (index = 0; index < iovcount; ++index)
+    iovs[index] = uv_buf_init(test_buf, sizeof(test_buf));
+
+  r = uv_fs_write(loop,
+                  &write_req,
+                  open_req1.result,
+                  iovs,
+                  iovcount,
+                  offset,
+                  NULL);
+  ASSERT(r >= 0);
+  ASSERT((size_t)write_req.result == sizeof(test_buf) * iovcount);
+  uv_fs_req_cleanup(&write_req);
+
+  /* Read the strings back to separate buffers. */
+  buffer = malloc(sizeof(test_buf) * iovcount);
+  ASSERT(buffer != NULL);
+
+  for (index = 0; index < iovcount; ++index)
+    iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf),
+                              sizeof(test_buf));
+
+  r = uv_fs_read(loop, &read_req, open_req1.result, iovs, iovcount, offset, NULL);
+  ASSERT(r >= 0);
+  ASSERT(read_req.result == sizeof(test_buf) * iovcount);
+
+  for (index = 0; index < iovcount; ++index)
+    ASSERT(strncmp(buffer + index * sizeof(test_buf),
+                   test_buf,
+                   sizeof(test_buf)) == 0);
+
+  uv_fs_req_cleanup(&read_req);
+  free(buffer);
+
+  r = uv_fs_stat(loop, &stat_req, "test_file", NULL);
+  ASSERT(r == 0);
+  ASSERT((int64_t)((uv_stat_t*)stat_req.ptr)->st_size ==
+         offset + (int64_t)(iovcount * sizeof(test_buf)));
+  uv_fs_req_cleanup(&stat_req);
+
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(loop,
+                 &read_req,
+                 open_req1.result,
+                 &iov,
+                 1,
+                 read_req.result + offset,
+                 NULL);
+  ASSERT(r == 0);
+  ASSERT(read_req.result == 0);
+  uv_fs_req_cleanup(&read_req);
+
+  r = uv_fs_close(loop, &close_req, open_req1.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  unlink("test_file");
+  free(iovs);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
