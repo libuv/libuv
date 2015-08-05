@@ -196,7 +196,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
   (((h)->flags & UV__HANDLE_REF) != 0)
 
 #if defined(_WIN32)
-# define uv__handle_platform_init(h)
+# define uv__handle_platform_init(h) ((h)->u.fd = -1)
 #else
 # define uv__handle_platform_init(h) ((h)->next_closing = NULL)
 #endif
@@ -210,5 +210,14 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
     uv__handle_platform_init(h);                                              \
   }                                                                           \
   while (0)
+
+
+/* Allocator prototypes */
+void *uv__calloc(size_t count, size_t size);
+char *uv__strdup(const char* s);
+char *uv__strndup(const char* s, size_t n);
+void* uv__malloc(size_t size);
+void uv__free(void* ptr);
+void* uv__realloc(void* ptr, size_t size);
 
 #endif /* UV_COMMON_H_ */

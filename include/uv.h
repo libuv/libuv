@@ -244,6 +244,16 @@ typedef enum {
 UV_EXTERN unsigned int uv_version(void);
 UV_EXTERN const char* uv_version_string(void);
 
+typedef void* (*uv_malloc_func)(size_t size);
+typedef void* (*uv_realloc_func)(void* ptr, size_t size);
+typedef void* (*uv_calloc_func)(size_t count, size_t size);
+typedef void (*uv_free_func)(void* ptr);
+
+UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func,
+                                   uv_realloc_func realloc_func,
+                                   uv_calloc_func calloc_func,
+                                   uv_free_func free_func);
+
 UV_EXTERN uv_loop_t* uv_default_loop(void);
 UV_EXTERN int uv_loop_init(uv_loop_t* loop);
 UV_EXTERN int uv_loop_close(uv_loop_t* loop);
@@ -396,7 +406,10 @@ struct uv_shutdown_s {
   /* private */                                                               \
   uv_close_cb close_cb;                                                       \
   void* handle_queue[2];                                                      \
-  void* reserved[4];                                                          \
+  union {                                                                     \
+    int fd;                                                                   \
+    void* reserved[4];                                                        \
+  } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
 /* The abstract base class of all handles. */
@@ -494,6 +507,7 @@ struct uv_tcp_s {
 };
 
 UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
+UV_EXTERN int uv_tcp_init_ex(uv_loop_t*, uv_tcp_t* handle, unsigned int flags);
 UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
 UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
 UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
@@ -584,6 +598,7 @@ struct uv_udp_send_s {
 };
 
 UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
+UV_EXTERN int uv_udp_init_ex(uv_loop_t*, uv_udp_t* handle, unsigned int flags);
 UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
                           const struct sockaddr* addr,
@@ -1027,6 +1042,8 @@ typedef struct {
 } uv_rusage_t;
 
 UV_EXTERN int uv_getrusage(uv_rusage_t* rusage);
+
+UV_EXTERN int uv_os_homedir(char* buffer, size_t* size);
 
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);

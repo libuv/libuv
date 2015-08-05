@@ -204,14 +204,15 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
         /* Read a couple of bytes. */
         static char buffer[74];
         r = recv(context->sock, buffer, sizeof buffer, 0);
-        ASSERT(r >= 0);
 
         if (r > 0) {
           context->read += r;
-        } else {
+        } else if (r == 0) {
           /* Got FIN. */
           context->got_fin = 1;
           new_events &= ~UV_READABLE;
+        } else {
+          ASSERT(got_eagain());
         }
 
         break;
@@ -222,7 +223,6 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
         /* Read until EAGAIN. */
         static char buffer[931];
         r = recv(context->sock, buffer, sizeof buffer, 0);
-        ASSERT(r >= 0);
 
         while (r > 0) {
           context->read += r;

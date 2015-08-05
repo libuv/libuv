@@ -37,6 +37,9 @@
 
 static uv_fs_event_t fs_event;
 static const char file_prefix[] = "fsevent-";
+#if defined(__APPLE__) || defined(_WIN32)
+static const char file_prefix_in_subdir[] = "subdir";
+#endif
 static uv_timer_t timer;
 static int timer_cb_called;
 static int close_cb_called;
@@ -51,6 +54,7 @@ static char fs_event_filename[1024];
 static int timer_cb_touch_called;
 
 static void fs_event_unlink_files(uv_timer_t* handle);
+static void fs_event_unlink_files_in_subdir(uv_timer_t* handle);
 
 static void create_dir(uv_loop_t* loop, const char* name) {
   int r;
@@ -138,10 +142,40 @@ static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
   }
 }
 
+#if defined(__APPLE__) || defined(_WIN32)
+static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
+                                                 const char* filename,
+                                                 int events,
+                                                 int status) {
+  fs_event_cb_called++;
+  ASSERT(handle == &fs_event);
+  ASSERT(status == 0);
+  ASSERT(events == UV_RENAME || events == UV_CHANGE);
+  ASSERT(filename == NULL ||
+         strncmp(filename, file_prefix_in_subdir, sizeof(file_prefix_in_subdir) - 1) == 0);
+
+  /* Stop watching dir when received events about all files:
+   * both create and close events */
+  if (fs_event_cb_called == 2 * fs_event_file_count) {
+    ASSERT(0 == uv_fs_event_stop(handle));
+    uv_close((uv_handle_t*) handle, close_cb);
+  }
+}
+#endif
+
 static const char* fs_event_get_filename(int i) {
   snprintf(fs_event_filename,
            sizeof(fs_event_filename),
            "watch_dir/%s%d",
+           file_prefix,
+           i);
+  return fs_event_filename;
+}
+
+static const char* fs_event_get_filename_in_subdir(int i) {
+  snprintf(fs_event_filename,
+           sizeof(fs_event_filename),
+           "watch_dir/subdir/%s%d",
            file_prefix,
            i);
   return fs_event_filename;
@@ -162,6 +196,41 @@ static void fs_event_create_files(uv_timer_t* handle) {
 
   /* And unlink them */
   ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files, 50, 0));
+}
+
+static void fs_event_create_files_in_subdir(uv_timer_t* handle) {
+  int i;
+
+  /* Already created all files */
+  if (fs_event_created == fs_event_file_count) {
+    uv_close((uv_handle_t*) &timer, close_cb);
+    return;
+  }
+
+  /* Create all files */
+  for (i = 0; i < 16; i++, fs_event_created++)
+    create_file(handle->loop, fs_event_get_filename_in_subdir(i));
+
+  /* And unlink them */
+  ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files_in_subdir, 50, 0));
+}
+
+void fs_event_unlink_files_in_subdir(uv_timer_t* handle) {
+  int r;
+  int i;
+
+  /* NOTE: handle might be NULL if invoked not as timer callback */
+
+  /* Unlink all files */
+  for (i = 0; i < 16; i++) {
+    r = remove(fs_event_get_filename_in_subdir(i));
+    if (handle != NULL)
+      ASSERT(r == 0);
+  }
+
+  /* And create them again */
+  if (handle != NULL)
+    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files_in_subdir, 50, 0));
 }
 
 void fs_event_unlink_files(uv_timer_t* handle) {
@@ -281,6 +350,51 @@ TEST_IMPL(fs_event_watch_dir) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(fs_event_watch_dir_recursive) {
+#if defined(__APPLE__) || defined(_WIN32)
+  uv_loop_t* loop;
+  int r;
+
+  /* Setup */
+  loop = uv_default_loop();
+  fs_event_unlink_files(NULL);
+  remove("watch_dir/file2");
+  remove("watch_dir/file1");
+  remove("watch_dir/subdir");
+  remove("watch_dir/");
+  create_dir(loop, "watch_dir");
+  create_dir(loop, "watch_dir/subdir");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_dir_multi_file_in_subdir, "watch_dir", UV_FS_EVENT_RECURSIVE);
+  ASSERT(r == 0);
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer, fs_event_create_files_in_subdir, 100, 0);
+  ASSERT(r == 0);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(fs_event_cb_called == 2 * fs_event_file_count);
+  ASSERT(fs_event_created == fs_event_file_count);
+  ASSERT(close_cb_called == 2);
+
+  /* Cleanup */
+  fs_event_unlink_files_in_subdir(NULL);
+  remove("watch_dir/file2");
+  remove("watch_dir/file1");
+  remove("watch_dir/subdir");
+  remove("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#else
+  RETURN_SKIP("Recursive directory watching not supported on this platform.");
+#endif
+}
+
 
 TEST_IMPL(fs_event_watch_file) {
   uv_loop_t* loop = uv_default_loop();

@@ -38,6 +38,7 @@ static uv_connect_t connect_req;
 static uv_shutdown_t shutdown_req;
 static uv_write_t write_req;
 
+static int read_bytes = 0;
 
 static void startup(void) {
 #ifdef _WIN32
@@ -71,6 +72,17 @@ static uv_os_sock_t create_tcp_socket(void) {
 }
 
 
+static void close_socket(uv_os_sock_t sock) {
+  int r;
+#ifdef _WIN32
+  r = closesocket(sock);
+#else
+  r = close(sock);
+#endif
+  ASSERT(r == 0);
+}
+
+
 static void alloc_cb(uv_handle_t* handle,
                      size_t suggested_size,
                      uv_buf_t* buf) {
@@ -100,11 +112,15 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(tcp != NULL);
 
   if (nread >= 0) {
-    ASSERT(nread == 4);
-    ASSERT(memcmp("PING", buf->base, nread) == 0);
+    read_bytes += nread;
+    if (nread > 0) {
+      ASSERT(nread == 4);
+      ASSERT(memcmp("PING", buf->base, nread) == 0);
+    }
   }
   else {
     ASSERT(nread == UV_EOF);
+    ASSERT(read_bytes == 4);
     printf("GOT EOF\n");
     uv_close((uv_handle_t*)tcp, close_cb);
   }
@@ -176,6 +192,33 @@ TEST_IMPL(tcp_open) {
   ASSERT(connect_cb_called == 1);
   ASSERT(write_cb_called == 1);
   ASSERT(close_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(tcp_open_twice) {
+  uv_tcp_t client;
+  uv_os_sock_t sock1, sock2;
+  int r;
+
+  startup();
+  sock1 = create_tcp_socket();
+  sock2 = create_tcp_socket();
+
+  r = uv_tcp_init(uv_default_loop(), &client);
+  ASSERT(r == 0);
+
+  r = uv_tcp_open(&client, sock1);
+  ASSERT(r == 0);
+
+  r = uv_tcp_open(&client, sock2);
+  ASSERT(r == UV_EBUSY);
+  close_socket(sock2);
+
+  uv_close((uv_handle_t*) &client, NULL);
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

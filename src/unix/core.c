@@ -35,9 +35,10 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <limits.h> /* INT_MAX, PATH_MAX */
+#include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
+#include <pwd.h>
 
 #ifdef __linux__
 # include <sys/ioctl.h>
@@ -54,13 +55,13 @@
 # include <sys/ioctl.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/ioctl.h>
 # include <sys/wait.h>
 # define UV__O_CLOEXEC O_CLOEXEC
-# if __FreeBSD__ >= 10
+# if defined(__FreeBSD__) && __FreeBSD__ >= 10
 #  define uv__accept4 accept4
 #  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
 #  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
@@ -198,6 +199,19 @@ void uv__make_close_pending(uv_handle_t* handle) {
   handle->loop->closing_handles = handle;
 }
 
+int uv__getiovmax(void) {
+#if defined(IOV_MAX)
+  return IOV_MAX;
+#elif defined(_SC_IOV_MAX)
+  static int iovmax = -1;
+  if (iovmax == -1)
+    iovmax = sysconf(_SC_IOV_MAX);
+  return iovmax;
+#else
+  return 1024;
+#endif
+}
+
 
 static void uv__finish_close(uv_handle_t* handle) {
   /* Note: while the handle is in the UV_CLOSING state now, it's still possible
@@ -280,6 +294,9 @@ int uv_backend_timeout(const uv_loop_t* loop) {
     return 0;
 
   if (!QUEUE_EMPTY(&loop->idle_handles))
+    return 0;
+
+  if (!QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
   if (loop->closing_handles)
@@ -473,7 +490,7 @@ int uv__close(int fd) {
 
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-    defined(_AIX)
+    defined(_AIX) || defined(__DragonFly__)
 
 int uv__nonblock(int fd, int set) {
   int r;
@@ -502,7 +519,8 @@ int uv__cloexec(int fd, int set) {
   return 0;
 }
 
-#else /* !(defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)) */
+#else /* !(defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
+	   defined(_AIX) || defined(__DragonFly__)) */
 
 int uv__nonblock(int fd, int set) {
   int flags;
@@ -565,7 +583,8 @@ int uv__cloexec(int fd, int set) {
   return 0;
 }
 
-#endif /* defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) */
+#endif /* defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
+	  defined(_AIX) || defined(__DragonFly__) */
 
 
 /* This function is not execve-safe, there is a race window
@@ -696,16 +715,20 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
 
 static int uv__run_pending(uv_loop_t* loop) {
   QUEUE* q;
+  QUEUE pq;
   uv__io_t* w;
 
   if (QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
-  while (!QUEUE_EMPTY(&loop->pending_queue)) {
-    q = QUEUE_HEAD(&loop->pending_queue);
+  QUEUE_INIT(&pq);
+  q = QUEUE_HEAD(&loop->pending_queue);
+  QUEUE_SPLIT(&loop->pending_queue, q, &pq);
+
+  while (!QUEUE_EMPTY(&pq)) {
+    q = QUEUE_HEAD(&pq);
     QUEUE_REMOVE(q);
     QUEUE_INIT(q);
-
     w = QUEUE_DATA(q, uv__io_t, pending_queue);
     w->cb(loop, w, UV__POLLOUT);
   }
@@ -745,8 +768,8 @@ static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = realloc(loop->watchers,
-                     (nwatchers + 2) * sizeof(loop->watchers[0]));
+  watchers = uv__realloc(loop->watchers,
+                         (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     abort();
@@ -899,7 +922,8 @@ int uv__open_cloexec(const char* path, int flags) {
   int err;
   int fd;
 
-#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9)
+#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9) || \
+    defined(__DragonFly__)
   static int no_cloexec;
 
   if (!no_cloexec) {
@@ -982,4 +1006,86 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
 
     return r;
   }
+}
+
+
+int uv_os_homedir(char* buffer, size_t* size) {
+  struct passwd pw;
+  struct passwd* result;
+  char* buf;
+  uid_t uid;
+  size_t bufsize;
+  size_t len;
+  long initsize;
+  int r;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return -EINVAL;
+
+  /* Check if the HOME environment variable is set first */
+  buf = getenv("HOME");
+
+  if (buf != NULL) {
+    len = strlen(buf);
+
+    if (len >= *size) {
+      *size = len;
+      return -ENOBUFS;
+    }
+
+    memcpy(buffer, buf, len + 1);
+    *size = len;
+
+    return 0;
+  }
+
+  /* HOME is not set, so call getpwuid() */
+  initsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+
+  if (initsize <= 0)
+    bufsize = 4096;
+  else
+    bufsize = (size_t) initsize;
+
+  uid = getuid();
+  buf = NULL;
+
+  for (;;) {
+    uv__free(buf);
+    buf = uv__malloc(bufsize);
+
+    if (buf == NULL)
+      return -ENOMEM;
+
+    r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+
+    if (r != ERANGE)
+      break;
+
+    bufsize *= 2;
+  }
+
+  if (r != 0) {
+    uv__free(buf);
+    return -r;
+  }
+
+  if (result == NULL) {
+    uv__free(buf);
+    return -ENOENT;
+  }
+
+  len = strlen(pw.pw_dir);
+
+  if (len >= *size) {
+    *size = len;
+    uv__free(buf);
+    return -ENOBUFS;
+  }
+
+  memcpy(buffer, pw.pw_dir, len + 1);
+  *size = len;
+  uv__free(buf);
+
+  return 0;
 }

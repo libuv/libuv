@@ -89,6 +89,9 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
   uv_udp_send_t* req;
   QUEUE* q;
 
+  assert(!(handle->flags & UV_UDP_PROCESSING));
+  handle->flags |= UV_UDP_PROCESSING;
+
   while (!QUEUE_EMPTY(&handle->write_completed_queue)) {
     q = QUEUE_HEAD(&handle->write_completed_queue);
     QUEUE_REMOVE(q);
@@ -100,7 +103,7 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
     handle->send_queue_count--;
 
     if (req->bufs != req->bufsml)
-      free(req->bufs);
+      uv__free(req->bufs);
     req->bufs = NULL;
 
     if (req->send_cb == NULL)
@@ -121,6 +124,8 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
     if (!uv__io_active(&handle->io_watcher, UV__POLLIN))
       uv__handle_stop(handle);
   }
+
+  handle->flags &= ~UV_UDP_PROCESSING;
 }
 
 
@@ -316,6 +321,10 @@ int uv__udp_bind(uv_udp_t* handle,
 
   if (bind(fd, addr, addrlen)) {
     err = -errno;
+    if (errno == EAFNOSUPPORT)
+      /* OSX, other BSDs and SunoS fail with EAFNOSUPPORT when binding a
+       * socket created with AF_INET to an AF_INET6 address or vice versa. */
+      err = -EINVAL;
     goto out;
   }
 
@@ -399,7 +408,7 @@ int uv__udp_send(uv_udp_send_t* req,
 
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = malloc(nbufs * sizeof(bufs[0]));
+    req->bufs = uv__malloc(nbufs * sizeof(bufs[0]));
 
   if (req->bufs == NULL)
     return -ENOMEM;
@@ -410,10 +419,11 @@ int uv__udp_send(uv_udp_send_t* req,
   QUEUE_INSERT_TAIL(&handle->write_queue, &req->queue);
   uv__handle_start(handle);
 
-  if (empty_queue)
+  if (empty_queue && !(handle->flags & UV_UDP_PROCESSING)) {
     uv__udp_sendmsg(handle);
-  else
+  } else {
     uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
+  }
 
   return 0;
 }
@@ -545,16 +555,42 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
 }
 
 
-int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
+int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned int flags) {
+  int domain;
+  int err;
+  int fd;
+
+  /* Use the lower 8 bits for the domain */
+  domain = flags & 0xFF;
+  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+    return -EINVAL;
+
+  if (flags & ~0xFF)
+    return -EINVAL;
+
+  if (domain != AF_UNSPEC) {
+    err = uv__socket(domain, SOCK_DGRAM, 0);
+    if (err < 0)
+      return err;
+    fd = err;
+  } else {
+    fd = -1;
+  }
+
   uv__handle_init(loop, (uv_handle_t*)handle, UV_UDP);
   handle->alloc_cb = NULL;
   handle->recv_cb = NULL;
   handle->send_queue_size = 0;
   handle->send_queue_count = 0;
-  uv__io_init(&handle->io_watcher, uv__udp_io, -1);
+  uv__io_init(&handle->io_watcher, uv__udp_io, fd);
   QUEUE_INIT(&handle->write_queue);
   QUEUE_INIT(&handle->write_completed_queue);
   return 0;
+}
+
+
+int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
+  return uv_udp_init_ex(loop, handle, AF_UNSPEC);
 }
 
 
@@ -563,7 +599,7 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
 
   /* Check for already active socket. */
   if (handle->io_watcher.fd != -1)
-    return -EALREADY;  /* FIXME(bnoordhuis) Should be -EBUSY. */
+    return -EBUSY;
 
   err = uv__nonblock(sock, 1);
   if (err)
@@ -666,13 +702,13 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
  * so hardcode the size of these options on this platform,
  * and use the general uv__setsockopt_maybe_char call on other platforms.
  */
-#if defined(__sun)
+#if defined(__sun) || defined(_AIX)
   return uv__setsockopt(handle,
                         IP_TTL,
                         IPV6_UNICAST_HOPS,
                         &ttl,
                         sizeof(ttl));
-#endif /* defined(__sun) */
+#endif /* defined(__sun) || defined(_AIX) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_TTL,
@@ -688,14 +724,14 @@ int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl) {
  * IP_MULTICAST_TTL, so hardcode the size of the option in the IPv6 case,
  * and use the general uv__setsockopt_maybe_char call otherwise.
  */
-#if defined(__sun)
+#if defined(__sun) || defined(_AIX)
   if (handle->flags & UV_HANDLE_IPV6)
     return uv__setsockopt(handle,
                           IP_MULTICAST_TTL,
                           IPV6_MULTICAST_HOPS,
                           &ttl,
                           sizeof(ttl));
-#endif /* defined(__sun) */
+#endif /* defined(__sun) || defined(_AIX) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_MULTICAST_TTL,
@@ -711,14 +747,14 @@ int uv_udp_set_multicast_loop(uv_udp_t* handle, int on) {
  * IP_MULTICAST_LOOP, so hardcode the size of the option in the IPv6 case,
  * and use the general uv__setsockopt_maybe_char call otherwise.
  */
-#if defined(__sun)
+#if defined(__sun) || defined(_AIX)
   if (handle->flags & UV_HANDLE_IPV6)
     return uv__setsockopt(handle,
                           IP_MULTICAST_LOOP,
                           IPV6_MULTICAST_LOOP,
                           &on,
                           sizeof(on));
-#endif /* defined(__sun) */
+#endif /* defined(__sun) || defined(_AIX) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_MULTICAST_LOOP,
