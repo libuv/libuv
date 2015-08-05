@@ -1401,6 +1401,7 @@ TEST_IMPL(spawn_fs_open) {
 
   fd = uv_fs_open(uv_default_loop(), &fs_req, "/dev/null", O_RDWR, 0, NULL);
   ASSERT(fd >= 0);
+  uv_fs_req_cleanup(&fs_req);
 
   init_process_options("spawn_helper8", exit_cb);
 
