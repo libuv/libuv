@@ -79,9 +79,6 @@ TEST_DECLARE   (tcp_bind_invalid_flags)
 TEST_DECLARE   (tcp_listen_without_bind)
 TEST_DECLARE   (tcp_connect_error_fault)
 TEST_DECLARE   (tcp_connect_timeout)
-#ifndef _WIN32
-TEST_DECLARE   (tcp_squelch_connreset)
-#endif
 TEST_DECLARE   (tcp_close_while_connecting)
 TEST_DECLARE   (tcp_close)
 TEST_DECLARE   (tcp_create_early)
@@ -427,9 +424,6 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_listen_without_bind)
   TEST_ENTRY  (tcp_connect_error_fault)
   TEST_ENTRY  (tcp_connect_timeout)
-#ifndef _WIN32
-  TEST_ENTRY  (tcp_squelch_connreset)
-#endif
   TEST_ENTRY  (tcp_close_while_connecting)
   TEST_ENTRY  (tcp_close)
   TEST_ENTRY  (tcp_create_early)
