@@ -142,6 +142,8 @@ API
     Stop reading data from the stream. The :c:type:`uv_read_cb` callback will
     no longer be called.
 
+    This function is idempotent and may be safely called on a stopped stream.
+
 .. c:function:: int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb)
 
     Write data to stream. Buffers are written in order. Example:
