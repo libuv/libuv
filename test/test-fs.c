@@ -2514,3 +2514,24 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+TEST_IMPL(fs_read_write_null_arguments) {
+  int r;
+
+  r = uv_fs_read(NULL, NULL, 0, NULL, 0, -1, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_write(NULL, NULL, 0, NULL, 0, -1, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_read(NULL, NULL, 0, &iov, 0, -1, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_write(NULL, NULL, 0, &iov, 0, -1, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  return 0;
+}

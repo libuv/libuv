@@ -1071,6 +1071,9 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
                unsigned int nbufs,
                int64_t off,
                uv_fs_cb cb) {
+  if (bufs == NULL || nbufs == 0)
+    return -EINVAL;
+
   INIT(READ);
   req->file = file;
 
@@ -1193,6 +1196,9 @@ int uv_fs_write(uv_loop_t* loop,
                 unsigned int nbufs,
                 int64_t off,
                 uv_fs_cb cb) {
+  if (bufs == NULL || nbufs == 0)
+    return -EINVAL;
+
   INIT(WRITE);
   req->file = file;
 
