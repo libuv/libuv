@@ -60,21 +60,21 @@
 
 #define INIT(type)                                                            \
   do {                                                                        \
-    uv__req_init((loop), (req), UV_FS);                                       \
-    (req)->fs_type = UV_FS_ ## type;                                          \
-    (req)->result = 0;                                                        \
-    (req)->ptr = NULL;                                                        \
-    (req)->loop = loop;                                                       \
-    (req)->path = NULL;                                                       \
-    (req)->new_path = NULL;                                                   \
-    (req)->cb = (cb);                                                         \
+    uv__req_init(loop, req, UV_FS);                                           \
+    req->fs_type = UV_FS_ ## type;                                            \
+    req->result = 0;                                                          \
+    req->ptr = NULL;                                                          \
+    req->loop = loop;                                                         \
+    req->path = NULL;                                                         \
+    req->new_path = NULL;                                                     \
+    req->cb = cb;                                                             \
   }                                                                           \
   while (0)
 
 #define PATH                                                                  \
   do {                                                                        \
-    (req)->path = uv__strdup(path);                                           \
-    if ((req)->path == NULL)                                                  \
+    req->path = uv__strdup(path);                                             \
+    if (req->path == NULL)                                                    \
       return -ENOMEM;                                                         \
   }                                                                           \
   while (0)
@@ -83,27 +83,27 @@
   do {                                                                        \
     size_t path_len;                                                          \
     size_t new_path_len;                                                      \
-    path_len = strlen((path)) + 1;                                            \
-    new_path_len = strlen((new_path)) + 1;                                    \
-    (req)->path = uv__malloc(path_len + new_path_len);                        \
-    if ((req)->path == NULL)                                                  \
+    path_len = strlen(path) + 1;                                              \
+    new_path_len = strlen(new_path) + 1;                                      \
+    req->path = uv__malloc(path_len + new_path_len);                          \
+    if (req->path == NULL)                                                    \
       return -ENOMEM;                                                         \
-    (req)->new_path = (req)->path + path_len;                                 \
-    memcpy((void*) (req)->path, (path), path_len);                            \
-    memcpy((void*) (req)->new_path, (new_path), new_path_len);                \
+    req->new_path = req->path + path_len;                                     \
+    memcpy((void*) req->path, path, path_len);                                \
+    memcpy((void*) req->new_path, new_path, new_path_len);                    \
   }                                                                           \
   while (0)
 
 #define POST                                                                  \
   do {                                                                        \
-    if ((cb) != NULL) {                                                       \
-      uv__work_submit((loop), &(req)->work_req, uv__fs_work, uv__fs_done);    \
+    if (cb != NULL) {                                                         \
+      uv__work_submit(loop, &req->work_req, uv__fs_work, uv__fs_done);        \
       return 0;                                                               \
     }                                                                         \
     else {                                                                    \
-      uv__fs_work(&(req)->work_req);                                          \
-      uv__fs_done(&(req)->work_req, 0);                                       \
-      return (req)->result;                                                   \
+      uv__fs_work(&req->work_req);                                            \
+      uv__fs_done(&req->work_req, 0);                                         \
+      return req->result;                                                     \
     }                                                                         \
   }                                                                           \
   while (0)
