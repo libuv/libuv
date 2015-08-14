@@ -37,14 +37,15 @@
 
 static uv_fs_event_t fs_event;
 static const char file_prefix[] = "fsevent-";
+static const int fs_event_file_count = 16;
 #if defined(__APPLE__) || defined(_WIN32)
 static const char file_prefix_in_subdir[] = "subdir";
 #endif
 static uv_timer_t timer;
 static int timer_cb_called;
 static int close_cb_called;
-static const int fs_event_file_count = 128;
 static int fs_event_created;
+static int fs_event_removed;
 static int fs_event_cb_called;
 #if defined(PATH_MAX)
 static char fs_event_filename[PATH_MAX];
@@ -52,9 +53,6 @@ static char fs_event_filename[PATH_MAX];
 static char fs_event_filename[1024];
 #endif  /* defined(PATH_MAX) */
 static int timer_cb_touch_called;
-
-static void fs_event_unlink_files(uv_timer_t* handle);
-static void fs_event_unlink_files_in_subdir(uv_timer_t* handle);
 
 static void create_dir(const char* name) {
   int r;
@@ -122,46 +120,6 @@ static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   uv_close((uv_handle_t*)handle, close_cb);
 }
 
-static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
-                                       const char* filename,
-                                       int events,
-                                       int status) {
-  fs_event_cb_called++;
-  ASSERT(handle == &fs_event);
-  ASSERT(status == 0);
-  ASSERT(events == UV_RENAME);
-  ASSERT(filename == NULL ||
-         strncmp(filename, file_prefix, sizeof(file_prefix) - 1) == 0);
-
-  /* Stop watching dir when received events about all files:
-   * both create and close events */
-  if (fs_event_cb_called == 2 * fs_event_file_count) {
-    ASSERT(0 == uv_fs_event_stop(handle));
-    uv_close((uv_handle_t*) handle, close_cb);
-  }
-}
-
-#if defined(__APPLE__) || defined(_WIN32)
-static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
-                                                 const char* filename,
-                                                 int events,
-                                                 int status) {
-  fs_event_cb_called++;
-  ASSERT(handle == &fs_event);
-  ASSERT(status == 0);
-  ASSERT(events == UV_RENAME || events == UV_CHANGE);
-  ASSERT(filename == NULL ||
-         strncmp(filename, file_prefix_in_subdir, sizeof(file_prefix_in_subdir) - 1) == 0);
-
-  /* Stop watching dir when received events about all files:
-   * both create and close events */
-  if (fs_event_cb_called == 2 * fs_event_file_count) {
-    ASSERT(0 == uv_fs_event_stop(handle));
-    uv_close((uv_handle_t*) handle, close_cb);
-  }
-}
-#endif
-
 static const char* fs_event_get_filename(int i) {
   snprintf(fs_event_filename,
            sizeof(fs_event_filename),
@@ -171,6 +129,69 @@ static const char* fs_event_get_filename(int i) {
   return fs_event_filename;
 }
 
+static void fs_event_create_files(uv_timer_t* handle) {
+  /* Make sure we're not attempting to create files we do not intend */
+  ASSERT(fs_event_created < fs_event_file_count);
+
+  /* Create the file */
+  create_file(fs_event_get_filename(fs_event_created));
+
+  if (++fs_event_created < fs_event_file_count) {
+    /* Create another file on a different event loop tick.  We do it this way
+     * to avoid fs events coalescing into one fs event. */
+    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files, 1, 0));
+  }
+}
+
+static void fs_event_unlink_files(uv_timer_t* handle) {
+  int r;
+  int i;
+
+  /* NOTE: handle might be NULL if invoked not as timer callback */
+  if (handle == NULL) {
+    /* Unlink all files */
+    for (i = 0; i < 16; i++) {
+      r = remove(fs_event_get_filename(i));
+      if (handle != NULL)
+        ASSERT(r == 0);
+    }
+  } else {
+    /* Make sure we're not attempting to remove files we do not intend */
+    ASSERT(fs_event_removed < fs_event_file_count);
+
+    /* Remove the file */
+    ASSERT(0 == remove(fs_event_get_filename(fs_event_removed)));
+
+    if (++fs_event_removed < fs_event_file_count) {
+      /* Remove another file on a different event loop tick.  We do it this way
+       * to avoid fs events coalescing into one fs event. */
+      ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files, 1, 0));
+    }
+  }
+}
+
+static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
+                                       const char* filename,
+                                       int events,
+                                       int status) {
+  fs_event_cb_called++;
+  ASSERT(handle == &fs_event);
+  ASSERT(status == 0);
+  ASSERT(events == UV_CHANGE || UV_RENAME);
+  ASSERT(filename == NULL ||
+         strncmp(filename, file_prefix, sizeof(file_prefix) - 1) == 0);
+
+  if (fs_event_created + fs_event_removed == fs_event_file_count) {
+    /* Once we've processed all create events, delete all files */
+    ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files, 1, 0));
+  } else if (fs_event_cb_called == 2 * fs_event_file_count) {
+    /* Once we've processed all create and delete events, stop watching */
+    uv_close((uv_handle_t*) &timer, close_cb);
+    uv_close((uv_handle_t*) handle, close_cb);
+  }
+}
+
+#if defined(__APPLE__) || defined(_WIN32)
 static const char* fs_event_get_filename_in_subdir(int i) {
   snprintf(fs_event_filename,
            sizeof(fs_event_filename),
@@ -180,75 +201,68 @@ static const char* fs_event_get_filename_in_subdir(int i) {
   return fs_event_filename;
 }
 
-static void fs_event_create_files(uv_timer_t* handle) {
-  int i;
-
-  /* Already created all files */
-  if (fs_event_created == fs_event_file_count) {
-    uv_close((uv_handle_t*) &timer, close_cb);
-    return;
-  }
-
-  /* Create all files */
-  for (i = 0; i < 16; i++, fs_event_created++)
-    create_file(fs_event_get_filename(i));
-
-  /* And unlink them */
-  ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files, 50, 0));
-}
-
 static void fs_event_create_files_in_subdir(uv_timer_t* handle) {
+  /* Make sure we're not attempting to create files we do not intend */
+  ASSERT(fs_event_created < fs_event_file_count);
+
+  /* Create the file */
+  create_file(fs_event_get_filename_in_subdir(fs_event_created));
+
+  if (++fs_event_created < fs_event_file_count) {
+    /* Create another file on a different event loop tick.  We do it this way
+     * to avoid fs events coalescing into one fs event. */
+    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files_in_subdir, 1, 0));
+  }
+}
+
+static void fs_event_unlink_files_in_subdir(uv_timer_t* handle) {
+  int r;
   int i;
 
-  /* Already created all files */
-  if (fs_event_created == fs_event_file_count) {
+  /* NOTE: handle might be NULL if invoked not as timer callback */
+  if (handle == NULL) {
+    /* Unlink all files */
+    for (i = 0; i < 16; i++) {
+      r = remove(fs_event_get_filename_in_subdir(i));
+      if (handle != NULL)
+        ASSERT(r == 0);
+    }
+  } else {
+    /* Make sure we're not attempting to remove files we do not intend */
+    ASSERT(fs_event_removed < fs_event_file_count);
+
+    /* Remove the file */
+    ASSERT(0 == remove(fs_event_get_filename_in_subdir(fs_event_removed)));
+
+    if (++fs_event_removed < fs_event_file_count) {
+      /* Remove another file on a different event loop tick.  We do it this way
+       * to avoid fs events coalescing into one fs event. */
+      ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files_in_subdir, 1, 0));
+    }
+  }
+}
+
+static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
+                                                 const char* filename,
+                                                 int events,
+                                                 int status) {
+  fs_event_cb_called++;
+  ASSERT(handle == &fs_event);
+  ASSERT(status == 0);
+  ASSERT(events == UV_CHANGE || UV_RENAME);
+  ASSERT(filename == NULL ||
+         strncmp(filename, file_prefix_in_subdir, sizeof(file_prefix_in_subdir) - 1) == 0);
+
+  if (fs_event_created + fs_event_removed == fs_event_file_count) {
+    /* Once we've processed all create events, delete all files */
+    ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files_in_subdir, 1, 0));
+  } else if (fs_event_cb_called == 2 * fs_event_file_count) {
+    /* Once we've processed all create and delete events, stop watching */
     uv_close((uv_handle_t*) &timer, close_cb);
-    return;
+    uv_close((uv_handle_t*) handle, close_cb);
   }
-
-  /* Create all files */
-  for (i = 0; i < 16; i++, fs_event_created++)
-    create_file(fs_event_get_filename_in_subdir(i));
-
-  /* And unlink them */
-  ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files_in_subdir, 50, 0));
 }
-
-void fs_event_unlink_files_in_subdir(uv_timer_t* handle) {
-  int r;
-  int i;
-
-  /* NOTE: handle might be NULL if invoked not as timer callback */
-
-  /* Unlink all files */
-  for (i = 0; i < 16; i++) {
-    r = remove(fs_event_get_filename_in_subdir(i));
-    if (handle != NULL)
-      ASSERT(r == 0);
-  }
-
-  /* And create them again */
-  if (handle != NULL)
-    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files_in_subdir, 50, 0));
-}
-
-void fs_event_unlink_files(uv_timer_t* handle) {
-  int r;
-  int i;
-
-  /* NOTE: handle might be NULL if invoked not as timer callback */
-
-  /* Unlink all files */
-  for (i = 0; i < 16; i++) {
-    r = remove(fs_event_get_filename(i));
-    if (handle != NULL)
-      ASSERT(r == 0);
-  }
-
-  /* And create them again */
-  if (handle != NULL)
-    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files, 50, 0));
-}
+#endif
 
 static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   int events, int status) {
@@ -336,8 +350,7 @@ TEST_IMPL(fs_event_watch_dir) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_event_cb_called == 2 * fs_event_file_count);
-  ASSERT(fs_event_created == fs_event_file_count);
+  ASSERT(fs_event_cb_called == fs_event_created + fs_event_removed);
   ASSERT(close_cb_called == 2);
 
   /* Cleanup */
@@ -376,8 +389,7 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_event_cb_called == 2 * fs_event_file_count);
-  ASSERT(fs_event_created == fs_event_file_count);
+  ASSERT(fs_event_cb_called == fs_event_created + fs_event_removed);
   ASSERT(close_cb_called == 2);
 
   /* Cleanup */
