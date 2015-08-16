@@ -701,8 +701,24 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_mtim.tv_nsec = src->st_mtime_nsec;
   dst->st_ctim.tv_sec = src->st_ctime;
   dst->st_ctim.tv_nsec = src->st_ctime_nsec;
-  dst->st_birthtim.tv_sec = src->st_ctime;
-  dst->st_birthtim.tv_nsec = src->st_ctime_nsec;
+
+  /* On systems that do not support birthtime, resolve the value to the least
+   * time available (oldest of atime, mtime, ctime), disregarding nanoseconds.
+   */
+  if (src->st_atime < src->st_mtime && src->st_atime < src->st_ctime) {
+    /* Use last accessed time. */
+    dst->st_birthtim.tv_sec = src->st_atime;
+    dst->st_birthtim.tv_nsec = src->st_atime_nsec;
+  } else if (src->st_mtime < src->st_ctime) {
+    /* Use last modified time. */
+    dst->st_birthtim.tv_sec = src->st_mtime;
+    dst->st_birthtim.tv_nsec = src->st_mtime_nsec;
+  } else {
+    /* Use last change time. */
+    dst->st_birthtim.tv_sec = src->st_ctime;
+    dst->st_birthtim.tv_nsec = src->st_ctime_nsec;
+  }
+
   dst->st_flags = 0;
   dst->st_gen = 0;
 #elif !defined(_AIX) && (       \
@@ -725,8 +741,23 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_flags = src->st_flags;
   dst->st_gen = src->st_gen;
 # else
-  dst->st_birthtim.tv_sec = src->st_ctim.tv_sec;
-  dst->st_birthtim.tv_nsec = src->st_ctim.tv_nsec;
+  /* On systems that do not support birthtime, resolve the value to the least
+   * time available (oldest of atime, mtime, ctime), disregarding nanoseconds.
+   */
+  if (src->st_atime < src->st_mtime && src->st_atime < src->st_ctime) {
+    /* Use last accessed time. */
+    dst->st_birthtim.tv_sec = src->st_atim.tv_sec;
+    dst->st_birthtim.tv_nsec = src->st_atim.tv_nsec;
+  } else if (src->st_mtime < src->st_ctime) {
+    /* Use last modified time. */
+    dst->st_birthtim.tv_sec = src->st_mtim.tv_sec;
+    dst->st_birthtim.tv_nsec = src->st_mtim.tv_nsec;
+  } else {
+    /* Use last change time. */
+    dst->st_birthtim.tv_sec = src->st_ctim.tv_sec;
+    dst->st_birthtim.tv_nsec = src->st_ctim.tv_nsec;
+  }
+
   dst->st_flags = 0;
   dst->st_gen = 0;
 # endif
