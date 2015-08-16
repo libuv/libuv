@@ -2535,3 +2535,63 @@ TEST_IMPL(fs_read_write_null_arguments) {
 
   return 0;
 }
+
+
+TEST_IMPL(fs_stat_small_birthtime) {
+  int r;
+  long birthtime;
+  uv_buf_t* iovs;
+
+  unlink("test_file");
+
+  loop = uv_default_loop();
+
+  /* First open the file, then write and read, in that order. uv_fs_stat used
+   * to give preference to ctime, which would in this case give the smaller
+   * time. In this case, atime will be the returned birthtime, for systems that
+   * do not support birthtime.
+   */
+  r = uv_fs_open(loop,
+                 &open_req1,
+                 "test_file",
+                 O_RDWR | O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  iovs = malloc(sizeof(*iovs) * 1);
+  iovs[0] = uv_buf_init(test_buf, sizeof(test_buf));
+
+  r = uv_fs_write(loop, &write_req, open_req1.result, iovs, 1, 0, NULL);
+  ASSERT(r >= 0);
+  uv_fs_req_cleanup(&write_req);
+
+  r = uv_fs_read(loop, &read_req, open_req1.result, iovs, 1, 0, NULL);
+  ASSERT(r >= 0);
+  uv_fs_req_cleanup(&read_req);
+
+  /* And now, we test. */
+
+  r = uv_fs_stat(loop, &stat_req, "test_file", NULL);
+  ASSERT(r >= 0);
+  ASSERT(stat_req.result >= 0);
+
+  /* Birthtime must be less than or equal to all of the other stat time fields:
+   * ctime, atime, and mtime.
+   */
+  birthtime = stat_req.statbuf.st_birthtim.tv_sec;
+
+  ASSERT(birthtime <= stat_req.statbuf.st_ctim.tv_sec);
+  ASSERT(birthtime <= stat_req.statbuf.st_atim.tv_sec);
+  ASSERT(birthtime <= stat_req.statbuf.st_mtim.tv_sec);
+
+  /* Cleanup. */
+  uv_fs_req_cleanup(&stat_req);
+  unlink("test_file");
+  free(iovs);
+
+  MAKE_VALGRIND_HAPPY();
+
+  return 0;
+}
