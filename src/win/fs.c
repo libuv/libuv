@@ -116,8 +116,8 @@ void uv_fs_init() {
 }
 
 
-INLINE static int fs__capture_path(uv_loop_t* loop, uv_fs_t* req,
-    const char* path, const char* new_path, const int copy_path) {
+INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
+    const char* new_path, const int copy_path) {
   char* buf;
   char* pos;
   ssize_t buf_sz = 0, path_len, pathw_len = 0, new_pathw_len = 0;
@@ -1762,8 +1762,7 @@ static void uv__fs_done(struct uv__work* w, int status) {
     req->result = UV_ECANCELED;
   }
 
-  if (req->cb != NULL)
-    req->cb(req);
+  req->cb(req);
 }
 
 
@@ -1792,7 +1791,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
   uv_fs_req_init(loop, req, UV_FS_OPEN, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -1902,7 +1901,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
   uv_fs_req_init(loop, req, UV_FS_UNLINK, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -1923,7 +1922,7 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
 
   uv_fs_req_init(loop, req, UV_FS_MKDIR, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -1946,7 +1945,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
 
   uv_fs_req_init(loop, req, UV_FS_MKDTEMP, cb);
 
-  err = fs__capture_path(loop, req, tpl, NULL, TRUE);
+  err = fs__capture_path(req, tpl, NULL, TRUE);
   if (err)
     return uv_translate_sys_error(err);
 
@@ -1965,7 +1964,7 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
   uv_fs_req_init(loop, req, UV_FS_RMDIR, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -1986,7 +1985,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
   uv_fs_req_init(loop, req, UV_FS_SCANDIR, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2009,7 +2008,7 @@ int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
   uv_fs_req_init(loop, req, UV_FS_LINK, cb);
 
-  err = fs__capture_path(loop, req, path, new_path, cb != NULL);
+  err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2030,7 +2029,7 @@ int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
   uv_fs_req_init(loop, req, UV_FS_SYMLINK, cb);
 
-  err = fs__capture_path(loop, req, path, new_path, cb != NULL);
+  err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2053,7 +2052,7 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
   uv_fs_req_init(loop, req, UV_FS_READLINK, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2074,7 +2073,7 @@ int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
 
   uv_fs_req_init(loop, req, UV_FS_CHOWN, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2108,7 +2107,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
   uv_fs_req_init(loop, req, UV_FS_STAT, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2128,7 +2127,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
   uv_fs_req_init(loop, req, UV_FS_LSTAT, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2163,7 +2162,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
   uv_fs_req_init(loop, req, UV_FS_RENAME, cb);
 
-  err = fs__capture_path(loop, req, path, new_path, cb != NULL);
+  err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2252,7 +2251,7 @@ int uv_fs_access(uv_loop_t* loop,
 
   uv_fs_req_init(loop, req, UV_FS_ACCESS, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err)
     return uv_translate_sys_error(err);
 
@@ -2274,7 +2273,7 @@ int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
 
   uv_fs_req_init(loop, req, UV_FS_CHMOD, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }
@@ -2314,7 +2313,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
 
   uv_fs_req_init(loop, req, UV_FS_UTIME, cb);
 
-  err = fs__capture_path(loop, req, path, NULL, cb != NULL);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
   }

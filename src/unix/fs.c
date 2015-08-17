@@ -58,10 +58,12 @@
 # include <sys/sendfile.h>
 #endif
 
-#define INIT(type)                                                            \
+#define INIT(subtype)                                                         \
   do {                                                                        \
-    uv__req_init(loop, req, UV_FS);                                           \
-    req->fs_type = UV_FS_ ## type;                                            \
+    req->type = UV_FS;                                                        \
+    if (cb != NULL)                                                           \
+      uv__req_init(loop, req, UV_FS);                                         \
+    req->fs_type = UV_FS_ ## subtype;                                         \
     req->result = 0;                                                          \
     req->ptr = NULL;                                                          \
     req->loop = loop;                                                         \
@@ -112,7 +114,6 @@
     }                                                                         \
     else {                                                                    \
       uv__fs_work(&req->work_req);                                            \
-      uv__fs_done(&req->work_req, 0);                                         \
       return req->result;                                                     \
     }                                                                         \
   }                                                                           \
@@ -896,8 +897,7 @@ static void uv__fs_done(struct uv__work* w, int status) {
     req->result = -ECANCELED;
   }
 
-  if (req->cb != NULL)
-    req->cb(req);
+  req->cb(req);
 }
 
 
