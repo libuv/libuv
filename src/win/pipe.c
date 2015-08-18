@@ -802,6 +802,7 @@ static void uv_pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
       return;
     }
 
+    handle->handle = INVALID_HANDLE_VALUE;
     if (uv_set_pipe_handle(loop, handle, req->pipeHandle, -1, 0)) {
       CloseHandle(req->pipeHandle);
       req->pipeHandle = INVALID_HANDLE_VALUE;
