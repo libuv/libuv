@@ -1,3 +1,44 @@
+2015.08.20, Version 1.7.1 (Stable)
+
+Changes since version 1.7.0:
+
+* doc: document the procedure for verifying releases (Saúl Ibarra Corretgé)
+
+* doc: add note about Windows binaries to the README (Saúl Ibarra Corretgé)
+
+* doc: use long GPG IDs in MAINTAINERS.md (Saúl Ibarra Corretgé)
+
+* Revert "stream: squelch ECONNRESET error if already closed" (Saúl Ibarra
+  Corretgé)
+
+* doc: clarify uv_read_stop() is idempotent (Corbin Simpson)
+
+* unix: OpenBSD's setsockopt needs an unsigned char for multicast (Zachary
+  Hamm)
+
+* test: Fix two memory leaks (Karl Skomski)
+
+* unix,win: return EINVAL on nullptr args in uv_fs_{read,write} (Karl Skomski)
+
+* win: set accepted TCP sockets as non-inheritable (Saúl Ibarra Corretgé)
+
+* unix: remove superfluous parentheses in fs macros (Ben Noordhuis)
+
+* unix: don't copy arguments for sync fs requests (Ben Noordhuis)
+
+* test: plug small memory leak in unix test runner (Ben Noordhuis)
+
+* unix,windows: allow NULL loop for sync fs requests (Ben Noordhuis)
+
+* unix,windows: don't assert on unknown error code (Ben Noordhuis)
+
+* stream: retry write on EPROTOTYPE on OSX (Brian White)
+
+* common: fix use of snprintf on Windows (Saúl Ibarra Corretgé)
+
+* tests: refactored fs watch_dir tests for stability (Jeremy Whitlock)
+
+
 2015.08.06, Version 1.7.0 (Stable), 415a865d6365ba58d02b92b89d46ba5d7744ec8b
 
 Changes since version 1.6.1:
