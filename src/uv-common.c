@@ -141,7 +141,11 @@ static const char* uv__unknown_err_code(int err) {
   char buf[32];
   char* copy;
 
+#ifndef _WIN32
   snprintf(buf, sizeof(buf), "Unknown system error %d", err);
+#else
+  _snprintf(buf, sizeof(buf), "Unknown system error %d", err);
+#endif
   copy = uv__strdup(buf);
 
   return copy != NULL ? copy : "Unknown system error";
