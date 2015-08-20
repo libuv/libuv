@@ -254,7 +254,8 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
   DWORD current_mode = 0;
   DWORD err = 0;
 
-  if (handle->handle != INVALID_HANDLE_VALUE)
+  if (!(handle->flags & UV_HANDLE_PIPESERVER) &&
+      handle->handle != INVALID_HANDLE_VALUE)
     return UV_EBUSY;
 
   if (!SetNamedPipeHandleState(pipeHandle, &mode, NULL, NULL)) {
