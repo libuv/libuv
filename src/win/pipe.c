@@ -748,6 +748,7 @@ void uv_pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
         handle->pipe.serv.accept_reqs[i].pipeHandle = INVALID_HANDLE_VALUE;
       }
     }
+    handle->handle = INVALID_HANDLE_VALUE;
   }
 
   if (handle->flags & UV_HANDLE_CONNECTION) {
