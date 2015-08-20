@@ -267,14 +267,10 @@ int process_wait(process_info_t* vec, int n, int timeout) {
       kill(p->pid, SIGTERM);
     }
     retval = -2;
-
-    /* Wait for thread to finish. */
-    r = pthread_join(tid, NULL);
-    if (r) {
-      perror("pthread_join");
-      retval = -1;
-    }
   }
+
+  if (pthread_join(tid, NULL))
+    abort();
 
 terminate:
   close(args.pipe[0]);

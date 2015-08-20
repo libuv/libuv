@@ -419,6 +419,15 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     return;
   }
 
+  /* Make the socket non-inheritable */
+  if (!SetHandleInformation((HANDLE) accept_socket, HANDLE_FLAG_INHERIT, 0)) {
+    SET_REQ_ERROR(req, GetLastError());
+    uv_insert_pending_req(loop, (uv_req_t*)req);
+    handle->reqs_pending++;
+    closesocket(accept_socket);
+    return;
+  }
+
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {

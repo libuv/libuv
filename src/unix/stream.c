@@ -809,7 +809,17 @@ start:
     do {
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
     }
+#if defined(__APPLE__)
+    /*
+     * Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
+     * EPROTOTYPE can be returned while trying to write to a socket that is
+     * shutting down. If we retry the write, we should get the expected EPIPE
+     * instead.
+     */
+    while (n == -1 && (errno == EINTR || errno == EPROTOTYPE));
+#else
     while (n == -1 && errno == EINTR);
+#endif
   } else {
     do {
       if (iovcnt == 1) {
@@ -818,7 +828,17 @@ start:
         n = writev(uv__stream_fd(stream), iov, iovcnt);
       }
     }
+#if defined(__APPLE__)
+    /*
+     * Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
+     * EPROTOTYPE can be returned while trying to write to a socket that is
+     * shutting down. If we retry the write, we should get the expected EPIPE
+     * instead.
+     */
+    while (n == -1 && (errno == EINTR || errno == EPROTOTYPE));
+#else
     while (n == -1 && errno == EINTR);
+#endif
   }
 
   if (n < 0) {
@@ -1129,8 +1149,6 @@ static void uv__read(uv_stream_t* stream) {
           uv__stream_osx_interrupt_select(stream);
         }
         stream->read_cb(stream, 0, &buf);
-      } else if (errno == ECONNRESET && (stream->flags & UV_STREAM_DISCONNECT)) {
-        uv__stream_eof(stream, &buf);
       } else {
         /* Error. User should call uv_close(). */
         stream->read_cb(stream, -errno, &buf);
@@ -1219,11 +1237,8 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(uv__stream_fd(stream) >= 0);
 
   /* Ignore POLLHUP here. Even it it's set, there may still be data to read. */
-  if (events & (UV__POLLIN | UV__POLLERR | UV__POLLHUP | UV__POLLRDHUP)) {
-    if (events & UV__POLLRDHUP)
-      stream->flags |= UV_STREAM_DISCONNECT;
+  if (events & (UV__POLLIN | UV__POLLERR | UV__POLLHUP))
     uv__read(stream);
-  }
 
   if (uv__stream_fd(stream) == -1)
     return;  /* read_cb closed stream. */
