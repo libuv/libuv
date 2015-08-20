@@ -472,6 +472,8 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
 
 
 void uv_pipe_pending_instances(uv_pipe_t* handle, int count) {
+  if (handle->flags & UV_HANDLE_BOUND)
+    return;
   handle->pipe.serv.pending_instances = count;
   handle->flags |= UV_HANDLE_PIPESERVER;
 }
