@@ -27,6 +27,11 @@
 #include "uv.h"
 #include "task.h"
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+static read_req_t req;
 
 static const char MESSAGE[] = "Failure is for the weak. Everyone dies alone.";
 
@@ -45,13 +50,6 @@ static int bytes_received = 0;
 static int shutdown_cb_called = 0;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->len = size;
-  buf->base = malloc(size);
-  ASSERT(buf->base != NULL);
-}
-
-
 static void close_cb(uv_handle_t* handle) {
   ASSERT(nested == 0 && "close_cb must be called from a fresh stack");
 
@@ -67,11 +65,12 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_read_t* req, int nread) {
+  read_req_t* rr = (read_req_t*) req;
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
-  printf("Read. nread == %d\n", (int)nread);
-  free(buf->base);
+  printf("Read. nread == %d\n", nread);
+  free(rr->buf.base);
 
   if (nread == 0) {
     return;
@@ -80,7 +79,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ASSERT(nread == UV_EOF);
 
     nested++;
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*)req->handle, close_cb);
     nested--;
 
     return;
@@ -97,7 +96,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
     puts("Shutdown");
 
-    if (uv_shutdown(&shutdown_req, (uv_stream_t*)tcp, shutdown_cb)) {
+    if (uv_shutdown(&shutdown_req, (uv_stream_t*)req->handle, shutdown_cb)) {
       FATAL("uv_shutdown failed");
     }
     nested--;
@@ -112,9 +111,12 @@ static void timer_cb(uv_timer_t* handle) {
   puts("Timeout complete. Now read data...");
 
   nested++;
-  if (uv_read_start((uv_stream_t*)&client, alloc_cb, read_cb)) {
-    FATAL("uv_read_start failed");
-  }
+  int size = 64 * 1024;
+  req.buf.len = size;
+  req.buf.base = malloc(size);
+  ASSERT(req.buf.base != NULL);
+
+  ASSERT(0 == uv_read(&req.req, (uv_stream_t*)&client, &req.buf, 1, read_cb));
   nested--;
 
   timer_cb_called++;

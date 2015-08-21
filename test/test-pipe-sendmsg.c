@@ -39,6 +39,17 @@ static uv_pipe_t incoming[4];
 static unsigned int incoming_count;
 static unsigned int close_called;
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+static void read_init(read_req_t** req, char* base, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
+}
 
 static void set_nonblocking(uv_os_sock_t sock) {
   int r;
@@ -62,17 +73,12 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  static char base[1];
-
-  buf->base = base;
-  buf->len = sizeof(base);
-}
+static char base[1];
 
 
-static void read_cb(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* buf) {
+static void read_cb(uv_read_t* req,
+                    int nread) {
+  uv_stream_t* handle = req->handle;
   uv_pipe_t* p;
   uv_pipe_t* inc;
   uv_handle_type pending;
@@ -94,7 +100,6 @@ static void read_cb(uv_stream_t* handle,
   if (incoming_count != ARRAY_SIZE(incoming))
     return;
 
-  ASSERT(0 == uv_read_stop((uv_stream_t*) p));
   uv_close((uv_handle_t*) p, close_cb);
   for (i = 0; i < ARRAY_SIZE(incoming); i++)
     uv_close((uv_handle_t*) &incoming[i], close_cb);
@@ -103,6 +108,7 @@ static void read_cb(uv_stream_t* handle,
 
 TEST_IMPL(pipe_sendmsg) {
   uv_pipe_t p;
+  read_req_t* read_req;
   int r;
   int fds[2];
   int send_fds[ARRAY_SIZE(incoming)];
@@ -143,7 +149,9 @@ TEST_IMPL(pipe_sendmsg) {
   }
 
   set_nonblocking(fds[1]);
-  ASSERT(0 == uv_read_start((uv_stream_t*) &p, alloc_cb, read_cb));
+  read_init(&read_req, base, sizeof(base));
+  r = uv_read(&read_req->req, (uv_stream_t*) &p, &read_req->buf, 1, read_cb);
+  /*ASSERT(0 == uv_read_start((uv_stream_t*) &p, alloc_cb, read_cb));*/
 
   do
     r = sendmsg(fds[0], &msg, 0);

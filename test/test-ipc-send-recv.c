@@ -25,6 +25,20 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+
+static void read_init(read_req_t** req, char* base, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
+}
+
+
 /* See test-ipc.ctx */
 void spawn_helper(uv_pipe_t* channel,
                   uv_process_t* process,
@@ -49,27 +63,18 @@ struct echo_ctx {
 static struct echo_ctx ctx;
 static int num_recv_handles;
 
+static char slab[8];
 
-static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
-                     uv_buf_t* buf) {
-  /* we're not actually reading anything so a small buffer is okay */
-  static char slab[8];
-  buf->base = slab;
-  buf->len = sizeof(slab);
-}
-
-
-static void recv_cb(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* buf) {
+static void recv_cb(uv_read_t* req,
+                    int nread) {
   uv_handle_type pending;
   uv_pipe_t* pipe;
   int r;
 
-  pipe = (uv_pipe_t*) handle;
+  pipe = (uv_pipe_t*) req->handle;
   ASSERT(pipe == &ctx.channel);
   ASSERT(nread >= 0);
+  printf("%i\n", nread);
   ASSERT(1 == uv_pipe_pending_count(pipe));
 
   pending = uv_pipe_pending_type(pipe);
@@ -83,7 +88,7 @@ static void recv_cb(uv_stream_t* handle,
     abort();
   ASSERT(r == 0);
 
-  r = uv_accept(handle, &ctx.recv.stream);
+  r = uv_accept(req->handle, &ctx.recv.stream);
   ASSERT(r == 0);
 
   uv_close((uv_handle_t*)&ctx.channel, NULL);
@@ -108,7 +113,9 @@ static int run_test(void) {
                 NULL);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&ctx.channel, alloc_cb, recv_cb);
+  read_req_t* req;
+  read_init(&req, slab, sizeof(slab));
+  r = uv_read(&req->req, (uv_stream_t*) &ctx.channel, &req->buf, 1, recv_cb);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -170,15 +177,14 @@ static void write2_cb(uv_write_t* req, int status) {
 }
 
 
-static void read_cb(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* rdbuf) {
+static void read_cb(uv_read_t* req,
+                    int nread) {
   uv_buf_t wrbuf;
   uv_pipe_t* pipe;
   uv_handle_type pending;
   int r;
 
-  pipe = (uv_pipe_t*) handle;
+  pipe = (uv_pipe_t*) req->handle;
   ASSERT(pipe == &ctx.channel);
   ASSERT(nread >= 0);
   ASSERT(1 == uv_pipe_pending_count(pipe));
@@ -196,7 +202,7 @@ static void read_cb(uv_stream_t* handle,
     abort();
   ASSERT(r == 0);
 
-  r = uv_accept(handle, &ctx.recv.stream);
+  r = uv_accept(req->handle, &ctx.recv.stream);
   ASSERT(r == 0);
 
   r = uv_write2(&ctx.write_req,
@@ -225,7 +231,9 @@ int ipc_send_recv_helper(void) {
   ASSERT(1 == uv_is_writable((uv_stream_t*)&ctx.channel));
   ASSERT(0 == uv_is_closing((uv_handle_t*)&ctx.channel));
 
-  r = uv_read_start((uv_stream_t*)&ctx.channel, alloc_cb, read_cb);
+  read_req_t* req;
+  read_init(&req, slab, sizeof(slab));
+  r = uv_read(&req->req, (uv_stream_t*) &ctx.channel, &req->buf, 1, read_cb);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);

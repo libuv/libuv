@@ -27,20 +27,23 @@
 
 typedef struct {
   uv_tcp_t handle;
+  uv_read_t read_req;
   uv_shutdown_t shutdown_req;
 } conn_rec;
+
+static char slab[65536];
 
 static uv_tcp_t tcp_server;
 
 static void connection_cb(uv_stream_t* stream, int status);
-static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+static void read_cb(uv_read_t* req, int status);
 static void shutdown_cb(uv_shutdown_t* req, int status);
 static void close_cb(uv_handle_t* handle);
 
 
 static void connection_cb(uv_stream_t* stream, int status) {
   conn_rec* conn;
+  uv_buf_t buf;
   int r;
 
   ASSERT(status == 0);
@@ -55,30 +58,30 @@ static void connection_cb(uv_stream_t* stream, int status) {
   r = uv_accept(stream, (uv_stream_t*)&conn->handle);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&conn->handle, alloc_cb, read_cb);
+  buf = uv_buf_init(slab, sizeof slab);
+  r = uv_read(&conn->read_req, (uv_stream_t*)&conn->handle, &buf, 1, read_cb);
   ASSERT(r == 0);
 }
 
 
-static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
-                     uv_buf_t* buf) {
-  static char slab[65536];
-  buf->base = slab;
-  buf->len = sizeof(slab);
-}
-
-
-static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_read_t* req, int status) {
   conn_rec* conn;
+  uv_stream_t* stream;
   int r;
 
-  if (nread >= 0)
-    return;
-
-  ASSERT(nread == UV_EOF);
-
+  stream = req->handle;
   conn = container_of(stream, conn_rec, handle);
+
+  if (status > 0) {
+    /* Rearm read request */
+    uv_buf_t buf;
+    buf = uv_buf_init(slab, sizeof slab);
+    r = uv_read(&conn->read_req, (uv_stream_t*)&conn->handle, &buf, 1, read_cb);
+    ASSERT(r == 0);
+    return;
+  }
+
+  ASSERT(status == UV_EOF);
 
   r = uv_shutdown(&conn->shutdown_req, stream, shutdown_cb);
   ASSERT(r == 0);

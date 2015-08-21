@@ -243,6 +243,13 @@ typedef struct {
 
 #define UV_PRIVATE_REQ_TYPES /* empty */
 
+#define UV_READ_PRIVATE_FIELDS                                                \
+  void* queue[2];                                                             \
+  uv_buf_t* bufs;                                                             \
+  unsigned int nbufs;                                                         \
+  int error;                                                                  \
+  uv_buf_t bufsml[4];                                                         \
+
 #define UV_WRITE_PRIVATE_FIELDS                                               \
   void* queue[2];                                                             \
   unsigned int write_index;                                                   \
@@ -273,6 +280,7 @@ typedef struct {
   uv_connect_t *connect_req;                                                  \
   uv_shutdown_t *shutdown_req;                                                \
   uv__io_t io_watcher;                                                        \
+  void* read_queue[2];                                                       \
   void* write_queue[2];                                                       \
   void* write_completed_queue[2];                                             \
   uv_connection_cb connection_cb;                                             \

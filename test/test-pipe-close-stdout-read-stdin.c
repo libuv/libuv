@@ -29,16 +29,24 @@
 #include "uv.h"
 #include "task.h"
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t* buf)
-{
-  static char buffer[1024];
 
-  buf->base = buffer;
-  buf->len = sizeof(buffer);
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+static void read_init(read_req_t** req, char* base, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
 }
 
-void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t* buf)
+static char buffer[1024];
+
+void read_stdin(uv_read_t *req, int nread)
 {
+  uv_stream_t* stream = req->handle;
+  free(req);
   if (nread < 0) {
     uv_close((uv_handle_t*)stream, NULL);
     return;
@@ -49,6 +57,7 @@ void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t* buf)
  * This test is a reproduction of joyent/libuv#1419 .
  */
 TEST_IMPL(pipe_close_stdout_read_stdin) {
+  read_req_t* read_req;
   int r = -1;
   int pid;
   int fd[2];
@@ -75,7 +84,8 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
     r = uv_pipe_open((uv_pipe_t *)&stdin_pipe, 0);
     ASSERT(r == 0);
 
-    r = uv_read_start((uv_stream_t *)&stdin_pipe, alloc_buffer, read_stdin);
+    read_init(&read_req, buffer, sizeof(buffer));
+    r = uv_read(&read_req->req, (uv_stream_t *)&stdin_pipe, &read_req->buf, 1, read_stdin);
     ASSERT(r == 0);
 
     /*

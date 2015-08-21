@@ -39,13 +39,33 @@ static int called_timer_close_cb;
 static int called_timer_cb;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->base = malloc(size);
-  buf->len = size;
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+static void read_init(read_req_t** req, char* base, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
 }
 
+static void read_malloc(read_req_t**req, int size) {
+  read_init(req, malloc(size), size);
+}
 
-static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
+static void read_free(read_req_t* req) {
+  if (req->buf.base != NULL)
+    free(req->buf.base);
+  req->buf.base = NULL;
+  free(req);
+}
+
+static void read_cb(uv_read_t* req, int nread) {
+  read_req_t* read_req = (read_req_t*)req;
+  uv_stream_t* t = req->handle;
+  uv_buf_t* buf = &read_req->buf;
   ASSERT((uv_tcp_t*)t == &tcp);
 
   if (nread == 0) {
@@ -57,14 +77,10 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
     ASSERT(nread == 1);
     ASSERT(!got_eof);
     ASSERT(buf->base[0] == 'Q');
-    free(buf->base);
     got_q = 1;
     puts("got Q");
   } else {
     ASSERT(nread == UV_EOF);
-    if (buf->base) {
-      free(buf->base);
-    }
     got_eof = 1;
     puts("got EOF");
   }
@@ -85,11 +101,15 @@ static void shutdown_cb(uv_shutdown_t *req, int status) {
 
 
 static void connect_cb(uv_connect_t *req, int status) {
+  read_req_t* read_req;
+  int r;
   ASSERT(status == 0);
   ASSERT(req == &connect_req);
 
+  read_malloc(&read_req, 64 * 1024);
   /* Start reading from our connection so we can receive the EOF.  */
-  uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb);
+  r = uv_read(&read_req->req, (uv_stream_t*)&tcp, &read_req->buf, 1, read_cb);
+  ASSERT(0 == r);
 
   /*
    * Write the letter 'Q' to gracefully kill the echo-server. This will not

@@ -55,6 +55,17 @@ static char output[OUTPUT_SIZE];
 static int output_used;
 
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+static void read_alloc(read_req_t** req, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = output + output_used;
+  (*req)->buf.len = OUTPUT_SIZE - output_used;
+}
+
 static void close_cb(uv_handle_t* handle) {
   printf("close_cb\n");
   close_cb_called++;
@@ -128,7 +139,7 @@ static void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void on_read_once(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
-  uv_read_stop(tcp);
+  /*uv_read_stop(tcp);*/
   on_read(tcp, nread, buf);
 }
 
@@ -234,6 +245,7 @@ TEST_IMPL(spawn_exit_code) {
 
 TEST_IMPL(spawn_stdout) {
   int r;
+  uv_read_t* read;
   uv_pipe_t out;
   uv_stdio_container_t stdio[2];
 
@@ -249,7 +261,7 @@ TEST_IMPL(spawn_stdout) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  /* r = uv_read((uv_stream_t*) &out, on_alloc, on_read); */
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -533,6 +545,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 
 
 TEST_IMPL(spawn_stdin) {
+  read_req_t* read_req;
   int r;
   uv_pipe_t out;
   uv_pipe_t in;
@@ -560,7 +573,7 @@ TEST_IMPL(spawn_stdin) {
   r = uv_write(&write_req, (uv_stream_t*)&in, &buf, 1, write_cb);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  /* r = uv_read((uv_stream_t*) &out, on_alloc, on_read); */
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -594,7 +607,7 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &pipe, on_alloc, on_read);
+  /*r = uv_read_start((uv_stream_t*) &pipe, on_alloc, on_read);*/
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -680,8 +693,8 @@ TEST_IMPL(spawn_preserve_env) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT(r == 0);*/
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
@@ -760,11 +773,11 @@ TEST_IMPL(spawn_and_kill_with_std) {
   r = uv_write(&write, (uv_stream_t*) &in, &buf, 1, write_cb);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  /*r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
   ASSERT(r == 0);
 
   r = uv_read_start((uv_stream_t*) &err, on_alloc, on_read);
-  ASSERT(r == 0);
+  ASSERT(r == 0);*/
 
   r = uv_timer_init(uv_default_loop(), &timer);
   ASSERT(r == 0);
@@ -814,8 +827,8 @@ TEST_IMPL(spawn_and_ping) {
   r = uv_write(&write_req, (uv_stream_t*)&in, &buf, 1, write_cb);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&out, on_alloc, on_read);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*)&out, on_alloc, on_read);
+  ASSERT(r == 0);*/
 
   ASSERT(exit_cb_called == 0);
 
@@ -861,8 +874,8 @@ TEST_IMPL(spawn_same_stdout_stderr) {
   r = uv_write(&write_req, (uv_stream_t*)&in, &buf, 1, write_cb);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)&out, on_alloc, on_read);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*)&out, on_alloc, on_read);
+  ASSERT(r == 0);*/
 
   ASSERT(exit_cb_called == 0);
 
@@ -978,8 +991,8 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
-  ASSERT(r == 0);
+  /*r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT(r == 0);*/
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
@@ -1455,7 +1468,7 @@ TEST_IMPL(closed_fd_events) {
   ASSERT(0 == uv_pipe_open(&pipe_handle, fd[0]));
   fd[0] = -1;
 
-  ASSERT(0 == uv_read_start((uv_stream_t*) &pipe_handle, on_alloc, on_read_once));
+  /*ASSERT(0 == uv_read_start((uv_stream_t*) &pipe_handle, on_alloc, on_read_once));*/
 
   ASSERT(1 == write(fd[1], "", 1));
 

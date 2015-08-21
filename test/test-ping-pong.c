@@ -37,6 +37,26 @@ static int pinger_on_connect_count;
 
 
 typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
+
+static void read_malloc(read_req_t** req, int size) {
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = malloc(size);
+  (*req)->buf.len = size;
+}
+
+
+static void read_free(read_req_t* req) {
+  free(req->buf.base);
+  req->buf.base = NULL;
+  free(req);
+}
+
+
+typedef struct {
   int pongs;
   int state;
   union {
@@ -46,12 +66,6 @@ typedef struct {
   uv_connect_t connect_req;
   char read_buffer[BUFSIZE];
 } pinger_t;
-
-
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->base = malloc(size);
-  buf->len = size;
-}
 
 
 static void pinger_on_close(uv_handle_t* handle) {
@@ -90,19 +104,23 @@ static void pinger_write_ping(pinger_t* pinger) {
 }
 
 
-static void pinger_read_cb(uv_stream_t* stream,
-                           ssize_t nread,
-                           const uv_buf_t* buf) {
+static void pinger_read_cb(uv_read_t* req,
+                           int nread) {
   ssize_t i;
   pinger_t* pinger;
+  read_req_t* read_req;
+  uv_stream_t* stream;
+  uv_buf_t* buf;
 
+  read_req = (read_req_t*) req;
+  stream = (uv_stream_t*) req->handle;
+  buf = &read_req->buf;
   pinger = (pinger_t*)stream->data;
 
   if (nread < 0) {
     ASSERT(nread == UV_EOF);
 
-    puts("got EOF");
-    free(buf->base);
+    read_free(read_req);
 
     uv_close((uv_handle_t*)(&pinger->stream.tcp), pinger_on_close);
 
@@ -133,6 +151,7 @@ static void pinger_read_cb(uv_stream_t* stream,
 
 
 static void pinger_on_connect(uv_connect_t *req, int status) {
+  int r;
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
   pinger_on_connect_count++;
@@ -145,7 +164,10 @@ static void pinger_on_connect(uv_connect_t *req, int status) {
 
   pinger_write_ping(pinger);
 
-  uv_read_start((uv_stream_t*)(req->handle), alloc_cb, pinger_read_cb);
+  read_req_t* rr;
+  read_malloc(&rr, 64 * 1024);
+  r = uv_read(&rr->req, (uv_stream_t*) req->handle, &rr->buf, 1, pinger_read_cb);
+  ASSERT(r == 0);
 }
 
 

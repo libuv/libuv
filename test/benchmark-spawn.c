@@ -35,6 +35,7 @@ static char exepath[1024];
 static size_t exepath_size = 1024;
 static char* args[3];
 static uv_pipe_t out;
+static uv_read_t read_req;
 
 #define OUTPUT_SIZE 1024
 static char output[OUTPUT_SIZE];
@@ -73,14 +74,6 @@ static void exit_cb(uv_process_t* process,
 }
 
 
-static void on_alloc(uv_handle_t* handle,
-                     size_t suggested_size,
-                     uv_buf_t* buf) {
-  buf->base = output + output_used;
-  buf->len = OUTPUT_SIZE - output_used;
-}
-
-
 static void pipe_close_cb(uv_handle_t* pipe) {
   ASSERT(pipe_open == 1);
   pipe_open = 0;
@@ -88,12 +81,24 @@ static void pipe_close_cb(uv_handle_t* pipe) {
 }
 
 
-static void on_read(uv_stream_t* pipe, ssize_t nread, const uv_buf_t* buf) {
-  if (nread > 0) {
+static void on_read(uv_read_t* req, int status) {
+  uv_stream_t* pipe = req->handle;
+
+  if (status > 0) {
+    int r;
+    uv_buf_t buf;
+
     ASSERT(pipe_open == 1);
-    output_used += nread;
-  } else if (nread < 0) {
-    if (nread == UV_EOF) {
+    output_used += status;
+
+    /* rearm read request */
+    buf.base = output + output_used;
+    buf.len = OUTPUT_SIZE - output_used;
+    r = uv_read(&read_req, (uv_stream_t*) &out, &buf, 1, on_read);
+    ASSERT(r == 0);
+  } else {
+    ASSERT(status < 0);
+    if (status == UV_EOF) {
       uv_close((uv_handle_t*)pipe, pipe_close_cb);
     }
   }
@@ -103,6 +108,7 @@ static void on_read(uv_stream_t* pipe, ssize_t nread, const uv_buf_t* buf) {
 static void spawn(void) {
   uv_stdio_container_t stdio[2];
   int r;
+  uv_buf_t buf;
 
   ASSERT(process_open == 0);
   ASSERT(pipe_open == 0);
@@ -129,7 +135,10 @@ static void spawn(void) {
   pipe_open = 1;
   output_used = 0;
 
-  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  buf.base = output + output_used;
+  buf.len = OUTPUT_SIZE - output_used;
+
+  r = uv_read(&read_req, (uv_stream_t*) &out, &buf, 1, on_read);
   ASSERT(r == 0);
 }
 

@@ -26,22 +26,33 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+typedef struct {
+  uv_read_t req;
+  uv_buf_t buf;
+} read_req_t;
+
 static unsigned int read_cb_called;
 
-static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
-  static char slab[1];
-  buf->base = slab;
-  buf->len = sizeof(slab);
+static char slab[1];
+
+static void read_init(read_req_t** req, char* base, int size)
+{
+  *req = malloc(sizeof(read_req_t));
+  (*req)->buf.base = base;
+  (*req)->buf.len = size;
 }
 
-static void read_cb(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+
+static void read_cb(uv_read_t* req, int nread) {
+  read_req_t* read_req = (read_req_t*)req;
+  uv_stream_t* handle = read_req->req.handle;
   switch (++read_cb_called) {
   case 1:
     ASSERT(nread == 1);
-    uv_read_stop(handle);
     break;
   case 2:
     ASSERT(nread == UV_EOF);
+    free(req);
     uv_close((uv_handle_t *) handle, NULL);
     break;
   default:
@@ -52,6 +63,7 @@ static void read_cb(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 TEST_IMPL(close_fd) {
   uv_pipe_t pipe_handle;
   int fd[2];
+  read_req_t* req;
 
   ASSERT(0 == pipe(fd));
   ASSERT(0 == uv_pipe_init(uv_default_loop(), &pipe_handle, 0));
@@ -60,11 +72,13 @@ TEST_IMPL(close_fd) {
   ASSERT(1 == write(fd[1], "", 1));
   ASSERT(0 == close(fd[1]));
   fd[1] = -1;
-  ASSERT(0 == uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
+
+  read_init(&req, slab, sizeof(slab));
+  ASSERT(0 == uv_read(&req->req, (uv_stream_t *) &pipe_handle, &req->buf, 1, read_cb));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(1 == read_cb_called);
   ASSERT(0 == uv_is_active((const uv_handle_t *) &pipe_handle));
-  ASSERT(0 == uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
+  ASSERT(0 == uv_read(&req->req, (uv_stream_t *) &pipe_handle, &req->buf, 1, read_cb));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(2 == read_cb_called);
   ASSERT(0 != uv_is_closing((const uv_handle_t *) &pipe_handle));

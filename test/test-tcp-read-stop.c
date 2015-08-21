@@ -45,16 +45,16 @@ static void timer_cb(uv_timer_t* handle) {
                        &buf,
                        1,
                        write_cb));
-  ASSERT(0 == uv_read_stop((uv_stream_t*) &tcp_handle));
+  /*ASSERT(0 == uv_read_stop((uv_stream_t*) &tcp_handle));*/
 }
 
 
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(0 == status);
   ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));
-  ASSERT(0 == uv_read_start((uv_stream_t*) &tcp_handle,
+  /*ASSERT(0 == uv_read_start((uv_stream_t*) &tcp_handle,
                             (uv_alloc_cb) fail_cb,
-                            (uv_read_cb) fail_cb));
+                            (uv_read_cb) fail_cb));*/
 }
 
 
