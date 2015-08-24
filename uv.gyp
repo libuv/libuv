@@ -377,6 +377,7 @@
         'test/test-tcp-write-queue-order.c',
         'test/test-threadpool.c',
         'test/test-threadpool-cancel.c',
+        'test/test-threadpool-check-pool.c',
         'test/test-thread-equal.c',
         'test/test-mutexes.c',
         'test/test-thread.c',
