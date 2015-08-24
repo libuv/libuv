@@ -1,3 +1,16 @@
+2015.08.25, Version 1.7.2 (Stable)
+
+Changes since version 1.7.1:
+
+* unix, win: make uv_loop_init return on error (Willem Thiart)
+
+* win: reset pipe handle for pipe servers (Saúl Ibarra Corretgé)
+
+* win: fix replacing pipe handle for pipe servers (Saúl Ibarra Corretgé)
+
+* win: fix setting pipe pending instances after bind (Saúl Ibarra Corretgé)
+
+
 2015.08.20, Version 1.7.1 (Stable), 44f4b6bd82d8ae4583ccc4768a83af778ef69f85
 
 Changes since version 1.7.0:

@@ -1,4 +1,4 @@
-version: v1.7.1.build{build}
+version: v1.7.2.build{build}
 
 install:
   - cinst -y nsis
