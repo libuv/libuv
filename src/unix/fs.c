@@ -796,6 +796,19 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   return ret;
 }
 
+static size_t uv__fs_buf_offset(uv_buf_t* bufs, size_t size) {
+  size_t offset;
+  /* Figure out which bufs are done */
+  for(offset=0; size>0 && bufs[offset].len <= size; ++offset) {
+    size -= bufs[offset].len;
+  }
+  /* Fix a partial read/write */
+  if (size > 0) {
+    bufs[offset].base += size;
+    bufs[offset].len -= size;
+  }
+  return offset;
+}
 
 typedef ssize_t (*uv__fs_buf_iter_processor)(uv_fs_t* req);
 static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) {
@@ -825,6 +838,7 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     if (req->off >= 0)
       req->off += result;
 
+    req->nbufs = uv__fs_buf_offset(req->bufs, result);
     req->bufs += req->nbufs;
     nbufs -= req->nbufs;
     total += result;
