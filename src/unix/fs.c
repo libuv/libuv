@@ -565,10 +565,12 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
     r = sendfile(in_fd, out_fd, req->off, &len, NULL, 0);
 #endif
 
-    /*
-     * Do NOT rely on the assumption that the value of 'len' is not being
-     * modified by the operating system during the system call in case of an
-     * error, unless explicitly specified for the error (EAGAIN, EINTR).
+     /*
+     * The man page for sendfile(2) on DragonFly states that `len` contains
+     * a meaningful value ONLY in case of EAGAIN and EINTR.
+     * Nothing is said about it's value in case of other errors, so better
+     * not depend on the potential wrong assumption that is was not modified
+     * by the syscall.
      */
     if (r == 0 || ((errno == EAGAIN || errno == EINTR) && len != 0)) {
       req->off += len;
