@@ -121,6 +121,7 @@ extern "C" {
   XX(ENOTEMPTY, "directory not empty")                                        \
   XX(ENOTSOCK, "socket operation on non-socket")                              \
   XX(ENOTSUP, "operation not supported on socket")                            \
+  XX(ENOTTY, "inappropriate ioctl for device")                                \
   XX(EPERM, "operation not permitted")                                        \
   XX(EPIPE, "broken pipe")                                                    \
   XX(EPROTO, "protocol error")                                                \
