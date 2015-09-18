@@ -484,7 +484,10 @@
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
-          ]
+          ],
+          'link_settings': {
+            'libraries': [ '-lutil' ],
+          },
         }],
         ['uv_library=="shared_library"', {
           'defines': [ 'USING_UV_SHARED=1' ]

@@ -130,6 +130,7 @@ EXTRA_DIST = test/fixtures/empty_file \
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
 test_run_tests_CFLAGS =
+test_run_tests_LDFLAGS = -lutil
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
                          test/echo-server.c \
