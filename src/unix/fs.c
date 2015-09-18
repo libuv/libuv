@@ -404,6 +404,36 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   return 0;
 }
 
+static ssize_t uv__fs_realpath(uv_fs_t* req) {
+  ssize_t len;
+  char* buf;
+
+  len = pathconf(req->path, _PC_PATH_MAX);
+
+  if (len == -1) {
+#if defined(PATH_MAX)
+    len = PATH_MAX;
+#else
+    len = 4096;
+#endif
+  }
+
+  buf = uv__malloc(len + 1);
+
+  if (buf == NULL) {
+    errno = ENOMEM;
+    return -1;
+  }
+
+  if (realpath(req->path, buf) == NULL) {
+    uv__free(buf);
+    return -1;
+  }
+
+  req->ptr = buf;
+
+  return 0;
+}
 
 static ssize_t uv__fs_sendfile_emul(uv_fs_t* req) {
   struct pollfd pfd;
@@ -867,6 +897,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(READ, uv__fs_buf_iter(req, uv__fs_read));
     X(SCANDIR, uv__fs_scandir(req));
     X(READLINK, uv__fs_readlink(req));
+    X(REALPATH, uv__fs_realpath(req));
     X(RENAME, rename(req->path, req->new_path));
     X(RMDIR, rmdir(req->path));
     X(SENDFILE, uv__fs_sendfile(req));
@@ -1126,6 +1157,16 @@ int uv_fs_readlink(uv_loop_t* loop,
                    const char* path,
                    uv_fs_cb cb) {
   INIT(READLINK);
+  PATH;
+  POST;
+}
+
+
+int uv_fs_realpath(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char * path,
+                  uv_fs_cb cb) {
+  INIT(REALPATH);
   PATH;
   POST;
 }

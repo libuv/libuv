@@ -1743,6 +1743,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(LINK, link)
     XX(SYMLINK, symlink)
     XX(READLINK, readlink)
+    XX(REALPATH, realpath)
     XX(CHOWN, chown)
     XX(FCHOWN, fchown);
     default:
@@ -2065,6 +2066,27 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     return req->result;
   }
 }
+
+
+int uv_fs_realpath(uv_looop_t* loop, uv_fs_t* req, const char* path,
+    uv_fs_cb cb) {
+  int err;
+
+  uv_fs_req_init(loop, req, UV_FS_REALPATH, cb);
+
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err) {
+    return uv_translate_sys_error(err);
+  }
+
+  if (cb) {
+    QUEUE_FS_TP_JOB(loop, req);
+    return 0;
+  } else {
+    fs__realpath(req);
+    return req->result;
+  }
+
 
 
 int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
