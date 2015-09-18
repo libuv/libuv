@@ -1083,7 +1083,8 @@ typedef enum {
   UV_FS_SYMLINK,
   UV_FS_READLINK,
   UV_FS_CHOWN,
-  UV_FS_FCHOWN
+  UV_FS_FCHOWN,
+  UV_FS_REALPATH
 } uv_fs_type;
 
 /* uv_fs_t is a subclass of uv_req_t. */
@@ -1232,6 +1233,10 @@ UV_EXTERN int uv_fs_symlink(uv_loop_t* loop,
                             int flags,
                             uv_fs_cb cb);
 UV_EXTERN int uv_fs_readlink(uv_loop_t* loop,
+                             uv_fs_t* req,
+                             const char* path,
+                             uv_fs_cb cb);
+UV_EXTERN int uv_fs_realpath(uv_loop_t* loop,
                              uv_fs_t* req,
                              const char* path,
                              uv_fs_cb cb);
