@@ -104,6 +104,13 @@
             'src/win/winsock.c',
             'src/win/winsock.h',
           ],
+          'conditions': [
+            ['MSVS_VERSION < "2015"', {
+              'sources': [
+                'src/win/snprintf.c'
+              ]
+            }]
+          ],
           'link_settings': {
             'libraries': [
               '-ladvapi32',
