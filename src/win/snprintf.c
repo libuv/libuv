@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright the libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,21 +19,23 @@
  * IN THE SOFTWARE.
  */
 
-/* Don't complain about write(), fileno() etc. being deprecated. */
-#pragma warning(disable : 4996)
+#if defined(_MSC_VER) && _MSC_VER < 1900
 
-
-#include <winsock2.h>
-#include <windows.h>
 #include <stdio.h>
+#include <stdarg.h>
 
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
-extern int snprintf(char*, size_t, const char*, ...);
+/* Emulate snprintf() on MSVC<2015, _snprintf() doesn't zero-terminate the buffer
+ * on overflow...
+ */
+int snprintf(char* buf, size_t len, const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  int n = _vscprintf(fmt, ap);
+  vsnprintf_s(buf, len, _TRUNCATE, fmt, ap);
+
+  va_end(ap);
+  return n;
+}
+
 #endif
-
-typedef struct {
-  HANDLE process;
-  HANDLE stdio_in;
-  HANDLE stdio_out;
-  char *name;
-} process_info_t;
