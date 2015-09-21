@@ -188,7 +188,7 @@ TEST_IMPL(tty_pty) {
   struct winsize w;
   struct stat master_stat, tty_stat;
   uv_loop_t loop;
-  uv_tty_t tty = { 0 };
+  uv_tty_t tty;
 
   ASSERT(0 == uv_loop_init(&loop));
 
@@ -201,10 +201,8 @@ TEST_IMPL(tty_pty) {
   }
 
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
-  ASSERT(0 == uv_loop_close(&loop));
-
 
   MAKE_VALGRIND_HAPPY();
 #endif
-	return 0;
+  return 0;
 }
