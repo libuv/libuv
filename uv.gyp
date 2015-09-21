@@ -418,6 +418,9 @@
             'test/runner-unix.c',
             'test/runner-unix.h',
           ],
+          'link_settings': {
+            'libraries': [ '-lutil' ],
+          },
         }],
         [ 'OS=="solaris"', { # make test-fs.c compile, needs _POSIX_C_SOURCE
           'defines': [
@@ -484,10 +487,7 @@
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
-          ],
-          'link_settings': {
-            'libraries': [ '-lutil' ],
-          },
+          ]
         }],
         ['uv_library=="shared_library"', {
           'defines': [ 'USING_UV_SHARED=1' ]
