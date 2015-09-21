@@ -67,6 +67,10 @@ API
         If opening ``/dev/tty`` fails or fd may not the controlling terminal,
         libuv falls back to blocking writes for non-readable TTY streams.
 
+    .. versionchanged:: 1.8.0: only TTYs that are bound to any of stdin, stdout,
+                        or stderr are reopened trough ``/dev/tty`` and therefore
+                        accessed in async mode.
+
     .. versionchanged:: 1.5.0: trying to initialize a TTY stream with a file
                         descriptor that refers to a file returns `UV_EINVAL`
                         on UNIX.
