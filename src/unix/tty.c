@@ -67,15 +67,15 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   if (type == UV_TTY) {
     /* Try to find a tty in stdin, stdout, and stderr. If a tty is found compare
      * it to the fd. Only reopen the file descriptor if its inode matches the one
-     * bound to stdin, stdout, or stderr
+     * bound to stdin, stdout, or stderr.
      */
     r = fstat(fd, &fdstat);
     if (r < 0) {
-      /* Unlikely to happen, as a fstat() call * has already happened in
-       * uv_guess_handle(). Nevertheless, another thread may has closed
+      /* Unlikely to happen, as a fstat() call has already happened in
+       * uv_guess_handle(). Nevertheless, another thread may have closed
        * the fd so check this.
        */
-      return r;
+      return -errno;
     }
 
     for (fdtty = 0, r = -1; fdtty <= STDERR_FILENO && !isatty(fdtty); fdtty++) {
