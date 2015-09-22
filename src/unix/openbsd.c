@@ -313,8 +313,10 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
   *addresses = uv__malloc(*count * sizeof(**addresses));
 
-  if (!(*addresses))
+  if (!(*addresses)) {
+    freeifaddrs(addrs);
     return -ENOMEM;
+  }
 
   address = *addresses;
 
