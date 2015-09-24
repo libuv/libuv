@@ -174,40 +174,8 @@ enum test_status {
 
 #endif
 
-
-#if defined _WIN32 && ! defined __GNUC__
-
-#include <stdarg.h>
-
-/* Define inline for MSVC<2015 */
-# if defined(_MSC_VER) && _MSC_VER < 1900
-#  define inline __inline
-# endif
-
-# if defined(_MSC_VER) && _MSC_VER < 1900
-/* Emulate snprintf() on MSVC<2015, _snprintf() doesn't zero-terminate the buffer
- * on overflow...
- */
-inline int snprintf(char* buf, size_t len, const char* fmt, ...) {
-  va_list ap;
-  int n;
-
-  va_start(ap, fmt);
-  n = _vsprintf_p(buf, len, fmt, ap);
-  va_end(ap);
-
-  /* It's a sad fact of life that no one ever checks the return value of
-   * snprintf(). Zero-terminating the buffer hopefully reduces the risk
-   * of gaping security holes.
-   */
-  if (n < 0)
-    if (len > 0)
-      buf[0] = '\0';
-
-  return n;
-}
-# endif
-
+#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
+extern int snprintf(char*, size_t, const char*, ...);
 #endif
 
 #if defined(__clang__) ||                                \
