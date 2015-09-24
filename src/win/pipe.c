@@ -1633,7 +1633,7 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
 
       if (ReadFile(handle->handle,
                    buf.base,
-                   buf.len,
+                   min(buf.len, avail),
                    &bytes,
                    NULL)) {
         /* Successful read */
