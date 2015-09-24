@@ -50,9 +50,11 @@
 #ifdef _WIN32
 # define TEST_PIPENAME "\\\\?\\pipe\\uv-test"
 # define TEST_PIPENAME_2 "\\\\?\\pipe\\uv-test2"
+# define TEST_PIPENAME_3 "\\\\?\\pipe\\uv-test3"
 #else
 # define TEST_PIPENAME "/tmp/uv-test-sock"
 # define TEST_PIPENAME_2 "/tmp/uv-test-sock2"
+# define TEST_PIPENAME_3 "/tmp/uv-test-sock3"
 #endif
 
 #ifdef _WIN32
