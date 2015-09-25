@@ -28,7 +28,11 @@
 #else /*  Unix */
 # include <fcntl.h>
 # include <unistd.h>
-# include <pty.h>
+# ifdef __linux__
+#  include <pty.h>
+# else
+#  include <util.h>
+# endif
 #endif
 
 #include <string.h>
@@ -184,21 +188,18 @@ TEST_IMPL(tty_file) {
 TEST_IMPL(tty_pty) {
 #ifndef _WIN32
   int master_fd, slave_fd;
-  uv_os_fd_t tty_fd;
   struct winsize w;
-  struct stat master_stat, tty_stat;
   uv_loop_t loop;
   uv_tty_t tty;
 
   ASSERT(0 == uv_loop_init(&loop));
 
-  if(openpty(&master_fd, &slave_fd, NULL, NULL, &w) == 0) {
-    ASSERT(0 == uv_tty_init(&loop, &tty, master_fd, 1));
-    ASSERT(strcmp(ttyname(master_fd), "/dev/tty"));
-    ASSERT(0 == close(master_fd));
-    ASSERT(0 == close(slave_fd));
-    uv_close((uv_handle_t*) &tty, NULL);
-  }
+  ASSERT(0 == openpty(&master_fd, &slave_fd, NULL, NULL, &w));
+  ASSERT(0 == uv_tty_init(&loop, &tty, master_fd, 1));
+  ASSERT(strcmp(ttyname(slave_fd), "/dev/tty"));
+  ASSERT(0 == close(master_fd));
+  ASSERT(0 == close(slave_fd));
+  uv_close((uv_handle_t*) &tty, NULL);
 
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
 
