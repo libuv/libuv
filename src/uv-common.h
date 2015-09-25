@@ -39,7 +39,7 @@
 
 #include "uv.h"
 #include "tree.h"
-#include "queue.h"
+#include "uv-queue.h"
 
 #if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
 extern int snprintf(char*, size_t, const char*, ...);
