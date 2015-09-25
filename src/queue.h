@@ -20,6 +20,15 @@
 
 #include "uv/queue.h"
 
+/* Private macros. */
+#define QUEUE_POISON_NEXT   (void*)0x101
+#define QUEUE_POISON_PREV   (void*)0x102
+
+static inline void QUEUE_POISON(QUEUE *q) {
+  q->next = QUEUE_POISON_NEXT;
+  q->prev = QUEUE_POISON_PREV;
+}
+
 /* Public macros. */
 #define QUEUE_DATA(ptr, type, field)                                          \
   ((type *) ((char *) (ptr) - offsetof(type, field)))
@@ -58,6 +67,7 @@ static inline void QUEUE_ADD(QUEUE *h, QUEUE *n) {
   n->next->prev = h->prev;
   h->prev = n->prev;
   h->prev->next = h;
+  QUEUE_POISON(n);
 }
 
 static inline void QUEUE_SPLIT(QUEUE *h, QUEUE *q, QUEUE *n) {
@@ -95,6 +105,7 @@ static inline void QUEUE_INSERT_TAIL(QUEUE *h, QUEUE *q) {
 static inline void QUEUE_REMOVE(QUEUE *q) {
   q->prev->next = q->next;
   q->next->prev = q->prev;
+  QUEUE_POISON(q);
 }
 
 /* Should be used to remove an element from the queue, while iterating over it,
