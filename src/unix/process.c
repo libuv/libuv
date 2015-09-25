@@ -492,19 +492,17 @@ int uv_spawn(uv_loop_t* loop,
 
   for (i = 0; i < options->stdio_count; i++) {
     err = uv__process_open_stream(options->stdio + i, pipes[i], i == 0);
-    if (err == 0)
-      continue;
-
-    while (i--)
-      uv__process_close_stream(options->stdio + i);
-
-    goto error;
+    if (err != 0)
+      goto close_stream;
   }
 
   /* Only activate this handle if exec() happened successfully */
   if (exec_errorno == 0) {
     QUEUE_INSERT_TAIL(&loop->process_handles, &process->queue);
     uv__handle_start(process);
+  } else {
+    err = exec_errorno;
+    goto close_stream;
   }
 
   process->pid = pid;
@@ -513,6 +511,9 @@ int uv_spawn(uv_loop_t* loop,
   uv__free(pipes);
   return exec_errorno;
 
+close_stream:
+  while (i--)
+    uv__process_close_stream(options->stdio + i);
 error:
   if (pipes != NULL) {
     for (i = 0; i < stdio_count; i++) {
@@ -526,7 +527,9 @@ error:
     }
     uv__free(pipes);
   }
-
+  QUEUE_REMOVE(&process->handle_queue);
+  if (QUEUE_EMPTY(&loop->process_handles))
+    uv_signal_stop(&loop->child_watcher);
   return err;
 }
 
