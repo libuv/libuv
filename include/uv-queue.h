@@ -13,16 +13,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef QUEUE_H_
-#define QUEUE_H_
+#ifndef UV_QUEUE_H_
+#define UV_QUEUE_H_
 
 #include <stddef.h>
 
-typedef void *QUEUE[2];
+struct QUEUE { struct QUEUE *next, *prev; };
+typedef struct QUEUE QUEUE;
 
 /* Private macros. */
-#define QUEUE_NEXT(q)       (*(QUEUE **) &((*(q))[0]))
-#define QUEUE_PREV(q)       (*(QUEUE **) &((*(q))[1]))
+#define QUEUE_NEXT(q)       ((q)->next)
+#define QUEUE_PREV(q)       ((q)->prev)
 #define QUEUE_PREV_NEXT(q)  (QUEUE_NEXT(QUEUE_PREV(q)))
 #define QUEUE_NEXT_PREV(q)  (QUEUE_PREV(QUEUE_NEXT(q)))
 
@@ -34,7 +35,7 @@ typedef void *QUEUE[2];
   for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
 
 #define QUEUE_EMPTY(q)                                                        \
-  ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q))
+  ((q) == QUEUE_NEXT(q))
 
 #define QUEUE_HEAD(q)                                                         \
   (QUEUE_NEXT(q))
@@ -91,4 +92,4 @@ typedef void *QUEUE[2];
   }                                                                           \
   while (0)
 
-#endif /* QUEUE_H_ */
+#endif /* UV_QUEUE_H_ */
