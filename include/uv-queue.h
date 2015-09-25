@@ -34,62 +34,52 @@ typedef struct QUEUE QUEUE;
 #define QUEUE_FOREACH(q, h)                                                   \
   for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
 
-#define QUEUE_EMPTY(q)                                                        \
-  ((q) == QUEUE_NEXT(q))
+static inline int QUEUE_EMPTY(const QUEUE *q) {
+  return q == QUEUE_NEXT(q);
+}
 
-#define QUEUE_HEAD(q)                                                         \
-  (QUEUE_NEXT(q))
+static inline QUEUE * QUEUE_HEAD(QUEUE *q) {
+  return QUEUE_NEXT(q);
+}
 
-#define QUEUE_INIT(q)                                                         \
-  do {                                                                        \
-    QUEUE_NEXT(q) = (q);                                                      \
-    QUEUE_PREV(q) = (q);                                                      \
-  }                                                                           \
-  while (0)
+static inline void QUEUE_INIT(QUEUE *q) {
+  QUEUE_NEXT(q) = q;
+  QUEUE_PREV(q) = q;
+}
 
-#define QUEUE_ADD(h, n)                                                       \
-  do {                                                                        \
-    QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);                                       \
-    QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);                                       \
-    QUEUE_PREV(h) = QUEUE_PREV(n);                                            \
-    QUEUE_PREV_NEXT(h) = (h);                                                 \
-  }                                                                           \
-  while (0)
+static inline void QUEUE_ADD(QUEUE *h, QUEUE *n) {
+  QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);
+  QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);
+  QUEUE_PREV(h) = QUEUE_PREV(n);
+  QUEUE_PREV_NEXT(h) = (h);
+}
 
-#define QUEUE_SPLIT(h, q, n)                                                  \
-  do {                                                                        \
-    QUEUE_PREV(n) = QUEUE_PREV(h);                                            \
-    QUEUE_PREV_NEXT(n) = (n);                                                 \
-    QUEUE_NEXT(n) = (q);                                                      \
-    QUEUE_PREV(h) = QUEUE_PREV(q);                                            \
-    QUEUE_PREV_NEXT(h) = (h);                                                 \
-    QUEUE_PREV(q) = (n);                                                      \
-  }                                                                           \
-  while (0)
+static inline void QUEUE_SPLIT(QUEUE *h, QUEUE *q, QUEUE *n) {
+  QUEUE_PREV(n) = QUEUE_PREV(h);
+  QUEUE_PREV_NEXT(n) = n;
+  QUEUE_NEXT(n) = q;
+  QUEUE_PREV(h) = QUEUE_PREV(q);
+  QUEUE_PREV_NEXT(h) = h;
+  QUEUE_PREV(q) = n;
+}
 
-#define QUEUE_INSERT_HEAD(h, q)                                               \
-  do {                                                                        \
-    QUEUE_NEXT(q) = QUEUE_NEXT(h);                                            \
-    QUEUE_PREV(q) = (h);                                                      \
-    QUEUE_NEXT_PREV(q) = (q);                                                 \
-    QUEUE_NEXT(h) = (q);                                                      \
-  }                                                                           \
-  while (0)
+static inline void QUEUE_INSERT_HEAD(QUEUE *h, QUEUE *q) {
+  QUEUE_NEXT(q) = QUEUE_NEXT(h);
+  QUEUE_PREV(q) = h;
+  QUEUE_NEXT_PREV(q) = q;
+  QUEUE_NEXT(h) = q;
+}
 
-#define QUEUE_INSERT_TAIL(h, q)                                               \
-  do {                                                                        \
-    QUEUE_NEXT(q) = (h);                                                      \
-    QUEUE_PREV(q) = QUEUE_PREV(h);                                            \
-    QUEUE_PREV_NEXT(q) = (q);                                                 \
-    QUEUE_PREV(h) = (q);                                                      \
-  }                                                                           \
-  while (0)
+static inline void QUEUE_INSERT_TAIL(QUEUE *h, QUEUE *q) {
+  QUEUE_NEXT(q) = h;
+  QUEUE_PREV(q) = QUEUE_PREV(h);
+  QUEUE_PREV_NEXT(q) = q;
+  QUEUE_PREV(h) = q;
+}
 
-#define QUEUE_REMOVE(q)                                                       \
-  do {                                                                        \
-    QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);                                       \
-    QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);                                       \
-  }                                                                           \
-  while (0)
+static inline void QUEUE_REMOVE(QUEUE *q) {
+  QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);
+  QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);
+}
 
 #endif /* UV_QUEUE_H_ */
