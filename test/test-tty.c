@@ -188,7 +188,7 @@ TEST_IMPL(tty_file) {
 }
 
 TEST_IMPL(tty_pty) {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__sun)
   int master_fd, slave_fd;
   struct winsize w;
   uv_loop_t loop;
