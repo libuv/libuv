@@ -202,7 +202,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
 #if defined(_WIN32)
 # define uv__handle_platform_init(h) ((h)->u.fd = -1)
 #else
-# define uv__handle_platform_init(h) ((h)->next_closing = NULL)
+# define uv__handle_platform_init(h) QUEUE_INIT(&(h)->closing_queue)
 #endif
 
 #define uv__handle_init(loop_, h, type_)                                      \

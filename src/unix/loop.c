@@ -52,7 +52,7 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->pending_queue);
   QUEUE_INIT(&loop->watcher_queue);
 
-  loop->closing_handles = NULL;
+  QUEUE_INIT(&loop->closing_handles);
   uv__update_time(loop);
   uv__async_init(&loop->async_watcher);
   loop->signal_pipefd[0] = -1;

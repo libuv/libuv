@@ -218,7 +218,7 @@ typedef struct {
   uv_mutex_t wq_mutex;                                                        \
   uv_async_t wq_async;                                                        \
   uv_rwlock_t cloexec_lock;                                                   \
-  uv_handle_t* closing_handles;                                               \
+  QUEUE closing_handles;                                                      \
   QUEUE process_handles;                                                      \
   QUEUE prepare_handles;                                                      \
   QUEUE* prepare_handles_run_iter;                                            \
@@ -270,7 +270,7 @@ typedef struct {
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
-  uv_handle_t* next_closing;                                                  \
+  QUEUE closing_queue;                                                        \
   unsigned int flags;                                                         \
 
 #define UV_STREAM_PRIVATE_FIELDS                                              \
