@@ -326,6 +326,7 @@
         'test/test-loop-time.c',
         'test/test-loop-configure.c',
         'test/test-walk-handles.c',
+        'test/test-walk-and-close-handles.c',
         'test/test-watcher-cross-stop.c',
         'test/test-multiple-listen.c',
         'test/test-osx-select.c',
