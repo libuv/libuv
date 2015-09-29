@@ -70,7 +70,7 @@ int uv_async_send(uv_async_t* handle) {
 
 
 void uv__async_close(uv_async_t* handle) {
-  QUEUE_REMOVE(&handle->queue);
+  QUEUE_REMOVE_SAFE(&handle->queue, &handle->loop->async_handles_event_iter);
   uv__handle_stop(handle);
 }
 
@@ -81,7 +81,7 @@ static void uv__async_event(uv_loop_t* loop,
   QUEUE* q;
   uv_async_t* h;
 
-  QUEUE_FOREACH(q, &loop->async_handles) {
+  QUEUE_FOREACH_SAFE(q, loop->async_handles_event_iter, &loop->async_handles) {
     h = QUEUE_DATA(q, uv_async_t, queue);
 
     if (cmpxchgi(&h->pending, 1, 0) == 0)

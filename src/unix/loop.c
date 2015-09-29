@@ -35,12 +35,16 @@ int uv_loop_init(uv_loop_t* loop) {
   memset(loop, 0, sizeof(*loop));
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
-  QUEUE_INIT(&loop->active_reqs);
-  QUEUE_INIT(&loop->idle_handles);
-  QUEUE_INIT(&loop->async_handles);
-  QUEUE_INIT(&loop->check_handles);
-  QUEUE_INIT(&loop->prepare_handles);
   QUEUE_INIT(&loop->handle_queue);
+  QUEUE_INIT(&loop->active_reqs);
+  QUEUE_INIT(&loop->prepare_handles);
+  loop->prepare_handles_run_iter = NULL;
+  QUEUE_INIT(&loop->check_handles);
+  loop->check_handles_run_iter = NULL;
+  QUEUE_INIT(&loop->idle_handles);
+  loop->idle_handles_run_iter = NULL;
+  QUEUE_INIT(&loop->async_handles);
+  loop->async_handles_event_iter = NULL;
 
   loop->nfds = 0;
   loop->watchers = NULL;

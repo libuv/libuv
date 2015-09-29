@@ -40,7 +40,7 @@
                                                                               \
   int uv_##name##_stop(uv_##name##_t* handle) {                               \
     if (!uv__is_active(handle)) return 0;                                     \
-    QUEUE_REMOVE(&handle->queue);                                             \
+    QUEUE_REMOVE_SAFE(&handle->queue, &handle->loop->name##_handles_run_iter);\
     uv__handle_stop(handle);                                                  \
     return 0;                                                                 \
   }                                                                           \
@@ -48,7 +48,13 @@
   void uv__run_##name(uv_loop_t* loop) {                                      \
     uv_##name##_t* h;                                                         \
     QUEUE* q;                                                                 \
-    QUEUE_FOREACH(q, &loop->name##_handles) {                                 \
+    QUEUE* head = &loop->name##_handles;                                      \
+    /* save loop next element in uv_loop_t,                                   \
+     * so that uv_##name##_stop() can adjust it                               \
+     * in case someone is removing the uv_##name##_t from under our feet      \
+     * (for example, by calling uv_close() from name##_cb())                  \
+     */                                                                       \
+    QUEUE_FOREACH_SAFE(q, loop->name##_handles_run_iter, head) {              \
       h = QUEUE_DATA(q, uv_##name##_t, queue);                                \
       h->name##_cb(h);                                                        \
     }                                                                         \
