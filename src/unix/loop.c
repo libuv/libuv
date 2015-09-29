@@ -51,7 +51,7 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->pending_queue);
   QUEUE_INIT(&loop->watcher_queue);
 
-  loop->closing_handles = NULL;
+  QUEUE_INIT(&loop->closing_handles);
   uv__update_time(loop);
   loop->async_io_watcher.fd = -1;
   loop->async_wfd = -1;
