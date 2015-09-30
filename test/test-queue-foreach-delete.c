@@ -61,6 +61,7 @@ static const unsigned first_handle_number_idle     = 2;
 static const unsigned first_handle_number_prepare  = 2;
 static const unsigned first_handle_number_check    = 2;
 #ifdef __linux__
+static const unsigned first_handle_number_async    = 0;
 static const unsigned first_handle_number_fs_event = 0;
 #endif
 
@@ -123,12 +124,21 @@ DEFINE_GLOBALS_AND_CBS(prepare)
 DEFINE_GLOBALS_AND_CBS(check)
 
 #ifdef __linux__
+DEFINE_GLOBALS_AND_CBS(async)
 DEFINE_GLOBALS_AND_CBS(fs_event)
 
 static const char watched_dir[] = ".";
 static uv_timer_t timer;
 static unsigned helper_timer_cb_calls;
 
+static void init_asyncs(uv_loop_t* loop) {
+  size_t i;
+  for (i = 0; i < ARRAY_SIZE(async); i++) {
+    int r;
+    r = uv_async_init(loop, &async[i], async_cbs[i]);
+    ASSERT(r == 0);
+  }
+}
 
 static void init_and_start_fs_events(uv_loop_t* loop) {
   size_t i;
@@ -146,8 +156,15 @@ static void init_and_start_fs_events(uv_loop_t* loop) {
 }
 
 static void helper_timer_cb(uv_timer_t* thandle) {
+  size_t i;
   int r;
   uv_fs_t fs_req;
+
+  /* fire all asyncs */
+  for (i = 0; i < ARRAY_SIZE(async); i++) {
+    r = uv_async_send(&async[i]);
+    ASSERT(r == 0);
+  }
 
   /* fire all fs_events */
   r = uv_fs_utime(thandle->loop, &fs_req, watched_dir, 0, 0, NULL);
@@ -173,6 +190,7 @@ TEST_IMPL(queue_foreach_delete) {
   INIT_AND_START(check,   loop);
 
 #ifdef __linux__
+  init_asyncs(loop);
   init_and_start_fs_events(loop);
 
   /* helper timer to trigger async and fs_event callbacks */
@@ -191,6 +209,8 @@ TEST_IMPL(queue_foreach_delete) {
   END_ASSERTS(check);
 
 #ifdef __linux__
+  END_ASSERTS(async);
+  END_ASSERTS(fs_event);
   ASSERT(helper_timer_cb_calls == 1);
 #endif
 
