@@ -30,6 +30,16 @@
 #define QUEUE_FOREACH(q, h)                                                   \
   for ((q) = (h)->next; (q) != (h); (q) = (q)->next)
 
+/* Removing an element from the queue, while iterating over it,
+ * should be done using QUEUE_REMOVE_SAFE() in conjunction with
+ * QUEUE_FOREACH_SAFE() sharing the same n.
+ * It's still not safe to remove the head though.
+ */
+#define QUEUE_FOREACH_SAFE(q, n, h)                                           \
+  for ((q) = (h)->next, (n) = (q)->next;                                      \
+       (q) != (h);                                                            \
+       (q) = (n), (n) = (n)->next)
+
 static inline int QUEUE_EMPTY(const QUEUE *q) {
   return q == q->next;
 }
@@ -85,6 +95,17 @@ static inline void QUEUE_INSERT_TAIL(QUEUE *h, QUEUE *q) {
 static inline void QUEUE_REMOVE(QUEUE *q) {
   q->prev->next = q->next;
   q->next->prev = q->prev;
+}
+
+/* Should be used to remove an element from the queue, while iterating over it,
+ * in conjunction with QUEUE_FOREACH_SAFE() sharing the same n.
+ * It's still not safe to remove the head though.
+ */
+static inline void QUEUE_REMOVE_SAFE(QUEUE *q, QUEUE **n) {
+  if ((*n) == q) {
+    *n = (*n)->next;
+  }
+  QUEUE_REMOVE(q);
 }
 
 #endif /* QUEUE_H_ */
