@@ -37,6 +37,16 @@ typedef struct QUEUE QUEUE;
 #define QUEUE_FOREACH(q, h)                                                   \
   for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
 
+/* Removing an element from the queue, while iterating over it,
+ * should be done using QUEUE_REMOVE_SAFE() in conjunction with
+ * QUEUE_FOREACH_SAFE() sharing the same n.
+ * It's still not safe to delete the head though.
+ */
+#define QUEUE_FOREACH_SAFE(q, n, h)                                           \
+  for ((q) = QUEUE_NEXT(h), (n) = QUEUE_NEXT(q);                              \
+       (q) != (h);                                                            \
+       (q) = (n), (n) = QUEUE_NEXT(n))
+
 static inline int QUEUE_EMPTY(const QUEUE *q) {
   return q == QUEUE_NEXT(q);
 }
@@ -92,6 +102,17 @@ static inline void QUEUE_INSERT_TAIL(QUEUE *h, QUEUE *q) {
 static inline void QUEUE_REMOVE(QUEUE *q) {
   QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);
   QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);
+}
+
+/* Should be used to remove an element from the queue, while iterating over it,
+ * in conjunction with QUEUE_FOREACH_SAFE() sharing the same n.
+ * It's still not safe to delete the head though.
+ */
+static inline void QUEUE_REMOVE_SAFE(QUEUE *q, QUEUE **n) {
+  if ((*n) == q) {
+    *n = QUEUE_NEXT(*n);
+  }
+  QUEUE_REMOVE(q);
 }
 
 #endif /* UV_QUEUE_H_ */
