@@ -23,6 +23,7 @@
 #include "tree.h"
 #include "internal.h"
 #include "heap-inl.h"
+#include "queue-internal.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -37,14 +38,22 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->handle_queue);
   QUEUE_INIT(&loop->active_reqs);
-  QUEUE_INIT(&loop->prepare_handles);
-  loop->prepare_handles_run_iter = NULL;
-  QUEUE_INIT(&loop->check_handles);
-  loop->check_handles_run_iter = NULL;
-  QUEUE_INIT(&loop->idle_handles);
-  loop->idle_handles_run_iter = NULL;
-  QUEUE_INIT(&loop->async_handles);
-  loop->async_handles_event_iter = NULL;
+
+  err = QUEUE_WITH_ITER_INIT(&loop->prepare_handles);
+  if (err)
+    goto fail_prepare_handles_init;
+
+  err = QUEUE_WITH_ITER_INIT(&loop->check_handles);
+  if (err)
+    goto fail_check_handles_init;
+
+  err = QUEUE_WITH_ITER_INIT(&loop->idle_handles);
+  if (err)
+    goto fail_idle_handles_init;
+
+  err = QUEUE_WITH_ITER_INIT(&loop->async_handles);
+  if (err)
+    goto fail_async_handles_init;
 
   loop->nfds = 0;
   loop->watchers = NULL;
@@ -65,7 +74,7 @@ int uv_loop_init(uv_loop_t* loop) {
 
   err = uv__platform_loop_init(loop);
   if (err)
-    return err;
+    goto fail_platform_init;
 
   err = uv_signal_init(loop, &loop->child_watcher);
   if (err)
@@ -103,6 +112,21 @@ fail_rwlock_init:
 
 fail_signal_init:
   uv__platform_loop_delete(loop);
+
+fail_platform_init:
+  QUEUE_WITH_ITER_DESTROY(&loop->async_handles);
+
+fail_async_handles_init:
+  QUEUE_WITH_ITER_DESTROY(&loop->idle_handles);
+
+fail_idle_handles_init:
+  QUEUE_WITH_ITER_DESTROY(&loop->check_handles);
+
+fail_check_handles_init:
+  QUEUE_WITH_ITER_DESTROY(&loop->prepare_handles);
+
+fail_prepare_handles_init:
+  /* nop */
 
   return err;
 }
@@ -144,6 +168,11 @@ void uv__loop_close(uv_loop_t* loop) {
   uv__free(loop->watchers);
   loop->watchers = NULL;
   loop->nwatchers = 0;
+
+  QUEUE_WITH_ITER_DESTROY(&loop->async_handles);
+  QUEUE_WITH_ITER_DESTROY(&loop->idle_handles);
+  QUEUE_WITH_ITER_DESTROY(&loop->check_handles);
+  QUEUE_WITH_ITER_DESTROY(&loop->prepare_handles);
 }
 
 

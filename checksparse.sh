@@ -43,6 +43,8 @@ src/unix/loop.c
 src/unix/pipe.c
 src/unix/poll.c
 src/unix/process.c
+src/unix/queue-internal.h
+src/unix/queue-internal.c
 src/unix/signal.c
 src/unix/stream.c
 src/unix/tcp.c

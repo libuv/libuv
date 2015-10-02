@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "queue-internal.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -294,7 +295,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
     return 0;
 
-  if (!QUEUE_EMPTY(&loop->idle_handles))
+  if (!QUEUE_WITH_ITER_EMPTY(&loop->idle_handles))
     return 0;
 
   if (!QUEUE_EMPTY(&loop->pending_queue))

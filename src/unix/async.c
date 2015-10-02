@@ -25,6 +25,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "atomic-ops.h"
+#include "queue-internal.h"
 
 #include <errno.h>
 #include <stdio.h>  /* snprintf() */
@@ -50,7 +51,7 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   handle->async_cb = async_cb;
   handle->pending = 0;
 
-  QUEUE_INSERT_TAIL(&loop->async_handles, &handle->queue);
+  QUEUE_WITH_ITER_INSERT_TAIL(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
 
   return 0;
@@ -70,7 +71,7 @@ int uv_async_send(uv_async_t* handle) {
 
 
 void uv__async_close(uv_async_t* handle) {
-  QUEUE_REMOVE_SAFE(&handle->queue, &handle->loop->async_handles_event_iter);
+  QUEUE_WITH_ITER_REMOVE_SAFE(&handle->loop->async_handles, &handle->queue);
   uv__handle_stop(handle);
 }
 
@@ -81,7 +82,7 @@ static void uv__async_event(uv_loop_t* loop,
   QUEUE* q;
   uv_async_t* h;
 
-  QUEUE_FOREACH_SAFE(q, loop->async_handles_event_iter, &loop->async_handles) {
+  QUEUE_WITH_ITER_FOREACH_SAFE_BEGIN(q, &loop->async_handles) {
     h = QUEUE_DATA(q, uv_async_t, queue);
 
     if (cmpxchgi(&h->pending, 1, 0) == 0)
@@ -90,7 +91,7 @@ static void uv__async_event(uv_loop_t* loop,
     if (h->async_cb == NULL)
       continue;
     h->async_cb(h);
-  }
+  } QUEUE_WITH_ITER_FOREACH_SAFE_END();
 }
 
 

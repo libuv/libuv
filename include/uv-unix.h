@@ -221,13 +221,9 @@ typedef struct {
   QUEUE closing_handles;                                                      \
   QUEUE process_handles;                                                      \
   QUEUE prepare_handles;                                                      \
-  QUEUE* prepare_handles_run_iter;                                            \
   QUEUE check_handles;                                                        \
-  QUEUE* check_handles_run_iter;                                              \
   QUEUE idle_handles;                                                         \
-  QUEUE* idle_handles_run_iter;                                               \
   QUEUE async_handles;                                                        \
-  QUEUE* async_handles_event_iter;                                            \
   struct uv__async async_watcher;                                             \
   struct {                                                                    \
     void* min;                                                                \
