@@ -57,11 +57,12 @@ static void connect_cb(uv_connect_t* req, int status) {
       bytes_written += r;
       break;
     }
+  } while (1);
 
+  do {
     buf = uv_buf_init("", 0);
     r = uv_try_write((uv_stream_t*) &client, &buf, 1);
-    ASSERT(r == 0 || r == UV_EAGAIN);
-  } while (1);
+  } while (r != 0);
   uv_close((uv_handle_t*) &client, close_cb);
 }
 
