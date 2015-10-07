@@ -39,7 +39,7 @@
 
 #include "uv.h"
 #include "tree.h"
-#include "queue.h"
+#include "uv-queue.h"
 
 #if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
 extern int snprintf(char*, size_t, const char*, ...);
@@ -202,7 +202,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
 #if defined(_WIN32)
 # define uv__handle_platform_init(h) ((h)->u.fd = -1)
 #else
-# define uv__handle_platform_init(h) ((h)->next_closing = NULL)
+# define uv__handle_platform_init(h) QUEUE_INIT(&(h)->closing_queue)
 #endif
 
 #define uv__handle_init(loop_, h, type_)                                      \

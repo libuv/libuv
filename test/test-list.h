@@ -156,6 +156,7 @@ TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
 TEST_DECLARE   (walk_handles)
+TEST_DECLARE   (walk_and_close_handles)
 TEST_DECLARE   (watcher_cross_stop)
 TEST_DECLARE   (ref)
 TEST_DECLARE   (idle_ref)
@@ -334,6 +335,7 @@ HELPER_DECLARE (tcp6_echo_server)
 HELPER_DECLARE (udp4_echo_server)
 HELPER_DECLARE (pipe_echo_server)
 
+TEST_DECLARE   (queue_foreach_delete)
 
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
@@ -551,6 +553,7 @@ TASK_LIST_START
 
   TEST_ENTRY  (loop_handles)
   TEST_ENTRY  (walk_handles)
+  TEST_ENTRY  (walk_and_close_handles)
 
   TEST_ENTRY  (watcher_cross_stop)
 
@@ -714,6 +717,9 @@ TASK_LIST_START
   TEST_ENTRY  (dlerror)
   TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)
+
+  TEST_ENTRY  (queue_foreach_delete)
+
 #if 0
   /* These are for testing the test runner. */
   TEST_ENTRY  (fail_always)

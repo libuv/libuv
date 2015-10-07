@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "queue-internal.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -195,8 +196,7 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
 void uv__make_close_pending(uv_handle_t* handle) {
   assert(handle->flags & UV_CLOSING);
   assert(!(handle->flags & UV_CLOSED));
-  handle->next_closing = handle->loop->closing_handles;
-  handle->loop->closing_handles = handle;
+  QUEUE_INSERT_HEAD(&handle->loop->closing_handles, &handle->closing_queue);
 }
 
 int uv__getiovmax(void) {
@@ -262,16 +262,18 @@ static void uv__finish_close(uv_handle_t* handle) {
 
 
 static void uv__run_closing_handles(uv_loop_t* loop) {
-  uv_handle_t* p;
-  uv_handle_t* q;
+  QUEUE h;
+  QUEUE *q;
+  QUEUE *n;
 
-  p = loop->closing_handles;
-  loop->closing_handles = NULL;
+  /* first, hide the queue from others while we work on it */
+  QUEUE_INIT(&h);
+  QUEUE_ADD(&h, &loop->closing_handles);
+  QUEUE_INIT(&loop->closing_handles);
 
-  while (p) {
-    q = p->next_closing;
-    uv__finish_close(p);
-    p = q;
+  QUEUE_FOREACH_SAFE(q, n, &h) {
+    uv_handle_t *handle = QUEUE_DATA(q, uv_handle_t, closing_queue);
+    uv__finish_close(handle);
   }
 }
 
@@ -293,13 +295,13 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
     return 0;
 
-  if (!QUEUE_EMPTY(&loop->idle_handles))
+  if (!QUEUE_WITH_ITER_EMPTY(&loop->idle_handles))
     return 0;
 
   if (!QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
-  if (loop->closing_handles)
+  if (!QUEUE_EMPTY(&loop->closing_handles))
     return 0;
 
   return uv__next_timeout(loop);
@@ -309,7 +311,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
 static int uv__loop_alive(const uv_loop_t* loop) {
   return uv__has_active_handles(loop) ||
          uv__has_active_reqs(loop) ||
-         loop->closing_handles != NULL;
+	 !QUEUE_EMPTY(&loop->closing_handles);
 }
 
 

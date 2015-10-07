@@ -83,8 +83,8 @@ typedef struct uv__io_s uv__io_t;
 
 struct uv__io_s {
   uv__io_cb cb;
-  void* pending_queue[2];
-  void* watcher_queue[2];
+  QUEUE pending_queue;
+  QUEUE watcher_queue;
   unsigned int pevents; /* Pending event mask i.e. mask at next tick. */
   unsigned int events;  /* Current event mask. */
   int fd;
@@ -209,21 +209,21 @@ typedef struct {
 #define UV_LOOP_PRIVATE_FIELDS                                                \
   unsigned long flags;                                                        \
   int backend_fd;                                                             \
-  void* pending_queue[2];                                                     \
-  void* watcher_queue[2];                                                     \
+  QUEUE pending_queue;                                                        \
+  QUEUE watcher_queue;                                                        \
   uv__io_t** watchers;                                                        \
   unsigned int nwatchers;                                                     \
   unsigned int nfds;                                                          \
-  void* wq[2];                                                                \
+  QUEUE wq;                                                                   \
   uv_mutex_t wq_mutex;                                                        \
   uv_async_t wq_async;                                                        \
   uv_rwlock_t cloexec_lock;                                                   \
-  uv_handle_t* closing_handles;                                               \
-  void* process_handles[2];                                                   \
-  void* prepare_handles[2];                                                   \
-  void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
-  void* async_handles[2];                                                     \
+  QUEUE closing_handles;                                                      \
+  QUEUE process_handles;                                                      \
+  QUEUE prepare_handles;                                                      \
+  QUEUE check_handles;                                                        \
+  QUEUE idle_handles;                                                         \
+  QUEUE async_handles;                                                        \
   struct uv__async async_watcher;                                             \
   struct {                                                                    \
     void* min;                                                                \
@@ -244,7 +244,7 @@ typedef struct {
 #define UV_PRIVATE_REQ_TYPES /* empty */
 
 #define UV_WRITE_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
   unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
   unsigned int nbufs;                                                         \
@@ -252,12 +252,12 @@ typedef struct {
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
 
 #define UV_SHUTDOWN_PRIVATE_FIELDS /* empty */
 
 #define UV_UDP_SEND_PRIVATE_FIELDS                                            \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
   struct sockaddr_storage addr;                                               \
   unsigned int nbufs;                                                         \
   uv_buf_t* bufs;                                                             \
@@ -266,15 +266,15 @@ typedef struct {
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
-  uv_handle_t* next_closing;                                                  \
+  QUEUE closing_queue;                                                        \
   unsigned int flags;                                                         \
 
 #define UV_STREAM_PRIVATE_FIELDS                                              \
   uv_connect_t *connect_req;                                                  \
   uv_shutdown_t *shutdown_req;                                                \
   uv__io_t io_watcher;                                                        \
-  void* write_queue[2];                                                       \
-  void* write_completed_queue[2];                                             \
+  QUEUE write_queue;                                                          \
+  QUEUE write_completed_queue;                                                \
   uv_connection_cb connection_cb;                                             \
   int delayed_error;                                                          \
   int accepted_fd;                                                            \
@@ -287,8 +287,8 @@ typedef struct {
   uv_alloc_cb alloc_cb;                                                       \
   uv_udp_recv_cb recv_cb;                                                     \
   uv__io_t io_watcher;                                                        \
-  void* write_queue[2];                                                       \
-  void* write_completed_queue[2];                                             \
+  QUEUE write_queue;                                                          \
+  QUEUE write_completed_queue;                                                \
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   const char* pipe_fname; /* strdup'ed */
@@ -298,19 +298,19 @@ typedef struct {
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   uv_prepare_cb prepare_cb;                                                   \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
 
 #define UV_CHECK_PRIVATE_FIELDS                                               \
   uv_check_cb check_cb;                                                       \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
 
 #define UV_IDLE_PRIVATE_FIELDS                                                \
   uv_idle_cb idle_cb;                                                         \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   uv_async_cb async_cb;                                                       \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
   int pending;                                                                \
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
@@ -339,7 +339,7 @@ typedef struct {
   int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
-  void* queue[2];                                                             \
+  QUEUE queue;                                                                \
   int status;                                                                 \
 
 #define UV_FS_PRIVATE_FIELDS                                                  \

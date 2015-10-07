@@ -35,6 +35,7 @@
 struct watcher_list {
   RB_ENTRY(watcher_list) entry;
   QUEUE watchers;
+  QUEUE* watchers_read_iter;
   char* path;
   int wd;
 };
@@ -159,7 +160,7 @@ static void uv__inotify_read(uv_loop_t* loop,
        */
       path = e->len ? (const char*) (e + 1) : uv__basename_r(w->path);
 
-      QUEUE_FOREACH(q, &w->watchers) {
+      QUEUE_FOREACH_SAFE(q, w->watchers_read_iter, &w->watchers) {
         h = QUEUE_DATA(q, uv_fs_event_t, watchers);
         h->cb(h, path, events, 0);
       }
@@ -214,6 +215,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   w->wd = wd;
   w->path = strcpy((char*)(w + 1), path);
   QUEUE_INIT(&w->watchers);
+  w->watchers_read_iter = NULL;
   RB_INSERT(watcher_root, CAST(&handle->loop->inotify_watchers), w);
 
 no_insert:
@@ -239,7 +241,7 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   handle->wd = -1;
   handle->path = NULL;
   uv__handle_stop(handle);
-  QUEUE_REMOVE(&handle->watchers);
+  QUEUE_REMOVE_SAFE(&handle->watchers, &w->watchers_read_iter);
 
   if (QUEUE_EMPTY(&w->watchers)) {
     /* No watchers left for this path. Clean up. */

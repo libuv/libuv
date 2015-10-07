@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "queue-internal.h"
 
 #define UV_LOOP_WATCHER_DEFINE(name, type)                                    \
   int uv_##name##_init(uv_loop_t* loop, uv_##name##_t* handle) {              \
@@ -32,7 +33,7 @@
   int uv_##name##_start(uv_##name##_t* handle, uv_##name##_cb cb) {           \
     if (uv__is_active(handle)) return 0;                                      \
     if (cb == NULL) return -EINVAL;                                           \
-    QUEUE_INSERT_HEAD(&handle->loop->name##_handles, &handle->queue);         \
+    QUEUE_WITH_ITER_INSERT_HEAD(&handle->loop->name##_handles, &handle->queue);\
     handle->name##_cb = cb;                                                   \
     uv__handle_start(handle);                                                 \
     return 0;                                                                 \
@@ -40,7 +41,7 @@
                                                                               \
   int uv_##name##_stop(uv_##name##_t* handle) {                               \
     if (!uv__is_active(handle)) return 0;                                     \
-    QUEUE_REMOVE(&handle->queue);                                             \
+    QUEUE_WITH_ITER_REMOVE_SAFE(&handle->loop->name##_handles, &handle->queue);\
     uv__handle_stop(handle);                                                  \
     return 0;                                                                 \
   }                                                                           \
@@ -48,10 +49,15 @@
   void uv__run_##name(uv_loop_t* loop) {                                      \
     uv_##name##_t* h;                                                         \
     QUEUE* q;                                                                 \
-    QUEUE_FOREACH(q, &loop->name##_handles) {                                 \
+    /* save loop next element in uv_loop_t,                                   \
+     * so that uv_##name##_stop() can adjust it                               \
+     * in case someone is removing the uv_##name##_t from under our feet      \
+     * (for example, by calling uv_close() from name##_cb())                  \
+     */                                                                       \
+    QUEUE_WITH_ITER_FOREACH_SAFE_BEGIN(q, &loop->name##_handles) {            \
       h = QUEUE_DATA(q, uv_##name##_t, queue);                                \
       h->name##_cb(h);                                                        \
-    }                                                                         \
+    } QUEUE_WITH_ITER_FOREACH_SAFE_END();                                     \
   }                                                                           \
                                                                               \
   void uv__##name##_close(uv_##name##_t* handle) {                            \

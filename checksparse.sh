@@ -27,11 +27,11 @@ SPARSE_FLAGS=${SPARSE_FLAGS:-"
 
 SOURCES="
 include/tree.h
+include/uv-queue.h
 include/uv-unix.h
 include/uv.h
 src/fs-poll.c
 src/inet.c
-src/queue.h
 src/unix/async.c
 src/unix/core.c
 src/unix/dl.c
@@ -43,6 +43,8 @@ src/unix/loop.c
 src/unix/pipe.c
 src/unix/poll.c
 src/unix/process.c
+src/unix/queue-internal.h
+src/unix/queue-internal.c
 src/unix/signal.c
 src/unix/stream.c
 src/unix/tcp.c
