@@ -106,6 +106,17 @@ struct ngx_queue_s {
   while (0)
 
 
+#define ngx_queue_move(h, n)                                                  \
+  do {                                                                        \
+    if (ngx_queue_empty(h))                                                   \
+      ngx_queue_init(n);                                                      \
+    else {                                                                    \
+      ngx_queue_t* q = ngx_queue_head(h);                                     \
+      ngx_queue_split(h, q, n);                                               \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
 #define ngx_queue_add(h, n)                                                   \
   do {                                                                        \
     (h)->prev->next = (n)->next;                                              \
