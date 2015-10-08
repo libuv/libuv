@@ -149,11 +149,7 @@ static void (*pFSEventStreamStop)(FSEventStreamRef);
       int err;                                                                \
       uv_mutex_lock(&(handle)->cf_mutex);                                     \
       /* Split-off all events and empty original queue */                     \
-      QUEUE_INIT(&events);                                                    \
-      if (!QUEUE_EMPTY(&(handle)->cf_events)) {                               \
-        q = QUEUE_HEAD(&(handle)->cf_events);                                 \
-        QUEUE_SPLIT(&(handle)->cf_events, q, &events);                        \
-      }                                                                       \
+      QUEUE_MOVE(&(handle)->cf_events, &events);                              \
       /* Get error (if any) and zero original one */                          \
       err = (handle)->cf_error;                                               \
       (handle)->cf_error = 0;                                                 \
@@ -735,17 +731,14 @@ static void uv__cf_loop_cb(void* arg) {
 
   loop = arg;
   state = loop->cf_state;
-  QUEUE_INIT(&split_head);
 
   uv_mutex_lock(&loop->cf_mutex);
-  if (!QUEUE_EMPTY(&loop->cf_signals)) {
-    QUEUE* split_pos = QUEUE_HEAD(&loop->cf_signals);
-    QUEUE_SPLIT(&loop->cf_signals, split_pos, &split_head);
-  }
+  QUEUE_MOVE(&loop->cf_signals, &split_head);
   uv_mutex_unlock(&loop->cf_mutex);
 
   while (!QUEUE_EMPTY(&split_head)) {
     item = QUEUE_HEAD(&split_head);
+    QUEUE_REMOVE(item);
 
     s = QUEUE_DATA(item, uv__cf_loop_signal_t, member);
 
@@ -755,7 +748,6 @@ static void uv__cf_loop_cb(void* arg) {
     else
       uv__fsevents_reschedule(s->handle);
 
-    QUEUE_REMOVE(item);
     uv__free(s);
   }
 }

@@ -66,6 +66,17 @@ typedef void *QUEUE[2];
   }                                                                           \
   while (0)
 
+#define QUEUE_MOVE(h, n)                                                      \
+  do {                                                                        \
+    if (QUEUE_EMPTY(h))                                                       \
+      QUEUE_INIT(n);                                                          \
+    else {                                                                    \
+      QUEUE* q = QUEUE_HEAD(h);                                               \
+      QUEUE_SPLIT(h, q, n);                                                   \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
 #define QUEUE_INSERT_HEAD(h, q)                                               \
   do {                                                                        \
     QUEUE_NEXT(q) = QUEUE_NEXT(h);                                            \

@@ -721,9 +721,7 @@ static int uv__run_pending(uv_loop_t* loop) {
   if (QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
-  QUEUE_INIT(&pq);
-  q = QUEUE_HEAD(&loop->pending_queue);
-  QUEUE_SPLIT(&loop->pending_queue, q, &pq);
+  QUEUE_MOVE(&loop->pending_queue, &pq);
 
   while (!QUEUE_EMPTY(&pq)) {
     q = QUEUE_HEAD(&pq);
