@@ -337,11 +337,18 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 
 
 void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
+  QUEUE queue;
   QUEUE* q;
   uv_handle_t* h;
 
-  QUEUE_FOREACH(q, &loop->handle_queue) {
+  QUEUE_MOVE(&loop->handle_queue, &queue);
+  while (!QUEUE_EMPTY(&queue)) {
+    q = QUEUE_HEAD(&queue);
     h = QUEUE_DATA(q, uv_handle_t, handle_queue);
+
+    QUEUE_REMOVE(q);
+    QUEUE_INSERT_TAIL(&loop->handle_queue, q);
+
     if (h->flags & UV__HANDLE_INTERNAL) continue;
     walk_cb(h, arg);
   }

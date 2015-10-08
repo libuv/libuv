@@ -30,6 +30,9 @@ typedef void *QUEUE[2];
 #define QUEUE_DATA(ptr, type, field)                                          \
   ((type *) ((char *) (ptr) - offsetof(type, field)))
 
+/* Important note: mutating the list while QUEUE_FOREACH is
+ * iterating over its elements results in undefined behavior.
+ */
 #define QUEUE_FOREACH(q, h)                                                   \
   for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
 

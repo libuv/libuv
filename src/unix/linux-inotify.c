@@ -120,6 +120,7 @@ static void uv__inotify_read(uv_loop_t* loop,
   const struct uv__inotify_event* e;
   struct watcher_list* w;
   uv_fs_event_t* h;
+  QUEUE queue;
   QUEUE* q;
   const char* path;
   ssize_t size;
@@ -159,8 +160,14 @@ static void uv__inotify_read(uv_loop_t* loop,
        */
       path = e->len ? (const char*) (e + 1) : uv__basename_r(w->path);
 
-      QUEUE_FOREACH(q, &w->watchers) {
+      QUEUE_MOVE(&w->watchers, &queue);
+      while (!QUEUE_EMPTY(&queue)) {
+        q = QUEUE_HEAD(&queue);
         h = QUEUE_DATA(q, uv_fs_event_t, watchers);
+
+        QUEUE_REMOVE(q);
+        QUEUE_INSERT_TAIL(&w->watchers, q);
+
         h->cb(h, path, events, 0);
       }
     }
