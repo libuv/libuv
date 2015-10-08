@@ -131,6 +131,9 @@ struct ngx_queue_s {
     ((type *) ((unsigned char *) q - offsetof(type, link)))
 
 
+/* Important note: mutating the list while ngx_queue_foreach is
+ * iterating over its elements results in undefined behavior.
+ */
 #define ngx_queue_foreach(q, h)                                               \
     for ((q) = ngx_queue_head(h);                                             \
          (q) != ngx_queue_sentinel(h) && !ngx_queue_empty(h);                 \
