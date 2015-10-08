@@ -779,9 +779,9 @@ start:
 
   if (req->send_handle) {
     struct msghdr msg;
-    char scratch[64];
     struct cmsghdr *cmsg;
     int fd_to_send = uv__handle_fd((uv_handle_t*) req->send_handle);
+    char scratch[64] = {0};
 
     assert(fd_to_send >= 0);
 
