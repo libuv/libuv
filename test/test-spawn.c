@@ -423,7 +423,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   uv_fs_req_cleanup(&fs_req);
 
   r = uv_fs_close(NULL, &fs_req, file, NULL);
-  ASSERT(r == 0);
+  ASSERT(r == UV_EINVAL);
   uv_fs_req_cleanup(&fs_req);
 
   printf("output is: %s", output);
@@ -502,7 +502,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   uv_fs_req_cleanup(&fs_req);
 
   r = uv_fs_close(NULL, &fs_req, stdout_file, NULL);
-  ASSERT(r == 0);
+  ASSERT(r == UV_EINVAL);
   uv_fs_req_cleanup(&fs_req);
 
   printf("output is: %s", output);
@@ -514,7 +514,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   uv_fs_req_cleanup(&fs_req);
 
   r = uv_fs_close(NULL, &fs_req, stderr_file, NULL);
-  ASSERT(r == 0);
+  ASSERT(r == UV_EINVAL);
   uv_fs_req_cleanup(&fs_req);
 
   printf("output is: %s", output);

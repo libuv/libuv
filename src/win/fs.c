@@ -531,7 +531,7 @@ void fs__close(uv_fs_t* req) {
   if (fd > 2)
     result = _close(fd);
   else
-    result = 0;
+    result = UV__EINVAL;
 
   SET_REQ_RESULT(req, result);
 }

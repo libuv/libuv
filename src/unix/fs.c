@@ -134,6 +134,15 @@ static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 #endif
 }
 
+static int uv__fs_close(uv_fs_t* req) {
+  int fd = req->file;
+  int result;
+  if (fd > 2)
+    result = close(fd);
+  else
+    result = -EINVAL;
+  return result;
+}
 
 static ssize_t uv__fs_futime(uv_fs_t* req) {
 #if defined(__linux__)
@@ -855,7 +864,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(ACCESS, access(req->path, req->flags));
     X(CHMOD, chmod(req->path, req->mode));
     X(CHOWN, chown(req->path, req->uid, req->gid));
-    X(CLOSE, close(req->file));
+    X(CLOSE, uv__fs_close(req));
     X(FCHMOD, fchmod(req->file, req->mode));
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
     X(FDATASYNC, uv__fs_fdatasync(req));
