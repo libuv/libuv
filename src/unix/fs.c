@@ -1067,7 +1067,8 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
   INIT(MKDTEMP);
   req->path = uv__strdup(tpl);
   if (req->path == NULL) {
-    uv__req_unregister(loop, req);
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
     return -ENOMEM;
   }
   POST;
@@ -1106,7 +1107,8 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL) {
-    uv__req_unregister(loop, req);
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
     return -ENOMEM;
   }
 
@@ -1233,7 +1235,8 @@ int uv_fs_write(uv_loop_t* loop,
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL) {
-    uv__req_unregister(loop, req);
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
     return -ENOMEM;
   }
 
