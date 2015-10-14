@@ -204,8 +204,14 @@ int uv__getiovmax(void) {
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
   static int iovmax = -1;
-  if (iovmax == -1)
+  if (iovmax == -1) {
     iovmax = sysconf(_SC_IOV_MAX);
+    /* In some embedded device (arm-linux-ublic based ip camera), 
+       sysconf(_SC_IOV_MAX) can not get the correct value
+       The returl value is -1 and the errno is EINPROGRESS (Operation now in progress)
+       Degrade the value to 1 */
+    if (iovmax == -1) iovmax = 1;
+  }
   return iovmax;
 #else
   return 1024;
