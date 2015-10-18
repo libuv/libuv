@@ -269,7 +269,7 @@ static void uv__write_int(int fd, int val) {
   assert(n == sizeof(val));
 }
 
-
+#if !(defined(__APPLE__) && TARGET_OS_TV)
 static void uv__process_child_init(const uv_process_options_t* options,
                                    int stdio_count,
                                    int (*pipes)[2],
@@ -375,7 +375,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   uv__write_int(error_fd, -errno);
   _exit(127);
 }
-
+#endif
 
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
@@ -448,6 +448,8 @@ int uv_spawn(uv_loop_t* loop,
 
   /* Acquire write lock to prevent opening new fds in worker threads */
   uv_rwlock_wrlock(&loop->cloexec_lock);
+
+#if !(defined(__APPLE__) && TARGET_OS_TV)
   pid = fork();
 
   if (pid == -1) {
@@ -512,7 +514,7 @@ int uv_spawn(uv_loop_t* loop,
 
   uv__free(pipes);
   return exec_errorno;
-
+#endif
 error:
   if (pipes != NULL) {
     for (i = 0; i < stdio_count; i++) {
