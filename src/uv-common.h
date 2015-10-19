@@ -188,7 +188,7 @@ void uv__work_submit(uv_loop_t* loop,
 
 void uv__work_done(uv_async_t* handle);
 
-size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
+uint64_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
 
 int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
 

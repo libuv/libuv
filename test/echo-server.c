@@ -129,6 +129,8 @@ static void on_close(uv_handle_t* peer) {
 static void echo_alloc(uv_handle_t* handle,
                        size_t suggested_size,
                        uv_buf_t* buf) {
+  if (suggested_size > INT32_MAX)
+    suggested_size = INT32_MAX;
   buf->base = malloc(suggested_size);
   buf->len = suggested_size;
 }
