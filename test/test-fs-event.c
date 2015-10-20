@@ -487,7 +487,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   r = uv_timer_init(loop, &timer);
   ASSERT(r == 0);
 
-  r = uv_timer_start(&timer, timer_cb_touch, 1, 0);
+  r = uv_timer_start(&timer, timer_cb_touch, 10, 0);
   ASSERT(r == 0);
 
   ASSERT(timer_cb_touch_called == 0);
