@@ -201,8 +201,10 @@ static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
   if (fs_event_created + fs_event_removed == fs_event_file_count) {
     /* Once we've processed all create events, delete all files */
     ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files, 1, 0));
-  } else if (fs_event_cb_called == 2 * fs_event_file_count) {
-    /* Once we've processed all create and delete events, stop watching */
+  } else if (fs_event_created == fs_event_file_count &&
+             fs_event_removed == fs_event_file_count &&
+             fs_event_cb_called == 2 * fs_event_file_count) {
+    /* Once we've processed all create and delete events, stop watching. */
     uv_close((uv_handle_t*) &timer, close_cb);
     uv_close((uv_handle_t*) handle, close_cb);
   }
@@ -281,8 +283,16 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
   if (fs_event_created + fs_event_removed == fs_event_file_count) {
     /* Once we've processed all create events, delete all files */
     ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files_in_subdir, 1, 0));
-  } else if (fs_event_cb_called == 2 * fs_event_file_count) {
-    /* Once we've processed all create and delete events, stop watching */
+  } else if (fs_event_created == fs_event_file_count &&
+             fs_event_removed == fs_event_file_count &&
+             fs_event_cb_called >= 2 * fs_event_file_count) {
+    /* Once we've processed all create and delete events, stop watching.  The
+     * reason we check for fs_event_cb_called >= instead of == is because some
+     * filesystem backends can cause multiple fs_event_cb invocations for a
+     * single filesystem interaction when watching a directory recursively.
+     * See issue #587:
+     *
+     *   https://github.com/libuv/libuv/issues/587 */
     uv_close((uv_handle_t*) &timer, close_cb);
     uv_close((uv_handle_t*) handle, close_cb);
   }
@@ -402,7 +412,10 @@ TEST_IMPL(fs_event_watch_dir) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_event_cb_called == fs_event_created + fs_event_removed);
+  /* We check for at least as many callback invocations as events because some
+   * filesystems can create multiple events per filesystem interaction when
+   * watching recursively. */
+  ASSERT(fs_event_cb_called >= fs_event_created + fs_event_removed);
   ASSERT(close_cb_called == 2);
 
   /* Cleanup */
