@@ -25,7 +25,10 @@
 #include <errno.h>
 #include <limits.h>
 #include <fcntl.h> /* file constants */
+#include <math.h>
 #include <sys/stat.h> /* stat constants */
+#include <sys/utime.h>
+#include <stdio.h>
 
 #include "uv.h"
 #include "internal.h"
@@ -1497,13 +1500,28 @@ static void fs__fchmod(uv_fs_t* req) {
 }
 
 
-INLINE static int fs__utime_handle(HANDLE handle, double atime, double mtime) {
-  FILETIME filetime_a, filetime_m;
+INLINE static int fs__utime_handle(HANDLE handle,
+                                   double btime,
+                                   double atime,
+                                   double mtime) {
+  FILETIME filetime_b;
+  FILETIME filetime_a;
+  FILETIME filetime_m;
+
+  if (isnan(btime)) {
+    filetime_b.dwHighDateTime = 0;
+    filetime_b.dwLowDateTime = 0;
+  } else {
+    TIME_T_TO_FILETIME(btime, &filetime_b);
+  }
 
   TIME_T_TO_FILETIME(atime, &filetime_a);
   TIME_T_TO_FILETIME(mtime, &filetime_m);
 
-  if (!SetFileTime(handle, NULL, &filetime_a, &filetime_m)) {
+  if (!SetFileTime(handle,
+                   &filetime_b,
+                   &filetime_a,
+                   &filetime_m)) {
     return -1;
   }
 
@@ -1527,7 +1545,10 @@ static void fs__utime(uv_fs_t* req) {
     return;
   }
 
-  if (fs__utime_handle(handle, req->fs.time.atime, req->fs.time.mtime) != 0) {
+  if (fs__utime_handle(handle,
+                       req->fs.time.btime,
+                       req->fs.time.atime,
+                       req->fs.time.mtime) != 0) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     CloseHandle(handle);
     return;
@@ -1543,7 +1564,10 @@ static void fs__futime(uv_fs_t* req) {
   HANDLE handle = req->file.hFile;
   VERIFY_HANDLE(handle, req);
 
-  if (fs__utime_handle(handle, req->fs.time.atime, req->fs.time.mtime) != 0) {
+  if (fs__utime_handle(handle,
+                       req->fs.time.btime,
+                       req->fs.time.atime,
+                       req->fs.time.mtime) != 0) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     return;
   }
@@ -1964,7 +1988,8 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
       uv__free(req->ptr);
   }
 
-  if (req->fs.info.bufs != req->fs.info.bufsml)
+  if (req->fs.info.bufs != req->fs.info.bufsml &&
+      ARRAY_SIZE(req->fs.info.bufs) > 0)
     uv__free(req->fs.info.bufs);
 
   req->path = NULL;
@@ -2357,7 +2382,12 @@ int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle, int mode,
 
 
 int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
-    double mtime, uv_fs_cb cb) {
+                double mtime, uv_fs_cb cb) {
+  return uv_fs_utime_ex(loop, req, path, NAN, atime, mtime, cb);
+}
+
+int uv_fs_utime_ex(uv_loop_t* loop, uv_fs_t* req, const char* path,
+                   double btime, double atime, double mtime, uv_fs_cb cb) {
   int err;
 
   INIT(UV_FS_UTIME);
@@ -2366,6 +2396,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
     return uv_translate_sys_error(err);
   }
 
+  req->fs.time.btime = btime;
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
   POST;
@@ -2374,8 +2405,15 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
 
 int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle, double atime,
                  double mtime, uv_fs_cb cb) {
+  return uv_fs_futime_ex(loop, req, handle, NAN, atime, mtime, cb);
+}
+
+
+int uv_fs_futime_ex(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle,
+                    double btime, double atime, double mtime, uv_fs_cb cb) {
   INIT(UV_FS_FUTIME);
   req->file.hFile = handle;
+  req->fs.time.btime = btime;
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
   POST;

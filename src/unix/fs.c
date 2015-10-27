@@ -30,6 +30,7 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,6 +63,49 @@
 
 #if defined(__APPLE__)
 # include <copyfile.h>
+# include <sys/attr.h>
+
+static void uv__prepare_setattrlist_args(uv_fs_t* req,
+                                         struct attrlist* attr_list,
+                                         struct timespec (*times)[3],
+                                         unsigned int* size) {
+  memset(attr_list, 0, sizeof(*attr_list));
+  memset(times, 0, sizeof(*times));
+
+  attr_list->bitmapcount = ATTR_BIT_MAP_COUNT;
+
+  *size = 0;
+
+  if (!isnan(req->btime)) {
+    attr_list->commonattr |= ATTR_CMN_CRTIME;
+
+    (*times)[*size].tv_sec = req->btime;
+    (*times)[*size].tv_nsec =
+      (unsigned long)(req->btime * 1000000) % 1000000 * 1000;
+
+    ++*size;
+  }
+
+  if (!isnan(req->mtime)) {
+    attr_list->commonattr |= ATTR_CMN_MODTIME;
+
+    (*times)[*size].tv_sec = req->mtime;
+    (*times)[*size].tv_nsec =
+      (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
+
+    ++*size;
+  }
+
+  if (!isnan(req->atime)) {
+    attr_list->commonattr |= ATTR_CMN_ACCTIME;
+
+    (*times)[*size].tv_sec = req->atime;
+    (*times)[*size].tv_nsec =
+      (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
+
+    ++*size;
+  }
+}
 #endif
 
 #define INIT(subtype)                                                         \
@@ -230,9 +274,15 @@ skip:
   }
 
   return r;
+#elif defined(__APPLE__)
+  struct attrlist attr_list;
+  unsigned i;
+  struct timespec times[3];
 
-#elif defined(__APPLE__)                                                      \
-    || defined(__DragonFly__)                                                 \
+  uv__prepare_setattrlist_args(req, &attr_list, &times, &i);
+
+  return fsetattrlist(req->file, &attr_list, &times, i * sizeof(times[0]), 0);
+#elif defined(__DragonFly__)                                                  \
     || defined(__FreeBSD__)                                                   \
     || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
@@ -704,10 +754,20 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_utime(uv_fs_t* req) {
+#if defined(__APPLE__)
+  struct attrlist attr_list;
+  unsigned i;
+  struct timespec times[3];
+
+  uv__prepare_setattrlist_args(req, &attr_list, &times, &i);
+
+  return setattrlist(req->path, &attr_list, &times, i * sizeof(times[0]), 0);
+#else
   struct utimbuf buf;
   buf.actime = req->atime;
   buf.modtime = req->mtime;
   return utime(req->path, &buf); /* TODO use utimes() where available */
+#endif
 }
 
 
@@ -1251,8 +1311,20 @@ int uv_fs_futime(uv_loop_t* loop,
                  double atime,
                  double mtime,
                  uv_fs_cb cb) {
+  return uv_fs_futime_ex(loop, req, file, NAN, atime, mtime, cb);
+}
+
+
+int uv_fs_futime_ex(uv_loop_t* loop,
+                    uv_fs_t* req,
+                    uv_os_fd_t file,
+                    double btime,
+                    double atime,
+                    double mtime,
+                    uv_fs_cb cb) {
   INIT(FUTIME);
   req->file = file;
+  req->btime = btime;
   req->atime = atime;
   req->mtime = mtime;
   POST;
@@ -1442,8 +1514,20 @@ int uv_fs_utime(uv_loop_t* loop,
                 double atime,
                 double mtime,
                 uv_fs_cb cb) {
+  return uv_fs_utime_ex(loop, req, path, NAN, atime, mtime, cb);
+}
+
+
+int uv_fs_utime_ex(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   const char* path,
+                   double btime,
+                   double atime,
+                   double mtime,
+                   uv_fs_cb cb) {
   INIT(UTIME);
   PATH;
+  req->btime = btime;
   req->atime = atime;
   req->mtime = mtime;
   POST;

@@ -298,8 +298,17 @@ API
       AIX: This function only works for AIX 7.1 and newer. It can still be called on older
       versions but will return ``UV_ENOSYS``.
 
-    .. versionchanged:: 1.10.0 sub-second precission is supported on Windows
+    .. versionchanged:: 1.10.0 sub-second precision is supported on Windows
     .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
+.. c:function:: int uv_fs_utime_ex(uv_loop_t* loop, uv_fs_t* req, const char* path, double btime, double atime, double mtime, uv_fs_cb cb)
+.. c:function:: int uv_fs_futime_ex(uv_loop_t* loop, uv_fs_t* req, uv_file file, double btime, double atime, double mtime, uv_fs_cb cb)
+
+    Equivalent to :c:func:`uv_fs_utime` and :c:func:`uv_fs_futime` except on
+    macOS and Windows, in which case these variants also allow the
+    birth/creation time to be set.
+
+    .. versionadded:: 2.0.0
 
 .. c:function:: int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 

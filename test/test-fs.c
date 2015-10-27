@@ -23,8 +23,9 @@
 #include "task.h"
 
 #include <errno.h>
-#include <string.h> /* memset */
 #include <fcntl.h>
+#include <math.h>
+#include <string.h> /* memset */
 #include <sys/stat.h>
 
 /* FIXME we shouldn't need to branch in this file */
@@ -56,6 +57,7 @@
 
 typedef struct {
   const char* path;
+  double btime;
   double atime;
   double mtime;
 } utime_check_t;
@@ -687,21 +689,45 @@ TEST_IMPL(fs_file_loop) {
   return 0;
 }
 
-static void check_utime(const char* path, double atime, double mtime) {
+
+static void check_utime_ex(const char* path,
+                           double btime,
+                           double atime,
+                           double mtime) {
   uv_stat_t* s;
   uv_fs_t req;
   int r;
 
   r = uv_fs_stat(loop, &req, path, NULL);
   ASSERT(r == 0);
-
   ASSERT(req.result == 0);
   s = &req.statbuf;
+
+#if defined(__APPLE__) || defined(_WIN32)
+  /* When check_utime_ex is called with a btime of NAN, this means that we are
+   * checking uv_fs_utime and uv_fs_futime results, which SHOULD NOT allow the
+   * caller to alter the btime.  Well some utime implementations, like FreeBSD,
+   * have conditions where btime can be altered via utime even though btime is
+   * not an argument.  The conditions to identify this are impossible to check
+   * at test time so we will not check that btime is unaltered when checking
+   * the results of uv_fs_utime and uv_fs_futime.
+   */
+  if (!isnan(btime)) {
+    /* Make sure the birth/creation time was altered as expected. */
+    ASSERT(s->st_birthtim.tv_sec + (s->st_birthtim.tv_nsec / 1000000000.0) ==
+      btime);
+  }
+#endif
 
   ASSERT(s->st_atim.tv_sec + (s->st_atim.tv_nsec / 1000000000.0) == atime);
   ASSERT(s->st_mtim.tv_sec + (s->st_mtim.tv_nsec / 1000000000.0) == mtime);
 
   uv_fs_req_cleanup(&req);
+}
+
+
+static void check_utime(const char* path, double atime, double mtime) {
+  check_utime_ex(path, NAN, atime, mtime);
 }
 
 
@@ -2136,7 +2162,7 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
 
 TEST_IMPL(fs_utime) {
   utime_check_t checkme;
-  const char* path = "test_file";
+  const char path[] = "test_file";
   double atime;
   double mtime;
   uv_fs_t req;
@@ -2200,6 +2226,74 @@ TEST_IMPL(fs_utime) {
 }
 
 
+TEST_IMPL(fs_utime_ex) {
+  utime_check_t checkme;
+  const char path[] = "test_file";
+  double atime;
+  double btime;
+  double mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result >= 0);
+  file = (uv_os_fd_t)req.result;
+  uv_fs_req_cleanup(&req);
+
+  /* Close file */
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  atime = btime = mtime = 400497753; /* 1982-09-10 11:22:33 */
+
+  /*
+   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
+   * platforms support sub-second timestamps, but that support is filesystem-
+   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
+   */
+#ifdef _WIN32
+  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
+#endif
+
+  r = uv_fs_utime_ex(NULL, &req, path, btime, atime, mtime, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  check_utime_ex(path, btime, atime, mtime);
+  uv_fs_req_cleanup(&req);
+
+  atime = btime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
+  checkme.path = path;
+  checkme.atime = atime;
+  checkme.btime = btime;
+  checkme.mtime = mtime;
+
+  /* async utime */
+  utime_req.data = &checkme;
+  r = uv_fs_utime_ex(loop, &utime_req, path, btime, atime, mtime, utime_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(utime_cb_count == 1);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
 #ifdef _WIN32
 TEST_IMPL(fs_stat_root) {
   int r;
@@ -2237,7 +2331,7 @@ TEST_IMPL(fs_futime) {
   RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
 #else
   utime_check_t checkme;
-  const char* path = "test_file";
+  const char path[] = "test_file";
   double atime;
   double mtime;
   uv_os_fd_t file;
@@ -2273,7 +2367,7 @@ TEST_IMPL(fs_futime) {
   r = uv_fs_open(NULL, &req, path, O_RDWR, 0, NULL);
   ASSERT(r == 0);
   ASSERT(req.result >= 0);
-  file = (uv_os_fd_t)req.result; /* FIXME probably not how it's supposed to be used */
+  file = (uv_os_fd_t)req.result;
   uv_fs_req_cleanup(&req);
 
   r = uv_fs_futime(NULL, &req, file, atime, mtime, NULL);
@@ -2301,6 +2395,90 @@ TEST_IMPL(fs_futime) {
   /* async futime */
   futime_req.data = &checkme;
   r = uv_fs_futime(loop, &futime_req, file, atime, mtime, futime_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(futime_cb_count == 1);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
+
+
+TEST_IMPL(fs_futime_ex) {
+#if defined(_AIX) && !defined(_AIX71)
+  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
+#else
+  utime_check_t checkme;
+  const char path[] = "test_file";
+  double atime;
+  double btime;
+  double mtime;
+  uv_os_fd_t file;
+  uv_fs_t req;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result >= 0);
+  file = (uv_os_fd_t)req.result;
+  uv_fs_req_cleanup(&req);
+
+  /* Close file */
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  atime = btime = mtime = 400497753; /* 1982-09-10 11:22:33 */
+
+  /*
+   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
+   * platforms support sub-second timestamps, but that support is filesystem-
+   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
+   */
+#ifdef _WIN32
+  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
+#endif
+
+  r = uv_fs_open(NULL, &req, path, O_RDWR, 0, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result >= 0);
+  file = (uv_os_fd_t)req.result;
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_futime_ex(NULL, &req, file, btime, atime, mtime, NULL);
+#if defined(__CYGWIN__) || defined(__MSYS__)
+  ASSERT(r == UV_ENOSYS);
+  RETURN_SKIP("futime not supported on Cygwin");
+#else
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+#endif
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  check_utime_ex(path, btime, atime, mtime);
+  uv_fs_req_cleanup(&req);
+
+  atime = btime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
+
+  checkme.atime = atime;
+  checkme.btime = btime;
+  checkme.mtime = mtime;
+  checkme.path = path;
+
+  /* async futime */
+  futime_req.data = &checkme;
+  r = uv_fs_futime_ex(loop, &futime_req, file, btime, atime, mtime, futime_cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(futime_cb_count == 1);

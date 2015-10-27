@@ -468,6 +468,7 @@ typedef struct {
       uv_buf_t bufsml[4];                                                     \
     } info;                                                                   \
     struct {                                                                  \
+      double btime;                                                           \
       double atime;                                                           \
       double mtime;                                                           \
     } time;                                                                   \
