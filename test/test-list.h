@@ -50,8 +50,10 @@ TEST_DECLARE   (ipc_listen_before_write)
 TEST_DECLARE   (ipc_listen_after_write)
 #ifndef _WIN32
 TEST_DECLARE   (ipc_send_recv_pipe)
+TEST_DECLARE   (ipc_send_recv_pipe_inprocess)
 #endif
 TEST_DECLARE   (ipc_send_recv_tcp)
+TEST_DECLARE   (ipc_send_recv_tcp_inprocess)
 TEST_DECLARE   (ipc_tcp_connection)
 TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_v6)
@@ -380,8 +382,10 @@ TASK_LIST_START
   TEST_ENTRY  (ipc_listen_after_write)
 #ifndef _WIN32
   TEST_ENTRY  (ipc_send_recv_pipe)
+  TEST_ENTRY  (ipc_send_recv_pipe_inprocess)
 #endif
   TEST_ENTRY  (ipc_send_recv_tcp)
+  TEST_ENTRY  (ipc_send_recv_tcp_inprocess)
   TEST_ENTRY  (ipc_tcp_connection)
 
   TEST_ENTRY  (tcp_ping_pong)
