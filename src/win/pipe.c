@@ -1246,6 +1246,10 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     if (send_handle) {
       tcp_send_handle = (uv_tcp_t*)send_handle;
 
+      if (handle->pipe.conn.ipc_pid == 0) {
+          handle->pipe.conn.ipc_pid = uv_current_pid();
+      }
+
       err = uv_tcp_duplicate_socket(tcp_send_handle, handle->pipe.conn.ipc_pid,
           &ipc_frame.socket_info_ex.socket_info);
       if (err) {
