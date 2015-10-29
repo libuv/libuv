@@ -126,6 +126,7 @@
         'test-tmpdir.c',
         'test-mutexes.c',
         'test-thread.c',
+        'test-thread-affinity.c',
         'test-barrier.c',
         'test-buf.c',
         'test-condvar.c',
