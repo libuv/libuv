@@ -23,6 +23,7 @@
 #include "internal.h"
 
 #include <pthread.h>
+#include <sched.h>
 #include <assert.h>
 #include <errno.h>
 
@@ -78,6 +79,74 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
     pthread_attr_destroy(attr);
 
   return -err;
+}
+
+
+#if defined(__APPLE__) && defined(__MACH__) || defined(_AIX)
+int uv_thread_setaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          char* oldmask,
+                          size_t mask_size) {
+  return -ENOTSUP;
+}
+
+
+int uv_thread_getaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          size_t mask_size) {
+  return -ENOTSUP;
+}
+
+#else /* !((defined(__APPLE__) && defined(__MACH__)) || defined(_AIX)) */
+
+int uv_thread_setaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          char* oldmask,
+                          size_t mask_size) {
+  int i;
+  int r;
+  cpu_set_t cpuset;
+  int cpumasksize;
+  
+  cpumasksize = uv_cpumask_size();
+  assert(mask_size >= (size_t)cpumasksize);
+
+  if (oldmask != NULL) {
+    r = uv_thread_getaffinity(tid, oldmask, mask_size);
+    if (r < 0)
+      return r;
+  }
+
+  CPU_ZERO(&cpuset);
+  for (i = 0; i < cpumasksize; i++)
+    if (cpumask[i])
+      CPU_SET(i, &cpuset);
+
+  return -pthread_setaffinity_np(*tid, sizeof(cpuset), &cpuset);
+}
+
+
+int uv_thread_getaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          size_t mask_size) {
+  int i;
+  cpu_set_t cpuset;
+  int cpumasksize;
+  
+  cpumasksize = uv_cpumask_size();
+  assert(mask_size >= (size_t)cpumasksize);
+
+  CPU_ZERO(&cpuset);
+  pthread_getaffinity_np(*tid, sizeof(cpuset), &cpuset);
+  for (i = 0; i < cpumasksize; i++)
+    cpumask[i] = CPU_ISSET(i, &cpuset);
+
+  return 0;
+}
+#endif /* (defined(__APPLE__) && defined(__MACH__)) || defined(_AIX) */
+
+int uv_thread_detach(uv_thread_t* tid) {
+  return -pthread_detach(*tid);
 }
 
 
