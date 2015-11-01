@@ -156,7 +156,9 @@ int uv__tcp_connect(uv_connect_t* req,
   if (err)
     return err;
 
-  handle->delayed_error = 0;
+  if (handle->delayed_error) {
+    return handle->delayed_error;
+  }
 
   do
     r = connect(uv__stream_fd(handle), addr, addrlen);
