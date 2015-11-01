@@ -77,9 +77,9 @@ API
 
     When the port is already taken, the error is relayed and you can expect to see an 
     ``UV_EADDRINUSE`` error from function such as :c:func:`uv_listen` or 
-    :c:func:`uv_tcp_connect as :c:func:`.That is, a successful call to this function 
-    does not guarantee that the call to :c:func:`uv_listen` or :c:func:`uv_tcp_connect` 
-    will succeed as well.
+    :c:func:`uv_tcp_connect`. That is, a successful call to this function does not 
+    guarantee that the call to :c:func:`uv_listen` or :c:func:`uv_tcp_connect` will succeed 
+    as well.
 
     `flags` can contain ``UV_TCP_IPV6ONLY``, in which case dual-stack support
     is disabled and only IPv6 is used.
