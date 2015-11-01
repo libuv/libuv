@@ -156,6 +156,9 @@ int uv__tcp_connect(uv_connect_t* req,
   if (err)
     return err;
 
+  if (handle->delayed_error)
+    return handle->delayed_error;
+
   handle->delayed_error = 0;
 
   do
