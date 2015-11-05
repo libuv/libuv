@@ -980,7 +980,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
   if (!no_dup3) {
     do
       r = uv__dup3(oldfd, newfd, UV__O_CLOEXEC);
-    while (r == -1 && (errno == EINTR || errno == EBUSY));
+    while (r == -1 && errno == EBUSY);
     if (r != -1)
       return r;
     if (errno != ENOSYS)
@@ -994,7 +994,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
     do
       r = dup2(oldfd, newfd);
 #if defined(__linux__)
-    while (r == -1 && (errno == EINTR || errno == EBUSY));
+    while (r == -1 && errno == EBUSY);
 #else
     while (r == -1 && errno == EINTR);
 #endif
