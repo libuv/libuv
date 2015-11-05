@@ -960,16 +960,12 @@ int uv__open_cloexec(const char* path, int flags) {
 int uv__dup2_cloexec(int oldfd, int newfd) {
   int r;
 #if defined(__FreeBSD__) && __FreeBSD__ >= 10
-  do
-    r = dup3(oldfd, newfd, O_CLOEXEC);
-  while (r == -1 && errno == EINTR);
+  r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return -errno;
   return r;
 #elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
-  do
-    r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
-  while (r == -1 && errno == EINTR);
+  r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
   if (r != -1)
     return r;
   if (errno != EINVAL)
@@ -996,7 +992,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
 #if defined(__linux__)
     while (r == -1 && errno == EBUSY);
 #else
-    while (r == -1 && errno == EINTR);
+    while (0);  /* Never retry. */
 #endif
 
     if (r == -1)
