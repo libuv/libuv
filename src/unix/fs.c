@@ -45,15 +45,6 @@
 #include <utime.h>
 #include <poll.h>
 
-#if defined(__DragonFly__)  ||                                            \
-    defined(__FreeBSD__)    ||                                            \
-    defined(__OpenBSD__)    ||                                            \
-    defined(__NetBSD__)
-# define HAVE_PREADV 1
-#else
-# define HAVE_PREADV 0
-#endif
-
 #if defined(__linux__) || defined(__sun)
 # include <sys/sendfile.h>
 #endif
@@ -256,9 +247,6 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_preadv;
-#endif
   ssize_t result;
 
 #if defined(_AIX)
@@ -270,60 +258,19 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     return -1;
   }
 #endif /* defined(_AIX) */
+
   if (req->off < 0) {
     if (req->nbufs == 1)
       result = read(req->file, req->bufs[0].base, req->bufs[0].len);
     else
       result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
-    if (req->nbufs == 1) {
+    if (req->nbufs == 1)
       result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-
-#if HAVE_PREADV
-    result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (no_preadv) retry:
-# endif
-    {
-      off_t nread;
-      size_t index;
-
-      nread = 0;
-      index = 0;
-      result = 1;
-      do {
-        if (req->bufs[index].len > 0) {
-          result = pread(req->file,
-                         req->bufs[index].base,
-                         req->bufs[index].len,
-                         req->off + nread);
-          if (result > 0)
-            nread += result;
-        }
-        index++;
-      } while (index < req->nbufs && result > 0);
-      if (nread > 0)
-        result = nread;
-    }
-# if defined(__linux__)
-    else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
-      if (result == -1 && errno == ENOSYS) {
-        no_preadv = 1;
-        goto retry;
-      }
-    }
-# endif
-#endif
+    else
+      result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
   }
 
-done:
   return result;
 }
 
@@ -619,9 +566,6 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_pwritev;
-#endif
   ssize_t r;
 
   /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
@@ -641,53 +585,12 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     else
       r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
-    if (req->nbufs == 1) {
+    if (req->nbufs == 1)
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-#if HAVE_PREADV
-    r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (no_pwritev) retry:
-# endif
-    {
-      off_t written;
-      size_t index;
-
-      written = 0;
-      index = 0;
-      r = 0;
-      do {
-        if (req->bufs[index].len > 0) {
-          r = pwrite(req->file,
-                     req->bufs[index].base,
-                     req->bufs[index].len,
-                     req->off + written);
-          if (r > 0)
-            written += r;
-        }
-        index++;
-      } while (index < req->nbufs && r >= 0);
-      if (written > 0)
-        r = written;
-    }
-# if defined(__linux__)
-    else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
-        goto retry;
-      }
-    }
-# endif
-#endif
+    else
+      r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
   }
 
-done:
 #if defined(__APPLE__)
   if (pthread_mutex_unlock(&lock))
     abort();
