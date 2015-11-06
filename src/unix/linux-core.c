@@ -188,6 +188,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   sigset_t sigset;
   uint64_t sigmask;
   uint64_t base;
+  int have_signals;
   int nevents;
   int count;
   int nfds;
@@ -315,6 +316,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       goto update_timeout;
     }
 
+    have_signals = 0;
     nevents = 0;
 
     assert(loop->watchers != NULL);
@@ -369,12 +371,26 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         pe->events |= w->pevents & (POLLIN | POLLOUT);
 
       if (pe->events != 0) {
-        w->cb(loop, w, pe->events);
+        /* Run signal watchers last.  This also affects child process watchers
+         * because those are implemented in terms of signal watchers.
+         */
+        if (w == &loop->signal_io_watcher)
+          have_signals = 1;
+        else
+          w->cb(loop, w, pe->events);
+
         nevents++;
       }
     }
+
+    if (have_signals != 0)
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+
     loop->watchers[loop->nwatchers] = NULL;
     loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
