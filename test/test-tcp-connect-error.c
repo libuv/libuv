@@ -71,3 +71,46 @@ TEST_IMPL(tcp_connect_error_fault) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(tcp_connect_after_bind) {
+  struct sockaddr_in addr;
+  uv_tcp_t server;
+  uv_tcp_t server2;
+  int r;
+  uv_connect_t req;
+
+  ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  r = uv_tcp_init(uv_default_loop(), &server);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&server, (struct sockaddr*) &addr, 0);
+  ASSERT(r == 0);
+
+  r = uv_tcp_init(uv_default_loop(), &server2);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&server2, (struct sockaddr*) &addr, 0);
+  ASSERT(r == 0);
+
+  r = uv_tcp_connect(&req,
+                     &server,
+                     (struct sockaddr*) &addr,
+                     connect_cb);
+  ASSERT(r == 0);
+
+  r = uv_tcp_connect(&req,
+                     &server2,
+                     (struct sockaddr*) &addr,
+                     connect_cb);
+  ASSERT(r == UV_EADDRNOTAVAIL);
+
+
+  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*)&server2, close_cb);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(connect_cb_called == 1);
+  ASSERT(close_cb_called == 2);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
