@@ -533,6 +533,9 @@ void fs__close(uv_fs_t* req) {
   else
     result = 0;
 
+  /* _close doesn't set _doserrno on failure, but it does always set errno
+   * to EBADF on failure.
+   */
   if (result == -1) {
     assert(errno == EBADF);
     SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
