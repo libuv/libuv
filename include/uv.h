@@ -424,6 +424,10 @@ UV_EXTERN int uv_is_active(const uv_handle_t* handle);
 
 UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
 
+/* Helpers for ad hoc debugging, no API/ABI stability guaranteed. */
+UV_EXTERN void uv_print_all_handles(uv_loop_t* loop, FILE* stream);
+UV_EXTERN void uv_print_active_handles(uv_loop_t* loop, FILE* stream);
+
 UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
 UV_EXTERN int uv_send_buffer_size(uv_handle_t* handle, int* value);
