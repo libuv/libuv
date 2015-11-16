@@ -47,7 +47,7 @@ static inline void QUEUE_POISON(QUEUE *q) {
 /* Removing an element from the queue, while iterating over it,
  * should be done using QUEUE_REMOVE_SAFE() in conjunction with
  * QUEUE_FOREACH_SAFE() sharing the same n.
- * It's still not safe to delete the head though.
+ * It's still not safe to remove the head though.
  */
 #define QUEUE_FOREACH_SAFE(q, n, h)                                           \
   for ((q) = QUEUE_NEXT(h), (n) = QUEUE_NEXT(q);                              \
@@ -58,7 +58,7 @@ static inline int QUEUE_EMPTY(const QUEUE *q) {
   return q == QUEUE_NEXT(q);
 }
 
-static inline QUEUE * QUEUE_HEAD(QUEUE *q) {
+static inline QUEUE *QUEUE_HEAD(QUEUE *q) {
   return QUEUE_NEXT(q);
 }
 
@@ -119,7 +119,7 @@ static inline void QUEUE_REMOVE(QUEUE *q) {
 
 /* Should be used to remove an element from the queue, while iterating over it,
  * in conjunction with QUEUE_FOREACH_SAFE() sharing the same n.
- * It's still not safe to delete the head though.
+ * It's still not safe to remove the head though.
  */
 static inline void QUEUE_REMOVE_SAFE(QUEUE *q, QUEUE **n) {
   if ((*n) == q) {
