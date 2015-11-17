@@ -26,6 +26,7 @@ SPARSE_FLAGS=${SPARSE_FLAGS:-"
 "}
 
 SOURCES="
+include/uv/queue.h
 include/uv/tree.h
 include/uv/unix.h
 include/uv.h

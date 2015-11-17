@@ -20,7 +20,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include \
 include_HEADERS=include/uv.h
 
 uvincludedir = $(includedir)/uv
-uvinclude_HEADERS=include/uv/errno.h include/uv/threadpool.h include/uv/version.h
+uvinclude_HEADERS=include/uv/errno.h include/uv/threadpool.h include/uv/version.h include/uv/queue.h
 
 CLEANFILES =
 

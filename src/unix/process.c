@@ -74,7 +74,7 @@ static void uv__chld(uv_signal_t* handle, int signum) {
   q = QUEUE_HEAD(h);
   while (q != h) {
     process = QUEUE_DATA(q, uv_process_t, queue);
-    q = QUEUE_NEXT(q);
+    q = q->next;
 
     do
       pid = waitpid(process->pid, &status, WNOHANG);
@@ -98,7 +98,7 @@ static void uv__chld(uv_signal_t* handle, int signum) {
   q = QUEUE_HEAD(h);
   while (q != h) {
     process = QUEUE_DATA(q, uv_process_t, queue);
-    q = QUEUE_NEXT(q);
+    q = q->next;
 
     QUEUE_REMOVE(&process->queue);
     QUEUE_INIT(&process->queue);

@@ -18,13 +18,7 @@
 
 #include <stddef.h>
 
-typedef void *QUEUE[2];
-
-/* Private macros. */
-#define QUEUE_NEXT(q)       (*(QUEUE **) &((*(q))[0]))
-#define QUEUE_PREV(q)       (*(QUEUE **) &((*(q))[1]))
-#define QUEUE_PREV_NEXT(q)  (QUEUE_NEXT(QUEUE_PREV(q)))
-#define QUEUE_NEXT_PREV(q)  (QUEUE_PREV(QUEUE_NEXT(q)))
+#include "uv/queue.h"
 
 /* Public macros. */
 #define QUEUE_DATA(ptr, type, field)                                          \
@@ -34,38 +28,38 @@ typedef void *QUEUE[2];
  * iterating over its elements results in undefined behavior.
  */
 #define QUEUE_FOREACH(q, h)                                                   \
-  for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
+  for ((q) = (h)->next; (q) != (h); (q) = (q)->next)
 
 #define QUEUE_EMPTY(q)                                                        \
-  ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q))
+  ((q) == (q)->next)
 
 #define QUEUE_HEAD(q)                                                         \
-  (QUEUE_NEXT(q))
+  ((q)->next)
 
 #define QUEUE_INIT(q)                                                         \
   do {                                                                        \
-    QUEUE_NEXT(q) = (q);                                                      \
-    QUEUE_PREV(q) = (q);                                                      \
+    (q)->next = (q);                                                          \
+    (q)->prev = (q);                                                          \
   }                                                                           \
   while (0)
 
 #define QUEUE_ADD(h, n)                                                       \
   do {                                                                        \
-    QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);                                       \
-    QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);                                       \
-    QUEUE_PREV(h) = QUEUE_PREV(n);                                            \
-    QUEUE_PREV_NEXT(h) = (h);                                                 \
+    (h)->prev->next = (n)->next;                                              \
+    (n)->next->prev = (h)->prev;                                              \
+    (h)->prev = (n)->prev;                                                    \
+    (h)->prev->next = (h);                                                    \
   }                                                                           \
   while (0)
 
 #define QUEUE_SPLIT(h, q, n)                                                  \
   do {                                                                        \
-    QUEUE_PREV(n) = QUEUE_PREV(h);                                            \
-    QUEUE_PREV_NEXT(n) = (n);                                                 \
-    QUEUE_NEXT(n) = (q);                                                      \
-    QUEUE_PREV(h) = QUEUE_PREV(q);                                            \
-    QUEUE_PREV_NEXT(h) = (h);                                                 \
-    QUEUE_PREV(q) = (n);                                                      \
+    (n)->prev = (h)->prev;                                                    \
+    (n)->prev->next = (n);                                                    \
+    (n)->next = (q);                                                          \
+    (h)->prev = (q)->prev;                                                    \
+    (h)->prev->next = (h);                                                    \
+    (q)->prev = (n);                                                          \
   }                                                                           \
   while (0)
 
@@ -82,26 +76,26 @@ typedef void *QUEUE[2];
 
 #define QUEUE_INSERT_HEAD(h, q)                                               \
   do {                                                                        \
-    QUEUE_NEXT(q) = QUEUE_NEXT(h);                                            \
-    QUEUE_PREV(q) = (h);                                                      \
-    QUEUE_NEXT_PREV(q) = (q);                                                 \
-    QUEUE_NEXT(h) = (q);                                                      \
+    (q)->next = (h)->next;                                                    \
+    (q)->prev = (h);                                                          \
+    (q)->next->prev = (q);                                                    \
+    (h)->next = (q);                                                          \
   }                                                                           \
   while (0)
 
 #define QUEUE_INSERT_TAIL(h, q)                                               \
   do {                                                                        \
-    QUEUE_NEXT(q) = (h);                                                      \
-    QUEUE_PREV(q) = QUEUE_PREV(h);                                            \
-    QUEUE_PREV_NEXT(q) = (q);                                                 \
-    QUEUE_PREV(h) = (q);                                                      \
+    (q)->next = (h);                                                          \
+    (q)->prev = (h)->prev;                                                    \
+    (q)->prev->next = (q);                                                    \
+    (h)->prev = (q);                                                          \
   }                                                                           \
   while (0)
 
 #define QUEUE_REMOVE(q)                                                       \
   do {                                                                        \
-    QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);                                       \
-    QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);                                       \
+    (q)->prev->next = (q)->next;                                              \
+    (q)->next->prev = (q)->prev;                                              \
   }                                                                           \
   while (0)
 

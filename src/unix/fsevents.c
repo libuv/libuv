@@ -437,7 +437,7 @@ static void uv__fsevents_reschedule(uv_fs_event_t* handle,
 
     q = &state->fsevent_handles;
     for (; i < path_count; i++) {
-      q = QUEUE_NEXT(q);
+      q = q->next;
       assert(q != &state->fsevent_handles);
       curr = QUEUE_DATA(q, uv_fs_event_t, cf_member);
 
