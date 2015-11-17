@@ -18,6 +18,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct QUEUE { struct QUEUE *next, *prev; };
 typedef struct QUEUE QUEUE;
 
@@ -127,5 +131,9 @@ static inline void QUEUE_REMOVE_SAFE(QUEUE *q, QUEUE **n) {
   }
   QUEUE_REMOVE(q);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UV_QUEUE_H_ */
