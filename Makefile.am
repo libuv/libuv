@@ -17,7 +17,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -I$(top_srcdir)/include \
               -I$(top_srcdir)/src
 
-include_HEADERS=include/uv.h include/uv-errno.h include/uv-threadpool.h include/uv-version.h
+include_HEADERS=include/uv.h include/uv-errno.h include/uv-threadpool.h include/uv-version.h include/uv-queue.h
 
 CLEANFILES =
 
@@ -27,7 +27,6 @@ libuv_la_LDFLAGS = -no-undefined -version-info 1:0:0
 libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
                    src/inet.c \
-                   src/queue.h \
                    src/threadpool.c \
                    src/uv-common.c \
                    src/uv-common.h \
@@ -200,6 +199,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-poll-closesocket.c \
                          test/test-poll.c \
                          test/test-process-title.c \
+                         test/test-queue-foreach-delete.c \
                          test/test-ref.c \
                          test/test-run-nowait.c \
                          test/test-run-once.c \
@@ -258,6 +258,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-send-unreachable.c \
                          test/test-udp-try-send.c \
                          test/test-walk-handles.c \
+                         test/test-walk-and-close-handles.c \
                          test/test-watcher-cross-stop.c
 test_run_tests_LDADD = libuv.la
 

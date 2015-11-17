@@ -47,6 +47,7 @@ extern "C" {
 
 #include "uv-errno.h"
 #include "uv-version.h"
+#include "uv-queue.h"
 #include <stddef.h>
 #include <stdio.h>
 
@@ -372,7 +373,7 @@ UV_EXTERN const char* uv_err_name(int err);
   /* read-only */                                                             \
   uv_req_type type;                                                           \
   /* private */                                                               \
-  void* active_queue[2];                                                      \
+  QUEUE active_queue;                                                         \
   void* reserved[4];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
@@ -406,7 +407,7 @@ struct uv_shutdown_s {
   uv_handle_type type;                                                        \
   /* private */                                                               \
   uv_close_cb close_cb;                                                       \
-  void* handle_queue[2];                                                      \
+  QUEUE handle_queue;                                                         \
   union {                                                                     \
     int fd;                                                                   \
     void* reserved[4];                                                        \
@@ -1443,8 +1444,8 @@ struct uv_loop_s {
   void* data;
   /* Loop reference counting. */
   unsigned int active_handles;
-  void* handle_queue[2];
-  void* active_reqs[2];
+  QUEUE handle_queue;
+  QUEUE active_reqs;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   UV_LOOP_PRIVATE_FIELDS

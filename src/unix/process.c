@@ -54,18 +54,15 @@ static void uv__chld(uv_signal_t* handle, int signum) {
   pid_t pid;
   QUEUE pending;
   QUEUE* q;
-  QUEUE* h;
+  QUEUE* n;
 
   assert(signum == SIGCHLD);
 
   QUEUE_INIT(&pending);
   loop = handle->loop;
 
-  h = &loop->process_handles;
-  q = QUEUE_HEAD(h);
-  while (q != h) {
+  QUEUE_FOREACH_SAFE(q, n, &loop->process_handles) {
     process = QUEUE_DATA(q, uv_process_t, queue);
-    q = QUEUE_NEXT(q);
 
     do
       pid = waitpid(process->pid, &status, WNOHANG);
@@ -85,11 +82,8 @@ static void uv__chld(uv_signal_t* handle, int signum) {
     QUEUE_INSERT_TAIL(&pending, &process->queue);
   }
 
-  h = &pending;
-  q = QUEUE_HEAD(h);
-  while (q != h) {
+  QUEUE_FOREACH_SAFE(q, n, &pending) {
     process = QUEUE_DATA(q, uv_process_t, queue);
-    q = QUEUE_NEXT(q);
 
     QUEUE_REMOVE(&process->queue);
     QUEUE_INIT(&process->queue);
