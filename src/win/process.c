@@ -516,7 +516,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
     }
   }
   target[0] = L'\0';
-  wcsrev(start);
+  _wcsrev(start);
   *(target++) = L'"';
   return target;
 }

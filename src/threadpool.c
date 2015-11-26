@@ -144,7 +144,11 @@ static void init_once(void) {
   const char* val;
 
   nthreads = ARRAY_SIZE(default_threads);
+#if !defined(UV_WINUAP)
   val = getenv("UV_THREADPOOL_SIZE");
+#else
+  val = NULL;
+#endif
   if (val != NULL)
     nthreads = atoi(val);
   if (nthreads == 0)

@@ -95,9 +95,11 @@ static int uv_tcp_set_socket(uv_loop_t* loop,
     return WSAGetLastError();
   }
 
+#if !defined(UV_WINUAP)
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE) socket, HANDLE_FLAG_INHERIT, 0))
     return GetLastError();
+#endif
 
   /* Associate it with the I/O completion port. */
   /* Use uv_handle_t pointer as completion key. */
@@ -419,6 +421,7 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     return;
   }
 
+#if !defined(UV_WINUAP)
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE) accept_socket, HANDLE_FLAG_INHERIT, 0)) {
     SET_REQ_ERROR(req, GetLastError());
@@ -427,6 +430,7 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     closesocket(accept_socket);
     return;
   }
+#endif
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
