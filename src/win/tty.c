@@ -2000,10 +2000,11 @@ int uv_tty_write(uv_loop_t* loop,
 #endif
 }
 
-#if !defined(UV_WINUAP)
+
 int uv__tty_try_write(uv_tty_t* handle,
                       const uv_buf_t bufs[],
                       unsigned int nbufs) {
+#if !defined(UV_WINUAP)
   DWORD error;
 
   if (handle->stream.conn.write_reqs_pending > 0)
@@ -2013,8 +2014,11 @@ int uv__tty_try_write(uv_tty_t* handle,
     return uv_translate_sys_error(error);
 
   return uv__count_bufs(bufs, nbufs);
-}
+#else
+    return -1;
 #endif
+}
+
 
 void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   uv_write_t* req) {

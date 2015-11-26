@@ -739,14 +739,16 @@ void uv__pipe_unpause_read(uv_pipe_t* handle) {
     uv_mutex_unlock(&handle->pipe.conn.readfile_mutex);
   }
 }
-
+#endif
 
 void uv__pipe_stop_read(uv_pipe_t* handle) {
+#if !defined(UV_WINUAP)
   handle->flags &= ~UV_HANDLE_READING;
   uv__pipe_pause_read((uv_pipe_t*)handle);
   uv__pipe_unpause_read((uv_pipe_t*)handle);
-}
 #endif
+}
+
 
 /* Cleans up uv_pipe_t (server or connection) and all resources associated */
 /* with it. */
@@ -1164,11 +1166,12 @@ error:
   handle->flags |= UV_HANDLE_READ_PENDING;
   handle->reqs_pending++;
 }
-
+#endif
 
 int uv_pipe_read_start(uv_pipe_t* handle,
                        uv_alloc_cb alloc_cb,
                        uv_read_cb read_cb) {
+#if !defined(UV_WINUAP)
   uv_loop_t* loop = handle->loop;
 
   handle->flags |= UV_HANDLE_READING;
@@ -1182,9 +1185,12 @@ int uv_pipe_read_start(uv_pipe_t* handle,
     uv_pipe_queue_read(loop, handle);
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
-
+#if !defined(UV_WINUAP)
 static void uv_insert_non_overlapped_write_req(uv_pipe_t* handle,
     uv_write_t* req) {
   req->next_req = NULL;
