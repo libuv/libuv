@@ -39,6 +39,33 @@ fptr_QueueUserWorkItem QueueUserWorkItem;
 
 fptr_UnregisterWaitEx UnregisterWaitEx;
 fptr_RegisterWaitForSingleObjectEx RegisterWaitForSingleObjectEx;
+
+static void uv_winuap_hack_init()
+{
+    HMODULE hkernel;
+    MEMORY_BASIC_INFORMATION bi;
+
+    // Get HMODULE of kernel dll, KernelBase.dll for Universal Apps 
+    void* base = (void*)&GetModuleFileNameA;
+    VirtualQuery(base, &bi, sizeof(bi));
+    hkernel = (HMODULE)bi.AllocationBase;
+
+    GetModuleHandleA = (fptr_GetModuleHandleA)GetProcAddress(hkernel, "GetModuleHandleA");
+    LoadLibraryExW = (fptr_LoadLibraryExW)GetProcAddress(hkernel, "LoadLibraryExW");
+
+    GlobalMemoryStatusEx = (fptr_GlobalMemoryStatusEx)GetProcAddress(hkernel, "GlobalMemoryStatusEx");
+    LocalFree = (fptr_LocalFree)GetProcAddress(hkernel, "LocalFree");
+
+    CreateIoCompletionPort = (fptr_CreateIoCompletionPort)GetProcAddress(hkernel, "CreateIoCompletionPort");
+    GetQueuedCompletionStatus = (fptr_GetQueuedCompletionStatus)GetProcAddress(hkernel, "GetQueuedCompletionStatus");
+    PostQueuedCompletionStatus = (fptr_PostQueuedCompletionStatus)GetProcAddress(hkernel, "PostQueuedCompletionStatus");
+    CancelIo = (fptr_CancelIo)GetProcAddress(hkernel, "CancelIo");
+
+    QueueUserWorkItem = (fptr_QueueUserWorkItem)GetProcAddress(hkernel, "QueueUserWorkItem");
+    
+    UnregisterWaitEx = (fptr_UnregisterWaitEx)GetProcAddress(hkernel, "UnregisterWaitEx");
+    RegisterWaitForSingleObjectEx = (fptr_RegisterWaitForSingleObjectEx)GetProcAddress(hkernel, "RegisterWaitForSingleObjectEx");
+}
 #endif
 
 /* Ntdll function pointers */
@@ -67,6 +94,10 @@ sCancelSynchronousIo pCancelSynchronousIo;
 void uv_winapi_init() {
   HMODULE ntdll_module;
   HMODULE kernel32_module;
+
+#if defined(UV_WINUAP)
+  uv_winuap_hack_init();
+#endif
 
   ntdll_module = GetModuleHandleA("ntdll.dll");
   if (ntdll_module == NULL) {
@@ -120,7 +151,11 @@ void uv_winapi_init() {
     uv_fatal_error(GetLastError(), "GetProcAddress");
   }
 
+#if !defined(UV_WINUAP)
   kernel32_module = GetModuleHandleA("kernel32.dll");
+#else
+  kernel32_module = GetModuleHandleA("KernelBase.dll");
+#endif
   if (kernel32_module == NULL) {
     uv_fatal_error(GetLastError(), "GetModuleHandleA");
   }
