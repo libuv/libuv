@@ -144,6 +144,9 @@
     <ClInclude Include="..\src\uv-common.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\uv-winuap-hack.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

@@ -59,6 +59,10 @@ typedef struct pollfd {
 #include <signal.h>
 #include <sys/stat.h>
 
+#if defined(UV_WINUAP)
+#   include "uv-winuap-hack.h"
+#endif
+
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "stdint-msvc2008.h"
 #else

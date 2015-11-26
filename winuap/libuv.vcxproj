@@ -218,6 +218,7 @@
     <ClInclude Include="..\include\uv-threadpool.h" />
     <ClInclude Include="..\include\uv-version.h" />
     <ClInclude Include="..\include\uv-win.h" />
+    <ClInclude Include="..\include\uv-winuap-hack.h" />
     <ClInclude Include="..\include\uv.h" />
     <ClInclude Include="..\src\heap-inl.h" />
     <ClInclude Include="..\src\queue.h" />

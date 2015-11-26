@@ -24,6 +24,22 @@
 #include "uv.h"
 #include "internal.h"
 
+#if defined(UV_WINUAP)
+fptr_GetModuleHandleA GetModuleHandleA;
+fptr_LoadLibraryExW LoadLibraryExW;
+fptr_GlobalMemoryStatusEx GlobalMemoryStatusEx;
+fptr_LocalFree LocalFree;
+
+fptr_CreateIoCompletionPort CreateIoCompletionPort;
+fptr_GetQueuedCompletionStatus GetQueuedCompletionStatus;
+fptr_PostQueuedCompletionStatus PostQueuedCompletionStatus;
+fptr_CancelIo CancelIo;
+
+fptr_QueueUserWorkItem QueueUserWorkItem;
+
+fptr_UnregisterWaitEx UnregisterWaitEx;
+fptr_RegisterWaitForSingleObjectEx RegisterWaitForSingleObjectEx;
+#endif
 
 /* Ntdll function pointers */
 sRtlNtStatusToDosError pRtlNtStatusToDosError;
