@@ -233,6 +233,7 @@ int uv_cwd(char* buffer, size_t* size) {
 
 
 int uv_chdir(const char* dir) {
+#if !defined(UV_WINUAP)
   WCHAR utf16_buffer[MAX_PATH];
   size_t utf16_len;
   WCHAR drive_letter, env_var[4];
@@ -307,6 +308,9 @@ int uv_chdir(const char* dir) {
   }
 
   return 0;
+#else
+    return UV_UNKNOWN;
+#endif
 }
 
 
@@ -317,6 +321,7 @@ void uv_loadavg(double avg[3]) {
 
 
 uint64_t uv_get_free_memory(void) {
+#if !defined(UV_WINUAP)
   MEMORYSTATUSEX memory_status;
   memory_status.dwLength = sizeof(memory_status);
 
@@ -325,10 +330,14 @@ uint64_t uv_get_free_memory(void) {
   }
 
   return (uint64_t)memory_status.ullAvailPhys;
+#else
+    return -1;
+#endif
 }
 
 
 uint64_t uv_get_total_memory(void) {
+#if !defined(UV_WINUAP)
   MEMORYSTATUSEX memory_status;
   memory_status.dwLength = sizeof(memory_status);
 
@@ -337,11 +346,15 @@ uint64_t uv_get_total_memory(void) {
   }
 
   return (uint64_t)memory_status.ullTotalPhys;
+#else
+    return -1;
+#endif
 }
 
 
 int uv_parent_pid() {
   int parent_pid = -1;
+#if !defined(UV_WINUAP)
   HANDLE handle;
   PROCESSENTRY32 pe;
   DWORD current_pid = GetCurrentProcessId();
@@ -359,6 +372,7 @@ int uv_parent_pid() {
   }
 
   CloseHandle(handle);
+#endif
   return parent_pid;
 }
 
@@ -377,6 +391,7 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 int uv_set_process_title(const char* title) {
+#if !defined(UV_WINUAP)
   int err;
   int length;
   WCHAR* title_w = NULL;
@@ -422,10 +437,14 @@ int uv_set_process_title(const char* title) {
 done:
   uv__free(title_w);
   return uv_translate_sys_error(err);
+#else
+    return UV_UNKNOWN;
+#endif
 }
 
 
 static int uv__get_process_title() {
+#if !defined(UV_WINUAP)
   WCHAR title_w[MAX_TITLE_LENGTH];
   int length;
 
@@ -452,6 +471,9 @@ static int uv__get_process_title() {
   }
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
@@ -518,6 +540,7 @@ int uv_resident_set_memory(size_t* rss) {
 
 
 int uv_uptime(double* uptime) {
+#if !defined(UV_WINUAP)
   BYTE stack_buffer[4096];
   BYTE* malloced_buffer = NULL;
   BYTE* buffer = (BYTE*) stack_buffer;
@@ -615,10 +638,15 @@ int uv_uptime(double* uptime) {
   uv__free(malloced_buffer);
   *uptime = 0;
   return UV_EIO;
+#else
+    *uptime = 0.0;
+    return UV_ENOSYS;
+#endif
 }
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
+#if !defined(UV_WINUAP)
   uv_cpu_info_t* cpu_infos;
   SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* sppi;
   DWORD sppi_size;
@@ -776,6 +804,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   uv__free(sppi);
 
   return uv_translate_sys_error(err);
+#else
+    return UV_UNKNOWN;
+#endif
 }
 
 
@@ -789,7 +820,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   uv__free(cpu_infos);
 }
 
-
+#if !defined(UV_WINUAP)
 static int is_windows_version_or_greater(DWORD os_major,
                                          DWORD os_minor,
                                          WORD service_pack_major,
@@ -819,7 +850,7 @@ static int is_windows_version_or_greater(DWORD os_major,
     VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
     condition_mask);
 }
-
+#endif
 
 static int address_prefix_match(int family,
                                 struct sockaddr* address,
@@ -871,6 +902,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   int is_vista_or_greater;
   ULONG flags;
 
+#if !defined(UV_WINUAP)
   is_vista_or_greater = is_windows_version_or_greater(6, 0, 0, 0);
   if (is_vista_or_greater) {
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
@@ -883,6 +915,10 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
       GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
   }
+#else
+  is_vista_or_greater = 1;
+  flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER;
+#endif
 
 
   /* Fetch the size of the adapters reported by windows, and then get the */
@@ -1133,6 +1169,7 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 
 
 int uv_getrusage(uv_rusage_t *uv_rusage) {
+#if !defined(UV_WINUAP)
   FILETIME createTime, exitTime, kernelTime, userTime;
   SYSTEMTIME kernelSystemTime, userSystemTime;
   int ret;
@@ -1165,10 +1202,14 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
   uv_rusage->ru_stime.tv_usec = kernelSystemTime.wMilliseconds * 1000;
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 int uv_os_homedir(char* buffer, size_t* size) {
+#if !defined(UV_WINUAP)
   HANDLE token;
   wchar_t path[MAX_PATH];
   DWORD bufsize;
@@ -1229,4 +1270,7 @@ convert_buffer:
 
   *size = bufsize - 1;
   return 0;
+#else
+    return -1;
+#endif
 }

@@ -32,7 +32,7 @@
 
 const unsigned int uv_directory_watcher_buffer_size = 4096;
 
-
+#if !defined(UV_WINUAP)
 static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
     uv_fs_event_t* handle) {
   assert(handle->dir_handle != INVALID_HANDLE_VALUE);
@@ -119,9 +119,10 @@ static int uv_split_path(const WCHAR* filename, WCHAR** dir,
 
   return 0;
 }
-
+#endif
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+#if !defined(UV_WINUAP)
   uv__handle_init(loop, (uv_handle_t*) handle, UV_FS_EVENT);
   handle->dir_handle = INVALID_HANDLE_VALUE;
   handle->buffer = NULL;
@@ -299,10 +300,14 @@ error:
   }
 
   return uv_translate_sys_error(last_error);
+#else
+    return -1;
+#endif
 }
 
 
 int uv_fs_event_stop(uv_fs_event_t* handle) {
+#if !defined(UV_WINUAP)
   if (!uv__is_active(handle))
     return 0;
 
@@ -334,11 +339,15 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   }
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
     uv_fs_event_t* handle) {
+#if !defined(UV_WINUAP)
   FILE_NOTIFY_INFORMATION* file_info;
   int err, sizew, size, result;
   char* filename = NULL;
@@ -514,10 +523,12 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
   } else {
     uv_want_endgame(loop, (uv_handle_t*)handle);
   }
+#endif
 }
 
 
 void uv_fs_event_close(uv_loop_t* loop, uv_fs_event_t* handle) {
+#if !defined(UV_WINUAP)
   uv_fs_event_stop(handle);
 
   uv__handle_closing(handle);
@@ -525,11 +536,12 @@ void uv_fs_event_close(uv_loop_t* loop, uv_fs_event_t* handle) {
   if (!handle->req_pending) {
     uv_want_endgame(loop, (uv_handle_t*)handle);
   }
-
+#endif
 }
 
 
 void uv_fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle) {
+#if !defined(UV_WINUAP)
   if ((handle->flags & UV__HANDLE_CLOSING) && !handle->req_pending) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
 
@@ -540,4 +552,5 @@ void uv_fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle) {
 
     uv__handle_close(handle);
   }
+#endif
 }
