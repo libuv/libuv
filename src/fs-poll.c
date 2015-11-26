@@ -184,10 +184,10 @@ static void poll_cb(uv_fs_t* req) {
   if (req->result != 0) {
     if (ctx->busy_polling != req->result) {
       ctx->poll_cb(ctx->parent_handle,
-                   req->result,
+                   (int)req->result,
                    &ctx->statbuf,
                    &zero_statbuf);
-      ctx->busy_polling = req->result;
+      ctx->busy_polling = (int)req->result;
     }
     goto out;
   }

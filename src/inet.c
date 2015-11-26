@@ -168,7 +168,7 @@ int uv_inet_pton(int af, const char* src, void* dst) {
     p = strchr(src, '%');
     if (p != NULL) {
       s = tmp;
-      len = p - src;
+      len = (int)(p - src);
       if (len > UV__INET6_ADDRSTRLEN-1)
         return UV_EINVAL;
       memcpy(s, src, len);
@@ -195,7 +195,7 @@ static int inet_pton4(const char *src, unsigned char *dst) {
     const char *pch;
 
     if ((pch = strchr(digits, ch)) != NULL) {
-      unsigned int nw = *tp * 10 + (pch - digits);
+      unsigned int nw = (unsigned)(*tp * 10 + (pch - digits));
 
       if (saw_digit && *tp == 0)
         return UV_EINVAL;
@@ -291,7 +291,7 @@ static int inet_pton6(const char *src, unsigned char *dst) {
      * Since some memmove()'s erroneously fail to handle
      * overlapping regions, we'll do the shift by hand.
      */
-    const int n = tp - colonp;
+    const int n = (int)(tp - colonp);
     int i;
 
     if (tp == endp)

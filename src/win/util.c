@@ -92,9 +92,9 @@ int uv_utf16_to_utf8(const WCHAR* utf16Buffer, size_t utf16Size,
   return WideCharToMultiByte(CP_UTF8,
                              0,
                              utf16Buffer,
-                             utf16Size,
+                             (int)utf16Size,
                              utf8Buffer,
-                             utf8Size,
+                             (int)utf8Size,
                              NULL,
                              NULL);
 }
@@ -107,7 +107,7 @@ int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
                              utf8Buffer,
                              -1,
                              utf16Buffer,
-                             utf16Size);
+                             (int)utf16Size);
 }
 
 

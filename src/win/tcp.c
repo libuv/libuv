@@ -376,7 +376,7 @@ static void CALLBACK post_completion(void* context, BOOLEAN timed_out) {
   assert(!timed_out);
 
   if (!PostQueuedCompletionStatus(handle->loop->iocp,
-                                  req->u.io.overlapped.InternalHigh,
+                                  (DWORD)req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
     uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
@@ -395,7 +395,7 @@ static void CALLBACK post_write_completion(void* context, BOOLEAN timed_out) {
   assert(!timed_out);
 
   if (!PostQueuedCompletionStatus(handle->loop->iocp,
-                                  req->u.io.overlapped.InternalHigh,
+                                  (DWORD)req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
     uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
