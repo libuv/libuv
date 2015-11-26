@@ -19,6 +19,14 @@
  * IN THE SOFTWARE.
  */
 
+#if defined(_MSC_VER) && _MSC_VER >= 1800
+#   include <sdkddkver.h>
+#endif
+
+#if defined(WINAPI_FAMILY_PARTITION) && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#   define UV_WINUAP
+#endif
+
 #ifndef _WIN32_WINNT
 # define _WIN32_WINNT   0x0502
 #endif
