@@ -253,7 +253,11 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
         for (i = 0; i < uv_simultaneous_server_accepts; i++) {
           req = &handle->tcp.serv.accept_reqs[i];
           if (req->wait_handle != INVALID_HANDLE_VALUE) {
+#if !defined(UV_WINUAP)
             UnregisterWait(req->wait_handle);
+#else
+              UnregisterWaitEx(req->wait_handle, NULL);
+#endif
             req->wait_handle = INVALID_HANDLE_VALUE;
           }
           if (req->event_handle) {
@@ -270,7 +274,11 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
     if (handle->flags & UV_HANDLE_CONNECTION &&
         handle->flags & UV_HANDLE_EMULATE_IOCP) {
       if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
+#if !defined(UV_WINUAP)
         UnregisterWait(handle->read_req.wait_handle);
+#else
+          UnregisterWaitEx(handle->read_req.wait_handle, NULL);
+#endif
         handle->read_req.wait_handle = INVALID_HANDLE_VALUE;
       }
       if (handle->read_req.event_handle) {
@@ -458,7 +466,12 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     handle->reqs_pending++;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
-        !RegisterWaitForSingleObject(&req->wait_handle,
+#if !defined(UV_WINUAP)
+        !RegisterWaitForSingleObject
+#else
+        !RegisterWaitForSingleObjectEx
+#endif
+        (&req->wait_handle,
           req->event_handle, post_completion, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
       SET_REQ_ERROR(req, GetLastError());
@@ -541,7 +554,12 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     handle->reqs_pending++;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
-        !RegisterWaitForSingleObject(&req->wait_handle,
+#if !defined(UV_WINUAP)
+        !RegisterWaitForSingleObject
+#else
+        !RegisterWaitForSingleObjectEx
+#endif
+        (&req->wait_handle,
           req->event_handle, post_completion, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
       SET_REQ_ERROR(req, GetLastError());
@@ -904,7 +922,12 @@ int uv_tcp_write(uv_loop_t* loop,
     REGISTER_HANDLE_REQ(loop, handle, req);
     handle->write_queue_size += req->u.io.queued_bytes;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
-        !RegisterWaitForSingleObject(&req->wait_handle,
+#if !defined(UV_WINUAP)
+        !RegisterWaitForSingleObject
+#else
+        !RegisterWaitForSingleObjectEx
+#endif
+        (&req->wait_handle,
           req->event_handle, post_write_completion, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE)) {
       SET_REQ_ERROR(req, GetLastError());
@@ -1087,7 +1110,11 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     if (req->wait_handle != INVALID_HANDLE_VALUE) {
+#if !defined(UV_WINUAP)
       UnregisterWait(req->wait_handle);
+#else
+      UnregisterWaitEx(req->wait_handle, NULL);
+#endif
       req->wait_handle = INVALID_HANDLE_VALUE;
     }
     if (req->event_handle) {
