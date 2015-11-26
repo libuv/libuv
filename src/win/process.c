@@ -64,7 +64,7 @@ static size_t n_required_vars = ARRAY_SIZE(required_vars);
 static HANDLE uv_global_job_handle_;
 static uv_once_t uv_global_job_handle_init_guard_ = UV_ONCE_INIT;
 
-
+#if !defined(UV_WINUAP)
 static void uv__init_global_job_handle(void) {
   /* Create a job object and set it up to kill all contained processes when
    * it's closed. Since this handle is made non-inheritable and we're not
@@ -104,6 +104,7 @@ static void uv__init_global_job_handle(void) {
                                sizeof info))
     uv_fatal_error(GetLastError(), "SetInformationJobObject");
 }
+#endif
 
 
 static int uv_utf8_to_utf16_alloc(const char* s, WCHAR** ws_ptr) {
@@ -161,6 +162,7 @@ static void uv_process_init(uv_loop_t* loop, uv_process_t* handle) {
 /*
  * Helper function for search_path
  */
+#if !defined(UV_WINUAP)
 static WCHAR* search_path_join_test(const WCHAR* dir,
                                     size_t dir_len,
                                     const WCHAR* name,
@@ -249,11 +251,12 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   uv__free(result);
   return NULL;
 }
-
+#endif
 
 /*
  * Helper function for search_path
  */
+#if !defined(UV_WINUAP)
 static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                    size_t dir_len,
                                    const WCHAR *name,
@@ -294,7 +297,7 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
 
   return NULL;
 }
-
+#endif
 
 /*
  * search_path searches the system path for an executable filename -
@@ -339,6 +342,7 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  * really a pointless restriction.
  *
  */
+#if !defined(UV_WINUAP)
 static WCHAR* search_path(const WCHAR *file,
                             WCHAR *cwd,
                             const WCHAR *path) {
@@ -439,7 +443,7 @@ static WCHAR* search_path(const WCHAR *file,
 
   return result;
 }
-
+#endif
 
 /*
  * Quotes command line arguments
@@ -512,7 +516,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
     }
   }
   target[0] = L'\0';
-  wcsrev(start);
+  _wcsrev(start);
   *(target++) = L'"';
   return target;
 }
@@ -607,7 +611,7 @@ error:
   return err;
 }
 
-
+#if !defined(UV_WINUAP)
 int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   wchar_t* a_eq;
   wchar_t* b_eq;
@@ -656,7 +660,7 @@ static int qsort_wcscmp(const void *a, const void *b) {
   wchar_t* bstr = *(wchar_t* const*)b;
   return env_strncmp(astr, -1, bstr);
 }
-
+#endif
 
 /*
  * The way windows takes environment variables is different than what C does;
@@ -674,6 +678,7 @@ static int qsort_wcscmp(const void *a, const void *b) {
  * https://github.com/Alexpux/Cygwin/blob/b266b04fbbd3a595f02ea149e4306d3ab9b1fe3d/winsup/cygwin/environ.cc#L955
  *
  */
+#if !defined(UV_WINUAP)
 int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   WCHAR* dst;
   WCHAR* ptr;
@@ -816,6 +821,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   *dst_ptr = dst;
   return 0;
 }
+#endif
 
 /*
  * Attempt to find the value of the PATH environment variable in the child's
@@ -836,6 +842,7 @@ static WCHAR* find_path(WCHAR *env) {
  * Called on Windows thread-pool thread to indicate that
  * a child process has exited.
  */
+#if !defined(UV_WINUAP)
 static void CALLBACK exit_wait_callback(void* data, BOOLEAN didTimeout) {
   uv_process_t* process = (uv_process_t*) data;
   uv_loop_t* loop = process->loop;
@@ -849,10 +856,11 @@ static void CALLBACK exit_wait_callback(void* data, BOOLEAN didTimeout) {
   /* Post completed */
   POST_COMPLETION_FOR_REQ(loop, &process->exit_req);
 }
-
+#endif
 
 /* Called on main thread after a child process has exited. */
 void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
+#if !defined(UV_WINUAP)
   int64_t exit_code;
   DWORD status;
 
@@ -887,10 +895,12 @@ void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   if (handle->exit_cb) {
     handle->exit_cb(handle, exit_code, handle->exit_signal);
   }
+#endif
 }
 
 
 void uv_process_close(uv_loop_t* loop, uv_process_t* handle) {
+#if !defined(UV_WINUAP)
   uv__handle_closing(handle);
 
   if (handle->wait_handle != INVALID_HANDLE_VALUE) {
@@ -908,10 +918,12 @@ void uv_process_close(uv_loop_t* loop, uv_process_t* handle) {
   if (!handle->exit_cb_pending) {
     uv_want_endgame(loop, (uv_handle_t*)handle);
   }
+#endif
 }
 
 
 void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle) {
+#if !defined(UV_WINUAP)
   assert(!handle->exit_cb_pending);
   assert(handle->flags & UV__HANDLE_CLOSING);
   assert(!(handle->flags & UV_HANDLE_CLOSED));
@@ -920,12 +932,14 @@ void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   CloseHandle(handle->process_handle);
 
   uv__handle_close(handle);
+#endif
 }
 
 
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t* options) {
+#if !defined(UV_WINUAP)
   int i;
   int err = 0;
   WCHAR* path = NULL, *alloc_path = NULL;
@@ -1160,10 +1174,14 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   return uv_translate_sys_error(err);
+#else
+  return -1;
+#endif
 }
 
 
 static int uv__kill(HANDLE process_handle, int signum) {
+#if !defined(UV_WINUAP)
   switch (signum) {
     case SIGTERM:
     case SIGKILL:
@@ -1205,10 +1223,14 @@ static int uv__kill(HANDLE process_handle, int signum) {
       /* Unsupported signal. */
       return UV_ENOSYS;
   }
+#else
+    return -1;
+#endif
 }
 
 
 int uv_process_kill(uv_process_t* process, int signum) {
+#if !defined(UV_WINUAP)
   int err;
 
   if (process->process_handle == INVALID_HANDLE_VALUE) {
@@ -1223,10 +1245,14 @@ int uv_process_kill(uv_process_t* process, int signum) {
   process->exit_signal = signum;
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 int uv_kill(int pid, int signum) {
+#if !defined(UV_WINUAP)
   int err;
   HANDLE process_handle = OpenProcess(PROCESS_TERMINATE |
     PROCESS_QUERY_INFORMATION, FALSE, pid);
@@ -1244,4 +1270,7 @@ int uv_kill(int pid, int signum) {
   CloseHandle(process_handle);
 
   return err;  /* err is already translated. */
+#else
+    return -1;
+#endif
 }

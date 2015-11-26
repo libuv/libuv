@@ -30,7 +30,9 @@
 
 uv_handle_type uv_guess_handle(uv_file file) {
   HANDLE handle;
+#if !defined(UV_WINUAP)
   DWORD mode;
+#endif
 
   if (file < 0) {
     return UV_UNKNOWN_HANDLE;
@@ -40,11 +42,15 @@ uv_handle_type uv_guess_handle(uv_file file) {
 
   switch (GetFileType(handle)) {
     case FILE_TYPE_CHAR:
+#if !defined(UV_WINUAP)
       if (GetConsoleMode(handle, &mode)) {
         return UV_TTY;
       } else {
         return UV_FILE;
       }
+#else
+        return UV_FILE;
+#endif
 
     case FILE_TYPE_PIPE:
       return UV_NAMED_PIPE;

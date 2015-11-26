@@ -28,6 +28,8 @@
 #include "internal.h"
 #include "handle-inl.h"
 
+#if !defined(UV_WINUAP)
+
 
 /*
  * The `child_stdio_buffer` buffer has the following layout:
@@ -508,3 +510,4 @@ WORD uv__stdio_size(BYTE* buffer) {
 HANDLE uv__stdio_handle(BYTE* buffer, int fd) {
   return CHILD_STDIO_HANDLE(buffer, fd);
 }
+#endif

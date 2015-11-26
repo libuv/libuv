@@ -54,10 +54,10 @@
 
 #define MAX_INPUT_BUFFER_LENGTH 8192
 
-
+#if !defined(UV_WINUAP)
 static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info);
 static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info);
-
+#endif
 
 /* Null uv_buf_t */
 static const uv_buf_t uv_null_buf_ = { 0, NULL };
@@ -113,6 +113,7 @@ void uv_console_init() {
 
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
+#if !defined(UV_WINUAP)
   HANDLE handle;
   CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
 
@@ -198,9 +199,12 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
   }
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
-
+#if !defined(UV_WINUAP)
 /* Set the default console text attributes based on how the console was
  * configured when libuv started.
  */
@@ -255,9 +259,10 @@ static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info) {
 
   style_captured = 1;
 }
-
+#endif
 
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
+#if !defined(UV_WINUAP)
   DWORD flags;
   unsigned char was_reading;
   uv_alloc_cb alloc_cb;
@@ -316,16 +321,24 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 int uv_is_tty(uv_file file) {
+#if !defined(UV_WINUAP)
   DWORD result;
   return GetConsoleMode((HANDLE) _get_osfhandle(file), &result) != 0;
+#else
+    return 0;
+#endif
 }
 
 
 int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
+#if !defined(UV_WINUAP)
   CONSOLE_SCREEN_BUFFER_INFO info;
 
   if (!GetConsoleScreenBufferInfo(tty->handle, &info)) {
@@ -340,9 +353,12 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   *height = uv_tty_virtual_height;
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
-
+#if !defined(UV_WINUAP)
 static void CALLBACK uv_tty_post_raw_read(void* data, BOOLEAN didTimeout) {
   uv_loop_t* loop;
   uv_tty_t* handle;
@@ -572,10 +588,11 @@ static const char* get_vt100_fn_key(DWORD code, char shift, char ctrl,
   }
 #undef VK_CASE
 }
-
+#endif
 
 void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req) {
+#if !defined(UV_WINUAP)
   /* Shortcut for handle->tty.rd.last_input_record.Event.KeyEvent. */
 #define KEV handle->tty.rd.last_input_record.Event.KeyEvent
 
@@ -842,12 +859,14 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
   DECREASE_PENDING_REQ_COUNT(handle);
 
 #undef KEV
+#endif
 }
 
 
 
 void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req) {
+#if !defined(UV_WINUAP)
   uv_buf_t buf;
 
   assert(handle->type == UV_TTY);
@@ -887,11 +906,13 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+#endif
 }
 
 
 void uv_process_tty_read_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req) {
+#if !defined(UV_WINUAP)
   assert(handle->type == UV_TTY);
   assert(handle->flags & UV_HANDLE_TTY_READABLE);
 
@@ -903,11 +924,13 @@ void uv_process_tty_read_req(uv_loop_t* loop, uv_tty_t* handle,
   } else {
     uv_process_tty_read_line_req(loop, handle, req);
   }
+#endif
 }
 
 
 int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb) {
+#if !defined(UV_WINUAP)
   uv_loop_t* loop = handle->loop;
 
   if (!(handle->flags & UV_HANDLE_TTY_READABLE)) {
@@ -936,10 +959,14 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
   uv_tty_queue_read(loop, handle);
 
   return 0;
+#else
+    return ERROR_INVALID_HANDLE;
+#endif
 }
 
 
 int uv_tty_read_stop(uv_tty_t* handle) {
+#if !defined(UV_WINUAP)
   handle->flags &= ~UV_HANDLE_READING;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
 
@@ -964,9 +991,12 @@ int uv_tty_read_stop(uv_tty_t* handle) {
 
 
   return 0;
+#else
+    return ERROR_INVALID_HANDLE;
+#endif
 }
 
-
+#if !defined(UV_WINUAP)
 static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info) {
   int old_virtual_width = uv_tty_virtual_width;
   int old_virtual_height = uv_tty_virtual_height;
@@ -1934,7 +1964,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
 
 #undef FLUSH_TEXT
 }
-
+#endif
 
 int uv_tty_write(uv_loop_t* loop,
                  uv_write_t* req,
@@ -1942,6 +1972,7 @@ int uv_tty_write(uv_loop_t* loop,
                  const uv_buf_t bufs[],
                  unsigned int nbufs,
                  uv_write_cb cb) {
+#if !defined(UV_WINUAP)
   DWORD error;
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -1964,12 +1995,16 @@ int uv_tty_write(uv_loop_t* loop,
   uv_insert_pending_req(loop, (uv_req_t*) req);
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 int uv__tty_try_write(uv_tty_t* handle,
                       const uv_buf_t bufs[],
                       unsigned int nbufs) {
+#if !defined(UV_WINUAP)
   DWORD error;
 
   if (handle->stream.conn.write_reqs_pending > 0)
@@ -1979,11 +2014,15 @@ int uv__tty_try_write(uv_tty_t* handle,
     return uv_translate_sys_error(error);
 
   return uv__count_bufs(bufs, nbufs);
+#else
+    return -1;
+#endif
 }
 
 
 void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   uv_write_t* req) {
+#if !defined(UV_WINUAP)
   int err;
 
   handle->write_queue_size -= req->u.io.queued_bytes;
@@ -2001,10 +2040,12 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+#endif
 }
 
 
 void uv_tty_close(uv_tty_t* handle) {
+#if !defined(UV_WINUAP)
   assert(handle->u.fd == -1 || handle->u.fd > 2);
   if (handle->u.fd == -1)
     CloseHandle(handle->handle);
@@ -2022,10 +2063,12 @@ void uv_tty_close(uv_tty_t* handle) {
   if (handle->reqs_pending == 0) {
     uv_want_endgame(handle->loop, (uv_handle_t*) handle);
   }
+#endif
 }
 
 
 void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
+#if !defined(UV_WINUAP)
   if (!(handle->flags & UV_HANDLE_TTY_READABLE) &&
       handle->stream.conn.shutdown_req != NULL &&
       handle->stream.conn.write_reqs_pending == 0) {
@@ -2061,6 +2104,7 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
     uv__handle_close(handle);
   }
+#endif
 }
 
 

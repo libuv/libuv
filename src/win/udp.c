@@ -69,10 +69,12 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     return WSAGetLastError();
   }
 
+#if !defined(UV_WINUAP)
   /* Make the socket non-inheritable */
   if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
     return GetLastError();
   }
+#endif
 
   /* Associate it with the I/O completion port. */
   /* Use uv_handle_t pointer as completion key. */

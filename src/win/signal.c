@@ -38,7 +38,7 @@ void uv_signals_init() {
   InitializeCriticalSection(&uv__signal_lock);
 }
 
-
+#if !defined(UV_WINUAP)
 static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2) {
   /* Compare signums first so all watchers with the same signnum end up */
   /* adjacent. */
@@ -219,9 +219,10 @@ static void uv__signal_unregister(int signum) {
       return;
   }
 }
-
+#endif
 
 int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
+#if !defined(UV_WINUAP)
   uv_req_t* req;
 
   uv__handle_init(loop, (uv_handle_t*) handle, UV_SIGNAL);
@@ -235,10 +236,14 @@ int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
   req->data = handle;
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 int uv_signal_stop(uv_signal_t* handle) {
+#if !defined(UV_WINUAP)
   uv_signal_t* removed_handle;
 
   /* If the watcher wasn't started, this is a no-op. */
@@ -258,10 +263,14 @@ int uv_signal_stop(uv_signal_t* handle) {
   uv__handle_stop(handle);
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
+#if !defined(UV_WINUAP)
   int err;
 
   /* If the user supplies signum == 0, then return an error already. If the */
@@ -305,11 +314,15 @@ int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
   uv__handle_start(handle);
 
   return 0;
+#else
+    return -1;
+#endif
 }
 
 
 void uv_process_signal_req(uv_loop_t* loop, uv_signal_t* handle,
     uv_req_t* req) {
+#if !defined(UV_WINUAP)
   long dispatched_signum;
 
   assert(handle->type == UV_SIGNAL);
@@ -330,20 +343,24 @@ void uv_process_signal_req(uv_loop_t* loop, uv_signal_t* handle,
     assert(handle->signum == 0);
     uv_want_endgame(loop, (uv_handle_t*) handle);
   }
+#endif
 }
 
 
 void uv_signal_close(uv_loop_t* loop, uv_signal_t* handle) {
+#if !defined(UV_WINUAP)
   uv_signal_stop(handle);
   uv__handle_closing(handle);
 
   if (handle->pending_signum == 0) {
     uv_want_endgame(loop, (uv_handle_t*) handle);
   }
+#endif
 }
 
 
 void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle) {
+#if !defined(UV_WINUAP)
   assert(handle->flags & UV__HANDLE_CLOSING);
   assert(!(handle->flags & UV_HANDLE_CLOSED));
 
@@ -353,4 +370,5 @@ void uv_signal_endgame(uv_loop_t* loop, uv_signal_t* handle) {
   handle->flags |= UV_HANDLE_CLOSED;
 
   uv__handle_close(handle);
+#endif
 }

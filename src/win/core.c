@@ -83,8 +83,10 @@ static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
 
 static void uv_init(void) {
   /* Tell Windows that we will handle critical errors. */
+#if !defined(UV_WINUAP)
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
                SEM_NOOPENFILEERRORBOX);
+#endif
 
   /* Tell the CRT to not exit the application when an invalid parameter is
    * passed. The main issue is that invalid FDs will trigger this behavior.

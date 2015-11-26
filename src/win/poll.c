@@ -267,9 +267,11 @@ static SOCKET uv__fast_poll_create_peer_socket(HANDLE iocp,
     return INVALID_SOCKET;
   }
 
+#if !defined(UV_WINUAP)
   if (!SetHandleInformation((HANDLE) sock, HANDLE_FLAG_INHERIT, 0)) {
     goto error;
   };
+#endif
 
   if (CreateIoCompletionPort((HANDLE) sock,
                              iocp,
