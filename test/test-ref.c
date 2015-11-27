@@ -256,7 +256,7 @@ TEST_IMPL(tcp_ref2b) {
 TEST_IMPL(tcp_ref3) {
   struct sockaddr_in addr;
   uv_tcp_t h;
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   uv_tcp_init(uv_default_loop(), &h);
   uv_tcp_connect(&connect_req,
                  &h,
@@ -275,7 +275,7 @@ TEST_IMPL(tcp_ref3) {
 TEST_IMPL(tcp_ref4) {
   struct sockaddr_in addr;
   uv_tcp_t h;
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   uv_tcp_init(uv_default_loop(), &h);
   uv_tcp_connect(&connect_req,
                  &h,
@@ -306,7 +306,7 @@ TEST_IMPL(udp_ref) {
 TEST_IMPL(udp_ref2) {
   struct sockaddr_in addr;
   uv_udp_t h;
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   uv_udp_init(uv_default_loop(), &h);
   uv_udp_bind(&h, (const struct sockaddr*) &addr, 0);
   uv_udp_recv_start(&h, (uv_alloc_cb)fail_cb, (uv_udp_recv_cb)fail_cb);
@@ -324,7 +324,7 @@ TEST_IMPL(udp_ref3) {
   uv_udp_send_t req;
   uv_udp_t h;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   uv_udp_init(uv_default_loop(), &h);
   uv_udp_send(&req,
               &h,

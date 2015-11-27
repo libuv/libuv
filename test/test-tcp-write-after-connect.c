@@ -44,7 +44,7 @@ static void connect_cb(uv_connect_t *req, int status) {
 
 TEST_IMPL(tcp_write_after_connect) {
   struct sockaddr_in sa;
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &sa));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &sa));
   ASSERT(0 == uv_loop_init(&loop));
   ASSERT(0 == uv_tcp_init(&loop, &tcp_client));
 

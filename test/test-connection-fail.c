@@ -92,7 +92,7 @@ static void connection_fail(uv_connect_cb connect_cb) {
   ASSERT(0 == uv_ip4_addr("0.0.0.0", 0, &client_addr));
 
   /* There should be no servers listening on this port. */
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &server_addr));
 
   /* Try to connect to the server and do NUM_PINGS ping-pongs. */
   r = uv_tcp_init(uv_default_loop(), &tcp);

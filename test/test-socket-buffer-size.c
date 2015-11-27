@@ -56,7 +56,7 @@ static void check_buffer_size(uv_handle_t* handle) {
 TEST_IMPL(socket_buffer_size) {
   struct sockaddr_in addr;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   ASSERT(0 == uv_tcp_init(uv_default_loop(), &tcp));
   ASSERT(0 == uv_tcp_bind(&tcp, (struct sockaddr*) &addr, 0));

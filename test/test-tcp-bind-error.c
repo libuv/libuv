@@ -173,7 +173,7 @@ TEST_IMPL(tcp_bind_localhost_ok) {
   uv_tcp_t server;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
@@ -190,7 +190,7 @@ TEST_IMPL(tcp_bind_invalid_flags) {
   uv_tcp_t server;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);

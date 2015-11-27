@@ -102,7 +102,7 @@ TEST_IMPL(udp_multicast_join) {
   uv_buf_t buf;
   struct sockaddr_in addr;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
   ASSERT(r == 0);

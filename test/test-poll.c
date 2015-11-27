@@ -480,7 +480,7 @@ static void start_server(void) {
   uv_os_sock_t sock;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   sock = create_bound_socket(addr);
   context = create_server_context(sock);
 
@@ -499,7 +499,7 @@ static void start_client(void) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &server_addr));
   ASSERT(0 == uv_ip4_addr("0.0.0.0", 0, &addr));
 
   sock = create_bound_socket(addr);

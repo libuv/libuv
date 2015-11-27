@@ -67,7 +67,7 @@ TEST_IMPL(watcher_cross_stop) {
 
   TEST_FILE_LIMIT(ARRAY_SIZE(sockets) + 32);
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   memset(big_string, 'A', sizeof(big_string));
   buf = uv_buf_init(big_string, sizeof(big_string));
 

@@ -80,7 +80,7 @@ static void start_server(uv_loop_t* loop, uv_tcp_t* handle) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_tcp_init(loop, handle);
   ASSERT(r == 0);
@@ -104,7 +104,7 @@ TEST_IMPL(tcp_close) {
   uv_loop_t* loop;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   loop = uv_default_loop();
 

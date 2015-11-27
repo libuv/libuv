@@ -96,7 +96,7 @@ TEST_IMPL(osx_select_many_fds) {
 
   TEST_FILE_LIMIT(ARRAY_SIZE(tcps) + 100);
 
-  r = uv_ip4_addr("127.0.0.1", 0, &addr);
+  r = uv_ip4_addr(localhost_ipv4(), 0, &addr);
   ASSERT(r == 0);
 
   for (i = 0; i < ARRAY_SIZE(tcps); i++) {

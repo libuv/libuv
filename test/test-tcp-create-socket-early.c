@@ -78,7 +78,7 @@ static void tcp_connector(uv_loop_t* loop, uv_tcp_t* client, uv_connect_t* req) 
   struct sockaddr_in server_addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &server_addr));
 
   r = uv_tcp_init(loop, client);
   ASSERT(r == 0);
@@ -98,7 +98,7 @@ TEST_IMPL(tcp_create_early) {
   uv_os_fd_t fd;
   int r, namelen;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_tcp_init_ex(uv_default_loop(), &client, AF_INET);
   ASSERT(r == 0);
@@ -139,7 +139,7 @@ TEST_IMPL(tcp_create_early_bad_bind) {
   uv_os_fd_t fd;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_tcp_init_ex(uv_default_loop(), &client, AF_INET6);
   ASSERT(r == 0);

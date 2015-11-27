@@ -25,8 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-static const char* address_ip4 = "127.0.0.1";
 static const char* address_ip6 = "::1";
 static const int port = 80;
 
@@ -48,7 +46,7 @@ static void getnameinfo_req(uv_getnameinfo_t* handle,
 TEST_IMPL(getnameinfo_basic_ip4) {
   int r;
 
-  r = uv_ip4_addr(address_ip4, port, &addr4);
+  r = uv_ip4_addr(localhost_ipv4(), port, &addr4);
   ASSERT(r == 0);
 
   r = uv_getnameinfo(uv_default_loop(),
@@ -66,7 +64,7 @@ TEST_IMPL(getnameinfo_basic_ip4) {
 
 
 TEST_IMPL(getnameinfo_basic_ip4_sync) {
-  ASSERT(0 == uv_ip4_addr(address_ip4, port, &addr4));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), port, &addr4));
 
   ASSERT(0 == uv_getnameinfo(uv_default_loop(),
                              &req,
