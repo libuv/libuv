@@ -75,6 +75,10 @@
 #include <sys/ioctl.h>
 #endif
 
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
+# include <dlfcn.h>  /* for dlsym */
+#endif
+
 static int uv__run_pending(uv_loop_t* loop);
 
 /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
@@ -1018,6 +1022,9 @@ int uv_os_homedir(char* buffer, size_t* size) {
   size_t len;
   long initsize;
   int r;
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
+  int (*getpwuid_r)(uid_t, struct passwd*, char*, size_t, struct passwd**);
+#endif
 
   if (buffer == NULL || size == NULL || *size == 0)
     return -EINVAL;
@@ -1038,6 +1045,12 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
     return 0;
   }
+
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
+  getpwuid_r = dlsym(RTLD_DEFAULT, "getpwuid_r");
+  if (getpwuid_r == NULL)
+    return -ENOSYS;
+#endif
 
   /* HOME is not set, so call getpwuid() */
   initsize = sysconf(_SC_GETPW_R_SIZE_MAX);
