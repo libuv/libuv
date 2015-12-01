@@ -901,7 +901,15 @@ void fs__scandir(uv_fs_t* req) {
       /* Compute the length of the filename in WCHARs. */
       wchar_len = info->FileNameLength / sizeof info->FileName[0];
 
-      /* Skip over '.' and '..' entries. */
+      /* Skip over '.' and '..' entries.  It has been reported that
+       * the SharePoint driver includes the terminating zero byte in
+       * the filename length.  Strip those first.
+       */
+      while (wchar_len > 0 && info->FileName[wchar_len - 1] == L'\0')
+        wchar_len -= 1;
+
+      if (wchar_len == 0)
+        continue;
       if (wchar_len == 1 && info->FileName[0] == L'.')
         continue;
       if (wchar_len == 2 && info->FileName[0] == L'.' &&
