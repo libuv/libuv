@@ -145,7 +145,7 @@ TEST_IMPL(tcp_writealot) {
   uv_tcp_t client;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   send_buffer = calloc(1, TOTAL_BYTES);
   ASSERT(send_buffer != NULL);

@@ -363,7 +363,7 @@ static int test_tcp(unsigned int num_servers, unsigned int num_clients) {
   unsigned int i;
   double time;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &listen_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &listen_addr));
   loop = uv_default_loop();
 
   servers = calloc(num_servers, sizeof(servers[0]));

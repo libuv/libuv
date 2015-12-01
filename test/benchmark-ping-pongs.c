@@ -183,7 +183,7 @@ static void pinger_new(void) {
   int r;
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", 0, &client_addr));
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &server_addr));
   pinger = malloc(sizeof(*pinger));
   pinger->state = 0;
   pinger->pongs = 0;

@@ -56,7 +56,7 @@ TEST_IMPL(handle_fileno) {
   uv_loop_t* loop;
 
   loop = uv_default_loop();
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_idle_init(loop, &idle);
   ASSERT(r == 0);

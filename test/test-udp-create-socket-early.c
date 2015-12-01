@@ -38,7 +38,7 @@ TEST_IMPL(udp_create_early) {
   uv_os_fd_t fd;
   int r, namelen;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_udp_init_ex(uv_default_loop(), &client, AF_INET);
   ASSERT(r == 0);
@@ -79,7 +79,7 @@ TEST_IMPL(udp_create_early_bad_bind) {
   uv_os_fd_t fd;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_udp_init_ex(uv_default_loop(), &client, AF_INET6);
   ASSERT(r == 0);

@@ -188,7 +188,7 @@ static int run_ipc_send_recv_tcp(int inprocess) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   ctx.expected_type = UV_TCP;
 

@@ -185,7 +185,7 @@ static void tcp_pinger_new(void) {
   struct sockaddr_in server_addr;
   pinger_t *pinger;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &server_addr));
   pinger = malloc(sizeof(*pinger));
   ASSERT(pinger != NULL);
   pinger->state = 0;

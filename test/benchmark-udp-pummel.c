@@ -187,7 +187,7 @@ static int pummel(unsigned int n_senders,
 
   for (i = 0; i < n_senders; i++) {
     struct sender_state* s = senders + i;
-    ASSERT(0 == uv_ip4_addr("127.0.0.1",
+    ASSERT(0 == uv_ip4_addr(localhost_ipv4(),
                             BASE_PORT + (i % n_receivers),
                             &s->addr));
     ASSERT(0 == uv_udp_init(loop, &s->udp_handle));

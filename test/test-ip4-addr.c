@@ -30,7 +30,7 @@ TEST_IMPL(ip4_addr) {
 
   struct sockaddr_in addr;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
   ASSERT(0 == uv_ip4_addr("255.255.255.255", TEST_PORT, &addr));
   ASSERT(UV_EINVAL == uv_ip4_addr("255.255.255*000", TEST_PORT, &addr));
   ASSERT(UV_EINVAL == uv_ip4_addr("255.255.255.256", TEST_PORT, &addr));
@@ -38,7 +38,7 @@ TEST_IMPL(ip4_addr) {
   ASSERT(UV_EINVAL == uv_ip4_addr("255", TEST_PORT, &addr));
 
   /* for broken address family */
-  ASSERT(UV_EAFNOSUPPORT == uv_inet_pton(42, "127.0.0.1",
+  ASSERT(UV_EAFNOSUPPORT == uv_inet_pton(42, localhost_ipv4(),
     &addr.sin_addr.s_addr));
 
   MAKE_VALGRIND_HAPPY();

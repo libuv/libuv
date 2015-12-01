@@ -215,4 +215,21 @@ UNUSED static int can_ipv6(void) {
   return supported;
 }
 
+
+/* Helper function to get the localhost ipv4 address. It defaults to 127.0.0.1
+ * except in FreeBSD, that uses the value of the LOCALHOST environment variable,
+ * if present. The reason is that the FreeBSD buildbots in the libuv CI set that
+ * variable to their localhost ipv4 address.
+ */
+UNUSED static const char* localhost_ipv4() {
+#ifdef __FreeBSD__
+  const char* addr = getenv("LOCALHOST");
+  if (addr) {
+    return addr;
+  }
+#endif
+
+  return "127.0.0.1";
+}
+
 #endif /* TASK_H_ */

@@ -130,13 +130,16 @@ static void on_connection(uv_stream_t* server, int status) {
   namelen = sizeof sockname;
   r = uv_tcp_getsockname(handle, &sockname, &namelen);
   ASSERT(r == 0);
-  check_sockname(&sockname, "127.0.0.1", server_port, "accepted socket");
+  check_sockname(&sockname, localhost_ipv4(), server_port, "accepted socket");
   getsocknamecount++;
 
   namelen = sizeof peername;
   r = uv_tcp_getpeername(handle, &peername, &namelen);
   ASSERT(r == 0);
-  check_sockname(&peername, "127.0.0.1", connect_port, "accepted socket peer");
+  check_sockname(&peername,
+                 localhost_ipv4(),
+                 connect_port,
+                 "accepted socket peer");
   getpeernamecount++;
 
   r = uv_read_start((uv_stream_t*)handle, alloc, after_read);
@@ -153,13 +156,16 @@ static void on_connect(uv_connect_t* req, int status) {
   namelen = sizeof sockname;
   r = uv_tcp_getsockname((uv_tcp_t*) req->handle, &sockname, &namelen);
   ASSERT(r == 0);
-  check_sockname(&sockname, "127.0.0.1", 0, "connected socket");
+  check_sockname(&sockname, localhost_ipv4(), 0, "connected socket");
   getsocknamecount++;
 
   namelen = sizeof peername;
   r = uv_tcp_getpeername((uv_tcp_t*) req->handle, &peername, &namelen);
   ASSERT(r == 0);
-  check_sockname(&peername, "127.0.0.1", server_port, "connected socket peer");
+  check_sockname(&peername,
+                 localhost_ipv4(),
+                 server_port,
+                 "connected socket peer");
   getpeernamecount++;
 
   uv_close((uv_handle_t*)&tcp, NULL);
@@ -213,7 +219,7 @@ static void tcp_connector(void) {
   struct sockaddr sockname;
   int r, namelen;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", server_port, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), server_port, &server_addr));
 
   r = uv_tcp_init(loop, &tcp);
   tcp.data = &connect_req;
@@ -311,7 +317,7 @@ static void udp_sender(void) {
   ASSERT(!r);
 
   buf = uv_buf_init("PING", 4);
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", server_port, &server_addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), server_port, &server_addr));
 
   r = uv_udp_send(&send_req,
                   &udp,

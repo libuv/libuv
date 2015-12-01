@@ -140,7 +140,7 @@ TEST_IMPL(udp_open) {
   uv_os_sock_t sock;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   startup();
   sock = create_udp_socket();

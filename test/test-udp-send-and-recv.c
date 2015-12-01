@@ -176,7 +176,7 @@ TEST_IMPL(udp_send_and_recv) {
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
   ASSERT(r == 0);
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip4_addr(localhost_ipv4(), TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &client);
   ASSERT(r == 0);

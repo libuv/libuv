@@ -217,7 +217,7 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   uv_loop_t* loop;
   int r;
 
-  r = uv_ip4_addr("127.0.0.1", 80, &addr4);
+  r = uv_ip4_addr(localhost_ipv4(), 80, &addr4);
   ASSERT(r == 0);
 
   INIT_CANCEL_INFO(&ci, reqs);
