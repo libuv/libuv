@@ -838,7 +838,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
 
   /* Reschedule FSEventStream */
   assert(handle != NULL);
-  err = uv__cf_loop_signal(handle->loop, handle, 0);
+  err = uv__cf_loop_signal(handle->loop, handle, kUVCFLoopSignalRegular);
   if (err)
     goto fail_loop_signal;
 
