@@ -48,7 +48,8 @@
 #if defined(__DragonFly__)  ||                                            \
     defined(__FreeBSD__)    ||                                            \
     defined(__OpenBSD__)    ||                                            \
-    defined(__NetBSD__)
+    defined(__NetBSD__)     ||                                            \
+    defined(__linux__)
 # define HAVE_PREADV 1
 #else
 # define HAVE_PREADV 0
@@ -256,9 +257,6 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_preadv;
-#endif
   ssize_t result;
 
 #if defined(_AIX)
@@ -284,9 +282,6 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 #if HAVE_PREADV
     result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
-# if defined(__linux__)
-    if (no_preadv) retry:
-# endif
     {
       off_t nread;
       size_t index;
@@ -308,18 +303,6 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
       if (nread > 0)
         result = nread;
     }
-# if defined(__linux__)
-    else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
-      if (result == -1 && errno == ENOSYS) {
-        no_preadv = 1;
-        goto retry;
-      }
-    }
-# endif
 #endif
   }
 
@@ -619,9 +602,6 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_pwritev;
-#endif
   ssize_t r;
 
   /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
@@ -648,9 +628,6 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
 #if HAVE_PREADV
     r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
-# if defined(__linux__)
-    if (no_pwritev) retry:
-# endif
     {
       off_t written;
       size_t index;
@@ -672,18 +649,6 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
       if (written > 0)
         r = written;
     }
-# if defined(__linux__)
-    else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
-        goto retry;
-      }
-    }
-# endif
 #endif
   }
 
