@@ -45,6 +45,14 @@
 #include <utime.h>
 #include <poll.h>
 
+#if defined(__DragonFly__)  ||                                            \
+    defined(__FreeBSD__)    ||                                            \
+    defined(__OpenBSD__)    ||                                            \
+    defined(__NetBSD__)     ||                                            \
+    defined(__linux__)
+# define HAVE_PREADV 1
+#endif
+
 #if defined(__linux__) || defined(__sun)
 # include <sys/sendfile.h>
 #endif
@@ -258,17 +266,20 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     return -1;
   }
 #endif /* defined(_AIX) */
-
   if (req->off < 0) {
     if (req->nbufs == 1)
       result = read(req->file, req->bufs[0].base, req->bufs[0].len);
     else
       result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
+#if defined(HAVE_PREADV)
     if (req->nbufs == 1)
+#endif
       result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
+#if defined(HAVE_PREADV)
     else
       result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
+#endif
   }
 
   return result;
@@ -585,10 +596,14 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     else
       r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
+#if defined(HAVE_PREADV)
     if (req->nbufs == 1)
+#endif
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
+#if defined(HAVE_PREADV)
     else
       r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
+#endif
   }
 
 #if defined(__APPLE__)
