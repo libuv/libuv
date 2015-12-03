@@ -48,10 +48,9 @@
 #if defined(__DragonFly__)  ||                                            \
     defined(__FreeBSD__)    ||                                            \
     defined(__OpenBSD__)    ||                                            \
-    defined(__NetBSD__)
+    defined(__NetBSD__)     ||                                            \
+    defined(__linux__)
 # define HAVE_PREADV 1
-#else
-# define HAVE_PREADV 0
 #endif
 
 #if defined(__linux__) || defined(__sun)
@@ -256,9 +255,6 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_preadv;
-#endif
   ssize_t result;
 
 #if defined(_AIX)
@@ -276,54 +272,16 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     else
       result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
-    if (req->nbufs == 1) {
+#if defined(HAVE_PREADV)
+    if (req->nbufs == 1)
+#endif
       result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-
-#if HAVE_PREADV
-    result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (no_preadv) retry:
-# endif
-    {
-      off_t nread;
-      size_t index;
-
-      nread = 0;
-      index = 0;
-      result = 1;
-      do {
-        if (req->bufs[index].len > 0) {
-          result = pread(req->file,
-                         req->bufs[index].base,
-                         req->bufs[index].len,
-                         req->off + nread);
-          if (result > 0)
-            nread += result;
-        }
-        index++;
-      } while (index < req->nbufs && result > 0);
-      if (nread > 0)
-        result = nread;
-    }
-# if defined(__linux__)
-    else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
-      if (result == -1 && errno == ENOSYS) {
-        no_preadv = 1;
-        goto retry;
-      }
-    }
-# endif
+#if defined(HAVE_PREADV)
+    else
+      result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #endif
   }
 
-done:
   return result;
 }
 
@@ -619,9 +577,6 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_pwritev;
-#endif
   ssize_t r;
 
   /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
@@ -641,53 +596,16 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     else
       r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
-    if (req->nbufs == 1) {
+#if defined(HAVE_PREADV)
+    if (req->nbufs == 1)
+#endif
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-#if HAVE_PREADV
-    r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (no_pwritev) retry:
-# endif
-    {
-      off_t written;
-      size_t index;
-
-      written = 0;
-      index = 0;
-      r = 0;
-      do {
-        if (req->bufs[index].len > 0) {
-          r = pwrite(req->file,
-                     req->bufs[index].base,
-                     req->bufs[index].len,
-                     req->off + written);
-          if (r > 0)
-            written += r;
-        }
-        index++;
-      } while (index < req->nbufs && r >= 0);
-      if (written > 0)
-        r = written;
-    }
-# if defined(__linux__)
-    else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
-        goto retry;
-      }
-    }
-# endif
+#if defined(HAVE_PREADV)
+    else
+      r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #endif
   }
 
-done:
 #if defined(__APPLE__)
   if (pthread_mutex_unlock(&lock))
     abort();
@@ -796,6 +714,19 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   return ret;
 }
 
+static size_t uv__fs_buf_offset(uv_buf_t* bufs, size_t size) {
+  size_t offset;
+  /* Figure out which bufs are done */
+  for(offset=0; size>0 && bufs[offset].len <= size; ++offset) {
+    size -= bufs[offset].len;
+  }
+  /* Fix a partial read/write */
+  if (size > 0) {
+    bufs[offset].base += size;
+    bufs[offset].len -= size;
+  }
+  return offset;
+}
 
 typedef ssize_t (*uv__fs_buf_iter_processor)(uv_fs_t* req);
 static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) {
@@ -825,6 +756,7 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     if (req->off >= 0)
       req->off += result;
 
+    req->nbufs = uv__fs_buf_offset(req->bufs, result);
     req->bufs += req->nbufs;
     nbufs -= req->nbufs;
     total += result;
