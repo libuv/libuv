@@ -375,9 +375,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   if (fstat(fd, &statbuf))
     goto fallback;
-  /* FSEvents works only with directories */
+
+#ifndef MAC_OS_X_VERSION_10_7
+  /* FSEvents works only with directories before 10.7 */
   if (!(statbuf.st_mode & S_IFDIR))
     goto fallback;
+#endif
 
   /* The fallback fd is no longer needed */
   uv__close(fd);

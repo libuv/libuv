@@ -295,13 +295,7 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
   ASSERT(events == UV_CHANGE);
   ASSERT(filename == NULL || strcmp(filename, "watch_file") == 0);
 
-  /* Regression test for SunOS: touch should generate just one event. */
-  {
-    static uv_timer_t timer;
-    uv_timer_init(handle->loop, &timer);
-    timer.data = handle;
-    uv_timer_start(&timer, timer_cb_close_handle, 250, 0);
-  }
+  uv_close((uv_handle_t*) handle, close_cb);
 }
 
 static void timer_cb_file(uv_timer_t* handle) {

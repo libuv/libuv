@@ -267,10 +267,14 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
         }
       }
 
-#ifdef MAC_OS_X_VERSION_10_7
-      /* Ignore events with path equal to directory itself */
+#ifndef MAC_OS_X_VERSION_10_7
       if (len == 0)
         continue;
+#else
+      if ((eventFlags[i] & kFSEventStreamEventFlagItemIsDir) &&
+          len == 0) {
+        continue;
+      }
 #endif /* MAC_OS_X_VERSION_10_7 */
 
       /* Do not emit events from subdirectories (without option set) */
@@ -291,13 +295,30 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
 
       memset(event, 0, sizeof(*event));
       memcpy(event->path, path, len + 1);
-
+      
+#ifndef MAC_OS_X_VERSION_10_7
       if ((eventFlags[i] & kFSEventsModified) != 0 &&
           (eventFlags[i] & kFSEventsRenamed) == 0)
         event->events = UV_CHANGE;
       else
         event->events = UV_RENAME;
-
+#else
+      if (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) {
+        if ((eventFlags[i] & kFSEventsModified) != 0 &&
+            (eventFlags[i] & kFSEventStreamEventFlagItemRenamed) == 0) {
+          event->events = UV_CHANGE;
+        } else {
+          event->events = UV_RENAME;
+        }
+      } else {
+        if ((eventFlags[i] & kFSEventStreamEventFlagItemRenamed) == 0) {
+          event->events = UV_CHANGE;
+        } else {
+          event->events = UV_RENAME;
+        }
+      }
+#endif /* MAC_OS_X_VERSION_10_7 */
+      
       QUEUE_INSERT_TAIL(&head, &event->member);
     }
 
