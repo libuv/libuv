@@ -347,6 +347,7 @@
         'test/test-poll-close-doesnt-corrupt-stack.c',
         'test/test-poll-closesocket.c',
         'test/test-process-title.c',
+        'test/test-queue-foreach-delete.c',
         'test/test-ref.c',
         'test/test-run-nowait.c',
         'test/test-run-once.c',
