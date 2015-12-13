@@ -26,6 +26,7 @@
 #include <sys/resource.h>
 #include <sys/sched.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/sysctl.h>
 
 #include <ifaddrs.h>
@@ -36,6 +37,7 @@
 #include <fcntl.h>
 #include <kvm.h>
 #include <paths.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -76,12 +78,53 @@ void uv_loadavg(double avg[3]) {
 }
 
 
+static int search(const char *name, char *buffer, size_t *size) {
+  char *ropath, *wpath, *path, *ps;
+  struct stat statb;
+  size_t size_tmp;
+  int err = 1, tmp;
+
+  if (name == NULL)
+    goto out;
+
+  if (*name == '.' || *name == '/') {
+    if ((size_tmp = strlcpy(buffer, name, *size)) < *size)
+      *size = size_tmp;
+    else
+      *size -= 1;
+
+    err = 0;
+    goto out;
+  }
+
+  if ((ropath = getenv("PATH")) == NULL)
+    goto out;
+
+  if ((path = uv__strdup(ropath)) == NULL)
+    goto out;
+
+  wpath = path;
+  while ((ps = strsep(&wpath, ":")) != NULL) {
+    tmp = snprintf(buffer, *size, "%s/%s", ps, name);
+    if (tmp != -1 && tmp < (int)*size && !stat(buffer, &statb)) {
+      *size = tmp;
+      err = 0;
+      break;
+    }
+  }
+
+  uv__free(path);
+
+out:
+  return err;
+}
+
+
 int uv_exepath(char* buffer, size_t* size) {
   int mib[4];
   char **argsbuf = NULL;
   char **argsbuf_tmp;
   size_t argsbuf_size = 100U;
-  size_t exepath_size;
   pid_t mypid;
   int err;
 
@@ -109,18 +152,11 @@ int uv_exepath(char* buffer, size_t* size) {
     argsbuf_size *= 2U;
   }
 
-  if (argsbuf[0] == NULL) {
+  if (search(argsbuf[0], buffer, size)) {
     err = -EINVAL;  /* FIXME(bnoordhuis) More appropriate error. */
     goto out;
   }
 
-  *size -= 1;
-  exepath_size = strlen(argsbuf[0]);
-  if (*size > exepath_size)
-    *size = exepath_size;
-
-  memcpy(buffer, argsbuf[0], *size);
-  buffer[*size] = '\0';
   err = 0;
 
 out:
