@@ -1288,6 +1288,52 @@ int uv_fs_write(uv_loop_t* loop,
   POST;
 }
 
+int uv_fs_rdlock(int fd,
+                 off_t start,
+                 off_t len) {
+   struct flock lock;
+   lock.l_type   = F_RDLCK;
+   lock.l_whence = SEEK_SET;
+   lock.l_start  = start;
+   lock.l_len    = len;
+
+   /* returns 0 on success; sets errno appropriately
+    * and returns -1 on failure                     */
+   return fcntl(fd, F_SETLK, &lock);
+}
+
+int uv_fs_wrlock(int fd,
+                 off_t start,
+                 off_t len,
+                 int wait) {
+   struct flock lock;
+   lock.l_type   = F_WRLCK;
+   lock.l_whence = SEEK_SET;
+   lock.l_start  = start;
+   lock.l_len    = end;
+
+   return wait ? fcntl(fd, F_SETLKW, &lock) : /* trys again if there is a */
+                 fcntl(fd, F_SETLK, &lock);   /* conflicting lock         */
+}
+
+int uv_fs_rdwrlock(int fd,
+                   off_t start,
+                   off_t len,
+                   int wait) {
+   return uv_fs_wrlock(fd, start, len, wait);
+}
+
+int uv_fs_unlock(int fd,
+                 off_t start,
+                 off_t len) {
+   struct flock lock;
+   lock.l_type   = F_UNLCK;
+   lock.l_whence = SEEK_SET;
+   lock.l_start  = start;
+   lock.l_len    = len;
+
+   return fcntl(fd, F_SETLK, &lock);
+}
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
   /* Only necessary for asychronous requests, i.e., requests with a callback.
