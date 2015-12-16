@@ -34,7 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <attr/xattr.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
