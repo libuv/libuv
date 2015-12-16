@@ -1310,7 +1310,7 @@ int uv_fs_wrlock(int fd,
    lock.l_type   = F_WRLCK;
    lock.l_whence = SEEK_SET;
    lock.l_start  = start;
-   lock.l_len    = end;
+   lock.l_len    = len;
 
    return wait ? fcntl(fd, F_SETLKW, &lock) : /* trys again if there is a */
                  fcntl(fd, F_SETLK, &lock);   /* conflicting lock         */
