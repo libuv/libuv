@@ -21,7 +21,9 @@
 
 #include <errno.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+# include <fcntl.h>
+#else
 # include <sys/socket.h>
 # include <unistd.h>
 #endif
@@ -556,5 +558,30 @@ TEST_IMPL(poll_duplex) {
 TEST_IMPL(poll_unidirectional) {
   test_mode = UNIDIRECTIONAL;
   start_poll_test();
+  return 0;
+}
+
+
+/* Windows won't let you open a directory so we open a file instead.
+ * OS X lets you poll a file so open the $PWD instead.  Both fail
+ * on Linux so it doesn't matter which one we pick.  Both succeed
+ * on FreeBSD and Solaris so skip the test on those platforms.
+ */
+TEST_IMPL(poll_bad_fdtype) {
+#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__sun)
+  uv_poll_t poll_handle;
+  int fd;
+
+#if defined(_WIN32)
+  fd = open("test/fixtures/empty_file", O_RDONLY);
+#else
+  fd = open(".", O_RDONLY);
+#endif
+  ASSERT(fd != -1);
+  ASSERT(0 != uv_poll_init(uv_default_loop(), &poll_handle, fd));
+  ASSERT(0 == close(fd));
+#endif
+
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

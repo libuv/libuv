@@ -53,6 +53,10 @@ static void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
   int err;
 
+  err = uv__io_check_fd(loop, fd);
+  if (err)
+    return err;
+
   err = uv__nonblock(fd, 1);
   if (err)
     return err;

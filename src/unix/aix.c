@@ -91,6 +91,24 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
 
+int uv__io_check_fd(uv_loop_t* loop, int fd) {
+  struct poll_ctl pc;
+
+  pc.events = POLLIN;
+  pc.cmd = PS_MOD;  /* Equivalent to PS_ADD if the fd is not in the pollset. */
+  pc.fd = fd;
+
+  if (pollset_ctl(loop->backend_fd, &pc, 1))
+    return -errno;
+
+  pc.cmd = PS_DELETE;
+  if (pollset_ctl(loop->backend_fd, &pc, 1))
+    abort();
+
+  return 0;
+}
+
+
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct pollfd events[1024];
   struct pollfd pqry;

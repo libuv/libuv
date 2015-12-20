@@ -140,6 +140,26 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 }
 
 
+int uv__io_check_fd(uv_loop_t* loop, int fd) {
+  struct uv__epoll_event e;
+  int rc;
+
+  e.events = UV__EPOLLIN;
+  e.data = -1;
+
+  rc = 0;
+  if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_ADD, fd, &e))
+    if (errno != EEXIST)
+      rc = -errno;
+
+  if (rc == 0)
+    if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_DEL, fd, &e))
+      abort();
+
+  return rc;
+}
+
+
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   /* A bug in kernels < 2.6.37 makes timeouts larger than ~30 minutes
    * effectively infinite on 32 bits architectures.  To avoid blocking
