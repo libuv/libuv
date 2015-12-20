@@ -151,6 +151,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-default-loop-close.c \
                          test/test-delayed-accept.c \
                          test/test-dlerror.c \
+                         test/test-eintr-handling.c \
                          test/test-embed.c \
                          test/test-emfile.c \
                          test/test-error.c \
