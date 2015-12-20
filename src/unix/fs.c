@@ -858,9 +858,14 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     total += result;
   }
 
+  if (errno == EINTR && total == -1)
+    return total;
+
   if (bufs != req->bufsml)
     uv__free(bufs);
+
   req->bufs = NULL;
+  req->nbufs = 0;
 
   return total;
 }
