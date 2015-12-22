@@ -138,7 +138,10 @@ $ git rebase upstream/v1.x  # or upstream/master
 ### TEST
 
 Bug fixes and features should come with tests.  Add your tests in the
-`test/` directory. Tests also need to be registered in `test/test-list.h`.
+`test/` directory. Each new test needs to be registered in `test/test-list.h`. If you add a new test file, it needs to be registered in two places:
+- `Makefile.am`: add the file's name to the `test_run_tests_SOURCES` list.
+- `uv.gyp`: add the file's name to the `sources` list in the `run-tests` target.
+
 Look at other tests to see how they should be structured (license boilerplate,
 the way entry points are declared, etc.).
 
