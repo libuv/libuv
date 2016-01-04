@@ -1049,6 +1049,7 @@ typedef struct {
 UV_EXTERN int uv_getrusage(uv_rusage_t* rusage);
 
 UV_EXTERN int uv_os_homedir(char* buffer, size_t* size);
+UV_EXTERN int uv_os_tmpdir(char* buffer, size_t* size);
 
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
