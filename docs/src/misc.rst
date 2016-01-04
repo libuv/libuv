@@ -273,6 +273,22 @@ API
 
     .. versionadded:: 1.6.0
 
+.. c:function:: int uv_os_tmpdir(char* buffer, size_t* size)
+
+    Gets the temp directory. On Windows, `uv_os_tmpdir()` uses `GetTempPathW()`.
+    On all other operating systems, `uv_os_tmpdir()` uses the first environment
+    variable found in the ordered list `TMPDIR`, `TMP`, `TEMP`, and `TEMPDIR`.
+    If none of these are found, the path `"/tmp"` is used, or, on Android,
+    `"/data/local/tmp"` is used. The temp directory is stored in `buffer`. When
+    `uv_os_tmpdir()` is called, `size` indicates the maximum size of `buffer`.
+    On success or `UV_ENOBUFS` failure, `size` is set to the string length of
+    `buffer` (which does not include the terminating null).
+
+    .. warning::
+        `uv_os_tmpdir()` is not thread safe.
+
+    .. versionadded:: 1.9.0
+
 .. uint64_t uv_get_free_memory(void)
 .. c:function:: uint64_t uv_get_total_memory(void)
 

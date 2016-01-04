@@ -155,6 +155,7 @@ test/test-threadpool-cancel.c
 test/test-threadpool.c
 test/test-timer-again.c
 test/test-timer.c
+test/test-tmpdir.c
 test/test-tty.c
 test/test-udp-dgram-too-big.c
 test/test-udp-ipv6.c
