@@ -24,12 +24,13 @@
 
 #ifdef _WIN32
 
-TEST_IMPL(pipe_set_non_blocking) {
+TEST_IMPL(eintr_handling) {
   RETURN_SKIP("Test not implemented on Windows.");
 }
 
 #else  /* !_WIN32 */
 
+#include <string.h>
 #include <unistd.h>
 
 static uv_loop_t* loop;
@@ -49,9 +50,9 @@ static void thread_main(void* arg) {
   int nwritten;
   ASSERT(0 == kill(getpid(), SIGUSR1));
 
-  do {
-      nwritten = write(pipe_fds[1], test_buf, sizeof(test_buf));
-  } while (nwritten == -1 && errno == EINTR);
+  do
+    nwritten = write(pipe_fds[1], test_buf, sizeof(test_buf));
+  while (nwritten == -1 && errno == EINTR);
 
   ASSERT(nwritten == sizeof(test_buf));
 }
