@@ -1082,6 +1082,11 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
 }
 
 
+#ifdef __clang__
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wgnu-folding-constant"
+#endif
+
 static void uv__read(uv_stream_t* stream) {
   uv_buf_t buf;
   ssize_t nread;
@@ -1186,6 +1191,10 @@ static void uv__read(uv_stream_t* stream) {
   }
 }
 
+
+#ifdef __clang__
+# pragma clang diagnostic pop
+#endif
 
 #undef UV__CMSG_FD_COUNT
 #undef UV__CMSG_FD_SIZE
