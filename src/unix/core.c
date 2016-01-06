@@ -1035,12 +1035,12 @@ int uv_os_homedir(char* buffer, size_t* size) {
   if (buf != NULL) {
     len = strlen(buf);
 
-    if (len >= *size) {
+    if (len > *size) {
       *size = len;
       return -ENOBUFS;
     }
 
-    memcpy(buffer, buf, len + 1);
+    memcpy(buffer, buf, len);
     *size = len;
 
     return 0;
@@ -1090,13 +1090,13 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
   len = strlen(pw.pw_dir);
 
-  if (len >= *size) {
+  if (len > *size) {
     *size = len;
     uv__free(buf);
     return -ENOBUFS;
   }
 
-  memcpy(buffer, pw.pw_dir, len + 1);
+  memcpy(buffer, pw.pw_dir, len);
   *size = len;
   uv__free(buf);
 

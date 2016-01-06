@@ -17,9 +17,7 @@ TEST_IMPL(homedir) {
   ASSERT(strlen(homedir) == 0);
   r = uv_os_homedir(homedir, &len);
   ASSERT(r == 0);
-  ASSERT(strlen(homedir) == len);
   ASSERT(len > 0);
-  ASSERT(homedir[len] == '\0');
 
   if (len > 1) {
     last = homedir[len - 1];
