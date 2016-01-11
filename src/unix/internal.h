@@ -90,17 +90,19 @@
 #endif
 
 #if defined(__linux__)
-# define UV__POLLIN   UV__EPOLLIN
-# define UV__POLLOUT  UV__EPOLLOUT
-# define UV__POLLERR  UV__EPOLLERR
-# define UV__POLLHUP  UV__EPOLLHUP
+# define UV__POLLIN     UV__EPOLLIN
+# define UV__POLLOUT    UV__EPOLLOUT
+# define UV__POLLERR    UV__EPOLLERR
+# define UV__POLLHUP    UV__EPOLLHUP
+# define UV__POLLRDHUP  UV__EPOLLRDHUP
 #endif
 
 #if defined(__sun) || defined(_AIX)
-# define UV__POLLIN   POLLIN
-# define UV__POLLOUT  POLLOUT
-# define UV__POLLERR  POLLERR
-# define UV__POLLHUP  POLLHUP
+# define UV__POLLIN     POLLIN
+# define UV__POLLOUT    POLLOUT
+# define UV__POLLERR    POLLERR
+# define UV__POLLHUP    POLLHUP
+# define UV__POLLRDHUP  POLLRDHUP
 #endif
 
 #ifndef UV__POLLIN
@@ -117,6 +119,10 @@
 
 #ifndef UV__POLLHUP
 # define UV__POLLHUP  8
+#endif
+
+#ifndef UV__POLLRDHUP
+# define UV__POLLRDHUP  0x200
 #endif
 
 #if !defined(O_CLOEXEC) && defined(__FreeBSD__)

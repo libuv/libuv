@@ -51,7 +51,7 @@ typedef struct connection_context_s {
   size_t read, sent;
   int is_server_connection;
   int open_handles;
-  int got_fin, sent_fin;
+  int got_fin, sent_fin, got_disconnect;
   unsigned int events, delayed_events;
 } connection_context_t;
 
@@ -71,6 +71,8 @@ static int closed_connections = 0;
 
 static int valid_writable_wakeups = 0;
 static int spurious_writable_wakeups = 0;
+
+static int disconnects = 0;
 
 
 static int got_eagain(void) {
@@ -142,6 +144,7 @@ static connection_context_t* create_connection_context(
   context->delayed_events = 0;
   context->got_fin = 0;
   context->sent_fin = 0;
+  context->got_disconnect = 0;
 
   r = uv_poll_init_socket(uv_default_loop(), &context->poll_handle, sock);
   context->open_handles++;
@@ -375,7 +378,13 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
     }
   }
 
-  if (context->got_fin && context->sent_fin) {
+  if (events & UV_DISCONNECT) {
+    context->got_disconnect = 1;
+    ++disconnects;
+    new_events &= ~UV_DISCONNECT;
+  }
+
+  if (context->got_fin && context->sent_fin && context->got_disconnect) {
     /* Sent and received FIN. Close and destroy context. */
     close_socket(context->sock);
     destroy_connection_context(context);
@@ -463,9 +472,9 @@ static void server_poll_cb(uv_poll_t* handle, int status, int events) {
 #endif
 
   connection_context = create_connection_context(sock, 1);
-  connection_context->events = UV_READABLE | UV_WRITABLE;
+  connection_context->events = UV_READABLE | UV_WRITABLE | UV_DISCONNECT;
   r = uv_poll_start(&connection_context->poll_handle,
-                    UV_READABLE | UV_WRITABLE,
+                    UV_READABLE | UV_WRITABLE | UV_DISCONNECT,
                     connection_poll_cb);
   ASSERT(r == 0);
 
@@ -507,9 +516,9 @@ static void start_client(void) {
   sock = create_bound_socket(addr);
   context = create_connection_context(sock, 0);
 
-  context->events = UV_READABLE | UV_WRITABLE;
+  context->events = UV_READABLE | UV_WRITABLE | UV_DISCONNECT;
   r = uv_poll_start(&context->poll_handle,
-                    UV_READABLE | UV_WRITABLE,
+                    UV_READABLE | UV_WRITABLE | UV_DISCONNECT,
                     connection_poll_cb);
   ASSERT(r == 0);
 
@@ -543,6 +552,7 @@ static void start_poll_test(void) {
          spurious_writable_wakeups > 20);
 
   ASSERT(closed_connections == NUM_CLIENTS * 2);
+  ASSERT(disconnects == NUM_CLIENTS * 2);
 
   MAKE_VALGRIND_HAPPY();
 }
