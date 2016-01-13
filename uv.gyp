@@ -405,6 +405,7 @@
         'test/test-tcp-shutdown-after-write.c',
         'test/test-tcp-flags.c',
         'test/test-tcp-connect-error.c',
+        'test/test-tcp-connect-error-busy.c',
         'test/test-tcp-connect-timeout.c',
         'test/test-tcp-connect6-error.c',
         'test/test-tcp-open.c',

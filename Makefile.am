@@ -225,6 +225,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-create-socket-early.c \
                          test/test-tcp-connect-error-after-write.c \
                          test/test-tcp-connect-error.c \
+                         test/test-tcp-connect-error-busy.c \
                          test/test-tcp-connect-timeout.c \
                          test/test-tcp-connect6-error.c \
                          test/test-tcp-flags.c \

@@ -140,6 +140,7 @@ test/test-tcp-close-accept.c
 test/test-tcp-close.c
 test/test-tcp-connect-error-after-write.c
 test/test-tcp-connect-error.c
+test/test-tcp-connect-error-busy.c
 test/test-tcp-connect-timeout.c
 test/test-tcp-connect6-error.c
 test/test-tcp-flags.c

@@ -153,7 +153,7 @@ int uv__tcp_connect(uv_connect_t* req,
   assert(handle->type == UV_TCP);
 
   if (handle->connect_req != NULL)
-    return -EALREADY;  /* FIXME(bnoordhuis) -EINVAL or maybe -EBUSY. */
+    return -EBUSY;
 
   err = maybe_new_socket(handle,
                          addr->sa_family,
