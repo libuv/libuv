@@ -109,12 +109,6 @@ static void fail_cb(uv_fs_event_t* handle,
   ASSERT(0 && "fail_cb called");
 }
 
-static void noop_cb(uv_fs_event_t* handle,
-                    const char* path,
-                    int events,
-                    int status) {
-}
-
 static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   int events, int status) {
   ++fs_event_cb_called;
@@ -537,11 +531,13 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   return 0;
 }
 
+#ifdef _WIN32
 TEST_IMPL(fs_event_watch_file_root_dir) {
   uv_loop_t* loop;
   int r;
 
   const char* sys_drive = getenv("SystemDrive");
+  ASSERT(sys_drive != NULL);
   char path[] = "\\\\?\\X:\\autoexec.bat";
   strncpy(path + sizeof("\\\\?\\") - 1, sys_drive, 1);
 
@@ -549,11 +545,9 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT(r == 0);
-  r = uv_fs_event_start(&fs_event, noop_cb, path, 0);
-  if (r == UV__ENOENT) {
-    fprintf(stderr,
-            "Skipping test, autoexec.bat doesn't exist in system root.\n");
-    return 0;
+  r = uv_fs_event_start(&fs_event, fail_cb, path, 0);
+  if (r == UV_ENOENT) {
+    RETURN_SKIP("Skipping test, autoexec.bat doesn't exist in system root.\n");
   }
   ASSERT(r == 0);
 
@@ -562,6 +556,7 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+#endif
 
 TEST_IMPL(fs_event_no_callback_after_close) {
   uv_loop_t* loop = uv_default_loop();
