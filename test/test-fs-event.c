@@ -538,7 +538,7 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 
   const char* sys_drive = getenv("SystemDrive");
   ASSERT(sys_drive != NULL);
-  char path[] = "\\\\?\\X:\\autoexec.bat";
+  char path[] = "\\\\?\\X:\\bootsect.bak";
   strncpy(path + sizeof("\\\\?\\") - 1, sys_drive, 1);
 
   loop = uv_default_loop();
