@@ -2038,7 +2038,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
     *size = 0;
     err = uv_translate_sys_error(GetLastError());
     goto error;
-  } else if (pipe_prefix_len + addrlen > *size) {
+  } else if (pipe_prefix_len + addrlen >= *size) {
     /* "\\\\.\\pipe" + name */
     *size = pipe_prefix_len + addrlen;
     err = UV_ENOBUFS;
@@ -2062,6 +2062,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
 
   addrlen += pipe_prefix_len;
   *size = addrlen;
+  buffer[addrlen] = '\0';
 
   err = 0;
   goto cleanup;
