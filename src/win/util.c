@@ -210,7 +210,7 @@ int uv_cwd(char* buffer, size_t* size) {
   if (r == 0) {
     return uv_translate_sys_error(GetLastError());
   } else if (r > (int) *size) {
-    *size = r -1;
+    *size = r;
     return UV_ENOBUFS;
   }
 
@@ -1218,7 +1218,7 @@ convert_buffer:
   if (bufsize == 0) {
     return uv_translate_sys_error(GetLastError());
   } else if (bufsize > *size) {
-    *size = bufsize - 1;
+    *size = bufsize;
     return UV_ENOBUFS;
   }
 
@@ -1263,7 +1263,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
   if (bufsize == 0) {
     return uv_translate_sys_error(GetLastError());
   } else if (bufsize > *size) {
-    *size = bufsize - 1;
+    *size = bufsize;
     return UV_ENOBUFS;
   }
 

@@ -265,8 +265,9 @@ API
     `uv_os_homedir()` first checks the `HOME` environment variable using
     :man:`getenv(3)`. If `HOME` is not set, :man:`getpwuid_r(3)` is called. The
     user's home directory is stored in `buffer`. When `uv_os_homedir()` is
-    called, `size` indicates the maximum size of `buffer`. On success or
-    `UV_ENOBUFS` failure, `size` is set to the string length of `buffer`.
+    called, `size` indicates the maximum size of `buffer`. On success `size` is set
+    to the string length of `buffer`. On `UV_ENOBUFS` failure `size` is set to the
+    required length for `buffer`, including the null byte.
 
     .. warning::
         `uv_os_homedir()` is not thread safe.
@@ -281,8 +282,9 @@ API
     If none of these are found, the path `"/tmp"` is used, or, on Android,
     `"/data/local/tmp"` is used. The temp directory is stored in `buffer`. When
     `uv_os_tmpdir()` is called, `size` indicates the maximum size of `buffer`.
-    On success or `UV_ENOBUFS` failure, `size` is set to the string length of
-    `buffer` (which does not include the terminating null).
+    On success `size` is set to the string length of `buffer` (which does not
+    include the terminating null). On `UV_ENOBUFS` failure `size` is set to the
+    required length for `buffer`, including the null byte.
 
     .. warning::
         `uv_os_tmpdir()` is not thread safe.

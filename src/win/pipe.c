@@ -2040,7 +2040,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
     goto error;
   } else if (pipe_prefix_len + addrlen >= *size) {
     /* "\\\\.\\pipe" + name */
-    *size = pipe_prefix_len + addrlen;
+    *size = pipe_prefix_len + addrlen + 1;
     err = UV_ENOBUFS;
     goto error;
   }

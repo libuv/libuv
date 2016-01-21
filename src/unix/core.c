@@ -1036,7 +1036,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
     len = strlen(buf);
 
     if (len >= *size) {
-      *size = len;
+      *size = len + 1;
       return -ENOBUFS;
     }
 
@@ -1091,7 +1091,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
   len = strlen(pw.pw_dir);
 
   if (len >= *size) {
-    *size = len;
+    *size = len + 1;
     uv__free(buf);
     return -ENOBUFS;
   }
@@ -1138,7 +1138,7 @@ return_buffer:
   len = strlen(buf);
 
   if (len >= *size) {
-    *size = len;
+    *size = len + 1;
     return -ENOBUFS;
   }
 
