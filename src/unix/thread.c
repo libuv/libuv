@@ -29,6 +29,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>  /* getrlimit() */
 
+#include <limits.h>
+
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
