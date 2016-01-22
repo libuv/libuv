@@ -334,25 +334,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     if (no_preadv) retry:
 # endif
     {
-      off_t nread;
-      size_t index;
-
-      nread = 0;
-      index = 0;
-      result = 1;
-      do {
-        if (req->bufs[index].len > 0) {
-          result = pread(req->file,
-                         req->bufs[index].base,
-                         req->bufs[index].len,
-                         req->off + nread);
-          if (result > 0)
-            nread += result;
-        }
-        index++;
-      } while (index < req->nbufs && result > 0);
-      if (nread > 0)
-        result = nread;
+      result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
     }
 # if defined(__linux__)
     else {
@@ -740,25 +722,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     if (no_pwritev) retry:
 # endif
     {
-      off_t written;
-      size_t index;
-
-      written = 0;
-      index = 0;
-      r = 0;
-      do {
-        if (req->bufs[index].len > 0) {
-          r = pwrite(req->file,
-                     req->bufs[index].base,
-                     req->bufs[index].len,
-                     req->off + written);
-          if (r > 0)
-            written += r;
-        }
-        index++;
-      } while (index < req->nbufs && r >= 0);
-      if (written > 0)
-        r = written;
+      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
     }
 # if defined(__linux__)
     else {
@@ -1008,6 +972,19 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   return ret;
 }
 
+static size_t uv__fs_buf_offset(uv_buf_t* bufs, size_t size) {
+  size_t offset;
+  /* Figure out which bufs are done */
+  for (offset = 0; size > 0 && bufs[offset].len <= size; ++offset)
+    size -= bufs[offset].len;
+
+  /* Fix a partial read/write */
+  if (size > 0) {
+    bufs[offset].base += size;
+    bufs[offset].len -= size;
+  }
+  return offset;
+}
 
 typedef ssize_t (*uv__fs_buf_iter_processor)(uv_fs_t* req);
 static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) {
@@ -1027,7 +1004,10 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     if (req->nbufs > iovmax)
       req->nbufs = iovmax;
 
-    result = process(req);
+    do
+      result = process(req);
+    while (result < 0 && errno == EINTR);
+
     if (result <= 0) {
       if (total == 0)
         total = result;
@@ -1037,13 +1017,11 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     if (req->off >= 0)
       req->off += result;
 
+    req->nbufs = uv__fs_buf_offset(req->bufs, result);
     req->bufs += req->nbufs;
     nbufs -= req->nbufs;
     total += result;
   }
-
-  if (errno == EINTR && total == -1)
-    return total;
 
   if (bufs != req->bufsml)
     uv__free(bufs);

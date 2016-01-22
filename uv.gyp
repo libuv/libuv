@@ -371,7 +371,6 @@
         'test/test-cwd-and-chdir.c',
         'test/test-default-loop-close.c',
         'test/test-delayed-accept.c',
-        'test/test-eintr-handling.c',
         'test/test-error.c',
         'test/test-embed.c',
         'test/test-emfile.c',
