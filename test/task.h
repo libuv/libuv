@@ -109,7 +109,7 @@ typedef enum {
 #define MAKE_VALGRIND_HAPPY()           \
   do {                                  \
     close_loop(uv_default_loop());      \
-    uv_loop_delete(uv_default_loop());  \
+    uv_loop_close(uv_default_loop());  \
   } while (0)
 
 /* Just sugar for wrapping the main() for a task or helper. */
@@ -227,7 +227,6 @@ static void close_walk_cb(uv_handle_t* handle, void* arg) {
 
 UNUSED static void close_loop(uv_loop_t* loop) {
   uv_walk(loop, close_walk_cb, NULL);
-  uv_run(loop, UV_RUN_DEFAULT);
 }
 
 UNUSED static int can_ipv6(void) {
