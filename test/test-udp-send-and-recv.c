@@ -94,7 +94,9 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
-
+  
+  uv_close((uv_handle_t*) handle, close_cb);
+  
   r = uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb);
   ASSERT(r == 0);
 
