@@ -92,6 +92,7 @@
             'src/win/req.c',
             'src/win/req-inl.h',
             'src/win/signal.c',
+            'src/win/snprintf.c',
             'src/win/stream.c',
             'src/win/stream-inl.h',
             'src/win/tcp.c',
@@ -103,13 +104,6 @@
             'src/win/winapi.h',
             'src/win/winsock.c',
             'src/win/winsock.h',
-          ],
-          'conditions': [
-            ['MSVS_VERSION < "2015"', {
-              'sources': [
-                'src/win/snprintf.c'
-              ]
-            }]
           ],
           'link_settings': {
             'libraries': [
