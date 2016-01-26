@@ -70,7 +70,7 @@ static int uv_relative_path(const WCHAR* filename,
   int filelen = wcslen(filename);
   if (dir[dirlen - 1] == '\\')
     dirlen--;
-  *relpath = uv__malloc((MAX_PATH + 1) * sizeof(WCHAR));
+  *relpath = uv__malloc((filelen - dirlen - 1 + 1) * sizeof(WCHAR));
   if (!*relpath)
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   wcsncpy(*relpath, filename + dirlen + 1, filelen - dirlen - 1);
