@@ -551,7 +551,7 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
     RETURN_SKIP("bootsect.bak doesn't exist in system root.\n");
   ASSERT(r == 0);
 
-  uv_close(&fs_event, NULL);
+  uv_close((uv_handle_t*) &fs_event, NULL);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
