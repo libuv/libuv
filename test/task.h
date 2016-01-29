@@ -109,7 +109,7 @@ typedef enum {
 #define MAKE_VALGRIND_HAPPY()           \
   do {                                  \
     close_loop(uv_default_loop());      \
-    uv_loop_delete(uv_default_loop());  \
+    ASSERT(0 == uv_loop_close(uv_default_loop()));  \
   } while (0)
 
 /* Just sugar for wrapping the main() for a task or helper. */
