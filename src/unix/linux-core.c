@@ -461,7 +461,32 @@ int uv_exepath(char* buffer, size_t* size) {
 
 
 uint64_t uv_get_free_memory(void) {
-  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_AVPHYS_PAGES);
+  char buf[1024];
+  FILE* fp;
+  int64_t free = 0, buffers = 0, cached = 0;
+  uint8_t flags = 0x07;
+  fp = fopen("/proc/meminfo", "r");
+  if (fp == NULL) {
+    return -1;
+  }
+  while(fgets(buf, 1024, fp) != NULL) {
+    if (!strncmp(buf, "MemFree:", strlen("MemFree:"))) {
+      sscanf(buf + strlen("MemFree:"), "%ld", &free);
+      flags &= 0xfe;
+    } else if (!strncmp(buf, "Buffers:", strlen("Buffers:"))) {
+      sscanf(buf + strlen("Buffers:"), "%ld", &buffers);
+      flags &= 0xfd;
+    } else if (!strncmp(buf, "Cached:", strlen("Cached:"))) {
+      sscanf(buf + strlen("Cached:"), "%ld", &cached);
+      flags &= 0xfb;
+    } else {
+      if (!flags) {
+        break;
+      }
+    }
+  }
+  fclose(fp);
+  return  (free + buffers + cached) << 10;
 }
 
 
