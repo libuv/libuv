@@ -189,7 +189,9 @@ extern int snprintf(char*, size_t, const char*, ...);
 # define UNUSED
 #endif
 
-/* Fully close a loop */
+/* 关闭loop需要遍历loop内的所有handle，关闭它们 
+ * 注意使用的是walk函数，需要再启动loop
+ */
 static void close_walk_cb(uv_handle_t* handle, void* arg) {
   if (!uv_is_closing(handle))
     uv_close(handle, NULL);

@@ -25,7 +25,7 @@
 #include "runner.h"
 #include "task.h"
 
-/* Actual benchmarks and helpers are defined in benchmark-list.h */
+/* 实际的东西都在 benchmark-list.h */
 #include "benchmark-list.h"
 
 

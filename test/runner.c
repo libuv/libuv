@@ -413,7 +413,7 @@ int run_test_part(const char* test, const char* part) {
   return 255;
 }
 
-
+//比较两个task
 static int compare_task(const void* va, const void* vb) {
   const task_entry_t* a = va;
   const task_entry_t* b = vb;

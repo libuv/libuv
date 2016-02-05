@@ -33,23 +33,22 @@
 #include "runner.h"
 
 
-/*
- * Define the stuff that MinGW doesn't have
- */
+/* MinGW 没有的东西 */
 #ifndef GetFileSizeEx
   WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile,
                                        PLARGE_INTEGER lpFileSize);
 #endif
 
 
-/* Do platform-specific initialization. */
+/* 平台特定初始化 */
 int platform_init(int argc, char **argv) {
   const char* tap;
 
+  //取得环境变量
   tap = getenv("UV_TAP_OUTPUT");
   tap_output = (tap != NULL && atoi(tap) > 0);
 
-  /* Disable the "application crashed" popup. */
+  /* 禁用 "application crashed" 提示 */
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
       SEM_NOOPENFILEERRORBOX);
 #if !defined(__MINGW32__)
@@ -61,7 +60,7 @@ int platform_init(int argc, char **argv) {
   _setmode(1, _O_BINARY);
   _setmode(2, _O_BINARY);
 
-  /* Disable stdio output buffering. */
+  /* 禁用stdio 输出缓冲 */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
 
