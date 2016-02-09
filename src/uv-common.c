@@ -35,6 +35,13 @@
 # include <net/if.h> /* if_nametoindex */
 #endif
 
+#define __need_IOV_MAX
+#include <limits.h> /* IOV_MAX */
+
+#ifndef IOV_MAX
+#define IOV_MAX	1024
+#endif
+
 
 typedef struct {
   uv_malloc_func local_malloc;
@@ -134,6 +141,23 @@ uv_buf_t uv_buf_init(char* base, unsigned int len) {
   buf.base = base;
   buf.len = len;
   return buf;
+}
+
+int uv_getiovmax(void) {
+#if defined(_SC_IOV_MAX)
+  static int iovmax = -1;
+  if (iovmax == -1) {
+    iovmax = sysconf(_SC_IOV_MAX);
+    /* On some embedded devices (arm-linux-uclibc based ip camera),
+     * sysconf(_SC_IOV_MAX) can not get the correct value. The return
+     * value is -1 and the errno is EINPROGRESS. Degrade the value to 1.
+     */
+    if (iovmax == -1) iovmax = 1;
+  }
+  return iovmax;
+#else
+  return IOV_MAX;
+#endif
 }
 
 
