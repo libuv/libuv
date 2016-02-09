@@ -52,7 +52,7 @@
 # endif
 # include <sys/socket.h>
 # include <net/ethernet.h>
-# include <linux/if_packet.h>
+# include <netpacket/packet.h>
 #endif /* HAVE_IFADDRS_H */
 
 /* Available from 2.6.32 onwards. */
