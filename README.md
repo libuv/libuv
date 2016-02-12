@@ -156,10 +156,15 @@ project tree manually:
 
 ### Unix
 
-Run:
+For Debug builds (recommended) run:
 
     $ ./gyp_uv.py -f make
     $ make -C out
+
+For Release builds run:
+
+    $ ./gyp_uv.py -f make
+    $ BUILDTYPE=Release make -C out
 
 Run `./gyp_uv.py -f make -Dtarget_arch=x32` to build [x32][] binaries.
 
