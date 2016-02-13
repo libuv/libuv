@@ -209,7 +209,7 @@ typedef struct _AFD_POLL_INFO {
 #define UV_MSAFD_PROVIDER_COUNT 3
 
 
-/**
+/*
  * It should be possible to cast uv_buf_t[] to WSABUF[]
  * see http://msdn.microsoft.com/en-us/library/ms741542(v=vs.85).aspx
  */
@@ -309,7 +309,7 @@ typedef struct {
 RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_LOOP_PRIVATE_FIELDS                                                \
-    /* The loop's I/O completion port */                                      \
+  /* The loop's I/O completion port */                                        \
   HANDLE iocp;                                                                \
   /* The current time according to the event loop. in msecs. */               \
   uint64_t time;                                                              \
@@ -321,7 +321,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_handle_t* endgame_handles;                                               \
   /* The head of the timers tree */                                           \
   struct uv_timer_tree_s timers;                                              \
-    /* Lists of active loop (prepare / check / idle) watchers */              \
+  /* Lists of active loop (prepare / check / idle) watchers */                \
   uv_prepare_t* prepare_handles;                                              \
   uv_check_t* check_handles;                                                  \
   uv_idle_t* idle_handles;                                                    \
