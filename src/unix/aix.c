@@ -524,7 +524,7 @@ static int uv__makedir_p(const char *dir) {
     if (*p == '/') {
       *p = 0;
       err = mkdir(tmp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-      if(err != 0)
+      if (err != 0)
         return err;
       *p = '/';
     }
@@ -746,7 +746,7 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
   assert((bytes <= 0) && "uv__ahafs_event - Error reading monitor file");
 
   /* Parse the data */
-  if(bytes > 0)
+  if (bytes > 0)
     rc = uv__parse_data(result_data, &events, handle);
 
   /* For directory changes, the name of the files that triggered the change
@@ -1171,6 +1171,6 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   pc.events = 0;
   pc.cmd = PS_DELETE;
   pc.fd = fd;
-  if(loop->backend_fd >= 0)
+  if (loop->backend_fd >= 0)
     pollset_ctl(loop->backend_fd, &pc, 1);
 }

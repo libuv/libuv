@@ -263,9 +263,9 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 
 #if defined(_AIX)
   struct stat buf;
-  if(fstat(req->file, &buf))
+  if (fstat(req->file, &buf))
     return -1;
-  if(S_ISDIR(buf.st_mode)) {
+  if (S_ISDIR(buf.st_mode)) {
     errno = EISDIR;
     return -1;
   }
