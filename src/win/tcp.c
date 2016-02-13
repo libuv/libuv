@@ -601,7 +601,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   simultaneous_accepts = handle->flags & UV_HANDLE_TCP_SINGLE_ACCEPT ? 1
     : uv_simultaneous_server_accepts;
 
-  if(!handle->tcp.serv.accept_reqs) {
+  if (!handle->tcp.serv.accept_reqs) {
     handle->tcp.serv.accept_reqs = (uv_tcp_accept_t*)
       uv__malloc(uv_simultaneous_server_accepts * sizeof(uv_tcp_accept_t));
     if (!handle->tcp.serv.accept_reqs) {

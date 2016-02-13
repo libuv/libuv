@@ -58,7 +58,7 @@ static int uv__crt_dbg_report_handler(int report_type, char *message, int *ret_v
      * Set ret_val to 1 to trigger a breakpoint.
     */
 
-    if(IsDebuggerPresent())
+    if (IsDebuggerPresent())
       *ret_val = 1;
     else
       *ret_val = 0;

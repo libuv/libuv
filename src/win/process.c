@@ -504,7 +504,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
 
     if (quote_hit && source[i - 1] == L'\\') {
       *(target++) = L'\\';
-    } else if(source[i - 1] == L'"') {
+    } else if (source[i - 1] == L'"') {
       quote_hit = 1;
       *(target++) = L'\\';
     } else {
