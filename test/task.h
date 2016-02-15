@@ -237,7 +237,7 @@ UNUSED static int can_ipv6(void) {
   int i;
 
   if (uv_interface_addresses(&addr, &count))
-    return 0;  /* Get interface_addresses failure. Assume no IPv6 support on failure. */
+    return 0;  /* Get interface_addresses failure. Assume no IPv6 support. */
 
   supported = 0;
   for (i = 0; supported == 0 && i < count; i += 1)
