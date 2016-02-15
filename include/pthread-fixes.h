@@ -35,10 +35,10 @@
 #include <pthread.h>
 
 
-/*Android doesn't provide pthread_barrier_t for now.*/
+/* Android doesn't provide pthread_barrier_t for now. */
 #ifndef PTHREAD_BARRIER_SERIAL_THREAD
 
-/* Anything except 0 will do here.*/
+/* Anything except 0 will do here. */
 #define PTHREAD_BARRIER_SERIAL_THREAD  0x12345
 
 typedef struct {
