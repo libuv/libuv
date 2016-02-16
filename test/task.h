@@ -208,7 +208,11 @@ UNUSED static int can_ipv6(void) {
   int i;
   //获得了一系列的网卡地址
   if (uv_interface_addresses(&addr, &count))
+<<<<<<< HEAD
     return 0;  /* 地址获取不到，所以不支持IPv6 */
+=======
+    return 0;  /* Assume no IPv6 support on failure. */
+>>>>>>> 12548de1b568abae81f823779f4ba721f025c000
 
   supported = 0;
   for (i = 0; supported == 0 && i < count; i += 1)
