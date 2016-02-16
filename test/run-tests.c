@@ -33,7 +33,7 @@
 #include "runner.h"
 #include "task.h"
 
-/* 实际的东西在 test-list.h */
+/* 在 test-list.h中声明了一堆函数和实体 */
 #include "test-list.h"
 
 int ipc_helper(int listen_after_write);
@@ -41,19 +41,20 @@ int ipc_helper_tcp_connection(void);
 int ipc_send_recv_helper(void);
 int ipc_helper_bind_twice(void);
 int stdio_over_pipes_helper(void);
-//int spawn_stdin_stdout(void);
+int spawn_stdin_stdout(void);
 
 static int maybe_run_test(int argc, char **argv);
 
 
 int main(int argc, char **argv) {
-  //平台特定初始化
+  //平台特定初始化 在runner win
   if (platform_init(argc, argv))
     return EXIT_FAILURE;
 
+  //设置参数
   argv = uv_setup_args(argc, argv);
 
-  //根据参数执行相应功能
+  //根据参数个数执行相应功能
   switch (argc) {
   case 1: return run_tests(0);
   case 2: return maybe_run_test(argc, argv);

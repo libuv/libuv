@@ -30,7 +30,7 @@
 #define MAX_PROCESSES 8
 
 
-/* 保存所有tests */
+/* 保存所有tests的结构 */
 typedef struct {
   char *task_name;
   char *process_name;
@@ -53,7 +53,7 @@ typedef struct {
     { 0, 0, 0, 0, 0, 0 }                               \
   };
 
-//sugar
+//sugar按照上述的结构体构建
 #define TEST_DECLARE(name)                          \
   int run_test_##name(void);
 
@@ -148,10 +148,10 @@ int process_reap(process_info_t *p);
 /* 终结进程后的清理 */
 void process_cleanup(process_info_t *p);
 
-/* Move the console cursor one line up and back to the first column. */
+/* 光标移动到上一行开头 */
 void rewind_cursor(void);
 
-/* trigger output as tap */
+/* 标识输出的 */
 extern int tap_output;
 
 #endif /* RUNNER_H_ */

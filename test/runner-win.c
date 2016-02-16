@@ -169,8 +169,8 @@ error:
 }
 
 
-/* Timeout is is msecs. Set timeout < 0 to never time out. */
-/* Returns 0 when all processes are terminated, -2 on timeout. */
+/* 毫秒计时，timeout < 0 不会退出 */
+/* 返回0说明进程都结束了，返回 -2 说明timeout. */
 int process_wait(process_info_t *vec, int n, int timeout) {
   int i;
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
@@ -203,7 +203,7 @@ int process_wait(process_info_t *vec, int n, int timeout) {
   return -1;
 }
 
-
+//获得输出流的大小
 long int process_output_size(process_info_t *p) {
   LARGE_INTEGER size;
   if (!GetFileSizeEx(p->stdio_out, &size))
@@ -211,7 +211,7 @@ long int process_output_size(process_info_t *p) {
   return (long int)size.QuadPart;
 }
 
-
+//复制输出到文件fd
 int process_copy_output(process_info_t *p, int fd) {
   DWORD read;
   char buf[1024];
@@ -254,7 +254,7 @@ int process_copy_output(process_info_t *p, int fd) {
   return 0;
 }
 
-
+//复制输出的最后一行到buffer
 int process_read_last_line(process_info_t *p,
                            char * buffer,
                            size_t buffer_len) {
@@ -294,19 +294,19 @@ int process_read_last_line(process_info_t *p,
   return 0;
 }
 
-
+//获得进程名称
 char* process_get_name(process_info_t *p) {
   return p->name;
 }
 
-
+//关闭进程
 int process_terminate(process_info_t *p) {
   if (!TerminateProcess(p->process, 1))
     return -1;
   return 0;
 }
 
-
+//获得进程的退出码
 int process_reap(process_info_t *p) {
   DWORD exitCode;
   if (!GetExitCodeProcess(p->process, &exitCode))
@@ -314,7 +314,7 @@ int process_reap(process_info_t *p) {
   return (int)exitCode;
 }
 
-
+//清理进程资源
 void process_cleanup(process_info_t *p) {
   CloseHandle(p->process);
   CloseHandle(p->stdio_in);
@@ -364,7 +364,7 @@ void rewind_cursor() {
 }
 
 
-/* Pause the calling thread for a number of milliseconds. */
+/* 暂停调用的线程 */
 void uv_sleep(int msec) {
   Sleep(msec);
 }

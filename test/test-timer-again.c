@@ -53,13 +53,14 @@ static void repeat_1_cb(uv_timer_t* handle) {
 
   repeat_1_cb_called++;
 
-  r = uv_timer_again(&repeat_2);
+  r = uv_timer_again(&repeat_2);//重启repeat 2
   ASSERT(r == 0);
 
+  //一直重启repeat 2所以repeat 2不能获得回调
+  //repeat 1获得10次回调后 关闭了，所以repeat 2 可以获得回调了
   if (repeat_1_cb_called == 10) {
     uv_close((uv_handle_t*)handle, close_cb);
-    /* We're not calling uv_timer_again on repeat_2 any more, so after this */
-    /* timer_2_cb is expected. */
+    /* 不会再重启repeat 2了所以 repeat 2可以获得回调了 */
     repeat_2_cb_allowed = 1;
     return;
   }
@@ -87,7 +88,7 @@ static void repeat_2_cb(uv_timer_t* handle) {
   fflush(stderr);
   ASSERT(uv_timer_get_repeat(&repeat_2) == 100);
 
-  /* This shouldn't take effect immediately. */
+  /* 下次循环才会生效 */
   uv_timer_set_repeat(&repeat_2, 0);
 }
 
@@ -98,28 +99,25 @@ TEST_IMPL(timer_again) {
   start_time = uv_now(uv_default_loop());
   ASSERT(0 < start_time);
 
-  /* Verify that it is not possible to uv_timer_again a never-started timer. */
+  /* 验证是否可重启一个没有启动的loop：结果是不能重启 */
   r = uv_timer_init(uv_default_loop(), &dummy);
   ASSERT(r == 0);
   r = uv_timer_again(&dummy);
   ASSERT(r == UV_EINVAL);
   uv_unref((uv_handle_t*)&dummy);
 
-  /* Start timer repeat_1. */
+  /* 启动repeat 1 */
   r = uv_timer_init(uv_default_loop(), &repeat_1);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat_1, repeat_1_cb, 50, 0);
   ASSERT(r == 0);
   ASSERT(uv_timer_get_repeat(&repeat_1) == 0);
 
-  /* Actually make repeat_1 repeating. */
+  /* 设置repeat 1的repeat值 */
   uv_timer_set_repeat(&repeat_1, 50);
   ASSERT(uv_timer_get_repeat(&repeat_1) == 50);
 
-  /*
-   * Start another repeating timer. It'll be again()ed by the repeat_1 so
-   * it should not time out until repeat_1 stops.
-   */
+  /* 设置repeat 2，会在repeat 2的回调中重启 */
   r = uv_timer_init(uv_default_loop(), &repeat_2);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat_2, repeat_2_cb, 100, 100);

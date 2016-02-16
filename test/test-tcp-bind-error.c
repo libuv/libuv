@@ -33,7 +33,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//绑定到了同一个addr，bind不出错 listen出错了
 TEST_IMPL(tcp_bind_error_addrinuse) {
   struct sockaddr_in addr;
   uv_tcp_t server1, server2;
@@ -66,7 +66,7 @@ TEST_IMPL(tcp_bind_error_addrinuse) {
   return 0;
 }
 
-
+//绑定127段地址
 TEST_IMPL(tcp_bind_error_addrnotavail_1) {
   struct sockaddr_in addr;
   uv_tcp_t server;
@@ -77,7 +77,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_1) {
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
 
-  /* It seems that Linux is broken here - bind succeeds. */
+  /* Linux 下可以绑定成功 */
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0 || r == UV_EADDRNOTAVAIL);
 
@@ -91,7 +91,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_1) {
   return 0;
 }
 
-
+//绑定4.4.4.4
 TEST_IMPL(tcp_bind_error_addrnotavail_2) {
   struct sockaddr_in addr;
   uv_tcp_t server;
@@ -114,7 +114,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_2) {
   return 0;
 }
 
-
+//绑定乱码地址
 TEST_IMPL(tcp_bind_error_fault) {
   char garbage[] =
       "blah blah blah blah blah blah blah blah blah blah blah blah";
@@ -139,8 +139,8 @@ TEST_IMPL(tcp_bind_error_fault) {
   return 0;
 }
 
-/* Notes: On Linux uv_bind(server, NULL) will segfault the program.  */
-
+/* 注意：在Linux 下uv_bind(server, NULL)导致段错误 */
+//绑定到同一个IP地址不同端口
 TEST_IMPL(tcp_bind_error_inval) {
   struct sockaddr_in addr1;
   struct sockaddr_in addr2;
@@ -167,7 +167,7 @@ TEST_IMPL(tcp_bind_error_inval) {
   return 0;
 }
 
-
+//绑定本地端口 成功
 TEST_IMPL(tcp_bind_localhost_ok) {
   struct sockaddr_in addr;
   uv_tcp_t server;
@@ -184,7 +184,7 @@ TEST_IMPL(tcp_bind_localhost_ok) {
   return 0;
 }
 
-
+//使用了IPv4地址作为IPv6地址
 TEST_IMPL(tcp_bind_invalid_flags) {
   struct sockaddr_in addr;
   uv_tcp_t server;
@@ -201,7 +201,7 @@ TEST_IMPL(tcp_bind_invalid_flags) {
   return 0;
 }
 
-
+//不绑定直接listen 会自动绑定
 TEST_IMPL(tcp_listen_without_bind) {
   int r;
   uv_tcp_t server;

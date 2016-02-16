@@ -60,7 +60,7 @@ static uv_os_sock_t create_tcp_socket(void) {
 
 #ifndef _WIN32
   {
-    /* Allow reuse of the port. */
+    /* 允许重用 */
     int yes = 1;
     int r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     ASSERT(r == 0);
@@ -133,7 +133,7 @@ static void write_cb(uv_write_t* req, int status) {
   write_cb_called++;
 }
 
-
+//连接后 写 shutdown 开始读（shutdown会等待写请求完成）
 static void connect_cb(uv_connect_t* req, int status) {
   uv_buf_t buf = uv_buf_init("PING", 4);
   uv_stream_t* stream;
@@ -209,7 +209,7 @@ TEST_IMPL(tcp_open_twice) {
   ASSERT(r == 0);
 
   r = uv_tcp_open(&client, sock2);
-  ASSERT(r == UV_EBUSY);
+  ASSERT(r == UV_EBUSY);//不能打开两次
   close_socket(sock2);
 
   uv_close((uv_handle_t*) &client, NULL);

@@ -30,7 +30,7 @@
 
 static uv_tcp_t server;
 static uv_tcp_t client;
-static uv_tcp_t incoming;
+static uv_tcp_t incoming;//用于服务端接收时使用
 static int connect_cb_called;
 static int close_cb_called;
 static int connection_cb_called;
@@ -42,7 +42,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//写 关闭
 static void connect_cb(uv_connect_t* req, int status) {
   int r;
   uv_buf_t buf;
@@ -57,12 +57,12 @@ static void connect_cb(uv_connect_t* req, int status) {
       bytes_written += r;
       break;
     }
-  } while (1);
+  } while (1);//没发成功则一直尝试
 
   do {
     buf = uv_buf_init("", 0);
     r = uv_try_write((uv_stream_t*) &client, &buf, 1);
-  } while (r != 0);
+  } while (r != 0);//发空包
   uv_close((uv_handle_t*) &client, close_cb);
 }
 
@@ -74,7 +74,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->len = sizeof(base);
 }
 
-
+//读到不能读了就关闭
 static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   if (nread < 0) {
     uv_close((uv_handle_t*) tcp, close_cb);

@@ -1,24 +1,3 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to
- * deal in the Software without restriction, including without limitation the
- * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
- * sell copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
- */
-
 #include "uv.h"
 #include "task.h"
 
@@ -57,7 +36,7 @@ static void alloc_cb(uv_handle_t* handle,
   buf->len = sizeof(slab);
 }
 
-
+//关闭timer ，写tcp 然后shutdown
 static void timer_cb(uv_timer_t* handle) {
   uv_buf_t buf;
   int r;
@@ -76,7 +55,7 @@ static void timer_cb(uv_timer_t* handle) {
 static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
 }
 
-
+//连接后开始读取
 static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
@@ -93,7 +72,7 @@ static void write_cb(uv_write_t* req, int status) {
   write_cb_called++;
 }
 
-
+//关闭
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT(status == 0);
   shutdown_cb_called++;

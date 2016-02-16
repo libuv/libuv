@@ -45,7 +45,7 @@ static uv_connect_t connect_req;
 static uv_shutdown_t shutdown_req;
 static uv_write_t write_reqs[WRITES];
 
-
+//动态分配了空间
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->base = malloc(size);
   buf->len = size;
@@ -66,17 +66,16 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 
   tcp = (uv_tcp_t*)(req->handle);
 
-  /* The write buffer should be empty by now. */
+  /* 都写完了 */
   ASSERT(tcp->write_queue_size == 0);
 
-  /* Now we wait for the EOF */
   shutdown_cb_called++;
 
-  /* We should have had all the writes called already. */
+  /* 所有的写请求都执行完了 */
   ASSERT(write_cb_called == WRITES);
 }
 
-
+//一直读到EOF 关闭
 static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(tcp != NULL);
 
@@ -105,7 +104,7 @@ static void write_cb(uv_write_t* req, int status) {
   write_cb_called++;
 }
 
-
+//连接后写 总共三次 每次4096个buf 每个buf 10kb
 static void connect_cb(uv_connect_t* req, int status) {
   uv_buf_t send_bufs[CHUNKS_PER_WRITE];
   uv_stream_t* stream;
@@ -117,7 +116,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   stream = req->handle;
   connect_cb_called++;
 
-  /* Write a lot of data */
+  /* 写很多数据 */
   for (i = 0; i < WRITES; i++) {
     uv_write_t* write_req = write_reqs + i;
 
@@ -130,11 +129,11 @@ static void connect_cb(uv_connect_t* req, int status) {
     ASSERT(r == 0);
   }
 
-  /* Shutdown on drain. */
+  /* 写完了shutdown */
   r = uv_shutdown(&shutdown_req, stream, shutdown_cb);
   ASSERT(r == 0);
 
-  /* Start reading */
+  /* 开始读 */
   r = uv_read_start(stream, alloc_cb, read_cb);
   ASSERT(r == 0);
 }

@@ -61,13 +61,13 @@ TEST_IMPL(walk_handles) {
   r = uv_timer_start(&timer, timer_cb, 1, 0);
   ASSERT(r == 0);
 
-  /* Start event loop, expect to see the timer handle in walk_cb. */
+  /* 启动loop，在timer cb中调用walk，在walk cb中设置seen timer handle */
   ASSERT(seen_timer_handle == 0);
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(r == 0);
   ASSERT(seen_timer_handle == 1);
 
-  /* Loop is finished, walk_cb should not see our timer handle. */
+  /* loop结束了所以不会再执行 */
   seen_timer_handle = 0;
   uv_walk(loop, walk_cb, magic_cookie);
   ASSERT(seen_timer_handle == 0);

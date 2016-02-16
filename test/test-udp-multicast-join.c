@@ -54,7 +54,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//发送后关闭
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
@@ -65,7 +65,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
   uv_close((uv_handle_t*) req->handle, close_cb);
 }
 
-
+//收到后关闭
 static void cl_recv_cb(uv_udp_t* handle,
                        ssize_t nread,
                        const uv_buf_t* buf,

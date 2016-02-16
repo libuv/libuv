@@ -41,7 +41,7 @@ static void connect_cb(uv_connect_t *req, int status) {
   ASSERT(status == UV_ECONNREFUSED);
 }
 
-
+//没有服务端的 连接失败 写失败
 TEST_IMPL(tcp_write_after_connect) {
   struct sockaddr_in sa;
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &sa));

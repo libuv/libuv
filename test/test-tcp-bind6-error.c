@@ -33,7 +33,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//绑定到同一个addr 绑定不出错，listen出错
 TEST_IMPL(tcp_bind6_error_addrinuse) {
   struct sockaddr_in6 addr;
   uv_tcp_t server1, server2;
@@ -70,7 +70,7 @@ TEST_IMPL(tcp_bind6_error_addrinuse) {
   return 0;
 }
 
-
+//绑定到4:4:4:4:4:4:4:4
 TEST_IMPL(tcp_bind6_error_addrnotavail) {
   struct sockaddr_in6 addr;
   uv_tcp_t server;
@@ -96,7 +96,7 @@ TEST_IMPL(tcp_bind6_error_addrnotavail) {
   return 0;
 }
 
-
+//绑定到乱码地址
 TEST_IMPL(tcp_bind6_error_fault) {
   char garbage[] =
       "blah blah blah blah blah blah blah blah blah blah blah blah";
@@ -125,7 +125,7 @@ TEST_IMPL(tcp_bind6_error_fault) {
 }
 
 /* Notes: On Linux uv_bind6(server, NULL) will segfault the program.  */
-
+//绑定到同一IP不同端口
 TEST_IMPL(tcp_bind6_error_inval) {
   struct sockaddr_in6 addr1;
   struct sockaddr_in6 addr2;
@@ -155,7 +155,7 @@ TEST_IMPL(tcp_bind6_error_inval) {
   return 0;
 }
 
-
+//绑定到本地地址 成功
 TEST_IMPL(tcp_bind6_localhost_ok) {
   struct sockaddr_in6 addr;
   uv_tcp_t server;

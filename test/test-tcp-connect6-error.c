@@ -40,7 +40,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//连接一个乱码地址
 TEST_IMPL(tcp_connect6_error_fault) {
   const char garbage[] =
       "blah blah blah blah blah blah blah blah blah blah blah blah";
@@ -57,7 +57,7 @@ TEST_IMPL(tcp_connect6_error_fault) {
                      &server,
                      (const struct sockaddr*) garbage_addr,
                      connect_cb);
-  ASSERT(r == UV_EINVAL);
+  ASSERT(r == UV_EINVAL);//失败
 
   uv_close((uv_handle_t*)&server, close_cb);
 

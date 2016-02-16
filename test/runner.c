@@ -30,7 +30,7 @@ char executable_path[sizeof(executable_path)];
 
 int tap_output = 0;
 
-
+//进程日志输出
 static void log_progress(int total,
                          int passed,
                          int failed,
@@ -92,6 +92,7 @@ const char* fmt(double d) {
 
 
 int run_tests(int benchmark_output) {
+	//一般是runtests（0）
   int total;
   int passed;
   int failed;
@@ -101,20 +102,31 @@ int run_tests(int benchmark_output) {
   int test_result;
   task_entry_t* task;
 
-  /* Count the number of tests. */
-  total = 0;
+  /* 遍历task 计数 这个是在testlist里填充的
+  typedef struct {
+  char *task_name; //任务名称
+  char *process_name; //进程名称
+  int (*main)(void); //主函数
+  int is_helper; //是否为helper
+  int show_output; 
+  int timeout;
+  } task_entry_t, bench_entry_t;
+  */
+
+  total = 0;//总数
   for (task = TASKS; task->main; task++) {
     if (!task->is_helper) {
       total++;
     }
   }
 
+
   if (tap_output) {
     fprintf(stderr, "1..%d\n", total);
     fflush(stderr);
   }
 
-  /* Run all tests. */
+  /* 运行所有测试 */
   passed = 0;
   failed = 0;
   todos = 0;
@@ -132,7 +144,7 @@ int run_tests(int benchmark_output) {
       log_progress(total, passed, failed, todos, skipped, task->task_name);
     }
 
-    test_result = run_test(task->task_name, benchmark_output, current);
+    test_result = run_test(task->task_name, benchmark_output, current);//运行
     switch (test_result) {
     case TEST_OK: passed++; break;
     case TEST_TODO: todos++; break;
@@ -152,7 +164,7 @@ int run_tests(int benchmark_output) {
   return failed;
 }
 
-
+//tap 日志输出
 void log_tap_result(int test_count,
                     const char* test,
                     int status,
@@ -161,6 +173,7 @@ void log_tap_result(int test_count,
   const char* directive;
   char reason[1024];
 
+  //根据状态设置相应的日志
   switch (status) {
   case TEST_OK:
     result = "ok";
@@ -214,24 +227,24 @@ int run_test(const char* test,
   remove(TEST_PIPENAME_3);
 #endif
 
-  /* If it's a helper the user asks for, start it directly. */
+  /* 如果用户调用的helper直接启动 */
   for (task = TASKS; task->main; task++) {
     if (task->is_helper && strcmp(test, task->process_name) == 0) {
       return task->main();
     }
   }
 
-  /* Start the helpers first. */
+  /* 先启动helper */
   for (task = TASKS; task->main; task++) {
     if (strcmp(test, task->task_name) != 0) {
       continue;
     }
 
-    /* Skip the test itself. */
+    /* 先跳过测试 */
     if (!task->is_helper) {
       continue;
     }
-
+	//开进程
     if (process_start(task->task_name,
                       task->process_name,
                       &processes[process_count],
@@ -249,7 +262,7 @@ int run_test(const char* test,
   /* Give the helpers time to settle. Race-y, fix this. */
   uv_sleep(250);
 
-  /* Now start the test itself. */
+  /* 现在启动测试 */
   for (task = TASKS; task->main; task++) {
     if (strcmp(test, task->task_name) != 0) {
       continue;
@@ -384,7 +397,7 @@ out:
     }
   }
 
-  /* Clean up all process handles. */
+  /* 清理进程 handles. */
   for (i = 0; i < process_count; i++) {
     process_cleanup(&processes[i]);
   }
@@ -393,9 +406,7 @@ out:
 }
 
 
-/* Returns the status code of the task part
- * or 255 if no matching task was not found.
- */
+/* 返回任务状态，255说明没有找到 */
 int run_test_part(const char* test, const char* part) {
   task_entry_t* task;
   int r;
@@ -413,14 +424,14 @@ int run_test_part(const char* test, const char* part) {
   return 255;
 }
 
-//比较两个task
+//比较两个task 即比较两个test的名称
 static int compare_task(const void* va, const void* vb) {
   const task_entry_t* a = va;
   const task_entry_t* b = vb;
   return strcmp(a->task_name, b->task_name);
 }
 
-
+//找到对应task 的helper（可能有多个对应的helper）
 static int find_helpers(const task_entry_t* task,
                         const task_entry_t** helpers) {
   const task_entry_t* helper;
@@ -436,7 +447,7 @@ static int find_helpers(const task_entry_t* task,
   return n_helpers;
 }
 
-
+//打印test
 void print_tests(FILE* stream) {
   const task_entry_t* helpers[1024];
   const task_entry_t* task;
@@ -444,9 +455,11 @@ void print_tests(FILE* stream) {
   int n_tasks;
   int i;
 
+  //将task排序 计数 
   for (n_tasks = 0, task = TASKS; task->main; n_tasks++, task++);
   qsort(TASKS, n_tasks, sizeof(TASKS[0]), compare_task);
 
+  //打印task helper（如果有的话）
   for (task = TASKS; task->main; task++) {
     if (task->is_helper) {
       continue;

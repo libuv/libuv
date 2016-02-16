@@ -30,14 +30,14 @@ static uv_tcp_t peer_handle;
 static uv_write_t write_req;
 static uv_connect_t connect_req;
 
-static unsigned long ticks; /* event loop ticks */
+static unsigned long ticks; /* loop 计数 */
 
 
 static void check_cb(uv_check_t* handle) {
   ticks++;
 }
 
-
+//全部关闭
 static void timer_cb(uv_timer_t* handle) {
   uv_close((uv_handle_t*) &check_handle, NULL);
   uv_close((uv_handle_t*) &timer_handle, NULL);
@@ -70,7 +70,7 @@ static void write_cb(uv_write_t* req, int status) {
   ASSERT(0 == status);
 }
 
-
+//接收连接 开始读取 写
 static void connection_cb(uv_stream_t* handle, int status) {
   uv_buf_t buf;
 
@@ -83,7 +83,7 @@ static void connection_cb(uv_stream_t* handle, int status) {
                        &buf, 1, write_cb));
 }
 
-
+//客户端就没有开启读取 服务端就发送
 TEST_IMPL(tcp_unexpected_read) {
   struct sockaddr_in addr;
   uv_loop_t* loop;
@@ -106,10 +106,7 @@ TEST_IMPL(tcp_unexpected_read) {
                              connect_cb));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
-  /* This is somewhat inexact but the idea is that the event loop should not
-   * start busy looping when the server sends a message and the client isn't
-   * reading.
-   */
+  /* 没有启动读取 被一直发则会死循环 */
   ASSERT(ticks <= 20);
 
   MAKE_VALGRIND_HAPPY();

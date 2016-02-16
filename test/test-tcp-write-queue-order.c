@@ -46,12 +46,14 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
+//全部关闭
 void timer_cb(uv_timer_t* handle) {
   uv_close((uv_handle_t*) &client, close_cb);
   uv_close((uv_handle_t*) &server, close_cb);
   uv_close((uv_handle_t*) &incoming, close_cb);
 }
 
+//没有timer回调时则发送成功的
 void write_cb(uv_write_t* req, int status) {
   if (status == 0)
     write_callbacks++;
@@ -60,6 +62,7 @@ void write_cb(uv_write_t* req, int status) {
   else
     write_error_callbacks++;
 }
+
 
 static void connect_cb(uv_connect_t* req, int status) {
   static char base[1024];
@@ -82,7 +85,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   }
 }
 
-
+//接收
 static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT(status == 0);
 

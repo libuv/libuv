@@ -56,7 +56,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//socket关闭了这边的写失败了
 static void write_cb(uv_write_t* req, int status) {
   ASSERT(req != NULL);
 
@@ -67,7 +67,7 @@ static void write_cb(uv_write_t* req, int status) {
   uv_close((uv_handle_t*)(req->handle), close_cb);
 }
 
-
+//关闭了socket后写
 static void connect_cb(uv_connect_t* req, int status) {
   uv_buf_t buf;
   uv_stream_t* stream;
@@ -79,7 +79,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   stream = req->handle;
   connect_cb_called++;
 
-  /* close the socket, the hard way */
+  /* 关闭了socket所以tcp也不能用了 */
   close_socket((uv_tcp_t*)stream);
 
   buf = uv_buf_init("hello\n", 6);

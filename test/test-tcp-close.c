@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+  /* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -37,7 +37,7 @@ static void connect_cb(uv_connect_t* req, int status);
 static void write_cb(uv_write_t* req, int status);
 static void close_cb(uv_handle_t* handle);
 
-
+//连接后 写 关闭
 static void connect_cb(uv_connect_t* conn_req, int status) {
   uv_write_t* req;
   uv_buf_t buf;
@@ -57,7 +57,7 @@ static void connect_cb(uv_connect_t* conn_req, int status) {
 
 
 static void write_cb(uv_write_t* req, int status) {
-  /* write callbacks should run before the close callback */
+  /* 关闭前会调用写请求 */
   ASSERT(close_cb_called == 0);
   ASSERT(req->handle == (uv_stream_t*)&tcp_handle);
   write_cb_called++;

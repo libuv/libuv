@@ -117,7 +117,7 @@ TEST_IMPL(udp_send_unreachable) {
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
   ASSERT(r == 0);
 
-  /* client sends "PING", then "PANG" */
+  //绑定了addr2并启用了接收函数，但是发送时却发给了addr
   buf = uv_buf_init("PING", 4);
 
   r = uv_udp_send(&req1,

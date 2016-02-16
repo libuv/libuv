@@ -42,7 +42,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//Á¬½ÓÂÒÂëµØÖ·
 TEST_IMPL(tcp_connect_error_fault) {
   const char garbage[] =
       "blah blah blah blah blah blah blah blah blah blah blah blah";

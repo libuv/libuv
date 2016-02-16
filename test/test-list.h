@@ -19,6 +19,7 @@
  * IN THE SOFTWARE.
  */
 
+//єЇКэ
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (close_order)
@@ -347,6 +348,7 @@ HELPER_DECLARE (pipe_echo_server)
 
 TEST_DECLARE   (queue_foreach_delete)
 
+//КµМе
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -746,4 +748,5 @@ TASK_LIST_START
   TEST_ENTRY  (fail_always)
   TEST_ENTRY  (pass_always)
 #endif
+
 TASK_LIST_END

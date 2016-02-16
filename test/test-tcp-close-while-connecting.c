@@ -35,21 +35,21 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//在timer1里关闭了tcp 所以还没连接到就取消了
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(status == UV_ECANCELED);
   uv_timer_stop(&timer2_handle);
   connect_cb_called++;
 }
 
-
+//timer1回调关闭tcp和timer1
 static void timer1_cb(uv_timer_t* handle) {
   uv_close((uv_handle_t*)handle, close_cb);
   uv_close((uv_handle_t*)&tcp_handle, close_cb);
   timer1_cb_called++;
 }
 
-
+//在timer2执行之前于connect的回调中停止了timer2
 static void timer2_cb(uv_timer_t* handle) {
   ASSERT(0 && "should not be called");
 }

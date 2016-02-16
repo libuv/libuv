@@ -117,7 +117,7 @@ TEST_IMPL(udp_send_immediate) {
   r = uv_udp_init(uv_default_loop(), &client);
   ASSERT(r == 0);
 
-  /* client sends "PING", then "PANG" */
+  /* ¿Í»§¶Ë·¢ËÍ "PING", "PANG" */
   buf = uv_buf_init("PING", 4);
 
   r = uv_udp_send(&req1,

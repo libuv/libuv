@@ -36,14 +36,14 @@ static void connect_cb(uv_connect_t* req, int status);
 static void timer_cb(uv_timer_t* handle);
 static void close_cb(uv_handle_t* handle);
 
-
+//正在连接的呢就在timer中把tcp关闭了
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(req == &connect_req);
   ASSERT(status == UV_ECANCELED);
   connect_cb_called++;
 }
 
-
+//关闭了timer和tcp
 static void timer_cb(uv_timer_t* handle) {
   ASSERT(handle == &timer);
   uv_close((uv_handle_t*)&conn, close_cb);
@@ -57,9 +57,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-/* Verify that connecting to an unreachable address or port doesn't hang
- * the event loop.
- */
+/* 连接一个不可到达地址 */
 TEST_IMPL(tcp_connect_timeout) {
   struct sockaddr_in addr;
   int r;

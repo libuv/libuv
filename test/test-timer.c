@@ -43,7 +43,7 @@ static void once_close_cb(uv_handle_t* handle) {
   once_close_cb_called++;
 }
 
-
+//调用1次就关闭
 static void once_cb(uv_timer_t* handle) {
   printf("ONCE_CB %d\n", once_cb_called);
 
@@ -67,7 +67,7 @@ static void repeat_close_cb(uv_handle_t* handle) {
   repeat_close_cb_called++;
 }
 
-
+//调用了5次repeat则关闭
 static void repeat_cb(uv_timer_t* handle) {
   printf("REPEAT_CB\n");
 
@@ -97,7 +97,7 @@ TEST_IMPL(timer) {
   start_time = uv_now(uv_default_loop());
   ASSERT(0 < start_time);
 
-  /* Let 10 timers time out in 500 ms total. */
+  /* 总共是500ms */
   for (i = 0; i < ARRAY_SIZE(once_timers); i++) {
     once = once_timers + i;
     r = uv_timer_init(uv_default_loop(), once);
@@ -106,13 +106,13 @@ TEST_IMPL(timer) {
     ASSERT(r == 0);
   }
 
-  /* The 11th timer is a repeating timer that runs 4 times */
+  /* repeat会执行5次 */
   r = uv_timer_init(uv_default_loop(), &repeat);
   ASSERT(r == 0);
   r = uv_timer_start(&repeat, repeat_cb, 100, 100);
   ASSERT(r == 0);
 
-  /* The 12th timer should not do anything. */
+  /* 这个timer刚启动就停止了所以不会执行 */
   r = uv_timer_init(uv_default_loop(), &never);
   ASSERT(r == 0);
   r = uv_timer_start(&never, never_cb, 100, 100);
@@ -142,7 +142,7 @@ TEST_IMPL(timer_start_twice) {
 
   r = uv_timer_init(uv_default_loop(), &once);
   ASSERT(r == 0);
-  r = uv_timer_start(&once, never_cb, 86400 * 1000, 0);
+  r = uv_timer_start(&once, never_cb, 86400 * 1000, 0);//还没来得及运行就被关闭了
   ASSERT(r == 0);
   r = uv_timer_start(&once, once_cb, 10, 0);
   ASSERT(r == 0);
@@ -161,7 +161,7 @@ TEST_IMPL(timer_init) {
 
   ASSERT(0 == uv_timer_init(uv_default_loop(), &handle));
   ASSERT(0 == uv_timer_get_repeat(&handle));
-  ASSERT(0 == uv_is_active((uv_handle_t*) &handle));
+  ASSERT(0 == uv_is_active((uv_handle_t*) &handle));//没启动
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -189,19 +189,19 @@ TEST_IMPL(timer_order) {
   ASSERT(0 == uv_timer_init(uv_default_loop(), &handle_a));
   ASSERT(0 == uv_timer_init(uv_default_loop(), &handle_b));
 
-  /* Test for starting handle_a then handle_b */
+  /* 先handle_a 再 handle_b */
   handle_a.data = &first;
   ASSERT(0 == uv_timer_start(&handle_a, order_cb_a, 0, 0));
   handle_b.data = &second;
   ASSERT(0 == uv_timer_start(&handle_b, order_cb_b, 0, 0));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT(order_cb_called == 2);
+  ASSERT(order_cb_called == 2);//只是执行了两次
 
   ASSERT(0 == uv_timer_stop(&handle_a));
   ASSERT(0 == uv_timer_stop(&handle_b));
 
-  /* Test for starting handle_b then handle_a */
+  /* 再测试一遍 */
   order_cb_called = 0;
   handle_b.data = &first;
   ASSERT(0 == uv_timer_start(&handle_b, order_cb_b, 0, 0));

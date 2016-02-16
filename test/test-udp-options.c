@@ -38,7 +38,7 @@ static int udp_options_test(const struct sockaddr* addr) {
   r = uv_udp_init(loop, &h);
   ASSERT(r == 0);
 
-  uv_unref((uv_handle_t*)&h); /* don't keep the loop alive */
+  uv_unref((uv_handle_t*)&h); /* 取消该函数内的udp引用 */
 
   r = uv_udp_bind(&h, addr, 0);
   ASSERT(r == 0);
@@ -49,12 +49,13 @@ static int udp_options_test(const struct sockaddr* addr) {
   r |= uv_udp_set_broadcast(&h, 0);
   ASSERT(r == 0);
 
-  /* values 1-255 should work */
+  /* 1-255的ttl可以设置 */
   for (i = 1; i <= 255; i++) {
     r = uv_udp_set_ttl(&h, i);
     ASSERT(r == 0);
   }
 
+  //设置非法的ttl
   for (i = 0; i < (int) ARRAY_SIZE(invalid_ttls); i++) {
     r = uv_udp_set_ttl(&h, invalid_ttls[i]);
     ASSERT(r == UV_EINVAL);
@@ -66,16 +67,16 @@ static int udp_options_test(const struct sockaddr* addr) {
   r |= uv_udp_set_multicast_loop(&h, 0);
   ASSERT(r == 0);
 
-  /* values 0-255 should work */
+  /* 0-255 的多播ttl可以设置 */
   for (i = 0; i <= 255; i++) {
     r = uv_udp_set_multicast_ttl(&h, i);
     ASSERT(r == 0);
   }
 
-  /* anything >255 should fail */
+  /* >255 的多播ttl非法 */
   r = uv_udp_set_multicast_ttl(&h, 256);
   ASSERT(r == UV_EINVAL);
-  /* don't test ttl=-1, it's a valid value on some platforms */
+  /* ttl=-1在一些平台是合法的 */
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(r == 0);

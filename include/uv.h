@@ -28,15 +28,15 @@ extern "C" {
 #endif
 
 #ifdef _WIN32
-  /* Windows - set up dll import/export decorators. */
+  /* Windows - 设置dll导入导出 */
 # if defined(BUILDING_UV_SHARED)
-    /* Building shared library. */
+    /* 生成共享库 */
 #   define UV_EXTERN __declspec(dllexport)
 # elif defined(USING_UV_SHARED)
-    /* Using shared library. */
+    /* 共享库 */
 #   define UV_EXTERN __declspec(dllimport)
 # else
-    /* Building static library. */
+    /* 静态库 */
 #   define UV_EXTERN /* nothing */
 # endif
 #elif __GNUC__ >= 4
@@ -50,6 +50,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdio.h>
 
+//VS2010以前的版本
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "stdint-msvc2008.h"
 #else
@@ -62,7 +63,7 @@ extern "C" {
 # include "uv-unix.h"
 #endif
 
-/* Expand this list if necessary. */
+/* 错误映射表 可根据需要扩展这个列表 */
 #define UV_ERRNO_MAP(XX)                                                      \
   XX(E2BIG, "argument list too long")                                         \
   XX(EACCES, "permission denied")                                             \
@@ -258,17 +259,9 @@ UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func,
 UV_EXTERN uv_loop_t* uv_default_loop(void);
 UV_EXTERN int uv_loop_init(uv_loop_t* loop);
 UV_EXTERN int uv_loop_close(uv_loop_t* loop);
-/*
- * NOTE:
- *  This function is DEPRECATED (to be removed after 0.12), users should
- *  allocate the loop manually and use uv_loop_init instead.
- */
+/* 不推荐使用这个函数，应该使用uv_loop_init */
 UV_EXTERN uv_loop_t* uv_loop_new(void);
-/*
- * NOTE:
- *  This function is DEPRECATED (to be removed after 0.12). Users should use
- *  uv_loop_close and free the memory manually instead.
- */
+/* 不推荐使用这个函数，应该使用uv_loop_close */
 UV_EXTERN void uv_loop_delete(uv_loop_t*);
 UV_EXTERN size_t uv_loop_size(void);
 UV_EXTERN int uv_loop_alive(const uv_loop_t* loop);
@@ -376,7 +369,7 @@ UV_EXTERN const char* uv_err_name(int err);
   void* reserved[4];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
-/* Abstract base class of all requests. */
+/* 所有requests.的抽象基类 */
 struct uv_req_s {
   UV_REQ_FIELDS
 };
@@ -385,7 +378,7 @@ struct uv_req_s {
 /* Platform-specific request types. */
 UV_PRIVATE_REQ_TYPES
 
-
+//单向关闭（关闭写），会等待写请求的完成
 UV_EXTERN int uv_shutdown(uv_shutdown_t* req,
                           uv_stream_t* handle,
                           uv_shutdown_cb cb);
@@ -413,7 +406,7 @@ struct uv_shutdown_s {
   } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
-/* The abstract base class of all handles. */
+/* 所有handles抽象基类 */
 struct uv_handle_s {
   UV_HANDLE_FIELDS
 };
@@ -434,6 +427,7 @@ UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 UV_EXTERN int uv_send_buffer_size(uv_handle_t* handle, int* value);
 UV_EXTERN int uv_recv_buffer_size(uv_handle_t* handle, int* value);
 
+//获取等价的平台文件
 UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
 
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
@@ -448,11 +442,8 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
   UV_STREAM_PRIVATE_FIELDS
 
 /*
- * uv_stream_t is a subclass of uv_handle_t.
- *
- * uv_stream is an abstract class.
- *
- * uv_stream_t is the parent class of uv_tcp_t, uv_pipe_t and uv_tty_t.
+ * uv_stream_t 是uv_handle_t.的子类
+ * uv_stream_t 是uv_tcp_t  uv_pipe_t  uv_tty_t.的父类
  */
 struct uv_stream_s {
   UV_HANDLE_FIELDS
@@ -478,11 +469,13 @@ UV_EXTERN int uv_write2(uv_write_t* req,
                         unsigned int nbufs,
                         uv_stream_t* send_handle,
                         uv_write_cb cb);
+
+//成功返回发送的字节数(可以比buf小) (数据不能立即发送返回UV_EAGAIN )
 UV_EXTERN int uv_try_write(uv_stream_t* handle,
                            const uv_buf_t bufs[],
                            unsigned int nbufs);
 
-/* uv_write_t is a subclass of uv_req_t. */
+/* uv_write_t 是 uv_req_t.的子类 */
 struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
@@ -500,11 +493,7 @@ UV_EXTERN int uv_stream_set_blocking(uv_stream_t* handle, int blocking);
 UV_EXTERN int uv_is_closing(const uv_handle_t* handle);
 
 
-/*
- * uv_tcp_t is a subclass of uv_stream_t.
- *
- * Represents a TCP stream or TCP server.
- */
+/* uv_tcp_t 是uv_stream_t.的子类 */
 struct uv_tcp_s {
   UV_HANDLE_FIELDS
   UV_STREAM_FIELDS
@@ -514,14 +503,18 @@ struct uv_tcp_s {
 UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
 UV_EXTERN int uv_tcp_init_ex(uv_loop_t*, uv_tcp_t* handle, unsigned int flags);
 UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
+
+//启用或禁用Nagle’s 算法(合并小数据包的)
 UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
+
+//启用或禁用 TCP keep-alive。（用于判断连接是否中断）
 UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
                                int enable,
                                unsigned int delay);
+//启用或禁用 同时接受异步请求模式。（被操作系统缓存的新TCP连接）
 UV_EXTERN int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable);
 
 enum uv_tcp_flags {
-  /* Used with uv_tcp_bind, when an IPv6 address is used. */
   UV_TCP_IPV6ONLY = 1
 };
 
@@ -539,7 +532,7 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
 
-/* uv_connect_t is a subclass of uv_req_t. */
+/* uv_connect_t 是uv_req_t.的子类 */
 struct uv_connect_s {
   UV_REQ_FIELDS
   uv_connect_cb cb;
@@ -553,21 +546,11 @@ struct uv_connect_s {
  */
 
 enum uv_udp_flags {
-  /* Disables dual stack mode. */
+  /* 禁用双协议栈 */
   UV_UDP_IPV6ONLY = 1,
-  /*
-   * Indicates message was truncated because read buffer was too small. The
-   * remainder was discarded by the OS. Used in uv_udp_recv_cb.
-   */
+  /* 说明缓冲区太小 */
   UV_UDP_PARTIAL = 2,
-  /*
-   * Indicates if SO_REUSEADDR will be set when binding the handle.
-   * This sets the SO_REUSEPORT socket flag on the BSDs and OS X. On other
-   * Unix platforms, it sets the SO_REUSEADDR flag.  What that means is that
-   * multiple threads or processes can bind to the same address without error
-   * (provided they all set the flag) but only the last one to bind will receive
-   * any traffic, in effect "stealing" the port from the previous listener.
-   */
+  /* 多个线程进程可以绑定到一个地址上(都需要设置这个标记) 只有最后一个才能收发 */
   UV_UDP_REUSEADDR = 4
 };
 
@@ -766,11 +749,7 @@ UV_EXTERN int uv_async_init(uv_loop_t*,
 UV_EXTERN int uv_async_send(uv_async_t* async);
 
 
-/*
- * uv_timer_t is a subclass of uv_handle_t.
- *
- * Used to get woken up at a specified time in the future.
- */
+/* uv_timer_t 是uv_handle_t的子类 会在将来的某个时间获得回调 */
 struct uv_timer_s {
   UV_HANDLE_FIELDS
   UV_TIMER_PRIVATE_FIELDS
@@ -782,16 +761,16 @@ UV_EXTERN int uv_timer_start(uv_timer_t* handle,
                              uint64_t timeout,
                              uint64_t repeat);
 UV_EXTERN int uv_timer_stop(uv_timer_t* handle);
+
+//重启
 UV_EXTERN int uv_timer_again(uv_timer_t* handle);
+
+//设置repeat值并按照repeat值重启
 UV_EXTERN void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat);
 UV_EXTERN uint64_t uv_timer_get_repeat(const uv_timer_t* handle);
 
 
-/*
- * uv_getaddrinfo_t is a subclass of uv_req_t.
- *
- * Request object for uv_getaddrinfo.
- */
+/* uv_getaddrinfo_t 是 uv_req_t的子类 */
 struct uv_getaddrinfo_s {
   UV_REQ_FIELDS
   /* read-only */
@@ -810,11 +789,7 @@ UV_EXTERN int uv_getaddrinfo(uv_loop_t* loop,
 UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
 
-/*
-* uv_getnameinfo_t is a subclass of uv_req_t.
-*
-* Request object for uv_getnameinfo.
-*/
+/* uv_getnameinfo_t 是uv_req_t的子类 */
 struct uv_getnameinfo_s {
   UV_REQ_FIELDS
   /* read-only */
@@ -1374,6 +1349,7 @@ UV_EXTERN int uv_chdir(const char* dir);
 UV_EXTERN uint64_t uv_get_free_memory(void);
 UV_EXTERN uint64_t uv_get_total_memory(void);
 
+//当前高精度时间 纳秒计时
 UV_EXTERN uint64_t uv_hrtime(void);
 
 UV_EXTERN void uv_disable_stdio_inheritance(void);

@@ -26,18 +26,18 @@ static uv_timer_t timer_handle;
 static uv_tcp_t tcp_handle;
 static uv_write_t write_req;
 
-
+//对应的是读取函数，不会执行到
 static void fail_cb(void) {
   ASSERT(0 && "fail_cb called");
 }
 
-
+//关闭
 static void write_cb(uv_write_t* req, int status) {
   uv_close((uv_handle_t*) &timer_handle, NULL);
   uv_close((uv_handle_t*) &tcp_handle, NULL);
 }
 
-
+//写 停止读取
 static void timer_cb(uv_timer_t* handle) {
   uv_buf_t buf = uv_buf_init("PING", 4);
   ASSERT(0 == uv_write(&write_req,
@@ -48,7 +48,7 @@ static void timer_cb(uv_timer_t* handle) {
   ASSERT(0 == uv_read_stop((uv_stream_t*) &tcp_handle));
 }
 
-
+//连接后开始读取
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(0 == status);
   ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));

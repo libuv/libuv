@@ -34,13 +34,14 @@ static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 
 static uv_tcp_t tcp_server;
 static uv_tcp_t tcp_client;
-static uv_tcp_t tcp_peer; /* client socket as accept()-ed by server */
+static uv_tcp_t tcp_peer; //服务端中接收的
 static uv_connect_t connect_req;
 static uv_write_t write_req;
 
 static int write_cb_called;
 static int read_cb_called;
 
+//接收 开始读 写
 static void connection_cb(uv_stream_t* server, int status) {
   int r;
   uv_buf_t buf;
@@ -86,12 +87,12 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   read_cb_called++;
 }
 
-
+//连接后关闭客户端
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(req == &connect_req);
   ASSERT(status == 0);
 
-  /* Close the client. */
+  /* 关闭客户端 */
   uv_close((uv_handle_t*)&tcp_client, NULL);
 }
 

@@ -30,7 +30,7 @@ static int prepare_cb_called;
 static int check_cb_called;
 static int timer_cb_called;
 
-
+//2 关闭prepare 
 static void prepare_cb(uv_prepare_t* handle) {
   ASSERT(0 == uv_prepare_stop(&prepare_handle));
   ASSERT(0 == prepare_cb_called);
@@ -39,7 +39,7 @@ static void prepare_cb(uv_prepare_t* handle) {
   prepare_cb_called++;
 }
 
-
+//3 关闭timer
 static void timer_cb(uv_timer_t* handle) {
   ASSERT(0 == uv_timer_stop(&timer_handle));
   ASSERT(1 == prepare_cb_called);
@@ -48,7 +48,7 @@ static void timer_cb(uv_timer_t* handle) {
   timer_cb_called++;
 }
 
-
+//1 关闭check timer 启动prepare 重启timer
 static void check_cb(uv_check_t* handle) {
   ASSERT(0 == uv_check_stop(&check_handle));
   ASSERT(0 == uv_timer_stop(&timer_handle));  /* Runs before timer_cb. */
@@ -64,9 +64,9 @@ static void check_cb(uv_check_t* handle) {
 TEST_IMPL(timer_from_check) {
   ASSERT(0 == uv_prepare_init(uv_default_loop(), &prepare_handle));
   ASSERT(0 == uv_check_init(uv_default_loop(), &check_handle));
-  ASSERT(0 == uv_check_start(&check_handle, check_cb));
+  ASSERT(0 == uv_check_start(&check_handle, check_cb));//先启动了check 虽然prepare先执行，但是没有启动
   ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
-  ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));
+  ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));//虽然是先执行timer但是他得等50ms
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(1 == prepare_cb_called);
   ASSERT(1 == check_cb_called);

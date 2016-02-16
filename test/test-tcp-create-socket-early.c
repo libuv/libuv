@@ -30,7 +30,7 @@
 # define INVALID_FD (-1)
 #endif
 
-
+//连接后关闭
 static void on_connect(uv_connect_t* req, int status) {
   ASSERT(status == 0);
   uv_close((uv_handle_t*) req->handle, NULL);

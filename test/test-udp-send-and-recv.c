@@ -58,7 +58,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//客户端收到PANG后关闭
 static void cl_recv_cb(uv_udp_t* handle,
                        ssize_t nread,
                        const uv_buf_t* buf,
@@ -87,7 +87,7 @@ static void cl_recv_cb(uv_udp_t* handle,
   uv_close((uv_handle_t*) handle, close_cb);
 }
 
-
+//客户端发送后启用接收函数
 static void cl_send_cb(uv_udp_send_t* req, int status) {
   int r;
 
@@ -101,7 +101,7 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
   cl_send_cb_called++;
 }
 
-
+//服务端发送后关闭
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
@@ -113,7 +113,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
   sv_send_cb_called++;
 }
 
-
+//服务端收到后停止接收，并发送信息
 static void sv_recv_cb(uv_udp_t* handle,
                        ssize_t nread,
                        const uv_buf_t* rcvbuf,

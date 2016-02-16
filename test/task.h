@@ -105,16 +105,14 @@ typedef enum {
   }                                                       \
  } while (0)
 
-/* This macro cleans up the main loop. This is used to avoid valgrind
- * warnings about memory being "leaked" by the main event loop.
- */
+/* 清理主循环避免资源泄漏 */
 #define MAKE_VALGRIND_HAPPY()                       \
   do {                                              \
     close_loop(uv_default_loop());                  \
     ASSERT(0 == uv_loop_close(uv_default_loop()));  \
   } while (0)
 
-/* Just sugar for wrapping the main() for a task or helper. */
+/* 封装函数 */
 #define TEST_IMPL(name)                                                       \
   int run_test_##name(void);                                                  \
   int run_test_##name(void)
@@ -127,13 +125,13 @@ typedef enum {
   int run_helper_##name(void);                                                \
   int run_helper_##name(void)
 
-/* Pause the calling thread for a number of milliseconds. */
+/* 暂停调用该函数的线程 */
 void uv_sleep(int msec);
 
-/* Format big numbers nicely. WARNING: leaks memory. */
+/* 格式化大数字 WARNING: 内存泄漏 */
 const char* fmt(double d);
 
-/* Reserved test exit codes. */
+/* 保留的测试退出码 */
 enum test_status {
   TEST_OK = 0,
   TEST_TODO,
@@ -202,19 +200,20 @@ UNUSED static void close_loop(uv_loop_t* loop) {
   uv_run(loop, UV_RUN_DEFAULT);
 }
 
+//是否支持IPv6，支持返回1
 UNUSED static int can_ipv6(void) {
   uv_interface_address_t* addr;
   int supported;
   int count;
   int i;
-
+  //获得了一系列的网卡地址
   if (uv_interface_addresses(&addr, &count))
-    return 1;  /* Assume IPv6 support on failure. */
+    return 0;  /* 地址获取不到，所以不支持IPv6 */
 
   supported = 0;
   for (i = 0; supported == 0 && i < count; i += 1)
     supported = (AF_INET6 == addr[i].address.address6.sin6_family);
-
+  
   uv_free_interface_addresses(addr, count);
   return supported;
 }

@@ -41,7 +41,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//·¢ËÍºó¹Ø±Õ
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);

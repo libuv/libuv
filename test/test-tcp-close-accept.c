@@ -50,6 +50,7 @@ static void write_cb(uv_write_t* req, int status) {
   write_cb_called++;
 }
 
+//连接后 写
 static void connect_cb(uv_connect_t* req, int status) {
   unsigned int i;
   uv_buf_t buf;
@@ -58,7 +59,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   if (req == &tcp_check_req) {
     ASSERT(status != 0);
 
-    /* Close check and incoming[0], time to finish test */
+    /* check连接时结束 */
     uv_close((uv_handle_t*) &tcp_incoming[0], close_cb);
     uv_close((uv_handle_t*) &tcp_check, close_cb);
     return;
@@ -84,7 +85,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   uv_loop_t* loop;
   unsigned int i;
 
-  /* Only first stream should receive read events */
+  /* 只有第一个客户端的读取请求会执行 */
   ASSERT(stream == (uv_stream_t*) &tcp_incoming[0]);
   ASSERT(0 == uv_read_stop(stream));
   ASSERT(1 == nread);
@@ -92,11 +93,11 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   loop = stream->loop;
   read_cb_called++;
 
-  /* Close all active incomings, except current one */
+  /* 关闭其他的handle */
   for (i = 1; i < got_connections; i++)
     uv_close((uv_handle_t*) &tcp_incoming[i], close_cb);
 
-  /* Create new fd that should be one of the closed incomings */
+  /* 创建一个新的请求check */
   ASSERT(0 == uv_tcp_init(loop, &tcp_check));
   ASSERT(0 == uv_tcp_connect(&tcp_check_req,
                              &tcp_check,
@@ -104,7 +105,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
                              connect_cb));
   ASSERT(0 == uv_read_start((uv_stream_t*) &tcp_check, alloc_cb, read_cb));
 
-  /* Close server, so no one will connect to it */
+  /* 关闭服务器 */
   uv_close((uv_handle_t*) &tcp_server, close_cb);
 }
 
@@ -114,11 +115,11 @@ static void connection_cb(uv_stream_t* server, int status) {
 
   ASSERT(server == (uv_stream_t*) &tcp_server);
 
-  /* Ignore tcp_check connection */
+  /* 忽略tcp_check的连接  */
   if (got_connections == ARRAY_SIZE(tcp_incoming))
     return;
 
-  /* Accept everyone */
+  /* 接收连接 */
   incoming = &tcp_incoming[got_connections++];
   ASSERT(0 == uv_tcp_init(server->loop, incoming));
   ASSERT(0 == uv_accept(server, (uv_stream_t*) incoming));
@@ -126,7 +127,7 @@ static void connection_cb(uv_stream_t* server, int status) {
   if (got_connections != ARRAY_SIZE(tcp_incoming))
     return;
 
-  /* Once all clients are accepted - start reading */
+  /* 当所有的客户端都连接了开始读取 */
   for (i = 0; i < ARRAY_SIZE(tcp_incoming); i++) {
     incoming = &tcp_incoming[i];
     ASSERT(0 == uv_read_start((uv_stream_t*) incoming, alloc_cb, read_cb));
@@ -139,20 +140,15 @@ TEST_IMPL(tcp_close_accept) {
   uv_tcp_t* client;
 
   /*
-   * A little explanation of what goes on below:
+   * 下面:
    *
-   * We'll create server and connect to it using two clients, each writing one
-   * byte once connected.
+   * 创建服务器并创建两个客户端连接到它 每一个在连接后发送一个字节
    *
-   * When all clients will be accepted by server - we'll start reading from them
-   * and, on first client's first byte, will close second client and server.
-   * After that, we'll immediately initiate new connection to server using
-   * tcp_check handle (thus, reusing fd from second client).
+   * 当所有客户端都被服务器接收后 - 开始读取第一个客户端的数据并关闭第二个客户端和服务器
+   * 之后初始化一个新的连接使用tcp_check handle (thus, reusing fd from second client).
    *
-   * In this situation uv__io_poll()'s event list should still contain read
-   * event for second client, and, if not cleaned up properly, `tcp_check` will
-   * receive stale event of second incoming and invoke `connect_cb` with zero
-   * status.
+   * uv__io_poll()'s 还会包含第二个客户端的读取请求 
+   * 如果没有清除 `tcp_check` 还会收到并调用 `connect_cb` status = 0
    */
 
   loop = uv_default_loop();
@@ -179,7 +175,7 @@ TEST_IMPL(tcp_close_accept) {
   ASSERT(ARRAY_SIZE(tcp_outgoing) == got_connections);
   ASSERT((ARRAY_SIZE(tcp_outgoing) + 2) == close_cb_called);
   ASSERT(ARRAY_SIZE(tcp_outgoing) == write_cb_called);
-  ASSERT(1 == read_cb_called);
+  ASSERT(1 == read_cb_called);//读取只有一次
 
   MAKE_VALGRIND_HAPPY();
   return 0;

@@ -66,7 +66,7 @@ static uv_os_sock_t create_udp_socket(void) {
   return sock;
 }
 
-
+//关闭socket
 static void close_socket(uv_os_sock_t sock) {
   int r;
 #ifdef _WIN32
@@ -93,7 +93,7 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//收到后关闭
 static void recv_cb(uv_udp_t* handle,
                        ssize_t nread,
                        const uv_buf_t* buf,
@@ -176,7 +176,7 @@ TEST_IMPL(udp_open) {
   return 0;
 }
 
-
+//不可用打开两次
 TEST_IMPL(udp_open_twice) {
   uv_udp_t client;
   uv_os_sock_t sock1, sock2;

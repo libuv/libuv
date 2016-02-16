@@ -27,7 +27,7 @@
 #include <string.h>
 
 static int connect_cb_called;
-static int write_cb_called;
+static int write_cb_called; 
 static int close_cb_called;
 
 
@@ -35,25 +35,21 @@ static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-
+//连接后关闭
 static void connect_cb(uv_connect_t* req, int status) {
-  ASSERT(status < 0);
+  ASSERT(status < 0);//连接一个不在监听的status小于0
   connect_cb_called++;
   uv_close((uv_handle_t*)req->handle, close_cb);
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(status < 0);
+  ASSERT(status < 0);//连接没有成功则写请求也失败了
   write_cb_called++;
 }
 
 
-/*
- * Try to connect to an address on which nothing listens, get ECONNREFUSED
- * (uv errno 12) and get connect_cb() called once with status != 0.
- * Related issue: https://github.com/joyent/libuv/issues/443
- */
+/* 连接一个不在监听的： ECONNREFUSED 在connect_cb() 回调中的status != 0.*/
 TEST_IMPL(tcp_connect_error_after_write) {
   uv_connect_t connect_req;
   struct sockaddr_in addr;
@@ -64,7 +60,6 @@ TEST_IMPL(tcp_connect_error_after_write) {
 
 #ifdef _WIN32
   fprintf(stderr, "This test is disabled on Windows for now.\n");
-  fprintf(stderr, "See https://github.com/joyent/libuv/issues/444\n");
   return 0; /* windows slackers... */
 #endif
 
@@ -74,6 +69,7 @@ TEST_IMPL(tcp_connect_error_after_write) {
   r = uv_tcp_init(uv_default_loop(), &conn);
   ASSERT(r == 0);
 
+  //写之前必须先连接
   r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
   ASSERT(r == UV_EBADF);
 
