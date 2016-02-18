@@ -25,28 +25,55 @@
 #include <string.h>
 #include <errno.h>
 
-typedef struct {
+typedef struct worker_config {
   uv_mutex_t mutex;
-  uv_cond_t cond;
-  int delay;
+  uv_cond_t cond_1, cond_2;
+  int signal_delay, wait_delay;
   int use_broadcast;
-  volatile int posted;
+  volatile int posted_1, posted_2;
+  void (*signal_cond)(struct worker_config* c,
+                      uv_cond_t* cond,
+                      volatile int* flag);
+  void (*wait_cond)(struct worker_config* c,
+                    uv_cond_t* cond,
+                    const volatile int* flag);
 } worker_config;
 
 
 static void worker(void* arg) {
   worker_config* c = arg;
+  c->signal_cond(c, &c->cond_1, &c->posted_1);
+  c->wait_cond(c, &c->cond_2, &c->posted_2);
+}
 
-  if (c->delay)
-    uv_sleep(c->delay);
+
+static void condvar_signal(worker_config* c,
+                           uv_cond_t* cond,
+                           volatile int* flag) {
+  if (c->signal_delay)
+    uv_sleep(c->signal_delay);
 
   uv_mutex_lock(&c->mutex);
-  ASSERT(c->posted == 0);
-  c->posted = 1;
+  ASSERT(*flag == 0);
+  *flag = 1;
   if (c->use_broadcast)
-    uv_cond_broadcast(&c->cond);
+    uv_cond_broadcast(cond);
   else
-    uv_cond_signal(&c->cond);
+    uv_cond_signal(cond);
+  uv_mutex_unlock(&c->mutex);
+}
+
+
+static void condvar_wait(worker_config* c,
+                         uv_cond_t* cond,
+                         const volatile int* flag) {
+  uv_mutex_lock(&c->mutex);
+  if (c->wait_delay)
+    uv_sleep(c->wait_delay);
+  while (*flag == 0) {
+    uv_cond_wait(cond, &c->mutex);
+  }
+  ASSERT(*flag == 1);
   uv_mutex_unlock(&c->mutex);
 }
 
@@ -56,20 +83,22 @@ TEST_IMPL(condvar_1) {
   worker_config wc;
 
   memset(&wc, 0, sizeof(wc));
+  wc.wait_delay = 100;
+  wc.signal_cond = condvar_signal;
+  wc.wait_cond = condvar_wait;
 
-  ASSERT(0 == uv_cond_init(&wc.cond));
+  ASSERT(0 == uv_cond_init(&wc.cond_1));
+  ASSERT(0 == uv_cond_init(&wc.cond_2));
   ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
-  uv_mutex_lock(&wc.mutex);
-  uv_sleep(100);
-  uv_cond_wait(&wc.cond, &wc.mutex);
-  ASSERT(wc.posted == 1);
-  uv_mutex_unlock(&wc.mutex);
+  wc.wait_cond(&wc, &wc.cond_1, &wc.posted_1);
+  wc.signal_cond(&wc, &wc.cond_2, &wc.posted_2);
 
   ASSERT(0 == uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
-  uv_cond_destroy(&wc.cond);
+  uv_cond_destroy(&wc.cond_1);
+  uv_cond_destroy(&wc.cond_2);
 
   return 0;
 }
@@ -80,44 +109,64 @@ TEST_IMPL(condvar_2) {
   worker_config wc;
 
   memset(&wc, 0, sizeof(wc));
-  wc.delay = 100;
+  wc.signal_delay = 100;
+  wc.signal_cond = condvar_signal;
+  wc.wait_cond = condvar_wait;
 
-  ASSERT(0 == uv_cond_init(&wc.cond));
+  ASSERT(0 == uv_cond_init(&wc.cond_1));
+  ASSERT(0 == uv_cond_init(&wc.cond_2));
   ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
-  uv_mutex_lock(&wc.mutex);
-  uv_cond_wait(&wc.cond, &wc.mutex);
-  uv_mutex_unlock(&wc.mutex);
+  wc.wait_cond(&wc, &wc.cond_1, &wc.posted_1);
+  wc.signal_cond(&wc, &wc.cond_2, &wc.posted_2);
 
   ASSERT(0 == uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
-  uv_cond_destroy(&wc.cond);
+  uv_cond_destroy(&wc.cond_1);
+  uv_cond_destroy(&wc.cond_2);
 
   return 0;
+}
+
+
+static void condvar_timedwait(worker_config* c,
+                              uv_cond_t* cond,
+                              const volatile int* flag) {
+  int r;
+
+  uv_mutex_lock(&c->mutex);
+  if (c->wait_delay)
+    uv_sleep(c->wait_delay);
+  while (*flag == 0) {
+    r = uv_cond_timedwait(cond, &c->mutex, (uint64_t)(150 * 1e6));
+    ASSERT(r == 0);
+  }
+  uv_mutex_unlock(&c->mutex);
 }
 
 
 TEST_IMPL(condvar_3) {
   uv_thread_t thread;
   worker_config wc;
-  int r;
 
   memset(&wc, 0, sizeof(wc));
-  wc.delay = 100;
+  wc.signal_delay = 100;
+  wc.signal_cond = condvar_signal;
+  wc.wait_cond = condvar_timedwait;
 
-  ASSERT(0 == uv_cond_init(&wc.cond));
+  ASSERT(0 == uv_cond_init(&wc.cond_1));
+  ASSERT(0 == uv_cond_init(&wc.cond_2));
   ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
-  uv_mutex_lock(&wc.mutex);
-  r = uv_cond_timedwait(&wc.cond, &wc.mutex, (uint64_t)(50 * 1e6));
-  ASSERT(r == UV_ETIMEDOUT);
-  uv_mutex_unlock(&wc.mutex);
+  wc.wait_cond(&wc, &wc.cond_1, &wc.posted_1);
+  wc.signal_cond(&wc, &wc.cond_2, &wc.posted_2);
 
   ASSERT(0 == uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
-  uv_cond_destroy(&wc.cond);
+  uv_cond_destroy(&wc.cond_1);
+  uv_cond_destroy(&wc.cond_2);
 
   return 0;
 }
@@ -126,23 +175,24 @@ TEST_IMPL(condvar_3) {
 TEST_IMPL(condvar_4) {
   uv_thread_t thread;
   worker_config wc;
-  int r;
 
   memset(&wc, 0, sizeof(wc));
-  wc.delay = 100;
+  wc.signal_delay = 100;
+  wc.signal_cond = condvar_signal;
+  wc.wait_cond = condvar_timedwait;
 
-  ASSERT(0 == uv_cond_init(&wc.cond));
+  ASSERT(0 == uv_cond_init(&wc.cond_1));
+  ASSERT(0 == uv_cond_init(&wc.cond_2));
   ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
-  uv_mutex_lock(&wc.mutex);
-  r = uv_cond_timedwait(&wc.cond, &wc.mutex, (uint64_t)(150 * 1e6));
-  ASSERT(r == 0);
-  uv_mutex_unlock(&wc.mutex);
+  wc.wait_cond(&wc, &wc.cond_1, &wc.posted_1);
+  wc.signal_cond(&wc, &wc.cond_2, &wc.posted_2);
 
   ASSERT(0 == uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
-  uv_cond_destroy(&wc.cond);
+  uv_cond_destroy(&wc.cond_1);
+  uv_cond_destroy(&wc.cond_2);
 
   return 0;
 }
@@ -154,20 +204,22 @@ TEST_IMPL(condvar_5) {
 
   memset(&wc, 0, sizeof(wc));
   wc.use_broadcast = 1;
+  wc.signal_delay = 100;
+  wc.signal_cond = condvar_signal;
+  wc.wait_cond = condvar_wait;
 
-  ASSERT(0 == uv_cond_init(&wc.cond));
+  ASSERT(0 == uv_cond_init(&wc.cond_1));
+  ASSERT(0 == uv_cond_init(&wc.cond_2));
   ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
-  uv_mutex_lock(&wc.mutex);
-  uv_sleep(100);
-  uv_cond_wait(&wc.cond, &wc.mutex);
-  ASSERT(wc.posted == 1);
-  uv_mutex_unlock(&wc.mutex);
+  wc.wait_cond(&wc, &wc.cond_1, &wc.posted_1);
+  wc.signal_cond(&wc, &wc.cond_2, &wc.posted_2);
 
   ASSERT(0 == uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
-  uv_cond_destroy(&wc.cond);
+  uv_cond_destroy(&wc.cond_1);
+  uv_cond_destroy(&wc.cond_2);
 
   return 0;
 }
