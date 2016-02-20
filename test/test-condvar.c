@@ -28,9 +28,11 @@
 typedef struct worker_config {
   uv_mutex_t mutex;
   uv_cond_t cond;
-  int signal_delay, wait_delay;
+  int signal_delay;
+  int wait_delay;
   int use_broadcast;
-  volatile int posted_1, posted_2;
+  volatile int posted_1;
+  volatile int posted_2;
   void (*signal_cond)(struct worker_config* c, volatile int* flag);
   void (*wait_cond)(struct worker_config* c, const volatile int* flag);
 } worker_config;
