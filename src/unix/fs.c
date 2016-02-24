@@ -127,8 +127,8 @@
 static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 #if defined(__linux__) || defined(__sun) || defined(__NetBSD__)
   return fdatasync(req->file);
-#elif defined(__APPLE__) && defined(F_FULLFSYNC)
-  return fcntl(req->file, F_FULLFSYNC);
+#elif defined(__APPLE__) && defined(SYS_fdatasync)
+  return syscall(SYS_fdatasync, req->file);
 #else
   return fsync(req->file);
 #endif
