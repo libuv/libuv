@@ -552,6 +552,29 @@ int uv_uptime(double* uptime) {
 }
 
 
+int uv_cpu_num() {
+  unsigned int num;
+  char buf[1024];
+  FILE* fp;
+
+  fp = fopen("/proc/stat", "r");
+  if (fp == NULL)
+    return -errno;
+
+  if (!fgets(buf, sizeof(buf), fp))
+    abort();
+
+  num = 0;
+  while (fgets(buf, sizeof(buf), fp)) {
+    if (strncmp(buf, "cpu", 3))
+      break;
+    num++;
+  }
+  fclose(fp);
+  return num;
+}
+
+
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   unsigned int numcpus;
   uv_cpu_info_t* ci;
@@ -560,7 +583,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   *cpu_infos = NULL;
   *count = 0;
 
-  numcpus = sysconf(_SC_NPROCESSORS_ONLN);
+  numcpus = uv_cpu_num();
   assert(numcpus != (unsigned int) -1);
   assert(numcpus != 0);
 
