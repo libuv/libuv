@@ -722,7 +722,14 @@ TASK_LIST_START
   TEST_ENTRY  (fs_read_write_null_arguments)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
+#if defined(__PPC__) || defined(__PPC64__)  /* For linux PPC and AIX */
+  /* pthread_join takes a while, especially on AIX.
+   * Therefore being gratuitous with timeout.
+   */
+  TEST_ENTRY_CUSTOM (threadpool_multiple_event_loops, 0, 0, 120000)
+#else
   TEST_ENTRY  (threadpool_multiple_event_loops)
+#endif
   TEST_ENTRY  (threadpool_cancel_getaddrinfo)
   TEST_ENTRY  (threadpool_cancel_getnameinfo)
   TEST_ENTRY  (threadpool_cancel_work)
