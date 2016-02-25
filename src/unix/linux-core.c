@@ -552,7 +552,7 @@ int uv_uptime(double* uptime) {
 }
 
 
-int uv_cpu_num() {
+static int uv__cpu_num() {
   unsigned int num;
   char buf[1024];
   FILE* fp;
@@ -583,7 +583,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   *cpu_infos = NULL;
   *count = 0;
 
-  numcpus = uv_cpu_num();
+  numcpus = uv__cpu_num();
   assert(numcpus != (unsigned int) -1);
   assert(numcpus != 0);
 
