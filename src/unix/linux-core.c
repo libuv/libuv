@@ -69,7 +69,7 @@
 #endif
 
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(int* statfile_fd, unsigned int numcpus, uv_cpu_info_t* ci);
+static int read_times(FILE* statfile_fp, unsigned int numcpus, uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static unsigned long read_cpufreq(unsigned int cpunum);
 
@@ -552,21 +552,15 @@ int uv_uptime(double* uptime) {
 }
 
 
-static int uv__cpu_num(int* statfile_fd, unsigned int* numcpus) {
+static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
   unsigned int num;
   char buf[1024];
-  FILE* fp;
 
-  lseek(*statfile_fd, 0, SEEK_SET);
-  fp = fdopen(*statfile_fd, "r");
-  if (fp == NULL)
-    return -errno;
-
-  if (!fgets(buf, sizeof(buf), fp))
+  if (!fgets(buf, sizeof(buf), statfile_fp))
     abort();
 
   num = 0;
-  while (fgets(buf, sizeof(buf), fp)) {
+  while (fgets(buf, sizeof(buf), statfile_fp)) {
     if (strncmp(buf, "cpu", 3))
       break;
     num++;
@@ -582,6 +576,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   uv_cpu_info_t* ci;
   int err;
   int statfile_fd;
+  FILE* statfile_fp;
 
   *cpu_infos = NULL;
   *count = 0;
@@ -589,13 +584,15 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   err = uv__open_cloexec("/proc/stat", O_RDONLY);
   if (err < 0)
     return err;
-  if (err >= 0)
-    statfile_fd = err;
+  statfile_fd = err;
 
-  err = uv__cpu_num(&statfile_fd, &numcpus);
-  if (err) {
-    numcpus = sysconf(_SC_NPROCESSORS_ONLN);
-  }
+  statfile_fp = fdopen(statfile_fd, "r");
+  if (statfile_fp == NULL)
+    return -errno;
+
+  err = uv__cpu_num(statfile_fp, &numcpus);
+  if (err < 0)
+    return err;
 
   assert(numcpus != (unsigned int) -1);
   assert(numcpus != 0);
@@ -606,7 +603,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   err = read_models(numcpus, ci);
   if (err == 0)
-    err = read_times(&statfile_fd, numcpus, ci);
+    rewind(statfile_fp);
+    err = read_times(statfile_fp, numcpus, ci);
 
   uv__close(statfile_fd);
 
@@ -734,7 +732,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-static int read_times(int* statfile_fd, unsigned int numcpus, uv_cpu_info_t* ci) {
+static int read_times(FILE* statfile_fp, unsigned int numcpus, uv_cpu_info_t* ci) {
   unsigned long clock_ticks;
   struct uv_cpu_times_s ts;
   unsigned long user;
@@ -746,24 +744,19 @@ static int read_times(int* statfile_fd, unsigned int numcpus, uv_cpu_info_t* ci)
   unsigned int num;
   unsigned int len;
   char buf[1024];
-  FILE* fp;
 
   clock_ticks = sysconf(_SC_CLK_TCK);
   assert(clock_ticks != (unsigned long) -1);
   assert(clock_ticks != 0);
 
-  lseek(*statfile_fd, 0, SEEK_SET);
-  fp = fdopen(*statfile_fd, "r");
+  rewind(statfile_fp);
 
-  if (fp == NULL)
-    return -errno;
-
-  if (!fgets(buf, sizeof(buf), fp))
+  if (!fgets(buf, sizeof(buf), statfile_fp))
     abort();
 
   num = 0;
 
-  while (fgets(buf, sizeof(buf), fp)) {
+  while (fgets(buf, sizeof(buf), statfile_fp)) {
     if (num >= numcpus)
       break;
 
@@ -802,7 +795,6 @@ static int read_times(int* statfile_fd, unsigned int numcpus, uv_cpu_info_t* ci)
     ts.irq  = clock_ticks * irq;
     ci[num++].cpu_times = ts;
   }
-  fclose(fp);
   assert(num == numcpus);
 
   return 0;
