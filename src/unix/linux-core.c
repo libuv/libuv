@@ -69,7 +69,7 @@
 #endif
 
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(unsigned int numcpus, uv_cpu_info_t* ci);
+static int read_times(int* statfile_fd, unsigned int numcpus, uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static unsigned long read_cpufreq(unsigned int cpunum);
 
@@ -552,12 +552,13 @@ int uv_uptime(double* uptime) {
 }
 
 
-static int uv__cpu_num(unsigned int* numcpus) {
+static int uv__cpu_num(int* statfile_fd, unsigned int* numcpus) {
   unsigned int num;
   char buf[1024];
   FILE* fp;
 
-  fp = fopen("/proc/stat", "r");
+  lseek(*statfile_fd, 0, SEEK_SET);
+  fp = fdopen(*statfile_fd, "r");
   if (fp == NULL)
     return -errno;
 
@@ -570,7 +571,7 @@ static int uv__cpu_num(unsigned int* numcpus) {
       break;
     num++;
   }
-  fclose(fp);
+
   *numcpus = num;
   return 0;
 }
@@ -580,11 +581,18 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   unsigned int numcpus;
   uv_cpu_info_t* ci;
   int err;
+  int statfile_fd;
 
   *cpu_infos = NULL;
   *count = 0;
 
-  err = uv__cpu_num(&numcpus);
+  err = uv__open_cloexec("/proc/stat", O_RDONLY);
+  if (err < 0)
+    return err;
+  if (err >= 0)
+    statfile_fd = err;
+
+  err = uv__cpu_num(&statfile_fd, &numcpus);
   if (err) {
     numcpus = sysconf(_SC_NPROCESSORS_ONLN);
   }
@@ -598,7 +606,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   err = read_models(numcpus, ci);
   if (err == 0)
-    err = read_times(numcpus, ci);
+    err = read_times(&statfile_fd, numcpus, ci);
+
+  uv__close(statfile_fd);
 
   if (err) {
     uv_free_cpu_info(ci, numcpus);
@@ -724,7 +734,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-static int read_times(unsigned int numcpus, uv_cpu_info_t* ci) {
+static int read_times(int* statfile_fd, unsigned int numcpus, uv_cpu_info_t* ci) {
   unsigned long clock_ticks;
   struct uv_cpu_times_s ts;
   unsigned long user;
@@ -742,7 +752,9 @@ static int read_times(unsigned int numcpus, uv_cpu_info_t* ci) {
   assert(clock_ticks != (unsigned long) -1);
   assert(clock_ticks != 0);
 
-  fp = fopen("/proc/stat", "r");
+  lseek(*statfile_fd, 0, SEEK_SET);
+  fp = fdopen(*statfile_fd, "r");
+
   if (fp == NULL)
     return -errno;
 
