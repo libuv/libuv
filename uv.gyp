@@ -241,6 +241,7 @@
             '_ALL_SOURCE',
             '_XOPEN_SOURCE=500',
             '_LINUX_SOURCE_COMPAT',
+            '_THREAD_SAFE',
           ],
           'link_settings': {
             'libraries': [
