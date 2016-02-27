@@ -239,7 +239,7 @@
           'sources': [ 'src/unix/aix.c' ],
           'defines': [
             '_ALL_SOURCE',
-            '_XOPEN_SOURCE=500',
+            '_XOPEN_SOURCE=700',
             '_LINUX_SOURCE_COMPAT',
             '_THREAD_SAFE',
           ],
@@ -248,6 +248,15 @@
               '-lperfstat',
             ],
           },
+        }],
+        [ 'OS=="aix"', {
+          'sources': [ 'src/unix/fs.c' ],
+          'defines': [
+            '_ALL_SOURCE',
+            '_XOPEN_SOURCE=700',
+            '_LINUX_SOURCE_COMPAT',
+            '_THREAD_SAFE',
+          ],
         }],
         [ 'OS=="freebsd" or OS=="dragonflybsd"', {
           'sources': [ 'src/unix/freebsd.c' ],
@@ -434,7 +443,7 @@
         [ 'OS=="aix"', {     # make test-fs.c compile, needs _POSIX_C_SOURCE
           'defines': [
             '_ALL_SOURCE',
-            '_XOPEN_SOURCE=500',
+            '_XOPEN_SOURCE=700',
           ],
         }],
         ['uv_library=="shared_library"', {
