@@ -304,6 +304,7 @@
         'test/test-fs-event.c',
         'test/test-get-currentexe.c',
         'test/test-get-memory.c',
+        'test/test-get-passwd.c',
         'test/test-getaddrinfo.c',
         'test/test-getnameinfo.c',
         'test/test-getsockname.c',

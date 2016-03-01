@@ -1152,7 +1152,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 
 int uv_os_homedir(char* buffer, size_t* size) {
-  HANDLE token;
+  uv_passwd_t pwd;
   wchar_t path[MAX_PATH];
   DWORD bufsize;
   size_t len;
@@ -1166,6 +1166,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
   if (len == 0) {
     r = GetLastError();
+
     /* Don't return an error if USERPROFILE was not found */
     if (r != ERROR_ENVVAR_NOT_FOUND)
       return uv_translate_sys_error(r);
@@ -1173,51 +1174,52 @@ int uv_os_homedir(char* buffer, size_t* size) {
     /* This should not be possible */
     return UV_EIO;
   } else {
-    goto convert_buffer;
+    /* Check how much space we need */
+    bufsize = WideCharToMultiByte(CP_UTF8, 0, path, -1, NULL, 0, NULL, NULL);
+
+    if (bufsize == 0) {
+      return uv_translate_sys_error(GetLastError());
+    } else if (bufsize > *size) {
+      *size = bufsize;
+      return UV_ENOBUFS;
+    }
+
+    /* Convert to UTF-8 */
+    bufsize = WideCharToMultiByte(CP_UTF8,
+                                  0,
+                                  path,
+                                  -1,
+                                  buffer,
+                                  *size,
+                                  NULL,
+                                  NULL);
+
+    if (bufsize == 0)
+      return uv_translate_sys_error(GetLastError());
+
+    *size = bufsize - 1;
+    return 0;
   }
 
-  /* USERPROFILE is not set, so call GetUserProfileDirectoryW() */
-  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
-    return uv_translate_sys_error(GetLastError());
+  /* USERPROFILE is not set, so call uv__getpwuid_r() */
+  r = uv__getpwuid_r(&pwd);
 
-  bufsize = MAX_PATH;
-  if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
-    r = GetLastError();
-    CloseHandle(token);
-
-    /* This should not be possible */
-    if (r == ERROR_INSUFFICIENT_BUFFER)
-      return UV_EIO;
-
-    return uv_translate_sys_error(r);
+  if (r != 0) {
+    return r;
   }
 
-  CloseHandle(token);
+  len = strlen(pwd.homedir);
 
-convert_buffer:
-
-  /* Check how much space we need */
-  bufsize = WideCharToMultiByte(CP_UTF8, 0, path, -1, NULL, 0, NULL, NULL);
-  if (bufsize == 0) {
-    return uv_translate_sys_error(GetLastError());
-  } else if (bufsize > *size) {
-    *size = bufsize;
+  if (len >= *size) {
+    *size = len + 1;
+    uv_os_free_passwd(&pwd);
     return UV_ENOBUFS;
   }
 
-  /* Convert to UTF-8 */
-  bufsize = WideCharToMultiByte(CP_UTF8,
-                                0,
-                                path,
-                                -1,
-                                buffer,
-                                *size,
-                                NULL,
-                                NULL);
-  if (bufsize == 0)
-    return uv_translate_sys_error(GetLastError());
+  memcpy(buffer, pwd.homedir, len + 1);
+  *size = len;
+  uv_os_free_passwd(&pwd);
 
-  *size = bufsize - 1;
   return 0;
 }
 
@@ -1272,4 +1274,119 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
 
   *size = bufsize - 1;
   return 0;
+}
+
+
+void uv_os_free_passwd(uv_passwd_t* pwd) {
+  if (pwd == NULL)
+    return;
+
+  uv__free(pwd->username);
+  uv__free(pwd->homedir);
+  pwd->username = NULL;
+  pwd->homedir = NULL;
+}
+
+
+int uv__convert_utf16_to_utf8(const WCHAR* utf16, char** utf8) {
+  DWORD bufsize;
+
+  if (utf16 == NULL)
+    return UV_EINVAL;
+
+  /* Check how much space we need */
+  bufsize = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL);
+
+  if (bufsize == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  /* Allocate the destination buffer */
+  *utf8 = uv__malloc(bufsize);
+
+  if (*utf8 == NULL)
+    return UV_ENOMEM;
+
+  /* Convert to UTF-8 */
+  bufsize = WideCharToMultiByte(CP_UTF8,
+                                0,
+                                utf16,
+                                -1,
+                                *utf8,
+                                bufsize,
+                                NULL,
+                                NULL);
+
+  if (bufsize == 0) {
+    uv__free(*utf8);
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  return 0;
+}
+
+
+int uv__getpwuid_r(uv_passwd_t* pwd) {
+  HANDLE token;
+  wchar_t username[UNLEN + 1];
+  wchar_t path[MAX_PATH];
+  DWORD bufsize;
+  int r;
+
+  if (pwd == NULL)
+    return UV_EINVAL;
+
+  /* Get the home directory using GetUserProfileDirectoryW() */
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  bufsize = sizeof(path);
+  if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
+    r = GetLastError();
+    CloseHandle(token);
+
+    /* This should not be possible */
+    if (r == ERROR_INSUFFICIENT_BUFFER)
+      return UV_ENOMEM;
+
+    return uv_translate_sys_error(r);
+  }
+
+  CloseHandle(token);
+
+  /* Get the username using GetUserNameW() */
+  bufsize = sizeof(username);
+  if (!GetUserNameW(username, &bufsize)) {
+    r = GetLastError();
+
+    /* This should not be possible */
+    if (r == ERROR_INSUFFICIENT_BUFFER)
+      return UV_ENOMEM;
+
+    return uv_translate_sys_error(r);
+  }
+
+  pwd->homedir = NULL;
+  r = uv__convert_utf16_to_utf8(path, &pwd->homedir);
+
+  if (r != 0)
+    return r;
+
+  pwd->username = NULL;
+  r = uv__convert_utf16_to_utf8(username, &pwd->username);
+
+  if (r != 0) {
+    uv__free(pwd->homedir);
+    return r;
+  }
+
+  pwd->shell = NULL;
+  pwd->uid = -1;
+  pwd->gid = -1;
+
+  return 0;
+}
+
+
+int uv_os_get_passwd(uv_passwd_t* pwd) {
+  return uv__getpwuid_r(pwd);
 }

@@ -197,6 +197,7 @@ TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (process_title)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
+TEST_DECLARE   (get_passwd)
 TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (homedir)
 TEST_DECLARE   (tmpdir)
@@ -584,6 +585,8 @@ TASK_LIST_START
   TEST_ENTRY  (cwd_and_chdir)
 
   TEST_ENTRY  (get_memory)
+
+  TEST_ENTRY  (get_passwd)
 
   TEST_ENTRY  (get_loadavg)
 

@@ -257,6 +257,7 @@ void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
+int uv__getpwuid_r(uv_passwd_t* pwd);
 
 
 #if defined(__APPLE__)

@@ -161,6 +161,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-get-currentexe.c \
                          test/test-get-loadavg.c \
                          test/test-get-memory.c \
+                         test/test-get-passwd.c \
                          test/test-getaddrinfo.c \
                          test/test-getnameinfo.c \
                          test/test-getsockname.c \

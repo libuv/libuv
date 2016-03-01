@@ -122,6 +122,20 @@ Data types
             } netmask;
         } uv_interface_address_t;
 
+.. c:type:: uv_passwd_t
+
+    Data type for password file information.
+
+    ::
+
+        typedef struct uv_passwd_s {
+            char* username;
+            long uid;
+            long gid;
+            char* shell;
+            char* homedir;
+        } uv_passwd_t;
+
 
 API
 ---
@@ -288,6 +302,24 @@ API
 
     .. warning::
         `uv_os_tmpdir()` is not thread safe.
+
+    .. versionadded:: 1.9.0
+
+.. c:function:: int uv_os_get_passwd(uv_passwd_t* pwd)
+
+    Gets a subset of the password file entry for the current effective uid (not
+    the real uid). The populated data includes the username, euid, gid, shell,
+    and home directory. On non-Windows systems, all data comes from
+    :man:`getpwuid_r(3)`. On Windows, uid and gid are set to -1 and have no
+    meaning, and shell is `NULL`. After successfully calling this function, the
+    memory allocated to `pwd` needs to be freed with
+    :c:func:`uv_os_free_passwd`.
+
+    .. versionadded:: 1.9.0
+
+.. c:function:: void uv_os_free_passwd(uv_passwd_t* pwd)
+
+    Frees the `pwd` memory previously allocated with :c:func:`uv_os_get_passwd`.
 
     .. versionadded:: 1.9.0
 
