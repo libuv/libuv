@@ -28,6 +28,7 @@
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
 #include <fcntl.h>  /* O_CLOEXEC, may be */
+#include <stdio.h>
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
@@ -246,6 +247,8 @@ void uv__timer_close(uv_timer_t* handle);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
+FILE* uv__open_file(const char* path);
+
 
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);

@@ -427,6 +427,22 @@ int uv__socket(int domain, int type, int protocol) {
   return sockfd;
 }
 
+/* get a file pointer to a file in read-only and close-on-exec mode */
+FILE* uv__open_file(const char* path) {
+  int fd;
+  FILE* fp;
+
+  fd = uv__open_cloexec(path, O_RDONLY);
+  if (fd == -1)
+    return NULL;
+
+   fp = fdopen(fd, "r");
+   if (fp == NULL)
+     uv__close(fd);
+
+   return fp;
+}
+
 
 int uv__accept(int sockfd) {
   int peerfd;
