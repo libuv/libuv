@@ -575,18 +575,12 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   unsigned int numcpus;
   uv_cpu_info_t* ci;
   int err;
-  int statfile_fd;
   FILE* statfile_fp;
 
   *cpu_infos = NULL;
   *count = 0;
 
-  err = uv__open_cloexec("/proc/stat", O_RDONLY);
-  if (err < 0)
-    return err;
-  statfile_fd = err;
-
-  statfile_fp = fdopen(statfile_fd, "r");
+  statfile_fp = uv__open_file("/proc/stat");
   if (statfile_fp == NULL)
     return -errno;
 
@@ -667,7 +661,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     defined(__i386__) || \
     defined(__mips__) || \
     defined(__x86_64__)
-  fp = fopen("/proc/cpuinfo", "r");
+  fp = uv__open_file("/proc/cpuinfo");
   if (fp == NULL)
     return -errno;
 
@@ -814,7 +808,7 @@ static unsigned long read_cpufreq(unsigned int cpunum) {
            "/sys/devices/system/cpu/cpu%u/cpufreq/scaling_cur_freq",
            cpunum);
 
-  fp = fopen(buf, "r");
+  fp = uv__open_file(buf);
   if (fp == NULL)
     return 0;
 
