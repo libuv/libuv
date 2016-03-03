@@ -749,13 +749,13 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_gen = src->st_gen;
 #elif defined(__ANDROID__)
   dst->st_atim.tv_sec = src->st_atime;
-  dst->st_atim.tv_nsec = src->st_atime_nsec;
+  dst->st_atim.tv_nsec = src->st_atimensec;
   dst->st_mtim.tv_sec = src->st_mtime;
-  dst->st_mtim.tv_nsec = src->st_mtime_nsec;
+  dst->st_mtim.tv_nsec = src->st_mtimensec;
   dst->st_ctim.tv_sec = src->st_ctime;
-  dst->st_ctim.tv_nsec = src->st_ctime_nsec;
+  dst->st_ctim.tv_nsec = src->st_ctimensec;
   dst->st_birthtim.tv_sec = src->st_ctime;
-  dst->st_birthtim.tv_nsec = src->st_ctime_nsec;
+  dst->st_birthtim.tv_nsec = src->st_ctimensec;
   dst->st_flags = 0;
   dst->st_gen = 0;
 #elif !defined(_AIX) && (       \
