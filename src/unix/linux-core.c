@@ -606,7 +606,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     rewind(statfile_fp);
     err = read_times(statfile_fp, numcpus, ci);
 
-  uv__close(statfile_fd);
+  if (fclose(statfile_fp))
+    if (errno != EINTR && errno != EINPROGRESS)
+      abort();
 
   if (err) {
     uv_free_cpu_info(ci, numcpus);
