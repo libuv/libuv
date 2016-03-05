@@ -602,9 +602,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return -ENOMEM;
 
   err = read_models(numcpus, ci);
-  if (err == 0)
+  if (err == 0) {
     rewind(statfile_fp);
     err = read_times(statfile_fp, numcpus, ci);
+  }
 
   if (fclose(statfile_fp))
     if (errno != EINTR && errno != EINPROGRESS)
