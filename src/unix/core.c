@@ -53,6 +53,9 @@
 # include <mach-o/dyld.h> /* _NSGetExecutablePath */
 # include <sys/filio.h>
 # include <sys/ioctl.h>
+# if defined(O_CLOEXEC)
+#  define UV__O_CLOEXEC O_CLOEXEC
+# endif
 #endif
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
@@ -946,8 +949,7 @@ int uv__open_cloexec(const char* path, int flags) {
   int err;
   int fd;
 
-#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9) || \
-    defined(__DragonFly__)
+#if defined(UV__O_CLOEXEC)
   static int no_cloexec;
 
   if (!no_cloexec) {
