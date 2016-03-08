@@ -437,26 +437,15 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
                   long_filenamew = NULL;
                 }
               }
-
-              /*
-               * We could not resolve the long form explicitly.
-               * We therefore use the name given by ReadDirectoryChangesW.
-               * This may be the long form or the 8.3 short name in some cases.
-               */
-              if (!long_filenamew) {
-                filenamew = file_info->FileName;
-                sizew = file_info->FileNameLength / sizeof(WCHAR);
-              }
-            } else {
-              /*
-               * Removed or renamed events cannot be resolved to the long form.
-               * We therefore use the name given by ReadDirectoryChangesW.
-               * This may be the long form or the 8.3 short name in some cases.
-               */
-              if (!long_filenamew) {
-                filenamew = file_info->FileName;
-                sizew = file_info->FileNameLength / sizeof(WCHAR);
-              }
+            }
+            /*
+             * Removed or renamed events cannot be resolved to the long form.
+             * We therefore use the name given by ReadDirectoryChangesW.
+             * This may be the long form or the 8.3 short name in some cases.
+             */
+            if (!long_filenamew) {
+              filenamew = file_info->FileName;
+              sizew = file_info->FileNameLength / sizeof(WCHAR);
             }
           } else {
             /* We already have the long name of the file, so just use it. */
