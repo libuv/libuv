@@ -565,10 +565,11 @@ TEST_IMPL(poll_unidirectional) {
 /* Windows won't let you open a directory so we open a file instead.
  * OS X lets you poll a file so open the $PWD instead.  Both fail
  * on Linux so it doesn't matter which one we pick.  Both succeed
- * on FreeBSD and Solaris so skip the test on those platforms.
+ * on FreeBSD, Solaris and AIX so skip the test on those platforms.
  */
 TEST_IMPL(poll_bad_fdtype) {
-#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__sun)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__sun) && \
+    !defined(_AIX)
   uv_poll_t poll_handle;
   int fd;
 
