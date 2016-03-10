@@ -433,7 +433,7 @@ FILE* uv__open_file(const char* path) {
   FILE* fp;
 
   fd = uv__open_cloexec(path, O_RDONLY);
-  if (fd == -1)
+  if (fd < 0)
     return NULL;
 
    fp = fdopen(fd, "r");
