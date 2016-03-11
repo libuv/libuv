@@ -111,60 +111,177 @@ int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
 }
 
 
+/* Gets the offset to the end of a \\?\ or \\?\UNC\ path prefix. */
+static size_t unc_prefix_offset(WCHAR* str)
+{
+  if (str == NULL) {
+    return 0;
+  }
+
+  if (wcsstr(str, L"\\\\?\\UNC\\") != NULL) {
+    return 8; /* length of '\\?\UNC\' */
+  } else if (wcsstr(str, L"\\\\?\\") != NULL) {
+    return 4; /* length of '\\?\' */
+  } else {
+    return 0;
+  }
+}
+
+
+static int exe_get_module_path(WCHAR* buf, size_t* size)
+{
+  size_t outlen = GetModuleFileNameW(NULL, buf, *size);
+
+  if (outlen >= *size) { /* For XP */
+    return UV_EIO;
+  } else if (outlen == 0) {
+    if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+      return UV_EIO;
+    } else {
+      return GetLastError();
+    }
+  }
+
+  buf[outlen] = L'\0';
+  *size = outlen;
+  return 0;
+}
+
+
+static int exe_get_resolved_path(HANDLE handle, DWORD flags,
+                                 WCHAR* buf, size_t* size)
+{
+  size_t outlen = GetFinalPathNameByHandleW(handle, buf, *size - 1, flags);
+
+  if (outlen >= *size) {
+    return UV_EIO;
+  } else if (outlen == 0) {
+    return GetLastError();
+  }
+
+  buf[outlen] = L'\0';
+  *size = outlen;
+  return 0;
+}
+
+
 int uv_exepath(char* buffer, size_t* size_ptr) {
-  int utf8_len, utf16_buffer_len, utf16_len;
-  WCHAR* utf16_buffer;
+  /* According to MSDN the maximum (unicode) length of an NT-style file path */
+  /* is exactly 32767 characters, excluding the null termination character. */
+  WCHAR module_path[32768], resolved_path[32768];
+  size_t module_len = ARRAY_SIZE(module_path);
+  size_t resolved_len = ARRAY_SIZE(resolved_path);
+  HANDLE exe_handle = INVALID_HANDLE_VALUE;
+  WCHAR *final_path;
+  size_t final_len;
+  enum {
+    MODULE_PATH         = 1,
+    RESOLVED_DOS_PATH   = 2,
+    RESOLVED_GUID_PATH  = 3
+  } status = 0;
   int err;
 
   if (buffer == NULL || size_ptr == NULL || *size_ptr == 0) {
     return UV_EINVAL;
   }
 
+  /* We're going to be working on lengths of at most 32768 characters anyway, */
+  /* so truncate the input size to that length. Note that since size_t is */
+  /* guaranteed to be able to hold values 0 through 65535, this is safe. */
   if (*size_ptr > 32768) {
-    /* Windows paths can never be longer than this. */
-    utf16_buffer_len = 32768;
+    *size_ptr = 32768;
+  }
+
+  /* Get the path to the module as UTF-16. Normally this should not fail due */
+  /* to the module_path buffer being too short, but if it does, the helper */
+  /* function will return UV_EIO to signal an internal error. */
+  if ((err = exe_get_module_path(module_path, &module_len)) == 0) {
+    status = MODULE_PATH;
   } else {
-    utf16_buffer_len = (int) *size_ptr;
+    goto final;
   }
 
-  utf16_buffer = (WCHAR*) uv__malloc(sizeof(WCHAR) * utf16_buffer_len);
-  if (!utf16_buffer) {
-    return UV_ENOMEM;
+  /* Open the executable at that path in read mode to fully resolve it. */
+  exe_handle = CreateFileW(module_path,
+                           FILE_READ_ATTRIBUTES,
+                           FILE_SHARE_READ |
+                           FILE_SHARE_WRITE |
+                           FILE_SHARE_DELETE,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_ATTRIBUTE_NORMAL,
+                           NULL);
+
+  if (exe_handle == INVALID_HANDLE_VALUE) {
+    goto final;
   }
 
-  /* Get the path as UTF-16. */
-  utf16_len = GetModuleFileNameW(NULL, utf16_buffer, utf16_buffer_len);
-  if (utf16_len <= 0) {
-    err = GetLastError();
-    goto error;
+  /* Resolve the path to a full path (dereferencing any symlinks). First try */
+  /* to get a DOS path. If that fails with ERROR_PATH_NOT_FOUND, try again */
+  /* but with a GUID path. If that also fails, we have to give up. */
+  if ((err = exe_get_resolved_path(exe_handle, VOLUME_NAME_DOS,
+                                   resolved_path, &resolved_len)) == 0) {
+    status = RESOLVED_DOS_PATH;
+  } else {
+    if (err == ERROR_PATH_NOT_FOUND) { /* Maybe we just need a GUID path */
+      if ((err = exe_get_resolved_path(exe_handle, VOLUME_NAME_GUID,
+                                       resolved_path, &resolved_len)) == 0) {
+        status = RESOLVED_GUID_PATH;
+      }
+    }
   }
 
-  /* utf16_len contains the length, *not* including the terminating null. */
-  utf16_buffer[utf16_len] = L'\0';
-
-  /* Convert to UTF-8 */
-  utf8_len = WideCharToMultiByte(CP_UTF8,
-                                 0,
-                                 utf16_buffer,
-                                 -1,
-                                 buffer,
-                                 *size_ptr > INT_MAX ? INT_MAX : (int) *size_ptr,
-                                 NULL,
-                                 NULL);
-  if (utf8_len == 0) {
-    err = GetLastError();
-    goto error;
+final:
+  if (exe_handle != INVALID_HANDLE_VALUE) {
+    CloseHandle(exe_handle);
   }
 
-  uv__free(utf16_buffer);
+  /* Depending on what type of path we managed to retrieve, determine what */
+  /* we should return to the user here (also strip off \\?\ if needed). */
+  switch (status) {
+    size_t unc_offset;
+    case RESOLVED_GUID_PATH:
+      final_path = resolved_path;
+      final_len = resolved_len;
+      break;
+    case RESOLVED_DOS_PATH:
+      unc_offset = unc_prefix_offset(resolved_path);
+      final_path = resolved_path + unc_offset;
+      final_len = resolved_len - unc_offset;
+      break;
+    case MODULE_PATH:
+      unc_offset = unc_prefix_offset(module_path);
+      final_path = module_path + unc_offset;
+      final_len = module_len - unc_offset;
+      break;
+    default:
+      final_path = NULL;
+      final_len = 0;
+  }
 
-  /* utf8_len *does* include the terminating null at this point, but the */
-  /* returned size shouldn't. */
-  *size_ptr = utf8_len - 1;
-  return 0;
+  if (final_path != NULL) {
+    int utf8_len;
+  
+    /* Need to make sure the final path fits in the output buffer. */
+    if (*size_ptr - 1 < final_len) {
+      final_path[*size_ptr - 1] = L'\0';
+    }
+    
+    /* Convert to UTF-8 */
+    utf8_len = WideCharToMultiByte(CP_UTF8, 0,
+                                   final_path, -1,
+                                   buffer, (int)*size_ptr,
+                                   NULL, NULL);
 
- error:
-  uv__free(utf16_buffer);
+    /* utf8_len *does* include the terminating null at this point, but the */
+    /* returned size shouldn't. */
+    if (utf8_len != 0) {
+      *size_ptr = (size_t)(utf8_len - 1);
+    } else {
+      err = GetLastError();
+    }
+  }
+
   return uv_translate_sys_error(err);
 }
 
