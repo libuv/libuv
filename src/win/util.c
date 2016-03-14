@@ -87,30 +87,6 @@ void uv__util_init() {
 }
 
 
-int uv_utf16_to_utf8(const WCHAR* utf16Buffer, size_t utf16Size,
-    char* utf8Buffer, size_t utf8Size) {
-  return WideCharToMultiByte(CP_UTF8,
-                             0,
-                             utf16Buffer,
-                             utf16Size,
-                             utf8Buffer,
-                             utf8Size,
-                             NULL,
-                             NULL);
-}
-
-
-int uv_utf8_to_utf16(const char* utf8Buffer, WCHAR* utf16Buffer,
-    size_t utf16Size) {
-  return MultiByteToWideChar(CP_UTF8,
-                             0,
-                             utf8Buffer,
-                             -1,
-                             utf16Buffer,
-                             utf16Size);
-}
-
-
 int uv_exepath(char* buffer, size_t* size_ptr) {
   int utf8_len, utf16_buffer_len, utf16_len;
   WCHAR* utf16_buffer;
@@ -384,7 +360,7 @@ int uv_set_process_title(const char* title) {
   uv__once_init();
 
   /* Find out how big the buffer for the wide-char title must be */
-  length = uv_utf8_to_utf16(title, NULL, 0);
+  length = MultiByteToWideChar(CP_UTF8, 0, title, -1, NULL, 0);
   if (!length) {
     err = GetLastError();
     goto done;
@@ -396,7 +372,7 @@ int uv_set_process_title(const char* title) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
-  length = uv_utf8_to_utf16(title, title_w, length);
+  length = MultiByteToWideChar(CP_UTF8, 0, title, -1, title_w, length);
   if (!length) {
     err = GetLastError();
     goto done;
@@ -434,7 +410,7 @@ static int uv__get_process_title() {
   }
 
   /* Find out what the size of the buffer is that we need */
-  length = uv_utf16_to_utf8(title_w, -1, NULL, 0);
+  length = WideCharToMultiByte(CP_UTF8, 0, title_w, -1, NULL, 0, NULL, NULL);
   if (!length) {
     return -1;
   }
@@ -446,7 +422,14 @@ static int uv__get_process_title() {
   }
 
   /* Do utf16 -> utf8 conversion here */
-  if (!uv_utf16_to_utf8(title_w, -1, process_title, length)) {
+  if (!WideCharToMultiByte(CP_UTF8,
+                           0,
+                           title_w,
+                           -1,
+                           process_title,
+                           length,
+                           NULL,
+                           NULL)) {
     uv__free(process_title);
     return -1;
   }
@@ -1214,7 +1197,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
 convert_buffer:
 
   /* Check how much space we need */
-  bufsize = uv_utf16_to_utf8(path, -1, NULL, 0);
+  bufsize = WideCharToMultiByte(CP_UTF8, 0, path, -1, NULL, 0, NULL, NULL);
   if (bufsize == 0) {
     return uv_translate_sys_error(GetLastError());
   } else if (bufsize > *size) {
@@ -1223,7 +1206,14 @@ convert_buffer:
   }
 
   /* Convert to UTF-8 */
-  bufsize = uv_utf16_to_utf8(path, -1, buffer, *size);
+  bufsize = WideCharToMultiByte(CP_UTF8,
+                                0,
+                                path,
+                                -1,
+                                buffer,
+                                *size,
+                                NULL,
+                                NULL);
   if (bufsize == 0)
     return uv_translate_sys_error(GetLastError());
 

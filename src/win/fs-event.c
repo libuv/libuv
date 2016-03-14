@@ -159,14 +159,20 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   uv__handle_start(handle);
 
   /* Convert name to UTF16. */
-  name_size = uv_utf8_to_utf16(path, NULL, 0) * sizeof(WCHAR);
+
+  name_size = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0) *
+              sizeof(WCHAR);
   pathw = (WCHAR*)uv__malloc(name_size);
   if (!pathw) {
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   }
 
-  if (!uv_utf8_to_utf16(path, pathw,
-      name_size / sizeof(WCHAR))) {
+  if (!MultiByteToWideChar(CP_UTF8,
+                           0,
+                           path,
+                           -1,
+                           pathw,
+                           name_size / sizeof(WCHAR))) {
     return uv_translate_sys_error(GetLastError());
   }
 
@@ -455,20 +461,28 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
 
           if (filenamew) {
             /* Convert the filename to utf8. */
-            size = uv_utf16_to_utf8(filenamew,
-                                    sizew,
-                                    NULL,
-                                    0);
+            size = WideCharToMultiByte(CP_UTF8,
+                                       0,
+                                       filenamew,
+                                       sizew,
+                                       NULL,
+                                       0,
+                                       NULL,
+                                       NULL);
             if (size) {
               filename = (char*)uv__malloc(size + 1);
               if (!filename) {
                 uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
               }
 
-              size = uv_utf16_to_utf8(filenamew,
-                                      sizew,
-                                      filename,
-                                      size);
+              size = WideCharToMultiByte(CP_UTF8,
+                                         0,
+                                         filenamew,
+                                         sizew,
+                                         filename,
+                                         size,
+                                         NULL,
+                                         NULL);
               if (size) {
                 filename[size] = '\0';
               } else {
