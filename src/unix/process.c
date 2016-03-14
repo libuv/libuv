@@ -395,8 +395,17 @@ static void uv__process_child_init(const uv_process_options_t* options,
     SAVE_ERRNO(setgroups(0, NULL));
   }
 
-  if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid))
-    uv__write_errno(error_fd);
+  if (options->flags & UV_PROCESS_SETGROUPS) {
+    if (setgroups(options->gids_size, options->gids)) {
+      uv__write_int(error_fd, -errno);
+      _exit(127);
+    }
+  }
+
+  if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid)) {
+    uv__write_int(error_fd, -errno);
+    _exit(127);
+  }
 
   if ((options->flags & UV_PROCESS_SETUID) && setuid(options->uid))
     uv__write_errno(error_fd);
@@ -899,6 +908,13 @@ static int uv__spawn_and_init_child(
   int exec_errorno;
   ssize_t r;
 
+  assert(options->file != NULL);
+  assert(!(options->flags & ~(UV_PROCESS_DETACHED |
+                              UV_PROCESS_SETGID |
+                              UV_PROCESS_SETUID |
+                              UV_PROCESS_SETGROUPS |
+                              UV_PROCESS_WINDOWS_HIDE |
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
 #if defined(__APPLE__)
   uv_once(&posix_spawn_init_once, uv__spawn_init_posix_spawn);
 

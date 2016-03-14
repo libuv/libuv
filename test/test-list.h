@@ -341,8 +341,12 @@ TEST_DECLARE   (spawn_preserve_env)
 TEST_DECLARE   (spawn_same_stdout_stderr)
 TEST_DECLARE   (spawn_setuid_fails)
 TEST_DECLARE   (spawn_setgid_fails)
+<<<<<<< HEAD
 TEST_DECLARE   (spawn_affinity)
 TEST_DECLARE   (spawn_affinity_invalid_mask)
+=======
+TEST_DECLARE   (spawn_setgids_fails)
+>>>>>>> 20a263fd (unix: Support setting supplementary process groups)
 TEST_DECLARE   (spawn_stdout_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file2)
@@ -541,6 +545,7 @@ TEST_DECLARE   (win32_signum_number)
 #else
 TEST_DECLARE   (emfile)
 TEST_DECLARE   (spawn_setuid_setgid)
+TEST_DECLARE   (spawn_setgids)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
 TEST_DECLARE   (we_get_signal_one_shot)
@@ -1037,8 +1042,12 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_same_stdout_stderr)
   TEST_ENTRY  (spawn_setuid_fails)
   TEST_ENTRY  (spawn_setgid_fails)
+<<<<<<< HEAD
   TEST_ENTRY  (spawn_affinity)
   TEST_ENTRY  (spawn_affinity_invalid_mask)
+=======
+  TEST_ENTRY  (spawn_setgids_fails)
+>>>>>>> 20a263fd (unix: Support setting supplementary process groups)
   TEST_ENTRY  (spawn_stdout_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file2)
@@ -1084,6 +1093,7 @@ TASK_LIST_START
 #else
   TEST_ENTRY  (emfile)
   TEST_ENTRY  (spawn_setuid_setgid)
+  TEST_ENTRY  (spawn_setgids)
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
   TEST_ENTRY  (we_get_signal_one_shot)
