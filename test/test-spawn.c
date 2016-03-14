@@ -1260,6 +1260,46 @@ TEST_IMPL(spawn_setuid_setgid) {
 }
 #endif
 
+#ifndef _WIN32
+TEST_IMPL(spawn_setgids) {
+  int r;
+  struct passwd* pw;
+  uv_gid_t gids[1];
+
+  /* if not root, then this will fail. */
+  uv_uid_t uid = getuid();
+  if (uid != 0) {
+    fprintf(stderr, "spawn_setgids skipped: not root\n");
+    return 0;
+  }
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  pw = getpwnam("nobody");
+  ASSERT(pw != NULL);
+  gids[0] = pw->pw_gid;
+  options.gids = gids;
+  options.gids_sz = 1;
+
+  options.flags = UV_PROCESS_SETGROUPS;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  if (r == UV_EACCES)
+    RETURN_SKIP("user 'nobody' cannot access the test runner");
+
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
+
 
 #ifndef _WIN32
 TEST_IMPL(spawn_setuid_fails) {
@@ -1310,6 +1350,39 @@ TEST_IMPL(spawn_setgid_fails) {
 
   options.flags |= UV_PROCESS_SETGID;
   options.gid = 0;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == UV_EPERM);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(close_cb_called == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(spawn_setgids_fails) {
+  int r;
+  uv_gid_t gids[1] = {0};
+
+  /* if root, become nobody. */
+  uv_uid_t uid = getuid();
+  if (uid == 0) {
+    struct passwd* pw;
+    pw = getpwnam("nobody");
+    ASSERT(pw != NULL);
+    ASSERT(0 == setgid(pw->pw_gid));
+    ASSERT(0 == setuid(pw->pw_uid));
+  }
+
+  init_process_options("spawn_helper1", fail_cb);
+
+  options.flags |= UV_PROCESS_SETGROUPS;
+  options.gids = gids;
+  options.gids_sz = 1;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == UV_EPERM);

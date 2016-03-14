@@ -362,6 +362,13 @@ static void uv__process_child_init(const uv_process_options_t* options,
     SAVE_ERRNO(setgroups(0, NULL));
   }
 
+  if (options->flags & UV_PROCESS_SETGROUPS) {
+    if (setgroups(options->gids_sz, options->gids)) {
+      uv__write_int(error_fd, -errno);
+      _exit(127);
+    }
+  }
+
   if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid)) {
     uv__write_int(error_fd, -errno);
     _exit(127);
@@ -404,6 +411,7 @@ int uv_spawn(uv_loop_t* loop,
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
+                              UV_PROCESS_SETGROUPS |
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
 
