@@ -205,6 +205,13 @@ skip:
 # else
   return futimes(req->file, tv);
 # endif
+#elif defined(_AIX71)
+  struct timespec ts[2];
+  ts[0].tv_sec  = req->atime;
+  ts[0].tv_nsec = (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
+  ts[1].tv_sec  = req->mtime;
+  ts[1].tv_nsec = (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
+  return futimens(req->file, ts);
 #else
   errno = ENOSYS;
   return -1;
