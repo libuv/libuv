@@ -33,7 +33,7 @@ Data types
             uv_uid_t uid;
             uv_gid_t gid;
             uv_gid_t* gids;
-            size_t gids_sz;
+            size_t num_gids;
         } uv_process_options_t;
 
 .. c:type:: void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal)
@@ -80,7 +80,7 @@ Data types
             /*
              * Set the child process' supplementary group ids. The group ids are supplied
              * in the 'gids' field in the options struct, and the number of groups is
-             * specified in the 'gids_sz' field.  This does not work on windows;
+             * specified in the 'num_gids' field.  This does not work on windows;
              * setting this flag will cause uv_spawn() to fail.
              */
             UV_PROCESS_SETGROUPS = (1 << 5)
@@ -174,7 +174,7 @@ Public members
 .. c:member:: uv_process_options_t.uid
 .. c:member:: uv_process_options_t.gid
 .. c:member:: uv_process_options_t.gids
-.. c:member:: uv_process_options_t.gids_sz
+.. c:member:: uv_process_options_t.num_gids
 
     Libuv can change the child process' user/group id and supplementary group
     ids. This happens only when the appropriate bits are set in the flags fields.

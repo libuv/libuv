@@ -900,7 +900,7 @@ typedef struct uv_process_options_s {
   uv_uid_t uid;
   uv_gid_t gid;
   uv_gid_t* gids;
-  size_t gids_sz;
+  size_t num_gids;
 
 } uv_process_options_t;
 
@@ -943,7 +943,7 @@ enum uv_process_flags {
   /*
    * Set the child process' supplementary group ids. The group ids are supplied
    * in the 'gids' field in the options struct, and the number of groups is
-   * specified in the 'gids_sz' field.  This does not work on windows;
+   * specified in the 'num_gids' field.  This does not work on windows;
    * setting this flag will cause uv_spawn() to fail on windows.
    */
   UV_PROCESS_SETGROUPS = (1 << 5)

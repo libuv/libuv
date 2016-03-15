@@ -363,7 +363,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   if (options->flags & UV_PROCESS_SETGROUPS) {
-    if (setgroups(options->gids_sz, options->gids)) {
+    if (setgroups(options->num_gids, options->gids)) {
       uv__write_int(error_fd, -errno);
       _exit(127);
     }
