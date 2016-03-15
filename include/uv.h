@@ -1153,7 +1153,6 @@ typedef struct uv_process_options_s {
   size_t cpumask_size;
   uv_gid_t* gids;
   size_t gids_size;
-
 } uv_process_options_t;
 
 /*
