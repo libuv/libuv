@@ -100,7 +100,7 @@ Data types
             /*
              * Set the child process' supplementary group ids. The group ids are supplied
              * in the 'gids' field in the options struct, and the number of groups is
-             * specified in the 'gids_sz' field.  This does not work on windows;
+             * specified in the 'num_gids' field.  This does not work on windows;
              * setting this flag will cause uv_spawn() to fail.
              */
             UV_PROCESS_SETGROUPS = (1 << 8)

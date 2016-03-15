@@ -1517,7 +1517,7 @@ TEST_IMPL(spawn_setgids) {
   ASSERT(pw != NULL);
   gids[0] = pw->pw_gid;
   options.gids = gids;
-  options.gids_sz = 1;
+  options.num_gids = 1;
 
   options.flags = UV_PROCESS_SETGROUPS;
 
@@ -1654,7 +1654,7 @@ TEST_IMPL(spawn_setgids_fails) {
 
   options.flags |= UV_PROCESS_SETGROUPS;
   options.gids = gids;
-  options.gids_sz = 1;
+  options.num_gids = 1;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == UV_EPERM);
