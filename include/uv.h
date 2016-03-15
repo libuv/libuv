@@ -901,7 +901,6 @@ typedef struct uv_process_options_s {
   uv_gid_t gid;
   uv_gid_t* gids;
   size_t num_gids;
-
 } uv_process_options_t;
 
 /*
