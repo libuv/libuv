@@ -164,15 +164,38 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
 
 INLINE static HANDLE uv__get_osfhandle(int fd)
 {
+  HANDLE handle;
+
   /* _get_osfhandle() raises an assert in debug builds if the FD is invalid. */
   /* But  it also correctly checks the FD and returns INVALID_HANDLE_VALUE */
   /* for invalid FDs in release builds (or if you let the assert continue).  */
   /* So this wrapper function disables asserts when calling _get_osfhandle. */
 
-  HANDLE handle;
-  UV_BEGIN_DISABLE_CRT_ASSERT();
-  handle = (HANDLE) _get_osfhandle(fd);
-  UV_END_DISABLE_CRT_ASSERT();
+  /* For the stdin/stdout/stderr file descriptors, we need GetStdHandle */
+  /* because _get_osfhandle does not return the correct handle if the */
+  /* console was attached during runtime. This may occur when e.g. a Windows */
+  /* GUI application allocates a console with AllocConsole. */
+
+  switch (fd) {
+    case 0:
+      handle = GetStdHandle(STD_INPUT_HANDLE);
+      break;
+
+    case 1:
+      handle = GetStdHandle(STD_OUTPUT_HANDLE);
+      break;
+
+    case 2:
+      handle = GetStdHandle(STD_ERROR_HANDLE);
+      break;
+
+    default:
+      UV_BEGIN_DISABLE_CRT_ASSERT();
+      handle = (HANDLE) _get_osfhandle(fd);
+      UV_END_DISABLE_CRT_ASSERT();
+      break;
+  }
+
   return handle;
 }
 
