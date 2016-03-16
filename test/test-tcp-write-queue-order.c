@@ -26,7 +26,9 @@
 #include "uv.h"
 #include "task.h"
 
-#define REQ_COUNT 10000
+#define MAX_REQ_COUNT 100000
+
+static int req_count = 0;
 
 static uv_timer_t timer;
 static uv_tcp_t server;
@@ -39,7 +41,7 @@ static int write_callbacks;
 static int write_cancelled_callbacks;
 static int write_error_callbacks;
 
-static uv_write_t write_requests[REQ_COUNT];
+static uv_write_t write_requests[MAX_REQ_COUNT];
 
 
 static void close_cb(uv_handle_t* handle) {
@@ -65,6 +67,8 @@ static void connect_cb(uv_connect_t* req, int status) {
   static char base[1024];
   int r;
   int i;
+  int j;
+
   uv_buf_t buf;
 
   ASSERT(status == 0);
@@ -72,13 +76,29 @@ static void connect_cb(uv_connect_t* req, int status) {
 
   buf = uv_buf_init(base, sizeof(base));
 
-  for (i = 0; i < REQ_COUNT; i++) {
+  for (i = 0; i < MAX_REQ_COUNT; i++) {
     r = uv_write(&write_requests[i],
                  req->handle,
                  &buf,
                  1,
                  write_cb);
     ASSERT(r == 0);
+
+    req_count++;
+
+    if (client.write_queue_size > 0)
+      break;
+  }
+
+  for (j = 0; j < i + 1; j++) {
+    r = uv_write(&write_requests[i + 1 + j],
+                 req->handle,
+                 &buf,
+                 1,
+                 write_cb);
+    ASSERT(r == 0);
+
+    req_count++;
   }
 }
 
@@ -129,7 +149,7 @@ TEST_IMPL(tcp_write_queue_order) {
   ASSERT(write_cancelled_callbacks > 0);
   ASSERT(write_callbacks +
          write_error_callbacks +
-         write_cancelled_callbacks == REQ_COUNT);
+         write_cancelled_callbacks == req_count);
   ASSERT(close_cb_called == 3);
 
   MAKE_VALGRIND_HAPPY();
