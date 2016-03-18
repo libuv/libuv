@@ -21,12 +21,23 @@
 
 #include "uv.h"
 #include "internal.h"
+#include <stdio.h>
+#include <Rpc.h>
+
+#define MAX_LONG_PATH 32768
+#define MAX_LINK_FILENAME_RETRIES 16
 
 static int uv__dlerror(uv_lib_t* lib, int errorno);
 
-
 int uv_dlopen(const char* filename, uv_lib_t* lib) {
-  WCHAR filename_w[32768];
+  WCHAR filename_w[MAX_LONG_PATH];
+  WCHAR temp_path[MAX_PATH];
+  WCHAR symlink_name[MAX_PATH];
+  WCHAR dll_filename_long[MAX_LONG_PATH] = L"\\\\?\\";
+  WCHAR *filename_ptr = filename_w;
+  DWORD load_library_last_error;
+  UUID uuid;
+  RPC_WSTR uuid_string;
 
   lib->handle = NULL;
   lib->errmsg = NULL;
@@ -41,8 +52,54 @@ int uv_dlopen(const char* filename, uv_lib_t* lib) {
   }
 
   lib->handle = LoadLibraryExW(filename_w, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+  load_library_last_error = GetLastError();
+  if (lib->handle == NULL
+      && load_library_last_error == ERROR_INSUFFICIENT_BUFFER) {
+    /* If filename is too long, LoadLibrary will fail on some versions of
+       Windows. We will create a symbolic link in temporary folder to that
+       DLL, and load it from there. */
+
+    /* Prefix filename with \\?\ if not already present,
+       otherwise it won't work */
+    if (wcsncmp(filename_w, dll_filename_long, 4) == 0) {
+      wcsncat(dll_filename_long + 4, filename_w + 4, MAX_LONG_PATH - 4);
+    } else {
+      wcsncat(dll_filename_long, filename_w, MAX_LONG_PATH - 4);
+      /* Adding \\?\ disables support for forward slashes. Substitute
+         them with back slashes. */
+      while (*filename_ptr != 0) {
+        if (*filename_ptr == '/') {
+          *filename_ptr = '\\';
+        }
+        ++filename_ptr;
+      }
+    }
+
+    /* Create temporary file name */
+    if (!GetTempPathW(MAX_PATH, temp_path)) {
+      return uv__dlerror(lib, GetLastError());
+    }
+    if (UuidCreateSequential(&uuid) == RPC_S_UUID_NO_ADDRESS) {
+      return uv__dlerror(lib, GetLastError());
+    }
+    if (UuidToStringW(&uuid, &uuid_string) != RPC_S_OK) {
+      return uv__dlerror(lib, GetLastError());
+    }
+    swprintf_s(symlink_name, MAX_PATH, L"%s%s.tmp", temp_path, uuid_string);
+    RpcStringFreeW(&uuid_string);
+
+    /* Create symbolic link and try to load it */
+    if (!CreateSymbolicLinkW(symlink_name, dll_filename_long, 0)) {
+      return uv__dlerror(lib, GetLastError());
+    }
+    lib->handle = LoadLibraryExW(symlink_name, NULL,
+                                 LOAD_WITH_ALTERED_SEARCH_PATH);
+    load_library_last_error = GetLastError();
+    DeleteFileW(symlink_name);
+  }
+
   if (lib->handle == NULL) {
-    return uv__dlerror(lib, GetLastError());
+    return uv__dlerror(lib, load_library_last_error);
   }
 
   return 0;

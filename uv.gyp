@@ -110,6 +110,7 @@
               '-ladvapi32',
               '-liphlpapi',
               '-lpsapi',
+              '-lrpcrt4',
               '-lshell32',
               '-luserenv',
               '-lws2_32'
@@ -404,6 +405,7 @@
         'test/test-udp-multicast-join.c',
         'test/test-udp-multicast-join6.c',
         'test/test-dlerror.c',
+        'test/test-dlopen.c',
         'test/test-udp-multicast-ttl.c',
         'test/test-ip4-addr.c',
         'test/test-ip6-addr.c',

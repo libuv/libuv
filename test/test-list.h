@@ -307,6 +307,9 @@ TEST_DECLARE   (thread_rwlock_trylock)
 TEST_DECLARE   (thread_create)
 TEST_DECLARE   (thread_equal)
 TEST_DECLARE   (dlerror)
+#ifdef _WIN32
+TEST_DECLARE   (dlopen)
+#endif
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
@@ -748,6 +751,9 @@ TASK_LIST_START
   TEST_ENTRY  (thread_create)
   TEST_ENTRY  (thread_equal)
   TEST_ENTRY  (dlerror)
+#ifdef _WIN32
+  TEST_ENTRY  (dlopen)
+#endif
   TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)
 
