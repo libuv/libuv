@@ -34,7 +34,6 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
-
 struct thread_ctx {
   void (*entry)(void* arg);
   void* arg;
@@ -448,72 +447,6 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 }
 
 
-#if defined(__APPLE__) && defined(__MACH__)
-
-int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  int err;
-
-  barrier->n = count;
-  barrier->count = 0;
-
-  err = uv_mutex_init(&barrier->mutex);
-  if (err)
-    return -err;
-
-  err = uv_sem_init(&barrier->turnstile1, 0);
-  if (err)
-    goto error2;
-
-  err = uv_sem_init(&barrier->turnstile2, 1);
-  if (err)
-    goto error;
-
-  return 0;
-
-error:
-  uv_sem_destroy(&barrier->turnstile1);
-error2:
-  uv_mutex_destroy(&barrier->mutex);
-  return -err;
-
-}
-
-
-void uv_barrier_destroy(uv_barrier_t* barrier) {
-  uv_sem_destroy(&barrier->turnstile2);
-  uv_sem_destroy(&barrier->turnstile1);
-  uv_mutex_destroy(&barrier->mutex);
-}
-
-
-int uv_barrier_wait(uv_barrier_t* barrier) {
-  int serial_thread;
-
-  uv_mutex_lock(&barrier->mutex);
-  if (++barrier->count == barrier->n) {
-    uv_sem_wait(&barrier->turnstile2);
-    uv_sem_post(&barrier->turnstile1);
-  }
-  uv_mutex_unlock(&barrier->mutex);
-
-  uv_sem_wait(&barrier->turnstile1);
-  uv_sem_post(&barrier->turnstile1);
-
-  uv_mutex_lock(&barrier->mutex);
-  serial_thread = (--barrier->count == 0);
-  if (serial_thread) {
-    uv_sem_wait(&barrier->turnstile1);
-    uv_sem_post(&barrier->turnstile2);
-  }
-  uv_mutex_unlock(&barrier->mutex);
-
-  uv_sem_wait(&barrier->turnstile2);
-  uv_sem_post(&barrier->turnstile2);
-  return serial_thread;
-}
-
-#else /* !(defined(__APPLE__) && defined(__MACH__)) */
-
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   return -pthread_barrier_init(barrier, NULL, count);
 }
@@ -532,7 +465,6 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
   return r == PTHREAD_BARRIER_SERIAL_THREAD;
 }
 
-#endif /* defined(__APPLE__) && defined(__MACH__) */
 
 int uv_key_create(uv_key_t* key) {
   return -pthread_key_create(key, NULL);

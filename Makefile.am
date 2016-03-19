@@ -291,20 +291,23 @@ endif
 
 if ANDROID
 include_HEADERS += include/android-ifaddrs.h \
-                   include/pthread-fixes.h
+                   include/pthread-barrier.h
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c
+                    src/unix/pthread-fixes.c \
+                    src/unix/pthread-barrier.c
 endif
 
 if DARWIN
-include_HEADERS += include/uv-darwin.h
+include_HEADERS += include/uv-darwin.h \
+                   include/pthread-barrier.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
 libuv_la_SOURCES += src/unix/darwin.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
-                    src/unix/proctitle.c
+                    src/unix/proctitle.c \
+                    src/unix/pthread-barrier.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
