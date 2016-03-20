@@ -185,8 +185,13 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 
 int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   struct winsize ws;
+  int err;
 
-  if (ioctl(uv__stream_fd(tty), TIOCGWINSZ, &ws))
+  do
+    err = ioctl(uv__stream_fd(tty), TIOCGWINSZ, &ws);
+  while (err == -1 && errno == EINTR);
+
+  if (err == -1)
     return -errno;
 
   *width = ws.ws_col;
