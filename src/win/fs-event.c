@@ -63,19 +63,19 @@ static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
   handle->req_pending = 1;
 }
 
-static int uv_relative_path(const WCHAR* filename,
-                            const WCHAR* dir,
-	                    WCHAR** relpath) {
-  int dirlen = wcslen(dir);
-  int filelen = wcslen(filename);
-  if (dir[dirlen - 1] == '\\')
+static void uv_relative_path(const WCHAR* filename,
+                             const WCHAR* dir,
+                             WCHAR** relpath) {
+  size_t dirlen = wcslen(dir);
+  if (dirlen > 0 && dir[dirlen - 1] == '\\')
     dirlen--;
-  *relpath = uv__malloc((MAX_PATH + 1) * sizeof(WCHAR));
+  size_t filenamelen = wcslen(filename);
+  size_t relpathlen = filenamelen - dirlen - 1;
+  *relpath = uv__malloc((relpathlen + 1) * sizeof(WCHAR));
   if (!*relpath)
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-  wcsncpy(*relpath, filename + dirlen + 1, filelen - dirlen - 1);
-  (*relpath)[filelen - dirlen - 1] = L'\0';
-  return 0;
+  wcsncpy(*relpath, filename + dirlen + 1, relpathlen);
+  (*relpath)[relpathlen] = L'\0';
 }
 
 static int uv_split_path(const WCHAR* filename, WCHAR** dir,
@@ -346,7 +346,7 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
 void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
     uv_fs_event_t* handle) {
   FILE_NOTIFY_INFORMATION* file_info;
-  int err, sizew, size, result;
+  int err, sizew, size;
   char* filename = NULL;
   WCHAR* filenamew, *long_filenamew = NULL;
   DWORD offset = 0;
@@ -431,17 +431,12 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
 
               if (long_filenamew) {
                 /* Get the file name out of the long path. */
-                result = uv_relative_path(long_filenamew,
-                                          handle->dirw,
-                                          &filenamew);
+                uv_relative_path(long_filenamew,
+                                 handle->dirw,
+                                 &filenamew);
                 uv__free(long_filenamew);
-
-                if (result == 0) {
-                  long_filenamew = filenamew;
-                  sizew = -1;
-                } else {
-                  long_filenamew = NULL;
-                }
+                long_filenamew = filenamew;
+                sizew = -1;
               }
             }
             /*
