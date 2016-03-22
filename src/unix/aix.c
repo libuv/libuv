@@ -524,7 +524,7 @@ static int uv__makedir_p(const char *dir) {
     if (*p == '/') {
       *p = 0;
       err = mkdir(tmp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-      if(err != 0)
+      if (err != 0 && errno != EEXIST)
         return err;
       *p = '/';
     }
@@ -743,7 +743,7 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
    */
   bytes = pread(event_watch->fd, result_data, RDWR_BUF_SIZE, 0);
 
-  assert((bytes <= 0) && "uv__ahafs_event - Error reading monitor file");
+  assert((bytes >= 0) && "uv__ahafs_event - Error reading monitor file");
 
   /* Parse the data */
   if(bytes > 0)
