@@ -58,13 +58,18 @@ API
     `readable`, specifies if you plan on calling :c:func:`uv_read_start` with
     this stream. stdin is readable, stdout is not.
 
-    On Unix this function will try to open ``/dev/tty`` and use it if the passed
-    file descriptor refers to a TTY. This lets libuv put the tty in non-blocking
-    mode without affecting other processes that share the tty.
+    On Unix this function will determine the path of the fd of the terminal
+    using `ttyname_r(3)`, open it, and use it if the passed file descriptor
+    refers to a TTY. This lets libuv put the tty in non-blocking mode without
+    affecting other processes that share the tty.
 
     .. note::
-        If opening ``/dev/tty`` fails, libuv falls back to blocking writes for
+        If reopening the TTY fails, libuv falls back to blocking writes for
         non-readable TTY streams.
+
+    .. versionchanged:: 1.9.0: the path of the TTY is determined by
+                        `ttyname_r(3)`. In earlier versions libuv opened
+                        `/dev/tty` instead.
 
     .. versionchanged:: 1.5.0: trying to initialize a TTY stream with a file
                         descriptor that refers to a file returns `UV_EINVAL`
