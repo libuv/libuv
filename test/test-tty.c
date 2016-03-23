@@ -189,7 +189,7 @@ TEST_IMPL(tty_file) {
 
 TEST_IMPL(tty_pty) {
 # if defined(__linux__) || defined(__OpenBSD__) || defined(__NetBSD__) || \
-		defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
+    defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
   int master_fd, slave_fd;
   struct winsize w;
   uv_loop_t loop;
