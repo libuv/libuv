@@ -39,6 +39,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   int flags;
   int newfd;
   int r;
+  char path[256] = { 0 };
 
   /* File descriptors that refer to files cannot be monitored with epoll.
    * That restriction also applies to character devices like /dev/random
@@ -62,7 +63,15 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
    * other processes.
    */
   if (type == UV_TTY) {
-    r = uv__open_cloexec("/dev/tty", O_RDWR);
+    r = -1;
+    /* Reopening /dev/ptmx generates a new master/slave pair and therefore
+     * causes losing the connection to the original slave. As this is behavior
+     * is not desired do not reopen /dev/ptmx.
+     */
+    if(ttyname_r(fd, path, sizeof(path) - 1) == 0 &&
+        strcmp(path, "/dev/ptmx") != 0) {
+      r = uv__open_cloexec(path, O_RDWR);
+    }
 
     if (r < 0) {
       /* fallback to using blocking writes */
