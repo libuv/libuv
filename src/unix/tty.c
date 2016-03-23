@@ -78,7 +78,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
       return -errno;
     }
 
-    for (fdtty = 0, r = -1; fdtty <= STDERR_FILENO && !isatty(fdtty); fdtty++) {
+    for (fdtty = 0, r = -1; fdtty <= STDERR_FILENO; fdtty++) {
       /* Check stdin, stdout, stderr. If any of those has the same inode as fd
        * reopen the file.
        */
