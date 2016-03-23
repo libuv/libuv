@@ -425,6 +425,11 @@
             'test/runner-unix.h',
           ],
         }],
+        [ 'OS in "mac dragonflybsd freebsd linux netbsd openbsd".split()', {
+          'link_settings': {
+            'libraries': [ '-lutil' ],
+          },
+        }],
         [ 'OS=="solaris"', { # make test-fs.c compile, needs _POSIX_C_SOURCE
           'defines': [
             '__EXTENSIONS__',
