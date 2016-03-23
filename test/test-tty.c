@@ -28,6 +28,14 @@
 #else /*  Unix */
 # include <fcntl.h>
 # include <unistd.h>
+# if defined(__linux__)
+#  include <pty.h>
+# elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+#  include <util.h>
+# elif defined(__FreeBSD__) || defined(__DragonFly__)
+#  include <libutil.h>
+# endif
+# include "unix/internal.h"
 #endif
 
 #include <string.h>
@@ -177,6 +185,55 @@ TEST_IMPL(tty_file) {
 
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
   ASSERT(0 == uv_loop_close(&loop));
+
+  MAKE_VALGRIND_HAPPY();
+#endif
+  return 0;
+}
+
+TEST_IMPL(tty_stdin_is_reopened) {
+#ifndef _WIN32
+  uv_loop_t loop;
+  uv_tty_t stdintty;
+  struct stat stdinstat, ttystat;
+  uv_os_fd_t fileno;
+
+  ASSERT(0 == uv_loop_init(&loop));
+
+  ASSERT(0 == uv_tty_init(&loop, &stdintty, STDIN_FILENO, 0));
+  ASSERT(0 == stat("/dev/tty", &ttystat));
+  uv_fileno((uv_handle_t *)&stdintty, &fileno);
+  ASSERT(0 == fstat(fileno, &stdinstat));
+  ASSERT(ttystat.st_ino == stdinstat.st_ino);
+  ASSERT(0 == (stdintty.flags & UV_STREAM_BLOCKING));
+  uv_close((uv_handle_t*) &stdintty, NULL);
+
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY();
+#endif
+  return 0;
+}
+
+TEST_IMPL(tty_pty) {
+# if defined(__linux__) || defined(__OpenBSD__) || defined(__NetBSD__) || \
+    defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
+  int master_fd, slave_fd;
+  struct winsize w;
+  uv_loop_t loop;
+  uv_tty_t tty;
+
+  ASSERT(0 == uv_loop_init(&loop));
+
+  ASSERT(0 == openpty(&master_fd, &slave_fd, NULL, NULL, &w));
+  ASSERT(0 == uv_tty_init(&loop, &tty, master_fd, 0));
+  ASSERT(strcmp(ttyname(slave_fd), "/dev/tty"));
+  ASSERT(tty.flags & UV_STREAM_BLOCKING);
+  ASSERT(0 == close(master_fd));
+  ASSERT(0 == close(slave_fd));
+  uv_close((uv_handle_t*) &tty, NULL);
+
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY();
 #endif
