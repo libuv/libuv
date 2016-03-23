@@ -43,7 +43,6 @@ if WINNT
 
 include_HEADERS += include/uv-win.h include/tree.h
 AM_CPPFLAGS += -I$(top_srcdir)/src/win \
-               -DWIN32_LEAN_AND_MEAN \
                -D_WIN32_WINNT=0x0600
 LIBS += -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv
 libuv_la_SOURCES += src/win/async.c \
