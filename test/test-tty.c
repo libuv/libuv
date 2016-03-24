@@ -203,8 +203,8 @@ TEST_IMPL(tty_pty) {
   ASSERT(0 == openpty(&master_fd, &slave_fd, NULL, NULL, &w));
   ASSERT(0 == uv_tty_init(&loop, &slave_tty, slave_fd, 0));
   ASSERT(0 == uv_tty_init(&loop, &master_tty, master_fd, 0));
-  /* Check if the file descriptor was reopened. If they are, 
-   * UV_STREAM_BLOCKING (value 0x80) should be set on flags.
+  /* Check if the file descriptor was reopened. If it is,
+   * UV_STREAM_BLOCKING (value 0x80) isn't set on flags.
    */
   ASSERT(0 == (slave_tty.flags & 0x80));
   /* The master_fd of a pty should never be reopened.
