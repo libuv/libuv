@@ -35,7 +35,6 @@
 # elif defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <libutil.h>
 # endif
-# include "unix/internal.h"
 #endif
 
 #include <string.h>
@@ -204,8 +203,13 @@ TEST_IMPL(tty_pty) {
   ASSERT(0 == openpty(&master_fd, &slave_fd, NULL, NULL, &w));
   ASSERT(0 == uv_tty_init(&loop, &slave_tty, slave_fd, 0));
   ASSERT(0 == uv_tty_init(&loop, &master_tty, master_fd, 0));
-  ASSERT(master_tty.flags & UV_STREAM_BLOCKING);
-  ASSERT(0 == (slave_tty.flags & UV_STREAM_BLOCKING));
+  /* Check if the file descriptor was reopened. If they are, 
+   * UV_STREAM_BLOCKING (value 0x80) should be set on flags.
+   */
+  ASSERT(0 == (slave_tty.flags & 0x80));
+  /* The master_fd of a pty should never be reopened.
+   */
+  ASSERT(master_tty.flags & 0x80);
   ASSERT(0 == close(slave_fd));
   uv_close((uv_handle_t*) &slave_tty, NULL);
   ASSERT(0 == close(master_fd));
