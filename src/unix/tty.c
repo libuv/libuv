@@ -23,6 +23,7 @@
 #include "internal.h"
 #include "spinlock.h"
 
+#include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
 #include <termios.h>
@@ -39,7 +40,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   int flags;
   int newfd;
   int r;
-  char path[256] = { 0 };
+  char path[256];
 
   /* File descriptors that refer to files cannot be monitored with epoll.
    * That restriction also applies to character devices like /dev/random
@@ -63,14 +64,17 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
    * other processes.
    */
   if (type == UV_TTY) {
-    r = -1;
-    /* Reopening /dev/ptmx generates a new master/slave pair and therefore
-     * causes losing the connection to the original slave. As this is behavior
-     * is not desired do not reopen /dev/ptmx.
+    /* Reopening a pty in master mode won't work either because the reopened
+     * pty will be in slave mode (*BSD) or reopening will allocate a new
+     * master/slave pair (Linux)
+     *
+     * This ptsname call should return NULL if this fd isn't a pty in master
+     * mode. If it succeeds the pty is in master mode and reopening should be skipped.
      */
-    if(ttyname_r(fd, path, sizeof(path) - 1) == 0 &&
-        strcmp(path, "/dev/ptmx") != 0) {
+    if (ptsname(fd) == NULL && ttyname_r(fd, path, sizeof(path)) == 0) {
       r = uv__open_cloexec(path, O_RDWR);
+    } else {
+      r = -1;
     }
 
     if (r < 0) {
