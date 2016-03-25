@@ -102,7 +102,6 @@
 # define UV__POLLOUT    POLLOUT
 # define UV__POLLERR    POLLERR
 # define UV__POLLHUP    POLLHUP
-# define UV__POLLRDHUP  POLLRDHUP
 #endif
 
 #ifndef UV__POLLIN
@@ -122,7 +121,11 @@
 #endif
 
 #ifndef UV__POLLRDHUP
-# define UV__POLLRDHUP  0x200
+# ifdef POLLRDHUP
+#  define UV__POLLRDHUP POLLRDHUP
+# else
+#  define UV__POLLRDHUP 0x200
+# endif
 #endif
 
 #if !defined(O_CLOEXEC) && defined(__FreeBSD__)
