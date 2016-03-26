@@ -38,6 +38,8 @@
 #include <windows.h>
 #include <userenv.h>
 
+#define PSAPI_VERSION 1
+#pragma comment(lib, "psapi.lib")
 
 /*
  * Max title length; the only thing MSDN tells us about the maximum length
@@ -1118,6 +1120,8 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 int uv_getrusage(uv_rusage_t *uv_rusage) {
   FILETIME createTime, exitTime, kernelTime, userTime;
   SYSTEMTIME kernelSystemTime, userSystemTime;
+  PERFORMANCE_INFORMATION perfInfo;
+  PROCESS_MEMORY_COUNTERS memCounters;
   int ret;
 
   ret = GetProcessTimes(GetCurrentProcess(), &createTime, &exitTime, &kernelTime, &userTime);
@@ -1135,6 +1139,17 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
     return uv_translate_sys_error(GetLastError());
   }
 
+  ret = GetProcessMemoryInfo(GetCurrentProcess(),
+                             &memCounters,
+                             sizeof(PROCESS_MEMORY_COUNTERS));
+  if (ret == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  if (!GetPerformanceInfo(&perfInfo, sizeof(PERFORMANCE_INFORMATION))) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
   memset(uv_rusage, 0, sizeof(*uv_rusage));
 
   uv_rusage->ru_utime.tv_sec = userSystemTime.wHour * 3600 +
@@ -1146,6 +1161,21 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
                                kernelSystemTime.wMinute * 60 +
                                kernelSystemTime.wSecond;
   uv_rusage->ru_stime.tv_usec = kernelSystemTime.wMilliseconds * 1000;
+  uv_rusage->ru_majflt = (uint64_t) memCounters.PageFaultCount;
+
+  uv_rusage->ru_committotal = perfInfo.CommitTotal;
+  uv_rusage->ru_commitlimit = perfInfo.CommitLimit;
+  uv_rusage->ru_commitpeak = perfInfo.CommitPeak;
+  uv_rusage->ru_physicaltotal = perfInfo.PhysicalTotal;
+  uv_rusage->ru_physicalavailable = perfInfo.PhysicalAvailable;
+  uv_rusage->ru_systemcache = perfInfo.SystemCache;
+  uv_rusage->ru_kerneltotal = perfInfo.KernelTotal;
+  uv_rusage->ru_kernelpaged = perfInfo.KernelPaged;
+  uv_rusage->ru_kernelnonpaged = perfInfo.KernelNonpaged;
+  uv_rusage->ru_pageSize = perfInfo.PageSize;
+  uv_rusage->ru_handlecount = (uint64_t) perfInfo.HandleCount;
+  uv_rusage->ru_processcount = (uint64_t) perfInfo.ProcessCount;
+  uv_rusage->ru_threadcount = (uint64_t) perfInfo.ThreadCount;
 
   return 0;
 }
