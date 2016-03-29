@@ -498,7 +498,7 @@ int uv_spawn(uv_loop_t* loop,
   } else
     abort();
 
-  uv__close(signal_pipe[0]);
+  uv__close_nocheckstdio(signal_pipe[0]);
 
   for (i = 0; i < options->stdio_count; i++) {
     err = uv__process_open_stream(options->stdio + i, pipes[i], i == 0);
