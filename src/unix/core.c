@@ -498,12 +498,11 @@ skip:
 }
 
 
-int uv__close(int fd) {
+int uv__close_nocheckstdio(int fd) {
   int saved_errno;
   int rc;
 
   assert(fd > -1);  /* Catch uninitialized io_watcher.fd bugs. */
-  assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
 
   saved_errno = errno;
   rc = close(fd);
@@ -515,6 +514,12 @@ int uv__close(int fd) {
   }
 
   return rc;
+}
+
+
+int uv__close(int fd) {
+  assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
+  return uv__close_nocheckstdio(fd);
 }
 
 

@@ -177,6 +177,7 @@ struct uv__stream_queued_fds_s {
 /* core */
 int uv__nonblock(int fd, int set);
 int uv__close(int fd);
+int uv__close_nocheckstdio(int fd);
 int uv__cloexec(int fd, int set);
 int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);
