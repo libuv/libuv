@@ -283,9 +283,11 @@ static void uv_poll_ex(uv_loop_t* loop, DWORD timeout) {
                                          ARRAY_SIZE(overlappeds),
                                          &count,
                                          timeout,
-                                         FALSE);
+                                         TRUE);
 
-  if (success) {
+  if (!success && GetLastError() == WAIT_IO_COMPLETION) {
+    uv_update_time(loop);
+  } else if (success) {
     for (i = 0; i < count; i++) {
       /* Package was dequeued */
       req = uv_overlapped_to_req(overlappeds[i].lpOverlapped);
