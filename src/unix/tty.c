@@ -34,6 +34,23 @@ static int orig_termios_fd = -1;
 static struct termios orig_termios;
 static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
 
+static int uv__tty_is_slave(const int fd) {
+  int result = 0;
+#if defined(__linux__) || defined(__FreeBSD__)
+  int dummy;
+
+  result = ioctl(fd, TIOCGPTN, &dummy) != 0;
+#elif defined(__APPLE__)
+  char dummy[256];
+
+  result = ioctl(fd, TIOCPTYGNAME, &dummy) != 0;
+#else
+  /* Fallback to ptsname
+   */
+  result = ptsname(fd) == NULL;
+#endif
+  return result;
+}
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   uv_handle_type type;
@@ -66,13 +83,10 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   if (type == UV_TTY) {
     /* Reopening a pty in master mode won't work either because the reopened
      * pty will be in slave mode (*BSD) or reopening will allocate a new
-     * master/slave pair (Linux)
-     *
-     * This ptsname call should return NULL if this fd isn't a pty in master
-     * mode. If it succeeds the pty is in master mode and reopening should be
-     * skipped.
+     * master/slave pair (Linux). Therefore check if the fd points to a
+     * slave device.
      */
-    if (ptsname(fd) == NULL && ttyname_r(fd, path, sizeof(path)) == 0) {
+    if (uv__tty_is_slave(fd) && ttyname_r(fd, path, sizeof(path)) == 0) {
       r = uv__open_cloexec(path, O_RDWR);
     } else {
       r = -1;
