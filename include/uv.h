@@ -1054,6 +1054,21 @@ typedef struct {
    uint64_t ru_nsignals;  /* signals received */
    uint64_t ru_nvcsw;     /* voluntary context switches */
    uint64_t ru_nivcsw;    /* involuntary context switches */
+
+   uint64_t ru_committotal; /* pages max. currently committed */
+   uint64_t ru_commitlimit; /* pages max. that can be committed */
+   uint64_t ru_commitpeak; /*  pages max. that were simultaneously */
+   uint64_t ru_physicaltotal; /* actual physical memory, in pages */
+   uint64_t ru_physicalavailable; /* phys. memory available, in pages */
+   uint64_t ru_systemcache; /* system cache memory */
+   uint64_t ru_kerneltotal; /* mem. in kernel pools, in pages */
+   uint64_t ru_kernelpaged; /* mem. in the paged kernel pool, in pages */
+   uint64_t ru_kernelnonpaged; /* mem. in the nonpaged kernel pool, in pages */
+   uint64_t ru_pageSize; /* size of a page, in bytes */
+
+   uint64_t ru_handlecount; /* open handles */
+   uint64_t ru_processcount; /* number of processes */
+   uint64_t ru_threadcount; /* number of threads */
 } uv_rusage_t;
 
 UV_EXTERN int uv_getrusage(uv_rusage_t* rusage);
