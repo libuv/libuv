@@ -69,7 +69,8 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
      * master/slave pair (Linux)
      *
      * This ptsname call should return NULL if this fd isn't a pty in master
-     * mode. If it succeeds the pty is in master mode and reopening should be skipped.
+     * mode. If it succeeds the pty is in master mode and reopening should be
+     * skipped.
      */
     if (ptsname(fd) == NULL && ttyname_r(fd, path, sizeof(path)) == 0) {
       r = uv__open_cloexec(path, O_RDWR);
