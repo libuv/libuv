@@ -35,7 +35,7 @@ static struct termios orig_termios;
 static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
 
 static int uv__tty_is_slave(const int fd) {
-  int result = 0;
+  int result;
 #if defined(__linux__) || defined(__FreeBSD__)
   int dummy;
 
