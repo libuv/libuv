@@ -530,9 +530,9 @@ error:
         if (options->stdio[i].flags & (UV_INHERIT_FD | UV_INHERIT_STREAM))
           continue;
       if (pipes[i][0] != -1)
-        close(pipes[i][0]);
+        uv__close_nocheckstdio(pipes[i][0]);
       if (pipes[i][1] != -1)
-        close(pipes[i][1]);
+        uv__close_nocheckstdio(pipes[i][1]);
     }
     uv__free(pipes);
   }
