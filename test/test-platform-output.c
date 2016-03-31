@@ -127,8 +127,8 @@ TEST_IMPL(platform_output) {
   ASSERT(err == 0);
 
   printf("uv_os_get_passwd:\n");
-  printf("  euid: %d\n", pwd.uid);
-  printf("  gid: %d\n", pwd.gid);
+  printf("  euid: %ld\n", pwd.uid);
+  printf("  gid: %ld\n", pwd.gid);
   printf("  username: %s\n", pwd.username);
   printf("  shell: %s\n", pwd.shell);
   printf("  home directory: %s\n", pwd.homedir);
