@@ -23,6 +23,7 @@
 #include "internal.h"
 #include "spinlock.h"
 
+#include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
 #include <termios.h>
@@ -33,12 +34,30 @@ static int orig_termios_fd = -1;
 static struct termios orig_termios;
 static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
 
+static int uv__tty_is_slave(const int fd) {
+  int result;
+#if defined(__linux__) || defined(__FreeBSD__)
+  int dummy;
+
+  result = ioctl(fd, TIOCGPTN, &dummy) != 0;
+#elif defined(__APPLE__)
+  char dummy[256];
+
+  result = ioctl(fd, TIOCPTYGNAME, &dummy) != 0;
+#else
+  /* Fallback to ptsname
+   */
+  result = ptsname(fd) == NULL;
+#endif
+  return result;
+}
 
 int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   uv_handle_type type;
   int flags;
   int newfd;
   int r;
+  char path[256];
 
   /* File descriptors that refer to files cannot be monitored with epoll.
    * That restriction also applies to character devices like /dev/random
@@ -62,7 +81,16 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
    * other processes.
    */
   if (type == UV_TTY) {
-    r = uv__open_cloexec("/dev/tty", O_RDWR);
+    /* Reopening a pty in master mode won't work either because the reopened
+     * pty will be in slave mode (*BSD) or reopening will allocate a new
+     * master/slave pair (Linux). Therefore check if the fd points to a
+     * slave device.
+     */
+    if (uv__tty_is_slave(fd) && ttyname_r(fd, path, sizeof(path)) == 0) {
+      r = uv__open_cloexec(path, O_RDWR);
+    } else {
+      r = -1;
+    }
 
     if (r < 0) {
       /* fallback to using blocking writes */
