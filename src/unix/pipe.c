@@ -200,9 +200,6 @@ out:
   if (err)
     uv__io_feed(handle->loop, &handle->io_watcher);
 
-  /* Mimic the Windows pipe implementation, always
-   * return 0 and let the callback handle errors.
-   */
 }
 
 
