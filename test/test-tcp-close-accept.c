@@ -96,16 +96,22 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   for (i = 1; i < got_connections; i++)
     uv_close((uv_handle_t*) &tcp_incoming[i], close_cb);
 
-  /* Create new fd that should be one of the closed incomings */
-  ASSERT(0 == uv_tcp_init(loop, &tcp_check));
+  /*
+   * Create new fd that should be one of the closed incomings. Create it early
+   * so the server can be closed before calling to uv_tcp_connect
+   */
+  ASSERT(0 == uv_tcp_init_ex(loop, &tcp_check, AF_INET));
+  /* Close server, so no one will connect to it */
+  uv_close((uv_handle_t*) &tcp_server, close_cb);
+  /*
+   * Try to connect to the server again. connect_cb should be called
+   * with error.
+   */
   ASSERT(0 == uv_tcp_connect(&tcp_check_req,
                              &tcp_check,
                              (const struct sockaddr*) &addr,
                              connect_cb));
   ASSERT(0 == uv_read_start((uv_stream_t*) &tcp_check, alloc_cb, read_cb));
-
-  /* Close server, so no one will connect to it */
-  uv_close((uv_handle_t*) &tcp_server, close_cb);
 }
 
 static void connection_cb(uv_stream_t* server, int status) {
