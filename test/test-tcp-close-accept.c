@@ -84,8 +84,8 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   uv_loop_t* loop;
   unsigned int i;
 
-  /* Only first stream should receive read events */
-  ASSERT(stream == (uv_stream_t*) &tcp_incoming[0]);
+  ASSERT((stream == (uv_stream_t*) &tcp_incoming[0]) ||
+         (stream == (uv_stream_t*) &tcp_incoming[1]));
   ASSERT(0 == uv_read_stop(stream));
   ASSERT(1 == nread);
 
