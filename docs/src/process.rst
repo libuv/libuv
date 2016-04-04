@@ -212,6 +212,10 @@ API
     setgid specified, or not having enough memory to allocate for the new
     process.
 
+.. c:function:: int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count)
+
+    Queries the specified process for children and stores their PIDs and count.
+
 .. c:function:: int uv_process_kill(uv_process_t* handle, int signum)
 
     Sends the specified signal to the given process handle. Check the documentation

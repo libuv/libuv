@@ -164,7 +164,6 @@ static void timer_counter_cb(uv_timer_t* handle) {
   ++timer_counter;
 }
 
-
 TEST_IMPL(spawn_fails) {
   int r;
 
@@ -651,6 +650,60 @@ TEST_IMPL(spawn_and_kill) {
 
   ASSERT(exit_cb_called == 1);
   ASSERT(close_cb_called == 2); /* Once for process and once for timer. */
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(spawn_observe_and_kill) {
+  int r;
+  int ret;
+#ifndef _WIN32
+  pid_t p;
+#else
+  DWORD p;
+#endif
+  uint32_t proc_count_1, proc_count_2, proc_count_3;
+  uint32_t* proc_list;
+
+  p = getpid();
+  ASSERT(p > 0);
+
+  ret = uv_get_children_pid(p, &proc_list, &proc_count_1);
+  ASSERT(ret == 0);
+  /* should be zero because we have just spawned the porcesses w/o children */
+  ASSERT(proc_count_1 == 0);
+
+  init_process_options("spawn_helper4", kill_cb);
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_timer_init(uv_default_loop(), &timer);
+  ASSERT(r == 0);
+
+  ret = uv_get_children_pid(p, &proc_list, &proc_count_2);
+  ASSERT(ret == 0);
+
+  /* should have observed two more child processes then before */
+  ASSERT(proc_count_1 + 1 == proc_count_2);
+
+  r = uv_timer_start(&timer, timer_cb, 500, 0);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 2); /* Once for process and once for timer. */
+
+  ret = uv_get_children_pid(p, &proc_list, &proc_count_3);
+  ASSERT(ret == 0);
+  ASSERT(r == 0);
+
+  /* should be zero again */
+  ASSERT(proc_count_3 == 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

@@ -29,6 +29,14 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#if defined(__APPLE__)    || \
+    defined(__NetBSD__)   || \
+    defined(__OpenBSD__)  || \
+    defined(__FreeBSD__)  || \
+    defined(__DragonFly__)
+#include <sys/sysctl.h>
+#include <pwd.h>
+#endif
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -381,6 +389,74 @@ static void uv__process_child_init(const uv_process_options_t* options,
   _exit(127);
 }
 #endif
+
+
+int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
+  uint32_t* temp = uv__malloc(0);
+  size_t len = 0;
+
+#if defined(__APPLE__)    || \
+    defined(__NetBSD__)   || \
+    defined(__OpenBSD__)  || \
+    defined(__FreeBSD__)  || \
+    defined(__DragonFly__)
+  struct kinfo_proc *p_list = NULL;
+  int ret, p_count, i;
+  /* ref:
+     http://unix.superglobalmegacorp.com/Net2/newsrc/sys/kinfo_proc.h.html */
+  static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+
+  *proc_list = NULL;
+  *proc_count = 0;
+  /* get number of total processes for subsequent calls */
+  ret = sysctl((int *)name, (sizeof(name) / sizeof(*name)) - 1, NULL, &len, NULL, 0);
+  if (ret) return 1;
+
+  p_list = malloc(len);
+  if (!p_list) return 1;
+  /* get the process list */
+  ret = sysctl((int *)name, (sizeof(name) / sizeof(*name)) - 1, p_list, &len, NULL, 0);
+  if (ret) return 1;
+
+  p_count = len / sizeof(struct kinfo_proc);
+  /* iterate though whole p_list */
+  for (i = 0; i < p_count; i++) {
+   /* if parent is ppid, push pid to array; increase counter */
+   if ((uint32_t) p_list[i].kp_eproc.e_ppid == (uint32_t) ppid) {
+     uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+     temp[*proc_count] = (uint32_t)p_list[i].kp_proc.p_pid;
+
+     (*proc_count)++;
+   }
+  }
+  free(p_list);
+
+#elif defined(__linux__)
+  char *line = NULL;
+  char proc_p[256] = {0};
+  int *fp;
+
+  *proc_list = NULL;
+  *proc_count = 0;
+  /* Rationale: children are defined in thread with sames ID of process -> read,
+   * check line endings, count, build array, return */
+  sprintf(proc_p, "/proc/%u/task/%u/children", ppid, ppid);
+  fp = fopen(proc_p,"r");
+  if (fp == NULL)
+    return 127;
+
+  while (getline(&line, &len, fp) >= 0) {
+     uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+     temp[*proc_count] = atoi(line);
+     (*proc_count)++;
+  }
+  uv__close(fp);
+#endif
+
+  *proc_list = temp;
+  free(temp);
+  return 0;
+}
 
 
 int uv_spawn(uv_loop_t* loop,
