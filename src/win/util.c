@@ -1118,6 +1118,7 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 int uv_getrusage(uv_rusage_t *uv_rusage) {
   FILETIME createTime, exitTime, kernelTime, userTime;
   SYSTEMTIME kernelSystemTime, userSystemTime;
+  PROCESS_MEMORY_COUNTERS memCounters;
   int ret;
 
   ret = GetProcessTimes(GetCurrentProcess(), &createTime, &exitTime, &kernelTime, &userTime);
@@ -1135,6 +1136,13 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
     return uv_translate_sys_error(GetLastError());
   }
 
+  ret = GetProcessMemoryInfo(GetCurrentProcess(),
+                             &memCounters,
+                             sizeof(memCounters));
+  if (ret == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
   memset(uv_rusage, 0, sizeof(*uv_rusage));
 
   uv_rusage->ru_utime.tv_sec = userSystemTime.wHour * 3600 +
@@ -1146,6 +1154,9 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
                                kernelSystemTime.wMinute * 60 +
                                kernelSystemTime.wSecond;
   uv_rusage->ru_stime.tv_usec = kernelSystemTime.wMilliseconds * 1000;
+
+  uv_rusage->ru_majflt = (uint64_t) memCounters.PageFaultCount;
+  uv_rusage->ru_maxrss = (uint64_t) memCounters.PeakWorkingSetSize / 1024;
 
   return 0;
 }
