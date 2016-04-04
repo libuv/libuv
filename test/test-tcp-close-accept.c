@@ -40,6 +40,7 @@ static unsigned int got_connections;
 static unsigned int close_cb_called;
 static unsigned int write_cb_called;
 static unsigned int read_cb_called;
+static unsigned int pending_incoming;
 
 static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
@@ -58,8 +59,11 @@ static void connect_cb(uv_connect_t* req, int status) {
   if (req == &tcp_check_req) {
     ASSERT(status != 0);
 
-    /* Close check and incoming[0], time to finish test */
-    uv_close((uv_handle_t*) &tcp_incoming[0], close_cb);
+    /* 
+     * Time to finish the test: close both the check and pending incoming
+     * connections
+     */
+    uv_close((uv_handle_t*) &tcp_incoming[pending_incoming], close_cb);
     uv_close((uv_handle_t*) &tcp_check, close_cb);
     return;
   }
@@ -84,8 +88,8 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   uv_loop_t* loop;
   unsigned int i;
 
-  /* Only first stream should receive read events */
-  ASSERT(stream == (uv_stream_t*) &tcp_incoming[0]);
+  pending_incoming = (uv_tcp_t*) stream - &tcp_incoming[0];
+  ASSERT(pending_incoming < got_connections);
   ASSERT(0 == uv_read_stop(stream));
   ASSERT(1 == nread);
 
@@ -93,8 +97,10 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   read_cb_called++;
 
   /* Close all active incomings, except current one */
-  for (i = 1; i < got_connections; i++)
-    uv_close((uv_handle_t*) &tcp_incoming[i], close_cb);
+  for (i = 0; i < got_connections; i++) {
+    if (i != pending_incoming)
+      uv_close((uv_handle_t*) &tcp_incoming[i], close_cb);
+  }
 
   /* Create new fd that should be one of the closed incomings */
   ASSERT(0 == uv_tcp_init(loop, &tcp_check));
