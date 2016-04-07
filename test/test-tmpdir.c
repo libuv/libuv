@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,25 +19,53 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef UV_VERSION_H
-#define UV_VERSION_H
+#include "uv.h"
+#include "task.h"
+#include <string.h>
 
- /*
- * Versions with the same major number are ABI stable. API is allowed to
- * evolve between minor releases, but only in a backwards compatible way.
- * Make sure you update the -soname directives in configure.ac
- * and uv.gyp whenever you bump UV_VERSION_MAJOR or UV_VERSION_MINOR (but
- * not UV_VERSION_PATCH.)
- */
+#define PATHMAX 1024
+#define SMALLPATH 1
 
-#define UV_VERSION_MAJOR 1
-#define UV_VERSION_MINOR 9
-#define UV_VERSION_PATCH 1
-#define UV_VERSION_IS_RELEASE 0
-#define UV_VERSION_SUFFIX "dev"
+TEST_IMPL(tmpdir) {
+  char tmpdir[PATHMAX];
+  size_t len;
+  char last;
+  int r;
 
-#define UV_VERSION_HEX  ((UV_VERSION_MAJOR << 16) | \
-                         (UV_VERSION_MINOR <<  8) | \
-                         (UV_VERSION_PATCH))
+  /* Test the normal case */
+  len = sizeof tmpdir;
+  tmpdir[0] = '\0';
 
-#endif /* UV_VERSION_H */
+  ASSERT(strlen(tmpdir) == 0);
+  r = uv_os_tmpdir(tmpdir, &len);
+  ASSERT(r == 0);
+  ASSERT(strlen(tmpdir) == len);
+  ASSERT(len > 0);
+  ASSERT(tmpdir[len] == '\0');
+
+  if (len > 1) {
+    last = tmpdir[len - 1];
+#ifdef _WIN32
+    ASSERT(last != '\\');
+#else
+    ASSERT(last != '/');
+#endif
+  }
+
+  /* Test the case where the buffer is too small */
+  len = SMALLPATH;
+  r = uv_os_tmpdir(tmpdir, &len);
+  ASSERT(r == UV_ENOBUFS);
+  ASSERT(len > SMALLPATH);
+
+  /* Test invalid inputs */
+  r = uv_os_tmpdir(NULL, &len);
+  ASSERT(r == UV_EINVAL);
+  r = uv_os_tmpdir(tmpdir, NULL);
+  ASSERT(r == UV_EINVAL);
+  len = 0;
+  r = uv_os_tmpdir(tmpdir, &len);
+  ASSERT(r == UV_EINVAL);
+
+  return 0;
+}

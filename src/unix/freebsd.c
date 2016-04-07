@@ -176,7 +176,7 @@ char** uv_setup_args(int argc, char** argv) {
 int uv_set_process_title(const char* title) {
   int oid[4];
 
-  if (process_title) uv__free(process_title);
+  uv__free(process_title);
   process_title = uv__strdup(title);
 
   oid[0] = CTL_KERN;
@@ -240,17 +240,13 @@ error:
 
 
 int uv_uptime(double* uptime) {
-  time_t now;
-  struct timeval info;
-  size_t size = sizeof(info);
-  static int which[] = {CTL_KERN, KERN_BOOTTIME};
-
-  if (sysctl(which, 2, &info, &size, NULL, 0))
+  int r;
+  struct timespec sp;
+  r = clock_gettime(CLOCK_MONOTONIC, &sp);
+  if (r)
     return -errno;
 
-  now = time(NULL);
-
-  *uptime = (double)(now - info.tv_sec);
+  *uptime = sp.tv_sec;
   return 0;
 }
 
@@ -377,8 +373,10 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   }
 
   *addresses = uv__malloc(*count * sizeof(**addresses));
-  if (!(*addresses))
+  if (!(*addresses)) {
+    freeifaddrs(addrs);
     return -ENOMEM;
+  }
 
   address = *addresses;
 

@@ -246,7 +246,6 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle);
 void uv_timer_endgame(uv_loop_t* loop, uv_timer_t* handle);
 
 DWORD uv__next_timeout(const uv_loop_t* loop);
-void uv__time_forward(uv_loop_t* loop, uint64_t msecs);
 void uv_process_timers(uv_loop_t* loop);
 
 
@@ -327,7 +326,10 @@ void uv__util_init();
 
 uint64_t uv__hrtime(double scale);
 int uv_parent_pid();
+int uv_current_pid();
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
+int uv__getpwuid_r(uv_passwd_t* pwd);
+int uv__convert_utf16_to_utf8(const WCHAR* utf16, char** utf8);
 
 
 /*

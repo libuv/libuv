@@ -1,4 +1,5 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright (c) 2015 Saúl Ibarra Corretgé <saghul@gmail.com>.
+ * All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,25 +20,40 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef UV_VERSION_H
-#define UV_VERSION_H
+#include "uv.h"
+#include "task.h"
 
- /*
- * Versions with the same major number are ABI stable. API is allowed to
- * evolve between minor releases, but only in a backwards compatible way.
- * Make sure you update the -soname directives in configure.ac
- * and uv.gyp whenever you bump UV_VERSION_MAJOR or UV_VERSION_MINOR (but
- * not UV_VERSION_PATCH.)
- */
 
-#define UV_VERSION_MAJOR 1
-#define UV_VERSION_MINOR 9
-#define UV_VERSION_PATCH 1
-#define UV_VERSION_IS_RELEASE 0
-#define UV_VERSION_SUFFIX "dev"
+static void connection_cb(uv_stream_t* server, int status) {
+  ASSERT(0 && "this will never be called");
+}
 
-#define UV_VERSION_HEX  ((UV_VERSION_MAJOR << 16) | \
-                         (UV_VERSION_MINOR <<  8) | \
-                         (UV_VERSION_PATCH))
 
-#endif /* UV_VERSION_H */
+TEST_IMPL(pipe_pending_instances) {
+  int r;
+  uv_pipe_t pipe_handle;
+  uv_loop_t* loop;
+
+  loop = uv_default_loop();
+
+  r = uv_pipe_init(loop, &pipe_handle, 0);
+  ASSERT(r == 0);
+
+  uv_pipe_pending_instances(&pipe_handle, 8);
+
+  r = uv_pipe_bind(&pipe_handle, TEST_PIPENAME);
+  ASSERT(r == 0);
+
+  uv_pipe_pending_instances(&pipe_handle, 16);
+
+  r = uv_listen((uv_stream_t*)&pipe_handle, 128, connection_cb);
+  ASSERT(r == 0);
+
+  uv_close((uv_handle_t*)&pipe_handle, NULL);
+
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

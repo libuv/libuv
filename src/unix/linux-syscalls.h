@@ -76,6 +76,7 @@
 #define UV__EPOLLOUT          4
 #define UV__EPOLLERR          8
 #define UV__EPOLLHUP          16
+#define UV__EPOLLRDHUP        0x2000
 #define UV__EPOLLONESHOT      0x40000000
 #define UV__EPOLLET           0x80000000
 
@@ -151,8 +152,8 @@ int uv__utimesat(int dirfd,
                  const char* path,
                  const struct timespec times[2],
                  int flags);
-ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset);
-ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset);
+ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
+ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 int uv__dup3(int oldfd, int newfd, int flags);
 
 #endif /* UV_LINUX_SYSCALL_H_ */

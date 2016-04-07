@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -23,31 +23,58 @@
 #include "task.h"
 #include <string.h>
 
+TEST_IMPL(get_passwd) {
+  uv_passwd_t pwd;
+  size_t len;
+  int r;
 
-static void set_title(const char* title) {
-  char buffer[512];
-  int err;
+  /* Test the normal case */
+  r = uv_os_get_passwd(&pwd);
+  ASSERT(r == 0);
+  len = strlen(pwd.username);
+  ASSERT(len > 0);
 
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
-
-  err = uv_set_process_title(title);
-  ASSERT(err == 0);
-
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
-
-  ASSERT(strcmp(buffer, title) == 0);
-}
-
-
-TEST_IMPL(process_title) {
-#if defined(__sun) || defined(_AIX)
-  RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
+#ifdef _WIN32
+  ASSERT(pwd.shell == NULL);
 #else
-  /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
-  set_title("new title");
-  return 0;
+  len = strlen(pwd.shell);
+  ASSERT(len > 0);
 #endif
+
+  len = strlen(pwd.homedir);
+  ASSERT(len > 0);
+
+#ifdef _WIN32
+  ASSERT(pwd.homedir[len - 1] != '\\');
+#else
+  ASSERT(pwd.homedir[len - 1] != '/');
+#endif
+
+#ifdef _WIN32
+  ASSERT(pwd.uid == -1);
+  ASSERT(pwd.gid == -1);
+#else
+  ASSERT(pwd.uid >= 0);
+  ASSERT(pwd.gid >= 0);
+#endif
+
+  /* Test uv_os_free_passwd() */
+  uv_os_free_passwd(&pwd);
+
+  ASSERT(pwd.username == NULL);
+  ASSERT(pwd.shell == NULL);
+  ASSERT(pwd.homedir == NULL);
+
+  /* Test a double free */
+  uv_os_free_passwd(&pwd);
+
+  ASSERT(pwd.username == NULL);
+  ASSERT(pwd.shell == NULL);
+  ASSERT(pwd.homedir == NULL);
+
+  /* Test invalid input */
+  r = uv_os_get_passwd(NULL);
+  ASSERT(r == UV_EINVAL);
+
+  return 0;
 }

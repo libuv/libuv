@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright the libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,25 +19,24 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef UV_VERSION_H
-#define UV_VERSION_H
+#if defined(_MSC_VER) && _MSC_VER < 1900
 
- /*
- * Versions with the same major number are ABI stable. API is allowed to
- * evolve between minor releases, but only in a backwards compatible way.
- * Make sure you update the -soname directives in configure.ac
- * and uv.gyp whenever you bump UV_VERSION_MAJOR or UV_VERSION_MINOR (but
- * not UV_VERSION_PATCH.)
+#include <stdio.h>
+#include <stdarg.h>
+
+/* Emulate snprintf() on MSVC<2015, _snprintf() doesn't zero-terminate the buffer
+ * on overflow...
  */
+int snprintf(char* buf, size_t len, const char* fmt, ...) {
+  int n;
+  va_list ap;
+  va_start(ap, fmt);
 
-#define UV_VERSION_MAJOR 1
-#define UV_VERSION_MINOR 9
-#define UV_VERSION_PATCH 1
-#define UV_VERSION_IS_RELEASE 0
-#define UV_VERSION_SUFFIX "dev"
+  n = _vscprintf(fmt, ap);
+  vsnprintf_s(buf, len, _TRUNCATE, fmt, ap);
 
-#define UV_VERSION_HEX  ((UV_VERSION_MAJOR << 16) | \
-                         (UV_VERSION_MINOR <<  8) | \
-                         (UV_VERSION_PATCH))
+  va_end(ap);
+  return n;
+}
 
-#endif /* UV_VERSION_H */
+#endif

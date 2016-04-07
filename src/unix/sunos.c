@@ -116,6 +116,17 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 }
 
 
+int uv__io_check_fd(uv_loop_t* loop, int fd) {
+  if (port_associate(loop->backend_fd, PORT_SOURCE_FD, fd, POLLIN, 0))
+    return -errno;
+
+  if (port_dissociate(loop->backend_fd, PORT_SOURCE_FD, fd))
+    abort();
+
+  return 0;
+}
+
+
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct port_event events[1024];
   struct port_event* pe;
@@ -693,8 +704,10 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   }
 
   *addresses = uv__malloc(*count * sizeof(**addresses));
-  if (!(*addresses))
+  if (!(*addresses)) {
+    freeifaddrs(addrs);
     return -ENOMEM;
+  }
 
   address = *addresses;
 
