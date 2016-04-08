@@ -66,11 +66,12 @@ static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
 static void uv_relative_path(const WCHAR* filename,
                              const WCHAR* dir,
                              WCHAR** relpath) {
+  size_t relpathlen;
+  size_t filenamelen = wcslen(filename);
   size_t dirlen = wcslen(dir);
   if (dirlen > 0 && dir[dirlen - 1] == '\\')
     dirlen--;
-  size_t filenamelen = wcslen(filename);
-  size_t relpathlen = filenamelen - dirlen - 1;
+  relpathlen = filenamelen - dirlen - 1;
   *relpath = uv__malloc((relpathlen + 1) * sizeof(WCHAR));
   if (!*relpath)
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
