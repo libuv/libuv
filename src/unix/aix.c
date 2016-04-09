@@ -845,7 +845,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->path = uv__strdup(filename);
   handle->cb = cb;
 
-  uv__io_start(handle->loop, &handle->event_watcher, UV__POLLIN);
+  uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
 
   return 0;
 #else

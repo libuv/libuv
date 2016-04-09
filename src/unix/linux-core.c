@@ -18,6 +18,11 @@
  * IN THE SOFTWARE.
  */
 
+/* We lean on the fact that POLL{IN,OUT,ERR,HUP} correspond with their
+ * EPOLL* counterparts.  We use the POLL* variants in this file because that
+ * is what libuv uses elsewhere and it avoids a dependency on <sys/epoll.h>.
+ */
+
 #include "uv.h"
 #include "internal.h"
 
@@ -102,7 +107,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
 void uv__platform_loop_delete(uv_loop_t* loop) {
   if (loop->inotify_fd == -1) return;
-  uv__io_stop(loop, &loop->inotify_read_watcher, UV__POLLIN);
+  uv__io_stop(loop, &loop->inotify_read_watcher, POLLIN);
   uv__close(loop->inotify_fd);
   loop->inotify_fd = -1;
 }
@@ -144,7 +149,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   struct uv__epoll_event e;
   int rc;
 
-  e.events = UV__EPOLLIN;
+  e.events = POLLIN;
   e.data = -1;
 
   rc = 0;
@@ -341,7 +346,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        * the current watcher. Also, filters out events that users has not
        * requested us to watch.
        */
-      pe->events &= w->pevents | UV__POLLERR | UV__POLLHUP;
+      pe->events &= w->pevents | POLLERR | POLLHUP;
 
       /* Work around an epoll quirk where it sometimes reports just the
        * EPOLLERR or EPOLLHUP event.  In order to force the event loop to
@@ -358,8 +363,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        * needs to remember the error/hangup event.  We should get that for
        * free when we switch over to edge-triggered I/O.
        */
-      if (pe->events == UV__EPOLLERR || pe->events == UV__EPOLLHUP)
-        pe->events |= w->pevents & (UV__EPOLLIN | UV__EPOLLOUT);
+      if (pe->events == POLLERR || pe->events == POLLHUP)
+        pe->events |= w->pevents & (POLLIN | POLLOUT);
 
       if (pe->events != 0) {
         w->cb(loop, w, pe->events);
