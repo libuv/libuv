@@ -74,7 +74,9 @@
 #endif
 
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(FILE* statfile_fp, unsigned int numcpus, uv_cpu_info_t* ci);
+static int read_times(FILE* statfile_fp,
+                      unsigned int numcpus,
+                      uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static unsigned long read_cpufreq(unsigned int cpunum);
 
@@ -736,7 +738,9 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-static int read_times(FILE* statfile_fp, unsigned int numcpus, uv_cpu_info_t* ci) {
+static int read_times(FILE* statfile_fp,
+                      unsigned int numcpus,
+                      uv_cpu_info_t* ci) {
   unsigned long clock_ticks;
   struct uv_cpu_times_s ts;
   unsigned long user;
