@@ -562,7 +562,7 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
   char buf[1024];
 
   if (!fgets(buf, sizeof(buf), statfile_fp))
-    abort();
+    return -EIO;
 
   num = 0;
   while (fgets(buf, sizeof(buf), statfile_fp)) {
@@ -570,6 +570,9 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
       break;
     num++;
   }
+
+  if (num == 0)
+    return -EIO;
 
   *numcpus = num;
   return 0;
@@ -592,9 +595,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   err = uv__cpu_num(statfile_fp, &numcpus);
   if (err < 0)
     goto out;
-
-  assert(numcpus != (unsigned int) -1);
-  assert(numcpus != 0);
 
   err = -ENOMEM;
   ci = uv__calloc(numcpus, sizeof(*ci));
