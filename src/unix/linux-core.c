@@ -591,26 +591,23 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   err = uv__cpu_num(statfile_fp, &numcpus);
   if (err < 0)
-    return err;
+    goto out;
 
   assert(numcpus != (unsigned int) -1);
   assert(numcpus != 0);
 
+  err = -ENOMEM;
   ci = uv__calloc(numcpus, sizeof(*ci));
   if (ci == NULL)
-    return -ENOMEM;
+    goto out;
 
   err = read_models(numcpus, ci);
   if (err == 0)
     err = read_times(statfile_fp, numcpus, ci);
 
-  if (fclose(statfile_fp))
-    if (errno != EINTR && errno != EINPROGRESS)
-      abort();
-
   if (err) {
     uv_free_cpu_info(ci, numcpus);
-    return err;
+    goto out;
   }
 
   /* read_models() on x86 also reads the CPU speed from /proc/cpuinfo.
@@ -621,8 +618,15 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   *cpu_infos = ci;
   *count = numcpus;
+  err = 0;
 
-  return 0;
+out:
+
+  if (fclose(statfile_fp))
+    if (errno != EINTR && errno != EINPROGRESS)
+      abort();
+
+  return err;
 }
 
 
