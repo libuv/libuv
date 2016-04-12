@@ -782,53 +782,30 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       const char* filename,
                       unsigned int flags) {
 #ifdef HAVE_SYS_AHAFS_EVPRODS_H
-  int  fd, rc, i = 0, res = 0;
+  int  fd, rc, str_offset = 0;
   char cwd[PATH_MAX];
   char absolute_path[PATH_MAX];
-  char fname[PATH_MAX];
-  char *p;
+  char readlink_cwd[PATH_MAX];
 
-  /* Clean all the buffers*/
-  for(i = 0; i < PATH_MAX; i++) {
-    cwd[i] = 0;
-    absolute_path[i] = 0;
-    fname[i] = 0;
-  }
-  i = 0;
 
   /* Figure out whether filename is absolute or not */
   if (filename[0] == '/') {
-    /* We have absolute pathname, create the relative pathname*/
-    sprintf(absolute_path, filename);
-    p = strrchr(filename, '/');
-    p++;
+    /* We have absolute pathname */
+    snprintf(absolute_path, sizeof(absolute_path), "%s", filename);
   } else {
-    if (filename[0] == '.' && filename[1] == '/') {
-      /* We have a relative pathname, compose the absolute pathname */
-      sprintf(fname, filename);
-      snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-      res = readlink(cwd, absolute_path, sizeof(absolute_path) - 1);
-      if (res < 0)
-        return res;
-      p = strrchr(absolute_path, '/');
-      p++;
-      p++;
-    } else {
-      /* We have a relative pathname, compose the absolute pathname */
-      sprintf(fname, filename);
-      snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-      res = readlink(cwd, absolute_path, sizeof(absolute_path) - 1);
-      if (res < 0)
-        return res;
-      p = strrchr(absolute_path, '/');
-      p++;
-    }
-    /* Copy to filename buffer */
-    while(filename[i] != NULL) {
-      *p = filename[i];
-      i++;
-      p++;
-    }
+    /* We have a relative pathname, compose the absolute pathname */
+    snprintf(cwd, sizeof(cwd), "/proc/%lu/cwd", (unsigned long) getpid());
+    rc = readlink(cwd, readlink_cwd, sizeof(readlink_cwd) - 1);
+    if (rc < 0)
+      return rc;
+    /* readlink does not null terminate our string */
+    readlink_cwd[rc] = '\0';
+
+    if (filename[0] == '.' && filename[1] == '/')
+      str_offset = 2;
+
+    snprintf(absolute_path, sizeof(absolute_path), "%s%s", readlink_cwd,
+             filename + str_offset);
   }
 
   if (uv__is_ahafs_mounted() < 0)  /* /aha checks failed */
