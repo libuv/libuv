@@ -123,17 +123,12 @@ static void do_work(void* arg) {
     getaddrinfo_do(req);
   }
 
-/* Disable fs work on AIX as there are known issues.
- * See: Readme.md AIX Notes
- */
-#ifndef _AIX
   for (i = 0; i < ARRAY_SIZE(fs_reqs); i++) {
     struct fs_req* req = fs_reqs + i;
     req->counter = 16;
     req->loop = loop;
     fs_do(req);
   }
-#endif
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(r == 0);

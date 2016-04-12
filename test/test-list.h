@@ -45,6 +45,7 @@ TEST_DECLARE   (semaphore_2)
 TEST_DECLARE   (semaphore_3)
 TEST_DECLARE   (tty)
 TEST_DECLARE   (tty_file)
+TEST_DECLARE   (tty_pty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ip6_pton)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -198,6 +199,7 @@ TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (process_title)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
+TEST_DECLARE   (get_passwd)
 TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (homedir)
 TEST_DECLARE   (tmpdir)
@@ -388,6 +390,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_set_non_blocking)
   TEST_ENTRY  (tty)
   TEST_ENTRY  (tty_file)
+  TEST_ENTRY  (tty_pty)
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ip6_pton)
   TEST_ENTRY  (ipc_listen_before_write)
@@ -587,6 +590,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (get_memory)
 
+  TEST_ENTRY  (get_passwd)
+
   TEST_ENTRY  (get_loadavg)
 
   TEST_ENTRY  (handle_fileno)
@@ -724,7 +729,14 @@ TASK_LIST_START
   TEST_ENTRY  (fs_read_write_null_arguments)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
+#if defined(__PPC__) || defined(__PPC64__)  /* For linux PPC and AIX */
+  /* pthread_join takes a while, especially on AIX.
+   * Therefore being gratuitous with timeout.
+   */
+  TEST_ENTRY_CUSTOM (threadpool_multiple_event_loops, 0, 0, 120000)
+#else
   TEST_ENTRY  (threadpool_multiple_event_loops)
+#endif
   TEST_ENTRY  (threadpool_cancel_getaddrinfo)
   TEST_ENTRY  (threadpool_cancel_getnameinfo)
   TEST_ENTRY  (threadpool_cancel_work)

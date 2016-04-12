@@ -23,8 +23,7 @@ The stable branch is effectively frozen; patches that change the libuv
 API/ABI or affect the run-time behavior of applications get rejected.
 
 In case of doubt, open an issue in the [issue tracker][], post your question
-to the [libuv mailing list], or contact one of project maintainers
-(@bnoordhuis, @piscisaureus, @indutny or @saghul) on [IRC][].
+to the [libuv mailing list], or contact one of [project maintainers][] on [IRC][].
 
 Especially do so if you plan to work on something big.  Nothing is more
 frustrating than seeing your hard work go to waste because your vision
@@ -167,3 +166,4 @@ not send out notifications when you add commits.
 [libuv mailing list]: http://groups.google.com/group/libuv
 [IRC]: http://webchat.freelibuv.net/?channels=libuv
 [Google C/C++ style guide]: http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml
+[project maintainers]: https://github.com/libuv/libuv/blob/master/MAINTAINERS.md

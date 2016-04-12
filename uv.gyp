@@ -241,6 +241,7 @@
             '_ALL_SOURCE',
             '_XOPEN_SOURCE=500',
             '_LINUX_SOURCE_COMPAT',
+            '_THREAD_SAFE',
           ],
           'link_settings': {
             'libraries': [
@@ -303,6 +304,7 @@
         'test/test-fs-event.c',
         'test/test-get-currentexe.c',
         'test/test-get-memory.c',
+        'test/test-get-passwd.c',
         'test/test-getaddrinfo.c',
         'test/test-getnameinfo.c',
         'test/test-getsockname.c',
@@ -423,6 +425,11 @@
             'test/runner-unix.c',
             'test/runner-unix.h',
           ],
+        }],
+        [ 'OS in "mac dragonflybsd freebsd linux netbsd openbsd".split()', {
+          'link_settings': {
+            'libraries': [ '-lutil' ],
+          },
         }],
         [ 'OS=="solaris"', { # make test-fs.c compile, needs _POSIX_C_SOURCE
           'defines': [

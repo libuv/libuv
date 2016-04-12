@@ -456,7 +456,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   if (first_run) {
     uv__io_init(&handle->loop->fs_event_watcher, uv__fs_event_read, portfd);
-    uv__io_start(handle->loop, &handle->loop->fs_event_watcher, UV__POLLIN);
+    uv__io_start(handle->loop, &handle->loop->fs_event_watcher, POLLIN);
   }
 
   return 0;

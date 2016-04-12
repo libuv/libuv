@@ -1,4 +1,4 @@
-/* Copyright libuv project contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -23,48 +23,63 @@
 #include "task.h"
 #include <string.h>
 
-#define PATHMAX 1024
-#define SMALLPATH 1
-
-TEST_IMPL(tmpdir) {
-  char tmpdir[PATHMAX];
+TEST_IMPL(get_passwd) {
+  uv_passwd_t pwd;
   size_t len;
-  char last;
   int r;
 
   /* Test the normal case */
-  len = sizeof tmpdir;
-  tmpdir[0] = '\0';
-
-  ASSERT(strlen(tmpdir) == 0);
-  r = uv_os_tmpdir(tmpdir, &len);
+  r = uv_os_get_passwd(&pwd);
   ASSERT(r == 0);
-  ASSERT(strlen(tmpdir) == len);
+  len = strlen(pwd.username);
   ASSERT(len > 0);
-  ASSERT(tmpdir[len] == '\0');
 
-  if (len > 1) {
-    last = tmpdir[len - 1];
 #ifdef _WIN32
-    ASSERT(last != '\\');
+  ASSERT(pwd.shell == NULL);
 #else
-    ASSERT(last != '/');
+  len = strlen(pwd.shell);
+  ASSERT(len > 0);
 #endif
-  }
 
-  /* Test the case where the buffer is too small */
-  len = SMALLPATH;
-  r = uv_os_tmpdir(tmpdir, &len);
-  ASSERT(r == UV_ENOBUFS);
-  ASSERT(len > SMALLPATH);
+  len = strlen(pwd.homedir);
+  ASSERT(len > 0);
 
-  /* Test invalid inputs */
-  r = uv_os_tmpdir(NULL, &len);
-  ASSERT(r == UV_EINVAL);
-  r = uv_os_tmpdir(tmpdir, NULL);
-  ASSERT(r == UV_EINVAL);
-  len = 0;
-  r = uv_os_tmpdir(tmpdir, &len);
+#ifdef _WIN32
+  if (len == 3 && pwd.homedir[1] == ':')
+    ASSERT(pwd.homedir[2] == '\\');
+  else
+    ASSERT(pwd.homedir[len - 1] != '\\');
+#else
+  if (len == 1)
+    ASSERT(pwd.homedir[0] == '/');
+  else
+    ASSERT(pwd.homedir[len - 1] != '/');
+#endif
+
+#ifdef _WIN32
+  ASSERT(pwd.uid == -1);
+  ASSERT(pwd.gid == -1);
+#else
+  ASSERT(pwd.uid >= 0);
+  ASSERT(pwd.gid >= 0);
+#endif
+
+  /* Test uv_os_free_passwd() */
+  uv_os_free_passwd(&pwd);
+
+  ASSERT(pwd.username == NULL);
+  ASSERT(pwd.shell == NULL);
+  ASSERT(pwd.homedir == NULL);
+
+  /* Test a double free */
+  uv_os_free_passwd(&pwd);
+
+  ASSERT(pwd.username == NULL);
+  ASSERT(pwd.shell == NULL);
+  ASSERT(pwd.homedir == NULL);
+
+  /* Test invalid input */
+  r = uv_os_get_passwd(NULL);
   ASSERT(r == UV_EINVAL);
 
   return 0;
