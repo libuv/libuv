@@ -19,6 +19,8 @@
  * IN THE SOFTWARE.
  */
 
+#define SECURITY_WIN32
+
 #include <assert.h>
 #include <direct.h>
 #include <limits.h>
@@ -1181,8 +1183,10 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
 
   uv__free(pwd->username);
   uv__free(pwd->homedir);
+  uv__free(pwd->gecos);
   pwd->username = NULL;
   pwd->homedir = NULL;
+  pwd->gecos = NULL;
 }
 
 
@@ -1246,7 +1250,12 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   wchar_t username[UNLEN + 1];
   wchar_t path[MAX_PATH];
   DWORD bufsize;
+  wchar_t* gecosbuf;
+  ULONG gecos_size;
+  EXTENDED_NAME_FORMAT name_format;
   int r;
+
+  uv__once_init();
 
   if (pwd == NULL)
     return UV_EINVAL;
@@ -1295,6 +1304,46 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
     return r;
   }
 
+  gecos_size = 0;
+  pGetUserNameExW(NameDisplay, NULL, &gecos_size);
+  if (GetLastError() != ERROR_MORE_DATA) {
+    /* try NameSamCompatible */
+    pGetUserNameExW(NameSamCompatible, NULL, &gecos_size);
+    if (GetLastError() != ERROR_MORE_DATA) {
+      pwd->gecos = NULL;
+      goto end;
+    } else {
+      name_format = NameSamCompatible;
+    }
+  } else {
+    name_format = NameDisplay;
+  }
+
+  assert(gecos_size > 0);
+  gecosbuf = uv__malloc(sizeof(wchar_t) * gecos_size);
+  if (!gecosbuf) {
+    pwd->gecos = NULL;
+    goto end;
+  }
+
+  if (!pGetUserNameExW(name_format, gecosbuf, &gecos_size)) {
+    uv__free(gecosbuf);
+    pwd->gecos = NULL;
+    goto end;
+  }
+
+  r = uv__convert_utf16_to_utf8(gecosbuf, &pwd->gecos);
+  uv__free(gecosbuf);
+
+  if (r != 0) {
+    uv__free(pwd->gecos);
+    pwd->gecos = NULL;
+    goto end;
+  }
+
+end:
+
+  /* unsupported */
   pwd->shell = NULL;
   pwd->uid = -1;
   pwd->gid = -1;

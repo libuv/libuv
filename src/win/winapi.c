@@ -42,10 +42,15 @@ sNtQuerySystemInformation pNtQuerySystemInformation;
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
 
 
+/* Secur32 function pointers */
+sGetUserNameExW pGetUserNameExW;
+
+
 void uv_winapi_init() {
   HMODULE ntdll_module;
   HMODULE kernel32_module;
   HMODULE powrprof_module;
+  HMODULE secur32_module;
 
   ntdll_module = GetModuleHandleA("ntdll.dll");
   if (ntdll_module == NULL) {
@@ -109,4 +114,12 @@ void uv_winapi_init() {
     pPowerRegisterSuspendResumeNotification = (sPowerRegisterSuspendResumeNotification)
       GetProcAddress(powrprof_module, "PowerRegisterSuspendResumeNotification");
   }
+
+  secur32_module = LoadLibraryA("secur32.dll");
+  if (secur32_module == NULL) {
+    uv_fatal_error(GetLastError(), "GetModuleHandleA - secur32.dll");
+  }
+
+  pGetUserNameExW = (sGetUserNameExW)
+    GetProcAddress(secur32_module, "GetUserNameExW");
 }

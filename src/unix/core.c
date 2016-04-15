@@ -1119,6 +1119,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   size_t name_size;
   size_t homedir_size;
   size_t shell_size;
+  size_t gecos_size;
   long initsize;
   int r;
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
@@ -1171,7 +1172,14 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   name_size = strlen(pw.pw_name) + 1;
   homedir_size = strlen(pw.pw_dir) + 1;
   shell_size = strlen(pw.pw_shell) + 1;
-  pwd->username = uv__malloc(name_size + homedir_size + shell_size);
+  if (pw.pw_gecos != NULL)
+    gecos_size = strlen(pw.pw_gecos) + 1;
+  else
+    gecos_size = 0;
+  pwd->username = uv__malloc(name_size +
+                             homedir_size +
+                             shell_size +
+                             gecos_size);
 
   if (pwd->username == NULL) {
     uv__free(buf);
@@ -1189,6 +1197,13 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   pwd->shell = pwd->homedir + homedir_size;
   memcpy(pwd->shell, pw.pw_shell, shell_size);
 
+  /* Copy the gecos field */
+  pwd->gecos = pwd->shell + shell_size;
+  if (pw.pw_gecos != NULL && gecos_size > 0)
+    memcpy(pwd->gecos, pw.pw_gecos, gecos_size);
+  else
+    pwd->gecos = NULL;
+
   /* Copy the uid and gid */
   pwd->uid = pw.pw_uid;
   pwd->gid = pw.pw_gid;
@@ -1204,7 +1219,7 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
     return;
 
   /*
-    The memory for name, shell, and homedir are allocated in a single
+    The memory for name, shell, homedir and gecos are allocated in a single
     uv__malloc() call. The base of the pointer is stored in pwd->username, so
     that is the field that needs to be freed.
   */
@@ -1212,6 +1227,7 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
   pwd->username = NULL;
   pwd->shell = NULL;
   pwd->homedir = NULL;
+  pwd->gecos = NULL;
 }
 
 
