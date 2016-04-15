@@ -140,6 +140,7 @@ Data types
             long gid;
             char* shell;
             char* homedir;
+            char* gecos;
         } uv_passwd_t;
 
 
@@ -421,6 +422,8 @@ API
     :c:func:`uv_os_free_passwd`.
 
     .. versionadded:: 1.9.0
+
+    .. versionchanged:: 2.0.0 `gecos` support is added.
 
 .. c:function:: void uv_os_free_passwd(uv_passwd_t* pwd)
 

@@ -35,6 +35,9 @@
 #include <windows.h>
 #include <userenv.h>
 
+#define SECURITY_WIN32
+#include <security.h>
+
 
 /*
  * Max title length; the only thing MSDN tells us about the maximum length
@@ -1169,8 +1172,10 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
 
   uv__free(pwd->username);
   uv__free(pwd->homedir);
+  uv__free(pwd->gecos);
   pwd->username = NULL;
   pwd->homedir = NULL;
+  pwd->gecos = NULL;
 }
 
 
@@ -1275,6 +1280,9 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   wchar_t username[UNLEN + 1];
   wchar_t path[MAX_PATH];
   DWORD bufsize;
+  wchar_t* gecosbuf;
+  ULONG gecos_size;
+  EXTENDED_NAME_FORMAT name_format;
   int r;
 
   if (pwd == NULL)
@@ -1310,18 +1318,60 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
     return uv_translate_sys_error(r);
   }
 
+  /* Set all of the pointers to NULL in case an error is encountered. */
   pwd->homedir = NULL;
+  pwd->username = NULL;
+  pwd->gecos = NULL;
+  gecosbuf = NULL;
+
+  /* Get the gecos using GetUserNameExW() */
+  gecos_size = 0;
+  /* Try using the display name first. */
+  GetUserNameExW(NameDisplay, NULL, &gecos_size);
+  if (GetLastError() == ERROR_MORE_DATA) {
+    name_format = NameDisplay;
+  } else {
+    /* NameDisplay not available, so try NameSamCompatible. */
+    GetUserNameExW(NameSamCompatible, NULL, &gecos_size);
+    if (GetLastError() == ERROR_MORE_DATA) {
+      name_format = NameSamCompatible;
+    } else {
+      /* Unsupported */
+      gecos_size = 0;
+    }
+  }
+
+  if (gecos_size > 0) {
+    gecosbuf = uv__malloc(sizeof(wchar_t) * gecos_size);
+    if (gecosbuf == NULL) {
+      r = UV_ENOMEM;
+      goto error;
+    }
+
+    if (GetUserNameExW(name_format, gecosbuf, &gecos_size) == 0) {
+      r = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+  }
+
+  /* Populate the uv_passwd_t structure. */
   r = uv__convert_utf16_to_utf8(path, -1, &pwd->homedir);
 
   if (r != 0)
-    return r;
+    goto error;
 
-  pwd->username = NULL;
   r = uv__convert_utf16_to_utf8(username, -1, &pwd->username);
 
-  if (r != 0) {
-    uv__free(pwd->homedir);
-    return r;
+  if (r != 0)
+    goto error;
+
+  if (gecosbuf != NULL) {
+    r = uv__convert_utf16_to_utf8(gecosbuf, -1, &pwd->gecos);
+
+    if (r != 0)
+      goto error;
+
+    uv__free(gecosbuf);
   }
 
   pwd->shell = NULL;
@@ -1329,6 +1379,13 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   pwd->gid = -1;
 
   return 0;
+
+error:
+  uv__free(gecosbuf);
+  uv__free(pwd->homedir);
+  uv__free(pwd->username);
+  uv__free(pwd->gecos);
+  return r;
 }
 
 

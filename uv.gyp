@@ -135,6 +135,7 @@
               '-liphlpapi',
               '-lpsapi',
               '-lshell32',
+              '-lsecur32',
               '-luser32',
               '-luserenv',
               '-lws2_32'
