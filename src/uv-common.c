@@ -22,10 +22,11 @@
 #include "uv.h"
 #include "uv-common.h"
 
-#include <stdio.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stddef.h> /* NULL */
+#include <stdio.h>
 #include <stdlib.h> /* malloc */
 #include <string.h> /* memset */
 
@@ -75,7 +76,14 @@ void* uv__malloc(size_t size) {
 }
 
 void uv__free(void* ptr) {
+  int saved_errno;
+
+  /* Libuv expects that free() does not clobber errno.  The system allocator
+   * honors that assumption but custom allocators may not be so careful.
+   */
+  saved_errno = errno;
   uv__allocator.local_free(ptr);
+  errno = saved_errno;
 }
 
 void* uv__calloc(size_t count, size_t size) {
