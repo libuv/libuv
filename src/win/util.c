@@ -1153,7 +1153,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 int uv_get_children_pid(DWORD ppid, uint32_t** proc_list, int* proc_count) {
   HANDLE process_snap;
   PROCESSENTRY32 pe32;
-  uint32_t* temp = uv__malloc(0);
+  uint32_t* temp = NULL;
 
   *proc_list = NULL;
   *proc_count = 0;
@@ -1171,7 +1171,11 @@ int uv_get_children_pid(DWORD ppid, uint32_t** proc_list, int* proc_count) {
   /* walk and push to results */
   do {
     if (pe32.th32ParentProcessID == ppid) {
-      uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+      temp = uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+      if (temp == NULL) {
+        CloseHandle(process_snap);
+        return -ENOMEM;
+      }
       temp[*proc_count] = (uint32_t)pe32.th32ProcessID;
       (*proc_count)++;
     }
@@ -1180,7 +1184,7 @@ int uv_get_children_pid(DWORD ppid, uint32_t** proc_list, int* proc_count) {
   CloseHandle(process_snap);
 
   *proc_list = temp;
-  free(temp);
+  uv__free(temp);
   return 0;
 }
 

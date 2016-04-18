@@ -392,7 +392,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
 
 
 int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
-  uint32_t* temp = uv__malloc(0);
+  uint32_t* temp = NULL;
   size_t len = 0;
 
 #if defined(__APPLE__)    || \
@@ -412,24 +412,32 @@ int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
   ret = sysctl((int *)name, (sizeof(name) / sizeof(*name)) - 1, NULL, &len, NULL, 0);
   if (ret) return 1;
 
-  p_list = malloc(len);
+  p_list = uv__malloc(len);
   if (!p_list) return 1;
   /* get the process list */
   ret = sysctl((int *)name, (sizeof(name) / sizeof(*name)) - 1, p_list, &len, NULL, 0);
-  if (ret) return 1;
+  if (ret) {
+    uv__free(p_list);
+    return 1;
+  }
+
 
   p_count = len / sizeof(struct kinfo_proc);
   /* iterate though whole p_list */
   for (i = 0; i < p_count; i++) {
    /* if parent is ppid, push pid to array; increase counter */
    if ((uint32_t) p_list[i].kp_eproc.e_ppid == (uint32_t) ppid) {
-     uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+     temp = uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+     if (temp == NULL) {
+       uv__free(p_list);
+       return -ENOMEM;
+     }
      temp[*proc_count] = (uint32_t)p_list[i].kp_proc.p_pid;
 
      (*proc_count)++;
    }
   }
-  free(p_list);
+  uv__free(p_list);
 
 #elif defined(__linux__)
   char *line = NULL;
@@ -446,7 +454,11 @@ int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
     return 127;
 
   while (getline(&line, &len, fp) >= 0) {
-     uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+     temp = uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
+     if (temp == NULL) {
+       uv__close(fp);
+       return -ENOMEM;
+     }
      temp[*proc_count] = atoi(line);
      (*proc_count)++;
   }
@@ -454,7 +466,7 @@ int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
 #endif
 
   *proc_list = temp;
-  free(temp);
+  uv__free(temp);
   return 0;
 }
 
