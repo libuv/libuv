@@ -1028,14 +1028,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   }
 
   if (ioctl(sockfd, SIOCGSIZIFCONF, &size) == -1) {
-    SAVE_ERRNO(uv__close(sockfd));
+    uv__close(sockfd);
     return -errno;
   }
 
   ifc.ifc_req = (struct ifreq*)uv__malloc(size);
   ifc.ifc_len = size;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
-    SAVE_ERRNO(uv__close(sockfd));
+    uv__close(sockfd);
     return -errno;
   }
 
@@ -1054,7 +1054,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
-      SAVE_ERRNO(uv__close(sockfd));
+      uv__close(sockfd);
       return -errno;
     }
 
