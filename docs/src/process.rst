@@ -212,7 +212,7 @@ API
     setgid specified, or not having enough memory to allocate for the new
     process.
 
-.. c:function:: int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count)
+.. c:function:: int uv_process_children(pid_t ppid, uint32_t** proc_list, int* proc_count)
 
     Queries the specified process for children and stores their PIDs and count.
 

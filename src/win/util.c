@@ -1150,7 +1150,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
   return 0;
 }
 
-int uv_get_children_pid(DWORD ppid, uint32_t** proc_list, int* proc_count) {
+int uv_process_children(DWORD ppid, uint32_t** proc_list, int* proc_count) {
   HANDLE process_snap;
   PROCESSENTRY32 pe32;
   uint32_t* temp = NULL;

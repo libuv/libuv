@@ -391,9 +391,8 @@ static void uv__process_child_init(const uv_process_options_t* options,
 #endif
 
 
-int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
+int uv_process_children(pid_t ppid, uint32_t** proc_list, int* proc_count) {
   uint32_t* temp = NULL;
-  size_t len = 0;
 
 #if defined(__APPLE__)    || \
     defined(__NetBSD__)   || \
@@ -402,6 +401,7 @@ int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
     defined(__DragonFly__)
   struct kinfo_proc *p_list = NULL;
   int ret, p_count, i;
+  size_t len = 0;
   /* ref:
      http://unix.superglobalmegacorp.com/Net2/newsrc/sys/kinfo_proc.h.html */
   static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
@@ -440,9 +440,9 @@ int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
   uv__free(p_list);
 
 #elif defined(__linux__)
-  char *line = NULL;
   char proc_p[256] = {0};
   int *fp;
+  int match_pid;
 
   *proc_list = NULL;
   *proc_count = 0;
@@ -453,13 +453,13 @@ int uv_get_children_pid(pid_t ppid, uint32_t** proc_list, int* proc_count) {
   if (fp == NULL)
     return 127;
 
-  while (getline(&line, &len, fp) >= 0) {
+  while (fscanf(fp, "%d", &match_pid) > 0) {
      temp = uv__realloc(temp, (*proc_count + 1) * sizeof(uint32_t));
      if (temp == NULL) {
        uv__close(fp);
        return -ENOMEM;
      }
-     temp[*proc_count] = atoi(line);
+     temp[*proc_count] = (uint32_t) match_pid;
      (*proc_count)++;
   }
   uv__close(fp);

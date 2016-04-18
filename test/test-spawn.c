@@ -670,7 +670,7 @@ TEST_IMPL(spawn_observe_and_kill) {
   p = getpid();
   ASSERT(p > 0);
 
-  ret = uv_get_children_pid(p, &proc_list, &proc_count_1);
+  ret = uv_process_children(p, &proc_list, &proc_count_1);
   ASSERT(ret == 0);
   /* should be zero because we have just spawned the porcesses w/o children */
   ASSERT(proc_count_1 == 0);
@@ -683,7 +683,7 @@ TEST_IMPL(spawn_observe_and_kill) {
   r = uv_timer_init(uv_default_loop(), &timer);
   ASSERT(r == 0);
 
-  ret = uv_get_children_pid(p, &proc_list, &proc_count_2);
+  ret = uv_process_children(p, &proc_list, &proc_count_2);
   ASSERT(ret == 0);
 
   /* should have observed two more child processes then before */
@@ -698,7 +698,7 @@ TEST_IMPL(spawn_observe_and_kill) {
   ASSERT(exit_cb_called == 1);
   ASSERT(close_cb_called == 2); /* Once for process and once for timer. */
 
-  ret = uv_get_children_pid(p, &proc_list, &proc_count_3);
+  ret = uv_process_children(p, &proc_list, &proc_count_3);
   ASSERT(ret == 0);
   ASSERT(r == 0);
 
