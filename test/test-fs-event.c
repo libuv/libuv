@@ -698,18 +698,19 @@ TEST_IMPL(fs_event_close_with_pending_event) {
   return 0;
 }
 
-#if defined(HAVE_KQUEUE)
+#if defined(HAVE_KQUEUE) || defined(_AIX)
 
 /* kqueue doesn't register fs events if you don't have an active watcher.
  * The file descriptor needs to be part of the kqueue set of interest and
  * that's not the case until we actually enter the event loop.
+ * This is also observed on AIX with ahafs.
  */
 TEST_IMPL(fs_event_close_in_callback) {
-  fprintf(stderr, "Skipping test, doesn't work with kqueue.\n");
+  fprintf(stderr, "Skipping test, doesn't work with kqueue and AIX.\n");
   return 0;
 }
 
-#else /* !HAVE_KQUEUE */
+#else /* !HAVE_KQUEUE || !_AIX */
 
 static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
     int events, int status) {
@@ -766,7 +767,7 @@ TEST_IMPL(fs_event_close_in_callback) {
   return 0;
 }
 
-#endif /* HAVE_KQUEUE */
+#endif /* HAVE_KQUEUE || _AIX */
 
 TEST_IMPL(fs_event_start_and_close) {
   uv_loop_t* loop;
