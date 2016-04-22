@@ -22,7 +22,7 @@
 #include "task.h"
 #include "uv.h"
 
-#define NUM_TIMERS (10 * 1000 * 1000)
+#define NUM_TIMERS (10 * 1000 * 1000 )
 
 static int timer_cb_called;
 static int close_cb_called;
@@ -59,6 +59,114 @@ BENCHMARK_IMPL(million_timers) {
     if (i % 1000 == 0) timeout++;
     ASSERT(0 == uv_timer_init(loop, timers + i));
     ASSERT(0 == uv_timer_start(timers + i, timer_cb, timeout, 0));
+
+  }
+
+  before_run = uv_hrtime();
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  after_run = uv_hrtime();
+
+  for (i = 0; i < NUM_TIMERS; i++)
+    uv_close((uv_handle_t*) (timers + i), close_cb);
+
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  after_all = uv_hrtime();
+
+  ASSERT(timer_cb_called == NUM_TIMERS);
+  ASSERT(close_cb_called == NUM_TIMERS);
+  free(timers);
+
+  fprintf(stderr, "%.2f seconds total\n", (after_all - before_all) / 1e9);
+  fprintf(stderr, "%.2f seconds init\n", (before_run - before_all) / 1e9);
+  fprintf(stderr, "%.2f seconds dispatch\n", (after_run - before_run) / 1e9);
+  fprintf(stderr, "%.2f seconds cleanup\n", (after_all - after_run) / 1e9);
+  fflush(stderr);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+BENCHMARK_IMPL(million_timers_cancel) {
+  uv_timer_t* timers;
+  uv_loop_t* loop;
+  uint64_t before_all;
+  uint64_t before_run;
+  uint64_t after_run;
+  uint64_t after_all;
+  int timeout;
+  int i;
+
+  timers = malloc(NUM_TIMERS * sizeof(timers[0]));
+  ASSERT(timers != NULL);
+
+  loop = uv_default_loop();
+  timeout = 0;
+
+  before_all = uv_hrtime();
+  for (i = 0; i < NUM_TIMERS; i++) {
+    if (i % 1000 == 0) timeout++;
+    ASSERT(0 == uv_timer_init(loop, timers + i));
+    ASSERT(0 == uv_timer_start(timers + i, timer_cb, timeout, 0));
+
+  }
+
+  timeout = 0;
+  for (i = 0; i < NUM_TIMERS; i++) {
+    if (i % 1000 == 0) timeout++;
+    ASSERT(0 == uv_timer_stop(timers + i));
+
+  }
+
+  before_run = uv_hrtime();
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  after_run = uv_hrtime();
+
+  for (i = 0; i < NUM_TIMERS; i++)
+    uv_close((uv_handle_t*) (timers + i), close_cb);
+
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  free(timers);
+  after_all = uv_hrtime();
+
+  fprintf(stderr, "%.2f seconds total\n", (after_all - before_all) / 1e9);
+  fprintf(stderr, "%.2f seconds start/stop\n", (before_run - before_all) / 1e9);
+  fprintf(stderr, "%.2f seconds run\n", (after_run - before_run) / 1e9);
+  fprintf(stderr, "%.2f seconds cleanup\n", (after_all - after_run) / 1e9);
+  fflush(stderr);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+BENCHMARK_IMPL(million_timers_cascade) {
+  uv_timer_t* timers;
+  uv_loop_t* loop;
+  uint64_t before_all;
+  uint64_t before_run;
+  uint64_t after_run;
+  uint64_t after_all;
+  int timeout;
+  int i;
+
+  timers = malloc(NUM_TIMERS * sizeof(timers[0]));
+  ASSERT(timers != NULL);
+
+  loop = uv_default_loop();
+  /* cause cascade , O(m), but worse case m = N.
+  *         | start  | stop    | schedule |
+  * |  heap | O(logN)| O(logN) | O(1) |
+  * | wheels| O(1)   | O(1)    | O(m) |  
+  * 
+  *   this case: heap vs time wheels
+  *   (2N * O(logN) + N ) vs (2N + 2N))
+  */
+  timeout = 256;
+
+  before_all = uv_hrtime();
+  for (i = 0; i < NUM_TIMERS; i++) {
+    ASSERT(0 == uv_timer_init(loop, timers + i));
+    ASSERT(0 == uv_timer_start(timers + i, timer_cb, timeout, 0));
+
   }
 
   before_run = uv_hrtime();
