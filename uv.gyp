@@ -349,6 +349,7 @@
         'test/test-emfile.c',
         'test/test-env-vars.c',
         'test/test-fail-always.c',
+        'test/test-fork.c',
         'test/test-fs.c',
         'test/test-fs-event.c',
         'test/test-get-currentexe.c',
