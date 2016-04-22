@@ -72,6 +72,34 @@
 # define UV_IO_PRIVATE_PLATFORM_FIELDS /* empty */
 #endif
 
+
+// 8+6+6+6+6=32
+#define TVR_BITS  8
+#define TVN_BITS  6
+#define TVR_SIZE  (1 << TVR_BITS)
+#define TVN_SIZE  (1 << TVN_BITS)
+#define TVR_MASK  (TVR_SIZE - 1)
+#define TVN_MASK  (TVN_SIZE - 1)
+#define MAX_TVAL ((unsigned long)((1UL << (TVR_BITS + 4 * TVN_BITS)) - 1))
+
+typedef void *TQUEUE[2];
+struct tvec {
+  TQUEUE vec[TVN_SIZE];
+};
+
+struct tvec_root {
+  TQUEUE vec[TVR_SIZE];
+};
+
+struct tvec_base {
+    unsigned long next_tick;
+    struct tvec_root tv1;
+    struct tvec tv2;
+    struct tvec tv3;
+    struct tvec tv4;
+    struct tvec tv5;
+};
+
 struct uv__io_s;
 struct uv__async;
 struct uv_loop_s;
@@ -225,10 +253,7 @@ typedef struct {
   void* idle_handles[2];                                                      \
   void* async_handles[2];                                                     \
   struct uv__async async_watcher;                                             \
-  struct {                                                                    \
-    void* min;                                                                \
-    unsigned int nelts;                                                       \
-  } timer_heap;                                                               \
+  struct tvec_base vec_base;                                                 \
   uint64_t timer_counter;                                                     \
   uint64_t time;                                                              \
   int signal_pipefd[2];                                                       \
@@ -315,7 +340,7 @@ typedef struct {
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
   uv_timer_cb timer_cb;                                                       \
-  void* heap_node[3];                                                         \
+  void* timer_queue[2];                                                       \
   uint64_t timeout;                                                           \
   uint64_t repeat;                                                            \
   uint64_t start_id;

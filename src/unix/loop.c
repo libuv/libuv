@@ -33,7 +33,7 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__signal_global_once_init();
 
   memset(loop, 0, sizeof(*loop));
-  heap_init((struct heap*) &loop->timer_heap);
+  //heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->active_reqs);
   QUEUE_INIT(&loop->idle_handles);
@@ -50,6 +50,9 @@ int uv_loop_init(uv_loop_t* loop) {
 
   loop->closing_handles = NULL;
   uv__update_time(loop);
+  // after init loop time
+  uv__init_timers(loop);
+
   uv__async_init(&loop->async_watcher);
   loop->signal_pipefd[0] = -1;
   loop->signal_pipefd[1] = -1;
