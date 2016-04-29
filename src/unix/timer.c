@@ -26,7 +26,7 @@
 
 int uv__init_timers(uv_loop_t* loop) {
   int j;
-  struct tvec_base *base = &loop->vec_base;
+  struct uv__tvec_base *base = &loop->vec_base;
 
   for (j = 0; j < TVN_SIZE; j++) {
     QUEUE_INIT(base->tv5.vec + j);
@@ -43,7 +43,7 @@ int uv__init_timers(uv_loop_t* loop) {
   return 0;
 }
 
-static void uv__add_timer(struct tvec_base *base, uv_timer_t *timer) {
+static void uv__add_timer(struct uv__tvec_base *base, uv_timer_t *timer) {
   int i;
   unsigned long idx;
   unsigned long expires = timer->timeout;
@@ -85,7 +85,7 @@ static void uv__detach_timer(uv_timer_t *timer) {
 }
 
 
-static int cascade(struct tvec_base *base, struct tvec *tv, int index) {
+static int cascade(struct uv__tvec_base *base, struct uv__tvec *tv, int index) {
   uv_timer_t *timer;
   QUEUE tv_list;
   QUEUE* q;
@@ -145,7 +145,7 @@ int uv_timer_stop(uv_timer_t* handle) {
   if (!uv__is_active(handle))
     return 0;
 
-  --handle->loop->timer_counter;
+  handle->loop->timer_counter--;
   uv__detach_timer(handle);
   uv__handle_stop(handle);
 
@@ -177,7 +177,7 @@ uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
 
 
 int uv__next_timeout(const uv_loop_t* loop) {
-  const struct tvec_base *base = &loop->vec_base;
+  const struct uv__tvec_base *base = &loop->vec_base;
   unsigned long expires = TVR_SIZE;
   int index, slot;
   uv_timer_t *nte;
@@ -216,7 +216,7 @@ int uv__next_timeout(const uv_loop_t* loop) {
 void uv__run_timers(uv_loop_t* loop) {
   uv_timer_t* handle;
   uint64_t catchup = uv__hrtime(UV_CLOCK_FAST) / 1000000;
-  struct tvec_base *base = &loop->vec_base;
+  struct uv__tvec_base *base = &loop->vec_base;
   QUEUE* q;
 
   while (base->next_tick <= catchup) {

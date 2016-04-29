@@ -73,7 +73,7 @@
 #endif
 
 
-// 8+6+6+6+6=32
+/* 8 + 6 + 6 + 6 + 6 = 32 */
 #define TVR_BITS  8
 #define TVN_BITS  6
 #define TVR_SIZE  (1 << TVR_BITS)
@@ -82,22 +82,22 @@
 #define TVN_MASK  (TVN_SIZE - 1)
 #define MAX_TVAL ((unsigned long)((1UL << (TVR_BITS + 4 * TVN_BITS)) - 1))
 
-typedef void *TQUEUE[2];
-struct tvec {
-  TQUEUE vec[TVN_SIZE];
+typedef void *UV_QUEUE[2];
+struct uv__tvec {
+  UV_QUEUE vec[TVN_SIZE];
 };
 
-struct tvec_root {
-  TQUEUE vec[TVR_SIZE];
+struct uv__tvec_root {
+  UV_QUEUE vec[TVR_SIZE];
 };
 
-struct tvec_base {
+struct uv__tvec_base {
     unsigned long next_tick;
-    struct tvec_root tv1;
-    struct tvec tv2;
-    struct tvec tv3;
-    struct tvec tv4;
-    struct tvec tv5;
+    struct uv__tvec_root tv1;
+    struct uv__tvec tv2;
+    struct uv__tvec tv3;
+    struct uv__tvec tv4;
+    struct uv__tvec tv5;
 };
 
 struct uv__io_s;
@@ -253,7 +253,7 @@ typedef struct {
   void* idle_handles[2];                                                      \
   void* async_handles[2];                                                     \
   struct uv__async async_watcher;                                             \
-  struct tvec_base vec_base;                                                 \
+  struct uv__tvec_base vec_base;                                              \
   uint64_t timer_counter;                                                     \
   uint64_t time;                                                              \
   int signal_pipefd[2];                                                       \

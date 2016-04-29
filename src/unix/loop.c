@@ -33,7 +33,7 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__signal_global_once_init();
 
   memset(loop, 0, sizeof(*loop));
-  //heap_init((struct heap*) &loop->timer_heap);
+
   QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->active_reqs);
   QUEUE_INIT(&loop->idle_handles);
