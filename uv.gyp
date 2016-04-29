@@ -17,6 +17,7 @@
       }],
     ],
     'xcode_settings': {
+      'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
       'WARNING_CFLAGS': [ '-Wall', '-Wextra', '-Wno-unused-parameter' ],
       'OTHER_CFLAGS': [ '-g', '--std=gnu89', '-pedantic' ],
     }
@@ -117,6 +118,7 @@
           },
         }, { # Not Windows i.e. POSIX
           'cflags': [
+            '-fvisibility=hidden',
             '-g',
             '--std=gnu89',
             '-pedantic',
