@@ -70,8 +70,9 @@ TEST_IMPL(platform_output) {
   printf("  system: %llu sec %llu microsec\n",
          (unsigned long long) rusage.ru_stime.tv_sec,
          (unsigned long long) rusage.ru_stime.tv_usec);
-  printf("  page faults: %llu\n", rusage.ru_majflt);
-  printf("  maximum resident set size: %llu\n", rusage.ru_maxrss);
+  printf("  page faults: %llu\n", (unsigned long long) rusage.ru_majflt);
+  printf("  maximum resident set size: %llu\n",
+         (unsigned long long) rusage.ru_maxrss);
 
   err = uv_cpu_info(&cpus, &count);
   ASSERT(err == 0);
