@@ -94,7 +94,7 @@
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    uint64_t bigtime = ((int64_t) (time) * 10000000LL) +                    \
+    uint64_t bigtime = ((uint64_t) ((time) * 10000000ULL)) +                \
                                   116444736000000000ULL;                    \
     (filetime_ptr)->dwLowDateTime = bigtime & 0xFFFFFFFF;                   \
     (filetime_ptr)->dwHighDateTime = bigtime >> 32;                         \
@@ -1429,8 +1429,8 @@ static void fs__fchmod(uv_fs_t* req) {
 INLINE static int fs__utime_handle(HANDLE handle, double atime, double mtime) {
   FILETIME filetime_a, filetime_m;
 
-  TIME_T_TO_FILETIME((time_t) atime, &filetime_a);
-  TIME_T_TO_FILETIME((time_t) mtime, &filetime_m);
+  TIME_T_TO_FILETIME(atime, &filetime_a);
+  TIME_T_TO_FILETIME(mtime, &filetime_m);
 
   if (!SetFileTime(handle, NULL, &filetime_a, &filetime_m)) {
     return -1;

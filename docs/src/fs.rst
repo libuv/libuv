@@ -258,6 +258,8 @@ API
 
     Equivalent to :man:`utime(2)` and :man:`futime(2)` respectively.
 
+    .. versionchanged:: 1.10.0 sub-second precission is supported on Windows
+
 .. c:function:: int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 
     Equivalent to :man:`link(2)`.
