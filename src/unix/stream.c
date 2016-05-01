@@ -150,7 +150,7 @@ static void uv__stream_osx_select(void* arg) {
   else
     max_fd = s->int_fd;
 
-  while (1) {
+  for (;;) {
     /* Terminate on semaphore */
     if (uv_sem_trywait(&s->close_sem) == 0)
       break;
@@ -181,7 +181,7 @@ static void uv__stream_osx_select(void* arg) {
 
     /* Empty socketpair's buffer in case of interruption */
     if (FD_ISSET(s->int_fd, s->sread))
-      while (1) {
+      for (;;) {
         r = read(s->int_fd, buf, sizeof(buf));
 
         if (r == sizeof(buf))

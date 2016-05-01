@@ -453,7 +453,7 @@ int uv__accept(int sockfd) {
 
   assert(sockfd >= 0);
 
-  while (1) {
+  for (;;) {
 #if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 10)
     static int no_accept4;
 
