@@ -51,7 +51,7 @@ typedef struct pollfd {
 #include <signal.h>
 #include <sys/stat.h>
 
-#if defined(_MSC_VER) && _MSC_VER < 1600
+#if defined(_MSC_VER) && (_MSC_VER < 1600)
 # include "stdint-msvc2008.h"
 #else
 # include <stdint.h>
