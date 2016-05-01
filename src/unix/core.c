@@ -439,11 +439,11 @@ FILE* uv__open_file(const char* path) {
   if (fd < 0)
     return NULL;
 
-   fp = fdopen(fd, "r");
-   if (fp == NULL)
-     uv__close(fd);
+  fp = fdopen(fd, "r");
+  if (fp == NULL)
+    uv__close(fd);
 
-   return fp;
+  return fp;
 }
 
 
