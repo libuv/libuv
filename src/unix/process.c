@@ -217,6 +217,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
 
   default:
     assert(0 && "Unexpected flags");
+    /* NOTREACHED */
     return -EINVAL;
   }
 }

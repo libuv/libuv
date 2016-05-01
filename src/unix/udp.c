@@ -370,6 +370,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
   }
   default:
     assert(0 && "unsupported address family");
+    /* NOTREACHED */
     abort();
   }
 
@@ -809,6 +810,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
     }
   } else {
     assert(0 && "unexpected address family");
+    /* NOTREACHED */
     abort();
   }
 

@@ -89,7 +89,9 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 #endif
   }
   assert(!"unknown EAI_* error code");
+  /* NOTREACHED */
   abort();
+  /* NOTREACHED */
   return 0;  /* Pacify compiler. */
 }
 
