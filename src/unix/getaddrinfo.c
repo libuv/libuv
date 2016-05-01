@@ -87,12 +87,13 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 #if defined(EAI_SYSTEM)
   case EAI_SYSTEM: return -errno;
 #endif
+  default:
+    assert(!"unknown EAI_* error code");
+    /* NOTREACHED */
+    abort();
+    /* NOTREACHED */
+    return 0;  /* Pacify compiler. */
   }
-  assert(!"unknown EAI_* error code");
-  /* NOTREACHED */
-  abort();
-  /* NOTREACHED */
-  return 0;  /* Pacify compiler. */
 }
 
 
