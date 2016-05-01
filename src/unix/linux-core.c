@@ -793,7 +793,7 @@ static int read_times(FILE* statfile_fp,
       int r = sscanf(buf, "cpu%u ", &n);
       assert(r == 1);
       (void) r;  /* silence build warning */
-      for (len = sizeof("cpu0"); n /= 10; len++);
+      for (len = sizeof("cpu0"); n /= 10; len++) {}
     }
 
     /* Line contains user, nice, system, idle, iowait, irq, softirq, steal,
