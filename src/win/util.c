@@ -1299,20 +1299,36 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
 }
 
 
-int uv__convert_utf16_to_utf8(const WCHAR* utf16, char** utf8) {
+/*
+ * Converts a UTF-16 string into a UTF-8 one. The resulting string is
+ * null-terminated.
+ *
+ * If utf16 is null terminated, utf16len can be set to -1, otherwise it must
+ * be specified.
+ */
+int uv__convert_utf16_to_utf8(const WCHAR* utf16, int utf16len, char** utf8) {
   DWORD bufsize;
 
   if (utf16 == NULL)
     return UV_EINVAL;
 
   /* Check how much space we need */
-  bufsize = WideCharToMultiByte(CP_UTF8, 0, utf16, -1, NULL, 0, NULL, NULL);
+  bufsize = WideCharToMultiByte(CP_UTF8,
+                                0,
+                                utf16,
+                                utf16len,
+                                NULL,
+                                0,
+                                NULL,
+                                NULL);
 
   if (bufsize == 0)
     return uv_translate_sys_error(GetLastError());
 
-  /* Allocate the destination buffer */
-  *utf8 = uv__malloc(bufsize);
+  /* Allocate the destination buffer adding an extra byte for the terminating
+   * NULL. If utf16len is not -1 WideCharToMultiByte will not add it, so
+   * we do it ourselves always, just in case. */
+  *utf8 = uv__malloc(bufsize + 1);
 
   if (*utf8 == NULL)
     return UV_ENOMEM;
@@ -1321,7 +1337,7 @@ int uv__convert_utf16_to_utf8(const WCHAR* utf16, char** utf8) {
   bufsize = WideCharToMultiByte(CP_UTF8,
                                 0,
                                 utf16,
-                                -1,
+                                utf16len,
                                 *utf8,
                                 bufsize,
                                 NULL,
@@ -1329,9 +1345,11 @@ int uv__convert_utf16_to_utf8(const WCHAR* utf16, char** utf8) {
 
   if (bufsize == 0) {
     uv__free(*utf8);
+    *utf8 = NULL;
     return uv_translate_sys_error(GetLastError());
   }
 
+  (*utf8)[bufsize] = '\0';
   return 0;
 }
 
@@ -1377,13 +1395,13 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   }
 
   pwd->homedir = NULL;
-  r = uv__convert_utf16_to_utf8(path, &pwd->homedir);
+  r = uv__convert_utf16_to_utf8(path, -1, &pwd->homedir);
 
   if (r != 0)
     return r;
 
   pwd->username = NULL;
-  r = uv__convert_utf16_to_utf8(username, &pwd->username);
+  r = uv__convert_utf16_to_utf8(username, -1, &pwd->username);
 
   if (r != 0) {
     uv__free(pwd->homedir);
