@@ -124,7 +124,7 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
                                  utf16_buffer,
                                  -1,
                                  buffer,
-                                 *size_ptr > INT_MAX ? INT_MAX : (int) *size_ptr,
+                                 (int) *size_ptr,
                                  NULL,
                                  NULL);
   if (utf8_len == 0) {
