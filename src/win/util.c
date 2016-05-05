@@ -403,36 +403,13 @@ done:
 
 static int uv__get_process_title() {
   WCHAR title_w[MAX_TITLE_LENGTH];
-  int length;
 
   if (!GetConsoleTitleW(title_w, sizeof(title_w) / sizeof(WCHAR))) {
     return -1;
   }
 
-  /* Find out what the size of the buffer is that we need */
-  length = WideCharToMultiByte(CP_UTF8, 0, title_w, -1, NULL, 0, NULL, NULL);
-  if (!length) {
+  if (uv__convert_utf16_to_utf8(title_w, -1, &process_title) != 0)
     return -1;
-  }
-
-  assert(!process_title);
-  process_title = (char*)uv__malloc(length);
-  if (!process_title) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-  }
-
-  /* Do utf16 -> utf8 conversion here */
-  if (!WideCharToMultiByte(CP_UTF8,
-                           0,
-                           title_w,
-                           -1,
-                           process_title,
-                           length,
-                           NULL,
-                           NULL)) {
-    uv__free(process_title);
-    return -1;
-  }
 
   return 0;
 }
@@ -704,43 +681,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
     cpu_info->cpu_times.irq = sppi[i].InterruptTime.QuadPart / 10000;
     cpu_info->cpu_times.nice = 0;
 
-
-    len = WideCharToMultiByte(CP_UTF8,
-                              0,
-                              cpu_brand,
+    uv__convert_utf16_to_utf8(cpu_brand,
                               cpu_brand_size / sizeof(WCHAR),
-                              NULL,
-                              0,
-                              NULL,
-                              NULL);
-    if (len == 0) {
-      err = GetLastError();
-      goto error;
-    }
-
-    assert(len > 0);
-
-    /* Allocate 1 extra byte for the null terminator. */
-    cpu_info->model = uv__malloc(len + 1);
-    if (cpu_info->model == NULL) {
-      err = ERROR_OUTOFMEMORY;
-      goto error;
-    }
-
-    if (WideCharToMultiByte(CP_UTF8,
-                            0,
-                            cpu_brand,
-                            cpu_brand_size / sizeof(WCHAR),
-                            cpu_info->model,
-                            len,
-                            NULL,
-                            NULL) == 0) {
-      err = GetLastError();
-      goto error;
-    }
-
-    /* Ensure that cpu_info->model is null terminated. */
-    cpu_info->model[len] = '\0';
+                              &(cpu_info->model));
   }
 
   uv__free(sppi);

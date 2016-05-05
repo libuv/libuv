@@ -461,35 +461,7 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
           }
 
           /* Convert the filename to utf8. */
-          size = WideCharToMultiByte(CP_UTF8,
-                                     0,
-                                     filenamew,
-                                     sizew,
-                                     NULL,
-                                     0,
-                                     NULL,
-                                     NULL);
-          if (size) {
-            filename = (char*)uv__malloc(size + 1);
-            if (!filename) {
-              uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-            }
-
-            size = WideCharToMultiByte(CP_UTF8,
-                                       0,
-                                       filenamew,
-                                       sizew,
-                                       filename,
-                                       size,
-                                       NULL,
-                                       NULL);
-            if (size) {
-              filename[size] = '\0';
-            } else {
-              uv__free(filename);
-              filename = NULL;
-            }
-          }
+          uv__convert_utf16_to_utf8(filenamew, sizew, &filename);
 
           switch (file_info->Action) {
             case FILE_ACTION_ADDED:
