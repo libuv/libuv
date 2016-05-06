@@ -392,6 +392,35 @@ error2:
 #endif /* defined(__APPLE__) && defined(__MACH__) */
 
 void uv_cond_destroy(uv_cond_t* cond) {
+#if defined(__APPLE__) && defined(__MACH__)
+  /* It has been reported that destroying condition variables that have been
+   * signalled but not waited on can sometimes result in application crashes.
+   * See https://codereview.chromium.org/1323293005.
+   */
+  pthread_mutex_t mutex;
+  struct timespec ts;
+  int err;
+
+  if (pthread_mutex_init(&mutex, NULL))
+    abort();
+
+  if (pthread_mutex_lock(&mutex))
+    abort();
+
+  ts.tv_sec = 0;
+  ts.tv_nsec = 1;
+
+  err = pthread_cond_timedwait_relative_np(cond, &mutex, &ts);
+  if (err != 0 && err != ETIMEDOUT)
+    abort();
+
+  if (pthread_mutex_unlock(&mutex))
+    abort();
+
+  if (pthread_mutex_destroy(&mutex))
+    abort();
+#endif /* defined(__APPLE__) && defined(__MACH__) */
+
   if (pthread_cond_destroy(cond))
     abort();
 }
