@@ -18,28 +18,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define _UV_PTHREAD_BARRIER_
 #include <errno.h>
 #include <pthread.h>
-#include <semaphore.h> /* sem_t */
 
 #define PTHREAD_BARRIER_SERIAL_THREAD  0x12345
-
-/*
- * To maintain ABI compatibility with
- * libuv v1.x struct is padded according
- * to target platform
- */
-#if defined(__ANDROID__)
-# define UV_BARRIER_STRUCT_PADDING \
-  sizeof(pthread_mutex_t) + \
-  sizeof(pthread_cond_t) + \
-  sizeof(unsigned int) - \
-  sizeof(void *)
-#elif defined(__APPLE__)
-# define UV_BARRIER_STRUCT_PADDING \
-  sizeof(pthread_mutex_t) + \
-  2 * sizeof(sem_t) + \
-  2 * sizeof(unsigned int) - \
-  sizeof(void *)
-#endif
 
 typedef struct {
   pthread_mutex_t  mutex;
@@ -47,11 +27,6 @@ typedef struct {
   unsigned         threshold;
   unsigned         in;
   unsigned         out;
-} _uv_barrier;
-
-typedef struct {
-  _uv_barrier* b;
-  char _pad[UV_BARRIER_STRUCT_PADDING];
 } pthread_barrier_t;
 
 int pthread_barrier_init(pthread_barrier_t* barrier,
