@@ -1968,9 +1968,11 @@ TEST_IMPL(fs_utime) {
 
   atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
 
-  // Test sub-second timestamps only on Windows (assuming NTFS). Some other
-  // platforms support sub-second timestamps, but that support is filesystem-
-  // dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
+  /*
+   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
+   * platforms support sub-second timestamps, but that support is filesystem-
+   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
+   */
 #ifdef _WIN32
   mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
 #endif
@@ -2062,9 +2064,11 @@ TEST_IMPL(fs_futime) {
 
   atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
 
-  // Test sub-second timestamps only on Windows (assuming NTFS). Some other
-  // platforms support sub-second timestamps, but that support is filesystem-
-  // dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
+  /*
+   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
+   * platforms support sub-second timestamps, but that support is filesystem-
+   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
+   */
 #ifdef _WIN32
   mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
 #endif

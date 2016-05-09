@@ -94,7 +94,7 @@
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    uint64_t bigtime = ((uint64_t) ((time) * 10000000LL)) +                 \
+    uint64_t bigtime = ((uint64_t) ((time) * 10000000ULL)) +                \
                                   116444736000000000ULL;                    \
     (filetime_ptr)->dwLowDateTime = bigtime & 0xFFFFFFFF;                   \
     (filetime_ptr)->dwHighDateTime = bigtime >> 32;                         \
