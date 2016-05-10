@@ -28,6 +28,7 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>  /* getrlimit() */
+#include <unistd.h>  /* getpagesize() */
 
 #include <limits.h>
 
@@ -81,10 +82,13 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   if (pthread_attr_init(attr))
     abort();
 
-  if (lim.rlim_cur != RLIM_INFINITY &&
-      lim.rlim_cur >= PTHREAD_STACK_MIN) {
-    if (pthread_attr_setstacksize(attr, lim.rlim_cur))
-      abort();
+  if (lim.rlim_cur != RLIM_INFINITY) {
+    /* pthread_attr_setstacksize() expects page-aligned values. */
+    lim.rlim_cur -= lim.rlim_cur % (rlim_t) getpagesize();
+
+    if (lim.rlim_cur >= PTHREAD_STACK_MIN)
+      if (pthread_attr_setstacksize(attr, lim.rlim_cur))
+        abort();
   }
 #else
   attr = NULL;
