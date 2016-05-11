@@ -57,10 +57,22 @@
 
 static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info);
 static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info);
+static int uv__cancel_read_console(uv_tty_t* handle);
 
 
 /* Null uv_buf_t */
 static const uv_buf_t uv_null_buf_ = { 0, NULL };
+
+enum uv__read_console_status_e {
+  NOT_STARTED,
+  IN_PROGRESS,
+  TRAP_REQUESTED,
+  COMPLETED
+};
+
+static volatile LONG uv__read_console_status = NOT_STARTED;
+static volatile LONG uv__restore_screen_state;
+static CONSOLE_SCREEN_BUFFER_INFO uv__saved_screen_state;
 
 
 /*
@@ -399,6 +411,8 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   DWORD bytes, read_bytes;
   WCHAR utf16[MAX_INPUT_BUFFER_LENGTH / 3];
   DWORD chars, read_chars;
+  LONG status;
+  COORD pos;
 
   assert(data);
 
@@ -420,6 +434,14 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   /* One utf-16 codeunit never takes more than 3 utf-8 codeunits to encode */
   chars = bytes / 3;
 
+  status = InterlockedExchange(&uv__read_console_status, IN_PROGRESS);
+  if (status == TRAP_REQUESTED) {
+    SET_REQ_SUCCESS(req);
+    req->u.io.overlapped.InternalHigh = 0;
+    POST_COMPLETION_FOR_REQ(loop, req);
+    return 0;
+  }
+
   if (ReadConsoleW(handle->handle,
                    (void*) utf16,
                    chars,
@@ -437,6 +459,33 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
     req->u.io.overlapped.InternalHigh = read_bytes;
   } else {
     SET_REQ_ERROR(req, GetLastError());
+  }
+
+  InterlockedExchange(&uv__read_console_status, COMPLETED);
+
+  /* If we canceled the read by sending a VK_RETURN event, restore the screen
+     state to undo the visual effect of the VK_RETURN*/
+  if (InterlockedOr(&uv__restore_screen_state, 0)) {
+    HANDLE active_screen_buffer = CreateFileA("conout$",
+                                         GENERIC_READ | GENERIC_WRITE,
+                                         FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                         NULL,
+                                         OPEN_EXISTING,
+                                         FILE_ATTRIBUTE_NORMAL,
+                                         NULL);
+    if (active_screen_buffer != INVALID_HANDLE_VALUE) {
+      pos = uv__saved_screen_state.dwCursorPosition;
+
+      /* If the cursor was at the bottom line of the screen buffer, the
+         VK_RETURN would have caused the buffer contents to scroll up by
+         one line. The right position to reset the cursor to is therefore one
+         line higher */
+      if (pos.Y == uv__saved_screen_state.dwSize.Y - 1)
+        pos.Y--;
+
+      SetConsoleCursorPosition(active_screen_buffer, pos);
+      CloseHandle(active_screen_buffer);
+    }
   }
 
   POST_COMPLETION_FOR_REQ(loop, req);
@@ -464,6 +513,11 @@ static void uv_tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
   }
   assert(handle->tty.rd.read_line_buffer.base != NULL);
 
+  /* Reset flags  No locking is required since there cannot be a line read
+     in progress. We are also relying on the memory barrier provided by
+     QueueUserWorkItem*/
+  uv__restore_screen_state = FALSE;
+  uv__read_console_status = NOT_STARTED;
   r = QueueUserWorkItem(uv_tty_line_read_thread,
                         (void*) req,
                         WT_EXECUTELONGFUNCTION);
@@ -923,7 +977,7 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
 
 int uv_tty_read_stop(uv_tty_t* handle) {
   INPUT_RECORD record;
-  DWORD written;
+  DWORD written, err;
 
   handle->flags &= ~UV_HANDLE_READING;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
@@ -940,20 +994,64 @@ int uv_tty_read_stop(uv_tty_t* handle) {
     }
   } else if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
     /* Cancel line-buffered read if not already pending */
-    /* Write enter key event to force the console wait to return. */
-    record.EventType = KEY_EVENT;
-    record.Event.KeyEvent.bKeyDown = TRUE;
-    record.Event.KeyEvent.wRepeatCount = 1;
-    record.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
-    record.Event.KeyEvent.wVirtualScanCode =
-      MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC);
-    record.Event.KeyEvent.uChar.UnicodeChar = L'\r';
-    record.Event.KeyEvent.dwControlKeyState = 0;
-    WriteConsoleInputW(handle->handle, &record, 1, &written);
+    err = uv__cancel_read_console(handle);
+    if (err)
+      return err;
+
     handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
   }
 
   return 0;
+}
+
+static int uv__cancel_read_console(uv_tty_t* handle) {
+  HANDLE active_screen_buffer = INVALID_HANDLE_VALUE;
+  INPUT_RECORD record;
+  DWORD written;
+  DWORD err = 0;
+  LONG status;
+
+  assert(!(handle->flags & UV_HANDLE_CANCELLATION_PENDING));
+
+  status = InterlockedExchange(&uv__read_console_status, TRAP_REQUESTED);
+  if (status != IN_PROGRESS) {
+    /* Either we have managed to set a trap for the other thread before
+       ReadConsole is called, or ReadConsole has returned because the user
+       has pressed ENTER. In either case, there is nothing else to do. */
+    return 0;
+  }
+
+  /* Save screen state before sending the VK_RETURN event */
+  active_screen_buffer = CreateFileA("conout$",
+                                     GENERIC_READ | GENERIC_WRITE,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                     NULL,
+                                     OPEN_EXISTING,
+                                     FILE_ATTRIBUTE_NORMAL,
+                                     NULL);
+
+  if (active_screen_buffer != INVALID_HANDLE_VALUE &&
+      GetConsoleScreenBufferInfo(active_screen_buffer,
+                                 &uv__saved_screen_state)) {
+    InterlockedOr(&uv__restore_screen_state, 1);
+  }
+
+  /* Write enter key event to force the console wait to return. */
+  record.EventType = KEY_EVENT;
+  record.Event.KeyEvent.bKeyDown = TRUE;
+  record.Event.KeyEvent.wRepeatCount = 1;
+  record.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
+  record.Event.KeyEvent.wVirtualScanCode =
+    MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC);
+  record.Event.KeyEvent.uChar.UnicodeChar = L'\r';
+  record.Event.KeyEvent.dwControlKeyState = 0;
+  if (!WriteConsoleInputW(handle->handle, &record, 1, &written))
+    err = GetLastError();
+
+  if (active_screen_buffer != INVALID_HANDLE_VALUE)
+    CloseHandle(active_screen_buffer);
+
+  return err;
 }
 
 
