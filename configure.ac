@@ -59,7 +59,7 @@ AM_CONDITIONAL([OPENBSD],  [AS_CASE([$host_os],[openbsd*],      [true], [false])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
 AS_CASE([$host_os],[mingw*], [
-    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv"
+    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
 ])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)
