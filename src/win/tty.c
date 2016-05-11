@@ -871,10 +871,15 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
     }
 
   } else {
-    /* Read successful */
-    /* TODO: read unicode, convert to utf-8 */
-    DWORD bytes = req->u.io.overlapped.InternalHigh;
-    handle->read_cb((uv_stream_t*) handle, bytes, &buf);
+    if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
+      /* Read successful */
+      /* TODO: read unicode, convert to utf-8 */
+      DWORD bytes = req->u.io.overlapped.InternalHigh;
+      handle->read_cb((uv_stream_t*) handle, bytes, &buf);
+    } else {
+      handle->flags &= ~UV_HANDLE_CANCELLATION_PENDING;
+      handle->read_cb((uv_stream_t*) handle, 0, &buf);
+    }
   }
 
   /* Wait for more input events. */
@@ -937,6 +942,9 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
 
 
 int uv_tty_read_stop(uv_tty_t* handle) {
+  INPUT_RECORD record;
+  DWORD written;
+
   handle->flags &= ~UV_HANDLE_READING;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
 
@@ -944,8 +952,6 @@ int uv_tty_read_stop(uv_tty_t* handle) {
   if ((handle->flags & UV_HANDLE_READ_PENDING) &&
       (handle->flags & UV_HANDLE_TTY_RAW)) {
     /* Write some bullshit event to force the console wait to return. */
-    INPUT_RECORD record;
-    DWORD written;
     memset(&record, 0, sizeof record);
     if (!WriteConsoleInputW(handle->handle, &record, 1, &written)) {
       return GetLastError();
@@ -954,7 +960,20 @@ int uv_tty_read_stop(uv_tty_t* handle) {
 
   /* Cancel line-buffered read */
   if (handle->tty.rd.read_line_handle != NULL) {
-    /* Closing this handle will cancel the ReadConsole operation */
+    if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
+      /* Write enter key event to force the console wait to return. */
+      record.EventType = KEY_EVENT;
+      record.Event.KeyEvent.bKeyDown = TRUE;
+      record.Event.KeyEvent.wRepeatCount = 1;
+      record.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
+      record.Event.KeyEvent.wVirtualScanCode =
+        MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC);
+      record.Event.KeyEvent.uChar.UnicodeChar = L'\r';
+      record.Event.KeyEvent.dwControlKeyState = 0;
+      WriteConsoleInputW(handle->handle, &record, 1, &written);
+      handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
+    }
+    /* Close line-buffered read handle */
     CloseHandle(handle->tty.rd.read_line_handle);
     handle->tty.rd.read_line_handle = NULL;
   }

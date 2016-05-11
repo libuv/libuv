@@ -112,6 +112,7 @@
               '-liphlpapi',
               '-lpsapi',
               '-lshell32',
+              '-luser32',
               '-luserenv',
               '-lws2_32'
             ],
