@@ -173,7 +173,8 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
   if (readable) {
     /* Initialize TTY input specific fields. */
     tty->flags |= UV_HANDLE_TTY_READABLE | UV_HANDLE_READABLE;
-    tty->tty.rd.read_line_handle = NULL;
+    /* TODO: remove me in v2.x. */
+    tty->tty.rd.unused_ = NULL;
     tty->tty.rd.read_line_buffer = uv_null_buf_;
     tty->tty.rd.read_raw_wait = NULL;
 
@@ -419,7 +420,7 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   /* One utf-16 codeunit never takes more than 3 utf-8 codeunits to encode */
   chars = bytes / 3;
 
-  if (ReadConsoleW(handle->tty.rd.read_line_handle,
+  if (ReadConsoleW(handle->handle,
                    (void*) utf16,
                    chars,
                    &read_chars,
@@ -463,25 +464,6 @@ static void uv_tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
   }
   assert(handle->tty.rd.read_line_buffer.base != NULL);
 
-  /* Duplicate the console handle, so if we want to cancel the read, we can */
-  /* just close this handle duplicate. */
-  if (handle->tty.rd.read_line_handle == NULL) {
-    HANDLE this_process = GetCurrentProcess();
-    r = DuplicateHandle(this_process,
-                        handle->handle,
-                        this_process,
-                        &handle->tty.rd.read_line_handle,
-                        0,
-                        0,
-                        DUPLICATE_SAME_ACCESS);
-    if (!r) {
-      handle->tty.rd.read_line_handle = NULL;
-      SET_REQ_ERROR(req, GetLastError());
-      uv_insert_pending_req(loop, (uv_req_t*)req);
-      goto out;
-    }
-  }
-
   r = QueueUserWorkItem(uv_tty_line_read_thread,
                         (void*) req,
                         WT_EXECUTELONGFUNCTION);
@@ -490,7 +472,6 @@ static void uv_tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
     uv_insert_pending_req(loop, (uv_req_t*)req);
   }
 
- out:
   handle->flags |= UV_HANDLE_READ_PENDING;
   handle->reqs_pending++;
 }
@@ -857,8 +838,7 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
 
   if (!REQ_SUCCESS(req)) {
     /* Read was not successful */
-    if ((handle->flags & UV_HANDLE_READING) &&
-        handle->tty.rd.read_line_handle != NULL) {
+    if (handle->flags & UV_HANDLE_READING) {
       /* Real error */
       handle->flags &= ~UV_HANDLE_READING;
       DECREASE_ACTIVE_COUNT(loop, handle);
@@ -948,36 +928,30 @@ int uv_tty_read_stop(uv_tty_t* handle) {
   handle->flags &= ~UV_HANDLE_READING;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
 
-  /* Cancel raw read */
-  if ((handle->flags & UV_HANDLE_READ_PENDING) &&
-      (handle->flags & UV_HANDLE_TTY_RAW)) {
+  if (!(handle->flags & UV_HANDLE_READ_PENDING))
+    return 0;
+
+  if (handle->flags & UV_HANDLE_TTY_RAW) {
+    /* Cancel raw read */
     /* Write some bullshit event to force the console wait to return. */
     memset(&record, 0, sizeof record);
     if (!WriteConsoleInputW(handle->handle, &record, 1, &written)) {
       return GetLastError();
     }
+  } else if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
+    /* Cancel line-buffered read if not already pending */
+    /* Write enter key event to force the console wait to return. */
+    record.EventType = KEY_EVENT;
+    record.Event.KeyEvent.bKeyDown = TRUE;
+    record.Event.KeyEvent.wRepeatCount = 1;
+    record.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
+    record.Event.KeyEvent.wVirtualScanCode =
+      MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC);
+    record.Event.KeyEvent.uChar.UnicodeChar = L'\r';
+    record.Event.KeyEvent.dwControlKeyState = 0;
+    WriteConsoleInputW(handle->handle, &record, 1, &written);
+    handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
   }
-
-  /* Cancel line-buffered read */
-  if (handle->tty.rd.read_line_handle != NULL) {
-    if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
-      /* Write enter key event to force the console wait to return. */
-      record.EventType = KEY_EVENT;
-      record.Event.KeyEvent.bKeyDown = TRUE;
-      record.Event.KeyEvent.wRepeatCount = 1;
-      record.Event.KeyEvent.wVirtualKeyCode = VK_RETURN;
-      record.Event.KeyEvent.wVirtualScanCode =
-        MapVirtualKeyW(VK_RETURN, MAPVK_VK_TO_VSC);
-      record.Event.KeyEvent.uChar.UnicodeChar = L'\r';
-      record.Event.KeyEvent.dwControlKeyState = 0;
-      WriteConsoleInputW(handle->handle, &record, 1, &written);
-      handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
-    }
-    /* Close line-buffered read handle */
-    CloseHandle(handle->tty.rd.read_line_handle);
-    handle->tty.rd.read_line_handle = NULL;
-  }
-
 
   return 0;
 }
@@ -2064,11 +2038,6 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
 
   if (handle->flags & UV__HANDLE_CLOSING &&
       handle->reqs_pending == 0) {
-    /* The console handle duplicate used for line reading should be destroyed */
-    /* by uv_tty_read_stop. */
-    assert(!(handle->flags & UV_HANDLE_TTY_READABLE) ||
-           handle->tty.rd.read_line_handle == NULL);
-
     /* The wait handle used for raw reading should be unregistered when the */
     /* wait callback runs. */
     assert(!(handle->flags & UV_HANDLE_TTY_READABLE) ||
