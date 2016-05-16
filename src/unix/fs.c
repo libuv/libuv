@@ -370,9 +370,10 @@ out:
   if (dents != NULL) {
     int i;
 
+    /* Memory was allocated using the system allocator, so use free() here. */
     for (i = 0; i < n; i++)
-      uv__free(dents[i]);
-    uv__free(dents);
+      free(dents[i]);
+    free(dents);
   }
   errno = saved_errno;
 

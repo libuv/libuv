@@ -483,6 +483,16 @@ static unsigned int* uv__get_nbufs(uv_fs_t* req) {
 #endif
 }
 
+/* uv_fs_scandir() uses the system allocator to allocate memory on non-Windows
+ * systems. So, the memory should be released using free(). On Windows,
+ * uv__malloc() is used, so use uv__free() to free memory.
+*/
+#ifdef _WIN32
+# define uv__fs_scandir_free uv__free
+#else
+# define uv__fs_scandir_free free
+#endif
+
 void uv__fs_scandir_cleanup(uv_fs_t* req) {
   uv__dirent_t** dents;
 
@@ -492,7 +502,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req) {
   if (*nbufs > 0 && *nbufs != (unsigned int) req->result)
     (*nbufs)--;
   for (; *nbufs < (unsigned int) req->result; (*nbufs)++)
-    uv__free(dents[*nbufs]);
+    uv__fs_scandir_free(dents[*nbufs]);
 }
 
 
@@ -506,11 +516,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 
   /* Free previous entity */
   if (*nbufs > 0)
-    uv__free(dents[*nbufs - 1]);
+    uv__fs_scandir_free(dents[*nbufs - 1]);
 
   /* End was already reached */
   if (*nbufs == (unsigned int) req->result) {
-    uv__free(dents);
+    uv__fs_scandir_free(dents);
     req->ptr = NULL;
     return UV_EOF;
   }
