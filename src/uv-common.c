@@ -503,6 +503,9 @@ void uv__fs_scandir_cleanup(uv_fs_t* req) {
     (*nbufs)--;
   for (; *nbufs < (unsigned int) req->result; (*nbufs)++)
     uv__fs_scandir_free(dents[*nbufs]);
+
+  uv__fs_scandir_free(req->ptr);
+  req->ptr = NULL;
 }
 
 
