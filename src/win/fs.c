@@ -1878,8 +1878,12 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->flags & UV_FS_FREE_PATHS)
     uv__free(req->file.pathw);
 
-  if (req->flags & UV_FS_FREE_PTR)
-    uv__free(req->ptr);
+  if (req->flags & UV_FS_FREE_PTR) {
+    if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
+      uv__fs_scandir_cleanup(req);
+    else
+      uv__free(req->ptr);
+  }
 
   req->path = NULL;
   req->file.pathw = NULL;
