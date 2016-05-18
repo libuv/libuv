@@ -81,15 +81,18 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
    * other processes.
    */
   if (type == UV_TTY) {
-    /* Reopening a pty in master mode won't work either because the reopened
-     * pty will be in slave mode (*BSD) or reopening will allocate a new
-     * master/slave pair (Linux). Therefore check if the fd points to a
-     * slave device.
-     */
-    if (uv__tty_is_slave(fd) && ttyname_r(fd, path, sizeof(path)) == 0)
+    if (fd <= STDERR_FILENO) {
+      r = uv__open_cloexec("/dev/tty", O_RDWR);
+    } else if (uv__tty_is_slave(fd) && ttyname_r(fd, path, sizeof(path)) == 0) {
+      /* Reopening a pty in master mode won't work either because the reopened
+       * pty will be in slave mode (*BSD) or reopening will allocate a new
+       * master/slave pair (Linux). Therefore check if the fd points to a
+       * slave device.
+       */
       r = uv__open_cloexec(path, O_RDWR);
-    else
+    } else {
       r = -1;
+    }
 
     if (r < 0) {
       /* fallback to using blocking writes */
