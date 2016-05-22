@@ -312,6 +312,7 @@ endif
 
 if DRAGONFLY
 include_HEADERS += include/uv-bsd.h
+libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
