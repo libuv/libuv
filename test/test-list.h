@@ -19,6 +19,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "uv.h"
+
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (close_order)
@@ -314,6 +316,12 @@ TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
 TEST_DECLARE   (poll_bad_fdtype)
+#ifdef __linux__
+TEST_DECLARE   (poll_nested_epoll)
+#endif
+#ifdef UV_HAVE_KQUEUE
+TEST_DECLARE   (poll_nested_kqueue)
+#endif
 
 TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
@@ -624,6 +632,12 @@ TASK_LIST_START
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
   TEST_ENTRY  (poll_bad_fdtype)
+#ifdef __linux__
+  TEST_ENTRY  (poll_nested_epoll)
+#endif
+#ifdef UV_HAVE_KQUEUE
+  TEST_ENTRY  (poll_nested_kqueue)
+#endif
 
   TEST_ENTRY  (socket_buffer_size)
 

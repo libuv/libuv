@@ -31,6 +31,16 @@
 #include "uv.h"
 #include "task.h"
 
+#ifdef __linux__
+# include <sys/epoll.h>
+#endif
+
+#ifdef UV_HAVE_KQUEUE
+# include <sys/types.h>
+# include <sys/event.h>
+# include <sys/time.h>
+#endif
+
 
 #define NUM_CLIENTS 5
 #define TRANSFER_BYTES (1 << 16)
@@ -601,3 +611,47 @@ TEST_IMPL(poll_bad_fdtype) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+#ifdef __linux__
+TEST_IMPL(poll_nested_epoll) {
+  uv_poll_t poll_handle;
+  int fd;
+
+  fd = epoll_create(1);
+  ASSERT(fd != -1);
+
+  ASSERT(0 == uv_poll_init(uv_default_loop(), &poll_handle, fd));
+  ASSERT(0 == uv_poll_start(&poll_handle, UV_READABLE, (uv_poll_cb) abort));
+  ASSERT(0 != uv_run(uv_default_loop(), UV_RUN_NOWAIT));
+
+  uv_close((uv_handle_t*) &poll_handle, NULL);
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT(0 == close(fd));
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif  /* __linux__ */
+
+
+#ifdef UV_HAVE_KQUEUE
+TEST_IMPL(poll_nested_kqueue) {
+  uv_poll_t poll_handle;
+  int fd;
+
+  fd = kqueue();
+  ASSERT(fd != -1);
+
+  ASSERT(0 == uv_poll_init(uv_default_loop(), &poll_handle, fd));
+  ASSERT(0 == uv_poll_start(&poll_handle, UV_READABLE, (uv_poll_cb) abort));
+  ASSERT(0 != uv_run(uv_default_loop(), UV_RUN_NOWAIT));
+
+  uv_close((uv_handle_t*) &poll_handle, NULL);
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT(0 == close(fd));
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif  /* UV_HAVE_KQUEUE */
