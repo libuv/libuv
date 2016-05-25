@@ -144,6 +144,9 @@ TEST_DECLARE   (pipe_getsockname_blocking)
 TEST_DECLARE   (pipe_pending_instances)
 TEST_DECLARE   (pipe_sendmsg)
 TEST_DECLARE   (pipe_server_close)
+TEST_DECLARE   (pipe_try_write_0)
+TEST_DECLARE   (pipe_try_write_1)
+TEST_DECLARE   (pipe_try_write_2)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_close_tcp)
@@ -397,6 +400,9 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_connect_on_prepare)
 
   TEST_ENTRY  (pipe_server_close)
+  TEST_ENTRY  (pipe_try_write_0)
+  TEST_ENTRY  (pipe_try_write_1)
+  TEST_ENTRY  (pipe_try_write_2)
 #ifndef _WIN32
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif

@@ -183,6 +183,8 @@ int uv_pipe_write(uv_loop_t* loop, uv_write_t* req, uv_pipe_t* handle,
 int uv_pipe_write2(uv_loop_t* loop, uv_write_t* req, uv_pipe_t* handle,
     const uv_buf_t bufs[], unsigned int nbufs, uv_stream_t* send_handle,
     uv_write_cb cb);
+int uv__pipe_try_write(uv_pipe_t* handle, const uv_buf_t bufs[],
+    unsigned int nbufs);
 void uv__pipe_pause_read(uv_pipe_t* handle);
 void uv__pipe_unpause_read(uv_pipe_t* handle);
 void uv__pipe_stop_read(uv_pipe_t* handle);
