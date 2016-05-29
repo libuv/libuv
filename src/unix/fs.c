@@ -251,7 +251,7 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
    */
   if (r >= 0 && uv__cloexec(r, 1) != 0) {
     r = uv__close(r);
-    if (r != 0 && r != -EINPROGRESS)
+    if (r != 0)
       abort();
     r = -1;
   }

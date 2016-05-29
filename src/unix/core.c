@@ -500,8 +500,8 @@ int uv__close_nocheckstdio(int fd) {
   rc = close(fd);
   if (rc == -1) {
     rc = -errno;
-    if (rc == -EINTR)
-      rc = -EINPROGRESS;  /* For platform/libc consistency. */
+    if (rc == -EINTR || rc == -EINPROGRESS)
+      rc = 0;    /* The close is in progress, not an error. */
     errno = saved_errno;
   }
 
