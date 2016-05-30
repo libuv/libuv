@@ -426,6 +426,7 @@
           'libraries': [ '-lws2_32' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
+          'cflags': [ '-Wno-long-long' ],
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
