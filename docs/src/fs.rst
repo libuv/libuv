@@ -258,6 +258,10 @@ API
 
     Equivalent to :man:`utime(2)` and :man:`futime(2)` respectively.
 
+    .. note::
+      AIX: This function only works for AIX 7.1 and newer. It can still be called on older
+      versions but will return ``UV_ENOSYS``.
+
     .. versionchanged:: 1.10.0 sub-second precission is supported on Windows
 
 .. c:function:: int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
