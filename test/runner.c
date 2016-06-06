@@ -70,7 +70,6 @@ int run_tests(int benchmark_output) {
   int total;
   int passed;
   int failed;
-  int todos;
   int skipped;
   int current;
   int test_result;
@@ -90,7 +89,6 @@ int run_tests(int benchmark_output) {
   /* Run all tests. */
   passed = 0;
   failed = 0;
-  todos = 0;
   skipped = 0;
   current = 1;
   for (task = TASKS; task->main; task++) {
@@ -101,7 +99,6 @@ int run_tests(int benchmark_output) {
     test_result = run_test(task->task_name, benchmark_output, current);
     switch (test_result) {
     case TEST_OK: passed++; break;
-    case TEST_TODO: todos++; break;
     case TEST_SKIP: skipped++; break;
     default: failed++;
     }
@@ -125,10 +122,6 @@ void log_tap_result(int test_count,
     result = "ok";
     directive = "";
     break;
-  case TEST_TODO:
-    result = "not ok";
-    directive = " # TODO ";
-    break;
   case TEST_SKIP:
     result = "ok";
     directive = " # SKIP ";
@@ -138,8 +131,7 @@ void log_tap_result(int test_count,
     directive = "";
   }
 
-  if ((status == TEST_SKIP || status == TEST_TODO) &&
-      process_output_size(process) > 0) {
+  if (status == TEST_SKIP && process_output_size(process) > 0) {
     process_read_last_line(process, reason, sizeof reason);
   } else {
     reason[0] = '\0';
