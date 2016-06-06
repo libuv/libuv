@@ -28,31 +28,6 @@
 
 char executable_path[sizeof(executable_path)];
 
-int tap_output = 0;
-
-
-static void log_progress(int total,
-                         int passed,
-                         int failed,
-                         int todos,
-                         int skipped,
-                         const char* name) {
-  int progress;
-
-  if (total == 0)
-    total = 1;
-
-  progress = 100 * (passed + failed + skipped + todos) / total;
-  fprintf(stderr, "[%% %3d|+ %3d|- %3d|T %3d|S %3d]: %s",
-          progress,
-          passed,
-          failed,
-          todos,
-          skipped,
-          name);
-  fflush(stderr);
-}
-
 
 const char* fmt(double d) {
   static char buf[1024];
@@ -109,10 +84,8 @@ int run_tests(int benchmark_output) {
     }
   }
 
-  if (tap_output) {
-    fprintf(stderr, "1..%d\n", total);
-    fflush(stderr);
-  }
+  fprintf(stderr, "1..%d\n", total);
+  fflush(stderr);
 
   /* Run all tests. */
   passed = 0;
@@ -125,13 +98,6 @@ int run_tests(int benchmark_output) {
       continue;
     }
 
-    if (!tap_output)
-      rewind_cursor();
-
-    if (!benchmark_output && !tap_output) {
-      log_progress(total, passed, failed, todos, skipped, task->task_name);
-    }
-
     test_result = run_test(task->task_name, benchmark_output, current);
     switch (test_result) {
     case TEST_OK: passed++; break;
@@ -140,13 +106,6 @@ int run_tests(int benchmark_output) {
     default: failed++;
     }
     current++;
-  }
-
-  if (!tap_output)
-    rewind_cursor();
-
-  if (!benchmark_output && !tap_output) {
-    log_progress(total, passed, failed, todos, skipped, "Done.\n");
   }
 
   return failed;
@@ -319,22 +278,11 @@ out:
     FATAL("process_wait failed");
   }
 
-  if (tap_output)
-    log_tap_result(test_count, test, status, &processes[i]);
+  log_tap_result(test_count, test, status, &processes[i]);
 
   /* Show error and output from processes if the test failed. */
   if (status != 0 || task->show_output) {
-    if (tap_output) {
-      fprintf(stderr, "#");
-    } else if (status == TEST_TODO) {
-      fprintf(stderr, "\n`%s` todo\n", test);
-    } else if (status == TEST_SKIP) {
-      fprintf(stderr, "\n`%s` skipped\n", test);
-    } else if (status != 0) {
-      fprintf(stderr, "\n`%s` failed: %s\n", test, errmsg);
-    } else {
-      fprintf(stderr, "\n");
-    }
+    fprintf(stderr, "#");
     fflush(stderr);
 
     for (i = 0; i < process_count; i++) {
@@ -357,10 +305,6 @@ out:
         process_copy_output(&processes[i], fileno(stderr));
         break;
       }
-    }
-
-    if (!tap_output) {
-      fprintf(stderr, "=============================================================\n");
     }
 
   /* In benchmark mode show concise output from the main process. */

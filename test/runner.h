@@ -172,7 +172,4 @@ void process_cleanup(process_info_t *p);
 /* Move the console cursor one line up and back to the first column. */
 void rewind_cursor(void);
 
-/* trigger output as tap */
-extern int tap_output;
-
 #endif /* RUNNER_H_ */

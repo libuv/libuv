@@ -43,11 +43,6 @@
 
 /* Do platform-specific initialization. */
 int platform_init(int argc, char **argv) {
-  const char* tap;
-
-  tap = getenv("UV_TAP_OUTPUT");
-  tap_output = (tap != NULL && atoi(tap) > 0);
-
   /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
@@ -310,9 +305,7 @@ int process_copy_output(process_info_t *p, int fd) {
    /* TODO: what if write doesn't write the whole buffer... */
     nwritten = 0;
 
-    if (tap_output)
-      nwritten += write(fd, "#", 1);
-
+    nwritten += write(fd, "#", 1);
     nwritten += write(fd, buf, strlen(buf));
 
     if (nwritten < 0) {
