@@ -281,7 +281,7 @@ out:
   log_tap_result(test_count, test, status, &processes[i]);
 
   /* Show error and output from processes if the test failed. */
-  if (status != 0 || task->show_output) {
+  if ((status != TEST_OK && status != TEST_SKIP) || task->show_output) {
     fprintf(stderr, "#");
     fflush(stderr);
 
