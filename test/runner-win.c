@@ -208,10 +208,9 @@ long int process_output_size(process_info_t *p) {
 }
 
 
-int process_copy_output(process_info_t *p, int fd) {
+int process_copy_output(process_info_t* p, FILE* stream) {
   DWORD read;
   char buf[1024];
-  char *line, *start;
 
   if (SetFilePointer(p->stdio_out,
                      0,
@@ -220,23 +219,8 @@ int process_copy_output(process_info_t *p, int fd) {
     return -1;
   }
 
-  write(fd, "#", 1);
-
-  while (ReadFile(p->stdio_out, (void*)&buf, sizeof(buf), &read, NULL) &&
-         read > 0) {
-    start = buf;
-
-    while ((line = strchr(start, '\n')) != NULL) {
-      write(fd, start, line - start + 1);
-      write(fd, "#", 1);
-      start = line + 1;
-    }
-
-    if (start < buf + read)
-      write(fd, start, buf + read - start);
-  }
-
-  write(fd, "\n", 1);
+  while (ReadFile(p->stdio_out, &buf, sizeof(buf), &read, NULL) && read > 0)
+    print_lines(buf, read, stream);
 
   if (GetLastError() != ERROR_HANDLE_EOF)
     return -1;

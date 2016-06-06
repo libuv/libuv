@@ -282,7 +282,7 @@ out:
 
   /* Show error and output from processes if the test failed. */
   if ((status != TEST_OK && status != TEST_SKIP) || task->show_output) {
-    fprintf(stderr, "#");
+    fprintf(stderr, "# ");
     fflush(stderr);
 
     for (i = 0; i < process_count; i++) {
@@ -302,7 +302,7 @@ out:
        default:
         fprintf(stderr, "Output from process `%s`:\n", process_get_name(&processes[i]));
         fflush(stderr);
-        process_copy_output(&processes[i], fileno(stderr));
+        process_copy_output(&processes[i], stderr);
         break;
       }
     }
@@ -322,7 +322,7 @@ out:
 
      default:
       for (i = 0; i < process_count; i++) {
-        process_copy_output(&processes[i], fileno(stderr));
+        process_copy_output(&processes[i], stderr);
       }
       break;
     }
@@ -406,5 +406,23 @@ void print_tests(FILE* stream) {
     } else {
       printf("%s\n", task->task_name);
     }
+  }
+}
+
+
+void print_lines(const char* buffer, size_t size, FILE* stream) {
+  const char* start;
+  const char* end;
+
+  start = buffer;
+  while ((end = memchr(start, '\n', &buffer[size] - start))) {
+    fprintf(stream, "# %.*s\n", (int) (end - start), start);
+    fflush(stream);
+    start = end + 1;
+  }
+
+  if (start < &buffer[size]) {
+    fprintf(stream, "# %s\n", start);
+    fflush(stream);
   }
 }

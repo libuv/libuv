@@ -126,6 +126,8 @@ int run_test_part(const char* test, const char* part);
  */
 void print_tests(FILE* stream);
 
+/* Print lines in |buffer| as TAP diagnostics to |stream|. */
+void print_lines(const char* buffer, size_t size, FILE* stream);
 
 /*
  * Stuff that should be implemented by test-runner-<platform>.h
@@ -148,8 +150,8 @@ int process_wait(process_info_t *vec, int n, int timeout);
 /* Returns the number of bytes in the stdio output buffer for process `p`. */
 long int process_output_size(process_info_t *p);
 
-/* Copy the contents of the stdio output buffer to `fd`. */
-int process_copy_output(process_info_t *p, int fd);
+/* Copy the contents of the stdio output buffer to `stream`. */
+int process_copy_output(process_info_t* p, FILE* stream);
 
 /* Copy the last line of the stdio output buffer to `buffer` */
 int process_read_last_line(process_info_t *p,

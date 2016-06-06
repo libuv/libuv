@@ -289,8 +289,7 @@ long int process_output_size(process_info_t *p) {
 
 
 /* Copy the contents of the stdio output buffer to `fd`. */
-int process_copy_output(process_info_t *p, int fd) {
-  ssize_t nwritten;
+int process_copy_output(process_info_t* p, FILE* stream) {
   char buf[1024];
   int r;
 
@@ -301,18 +300,8 @@ int process_copy_output(process_info_t *p, int fd) {
   }
 
   /* TODO: what if the line is longer than buf */
-  while (fgets(buf, sizeof(buf), p->stdout_file) != NULL) {
-   /* TODO: what if write doesn't write the whole buffer... */
-    nwritten = 0;
-
-    nwritten += write(fd, "#", 1);
-    nwritten += write(fd, buf, strlen(buf));
-
-    if (nwritten < 0) {
-      perror("write");
-      return -1;
-    }
-  }
+  while (fgets(buf, sizeof(buf), p->stdout_file) != NULL)
+    print_lines(buf, strlen(buf), stream);
 
   if (ferror(p->stdout_file)) {
     perror("read");
