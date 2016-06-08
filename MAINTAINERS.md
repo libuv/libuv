@@ -11,6 +11,7 @@ libuv is currently managed by the following individuals:
 * **Fedor Indutny** ([@indutny](https://github.com/indutny))
   - GPG key: AF2E EA41 EC34 47BF DD86  FED9 D706 3CCE 19B7 E890 (pubkey-indutny)
 * **Imran Iqbal** ([@iWuzHere](https://github.com/iWuzHere))
+  - GPG key: 9DFE AA5F 481B BF77 2D90  03CE D592 4925 2F8E C41A (pubkey-iwuzhere)
 * **Saúl Ibarra Corretgé** ([@saghul](https://github.com/saghul))
   - GPG key: FDF5 1936 4458 319F A823  3DC9 410E 5553 AE9B C059 (pubkey-saghul)
 
