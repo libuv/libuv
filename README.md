@@ -6,6 +6,9 @@ eventually contain all platform differences in this library.
 
 http://nodejs.org/
 
+**This branch only receives security fixes and will be EOL'd by the end of 2016,
+please switch to version v1.x**
+
 ## Features
 
  * Non-blocking TCP sockets
