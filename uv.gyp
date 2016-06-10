@@ -447,6 +447,7 @@
           'defines': [
             '_ALL_SOURCE',
             '_XOPEN_SOURCE=500',
+            '-D_LINUX_SOURCE_COMPAT',
           ],
         }],
         ['uv_library=="shared_library"', {
