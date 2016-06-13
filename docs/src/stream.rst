@@ -61,7 +61,7 @@ Data types
 
 .. c:type:: void (*uv_shutdown_cb)(uv_shutdown_t* req, int status)
 
-    Callback called after s shutdown request has been completed. `status` will
+    Callback called after a shutdown request has been completed. `status` will
     be 0 in case of success, < 0 otherwise.
 
 .. c:type:: void (*uv_connection_cb)(uv_stream_t* server, int status)
@@ -92,7 +92,7 @@ Public members
 
 .. c:member:: uv_stream_t* uv_write_t.send_handle
 
-    Pointer to the stream being sent using this write request..
+    Pointer to the stream being sent using this write request.
 
 .. seealso:: The :c:type:`uv_handle_t` members also apply.
 
