@@ -1,0 +1,45 @@
+﻿=============================================================
+[%   8|+  23|-   0|T   0|S   0]: pipe_connect_to_file
+`pipe_connect_to_file` failed: exit code 3
+Output from process `pipe_connect_to_file`:
+Assertion failed in test\test-pipe-connect-error.c on line 53: status == UV_ENOTSOCK || status == UV_ECONNREFUSED
+=============================================================
+[%  15|+  43|-   1|T   0|S   1]: tcp_write_queue_order
+`tcp_write_queue_order` failed: exit code 3
+Output from process `tcp_write_queue_order`: (no output)
+=============================================================
+[%  59|+ 165|-   2|T   0|S   2]: getaddrinfo_fail
+`getaddrinfo_fail` failed: exit code 3
+Output from process `getaddrinfo_fail`:
+Assertion failed in test\test-getaddrinfo.c on line 43: status < 0
+=============================================================
+[%  60|+ 165|-   3|T   0|S   2]: getaddrinfo_fail_sync
+`getaddrinfo_fail_sync` failed: exit code 3
+Output from process `getaddrinfo_fail_sync`:
+Assertion failed in test\test-getaddrinfo.c on line 110: 0 > uv_getaddrinfo(uv_default_loop(), &req, NULL, "xyzzy.xyzzy.xyzzy.", NULL, NULL)
+=============================================================
+[%  64|+ 176|-   4|T   0|S   2]: poll_bad_fdtype
+`poll_bad_fdtype` failed: exit code 3
+Output from process `poll_bad_fdtype`:
+Assertion failed in test\test-poll.c on line 591: fd != -1
+=============================================================
+[%  85|+ 233|-   5|T   0|S   4]: fs_event_watch_dir_recursive
+`fs_event_watch_dir_recursive` failed: exit code 3
+Output from process `fs_event_watch_dir_recursive`:
+Assertion failed in test\test-fs-event.c on line 416: fs_event_cb_called == fs_event_created + fs_event_removed
+=============================================================
+[%  86|+ 234|-   6|T   0|S   4]: fs_event_watch_file_twice
+`fs_event_watch_file_twice` failed: exit code 3
+Output from process `fs_event_watch_file_twice`:
+Assertion failed in test\test-fs-event.c on line 480: 0 == uv_fs_event_start(watchers + 0, fail_cb, path, 0)
+=============================================================
+[%  87|+ 235|-   7|T   0|S   4]: fs_event_watch_file_root_dir
+`fs_event_watch_file_root_dir` skipped
+Output from process `fs_event_watch_file_root_dir`:
+bootsect.bak doesn't exist in system root.
+
+=============================================================
+[%  90|+ 244|-   7|T   0|S   5]: fs_scandir_file
+`fs_scandir_file` failed: exit code 3
+Output from process `fs_scandir_file`:
+Assertion failed in test\test-fs.c on line 2158: r == UV_ENOTDIR

@@ -24,9 +24,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-/* Emulate snprintf() on MSVC<2015, _snprintf() doesn't zero-terminate the buffer
- * on overflow...
- */
+/* visualstudio2015之前的 _snprintf() 没有用NULL截止buffer */
 int snprintf(char* buf, size_t len, const char* fmt, ...) {
   int n;
   va_list ap;

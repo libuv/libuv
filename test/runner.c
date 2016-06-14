@@ -144,7 +144,7 @@ int run_tests(int benchmark_output) {
       log_progress(total, passed, failed, todos, skipped, task->task_name);
     }
 
-    test_result = run_test(task->task_name, benchmark_output, current);//运行
+    test_result = run_test(task->task_name, benchmark_output, current);// 运行
     switch (test_result) {
     case TEST_OK: passed++; break;
     case TEST_TODO: todos++; break;
@@ -424,14 +424,14 @@ int run_test_part(const char* test, const char* part) {
   return 255;
 }
 
-//比较两个task 即比较两个test的名称
+//比较两个task 即比较两个task的名称
 static int compare_task(const void* va, const void* vb) {
   const task_entry_t* a = va;
   const task_entry_t* b = vb;
   return strcmp(a->task_name, b->task_name);
 }
 
-//找到对应task 的helper（可能有多个对应的helper）
+//找到对应 task 的 helper（可能有多个对应的helper）返回个数
 static int find_helpers(const task_entry_t* task,
                         const task_entry_t** helpers) {
   const task_entry_t* helper;

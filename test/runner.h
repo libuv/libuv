@@ -23,7 +23,7 @@
 #define RUNNER_H_
 
 #include <limits.h> /* PATH_MAX 编译器所支持最长全路径的长度*/
-#include <stdio.h> /* FILE */
+#include <stdio.h> /* 用于文件 */
 
 
 /* 一个 test / benchmark可以拥有的最大进程数(main + helpers)*/
@@ -53,7 +53,6 @@ typedef struct {
     { 0, 0, 0, 0, 0, 0 }                               \
   };
 
-//sugar按照上述的结构体构建
 #define TEST_DECLARE(name)                          \
   int run_test_##name(void);
 

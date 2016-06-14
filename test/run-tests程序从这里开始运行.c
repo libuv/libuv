@@ -33,7 +33,7 @@
 #include "runner.h"
 #include "task.h"
 
-/* 在 test-list.h中声明了一堆函数和实体 */
+/* 在 test-list.h中填充了任务列表 */
 #include "test-list.h"
 
 int ipc_helper(int listen_after_write);
@@ -56,9 +56,9 @@ int main(int argc, char **argv) {
 
   //根据参数个数执行相应功能
   switch (argc) {
-  case 1: return run_tests(0);
-  case 2: return maybe_run_test(argc, argv);
-  case 3: return run_test_part(argv[1], argv[2]);
+  case 1: return run_tests(0); // 没有参数
+  case 2: return maybe_run_test(argc, argv); // 有一个参数
+  case 3: return run_test_part(argv[1], argv[2]); // 有两个参数
   default:
     fprintf(stderr, "Too many arguments.\n");
     fflush(stderr);
@@ -70,9 +70,11 @@ int main(int argc, char **argv) {
 
 
 static int maybe_run_test(int argc, char **argv) {
+  // 主要是看看选项 
   if (strcmp(argv[1], "--list") == 0) {
-    print_tests(stdout);
-    return 0;
+	  // 显示任务表
+	  print_tests(stdout);
+	  return 0;
   }
 
   if (strcmp(argv[1], "ipc_helper_listen_before_write") == 0) {
@@ -180,5 +182,6 @@ static int maybe_run_test(int argc, char **argv) {
     return spawn_stdin_stdout();
   }
 
+  // 真的只有一个任务 运行它
   return run_test(argv[1], 0, 1);
 }
