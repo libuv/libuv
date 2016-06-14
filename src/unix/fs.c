@@ -151,9 +151,9 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
     goto skip;
 
   ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
+  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
 
   r = uv__utimesat(req->file, NULL, ts, 0);
   if (r == 0)
@@ -167,9 +167,9 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 skip:
 
   tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (unsigned long)(req->atime * 1000000) % 1000000;
+  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
   tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (unsigned long)(req->mtime * 1000000) % 1000000;
+  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
   snprintf(path, sizeof(path), "/proc/self/fd/%d", (int) req->file);
 
   r = utimes(path, tv);
@@ -198,9 +198,9 @@ skip:
     || defined(__sun)
   struct timeval tv[2];
   tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (unsigned long)(req->atime * 1000000) % 1000000;
+  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
   tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (unsigned long)(req->mtime * 1000000) % 1000000;
+  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
 # if defined(__sun)
   return futimesat(req->file, NULL, tv);
 # else
@@ -209,9 +209,9 @@ skip:
 #elif defined(_AIX71)
   struct timespec ts[2];
   ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
+  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
   return futimens(req->file, ts);
 #else
   errno = ENOSYS;
