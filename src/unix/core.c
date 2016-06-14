@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
@@ -40,11 +41,8 @@
 #include <sys/resource.h> /* getrusage */
 #include <pwd.h>
 
-#ifdef __linux__
-# include <sys/ioctl.h>
-#endif
-
 #ifdef __sun
+# include <sys/filio.h>
 # include <sys/types.h>
 # include <sys/wait.h>
 #endif
@@ -52,7 +50,6 @@
 #ifdef __APPLE__
 # include <mach-o/dyld.h> /* _NSGetExecutablePath */
 # include <sys/filio.h>
-# include <sys/ioctl.h>
 # if defined(O_CLOEXEC)
 #  define UV__O_CLOEXEC O_CLOEXEC
 # endif
@@ -61,7 +58,6 @@
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
-# include <sys/ioctl.h>
 # include <sys/wait.h>
 # define UV__O_CLOEXEC O_CLOEXEC
 # if defined(__FreeBSD__) && __FreeBSD__ >= 10
@@ -72,10 +68,6 @@
 # if !defined(F_DUP2FD_CLOEXEC) && defined(_F_DUP2FD_CLOEXEC)
 #  define F_DUP2FD_CLOEXEC  _F_DUP2FD_CLOEXEC
 # endif
-#endif
-
-#ifdef _AIX
-#include <sys/ioctl.h>
 #endif
 
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
@@ -508,8 +500,8 @@ int uv__close_nocheckstdio(int fd) {
   rc = close(fd);
   if (rc == -1) {
     rc = -errno;
-    if (rc == -EINTR)
-      rc = -EINPROGRESS;  /* For platform/libc consistency. */
+    if (rc == -EINTR || rc == -EINPROGRESS)
+      rc = 0;    /* The close is in progress, not an error. */
     errno = saved_errno;
   }
 
@@ -523,10 +515,7 @@ int uv__close(int fd) {
 }
 
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-    defined(_AIX) || defined(__DragonFly__)
-
-int uv__nonblock(int fd, int set) {
+int uv__nonblock_ioctl(int fd, int set) {
   int r;
 
   do
@@ -540,7 +529,7 @@ int uv__nonblock(int fd, int set) {
 }
 
 
-int uv__cloexec(int fd, int set) {
+int uv__cloexec_ioctl(int fd, int set) {
   int r;
 
   do
@@ -553,10 +542,8 @@ int uv__cloexec(int fd, int set) {
   return 0;
 }
 
-#else /* !(defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-	   defined(_AIX) || defined(__DragonFly__)) */
 
-int uv__nonblock(int fd, int set) {
+int uv__nonblock_fcntl(int fd, int set) {
   int flags;
   int r;
 
@@ -587,7 +574,7 @@ int uv__nonblock(int fd, int set) {
 }
 
 
-int uv__cloexec(int fd, int set) {
+int uv__cloexec_fcntl(int fd, int set) {
   int flags;
   int r;
 
@@ -616,9 +603,6 @@ int uv__cloexec(int fd, int set) {
 
   return 0;
 }
-
-#endif /* defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-	  defined(_AIX) || defined(__DragonFly__) */
 
 
 /* This function is not execve-safe, there is a race window

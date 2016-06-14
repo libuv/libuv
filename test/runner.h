@@ -110,6 +110,8 @@ int run_test_part(const char* test, const char* part);
 /* 打印测试列表 */
 void print_tests(FILE* stream);
 
+/* Print lines in |buffer| as TAP diagnostics to |stream|. */
+void print_lines(const char* buffer, size_t size, FILE* stream);
 
 /* 下述的东西是在runner win下实现的 */
 
@@ -127,8 +129,8 @@ int process_wait(process_info_t *vec, int n, int timeout);
 /* 为该进程缓存的字节数 */
 long int process_output_size(process_info_t *p);
 
-/* 复制输出缓存到文件`fd`. */
-int process_copy_output(process_info_t *p, int fd);
+/* Copy the contents of the stdio output buffer to `stream`. */
+int process_copy_output(process_info_t* p, FILE* stream);
 
 /* 复制输出缓存的最后一行到`buffer` */
 int process_read_last_line(process_info_t *p,
@@ -149,8 +151,5 @@ void process_cleanup(process_info_t *p);
 
 /* 光标移动到上一行开头 */
 void rewind_cursor(void);
-
-/* 标识输出的 */
-extern int tap_output;
 
 #endif /* RUNNER_H_ */

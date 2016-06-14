@@ -74,7 +74,9 @@
 #endif
 
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(FILE* statfile_fp, unsigned int numcpus, uv_cpu_info_t* ci);
+static int read_times(FILE* statfile_fp,
+                      unsigned int numcpus,
+                      uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static unsigned long read_cpufreq(unsigned int cpunum);
 
@@ -186,6 +188,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   sigset_t sigset;
   uint64_t sigmask;
   uint64_t base;
+  int have_signals;
   int nevents;
   int count;
   int nfds;
@@ -313,6 +316,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       goto update_timeout;
     }
 
+    have_signals = 0;
     nevents = 0;
 
     assert(loop->watchers != NULL);
@@ -367,12 +371,26 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         pe->events |= w->pevents & (POLLIN | POLLOUT);
 
       if (pe->events != 0) {
-        w->cb(loop, w, pe->events);
+        /* Run signal watchers last.  This also affects child process watchers
+         * because those are implemented in terms of signal watchers.
+         */
+        if (w == &loop->signal_io_watcher)
+          have_signals = 1;
+        else
+          w->cb(loop, w, pe->events);
+
         nevents++;
       }
     }
+
+    if (have_signals != 0)
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+
     loop->watchers[loop->nwatchers] = NULL;
     loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -466,12 +484,20 @@ int uv_exepath(char* buffer, size_t* size) {
 
 
 uint64_t uv_get_free_memory(void) {
-  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_AVPHYS_PAGES);
+  struct sysinfo info;
+
+  if (sysinfo(&info) == 0)
+    return (uint64_t) info.freeram * info.mem_unit;
+  return 0;
 }
 
 
 uint64_t uv_get_total_memory(void) {
-  return (uint64_t) sysconf(_SC_PAGESIZE) * sysconf(_SC_PHYS_PAGES);
+  struct sysinfo info;
+
+  if (sysinfo(&info) == 0)
+    return (uint64_t) info.totalram * info.mem_unit;
+  return 0;
 }
 
 
@@ -562,7 +588,7 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
   char buf[1024];
 
   if (!fgets(buf, sizeof(buf), statfile_fp))
-    abort();
+    return -EIO;
 
   num = 0;
   while (fgets(buf, sizeof(buf), statfile_fp)) {
@@ -570,6 +596,9 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
       break;
     num++;
   }
+
+  if (num == 0)
+    return -EIO;
 
   *numcpus = num;
   return 0;
@@ -591,26 +620,20 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   err = uv__cpu_num(statfile_fp, &numcpus);
   if (err < 0)
-    return err;
+    goto out;
 
-  assert(numcpus != (unsigned int) -1);
-  assert(numcpus != 0);
-
+  err = -ENOMEM;
   ci = uv__calloc(numcpus, sizeof(*ci));
   if (ci == NULL)
-    return -ENOMEM;
+    goto out;
 
   err = read_models(numcpus, ci);
   if (err == 0)
     err = read_times(statfile_fp, numcpus, ci);
 
-  if (fclose(statfile_fp))
-    if (errno != EINTR && errno != EINPROGRESS)
-      abort();
-
   if (err) {
     uv_free_cpu_info(ci, numcpus);
-    return err;
+    goto out;
   }
 
   /* read_models() on x86 also reads the CPU speed from /proc/cpuinfo.
@@ -621,8 +644,15 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   *cpu_infos = ci;
   *count = numcpus;
+  err = 0;
 
-  return 0;
+out:
+
+  if (fclose(statfile_fp))
+    if (errno != EINTR && errno != EINPROGRESS)
+      abort();
+
+  return err;
 }
 
 
@@ -732,7 +762,9 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-static int read_times(FILE* statfile_fp, unsigned int numcpus, uv_cpu_info_t* ci) {
+static int read_times(FILE* statfile_fp,
+                      unsigned int numcpus,
+                      uv_cpu_info_t* ci) {
   unsigned long clock_ticks;
   struct uv_cpu_times_s ts;
   unsigned long user;

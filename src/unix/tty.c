@@ -57,6 +57,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   int flags;
   int newfd;
   int r;
+  int saved_flags;
   char path[256];
 
   /* File descriptors that refer to files cannot be monitored with epoll.
@@ -113,6 +114,22 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
     fd = newfd;
   }
 
+#if defined(__APPLE__)
+  /* Save the fd flags in case we need to restore them due to an error. */
+  do
+    saved_flags = fcntl(fd, F_GETFL);
+  while (saved_flags == -1 && errno == EINTR);
+
+  if (saved_flags == -1) {
+    if (newfd != -1)
+      uv__close(newfd);
+    return -errno;
+  }
+#endif
+
+  /* Pacify the compiler. */
+  (void) &saved_flags;
+
 skip:
   uv__stream_init(loop, (uv_stream_t*) tty, UV_TTY);
 
@@ -120,13 +137,20 @@ skip:
    * the handle queue, since it was added by uv__handle_init in uv_stream_init.
    */
 
+  if (!(flags & UV_STREAM_BLOCKING))
+    uv__nonblock(fd, 1);
+
 #if defined(__APPLE__)
   r = uv__stream_try_select((uv_stream_t*) tty, &fd);
   if (r) {
+    int rc = r;
     if (newfd != -1)
       uv__close(newfd);
     QUEUE_REMOVE(&tty->handle_queue);
-    return r;
+    do
+      r = fcntl(fd, F_SETFL, saved_flags);
+    while (r == -1 && errno == EINTR);
+    return rc;
   }
 #endif
 
@@ -134,9 +158,6 @@ skip:
     flags |= UV_STREAM_READABLE;
   else
     flags |= UV_STREAM_WRITABLE;
-
-  if (!(flags & UV_STREAM_BLOCKING))
-    uv__nonblock(fd, 1);
 
   uv__stream_open((uv_stream_t*) tty, fd, flags);
   tty->mode = UV_TTY_MODE_NORMAL;
@@ -268,14 +289,14 @@ uv_handle_type uv_guess_handle(uv_file file) {
       return UV_UDP;
 
   if (type == SOCK_STREAM) {
-#if defined(_AIX)
-    /* on AIX the getsockname call returns an empty sa structure
+#if defined(_AIX) || defined(__DragonFly__)
+    /* on AIX/DragonFly the getsockname call returns an empty sa structure
      * for sockets of type AF_UNIX.  For all other types it will
      * return a properly filled in structure.
      */
     if (len == 0)
       return UV_NAMED_PIPE;
-#endif /* defined(_AIX) */
+#endif /* defined(_AIX) || defined(__DragonFly__) */
 
     if (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)
       return UV_TCP;
