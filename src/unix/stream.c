@@ -571,7 +571,6 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   int err;
 
-  /* TODO document this */
   assert(server->loop == client->loop);
 
   if (server->accepted_fd == -1)
