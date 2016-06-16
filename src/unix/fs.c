@@ -347,7 +347,6 @@ static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
 
 static ssize_t uv__fs_scandir(uv_fs_t* req) {
   uv__dirent_t **dents;
-  int saved_errno;
   int n;
 
   dents = NULL;
@@ -366,16 +365,16 @@ static ssize_t uv__fs_scandir(uv_fs_t* req) {
   return n;
 
 out:
-  saved_errno = errno;
-  if (dents != NULL) {
-    int i;
+  SAVE_ERRNO(
+    if (dents != NULL) {
+      int i;
 
-    /* Memory was allocated using the system allocator, so use free() here. */
-    for (i = 0; i < n; i++)
-      free(dents[i]);
-    free(dents);
-  }
-  errno = saved_errno;
+      /* Memory was allocated using the system allocator, so use free() here. */
+      for (i = 0; i < n; i++)
+        free(dents[i]);
+      free(dents);
+    }
+  );
 
   req->ptr = NULL;
 
