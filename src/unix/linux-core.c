@@ -289,11 +289,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (nfds == 0) {
       assert(timeout != -1);
 
-      timeout = real_timeout - timeout;
-      if (timeout > 0)
-        continue;
+      if (timeout == 0)
+        return;
 
-      return;
+      /* We may have been inside the system call for longer than |timeout|
+       * milliseconds so we need to update the timestamp to avoid drift.
+       */
+      goto update_timeout;
     }
 
     if (nfds == -1) {
