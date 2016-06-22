@@ -53,6 +53,14 @@ static char fs_event_filename[PATH_MAX];
 static char fs_event_filename[1024];
 #endif  /* defined(PATH_MAX) */
 static int timer_cb_touch_called;
+static int timer_cb_exact_called;
+
+static void fs_event_fail(uv_fs_event_t* handle,
+                          const char* filename,
+                          int events,
+                          int status) {
+  ASSERT(0 && "should never be called");
+}
 
 static void create_dir(const char* name) {
   int r;
@@ -345,6 +353,21 @@ static void timer_cb_touch(uv_timer_t* timer) {
   timer_cb_touch_called++;
 }
 
+static void timer_cb_exact(uv_timer_t* handle) {
+  int r;
+
+  if (timer_cb_exact_called == 0) {
+    touch_file("watch_dir/file.js");
+  } else {
+    uv_close((uv_handle_t*)handle, NULL);
+    r = uv_fs_event_stop(&fs_event);
+    ASSERT(r == 0);
+    uv_close((uv_handle_t*) &fs_event, NULL);
+  }
+
+  ++timer_cb_exact_called;
+}
+
 static void timer_cb_watch_twice(uv_timer_t* handle) {
   uv_fs_event_t* handles = handle->data;
   uv_close((uv_handle_t*) (handles + 0), NULL);
@@ -461,6 +484,45 @@ TEST_IMPL(fs_event_watch_file) {
   /* Cleanup */
   remove("watch_dir/file2");
   remove("watch_dir/file1");
+  remove("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+TEST_IMPL(fs_event_watch_file_exact_path) {
+  /*
+    This test watches a file named "file.jsx" and modifies a file named
+    "file.js". The test verifies that no events occur for file.jsx.
+  */
+  uv_loop_t* loop;
+  int r;
+
+  loop = uv_default_loop();
+
+  /* Setup */
+  remove("watch_dir/file.js");
+  remove("watch_dir/file.jsx");
+  remove("watch_dir/");
+  create_dir("watch_dir");
+  create_file("watch_dir/file.js");
+  create_file("watch_dir/file.jsx");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, fs_event_fail, "watch_dir/file.jsx", 0);
+  ASSERT(r == 0);
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer, timer_cb_exact, 100, 100);
+  ASSERT(r == 0);
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+  ASSERT(timer_cb_exact_called == 2);
+
+  /* Cleanup */
+  remove("watch_dir/file.js");
+  remove("watch_dir/file.jsx");
   remove("watch_dir/");
 
   MAKE_VALGRIND_HAPPY();
@@ -623,12 +685,6 @@ TEST_IMPL(fs_event_no_callback_on_close) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-}
-
-
-static void fs_event_fail(uv_fs_event_t* handle, const char* filename,
-    int events, int status) {
-  ASSERT(0 && "should never be called");
 }
 
 
