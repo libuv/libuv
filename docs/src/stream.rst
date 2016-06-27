@@ -26,7 +26,11 @@ Data types
 
 .. c:type:: uv_write_t
 
-    Write request type.
+    Write request type. Careful attention must be paid when reusing objects of
+    this type. When a stream is in non-blocking mode, write requests sent
+    with ``uv_write`` will be queued. Reusing objects at this point is undefined
+    behaviour. It is safe to reuse the ``uv_write_t`` object only after the
+    callback passed to ``uv_write`` is fired.
 
 .. c:type:: void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
 
