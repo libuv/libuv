@@ -183,7 +183,9 @@ API
 
 .. c:function:: int uv_get_process_title(char* buffer, size_t size)
 
-    Gets the title of the current process.
+    Gets the title of the current process. If `buffer` is `NULL` or `size` is
+    zero, `UV_EINVAL` is returned. If `size` cannot accommodate the process
+    title and terminating `NULL` character, the function returns `UV_ENOBUFS`.
 
 .. c:function:: int uv_set_process_title(const char* title)
 

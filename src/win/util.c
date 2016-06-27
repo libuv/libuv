@@ -416,6 +416,11 @@ static int uv__get_process_title() {
 
 
 int uv_get_process_title(char* buffer, size_t size) {
+  size_t len;
+
+  if (buffer == NULL || size == 0)
+    return UV_EINVAL;
+
   uv__once_init();
 
   EnterCriticalSection(&process_title_lock);
@@ -429,7 +434,14 @@ int uv_get_process_title(char* buffer, size_t size) {
   }
 
   assert(process_title);
-  strncpy(buffer, process_title, size);
+  len = strlen(process_title) + 1;
+
+  if (size < len) {
+    LeaveCriticalSection(&process_title_lock);
+    return UV_ENOBUFS;
+  }
+
+  memcpy(buffer, process_title, len);
   LeaveCriticalSection(&process_title_lock);
 
   return 0;
