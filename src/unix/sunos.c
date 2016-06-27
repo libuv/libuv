@@ -542,9 +542,10 @@ int uv_set_process_title(const char* title) {
 
 
 int uv_get_process_title(char* buffer, size_t size) {
-  if (size > 0) {
-    buffer[0] = '\0';
-  }
+  if (buffer == NULL || size == 0)
+    return -EINVAL;
+
+  buffer[0] = '\0';
   return 0;
 }
 
