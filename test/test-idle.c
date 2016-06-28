@@ -97,3 +97,31 @@ TEST_IMPL(idle_starvation) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(idle_start_nop_callback) {
+  int r;
+
+  r = uv_idle_init(uv_default_loop(), &idle_handle);
+  ASSERT(r == 0);
+  r = uv_idle_start_nop(&idle_handle);
+  ASSERT(r == 0);
+
+  r = uv_check_init(uv_default_loop(), &check_handle);
+  ASSERT(r == 0);
+  r = uv_check_start(&check_handle, check_cb);
+  ASSERT(r == 0);
+
+  r = uv_timer_init(uv_default_loop(), &timer_handle);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer_handle, timer_cb, 50, 0);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(timer_cb_called == 1);
+  ASSERT(close_cb_called == 3);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

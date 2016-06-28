@@ -754,6 +754,7 @@ struct uv_idle_s {
 
 UV_EXTERN int uv_idle_init(uv_loop_t*, uv_idle_t* idle);
 UV_EXTERN int uv_idle_start(uv_idle_t* idle, uv_idle_cb cb);
+UV_EXTERN int uv_idle_start_nop(uv_idle_t* handle);
 UV_EXTERN int uv_idle_stop(uv_idle_t* idle);
 
 

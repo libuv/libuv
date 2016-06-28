@@ -647,3 +647,10 @@ void uv_loop_delete(uv_loop_t* loop) {
   if (loop != default_loop)
     uv__free(loop);
 }
+
+void uv__idle_nop_callback(uv_idle_t* handle) {
+}
+
+int uv_idle_start_nop(uv_idle_t* handle) {
+  return uv_idle_start(handle, uv__idle_nop_callback);
+}
