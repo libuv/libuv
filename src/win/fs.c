@@ -2048,6 +2048,34 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
 }
 
 
+int uv_fs_mkdirp(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 int mode,
+                 uv_fs_cb cb) {
+  char tmp[256];
+  char *p = NULL;
+  size_t len;
+  int err;
+
+  snprintf(tmp, sizeof(tmp),"%s",path);
+  len = strlen(tmp);
+  if (tmp[len - 1] == '/' || tmp[len - 1] == '\\')
+    tmp[len - 1] = 0;
+
+  for (p = tmp + 1; *p; p++) {
+    if (*p == '/' || *p == '\\') {
+      *p = 0;
+      err = uv_fs_mkdir(loop, req, tmp, mode, NULL);
+      if (err != 0 && errno != EEXIST)
+        return err;
+      *p = '/';
+    }
+  }
+  return uv_fs_mkdir(loop, req, path, mode, cb);
+}
+
+
 int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
     uv_fs_cb cb) {
   int err;

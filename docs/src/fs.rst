@@ -192,6 +192,10 @@ API
     .. note::
         `mode` is currently not implemented on Windows.
 
+.. c:function:: int uv_fs_mkdirp(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
+
+    Equivalent to :man:`mkdir(2)` with `-p` option to ignore EEXIST when intermediate directories in a path already exist or to create them.
+
 .. c:function:: int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb)
 
     Equivalent to :man:`mkdtemp(3)`.

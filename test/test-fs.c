@@ -65,6 +65,7 @@ static int read_cb_count;
 static int write_cb_count;
 static int unlink_cb_count;
 static int mkdir_cb_count;
+static int mkdirp_cb_count;
 static int mkdtemp_cb_count;
 static int rmdir_cb_count;
 static int scandir_cb_count;
@@ -96,6 +97,7 @@ static uv_fs_t write_req;
 static uv_fs_t unlink_req;
 static uv_fs_t close_req;
 static uv_fs_t mkdir_req;
+static uv_fs_t mkdirp_req;
 static uv_fs_t mkdtemp_req1;
 static uv_fs_t mkdtemp_req2;
 static uv_fs_t rmdir_req;
@@ -416,6 +418,14 @@ static void mkdir_cb(uv_fs_t* req) {
   mkdir_cb_count++;
   ASSERT(req->path);
   ASSERT(memcmp(req->path, "test_dir\0", 9) == 0);
+  uv_fs_req_cleanup(req);
+}
+
+static void mkdirp_cb(uv_fs_t* req) {
+  ASSERT(req == &mkdirp_req);
+  ASSERT(req->fs_type == UV_FS_MKDIR);
+  mkdirp_cb_count++;
+  ASSERT(req->path);
   uv_fs_req_cleanup(req);
 }
 
@@ -967,6 +977,69 @@ TEST_IMPL(fs_async_dir) {
   /* Cleanup */
   unlink("test_dir/file1");
   unlink("test_dir/file2");
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+TEST_IMPL(fs_mkdirp) {
+  int r;
+
+  /* Setup */
+  rmdir("test_dir");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_mkdirp(loop, &mkdirp_req, "test_dir/", 0755, mkdirp_cb);
+  ASSERT(r == 0);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(mkdirp_cb_count == 1);
+
+  r = uv_fs_stat(loop, &stat_req, "test_dir", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  r = uv_fs_stat(loop, &stat_req, "test_dir/", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  r = uv_fs_lstat(loop, &stat_req, "test_dir", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  r = uv_fs_lstat(loop, &stat_req, "test_dir/", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(stat_cb_count == 4);
+
+  r = uv_fs_mkdirp(loop, &mkdirp_req, "test_dir/deep/deeper", 0755, mkdirp_cb);
+  ASSERT(r == 0);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(mkdirp_cb_count == 2);
+
+  r = uv_fs_stat(loop, &stat_req, "test_dir/deep/deeper", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  r = uv_fs_stat(loop, &stat_req, "test_dir/deep/deeper/", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  r = uv_fs_lstat(loop, &stat_req, "test_dir/deep/deeper", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  r = uv_fs_lstat(loop, &stat_req, "test_dir/deep/deeper/", stat_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(stat_cb_count == 8);
+
+  /* Cleanup */
   rmdir("test_dir");
 
   MAKE_VALGRIND_HAPPY();

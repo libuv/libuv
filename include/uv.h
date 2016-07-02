@@ -1152,6 +1152,11 @@ UV_EXTERN int uv_fs_mkdir(uv_loop_t* loop,
                           const char* path,
                           int mode,
                           uv_fs_cb cb);
+UV_EXTERN int uv_fs_mkdirp(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           const char* path,
+                           int mode,
+                           uv_fs_cb cb);
 UV_EXTERN int uv_fs_mkdtemp(uv_loop_t* loop,
                             uv_fs_t* req,
                             const char* tpl,
