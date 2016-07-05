@@ -60,7 +60,7 @@ static void uv_get_process_title_edge_cases() {
 
 
 TEST_IMPL(process_title) {
-#if defined(__sun) || defined(_AIX)
+#if defined(__sun) || defined(_AIX) || defined(__MVS__)
   RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
 #else
   /* Check for format string vulnerabilities. */
