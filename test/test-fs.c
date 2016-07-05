@@ -29,7 +29,7 @@
 
 /* FIXME we shouldn't need to branch in this file */
 #if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(_AIX)
+    defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
 #include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <direct.h>

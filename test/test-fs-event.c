@@ -376,6 +376,10 @@ static void timer_cb_watch_twice(uv_timer_t* handle) {
 }
 
 TEST_IMPL(fs_event_watch_dir) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -455,6 +459,10 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 
 
 TEST_IMPL(fs_event_watch_file) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -495,6 +503,11 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
     This test watches a file named "file.jsx" and modifies a file named
     "file.js". The test verifies that no events occur for file.jsx.
   */
+
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop;
   int r;
 
@@ -530,6 +543,9 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
 }
 
 TEST_IMPL(fs_event_watch_file_twice) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   const char path[] = "test/fixtures/empty_file";
   uv_fs_event_t watchers[2];
   uv_timer_t timer;
@@ -551,6 +567,9 @@ TEST_IMPL(fs_event_watch_file_twice) {
 }
 
 TEST_IMPL(fs_event_watch_file_current_dir) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_timer_t timer;
   uv_loop_t* loop;
   int r;
@@ -621,6 +640,10 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 #endif
 
 TEST_IMPL(fs_event_no_callback_after_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -655,6 +678,10 @@ TEST_IMPL(fs_event_no_callback_after_close) {
 }
 
 TEST_IMPL(fs_event_no_callback_on_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -702,6 +729,9 @@ static void timer_cb(uv_timer_t* handle) {
 
 
 TEST_IMPL(fs_event_immediate_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_timer_t timer;
   uv_loop_t* loop;
   int r;
@@ -724,6 +754,9 @@ TEST_IMPL(fs_event_immediate_close) {
 
 
 TEST_IMPL(fs_event_close_with_pending_event) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop;
   int r;
 
@@ -782,6 +815,9 @@ static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
 
 
 TEST_IMPL(fs_event_close_in_callback) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop;
   int r;
 
@@ -826,6 +862,9 @@ TEST_IMPL(fs_event_close_in_callback) {
 #endif /* HAVE_KQUEUE || _AIX */
 
 TEST_IMPL(fs_event_start_and_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop;
   uv_fs_event_t fs_event1;
   uv_fs_event_t fs_event2;
@@ -858,6 +897,9 @@ TEST_IMPL(fs_event_start_and_close) {
 }
 
 TEST_IMPL(fs_event_getpath) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop = uv_default_loop();
   int r;
   char buf[1024];
