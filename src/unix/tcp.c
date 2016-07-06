@@ -147,6 +147,9 @@ int uv__tcp_connect(uv_connect_t* req,
 
   assert(handle->type == UV_TCP);
 
+  if (handle->delayed_error)
+    return handle->delayed_error;
+
   if (handle->connect_req != NULL)
     return -EALREADY;  /* FIXME(bnoordhuis) -EINVAL or maybe -EBUSY. */
 
@@ -155,8 +158,6 @@ int uv__tcp_connect(uv_connect_t* req,
                          UV_STREAM_READABLE | UV_STREAM_WRITABLE);
   if (err)
     return err;
-
-  handle->delayed_error = 0;
 
   do
     r = connect(uv__stream_fd(handle), addr, addrlen);
