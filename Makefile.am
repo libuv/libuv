@@ -128,7 +128,11 @@ EXTRA_DIST = test/fixtures/empty_file \
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
+if OS390
+test_run_tests_CFLAGS =
+else
 test_run_tests_CFLAGS = -Wno-long-long
+endif
 test_run_tests_LDFLAGS =
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
@@ -281,6 +285,21 @@ if SUNOS
 test_run_tests_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 endif
 
+if OS390
+test_run_tests_CFLAGS += -D_UNIX03_THREADS \
+                         -D_UNIX03_SOURCE \
+                         -D_OPEN_SYS_IF_EXT=1 \
+                         -D_OPEN_SYS_SOCK_IPV6 \
+                         -D_OPEN_MSGQ_EXT \
+                         -D_XOPEN_SOURCE_EXTENDED \
+                         -D_ALL_SOURCE \
+                         -D_LARGE_TIME_API \
+                         -D_OPEN_SYS_FILE_EXT \
+                         -DPATH_MAX=255 \
+                         -qCHARS=signed \
+                         -qXPLINK \
+                         -qFLOAT=IEEE
+endif
 
 if AIX
 libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT -D_THREAD_SAFE
@@ -349,6 +368,25 @@ if SUNOS
 include_HEADERS += include/uv-sunos.h
 libuv_la_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 libuv_la_SOURCES += src/unix/sunos.c
+endif
+
+if OS390
+include_HEADERS += include/pthread-fixes.h include/pthread-barrier.h
+libuv_la_CFLAGS += -D_UNIX03_THREADS \
+                   -D_UNIX03_SOURCE \
+                   -D_OPEN_SYS_IF_EXT=1 \
+                   -D_OPEN_MSGQ_EXT \
+                   -D_XOPEN_SOURCE_EXTENDED \
+                   -D_ALL_SOURCE \
+                   -D_LARGE_TIME_API \
+                   -D_OPEN_SYS_SOCK_IPV6 \
+                   -D_OPEN_SYS_FILE_EXT \
+                   -DUV_PLATFORM_SEM_T=int \
+                   -DPATH_MAX=255 \
+                   -qCHARS=signed \
+                   -qXPLINK \
+                   -qFLOAT=IEEE
+libuv_la_LDFLAGS += -qXPLINK
 endif
 
 if HAVE_PKG_CONFIG
