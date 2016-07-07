@@ -32,6 +32,8 @@ Data types
             uv_stdio_container_t* stdio;
             uv_uid_t uid;
             uv_gid_t gid;
+            uv_gid_t* groups;
+            int groups_count;
         } uv_process_options_t;
 
 .. c:type:: void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal)
@@ -74,7 +76,15 @@ Data types
             * option is only meaningful on Windows systems. On Unix it is silently
             * ignored.
             */
-            UV_PROCESS_WINDOWS_HIDE = (1 << 4)
+            UV_PROCESS_WINDOWS_HIDE = (1 << 4),
+            /*
+            * Set the child process' secondary groups id. The secondary groups are
+            * supplied as a list in the `groups` field of the options struct, and
+            * the number of elements is specified in the `groups_count`field of the
+            * same structure.
+            * This is only supported on POSIX platforms.
+            */
+            UV_PROCESS_SETGROUPS = (1 << 5)
         };
 
 .. c:type:: uv_stdio_container_t
@@ -169,6 +179,16 @@ Public members
     the appropriate bits are set in the flags fields.
 
     .. note::
+        This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
+        to ``UV_ENOTSUP``.
+
+.. c:member:: uv_process_options_t.groups
+.. c:member:: uv_process_options_t.groups_count
+
+    Libuv can change the child process' secondary groups (usually left unset).
+    This happens only when the appropriate bits are set in the flags field.
+
+    ..note::
         This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
         to ``UV_ENOTSUP``.
 

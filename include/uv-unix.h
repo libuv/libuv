@@ -35,6 +35,7 @@
 
 #include <termios.h>
 #include <pwd.h>
+#include <grp.h>
 
 #include <semaphore.h>
 #include <pthread.h>
