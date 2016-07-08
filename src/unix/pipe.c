@@ -97,6 +97,14 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   if (uv__stream_fd(handle) == -1)
     return -EINVAL;
 
+#if defined(__MVS__)
+  /* On zOS, backlog=0 has undefined behaviour */
+  if (backlog == 0)
+    backlog = 1;
+  else if(backlog < 0)
+    backlog = SOMAXCONN;
+#endif
+
   if (listen(uv__stream_fd(handle), backlog))
     return -errno;
 
