@@ -64,7 +64,7 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 
 /* Used by all handles. */
 #define UV_HANDLE_CLOSED                        0x00000002
-#define UV_HANDLE_ENDGAME_QUEUED                0x00000004
+#define UV_HANDLE_ENDGAME_QUEUED                0x00000008
 
 /* uv-common.h: #define UV__HANDLE_CLOSING      0x00000001 */
 /* uv-common.h: #define UV__HANDLE_ACTIVE       0x00000040 */
@@ -76,7 +76,6 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 #define UV_HANDLE_BOUND                         0x00000200
 #define UV_HANDLE_LISTENING                     0x00000800
 #define UV_HANDLE_CONNECTION                    0x00001000
-#define UV_HANDLE_CONNECTED                     0x00002000
 #define UV_HANDLE_READABLE                      0x00008000
 #define UV_HANDLE_WRITABLE                      0x00010000
 #define UV_HANDLE_READ_PENDING                  0x00020000
@@ -84,6 +83,7 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 #define UV_HANDLE_ZERO_READ                     0x00080000
 #define UV_HANDLE_EMULATE_IOCP                  0x00100000
 #define UV_HANDLE_BLOCKING_WRITES               0x00200000
+#define UV_HANDLE_CANCELLATION_PENDING          0x00400000
 
 /* Used by uv_tcp_t and uv_udp_t handles */
 #define UV_HANDLE_IPV6                          0x01000000
@@ -247,7 +247,6 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle);
 void uv_timer_endgame(uv_loop_t* loop, uv_timer_t* handle);
 
 DWORD uv__next_timeout(const uv_loop_t* loop);
-void uv__time_forward(uv_loop_t* loop, uint64_t msecs);
 void uv_process_timers(uv_loop_t* loop);
 
 
@@ -328,7 +327,10 @@ void uv__util_init();
 
 uint64_t uv__hrtime(double scale);
 int uv_parent_pid();
+int uv_current_pid();
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
+int uv__getpwuid_r(uv_passwd_t* pwd);
+int uv__convert_utf16_to_utf8(const WCHAR* utf16, int utf16len, char** utf8);
 
 
 /*

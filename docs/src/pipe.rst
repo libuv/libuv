@@ -29,16 +29,20 @@ N/A
 API
 ---
 
-.. c:function:: int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc)
+.. c:function:: int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc)
 
     Initialize a pipe handle. The `ipc` argument is a boolean to indicate if
     this pipe will be used for handle passing between processes.
 
-.. c:function:: int uv_pipe_open(uv_pipe_t*, uv_file file)
+.. c:function:: int uv_pipe_open(uv_pipe_t* handle, uv_file file)
 
     Open an existing file descriptor or HANDLE as a pipe.
 
     .. versionchanged:: 1.2.1 the file descriptor is set to non-blocking mode.
+
+    .. note::
+        The passed file descriptor or HANDLE is not checked for its type, but
+        it's required that it represents a valid pipe.
 
 .. c:function:: int uv_pipe_bind(uv_pipe_t* handle, const char* name)
 

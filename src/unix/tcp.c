@@ -28,18 +28,14 @@
 #include <errno.h>
 
 
-int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
-  uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
-  return 0;
-}
-
-
 static int maybe_new_socket(uv_tcp_t* handle, int domain, int flags) {
   int sockfd;
   int err;
 
-  if (uv__stream_fd(handle) != -1)
+  if (domain == AF_UNSPEC || uv__stream_fd(handle) != -1) {
+    handle->flags |= flags;
     return 0;
+  }
 
   err = uv__socket(domain, SOCK_STREAM, 0);
   if (err < 0)
@@ -53,6 +49,40 @@ static int maybe_new_socket(uv_tcp_t* handle, int domain, int flags) {
   }
 
   return 0;
+}
+
+
+int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
+  int domain;
+
+  /* Use the lower 8 bits for the domain */
+  domain = flags & 0xFF;
+  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+    return -EINVAL;
+
+  if (flags & ~0xFF)
+    return -EINVAL;
+
+  uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
+
+  /* If anything fails beyond this point we need to remove the handle from
+   * the handle queue, since it was added by uv__handle_init in uv_stream_init.
+   */
+
+  if (domain != AF_UNSPEC) {
+    int err = maybe_new_socket(tcp, domain, 0);
+    if (err) {
+      QUEUE_REMOVE(&tcp->handle_queue);
+      return err;
+    }
+  }
+
+  return 0;
+}
+
+
+int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
+  return uv_tcp_init_ex(loop, tcp, AF_UNSPEC);
 }
 
 
@@ -91,8 +121,13 @@ int uv__tcp_bind(uv_tcp_t* tcp,
 #endif
 
   errno = 0;
-  if (bind(tcp->io_watcher.fd, addr, addrlen) && errno != EADDRINUSE)
+  if (bind(tcp->io_watcher.fd, addr, addrlen) && errno != EADDRINUSE) {
+    if (errno == EAFNOSUPPORT)
+      /* OSX, other BSDs and SunoS fail with EAFNOSUPPORT when binding a
+       * socket created with AF_INET to an AF_INET6 address or vice versa. */
+      return -EINVAL;
     return -errno;
+  }
   tcp->delayed_error = -errno;
 
   if (addr->sa_family == AF_INET6)
@@ -146,7 +181,7 @@ int uv__tcp_connect(uv_connect_t* req,
   QUEUE_INIT(&req->queue);
   handle->connect_req = req;
 
-  uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
+  uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
 
   if (handle->delayed_error)
     uv__io_feed(handle->loop, &handle->io_watcher);
@@ -238,7 +273,7 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
   /* Start listening for connections. */
   tcp->io_watcher.cb = uv__server_io;
-  uv__io_start(tcp->loop, &tcp->io_watcher, UV__POLLIN);
+  uv__io_start(tcp->loop, &tcp->io_watcher, POLLIN);
 
   return 0;
 }

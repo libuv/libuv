@@ -39,6 +39,10 @@ Starting with version 1.0.0 libuv follows the [semantic versioning](http://semve
 scheme. The API change and backwards compatibility rules are those indicated by
 SemVer. libuv will keep a stable ABI across major releases.
 
+## Licensing
+
+libuv is licensed under the MIT license. Check the [LICENSE file](LICENSE).
+
 ## Community
 
  * [Mailing list](http://groups.google.com/group/libuv)
@@ -60,6 +64,11 @@ Build documentation as HTML:
 
     $ make html
 
+Build documentation as HTML and live reload it when it changes (this requires
+sphinx-autobuild to be installed and is only supported on Unix):
+
+    $ make livehtml
+
 Build documentation as man pages:
 
     $ make man
@@ -72,18 +81,58 @@ NOTE: Windows users need to use make.bat instead of plain 'make'.
 
 Documentation can be browsed online [here](http://docs.libuv.org).
 
+The [tests and benchmarks](https://github.com/libuv/libuv/tree/master/test)
+also serve as API specification and usage examples.
+
 ### Other resources
 
  * [An Introduction to libuv](http://nikhilm.github.com/uvbook/)
    &mdash; An overview of libuv with tutorials.
  * [LXJS 2012 talk](http://www.youtube.com/watch?v=nGn60vDSxQ4)
    &mdash; High-level introductory talk about libuv.
- * [Tests and benchmarks](https://github.com/libuv/libuv/tree/master/test)
-   &mdash; API specification and usage examples.
  * [libuv-dox](https://github.com/thlorenz/libuv-dox)
    &mdash; Documenting types and methods of libuv, mostly by reading uv.h.
  * [learnuv](https://github.com/thlorenz/learnuv)
    &mdash; Learn uv for fun and profit, a self guided workshop to libuv.
+
+These resources are not handled by libuv maintainers and might be out of
+date. Please verify it before opening new issues.
+
+## Downloading
+
+libuv can be downloaded either from the
+[GitHub repository](https://github.com/libuv/libuv)
+or from the [downloads site](http://dist.libuv.org/dist/).
+
+Starting with libuv 1.7.0, binaries for Windows are also provided. This is to
+be considered EXPERIMENTAL.
+
+Before verifying the git tags or signature files, importing the relevant keys
+is necessary. Key IDs are listed in the
+[MAINTAINERS](https://github.com/libuv/libuv/blob/master/MAINTAINERS.md)
+file, but are also available as git blob objects for easier use.
+
+Importing a key the usual way:
+
+    $ gpg --keyserver pool.sks-keyservers.net \
+      --recv-keys AE9BC059
+
+Importing a key from a git blob object:
+
+    $ git show pubkey-saghul | gpg --import
+
+### Verifying releases
+
+Git tags are signed with the developer's key, they can be verified as follows:
+
+    $ git verify-tag v1.6.1
+
+Starting with libuv 1.7.0, the tarballs stored in the
+[downloads site](http://dist.libuv.org/dist/) are signed and an accompanying
+signature file sit alongside each. Once both the release tarball and the
+signature file are downloaded, the file can be verified as follows:
+
+    $ gpg --verify libuv-1.7.0.tar.gz.sign
 
 ## Build Instructions
 
@@ -116,10 +165,15 @@ project tree manually:
 
 ### Unix
 
-Run:
+For Debug builds (recommended) run:
 
     $ ./gyp_uv.py -f make
     $ make -C out
+
+For Release builds run:
+
+    $ ./gyp_uv.py -f make
+    $ BUILDTYPE=Release make -C out
 
 Run `./gyp_uv.py -f make -Dtarget_arch=x32` to build [x32][] binaries.
 
@@ -151,6 +205,15 @@ Run:
 Note for UNIX users: compile your project with `-D_LARGEFILE_SOURCE` and
 `-D_FILE_OFFSET_BITS=64`. GYP builds take care of that automatically.
 
+### Using Ninja
+
+To use ninja for build on ninja supported platforms, run:
+
+    $ ./gyp_uv.py -f ninja
+    $ ninja -C out/Debug     #for debug build OR
+    $ ninja -C out/Release
+
+
 ### Running tests
 
 Run:
@@ -172,6 +235,18 @@ OS X using the GCC or XCode toolchain.
 
 Solaris 121 and later using GCC toolchain.
 
+AIX 6 and later using GCC toolchain (see notes).
+
+### AIX Notes
+
+AIX support for filesystem events requires the non-default IBM `bos.ahafs`
+package to be installed.  This package provides the AIX Event Infrastructure
+that is detected by `autoconf`.
+[IBM documentation](http://www.ibm.com/developerworks/aix/library/au-aix_event_infrastructure/)
+describes the package in more detail.
+
+AIX support for filesystem events is not compiled when building with `gyp`.
+
 ## Patches
 
 See the [guidelines for contributing][].
@@ -182,3 +257,4 @@ See the [guidelines for contributing][].
 [Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
 [guidelines for contributing]: https://github.com/libuv/libuv/blob/master/CONTRIBUTING.md
 [libuv_banner]: https://raw.githubusercontent.com/libuv/libuv/master/img/banner.png
+[x32]: https://en.wikipedia.org/wiki/X32_ABI

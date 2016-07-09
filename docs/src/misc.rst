@@ -15,15 +15,36 @@ Data types
 
     Buffer data type.
 
-.. c:type:: uv_malloc_func
+    .. c:member:: char* uv_buf_t.base
 
-    Function pointer type for the malloc override used by
-    :c:func:`uv_replace_allocator`.
+        Pointer to the base of the buffer. Readonly.
 
-.. c:type:: uv_free_func
+    .. c:member:: size_t uv_buf_t.len
 
-    Function pointer type for the free override used by
-    :c:func:`uv_replace_allocator`.
+        Total bytes in the buffer. Readonly.
+
+        .. note::
+            On Windows this field is ULONG.
+
+.. c:type:: void* (*uv_malloc_func)(size_t size)
+
+        Replacement function for :man:`malloc(3)`.
+        See :c:func:`uv_replace_allocator`.
+
+.. c:type::  void* (*uv_realloc_func)(void* ptr, size_t size)
+
+        Replacement function for :man:`realloc(3)`.
+        See :c:func:`uv_replace_allocator`.
+
+.. c:type::  void* (*uv_calloc_func)(size_t count, size_t size)
+
+        Replacement function for :man:`calloc(3)`.
+        See :c:func:`uv_replace_allocator`.
+
+.. c:type:: void (*uv_free_func)(void* ptr)
+
+        Replacement function for :man:`free(3)`.
+        See :c:func:`uv_replace_allocator`.
 
 .. c:type:: uv_file
 
@@ -101,6 +122,20 @@ Data types
             } netmask;
         } uv_interface_address_t;
 
+.. c:type:: uv_passwd_t
+
+    Data type for password file information.
+
+    ::
+
+        typedef struct uv_passwd_s {
+            char* username;
+            long uid;
+            long gid;
+            char* shell;
+            char* homedir;
+        } uv_passwd_t;
+
 
 API
 ---
@@ -114,26 +149,25 @@ API
     For :man:`isatty(3)` equivalent functionality use this function and test
     for ``UV_TTY``.
 
-.. c:function:: unsigned int uv_version(void)
+.. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_realloc_func realloc_func, uv_calloc_func calloc_func, uv_free_func free_func)
 
-    Returns the libuv version packed into a single integer. 8 bits are used for
-    each component, with the patch number stored in the 8 least significant
-    bits. E.g. for libuv 1.2.3 this would return 0x010203.
+    .. versionadded:: 1.6.0
 
-.. c:function:: const char* uv_version_string(void)
+    Override the use of the standard library's :man:`malloc(3)`,
+    :man:`calloc(3)`, :man:`realloc(3)`, :man:`free(3)`, memory allocation
+    functions.
 
-    Returns the libuv version number as a string. For non-release versions
-    "-pre" is appended, so the version number could be "1.2.3-pre".
+    This function must be called before any other libuv function is called or
+    after all resources have been freed and thus libuv doesn't reference
+    any allocated memory chunk.
 
-.. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_free_func free_func)
+    On success, it returns 0, if any of the function pointers is NULL it
+    returns UV_EINVAL.
 
-    .. versionadded:: 1.5.0
-
-    Override the use of the standard library's malloc and free functions for
-    memory allocation. If used, this function must be called before any
-    other libuv function is called. On success, it returns 0. If called more
-    than once, the replacement request is ignored and the function returns
-    ``UV_EINVAL``.
+    .. warning:: There is no protection against changing the allocator multiple
+                 times. If the user changes it they are responsible for making
+                 sure the allocator is changed while no memory was allocated with
+                 the previous allocator, or that they are compatible.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 
@@ -236,6 +270,59 @@ API
 
     Changes the current working directory.
 
+.. c:function:: int uv_os_homedir(char* buffer, size_t* size)
+
+    Gets the current user's home directory. On Windows, `uv_os_homedir()` first
+    checks the `USERPROFILE` environment variable using
+    `GetEnvironmentVariableW()`. If `USERPROFILE` is not set,
+    `GetUserProfileDirectoryW()` is called. On all other operating systems,
+    `uv_os_homedir()` first checks the `HOME` environment variable using
+    :man:`getenv(3)`. If `HOME` is not set, :man:`getpwuid_r(3)` is called. The
+    user's home directory is stored in `buffer`. When `uv_os_homedir()` is
+    called, `size` indicates the maximum size of `buffer`. On success `size` is set
+    to the string length of `buffer`. On `UV_ENOBUFS` failure `size` is set to the
+    required length for `buffer`, including the null byte.
+
+    .. warning::
+        `uv_os_homedir()` is not thread safe.
+
+    .. versionadded:: 1.6.0
+
+.. c:function:: int uv_os_tmpdir(char* buffer, size_t* size)
+
+    Gets the temp directory. On Windows, `uv_os_tmpdir()` uses `GetTempPathW()`.
+    On all other operating systems, `uv_os_tmpdir()` uses the first environment
+    variable found in the ordered list `TMPDIR`, `TMP`, `TEMP`, and `TEMPDIR`.
+    If none of these are found, the path `"/tmp"` is used, or, on Android,
+    `"/data/local/tmp"` is used. The temp directory is stored in `buffer`. When
+    `uv_os_tmpdir()` is called, `size` indicates the maximum size of `buffer`.
+    On success `size` is set to the string length of `buffer` (which does not
+    include the terminating null). On `UV_ENOBUFS` failure `size` is set to the
+    required length for `buffer`, including the null byte.
+
+    .. warning::
+        `uv_os_tmpdir()` is not thread safe.
+
+    .. versionadded:: 1.9.0
+
+.. c:function:: int uv_os_get_passwd(uv_passwd_t* pwd)
+
+    Gets a subset of the password file entry for the current effective uid (not
+    the real uid). The populated data includes the username, euid, gid, shell,
+    and home directory. On non-Windows systems, all data comes from
+    :man:`getpwuid_r(3)`. On Windows, uid and gid are set to -1 and have no
+    meaning, and shell is `NULL`. After successfully calling this function, the
+    memory allocated to `pwd` needs to be freed with
+    :c:func:`uv_os_free_passwd`.
+
+    .. versionadded:: 1.9.0
+
+.. c:function:: void uv_os_free_passwd(uv_passwd_t* pwd)
+
+    Frees the `pwd` memory previously allocated with :c:func:`uv_os_get_passwd`.
+
+    .. versionadded:: 1.9.0
+
 .. uint64_t uv_get_free_memory(void)
 .. c:function:: uint64_t uv_get_total_memory(void)
 
@@ -251,3 +338,41 @@ API
     .. note::
         Not every platform can support nanosecond resolution; however, this value will always
         be in nanoseconds.
+
+.. c:function:: void uv_print_all_handles(uv_loop_t* loop, FILE* stream)
+
+    Prints all handles associated with the given `loop` to the given `stream`.
+
+    Example:
+
+    ::
+
+        uv_print_all_handles(uv_default_loop(), stderr);
+        /*
+        [--I] signal   0x1a25ea8
+        [-AI] async    0x1a25cf0
+        [R--] idle     0x1a7a8c8
+        */
+
+    The format is `[flags] handle-type handle-address`. For `flags`:
+
+    - `R` is printed for a handle that is referenced
+    - `A` is printed for a handle that is active
+    - `I` is printed for a handle that is internal
+
+    .. warning::
+        This function is meant for ad hoc debugging, there is no API/ABI
+        stability guarantees.
+
+    .. versionadded:: 1.8.0
+
+.. c:function:: void uv_print_active_handles(uv_loop_t* loop, FILE* stream)
+
+    This is the same as :c:func:`uv_print_all_handles` except only active handles
+    are printed.
+
+    .. warning::
+        This function is meant for ad hoc debugging, there is no API/ABI
+        stability guarantees.
+
+    .. versionadded:: 1.8.0

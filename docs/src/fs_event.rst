@@ -8,6 +8,20 @@ FS Event handles allow the user to monitor a given path for changes, for example
 if the file was renamed or there was a generic change in it. This handle uses
 the best backend for the job on each platform.
 
+.. note::
+    For AIX, the non default IBM bos.ahafs package has to be installed.
+    The AIX Event Infrastructure file system (ahafs) has some limitations:
+
+        - ahafs tracks monitoring per process and is not thread safe. A separate process
+          must be spawned for each monitor for the same event.
+        - Events for file modification (writing to a file) are not received if only the
+          containing folder is watched.
+
+    See documentation_ for more details.
+
+    .. _documentation: http://www.ibm.com/developerworks/aix/library/au-aix_event_infrastructure/
+
+
 
 Data types
 ----------
@@ -88,7 +102,7 @@ API
     `path` for changes. `flags` can be an ORed mask of :c:type:`uv_fs_event_flags`.
 
     .. note:: Currently the only supported flag is ``UV_FS_EVENT_RECURSIVE`` and
-              only on OSX.
+              only on OSX and Windows.
 
 .. c:function:: int uv_fs_event_stop(uv_fs_event_t* handle)
 

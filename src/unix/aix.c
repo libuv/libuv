@@ -43,6 +43,7 @@
 
 #include <sys/protosw.h>
 #include <libperfstat.h>
+#include <procinfo.h>
 #include <sys/proc.h>
 #include <sys/procfs.h>
 
@@ -50,7 +51,9 @@
 
 #include <sys/pollset.h>
 #include <ctype.h>
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
 #include <sys/ahafs_evProds.h>
+#endif
 
 #include <sys/mntctl.h>
 #include <sys/vmount.h>
@@ -88,6 +91,24 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
 
+int uv__io_check_fd(uv_loop_t* loop, int fd) {
+  struct poll_ctl pc;
+
+  pc.events = POLLIN;
+  pc.cmd = PS_MOD;  /* Equivalent to PS_ADD if the fd is not in the pollset. */
+  pc.fd = fd;
+
+  if (pollset_ctl(loop->backend_fd, &pc, 1))
+    return -errno;
+
+  pc.cmd = PS_DELETE;
+  if (pollset_ctl(loop->backend_fd, &pc, 1))
+    abort();
+
+  return 0;
+}
+
+
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct pollfd events[1024];
   struct pollfd pqry;
@@ -97,6 +118,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   uv__io_t* w;
   uint64_t base;
   uint64_t diff;
+  int have_signals;
   int nevents;
   int count;
   int nfds;
@@ -204,6 +226,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       goto update_timeout;
     }
 
+    have_signals = 0;
     nevents = 0;
 
     assert(loop->watchers != NULL);
@@ -234,12 +257,25 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
       }
 
-      w->cb(loop, w, pe->revents);
+      /* Run signal watchers last.  This also affects child process watchers
+       * because those are implemented in terms of signal watchers.
+       */
+      if (w == &loop->signal_io_watcher)
+        have_signals = 1;
+      else
+        w->cb(loop, w, pe->revents);
+
       nevents++;
     }
 
+    if (have_signals != 0)
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+
     loop->watchers[loop->nwatchers] = NULL;
     loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -286,182 +322,80 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
  * and use it in conjunction with PATH environment variable to craft one.
  */
 int uv_exepath(char* buffer, size_t* size) {
-  ssize_t res;
-  char cwd[PATH_MAX], cwdl[PATH_MAX];
-  char symlink[PATH_MAX], temp_buffer[PATH_MAX];
-  char pp[64];
-  struct psinfo ps;
-  int fd;
-  char **argv;
+  int res;
+  char args[PATH_MAX];
+  char abspath[PATH_MAX];
+  size_t abspath_size;
+  struct procsinfo pi;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return -EINVAL;
 
-  snprintf(pp, sizeof(pp), "/proc/%lu/psinfo", (unsigned long) getpid());
-
-  fd = open(pp, O_RDONLY);
-  if (fd < 0)
-    return fd;
-
-  res = read(fd, &ps, sizeof(ps));
-  uv__close(fd);
-  if (res < 0)
-    return res;
-
-  if (ps.pr_argv == 0)
-    return -EINVAL;
-
-  argv = (char **) *((char ***) (intptr_t) ps.pr_argv);
-
-  if ((argv == NULL) || (argv[0] == NULL))
+  pi.pi_pid = getpid();
+  res = getargs(&pi, sizeof(pi), args, sizeof(args));
+  if (res < 0) 
     return -EINVAL;
 
   /*
-   * Three possibilities for argv[0]:
+   * Possibilities for args:
    * i) an absolute path such as: /home/user/myprojects/nodejs/node
-   * ii) a relative path such as: ./node or ./myprojects/nodejs/node
+   * ii) a relative path such as: ./node or ../myprojects/nodejs/node
    * iii) a bare filename such as "node", after exporting PATH variable 
    *     to its location.
    */
 
-  /* case #1, absolute path. */
-  if (argv[0][0] == '/') {
-    snprintf(symlink, PATH_MAX-1, "%s", argv[0]);
-
-    /* This could or could not be a symlink. */
-    res = readlink(symlink, temp_buffer, PATH_MAX-1);
-
-    /* if readlink fails, it is a normal file just copy symlink to the 
-     * output buffer.
-     */
-    if (res < 0) {
-      assert(*size > strlen(symlink));
-      strcpy(buffer, symlink);
-
-    /* If it is a link, the resolved filename is again a relative path,
-     * make it absolute. 
-     */
-    } else {
-      assert(*size > (strlen(symlink) + 1 + strlen(temp_buffer)));
-      snprintf(buffer, *size-1, "%s/%s", dirname(symlink), temp_buffer);
-    }
-    *size = strlen(buffer);
-    return 0;
-
-  /* case #2, relative path with usage of '.' */
-  } else if (argv[0][0] == '.') {
-    char *relative = strchr(argv[0], '/');
-    if (relative == NULL)
-      return -EINVAL;
-
-    /* Get the current working directory to resolve the relative path. */
-    snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-
-    /* This is always a symlink, resolve it. */
-    res = readlink(cwd, cwdl, sizeof(cwdl) - 1);
-    if (res < 0)
+  /* Case i) and ii) absolute or relative paths */
+  if (strchr(args, '/') != NULL) {
+    if (realpath(args, abspath) != abspath) 
       return -errno;
 
-    snprintf(symlink, PATH_MAX-1, "%s%s", cwdl, relative + 1);
+    abspath_size = strlen(abspath);
 
-    res = readlink(symlink, temp_buffer, PATH_MAX-1);
-    if (res < 0) {
-      assert(*size > strlen(symlink));
-      strcpy(buffer, symlink);
-    } else {
-      assert(*size > (strlen(symlink) + 1 + strlen(temp_buffer)));
-      snprintf(buffer, *size-1, "%s/%s", dirname(symlink), temp_buffer);
-    }
-    *size = strlen(buffer);
+    *size -= 1;
+    if (*size > abspath_size)
+      *size = abspath_size;
+
+    memcpy(buffer, abspath, *size);
+    buffer[*size] = '\0';
+
     return 0;
-
-  /* case #3, relative path without usage of '.', such as invocations in Node test suite. */
-  } else if (strchr(argv[0], '/') != NULL) {
-    /* Get the current working directory to resolve the relative path. */
-    snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-
-    /* This is always a symlink, resolve it. */
-    res = readlink(cwd, cwdl, sizeof(cwdl) - 1);
-    if (res < 0)
-      return -errno;
-
-    snprintf(symlink, PATH_MAX-1, "%s%s", cwdl, argv[0]);
-
-    res = readlink(symlink, temp_buffer, PATH_MAX-1);
-    if (res < 0) {
-      assert(*size > strlen(symlink));
-      strcpy(buffer, symlink);
-    } else {
-      assert(*size > (strlen(symlink) + 1 + strlen(temp_buffer)));
-      snprintf(buffer, *size-1, "%s/%s", dirname(symlink), temp_buffer);
-    }
-    *size = strlen(buffer);
-    return 0;
-  /* Usage of absolute filename with location exported in PATH */
   } else {
-    char clonedpath[8192];  /* assume 8k buffer will fit PATH */
+  /* Case iii). Search PATH environment variable */ 
+    char trypath[PATH_MAX];
+    char *clonedpath = NULL;
     char *token = NULL;
-    struct stat statstruct;
-
-    /* Get the paths. */
     char *path = getenv("PATH");
-    if(sizeof(clonedpath) <= strlen(path))
+
+    if (path == NULL)
       return -EINVAL;
 
-    /* Get a local copy. */
-    strcpy(clonedpath, path);
+    clonedpath = uv__strdup(path);
+    if (clonedpath == NULL)
+      return -ENOMEM;
 
-    /* Tokenize. */
     token = strtok(clonedpath, ":");
+    while (token != NULL) {
+      snprintf(trypath, sizeof(trypath) - 1, "%s/%s", token, args);
+      if (realpath(trypath, abspath) == abspath) { 
+        /* Check the match is executable */
+        if (access(abspath, X_OK) == 0) {
+          abspath_size = strlen(abspath);
 
-    /* Get current working directory. (may be required in the loop). */
-    snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-    res = readlink(cwd, cwdl, sizeof(cwdl) - 1);
-    if (res < 0)
-      return -errno;
-    /* Run through the tokens, append our executable file name with each,
-     * and see which one succeeds. Exit on first match. */
-    while(token != NULL) {
-      if (token[0] == '.') {
-        /* Path contains a token relative to current directory. */
-        char *relative = strchr(token, '/');
-        if (relative != NULL)
-          /* A path which is not current directory. */
-          snprintf(symlink, PATH_MAX-1, "%s%s/%s", cwdl, relative+1, ps.pr_fname);
-        else
-          snprintf(symlink, PATH_MAX-1, "%s%s", cwdl, ps.pr_fname);
-        if (stat(symlink, &statstruct) != -1) {
-          /* File exists. Resolve if it is a link. */
-          res = readlink(symlink, temp_buffer, PATH_MAX-1);
-          if (res < 0) {
-            assert(*size > strlen(symlink));
-            strcpy(buffer, symlink);
-          } else {
-            assert(*size > (strlen(symlink) + 1 + strlen(temp_buffer)));
-            snprintf(buffer, *size-1, "%s/%s", dirname(symlink), temp_buffer);
-          }
-          *size = strlen(buffer);
-          return 0;
-        }
+          *size -= 1;
+          if (*size > abspath_size)
+            *size = abspath_size;
 
-        /* Absolute path names. */
-      } else {
-        snprintf(symlink, PATH_MAX-1, "%s/%s", token, ps.pr_fname);
-        if (stat(symlink, &statstruct) != -1) {
-          res = readlink(symlink, temp_buffer, PATH_MAX-1);
-          if (res < 0) {
-            assert(*size > strlen(symlink));
-            strcpy(buffer, symlink);
-          } else {
-            assert(*size > (strlen(symlink) + 1 + strlen(temp_buffer)));
-            snprintf(buffer, *size-1, "%s/%s", dirname(symlink), temp_buffer);
-          }
-          *size = strlen(buffer);
+          memcpy(buffer, abspath, *size);
+          buffer[*size] = '\0';
+
+          uv__free(clonedpath);
           return 0;
         }
       }
       token = strtok(NULL, ":");
     }
+    uv__free(clonedpath);
+
     /* Out of tokens (path entries), and no match found */
     return -EINVAL;
   }
@@ -501,6 +435,7 @@ void uv_loadavg(double avg[3]) {
 }
 
 
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
 static char *uv__rawname(char *cp) {
   static char rawbuf[FILENAME_MAX+1];
   char *dp = rindex(cp, '/');
@@ -604,7 +539,7 @@ static int uv__makedir_p(const char *dir) {
     if (*p == '/') {
       *p = 0;
       err = mkdir(tmp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-      if(err != 0)
+      if (err != 0 && errno != EEXIST)
         return err;
       *p = '/';
     }
@@ -781,7 +716,7 @@ static int uv__parse_data(char *buf, int *events, uv_fs_event_t* handle) {
 
         /* Scan out the name of the file that triggered the event*/
         if (sscanf(p, "BEGIN_EVPROD_INFO\n%sEND_EVPROD_INFO", filename) == 1) {
-          handle->dir_filename = strdup((const char*)&filename);
+          handle->dir_filename = uv__strdup((const char*)&filename);
         } else
           return -1;
         }
@@ -805,17 +740,10 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
   int bytes, rc = 0;
   uv_fs_event_t* handle;
   int events = 0;
-  int  i = 0;
   char fname[PATH_MAX];
   char *p;
 
   handle = container_of(event_watch, uv_fs_event_t, event_watcher);
-
-  /* Clean all the buffers*/
-  for(i = 0; i < PATH_MAX; i++) {
-    fname[i] = 0;
-  }
-  i = 0;
 
   /* At this point, we assume that polling has been done on the
    * file descriptor, so we can just read the AHAFS event occurrence
@@ -823,47 +751,44 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
    */
   bytes = pread(event_watch->fd, result_data, RDWR_BUF_SIZE, 0);
 
-  assert((bytes <= 0) && "uv__ahafs_event - Error reading monitor file");
+  assert((bytes >= 0) && "uv__ahafs_event - Error reading monitor file");
 
   /* Parse the data */
   if(bytes > 0)
     rc = uv__parse_data(result_data, &events, handle);
+
+  /* Unrecoverable error */
+  if (rc == -1)
+    return;
 
   /* For directory changes, the name of the files that triggered the change
    * are never absolute pathnames
    */
   if (uv__path_is_a_directory(handle->path) == 0) {
     p = handle->dir_filename;
-    while(*p != NULL){
-      fname[i]= *p;
-      i++;
-      p++;
-    }
   } else {
-    /* For file changes, figure out whether filename is absolute or not */
-    if (handle->path[0] == '/') {
-      p = strrchr(handle->path, '/');
+    p = strrchr(handle->path, '/');
+    if (p == NULL)
+      p = handle->path;
+    else
       p++;
-
-      while(*p != NULL) {
-        fname[i]= *p;
-        i++;
-        p++;
-      }
-    }
   }
+  strncpy(fname, p, sizeof(fname) - 1);
+  /* Just in case */
+  fname[sizeof(fname) - 1] = '\0';
 
-  /* Unrecoverable error */
-  if (rc == -1)
-    return;
-  else /* Call the actual JavaScript callback function */
-    handle->cb(handle, (const char*)&fname, events, 0);
+  handle->cb(handle, fname, events, 0);
 }
+#endif
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
   return 0;
+#else
+  return -ENOSYS;
+#endif
 }
 
 
@@ -871,53 +796,31 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
                       const char* filename,
                       unsigned int flags) {
-  int  fd, rc, i = 0, res = 0;
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
+  int  fd, rc, str_offset = 0;
   char cwd[PATH_MAX];
   char absolute_path[PATH_MAX];
-  char fname[PATH_MAX];
-  char *p;
+  char readlink_cwd[PATH_MAX];
 
-  /* Clean all the buffers*/
-  for(i = 0; i < PATH_MAX; i++) {
-    cwd[i] = 0;
-    absolute_path[i] = 0;
-    fname[i] = 0;
-  }
-  i = 0;
 
   /* Figure out whether filename is absolute or not */
   if (filename[0] == '/') {
-    /* We have absolute pathname, create the relative pathname*/
-    sprintf(absolute_path, filename);
-    p = strrchr(filename, '/');
-    p++;
+    /* We have absolute pathname */
+    snprintf(absolute_path, sizeof(absolute_path), "%s", filename);
   } else {
-    if (filename[0] == '.' && filename[1] == '/') {
-      /* We have a relative pathname, compose the absolute pathname */
-      sprintf(fname, filename);
-      snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-      res = readlink(cwd, absolute_path, sizeof(absolute_path) - 1);
-      if (res < 0)
-        return res;
-      p = strrchr(absolute_path, '/');
-      p++;
-      p++;
-    } else {
-      /* We have a relative pathname, compose the absolute pathname */
-      sprintf(fname, filename);
-      snprintf(cwd, PATH_MAX-1, "/proc/%lu/cwd", (unsigned long) getpid());
-      res = readlink(cwd, absolute_path, sizeof(absolute_path) - 1);
-      if (res < 0)
-        return res;
-      p = strrchr(absolute_path, '/');
-      p++;
-    }
-    /* Copy to filename buffer */
-    while(filename[i] != NULL) {
-      *p = filename[i];
-      i++;
-      p++;
-    }
+    /* We have a relative pathname, compose the absolute pathname */
+    snprintf(cwd, sizeof(cwd), "/proc/%lu/cwd", (unsigned long) getpid());
+    rc = readlink(cwd, readlink_cwd, sizeof(readlink_cwd) - 1);
+    if (rc < 0)
+      return rc;
+    /* readlink does not null terminate our string */
+    readlink_cwd[rc] = '\0';
+
+    if (filename[0] == '.' && filename[1] == '/')
+      str_offset = 2;
+
+    snprintf(absolute_path, sizeof(absolute_path), "%s%s", readlink_cwd,
+             filename + str_offset);
   }
 
   if (uv__is_ahafs_mounted() < 0)  /* /aha checks failed */
@@ -931,17 +834,20 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   /* Setup/Initialize all the libuv routines */
   uv__handle_start(handle);
   uv__io_init(&handle->event_watcher, uv__ahafs_event, fd);
-  handle->path = strdup((const char*)&absolute_path);
+  handle->path = uv__strdup(filename);
   handle->cb = cb;
 
-  uv__io_start(handle->loop, &handle->event_watcher, UV__POLLIN);
+  uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
 
   return 0;
+#else
+  return -ENOSYS;
+#endif
 }
 
 
 int uv_fs_event_stop(uv_fs_event_t* handle) {
-
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   if (!uv__is_active(handle))
     return 0;
 
@@ -959,11 +865,18 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   handle->event_watcher.fd = -1;
 
   return 0;
+#else
+  return -ENOSYS;
+#endif
 }
 
 
 void uv__fs_event_close(uv_fs_event_t* handle) {
+#ifdef HAVE_SYS_AHAFS_EVPRODS_H
   uv_fs_event_stop(handle);
+#else
+  UNREACHABLE();
+#endif
 }
 
 
@@ -1075,7 +988,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   cpu_info = *cpu_infos;
   while (idx < ncpus) {
     cpu_info->speed = (int)(ps_total.processorHZ / 1000000);
-    cpu_info->model = strdup(ps_total.description);
+    cpu_info->model = uv__strdup(ps_total.description);
     cpu_info->cpu_times.user = ps_cpus[idx].user;
     cpu_info->cpu_times.sys = ps_cpus[idx].sys;
     cpu_info->cpu_times.idle = ps_cpus[idx].idle;
@@ -1111,19 +1024,19 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   *count = 0;
 
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
-    return -ENOSYS;
+    return -errno;
   }
 
   if (ioctl(sockfd, SIOCGSIZIFCONF, &size) == -1) {
     uv__close(sockfd);
-    return -ENOSYS;
+    return -errno;
   }
 
   ifc.ifc_req = (struct ifreq*)uv__malloc(size);
   ifc.ifc_len = size;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
     uv__close(sockfd);
-    return -ENOSYS;
+    return -errno;
   }
 
 #define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
@@ -1142,7 +1055,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
       uv__close(sockfd);
-      return -ENOSYS;
+      return -errno;
     }
 
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
@@ -1181,7 +1094,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
     /* All conditions above must match count loop */
 
-    address->name = strdup(p->ifr_name);
+    address->name = uv__strdup(p->ifr_name);
 
     if (p->ifr_addr.sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);

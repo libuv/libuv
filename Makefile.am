@@ -45,7 +45,6 @@ include_HEADERS += include/uv-win.h include/tree.h
 AM_CPPFLAGS += -I$(top_srcdir)/src/win \
                -DWIN32_LEAN_AND_MEAN \
                -D_WIN32_WINNT=0x0600
-LIBS += -lws2_32 -lpsapi -liphlpapi -lshell32
 libuv_la_SOURCES += src/win/async.c \
                     src/win/atomicops-inl.h \
                     src/win/core.c \
@@ -129,7 +128,8 @@ EXTRA_DIST = test/fixtures/empty_file \
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
-test_run_tests_CFLAGS =
+test_run_tests_CFLAGS = -Wno-long-long
+test_run_tests_LDFLAGS =
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
                          test/echo-server.c \
@@ -151,6 +151,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-default-loop-close.c \
                          test/test-delayed-accept.c \
                          test/test-dlerror.c \
+                         test/test-eintr-handling.c \
                          test/test-embed.c \
                          test/test-emfile.c \
                          test/test-error.c \
@@ -161,10 +162,12 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-get-currentexe.c \
                          test/test-get-loadavg.c \
                          test/test-get-memory.c \
+                         test/test-get-passwd.c \
                          test/test-getaddrinfo.c \
                          test/test-getnameinfo.c \
                          test/test-getsockname.c \
                          test/test-handle-fileno.c \
+                         test/test-homedir.c \
                          test/test-hrtime.c \
                          test/test-idle.c \
                          test/test-ip4-addr.c \
@@ -185,7 +188,10 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-ping-pong.c \
                          test/test-pipe-bind-error.c \
                          test/test-pipe-connect-error.c \
+                         test/test-pipe-connect-multiple.c \
+                         test/test-pipe-connect-prepare.c \
                          test/test-pipe-getsockname.c \
+                         test/test-pipe-pending-instances.c \
                          test/test-pipe-sendmsg.c \
                          test/test-pipe-server-close.c \
                          test/test-pipe-close-stdout-read-stdin.c \
@@ -196,6 +202,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-poll-closesocket.c \
                          test/test-poll.c \
                          test/test-process-title.c \
+                         test/test-queue-foreach-delete.c \
                          test/test-ref.c \
                          test/test-run-nowait.c \
                          test/test-run-once.c \
@@ -213,6 +220,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-close-accept.c \
                          test/test-tcp-close-while-connecting.c \
                          test/test-tcp-close.c \
+                         test/test-tcp-create-socket-early.c \
                          test/test-tcp-connect-error-after-write.c \
                          test/test-tcp-connect-error.c \
                          test/test-tcp-connect-timeout.c \
@@ -226,6 +234,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-write-to-half-open-connection.c \
                          test/test-tcp-write-after-connect.c \
                          test/test-tcp-writealot.c \
+                         test/test-tcp-write-fail.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-write-queue-order.c \
                          test/test-thread-equal.c \
@@ -235,8 +244,10 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-timer-again.c \
                          test/test-timer-from-check.c \
                          test/test-timer.c \
+                         test/test-tmpdir.c \
                          test/test-tty.c \
                          test/test-udp-bind.c \
+                         test/test-udp-create-socket-early.c \
                          test/test-udp-dgram-too-big.c \
                          test/test-udp-ipv6.c \
                          test/test-udp-multicast-interface.c \
@@ -272,35 +283,43 @@ endif
 
 
 if AIX
-libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT
+libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT -D_THREAD_SAFE
+include_HEADERS += include/uv-aix.h
 libuv_la_SOURCES += src/unix/aix.c
 endif
 
 if ANDROID
 include_HEADERS += include/android-ifaddrs.h \
-                   include/pthread-fixes.h
+                   include/pthread-barrier.h
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c
+                    src/unix/pthread-fixes.c \
+                    src/unix/pthread-barrier.c
 endif
 
 if DARWIN
-include_HEADERS += include/uv-darwin.h
+include_HEADERS += include/uv-darwin.h \
+                   include/pthread-barrier.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
 libuv_la_SOURCES += src/unix/darwin.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
-                    src/unix/proctitle.c
+                    src/unix/proctitle.c \
+                    src/unix/pthread-barrier.c
+test_run_tests_LDFLAGS += -lutil
 endif
 
 if DRAGONFLY
 include_HEADERS += include/uv-bsd.h
+libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
+test_run_tests_LDFLAGS += -lutil
 endif
 
 if FREEBSD
 include_HEADERS += include/uv-bsd.h
 libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
+test_run_tests_LDFLAGS += -lutil
 endif
 
 if LINUX
@@ -311,16 +330,19 @@ libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/linux-syscalls.c \
                     src/unix/linux-syscalls.h \
                     src/unix/proctitle.c
+test_run_tests_LDFLAGS += -lutil
 endif
 
 if NETBSD
 include_HEADERS += include/uv-bsd.h
 libuv_la_SOURCES += src/unix/kqueue.c src/unix/netbsd.c
+test_run_tests_LDFLAGS += -lutil
 endif
 
 if OPENBSD
 include_HEADERS += include/uv-bsd.h
 libuv_la_SOURCES += src/unix/kqueue.c src/unix/openbsd.c
+test_run_tests_LDFLAGS += -lutil
 endif
 
 if SUNOS

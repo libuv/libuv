@@ -101,8 +101,10 @@ test/test-fs.c
 test/test-get-currentexe.c
 test/test-get-loadavg.c
 test/test-get-memory.c
+test/test-get-passwd.c
 test/test-getaddrinfo.c
 test/test-getsockname.c
+test/test-homedir.c
 test/test-hrtime.c
 test/test-idle.c
 test/test-ip6-addr.c
@@ -154,6 +156,7 @@ test/test-threadpool-cancel.c
 test/test-threadpool.c
 test/test-timer-again.c
 test/test-timer.c
+test/test-tmpdir.c
 test/test-tty.c
 test/test-udp-dgram-too-big.c
 test/test-udp-ipv6.c
