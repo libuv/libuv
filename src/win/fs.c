@@ -204,14 +204,11 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     req->fs.info.new_pathw = NULL;
   }
 
-  if (!copy_path) {
-    req->path = path;
-  } else if (path) {
+  req->path = path;
+  if (path != NULL && copy_path) {
     memcpy(pos, path, path_len);
     assert(path_len == buf_sz - (pos - buf));
     req->path = pos;
-  } else {
-    req->path = NULL;
   }
 
   req->flags |= UV_FS_FREE_PATHS;
