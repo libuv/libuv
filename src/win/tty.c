@@ -297,6 +297,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       break;
     case UV_TTY_MODE_IO:
       return UV_ENOTSUP;
+    default:
+      return UV_EINVAL;
   }
 
   if (!SetConsoleMode(tty->handle, flags)) {
