@@ -31,6 +31,7 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/threadpool.c \
                    src/uv-common.c \
                    src/uv-common.h \
+                   src/uv-path.c \
                    src/version.c
 
 if SUNOS
@@ -262,7 +263,9 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-send-unreachable.c \
                          test/test-udp-try-send.c \
                          test/test-walk-handles.c \
-                         test/test-watcher-cross-stop.c
+                         test/test-watcher-cross-stop.c \
+                         test/test-path.c
+
 test_run_tests_LDADD = libuv.la
 
 if WINNT
