@@ -372,7 +372,11 @@ void process_cleanup(process_info_t *p) {
 
 /* Move the console cursor one line up and back to the first column. */
 void rewind_cursor(void) {
+#if defined(__MVS__)
+  fprintf(stderr, "\047[2K\r");
+#else
   fprintf(stderr, "\033[2K\r");
+#endif
 }
 
 
