@@ -26,54 +26,52 @@
 #include <string.h>
 
 TEST_IMPL(path_combine) {
-  const char *comp;
-  char        homedir[PATH_MAX];
+  char      **fragments;
+  char       *valid_path;
   char        path[PATH_MAX];
-  char        path2[PATH_MAX];
-  size_t      homedir_len;
+  char        invalid_path_buf[1];
+  size_t      path_len;
+  size_t      path_oldlen;
   int         r;
 
-  homedir_len = sizeof(homedir);
+  valid_path  = "/usr/local/bin";
+  path_oldlen = path_len = sizeof(path);
+  fragments   = (char *[]){"/usr/", "/local/", "\\bin/", NULL};
 
-  r = uv_os_homedir(homedir,
-                    &homedir_len);
+  r = uv_path_join(fragments,
+                   path,
+                   &path_len);
 
+  ASSERT(strcmp(path, valid_path) == 0);
+  ASSERT(path_oldlen >= path_len);
   ASSERT(r == 0);
 
-  comp = "/Downloads";
+  valid_path = "http://docs.libuv.org/en/v1.x/fs.html";
+  fragments  = (char *[]){"http://docs.libuv.org/en",
+                          "v1.x/",
+                          "/fs.html", NULL};
+  path_len = path_oldlen;
 
-  strcpy(path2, homedir);
-  strcat(path2, comp);
+  r = uv_path_join(fragments,
+                   path,
+                   &path_len);
 
-  uv_path_combine(homedir,
-                  comp,
-                  path);
+  ASSERT(strcmp(path, valid_path) == 0);
+  ASSERT(path_oldlen >= path_len);
+  ASSERT(r == 0);
 
-  ASSERT(strcmp(path, path2) == 0);
+  path_len = sizeof(invalid_path_buf);
+  r = uv_path_join(fragments,
+                   invalid_path_buf,
+                   &path_len);
 
-  comp = "///Downloads";
+  ASSERT(r == -1);
 
-  uv_path_combine(homedir,
-                  comp,
-                  path);
+  r = uv_path_join((char *[]){NULL},
+                   invalid_path_buf,
+                   &path_len);
 
-  ASSERT(strcmp(path, path2) == 0);
-
-  comp = "\\Downloads";
-
-  uv_path_combine(homedir,
-                  comp,
-                  path);
-
-  ASSERT(strcmp(path, path2) == 0);
-
-  strcat(homedir, "////");
-
-  uv_path_combine(homedir,
-                  comp,
-                  path);
-
-  ASSERT(strcmp(path, path2) == 0);
+  ASSERT(r == -EINVAL);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

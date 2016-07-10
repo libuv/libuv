@@ -25,35 +25,81 @@
 #include <string.h>
 
 UV_EXTERN
-void
-uv_path_combine(const char *path,
-                const char *component,
-                char *buf) {
+int
+uv_path_join(char **fragments,
+             char *buf,
+             size_t *size) {
 #define SLASH       '/'
 #define BACK_SLASH  '\\'
 #define SLASH_STR   "/"
+  const char *frag;
+  const char *frag_end;
+  size_t      len;
+  size_t      frag_len;
+  int         frag_idx;
+  char        c;
 
-  char       *iterPath;
-  const char *iterComponent;
+  if (!fragments
+      || !*fragments /* there are no fragments to join */
+      || !buf
+      || !size)
+    return -EINVAL;
 
-  strcpy(buf, path);
+  len = 0;
 
-  iterPath      = buf + strlen(path) - 1;
-  iterComponent = component;
+  /* 
+   dont trim sep from beginning of first fragment (etc: /usr)
+   */
+  frag     = *fragments;
+  frag_end = frag + strlen(frag) - 1;
+  c        = *frag_end;
 
-  while (*iterPath != '\0'
-         && (*iterPath == SLASH || *iterPath == BACK_SLASH))
-    iterPath--;
+  while (c != '\0'
+         && (c == SLASH || c == BACK_SLASH))
+    c = *--frag_end;
 
-  iterPath++;
+  frag_end++;
 
-  while (*iterComponent != '\0'
-         && (*iterComponent == SLASH || *iterComponent == BACK_SLASH))
-    iterComponent++;
+  len += frag_len = frag_end - frag;
+  if (*size < len)
+    return -1;
+  
+  strncpy(buf, frag, frag_len);
 
-  strcpy(iterPath++, SLASH_STR);
-  strcat(iterPath, iterComponent);
-  memset(iterPath + strlen(iterComponent), '\0', 1);
+  buf += frag_len;
+
+  /* build path */
+  frag_idx = 1;
+
+  while ((frag = fragments[frag_idx++])) {
+    frag_end = frag + strlen(frag) - 1;
+
+    /* l-trim */
+    while ((c = *frag) != '\0'
+           && (c == SLASH || c == BACK_SLASH))
+      frag++;
+
+    /* r-trim */
+    while ((c = *frag_end) != '\0'
+           && (c == SLASH || c == BACK_SLASH))
+      frag_end--;
+
+    frag_end++;
+
+    len += frag_len = frag_end - frag;
+    if (*size < len)
+      return -1;
+
+    strncpy(buf++, SLASH_STR, 1);
+    strncpy(buf, frag, frag_len);
+
+    buf += frag_len;
+  }
+
+  memset(buf + 1, '\0', 1);
+  *size = len;
+
+  return 0;
 
 #undef SLASH_STR
 #undef BACK_SLASH
