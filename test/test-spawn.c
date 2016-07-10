@@ -1503,6 +1503,8 @@ TEST_IMPL(spawn_reads_child_path) {
    */
 #if defined(__APPLE__)
   static const char dyld_path_var[] = "DYLD_LIBRARY_PATH";
+#elif defined __MVS__
+  static const char dyld_path_var[] = "LIBPATH";
 #else
   static const char dyld_path_var[] = "LD_LIBRARY_PATH";
 #endif
