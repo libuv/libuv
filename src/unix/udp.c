@@ -703,6 +703,11 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
   if (ttl < 1 || ttl > 255)
     return -EINVAL;
 
+#if defined(__MVS__)
+  if (!(handle->flags & UV_HANDLE_IPV6))
+    return -ENOTSUP;  /* zOS does not support setting ttl for IPv4 */
+#endif
+
 /*
  * On Solaris and derivatives such as SmartOS, the length of socket options
  * is sizeof(int) for IP_TTL and IPV6_UNICAST_HOPS,
