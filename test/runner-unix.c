@@ -201,7 +201,11 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   if (pthread_attr_init(&attr))
     abort();
 
+#if defined(__MVS__)
+  if (pthread_attr_setstacksize(&attr, 1024 * 1024))
+#else
   if (pthread_attr_setstacksize(&attr, 256 * 1024))
+#endif
     abort();
 
   r = pthread_create(&tid, &attr, dowait, &args);
