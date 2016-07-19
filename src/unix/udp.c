@@ -331,6 +331,8 @@ int uv__udp_bind(uv_udp_t* handle,
   if (addr->sa_family == AF_INET6)
     handle->flags |= UV_HANDLE_IPV6;
 
+  handle->flags |= UV_HANDLE_BOUND;
+
   return 0;
 
 out:

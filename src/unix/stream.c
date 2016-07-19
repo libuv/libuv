@@ -601,6 +601,8 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
       return -EINVAL;
   }
 
+  client->flags |= UV_HANDLE_BOUND;
+
 done:
   /* Process queued fds */
   if (server->queued_fds != NULL) {
