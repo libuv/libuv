@@ -42,6 +42,7 @@ Makefile.in
 
 /out/
 /build/gyp
+/build
 
 /test/.libs/
 /test/run-tests
