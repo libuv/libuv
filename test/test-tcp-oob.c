@@ -19,7 +19,7 @@
  * IN THE SOFTWARE.
  */
 
-#if !defined(_WIN32) && !defined(__MVS__)
+#if !defined(_WIN32)
 
 #include "uv.h"
 #include "task.h"
