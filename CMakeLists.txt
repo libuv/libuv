@@ -23,7 +23,6 @@ set(UV_VERSION ${UV_VERSION_MAJOR}.${UV_VERSION_MINOR}.${UV_VERSION_PATCH})
 set(UV_VERSION_SOVER ${UV_VERSION_MAJOR})
 
 option(UV_TESTS_ENABLED "Enable testing" Off)
-option(UV_INSTALL_ENABLED "Generate install configuration" On)
 option(UV_BUILD_STATIC "Build static library" On)
 option(UV_BUILD_SHARED "Build shared library" On)
 if(APPLE)
@@ -126,34 +125,47 @@ list(APPEND UV_DEFINES
 
 # Set the install path per platform
 if(WIN32)
-    # Use C:\Program Files\libuv\<version> under windows (since there isn't a 
-    # common "lib" folder)
-    set(UV_LIBRARY_INSTALL_PATH lib${UV_LIBRARY_NAME}\${UV_VERSION})
+    # Use C:\Program Files\${PROJECT_NAME}\<version> under windows (since there
+    # isn't a common "lib" folder)
+    set(UV_INSTALL_PATH ${PROJECT_NAME}/${UV_VERSION})
+    set(UV_LIBRARY_INSTALL_PATH ${UV_INSTALL_PATH})
+    set(UV_RUNTIME_INSTALL_PATH ${UV_INSTALL_PATH})
+    set(UV_INCLUDE_INSTALL_PATH ${UV_INSTALL_PATH}/include)
+    set(UV_PACKAGE_INSTALL_PATH cmake/${PROJECT_NAME})
 else()
     set(UV_LIBRARY_INSTALL_PATH lib)
-
     # Use library architecture if it is set (multiarch support)
     if(CMAKE_LIBRARY_ARCHITECTURE)
-        set(UV_LIBRARY_INSTALL_PATH 
+        set(UV_LIBRARY_INSTALL_PATH
             "${UV_LIBRARY_INSTALL_PATH}/${CMAKE_LIBRARY_ARCHITECTURE}"
         )
     endif()
+    set(UV_RUNTIME_INSTALL_PATH bin)
+    set(UV_INCLUDE_INSTALL_PATH include)
+    set(UV_PACKAGE_INSTALL_PATH 
+        ${UV_LIBRARY_INSTALL_PATH}/cmake/${PROJECT_NAME}
+    )
 endif()
 
 # Generate output tree
 if(NOT CMAKE_OUTPUT_DIRECTORY)
     set(CMAKE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
-set(CMAKE_INCLUDE_OUTPUT_DIRECTORY ${CMAKE_OUTPUT_DIRECTORY}/include)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_OUTPUT_DIRECTORY}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_OUTPUT_DIRECTORY}/bin)
-# Use library architecture if it is set (multiarch support)
-if(CMAKE_LIBRARY_ARCHITECTURE)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY 
-        "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${CMAKE_LIBRARY_ARCHITECTURE}"
-    )
-endif()
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+set(CMAKE_INCLUDE_OUTPUT_DIRECTORY 
+    ${CMAKE_OUTPUT_DIRECTORY}/${UV_INCLUDE_INSTALL_PATH}
+)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY 
+    ${CMAKE_OUTPUT_DIRECTORY}/${UV_LIBRARY_INSTALL_PATH}
+)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY 
+    ${CMAKE_OUTPUT_DIRECTORY}/${UV_RUNTIME_INSTALL_PATH}
+)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY 
+    ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+)
+set(CMAKE_PACKAGE_OUTPUT_DIRECTORY 
+    ${CMAKE_OUTPUT_DIRECTORY}/${UV_PACKAGE_INSTALL_PATH}
+)
 
 # Building for windows
 if(WIN32)
@@ -457,7 +469,8 @@ if(UV_BUILD_SHARED)
         LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-        LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO 
+            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         DEBUG_POSTFIX _d
         VERSION ${UV_VERSION}
         SOVERSION ${UV_VERSION_SOVER}
@@ -490,7 +503,8 @@ if(UV_BUILD_FRAMEWORK)
         LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         LIBRARY_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-        LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+        LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO 
+            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
         VERSION ${UV_VERSION}
         SOVERSION ${UV_VERSION_SOVER}
         POSITION_INDEPENDENT_CODE True
@@ -518,7 +532,8 @@ if(UV_BUILD_STATIC)
         ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
         ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
         ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
-        ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
+        ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO 
+            ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
         DEBUG_POSTFIX _d
     )
     list(APPEND UV_EXPORT_TARGETS ${PROJECT_NAME}-static)
@@ -530,65 +545,45 @@ endif()
 # Include installed export targets in local targets
 list(APPEND UV_EXPORT_TARGETS_LOCAL ${UV_EXPORT_TARGETS})
 
-if(UV_INSTALL_ENABLED)
-    # Install uv libraries and headers
-    install(TARGETS ${UV_EXPORT_TARGETS}
-        EXPORT ${PROJECT_NAME}
-        LIBRARY DESTINATION ${UV_LIBRARY_INSTALL_PATH}
-        ARCHIVE DESTINATION ${UV_LIBRARY_INSTALL_PATH}
-    )
-    install(FILES ${UV_HEADERS} DESTINATION include)
-endif()
-
-# Standard cmake search path for find_package(XX) is cmake/XX
-set(UV_CMAKE_INSTALL_SUFFIX cmake/${PROJECT_NAME})
-if(WIN32)
-    # Windows find_package looks directly in C:\Program Files\cmake\<name>
-    set(UV_CMAKE_INSTALL_PATH ${UV_CMAKE_INSTALL_SUFFIX})
-else()
-    set(UV_CMAKE_INSTALL_PATH 
-        ${UV_LIBRARY_INSTALL_PATH}/${UV_CMAKE_INSTALL_SUFFIX}
-    )
-endif()
-
-# Local install path for cmake configuration (for in-tree find_package)
-set(UV_CMAKE_INSTALL_PATH_LOCAL
-    ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${UV_CMAKE_INSTALL_SUFFIX}
+# Install uv libraries and headers
+install(TARGETS ${UV_EXPORT_TARGETS}
+    EXPORT ${PROJECT_NAME}
+    LIBRARY DESTINATION ${UV_LIBRARY_INSTALL_PATH}
+    ARCHIVE DESTINATION ${UV_LIBRARY_INSTALL_PATH}
 )
+install(FILES ${UV_HEADERS} DESTINATION ${UV_INCLUDE_INSTALL_PATH})
 
 # Generate in-tree package configuration
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    ${UV_CMAKE_INSTALL_PATH_LOCAL}/${PROJECT_NAME}ConfigVersion.cmake
+    ${CMAKE_PACKAGE_OUTPUT_DIRECTORY}/${PROJECT_NAME}ConfigVersion.cmake
     VERSION ${UV_VERSION}
     COMPATIBILITY SameMajorVersion
 )
 export(TARGETS ${UV_EXPORT_TARGETS_LOCAL}
-    FILE ${UV_CMAKE_INSTALL_PATH_LOCAL}/${PROJECT_NAME}Config.cmake
+    FILE ${CMAKE_PACKAGE_OUTPUT_DIRECTORY}/${PROJECT_NAME}Config.cmake
 )
 
-if(UV_INSTALL_ENABLED)
-    # Generate installed package configuration
-    install(
-        FILES ${UV_CMAKE_INSTALL_PATH_LOCAL}/${PROJECT_NAME}ConfigVersion.cmake
-        DESTINATION ${UV_CMAKE_INSTALL_PATH}
-    )
-    install(EXPORT ${PROJECT_NAME} 
-        DESTINATION ${UV_CMAKE_INSTALL_PATH}
-        FILE ${PROJECT_NAME}Config.cmake
-    )
+# Generate installed package configuration
+install(
+    FILES ${CMAKE_PACKAGE_OUTPUT_DIRECTORY}/${PROJECT_NAME}ConfigVersion.cmake
+    DESTINATION ${UV_PACKAGE_INSTALL_PATH}
+)
+install(EXPORT ${PROJECT_NAME} 
+    DESTINATION ${UV_PACKAGE_INSTALL_PATH}
+    FILE ${PROJECT_NAME}Config.cmake
+)
 
-    # Provide an uninstall target
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
-        IMMEDIATE @ONLY
-    )
-    add_custom_target(uninstall
-        COMMAND ${CMAKE_COMMAND}
-        ARGS -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
-    )
-endif()
+# Provide an uninstall target
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+    IMMEDIATE @ONLY
+)
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND}
+    ARGS -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+)
 
 # Configure testing
 if(UV_TESTS_ENABLED)
@@ -768,8 +763,8 @@ if(UV_TESTS_ENABLED)
 
     # Shared test configuration
     list(APPEND UV_TEST_LIBRARIES ${UV_BUILT_LIBRARY})
-    list(APPEND UV_TEST_INCLUDE PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/test
+    list(APPEND UV_TEST_INCLUDE 
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/test
     )
 
     if(WIN32)
