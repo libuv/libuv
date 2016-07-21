@@ -115,6 +115,10 @@ int uv__tcp_bind(uv_tcp_t* tcp,
                    IPV6_V6ONLY,
                    &on,
                    sizeof on) == -1) {
+#if defined(__MVS__)
+      if (errno == EOPNOTSUPP)
+        return -EINVAL;
+#endif
       return -errno;
     }
   }
