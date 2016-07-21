@@ -580,6 +580,11 @@ configure_file(
     ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
     IMMEDIATE @ONLY
 )
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/uninstall_libuv.cmake.in
+    ${CMAKE_OUTPUT_DIRECTORY}/uninstall/uninstall_libuv.cmake
+    IMMEDIATE @ONLY
+)
 add_custom_target(uninstall
     COMMAND ${CMAKE_COMMAND}
     ARGS -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake

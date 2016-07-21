@@ -20,24 +20,7 @@ foreach(file ${files})
   endif(IS_SYMLINK "$ENV{DESTDIR}${file}" OR EXISTS "$ENV{DESTDIR}${file}")
 endforeach(file)
 
-# Remove cmake definitions
-exec_program(
-  "@CMAKE_COMMAND@" ARGS "-E remove_directory \"@CMAKE_INSTALL_PREFIX@/@UV_CMAKE_INSTALL_PATH@\""
-  OUTPUT_VARIABLE rm_out
-  RETURN_VALUE rm_retval
-)
-if(NOT "${rm_retval}" STREQUAL 0)
-  message(FATAL_ERROR "Problem removing cmake configuration: '@CMAKE_INSTALL_PREFIX@/@UV_CMAKE_INSTALL_PATH@'")
-endif()
-
-# Remove the Program Files folder under windows
-if(WIN32)
-  exec_program(
-    "@CMAKE_COMMAND@" ARGS "-E remove_directory \"@CMAKE_INSTALL_PREFIX@/@UV_INSTALL_PATH@\""
-    OUTPUT_VARIABLE rm_out
-    RETURN_VALUE rm_retval
-  )
-  if(NOT "${rm_retval}" STREQUAL 0)
-    message(FATAL_ERROR "Problem removing cmake configuration: '@CMAKE_INSTALL_PREFIX@/@UV_INSTALL_PATH@'")
-  endif()
-endif()
+file(GLOB_RECURSE sub_uninstalls "@CMAKE_OUTPUT_DIRECTORY@/uninstall/*.cmake")
+foreach(sub_uninstall ${sub_uninstalls})
+  exec_program("@CMAKE_COMMAND@" ARGS "-P \"${sub_uninstall}\"")
+endforeach()
