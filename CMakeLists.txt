@@ -310,22 +310,38 @@ else()
         # Debug and Release are explicitly stated here for Xcode configuration
         # build
         list(APPEND CMAKE_INSTALL_RPATH
+            @executable_path/lib/Debug
+            @executable_path/lib/Release
+            @executable_path/lib
             @executable_path/../lib/Debug
             @executable_path/../lib/Release
             @executable_path/../lib
+            @loader_path/lib/Debug
+            @loader_path/lib/Release
+            @loader_path/lib
             @loader_path/../lib/Debug
             @loader_path/../lib/Release
             @loader_path/../lib
+            $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib
             /usr/local/lib
             /usr/lib
+            @executable_path/Frameworks/Debug
+            @executable_path/Frameworks/Release
+            @executable_path/Frameworks
             @executable_path/../Frameworks/Debug
             @executable_path/../Frameworks/Release
             @executable_path/../Frameworks
+            @loader_path/Frameworks/Debug
+            @loader_path/Frameworks/Release
+            @loader_path/Frameworks
             @loader_path/../Frameworks/Debug
             @loader_path/../Frameworks/Release
             @loader_path/../Frameworks
             /Library/Frameworks
             /System/Library/Frameworks
+            ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+            ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
         )
 
         # OSX/IOS sources
@@ -361,8 +377,12 @@ else()
             list(APPEND CMAKE_INSTALL_RPATH
                 $ORIGIN/lib
                 $ORIGIN/../lib
+                $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/lib
                 /usr/local/lib
                 /usr/lib
+                ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+                ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
             )
         endif()
 
