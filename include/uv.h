@@ -849,7 +849,7 @@ typedef enum {
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {
-  uv_stdio_flags flags;
+  unsigned int flags;
 
   union {
     uv_stream_t* stream;
