@@ -5,7 +5,7 @@ find_library(MATH_LIBRARY NAMES m)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(MATH 
-    DEFAULT_MESSAGE MATH_LIBRARY MATH_INCLUDE_DIR
+    DEFAULT_MSG MATH_LIBRARY MATH_INCLUDE_DIR
 )
 
 if(MATH_FOUND)
