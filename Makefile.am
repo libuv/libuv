@@ -390,6 +390,8 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -qXPLINK \
                    -qFLOAT=IEEE
 libuv_la_LDFLAGS += -qXPLINK
+libuv_la_SOURCES += src/unix/pthread-fixes.c \
+                    src/unix/pthread-barrier.c
 endif
 
 if HAVE_PKG_CONFIG
