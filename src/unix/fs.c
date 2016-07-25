@@ -213,6 +213,14 @@ skip:
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
   return futimens(req->file, ts);
+#elif defined(__MVS__)
+  attrib_t atr;
+  memset(&atr, 0, sizeof(atr));
+  atr.att_mtimechg = 1;
+  atr.att_atimechg = 1;
+  atr.att_mtime = req->mtime;
+  atr.att_atime = req->atime;
+  return __fchattr(req->file, &atr, sizeof(atr));
 #else
   errno = ENOSYS;
   return -1;
