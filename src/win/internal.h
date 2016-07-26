@@ -381,4 +381,9 @@ extern int uv_tcp_non_ifs_lsp_ipv6;
 extern struct sockaddr_in uv_addr_ip4_any_;
 extern struct sockaddr_in6 uv_addr_ip6_any_;
 
+/*
+ * Wake all loops with fake message
+ */
+void uv_wake_all_loops();
+
 #endif /* UV_WIN_INTERNAL_H_ */

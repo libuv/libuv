@@ -31,6 +31,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "queue.h"
 #include "handle-inl.h"
 #include "req-inl.h"
 
@@ -80,6 +81,38 @@ static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
 }
 #endif
 
+static QUEUE uv_loops;
+static uv_mutex_t uv_loops_lock;
+
+static void uv__loops_init() {
+  uv_mutex_init(&uv_loops_lock);
+  QUEUE_INIT(&uv_loops);
+}
+
+static void uv__loops_add(uv_loop_t* loop) {
+  uv_mutex_lock(&uv_loops_lock);
+  QUEUE_INIT(&loop->uv_loops);
+  QUEUE_INSERT_TAIL(&uv_loops, &loop->uv_loops);
+  uv_mutex_unlock(&uv_loops_lock);
+}
+
+static void uv__loops_remove(uv_loop_t* loop) {
+  uv_mutex_lock(&uv_loops_lock);
+  QUEUE_REMOVE(&loop->uv_loops);
+  uv_mutex_unlock(&uv_loops_lock);
+}
+
+void uv_wake_all_loops() {
+  QUEUE *q;
+  uv_loop_t* loop;
+  uv_mutex_lock(&uv_loops_lock);
+  QUEUE_FOREACH(q, &uv_loops) {
+    loop = (uv_loop_t*)QUEUE_DATA(q, uv_loop_t, uv_loops);
+    if (loop->iocp != INVALID_HANDLE_VALUE)
+      PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
+  }
+  uv_mutex_unlock(&uv_loops_lock);
+}
 
 static void uv_init(void) {
   /* Tell Windows that we will handle critical errors. */
@@ -100,6 +133,9 @@ static void uv_init(void) {
 #if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
   _CrtSetReportHook(uv__crt_dbg_report_handler);
 #endif
+
+  /* Initialize tracking of all uv loops */
+  uv__loops_init();
 
   /* Fetch winapi function pointers. This must be done first because other
    * initialization code might need these function pointers to be loaded.
@@ -178,6 +214,8 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__handle_unref(&loop->wq_async);
   loop->wq_async.flags |= UV__HANDLE_INTERNAL;
 
+  uv__loops_add(loop);
+
   return 0;
 
 fail_async_init:
@@ -198,6 +236,8 @@ void uv__once_init(void) {
 
 void uv__loop_close(uv_loop_t* loop) {
   size_t i;
+
+  uv__loops_remove(loop);
 
   /* close the async handle without needing an extra loop iteration */
   assert(!loop->wq_async.async_sent);
@@ -323,9 +363,13 @@ static void uv_poll_ex(uv_loop_t* loop, DWORD timeout) {
 
     if (success) {
       for (i = 0; i < count; i++) {
-        /* Package was dequeued */
-        req = uv_overlapped_to_req(overlappeds[i].lpOverlapped);
-        uv_insert_pending_req(loop, req);
+        /* Package was dequeued, but see if it is not a empty package
+         * meant only to wake us up.
+         */
+        if (overlappeds[i].lpOverlapped) {
+          req = uv_overlapped_to_req(overlappeds[i].lpOverlapped);
+          uv_insert_pending_req(loop, req);
+        }
       }
 
       /* Some time might have passed waiting for I/O,
