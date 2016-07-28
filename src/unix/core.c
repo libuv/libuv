@@ -55,7 +55,9 @@
 # endif
 #endif
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
+#if defined(__DragonFly__)      || \
+    defined(__FreeBSD__)        || \
+    defined(__FreeBSD_kernel__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
