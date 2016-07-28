@@ -386,4 +386,9 @@ extern struct sockaddr_in6 uv_addr_ip6_any_;
  */
 void uv_wake_all_loops();
 
+/*
+ * Init system wake-up detection
+ */
+void uv_init_detect_system_wakeup();
+
 #endif /* UV_WIN_INTERNAL_H_ */

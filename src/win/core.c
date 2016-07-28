@@ -156,6 +156,9 @@ static void uv_init(void) {
 
   /* Initialize utilities */
   uv__util_init();
+
+  /* Initialize system wakeup detection */
+  uv_init_detect_system_wakeup();
 }
 
 
