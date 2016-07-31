@@ -181,6 +181,25 @@ API
 
     :returns: 0 on success, or an error code < 0 on failure.
 
+.. c:function:: int uv_udp_set_source_membership(uv_udp_t* handle, const char* multicast_addr, const char* interface_addr, const char* source_addr, uv_membership membership)
+
+    Set membership for a source-specific multicast group.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init`.
+
+    :param multicast_addr: Multicast address to set membership for.
+
+    :param interface_addr: Interface address.
+
+    :param source_addr: Source address.
+
+    :param membership: Should be ``UV_JOIN_GROUP`` or ``UV_LEAVE_GROUP``.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+
+    .. versionadded:: 1.20.0
+
 .. c:function:: int uv_udp_set_multicast_loop(uv_udp_t* handle, int on)
 
     Set IP multicast loop flag. Makes multicast packets loop back to

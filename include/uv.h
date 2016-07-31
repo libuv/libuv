@@ -359,6 +359,17 @@ typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
 
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
 
+#if defined(MCAST_JOIN_SOURCE_GROUP) && defined(MCAST_LEAVE_SOURCE_GROUP)
+# ifndef IPV6_SSM_SUPPORT
+#  define IPV6_SSM_SUPPORT
+# endif
+# ifndef IPV6_ADD_SOURCE_MEMBERSHIP
+#  define IPV6_ADD_SOURCE_MEMBERSHIP MCAST_JOIN_SOURCE_GROUP
+# endif
+# ifndef IPV6_DROP_SOURCE_MEMBERSHIP
+#  define IPV6_DROP_SOURCE_MEMBERSHIP MCAST_LEAVE_SOURCE_GROUP
+# endif
+#endif
 
 typedef enum {
   UV_LEAVE_GROUP = 0,
@@ -634,6 +645,11 @@ UV_EXTERN int uv_udp_set_membership(uv_udp_t* handle,
                                     const char* multicast_addr,
                                     const char* interface_addr,
                                     uv_membership membership);
+UV_EXTERN int uv_udp_set_source_membership(uv_udp_t* handle,
+                                           const char* multicast_addr,
+                                           const char* interface_addr,
+                                           const char* source_addr,
+                                           uv_membership membership);
 UV_EXTERN int uv_udp_set_multicast_loop(uv_udp_t* handle, int on);
 UV_EXTERN int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
 UV_EXTERN int uv_udp_set_multicast_interface(uv_udp_t* handle,
