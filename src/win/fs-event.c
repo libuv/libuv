@@ -425,7 +425,7 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
               }
 
               _snwprintf(filenamew, size, L"%s\\%.*s", handle->dirw,
-                file_info->FileNameLength / sizeof(WCHAR),
+                file_info->FileNameLength / (DWORD)sizeof(WCHAR),
                 file_info->FileName);
 
               filenamew[size - 1] = L'\0';
