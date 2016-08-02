@@ -13,9 +13,9 @@ void uv_init_detect_system_wakeup() {
 #define DEVICE_NOTIFY_CALLBACK 2
 
 typedef ULONG CALLBACK DEVICE_NOTIFY_CALLBACK_ROUTINE(
-  _In_opt_ PVOID Context,
-  _In_ ULONG Type,
-  _In_ PVOID Setting
+  PVOID Context,
+  ULONG Type,
+  PVOID Setting
 );
 typedef DEVICE_NOTIFY_CALLBACK_ROUTINE* PDEVICE_NOTIFY_CALLBACK_ROUTINE;
 
@@ -28,9 +28,9 @@ typedef PVOID HPOWERNOTIFY;
 typedef HPOWERNOTIFY *PHPOWERNOTIFY;
 
 typedef DWORD (WINAPI *sPowerRegisterSuspendResumeNotification)(
-  _In_  DWORD         Flags,
-  _In_  HANDLE        Recipient,
-  _Out_ PHPOWERNOTIFY RegistrationHandle
+  DWORD         Flags,
+  HANDLE        Recipient,
+  PHPOWERNOTIFY RegistrationHandle
 );
 
 static ULONG CALLBACK uv__system_resume_callback(PVOID Context, ULONG Type,
