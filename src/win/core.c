@@ -91,7 +91,6 @@ static void uv__loops_init() {
 
 static void uv__loops_add(uv_loop_t* loop) {
   uv_mutex_lock(&uv_loops_lock);
-  QUEUE_INIT(&loop->uv_loops);
   QUEUE_INSERT_TAIL(&uv_loops, &loop->uv_loops);
   uv_mutex_unlock(&uv_loops_lock);
 }
@@ -183,6 +182,7 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->handle_queue);
   QUEUE_INIT(&loop->active_reqs);
   loop->active_handles = 0;
+  QUEUE_INIT(&loop->uv_loops);
 
   loop->pending_reqs_tail = NULL;
 
