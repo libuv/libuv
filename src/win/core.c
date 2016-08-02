@@ -102,12 +102,12 @@ static void uv__loops_remove(uv_loop_t* loop) {
   uv_mutex_unlock(&uv_loops_lock);
 }
 
-void uv_wake_all_loops() {
+void uv__wake_all_loops() {
   QUEUE *q;
   uv_loop_t* loop;
   uv_mutex_lock(&uv_loops_lock);
   QUEUE_FOREACH(q, &uv_loops) {
-    loop = (uv_loop_t*)QUEUE_DATA(q, uv_loop_t, uv_loops);
+    loop = QUEUE_DATA(q, uv_loop_t, uv_loops);
     if (loop->iocp != INVALID_HANDLE_VALUE)
       PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
   }
@@ -158,7 +158,7 @@ static void uv_init(void) {
   uv__util_init();
 
   /* Initialize system wakeup detection */
-  uv_init_detect_system_wakeup();
+  uv__init_detect_system_wakeup();
 }
 
 

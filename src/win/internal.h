@@ -384,11 +384,11 @@ extern struct sockaddr_in6 uv_addr_ip6_any_;
 /*
  * Wake all loops with fake message
  */
-void uv_wake_all_loops();
+void uv__wake_all_loops();
 
 /*
  * Init system wake-up detection
  */
-void uv_init_detect_system_wakeup();
+void uv__init_detect_system_wakeup();
 
 #endif /* UV_WIN_INTERNAL_H_ */
