@@ -343,9 +343,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   /* Threadpool */                                                            \
   void* wq[2];                                                                \
   uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;                                                        \
-  /* Queue of all active uv_loops */                                          \
-  void* uv_loops[2];
+  uv_async_t wq_async;
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \

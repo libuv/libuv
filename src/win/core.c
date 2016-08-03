@@ -81,36 +81,93 @@ static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
 }
 #endif
 
-static QUEUE uv_loops;
-static uv_mutex_t uv_loops_lock;
+static uv_loop_t** uv__loops;
+static int uv__loops_size;
+static int uv__loops_capacity;
+#define UV__LOOPS_CHUNK_SIZE 8
+static uv_mutex_t uv__loops_lock;
 
 static void uv__loops_init() {
-  uv_mutex_init(&uv_loops_lock);
-  QUEUE_INIT(&uv_loops);
+  uv_mutex_init(&uv__loops_lock);
+  uv__loops = uv__malloc(sizeof(uv_loop_t*) * UV__LOOPS_CHUNK_SIZE);
+  if (!uv__loops)
+    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+  uv__loops_size = 0;
+  uv__loops_capacity = UV__LOOPS_CHUNK_SIZE;
 }
 
-static void uv__loops_add(uv_loop_t* loop) {
-  uv_mutex_lock(&uv_loops_lock);
-  QUEUE_INSERT_TAIL(&uv_loops, &loop->uv_loops);
-  uv_mutex_unlock(&uv_loops_lock);
+static int uv__loops_add(uv_loop_t* loop) {
+  uv_loop_t** new_loops;
+  int new_capacity;
+
+  uv_mutex_lock(&uv__loops_lock);
+
+  if (uv__loops_size == uv__loops_capacity) {
+    new_capacity = uv__loops_capacity + UV__LOOPS_CHUNK_SIZE;
+    new_loops = uv__realloc(uv__loops, sizeof(uv_loop_t*) * new_capacity);
+    if (!new_loops) 
+      goto failed_loops_realloc;
+    uv__loops = new_loops;
+    uv__loops_capacity = new_capacity;
+  }
+  uv__loops[uv__loops_size] = loop;
+  ++uv__loops_size;
+
+  uv_mutex_unlock(&uv__loops_lock);
+  return 0;
+
+failed_loops_realloc:
+  uv_mutex_unlock(&uv__loops_lock);
+  return ERROR_OUTOFMEMORY;
 }
 
 static void uv__loops_remove(uv_loop_t* loop) {
-  uv_mutex_lock(&uv_loops_lock);
-  QUEUE_REMOVE(&loop->uv_loops);
-  uv_mutex_unlock(&uv_loops_lock);
+  int loop_index;
+  int smaller_capacity;
+  uv_loop_t** new_loops;
+
+  uv_mutex_lock(&uv__loops_lock);
+
+  for (loop_index = 0; loop_index < uv__loops_size; ++loop_index) {
+    if (uv__loops[loop_index] == loop)
+      break;
+  }
+  /* If loop was not found, ignore */
+  if (loop_index == uv__loops_size)
+    goto loop_removed;
+
+  uv__loops[loop_index] = uv__loops[uv__loops_size - 1];
+  --uv__loops_size;
+
+  /* If we didn't grow to big skip downsizing */
+  if (uv__loops_capacity < 4 * UV__LOOPS_CHUNK_SIZE)
+    goto loop_removed;
+
+  /* Downsize only if more than half of buffer is free */
+  smaller_capacity = uv__loops_capacity / 2;
+  if (uv__loops_size >= smaller_capacity)
+    goto loop_removed;
+  new_loops = uv__realloc(uv__loops, sizeof(uv_loop_t*) * smaller_capacity);
+  if (!new_loops)
+    goto loop_removed;
+  uv__loops = new_loops;
+  uv__loops_capacity = smaller_capacity;
+
+loop_removed:
+  uv_mutex_unlock(&uv__loops_lock);
 }
 
 void uv__wake_all_loops() {
-  QUEUE *q;
+  int i;
   uv_loop_t* loop;
-  uv_mutex_lock(&uv_loops_lock);
-  QUEUE_FOREACH(q, &uv_loops) {
-    loop = QUEUE_DATA(q, uv_loop_t, uv_loops);
+
+  uv_mutex_lock(&uv__loops_lock);
+  for (i = 0; i < uv__loops_size; ++i) {
+    loop = uv__loops[i];
     if (loop->iocp != INVALID_HANDLE_VALUE)
       PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
   }
-  uv_mutex_unlock(&uv_loops_lock);
+  uv_mutex_unlock(&uv__loops_lock);
 }
 
 static void uv_init(void) {
@@ -182,7 +239,6 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->handle_queue);
   QUEUE_INIT(&loop->active_reqs);
   loop->active_handles = 0;
-  QUEUE_INIT(&loop->uv_loops);
 
   loop->pending_reqs_tail = NULL;
 
@@ -217,7 +273,9 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__handle_unref(&loop->wq_async);
   loop->wq_async.flags |= UV__HANDLE_INTERNAL;
 
-  uv__loops_add(loop);
+  err = uv__loops_add(loop);
+  if (err)
+    goto fail_async_init;
 
   return 0;
 
