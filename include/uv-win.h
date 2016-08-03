@@ -246,15 +246,6 @@ typedef union {
     CRITICAL_SECTION num_readers_lock_;
     HANDLE write_semaphore_;
   } state_;
-  /* TODO: remove me in v2.x. */
-  struct {
-    SRWLOCK unused_;
-  } unused1_;
-  /* TODO: remove me in v2.x. */
-  struct {
-    uv_mutex_t unused1_;
-    uv_mutex_t unused2_;
-  } unused2_;
 } uv_rwlock_t;
 
 typedef struct {
@@ -478,8 +469,6 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   union {                                                                     \
     struct {                                                                  \
       /* Used for readable TTY handles */                                     \
-      /* TODO: remove me in v2.x. */                                          \
-      HANDLE unused_;                                                         \
       uv_buf_t read_line_buffer;                                              \
       HANDLE read_raw_wait;                                                   \
       /* Fields used for translating win keystrokes into vt100 characters */  \
