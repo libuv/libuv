@@ -336,7 +336,7 @@ done:
 }
 
 
-#if defined(__OpenBSD__) || (defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8))
+#if defined(__OpenBSD__)
 static int uv__fs_scandir_filter(uv__dirent_t* dent) {
 #else
 static int uv__fs_scandir_filter(const uv__dirent_t* dent) {

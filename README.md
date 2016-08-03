@@ -231,7 +231,7 @@ Studio license.
 
 Linux using the GCC toolchain.
 
-OS X using the GCC or XCode toolchain.
+macOS >= 10.9 using the GCC or XCode toolchain.
 
 Solaris 121 and later using GCC toolchain.
 
