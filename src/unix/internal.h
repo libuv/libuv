@@ -152,11 +152,25 @@ struct uv__stream_queued_fds_s {
 };
 
 
+#if defined(_AIX) || \
+    defined(__APPLE__) || \
+    defined(__DragonFly__) || \
+    defined(__FreeBSD__) || \
+    defined(__linux__)
+#define uv__cloexec uv__cloexec_ioctl
+#define uv__nonblock uv__nonblock_ioctl
+#else
+#define uv__cloexec uv__cloexec_fcntl
+#define uv__nonblock uv__nonblock_fcntl
+#endif
+
 /* core */
-int uv__nonblock(int fd, int set);
+int uv__cloexec_ioctl(int fd, int set);
+int uv__cloexec_fcntl(int fd, int set);
+int uv__nonblock_ioctl(int fd, int set);
+int uv__nonblock_fcntl(int fd, int set);
 int uv__close(int fd);
 int uv__close_nocheckstdio(int fd);
-int uv__cloexec(int fd, int set);
 int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);
 ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);

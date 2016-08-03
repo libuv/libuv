@@ -128,7 +128,7 @@ EXTRA_DIST = test/fixtures/empty_file \
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
-test_run_tests_CFLAGS =
+test_run_tests_CFLAGS = -Wno-long-long
 test_run_tests_LDFLAGS =
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
@@ -312,6 +312,7 @@ endif
 
 if DRAGONFLY
 include_HEADERS += include/uv-bsd.h
+libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
 test_run_tests_LDFLAGS += -lutil
 endif
 

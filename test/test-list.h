@@ -19,6 +19,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "uv.h"
+
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (close_order)
@@ -273,6 +275,7 @@ TEST_DECLARE   (fs_read_file_eof)
 TEST_DECLARE   (fs_event_watch_dir)
 TEST_DECLARE   (fs_event_watch_dir_recursive)
 TEST_DECLARE   (fs_event_watch_file)
+TEST_DECLARE   (fs_event_watch_file_exact_path)
 TEST_DECLARE   (fs_event_watch_file_twice)
 TEST_DECLARE   (fs_event_watch_file_current_dir)
 #ifdef _WIN32
@@ -314,13 +317,19 @@ TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
 TEST_DECLARE   (poll_bad_fdtype)
+#ifdef __linux__
+TEST_DECLARE   (poll_nested_epoll)
+#endif
+#ifdef UV_HAVE_KQUEUE
+TEST_DECLARE   (poll_nested_kqueue)
+#endif
 
 TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
 
-#ifdef _WIN32
 TEST_DECLARE   (poll_close_doesnt_corrupt_stack)
 TEST_DECLARE   (poll_closesocket)
+#ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
 #if !defined(USING_UV_SHARED)
 TEST_DECLARE   (argument_escaping)
@@ -624,6 +633,12 @@ TASK_LIST_START
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
   TEST_ENTRY  (poll_bad_fdtype)
+#ifdef __linux__
+  TEST_ENTRY  (poll_nested_epoll)
+#endif
+#ifdef UV_HAVE_KQUEUE
+  TEST_ENTRY  (poll_nested_kqueue)
+#endif
 
   TEST_ENTRY  (socket_buffer_size)
 
@@ -655,9 +670,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (kill)
 
-#ifdef _WIN32
   TEST_ENTRY  (poll_close_doesnt_corrupt_stack)
   TEST_ENTRY  (poll_closesocket)
+#ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
 #if !defined(USING_UV_SHARED)
   TEST_ENTRY  (argument_escaping)
@@ -710,6 +725,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_watch_dir)
   TEST_ENTRY  (fs_event_watch_dir_recursive)
   TEST_ENTRY  (fs_event_watch_file)
+  TEST_ENTRY  (fs_event_watch_file_exact_path)
   TEST_ENTRY  (fs_event_watch_file_twice)
   TEST_ENTRY  (fs_event_watch_file_current_dir)
 #ifdef _WIN32

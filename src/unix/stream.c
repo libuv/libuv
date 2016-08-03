@@ -571,7 +571,6 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   int err;
 
-  /* TODO document this */
   assert(server->loop == client->loop);
 
   if (server->accepted_fd == -1)
@@ -962,8 +961,8 @@ uv_handle_type uv__handle_type(int fd) {
     return UV_UNKNOWN_HANDLE;
 
   if (type == SOCK_STREAM) {
-#if defined(_AIX)
-    /* on AIX the getsockname call returns an empty sa structure
+#if defined(_AIX) || defined(__DragonFly__)
+    /* on AIX/DragonFly the getsockname call returns an empty sa structure
      * for sockets of type AF_UNIX.  For all other types it will
      * return a properly filled in structure.
      */
