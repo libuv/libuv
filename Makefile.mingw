@@ -23,8 +23,7 @@ CFLAGS += -Wall \
           -DWIN32_LEAN_AND_MEAN \
           -D_WIN32_WINNT=0x0600
 
-INCLUDES = include/stdint-msvc2008.h \
-           include/tree.h \
+INCLUDES = include/tree.h \
            include/uv-errno.h \
            include/uv-threadpool.h \
            include/uv-version.h \

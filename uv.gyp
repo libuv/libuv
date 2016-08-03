@@ -93,7 +93,6 @@
             'src/win/req.c',
             'src/win/req-inl.h',
             'src/win/signal.c',
-            'src/win/snprintf.c',
             'src/win/stream.c',
             'src/win/stream-inl.h',
             'src/win/tcp.c',
@@ -421,7 +420,6 @@
           'sources': [
             'test/runner-win.c',
             'test/runner-win.h',
-            'src/win/snprintf.c',
           ],
           'libraries': [ '-lws2_32' ]
         }, { # POSIX
@@ -495,7 +493,6 @@
           'sources': [
             'test/runner-win.c',
             'test/runner-win.h',
-            'src/win/snprintf.c',
           ],
           'libraries': [ '-lws2_32' ]
         }, { # POSIX

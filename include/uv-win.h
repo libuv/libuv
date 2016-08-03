@@ -50,12 +50,7 @@ typedef struct pollfd {
 #include <process.h>
 #include <signal.h>
 #include <sys/stat.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #include "tree.h"
 #include "uv-threadpool.h"

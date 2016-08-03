@@ -59,9 +59,6 @@ The externally maintained libraries used by libuv are:
     copyright the Internet Systems Consortium, Inc., and licensed under the ISC
     license.
 
-  - stdint-msvc2008.h (from msinttypes), copyright Alexander Chemeris. Three
-    clause BSD license.
-
   - pthread-fixes.h, pthread-fixes.c, copyright Google Inc. and Sony Mobile
     Communications AB. Three clause BSD license.
 

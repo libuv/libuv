@@ -49,12 +49,7 @@ extern "C" {
 #include "uv-version.h"
 #include <stddef.h>
 #include <stdio.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #if defined(_WIN32)
 # include "uv-win.h"

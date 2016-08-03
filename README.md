@@ -225,9 +225,7 @@ Run:
 ## Supported Platforms
 
 Microsoft Windows operating systems since Windows XP SP2. It can be built
-with either Visual Studio or MinGW. Consider using
-[Visual Studio Express 2010][] or later if you do not have a full Visual
-Studio license.
+with either Visual Studio 2015 or MinGW.
 
 Linux using the GCC toolchain.
 

@@ -27,12 +27,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #if !defined(_WIN32)
 # include <sys/time.h>
@@ -166,10 +161,6 @@ enum test_status {
 
 # define TEST_FILE_LIMIT(num) do {} while (0)
 
-#endif
-
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
-extern int snprintf(char*, size_t, const char*, ...);
 #endif
 
 #if defined(__clang__) ||                                \

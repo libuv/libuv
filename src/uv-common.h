@@ -30,20 +30,12 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stddef.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #include "uv.h"
 #include "tree.h"
 #include "queue.h"
 
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
-extern int snprintf(char*, size_t, const char*, ...);
-#endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
