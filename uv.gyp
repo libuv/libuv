@@ -421,6 +421,9 @@
             'test/runner-win.c',
             'test/runner-win.h',
           ],
+          'defines': [
+            '_WIN32_WINNT=0x0600',
+          ],
           'libraries': [ '-lws2_32' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],

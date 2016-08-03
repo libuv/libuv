@@ -1675,17 +1675,15 @@ static void fs__symlink(uv_fs_t* req) {
 
   if (flags & UV_FS_SYMLINK_JUNCTION) {
     fs__create_junction(req, pathw, new_pathw);
-  } else if (pCreateSymbolicLinkW) {
-    result = pCreateSymbolicLinkW(new_pathw,
-                                  pathw,
-                                  flags & UV_FS_SYMLINK_DIR ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0) ? 0 : -1;
+  } else {
+    result = CreateSymbolicLinkW(new_pathw,
+                                 pathw,
+                                 flags & UV_FS_SYMLINK_DIR ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0) ? 0 : -1;
     if (result == -1) {
       SET_REQ_WIN32_ERROR(req, GetLastError());
     } else {
       SET_REQ_RESULT(req, result);
     }
-  } else {
-    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
   }
 }
 
@@ -1725,7 +1723,7 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   WCHAR* w_realpath_ptr = NULL;
   WCHAR* w_realpath_buf;
 
-  w_realpath_len = pGetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
+  w_realpath_len = GetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
   if (w_realpath_len == 0) {
     return -1;
   }
@@ -1737,7 +1735,7 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   }
   w_realpath_ptr = w_realpath_buf;
 
-  if (pGetFinalPathNameByHandleW(handle,
+  if (GetFinalPathNameByHandleW(handle,
                                 w_realpath_ptr,
                                 w_realpath_len,
                                 VOLUME_NAME_DOS) == 0) {
@@ -1771,11 +1769,6 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
 
 static void fs__realpath(uv_fs_t* req) {
   HANDLE handle;
-
-  if (!pGetFinalPathNameByHandleW) {
-    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
-    return;
-  }
 
   handle = CreateFileW(req->file.pathw,
                        0,

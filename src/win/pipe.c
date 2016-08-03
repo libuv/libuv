@@ -114,10 +114,9 @@ static void uv_pipe_connection_init(uv_pipe_t* handle) {
   handle->read_req.data = handle;
   handle->pipe.conn.eof_timer = NULL;
   assert(!(handle->flags & UV_HANDLE_PIPESERVER));
-  if (pCancelSynchronousIo &&
-      handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
-      uv_mutex_init(&handle->pipe.conn.readfile_mutex);
-      handle->flags |= UV_HANDLE_PIPE_READ_CANCELABLE;
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    uv_mutex_init(&handle->pipe.conn.readfile_mutex);
+    handle->flags |= UV_HANDLE_PIPE_READ_CANCELABLE;
   }
 }
 
@@ -718,7 +717,7 @@ void uv__pipe_pause_read(uv_pipe_t* handle) {
         /* spinlock: we expect this to finish quickly,
            or we are probably about to deadlock anyways
            (in the kernel), so it doesn't matter */
-        pCancelSynchronousIo(h);
+        CancelSynchronousIo(h);
         SwitchToThread(); /* yield thread control briefly */
         h = handle->pipe.conn.readfile_thread;
       }

@@ -224,7 +224,7 @@ Run:
 
 ## Supported Platforms
 
-Microsoft Windows operating systems since Windows XP SP2. It can be built
+Microsoft Windows operating systems since Windows Vista. It can be built
 with either Visual Studio 2015 or MinGW.
 
 Linux using the GCC toolchain.

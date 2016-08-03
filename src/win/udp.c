@@ -83,31 +83,29 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     return GetLastError();
   }
 
-  if (pSetFileCompletionNotificationModes) {
-    /* All known Windows that support SetFileCompletionNotificationModes */
-    /* have a bug that makes it impossible to use this function in */
-    /* conjunction with datagram sockets. We can work around that but only */
-    /* if the user is using the default UDP driver (AFD) and has no other */
-    /* LSPs stacked on top. Here we check whether that is the case. */
-    opt_len = (int) sizeof info;
-    if (getsockopt(socket,
-                   SOL_SOCKET,
-                   SO_PROTOCOL_INFOW,
-                   (char*) &info,
-                   &opt_len) == SOCKET_ERROR) {
-      return GetLastError();
-    }
+  /* All known Windows that support SetFileCompletionNotificationModes */
+  /* have a bug that makes it impossible to use this function in */
+  /* conjunction with datagram sockets. We can work around that but only */
+  /* if the user is using the default UDP driver (AFD) and has no other */
+  /* LSPs stacked on top. Here we check whether that is the case. */
+  opt_len = (int) sizeof info;
+  if (getsockopt(socket,
+                 SOL_SOCKET,
+                 SO_PROTOCOL_INFOW,
+                 (char*) &info,
+                 &opt_len) == SOCKET_ERROR) {
+    return GetLastError();
+  }
 
-    if (info.ProtocolChain.ChainLen == 1) {
-      if (pSetFileCompletionNotificationModes((HANDLE)socket,
-          FILE_SKIP_SET_EVENT_ON_HANDLE |
-          FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
-        handle->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
-        handle->func_wsarecv = uv_wsarecv_workaround;
-        handle->func_wsarecvfrom = uv_wsarecvfrom_workaround;
-      } else if (GetLastError() != ERROR_INVALID_FUNCTION) {
-        return GetLastError();
-      }
+  if (info.ProtocolChain.ChainLen == 1) {
+    if (SetFileCompletionNotificationModes((HANDLE)socket,
+        FILE_SKIP_SET_EVENT_ON_HANDLE |
+        FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
+      handle->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
+      handle->func_wsarecv = uv_wsarecv_workaround;
+      handle->func_wsarecvfrom = uv_wsarecvfrom_workaround;
+    } else if (GetLastError() != ERROR_INVALID_FUNCTION) {
+      return GetLastError();
     }
   }
 
@@ -250,8 +248,7 @@ static int uv_udp_maybe_bind(uv_udp_t* handle,
     /* If the user doesn't specify it libuv turns it off. */
 
     /* TODO: how to handle errors? This may fail if there is no ipv4 stack */
-    /* available, or when run on XP/2003 which have no support for dualstack */
-    /* sockets. For now we're silently ignoring the error. */
+    /* available. For now we're silently ignoring the error. */
     setsockopt(handle->socket,
                IPPROTO_IPV6,
                IPV6_V6ONLY,
