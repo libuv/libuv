@@ -88,17 +88,20 @@ static int uv__loops_capacity;
 static uv_mutex_t uv__loops_lock;
 
 static void uv__loops_init() {
+  int i;
   uv_mutex_init(&uv__loops_lock);
   uv__loops = uv__malloc(sizeof(uv_loop_t*) * UV__LOOPS_CHUNK_SIZE);
   if (!uv__loops)
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   uv__loops_size = 0;
   uv__loops_capacity = UV__LOOPS_CHUNK_SIZE;
+  for (i = 0; i < uv__loops_capacity; ++i)
+    uv__loops[i] = NULL;
 }
 
 static int uv__loops_add(uv_loop_t* loop) {
   uv_loop_t** new_loops;
-  int new_capacity;
+  int new_capacity, i;
 
   uv_mutex_lock(&uv__loops_lock);
 
@@ -108,6 +111,8 @@ static int uv__loops_add(uv_loop_t* loop) {
     if (!new_loops) 
       goto failed_loops_realloc;
     uv__loops = new_loops;
+    for (i = uv__loops_capacity; i < new_capacity; ++i)
+      uv__loops[i] = NULL;
     uv__loops_capacity = new_capacity;
   }
   uv__loops[uv__loops_size] = loop;
@@ -137,6 +142,7 @@ static void uv__loops_remove(uv_loop_t* loop) {
     goto loop_removed;
 
   uv__loops[loop_index] = uv__loops[uv__loops_size - 1];
+  uv__loops[uv__loops_size - 1] = NULL;
   --uv__loops_size;
 
   /* If we didn't grow to big skip downsizing */
@@ -164,7 +170,7 @@ void uv__wake_all_loops() {
   uv_mutex_lock(&uv__loops_lock);
   for (i = 0; i < uv__loops_size; ++i) {
     loop = uv__loops[i];
-    if (loop->iocp != INVALID_HANDLE_VALUE)
+    if (loop && loop->iocp != INVALID_HANDLE_VALUE)
       PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
   }
   uv_mutex_unlock(&uv__loops_lock);
