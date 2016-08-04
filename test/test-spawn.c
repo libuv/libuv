@@ -1179,9 +1179,7 @@ TEST_IMPL(environment_creation) {
       }
     }
     if (prev) { /* verify sort order  */
-#if !defined(__MINGW32__) || defined(__MINGW64_VERSION_MAJOR)
       ASSERT(CompareStringOrdinal(prev, -1, str, -1, TRUE) == 1);
-#endif
     }
     ASSERT(found); /* verify that we expected this variable */
   }

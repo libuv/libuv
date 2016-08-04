@@ -25,9 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
 #include <crtdbg.h>
-#endif
 
 #include "uv.h"
 #include "internal.h"
@@ -42,7 +40,7 @@ static uv_loop_t* default_loop_ptr;
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
 
-#if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
+#if defined(_DEBUG)
 /* Our crt debug report handler allows us to temporarily disable asserts
  * just for the current thread.
  */
@@ -72,7 +70,7 @@ UV_THREAD_LOCAL int uv__crt_assert_enabled = FALSE;
 #endif
 
 
-#if !defined(__MINGW32__) || __MSVCRT_VERSION__ >= 0x800
+#if __MSVCRT_VERSION__ >= 0x800
 static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
     const wchar_t* function, const wchar_t * file, unsigned int line,
     uintptr_t reserved) {
@@ -89,7 +87,7 @@ static void uv_init(void) {
   /* Tell the CRT to not exit the application when an invalid parameter is
    * passed. The main issue is that invalid FDs will trigger this behavior.
    */
-#if !defined(__MINGW32__) || __MSVCRT_VERSION__ >= 0x800
+#if __MSVCRT_VERSION__ >= 0x800
   _set_invalid_parameter_handler(uv__crt_invalid_parameter_handler);
 #endif
 
@@ -97,7 +95,7 @@ static void uv_init(void) {
    * functions (eg _get_osfhandle) raise an assert when called with invalid
    * FDs even though they return the proper error code in the release build.
    */
-#if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
+#if defined(_DEBUG)
   _CrtSetReportHook(uv__crt_dbg_report_handler);
 #endif
 
