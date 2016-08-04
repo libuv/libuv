@@ -88,15 +88,12 @@ static int uv__loops_capacity;
 static uv_mutex_t uv__loops_lock;
 
 static void uv__loops_init() {
-  int i;
   uv_mutex_init(&uv__loops_lock);
-  uv__loops = uv__malloc(sizeof(uv_loop_t*) * UV__LOOPS_CHUNK_SIZE);
+  uv__loops = uv__calloc(UV__LOOPS_CHUNK_SIZE, sizeof(uv_loop_t*));
   if (!uv__loops)
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   uv__loops_size = 0;
   uv__loops_capacity = UV__LOOPS_CHUNK_SIZE;
-  for (i = 0; i < uv__loops_capacity; ++i)
-    uv__loops[i] = NULL;
 }
 
 static int uv__loops_add(uv_loop_t* loop) {
@@ -170,7 +167,8 @@ void uv__wake_all_loops() {
   uv_mutex_lock(&uv__loops_lock);
   for (i = 0; i < uv__loops_size; ++i) {
     loop = uv__loops[i];
-    if (loop && loop->iocp != INVALID_HANDLE_VALUE)
+    assert(loop);
+    if (loop->iocp != INVALID_HANDLE_VALUE)
       PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
   }
   uv_mutex_unlock(&uv__loops_lock);
