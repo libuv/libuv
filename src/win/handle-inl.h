@@ -132,7 +132,7 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
       case UV_PREPARE:
       case UV_CHECK:
       case UV_IDLE:
-        uv_loop_watcher_endgame(loop, handle);
+        uv__loop_watcher_endgame(loop, handle);
         break;
 
       case UV_ASYNC:

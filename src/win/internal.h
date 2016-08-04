@@ -253,11 +253,10 @@ void uv_process_timers(uv_loop_t* loop);
 /*
  * Loop watchers
  */
-void uv_loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle);
-
-void uv_prepare_invoke(uv_loop_t* loop);
-void uv_check_invoke(uv_loop_t* loop);
-void uv_idle_invoke(uv_loop_t* loop);
+void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle);
+void uv__run_prepare(uv_loop_t* loop);
+void uv__run_check(uv_loop_t* loop);
+void uv__run_idle(uv_loop_t* loop);
 
 void uv__once_init();
 

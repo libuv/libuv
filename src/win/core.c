@@ -151,13 +151,9 @@ int uv_loop_init(uv_loop_t* loop) {
 
   RB_INIT(&loop->timers);
 
-  loop->check_handles = NULL;
-  loop->prepare_handles = NULL;
-  loop->idle_handles = NULL;
-
-  loop->next_prepare_handle = NULL;
-  loop->next_check_handle = NULL;
-  loop->next_idle_handle = NULL;
+  QUEUE_INIT(&loop->check_handles);
+  QUEUE_INIT(&loop->prepare_handles);
+  QUEUE_INIT(&loop->idle_handles);
 
   memset(&loop->poll_peer_sockets, 0, sizeof loop->poll_peer_sockets);
 
@@ -244,7 +240,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (loop->endgame_handles)
     return 0;
 
-  if (loop->idle_handles)
+  if (!QUEUE_EMPTY(&loop->idle_handles))
     return 0;
 
   return uv__next_timeout(loop);
@@ -332,8 +328,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_process_timers(loop);
 
     ran_pending = uv_process_reqs(loop);
-    uv_idle_invoke(loop);
-    uv_prepare_invoke(loop);
+    uv__run_idle(loop);
+    uv__run_prepare(loop);
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
@@ -341,7 +337,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
     uv__loop_poll(loop, timeout);
 
-    uv_check_invoke(loop);
+    uv__run_check(loop);
     uv_process_endgames(loop);
 
     if (mode == UV_RUN_ONCE) {
