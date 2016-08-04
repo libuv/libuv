@@ -27,6 +27,7 @@ libuv_la_LDFLAGS = -no-undefined -version-info 1:0:0
 libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
                    src/inet.c \
+                   src/loop-watcher.c \
                    src/queue.h \
                    src/threadpool.c \
                    src/uv-common.c \
@@ -57,7 +58,6 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/handle.c \
                     src/win/handle-inl.h \
                     src/win/internal.h \
-                    src/win/loop-watcher.c \
                     src/win/pipe.c \
                     src/win/poll.c \
                     src/win/process-stdio.c \
@@ -90,7 +90,6 @@ libuv_la_SOURCES += src/unix/async.c \
                    src/unix/getaddrinfo.c \
                    src/unix/getnameinfo.c \
                    src/unix/internal.h \
-                   src/unix/loop-watcher.c \
                    src/unix/loop.c \
                    src/unix/pipe.c \
                    src/unix/poll.c \

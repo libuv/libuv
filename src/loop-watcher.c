@@ -19,21 +19,8 @@
  * IN THE SOFTWARE.
  */
 
-#include <assert.h>
-
 #include "uv.h"
-#include "internal.h"
-#include "handle-inl.h"
-
-
-void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle) {
-  if (handle->flags & UV__HANDLE_CLOSING) {
-    assert(!(handle->flags & UV_HANDLE_CLOSED));
-    handle->flags |= UV_HANDLE_CLOSED;
-    uv__handle_close(handle);
-  }
-}
-
+#include "uv-common.h"
 
 #define UV_LOOP_WATCHER_DEFINE(name, type)                                    \
   int uv_##name##_init(uv_loop_t* loop, uv_##name##_t* handle) {              \
@@ -44,7 +31,7 @@ void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle) {
                                                                               \
   int uv_##name##_start(uv_##name##_t* handle, uv_##name##_cb cb) {           \
     if (uv__is_active(handle)) return 0;                                      \
-    if (cb == NULL) return UV_EINVAL;                                         \
+    if (cb == NULL) return -EINVAL;                                           \
     QUEUE_INSERT_HEAD(&handle->loop->name##_handles, &handle->queue);         \
     handle->name##_cb = cb;                                                   \
     uv__handle_start(handle);                                                 \
@@ -71,6 +58,10 @@ void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle) {
       h->name##_cb(h);                                                        \
     }                                                                         \
   }                                                                           \
+                                                                              \
+  void uv__##name##_close(uv_##name##_t* handle) {                            \
+    uv_##name##_stop(handle);                                                 \
+  }
 
 UV_LOOP_WATCHER_DEFINE(prepare, PREPARE)
 UV_LOOP_WATCHER_DEFINE(check, CHECK)

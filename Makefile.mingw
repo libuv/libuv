@@ -42,6 +42,7 @@ INCLUDES = include/tree.h \
 
 OBJS = src/fs-poll.o \
        src/inet.o \
+       src/loop-watcher.o \
        src/threadpool.o \
        src/uv-common.o \
        src/version.o \
@@ -54,7 +55,6 @@ OBJS = src/fs-poll.o \
        src/win/getaddrinfo.o \
        src/win/getnameinfo.o \
        src/win/handle.o \
-       src/win/loop-watcher.o \
        src/win/pipe.o \
        src/win/poll.o \
        src/win/process-stdio.o \

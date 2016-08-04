@@ -236,12 +236,9 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);
 
 /* various */
 void uv__async_close(uv_async_t* handle);
-void uv__check_close(uv_check_t* handle);
 void uv__fs_event_close(uv_fs_event_t* handle);
-void uv__idle_close(uv_idle_t* handle);
 void uv__pipe_close(uv_pipe_t* handle);
 void uv__poll_close(uv_poll_t* handle);
-void uv__prepare_close(uv_prepare_t* handle);
 void uv__process_close(uv_process_t* handle);
 void uv__stream_close(uv_stream_t* handle);
 void uv__tcp_close(uv_tcp_t* handle);

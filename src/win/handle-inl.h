@@ -132,7 +132,10 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
       case UV_PREPARE:
       case UV_CHECK:
       case UV_IDLE:
-        uv__loop_watcher_endgame(loop, handle);
+        assert(handle->flags & UV__HANDLE_CLOSING);
+        assert(!(handle->flags & UV_HANDLE_CLOSED));
+        handle->flags |= UV_HANDLE_CLOSED;
+        uv__handle_close(handle);
         break;
 
       case UV_ASYNC:

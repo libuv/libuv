@@ -103,19 +103,19 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       return;
 
     case UV_PREPARE:
-      uv_prepare_stop((uv_prepare_t*)handle);
+      uv__prepare_close((uv_prepare_t*) handle);
       uv__handle_closing(handle);
       uv_want_endgame(loop, handle);
       return;
 
     case UV_CHECK:
-      uv_check_stop((uv_check_t*)handle);
+      uv__check_close((uv_check_t*) handle);
       uv__handle_closing(handle);
       uv_want_endgame(loop, handle);
       return;
 
     case UV_IDLE:
-      uv_idle_stop((uv_idle_t*)handle);
+      uv__idle_close((uv_idle_t*) handle);
       uv__handle_closing(handle);
       uv_want_endgame(loop, handle);
       return;

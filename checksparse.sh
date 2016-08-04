@@ -31,6 +31,7 @@ include/uv-unix.h
 include/uv.h
 src/fs-poll.c
 src/inet.c
+src/loop-watcher.c
 src/queue.h
 src/unix/async.c
 src/unix/core.c
@@ -38,7 +39,6 @@ src/unix/dl.c
 src/unix/fs.c
 src/unix/getaddrinfo.c
 src/unix/internal.h
-src/unix/loop-watcher.c
 src/unix/loop.c
 src/unix/pipe.c
 src/unix/poll.c
