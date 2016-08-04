@@ -30,20 +30,10 @@
 
 
 /*
- * Threshold of active tcp streams for which to preallocate tcp read buffers.
- * (Due to node slab allocator performing poorly under this pattern,
- *  the optimization is temporarily disabled (threshold=0).  This will be
- *  revisited once node allocator is improved.)
- */
-const unsigned int uv_active_tcp_streams_threshold = 0;
-
-/*
  * Number of simultaneous pending AcceptEx calls.
  */
 const unsigned int uv_simultaneous_server_accepts = 32;
 
-/* A zero-size buffer for use by uv_tcp_read */
-static char uv_zero_[] = "";
 
 static int uv__tcp_nodelay(uv_tcp_t* handle, SOCKET socket, int enable) {
   if (setsockopt(socket,
@@ -277,7 +267,6 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
     }
 
     uv__handle_close(handle);
-    loop->active_tcp_streams--;
   }
 }
 
@@ -488,24 +477,9 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
   req = &handle->read_req;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
 
-  /*
-   * Preallocate a read buffer if the number of active streams is below
-   * the threshold.
-  */
-  if (loop->active_tcp_streams < uv_active_tcp_streams_threshold) {
-    handle->flags &= ~UV_HANDLE_ZERO_READ;
-    handle->alloc_cb((uv_handle_t*) handle, 65536, &handle->tcp.conn.read_buffer);
-    if (handle->tcp.conn.read_buffer.len == 0) {
-      handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, &handle->tcp.conn.read_buffer);
-      return;
-    }
-    assert(handle->tcp.conn.read_buffer.base != NULL);
-    buf = handle->tcp.conn.read_buffer;
-  } else {
-    handle->flags |= UV_HANDLE_ZERO_READ;
-    buf.base = (char*) &uv_zero_;
-    buf.len = 0;
-  }
+  handle->flags |= UV_HANDLE_ZERO_READ;
+  buf.base = "";
+  buf.len = 0;
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
@@ -706,8 +680,6 @@ int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
       }
     }
   }
-
-  loop->active_tcp_streams++;
 
   return err;
 }
@@ -1175,7 +1147,6 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
                     0) == 0) {
       uv_connection_init((uv_stream_t*)handle);
       handle->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
-      loop->active_tcp_streams++;
     } else {
       err = WSAGetLastError();
     }
@@ -1222,7 +1193,6 @@ int uv_tcp_import(uv_tcp_t* tcp, uv__ipc_socket_info_ex* socket_info_ex,
 
   tcp->delayed_error = socket_info_ex->delayed_error;
 
-  tcp->loop->active_tcp_streams++;
   return 0;
 }
 

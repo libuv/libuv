@@ -155,9 +155,6 @@ int uv_loop_init(uv_loop_t* loop) {
 
   memset(&loop->poll_peer_sockets, 0, sizeof loop->poll_peer_sockets);
 
-  loop->active_tcp_streams = 0;
-  loop->active_udp_streams = 0;
-
   loop->timer_counter = 0;
   loop->stop_flag = 0;
 
