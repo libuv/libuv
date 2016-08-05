@@ -194,7 +194,7 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
         break;
 
       case UV_WAKEUP:
-        uv_process_async_wakeup_req(loop, (uv_async_t*) req->data, req);
+        uv_process_async_wakeup_req(loop, req);
         break;
 
       case UV_SIGNAL_REQ:

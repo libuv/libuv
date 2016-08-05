@@ -267,8 +267,7 @@ void uv__once_init();
 void uv_async_close(uv_loop_t* loop, uv_async_t* handle);
 void uv_async_endgame(uv_loop_t* loop, uv_async_t* handle);
 
-void uv_process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
-    uv_req_t* req);
+void uv_process_async_wakeup_req(uv_loop_t* loop, uv_req_t* req);
 
 
 /*

@@ -32,7 +32,6 @@ INCLUDES = include/tree.h \
            src/heap-inl.h \
            src/queue.h \
            src/uv-common.h \
-           src/win/atomicops-inl.h \
            src/win/handle-inl.h \
            src/win/internal.h \
            src/win/req-inl.h \

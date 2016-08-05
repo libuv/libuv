@@ -310,7 +310,10 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   /* Threadpool */                                                            \
   void* wq[2];                                                                \
   uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;
+  uv_async_t wq_async;                                                        \
+  /* Async handle */                                                          \
+  struct uv_req_s async_req;                                                  \
+  void* async_handles[2];
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \
@@ -498,10 +501,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_timer_cb timer_cb;
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
-  struct uv_req_s async_req;                                                  \
+  void* queue[2];                                                             \
   uv_async_cb async_cb;                                                       \
-  /* char to avoid alignment issues */                                        \
-  char volatile async_sent;
+  LONG volatile async_sent;
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   void* queue[2];                                                             \
