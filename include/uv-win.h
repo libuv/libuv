@@ -309,7 +309,7 @@ typedef struct {
 RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define UV_LOOP_PRIVATE_FIELDS                                                \
-    /* The loop's I/O completion port */                                      \
+  /* The loop's I/O completion port */                                        \
   HANDLE iocp;                                                                \
   /* The current time according to the event loop. in msecs. */               \
   uint64_t time;                                                              \
@@ -343,7 +343,14 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   /* Threadpool */                                                            \
   void* wq[2];                                                                \
   uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;
+  uv_async_t wq_async;                                                        \
+  /* The following fields are only used when the loop is configured with */   \
+  /* UV_LOOP_EMBED */                                                         \
+  HANDLE backend_event;                                                       \
+  /* Pending IOCP poll thread requests (in reverse order) */                  \
+  uv_req_t* iocp_poll_reqs;                                                   \
+  /* Thread that does the IOCP polling. */                                    \
+  uv_thread_t iocp_poll_thread;
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \

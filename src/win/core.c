@@ -41,6 +41,11 @@ static uv_loop_t* default_loop_ptr;
 /* uv_once initialization guards */
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
+#ifdef NDEBUG
+#define UV_VERIFY(expr) (expr)
+#else
+#define UV_VERIFY(expr) assert(expr)
+#endif
 
 #if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
 /* Our crt debug report handler allows us to temporarily disable asserts
@@ -79,6 +84,18 @@ static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
   /* No-op. */
 }
 #endif
+
+
+INLINE static uv_req_t *uv__reverse_req_list(uv_req_t* reqs) {
+  uv_req_t* prev = NULL;
+  while (reqs != NULL) {
+    uv_req_t* next = reqs->next_req;
+    reqs->next_req = prev;
+    prev = reqs;
+    reqs = next;
+  }
+  return prev;
+}
 
 
 static void uv_init(void) {
@@ -178,6 +195,9 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__handle_unref(&loop->wq_async);
   loop->wq_async.flags |= UV__HANDLE_INTERNAL;
 
+  loop->backend_event = NULL;
+  loop->iocp_poll_reqs = NULL;
+
   return 0;
 
 fail_async_init:
@@ -218,16 +238,91 @@ void uv__loop_close(uv_loop_t* loop) {
   uv_mutex_destroy(&loop->wq_mutex);
 
   CloseHandle(loop->iocp);
+
+  if (loop->backend_event != NULL) {
+    /* Invalidating the IOCP handle will end the thread. */
+    uv_thread_join(&loop->iocp_poll_thread);
+    CloseHandle(loop->backend_event);
+  }
+}
+
+
+static void iocp_poll_thread(void* arg) {
+  uv_loop_t* loop = (uv_loop_t*)arg;
+
+  for (;;) {
+    DWORD bytes;
+    ULONG_PTR key;
+    OVERLAPPED* overlapped;
+
+    /* TODO: Use pGetQueuedCompletionStatusEx when available. */
+    GetQueuedCompletionStatus(loop->iocp,
+                              &bytes,
+                              &key,
+                              &overlapped,
+                              INFINITE);
+
+    if (overlapped) {
+      uv_req_t* req;
+      uv_req_t* iocp_poll_reqs;
+
+      /* Package was dequeued */
+      req = uv_overlapped_to_req(overlapped);
+
+      do {
+        req->next_req = loop->iocp_poll_reqs;
+        iocp_poll_reqs = InterlockedCompareExchangePointer(&loop->iocp_poll_reqs,
+                                                           req,
+                                                           req->next_req);
+      } while (iocp_poll_reqs != req->next_req);
+      /* If the list was empty wake up the loop thread by signaling the event.
+       * Otherwise, the event was already signaled by us in the past.
+       */
+      if (iocp_poll_reqs == NULL)
+        UV_VERIFY(SetEvent(loop->backend_event));
+    } else if (GetLastError() == ERROR_INVALID_HANDLE ||
+               GetLastError() == ERROR_ABANDONED_WAIT_0) {
+      /* The loop is closing. Our work is done.
+       * NOTE: Closing the loop will close the completion port handle.
+       * If this happens between calls to GetQueuedCompletionStatus the error
+       * will be ERROR_INVALID_HANDLE if the call is outstanding the error
+       * will be ERROR_ABANDONED_WAIT_0.
+       */
+      return;
+    } else {
+      /* Serious error */
+      uv_fatal_error(GetLastError(), "GetQueuedCompletionStatus");
+    }
+  }
 }
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  return UV_ENOSYS;
+  int err;
+
+  if (option != UV_LOOP_EMBED)
+    return UV_ENOSYS;
+
+  if (loop->backend_event != NULL)
+    return 0;
+
+  loop->backend_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+  if (loop->backend_event == NULL)
+    return uv_translate_sys_error(GetLastError());
+
+  err = uv_thread_create(&loop->iocp_poll_thread, iocp_poll_thread, loop);
+  if (err) {
+    CloseHandle(loop->backend_event);
+    loop->backend_event = NULL;
+    return err;
+  }
+
+  return 0;
 }
 
 
-int uv_backend_fd(const uv_loop_t* loop) {
-  return -1;
+HANDLE uv_backend_fd(const uv_loop_t* loop) {
+  return loop->backend_event;
 }
 
 
@@ -251,7 +346,45 @@ int uv_backend_timeout(const uv_loop_t* loop) {
 }
 
 
-static void uv_poll(uv_loop_t* loop, DWORD timeout) {
+static void uv_poll_event(uv_loop_t* loop, DWORD timeout) {
+  DWORD status = WaitForSingleObject(loop->backend_event, timeout);
+
+  if (status == WAIT_OBJECT_0) {
+    uv_req_t* reqs;
+    /* Reset the event so we may block again. */
+    UV_VERIFY(ResetEvent(loop->backend_event));
+    /* Dequeue any requests. There may be none if the event was
+     * signaled "spuriously". e.g. the user manually called
+     * SetEvent(uv_backend_fd()).
+     */
+    reqs = InterlockedExchangePointer(&loop->iocp_poll_reqs, NULL);
+    /* The list is backwards. Reverse it. */
+    reqs = uv__reverse_req_list(reqs);
+    /* Now traverse the list forwards, adding the requests to the pending
+     * list.
+     */
+    while (reqs != NULL) {
+      uv_req_t* next = reqs->next_req;
+      uv_insert_pending_req(loop, reqs);
+      reqs = next;
+    }
+    /* Some time might have passed waiting for I/O,
+     * so update the loop time here.
+     */
+    uv_update_time(loop);
+  } else if (status != WAIT_TIMEOUT) {
+    /* Serious error */
+    uv_fatal_error(GetLastError(), "WaitForSingleObject");
+  } else if (timeout > 0) {
+    /* WaitForSingleObject can occasionally return a little early.
+     * Make sure that the desired timeout is reflected in the loop time.
+     */
+    uv__time_forward(loop, timeout);
+  }
+}
+
+
+static void uv_poll_iocp(uv_loop_t* loop, DWORD timeout) {
   DWORD bytes;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
@@ -302,7 +435,7 @@ static void uv_poll(uv_loop_t* loop, DWORD timeout) {
 }
 
 
-static void uv_poll_ex(uv_loop_t* loop, DWORD timeout) {
+static void uv_poll_iocp_ex(uv_loop_t* loop, DWORD timeout) {
   BOOL success;
   uv_req_t* req;
   OVERLAPPED_ENTRY overlappeds[128];
@@ -375,10 +508,12 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   int ran_pending;
   void (*poll)(uv_loop_t* loop, DWORD timeout);
 
-  if (pGetQueuedCompletionStatusEx)
-    poll = &uv_poll_ex;
+  if (loop->backend_event)
+    poll = &uv_poll_event;
+  else if (pGetQueuedCompletionStatusEx)
+    poll = &uv_poll_iocp_ex;
   else
-    poll = &uv_poll;
+    poll = &uv_poll_iocp;
 
   r = uv__loop_alive(loop);
   if (!r)
