@@ -60,13 +60,10 @@
 # include <sys/filio.h>
 # include <sys/wait.h>
 # define UV__O_CLOEXEC O_CLOEXEC
-# if defined(__FreeBSD__) && __FreeBSD__ >= 10
+# if defined(__FreeBSD__)
 #  define uv__accept4 accept4
 #  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
 #  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
-# endif
-# if !defined(F_DUP2FD_CLOEXEC) && defined(_F_DUP2FD_CLOEXEC)
-#  define F_DUP2FD_CLOEXEC  _F_DUP2FD_CLOEXEC
 # endif
 #endif
 
@@ -446,7 +443,7 @@ int uv__accept(int sockfd) {
   assert(sockfd >= 0);
 
   while (1) {
-#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 10)
+#if defined(__linux__) || defined(__FreeBSD__)
     static int no_accept4;
 
     if (no_accept4)
@@ -970,18 +967,11 @@ int uv__open_cloexec(const char* path, int flags) {
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
   int r;
-#if defined(__FreeBSD__) && __FreeBSD__ >= 10
+#if defined(__FreeBSD__)
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return -errno;
   return r;
-#elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
-  r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
-  if (r != -1)
-    return r;
-  if (errno != EINVAL)
-    return -errno;
-  /* Fall through. */
 #elif defined(__linux__)
   static int no_dup3;
   if (!no_dup3) {
