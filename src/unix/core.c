@@ -71,7 +71,7 @@ extern char** environ;
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
-# if defined(__FreeBSD__) && __FreeBSD__ >= 10
+# if defined(__FreeBSD__)
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
@@ -81,9 +81,6 @@ extern char** environ;
       defined(__NetBSD__) || defined(__OpenBSD__)
 #  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
 #  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
-# endif
-# if !defined(F_DUP2FD_CLOEXEC) && defined(_F_DUP2FD_CLOEXEC)
-#  define F_DUP2FD_CLOEXEC  _F_DUP2FD_CLOEXEC
 # endif
 #endif
 
@@ -475,9 +472,7 @@ int uv__accept(int sockfd) {
   assert(sockfd >= 0);
 
   while (1) {
-#if defined(__linux__)                          || \
-    (defined(__FreeBSD__) && __FreeBSD__ >= 10) || \
-    defined(__NetBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
     static int no_accept4;
 
     if (no_accept4)
@@ -1032,18 +1027,11 @@ int uv__open_cloexec(const char* path, int flags) {
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
   int r;
-#if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__)
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return UV__ERR(errno);
   return r;
-#elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
-  r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
-  if (r != -1)
-    return r;
-  if (errno != EINVAL)
-    return UV__ERR(errno);
-  /* Fall through. */
 #elif defined(__linux__)
   static int no_dup3;
   if (!no_dup3) {
