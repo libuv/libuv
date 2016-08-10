@@ -35,6 +35,10 @@
 #include "stream-inl.h"
 #include "req-inl.h"
 
+#ifndef InterlockedOr
+# define InterlockedOr _InterlockedOr
+#endif
+
 #define UNICODE_REPLACEMENT_CHARACTER (0xfffd)
 
 #define ANSI_NORMAL           0x00
