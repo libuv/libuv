@@ -207,57 +207,57 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
   HANDLE handle = CreateSemaphoreW(NULL, 1, 1, NULL);
   if (handle == NULL)
     return uv_translate_sys_error(GetLastError());
-  rwlock->state_.write_semaphore_ = handle;
+  rwlock->write_semaphore_ = handle;
 
   /* Initialize the critical section protecting the reader count. */
-  InitializeCriticalSection(&rwlock->state_.num_readers_lock_);
+  InitializeCriticalSection(&rwlock->num_readers_lock_);
 
   /* Initialize the reader count. */
-  rwlock->state_.num_readers_ = 0;
+  rwlock->num_readers_ = 0;
 
   return 0;
 }
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  DeleteCriticalSection(&rwlock->state_.num_readers_lock_);
-  CloseHandle(rwlock->state_.write_semaphore_);
+  DeleteCriticalSection(&rwlock->num_readers_lock_);
+  CloseHandle(rwlock->write_semaphore_);
 }
 
 
 void uv_rwlock_rdlock(uv_rwlock_t* rwlock) {
   /* Acquire the lock that protects the reader count. */
-  EnterCriticalSection(&rwlock->state_.num_readers_lock_);
+  EnterCriticalSection(&rwlock->num_readers_lock_);
 
   /* Increase the reader count, and lock for write if this is the first
    * reader.
    */
-  if (++rwlock->state_.num_readers_ == 1) {
-    DWORD r = WaitForSingleObject(rwlock->state_.write_semaphore_, INFINITE);
+  if (++rwlock->num_readers_ == 1) {
+    DWORD r = WaitForSingleObject(rwlock->write_semaphore_, INFINITE);
     if (r != WAIT_OBJECT_0)
       uv_fatal_error(GetLastError(), "WaitForSingleObject");
   }
 
   /* Release the lock that protects the reader count. */
-  LeaveCriticalSection(&rwlock->state_.num_readers_lock_);
+  LeaveCriticalSection(&rwlock->num_readers_lock_);
 }
 
 
 int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
   int err;
 
-  if (!TryEnterCriticalSection(&rwlock->state_.num_readers_lock_))
+  if (!TryEnterCriticalSection(&rwlock->num_readers_lock_))
     return UV_EBUSY;
 
   err = 0;
 
-  if (rwlock->state_.num_readers_ == 0) {
+  if (rwlock->num_readers_ == 0) {
     /* Currently there are no other readers, which means that the write lock
      * needs to be acquired.
      */
-    DWORD r = WaitForSingleObject(rwlock->state_.write_semaphore_, 0);
+    DWORD r = WaitForSingleObject(rwlock->write_semaphore_, 0);
     if (r == WAIT_OBJECT_0)
-      rwlock->state_.num_readers_++;
+      rwlock->num_readers_++;
     else if (r == WAIT_TIMEOUT)
       err = UV_EBUSY;
     else if (r == WAIT_FAILED)
@@ -267,35 +267,35 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
     /* The write lock has already been acquired because there are other
      * active readers.
      */
-    rwlock->state_.num_readers_++;
+    rwlock->num_readers_++;
   }
 
-  LeaveCriticalSection(&rwlock->state_.num_readers_lock_);
+  LeaveCriticalSection(&rwlock->num_readers_lock_);
   return err;
 }
 
 
 void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) {
-  EnterCriticalSection(&rwlock->state_.num_readers_lock_);
+  EnterCriticalSection(&rwlock->num_readers_lock_);
 
-  if (--rwlock->state_.num_readers_ == 0) {
-    if (!ReleaseSemaphore(rwlock->state_.write_semaphore_, 1, NULL))
+  if (--rwlock->num_readers_ == 0) {
+    if (!ReleaseSemaphore(rwlock->write_semaphore_, 1, NULL))
       uv_fatal_error(GetLastError(), "ReleaseSemaphore");
   }
 
-  LeaveCriticalSection(&rwlock->state_.num_readers_lock_);
+  LeaveCriticalSection(&rwlock->num_readers_lock_);
 }
 
 
 void uv_rwlock_wrlock(uv_rwlock_t* rwlock) {
-  DWORD r = WaitForSingleObject(rwlock->state_.write_semaphore_, INFINITE);
+  DWORD r = WaitForSingleObject(rwlock->write_semaphore_, INFINITE);
   if (r != WAIT_OBJECT_0)
     uv_fatal_error(GetLastError(), "WaitForSingleObject");
 }
 
 
 int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
-  DWORD r = WaitForSingleObject(rwlock->state_.write_semaphore_, 0);
+  DWORD r = WaitForSingleObject(rwlock->write_semaphore_, 0);
   if (r == WAIT_OBJECT_0)
     return 0;
   else if (r == WAIT_TIMEOUT)
@@ -306,7 +306,7 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
-  if (!ReleaseSemaphore(rwlock->state_.write_semaphore_, 1, NULL))
+  if (!ReleaseSemaphore(rwlock->write_semaphore_, 1, NULL))
     uv_fatal_error(GetLastError(), "ReleaseSemaphore");
 }
 

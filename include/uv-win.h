@@ -217,12 +217,10 @@ typedef CRITICAL_SECTION uv_mutex_t;
 
 typedef CONDITION_VARIABLE uv_cond_t;
 
-typedef union {
-  struct {
-    unsigned int num_readers_;
-    CRITICAL_SECTION num_readers_lock_;
-    HANDLE write_semaphore_;
-  } state_;
+typedef struct {
+  unsigned int num_readers_;
+  CRITICAL_SECTION num_readers_lock_;
+  HANDLE write_semaphore_;
 } uv_rwlock_t;
 
 typedef struct {
