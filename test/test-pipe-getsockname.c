@@ -255,7 +255,6 @@ TEST_IMPL(pipe_getsockname_blocking) {
 
   ASSERT(pipe_close_cb_called == 1);
 
-  _close(readfd);
   CloseHandle(writeh);
 #endif
 
