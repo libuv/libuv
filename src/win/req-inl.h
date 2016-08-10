@@ -85,11 +85,6 @@ INLINE static void uv_req_init(uv_loop_t* loop, uv_req_t* req) {
 }
 
 
-INLINE static uv_req_t* uv_overlapped_to_req(OVERLAPPED* overlapped) {
-  return CONTAINING_RECORD(overlapped, uv_req_t, u.io.overlapped);
-}
-
-
 INLINE static void uv_insert_pending_req(uv_loop_t* loop, uv_req_t* req) {
   req->next_req = NULL;
   if (loop->pending_reqs_tail) {

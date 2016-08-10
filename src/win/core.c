@@ -268,7 +268,7 @@ static void uv__loop_poll(uv_loop_t* loop, DWORD timeout) {
     if (success) {
       for (i = 0; i < count; i++) {
         /* Package was dequeued */
-        req = uv_overlapped_to_req(overlappeds[i].lpOverlapped);
+        req = container_of(overlappeds[i].lpOverlapped, uv_req_t, u.io.overlapped);
         uv_insert_pending_req(loop, req);
       }
 
