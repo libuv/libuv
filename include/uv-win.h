@@ -647,3 +647,17 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 #ifndef X_OK
 #define X_OK 1
 #endif
+
+#if _MSC_VER >= 1900
+#undef stdin
+#undef stdout
+#undef stderr
+_CRTIMP extern FILE _iob[];
+#define stdin   _iob
+#define stdout  (_iob+1)
+#define stderr  (_iob+2)
+#endif
+
+#pragma comment(lib, "IPHLPAPI.lib")
+#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "Userenv.lib")
