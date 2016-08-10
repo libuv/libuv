@@ -54,6 +54,10 @@
 /* The number of nanoseconds in one second. */
 #define UV__NANOSEC 1000000000
 
+/* Max user name length, from iphlpapi.h */
+#ifndef UNLEN
+# define UNLEN 256
+#endif
 
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
