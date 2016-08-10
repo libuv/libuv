@@ -69,11 +69,11 @@ int uv_async_send(uv_async_t* handle) {
 
 void uv_process_async_wakeup_req(uv_loop_t* loop,
                                  uv_req_t* req) {
-  assert(req->type == UV_WAKEUP);
-
   QUEUE queue;
   QUEUE* q;
   uv_async_t* h;
+
+  assert(req->type == UV_WAKEUP);
 
   QUEUE_MOVE(&loop->async_handles, &queue);
   while (!QUEUE_EMPTY(&queue)) {
