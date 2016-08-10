@@ -224,18 +224,7 @@ Run:
 
 ## Supported Platforms
 
-Microsoft Windows operating systems since Windows XP SP2. It can be built
-with either Visual Studio or MinGW. Consider using
-[Visual Studio Express 2010][] or later if you do not have a full Visual
-Studio license.
-
-Linux using the GCC toolchain.
-
-OS X using the GCC or XCode toolchain.
-
-Solaris 121 and later using GCC toolchain.
-
-AIX 6 and later using GCC toolchain (see notes).
+Check the [SUPPORTED_PLATFORMS file](SUPPORTED_PLATFORMS.md).
 
 ### AIX Notes
 
@@ -254,7 +243,6 @@ See the [guidelines for contributing][].
 [node.js]: http://nodejs.org/
 [GYP]: http://code.google.com/p/gyp/
 [Python]: https://www.python.org/downloads/
-[Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
 [guidelines for contributing]: https://github.com/libuv/libuv/blob/master/CONTRIBUTING.md
 [libuv_banner]: https://raw.githubusercontent.com/libuv/libuv/master/img/banner.png
 [x32]: https://en.wikipedia.org/wiki/X32_ABI
