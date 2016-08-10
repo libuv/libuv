@@ -34,24 +34,8 @@
 /*
  * MinGW is missing these too
  */
-#ifndef SO_UPDATE_CONNECT_CONTEXT
-# define SO_UPDATE_CONNECT_CONTEXT 0x7010
-#endif
-
 #ifndef TCP_KEEPALIVE
 # define TCP_KEEPALIVE 3
-#endif
-
-#ifndef IPV6_V6ONLY
-# define IPV6_V6ONLY 27
-#endif
-
-#ifndef IPV6_HOPLIMIT
-# define IPV6_HOPLIMIT 21
-#endif
-
-#ifndef SIO_BASE_HANDLE
-# define SIO_BASE_HANDLE 0x48000022
 #endif
 
 /*

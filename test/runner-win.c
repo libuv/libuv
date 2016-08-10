@@ -31,15 +31,6 @@
 #include "runner.h"
 
 
-/*
- * Define the stuff that MinGW doesn't have
- */
-#ifndef GetFileSizeEx
-  WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile,
-                                       PLARGE_INTEGER lpFileSize);
-#endif
-
-
 /* Do platform-specific initialization. */
 int platform_init(int argc, char **argv) {
   /* Disable the "application crashed" popup. */
