@@ -215,22 +215,7 @@ typedef HANDLE uv_sem_t;
 
 typedef CRITICAL_SECTION uv_mutex_t;
 
-/* This condition variable implementation is based on the SetEvent solution
- * (section 3.2) at http://www.cs.wustl.edu/~schmidt/win32-cv-1.html
- * We could not use the SignalObjectAndWait solution (section 3.4) because
- * it want the 2nd argument (type uv_mutex_t) of uv_cond_wait() and
- * uv_cond_timedwait() to be HANDLEs, but we use CRITICAL_SECTIONs.
- */
-
-typedef union {
-  CONDITION_VARIABLE cond_var;
-  struct {
-    unsigned int waiters_count;
-    CRITICAL_SECTION waiters_count_lock;
-    HANDLE signal_event;
-    HANDLE broadcast_event;
-  } fallback;
-} uv_cond_t;
+typedef CONDITION_VARIABLE uv_cond_t;
 
 typedef union {
   struct {
