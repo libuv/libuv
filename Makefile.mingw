@@ -17,6 +17,7 @@ CC ?= gcc
 CFLAGS += -Wall \
           -Wextra \
           -Wno-unused-parameter \
+          -std=gnu99 \
           -Iinclude \
           -Isrc \
           -Isrc/win \

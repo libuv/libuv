@@ -30,10 +30,6 @@
 #include <fcntl.h>  /* O_CLOEXEC, may be */
 #include <stdio.h>
 
-#if defined(__STRICT_ANSI__)
-# define inline __inline
-#endif
-
 #if defined(__linux__)
 # include "linux-syscalls.h"
 #endif /* __linux__ */

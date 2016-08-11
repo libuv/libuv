@@ -19,7 +19,7 @@
     'xcode_settings': {
       'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
       'WARNING_CFLAGS': [ '-Wall', '-Wextra', '-Wno-unused-parameter' ],
-      'OTHER_CFLAGS': [ '-g', '--std=gnu89', '-pedantic' ],
+      'OTHER_CFLAGS': [ '-g', '--std=gnu99', '-pedantic' ],
     }
   },
 
@@ -119,7 +119,7 @@
           'cflags': [
             '-fvisibility=hidden',
             '-g',
-            '--std=gnu89',
+            '--std=gnu99',
             '-pedantic',
             '-Wall',
             '-Wextra',
@@ -226,7 +226,7 @@
           'sources': [ 'src/unix/sunos.c' ],
           'defines': [
             '__EXTENSIONS__',
-            '_XOPEN_SOURCE=500',
+            '_XOPEN_SOURCE=600',
           ],
           'link_settings': {
             'libraries': [
@@ -425,7 +425,6 @@
           'libraries': [ '-lws2_32' ]
         }, { # POSIX
           'defines': [ '_GNU_SOURCE' ],
-          'cflags': [ '-Wno-long-long' ],
           'sources': [
             'test/runner-unix.c',
             'test/runner-unix.h',
