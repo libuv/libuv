@@ -1088,17 +1088,26 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
   statbuf->st_mode = 0;
 
   if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-    statbuf->st_mode |= S_IFLNK;
-    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) != 0)
+    /*
+     * It is possible for a file to have FILE_ATTRIBUTE_REPARSE_POINT but not have
+     * any link data. In that case the failure to read the link is ignored here,
+     * and then the stat result will indicate a normal directory or file mode.
+     */
+    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) == 0) {
+      statbuf->st_mode |= S_IFLNK;
+    } else if (GetLastError() != ERROR_NOT_A_REPARSE_POINT) {
       return -1;
+    }
+  }
 
-  } else if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    statbuf->st_mode |= _S_IFDIR;
-    statbuf->st_size = 0;
-
-  } else {
-    statbuf->st_mode |= _S_IFREG;
-    statbuf->st_size = file_info.StandardInformation.EndOfFile.QuadPart;
+  if (statbuf->st_mode == 0) {
+    if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+      statbuf->st_mode |= _S_IFDIR;
+      statbuf->st_size = 0;
+    } else {
+      statbuf->st_mode |= _S_IFREG;
+      statbuf->st_size = file_info.StandardInformation.EndOfFile.QuadPart;
+    }
   }
 
   if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_READONLY)
