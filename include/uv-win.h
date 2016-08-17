@@ -210,7 +210,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_handle_t* endgame_handles;                                               \
   /* The head of the timers tree */                                           \
   struct uv_timer_tree_s timers;                                              \
-    /* Lists of active loop (prepare / check / idle) watchers */              \
+  /* Lists of active loop (prepare / check / idle) watchers */                \
   void* prepare_handles[2];                                                   \
   void* check_handles[2];                                                     \
   void* idle_handles[2];                                                      \
@@ -224,7 +224,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_async_t wq_async;                                                        \
   /* Async handle */                                                          \
   struct uv_req_s async_req;                                                  \
-  void* async_handles[2];
+  void* async_handles[2];                                                     \
+  /* Global queue of loops */                                                 \
+  void* loops_queue[2];
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \
