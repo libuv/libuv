@@ -117,7 +117,6 @@ EXTRA_DIST = test/fixtures/empty_file \
              README.md \
              checksparse.sh \
              vcbuild.bat \
-             Makefile.mingw \
              common.gypi \
              gyp_uv.py \
              uv.gyp
