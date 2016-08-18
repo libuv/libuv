@@ -1088,17 +1088,28 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
   statbuf->st_mode = 0;
 
   if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-    statbuf->st_mode |= S_IFLNK;
-    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) != 0)
+    /*
+     * It is possible for a file to have FILE_ATTRIBUTE_REPARSE_POINT but not have
+     * any link data. In that case DeviceIoControl() in fs__readlink_handle() sets
+     * the last error to ERROR_NOT_A_REPARSE_POINT. Then the stat result mode
+     * calculated below will indicate a normal directory or file, as if
+     * FILE_ATTRIBUTE_REPARSE_POINT was not present.
+     */
+    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) == 0) {
+      statbuf->st_mode |= S_IFLNK;
+    } else if (GetLastError() != ERROR_NOT_A_REPARSE_POINT) {
       return -1;
+    }
+  }
 
-  } else if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    statbuf->st_mode |= _S_IFDIR;
-    statbuf->st_size = 0;
-
-  } else {
-    statbuf->st_mode |= _S_IFREG;
-    statbuf->st_size = file_info.StandardInformation.EndOfFile.QuadPart;
+  if (statbuf->st_mode == 0) {
+    if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+      statbuf->st_mode |= _S_IFDIR;
+      statbuf->st_size = 0;
+    } else {
+      statbuf->st_mode |= _S_IFREG;
+      statbuf->st_size = file_info.StandardInformation.EndOfFile.QuadPart;
+    }
   }
 
   if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_READONLY)

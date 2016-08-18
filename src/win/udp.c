@@ -270,9 +270,7 @@ static void uv_udp_queue_recv(uv_loop_t* loop, uv_udp_t* handle) {
 
   req = &handle->recv_req;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
-
   handle->flags |= UV_HANDLE_ZERO_READ;
-
   buf.base = "";
   buf.len = 0;
   flags = MSG_PEEK;
@@ -445,8 +443,9 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
 
     /* Do a nonblocking receive */
     /* TODO: try to read multiple datagrams at once. FIONREAD maybe? */
+    buf = uv_buf_init(NULL, 0);
     handle->alloc_cb((uv_handle_t*) handle, 65536, &buf);
-    if (buf.len == 0) {
+    if (buf.base == NULL || buf.len == 0) {
       handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
       goto done;
     }

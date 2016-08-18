@@ -4620,6 +4620,40 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
 # define ERROR_MUI_FILE_NOT_LOADED 15105
 #endif
 
+/* from powerbase.h */
+#ifndef DEVICE_NOTIFY_CALLBACK
+# define DEVICE_NOTIFY_CALLBACK 2
+#endif
+
+#ifndef PBT_APMRESUMEAUTOMATIC
+# define PBT_APMRESUMEAUTOMATIC 18
+#endif
+
+#ifndef PBT_APMRESUMESUSPEND
+# define PBT_APMRESUMESUSPEND 7
+#endif
+
+typedef ULONG CALLBACK _DEVICE_NOTIFY_CALLBACK_ROUTINE(
+  PVOID Context,
+  ULONG Type,
+  PVOID Setting
+);
+typedef _DEVICE_NOTIFY_CALLBACK_ROUTINE* _PDEVICE_NOTIFY_CALLBACK_ROUTINE;
+
+typedef struct _DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS {
+  _PDEVICE_NOTIFY_CALLBACK_ROUTINE Callback;
+  PVOID Context;
+} _DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS, *_PDEVICE_NOTIFY_SUBSCRIBE_PARAMETERS;
+
+typedef PVOID _HPOWERNOTIFY;
+typedef _HPOWERNOTIFY *_PHPOWERNOTIFY;
+
+typedef DWORD (WINAPI *sPowerRegisterSuspendResumeNotification)
+              (DWORD         Flags,
+               HANDLE        Recipient,
+               _PHPOWERNOTIFY RegistrationHandle);
+
+
 /* Ntdll function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
@@ -4632,5 +4666,9 @@ extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 /* Kernel32 function pointers */
 
+
+
+/* Powrprof.dll function pointer */
+extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
 
 #endif /* UV_WIN_WINAPI_H_ */
