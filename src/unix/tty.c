@@ -30,6 +30,10 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 
+#if defined(__MVS__) && !defined(IMAXBEL)
+#define IMAXBEL 0
+#endif
+
 static int orig_termios_fd = -1;
 static struct termios orig_termios;
 static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
@@ -168,7 +172,7 @@ skip:
 static void uv__tty_make_raw(struct termios* tio) {
   assert(tio != NULL);
 
-#ifdef __sun
+#if defined __sun || defined __MVS__
   /*
    * This implementation of cfmakeraw for Solaris and derivatives is taken from
    * http://www.perkin.org.uk/posts/solaris-portability-cfmakeraw.html.
