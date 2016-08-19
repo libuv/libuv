@@ -56,8 +56,23 @@ TEST_IMPL(embed) {
   ASSERT_LE(0, uv_barrier_wait(&barrier));
 
   while (uv_loop_alive(loop)) {
-#if defined(_WIN32) || defined(_AIX)
+#if defined(_AIX)
     ASSERT_LE(0, uv_run(loop, UV_RUN_ONCE));
+#elif defined(_WIN32)
+    DWORD bytes;
+    ULONG_PTR key;
+    HANDLE handle;
+    OVERLAPPED* overlapped;
+    int timeout;
+
+    handle = uv_backend_fd(loop);
+    timeout = uv_backend_timeout(loop);
+    GetQueuedCompletionStatus(handle, &bytes, &key, &overlapped, timeout);
+
+    if (overlapped != NULL)
+      PostQueuedCompletionStatus(handle, bytes, key, overlapped);
+
+    ASSERT_LE(0, uv_run(loop, UV_RUN_NOWAIT));
 #else
     int rc;
     do {
