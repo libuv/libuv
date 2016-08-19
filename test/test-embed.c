@@ -41,7 +41,7 @@
 # endif
 #endif
 
-#if defined(HAVE_KQUEUE) || defined(HAVE_EPOLL)
+#if defined(HAVE_KQUEUE) || defined(HAVE_EPOLL) || defined(_WIN32)
 
 #if defined(HAVE_KQUEUE)
 # include <sys/types.h>
@@ -62,28 +62,59 @@ static volatile int embed_closed;
 static int embed_timer_called;
 
 
-static void embed_thread_runner(void* arg) {
+#if defined(_WIN32)
+static void embed_thread_poll_win(HANDLE iocp, int timeout) {
+  DWORD bytes;
+  ULONG_PTR key;
+  OVERLAPPED* overlapped;
+
+  GetQueuedCompletionStatus(iocp,
+                            &bytes,
+                            &key,
+                            &overlapped,
+                            timeout);
+
+  /* Give the event back so the loop can deal with it. */
+  if (overlapped != NULL)
+    PostQueuedCompletionStatus(iocp,
+                               bytes,
+                               key,
+                               overlapped);
+}
+#else
+static void embed_thread_poll_unix(int fd, int timeout) {
   int r;
-  int fd;
+  do {
+#if defined(HAVE_KQUEUE)
+    struct timespec ts;
+    ts.tv_sec = timeout / 1000;
+    ts.tv_nsec = (timeout % 1000) * 1000000;
+    r = kevent(fd, NULL, 0, NULL, 0, &ts);
+#elif defined(HAVE_EPOLL)
+    {
+      struct epoll_event ev;
+      r = epoll_wait(fd, &ev, 1, timeout);
+    }
+#endif
+  } while (r == -1 && errno == EINTR);
+}
+#endif /* !_WIN32 */
+
+
+static void embed_thread_runner(void* arg) {
+  uv_os_fd_t fd;
   int timeout;
 
   while (!embed_closed) {
     fd = uv_backend_fd(uv_default_loop());
     timeout = uv_backend_timeout(uv_default_loop());
 
-    do {
-#if defined(HAVE_KQUEUE)
-      struct timespec ts;
-      ts.tv_sec = timeout / 1000;
-      ts.tv_nsec = (timeout % 1000) * 1000000;
-      r = kevent(fd, NULL, 0, NULL, 0, &ts);
-#elif defined(HAVE_EPOLL)
-      {
-        struct epoll_event ev;
-        r = epoll_wait(fd, &ev, 1, timeout);
-      }
+#if defined(_WIN32)
+    embed_thread_poll_win(fd, timeout);
+#else
+    embed_thread_poll_unix(fd, timeout);
 #endif
-    } while (r == -1 && errno == EINTR);
+
     uv_async_send(&embed_async);
     uv_sem_wait(&embed_sem);
   }
@@ -107,7 +138,7 @@ static void embed_timer_cb(uv_timer_t* timer) {
 
 
 TEST_IMPL(embed) {
-#if defined(HAVE_KQUEUE) || defined(HAVE_EPOLL)
+#if defined(HAVE_KQUEUE) || defined(HAVE_EPOLL) || defined(_WIN32)
   uv_loop_t external;
 
   ASSERT(0 == uv_loop_init(&external));
@@ -132,7 +163,9 @@ TEST_IMPL(embed) {
   uv_loop_close(&external);
 
   ASSERT(embed_timer_called == 1);
-#endif
 
   return 0;
+#else
+  RETURN_SKIP("Not supported in the current platform.");
+#endif
 }

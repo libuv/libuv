@@ -121,10 +121,10 @@ API
     Returns the size of the `uv_loop_t` structure. Useful for FFI binding
     writers who don't want to know the structure layout.
 
-.. c:function:: int uv_backend_fd(const uv_loop_t* loop)
+.. c:function:: uv_os_fd_t uv_backend_fd(const uv_loop_t* loop)
 
-    Get backend file descriptor. Only kqueue, epoll and event ports are
-    supported.
+    Get backend file descriptor. Returns the epoll / kqueue / event ports file
+    descriptor on Unix and the IOCP `HANDLE` on Windows.
 
     This can be used in conjunction with `uv_run(loop, UV_RUN_NOWAIT)` to
     poll in one thread and run the event loop's callbacks in another see
@@ -133,6 +133,9 @@ API
     .. note::
         Embedding a kqueue fd in another kqueue pollset doesn't work on all platforms. It's not
         an error to add the fd but it never generates events.
+
+    .. versionchanged:: 2.0.0: added support for Windows and changed return type
+        to ``uv_os_fd_t``.
 
 .. c:function:: int uv_backend_timeout(const uv_loop_t* loop)
 
