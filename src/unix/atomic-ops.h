@@ -43,9 +43,8 @@ UV_UNUSED(static int cmpxchgi(int* ptr, int oldval, int newval)) {
   __compare_and_swap(ptr, &oldval, newval);
   return out;
 #elif defined(__MVS__)
-  const int out = (*(volatile int*) ptr);
-  cs((cs_t*)&oldval, (cs_t*)ptr, *(cs_t*)(&newval));
-  return out;
+  return __plo_CS(ptr, (unsigned int*) ptr,
+                  oldval, (unsigned int*) &newval);
 #else
   return __sync_val_compare_and_swap(ptr, oldval, newval);
 #endif
@@ -68,13 +67,13 @@ UV_UNUSED(static long cmpxchgl(long* ptr, long oldval, long newval)) {
 # endif /* if defined(__64BIT__) */
   return out;
 #elif defined (__MVS__)
-  const long out = (*(volatile int*) ptr);
 # ifdef _LP64
-  cds((cds_t*)(&oldval), (cds_t*)ptr, *(cds_t*)(&newval));
+  return __plo_CSGR(ptr, (unsigned long long*) ptr,
+                    oldval, (unsigned long long*) &newval);
 # else
-  cs((cs_t*)&oldval, (cs_t*)ptr, *(cs_t*)(&newval));
+  return __plo_CS(ptr, (unsigned int*) ptr,
+                  oldval, (unsigned int*) &newval);
 # endif
-  return out;
 #else
   return __sync_val_compare_and_swap(ptr, oldval, newval);
 #endif
