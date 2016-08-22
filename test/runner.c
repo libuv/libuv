@@ -145,7 +145,7 @@ void log_tap_result(int test_count,
 int run_test(const char* test,
              int benchmark_output,
              int test_count) {
-  char errmsg[1024] = "no error";
+  char errmsg[1024] = "";
   process_info_t processes[1024];
   process_info_t *main_proc;
   task_entry_t* task;
@@ -274,6 +274,8 @@ out:
 
   /* Show error and output from processes if the test failed. */
   if ((status != TEST_OK && status != TEST_SKIP) || task->show_output) {
+    if (strlen(errmsg) > 0)
+      fprintf(stderr, "# %s\n", errmsg);
     fprintf(stderr, "# ");
     fflush(stderr);
 
