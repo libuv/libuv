@@ -788,20 +788,6 @@ TEST_IMPL(fs_event_close_with_pending_event) {
   return 0;
 }
 
-#if defined(HAVE_KQUEUE) || defined(_AIX)
-
-/* kqueue doesn't register fs events if you don't have an active watcher.
- * The file descriptor needs to be part of the kqueue set of interest and
- * that's not the case until we actually enter the event loop.
- * This is also observed on AIX with ahafs.
- */
-TEST_IMPL(fs_event_close_in_callback) {
-  fprintf(stderr, "Skipping test, doesn't work with kqueue and AIX.\n");
-  return 0;
-}
-
-#else /* !HAVE_KQUEUE || !_AIX */
-
 static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
     int events, int status) {
   ASSERT(status == 0);
@@ -814,7 +800,6 @@ static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
   }
 }
 
-
 TEST_IMPL(fs_event_close_in_callback) {
 #if defined(__MVS__)
   RETURN_SKIP("Filesystem watching not supported on this platform.");
@@ -824,43 +809,35 @@ TEST_IMPL(fs_event_close_in_callback) {
 
   loop = uv_default_loop();
 
+  fs_event_unlink_files(NULL);
   create_dir("watch_dir");
-  create_file("watch_dir/file1");
-  create_file("watch_dir/file2");
-  create_file("watch_dir/file3");
-  create_file("watch_dir/file4");
-  create_file("watch_dir/file5");
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT(r == 0);
   r = uv_fs_event_start(&fs_event, fs_event_cb_close, "watch_dir", 0);
   ASSERT(r == 0);
 
-  /* Generate a couple of fs events. */
-  touch_file("watch_dir/file1");
-  touch_file("watch_dir/file2");
-  touch_file("watch_dir/file3");
-  touch_file("watch_dir/file4");
-  touch_file("watch_dir/file5");
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer, fs_event_create_files, 100, 0);
+  ASSERT(r == 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 1);
+  uv_close((uv_handle_t*)&timer, close_cb);
+
+  uv_run(loop, UV_RUN_ONCE);
+
+  ASSERT(close_cb_called == 2);
   ASSERT(fs_event_cb_called == 3);
 
   /* Clean up */
-  remove("watch_dir/file1");
-  remove("watch_dir/file2");
-  remove("watch_dir/file3");
-  remove("watch_dir/file4");
-  remove("watch_dir/file5");
+  fs_event_unlink_files(NULL);
   remove("watch_dir/");
 
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
-
-#endif /* HAVE_KQUEUE || _AIX */
 
 TEST_IMPL(fs_event_start_and_close) {
 #if defined(__MVS__)
