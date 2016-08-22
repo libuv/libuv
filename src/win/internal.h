@@ -107,9 +107,6 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 #define UV_HANDLE_TTY_SAVED_POSITION            0x04000000
 #define UV_HANDLE_TTY_SAVED_ATTRIBUTES          0x08000000
 
-/* Only used by uv_poll_t handles. */
-#define UV_HANDLE_POLL_SLOW                     0x02000000
-
 
 /*
  * Requests: see req-inl.h

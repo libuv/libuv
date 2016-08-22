@@ -37,11 +37,6 @@ static const GUID uv_msafd_provider_ids[UV_MSAFD_PROVIDER_COUNT] = {
       {0xb7, 0xbd, 0x18, 0x1f, 0x20, 0x89, 0x79, 0x2a}}
 };
 
-typedef struct uv_single_fd_set_s {
-  unsigned int fd_count;
-  SOCKET fd_array[1];
-} uv_single_fd_set_t;
-
 
 static OVERLAPPED overlapped_dummy_;
 static uv_once_t overlapped_dummy_init_guard_ = UV_ONCE_INIT;
@@ -72,7 +67,7 @@ static AFD_POLL_INFO* uv__get_afd_poll_info_dummy() {
 }
 
 
-static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
+static void uv__poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
   uv_req_t* req;
   AFD_POLL_INFO* afd_poll_info;
   DWORD result;
@@ -94,7 +89,7 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
     /* Just wait until there's an unsubmitted req. */
     /* This will happen almost immediately as one of the 2 outstanding */
     /* requests is about to return. When this happens, */
-    /* uv__fast_poll_process_poll_req will be called, and the pending */
+    /* uv_process_poll_req will be called, and the pending */
     /* events, if needed, will be processed in a subsequent request. */
     return;
   }
@@ -134,7 +129,7 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 }
 
 
-static int uv__fast_poll_cancel_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
+static int uv__poll_cancel_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
   AFD_POLL_INFO afd_poll_info;
   DWORD result;
 
@@ -160,8 +155,188 @@ static int uv__fast_poll_cancel_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 }
 
 
-static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
-    uv_req_t* req) {
+static int uv__poll_set_events(uv_loop_t* loop, uv_poll_t* handle, int events) {
+  assert(handle->type == UV_POLL);
+  assert(!(handle->flags & UV__HANDLE_CLOSING));
+  assert((events & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT)) == 0);
+
+  handle->events = events;
+
+  if (handle->events != 0) {
+    uv__handle_start(handle);
+  } else {
+    uv__handle_stop(handle);
+  }
+
+  if ((handle->events & ~(handle->submitted_events_1 |
+      handle->submitted_events_2)) != 0) {
+    uv__poll_submit_poll_req(handle->loop, handle);
+  }
+
+  return 0;
+}
+
+
+static SOCKET uv__poll_create_peer_socket(HANDLE iocp,
+                                          WSAPROTOCOL_INFOW* protocol_info) {
+  SOCKET sock = INVALID_SOCKET;
+
+  sock = WSASocketW(protocol_info->iAddressFamily,
+                    protocol_info->iSocketType,
+                    protocol_info->iProtocol,
+                    protocol_info,
+                    0,
+                    WSA_FLAG_OVERLAPPED);
+  if (sock == INVALID_SOCKET) {
+    return INVALID_SOCKET;
+  }
+
+  if (!SetHandleInformation((HANDLE) sock, HANDLE_FLAG_INHERIT, 0)) {
+    goto error;
+  };
+
+  if (CreateIoCompletionPort((HANDLE) sock,
+                             iocp,
+                             (ULONG_PTR) sock,
+                             0) == NULL) {
+    goto error;
+  }
+
+  return sock;
+
+ error:
+  closesocket(sock);
+  return INVALID_SOCKET;
+}
+
+
+static SOCKET uv__poll_get_peer_socket(uv_loop_t* loop,
+                                       WSAPROTOCOL_INFOW* protocol_info) {
+  int index, i;
+  SOCKET peer_socket;
+
+  index = -1;
+  for (i = 0; (size_t) i < ARRAY_SIZE(uv_msafd_provider_ids); i++) {
+    if (memcmp((void*) &protocol_info->ProviderId,
+               (void*) &uv_msafd_provider_ids[i],
+               sizeof protocol_info->ProviderId) == 0) {
+      index = i;
+    }
+  }
+
+  /* Check if the protocol uses an msafd socket. */
+  if (index < 0) {
+    return INVALID_SOCKET;
+  }
+
+  /* If we didn't (try) to create a peer socket yet, try to make one. Don't */
+  /* try again if the peer socket creation failed earlier for the same */
+  /* protocol. */
+  peer_socket = loop->poll_peer_sockets[index];
+  if (peer_socket == 0) {
+    peer_socket = uv__poll_create_peer_socket(loop->iocp, protocol_info);
+    loop->poll_peer_sockets[index] = peer_socket;
+  }
+
+  return peer_socket;
+}
+
+
+int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
+  return uv_poll_init_socket(loop, handle, (SOCKET) uv__get_osfhandle(fd));
+}
+
+
+int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
+    uv_os_sock_t socket) {
+  WSAPROTOCOL_INFOW protocol_info;
+  int len;
+  SOCKET peer_socket, base_socket;
+  DWORD bytes;
+  DWORD yes = 1;
+
+  /* Set the socket to nonblocking mode */
+  if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR)
+    return uv_translate_sys_error(WSAGetLastError());
+
+  /*
+   * Obtain the base handle for the socket. Then find an AFD provider so we can
+   * bypass any LFPs. If we cannot find it (or a valid AFD provider) we bail out.
+   */
+  base_socket = INVALID_SOCKET;
+  if (WSAIoctl(socket,
+               SIO_BASE_HANDLE,
+               NULL,
+               0,
+               &base_socket,
+               sizeof base_socket,
+               &bytes,
+               NULL,
+               NULL) == 0) {
+    assert(base_socket != 0 && base_socket != INVALID_SOCKET);
+    socket = base_socket;
+  } else {
+    return uv_translate_sys_error(WSAGetLastError());
+  }
+
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_POLL);
+  handle->socket = socket;
+  handle->events = 0;
+
+  /* Obtain protocol information about the socket. */
+  len = sizeof protocol_info;
+  if (getsockopt(socket,
+                 SOL_SOCKET,
+                 SO_PROTOCOL_INFOW,
+                 (char*) &protocol_info,
+                 &len) != 0) {
+    return uv_translate_sys_error(WSAGetLastError());
+  }
+
+  /* Get the peer socket that is needed to bypass LSPs. If the returned
+   * value is INVALID_SOCKET, the protocol is not implemented by MSAFD and we
+   * can't work with it. */
+  peer_socket = uv__poll_get_peer_socket(loop, &protocol_info);
+  if (peer_socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  handle->peer_socket = peer_socket;
+
+  /* Initialize 2 poll reqs. */
+  handle->submitted_events_1 = 0;
+  uv_req_init(loop, (uv_req_t*) &(handle->poll_req_1));
+  handle->poll_req_1.type = UV_POLL_REQ;
+  handle->poll_req_1.data = handle;
+
+  handle->submitted_events_2 = 0;
+  uv_req_init(loop, (uv_req_t*) &(handle->poll_req_2));
+  handle->poll_req_2.type = UV_POLL_REQ;
+  handle->poll_req_2.data = handle;
+
+  return 0;
+}
+
+
+int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb) {
+  int err;
+
+  err = uv__poll_set_events(handle->loop, handle, events);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  handle->poll_cb = cb;
+  return 0;
+}
+
+
+int uv_poll_stop(uv_poll_t* handle) {
+  int err;
+  err = uv__poll_set_events(handle->loop, handle, 0);
+  return uv_translate_sys_error(err);
+}
+
+
+void uv_process_poll_req(uv_loop_t* loop, uv_poll_t* handle, uv_req_t* req) {
   unsigned char mask_events;
   AFD_POLL_INFO* afd_poll_info;
 
@@ -217,7 +392,7 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
 
   if ((handle->events & ~(handle->submitted_events_1 |
       handle->submitted_events_2)) != 0) {
-    uv__fast_poll_submit_poll_req(loop, handle);
+    uv__poll_submit_poll_req(loop, handle);
   } else if ((handle->flags & UV__HANDLE_CLOSING) &&
              handle->submitted_events_1 == 0 &&
              handle->submitted_events_2 == 0) {
@@ -226,29 +401,7 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
 }
 
 
-static int uv__fast_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
-  assert(handle->type == UV_POLL);
-  assert(!(handle->flags & UV__HANDLE_CLOSING));
-  assert((events & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT)) == 0);
-
-  handle->events = events;
-
-  if (handle->events != 0) {
-    uv__handle_start(handle);
-  } else {
-    uv__handle_stop(handle);
-  }
-
-  if ((handle->events & ~(handle->submitted_events_1 |
-      handle->submitted_events_2)) != 0) {
-    uv__fast_poll_submit_poll_req(handle->loop, handle);
-  }
-
-  return 0;
-}
-
-
-static int uv__fast_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
+int uv_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   handle->events = 0;
   uv__handle_closing(handle);
 
@@ -259,376 +412,7 @@ static int uv__fast_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   } else {
     /* Cancel outstanding poll requests by executing another, unique poll */
     /* request that forces the outstanding ones to return. */
-    return uv__fast_poll_cancel_poll_req(loop, handle);
-  }
-}
-
-
-static SOCKET uv__fast_poll_create_peer_socket(HANDLE iocp,
-    WSAPROTOCOL_INFOW* protocol_info) {
-  SOCKET sock = 0;
-
-  sock = WSASocketW(protocol_info->iAddressFamily,
-                    protocol_info->iSocketType,
-                    protocol_info->iProtocol,
-                    protocol_info,
-                    0,
-                    WSA_FLAG_OVERLAPPED);
-  if (sock == INVALID_SOCKET) {
-    return INVALID_SOCKET;
-  }
-
-  if (!SetHandleInformation((HANDLE) sock, HANDLE_FLAG_INHERIT, 0)) {
-    goto error;
-  };
-
-  if (CreateIoCompletionPort((HANDLE) sock,
-                             iocp,
-                             (ULONG_PTR) sock,
-                             0) == NULL) {
-    goto error;
-  }
-
-  return sock;
-
- error:
-  closesocket(sock);
-  return INVALID_SOCKET;
-}
-
-
-static SOCKET uv__fast_poll_get_peer_socket(uv_loop_t* loop,
-    WSAPROTOCOL_INFOW* protocol_info) {
-  int index, i;
-  SOCKET peer_socket;
-
-  index = -1;
-  for (i = 0; (size_t) i < ARRAY_SIZE(uv_msafd_provider_ids); i++) {
-    if (memcmp((void*) &protocol_info->ProviderId,
-               (void*) &uv_msafd_provider_ids[i],
-               sizeof protocol_info->ProviderId) == 0) {
-      index = i;
-    }
-  }
-
-  /* Check if the protocol uses an msafd socket. */
-  if (index < 0) {
-    return INVALID_SOCKET;
-  }
-
-  /* If we didn't (try) to create a peer socket yet, try to make one. Don't */
-  /* try again if the peer socket creation failed earlier for the same */
-  /* protocol. */
-  peer_socket = loop->poll_peer_sockets[index];
-  if (peer_socket == 0) {
-    peer_socket = uv__fast_poll_create_peer_socket(loop->iocp, protocol_info);
-    loop->poll_peer_sockets[index] = peer_socket;
-  }
-
-  return peer_socket;
-}
-
-
-static DWORD WINAPI uv__slow_poll_thread_proc(void* arg) {
-  uv_req_t* req = (uv_req_t*) arg;
-  uv_poll_t* handle = (uv_poll_t*) req->data;
-  unsigned char reported_events;
-  int r;
-  uv_single_fd_set_t rfds, wfds, efds;
-  struct timeval timeout;
-
-  assert(handle->type == UV_POLL);
-  assert(req->type == UV_POLL_REQ);
-
-  if (handle->events & UV_READABLE) {
-    rfds.fd_count = 1;
-    rfds.fd_array[0] = handle->socket;
-  } else {
-    rfds.fd_count = 0;
-  }
-
-  if (handle->events & UV_WRITABLE) {
-    wfds.fd_count = 1;
-    wfds.fd_array[0] = handle->socket;
-    efds.fd_count = 1;
-    efds.fd_array[0] = handle->socket;
-  } else {
-    wfds.fd_count = 0;
-    efds.fd_count = 0;
-  }
-
-  /* Make the select() time out after 3 minutes. If select() hangs because */
-  /* the user closed the socket, we will at least not hang indefinitely. */
-  timeout.tv_sec = 3 * 60;
-  timeout.tv_usec = 0;
-
-  r = select(1, (fd_set*) &rfds, (fd_set*) &wfds, (fd_set*) &efds, &timeout);
-  if (r == SOCKET_ERROR) {
-    /* Queue this req, reporting an error. */
-    SET_REQ_ERROR(&handle->poll_req_1, WSAGetLastError());
-    POST_COMPLETION_FOR_REQ(handle->loop, req);
-    return 0;
-  }
-
-  reported_events = 0;
-
-  if (r > 0) {
-    if (rfds.fd_count > 0) {
-      assert(rfds.fd_count == 1);
-      assert(rfds.fd_array[0] == handle->socket);
-      reported_events |= UV_READABLE;
-    }
-
-    if (wfds.fd_count > 0) {
-      assert(wfds.fd_count == 1);
-      assert(wfds.fd_array[0] == handle->socket);
-      reported_events |= UV_WRITABLE;
-    } else if (efds.fd_count > 0) {
-      assert(efds.fd_count == 1);
-      assert(efds.fd_array[0] == handle->socket);
-      reported_events |= UV_WRITABLE;
-    }
-  }
-
-  SET_REQ_SUCCESS(req);
-  req->u.io.overlapped.InternalHigh = (DWORD) reported_events;
-  POST_COMPLETION_FOR_REQ(handle->loop, req);
-
-  return 0;
-}
-
-
-static void uv__slow_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
-  uv_req_t* req;
-
-  /* Find a yet unsubmitted req to submit. */
-  if (handle->submitted_events_1 == 0) {
-    req = &handle->poll_req_1;
-    handle->submitted_events_1 = handle->events;
-    handle->mask_events_1 = 0;
-    handle->mask_events_2 = handle->events;
-  } else if (handle->submitted_events_2 == 0) {
-    req = &handle->poll_req_2;
-    handle->submitted_events_2 = handle->events;
-    handle->mask_events_1 = handle->events;
-    handle->mask_events_2 = 0;
-  } else {
-    assert(0);
-    return;
-  }
-
-  if (!QueueUserWorkItem(uv__slow_poll_thread_proc,
-                         (void*) req,
-                         WT_EXECUTELONGFUNCTION)) {
-    /* Make this req pending, reporting an error. */
-    SET_REQ_ERROR(req, GetLastError());
-    uv_insert_pending_req(loop, req);
-  }
-}
-
-
-
-static void uv__slow_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
-    uv_req_t* req) {
-  unsigned char mask_events;
-  int err;
-
-  if (req == &handle->poll_req_1) {
-    handle->submitted_events_1 = 0;
-    mask_events = handle->mask_events_1;
-  } else if (req == &handle->poll_req_2) {
-    handle->submitted_events_2 = 0;
-    mask_events = handle->mask_events_2;
-  } else {
-    assert(0);
-    return;
-  }
-
-  if (!REQ_SUCCESS(req)) {
-    /* Error. */
-    if (handle->events != 0) {
-      err = GET_REQ_ERROR(req);
-      handle->events = 0; /* Stop the watcher */
-      handle->poll_cb(handle, uv_translate_sys_error(err), 0);
-    }
-  } else {
-    /* Got some events. */
-    int events = req->u.io.overlapped.InternalHigh & handle->events & ~mask_events;
-    if (events != 0) {
-      handle->poll_cb(handle, 0, events);
-    }
-  }
-
-  if ((handle->events & ~(handle->submitted_events_1 |
-      handle->submitted_events_2)) != 0) {
-    uv__slow_poll_submit_poll_req(loop, handle);
-  } else if ((handle->flags & UV__HANDLE_CLOSING) &&
-             handle->submitted_events_1 == 0 &&
-             handle->submitted_events_2 == 0) {
-    uv_want_endgame(loop, (uv_handle_t*) handle);
-  }
-}
-
-
-static int uv__slow_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
-  assert(handle->type == UV_POLL);
-  assert(!(handle->flags & UV__HANDLE_CLOSING));
-  assert((events & ~(UV_READABLE | UV_WRITABLE)) == 0);
-
-  handle->events = events;
-
-  if (handle->events != 0) {
-    uv__handle_start(handle);
-  } else {
-    uv__handle_stop(handle);
-  }
-
-  if ((handle->events &
-      ~(handle->submitted_events_1 | handle->submitted_events_2)) != 0) {
-    uv__slow_poll_submit_poll_req(handle->loop, handle);
-  }
-
-  return 0;
-}
-
-
-static int uv__slow_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
-  handle->events = 0;
-  uv__handle_closing(handle);
-
-  if (handle->submitted_events_1 == 0 &&
-      handle->submitted_events_2 == 0) {
-    uv_want_endgame(loop, (uv_handle_t*) handle);
-  }
-
-  return 0;
-}
-
-
-int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
-  return uv_poll_init_socket(loop, handle, (SOCKET) uv__get_osfhandle(fd));
-}
-
-
-int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
-    uv_os_sock_t socket) {
-  WSAPROTOCOL_INFOW protocol_info;
-  int len;
-  SOCKET peer_socket, base_socket;
-  DWORD bytes;
-  DWORD yes = 1;
-
-  /* Set the socket to nonblocking mode */
-  if (ioctlsocket(socket, FIONBIO, &yes) == SOCKET_ERROR)
-    return uv_translate_sys_error(WSAGetLastError());
-
-  /* Try to obtain a base handle for the socket. This increases this chances */
-  /* that we find an AFD handle and are able to use the fast poll mechanism. */
-#ifndef NDEBUG
-  base_socket = INVALID_SOCKET;
-#endif
-
-  if (WSAIoctl(socket,
-               SIO_BASE_HANDLE,
-               NULL,
-               0,
-               &base_socket,
-               sizeof base_socket,
-               &bytes,
-               NULL,
-               NULL) == 0) {
-    assert(base_socket != 0 && base_socket != INVALID_SOCKET);
-    socket = base_socket;
-  }
-
-  uv__handle_init(loop, (uv_handle_t*) handle, UV_POLL);
-  handle->socket = socket;
-  handle->events = 0;
-
-  /* Obtain protocol information about the socket. */
-  len = sizeof protocol_info;
-  if (getsockopt(socket,
-                 SOL_SOCKET,
-                 SO_PROTOCOL_INFOW,
-                 (char*) &protocol_info,
-                 &len) != 0) {
-    return uv_translate_sys_error(WSAGetLastError());
-  }
-
-  /* Get the peer socket that is needed to enable fast poll. If the returned */
-  /* value is NULL, the protocol is not implemented by MSAFD and we'll have */
-  /* to use slow mode. */
-  peer_socket = uv__fast_poll_get_peer_socket(loop, &protocol_info);
-
-  if (peer_socket != INVALID_SOCKET) {
-    /* Initialize fast poll specific fields. */
-    handle->peer_socket = peer_socket;
-  } else {
-    /* Initialize slow poll specific fields. */
-    handle->flags |= UV_HANDLE_POLL_SLOW;
-  }
-
-  /* Initialize 2 poll reqs. */
-  handle->submitted_events_1 = 0;
-  uv_req_init(loop, (uv_req_t*) &(handle->poll_req_1));
-  handle->poll_req_1.type = UV_POLL_REQ;
-  handle->poll_req_1.data = handle;
-
-  handle->submitted_events_2 = 0;
-  uv_req_init(loop, (uv_req_t*) &(handle->poll_req_2));
-  handle->poll_req_2.type = UV_POLL_REQ;
-  handle->poll_req_2.data = handle;
-
-  return 0;
-}
-
-
-int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb) {
-  int err;
-
-  if (!(handle->flags & UV_HANDLE_POLL_SLOW)) {
-    err = uv__fast_poll_set(handle->loop, handle, events);
-  } else {
-    err = uv__slow_poll_set(handle->loop, handle, events);
-  }
-
-  if (err) {
-    return uv_translate_sys_error(err);
-  }
-
-  handle->poll_cb = cb;
-
-  return 0;
-}
-
-
-int uv_poll_stop(uv_poll_t* handle) {
-  int err;
-
-  if (!(handle->flags & UV_HANDLE_POLL_SLOW)) {
-    err = uv__fast_poll_set(handle->loop, handle, 0);
-  } else {
-    err = uv__slow_poll_set(handle->loop, handle, 0);
-  }
-
-  return uv_translate_sys_error(err);
-}
-
-
-void uv_process_poll_req(uv_loop_t* loop, uv_poll_t* handle, uv_req_t* req) {
-  if (!(handle->flags & UV_HANDLE_POLL_SLOW)) {
-    uv__fast_poll_process_poll_req(loop, handle, req);
-  } else {
-    uv__slow_poll_process_poll_req(loop, handle, req);
-  }
-}
-
-
-int uv_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
-  if (!(handle->flags & UV_HANDLE_POLL_SLOW)) {
-    return uv__fast_poll_close(loop, handle);
-  } else {
-    return uv__slow_poll_close(loop, handle);
+    return uv__poll_cancel_poll_req(loop, handle);
   }
 }
 

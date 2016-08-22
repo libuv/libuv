@@ -397,7 +397,6 @@ typedef struct {
   SOCKET peer_socket;                                                         \
   AFD_POLL_INFO afd_poll_info_1;                                              \
   AFD_POLL_INFO afd_poll_info_2;                                              \
-  /* Used in fast and slow mode. */                                           \
   uv_req_t poll_req_1;                                                        \
   uv_req_t poll_req_2;                                                        \
   unsigned char submitted_events_1;                                           \
