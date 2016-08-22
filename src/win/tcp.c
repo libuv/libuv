@@ -74,7 +74,6 @@ static int uv_tcp_set_socket(uv_loop_t* loop,
                              int family,
                              int imported) {
   DWORD yes = 1;
-  int non_ifs_lsp;
   int err;
 
   if (handle->socket != INVALID_SOCKET)
@@ -102,13 +101,7 @@ static int uv_tcp_set_socket(uv_loop_t* loop,
     }
   }
 
-  if (family == AF_INET6) {
-    non_ifs_lsp = uv_tcp_non_ifs_lsp_ipv6;
-  } else {
-    non_ifs_lsp = uv_tcp_non_ifs_lsp_ipv4;
-  }
-
-  if (!(handle->flags & UV_HANDLE_EMULATE_IOCP) && !non_ifs_lsp) {
+  if (!handle->flags & UV_HANDLE_EMULATE_IOCP) {
     if (SetFileCompletionNotificationModes((HANDLE) socket,
         FILE_SKIP_SET_EVENT_ON_HANDLE |
         FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
@@ -1304,29 +1297,6 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 
 static int uv_tcp_try_cancel_io(uv_tcp_t* tcp) {
   SOCKET socket = tcp->socket;
-  int non_ifs_lsp;
-
-  /* Check if we have any non-IFS LSPs stacked on top of TCP */
-  non_ifs_lsp = (tcp->flags & UV_HANDLE_IPV6) ? uv_tcp_non_ifs_lsp_ipv6 :
-                                                uv_tcp_non_ifs_lsp_ipv4;
-
-  /* If there are non-ifs LSPs then try to obtain a base handle for the
-     socket. */
-  if (non_ifs_lsp) {
-    DWORD bytes;
-    if (WSAIoctl(socket,
-                 SIO_BASE_HANDLE,
-                 NULL,
-                 0,
-                 &socket,
-                 sizeof socket,
-                 &bytes,
-                 NULL,
-                 NULL) != 0) {
-      /* Failed. We can't do CancelIo. */
-      return -1;
-    }
-  }
 
   assert(socket != 0 && socket != INVALID_SOCKET);
 

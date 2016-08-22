@@ -26,10 +26,6 @@
 #include "internal.h"
 
 
-/* Whether there are any non-IFS LSPs stacked on TCP */
-int uv_tcp_non_ifs_lsp_ipv4;
-int uv_tcp_non_ifs_lsp_ipv6;
-
 /* Ip address used to bind to any port at any interface */
 struct sockaddr_in uv_addr_ip4_any_;
 struct sockaddr_in6 uv_addr_ip6_any_;
@@ -83,9 +79,6 @@ static int error_means_no_support(DWORD error) {
 void uv_winsock_init() {
   WSADATA wsa_data;
   int errorno;
-  SOCKET dummy;
-  WSAPROTOCOL_INFOW protocol_info;
-  int opt_len;
 
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
@@ -100,52 +93,6 @@ void uv_winsock_init() {
 
   if (uv_ip6_addr("::", 0, &uv_addr_ip6_any_)) {
     abort();
-  }
-
-  /* Detect non-IFS LSPs */
-  dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-
-  if (dummy != INVALID_SOCKET) {
-    opt_len = (int) sizeof protocol_info;
-    if (getsockopt(dummy,
-                   SOL_SOCKET,
-                   SO_PROTOCOL_INFOW,
-                   (char*) &protocol_info,
-                   &opt_len) == SOCKET_ERROR)
-      uv_fatal_error(WSAGetLastError(), "getsockopt");
-
-    if (!(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES))
-      uv_tcp_non_ifs_lsp_ipv4 = 1;
-
-    if (closesocket(dummy) == SOCKET_ERROR)
-      uv_fatal_error(WSAGetLastError(), "closesocket");
-
-  } else if (!error_means_no_support(WSAGetLastError())) {
-    /* Any error other than "socket type not supported" is fatal. */
-    uv_fatal_error(WSAGetLastError(), "socket");
-  }
-
-  /* Detect IPV6 support and non-IFS LSPs */
-  dummy = socket(AF_INET6, SOCK_STREAM, IPPROTO_IP);
-
-  if (dummy != INVALID_SOCKET) {
-    opt_len = (int) sizeof protocol_info;
-    if (getsockopt(dummy,
-                   SOL_SOCKET,
-                   SO_PROTOCOL_INFOW,
-                   (char*) &protocol_info,
-                   &opt_len) == SOCKET_ERROR)
-      uv_fatal_error(WSAGetLastError(), "getsockopt");
-
-    if (!(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES))
-      uv_tcp_non_ifs_lsp_ipv6 = 1;
-
-    if (closesocket(dummy) == SOCKET_ERROR)
-      uv_fatal_error(WSAGetLastError(), "closesocket");
-
-  } else if (!error_means_no_support(WSAGetLastError())) {
-    /* Any error other than "socket type not supported" is fatal. */
-    uv_fatal_error(WSAGetLastError(), "socket");
   }
 }
 
