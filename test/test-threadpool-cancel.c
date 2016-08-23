@@ -37,6 +37,11 @@ struct cancel_info {
   uv_timer_t timer_handle;
 };
 
+struct suspend_req {
+  uv_work_t req;
+  uv_sem_t sem;
+};
+
 static uv_cond_t signal_cond;
 static uv_mutex_t signal_mutex;
 static uv_mutex_t wait_mutex;
@@ -166,12 +171,17 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 
-static void nop_work_cb(uv_work_t* req) {
+static void suspend(uv_work_t* req) {
+  struct suspend_req *s;
+
+  s = container_of(req, struct suspend_req, req);
+  uv_sem_wait(&s->sem);
 }
 
 
 static void nop_done_cb(uv_work_t* req, int status) {
-  req->data = "OK";
+  ASSERT(status == UV_ECANCELED);
+  done_cb_called++;
 }
 
 
@@ -330,32 +340,23 @@ TEST_IMPL(threadpool_cancel_fs) {
 
 
 TEST_IMPL(threadpool_cancel_single) {
+  struct suspend_req s;
   uv_loop_t* loop;
   uv_work_t req;
-  int cancelled;
-  int i;
+
+  putenv("UV_THREADPOOL_SIZE=1");
+  ASSERT(0 == uv_sem_init(&s.sem, 0));
 
   loop = uv_default_loop();
-  for (i = 0; i < 5000; i++) {
-    req.data = NULL;
-    ASSERT(0 == uv_queue_work(loop, &req, nop_work_cb, nop_done_cb));
+  ASSERT(0 == uv_queue_work(loop, &s.req, suspend, NULL));
+  ASSERT(0 == uv_queue_work(loop, &req, (uv_work_cb) abort, nop_done_cb));
+  ASSERT(0 == uv_cancel((uv_req_t*) &req));
 
-    cancelled = uv_cancel((uv_req_t*) &req);
-    if (cancelled == 0)
-      break;
-
-    ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  }
-
-  if (cancelled != 0) {
-    fputs("Failed to cancel a work req in 5,000 iterations, giving up.\n",
-          stderr);
-    return 1;
-  }
-
-  ASSERT(req.data == NULL);
+  uv_sem_post(&s.sem);
+  ASSERT(0 == done_cb_called);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(req.data != NULL);  /* Should have been updated by nop_done_cb(). */
+  ASSERT(1 == done_cb_called);
+  uv_sem_destroy(&s.sem);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
