@@ -895,6 +895,8 @@ typedef struct uv_process_options_s {
    */
   uv_uid_t uid;
   uv_gid_t gid;
+  uv_gid_t* groups;
+  unsigned int groups_count;
 } uv_process_options_t;
 
 /*
@@ -932,7 +934,15 @@ enum uv_process_flags {
    * option is only meaningful on Windows systems. On Unix it is silently
    * ignored.
    */
-  UV_PROCESS_WINDOWS_HIDE = (1 << 4)
+  UV_PROCESS_WINDOWS_HIDE = (1 << 4),
+  /*
+  * Set the child process' secondary groups id. The secondary groups are
+  * supplied as a list in the `groups` field of the options struct, and
+  * the number of elements is specified in the `groups_count`field of the
+  * same structure.
+  * This is only supported on POSIX platforms.
+  */
+  UV_PROCESS_SETGROUPS = (1 << 5)
 };
 
 /*
