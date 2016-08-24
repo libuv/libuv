@@ -80,6 +80,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   }
 
   /* Success. */
+  handle->flags |= UV_HANDLE_BOUND;
   handle->pipe_fname = pipe_fname; /* Is a strdup'ed copy. */
   handle->io_watcher.fd = sockfd;
   return 0;
