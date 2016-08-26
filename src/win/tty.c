@@ -130,7 +130,7 @@ typedef enum {
   UV_UNSUPPORTED
 } uv_vtermstate_t;
 /* Determine whether or not ANSI support is enabled. */
-static vtermstate_t uv__vterm_state = UV_UNCHECKED;
+static uv_vtermstate_t uv__vterm_state = UV_UNCHECKED;
 static void uv__determine_vterm_state(HANDLE handle);
 
 void uv_console_init() {
