@@ -39,7 +39,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
   2 * sizeof(sem_t) + \
   2 * sizeof(unsigned int) - \
   sizeof(void *)
-#elif defined(__MVS__)
+#else
 # define UV_BARRIER_STRUCT_PADDING 0
 #endif
 
