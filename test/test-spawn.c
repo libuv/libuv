@@ -1230,8 +1230,7 @@ TEST_IMPL(spawn_setuid_setgid) {
   /* if not root, then this will fail. */
   uv_uid_t uid = getuid();
   if (uid != 0) {
-    fprintf(stderr, "spawn_setuid_setgid skipped: not root\n");
-    return 0;
+    RETURN_SKIP("It should be run as root user");
   }
 
   init_process_options("spawn_helper1", exit_cb);
