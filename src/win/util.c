@@ -1078,6 +1078,7 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
   FILETIME createTime, exitTime, kernelTime, userTime;
   SYSTEMTIME kernelSystemTime, userSystemTime;
   PROCESS_MEMORY_COUNTERS memCounters;
+  IO_COUNTERS ioCounters;
   int ret;
 
   ret = GetProcessTimes(GetCurrentProcess(), &createTime, &exitTime, &kernelTime, &userTime);
@@ -1102,6 +1103,11 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
     return uv_translate_sys_error(GetLastError());
   }
 
+  ret = GetProcessIoCounters(GetCurrentProcess(), &ioCounters);
+  if (ret == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
   memset(uv_rusage, 0, sizeof(*uv_rusage));
 
   uv_rusage->ru_utime.tv_sec = userSystemTime.wHour * 3600 +
@@ -1116,6 +1122,9 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
   uv_rusage->ru_majflt = (uint64_t) memCounters.PageFaultCount;
   uv_rusage->ru_maxrss = (uint64_t) memCounters.PeakWorkingSetSize / 1024;
+
+  uv_rusage->ru_oublock = (uint64_t) ioCounters.WriteOperationCount;
+  uv_rusage->ru_inblock = (uint64_t) ioCounters.ReadOperationCount;
 
   return 0;
 }
