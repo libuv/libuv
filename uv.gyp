@@ -17,6 +17,7 @@
             'defines': [
               '_UNIX03_THREADS',
               '_UNIX03_SOURCE',
+              '_UNIX03_WITHDRAWN',
               '_OPEN_SYS_IF_EXT',
               '_OPEN_SYS_SOCK_IPV6',
               '_OPEN_MSGQ_EXT',
@@ -28,6 +29,7 @@
               'PATH_MAX=255'
             ],
             'cflags': [ '-qxplink' ],
+            'ldflags': [ '-qxplink' ],
           }]
         ],
       }],
@@ -305,8 +307,9 @@
         ['OS=="zos"', {
           'sources': [
             'src/unix/pthread-fixes.c',
-            'src/unix/pthread-barrier.c'
-            'src/unix/os390.c'
+            'src/unix/pthread-barrier.c',
+            'src/unix/os390.c',
+            'src/unix/os390-syscalls.c'
           ]
         }],
       ]
