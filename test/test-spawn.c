@@ -1268,10 +1268,8 @@ TEST_IMPL(spawn_setgids) {
 
   /* if not root, then this will fail. */
   uv_uid_t uid = getuid();
-  if (uid != 0) {
-    fprintf(stderr, "spawn_setgids skipped: not root\n");
-    return 0;
-  }
+  if (uid != 0)
+    RETURN_SKIP("spawn_setgids skipped: not root\n");
 
   init_process_options("spawn_helper1", exit_cb);
 

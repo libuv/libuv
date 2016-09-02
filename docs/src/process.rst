@@ -183,6 +183,8 @@ Public members
         This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
         to ``UV_ENOTSUP``.
 
+    .. versionadded:: 2.0.0
+
 .. c:member:: uv_stdio_container_t.flags
 
     Flags specifying how the stdio container should be passed to the child. See
