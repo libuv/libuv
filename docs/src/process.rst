@@ -240,6 +240,8 @@ Public members
         This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
         to ``UV_ENOTSUP``.
 
+    .. versionadded:: 2.0.0
+
 .. c:member:: char* uv_process_options_t.cpumask
 .. c:member:: size_t uv_process_options_t.cpumask_size
 
