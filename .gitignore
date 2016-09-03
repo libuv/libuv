@@ -71,6 +71,9 @@ ipch
 # Clion / IntelliJ project files
 /.idea/
 
+# VSCode setting files
+.vscode/
+
 *.xcodeproj
 *.xcworkspace
 
