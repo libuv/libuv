@@ -39,6 +39,10 @@ Starting with version 1.0.0 libuv follows the [semantic versioning](http://semve
 scheme. The API change and backwards compatibility rules are those indicated by
 SemVer. libuv will keep a stable ABI across major releases.
 
+## Licensing
+
+libuv is licensed under the MIT license. Check the [LICENSE file](LICENSE).
+
 ## Community
 
  * [Mailing list](http://groups.google.com/group/libuv)
@@ -59,6 +63,11 @@ Show different supported building options:
 Build documentation as HTML:
 
     $ make html
+
+Build documentation as HTML and live reload it when it changes (this requires
+sphinx-autobuild to be installed and is only supported on Unix):
+
+    $ make livehtml
 
 Build documentation as man pages:
 
@@ -215,18 +224,7 @@ Run:
 
 ## Supported Platforms
 
-Microsoft Windows operating systems since Windows XP SP2. It can be built
-with either Visual Studio or MinGW. Consider using
-[Visual Studio Express 2010][] or later if you do not have a full Visual
-Studio license.
-
-Linux using the GCC toolchain.
-
-OS X using the GCC or XCode toolchain.
-
-Solaris 121 and later using GCC toolchain.
-
-AIX 6 and later using GCC toolchain (see notes).
+Check the [SUPPORTED_PLATFORMS file](SUPPORTED_PLATFORMS.md).
 
 ### AIX Notes
 
@@ -245,7 +243,6 @@ See the [guidelines for contributing][].
 [node.js]: http://nodejs.org/
 [GYP]: http://code.google.com/p/gyp/
 [Python]: https://www.python.org/downloads/
-[Visual Studio Express 2010]: http://www.microsoft.com/visualstudio/eng/products/visual-studio-2010-express
 [guidelines for contributing]: https://github.com/libuv/libuv/blob/master/CONTRIBUTING.md
 [libuv_banner]: https://raw.githubusercontent.com/libuv/libuv/master/img/banner.png
 [x32]: https://en.wikipedia.org/wiki/X32_ABI

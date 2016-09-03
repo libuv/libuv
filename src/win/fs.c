@@ -94,7 +94,7 @@
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    uint64_t bigtime = ((int64_t) (time) * 10000000LL) +                    \
+    uint64_t bigtime = ((uint64_t) ((time) * 10000000ULL)) +                \
                                   116444736000000000ULL;                    \
     (filetime_ptr)->dwLowDateTime = bigtime & 0xFFFFFFFF;                   \
     (filetime_ptr)->dwHighDateTime = bigtime >> 32;                         \
@@ -204,14 +204,11 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     req->fs.info.new_pathw = NULL;
   }
 
-  if (!copy_path) {
-    req->path = path;
-  } else if (path) {
+  req->path = path;
+  if (path != NULL && copy_path) {
     memcpy(pos, path, path_len);
     assert(path_len == buf_sz - (pos - buf));
     req->path = pos;
-  } else {
-    req->path = NULL;
   }
 
   req->flags |= UV_FS_FREE_PATHS;
@@ -901,7 +898,15 @@ void fs__scandir(uv_fs_t* req) {
       /* Compute the length of the filename in WCHARs. */
       wchar_len = info->FileNameLength / sizeof info->FileName[0];
 
-      /* Skip over '.' and '..' entries. */
+      /* Skip over '.' and '..' entries.  It has been reported that
+       * the SharePoint driver includes the terminating zero byte in
+       * the filename length.  Strip those first.
+       */
+      while (wchar_len > 0 && info->FileName[wchar_len - 1] == L'\0')
+        wchar_len -= 1;
+
+      if (wchar_len == 0)
+        continue;
       if (wchar_len == 1 && info->FileName[0] == L'.')
         continue;
       if (wchar_len == 2 && info->FileName[0] == L'.' &&
@@ -1083,17 +1088,28 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
   statbuf->st_mode = 0;
 
   if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-    statbuf->st_mode |= S_IFLNK;
-    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) != 0)
+    /*
+     * It is possible for a file to have FILE_ATTRIBUTE_REPARSE_POINT but not have
+     * any link data. In that case DeviceIoControl() in fs__readlink_handle() sets
+     * the last error to ERROR_NOT_A_REPARSE_POINT. Then the stat result mode
+     * calculated below will indicate a normal directory or file, as if
+     * FILE_ATTRIBUTE_REPARSE_POINT was not present.
+     */
+    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) == 0) {
+      statbuf->st_mode |= S_IFLNK;
+    } else if (GetLastError() != ERROR_NOT_A_REPARSE_POINT) {
       return -1;
+    }
+  }
 
-  } else if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    statbuf->st_mode |= _S_IFDIR;
-    statbuf->st_size = 0;
-
-  } else {
-    statbuf->st_mode |= _S_IFREG;
-    statbuf->st_size = file_info.StandardInformation.EndOfFile.QuadPart;
+  if (statbuf->st_mode == 0) {
+    if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+      statbuf->st_mode |= _S_IFDIR;
+      statbuf->st_size = 0;
+    } else {
+      statbuf->st_mode |= _S_IFREG;
+      statbuf->st_size = file_info.StandardInformation.EndOfFile.QuadPart;
+    }
   }
 
   if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_READONLY)
@@ -1421,8 +1437,8 @@ static void fs__fchmod(uv_fs_t* req) {
 INLINE static int fs__utime_handle(HANDLE handle, double atime, double mtime) {
   FILETIME filetime_a, filetime_m;
 
-  TIME_T_TO_FILETIME((time_t) atime, &filetime_a);
-  TIME_T_TO_FILETIME((time_t) mtime, &filetime_m);
+  TIME_T_TO_FILETIME(atime, &filetime_a);
+  TIME_T_TO_FILETIME(mtime, &filetime_m);
 
   if (!SetFileTime(handle, NULL, &filetime_a, &filetime_m)) {
     return -1;
@@ -1870,8 +1886,12 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->flags & UV_FS_FREE_PATHS)
     uv__free(req->file.pathw);
 
-  if (req->flags & UV_FS_FREE_PTR)
-    uv__free(req->ptr);
+  if (req->flags & UV_FS_FREE_PTR) {
+    if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
+      uv__fs_scandir_cleanup(req);
+    else
+      uv__free(req->ptr);
+  }
 
   req->path = NULL;
   req->file.pathw = NULL;

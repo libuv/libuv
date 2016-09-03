@@ -44,13 +44,23 @@
 #endif /* __sun */
 
 #if defined(_AIX)
-#define reqevents events
-#define rtnevents revents
-#include <sys/poll.h>
+# define reqevents events
+# define rtnevents revents
+# include <sys/poll.h>
+#else
+# include <poll.h>
 #endif /* _AIX */
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <CoreServices/CoreServices.h>
+#endif
+
+#if defined(__ANDROID__)
+int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
+# ifdef pthread_sigmask
+# undef pthread_sigmask
+# endif
+# define pthread_sigmask(how, set, oldset) uv__pthread_sigmask(how, set, oldset)
 #endif
 
 #define ACCESS_ONCE(type, var)                                                \
@@ -89,40 +99,11 @@
 # define UV_UNUSED(declaration)     declaration
 #endif
 
-#if defined(__linux__)
-# define UV__POLLIN     UV__EPOLLIN
-# define UV__POLLOUT    UV__EPOLLOUT
-# define UV__POLLERR    UV__EPOLLERR
-# define UV__POLLHUP    UV__EPOLLHUP
-# define UV__POLLRDHUP  UV__EPOLLRDHUP
-#endif
-
-#if defined(__sun) || defined(_AIX)
-# define UV__POLLIN     POLLIN
-# define UV__POLLOUT    POLLOUT
-# define UV__POLLERR    POLLERR
-# define UV__POLLHUP    POLLHUP
-# define UV__POLLRDHUP  POLLRDHUP
-#endif
-
-#ifndef UV__POLLIN
-# define UV__POLLIN   1
-#endif
-
-#ifndef UV__POLLOUT
-# define UV__POLLOUT  2
-#endif
-
-#ifndef UV__POLLERR
-# define UV__POLLERR  4
-#endif
-
-#ifndef UV__POLLHUP
-# define UV__POLLHUP  8
-#endif
-
-#ifndef UV__POLLRDHUP
-# define UV__POLLRDHUP  0x200
+/* Leans on the fact that, on Linux, POLLRDHUP == EPOLLRDHUP. */
+#ifdef POLLRDHUP
+# define UV__POLLRDHUP POLLRDHUP
+#else
+# define UV__POLLRDHUP 0x2000
 #endif
 
 #if !defined(O_CLOEXEC) && defined(__FreeBSD__)
@@ -151,7 +132,8 @@ enum {
   UV_TCP_KEEPALIVE        = 0x800,  /* Turn on keep-alive. */
   UV_TCP_SINGLE_ACCEPT    = 0x1000, /* Only accept() when idle. */
   UV_HANDLE_IPV6          = 0x10000, /* Handle is bound to a IPv6 socket. */
-  UV_UDP_PROCESSING       = 0x20000  /* Handle is running the send callback queue. */
+  UV_UDP_PROCESSING       = 0x20000, /* Handle is running the send callback queue. */
+  UV_HANDLE_BOUND         = 0x40000  /* Handle is bound to an address and port */
 };
 
 /* loop flags */
@@ -171,10 +153,26 @@ struct uv__stream_queued_fds_s {
 };
 
 
+#if defined(_AIX) || \
+    defined(__APPLE__) || \
+    defined(__DragonFly__) || \
+    defined(__FreeBSD__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__linux__)
+#define uv__cloexec uv__cloexec_ioctl
+#define uv__nonblock uv__nonblock_ioctl
+#else
+#define uv__cloexec uv__cloexec_fcntl
+#define uv__nonblock uv__nonblock_fcntl
+#endif
+
 /* core */
-int uv__nonblock(int fd, int set);
+int uv__cloexec_ioctl(int fd, int set);
+int uv__cloexec_fcntl(int fd, int set);
+int uv__nonblock_ioctl(int fd, int set);
+int uv__nonblock_fcntl(int fd, int set);
 int uv__close(int fd);
-int uv__cloexec(int fd, int set);
+int uv__close_nocheckstdio(int fd);
 int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);
 ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
@@ -254,6 +252,7 @@ void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
+int uv__getpwuid_r(uv_passwd_t* pwd);
 
 
 #if defined(__APPLE__)

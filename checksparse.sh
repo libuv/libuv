@@ -101,6 +101,7 @@ test/test-fs.c
 test/test-get-currentexe.c
 test/test-get-loadavg.c
 test/test-get-memory.c
+test/test-get-passwd.c
 test/test-getaddrinfo.c
 test/test-getsockname.c
 test/test-homedir.c

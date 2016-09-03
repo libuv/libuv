@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -23,53 +23,64 @@
 #include "task.h"
 #include <string.h>
 
-
-static void set_title(const char* title) {
-  char buffer[512];
-  int err;
-
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
-
-  err = uv_set_process_title(title);
-  ASSERT(err == 0);
-
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
-
-  ASSERT(strcmp(buffer, title) == 0);
-}
-
-
-static void uv_get_process_title_edge_cases() {
-  char buffer[512];
+TEST_IMPL(get_passwd) {
+  uv_passwd_t pwd;
+  size_t len;
   int r;
 
-  /* Test a NULL buffer */
-  r = uv_get_process_title(NULL, 100);
-  ASSERT(r == UV_EINVAL);
+  /* Test the normal case */
+  r = uv_os_get_passwd(&pwd);
+  ASSERT(r == 0);
+  len = strlen(pwd.username);
+  ASSERT(len > 0);
 
-  /* Test size of zero */
-  r = uv_get_process_title(buffer, 0);
-  ASSERT(r == UV_EINVAL);
-
-  /* Test for insufficient buffer size */
-  r = uv_get_process_title(buffer, 1);
-  ASSERT(r == UV_ENOBUFS);
-}
-
-
-TEST_IMPL(process_title) {
-#if defined(__sun) || defined(_AIX) || defined(__MVS__)
-  RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
+#ifdef _WIN32
+  ASSERT(pwd.shell == NULL);
 #else
-  /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
-  set_title("new title");
+  len = strlen(pwd.shell);
+  ASSERT(len > 0);
+#endif
 
-  /* Check uv_get_process_title() edge cases */
-  uv_get_process_title_edge_cases();
+  len = strlen(pwd.homedir);
+  ASSERT(len > 0);
+
+#ifdef _WIN32
+  if (len == 3 && pwd.homedir[1] == ':')
+    ASSERT(pwd.homedir[2] == '\\');
+  else
+    ASSERT(pwd.homedir[len - 1] != '\\');
+#else
+  if (len == 1)
+    ASSERT(pwd.homedir[0] == '/');
+  else
+    ASSERT(pwd.homedir[len - 1] != '/');
+#endif
+
+#ifdef _WIN32
+  ASSERT(pwd.uid == -1);
+  ASSERT(pwd.gid == -1);
+#else
+  ASSERT(pwd.uid >= 0);
+  ASSERT(pwd.gid >= 0);
+#endif
+
+  /* Test uv_os_free_passwd() */
+  uv_os_free_passwd(&pwd);
+
+  ASSERT(pwd.username == NULL);
+  ASSERT(pwd.shell == NULL);
+  ASSERT(pwd.homedir == NULL);
+
+  /* Test a double free */
+  uv_os_free_passwd(&pwd);
+
+  ASSERT(pwd.username == NULL);
+  ASSERT(pwd.shell == NULL);
+  ASSERT(pwd.homedir == NULL);
+
+  /* Test invalid input */
+  r = uv_os_get_passwd(NULL);
+  ASSERT(r == UV_EINVAL);
 
   return 0;
-#endif
 }

@@ -29,6 +29,7 @@
 # if defined(__APPLE__) ||                                                    \
      defined(__DragonFly__) ||                                                \
      defined(__FreeBSD__) ||                                                  \
+     defined(__FreeBSD_kernel__) ||                                           \
      defined(__OpenBSD__) ||                                                  \
      defined(__NetBSD__)
 #  define HAVE_KQUEUE 1
@@ -53,6 +54,14 @@ static char fs_event_filename[PATH_MAX];
 static char fs_event_filename[1024];
 #endif  /* defined(PATH_MAX) */
 static int timer_cb_touch_called;
+static int timer_cb_exact_called;
+
+static void fs_event_fail(uv_fs_event_t* handle,
+                          const char* filename,
+                          int events,
+                          int status) {
+  ASSERT(0 && "should never be called");
+}
 
 static void create_dir(const char* name) {
   int r;
@@ -345,6 +354,21 @@ static void timer_cb_touch(uv_timer_t* timer) {
   timer_cb_touch_called++;
 }
 
+static void timer_cb_exact(uv_timer_t* handle) {
+  int r;
+
+  if (timer_cb_exact_called == 0) {
+    touch_file("watch_dir/file.js");
+  } else {
+    uv_close((uv_handle_t*)handle, NULL);
+    r = uv_fs_event_stop(&fs_event);
+    ASSERT(r == 0);
+    uv_close((uv_handle_t*) &fs_event, NULL);
+  }
+
+  ++timer_cb_exact_called;
+}
+
 static void timer_cb_watch_twice(uv_timer_t* handle) {
   uv_fs_event_t* handles = handle->data;
   uv_close((uv_handle_t*) (handles + 0), NULL);
@@ -353,6 +377,10 @@ static void timer_cb_watch_twice(uv_timer_t* handle) {
 }
 
 TEST_IMPL(fs_event_watch_dir) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -432,6 +460,10 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 
 
 TEST_IMPL(fs_event_watch_file) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -467,7 +499,54 @@ TEST_IMPL(fs_event_watch_file) {
   return 0;
 }
 
+TEST_IMPL(fs_event_watch_file_exact_path) {
+  /*
+    This test watches a file named "file.jsx" and modifies a file named
+    "file.js". The test verifies that no events occur for file.jsx.
+  */
+
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
+  uv_loop_t* loop;
+  int r;
+
+  loop = uv_default_loop();
+
+  /* Setup */
+  remove("watch_dir/file.js");
+  remove("watch_dir/file.jsx");
+  remove("watch_dir/");
+  create_dir("watch_dir");
+  create_file("watch_dir/file.js");
+  create_file("watch_dir/file.jsx");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, fs_event_fail, "watch_dir/file.jsx", 0);
+  ASSERT(r == 0);
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer, timer_cb_exact, 100, 100);
+  ASSERT(r == 0);
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+  ASSERT(timer_cb_exact_called == 2);
+
+  /* Cleanup */
+  remove("watch_dir/file.js");
+  remove("watch_dir/file.jsx");
+  remove("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 TEST_IMPL(fs_event_watch_file_twice) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   const char path[] = "test/fixtures/empty_file";
   uv_fs_event_t watchers[2];
   uv_timer_t timer;
@@ -489,6 +568,9 @@ TEST_IMPL(fs_event_watch_file_twice) {
 }
 
 TEST_IMPL(fs_event_watch_file_current_dir) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_timer_t timer;
   uv_loop_t* loop;
   int r;
@@ -511,7 +593,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   r = uv_timer_init(loop, &timer);
   ASSERT(r == 0);
 
-  r = uv_timer_start(&timer, timer_cb_touch, 10, 0);
+  r = uv_timer_start(&timer, timer_cb_touch, 100, 0);
   ASSERT(r == 0);
 
   ASSERT(timer_cb_touch_called == 0);
@@ -559,6 +641,10 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 #endif
 
 TEST_IMPL(fs_event_no_callback_after_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -593,6 +679,10 @@ TEST_IMPL(fs_event_no_callback_after_close) {
 }
 
 TEST_IMPL(fs_event_no_callback_on_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -626,12 +716,6 @@ TEST_IMPL(fs_event_no_callback_on_close) {
 }
 
 
-static void fs_event_fail(uv_fs_event_t* handle, const char* filename,
-    int events, int status) {
-  ASSERT(0 && "should never be called");
-}
-
-
 static void timer_cb(uv_timer_t* handle) {
   int r;
 
@@ -646,6 +730,9 @@ static void timer_cb(uv_timer_t* handle) {
 
 
 TEST_IMPL(fs_event_immediate_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_timer_t timer;
   uv_loop_t* loop;
   int r;
@@ -668,6 +755,9 @@ TEST_IMPL(fs_event_immediate_close) {
 
 
 TEST_IMPL(fs_event_close_with_pending_event) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop;
   int r;
 
@@ -698,19 +788,6 @@ TEST_IMPL(fs_event_close_with_pending_event) {
   return 0;
 }
 
-#if defined(HAVE_KQUEUE)
-
-/* kqueue doesn't register fs events if you don't have an active watcher.
- * The file descriptor needs to be part of the kqueue set of interest and
- * that's not the case until we actually enter the event loop.
- */
-TEST_IMPL(fs_event_close_in_callback) {
-  fprintf(stderr, "Skipping test, doesn't work with kqueue.\n");
-  return 0;
-}
-
-#else /* !HAVE_KQUEUE */
-
 static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
     int events, int status) {
   ASSERT(status == 0);
@@ -723,52 +800,49 @@ static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
   }
 }
 
-
 TEST_IMPL(fs_event_close_in_callback) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop;
   int r;
 
   loop = uv_default_loop();
 
+  fs_event_unlink_files(NULL);
   create_dir("watch_dir");
-  create_file("watch_dir/file1");
-  create_file("watch_dir/file2");
-  create_file("watch_dir/file3");
-  create_file("watch_dir/file4");
-  create_file("watch_dir/file5");
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT(r == 0);
   r = uv_fs_event_start(&fs_event, fs_event_cb_close, "watch_dir", 0);
   ASSERT(r == 0);
 
-  /* Generate a couple of fs events. */
-  touch_file("watch_dir/file1");
-  touch_file("watch_dir/file2");
-  touch_file("watch_dir/file3");
-  touch_file("watch_dir/file4");
-  touch_file("watch_dir/file5");
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer, fs_event_create_files, 100, 0);
+  ASSERT(r == 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 1);
+  uv_close((uv_handle_t*)&timer, close_cb);
+
+  uv_run(loop, UV_RUN_ONCE);
+
+  ASSERT(close_cb_called == 2);
   ASSERT(fs_event_cb_called == 3);
 
   /* Clean up */
-  remove("watch_dir/file1");
-  remove("watch_dir/file2");
-  remove("watch_dir/file3");
-  remove("watch_dir/file4");
-  remove("watch_dir/file5");
+  fs_event_unlink_files(NULL);
   remove("watch_dir/");
 
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
-#endif /* HAVE_KQUEUE */
-
 TEST_IMPL(fs_event_start_and_close) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop;
   uv_fs_event_t fs_event1;
   uv_fs_event_t fs_event2;
@@ -801,6 +875,9 @@ TEST_IMPL(fs_event_start_and_close) {
 }
 
 TEST_IMPL(fs_event_getpath) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   uv_loop_t* loop = uv_default_loop();
   int r;
   char buf[1024];
