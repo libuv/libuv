@@ -36,6 +36,12 @@
 # endif
 #endif
 
+#if defined(__arm__)/* Increase the timeout so the test passes on arm CI bots */
+# define CREATE_TIMEOUT 100
+#else
+# define CREATE_TIMEOUT 1
+#endif
+
 static uv_fs_event_t fs_event;
 static const char file_prefix[] = "fsevent-";
 static const int fs_event_file_count = 16;
@@ -152,7 +158,10 @@ static void fs_event_create_files(uv_timer_t* handle) {
   if (++fs_event_created < fs_event_file_count) {
     /* Create another file on a different event loop tick.  We do it this way
      * to avoid fs events coalescing into one fs event. */
-    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files, 1, 0));
+    ASSERT(0 == uv_timer_start(&timer,
+                               fs_event_create_files,
+                               CREATE_TIMEOUT,
+                               0));
   }
 }
 
