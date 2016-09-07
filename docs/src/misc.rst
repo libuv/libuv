@@ -17,11 +17,11 @@ Data types
 
     .. c:member:: char* uv_buf_t.base
 
-        Pointer to the base of the buffer. Readonly.
+        Pointer to the base of the buffer.
 
     .. c:member:: size_t uv_buf_t.len
 
-        Total bytes in the buffer. Readonly.
+        Total bytes in the buffer.
 
         .. note::
             On Windows this field is ULONG.
