@@ -284,6 +284,10 @@ if AIX
 test_run_tests_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT
 endif
 
+if LINUX
+test_run_tests_CFLAGS += -D_GNU_SOURCE
+endif
+
 if SUNOS
 test_run_tests_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 endif
