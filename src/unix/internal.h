@@ -110,6 +110,12 @@ int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
 # define UV__POLLRDHUP 0x2000
 #endif
 
+#ifdef POLLPRI
+# define UV__POLLPRI POLLPRI
+#else
+# define UV__POLLPRI 0
+#endif
+
 #if !defined(O_CLOEXEC) && defined(__FreeBSD__)
 /*
  * It may be that we are just missing `__POSIX_VISIBLE >= 200809`.

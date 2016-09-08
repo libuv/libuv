@@ -212,10 +212,11 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-close-stdout-read-stdin.c \
                          test/test-pipe-set-non-blocking.c \
                          test/test-platform-output.c \
+                         test/test-poll.c \
                          test/test-poll-close.c \
                          test/test-poll-close-doesnt-corrupt-stack.c \
                          test/test-poll-closesocket.c \
-                         test/test-poll.c \
+                         test/test-poll-oob.c \
                          test/test-process-title.c \
                          test/test-queue-foreach-delete.c \
                          test/test-ref.c \

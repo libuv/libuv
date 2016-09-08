@@ -405,6 +405,7 @@
         'test/test-poll-close.c',
         'test/test-poll-close-doesnt-corrupt-stack.c',
         'test/test-poll-closesocket.c',
+        'test/test-poll-oob.c',
         'test/test-process-title.c',
         'test/test-queue-foreach-delete.c',
         'test/test-ref.c',
