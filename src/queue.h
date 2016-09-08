@@ -62,6 +62,10 @@ static inline void QUEUE_INIT(QUEUE *q) {
   q->prev = q;
 }
 
+static inline void QUEUE_DESTROY(QUEUE *q) {
+  QUEUE_POISON(q);
+}
+
 static inline void QUEUE_ADD(QUEUE *h, QUEUE *n) {
   h->prev->next = n->next;
   n->next->prev = h->prev;
