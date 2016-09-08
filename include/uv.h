@@ -719,7 +719,8 @@ struct uv_poll_s {
 enum uv_poll_event {
   UV_READABLE = 1,
   UV_WRITABLE = 2,
-  UV_DISCONNECT = 4
+  UV_DISCONNECT = 4,
+  UV_PRIORITIZED = 8
 };
 
 UV_EXTERN int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd);
