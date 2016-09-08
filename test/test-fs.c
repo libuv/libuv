@@ -1135,6 +1135,7 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_ctim.tv_sec == t.st_ctime);
   ASSERT(s->st_ctim.tv_nsec == 0);
 #elif defined(__sun) || \
+      defined(_GNU_SOURCE) || \
       defined(_BSD_SOURCE) || \
       defined(_SVID_SOURCE) || \
       defined(_XOPEN_SOURCE) || \

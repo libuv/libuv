@@ -790,6 +790,7 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_flags = 0;
   dst->st_gen = 0;
 #elif !defined(_AIX) && (       \
+    defined(_GNU_SOURCE)     || \
     defined(_BSD_SOURCE)     || \
     defined(_SVID_SOURCE)    || \
     defined(_XOPEN_SOURCE)   || \
