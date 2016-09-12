@@ -346,12 +346,20 @@ done:
 }
 
 
-#if defined(__OpenBSD__) || (defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8))
-static int uv__fs_scandir_filter(uv__dirent_t* dent) {
+#if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8)
+#define UV_CONST_DIRENT uv__dirent_t
 #else
-static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
+#define UV_CONST_DIRENT const uv__dirent_t
 #endif
+
+
+static int uv__fs_scandir_filter(UV_CONST_DIRENT* dent) {
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
+}
+
+
+static int uv__fs_scandir_sort(UV_CONST_DIRENT** a, UV_CONST_DIRENT** b) {
+  return strcmp((*a)->d_name, (*b)->d_name);
 }
 
 
@@ -361,7 +369,7 @@ static ssize_t uv__fs_scandir(uv_fs_t* req) {
   int n;
 
   dents = NULL;
-  n = scandir(req->path, &dents, uv__fs_scandir_filter, alphasort);
+  n = scandir(req->path, &dents, uv__fs_scandir_filter, uv__fs_scandir_sort);
 
   /* NOTE: We will use nbufs as an index field */
   req->nbufs = 0;
