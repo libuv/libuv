@@ -470,6 +470,9 @@
             [ 'OS != "zos"', {
               'defines': [ '_GNU_SOURCE' ],
               'cflags': [ '-Wno-long-long' ],
+              'xcode_settings': {
+                'WARNING_CFLAGS': [ '-Wno-long-long' ]
+              }
             }],
           ]},
         ],
