@@ -36,7 +36,7 @@ libuv_la_SOURCES = src/fs-poll.c \
 if SUNOS
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
 # on other platforms complain that the argument is unused during compilation.
-libuv_la_CFLAGS += -pthread
+libuv_la_CFLAGS += -pthreads
 endif
 
 if WINNT
@@ -134,6 +134,13 @@ test_run_tests_CFLAGS =
 else
 test_run_tests_CFLAGS = -Wno-long-long
 endif
+
+if SUNOS
+# Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
+# on other platforms complain that the argument is unused during compilation.
+test_run_tests_CFLAGS += -pthreads
+endif
+
 test_run_tests_LDFLAGS =
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/dns-server.c \
