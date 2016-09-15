@@ -147,5 +147,6 @@ int uv__utimesat(int dirfd,
 ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 int uv__dup3(int oldfd, int newfd, int flags);
+int uv__getrandom(void* buf, size_t len);
 
 #endif /* UV_LINUX_SYSCALL_H_ */

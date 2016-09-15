@@ -443,3 +443,30 @@ API
     storage required to hold the value.
 
     .. versionadded:: 1.12.0
+
+.. c:function:: int uv_randbytes(void* buf, size_t len)
+
+    Fill the given buffer with cryptographically suitable random data from the system CSPRNG.
+    This function makes no guarantees about blocking or not doing so.  Likewise, the output
+    random data is not guaranteed to be cryptographically suitable for all platforms, if and
+    only if this function is executed at boot time.
+
+    While libuv's main goal is to abstract platform differences, this function is important
+    enough that it warrants detailing its implementation. APIs used:
+
+    - Linux: :man:`getrandom(2)` if available, otherwise the Unix fallback.
+    - OpenBSD: `arc4random_buf(3) <http://man.openbsd.org/arc4random.3>`_.
+    - Other Unixes / fallback: Open ``/dev/urandom`` and fill the buffer with data read
+      from it.
+    - Windows: `RtlGenRandom <https://msdn.microsoft.com/en-us/library/windows/desktop/aa387694(v=vs.85).aspx>`_.
+
+    References:
+
+    - https://paragonie.com/blog/2016/05/how-generate-secure-random-numbers-in-various-programming-languages
+    - http://www.2uo.de/myths-about-urandom/
+
+    :returns: 0 on success, or an error code < 0 on failure.  In case of failure, the contents
+        of the buffer are undefined.
+
+    .. versionadded:: 2.0.0
+

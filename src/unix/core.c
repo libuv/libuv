@@ -1317,3 +1317,75 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   *size = len;
   return 0;
 }
+
+
+static int uv__random_urandom(void* buf, size_t len) {
+  int r;
+  int fd;
+  struct stat st;
+
+  r = uv__open_cloexec("/dev/urandom", O_RDONLY);
+  if (r < 0)
+    return r;
+
+  fd = r;
+
+  if (fstat(fd, &st) < 0) {
+    uv__close(fd);
+    return -errno;
+  }
+
+  if (!S_ISCHR(st.st_mode)) {
+    /* Not a character device, giving up. */
+    uv__close(fd);
+    return -EIO;
+  }
+
+  while (len > 0) {
+    do {
+      r = read(fd, buf, len);
+    } while (r == -1 && errno == EINTR);
+    if (r == -1) {
+      uv__close(fd);
+      return -errno;
+    }
+    buf = (char*) buf + r;
+    len -= r;
+  }
+
+  uv__close(fd);
+  return 0;
+}
+
+
+int uv_randbytes(void* buf, size_t len) {
+#if defined(__linux__)
+  static int no_getrandom;
+  if (!no_getrandom) {
+    int r;
+    while (len > 0) {
+      do {
+        r = uv__getrandom(buf, len);
+      } while (r == -1 && errno == EINTR);
+      if (r == -1) {
+        if (errno == ENOSYS) {
+          no_getrandom = 1;
+          goto fallback;
+        } else {
+          return -errno;
+        }
+      }
+      buf = (char*) buf + r;
+      len -= r;
+    }
+    return 0;
+  }
+fallback:
+  return uv__random_urandom(buf, len);
+#elif defined(__OpenBSD__)
+  arc4random_buf(buf, len);
+  return 0;
+#else
+  return uv__random_urandom(buf, len);
+#endif
+}

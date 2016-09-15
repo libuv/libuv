@@ -35,7 +35,6 @@
 #include <windows.h>
 #include <userenv.h>
 
-
 /*
  * Max title length; the only thing MSDN tells us about the maximum length
  * of the console title is that it is smaller than 64K. However in practice
@@ -1497,5 +1496,20 @@ int uv_os_gethostname(char* buffer, size_t* size) {
 
   memcpy(buffer, buf, len + 1);
   *size = len;
+  return 0;
+}
+
+
+int uv_randbytes(void* buf, size_t len) {
+  while (len > 0) {
+    ULONG tmp_len = ULONG_MAX;
+    if (len < tmp_len)
+      tmp_len = (ULONG) len;
+    if (pRtlGenRandom(buf, tmp_len) == FALSE)
+      return UV_EIO;
+    buf = (char*) buf + tmp_len;
+    len -= tmp_len;
+  }
+
   return 0;
 }
