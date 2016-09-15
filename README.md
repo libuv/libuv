@@ -39,6 +39,8 @@ Starting with version 1.0.0 libuv follows the [semantic versioning](http://semve
 scheme. The API change and backwards compatibility rules are those indicated by
 SemVer. libuv will keep a stable ABI across major releases.
 
+The ABI/API changes can be tracked [here](http://abi-laboratory.pro/tracker/timeline/libuv/).
+
 ## Licensing
 
 libuv is licensed under the MIT license. Check the [LICENSE file](LICENSE).
