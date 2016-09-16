@@ -116,7 +116,7 @@ static int uv_tty_virtual_width = -1;
 /* thread and release it in another thread. Using a semaphore ensures that */
 /* in such scenario the main thread will still block when trying to acquire */
 /* the lock. */
-static HANDLE uv_tty_output_lock;
+static uv_sem_t uv_tty_output_lock;
 
 static HANDLE uv_tty_output_handle = INVALID_HANDLE_VALUE;
 
@@ -139,9 +139,8 @@ static uv_vtermstate_t uv__vterm_state = UV_UNCHECKED;
 static void uv__determine_vterm_state(HANDLE handle);
 
 void uv_console_init() {
-  uv_tty_output_lock = CreateSemaphoreW(NULL, 1, 1, NULL);
-  if (uv_tty_output_lock == NULL)
-    uv_fatal_error(GetLastError(), "CreateSemaphoreW");
+  if (uv_sem_init(&uv_tty_output_lock, 1))
+    abort();
 }
 
 
@@ -179,7 +178,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
 
     /* Obtain the the tty_output_lock because the virtual window state is */
     /* shared between all uv_tty_t handles. */
-    WaitForSingleObject(uv_tty_output_lock, INFINITE);
+    uv_sem_wait(&uv_tty_output_lock);
 
     if (uv__vterm_state == UV_UNCHECKED)
       uv__determine_vterm_state(handle);
@@ -194,7 +193,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
 
     uv_tty_update_virtual_window(&screen_buffer_info);
 
-    ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+    uv_sem_post(&uv_tty_output_lock);
   }
 
 
@@ -335,13 +334,13 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
     was_reading = 0;
   }
 
-  WaitForSingleObject(uv_tty_output_lock, INFINITE);
+  uv_sem_wait(&uv_tty_output_lock);
   if (!SetConsoleMode(tty->handle, flags)) {
     err = uv_translate_sys_error(GetLastError());
-    ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+    uv_sem_post(&uv_tty_output_lock);
     return err;
   }
-  ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+  uv_sem_post(&uv_tty_output_lock);
 
   /* Update flag. */
   tty->flags &= ~UV_HANDLE_TTY_RAW;
@@ -372,9 +371,9 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  WaitForSingleObject(uv_tty_output_lock, INFINITE);
+  uv_sem_wait(&uv_tty_output_lock);
   uv_tty_update_virtual_window(&info);
-  ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+  uv_sem_post(&uv_tty_output_lock);
 
   *width = uv_tty_virtual_width;
   *height = uv_tty_virtual_height;
@@ -497,8 +496,8 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
   status = InterlockedExchange(&uv__read_console_status, COMPLETED);
 
   if (status ==  TRAP_REQUESTED) {
-    /* If we canceled the read by sending a VK_RETURN event, restore the */
-    /* screen state to undo the visual effect of the VK_RETURN */
+    /* If we canceled the read by sending a VK_RETURN event, restore the
+       screen state to undo the visual effect of the VK_RETURN */
     if (read_console_success && InterlockedOr(&uv__restore_screen_state, 0)) {
       HANDLE active_screen_buffer;
       active_screen_buffer = CreateFileA("conout$",
@@ -511,10 +510,10 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
       if (active_screen_buffer != INVALID_HANDLE_VALUE) {
         pos = uv__saved_screen_state.dwCursorPosition;
 
-        /* If the cursor was at the bottom line of the screen buffer, the */
-        /* VK_RETURN would have caused the buffer contents to scroll up by */
-        /* one line. The right position to reset the cursor to is therefore */
-        /* one line higher */
+        /* If the cursor was at the bottom line of the screen buffer, the
+           VK_RETURN would have caused the buffer contents to scroll up by one
+           line. The right position to reset the cursor to is therefore one line
+           higher */
         if (pos.Y == uv__saved_screen_state.dwSize.Y - 1)
           pos.Y--;
 
@@ -522,7 +521,7 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
         CloseHandle(active_screen_buffer);
       } 
     }
-    ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+    uv_sem_post(&uv_tty_output_lock);
   }
   POST_COMPLETION_FOR_REQ(loop, req);
   return 0;
@@ -711,14 +710,14 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
       if (handle->tty.rd.last_input_record.EventType == WINDOW_BUFFER_SIZE_EVENT) {
         CONSOLE_SCREEN_BUFFER_INFO info;
 
-        WaitForSingleObject(uv_tty_output_lock, INFINITE);
+        uv_sem_wait(&uv_tty_output_lock);
 
         if (uv_tty_output_handle != INVALID_HANDLE_VALUE &&
             GetConsoleScreenBufferInfo(uv_tty_output_handle, &info)) {
           uv_tty_update_virtual_window(&info);
         }
 
-        ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+        uv_sem_post(&uv_tty_output_lock);
 
         continue;
       }
@@ -1053,15 +1052,15 @@ static int uv__cancel_read_console(uv_tty_t* handle) {
   assert(!(handle->flags & UV_HANDLE_CANCELLATION_PENDING));
 
   /* Hold the output lock during the cancellation, to ensure that further
-  /* writes don't interfere with the screen state. It will be the ReadConsole
-  /* thread's responsibility to release the lock. */
-  WaitForSingleObject(uv_tty_output_lock, INFINITE);
+     writes don't interfere with the screen state. It will be the ReadConsole
+     thread's responsibility to release the lock. */
+  uv_sem_wait(&uv_tty_output_lock);
   status = InterlockedExchange(&uv__read_console_status, TRAP_REQUESTED);
   if (status != IN_PROGRESS) {
     /* Either we have managed to set a trap for the other thread before
        ReadConsole is called, or ReadConsole has returned because the user
        has pressed ENTER. In either case, there is nothing else to do. */
-    ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+    uv_sem_post(&uv_tty_output_lock);
     return 0;
   }
 
@@ -1646,7 +1645,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
   /* state. */
   *error = ERROR_SUCCESS;
 
-  WaitForSingleObject(uv_tty_output_lock, INFINITE);
+  uv_sem_wait(&uv_tty_output_lock);
 
   for (i = 0; i < nbufs; i++) {
     uv_buf_t buf = bufs[i];
@@ -2083,7 +2082,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
   handle->tty.wr.previous_eol = previous_eol;
   handle->tty.wr.ansi_parser_state = ansi_parser_state;
 
-  ReleaseSemaphore(uv_tty_output_lock, 1, NULL);
+  uv_sem_post(&uv_tty_output_lock);
 
   if (*error == STATUS_SUCCESS) {
     return 0;
