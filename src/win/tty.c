@@ -111,11 +111,10 @@ static int uv_tty_virtual_offset = -1;
 static int uv_tty_virtual_height = -1;
 static int uv_tty_virtual_width = -1;
 
-/* We use a semaphore rather than a mutex or critical section because in */
-/* some cases (uv__cancel_read_console) we need take the lock in the main */
-/* thread and release it in another thread. Using a semaphore ensures that */
-/* in such scenario the main thread will still block when trying to acquire */
-/* the lock. */
+/* We use a semaphore rather than a mutex or critical section because in some
+   cases (uv__cancel_read_console) we need take the lock in the main thread and
+   release it in another thread. Using a semaphore ensures that in such
+   scenario the main thread will still block when trying to acquire the lock. */
 static uv_sem_t uv_tty_output_lock;
 
 static HANDLE uv_tty_output_handle = INVALID_HANDLE_VALUE;
