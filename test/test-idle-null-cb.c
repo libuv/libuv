@@ -31,12 +31,12 @@ TEST_IMPL(idle_starvation) {
 
   r = uv_idle_init(uv_default_loop(), &idle_handle);
   ASSERT(r == 0);
-  r = uv_idle_start(&idle_handle, nullptr);
+  r = uv_idle_start(&idle_handle, NULL);
   ASSERT(r == 0);
 
   r = uv_check_init(uv_default_loop(), &check_handle);
   ASSERT(r == 0);
-  r = uv_check_start(&check_handle, nullptr);
+  r = uv_check_start(&check_handle, NULL);
   ASSERT(r == 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
