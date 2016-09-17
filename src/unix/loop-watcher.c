@@ -31,7 +31,6 @@
                                                                               \
   int uv_##name##_start(uv_##name##_t* handle, uv_##name##_cb cb) {           \
     if (uv__is_active(handle)) return 0;                                      \
-    if (cb == NULL) return -EINVAL;                                           \
     QUEUE_INSERT_HEAD(&handle->loop->name##_handles, &handle->queue);         \
     handle->name##_cb = cb;                                                   \
     uv__handle_start(handle);                                                 \
@@ -55,7 +54,7 @@
       h = QUEUE_DATA(q, uv_##name##_t, queue);                                \
       QUEUE_REMOVE(q);                                                        \
       QUEUE_INSERT_TAIL(&loop->name##_handles, q);                            \
-      h->name##_cb(h);                                                        \
+      if (h->name##_cb != NULL) h->name##_cb(h);                              \
     }                                                                         \
   }                                                                           \
                                                                               \

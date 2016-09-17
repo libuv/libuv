@@ -351,6 +351,7 @@
         'test/test-handle-fileno.c',
         'test/test-homedir.c',
         'test/test-hrtime.c',
+        'test/test-idle-null-cb.c',
         'test/test-idle.c',
         'test/test-ip6-addr.c',
         'test/test-ipc.c',
