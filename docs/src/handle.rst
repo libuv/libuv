@@ -17,6 +17,34 @@ Data types
 
     The base libuv handle type.
 
+.. c:type:: uv_handle_type
+
+    The kind of the libuv handle.
+
+    ::
+
+        typedef enum {
+          UV_UNKNOWN_HANDLE = 0,
+          UV_ASYNC,
+          UV_CHECK,
+          UV_FS_EVENT,
+          UV_FS_POLL,
+          UV_HANDLE,
+          UV_IDLE,
+          UV_NAMED_PIPE,
+          UV_POLL,
+          UV_PREPARE,
+          UV_PROCESS,
+          UV_STREAM,
+          UV_TCP,
+          UV_TIMER,
+          UV_TTY,
+          UV_UDP,
+          UV_SIGNAL,
+          UV_FILE,
+          UV_HANDLE_TYPE_MAX
+        } uv_handle_type;
+
 .. c:type:: uv_any_handle
 
     Union of all handle types.
@@ -57,6 +85,10 @@ Public members
 .. c:member:: uv_loop_t* uv_handle_t.loop
 
     Pointer to the :c:type:`uv_loop_t` where the handle is running on. Readonly.
+
+.. c:member:: uv_loop_t* uv_handle_t.type
+
+    Pointer to the :c:type:`uv_handle_type`. Readonly.
 
 .. c:member:: void* uv_handle_t.data
 
