@@ -1134,6 +1134,13 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_mtim.tv_nsec == 0);
   ASSERT(s->st_ctim.tv_sec == t.st_ctime);
   ASSERT(s->st_ctim.tv_nsec == 0);
+#elif defined(__ANDROID__)
+  ASSERT(s->st_atim.tv_sec == t.st_atime);
+  ASSERT(s->st_atim.tv_nsec == t.st_atimensec);
+  ASSERT(s->st_mtim.tv_sec == t.st_mtime);
+  ASSERT(s->st_mtim.tv_nsec == t.st_mtimensec);
+  ASSERT(s->st_ctim.tv_sec == t.st_ctime);
+  ASSERT(s->st_ctim.tv_nsec == t.st_ctimensec);
 #elif defined(__sun) || \
       defined(_GNU_SOURCE) || \
       defined(_BSD_SOURCE) || \
