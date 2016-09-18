@@ -126,15 +126,11 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
         break;
 
       case UV_TIMER:
-        uv_timer_endgame(loop, (uv_timer_t*) handle);
-        break;
-
       case UV_PREPARE:
       case UV_CHECK:
       case UV_IDLE:
         assert(handle->flags & UV__HANDLE_CLOSING);
         assert(!(handle->flags & UV_HANDLE_CLOSED));
-        handle->flags |= UV_HANDLE_CLOSED;
         uv__handle_close(handle);
         break;
 

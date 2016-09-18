@@ -32,6 +32,7 @@
 #include "queue.h"
 #include "handle-inl.h"
 #include "req-inl.h"
+#include "heap-inl.h"
 
 
 static uv_loop_t default_loop_struct;
@@ -159,6 +160,17 @@ static void uv_init(void) {
 }
 
 
+/* The number of milliseconds in one second. */
+#define UV__MILLISEC 1000
+
+
+void uv_update_time(uv_loop_t* loop) {
+  uint64_t new_time = uv__hrtime(UV__MILLISEC);
+  assert(new_time >= loop->time);
+  loop->time = new_time;
+}
+
+
 int uv_loop_init(uv_loop_t* loop) {
   int err;
 
@@ -185,7 +197,8 @@ int uv_loop_init(uv_loop_t* loop) {
 
   loop->endgame_handles = NULL;
 
-  RB_INIT(&loop->timers);
+  heap_init((struct heap*) &loop->timer_heap);
+  loop->timer_counter = 0;
 
   QUEUE_INIT(&loop->check_handles);
   QUEUE_INIT(&loop->prepare_handles);
@@ -197,7 +210,6 @@ int uv_loop_init(uv_loop_t* loop) {
 
   memset(&loop->poll_peer_sockets, 0, sizeof loop->poll_peer_sockets);
 
-  loop->timer_counter = 0;
   loop->stop_flag = 0;
 
   err = uv_mutex_init(&loop->wq_mutex);
@@ -289,7 +301,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
 }
 
 
-static void uv__loop_poll(uv_loop_t* loop, DWORD timeout) {
+static void uv__loop_poll(uv_loop_t* loop, int timeout) {
   BOOL success;
   uv_req_t* req;
   OVERLAPPED_ENTRY overlappeds[128];
@@ -361,7 +373,7 @@ int uv_loop_alive(const uv_loop_t* loop) {
 
 
 int uv_run(uv_loop_t *loop, uv_run_mode mode) {
-  DWORD timeout;
+  int timeout;
   int r;
   int ran_pending;
 
@@ -371,7 +383,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
-    uv_process_timers(loop);
+    uv__run_timers(loop);
 
     ran_pending = uv_process_reqs(loop);
     uv__run_idle(loop);
@@ -381,7 +393,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
-    uv__loop_poll(loop, timeout);
+    uv__loop_poll(loop, timeout == -1 ? INFINITE : timeout);
 
     uv__run_check(loop);
     uv_process_endgames(loop);
@@ -395,7 +407,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
        * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
        * the check.
        */
-      uv_process_timers(loop);
+      uv__run_timers(loop);
     }
 
     r = uv__loop_alive(loop);

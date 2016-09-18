@@ -97,7 +97,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       return;
 
     case UV_TIMER:
-      uv_timer_stop((uv_timer_t*)handle);
+      uv__timer_close((uv_timer_t*)handle);
       uv__handle_closing(handle);
       uv_want_endgame(loop, handle);
       return;

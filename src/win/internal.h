@@ -242,15 +242,6 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle);
 
 
 /*
- * Timers
- */
-void uv_timer_endgame(uv_loop_t* loop, uv_timer_t* handle);
-
-DWORD uv__next_timeout(const uv_loop_t* loop);
-void uv_process_timers(uv_loop_t* loop);
-
-
-/*
  * Loop watchers
  */
 void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle);

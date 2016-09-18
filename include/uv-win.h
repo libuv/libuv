@@ -195,8 +195,6 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
-RB_HEAD(uv_timer_tree_s, uv_timer_s);
-
 #define UV_LOOP_PRIVATE_FIELDS                                                \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
@@ -208,16 +206,18 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_req_t* pending_reqs_tail;                                                \
   /* Head of a single-linked list of closed handles */                        \
   uv_handle_t* endgame_handles;                                               \
-  /* The head of the timers tree */                                           \
-  struct uv_timer_tree_s timers;                                              \
+  /* Timers */                                                                \
+  struct {                                                                    \
+    void* min;                                                                \
+    unsigned int nelts;                                                       \
+  } timer_heap;                                                               \
+  uint64_t timer_counter;                                                     \
   /* Lists of active loop (prepare / check / idle) watchers */                \
   void* prepare_handles[2];                                                   \
   void* check_handles[2];                                                     \
   void* idle_handles[2];                                                      \
   /* This handle holds the peer sockets for the fast variant of uv_poll_t */  \
   SOCKET poll_peer_sockets[UV_MSAFD_PROVIDER_COUNT];                          \
-  /* Counter to started timer */                                              \
-  uint64_t timer_counter;                                                     \
   /* Threadpool */                                                            \
   void* wq[2];                                                                \
   uv_mutex_t wq_mutex;                                                        \
@@ -407,11 +407,11 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   unsigned char events;
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
-  RB_ENTRY(uv_timer_s) tree_entry;                                            \
-  uint64_t due;                                                               \
+  uv_timer_cb timer_cb;                                                       \
+  void* heap_node[3];                                                         \
+  uint64_t timeout;                                                           \
   uint64_t repeat;                                                            \
-  uint64_t start_id;                                                          \
-  uv_timer_cb timer_cb;
+  uint64_t start_id;
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   void* queue[2];                                                             \
