@@ -332,3 +332,13 @@ API
 
     Returns the error name for the given error code.  Leaks a few bytes
     of memory when you call it with an unknown error code.
+
+.. c:function:: int uv_translate_sys_error(int sys_errno)
+
+   Returns the libuv error code equivalent to the given platform dependent error
+   code: POSIX error codes on Unix (the ones stored in `errno`), and Win32 error
+   codes on Windows (those returned by `GetLastError()` or `WSAGetLastError()`).
+
+   If `sys_errno` is already a libuv error, it is simply returned.
+
+   .. versionchanged:: 1.11.0 function declared public.
