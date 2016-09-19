@@ -55,7 +55,9 @@
 # endif
 #endif
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
+#if defined(__DragonFly__)      || \
+    defined(__FreeBSD__)        || \
+    defined(__FreeBSD_kernel__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
@@ -69,6 +71,10 @@
 
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
 # include <dlfcn.h>  /* for dlsym */
+#endif
+
+#if defined(__MVS__)
+#include <sys/ioctl.h>
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
@@ -912,6 +918,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_stime.tv_sec = usage.ru_stime.tv_sec;
   rusage->ru_stime.tv_usec = usage.ru_stime.tv_usec;
 
+#if !defined(__MVS__)
   rusage->ru_maxrss = usage.ru_maxrss;
   rusage->ru_ixrss = usage.ru_ixrss;
   rusage->ru_idrss = usage.ru_idrss;
@@ -926,6 +933,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_nsignals = usage.ru_nsignals;
   rusage->ru_nvcsw = usage.ru_nvcsw;
   rusage->ru_nivcsw = usage.ru_nivcsw;
+#endif
 
   return 0;
 }

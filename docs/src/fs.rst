@@ -288,7 +288,26 @@ API
 
 .. c:function:: int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
-    Equivalent to :man:`realpath(3)` on Unix. Windows uses ``GetFinalPathNameByHandle()``.
+    Equivalent to :man:`realpath(3)` on Unix. Windows uses `GetFinalPathNameByHandle <https://msdn.microsoft.com/en-us/library/windows/desktop/aa364962(v=vs.85).aspx>`_.
+
+    .. warning::
+        This function has certain platform specific caveats that were discovered when used in Node.
+
+        * macOS and other BSDs: this function will fail with UV_ELOOP if more than 32 symlinks are
+          found while resolving the given path.  This limit is hardcoded and cannot be sidestepped.
+        * Windows: while this function works in the common case, there are a number of corner cases
+          where it doesn't:
+
+          - Paths in ramdisk volumes created by tools which sidestep the Volume Manager (such as ImDisk)
+            cannot be resolved.
+          - Inconsistent casing when using drive letters.
+          - Resolved path bypasses subst'd drives.
+
+        While this function can still be used, it's not recommended if scenarios such as the
+        above need to be supported.
+
+        The background story and some more details on these issues can be checked
+        `here <https://github.com/nodejs/node/issues/7726>`_.
 
     .. versionadded:: 1.8.0
 

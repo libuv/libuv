@@ -46,9 +46,10 @@
 #include <utime.h>
 #include <poll.h>
 
-#if defined(__DragonFly__)  ||                                            \
-    defined(__FreeBSD__)    ||                                            \
-    defined(__OpenBSD__)    ||                                            \
+#if defined(__DragonFly__)        ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__FreeBSD_kernel_)    ||                                      \
+    defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # define HAVE_PREADV 1
 #else
@@ -193,6 +194,7 @@ skip:
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
+    || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)                                                   \
     || defined(__sun)
@@ -213,6 +215,14 @@ skip:
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
   return futimens(req->file, ts);
+#elif defined(__MVS__)
+  attrib_t atr;
+  memset(&atr, 0, sizeof(atr));
+  atr.att_mtimechg = 1;
+  atr.att_atimechg = 1;
+  atr.att_mtime = req->mtime;
+  atr.att_atime = req->atime;
+  return __fchattr(req->file, &atr, sizeof(atr));
 #else
   errno = ENOSYS;
   return -1;
@@ -336,12 +346,13 @@ done:
 }
 
 
-#if defined(__OpenBSD__)
-static int uv__fs_scandir_filter(uv__dirent_t* dent) {
-#else
 static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
-#endif
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
+}
+
+
+static int uv__fs_scandir_sort(const uv__dirent_t** a, const uv__dirent_t** b) {
+  return strcmp((*a)->d_name, (*b)->d_name);
 }
 
 
@@ -351,7 +362,7 @@ static ssize_t uv__fs_scandir(uv_fs_t* req) {
   int n;
 
   dents = NULL;
-  n = scandir(req->path, &dents, uv__fs_scandir_filter, alphasort);
+  n = scandir(req->path, &dents, uv__fs_scandir_filter, uv__fs_scandir_sort);
 
   /* NOTE: We will use nbufs as an index field */
   req->nbufs = 0;
@@ -595,7 +606,10 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
     return -1;
   }
-#elif defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
+#elif defined(__APPLE__)           || \
+      defined(__DragonFly__)       || \
+      defined(__FreeBSD__)         || \
+      defined(__FreeBSD_kernel__)
   {
     off_t len;
     ssize_t r;
@@ -608,6 +622,15 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 #if defined(__FreeBSD__) || defined(__DragonFly__)
     len = 0;
     r = sendfile(in_fd, out_fd, req->off, req->bufsml[0].len, NULL, &len, 0);
+#elif defined(__FreeBSD_kernel__)
+    len = 0;
+    r = bsd_sendfile(in_fd,
+                     out_fd,
+                     req->off,
+                     req->bufsml[0].len,
+                     NULL,
+                     &len,
+                     0);
 #else
     /* The darwin sendfile takes len as an input for the length to send,
      * so make sure to initialize it with the caller's value. */
@@ -768,6 +791,7 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_flags = 0;
   dst->st_gen = 0;
 #elif !defined(_AIX) && (       \
+    defined(_GNU_SOURCE)     || \
     defined(_BSD_SOURCE)     || \
     defined(_SVID_SOURCE)    || \
     defined(_XOPEN_SOURCE)   || \
