@@ -272,12 +272,14 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
                                                  const char* filename,
                                                  int events,
                                                  int status) {
+#ifdef _WIN32
   /* Each file created (or deleted) will cause this callback to be called twice
    * under Windows: once with the name of the file, and second time with the
    * name of the directory. We will ignore the callback for the directory
    * itself. */
   if (filename && strcmp(filename, file_prefix_in_subdir) == 0)
     return;
+#endif
   fs_event_cb_called++;
   ASSERT(handle == &fs_event);
   ASSERT(status == 0);
