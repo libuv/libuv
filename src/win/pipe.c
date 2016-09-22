@@ -618,8 +618,10 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
 }
 
 
-void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
-    const char* name, uv_connect_cb cb) {
+int uv_pipe_connect(uv_connect_t* req,
+                    uv_pipe_t* handle,
+                    const char* name,
+                    uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int err, nameSize;
   HANDLE pipeHandle = INVALID_HANDLE_VALUE;
@@ -683,7 +685,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   uv_insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
-  return;
+  return 0;
 
 error:
   if (handle->name) {
@@ -695,12 +697,7 @@ error:
     CloseHandle(pipeHandle);
   }
 
-  /* Make this req pending reporting an error. */
-  SET_REQ_ERROR(req, err);
-  uv_insert_pending_req(loop, (uv_req_t*) req);
-  handle->reqs_pending++;
-  REGISTER_HANDLE_REQ(loop, handle, req);
-  return;
+  return err;
 }
 
 
