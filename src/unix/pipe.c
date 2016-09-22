@@ -152,7 +152,7 @@ int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
 }
 
 
-void uv_pipe_connect(uv_connect_t* req,
+int uv_pipe_connect(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,
                     uv_connect_cb cb) {
@@ -166,8 +166,7 @@ void uv_pipe_connect(uv_connect_t* req,
   if (new_sock) {
     err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
     if (err < 0)
-      goto out;
-    handle->io_watcher.fd = err;
+      return err;
   }
 
   memset(&saddr, 0, sizeof saddr);
@@ -182,8 +181,7 @@ void uv_pipe_connect(uv_connect_t* req,
   while (r == -1 && errno == EINTR);
 
   if (r == -1 && errno != EINPROGRESS) {
-    err = -errno;
-    goto out;
+    return -errno;
   }
 
   err = 0;
@@ -193,22 +191,18 @@ void uv_pipe_connect(uv_connect_t* req,
                           UV_STREAM_READABLE | UV_STREAM_WRITABLE);
   }
 
-  if (err == 0)
-    uv__io_start(handle->loop, &handle->io_watcher, POLLIN | POLLOUT);
+  if (err)
+    return err;
 
-out:
-  handle->delayed_error = err;
+  uv__io_start(handle->loop, &handle->io_watcher, POLLIN | POLLOUT);
+
   handle->connect_req = req;
 
   uv__req_init(handle->loop, req, UV_CONNECT);
   req->handle = (uv_stream_t*)handle;
   req->cb = cb;
   QUEUE_INIT(&req->queue);
-
-  /* Force callback to run on next tick in case of error. */
-  if (err)
-    uv__io_feed(handle->loop, &handle->io_watcher);
-
+  return 0;
 }
 
 
