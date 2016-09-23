@@ -304,9 +304,6 @@ typedef struct {
   struct uv__work work_req;                                                   \
   uv_buf_t bufsml[4];                                                         \
 
-#define UV_WORK_PRIVATE_FIELDS                                                \
-  struct uv__work work_req;
-
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   struct termios orig_termios;                                                \
   int mode;

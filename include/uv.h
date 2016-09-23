@@ -437,6 +437,9 @@ struct uv_shutdown_s {
   char service[NI_MAXSERV];                                                   \
   int retcode;
 
+#define UV_WORK_PRIVATE_FIELDS                                                \
+  struct uv__work work_req;
+
 /* The abstract base class of all handles. */
 struct uv_handle_s {
   UV_HANDLE_FIELDS

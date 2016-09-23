@@ -447,9 +447,6 @@ typedef struct {
     } time;                                                                   \
   } fs;
 
-#define UV_WORK_PRIVATE_FIELDS                                                \
-  struct uv__work work_req;
-
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
   struct uv_fs_event_req_s {                                                  \
     UV_REQ_FIELDS                                                             \
