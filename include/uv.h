@@ -1461,6 +1461,25 @@ struct uv_loop_s {
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   void* reserved[4];
+  /* private fields that appear in both implementations */
+  /* Lists of active loop (async / prepare / check / idle) watchers */
+  void* async_handles[2];
+  void* prepare_handles[2];
+  void* check_handles[2];
+  void* idle_handles[2];
+  /* Timers */
+  struct {
+    void* min;
+    unsigned int nelts;
+  } timer_heap;
+  /* The current time according to the event loop. in msecs. */
+  uint64_t time;
+  uint64_t timer_counter;
+  /* Threadpool */
+  void* wq[2];
+  uv_mutex_t wq_mutex;
+  uv_async_t wq_async;
+
   UV_LOOP_PRIVATE_FIELDS
 };
 

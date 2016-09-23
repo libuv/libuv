@@ -198,33 +198,16 @@ typedef struct {
 #define UV_LOOP_PRIVATE_FIELDS                                                \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
-  /* The current time according to the event loop. in msecs. */               \
-  uint64_t time;                                                              \
   /* Tail of a single-linked circular queue of pending reqs. If the queue */  \
   /* is empty, tail_ is NULL. If there is only one item, */                   \
   /* tail_->next_req == tail_ */                                              \
   uv_req_t* pending_reqs_tail;                                                \
   /* Head of a single-linked list of closed handles */                        \
   uv_handle_t* endgame_handles;                                               \
-  /* Timers */                                                                \
-  struct {                                                                    \
-    void* min;                                                                \
-    unsigned int nelts;                                                       \
-  } timer_heap;                                                               \
-  uint64_t timer_counter;                                                     \
-  /* Lists of active loop (prepare / check / idle) watchers */                \
-  void* prepare_handles[2];                                                   \
-  void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
   /* This handle holds the peer sockets for the fast variant of uv_poll_t */  \
   SOCKET poll_peer_sockets[UV_MSAFD_PROVIDER_COUNT];                          \
-  /* Threadpool */                                                            \
-  void* wq[2];                                                                \
-  uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;                                                        \
   /* Async handle */                                                          \
   struct uv_req_s async_req;                                                  \
-  void* async_handles[2];                                                     \
   /* Global queue of loops */                                                 \
   void* loops_queue[2];
 

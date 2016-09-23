@@ -202,23 +202,10 @@ typedef struct {
   uv__io_t** watchers;                                                        \
   unsigned int nwatchers;                                                     \
   unsigned int nfds;                                                          \
-  void* wq[2];                                                                \
-  uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;                                                        \
   uv_rwlock_t cloexec_lock;                                                   \
   uv_handle_t* closing_handles;                                               \
   void* process_handles[2];                                                   \
-  void* prepare_handles[2];                                                   \
-  void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
-  void* async_handles[2];                                                     \
   struct uv__async async_watcher;                                             \
-  struct {                                                                    \
-    void* min;                                                                \
-    unsigned int nelts;                                                       \
-  } timer_heap;                                                               \
-  uint64_t timer_counter;                                                     \
-  uint64_t time;                                                              \
   int signal_pipefd[2];                                                       \
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
