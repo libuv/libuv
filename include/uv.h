@@ -428,6 +428,15 @@ struct uv_shutdown_s {
   uv_idle_cb idle_cb;                                                         \
   void* queue[2];                                                             \
 
+#define UV_GETNAMEINFO_PRIVATE_FIELDS                                         \
+  struct uv__work work_req;                                                   \
+  uv_getnameinfo_cb getnameinfo_cb;                                           \
+  struct sockaddr_storage storage;                                            \
+  int flags;                                                                  \
+  char host[NI_MAXHOST];                                                      \
+  char service[NI_MAXSERV];                                                   \
+  int retcode;
+
 /* The abstract base class of all handles. */
 struct uv_handle_s {
   UV_HANDLE_FIELDS
