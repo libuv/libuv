@@ -288,13 +288,6 @@ typedef struct {
   void* queue[2];                                                             \
   int pending;                                                                \
 
-#define UV_TIMER_PRIVATE_FIELDS                                               \
-  uv_timer_cb timer_cb;                                                       \
-  void* heap_node[3];                                                         \
-  uint64_t timeout;                                                           \
-  uint64_t repeat;                                                            \
-  uint64_t start_id;
-
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
   struct uv__work work_req;                                                   \
   uv_getaddrinfo_cb cb;                                                       \

@@ -409,6 +409,13 @@ struct uv_shutdown_s {
   } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
+#define UV_TIMER_PRIVATE_FIELDS                                               \
+  uv_timer_cb timer_cb;                                                       \
+  void* heap_node[3];                                                         \
+  uint64_t timeout;                                                           \
+  uint64_t repeat;                                                            \
+  uint64_t start_id;
+
 /* The abstract base class of all handles. */
 struct uv_handle_s {
   UV_HANDLE_FIELDS

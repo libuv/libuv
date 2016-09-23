@@ -389,13 +389,6 @@ typedef struct {
   unsigned char mask_events_2;                                                \
   unsigned char events;
 
-#define UV_TIMER_PRIVATE_FIELDS                                               \
-  uv_timer_cb timer_cb;                                                       \
-  void* heap_node[3];                                                         \
-  uint64_t timeout;                                                           \
-  uint64_t repeat;                                                            \
-  uint64_t start_id;
-
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   void* queue[2];                                                             \
   uv_async_cb async_cb;                                                       \
