@@ -230,6 +230,7 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
   req->ptr = NULL;
   req->path = NULL;
   req->cb = cb;
+  memset(&req->fs, 0, sizeof(req->fs));
 }
 
 
@@ -1893,9 +1894,13 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
       uv__free(req->ptr);
   }
 
+  if (req->fs.info.bufs != req->fs.info.bufsml)
+    uv__free(req->fs.info.bufs);
+
   req->path = NULL;
   req->file.pathw = NULL;
   req->fs.info.new_pathw = NULL;
+  req->fs.info.bufs = NULL;
   req->ptr = NULL;
 
   req->flags |= UV_FS_CLEANEDUP;
