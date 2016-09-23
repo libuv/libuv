@@ -416,6 +416,18 @@ struct uv_shutdown_s {
   uint64_t repeat;                                                            \
   uint64_t start_id;
 
+#define UV_PREPARE_PRIVATE_FIELDS                                             \
+  uv_prepare_cb prepare_cb;                                                   \
+  void* queue[2];                                                             \
+
+#define UV_CHECK_PRIVATE_FIELDS                                               \
+  uv_check_cb check_cb;                                                       \
+  void* queue[2];                                                             \
+
+#define UV_IDLE_PRIVATE_FIELDS                                                \
+  uv_idle_cb idle_cb;                                                         \
+  void* queue[2];                                                             \
+
 /* The abstract base class of all handles. */
 struct uv_handle_s {
   UV_HANDLE_FIELDS

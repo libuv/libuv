@@ -394,18 +394,6 @@ typedef struct {
   uv_async_cb async_cb;                                                       \
   LONG volatile async_sent;
 
-#define UV_PREPARE_PRIVATE_FIELDS                                             \
-  void* queue[2];                                                             \
-  uv_prepare_cb prepare_cb;
-
-#define UV_CHECK_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
-  uv_check_cb check_cb;
-
-#define UV_IDLE_PRIVATE_FIELDS                                                \
-  void* queue[2];                                                             \
-  uv_idle_cb idle_cb;
-
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
   uv_handle_t* endgame_next;                                                  \
   unsigned int flags;
