@@ -237,7 +237,6 @@ typedef struct {
   unsigned int nbufs;                                                         \
   uv_buf_t* bufs;                                                             \
   ssize_t status;                                                             \
-  uv_udp_send_cb send_cb;                                                     \
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
