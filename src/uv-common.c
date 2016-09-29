@@ -613,7 +613,9 @@ uv_loop_t* uv_loop_new(void) {
 int uv_loop_close(uv_loop_t* loop) {
   QUEUE* q;
   uv_handle_t* h;
+#ifndef NDEBUG
   void* saved_data;
+#endif
 
   if (!QUEUE_EMPTY(&(loop)->active_reqs))
     return UV_EBUSY;
