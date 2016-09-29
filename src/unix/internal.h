@@ -52,7 +52,7 @@
 #endif /* _AIX */
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
-# include <CoreServices/CoreServices.h>
+# include <AvailabilityMacros.h>
 #endif
 
 #if defined(__ANDROID__)
