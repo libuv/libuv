@@ -74,6 +74,7 @@ void uv__stream_init(uv_loop_t* loop,
   int err;
 
   uv__handle_init(loop, (uv_handle_t*)stream, type);
+  stream->read_func = NULL;
   stream->read_cb = NULL;
   stream->alloc_cb = NULL;
   stream->close_cb = NULL;
@@ -826,7 +827,9 @@ start:
 #endif
   } else {
     do {
-      if (iovcnt == 1) {
+      if (req->write_func != NULL) {
+        n = req->write_func(req, &req->bufs[req->write_index]);
+      } else if (iovcnt == 1) {
         n = write(uv__stream_fd(stream), iov[0].iov_base, iov[0].iov_len);
       } else {
         n = writev(uv__stream_fd(stream), iov, iovcnt);
@@ -1139,7 +1142,10 @@ static void uv__read(uv_stream_t* stream) {
 
     if (!is_ipc) {
       do {
-        nread = read(uv__stream_fd(stream), buf.base, buf.len);
+        if (stream->read_func != NULL)
+          nread = stream->read_func(stream, &buf);
+        else
+          nread = read(uv__stream_fd(stream), buf.base, buf.len);
       }
       while (nread < 0 && errno == EINTR);
     } else {
@@ -1543,6 +1549,7 @@ int uv_read_stop(uv_stream_t* stream) {
     uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
 
+  stream->read_func = NULL;
   stream->read_cb = NULL;
   stream->alloc_cb = NULL;
   return 0;

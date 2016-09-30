@@ -250,6 +250,8 @@ typedef void* (*uv_malloc_func)(size_t size);
 typedef void* (*uv_realloc_func)(void* ptr, size_t size);
 typedef void* (*uv_calloc_func)(size_t count, size_t size);
 typedef void (*uv_free_func)(void* ptr);
+typedef int (*uv_write_func)(uv_write_t *req, uv_buf_t *buf);
+typedef int (*uv_read_func)(uv_stream_t *req, uv_buf_t *buf);
 
 UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func,
                                    uv_realloc_func realloc_func,
@@ -445,6 +447,7 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
   size_t write_queue_size;                                                    \
   uv_alloc_cb alloc_cb;                                                       \
   uv_read_cb read_cb;                                                         \
+  uv_read_func read_func;                                                     \
   /* private */                                                               \
   UV_STREAM_PRIVATE_FIELDS
 
@@ -487,6 +490,7 @@ UV_EXTERN int uv_try_write(uv_stream_t* handle,
 struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
+  uv_write_func write_func;
   uv_stream_t* send_handle;
   uv_stream_t* handle;
   UV_WRITE_PRIVATE_FIELDS
