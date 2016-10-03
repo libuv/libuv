@@ -394,7 +394,6 @@ typedef struct {
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
   uv_handle_t* endgame_next;                                                  \
-  unsigned int flags;
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
   struct uv__work work_req;                                                   \

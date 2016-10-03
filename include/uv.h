@@ -407,6 +407,7 @@ struct uv_shutdown_s {
     int fd;                                                                   \
     void* reserved[4];                                                        \
   } u;                                                                        \
+  unsigned int flags;                                                         \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
