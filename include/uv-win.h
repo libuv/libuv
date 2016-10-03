@@ -396,8 +396,6 @@ typedef struct {
   uv_handle_t* endgame_next;                                                  \
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
-  struct uv__work work_req;                                                   \
-  uv_getaddrinfo_cb getaddrinfo_cb;                                           \
   void* alloc;                                                                \
   WCHAR* node;                                                                \
   WCHAR* service;                                                             \
@@ -405,8 +403,6 @@ typedef struct {
   /* later on to store the result of GetAddrInfoW. The final result will */   \
   /* be converted to struct addrinfo* and stored in the addrinfo field.  */   \
   struct addrinfoW* addrinfow;                                                \
-  struct addrinfo* addrinfo;                                                  \
-  int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
   struct uv_process_exit_s {                                                  \

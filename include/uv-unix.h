@@ -273,13 +273,9 @@ typedef struct {
   int pending;                                                                \
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
-  struct uv__work work_req;                                                   \
-  uv_getaddrinfo_cb cb;                                                       \
   struct addrinfo* hints;                                                     \
   char* hostname;                                                             \
   char* service;                                                              \
-  struct addrinfo* addrinfo;                                                  \
-  int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
   void* queue[2];                                                             \

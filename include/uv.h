@@ -827,6 +827,11 @@ struct uv_getaddrinfo_s {
   UV_REQ_FIELDS
   /* read-only */
   uv_loop_t* loop;
+  /* private */
+  struct uv__work work_req;
+  uv_getaddrinfo_cb getaddrinfo_cb;
+  int retcode;
+  struct addrinfo* addrinfo;
   /* struct addrinfo* addrinfo is marked as private, but it really isn't. */
   UV_GETADDRINFO_PRIVATE_FIELDS
 };
