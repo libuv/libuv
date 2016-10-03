@@ -313,7 +313,6 @@ typedef struct {
   unsigned int dispatched_signals;
 
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
-  uv_fs_event_cb cb;                                                          \
   UV_PLATFORM_FS_EVENT_FIELDS                                                 \
 
 #endif /* UV_UNIX_H */

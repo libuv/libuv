@@ -1321,6 +1321,7 @@ struct uv_fs_event_s {
   UV_HANDLE_FIELDS
   /* private */
   char* path;
+  uv_fs_event_cb cb;
   UV_FS_EVENT_PRIVATE_FIELDS
 };
 

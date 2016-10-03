@@ -446,7 +446,6 @@ typedef struct {
   } req;                                                                      \
   HANDLE dir_handle;                                                          \
   int req_pending;                                                            \
-  uv_fs_event_cb cb;                                                          \
   WCHAR* filew;                                                               \
   WCHAR* short_filew;                                                         \
   WCHAR* dirw;                                                                \
