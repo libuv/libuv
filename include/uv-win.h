@@ -390,8 +390,6 @@ typedef struct {
   unsigned char events;
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
-  uv_async_cb async_cb;                                                       \
   LONG volatile async_sent;
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \

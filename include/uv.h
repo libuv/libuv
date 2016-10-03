@@ -785,6 +785,8 @@ UV_EXTERN int uv_idle_stop(uv_idle_t* idle);
 
 struct uv_async_s {
   UV_HANDLE_FIELDS
+  uv_async_cb async_cb;
+  void* queue[2];
   UV_ASYNC_PRIVATE_FIELDS
 };
 

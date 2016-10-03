@@ -271,8 +271,6 @@ typedef struct {
   uv__io_t io_watcher;
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
-  uv_async_cb async_cb;                                                       \
-  void* queue[2];                                                             \
   int pending;                                                                \
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
