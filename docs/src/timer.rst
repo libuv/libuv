@@ -41,6 +41,9 @@ API
     If `timeout` is zero, the callback fires on the next event loop iteration.
     If `repeat` is non-zero, the callback fires first after `timeout`
     milliseconds and then repeatedly after `repeat` milliseconds.
+    
+    .. note::
+        Does not update the event loop's concept of "now". See :c:func:`uv_update_time` for more information.
 
 .. c:function:: int uv_timer_stop(uv_timer_t* handle)
 
