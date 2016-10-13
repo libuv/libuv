@@ -99,6 +99,7 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAEHOSTUNREACH:                   return UV_EHOSTUNREACH;
     case ERROR_INSUFFICIENT_BUFFER:         return UV_EINVAL;
     case ERROR_INVALID_DATA:                return UV_EINVAL;
+    case ERROR_INVALID_NAME:                return UV_EINVAL;
     case ERROR_INVALID_PARAMETER:           return UV_EINVAL;
     case ERROR_SYMLINK_NOT_SUPPORTED:       return UV_EINVAL;
     case WSAEINVAL:                         return UV_EINVAL;
@@ -132,7 +133,6 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_BAD_PATHNAME:                return UV_ENOENT;
     case ERROR_DIRECTORY:                   return UV_ENOENT;
     case ERROR_FILE_NOT_FOUND:              return UV_ENOENT;
-    case ERROR_INVALID_NAME:                return UV_ENOENT;
     case ERROR_INVALID_DRIVE:               return UV_ENOENT;
     case ERROR_INVALID_REPARSE_DATA:        return UV_ENOENT;
     case ERROR_MOD_NOT_FOUND:               return UV_ENOENT;
