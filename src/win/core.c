@@ -35,10 +35,6 @@
 #include "handle-inl.h"
 #include "req-inl.h"
 
-
-static uv_loop_t default_loop_struct;
-static uv_loop_t* default_loop_ptr;
-
 /* uv_once initialization guards */
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
