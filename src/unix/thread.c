@@ -40,41 +40,14 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
-struct thread_ctx {
-  void (*entry)(void* arg);
-  void* arg;
-};
-
-
-static void* uv__thread_start(void *arg)
-{
-  struct thread_ctx *ctx_p;
-  struct thread_ctx ctx;
-
-  ctx_p = arg;
-  ctx = *ctx_p;
-  uv__free(ctx_p);
-  ctx.entry(ctx.arg);
-
-  return 0;
-}
-
 
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
-  struct thread_ctx* ctx;
   int err;
   pthread_attr_t* attr;
 #if defined(__APPLE__)
   pthread_attr_t attr_storage;
   struct rlimit lim;
 #endif
-
-  ctx = uv__malloc(sizeof(*ctx));
-  if (ctx == NULL)
-    return UV_ENOMEM;
-
-  ctx->entry = entry;
-  ctx->arg = arg;
 
   /* On OSX threads other than the main thread are created with a reduced stack
    * size by default, adjust it to RLIMIT_STACK.
@@ -99,13 +72,10 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   attr = NULL;
 #endif
 
-  err = pthread_create(tid, attr, uv__thread_start, ctx);
+  err = pthread_create(tid, attr, (void*(*)(void*)) entry, arg);
 
   if (attr != NULL)
     pthread_attr_destroy(attr);
-
-  if (err)
-    uv__free(ctx);
 
   return -err;
 }
