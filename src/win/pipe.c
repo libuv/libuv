@@ -1499,10 +1499,20 @@ int uv__pipe_try_write(uv_pipe_t* handle,
   const uv_buf_t* buf;
   int bytes_written;
   unsigned int idx;
+  DWORD timeout;
   DWORD err;
+
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    return UV_EAGAIN;
+  }
 
   if (handle->stream.conn.write_reqs_pending > 0) {
     return UV_EAGAIN;
+  }
+
+  timeout = 0;
+  if (handle->flags & UV_HANDLE_BLOCKING_WRITES) {
+    timeout = INFINITE;
   }
 
   memset(&overlapped, 0, sizeof(overlapped));
@@ -1526,7 +1536,7 @@ int uv__pipe_try_write(uv_pipe_t* handle,
       break;
     }
 
-    err = WaitForSingleObject(overlapped.hEvent, 0);
+    err = WaitForSingleObject(overlapped.hEvent, timeout);
     if (err == WAIT_OBJECT_0) {
       bytes_written += buf->len;
       continue;
