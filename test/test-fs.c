@@ -2584,7 +2584,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   r = uv_fs_read(NULL, &read_req, open_req1.result,
                  iovs, iovcount, offset, NULL);
   ASSERT(r >= 0);
-  ASSERT(read_req.result == sizeof(test_buf) * iovcount);
+  ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
 
   for (index = 0; index < iovcount; ++index)
     ASSERT(strncmp(buffer + index * sizeof(test_buf),
