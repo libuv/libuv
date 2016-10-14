@@ -218,6 +218,30 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
   }                                                                           \
   while (0)
 
+/* Note: uses an open-coded version of SET_REQ_SUCCESS() because of
+ * a circular dependency between src/uv-common.h and src/win/internal.h.
+ */
+#if defined(_WIN32)
+# define UV_REQ_INIT(req, typ)                                                \
+  do {                                                                        \
+    (req)->type = (typ);                                                      \
+    (req)->u.io.overlapped.Internal = 0;  /* SET_REQ_SUCCESS() */             \
+  }                                                                           \
+  while (0)
+#else
+# define UV_REQ_INIT(req, typ)                                                \
+  do {                                                                        \
+    (req)->type = (typ);                                                      \
+  }                                                                           \
+  while (0)
+#endif
+
+#define uv__req_init(loop, req, typ)                                          \
+  do {                                                                        \
+    UV_REQ_INIT(req, typ);                                                    \
+    uv__req_register(loop, req);                                              \
+  }                                                                           \
+  while (0)
 
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);

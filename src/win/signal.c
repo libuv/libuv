@@ -140,17 +140,13 @@ static BOOL WINAPI uv__signal_control_handler(DWORD type) {
 
 
 int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
-  uv_req_t* req;
-
   uv__handle_init(loop, (uv_handle_t*) handle, UV_SIGNAL);
   handle->pending_signum = 0;
   handle->signum = 0;
   handle->signal_cb = NULL;
 
-  req = &handle->signal_req;
-  uv_req_init(loop, req);
-  req->type = UV_SIGNAL_REQ;
-  req->data = handle;
+  UV_REQ_INIT(&handle->signal_req, UV_SIGNAL_REQ);
+  handle->signal_req.data = handle;
 
   return 0;
 }

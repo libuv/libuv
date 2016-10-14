@@ -572,13 +572,11 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
 
   /* Initialize 2 poll reqs. */
   handle->submitted_events_1 = 0;
-  uv_req_init(loop, (uv_req_t*) &(handle->poll_req_1));
-  handle->poll_req_1.type = UV_POLL_REQ;
+  UV_REQ_INIT(&handle->poll_req_1, UV_POLL_REQ);
   handle->poll_req_1.data = handle;
 
   handle->submitted_events_2 = 0;
-  uv_req_init(loop, (uv_req_t*) &(handle->poll_req_2));
-  handle->poll_req_2.type = UV_POLL_REQ;
+  UV_REQ_INIT(&handle->poll_req_2, UV_POLL_REQ);
   handle->poll_req_2.data = handle;
 
   return 0;

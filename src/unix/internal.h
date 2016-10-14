@@ -303,15 +303,6 @@ static const int kFSEventStreamEventFlagItemIsSymlink = 0x00040000;
 
 #endif /* defined(__APPLE__) */
 
-UV_UNUSED(static void uv__req_init(uv_loop_t* loop,
-                                   uv_req_t* req,
-                                   uv_req_type type)) {
-  req->type = type;
-  uv__req_register(loop, req);
-}
-#define uv__req_init(loop, req, type) \
-  uv__req_init((loop), (uv_req_t*)(req), (type))
-
 UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   /* Use a fast time source if available.  We only need millisecond precision.
    */

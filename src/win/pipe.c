@@ -103,7 +103,7 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   handle->pipe.conn.non_overlapped_writes_tail = NULL;
   handle->pipe.conn.readfile_thread = NULL;
 
-  uv_req_init(loop, (uv_req_t*) &handle->pipe.conn.ipc_header_write_req);
+  UV_REQ_INIT(&handle->pipe.conn.ipc_header_write_req, UV_UNKNOWN_REQ);
 
   return 0;
 }
@@ -505,8 +505,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
 
   for (i = 0; i < handle->pipe.serv.pending_instances; i++) {
     req = &handle->pipe.serv.accept_reqs[i];
-    uv_req_init(loop, (uv_req_t*) req);
-    req->type = UV_ACCEPT;
+    UV_REQ_INIT(req, UV_ACCEPT);
     req->data = handle;
     req->pipeHandle = INVALID_HANDLE_VALUE;
     req->next_pending = NULL;
@@ -626,8 +625,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   HANDLE pipeHandle = INVALID_HANDLE_VALUE;
   DWORD duplex_flags;
 
-  uv_req_init(loop, (uv_req_t*) req);
-  req->type = UV_CONNECT;
+  UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
 
@@ -1239,8 +1237,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
 
   assert(handle->handle != INVALID_HANDLE_VALUE);
 
-  uv_req_init(loop, (uv_req_t*) req);
-  req->type = UV_WRITE;
+  UV_REQ_INIT(req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
   req->ipc_header = 0;
@@ -1301,8 +1298,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
         }
       }
 
-      uv_req_init(loop, (uv_req_t*) ipc_header_req);
-      ipc_header_req->type = UV_WRITE;
+      UV_REQ_INIT(ipc_header_req, UV_WRITE);
       ipc_header_req->handle = (uv_stream_t*) handle;
       ipc_header_req->cb = NULL;
       ipc_header_req->ipc_header = 1;
