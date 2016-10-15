@@ -297,6 +297,9 @@ TEST_DECLARE   (fs_open_dir)
 TEST_DECLARE   (fs_rename_to_existing_file)
 TEST_DECLARE   (fs_write_multiple_bufs)
 TEST_DECLARE   (fs_read_write_null_arguments)
+#ifdef _WIN32
+TEST_DECLARE   (fs_invalid_filename)
+#endif
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_DECLARE   (threadpool_queue_work_simple)
@@ -752,6 +755,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_write_alotof_bufs)
   TEST_ENTRY  (fs_write_alotof_bufs_with_offset)
   TEST_ENTRY  (fs_read_write_null_arguments)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_invalid_filename)
+#endif
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
 #if defined(__PPC__) || defined(__PPC64__)  /* For linux PPC and AIX */

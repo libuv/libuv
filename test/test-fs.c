@@ -2645,3 +2645,18 @@ TEST_IMPL(fs_read_write_null_arguments) {
 
   return 0;
 }
+
+
+#ifdef _WIN32
+TEST_IMPL(fs_invalid_filename) {
+  uv_fs_t req;
+  int r;
+
+  r = uv_fs_open(NULL, &req, "foo??", O_RDONLY, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+  ASSERT(req.result == UV_EINVAL);
+  uv_fs_req_cleanup(&req);
+
+  return 0;
+}
+#endif
