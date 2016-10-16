@@ -336,13 +336,10 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (loop->stop_flag != 0)
     return 0;
 
-  if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
+  if (!uv_loop_alive(loop))
     return 0;
 
   if (loop->pending_reqs_tail)
-    return 0;
-
-  if (loop->endgame_handles)
     return 0;
 
   if (loop->idle_handles)
@@ -463,8 +460,8 @@ static void uv_poll_ex(uv_loop_t* loop, DWORD timeout) {
 
 
 static int uv__loop_alive(const uv_loop_t* loop) {
-  return loop->active_handles > 0 ||
-         !QUEUE_EMPTY(&loop->active_reqs) ||
+  return uv__has_active_handles(loop) ||
+         uv__has_active_reqs(loop) ||
          loop->endgame_handles != NULL;
 }
 
