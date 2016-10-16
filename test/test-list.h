@@ -152,6 +152,7 @@ TEST_DECLARE   (shutdown_eof)
 TEST_DECLARE   (shutdown_twice)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (error_message)
+TEST_DECLARE   (sys_error)
 TEST_DECLARE   (timer)
 TEST_DECLARE   (timer_init)
 TEST_DECLARE   (timer_again)
@@ -542,6 +543,7 @@ TASK_LIST_START
   TEST_HELPER (callback_stack, tcp4_echo_server)
 
   TEST_ENTRY  (error_message)
+  TEST_ENTRY  (sys_error)
 
   TEST_ENTRY  (timer)
   TEST_ENTRY  (timer_init)
