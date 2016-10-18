@@ -110,6 +110,20 @@ API
     .. note::
         Though UV_DISCONNECT can be set, it is unsupported on AIX and as such will not be set
         on the `events` field in the callback.
+        
+    .. note::
+        If one of the events `UV_READABLE` or `UV_WRITABLE` are set, the callback
+        will be called again, as long as the given fd/socket remains readable or
+        writable accordingly. Particularly in each of the following scenarios:
+        
+        * The callback has been called because the socket became readable/writable and the callback did not conduct a read/write on this socket at all.
+        * The callback committed a read on the socket, and has not read all the available data (when `UV_READABLE` is set).
+        * The callback committed a write on the socket, but it remained writable afterwards (when `UV_WRITABLE` is set).
+        * The socket has already became readable/writable before calling :c:func:`uv_poll_start` on a poll handle associated with this socket, and since then the state of the socket did not changed.
+        
+        In all of the above listed scenarios, the socket remains readable or
+        writable and hence the callback will be called again (depending on the 
+        events set in the bitmask). This behaviour is known as level triggering.
 
     .. versionchanged:: 1.9.0 Added the UV_DISCONNECT event.
     .. versionchanged:: 1.14.0 Added the UV_PRIORITIZED event.
@@ -117,5 +131,10 @@ API
 .. c:function:: int uv_poll_stop(uv_poll_t* poll)
 
     Stop polling the file descriptor, the callback will no longer be called.
+    
+    .. note::
+        Calling :c:func:`uv_poll_stop` on a handle that its socket state has 
+        already been changed, but the callback has not been called yet, 
+        would also cancel the pending callback.
 
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.
