@@ -38,9 +38,14 @@ RB_HEAD(uv__signal_tree_s, uv_signal_s);
 
 
 static int uv__signal_unlock(void);
+static int uv__signal_start(uv_signal_t* handle,
+                            uv_signal_cb signal_cb,
+                            int signum,
+                            int oneshot);
 static void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2);
 static void uv__signal_stop(uv_signal_t* handle);
+static void uv__signal_unregister_handler(int signum);
 
 
 static uv_once_t uv__signal_global_init_guard = UV_ONCE_INIT;
@@ -122,6 +127,7 @@ static uv_signal_t* uv__signal_first_handle(int signum) {
   uv_signal_t* handle;
 
   lookup.signum = signum;
+  lookup.flags = 0;
   lookup.loop = NULL;
 
   handle = RB_NFIND(uv__signal_tree_s, &uv__signal_tree, &lookup);
@@ -174,7 +180,7 @@ static void uv__signal_handler(int signum) {
 }
 
 
-static int uv__signal_register_handler(int signum) {
+static int uv__signal_register_handler(int signum, int oneshot) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
 
@@ -183,6 +189,7 @@ static int uv__signal_register_handler(int signum) {
   if (sigfillset(&sa.sa_mask))
     abort();
   sa.sa_handler = uv__signal_handler;
+  sa.sa_flags = oneshot ? SA_RESETHAND : 0;
 
   /* XXX save old action so we can restore it later on? */
   if (sigaction(signum, &sa, NULL))
@@ -287,8 +294,24 @@ void uv__signal_close(uv_signal_t* handle) {
 
 
 int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
+  return uv__signal_start(handle, signal_cb, signum, 0);
+}
+
+
+int uv_signal_start_oneshot(uv_signal_t* handle,
+                            uv_signal_cb signal_cb,
+                            int signum) {
+  return uv__signal_start(handle, signal_cb, signum, 1);
+}
+
+
+static int uv__signal_start(uv_signal_t* handle,
+                            uv_signal_cb signal_cb,
+                            int signum,
+                            int oneshot) {
   sigset_t saved_sigmask;
   int err;
+  uv_signal_t* first_handle;
 
   assert(!uv__is_closing(handle));
 
@@ -318,9 +341,12 @@ int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
 
   /* If at this point there are no active signal watchers for this signum (in
    * any of the loops), it's time to try and register a handler for it here.
+   * Also in case there's only one-shot handlers and a regular handler comes in.
    */
-  if (uv__signal_first_handle(signum) == NULL) {
-    err = uv__signal_register_handler(signum);
+  first_handle = uv__signal_first_handle(signum);
+  if (first_handle == NULL ||
+      (!oneshot && (first_handle->flags & UV__SIGNAL_ONE_SHOT))) {
+    err = uv__signal_register_handler(signum, oneshot);
     if (err) {
       /* Registering the signal handler failed. Must be an invalid signal. */
       uv__signal_unlock_and_unblock(&saved_sigmask);
@@ -329,6 +355,9 @@ int uv_signal_start(uv_signal_t* handle, uv_signal_cb signal_cb, int signum) {
   }
 
   handle->signum = signum;
+  if (oneshot)
+    handle->flags |= UV__SIGNAL_ONE_SHOT;
+
   RB_INSERT(uv__signal_tree_s, &uv__signal_tree, handle);
 
   uv__signal_unlock_and_unblock(&saved_sigmask);
@@ -390,6 +419,9 @@ static void uv__signal_event(uv_loop_t* loop,
 
       handle->dispatched_signals++;
 
+      if (handle->flags & UV__SIGNAL_ONE_SHOT)
+        uv__signal_stop(handle);
+
       /* If uv_close was called while there were caught signals that were not
        * yet dispatched, the uv__finish_close was deferred. Make close pending
        * now if this has happened.
@@ -414,11 +446,21 @@ static void uv__signal_event(uv_loop_t* loop,
 
 
 static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2) {
+  int f1;
+  int f2;
   /* Compare signums first so all watchers with the same signnum end up
    * adjacent.
    */
   if (w1->signum < w2->signum) return -1;
   if (w1->signum > w2->signum) return 1;
+
+  /* Handlers without UV__SIGNAL_ONE_SHOT set will come first, so if the first
+   * handler returned is a one-shot handler, the rest will be too.
+   */
+  f1 = w1->flags & UV__SIGNAL_ONE_SHOT;
+  f2 = w2->flags & UV__SIGNAL_ONE_SHOT;
+  if (f1 < f2) return -1;
+  if (f1 > f2) return 1;
 
   /* Sort by loop pointer, so we can easily look up the first item after
    * { .signum = x, .loop = NULL }.
@@ -443,6 +485,10 @@ int uv_signal_stop(uv_signal_t* handle) {
 static void uv__signal_stop(uv_signal_t* handle) {
   uv_signal_t* removed_handle;
   sigset_t saved_sigmask;
+  uv_signal_t* first_handle;
+  int rem_oneshot;
+  int first_oneshot;
+  int ret;
 
   /* If the watcher wasn't started, this is a no-op. */
   if (handle->signum == 0)
@@ -457,8 +503,17 @@ static void uv__signal_stop(uv_signal_t* handle) {
   /* Check if there are other active signal watchers observing this signal. If
    * not, unregister the signal handler.
    */
-  if (uv__signal_first_handle(handle->signum) == NULL)
+  first_handle = uv__signal_first_handle(handle->signum);
+  if (first_handle == NULL) {
     uv__signal_unregister_handler(handle->signum);
+  } else {
+    rem_oneshot = handle->flags & UV__SIGNAL_ONE_SHOT;
+    first_oneshot = first_handle->flags & UV__SIGNAL_ONE_SHOT;
+    if (first_oneshot && !rem_oneshot) {
+      ret = uv__signal_register_handler(handle->signum, 1);
+      assert(ret == 0);
+    }
+  }
 
   uv__signal_unlock_and_unblock(&saved_sigmask);
 

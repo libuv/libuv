@@ -354,6 +354,8 @@ TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
+TEST_DECLARE   (we_get_signal_one_shot)
+TEST_DECLARE   (we_get_signals_mixed)
 TEST_DECLARE   (signal_multiple_loops)
 TEST_DECLARE   (closed_fd_events)
 #endif
@@ -704,6 +706,8 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_setuid_setgid)
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
+  TEST_ENTRY  (we_get_signal_one_shot)
+  TEST_ENTRY  (we_get_signals_mixed)
   TEST_ENTRY  (signal_multiple_loops)
   TEST_ENTRY  (closed_fd_events)
 #endif
