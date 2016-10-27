@@ -27,7 +27,9 @@
 extern "C" {
 #endif
 
-#ifdef _WIN32
+#ifdef UV_STATICLIB
+# define UV_EXTERN /* nothing */
+#elif defined(_WIN32)
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)
     /* Building shared library. */
