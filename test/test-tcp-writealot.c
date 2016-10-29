@@ -50,9 +50,10 @@ static uv_shutdown_t shutdown_req;
 static uv_write_t write_reqs[WRITES];
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->base = malloc(size);
-  buf->len = size;
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 
@@ -92,8 +93,6 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     printf("GOT EOF\n");
     uv_close((uv_handle_t*)tcp, close_cb);
   }
-
-  free(buf->base);
 }
 
 

@@ -284,7 +284,6 @@ UV_EXTERN uv_os_fd_t uv_backend_fd(const uv_loop_t*);
 UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
 
 typedef void (*uv_alloc_cb)(uv_handle_t* handle,
-                            size_t suggested_size,
                             uv_buf_t* buf);
 typedef void (*uv_read_cb)(uv_stream_t* stream,
                            ssize_t nread,

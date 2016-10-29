@@ -39,9 +39,10 @@ static int called_timer_close_cb;
 static int called_timer_cb;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->base = malloc(size);
-  buf->len = size;
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 
@@ -49,7 +50,6 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   ASSERT((uv_tcp_t*)t == &tcp);
 
   if (nread == 0) {
-    free(buf->base);
     return;
   }
 
@@ -57,14 +57,10 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
     ASSERT(nread == 1);
     ASSERT(!got_eof);
     ASSERT(buf->base[0] == 'Q');
-    free(buf->base);
     got_q = 1;
     puts("got Q");
   } else {
     ASSERT(nread == UV_EOF);
-    if (buf->base) {
-      free(buf->base);
-    }
     got_eof = 1;
     puts("got EOF");
   }

@@ -74,7 +74,6 @@ static int write2_cb_called;
 
 
 static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   /* we're not actually reading anything so a small buffer is okay */
   static char slab[8];

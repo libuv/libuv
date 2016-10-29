@@ -95,10 +95,10 @@ static void exit_cb(uv_process_t* process,
 
 
 static void on_alloc(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 
@@ -150,13 +150,11 @@ static void on_read(uv_stream_t* handle,
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf->base);
     return;
   }
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf->base);
       return;
     }
 
@@ -201,8 +199,6 @@ static void on_read(uv_stream_t* handle,
     remote_conn_accepted = 1;
     uv_close((uv_handle_t*)&channel, NULL);
   }
-
-  free(buf->base);
 }
 
 #ifdef _WIN32
@@ -217,13 +213,11 @@ static void on_read_listen_after_bound_twice(uv_stream_t* handle,
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf->base);
     return;
   }
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf->base);
       return;
     }
 
@@ -266,8 +260,6 @@ static void on_read_listen_after_bound_twice(uv_stream_t* handle,
     ASSERT(0 == uv_pipe_pending_count(pipe));
     uv_close((uv_handle_t*)&channel, NULL);
   }
-
-  free(buf->base);
 }
 #endif
 
@@ -318,10 +310,10 @@ static void on_tcp_write(uv_write_t* req, int status) {
 
 
 static void on_read_alloc(uv_handle_t* handle,
-                          size_t suggested_size,
                           uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 
@@ -329,7 +321,6 @@ static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nread > 0);
   ASSERT(memcmp("hello again\n", buf->base, nread) == 0);
   ASSERT(tcp == (uv_stream_t*)&tcp_connection);
-  free(buf->base);
 
   tcp_read_cb_called++;
 
@@ -349,13 +340,11 @@ static void on_read_connection(uv_stream_t* handle,
   pipe = (uv_pipe_t*) handle;
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf->base);
     return;
   }
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf->base);
       return;
     }
 
@@ -390,8 +379,6 @@ static void on_read_connection(uv_stream_t* handle,
 
   r = uv_read_start((uv_stream_t*)&tcp_connection, on_read_alloc, on_tcp_read);
   ASSERT(r == 0);
-
-  free(buf->base);
 }
 
 
@@ -532,7 +519,6 @@ static void on_tcp_child_process_read(uv_stream_t* tcp,
 
   if (nread < 0) {
     if (nread == UV_EOF) {
-      free(buf->base);
       return;
     }
 
@@ -543,7 +529,6 @@ static void on_tcp_child_process_read(uv_stream_t* tcp,
   ASSERT(nread > 0);
   ASSERT(memcmp("world\n", buf->base, nread) == 0);
   on_pipe_read_called++;
-  free(buf->base);
 
   /* Write to the socket */
   outbuf = uv_buf_init("hello again\n", 12);

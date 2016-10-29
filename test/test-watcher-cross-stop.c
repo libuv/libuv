@@ -33,7 +33,7 @@ static unsigned int recv_cb_called;
 static unsigned int send_cb_called;
 static unsigned int close_cb_called;
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
   buf->base = slab;
   buf->len = sizeof(slab);
 }

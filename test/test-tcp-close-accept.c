@@ -78,7 +78,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(0 == uv_write(&write_reqs[i], outgoing, &buf, 1, write_cb));
 }
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
   static char slab[1];
   buf->base = slab;
   buf->len = sizeof(slab);

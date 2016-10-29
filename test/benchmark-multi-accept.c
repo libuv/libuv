@@ -87,14 +87,12 @@ static void ipc_read_cb(uv_stream_t* handle,
                         ssize_t nread,
                         const uv_buf_t* buf);
 static void ipc_alloc_cb(uv_handle_t* handle,
-                         size_t suggested_size,
                          uv_buf_t* buf);
 
 static void sv_async_cb(uv_async_t* handle);
 static void sv_connection_cb(uv_stream_t* server_handle, int status);
 static void sv_read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf);
 static void sv_alloc_cb(uv_handle_t* handle,
-                        size_t suggested_size,
                         uv_buf_t* buf);
 
 static void cl_connect_cb(uv_connect_t* req, int status);
@@ -161,7 +159,6 @@ static void ipc_connect_cb(uv_connect_t* req, int status) {
 
 
 static void ipc_alloc_cb(uv_handle_t* handle,
-                         size_t suggested_size,
                          uv_buf_t* buf) {
   struct ipc_client_ctx* ctx;
   ctx = container_of(handle, struct ipc_client_ctx, ipc_pipe);
@@ -307,7 +304,6 @@ static void sv_connection_cb(uv_stream_t* server_handle, int status) {
 
 
 static void sv_alloc_cb(uv_handle_t* handle,
-                        size_t suggested_size,
                         uv_buf_t* buf) {
   static char slab[32];
   buf->base = slab;

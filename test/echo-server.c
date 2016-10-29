@@ -48,9 +48,8 @@ static void on_connection(uv_stream_t*, int status);
 static void after_write(uv_write_t* req, int status) {
   write_req_t* wr;
 
-  /* Free the read/write buffer and the request */
+  /* Free the request */
   wr = (write_req_t*) req;
-  free(wr->buf.base);
   free(wr);
 
   if (status == 0)
@@ -80,7 +79,6 @@ static void after_read(uv_stream_t* handle,
     /* Error or EOF */
     ASSERT(nread == UV_EOF);
 
-    free(buf->base);
     sreq = malloc(sizeof* sreq);
     ASSERT(0 == uv_shutdown(sreq, handle, after_shutdown));
     return;
@@ -88,7 +86,6 @@ static void after_read(uv_stream_t* handle,
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf->base);
     return;
   }
 
@@ -100,7 +97,6 @@ static void after_read(uv_stream_t* handle,
     for (i = 0; i < nread; i++) {
       if (buf->base[i] == 'Q') {
         if (i + 1 < nread && buf->base[i + 1] == 'S') {
-          free(buf->base);
           uv_close((uv_handle_t*)handle, on_close);
           return;
         } else {
@@ -127,10 +123,10 @@ static void on_close(uv_handle_t* peer) {
 
 
 static void echo_alloc(uv_handle_t* handle,
-                       size_t suggested_size,
                        uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 

@@ -74,7 +74,6 @@ static void exit_cb(uv_process_t* process,
 
 
 static void on_alloc(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   buf->base = output + output_used;
   buf->len = OUTPUT_SIZE - output_used;

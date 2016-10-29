@@ -74,7 +74,6 @@ static void init_process_options(char* test, uv_exit_cb exit_cb) {
 
 
 static void on_alloc(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   buf->base = output + output_used;
   buf->len = OUTPUT_SIZE - output_used;
@@ -168,8 +167,6 @@ static void on_pipe_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(memcmp("hello world\n", buf->base, nread) == 0);
   on_pipe_read_called++;
 
-  free(buf->base);
-
   uv_close((uv_handle_t*)&stdin_pipe, close_cb);
   uv_close((uv_handle_t*)&stdout_pipe, close_cb);
 }
@@ -182,10 +179,10 @@ static void after_pipe_write(uv_write_t* req, int status) {
 
 
 static void on_read_alloc(uv_handle_t* handle,
-                          size_t suggested_size,
                           uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 

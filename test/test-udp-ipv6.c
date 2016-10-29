@@ -61,7 +61,6 @@ static int can_ipv6_ipv4_dual() {
 
 
 static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   static char slab[65536];
   CHECK_HANDLE(handle);

@@ -42,7 +42,6 @@ static int close_cb_called;
 
 
 static void sv_alloc_cb(uv_handle_t* handle,
-                        size_t suggested_size,
                         uv_buf_t* buf) {
   static char slab[65536];
   CHECK_HANDLE(handle);
@@ -52,7 +51,6 @@ static void sv_alloc_cb(uv_handle_t* handle,
 
 
 static void cl_alloc_cb(uv_handle_t* handle,
-                        size_t suggested_size,
                         uv_buf_t* buf) {
   /* Do nothing, recv_cb should be called with UV_ENOBUFS. */
 }

@@ -75,14 +75,13 @@ static uint64_t start; /* in ms  */
 static int closed_streams;
 static int conns_failed;
 
-static void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf);
 static void connect_cb(uv_connect_t* conn_req, int status);
 static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 static void close_cb(uv_handle_t* handle);
 
 
 static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   static char slab[65536];
   buf->base = slab;

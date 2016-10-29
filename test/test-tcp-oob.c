@@ -37,7 +37,6 @@ static int ticks;
 static const int kMaxTicks = 10;
 
 static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   static char storage[1024];
   *buf = uv_buf_init(storage, sizeof(storage));

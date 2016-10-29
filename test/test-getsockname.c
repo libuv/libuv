@@ -42,9 +42,10 @@ static uv_udp_t udpServer;
 static uv_udp_send_t send_req;
 
 
-static void alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+static void alloc(uv_handle_t* handle, uv_buf_t* buf) {
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 
@@ -65,10 +66,6 @@ static void after_read(uv_stream_t* handle,
                        const uv_buf_t* buf) {
   uv_shutdown_t* req;
   int r;
-
-  if (buf->base) {
-    free(buf->base);
-  }
 
   req = (uv_shutdown_t*) malloc(sizeof *req);
   r = uv_shutdown(req, handle, after_shutdown);
@@ -245,7 +242,6 @@ static void udp_recv(uv_udp_t* handle,
   int r;
 
   ASSERT(nread >= 0);
-  free(buf->base);
 
   if (nread == 0) {
     return;

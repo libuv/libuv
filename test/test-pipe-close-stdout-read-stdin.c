@@ -29,7 +29,7 @@
 #include "uv.h"
 #include "task.h"
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t* buf)
+void alloc_buffer(uv_handle_t *handle, uv_buf_t* buf)
 {
   static char buffer[1024];
 

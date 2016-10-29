@@ -974,7 +974,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
     /* Do nonblocking reads until the buffer is empty */
     while (handle->flags & UV_HANDLE_READING) {
       buf = uv_buf_init(NULL, 0);
-      handle->alloc_cb((uv_handle_t*) handle, 65536, &buf);
+      handle->alloc_cb((uv_handle_t*) handle, &buf);
       if (buf.base == NULL || buf.len == 0) {
         handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, &buf);
         break;

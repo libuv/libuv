@@ -45,9 +45,10 @@ static int bytes_received = 0;
 static int shutdown_cb_called = 0;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->len = size;
-  buf->base = malloc(size);
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
   ASSERT(buf->base != NULL);
 }
 
@@ -71,7 +72,6 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nested == 0 && "read_cb must be called from a fresh stack");
 
   printf("Read. nread == %d\n", (int)nread);
-  free(buf->base);
 
   if (nread == 0) {
     return;

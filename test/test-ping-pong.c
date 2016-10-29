@@ -48,10 +48,10 @@ typedef struct {
 } pinger_t;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
-  buf->base = malloc(size);
-  buf->len = size;
-}
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);}
 
 
 static void pinger_on_close(uv_handle_t* handle) {
@@ -102,7 +102,6 @@ static void pinger_read_cb(uv_stream_t* stream,
     ASSERT(nread == UV_EOF);
 
     puts("got EOF");
-    free(buf->base);
 
     uv_close((uv_handle_t*)(&pinger->stream.tcp), pinger_on_close);
 
@@ -127,8 +126,6 @@ static void pinger_read_cb(uv_stream_t* stream,
       break;
     }
   }
-
-  free(buf->base);
 }
 
 

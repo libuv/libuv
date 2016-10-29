@@ -67,7 +67,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 }
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
   static char base[1024];
 
   buf->base = base;

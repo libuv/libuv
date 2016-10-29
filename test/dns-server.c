@@ -87,8 +87,7 @@ static void after_write(uv_write_t* req, int status) {
 
   wr = (write_req_t*) req;
 
-  /* Free the read/write buffer and the request */
-  free(wr->buf.base);
+  /* Free the request */
   free(wr);
 }
 
@@ -227,7 +226,6 @@ static void process_req(uv_stream_t* handle,
     dns->state.prevbuf_ptr = NULL;
     dns->state.prevbuf_pos = 0;
     dns->state.prevbuf_rem = 0;
-    free(buf->base);
   }
 }
 
@@ -240,10 +238,6 @@ static void after_read(uv_stream_t* handle,
     /* Error or EOF */
     ASSERT(nread == UV_EOF);
 
-    if (buf->base) {
-      free(buf->base);
-    }
-
     req = malloc(sizeof *req);
     uv_shutdown(req, handle, after_shutdown);
 
@@ -252,7 +246,6 @@ static void after_read(uv_stream_t* handle,
 
   if (nread == 0) {
     /* Everything OK, but nothing read. */
-    free(buf->base);
     return;
   }
   /* process requests and send responses */
@@ -266,10 +259,10 @@ static void on_close(uv_handle_t* peer) {
 
 
 static void buf_alloc(uv_handle_t* handle,
-                      size_t suggested_size,
                       uv_buf_t* buf) {
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+  static char slab[1024];
+  buf->base = slab;
+  buf->len = sizeof(slab);
 }
 
 

@@ -21,7 +21,7 @@ Data types
 
     Union of all handle types.
 
-.. c:type:: void (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
+.. c:type:: void (*uv_alloc_cb)(uv_handle_t* handle, uv_buf_t* buf)
 
     Type definition for callback passed to :c:func:`uv_read_start` and
     :c:func:`uv_udp_recv_start`. The user must allocate memory and fill the supplied
@@ -29,11 +29,8 @@ Data types
     a ``UV_ENOBUFS`` error will be triggered in the :c:type:`uv_udp_recv_cb` or the
     :c:type:`uv_read_cb` callback.
 
-    A suggested size (65536 at the moment in most cases) is provided, but it's just an indication,
-    not related in any way to the pending data to be read. The user is free to allocate the amount
-    of memory they decide.
-
-    As an example, applications with custom allocation schemes such as using freelists, allocation
+    Though the user is free to allocate the memory size in the callback, a suggested size
+    is 64k (65536). Applications with custom allocation schemes such as using freelists, allocation
     pools or slab based allocators may decide to use a different size which matches the memory
     chunks they already have.
 
@@ -41,10 +38,16 @@ Data types
 
     ::
 
-        static void my_alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-          buf->base = malloc(suggested_size);
-          buf->len = suggested_size;
+        static void my_alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
+          buf->base = malloc(1024);
+          buf->len = 1024;
         }
+
+    For Linux users, they can choose to allocate memory using `FIONREAD ioctl`, which
+    checks the size of the incoming chunk. However, there is a de-opt in performance
+    since the extra system call cuts throughput in half. It is almost always faster
+    to use malloc/realloc or a slab allocation scheme. Use with discretion.
+
 
 .. c:type:: void (*uv_close_cb)(uv_handle_t* handle)
 

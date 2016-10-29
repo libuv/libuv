@@ -30,7 +30,7 @@
 static int read_count;
 
 
-static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+static void alloc_cb(uv_handle_t* handle, uv_buf_t* buf) {
   static char slab[1024];
   buf->base = slab;
   buf->len = sizeof(slab);

@@ -50,7 +50,6 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void alloc_cb(uv_handle_t* handle,
-                     size_t suggested_size,
                      uv_buf_t* buf) {
   static char slab[64];
   buf->base = slab;
