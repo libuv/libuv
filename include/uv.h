@@ -840,6 +840,7 @@ typedef enum {
   UV_CREATE_PIPE    = 0x01,
   UV_INHERIT_FD     = 0x02,
   UV_INHERIT_STREAM = 0x04,
+  UV_INHERIT_HANDLE = 0x08,
 
   /*
    * When UV_CREATE_PIPE is specified, UV_READABLE_PIPE and UV_WRITABLE_PIPE
@@ -855,6 +856,7 @@ typedef struct uv_stdio_container_s {
 
   union {
     uv_stream_t* stream;
+    uv_os_fd_t handle;
     int fd;
   } data;
 } uv_stdio_container_t;

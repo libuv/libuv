@@ -260,6 +260,8 @@ int uv__create_nul_handle(HANDLE* handle_ptr,
   return 0;
 }
 
+/* Verify that HANDLE can be stored in `stream` field and not increase struct size*/
+STATIC_ASSERT(sizeof(((uv_stdio_container_t*)0)->data.handle) <= sizeof(((uv_stdio_container_t*)0)->data.stream));
 
 int uv__stdio_create(uv_loop_t* loop,
                      const uv_process_options_t* options,
@@ -301,7 +303,7 @@ int uv__stdio_create(uv_loop_t* loop,
     }
 
     switch (fdopt.flags & (UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD |
-            UV_INHERIT_STREAM)) {
+            UV_INHERIT_STREAM | UV_INHERIT_HANDLE)) {
       case UV_IGNORE:
         /* Starting a process with no stdin/stout/stderr can confuse it. */
         /* So no matter what the user specified, we make sure the first */
@@ -347,21 +349,36 @@ int uv__stdio_create(uv_loop_t* loop,
         break;
       }
 
+      case UV_INHERIT_HANDLE:
       case UV_INHERIT_FD: {
         /* Inherit a raw FD. */
         HANDLE child_handle;
 
         /* Make an inheritable duplicate of the handle. */
-        err = uv__duplicate_fd(loop, fdopt.data.fd, &child_handle);
-        if (err) {
-          /* If fdopt.data.fd is not valid and fd fd <= 2, then ignore the */
-          /* error. */
-          if (fdopt.data.fd <= 2 && err == ERROR_INVALID_HANDLE) {
+        if (fdopt.flags & UV_INHERIT_FD) {
+          err = uv__duplicate_fd(loop, fdopt.data.fd, &child_handle);
+          if (err) {
+            /* If fdopt.data.fd is not valid and fd fd <= 2, then ignore the */
+            /* error. */
+            if (fdopt.data.fd <= 2 && err == ERROR_INVALID_HANDLE) {
+              CHILD_STDIO_CRT_FLAGS(buffer, i) = 0;
+              CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
+              break;
+            }
+            goto error;
+          }
+        }
+        else {
+          HANDLE base_handle = fdopt.data.handle;
+          if (base_handle == INVALID_HANDLE_VALUE) {
             CHILD_STDIO_CRT_FLAGS(buffer, i) = 0;
             CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
             break;
           }
-          goto error;
+          /*Duplicate handle because finalizer close this handle*/
+          err = uv__duplicate_handle(loop, base_handle, &child_handle);
+          if (err)
+            goto error;
         }
 
         /* Figure out what the type is. */

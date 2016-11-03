@@ -180,6 +180,8 @@ skip:
   return 0;
 }
 
+/* Verify that HANDLE is same as int*/
+STATIC_ASSERT(sizeof(((uv_stdio_container_t*)0)->data.handle) == sizeof(((uv_stdio_container_t*)0)->data.fd));
 
 /*
  * Used for initializing stdio streams like options.stdin_stream. Returns
@@ -189,7 +191,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int mask;
   int fd;
 
-  mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM;
+  mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM | UV_INHERIT_HANDLE;
 
   switch (container->flags & mask) {
   case UV_IGNORE:
@@ -203,8 +205,9 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
       return uv__make_socketpair(fds, 0);
 
   case UV_INHERIT_FD:
+  case UV_INHERIT_HANDLE:
   case UV_INHERIT_STREAM:
-    if (container->flags & UV_INHERIT_FD)
+    if (container->flags & (UV_INHERIT_FD | UV_INHERIT_HANDLE))
       fd = container->data.fd;
     else
       fd = uv__stream_fd(container->data.stream);
