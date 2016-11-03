@@ -43,6 +43,22 @@
 # include <port.h>
 #endif /* __sun */
 
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+# include <sys/sysctl.h>
+# include <sys/filio.h>
+# include <sys/ioctl.h>
+# include <sys/wait.h>
+# define UV__O_CLOEXEC O_CLOEXEC
+# if defined(__FreeBSD__) && __FreeBSD__ >= 10
+#  define uv__accept4 accept4
+#  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
+#  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
+# endif
+# if !defined(F_DUP2FD_CLOEXEC) && defined(_F_DUP2FD_CLOEXEC)
+#  define F_DUP2FD_CLOEXEC  _F_DUP2FD_CLOEXEC
+# endif
+#endif
+
 #if defined(_AIX)
 # define reqevents events
 # define rtnevents revents

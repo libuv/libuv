@@ -55,21 +55,8 @@
 # endif
 #endif
 
-#if defined(__DragonFly__)      || \
-    defined(__FreeBSD__)        || \
-    defined(__FreeBSD_kernel__)
-# include <sys/sysctl.h>
-# include <sys/filio.h>
-# include <sys/wait.h>
-# define UV__O_CLOEXEC O_CLOEXEC
-# if defined(__FreeBSD__) && __FreeBSD__ >= 10
-#  define uv__accept4 accept4
-#  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
-#  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
-# endif
-# if !defined(F_DUP2FD_CLOEXEC) && defined(_F_DUP2FD_CLOEXEC)
-#  define F_DUP2FD_CLOEXEC  _F_DUP2FD_CLOEXEC
-# endif
+#ifdef _AIX
+#include <sys/ioctl.h>
 #endif
 
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21

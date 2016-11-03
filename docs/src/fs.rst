@@ -85,6 +85,7 @@ Data types
             UV_FS_RMDIR,
             UV_FS_MKDIR,
             UV_FS_MKDTEMP,
+            UV_FS_MKSTEMP,
             UV_FS_RENAME,
             UV_FS_SCANDIR,
             UV_FS_LINK,
@@ -199,6 +200,16 @@ API
 
     .. note::
         The result can be found as a null terminated string at `req->path`.
+
+.. c:function:: int uv_fs_mkstemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb)
+
+    Equivalent to :man:`mkstemp(3)`.
+
+    .. note::
+        The created file path can be found as a null terminated string at `req->path`.
+        The file descriptor can be found as an integer at `req->result`.
+
+    .. versionadded:: 1.10.0
 
 .. c:function:: int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 

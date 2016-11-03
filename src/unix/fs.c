@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h> /* PATH_MAX */
-
+#include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -232,6 +232,93 @@ skip:
 
 static ssize_t uv__fs_mkdtemp(uv_fs_t* req) {
   return mkdtemp((char*) req->path) ? 0 : -1;
+}
+
+
+static int uv__fs_mkstemp(uv_fs_t* req) {
+  int r;
+#ifdef UV__O_CLOEXEC
+  int (*mkostemp_function)(char*, int);
+  static int no_cloexec_support;
+#endif
+  static const char pattern[] = "XXXXXX";
+  char* path;
+  size_t path_length;
+
+  path = (char*) req->path;
+  path_length = strlen(path);
+
+  /* EINVAL can be returned for 2 reasons:
+       1. The template's last 6 characters were not XXXXXX
+       2. open() didn't support O_CLOEXEC
+     We want to avoid going to the fallback path in case
+     of 1., so it's manually checked before. */
+  if (path_length < strlen(pattern) ||
+      strcmp(path + (path_length - (sizeof(pattern) - 1)), pattern)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#ifdef UV__O_CLOEXEC
+  if (no_cloexec_support == 0) {
+    *(int**)(&mkostemp_function) = dlsym(RTLD_DEFAULT, "mkostemp64");
+
+    /* We don't care about errors, but we do want to clean them up.
+       If there has been no error, then dlerror() will just return
+       NULL. */
+    dlerror();
+
+    /* If mkostemp64() doesn't exist, try mkostemp(). */
+    if (mkostemp_function == NULL) {
+      *(int**)(&mkostemp_function) = dlsym(RTLD_DEFAULT, "mkostemp");
+      dlerror();
+    }
+
+    if (mkostemp_function != NULL) {
+#ifdef O_LARGEFILE
+      r = mkostemp_function(path, UV__O_CLOEXEC | O_LARGEFILE);
+#else
+      /* FreeBSD doesn't support O_LARGEFILE. */
+      r = mkostemp_function(path, UV__O_CLOEXEC);
+#endif
+
+      if (r >= 0)
+        return r;
+
+      /* If mkostemp() returns EINVAL, it means the kernel doesn't
+         support O_CLOEXEC, so we just fallback to mkstemp() below. */
+      if (r == -1 && errno != EINVAL)
+        return r;
+
+      /* We set the static variable so that next calls don't even
+         try to use mkostemp. */
+      no_cloexec_support = 1;
+    }
+  }
+#endif
+
+  r = mkstemp(path);
+
+  if (r == -1)
+    return -1;
+
+  if (req->cb != NULL)
+    uv_rwlock_rdlock(&req->loop->cloexec_lock);
+
+  /* In case of failure `uv__cloexec` will leave error in `errno`,
+   * so it is enough to just set `r` to `-1`.
+   */
+  if (r >= 0 && uv__cloexec(r, 1) != 0) {
+    r = uv__close(r);
+    if (r != 0)
+      abort();
+    r = -1;
+  }
+
+  if (req->cb != NULL)
+    uv_rwlock_rdunlock(&req->loop->cloexec_lock);
+
+  return r;
 }
 
 
@@ -952,6 +1039,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(LINK, link(req->path, req->new_path));
     X(MKDIR, mkdir(req->path, req->mode));
     X(MKDTEMP, uv__fs_mkdtemp(req));
+    X(MKSTEMP, uv__fs_mkstemp(req));
     X(OPEN, uv__fs_open(req));
     X(READ, uv__fs_buf_iter(req, uv__fs_read));
     X(SCANDIR, uv__fs_scandir(req));
@@ -1161,6 +1249,21 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
 }
 
 
+int uv_fs_mkstemp(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char* tpl,
+                  uv_fs_cb cb) {
+  INIT(MKSTEMP);
+  req->path = uv__strdup(tpl);
+  if (req->path == NULL) {
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
+    return -ENOMEM;
+  }
+  POST;
+}
+
+
 int uv_fs_open(uv_loop_t* loop,
                uv_fs_t* req,
                const char* path,
@@ -1349,7 +1452,10 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
    * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP is the
    * exception to the rule, it always allocates memory.
    */
-  if (req->path != NULL && (req->cb != NULL || req->fs_type == UV_FS_MKDTEMP))
+  if (req->path != NULL &&
+      (req->cb != NULL ||
+       req->fs_type == UV_FS_MKDTEMP ||
+       req->fs_type == UV_FS_MKSTEMP))
     uv__free((void*) req->path);  /* Memory is shared with req->new_path. */
 
   req->path = NULL;

@@ -303,6 +303,7 @@ int uv_translate_sys_error(int sys_errno);
  * FS
  */
 void uv_fs_init();
+typedef int (*uv__fs_mktemp_func)(uv_fs_t* req, size_t num_x, WCHAR *ep);
 
 
 /*
