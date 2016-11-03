@@ -1,0 +1,24 @@
+language: shell
+compiler: gcc
+
+git:
+  depth: 3
+  quiet: true
+
+os:
+  - windows
+  - linux
+  - osx
+
+script:
+  -  if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+       export PYTHON=C:\\tools\\mingw64\\opt\\bin\\python.exe;
+       ./vcbuild.bat vs2017 test;
+     fi;
+     if [ "$TRAVIS_OS_NAME" == "linux" -o "$TRAVIS_OS_NAME" == "osx" ]; then
+       cmake -DBUILD_TESTING=1 . ;
+       cmake --build . ;
+       ARGS="-V" cmake --build . --target test;
+     fi;
+
+

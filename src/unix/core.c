@@ -79,6 +79,10 @@
 # endif
 #endif
 
+#ifdef _AIX
+#include <sys/ioctl.h>
+#endif
+
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
 # include <dlfcn.h>  /* for dlsym */
 #endif
