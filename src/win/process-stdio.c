@@ -260,8 +260,9 @@ int uv__create_nul_handle(HANDLE* handle_ptr,
   return 0;
 }
 
-/* Verify that HANDLE can be stored in `stream` field and not increase struct size*/
-STATIC_ASSERT(sizeof(((uv_stdio_container_t*)0)->data.handle) <= sizeof(((uv_stdio_container_t*)0)->data.stream));
+/* Verify that HANDLE can be stored in `stream` field and not increase struct size. */
+STATIC_ASSERT(sizeof(((uv_stdio_container_t*)0)->data.handle) <=
+              sizeof(((uv_stdio_container_t*)0)->data.stream));
 
 int uv__stdio_create(uv_loop_t* loop,
                      const uv_process_options_t* options,
@@ -375,7 +376,6 @@ int uv__stdio_create(uv_loop_t* loop,
             CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
             break;
           }
-          /*Duplicate handle because finalizer close this handle*/
           err = uv__duplicate_handle(loop, base_handle, &child_handle);
           if (err)
             goto error;
