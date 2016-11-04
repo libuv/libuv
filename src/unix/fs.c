@@ -129,8 +129,23 @@
 static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 #if defined(__linux__) || defined(__sun) || defined(__NetBSD__)
   return fdatasync(req->file);
-#elif defined(__APPLE__) && defined(SYS_fdatasync)
-  return syscall(SYS_fdatasync, req->file);
+#elif defined(__APPLE__)
+  /* Apple's fdatasync and fsync explicitly do NOT flush the drive write cache
+   * to the drive platters. This is in contrast to Linux's fdatasync and fsync
+   * which do, according to recent man pages. F_FULLFSYNC is Apple's equivalent
+   * for flushing buffered data to permanent storage.
+   */
+  return fcntl(req->file, F_FULLFSYNC);
+#else
+  return fsync(req->file);
+#endif
+}
+
+
+static ssize_t uv__fs_fsync(uv_fs_t* req) {
+#if defined(__APPLE__)
+  /* See the comment in uv__fs_fdatasync. */
+  return fcntl(req->file, F_FULLFSYNC);
 #else
   return fsync(req->file);
 #endif
@@ -945,7 +960,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
     X(FDATASYNC, uv__fs_fdatasync(req));
     X(FSTAT, uv__fs_fstat(req->file, &req->statbuf));
-    X(FSYNC, fsync(req->file));
+    X(FSYNC, uv__fs_fsync(req));
     X(FTRUNCATE, ftruncate(req->file, req->off));
     X(FUTIME, uv__fs_futime(req));
     X(LSTAT, uv__fs_lstat(req->path, &req->statbuf));
