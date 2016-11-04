@@ -260,7 +260,8 @@ int uv__create_nul_handle(HANDLE* handle_ptr,
   return 0;
 }
 
-/* Verify that HANDLE can be stored in `stream` field and not increase struct size. */
+/* Verify that HANDLE can be stored in `stream` field and */
+/* not increase struct size. */
 STATIC_ASSERT(sizeof(((uv_stdio_container_t*)0)->data.handle) <=
               sizeof(((uv_stdio_container_t*)0)->data.stream));
 
