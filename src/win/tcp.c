@@ -1280,6 +1280,10 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int enable) {
 }
 
 
+int uv_tcp_fastopen(uv_tcp_t* handle, int enable) {
+  return UV_ENOTSUP;
+}
+
 int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
   int err;
 

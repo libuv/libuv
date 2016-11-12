@@ -116,6 +116,7 @@
         'test-tcp-create-socket-early.c',
         'test-tcp-connect-error-after-write.c',
         'test-tcp-shutdown-after-write.c',
+        'test-tcp-fastopen.c',
         'test-tcp-flags.c',
         'test-tcp-connect-error.c',
         'test-tcp-connect-timeout.c',

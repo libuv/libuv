@@ -295,7 +295,8 @@ typedef struct {
   void* queued_fds;                                                           \
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
-#define UV_TCP_PRIVATE_FIELDS /* empty */
+#define UV_TCP_PRIVATE_FIELDS						      \
+  struct sockaddr_storage addr;
 
 #define UV_UDP_PRIVATE_FIELDS                                                 \
   uv_alloc_cb alloc_cb;                                                       \

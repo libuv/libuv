@@ -423,6 +423,11 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
         uv__tcp_keepalive(fd, 1, 60)) {
       return UV__ERR(errno);
     }
+
+    if ((stream->flags & UV_HANDLE_TCP_FASTOPEN)) {
+      return UV_EINVAL;
+    }
+
   }
 
 #if defined(__APPLE__)
@@ -886,6 +891,34 @@ start:
     /* Ensure the handle isn't sent again in case this is a partial write. */
     if (n >= 0)
       req->send_handle = NULL;
+#if defined(TCP_FASTOPEN) && defined(MSG_FASTOPEN)
+  } else if (stream->flags & UV_HANDLE_TCP_FASTOPEN) {
+    struct sockaddr_storage* addr;
+    socklen_t addrlen;
+
+    addr = (struct sockaddr_storage*)&((uv_tcp_t*)stream)->addr;
+    switch (addr->ss_family) {
+      case AF_INET:
+        addrlen = sizeof(struct sockaddr_in);
+        break;
+      case AF_INET6:
+        addrlen = sizeof(struct sockaddr_in6);
+        break;
+      default:
+        err = UV__ERR(EINVAL);
+        goto error;
+    }
+    do {
+      n = sendto(uv__stream_fd(stream), iov[0].iov_base, iov[0].iov_len,
+                 MSG_FASTOPEN, (const struct sockaddr*)addr, addrlen);
+    } while (n == -1 && (RETRY_ON_WRITE_ERROR(errno) || errno == EINPROGRESS));
+
+    if (n == -1 && errno != 0) {
+	    fprintf(stderr, "errno = %d\n", errno);
+    }
+
+    stream->flags &= ~UV_HANDLE_TCP_FASTOPEN;
+#endif
   } else {
     do
       n = uv__writev(uv__stream_fd(stream), iov, iovcnt);

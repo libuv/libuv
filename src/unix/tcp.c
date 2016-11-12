@@ -222,31 +222,38 @@ int uv__tcp_connect(uv_connect_t* req,
 
   handle->delayed_error = 0;
 
-  do {
-    errno = 0;
-    r = connect(uv__stream_fd(handle), addr, addrlen);
-  } while (r == -1 && errno == EINTR);
-
-  /* We not only check the return value, but also check the errno != 0.
-   * Because in rare cases connect() will return -1 but the errno
-   * is 0 (for example, on Android 4.3, OnePlus phone A0001_12_150227)
-   * and actually the tcp three-way handshake is completed.
+  /* When TCP Fast Open is enabled, delay the initial TCP connection
+   * until we are sending the data
    */
-  if (r == -1 && errno != 0) {
-    if (errno == EINPROGRESS)
-      ; /* not an error */
-    else if (errno == ECONNREFUSED
-#if defined(__OpenBSD__)
-      || errno == EINVAL
-#endif
-      )
-    /* If we get ECONNREFUSED (Solaris) or EINVAL (OpenBSD) wait until the
-     * next tick to report the error. Solaris and OpenBSD wants to report
-     * immediately -- other unixes want to wait.
+  if ((handle->flags & UV_HANDLE_TCP_FASTOPEN)) {
+    memcpy(&handle->addr, addr, addrlen);
+  } else {
+    do {
+      errno = 0;
+      r = connect(uv__stream_fd(handle), addr, addrlen);
+    } while (r == -1 && errno == EINTR);
+
+    /* We not only check the return value, but also check the errno != 0.
+     * Because in rare cases connect() will return -1 but the errno
+     * is 0 (for example, on Android 4.3, OnePlus phone A0001_12_150227)
+     * and actually the tcp three-way handshake is completed.
      */
-      handle->delayed_error = UV__ERR(ECONNREFUSED);
-    else
-      return UV__ERR(errno);
+    if (r == -1 && errno != 0) {
+      if (errno == EINPROGRESS)
+        ; /* not an error */
+      else if (errno == ECONNREFUSED
+#if defined(__OpenBSD__)
+        || errno == EINVAL
+#endif
+        )
+      /* If we get ECONNREFUSED (Solaris) or EINVAL (OpenBSD) wait until the
+       * next tick to report the error. Solaris and OpenBSD wants to report
+       * immediately -- other unixes want to wait.
+       */
+        handle->delayed_error = UV__ERR(ECONNREFUSED);
+      else
+        return UV__ERR(errno);
+    }
   }
 
   uv__req_init(handle->loop, req, UV_CONNECT);
@@ -374,6 +381,17 @@ int uv__tcp_nodelay(int fd, int on) {
 }
 
 
+int uv__tcp_fastopen(int fd, int qlen) {
+#ifdef TCP_FASTOPEN
+  if (setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &qlen, sizeof(qlen)))
+    return UV__ERR(errno);
+  return 0;
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
+
 int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)))
     return UV__ERR(errno);
@@ -413,6 +431,28 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int on) {
   return 0;
 }
 
+#ifdef TCP_FASTOPEN
+int uv_tcp_fastopen(uv_tcp_t* handle, int qlen) {
+  int err;
+
+  if (uv__stream_fd(handle) == -1)
+    return UV_EBADF;
+
+  err = uv__tcp_fastopen(uv__stream_fd(handle), qlen);
+  if (err)
+    return err;
+
+  if (qlen)
+    handle->flags |= UV_HANDLE_TCP_FASTOPEN;
+  else
+    handle->flags &= ~UV_HANDLE_TCP_FASTOPEN;
+  return 0;
+}
+#else
+int uv_tcp_fastopen(uv_tcp_t* handle, int qlen) {
+  return UV_ENOTSUP;
+}
+#endif
 
 int uv_tcp_keepalive(uv_tcp_t* handle, int on, unsigned int delay) {
   int err;

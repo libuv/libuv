@@ -230,6 +230,15 @@ static int tcp4_echo_start(int port) {
     return 1;
   }
 
+#ifdef TCP_FASTOPEN
+  r = uv_tcp_fastopen(&tcpServer, 5);
+  if (r) {
+    /* TODO: Error codes */
+    fprintf(stderr, "TCP Fastopen enable error\n");
+    return 1;
+  }
+#endif
+
   r = uv_listen((uv_stream_t*)&tcpServer, SOMAXCONN, on_connection);
   if (r) {
     /* TODO: Error codes */
@@ -264,6 +273,15 @@ static int tcp6_echo_start(int port) {
     fprintf(stderr, "IPv6 not supported\n");
     return 0;
   }
+
+#ifdef TCP_FASTOPEN
+  r = uv_tcp_fastopen(&tcpServer, 5);
+  if (r) {
+    /* TODO: Error codes */
+    fprintf(stderr, "TCP Fastopen enable error\n");
+    return 1;
+  }
+#endif
 
   r = uv_listen((uv_stream_t*)&tcpServer, SOMAXCONN, on_connection);
   if (r) {

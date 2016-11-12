@@ -55,6 +55,20 @@ API
 
     Enable `TCP_NODELAY`, which disables Nagle's algorithm.
 
+.. c:function:: int uv_tcp_fastopen(uv_tcp_t* handle, int qlen)
+
+    Enable/Disable TCP Fast Open (TFO).  `qlen` is the queue length
+    for incoming connections, TCP Fast Open is disabled when `qlen` is
+    zero, and the specific non-zero value of `qlen` is ignored for
+    outgoing connections.
+
+    The `uv_tcp_fastopen` needs to be called on the existing socket
+    initialized by `uv_tcp_init_ex` with address family set, so the
+    socket is created and before calling `uv_tcp_connect` for outgoing
+    connections or `uv_tcp_listen` for incoming connections.
+
+    For more information on TCP FastOpen see https://lwn.net/Articles/508865/.
+
 .. c:function:: int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay)
 
     Enable / disable TCP keep-alive. `delay` is the initial delay in seconds,

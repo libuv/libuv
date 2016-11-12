@@ -100,6 +100,7 @@ enum {
   UV_HANDLE_TCP_ACCEPT_STATE_CHANGING   = 0x08000000,
   UV_HANDLE_TCP_SOCKET_CLOSED           = 0x10000000,
   UV_HANDLE_SHARED_TCP_SOCKET           = 0x20000000,
+  UV_HANDLE_TCP_FASTOPEN                = 0x40000000,
 
   /* Only used by uv_udp_t handles. */
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
