@@ -1650,7 +1650,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
     uv_buf_t buf = bufs[i];
     unsigned int j;
 
-  if (uv__vterm_state == UV_SUPPORTED) {
+  if (uv__vterm_state == UV_SUPPORTED && buf.len > 0) {
     utf16_buf_used = MultiByteToWideChar(CP_UTF8,
                                          0,
                                          buf.base,
