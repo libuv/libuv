@@ -1662,6 +1662,82 @@ TEST_IMPL(spawn_inherit_streams) {
   return 0;
 }
 
+TEST_IMPL(spawn_inherit_handle) {
+  uv_process_t child_req;
+  uv_stdio_container_t child_stdio[2];
+  int fds_stdin[2];
+  int fds_stdout[2];
+  uv_pipe_t pipe_stdin_parent;
+  uv_pipe_t pipe_stdout_parent;
+  unsigned char ubuf[OUTPUT_SIZE - 1];
+  uv_buf_t buf;
+  unsigned int i;
+  int r;
+  uv_write_t write_req;
+  uv_loop_t* loop;
+
+  init_process_options("spawn_helper9", exit_cb);
+
+  loop = uv_default_loop();
+  ASSERT(uv_pipe_init(loop, &pipe_stdin_parent, 0) == 0);
+  ASSERT(uv_pipe_init(loop, &pipe_stdout_parent, 0) == 0);
+
+  ASSERT(mpipe(fds_stdin) != -1);
+  ASSERT(mpipe(fds_stdout) != -1);
+
+  ASSERT(uv_pipe_open(&pipe_stdin_parent, fds_stdin[1]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdout_parent, fds_stdout[0]) == 0);
+
+  child_stdio[0].flags = UV_INHERIT_HANDLE;
+#ifndef _WIN32
+  child_stdio[0].data.handle = fds_stdin[0];
+#else
+  child_stdio[0].data.handle = (HANDLE) _get_osfhandle(fds_stdin[0]);
+#endif /* !_WIN32 */
+
+  child_stdio[1].flags = UV_INHERIT_HANDLE;
+#ifndef _WIN32
+  child_stdio[1].data.handle = fds_stdout[1];
+#else
+  child_stdio[1].data.handle = (HANDLE) _get_osfhandle(fds_stdout[1]);
+#endif /* !_WIN32 */
+
+  options.stdio = child_stdio;
+  options.stdio_count = 2;
+
+  ASSERT(uv_spawn(loop, &child_req, &options) == 0);
+
+  close(fds_stdin[0]);
+  close(fds_stdout[1]);
+
+  buf = uv_buf_init((char*)ubuf, sizeof ubuf);
+  for (i = 0; i < sizeof ubuf; ++i)
+    ubuf[i] = i & 255u;
+  memset(output, 0, sizeof ubuf);
+
+  r = uv_write(&write_req,
+               (uv_stream_t*)&pipe_stdin_parent,
+               &buf,
+               1,
+               write_cb);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*)&pipe_stdout_parent, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 3);
+
+  r = memcmp(ubuf, output, sizeof ubuf);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 /* Helper for child process of spawn_inherit_streams */
 #ifndef _WIN32
 int spawn_stdin_stdout(void) {
