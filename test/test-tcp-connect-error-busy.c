@@ -26,37 +26,37 @@
 
 
 static void connect_cb(uv_connect_t* handle, int status) {
-    FATAL("connect callback should not have been called!");
+  FATAL("connect callback should not have been called!");
 }
 
 
 TEST_IMPL(tcp_connect_error_busy) {
-    struct sockaddr_in addr;
-    uv_tcp_t server;
-    int r;
-    uv_connect_t req;
-    uv_connect_t* connect_req = malloc(sizeof *connect_req);
+  struct sockaddr_in addr;
+  uv_tcp_t server;
+  int r;
+  uv_connect_t req;
+  uv_connect_t* connect_req = malloc(sizeof *connect_req);
 
-    ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-    ASSERT(connect_req != NULL);
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT(connect_req != NULL);
 
-    r = uv_tcp_init(uv_default_loop(), &server);
+  r = uv_tcp_init(uv_default_loop(), &server);
 
-    // pretend there's an active request, which should
-    // result in -EBUSY when invoking uv_tcp_connect()
-    server.connect_req = connect_req;
+  // Pretend there's an active request, which should
+  // result in -EBUSY when invoking uv_tcp_connect()
+  server.connect_req = connect_req;
 
-    ASSERT(r == 0);
-    r = uv_tcp_connect(&req,
-                       &server,
-                       (const struct sockaddr*) &addr,
-                       connect_cb);
-    ASSERT(r == -EBUSY);
+  ASSERT(r == 0);
+  r = uv_tcp_connect(&req,
+                      &server,
+                      (const struct sockaddr*) &addr,
+                      connect_cb);
+  ASSERT(r == -EBUSY);
 
-    // remove mocked active request so the event loop
-    // can shut down in MAKE_VALGRIND_HAPPY()
-    server.connect_req = NULL;
+  // Remove mocked active request so the event loop
+  // can shut down in MAKE_VALGRIND_HAPPY()
+  server.connect_req = NULL;
 
-    MAKE_VALGRIND_HAPPY();
-    return 0;
+  MAKE_VALGRIND_HAPPY();
+  return 0;
 }
