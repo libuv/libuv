@@ -42,8 +42,9 @@ TEST_IMPL(tcp_connect_error_busy) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
 
-  // Pretend there's an active request, which should
-  // result in -EBUSY when invoking uv_tcp_connect()
+  /* Pretend there's an active request, which should
+   * result in -EBUSY when invoking uv_tcp_connect()
+   */
   server.connect_req = connect_req;
 
   ASSERT(r == 0);
@@ -53,8 +54,9 @@ TEST_IMPL(tcp_connect_error_busy) {
                       connect_cb);
   ASSERT(r == -EBUSY);
 
-  // Remove mocked active request so the event loop
-  // can shut down in MAKE_VALGRIND_HAPPY()
+  /* Remove mocked active request so the event loop
+   * can shut down in MAKE_VALGRIND_HAPPY()
+   */
   server.connect_req = NULL;
 
   MAKE_VALGRIND_HAPPY();
