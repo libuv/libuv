@@ -556,6 +556,8 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
 
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   uv_loop_t* loop = handle->loop;
+  struct sockaddr saddr;
+  int saddr_len = sizeof(saddr);
   unsigned int i, simultaneous_accepts;
   uv_tcp_accept_t* req;
   int err;
@@ -575,14 +577,20 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    err = uv_tcp_try_bind(handle,
-                          (const struct sockaddr*) &uv_addr_ip4_any_,
-                          sizeof(uv_addr_ip4_any_),
-                          0);
-    if (err)
-      return err;
-    if (handle->delayed_error)
-      return handle->delayed_error;
+    if (!uv_tcp_getsockname(handle, &saddr, &saddr_len)) {
+      /* socket is already bound; on Windows, getsockname() errors with
+         WSAEINVAL if the socket is not bound. */
+      handle->flags |= UV_HANDLE_BOUND;
+    } else {
+      err = uv_tcp_try_bind(handle,
+                            (const struct sockaddr*) &uv_addr_ip4_any_,
+                            sizeof(uv_addr_ip4_any_),
+                            0);
+      if (err)
+        return err;
+      if (handle->delayed_error)
+        return handle->delayed_error;
+    }
   }
 
   if (!handle->tcp.serv.func_acceptex) {

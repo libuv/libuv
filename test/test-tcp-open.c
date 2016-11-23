@@ -218,3 +218,31 @@ TEST_IMPL(tcp_open_twice) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+TEST_IMPL(tcp_open_bound) {
+  struct sockaddr_in addr;
+  uv_tcp_t server;
+  uv_os_sock_t sock;
+  int r;
+
+  startup();
+  sock = create_tcp_socket();
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  r = uv_tcp_init(uv_default_loop(), &server);
+  ASSERT(r == 0);
+
+  r = bind(sock, (struct sockaddr*) &addr, sizeof(addr));
+  ASSERT(r == 0);
+
+  r = uv_tcp_open(&server, sock);
+  ASSERT(r == 0);
+
+  r = uv_listen((uv_stream_t*)&server, 128, NULL);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
