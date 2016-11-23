@@ -88,6 +88,9 @@ static void uv__poll_stop(uv_poll_t* handle) {
               &handle->io_watcher,
               POLLIN | POLLOUT | UV__POLLRDHUP);
   uv__handle_stop(handle);
+
+  /* Remove stale events for this file descriptor */
+  uv__platform_invalidate_fd(handle->loop, ((uv__io_t*) &handle)->fd);
 }
 
 
