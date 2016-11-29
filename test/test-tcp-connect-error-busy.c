@@ -49,9 +49,9 @@ TEST_IMPL(tcp_connect_error_busy) {
 
   ASSERT(r == 0);
   r = uv_tcp_connect(&req,
-                      &server,
-                      (const struct sockaddr*) &addr,
-                      connect_cb);
+                     &server,
+                     (const struct sockaddr*) &addr,
+                     connect_cb);
   ASSERT(r == -EBUSY);
 
   /* Remove mocked active request so the event loop
