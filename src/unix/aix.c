@@ -753,6 +753,13 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
 
   assert((bytes >= 0) && "uv__ahafs_event - Error reading monitor file");
 
+  /* In file / directory move cases, AIX Event infrastructure
+   * produces a second event with no data.
+   * Ignore it and return gracefully.
+   */
+  if(bytes == 0)
+    return;
+
   /* Parse the data */
   if(bytes > 0)
     rc = uv__parse_data(result_data, &events, handle);
