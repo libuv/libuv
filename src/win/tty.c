@@ -1004,6 +1004,9 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
   if (handle->tty.rd.last_key_len > 0) {
     SET_REQ_SUCCESS(&handle->read_req);
     uv_insert_pending_req(handle->loop, (uv_req_t*) &handle->read_req);
+    /* Make sure no attempt is made to insert it again until it's handled. */
+    handle->flags |= UV_HANDLE_READ_PENDING;
+    handle->reqs_pending++;
     return 0;
   }
 
