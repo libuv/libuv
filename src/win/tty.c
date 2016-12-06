@@ -1649,6 +1649,11 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
     FLUSH_TEXT();                                                   \
   }
 
+#define ENSURE_BUFFER_SPACE(wchars_needed)                          \
+  if (wchars_needed > ARRAY_SIZE(utf16_buf) - utf16_buf_used) {     \
+    FLUSH_TEXT();                                                   \
+  }
+
   /* Cache for fast access */
   unsigned char utf8_bytes_left = handle->tty.wr.utf8_bytes_left;
   unsigned int utf8_codepoint = handle->tty.wr.utf8_codepoint;
