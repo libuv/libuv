@@ -46,18 +46,15 @@ Data types
         Replacement function for :man:`free(3)`.
         See :c:func:`uv_replace_allocator`.
 
-.. c:type:: uv_file
+.. c:type:: uv_os_fd_t
 
     Cross platform representation of a file handle.
+    On Unix systems this is a `typedef` of `int` and on Windows a `HANDLE`.
 
 .. c:type:: uv_os_sock_t
 
     Cross platform representation of a socket handle.
-
-.. c:type:: uv_os_fd_t
-
-    Abstract representation of a file descriptor. On Unix systems this is a
-    `typedef` of `int` and on Windows a `HANDLE`.
+    On Unix systems this is a `typedef` of `int` and on Windows a `SOCKET`.
 
 .. c:type:: uv_rusage_t
 
@@ -143,7 +140,7 @@ Data types
 API
 ---
 
-.. c:function:: uv_handle_type uv_guess_handle(uv_file file)
+.. c:function:: uv_handle_type uv_guess_handle(uv_os_fd_t file)
 
     Used to detect what type of stream should be used with a given file
     descriptor. Usually this will be used during initialization to guess the
@@ -151,6 +148,9 @@ API
 
     For :man:`isatty(3)` equivalent functionality use this function and test
     for ``UV_TTY``.
+
+    STDIO file descriptor pseudo-handles ``UV_STDIN_FD``, ``UV_STDOUT_FD``, and ``UV_STDERR_FD``
+    can be passed to any uv_os_fd_t field for cross-platform support of stdio.
 
 .. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_realloc_func realloc_func, uv_calloc_func calloc_func, uv_free_func free_func)
 

@@ -634,13 +634,14 @@ int ipc_helper(int listen_after_write) {
   uv_write_t write_req;
   int r;
   uv_buf_t buf;
+  uv_os_fd_t stdin_handle = uv_convert_fd_to_handle(0);
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT(r == 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, stdin_handle);
 
   ASSERT(1 == uv_is_readable((uv_stream_t*) &channel));
   ASSERT(1 == uv_is_writable((uv_stream_t*) &channel));
@@ -686,11 +687,12 @@ int ipc_helper_tcp_connection(void) {
 
   int r;
   struct sockaddr_in addr;
+  uv_os_fd_t stdin_handle = uv_convert_fd_to_handle(0);
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT(r == 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, stdin_handle);
 
   ASSERT(1 == uv_is_readable((uv_stream_t*) &channel));
   ASSERT(1 == uv_is_writable((uv_stream_t*) &channel));
@@ -740,13 +742,14 @@ int ipc_helper_bind_twice(void) {
   uv_write_t write_req2;
   int r;
   uv_buf_t buf;
+  uv_os_fd_t stdin_handle = uv_convert_fd_to_handle(0);
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT(r == 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, stdin_handle);
 
   ASSERT(1 == uv_is_readable((uv_stream_t*) &channel));
   ASSERT(1 == uv_is_writable((uv_stream_t*) &channel));

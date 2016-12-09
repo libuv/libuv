@@ -23,20 +23,16 @@
 #include "task.h"
 
 
-static int get_tty_fd(void) {
+static uv_os_fd_t get_tty_fd(void) {
   /* Make sure we have an FD that refers to a tty */
 #ifdef _WIN32
-  HANDLE handle;
-  handle = CreateFileA("conout$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  if (handle == INVALID_HANDLE_VALUE)
-    return -1;
-  return _open_osfhandle((intptr_t) handle, 0);
+  return CreateFileA("conout$",
+                     GENERIC_READ | GENERIC_WRITE,
+                     FILE_SHARE_READ | FILE_SHARE_WRITE,
+                     NULL,
+                     OPEN_EXISTING,
+                     FILE_ATTRIBUTE_NORMAL,
+                     NULL);
 #else /* unix */
   return open("/dev/tty", O_RDONLY, 0);
 #endif
@@ -45,7 +41,7 @@ static int get_tty_fd(void) {
 
 TEST_IMPL(handle_fileno) {
   int r;
-  int tty_fd;
+  uv_os_fd_t tty_fd;
   struct sockaddr_in addr;
   uv_os_fd_t fd;
   uv_tcp_t tcp;
@@ -101,7 +97,7 @@ TEST_IMPL(handle_fileno) {
   ASSERT(r == UV_EBADF);
 
   tty_fd = get_tty_fd();
-  if (tty_fd < 0) {
+  if (tty_fd == (uv_os_fd_t)-1) {
     fprintf(stderr, "Cannot open a TTY fd");
     fflush(stderr);
   } else {

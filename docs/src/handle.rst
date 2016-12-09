@@ -211,7 +211,6 @@ just for some handle types.
         Be very careful when using this function. libuv assumes it's in control of the file
         descriptor so any change to it may lead to malfunction.
 
-
 .. _refcount:
 
 Reference counting

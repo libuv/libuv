@@ -269,7 +269,7 @@ TEST_IMPL(spawn_stdout) {
 
 TEST_IMPL(spawn_stdout_to_file) {
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[2];
   uv_buf_t buf;
@@ -281,15 +281,14 @@ TEST_IMPL(spawn_stdout_to_file) {
 
   r = uv_fs_open(NULL, &fs_req, "stdout_file", O_CREAT | O_RDWR,
       S_IRUSR | S_IWUSR, NULL);
-  ASSERT(r != -1);
+  ASSERT(r == 0);
+  file = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-
-  file = r;
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
   options.stdio[1].flags = UV_INHERIT_FD;
-  options.stdio[1].data.fd = file;
+  options.stdio[1].data.file = file;
   options.stdio_count = 2;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
@@ -323,7 +322,7 @@ TEST_IMPL(spawn_stdout_to_file) {
 
 TEST_IMPL(spawn_stdout_and_stderr_to_file) {
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
   uv_buf_t buf;
@@ -335,17 +334,16 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 
   r = uv_fs_open(NULL, &fs_req, "stdout_file", O_CREAT | O_RDWR,
       S_IRUSR | S_IWUSR, NULL);
-  ASSERT(r != -1);
+  ASSERT(r == 0);
+  file = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-
-  file = r;
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
   options.stdio[1].flags = UV_INHERIT_FD;
-  options.stdio[1].data.fd = file;
+  options.stdio[1].data.file = file;
   options.stdio[2].flags = UV_INHERIT_FD;
-  options.stdio[2].data.fd = file;
+  options.stdio[2].data.file = file;
   options.stdio_count = 3;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
@@ -380,7 +378,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 #ifndef _WIN32
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
   uv_buf_t buf;
@@ -397,17 +395,18 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
                  O_CREAT | O_RDWR,
                  S_IRUSR | S_IWUSR,
                  NULL);
-  ASSERT(r != -1);
+  ASSERT(r == 0);
+  file = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-  file = dup2(r, STDERR_FILENO);
+  file = dup2(file, STDERR_FILENO);
   ASSERT(file != -1);
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
   options.stdio[1].flags = UV_INHERIT_FD;
-  options.stdio[1].data.fd = file;
+  options.stdio[1].data.file = file;
   options.stdio[2].flags = UV_INHERIT_FD;
-  options.stdio[2].data.fd = file;
+  options.stdio[2].data.file = file;
   options.stdio_count = 3;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
@@ -445,8 +444,8 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 #ifndef _WIN32
   int r;
-  uv_file stdout_file;
-  uv_file stderr_file;
+  uv_os_fd_t stdout_file;
+  uv_os_fd_t stderr_file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
   uv_buf_t buf;
@@ -464,17 +463,19 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
                  O_CREAT | O_RDWR,
                  S_IRUSR | S_IWUSR,
                  NULL);
-  ASSERT(r != -1);
+  ASSERT(r == 0);
+  stdout_file = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-  stdout_file = dup2(r, STDOUT_FILENO);
+  stdout_file = dup2(stdout_file, STDOUT_FILENO);
   ASSERT(stdout_file != -1);
 
   /* open 'stderr_file' and replace STDERR_FILENO with it */
   r = uv_fs_open(NULL, &fs_req, "stderr_file", O_CREAT | O_RDWR,
       S_IRUSR | S_IWUSR, NULL);
-  ASSERT(r != -1);
+  ASSERT(r == 0);
+  stderr_file = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-  stderr_file = dup2(r, STDERR_FILENO);
+  stderr_file = dup2(stderr_file, STDERR_FILENO);
   ASSERT(stderr_file != -1);
 
   /* now we're going to swap them: the child process' stdout will be our
@@ -482,9 +483,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
   options.stdio[1].flags = UV_INHERIT_FD;
-  options.stdio[1].data.fd = stderr_file;
+  options.stdio[1].data.file = stderr_file;
   options.stdio[2].flags = UV_INHERIT_FD;
-  options.stdio[2].data.fd = stdout_file;
+  options.stdio[2].data.file = stdout_file;
   options.stdio_count = 3;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
@@ -1396,15 +1397,16 @@ TEST_IMPL(spawn_auto_unref) {
 
 #ifndef _WIN32
 TEST_IMPL(spawn_fs_open) {
-  int fd;
+  int r, fd;
   uv_fs_t fs_req;
   uv_pipe_t in;
   uv_write_t write_req;
   uv_buf_t buf;
   uv_stdio_container_t stdio[1];
 
-  fd = uv_fs_open(NULL, &fs_req, "/dev/null", O_RDWR, 0, NULL);
-  ASSERT(fd >= 0);
+  r = uv_fs_open(NULL, &fs_req, "/dev/null", O_RDWR, 0, NULL);
+  ASSERT(r == 0);
+  fd = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
 
   init_process_options("spawn_helper8", exit_cb);
@@ -1450,7 +1452,7 @@ TEST_IMPL(closed_fd_events) {
   options.stdio_count = 3;
   options.stdio = stdio;
   options.stdio[0].flags = UV_INHERIT_FD;
-  options.stdio[0].data.fd = fd[0];
+  options.stdio[0].data.file = fd[0];
   options.stdio[1].flags = UV_IGNORE;
   options.stdio[2].flags = UV_IGNORE;
 
@@ -1554,7 +1556,7 @@ TEST_IMPL(spawn_reads_child_path) {
 }
 
 #ifndef _WIN32
-static int mpipe(int *fds) {
+static int mpipe(int fds[2]) {
   if (pipe(fds) == -1)
     return -1;
   if (fcntl(fds[0], F_SETFD, FD_CLOEXEC) == -1 ||
@@ -1566,21 +1568,13 @@ static int mpipe(int *fds) {
   return 0;
 }
 #else
-static int mpipe(int *fds) {
+static int mpipe(HANDLE fds[2]) {
   SECURITY_ATTRIBUTES attr;
-  HANDLE readh, writeh;
   attr.nLength = sizeof(attr);
   attr.lpSecurityDescriptor = NULL;
   attr.bInheritHandle = FALSE;
-  if (!CreatePipe(&readh, &writeh, &attr, 0))
+  if (!CreatePipe(&fds[0], &fds[1], &attr, 0))
     return -1;
-  fds[0] = _open_osfhandle((intptr_t)readh, 0);
-  fds[1] = _open_osfhandle((intptr_t)writeh, 0);
-  if (fds[0] == -1 || fds[1] == -1) {
-    CloseHandle(readh);
-    CloseHandle(writeh);
-    return -1;
-  }
   return 0;
 }
 #endif /* !_WIN32 */
@@ -1588,8 +1582,8 @@ static int mpipe(int *fds) {
 TEST_IMPL(spawn_inherit_streams) {
   uv_process_t child_req;
   uv_stdio_container_t child_stdio[2];
-  int fds_stdin[2];
-  int fds_stdout[2];
+  uv_os_fd_t fds_stdin[2];
+  uv_os_fd_t fds_stdout[2];
   uv_pipe_t pipe_stdin_child;
   uv_pipe_t pipe_stdout_child;
   uv_pipe_t pipe_stdin_parent;

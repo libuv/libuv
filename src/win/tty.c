@@ -20,8 +20,6 @@
  */
 
 #include <assert.h>
-#include <io.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -139,30 +137,19 @@ void uv_console_init() {
 }
 
 
-int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
-  HANDLE handle;
+int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_os_fd_t handle, int readable) {
   CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
 
-  handle = (HANDLE) uv__get_osfhandle(fd);
   if (handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
 
-  if (fd <= 2) {
-    /* In order to avoid closing a stdio file descriptor 0-2, duplicate the
-     * underlying OS handle and forget about the original fd.
-     * We could also opt to use the original OS handle and just never close it,
-     * but then there would be no reliable way to cancel pending read operations
-     * upon close.
+  if (handle == UV_STDIN_FD || handle == UV_STDOUT_FD || handle == UV_STDERR_FD) {
+    /* In order to avoid closing a stdio pseudo-handle, or having it get replaced under us,
+     * duplicate the underlying OS handle and forget about the original one.
      */
-    if (!DuplicateHandle(INVALID_HANDLE_VALUE,
-                         handle,
-                         INVALID_HANDLE_VALUE,
-                         &handle,
-                         0,
-                         FALSE,
-                         DUPLICATE_SAME_ACCESS))
-      return uv_translate_sys_error(GetLastError());
-    fd = -1;
+    int dup_err = uv__dup(handle, &handle);
+    if (dup_err)
+      return dup_err;
   }
 
   if (!readable) {
@@ -196,7 +183,6 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
   uv_connection_init((uv_stream_t*) tty);
 
   tty->handle = handle;
-  tty->u.fd = fd;
   tty->reqs_pending = 0;
   tty->flags |= UV_HANDLE_BOUND;
 
@@ -351,9 +337,9 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 }
 
 
-int uv_is_tty(uv_file file) {
+int uv_is_tty(uv_os_fd_t file) {
   DWORD result;
-  return GetConsoleMode((HANDLE) _get_osfhandle(file), &result) != 0;
+  return GetConsoleMode(file, &result) != 0;
 }
 
 
@@ -643,7 +629,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
   DWORD records_left, records_read;
   uv_buf_t buf;
-  off_t buf_used;
+  ssize_t buf_used;
 
   assert(handle->type == UV_TTY);
   assert(handle->flags & UV_HANDLE_TTY_READABLE);
@@ -2180,16 +2166,11 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 
 void uv_tty_close(uv_tty_t* handle) {
-  assert(handle->u.fd == -1 || handle->u.fd > 2);
-  if (handle->u.fd == -1)
-    CloseHandle(handle->handle);
-  else
-    close(handle->u.fd);
+  CloseHandle(handle->handle);
 
   if (handle->flags & UV_HANDLE_READING)
     uv_tty_read_stop(handle);
 
-  handle->u.fd = -1;
   handle->handle = INVALID_HANDLE_VALUE;
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   uv__handle_closing(handle);

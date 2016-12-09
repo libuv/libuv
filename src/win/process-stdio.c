@@ -20,8 +20,6 @@
  */
 
 #include <assert.h>
-#include <io.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "uv.h"
@@ -190,49 +188,38 @@ static int uv__create_stdio_pipe_pair(uv_loop_t* loop,
 }
 
 
-static int uv__duplicate_handle(uv_loop_t* loop, HANDLE handle, HANDLE* dup) {
+int uv__dup(uv_os_fd_t fd, uv_os_fd_t* dupfd) {
   HANDLE current_process;
 
+  if (fd == UV_STDIN_FD || fd == UV_STDOUT_FD || fd == UV_STDERR_FD)
+    fd = GetStdHandle((DWORD)(uintptr_t) fd);
 
   /* _get_osfhandle will sometimes return -2 in case of an error. This seems */
   /* to happen when fd <= 2 and the process' corresponding stdio handle is */
   /* set to NULL. Unfortunately DuplicateHandle will happily duplicate */
   /* (HANDLE) -2, so this situation goes unnoticed until someone tries to */
   /* use the duplicate. Therefore we filter out known-invalid handles here. */
-  if (handle == INVALID_HANDLE_VALUE ||
-      handle == NULL ||
-      handle == (HANDLE) -2) {
-    *dup = INVALID_HANDLE_VALUE;
+  if (fd == INVALID_HANDLE_VALUE ||
+      fd == NULL ||
+      fd == (HANDLE) -2) {
+    *dupfd = INVALID_HANDLE_VALUE;
     return ERROR_INVALID_HANDLE;
   }
 
   current_process = GetCurrentProcess();
 
   if (!DuplicateHandle(current_process,
-                       handle,
+                       fd,
                        current_process,
-                       dup,
+                       dupfd,
                        0,
                        TRUE,
                        DUPLICATE_SAME_ACCESS)) {
-    *dup = INVALID_HANDLE_VALUE;
+    *dupfd = INVALID_HANDLE_VALUE;
     return GetLastError();
   }
 
   return 0;
-}
-
-
-static int uv__duplicate_fd(uv_loop_t* loop, int fd, HANDLE* dup) {
-  HANDLE handle;
-
-  if (fd == -1) {
-    *dup = INVALID_HANDLE_VALUE;
-    return ERROR_INVALID_HANDLE;
-  }
-
-  handle = uv__get_osfhandle(fd);
-  return uv__duplicate_handle(loop, handle, dup);
 }
 
 
@@ -352,11 +339,14 @@ int uv__stdio_create(uv_loop_t* loop,
         HANDLE child_handle;
 
         /* Make an inheritable duplicate of the handle. */
-        err = uv__duplicate_fd(loop, fdopt.data.fd, &child_handle);
+        err = uv__dup(fdopt.data.file, &child_handle);
         if (err) {
-          /* If fdopt.data.fd is not valid and fd fd <= 2, then ignore the */
-          /* error. */
-          if (fdopt.data.fd <= 2 && err == ERROR_INVALID_HANDLE) {
+          /* If fdopt.data.file is pointing at one of the pseudo stdio handles,
+           * but it is not valid ignore the error. */
+          if ((fdopt.data.file == UV_STDIN_FD ||
+               fdopt.data.file == UV_STDOUT_FD ||
+               fdopt.data.file == UV_STDERR_FD) &&
+              err == ERROR_INVALID_HANDLE) {
             CHILD_STDIO_CRT_FLAGS(buffer, i) = 0;
             CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
             break;
@@ -425,7 +415,7 @@ int uv__stdio_create(uv_loop_t* loop,
         }
 
         /* Make an inheritable copy of the handle. */
-        err = uv__duplicate_handle(loop, stream_handle, &child_handle);
+        err = uv__dup(stream_handle, &child_handle);
         if (err)
           goto error;
 

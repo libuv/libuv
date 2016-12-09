@@ -38,25 +38,6 @@
 #endif
 
 
-#ifdef _DEBUG
-
-extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
-
-#define UV_BEGIN_DISABLE_CRT_ASSERT()                           \
-  {                                                             \
-    int uv__saved_crt_assert_enabled = uv__crt_assert_enabled;  \
-    uv__crt_assert_enabled = FALSE;
-
-
-#define UV_END_DISABLE_CRT_ASSERT()                             \
-    uv__crt_assert_enabled = uv__saved_crt_assert_enabled;      \
-  }
-
-#else
-#define UV_BEGIN_DISABLE_CRT_ASSERT()
-#define UV_END_DISABLE_CRT_ASSERT()
-#endif
-
 /*
  * Handles
  * (also see handle-inl.h)
@@ -119,6 +100,7 @@ extern UV_THREAD_LOCAL int uv__crt_assert_enabled;
 /*
  * Streams: see stream-inl.h
  */
+int uv__dup(uv_os_fd_t fd, uv_os_fd_t* dupfd);
 
 
 /*
@@ -286,12 +268,6 @@ void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle);
  * Error
  */
 int uv_translate_sys_error(int sys_errno);
-
-
-/*
- * FS
- */
-void uv_fs_init();
 
 
 /*

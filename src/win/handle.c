@@ -20,7 +20,6 @@
  */
 
 #include <assert.h>
-#include <io.h>
 #include <stdlib.h>
 
 #include "uv.h"
@@ -28,15 +27,12 @@
 #include "handle-inl.h"
 
 
-uv_handle_type uv_guess_handle(uv_file file) {
-  HANDLE handle;
+uv_handle_type uv_guess_handle(uv_os_fd_t handle) {
   DWORD mode;
 
-  if (file < 0) {
+  if (handle == INVALID_HANDLE_VALUE) {
     return UV_UNKNOWN_HANDLE;
   }
-
-  handle = uv__get_osfhandle(file);
 
   switch (GetFileType(handle)) {
     case FILE_TYPE_CHAR:

@@ -20,7 +20,6 @@
  */
 
 #include <assert.h>
-#include <io.h>
 
 #include "uv.h"
 #include "internal.h"
@@ -505,12 +504,7 @@ static int uv__slow_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
 }
 
 
-int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
-  return uv_poll_init_socket(loop, handle, (SOCKET) uv__get_osfhandle(fd));
-}
-
-
-int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
+int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle,
     uv_os_sock_t socket) {
   WSAPROTOCOL_INFOW protocol_info;
   int len;

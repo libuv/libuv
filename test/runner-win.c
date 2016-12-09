@@ -39,6 +39,8 @@ int platform_init(int argc, char **argv) {
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
   _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
 
+  /* make output mode sane */
+  _fmode = _O_BINARY;
   _setmode(0, _O_BINARY);
   _setmode(1, _O_BINARY);
   _setmode(2, _O_BINARY);

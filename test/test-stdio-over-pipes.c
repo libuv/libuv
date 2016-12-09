@@ -207,16 +207,18 @@ int stdio_over_pipes_helper(void) {
   int r;
   uv_loop_t* loop = uv_default_loop();
 
-  ASSERT(UV_NAMED_PIPE == uv_guess_handle(0));
-  ASSERT(UV_NAMED_PIPE == uv_guess_handle(1));
+  ASSERT(UV_NAMED_PIPE == uv_guess_handle(UV_STDIN_FD));
+  ASSERT(UV_NAMED_PIPE == uv_guess_handle(UV_STDOUT_FD));
 
   r = uv_pipe_init(loop, &stdin_pipe, 0);
   ASSERT(r == 0);
   r = uv_pipe_init(loop, &stdout_pipe, 0);
   ASSERT(r == 0);
 
-  uv_pipe_open(&stdin_pipe, 0);
-  uv_pipe_open(&stdout_pipe, 1);
+  r = uv_pipe_open(&stdin_pipe, UV_STDIN_FD);
+  ASSERT(r == 0);
+  r = uv_pipe_open(&stdout_pipe, UV_STDOUT_FD);
+  ASSERT(r == 0);
 
   /* Unref both stdio handles to make sure that all writes complete. */
   uv_unref((uv_handle_t*)&stdin_pipe);

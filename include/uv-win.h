@@ -39,10 +39,6 @@ typedef intptr_t ssize_t;
 #include <ws2tcpip.h>
 #include <windows.h>
 
-#include <process.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <stdint.h>
 
 #include "tree.h"
@@ -54,30 +50,19 @@ typedef intptr_t ssize_t;
 # define S_IFLNK 0xA000
 #endif
 
-/* Additional signals supported by uv_signal and or uv_kill. The CRT defines
- * the following signals already:
- *
- *   #define SIGINT           2
- *   #define SIGILL           4
- *   #define SIGABRT_COMPAT   6
- *   #define SIGFPE           8
- *   #define SIGSEGV         11
- *   #define SIGTERM         15
- *   #define SIGBREAK        21
- *   #define SIGABRT         22
- *
- * The additional signals have values that are common on other Unix
- * variants (Linux and Darwin)
- */
+/* Signals supported by uv_signal and or uv_kill */
 #define SIGHUP                1
+#define SIGINT                2
+#define SIGILL                4
+#define SIGABRT_COMPAT        6
+#define SIGFPE                8
 #define SIGKILL               9
+#define SIGSEGV              11
+#define SIGTERM              15
+#define SIGBREAK             21
+#define SIGABRT              22
 #define SIGWINCH             28
 
-/* The CRT defines SIGABRT_COMPAT as 6, which equals SIGABRT on many */
-/* unix-like platforms. However MinGW doesn't define it, so we do. */
-#ifndef SIGABRT_COMPAT
-# define SIGABRT_COMPAT       6
-#endif
 
 typedef int (WSAAPI* LPFN_WSARECV)
             (SOCKET socket,
@@ -133,7 +118,6 @@ typedef struct uv_buf_t {
   char* base;
 } uv_buf_t;
 
-typedef int uv_file;
 typedef SOCKET uv_os_sock_t;
 typedef HANDLE uv_os_fd_t;
 
@@ -473,14 +457,14 @@ typedef struct {
   union {                                                                     \
     /* TODO: remove me in 0.9. */                                             \
     WCHAR* pathw;                                                             \
-    int fd;                                                                   \
+    HANDLE hFile;                                                             \
   } file;                                                                     \
   union {                                                                     \
     struct {                                                                  \
       int mode;                                                               \
       WCHAR* new_pathw;                                                       \
       int file_flags;                                                         \
-      int fd_out;                                                             \
+      HANDLE hFile_out;                                                       \
       unsigned int nbufs;                                                     \
       uv_buf_t* bufs;                                                         \
       int64_t offset;                                                         \

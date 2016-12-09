@@ -137,7 +137,7 @@ void uv__pipe_close(uv_pipe_t* handle) {
 }
 
 
-int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
+int uv_pipe_open(uv_pipe_t* handle, uv_os_fd_t fd) {
   int err;
 
   err = uv__nonblock(fd, 1);

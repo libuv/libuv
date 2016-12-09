@@ -192,7 +192,7 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
   (((h)->flags & UV__HANDLE_REF) != 0)
 
 #if defined(_WIN32)
-# define uv__handle_platform_init(h) ((h)->u.fd = -1)
+# define uv__handle_platform_init(h)
 #else
 # define uv__handle_platform_init(h) ((h)->next_closing = NULL)
 #endif

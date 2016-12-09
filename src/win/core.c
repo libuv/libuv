@@ -20,12 +20,8 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <crtdbg.h>
 
 #include "uv.h"
 #include "internal.h"
@@ -36,45 +32,6 @@
 
 /* uv_once initialization guards */
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
-
-
-#if defined(_DEBUG)
-/* Our crt debug report handler allows us to temporarily disable asserts
- * just for the current thread.
- */
-
-UV_THREAD_LOCAL int uv__crt_assert_enabled = TRUE;
-
-static int uv__crt_dbg_report_handler(int report_type, char *message, int *ret_val) {
-  if (uv__crt_assert_enabled || report_type != _CRT_ASSERT)
-    return FALSE;
-
-  if (ret_val) {
-    /* Set ret_val to 0 to continue with normal execution.
-     * Set ret_val to 1 to trigger a breakpoint.
-    */
-
-    if(IsDebuggerPresent())
-      *ret_val = 1;
-    else
-      *ret_val = 0;
-  }
-
-  /* Don't call _CrtDbgReport. */
-  return TRUE;
-}
-#else
-UV_THREAD_LOCAL int uv__crt_assert_enabled = FALSE;
-#endif
-
-
-#if __MSVCRT_VERSION__ >= 0x800
-static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
-    const wchar_t* function, const wchar_t * file, unsigned int line,
-    uintptr_t reserved) {
-  /* No-op. */
-}
-#endif
 
 static void* uv__loops[2];
 static uv_mutex_t uv__loops_lock;
@@ -113,21 +70,6 @@ static void uv_init(void) {
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
                SEM_NOOPENFILEERRORBOX);
 
-  /* Tell the CRT to not exit the application when an invalid parameter is
-   * passed. The main issue is that invalid FDs will trigger this behavior.
-   */
-#if __MSVCRT_VERSION__ >= 0x800
-  _set_invalid_parameter_handler(uv__crt_invalid_parameter_handler);
-#endif
-
-  /* We also need to setup our debug report handler because some CRT
-   * functions (eg _get_osfhandle) raise an assert when called with invalid
-   * FDs even though they return the proper error code in the release build.
-   */
-#if defined(_DEBUG)
-  _CrtSetReportHook(uv__crt_dbg_report_handler);
-#endif
-
   /* Initialize tracking of all uv loops */
   uv__loops_init();
 
@@ -138,9 +80,6 @@ static void uv_init(void) {
 
   /* Initialize winsock */
   uv_winsock_init();
-
-  /* Initialize FS */
-  uv_fs_init();
 
   /* Initialize signal stuff */
   uv_signals_init();
