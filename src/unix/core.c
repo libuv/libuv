@@ -497,19 +497,19 @@ skip:
 
 
 int uv__close_nocheckstdio(int fd) {
-  int saved_errno;
   int rc;
 
   assert(fd > -1);  /* Catch uninitialized io_watcher.fd bugs. */
 
-  saved_errno = errno;
-  rc = close(fd);
-  if (rc == -1) {
-    rc = -errno;
-    if (rc == -EINTR || rc == -EINPROGRESS)
-      rc = 0;    /* The close is in progress, not an error. */
-    errno = saved_errno;
-  }
+  SAVE_ERRNO(
+    rc = close(fd);
+
+    if (rc == -1) {
+      rc = -errno;
+      if (rc == -EINTR || rc == -EINPROGRESS)
+        rc = 0;    /* The close is in progress, not an error. */
+    }
+  );
 
   return rc;
 }
