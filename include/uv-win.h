@@ -133,7 +133,6 @@ typedef struct uv_buf_t {
   char* base;
 } uv_buf_t;
 
-typedef int uv_file;
 typedef SOCKET uv_os_sock_t;
 typedef HANDLE uv_os_fd_t;
 
@@ -473,14 +472,14 @@ typedef struct {
   union {                                                                     \
     /* TODO: remove me in 0.9. */                                             \
     WCHAR* pathw;                                                             \
-    int fd;                                                                   \
+    HANDLE hFile;                                                             \
   } file;                                                                     \
   union {                                                                     \
     struct {                                                                  \
       int mode;                                                               \
       WCHAR* new_pathw;                                                       \
       int file_flags;                                                         \
-      int fd_out;                                                             \
+      HANDLE hFile_out;                                                       \
       unsigned int nbufs;                                                     \
       uv_buf_t* bufs;                                                         \
       int64_t offset;                                                         \

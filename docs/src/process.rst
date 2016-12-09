@@ -160,7 +160,7 @@ Public members
 
     .. note::
         On Windows file descriptors greater than 2 are available to the child process only if
-        the child processes uses the MSVCRT runtime.
+        the child executable uses the MSVCRT runtime.
 
 .. c:member:: uv_process_options_t.uid
 .. c:member:: uv_process_options_t.gid
@@ -179,7 +179,7 @@ Public members
 
 .. c:member:: uv_stdio_container_t.data
 
-    Union containing either the stream or fd to be passed on to the child
+    Union containing either the stream or fd handle to be passed on to the child
     process.
 
 

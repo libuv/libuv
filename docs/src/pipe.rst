@@ -34,7 +34,7 @@ API
     Initialize a pipe handle. The `ipc` argument is a boolean to indicate if
     this pipe will be used for handle passing between processes.
 
-.. c:function:: int uv_pipe_open(uv_pipe_t* handle, uv_file file)
+.. c:function:: int uv_pipe_open(uv_pipe_t* handle, uv_os_fd_t file)
 
     Open an existing file descriptor or HANDLE as a pipe.
 

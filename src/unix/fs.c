@@ -125,6 +125,21 @@
   }                                                                           \
   while (0)
 
+#define POST0                                                                 \
+  do {                                                                        \
+    if (cb != NULL) {                                                         \
+      uv__work_submit(loop, &req->work_req, uv__fs_work, uv__fs_done);        \
+      return 0;                                                               \
+    }                                                                         \
+    else {                                                                    \
+      uv__fs_work(&req->work_req);                                            \
+      if (req->result < 0)                                                    \
+        return req->result;                                                   \
+      return 0;                                                               \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
 
 static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 #if defined(__linux__) || defined(__sun) || defined(__NetBSD__)
@@ -1034,7 +1049,7 @@ int uv_fs_chown(uv_loop_t* loop,
 }
 
 
-int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(CLOSE);
   req->file = file;
   POST;
@@ -1043,7 +1058,7 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 
 int uv_fs_fchmod(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_file file,
+                 uv_os_fd_t file,
                  int mode,
                  uv_fs_cb cb) {
   INIT(FCHMOD);
@@ -1055,7 +1070,7 @@ int uv_fs_fchmod(uv_loop_t* loop,
 
 int uv_fs_fchown(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_file file,
+                 uv_os_fd_t file,
                  uv_uid_t uid,
                  uv_gid_t gid,
                  uv_fs_cb cb) {
@@ -1067,21 +1082,21 @@ int uv_fs_fchown(uv_loop_t* loop,
 }
 
 
-int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(FDATASYNC);
   req->file = file;
   POST;
 }
 
 
-int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(FSTAT);
   req->file = file;
   POST;
 }
 
 
-int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(FSYNC);
   req->file = file;
   POST;
@@ -1090,7 +1105,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 
 int uv_fs_ftruncate(uv_loop_t* loop,
                     uv_fs_t* req,
-                    uv_file file,
+                    uv_os_fd_t file,
                     int64_t off,
                     uv_fs_cb cb) {
   INIT(FTRUNCATE);
@@ -1102,7 +1117,7 @@ int uv_fs_ftruncate(uv_loop_t* loop,
 
 int uv_fs_futime(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_file file,
+                 uv_os_fd_t file,
                  double atime,
                  double mtime,
                  uv_fs_cb cb) {
@@ -1169,12 +1184,12 @@ int uv_fs_open(uv_loop_t* loop,
   PATH;
   req->flags = flags;
   req->mode = mode;
-  POST;
+  POST0;
 }
 
 
 int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
-               uv_file file,
+               uv_os_fd_t file,
                const uv_buf_t bufs[],
                unsigned int nbufs,
                int64_t off,
@@ -1255,8 +1270,8 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
 int uv_fs_sendfile(uv_loop_t* loop,
                    uv_fs_t* req,
-                   uv_file out_fd,
-                   uv_file in_fd,
+                   uv_os_fd_t out_fd,
+                   uv_os_fd_t in_fd,
                    int64_t off,
                    size_t len,
                    uv_fs_cb cb) {
@@ -1312,7 +1327,7 @@ int uv_fs_utime(uv_loop_t* loop,
 
 int uv_fs_write(uv_loop_t* loop,
                 uv_fs_t* req,
-                uv_file file,
+                uv_os_fd_t file,
                 const uv_buf_t bufs[],
                 unsigned int nbufs,
                 int64_t off,

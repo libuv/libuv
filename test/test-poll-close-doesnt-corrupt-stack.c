@@ -96,7 +96,7 @@ TEST_IMPL(poll_close_doesnt_corrupt_stack) {
   ASSERT(r != 0);
   ASSERT(WSAGetLastError() == WSAEWOULDBLOCK);
 
-  r = uv_poll_init_socket(uv_default_loop(), &handle, sock);
+  r = uv_poll_init(uv_default_loop(), &handle, sock);
   ASSERT(r == 0);
   r = uv_poll_start(&handle, UV_READABLE | UV_WRITABLE, poll_cb);
   ASSERT(r == 0);

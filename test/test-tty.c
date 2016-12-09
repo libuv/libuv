@@ -43,32 +43,29 @@
 
 TEST_IMPL(tty) {
   int r, width, height;
-  int ttyin_fd, ttyout_fd;
+  uv_os_fd_t ttyin_fd, ttyout_fd;
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
 #ifdef _WIN32
-  HANDLE handle;
-  handle = CreateFileA("conin$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
+  ttyin_fd = CreateFileA("conin$",
+                         GENERIC_READ | GENERIC_WRITE,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL,
+                         NULL);
+  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
 
-  handle = CreateFileA("conout$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
+  ttyout_fd = CreateFileA("conout$",
+                          GENERIC_READ | GENERIC_WRITE,
+                          FILE_SHARE_READ | FILE_SHARE_WRITE,
+                          NULL,
+                          OPEN_EXISTING,
+                          FILE_ATTRIBUTE_NORMAL,
+                          NULL);
+  ASSERT(ttyout_fd != INVALID_HANDLE_VALUE);
 
 #else /* unix */
   ttyin_fd = open("/dev/tty", O_RDONLY, 0);
@@ -84,12 +81,12 @@ TEST_IMPL(tty) {
     fflush(stderr);
     return TEST_SKIP;
   }
-#endif
 
   ASSERT(ttyin_fd >= 0);
   ASSERT(ttyout_fd >= 0);
+#endif
 
-  ASSERT(UV_UNKNOWN_HANDLE == uv_guess_handle(-1));
+  ASSERT(UV_UNKNOWN_HANDLE == uv_guess_handle((uv_os_fd_t)-1));
 
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
   ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
@@ -164,24 +161,21 @@ static void tty_raw_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf
 
 TEST_IMPL(tty_raw) {
   int r;
-  int ttyin_fd;
+  uv_os_fd_t ttyin_fd;
   uv_tty_t tty_in;
   uv_loop_t* loop = uv_default_loop();
-  HANDLE handle;
   INPUT_RECORD record;
   DWORD written;
 
   /* Make sure we have an FD that refers to a tty */
-  handle = CreateFileA("conin$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
-  ASSERT(ttyin_fd >= 0);
+  ttyin_fd = CreateFileA("conin$",
+                         GENERIC_READ | GENERIC_WRITE,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL,
+                         NULL);
+  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
@@ -205,7 +199,7 @@ TEST_IMPL(tty_raw) {
   record.Event.KeyEvent.wVirtualScanCode = MapVirtualKeyW(VK_SPACE, MAPVK_VK_TO_VSC);
   record.Event.KeyEvent.uChar.UnicodeChar = L' ';
   record.Event.KeyEvent.dwControlKeyState = 0;
-  WriteConsoleInputW(handle, &record, 1, &written);
+  WriteConsoleInputW(ttyin_fd, &record, 1, &written);
 
   uv_run(loop, UV_RUN_DEFAULT);
 

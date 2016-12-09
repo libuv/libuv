@@ -125,7 +125,6 @@ typedef struct uv_buf_t {
   size_t len;
 } uv_buf_t;
 
-typedef int uv_file;
 typedef int uv_os_sock_t;
 typedef int uv_os_fd_t;
 
@@ -332,7 +331,7 @@ typedef struct {
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
   const char *new_path;                                                       \
-  uv_file file;                                                               \
+  uv_os_fd_t file;                                                            \
   int flags;                                                                  \
   mode_t mode;                                                                \
   unsigned int nbufs;                                                         \

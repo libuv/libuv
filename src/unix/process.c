@@ -205,7 +205,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   case UV_INHERIT_FD:
   case UV_INHERIT_STREAM:
     if (container->flags & UV_INHERIT_FD)
-      fd = container->data.fd;
+      fd = container->data.file;
     else
       fd = uv__stream_fd(container->data.stream);
 

@@ -211,6 +211,12 @@ just for some handle types.
         Be very careful when using this function. libuv assumes it's in control of the file
         descriptor so any change to it may lead to malfunction.
 
+.. c:function:: int uv_dup(uv_os_fd_t fd, uv_os_fd_t* dupfd)
+
+    Copies the platform dependent file descriptor handle.
+
+    Equivalent to :man:`dup(2)` and `DuplicateHandle <https://msdn.microsoft.com/en-us/library/windows/desktop/ms724251(v=vs.85).aspx>`_.
+    On Windows, do not call this on a SOCKET (uv_os_sock_t).
 
 .. _refcount:
 
