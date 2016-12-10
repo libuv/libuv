@@ -32,23 +32,23 @@ static void connect_cb(uv_connect_t* handle, int status) {
 
 TEST_IMPL(tcp_connect_error_busy) {
   struct sockaddr_in addr;
-  uv_tcp_t server;
+  uv_tcp_t client;
   int r;
   uv_connect_t req;
   uv_connect_t connect_req;
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-  r = uv_tcp_init(uv_default_loop(), &server);
+  r = uv_tcp_init(uv_default_loop(), &client);
 
   /* Pretend there's an active request, which should
    * result in -UV_EBUSY when invoking uv_tcp_connect()
    */
-  server.connect_req = &connect_req;
+  client.connect_req = &connect_req;
 
   ASSERT(r == 0);
   r = uv_tcp_connect(&req,
-                     &server,
+                     &client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
   ASSERT(r == -UV_EBUSY);
@@ -56,7 +56,7 @@ TEST_IMPL(tcp_connect_error_busy) {
   /* Remove mocked active request so the event loop
    * can shut down in MAKE_VALGRIND_HAPPY()
    */
-  server.connect_req = NULL;
+  client.connect_req = NULL;
 
   MAKE_VALGRIND_HAPPY();
   return 0;
