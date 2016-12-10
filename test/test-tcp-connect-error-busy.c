@@ -35,17 +35,16 @@ TEST_IMPL(tcp_connect_error_busy) {
   uv_tcp_t server;
   int r;
   uv_connect_t req;
-  uv_connect_t* connect_req = malloc(sizeof *connect_req);
+  uv_connect_t connect_req;
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-  ASSERT(connect_req != NULL);
 
   r = uv_tcp_init(uv_default_loop(), &server);
 
   /* Pretend there's an active request, which should
    * result in -UV_EBUSY when invoking uv_tcp_connect()
    */
-  server.connect_req = connect_req;
+  server.connect_req = &connect_req;
 
   ASSERT(r == 0);
   r = uv_tcp_connect(&req,
