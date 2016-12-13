@@ -372,8 +372,11 @@ static void uv__process_child_init(const uv_process_options_t* options,
     _exit(127);
   }
 
-  execve(options->file, options->args, 
-         options->env != NULL ? options->env : environ);
+  if (options->env != NULL) {
+    environ = options->env;
+  }
+
+  execvp(options->file, options->args);
   uv__write_int(error_fd, -errno);
   _exit(127);
 }
