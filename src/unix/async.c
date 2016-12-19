@@ -131,7 +131,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   wa = container_of(w, struct uv__async, io_watcher);
 
 #if defined(__linux__)
-  if (wa->wfd == -1) {
+  if (wa->wfd == -1 && n != 0) {
     uint64_t val;
     assert(n == sizeof(val));
     memcpy(&val, buf, sizeof(val));  /* Avoid alignment issues. */
