@@ -1,19 +1,17 @@
 
-.. _idle:
+.. _spin:
 
-:c:type:`uv_spin_t` --- Idle handle
+:c:type:`uv_spin_t` --- Spin handle
 ===================================
 
 Idle handles will run the given callback once per loop iteration, right
 before the :c:type:`uv_prepare_t` handles.
 
 .. note::
-    The notable difference with prepare handles is that when there are active idle handles,
+    The notable difference with prepare handles is that when there are active spin handles,
     the loop will perform a zero timeout poll instead of blocking for i/o.
 
-.. warning::
-    Despite the name, idle handles will get their callbacks called on every loop iteration,
-    not when the loop is actually "idle".
+    spin handles will get their callbacks called on every loop iteration.
 
 
 Data types
@@ -21,7 +19,7 @@ Data types
 
 .. c:type:: uv_spin_t
 
-    Idle handle type.
+    Spin handle type.
 
 .. c:type:: void (*uv_spin_cb)(uv_spin_t* handle)
 
@@ -39,15 +37,15 @@ N/A
 API
 ---
 
-.. c:function:: int uv_spin_init(uv_loop_t* loop, uv_spin_t* idle)
+.. c:function:: int uv_spin_init(uv_loop_t* loop, uv_spin_t* spin)
 
     Initialize the handle.
 
-.. c:function:: int uv_spin_start(uv_spin_t* idle, uv_spin_cb cb)
+.. c:function:: int uv_spin_start(uv_spin_t* spin, uv_spin_cb cb)
 
     Start the handle with the given callback.
 
-.. c:function:: int uv_spin_stop(uv_spin_t* idle)
+.. c:function:: int uv_spin_stop(uv_spin_t* spin)
 
     Stop the handle, the callback will no longer be called.
 

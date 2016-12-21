@@ -22,35 +22,35 @@
 #include "uv.h"
 #include "task.h"
 
-static int idle_cb_called;
+static int spin_cb_called;
 static int timer_cb_called;
 
-static uv_idle_t idle_handle;
+static uv_spin_t spin_handle;
 static uv_timer_t timer_handle;
 
 
-/* idle_cb should run before timer_cb */
-static void idle_cb(uv_idle_t* handle) {
-  ASSERT(idle_cb_called == 0);
+/* spin_cb should run before timer_cb */
+static void spin_cb(uv_spin_t* handle) {
+  ASSERT(spin_cb_called == 0);
   ASSERT(timer_cb_called == 0);
-  uv_idle_stop(handle);
-  idle_cb_called++;
+  uv_spin_stop(handle);
+  spin_cb_called++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(idle_cb_called == 1);
+  ASSERT(spin_cb_called == 1);
   ASSERT(timer_cb_called == 0);
   uv_timer_stop(handle);
   timer_cb_called++;
 }
 
 
-static void next_tick(uv_idle_t* handle) {
+static void next_tick(uv_spin_t* handle) {
   uv_loop_t* loop = handle->loop;
-  uv_idle_stop(handle);
-  uv_idle_init(loop, &idle_handle);
-  uv_idle_start(&idle_handle, idle_cb);
+  uv_spin_stop(handle);
+  uv_spin_init(loop, &spin_handle);
+  uv_spin_start(&spin_handle, spin_cb);
   uv_timer_init(loop, &timer_handle);
   uv_timer_start(&timer_handle, timer_cb, 0, 0);
 }
@@ -58,18 +58,18 @@ static void next_tick(uv_idle_t* handle) {
 
 TEST_IMPL(callback_order) {
   uv_loop_t* loop;
-  uv_idle_t idle;
+  uv_spin_t spin;
 
   loop = uv_default_loop();
-  uv_idle_init(loop, &idle);
-  uv_idle_start(&idle, next_tick);
+  uv_spin_init(loop, &spin);
+  uv_spin_start(&spin, next_tick);
 
-  ASSERT(idle_cb_called == 0);
+  ASSERT(spin_cb_called == 0);
   ASSERT(timer_cb_called == 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(idle_cb_called == 1);
+  ASSERT(spin_cb_called == 1);
   ASSERT(timer_cb_called == 1);
 
   MAKE_VALGRIND_HAPPY();

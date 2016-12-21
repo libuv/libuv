@@ -78,8 +78,8 @@ API
       deals with i/o - is active when it is doing something that involves i/o,
       like reading, writing, connecting, accepting new connections, etc.
 
-    - A uv_check_t, uv_idle_t, uv_timer_t, etc. handle is active when it has
-      been started with a call to uv_check_start(), uv_idle_start(), etc.
+    - A uv_check_t, uv_spin_t, uv_timer_t, etc. handle is active when it has
+      been started with a call to uv_check_start(), uv_spin_start(), etc.
 
     Rule of thumb: if a handle of type `uv_foo_t` has a `uv_foo_start()`
     function, then it's active from the moment that function is called.

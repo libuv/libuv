@@ -24,24 +24,24 @@
 
 #define NUM_TICKS 64
 
-static uv_idle_t idle_handle;
-static int idle_counter;
+static uv_spin_t spin_handle;
+static int spin_counter;
 
 
-static void idle_cb(uv_idle_t* handle) {
-  ASSERT(handle == &idle_handle);
+static void spin_cb(uv_spin_t *handle) {
+  ASSERT(handle == &spin_handle);
 
-  if (++idle_counter == NUM_TICKS)
-    uv_idle_stop(handle);
+  if (++spin_counter == NUM_TICKS)
+    uv_spin_stop(handle);
 }
 
 
 TEST_IMPL(run_once) {
-  uv_idle_init(uv_default_loop(), &idle_handle);
-  uv_idle_start(&idle_handle, idle_cb);
+  uv_spin_init(uv_default_loop(), &spin_handle);
+  uv_spin_start(&spin_handle, spin_cb);
 
   while (uv_run(uv_default_loop(), UV_RUN_ONCE));
-  ASSERT(idle_counter == NUM_TICKS);
+  ASSERT(spin_counter == NUM_TICKS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

@@ -125,8 +125,8 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     uv__check_close((uv_check_t*)handle);
     break;
 
-  case UV_IDLE:
-    uv__idle_close((uv_idle_t*)handle);
+  case UV_SPIN:
+    uv__spin_close((uv_spin_t *) handle);
     break;
 
   case UV_ASYNC:
@@ -235,7 +235,7 @@ static void uv__finish_close(uv_handle_t* handle) {
   switch (handle->type) {
     case UV_PREPARE:
     case UV_CHECK:
-    case UV_IDLE:
+    case UV_SPIN:
     case UV_ASYNC:
     case UV_TIMER:
     case UV_PROCESS:
@@ -301,7 +301,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
     return 0;
 
-  if (!QUEUE_EMPTY(&loop->idle_handles))
+  if (!QUEUE_EMPTY(&loop->spin_handles))
     return 0;
 
   if (!QUEUE_EMPTY(&loop->pending_queue))
@@ -339,7 +339,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__update_time(loop);
     uv__run_timers(loop);
     ran_pending = uv__run_pending(loop);
-    uv__run_idle(loop);
+    uv__run_spin(loop);
     uv__run_prepare(loop);
 
     timeout = 0;

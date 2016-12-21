@@ -28,23 +28,23 @@
 #define NUM_TICKS (2 * 1000 * 1000)
 
 static unsigned long ticks;
-static uv_idle_t idle_handle;
+static uv_spin_t spin_handle;
 static uv_timer_t timer_handle;
 
 
-static void idle_cb(uv_idle_t* handle) {
+static void spin_cb(uv_spin_t* handle) {
   if (++ticks == NUM_TICKS)
-    uv_idle_stop(handle);
+    uv_spin_stop(handle);
 }
 
 
-static void idle2_cb(uv_idle_t* handle) {
+static void spin2_cb(uv_spin_t* handle) {
   ticks++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
-  uv_idle_stop(&idle_handle);
+  uv_spin_stop(&spin_handle);
   uv_timer_stop(&timer_handle);
 }
 
@@ -53,8 +53,8 @@ BENCHMARK_IMPL(loop_count) {
   uv_loop_t* loop = uv_default_loop();
   uint64_t ns;
 
-  uv_idle_init(loop, &idle_handle);
-  uv_idle_start(&idle_handle, idle_cb);
+  uv_spin_init(loop, &spin_handle);
+  uv_spin_start(&spin_handle, spin_cb);
 
   ns = uv_hrtime();
   uv_run(loop, UV_RUN_DEFAULT);
@@ -76,8 +76,8 @@ BENCHMARK_IMPL(loop_count) {
 BENCHMARK_IMPL(loop_count_timed) {
   uv_loop_t* loop = uv_default_loop();
 
-  uv_idle_init(loop, &idle_handle);
-  uv_idle_start(&idle_handle, idle2_cb);
+  uv_spin_init(loop, &spin_handle);
+  uv_spin_start(&spin_handle, spin2_cb);
 
   uv_timer_init(loop, &timer_handle);
   uv_timer_start(&timer_handle, timer_cb, 5000, 0);

@@ -23,11 +23,11 @@
 #include "task.h"
 
 
-static uv_idle_t idle_handle;
+static uv_spin_t spin_handle;
 static uv_check_t check_handle;
 static uv_timer_t timer_handle;
 
-static int idle_cb_called = 0;
+static int spin_cb_called = 0;
 static int check_cb_called = 0;
 static int timer_cb_called = 0;
 static int close_cb_called = 0;
@@ -41,7 +41,7 @@ static void close_cb(uv_handle_t* handle) {
 static void timer_cb(uv_timer_t* handle) {
   ASSERT(handle == &timer_handle);
 
-  uv_close((uv_handle_t*) &idle_handle, close_cb);
+  uv_close((uv_handle_t*) &spin_handle, close_cb);
   uv_close((uv_handle_t*) &check_handle, close_cb);
   uv_close((uv_handle_t*) &timer_handle, close_cb);
 
@@ -51,11 +51,11 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 
-static void idle_cb(uv_idle_t* handle) {
-  ASSERT(handle == &idle_handle);
+static void spin_cb(uv_spin_t *handle) {
+  ASSERT(handle == &spin_handle);
 
-  idle_cb_called++;
-  fprintf(stderr, "idle_cb %d\n", idle_cb_called);
+  spin_cb_called++;
+  fprintf(stderr, "spin_cb %d\n", spin_cb_called);
   fflush(stderr);
 }
 
@@ -69,12 +69,12 @@ static void check_cb(uv_check_t* handle) {
 }
 
 
-TEST_IMPL(idle_starvation) {
+TEST_IMPL(spin_starvation) {
   int r;
 
-  r = uv_idle_init(uv_default_loop(), &idle_handle);
+  r = uv_spin_init(uv_default_loop(), &spin_handle);
   ASSERT(r == 0);
-  r = uv_idle_start(&idle_handle, idle_cb);
+  r = uv_spin_start(&spin_handle, spin_cb);
   ASSERT(r == 0);
 
   r = uv_check_init(uv_default_loop(), &check_handle);
@@ -90,7 +90,7 @@ TEST_IMPL(idle_starvation) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
 
-  ASSERT(idle_cb_called > 0);
+  ASSERT(spin_cb_called > 0);
   ASSERT(timer_cb_called == 1);
   ASSERT(close_cb_called == 3);
 

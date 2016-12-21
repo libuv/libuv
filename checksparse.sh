@@ -106,7 +106,7 @@ test/test-getaddrinfo.c
 test/test-getsockname.c
 test/test-homedir.c
 test/test-hrtime.c
-test/test-idle.c
+test/test-spin.c
 test/test-ip6-addr.c
 test/test-ipc-send-recv.c
 test/test-ipc.c

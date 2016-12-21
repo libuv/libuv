@@ -202,7 +202,7 @@ int uv_loop_init(uv_loop_t* loop) {
 
   QUEUE_INIT(&loop->check_handles);
   QUEUE_INIT(&loop->prepare_handles);
-  QUEUE_INIT(&loop->idle_handles);
+  QUEUE_INIT(&loop->spin_handles);
 
   QUEUE_INIT(&loop->async_handles);
   uv_req_init(loop, &loop->async_req);
@@ -294,7 +294,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (loop->endgame_handles)
     return 0;
 
-  if (!QUEUE_EMPTY(&loop->idle_handles))
+  if (!QUEUE_EMPTY(&loop->spin_handles))
     return 0;
 
   return uv__next_timeout(loop);
@@ -386,7 +386,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv__run_timers(loop);
 
     ran_pending = uv_process_reqs(loop);
-    uv__run_idle(loop);
+    uv__run_spin(loop);
     uv__run_prepare(loop);
 
     timeout = 0;

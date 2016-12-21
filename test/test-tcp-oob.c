@@ -31,7 +31,7 @@
 static uv_tcp_t server_handle;
 static uv_tcp_t client_handle;
 static uv_tcp_t peer_handle;
-static uv_idle_t idle;
+static uv_spin_t spin;
 static uv_connect_t connect_req;
 static int ticks;
 static const int kMaxTicks = 10;
@@ -44,20 +44,20 @@ static void alloc_cb(uv_handle_t* handle,
 }
 
 
-static void idle_cb(uv_idle_t* idle) {
+static void spin_cb(uv_spin_t* spin) {
   if (++ticks < kMaxTicks)
     return;
 
   uv_close((uv_handle_t*) &server_handle, NULL);
   uv_close((uv_handle_t*) &client_handle, NULL);
   uv_close((uv_handle_t*) &peer_handle, NULL);
-  uv_close((uv_handle_t*) idle, NULL);
+  uv_close((uv_handle_t*) spin, NULL);
 }
 
 
 static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nread > 0);
-  ASSERT(0 == uv_idle_start(&idle, idle_cb));
+  ASSERT(0 == uv_spin_start(&spin, spin_cb));
 }
 
 
@@ -107,7 +107,7 @@ TEST_IMPL(tcp_oob) {
   ASSERT(0 == uv_tcp_init(loop, &server_handle));
   ASSERT(0 == uv_tcp_init(loop, &client_handle));
   ASSERT(0 == uv_tcp_init(loop, &peer_handle));
-  ASSERT(0 == uv_idle_init(loop, &idle));
+  ASSERT(0 == uv_spin_init(loop, &spin));
   ASSERT(0 == uv_tcp_bind(&server_handle, (const struct sockaddr*) &addr, 0));
   ASSERT(0 == uv_listen((uv_stream_t*) &server_handle, 1, connection_cb));
 

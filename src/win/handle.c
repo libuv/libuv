@@ -114,8 +114,8 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       uv_want_endgame(loop, handle);
       return;
 
-    case UV_IDLE:
-      uv__idle_close((uv_idle_t*) handle);
+    case UV_SPIN:
+      uv__spin_close((uv_spin_t*) handle);
       uv__handle_closing(handle);
       uv_want_endgame(loop, handle);
       return;

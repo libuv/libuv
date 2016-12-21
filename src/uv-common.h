@@ -217,7 +217,7 @@ void uv__free(void* ptr);
 void* uv__realloc(void* ptr, size_t size);
 
 /* Loop watcher prototypes */
-void uv__idle_close(uv_idle_t* handle);
+void uv__spin_close(uv_spin_t *handle);
 void uv__prepare_close(uv_prepare_t* handle);
 void uv__check_close(uv_check_t* handle);
 

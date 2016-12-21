@@ -210,7 +210,7 @@ typedef struct {
   void* process_handles[2];                                                   \
   void* prepare_handles[2];                                                   \
   void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
+  void* spin_handles[2];                                                      \
   void* async_handles[2];                                                     \
   struct uv__async async_watcher;                                             \
   struct {                                                                    \
@@ -292,8 +292,8 @@ typedef struct {
   uv_check_cb check_cb;                                                       \
   void* queue[2];                                                             \
 
-#define UV_IDLE_PRIVATE_FIELDS                                                \
-  uv_idle_cb idle_cb;                                                         \
+#define UV_SPIN_PRIVATE_FIELDS                                                \
+  uv_spin_cb spin_cb;                                                         \
   void* queue[2];                                                             \
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
