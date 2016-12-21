@@ -142,7 +142,7 @@ extern "C" {
   XX(FS_EVENT, fs_event)                                                      \
   XX(FS_POLL, fs_poll)                                                        \
   XX(HANDLE, handle)                                                          \
-  XX(IDLE, idle)                                                              \
+  XX(SPIN, spin)                                                              \
   XX(NAMED_PIPE, pipe)                                                        \
   XX(POLL, poll)                                                              \
   XX(PREPARE, prepare)                                                        \
@@ -203,7 +203,7 @@ typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
 typedef struct uv_check_s uv_check_t;
-typedef struct uv_idle_s uv_idle_t;
+typedef struct uv_spin_s uv_spin_t;
 typedef struct uv_async_s uv_async_t;
 typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
@@ -299,7 +299,7 @@ typedef void (*uv_timer_cb)(uv_timer_t* handle);
 typedef void (*uv_async_cb)(uv_async_t* handle);
 typedef void (*uv_prepare_cb)(uv_prepare_t* handle);
 typedef void (*uv_check_cb)(uv_check_t* handle);
-typedef void (*uv_idle_cb)(uv_idle_t* handle);
+typedef void (*uv_spin_cb)(uv_spin_t* handle);
 typedef void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal);
 typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
@@ -742,14 +742,14 @@ UV_EXTERN int uv_check_start(uv_check_t* check, uv_check_cb cb);
 UV_EXTERN int uv_check_stop(uv_check_t* check);
 
 
-struct uv_idle_s {
+struct uv_spin_s {
   UV_HANDLE_FIELDS
-  UV_IDLE_PRIVATE_FIELDS
+  UV_SPIN_PRIVATE_FIELDS
 };
 
-UV_EXTERN int uv_idle_init(uv_loop_t*, uv_idle_t* idle);
-UV_EXTERN int uv_idle_start(uv_idle_t* idle, uv_idle_cb cb);
-UV_EXTERN int uv_idle_stop(uv_idle_t* idle);
+UV_EXTERN int uv_spin_init(uv_loop_t*, uv_spin_t* spin);
+UV_EXTERN int uv_spin_start(uv_spin_t* spin, uv_spin_cb cb);
+UV_EXTERN int uv_spin_stop(uv_spin_t* spin);
 
 
 struct uv_async_s {
@@ -1473,7 +1473,7 @@ struct uv_loop_s {
 #undef UV_TCP_PRIVATE_FIELDS
 #undef UV_PREPARE_PRIVATE_FIELDS
 #undef UV_CHECK_PRIVATE_FIELDS
-#undef UV_IDLE_PRIVATE_FIELDS
+#undef UV_SPIN_PRIVATE_FIELDS
 #undef UV_ASYNC_PRIVATE_FIELDS
 #undef UV_TIMER_PRIVATE_FIELDS
 #undef UV_GETADDRINFO_PRIVATE_FIELDS

@@ -38,11 +38,11 @@
  *     The queue after the start() calls:
  *     ..=> [queue head] <=> [handle] <=> [handle #1] <=> [handle] <=..
  *
- *  2. Trigger handles to fire (for uv_idle_t, uv_prepare_t, and uv_check_t there is nothing to do).
+ *  2. Trigger handles to fire (for uv_spin_t, uv_prepare_t, and uv_check_t there is nothing to do).
  *
  *  3. In the callback for the first-executed handle (#0 or #2 depending on handle type)
  *     stop the handle and the next one (#1).
- *     (for uv_idle_t, uv_prepare_t, and uv_check_t callbacks are executed in the reverse order as they are start()'ed,
+ *     (for uv_spin_t, uv_prepare_t, and uv_check_t callbacks are executed in the reverse order as they are start()'ed,
  *     so callback for handle #2 will be called first)
  *
  *     The queue after the stop() calls:
@@ -57,7 +57,7 @@
  *     However, if QUEUE_REMOVE() is not handled properly within QUEUE_FOREACH(), the callback _will_ be called.
  */
 
-static const unsigned first_handle_number_idle     = 2;
+static const unsigned first_handle_number_spin     = 2;
 static const unsigned first_handle_number_prepare  = 2;
 static const unsigned first_handle_number_check    = 2;
 #ifdef __linux__
@@ -118,7 +118,7 @@ static const unsigned first_handle_number_fs_event = 0;
     ASSERT(name##_cb_calls[2] == 1);                                          \
   } while (0)
 
-DEFINE_GLOBALS_AND_CBS(idle)
+DEFINE_GLOBALS_AND_CBS(spin)
 DEFINE_GLOBALS_AND_CBS(prepare)
 DEFINE_GLOBALS_AND_CBS(check)
 
@@ -168,7 +168,7 @@ TEST_IMPL(queue_foreach_delete) {
 
   loop = uv_default_loop();
 
-  INIT_AND_START(idle,    loop);
+  INIT_AND_START(spin,    loop);
   INIT_AND_START(prepare, loop);
   INIT_AND_START(check,   loop);
 
@@ -186,7 +186,7 @@ TEST_IMPL(queue_foreach_delete) {
   r = uv_run(loop, UV_RUN_NOWAIT);
   ASSERT(r == 1);
 
-  END_ASSERTS(idle);
+  END_ASSERTS(spin);
   END_ASSERTS(prepare);
   END_ASSERTS(check);
 

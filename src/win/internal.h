@@ -247,7 +247,7 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle);
 void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle);
 void uv__run_prepare(uv_loop_t* loop);
 void uv__run_check(uv_loop_t* loop);
-void uv__run_idle(uv_loop_t* loop);
+void uv__run_spin(uv_loop_t *loop);
 
 void uv__once_init();
 

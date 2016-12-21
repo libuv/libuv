@@ -33,7 +33,7 @@ BENCHMARK_IMPL(sizes) {
   fprintf(stderr, "uv_tty_t: %u bytes\n", (unsigned int) sizeof(uv_tty_t));
   fprintf(stderr, "uv_prepare_t: %u bytes\n", (unsigned int) sizeof(uv_prepare_t));
   fprintf(stderr, "uv_check_t: %u bytes\n", (unsigned int) sizeof(uv_check_t));
-  fprintf(stderr, "uv_idle_t: %u bytes\n", (unsigned int) sizeof(uv_idle_t));
+  fprintf(stderr, "uv_spin_t: %u bytes\n", (unsigned int) sizeof(uv_spin_t));
   fprintf(stderr, "uv_async_t: %u bytes\n", (unsigned int) sizeof(uv_async_t));
   fprintf(stderr, "uv_timer_t: %u bytes\n", (unsigned int) sizeof(uv_timer_t));
   fprintf(stderr, "uv_fs_poll_t: %u bytes\n", (unsigned int) sizeof(uv_fs_poll_t));

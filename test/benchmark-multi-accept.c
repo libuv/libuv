@@ -76,7 +76,7 @@ struct client_ctx {
   handle_storage_t client_handle;
   unsigned int num_connects;
   uv_connect_t connect_req;
-  uv_idle_t idle_handle;
+  uv_spin_t spin_handle;
 };
 
 static void ipc_connection_cb(uv_stream_t* ipc_pipe, int status);
@@ -98,7 +98,7 @@ static void sv_alloc_cb(uv_handle_t* handle,
                         uv_buf_t* buf);
 
 static void cl_connect_cb(uv_connect_t* req, int status);
-static void cl_idle_cb(uv_idle_t* handle);
+static void cl_spin_cb(uv_spin_t* handle);
 static void cl_close_cb(uv_handle_t* handle);
 
 static struct sockaddr_in listen_addr;
@@ -325,15 +325,15 @@ static void sv_read_cb(uv_stream_t* handle,
 
 static void cl_connect_cb(uv_connect_t* req, int status) {
   struct client_ctx* ctx = container_of(req, struct client_ctx, connect_req);
-  uv_idle_start(&ctx->idle_handle, cl_idle_cb);
+  uv_spin_start(&ctx->spin_handle, cl_spin_cb);
   ASSERT(0 == status);
 }
 
 
-static void cl_idle_cb(uv_idle_t* handle) {
-  struct client_ctx* ctx = container_of(handle, struct client_ctx, idle_handle);
+static void cl_spin_cb(uv_spin_t* handle) {
+  struct client_ctx* ctx = container_of(handle, struct client_ctx, spin_handle);
   uv_close((uv_handle_t*) &ctx->client_handle, cl_close_cb);
-  uv_idle_stop(&ctx->idle_handle);
+  uv_spin_stop(&ctx->spin_handle);
 }
 
 
@@ -343,7 +343,7 @@ static void cl_close_cb(uv_handle_t* handle) {
   ctx = container_of(handle, struct client_ctx, client_handle);
 
   if (--ctx->num_connects == 0) {
-    uv_close((uv_handle_t*) &ctx->idle_handle, NULL);
+    uv_close((uv_handle_t*) &ctx->spin_handle, NULL);
     return;
   }
 
@@ -393,7 +393,7 @@ static int test_tcp(unsigned int num_servers, unsigned int num_clients) {
                                handle,
                                (const struct sockaddr*) &listen_addr,
                                cl_connect_cb));
-    ASSERT(0 == uv_idle_init(loop, &ctx->idle_handle));
+    ASSERT(0 == uv_spin_init(loop, &ctx->spin_handle));
   }
 
   {

@@ -215,7 +215,7 @@ typedef struct {
   /* Lists of active loop (prepare / check / idle) watchers */                \
   void* prepare_handles[2];                                                   \
   void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
+  void* spin_handles[2];                                                      \
   /* This handle holds the peer sockets for the fast variant of uv_poll_t */  \
   SOCKET poll_peer_sockets[UV_MSAFD_PROVIDER_COUNT];                          \
   /* Threadpool */                                                            \
@@ -428,7 +428,7 @@ typedef struct {
 
 #define UV_IDLE_PRIVATE_FIELDS                                                \
   void* queue[2];                                                             \
-  uv_idle_cb idle_cb;
+  uv_spin_cb spin_cb;
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
   uv_handle_t* endgame_next;                                                  \

@@ -23,7 +23,7 @@
 
 /*
  * Purpose of this test is to check semantics of starting and stopping
- * prepare, check and idle watchers.
+ * prepare, check and spin watchers.
  *
  * - A watcher must be able to safely stop or close itself;
  * - Once a watcher is stopped or closed its callback should never be called.
@@ -31,30 +31,30 @@
  *   be called exactly once.
  * - A watcher can safely start and stop other watchers of the same type.
  * - Prepare and check watchers are called once per event loop iterations.
- * - All active idle watchers are queued when the event loop has no more work
- *   to do. This is done repeatedly until all idle watchers are inactive.
+ * - All active spin watchers are queued when the event loop has no more work
+ *   to do. This is done repeatedly until all spin watchers are inactive.
  * - If a watcher starts another watcher of the same type its callback is not
  *   immediately queued. For check and prepare watchers, that means that if
  *   a watcher makes another of the same type active, it'll not be called until
- *   the next event loop iteration. For idle. watchers this means that the
- *   newly activated idle watcher might not be queued immediately.
- * - Prepare, check, idle watchers keep the event loop alive even when they're
+ *   the next event loop iteration. For spin watchers this means that the
+ *   newly activated spin watcher might not be queued immediately.
+ * - Prepare, check, spin watchers keep the event loop alive even when they're
  *   not active.
  *
  * This is what the test globally does:
  *
  * - prepare_1 is always active and counts event loop iterations. It also
  *   creates and starts prepare_2 every other iteration. Finally it verifies
- *   that no idle watchers are active before polling.
+ *   that no spin watchers are active before polling.
  * - prepare_2 is started by prepare_1 every other iteration. It immediately
  *   stops itself. It verifies that a watcher is not queued immediately
  *   if created by another watcher of the same type.
  * - There's a check watcher that stops the event loop after a certain number
- *   of iterations. It starts a varying number of idle_1 watchers.
- * - Idle_1 watchers stop themselves after being called a few times. All idle_1
- *   watchers try to start the idle_2 watcher if it is not already started or
+ *   of iterations. It starts a varying number of spin_1 watchers.
+ * - Idle_1 watchers stop themselves after being called a few times. All spin_1
+ *   watchers try to start the spin_2 watcher if it is not already started or
  *   awaiting its close callback.
- * - The idle_2 watcher always exists but immediately closes itself after
+ * - The spin_2 watcher always exists but immediately closes itself after
  *   being started by a check_1 watcher. It verifies that a watcher is
  *   implicitly stopped when closed, and that a watcher can close itself
  *   safely.
@@ -80,8 +80,8 @@ static uv_prepare_t prepare_2_handle;
 
 static uv_check_t check_handle;
 
-static uv_idle_t idle_1_handles[IDLE_COUNT];
-static uv_idle_t idle_2_handle;
+static uv_spin_t spin_1_handles[IDLE_COUNT];
+static uv_spin_t spin_2_handle;
 
 static uv_timer_t timer_handle;
 
@@ -97,14 +97,14 @@ static int prepare_2_close_cb_called = 0;
 static int check_cb_called = 0;
 static int check_close_cb_called = 0;
 
-static int idle_1_cb_called = 0;
-static int idle_1_close_cb_called = 0;
-static int idles_1_active = 0;
+static int spin_1_cb_called = 0;
+static int spin_1_close_cb_called = 0;
+static int spins_1_active = 0;
 
-static int idle_2_cb_called = 0;
-static int idle_2_close_cb_called = 0;
-static int idle_2_cb_started = 0;
-static int idle_2_is_active = 0;
+static int spin_2_cb_called = 0;
+static int spin_2_close_cb_called = 0;
+static int spin_2_cb_started = 0;
+static int spin_2_is_active = 0;
 
 
 static void timer_cb(uv_timer_t* handle) {
@@ -112,67 +112,67 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 
-static void idle_2_close_cb(uv_handle_t* handle) {
+static void spin_2_close_cb(uv_handle_t *handle) {
   fprintf(stderr, "%s", "IDLE_2_CLOSE_CB\n");
   fflush(stderr);
 
-  ASSERT(handle == (uv_handle_t*)&idle_2_handle);
+  ASSERT(handle == (uv_handle_t*)&spin_2_handle);
 
-  ASSERT(idle_2_is_active);
+  ASSERT(spin_2_is_active);
 
-  idle_2_close_cb_called++;
-  idle_2_is_active = 0;
+  spin_2_close_cb_called++;
+  spin_2_is_active = 0;
 }
 
 
-static void idle_2_cb(uv_idle_t* handle) {
+static void spin_2_cb(uv_spin_t* handle) {
   fprintf(stderr, "%s", "IDLE_2_CB\n");
   fflush(stderr);
 
-  ASSERT(handle == &idle_2_handle);
+  ASSERT(handle == &spin_2_handle);
 
-  idle_2_cb_called++;
+  spin_2_cb_called++;
 
-  uv_close((uv_handle_t*)handle, idle_2_close_cb);
+  uv_close((uv_handle_t *) handle, spin_2_close_cb);
 }
 
 
-static void idle_1_cb(uv_idle_t* handle) {
+static void spin_1_cb(uv_spin_t* handle) {
   int r;
 
   fprintf(stderr, "%s", "IDLE_1_CB\n");
   fflush(stderr);
 
   ASSERT(handle != NULL);
-  ASSERT(idles_1_active > 0);
+  ASSERT(spins_1_active > 0);
 
-  /* Init idle_2 and make it active */
-  if (!idle_2_is_active && !uv_is_closing((uv_handle_t*)&idle_2_handle)) {
-    r = uv_idle_init(uv_default_loop(), &idle_2_handle);
+  /* Init spin_2 and make it active */
+  if (!spin_2_is_active && !uv_is_closing((uv_handle_t*)&spin_2_handle)) {
+    r = uv_spin_init(uv_default_loop(), &spin_2_handle);
     ASSERT(r == 0);
-    r = uv_idle_start(&idle_2_handle, idle_2_cb);
+    r = uv_spin_start(&spin_2_handle, spin_2_cb);
     ASSERT(r == 0);
-    idle_2_is_active = 1;
-    idle_2_cb_started++;
+    spin_2_is_active = 1;
+    spin_2_cb_started++;
   }
 
-  idle_1_cb_called++;
+  spin_1_cb_called++;
 
-  if (idle_1_cb_called % 5 == 0) {
-    r = uv_idle_stop((uv_idle_t*)handle);
+  if (spin_1_cb_called % 5 == 0) {
+    r = uv_spin_stop((uv_spin_t*)handle);
     ASSERT(r == 0);
-    idles_1_active--;
+    spins_1_active--;
   }
 }
 
 
-static void idle_1_close_cb(uv_handle_t* handle) {
+static void spin_1_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "IDLE_1_CLOSE_CB\n");
   fflush(stderr);
 
   ASSERT(handle != NULL);
 
-  idle_1_close_cb_called++;
+  spin_1_close_cb_called++;
 }
 
 
@@ -211,11 +211,11 @@ static void check_cb(uv_check_t* handle) {
   ASSERT(handle == &check_handle);
 
   if (loop_iteration < ITERATIONS) {
-    /* Make some idle watchers active */
+    /* Make some spin watchers active */
     for (i = 0; i < 1 + (loop_iteration % IDLE_COUNT); i++) {
-      r = uv_idle_start(&idle_1_handles[i], idle_1_cb);
+      r = uv_spin_start(&spin_1_handles[i], spin_1_cb);
       ASSERT(r == 0);
-      idles_1_active++;
+      spins_1_active++;
     }
 
   } else {
@@ -225,13 +225,13 @@ static void check_cb(uv_check_t* handle) {
     uv_close((uv_handle_t*)&prepare_2_handle, prepare_2_close_cb);
 
     for (i = 0; i < IDLE_COUNT; i++) {
-      uv_close((uv_handle_t*)&idle_1_handles[i], idle_1_close_cb);
+      uv_close((uv_handle_t*)&spin_1_handles[i], spin_1_close_cb);
     }
 
     /* This handle is closed/recreated every time, close it only if it is */
     /* active.*/
-    if (idle_2_is_active) {
-      uv_close((uv_handle_t*)&idle_2_handle, idle_2_close_cb);
+    if (spin_2_is_active) {
+      uv_close((uv_handle_t *) &spin_2_handle, spin_2_close_cb);
     }
   }
 
@@ -297,12 +297,12 @@ TEST_IMPL(loop_handles) {
   ASSERT(r == 0);
 
   for (i = 0; i < IDLE_COUNT; i++) {
-    /* initialize only, idle_1 handles are started by check_cb */
-    r = uv_idle_init(uv_default_loop(), &idle_1_handles[i]);
+    /* initialize only, spin_1 handles are started by check_cb */
+    r = uv_spin_init(uv_default_loop(), &spin_1_handles[i]);
     ASSERT(r == 0);
   }
 
-  /* don't init or start idle_2, both is done by idle_1_cb */
+  /* don't init or start spin_2, both is done by spin_1_cb */
 
   /* the timer callback is there to keep the event loop polling */
   /* unref it as it is not supposed to keep the loop alive */
@@ -326,11 +326,11 @@ TEST_IMPL(loop_handles) {
   ASSERT(check_cb_called == ITERATIONS);
   ASSERT(check_close_cb_called == 1);
 
-  /* idle_1_cb should be called a lot */
-  ASSERT(idle_1_close_cb_called == IDLE_COUNT);
+  /* spin_1_cb should be called a lot */
+  ASSERT(spin_1_close_cb_called == IDLE_COUNT);
 
-  ASSERT(idle_2_close_cb_called == idle_2_cb_started);
-  ASSERT(idle_2_is_active == 0);
+  ASSERT(spin_2_close_cb_called == spin_2_cb_started);
+  ASSERT(spin_2_is_active == 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

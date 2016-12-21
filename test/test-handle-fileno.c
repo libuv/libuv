@@ -52,17 +52,17 @@ TEST_IMPL(handle_fileno) {
   uv_udp_t udp;
   uv_pipe_t pipe;
   uv_tty_t tty;
-  uv_idle_t idle;
+  uv_spin_t spin;
   uv_loop_t* loop;
 
   loop = uv_default_loop();
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-  r = uv_idle_init(loop, &idle);
+  r = uv_spin_init(loop, &spin);
   ASSERT(r == 0);
-  r = uv_fileno((uv_handle_t*) &idle, &fd);
+  r = uv_fileno((uv_handle_t*) &spin, &fd);
   ASSERT(r == UV_EINVAL);
-  uv_close((uv_handle_t*) &idle, NULL);
+  uv_close((uv_handle_t*) &spin, NULL);
 
   r = uv_tcp_init(loop, &tcp);
   ASSERT(r == 0);
