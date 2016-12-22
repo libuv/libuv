@@ -167,7 +167,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+int uv__io_poll(uv_loop_t* loop, int timeout) {
   /* A bug in kernels < 2.6.37 makes timeouts larger than ~30 minutes
    * effectively infinite on 32 bits architectures.  To avoid blocking
    * indefinitely, we cap the timeout and poll again if necessary.
@@ -195,10 +195,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int fd;
   int op;
   int i;
+  int got_events;
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
-    return;
+    return 0;
   }
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
@@ -248,6 +249,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
 
+  got_events = 0;
+
   for (;;) {
     /* See the comment for max_safe_timeout for an explanation of why
      * this is necessary.  Executive summary: kernel bug workaround.
@@ -290,7 +293,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       assert(timeout != -1);
 
       if (timeout == 0)
-        return;
+        goto end;
 
       /* We may have been inside the system call for longer than |timeout|
        * milliseconds so we need to update the timestamp to avoid drift.
@@ -312,11 +315,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0)
-        return;
+        goto end;
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
     }
+
+    got_events = 1;
 
     have_signals = 0;
     nevents = 0;
@@ -392,7 +397,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      goto end;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -400,11 +405,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = 0;
         continue;
       }
-      return;
+      goto end;
     }
 
     if (timeout == 0)
-      return;
+      goto end;
 
     if (timeout == -1)
       continue;
@@ -414,10 +419,13 @@ update_timeout:
 
     real_timeout -= (loop->time - base);
     if (real_timeout <= 0)
-      return;
+      goto end;
 
     timeout = real_timeout;
   }
+
+end:
+  return got_events == 0;
 }
 
 

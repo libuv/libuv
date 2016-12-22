@@ -219,6 +219,11 @@ typedef struct {
   } timer_heap;                                                               \
   uint64_t timer_counter;                                                     \
   uint64_t time;                                                              \
+  double timeout_adjust;                                                      \
+  struct {                                                                    \
+    int64_t deltas[16];                                                       \
+    unsigned int index;                                                       \
+  } adjust_table;                                                             \
   int signal_pipefd[2];                                                       \
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
