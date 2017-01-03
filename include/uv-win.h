@@ -469,6 +469,7 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   volatile HANDLE readfile_thread;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
+  int ipc; /* non-zero if this pipe is used for passing handles */            \
   HANDLE handle;                                                              \
   WCHAR* name;                                                                \
   union {                                                                     \
