@@ -246,6 +246,8 @@ int uv_loop_init(uv_loop_t* loop) {
 
   RB_INIT(&loop->timers);
 
+  loop->after_handles = NULL;
+  loop->before_handles = NULL;
   loop->check_handles = NULL;
   loop->prepare_handles = NULL;
   loop->idle_handles = NULL;
@@ -491,6 +493,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
+    uv_before_invoke(loop);
     uv_process_timers(loop);
 
     ran_pending = uv_process_reqs(loop);
@@ -518,6 +521,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
       uv_process_timers(loop);
     }
 
+    uv_after_invoke(loop);
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;

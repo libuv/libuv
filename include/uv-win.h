@@ -321,7 +321,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_handle_t* endgame_handles;                                               \
   /* The head of the timers tree */                                           \
   struct uv_timer_tree_s timers;                                              \
-    /* Lists of active loop (prepare / check / idle) watchers */              \
+  /* Lists of active loop (prepare / check / idle) watchers */                \
+  uv_prepare_t* after_handles;                                                \
+  uv_prepare_t* before_handles;                                               \
   uv_prepare_t* prepare_handles;                                              \
   uv_check_t* check_handles;                                                  \
   uv_idle_t* idle_handles;                                                    \
@@ -537,6 +539,16 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_async_cb async_cb;                                                       \
   /* char to avoid alignment issues */                                        \
   char volatile async_sent;
+
+#define UV_AFTER_PRIVATE_FIELDS                                               \
+  uv_after_t* after_prev;                                                     \
+  uv_after_t* after_next;                                                     \
+  uv_after_cb after_cb;
+
+#define UV_BEFORE_PRIVATE_FIELDS                                              \
+  uv_before_t* before_prev;                                                   \
+  uv_before_t* before_next;                                                   \
+  uv_before_cb before_cb;
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   uv_prepare_t* prepare_prev;                                                 \

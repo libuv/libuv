@@ -208,6 +208,8 @@ typedef struct {
   uv_rwlock_t cloexec_lock;                                                   \
   uv_handle_t* closing_handles;                                               \
   void* process_handles[2];                                                   \
+  void* after_handles[2];                                                     \
+  void* before_handles[2];                                                    \
   void* prepare_handles[2];                                                   \
   void* check_handles[2];                                                     \
   void* idle_handles[2];                                                      \
@@ -283,6 +285,14 @@ typedef struct {
 
 #define UV_POLL_PRIVATE_FIELDS                                                \
   uv__io_t io_watcher;
+
+#define UV_AFTER_PRIVATE_FIELDS                                               \
+  uv_after_cb after_cb;                                                       \
+  void* queue[2];                                                             \
+
+#define UV_BEFORE_PRIVATE_FIELDS                                              \
+  uv_before_cb before_cb;                                                     \
+  void* queue[2];                                                             \
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   uv_prepare_cb prepare_cb;                                                   \

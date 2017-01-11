@@ -73,6 +73,8 @@ Documentation
    handle
    request
    timer
+   before
+   after
    prepare
    check
    idle

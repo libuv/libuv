@@ -142,7 +142,9 @@ extern "C" {
   XX(EHOSTDOWN, "host is down")                                               \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
+  XX(AFTER, after)                                                            \
   XX(ASYNC, async)                                                            \
+  XX(BEFORE, before)                                                          \
   XX(CHECK, check)                                                            \
   XX(FS_EVENT, fs_event)                                                      \
   XX(FS_POLL, fs_poll)                                                        \
@@ -197,6 +199,8 @@ typedef enum {
 
 
 /* Handle types. */
+typedef struct uv_after_s uv_after_t;
+typedef struct uv_before_s uv_before_t;
 typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_handle_s uv_handle_t;
 typedef struct uv_stream_s uv_stream_t;
@@ -288,6 +292,8 @@ UV_EXTERN uint64_t uv_now(const uv_loop_t*);
 UV_EXTERN int uv_backend_fd(const uv_loop_t*);
 UV_EXTERN int uv_backend_timeout(const uv_loop_t*);
 
+typedef void (*uv_after_cb)(uv_after_t* handle);
+typedef void (*uv_before_cb)(uv_before_t* handle);
 typedef void (*uv_alloc_cb)(uv_handle_t* handle,
                             size_t suggested_size,
                             uv_buf_t* buf);
@@ -727,6 +733,26 @@ UV_EXTERN int uv_poll_init_socket(uv_loop_t* loop,
                                   uv_os_sock_t socket);
 UV_EXTERN int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb);
 UV_EXTERN int uv_poll_stop(uv_poll_t* handle);
+
+
+struct uv_after_s {
+  UV_HANDLE_FIELDS
+  UV_AFTER_PRIVATE_FIELDS
+};
+
+UV_EXTERN int uv_after_init(uv_loop_t*, uv_after_t* after);
+UV_EXTERN int uv_after_start(uv_after_t* after, uv_after_cb cb);
+UV_EXTERN int uv_after_stop(uv_after_t* after);
+
+
+struct uv_before_s {
+  UV_HANDLE_FIELDS
+  UV_BEFORE_PRIVATE_FIELDS
+};
+
+UV_EXTERN int uv_before_init(uv_loop_t*, uv_before_t* before);
+UV_EXTERN int uv_before_start(uv_before_t* before, uv_before_cb cb);
+UV_EXTERN int uv_before_stop(uv_before_t* before);
 
 
 struct uv_prepare_s {
@@ -1472,6 +1498,8 @@ struct uv_loop_s {
 
 
 /* Don't export the private CPP symbols. */
+#undef UV_AFTER_PRIVATE_FIELDS
+#undef UV_BEFORE_PRIVATE_FIELDS
 #undef UV_HANDLE_TYPE_PRIVATE
 #undef UV_REQ_TYPE_PRIVATE
 #undef UV_REQ_PRIVATE_FIELDS

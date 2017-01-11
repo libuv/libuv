@@ -120,6 +120,14 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     uv__udp_close((uv_udp_t*)handle);
     break;
 
+  case UV_AFTER:
+    uv__after_close((uv_after_t*)handle);
+    break;
+
+  case UV_BEFORE:
+    uv__before_close((uv_before_t*)handle);
+    break;
+
   case UV_PREPARE:
     uv__prepare_close((uv_prepare_t*)handle);
     break;
@@ -236,6 +244,8 @@ static void uv__finish_close(uv_handle_t* handle) {
   handle->flags |= UV_CLOSED;
 
   switch (handle->type) {
+    case UV_AFTER:
+    case UV_BEFORE:
     case UV_PREPARE:
     case UV_CHECK:
     case UV_IDLE:
@@ -340,6 +350,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv__update_time(loop);
+    uv__run_before(loop);
     uv__run_timers(loop);
     ran_pending = uv__run_pending(loop);
     uv__run_idle(loop);
@@ -366,6 +377,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
       uv__run_timers(loop);
     }
 
+    uv__run_after(loop);
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
