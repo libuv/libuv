@@ -64,6 +64,11 @@
 #define RDWR_BUF_SIZE   4096
 #define EQ(a,b)         (strcmp(a,b) == 0)
 
+static void* args_mem = NULL;
+static char **process_argv = NULL;
+static char process_argc = 0;
+static char *process_title_ptr = NULL;
+
 int uv__platform_loop_init(uv_loop_t* loop) {
   loop->fs_fd = -1;
 
@@ -881,21 +886,91 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
 
 
 char** uv_setup_args(int argc, char** argv) {
-  return argv;
+  char** new_argv;
+  size_t size;
+  char* s;
+  int i;
+
+  if (argc <= 0)
+    return argv;
+
+  /* Save the original pointer to argv.
+   * AIX uses argv to read the process name.
+   * (Not the memory pointed to by argv[0..n] as on Linux.)
+   */
+  process_argv = argv;
+  process_argc = argc;
+
+  /* Calculate how much memory we need for the argv strings. */
+  size = 0;
+  for (i = 0; i < argc; i++)
+    size += strlen(argv[i]) + 1;
+
+  /* Add space for the argv pointers. */
+  size += (argc + 1) * sizeof(char*);
+
+  new_argv = uv__malloc(size);
+  if (new_argv == NULL)
+    return argv;
+  args_mem = new_argv;
+
+  /* Copy over the strings and set up the pointer table. */
+  s = (char*) &new_argv[argc + 1];
+  for (i = 0; i < argc; i++) {
+    size = strlen(argv[i]) + 1;
+    memcpy(s, argv[i], size);
+    new_argv[i] = s;
+    s += size;
+  }
+  new_argv[i] = NULL;
+
+  return new_argv;
 }
 
 
 int uv_set_process_title(const char* title) {
+  /* If this is the first time this is set,
+   * don't free and set argv[1] to NULL.
+   */
+  size_t len = strlen(title);
+  if( process_title_ptr != NULL )
+    uv__free(process_title_ptr);
+
+  /* We cannot free this pointer when libuv shuts down,
+   * the process may still be using it.
+   */
+  process_title_ptr = (char*) uv__malloc(len + 1);
+  if( process_title_ptr == NULL )
+    return 0;
+
+  memcpy(process_title_ptr, title, len);
+  process_title_ptr[len] = '\0';
+  process_argv[0] = process_title_ptr;
+  if( process_argc > 1 )
+     process_argv[1] = NULL;
+
   return 0;
 }
 
 
 int uv_get_process_title(char* buffer, size_t size) {
+  size_t len = 0;
   if (buffer == NULL || size == 0)
     return -EINVAL;
+  else if (size <= strlen(process_title_ptr))
+    return -ENOBUFS;
 
-  buffer[0] = '\0';
+  len = strlen(process_argv[0]);
+  memcpy(buffer, process_argv[0], len);
+  buffer[len] = '\0';
+
   return 0;
+}
+
+
+UV_DESTRUCTOR(static void free_args_mem(void)) {
+  uv__free(args_mem);  /* Keep valgrind happy. */
+  args_mem = NULL;
 }
 
 
