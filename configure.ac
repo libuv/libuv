@@ -41,14 +41,17 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_INIT
 # TODO(bnoordhuis) Check for -pthread vs. -pthreads
 AC_CHECK_LIB([dl], [dlopen])
+AC_CHECK_LIB([root], [dlopen])
 AC_CHECK_LIB([kstat], [kstat_lookup])
 AC_CHECK_LIB([kvm], [kvm_open])
 AC_CHECK_LIB([nsl], [gethostbyname])
+AC_CHECK_LIB([network], [gethostbyname])
 AC_CHECK_LIB([perfstat], [perfstat_cpu])
 AC_CHECK_LIB([pthread], [pthread_mutex_init])
 AC_CHECK_LIB([rt], [clock_gettime])
 AC_CHECK_LIB([sendfile], [sendfile])
 AC_CHECK_LIB([socket], [socket])
+AC_CHECK_LIB([network], [socket])
 AC_SYS_LARGEFILE
 AM_CONDITIONAL([AIX],      [AS_CASE([$host_os],[aix*],          [true], [false])])
 AM_CONDITIONAL([ANDROID],  [AS_CASE([$host_os],[linux-android*],[true], [false])])
@@ -61,8 +64,12 @@ AM_CONDITIONAL([OPENBSD],  [AS_CASE([$host_os],[openbsd*],      [true], [false])
 AM_CONDITIONAL([OS390],    [AS_CASE([$host_os],[openedition*],  [true], [false])])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
+AM_CONDITIONAL([HAIKU],    [AS_CASE([$host_os],[haiku*],        [true], [false])])
 AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
+])
+AS_CASE([$host_os],[haiku*], [
+    LIBS="$LIBS -lnetwork"
 ])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)

@@ -55,6 +55,19 @@
 # endif
 #endif
 
+#ifdef __HAIKU__
+# include <posix/fcntl.h>
+# if defined(O_CLOEXEC)
+#  define UV__O_CLOEXEC O_CLOEXEC
+# endif
+# if !defined(FIONCLEX)
+#  define FIONCLEX        0x5450
+# endif
+# if !defined(FIOCLEX)
+#  define FIOCLEX         0x5451
+# endif
+#endif
+
 #if defined(__DragonFly__)      || \
     defined(__FreeBSD__)        || \
     defined(__FreeBSD_kernel__)
@@ -921,7 +934,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_stime.tv_sec = usage.ru_stime.tv_sec;
   rusage->ru_stime.tv_usec = usage.ru_stime.tv_usec;
 
-#if !defined(__MVS__)
+#if !defined(__MVS__) && !defined(__HAIKU__)
   rusage->ru_maxrss = usage.ru_maxrss;
   rusage->ru_ixrss = usage.ru_ixrss;
   rusage->ru_idrss = usage.ru_idrss;
@@ -936,6 +949,23 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_nsignals = usage.ru_nsignals;
   rusage->ru_nvcsw = usage.ru_nvcsw;
   rusage->ru_nivcsw = usage.ru_nivcsw;
+#endif
+
+#if defined(__HAIKU__)
+  rusage->ru_maxrss = 0;
+  rusage->ru_ixrss = 0;
+  rusage->ru_idrss = 0;
+  rusage->ru_isrss = 0;
+  rusage->ru_minflt = 0;
+  rusage->ru_majflt = 0;
+  rusage->ru_nswap = 0;
+  rusage->ru_inblock = 0;
+  rusage->ru_oublock = 0;
+  rusage->ru_msgsnd = 0;
+  rusage->ru_msgrcv = 0;
+  rusage->ru_nsignals = 0;
+  rusage->ru_nvcsw = 0;
+  rusage->ru_nivcsw = 0;
 #endif
 
   return 0;
