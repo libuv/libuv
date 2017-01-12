@@ -68,9 +68,6 @@ AM_CONDITIONAL([HAIKU],    [AS_CASE([$host_os],[haiku*],        [true], [false])
 AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
 ])
-AS_CASE([$host_os],[haiku*], [
-    LIBS="$LIBS -lnetwork"
-])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)
 AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
