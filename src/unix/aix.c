@@ -932,19 +932,16 @@ int uv_set_process_title(const char* title) {
   /* If this is the first time this is set,
    * don't free and set argv[1] to NULL.
    */
-  size_t len;
   if (process_title_ptr != NULL)
     uv__free(process_title_ptr);
 
   /* We cannot free this pointer when libuv shuts down,
    * the process may still be using it.
    */
-  len = strlen(title);
-  process_title_ptr = uv__malloc(len + 1);
+  process_title_ptr = uv__strdup(title);
   if (process_title_ptr == NULL)
-    return 0;
+    return -ENOMEM;
 
-  strncpy(process_title_ptr, title, len + 1);
   process_argv[0] = process_title_ptr;
   if (process_argc > 1)
      process_argv[1] = NULL;
@@ -954,15 +951,13 @@ int uv_set_process_title(const char* title) {
 
 
 int uv_get_process_title(char* buffer, size_t size) {
-  size_t len;
+  size_t len = strlen(process_argv[0]);
   if (buffer == NULL || size == 0)
     return -EINVAL;
-  else if (size <= strlen(process_argv[0]))
+  else if (size <= len)
     return -ENOBUFS;
 
-  len = strlen(process_argv[0]);
-  memcpy(buffer, process_argv[0], len);
-  buffer[len] = '\0';
+  strncpy(buffer, process_argv[0], len + 1);
 
   return 0;
 }
