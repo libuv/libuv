@@ -951,13 +951,14 @@ int uv_set_process_title(const char* title) {
 
 
 int uv_get_process_title(char* buffer, size_t size) {
-  size_t len = strlen(process_argv[0]);
+  size_t len;
+  len = strlen(process_argv[0]);
   if (buffer == NULL || size == 0)
     return -EINVAL;
   else if (size <= len)
     return -ENOBUFS;
 
-  strncpy(buffer, process_argv[0], len + 1);
+  strcpy(buffer, process_argv[0]);
 
   return 0;
 }
