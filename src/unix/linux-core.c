@@ -188,6 +188,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   sigset_t sigset;
   uint64_t sigmask;
   uint64_t base;
+  uint64_t diffns;
   int have_signals;
   int nevents;
   int count;
@@ -412,7 +413,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    real_timeout -= (loop->time - base);
+    diffns = loop->time - base;
+    if (diffns > NSPERMS)
+      real_timeout -= diffns / NSPERMS;
+
     if (real_timeout <= 0)
       return;
 
