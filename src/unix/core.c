@@ -928,6 +928,8 @@ int uv_getrusage(uv_rusage_t* rusage) {
   if (getrusage(RUSAGE_SELF, &usage))
     return -errno;
 
+  memset(rusage, 0, sizeof(*rusage));
+
   rusage->ru_utime.tv_sec = usage.ru_utime.tv_sec;
   rusage->ru_utime.tv_usec = usage.ru_utime.tv_usec;
 
@@ -949,23 +951,6 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_nsignals = usage.ru_nsignals;
   rusage->ru_nvcsw = usage.ru_nvcsw;
   rusage->ru_nivcsw = usage.ru_nivcsw;
-#endif
-
-#if defined(__HAIKU__)
-  rusage->ru_maxrss = 0;
-  rusage->ru_ixrss = 0;
-  rusage->ru_idrss = 0;
-  rusage->ru_isrss = 0;
-  rusage->ru_minflt = 0;
-  rusage->ru_majflt = 0;
-  rusage->ru_nswap = 0;
-  rusage->ru_inblock = 0;
-  rusage->ru_oublock = 0;
-  rusage->ru_msgsnd = 0;
-  rusage->ru_msgrcv = 0;
-  rusage->ru_nsignals = 0;
-  rusage->ru_nvcsw = 0;
-  rusage->ru_nivcsw = 0;
 #endif
 
   return 0;
