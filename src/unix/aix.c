@@ -66,7 +66,7 @@
 
 static void* args_mem = NULL;
 static char** process_argv = NULL;
-static char process_argc = 0;
+static int process_argc = 0;
 static char* process_title_ptr = NULL;
 
 int uv__platform_loop_init(uv_loop_t* loop) {
@@ -958,7 +958,7 @@ int uv_get_process_title(char* buffer, size_t size) {
   else if (size <= len)
     return -ENOBUFS;
 
-  strcpy(buffer, process_argv[0]);
+  memcpy(buffer, process_argv[0], len + 1);
 
   return 0;
 }
