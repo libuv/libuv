@@ -513,7 +513,18 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
   uv__dirent_t** dents;
   uv__dirent_t* dent;
 
-  unsigned int* nbufs = uv__get_nbufs(req);
+  unsigned int* nbufs;
+  
+  /* Check to see if req passed */
+  if (req->result < 0)
+    return req->result;
+  
+  /* Ptr will be null if req was canceled or no files found */
+  if (!req->ptr)
+    return UV_EOF;
+
+  nbufs = uv__get_nbufs(req);
+  assert(nbufs);
 
   dents = req->ptr;
 
