@@ -51,6 +51,7 @@
 #define ANSI_BACKSLASH_SEEN   0x80
 
 #define MAX_INPUT_BUFFER_LENGTH 8192
+#define MAX_CONSOLE_CHAR 8192
 
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
@@ -996,6 +997,9 @@ int uv_tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
   if (handle->tty.rd.last_key_len > 0) {
     SET_REQ_SUCCESS(&handle->read_req);
     uv_insert_pending_req(handle->loop, (uv_req_t*) &handle->read_req);
+    /* Make sure no attempt is made to insert it again until it's handled. */
+    handle->flags |= UV_HANDLE_READ_PENDING;
+    handle->reqs_pending++;
     return 0;
   }
 
@@ -1609,17 +1613,29 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
                              DWORD* error) {
   /* We can only write 8k characters at a time. Windows can't handle */
   /* much more characters in a single console write anyway. */
-  WCHAR utf16_buf[8192];
+  WCHAR utf16_buf[MAX_CONSOLE_CHAR];
+  WCHAR* utf16_buffer;
   DWORD utf16_buf_used = 0;
-  unsigned int i;
+  unsigned int i, len, max_len, pos;
+  int allocate = 0;
 
-#define FLUSH_TEXT()                                                \
-  do {                                                              \
-    if (utf16_buf_used > 0) {                                       \
-      uv_tty_emit_text(handle, utf16_buf, utf16_buf_used, error);   \
-      utf16_buf_used = 0;                                           \
-    }                                                               \
-  } while (0)
+#define FLUSH_TEXT()                                                 \
+  do {                                                               \
+    pos = 0;                                                         \
+    do {                                                             \
+      len = utf16_buf_used - pos;                                    \
+      if (len > MAX_CONSOLE_CHAR)                                    \
+        len = MAX_CONSOLE_CHAR;                                      \
+      uv_tty_emit_text(handle, &utf16_buffer[pos], len, error);      \
+      pos += len;                                                    \
+    } while (pos < utf16_buf_used);                                  \
+    if (allocate) {                                                  \
+      uv__free(utf16_buffer);                                        \
+      allocate = 0;                                                  \
+      utf16_buffer = utf16_buf;                                      \
+    }                                                                \
+    utf16_buf_used = 0;                                              \
+ } while (0)
 
 #define ENSURE_BUFFER_SPACE(wchars_needed)                          \
   if (wchars_needed > ARRAY_SIZE(utf16_buf) - utf16_buf_used) {     \
@@ -1637,38 +1653,47 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
   /* state. */
   *error = ERROR_SUCCESS;
 
+  utf16_buffer = utf16_buf;
+
   uv_sem_wait(&uv_tty_output_lock);
 
   for (i = 0; i < nbufs; i++) {
     uv_buf_t buf = bufs[i];
     unsigned int j;
 
-  if (uv__vterm_state == UV_SUPPORTED) {
-    utf16_buf_used = MultiByteToWideChar(CP_UTF8,
-                                         0,
-                                         buf.base,
-                                         buf.len,
-                                         NULL,
-                                         0);
+    if (uv__vterm_state == UV_SUPPORTED && buf.len > 0) {
+      utf16_buf_used = MultiByteToWideChar(CP_UTF8,
+                                           0,
+                                           buf.base,
+                                           buf.len,
+                                           NULL,
+                                           0);
 
-    if (utf16_buf_used == 0) {
-      *error = GetLastError();
-      break;
+      if (utf16_buf_used == 0) {
+        *error = GetLastError();
+        break;
+      }
+
+      max_len = (utf16_buf_used + 1) * sizeof(WCHAR);
+      allocate = max_len > MAX_CONSOLE_CHAR;
+      if (allocate)
+        utf16_buffer = uv__malloc(max_len);
+      if (!MultiByteToWideChar(CP_UTF8,
+                               0,
+                               buf.base,
+                               buf.len,
+                               utf16_buffer,
+                               utf16_buf_used)) {
+        if (allocate)
+          uv__free(utf16_buffer);
+        *error = GetLastError();
+        break;
+      }
+
+      FLUSH_TEXT();
+
+      continue;
     }
-
-    if (!MultiByteToWideChar(CP_UTF8,
-                             0,
-                             buf.base,
-                             buf.len,
-                             utf16_buf,
-                             utf16_buf_used)) {
-      *error = GetLastError();
-      break;
-    }
-
-    FLUSH_TEXT();
-    continue;
-  }
 
     for (j = 0; j < buf.len; j++) {
       unsigned char c = buf.base[j];

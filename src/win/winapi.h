@@ -4141,14 +4141,14 @@ typedef struct _REPARSE_DATA_BUFFER {
     struct {
       UCHAR  DataBuffer[1];
     } GenericReparseBuffer;
-  } DUMMYUNIONNAME;
+  };
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
 typedef struct _IO_STATUS_BLOCK {
   union {
     NTSTATUS Status;
     PVOID Pointer;
-  } DUMMYUNIONNAME;
+  };
   ULONG_PTR Information;
 } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
 

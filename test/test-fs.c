@@ -500,6 +500,18 @@ static void empty_scandir_cb(uv_fs_t* req) {
   scandir_cb_count++;
 }
 
+static void non_existent_scandir_cb(uv_fs_t* req) {
+  uv_dirent_t dent;
+
+  ASSERT(req == &scandir_req);
+  ASSERT(req->fs_type == UV_FS_SCANDIR);
+  ASSERT(req->result == UV_ENOENT);
+  ASSERT(req->ptr == NULL);
+  ASSERT(UV_ENOENT == uv_fs_scandir_next(req, &dent));
+  uv_fs_req_cleanup(req);
+  scandir_cb_count++;
+}
+
 
 static void file_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
@@ -1130,11 +1142,15 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_mtim.tv_nsec == t.st_mtimensec);
   ASSERT(s->st_ctim.tv_sec == t.st_ctime);
   ASSERT(s->st_ctim.tv_nsec == t.st_ctimensec);
-#elif defined(__sun) || \
-      defined(_GNU_SOURCE) || \
-      defined(_BSD_SOURCE) || \
-      defined(_SVID_SOURCE) || \
-      defined(_XOPEN_SOURCE) || \
+#elif defined(__sun)           || \
+      defined(__DragonFly__)   || \
+      defined(__FreeBSD__)     || \
+      defined(__OpenBSD__)     || \
+      defined(__NetBSD__)      || \
+      defined(_GNU_SOURCE)     || \
+      defined(_BSD_SOURCE)     || \
+      defined(_SVID_SOURCE)    || \
+      defined(_XOPEN_SOURCE)   || \
       defined(_DEFAULT_SOURCE)
   ASSERT(s->st_atim.tv_sec == t.st_atim.tv_sec);
   ASSERT(s->st_atim.tv_nsec == t.st_atim.tv_nsec);
@@ -1142,10 +1158,8 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_mtim.tv_nsec == t.st_mtim.tv_nsec);
   ASSERT(s->st_ctim.tv_sec == t.st_ctim.tv_sec);
   ASSERT(s->st_ctim.tv_nsec == t.st_ctim.tv_nsec);
-# if defined(__DragonFly__)  || \
-      defined(__FreeBSD__)    || \
-      defined(__OpenBSD__)    || \
-      defined(__NetBSD__)
+# if defined(__FreeBSD__)    || \
+     defined(__NetBSD__)
   ASSERT(s->st_birthtim.tv_sec == t.st_birthtim.tv_sec);
   ASSERT(s->st_birthtim.tv_nsec == t.st_birthtim.tv_nsec);
   ASSERT(s->st_flags == t.st_flags);
@@ -2126,6 +2140,39 @@ TEST_IMPL(fs_scandir_empty_dir) {
 }
 
 
+TEST_IMPL(fs_scandir_non_existent_dir) {
+  const char* path;
+  uv_fs_t req;
+  uv_dirent_t dent;
+  int r;
+
+  path = "./non_existent_dir/";
+  loop = uv_default_loop();
+
+  uv_fs_rmdir(NULL, &req, path, NULL);
+  uv_fs_req_cleanup(&req);
+
+  /* Fill the req to ensure that required fields are cleaned up */
+  memset(&req, 0xdb, sizeof(req));
+
+  r = uv_fs_scandir(NULL, &req, path, 0, NULL);
+  ASSERT(r == UV_ENOENT);
+  ASSERT(req.result == UV_ENOENT);
+  ASSERT(req.ptr == NULL);
+  ASSERT(UV_ENOENT == uv_fs_scandir_next(&req, &dent));
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_scandir(loop, &scandir_req, path, 0, non_existent_scandir_cb);
+  ASSERT(r == 0);
+
+  ASSERT(scandir_cb_count == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(scandir_cb_count == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 TEST_IMPL(fs_scandir_file) {
   const char* path;
   int r;
@@ -2584,7 +2631,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   r = uv_fs_read(NULL, &read_req, open_req1.result,
                  iovs, iovcount, offset, NULL);
   ASSERT(r >= 0);
-  ASSERT(read_req.result == sizeof(test_buf) * iovcount);
+  ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
 
   for (index = 0; index < iovcount; ++index)
     ASSERT(strncmp(buffer + index * sizeof(test_buf),

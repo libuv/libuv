@@ -58,7 +58,8 @@ int pthread_barrier_wait(pthread_barrier_t* barrier) {
   if (++barrier->in == barrier->threshold) {
     barrier->in = 0;
     barrier->out = barrier->threshold - 1;
-    assert(pthread_cond_signal(&barrier->cond) == 0);
+    rc = pthread_cond_signal(&barrier->cond);
+    assert(rc == 0);
 
     pthread_mutex_unlock(&barrier->mutex);
     return PTHREAD_BARRIER_SERIAL_THREAD;

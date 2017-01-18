@@ -41,6 +41,7 @@ typedef intptr_t ssize_t;
 
 #include <process.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <stdint.h>
 
@@ -77,7 +78,6 @@ typedef intptr_t ssize_t;
 #ifndef SIGABRT_COMPAT
 # define SIGABRT_COMPAT       6
 #endif
-
 
 typedef int (WSAAPI* LPFN_WSARECV)
             (SOCKET socket,
