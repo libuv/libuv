@@ -106,7 +106,7 @@ TEST_IMPL(ref) {
 }
 
 
-TEST_IMPL(idle_ref) {
+TEST_IMPL(spin_ref) {
   uv_spin_t h;
   uv_spin_init(uv_default_loop(), &h);
   uv_spin_start(&h, (uv_spin_cb) fail_cb2);
