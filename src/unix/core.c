@@ -126,7 +126,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     break;
 
   case UV_SPIN:
-    uv__spin_close((uv_spin_t *) handle);
+    uv__spin_close((uv_spin_t*)handle);
     break;
 
   case UV_ASYNC:

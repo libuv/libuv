@@ -133,7 +133,7 @@ static void spin_2_cb(uv_spin_t* handle) {
 
   spin_2_cb_called++;
 
-  uv_close((uv_handle_t *) handle, spin_2_close_cb);
+  uv_close((uv_handle_t*)handle, spin_2_close_cb);
 }
 
 
@@ -231,7 +231,7 @@ static void check_cb(uv_check_t* handle) {
     /* This handle is closed/recreated every time, close it only if it is */
     /* active.*/
     if (spin_2_is_active) {
-      uv_close((uv_handle_t *) &spin_2_handle, spin_2_close_cb);
+      uv_close((uv_handle_t*)&spin_2_handle, spin_2_close_cb);
     }
   }
 

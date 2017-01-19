@@ -115,7 +115,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       return;
 
     case UV_SPIN:
-      uv__spin_close((uv_spin_t*) handle);
+      uv__spin_close((uv_spin_t*)handle);
       uv__handle_closing(handle);
       uv_want_endgame(loop, handle);
       return;

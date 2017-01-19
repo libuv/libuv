@@ -28,7 +28,7 @@ static uv_spin_t spin_handle;
 static int spin_counter;
 
 
-static void spin_cb(uv_spin_t *handle) {
+static void spin_cb(uv_spin_t* handle) {
   ASSERT(handle == &spin_handle);
 
   if (++spin_counter == NUM_TICKS)

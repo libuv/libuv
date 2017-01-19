@@ -51,7 +51,7 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 
-static void spin_cb(uv_spin_t *handle) {
+static void spin_cb(uv_spin_t* handle) {
   ASSERT(handle == &spin_handle);
 
   spin_cb_called++;
