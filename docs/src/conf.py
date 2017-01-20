@@ -23,7 +23,7 @@ def get_libuv_version():
     try:
         m = re.search(r"""^#define UV_VERSION_MAJOR (\d)$""", data, re.MULTILINE)
         major = int(m.group(1))
-        m = re.search(r"""^#define UV_VERSION_MINOR (\d)$""", data, re.MULTILINE)
+        m = re.search(r"""^#define UV_VERSION_MINOR (\d+)$""", data, re.MULTILINE)
         minor = int(m.group(1))
         m = re.search(r"""^#define UV_VERSION_PATCH (\d)$""", data, re.MULTILINE)
         patch = int(m.group(1))
