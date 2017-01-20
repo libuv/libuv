@@ -1533,7 +1533,7 @@ TEST_IMPL(spawn_reads_child_path) {
    * so we need to add .libs/ to PATH,
    * see https://github.com/libuv/libuv/issues/1200
    */
-#ifdef _WIN32
+#ifdef __MINGW32__
   char libs_path[1024];
   strcpy(libs_path, ";");
   strcpy(libs_path + 1, exepath);
