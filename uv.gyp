@@ -10,10 +10,10 @@
           ['OS=="solaris"', {
             'cflags': [ '-pthreads' ],
           }],
-          ['OS not in "solaris android zos"', {
+          ['OS not in "solaris android os390"', {
             'cflags': [ '-pthread' ],
           }],
-          ['OS in "zos"', {
+          ['OS in "os390"', {
             'defines': [
               '_UNIX03_THREADS',
               '_UNIX03_SOURCE',
@@ -172,10 +172,10 @@
               ['OS=="solaris"', {
                 'ldflags': [ '-pthreads' ],
               }],
-              [ 'OS=="zos" and uv_library=="shared_library"', {
+              [ 'OS=="os390" and uv_library=="shared_library"', {
                 'ldflags': [ '-Wl,DLL' ],
               }],
-              ['OS != "solaris" and OS != "android" and OS != "zos"', {
+              ['OS != "solaris" and OS != "android" and OS != "os390"', {
                 'ldflags': [ '-pthread' ],
               }],
             ],
@@ -183,14 +183,14 @@
           'conditions': [
             ['uv_library=="shared_library"', {
               'conditions': [
-                ['OS=="zos"', {
+                ['OS=="os390"', {
                   'cflags': [ '-qexportall' ],
                 }, {
                   'cflags': [ '-fPIC' ],
                 }],
               ],
             }],
-            ['uv_library=="shared_library" and OS!="mac" and OS!="zos"', {
+            ['uv_library=="shared_library" and OS!="mac" and OS!="os390"', {
               # This will cause gyp to set soname
               # Must correspond with UV_VERSION_MAJOR
               # in include/uv-version.h
@@ -201,7 +201,7 @@
         [ 'OS in "linux mac ios android"', {
           'sources': [ 'src/unix/proctitle.c' ],
         }],
-        [ 'OS != "zos"', {
+        [ 'OS != "os390"', {
           'cflags': [
             '-fvisibility=hidden',
             '-g',
@@ -224,7 +224,7 @@
             '_DARWIN_UNLIMITED_SELECT=1',
           ]
         }],
-        [ 'OS!="mac" and OS!="zos"', {
+        [ 'OS!="mac" and OS!="os390"', {
           # Enable on all platforms except OS X. The antique gcc/clang that
           # ships with Xcode emits waaaay too many false positives.
           'cflags': [ '-Wstrict-aliasing' ],
@@ -304,7 +304,7 @@
         ['uv_library=="shared_library"', {
           'defines': [ 'BUILDING_UV_SHARED=1' ]
         }],
-        ['OS=="zos"', {
+        ['OS=="os390"', {
           'sources': [
             'src/unix/pthread-fixes.c',
             'src/unix/pthread-barrier.c',
@@ -470,7 +470,7 @@
             'test/runner-unix.h',
           ],
           'conditions': [
-            [ 'OS != "zos"', {
+            [ 'OS != "os390"', {
               'defines': [ '_GNU_SOURCE' ],
               'cflags': [ '-Wno-long-long' ],
               'xcode_settings': {
@@ -499,7 +499,7 @@
         ['uv_library=="shared_library"', {
           'defines': [ 'USING_UV_SHARED=1' ],
           'conditions': [
-            [ 'OS == "zos"', {
+            [ 'OS == "os390"', {
               'cflags': [ '-Wc,DLL' ],
             }],
           ],
@@ -560,7 +560,7 @@
         ['uv_library=="shared_library"', {
           'defines': [ 'USING_UV_SHARED=1' ],
           'conditions': [
-            [ 'OS == "zos"', {
+            [ 'OS == "os390"', {
               'cflags': [ '-Wc,DLL' ],
             }],
           ],
