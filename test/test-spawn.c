@@ -1528,6 +1528,18 @@ TEST_IMPL(spawn_reads_child_path) {
   exepath[len] = 0;
   strcpy(path, "PATH=");
   strcpy(path + 5, exepath);
+  
+  /* libuv-1.dll isn't located in test/.libs/,
+   * so we need to add .libs/ to PATH,
+   * see https://github.com/libuv/libuv/issues/1200
+   */
+#ifdef _WIN32
+  char libs_path[1024];
+  strcpy(libs_path, ";");
+  strcpy(libs_path + 1, exepath);
+  strcpy(libs_path + strlen(libs_path), "\\..\\..\\.libs\\");
+  strcpy(path + strlen(path), libs_path);
+#endif
 
   env[0] = path;
   env[1] = getenv(dyld_path_var);
