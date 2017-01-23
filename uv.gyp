@@ -198,7 +198,7 @@
             }],
           ],
         }],
-        [ 'OS in "linux mac ios android"', {
+        [ 'OS in "linux mac ios android os390"', {
           'sources': [ 'src/unix/proctitle.c' ],
         }],
         [ 'OS != "os390"', {
