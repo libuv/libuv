@@ -234,7 +234,7 @@ int process_read_last_line(process_info_t *p,
                            size_t buffer_len) {
   DWORD size;
   DWORD read;
-  DWORD start;
+  int start;
   OVERLAPPED overlapped;
 
   ASSERT(buffer_len > 0);
@@ -258,6 +258,11 @@ int process_read_last_line(process_info_t *p,
   for (start = read - 1; start >= 0; start--) {
     if (buffer[start] == '\n' || buffer[start] == '\r')
       break;
+  }
+
+  if (start < 0) {
+	  /* In case of no CRLF */
+	  start = 0;
   }
 
   if (start > 0)
