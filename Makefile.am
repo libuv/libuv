@@ -288,7 +288,7 @@ test_run_tests_SOURCES += test/runner-unix.c \
 endif
 
 if AIX
-test_run_tests_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT
+test_run_tests_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=700 -D_LINUX_SOURCE_COMPAT
 endif
 
 if LINUX
@@ -316,7 +316,7 @@ test_run_tests_CFLAGS += -D_UNIX03_THREADS \
 endif
 
 if AIX
-libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT -D_THREAD_SAFE
+libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=700 -D_LINUX_SOURCE_COMPAT -D_THREAD_SAFE
 include_HEADERS += include/uv-aix.h
 libuv_la_SOURCES += src/unix/aix.c
 endif
