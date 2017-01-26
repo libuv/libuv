@@ -924,5 +924,44 @@ int uv__udp_try_send(uv_udp_t* handle,
                      unsigned int nbufs,
                      const struct sockaddr* addr,
                      unsigned int addrlen) {
-  return UV_ENOSYS;
+
+  DWORD bytes;
+  const struct sockaddr* bind_addr;
+  int err;
+
+  assert(nbufs > 0);
+
+  /* already sending a message */
+  if (handle->send_queue_count != 0)
+  return UV_EAGAIN;
+
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    if (addrlen == sizeof(uv_addr_ip4_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip4_any_;
+    }
+    else if (addrlen == sizeof(uv_addr_ip6_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
+    }
+    else {
+      abort();
+    }
+    err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
+    if (err)
+      return uv_translate_sys_error(err);
+  }
+
+  err = WSASendTo(handle->socket,
+    (WSABUF*)bufs,
+    nbufs,
+    &bytes,
+    0,
+    addr,
+    addrlen,
+    NULL,
+    NULL);
+
+  if (err)
+    return uv_translate_sys_error(WSAGetLastError());
+
+  return bytes;
 }
