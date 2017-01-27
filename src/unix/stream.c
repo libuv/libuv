@@ -785,7 +785,12 @@ start:
     struct msghdr msg;
     struct cmsghdr *cmsg;
     int fd_to_send = uv__handle_fd((uv_handle_t*) req->send_handle);
-    char scratch[64] = {0};
+    union {
+      char data[64];
+      struct cmsghdr alias;
+    } scratch;
+
+    memset(&scratch, 0, sizeof(scratch));
 
     assert(fd_to_send >= 0);
 
@@ -795,7 +800,7 @@ start:
     msg.msg_iovlen = iovcnt;
     msg.msg_flags = 0;
 
-    msg.msg_control = (void*) scratch;
+    msg.msg_control = &scratch.alias;
     msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));
 
     cmsg = CMSG_FIRSTHDR(&msg);

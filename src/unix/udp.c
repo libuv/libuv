@@ -349,7 +349,11 @@ out:
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
                                        int domain,
                                        unsigned int flags) {
-  unsigned char taddr[sizeof(struct sockaddr_in6)];
+  union {
+    struct sockaddr_in6 in6;
+    struct sockaddr_in in;
+    struct sockaddr addr;
+  } taddr;
   socklen_t addrlen;
 
   if (handle->io_watcher.fd != -1)
@@ -358,7 +362,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
   switch (domain) {
   case AF_INET:
   {
-    struct sockaddr_in* addr = (void*)&taddr;
+    struct sockaddr_in* addr = &taddr.in;
     memset(addr, 0, sizeof *addr);
     addr->sin_family = AF_INET;
     addr->sin_addr.s_addr = INADDR_ANY;
@@ -367,7 +371,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
   }
   case AF_INET6:
   {
-    struct sockaddr_in6* addr = (void*)&taddr;
+    struct sockaddr_in6* addr = &taddr.in6;
     memset(addr, 0, sizeof *addr);
     addr->sin6_family = AF_INET6;
     addr->sin6_addr = in6addr_any;
@@ -379,7 +383,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
     abort();
   }
 
-  return uv__udp_bind(handle, (const struct sockaddr*) &taddr, addrlen, flags);
+  return uv__udp_bind(handle, &taddr.addr, addrlen, flags);
 }
 
 
