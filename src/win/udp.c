@@ -924,14 +924,13 @@ int uv__udp_try_send(uv_udp_t* handle,
                      unsigned int nbufs,
                      const struct sockaddr* addr,
                      unsigned int addrlen) {
-
   DWORD bytes;
   const struct sockaddr* bind_addr;
   int err;
 
   assert(nbufs > 0);
 
-  /* already sending a message */
+  /* Already sending a message.*/
   if (handle->send_queue_count != 0)
     return UV_EAGAIN;
 
