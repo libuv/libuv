@@ -293,6 +293,11 @@ error:
     handle->short_filew = NULL;
   }
 
+  if (handle->dirw) {
+	  assert(is_path_dir);
+	  assert(handle->dirw == pathw);
+	  handle->dirw = NULL;
+  }
   uv__free(pathw);
 
   if (handle->dir_handle != INVALID_HANDLE_VALUE) {
