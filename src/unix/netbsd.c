@@ -18,6 +18,9 @@
  * IN THE SOFTWARE.
  */
 
+/* needs kernel internal types */
+#define _KMEMUSER 1
+
 #include "uv.h"
 #include "internal.h"
 
