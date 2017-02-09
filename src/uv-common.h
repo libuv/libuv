@@ -31,7 +31,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#if defined(_MSC_VER) && _MSC_VER < 1600
+#if defined(_MSC_VER) && (_MSC_VER < 1600)
 # include "stdint-msvc2008.h"
 #else
 # include <stdint.h>
@@ -41,7 +41,7 @@
 #include "tree.h"
 #include "queue.h"
 
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
+#if !defined(snprintf) && defined(_MSC_VER) && (_MSC_VER < 1900)
 extern int snprintf(char*, size_t, const char*, ...);
 #endif
 

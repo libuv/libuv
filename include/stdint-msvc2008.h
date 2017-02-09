@@ -56,7 +56,7 @@ extern "C" {
 
 // Define _W64 macros to mark types changing their size, like intptr_t.
 #ifndef _W64
-#  if !defined(__midl) && (defined(_X86_) || defined(_M_IX86)) && _MSC_VER >= 1300
+#  if !defined(__midl) && (defined(_X86_) || defined(_M_IX86)) && (_MSC_VER >= 1300)
 #     define _W64 __w64
 #  else
 #     define _W64

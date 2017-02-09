@@ -437,11 +437,11 @@ FILE* uv__open_file(const char* path) {
   if (fd < 0)
     return NULL;
 
-   fp = fdopen(fd, "r");
-   if (fp == NULL)
-     uv__close(fd);
+  fp = fdopen(fd, "r");
+  if (fp == NULL)
+    uv__close(fd);
 
-   return fp;
+  return fp;
 }
 
 
@@ -451,7 +451,7 @@ int uv__accept(int sockfd) {
 
   assert(sockfd >= 0);
 
-  while (1) {
+  for (;;) {
 #if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 10)
     static int no_accept4;
 

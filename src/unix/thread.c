@@ -530,6 +530,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
     return -ETIMEDOUT;
 
   abort();
+  /* NOTREACHED */
   return -EINVAL;  /* Satisfy the compiler. */
 }
 

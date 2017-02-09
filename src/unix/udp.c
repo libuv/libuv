@@ -358,7 +358,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
   switch (domain) {
   case AF_INET:
   {
-    struct sockaddr_in* addr = (void*)&taddr;
+    struct sockaddr_in* addr = (void*)&taddr[0];
     memset(addr, 0, sizeof *addr);
     addr->sin_family = AF_INET;
     addr->sin_addr.s_addr = INADDR_ANY;
@@ -367,7 +367,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
   }
   case AF_INET6:
   {
-    struct sockaddr_in6* addr = (void*)&taddr;
+    struct sockaddr_in6* addr = (void*)&taddr[0];
     memset(addr, 0, sizeof *addr);
     addr->sin6_family = AF_INET6;
     addr->sin6_addr = in6addr_any;
@@ -376,10 +376,11 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
   }
   default:
     assert(0 && "unsupported address family");
+    /* NOTREACHED */
     abort();
   }
 
-  return uv__udp_bind(handle, (const struct sockaddr*) &taddr, addrlen, flags);
+  return uv__udp_bind(handle, (const struct sockaddr*) &taddr[0], addrlen, flags);
 }
 
 
@@ -831,6 +832,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
     }
   } else {
     assert(0 && "unexpected address family");
+    /* NOTREACHED */
     abort();
   }
 

@@ -19,7 +19,6 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
 #include "uv-common.h"
 
 #include <assert.h>
@@ -160,8 +159,9 @@ static const char* uv__unknown_err_code(int err) {
 const char* uv_err_name(int err) {
   switch (err) {
     UV_ERRNO_MAP(UV_ERR_NAME_GEN)
+    default:
+      return uv__unknown_err_code(err);
   }
-  return uv__unknown_err_code(err);
 }
 #undef UV_ERR_NAME_GEN
 
@@ -170,8 +170,9 @@ const char* uv_err_name(int err) {
 const char* uv_strerror(int err) {
   switch (err) {
     UV_ERRNO_MAP(UV_STRERROR_GEN)
+    default:
+      return uv__unknown_err_code(err);
   }
-  return uv__unknown_err_code(err);
 }
 #undef UV_STRERROR_GEN
 

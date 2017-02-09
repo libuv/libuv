@@ -18,13 +18,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(_MSC_VER) && _MSC_VER < 1600
+#if defined(_MSC_VER) && (_MSC_VER < 1600)
 # include "stdint-msvc2008.h"
 #else
 # include <stdint.h>
 #endif
 
-#include "uv.h"
 #include "uv-common.h"
 
 #define UV__INET_ADDRSTRLEN         16
