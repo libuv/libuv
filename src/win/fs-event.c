@@ -188,7 +188,6 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   if (is_path_dir) {
      /* path is a directory, so that's the directory that we will watch. */
-    handle->dirw = pathw;
     dir_to_watch = pathw;
   } else {
     /*
@@ -274,6 +273,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     goto error;
   }
 
+  assert(is_path_dir ? pathw != NULL : pathw == NULL);
+  handle->dirw = pathw;
   handle->req_pending = 1;
   return 0;
 
