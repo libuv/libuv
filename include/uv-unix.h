@@ -23,8 +23,6 @@
 #define UV_UNIX_H
 
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <dirent.h>
 
 #include <sys/socket.h>
@@ -40,9 +38,6 @@
 #include <semaphore.h>
 #endif
 #include <pthread.h>
-#include <signal.h>
-
-#include "uv-threadpool.h"
 
 #if defined(__linux__)
 # include "uv-linux.h"
@@ -357,13 +352,7 @@ typedef struct {
   int mode;
 
 #define UV_SIGNAL_PRIVATE_FIELDS                                              \
-  /* RB_ENTRY(uv_signal_s) tree_entry; */                                     \
-  struct {                                                                    \
-    struct uv_signal_s* rbe_left;                                             \
-    struct uv_signal_s* rbe_right;                                            \
-    struct uv_signal_s* rbe_parent;                                           \
-    int rbe_color;                                                            \
-  } tree_entry;                                                               \
+  RB_ENTRY(uv_signal_s) tree_entry;                                            \
   /* Use two counters here so we don have to fiddle with atomics. */          \
   unsigned int caught_signals;                                                \
   unsigned int dispatched_signals;
