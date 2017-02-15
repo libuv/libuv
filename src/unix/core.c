@@ -839,13 +839,8 @@ void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    * every tick of the event loop but the other backends allow us to
    * short-circuit here if the event mask is unchanged.
    */
-  if (w->events == w->pevents) {
-    if (w->events == 0 && !QUEUE_EMPTY(&w->watcher_queue)) {
-      QUEUE_REMOVE(&w->watcher_queue);
-      QUEUE_INIT(&w->watcher_queue);
-    }
+  if (w->events == w->pevents)
     return;
-  }
 #endif
 
   if (QUEUE_EMPTY(&w->watcher_queue))
