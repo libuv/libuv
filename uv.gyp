@@ -298,6 +298,7 @@
           'link_settings': {
             'libraries': [ '-lkvm' ],
           },
+          'sources': [ 'src/unix/posix-hrtime.c' ],
         }],
         [ 'OS in "ios mac freebsd dragonflybsd openbsd netbsd".split()', {
           'sources': [ 'src/unix/kqueue.c' ],
