@@ -43,9 +43,6 @@
 #include <unistd.h>
 #include <time.h>
 
-#undef NANOSEC
-#define NANOSEC ((uint64_t) 1e9)
-
 static char *process_title;
 
 
@@ -55,13 +52,6 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
 
 void uv__platform_loop_delete(uv_loop_t* loop) {
-}
-
-
-uint64_t uv__hrtime(uv_clocktype_t type) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (((uint64_t) ts.tv_sec) * NANOSEC + ts.tv_nsec);
 }
 
 
