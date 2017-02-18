@@ -338,7 +338,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
     if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)) ||
         (ent->ifa_addr == NULL) ||
-        (ent->ifa_addr->sa_family != AF_LINK)) {
+        (ent->ifa_addr->sa_family != PF_INET)) {
       continue;
     }
 
