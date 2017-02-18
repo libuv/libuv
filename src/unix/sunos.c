@@ -783,6 +783,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     if (ent->ifa_addr == NULL)
       continue;
 
+    if (ent->ifa_addr->sa_family == PF_PACKET)
+      continue;
+
     address->name = uv__strdup(ent->ifa_name);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
