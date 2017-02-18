@@ -349,6 +349,19 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   uv__free(cpu_infos);
 }
 
+static int uv__ifaddr_exclude(struct ifaddrs *ent) {
+  if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
+    return 1;
+  if (ent->ifa_addr == NULL)
+    return 1;
+  /*
+   * On FreeBSD getifaddrs returns information related to the raw underlying
+   * devices. We're not interested in this information yet.
+   */
+  if (ent->ifa_addr->sa_family == AF_LINK)
+    return 1;
+  return 0;
+}
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifaddrs *addrs, *ent;
@@ -363,12 +376,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)) ||
-        (ent->ifa_addr == NULL) ||
-        (ent->ifa_addr->sa_family == AF_LINK)) {
+    if (uv__ifaddr_exclude(ent))
       continue;
-    }
-
     (*count)++;
   }
 
@@ -381,17 +390,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   address = *addresses;
 
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
-      continue;
-
-    if (ent->ifa_addr == NULL)
-      continue;
-
-    /*
-     * On FreeBSD getifaddrs returns information related to the raw underlying
-     * devices. We're not interested in this information yet.
-     */
-    if (ent->ifa_addr->sa_family == AF_LINK)
+    if (uv__ifaddr_exclude(ent))
       continue;
 
     address->name = uv__strdup(ent->ifa_name);
@@ -415,11 +414,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* Fill in physical addresses for each interface */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)) ||
-        (ent->ifa_addr == NULL) ||
-        (ent->ifa_addr->sa_family != AF_LINK)) {
+    if (uv__ifaddr_exclude(ent))
       continue;
-    }
 
     address = *addresses;
 
