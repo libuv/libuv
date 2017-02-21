@@ -317,6 +317,7 @@
           'sources': [
             'src/unix/pthread-fixes.c',
             'src/unix/pthread-barrier.c',
+            'src/unix/no-fsevents.c',
             'src/unix/os390.c',
             'src/unix/os390-syscalls.c'
           ]
