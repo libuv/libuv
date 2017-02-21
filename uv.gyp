@@ -301,7 +301,10 @@
           'sources': [ 'src/unix/posix-hrtime.c' ],
         }],
         [ 'OS in "ios mac freebsd dragonflybsd openbsd netbsd".split()', {
-          'sources': [ 'src/unix/kqueue.c' ],
+          'sources': [
+            'src/unix/bsd-ifaddrs.c',
+            'src/unix/kqueue.c',
+          ],
         }],
         ['uv_library=="shared_library"', {
           'defines': [ 'BUILDING_UV_SHARED=1' ]
