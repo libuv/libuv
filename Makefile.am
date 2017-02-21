@@ -339,7 +339,8 @@ include_HEADERS += include/uv-darwin.h \
                    include/pthread-barrier.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
-libuv_la_SOURCES += src/unix/darwin.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/darwin.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
@@ -350,7 +351,8 @@ endif
 
 if DRAGONFLY
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/freebsd.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/freebsd.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
@@ -358,7 +360,8 @@ endif
 
 if FREEBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/freebsd.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/freebsd.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
@@ -377,7 +380,8 @@ endif
 
 if NETBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/kqueue.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/kqueue.c \
                     src/unix/netbsd.c \
                     src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
@@ -385,7 +389,8 @@ endif
 
 if OPENBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/kqueue.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/kqueue.c \
                     src/unix/openbsd.c \
                     src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
