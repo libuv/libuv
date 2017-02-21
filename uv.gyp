@@ -256,7 +256,10 @@
           },
         }],
         [ 'OS=="solaris"', {
-          'sources': [ 'src/unix/sunos.c' ],
+          'sources': [
+            'src/unix/no-proctitle.c',
+            'src/unix/sunos.c',
+          ],
           'defines': [
             '__EXTENSIONS__',
             '_XOPEN_SOURCE=500',
