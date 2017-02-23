@@ -176,12 +176,16 @@ int uv__tcp_connect(uv_connect_t* req,
   if (r == -1 && errno != 0) {
     if (errno == EINPROGRESS)
       ; /* not an error */
+#if defined(__MVS__)
+    else if (errno == ECONNREFUSED || errno == EADDRINUSE)
+#else
     else if (errno == ECONNREFUSED)
+#endif
     /* If we get a ECONNREFUSED wait until the next tick to report the
      * error. Solaris wants to report immediately--other unixes want to
      * wait.
      */
-      handle->delayed_error = -errno;
+      handle->delayed_error = -ECONNREFUSED;
     else
       return -errno;
   }
