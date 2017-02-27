@@ -770,7 +770,7 @@ start:
   iov = (struct iovec*) &(req->bufs[req->write_index]);
   iovcnt = req->nbufs - req->write_index;
 
-  iovmax = uv__getiovmax();
+  iovmax = uv_getiovmax();
 
   /* Limit iov count to avoid EINVALs from writev() */
   if (iovcnt > iovmax)

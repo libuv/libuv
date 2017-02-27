@@ -441,6 +441,8 @@ UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
 
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
+UV_EXTERN int uv_getiovmax(void);
+
 
 #define UV_STREAM_FIELDS                                                      \
   /* number of bytes queued for writing */                                    \

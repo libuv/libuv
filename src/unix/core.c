@@ -36,7 +36,7 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
+#include <limits.h> /* INT_MAX, PATH_MAX */
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
 #include <pwd.h>
@@ -203,26 +203,6 @@ void uv__make_close_pending(uv_handle_t* handle) {
   handle->next_closing = handle->loop->closing_handles;
   handle->loop->closing_handles = handle;
 }
-
-int uv__getiovmax(void) {
-#if defined(IOV_MAX)
-  return IOV_MAX;
-#elif defined(_SC_IOV_MAX)
-  static int iovmax = -1;
-  if (iovmax == -1) {
-    iovmax = sysconf(_SC_IOV_MAX);
-    /* On some embedded devices (arm-linux-uclibc based ip camera),
-     * sysconf(_SC_IOV_MAX) can not get the correct value. The return
-     * value is -1 and the errno is EINPROGRESS. Degrade the value to 1.
-     */
-    if (iovmax == -1) iovmax = 1;
-  }
-  return iovmax;
-#else
-  return 1024;
-#endif
-}
-
 
 static void uv__finish_close(uv_handle_t* handle) {
   /* Note: while the handle is in the UV_CLOSING state now, it's still possible
