@@ -270,11 +270,19 @@ API
 
 .. c:function:: int uv_cwd(char* buffer, size_t* size)
 
-    Gets the current working directory.
+    Gets the current working directory, and stores it in `buffer`. If the
+    current working directory is too large to fit in `buffer`, this function
+    returns `UV_ENOBUFS`, and sets `size` to the required length, including the
+    null terminator.
 
     .. versionchanged:: 1.1.0
 
         On Unix the path no longer ends in a slash.
+
+    .. versionchanged:: 1.9.0 the returned length includes the terminating null
+                        byte on `UV_ENOBUFS`, and the buffer is null terminated
+                        on success.
+
 
 .. c:function:: int uv_chdir(const char* dir)
 
