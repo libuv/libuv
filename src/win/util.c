@@ -59,6 +59,9 @@
 # define UNLEN 256
 #endif
 
+/* Maximum environment variable size, including the terminating null */
+#define MAX_ENV_VAR_LENGTH 32767
+
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
@@ -1386,4 +1389,181 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
 int uv_os_get_passwd(uv_passwd_t* pwd) {
   return uv__getpwuid_r(pwd);
+}
+
+
+int uv_os_getenv(const char* name, char* buffer, size_t* size) {
+  wchar_t var[MAX_ENV_VAR_LENGTH];
+  wchar_t* name_w;
+  DWORD bufsize;
+  size_t len;
+  int r;
+
+  if (name == NULL || buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
+
+  /* Determine the size of the wide character name */
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0);
+
+  if (bufsize == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  /* Convert the environment variable name to a wide character string */
+  name_w = uv__malloc(sizeof(wchar_t) * bufsize);
+
+  if (name_w == NULL)
+    return UV_ENOMEM;
+
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, name_w, bufsize);
+
+  if (bufsize == 0) {
+    uv__free(name_w);
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  len = GetEnvironmentVariableW(name_w, var, MAX_ENV_VAR_LENGTH);
+  uv__free(name_w);
+  assert(len < MAX_ENV_VAR_LENGTH); /* len does not include the null */
+
+  if (len == 0) {
+    r = GetLastError();
+
+    if (r == ERROR_ENVVAR_NOT_FOUND)
+      return UV_ENOENT;
+
+    return uv_translate_sys_error(r);
+  }
+
+  /* Check how much space we need */
+  bufsize = WideCharToMultiByte(CP_UTF8, 0, var, -1, NULL, 0, NULL, NULL);
+
+  if (bufsize == 0) {
+    return uv_translate_sys_error(GetLastError());
+  } else if (bufsize > *size) {
+    *size = bufsize;
+    return UV_ENOBUFS;
+  }
+
+  /* Convert to UTF-8 */
+  bufsize = WideCharToMultiByte(CP_UTF8,
+                                0,
+                                var,
+                                -1,
+                                buffer,
+                                *size,
+                                NULL,
+                                NULL);
+
+  if (bufsize == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  *size = bufsize - 1;
+  return 0;
+}
+
+
+int uv_os_setenv(const char* name, const char* value) {
+  wchar_t* name_w;
+  wchar_t* value_w;
+  DWORD bufsize;
+  int r;
+
+  if (name == NULL || value == NULL)
+    return UV_EINVAL;
+
+  name_w = NULL;
+  value_w = NULL;
+  r = 0;
+
+  /* Determine the size of the wide character name */
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0);
+
+  if (bufsize == 0) {
+    r = uv_translate_sys_error(GetLastError());
+    goto out;
+  }
+
+  /* Convert the environment variable name to a wide character string */
+  name_w = uv__malloc(sizeof(wchar_t) * bufsize);
+
+  if (name_w == NULL) {
+    r = UV_ENOMEM;
+    goto out;
+  }
+
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, name_w, bufsize);
+
+  if (bufsize == 0) {
+    r = uv_translate_sys_error(GetLastError());
+    goto out;
+  }
+
+  /* Determine the size of the wide character value */
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, value, -1, NULL, 0);
+
+  if (bufsize == 0) {
+    r = uv_translate_sys_error(GetLastError());
+    goto out;
+  }
+
+  /* Convert the environment variable value to a wide character string */
+  value_w = uv__malloc(sizeof(wchar_t) * bufsize);
+
+  if (value_w == NULL) {
+    r = UV_ENOMEM;
+    goto out;
+  }
+
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, value, -1, value_w, bufsize);
+
+  if (bufsize == 0) {
+    r = uv_translate_sys_error(GetLastError());
+    goto out;
+  }
+
+  if (SetEnvironmentVariableW(name_w, value_w) == 0)
+    r = uv_translate_sys_error(GetLastError());
+
+out:
+  uv__free(name_w);
+  uv__free(value_w);
+
+  return r;
+}
+
+
+int uv_os_unsetenv(const char* name) {
+  wchar_t* name_w;
+  DWORD bufsize;
+  int r;
+
+  if (name == NULL)
+    return UV_EINVAL;
+
+  /* Determine the size of the wide character name */
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0);
+
+  if (bufsize == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  /* Convert the environment variable name to a wide character string */
+  name_w = uv__malloc(sizeof(wchar_t) * bufsize);
+
+  if (name_w == NULL)
+    return UV_ENOMEM;
+
+  bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, name_w, bufsize);
+
+  if (bufsize == 0) {
+    uv__free(name_w);
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  r = SetEnvironmentVariableW(name_w, NULL);
+  uv__free(name_w);
+
+  if (r == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  return 0;
 }

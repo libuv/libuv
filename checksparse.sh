@@ -93,6 +93,7 @@ test/test-cwd-and-chdir.c
 test/test-delayed-accept.c
 test/test-dlerror.c
 test/test-embed.c
+test/test-env-vars.c
 test/test-error.c
 test/test-fail-always.c
 test/test-fs-event.c

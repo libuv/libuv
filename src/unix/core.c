@@ -1240,3 +1240,48 @@ int uv_translate_sys_error(int sys_errno) {
   /* If < 0 then it's already a libuv error. */
   return sys_errno <= 0 ? sys_errno : -sys_errno;
 }
+
+
+int uv_os_getenv(const char* name, char* buffer, size_t* size) {
+  char* var;
+  size_t len;
+
+  if (name == NULL || buffer == NULL || size == NULL || *size == 0)
+    return -EINVAL;
+
+  var = getenv(name);
+
+  if (var == NULL)
+    return -ENOENT;
+
+  len = strlen(var);
+
+  if (len >= *size) {
+    *size = len + 1;
+    return -ENOBUFS;
+  }
+
+  memcpy(buffer, var, len + 1);
+  *size = len;
+
+  return 0;
+}
+
+
+int uv_os_setenv(const char* name, const char* value) {
+  if (value == NULL)
+    return -EINVAL;
+
+  if (setenv(name, value, 1) != 0)
+    return -errno;
+
+  return 0;
+}
+
+
+int uv_os_unsetenv(const char* name) {
+  if (unsetenv(name) != 0)
+    return -errno;
+
+  return 0;
+}

@@ -153,6 +153,7 @@ TEST_DECLARE   (shutdown_close_pipe)
 TEST_DECLARE   (shutdown_eof)
 TEST_DECLARE   (shutdown_twice)
 TEST_DECLARE   (callback_stack)
+TEST_DECLARE   (env_vars)
 TEST_DECLARE   (error_message)
 TEST_DECLARE   (sys_error)
 TEST_DECLARE   (timer)
@@ -549,6 +550,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (callback_stack)
   TEST_HELPER (callback_stack, tcp4_echo_server)
+
+  TEST_ENTRY  (env_vars)
 
   TEST_ENTRY  (error_message)
   TEST_ENTRY  (sys_error)

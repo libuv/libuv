@@ -344,6 +344,7 @@
         'test/test-error.c',
         'test/test-embed.c',
         'test/test-emfile.c',
+        'test/test-env-vars.c',
         'test/test-fail-always.c',
         'test/test-fs.c',
         'test/test-fs-event.c',

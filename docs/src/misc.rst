@@ -386,3 +386,38 @@ API
         stability guarantees.
 
     .. versionadded:: 1.8.0
+
+.. c:function:: int uv_os_getenv(const char* name, char* buffer, size_t* size)
+
+    Retrieves the environment variable specified by `name`, copies its value
+    into `buffer`, and sets `size` to the string length of the value. When
+    calling this function, `size` must be set to the amount of storage available
+    in `buffer`, including the null terminator. If the environment variable
+    exceeds the storage available in `buffer`, `UV_ENOBUFS` is returned, and
+    `size` is set to the amount of storage required to hold the value. If no
+    matching environment variable exists, `UV_ENOENT` is returned.
+
+    .. warning::
+        This function is not thread safe.
+
+    .. versionadded:: 1.12.0
+
+.. c:function:: int uv_os_setenv(const char* name, const char* value)
+
+    Creates or updates the environment variable specified by `name` with
+    `value`.
+
+    .. warning::
+        This function is not thread safe.
+
+    .. versionadded:: 1.12.0
+
+.. c:function:: int uv_os_unsetenv(const char* name)
+
+    Deletes the environment variable specified by `name`. If no such environment
+    variable exists, this function returns successfully.
+
+    .. warning::
+        This function is not thread safe.
+
+    .. versionadded:: 1.12.0

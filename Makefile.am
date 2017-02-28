@@ -166,6 +166,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-eintr-handling.c \
                          test/test-embed.c \
                          test/test-emfile.c \
+                         test/test-env-vars.c \
                          test/test-error.c \
                          test/test-fail-always.c \
                          test/test-fs-event.c \
