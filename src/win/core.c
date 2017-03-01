@@ -470,7 +470,7 @@ static int uv__loop_alive(const uv_loop_t* loop) {
 
 
 int uv_loop_alive(const uv_loop_t* loop) {
-    return uv__loop_alive(loop);
+  return uv__loop_alive(loop);
 }
 
 
