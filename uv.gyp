@@ -424,6 +424,7 @@
         'test/test-mutexes.c',
         'test/test-thread.c',
         'test/test-barrier.c',
+        'test/test-buf.c',
         'test/test-condvar.c',
         'test/test-timer-again.c',
         'test/test-timer-from-check.c',
