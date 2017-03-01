@@ -125,6 +125,7 @@
         'test-mutexes.c',
         'test-thread.c',
         'test-barrier.c',
+        'test-buf.c',
         'test-condvar.c',
         'test-timer-again.c',
         'test-timer-from-check.c',
