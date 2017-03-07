@@ -170,6 +170,58 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
 }
 
 
+int uv_thread_create_on(int proc_num,
+                        uv_thread_t *tid,
+                        void (*entry)(void *arg),
+                        void *arg) {
+  struct thread_ctx* ctx;
+  int err;
+  HANDLE thread;
+
+  ctx = malloc(sizeof(*ctx));
+  if (ctx == NULL)
+    return UV_ENOMEM;
+
+  ctx->entry = entry;
+  ctx->arg = arg;
+
+  /* Create the thread in suspended state so we have a chance to pass
+   * its own creation handle to it */   
+  thread = (HANDLE) _beginthreadex(NULL,
+                                   0,
+                                   uv__thread_start,
+                                   ctx,
+                                   CREATE_SUSPENDED,
+                                   NULL);
+  if (thread == NULL) {
+    err = errno;
+    free(ctx);
+  } else {
+    err = 0;
+    *tid = thread;
+    ctx->self = thread;
+    if (proc_num >= 0)
+        SetThreadAffinityMask(thread, (1 << proc_num));
+    ResumeThread(thread);
+  }
+
+  return err;
+}
+
+
+int uv_thread_setaffinity(uv_thread_t *tid, int proc_num) {
+  if (!SetThreadAffinityMask(*tid, (1 << proc_num)))
+    return uv_translate_sys_error(GetLastError());
+  return 0;
+}
+
+
+int uv_thread_detach(uv_thread_t *tid) {
+  CloseHandle(*tid);
+  return 0;
+}
+
+
 uv_thread_t uv_thread_self(void) {
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
   return (uv_thread_t) uv_key_get(&uv__current_thread_key);

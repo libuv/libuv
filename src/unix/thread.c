@@ -19,10 +19,13 @@
  * IN THE SOFTWARE.
  */
 
+#define _GNU_SOURCE
+
 #include "uv.h"
 #include "internal.h"
 
 #include <pthread.h>
+#include <sched.h>
 #include <assert.h>
 #include <errno.h>
 
@@ -81,9 +84,58 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
 }
 
 
+int uv_thread_create_on(int proc_num,
+                        uv_thread_t *tid,
+                        void (*entry)(void *arg),
+                        void *arg) {
+  pthread_attr_t attr;
+  cpu_set_t cset;
+  struct thread_ctx* ctx;
+  int err;
+
+  ctx = malloc(sizeof(*ctx));
+  if (ctx == NULL)
+    return UV_ENOMEM;
+
+  ctx->entry = entry;
+  ctx->arg = arg;
+
+  pthread_attr_init(&attr);
+  if (proc_num >= 0) {
+    CPU_ZERO(&cset);
+    CPU_SET(proc_num, &cset);
+    pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cset);
+  }
+
+  err = pthread_create(tid, &attr, uv__thread_start, ctx);
+
+  if (err)
+    free(ctx);
+
+  pthread_attr_destroy(&attr);
+
+  return err ? -1 : 0;
+}
+
+
+int uv_thread_setaffinity(uv_thread_t *tid, int proc_num) {
+  cpu_set_t cset;
+
+  CPU_ZERO(&cset);
+  CPU_SET(proc_num, &cset);
+  return -pthread_setaffinity_np(*tid, sizeof(cpu_set_t), &cset);
+}
+
+
+int uv_thread_detach(uv_thread_t *tid) {
+  return -pthread_detach(*tid);
+}
+
+
 uv_thread_t uv_thread_self(void) {
   return pthread_self();
 }
+
 
 int uv_thread_join(uv_thread_t *tid) {
   return -pthread_join(*tid, NULL);
