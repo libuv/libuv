@@ -36,6 +36,8 @@ TEST_IMPL(env_vars) {
   ASSERT(r == UV_EINVAL);
   r = uv_os_setenv(name, NULL);
   ASSERT(r == UV_EINVAL);
+  r = uv_os_setenv(NULL, NULL);
+  ASSERT(r == UV_EINVAL);
 
   /* Reject invalid inputs when retrieving an environment variable */
   size = BUF_SIZE;
