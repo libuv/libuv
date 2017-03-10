@@ -32,6 +32,7 @@
 #endif
 
 #define CVT_PTR           0x10
+#define PSA_PTR           0x00
 #define CSD_OFFSET        0x294
 
 /*
@@ -68,6 +69,18 @@
 
 /* CPC model length from the CSRSI Service. */
 #define CPCMODEL_LENGTH   16
+
+/* Pointer to the home (current) ASCB. */
+#define PSAAOLD           0x224
+
+/* Pointer to rsm address space block extension. */
+#define ASCBRSME          0x16C
+
+/* 
+    NUMBER OF FRAMES CURRENTLY IN USE BY THIS ADDRESS SPACE. 
+    It does not include 2G frames.
+*/
+#define RAXFMCT           0x2C
 
 /* Thread Entry constants */
 #define PGTH_CURRENT  1
@@ -337,13 +350,17 @@ uint64_t uv_get_total_memory(void) {
 
 
 int uv_resident_set_memory(size_t* rss) {
-  W_PSPROC buf;
+  char* psa;
+  char* ascb;
+  char* rax;
+  size_t nframes;
 
-  memset(&buf, 0, sizeof(buf));
-  if (w_getpsent(0, &buf, sizeof(W_PSPROC)) == -1)
-    return -EINVAL;
-
-  *rss = buf.ps_size;
+  psa = PSA_PTR;
+  ascb  = *(char* __ptr32 *)(psa + PSAAOLD);
+  rax = *(char* __ptr32 *)(ascb + ASCBRSME);
+  nframes = *(unsigned int*)(rax + RAXFMCT);
+  
+  *rss = nframes * sysconf(_SC_PAGESIZE);
   return 0;
 }
 
