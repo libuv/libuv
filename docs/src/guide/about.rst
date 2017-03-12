@@ -20,9 +20,3 @@ This book was made using `Sphinx <http://sphinx.pocoo.org/>`_ and `vim
     In 2017 the libuv project incorporated the Nikhil's work into the official
     documentation and it's maintained there henceforth.
 
-Licensing
----------
-
-The contents of this book are licensed as `Creative Commons - Attribution
-<http://creativecommons.org/licenses/by/3.0/>`_. All code is in the **public
-domain**.
