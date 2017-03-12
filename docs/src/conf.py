@@ -64,7 +64,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'libuv API documentation'
-copyright = u'libuv contributors'
+copyright = u'2014-present, libuv contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -284,7 +284,7 @@ texinfo_documents = [
 epub_title = u'libuv documentation'
 epub_author = u'libuv contributors'
 epub_publisher = u'libuv contributors'
-epub_copyright = u'2014, libuv contributors'
+epub_copyright = u'2014-present, libuv contributors'
 
 # The basename for the epub file. It defaults to the project name.
 epub_basename = u'libuv'
