@@ -37,6 +37,16 @@ Features
 * Threading and synchronization primitives
 
 
+Documentation
+-------------
+
+.. toctree::
+   :maxdepth: 1
+
+   design
+   api
+
+
 Downloads
 ---------
 
@@ -58,13 +68,3 @@ Migration guides for different libuv versions, starting with 1.0.
    :maxdepth: 1
 
    migration_010_100
-
-
-Documentation
--------------
-
-.. toctree::
-   :maxdepth: 1
-
-   design
-   api
