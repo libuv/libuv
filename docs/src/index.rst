@@ -1,6 +1,6 @@
 
-Welcome to the libuv API documentation
-======================================
+Welcome to the libuv documentation
+==================================
 
 Overview
 --------
