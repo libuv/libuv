@@ -45,6 +45,7 @@ Documentation
 
    design
    api
+   guide
    upgrading
 
 
