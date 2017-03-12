@@ -45,6 +45,7 @@ Documentation
 
    design
    api
+   upgrading
 
 
 Downloads
@@ -58,13 +59,3 @@ Installation
 
 Installation instructions can be found in `the README <https://github.com/libuv/libuv/blob/master/README.md>`_.
 
-
-Upgrading
----------
-
-Migration guides for different libuv versions, starting with 1.0.
-
-.. toctree::
-   :maxdepth: 1
-
-   migration_010_100
