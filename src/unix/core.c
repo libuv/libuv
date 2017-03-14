@@ -1269,7 +1269,7 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
 
 
 int uv_os_setenv(const char* name, const char* value) {
-  if (value == NULL)
+  if (value == NULL || name == NULL)
     return -EINVAL;
 
   if (setenv(name, value, 1) != 0)
