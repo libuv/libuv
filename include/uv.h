@@ -1073,6 +1073,10 @@ UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
 UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
                                            int count);
 
+UV_EXTERN int uv_os_getenv(const char* name, char* buffer, size_t* size);
+UV_EXTERN int uv_os_setenv(const char* name, const char* value);
+UV_EXTERN int uv_os_unsetenv(const char* name);
+
 
 typedef enum {
   UV_FS_UNKNOWN = -1,
@@ -1324,6 +1328,9 @@ UV_EXTERN int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle);
 UV_EXTERN int uv_signal_start(uv_signal_t* handle,
                               uv_signal_cb signal_cb,
                               int signum);
+UV_EXTERN int uv_signal_start_oneshot(uv_signal_t* handle,
+                                      uv_signal_cb signal_cb,
+                                      int signum);
 UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
 
 UV_EXTERN void uv_loadavg(double avg[3]);

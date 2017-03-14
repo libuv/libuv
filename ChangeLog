@@ -1,3 +1,91 @@
+2017.02.02, Version 1.11.0 (Stable), 7452ef4e06a4f99ee26b694c65476401534f2725
+
+Changes since version 1.10.2:
+
+* Now working on version 1.10.3 (cjihrig)
+
+* win: added fcntl.h to uv-win.h (Michele Caini)
+
+* unix: move function call out of assert (jBarz)
+
+* fs: cleanup uv__fs_scandir (Santiago Gimeno)
+
+* fs: fix crash in uv_fs_scandir_next (muflub)
+
+* win,signal: fix potential deadlock (Bartosz Sosnowski)
+
+* unix: use async-signal safe functions between fork and exec (jBarz)
+
+* sunos: fix SUNOS_NO_IFADDRS build (Ben Noordhuis)
+
+* zos: make platform functional (John Barboza)
+
+* doc: add repitition qualifier to version regexs (Daniel Bevenius)
+
+* zos: use gyp OS label "os390" on z/OS (John Barboza)
+
+* aix: enable uv_get/set_process_title (Howard Hellyer)
+
+* zos: use built-in proctitle implementation (John Barboza)
+
+* Revert "darwin: use clock_gettime in macOS 10.12" (Chris Araman)
+
+* win,test: don't write uninitialized buffer to tty (Bert Belder)
+
+* win: define ERROR_ELEVATION_REQUIRED for MinGW (Richard Lau)
+
+* aix: re-enable fs watch facility (Gireesh Punathil)
+
+
+2017.01.10, Version 1.10.2 (Stable), cb9f579a454b8db592030ffa274ae58df78dbe20
+
+Changes since version 1.10.1:
+
+* Now working on version 1.10.2 (cjihrig)
+
+* darwin: fix fsync and fdatasync (Joran Dirk Greef)
+
+* Revert "Revert "win,tty: add support for ANSI codes in win10 v1511""
+  (Santiago Gimeno)
+
+* win,tty: fix MultiByteToWideChar output buffer (Santiago Gimeno)
+
+* win: remove dead code related to BACKUP_SEMANTICS (Sam Roberts)
+
+* win: fix comment in quote_cmd_arg (Eric Sciple)
+
+* darwin: use clock_gettime in macOS 10.12 (Saúl Ibarra Corretgé)
+
+* win, tty: fix crash on restarting with pending data (Nicholas Vavilov)
+
+* fs: fix uv__to_stat on BSD platforms (Santiago Gimeno)
+
+* win: map ERROR_ELEVATION_REQUIRED to UV_EACCES (Richard Lau)
+
+* win: fix free() on bad input in uv_getaddrinfo() (Ben Noordhuis)
+
+
+2016.11.17, Version 1.10.1 (Stable), 2e49e332bdede6db7cf17fa784a902e8386d5d86
+
+Changes since version 1.10.0:
+
+* Now working on version 1.10.1 (cjihrig)
+
+* win: fix anonymous union syntax (Brad King)
+
+* unix: use uv__is_closing everywhere (Santiago Gimeno)
+
+* win: add missing break statement (cjihrig)
+
+* doc: fix wrong man page link for uv_fs_lstat() (Michele Caini)
+
+* win, tty: handle empty buffer in uv_tty_write_bufs (Hitesh Kanwathirtha)
+
+* doc: add cjihrig alternative GPG ID (cjihrig)
+
+* Revert "win,tty: add support for ANSI codes in win10 v1511" (Ben Noordhuis)
+
+
 2016.10.25, Version 1.10.0 (Stable), c8a373c729b4c9392e0e14fc53cd6b67b3051ab9
 
 Changes since version 1.9.1:

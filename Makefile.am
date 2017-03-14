@@ -166,6 +166,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-eintr-handling.c \
                          test/test-embed.c \
                          test/test-emfile.c \
+                         test/test-env-vars.c \
                          test/test-error.c \
                          test/test-fail-always.c \
                          test/test-fs-event.c \
@@ -316,7 +317,11 @@ test_run_tests_CFLAGS += -D_UNIX03_THREADS \
 endif
 
 if AIX
-libuv_la_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT -D_THREAD_SAFE
+libuv_la_CFLAGS += -D_ALL_SOURCE \
+                   -D_XOPEN_SOURCE=500 \
+                   -D_LINUX_SOURCE_COMPAT \
+                   -D_THREAD_SAFE \
+                   -DHAVE_SYS_AHAFS_EVPRODS_H
 include_HEADERS += include/uv-aix.h
 libuv_la_SOURCES += src/unix/aix.c
 endif
@@ -334,7 +339,8 @@ include_HEADERS += include/uv-darwin.h \
                    include/pthread-barrier.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
-libuv_la_SOURCES += src/unix/darwin.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/darwin.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
@@ -345,13 +351,19 @@ endif
 
 if DRAGONFLY
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/freebsd.c \
+                    src/unix/kqueue.c \
+                    src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
 if FREEBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/freebsd.c \
+                    src/unix/kqueue.c \
+                    src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -368,13 +380,19 @@ endif
 
 if NETBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/kqueue.c src/unix/netbsd.c
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/kqueue.c \
+                    src/unix/netbsd.c \
+                    src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
 if OPENBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/kqueue.c src/unix/openbsd.c
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/kqueue.c \
+                    src/unix/openbsd.c \
+                    src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -402,8 +420,10 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -qFLOAT=IEEE
 libuv_la_LDFLAGS += -qXPLINK
 libuv_la_SOURCES += src/unix/pthread-fixes.c \
-                    src/unix/pthread-barrier.c
-libuv_la_SOURCES += src/unix/os390.c
+                    src/unix/pthread-barrier.c \
+                    src/unix/os390.c \
+                    src/unix/os390-syscalls.c \
+                    src/unix/proctitle.c
 endif
 
 if HAVE_PKG_CONFIG

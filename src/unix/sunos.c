@@ -695,6 +695,11 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   uv__free(cpu_infos);
 }
 
+#ifdef SUNOS_NO_IFADDRS
+int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+  return -ENOSYS;
+}
+#else  /* SUNOS_NO_IFADDRS */
 /*
  * Inspired By:
  * https://blogs.oracle.com/paulie/entry/retrieving_mac_address_in_solaris
@@ -741,10 +746,18 @@ static int uv__set_phys_addr(uv_interface_address_t* address,
   return 0;
 }
 
+
+static int uv__ifaddr_exclude(struct ifaddrs *ent) {
+  if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
+    return 1;
+  if (ent->ifa_addr == NULL)
+    return 1;
+  if (ent->ifa_addr->sa_family == PF_PACKET)
+    return 1;
+  return 0;
+}
+
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-#ifdef SUNOS_NO_IFADDRS
-  return -ENOSYS;
-#else
   uv_interface_address_t* address;
   struct ifaddrs* addrs;
   struct ifaddrs* ent;
@@ -757,12 +770,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)) ||
-        (ent->ifa_addr == NULL) ||
-        (ent->ifa_addr->sa_family == PF_PACKET)) {
+    if (uv__ifaddr_exclude(ent))
       continue;
-    }
-
     (*count)++;
   }
 
@@ -775,10 +784,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   address = *addresses;
 
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
-      continue;
-
-    if (ent->ifa_addr == NULL)
+    if (uv__ifaddr_exclude(ent))
       continue;
 
     address->name = uv__strdup(ent->ifa_name);
@@ -805,9 +811,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   freeifaddrs(addrs);
 
   return 0;
-#endif  /* SUNOS_NO_IFADDRS */
 }
-
+#endif  /* SUNOS_NO_IFADDRS */
 
 void uv_free_interface_addresses(uv_interface_address_t* addresses,
   int count) {

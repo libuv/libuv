@@ -19,12 +19,17 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef UV_MVS_H
-#define UV_MVS_H
+#include "uv.h"
+#include "internal.h"
 
-#define UV_PLATFORM_SEM_T int
+#include <stdint.h>
+#include <time.h>
 
-#define UV_PLATFORM_LOOP_FIELDS                                               \
-  void* ep;                                                                   \
+#undef NANOSEC
+#define NANOSEC ((uint64_t) 1e9)
 
-#endif /* UV_MVS_H */
+uint64_t uv__hrtime(uv_clocktype_t type) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (((uint64_t) ts.tv_sec) * NANOSEC + ts.tv_nsec);
+}

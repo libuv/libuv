@@ -38,6 +38,10 @@
 # include "linux-syscalls.h"
 #endif /* __linux__ */
 
+#if defined(__MVS__)
+# include "os390-syscalls.h"
+#endif /* __MVS__ */
+
 #if defined(__sun)
 # include <sys/port.h>
 # include <port.h>
@@ -158,7 +162,8 @@ struct uv__stream_queued_fds_s {
     defined(__DragonFly__) || \
     defined(__FreeBSD__) || \
     defined(__FreeBSD_kernel__) || \
-    defined(__linux__)
+    defined(__linux__) || \
+    defined(__OpenBSD__)
 #define uv__cloexec uv__cloexec_ioctl
 #define uv__nonblock uv__nonblock_ioctl
 #else
