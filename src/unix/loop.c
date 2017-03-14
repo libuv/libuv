@@ -54,7 +54,8 @@ int uv_loop_init(uv_loop_t* loop) {
 
   loop->closing_handles = NULL;
   uv__update_time(loop);
-  uv__async_init(&loop->async_watcher);
+  loop->async_io_watcher.fd = -1;
+  loop->async_wfd = -1;
   loop->signal_pipefd[0] = -1;
   loop->signal_pipefd[1] = -1;
   loop->backend_fd = -1;
@@ -111,7 +112,7 @@ fail_signal_init:
 void uv__loop_close(uv_loop_t* loop) {
   uv__signal_loop_cleanup(loop);
   uv__platform_loop_delete(loop);
-  uv__async_stop(loop, &loop->async_watcher);
+  uv__async_stop(loop);
 
   if (loop->emfile_fd != -1) {
     uv__close(loop->emfile_fd);

@@ -194,10 +194,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd);
 void uv__io_poll(uv_loop_t* loop, int timeout); /* in milliseconds or -1 */
 
 /* async */
-void uv__async_send(struct uv__async* wa);
-void uv__async_init(struct uv__async* wa);
-int uv__async_start(uv_loop_t* loop, struct uv__async* wa, uv__async_cb cb);
-void uv__async_stop(uv_loop_t* loop, struct uv__async* wa);
+void uv__async_stop(uv_loop_t* loop);
 
 /* loop */
 void uv__run_idle(uv_loop_t* loop);
