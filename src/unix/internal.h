@@ -311,7 +311,7 @@ UV_UNUSED(static void uv__req_init(uv_loop_t* loop,
 UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   /* Use a fast time source if available.  We only need millisecond precision.
    */
-  loop->time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
+  loop->time = uv__hrtime(UV_CLOCK_FAST);
 }
 
 UV_UNUSED(static char* uv__basename_r(const char* path)) {
@@ -323,5 +323,7 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
 
   return s + 1;
 }
+
+static const uint64_t NSPERMS = 1e6;
 
 #endif /* UV_UNIX_INTERNAL_H_ */

@@ -77,7 +77,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   sigset_t* pset;
   sigset_t set;
   uint64_t base;
-  uint64_t diff;
+  uint64_t diffms;
+  uint64_t diffns;
   int have_signals;
   int filter;
   int fflags;
@@ -305,11 +306,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 update_timeout:
     assert(timeout > 0);
 
-    diff = loop->time - base;
-    if (diff >= (uint64_t) timeout)
+    diffms = 0;
+    diffns = loop->time - base;
+    if (diffns > NSPERMS)
+      diffms = diffns / NSPERMS;
+
+    if (diffms >= (uint64_t) timeout)
       return;
 
-    timeout -= diff;
+    timeout -= diffms;
   }
 }
 

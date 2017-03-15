@@ -71,8 +71,8 @@ int uv_timer_start(uv_timer_t* handle,
   if (uv__is_active(handle))
     uv_timer_stop(handle);
 
-  clamped_timeout = handle->loop->time + timeout;
-  if (clamped_timeout < timeout)
+  clamped_timeout = handle->loop->time + (timeout * NSPERMS);
+  if (clamped_timeout < timeout * NSPERMS)
     clamped_timeout = (uint64_t) -1;
 
   handle->timer_cb = cb;
@@ -129,7 +129,8 @@ uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
 int uv__next_timeout(const uv_loop_t* loop) {
   const struct heap_node* heap_node;
   const uv_timer_t* handle;
-  uint64_t diff;
+  uint64_t diffns;
+  uint64_t diffms;
 
   heap_node = heap_min((const struct heap*) &loop->timer_heap);
   if (heap_node == NULL)
@@ -139,11 +140,18 @@ int uv__next_timeout(const uv_loop_t* loop) {
   if (handle->timeout <= loop->time)
     return 0;
 
-  diff = handle->timeout - loop->time;
-  if (diff > INT_MAX)
-    diff = INT_MAX;
+  diffns = handle->timeout - loop->time;
+  if (diffns <= NSPERMS)
+    diffms = 1;
+  else if (diffns % NSPERMS == 0)
+    diffms = diffns / NSPERMS;
+  else
+    diffms = (diffns / NSPERMS) + 1;
 
-  return diff;
+  if (diffms > INT_MAX)
+    diffms = INT_MAX;
+
+  return diffms;
 }
 
 

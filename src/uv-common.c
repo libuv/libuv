@@ -426,7 +426,7 @@ void uv_stop(uv_loop_t* loop) {
 
 
 uint64_t uv_now(const uv_loop_t* loop) {
-  return loop->time;
+  return loop->time / (uint64_t) 1e6;
 }
 
 
