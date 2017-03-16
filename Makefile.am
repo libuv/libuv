@@ -289,15 +289,11 @@ test_run_tests_SOURCES += test/runner-unix.c \
 endif
 
 if AIX
-test_run_tests_CFLAGS += -D_ALL_SOURCE -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT
-endif
-
-if LINUX
-test_run_tests_CFLAGS += -D_GNU_SOURCE
+test_run_tests_CFLAGS += -D_XOPEN_SOURCE=500 -D_LINUX_SOURCE_COMPAT
 endif
 
 if SUNOS
-test_run_tests_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
+test_run_tests_CFLAGS += -D_XOPEN_SOURCE=500
 endif
 
 if OS390
@@ -307,7 +303,6 @@ test_run_tests_CFLAGS += -D_UNIX03_THREADS \
                          -D_OPEN_SYS_SOCK_IPV6 \
                          -D_OPEN_MSGQ_EXT \
                          -D_XOPEN_SOURCE_EXTENDED \
-                         -D_ALL_SOURCE \
                          -D_LARGE_TIME_API \
                          -D_OPEN_SYS_FILE_EXT \
                          -DPATH_MAX=255 \
@@ -317,8 +312,7 @@ test_run_tests_CFLAGS += -D_UNIX03_THREADS \
 endif
 
 if AIX
-libuv_la_CFLAGS += -D_ALL_SOURCE \
-                   -D_XOPEN_SOURCE=500 \
+libuv_la_CFLAGS += -D_XOPEN_SOURCE=500 \
                    -D_LINUX_SOURCE_COMPAT \
                    -D_THREAD_SAFE \
                    -DHAVE_SYS_AHAFS_EVPRODS_H
@@ -369,7 +363,6 @@ endif
 
 if LINUX
 include_HEADERS += include/uv-linux.h
-libuv_la_CFLAGS += -D_GNU_SOURCE
 libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/linux-inotify.c \
                     src/unix/linux-syscalls.c \
@@ -398,7 +391,7 @@ endif
 
 if SUNOS
 include_HEADERS += include/uv-sunos.h
-libuv_la_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
+libuv_la_CFLAGS += -D_XOPEN_SOURCE=500
 libuv_la_SOURCES += src/unix/sunos.c
 endif
 
@@ -409,7 +402,6 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -D_OPEN_SYS_IF_EXT=1 \
                    -D_OPEN_MSGQ_EXT \
                    -D_XOPEN_SOURCE_EXTENDED \
-                   -D_ALL_SOURCE \
                    -D_LARGE_TIME_API \
                    -D_OPEN_SYS_SOCK_IPV6 \
                    -D_OPEN_SYS_FILE_EXT \
