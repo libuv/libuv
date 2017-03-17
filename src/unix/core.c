@@ -329,6 +329,32 @@ int uv_loop_alive(const uv_loop_t* loop) {
 }
 
 
+static void uv__loop_adjust_timeout(uv_loop_t* loop, int64_t delta) {
+  static const unsigned int kDuplicity = 4;
+  static const double kAdjustmentSpeed =
+      1.0 / ((double) kDuplicity * ARRAY_SIZE(loop->adjust_table.deltas));
+
+  double mean;
+  unsigned int i;
+  unsigned int index;
+
+  index = loop->adjust_table.index;
+  if (index % kDuplicity == 0)
+    loop->adjust_table.deltas[index / kDuplicity] = 0.0;
+
+  loop->adjust_table.deltas[index++ / kDuplicity] += delta;
+  loop->adjust_table.index =
+      index & (kDuplicity * ARRAY_SIZE(loop->adjust_table.deltas) - 1);
+
+  mean = 0.0;
+  for (i = 0; i < ARRAY_SIZE(loop->adjust_table.deltas); i++)
+    mean += (double) loop->adjust_table.deltas[i];
+  mean /= (double) ARRAY_SIZE(loop->adjust_table.deltas) * kDuplicity;
+
+  loop->timeout_adjust += mean * kAdjustmentSpeed;
+}
+
+
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
@@ -339,6 +365,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__update_time(loop);
 
   while (r != 0 && loop->stop_flag == 0) {
+    uint64_t target;
+
     uv__update_time(loop);
     uv__run_timers(loop);
     ran_pending = uv__run_pending(loop);
@@ -346,10 +374,22 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__run_prepare(loop);
 
     timeout = 0;
-    if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
+    target = 0;
+    if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT) {
+      int adjust;
+
       timeout = uv_backend_timeout(loop);
 
-    uv__io_poll(loop, timeout);
+      adjust = floor(loop->timeout_adjust);
+      if (timeout > adjust) {
+        target = loop->time + timeout;
+        timeout -= adjust;
+      }
+    }
+
+    uv__update_time(loop);
+    if (uv__io_poll(loop, timeout) && target != 0)
+      uv__loop_adjust_timeout(loop, (int64_t) loop->time - target);
     uv__run_check(loop);
     uv__run_closing_handles(loop);
 

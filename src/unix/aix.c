@@ -114,7 +114,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+int uv__io_poll(uv_loop_t* loop, int timeout) {
   struct pollfd events[1024];
   struct pollfd pqry;
   struct pollfd* pe;
@@ -133,7 +133,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
-    return;
+    return 0;
   }
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
@@ -213,7 +213,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (nfds == 0) {
       assert(timeout != -1);
-      return;
+      return 1;
     }
 
     if (nfds == -1) {
@@ -225,7 +225,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0)
-        return;
+        return 0;
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
@@ -280,7 +280,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      return 0;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -288,11 +288,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = 0;
         continue;
       }
-      return;
+      return 0;
     }
 
     if (timeout == 0)
-      return;
+      return 0;
 
     if (timeout == -1)
       continue;
@@ -302,10 +302,12 @@ update_timeout:
 
     diff = loop->time - base;
     if (diff >= (uint64_t) timeout)
-      return;
+      return 0;
 
     timeout -= diff;
   }
+
+  return 0;
 }
 
 
