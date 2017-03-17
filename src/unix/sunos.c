@@ -481,8 +481,10 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   memset(&handle->fo, 0, sizeof handle->fo);
   handle->fo.fo_name = handle->path;
   err = uv__fs_event_rearm(handle);
-  if (err != 0)
+  if (err != 0) {
+    uv_fs_event_stop(handle);
     return err;
+  }
 
   if (first_run) {
     uv__io_init(&handle->loop->fs_event_watcher, uv__fs_event_read, portfd);

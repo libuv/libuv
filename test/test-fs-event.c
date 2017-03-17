@@ -1027,3 +1027,21 @@ TEST_IMPL(fs_event_error_reporting) {
 }
 
 #endif  /* defined(__APPLE__) */
+
+TEST_IMPL(fs_event_watch_invalid_path) {
+#if defined(MVS)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
+
+  uv_loop_t* loop;
+  int r;
+
+  loop = uv_default_loop();
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_file, "<:;", 0);
+  ASSERT(r != 0);
+  ASSERT(uv_is_active((uv_handle_t*) &fs_event) == 0);
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

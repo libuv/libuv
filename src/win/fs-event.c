@@ -306,6 +306,9 @@ error:
     handle->buffer = NULL;
   }
 
+  if (uv__is_active(handle))
+    uv__handle_stop(handle);
+
   return uv_translate_sys_error(last_error);
 }
 

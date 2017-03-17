@@ -287,6 +287,7 @@ TEST_DECLARE   (fs_event_watch_file_current_dir)
 #ifdef _WIN32
 TEST_DECLARE   (fs_event_watch_file_root_dir)
 #endif
+TEST_DECLARE   (fs_event_watch_invalid_path)
 TEST_DECLARE   (fs_event_no_callback_after_close)
 TEST_DECLARE   (fs_event_no_callback_on_close)
 TEST_DECLARE   (fs_event_immediate_close)
@@ -764,6 +765,7 @@ TASK_LIST_START
 #ifdef _WIN32
   TEST_ENTRY  (fs_event_watch_file_root_dir)
 #endif
+  TEST_ENTRY  (fs_event_watch_invalid_path)
   TEST_ENTRY  (fs_event_no_callback_after_close)
   TEST_ENTRY  (fs_event_no_callback_on_close)
   TEST_ENTRY  (fs_event_immediate_close)
