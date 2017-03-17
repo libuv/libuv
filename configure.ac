@@ -18,6 +18,7 @@ AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/libuv-extra-automake-flags.m4])
 m4_include([m4/as_case.m4])
 m4_include([m4/libuv-check-flags.m4])
+m4_include([m4/ax_pthread.m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects] UV_EXTRA_AUTOMAKE_FLAGS)
 AC_CANONICAL_HOST
 AC_ENABLE_SHARED
@@ -39,7 +40,12 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_LIBTOOL
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_INIT
-# TODO(bnoordhuis) Check for -pthread vs. -pthreads
+AX_PTHREAD([
+  LIBS="$PTHREAD_LIBS $LIBS"
+  CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+  CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
+  CC="$PTHREAD_CC"
+])
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([kstat], [kstat_lookup])
 AC_CHECK_LIB([kvm], [kvm_open])
