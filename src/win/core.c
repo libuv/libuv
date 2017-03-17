@@ -85,11 +85,6 @@ static uv_mutex_t uv__loops_lock;
 
 static void uv__loops_init() {
   uv_mutex_init(&uv__loops_lock);
-  uv__loops = uv__calloc(UV__LOOPS_CHUNK_SIZE, sizeof(uv_loop_t*));
-  if (!uv__loops)
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-  uv__loops_size = 0;
-  uv__loops_capacity = UV__LOOPS_CHUNK_SIZE;
 }
 
 static int uv__loops_add(uv_loop_t* loop) {
@@ -137,6 +132,13 @@ static void uv__loops_remove(uv_loop_t* loop) {
   uv__loops[loop_index] = uv__loops[uv__loops_size - 1];
   uv__loops[uv__loops_size - 1] = NULL;
   --uv__loops_size;
+
+  if (uv__loops_size == 0) {
+    uv__loops_capacity = 0;
+    uv__free(uv__loops);
+    uv__loops = NULL;
+    goto loop_removed;
+  }
 
   /* If we didn't grow to big skip downsizing */
   if (uv__loops_capacity < 4 * UV__LOOPS_CHUNK_SIZE)
