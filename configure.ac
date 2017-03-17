@@ -25,15 +25,19 @@ AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 AC_PROG_CC
 AM_PROG_CC_C_O
-AS_IF([AS_CASE([$host_os],[openedition*],  [false], [true])], [
-  CC_CHECK_CFLAGS_APPEND([-pedantic])
-])
 CC_FLAG_VISIBILITY #[-fvisibility=hidden]
 CC_CHECK_CFLAGS_APPEND([-g])
-CC_CHECK_CFLAGS_APPEND([-std=gnu89])
-CC_CHECK_CFLAGS_APPEND([-Wall])
-CC_CHECK_CFLAGS_APPEND([-Wextra])
-CC_CHECK_CFLAGS_APPEND([-Wno-unused-parameter])
+# Only enable GCC specific options if GCC is being used.
+# The `$GCC` shell variable is set automatically by `AC_PROG_CC`.
+AS_IF([test x"$GCC" = "xyes"], [
+  AS_IF([AS_CASE([$host_os], [openedition*], [false], [true])], [
+    CC_CHECK_CFLAGS_APPEND([-pedantic])
+  ])
+  CC_CHECK_CFLAGS_APPEND([-std=gnu89])
+  CC_CHECK_CFLAGS_APPEND([-Wall])
+  CC_CHECK_CFLAGS_APPEND([-Wextra])
+  CC_CHECK_CFLAGS_APPEND([-Wno-unused-parameter])
+])
 # AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 # autoconf complains if AC_PROG_LIBTOOL precedes AM_PROG_AR.
