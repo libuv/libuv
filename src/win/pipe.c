@@ -2072,7 +2072,6 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
   buffer[addrlen] = '\0';
 
   err = 0;
-  goto cleanup;
 
 error:
   uv__free(name_info);
