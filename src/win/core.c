@@ -429,10 +429,11 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
   return 0;
 }
 
-<<<<<<< HEAD
+
 int uv_cpumask_size(void) {
   return (int)(sizeof(DWORD_PTR) * 8);
-=======
+}
+
 
 int uv__getsockpeername(const uv_handle_t* handle,
                         uv__peersockfunc func,
@@ -455,5 +456,4 @@ int uv__getsockpeername(const uv_handle_t* handle,
     return uv_translate_sys_error(WSAGetLastError());
 
   return 0;
->>>>>>> f574d69a... unix: refactor getsockname/getpeername methods
 }
