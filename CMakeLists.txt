@@ -153,6 +153,7 @@ set(uv_test_sources
     test/test-tty.c
     test/test-udp-alloc-cb-fail.c
     test/test-udp-bind.c
+    test/test-udp-connect.c
     test/test-udp-create-socket-early.c
     test/test-udp-dgram-too-big.c
     test/test-udp-ipv6.c
