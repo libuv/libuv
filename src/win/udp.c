@@ -36,6 +36,17 @@ const unsigned int uv_active_udp_streams_threshold = 0;
 
 /* A zero-size buffer for use by uv_udp_read */
 static char uv_zero_[] = "";
+int uv_udp_getpeername(const uv_udp_t* handle,
+                       struct sockaddr* name,
+                       int* namelen) {
+
+  return uv__getsockpeername((const uv_handle_t*) handle,
+                             getpeername,
+                             name,
+                             namelen,
+                             0);
+}
+
 
 int uv_udp_getsockname(const uv_udp_t* handle,
                        struct sockaddr* name,
@@ -815,6 +826,9 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
   if (uv__udp_is_bound(handle))
     handle->flags |= UV_HANDLE_BOUND;
 
+  if (uv__udp_is_connected(handle))
+    handle->flags |= UV_HANDLE_UDP_CONNECTED;
+
   return 0;
 }
 
@@ -892,6 +906,50 @@ int uv__udp_bind(uv_udp_t* handle,
 }
 
 
+int uv__udp_connect(uv_udp_t* handle,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen) {
+  const struct sockaddr* bind_addr;
+  int err;
+
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    if (addrlen == sizeof(uv_addr_ip4_any_))
+      bind_addr = (const struct sockaddr*) &uv_addr_ip4_any_;
+    else if (addrlen == sizeof(uv_addr_ip6_any_))
+      bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
+    else
+      return UV_EINVAL;
+
+    err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
+    if (err)
+      return uv_translate_sys_error(err);
+  }
+
+  err = connect(handle->socket, addr, addrlen);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  handle->flags |= UV_HANDLE_UDP_CONNECTED;
+
+  return 0;
+}
+
+
+int uv__udp_disconnect(uv_udp_t* handle) {
+    int err;
+    struct sockaddr addr;
+
+    memset(&addr, 0, sizeof(addr));
+
+    err = connect(handle->socket, &addr, sizeof(addr));
+    if (err)
+      return uv_translate_sys_error(err);
+
+    handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
+    return 0;
+}
+
+
 /* This function is an egress point, i.e. it returns libuv errors rather than
  * system errors.
  */
@@ -912,6 +970,7 @@ int uv__udp_send(uv_udp_send_t* req,
       bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
     else
       return UV_EINVAL;
+
     err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
     if (err)
       return uv_translate_sys_error(err);
@@ -937,9 +996,11 @@ int uv__udp_try_send(uv_udp_t* handle,
 
   assert(nbufs > 0);
 
-  err = uv__convert_to_localhost_if_unspecified(addr, &converted);
-  if (err)
-    return err;
+  if (addr != NULL) {
+    err = uv__convert_to_localhost_if_unspecified(addr, &converted);
+    if (err)
+      return err;
+  }
 
   /* Already sending a message.*/
   if (handle->send_queue_count != 0)
