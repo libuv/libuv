@@ -244,9 +244,9 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   addrlen = sizeof(sa);
   memset(&sa, 0, addrlen);
   err = uv__getsockpeername((const uv_handle_t*) handle,
-                             func,
-                             (struct sockaddr*) &sa,
-                             (int*) &addrlen);
+                            func,
+                            (struct sockaddr*) &sa,
+                            (int*) &addrlen);
   if (err < 0) {
     *size = 0;
     return err;
