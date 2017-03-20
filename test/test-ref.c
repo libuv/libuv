@@ -329,7 +329,7 @@ TEST_IMPL(udp_ref3) {
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_udp_init(uv_default_loop(), &h);
-  uv_udp_send(&req,
+  uv_udp_sendto(&req,
               &h,
               &buf,
               1,

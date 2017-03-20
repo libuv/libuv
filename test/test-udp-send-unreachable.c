@@ -120,7 +120,7 @@ TEST_IMPL(udp_send_unreachable) {
   /* client sends "PING", then "PANG" */
   buf = uv_buf_init("PING", 4);
 
-  r = uv_udp_send(&req1,
+  r = uv_udp_sendto(&req1,
                   &client,
                   &buf,
                   1,
@@ -130,7 +130,7 @@ TEST_IMPL(udp_send_unreachable) {
 
   buf = uv_buf_init("PANG", 4);
 
-  r = uv_udp_send(&req2,
+  r = uv_udp_sendto(&req2,
                   &client,
                   &buf,
                   1,

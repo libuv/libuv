@@ -72,7 +72,7 @@ TEST_IMPL(udp_multicast_ttl) {
   /* server sends "PING" */
   buf = uv_buf_init("PING", 4);
   ASSERT(0 == uv_ip4_addr("239.255.0.1", TEST_PORT, &addr));
-  r = uv_udp_send(&req,
+  r = uv_udp_sendto(&req,
                   &server,
                   &buf,
                   1,

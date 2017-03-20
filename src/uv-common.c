@@ -284,12 +284,7 @@ int uv_tcp_connect(uv_connect_t* req,
 }
 
 
-int uv_udp_send(uv_udp_send_t* req,
-                uv_udp_t* handle,
-                const uv_buf_t bufs[],
-                unsigned int nbufs,
-                const struct sockaddr* addr,
-                uv_udp_send_cb send_cb) {
+int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
   unsigned int addrlen;
 
   if (handle->type != UV_UDP)
@@ -302,18 +297,96 @@ int uv_udp_send(uv_udp_send_t* req,
   else
     return UV_EINVAL;
 
-  return uv__udp_send(req, handle, bufs, nbufs, addr, addrlen, send_cb);
+  /*
+   * If socket was already connected, disconnect first as in some cases
+   * the kernel return EINVAL error.
+   */
+  if (uv__is_udp_connected(handle)) {
+    if (uv__udp_disconnect(handle) != 0)
+      return UV_EINVAL;
+  }
+
+
+  return uv__udp_connect(handle, addr, addrlen);
+}
+
+
+int uv_udp_disconnect(uv_udp_t* handle) {
+  if (handle->type != UV_UDP)
+    return UV_EINVAL;
+
+  if (!uv__is_udp_connected(handle))
+    return 0;
+
+  return uv__udp_disconnect(handle);
+}
+
+
+int uv_udp_send(uv_udp_send_t* req,
+                uv_udp_t* handle,
+                const uv_buf_t bufs[],
+                unsigned int nbufs,
+                uv_udp_send_cb send_cb) {
+
+  if (handle->type != UV_UDP)
+    return UV_EINVAL;
+
+  if (!uv__is_udp_connected(handle))
+    return UV_EDESTADDRREQ;
+
+  return uv__udp_sendto(req, handle, bufs, nbufs, NULL, 0, send_cb);
+}
+
+
+int uv_udp_sendto(uv_udp_send_t* req,
+                  uv_udp_t* handle,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  const struct sockaddr* addr,
+                  uv_udp_send_cb send_cb) {
+  unsigned int addrlen;
+
+  if (handle->type != UV_UDP)
+    return UV_EINVAL;
+
+  if (uv__is_udp_connected(handle))
+    return UV_EISCONN;
+
+  if (addr->sa_family == AF_INET)
+    addrlen = sizeof(struct sockaddr_in);
+  else if (addr->sa_family == AF_INET6)
+    addrlen = sizeof(struct sockaddr_in6);
+  else
+    return UV_EINVAL;
+
+  return uv__udp_sendto(req, handle, bufs, nbufs, addr, addrlen, send_cb);
 }
 
 
 int uv_udp_try_send(uv_udp_t* handle,
                     const uv_buf_t bufs[],
-                    unsigned int nbufs,
-                    const struct sockaddr* addr) {
+                    unsigned int nbufs) {
+  if (handle->type != UV_UDP)
+    return UV_EINVAL;
+
+  if (!uv__is_udp_connected(handle))
+    return UV_EDESTADDRREQ;
+
+  return uv__udp_try_sendto(handle, bufs, nbufs, NULL, 0);
+}
+
+
+int uv_udp_try_sendto(uv_udp_t* handle,
+                      const uv_buf_t bufs[],
+                      unsigned int nbufs,
+                      const struct sockaddr* addr) {
   unsigned int addrlen;
 
   if (handle->type != UV_UDP)
     return UV_EINVAL;
+
+  if (uv__is_udp_connected(handle))
+    return UV_EISCONN;
 
   if (addr->sa_family == AF_INET)
     addrlen = sizeof(struct sockaddr_in);
@@ -322,7 +395,7 @@ int uv_udp_try_send(uv_udp_t* handle,
   else
     return UV_EINVAL;
 
-  return uv__udp_try_send(handle, bufs, nbufs, addr, addrlen);
+  return uv__udp_try_sendto(handle, bufs, nbufs, addr, addrlen);
 }
 
 

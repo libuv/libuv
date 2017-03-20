@@ -606,6 +606,8 @@ UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
                           const struct sockaddr* addr,
                           unsigned int flags);
+UV_EXTERN int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr);
+UV_EXTERN int uv_udp_disconnect(uv_udp_t* handle);
 
 UV_EXTERN int uv_udp_getsockname(const uv_udp_t* handle,
                                  struct sockaddr* name,
@@ -624,12 +626,20 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
                           uv_udp_t* handle,
                           const uv_buf_t bufs[],
                           unsigned int nbufs,
-                          const struct sockaddr* addr,
                           uv_udp_send_cb send_cb);
+UV_EXTERN int uv_udp_sendto(uv_udp_send_t* req,
+                            uv_udp_t* handle,
+                            const uv_buf_t bufs[],
+                            unsigned int nbufs,
+                            const struct sockaddr* addr,
+                            uv_udp_send_cb send_cb);
 UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
                               const uv_buf_t bufs[],
-                              unsigned int nbufs,
-                              const struct sockaddr* addr);
+                              unsigned int nbufs);
+UV_EXTERN int uv_udp_try_sendto(uv_udp_t* handle,
+                                const uv_buf_t bufs[],
+                                unsigned int nbufs,
+                                const struct sockaddr* addr);
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
                                 uv_udp_recv_cb recv_cb);

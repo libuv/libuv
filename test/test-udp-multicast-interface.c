@@ -74,7 +74,7 @@ TEST_IMPL(udp_multicast_interface) {
 
   /* server sends "PING" */
   buf = uv_buf_init("PING", 4);
-  r = uv_udp_send(&req,
+  r = uv_udp_sendto(&req,
                   &server,
                   &buf,
                   1,

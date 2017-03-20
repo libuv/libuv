@@ -157,7 +157,7 @@ TEST_IMPL(udp_open) {
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
   ASSERT(r == 0);
 
-  r = uv_udp_send(&send_req,
+  r = uv_udp_sendto(&send_req,
                   &client,
                   &buf,
                   1,
