@@ -1373,7 +1373,7 @@ static void fs__access(uv_fs_t* req) {
    * - or it's a directory.
    * (Directories cannot be read-only on Windows.)
    */
-  if (!(req->flags & W_OK) ||
+  if (!(req->fs.info.mode & W_OK) ||
       !(attr & FILE_ATTRIBUTE_READONLY) ||
       (attr & FILE_ATTRIBUTE_DIRECTORY)) {
     SET_REQ_RESULT(req, 0);
@@ -2400,7 +2400,7 @@ int uv_fs_access(uv_loop_t* loop,
   if (err)
     return uv_translate_sys_error(err);
 
-  req->flags = flags;
+  req->fs.info.mode = flags;
 
   if (cb) {
     QUEUE_FS_TP_JOB(loop, req);
