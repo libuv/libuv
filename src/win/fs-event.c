@@ -354,8 +354,8 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
 }
 
 
-static int file_info_cmp(WCHAR* str, WCHAR* file_name, int file_name_len) {
-  int str_len;
+static int file_info_cmp(WCHAR* str, WCHAR* file_name, size_t file_name_len) {
+  size_t str_len;
 
   if (str == NULL)
     return -1;
