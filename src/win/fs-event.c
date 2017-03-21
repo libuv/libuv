@@ -156,7 +156,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   DWORD attr, last_error;
   WCHAR* dir = NULL, *dir_to_watch, *pathw = NULL;
   WCHAR short_path_buffer[MAX_PATH];
-  WCHAR* short_path = short_path_buffer;
+  WCHAR* short_path;
 
   if (uv__is_active(handle))
     return UV_EINVAL;
@@ -206,6 +206,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
      */
 
     /* Convert to short path. */
+    short_path = short_path_buffer;
     if (!GetShortPathNameW(pathw, short_path, ARRAY_SIZE(short_path))) {
       short_path = NULL;
     }
