@@ -47,6 +47,9 @@ API
 
     .. versionchanged:: 1.2.1 the file descriptor is set to non-blocking mode.
 
+    .. versionchanged:: 1.10.2 On Windows, socket can be bound prior to
+                        calling the function.
+
     .. note::
         The passed file descriptor or SOCKET is not checked for its type, but
         it's required that it represents a valid stream socket.
