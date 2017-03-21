@@ -169,6 +169,7 @@ static void init_threads(void) {
 static void reset_once(void) {
   uv_once_t child_once = UV_ONCE_INIT;
   memcpy(&once, &child_once, sizeof(child_once));
+  initialized = 0;
 }
 #endif
 
