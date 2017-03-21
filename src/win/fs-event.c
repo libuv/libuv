@@ -81,10 +81,10 @@ static void uv_relative_path(const WCHAR* filename,
 
 static int uv_split_path(const WCHAR* filename, WCHAR** dir,
     WCHAR** file) {
-  int len, i;
+  size_t len, i;
  
-  if (!filename) {
-    if (dir)
+  if (filename == NULL) {
+    if (dir != NULL)
       *dir = NULL;
     *file = NULL;
     return 0;
@@ -357,7 +357,7 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
 static int file_info_cmp(WCHAR* str, WCHAR* file_name, int file_name_len) {
   int str_len;
 
-  if (!str)
+  if (str == NULL)
     return -1;
 
   str_len = wcslen(str);
