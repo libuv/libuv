@@ -302,3 +302,6 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
   else
     return uv__handle_type(handle->accepted_fd);
 }
+
+void uv_pipe_enable_interrupter(uv_pipe_t* handle) {
+}
