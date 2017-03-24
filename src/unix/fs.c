@@ -687,6 +687,27 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   return utime(req->path, &buf); /* TODO use utimes() where available */
 }
 
+#if defined(__APPLE__)
+static pthread_mutex_t fs_write_lock;
+static uv_once_t fs_write_once = UV_ONCE_INIT;
+
+static void init_fs_write_lock(void) {
+  memset(&fs_write_lock, 0, sizeof fs_write_lock);
+  if (uv_mutex_init(&fs_write_lock))
+    abort();
+}
+
+static void reset_fs_write(void) {
+  uv_once_t child_once = UV_ONCE_INIT;
+  memcpy(&fs_write_once, &child_once, sizeof(child_once));
+}
+
+static void init_fs_write(void) {
+  if (pthread_atfork(NULL, NULL, &reset_fs_write))
+    abort();
+  init_fs_write_lock();
+}
+#endif
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
 #if defined(__linux__)
@@ -699,9 +720,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
    * a dup().
    */
 #if defined(__APPLE__)
-  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-  if (pthread_mutex_lock(&lock))
+  if (pthread_mutex_lock(&fs_write_lock))
     abort();
 #endif
 
@@ -759,7 +778,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
 
 done:
 #if defined(__APPLE__)
-  if (pthread_mutex_unlock(&lock))
+  if (pthread_mutex_unlock(&fs_write_lock))
     abort();
 #endif
 
@@ -1332,6 +1351,11 @@ int uv_fs_write(uv_loop_t* loop,
 
   req->nbufs = nbufs;
   req->bufs = req->bufsml;
+
+#if defined(__APPLE__)
+  uv_once(&fs_write_once, init_fs_write);
+#endif
+
   if (nbufs > ARRAY_SIZE(req->bufsml))
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
