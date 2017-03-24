@@ -666,4 +666,64 @@ TEST_IMPL(fork_threadpool_queue_work_simple) {
 }
 
 
+static uv_mutex_t concurrent_mutex;
+static void concurrent_work_cb(uv_work_t* req) {
+  ASSERT(req != NULL);
+  uv_mutex_lock(&concurrent_mutex);
+  uv_mutex_unlock(&concurrent_mutex);
+}
+
+static int concurrent_cb_called;
+static void after_concurrent_cb(uv_work_t* req, int s) {
+  int p1;
+  int p2;
+  char *str;
+
+  p1 = getpid();
+  p2 = (intptr_t)req->data;
+  ++concurrent_cb_called;
+
+  str = p1 == p2 ? "parent" : "child";
+  printf("callback called in %s, status: %d\n", str, s);
+  ASSERT((s == 0 && p1 == p2) || (s == UV_ECANCELED && p1 != p2));
+  ASSERT(req != NULL);
+}
+
+TEST_IMPL(fork_threadpool_queue_work_canceled) {
+  /* The threadpool works in the parent and child process,
+     but pendings tasks are canceled in the child. */
+
+  pid_t child_pid;
+  int r;
+  uv_work_t req;
+  uv_loop_t *l;
+
+  r = uv_mutex_init(&concurrent_mutex);
+  ASSERT(r == 0);
+
+  uv_mutex_lock(&concurrent_mutex);
+
+  l = uv_default_loop();
+  req.data = (void*)(intptr_t) getpid();
+  r = uv_queue_work(l, &req, concurrent_work_cb, after_concurrent_cb);
+  ASSERT(r == 0);
+
+  child_pid = fork();
+  ASSERT(child_pid != -1);
+
+  if (child_pid != 0) {
+    /* parent. Let the work thread finish */
+    uv_mutex_unlock(&concurrent_mutex);
+    r = uv_run(l, UV_RUN_DEFAULT);
+    ASSERT(r == 0);
+    ASSERT(concurrent_cb_called == 1);
+    assert_wait_child(child_pid);
+  } else {
+    /* child */
+    ASSERT(0 == uv_loop_fork(l));
+    run_timer_loop_once();
+    ASSERT(concurrent_cb_called == 1);
+  }
+  return 0;
+}
 #endif /* !_WIN32 */

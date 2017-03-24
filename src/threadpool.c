@@ -140,6 +140,9 @@ static void init_threads(void) {
   if (nthreads > MAX_THREADPOOL_SIZE)
     nthreads = MAX_THREADPOOL_SIZE;
 
+  if (threads != default_threads)
+    uv__free(threads);
+
   threads = default_threads;
   if (nthreads > ARRAY_SIZE(default_threads)) {
     threads = uv__malloc(nthreads * sizeof(threads[0]));
@@ -149,9 +152,11 @@ static void init_threads(void) {
     }
   }
 
+  memset(&cond, 0, sizeof cond);
   if (uv_cond_init(&cond))
     abort();
 
+  memset(&mutex, 0, sizeof mutex);
   if (uv_mutex_init(&mutex))
     abort();
 
@@ -311,3 +316,78 @@ int uv_cancel(uv_req_t* req) {
 
   return uv__work_cancel(loop, req, wreq);
 }
+
+#ifndef _WIN32
+int uv__work_queue_fork(uv_loop_t* loop) {
+  QUEUE wq;
+  int err;
+  QUEUE* qreq;
+
+  err = pthread_mutex_trylock(&loop->wq_mutex);
+  /* Too bad. Locked in the parent, loop possibly
+     in a corrupt state */
+  if (err)
+    return -err;
+
+  if (QUEUE_EMPTY(&loop->active_reqs)) {
+    uv_mutex_unlock(&loop->wq_mutex);
+    return 0;
+  }
+
+  QUEUE_INIT(&wq);
+  QUEUE_FOREACH(qreq, &loop->active_reqs) {
+    struct uv__work* wreq;
+    uv_req_t * req;
+    int do_remove;
+    QUEUE* q;
+
+    req = QUEUE_DATA(qreq, uv_req_t, active_queue);
+    switch (req->type) {
+    case UV_FS:
+      wreq = &((uv_fs_t*) req)->work_req;
+      break;
+    case UV_GETADDRINFO:
+      wreq = &((uv_getaddrinfo_t*) req)->work_req;
+      break;
+    case UV_GETNAMEINFO:
+      wreq = &((uv_getnameinfo_t*) req)->work_req;
+      break;
+    case UV_WORK:
+      wreq = &((uv_work_t*) req)->work_req;
+      break;
+    default:
+      continue;
+    }
+
+    do_remove = 1;
+    QUEUE_FOREACH(q, &loop->wq) {
+      struct uv__work * wreq2;
+      wreq2 = container_of(q, struct uv__work, wq);
+      if (wreq2 == wreq) {
+        do_remove = 0;
+        break;
+      }
+    }
+    if (do_remove == 1) {
+      wreq->work = uv__cancelled;
+      QUEUE_INSERT_TAIL(&wq, &wreq->wq);
+    }
+  }
+
+  if (!QUEUE_EMPTY(&wq)) {
+    do {
+      QUEUE* q;
+      struct uv__work* w;
+
+      q = QUEUE_HEAD(&wq);
+      QUEUE_REMOVE(q);
+      w = container_of(q, struct uv__work, wq);
+      QUEUE_INSERT_TAIL(&loop->wq, &w->wq);
+    } while (!QUEUE_EMPTY(&wq));
+    uv_async_send(&loop->wq_async);
+  }
+
+  uv_mutex_unlock(&loop->wq_mutex);
+  return 0;
+}
+#endif

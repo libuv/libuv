@@ -214,3 +214,10 @@ API
        Any previous value returned from :c:func`uv_backend_fd` is now
        invalid. That function must be called again to determine the
        correct backend file descriptor.
+
+    .. caution::
+
+       The old threadpool and its state are not longer available in
+       the child process. If there were any pending tasks left, their
+       callbacks will be called with ``UV_ECANCELED``, so you can free
+       acquired resources or schedule tasks again.

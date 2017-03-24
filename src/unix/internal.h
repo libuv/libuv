@@ -323,4 +323,6 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
 int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
 #endif
 
+int uv__work_queue_fork(uv_loop_t* loop);
+
 #endif /* UV_UNIX_INTERNAL_H_ */
