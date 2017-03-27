@@ -99,18 +99,6 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
 
-int uv__io_fork(uv_loop_t* loop) {
-#if defined(PORT_SOURCE_FILE)
-  if (loop->fs_fd != -1) {
-    /* stop the watcher before we blow away its fileno */
-    uv__io_stop(loop, &loop->fs_event_watcher, POLLIN);
-  }
-#endif
-  uv__platform_loop_delete(loop);
-  return uv__platform_loop_init(loop);
-}
-
-
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct port_event* events;
   uintptr_t i;

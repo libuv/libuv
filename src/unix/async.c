@@ -200,16 +200,6 @@ static int uv__async_start(uv_loop_t* loop) {
 }
 
 
-int uv__async_fork(uv_loop_t* loop) {
-  if (loop->async_io_watcher.fd == -1) /* never started */
-    return 0;
-
-  uv__async_stop(loop);
-
-  return uv__async_start(loop);
-}
-
-
 void uv__async_stop(uv_loop_t* loop) {
   if (loop->async_io_watcher.fd == -1)
     return;

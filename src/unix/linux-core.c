@@ -107,24 +107,6 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 }
 
 
-int uv__io_fork(uv_loop_t* loop) {
-  int err;
-  void* old_watchers;
-
-  old_watchers = loop->inotify_watchers;
-
-  uv__close(loop->backend_fd);
-  loop->backend_fd = -1;
-  uv__platform_loop_delete(loop);
-
-  err = uv__platform_loop_init(loop);
-  if (err)
-    return err;
-
-  return uv__inotify_fork(loop, old_watchers);
-}
-
-
 void uv__platform_loop_delete(uv_loop_t* loop) {
   if (loop->inotify_fd == -1) return;
   uv__io_stop(loop, &loop->inotify_read_watcher, POLLIN);
