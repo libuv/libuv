@@ -74,7 +74,7 @@ Data types
             UV_FS_EVENT_STAT = 2,
             /*
             * By default, event watcher, when watching directory, is not registering
-            * (is ignoring) changes in it's subdirectories.
+            * (is ignoring) changes in its subdirectories.
             * This flag will override this behaviour on platforms that support it.
             */
             UV_FS_EVENT_RECURSIVE = 4
