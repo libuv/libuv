@@ -291,7 +291,7 @@ API
     Equivalent to :man:`realpath(3)` on Unix. Windows uses `GetFinalPathNameByHandle <https://msdn.microsoft.com/en-us/library/windows/desktop/aa364962(v=vs.85).aspx>`_.
 
     .. warning::
-        This function has certain platform specific caveats that were discovered when used in Node.
+        This function has certain platform-specific caveats that were discovered when used in Node.
 
         * macOS and other BSDs: this function will fail with UV_ELOOP if more than 32 symlinks are
           found while resolving the given path.  This limit is hardcoded and cannot be sidestepped.
