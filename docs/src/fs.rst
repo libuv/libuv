@@ -9,7 +9,7 @@ operations. All functions defined in this document take a callback, which is
 allowed to be NULL. If the callback is NULL the request is completed synchronously,
 otherwise it will be performed asynchronously.
 
-All file operations are run on the threadpool, see :ref:`threadpool` for information
+All file operations are run on the threadpool. See :ref:`threadpool` for information
 on the threadpool size.
 
 
