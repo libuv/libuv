@@ -10,7 +10,7 @@ the best backend for the job on each platform.
 
 .. note::
     For AIX, the non default IBM bos.ahafs package has to be installed.
-    The AIX Event Infrastructure file system (ahafs) has some limitations:
+    The AIX Event Infrastructure filesystem (ahafs) has some limitations:
 
         - ahafs tracks monitoring per process and is not thread safe. A separate process
           must be spawned for each monitor for the same event.
