@@ -66,7 +66,7 @@ Data types
             UV_FS_EVENT_WATCH_ENTRY = 1,
             /*
             * By default uv_fs_event will try to use a kernel interface such as inotify
-            * or kqueue to detect events. This may not work on remote filesystems such
+            * or kqueue to detect events. This may not work on remote file systems such
             * as NFS mounts. This flag makes fs_event fall back to calling stat() on a
             * regular interval.
             * This flag is currently not implemented yet on any backend.
@@ -74,7 +74,7 @@ Data types
             UV_FS_EVENT_STAT = 2,
             /*
             * By default, event watcher, when watching directory, is not registering
-            * (is ignoring) changes in it's subdirectories.
+            * (is ignoring) changes in its subdirectories.
             * This flag will override this behaviour on platforms that support it.
             */
             UV_FS_EVENT_RECURSIVE = 4

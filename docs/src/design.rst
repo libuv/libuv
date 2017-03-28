@@ -128,7 +128,7 @@ For a thorough explanation of the cross-platform file I/O landscape, checkout
 libuv currently uses a global thread pool on which all loops can queue work on. 3 types of
 operations are currently run on this pool:
 
-    * Filesystem operations
+    * File system operations
     * DNS functions (getaddrinfo and getnameinfo)
     * User specified code via :c:func:`uv_queue_work`
 
