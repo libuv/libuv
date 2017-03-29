@@ -107,6 +107,15 @@ TEST_DECLARE   (tcp_bind6_error_addrnotavail)
 TEST_DECLARE   (tcp_bind6_error_fault)
 TEST_DECLARE   (tcp_bind6_error_inval)
 TEST_DECLARE   (tcp_bind6_localhost_ok)
+#if defined(_AIX)                 ||                                      \
+    defined(__linux__)            ||                                      \
+    defined(__APPLE__)            ||                                      \
+    defined(__OpenBSD__)          ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__NetBSD__)
+TEST_DECLARE   (tcp_chunk_size)
+TEST_DECLARE   (tcp_chunk_size_large)
+#endif
 TEST_DECLARE   (udp_alloc_cb_fail)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
@@ -486,6 +495,15 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_bind6_error_fault)
   TEST_ENTRY  (tcp_bind6_error_inval)
   TEST_ENTRY  (tcp_bind6_localhost_ok)
+#if defined(_AIX)                 ||                                      \
+    defined(__linux__)            ||                                      \
+    defined(__APPLE__)            ||                                      \
+    defined(__OpenBSD__)          ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__NetBSD__)
+  TEST_ENTRY  (tcp_chunk_size)
+  TEST_ENTRY  (tcp_chunk_size_large)
+#endif
 
   TEST_ENTRY  (udp_alloc_cb_fail)
   TEST_ENTRY  (udp_bind)

@@ -239,6 +239,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-write-fail.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-write-queue-order.c \
+                         test/test-tcp-chunk-size.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \
                          test/test-threadpool-cancel.c \
@@ -328,7 +329,8 @@ libuv_la_SOURCES += src/unix/darwin.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
                     src/unix/proctitle.c \
-                    src/unix/pthread-barrier.c
+                    src/unix/pthread-barrier.c \
+                    src/unix/bsd-largesock.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -340,7 +342,7 @@ endif
 
 if FREEBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c
+libuv_la_SOURCES += src/unix/freebsd.c src/unix/kqueue.c src/unix/bsd-largesock.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -357,13 +359,13 @@ endif
 
 if NETBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/kqueue.c src/unix/netbsd.c
+libuv_la_SOURCES += src/unix/kqueue.c src/unix/netbsd.c src/unix/bsd-largesock.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
 if OPENBSD
 include_HEADERS += include/uv-bsd.h
-libuv_la_SOURCES += src/unix/kqueue.c src/unix/openbsd.c
+libuv_la_SOURCES += src/unix/kqueue.c src/unix/openbsd.c src/unix/bsd-largesock.c
 test_run_tests_LDFLAGS += -lutil
 endif
 

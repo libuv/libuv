@@ -1127,7 +1127,12 @@ static void uv__read(uv_stream_t* stream) {
     assert(stream->alloc_cb != NULL);
 
     buf = uv_buf_init(NULL, 0);
+#if defined(_AIX) || defined(__linux__) || defined(__APPLE__)
+    stream->alloc_cb((uv_handle_t*)stream, stream->type == UV_TCP ?
+                    ((uv_tcp_t *) stream)->chunk_read_size : STDTCPWINDOW, &buf);
+#else
     stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
+#endif
     if (buf.base == NULL || buf.len == 0) {
       /* User indicates it can't or won't handle the read. */
       stream->read_cb(stream, UV_ENOBUFS, &buf);

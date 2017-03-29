@@ -77,6 +77,14 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
     }
   }
 
+#if defined(_AIX)                 ||                                      \
+    defined(__linux__)            ||                                      \
+    defined(__APPLE__)            ||                                      \
+    defined(__OpenBSD__)          ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__NetBSD__)
+  tcp->chunk_read_size = STDTCPWINDOW;
+#endif
   return 0;
 }
 

@@ -211,7 +211,8 @@
             'src/unix/darwin.c',
             'src/unix/fsevents.c',
             'src/unix/darwin-proctitle.c',
-            'src/unix/pthread-barrier.c'
+            'src/unix/pthread-barrier.c',
+            'src/unix/bsd-largesock.c'
           ],
           'defines': [
             '_DARWIN_USE_64_BIT_INODE=1',
@@ -279,13 +280,19 @@
           },
         }],
         [ 'OS=="freebsd" or OS=="dragonflybsd"', {
-          'sources': [ 'src/unix/freebsd.c' ],
+          'sources': [ 'src/unix/freebsd.c',
+                       'src/unix/bsd-largesock.c'
+                     ],
         }],
         [ 'OS=="openbsd"', {
-          'sources': [ 'src/unix/openbsd.c' ],
+          'sources': [ 'src/unix/openbsd.c',
+                       'src/unix/bsd-largesock.c'
+                     ],
         }],
         [ 'OS=="netbsd"', {
-          'sources': [ 'src/unix/netbsd.c' ],
+          'sources': [ 'src/unix/netbsd.c',
+                       'src/unix/bsd-largesock.c'
+                     ],
         }],
         [ 'OS in "freebsd dragonflybsd openbsd netbsd".split()', {
           'link_settings': {
@@ -417,6 +424,7 @@
         'test/test-tcp-oob.c',
         'test/test-tcp-read-stop.c',
         'test/test-tcp-write-queue-order.c',
+        'test/test-tcp-chunk-size.c',
         'test/test-threadpool.c',
         'test/test-threadpool-cancel.c',
         'test/test-thread-equal.c',

@@ -61,6 +61,9 @@
 #include <strings.h>
 #include <sys/vnode.h>
 
+#include <stropts.h>
+#include <net/netopt.h>
+
 #define RDWR_BUF_SIZE   4096
 #define EQ(a,b)         (strcmp(a,b) == 0)
 
@@ -1151,4 +1154,54 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   pc.fd = fd;
   if(loop->backend_fd >= 0)
     pollset_ctl(loop->backend_fd, &pc, 1);
+}
+
+int uv__tcp_enable_largesocket(uv_tcp_t *tcp) {
+  struct optreq1 oreq;
+  int ws;
+  int rs;
+  int rmem;
+  int wmem;
+  int r;
+
+  int fd = socket(1, 1, 0);
+  if (fd < 0)
+    return UV_ENOSYS;
+
+  oreq.getnext = 1;
+  rs = 0;
+  ws = 0;
+  while (ioctl(fd, SIOCGNETOPT1, (caddr_t)&oreq) != -1) {
+    if (strncmp(oreq.name, "tcp_sendspace", strlen("tcp_sendspace")) == 0) {
+      wmem = atoi(oreq.data);
+      ws = 1;
+      if (rs == 1)
+        break;
+    }
+    if (strncmp(oreq.name, "tcp_recvspace", strlen("tcp_recvspace")) == 0) {
+      rmem = atoi(oreq.data);
+      rs = 1;
+      if (ws == 1)
+        break;
+    }
+  }
+
+  uv__close(fd);
+
+  if (rs == 0 || ws == 0)
+    return UV_ENOSYS;
+
+  if (rmem <= STDTCPWINDOW || wmem <= STDTCPWINDOW)
+    return UV_ENOSYS;
+
+  r = uv_recv_buffer_size((uv_handle_t*) tcp, &rmem);
+  if (r != 0)
+    return UV_ENOSYS;
+
+  r = uv_send_buffer_size((uv_handle_t*) tcp, &wmem);
+  if (r != 0)
+    return UV_ENOSYS;
+
+  tcp->chunk_read_size = rmem;
+  return 0; 
 }

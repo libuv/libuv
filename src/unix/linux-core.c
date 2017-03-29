@@ -983,3 +983,49 @@ void uv__set_process_title(const char* title) {
   prctl(PR_SET_NAME, title);  /* Only copies first 16 characters. */
 #endif
 }
+
+int uv__tcp_enable_largesocket(uv_tcp_t *tcp) {
+  int rmem;
+  int wmem;
+  int r;
+  FILE* fp = uv__open_file("/proc/sys/net/core/rmem_max");
+  if (fp == NULL)
+    return UV_ENOSYS;
+
+  rmem = 0;
+  wmem = 0;
+  if (fscanf(fp, "%d", &rmem) != 1) {
+    fclose(fp);
+    return UV_ENOSYS;
+  }
+
+  fclose(fp);
+
+  if (rmem <= STDTCPWINDOW)
+    return UV_ENOSYS;
+
+  fp = uv__open_file("/proc/sys/net/core/wmem_max");
+  if (fp == NULL)
+    return UV_ENOSYS;
+
+  if (fscanf(fp, "%d", &wmem) != 1) {
+    fclose(fp);
+    return UV_ENOSYS;
+  }
+
+  fclose(fp);
+
+  if (wmem <= STDTCPWINDOW)
+    return UV_ENOSYS;
+
+  r = uv_recv_buffer_size((uv_handle_t *) tcp, &rmem);
+  if (r != 0)
+    return UV_ENOSYS;
+
+  r = uv_send_buffer_size((uv_handle_t *) tcp, &wmem);
+  if (r != 0)
+    return UV_ENOSYS;
+
+  tcp->chunk_read_size = rmem;
+  return 0;
+}

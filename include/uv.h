@@ -534,6 +534,9 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
+UV_EXTERN int uv_tcp_enable_largesocket(uv_tcp_t* tcp);
+
+#define STDTCPWINDOW (64 * 1024)
 
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {

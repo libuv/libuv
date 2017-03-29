@@ -269,7 +269,17 @@ typedef struct {
   void* queued_fds;                                                           \
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
+#if defined(_AIX)                 ||                                          \
+    defined(__linux__)            ||                                          \
+    defined(__APPLE__)            ||                                          \
+    defined(__OpenBSD__)          ||                                          \
+    defined(__FreeBSD__)          ||                                          \
+    defined(__NetBSD__)
+#define UV_TCP_PRIVATE_FIELDS                                                 \
+  int chunk_read_size;
+#else
 #define UV_TCP_PRIVATE_FIELDS /* empty */
+#endif
 
 #define UV_UDP_PRIVATE_FIELDS                                                 \
   uv_alloc_cb alloc_cb;                                                       \

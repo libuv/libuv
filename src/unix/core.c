@@ -78,6 +78,7 @@
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
+int uv__tcp_enable_largesocket(uv_tcp_t* tcp);
 
 /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
 STATIC_ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
@@ -1225,4 +1226,27 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
 
 int uv_os_get_passwd(uv_passwd_t* pwd) {
   return uv__getpwuid_r(pwd);
+}
+
+/* Leverage RFC1323: TCP extensions for high performance
+ * https://tools.ietf.org/html/rfc1323
+ * This could be as simple as getsockopt(socket) to get the buffer
+ * sizes, and then applying to the stream's chunk read size. But
+ * given that the behavior is platform dependant, we go with the 
+ * OS configuration to get the values. Moreover in Linux, we want to
+ * leverage the maximum size not the default, which are different.
+ */
+
+int uv_tcp_enable_largesocket(uv_tcp_t *tcp) {
+#if defined(_AIX)                 ||                                      \
+    defined(__linux__)            ||                                      \
+    defined(__APPLE__)            ||                                      \
+    defined(__OpenBSD__)          ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__NetBSD__)
+  return uv__tcp_enable_largesocket(tcp);
+#else
+  /* Implement me. */
+  return UV_ENOSYS;
+#endif
 }

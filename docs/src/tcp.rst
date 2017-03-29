@@ -105,4 +105,20 @@ API
     The callback is made when the connection has been established or when a
     connection error happened.
 
+.. c:function:: int uv_tcp_enable_largesocket(uv_tcp_t* handle)
+
+    For TCP based full duplex streams, leverages the TCP window scaling,
+    if it is supported by the underlying system. The socket buffer size is aligned
+    to the system configuration values, and the internal I/O buffers are enlarged
+    to transport large amount of data.
+
+    Currently supported only for Linux, AIX and MAC OS X.
+
+    Will return either:
+
+    * 0: Indicates system supports TCP window scaling, and socket buffers are
+         increased (in platform specific manner)
+    * EV_ENOSYS: Indicates either no platform support,
+         or not configured to tap the capability.
+
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.
