@@ -6,7 +6,7 @@
 
 FS Poll handles allow the user to monitor a given path for changes. Unlike
 :c:type:`uv_fs_event_t`, fs poll handles use `stat` to detect when a file has
-changed so they can work on filesystems where fs event handles can't.
+changed so they can work on file systems where fs event handles can't.
 
 
 Data types
@@ -52,7 +52,7 @@ API
 
     .. note::
         For maximum portability, use multi-second intervals. Sub-second intervals will not detect
-        all changes on many filesystems.
+        all changes on many file systems.
 
 .. c:function:: int uv_fs_poll_stop(uv_fs_poll_t* handle)
 

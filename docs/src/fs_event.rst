@@ -10,7 +10,7 @@ the best backend for the job on each platform.
 
 .. note::
     For AIX, the non default IBM bos.ahafs package has to be installed.
-    The AIX Event Infrastructure filesystem (ahafs) has some limitations:
+    The AIX Event Infrastructure file system (ahafs) has some limitations:
 
         - ahafs tracks monitoring per process and is not thread safe. A separate process
           must be spawned for each monitor for the same event.
@@ -66,7 +66,7 @@ Data types
             UV_FS_EVENT_WATCH_ENTRY = 1,
             /*
             * By default uv_fs_event will try to use a kernel interface such as inotify
-            * or kqueue to detect events. This may not work on remote filesystems such
+            * or kqueue to detect events. This may not work on remote file systems such
             * as NFS mounts. This flag makes fs_event fall back to calling stat() on a
             * regular interval.
             * This flag is currently not implemented yet on any backend.

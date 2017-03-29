@@ -1,10 +1,10 @@
 
 .. _fs:
 
-Filesystem operations
+File system operations
 =====================
 
-libuv provides a wide variety of cross-platform sync and async filesystem
+libuv provides a wide variety of cross-platform sync and async file system
 operations. All functions defined in this document take a callback, which is
 allowed to be NULL. If the callback is NULL the request is completed synchronously,
 otherwise it will be performed asynchronously.
@@ -18,7 +18,7 @@ Data types
 
 .. c:type:: uv_fs_t
 
-    Filesystem request type.
+    File system request type.
 
 .. c:type:: uv_timespec_t
 
@@ -58,7 +58,7 @@ Data types
 
 .. c:type:: uv_fs_type
 
-    Filesystem request type.
+    File system request type.
 
     ::
 
@@ -216,7 +216,7 @@ API
         Unlike `scandir(3)`, this function does not return the "." and ".." entries.
 
     .. note::
-        On Linux, getting the type of an entry is only supported by some filesystems (btrfs, ext2,
+        On Linux, getting the type of an entry is only supported by some file systems (btrfs, ext2,
         ext3 and ext4 at the time of this writing), check the :man:`getdents(2)` man page.
 
 .. c:function:: int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)

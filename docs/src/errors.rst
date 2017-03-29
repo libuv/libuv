@@ -277,7 +277,7 @@ Error constants
 
 .. c:macro:: UV_EROFS
 
-    read-only filesystem
+    read-only file system
 
 .. c:macro:: UV_ESHUTDOWN
 
