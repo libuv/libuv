@@ -24,7 +24,10 @@ build_script:
   - cmd: if "%APPVEYOR_REPO_TAG%" == "true" set APPVEYOR_BUILD_VERSION=%APPVEYOR_REPO_TAG_NAME%
   # vcbuild overwrites the platform variable.
   - cmd: set ARCH=%platform%
-  - cmd: vcbuild.bat release %ARCH% shared
+  - cmd: |
+         "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
+         set GYP_MSVS_VERSION=2015
+         vcbuild.bat release %ARCH% shared
 
 # after_build:
 #   - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
