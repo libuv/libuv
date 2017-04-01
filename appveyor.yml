@@ -26,8 +26,8 @@ build_script:
   - cmd: set ARCH=%platform%
   - cmd: vcbuild.bat release %ARCH% shared
 
-after_build:
-  - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
+# after_build:
+#   - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
 
 artifacts:
   - name: Installer
