@@ -90,7 +90,16 @@ static void kill_cb(uv_process_t* process,
 #else
   ASSERT(exit_status == 0);
 #endif
-  ASSERT(no_term_signal || term_signal == 15);
+#if defined(__APPLE__)
+  /*
+   * At least starting with Darwin Kernel Version 16.4.0, sending a SIGTERM to a
+   * process that is still starting up kills it with SIGKILL instead of SIGTERM.
+   * See: https://github.com/libuv/libuv/issues/1226
+   */
+  ASSERT(no_term_signal || term_signal == SIGTERM || term_signal == SIGKILL);
+#else
+  ASSERT(no_term_signal || term_signal == SIGTERM);
+#endif
   uv_close((uv_handle_t*)process, close_cb);
 
   /*
