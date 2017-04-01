@@ -1,3 +1,4 @@
+os: Visual Studio 2017
 version: v1.10.2.build{build}
 
 install:
