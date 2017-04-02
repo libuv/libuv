@@ -29,7 +29,7 @@ build_script:
         set GYP_MSVS_VERSION=2015
         vcbuild.bat nobuild
   - ps: .\appveyor.ps1
-  # - cmd: vcbuild.bat release %ARCH% shared noprojgen
+  - cmd: vcbuild.bat release %ARCH% shared noprojgen
 
 # after_build:
 #   - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
@@ -37,8 +37,6 @@ build_script:
 artifacts:
   - name: Installer
     path: 'libuv-*.exe'
-  - name: proj
-    path: '*.vcxproj'
 
 cache:
   - C:\projects\libuv\build\gyp
