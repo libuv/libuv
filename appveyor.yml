@@ -36,7 +36,7 @@ build_script:
         $pt = $proj.SelectSingleNode("//msbuild:PlatformToolset", $nm)
         $pt.InnerText = "v141"
         $proj.Save("libuv.vcxproj")
-  - cmd: vcbuild.bat release %ARCH% shared
+  - cmd: vcbuild.bat release %ARCH% shared noprojgen
 
 # after_build:
 #   - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
