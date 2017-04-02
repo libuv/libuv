@@ -1,6 +1,7 @@
 # change PlatformToolset from v140 to v141
-$files = ".\libuv.vcxproj", ".\run-benchmarks.vcxproj", ".\run-tests.vcxproj"
+$files = "libuv.vcxproj", "run-benchmarks.vcxproj", "run-tests.vcxproj"
 ForEach ($file in $files) {
+    $file = (Resolve-Path $file).Path # full path
     [xml] $proj = Get-Content $file
     $nm = New-Object System.Xml.XmlNamespaceManager $proj.NameTable
     $nm.AddNamespace("msbuild", $proj.Project.NamespaceURI)
