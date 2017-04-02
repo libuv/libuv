@@ -26,7 +26,7 @@ build_script:
         "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
         set GYP_MSVS_VERSION=2015
         vcbuild.bat %configuration% %platform% shared nobuild
-  - ps: .\appveyor.ps1
+  - ps: .\scripts\Update-ProjectFilesToVS2017.ps1
   - cmd: vcbuild.bat %configuration% %platform% shared noprojgen
 
 after_build:
