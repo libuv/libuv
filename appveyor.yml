@@ -29,8 +29,8 @@ build_script:
   - ps: .\appveyor.ps1
   - cmd: vcbuild.bat %configuration% %platform% shared noprojgen
 
-# after_build:
-#   - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
+after_build:
+  - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
 
 artifacts:
   - name: Installer
