@@ -30,7 +30,7 @@ build_script:
   - cmd: vcbuild.bat %configuration% %platform% shared noprojgen
 
 after_build:
-  - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
+  - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%platform% libuv.nsi'
 
 artifacts:
   - name: Installer
