@@ -26,7 +26,7 @@ build_script:
   - cmd: set ARCH=%platform%
   - cmd: |
          "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
-         set GYP_MSVS_VERSION=2015
+         set GYP_MSVS_VERSION=2017
          vcbuild.bat release %ARCH% shared
 
 # after_build:
