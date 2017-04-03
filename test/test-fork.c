@@ -46,7 +46,6 @@ static char socket_cb_read_buf[1024];
 
 static void socket_cb(uv_poll_t* poll, int status, int events) {
   ssize_t cnt;
-  cnt = 0;
   socket_cb_called++;
   ASSERT(0 == status);
   printf("Socket cb got events %d\n", events);
