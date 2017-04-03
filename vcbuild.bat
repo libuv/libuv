@@ -41,6 +41,22 @@ shift
 goto next-arg
 :args-done
 
+@rem Look for a set-up Visual Studio 2017 environment
+if defined VCINSTALLDIR goto :skip-vswhere
+call tools\vswhere_usability_wrapper.cmd
+:skip-vswhere
+if not defined VCINSTALLDIR goto :no-vs2017-env
+if defined VisualStudioVersion if "%VisualStudioVersion%"=="15.0" goto :no-vcvarsall-2017
+call "%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vs_toolset%
+if not defined VisualStudioVersion if not "%VisualStudioVersion%"=="15.0" goto :no-vs2017-env
+:no-vcvarsall-2017
+echo Using Visual Studio 2017
+if %VSCMD_ARG_TGT_ARCH%==x64 set target_arch=x64&set msbuild_platform=x64&set vs_toolset=x64
+set GYP_MSVS_VERSION=2017
+goto select-target
+
+:no-vs2017-env
+echo Environment not set for VS2017
 if defined WindowsSDKDir goto select-target
 if defined VCINSTALLDIR goto select-target
 
