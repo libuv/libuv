@@ -47,7 +47,6 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   int err;
 
   pipe_fname = NULL;
-  sockfd = -1;
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
