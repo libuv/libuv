@@ -372,18 +372,6 @@ HELPER_DECLARE (pipe_echo_server)
 
 TEST_DECLARE   (queue_foreach_delete)
 
-#ifndef _WIN32
-TEST_DECLARE  (fork_timer)
-TEST_DECLARE  (fork_socketpair)
-TEST_DECLARE  (fork_socketpair_started)
-TEST_DECLARE  (fork_signal_to_child)
-TEST_DECLARE  (fork_signal_to_child_closed)
-TEST_DECLARE  (fork_fs_events_child)
-TEST_DECLARE  (fork_fs_events_child_dir)
-TEST_DECLARE  (fork_fs_events_file_parent_child)
-TEST_DECLARE  (fork_threadpool_queue_work_simple)
-#endif
-
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -810,18 +798,6 @@ TASK_LIST_START
   TEST_ENTRY  (ip6_addr_link_local)
 
   TEST_ENTRY  (queue_foreach_delete)
-
-#ifndef _WIN32
-  TEST_ENTRY  (fork_timer)
-  TEST_ENTRY  (fork_socketpair)
-  TEST_ENTRY  (fork_socketpair_started)
-  TEST_ENTRY  (fork_signal_to_child)
-  TEST_ENTRY  (fork_signal_to_child_closed)
-  TEST_ENTRY  (fork_fs_events_child)
-  TEST_ENTRY  (fork_fs_events_child_dir)
-  TEST_ENTRY  (fork_fs_events_file_parent_child)
-  TEST_ENTRY  (fork_threadpool_queue_work_simple)
-#endif
 
 #if 0
   /* These are for testing the test runner. */

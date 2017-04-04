@@ -127,7 +127,7 @@ UV_DESTRUCTOR(static void cleanup(void)) {
 #endif
 
 
-static void init_threads(void) {
+static void init_once(void) {
   unsigned int i;
   const char* val;
 
@@ -162,27 +162,6 @@ static void init_threads(void) {
       abort();
 
   initialized = 1;
-}
-
-
-#ifndef _WIN32
-static void reset_once(void) {
-  uv_once_t child_once = UV_ONCE_INIT;
-  memcpy(&once, &child_once, sizeof(child_once));
-}
-#endif
-
-
-static void init_once(void) {
-#ifndef _WIN32
-  /* Re-initialize the threadpool after fork.
-   * Note that this discards the global mutex and condition as well
-   * as the work queue.
-   */
-  if (pthread_atfork(NULL, NULL, &reset_once))
-    abort();
-#endif
-  init_threads();
 }
 
 
