@@ -472,26 +472,6 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
 }
 
 
-int uv_exepath(char* buffer, size_t* size) {
-  ssize_t n;
-
-  if (buffer == NULL || size == NULL || *size == 0)
-    return -EINVAL;
-
-  n = *size - 1;
-  if (n > 0)
-    n = readlink("/proc/self/exe", buffer, n);
-
-  if (n == -1)
-    return -errno;
-
-  buffer[n] = '\0';
-  *size = n;
-
-  return 0;
-}
-
-
 int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
   const char* s;
