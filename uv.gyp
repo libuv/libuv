@@ -237,6 +237,7 @@
             'src/unix/linux-inotify.c',
             'src/unix/linux-syscalls.c',
             'src/unix/linux-syscalls.h',
+            'src/unix/sysinfo-memory.c',
           ],
           'link_settings': {
             'libraries': [ '-ldl', '-lrt' ],
@@ -251,6 +252,7 @@
             'src/unix/pthread-fixes.c',
             'src/unix/android-ifaddrs.c',
             'src/unix/pthread-barrier.c'
+            'src/unix/sysinfo-memory.c',
           ],
           'link_settings': {
             'libraries': [ '-ldl' ],
