@@ -83,9 +83,6 @@ static void uv_init(void) {
   /* Initialize winsock */
   uv_winsock_init();
 
-  /* Initialize FS */
-  uv_fs_init();
-
   /* Initialize signal stuff */
   uv_signals_init();
 

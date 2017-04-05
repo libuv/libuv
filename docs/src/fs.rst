@@ -165,6 +165,8 @@ API
 
     Equivalent to :man:`close(2)`.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb)
 
     Equivalent to :man:`open(2)`.
@@ -178,6 +180,8 @@ API
 
     Equivalent to :man:`preadv(2)`.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     Equivalent to :man:`unlink(2)`.
@@ -185,6 +189,8 @@ API
 .. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`pwritev(2)`.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
@@ -225,6 +231,8 @@ API
 
     Equivalent to :man:`stat(2)`, :man:`fstat(2)` and :man:`lstat(2)` respectively.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 
     Equivalent to :man:`rename(2)`.
@@ -233,17 +241,25 @@ API
 
     Equivalent to :man:`fsync(2)`.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb)
 
     Equivalent to :man:`fdatasync(2)`.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`ftruncate(2)`.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t out_fd, uv_os_fd_t in_fd, int64_t in_offset, size_t length, uv_fs_cb cb)
 
     Limited equivalent to :man:`sendfile(2)`.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_access(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
@@ -253,6 +269,8 @@ API
 .. c:function:: int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, int mode, uv_fs_cb cb)
 
     Equivalent to :man:`chmod(2)` and :man:`fchmod(2)` respectively.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb)
 .. c:function:: int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, double atime, double mtime, uv_fs_cb cb)
@@ -264,6 +282,7 @@ API
       versions but will return ``UV_ENOSYS``.
 
     .. versionchanged:: 1.10.0 sub-second precission is supported on Windows
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 
@@ -319,6 +338,8 @@ API
     .. note::
         These functions are not implemented on Windows.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. seealso:: The :c:type:`uv_req_t` API functions also apply.
 
 Helper functions
@@ -330,9 +351,18 @@ Helper functions
    to the OS-dependent handle.
    Upon return, the input ``fd`` parameter is invalid and closed.
 
+   This is only useful on Windows, where it calls DuplicateHandle
+   to make a new HANDLE independent from the MSVCRT library,
+   and then closes the handle out of the C runtime to avoid leaks
+   and to avoid having multiple handles open for the same underlying resource.
+
+    .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: uv_os_fd_t uv_get_osfhandle(int fd)
 
    For a file descriptor in the C runtime, get the OS-dependent handle.
    On UNIX, returns ``fd``. On Windows, this calls ``_get_osfhandle``.
    Note that the return value is still owned by the C runtime,
    any attempts to close it or to use it after closing the fd may lead to malfunction.
+
+    .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t

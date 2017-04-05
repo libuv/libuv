@@ -118,11 +118,6 @@ const WCHAR UNC_PATH_PREFIX[] = L"\\\\?\\UNC\\";
 const WCHAR UNC_PATH_PREFIX_LEN = 8;
 
 
-void uv_fs_init() {
-  _fmode = _O_BINARY;
-}
-
-
 INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     const char* new_path, const int copy_path) {
   char* buf;
