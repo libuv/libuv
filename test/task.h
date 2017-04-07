@@ -209,7 +209,7 @@ UNUSED static int can_ipv6(void) {
   return supported;
 }
 
-#if defined(__MVS__)
+#if defined(__MVS__) || defined(__CYGWIN__) || defined(__MSYS__)
 # define NO_FS_EVENTS "Filesystem watching not supported on this platform."
 #endif
 

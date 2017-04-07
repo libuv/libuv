@@ -60,6 +60,8 @@
       defined(__OpenBSD__)         || \
       defined(__NetBSD__)
 # include "uv-bsd.h"
+#elif defined(__CYGWIN__) || defined(__MSYS__)
+# include "uv-posix.h"
 #endif
 
 #ifndef PTHREAD_BARRIER_SERIAL_THREAD
