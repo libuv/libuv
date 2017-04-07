@@ -574,6 +574,9 @@ static void start_poll_test(void) {
 
 
 TEST_IMPL(poll_duplex) {
+#if defined(NO_SELF_CONNECT)
+  RETURN_SKIP(NO_SELF_CONNECT);
+#endif
   test_mode = DUPLEX;
   start_poll_test();
   return 0;
@@ -581,6 +584,9 @@ TEST_IMPL(poll_duplex) {
 
 
 TEST_IMPL(poll_unidirectional) {
+#if defined(NO_SELF_CONNECT)
+  RETURN_SKIP(NO_SELF_CONNECT);
+#endif
   test_mode = UNIDIRECTIONAL;
   start_poll_test();
   return 0;
