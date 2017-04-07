@@ -538,6 +538,7 @@ int uv__nonblock_ioctl(int fd, int set) {
 }
 
 
+#if !defined(__CYGWIN__) && !defined(__MSYS__)
 int uv__cloexec_ioctl(int fd, int set) {
   int r;
 
@@ -550,6 +551,7 @@ int uv__cloexec_ioctl(int fd, int set) {
 
   return 0;
 }
+#endif
 
 
 int uv__nonblock_fcntl(int fd, int set) {

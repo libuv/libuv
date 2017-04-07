@@ -1297,7 +1297,11 @@ TEST_IMPL(spawn_setuid_fails) {
   options.uid = 0;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
+#if defined(__CYGWIN__)
+  ASSERT(r == UV_EINVAL);
+#else
   ASSERT(r == UV_EPERM);
+#endif
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
@@ -1328,7 +1332,11 @@ TEST_IMPL(spawn_setgid_fails) {
   options.gid = 0;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
+#if defined(__CYGWIN__)
+  ASSERT(r == UV_EINVAL);
+#else
   ASSERT(r == UV_EPERM);
+#endif
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
@@ -1537,6 +1545,17 @@ TEST_IMPL(spawn_reads_child_path) {
   exepath[len] = 0;
   strcpy(path, "PATH=");
   strcpy(path + 5, exepath);
+#if defined(__CYGWIN__) || defined(__MSYS__)
+  /* Carry over the dynamic linker path in case the test runner
+     is linked against cyguv-1.dll or msys-uv-1.dll, see above.  */
+  {
+    char* syspath = getenv("PATH");
+    if (syspath != NULL) {
+      strcat(path, ":");
+      strcat(path, syspath);
+    }
+  }
+#endif
 
   env[0] = path;
   env[1] = getenv(dyld_path_var);
