@@ -164,7 +164,7 @@ skip:
     flags |= UV_STREAM_WRITABLE;
 
   uv__stream_open((uv_stream_t*) tty, fd, flags);
-  tty->mode = UV_TTY_MODE_NORMAL;
+  tty->orig_termios_saved = 0;
 
   return 0;
 }
@@ -192,11 +192,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   struct termios tmp;
   int fd;
 
-  if (tty->mode == (int) mode)
-    return 0;
-
   fd = uv__stream_fd(tty);
-  if (tty->mode == UV_TTY_MODE_NORMAL && mode != UV_TTY_MODE_NORMAL) {
+  if (tty->orig_termios_saved == 0) {
     if (tcgetattr(fd, &tty->orig_termios))
       return -errno;
 
@@ -208,6 +205,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       orig_termios_fd = fd;
     }
     uv_spinlock_unlock(&termios_spinlock);
+
+    tty->orig_termios_saved = 1;
   }
 
   tmp = tty->orig_termios;
@@ -233,7 +232,6 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   if (tcsetattr(fd, TCSADRAIN, &tmp))
     return -errno;
 
-  tty->mode = mode;
   return 0;
 }
 

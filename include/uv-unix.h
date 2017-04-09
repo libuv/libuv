@@ -345,7 +345,7 @@ typedef struct {
 
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   struct termios orig_termios;                                                \
-  int mode;
+  int orig_termios_saved;
 
 #define UV_SIGNAL_PRIVATE_FIELDS                                              \
   /* RB_ENTRY(uv_signal_s) tree_entry; */                                     \
