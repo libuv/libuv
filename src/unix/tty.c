@@ -224,6 +224,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
     case UV_TTY_MODE_IO:
       uv__tty_make_raw(&tmp);
       break;
+    default:
+      return UV_EINVAL;
   }
 
   /* Apply changes after draining */
