@@ -87,8 +87,8 @@ API
 
 .. c:function:: int uv_tty_reset_mode(void)
 
-    To be called when the program exits. Resets TTY settings to default
-    values for the next process to take over.
+    To be called when the program exits. Resets the first TTY whose mode was
+    changed to initial values for the next process to take over.
 
     This function is async signal-safe on Unix platforms but can fail with error
     code ``UV_EBUSY`` if you call it when execution is inside
