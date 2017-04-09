@@ -171,6 +171,8 @@ struct uv__stream_queued_fds_s {
 #define uv__nonblock uv__nonblock_fcntl
 #endif
 
+#define UV_DOUBLE_ANTI_NANO 1e9
+
 /* core */
 int uv__cloexec_ioctl(int fd, int set);
 int uv__cloexec_fcntl(int fd, int set);

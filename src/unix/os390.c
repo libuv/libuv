@@ -357,7 +357,8 @@ int uv_uptime(double* uptime) {
   v = getutxid(&u);
   if (v == NULL)
     return -1;
-  *uptime = difftime64(time64(&t), v->ut_tv.tv_sec);
+  *uptime = difftime64(time64(&t), v->ut_tv.tv_sec) - 
+            (ut_tv.tv_usec / UV_DOUBLE_ANTI_NANO);
   return 0;
 }
 
