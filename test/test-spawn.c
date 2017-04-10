@@ -1562,9 +1562,6 @@ TEST_IMPL(spawn_fs_open) {
 
 #ifndef _WIN32
 TEST_IMPL(closed_fd_events) {
-#if defined(__MVS__)
-  RETURN_SKIP("Filesystem watching not supported on this platform.");
-#endif
   uv_stdio_container_t stdio[3];
   uv_pipe_t pipe_handle;
   int fd[2];
