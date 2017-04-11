@@ -78,7 +78,7 @@ stages of a loop iteration:
 #. Prepare handle callbacks are called. Prepare handles get their callbacks called right before
    the loop will block for I/O.
 
-#. Poll timeout is calculated. Before blocking for I/O the loop calculates the duration it should
+#. Poll timeout is calculated. Before blocking for I/O the loop calculates for how long it should
    block. These are the rules when calculating the timeout:
 
         * If the loop was run with the ``UV_RUN_NOWAIT`` flag, the timeout is 0.
