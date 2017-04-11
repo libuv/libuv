@@ -25,10 +25,10 @@ Handles and requests
 libuv provides users with 2 abstractions to work with, in combination with the event loop:
 handles and requests.
 
-Handles represent long-lived objects capable of performing certain operations while active. For
-example, a prepare handle gets its callback called once every loop iteration when active. Another
-example, is a TCP server handle that gets its connection callback called every time there is a
-new connection.
+Handles represent long-lived objects capable of performing certain operations while active. Some examples:
+
+- a prepare handle gets its callback called once every loop iteration when active
+- a TCP server handle that gets its connection callback called every time there is a new connection
 
 Requests represent (typically) short-lived operations. These operations can be performed over a
 handle: write requests are used to write data on a handle; or standalone: getaddrinfo requests
