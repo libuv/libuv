@@ -86,7 +86,7 @@ stages of a loop iteration:
         * If there are no active handles or requests, the timeout is 0.
         * If there are any idle handles active, the timeout is 0.
         * If there are any handles pending to be closed, the timeout is 0.
-        * If none of the above cases matched, the timeout of the closest timer is taken, or
+        * If none of the above cases matches, the timeout of the closest timer is taken, or
           if there are no active timers, infinity.
 
 #. The loop blocks for I/O. At this point the loop will block for I/O for the duration calculated
