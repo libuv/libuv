@@ -1410,6 +1410,12 @@ int uv_write2(uv_write_t* req,
      */
     if (uv__handle_fd((uv_handle_t*) send_handle) < 0)
       return -EBADF;
+
+#if defined(__CYGWIN__) || defined(__MSYS__)
+    /* Cygwin recvmsg always sets msg_controllen to zero, so we cannot send it.
+       See https://github.com/mirror/newlib-cygwin/blob/86fc4bf0/winsup/cygwin/fhandler_socket.cc#L1736-L1743 */
+    return -ENOSYS;
+#endif
   }
 
   /* It's legal for write_queue_size > 0 even when the write_queue is empty;

@@ -213,4 +213,12 @@ UNUSED static int can_ipv6(void) {
 # define NO_FS_EVENTS "Filesystem watching not supported on this platform."
 #endif
 
+#if defined(__MSYS__)
+# define NO_SEND_HANDLE_ON_PIPE \
+  "MSYS2 runtime does not support sending handles on pipes."
+#elif defined(__CYGWIN__)
+# define NO_SEND_HANDLE_ON_PIPE \
+  "Cygwin runtime does not support sending handles on pipes."
+#endif
+
 #endif /* TASK_H_ */
