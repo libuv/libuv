@@ -2,7 +2,7 @@
 .. _fs:
 
 File system operations
-=====================
+======================
 
 libuv provides a wide variety of cross-platform sync and async file system
 operations. All functions defined in this document take a callback, which is
