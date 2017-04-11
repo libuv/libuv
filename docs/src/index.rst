@@ -46,7 +46,7 @@ libuv can be downloaded from `here <http://dist.libuv.org/dist/>`_.
 Installation
 ------------
 
-Installation instructions can be found on `the README <https://github.com/libuv/libuv/blob/master/README.md>`_.
+Installation instructions can be found in `the README <https://github.com/libuv/libuv/blob/master/README.md>`_.
 
 
 Upgrading
