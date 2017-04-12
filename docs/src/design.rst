@@ -27,8 +27,8 @@ handles and requests.
 
 Handles represent long-lived objects capable of performing certain operations while active. Some examples:
 
-- a prepare handle gets its callback called once every loop iteration when active
-- a TCP server handle that gets its connection callback called every time there is a new connection
+- A prepare handle gets its callback called once every loop iteration when active.
+- A TCP server handle that gets its connection callback called every time there is a new connection.
 
 Requests represent (typically) short-lived operations. These operations can be performed over a
 handle: write requests are used to write data on a handle; or standalone: getaddrinfo requests
