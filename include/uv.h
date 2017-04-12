@@ -434,6 +434,12 @@ UV_EXTERN int uv_dup(uv_os_fd_t fd, uv_os_fd_t* dupfd);
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
 
+/*
+ * the following functions are declared 'static inline' to ensure that they
+ * end up in the static linkage namespace of the caller and thus point to
+ * the correct (caller's) copy of MSVCRT for resolving the `fd` pseudo-handle
+ * to the intended kernel `HANDLE`
+ */
 #ifdef _MSC_VER
 # define INLINE __inline
 #else
