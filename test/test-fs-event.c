@@ -1029,7 +1029,7 @@ TEST_IMPL(fs_event_error_reporting) {
 #endif  /* defined(__APPLE__) */
 
 TEST_IMPL(fs_event_watch_invalid_path) {
-#if defined(MVS)
+#if defined(__MVS__)
   RETURN_SKIP("Filesystem watching not supported on this platform.");
 #endif
 

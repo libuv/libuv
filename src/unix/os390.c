@@ -863,3 +863,9 @@ update_timeout:
 void uv__set_process_title(const char* title) {
   /* do nothing */
 }
+
+int uv__io_fork(uv_loop_t* loop) {
+  uv__platform_loop_delete(loop);
+
+  return uv__platform_loop_init(loop);
+}

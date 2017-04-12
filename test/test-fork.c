@@ -506,12 +506,17 @@ static int _do_fork_fs_events_child(int file_or_dir) {
 
 
 TEST_IMPL(fork_fs_events_child) {
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#endif
   return _do_fork_fs_events_child(FS_TEST_FILE);
 }
 
 
 TEST_IMPL(fork_fs_events_child_dir) {
-#if defined(__APPLE__) || defined (__linux__)
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#elif defined(__APPLE__) || defined (__linux__)
   return _do_fork_fs_events_child(FS_TEST_DIR);
 #else
   /* You can't spin up a cfrunloop thread on an apple platform
@@ -524,7 +529,9 @@ TEST_IMPL(fork_fs_events_child_dir) {
 
 
 TEST_IMPL(fork_fs_events_file_parent_child) {
-#if defined(__sun) || defined(_AIX)
+#if defined(__MVS__)
+  RETURN_SKIP("Filesystem watching not supported on this platform.");
+#elif defined(__sun) || defined(_AIX)
   /* It's not possible to implement this without additional
    * bookkeeping on SunOS. For AIX it is possible, but has to be
    * written. See https://github.com/libuv/libuv/pull/846#issuecomment-287170420
