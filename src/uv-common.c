@@ -627,6 +627,8 @@ int uv_loop_close(uv_loop_t* loop) {
   void* saved_data;
 #endif
 
+  uv__loop_run_closing_handles(loop);
+
   if (!QUEUE_EMPTY(&(loop)->active_reqs))
     return UV_EBUSY;
 
