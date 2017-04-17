@@ -433,6 +433,13 @@ int uv__udp_send(uv_udp_send_t* req,
 
   if (empty_queue && !(handle->flags & UV_UDP_PROCESSING)) {
     uv__udp_sendmsg(handle);
+
+    /* `uv__udp_sendmsg` may not be able to do non-blocking write straight
+     * away. In such cases the `io_watcher` has to be queued for asynchronous
+     * write.
+     */
+    if (!QUEUE_EMPTY(&handle->write_queue))
+      uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
   } else {
     uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
   }
