@@ -166,6 +166,7 @@ test/test-udp-multicast-ttl.c
 test/test-udp-open.c
 test/test-udp-options.c
 test/test-udp-send-and-recv.c
+test/test-udp-send-hang-loop.c
 test/test-walk-handles.c
 test/test-watcher-cross-stop.c
 "
