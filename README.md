@@ -47,6 +47,7 @@ libuv is licensed under the MIT license. Check the [LICENSE file](LICENSE).
 
 ## Community
 
+ * [Support](https://github.com/libuv/help)
  * [Mailing list](http://groups.google.com/group/libuv)
  * [IRC chatroom (#libuv@irc.freenode.org)](http://webchat.freenode.net?channels=libuv&uio=d4)
 
