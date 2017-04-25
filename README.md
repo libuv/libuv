@@ -44,6 +44,7 @@ The ABI/API changes can be tracked [here](http://abi-laboratory.pro/tracker/time
 ## Licensing
 
 libuv is licensed under the MIT license. Check the [LICENSE file](LICENSE).
+The documentation is licensed under the CC BY 4.0 license. Check the [LICENSE-docs file](LICENSE-docs).
 
 ## Community
 
