@@ -54,7 +54,7 @@ The documentation is licensed under the CC BY 4.0 license. Check the [LICENSE-do
 
 ## Documentation
 
-### Official API documentation
+### Official documentation
 
 Located in the docs/ subdirectory. It uses the [Sphinx](http://sphinx-doc.org/)
 framework, which makes it possible to build the documentation in multiple
@@ -90,8 +90,6 @@ also serve as API specification and usage examples.
 
 ### Other resources
 
- * [An Introduction to libuv](http://nikhilm.github.com/uvbook/)
-   &mdash; An overview of libuv with tutorials.
  * [LXJS 2012 talk](http://www.youtube.com/watch?v=nGn60vDSxQ4)
    &mdash; High-level introductory talk about libuv.
  * [libuv-dox](https://github.com/thlorenz/libuv-dox)
