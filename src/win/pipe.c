@@ -1902,7 +1902,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_os_fd_t os_handle) {
    * duplicate the underlying OS handle and forget about the original one.
    */
   if (os_handle == UV_STDIN_FD || os_handle == UV_STDOUT_FD || os_handle == UV_STDERR_FD) {
-    int dup_err = uv_dup(os_handle, &os_handle);
+    int dup_err = uv__dup(os_handle, &os_handle);
     if (dup_err)
       return dup_err;
   }

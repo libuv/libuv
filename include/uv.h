@@ -429,7 +429,6 @@ UV_EXTERN int uv_send_buffer_size(uv_handle_t* handle, int* value);
 UV_EXTERN int uv_recv_buffer_size(uv_handle_t* handle, int* value);
 
 UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
-UV_EXTERN int uv_dup(uv_os_fd_t fd, uv_os_fd_t* dupfd);
 
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
@@ -462,8 +461,11 @@ INLINE static uv_os_fd_t uv_get_osfhandle(int fd) {
 INLINE static uv_os_fd_t uv_convert_fd_to_handle(int fd) {
 #ifdef _WIN32
   HANDLE new_handle;
-  if (uv_dup((HANDLE) _get_osfhandle(fd), &new_handle))
+  if (!DuplicateHandle(GetCurrentProcess(), (HANDLE) _get_osfhandle(fd),
+                       GetCurrentProcess(), &new_handle,
+                       0, FALSE, DUPLICATE_SAME_ACCESS)) {
     return INVALID_HANDLE_VALUE;
+  }
   _close(fd);
   return new_handle;
 #else

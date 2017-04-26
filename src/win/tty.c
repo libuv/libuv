@@ -149,7 +149,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_os_fd_t handle, int readable)
     /* In order to avoid closing a stdio pseudo-handle, or having it get replaced under us,
      * duplicate the underlying OS handle and forget about the original one.
      */
-    int dup_err = uv_dup(handle, &handle);
+    int dup_err = uv__dup(handle, &handle);
     if (dup_err)
       return dup_err;
   }

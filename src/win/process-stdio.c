@@ -190,7 +190,7 @@ static int uv__create_stdio_pipe_pair(uv_loop_t* loop,
 }
 
 
-int uv_dup(uv_os_fd_t fd, uv_os_fd_t* dupfd) {
+int uv__dup(uv_os_fd_t fd, uv_os_fd_t* dupfd) {
   HANDLE current_process;
 
   if (fd == UV_STDIN_FD || fd == UV_STDOUT_FD || fd == UV_STDERR_FD)
@@ -341,7 +341,7 @@ int uv__stdio_create(uv_loop_t* loop,
         HANDLE child_handle;
 
         /* Make an inheritable duplicate of the handle. */
-        err = uv_dup(fdopt.data.file, &child_handle);
+        err = uv__dup(fdopt.data.file, &child_handle);
         if (err) {
           /* If fdopt.data.file is pointing at one of the pseudo stdio handles,
            * but it is not valid ignore the error. */
@@ -417,7 +417,7 @@ int uv__stdio_create(uv_loop_t* loop,
         }
 
         /* Make an inheritable copy of the handle. */
-        err = uv_dup(stream_handle, &child_handle);
+        err = uv__dup(stream_handle, &child_handle);
         if (err)
           goto error;
 

@@ -629,17 +629,6 @@ int uv__dup(int fd) {
 }
 
 
-int uv_dup(uv_os_fd_t fd, uv_os_fd_t* dupfd) {
-  int fd2 = uv__dup(fd);
-  if (fd2 < 0) {
-    *dupfd = -1;
-    return fd2;
-  }
-  *dupfd = fd2;
-  return 0;
-}
-
-
 ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   struct cmsghdr* cmsg;
   ssize_t rc;

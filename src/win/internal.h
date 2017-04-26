@@ -100,6 +100,7 @@
 /*
  * Streams: see stream-inl.h
  */
+int uv__dup(uv_os_fd_t fd, uv_os_fd_t* dupfd);
 
 
 /*

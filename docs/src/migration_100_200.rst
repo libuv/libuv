@@ -25,6 +25,14 @@ Now those uses should be handled by passing the constant ``UV_STDIN_FD`` instead
 If instead a library had an open file descriptor inherited from some other library,
 instead of using the ``int fd`` directly, the value should first be converted to a native handle
 by either calling ``uv_convert_fd_to_handle`` or ``uv_get_osfhandle``, depending on the required lifetime.
-For example, a client might need to call ``int fd; uv_os_fd_t newfd; uv_dup(uv_get_osfhandle(fd), &newfd);``
+For example, a client might need to call::
+
+    int fd;
+    uv_os_fd_t newfd;
+    DuplicateHandle(GetCurrentProcess(), uv_get_osfhandle(fd),
+                    GetCurrentProcess(), &newfd,
+                    0, FALSE, DUPLICATE_SAME_ACCESS);
+
 to get a new handle to the file where either handle could be closed without affecting the other,
 and the closing of both would be required to release the underlying file resource.
+Or if it is a ``SOCKET``, the user may need to call ``WSADuplicateSocket``.
