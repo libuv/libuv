@@ -42,6 +42,8 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->active_reqs);
   QUEUE_INIT(&loop->idle_handles);
   QUEUE_INIT(&loop->async_handles);
+  QUEUE_INIT(&loop->after_handles);
+  QUEUE_INIT(&loop->before_handles);
   QUEUE_INIT(&loop->check_handles);
   QUEUE_INIT(&loop->prepare_handles);
   QUEUE_INIT(&loop->handle_queue);

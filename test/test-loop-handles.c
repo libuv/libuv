@@ -72,8 +72,15 @@
 
 #define IDLE_COUNT      7
 #define ITERATIONS      21
+#define HALF_ITERATIONS (floor(ITERATIONS / 2.0))
 #define TIMEOUT         100
 
+
+static uv_after_t after_1_handle;
+static uv_after_t after_2_handle;
+
+static uv_before_t before_1_handle;
+static uv_before_t before_2_handle;
 
 static uv_prepare_t prepare_1_handle;
 static uv_prepare_t prepare_2_handle;
@@ -88,6 +95,12 @@ static uv_timer_t timer_handle;
 
 static int loop_iteration = 0;
 
+static int before_1_cb_called = 0;
+static int before_1_close_cb_called = 0;
+
+static int before_2_cb_called = 0;
+static int before_2_close_cb_called = 0;
+
 static int prepare_1_cb_called = 0;
 static int prepare_1_close_cb_called = 0;
 
@@ -96,6 +109,12 @@ static int prepare_2_close_cb_called = 0;
 
 static int check_cb_called = 0;
 static int check_close_cb_called = 0;
+
+static int after_1_cb_called = 0;
+static int after_1_close_cb_called = 0;
+
+static int after_2_cb_called = 0;
+static int after_2_close_cb_called = 0;
 
 static int idle_1_cb_called = 0;
 static int idle_1_close_cb_called = 0;
@@ -176,8 +195,26 @@ static void idle_1_close_cb(uv_handle_t* handle) {
 }
 
 
+static void before_1_close_cb(uv_handle_t* handle) {
+  fprintf(stderr, "%s", "BEFORE_1_CLOSE_CB\n");
+  fflush(stderr);
+  ASSERT(handle == (uv_handle_t*)&before_1_handle);
+
+  before_1_close_cb_called++;
+}
+
+
+static void after_1_close_cb(uv_handle_t* handle) {
+  fprintf(stderr, "%s", "AFTER_1_CLOSE_CB\n");
+  fflush(stderr);
+  ASSERT(handle == (uv_handle_t*)&after_1_handle);
+
+  after_1_close_cb_called++;
+}
+
+
 static void prepare_1_close_cb(uv_handle_t* handle) {
-  fprintf(stderr, "%s", "PREPARE_1_CLOSE_CB");
+  fprintf(stderr, "%s", "PREPARE_1_CLOSE_CB\n");
   fflush(stderr);
   ASSERT(handle == (uv_handle_t*)&prepare_1_handle);
 
@@ -191,6 +228,24 @@ static void check_close_cb(uv_handle_t* handle) {
   ASSERT(handle == (uv_handle_t*)&check_handle);
 
   check_close_cb_called++;
+}
+
+
+static void after_2_close_cb(uv_handle_t* handle) {
+  fprintf(stderr, "%s", "AFTER_2_CLOSE_CB\n");
+  fflush(stderr);
+  ASSERT(handle == (uv_handle_t*)&after_2_handle);
+
+  after_2_close_cb_called++;
+}
+
+
+static void before_2_close_cb(uv_handle_t* handle) {
+  fprintf(stderr, "%s", "BEFORE_2_CLOSE_CB\n");
+  fflush(stderr);
+  ASSERT(handle == (uv_handle_t*)&before_2_handle);
+
+  before_2_close_cb_called++;
 }
 
 
@@ -217,25 +272,45 @@ static void check_cb(uv_check_t* handle) {
       ASSERT(r == 0);
       idles_1_active++;
     }
-
-  } else {
-    /* End of the test - close all handles */
-    uv_close((uv_handle_t*)&prepare_1_handle, prepare_1_close_cb);
-    uv_close((uv_handle_t*)&check_handle, check_close_cb);
-    uv_close((uv_handle_t*)&prepare_2_handle, prepare_2_close_cb);
-
-    for (i = 0; i < IDLE_COUNT; i++) {
-      uv_close((uv_handle_t*)&idle_1_handles[i], idle_1_close_cb);
-    }
-
-    /* This handle is closed/recreated every time, close it only if it is */
-    /* active.*/
-    if (idle_2_is_active) {
-      uv_close((uv_handle_t*)&idle_2_handle, idle_2_close_cb);
-    }
   }
 
   check_cb_called++;
+}
+
+
+static void before_2_cb(uv_before_t* handle) {
+  int r;
+
+  fprintf(stderr, "%s", "BEFORE_2_CB\n");
+  fflush(stderr);
+  ASSERT(handle == &before_2_handle);
+
+  /* before_2 gets started by before_1 when (loop_iteration % 2 == 0), */
+  /* and it stops itself immediately. A started watcher is not queued */
+  /* until the next round, so when this callback is made */
+  /* (loop_iteration % 2 == 0) cannot be true. */
+  ASSERT(loop_iteration % 2 != 0);
+
+  r = uv_before_stop((uv_before_t*)handle);
+  ASSERT(r == 0);
+
+  before_2_cb_called++;
+}
+
+
+static void before_1_cb(uv_before_t* handle) {
+  int r;
+
+  fprintf(stderr, "%s", "BEFORE_1_CB\n");
+  fflush(stderr);
+  ASSERT(handle == &before_1_handle);
+
+  if (loop_iteration % 2 == 0) {
+    r = uv_before_start(&before_2_handle, before_2_cb);
+    ASSERT(r == 0);
+  }
+
+  before_1_cb_called++;
 }
 
 
@@ -272,6 +347,63 @@ static void prepare_1_cb(uv_prepare_t* handle) {
   }
 
   prepare_1_cb_called++;
+}
+
+
+static void after_2_cb(uv_after_t* handle) {
+  int r;
+
+  fprintf(stderr, "%s", "AFTER_2_CB\n");
+  fflush(stderr);
+  ASSERT(handle == &after_2_handle);
+
+  /* after_2 gets started by after_1 when (loop_iteration % 2 == 0), */
+  /* and it stops itself immediately. A started watcher is not queued */
+  /* until the next round, so when this callback is made */
+  /* (loop_iteration % 2 == 0) cannot be true. */
+  ASSERT(loop_iteration % 2 != 0);
+
+  r = uv_after_stop((uv_after_t*)handle);
+  ASSERT(r == 0);
+
+  after_2_cb_called++;
+}
+
+
+static void after_1_cb(uv_after_t* handle) {
+  int i, r;
+
+  fprintf(stderr, "%s", "AFTER_1_CB\n");
+  fflush(stderr);
+  ASSERT(handle == &after_1_handle);
+
+  if (loop_iteration + 1 < ITERATIONS) {
+    if (loop_iteration % 2 == 0) {
+      r = uv_after_start(&after_2_handle, after_2_cb);
+      ASSERT(r == 0);
+    }
+  } else {
+    /* End of the test - close all handles */
+    uv_close((uv_handle_t*)&before_1_handle, before_1_close_cb);
+    uv_close((uv_handle_t*)&after_1_handle, after_1_close_cb);
+    uv_close((uv_handle_t*)&prepare_1_handle, prepare_1_close_cb);
+    uv_close((uv_handle_t*)&check_handle, check_close_cb);
+    uv_close((uv_handle_t*)&before_2_handle, before_2_close_cb);
+    uv_close((uv_handle_t*)&after_2_handle, after_2_close_cb);
+    uv_close((uv_handle_t*)&prepare_2_handle, prepare_2_close_cb);
+
+    for (i = 0; i < IDLE_COUNT; i++) {
+      uv_close((uv_handle_t*)&idle_1_handles[i], idle_1_close_cb);
+    }
+
+    /* This handle is closed/recreated every time, close it only if it is */
+    /* active.*/
+    if (idle_2_is_active) {
+      uv_close((uv_handle_t*)&idle_2_handle, idle_2_close_cb);
+    }
+  }
+
+  after_1_cb_called++;
   loop_iteration++;
 
   printf("Loop iteration %d of %d.\n", loop_iteration, ITERATIONS);
@@ -281,6 +413,11 @@ static void prepare_1_cb(uv_prepare_t* handle) {
 TEST_IMPL(loop_handles) {
   int i;
   int r;
+
+  r = uv_before_init(uv_default_loop(), &before_1_handle);
+  ASSERT(r == 0);
+  r = uv_before_start(&before_1_handle, before_1_cb);
+  ASSERT(r == 0);
 
   r = uv_prepare_init(uv_default_loop(), &prepare_1_handle);
   ASSERT(r == 0);
@@ -292,7 +429,14 @@ TEST_IMPL(loop_handles) {
   r = uv_check_start(&check_handle, check_cb);
   ASSERT(r == 0);
 
-  /* initialize only, prepare_2 is started by prepare_1_cb */
+  r = uv_after_init(uv_default_loop(), &after_1_handle);
+  ASSERT(r == 0);
+  r = uv_after_start(&after_1_handle, after_1_cb);
+  ASSERT(r == 0);
+
+  /* initialize only, *_2 are started by *_1_cb */
+  r = uv_before_init(uv_default_loop(), &before_2_handle);
+  r = uv_after_init(uv_default_loop(), &after_2_handle);
   r = uv_prepare_init(uv_default_loop(), &prepare_2_handle);
   ASSERT(r == 0);
 
@@ -317,14 +461,26 @@ TEST_IMPL(loop_handles) {
 
   ASSERT(loop_iteration == ITERATIONS);
 
+  ASSERT(before_1_cb_called == ITERATIONS);
+  ASSERT(before_1_close_cb_called == 1);
+
+  ASSERT(before_2_cb_called == HALF_ITERATIONS);
+  ASSERT(before_2_close_cb_called == 1);
+
   ASSERT(prepare_1_cb_called == ITERATIONS);
   ASSERT(prepare_1_close_cb_called == 1);
 
-  ASSERT(prepare_2_cb_called == floor(ITERATIONS / 2.0));
+  ASSERT(prepare_2_cb_called == HALF_ITERATIONS);
   ASSERT(prepare_2_close_cb_called == 1);
 
   ASSERT(check_cb_called == ITERATIONS);
   ASSERT(check_close_cb_called == 1);
+
+  ASSERT(after_1_cb_called == ITERATIONS);
+  ASSERT(after_1_close_cb_called == 1);
+
+  ASSERT(after_2_cb_called == HALF_ITERATIONS);
+  ASSERT(after_2_close_cb_called == 1);
 
   /* idle_1_cb should be called a lot */
   ASSERT(idle_1_close_cb_called == IDLE_COUNT);
