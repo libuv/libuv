@@ -23,6 +23,7 @@
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 #ifdef _WIN32
@@ -56,6 +57,13 @@ static void connect_cb_file(uv_connect_t* connect_req, int status) {
 }
 
 
+static void connect_cb_long_path(uv_connect_t* connect_req, int status) {
+  ASSERT(status == UV_ENAMETOOLONG);
+  uv_close((uv_handle_t*)connect_req->handle, close_cb);
+  connect_cb_called++;
+}
+
+
 TEST_IMPL(pipe_connect_bad_name) {
   uv_pipe_t client;
   uv_connect_t req;
@@ -84,6 +92,29 @@ TEST_IMPL(pipe_connect_to_file) {
   r = uv_pipe_init(uv_default_loop(), &client, 0);
   ASSERT(r == 0);
   uv_pipe_connect(&req, &client, path, connect_cb_file);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(close_cb_called == 1);
+  ASSERT(connect_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(pipe_connect_to_long_path) {
+  char path[2048];
+  uv_pipe_t client;
+  uv_connect_t req;
+  int r;
+
+  memset(path, '.', sizeof(path) - 1);
+  path[sizeof(path) - 1] = '\0';
+
+  r = uv_pipe_init(uv_default_loop(), &client, 0);
+  ASSERT(r == 0);
+  uv_pipe_connect(&req, &client, path, connect_cb_long_path);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

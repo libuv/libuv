@@ -135,10 +135,16 @@ TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
 TEST_DECLARE   (pipe_bind_error_inval)
+#ifndef _WIN32
+TEST_DECLARE   (pipe_bind_error_long_path)
+#endif
 TEST_DECLARE   (pipe_connect_multiple)
 TEST_DECLARE   (pipe_listen_without_bind)
 TEST_DECLARE   (pipe_connect_bad_name)
 TEST_DECLARE   (pipe_connect_to_file)
+#ifndef _WIN32
+TEST_DECLARE   (pipe_connect_to_long_path)
+#endif
 TEST_DECLARE   (pipe_connect_on_prepare)
 TEST_DECLARE   (pipe_getsockname)
 TEST_DECLARE   (pipe_getsockname_abstract)
@@ -401,6 +407,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (pipe_connect_bad_name)
   TEST_ENTRY  (pipe_connect_to_file)
+#ifndef _WIN32
+  TEST_ENTRY  (pipe_connect_to_long_path)
+#endif
   TEST_ENTRY  (pipe_connect_on_prepare)
 
   TEST_ENTRY  (pipe_server_close)
@@ -526,6 +535,9 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_bind_error_addrinuse)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)
   TEST_ENTRY  (pipe_bind_error_inval)
+#ifndef _WIN32
+  TEST_ENTRY  (pipe_bind_error_long_path)
+#endif
   TEST_ENTRY  (pipe_connect_multiple)
   TEST_ENTRY  (pipe_listen_without_bind)
   TEST_ENTRY  (pipe_getsockname)

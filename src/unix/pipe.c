@@ -45,9 +45,14 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   const char* pipe_fname;
   int sockfd;
   int err;
+  size_t name_len;
 
   pipe_fname = NULL;
   sockfd = -1;
+  name_len = strlen(name);
+
+  if (name_len > sizeof(saddr.sun_path) - 1)
+    return -ENAMETOOLONG;
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
@@ -67,8 +72,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   sockfd = err;
 
   memset(&saddr, 0, sizeof saddr);
-  strncpy(saddr.sun_path, pipe_fname, sizeof(saddr.sun_path) - 1);
-  saddr.sun_path[sizeof(saddr.sun_path) - 1] = '\0';
+  memcpy(saddr.sun_path, pipe_fname, name_len);
   saddr.sun_family = AF_UNIX;
 
   if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
@@ -160,6 +164,14 @@ void uv_pipe_connect(uv_connect_t* req,
   int new_sock;
   int err;
   int r;
+  size_t name_len;
+
+  name_len = strlen(name);
+  
+  if (name_len > sizeof(saddr.sun_path) - 1) {
+    err = -ENAMETOOLONG;
+    goto out;
+  }
 
   new_sock = (uv__stream_fd(handle) == -1);
 
@@ -171,8 +183,7 @@ void uv_pipe_connect(uv_connect_t* req,
   }
 
   memset(&saddr, 0, sizeof saddr);
-  strncpy(saddr.sun_path, name, sizeof(saddr.sun_path) - 1);
-  saddr.sun_path[sizeof(saddr.sun_path) - 1] = '\0';
+  memcpy(saddr.sun_path, name, name_len);
   saddr.sun_family = AF_UNIX;
 
   do {
