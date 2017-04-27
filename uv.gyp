@@ -36,7 +36,7 @@
     ],
     'xcode_settings': {
       'GCC_SYMBOLS_PRIVATE_EXTERN': 'YES',  # -fvisibility=hidden
-      'WARNING_CFLAGS': [ '-Wall', '-Wextra', '-Wno-unused-parameter' ],
+      'WARNING_CFLAGS': [ '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wstrict-prototypes' ],
       'OTHER_CFLAGS': [ '-g', '--std=gnu89', '-pedantic' ],
     }
   },
@@ -210,6 +210,7 @@
             '-Wall',
             '-Wextra',
             '-Wno-unused-parameter',
+            '-Wstrict-prototypes',
           ],
         }],
         [ 'OS in "mac ios"', {

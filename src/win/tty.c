@@ -138,7 +138,7 @@ typedef enum {
 static uv_vtermstate_t uv__vterm_state = UV_UNCHECKED;
 static void uv__determine_vterm_state(HANDLE handle);
 
-void uv_console_init() {
+void uv_console_init(void) {
   if (uv_sem_init(&uv_tty_output_lock, 1))
     abort();
 }

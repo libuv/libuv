@@ -83,7 +83,7 @@ static int uv__loops_capacity;
 #define UV__LOOPS_CHUNK_SIZE 8
 static uv_mutex_t uv__loops_lock;
 
-static void uv__loops_init() {
+static void uv__loops_init(void) {
   uv_mutex_init(&uv__loops_lock);
 }
 
@@ -158,7 +158,7 @@ loop_removed:
   uv_mutex_unlock(&uv__loops_lock);
 }
 
-void uv__wake_all_loops() {
+void uv__wake_all_loops(void) {
   int i;
   uv_loop_t* loop;
 
