@@ -61,13 +61,13 @@ static void uv__init_overlapped_dummy(void) {
 }
 
 
-static OVERLAPPED* uv__get_overlapped_dummy() {
+static OVERLAPPED* uv__get_overlapped_dummy(void) {
   uv_once(&overlapped_dummy_init_guard_, uv__init_overlapped_dummy);
   return &overlapped_dummy_;
 }
 
 
-static AFD_POLL_INFO* uv__get_afd_poll_info_dummy() {
+static AFD_POLL_INFO* uv__get_afd_poll_info_dummy(void) {
   return &afd_poll_info_dummy_;
 }
 

@@ -114,7 +114,7 @@ const WCHAR UNC_PATH_PREFIX[] = L"\\\\?\\UNC\\";
 const WCHAR UNC_PATH_PREFIX_LEN = 8;
 
 
-void uv_fs_init() {
+void uv_fs_init(void) {
   _fmode = _O_BINARY;
 }
 

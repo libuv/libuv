@@ -77,7 +77,7 @@ static double hrtime_interval_ = 0;
 /*
  * One-time initialization code for functionality defined in util.c.
  */
-void uv__util_init() {
+void uv__util_init(void) {
   LARGE_INTEGER perf_frequency;
 
   /* Initialize process title access mutex. */
@@ -323,7 +323,7 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
-int uv_parent_pid() {
+int uv_parent_pid(void) {
   int parent_pid = -1;
   HANDLE handle;
   PROCESSENTRY32 pe;
@@ -346,7 +346,7 @@ int uv_parent_pid() {
 }
 
 
-int uv_current_pid() {
+int uv_current_pid(void) {
   if (current_pid == 0) {
     current_pid = GetCurrentProcessId();
   }
@@ -408,7 +408,7 @@ done:
 }
 
 
-static int uv__get_process_title() {
+static int uv__get_process_title(void) {
   WCHAR title_w[MAX_TITLE_LENGTH];
 
   if (!GetConsoleTitleW(title_w, sizeof(title_w) / sizeof(WCHAR))) {

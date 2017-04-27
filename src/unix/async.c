@@ -226,7 +226,7 @@ void uv__async_stop(uv_loop_t* loop) {
 }
 
 
-static int uv__async_eventfd() {
+static int uv__async_eventfd(void) {
 #if defined(__linux__)
   static int no_eventfd2;
   static int no_eventfd;
