@@ -49,9 +49,9 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
 
   pipe_fname = NULL;
   sockfd = -1;
-  name_len = strlen(name) + 1;
+  name_len = strlen(name);
 
-  if (name_len > sizeof(saddr.sun_path))
+  if (name_len > sizeof(saddr.sun_path) - 1)
     return -ENAMETOOLONG;
 
   /* Already bound? */
@@ -166,9 +166,9 @@ void uv_pipe_connect(uv_connect_t* req,
   int r;
   size_t name_len;
 
-  name_len = strlen(name) + 1;
+  name_len = strlen(name);
   
-  if (name_len > sizeof(saddr.sun_path)) {
+  if (name_len > sizeof(saddr.sun_path) - 1) {
     err = -ENAMETOOLONG;
     goto out;
   }
