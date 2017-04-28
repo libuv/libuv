@@ -324,3 +324,15 @@ API
         These functions are not implemented on Windows.
 
 .. seealso:: The :c:type:`uv_req_t` API functions also apply.
+
+Helper functions
+----------------
+
+.. c:function:: uv_os_fd_t uv_get_osfhandle(int fd)
+
+   For a file descriptor in the C runtime, get the OS-dependent handle.
+   On UNIX, returns the ``fd`` intact. On Windows, this calls `_get_osfhandle <https://msdn.microsoft.com/en-us/library/ks2530z6.aspx>`_.
+   Note that the return value is still owned by the C runtime,
+   any attempts to close it or to use it after closing the fd may lead to malfunction.
+
+    .. versionadded:: 1.12.0

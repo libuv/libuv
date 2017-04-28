@@ -1324,3 +1324,8 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   *size = len;
   return 0;
 }
+
+
+uv_os_fd_t uv_get_osfhandle(int fd) {
+  return fd;
+}
