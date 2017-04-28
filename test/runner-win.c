@@ -211,6 +211,7 @@ long int process_output_size(process_info_t *p) {
 int process_copy_output(process_info_t* p, FILE* stream) {
   DWORD read;
   char buf[1024];
+  int continue_line = 0;
 
   if (SetFilePointer(p->stdio_out,
                      0,
@@ -220,7 +221,7 @@ int process_copy_output(process_info_t* p, FILE* stream) {
   }
 
   while (ReadFile(p->stdio_out, &buf, sizeof(buf), &read, NULL) && read > 0)
-    print_lines(buf, read, stream);
+    print_lines(buf, read, stream, &continue_line);
 
   if (GetLastError() != ERROR_HANDLE_EOF)
     return -1;

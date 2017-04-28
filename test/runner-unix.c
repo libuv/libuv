@@ -296,6 +296,7 @@ long int process_output_size(process_info_t *p) {
 int process_copy_output(process_info_t* p, FILE* stream) {
   char buf[1024];
   int r;
+  int continue_line = 0;
 
   r = fseek(p->stdout_file, 0, SEEK_SET);
   if (r < 0) {
@@ -303,9 +304,8 @@ int process_copy_output(process_info_t* p, FILE* stream) {
     return -1;
   }
 
-  /* TODO: what if the line is longer than buf */
   while (fgets(buf, sizeof(buf), p->stdout_file) != NULL)
-    print_lines(buf, strlen(buf), stream);
+    print_lines(buf, strlen(buf), stream, &continue_line);
 
   if (ferror(p->stdout_file)) {
     perror("read");

@@ -403,20 +403,39 @@ void print_tests(FILE* stream) {
   }
 }
 
-
-void print_lines(const char* buffer, size_t size, FILE* stream) {
+/* The continue_line parameter must be set to 1 when continuing a line or 0 to
+ * write "# " before the new line.
+ * The function updates the value of continue_line with 1 if it wrote a
+ * unfinished line.
+ */
+void print_lines(const char* buffer,
+                 size_t size,
+                 FILE* stream,
+                 int* continue_line) {
   const char* start;
   const char* end;
 
   start = buffer;
   while ((end = memchr(start, '\n', &buffer[size] - start))) {
-    fprintf(stream, "# %.*s\n", (int) (end - start), start);
+    fprintf(stream,
+            "%s%.*s\n",
+            *continue_line ? "" : "# ",
+            (int) (end - start),
+            start);
+
     fflush(stream);
     start = end + 1;
+    *continue_line = 0;
   }
 
   if (start < &buffer[size]) {
-    fprintf(stream, "# %s\n", start);
+    fprintf(stream,
+            "%s%.*s",
+            *continue_line ? "" : "# ",
+            (int) (&buffer[size] - start),
+            start);
+
     fflush(stream);
+    *continue_line = 1;
   }
 }
