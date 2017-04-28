@@ -138,12 +138,12 @@ TEST_IMPL(pipe_listen_without_bind) {
 
 
 TEST_IMPL(pipe_bind_error_long_path) {
-  char path[256];
+  char path[2048];
   uv_pipe_t server;
   int r;
 
-  memset(path, '.', 255);
-  path[255] = '\0';
+  memset(path, '.', sizeof(path) - 1);
+  path[sizeof(path) - 1] = '\0';
 
   r = uv_pipe_init(uv_default_loop(), &server, 0);
   ASSERT(r == 0);

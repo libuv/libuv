@@ -104,13 +104,13 @@ TEST_IMPL(pipe_connect_to_file) {
 
 
 TEST_IMPL(pipe_connect_to_long_path) {
-  char path[256];
+  char path[2048];
   uv_pipe_t client;
   uv_connect_t req;
   int r;
 
-  memset(path, '.', 255);
-  path[255] = '\0';
+  memset(path, '.', sizeof(path) - 1);
+  path[sizeof(path) - 1] = '\0';
 
   r = uv_pipe_init(uv_default_loop(), &client, 0);
   ASSERT(r == 0);
