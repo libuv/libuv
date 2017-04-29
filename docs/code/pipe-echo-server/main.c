@@ -3,6 +3,12 @@
 #include <string.h>
 #include <uv.h>
 
+#ifdef _WIN32
+#define PIPENAME "\\\\?\\pipe\\echo.sock"
+#else
+#define PIPENAME "/tmp/echo.sock"
+#endif
+
 uv_loop_t *loop;
 
 typedef struct {
@@ -63,7 +69,7 @@ void on_new_connection(uv_stream_t *server, int status) {
 
 void remove_sock(int sig) {
     uv_fs_t req;
-    uv_fs_unlink(loop, &req, "echo.sock", NULL);
+    uv_fs_unlink(loop, &req, PIPENAME, NULL);
     exit(0);
 }
 
@@ -76,7 +82,7 @@ int main() {
     signal(SIGINT, remove_sock);
 
     int r;
-    if ((r = uv_pipe_bind(&server, "echo.sock"))) {
+    if ((r = uv_pipe_bind(&server, PIPENAME))) {
         fprintf(stderr, "Bind error %s\n", uv_err_name(r));
         return 1;
     }
