@@ -372,6 +372,7 @@ HELPER_DECLARE (udp4_echo_server)
 HELPER_DECLARE (pipe_echo_server)
 
 TEST_DECLARE   (queue_foreach_delete)
+TEST_DECLARE   (path_combine)
 
 #ifndef _WIN32
 TEST_DECLARE  (fork_timer)
@@ -830,4 +831,6 @@ TASK_LIST_START
   TEST_ENTRY  (fail_always)
   TEST_ENTRY  (pass_always)
 #endif
+  TEST_ENTRY  (path_combine)
+
 TASK_LIST_END

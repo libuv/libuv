@@ -1283,6 +1283,9 @@ UV_EXTERN int uv_fs_fchown(uv_loop_t* loop,
                            uv_gid_t gid,
                            uv_fs_cb cb);
 
+UV_EXTERN int uv_path_join(char **fragments,
+                           char *buf,
+                           size_t *size);
 
 enum uv_fs_event {
   UV_RENAME = 1,
