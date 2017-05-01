@@ -18,28 +18,38 @@ AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/libuv-extra-automake-flags.m4])
 m4_include([m4/as_case.m4])
 m4_include([m4/libuv-check-flags.m4])
+m4_include([m4/ax_pthread.m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects] UV_EXTRA_AUTOMAKE_FLAGS)
 AC_CANONICAL_HOST
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 AC_PROG_CC
 AM_PROG_CC_C_O
-AS_IF([AS_CASE([$host_os],[openedition*],  [false], [true])], [
-  CC_CHECK_CFLAGS_APPEND([-pedantic])
-])
 CC_FLAG_VISIBILITY #[-fvisibility=hidden]
 CC_CHECK_CFLAGS_APPEND([-g])
-CC_CHECK_CFLAGS_APPEND([-std=gnu89])
-CC_CHECK_CFLAGS_APPEND([-Wall])
-CC_CHECK_CFLAGS_APPEND([-Wextra])
-CC_CHECK_CFLAGS_APPEND([-Wno-unused-parameter])
+# Only enable GCC specific options if GCC is being used.
+# The `$GCC` shell variable is set automatically by `AC_PROG_CC`.
+AS_IF([test x"$GCC" = "xyes"], [
+  AS_IF([AS_CASE([$host_os], [openedition*], [false], [true])], [
+    CC_CHECK_CFLAGS_APPEND([-pedantic])
+  ])
+  CC_CHECK_CFLAGS_APPEND([-std=gnu89])
+  CC_CHECK_CFLAGS_APPEND([-Wall])
+  CC_CHECK_CFLAGS_APPEND([-Wextra])
+  CC_CHECK_CFLAGS_APPEND([-Wno-unused-parameter])
+])
 # AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 # autoconf complains if AC_PROG_LIBTOOL precedes AM_PROG_AR.
 AC_PROG_LIBTOOL
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_INIT
-# TODO(bnoordhuis) Check for -pthread vs. -pthreads
+AX_PTHREAD([
+  LIBS="$PTHREAD_LIBS $LIBS"
+  CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+  CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
+  CC="$PTHREAD_CC"
+])
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([kstat], [kstat_lookup])
 AC_CHECK_LIB([kvm], [kvm_open])

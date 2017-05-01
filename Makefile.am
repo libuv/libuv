@@ -33,12 +33,6 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/uv-common.h \
                    src/version.c
 
-if SUNOS
-# Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
-# on other platforms complain that the argument is unused during compilation.
-libuv_la_CFLAGS += -pthreads
-endif
-
 if WINNT
 
 include_HEADERS += include/uv-win.h include/tree.h
@@ -133,12 +127,6 @@ if OS390
 test_run_tests_CFLAGS =
 else
 test_run_tests_CFLAGS = -Wno-long-long
-endif
-
-if SUNOS
-# Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
-# on other platforms complain that the argument is unused during compilation.
-test_run_tests_CFLAGS += -pthreads
 endif
 
 test_run_tests_LDFLAGS =
@@ -322,8 +310,7 @@ if AIX
 libuv_la_CFLAGS += -D_ALL_SOURCE \
                    -D_XOPEN_SOURCE=500 \
                    -D_LINUX_SOURCE_COMPAT \
-                   -D_THREAD_SAFE \
-                   -DHAVE_SYS_AHAFS_EVPRODS_H
+                   -D_THREAD_SAFE
 include_HEADERS += include/uv-aix.h
 libuv_la_SOURCES += src/unix/aix.c
 endif
