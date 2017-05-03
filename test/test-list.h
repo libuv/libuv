@@ -460,7 +460,11 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_write_after_connect)
 #endif
 
+#ifdef __MVS__
+  TEST_ENTRY_CUSTOM (tcp_writealot, 0, 0, 20000)
+#else
   TEST_ENTRY  (tcp_writealot)
+#endif
   TEST_HELPER (tcp_writealot, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_write_fail)
