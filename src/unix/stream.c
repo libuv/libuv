@@ -390,7 +390,7 @@ failed_malloc:
 
 
 int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
-#if defined(__APPLE__) || defined(__MVS__)
+#if defined(__APPLE__)
   int enable;
 #endif
 
@@ -409,7 +409,7 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
       return -errno;
   }
 
-#if defined(__APPLE__) || defined(__MVS__)
+#if defined(__APPLE__)
   enable = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, &enable, sizeof(enable)) &&
       errno != ENOTSOCK &&
