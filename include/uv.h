@@ -1078,6 +1078,8 @@ UV_EXTERN int uv_os_getenv(const char* name, char* buffer, size_t* size);
 UV_EXTERN int uv_os_setenv(const char* name, const char* value);
 UV_EXTERN int uv_os_unsetenv(const char* name);
 
+UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
+
 
 typedef enum {
   UV_FS_UNKNOWN = -1,

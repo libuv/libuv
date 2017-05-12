@@ -429,3 +429,14 @@ API
         This function is not thread safe.
 
     .. versionadded:: 1.12.0
+
+.. c:function:: int uv_os_gethostname(char* buffer, size_t* size)
+
+    Returns the hostname as a null-terminated string in `buffer`, and sets
+    `size` to the string length of the hostname. When calling this function,
+    `size` must be set to the amount of storage available in `buffer`, including
+    the null terminator. If the hostname exceeds the storage available in
+    `buffer`, `UV_ENOBUFS` is returned, and `size` is set to the amount of
+    storage required to hold the value.
+
+    .. versionadded:: 1.12.0

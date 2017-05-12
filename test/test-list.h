@@ -220,6 +220,7 @@ TEST_DECLARE   (getaddrinfo_fail_sync)
 TEST_DECLARE   (getaddrinfo_basic)
 TEST_DECLARE   (getaddrinfo_basic_sync)
 TEST_DECLARE   (getaddrinfo_concurrent)
+TEST_DECLARE   (gethostname)
 TEST_DECLARE   (getnameinfo_basic_ip4)
 TEST_DECLARE   (getnameinfo_basic_ip4_sync)
 TEST_DECLARE   (getnameinfo_basic_ip6)
@@ -654,6 +655,8 @@ TASK_LIST_START
   TEST_ENTRY  (getaddrinfo_basic)
   TEST_ENTRY  (getaddrinfo_basic_sync)
   TEST_ENTRY  (getaddrinfo_concurrent)
+
+  TEST_ENTRY  (gethostname)
 
   TEST_ENTRY  (getnameinfo_basic_ip4)
   TEST_ENTRY  (getnameinfo_basic_ip4_sync)

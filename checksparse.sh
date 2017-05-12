@@ -104,6 +104,7 @@ test/test-get-loadavg.c
 test/test-get-memory.c
 test/test-get-passwd.c
 test/test-getaddrinfo.c
+test/test-gethostname.c
 test/test-getsockname.c
 test/test-homedir.c
 test/test-hrtime.c
