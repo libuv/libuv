@@ -30,7 +30,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <kvm.h>
 #include <paths.h>
 #include <stdlib.h>
 #include <string.h>
