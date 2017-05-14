@@ -63,6 +63,9 @@ TEST_DECLARE   (ipc_send_recv_pipe_inprocess)
 TEST_DECLARE   (ipc_send_recv_tcp)
 TEST_DECLARE   (ipc_send_recv_tcp_inprocess)
 TEST_DECLARE   (ipc_tcp_connection)
+#ifndef _WIN32
+TEST_DECLARE   (ipc_closed_handle)
+#endif
 TEST_DECLARE   (tcp_alloc_cb_fail)
 TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_v6)
@@ -444,6 +447,9 @@ TASK_LIST_START
   TEST_ENTRY  (ipc_send_recv_tcp)
   TEST_ENTRY  (ipc_send_recv_tcp_inprocess)
   TEST_ENTRY  (ipc_tcp_connection)
+#ifndef _WIN32
+  TEST_ENTRY  (ipc_closed_handle)
+#endif
 
   TEST_ENTRY  (tcp_alloc_cb_fail)
 
