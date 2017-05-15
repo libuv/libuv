@@ -54,6 +54,9 @@ TEST_DECLARE   (tty_file)
 TEST_DECLARE   (tty_pty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ip6_pton)
+#ifndef _WIN32
+TEST_DECLARE   (ip6_invalid_interface)
+#endif
 TEST_DECLARE   (ipc_listen_before_write)
 TEST_DECLARE   (ipc_listen_after_write)
 #ifndef _WIN32
@@ -427,6 +430,9 @@ TASK_LIST_START
   TEST_ENTRY  (tty_pty)
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ip6_pton)
+#ifndef _WIN32
+  TEST_ENTRY  (ip6_invalid_interface)
+#endif
   TEST_ENTRY  (ipc_listen_before_write)
   TEST_ENTRY  (ipc_listen_after_write)
 #ifndef _WIN32

@@ -204,11 +204,14 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
     ip = address_part;
 
     zone_index++; /* skip '%' */
-    /* NOTE: unknown interface (id=0) is silently ignored */
 #ifdef _WIN32
+    /* NOTE: unknown interfaces are silently ignored on Windows */
     addr->sin6_scope_id = atoi(zone_index);
 #else
     addr->sin6_scope_id = if_nametoindex(zone_index);
+
+    if (addr->sin6_scope_id == 0)
+      return -errno;
 #endif
   }
 

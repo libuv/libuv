@@ -245,6 +245,9 @@ API
 
     Convert a string containing an IPv6 addresses to a binary structure.
 
+    .. versionchanged:: 2.0.0: :man:`if_nametoindex(3)` errors are no longer
+                        ignored on Unix platforms.
+
 .. c:function:: int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size)
 
     Convert a binary structure containing an IPv4 address to a string.
