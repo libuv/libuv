@@ -115,6 +115,54 @@ static char test_buf[] = "test-buffer\n";
 static char test_buf2[] = "second-buffer\n";
 static uv_buf_t iov;
 
+#ifdef _WIN32
+/* Detect if user-mode symlinks are supported */
+typedef NTSTATUS (NTAPI *sRtlGetVersion)
+                 (PRTL_OSVERSIONINFOW lpVersionInformation);
+static int usermode_symlink_available(void) {
+  HANDLE ntdll_module;
+  sRtlGetVersion pRtlGetVersion;
+  HKEY key;
+  DWORD value, value_size;
+  OSVERSIONINFOW version_information;
+  int r;
+
+  ntdll_module = GetModuleHandleA("ntdll.dll");
+  if (ntdll_module == NULL) {
+    uv_fatal_error(GetLastError(), "GetModuleHandleA");
+  }
+
+  pRtlGetVersion = (sRtlGetVersion)GetProcAddress(
+    ntdll_module,
+    "RtlGetVersion");
+
+  if (!pRtlGetVersion) {
+    return 0;
+  }
+  pRtlGetVersion(&version_information);
+  /* Usermode symlinks are only available on Win10 with Creators Update... */
+  if (version_information.dwMajorVersion < 10 ||
+    version_information.dwBuildNumber < 15063) {
+    return 0;
+  }
+  r = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock",
+    0, KEY_QUERY_VALUE | KEY_WOW64_64KEY, &key);
+  if (r != ERROR_SUCCESS) {
+    return 0;
+  }
+  /* ...and with enabled Developer Mode */
+  value_size = sizeof(value);
+  r = RegQueryValueExW(key, L"AllowDevelopmentWithoutDevLicense", 0, NULL,
+    (LPBYTE)(&value), &value_size);
+  RegCloseKey(key);
+  if (r != ERROR_SUCCESS) {
+    return 0;
+  }
+  return value ? 1 : 0;
+}
+#endif
+
 static void check_permission(const char* filename, unsigned int mode) {
   int r;
   uv_fs_t req;
@@ -642,9 +690,9 @@ TEST_IMPL(fs_file_loop) {
   /*
    * Windows XP and Server 2003 don't support symlinks; we'll get UV_ENOTSUP.
    * Starting with vista they are supported, but only when elevated, otherwise
-   * we'll see UV_EPERM.
+   * we'll see UV_EPERM. If user-mode symlinks are avaiable, check the result.
    */
-  if (r == UV_ENOTSUP || r == UV_EPERM)
+  if (usermode_symlink_available() == 0 && (r == UV_ENOTSUP || r == UV_EPERM))
     return 0;
 #elif defined(__MSYS__)
   /* MSYS2's approximation of symlinks with copies does not work for broken
@@ -1701,7 +1749,7 @@ TEST_IMPL(fs_symlink) {
   /* sync symlink */
   r = uv_fs_symlink(NULL, &req, "test_file", "test_file_symlink", 0, NULL);
 #ifdef _WIN32
-  if (r < 0) {
+  if (usermode_symlink_available() == 0 && r < 0) {
     if (r == UV_ENOTSUP) {
       /*
        * Windows doesn't support symlinks on older versions.

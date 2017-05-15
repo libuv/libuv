@@ -113,9 +113,45 @@ const WCHAR LONG_PATH_PREFIX_LEN = 4;
 const WCHAR UNC_PATH_PREFIX[] = L"\\\\?\\UNC\\";
 const WCHAR UNC_PATH_PREFIX_LEN = 8;
 
+static DWORD uv__file_symlink_flags;
+
+static int uv__usermode_symlink_available(void) {
+  HKEY key;
+  DWORD value, value_size;
+  OSVERSIONINFOW version_information;
+  int r;
+
+  if (!pRtlGetVersion) {
+    return 0;
+  }
+  pRtlGetVersion(&version_information);
+  /* Usermode symlinks are only available on Win10 with Creators Update... */
+  if (version_information.dwMajorVersion < 10 ||
+      version_information.dwBuildNumber < 15063) {
+    return 0;
+  }
+  r = RegOpenKeyExW(HKEY_LOCAL_MACHINE, 
+                    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock",
+                    0, KEY_QUERY_VALUE | KEY_WOW64_64KEY, &key);
+  if (r != ERROR_SUCCESS) {
+    return 0;
+  }
+  /* ...and with enabled Developer Mode */
+  value_size = sizeof(value);
+  r = RegQueryValueExW(key, L"AllowDevelopmentWithoutDevLicense", 0, NULL,
+                       (LPBYTE)(&value), &value_size);
+  RegCloseKey(key);
+  if (r != ERROR_SUCCESS) {
+    return 0;
+  }
+  return value ? 1 : 0;
+}
 
 void uv_fs_init(void) {
   _fmode = _O_BINARY;
+  if (uv__usermode_symlink_available()) {
+    uv__file_symlink_flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+  }
 }
 
 
@@ -1684,9 +1720,12 @@ static void fs__symlink(uv_fs_t* req) {
   if (flags & UV_FS_SYMLINK_JUNCTION) {
     fs__create_junction(req, pathw, new_pathw);
   } else if (pCreateSymbolicLinkW) {
-    result = pCreateSymbolicLinkW(new_pathw,
-                                  pathw,
-                                  flags & UV_FS_SYMLINK_DIR ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0) ? 0 : -1;
+    if (flags & UV_FS_SYMLINK_DIR) {
+      flags = SYMBOLIC_LINK_FLAG_DIRECTORY;
+    } else {
+      flags = uv__file_symlink_flags;
+    }
+    result = pCreateSymbolicLinkW(new_pathw, pathw, flags) ? 0 : -1;
     if (result == -1) {
       SET_REQ_WIN32_ERROR(req, GetLastError());
     } else {
