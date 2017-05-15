@@ -50,6 +50,9 @@ static size_t exepath_size = 1024;
 static char* args[5];
 static int no_term_signal;
 static int timer_counter;
+static uv_tcp_t tcp_server;
+static uv_tcp_t tcp_client;
+static uv_connect_t connect_req;
 
 #define OUTPUT_SIZE 1024
 static char output[OUTPUT_SIZE];
@@ -616,6 +619,110 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
   ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
   printf("output from stdio[3] is: %s", output);
   ASSERT(strcmp("fourth stdio!\n", output) == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+static void on_connection(uv_stream_t* stream, int status) {
+  ASSERT(status == 0);
+  uv_close((uv_handle_t*)stream, close_cb);
+}
+
+
+static void connect_cb(uv_connect_t* req, int status) {
+  uv_handle_t* stream;
+
+  stream = req->handle;
+  ASSERT(status == 0);
+  uv_close(stream, close_cb);
+}
+
+
+int spawn_tcp_server_helper(void) {
+  uv_tcp_t tcp;
+  int r;
+
+  r = uv_tcp_init(uv_default_loop(), &tcp);
+  ASSERT(r == 0);
+
+  r = uv_tcp_open(&tcp, 3);
+  ASSERT(r == 0);
+
+  /* Make sure that we can listen on a socket that was
+   * passed down from the parent process
+   */
+  r = uv_listen((uv_stream_t*)&tcp, SOMAXCONN, on_connection);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  return 1;
+}
+
+
+static void tcp_connect(uv_timer_t* handle) {
+  struct sockaddr_in addr;
+  int r;
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  r = uv_tcp_connect(&connect_req,
+                     &tcp_client,
+                     (const struct sockaddr*) &addr,
+                     connect_cb);
+  ASSERT(r == 0);
+}
+
+
+TEST_IMPL(spawn_tcp_server) {
+  uv_stdio_container_t stdio[4];
+  struct sockaddr_in addr;
+  uv_os_fd_t fd;
+  int r;
+
+  init_process_options("spawn_tcp_server_helper", exit_cb);
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  r = uv_tcp_init_ex(uv_default_loop(), &tcp_server, AF_INET);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
+  ASSERT(r == 0);
+  r = uv_fileno((uv_handle_t*)&tcp_server, &fd);
+  ASSERT(r == 0);
+
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_INHERIT_FD;
+  options.stdio[0].data.fd = 0;
+  options.stdio[1].flags = UV_INHERIT_FD;
+  options.stdio[1].data.fd = 1;
+  options.stdio[2].flags = UV_INHERIT_FD;
+  options.stdio[2].data.fd = 2;
+  options.stdio[3].flags = UV_INHERIT_FD;
+  options.stdio[3].data.fd = fd;
+  options.stdio_count = 4;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_tcp_init(uv_default_loop(), &tcp_client);
+  ASSERT(r == 0);
+
+  r = uv_timer_init(uv_default_loop(), &timer);
+  ASSERT(r == 0);
+
+  /* Allow server some time to get set up. */
+  r = uv_timer_start(&timer, tcp_connect, 1000, 0);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 2); /* Once for process and other for client. */
 
   MAKE_VALGRIND_HAPPY();
   return 0;
