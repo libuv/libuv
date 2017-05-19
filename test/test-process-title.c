@@ -41,7 +41,7 @@ static void set_title(const char* title) {
 }
 
 
-static void uv_get_process_title_edge_cases() {
+static void uv_get_process_title_edge_cases(void) {
   char buffer[512];
   int r;
 

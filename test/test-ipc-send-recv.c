@@ -335,7 +335,7 @@ static void read_cb(uv_stream_t* handle,
   } while (uv_pipe_pending_count(pipe) > 0);
 }
 
-static void send_recv_start() {
+static void send_recv_start(void) {
   int r;
   ASSERT(1 == uv_is_readable((uv_stream_t*)&ctx2.channel));
   ASSERT(1 == uv_is_writable((uv_stream_t*)&ctx2.channel));
