@@ -191,6 +191,11 @@ API
 
     This function is not implemented on Windows, where it returns ``UV_ENOSYS``.
 
+    .. caution::
+
+       This function is experimental. It may contain bugs, and is subject to
+       change or removal. API and ABI stability is not guaranteed.
+
     .. note::
 
         On Mac OS X, if directory FS event handles were in use in the
