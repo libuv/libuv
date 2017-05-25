@@ -23,6 +23,13 @@
 #include <io.h>
 #include <string.h>
 #include <stdlib.h>
+#include <intrin.h>
+
+#define InterlockedOr _InterlockedOr
+#pragma intrinsic(_InterlockedOr)
+
+#define InterlockedAnd _InterlockedAnd
+#pragma intrinsic(_InterlockedAnd)
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "stdint-msvc2008.h"
