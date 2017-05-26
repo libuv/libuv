@@ -25,6 +25,10 @@ void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
     buf->len = suggested_size;
 }
 
+void on_close(uv_handle_t* handle) {
+    free(handle);
+}
+
 void echo_write(uv_write_t *req, int status) {
     if (status) {
         fprintf(stderr, "Write error %s\n", uv_strerror(status));
@@ -42,7 +46,7 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     if (nread < 0) {
         if (nread != UV_EOF)
             fprintf(stderr, "Read error %s\n", uv_err_name(nread));
-        uv_close((uv_handle_t*) client, NULL);
+        uv_close((uv_handle_t*) client, on_close);
     }
 
     free(buf->base);
@@ -61,7 +65,7 @@ void on_new_connection(uv_stream_t *server, int status) {
         uv_read_start((uv_stream_t*) client, alloc_buffer, echo_read);
     }
     else {
-        uv_close((uv_handle_t*) client, NULL);
+        uv_close((uv_handle_t*) client, on_close);
     }
 }
 
