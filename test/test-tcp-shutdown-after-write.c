@@ -66,7 +66,7 @@ static void timer_cb(uv_timer_t* handle) {
 
   buf = uv_buf_init("TEST", 4);
   r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
-  ASSERT(r == 0);
+  ASSERT(r == 0);//windows:Here failed 4047
 
   r = uv_shutdown(&shutdown_req, (uv_stream_t*)&conn, shutdown_cb);
   ASSERT(r == 0);
