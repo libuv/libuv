@@ -48,18 +48,12 @@ typedef struct pollfd {
 #include <windows.h>
 
 #include <process.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "stdint-msvc2008.h"
 #else
 # include <stdint.h>
 #endif
-
-#include "tree.h"
-#include "uv-threadpool.h"
 
 #define MAX_PIPENAME_LEN 256
 
