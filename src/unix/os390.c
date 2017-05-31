@@ -747,9 +747,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     SAVE_ERRNO(uv__update_time(loop));
     if (nfds == 0) {
       assert(timeout != -1);
-      timeout = real_timeout - timeout;
-      if (timeout > 0)
+
+      if (timeout > 0) {
+        timeout = real_timeout - timeout;
         continue;
+      }
 
       return;
     }
