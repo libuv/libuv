@@ -98,9 +98,8 @@ int uv_get_process_title(char* buffer, size_t size) {
   else if (size <= process_title.len)
     return -ENOBUFS;
 
-  if (process_title.len != 0) {
+  if (process_title.len != 0)
     memcpy(buffer, process_title.str, process_title.len + 1);
-  }
 
   buffer[process_title.len] = '\0';
 
