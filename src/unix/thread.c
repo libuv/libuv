@@ -172,7 +172,7 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
 
   err = pthread_rwlock_tryrdlock(rwlock);
   if (err) {
-    if (err != EBUSY && err != EAGAIN)
+    if (err != EBUSY && err != EAGAIN && err != EDEADLK)
       abort();
     return -EBUSY;
   }
@@ -198,7 +198,7 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 
   err = pthread_rwlock_trywrlock(rwlock);
   if (err) {
-    if (err != EBUSY && err != EAGAIN)
+    if (err != EBUSY && err != EAGAIN && err != EDEADLK)
       abort();
     return -EBUSY;
   }
