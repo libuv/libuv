@@ -1194,8 +1194,16 @@ int uv_pipe_read_start(uv_pipe_t* handle,
 
   /* If reading was stopped and then started again, there could still be a read
    * request pending. */
-  if (!(handle->flags & UV_HANDLE_READ_PENDING))
+  if (!(handle->flags & UV_HANDLE_READ_PENDING)) {
+    if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
+        handle->read_req.event_handle == NULL) {
+      handle->read_req.event_handle = CreateEvent(NULL, 0, 0, NULL);
+      if (handle->read_req.event_handle == NULL) {
+        uv_fatal_error(GetLastError(), "CreateEvent");
+      }
+    }
     uv_pipe_queue_read(loop, handle);
+  }
 
   return 0;
 }
