@@ -253,7 +253,7 @@
             'src/unix/linux-syscalls.h',
             'src/unix/pthread-fixes.c',
             'src/unix/android-ifaddrs.c',
-            'src/unix/pthread-barrier.c'
+            'src/unix/pthread-barrier.c',
             'src/unix/procfs-exepath.c',
             'src/unix/sysinfo-loadavg.c',
             'src/unix/sysinfo-memory.c',
