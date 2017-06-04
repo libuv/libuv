@@ -153,6 +153,70 @@ Data types
             } netmask;
         } uv_interface_address_t;
 
+.. c:type:: uv_network_interface_t
+
+    Data type for network interfaces.
+
+    ::
+
+        typedef struct uv_network_interface_s {
+            char* name;
+            uint32_t flags;
+            char phys_addr[16];
+            uint32_t phys_addr_len;
+            union {
+                struct sockaddr_in address4;
+                struct sockaddr_in6 address6;
+            } address;
+            struct sockaddr_in broadcast4;
+            uint32_t prefix;
+        } uv_network_interface_t;
+
+
+.. c:macro:: UV_NETIF_IS_UP
+
+    Macro that takes an `uv_network_interface_t` and returns
+    1 or 0 indicating whether the interface is up and running.
+
+
+.. c:macro:: UV_NETIF_IS_LOOPBACK
+
+    Macro that takes an `uv_network_interface_t` and returns
+    1 or 0 indicating whether the interface is a loopback
+    interface.
+
+
+.. c:macro:: UV_NETIF_IS_PTP
+
+    Macro that takes an `uv_network_interface_t` and returns
+    1 or 0 indicating whether the interface is a point-to-point
+    interface.
+
+
+.. c:macro:: UV_NETIF_IS_PROMISCUOUS
+
+    Macro that takes an `uv_network_interface_t` and returns
+    1 or 0 indicating whether the interface is in promiscuous
+    mode.
+
+
+.. c:macro:: UV_NETIF_HAS_BROADCAST
+
+    Macro that takes an `uv_network_interface_t` and returns
+    1 or 0 indicating whether the interface has the broadcast
+    flag set.  Currently, only IPv4 interface records have an
+    IPv4 broadcast address, but the flag can be set on all
+    interface records that share the same name.
+
+
+.. c:macro:: UV_NETIF_HAS_MULTICAST
+
+    Macro that takes an `uv_network_interface_t` and returns
+    1 or 0 indicating whether the interface has the multicast
+    flag set.  The flag can be set on all interface records
+    that share the same name.
+
+
 .. c:type:: uv_passwd_t
 
     Data type for password file information.
@@ -295,13 +359,32 @@ API
 .. c:function:: int uv_interface_addresses(uv_interface_address_t** addresses, int* count)
 
     Gets address information about the network interfaces on the system. An
-    array of `count` elements is allocated and returned in `addresses`. It must
-    be freed by the user, calling :c:func:`uv_free_interface_addresses`.
+    array of `count` elements is allocated and returned in `addresses`. Only
+    includes interfaces with `INET` or `INET6` addresses. It must be freed by
+    the user, calling :c:func:`uv_free_interface_addresses`.
 
 .. c:function:: void uv_free_interface_addresses(uv_interface_address_t* addresses, int count)
 
     Free an array of :c:type:`uv_interface_address_t` which was returned by
     :c:func:`uv_interface_addresses`.
+
+.. c:function:: int uv_network_interfaces(uv_network_interface_t** interfaces, int* count)
+
+    Gets information about internet network interfaces on the system. An array
+    of `count` elements is allocated and returned in `interfaces`. Includes up,
+    down, unattached interfaces and interfaces without addresses. Missing
+    addresses are marked with a family of `AF_UNSPEC` and their contents are
+    unspecified. At least one link-layer record is returned for each interface.
+    It must be freed by the user, calling :c:func:`uv_free_network_interfaces`.
+
+	.. note::
+	    This interface will return `UV_ENOTSUP` until individual platform support
+        has been implemented for each supported platform.
+
+.. c:function:: void uv_free_network_interfaces(uv_network_interface_t* interfaces, int count)
+
+    Free an array of :c:type:`uv_network_interface_t` which was returned by
+    :c:func:`uv_network_interfaces`.
 
 .. c:function:: void uv_loadavg(double avg[3])
 

@@ -926,6 +926,22 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 }
 
 
+int uv_network_interfaces(uv_network_interface_t** interfaces, int* count) {
+  return UV_ENOTSUP;
+}
+
+
+void uv_free_network_interfaces(uv_network_interface_t* interfaces, int count) {
+  int i;
+
+  for (i = 0; i < count; i++) {
+    uv__free(interfaces[i].name);
+  }
+
+  uv__free(interfaces);
+}
+
+
 void uv__set_process_title(const char* title) {
 #if defined(PR_SET_NAME)
   prctl(PR_SET_NAME, title);  /* Only copies first 16 characters. */

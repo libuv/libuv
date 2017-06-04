@@ -34,21 +34,25 @@ TEST_IMPL(platform_output) {
   uv_rusage_t rusage;
   uv_cpu_info_t* cpus;
   uv_interface_address_t* interfaces;
+  uv_network_interface_t* netifs;
   uv_passwd_t pwd;
   uv_utsname_t uname;
   int count;
   int i;
   int err;
 
+  /* uv_get_process_title */
   err = uv_get_process_title(buffer, sizeof(buffer));
   ASSERT(err == 0);
   printf("uv_get_process_title: %s\n", buffer);
 
+  /* uv_cwd */
   size = sizeof(buffer);
   err = uv_cwd(buffer, &size);
   ASSERT(err == 0);
   printf("uv_cwd: %s\n", buffer);
 
+  /* uv_resident_set_memory */
   err = uv_resident_set_memory(&rss);
 #if defined(__MSYS__)
   ASSERT(err == UV_ENOSYS);
@@ -57,11 +61,13 @@ TEST_IMPL(platform_output) {
   printf("uv_resident_set_memory: %llu\n", (unsigned long long) rss);
 #endif
 
+  /* uv_uptime */
   err = uv_uptime(&uptime);
   ASSERT(err == 0);
   ASSERT(uptime > 0);
   printf("uv_uptime: %f\n", uptime);
 
+  /* uv_getrusage */
   err = uv_getrusage(&rusage);
   ASSERT(err == 0);
   ASSERT(rusage.ru_utime.tv_sec >= 0);
@@ -79,6 +85,7 @@ TEST_IMPL(platform_output) {
   printf("  maximum resident set size: %llu\n",
          (unsigned long long) rusage.ru_maxrss);
 
+  /* uv_cpu_info */
   err = uv_cpu_info(&cpus, &count);
 #if defined(__CYGWIN__) || defined(__MSYS__)
   ASSERT(err == UV_ENOSYS);
@@ -101,6 +108,7 @@ TEST_IMPL(platform_output) {
 #endif
   uv_free_cpu_info(cpus, count);
 
+  /* uv_interface_addresses */
   err = uv_interface_addresses(&interfaces, &count);
   ASSERT(err == 0);
 
@@ -137,6 +145,81 @@ TEST_IMPL(platform_output) {
   }
   uv_free_interface_addresses(interfaces, count);
 
+  /* uv_network_interfaces */
+  err = uv_network_interfaces(&netifs, &count);
+  ASSERT(err == 0 || err == UV_ENOTSUP);
+
+  /* TODO: Remove this outer `if` after all platforms have implemented the new
+   * interface and the `ASSERT` above drops the `|| err == UV_ENOTSUP`
+   * condition.
+   */
+  if (err == 0) {
+    printf("uv_network_interfaces:\n");
+    for (i = 0; i < count; i++) {
+
+      /* Meta & flags */
+      printf("  name: %s\n", netifs[i].name);
+      printf("    is_up: %d\n", UV_NETIF_IS_UP(netifs[i]));
+      printf("    is_loopback: %d\n", UV_NETIF_IS_LOOPBACK(netifs[i]));
+      printf("    is_point_to_point: %d\n", UV_NETIF_IS_PTP(netifs[i]));
+      printf("    is_promiscuous: %d\n", UV_NETIF_IS_PROMISCUOUS(netifs[i]));
+      printf("    has_broadcast: %d\n", UV_NETIF_HAS_BROADCAST(netifs[i]));
+      printf("    has_multicast: %d\n", UV_NETIF_HAS_MULTICAST(netifs[i]));
+
+      /* Address */
+      if (netifs[i].address.address4.sin_family == AF_INET6) {
+        /* IPv6 addresses will display the prefix directly after the address,
+         * while IPv4 addresses will later print a netmask address computed
+         * from the prefix.
+         */
+        uv_ip6_name(&netifs[i].address.address6, buffer, sizeof(buffer));
+        printf("    address: inet6 %s/%u\n", buffer, netifs[i].prefix);
+      } else if (netifs[i].address.address4.sin_family == AF_INET) {
+        uv_ip4_name(&netifs[i].address.address4, buffer, sizeof(buffer));
+        printf("    address: inet4 %s\n", buffer);
+      } else {
+        printf("    address: none\n");
+      }
+
+      /* Broadcast */
+      if (UV_NETIF_HAS_BROADCAST(netifs[i]) &&
+          netifs[i].broadcast4.sin_family == AF_INET) {
+        uv_ip4_name(&netifs[i].broadcast4, buffer, sizeof(buffer));
+        printf("    broadcast: inet4 %s\n", buffer);
+      }
+
+      /* Netmask */
+      if (netifs[i].address.address4.sin_family == AF_INET) {
+        /* Only compute and display an IPv4 style netmask from the CIDR prefix
+         * if the interface address is `AF_INET`
+         */
+        if (netifs[i].prefix) {
+          uint32_t mask = htonl(~((1 << (32 - netifs[i].prefix)) - 1));
+          struct sockaddr_in netmask4;
+          netmask4.sin_addr.s_addr = mask;
+          uv_ip4_name(&netmask4, buffer, sizeof(buffer));
+          printf("    netmask: inet4 %s\n", buffer);
+        } else {
+          printf("    netmask: none\n");
+        }
+      }
+
+      /* Physical layer */
+      if (netifs[i].phys_addr_len) {
+        uint32_t b;
+        printf("    physical address: ");
+        for (b = 0; b < netifs[i].phys_addr_len; ++b) {
+          printf("%s%02x", b == 0 ? "" : ":",
+                 (unsigned char)netifs[i].phys_addr[b]);
+        }
+        printf("\n");
+      }
+    }
+
+    uv_free_network_interfaces(netifs, count);
+  }
+
+  /* uv_os_get_passwd */
   err = uv_os_get_passwd(&pwd);
   ASSERT(err == 0);
 

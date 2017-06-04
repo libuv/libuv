@@ -1066,6 +1066,22 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 }
 
 
+int uv_network_interfaces(uv_network_interface_t** interfaces, int* count) {
+  return UV_ENOTSUP;
+}
+
+
+void uv_free_network_interfaces(uv_network_interface_t* interfaces, int count) {
+  int i;
+
+  for (i = 0; i < count; i++) {
+    uv__free(interfaces[i].name);
+  }
+
+  uv__free(interfaces);
+}
+
+
 int uv_getrusage(uv_rusage_t *uv_rusage) {
   FILETIME createTime, exitTime, kernelTime, userTime;
   SYSTEMTIME kernelSystemTime, userSystemTime;

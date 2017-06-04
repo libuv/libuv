@@ -235,6 +235,7 @@ typedef struct uv_work_s uv_work_t;
 typedef struct uv_env_item_s uv_env_item_t;
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
+typedef struct uv_network_interface_s uv_network_interface_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_utsname_s uv_utsname_t;
@@ -1061,6 +1062,45 @@ struct uv_interface_address_s {
   } netmask;
 };
 
+/*
+ * These are the flags that are present in the uv_network_interface_t.flags
+ * field.
+ */
+enum uv_netif_flags {
+  /* Indicates the interface is up and running. */
+  UV_NETIF_UP          = (1 << 0),
+  /* Indicates the interface is a loopback interface. */
+  UV_NETIF_LOOPBACK    = (1 << 1),
+  /* Indicates the interface is a point-to-point interface. */
+  UV_NETIF_PTP         = (1 << 2),
+  /* Indicates the interface is running in promiscuous mode. */
+  UV_NETIF_PROMISCUOUS = (1 << 3),
+  /* Indicates the interface broadcast address field is populated. */
+  UV_NETIF_BROADCAST   = (1 << 4),
+  /* Indicates the interface is enabled for multicast packets. */
+  UV_NETIF_MULTICAST   = (1 << 5)
+};
+
+#define UV_NETIF_IS_UP(netif)          (!!(netif.flags & UV_NETIF_UP))
+#define UV_NETIF_IS_LOOPBACK(netif)    (!!(netif.flags & UV_NETIF_LOOPBACK))
+#define UV_NETIF_IS_PTP(netif)         (!!(netif.flags & UV_NETIF_PTP))
+#define UV_NETIF_IS_PROMISCUOUS(netif) (!!(netif.flags & UV_NETIF_PROMISCUOUS))
+#define UV_NETIF_HAS_BROADCAST(netif)  (!!(netif.flags & UV_NETIF_BROADCAST))
+#define UV_NETIF_HAS_MULTICAST(netif)  (!!(netif.flags & UV_NETIF_MULTICAST))
+
+typedef struct uv_network_interface_s {
+  char* name;
+  uint32_t flags; /* uv_netif_flags */
+  char phys_addr[16];
+  uint32_t phys_addr_len;
+  union {
+    struct sockaddr_in address4;
+    struct sockaddr_in6 address6;
+  } address;
+  struct sockaddr_in broadcast4;
+  uint32_t prefix; /* CIDR prefix for both IPv4 and IPv6 */
+} uv_network_interface_s;
+
 struct uv_passwd_s {
   char* username;
   long uid;
@@ -1196,6 +1236,10 @@ UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
 
 UV_EXTERN int uv_os_uname(uv_utsname_t* buffer);
 
+UV_EXTERN int uv_network_interfaces(uv_network_interface_t** interfaces,
+                                    int* count);
+UV_EXTERN void uv_free_network_interfaces(uv_network_interface_t* interfaces,
+                                          int count);
 
 typedef enum {
   UV_FS_UNKNOWN = -1,
