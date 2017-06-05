@@ -122,7 +122,9 @@ UV_DESTRUCTOR(static void cleanup(void)) {
 
   threads = NULL;
   nthreads = 0;
+  idle_threads = 0;
   initialized = 0;
+
 }
 #endif
 
@@ -148,6 +150,8 @@ static void init_threads(void) {
       threads = default_threads;
     }
   }
+
+  idle_threads = 0;
 
   if (uv_cond_init(&cond))
     abort();
