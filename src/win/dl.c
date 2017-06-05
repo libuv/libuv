@@ -48,6 +48,11 @@ int uv_dlopen(const char* filename, uv_lib_t* lib) {
   return 0;
 }
 
+/* uv_dlopen_with_flags is a no-op in windows */
+int uv_dlopen_with_flags(const char* filename, uv_lib_t* lib, int flags) {
+  return uv_dlopen(filename, lib);
+}
+
 
 void uv_dlclose(uv_lib_t* lib) {
   if (lib->errmsg) {
