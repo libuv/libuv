@@ -340,6 +340,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
+  unsigned int active_handles;
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -355,6 +356,11 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
+
+    /* After uv__io_poll, maybe new active handle added,
+     * so the loop->active_handles maybe changed
+     */
+    active_handles = loop->active_handles;
 
     uv__io_poll(loop, timeout);
     uv__run_check(loop);
@@ -374,7 +380,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     }
 
     r = uv__loop_alive(loop);
-    if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
+    if ((mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT) &&
+        QUEUE_EMPTY(&loop->pending_queue) && active_handles == loop->active_handles)
       break;
   }
 
