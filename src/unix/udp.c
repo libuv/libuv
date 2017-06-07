@@ -109,16 +109,16 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
       uv__free(req->bufs);
     req->bufs = NULL;
 
-    if (req->send_cb == NULL)
+    if (req->cb == NULL)
       continue;
 
     /* req->status >= 0 == bytes written
      * req->status <  0 == errno
      */
     if (req->status >= 0)
-      req->send_cb(req, 0);
+      req->cb(req, 0);
     else
-      req->send_cb(req, req->status);
+      req->cb(req, req->status);
   }
 
   if (QUEUE_EMPTY(&handle->write_queue)) {
@@ -408,7 +408,7 @@ int uv__udp_send(uv_udp_send_t* req,
   uv__req_init(handle->loop, req, UV_UDP_SEND);
   assert(addrlen <= sizeof(req->addr));
   memcpy(&req->addr, addr, addrlen);
-  req->send_cb = send_cb;
+  req->cb = send_cb;
   req->handle = handle;
   req->nbufs = nbufs;
 

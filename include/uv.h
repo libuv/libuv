@@ -409,7 +409,39 @@ struct uv_shutdown_s {
     int fd;                                                                   \
     void* reserved[4];                                                        \
   } u;                                                                        \
+  unsigned int flags;                                                         \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
+
+#define UV_TIMER_PRIVATE_FIELDS                                               \
+  uv_timer_cb timer_cb;                                                       \
+  void* heap_node[3];                                                         \
+  uint64_t timeout;                                                           \
+  uint64_t repeat;                                                            \
+  uint64_t start_id;
+
+#define UV_PREPARE_PRIVATE_FIELDS                                             \
+  uv_prepare_cb prepare_cb;                                                   \
+  void* queue[2];                                                             \
+
+#define UV_CHECK_PRIVATE_FIELDS                                               \
+  uv_check_cb check_cb;                                                       \
+  void* queue[2];                                                             \
+
+#define UV_IDLE_PRIVATE_FIELDS                                                \
+  uv_idle_cb idle_cb;                                                         \
+  void* queue[2];                                                             \
+
+#define UV_GETNAMEINFO_PRIVATE_FIELDS                                         \
+  struct uv__work work_req;                                                   \
+  uv_getnameinfo_cb getnameinfo_cb;                                           \
+  struct sockaddr_storage storage;                                            \
+  int flags;                                                                  \
+  char host[NI_MAXHOST];                                                      \
+  char service[NI_MAXSERV];                                                   \
+  int retcode;
+
+#define UV_WORK_PRIVATE_FIELDS                                                \
+  struct uv__work work_req;
 
 /* The abstract base class of all handles. */
 struct uv_handle_s {
@@ -756,6 +788,8 @@ UV_EXTERN int uv_idle_stop(uv_idle_t* idle);
 
 struct uv_async_s {
   UV_HANDLE_FIELDS
+  uv_async_cb async_cb;
+  void* queue[2];
   UV_ASYNC_PRIVATE_FIELDS
 };
 
@@ -795,6 +829,11 @@ struct uv_getaddrinfo_s {
   UV_REQ_FIELDS
   /* read-only */
   uv_loop_t* loop;
+  /* private */
+  struct uv__work work_req;
+  uv_getaddrinfo_cb getaddrinfo_cb;
+  int retcode;
+  struct addrinfo* addrinfo;
   /* struct addrinfo* addrinfo is marked as private, but it really isn't. */
   UV_GETADDRINFO_PRIVATE_FIELDS
 };
@@ -1284,6 +1323,7 @@ struct uv_fs_event_s {
   UV_HANDLE_FIELDS
   /* private */
   char* path;
+  uv_fs_event_cb cb;
   UV_FS_EVENT_PRIVATE_FIELDS
 };
 
@@ -1463,6 +1503,25 @@ struct uv_loop_s {
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   void* reserved[4];
+  /* private fields that appear in both implementations */
+  /* Lists of active loop (async / prepare / check / idle) watchers */
+  void* async_handles[2];
+  void* prepare_handles[2];
+  void* check_handles[2];
+  void* idle_handles[2];
+  /* Timers */
+  struct {
+    void* min;
+    unsigned int nelts;
+  } timer_heap;
+  /* The current time according to the event loop. in msecs. */
+  uint64_t time;
+  uint64_t timer_counter;
+  /* Threadpool */
+  void* wq[2];
+  uv_mutex_t wq_mutex;
+  uv_async_t wq_async;
+
   UV_LOOP_PRIVATE_FIELDS
 };
 

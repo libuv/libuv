@@ -129,8 +129,8 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
     req->retcode = UV_EAI_CANCELED;
   }
 
-  if (req->cb)
-    req->cb(req, req->retcode, req->addrinfo);
+  if (req->getaddrinfo_cb)
+    req->getaddrinfo_cb(req, req->retcode, req->addrinfo);
 }
 
 
@@ -159,7 +159,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   uv__req_init(loop, req, UV_GETADDRINFO);
   req->loop = loop;
-  req->cb = cb;
+  req->getaddrinfo_cb = cb;
   req->addrinfo = NULL;
   req->hints = NULL;
   req->service = NULL;

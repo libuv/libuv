@@ -198,33 +198,16 @@ typedef struct {
 #define UV_LOOP_PRIVATE_FIELDS                                                \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
-  /* The current time according to the event loop. in msecs. */               \
-  uint64_t time;                                                              \
   /* Tail of a single-linked circular queue of pending reqs. If the queue */  \
   /* is empty, tail_ is NULL. If there is only one item, */                   \
   /* tail_->next_req == tail_ */                                              \
   uv_req_t* pending_reqs_tail;                                                \
   /* Head of a single-linked list of closed handles */                        \
   uv_handle_t* endgame_handles;                                               \
-  /* Timers */                                                                \
-  struct {                                                                    \
-    void* min;                                                                \
-    unsigned int nelts;                                                       \
-  } timer_heap;                                                               \
-  uint64_t timer_counter;                                                     \
-  /* Lists of active loop (prepare / check / idle) watchers */                \
-  void* prepare_handles[2];                                                   \
-  void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
   /* This handle holds the peer sockets for the fast variant of uv_poll_t */  \
   SOCKET poll_peer_sockets[UV_MSAFD_PROVIDER_COUNT];                          \
-  /* Threadpool */                                                            \
-  void* wq[2];                                                                \
-  uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;                                                        \
   /* Async handle */                                                          \
   struct uv_req_s async_req;                                                  \
-  void* async_handles[2];                                                     \
   /* Global queue of loops */                                                 \
   void* loops_queue[2];
 
@@ -406,37 +389,13 @@ typedef struct {
   unsigned char mask_events_2;                                                \
   unsigned char events;
 
-#define UV_TIMER_PRIVATE_FIELDS                                               \
-  uv_timer_cb timer_cb;                                                       \
-  void* heap_node[3];                                                         \
-  uint64_t timeout;                                                           \
-  uint64_t repeat;                                                            \
-  uint64_t start_id;
-
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
-  uv_async_cb async_cb;                                                       \
   LONG volatile async_sent;
-
-#define UV_PREPARE_PRIVATE_FIELDS                                             \
-  void* queue[2];                                                             \
-  uv_prepare_cb prepare_cb;
-
-#define UV_CHECK_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
-  uv_check_cb check_cb;
-
-#define UV_IDLE_PRIVATE_FIELDS                                                \
-  void* queue[2];                                                             \
-  uv_idle_cb idle_cb;
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
   uv_handle_t* endgame_next;                                                  \
-  unsigned int flags;
 
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
-  struct uv__work work_req;                                                   \
-  uv_getaddrinfo_cb getaddrinfo_cb;                                           \
   void* alloc;                                                                \
   WCHAR* node;                                                                \
   WCHAR* service;                                                             \
@@ -444,17 +403,6 @@ typedef struct {
   /* later on to store the result of GetAddrInfoW. The final result will */   \
   /* be converted to struct addrinfo* and stored in the addrinfo field.  */   \
   struct addrinfoW* addrinfow;                                                \
-  struct addrinfo* addrinfo;                                                  \
-  int retcode;
-
-#define UV_GETNAMEINFO_PRIVATE_FIELDS                                         \
-  struct uv__work work_req;                                                   \
-  uv_getnameinfo_cb getnameinfo_cb;                                           \
-  struct sockaddr_storage storage;                                            \
-  int flags;                                                                  \
-  char host[NI_MAXHOST];                                                      \
-  char service[NI_MAXSERV];                                                   \
-  int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
   struct uv_process_exit_s {                                                  \
@@ -492,16 +440,12 @@ typedef struct {
     } time;                                                                   \
   } fs;
 
-#define UV_WORK_PRIVATE_FIELDS                                                \
-  struct uv__work work_req;
-
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
   struct uv_fs_event_req_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } req;                                                                      \
   HANDLE dir_handle;                                                          \
   int req_pending;                                                            \
-  uv_fs_event_cb cb;                                                          \
   WCHAR* filew;                                                               \
   WCHAR* short_filew;                                                         \
   WCHAR* dirw;                                                                \

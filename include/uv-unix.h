@@ -202,23 +202,10 @@ typedef struct {
   uv__io_t** watchers;                                                        \
   unsigned int nwatchers;                                                     \
   unsigned int nfds;                                                          \
-  void* wq[2];                                                                \
-  uv_mutex_t wq_mutex;                                                        \
-  uv_async_t wq_async;                                                        \
   uv_rwlock_t cloexec_lock;                                                   \
   uv_handle_t* closing_handles;                                               \
   void* process_handles[2];                                                   \
-  void* prepare_handles[2];                                                   \
-  void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
-  void* async_handles[2];                                                     \
   struct uv__async async_watcher;                                             \
-  struct {                                                                    \
-    void* min;                                                                \
-    unsigned int nelts;                                                       \
-  } timer_heap;                                                               \
-  uint64_t timer_counter;                                                     \
-  uint64_t time;                                                              \
   int signal_pipefd[2];                                                       \
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
@@ -250,12 +237,10 @@ typedef struct {
   unsigned int nbufs;                                                         \
   uv_buf_t* bufs;                                                             \
   ssize_t status;                                                             \
-  uv_udp_send_cb send_cb;                                                     \
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \
   uv_handle_t* next_closing;                                                  \
-  unsigned int flags;                                                         \
 
 #define UV_STREAM_PRIVATE_FIELDS                                              \
   uv_connect_t *connect_req;                                                  \
@@ -284,47 +269,13 @@ typedef struct {
 #define UV_POLL_PRIVATE_FIELDS                                                \
   uv__io_t io_watcher;
 
-#define UV_PREPARE_PRIVATE_FIELDS                                             \
-  uv_prepare_cb prepare_cb;                                                   \
-  void* queue[2];                                                             \
-
-#define UV_CHECK_PRIVATE_FIELDS                                               \
-  uv_check_cb check_cb;                                                       \
-  void* queue[2];                                                             \
-
-#define UV_IDLE_PRIVATE_FIELDS                                                \
-  uv_idle_cb idle_cb;                                                         \
-  void* queue[2];                                                             \
-
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
-  uv_async_cb async_cb;                                                       \
-  void* queue[2];                                                             \
   int pending;                                                                \
 
-#define UV_TIMER_PRIVATE_FIELDS                                               \
-  uv_timer_cb timer_cb;                                                       \
-  void* heap_node[3];                                                         \
-  uint64_t timeout;                                                           \
-  uint64_t repeat;                                                            \
-  uint64_t start_id;
-
 #define UV_GETADDRINFO_PRIVATE_FIELDS                                         \
-  struct uv__work work_req;                                                   \
-  uv_getaddrinfo_cb cb;                                                       \
   struct addrinfo* hints;                                                     \
   char* hostname;                                                             \
   char* service;                                                              \
-  struct addrinfo* addrinfo;                                                  \
-  int retcode;
-
-#define UV_GETNAMEINFO_PRIVATE_FIELDS                                         \
-  struct uv__work work_req;                                                   \
-  uv_getnameinfo_cb getnameinfo_cb;                                           \
-  struct sockaddr_storage storage;                                            \
-  int flags;                                                                  \
-  char host[NI_MAXHOST];                                                      \
-  char service[NI_MAXSERV];                                                   \
-  int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
   void* queue[2];                                                             \
@@ -345,9 +296,6 @@ typedef struct {
   struct uv__work work_req;                                                   \
   uv_buf_t bufsml[4];                                                         \
 
-#define UV_WORK_PRIVATE_FIELDS                                                \
-  struct uv__work work_req;
-
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   struct termios orig_termios;                                                \
   int mode;
@@ -365,7 +313,6 @@ typedef struct {
   unsigned int dispatched_signals;
 
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
-  uv_fs_event_cb cb;                                                          \
   UV_PLATFORM_FS_EVENT_FIELDS                                                 \
 
 #endif /* UV_UNIX_H */
