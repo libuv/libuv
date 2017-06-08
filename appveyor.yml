@@ -1,3 +1,4 @@
+os: Visual Studio 2017
 version: v1.10.2.build{build}
 
 install:
@@ -21,12 +22,15 @@ configuration:
 build_script:
   # Fixed tag version number if using a tag.
   - cmd: if "%APPVEYOR_REPO_TAG%" == "true" set APPVEYOR_BUILD_VERSION=%APPVEYOR_REPO_TAG_NAME%
-  # vcbuild overwrites the platform variable.
-  - cmd: set ARCH=%platform%
-  - cmd: vcbuild.bat release %ARCH% shared
+  - cmd: |
+        "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
+        set GYP_MSVS_VERSION=2015
+        vcbuild.bat %configuration% %platform% shared nobuild
+  - ps: .\scripts\Update-ProjectFilesToVS2017.ps1
+  - cmd: vcbuild.bat %configuration% %platform% shared noprojgen
 
 after_build:
-  - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%ARCH% libuv.nsi'
+  - '"%PROGRAMFILES(x86)%\NSIS\makensis" /DVERSION=%APPVEYOR_BUILD_VERSION% /DARCH=%platform% libuv.nsi'
 
 artifacts:
   - name: Installer
