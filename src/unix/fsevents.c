@@ -267,11 +267,9 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
         }
       }
 
-#ifdef MAC_OS_X_VERSION_10_7
       /* Ignore events with path equal to directory itself */
       if (len == 0)
         continue;
-#endif /* MAC_OS_X_VERSION_10_7 */
 
       /* Do not emit events from subdirectories (without option set) */
       if ((handle->cf_flags & UV_FS_EVENT_RECURSIVE) == 0 && *path != 0) {
@@ -279,11 +277,6 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
         if (pos != NULL)
           continue;
       }
-
-#ifndef MAC_OS_X_VERSION_10_7
-      path = "";
-      len = 0;
-#endif /* MAC_OS_X_VERSION_10_7 */
 
       event = uv__malloc(sizeof(*event) + len);
       if (event == NULL)
