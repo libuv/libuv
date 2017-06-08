@@ -57,6 +57,19 @@
 # endif
 #endif
 
+#ifdef __HAIKU__
+# include <posix/fcntl.h>
+# if defined(O_CLOEXEC)
+#  define UV__O_CLOEXEC O_CLOEXEC
+# endif
+# if !defined(FIONCLEX)
+#  define FIONCLEX        0x5450
+# endif
+# if !defined(FIOCLEX)
+#  define FIOCLEX         0x5451
+# endif
+#endif
+
 #if defined(__DragonFly__)      || \
     defined(__FreeBSD__)        || \
     defined(__FreeBSD_kernel__)
@@ -922,13 +935,15 @@ int uv_getrusage(uv_rusage_t* rusage) {
   if (getrusage(RUSAGE_SELF, &usage))
     return -errno;
 
+  memset(rusage, 0, sizeof(*rusage));
+
   rusage->ru_utime.tv_sec = usage.ru_utime.tv_sec;
   rusage->ru_utime.tv_usec = usage.ru_utime.tv_usec;
 
   rusage->ru_stime.tv_sec = usage.ru_stime.tv_sec;
   rusage->ru_stime.tv_usec = usage.ru_stime.tv_usec;
 
-#if !defined(__MVS__)
+#if !defined(__MVS__) && !defined(__HAIKU__)
   rusage->ru_maxrss = usage.ru_maxrss;
   rusage->ru_ixrss = usage.ru_ixrss;
   rusage->ru_idrss = usage.ru_idrss;
