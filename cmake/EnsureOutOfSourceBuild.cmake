@@ -1,0 +1,7 @@
+macro(ensure_out_of_source_build _errorMessage)
+   string(COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" _insource)
+   if(_insource)
+     message(SEND_ERROR "${_errorMessage}")
+     message(FATAL_ERROR "Remove the file CMakeCache.txt in ${CMAKE_SOURCE_DIR} first.")
+   endif()
+endmacro()
