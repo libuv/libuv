@@ -145,6 +145,12 @@ enum {
   UV_LOOP_BLOCK_SIGPROF = 1
 };
 
+/* flags of excluding ifaddr */
+enum {
+  UV__EXCLUDE_IFPHYS,
+  UV__EXCLUDE_IFADDR
+};
+
 typedef enum {
   UV_CLOCK_PRECISE = 0,  /* Use the highest resolution clock available. */
   UV_CLOCK_FAST = 1      /* Use the fastest clock with <= 1ms granularity. */
