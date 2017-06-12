@@ -126,7 +126,7 @@ static int uv__usermode_symlink_available(void) {
   }
   pRtlGetVersion(&version_information);
   /* Usermode symlinks are only available on Win10 with Creators Update... */
-  if (version_information.dwMajorVersion < 10 ||
+  if (version_information.dwMajorVersion != 10 ||
       version_information.dwBuildNumber < 15063) {
     return 0;
   }
