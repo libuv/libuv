@@ -2818,18 +2818,18 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
                  O_RDWR | O_CREAT,
                  S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT(r >= 0);
+  ASSERT(r > 0);
   uv_fs_req_cleanup(&open_req1);
 
   iov = uv_buf_init(test_buf, sizeof(test_buf));
   r = uv_fs_write(NULL, &write_req, open_req1.result, &iov, 1, 0, NULL);
-  ASSERT(r >= 0);
+  ASSERT(r == sizeof(test_buf));
   ASSERT(lseek(open_req1.result, 0, SEEK_CUR) == 0);
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, open_req1.result, &iov, 1, 0, NULL);
-  ASSERT(r >= 0);
+  ASSERT(r == sizeof(test_buf));
   ASSERT(strcmp(buf, test_buf) == 0);
   ASSERT(lseek(open_req1.result, 0, SEEK_CUR) == 0);
   uv_fs_req_cleanup(&read_req);
