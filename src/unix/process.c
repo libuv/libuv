@@ -279,8 +279,10 @@ static void uv__process_child_init(const uv_process_options_t* options,
                                    int stdio_count,
                                    int (*pipes)[2],
                                    int error_fd) {
+  sigset_t set;
   int close_fd;
   int use_fd;
+  int err;
   int fd;
   int n;
 
@@ -390,6 +392,15 @@ static void uv__process_child_init(const uv_process_options_t* options,
       continue;
 
     uv__write_int(error_fd, -errno);
+    _exit(127);
+  }
+
+  /* Reset signal mask. */
+  sigemptyset(&set);
+  err = pthread_sigmask(SIG_SETMASK, &set, NULL);
+
+  if (err != 0) {
+    uv__write_int(error_fd, -err);
     _exit(127);
   }
 

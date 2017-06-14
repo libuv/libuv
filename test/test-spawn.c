@@ -931,6 +931,12 @@ TEST_IMPL(kill) {
 
   /* Verify that uv_spawn() resets the signal disposition. */
 #ifndef _WIN32
+  {
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGTERM);
+    ASSERT(0 == pthread_sigmask(SIG_BLOCK, &set, NULL));
+  }
   ASSERT(SIG_ERR != signal(SIGTERM, SIG_IGN));
 #endif
 
@@ -938,6 +944,12 @@ TEST_IMPL(kill) {
   ASSERT(r == 0);
 
 #ifndef _WIN32
+  {
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGTERM);
+    ASSERT(0 == pthread_sigmask(SIG_UNBLOCK, &set, NULL));
+  }
   ASSERT(SIG_ERR != signal(SIGTERM, SIG_DFL));
 #endif
 
