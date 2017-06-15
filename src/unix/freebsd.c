@@ -220,7 +220,7 @@ int uv_resident_set_memory(size_t* rss) {
     return -errno;
 
 #ifdef __DragonFly__
-  *rss = kinfo.p_vm_rssize * page_size;
+  *rss = kinfo.kp_vm_rssize * page_size;
 #else
   *rss = kinfo.ki_rssize * page_size;
 #endif
