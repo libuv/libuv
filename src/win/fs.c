@@ -121,37 +121,36 @@ static int uv__usermode_symlink_available(void) {
   OSVERSIONINFOW version_information;
   int r;
 
-  if (!pRtlGetVersion) {
+  if (!pRtlGetVersion)
     return 0;
-  }
+
   pRtlGetVersion(&version_information);
   /* Usermode symlinks are only available on Win10 with Creators Update... */
   if (version_information.dwMajorVersion != 10 ||
-      version_information.dwBuildNumber < 15063) {
+      version_information.dwBuildNumber < 15063)
     return 0;
-  }
+
   r = RegOpenKeyExW(HKEY_LOCAL_MACHINE, 
                     L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock",
                     0, KEY_QUERY_VALUE | KEY_WOW64_64KEY, &key);
-  if (r != ERROR_SUCCESS) {
+  if (r != ERROR_SUCCESS)
     return 0;
-  }
+
   /* ...and with enabled Developer Mode */
   value_size = sizeof(value);
   r = RegQueryValueExW(key, L"AllowDevelopmentWithoutDevLicense", 0, NULL,
                        (LPBYTE)(&value), &value_size);
   RegCloseKey(key);
-  if (r != ERROR_SUCCESS) {
+  if (r != ERROR_SUCCESS)
     return 0;
-  }
+
   return value ? 1 : 0;
 }
 
 void uv_fs_init(void) {
   _fmode = _O_BINARY;
-  if (uv__usermode_symlink_available()) {
+  if (uv__usermode_symlink_available())
     uv__file_symlink_flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
-  }
 }
 
 
