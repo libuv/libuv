@@ -51,29 +51,26 @@ static int timer_less_than(const struct heap_node* ha,
 }
 
 
-int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
-  handle->timer_cb = NULL;
-  handle->repeat = 0;
-  return 0;
+static uint64_t get_clamped_timeout(uint64_t loop_time, uint64_t timeout) {
+  uint64_t clamped_timeout;
+
+  clamped_timeout = loop_time + timeout;
+  if (clamped_timeout < timeout)
+    clamped_timeout = (uint64_t) -1;
+
+  return clamped_timeout;
 }
 
 
-int uv_timer_start(uv_timer_t* handle,
-                   uv_timer_cb cb,
-                   uint64_t timeout,
-                   uint64_t repeat) {
-  uint64_t clamped_timeout;
-
+static int timer_start_clamped(uv_timer_t* handle,
+                           uv_timer_cb cb,
+                           uint64_t clamped_timeout,
+                           uint64_t repeat) {
   if (cb == NULL)
     return UV_EINVAL;
 
   if (uv__is_active(handle))
     uv_timer_stop(handle);
-
-  clamped_timeout = handle->loop->time + timeout;
-  if (clamped_timeout < timeout)
-    clamped_timeout = (uint64_t) -1;
 
   handle->timer_cb = cb;
   handle->timeout = clamped_timeout;
@@ -87,6 +84,24 @@ int uv_timer_start(uv_timer_t* handle,
   uv__handle_start(handle);
 
   return 0;
+}
+
+
+int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
+  uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
+  handle->timer_cb = NULL;
+  handle->repeat = 0;
+  return 0;
+}
+
+
+int uv_timer_start(uv_timer_t* handle,
+                   uv_timer_cb cb,
+                   uint64_t timeout,
+                   uint64_t repeat) {
+  return timer_start_clamped(handle, cb,
+                             get_clamped_timeout(handle->loop->time, timeout),
+                             repeat);
 }
 
 
@@ -161,7 +176,10 @@ void uv__run_timers(uv_loop_t* loop) {
       break;
 
     uv_timer_stop(handle);
-    uv_timer_again(handle);
+    if (handle->repeat)
+      timer_start_clamped(handle, handle->timer_cb,
+                          get_clamped_timeout(handle->timeout, handle->repeat),
+                          handle->repeat);
     handle->timer_cb(handle);
   }
 }

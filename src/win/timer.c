@@ -87,7 +87,7 @@ static uint64_t get_clamped_due_time(uint64_t loop_time, uint64_t timeout) {
 }
 
 
-int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
+static int timer_start_clamped(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t due,
     uint64_t repeat) {
   uv_loop_t* loop = handle->loop;
   uv_timer_t* old;
@@ -99,7 +99,7 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
     uv_timer_stop(handle);
 
   handle->timer_cb = timer_cb;
-  handle->due = get_clamped_due_time(loop->time, timeout);
+  handle->due = due;
   handle->repeat = repeat;
   uv__handle_start(handle);
 
@@ -110,6 +110,13 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
   assert(old == NULL);
 
   return 0;
+}
+
+
+int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
+    uint64_t repeat) {
+  return timer_start_clamped(handle, timer_cb,
+    get_clamped_due_time(handle->loop->time, timeout), repeat);
 }
 
 
@@ -189,7 +196,9 @@ void uv_process_timers(uv_loop_t* loop) {
        timer = RB_MIN(uv_timer_tree_s, &loop->timers)) {
 
     uv_timer_stop(timer);
-    uv_timer_again(timer);
+    if (timer->repeat)
+      timer_start_clamped(timer, timer->timer_cb,
+        get_clamped_due_time(timer->due, timer->repeat), timer->repeat);
     timer->timer_cb((uv_timer_t*) timer);
   }
 }
