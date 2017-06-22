@@ -202,6 +202,7 @@ TEST_DECLARE   (pipe_ref4)
 TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
+TEST_DECLARE   (pipe_set_fchmod)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
@@ -428,6 +429,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif
   TEST_ENTRY  (pipe_set_non_blocking)
+  TEST_ENTRY  (pipe_set_fchmod)
   TEST_ENTRY  (tty)
 #ifdef _WIN32
   TEST_ENTRY  (tty_raw)

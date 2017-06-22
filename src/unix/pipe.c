@@ -302,3 +302,16 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
   else
     return uv__handle_type(handle->accepted_fd);
 }
+
+int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
+  struct stat pipe_stat;
+  if (fstat(handle->u.fd, &pipe_stat) == -1)
+    return -errno;
+  if (mode & UV_READABLE)
+    pipe_stat.st_mode |= S_IRUSR | S_IRGRP | S_IROTH;
+  if (mode & UV_WRITABLE)
+    pipe_stat.st_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
+  if (fchmod(handle->u.fd, pipe_stat.st_mode) == -1)
+    return -errno;
+  return 0;
+}
