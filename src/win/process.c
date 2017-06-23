@@ -20,10 +20,7 @@
  */
 
 #include <assert.h>
-#include <io.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <limits.h>
 #include <wchar.h>
 #include <malloc.h>    /* alloca */
@@ -32,9 +29,6 @@
 #include "internal.h"
 #include "handle-inl.h"
 #include "req-inl.h"
-
-
-#define SIGKILL         9
 
 
 typedef struct env_var {

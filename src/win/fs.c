@@ -23,12 +23,9 @@
 #include <stdlib.h>
 #include <direct.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <io.h>
 #include <limits.h>
-#include <sys/stat.h>
-#include <sys/utime.h>
-#include <stdio.h>
+#include <fcntl.h> /* file constants */
+#include <sys/stat.h> /* stat constants */
 
 #include "uv.h"
 #include "internal.h"
@@ -42,6 +39,8 @@
 #define UV_FS_FREE_PTR           0x0008
 #define UV_FS_CLEANEDUP          0x0010
 
+/* number of attempts to generate a unique directory name before declaring failure */
+#define TMP_MAX 32767
 
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
   do {                                                                      \

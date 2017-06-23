@@ -20,7 +20,6 @@
 */
 
 #include <assert.h>
-#include <stdio.h>
 
 #include "uv.h"
 #include "internal.h"

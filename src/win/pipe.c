@@ -20,10 +20,8 @@
  */
 
 #include <assert.h>
-#include <io.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h> /* printf */
 
 #include "uv.h"
 #include "internal.h"

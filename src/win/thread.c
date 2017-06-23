@@ -22,6 +22,8 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <process.h> /* _beginthreadex */
+#include <errno.h> /* _beginthreadex errors */
 
 #include "uv.h"
 #include "internal.h"

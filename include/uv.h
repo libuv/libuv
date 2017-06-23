@@ -48,11 +48,13 @@ extern "C" {
 #include "uv-errno.h"
 #include "uv-version.h"
 #include <stddef.h>
-#include <stdio.h>
 #include <stdint.h>
 
 #if defined(_WIN32)
 # include "uv-win.h"
+# if !defined(BUILDING_UV_SHARED)
+#   include "io.h" /* this header is not correct in a shared library environment */
+# endif
 #else
 # include "uv-unix.h"
 #endif
@@ -420,8 +422,8 @@ UV_EXTERN int uv_is_active(const uv_handle_t* handle);
 UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
 
 /* Helpers for ad hoc debugging, no API/ABI stability guaranteed. */
-UV_EXTERN void uv_print_all_handles(uv_loop_t* loop, FILE* stream);
-UV_EXTERN void uv_print_active_handles(uv_loop_t* loop, FILE* stream);
+UV_EXTERN void uv_print_all_handles(uv_loop_t* loop, /*FILE*/void* stream);
+UV_EXTERN void uv_print_active_handles(uv_loop_t* loop, /*FILE*/void* stream);
 
 UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 
@@ -434,11 +436,14 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
 
 /*
- * the following functions are declared 'static inline' to ensure that they
+ * The following functions are declared 'static inline' to ensure that they
  * end up in the static linkage namespace of the caller and thus point to
  * the correct (caller's) copy of MSVCRT for resolving the `fd` pseudo-handle
- * to the intended kernel `HANDLE`
+ * to the intended kernel `HANDLE`.
+ * Thus, they are also not included when building a shared library,
+ * as their definition would not be correct when linked into that environment.
  */
+#if !defined(BUILDING_UV_SHARED)
 #ifdef _MSC_VER
 # define INLINE __inline
 #else
@@ -473,8 +478,10 @@ INLINE static uv_os_fd_t uv_convert_fd_to_handle(int fd) {
 #endif
 }
 
-
 #undef INLINE
+
+#endif /* BUILDING_UV_SHARED */
+
 
 #ifdef _WIN32
 #define UV_STDIN_FD    ((HANDLE)-10)

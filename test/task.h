@@ -48,7 +48,7 @@
 #endif
 
 #ifdef _WIN32
-# include <io.h>
+# include <sys/stat.h>
 # ifndef S_IRUSR
 #  define S_IRUSR _S_IREAD
 # endif

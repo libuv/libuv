@@ -20,8 +20,6 @@
  */
 
 #include <assert.h>
-#include <io.h>
-#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 

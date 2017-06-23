@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stddef.h> /* NULL */
-#include <stdio.h>
+#include <stdio.h> /* FILE, printf */
 #include <stdlib.h> /* malloc */
 #include <string.h> /* memset */
 
@@ -366,7 +366,7 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
 }
 
 
-static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
+static void uv__print_handles(uv_loop_t* loop, int only_active, void* stream) {
   const char* type;
   QUEUE* q;
   uv_handle_t* h;
@@ -398,12 +398,12 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
 }
 
 
-void uv_print_all_handles(uv_loop_t* loop, FILE* stream) {
+void uv_print_all_handles(uv_loop_t* loop, void* stream) {
   uv__print_handles(loop, 0, stream);
 }
 
 
-void uv_print_active_handles(uv_loop_t* loop, FILE* stream) {
+void uv_print_active_handles(uv_loop_t* loop, void* stream) {
   uv__print_handles(loop, 1, stream);
 }
 
