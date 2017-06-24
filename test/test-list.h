@@ -354,6 +354,7 @@ TEST_DECLARE   (listen_with_simultaneous_accepts)
 TEST_DECLARE   (listen_no_simultaneous_accepts)
 TEST_DECLARE   (fs_stat_root)
 TEST_DECLARE   (spawn_with_an_odd_path)
+TEST_DECLARE   (spawn_batch_args)
 TEST_DECLARE   (ipc_listen_after_bind_twice)
 TEST_DECLARE   (win32_signum_number)
 #else
@@ -730,6 +731,7 @@ TASK_LIST_START
   TEST_ENTRY  (listen_no_simultaneous_accepts)
   TEST_ENTRY  (fs_stat_root)
   TEST_ENTRY  (spawn_with_an_odd_path)
+  TEST_ENTRY  (spawn_batch_args)
   TEST_ENTRY  (ipc_listen_after_bind_twice)
   TEST_ENTRY  (win32_signum_number)
 #else
