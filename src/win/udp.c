@@ -902,7 +902,7 @@ int uv__udp_send(uv_udp_send_t* req,
     } else if (addrlen == sizeof(uv_addr_ip6_any_)) {
       bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
     } else {
-      abort();
+      return UV_EINVAL;
     }
     err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
     if (err)
@@ -933,12 +933,13 @@ int uv__udp_try_send(uv_udp_t* handle,
     return UV_EAGAIN;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
-    if (addrlen == sizeof(uv_addr_ip4_any_))
+    if (addrlen == sizeof(uv_addr_ip4_any_)) {
       bind_addr = (const struct sockaddr*) &uv_addr_ip4_any_;
-    else if (addrlen == sizeof(uv_addr_ip6_any_))
+    } else if (addrlen == sizeof(uv_addr_ip6_any_)) {
       bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
-    else
-      abort();
+    } else {
+      return UV_EINVAL;
+    }
     err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
     if (err)
       return uv_translate_sys_error(err);
