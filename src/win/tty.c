@@ -629,7 +629,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
   DWORD records_left, records_read;
   uv_buf_t buf;
-  off_t buf_used;
+  ssize_t buf_used;
 
   assert(handle->type == UV_TTY);
   assert(handle->flags & UV_HANDLE_TTY_READABLE);
