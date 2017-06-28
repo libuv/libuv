@@ -1028,7 +1028,7 @@ TEST_IMPL(fs_async_sendfile) {
       S_IWUSR | S_IRUSR, NULL);
   ASSERT(r == 0);
   ASSERT(open_req2.result >= 0);
-  file2 = (uv_os_fd_t*)open_req2.result;
+  file2 = (uv_os_fd_t)open_req2.result;
   uv_fs_req_cleanup(&open_req2);
 
   r = uv_fs_sendfile(loop, &sendfile_req, file2, file1,
@@ -1571,7 +1571,7 @@ TEST_IMPL(fs_link) {
   r = uv_fs_open(NULL, &req, "test_file_link", O_RDWR, 0, NULL);
   ASSERT(r == 0);
   ASSERT(req.result >= 0);
-  link = (uv_os_fd_t*)req.result;
+  link = (uv_os_fd_t)req.result;
   uv_fs_req_cleanup(&req);
 
   memset(buf, 0, sizeof(buf));
@@ -1596,7 +1596,7 @@ TEST_IMPL(fs_link) {
   r = uv_fs_open(NULL, &req, "test_file_link2", O_RDWR, 0, NULL);
   ASSERT(r == 0);
   ASSERT(req.result >= 0);
-  link = (uv_os_fd_t*)req.result;
+  link = (uv_os_fd_t)req.result;
   uv_fs_req_cleanup(&req);
 
   memset(buf, 0, sizeof(buf));
@@ -1740,7 +1740,7 @@ TEST_IMPL(fs_symlink) {
   r = uv_fs_open(NULL, &req, "test_file_symlink", O_RDWR, 0, NULL);
   ASSERT(r == 0);
   ASSERT(req.result >= 0);
-  link = (uv_os_fd_t*)req.result;
+  link = (uv_os_fd_t)req.result;
   uv_fs_req_cleanup(&req);
 
   memset(buf, 0, sizeof(buf));
@@ -1793,7 +1793,7 @@ TEST_IMPL(fs_symlink) {
   r = uv_fs_open(NULL, &req, "test_file_symlink2", O_RDWR, 0, NULL);
   ASSERT(r == 0);
   ASSERT(req.result >= 0);
-  link = (uv_os_fd_t*)req.result;
+  link = (uv_os_fd_t)req.result;
   uv_fs_req_cleanup(&req);
 
   memset(buf, 0, sizeof(buf));

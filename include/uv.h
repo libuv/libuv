@@ -450,7 +450,7 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 # define INLINE inline
 #endif
 
-INLINE static uv_os_fd_t uv_get_osfhandle(int fd) {
+static INLINE uv_os_fd_t uv_get_osfhandle(int fd) {
 #ifdef _WIN32
   /*
    * _get_osfhandle() raises an assert in debug builds if the FD is invalid.
@@ -463,7 +463,7 @@ INLINE static uv_os_fd_t uv_get_osfhandle(int fd) {
 }
 
 
-INLINE static uv_os_fd_t uv_convert_fd_to_handle(int fd) {
+static INLINE uv_os_fd_t uv_convert_fd_to_handle(int fd) {
 #ifdef _WIN32
   HANDLE new_handle;
   if (!DuplicateHandle(GetCurrentProcess(), (HANDLE) _get_osfhandle(fd),
