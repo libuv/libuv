@@ -97,7 +97,7 @@ TEST_IMPL(handle_fileno) {
   ASSERT(r == UV_EBADF);
 
   tty_fd = get_tty_fd();
-  if (tty_fd == -1) {
+  if (tty_fd == (uv_os_fd_t)-1) {
     fprintf(stderr, "Cannot open a TTY fd");
     fflush(stderr);
   } else {

@@ -596,6 +596,7 @@ TEST_IMPL(poll_bad_fdtype) {
 #if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__sun) && \
     !defined(_AIX) && !defined(__MVS__) && !defined(__FreeBSD_kernel__)
   uv_poll_t poll_handle;
+  uv_os_fd_t handle;
   int fd;
 
 #if defined(_WIN32)
@@ -604,7 +605,8 @@ TEST_IMPL(poll_bad_fdtype) {
   fd = open(".", O_RDONLY);
 #endif
   ASSERT(fd != -1);
-  ASSERT(0 != uv_poll_init(uv_default_loop(), &poll_handle, uv_get_osfhandle(fd)));
+  handle = uv_get_osfhandle(fd);
+  ASSERT(0 != uv_poll_init(uv_default_loop(), &poll_handle, (uv_os_sock_t)handle)); /* bad cast on windows to allow passing an invalid SOCKET */
   ASSERT(0 == close(fd));
 #endif
 
