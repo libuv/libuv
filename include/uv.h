@@ -444,8 +444,10 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
  * as their definition would not be correct when linked into that environment.
  */
 #if !defined(BUILDING_UV_SHARED)
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 # define INLINE __inline
+#elif defined(__GNUC__)
+# define INLINE __inline__
 #else
 # define INLINE inline
 #endif
