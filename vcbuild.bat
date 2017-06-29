@@ -30,7 +30,7 @@ if /i "%1"=="release"      set config=Release&goto arg-ok
 if /i "%1"=="test"         set run=run-tests.exe&goto arg-ok
 if /i "%1"=="bench"        set run=run-benchmarks.exe&goto arg-ok
 if /i "%1"=="clean"        set target=Clean&goto arg-ok
-if /i "%1"=="vs2017"        set target_env=vs2017&goto arg-ok
+if /i "%1"=="vs2017"       set target_env=vs2017&goto arg-ok
 if /i "%1"=="noprojgen"    set noprojgen=1&goto arg-ok
 if /i "%1"=="nobuild"      set nobuild=1&goto arg-ok
 if /i "%1"=="x86"          set target_arch=ia32&set msbuild_platform=WIN32&set vs_toolset=x86&goto arg-ok
