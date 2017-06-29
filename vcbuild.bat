@@ -44,7 +44,6 @@ goto next-arg
 :args-done
 
 @rem Look for Visual Studio 2017
-:vs-set-2017
 if "%target_env%" NEQ "vs2017" goto vs-set-2015
 echo Looking for Visual Studio 2017
 @rem check if VS2017 is already setup, and for the requested arch

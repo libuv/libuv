@@ -2,12 +2,12 @@
 :: Distributed under MIT style license or the libuv license
 :: See accompanying file LICENSE at https://github.com/node4good/windows-autoconf
 :: or libuv LICENSE file at https://github.com/libuv/libuv
-:: version: 1.15.0
+:: version: 1.15.3
 
 @if not defined DEBUG_HELPER @ECHO OFF
 setlocal
 set "InstallerPath=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
-if not exist "%InstallerPath%" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer"
+if not exist "%InstallerPath%" set "InstallerPath=%ProgramFiles%\Microsoft Visual Studio\Installer"
 if not exist "%InstallerPath%" exit goto :no-vswhere
 :: Manipulate %Path% for easier " handeling
 set Path=%Path%;%InstallerPath%
