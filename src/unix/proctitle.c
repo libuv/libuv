@@ -50,10 +50,14 @@ char** uv_setup_args(int argc, char** argv) {
 
 #if defined(__MVS__)
   /* argv is not adjacent. So just use argv[0] */
-  process_title.str = argv[0];
-  process_title.len = strlen(argv[0]);
+  process_title.str = uv__strdup(argv[0]);
+  if (process_title.str == NULL)
+    return argv;
+  process_title.len = strlen(process_title.str);
 #else
-  process_title.str = argv[0];
+  process_title.str = uv__strdup(argv[0]);
+  if (process_title.str == NULL)
+    return argv;
   process_title.len = argv[argc - 1] + strlen(argv[argc - 1]) - argv[0];
   assert(process_title.len + 1 == size);  /* argv memory should be adjacent. */
 #endif
@@ -81,11 +85,15 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 int uv_set_process_title(const char* title) {
-  if (process_title.len == 0)
-    return 0;
-
-  /* No need to terminate, byte after is always '\0'. */
-  strncpy(process_title.str, title, process_title.len);
+  char* new_title;
+  /* Copy the title into our own buffer. We don't want to free the pointer
+   * on libuv shutdown because the program might still be using it. */
+  new_title = uv__strdup(title);
+  if (new_title == NULL)
+    return -ENOMEM;
+  uv__free(process_title.str);
+  process_title.str = new_title;
+  process_title.len = strlen(new_title);
   uv__set_process_title(title);
 
   return 0;
