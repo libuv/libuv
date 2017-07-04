@@ -15,7 +15,7 @@ if /i "%1"=="/?" goto help
 set config=
 set target=Build
 set target_arch=ia32
-set target_env=vs2015
+set target_env=
 set noprojgen=
 set nobuild=
 set run=
@@ -43,15 +43,15 @@ shift
 goto next-arg
 :args-done
 
-@rem Look for Visual Studio 2017
+@rem Look for Visual Studio 2017 only if explicitly requested.
 if "%target_env%" NEQ "vs2017" goto vs-set-2015
 echo Looking for Visual Studio 2017
-@rem check if VS2017 is already setup, and for the requested arch
+@rem Check if VS2017 is already setup, and for the requested arch.
 if "_%VisualStudioVersion%_" == "_15.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%vs_toolset%_" goto found_vs2017
 set "VSINSTALLDIR="
 call tools\vswhere_usability_wrapper.cmd
 if "_%VCINSTALLDIR%_" == "__" goto vs-set-2015
-@rem need to clear VSINSTALLDIR for vcvarsall to work as expected
+@rem Need to clear VSINSTALLDIR for vcvarsall to work as expected.
 set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vs_toolset%
 echo calling: %vcvars_call%
 call %vcvars_call%
