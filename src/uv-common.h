@@ -47,12 +47,14 @@
 
 #ifndef _WIN32
 enum {
+  UV__UDP_CONNECTED   = 0x200000,
   UV__HANDLE_INTERNAL = 0x8000,
   UV__HANDLE_ACTIVE   = 0x4000,
   UV__HANDLE_REF      = 0x2000,
   UV__HANDLE_CLOSING  = 0 /* no-op on unix */
 };
 #else
+# define UV__UDP_CONNECTED    0x00800000
 # define UV__HANDLE_INTERNAL  0x80
 # define UV__HANDLE_ACTIVE    0x40
 # define UV__HANDLE_REF       0x20
@@ -79,19 +81,25 @@ int uv__udp_bind(uv_udp_t* handle,
                  unsigned int  addrlen,
                  unsigned int flags);
 
-int uv__udp_send(uv_udp_send_t* req,
-                 uv_udp_t* handle,
-                 const uv_buf_t bufs[],
-                 unsigned int nbufs,
-                 const struct sockaddr* addr,
-                 unsigned int addrlen,
-                 uv_udp_send_cb send_cb);
+int uv__udp_connect(uv_udp_t* handle,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen);
 
-int uv__udp_try_send(uv_udp_t* handle,
-                     const uv_buf_t bufs[],
-                     unsigned int nbufs,
-                     const struct sockaddr* addr,
-                     unsigned int addrlen);
+int uv__udp_disconnect(uv_udp_t* handle);
+
+int uv__udp_sendto(uv_udp_send_t* req,
+                   uv_udp_t* handle,
+                   const uv_buf_t bufs[],
+                   unsigned int nbufs,
+                   const struct sockaddr* addr,
+                   unsigned int addrlen,
+                   uv_udp_send_cb send_cb);
+
+int uv__udp_try_sendto(uv_udp_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs,
+                       const struct sockaddr* addr,
+                       unsigned int addrlen);
 
 int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloccb,
                        uv_udp_recv_cb recv_cb);
@@ -151,6 +159,9 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
 
 #define uv__is_closing(h)                                                     \
   (((h)->flags & (UV_CLOSING |  UV_CLOSED)) != 0)
+
+#define uv__is_udp_connected(h)                                               \
+  ((h->type == UV_UDP) && ((h)->flags & UV__UDP_CONNECTED) != 0)
 
 #define uv__handle_start(h)                                                   \
   do {                                                                        \

@@ -152,7 +152,7 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT(req != NULL);
 
   sndbuf = uv_buf_init("PONG", 4);
-  r = uv_udp_send(req, handle, &sndbuf, 1, addr, sv_send_cb);
+  r = uv_udp_sendto(req, handle, &sndbuf, 1, addr, sv_send_cb);
   ASSERT(r == 0);
 
   sv_recv_cb_called++;
@@ -184,7 +184,7 @@ TEST_IMPL(udp_send_and_recv) {
   /* client sends "PING", expects "PONG" */
   buf = uv_buf_init("PING", 4);
 
-  r = uv_udp_send(&req,
+  r = uv_udp_sendto(&req,
                   &client,
                   &buf,
                   1,

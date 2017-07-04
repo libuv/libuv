@@ -197,7 +197,7 @@ static void on_recv(uv_udp_t* handle,
   ASSERT(req != NULL);
 
   sndbuf = *rcvbuf;
-  ASSERT(0 == uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
+  ASSERT(0 == uv_udp_sendto(req, handle, &sndbuf, 1, addr, on_send));
 }
 
 

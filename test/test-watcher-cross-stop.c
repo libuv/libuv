@@ -80,7 +80,7 @@ TEST_IMPL(watcher_cross_stop) {
                             (const struct sockaddr*) &addr,
                             UV_UDP_REUSEADDR));
     ASSERT(0 == uv_udp_recv_start(&sockets[i], alloc_cb, recv_cb));
-    ASSERT(0 == uv_udp_send(&reqs[i],
+    ASSERT(0 == uv_udp_sendto(&reqs[i],
                             &sockets[i],
                             &buf,
                             1,

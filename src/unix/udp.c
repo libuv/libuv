@@ -227,9 +227,14 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
     assert(req != NULL);
 
     memset(&h, 0, sizeof h);
-    h.msg_name = &req->addr;
-    h.msg_namelen = (req->addr.ss_family == AF_INET6 ?
-      sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+    if (req->addr.ss_family == AF_UNSPEC) {
+      h.msg_name = NULL;
+      h.msg_namelen = 0;
+    } else {
+      h.msg_name = &req->addr;
+      h.msg_namelen = (req->addr.ss_family == AF_INET6 ?
+        sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+    }
     h.msg_iov = (struct iovec*) req->bufs;
     h.msg_iovlen = req->nbufs;
 
@@ -383,21 +388,70 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
 }
 
 
-int uv__udp_send(uv_udp_send_t* req,
-                 uv_udp_t* handle,
-                 const uv_buf_t bufs[],
-                 unsigned int nbufs,
-                 const struct sockaddr* addr,
-                 unsigned int addrlen,
-                 uv_udp_send_cb send_cb) {
+int uv__udp_connect(uv_udp_t* handle,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen) {
+  int err;
+
+  err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
+  if (err)
+    return err;
+
+  do {
+    errno = 0;
+    err = connect(handle->io_watcher.fd, addr, addrlen);
+  } while (err == -1 && errno == EINTR);
+
+  if (err)
+    return -errno;
+
+  handle->flags |= UV__UDP_CONNECTED;
+
+  return 0;
+}
+
+
+int uv__udp_disconnect(uv_udp_t* handle) {
+
+    int r;
+    struct sockaddr addr;
+
+    memset(&addr, 0, sizeof(addr));
+
+    addr.sa_family = AF_UNSPEC;
+
+    do {
+      errno = 0;
+      r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
+    } while (r == -1 && errno == EINTR);
+
+    if (r == -1 && errno != EAFNOSUPPORT)
+      return -errno;
+
+    handle->flags &= ~UV__UDP_CONNECTED;
+    return 0;
+}
+
+
+int uv__udp_sendto(uv_udp_send_t* req,
+                   uv_udp_t* handle,
+                   const uv_buf_t bufs[],
+                   unsigned int nbufs,
+                   const struct sockaddr* addr,
+                   unsigned int addrlen,
+                   uv_udp_send_cb send_cb) {
   int err;
   int empty_queue;
 
   assert(nbufs > 0);
 
-  err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
-  if (err)
-    return err;
+  if (addr) {
+    err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
+    if (err)
+      return err;
+  } else {
+    assert(uv__is_udp_connected(handle));
+  }
 
   /* It's legal for send_queue_count > 0 even when the write_queue is empty;
    * it means there are error-state requests in the write_completed_queue that
@@ -407,7 +461,10 @@ int uv__udp_send(uv_udp_send_t* req,
 
   uv__req_init(handle->loop, req, UV_UDP_SEND);
   assert(addrlen <= sizeof(req->addr));
-  memcpy(&req->addr, addr, addrlen);
+  if (addr == NULL)
+    req->addr.ss_family = AF_UNSPEC;
+  else
+    memcpy(&req->addr, addr, addrlen);
   req->send_cb = send_cb;
   req->handle = handle;
   req->nbufs = nbufs;
@@ -437,11 +494,11 @@ int uv__udp_send(uv_udp_send_t* req,
 }
 
 
-int uv__udp_try_send(uv_udp_t* handle,
-                     const uv_buf_t bufs[],
-                     unsigned int nbufs,
-                     const struct sockaddr* addr,
-                     unsigned int addrlen) {
+int uv__udp_try_sendto(uv_udp_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs,
+                       const struct sockaddr* addr,
+                       unsigned int addrlen) {
   int err;
   struct msghdr h;
   ssize_t size;
@@ -452,9 +509,13 @@ int uv__udp_try_send(uv_udp_t* handle,
   if (handle->send_queue_count != 0)
     return -EAGAIN;
 
-  err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
-  if (err)
-    return err;
+  if (addr) {
+    err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
+    if (err)
+      return err;
+  } else {
+    assert(handle->flags & UV__UDP_CONNECTED);
+  }
 
   memset(&h, 0, sizeof h);
   h.msg_name = (struct sockaddr*) addr;

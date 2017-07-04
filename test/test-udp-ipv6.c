@@ -136,7 +136,7 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   buf = uv_buf_init("PING", 4);
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-  r = uv_udp_send(&req_,
+  r = uv_udp_sendto(&req_,
                   &client,
                   &buf,
                   1,

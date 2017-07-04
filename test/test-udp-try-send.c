@@ -111,11 +111,11 @@ TEST_IMPL(udp_try_send) {
   ASSERT(r == 0);
 
   buf = uv_buf_init(buffer, sizeof(buffer));
-  r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
+  r = uv_udp_try_sendto(&client, &buf, 1, (const struct sockaddr*) &addr);
   ASSERT(r == UV_EMSGSIZE);
 
   buf = uv_buf_init("EXIT", 4);
-  r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
+  r = uv_udp_try_sendto(&client, &buf, 1, (const struct sockaddr*) &addr);
   ASSERT(r == 4);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -96,7 +96,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
   packet_counter--;
 
 send:
-  ASSERT(0 == uv_udp_send(&s->send_req,
+  ASSERT(0 == uv_udp_sendto(&s->send_req,
                           &s->udp_handle,
                           bufs,
                           ARRAY_SIZE(bufs),
@@ -191,7 +191,7 @@ static int pummel(unsigned int n_senders,
                             BASE_PORT + (i % n_receivers),
                             &s->addr));
     ASSERT(0 == uv_udp_init(loop, &s->udp_handle));
-    ASSERT(0 == uv_udp_send(&s->send_req,
+    ASSERT(0 == uv_udp_sendto(&s->send_req,
                             &s->udp_handle,
                             bufs,
                             ARRAY_SIZE(bufs),

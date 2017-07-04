@@ -821,16 +821,9 @@ int uv__udp_bind(uv_udp_t* handle,
 }
 
 
-/* This function is an egress point, i.e. it returns libuv errors rather than
- * system errors.
- */
-int uv__udp_send(uv_udp_send_t* req,
-                 uv_udp_t* handle,
-                 const uv_buf_t bufs[],
-                 unsigned int nbufs,
-                 const struct sockaddr* addr,
-                 unsigned int addrlen,
-                 uv_udp_send_cb send_cb) {
+int uv__udp_connect(uv_udp_t* handle,
+                    const struct sockaddr* addr,
+                    unsigned int addrlen) {
   const struct sockaddr* bind_addr;
   int err;
 
@@ -841,6 +834,59 @@ int uv__udp_send(uv_udp_send_t* req,
       bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
     } else {
       abort();
+    }
+
+    err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
+    if (err)
+      return uv_translate_sys_error(err);
+  }
+
+  err = connect(handle->socket, addr, addrlen);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  handle->flags |= UV__UDP_CONNECTED;
+
+  return 0;
+}
+
+
+int uv__udp_disconnect(uv_udp_t* handle) {
+
+    int err;
+    struct sockaddr addr;
+
+    memset(&addr, 0, sizeof(addr));
+
+    err = connect(handle->socket, &addr, sizeof(addr));
+    if (err)
+      return uv_translate_sys_error(err);
+
+    handle->flags &= ~UV__UDP_CONNECTED;
+    return 0;
+}
+
+
+/* This function is an egress point, i.e. it returns libuv errors rather than
+ * system errors.
+ */
+int uv__udp_sendto(uv_udp_send_t* req,
+                   uv_udp_t* handle,
+                   const uv_buf_t bufs[],
+                   unsigned int nbufs,
+                   const struct sockaddr* addr,
+                   unsigned int addrlen,
+                   uv_udp_send_cb send_cb) {
+  const struct sockaddr* bind_addr;
+  int err;
+
+  if (!(handle->flags & UV_HANDLE_BOUND)) {
+    if (addrlen == sizeof(uv_addr_ip4_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip4_any_;
+    } else if (addrlen == sizeof(uv_addr_ip6_any_)) {
+      bind_addr = (const struct sockaddr*) &uv_addr_ip6_any_;
+    } else {
+      return UV_EINVAL;
     }
     err = uv_udp_maybe_bind(handle, bind_addr, addrlen, 0);
     if (err)
@@ -855,10 +901,10 @@ int uv__udp_send(uv_udp_send_t* req,
 }
 
 
-int uv__udp_try_send(uv_udp_t* handle,
-                     const uv_buf_t bufs[],
-                     unsigned int nbufs,
-                     const struct sockaddr* addr,
-                     unsigned int addrlen) {
+int uv__udp_try_sendto(uv_udp_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs,
+                       const struct sockaddr* addr,
+                       unsigned int addrlen) {
   return UV_ENOSYS;
 }

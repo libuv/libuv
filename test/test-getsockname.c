@@ -313,7 +313,7 @@ static void udp_sender(void) {
   buf = uv_buf_init("PING", 4);
   ASSERT(0 == uv_ip4_addr("127.0.0.1", server_port, &server_addr));
 
-  r = uv_udp_send(&send_req,
+  r = uv_udp_sendto(&send_req,
                   &udp,
                   &buf,
                   1,
