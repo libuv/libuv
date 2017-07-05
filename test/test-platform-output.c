@@ -135,6 +135,7 @@ TEST_IMPL(platform_output) {
   printf("  username: %s\n", pwd.username);
   printf("  shell: %s\n", pwd.shell);
   printf("  home directory: %s\n", pwd.homedir);
+  printf("  gecos: %s\n", pwd.gecos);
 
   return 0;
 }

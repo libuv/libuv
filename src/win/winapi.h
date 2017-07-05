@@ -4625,6 +4625,26 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
 # define DEVICE_NOTIFY_CALLBACK 2
 #endif
 
+/* from secext.h */
+typedef enum
+{
+  NameUnknown = 0,
+  NameFullyQualifiedDN = 1,
+  NameSamCompatible = 2,
+  NameDisplay = 3,
+  NameUniqueId = 6,
+  NameCanonical = 7,
+  NameUserPrincipal = 8,
+  NameCanonicalEx = 9,
+  NameServicePrincipal = 10,
+  NameDnsDomain = 12
+} EXTENDED_NAME_FORMAT, *PEXTENDED_NAME_FORMAT;
+
+typedef BOOL (WINAPI *sGetUserNameExW)
+             (EXTENDED_NAME_FORMAT NameFormat,
+              LPWSTR lpNameBuffer,
+              PULONG lpnSize);
+
 #ifndef PBT_APMRESUMEAUTOMATIC
 # define PBT_APMRESUMEAUTOMATIC 18
 #endif
@@ -4670,5 +4690,9 @@ extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+
+
+/* Secur32 function pointers */
+extern sGetUserNameExW pGetUserNameExW;
 
 #endif /* UV_WIN_WINAPI_H_ */

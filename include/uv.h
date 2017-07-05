@@ -1063,6 +1063,7 @@ struct uv_passwd_s {
   long gid;
   char* shell;
   char* homedir;
+  char* gecos;
 };
 
 typedef enum {
