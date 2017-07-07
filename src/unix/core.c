@@ -1292,6 +1292,9 @@ int uv_os_setenv(const char* name, const char* value) {
 
 
 int uv_os_unsetenv(const char* name) {
+  if (name == NULL)
+    return -EINVAL;
+
   if (unsetenv(name) != 0)
     return -errno;
 
