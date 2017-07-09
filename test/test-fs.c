@@ -2875,7 +2875,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
                  O_RDWR | O_CREAT,
                  S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT(r > 0);
+  ASSERT(r == 0);
   uv_fs_req_cleanup(&open_req1);
 
   iov = uv_buf_init(test_buf, sizeof(test_buf));
