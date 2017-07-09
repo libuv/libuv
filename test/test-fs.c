@@ -2901,4 +2901,3 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
->>>>>>> v1.x
