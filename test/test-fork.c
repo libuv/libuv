@@ -348,7 +348,7 @@ TEST_IMPL(fork_signal_to_child_closed) {
 
 static void create_file(const char* name) {
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t req;
 
   r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR, NULL);
@@ -363,7 +363,7 @@ static void create_file(const char* name) {
 
 static void touch_file(const char* name) {
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t req;
   uv_buf_t buf;
 
