@@ -36,7 +36,7 @@ static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 static void* uv__loops[2];
 static uv_mutex_t uv__loops_lock;
 
-static void uv__loops_init() {
+static void uv__loops_init(void) {
   uv_mutex_init(&uv__loops_lock);
   QUEUE_INIT(&uv__loops);
 }
@@ -213,6 +213,11 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
 
 uv_os_fd_t uv_backend_fd(const uv_loop_t* loop) {
   return loop->iocp;
+}
+
+
+int uv_loop_fork(uv_loop_t* loop) {
+  return UV_ENOSYS;
 }
 
 

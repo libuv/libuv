@@ -218,9 +218,7 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
 
 INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
     uv_fs_type fs_type, const uv_fs_cb cb) {
-  uv_req_init(loop, (uv_req_t*) req);
-
-  req->type = UV_FS;
+  UV_REQ_INIT(req, UV_FS);
   req->loop = loop;
   req->flags = 0;
   req->fs_type = fs_type;
@@ -535,12 +533,22 @@ void fs__read(uv_fs_t* req) {
   DWORD error;
   int result;
   unsigned int index;
+  LARGE_INTEGER original_position;
+  LARGE_INTEGER zero_offset;
+  int restore_position;
 
   VERIFY_HANDLE(handle, req);
+
+  zero_offset.QuadPart = 0;
+  restore_position = 0;
 
   if (offset != -1) {
     memset(&overlapped, 0, sizeof overlapped);
     overlapped_ptr = &overlapped;
+    if (SetFilePointerEx(handle, zero_offset, &original_position,
+                         FILE_CURRENT)) {
+      restore_position = 1;
+    }
   } else {
     overlapped_ptr = NULL;
   }
@@ -565,6 +573,9 @@ void fs__read(uv_fs_t* req) {
     ++index;
   } while (result && index < req->fs.info.nbufs);
 
+  if (restore_position)
+    SetFilePointerEx(handle, original_position, NULL, FILE_BEGIN);
+
   if (result || bytes > 0) {
     SET_REQ_RESULT(req, bytes);
   } else {
@@ -586,12 +597,22 @@ void fs__write(uv_fs_t* req) {
   DWORD bytes;
   int result;
   unsigned int index;
+  LARGE_INTEGER original_position;
+  LARGE_INTEGER zero_offset;
+  int restore_position;
 
   VERIFY_HANDLE(handle, req);
+
+  zero_offset.QuadPart = 0;
+  restore_position = 0;
 
   if (offset != -1) {
     memset(&overlapped, 0, sizeof overlapped);
     overlapped_ptr = &overlapped;
+    if (SetFilePointerEx(handle, zero_offset, &original_position,
+                         FILE_CURRENT)) {
+      restore_position = 1;
+    }
   } else {
     overlapped_ptr = NULL;
   }
@@ -615,6 +636,9 @@ void fs__write(uv_fs_t* req) {
     bytes += incremental_bytes;
     ++index;
   } while (result && index < req->fs.info.nbufs);
+
+  if (restore_position)
+    SetFilePointerEx(handle, original_position, NULL, FILE_BEGIN);
 
   if (result || bytes > 0) {
     SET_REQ_RESULT(req, bytes);
@@ -1331,7 +1355,7 @@ static void fs__access(uv_fs_t* req) {
    * - or it's a directory.
    * (Directories cannot be read-only on Windows.)
    */
-  if (!(req->flags & W_OK) ||
+  if (!(req->fs.info.mode & W_OK) ||
       !(attr & FILE_ATTRIBUTE_READONLY) ||
       (attr & FILE_ATTRIBUTE_DIRECTORY)) {
     SET_REQ_RESULT(req, 0);
@@ -2341,7 +2365,7 @@ int uv_fs_access(uv_loop_t* loop,
   if (err)
     return uv_translate_sys_error(err);
 
-  req->flags = flags;
+  req->fs.info.mode = flags;
 
   if (cb) {
     QUEUE_FS_TP_JOB(loop, req);

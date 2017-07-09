@@ -42,7 +42,7 @@ sNtQuerySystemInformation pNtQuerySystemInformation;
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
 
 
-void uv_winapi_init() {
+void uv_winapi_init(void) {
   HMODULE ntdll_module;
   HMODULE kernel32_module;
   HMODULE powrprof_module;
