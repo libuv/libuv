@@ -370,7 +370,7 @@ terminal information.
 The first thing to do is to initialize a ``uv_tty_t`` with the file descriptor
 it reads/writes from. This is achieved with::
 
-    int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int readable)
+    int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_os_fd_t fd, int readable)
 
 Set ``readable`` to true if you plan to use ``uv_read_start()`` on the stream.
 
