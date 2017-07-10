@@ -64,6 +64,7 @@ goto select-target
 
 
 @rem Look for Visual Studio 2015
+:vs-set-2015
 if not defined VS140COMNTOOLS goto vc-set-notfound
 if not exist "%VS140COMNTOOLS%\..\..\vc\vcvarsall.bat" goto vc-set-notfound
 call "%VS140COMNTOOLS%\..\..\vc\vcvarsall.bat" %vs_toolset%
