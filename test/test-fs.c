@@ -2824,44 +2824,6 @@ TEST_IMPL(fs_invalid_filename) {
 }
 #endif
 
-TEST_IMPL(get_osfhandle_valid_handle) {
-  int r;
-  uv_os_fd_t fd;
-
-  /* Setup. */
-  unlink("test_file");
-
-  loop = uv_default_loop();
-
-  r = uv_fs_open(NULL,
-                 &open_req1,
-                 "test_file",
-                 O_RDWR | O_CREAT,
-                 S_IWUSR | S_IRUSR,
-                 NULL);
-  ASSERT(r >= 0);
-  ASSERT(open_req1.result >= 0);
-  uv_fs_req_cleanup(&open_req1);
-
-  fd = uv_get_osfhandle(open_req1.result);
-#ifdef _WIN32
-  ASSERT(fd != INVALID_HANDLE_VALUE);
-#else
-  ASSERT(fd >= 0);
-#endif
-
-  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
-  ASSERT(r == 0);
-  ASSERT(close_req.result == 0);
-  uv_fs_req_cleanup(&close_req);
-
-  /* Cleanup. */
-  unlink("test_file");
-
-  MAKE_VALGRIND_HAPPY();
-  return 0;
-}
-
 TEST_IMPL(fs_file_pos_after_op_with_offset) {
   int r;
 

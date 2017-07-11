@@ -323,7 +323,6 @@ TEST_DECLARE   (fs_invalid_filename)
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
-TEST_DECLARE   (get_osfhandle_valid_handle)
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (threadpool_queue_work_einval)
 TEST_DECLARE   (threadpool_multiple_event_loops)
@@ -825,7 +824,6 @@ TASK_LIST_START
   TEST_ENTRY  (fs_invalid_filename)
 #endif
   TEST_ENTRY  (fs_file_pos_after_op_with_offset)
-  TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
 #if defined(__PPC__) || defined(__PPC64__)  /* For linux PPC and AIX */
