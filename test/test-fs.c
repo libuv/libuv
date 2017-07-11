@@ -2843,14 +2843,41 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   iov = uv_buf_init(test_buf, sizeof(test_buf));
   r = uv_fs_write(NULL, &write_req, open_req1.result, &iov, 1, 0, NULL);
   ASSERT(r == sizeof(test_buf));
+
+#ifdef _WIN32
+  LARGE_INTEGER original_position;
+  LARGE_INTEGER zero_offset;
+
+  zero_offset.QuadPart = 0;
+
+  ASSERT(SetFilePointerEx(open_req1.result,
+                          zero_offset,
+                          &original_position,
+                          FILE_CURRENT) != 0);
+  ASSERT(original_position.QuadPart == 0);
+#else
   ASSERT(lseek(open_req1.result, 0, SEEK_CUR) == 0);
+#endif
+
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, open_req1.result, &iov, 1, 0, NULL);
   ASSERT(r == sizeof(test_buf));
   ASSERT(strcmp(buf, test_buf) == 0);
+
+#ifdef _WIN32
+  zero_offset.QuadPart = 0;
+
+  ASSERT(SetFilePointerEx(open_req1.result,
+                          zero_offset,
+                          &original_position,
+                          FILE_CURRENT) != 0);
+  ASSERT(original_position.QuadPart == 0);
+#else
   ASSERT(lseek(open_req1.result, 0, SEEK_CUR) == 0);
+#endif
+
   uv_fs_req_cleanup(&read_req);
 
   r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
