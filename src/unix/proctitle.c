@@ -48,16 +48,14 @@ char** uv_setup_args(int argc, char** argv) {
   for (i = 0; i < argc; i++)
     size += strlen(argv[i]) + 1;
 
+  process_title.str = uv__strdup(argv[0]);
+  if (process_title.str == NULL)
+    return argv;
+  
 #if defined(__MVS__)
   /* argv is not adjacent. So just use argv[0] */
-  process_title.str = uv__strdup(argv[0]);
-  if (process_title.str == NULL)
-    return argv;
   process_title.len = strlen(process_title.str);
 #else
-  process_title.str = uv__strdup(argv[0]);
-  if (process_title.str == NULL)
-    return argv;
   process_title.len = argv[argc - 1] + strlen(argv[argc - 1]) - argv[0];
   assert(process_title.len + 1 == size);  /* argv memory should be adjacent. */
 #endif
