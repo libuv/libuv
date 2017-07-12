@@ -1,5 +1,8 @@
 version: v1.13.1.build{build}
 
+init:
+  - git config --global core.autocrlf true
+
 install:
   - cinst -y nsis
 
