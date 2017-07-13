@@ -65,6 +65,10 @@ goto select-target
 
 @rem Look for Visual Studio 2015
 :vs-set-2015
+@rem skip detection code, this also protects again excessive PATH concatenation by vcvarsall.bat
+if defined WindowsSDKDir goto select-target
+if defined VCINSTALLDIR goto select-target
+
 if not defined VS140COMNTOOLS goto vc-set-2013
 if not exist "%VS140COMNTOOLS%\..\..\vc\vcvarsall.bat" goto vc-set-2013
 call "%VS140COMNTOOLS%\..\..\vc\vcvarsall.bat" %vs_toolset%
@@ -168,7 +172,9 @@ echo Failed to create vc project files.
 exit /b 1
 
 :help
-echo vcbuild.bat [debug/release] [test/bench] [clean] [noprojgen] [nobuild] [vs2017] [x86/x64] [static/shared]
+
+echo "vcbuild.bat [debug/release] [test/bench] [clean] [noprojgen] [nobuild] [vs2017] [x86/x64] [static/shared]"
+
 echo Examples:
 echo   vcbuild.bat              : builds debug build
 echo   vcbuild.bat test         : builds debug build and runs tests
