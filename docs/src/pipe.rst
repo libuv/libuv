@@ -109,3 +109,5 @@ API
     different users. Makes the pipe writable or readable by all users. Mode can
     be either ``UV_WRITABLE``, ``UV_READABLE`` or
     ``UV_WRITABLE | UV_READABLE``.
+
+    .. versionadded:: 1.13.2
