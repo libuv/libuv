@@ -1118,8 +1118,6 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
      */
     if (fs__readlink_handle(handle, NULL, &statbuf->st_size) == 0) {
       statbuf->st_mode |= S_IFLNK;
-    } else if (GetLastError() != ERROR_NOT_A_REPARSE_POINT) {
-      return -1;
     }
   }
 
