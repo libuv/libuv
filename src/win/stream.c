@@ -195,7 +195,7 @@ int uv_try_write(uv_stream_t* stream,
     case UV_TTY:
       return uv__tty_try_write((uv_tty_t*) stream, bufs, nbufs);
     case UV_NAMED_PIPE:
-      return UV_EAGAIN;
+      return uv__pipe_try_write((uv_pipe_t*) stream, bufs, nbufs);
     default:
       assert(0);
       return UV_ENOSYS;
