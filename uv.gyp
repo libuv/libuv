@@ -359,6 +359,7 @@
         'test/test-fail-always.c',
         'test/test-fork.c',
         'test/test-fs.c',
+        'test/test-fs-copyfile.c',
         'test/test-fs-event.c',
         'test/test-get-currentexe.c',
         'test/test-get-memory.c',

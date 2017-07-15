@@ -60,6 +60,10 @@
 # include <sys/sendfile.h>
 #endif
 
+#if defined(__APPLE__)
+# include <copyfile.h>
+#endif
+
 #define INIT(subtype)                                                         \
   do {                                                                        \
     req->type = UV_FS;                                                        \
@@ -766,6 +770,102 @@ done:
   return r;
 }
 
+static ssize_t uv__fs_copyfile(uv_fs_t* req) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  /* On macOS, use the native copyfile(3). */
+  copyfile_flags_t flags;
+
+  flags = COPYFILE_ALL;
+
+  if (req->flags & UV_FS_COPYFILE_EXCL)
+    flags |= COPYFILE_EXCL;
+
+  return copyfile(req->path, req->new_path, NULL, flags);
+#else
+  uv_fs_t fs_req;
+  uv_file srcfd;
+  uv_file dstfd;
+  struct stat statsbuf;
+  int dst_flags;
+  int result;
+  int err;
+
+  dstfd = -1;
+
+  /* Open the source file. */
+  srcfd = uv_fs_open(req->loop, &fs_req, req->path, O_RDONLY, 0, NULL);
+  uv_fs_req_cleanup(&fs_req);
+
+  if (srcfd < 0)
+    return srcfd;
+
+  /* Get the source file's mode. */
+  if (fstat(srcfd, &statsbuf)) {
+    err = -errno;
+    goto out;
+  }
+
+  dst_flags = O_WRONLY | O_CREAT;
+
+  if (req->flags & UV_FS_COPYFILE_EXCL)
+    dst_flags |= O_EXCL;
+
+  /* Open the destination file. */
+  dstfd = uv_fs_open(req->loop,
+                     &fs_req,
+                     req->new_path,
+                     dst_flags,
+                     statsbuf.st_mode,
+                     NULL);
+  uv_fs_req_cleanup(&fs_req);
+
+  if (dstfd < 0) {
+    err = dstfd;
+    goto out;
+  }
+
+  err = uv_fs_sendfile(req->loop,
+                       &fs_req,
+                       dstfd,
+                       srcfd,
+                       0,
+                       statsbuf.st_size,
+                       NULL);
+  uv_fs_req_cleanup(&fs_req);
+
+out:
+  if (err < 0)
+    result = err;
+  else
+    result = 0;
+
+  /* Close the source file. */
+  err = uv__close_nocheckstdio(srcfd);
+
+  /* Don't overwrite any existing errors. */
+  if (err != 0 && result == 0)
+    result = err;
+
+  /* Close the destination file if it is open. */
+  if (dstfd >= 0) {
+    err = uv__close_nocheckstdio(dstfd);
+
+    /* Don't overwrite any existing errors. */
+    if (err != 0 && result == 0)
+      result = err;
+
+    /* Remove the destination file if something went wrong. */
+    if (result != 0) {
+      uv_fs_unlink(NULL, &fs_req, req->new_path, NULL);
+      /* Ignore the unlink return value, as an error already happened. */
+      uv_fs_req_cleanup(&fs_req);
+    }
+  }
+
+  return result;
+#endif
+}
+
 static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_dev = src->st_dev;
   dst->st_mode = src->st_mode;
@@ -946,6 +1046,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(CHMOD, chmod(req->path, req->mode));
     X(CHOWN, chown(req->path, req->uid, req->gid));
     X(CLOSE, close(req->file));
+    X(COPYFILE, uv__fs_copyfile(req));
     X(FCHMOD, fchmod(req->file, req->mode));
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
     X(FDATASYNC, uv__fs_fdatasync(req));
@@ -1366,4 +1467,17 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->ptr != &req->statbuf)
     uv__free(req->ptr);
   req->ptr = NULL;
+}
+
+
+int uv_fs_copyfile(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   const char* path,
+                   const char* new_path,
+                   int flags,
+                   uv_fs_cb cb) {
+  INIT(COPYFILE);
+  PATH2;
+  req->flags = flags;
+  POST;
 }

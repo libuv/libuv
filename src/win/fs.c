@@ -1331,6 +1331,22 @@ static void fs__ftruncate(uv_fs_t* req) {
 }
 
 
+static void fs__copyfile(uv_fs_t* req) {
+  int flags;
+  int overwrite;
+
+  flags = req->fs.info.file_flags;
+  overwrite = flags & UV_FS_COPYFILE_EXCL;
+
+  if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, overwrite) == 0) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
+  }
+
+  SET_REQ_RESULT(req, 0);
+}
+
+
 static void fs__sendfile(uv_fs_t* req) {
   int fd_in = req->file.fd, fd_out = req->fs.info.fd_out;
   size_t length = req->fs.info.bufsml[0].len;
@@ -1853,6 +1869,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(CLOSE, close)
     XX(READ, read)
     XX(WRITE, write)
+    XX(COPYFILE, copyfile)
     XX(SENDFILE, sendfile)
     XX(STAT, stat)
     XX(LSTAT, lstat)
@@ -2386,6 +2403,31 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file fd,
   }
 }
 
+
+int uv_fs_copyfile(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   const char* path,
+                   const char* new_path,
+                   int flags,
+                   uv_fs_cb cb) {
+  int err;
+
+  uv_fs_req_init(loop, req, UV_FS_COPYFILE, cb);
+  err = fs__capture_path(req, path, new_path, cb != NULL);
+
+  if (err)
+    return uv_translate_sys_error(err);
+
+  req->fs.info.file_flags = flags;
+
+  if (cb != NULL) {
+    QUEUE_FS_TP_JOB(loop, req);
+    return 0;
+  }
+
+  fs__copyfile(req);
+  return req->result;
+}
 
 
 int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file fd_out,
