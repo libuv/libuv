@@ -190,7 +190,7 @@
               # This will cause gyp to set soname
               # Must correspond with UV_VERSION_MAJOR
               # in include/uv/version.h
-              'product_extension': 'so.1',
+              'product_extension': 'so.2',
             }],
           ],
         }],
