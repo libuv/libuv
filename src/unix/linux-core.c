@@ -51,7 +51,7 @@
 
 #ifdef HAVE_IFADDRS_H
 # if defined(__ANDROID__)
-#  include "android-ifaddrs.h"
+#  include "uv/android-ifaddrs.h"
 # else
 #  include <ifaddrs.h>
 # endif

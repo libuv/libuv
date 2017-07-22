@@ -58,8 +58,8 @@ typedef struct pollfd {
 # include <stdint.h>
 #endif
 
-#include "tree.h"
-#include "uv-threadpool.h"
+#include "uv/tree.h"
+#include "uv/threadpool.h"
 
 #define MAX_PIPENAME_LEN 256
 

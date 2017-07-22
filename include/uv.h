@@ -45,8 +45,8 @@ extern "C" {
 # define UV_EXTERN /* nothing */
 #endif
 
-#include "uv-errno.h"
-#include "uv-version.h"
+#include "uv/errno.h"
+#include "uv/version.h"
 #include <stddef.h>
 #include <stdio.h>
 
@@ -57,9 +57,9 @@ extern "C" {
 #endif
 
 #if defined(_WIN32)
-# include "uv-win.h"
+# include "uv/win.h"
 #else
-# include "uv-unix.h"
+# include "uv/unix.h"
 #endif
 
 /* Expand this list if necessary. */

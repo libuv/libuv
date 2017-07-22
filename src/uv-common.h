@@ -38,7 +38,7 @@
 #endif
 
 #include "uv.h"
-#include "tree.h"
+#include "uv/tree.h"
 #include "queue.h"
 
 #if EDOM > 0
