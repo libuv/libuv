@@ -41,8 +41,8 @@ typedef intptr_t ssize_t;
 
 #include <stdint.h>
 
-#include "tree.h"
-#include "uv-threadpool.h"
+#include "uv/tree.h"
+#include "uv/threadpool.h"
 
 #define MAX_PIPENAME_LEN 256
 

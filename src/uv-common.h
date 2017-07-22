@@ -33,7 +33,7 @@
 #include <stdint.h>
 
 #include "uv.h"
-#include "tree.h"
+#include "uv/tree.h"
 #include "queue.h"
 
 

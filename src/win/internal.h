@@ -25,7 +25,7 @@
 #include "uv.h"
 #include "../uv-common.h"
 
-#include "tree.h"
+#include "uv/tree.h"
 #include "winapi.h"
 #include "winsock.h"
 
