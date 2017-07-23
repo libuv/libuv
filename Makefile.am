@@ -437,7 +437,7 @@ libuv_la_SOURCES += src/unix/no-proctitle.c \
 endif
 
 if OS390
-include_HEADERS += include/pthread-fixes.h include/pthread-barrier.h
+include_HEADERS += include/pthread-barrier.h
 libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -D_UNIX03_SOURCE \
                    -D_OPEN_SYS_IF_EXT=1 \
