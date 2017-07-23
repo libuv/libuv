@@ -217,8 +217,7 @@
           'sources': [
             'src/unix/darwin.c',
             'src/unix/fsevents.c',
-            'src/unix/darwin-proctitle.c',
-            'src/unix/pthread-barrier.c'
+            'src/unix/darwin-proctitle.c'
           ],
           'defines': [
             '_DARWIN_USE_64_BIT_INODE=1',
@@ -253,7 +252,6 @@
             'src/unix/linux-syscalls.h',
             'src/unix/pthread-fixes.c',
             'src/unix/android-ifaddrs.c',
-            'src/unix/pthread-barrier.c',
             'src/unix/procfs-exepath.c',
             'src/unix/sysinfo-loadavg.c',
             'src/unix/sysinfo-memory.c',
@@ -322,7 +320,6 @@
         ['OS=="os390"', {
           'sources': [
             'src/unix/pthread-fixes.c',
-            'src/unix/pthread-barrier.c',
             'src/unix/no-fsevents.c',
             'src/unix/os390.c',
             'src/unix/os390-syscalls.c'

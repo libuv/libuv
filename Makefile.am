@@ -334,8 +334,7 @@ if ANDROID
 include_HEADERS += include/android-ifaddrs.h \
                    include/pthread-barrier.h
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c \
-                    src/unix/pthread-barrier.c
+                    src/unix/pthread-fixes.c
 endif
 
 if CYGWIN
@@ -361,8 +360,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
-                    src/unix/proctitle.c \
-                    src/unix/pthread-barrier.c
+                    src/unix/proctitle.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -454,7 +452,6 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -qFLOAT=IEEE
 libuv_la_LDFLAGS += -qXPLINK
 libuv_la_SOURCES += src/unix/pthread-fixes.c \
-                    src/unix/pthread-barrier.c \
                     src/unix/no-fsevents.c \
                     src/unix/os390.c \
                     src/unix/os390-syscalls.c \
