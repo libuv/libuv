@@ -1711,6 +1711,31 @@ TEST_IMPL(spawn_inherit_streams) {
   return 0;
 }
 
+TEST_IMPL(spawn_quoted_path) {
+#ifndef _WIN32
+  RETURN_SKIP("Test for Windows")
+#else
+  char* quoted_path_env[2];
+  options.file = "not_existing";
+  args[0] = options.file;
+  args[1] = NULL;
+  options.args = args;
+  options.exit_cb = exit_cb;
+  options.flags = 0;
+  /* We test if search_path works correctly with semicolons in quoted path. */
+  /* We will use invalid drive, so we are sure no executable is spawned */
+  quoted_path_env[0] = "PATH=\"xyz:\\test;\";xyz:\\other";
+  quoted_path_env[1] = NULL;
+  options.env = quoted_path_env;
+
+  /* We test if libuv will not segfaul */
+  uv_spawn(uv_default_loop(), &process, &options);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
+
 /* Helper for child process of spawn_inherit_streams */
 #ifndef _WIN32
 int spawn_stdin_stdout(void) {
