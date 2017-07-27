@@ -371,6 +371,7 @@
         'test/test-homedir.c',
         'test/test-hrtime.c',
         'test/test-idle.c',
+        'test/test-interface-address.c',
         'test/test-ip6-addr.c',
         'test/test-ipc.c',
         'test/test-ipc-send-recv.c',

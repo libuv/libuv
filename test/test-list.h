@@ -229,6 +229,9 @@ TEST_DECLARE   (getnameinfo_basic_ip4_sync)
 TEST_DECLARE   (getnameinfo_basic_ip6)
 TEST_DECLARE   (getsockname_tcp)
 TEST_DECLARE   (getsockname_udp)
+#ifdef __linux__
+TEST_DECLARE   (interface_address)
+#endif
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 TEST_DECLARE   (socket_buffer_size)
@@ -681,6 +684,10 @@ TASK_LIST_START
 
   TEST_ENTRY  (getsockname_tcp)
   TEST_ENTRY  (getsockname_udp)
+
+#ifdef __linux__
+  TEST_ENTRY  (interface_address)
+#endif
 
   TEST_ENTRY  (poll_duplex)
   TEST_ENTRY  (poll_unidirectional)
