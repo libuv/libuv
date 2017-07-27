@@ -1406,6 +1406,21 @@ UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
 UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
 
+#if defined(IF_NAMESIZE)
+# define UV_IF_NAMESIZE (IF_NAMESIZE + 1)
+#elif defined(IFNAMSIZ)
+# define UV_IF_NAMESIZE (IFNAMSIZ + 1)
+#else
+# define UV_IF_NAMESIZE (16 + 1)
+#endif
+
+UV_EXTERN int uv_if_indextoname(unsigned int ifindex,
+                                char* buffer,
+                                size_t* size);
+UV_EXTERN int uv_if_indextoiid(unsigned int ifindex,
+                               char* buffer,
+                               size_t* size);
+
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
 
 UV_EXTERN int uv_cwd(char* buffer, size_t* size);
