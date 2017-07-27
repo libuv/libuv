@@ -1714,7 +1714,7 @@ TEST_IMPL(spawn_inherit_streams) {
 
 TEST_IMPL(spawn_quoted_path) {
 #ifndef _WIN32
-  RETURN_SKIP("Test for Windows")
+  RETURN_SKIP("Test for Windows");
 #else
   char* quoted_path_env[2];
   options.file = "not_existing";

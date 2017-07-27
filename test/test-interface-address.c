@@ -62,7 +62,7 @@ TEST_IMPL(interface_address) {
 
     strncpy(_br, brname, IFNAMSIZ);
     ret = ioctl(s, SIOCSIFBR, arg);
-    fprintf(stderr, "%d %d\n", ret, errno);
+    fprintf(stderr, "%d %d %s\n", ret, errno, strerror(errno));
     ASSERT(0 == ret || errno == EEXIST);
   }
 
