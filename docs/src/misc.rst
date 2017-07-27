@@ -271,6 +271,12 @@ API
     and :man:`inet_pton(3)`. On success they return 0. In case of error
     the target `dst` pointer is unmodified.
 
+.. c:function:: char* uv_if_indextoname(unsigned int ifindex, char* ifname)
+
+    Cross-platform IPv6-capable implementation of :man:`if_indextoname(3)`.
+    Writes the result to `ifname`, which must be at least `IFNAMSIZ` long.
+    On success returns the generated string.  In case of error returns `NULL`.
+
 .. c:function:: int uv_exepath(char* buffer, size_t* size)
 
     Gets the executable path.

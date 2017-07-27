@@ -67,6 +67,8 @@ TEST_IMPL(ip6_addr_link_local) {
     iface_index = address->address.address6.sin6_scope_id;
     device_name = address->name;
 
+    ASSERT(0 == strcmp(device_name, uv_if_indextoname(iface_index, scoped_addr)));
+
 #ifdef _WIN32
     snprintf(scoped_addr,
              sizeof(scoped_addr),

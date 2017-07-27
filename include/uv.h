@@ -1392,6 +1392,8 @@ UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
 UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
 
+UV_EXTERN char* uv_if_indextoname(unsigned int ifindex, char* ifname);
+
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
 
 UV_EXTERN int uv_cwd(char* buffer, size_t* size);

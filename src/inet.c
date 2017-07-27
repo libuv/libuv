@@ -49,6 +49,9 @@ int uv_inet_ntop(int af, const void* src, char* dst, size_t size) {
   /* NOTREACHED */
 }
 
+char* uv_if_indextoname(unsigned int ifindex, char* ifname) {
+    return if_indextoname(ifindex, ifname);
+}
 
 static int inet_ntop4(const unsigned char *src, char *dst, size_t size) {
   static const char fmt[] = "%u.%u.%u.%u";
