@@ -60,6 +60,7 @@ int uv_loop_init(uv_loop_t* loop) {
   loop->signal_pipefd[1] = -1;
   loop->backend_fd = -1;
   loop->emfile_fd = -1;
+  loop->keventfunc = NULL;
 
   loop->timer_counter = 0;
   loop->stop_flag = 0;
