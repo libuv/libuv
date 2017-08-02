@@ -77,6 +77,9 @@
 #pragma linkage(BPX4GTH, OS)
 #pragma linkage(BPX1GTH, OS)
 
+/* TOD Clock resolution in nanoseconds */
+#define TOD_RES 4.096
+
 typedef unsigned data_area_ptr_assign_type;
 
 typedef union {
@@ -122,7 +125,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
   unsigned long long timestamp;
   __stckf(&timestamp);
   /* Convert to nanoseconds */
-  return timestamp / 10;
+  return timestamp / TOD_RES;
 }
 
 
