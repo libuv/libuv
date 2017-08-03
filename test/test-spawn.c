@@ -1351,10 +1351,14 @@ TEST_IMPL(spawn_setgid_fails) {
   init_process_options("spawn_helper1", fail_cb);
 
   options.flags |= UV_PROCESS_SETGID;
+#if defined(__MVS__)
+  options.gid = -1;
+#else
   options.gid = 0;
+#endif
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-#if defined(__CYGWIN__)
+#if defined(__CYGWIN__) || defined(__MVS__)
   ASSERT(r == UV_EINVAL);
 #else
   ASSERT(r == UV_EPERM);
