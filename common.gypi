@@ -32,7 +32,6 @@
         },
         'xcode_settings': {
           'GCC_OPTIMIZATION_LEVEL': '0',
-          'OTHER_CFLAGS': [ '-Wno-strict-aliasing' ],
         },
         'conditions': [
           ['OS != "zos"', {
@@ -48,7 +47,6 @@
         'defines': [ 'NDEBUG' ],
         'cflags': [
           '-O3',
-          '-fstrict-aliasing',
         ],
         'msvs_settings': {
           'VCCLCompilerTool': {
@@ -178,9 +176,6 @@
           'GCC_THREADSAFE_STATICS': 'NO',           # -fno-threadsafe-statics
           'PREBINDING': 'NO',                       # No -Wl,-prebind
           'USE_HEADERMAP': 'NO',
-          'OTHER_CFLAGS': [
-            '-fstrict-aliasing',
-          ],
           'WARNING_CFLAGS': [
             '-Wall',
             '-Wendif-labels',
