@@ -224,11 +224,6 @@
             '_DARWIN_UNLIMITED_SELECT=1',
           ]
         }],
-        [ 'OS!="mac" and OS!="zos"', {
-          # Enable on all platforms except OS X. The antique gcc/clang that
-          # ships with Xcode emits waaaay too many false positives.
-          'cflags': [ '-Wstrict-aliasing' ],
-        }],
         [ 'OS=="linux"', {
           'defines': [ '_GNU_SOURCE' ],
           'sources': [
