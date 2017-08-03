@@ -1492,12 +1492,14 @@ TEST_IMPL(fs_chown) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(chown_cb_count == 1);
 
+#ifndef __MVS__
   /* chown to root (fail) */
   chown_cb_count = 0;
   r = uv_fs_chown(loop, &req, "test_file", 0, 0, chown_root_cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(chown_cb_count == 1);
+#endif
 
   /* async fchown */
   r = uv_fs_fchown(loop, &req, file, -1, -1, fchown_cb);
