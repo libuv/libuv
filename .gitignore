@@ -76,3 +76,7 @@ ipch
 
 # make dist output
 libuv-*.tar.*
+
+# xmake
+.xmake
+build
