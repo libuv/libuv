@@ -1,0 +1,348 @@
+apply plugin: 'c'
+
+model {
+    buildTypes {
+        debug
+        release
+    }
+    
+    platforms {
+        x86 {
+            architecture "x86"
+        }
+        x64 {
+            architecture "x86_64"
+        }
+    }
+    
+    components {
+        uv(NativeLibrarySpec) {
+            targetPlatform "x86"
+            targetPlatform "x64"
+            
+            binaries.withType(SharedLibraryBinarySpec) {
+                cCompiler.define 'BUILDING_UV_SHARED=1'
+            }
+            
+            binaries.all {
+            
+                sources {
+                    all(CSourceSet) {
+                        source {
+                            srcDirs "src"
+                            include "fs-poll.c",
+                                    "inet.c",
+                                    "threadpool.c",
+                                    "uv-common.c",
+                                    "version.c"
+                        }
+                        exportedHeaders {
+                            srcDirs "include", "src"
+                        }
+                    }
+                }
+                
+                if (targetPlatform.operatingSystem.windows) {
+                    cCompiler.define '_WIN32_WINNT=0x0600'
+                    cCompiler.define '_GNU_SOURCE'
+                    
+                    if (toolChain in VisualCpp) {
+                        linker.args 'advapi32.lib'
+                        linker.args 'iphlpapi.lib'
+                        linker.args 'psapi.lib'
+                        linker.args 'shell32.lib'
+                        linker.args 'user32.lib'
+                        linker.args 'userenv.lib'
+                        linker.args 'ws2_32.lib'
+                    }
+                    
+                    sources {
+                        win(CSourceSet) {
+                            source {
+                                srcDirs "src"
+                                include "win/*.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "include", "src"
+                            }
+                        }
+                    }
+                } else {
+                    // Not Windows
+                    cCompiler.define '_LARGEFILE_SOURCE'
+                    cCompiler.define'_FILE_OFFSET_BITS=64'
+                    
+                    sources {
+                        unix(CSourceSet) {
+                            source {
+                                srcDirs "src"
+                                include "unix/async.c",
+                                        "unix/core.c",
+                                        "unix/dl.c",
+                                        "unix/fs.c",
+                                        "unix/getaddrinfo.c",
+                                        "unix/getnameinfo.c",
+                                        "unix/loop.c",
+                                        "unix/loop-watcher.c",
+                                        "unix/pipe.c",
+                                        "unix/poll.c",
+                                        "unix/process.c",
+                                        "unix/signal.c",
+                                        "unix/stream.c",
+                                        "unix/tcp.c",
+                                        "unix/thread.c",
+                                        "unix/timer.c",
+                                        "unix/tty.c",
+                                        "unix/udp.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "include", "src"
+                            }
+                        }
+                    }
+                        
+                    if (targetPlatform.operatingSystem.macOsX) {
+                        cCompiler.define '_DARWIN_USE_64_BIT_INODE=1'
+                        cCompiler.define '_DARWIN_UNLIMITED_SELECT=1'
+                        
+                        sources {
+                            darwin(CSourceSet) {
+                                source {
+                                    srcDirs "src"
+                                    include "unix/proctitle.c",
+                                            "unix/darwin.c",
+                                            "unix/fsevents.c",
+                                            "unix/darwin-proctitle.c",
+                                            "unix/bsd-ifaddrs.c",
+                                            "unix/kqueue.c"
+                                }
+                                exportedHeaders {
+                                    srcDirs "include", "src"
+                                }
+                            }
+                        }
+                    } else if (targetPlatform.operatingSystem.linux) {
+                        cCompiler.define '_POSIX_C_SOURCE=200112'
+                        cCompiler.define '_GNU_SOURCE'
+                        
+                        sources {
+                            linux(CSourceSet) {
+                                source {
+                                    srcDirs "src"
+                                    include "unix/proctitle.c",
+                                            "unix/linux-core.c",
+                                            "unix/linux-inotify.c",
+                                            "unix/linux-syscalls.c",
+                                            "unix/procfs-exepath.c",
+                                            "unix/sysinfo-loadavg.c",
+                                            "unix/sysinfo-memory.c"
+                                }
+                                exportedHeaders {
+                                    srcDirs "include", "src"
+                                }
+                            }
+                        }
+                    } else if (targetPlatform.operatingSystem.solaris) {
+                        cCompiler.define '__EXTENSIONS__'
+                        cCompiler.define '_XOPEN_SOURCE=500'
+                        
+                        sources {
+                            solaris(CSourceSet) {
+                                source {
+                                    srcDirs "src"
+                                    include "unix/no-proctitle.c",
+                                            "unix/sunos.c"
+                                }
+                                exportedHeaders {
+                                    srcDirs "include", "src"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        tests(NativeExecutableSpec) {
+            targetPlatform "x86"
+            targetPlatform "x64"
+            
+            binaries.all {
+                sources {
+                        lib library: "uv", linkage: 'static'
+                        all(CSourceSet) {
+                            source {
+                                srcDirs "test"
+                                include "test-*.c",
+                                        "blackhole-server.c",
+                                        "echo-server.c",
+                                        "run-tests.c",
+                                        "runner.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "test", "include"
+                            }
+                        }
+                    }
+                    
+                if (targetPlatform.operatingSystem.windows) {
+                    if (toolChain in VisualCpp) {
+                        linker.args 'advapi32.lib'
+                        linker.args 'iphlpapi.lib'
+                        linker.args 'psapi.lib'
+                        linker.args 'shell32.lib'
+                        linker.args 'user32.lib'
+                        linker.args 'userenv.lib'
+                        linker.args 'ws2_32.lib'
+                    }
+                    sources {
+                        win(CSourceSet) {
+                            source {
+                                srcDirs "test"
+                                include "runner-win.c",
+                                        "src/win/snprintf.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "test", "include"
+                            }
+                        }
+                    }
+                } else {
+                    // Not windows
+                    cCompiler.define '_GNU_SOURCE'
+                    
+                    if (toolChain in Gcc) {
+                        linker.args '-ldl'
+                        linker.args '-lutil'
+                        linker.args '-pthread'
+                    }
+                    
+                    sources {
+                        unix(CSourceSet) {
+                            source {
+                                srcDirs "test"
+                                include "runner-unix.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "test", "include"
+                            }
+                        }
+                    }
+                    
+                    if (targetPlatform.operatingSystem.solaris) {
+                        cCompiler.define '__EXTENSIONS__'
+                        cCompiler.define '_XOPEN_SOURCE=500'
+                    }
+                }
+            }
+        }
+        benchmarks(NativeExecutableSpec) {
+            targetPlatform "x86"
+            targetPlatform "x64"
+            
+            binaries.all {
+                sources {
+                        lib library: "uv", linkage: 'static'
+                        all(CSourceSet) {
+                            source {
+                                srcDirs "test"
+                                include "benchmark-*.c", 
+                                        "dns-server.c",
+                                        "echo-server.c",
+                                        "blackhole-server.c",
+                                        "run-benchmarks.c",
+                                        "runner.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "test", "include"
+                            }
+                        }
+                    }
+                    
+                if (targetPlatform.operatingSystem.windows) {
+                    if (toolChain in VisualCpp) {
+                        linker.args 'advapi32.lib'
+                        linker.args 'iphlpapi.lib'
+                        linker.args 'psapi.lib'
+                        linker.args 'shell32.lib'
+                        linker.args 'user32.lib'
+                        linker.args 'userenv.lib'
+                        linker.args 'ws2_32.lib'
+                    }
+                    sources {
+                        win(CSourceSet) {
+                            source {
+                                srcDirs "test"
+                                include "runner-win.c", 
+                                        "src/win/snprintf.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "test", "include"
+                            }
+                        }
+                    }
+                } else {
+                    // Not Windows
+                    cCompiler.define '_GNU_SOURCE'
+                    
+                    if (toolChain in Gcc) {
+                        linker.args '-pthread'
+                    }
+                    
+                    sources {
+                        unix(CSourceSet) {
+                            source {
+                                srcDirs "test"
+                                include "runner-unix.c"
+                            }
+                            exportedHeaders {
+                                srcDirs "test", "include"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    binaries {
+        all {
+            if (targetPlatform.operatingSystem.windows) {
+                cCompiler.define 'WIN32'
+                cCompiler.define '_CRT_SECURE_NO_DEPRECATE'
+                cCompiler.define '_CRT_NONSTDC_NO_DEPRECATE'
+            }
+            
+            if (toolChain in VisualCpp) {
+                // https://stackoverflow.com/questions/4659754/the-gs-g-option-equivalent-to-vs2010-cl-compiler
+                cCompiler.args '/Zi'
+                cCompiler.args '/FS'
+            }
+            
+            if (buildType == buildTypes.debug) {
+                cCompiler.define '_DEBUG'
+                cCompiler.define 'DEBUG'
+                if (toolChain in VisualCpp) {
+                    linker.args '/DEBUG'
+                    linker.args "libcmtd.lib"
+                } else if (toolChain in Gcc || toolChain in Clang) {
+                    cCompiler.args '-g'
+                    cCompiler.args '-O0'
+                    cCompiler.args '-fwrapv'
+                }
+            } else if (buildType == buildTypes.release) {
+                cCompiler.define 'NDEBUG'
+                
+                if (toolChain in VisualCpp) {
+                    cCompiler.args '/O2'
+                } else if (toolChain in Gcc || toolChain in Clang) {
+                    cCompiler.args '-O3'
+                    cCompiler.args '-fstrict-aliasing'
+                    cCompiler.args '-fomit-frame-pointer'
+                    cCompiler.args '-fdata-sections'
+                    cCompiler.args '-ffunction-sections'
+                }
+            }
+        }
+    }
+}
+
