@@ -304,14 +304,31 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
 }
 
 int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
+#if defined(__APPLE__) || defined(__FreeBSD__)
+  return UV_ENOSYS;
+#else
   struct stat pipe_stat;
-  if (fstat(handle->u.fd, &pipe_stat) == -1)
+  int fd;
+
+  if (!handle || uv__stream_fd(handle) == -1)
+    return UV_EBADF;
+  fd = uv__stream_fd(handle);
+
+  if (mode != UV_READABLE &&
+      mode != UV_WRITABLE &&
+      mode != (UV_WRITABLE | UV_READABLE))
+    return UV_EINVAL;  
+
+  if (fstat(fd, &pipe_stat) == -1)
     return -errno;
+
   if (mode & UV_READABLE)
     pipe_stat.st_mode |= S_IRUSR | S_IRGRP | S_IROTH;
   if (mode & UV_WRITABLE)
     pipe_stat.st_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
-  if (fchmod(handle->u.fd, pipe_stat.st_mode) == -1)
+
+  if (fchmod(fd, pipe_stat.st_mode) == -1)
     return -errno;
   return 0;
+#endif
 }

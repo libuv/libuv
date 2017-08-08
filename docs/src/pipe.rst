@@ -108,6 +108,6 @@ API
     Alters pipe permissions, allowing it to be accessed from process running by
     different users. Makes the pipe writable or readable by all users. Mode can
     be either ``UV_WRITABLE``, ``UV_READABLE`` or
-    ``UV_WRITABLE | UV_READABLE``.
+    ``UV_WRITABLE | UV_READABLE``. This function is blocking.
 
-    .. versionadded:: 1.13.2
+    .. versionadded:: 1.14.0

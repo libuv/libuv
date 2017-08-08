@@ -2142,6 +2142,14 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   PSID everyone;
   int error;
 
+  if (!handle || handle->handle == INVALID_HANDLE_VALUE)
+    return UV_EBADF;
+
+  if (mode != UV_READABLE &&
+      mode != UV_WRITABLE &&
+      mode != (UV_WRITABLE | UV_READABLE))
+    return UV_EINVAL;
+
   if (!AllocateAndInitializeSid(&sid_world,
                                 1,
                                 SECURITY_WORLD_RID,
@@ -2150,6 +2158,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     error = GetLastError();
     goto done;
   }
+
   if (GetSecurityInfo(handle->handle,
                       SE_KERNEL_OBJECT,
                       DACL_SECURITY_INFORMATION,
@@ -2162,7 +2171,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     goto clean_sid;
   }
  
-  ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+  memset(&ea, 0, sizeof(EXPLICIT_ACCESS));
   if (mode & UV_READABLE)
     ea.grfAccessPermissions |= GENERIC_READ | FILE_WRITE_ATTRIBUTES;
   if (mode & UV_WRITABLE)
@@ -2189,6 +2198,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     error = GetLastError();
     goto clean_dacl;
   }
+
   error = 0;
 
 clean_dacl:
