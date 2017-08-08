@@ -101,6 +101,7 @@ static void uv__poll_stop(uv_poll_t* handle) {
               &handle->io_watcher,
               POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI);
   uv__handle_stop(handle);
+  uv__platform_invalidate_fd(handle->loop, handle->io_watcher.fd);
 }
 
 
