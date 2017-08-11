@@ -532,7 +532,7 @@ void fs__close(uv_fs_t* req) {
   if (fd > 2)
     result = _close(fd);
   else
-    result = 0;
+    result = UV__EINVAL;
 
   /* _close doesn't set _doserrno on failure, but it does always set errno
    * to EBADF on failure.
