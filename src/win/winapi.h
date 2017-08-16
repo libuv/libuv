@@ -4104,6 +4104,10 @@
 # define JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE          0x00002000
 #endif
 
+#ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+# define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x00000002
+#endif
+
 /* from winternl.h */
 typedef struct _UNICODE_STRING {
   USHORT Length;
@@ -4512,6 +4516,9 @@ typedef VOID (NTAPI *PIO_APC_ROUTINE)
               PIO_STATUS_BLOCK IoStatusBlock,
               ULONG Reserved);
 
+typedef NTSTATUS (NTAPI *sRtlGetVersion)
+                 (PRTL_OSVERSIONINFOW lpVersionInformation);
+
 typedef ULONG (NTAPI *sRtlNtStatusToDosError)
               (NTSTATUS Status);
 
@@ -4723,6 +4730,7 @@ typedef DWORD (WINAPI *sPowerRegisterSuspendResumeNotification)
 
 
 /* Ntdll function pointers */
+extern sRtlGetVersion pRtlGetVersion;
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
