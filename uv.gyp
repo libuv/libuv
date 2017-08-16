@@ -28,7 +28,7 @@
               '_AE_BIMODAL',
               'PATH_MAX=255'
             ],
-            'cflags': [ '-qxplink' ],
+            'cflags': [ '-qxplink', '-qlanglvl=extc99' ],
             'ldflags': [ '-qxplink' ],
           }]
         ],
