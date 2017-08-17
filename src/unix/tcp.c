@@ -462,3 +462,43 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 void uv__tcp_close(uv_tcp_t* handle) {
   uv__stream_close((uv_stream_t*)handle);
 }
+
+
+int uv_socketpair(int type, int protocol, int fds[2], int flags0, int flags1) {
+  int err;
+#if defined(__FreeBSD__) || defined(__linux__)
+  int flags;
+
+  flags = type | SOCK_CLOEXEC;
+  if ((flags0 & UV_NONBLOCK_PIPE) && (flags1 & UV_NONBLOCK_PIPE))
+    flags |= UV_FS_O_NONBLOCK;
+
+  if (socketpair(AF_UNIX, type, protocol, fds))
+    return UV__ERR(errno);
+
+  if (flags & UV_FS_O_NONBLOCK)
+    return 0;
+#else
+  if (socketpair(AF_UNIX, type, protocol, fds))
+    return UV__ERR(errno);
+
+  if ((err = uv__cloexec(fds[0], 1)))
+    goto fail;
+  if ((err = uv__cloexec(fds[1], 1)))
+    goto fail;
+#endif
+
+  if (flags0 & UV_NONBLOCK_PIPE)
+    if ((err = uv__nonblock(fds[0], 1)))
+        goto fail;
+  if (flags1 & UV_NONBLOCK_PIPE)
+    if ((err = uv__nonblock(fds[1], 1)))
+      goto fail;
+
+  return 0;
+
+fail:
+  uv__close(fds[0]);
+  uv__close(fds[1]);
+  return err;
+}
