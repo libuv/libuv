@@ -314,3 +314,55 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
   else
     return uv__handle_type(handle->accepted_fd);
 }
+
+
+int uv_pipe(uv_os_fd_t fds[2], int nonblock_read, int nonblock_write) {
+#if defined(__linux__)
+  static int no_pipe2;
+  int flags;
+
+  if (no_pipe2)
+    goto skip;
+
+  flags = (nonblock_read && nonblock_write) ? UV__F_NONBLOCK : 0;
+  if (uv__pipe2(fds, flags | UV__O_CLOEXEC) == 0) {
+    if (!(flags & UV__F_NONBLOCK)) {
+      if (nonblock_read) {
+        uv__nonblock(fds[0], 1);
+      }
+      if (nonblock_write) {
+        uv__nonblock(fds[1], 1);
+      }
+    }
+    return 0;
+  }
+
+  if (errno != ENOSYS)
+    return -errno;
+
+  no_pipe2 = 1;
+
+skip:
+#endif
+
+  if (pipe(fds))
+    return -errno;
+
+  uv__cloexec(fds[0], 1);
+  uv__cloexec(fds[1], 1);
+
+  if (nonblock_read) {
+    uv__nonblock(fds[0], 1);
+  }
+  if (nonblock_write) {
+    uv__nonblock(fds[1], 1);
+  }
+
+  return 0;
+}
+
+int uv__make_pipe(int fds[2], int flags) {
+  return uv_pipe(fds,
+                 flags & UV__F_NONBLOCK,
+                 flags & UV__F_NONBLOCK);
+}

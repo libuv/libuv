@@ -393,3 +393,34 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 void uv__tcp_close(uv_tcp_t* handle) {
   uv__stream_close((uv_stream_t*)handle);
 }
+
+
+int uv_socketpair(int type, int protocol, int fds[2]) {
+#if defined(__linux__)
+  static int no_cloexec;
+
+  if (no_cloexec)
+    goto skip;
+
+  if (socketpair(AF_UNIX, type | UV__SOCK_CLOEXEC, protocol, fds) == 0)
+    return 0;
+
+  /* Retry on EINVAL, it means SOCK_CLOEXEC is not supported.
+   * Anything else is a genuine error.
+   */
+  if (errno != EINVAL)
+    return -errno;
+
+  no_cloexec = 1;
+
+skip:
+#endif
+
+  if (socketpair(AF_UNIX, SOCK_STREAM, protocol, fds))
+    return -errno;
+
+  uv__cloexec(fds[0], 1);
+  uv__cloexec(fds[1], 1);
+
+  return 0;
+}

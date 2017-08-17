@@ -16,40 +16,47 @@
 #include "uv.h"
 #include "task.h"
 
-#ifdef _WIN32
-
-TEST_IMPL(pipe_set_non_blocking) {
-  RETURN_SKIP("Test not implemented on Windows.");
-}
-
-#else  /* !_WIN32 */
-
-#include <errno.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
-
 struct thread_ctx {
   uv_barrier_t barrier;
-  int fd;
+  uv_os_fd_t fd;
 };
 
 static void thread_main(void* arg) {
   struct thread_ctx* ctx;
+  uv_fs_t req;
+  uv_buf_t bufs[1];
   char buf[4096];
   ssize_t n;
+  int uv_errno;
+
+  bufs[0] = uv_buf_init(buf, sizeof(buf));
 
   ctx = arg;
   uv_barrier_wait(&ctx->barrier);
 
-  do
-    n = read(ctx->fd, buf, sizeof(buf));
-  while (n > 0 || (n == -1 && errno == EINTR));
+  do {
+    uv_sleep(0.25); /* make sure we are forcing the writer to block */
+    uv_errno = uv_fs_read(NULL, &req, ctx->fd, bufs, 1, -1, NULL);
+    n = req.result;
+    uv_fs_req_cleanup(&req);
+  } while (n > 0 || (n == -1 && uv_errno == UV_EINTR));
 
+#ifdef _WIN32
+  ASSERT(n == UV_EOF);
+#else
   ASSERT(n == 0);
+#endif
 }
+
+
+#ifdef _WIN32
+static void write_cb(uv_write_t* req, int status) {
+  ASSERT(status == 0);
+  req->handle = NULL; /* signal completion of write_cb */
+}
+#endif
+
+
 
 TEST_IMPL(pipe_set_non_blocking) {
   struct thread_ctx ctx;
@@ -58,11 +65,14 @@ TEST_IMPL(pipe_set_non_blocking) {
   size_t nwritten;
   char data[4096];
   uv_buf_t buf;
-  int fd[2];
+  uv_os_fd_t fd[2];
   int n;
+#ifdef _WIN32
+  uv_write_t write_req;
+#endif
 
   ASSERT(0 == uv_pipe_init(uv_default_loop(), &pipe_handle, 0));
-  ASSERT(0 == socketpair(AF_UNIX, SOCK_STREAM, 0, fd));
+  ASSERT(0 == uv_pipe(fd, 0, 0));
   ASSERT(0 == uv_pipe_open(&pipe_handle, fd[0]));
   ASSERT(0 == uv_stream_set_blocking((uv_stream_t*) &pipe_handle, 1));
 
@@ -81,6 +91,15 @@ TEST_IMPL(pipe_set_non_blocking) {
      * with the exact number of bytes that we wanted written.
      */
     n = uv_try_write((uv_stream_t*) &pipe_handle, &buf, 1);
+#ifdef _WIN32
+    ASSERT(n == UV_EAGAIN); /* E_NOTIMPL */
+    ASSERT(0 == uv_write(&write_req, (uv_stream_t*) &pipe_handle, &buf, 1, write_cb));
+    ASSERT(write_req.handle != NULL);
+    ASSERT(1 == uv_run(uv_default_loop(), UV_RUN_ONCE)); /* queue write_cb */
+    ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE)); /* process write_cb */
+    ASSERT(write_req.handle == NULL); /* check for signaled completion of write_cb */
+    n = buf.len;
+#endif
     ASSERT(n == sizeof(data));
     nwritten += n;
   }
@@ -89,11 +108,13 @@ TEST_IMPL(pipe_set_non_blocking) {
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   ASSERT(0 == uv_thread_join(&thread));
+#ifdef _WIN32
+  ASSERT(0 != CloseHandle(fd[1]));  /* fd[0] is closed by uv_close(). */
+#else
   ASSERT(0 == close(fd[1]));  /* fd[0] is closed by uv_close(). */
+#endif
   uv_barrier_destroy(&ctx.barrier);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
-
-#endif  /* !_WIN32 */

@@ -168,16 +168,32 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 
-#ifndef _WIN32
   if (strcmp(argv[1], "spawn_helper8") == 0) {
-    int fd;
-    ASSERT(sizeof(fd) == read(0, &fd, sizeof(fd)));
-    ASSERT(fd > 2);
-    ASSERT(-1 == write(fd, "x", 1));
+    uv_os_fd_t closed_fd, open_fd;
+#ifdef _WIN32
+    DWORD flags;
+    HMODULE kernelbase_module;
+    typedef BOOL WINAPI (*sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
+    sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
+#endif
+    ASSERT(sizeof(closed_fd) == read(0, &closed_fd, sizeof(closed_fd)));
+    ASSERT(sizeof(open_fd) == read(0, &open_fd, sizeof(open_fd)));
+#ifdef _WIN32
+    ASSERT((intptr_t)closed_fd > 0);
+    ASSERT((intptr_t)open_fd > 0);
+    ASSERT(0 != GetHandleInformation(open_fd, &flags));
+    kernelbase_module = GetModuleHandleA("kernelbase.dll");
+    pCompareObjectHandles = (sCompareObjectHandles)
+        GetProcAddress(kernelbase_module, "CompareObjectHandles");
+    ASSERT(!pCompareObjectHandles(open_fd, closed_fd));
+#else
+    ASSERT(open_fd > 2);
+    ASSERT(closed_fd > 2);
+    ASSERT(-1 == write(closed_fd, "x", 1));
+#endif
 
     return 1;
   }
-#endif  /* !_WIN32 */
 
   if (strcmp(argv[1], "spawn_helper9") == 0) {
     return spawn_stdin_stdout();

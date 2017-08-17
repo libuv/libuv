@@ -106,3 +106,12 @@ API
     connection error happened.
 
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.
+
+.. c:function:: int uv_socketpair(int type, int protocol, uv_os_sock_t socket_vector[2])
+
+    Create an pair of connected sockets with the specified properties.
+    The resulting handles can be passed to `uv_tcp_open`, used with `uv_spawn`, or for any other purpose.
+
+    Equivalent to :man:`socketpair(2)` with a domain of AF_UNIX.
+
+    .. versionadded:: 2.0.0
