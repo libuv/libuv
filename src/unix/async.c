@@ -167,7 +167,7 @@ static int uv__async_start(uv_loop_t* loop) {
     pipefd[1] = -1;
   }
   else if (err == UV_ENOSYS) {
-    err = uv__make_pipe(pipefd, UV__F_NONBLOCK);
+    err = uv__make_pipe(pipefd, UV_NONBLOCK_PIPE);
 #if defined(__linux__)
     /* Save a file descriptor by opening one of the pipe descriptors as
      * read/write through the procfs.  That file descriptor can then

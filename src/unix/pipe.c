@@ -389,3 +389,48 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   return r != -1 ? 0 : UV__ERR(errno);
 }
+
+int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
+#if defined(__linux__)
+  static int no_pipe2;
+  int flags = UV__O_CLOEXEC;
+
+  if (!no_pipe2) {
+    if ((read_flags & UV_NONBLOCK_PIPE) && (write_flags & UV_NONBLOCK_PIPE))
+      flags |= UV__O_NONBLOCK;
+
+    if (uv__pipe2(fds, flags) == 0) {
+      if (flags & UV__O_NONBLOCK)
+        return 0;
+      goto success;
+    }
+
+    if (errno != ENOSYS)
+      return UV__ERR(errno);
+
+    no_pipe2 = 1;
+  }
+#endif
+
+  if (pipe(fds))
+    return UV__ERR(errno);
+
+  uv__cloexec(fds[0], 1);
+  uv__cloexec(fds[1], 1);
+
+#if defined(__linux__)
+success:
+#endif
+  if (read_flags & UV_NONBLOCK_PIPE)
+    uv__nonblock(fds[0], 1);
+  if (write_flags & UV_NONBLOCK_PIPE)
+    uv__nonblock(fds[1], 1);
+
+  return 0;
+}
+
+int uv__make_pipe(int fds[2], int flags) {
+  return uv_pipe(fds,
+                 flags & UV_NONBLOCK_PIPE,
+                 flags & UV_NONBLOCK_PIPE);
+}

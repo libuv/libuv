@@ -427,3 +427,46 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 void uv__tcp_close(uv_tcp_t* handle) {
   uv__stream_close((uv_stream_t*)handle);
 }
+
+
+int uv_socketpair(int type, int protocol, int fds[2], int flags0, int flags1) {
+#if defined(__linux__)
+  static int no_cloexec;
+  int flags = type | UV__SOCK_CLOEXEC;
+
+  if (!no_cloexec) {
+    if ((flags0 & UV_NONBLOCK_PIPE) && (flags1 & UV_NONBLOCK_PIPE))
+      flags |= UV__O_NONBLOCK;
+
+    if (socketpair(AF_UNIX, type, protocol, fds) == 0) {
+      if (flags & UV__O_NONBLOCK)
+        return 0;
+      goto success;
+    }
+
+    /* Retry on EINVAL, it means SOCK_CLOEXEC is not supported.
+     * Anything else is a genuine error.
+     */
+    if (errno != EINVAL)
+      return UV__ERR(errno);
+
+    no_cloexec = 1;
+  }
+#endif
+
+  if (socketpair(AF_UNIX, type, protocol, fds))
+    return UV__ERR(errno);
+
+  uv__cloexec(fds[0], 1);
+  uv__cloexec(fds[1], 1);
+
+#if defined(__linux__)
+ success:
+#endif
+  if (flags0 & UV_NONBLOCK_PIPE)
+    uv__nonblock(fds[0], 1);
+  if (flags1 & UV_NONBLOCK_PIPE)
+    uv__nonblock(fds[1], 1);
+
+  return 0;
+}
