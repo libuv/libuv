@@ -345,19 +345,33 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   if (!r)
     uv__update_time(loop);
 
+  uv__update_stats_ts(loop, loop_enter);
   while (r != 0 && loop->stop_flag == 0) {
     uv__update_time(loop);
+    uv__update_stats_ts(loop, tick_start);
     uv__run_timers(loop);
     ran_pending = uv__run_pending(loop);
+
+    uv__update_stats_ts(loop, idle_start);
     uv__run_idle(loop);
+    uv__update_stats_ts(loop, idle_end);
+
+    uv__update_stats_ts(loop, prepare_start);
     uv__run_prepare(loop);
+    uv__update_stats_ts(loop, prepare_end);
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
+    uv__update_stats_ts(loop, poll_start);
     uv__io_poll(loop, timeout);
+    uv__update_stats_ts(loop, poll_end);
+
+    uv__update_stats_ts(loop, check_start);
     uv__run_check(loop);
+    uv__update_stats_ts(loop, check_end);
+
     uv__run_closing_handles(loop);
 
     if (mode == UV_RUN_ONCE) {
@@ -373,10 +387,15 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
       uv__run_timers(loop);
     }
 
+    uv__inc_stats_count(loop, tick_count);
+    uv__update_stats_ts(loop, tick_end);
+    uv__loop_stats_notify(loop);
+
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
   }
+  uv__update_stats_ts(loop, loop_exit);
 
   /* The if statement lets gcc compile it to a conditional store. Avoids
    * dirtying a cache line.

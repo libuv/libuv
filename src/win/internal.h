@@ -357,4 +357,17 @@ void uv__wake_all_loops(void);
  */
 void uv__init_detect_system_wakeup(void);
 
+#define uv__update_stats_ts(loop, field)                                      \
+  do {                                                                        \
+    loop->stats.field = uv__hrtime(UV__NANOSEC);                              \
+  }                                                                           \
+  while (0)
+
+#define uv__inc_stats_count(loop, field)                                      \
+  do {                                                                        \
+    loop->stats.field++;                                                      \
+  }                                                                           \
+  while (0)
+
+
 #endif /* UV_WIN_INTERNAL_H_ */

@@ -28,10 +28,63 @@ Data types
             UV_RUN_NOWAIT
         } uv_run_mode;
 
+.. c:type:: uv_loop_stats_sample
+
+    The notification schedule to use when delivering loop statistics. The
+    sample is set within the :c:type:`uv_stats_config_t` struct.
+
+    ::
+
+        typedef enum {
+            UV_LOOP_STATS_TICK,  /* notify once per iteration  */
+            UV_LOOP_STATS_COUNT, /* notify every Nth iteration */
+            UV_LOOP_STATS_TIME   /* notify every N nanoseconds */
+        } uv_loop_stats_sample;
+
+
+.. c:type:: uv_stats_config_t
+
+    Loop statistics callback configuration.
+
+    ::
+
+        typedef struct {
+            uv_loop_stats_sample rate; /* the notification rate strategy */
+            uint32_t num;              /* the notification rate value */
+            uv_stats_cb cb;            /* the notification callback */
+        } uv_stats_config_t;
+
+.. c:type:: uv_stats_info_t
+
+    Structure that holds loop statistics information.
+
+    ::
+
+        typedef struct {
+            uint64_t last_stats_cb
+            uint64_t loop_enter
+            uint64_t loop_exit
+            uint64_t tick_start
+            uint64_t tick_end
+            uint64_t idle_start
+            uint64_t idle_end
+            uint64_t prepare_start
+            uint64_t prepare_end
+            uint64_t poll_start
+            uint64_t poll_end
+            uint64_t check_start
+            uint64_t check_end
+            uint64_t tick_count;
+        } uv_stats_info_t;
+
 .. c:type:: void (*uv_walk_cb)(uv_handle_t* handle, void* arg)
 
     Type definition for callback passed to :c:func:`uv_walk`.
 
+.. c:type:: void (*uv_stats_cb)(uv_stats_info_t* info)
+
+    The definition for callback passed in :c:type:`uv_stats_config_t`. Libuv
+    maintains ownership of the :c:type:`uv_stats_info_t`.
 
 Public members
 ^^^^^^^^^^^^^^
@@ -67,6 +120,10 @@ API
       This operation is currently only implemented for SIGPROF signals,
       to suppress unnecessary wakeups when using a sampling profiler.
       Requesting other signals will fail with UV_EINVAL.
+
+    - UV_LOOP_STATS: Call the given callback to deliver loop statistics on a
+      defined schedule.  The second argument to :c:func:`uv_loop_configure` is
+      a pointer to a :c:type:`uv_stats_config_t`.
 
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 
@@ -221,3 +278,8 @@ API
        Any previous value returned from :c:func`uv_backend_fd` is now
        invalid. That function must be called again to determine the
        correct backend file descriptor.
+
+.. c:function:: int uv_loop_stats(uv_loop_t* loop, uv_stats_info_t* info)
+
+    Synchronously retrieves the current loop statistics. The caller maintains
+    ownership of the :c:type:`uv_stats_info_t`.

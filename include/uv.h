@@ -228,10 +228,19 @@ typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
+typedef struct uv_stats_config_s uv_stats_config_t;
+typedef struct uv_stats_info_s uv_stats_info_t;
 
 typedef enum {
-  UV_LOOP_BLOCK_SIGNAL
+  UV_LOOP_BLOCK_SIGNAL,
+  UV_LOOP_STATS = 2         /* uv_stats_config_t */
 } uv_loop_option;
+
+typedef enum {
+  UV_LOOP_STATS_TICK,   /* Sample rate is every tick */
+  UV_LOOP_STATS_COUNT,  /* Sample rate is every Nth tick */
+  UV_LOOP_STATS_TIME    /* Sample rate is every Nth milliseconds */
+} uv_loop_stats_sample;
 
 typedef enum {
   UV_RUN_DEFAULT = 0,
@@ -315,6 +324,7 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
+typedef void (*uv_stats_cb)(uv_stats_info_t* stats);
 
 typedef struct {
   long tv_sec;
@@ -1520,6 +1530,36 @@ union uv_any_req {
 };
 #undef XX
 
+#define UV_STATS_FIELDS                                                       \
+  uint64_t last_stats_cb;                                                     \
+  uint64_t loop_enter;                                                        \
+  uint64_t loop_exit;                                                         \
+  uint64_t tick_start;                                                        \
+  uint64_t tick_end;                                                          \
+  uint64_t idle_start;                                                        \
+  uint64_t idle_end;                                                          \
+  uint64_t prepare_start;                                                     \
+  uint64_t prepare_end;                                                       \
+  uint64_t poll_start;                                                        \
+  uint64_t poll_end;                                                          \
+  uint64_t check_start;                                                       \
+  uint64_t check_end;                                                         \
+  uint64_t tick_count;
+
+#define UV_STATS_CONFIG_FIELDS                                                \
+  uv_loop_stats_sample rate;                                                  \
+  uint32_t num;                                                               \
+  uv_stats_cb cb;
+
+struct uv_stats_config_s {
+  UV_STATS_CONFIG_FIELDS
+};
+
+struct uv_stats_info_s {
+  UV_STATS_FIELDS
+};
+
+UV_EXTERN void uv_loop_stats(uv_loop_t* loop, uv_stats_info_t* stats);
 
 struct uv_loop_s {
   /* User data - use this for whatever. */
