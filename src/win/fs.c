@@ -2334,7 +2334,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
 
   INIT(UV_FS_COPYFILE);
 
-  if (flags & ~UV_FS_COPYFILE_EXCL)
+  if (flags & ~(UV_FS_COPYFILE_EXCL | UV_FS_COPYFILE_FICLONE))
     return UV_EINVAL;
 
   err = fs__capture_path(req, path, new_path, cb != NULL);

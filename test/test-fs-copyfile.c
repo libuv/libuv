@@ -168,6 +168,13 @@ TEST_IMPL(fs_copyfile) {
   r = uv_fs_copyfile(loop, &req, fixture, dst, -1, fail_cb);
   ASSERT(r == UV_EINVAL);
   uv_run(loop, UV_RUN_DEFAULT);
+
+  /* Copies file using UV_FS_COPYFILE_FICLONE. */
+  unlink(dst);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE, NULL);
+  ASSERT(r == 0);
+  handle_result(&req);
+
   unlink(dst); /* Cleanup */
   return 0;
 }

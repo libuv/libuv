@@ -1190,6 +1190,12 @@ UV_EXTERN int uv_fs_write(uv_loop_t* loop,
  */
 #define UV_FS_COPYFILE_EXCL   0x0001
 
+/*
+ * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+ * If copy-on-write is not supported, a fallback copy mechanism is used.
+ */
+#define UV_FS_COPYFILE_FICLONE 0x0002
+
 UV_EXTERN int uv_fs_copyfile(uv_loop_t* loop,
                              uv_fs_t* req,
                              const char* path,
