@@ -113,6 +113,7 @@ const WCHAR LONG_PATH_PREFIX_LEN = 4;
 const WCHAR UNC_PATH_PREFIX[] = L"\\\\?\\UNC\\";
 const WCHAR UNC_PATH_PREFIX_LEN = 8;
 
+static int uv__file_symlink_usermode_flag = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
 
 void uv_fs_init(void) {
   _fmode = _O_BINARY;
@@ -1713,25 +1714,46 @@ error:
 
 
 static void fs__symlink(uv_fs_t* req) {
-  WCHAR* pathw = req->file.pathw;
-  WCHAR* new_pathw = req->fs.info.new_pathw;
-  int flags = req->fs.info.file_flags;
-  int result;
+  WCHAR* pathw;
+  WCHAR* new_pathw;
+  int flags;
+  int err;
 
+  pathw = req->file.pathw;
+  new_pathw = req->fs.info.new_pathw;
 
-  if (flags & UV_FS_SYMLINK_JUNCTION) {
+  if (req->fs.info.file_flags & UV_FS_SYMLINK_JUNCTION) {
     fs__create_junction(req, pathw, new_pathw);
-  } else if (pCreateSymbolicLinkW) {
-    result = pCreateSymbolicLinkW(new_pathw,
-                                  pathw,
-                                  flags & UV_FS_SYMLINK_DIR ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0) ? 0 : -1;
-    if (result == -1) {
-      SET_REQ_WIN32_ERROR(req, GetLastError());
-    } else {
-      SET_REQ_RESULT(req, result);
-    }
-  } else {
+    return;
+  }
+  if (!pCreateSymbolicLinkW) {
     SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
+    return;
+  }
+
+  if (req->fs.info.file_flags & UV_FS_SYMLINK_DIR)
+    flags = SYMBOLIC_LINK_FLAG_DIRECTORY;
+  else
+    flags = uv__file_symlink_usermode_flag;
+
+  if (pCreateSymbolicLinkW(new_pathw, pathw, flags)) {
+    SET_REQ_RESULT(req, 0);
+    return;
+  }
+
+  /* Something went wrong. We will test if it is because of user-mode
+   * symlinks.
+   */
+  err = GetLastError();
+  if (err == ERROR_INVALID_PARAMETER &&
+      flags & SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE) {
+    /* This system does not support user-mode symlinks. We will clear the
+     * unsupported flag and retry.
+     */
+    uv__file_symlink_usermode_flag = 0;
+    fs__symlink(req);
+  } else {
+    SET_REQ_WIN32_ERROR(req, err);
   }
 }
 
