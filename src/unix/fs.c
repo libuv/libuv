@@ -1476,6 +1476,9 @@ int uv_fs_copyfile(uv_loop_t* loop,
                    const char* new_path,
                    int flags,
                    uv_fs_cb cb) {
+  if (flags & ~UV_FS_COPYFILE_EXCL)
+    return -EINVAL;
+
   INIT(COPYFILE);
   PATH2;
   req->flags = flags;

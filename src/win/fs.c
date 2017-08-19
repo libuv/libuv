@@ -2434,6 +2434,9 @@ int uv_fs_copyfile(uv_loop_t* loop,
                    uv_fs_cb cb) {
   int err;
 
+  if (flags & ~UV_FS_COPYFILE_EXCL)
+    return UV_EINVAL;
+
   uv_fs_req_init(loop, req, UV_FS_COPYFILE, cb);
   err = fs__capture_path(req, path, new_path, cb != NULL);
 
