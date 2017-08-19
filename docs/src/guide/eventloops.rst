@@ -46,3 +46,35 @@ iteration of the loop still takes places.
     :linenos:
     :emphasize-lines: 11
 
+Monitoring event loop performance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``uv_loop_stats()`` and ``uv_stats_info_t`` API can be used to monitor
+the current performance of an event loop.
+
+Monitoring may be synchronous:
+
+.. code-block:: c
+
+    uv_stats_info_t info;
+    uv_loop_stats(uv_default_loop(), &info);
+    printf("loop entered: %llu\n", info.loop_enter);
+    printf("loop exited: %llu\n, info.loop_exit);
+
+Or asynchronous:
+
+.. code-block:: c
+
+    void cb(uv_stats_info_t* info) {
+        /* ... */
+    }
+
+    uv_stats_config_t config = { UV_LOOP_STATS_TICK, 0, cb };
+    uv_loop_configure(loop, UV_LOOP_STATS, &config);
+
+The first member of the ``uv_stats_config_t`` struct identifies the notification
+schedule. Currently three options are supported:
+
+    - ``UV_LOOP_STATS_TICK`` - notify on every turn of the event loop.
+    - ``UV_LOOP_STATS_COUNT`` - notify on every Nth turn of the event loop,where ``N`` is specified by the second member of the ``uv_stats_config_t`` struct.
+    - ``UV_LOOP_STATS_TIME`` - notify every N nanoseconds, where ``N`` is specified by the second member of the ``uv_stats_config_t`` struct.

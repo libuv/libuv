@@ -253,4 +253,7 @@ void uv__run_timers(uv_loop_t* loop);
 int uv__next_timeout(const uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
 
+/* Stats prototypes */
+void uv__loop_stats_notify(uv_loop_t* loop);
+
 #endif /* UV_COMMON_H_ */

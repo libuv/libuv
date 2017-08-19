@@ -182,12 +182,40 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  if (option != UV_LOOP_BLOCK_SIGNAL)
-    return UV_ENOSYS;
-
-  if (va_arg(ap, int) != SIGPROF)
-    return UV_EINVAL;
-
-  loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+  struct uv_stats_config_s* config;
+  switch (option) {
+    case UV_LOOP_BLOCK_SIGNAL:
+      if (va_arg(ap, int) != SIGPROF)
+        return UV_EINVAL;
+      loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+      break;
+    case UV_LOOP_STATS:
+      loop->stats.last_stats_cb = 0;
+      loop->stats.loop_enter = 0;
+      loop->stats.loop_exit = 0;
+      loop->stats.tick_start = 0;
+      loop->stats.tick_end = 0;
+      loop->stats.idle_start = 0;
+      loop->stats.idle_end = 0;
+      loop->stats.prepare_start = 0;
+      loop->stats.prepare_end = 0;
+      loop->stats.poll_start = 0;
+      loop->stats.poll_end = 0;
+      loop->stats.check_start = 0;
+      loop->stats.check_end = 0;
+      loop->stats.tick_count = 0;
+      config = va_arg(ap, struct uv_stats_config_s*);
+      if (config->rate > UV_LOOP_STATS_TIME)
+        return UV_EINVAL;
+      if (config->cb == 0)
+        return UV_EINVAL;
+      loop->stats.rate = config->rate;
+      loop->stats.num = config->num;
+      loop->stats.cb = config->cb;
+      loop->flags |= UV_LOOP_STATS;
+      break;
+    default:
+      return UV_ENOSYS;
+  }
   return 0;
 }

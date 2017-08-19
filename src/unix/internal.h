@@ -138,7 +138,8 @@ enum {
 
 /* loop flags */
 enum {
-  UV_LOOP_BLOCK_SIGPROF = 1
+  UV_LOOP_BLOCK_SIGPROF = 1,
+  UV_LOOP_STATS_NOTIFY = 2
 };
 
 typedef enum {
@@ -292,5 +293,17 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
 #if defined(__linux__)
 int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
 #endif
+
+#define uv__update_stats_ts(loop, field)                                      \
+  do {                                                                        \
+    loop->stats.field = uv__hrtime(UV_CLOCK_PRECISE);                         \
+  }                                                                           \
+  while (0)
+
+#define uv__inc_stats_count(loop, field)                                      \
+  do {                                                                        \
+    loop->stats.field++;                                                      \
+  }                                                                           \
+  while (0)
 
 #endif /* UV_UNIX_INTERNAL_H_ */

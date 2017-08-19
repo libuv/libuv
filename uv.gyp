@@ -377,6 +377,7 @@
         'test/test-loop-handles.c',
         'test/test-loop-alive.c',
         'test/test-loop-close.c',
+        'test/test-loop-stats.c',
         'test/test-loop-stop.c',
         'test/test-loop-time.c',
         'test/test-loop-configure.c',

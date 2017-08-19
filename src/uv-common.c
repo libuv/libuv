@@ -665,3 +665,52 @@ void uv_loop_delete(uv_loop_t* loop) {
   if (loop != default_loop)
     uv__free(loop);
 }
+
+void uv_loop_stats(uv_loop_t* loop, uv_stats_info_t* info) {
+  assert(info != 0);
+  info->last_stats_cb = loop->stats.last_stats_cb;
+  info->loop_enter = loop->stats.loop_enter;
+  info->loop_exit = loop->stats.loop_exit;
+  info->tick_start = loop->stats.tick_start;
+  info->tick_end = loop->stats.tick_end;
+  info->idle_start = loop->stats.idle_start;
+  info->idle_end = loop->stats.idle_end;
+  info->prepare_start = loop->stats.prepare_start;
+  info->prepare_end = loop->stats.prepare_end;
+  info->poll_start = loop->stats.poll_start;
+  info->poll_end = loop->stats.poll_end;
+  info->check_start = loop->stats.check_start;
+  info->check_end = loop->stats.check_end;
+  info->tick_count = loop->stats.tick_count;
+}
+
+void uv__loop_stats_notify(uv_loop_t* loop) {
+  struct uv_stats_info_s info;
+  unsigned int notify = 0;
+  uint64_t now;
+
+  if (!(loop->flags & UV_LOOP_STATS))
+    return;
+
+  /* Only notify if a callback is configured */
+  now = uv_hrtime();
+  switch (loop->stats.rate) {
+    case UV_LOOP_STATS_TICK:
+      /* Notify on every tick of the loop */
+      notify = 1;
+      break;
+    case UV_LOOP_STATS_COUNT:
+      /* Notify on every Nth tick of the loop */
+      notify = (loop->stats.tick_count % loop->stats.num == 0);
+      break;
+    case UV_LOOP_STATS_TIME:
+      /* Notify approximately every Nth nanoseconds */
+      notify = (now - loop->stats.last_stats_cb) >= loop->stats.num;
+      break;
+  }
+  if (notify) {
+    loop->stats.last_stats_cb = now;
+    uv_loop_stats(loop, &info);
+    loop->stats.cb(&info);
+  }
+}

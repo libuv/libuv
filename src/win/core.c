@@ -206,7 +206,37 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  return UV_ENOSYS;
+  struct uv_stats_config_s* config;
+  switch (option) {
+    case UV_LOOP_STATS:
+      loop->stats.last_stats_cb = 0;
+      loop->stats.loop_enter = 0;
+      loop->stats.loop_exit = 0;
+      loop->stats.tick_start = 0;
+      loop->stats.tick_end = 0;
+      loop->stats.idle_start = 0;
+      loop->stats.idle_end = 0;
+      loop->stats.prepare_start = 0;
+      loop->stats.prepare_end = 0;
+      loop->stats.poll_start = 0;
+      loop->stats.poll_end = 0;
+      loop->stats.check_start = 0;
+      loop->stats.check_end = 0;
+      loop->stats.tick_count = 0;
+      config = va_arg(ap, struct uv_stats_config_s*);
+      if (config->rate > UV_LOOP_STATS_TIME)
+        return UV_EINVAL;
+      if (config->cb == 0)
+        return UV_EINVAL;
+      loop->stats.rate = config->rate;
+      loop->stats.num = config->num;
+      loop->stats.cb = config->cb;
+      loop->flags |= UV_LOOP_STATS;
+      break;
+    default:
+      return UV_ENOSYS;
+  }
+  return 0;
 }
 
 
@@ -320,21 +350,34 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   if (!r)
     uv_update_time(loop);
 
+  uv__update_stats_ts(loop, loop_enter);
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
+    uv__update_stats_ts(loop, tick_start);
     uv__run_timers(loop);
 
     ran_pending = uv_process_reqs(loop);
+
+    uv__update_stats_ts(loop, idle_start);
     uv__run_idle(loop);
+    uv__update_stats_ts(loop, idle_end);
+
+    uv__update_stats_ts(loop, prepare_start);
     uv__run_prepare(loop);
+    uv__update_stats_ts(loop, prepare_end);
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
+    uv__update_stats_ts(loop, poll_start);
     uv__loop_poll(loop, timeout == -1 ? INFINITE : timeout);
+    uv__update_stats_ts(loop, poll_end);
 
+    uv__update_stats_ts(loop, check_start);
     uv__run_check(loop);
+    uv__update_stats_ts(loop, check_end);
+
     uv_process_endgames(loop);
 
     if (mode == UV_RUN_ONCE) {
@@ -349,10 +392,15 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
       uv__run_timers(loop);
     }
 
+    uv__inc_stats_count(loop, tick_count);
+    uv__update_stats_ts(loop, tick_end);
+    uv__loop_stats_notify(loop);
+
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
   }
+  uv__update_stats_ts(loop, loop_exit);
 
   /* The if statement lets the compiler compile it to a conditional store.
    * Avoids dirtying a cache line.

@@ -219,6 +219,10 @@ typedef struct {
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
   int emfile_fd;                                                              \
+  struct {                                                                    \
+    UV_STATS_CONFIG_FIELDS                                                    \
+    UV_STATS_FIELDS                                                           \
+  } stats;                                                                    \
   UV_PLATFORM_LOOP_FIELDS                                                     \
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
