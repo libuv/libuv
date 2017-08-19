@@ -387,16 +387,19 @@ int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   uv_sem_t semid;
   struct sembuf buf;
   int err;
+  union {
+    int val;
+    struct semid_ds* buf;
+    unsigned short* array;
+  } arg;
 
-  buf.sem_num = 0;
-  buf.sem_op = value;
-  buf.sem_flg = 0;
 
   semid = semget(IPC_PRIVATE, 1, S_IRUSR | S_IWUSR);
   if (semid == -1)
     return -errno;
 
-  if (-1 == semop(semid, &buf, 1)) {
+  arg.val = value;
+  if (-1 == semctl(semid, 0, SETVAL, arg)) {
     err = errno;
     if (-1 == semctl(*sem, 0, IPC_RMID))
       abort();
