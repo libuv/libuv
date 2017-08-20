@@ -789,6 +789,8 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   int dst_flags;
   int result;
   int err;
+  size_t bytes_to_send;
+  int64_t in_offset;
 
   dstfd = -1;
 
@@ -824,14 +826,22 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
-  err = uv_fs_sendfile(NULL,
-                       &fs_req,
-                       dstfd,
-                       srcfd,
-                       0,
-                       statsbuf.st_size,
-                       NULL);
-  uv_fs_req_cleanup(&fs_req);
+  bytes_to_send = statsbuf.st_size;
+  in_offset = 0;
+  while (bytes_to_send != 0) {
+    err = uv_fs_sendfile(NULL,
+                         &fs_req,
+                         dstfd,
+                         srcfd,
+                         in_offset,
+                         bytes_to_send,
+                         NULL);
+    uv_fs_req_cleanup(&fs_req);
+    if (err < 0)
+      break;
+    bytes_to_send -= fs_req.result;
+    in_offset += fs_req.result;
+  }
 
 out:
   if (err < 0)
