@@ -24,8 +24,8 @@
 #include "task.h"
 
 TEST_IMPL(pipe_set_fchmod) {
-#if defined(__APPLE__) || defined(__FreeBSD__)
-  RETURN_SKIP("test not supported on OSX nor on FreeBSD");
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(_AIX)
+  RETURN_SKIP("test not supported on this platform");
 #else
   uv_pipe_t pipe_handle;
   uv_loop_t* loop;
