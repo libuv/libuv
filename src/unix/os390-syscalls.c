@@ -336,6 +336,8 @@ char* mkdtemp(char* path) {
 
 ssize_t os390_readlink(const char* path, char* buf, size_t len) {
   ssize_t rlen;
+  ssize_t vlen;
+  ssize_t plen;
   char* delimiter;
   char old_delim;
   char tmpbuf[len + 1];
@@ -369,11 +371,15 @@ ssize_t os390_readlink(const char* path, char* buf, size_t len) {
 
   /* Reset the delimiter and fill up the buffer */
   *delimiter = old_delim;
-  rlen = snprintf(buf, len, "%s%s", realpathstr, delimiter);
-  if (rlen >= len) {
+  plen = strlen(delimiter);
+  vlen = strlen(realpathstr);
+  rlen = plen + vlen;
+  if (rlen > len) {
     errno = ENAMETOOLONG;
     return -1;
   }
+  memcpy(buf, realpathstr, vlen);
+  memcpy(buf + vlen, delimiter, plen);
 
   return rlen;
 }
