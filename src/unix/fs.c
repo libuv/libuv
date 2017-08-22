@@ -793,7 +793,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   dstfd = -1;
 
   /* Open the source file. */
-  srcfd = uv_fs_open(req->loop, &fs_req, req->path, O_RDONLY, 0, NULL);
+  srcfd = uv_fs_open(NULL, &fs_req, req->path, O_RDONLY, 0, NULL);
   uv_fs_req_cleanup(&fs_req);
 
   if (srcfd < 0)
@@ -811,7 +811,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     dst_flags |= O_EXCL;
 
   /* Open the destination file. */
-  dstfd = uv_fs_open(req->loop,
+  dstfd = uv_fs_open(NULL,
                      &fs_req,
                      req->new_path,
                      dst_flags,
@@ -824,7 +824,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
-  err = uv_fs_sendfile(req->loop,
+  err = uv_fs_sendfile(NULL,
                        &fs_req,
                        dstfd,
                        srcfd,
