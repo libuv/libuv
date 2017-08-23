@@ -24,9 +24,6 @@
 #include "task.h"
 
 TEST_IMPL(pipe_set_fchmod) {
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(_AIX)
-  RETURN_SKIP("test not supported on this platform");
-#else
   uv_pipe_t pipe_handle;
   uv_loop_t* loop;
   int r;
@@ -67,5 +64,4 @@ TEST_IMPL(pipe_set_fchmod) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-#endif
 }
