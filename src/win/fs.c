@@ -2010,10 +2010,10 @@ int uv_fs_read(uv_loop_t* loop,
                unsigned int nbufs,
                int64_t offset,
                uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_READ, cb);
+
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
-
-  uv_fs_req_init(loop, req, UV_FS_READ, cb);
 
   req->file.fd = fd;
 
@@ -2046,10 +2046,10 @@ int uv_fs_write(uv_loop_t* loop,
                 unsigned int nbufs,
                 int64_t offset,
                 uv_fs_cb cb) {
+  uv_fs_req_init(loop, req, UV_FS_WRITE, cb);
+
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
-
-  uv_fs_req_init(loop, req, UV_FS_WRITE, cb);
 
   req->file.fd = fd;
 
@@ -2251,11 +2251,11 @@ int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb) {
   int err;
 
-  if (!req || !path) {
+  uv_fs_req_init(loop, req, UV_FS_REALPATH, cb);
+
+  if (!path) {
     return UV_EINVAL;
   }
-
-  uv_fs_req_init(loop, req, UV_FS_REALPATH, cb);
 
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
@@ -2435,10 +2435,11 @@ int uv_fs_copyfile(uv_loop_t* loop,
                    uv_fs_cb cb) {
   int err;
 
+  uv_fs_req_init(loop, req, UV_FS_COPYFILE, cb);
+
   if (flags & ~UV_FS_COPYFILE_EXCL)
     return UV_EINVAL;
 
-  uv_fs_req_init(loop, req, UV_FS_COPYFILE, cb);
   err = fs__capture_path(req, path, new_path, cb != NULL);
 
   if (err)

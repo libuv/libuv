@@ -99,6 +99,7 @@ TEST_IMPL(fs_copyfile) {
   /* Fails with EINVAL if bad flags are passed. */
   r = uv_fs_copyfile(NULL, &req, src, dst, -1, NULL);
   ASSERT(r == UV_EINVAL);
+  uv_fs_req_cleanup(&req);
 
   /* Fails with ENOENT if source does not exist. */
   unlink(src);
