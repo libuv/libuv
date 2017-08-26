@@ -66,6 +66,8 @@
 
 #define INIT(subtype)                                                         \
   do {                                                                        \
+    if (req == NULL)                                                          \
+      return -EINVAL;                                                         \
     req->type = UV_FS;                                                        \
     if (cb != NULL)                                                           \
       uv__req_init(loop, req, UV_FS);                                         \
@@ -1452,6 +1454,9 @@ int uv_fs_write(uv_loop_t* loop,
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
+  if (req == NULL)
+    return;
+
   /* Only necessary for asychronous requests, i.e., requests with a callback.
    * Synchronous ones don't copy their arguments and have req->path and
    * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP is the
