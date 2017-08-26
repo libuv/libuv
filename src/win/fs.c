@@ -43,6 +43,14 @@
 #define UV_FS_CLEANEDUP          0x0010
 
 
+#define INIT(subtype)                                                         \
+  do {                                                                        \
+    if (req == NULL)                                                          \
+      return UV_EINVAL;                                                       \
+    uv_fs_req_init(loop, req, subtype, cb);                                   \
+  }                                                                           \
+  while (0)
+
 #define QUEUE_FS_TP_JOB(loop, req)                                          \
   do {                                                                      \
     uv__req_register(loop, req);                                            \
@@ -1939,6 +1947,9 @@ static void uv__fs_done(struct uv__work* w, int status) {
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
+  if (req == NULL)
+    return;
+
   if (req->flags & UV_FS_CLEANEDUP)
     return;
 
@@ -1969,8 +1980,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     int mode, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_OPEN, cb);
-
+  INIT(UV_FS_OPEN);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -1990,7 +2000,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
 
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_CLOSE, cb);
+  INIT(UV_FS_CLOSE);
   req->file.fd = fd;
 
   if (cb) {
@@ -2010,7 +2020,7 @@ int uv_fs_read(uv_loop_t* loop,
                unsigned int nbufs,
                int64_t offset,
                uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_READ, cb);
+  INIT(UV_FS_READ);
 
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
@@ -2046,7 +2056,7 @@ int uv_fs_write(uv_loop_t* loop,
                 unsigned int nbufs,
                 int64_t offset,
                 uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_WRITE, cb);
+  INIT(UV_FS_WRITE);
 
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
@@ -2079,8 +2089,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_UNLINK, cb);
-
+  INIT(UV_FS_UNLINK);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2100,8 +2109,7 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_MKDIR, cb);
-
+  INIT(UV_FS_MKDIR);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2123,8 +2131,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_MKDTEMP, cb);
-
+  INIT(UV_FS_MKDTEMP);
   err = fs__capture_path(req, tpl, NULL, TRUE);
   if (err)
     return uv_translate_sys_error(err);
@@ -2142,8 +2149,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
 int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_RMDIR, cb);
-
+  INIT(UV_FS_RMDIR);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2163,8 +2169,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_SCANDIR, cb);
-
+  INIT(UV_FS_SCANDIR);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2186,8 +2191,7 @@ int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
     const char* new_path, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_LINK, cb);
-
+  INIT(UV_FS_LINK);
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2207,8 +2211,7 @@ int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     const char* new_path, int flags, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_SYMLINK, cb);
-
+  INIT(UV_FS_SYMLINK);
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2230,8 +2233,7 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_READLINK, cb);
-
+  INIT(UV_FS_READLINK);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2251,7 +2253,7 @@ int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_REALPATH, cb);
+  INIT(UV_FS_REALPATH);
 
   if (!path) {
     return UV_EINVAL;
@@ -2276,8 +2278,7 @@ int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
     uv_gid_t gid, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_CHOWN, cb);
-
+  INIT(UV_FS_CHOWN);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2295,7 +2296,7 @@ int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
 
 int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_uid_t uid,
     uv_gid_t gid, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FCHOWN, cb);
+  INIT(UV_FS_FCHOWN);
 
   if (cb) {
     QUEUE_FS_TP_JOB(loop, req);
@@ -2310,8 +2311,7 @@ int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_uid_t uid,
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_STAT, cb);
-
+  INIT(UV_FS_STAT);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2330,8 +2330,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_LSTAT, cb);
-
+  INIT(UV_FS_LSTAT);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2348,7 +2347,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
 
 int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FSTAT, cb);
+  INIT(UV_FS_FSTAT);
   req->file.fd = fd;
 
   if (cb) {
@@ -2365,8 +2364,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
     const char* new_path, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_RENAME, cb);
-
+  INIT(UV_FS_RENAME);
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2383,7 +2381,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
 
 
 int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FSYNC, cb);
+  INIT(UV_FS_FSYNC);
   req->file.fd = fd;
 
   if (cb) {
@@ -2397,7 +2395,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
 
 
 int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FDATASYNC, cb);
+  INIT(UV_FS_FDATASYNC);
   req->file.fd = fd;
 
   if (cb) {
@@ -2412,8 +2410,7 @@ int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
 
 int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file fd,
     int64_t offset, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FTRUNCATE, cb);
-
+  INIT(UV_FS_FTRUNCATE);
   req->file.fd = fd;
   req->fs.info.offset = offset;
 
@@ -2435,7 +2432,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
                    uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_COPYFILE, cb);
+  INIT(UV_FS_COPYFILE);
 
   if (flags & ~UV_FS_COPYFILE_EXCL)
     return UV_EINVAL;
@@ -2459,8 +2456,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
 
 int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file fd_out,
     uv_file fd_in, int64_t in_offset, size_t length, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_SENDFILE, cb);
-
+  INIT(UV_FS_SENDFILE);
   req->file.fd = fd_in;
   req->fs.info.fd_out = fd_out;
   req->fs.info.offset = in_offset;
@@ -2483,8 +2479,7 @@ int uv_fs_access(uv_loop_t* loop,
                  uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_ACCESS, cb);
-
+  INIT(UV_FS_ACCESS);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err)
     return uv_translate_sys_error(err);
@@ -2505,8 +2500,7 @@ int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
     uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_CHMOD, cb);
-
+  INIT(UV_FS_CHMOD);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2526,8 +2520,7 @@ int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
 
 int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file fd, int mode,
     uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FCHMOD, cb);
-
+  INIT(UV_FS_FCHMOD);
   req->file.fd = fd;
   req->fs.info.mode = mode;
 
@@ -2545,8 +2538,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
     double mtime, uv_fs_cb cb) {
   int err;
 
-  uv_fs_req_init(loop, req, UV_FS_UTIME, cb);
-
+  INIT(UV_FS_UTIME);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     return uv_translate_sys_error(err);
@@ -2567,8 +2559,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
 
 int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file fd, double atime,
     double mtime, uv_fs_cb cb) {
-  uv_fs_req_init(loop, req, UV_FS_FUTIME, cb);
-
+  INIT(UV_FS_FUTIME);
   req->file.fd = fd;
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
