@@ -923,9 +923,12 @@ int uv__udp_try_send(uv_udp_t* handle,
                      unsigned int addrlen) {
   DWORD bytes;
   const struct sockaddr* bind_addr;
+  struct sockaddr_storage storage;
   int err;
 
   assert(nbufs > 0);
+
+  addr = uv__convert_to_localhost_if_unspecified(addr, &storage);
 
   /* Already sending a message.*/
   if (handle->send_queue_count != 0)

@@ -559,3 +559,33 @@ int WSAAPI uv_msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
     return SOCKET_ERROR;
   }
 }
+
+const struct sockaddr* uv__convert_to_localhost_if_unspecified(
+  const struct sockaddr* addr,
+  struct sockaddr_storage* storage) {
+  if (addr->sa_family == AF_INET) {
+    const struct sockaddr_in* src;
+    struct sockaddr_in* dest;
+    src = (const struct sockaddr_in*) addr;
+    dest = (struct sockaddr_in*) storage;
+    if (src->sin_addr.S_un.S_addr == 0) {
+      memcpy(dest, src, sizeof(struct sockaddr_in));
+      uv_inet_pton(AF_INET, "127.0.0.1", &(dest->sin_addr.s_addr));
+      addr = (const struct sockaddr*) dest;
+    }
+  }
+  else if (addr->sa_family == AF_INET6) {
+    const struct sockaddr_in6* src;
+    struct sockaddr_in6* dest;
+    src = (const struct sockaddr_in6*) addr;
+    dest = (struct sockaddr_in6*) storage;
+    if (memcmp(src->sin6_addr.u.Byte,
+               uv_addr_ip6_any_.sin6_addr.u.Byte,
+               sizeof(struct in6_addr)) == 0) {
+      memcpy(dest, src, sizeof(struct sockaddr_in6));
+      uv_inet_pton(AF_INET6, "::1", &(dest->sin6_addr));
+      addr = (const struct sockaddr*) dest;
+    }
+  }
+  return addr;
+}

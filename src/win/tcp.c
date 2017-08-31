@@ -747,9 +747,12 @@ static int uv_tcp_try_connect(uv_connect_t* req,
                               uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   const struct sockaddr* bind_addr;
+  struct sockaddr_storage storage;
   BOOL success;
   DWORD bytes;
   int err;
+
+  addr = uv__convert_to_localhost_if_unspecified(addr, &storage);
 
   if (handle->delayed_error) {
     return handle->delayed_error;
