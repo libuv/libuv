@@ -691,9 +691,185 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
 }
 
 #ifdef SUNOS_NO_IFADDRS
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-  return -ENOSYS;
+struct __uv_solaris_testsocket {
+  int sock;
+  int type;
+  int domain;
+  int nb_ifaces;
+};
+
+int __solaris_get_nb_ifaces(int sock, int domain) {
+  int err;
+  struct lifnum lifnum_info;
+  lifnum_info.lifn_flags = 0;
+
+  if (domain == AF_INET) {
+    lifnum_info.lifn_family = AF_INET;
+  } else {
+    lifnum_info.lifn_family = AF_INET6;
+  }
+
+  if ((err = ioctl(sock, SIOCGLIFNUM, &lifnum_info)) < 0) {
+    /*fprintf(stderr, "ioctl(): error %d, %s\n", err, strerror(errno));*/
+    return err;
+  }
+  return lifnum_info.lifn_count;
 }
+
+int __solaris_gethwaddr(const struct __uv_solaris_testsocket* sock, uv_interface_address_t *uv_address)
+{
+  int err = 0;
+  struct arpreq arpreq_info;
+  if (sock->domain == AF_INET) {
+    memcpy(&arpreq_info.arp_pa, &uv_address->address.address4, sizeof(struct sockaddr_in));
+  } else {
+    memcpy(&arpreq_info.arp_pa, &uv_address->address.address6, sizeof(struct sockaddr_in6));
+  }
+
+  if (!uv_address->is_internal) {
+    if ((err = ioctl(sock->sock, SIOCGARP, &arpreq_info)) < 0) {
+      /*fprintf(stderr, "ioctl(): error %d, %s\n", errno, strerror(errno));*/
+      return err;
+    }
+    memcpy(uv_address->phys_addr, &arpreq_info.arp_ha.sa_data, 6);
+  }
+  return err;
+}
+
+int __solaris_getnetmask(const struct __uv_solaris_testsocket* sock, uv_interface_address_t *uv_address)
+{
+  int err;
+  struct lifreq lifreq_info;
+  strncpy(lifreq_info.lifr_name, uv_address->name, LIFNAMSIZ - 1);
+  lifreq_info.lifr_name[LIFNAMSIZ - 1] = '\0';
+
+  if ((err = ioctl(sock->sock, SIOCGLIFNETMASK, &lifreq_info)) < 0) {
+    /*fprintf(stderr, "ioctl(): error %d, %s\n", errno, strerror(errno));*/
+    return err;
+  }
+
+  if (sock->domain == AF_INET) {
+    struct sockaddr_in *sockaddr = (struct sockaddr_in*) &lifreq_info.lifr_subnet;
+    uv_address->netmask.netmask4 = *sockaddr;
+  } else {
+    struct sockaddr_in6 *sockaddr6 = (struct sockaddr_in6*) &lifreq_info.lifr_subnet;
+    uv_address->netmask.netmask6 = *sockaddr6;
+  }
+  return err;
+}
+
+int __solaris_getifflags(const char* ifname, int sock, uint64_t *flags)
+{
+  int err;
+  struct lifreq lifreq_info;
+  strncpy(lifreq_info.lifr_name, ifname, LIFNAMSIZ - 1);
+  lifreq_info.lifr_name[LIFNAMSIZ - 1] = '\0';
+  if ((err = ioctl(sock, SIOCGLIFFLAGS, &lifreq_info)) < 0) {
+    /*fprintf(stderr, "ioctl(): error %d, %s\n", errno, strerror(errno));*/
+    *flags = 0;
+    return err;
+  }
+  *flags = lifreq_info.lifr_flags;
+  return err;
+}
+
+int __solaris_ifaddr_exclude(uint64_t ifflags)
+{
+  return !((ifflags & IFF_UP) && (ifflags & IFF_RUNNING));
+}
+
+int __solaris_getiflist(const struct __uv_solaris_testsocket *sock, uv_interface_address_t *addresses, int *n)
+{
+  int err, i, n_ifaces = 0;
+  struct lifconf lifconf_info;
+  lifconf_info.lifc_family = sock->domain;
+  lifconf_info.lifc_flags = 0;
+  lifconf_info.lifc_len = sock->nb_ifaces * sizeof(struct lifreq);
+  lifconf_info.lifc_req = calloc(sock->nb_ifaces, sizeof(struct lifreq));
+
+  if ((err = ioctl(sock->sock, SIOCGLIFCONF, &lifconf_info)) < 0) {
+    /*fprintf(stderr, "ioctl(): error %d, %s\n", err, strerror(errno));*/
+    return err;
+  }
+
+  for (i = 0; i < sock->nb_ifaces; ++i) {
+    uint64_t ifflags = 0;
+    struct lifreq* iface = &lifconf_info.lifc_req[i];
+    if ((__solaris_getifflags(iface->lifr_name, sock->sock, &ifflags) == 0)
+        && !__solaris_ifaddr_exclude(ifflags)) {
+      addresses[n_ifaces].name = iface->lifr_name;
+      addresses[n_ifaces].is_internal = (ifflags & IFF_LOOPBACK) ? 1 : 0;
+      if (sock->domain == AF_INET) {
+        struct sockaddr_in *sockaddr = (struct sockaddr_in*) &iface->lifr_addr;
+        addresses[n_ifaces].address.address4 = *sockaddr;
+      } else {
+        struct sockaddr_in6 *sockaddr6 = (struct sockaddr_in6*) &iface->lifr_addr;
+        addresses[n_ifaces].address.address6 = *sockaddr6;
+      }
+      err = __solaris_getnetmask(sock, &addresses[n_ifaces]);
+      err = __solaris_gethwaddr(sock, &addresses[n_ifaces]);
+      ++n_ifaces;
+    }
+  }
+
+  free(lifconf_info.lifc_req);
+  *n += n_ifaces;
+  return err;
+}
+
+#define NB_TEST_SOCKETS 2
+int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+  int i, detected_ifaces = 0, upandrunning = 0;
+  struct __uv_solaris_testsocket socks[NB_TEST_SOCKETS];
+  for (i = 0; i < NB_TEST_SOCKETS; ++i) {
+    socks[i].sock = -1;
+    socks[i].type = SOCK_DGRAM;
+    socks[i].domain = (i == 0) ? AF_INET : AF_INET6;
+    socks[i].nb_ifaces = 0;
+  }
+
+  for (i = 0; i < NB_TEST_SOCKETS; ++i) {
+    if ((socks[i].sock = socket(socks[i].domain, socks[i].type, 0)) < 0) {
+      /*fprintf(stderr, "socket(): error creating %s socket %d\n",
+        (socks[i].domain == AF_INET) ? "AF_INET" : "AF_INET6",
+        socks[i].sock);*/
+      return socks[i].sock;
+    }
+
+    socks[i].nb_ifaces = __solaris_get_nb_ifaces(socks[i].sock, socks[i].domain);
+    if (socks[i].nb_ifaces < 0) {
+      /*fprintf(stderr, "__solaris_get_nb_ifaces(%d, %s)\n",
+        socks[i].sock,
+        (socks[i].domain == AF_INET) ? "AF_INET" : "AF_INET6");*/
+      socks[i].nb_ifaces = 0;
+    }
+  }
+
+  for (i = 0; i < NB_TEST_SOCKETS; ++i) {
+    detected_ifaces += socks[i].nb_ifaces;
+  }
+
+  *addresses = calloc(detected_ifaces, sizeof(uv_interface_address_t));
+  if (!addresses) {
+    return -ENOMEM;
+  }
+
+  for (i = 0; i < NB_TEST_SOCKETS; ++i) {
+    if (socks[i].nb_ifaces > 0) {
+      __solaris_getiflist(&socks[i], &(*addresses)[upandrunning], &upandrunning);
+    }
+  }
+  *count = upandrunning;
+
+  for (i = 0; i < NB_TEST_SOCKETS; ++i) {
+    if (socks[i].sock > 0) {
+      close(socks[i].sock);
+    }
+  }
+
+  return EXIT_SUCCESS;
+}
+
 #else  /* SUNOS_NO_IFADDRS */
 /*
  * Inspired By:
