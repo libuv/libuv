@@ -153,6 +153,12 @@ uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
 }
 
 
+uint64_t uv_timer_get_timeout(const uv_timer_t* handle) {
+  assert(handle->type == UV_TIMER);
+  return handle->due;
+}
+
+
 DWORD uv__next_timeout(const uv_loop_t* loop) {
   uv_timer_t* timer;
   int64_t delta;
