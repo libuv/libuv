@@ -51,11 +51,18 @@
   }                                                                           \
   while (0)
 
-#define QUEUE_FS_TP_JOB(loop, req)                                          \
-  do {                                                                      \
-    uv__req_register(loop, req);                                            \
-    uv__work_submit((loop), &(req)->work_req, uv__fs_work, uv__fs_done);    \
-  } while (0)
+#define POST                                                                  \
+  do {                                                                        \
+    if (cb != NULL) {                                                         \
+      uv__req_register(loop, req);                                            \
+      uv__work_submit(loop, &req->work_req, uv__fs_work, uv__fs_done);        \
+      return 0;                                                               \
+    } else {                                                                  \
+      uv__fs_work(&req->work_req);                                            \
+      return req->result;                                                     \
+    }                                                                         \
+  }                                                                           \
+  while (0)
 
 #define SET_REQ_RESULT(req, result_value)                                   \
   do {                                                                      \
@@ -1987,28 +1994,14 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__open(req);
-    return req->result;
-  }
+  POST;
 }
 
 
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
   INIT(UV_FS_CLOSE);
   req->file.fd = fd;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__close(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2037,14 +2030,7 @@ int uv_fs_read(uv_loop_t* loop,
   memcpy(req->fs.info.bufs, bufs, nbufs * sizeof(*bufs));
 
   req->fs.info.offset = offset;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__read(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2073,14 +2059,7 @@ int uv_fs_write(uv_loop_t* loop,
   memcpy(req->fs.info.bufs, bufs, nbufs * sizeof(*bufs));
 
   req->fs.info.offset = offset;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__write(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2094,13 +2073,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__unlink(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2115,14 +2088,7 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
   }
 
   req->fs.info.mode = mode;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__mkdir(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2135,13 +2101,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl,
   if (err)
     return uv_translate_sys_error(err);
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__mkdtemp(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2154,13 +2114,7 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__rmdir(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2175,14 +2129,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
   }
 
   req->fs.info.file_flags = flags;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__scandir(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2196,13 +2143,7 @@ int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__link(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2217,14 +2158,7 @@ int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
   }
 
   req->fs.info.file_flags = flags;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__symlink(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2238,13 +2172,7 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__readlink(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2263,13 +2191,7 @@ int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path,
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__realpath(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2283,27 +2205,14 @@ int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__chown(req);
-    return req->result;
-  }
+  POST;
 }
 
 
 int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_uid_t uid,
     uv_gid_t gid, uv_fs_cb cb) {
   INIT(UV_FS_FCHOWN);
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__fchown(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2316,13 +2225,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__stat(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2335,27 +2238,14 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__lstat(req);
-    return req->result;
-  }
+  POST;
 }
 
 
 int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
   INIT(UV_FS_FSTAT);
   req->file.fd = fd;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__fstat(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2369,41 +2259,21 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
     return uv_translate_sys_error(err);
   }
 
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__rename(req);
-    return req->result;
-  }
+  POST;
 }
 
 
 int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
   INIT(UV_FS_FSYNC);
   req->file.fd = fd;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__fsync(req);
-    return req->result;
-  }
+  POST;
 }
 
 
 int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file fd, uv_fs_cb cb) {
   INIT(UV_FS_FDATASYNC);
   req->file.fd = fd;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__fdatasync(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2412,14 +2282,7 @@ int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file fd,
   INIT(UV_FS_FTRUNCATE);
   req->file.fd = fd;
   req->fs.info.offset = offset;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__ftruncate(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2442,14 +2305,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
     return uv_translate_sys_error(err);
 
   req->fs.info.file_flags = flags;
-
-  if (cb != NULL) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  }
-
-  fs__copyfile(req);
-  return req->result;
+  POST;
 }
 
 
@@ -2460,14 +2316,7 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file fd_out,
   req->fs.info.fd_out = fd_out;
   req->fs.info.offset = in_offset;
   req->fs.info.bufsml[0].len = length;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__sendfile(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2484,14 +2333,7 @@ int uv_fs_access(uv_loop_t* loop,
     return uv_translate_sys_error(err);
 
   req->fs.info.mode = flags;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  }
-
-  fs__access(req);
-  return req->result;
+  POST;
 }
 
 
@@ -2506,14 +2348,7 @@ int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
   }
 
   req->fs.info.mode = mode;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__chmod(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2522,14 +2357,7 @@ int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file fd, int mode,
   INIT(UV_FS_FCHMOD);
   req->file.fd = fd;
   req->fs.info.mode = mode;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__fchmod(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2545,14 +2373,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
 
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__utime(req);
-    return req->result;
-  }
+  POST;
 }
 
 
@@ -2562,12 +2383,5 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file fd, double atime,
   req->file.fd = fd;
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
-
-  if (cb) {
-    QUEUE_FS_TP_JOB(loop, req);
-    return 0;
-  } else {
-    fs__futime(req);
-    return req->result;
-  }
+  POST;
 }
