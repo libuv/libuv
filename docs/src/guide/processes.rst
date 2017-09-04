@@ -26,7 +26,7 @@ The simplest case is when you simply want to launch a process and know when it
 exits. This is achieved using ``uv_spawn``.
 
 .. rubric:: spawn/main.c
-.. literalinclude:: ../code/spawn/main.c
+.. literalinclude:: ../../code/spawn/main.c
     :linenos:
     :lines: 6-8,15-
     :emphasize-lines: 11,13-17
@@ -55,7 +55,7 @@ The exit callback will be invoked with the *exit status* and the type of *signal
 which caused the exit.
 
 .. rubric:: spawn/main.c
-.. literalinclude:: ../code/spawn/main.c
+.. literalinclude:: ../../code/spawn/main.c
     :linenos:
     :lines: 9-12
     :emphasize-lines: 3
@@ -105,7 +105,7 @@ child processes which are independent of the parent so that the parent exiting
 does not affect it.
 
 .. rubric:: detach/main.c
-.. literalinclude:: ../code/detach/main.c
+.. literalinclude:: ../../code/detach/main.c
     :linenos:
     :lines: 9-30
     :emphasize-lines: 12,19
@@ -141,7 +141,7 @@ can only be associated with one signal number, with subsequent calls to
 stop watching. Here is a small example demonstrating the various possibilities:
 
 .. rubric:: signal/main.c
-.. literalinclude:: ../code/signal/main.c
+.. literalinclude:: ../../code/signal/main.c
     :linenos:
     :emphasize-lines: 17-18,27-28
 
@@ -173,7 +173,7 @@ child be the same as the stderr of the parent. In this case, libuv supports
 which is:
 
 .. rubric:: proc-streams/test.c
-.. literalinclude:: ../code/proc-streams/test.c
+.. literalinclude:: ../../code/proc-streams/test.c
 
 The actual program ``proc-streams`` runs this while sharing only ``stderr``.
 The file descriptors of the child process are set using the ``stdio`` field in
@@ -181,7 +181,7 @@ The file descriptors of the child process are set using the ``stdio`` field in
 file descriptors being set. ``uv_process_options_t.stdio`` is an array of
 ``uv_stdio_container_t``, which is:
 
-.. literalinclude:: ../libuv/include/uv.h
+.. literalinclude:: ../../../include/uv.h
     :lines: 826-834
 
 where flags can have several values. Use ``UV_IGNORE`` if it isn't going to be
@@ -192,7 +192,7 @@ Since we want to pass on an existing descriptor, we'll use ``UV_INHERIT_FD``.
 Then we set the ``fd`` to ``stderr``.
 
 .. rubric:: proc-streams/main.c
-.. literalinclude:: ../code/proc-streams/main.c
+.. literalinclude:: ../../code/proc-streams/main.c
     :linenos:
     :lines: 15-17,27-
     :emphasize-lines: 6,10,11,12
@@ -210,13 +210,13 @@ can be used to implement something like CGI_.
 A sample CGI script/executable is:
 
 .. rubric:: cgi/tick.c
-.. literalinclude:: ../code/cgi/tick.c
+.. literalinclude:: ../../code/cgi/tick.c
 
 The CGI server combines the concepts from this chapter and :doc:`networking` so
 that every client is sent ten ticks after which that connection is closed.
 
 .. rubric:: cgi/main.c
-.. literalinclude:: ../code/cgi/main.c
+.. literalinclude:: ../../code/cgi/main.c
     :linenos:
     :lines: 49-63
     :emphasize-lines: 10
@@ -225,7 +225,7 @@ Here we simply accept the TCP connection and pass on the socket (*stream*) to
 ``invoke_cgi_script``.
 
 .. rubric:: cgi/main.c
-.. literalinclude:: ../code/cgi/main.c
+.. literalinclude:: ../../code/cgi/main.c
     :linenos:
     :lines: 16, 25-45
     :emphasize-lines: 8-9,18,20
@@ -275,7 +275,7 @@ creator/owner of the socket acting as the server. After the initial setup,
 messaging is no different from TCP, so we'll re-use the echo server example.
 
 .. rubric:: pipe-echo-server/main.c
-.. literalinclude:: ../code/pipe-echo-server/main.c
+.. literalinclude:: ../../code/pipe-echo-server/main.c
     :linenos:
     :lines: 70-
     :emphasize-lines: 5,10,14
@@ -312,7 +312,7 @@ The worker process is quite simple, since the file-descriptor is handed over to
 it by the master.
 
 .. rubric:: multi-echo-server/worker.c
-.. literalinclude:: ../code/multi-echo-server/worker.c
+.. literalinclude:: ../../code/multi-echo-server/worker.c
     :linenos:
     :lines: 7-9,81-
     :emphasize-lines: 6-8
@@ -325,7 +325,7 @@ standard input of the worker, we connect the pipe to ``stdin`` using
 ``uv_pipe_open``.
 
 .. rubric:: multi-echo-server/worker.c
-.. literalinclude:: ../code/multi-echo-server/worker.c
+.. literalinclude:: ../../code/multi-echo-server/worker.c
     :linenos:
     :lines: 51-79
     :emphasize-lines: 10,15,20
@@ -343,7 +343,7 @@ Turning now to the master, let's take a look at how the workers are launched to
 allow load balancing.
 
 .. rubric:: multi-echo-server/main.c
-.. literalinclude:: ../code/multi-echo-server/main.c
+.. literalinclude:: ../../code/multi-echo-server/main.c
     :linenos:
     :lines: 9-13
 
@@ -351,7 +351,7 @@ The ``child_worker`` structure wraps the process, and the pipe between the
 master and the individual process.
 
 .. rubric:: multi-echo-server/main.c
-.. literalinclude:: ../code/multi-echo-server/main.c
+.. literalinclude:: ../../code/multi-echo-server/main.c
     :linenos:
     :lines: 51,61-95
     :emphasize-lines: 17,20-21
@@ -369,7 +369,7 @@ It is in ``on_new_connection`` (the TCP infrastructure is initialized in
 worker in the round-robin.
 
 .. rubric:: multi-echo-server/main.c
-.. literalinclude:: ../code/multi-echo-server/main.c
+.. literalinclude:: ../../code/multi-echo-server/main.c
     :linenos:
     :lines: 31-49
     :emphasize-lines: 9,12-13

@@ -1899,6 +1899,8 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_os_fd_t os_handle) {
   if (os_handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
 
+  uv__once_init();
+
   /* In order to avoid closing a stdio pseudo-handle, or having it get replaced under us,
    * duplicate the underlying OS handle and forget about the original one.
    */
@@ -1962,6 +1964,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
   unsigned int name_len;
   int err;
 
+  uv__once_init();
   name_info = NULL;
 
   if (handle->handle == INVALID_HANDLE_VALUE) {

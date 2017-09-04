@@ -168,6 +168,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-env-vars.c \
                          test/test-error.c \
                          test/test-fail-always.c \
+                         test/test-fs-copyfile.c \
                          test/test-fs-event.c \
                          test/test-fs-poll.c \
                          test/test-fs.c \
@@ -211,10 +212,11 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-close-stdout-read-stdin.c \
                          test/test-pipe-set-non-blocking.c \
                          test/test-platform-output.c \
+                         test/test-poll.c \
                          test/test-poll-close.c \
                          test/test-poll-close-doesnt-corrupt-stack.c \
                          test/test-poll-closesocket.c \
-                         test/test-poll.c \
+                         test/test-poll-oob.c \
                          test/test-process-title.c \
                          test/test-queue-foreach-delete.c \
                          test/test-ref.c \
@@ -332,11 +334,11 @@ if ANDROID
 uvinclude_HEADERS += include/uv/android-ifaddrs.h \
                    include/uv/pthread-barrier.h
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c \
-                    src/unix/pthread-barrier.c
+                    src/unix/pthread-fixes.c
 endif
 
 if CYGWIN
+uvinclude_HEADERS += include/uv/posix.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
 libuv_la_SOURCES += src/unix/cygwin.c \
                     src/unix/bsd-ifaddrs.c \
@@ -359,8 +361,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
-                    src/unix/proctitle.c \
-                    src/unix/pthread-barrier.c
+                    src/unix/proctitle.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -452,7 +453,6 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -qFLOAT=IEEE
 libuv_la_LDFLAGS += -qXPLINK
 libuv_la_SOURCES += src/unix/pthread-fixes.c \
-                    src/unix/pthread-barrier.c \
                     src/unix/no-fsevents.c \
                     src/unix/os390.c \
                     src/unix/os390-syscalls.c \

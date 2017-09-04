@@ -4,13 +4,15 @@
 |---|---|---|---|
 | GNU/Linux | Tier 1 | Linux >= 2.6.32 with glibc >= 2.12 | |
 | macOS | Tier 1 | macOS >= 10.9 | |
-| Windows | Tier 1 | Windows >= Vista | MSVC 2015 and later are supported |
+| Windows | Tier 1 | Windows >= 8.1 | MSVC 2015 and later are supported |
 | FreeBSD | Tier 1 | >= 10 | |
 | AIX | Tier 2 | >= 6 | Maintainers: @libuv/aix |
 | z/OS | Tier 2 | >= V2R2 | Maintainers: @libuv/zos |
 | Linux with musl | Tier 2 | musl >= 1.0 | |
-| SunOS | Tier 2 | Solaris 121 and later | Maintainers: @libuv/sunos |
+| SmartOS | Tier 2 | >= 14.4 | Maintainers: @libuv/smartos |
+| Android | Tier 3 | NDK >= r15b | |
 | MinGW | Tier 3 | MinGW-w64 | |
+| SunOS | Tier 2 | Solaris 121 and later | |
 | Other | Tier 3 | N/A | |
 
 ## Support types
