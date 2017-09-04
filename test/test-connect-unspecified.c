@@ -43,11 +43,17 @@ TEST_IMPL(connect_unspecified) {
 
   uv_tcp_init(loop, &socket4);
   uv_ip4_addr("0.0.0.0", 80, &addr4);
-  uv_tcp_connect(&connect4, &socket4, (const struct sockaddr*)&addr4, connect_4);
+  uv_tcp_connect(&connect4,
+                 &socket4,
+                 (const struct sockaddr*) &addr4,
+                 connect_4);
 
   uv_tcp_init(loop, &socket6);
   uv_ip4_addr("::", 80, &addr6);
-  uv_tcp_connect(&connect6, &socket6, (const struct sockaddr*)&addr6, connect_6);
+  uv_tcp_connect(&connect6,
+                 &socket6,
+                 (const struct sockaddr*) &addr6,
+                 connect_6);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
