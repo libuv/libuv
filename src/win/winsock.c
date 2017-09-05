@@ -569,11 +569,11 @@ int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
     struct sockaddr_in* dest;
     src = (const struct sockaddr_in*) addr;
     dest = (struct sockaddr_in*) storage;
-	  memcpy(dest, src, sizeof(struct sockaddr_in));
+    memcpy(dest, src, sizeof(struct sockaddr_in));
     if (src->sin_addr.S_un.S_addr == 0) {
       uv_inet_pton(AF_INET, "127.0.0.1", &dest->sin_addr.s_addr);
     }
-	  return 0;
+    return 0;
   } else if (addr->sa_family == AF_INET6) {
     const struct sockaddr_in6* src;
     struct sockaddr_in6* dest;
@@ -581,12 +581,12 @@ int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
     dest = (struct sockaddr_in6*) storage;
     memcpy(dest, src, sizeof(struct sockaddr_in6));
     if (memcmp(&src->sin6_addr,
-		       &uv_addr_ip6_any_.sin6_addr,
-		       sizeof(struct in6_addr)) == 0) {
+               &uv_addr_ip6_any_.sin6_addr,
+               sizeof(struct in6_addr)) == 0) {
       uv_inet_pton(AF_INET6, "::1", &dest->sin6_addr);
     }
-	  return 0;
+    return 0;
   } else {
-	  return UV_EINVAL;
+    return UV_EINVAL;
   }
 }

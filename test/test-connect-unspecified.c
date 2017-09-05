@@ -36,26 +36,26 @@ TEST_IMPL(connect_unspecified) {
   struct sockaddr_in addr4;
   uv_connect_t connect4;
   uv_tcp_t socket6;
-  struct sockaddr_in addr6;
+  struct sockaddr_in6 addr6;
   uv_connect_t connect6;
 
   loop = uv_default_loop();
 
-  uv_tcp_init(loop, &socket4);
-  uv_ip4_addr("0.0.0.0", 80, &addr4);
-  uv_tcp_connect(&connect4,
-                 &socket4,
-                 (const struct sockaddr*) &addr4,
-                 connect_4);
+  ASSERT(uv_tcp_init(loop, &socket4) == 0);
+  ASSERT(uv_ip4_addr("0.0.0.0", 80, &addr4) == 0);
+  ASSERT(uv_tcp_connect(&connect4,
+                        &socket4,
+                        (const struct sockaddr*) &addr4,
+                        connect_4) == 0);
 
-  uv_tcp_init(loop, &socket6);
-  uv_ip4_addr("::", 80, &addr6);
-  uv_tcp_connect(&connect6,
-                 &socket6,
-                 (const struct sockaddr*) &addr6,
-                 connect_6);
+  ASSERT(uv_tcp_init(loop, &socket6) == 0);
+  ASSERT(uv_ip6_addr("::", 80, &addr6) == 0);
+  ASSERT(uv_tcp_connect(&connect6,
+                        &socket6,
+                        (const struct sockaddr*) &addr6,
+                        connect_6) == 0);
 
-  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(uv_run(loop, UV_RUN_DEFAULT) == 0);
 
   return 0;
 }
