@@ -232,6 +232,8 @@ typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
+typedef struct uv_queue_stats_s uv_queue_stats_t;
+
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL
@@ -980,6 +982,20 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
+typedef void (*uv_queue_stats_cb)(int queued, int idle_threads, void* data);
+
+struct uv_queue_stats_s {
+  uv_queue_stats_cb submit_cb;
+  uv_queue_stats_cb start_cb;
+  uv_queue_stats_cb done_cb;
+  void* data;
+
+  /* private */
+  void* q[2];
+};
+
+UV_EXTERN void uv_queue_stats_start(uv_queue_stats_t* stats);
+UV_EXTERN void uv_queue_stats_stop(uv_queue_stats_t* stats);
 
 struct uv_cpu_info_s {
   char* model;

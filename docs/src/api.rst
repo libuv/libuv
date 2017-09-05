@@ -28,6 +28,7 @@ API documentation
    fs_poll
    fs
    threadpool
+   threadpool_stats
    dns
    dll
    threading

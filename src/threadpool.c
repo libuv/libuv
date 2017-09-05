@@ -27,6 +27,10 @@
 
 #include <stdlib.h>
 
+#include <sys/types.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+
 #define MAX_THREADPOOL_SIZE 128
 
 static uv_once_t once = UV_ONCE_INIT;
@@ -38,7 +42,12 @@ static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
 static QUEUE exit_message;
 static QUEUE wq;
+static int wq_length;
 static volatile int initialized;
+QUEUE stats;
+enum estage { SUBMIT, START, DONE };
+
+static void report(enum estage stage, int need_lock);
 
 
 static void uv__cancelled(struct uv__work* w) {
@@ -72,6 +81,8 @@ static void worker(void* arg) {
       QUEUE_REMOVE(q);
       QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
                              executing. */
+      wq_length--;
+      report(START, 0);
     }
 
     uv_mutex_unlock(&mutex);
@@ -95,6 +106,8 @@ static void worker(void* arg) {
 static void post(QUEUE* q) {
   uv_mutex_lock(&mutex);
   QUEUE_INSERT_TAIL(&wq, q);
+  wq_length++;
+  report(SUBMIT, 0);
   if (idle_threads > 0)
     uv_cond_signal(&cond);
   uv_mutex_unlock(&mutex);
@@ -156,6 +169,7 @@ static void init_threads(void) {
     abort();
 
   QUEUE_INIT(&wq);
+  QUEUE_INIT(&stats);
 
   for (i = 0; i < nthreads; i++)
     if (uv_thread_create(threads + i, worker, NULL))
@@ -204,9 +218,16 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
 
+  /* Check for core cancellable state, where states are:
+   * 1. On global wq, work is a fn: waiting for execution, can be cancelled.
+   * 2. Not on a wq, work is a fn: currently executing so uncancellable.
+   * 3. On loop wq, work is NULL: already executed so uncancellable.
+   */
   cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL;
-  if (cancelled)
+  if (cancelled) {
+    wq_length--;
     QUEUE_REMOVE(&w->wq);
+  }
 
   uv_mutex_unlock(&w->loop->wq_mutex);
   uv_mutex_unlock(&mutex);
@@ -243,6 +264,7 @@ void uv__work_done(uv_async_t* handle) {
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     w->done(w, err);
+    report(DONE, 1);
   }
 }
 
@@ -309,4 +331,45 @@ int uv_cancel(uv_req_t* req) {
   }
 
   return uv__work_cancel(loop, req, wreq);
+}
+
+
+static void report(enum estage stage, int lock) {
+  QUEUE* q;
+  uv_queue_stats_t* s;
+  int length_;
+  int threads_;
+
+  if (lock) uv_mutex_lock(&mutex);
+
+  if (!QUEUE_EMPTY(&stats)) {
+    length_ = wq_length;
+    threads_ = idle_threads;
+
+    QUEUE_FOREACH(q, &stats) {
+      s = QUEUE_DATA(q, struct uv_queue_stats_s, q);
+      switch(stage) {
+        case SUBMIT: s->submit_cb(length_, threads_, s->data); break;
+        case START: s->start_cb(length_, threads_, s->data); break;
+        case DONE: s->done_cb(length_, threads_, s->data); break;
+        default: abort();
+      }
+    }
+  }
+
+  if (lock) uv_mutex_unlock(&mutex);
+}
+
+
+void uv_queue_stats_start(uv_queue_stats_t* s) {
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+  QUEUE_INSERT_TAIL(&stats, &s->q);
+  uv_mutex_unlock(&mutex);
+}
+
+void uv_queue_stats_stop(uv_queue_stats_t* s) {
+  uv_mutex_lock(&mutex);
+  QUEUE_REMOVE(&s->q);
+  uv_mutex_unlock(&mutex);
 }
