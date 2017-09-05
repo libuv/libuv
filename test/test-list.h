@@ -282,6 +282,9 @@ TEST_DECLARE   (fs_readlink)
 TEST_DECLARE   (fs_realpath)
 TEST_DECLARE   (fs_symlink)
 TEST_DECLARE   (fs_symlink_dir)
+#ifdef _WIN32
+TEST_DECLARE   (fs_non_symlink_reparse_point)
+#endif
 TEST_DECLARE   (fs_utime)
 TEST_DECLARE   (fs_futime)
 TEST_DECLARE   (fs_file_open_append)
@@ -789,6 +792,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_realpath)
   TEST_ENTRY  (fs_symlink)
   TEST_ENTRY  (fs_symlink_dir)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_non_symlink_reparse_point)
+#endif
   TEST_ENTRY  (fs_stat_missing_path)
   TEST_ENTRY  (fs_read_file_eof)
   TEST_ENTRY  (fs_file_open_append)

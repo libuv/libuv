@@ -1070,7 +1070,8 @@ cleanup:
 }
 
 
-INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
+INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
+    int do_lstat) {
   FILE_ALL_INFORMATION file_info;
   FILE_FS_VOLUME_INFORMATION volume_info;
   NTSTATUS nt_status;
@@ -1125,17 +1126,25 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
    */
   statbuf->st_mode = 0;
 
-  if (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+  /*
+  * On Windows, FILE_ATTRIBUTE_REPARSE_POINT is a general purpose mechanism
+  * by which filesystem drivers can intercept and alter file system requests.
+  *
+  * The only reparse points we care about are symlinks and mount points, both
+  * of which are treated as POSIX symlinks. Further, we only care when
+  * invoked via lstat, which seeks information about the link instead of its
+  * target. Otherwise, reparse points must be treated as regular files.
+  */
+  if (do_lstat &&
+      (file_info.BasicInformation.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
     /*
-     * It is possible for a file to have FILE_ATTRIBUTE_REPARSE_POINT but not have
-     * any link data. In that case DeviceIoControl() in fs__readlink_handle() sets
-     * the last error to ERROR_NOT_A_REPARSE_POINT. Then the stat result mode
-     * calculated below will indicate a normal directory or file, as if
-     * FILE_ATTRIBUTE_REPARSE_POINT was not present.
+     * If reading the link fails, the reparse point is not a symlink and needs
+     * to be treated as a regular file. The higher level lstat function will
+     * detect this failure and retry without do_lstat if appropriate.
      */
-    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) == 0) {
-      statbuf->st_mode |= S_IFLNK;
-    }
+    if (fs__readlink_handle(handle, NULL, &statbuf->st_size) != 0)
+      return -1;
+    statbuf->st_mode |= S_IFLNK;
   }
 
   if (statbuf->st_mode == 0) {
@@ -1230,9 +1239,11 @@ INLINE static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
     return;
   }
 
-  if (fs__stat_handle(handle, &req->statbuf) != 0) {
+  if (fs__stat_handle(handle, &req->statbuf, do_lstat) != 0) {
     DWORD error = GetLastError();
-    if (do_lstat && error == ERROR_SYMLINK_NOT_SUPPORTED) {
+    if (do_lstat &&
+        (error == ERROR_SYMLINK_NOT_SUPPORTED ||
+         error == ERROR_NOT_A_REPARSE_POINT)) {
       /* We opened a reparse point but it was not a symlink. Try again. */
       fs__stat_impl(req, 0);
 
@@ -1276,7 +1287,7 @@ static void fs__fstat(uv_fs_t* req) {
     return;
   }
 
-  if (fs__stat_handle(handle, &req->statbuf) != 0) {
+  if (fs__stat_handle(handle, &req->statbuf, 0) != 0) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     return;
   }
