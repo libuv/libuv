@@ -241,7 +241,7 @@ int uv_uptime(double* uptime) {
   if (r)
     return -errno;
 
-  *uptime = sp.tv_sec;
+  *uptime = (double)sp.tv_sec + (sp.tv_usec / UV_DOUBLE_ANTI_NANO);
   return 0;
 }
 

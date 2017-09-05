@@ -161,7 +161,7 @@ int uv_uptime(double* uptime) {
     return -errno;
 
   now = time(NULL);
-  *uptime = now - info.tv_sec;
+  *uptime = (double)(now - info.tv_sec) - (info.tv_usec / UV_DOUBLE_ANTI_NANO);
 
   return 0;
 }

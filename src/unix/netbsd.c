@@ -201,7 +201,7 @@ int uv_uptime(double* uptime) {
 
   now = time(NULL);
 
-  *uptime = (double)(now - info.tv_sec);
+  *uptime = (double)(now - info.tv_sec) - (info.tv_usec / UV_DOUBLE_ANTI_NANO);
   return 0;
 }
 
