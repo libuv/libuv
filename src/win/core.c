@@ -427,3 +427,7 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
 
   return 0;
 }
+
+int uv_cpumask_size(void) {
+  return (int)(sizeof(DWORD_PTR) * 8);
+}

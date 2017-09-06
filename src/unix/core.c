@@ -40,6 +40,7 @@
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
 #include <pwd.h>
+#include <sched.h>
 
 #ifdef __sun
 # include <netdb.h> /* MAXHOSTNAMELEN on Solaris */
@@ -63,6 +64,8 @@
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
+# include <sys/param.h>
+# include <sys/cpuset.h>
 # define UV__O_CLOEXEC O_CLOEXEC
 # if defined(__FreeBSD__)
 #  define uv__accept4 accept4
@@ -1336,7 +1339,6 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   return 0;
 }
 
-
 uv_pid_t uv_os_getpid(void) {
   return getpid();
 }
@@ -1344,4 +1346,12 @@ uv_pid_t uv_os_getpid(void) {
 
 uv_pid_t uv_os_getppid(void) {
   return getppid();
+}
+
+int uv_cpumask_size(void) {
+#if defined(__linux__) || defined(__FreeBSD__)
+  return CPU_SETSIZE;
+#else
+  return UV_ENOTSUP;
+#endif
 }
