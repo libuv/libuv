@@ -949,6 +949,12 @@ int uv_spawn(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
+  if (options->cpumask != NULL) {
+    if (options->cpumask_size < (size_t)uv_cpumask_size()) {
+      return UV_EINVAL;
+    }
+  }
+
   assert(options->file != NULL);
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
@@ -1084,6 +1090,12 @@ int uv_spawn(uv_loop_t* loop,
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
   }
 
+  if (options->cpumask != NULL) {
+    /* Create the child in a suspended state so we have a chance to set
+       its process affinity before it runs.  */
+    process_flags |= CREATE_SUSPENDED;
+  }
+
   if (!CreateProcessW(application_path,
                      arguments,
                      NULL,
@@ -1097,6 +1109,50 @@ int uv_spawn(uv_loop_t* loop,
     /* CreateProcessW failed. */
     err = GetLastError();
     goto done;
+  }
+
+  if (options->cpumask != NULL) {
+    /* The child is currently suspended.  Set its process affinity
+       or terminate it if we can't.  */
+    int i;
+    int cpumasksize;
+    DWORD_PTR sysmask;
+    DWORD_PTR oldmask;
+    DWORD_PTR newmask;
+
+    cpumasksize = uv_cpumask_size();
+
+    if (!GetProcessAffinityMask(info.hProcess, &oldmask, &sysmask)) {
+      err = GetLastError();
+      TerminateProcess(info.hProcess, 1);
+      goto done;
+    }
+
+    newmask = 0;
+    for (i = 0; i < cpumasksize; i++) {
+      if (options->cpumask[i]) {
+        if (oldmask & (((DWORD_PTR)1) << i)) {
+          newmask |= ((DWORD_PTR)1) << i;
+        } else {
+          err = UV_EINVAL;
+          TerminateProcess(info.hProcess, 1);
+          goto done;
+        }
+      }
+    }
+
+    if (!SetProcessAffinityMask(info.hProcess, newmask)) {
+      err = GetLastError();
+      TerminateProcess(info.hProcess, 1);
+      goto done;
+    }
+
+    /* The process affinity of the child is set.  Let it run.  */
+    if (ResumeThread(info.hThread) == ((DWORD)-1)) {
+      err = GetLastError();
+      TerminateProcess(info.hProcess, 1);
+      goto done;
+    }
   }
 
   /* Spawn succeeded */

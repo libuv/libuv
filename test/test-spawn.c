@@ -37,6 +37,12 @@
 #else
 # include <unistd.h>
 # include <sys/wait.h>
+# include <sched.h>
+# if defined(__FreeBSD__)
+#  include <sys/param.h>
+#  include <sys/cpuset.h>
+#  include <pthread_np.h>
+# endif
 #endif
 
 
@@ -1443,6 +1449,109 @@ TEST_IMPL(spawn_setgid_fails) {
 }
 #endif
 
+TEST_IMPL(spawn_affinity) {
+#if defined(NO_CPU_AFFINITY)
+  RETURN_SKIP(NO_CPU_AFFINITY);
+#else
+  int i;
+  int r;
+  int cpu;
+  char cpustr[11];
+  char* newmask;
+  int cpumask_size;
+#if defined(_WIN32)
+  DWORD_PTR procmask;
+  DWORD_PTR sysmask;
+#elif defined(__linux__)
+  cpu_set_t cpuset;
+#else
+  cpuset_t cpuset;
+#endif
+
+  cpumask_size = uv_cpumask_size();
+  ASSERT(cpumask_size > 0);
+
+  /* find a cpu we can use */
+  cpu = cpumask_size;
+#ifdef _WIN32
+  r = GetProcessAffinityMask(GetCurrentProcess(), &procmask, &sysmask);
+  ASSERT(r != 0);
+  for (i = 0; i < cpumask_size; ++i) {
+    if (procmask & (((DWORD_PTR)1) << i)) {
+      cpu = i;
+      break;
+    }
+  }
+#else
+  CPU_ZERO(&cpuset);
+  r = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+  ASSERT(r == 0);
+  for (i = 0; i < cpumask_size; ++i) {
+    if (CPU_ISSET(i, &cpuset)) {
+      cpu = i;
+      break;
+    }
+  }
+#endif
+  ASSERT(cpu < cpumask_size);
+  snprintf(cpustr, sizeof(cpustr), "%d", cpu);
+
+  init_process_options("spawn_helper_affinity", exit_cb);
+
+  /* mask the child to just one cpu */
+  newmask = (char*)calloc(cpumask_size, 1);
+  ASSERT(newmask != NULL);
+  newmask[cpu] = 1;
+  options.cpumask_size = (size_t)cpumask_size;
+  options.cpumask = newmask;
+
+  /* tell the child which one it should get */
+  options.args[2] = cpustr;
+  options.args[3] = "dummy"; /* need 4 args for test/run-tests.c dispatch */
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  free(newmask);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
+
+TEST_IMPL(spawn_affinity_invalid_mask) {
+#if defined(NO_CPU_AFFINITY)
+  RETURN_SKIP(NO_CPU_AFFINITY);
+#else
+  int r;
+  char newmask[1];
+  int cpumask_size;
+
+  cpumask_size = uv_cpumask_size();
+  ASSERT(cpumask_size > 0);
+
+  init_process_options("", exit_cb);
+
+  /* provide a mask that is too small */
+  newmask[0] = 0;
+  options.cpumask_size = 0;
+  options.cpumask = newmask;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == UV_EINVAL);
+
+  ASSERT(exit_cb_called == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
 
 #ifdef _WIN32
 
