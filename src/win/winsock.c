@@ -570,7 +570,7 @@ int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
     src = (const struct sockaddr_in*) addr;
     dest = (struct sockaddr_in*) storage;
     memcpy(dest, src, sizeof(struct sockaddr_in));
-    if (src->sin_addr.S_un.S_addr == 0) {
+    if (src->sin_addr.s_addr == 0) {
       uv_inet_pton(AF_INET, "127.0.0.1", &dest->sin_addr.s_addr);
     }
     return 0;
