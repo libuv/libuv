@@ -1,3 +1,42 @@
+2017.09.07, Version 1.14.1 (Stable)
+
+Changes since version 1.14.0:
+
+* fs, win: add support for user symlinks (Bartosz Sosnowski)
+
+* cygwin: include uv-posix.h header (Joel Winarske)
+
+* zos: fix semaphore initialization (jBarz)
+
+* zos: improve loop_count benchmark performance (jBarz)
+
+* zos, test: flush out the oob data in callback (jBarz)
+
+* unix,win: check for bad flags in uv_fs_copyfile() (cjihrig)
+
+* unix: modify argv[0] when process title is set (Matthew Taylor)
+
+* unix: don't use req->loop in uv__fs_copyfile() (cjihrig)
+
+* doc: fix a trivial typo (Vladimír Čunát)
+
+* android: fix uv_cond_timedwait on API level < 21 (Gergely Nagy)
+
+* win: add uv__once_init() calls (Bartosz Sosnowski)
+
+* unix,windows: init all requests in fs calls (cjihrig)
+
+* unix,windows: return UV_EINVAL on NULL fs reqs (cjihrig)
+
+* windows: add POST macro to fs functions (cjihrig)
+
+* unix: handle partial sends in uv_fs_copyfile() (A. Hauptmann)
+
+* Revert "win, test: fix double close in test runner" (Bartosz Sosnowski)
+
+* win, test: remove surplus CloseHandle (Bartosz Sosnowski)
+
+
 2017.08.17, Version 1.14.0 (Stable), e0d31e9e21870f88277746b6d59cf07b977cdfea
 
 Changes since version 1.13.1:
