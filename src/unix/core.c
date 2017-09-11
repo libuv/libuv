@@ -218,8 +218,8 @@ int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
-  static int iovmax = -1;
-  if (iovmax == -1) {
+  static int iovmax = -2;
+  if (iovmax == -2) {
     /*
      * From sysconf(3): "If name corresponds to a maximum or minimum
      * limit, and that limit is indeterminate, -1 is returned and errno
