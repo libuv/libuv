@@ -194,6 +194,11 @@ int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);
 ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
 void uv__make_close_pending(uv_handle_t* handle);
+/*
+ * NOTE: this can return -1 if there is no limit, so don't simply
+ * use this as a maximum value without checking for -1, or bad
+ * things will happen
+ */
 int uv__getiovmax(void);
 
 void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd);
