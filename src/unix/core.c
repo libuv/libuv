@@ -88,6 +88,7 @@
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
+static void uv__finish_close(uv_handle_t* handle);
 
 /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
 STATIC_ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
@@ -173,7 +174,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     assert(0);
   }
 
-  uv__make_close_pending(handle);
+  if (close_cb != NULL)
+    uv__make_close_pending(handle);
+  else
+    uv__finish_close(handle);
 }
 
 int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
