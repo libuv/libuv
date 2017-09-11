@@ -180,6 +180,7 @@ TEST_DECLARE   (timer_run_once)
 TEST_DECLARE   (timer_from_check)
 TEST_DECLARE   (timer_null_callback)
 TEST_DECLARE   (timer_early_check)
+TEST_DECLARE   (timer_close_now)
 TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
@@ -615,6 +616,7 @@ TASK_LIST_START
   TEST_ENTRY  (timer_from_check)
   TEST_ENTRY  (timer_null_callback)
   TEST_ENTRY  (timer_early_check)
+  TEST_ENTRY  (timer_close_now)
 
   TEST_ENTRY  (idle_starvation)
 

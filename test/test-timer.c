@@ -19,6 +19,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <string.h>
+
 #include "uv.h"
 #include "task.h"
 
@@ -323,6 +325,70 @@ TEST_IMPL(timer_early_check) {
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   uv_close((uv_handle_t*) &timer_handle, NULL);
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+static void timer_close_now_cb1(uv_timer_t* handle) {
+  ASSERT(0);
+}
+
+static int timer_close_now_flag;
+
+static void timer_close_now_cb2(uv_timer_t* handle) {
+  ASSERT(!timer_close_now_flag);
+  ASSERT(0 == uv_timer_close_now(handle));
+  memset(handle, 0, sizeof(*handle));
+  timer_close_now_flag = 1;
+}
+
+static void timer_close_now_cb3(uv_timer_t* handle) {
+  ASSERT(!timer_close_now_flag);
+  timer_close_now_flag = 1;
+}
+
+TEST_IMPL(timer_close_now) {
+  uv_timer_t timer_handle;
+  uv_timer_t timer_handle2;
+
+  /* uv_timer_close_now on an inactive timer */
+  ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT(0 == uv_timer_close_now(&timer_handle));
+  memset(&timer_handle, 0xFF, sizeof(timer_handle));
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  /* uv_timer_close_now on an active timer */
+  ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT(0 == uv_timer_start(&timer_handle, timer_close_now_cb1, 0, 0));
+  ASSERT(0 == uv_timer_close_now(&timer_handle));
+  memset(&timer_handle, 0xFF, sizeof(timer_handle));
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  /* uv_timer_close_now from within the callback of a repeating timer */
+  ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT(0 == uv_timer_start(&timer_handle, timer_close_now_cb2, 0, 1));
+  timer_close_now_flag = 0;
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT(timer_close_now_flag);
+  timer_close_now_flag = 0;
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT(!timer_close_now_flag);
+
+  /* uv_timer_close_now stops one timer and another one is left to expire */
+  ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT(0 == uv_timer_start(&timer_handle, timer_close_now_cb1, 0, 0));
+  ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle2));
+  ASSERT(0 == uv_timer_start(&timer_handle2, timer_close_now_cb3, 0, 0));
+  ASSERT(0 == uv_timer_close_now(&timer_handle));
+  memset(&timer_handle, 0, sizeof(timer_handle));
+  timer_close_now_flag = 0;
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT(timer_close_now_flag);
+  ASSERT(0 == uv_timer_close_now(&timer_handle2));
+  memset(&timer_handle, 0xFF, sizeof(timer_handle2));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY();

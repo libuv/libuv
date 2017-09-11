@@ -835,6 +835,7 @@ struct uv_timer_s {
 };
 
 UV_EXTERN int uv_timer_init(uv_loop_t*, uv_timer_t* handle);
+UV_EXTERN int uv_timer_close_now(uv_timer_t* handle);
 UV_EXTERN int uv_timer_start(uv_timer_t* handle,
                              uv_timer_cb cb,
                              uint64_t timeout,

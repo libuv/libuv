@@ -34,6 +34,17 @@ API
 
     Initialize the handle.
 
+.. c:function:: int uv_timer_close_now(uv_timer_t* handle)
+
+    Close the timer immediately.
+
+    The timer handle is closed, the callback will not be called anymore,
+    and the memory can be released. This may be more practical than using
+    :c:func:`uv_close` which is an asynchronous operation.
+
+    This function must not be called on a timer for which :c:func:`uv_close`
+    has already been called.
+
 .. c:function:: int uv_timer_start(uv_timer_t* handle, uv_timer_cb cb, uint64_t timeout, uint64_t repeat)
 
     Start the timer. `timeout` and `repeat` are in milliseconds.
