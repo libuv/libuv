@@ -241,7 +241,7 @@ int uv__getiovmax(void) {
          */
         iovmax = 1;
       }
-#if defined(__linux__) && !defined(IOV_MAX)
+#if defined(__linux__) && defined(UIO_MAXIOV)
       else {
         iovmax = UIO_MAXIOV;
       }
