@@ -257,6 +257,14 @@ void uv_process_signal_req(uv_loop_t* loop, uv_signal_t* handle,
 
 
 /*
+ * Overlapped integration
+ */
+void uv_overlapped_close(uv_loop_t* loop, uv_overlapped_t* handle);
+void uv_overlapped_endgame(uv_loop_t* loop, uv_overlapped_t* handle);
+void uv_process_overlapped_req(uv_loop_t* loop, uv_overlapped_t* handle);
+
+
+/*
  * Spawn
  */
 void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle);

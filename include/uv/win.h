@@ -221,7 +221,8 @@ typedef struct {
   UV_READ,                                                                    \
   UV_UDP_RECV,                                                                \
   UV_WAKEUP,                                                                  \
-  UV_SIGNAL_REQ,
+  UV_SIGNAL_REQ,                                                              \
+  UV_OVERLAPPED_REQ,
 
 #define UV_REQ_PRIVATE_FIELDS                                                 \
   union {                                                                     \
@@ -495,6 +496,10 @@ typedef struct {
   RB_ENTRY(uv_signal_s) tree_entry;                                           \
   struct uv_req_s signal_req;                                                 \
   unsigned long pending_signum;
+
+#define UV_OVERLAPPED_PRIVATE_FIELDS                                          \
+  uv_overlapped_cb overlapped_cb;                                             \
+  struct uv_req_s overlapped_req;
 
 #ifndef F_OK
 #define F_OK 0

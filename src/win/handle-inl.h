@@ -141,6 +141,10 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
         uv_signal_endgame(loop, (uv_signal_t*) handle);
         break;
 
+      case UV_OVERLAPPED:
+        uv_overlapped_endgame(loop, (uv_overlapped_t*) handle);
+        break;
+
       case UV_PROCESS:
         uv_process_endgame(loop, (uv_process_t*) handle);
         break;

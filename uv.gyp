@@ -104,6 +104,7 @@
             'src/win/handle.c',
             'src/win/handle-inl.h',
             'src/win/internal.h',
+            'src/win/overlapped.c',
             'src/win/pipe.c',
             'src/win/thread.c',
             'src/win/poll.c',

@@ -193,6 +193,10 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
         uv_process_signal_req(loop, (uv_signal_t*) req->data, req);
         break;
 
+      case UV_OVERLAPPED_REQ:
+        uv_process_overlapped_req(loop, (uv_overlapped_t*) req->data);
+        break;
+
       case UV_POLL_REQ:
         uv_process_poll_req(loop, (uv_poll_t*) req->data, req);
         break;

@@ -155,6 +155,14 @@ extern "C" {
   XX(TTY, tty)                                                                \
   XX(UDP, udp)                                                                \
   XX(SIGNAL, signal)                                                          \
+  UV_HANDLE_TYPE_MAP_WIN(XX)                                                  \
+
+#if defined(_WIN32)
+#define UV_HANDLE_TYPE_MAP_WIN(XX)                                            \
+  XX(OVERLAPPED, overlapped)
+#else
+#define UV_HANDLE_TYPE_MAP_WIN(XX)
+#endif
 
 #define UV_REQ_TYPE_MAP(XX)                                                   \
   XX(REQ, req)                                                                \
@@ -211,6 +219,9 @@ typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
+#if defined(_WIN32)
+typedef struct uv_overlapped_s uv_overlapped_t;
+#endif
 
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
@@ -315,6 +326,9 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
+#if defined(_WIN32)
+typedef void (*uv_overlapped_cb)(uv_overlapped_t* handle);
+#endif
 
 typedef struct {
   long tv_sec;
@@ -1390,6 +1404,22 @@ UV_EXTERN int uv_signal_start_oneshot(uv_signal_t* handle,
 UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
 
 UV_EXTERN void uv_loadavg(double avg[3]);
+
+
+#if defined(_WIN32)
+
+struct uv_overlapped_s {
+  UV_HANDLE_FIELDS
+  UV_OVERLAPPED_PRIVATE_FIELDS
+};
+
+UV_EXTERN int uv_overlapped_init(uv_loop_t* loop, uv_overlapped_t* handle);
+UV_EXTERN HANDLE uv_overlapped_get_iocp(uv_overlapped_t* handle);
+UV_EXTERN OVERLAPPED* uv_overlapped_get_overlapped(uv_overlapped_t* handle);
+UV_EXTERN void uv_overlapped_start(uv_overlapped_t* handle,
+                                   uv_overlapped_cb overlapped_cb);
+
+#endif
 
 
 /*

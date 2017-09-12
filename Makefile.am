@@ -62,6 +62,7 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/handle.c \
                     src/win/handle-inl.h \
                     src/win/internal.h \
+                    src/win/overlapped.c \
                     src/win/pipe.c \
                     src/win/poll.c \
                     src/win/process-stdio.c \
