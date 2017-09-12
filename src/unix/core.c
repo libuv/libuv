@@ -41,6 +41,10 @@
 #include <sys/resource.h> /* getrusage */
 #include <pwd.h>
 
+#if defined(__linux__) && !defined(IOV_MAX)
+#include <linux/uio.h>
+#endif
+
 #ifdef __sun
 # include <netdb.h> /* MAXHOSTNAMELEN on Solaris */
 # include <sys/filio.h>
@@ -237,6 +241,11 @@ int uv__getiovmax(void) {
          */
         iovmax = 1;
       }
+#if defined(__linux__) && !defined(IOV_MAX)
+      else {
+        iovmax = UIO_MAXIOV;
+      }
+#else
       /*
        * TODO: should this be set to a (rather arbitrary) maximum value,
        * or should the caller check for -1?
@@ -245,6 +254,7 @@ int uv__getiovmax(void) {
       /*else {
         iovmax = 1024;
       }*/
+#endif
     }
   }
   return iovmax;
