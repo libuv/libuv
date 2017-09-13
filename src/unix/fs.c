@@ -828,6 +828,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
+  if (fchmod(dstfd, statsbuf.st_mode) == -1) {
+    err = -errno;
+    goto out;
+  }
+
   bytes_to_send = statsbuf.st_size;
   in_offset = 0;
   while (bytes_to_send != 0) {
