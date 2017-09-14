@@ -787,7 +787,7 @@ static int uv_tcp_try_connect(uv_connect_t* req,
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
 
   success = handle->tcp.conn.func_connectex(handle->socket,
-	                                        (const struct sockaddr*) &converted,
+                                            (const struct sockaddr*) &converted,
                                             addrlen,
                                             NULL,
                                             0,
