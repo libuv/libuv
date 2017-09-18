@@ -40,16 +40,15 @@ void alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
 void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 }
 
-void pipe_read_thread_proc(void* arg) {
+void pipe_read_proc(void* arg) {
   uv_pipe_t* pipe;
   pipe = arg;
-  uv_read_start((uv_stream_t*) pipe, alloc_cb, read_cb);
-  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  FATAL("loop should not exit");
+  ASSERT(uv_read_start((uv_stream_t*) pipe, alloc_cb, read_cb) == 0);
+  ASSERT(uv_run(uv_default_loop(), UV_RUN_DEFAULT) == 0);
 }
 
 TEST_IMPL(pipe_open_read_pipe) {
-  int r, pipe_fd;
+  int pipe_fd;
   uv_thread_t pipe_read_thread;
   uv_pipe_t uv_pipe, uv_reopen_pipe;
   uv_loop_t test_loop;
@@ -59,26 +58,21 @@ TEST_IMPL(pipe_open_read_pipe) {
   sa_attr.nLength = sizeof(sa_attr);
   sa_attr.bInheritHandle = TRUE;
   sa_attr.lpSecurityDescriptor = NULL;
-  r = CreatePipe(&stdin_read_pipe, &stdin_write_pipe, &sa_attr, 0);
-  ASSERT(r != 0);
+  ASSERT(CreatePipe(&stdin_read_pipe, &stdin_write_pipe, &sa_attr, 0) != 0);
 
-  r = uv_pipe_init(uv_default_loop(), &uv_pipe, 0);
-  ASSERT(r == 0);
+  ASSERT(uv_pipe_init(uv_default_loop(), &uv_pipe, 0) == 0);
   pipe_fd = _open_osfhandle((intptr_t) stdin_read_pipe, 0);
-  r = uv_pipe_open(&uv_pipe, pipe_fd);
-  ASSERT(r == 0);
+  ASSERT(uv_pipe_open(&uv_pipe, pipe_fd) == 0);
 
-  r = uv_thread_create(&pipe_read_thread, pipe_read_thread_proc, &uv_pipe);
-  ASSERT(r == 0);
+  ASSERT(uv_thread_create(&pipe_read_thread, pipe_read_proc, &uv_pipe) == 0);
 
   /* Give uv_run some time to start */
   uv_sleep(250);
   /* Try to access the pipe again, in different loop */  
-  r = uv_loop_init(&test_loop);
-  ASSERT(r == 0);
-  r = uv_pipe_init(&test_loop, &uv_reopen_pipe, 0);
-  ASSERT(r == 0);
-  r = uv_pipe_open(&uv_reopen_pipe, pipe_fd);
+  ASSERT(uv_loop_init(&test_loop) == 0);
+  ASSERT(uv_pipe_init(&test_loop, &uv_reopen_pipe, 0) == 0);
+  ASSERT(uv_pipe_open(&uv_reopen_pipe, pipe_fd) == 0);
+  MAKE_VALGRIND_HAPPY();
   return TEST_OK;
 }
 #endif

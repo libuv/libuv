@@ -47,8 +47,20 @@ struct uv__ipc_queue_item_s {
 static char uv_zero_[] = "";
 
 #ifdef UV_USE_PIPE_INTERRUPTER
-/* To prevent deadlocks we will interrupt synchronous pipe read every 2.5 s. */
-#define PIPE_ZERO_READ_INTERRUPT_INTERVAL 2500
+/*
+ * On Windows, when one thread is reading from a synchronous pipe, all other
+ * WinAPI calls on that pipe will block. For example, if libuv is reading a
+ * synchronous pipe, and this pipe is passed over to child process as
+ * redirected stdin, if the child process calls uv_pipe_open, it will
+ * deadlock.
+ *
+ * To solve this issue, for each read of a synchronous pipe we create a
+ * separate thread that will interrupt the read operation every 2.5s. This
+ * allows other WinAPI calls to finish.
+ *
+ * This is only enabled if libuv was built with enable-interrupter option.
+ */
+#define UV__PIPE_ZERO_READ_INTERRUPT_INTERVAL 2500
 #endif
 
 /* Null uv_buf_t */
@@ -964,7 +976,7 @@ static DWORD WINAPI uv__readfile_interrupter_thread(void* param) {
   interrupter = param;
   for (;;) {
     r = WaitForSingleObject(interrupter->completed_event,
-                            PIPE_ZERO_READ_INTERRUPT_INTERVAL);
+                            UV__PIPE_ZERO_READ_INTERRUPT_INTERVAL);
     if (r == WAIT_TIMEOUT) {
       /* ReadFile thread is active - interrupt ReadFile to give other */
       /* processes a chance to act upon pipe */
