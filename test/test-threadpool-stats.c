@@ -21,41 +21,14 @@
 
 #include "uv.h"
 #include "task.h"
-
-static uv_work_t pause_reqs[8];
-static uv_sem_t pause_sems[ARRAY_SIZE(pause_reqs)];
-
-static void work_cb(uv_work_t* req) {
-  uv_sem_wait(pause_sems + (req - pause_reqs));
-}
-
-static void done_cb(uv_work_t* req, int status) {
-  uv_sem_destroy(pause_sems + (req - pause_reqs));
-}
-
-static void saturate_threadpool(void) {
-  uv_loop_t* loop;
-  size_t i;
-
-  loop = uv_default_loop();
-  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1) {
-    ASSERT(0 == uv_sem_init(pause_sems + i, 0));
-    ASSERT(0 == uv_queue_work(loop, pause_reqs + i, work_cb, done_cb));
-  }
-}
-
-static void unblock_threadpool(void) {
-  size_t i;
-
-  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1)
-    uv_sem_post(pause_sems + i);
-}
+#include "test-threadpool.h"
 
 static int submitted;
 static int started;
 static int done;
+#define START_SIZE 8
 static int idle_max;
-static int idle_min = 2 * ARRAY_SIZE(pause_reqs);
+static int idle_min = 2 * START_SIZE;
 static int queued_max;
 
 static void update(int queued, int idle) {
@@ -84,24 +57,16 @@ static void stats_done_cb(int queued, int idle, void* data) {
 
 
 TEST_IMPL(threadpool_stats) {
-  char buf[64];
   uv_queue_stats_t stats;
   stats.submit_cb = stats_submit_cb;
   stats.start_cb = stats_start_cb;
   stats.done_cb = stats_done_cb;
 
-  /* Set here, because stats_start initializes the threadpool */
-  snprintf(buf,
-           sizeof(buf),
-           "UV_THREADPOOL_SIZE=%lu",
-           (unsigned long)ARRAY_SIZE(pause_reqs) / 2);
-  putenv(buf);
-
   uv_queue_stats_start(&stats);
 
-  saturate_threadpool();
+  threadpool_saturate(START_SIZE);
   uv_sleep(500); /* Give idle threads time to grab work items and block. */
-  unblock_threadpool();
+  threadpool_unblock();
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   uv_queue_stats_stop(&stats);
@@ -110,11 +75,11 @@ TEST_IMPL(threadpool_stats) {
       "submitted %d started %d done %d queued_max %d idle_max %d idle_min %d\n",
       submitted, started, done, queued_max, idle_max, idle_min);
 
-  ASSERT(submitted == ARRAY_SIZE(pause_reqs));
-  ASSERT(started == ARRAY_SIZE(pause_reqs));
-  ASSERT(done == ARRAY_SIZE(pause_reqs));
-  ASSERT(queued_max >= (int) ARRAY_SIZE(pause_reqs) / 2);
-  ASSERT(idle_max == ARRAY_SIZE(pause_reqs) / 2);
+  ASSERT(submitted == START_SIZE);
+  ASSERT(started == START_SIZE);
+  ASSERT(done == START_SIZE);
+  ASSERT(queued_max >= (int) START_SIZE / 2);
+  ASSERT(idle_max == START_SIZE / 2);
   ASSERT(idle_min == 0);
 
   MAKE_VALGRIND_HAPPY();

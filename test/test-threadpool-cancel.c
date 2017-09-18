@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "task.h"
+#include "test-threadpool.h"
 
 #define INIT_CANCEL_INFO(ci, what)                                            \
   do {                                                                        \
@@ -41,7 +42,8 @@ static unsigned fs_cb_called;
 static unsigned done_cb_called;
 static unsigned done2_cb_called;
 static unsigned timer_cb_called;
-static uv_work_t pause_reqs[4];
+static unsigned start_size = 4;
+static uv_work_t pause_reqs[8];
 static uv_sem_t pause_sems[ARRAY_SIZE(pause_reqs)];
 
 
@@ -57,17 +59,10 @@ static void done_cb(uv_work_t* req, int status) {
 
 static void saturate_threadpool(void) {
   uv_loop_t* loop;
-  char buf[64];
   size_t i;
 
-  snprintf(buf,
-           sizeof(buf),
-           "UV_THREADPOOL_SIZE=%lu",
-           (unsigned long)ARRAY_SIZE(pause_reqs));
-  putenv(buf);
-
   loop = uv_default_loop();
-  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1) {
+  for (i = 0; i < start_size; i += 1) {
     ASSERT(0 == uv_sem_init(pause_sems + i, 0));
     ASSERT(0 == uv_queue_work(loop, pause_reqs + i, work_cb, done_cb));
   }
@@ -77,8 +72,20 @@ static void saturate_threadpool(void) {
 static void unblock_threadpool(void) {
   size_t i;
 
-  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1)
+  for (i = 0; i < start_size; i += 1)
     uv_sem_post(pause_sems + i);
+}
+
+
+void threadpool_saturate(unsigned start) {
+  start_size = start;
+  ASSERT(start <= ARRAY_SIZE(pause_reqs));
+  saturate_threadpool();
+}
+
+
+void threadpool_unblock(void) {
+  unblock_threadpool();
 }
 
 
