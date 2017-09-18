@@ -303,10 +303,6 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
     return uv__handle_type(handle->accepted_fd);
 }
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(_AIX)
-# define UV__USE_CHMOD
-#endif
-
 static int uv__pipe_chmod_validate(uv_pipe_t* handle, int mode) {
   if (!handle || uv__stream_fd(handle) == -1)
     return UV_EBADF;
@@ -317,7 +313,6 @@ static int uv__pipe_chmod_validate(uv_pipe_t* handle, int mode) {
   return 0;
 }
 
-#ifdef UV__USE_CHMOD
 int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   struct stat pipe_stat;
   char* name_buffer;
@@ -361,27 +356,3 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   return 0;
 }
-#else
-int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
-  struct stat pipe_stat;
-  int fd;
-  int r;
-
-  r = uv__pipe_chmod_validate(handle, mode);
-  if (r != 0)
-    return r;
-
-  fd = uv__stream_fd(handle);
-  if (fstat(fd, &pipe_stat) == -1)
-    return -errno;
-
-  if (fchmod(fd, pipe_stat.st_mode) == -1)
-    return -errno;
-
-  return 0;
-}
-#endif
-
-#ifdef UV__USE_CHMOD
-# undef UV__USE_CHMOD
-#endif
