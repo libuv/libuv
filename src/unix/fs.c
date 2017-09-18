@@ -809,7 +809,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
-  dst_flags = O_WRONLY | O_CREAT;
+  dst_flags = O_WRONLY | O_CREAT | O_TRUNC;
 
   if (req->flags & UV_FS_COPYFILE_EXCL)
     dst_flags |= O_EXCL;
