@@ -68,7 +68,8 @@ static void touch_file(const char* name, unsigned int size) {
   int r;
   unsigned int i;
 
-  r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT | O_TRUNC,
+                 S_IWUSR | S_IRUSR, NULL);
   uv_fs_req_cleanup(&req);
   ASSERT(r >= 0);
   file = r;
@@ -136,6 +137,12 @@ TEST_IMPL(fs_copyfile) {
   ASSERT(r == UV_EEXIST);
   uv_fs_req_cleanup(&req);
 
+  /* Truncates when an existing destination is larger than the source file. */
+  touch_file(src, 1);
+  r = uv_fs_copyfile(NULL, &req, src, dst, 0, NULL);
+  ASSERT(r == 0);
+  handle_result(&req);
+
   /* Copies a larger file. */
   unlink(dst);
   touch_file(src, 4096 * 2);
@@ -148,9 +155,9 @@ TEST_IMPL(fs_copyfile) {
   unlink(dst);
   r = uv_fs_copyfile(loop, &req, fixture, dst, 0, handle_result);
   ASSERT(r == 0);
-  ASSERT(result_check_count == 4);
-  uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(result_check_count == 5);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(result_check_count == 6);
   unlink(dst); /* Cleanup */
 
   return 0;
