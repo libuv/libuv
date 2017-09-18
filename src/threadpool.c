@@ -27,10 +27,6 @@
 
 #include <stdlib.h>
 
-#include <sys/types.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-
 #define MAX_THREADPOOL_SIZE 128
 
 static uv_once_t once = UV_ONCE_INIT;
@@ -44,7 +40,7 @@ static QUEUE exit_message;
 static QUEUE wq;
 static int wq_length;
 static volatile int initialized;
-QUEUE stats;
+static QUEUE stats;
 enum estage { SUBMIT, START, DONE };
 
 static void report(enum estage stage, int need_lock);
@@ -337,27 +333,35 @@ int uv_cancel(uv_req_t* req) {
 static void report(enum estage stage, int lock) {
   QUEUE* q;
   uv_queue_stats_t* s;
-  int length_;
-  int threads_;
+  int length;
+  int threads;
 
-  if (lock) uv_mutex_lock(&mutex);
+  if (lock)
+    uv_mutex_lock(&mutex);
 
   if (!QUEUE_EMPTY(&stats)) {
-    length_ = wq_length;
-    threads_ = idle_threads;
+    length = wq_length;
+    threads = idle_threads;
 
     QUEUE_FOREACH(q, &stats) {
       s = QUEUE_DATA(q, struct uv_queue_stats_s, q);
-      switch(stage) {
-        case SUBMIT: s->submit_cb(length_, threads_, s->data); break;
-        case START: s->start_cb(length_, threads_, s->data); break;
-        case DONE: s->done_cb(length_, threads_, s->data); break;
+      switch (stage) {
+        case SUBMIT:
+          s->submit_cb(length, threads, s->data);
+          break;
+        case START:
+          s->start_cb(length, threads, s->data);
+          break;
+        case DONE:
+          s->done_cb(length, threads, s->data);
+          break;
         default: abort();
       }
     }
   }
 
-  if (lock) uv_mutex_unlock(&mutex);
+  if (lock)
+    uv_mutex_unlock(&mutex);
 }
 
 

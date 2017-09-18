@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -51,12 +51,12 @@ static void unblock_threadpool(void) {
     uv_sem_post(pause_sems + i);
 }
 
-int submitted;
-int started;
-int done;
-int idle_max;
-int idle_min = 2 * ARRAY_SIZE(pause_reqs);
-int queued_max;
+static int submitted;
+static int started;
+static int done;
+static int idle_max;
+static int idle_min = 2 * ARRAY_SIZE(pause_reqs);
+static int queued_max;
 
 static void update(int queued, int idle) {
   if (queued > queued_max) queued_max = queued;
@@ -84,8 +84,6 @@ static void stats_done_cb(int queued, int idle, void* data) {
 
 
 TEST_IMPL(threadpool_stats) {
-  /* uv_loop_t* loop; */
-  /* uv_work_t req; */
   char buf[64];
   uv_queue_stats_t stats;
   stats.submit_cb = stats_submit_cb;
