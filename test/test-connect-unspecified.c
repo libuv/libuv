@@ -22,11 +22,11 @@
 #include "uv.h"
 #include "task.h"
 
-void connect_4(uv_connect_t* req, int status) {
+static void connect_4(uv_connect_t* req, int status) {
   ASSERT(status != UV_EADDRNOTAVAIL);
 }
 
-void connect_6(uv_connect_t* req, int status) {
+static void connect_6(uv_connect_t* req, int status) {
   ASSERT(status != UV_EADDRNOTAVAIL);
 }
 
