@@ -795,6 +795,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   int64_t in_offset;
 
   dstfd = -1;
+  err = 0;
 
   /* Open the source file. */
   srcfd = uv_fs_open(NULL, &fs_req, req->path, O_RDONLY, 0, NULL);
