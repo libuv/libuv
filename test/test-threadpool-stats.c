@@ -21,7 +21,6 @@
 
 #include "uv.h"
 #include "task.h"
-#include "test-threadpool.h"
 
 static int submitted;
 static int started;

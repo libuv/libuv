@@ -21,7 +21,6 @@
 
 #include "uv.h"
 #include "task.h"
-#include "test-threadpool.h"
 
 #define INIT_CANCEL_INFO(ci, what)                                            \
   do {                                                                        \

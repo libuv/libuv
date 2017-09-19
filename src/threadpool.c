@@ -355,7 +355,8 @@ static void report(enum estage stage, int lock) {
         case DONE:
           s->done_cb(length, threads, s->data);
           break;
-        default: abort();
+        default:
+          abort();
       }
     }
   }
