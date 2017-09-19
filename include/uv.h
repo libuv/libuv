@@ -982,7 +982,9 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
-typedef void (*uv_queue_stats_cb)(int queued, int idle_threads, void* data);
+typedef void (*uv_queue_stats_cb)(uv_queue_stats_t*,
+                                  unsigned queued,
+                                  unsigned idle_threads);
 
 struct uv_queue_stats_s {
   uv_queue_stats_cb submit_cb;

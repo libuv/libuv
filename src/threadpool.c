@@ -333,8 +333,8 @@ int uv_cancel(uv_req_t* req) {
 static void report(enum estage stage, int lock) {
   QUEUE* q;
   uv_queue_stats_t* s;
-  int length;
-  int threads;
+  unsigned length;
+  unsigned threads;
 
   if (lock)
     uv_mutex_lock(&mutex);
@@ -347,13 +347,13 @@ static void report(enum estage stage, int lock) {
       s = QUEUE_DATA(q, struct uv_queue_stats_s, q);
       switch (stage) {
         case SUBMIT:
-          s->submit_cb(length, threads, s->data);
+          s->submit_cb(s, length, threads);
           break;
         case START:
-          s->start_cb(length, threads, s->data);
+          s->start_cb(s, length, threads);
           break;
         case DONE:
-          s->done_cb(length, threads, s->data);
+          s->done_cb(s, length, threads);
           break;
         default:
           abort();

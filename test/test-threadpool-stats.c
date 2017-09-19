@@ -36,19 +36,22 @@ static void update(int queued, int idle) {
   if (idle < idle_min) idle_min = idle;
 }
 
-static void stats_submit_cb(int queued, int idle, void* data) {
+static void stats_submit_cb(uv_queue_stats_t* s, unsigned queued,
+                            unsigned idle) {
   fprintf(stderr, "submit: q %d i %d\n", queued, idle);
   submitted++;
   update(queued, idle);
 }
 
-static void stats_start_cb(int queued, int idle, void* data) {
+static void stats_start_cb(uv_queue_stats_t* s, unsigned queued,
+                           unsigned idle) {
   fprintf(stderr, "start: q %d i %d\n", queued, idle);
   started++;
   update(queued, idle);
 }
 
-static void stats_done_cb(int queued, int idle, void* data) {
+static void stats_done_cb(uv_queue_stats_t* s, unsigned queued,
+                          unsigned idle) {
   fprintf(stderr, "done: q %d i %d\n", queued, idle);
   done++;
   update(queued, idle);
