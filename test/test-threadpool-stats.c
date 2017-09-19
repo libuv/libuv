@@ -63,9 +63,9 @@ TEST_IMPL(threadpool_stats) {
 
   uv_queue_stats_start(&stats);
 
-  threadpool_saturate(START_SIZE);
+  saturate_threadpool(START_SIZE);
   uv_sleep(500); /* Give idle threads time to grab work items and block. */
-  threadpool_unblock();
+  unblock_threadpool();
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   uv_queue_stats_stop(&stats);

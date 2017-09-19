@@ -229,7 +229,7 @@ UNUSED static int can_ipv6(void) {
   "Cygwin runtime hangs on listen+connect in same process."
 #endif
 
-void threadpool_saturate(unsigned start);
-void threadpool_unblock(void);
+void saturate_threadpool(unsigned start);
+void unblock_threadpool(void);
 
 #endif /* TASK_H_ */
