@@ -45,6 +45,7 @@ void pipe_read_proc(void* arg) {
   pipe = arg;
   ASSERT(uv_read_start((uv_stream_t*) pipe, alloc_cb, read_cb) == 0);
   ASSERT(uv_run(uv_default_loop(), UV_RUN_DEFAULT) == 0);
+  MAKE_VALGRIND_HAPPY();
 }
 
 TEST_IMPL(pipe_open_read_pipe) {
@@ -72,7 +73,9 @@ TEST_IMPL(pipe_open_read_pipe) {
   ASSERT(uv_loop_init(&test_loop) == 0);
   ASSERT(uv_pipe_init(&test_loop, &uv_reopen_pipe, 0) == 0);
   ASSERT(uv_pipe_open(&uv_reopen_pipe, pipe_fd) == 0);
-  MAKE_VALGRIND_HAPPY();
+  ASSERT(uv_read_stop((uv_stream_t*) &uv_pipe) == 0);
+  /* Give some time for loop to exit cleanly */
+  uv_sleep(250);
   return TEST_OK;
 }
 #endif

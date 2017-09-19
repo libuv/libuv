@@ -97,6 +97,7 @@ typedef struct {
 /* Parameter for uv__pipe_readfile_interrupter */
 typedef struct {
   volatile HANDLE thread;
+  HANDLE wait_handle;
   HANDLE thread_mutex;
   HANDLE completed_event;
 } uv__readfile_interrupter_t;
@@ -969,30 +970,25 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
 
 
 #ifdef UV_USE_PIPE_INTERRUPTER
-static DWORD WINAPI uv__readfile_interrupter_thread(void* param) {
+static VOID CALLBACK uv__readfile_interrupter_callback(PVOID param,
+                                                       BOOLEAN timedout) {
   uv__readfile_interrupter_t* interrupter;
-  int r;
 
   interrupter = param;
-  for (;;) {
-    r = WaitForSingleObject(interrupter->completed_event,
-                            UV__PIPE_ZERO_READ_INTERRUPT_INTERVAL);
-    if (r == WAIT_TIMEOUT) {
-      /* ReadFile thread is active - interrupt ReadFile to give other */
-      /* processes a chance to act upon pipe */
-      WaitForSingleObject(interrupter->thread_mutex, INFINITE);
-      if (interrupter->thread != NULL) {
-        pCancelSynchronousIo(interrupter->thread);
-        SwitchToThread();
-      }
-      ReleaseMutex(interrupter->thread_mutex);
-    } else if (r == WAIT_OBJECT_0) {
-      /* ReadFile thread has terminated - clean up the handles and exit */
-      CloseHandle(interrupter->completed_event);
-      CloseHandle(interrupter->thread_mutex);
-      uv__free(interrupter);
-      return 0;
+  if (timedout) {
+    /* Interrupt ReadFile to give other processes a chance to act upon pipe */
+    WaitForSingleObject(interrupter->thread_mutex, INFINITE);
+    if (interrupter->thread != NULL) {
+      pCancelSynchronousIo(interrupter->thread);
+      SwitchToThread();
     }
+    ReleaseMutex(interrupter->thread_mutex);
+  } else {
+    /* ReadFile thread has terminated - clean up the handles and exit */
+    CloseHandle(interrupter->completed_event);
+    CloseHandle(interrupter->thread_mutex);
+    UnregisterWait(interrupter->wait_handle);
+    uv__free(interrupter);
   }
 }
 
@@ -1023,14 +1019,17 @@ static uv__readfile_interrupter_t* uv__start_readfile_interrupter(void) {
   if (interrupter->completed_event == NULL)
     goto failed_event;
 
-  if (!QueueUserWorkItem(uv__readfile_interrupter_thread,
-                         interrupter,
-                         WT_EXECUTEINLONGTHREAD))
-    goto failed_queue;
+  if (!RegisterWaitForSingleObject(&interrupter->wait_handle,
+                                   interrupter->completed_event,
+                                   uv__readfile_interrupter_callback,
+                                   interrupter,
+                                   UV__PIPE_ZERO_READ_INTERRUPT_INTERVAL,
+                                   WT_EXECUTEDEFAULT))
+    goto failed_register;
 
   return interrupter;
 
-failed_queue:
+failed_register:
   CloseHandle(interrupter->completed_event);
 failed_event:
   CloseHandle(interrupter->thread_mutex);
