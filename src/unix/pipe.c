@@ -303,32 +303,41 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
     return uv__handle_type(handle->accepted_fd);
 }
 
-static int uv__pipe_chmod_validate(uv_pipe_t* handle, int mode) {
-  if (!handle || uv__stream_fd(handle) == -1)
-    return UV_EBADF;
-  if (mode != UV_READABLE &&
-      mode != UV_WRITABLE &&
-      mode != (UV_WRITABLE | UV_READABLE))
-    return UV_EINVAL;
-  return 0;
-}
 
 int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
+  #define UV__WRITABLE_DEF (S_IWUSR | S_IWGRP | S_IWOTH)
+  #define UV__READABLE_DEF (S_IRUSR | S_IRGRP | S_IROTH)
   struct stat pipe_stat;
   char* name_buffer;
   size_t name_len;
   int r;
 
-  r = uv__pipe_chmod_validate(handle, mode);
-  if (r != 0)
-    return r;
+  if (!handle || uv__stream_fd(handle) == -1)
+    return UV_EBADF;
 
+  if (mode != UV_READABLE &&
+      mode != UV_WRITABLE &&
+      mode != (UV_WRITABLE | UV_READABLE))
+    return UV_EINVAL;
+
+  if (fstat(uv__stream_fd(handle), &pipe_stat) == -1)
+    return -errno;
+
+  /* Exit early if pipe already has desired mode. */
+  if (mode & UV_READABLE && 
+      (pipe_stat.st_mode & UV__READABLE_DEF) == UV__READABLE_DEF)
+    return 0;
+  if (mode & UV_WRITABLE &&
+      (pipe_stat.st_mode & UV__WRITABLE_DEF) == UV__WRITABLE_DEF)
+    return 0;
+
+  /* Unfortunatly fchmod does not work on all platforms, we will use fchmod. */
   name_len = 0;
   r = uv_pipe_getsockname(handle, NULL, &name_len);
   if (r != UV_ENOBUFS)
     return r;
 
-  name_buffer = uv__malloc(name_len + 1);
+  name_buffer = uv__malloc(name_len);
   if (name_buffer == NULL)
     return UV_ENOMEM;
 
@@ -337,22 +346,24 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     uv__free(name_buffer);
     return r;
   }
-  name_buffer[name_len] = 0;
+
   if (stat(name_buffer, &pipe_stat) == -1) {
     uv__free(name_buffer);
     return -errno;
   }
 
   if (mode & UV_READABLE)
-    pipe_stat.st_mode |= S_IRUSR | S_IRGRP | S_IROTH;
+    pipe_stat.st_mode |= UV__READABLE_DEF;
   if (mode & UV_WRITABLE)
-    pipe_stat.st_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
+    pipe_stat.st_mode |= UV__WRITABLE_DEF;
   
   if (chmod(name_buffer, pipe_stat.st_mode) == -1) {
     uv__free(name_buffer);
-    return - errno;
+    return -errno;
   }
   uv__free(name_buffer);
 
   return 0;
+  #undef UV__WRITABLE_DEF
+  #undef UV__READABLE_DEF
 }

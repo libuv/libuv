@@ -23,7 +23,7 @@
 #include "uv.h"
 #include "task.h"
 
-TEST_IMPL(pipe_set_fchmod) {
+TEST_IMPL(pipe_set_chmod) {
   uv_pipe_t pipe_handle;
   uv_loop_t* loop;
   int r;

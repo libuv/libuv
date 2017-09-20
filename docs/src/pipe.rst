@@ -110,4 +110,4 @@ API
     be either ``UV_WRITABLE``, ``UV_READABLE`` or
     ``UV_WRITABLE | UV_READABLE``. This function is blocking.
 
-    .. versionadded:: 1.14.0
+    .. versionadded:: 1.15.0
