@@ -241,6 +241,25 @@ int uv_mutex_init(uv_mutex_t* mutex) {
 }
 
 
+int uv_mutex_init_recursive(uv_mutex_t* mutex) {
+  pthread_mutexattr_t attr;
+  int err;
+
+  if (pthread_mutexattr_init(&attr))
+    abort();
+
+  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
+    abort();
+
+  err = pthread_mutex_init(mutex, &attr);
+
+  if (pthread_mutexattr_destroy(&attr))
+    abort();
+
+  return -err;
+}
+
+
 void uv_mutex_destroy(uv_mutex_t* mutex) {
   if (pthread_mutex_destroy(mutex))
     abort();
