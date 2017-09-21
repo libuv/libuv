@@ -95,25 +95,17 @@ int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
 }
 
 
-int uv_mutex_init(uv_mutex_t* mutex, unsigned int flags) {
-  int type;
-
-  if (flags & UV_MUTEX_RECURSIVE)
-    type = PTHREAD_MUTEX_RECURSIVE;
-  else
+int uv_mutex_init(uv_mutex_t* mutex) {
 #if defined(NDEBUG) || !defined(PTHREAD_MUTEX_ERRORCHECK)
-    return -pthread_mutex_init(mutex, NULL);
+  return -pthread_mutex_init(mutex, NULL);
 #else
-    type = PTHREAD_MUTEX_ERRORCHECK;
-#endif
-
   pthread_mutexattr_t attr;
   int err;
 
   if (pthread_mutexattr_init(&attr))
     abort();
 
-  if (pthread_mutexattr_settype(&attr, type))
+  if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK))
     abort();
 
   err = pthread_mutex_init(mutex, &attr);
@@ -122,6 +114,7 @@ int uv_mutex_init(uv_mutex_t* mutex, unsigned int flags) {
     abort();
 
   return -err;
+#endif
 }
 
 

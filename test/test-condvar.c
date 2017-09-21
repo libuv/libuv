@@ -82,7 +82,7 @@ TEST_IMPL(condvar_1) {
   wc.wait_cond = condvar_wait;
 
   ASSERT(0 == uv_cond_init(&wc.cond));
-  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
+  ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   wc.wait_cond(&wc, &wc.posted_1);
@@ -106,7 +106,7 @@ TEST_IMPL(condvar_2) {
   wc.wait_cond = condvar_wait;
 
   ASSERT(0 == uv_cond_init(&wc.cond));
-  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
+  ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   wc.wait_cond(&wc, &wc.posted_1);
@@ -144,7 +144,7 @@ TEST_IMPL(condvar_3) {
   wc.wait_cond = condvar_timedwait;
 
   ASSERT(0 == uv_cond_init(&wc.cond));
-  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
+  ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   wc.wait_cond(&wc, &wc.posted_1);
@@ -168,7 +168,7 @@ TEST_IMPL(condvar_4) {
   wc.wait_cond = condvar_timedwait;
 
   ASSERT(0 == uv_cond_init(&wc.cond));
-  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
+  ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   wc.wait_cond(&wc, &wc.posted_1);
@@ -193,7 +193,7 @@ TEST_IMPL(condvar_5) {
   wc.wait_cond = condvar_wait;
 
   ASSERT(0 == uv_cond_init(&wc.cond));
-  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
+  ASSERT(0 == uv_mutex_init(&wc.mutex));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   wc.wait_cond(&wc, &wc.posted_1);

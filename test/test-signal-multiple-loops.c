@@ -210,7 +210,7 @@ TEST_IMPL(signal_multiple_loops) {
   r = uv_sem_init(&sem, 0);
   ASSERT(r == 0);
 
-  r = uv_mutex_init(&counter_lock, UV_MUTEX_SIMPLE);
+  r = uv_mutex_init(&counter_lock);
   ASSERT(r == 0);
 
   /* Create a couple of threads that create a destroy loops continuously. */

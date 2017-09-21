@@ -584,7 +584,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   if (state == NULL)
     return -ENOMEM;
 
-  err = uv_mutex_init(&loop->cf_mutex, UV_MUTEX_SIMPLE);
+  err = uv_mutex_init(&loop->cf_mutex);
   if (err)
     goto fail_mutex_init;
 
@@ -598,7 +598,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   if (err)
     goto fail_fsevent_sem_init;
 
-  err = uv_mutex_init(&state->fsevent_mutex, UV_MUTEX_SIMPLE);
+  err = uv_mutex_init(&state->fsevent_mutex);
   if (err)
     goto fail_fsevent_mutex_init;
 
@@ -814,7 +814,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   handle->cf_cb->flags |= UV__HANDLE_INTERNAL;
   uv_unref((uv_handle_t*) handle->cf_cb);
 
-  err = uv_mutex_init(&handle->cf_mutex, UV_MUTEX_SIMPLE);
+  err = uv_mutex_init(&handle->cf_mutex);
   if (err)
     goto fail_cf_mutex_init;
 

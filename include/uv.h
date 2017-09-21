@@ -1460,19 +1460,7 @@ UV_EXTERN void uv_dlclose(uv_lib_t* lib);
 UV_EXTERN int uv_dlsym(uv_lib_t* lib, const char* name, void** ptr);
 UV_EXTERN const char* uv_dlerror(const uv_lib_t* lib);
 
-
-/*
- * Flags to be passed to uv_mutex_init(). On Windows they are silently ignored.
- */
-enum uv_mutex_flags {
-  /* Creates a non-recursive mutex */
-  UV_MUTEX_SIMPLE = 0,
-  /* Creates a recursive mutex */
-  UV_MUTEX_RECURSIVE = 1
-};
-
-
-UV_EXTERN int uv_mutex_init(uv_mutex_t* handle, unsigned int flags);
+UV_EXTERN int uv_mutex_init(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_destroy(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_lock(uv_mutex_t* handle);
 UV_EXTERN int uv_mutex_trylock(uv_mutex_t* handle);

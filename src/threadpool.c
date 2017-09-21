@@ -152,7 +152,7 @@ static void init_threads(void) {
   if (uv_cond_init(&cond))
     abort();
 
-  if (uv_mutex_init(&mutex, UV_MUTEX_SIMPLE))
+  if (uv_mutex_init(&mutex))
     abort();
 
   QUEUE_INIT(&wq);
