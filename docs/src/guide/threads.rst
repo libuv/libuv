@@ -79,18 +79,19 @@ The mutex functions are a **direct** map to the pthread equivalents.
 .. literalinclude:: ../libuv/include/uv.h
     :lines: 1355-1360
 
-The ``uv_mutex_init()`` and ``uv_mutex_trylock()`` functions will return 0 on
-success, and an error code otherwise.
+The ``uv_mutex_init()``, ``uv_mutex_init_recursive()`` and ``uv_mutex_trylock()``
+functions will return 0 on success, and an error code otherwise.
 
 If `libuv` has been compiled with debugging enabled, ``uv_mutex_destroy()``,
 ``uv_mutex_lock()`` and ``uv_mutex_unlock()`` will ``abort()`` on error.
 Similarly ``uv_mutex_trylock()`` will abort if the error is anything *other
 than* ``EAGAIN`` or ``EBUSY``.
 
-Recursive mutexes are supported by some platforms, but you should not rely on
-them. The BSD mutex implementation will raise an error if a thread which has
-locked a mutex attempts to lock it again. For example, a construct like::
+Recursive mutexes are supported, but you should not rely on them. The default
+BSD mutex implementation will raise an error if a thread which has locked a
+mutex attempts to lock it again. For example, a construct like::
 
+    uv_mutex_init(a_mutex);
     uv_mutex_lock(a_mutex);
     uv_thread_create(thread_id, entry, (void *)a_mutex);
     uv_mutex_lock(a_mutex);
@@ -102,8 +103,7 @@ return an error in the second call to ``uv_mutex_lock()``.
 
 .. note::
 
-    Mutexes on linux support attributes for a recursive mutex, but the API is
-    not exposed via libuv.
+    Mutexes on windows are always recursive.
 
 Locks
 ~~~~~

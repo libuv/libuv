@@ -181,6 +181,11 @@ int uv_mutex_init(uv_mutex_t* mutex) {
 }
 
 
+int uv_mutex_init_recursive(uv_mutex_t* mutex) {
+  return uv_mutex_init(mutex);
+}
+
+
 void uv_mutex_destroy(uv_mutex_t* mutex) {
   DeleteCriticalSection(mutex);
 }
