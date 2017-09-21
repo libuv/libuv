@@ -342,30 +342,40 @@ int uv_cancel(uv_req_t* req) {
 
 static void report(enum estage stage) {
   QUEUE* q;
+  QUEUE sq;
   uv_queue_stats_t* s;
   unsigned length;
   unsigned threads;
 
-  if (!QUEUE_EMPTY(&stats)) {
-    length = wq_length;
-    threads = idle_threads;
+  if (QUEUE_EMPTY(&stats))
+    return;
 
-    QUEUE_FOREACH(q, &stats) {
-      s = QUEUE_DATA(q, struct uv_queue_stats_s, q);
-      switch (stage) {
-        case SUBMIT:
-          s->submit_cb(s, length, threads);
-          break;
-        case START:
-          s->start_cb(s, length, threads);
-          break;
-        case DONE:
-          s->done_cb(s, length, threads);
-          break;
-        default:
-          abort();
-      }
+  length = wq_length;
+  threads = idle_threads;
+
+  QUEUE_MOVE(&stats, &sq);
+
+  while (!QUEUE_EMPTY(&sq)) {
+    q = QUEUE_HEAD(&sq);
+    QUEUE_REMOVE(q);
+    s = QUEUE_DATA(q, struct uv_queue_stats_s, q);
+
+    uv_mutex_unlock(&mutex);
+    switch (stage) {
+      case SUBMIT:
+        s->submit_cb(s, length, threads);
+        break;
+      case START:
+        s->start_cb(s, length, threads);
+        break;
+      case DONE:
+        s->done_cb(s, length, threads);
+        break;
+      default:
+        abort();
     }
+    uv_mutex_lock(&mutex);
+    QUEUE_INSERT_TAIL(&stats, q);
   }
 }
 
@@ -376,6 +386,7 @@ void uv_queue_stats_start(uv_queue_stats_t* s) {
   QUEUE_INSERT_TAIL(&stats, &s->q);
   uv_mutex_unlock(&mutex);
 }
+
 
 void uv_queue_stats_stop(uv_queue_stats_t* s) {
   uv_mutex_lock(&mutex);

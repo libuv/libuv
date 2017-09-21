@@ -27,8 +27,9 @@ Data types
     `data` is the corresponding value from the :c:type:`uv_queue_stats_t`
     structure.
 
-    *Note*: No libuv API functions may be called in these callbacks other than
-    :c:func:`uv_async_send()`.
+    .. warning::
+      These callback functions are not threadsafe. No libuv API functions may be
+      called in these callbacks other than :c:func:`uv_async_send()`.
 
 Public members
 ^^^^^^^^^^^^^^
