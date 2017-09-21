@@ -305,8 +305,7 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
 
 
 int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
-  #define UV__WRITABLE_DEF (S_IWUSR | S_IWGRP | S_IWOTH)
-  #define UV__READABLE_DEF (S_IRUSR | S_IRGRP | S_IROTH)
+  unsigned desired_mode;
   struct stat pipe_stat;
   char* name_buffer;
   size_t name_len;
@@ -323,17 +322,17 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   if (fstat(uv__stream_fd(handle), &pipe_stat) == -1)
     return -errno;
 
+  desired_mode = 0;
+  if (mode & UV_READABLE)
+    desired_mode |= S_IRUSR | S_IRGRP | S_IROTH;
+  if (mode & UV_WRITABLE)
+    desired_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
+
   /* Exit early if pipe already has desired mode. */
-  if ((mode & (UV_READABLE | UV_WRITABLE)) == (UV_READABLE | UV_WRITABLE) &&
-      (pipe_stat.st_mode & UV__READABLE_DEF) == UV__READABLE_DEF &&
-      (pipe_stat.st_mode & UV__WRITABLE_DEF) == UV__WRITABLE_DEF)
+  if ((pipe_stat.st_mode & desired_mode) == desired_mode)
     return 0;
-  else if (mode & UV_READABLE && 
-           (pipe_stat.st_mode & UV__READABLE_DEF) == UV__READABLE_DEF)
-    return 0;
-  else if (mode & UV_WRITABLE &&
-           (pipe_stat.st_mode & UV__WRITABLE_DEF) == UV__WRITABLE_DEF)
-    return 0;
+
+  pipe_stat.st_mode |= desired_mode;
 
   /* Unfortunatly fchmod does not work on all platforms, we will use chmod. */
   name_len = 0;
@@ -351,11 +350,6 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     return r;
   }
 
-  if (mode & UV_READABLE)
-    pipe_stat.st_mode |= UV__READABLE_DEF;
-  if (mode & UV_WRITABLE)
-    pipe_stat.st_mode |= UV__WRITABLE_DEF;
-  
   if (chmod(name_buffer, pipe_stat.st_mode) == -1) {
     uv__free(name_buffer);
     return -errno;
@@ -363,6 +357,4 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   uv__free(name_buffer);
 
   return 0;
-  #undef UV__WRITABLE_DEF
-  #undef UV__READABLE_DEF
 }
