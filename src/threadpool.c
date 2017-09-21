@@ -43,7 +43,7 @@ static volatile int initialized;
 static QUEUE stats;
 enum estage { SUBMIT, START, DONE };
 
-static void report(enum estage stage, int need_lock);
+static void report(enum estage stage);
 
 
 static void uv__cancelled(struct uv__work* w) {
@@ -78,7 +78,7 @@ static void worker(void* arg) {
       QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
                              executing. */
       wq_length--;
-      report(START, 0);
+      report(START);
     }
 
     uv_mutex_unlock(&mutex);
@@ -103,7 +103,7 @@ static void post(QUEUE* q) {
   uv_mutex_lock(&mutex);
   QUEUE_INSERT_TAIL(&wq, q);
   wq_length++;
-  report(SUBMIT, 0);
+  report(SUBMIT);
   if (idle_threads > 0)
     uv_cond_signal(&cond);
   uv_mutex_unlock(&mutex);
@@ -247,11 +247,16 @@ void uv__work_done(uv_async_t* handle) {
   QUEUE* q;
   QUEUE wq;
   int err;
+  int reporting;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   uv_mutex_lock(&loop->wq_mutex);
-  QUEUE_MOVE(&loop->wq, &wq);
+  QUEUE_MOVE(&loop->wq, &wq); /* XXX */
   uv_mutex_unlock(&loop->wq_mutex);
+
+  uv_mutex_lock(&mutex);
+  reporting = !QUEUE_EMPTY(&stats);
+  uv_mutex_unlock(&mutex);
 
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
@@ -260,7 +265,12 @@ void uv__work_done(uv_async_t* handle) {
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     w->done(w, err);
-    report(DONE, 1);
+
+    if (reporting) {
+      uv_mutex_lock(&mutex);
+      report(DONE);
+      uv_mutex_unlock(&mutex);
+    }
   }
 }
 
@@ -330,14 +340,11 @@ int uv_cancel(uv_req_t* req) {
 }
 
 
-static void report(enum estage stage, int lock) {
+static void report(enum estage stage) {
   QUEUE* q;
   uv_queue_stats_t* s;
   unsigned length;
   unsigned threads;
-
-  if (lock)
-    uv_mutex_lock(&mutex);
 
   if (!QUEUE_EMPTY(&stats)) {
     length = wq_length;
@@ -360,9 +367,6 @@ static void report(enum estage stage, int lock) {
       }
     }
   }
-
-  if (lock)
-    uv_mutex_unlock(&mutex);
 }
 
 
