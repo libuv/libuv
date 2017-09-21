@@ -108,7 +108,7 @@ static void prepare_cb(uv_prepare_t* handle) {
 TEST_IMPL(async) {
   int r;
 
-  r = uv_mutex_init(&mutex);
+  r = uv_mutex_init(&mutex, UV_MUTEX_SIMPLE);
   ASSERT(r == 0);
   uv_mutex_lock(&mutex);
 

@@ -80,7 +80,7 @@ int uv_loop_init(uv_loop_t* loop) {
   if (err)
     goto fail_rwlock_init;
 
-  err = uv_mutex_init(&loop->wq_mutex);
+  err = uv_mutex_init(&loop->wq_mutex, UV_MUTEX_SIMPLE);
   if (err)
     goto fail_mutex_init;
 

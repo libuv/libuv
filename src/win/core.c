@@ -37,7 +37,7 @@ static void* uv__loops[2];
 static uv_mutex_t uv__loops_lock;
 
 static void uv__loops_init(void) {
-  uv_mutex_init(&uv__loops_lock);
+  uv_mutex_init(&uv__loops_lock, UV_MUTEX_SIMPLE);
   QUEUE_INIT(&uv__loops);
 }
 
@@ -146,7 +146,7 @@ int uv_loop_init(uv_loop_t* loop) {
 
   loop->stop_flag = 0;
 
-  err = uv_mutex_init(&loop->wq_mutex);
+  err = uv_mutex_init(&loop->wq_mutex, UV_MUTEX_SIMPLE);
   if (err)
     goto fail_mutex_init;
 

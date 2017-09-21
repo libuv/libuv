@@ -39,7 +39,7 @@ TEST_IMPL(thread_mutex) {
   uv_mutex_t mutex;
   int r;
 
-  r = uv_mutex_init(&mutex);
+  r = uv_mutex_init(&mutex, UV_MUTEX_SIMPLE);
   ASSERT(r == 0);
 
   uv_mutex_lock(&mutex);
@@ -120,7 +120,7 @@ TEST_IMPL(thread_rwlock_trylock) {
   uv_thread_t thread;
 
   ASSERT(0 == uv_cond_init(&condvar));
-  ASSERT(0 == uv_mutex_init(&mutex));
+  ASSERT(0 == uv_mutex_init(&mutex, UV_MUTEX_SIMPLE));
   ASSERT(0 == uv_rwlock_init(&rwlock));
 
   uv_mutex_lock(&mutex);

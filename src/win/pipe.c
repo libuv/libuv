@@ -113,7 +113,7 @@ static void uv_pipe_connection_init(uv_pipe_t* handle) {
   handle->pipe.conn.eof_timer = NULL;
   assert(!(handle->flags & UV_HANDLE_PIPESERVER));
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
-    uv_mutex_init(&handle->pipe.conn.readfile_mutex);
+    uv_mutex_init(&handle->pipe.conn.readfile_mutex, UV_MUTEX_SIMPLE);
     handle->flags |= UV_HANDLE_PIPE_READ_CANCELABLE;
   }
 }

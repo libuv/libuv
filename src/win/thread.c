@@ -175,7 +175,7 @@ int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
 }
 
 
-int uv_mutex_init(uv_mutex_t* mutex) {
+int uv_mutex_init(uv_mutex_t* mutex, unsigned int flags) {
   InitializeCriticalSection(mutex);
   return 0;
 }
@@ -398,7 +398,7 @@ int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   barrier->n = count;
   barrier->count = 0;
 
-  err = uv_mutex_init(&barrier->mutex);
+  err = uv_mutex_init(&barrier->mutex, UV_MUTEX_SIMPLE);
   if (err)
     return err;
 

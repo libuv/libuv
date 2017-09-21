@@ -54,7 +54,7 @@ TEST_IMPL(semaphore_1) {
   memset(&wc, 0, sizeof(wc));
 
   ASSERT(0 == uv_sem_init(&wc.sem, 0));
-  ASSERT(0 == uv_mutex_init(&wc.mutex));
+  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   uv_sleep(100);
@@ -79,7 +79,7 @@ TEST_IMPL(semaphore_2) {
   wc.delay = 100;
 
   ASSERT(0 == uv_sem_init(&wc.sem, 0));
-  ASSERT(0 == uv_mutex_init(&wc.mutex));
+  ASSERT(0 == uv_mutex_init(&wc.mutex, UV_MUTEX_SIMPLE));
   ASSERT(0 == uv_thread_create(&thread, worker, &wc));
 
   uv_sem_wait(&wc.sem);
