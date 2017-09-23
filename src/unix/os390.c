@@ -117,7 +117,7 @@ void uv_loadavg(double avg[3]) {
 int uv__platform_loop_init(uv_loop_t* loop) {
   uv__os390_epoll* ep;
 
-  ep = epoll_create1(UV__EPOLL_CLOEXEC);
+  ep = epoll_create1(0);
   loop->ep = ep;
   if (ep == NULL)
     return -errno;
