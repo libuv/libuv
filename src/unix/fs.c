@@ -125,10 +125,6 @@
   }                                                                           \
   while (0)
 
-#if defined(__MVS__)
-#define readlink(...) os390_readlink(__VA_ARGS__)
-#endif
-
 
 static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 #if defined(__linux__) || defined(__sun) || defined(__NetBSD__)
@@ -436,7 +432,12 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
     return -1;
   }
 
+#if defined(__MVS__)
+  len = os390_readlink(req->path, buf, len);
+#else
   len = readlink(req->path, buf, len);
+#endif
+
 
   if (len == -1) {
     uv__free(buf);

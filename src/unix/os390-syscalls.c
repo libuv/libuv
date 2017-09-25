@@ -338,24 +338,33 @@ ssize_t os390_readlink(const char* path, char* buf, size_t len) {
   ssize_t rlen;
   ssize_t vlen;
   ssize_t plen;
-  char* delimiter;
+  char *delimiter;
   char old_delim;
-  char tmpbuf[len + 1];
-  char realpathstr[PATH_MAX];
+  char *tmpbuf;
+  char realpathstr[PATH_MAX + 1];
+
+  tmpbuf = uv__malloc(len + 1);
+  if (tmpbuf == NULL) {
+    errno = ENOMEM;
+    return -1;
+  }
 
   rlen = readlink(path, tmpbuf, len);
-  if (rlen < 0)
+  if (rlen < 0) {
+    uv__free(tmpbuf);
     return rlen;
+  }
 
   if (rlen < 3 || strncmp("/$", tmpbuf, 2) != 0) {
-    /* Straightforward readlink */
+    /* Straightforward readlink. */
     memcpy(buf, tmpbuf, rlen);
+    uv__free(tmpbuf);
     return rlen;
   }
 
   /*
    * There is a parmlib variable at the beginning
-   * which needs interpretation
+   * which needs interpretation.
    */
   tmpbuf[rlen] = '\0';
   delimiter = strchr(tmpbuf + 2, '/'); 
@@ -363,23 +372,32 @@ ssize_t os390_readlink(const char* path, char* buf, size_t len) {
     /* No slash at the end */
     delimiter = strchr(tmpbuf + 2, '\0');
 
-  /* Read real path of the variable */
+  /* Read real path of the variable. */
   old_delim = *delimiter;
   *delimiter = '\0';
-  if (realpath(tmpbuf, realpathstr) == NULL)
+  if (realpath(tmpbuf, realpathstr) == NULL) {
+    uv__free(tmpbuf);
     return -1;
+  }
 
-  /* Reset the delimiter and fill up the buffer */
+  /* realpathstr is not guaranteed to end with null byte.*/
+  realpathstr[PATH_MAX] = '\0';
+
+  /* Reset the delimiter and fill up the buffer. */
   *delimiter = old_delim;
   plen = strlen(delimiter);
   vlen = strlen(realpathstr);
   rlen = plen + vlen;
   if (rlen > len) {
+    uv__free(tmpbuf);
     errno = ENAMETOOLONG;
     return -1;
   }
   memcpy(buf, realpathstr, vlen);
   memcpy(buf + vlen, delimiter, plen);
+
+  /* Done using temporary buffer. */
+  uv__free(tmpbuf);
 
   return rlen;
 }
