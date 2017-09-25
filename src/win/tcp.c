@@ -475,6 +475,8 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
 
   req = &handle->read_req;
+  UV_REQ_INIT(req, UV_READ);
+  req->data = handle;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
   handle->flags |= UV_HANDLE_ZERO_READ;
   buf.base = "";
@@ -501,11 +503,13 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     handle->flags |= UV_HANDLE_READ_PENDING;
     req->u.io.overlapped.InternalHigh = bytes;
     handle->reqs_pending++;
+    REGISTER_HANDLE_REQ(loop, handle, req);
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* The req will be processed with IOCP. */
     handle->flags |= UV_HANDLE_READ_PENDING;
     handle->reqs_pending++;
+    REGISTER_HANDLE_REQ(loop, handle, req);
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -516,6 +520,7 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     }
   } else {
     /* Make this req pending reporting an error. */
+    REGISTER_HANDLE_REQ(loop, handle, req);
     SET_REQ_ERROR(req, WSAGetLastError());
     uv_insert_pending_req(loop, (uv_req_t*)req);
     handle->reqs_pending++;
@@ -615,7 +620,6 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
 
 
 int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
-  uv_loop_t* loop = server->loop;
   int err = 0;
   int family;
 
@@ -916,6 +920,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
   assert(handle->type == UV_TCP);
 
   handle->flags &= ~UV_HANDLE_READ_PENDING;
+  UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   if (!REQ_SUCCESS(req)) {
     /* An error occurred doing the read. */
@@ -1430,6 +1435,8 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
   if (err) {
     return uv_translate_sys_error(err);
   }
+
+  handle->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
 
   return 0;
 }
