@@ -87,9 +87,11 @@ If `libuv` has been compiled with debugging enabled, ``uv_mutex_destroy()``,
 Similarly ``uv_mutex_trylock()`` will abort if the error is anything *other
 than* ``EAGAIN`` or ``EBUSY``.
 
-Recursive mutexes are supported, but you should not rely on them. The default
-BSD mutex implementation will raise an error if a thread which has locked a
-mutex attempts to lock it again. For example, a construct like::
+Recursive mutexes are supported, but you should not rely on them. Also, they
+should not be used with ``uv_cond_t`` variables.
+
+The default BSD mutex implementation will raise an error if a thread which has
+locked a mutex attempts to lock it again. For example, a construct like::
 
     uv_mutex_init(a_mutex);
     uv_mutex_lock(a_mutex);
