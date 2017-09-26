@@ -438,7 +438,12 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
     return -1;
   }
 
+#if defined(__MVS__)
+  len = os390_readlink(req->path, buf, len);
+#else
   len = readlink(req->path, buf, len);
+#endif
+
 
   if (len == -1) {
     uv__free(buf);
