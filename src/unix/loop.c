@@ -138,6 +138,10 @@ int uv_loop_fork(uv_loop_t* loop) {
     }
   }
 
+  err = uv__work_queue_fork(loop);
+  if (err)
+    return err;
+
   return 0;
 }
 

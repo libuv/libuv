@@ -201,12 +201,31 @@ static int uv__async_start(uv_loop_t* loop) {
 
 
 int uv__async_fork(uv_loop_t* loop) {
+  int err;
+  QUEUE* q;
+
   if (loop->async_io_watcher.fd == -1) /* never started */
     return 0;
 
   uv__async_stop(loop);
 
-  return uv__async_start(loop);
+  err = uv__async_start(loop);
+  if (err)
+    return err;
+
+  /* If there are handles with `h->pending == 1`, this information is only valid
+     for the previous async_io_watcher.fd. Call uv_async_send once again
+     in the child. */
+  QUEUE_FOREACH(q, &loop->async_handles) {
+    uv_async_t* h;
+    h = QUEUE_DATA(q, uv_async_t, queue);
+    if (h->pending) {
+      h->pending = 0;
+      uv_async_send(h);
+      break;
+    }
+  }
+  return 0;
 }
 
 
