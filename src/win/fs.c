@@ -1179,7 +1179,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
    * Therefore we'll just report a sensible value that's quite commonly okay
    * on modern hardware.
    */
-  statbuf->st_blksize = 2048;
+  statbuf->st_blksize = 4096;
 
   /* Todo: set st_flags to something meaningful. Also provide a wrapper for
    * chattr(2).
