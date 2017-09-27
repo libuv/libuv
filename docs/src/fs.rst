@@ -353,3 +353,48 @@ Helper functions
    any attempts to close it or to use it after closing the fd may lead to malfunction.
 
     .. versionadded:: 1.12.0
+
+File open constants
+-------------------
+
+.. c:macro:: UV_FS_O_APPEND
+
+.. c:macro:: UV_FS_O_CREAT
+
+.. c:macro:: UV_FS_O_DIRECT
+
+.. c:macro:: UV_FS_O_DIRECTORY
+
+.. c:macro:: UV_FS_O_DSYNC
+
+.. c:macro:: UV_FS_O_EXCL
+
+.. c:macro:: UV_FS_O_EXLOCK
+
+.. c:macro:: UV_FS_O_NOATIME
+
+.. c:macro:: UV_FS_O_NOCTTY
+
+.. c:macro:: UV_FS_O_NOFOLLOW
+
+.. c:macro:: UV_FS_O_NONBLOCK
+
+.. c:macro:: UV_FS_O_RANDOM
+
+.. c:macro:: UV_FS_O_RDONLY
+
+.. c:macro:: UV_FS_O_RDWR
+
+.. c:macro:: UV_FS_O_SEQUENTIAL
+
+.. c:macro:: UV_FS_O_SHORT_LIVED
+
+.. c:macro:: UV_FS_O_SYMLINK
+
+.. c:macro:: UV_FS_O_SYNC
+
+.. c:macro:: UV_FS_O_TEMPORARY
+
+.. c:macro:: UV_FS_O_TRUNC
+
+.. c:macro:: UV_FS_O_WRONLY
