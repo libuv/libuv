@@ -1178,8 +1178,12 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf) {
    *
    * Therefore we'll just report a sensible value that's quite commonly okay
    * on modern hardware.
+   *
+   * 4096 is the minimum required to be compatible with newer Advanced Format
+   * drives (which have 4096 bytes per physical sector), and to be backwards
+   * compatible with older drives (which have 512 bytes per physical sector).
    */
-  statbuf->st_blksize = 2048;
+  statbuf->st_blksize = 4096;
 
   /* Todo: set st_flags to something meaningful. Also provide a wrapper for
    * chattr(2).
