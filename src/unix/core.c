@@ -326,6 +326,9 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (!QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
+  if (!QUEUE_EMPTY(&loop->watcher_queue))
+    return 0;
+
   if (loop->closing_handles)
     return 0;
 
