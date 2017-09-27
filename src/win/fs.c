@@ -415,21 +415,21 @@ void fs__open(uv_fs_t* req) {
   umask(current_umask);
 
   /* convert flags and mode to CreateFile parameters */
-  switch (flags & (_O_RDONLY | _O_WRONLY | _O_RDWR)) {
-  case _O_RDONLY:
+  switch (flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) {
+  case UV_FS_O_RDONLY:
     access = FILE_GENERIC_READ;
     break;
-  case _O_WRONLY:
+  case UV_FS_O_WRONLY:
     access = FILE_GENERIC_WRITE;
     break;
-  case _O_RDWR:
+  case UV_FS_O_RDWR:
     access = FILE_GENERIC_READ | FILE_GENERIC_WRITE;
     break;
   default:
     goto einval;
   }
 
-  if (flags & _O_APPEND) {
+  if (flags & UV_FS_O_APPEND) {
     access &= ~FILE_WRITE_DATA;
     access |= FILE_APPEND_DATA;
   }
@@ -442,23 +442,23 @@ void fs__open(uv_fs_t* req) {
    */
   share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
 
-  switch (flags & (_O_CREAT | _O_EXCL | _O_TRUNC)) {
+  switch (flags & (UV_FS_O_CREAT | UV_FS_O_EXCL | UV_FS_O_TRUNC)) {
   case 0:
-  case _O_EXCL:
+  case UV_FS_O_EXCL:
     disposition = OPEN_EXISTING;
     break;
-  case _O_CREAT:
+  case UV_FS_O_CREAT:
     disposition = OPEN_ALWAYS;
     break;
-  case _O_CREAT | _O_EXCL:
-  case _O_CREAT | _O_TRUNC | _O_EXCL:
+  case UV_FS_O_CREAT | UV_FS_O_EXCL:
+  case UV_FS_O_CREAT | UV_FS_O_TRUNC | UV_FS_O_EXCL:
     disposition = CREATE_NEW;
     break;
-  case _O_TRUNC:
-  case _O_TRUNC | _O_EXCL:
+  case UV_FS_O_TRUNC:
+  case UV_FS_O_TRUNC | UV_FS_O_EXCL:
     disposition = TRUNCATE_EXISTING;
     break;
-  case _O_CREAT | _O_TRUNC:
+  case UV_FS_O_CREAT | UV_FS_O_TRUNC:
     disposition = CREATE_ALWAYS;
     break;
   default:
@@ -466,29 +466,44 @@ void fs__open(uv_fs_t* req) {
   }
 
   attributes |= FILE_ATTRIBUTE_NORMAL;
-  if (flags & _O_CREAT) {
+  if (flags & UV_FS_O_CREAT) {
     if (!((req->fs.info.mode & ~current_umask) & _S_IWRITE)) {
       attributes |= FILE_ATTRIBUTE_READONLY;
     }
   }
 
-  if (flags & _O_TEMPORARY ) {
+  if (flags & UV_FS_O_TEMPORARY ) {
     attributes |= FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_TEMPORARY;
     access |= DELETE;
   }
 
-  if (flags & _O_SHORT_LIVED) {
+  if (flags & UV_FS_O_SHORT_LIVED) {
     attributes |= FILE_ATTRIBUTE_TEMPORARY;
   }
 
-  switch (flags & (_O_SEQUENTIAL | _O_RANDOM)) {
+  switch (flags & (UV_FS_O_SEQUENTIAL | UV_FS_O_RANDOM)) {
   case 0:
     break;
-  case _O_SEQUENTIAL:
+  case UV_FS_O_SEQUENTIAL:
     attributes |= FILE_FLAG_SEQUENTIAL_SCAN;
     break;
-  case _O_RANDOM:
+  case UV_FS_O_RANDOM:
     attributes |= FILE_FLAG_RANDOM_ACCESS;
+    break;
+  default:
+    goto einval;
+  }
+
+  if (flags & UV_FS_O_DIRECT) {
+    attributes |= FILE_FLAG_NO_BUFFERING;
+  }
+
+  switch (flags & (UV_FS_O_DSYNC | UV_FS_O_SYNC)) {
+  case 0:
+    break;
+  case UV_FS_O_DSYNC:
+  case UV_FS_O_SYNC:
+    attributes |= FILE_FLAG_WRITE_THROUGH;
     break;
   default:
     goto einval;
@@ -506,9 +521,9 @@ void fs__open(uv_fs_t* req) {
                      NULL);
   if (file == INVALID_HANDLE_VALUE) {
     DWORD error = GetLastError();
-    if (error == ERROR_FILE_EXISTS && (flags & _O_CREAT) &&
-        !(flags & _O_EXCL)) {
-      /* Special case: when ERROR_FILE_EXISTS happens and O_CREAT was */
+    if (error == ERROR_FILE_EXISTS && (flags & UV_FS_O_CREAT) &&
+        !(flags & UV_FS_O_EXCL)) {
+      /* Special case: when ERROR_FILE_EXISTS happens and UV_FS_O_CREAT was */
       /* specified, it means the path referred to a directory. */
       SET_REQ_UV_ERROR(req, UV_EISDIR, error);
     } else {
