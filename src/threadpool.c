@@ -346,6 +346,7 @@ static void report(enum estage stage) {
   uv_queue_stats_t* s;
   unsigned length;
   unsigned threads;
+  uv_queue_stats_cb cb;
 
   if (QUEUE_EMPTY(&stats))
     return;
@@ -360,22 +361,24 @@ static void report(enum estage stage) {
     QUEUE_REMOVE(q);
     s = QUEUE_DATA(q, struct uv_queue_stats_s, q);
 
-    uv_mutex_unlock(&mutex);
     switch (stage) {
       case SUBMIT:
-        s->submit_cb(s, length, threads);
+        cb = s->submit_cb;
         break;
       case START:
-        s->start_cb(s, length, threads);
+        cb = s->start_cb;
         break;
       case DONE:
-        s->done_cb(s, length, threads);
+        cb = s->done_cb;
         break;
       default:
         abort();
     }
-    uv_mutex_lock(&mutex);
+
     QUEUE_INSERT_TAIL(&stats, q);
+    uv_mutex_unlock(&mutex);
+    cb(s, length, threads);
+    uv_mutex_lock(&mutex);
   }
 }
 
