@@ -60,7 +60,7 @@ void saturate_threadpool(unsigned start) {
   uv_loop_t* loop;
   size_t i;
 
-  if (start) {
+  if (start > 0) {
     start_size = start;
     ASSERT(start <= ARRAY_SIZE(pause_reqs));
   }

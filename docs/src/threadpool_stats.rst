@@ -28,8 +28,8 @@ Data types
     structure.
 
     .. warning::
-      These callback functions are not threadsafe. No libuv API functions may be
-      called in these callbacks other than :c:func:`uv_async_send()`.
+      These callback functions are not thread-safe. No libuv API functions may
+      be called in these callbacks other than :c:func:`uv_async_send()`.
 
 Public members
 ^^^^^^^^^^^^^^

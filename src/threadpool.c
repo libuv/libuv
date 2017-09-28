@@ -251,7 +251,7 @@ void uv__work_done(uv_async_t* handle) {
 
   loop = container_of(handle, uv_loop_t, wq_async);
   uv_mutex_lock(&loop->wq_mutex);
-  QUEUE_MOVE(&loop->wq, &wq); /* XXX */
+  QUEUE_MOVE(&loop->wq, &wq);
   uv_mutex_unlock(&loop->wq_mutex);
 
   uv_mutex_lock(&mutex);

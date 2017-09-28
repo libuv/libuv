@@ -41,6 +41,7 @@ static void stats_submit_cb(uv_queue_stats_t* s, unsigned queued,
   fprintf(stderr, "submit: q %d i %d\n", queued, idle);
   submitted++;
   update(queued, idle);
+  ASSERT(s == s->data);
 }
 
 static void stats_start_cb(uv_queue_stats_t* s, unsigned queued,
@@ -48,6 +49,7 @@ static void stats_start_cb(uv_queue_stats_t* s, unsigned queued,
   fprintf(stderr, "start: q %d i %d\n", queued, idle);
   started++;
   update(queued, idle);
+  ASSERT(s == s->data);
 }
 
 static void stats_done_cb(uv_queue_stats_t* s, unsigned queued,
@@ -55,14 +57,16 @@ static void stats_done_cb(uv_queue_stats_t* s, unsigned queued,
   fprintf(stderr, "done: q %d i %d\n", queued, idle);
   done++;
   update(queued, idle);
+  ASSERT(s == s->data);
 }
 
 
 TEST_IMPL(threadpool_stats) {
   uv_queue_stats_t stats;
-  stats.submit_cb = stats_submit_cb;
-  stats.start_cb = stats_start_cb;
   stats.done_cb = stats_done_cb;
+  stats.start_cb = stats_start_cb;
+  stats.submit_cb = stats_submit_cb;
+  stats.data = &stats;
 
   uv_queue_stats_start(&stats);
 
