@@ -1108,9 +1108,6 @@ static int uv__cancel_read_console(uv_tty_t* handle) {
 
 
 static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info) {
-  int old_virtual_width = uv_tty_virtual_width;
-  int old_virtual_height = uv_tty_virtual_height;
-
   uv_tty_virtual_width = info->dwSize.X;
   uv_tty_virtual_height = info->srWindow.Bottom - info->srWindow.Top + 1;
 
