@@ -359,9 +359,24 @@ File open constants
 
 .. c:macro:: UV_FS_O_APPEND
 
+    The file is opened in append mode. Before each write, the file offset is
+    positioned at the end of the file. The modification of the file offset and
+    the write operation are performed as a single atomic step (except on NFS).
+
 .. c:macro:: UV_FS_O_CREAT
 
+    The file is created if it does not already exist.
+
 .. c:macro:: UV_FS_O_DIRECT
+
+    File I/O is done directly to and from user-space buffers, which must be
+    aligned. Buffer size and address must be a multiple of the physical sector
+    size of the block device.
+
+    .. note::
+        `UV_FS_O_DIRECT` is supported on Windows, and mapped to
+        [FILE_FLAG_NO_BUFFERING](
+        https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx).
 
 .. c:macro:: UV_FS_O_DIRECTORY
 
