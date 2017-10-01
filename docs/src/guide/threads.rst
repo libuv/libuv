@@ -105,7 +105,7 @@ return an error in the second call to ``uv_mutex_lock()``.
 
 .. note::
 
-    Mutexes on windows are always recursive.
+    Mutexes on Windows are always recursive.
 
 Locks
 ~~~~~
