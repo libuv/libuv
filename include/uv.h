@@ -141,6 +141,7 @@ extern "C" {
   XX(EMLINK, "too many links")                                                \
   XX(EHOSTDOWN, "host is down")                                               \
   XX(EREMOTEIO, "remote I/O error")                                           \
+  XX(ENOTTY, "inappropriate ioctl for device")                                \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
