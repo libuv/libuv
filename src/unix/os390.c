@@ -386,7 +386,6 @@ int uv_uptime(double* uptime) {
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   uv_cpu_info_t* cpu_info;
-  int result;
   int idx;
   siv1v2 info;
   data_area_ptr cvt = {0};

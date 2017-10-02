@@ -404,7 +404,6 @@ int uv_sem_trywait(uv_sem_t* sem) {
 
 int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   uv_sem_t semid;
-  struct sembuf buf;
   int err;
   union {
     int val;
