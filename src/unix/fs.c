@@ -154,7 +154,8 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
    * same approach taken by sqlite.
    */
   int r = fcntl(req->file, F_FULLFSYNC);
-  if (r) r = fsync(req->file);
+  if (r != 0)
+    r = fsync(req->file);
   return r;
 #else
   return fsync(req->file);
