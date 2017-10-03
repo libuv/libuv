@@ -374,8 +374,7 @@ File open constants
 
     .. note::
         `UV_FS_O_DIRECT` is supported on Linux, and on Windows via
-        [FILE_FLAG_NO_BUFFERING](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx).
+        `FILE_FLAG_NO_BUFFERING <https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx>`_.
         `UV_FS_O_DIRECT` is not supported on macOS.
 
 .. c:macro:: UV_FS_O_DIRECTORY
@@ -392,8 +391,7 @@ File open constants
 
     .. note::
         `UV_FS_O_DSYNC` is supported on Windows via
-        [FILE_FLAG_WRITE_THROUGH](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx).
+        `FILE_FLAG_WRITE_THROUGH <https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx>`_.
 
 .. c:macro:: UV_FS_O_EXCL
 
@@ -450,8 +448,7 @@ File open constants
 
     .. note::
         `UV_FS_O_RANDOM` is only supported on Windows via
-        [FILE_FLAG_RANDOM_ACCESS](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx).
+        `FILE_FLAG_RANDOM_ACCESS <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
 
 .. c:macro:: UV_FS_O_RDONLY
 
@@ -468,8 +465,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SEQUENTIAL` is only supported on Windows via
-        [FILE_FLAG_SEQUENTIAL_SCAN](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx).
+        `FILE_FLAG_SEQUENTIAL_SCAN <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
 
 .. c:macro:: UV_FS_O_SHORT_LIVED
 
@@ -477,8 +473,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SHORT_LIVED` is only supported on Windows via
-        [FILE_ATTRIBUTE_TEMPORARY](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx).
+        `FILE_ATTRIBUTE_TEMPORARY <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
 
 .. c:macro:: UV_FS_O_SYMLINK
 
@@ -491,8 +486,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SYNC` is supported on Windows via
-        [FILE_FLAG_WRITE_THROUGH](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx).
+        `FILE_FLAG_WRITE_THROUGH <https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx>`_.
 
 .. c:macro:: UV_FS_O_TEMPORARY
 
@@ -500,8 +494,7 @@ File open constants
 
     .. note::
         `UV_FS_O_TEMPORARY` is only supported on Windows via
-        [FILE_ATTRIBUTE_TEMPORARY](
-        https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx).
+        `FILE_ATTRIBUTE_TEMPORARY <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
 
 .. c:macro:: UV_FS_O_TRUNC
 
