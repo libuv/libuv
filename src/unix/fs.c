@@ -153,8 +153,10 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
    * supported by the file system we should fall back to fsync(). This is the
    * same approach taken by sqlite.
    */
-  int r = fcntl(req->file, F_FULLFSYNC);
-  if (r != 0)
+  int r;
+
+  r = fcntl(req->file, F_FULLFSYNC);
+  if (r != 0 && errno == ENOTTY)
     r = fsync(req->file);
   return r;
 #else
