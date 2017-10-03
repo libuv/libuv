@@ -502,8 +502,6 @@ void fs__open(uv_fs_t* req) {
   case 0:
     break;
   case UV_FS_O_DSYNC:
-    attributes |= FILE_FLAG_WRITE_THROUGH;
-    break;
   case UV_FS_O_SYNC:
     attributes |= FILE_FLAG_WRITE_THROUGH;
     break;
