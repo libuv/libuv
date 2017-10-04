@@ -92,7 +92,11 @@ int run_tests(int benchmark_output) {
     }
   }
 
-  qsort(TASKS, actual, sizeof(TASKS[0]), compare_task);
+  /* Keep platform_output first */
+  if (actual > 0 && strcmp(TASKS[0].task_name, "platform_output") == 0)
+    qsort(TASKS + 1, actual - 1, sizeof(TASKS[0]), compare_task);
+  else
+    qsort(TASKS, actual, sizeof(TASKS[0]), compare_task);
 
   fprintf(stderr, "1..%d\n", total);
   fflush(stderr);
