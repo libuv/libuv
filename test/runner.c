@@ -81,6 +81,7 @@ int run_tests(int benchmark_output) {
   int skipped;
   int current;
   int test_result;
+  int skip;
   task_entry_t* task;
 
   /* Count the number of tests. */
@@ -92,7 +93,9 @@ int run_tests(int benchmark_output) {
     }
   }
 
-  qsort(TASKS, actual, sizeof(TASKS[0]), compare_task);
+  /* Keep platform_output first. */
+  skip = (actual > 0 && 0 == strcmp(TASKS[0].task_name, "platform_output"));
+  qsort(TASKS + skip, actual - skip, sizeof(TASKS[0]), compare_task);
 
   fprintf(stderr, "1..%d\n", total);
   fflush(stderr);
