@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <uv.h>
 #include <curl/curl.h>
+#include "defs.h"
 
 uv_loop_t *loop;
 CURLM *curl_handle;
@@ -88,7 +89,7 @@ void curl_perform(uv_poll_t *req, int status, int events) {
 
     curl_context_t *context;
 
-    context = (curl_context_t*)req;
+    context = CONTAINER_OF(req, curl_context_t, poll_handle);
 
     curl_multi_socket_action(curl_handle, context->sockfd, flags, &running_handles);
     check_multi_info();   
