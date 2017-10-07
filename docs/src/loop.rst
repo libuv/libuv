@@ -78,13 +78,16 @@ API
 .. c:function:: uv_loop_t* uv_default_loop(void)
 
     Returns the initialized default loop. It may return NULL in case of
-    allocation failure.
+    allocation failure. 
 
     This function is just a convenient way for having a global loop throughout
     an application, the default loop is in no way different than the ones
     initialized with :c:func:`uv_loop_init`. As such, the default loop can (and
     should) be closed with :c:func:`uv_loop_close` so the resources associated
-    with it are freed.
+    with it are freed. 
+
+    .. note::
+        This function is not intended to be called from multiple threads. It is not thread-safe.
 
 .. c:function:: int uv_run(uv_loop_t* loop, uv_run_mode mode)
 
