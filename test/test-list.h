@@ -401,7 +401,9 @@ TEST_DECLARE  (fork_signal_to_child_closed)
 TEST_DECLARE  (fork_fs_events_child)
 TEST_DECLARE  (fork_fs_events_child_dir)
 TEST_DECLARE  (fork_fs_events_file_parent_child)
+#ifndef __MVS__
 TEST_DECLARE  (fork_threadpool_queue_work_simple)
+#endif
 #endif
 
 TASK_LIST_START
@@ -867,7 +869,9 @@ TASK_LIST_START
   TEST_ENTRY  (fork_fs_events_child)
   TEST_ENTRY  (fork_fs_events_child_dir)
   TEST_ENTRY  (fork_fs_events_file_parent_child)
+#ifndef __MVS__
   TEST_ENTRY  (fork_threadpool_queue_work_simple)
+#endif
 #endif
 
 #if 0
