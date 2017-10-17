@@ -27,6 +27,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
+
 #if defined(__MVS__)
 #include <xti.h>
 #endif
@@ -115,10 +117,12 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
     /* req->status >= 0 == bytes written
      * req->status <  0 == errno
      */
+    req->send_cb(req, (req->status >> (CHAR_BIT * sizeof(integer) - 1)) * req->status);
+    /*
     if (req->status >= 0)
       req->send_cb(req, 0);
     else
-      req->send_cb(req, req->status);
+      req->send_cb(req, req->status); faster equivalent above : */
   }
 
   if (QUEUE_EMPTY(&handle->write_queue)) {
