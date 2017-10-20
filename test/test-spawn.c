@@ -1722,7 +1722,7 @@ TEST_IMPL(spawn_quoted_path) {
 #else
   char* quoted_path_env[2];
   options.file = "not_existing";
-  args[0] = options.file;
+  args[0] = (char*) options.file;
   args[1] = NULL;
   options.args = args;
   options.exit_cb = exit_cb;
