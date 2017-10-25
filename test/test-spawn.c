@@ -625,74 +625,56 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
 }
 
 
-static void on_connection(uv_stream_t* stream, int status) {
-  ASSERT(status == 0);
-  uv_close((uv_handle_t*)stream, close_cb);
-}
-
-
-static void connect_cb(uv_connect_t* req, int status) {
-  uv_handle_t* stream;
-
-  stream = req->handle;
-  ASSERT(status == 0);
-  uv_close(stream, close_cb);
-}
-
-
 int spawn_tcp_server_helper(void) {
   uv_tcp_t tcp;
+  uv_os_sock_t handle;
   int r;
 
   r = uv_tcp_init(uv_default_loop(), &tcp);
   ASSERT(r == 0);
 
-  r = uv_tcp_open(&tcp, 3);
+#ifdef _WIN32
+  handle = _get_osfhandle(3);
+#else
+  handle = 3;
+#endif
+  r = uv_tcp_open(&tcp, handle);
   ASSERT(r == 0);
 
   /* Make sure that we can listen on a socket that was
    * passed down from the parent process
    */
-  r = uv_listen((uv_stream_t*)&tcp, SOMAXCONN, on_connection);
-  ASSERT(r == 0);
-
-  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  r = uv_listen((uv_stream_t*)&tcp, SOMAXCONN, NULL);
   ASSERT(r == 0);
 
   return 1;
 }
 
 
-static void tcp_connect(uv_timer_t* handle) {
-  struct sockaddr_in addr;
-  int r;
-
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-
-  r = uv_tcp_connect(&connect_req,
-                     &tcp_client,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
-  ASSERT(r == 0);
-}
-
-
 TEST_IMPL(spawn_tcp_server) {
   uv_stdio_container_t stdio[4];
   struct sockaddr_in addr;
-  uv_os_fd_t fd;
+  uv_os_fd_t handle;
+  int fd;
   int r;
 
   init_process_options("spawn_tcp_server_helper", exit_cb);
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
+  fd = -1;
   r = uv_tcp_init_ex(uv_default_loop(), &tcp_server, AF_INET);
   ASSERT(r == 0);
   r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
+#ifdef _WIN32
+  r = uv_fileno((uv_handle_t*)&tcp_server, &handle);
+  fd = _open_osfhandle((intptr_t) handle, 0);
+#else
   r = uv_fileno((uv_handle_t*)&tcp_server, &fd);
+ #endif 
   ASSERT(r == 0);
+  ASSERT(fd > 0);
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_INHERIT_FD;
@@ -708,21 +690,11 @@ TEST_IMPL(spawn_tcp_server) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == 0);
 
-  r = uv_tcp_init(uv_default_loop(), &tcp_client);
-  ASSERT(r == 0);
-
-  r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
-
-  /* Allow server some time to get set up. */
-  r = uv_timer_start(&timer, tcp_connect, 1000, 0);
-  ASSERT(r == 0);
-
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
 
   ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* Once for process and other for client. */
+  ASSERT(close_cb_called == 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
