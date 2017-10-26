@@ -562,29 +562,28 @@ int WSAAPI uv_msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
 
 int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
                                             struct sockaddr_storage* storage) {
-  if (addr == NULL) {
+  struct sockaddr_in* dest4;
+  struct sockaddr_in6* dest6;
+
+  if (addr == NULL)
     return UV_EINVAL;
-  } else if (addr->sa_family == AF_INET) {
-    const struct sockaddr_in* src;
-    struct sockaddr_in* dest;
-    src = (const struct sockaddr_in*) addr;
-    dest = (struct sockaddr_in*) storage;
-    memcpy(dest, src, sizeof(*src));
-    if (src->sin_addr.s_addr == 0)
-      dest->sin_addr.s_addr = INADDR_LOOPBACK;
+
+  switch (addr->sa_family) {
+  case AF_INET:
+    dest4 = (struct sockaddr_in*) storage;
+    memcpy(dest4, addr, sizeof(*dest4));
+    if (dest4->sin_addr.s_addr == 0)
+      dest4->sin_addr.s_addr = INADDR_LOOPBACK;
     return 0;
-  } else if (addr->sa_family == AF_INET6) {
-    const struct sockaddr_in6* src;
-    struct sockaddr_in6* dest;
-    src = (const struct sockaddr_in6*) addr;
-    dest = (struct sockaddr_in6*) storage;
-    memcpy(dest, src, sizeof(*src));
-    if (memcmp(&src->sin6_addr,
+  case AF_INET6:
+    dest6 = (struct sockaddr_in6*) storage;
+    memcpy(dest6, addr, sizeof(*dest6));
+    if (memcmp(&dest6->sin6_addr,
                &uv_addr_ip6_any_.sin6_addr,
                sizeof(uv_addr_ip6_any_.sin6_addr)) == 0)
-      dest->sin6_addr = (struct in6_addr) IN6ADDR_LOOPBACK_INIT;
+      dest6->sin6_addr = (struct in6_addr) IN6ADDR_LOOPBACK_INIT;
     return 0;
-  } else {
+  default:
     return UV_EINVAL;
   }
 }

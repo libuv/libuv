@@ -42,14 +42,14 @@ TEST_IMPL(connect_unspecified) {
   loop = uv_default_loop();
 
   ASSERT(uv_tcp_init(loop, &socket4) == 0);
-  ASSERT(uv_ip4_addr("0.0.0.0", 80, &addr4) == 0);
+  ASSERT(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr4) == 0);
   ASSERT(uv_tcp_connect(&connect4,
                         &socket4,
                         (const struct sockaddr*) &addr4,
                         connect_4) == 0);
 
   ASSERT(uv_tcp_init(loop, &socket6) == 0);
-  ASSERT(uv_ip6_addr("::", 80, &addr6) == 0);
+  ASSERT(uv_ip6_addr("::", TEST_PORT, &addr6) == 0);
   ASSERT(uv_tcp_connect(&connect6,
                         &socket6,
                         (const struct sockaddr*) &addr6,
