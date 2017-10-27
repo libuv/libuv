@@ -573,7 +573,7 @@ int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
     dest4 = (struct sockaddr_in*) storage;
     memcpy(dest4, addr, sizeof(*dest4));
     if (dest4->sin_addr.s_addr == 0)
-      dest4->sin_addr.s_addr = INADDR_LOOPBACK;
+      dest4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     return 0;
   case AF_INET6:
     dest6 = (struct sockaddr_in6*) storage;
