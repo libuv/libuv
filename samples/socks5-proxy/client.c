@@ -673,12 +673,14 @@ static void conn_read_done(uv_stream_t *handle,
   conn *c;
 
   c = CONTAINER_OF(handle, conn, handle);
+
+  uv_read_stop(&c->handle.stream);
+
   ASSERT(c->t.buf == buf->base);
   ASSERT(c->rdstate == c_busy);
   c->rdstate = c_done;
   c->result = nread;
 
-  uv_read_stop(&c->handle.stream);
   do_next(c->client);
 }
 
