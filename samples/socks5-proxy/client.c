@@ -548,6 +548,7 @@ static int do_proxy(client_ctx *cx) {
 static int do_kill(client_ctx *cx) {
   int new_state = s_kill;
 
+  ASSERT(client_is_dead(cx) == false);
   if (cx->state >= s_almost_dead_0) {
     return cx->state;
   }
@@ -621,6 +622,10 @@ static void conn_timer_expire(uv_timer_t *handle) {
   c->result = UV_ETIMEDOUT;
 
   client = c->client;
+  if (client_is_dead(client)) {
+    return;
+  }
+
   do_next(client);
 }
 
@@ -650,6 +655,10 @@ static void conn_getaddrinfo_done(uv_getaddrinfo_t *req,
   c->result = status;
 
   client = c->client;
+  if (client_is_dead(client)) {
+    return;
+  }
+
   if (status == 0) {
     /* FIXME(bnoordhuis) Should try all addresses. */
     if (ai->ai_family == AF_INET) {
@@ -684,6 +693,10 @@ static void conn_connect_done(uv_connect_t *req, int status) {
   c->result = status;
 
   client = c->client;
+  if (client_is_dead(client)) {
+    return;
+  }
+
   if (status == UV_ECANCELED) {
     do_kill(client);
     return;  /* Handle has been closed. */
@@ -709,6 +722,10 @@ static void conn_read_done(uv_stream_t *handle,
   client = c->client;
 
   uv_read_stop(&c->handle.stream);
+
+  if (client_is_dead(client)) {
+    return;
+  }
 
   if (nread <= 0) {
     ASSERT(nread == UV_EOF || nread == UV_ECONNRESET);
@@ -760,6 +777,10 @@ static void conn_write_done(uv_write_t *req, int status) {
   c = CONTAINER_OF(req, conn, write_req);
   client = c->client;
 
+  if (client_is_dead(client)) {
+    return;
+  }
+
   if (status == UV_ECANCELED) {
     do_kill(client);
     return;  /* Handle has been closed. */
@@ -781,7 +802,10 @@ static void conn_close(conn *c) {
   c->wrstate = c_dead;
   c->timer_handle.data = c;
   c->handle.handle.data = c;
+
+  client_add_ref(client);
   uv_close(&c->handle.handle, conn_close_done);
+  client_add_ref(client);
   uv_close((uv_handle_t *) &c->timer_handle, conn_close_done);
 }
 
@@ -792,5 +816,5 @@ static void conn_close_done(uv_handle_t *handle) {
   c = handle->data;
   client = c->client;
 
-  do_next(c->client);
+  client_release(client);
 }
