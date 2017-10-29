@@ -671,17 +671,25 @@ static void conn_read_done(uv_stream_t *handle,
                            ssize_t nread,
                            const uv_buf_t *buf) {
   conn *c;
+  client_ctx *client;
 
   c = CONTAINER_OF(handle, conn, handle);
+  client = c->client;
 
   uv_read_stop(&c->handle.stream);
+
+  if (nread <= 0) {
+    ASSERT(nread == UV_EOF || nread == UV_ECONNRESET);
+    do_kill(client);
+    return;
+  }
 
   ASSERT(c->t.buf == buf->base);
   ASSERT(c->rdstate == c_busy);
   c->rdstate = c_done;
   c->result = nread;
 
-  do_next(c->client);
+  do_next(client);
 }
 
 static void conn_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
