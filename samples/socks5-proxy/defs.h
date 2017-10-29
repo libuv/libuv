@@ -88,6 +88,7 @@ typedef struct client_ctx {
   s5_ctx parser;  /* The SOCKS protocol parser. */
   conn incoming;  /* Connection with the SOCKS client. */
   conn outgoing;  /* Connection with upstream. */
+  int ref_count;
 } client_ctx;
 
 /* server.c */

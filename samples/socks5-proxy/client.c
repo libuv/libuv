@@ -81,6 +81,9 @@ enum sess_state {
   s_dead              /* Dead. Safe to free now. */
 };
 
+static bool client_is_dead(client_ctx *cx);
+static void client_add_ref(client_ctx *cx);
+static void client_release(client_ctx *cx);
 static void do_next(client_ctx *cx);
 static int do_handshake(client_ctx *cx);
 static int do_handshake_auth(client_ctx *cx);
@@ -112,6 +115,22 @@ static void conn_write_done(uv_write_t *req, int status);
 static void conn_close(conn *c);
 static void conn_close_done(uv_handle_t *handle);
 
+static bool client_is_dead(client_ctx *cx) {
+  return (cx->state == s_kill);
+}
+
+static void client_add_ref(client_ctx *cx) {
+  cx->ref_count++;
+}
+
+static void client_release(client_ctx *cx) {
+  cx->ref_count--;
+  if (cx->ref_count == 0) {
+    // pr_info("client %016x destroyed", cx);
+    free(cx);
+  }
+}
+
 /* |incoming| has been initialized by server.c when this is called. */
 void client_finish_init(server_ctx *sx) {
   uv_stream_t *server;
@@ -127,6 +146,7 @@ void client_finish_init(server_ctx *sx) {
 
   cx->sx = sx;
   cx->state = s_handshake;
+  cx->ref_count = 0;
   s5_init(&cx->parser);
 
   incoming = &cx->incoming;
