@@ -222,7 +222,7 @@ static int do_handshake(client_ctx *cx) {
   incoming->rdstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("read error: %s", uv_strerror(incoming->result));
+    pr_err("read error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -278,7 +278,7 @@ static int do_req_start(client_ctx *cx) {
   incoming->wrstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("write error: %s", uv_strerror(incoming->result));
+    pr_err("write error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -304,7 +304,7 @@ static int do_req_parse(client_ctx *cx) {
   incoming->rdstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("read error: %s", uv_strerror(incoming->result));
+    pr_err("read error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -384,7 +384,7 @@ static int do_req_lookup(client_ctx *cx) {
     /* TODO(bnoordhuis) Escape control characters in parser->daddr. */
     pr_err("lookup error for \"%s\": %s",
            parser->daddr,
-           uv_strerror(outgoing->result));
+           uv_strerror((int)outgoing->result));
     /* Send back a 'Host unreachable' reply. */
     conn_write(incoming, "\5\4\0\1\0\0\0\0\0\0", 10);
     return s_kill;
@@ -480,7 +480,7 @@ static int do_req_connect(client_ctx *cx) {
     }
     return s_proxy_start;
   } else {
-    pr_err("upstream connection error: %s\n", uv_strerror(outgoing->result));
+    pr_err("upstream connection error: %s\n", uv_strerror((int)outgoing->result));
     /* Send a 'Connection refused' reply. */
     conn_write(incoming, "\5\5\0\1\0\0\0\0\0\0", 10);
     return s_kill;
@@ -503,7 +503,7 @@ static int do_proxy_start(client_ctx *cx) {
   incoming->wrstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("write error: %s", uv_strerror(incoming->result));
+    pr_err("write error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -554,7 +554,7 @@ static int do_almost_dead(client_ctx *cx) {
 static int conn_cycle(const char *who, conn *a, conn *b) {
   if (a->result < 0) {
     if (a->result != UV_EOF) {
-      pr_err("%s error: %s", who, uv_strerror(a->result));
+      pr_err("%s error: %s", who, uv_strerror((int)a->result));
     }
     return -1;
   }
@@ -575,7 +575,7 @@ static int conn_cycle(const char *who, conn *a, conn *b) {
     if (b->rdstate == c_stop) {
       conn_read(b);
     } else if (b->rdstate == c_done) {
-      conn_write(a, b->t.buf, b->result);
+      conn_write(a, b->t.buf, (unsigned int)b->result);
       b->rdstate = c_stop;  /* Triggers the call to conn_read() above. */
     }
   }
