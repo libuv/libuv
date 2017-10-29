@@ -25,11 +25,22 @@
 #include "s5.h"
 #include "uv.h"
 
+#if !defined(WIN32)
 #include <assert.h>
 #include <netinet/in.h>  /* sockaddr_in, sockaddr_in6 */
 #include <stddef.h>      /* size_t, ssize_t */
 #include <stdint.h>
 #include <sys/socket.h>  /* sockaddr */
+#else
+#include <assert.h>
+#include <stddef.h>      /* size_t, ssize_t */
+#include <stdint.h>
+#include <WinSock2.h>
+#endif // !defined(WIN32)
+
+#if !defined(_MSC_VER)
+#include <stdbool.h>
+#endif
 
 struct client_ctx;
 

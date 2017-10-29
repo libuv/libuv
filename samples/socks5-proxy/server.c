@@ -20,7 +20,7 @@
  */
 
 #include "defs.h"
-#include <netinet/in.h>  /* INET6_ADDRSTRLEN */
+//#include <netinet/in.h>  /* INET6_ADDRSTRLEN */
 #include <stdlib.h>
 #include <string.h>
 
