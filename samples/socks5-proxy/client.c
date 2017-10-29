@@ -73,12 +73,6 @@ enum sess_state {
   s_proxy_start,      /* Connected. Start piping data. */
   s_proxy,            /* Connected. Pipe data back and forth. */
   s_kill,             /* Tear down session. */
-  s_almost_dead_0,    /* Waiting for finalizers to complete. */
-  s_almost_dead_1,    /* Waiting for finalizers to complete. */
-  s_almost_dead_2,    /* Waiting for finalizers to complete. */
-  s_almost_dead_3,    /* Waiting for finalizers to complete. */
-  s_almost_dead_4,    /* Waiting for finalizers to complete. */
-  s_dead              /* Dead. Safe to free now. */
 };
 
 static bool client_is_dead(client_ctx *cx);
@@ -95,7 +89,6 @@ static int do_req_connect(client_ctx *cx);
 static int do_proxy_start(client_ctx *cx);
 static int do_proxy(client_ctx *cx);
 static int do_kill(client_ctx *cx);
-static int do_almost_dead(client_ctx *cx);
 static int conn_cycle(const char *who, conn *a, conn *b);
 static void conn_timer_reset(conn *c);
 static void conn_timer_expire(uv_timer_t *handle);
@@ -178,7 +171,6 @@ void client_finish_init(server_ctx *sx) {
 static void do_next(client_ctx *cx) {
   int new_state = s_kill;
 
-  ASSERT(cx->state != s_dead);
   switch (cx->state) {
     case s_handshake:
       new_state = do_handshake(cx);
@@ -207,24 +199,10 @@ static void do_next(client_ctx *cx) {
     case s_kill:
       new_state = do_kill(cx);
       break;
-    case s_almost_dead_0:
-    case s_almost_dead_1:
-    case s_almost_dead_2:
-    case s_almost_dead_3:
-    case s_almost_dead_4:
-      new_state = do_almost_dead(cx);
-      break;
     default:
       UNREACHABLE();
   }
   cx->state = new_state;
-
-  if (cx->state == s_dead) {
-    if (DEBUG_CHECKS) {
-      memset(cx, -1, sizeof(*cx));
-    }
-    free(cx);
-  }
 }
 
 static int do_handshake(client_ctx *cx) {
@@ -549,16 +527,11 @@ static int do_kill(client_ctx *cx) {
   int new_state = s_kill;
 
   ASSERT(client_is_dead(cx) == false);
-  if (cx->state >= s_almost_dead_0) {
-    return cx->state;
-  }
 
   /* Try to cancel the request. The callback still runs but if the
    * cancellation succeeded, it gets called with status=UV_ECANCELED.
    */
-  new_state = s_almost_dead_1;
   if (cx->state == s_req_lookup) {
-    new_state = s_almost_dead_0;
     uv_cancel(&cx->outgoing.t.req);
   }
 
@@ -568,11 +541,6 @@ static int do_kill(client_ctx *cx) {
   cx->state = new_state;
 
   return new_state;
-}
-
-static int do_almost_dead(client_ctx *cx) {
-  ASSERT(cx->state >= s_almost_dead_0);
-  return cx->state + 1;  /* Another finalizer completed. */
 }
 
 static int conn_cycle(const char *who, conn *a, conn *b) {
