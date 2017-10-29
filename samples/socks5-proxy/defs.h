@@ -25,11 +25,22 @@
 #include "s5.h"
 #include "uv.h"
 
+#if !defined(WIN32)
 #include <assert.h>
 #include <netinet/in.h>  /* sockaddr_in, sockaddr_in6 */
 #include <stddef.h>      /* size_t, ssize_t */
 #include <stdint.h>
 #include <sys/socket.h>  /* sockaddr */
+#else
+#include <assert.h>
+#include <stddef.h>      /* size_t, ssize_t */
+#include <stdint.h>
+#include <WinSock2.h>
+#endif // !defined(WIN32)
+
+#if !defined(_MSC_VER)
+#include <stdbool.h>
+#endif
 
 struct client_ctx;
 
@@ -77,6 +88,7 @@ typedef struct client_ctx {
   s5_ctx parser;  /* The SOCKS protocol parser. */
   conn incoming;  /* Connection with the SOCKS client. */
   conn outgoing;  /* Connection with upstream. */
+  int release_count;
 } client_ctx;
 
 /* server.c */
@@ -88,7 +100,7 @@ int can_access(const server_ctx *sx,
                const struct sockaddr *addr);
 
 /* client.c */
-void client_finish_init(server_ctx *sx, client_ctx *cx);
+void client_finish_init(server_ctx *sx);
 
 /* util.c */
 #if defined(__GNUC__)
