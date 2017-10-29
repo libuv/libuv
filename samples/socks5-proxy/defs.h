@@ -99,7 +99,7 @@ int can_access(const server_ctx *sx,
                const struct sockaddr *addr);
 
 /* client.c */
-void client_finish_init(server_ctx *sx, client_ctx *cx);
+void client_finish_init(server_ctx *sx);
 
 /* util.c */
 #if defined(__GNUC__)

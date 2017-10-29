@@ -113,9 +113,17 @@ static void conn_close(conn *c);
 static void conn_close_done(uv_handle_t *handle);
 
 /* |incoming| has been initialized by server.c when this is called. */
-void client_finish_init(server_ctx *sx, client_ctx *cx) {
+void client_finish_init(server_ctx *sx) {
+  uv_stream_t *server;
+  client_ctx *cx;
   conn *incoming;
   conn *outgoing;
+
+  server = (uv_stream_t *)&sx->tcp_handle;
+
+  cx = xmalloc(sizeof(*cx));
+  CHECK(0 == uv_tcp_init(sx->loop, &cx->incoming.handle.tcp));
+  CHECK(0 == uv_accept(server, &cx->incoming.handle.stream));
 
   cx->sx = sx;
   cx->state = s_handshake;

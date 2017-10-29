@@ -183,14 +183,10 @@ static void do_bind(uv_getaddrinfo_t *req, int status, struct addrinfo *addrs) {
 
 static void on_connection(uv_stream_t *server, int status) {
   server_ctx *sx;
-  client_ctx *cx;
 
   CHECK(status == 0);
   sx = CONTAINER_OF(server, server_ctx, tcp_handle);
-  cx = xmalloc(sizeof(*cx));
-  CHECK(0 == uv_tcp_init(sx->loop, &cx->incoming.handle.tcp));
-  CHECK(0 == uv_accept(server, &cx->incoming.handle.stream));
-  client_finish_init(sx, cx);
+  client_finish_init(sx);
 }
 
 int can_auth_none(const server_ctx *sx, const client_ctx *cx) {
