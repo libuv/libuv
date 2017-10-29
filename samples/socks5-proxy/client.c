@@ -156,7 +156,7 @@ void client_finish_init(server_ctx *sx) {
  * data between the client and upstream.
  */
 static void do_next(client_ctx *cx) {
-  int new_state;
+  int new_state = s_kill;
 
   ASSERT(cx->state != s_dead);
   switch (cx->state) {
@@ -487,7 +487,7 @@ static int do_req_connect(client_ctx *cx) {
   }
 
   UNREACHABLE();
-  return s_kill;
+  return do_kill(cx);
 }
 
 static int do_proxy_start(client_ctx *cx) {
@@ -526,7 +526,7 @@ static int do_proxy(client_ctx *cx) {
 }
 
 static int do_kill(client_ctx *cx) {
-  int new_state;
+  int new_state = s_kill;
 
   if (cx->state >= s_almost_dead_0) {
     return cx->state;
@@ -543,6 +543,9 @@ static int do_kill(client_ctx *cx) {
 
   conn_close(&cx->incoming);
   conn_close(&cx->outgoing);
+
+  cx->state = new_state;
+
   return new_state;
 }
 
@@ -592,10 +595,13 @@ static void conn_timer_reset(conn *c) {
 
 static void conn_timer_expire(uv_timer_t *handle) {
   conn *c;
+  client_ctx *client;
 
   c = CONTAINER_OF(handle, conn, timer_handle);
   c->result = UV_ETIMEDOUT;
-  do_next(c->client);
+
+  client = c->client;
+  do_next(client);
 }
 
 static void conn_getaddrinfo(conn *c, const char *hostname) {
@@ -618,10 +624,12 @@ static void conn_getaddrinfo_done(uv_getaddrinfo_t *req,
                                   int status,
                                   struct addrinfo *ai) {
   conn *c;
+  client_ctx *client;
 
   c = CONTAINER_OF(req, conn, t.addrinfo_req);
   c->result = status;
 
+  client = c->client;
   if (status == 0) {
     /* FIXME(bnoordhuis) Should try all addresses. */
     if (ai->ai_family == AF_INET) {
@@ -634,7 +642,7 @@ static void conn_getaddrinfo_done(uv_getaddrinfo_t *req,
   }
 
   uv_freeaddrinfo(ai);
-  do_next(c->client);
+  do_next(client);
 }
 
 /* Assumes that c->t.sa contains a valid AF_INET or AF_INET6 address. */
@@ -650,14 +658,18 @@ static int conn_connect(conn *c) {
 
 static void conn_connect_done(uv_connect_t *req, int status) {
   conn *c;
-
-  if (status == UV_ECANCELED) {
-    return;  /* Handle has been closed. */
-  }
+  client_ctx *client;
 
   c = CONTAINER_OF(req, conn, t.connect_req);
   c->result = status;
-  do_next(c->client);
+
+  client = c->client;
+  if (status == UV_ECANCELED) {
+    do_kill(client);
+    return;  /* Handle has been closed. */
+  }
+
+  do_next(client);
 }
 
 static void conn_read(conn *c) {
@@ -723,19 +735,26 @@ static void conn_write(conn *c, const void *data, unsigned int len) {
 
 static void conn_write_done(uv_write_t *req, int status) {
   conn *c;
+  client_ctx *client;
+
+  c = CONTAINER_OF(req, conn, write_req);
+  client = c->client;
 
   if (status == UV_ECANCELED) {
+    do_kill(client);
     return;  /* Handle has been closed. */
   }
 
-  c = CONTAINER_OF(req, conn, write_req);
   ASSERT(c->wrstate == c_busy);
   c->wrstate = c_done;
   c->result = status;
-  do_next(c->client);
+  do_next(client);
 }
 
 static void conn_close(conn *c) {
+  client_ctx *client;
+
+  client = c->client;
   ASSERT(c->rdstate != c_dead);
   ASSERT(c->wrstate != c_dead);
   c->rdstate = c_dead;
@@ -748,7 +767,10 @@ static void conn_close(conn *c) {
 
 static void conn_close_done(uv_handle_t *handle) {
   conn *c;
+  client_ctx *client;
 
   c = handle->data;
+  client = c->client;
+
   do_next(c->client);
 }
