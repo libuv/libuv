@@ -56,9 +56,9 @@
  * reads in the future.
  */
 enum conn_state {
+  c_stop,  /* Stopped. */
   c_busy,  /* Busy; waiting for incoming data or for a write to complete. */
   c_done,  /* Done; read incoming data or write finished. */
-  c_stop,  /* Stopped. */
   c_dead
 };
 
