@@ -56,9 +56,9 @@
  * reads in the future.
  */
 enum conn_state {
+  c_stop,  /* Stopped. */
   c_busy,  /* Busy; waiting for incoming data or for a write to complete. */
   c_done,  /* Done; read incoming data or write finished. */
-  c_stop,  /* Stopped. */
   c_dead
 };
 
@@ -73,14 +73,12 @@ enum sess_state {
   s_proxy_start,      /* Connected. Start piping data. */
   s_proxy,            /* Connected. Pipe data back and forth. */
   s_kill,             /* Tear down session. */
-  s_almost_dead_0,    /* Waiting for finalizers to complete. */
-  s_almost_dead_1,    /* Waiting for finalizers to complete. */
-  s_almost_dead_2,    /* Waiting for finalizers to complete. */
-  s_almost_dead_3,    /* Waiting for finalizers to complete. */
-  s_almost_dead_4,    /* Waiting for finalizers to complete. */
-  s_dead              /* Dead. Safe to free now. */
 };
 
+#define TOTAL_RELEASE_COUNT 4
+
+static bool client_is_dead(client_ctx *cx);
+static void client_release(client_ctx *cx);
 static void do_next(client_ctx *cx);
 static int do_handshake(client_ctx *cx);
 static int do_handshake_auth(client_ctx *cx);
@@ -92,7 +90,6 @@ static int do_req_connect(client_ctx *cx);
 static int do_proxy_start(client_ctx *cx);
 static int do_proxy(client_ctx *cx);
 static int do_kill(client_ctx *cx);
-static int do_almost_dead(client_ctx *cx);
 static int conn_cycle(const char *who, conn *a, conn *b);
 static void conn_timer_reset(conn *c);
 static void conn_timer_expire(uv_timer_t *handle);
@@ -112,13 +109,34 @@ static void conn_write_done(uv_write_t *req, int status);
 static void conn_close(conn *c);
 static void conn_close_done(uv_handle_t *handle);
 
+static bool client_is_dead(client_ctx *cx) {
+  return (cx->state == s_kill);
+}
+
+static void client_release(client_ctx *cx) {
+  cx->release_count++;
+  if (cx->release_count == TOTAL_RELEASE_COUNT) {
+    // pr_info("client %016x destroyed", cx);
+    free(cx);
+  }
+}
+
 /* |incoming| has been initialized by server.c when this is called. */
-void client_finish_init(server_ctx *sx, client_ctx *cx) {
+void client_finish_init(server_ctx *sx) {
+  uv_stream_t *server;
+  client_ctx *cx;
   conn *incoming;
   conn *outgoing;
 
+  server = (uv_stream_t *)&sx->tcp_handle;
+
+  cx = xmalloc(sizeof(*cx));
+  CHECK(0 == uv_tcp_init(sx->loop, &cx->incoming.handle.tcp));
+  CHECK(0 == uv_accept(server, &cx->incoming.handle.stream));
+
   cx->sx = sx;
   cx->state = s_handshake;
+  cx->release_count = 0;
   s5_init(&cx->parser);
 
   incoming = &cx->incoming;
@@ -148,9 +166,8 @@ void client_finish_init(server_ctx *sx, client_ctx *cx) {
  * data between the client and upstream.
  */
 static void do_next(client_ctx *cx) {
-  int new_state;
+  int new_state = s_kill;
 
-  ASSERT(cx->state != s_dead);
   switch (cx->state) {
     case s_handshake:
       new_state = do_handshake(cx);
@@ -179,24 +196,10 @@ static void do_next(client_ctx *cx) {
     case s_kill:
       new_state = do_kill(cx);
       break;
-    case s_almost_dead_0:
-    case s_almost_dead_1:
-    case s_almost_dead_2:
-    case s_almost_dead_3:
-    case s_almost_dead_4:
-      new_state = do_almost_dead(cx);
-      break;
     default:
       UNREACHABLE();
   }
   cx->state = new_state;
-
-  if (cx->state == s_dead) {
-    if (DEBUG_CHECKS) {
-      memset(cx, -1, sizeof(*cx));
-    }
-    free(cx);
-  }
 }
 
 static int do_handshake(client_ctx *cx) {
@@ -214,7 +217,7 @@ static int do_handshake(client_ctx *cx) {
   incoming->rdstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("read error: %s", uv_strerror(incoming->result));
+    pr_err("read error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -270,7 +273,7 @@ static int do_req_start(client_ctx *cx) {
   incoming->wrstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("write error: %s", uv_strerror(incoming->result));
+    pr_err("write error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -296,7 +299,7 @@ static int do_req_parse(client_ctx *cx) {
   incoming->rdstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("read error: %s", uv_strerror(incoming->result));
+    pr_err("read error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -376,7 +379,7 @@ static int do_req_lookup(client_ctx *cx) {
     /* TODO(bnoordhuis) Escape control characters in parser->daddr. */
     pr_err("lookup error for \"%s\": %s",
            parser->daddr,
-           uv_strerror(outgoing->result));
+           uv_strerror((int)outgoing->result));
     /* Send back a 'Host unreachable' reply. */
     conn_write(incoming, "\5\4\0\1\0\0\0\0\0\0", 10);
     return s_kill;
@@ -472,14 +475,14 @@ static int do_req_connect(client_ctx *cx) {
     }
     return s_proxy_start;
   } else {
-    pr_err("upstream connection error: %s\n", uv_strerror(outgoing->result));
+    pr_err("upstream connection error: %s\n", uv_strerror((int)outgoing->result));
     /* Send a 'Connection refused' reply. */
     conn_write(incoming, "\5\5\0\1\0\0\0\0\0\0", 10);
     return s_kill;
   }
 
   UNREACHABLE();
-  return s_kill;
+  return do_kill(cx);
 }
 
 static int do_proxy_start(client_ctx *cx) {
@@ -495,7 +498,7 @@ static int do_proxy_start(client_ctx *cx) {
   incoming->wrstate = c_stop;
 
   if (incoming->result < 0) {
-    pr_err("write error: %s", uv_strerror(incoming->result));
+    pr_err("write error: %s", uv_strerror((int)incoming->result));
     return do_kill(cx);
   }
 
@@ -518,35 +521,29 @@ static int do_proxy(client_ctx *cx) {
 }
 
 static int do_kill(client_ctx *cx) {
-  int new_state;
+  int new_state = s_kill;
 
-  if (cx->state >= s_almost_dead_0) {
-    return cx->state;
-  }
-
+  ASSERT(client_is_dead(cx) == false);
+    
   /* Try to cancel the request. The callback still runs but if the
    * cancellation succeeded, it gets called with status=UV_ECANCELED.
    */
-  new_state = s_almost_dead_1;
   if (cx->state == s_req_lookup) {
-    new_state = s_almost_dead_0;
     uv_cancel(&cx->outgoing.t.req);
   }
 
   conn_close(&cx->incoming);
   conn_close(&cx->outgoing);
-  return new_state;
-}
 
-static int do_almost_dead(client_ctx *cx) {
-  ASSERT(cx->state >= s_almost_dead_0);
-  return cx->state + 1;  /* Another finalizer completed. */
+  cx->state = new_state;
+
+  return new_state;
 }
 
 static int conn_cycle(const char *who, conn *a, conn *b) {
   if (a->result < 0) {
     if (a->result != UV_EOF) {
-      pr_err("%s error: %s", who, uv_strerror(a->result));
+      pr_err("%s error: %s", who, uv_strerror((int)a->result));
     }
     return -1;
   }
@@ -567,7 +564,7 @@ static int conn_cycle(const char *who, conn *a, conn *b) {
     if (b->rdstate == c_stop) {
       conn_read(b);
     } else if (b->rdstate == c_done) {
-      conn_write(a, b->t.buf, b->result);
+      conn_write(a, b->t.buf, (unsigned int)b->result);
       b->rdstate = c_stop;  /* Triggers the call to conn_read() above. */
     }
   }
@@ -584,10 +581,17 @@ static void conn_timer_reset(conn *c) {
 
 static void conn_timer_expire(uv_timer_t *handle) {
   conn *c;
+  client_ctx *client;
 
   c = CONTAINER_OF(handle, conn, timer_handle);
   c->result = UV_ETIMEDOUT;
-  do_next(c->client);
+
+  client = c->client;
+  if (client_is_dead(client)) {
+    return;
+  }
+
+  do_next(client);
 }
 
 static void conn_getaddrinfo(conn *c, const char *hostname) {
@@ -610,9 +614,15 @@ static void conn_getaddrinfo_done(uv_getaddrinfo_t *req,
                                   int status,
                                   struct addrinfo *ai) {
   conn *c;
+  client_ctx *client;
 
   c = CONTAINER_OF(req, conn, t.addrinfo_req);
   c->result = status;
+
+  client = c->client;
+  if (client_is_dead(client)) {
+    return;
+  }
 
   if (status == 0) {
     /* FIXME(bnoordhuis) Should try all addresses. */
@@ -626,7 +636,7 @@ static void conn_getaddrinfo_done(uv_getaddrinfo_t *req,
   }
 
   uv_freeaddrinfo(ai);
-  do_next(c->client);
+  do_next(client);
 }
 
 /* Assumes that c->t.sa contains a valid AF_INET or AF_INET6 address. */
@@ -642,14 +652,22 @@ static int conn_connect(conn *c) {
 
 static void conn_connect_done(uv_connect_t *req, int status) {
   conn *c;
-
-  if (status == UV_ECANCELED) {
-    return;  /* Handle has been closed. */
-  }
+  client_ctx *client;
 
   c = CONTAINER_OF(req, conn, t.connect_req);
   c->result = status;
-  do_next(c->client);
+
+  client = c->client;
+  if (client_is_dead(client)) {
+    return;
+  }
+
+  if (status == UV_ECANCELED) {
+    do_kill(client);
+    return;  /* Handle has been closed. */
+  }
+
+  do_next(client);
 }
 
 static void conn_read(conn *c) {
@@ -663,15 +681,29 @@ static void conn_read_done(uv_stream_t *handle,
                            ssize_t nread,
                            const uv_buf_t *buf) {
   conn *c;
+  client_ctx *client;
 
   c = CONTAINER_OF(handle, conn, handle);
+  client = c->client;
+
+  uv_read_stop(&c->handle.stream);
+
+  if (client_is_dead(client)) {
+    return;
+  }
+
+  if (nread <= 0) {
+    ASSERT(nread == UV_EOF || nread == UV_ECONNRESET);
+    do_kill(client);
+    return;
+  }
+
   ASSERT(c->t.buf == buf->base);
   ASSERT(c->rdstate == c_busy);
   c->rdstate = c_done;
   c->result = nread;
 
-  uv_read_stop(&c->handle.stream);
-  do_next(c->client);
+  do_next(client);
 }
 
 static void conn_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
@@ -705,16 +737,24 @@ static void conn_write(conn *c, const void *data, unsigned int len) {
 
 static void conn_write_done(uv_write_t *req, int status) {
   conn *c;
+  client_ctx *client;
+
+  c = CONTAINER_OF(req, conn, write_req);
+  client = c->client;
+
+  if (client_is_dead(client)) {
+    return;
+  }
 
   if (status == UV_ECANCELED) {
+    do_kill(client);
     return;  /* Handle has been closed. */
   }
 
-  c = CONTAINER_OF(req, conn, write_req);
   ASSERT(c->wrstate == c_busy);
   c->wrstate = c_done;
   c->result = status;
-  do_next(c->client);
+  do_next(client);
 }
 
 static void conn_close(conn *c) {
@@ -730,7 +770,10 @@ static void conn_close(conn *c) {
 
 static void conn_close_done(uv_handle_t *handle) {
   conn *c;
+  client_ctx *client;
 
   c = handle->data;
-  do_next(c->client);
+  client = c->client;
+
+  client_release(client);
 }
