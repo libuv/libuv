@@ -59,6 +59,12 @@ Data types
     Abstract representation of a file descriptor. On Unix systems this is a
     `typedef` of `int` and on Windows a `HANDLE`.
 
+.. c:type:: uv_pid_t
+
+    Cross platform representation of a `pid_t`.
+
+    .. versionadded:: 1.16.0
+
 .. c:type:: uv_rusage_t
 
     Data type for resource usage results.
@@ -220,6 +226,12 @@ API
     .. note::
         On Windows not all fields are set, the unsupported fields are filled with zeroes.
         See :c:type:`uv_rusage_t` for more details.
+
+.. c:function:: uv_pid_t uv_os_getppid(void)
+
+    Returns the parent process ID.
+
+    .. versionadded:: 1.16.0
 
 .. c:function:: int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count)
 

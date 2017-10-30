@@ -1969,7 +1969,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
 
   if (pipe->ipc) {
     assert(!(pipe->flags & UV_HANDLE_NON_OVERLAPPED_PIPE));
-    pipe->pipe.conn.ipc_pid = uv_parent_pid();
+    pipe->pipe.conn.ipc_pid = uv_os_getppid();
     assert(pipe->pipe.conn.ipc_pid != -1);
   }
   return 0;

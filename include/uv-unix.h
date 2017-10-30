@@ -123,6 +123,7 @@ typedef struct uv_buf_t {
 typedef int uv_file;
 typedef int uv_os_sock_t;
 typedef int uv_os_fd_t;
+typedef pid_t uv_pid_t;
 
 #define UV_ONCE_INIT PTHREAD_ONCE_INIT
 
