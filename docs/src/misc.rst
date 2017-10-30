@@ -276,7 +276,7 @@ API
     Maximum IPv6 interface identifier name length.  Defined as
     `IFNAMSIZ` on Unix and `IF_NAMESIZE` on Linux and Windows.
 
-    .. versionadded:: 1.15.0
+    .. versionadded:: 1.16.0
 
 .. c:function:: int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size)
 
