@@ -73,6 +73,7 @@ enum sess_state {
   s_proxy_start,      /* Connected. Start piping data. */
   s_proxy,            /* Connected. Pipe data back and forth. */
   s_kill,             /* Tear down session. */
+  s_dead,
 };
 
 static bool client_is_dead(client_ctx *cx);
@@ -109,7 +110,7 @@ static void conn_close(conn *c);
 static void conn_close_done(uv_handle_t *handle);
 
 static bool client_is_dead(client_ctx *cx) {
-  return (cx->state == s_kill);
+  return (cx->state == s_dead);
 }
 
 static void client_add_ref(client_ctx *cx) {
@@ -524,7 +525,7 @@ static int do_proxy(client_ctx *cx) {
 }
 
 static int do_kill(client_ctx *cx) {
-  int new_state = s_kill;
+  int new_state = s_dead;
 
   ASSERT(client_is_dead(cx) == false);
 
