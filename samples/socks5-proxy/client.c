@@ -73,7 +73,7 @@ enum sess_state {
   s_proxy_start,      /* Connected. Start piping data. */
   s_proxy,            /* Connected. Pipe data back and forth. */
   s_kill,             /* Tear down session. */
-  s_dead,
+  s_dead              /* Dead. Safe to free now. */
 };
 
 static bool client_is_dead(client_ctx *cx);
@@ -125,7 +125,7 @@ static void client_release(client_ctx *cx) {
     free(cx);
     client_count--;
     if (client_count == 0) {
-      pr_info("Great! tunnel count is zero.");
+      pr_info("Great! Client count is zero.");
     }
   }
 }
