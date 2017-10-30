@@ -117,11 +117,16 @@ static void client_add_ref(client_ctx *cx) {
   cx->ref_count++;
 }
 
+int client_count = 0;
+
 static void client_release(client_ctx *cx) {
   cx->ref_count--;
   if (cx->ref_count == 0) {
-    // pr_info("client %016x destroyed", cx);
     free(cx);
+    client_count--;
+    if (client_count == 0) {
+      pr_info("Great! tunnel count is zero.");
+    }
   }
 }
 
@@ -133,6 +138,8 @@ void client_finish_init(server_ctx *sx) {
   conn *outgoing;
 
   server = (uv_stream_t *)&sx->tcp_handle;
+
+  client_count++;
 
   cx = xmalloc(sizeof(*cx));
   CHECK(0 == uv_tcp_init(sx->loop, &cx->incoming.handle.tcp));
