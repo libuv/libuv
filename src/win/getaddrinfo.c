@@ -435,7 +435,7 @@ int uv_if_indextoiid(unsigned int ifindex, char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  r = snprintf(buffer, *size, "%d", ifindex) + 1;
+  r = snprintf(buffer, *size, "%d", ifindex);
 
   if (r < 0)
     return uv_translate_sys_error(r);
