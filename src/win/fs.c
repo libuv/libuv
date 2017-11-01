@@ -434,13 +434,17 @@ void fs__open(uv_fs_t* req) {
     access |= FILE_APPEND_DATA;
   }
 
-  /*
-   * Here is where we deviate significantly from what CRT's _open()
-   * does. We indiscriminately use all the sharing modes, to match
-   * UNIX semantics. In particular, this ensures that the file can
-   * be deleted even whilst it's open, fixing issue #1449.
-   */
-  share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+  if (flags & UV_FS_O_EXLOCK) {
+    share = 0;
+  } else {
+    /*
+     * Here is where we deviate significantly from what CRT's _open()
+     * does. We indiscriminately use all the sharing modes, to match
+     * UNIX semantics. In particular, this ensures that the file can
+     * be deleted even whilst it's open, fixing issue #1449.
+     */
+    share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+  }
 
   switch (flags & (UV_FS_O_CREAT | UV_FS_O_EXCL | UV_FS_O_TRUNC)) {
   case 0:

@@ -409,7 +409,7 @@ File open constants
     Atomically obtain an exclusive lock.
 
     .. note::
-        `UV_FS_O_EXLOCK` is only supported on macOS.
+        `UV_FS_O_EXLOCK` is only supported on macOS and Windows.
 
 .. c:macro:: UV_FS_O_NOATIME
 
