@@ -204,6 +204,9 @@ TEST_DECLARE   (pipe_ref4)
 TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
+#if defined(_WIN32) && defined(UV_USE_PIPE_INTERRUPTER)
+TEST_DECLARE   (pipe_open_read_pipe)
+#endif
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
@@ -443,6 +446,9 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif
   TEST_ENTRY  (pipe_set_non_blocking)
+#if defined(_WIN32) && defined(UV_USE_PIPE_INTERRUPTER)
+  TEST_ENTRY_CUSTOM  (pipe_open_read_pipe, 0, 0, 10000)
+#endif
   TEST_ENTRY  (tty)
 #ifdef _WIN32
   TEST_ENTRY  (tty_raw)

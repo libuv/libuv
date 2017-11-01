@@ -1,9 +1,10 @@
 {
   'variables': {
-    'target_arch%': 'ia32',          # set v8's target architecture
-    'host_arch%': 'ia32',            # set v8's host architecture
-    'uv_library%': 'static_library', # allow override to 'shared_library' for DLL/.so builds
-    'msvs_multi_core_compile': '0',  # we do enable multicore compiles, but not using the V8 way
+    'target_arch%': 'ia32',            # set v8's target architecture
+    'host_arch%': 'ia32',              # set v8's host architecture
+    'uv_library%': 'static_library',   # allow override to 'shared_library' for DLL/.so builds
+    'uv_enable_interrupter%': 'false', # enable pipe read interrupter (see [PR link])
+    'msvs_multi_core_compile': '0',    # we do enable multicore compiles, but not using the V8 way
   },
 
   'target_defaults': {
@@ -202,6 +203,9 @@
        'cflags': [ '-fno-omit-frame-pointer' ],
        # pull in V8's postmortem metadata
        'ldflags': [ '-Wl,-z,allextract' ]
+     }],
+     ['uv_enable_interrupter=="true"', {
+      'defines': ['UV_USE_PIPE_INTERRUPTER']
      }],
     ],
   },

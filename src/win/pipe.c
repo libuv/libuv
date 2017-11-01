@@ -46,6 +46,23 @@ struct uv__ipc_queue_item_s {
 /* A zero-size buffer for use by uv_pipe_read */
 static char uv_zero_[] = "";
 
+#ifdef UV_USE_PIPE_INTERRUPTER
+/*
+ * On Windows, when one thread is reading from a synchronous pipe, all other
+ * WinAPI calls on that pipe will block. For example, if libuv is reading a
+ * synchronous pipe, and this pipe is passed over to child process as
+ * redirected stdin, if the child process calls uv_pipe_open, it will
+ * deadlock.
+ *
+ * To solve this issue, for each read of a synchronous pipe we create a
+ * separate thread that will interrupt the read operation every 2.5s. This
+ * allows other WinAPI calls to finish.
+ *
+ * This is only enabled if libuv was built with enable-interrupter option.
+ */
+#define UV__PIPE_ZERO_READ_INTERRUPT_INTERVAL 2500
+#endif
+
 /* Null uv_buf_t */
 static const uv_buf_t uv_null_buf_ = { 0, NULL };
 
@@ -75,6 +92,16 @@ typedef struct {
   uv_ipc_frame_header_t header;
   uv__ipc_socket_info_ex socket_info_ex;
 } uv_ipc_frame_uv_stream;
+
+#ifdef UV_USE_PIPE_INTERRUPTER
+/* Parameter for uv__pipe_readfile_interrupter */
+typedef struct {
+  volatile HANDLE thread;
+  HANDLE wait_handle;
+  HANDLE thread_mutex;
+  HANDLE completed_event;
+} uv__readfile_interrupter_t;
+#endif
 
 static void eof_timer_init(uv_pipe_t* pipe);
 static void eof_timer_start(uv_pipe_t* pipe);
@@ -942,6 +969,87 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
 }
 
 
+#ifdef UV_USE_PIPE_INTERRUPTER
+static VOID CALLBACK uv__readfile_interrupter_callback(PVOID param,
+                                                       BOOLEAN timedout) {
+  uv__readfile_interrupter_t* interrupter;
+
+  interrupter = param;
+  if (timedout) {
+    /* Interrupt ReadFile to give other processes a chance to act upon pipe */
+    WaitForSingleObject(interrupter->thread_mutex, INFINITE);
+    if (interrupter->thread != NULL) {
+      pCancelSynchronousIo(interrupter->thread);
+      SwitchToThread();
+    }
+    ReleaseMutex(interrupter->thread_mutex);
+  } else {
+    /* ReadFile thread has terminated - clean up the handles and exit */
+    CloseHandle(interrupter->completed_event);
+    CloseHandle(interrupter->thread_mutex);
+    UnregisterWait(interrupter->wait_handle);
+    uv__free(interrupter);
+  }
+}
+
+
+static uv__readfile_interrupter_t* uv__start_readfile_interrupter(void) {
+  HANDLE thread_handle;
+  uv__readfile_interrupter_t* interrupter;
+
+  interrupter = uv__malloc(sizeof(*interrupter));
+  if (interrupter == NULL)
+    return NULL;
+
+  if (!DuplicateHandle(GetCurrentProcess(),
+                       GetCurrentThread(),
+                       GetCurrentProcess(),
+                       &thread_handle,
+                       0,
+                       FALSE,
+                       DUPLICATE_SAME_ACCESS))
+    goto failed_duplicate;
+
+  interrupter->thread = thread_handle;
+  interrupter->thread_mutex = CreateMutex(NULL, FALSE, NULL);
+  if (interrupter->thread_mutex == NULL)
+    goto failed_mutex;
+
+  interrupter->completed_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+  if (interrupter->completed_event == NULL)
+    goto failed_event;
+
+  if (!RegisterWaitForSingleObject(&interrupter->wait_handle,
+                                   interrupter->completed_event,
+                                   uv__readfile_interrupter_callback,
+                                   interrupter,
+                                   UV__PIPE_ZERO_READ_INTERRUPT_INTERVAL,
+                                   WT_EXECUTEDEFAULT))
+    goto failed_register;
+
+  return interrupter;
+
+failed_register:
+  CloseHandle(interrupter->completed_event);
+failed_event:
+  CloseHandle(interrupter->thread_mutex);
+failed_mutex:
+  CloseHandle(interrupter->thread);
+failed_duplicate:
+  uv__free(interrupter);
+  return NULL;
+}
+
+static void uv__stop_readfile_interrupter(uv__readfile_interrupter_t* interrupter) {
+  WaitForSingleObject(interrupter->thread_mutex, INFINITE);
+  CloseHandle(interrupter->thread);
+  interrupter->thread = NULL;
+  ReleaseMutex(interrupter->thread_mutex);
+  SetEvent(interrupter->completed_event);
+}
+#endif
+
+
 static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* parameter) {
   int result;
   DWORD bytes;
@@ -951,6 +1059,10 @@ static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* parameter) {
   HANDLE hThread = NULL;
   DWORD err;
   uv_mutex_t *m = &handle->pipe.conn.readfile_mutex;
+#ifdef UV_USE_PIPE_INTERRUPTER
+  uv__readfile_interrupter_t* interrupter;
+  interrupter = NULL;
+#endif
 
   assert(req != NULL);
   assert(req->type == UV_READ);
@@ -966,6 +1078,9 @@ static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* parameter) {
       hThread = NULL;
     }
     uv_mutex_unlock(m);
+#ifdef UV_USE_PIPE_INTERRUPTER
+    interrupter = uv__start_readfile_interrupter();
+#endif
   }
 restart_readfile:
   if (handle->flags & UV_HANDLE_READING) {
@@ -985,6 +1100,10 @@ restart_readfile:
           uv_mutex_lock(m);
           handle->pipe.conn.readfile_thread = hThread;
           uv_mutex_unlock(m);
+#ifdef UV_USE_PIPE_INTERRUPTER
+          /* Give some time for other processes to wake before restarting. */
+          Sleep(1);
+#endif
           goto restart_readfile;
         } else {
           result = 1; /* successfully stopped reading */
@@ -1010,6 +1129,9 @@ restart_readfile:
   }
 
   POST_COMPLETION_FOR_REQ(loop, req);
+#ifdef UV_USE_PIPE_INTERRUPTER
+  uv__stop_readfile_interrupter(interrupter);
+#endif
   return 0;
 }
 

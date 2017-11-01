@@ -22,6 +22,7 @@ set run=
 set vs_toolset=x86
 set msbuild_platform=WIN32
 set library=static_library
+set enable_interrupter=false
 
 :next-arg
 if "%1"=="" goto args-done
@@ -38,6 +39,7 @@ if /i "%1"=="ia32"         set target_arch=ia32&set msbuild_platform=WIN32&set v
 if /i "%1"=="x64"          set target_arch=x64&set msbuild_platform=x64&set vs_toolset=x64&goto arg-ok
 if /i "%1"=="shared"       set library=shared_library&goto arg-ok
 if /i "%1"=="static"       set library=static_library&goto arg-ok
+if /i "%1"=="enable-interrupter" set enable_interrupter=true&goto arg-ok
 :arg-ok
 shift
 goto next-arg
@@ -140,7 +142,7 @@ exit /b 1
 
 :have_gyp
 if not defined PYTHON set PYTHON=python
-"%PYTHON%" gyp_uv.py -Dtarget_arch=%target_arch% -Duv_library=%library%
+"%PYTHON%" gyp_uv.py -Dtarget_arch=%target_arch% -Duv_library=%library% -Duv_enable_interrupter=%enable_interrupter%
 if errorlevel 1 goto create-msvs-files-failed
 if not exist uv.sln goto create-msvs-files-failed
 echo Project files generated.
