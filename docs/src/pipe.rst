@@ -101,4 +101,20 @@ API
     a handle of the given `type`, returned by :c:func:`uv_pipe_pending_type`
     and call ``uv_accept(pipe, handle)``.
 
+.. c:function:: void uv_pipe_enable_interrupter(uv_pipe_t* handle)
+
+    Enables automatic interrupts of synchronous pipes reads.
+
+    For synchronous pipes :c:func:`uv_read_start` will cause all other WinAPI
+    calls for that pipe to wait until read completes, which can cause
+    deadlocks. With this setting, an internal thread will interrupt the read
+    every 2.5s allowing other API calls to complete. This interrupt is
+    transparent for the user - callback will not be called, and user does not
+    have to restart the read.
+
+    .. note::
+        This setting applies to synchronous pipes on Windows only.
+
+	.. versionadded:: 1.14.0
+
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.
