@@ -311,13 +311,13 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   size_t name_len;
   int r;
 
-  if (!handle || uv__stream_fd(handle) == -1)
-    return UV_EBADF;
+  if (handle == NULL || uv__stream_fd(handle) == -1)
+    return -EBADF;
 
   if (mode != UV_READABLE &&
       mode != UV_WRITABLE &&
       mode != (UV_WRITABLE | UV_READABLE))
-    return UV_EINVAL;
+    return -EINVAL;
 
   if (fstat(uv__stream_fd(handle), &pipe_stat) == -1)
     return -errno;
@@ -334,7 +334,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   pipe_stat.st_mode |= desired_mode;
 
-  /* Unfortunatly fchmod does not work on all platforms, we will use chmod. */
+  /* Unfortunately fchmod does not work on all platforms, we will use chmod. */
   name_len = 0;
   r = uv_pipe_getsockname(handle, NULL, &name_len);
   if (r != UV_ENOBUFS)
@@ -350,11 +350,8 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     return r;
   }
 
-  if (chmod(name_buffer, pipe_stat.st_mode) == -1) {
-    uv__free(name_buffer);
-    return -errno;
-  }
+  r = chmod(name_buffer, pipe_stat.st_mode);
   uv__free(name_buffer);
 
-  return 0;
+  return r != -1 ? 0 : -errno;
 }

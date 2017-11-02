@@ -39,7 +39,6 @@ TEST_IMPL(pipe_set_chmod) {
   /* No easy way to test if this works, we will only make sure that */
   /* the call is successful. */
   r = uv_pipe_chmod(&pipe_handle, UV_READABLE);
-  printf("uv_pipe_chmod result: %s\n", uv_err_name(r));
   if (r == UV_EPERM) {
     MAKE_VALGRIND_HAPPY();
     RETURN_SKIP("Insufficient privileges to alter pipe fmode");

@@ -2142,7 +2142,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   PSID everyone;
   int error;
 
-  if (!handle || handle->handle == INVALID_HANDLE_VALUE)
+  if (handle == NULL || handle->handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
 
   if (mode != UV_READABLE &&

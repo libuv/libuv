@@ -105,9 +105,9 @@ API
 
 .. c:function:: int uv_pipe_chmod(uv_pipe_t* handle, int flags)
 
-    Alters pipe permissions, allowing it to be accessed from process running by
+    Alters pipe permissions, allowing it to be accessed from processes run by
     different users. Makes the pipe writable or readable by all users. Mode can
-    be either ``UV_WRITABLE``, ``UV_READABLE`` or
-    ``UV_WRITABLE | UV_READABLE``. This function is blocking.
+    be ``UV_WRITABLE``, ``UV_READABLE`` or ``UV_WRITABLE | UV_READABLE``. This
+    function is blocking.
 
-    .. versionadded:: 1.15.0
+    .. versionadded:: 1.16.0
