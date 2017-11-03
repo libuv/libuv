@@ -130,6 +130,7 @@ void log_tap_result(int test_count,
   const char* result;
   const char* directive;
   char reason[1024];
+  int reason_length;
 
   switch (status) {
   case TEST_OK:
@@ -147,6 +148,9 @@ void log_tap_result(int test_count,
 
   if (status == TEST_SKIP && process_output_size(process) > 0) {
     process_read_last_line(process, reason, sizeof reason);
+    reason_length = strlen(reason);
+    if (reason_length > 0 && reason[reason_length - 1] == '\n')
+      reason[reason_length - 1] = '\0';
   } else {
     reason[0] = '\0';
   }
