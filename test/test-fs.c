@@ -3075,7 +3075,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
                  &open_req1,
                  "test_file",
                  O_RDWR | O_CREAT | UV_FS_O_EXLOCK,
-                 0,
+                 S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT(r >= 0);
   ASSERT(open_req1.result >= 0);
@@ -3085,7 +3085,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
                  &open_req2,
                  "test_file",
                  O_RDONLY | UV_FS_O_EXLOCK,
-                 0,
+                 S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT(r < 0);
   ASSERT(open_req2.result < 0);
@@ -3100,7 +3100,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
                  &open_req2,
                  "test_file",
                  O_RDONLY | UV_FS_O_EXLOCK,
-                 0,
+                 S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT(r >= 0);
   ASSERT(open_req2.result >= 0);
