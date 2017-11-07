@@ -411,6 +411,8 @@ File open constants
     .. note::
         `UV_FS_O_EXLOCK` is only supported on macOS and Windows.
 
+    .. versionchanged:: 1.16.1 support is added for Windows.
+
 .. c:macro:: UV_FS_O_NOATIME
 
     Do not update the file access time when the file is read.

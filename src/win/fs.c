@@ -434,15 +434,18 @@ void fs__open(uv_fs_t* req) {
     access |= FILE_APPEND_DATA;
   }
 
+  /*
+   * Here is where we deviate significantly from what CRT's _open()
+   * does. We indiscriminately use all the sharing modes, to match
+   * UNIX semantics. In particular, this ensures that the file can
+   * be deleted even whilst it's open, fixing issue #1449.
+   * We still support exclusive sharing mode, since it is necessary
+   * for opening raw block devices, otherwise Windows will prevent
+   * any attempt to write past the master boot record.
+   */
   if (flags & UV_FS_O_EXLOCK) {
     share = 0;
   } else {
-    /*
-     * Here is where we deviate significantly from what CRT's _open()
-     * does. We indiscriminately use all the sharing modes, to match
-     * UNIX semantics. In particular, this ensures that the file can
-     * be deleted even whilst it's open, fixing issue #1449.
-     */
     share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
   }
 
