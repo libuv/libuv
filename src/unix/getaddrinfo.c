@@ -32,6 +32,7 @@
 #include <stddef.h> /* NULL */
 #include <stdlib.h>
 #include <string.h>
+#include <net/if.h> /* if_indextoname() */
 
 /* EAI_* constants. */
 #include <netdb.h>
