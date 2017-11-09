@@ -75,6 +75,9 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 /* Do we need different versions of this for different architectures? */
 #define ALIGNED_SIZE(X)     ((((X) + 3) >> 2) << 2)
 
+#ifndef NDIS_IF_MAX_STRING_SIZE
+#define NDIS_IF_MAX_STRING_SIZE IF_MAX_STRING_SIZE
+#endif
 
 static void uv__getaddrinfo_work(struct uv__work* w) {
   uv_getaddrinfo_t* req;
