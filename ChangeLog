@@ -1,3 +1,12 @@
+2017.11.11, Version 1.16.1 (Stable)
+
+Changes since version 1.16.0:
+
+* unix: move net/if.h include (cjihrig)
+
+* win: fix undeclared NDIS_IF_MAX_STRING_SIZE (Nick Logan)
+
+
 2017.11.07, Version 1.16.0 (Stable), d68779f0ea742918f653b9c20237460271c39aeb
 
 Changes since version 1.15.0:
