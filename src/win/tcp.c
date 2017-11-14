@@ -459,8 +459,6 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
-      handle->reqs_pending++;
-      return;
     }
   } else {
     /* Make this req pending reporting an error. */

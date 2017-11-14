@@ -378,8 +378,7 @@ UV_EXTERN const char* uv_err_name(int err);
   /* read-only */                                                             \
   uv_req_type type;                                                           \
   /* private */                                                               \
-  void* active_queue[2];                                                      \
-  void* reserved[4];                                                          \
+  void* reserved[6];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
 /* Abstract base class of all requests. */
@@ -1531,7 +1530,10 @@ struct uv_loop_s {
   /* Loop reference counting. */
   unsigned int active_handles;
   void* handle_queue[2];
-  void* active_reqs[2];
+  union {
+    void* unused[2];
+    unsigned int count;
+  } active_reqs;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   UV_LOOP_PRIVATE_FIELDS
