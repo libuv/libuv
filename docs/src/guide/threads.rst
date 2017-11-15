@@ -38,9 +38,9 @@ wait for it to close using ``uv_thread_join()``.
 .. _thread-create-example:
 
 .. rubric:: thread-create/main.c
-.. literalinclude:: ../code/thread-create/main.c
+.. literalinclude:: ../../code/thread-create/main.c
     :linenos:
-    :lines: 26-37
+    :lines: 26-36
     :emphasize-lines: 3-7
 
 .. tip::
@@ -54,7 +54,7 @@ custom parameters to the thread. The function ``hare`` will now run in a separat
 thread, scheduled pre-emptively by the operating system:
 
 .. rubric:: thread-create/main.c
-.. literalinclude:: ../code/thread-create/main.c
+.. literalinclude:: ../../code/thread-create/main.c
     :linenos:
     :lines: 6-14
     :emphasize-lines: 2
@@ -76,21 +76,24 @@ Mutexes
 The mutex functions are a **direct** map to the pthread equivalents.
 
 .. rubric:: libuv mutex functions
-.. literalinclude:: ../libuv/include/uv.h
+.. literalinclude:: ../../../include/uv.h
     :lines: 1355-1360
 
-The ``uv_mutex_init()`` and ``uv_mutex_trylock()`` functions will return 0 on
-success, and an error code otherwise.
+The ``uv_mutex_init()``, ``uv_mutex_init_recursive()`` and ``uv_mutex_trylock()``
+functions will return 0 on success, and an error code otherwise.
 
 If `libuv` has been compiled with debugging enabled, ``uv_mutex_destroy()``,
 ``uv_mutex_lock()`` and ``uv_mutex_unlock()`` will ``abort()`` on error.
 Similarly ``uv_mutex_trylock()`` will abort if the error is anything *other
 than* ``EAGAIN`` or ``EBUSY``.
 
-Recursive mutexes are supported by some platforms, but you should not rely on
-them. The BSD mutex implementation will raise an error if a thread which has
+Recursive mutexes are supported, but you should not rely on them. Also, they
+should not be used with ``uv_cond_t`` variables.
+
+The default BSD mutex implementation will raise an error if a thread which has
 locked a mutex attempts to lock it again. For example, a construct like::
 
+    uv_mutex_init(a_mutex);
     uv_mutex_lock(a_mutex);
     uv_thread_create(thread_id, entry, (void *)a_mutex);
     uv_mutex_lock(a_mutex);
@@ -102,8 +105,7 @@ return an error in the second call to ``uv_mutex_lock()``.
 
 .. note::
 
-    Mutexes on linux support attributes for a recursive mutex, but the API is
-    not exposed via libuv.
+    Mutexes on Windows are always recursive.
 
 Locks
 ~~~~~
@@ -115,7 +117,7 @@ holding it. Read-write locks are frequently used in databases. Here is a toy
 example.
 
 .. rubric:: locks/main.c - simple rwlocks
-.. literalinclude:: ../code/locks/main.c
+.. literalinclude:: ../../code/locks/main.c
     :linenos:
     :emphasize-lines: 13,16,27,31,42,55
 
@@ -199,7 +201,7 @@ a separate thread so that the blocking and CPU bound task does not prevent the
 event loop from performing other activities.
 
 .. rubric:: queue-work/main.c - lazy fibonacci
-.. literalinclude:: ../code/queue-work/main.c
+.. literalinclude:: ../../code/queue-work/main.c
     :linenos:
     :lines: 17-29
 
@@ -212,10 +214,10 @@ you are changing things while both threads may be running.
 The trigger is ``uv_queue_work``:
 
 .. rubric:: queue-work/main.c
-.. literalinclude:: ../code/queue-work/main.c
+.. literalinclude:: ../../code/queue-work/main.c
     :linenos:
     :lines: 31-44
-    :emphasize-lines: 40
+    :emphasize-lines: 10
 
 The thread function will be launched in a separate thread, passed the
 ``uv_work_t`` structure and once the function returns, the *after* function
@@ -239,7 +241,7 @@ Let's modify the fibonacci example to demonstrate ``uv_cancel()``. We first set
 up a signal handler for termination.
 
 .. rubric:: queue-cancel/main.c
-.. literalinclude:: ../code/queue-cancel/main.c
+.. literalinclude:: ../../code/queue-cancel/main.c
     :linenos:
     :lines: 43-
 
@@ -247,7 +249,7 @@ When the user triggers the signal by pressing ``Ctrl+C`` we send
 ``uv_cancel()`` to all the workers. ``uv_cancel()`` will return ``0`` for those that are already executing or finished.
 
 .. rubric:: queue-cancel/main.c
-.. literalinclude:: ../code/queue-cancel/main.c
+.. literalinclude:: ../../code/queue-cancel/main.c
     :linenos:
     :lines: 33-41
     :emphasize-lines: 6
@@ -256,7 +258,7 @@ For tasks that do get cancelled successfully, the *after* function is called
 with ``status`` set to ``UV_ECANCELED``.
 
 .. rubric:: queue-cancel/main.c
-.. literalinclude:: ../code/queue-cancel/main.c
+.. literalinclude:: ../../code/queue-cancel/main.c
     :linenos:
     :lines: 28-31
     :emphasize-lines: 2
@@ -283,7 +285,7 @@ to the main thread. This is a simple example of having a download manager
 informing the user of the status of running downloads.
 
 .. rubric:: progress/main.c
-.. literalinclude:: ../code/progress/main.c
+.. literalinclude:: ../../code/progress/main.c
     :linenos:
     :lines: 7-8,34-
     :emphasize-lines: 2,11
@@ -308,7 +310,7 @@ with the async watcher whenever it receives a message.
     event.
 
 .. rubric:: progress/main.c
-.. literalinclude:: ../code/progress/main.c
+.. literalinclude:: ../../code/progress/main.c
     :linenos:
     :lines: 10-23
     :emphasize-lines: 7-8
@@ -318,7 +320,7 @@ for delivery with ``uv_async_send``. Remember: ``uv_async_send`` is also
 non-blocking and will return immediately.
 
 .. rubric:: progress/main.c
-.. literalinclude:: ../code/progress/main.c
+.. literalinclude:: ../../code/progress/main.c
     :linenos:
     :lines: 30-33
 
@@ -327,7 +329,7 @@ The callback is a standard libuv pattern, extracting the data from the watcher.
 Finally it is important to remember to clean up the watcher.
 
 .. rubric:: progress/main.c
-.. literalinclude:: ../code/progress/main.c
+.. literalinclude:: ../../code/progress/main.c
     :linenos:
     :lines: 25-28
     :emphasize-lines: 3

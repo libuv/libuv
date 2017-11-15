@@ -29,6 +29,13 @@
 char executable_path[sizeof(executable_path)];
 
 
+static int compare_task(const void* va, const void* vb) {
+  const task_entry_t* a = va;
+  const task_entry_t* b = vb;
+  return strcmp(a->task_name, b->task_name);
+}
+
+
 const char* fmt(double d) {
   static char buf[1024];
   static char* p;
@@ -67,21 +74,28 @@ const char* fmt(double d) {
 
 
 int run_tests(int benchmark_output) {
+  int actual;
   int total;
   int passed;
   int failed;
   int skipped;
   int current;
   int test_result;
+  int skip;
   task_entry_t* task;
 
   /* Count the number of tests. */
+  actual = 0;
   total = 0;
-  for (task = TASKS; task->main; task++) {
+  for (task = TASKS; task->main; task++, actual++) {
     if (!task->is_helper) {
       total++;
     }
   }
+
+  /* Keep platform_output first. */
+  skip = (actual > 0 && 0 == strcmp(TASKS[0].task_name, "platform_output"));
+  qsort(TASKS + skip, actual - skip, sizeof(TASKS[0]), compare_task);
 
   fprintf(stderr, "1..%d\n", total);
   fflush(stderr);
@@ -116,6 +130,7 @@ void log_tap_result(int test_count,
   const char* result;
   const char* directive;
   char reason[1024];
+  int reason_length;
 
   switch (status) {
   case TEST_OK:
@@ -133,6 +148,9 @@ void log_tap_result(int test_count,
 
   if (status == TEST_SKIP && process_output_size(process) > 0) {
     process_read_last_line(process, reason, sizeof reason);
+    reason_length = strlen(reason);
+    if (reason_length > 0 && reason[reason_length - 1] == '\n')
+      reason[reason_length - 1] = '\0';
   } else {
     reason[0] = '\0';
   }
@@ -351,12 +369,6 @@ int run_test_part(const char* test, const char* part) {
   return 255;
 }
 
-
-static int compare_task(const void* va, const void* vb) {
-  const task_entry_t* a = va;
-  const task_entry_t* b = vb;
-  return strcmp(a->task_name, b->task_name);
-}
 
 
 static int find_helpers(const task_entry_t* task,

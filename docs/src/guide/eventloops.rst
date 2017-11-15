@@ -19,7 +19,7 @@ these things can be a bit difficult to understand, so let's look at
 ``uv_run()`` where all the control flow occurs.
 
 .. rubric:: src/unix/core.c - uv_run
-.. literalinclude:: ../libuv/src/unix/core.c
+.. literalinclude:: ../../../src/unix/core.c
     :linenos:
     :lines: 304-324
     :emphasize-lines: 10,19,21
@@ -42,7 +42,7 @@ Here is a simple example that stops the loop and demonstrates how the current
 iteration of the loop still takes places.
 
 .. rubric:: uvstop/main.c
-.. literalinclude:: ../code/uvstop/main.c
+.. literalinclude:: ../../code/uvstop/main.c
     :linenos:
     :emphasize-lines: 11
 

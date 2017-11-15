@@ -230,6 +230,7 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
   uv_loop_t* loop;
   uv__cf_loop_state_t* state;
   uv__fsevents_event_t* event;
+  FSEventStreamEventFlags flags;
   QUEUE head;
 
   loop = info;
@@ -245,8 +246,10 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
 
     /* Process and filter out events */
     for (i = 0; i < numEvents; i++) {
+      flags = eventFlags[i];
+
       /* Ignore system events */
-      if (eventFlags[i] & kFSEventsSystem)
+      if (flags & kFSEventsSystem)
         continue;
 
       path = paths[i];
@@ -267,8 +270,7 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
         }
       }
 
-      /* Ignore events with path equal to directory itself */
-      if (len == 0)
+      if (len == 0 && (flags & kFSEventStreamEventFlagItemIsDir))
         continue;
 
       /* Do not emit events from subdirectories (without option set) */
@@ -284,12 +286,17 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
 
       memset(event, 0, sizeof(*event));
       memcpy(event->path, path, len + 1);
+      event->events = UV_RENAME;
 
-      if ((eventFlags[i] & kFSEventsModified) != 0 &&
-          (eventFlags[i] & kFSEventsRenamed) == 0)
+      if (0 != (flags & kFSEventsModified) &&
+          0 != (flags & kFSEventStreamEventFlagItemIsDir) &&
+          0 == (flags & kFSEventStreamEventFlagItemRenamed)) {
         event->events = UV_CHANGE;
-      else
-        event->events = UV_RENAME;
+      }
+      if (0 == (flags & kFSEventStreamEventFlagItemIsDir) &&
+          0 == (flags & kFSEventStreamEventFlagItemRenamed)) {
+        event->events = UV_CHANGE;
+      }
 
       QUEUE_INSERT_TAIL(&head, &event->member);
     }

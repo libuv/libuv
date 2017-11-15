@@ -58,13 +58,19 @@
 
 #if defined(__DragonFly__)      || \
     defined(__FreeBSD__)        || \
-    defined(__FreeBSD_kernel__)
+    defined(__FreeBSD_kernel__) || \
+    defined(__NetBSD__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
 # define UV__O_CLOEXEC O_CLOEXEC
 # if defined(__FreeBSD__)
 #  define uv__accept4 accept4
+# endif
+# if defined(__NetBSD__)
+#  define uv__accept4(a, b, c, d) paccept((a), (b), (c), NULL, (d))
+# endif
+# if defined(__FreeBSD__) || defined(__NetBSD__)
 #  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
 #  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
 # endif
@@ -459,7 +465,7 @@ int uv__accept(int sockfd) {
   assert(sockfd >= 0);
 
   while (1) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
     static int no_accept4;
 
     if (no_accept4)
@@ -835,7 +841,7 @@ void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
 
 
 void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP)));
+  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
   assert(0 != events);
   assert(w->fd >= 0);
   assert(w->fd < INT_MAX);
@@ -863,7 +869,7 @@ void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP)));
+  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
   assert(0 != events);
 
   if (w->fd == -1)
@@ -895,7 +901,7 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
-  uv__io_stop(loop, w, POLLIN | POLLOUT | UV__POLLRDHUP);
+  uv__io_stop(loop, w, POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI);
   QUEUE_REMOVE(&w->pending_queue);
 
   /* Remove stale events for this file descriptor */
@@ -910,7 +916,7 @@ void uv__io_feed(uv_loop_t* loop, uv__io_t* w) {
 
 
 int uv__io_active(const uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP)));
+  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
   assert(0 != events);
   return 0 != (w->pevents & events);
 }
@@ -985,7 +991,7 @@ int uv__open_cloexec(const char* path, int flags) {
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
   int r;
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__)
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return -errno;
@@ -1282,6 +1288,9 @@ int uv_os_setenv(const char* name, const char* value) {
 
 
 int uv_os_unsetenv(const char* name) {
+  if (name == NULL)
+    return -EINVAL;
+
   if (unsetenv(name) != 0)
     return -errno;
 
@@ -1316,4 +1325,9 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   memcpy(buffer, buf, len + 1);
   *size = len;
   return 0;
+}
+
+
+uv_pid_t uv_os_getppid(void) {
+  return getppid();
 }

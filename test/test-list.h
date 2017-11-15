@@ -84,6 +84,8 @@ TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_queue_order)
 TEST_DECLARE   (tcp_open)
 TEST_DECLARE   (tcp_open_twice)
+TEST_DECLARE   (tcp_open_bound)
+TEST_DECLARE   (tcp_open_connected)
 TEST_DECLARE   (tcp_connect_error_after_write)
 TEST_DECLARE   (tcp_shutdown_after_write)
 TEST_DECLARE   (tcp_bind_error_addrinuse)
@@ -211,6 +213,7 @@ TEST_DECLARE   (pipe_ref4)
 TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
+TEST_DECLARE   (pipe_set_chmod)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
@@ -265,6 +268,7 @@ TEST_DECLARE   (spawn_auto_unref)
 TEST_DECLARE   (spawn_closed_process_io)
 TEST_DECLARE   (spawn_reads_child_path)
 TEST_DECLARE   (spawn_inherit_streams)
+TEST_DECLARE   (spawn_quoted_path)
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (fs_poll_getpath)
 TEST_DECLARE   (kill)
@@ -280,6 +284,7 @@ TEST_DECLARE   (fs_mkdtemp)
 TEST_DECLARE   (fs_fstat)
 TEST_DECLARE   (fs_access)
 TEST_DECLARE   (fs_chmod)
+TEST_DECLARE   (fs_copyfile)
 TEST_DECLARE   (fs_unlink_readonly)
 TEST_DECLARE   (fs_chown)
 TEST_DECLARE   (fs_link)
@@ -287,6 +292,9 @@ TEST_DECLARE   (fs_readlink)
 TEST_DECLARE   (fs_realpath)
 TEST_DECLARE   (fs_symlink)
 TEST_DECLARE   (fs_symlink_dir)
+#ifdef _WIN32
+TEST_DECLARE   (fs_non_symlink_reparse_point)
+#endif
 TEST_DECLARE   (fs_utime)
 TEST_DECLARE   (fs_futime)
 TEST_DECLARE   (fs_file_open_append)
@@ -323,6 +331,7 @@ TEST_DECLARE   (fs_invalid_filename)
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
+TEST_DECLARE   (fs_null_req)
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (threadpool_queue_work_einval)
 TEST_DECLARE   (threadpool_multiple_event_loops)
@@ -334,11 +343,16 @@ TEST_DECLARE   (threadpool_cancel_single)
 TEST_DECLARE   (thread_local_storage)
 TEST_DECLARE   (thread_stack_size)
 TEST_DECLARE   (thread_mutex)
+TEST_DECLARE   (thread_mutex_recursive)
 TEST_DECLARE   (thread_rwlock)
 TEST_DECLARE   (thread_rwlock_trylock)
 TEST_DECLARE   (thread_create)
 TEST_DECLARE   (thread_equal)
 TEST_DECLARE   (dlerror)
+#if (defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))) && \
+    !defined(__sun)
+TEST_DECLARE   (poll_oob)
+#endif
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
@@ -399,7 +413,9 @@ TEST_DECLARE  (fork_signal_to_child_closed)
 TEST_DECLARE  (fork_fs_events_child)
 TEST_DECLARE  (fork_fs_events_child_dir)
 TEST_DECLARE  (fork_fs_events_file_parent_child)
+#ifndef __MVS__
 TEST_DECLARE  (fork_threadpool_queue_work_simple)
+#endif
 #endif
 
 TASK_LIST_START
@@ -442,6 +458,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif
   TEST_ENTRY  (pipe_set_non_blocking)
+  TEST_ENTRY  (pipe_set_chmod)
   TEST_ENTRY  (tty)
 #ifdef _WIN32
   TEST_ENTRY  (tty_raw)
@@ -503,6 +520,9 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_open)
   TEST_HELPER (tcp_open, tcp4_echo_server)
   TEST_ENTRY  (tcp_open_twice)
+  TEST_ENTRY  (tcp_open_bound)
+  TEST_ENTRY  (tcp_open_connected)
+  TEST_HELPER (tcp_open_connected, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_shutdown_after_write)
   TEST_HELPER (tcp_shutdown_after_write, tcp4_echo_server)
@@ -701,6 +721,11 @@ TASK_LIST_START
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
   TEST_ENTRY  (poll_bad_fdtype)
+#if (defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))) && \
+    !defined(__sun)
+  TEST_ENTRY  (poll_oob)
+#endif
+
 #ifdef __linux__
   TEST_ENTRY  (poll_nested_epoll)
 #endif
@@ -734,6 +759,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_closed_process_io)
   TEST_ENTRY  (spawn_reads_child_path)
   TEST_ENTRY  (spawn_inherit_streams)
+  TEST_ENTRY  (spawn_quoted_path)
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (kill)
@@ -782,6 +808,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_fstat)
   TEST_ENTRY  (fs_access)
   TEST_ENTRY  (fs_chmod)
+  TEST_ENTRY  (fs_copyfile)
   TEST_ENTRY  (fs_unlink_readonly)
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
@@ -790,6 +817,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_realpath)
   TEST_ENTRY  (fs_symlink)
   TEST_ENTRY  (fs_symlink_dir)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_non_symlink_reparse_point)
+#endif
   TEST_ENTRY  (fs_stat_missing_path)
   TEST_ENTRY  (fs_read_file_eof)
   TEST_ENTRY  (fs_file_open_append)
@@ -824,6 +854,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_invalid_filename)
 #endif
   TEST_ENTRY  (fs_file_pos_after_op_with_offset)
+  TEST_ENTRY  (fs_null_req)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
 #if defined(__PPC__) || defined(__PPC64__)  /* For linux PPC and AIX */
@@ -842,6 +873,7 @@ TASK_LIST_START
   TEST_ENTRY  (thread_local_storage)
   TEST_ENTRY  (thread_stack_size)
   TEST_ENTRY  (thread_mutex)
+  TEST_ENTRY  (thread_mutex_recursive)
   TEST_ENTRY  (thread_rwlock)
   TEST_ENTRY  (thread_rwlock_trylock)
   TEST_ENTRY  (thread_create)
@@ -861,7 +893,9 @@ TASK_LIST_START
   TEST_ENTRY  (fork_fs_events_child)
   TEST_ENTRY  (fork_fs_events_child_dir)
   TEST_ENTRY  (fork_fs_events_file_parent_child)
+#ifndef __MVS__
   TEST_ENTRY  (fork_threadpool_queue_work_simple)
+#endif
 #endif
 
 #if 0
