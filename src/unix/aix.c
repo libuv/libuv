@@ -64,10 +64,18 @@
 #define RDWR_BUF_SIZE   4096
 #define EQ(a,b)         (strcmp(a,b) == 0)
 
+static uv_mutex_t mutex;
+static uv_once_t once = UV_ONCE_INIT;
 static void* args_mem = NULL;
 static char** process_argv = NULL;
 static int process_argc = 0;
 static char* process_title_ptr = NULL;
+
+
+static void init_once(void) {
+    uv_mutex_init(&mutex);
+}
+
 
 int uv__platform_loop_init(uv_loop_t* loop) {
   loop->fs_fd = -1;
@@ -946,12 +954,17 @@ char** uv_setup_args(int argc, char** argv) {
 int uv_set_process_title(const char* title) {
   char* new_title;
 
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+
   /* We cannot free this pointer when libuv shuts down,
    * the process may still be using it.
    */
   new_title = uv__strdup(title);
-  if (new_title == NULL)
+  if (new_title == NULL) {
+    uv_mutex_unlock(&mutex);
     return -ENOMEM;
+  }
 
   /* If this is the first time this is set,
    * don't free and set argv[1] to NULL.
@@ -965,19 +978,27 @@ int uv_set_process_title(const char* title) {
   if (process_argc > 1)
      process_argv[1] = NULL;
 
+  uv_mutex_unlock(&mutex);
+
   return 0;
 }
 
 
 int uv_get_process_title(char* buffer, size_t size) {
   size_t len;
+
   len = strlen(process_argv[0]);
   if (buffer == NULL || size == 0)
     return -EINVAL;
   else if (size <= len)
     return -ENOBUFS;
 
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+
   memcpy(buffer, process_argv[0], len + 1);
+
+  uv_mutex_unlock(&mutex);
 
   return 0;
 }

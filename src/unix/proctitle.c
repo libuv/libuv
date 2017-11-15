@@ -24,14 +24,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 extern void uv__set_process_title(const char* title);
 
+
+static uv_mutex_t mutex;
+static uv_once_t once = UV_ONCE_INIT;
 static void* args_mem;
+
 
 static struct {
   char* str;
   size_t len;
 } process_title;
+
+
+static void init_once(void) {
+    uv_mutex_init(&mutex);
+}
 
 
 char** uv_setup_args(int argc, char** argv) {
@@ -84,9 +94,14 @@ int uv_set_process_title(const char* title) {
   if (process_title.len == 0)
     return 0;
 
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+
   /* No need to terminate, byte after is always '\0'. */
   strncpy(process_title.str, title, process_title.len);
   uv__set_process_title(title);
+
+  uv_mutex_unlock(&mutex);
 
   return 0;
 }
@@ -98,10 +113,15 @@ int uv_get_process_title(char* buffer, size_t size) {
   else if (size <= process_title.len)
     return -ENOBUFS;
 
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+
   if (process_title.len != 0)
     memcpy(buffer, process_title.str, process_title.len + 1);
 
   buffer[process_title.len] = '\0';
+
+  uv_mutex_unlock(&mutex);
 
   return 0;
 }
