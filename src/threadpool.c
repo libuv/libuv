@@ -32,6 +32,9 @@
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
+static unsigned int threads_started;
+static uv_cond_t threads_started_cond;
+static uv_mutex_t threads_started_mutex;
 static unsigned int idle_threads;
 static unsigned int nthreads;
 static uv_thread_t* threads;
@@ -54,6 +57,11 @@ static void worker(void* arg) {
   QUEUE* q;
 
   (void) arg;
+
+  uv_mutex_lock(&threads_started_mutex);
+  ++threads_started;
+  uv_cond_signal(&threads_started_cond);
+  uv_mutex_unlock(&threads_started_mutex);
 
   for (;;) {
     uv_mutex_lock(&mutex);
@@ -155,11 +163,26 @@ static void init_threads(void) {
   if (uv_mutex_init(&mutex))
     abort();
 
+  if (uv_cond_init(&threads_started_cond))
+    abort();
+
+  if (uv_mutex_init(&threads_started_mutex))
+    abort();
+
+  threads_started = 0;
+
   QUEUE_INIT(&wq);
+
+  uv_mutex_lock(&threads_started_mutex);
 
   for (i = 0; i < nthreads; i++)
     if (uv_thread_create(threads + i, worker, NULL))
       abort();
+
+  do {
+    uv_cond_wait(&threads_started_cond, &threads_started_mutex);
+  } while (threads_started != nthreads);
+  uv_mutex_unlock(&threads_started_mutex);
 
   initialized = 1;
 }
