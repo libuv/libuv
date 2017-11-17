@@ -2171,7 +2171,6 @@ TEST_IMPL(fs_utime) {
 #ifdef _WIN32
 TEST_IMPL(fs_stat_root) {
   int r;
-  uv_loop_t* loop = uv_default_loop();
 
   r = uv_fs_stat(NULL, &stat_req, "\\", NULL);
   ASSERT(r == 0);
