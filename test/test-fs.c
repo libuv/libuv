@@ -32,8 +32,12 @@
     defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
 #include <unistd.h> /* unlink, rmdir, etc. */
 #else
+# include <winioctl.h>
 # include <direct.h>
 # include <io.h>
+# ifndef ERROR_SYMLINK_NOT_SUPPORTED
+#  define ERROR_SYMLINK_NOT_SUPPORTED 1464
+# endif
 # define unlink _unlink
 # define rmdir _rmdir
 # define open _open
