@@ -44,7 +44,7 @@ struct fs_req {
 
 struct test_thread {
   uv_thread_t thread_id;
-  volatile int thread_called;
+  int thread_called;
 };
 
 static void getaddrinfo_do(struct getaddrinfo_req* req);
@@ -54,7 +54,7 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
 static void fs_do(struct fs_req* req);
 static void fs_cb(uv_fs_t* handle);
 
-static volatile int thread_called;
+static int thread_called;
 static uv_key_t tls_key;
 
 
@@ -173,7 +173,7 @@ TEST_IMPL(threadpool_multiple_event_loops) {
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_join(&threads[i].thread_id);
     ASSERT(r == 0);
-    ASSERT(threads[i].thread_called);
+    ASSERT(threads[i].thread_called == 1);
   }
 
   return 0;
