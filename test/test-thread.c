@@ -105,8 +105,8 @@ static void fs_cb(uv_fs_t* handle) {
 
 
 static void do_work(void* arg) {
-  struct getaddrinfo_req getaddrinfo_reqs[16];
-  struct fs_req fs_reqs[16];
+  struct getaddrinfo_req getaddrinfo_reqs[4];
+  struct fs_req fs_reqs[4];
   uv_loop_t loop;
   size_t i;
   struct test_thread* thread = arg;
@@ -115,14 +115,14 @@ static void do_work(void* arg) {
 
   for (i = 0; i < ARRAY_SIZE(getaddrinfo_reqs); i++) {
     struct getaddrinfo_req* req = getaddrinfo_reqs + i;
-    req->counter = 16;
+    req->counter = 4;
     req->loop = &loop;
     getaddrinfo_do(req);
   }
 
   for (i = 0; i < ARRAY_SIZE(fs_reqs); i++) {
     struct fs_req* req = fs_reqs + i;
-    req->counter = 16;
+    req->counter = 4;
     req->loop = &loop;
     fs_do(req);
   }
