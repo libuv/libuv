@@ -36,14 +36,14 @@
 #include <unistd.h>
 
 
-static uv_mutex_t mutex;
+static uv_mutex_t process_title_mutex;
 static uv_once_t once = UV_ONCE_INIT;
 static char *process_title;
 static void* args_mem;
 
 
 static void init_once(void) {
-    uv_mutex_init(&mutex);
+    uv_mutex_init(&process_title_mutex);
 }
 
 
@@ -155,13 +155,13 @@ char** uv_setup_args(int argc, char** argv) {
 
 int uv_set_process_title(const char* title) {
   uv_once(&once, init_once);
-  uv_mutex_lock(&mutex);
+  uv_mutex_lock(&process_title_mutex);
 
   uv__free(process_title);
   process_title = uv__strdup(title);
   setproctitle("%s", title);
 
-  uv_mutex_unlock(&mutex);
+  uv_mutex_unlock(&process_title_mutex);
 
   return 0;
 }
@@ -174,13 +174,13 @@ int uv_get_process_title(char* buffer, size_t size) {
     return -EINVAL;
 
   uv_once(&once, init_once);
-  uv_mutex_lock(&mutex);
+  uv_mutex_lock(&process_title_mutex);
 
   if (process_title) {
     len = strlen(process_title) + 1;
 
     if (size < len) {
-      uv_mutex_unlock(&mutex);
+      uv_mutex_unlock(&process_title_mutex);
       return -ENOBUFS;
     }
 
@@ -191,7 +191,7 @@ int uv_get_process_title(char* buffer, size_t size) {
 
   buffer[len] = '\0';
 
-  uv_mutex_unlock(&mutex);
+  uv_mutex_unlock(&process_title_mutex);
 
   return 0;
 }
