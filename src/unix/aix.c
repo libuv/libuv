@@ -71,7 +71,6 @@ static char** process_argv = NULL;
 static int process_argc = 0;
 static char* process_title_ptr = NULL;
 
-
 static void init_process_title_mutex_once(void) {
   uv_mutex_init(&process_title_mutex);
 }
