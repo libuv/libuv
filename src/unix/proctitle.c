@@ -29,7 +29,7 @@ extern void uv__set_process_title(const char* title);
 
 
 static uv_mutex_t process_title_mutex;
-static uv_once_t once = UV_ONCE_INIT;
+static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 static void* args_mem;
 
 
@@ -39,7 +39,7 @@ static struct {
 } process_title;
 
 
-static void init_once(void) {
+static void init_process_title_mutex_once(void) {
     uv_mutex_init(&process_title_mutex);
 }
 
@@ -94,7 +94,7 @@ int uv_set_process_title(const char* title) {
   if (process_title.len == 0)
     return 0;
 
-  uv_once(&once, init_once);
+  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
 
   /* No need to terminate, byte after is always '\0'. */
@@ -113,7 +113,7 @@ int uv_get_process_title(char* buffer, size_t size) {
   else if (size <= process_title.len)
     return -ENOBUFS;
 
-  uv_once(&once, init_once);
+  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
 
   if (process_title.len != 0)

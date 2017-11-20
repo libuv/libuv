@@ -65,14 +65,14 @@
 #define EQ(a,b)         (strcmp(a,b) == 0)
 
 static uv_mutex_t process_title_mutex;
-static uv_once_t once = UV_ONCE_INIT;
+static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 static void* args_mem = NULL;
 static char** process_argv = NULL;
 static int process_argc = 0;
 static char* process_title_ptr = NULL;
 
 
-static void init_once(void) {
+static void init_process_title_mutex_once(void) {
     uv_mutex_init(&process_title_mutex);
 }
 
@@ -954,7 +954,7 @@ char** uv_setup_args(int argc, char** argv) {
 int uv_set_process_title(const char* title) {
   char* new_title;
 
-  uv_once(&once, init_once);
+  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
 
   /* We cannot free this pointer when libuv shuts down,
@@ -993,7 +993,7 @@ int uv_get_process_title(char* buffer, size_t size) {
   else if (size <= len)
     return -ENOBUFS;
 
-  uv_once(&once, init_once);
+  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
 
   memcpy(buffer, process_argv[0], len + 1);
