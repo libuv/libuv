@@ -335,7 +335,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     return r;
   }
 
-  /* Unfortunately fstat on a pipe has a bug on OSX Darwin */
+  /* stat must be used as fstat has a bug on Darwin */
   if (stat(name_buffer, &pipe_stat) == -1) {
     uv__free(name_buffer);
     return -errno;
