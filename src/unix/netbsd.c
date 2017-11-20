@@ -40,7 +40,6 @@
 #include <unistd.h>
 #include <time.h>
 
-
 static uv_mutex_t process_title_mutex;
 static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 static char *process_title;
