@@ -63,8 +63,8 @@ static void loop_instant_close_after_work_cb(uv_work_t* req, int status) {
 }
 
 TEST_IMPL(loop_instant_close) {
-  uv_loop_t loop;
-  uv_work_t req;
+  static uv_loop_t loop;
+  static uv_work_t req;
   ASSERT(0 == uv_loop_init(&loop));
   ASSERT(0 == uv_queue_work(&loop,
                             &req,
