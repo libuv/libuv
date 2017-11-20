@@ -22,6 +22,8 @@
 #include "uv.h"
 #include "task.h"
 
+#include <fcntl.h>
+
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
 #include <unistd.h> /* unlink, etc. */
