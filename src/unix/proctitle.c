@@ -88,15 +88,14 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 int uv_set_process_title(const char* title) {
-  if (process_title.len == 0)
-    return 0;
-
   uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
 
-  /* No need to terminate, byte after is always '\0'. */
-  strncpy(process_title.str, title, process_title.len);
-  uv__set_process_title(title);
+  if (process_title.len != 0) {
+    /* No need to terminate, byte after is always '\0'. */
+    strncpy(process_title.str, title, process_title.len);
+    uv__set_process_title(title);
+  }
 
   uv_mutex_unlock(&process_title_mutex);
 
