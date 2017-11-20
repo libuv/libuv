@@ -954,17 +954,15 @@ char** uv_setup_args(int argc, char** argv) {
 int uv_set_process_title(const char* title) {
   char* new_title;
 
-  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
-  uv_mutex_lock(&process_title_mutex);
-
   /* We cannot free this pointer when libuv shuts down,
    * the process may still be using it.
    */
   new_title = uv__strdup(title);
-  if (new_title == NULL) {
-    uv_mutex_unlock(&process_title_mutex);
+  if (new_title == NULL)
     return -ENOMEM;
-  }
+
+  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
+  uv_mutex_lock(&process_title_mutex);
 
   /* If this is the first time this is set,
    * don't free and set argv[1] to NULL.
