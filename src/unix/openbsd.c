@@ -39,7 +39,6 @@
 static uv_mutex_t process_title_mutex;
 static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 static char *process_title;
-static void* args_mem;
 
 
 static void init_process_title_mutex_once(void) {
