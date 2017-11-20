@@ -40,7 +40,7 @@ static struct {
 
 
 static void init_process_title_mutex_once(void) {
-    uv_mutex_init(&process_title_mutex);
+  uv_mutex_init(&process_title_mutex);
 }
 
 
