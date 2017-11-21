@@ -654,6 +654,9 @@ TEST_IMPL(spawn_tcp_server) {
   struct sockaddr_in addr;
   int fd;
   int r;
+#ifdef _WIN32
+  uv_os_fd_t handle;
+#endif
 
   init_process_options("spawn_tcp_server_helper", exit_cb);
 
