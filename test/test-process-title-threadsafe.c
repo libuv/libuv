@@ -28,7 +28,7 @@
 #define NUM_SETTER_THREADS  4
 #define NUM_ITERATIONS      100
 
-static char *titles[] = {
+static const char* titles[] = {
   "8L2NY0Kdj0XyNFZnmUZigIOfcWjyNr0SkMmUhKw99VLUsZFrvCQQC3XIRfNR8pjyMjXObllled",
   "jUAcscJN49oLSN8GdmXj2Wo34XX2T2vp2j5khfajNQarlOulp57cE130yiY53ipJFnPyTn5i82",
   "9niCI5icXGFS72XudhXqo5alftmZ1tpE7B3cwUmrq0CCDjC84FzBNB8XAHqvpNQfI2QAQG6ztT",
@@ -38,13 +38,13 @@ static char *titles[] = {
 static void getter_thread_body(void* arg) {
   char buffer[512];
 
-  while(1) {
-    ASSERT(uv_get_process_title(buffer, sizeof(buffer)) == 0);
+  for (;;) {
+    ASSERT(0 == uv_get_process_title(buffer, sizeof(buffer)));
     ASSERT(
-      strcmp(buffer, titles[0]) == 0 ||
-      strcmp(buffer, titles[1]) == 0 ||
-      strcmp(buffer, titles[2]) == 0 ||
-      strcmp(buffer, titles[3]) == 0);
+      0 == strcmp(buffer, titles[0]) ||
+      0 == strcmp(buffer, titles[1]) ||
+      0 == strcmp(buffer, titles[2]) ||
+      0 == strcmp(buffer, titles[3]));
   }
 }
 
@@ -53,10 +53,10 @@ static void setter_thread_body(void* arg) {
   int i;
 
   for (i = 0; i < NUM_ITERATIONS; i++) {
-    ASSERT(uv_set_process_title(titles[0]) == 0);
-    ASSERT(uv_set_process_title(titles[1]) == 0);
-    ASSERT(uv_set_process_title(titles[2]) == 0);
-    ASSERT(uv_set_process_title(titles[3]) == 0);
+    ASSERT(0 == uv_set_process_title(titles[0]));
+    ASSERT(0 == uv_set_process_title(titles[1]));
+    ASSERT(0 == uv_set_process_title(titles[2]));
+    ASSERT(0 == uv_set_process_title(titles[3]));
   }
 }
 
@@ -70,14 +70,14 @@ TEST_IMPL(process_title_threadsafe) {
   RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
 #else
 
-  ASSERT(uv_set_process_title(titles[0]) == 0);
-  ASSERT(uv_thread_create(&getter_thread, getter_thread_body, NULL) == 0);
+  ASSERT(0 == uv_set_process_title(titles[0]));
+  ASSERT(0 == uv_thread_create(&getter_thread, getter_thread_body, NULL));
 
   for (i = 0; i < NUM_SETTER_THREADS; i++)
-    ASSERT(uv_thread_create(&setter_threads[i], setter_thread_body, NULL) == 0);
+    ASSERT(0 == uv_thread_create(&setter_threads[i], setter_thread_body, NULL));
 
   for (i = 0; i < NUM_SETTER_THREADS; i++)
-    ASSERT(uv_thread_join(&setter_threads[i]) == 0);
+    ASSERT(0 == uv_thread_join(&setter_threads[i]));
 
   return 0;
 #endif
