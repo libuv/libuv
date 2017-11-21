@@ -63,17 +63,18 @@ TEST_IMPL(process_title_threadsafe) {
   uv_thread_t getter_thread;
   int i;
 
-#if defined(__sun) || defined(__CYGWIN__) || defined(__MSYS__)
+#if defined(__sun) || defined(__CYGWIN__) || defined(__MSYS__) || \
+    defined(__MVS__)
   RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
 #else
 
   ASSERT(0 == uv_set_process_title(titles[0]));
   ASSERT(0 == uv_thread_create(&getter_thread, getter_thread_body, NULL));
 
-  for (i = 0; i < ARRAY_SIZE(setter_threads); i++)
+  for (i = 0; i < (int) ARRAY_SIZE(setter_threads); i++)
     ASSERT(0 == uv_thread_create(&setter_threads[i], setter_thread_body, NULL));
 
-  for (i = 0; i < ARRAY_SIZE(setter_threads); i++)
+  for (i = 0; i < (int) ARRAY_SIZE(setter_threads); i++)
     ASSERT(0 == uv_thread_join(&setter_threads[i]));
 
   return 0;
