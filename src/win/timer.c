@@ -101,6 +101,14 @@ int uv_timer_start(uv_timer_t* handle, uv_timer_cb timer_cb, uint64_t timeout,
   handle->timer_cb = timer_cb;
   handle->due = get_clamped_due_time(loop->time, timeout);
   handle->repeat = repeat;
+    
+  if (loop->on_timeout_change) {
+    old = RB_MIN(uv_timer_tree_s, &((uv_loop_t*)loop)->timers);
+    if (!old || old->due > handle->due) {
+      loop->on_timeout_change(loop, timeout);
+    }
+  }
+
   uv__handle_start(handle);
 
   /* start_id is the second index to be compared in uv__timer_cmp() */

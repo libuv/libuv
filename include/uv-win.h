@@ -674,3 +674,14 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 #define UV_FS_O_NONBLOCK     0
 #define UV_FS_O_SYMLINK      0
 #define UV_FS_O_SYNC         0x08000000 /* FILE_FLAG_WRITE_THROUGH */
+
+
+/*
+ * This function is used for embed uv loop into win32 gui application or other thread which has it's own event loop.
+ *  1. get iocp handle
+ *  2. call GetQueuedCompletionStatus() in backgound thread
+ *  3. call uv_insert_overlapped_result() with result of iocp in main thread
+ *  4. call uv_run(... UV_RUN_NOWAIT) in main thread
+ */
+UV_EXTERN void uv_insert_overlapped_result(uv_loop_t* loop, LPOVERLAPPED lpoverlap);
+

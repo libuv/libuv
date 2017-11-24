@@ -231,6 +231,8 @@ int uv_loop_init(uv_loop_t* loop) {
   if (loop->iocp == NULL)
     return uv_translate_sys_error(GetLastError());
 
+  loop->on_timeout_change = NULL;
+
   /* To prevent uninitialized memory access, loop->time must be initialized
    * to zero before calling uv_update_time for the first time.
    */
@@ -329,8 +331,8 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
 }
 
 
-int uv_backend_fd(const uv_loop_t* loop) {
-  return -1;
+uv_os_fd_t uv_backend_fd(const uv_loop_t* loop) {
+  return loop->iocp;
 }
 
 
@@ -603,3 +605,10 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
 
   return 0;
 }
+
+
+void uv_insert_overlapped_result(uv_loop_t* loop, LPOVERLAPPED lpoverlap) {
+	uv_req_t* req = uv_overlapped_to_req(lpoverlap);
+	uv_insert_pending_req(loop, req);	
+}
+
