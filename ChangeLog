@@ -1,3 +1,38 @@
+2017.11.25, Version 1.17.0 (Stable)
+
+Changes since version 1.16.1:
+
+* unix: avoid malloc() call in uv_spawn() (Ben Noordhuis)
+
+* doc: clarify the description of uv_loop_alive() (Ed Schouten)
+
+* win: map UV_FS_O_EXLOCK to a share mode of 0 (Joran Dirk Greef)
+
+* win: fix build on case-sensitive file systems (Ben Noordhuis)
+
+* win: fix test runner build with mingw64 (Ben Noordhuis)
+
+* win: remove unused variable in test/test-fs.c (Ben Noordhuis)
+
+* zos: add strnlen() implementation (jBarz)
+
+* unix: keep track of bound sockets sent via spawn (jBarz)
+
+* unix,win: wait for threads to start (Ben Noordhuis)
+
+* test: add threadpool init/teardown test (Bartosz Sosnowski)
+
+* test: avoid malloc() in threadpool test (Ben Noordhuis)
+
+* test: lower number of tasks in threadpool test (Ben Noordhuis)
+
+* win: issue memory barrier in uv_thread_join() (Ben Noordhuis)
+
+* ibmi: add support for new platform (Xu Meng)
+
+* test: fix test-spawn compilation (Bartosz Sosnowski)
+
+
 2017.11.11, Version 1.16.1 (Stable), 4056fbe46493ef87237e307e0025e551db875e13
 
 Changes since version 1.16.0:
