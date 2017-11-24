@@ -921,6 +921,7 @@ int uv_uptime(double* uptime) {
   size_t entries = 0;
   time_t boot_time;
 
+  boot_time = 0;
   utmpname(UTMP_FILE);
 
   setutent();
