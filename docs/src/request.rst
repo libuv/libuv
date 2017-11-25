@@ -46,7 +46,6 @@ Public members
             UV_WORK,
             UV_GETADDRINFO,
             UV_GETNAMEINFO,
-            UV_REQ_TYPE_PRIVATE,
             UV_REQ_TYPE_MAX,
         } uv_req_type;
 
