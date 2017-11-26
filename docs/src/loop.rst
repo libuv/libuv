@@ -16,6 +16,11 @@ Data types
 
     Loop data type.
 
+.. c:type:: struct uv_loop_s
+
+    Alternative spelling of :c:type:`uv_loop_t` that may be used to
+    prevent header file pollution.
+
 .. c:type:: uv_run_mode
 
     Mode used to run the loop with :c:func:`uv_run`.
