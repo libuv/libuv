@@ -53,6 +53,14 @@ Public members
 API
 ---
 
+.. c:function:: UV_REQ_TYPE_MAP(iter_macro)
+
+    Macro that expands to a series of invocations of `iter_macro` for
+    each of the request types. `iter_macro` is invoked with two
+    arguments: the name of the `uv_req_type` element without the `UV_`
+    prefix, and the name of the corresponding structure type without the
+    `uv_` prefix and `_t` suffix.
+
 .. c:function:: int uv_cancel(uv_req_t* req)
 
     Cancel a pending request. Fails if the request is executing or has finished
