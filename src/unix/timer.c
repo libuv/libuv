@@ -104,15 +104,12 @@ int uv_timer_stop(uv_timer_t* handle) {
 
 
 int uv_timer_again(uv_timer_t* handle) {
-  if (handle->timer_cb == NULL)
+  /* If timer_cb is NULL that means that the timer was never started. */
+  if (handle->timer_cb == NULL || handle->repeat == 0)
     return -EINVAL;
 
-  if (handle->repeat) {
-    uv_timer_stop(handle);
-    uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
-  }
-
-  return 0;
+  return uv_timer_start(handle, handle->timer_cb, handle->repeat,
+                        handle->repeat);
 }
 
 
