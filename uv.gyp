@@ -78,6 +78,7 @@
         'src/inet.c',
         'src/queue.h',
         'src/threadpool.c',
+        'src/uv-data-getter-setters.c',
         'src/uv-common.c',
         'src/uv-common.h',
         'src/version.c'
@@ -380,6 +381,7 @@
         'test/test-fs.c',
         'test/test-fs-copyfile.c',
         'test/test-fs-event.c',
+        'test/test-getters-setters.c',
         'test/test-get-currentexe.c',
         'test/test-get-memory.c',
         'test/test-get-passwd.c',

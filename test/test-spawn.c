@@ -805,6 +805,8 @@ TEST_IMPL(spawn_detached) {
 
   ASSERT(exit_cb_called == 0);
 
+  ASSERT(process.pid == uv_process_get_pid(&process));
+
   r = uv_kill(process.pid, 0);
   ASSERT(r == 0);
 

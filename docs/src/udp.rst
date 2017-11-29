@@ -292,4 +292,12 @@ API
 
     :returns: 0 on success, or an error code < 0 on failure.
 
+.. c:function:: size_t uv_udp_get_send_queue_size(const uv_udp_t* handle)
+
+    Returns `handle->send_queue_size`.
+
+.. c:function:: size_t uv_udp_get_send_queue_count(const uv_udp_t* handle)
+
+    Returns `handle->send_queue_count`.
+
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

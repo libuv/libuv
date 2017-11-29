@@ -397,6 +397,10 @@ HELPER_DECLARE (pipe_echo_server)
 
 TEST_DECLARE   (queue_foreach_delete)
 
+TEST_DECLARE   (handle_type_name)
+TEST_DECLARE   (req_type_name)
+TEST_DECLARE   (getters_setters)
+
 #ifndef _WIN32
 TEST_DECLARE  (fork_timer)
 TEST_DECLARE  (fork_socketpair)
@@ -869,6 +873,10 @@ TASK_LIST_START
   TEST_ENTRY  (ip6_addr_link_local)
 
   TEST_ENTRY  (queue_foreach_delete)
+
+  TEST_ENTRY  (handle_type_name)
+  TEST_ENTRY  (req_type_name)
+  TEST_ENTRY  (getters_setters)
 
 #ifndef _WIN32
   TEST_ENTRY  (fork_timer)

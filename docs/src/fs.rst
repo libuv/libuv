@@ -340,6 +340,26 @@ API
     .. note::
         These functions are not implemented on Windows.
 
+.. c:function:: uv_fs_type uv_fs_get_type(const uv_fs_t* req)
+
+    Returns `req->fs_type`.
+
+.. c:function:: ssize_t uv_fs_get_result(const uv_fs_t* req)
+
+    Returns `req->result`.
+
+.. c:function:: void* uv_fs_get_ptr(const uv_fs_t* req)
+
+    Returns `req->ptr`.
+
+.. c:function:: const char* uv_fs_get_path(const uv_fs_t* req)
+
+    Returns `req->path`.
+
+.. c:function:: uv_stat_t* uv_fs_get_statbuf(uv_fs_t* req)
+
+    Returns `&req->statbuf`.
+
 .. seealso:: The :c:type:`uv_req_t` API functions also apply.
 
 Helper functions

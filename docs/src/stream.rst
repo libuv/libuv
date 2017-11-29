@@ -228,4 +228,8 @@ API
 
     .. versionchanged:: 1.4.0 UNIX implementation added.
 
+.. c:function:: size_t uv_stream_get_write_queue_size(const uv_stream_t* stream)
+
+    Returns `stream->write_queue_size`.
+
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

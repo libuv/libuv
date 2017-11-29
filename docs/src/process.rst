@@ -222,4 +222,8 @@ API
     Sends the specified signal to the given PID. Check the documentation
     on :c:ref:`signal` for signal support, specially on Windows.
 
+.. c:function:: int uv_process_get_pid(const uv_process_t* handle)
+
+    Returns `handle->pid`.
+
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

@@ -222,3 +222,11 @@ API
        Any previous value returned from :c:func`uv_backend_fd` is now
        invalid. That function must be called again to determine the
        correct backend file descriptor.
+
+.. c:function:: void* uv_loop_get_data(const uv_loop_t* loop)
+
+    Returns `loop->data`.
+
+.. c:function:: void* uv_loop_set_data(uv_loop_t* loop, void* data)
+
+    Sets `loop->data` to `data`.
