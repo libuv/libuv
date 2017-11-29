@@ -38,6 +38,7 @@ static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
 static QUEUE exit_message;
 static QUEUE wq;
+static volatile int initialized;
 
 
 static void uv__cancelled(struct uv__work* w) {
@@ -104,7 +105,7 @@ static void post(QUEUE* q) {
 UV_DESTRUCTOR(static void cleanup(void)) {
   unsigned int i;
 
-  if (nthreads == 0)
+  if (initialized == 0)
     return;
 
   post(&exit_message);
@@ -121,6 +122,7 @@ UV_DESTRUCTOR(static void cleanup(void)) {
 
   threads = NULL;
   nthreads = 0;
+  initialized = 0;
 }
 #endif
 
@@ -128,7 +130,6 @@ UV_DESTRUCTOR(static void cleanup(void)) {
 static void init_threads(void) {
   unsigned int i;
   const char* val;
-  int spin;
 
   nthreads = ARRAY_SIZE(default_threads);
   val = getenv("UV_THREADPOOL_SIZE");
@@ -160,11 +161,7 @@ static void init_threads(void) {
     if (uv_thread_create(threads + i, worker, NULL))
       abort();
 
-  do {
-    uv_mutex_lock(&mutex);
-    spin = (idle_threads < nthreads);
-    uv_mutex_unlock(&mutex);
-  } while (spin);
+  initialized = 1;
 }
 
 
