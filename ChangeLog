@@ -1,3 +1,20 @@
+2017.12.02, Version 1.18.0 (Stable)
+
+Changes since version 1.17.0:
+
+* aix: fix -Wmaybe-uninitialized warning (cjihrig)
+
+* doc: remove note about SIGWINCH on Windows (Bartosz Sosnowski)
+
+* Revert "unix,win: wait for threads to start" (Ben Noordhuis)
+
+* unix,win: add uv_os_getpid() (Bartosz Sosnowski)
+
+* unix: remove incorrect assertion in uv_shutdown() (Jameson Nash)
+
+* doc: fix IRC URL in CONTRIBUTING.md (Matt Harrison)
+
+
 2017.11.25, Version 1.17.0 (Stable), 1344d2bb82e195d0eafc0b40ba103f18dfd04cc5
 
 Changes since version 1.16.1:
