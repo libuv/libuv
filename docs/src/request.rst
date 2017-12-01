@@ -85,13 +85,19 @@ API
 
     Returns `req->data`.
 
+    .. versionadded:: 1.19.0
+
 .. c:function:: void* uv_req_set_data(uv_req_t* req, void* data)
 
     Sets `req->data` to `data`.
 
+    .. versionadded:: 1.19.0
+
 .. c:function:: uv_req_type uv_req_get_type(const uv_req_t* req)
 
     Returns `req->type`.
+
+    .. versionadded:: 1.19.0
 
 .. c:function:: const char* uv_req_type_name(uv_req_type type)
 
@@ -99,3 +105,5 @@ API
     e.g. `"connect"` (as in :c:type:`uv_connect_t`) for `UV_CONNECT`.
 
     If no such request type exists, this returns `NULL`.
+
+    .. versionadded:: 1.19.0

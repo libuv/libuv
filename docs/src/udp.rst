@@ -296,8 +296,12 @@ API
 
     Returns `handle->send_queue_size`.
 
+    .. versionadded:: 1.19.0
+
 .. c:function:: size_t uv_udp_get_send_queue_count(const uv_udp_t* handle)
 
     Returns `handle->send_queue_count`.
+
+    .. versionadded:: 1.19.0
 
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

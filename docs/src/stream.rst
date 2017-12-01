@@ -232,4 +232,6 @@ API
 
     Returns `stream->write_queue_size`.
 
+    .. versionadded:: 1.19.0
+
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

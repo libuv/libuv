@@ -215,17 +215,25 @@ just for some handle types.
 
     Returns `handle->loop`.
 
+    .. versionadded:: 1.19.0
+
 .. c:function:: void* uv_handle_get_data(const uv_handle_t* handle)
 
     Returns `handle->data`.
+
+    .. versionadded:: 1.19.0
 
 .. c:function:: void* uv_handle_set_data(uv_handle_t* handle, void* data)
 
     Sets `handle->data` to `data`.
 
+    .. versionadded:: 1.19.0
+
 .. c:function:: uv_handle_type uv_handle_get_type(const uv_handle_t* handle)
 
     Returns `handle->type`.
+
+    .. versionadded:: 1.19.0
 
 .. c:function:: const char* uv_handle_type_name(uv_handle_type type)
 
@@ -233,6 +241,8 @@ just for some handle types.
     e.g. `"pipe"` (as in :c:type:`uv_pipe_t`) for `UV_NAMED_PIPE`.
 
     If no such handle type exists, this returns `NULL`.
+
+    .. versionadded:: 1.19.0
 
 .. _refcount:
 

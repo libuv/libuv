@@ -226,4 +226,6 @@ API
 
     Returns `handle->pid`.
 
+    .. versionadded:: 1.19.0
+
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.
