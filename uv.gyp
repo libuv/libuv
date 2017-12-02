@@ -427,6 +427,7 @@
         'test/test-poll-closesocket.c',
         'test/test-poll-oob.c',
         'test/test-process-title.c',
+        'test/test-process-title-threadsafe.c',
         'test/test-queue-foreach-delete.c',
         'test/test-ref.c',
         'test/test-run-nowait.c',
