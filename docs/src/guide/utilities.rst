@@ -86,7 +86,7 @@ the JS API. A ``uv_handle_t`` (the superclass of all watchers) is created per
 JS object and can be ref/unrefed.
 
 .. rubric:: ref-timer/main.c
-.. literalinclude:: ../code/ref-timer/main.c
+.. literalinclude:: ../../code/ref-timer/main.c
     :linenos:
     :lines: 5-8, 17-
     :emphasize-lines: 9
@@ -110,7 +110,7 @@ and the user will face an unresponsive application. In such a case queue up and
 idle watcher to keep the UI operational.
 
 .. rubric:: idle-compute/main.c
-.. literalinclude:: ../code/idle-compute/main.c
+.. literalinclude:: ../../code/idle-compute/main.c
     :linenos:
     :lines: 5-9, 34-
     :emphasize-lines: 13
@@ -122,7 +122,7 @@ for a brief amount as the loop deals with the input data, after which it will
 keep calling the idle callback again.
 
 .. rubric:: idle-compute/main.c
-.. literalinclude:: ../code/idle-compute/main.c
+.. literalinclude:: ../../code/idle-compute/main.c
     :linenos:
     :lines: 10-19
 
@@ -214,7 +214,7 @@ progress with the download whenever libuv notifies of I/O readiness.
 .. _multi: http://curl.haxx.se/libcurl/c/libcurl-multi.html
 
 .. rubric:: uvwget/main.c - The setup
-.. literalinclude:: ../code/uvwget/main.c
+.. literalinclude:: ../../code/uvwget/main.c
     :linenos:
     :lines: 1-9,140-
     :emphasize-lines: 7,21,24-25
@@ -234,7 +234,7 @@ Our downloader is to be invoked as::
 So we add each argument as an URL
 
 .. rubric:: uvwget/main.c - Adding urls
-.. literalinclude:: ../code/uvwget/main.c
+.. literalinclude:: ../../code/uvwget/main.c
     :linenos:
     :lines: 39-56
     :emphasize-lines: 13-14
@@ -250,7 +250,7 @@ call whenever sockets change state. But before we go into that, we need to poll
 on sockets whenever ``handle_socket`` is called.
 
 .. rubric:: uvwget/main.c - Setting up polling
-.. literalinclude:: ../code/uvwget/main.c
+.. literalinclude:: ../../code/uvwget/main.c
     :linenos:
     :lines: 102-140
     :emphasize-lines: 9,11,15,21,24
@@ -270,10 +270,10 @@ multiple times on the same handle is acceptable, it will just update the events
 mask with the new value. ``curl_perform`` is the crux of this program.
 
 .. rubric:: uvwget/main.c - Driving libcurl.
-.. literalinclude:: ../code/uvwget/main.c
+.. literalinclude:: ../../code/uvwget/main.c
     :linenos:
     :lines: 81-95
-    :emphasize-lines: 2,6-7,12,18,20
+    :emphasize-lines: 2,6-7,12
 
 The first thing we do is to stop the timer, since there has been some progress
 in the interval. Then depending on what event triggered the callback, we set
@@ -287,7 +287,7 @@ are completed. So we extract these messages, and clean up handles whose
 transfers are done.
 
 .. rubric:: uvwget/main.c - Reading transfer status.
-.. literalinclude:: ../code/uvwget/main.c
+.. literalinclude:: ../../code/uvwget/main.c
     :linenos:
     :lines: 58-79
     :emphasize-lines: 6,9-10,13-14
@@ -311,14 +311,14 @@ plugin system which does nothing except print the name of the plugin.
 Let us first look at the interface provided to plugin authors.
 
 .. rubric:: plugin/plugin.h
-.. literalinclude:: ../code/plugin/plugin.h
+.. literalinclude:: ../../code/plugin/plugin.h
     :linenos:
 
 You can similarly add more functions that plugin authors can use to do useful
 things in your application [#]_. A sample plugin using this API is:
 
 .. rubric:: plugin/hello.c
-.. literalinclude:: ../code/plugin/hello.c
+.. literalinclude:: ../../code/plugin/hello.c
     :linenos:
 
 Our interface defines that all plugins should have an ``initialize`` function
@@ -339,7 +339,7 @@ This is done by using ``uv_dlopen`` to first load the shared library
 ``uv_dlsym`` and invoke it.
 
 .. rubric:: plugin/main.c
-.. literalinclude:: ../code/plugin/main.c
+.. literalinclude:: ../../code/plugin/main.c
     :linenos:
     :lines: 7-
     :emphasize-lines: 15, 18, 24
@@ -391,7 +391,7 @@ a file, control sequences should not be written as they impede readability and
 Here is a simple example which prints white text on a red background:
 
 .. rubric:: tty/main.c
-.. literalinclude:: ../code/tty/main.c
+.. literalinclude:: ../../code/tty/main.c
     :linenos:
     :emphasize-lines: 11-12,14,17,27
 
@@ -401,7 +401,7 @@ program which does some animation using the function and character position
 escape codes.
 
 .. rubric:: tty-gravity/main.c
-.. literalinclude:: ../code/tty-gravity/main.c
+.. literalinclude:: ../../code/tty-gravity/main.c
     :linenos:
     :emphasize-lines: 19,25,38
 

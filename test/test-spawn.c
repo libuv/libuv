@@ -1,3 +1,4 @@
+
 /* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -49,6 +50,7 @@ static size_t exepath_size = 1024;
 static char* args[5];
 static int no_term_signal;
 static int timer_counter;
+static uv_tcp_t tcp_server;
 
 #define OUTPUT_SIZE 1024
 static char output[OUTPUT_SIZE];
@@ -616,6 +618,74 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
   ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
   printf("output from stdio[3] is: %s", output);
   ASSERT(strcmp("fourth stdio!\n", output) == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+int spawn_tcp_server_helper(void) {
+  uv_tcp_t tcp;
+  uv_os_sock_t handle;
+  int r;
+
+  r = uv_tcp_init(uv_default_loop(), &tcp);
+  ASSERT(r == 0);
+
+#ifdef _WIN32
+  handle = _get_osfhandle(3);
+#else
+  handle = 3;
+#endif
+  r = uv_tcp_open(&tcp, handle);
+  ASSERT(r == 0);
+
+  /* Make sure that we can listen on a socket that was
+   * passed down from the parent process
+   */
+  r = uv_listen((uv_stream_t*)&tcp, SOMAXCONN, NULL);
+  ASSERT(r == 0);
+
+  return 1;
+}
+
+
+TEST_IMPL(spawn_tcp_server) {
+  uv_stdio_container_t stdio[4];
+  struct sockaddr_in addr;
+  int fd;
+  int r;
+
+  init_process_options("spawn_tcp_server_helper", exit_cb);
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  r = uv_tcp_init_ex(uv_default_loop(), &tcp_server, AF_INET);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
+  ASSERT(r == 0);
+  r = uv_fileno((uv_handle_t*)&tcp_server, &fd);
+  ASSERT(r == 0);
+
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_INHERIT_FD;
+  options.stdio[0].data.file = uv_get_osfhandle(0);
+  options.stdio[1].flags = UV_INHERIT_FD;
+  options.stdio[1].data.file = uv_get_osfhandle(1);
+  options.stdio[2].flags = UV_INHERIT_FD;
+  options.stdio[2].data.file = uv_get_osfhandle(2);
+  options.stdio[3].flags = UV_INHERIT_FD;
+  options.stdio[3].data.file = fd;
+  options.stdio_count = 4;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -1348,10 +1418,14 @@ TEST_IMPL(spawn_setgid_fails) {
   init_process_options("spawn_helper1", fail_cb);
 
   options.flags |= UV_PROCESS_SETGID;
+#if defined(__MVS__)
+  options.gid = -1;
+#else
   options.gid = 0;
+#endif
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-#if defined(__CYGWIN__)
+#if defined(__CYGWIN__) || defined(__MVS__)
   ASSERT(r == UV_EINVAL);
 #else
   ASSERT(r == UV_EPERM);
@@ -1700,6 +1774,31 @@ TEST_IMPL(spawn_inherit_streams) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+}
+
+TEST_IMPL(spawn_quoted_path) {
+#ifndef _WIN32
+  RETURN_SKIP("Test for Windows");
+#else
+  char* quoted_path_env[2];
+  args[0] = "not_existing";
+  args[1] = NULL;
+  options.file = args[0];
+  options.args = args;
+  options.exit_cb = exit_cb;
+  options.flags = 0;
+  /* We test if search_path works correctly with semicolons in quoted path. */
+  /* We will use invalid drive, so we are sure no executable is spawned */
+  quoted_path_env[0] = "PATH=\"xyz:\\test;\";xyz:\\other";
+  quoted_path_env[1] = NULL;
+  options.env = quoted_path_env;
+
+  /* We test if libuv will not segfault. */
+  uv_spawn(uv_default_loop(), &process, &options);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
 }
 
 /* Helper for child process of spawn_inherit_streams */

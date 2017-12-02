@@ -289,7 +289,6 @@ int process_reap(process_info_t *p) {
 void process_cleanup(process_info_t *p) {
   CloseHandle(p->process);
   CloseHandle(p->stdio_in);
-  CloseHandle(p->stdio_out);
 }
 
 

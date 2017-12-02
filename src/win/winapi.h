@@ -4104,6 +4104,10 @@
 # define JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE          0x00002000
 #endif
 
+#ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+# define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x00000002
+#endif
+
 /* from winternl.h */
 typedef struct _UNICODE_STRING {
   USHORT Length;
@@ -4657,6 +4661,25 @@ typedef DWORD (WINAPI *sPowerRegisterSuspendResumeNotification)
                HANDLE        Recipient,
                _PHPOWERNOTIFY RegistrationHandle);
 
+/* from Winuser.h */
+typedef VOID (CALLBACK* WINEVENTPROC)
+             (HWINEVENTHOOK hWinEventHook,
+              DWORD         event,
+              HWND          hwnd,
+              LONG          idObject,
+              LONG          idChild,
+              DWORD         idEventThread,
+              DWORD         dwmsEventTime);
+
+typedef HWINEVENTHOOK (WINAPI *sSetWinEventHook)
+                      (UINT         eventMin,
+                       UINT         eventMax,
+                       HMODULE      hmodWinEventProc,
+                       WINEVENTPROC lpfnWinEventProc,
+                       DWORD        idProcess,
+                       DWORD        idThread,
+                       UINT         dwflags);
+
 
 /* Ntdll function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
@@ -4674,5 +4697,8 @@ extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+
+/* User32.dll function pointer */
+extern sSetWinEventHook pSetWinEventHook;
 
 #endif /* UV_WIN_WINAPI_H_ */

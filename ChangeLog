@@ -1,3 +1,237 @@
+2017.11.11, Version 1.16.1 (Stable), 4056fbe46493ef87237e307e0025e551db875e13
+
+Changes since version 1.16.0:
+
+* unix: move net/if.h include (cjihrig)
+
+* win: fix undeclared NDIS_IF_MAX_STRING_SIZE (Nick Logan)
+
+
+2017.11.07, Version 1.16.0 (Stable), d68779f0ea742918f653b9c20237460271c39aeb
+
+Changes since version 1.15.0:
+
+* win: change st_blksize from `2048` to `4096` (Joran Dirk Greef)
+
+* unix,win: add fs open flags, map O_DIRECT|O_DSYNC (Joran Dirk Greef)
+
+* win, fs: fix non-symlink reparse points (Wade Brainerd)
+
+* test: fix -Wstrict-prototypes warnings (Ben Noordhuis)
+
+* unix, windows: map ENOTTY errno (Ben Noordhuis)
+
+* unix: fall back to fsync() if F_FULLFSYNC fails (Joran Dirk Greef)
+
+* unix: do not close invalid kqueue fd after fork (jBarz)
+
+* zos: reset epoll data after fork (jBarz)
+
+* zos: skip fork_threadpool_queue_work_simple (jBarz)
+
+* test: keep platform_output as first test (Bartosz Sosnowski)
+
+* win: fix non-English dlopen error message (Bartosz Sosnowski)
+
+* unix,win: add uv_os_getppid() (cjihrig)
+
+* test: fix const qualification compiler warning (Ben Noordhuis)
+
+* doc: mark uv_default_loop() as not thread safe (rayrase)
+
+* win, pipe: null-initialize stream->shutdown_req (Jameson Nash)
+
+* tty, win: get SetWinEventHook pointer at startup (Bartosz Sosnowski)
+
+* test: no extra new line in skipped test output (Bartosz Sosnowski)
+
+* pipe: allow access from other users (Bartosz Sosnowski)
+
+* unix,win: add uv_if_{indextoname,indextoiid} (Pekka Nikander)
+
+
+2017.10.03, Version 1.15.0 (Stable), 8b69ce1419d2958011d415a636810705c36c2cc2
+
+Changes since version 1.14.1:
+
+* unix: limit uv__has_forked_with_cfrunloop to macOS (Kamil Rytarowski)
+
+* win: fix buffer size in uv__getpwuid_r() (tux.uudiin)
+
+* win,tty: improve SIGWINCH support (Bartosz Sosnowski)
+
+* unix: use fchmod() in uv_fs_copyfile() (cjihrig)
+
+* unix: support copying empty files (cjihrig)
+
+* unix: truncate destination in uv_fs_copyfile() (Nick Logan)
+
+* win,build: keep cwd when setting build environment (darobs)
+
+* test: add NetBSD support to test-udp-ipv6.c (Kamil Rytarowski)
+
+* unix: add NetBSD support in core.c (Kamil Rytarowski)
+
+* linux: increase thread stack size with musl libc (Ben Noordhuis)
+
+* netbsd: correct uv_exepath() on NetBSD (Kamil Rytarowski)
+
+* test: clean up semaphore after use (jBarz)
+
+* win,build: bump vswhere_usability_wrapper to 2.0.0 (Refael Ackermann)
+
+* win: let UV_PROCESS_WINDOWS_HIDE hide consoles (cjihrig)
+
+* zos: lock protect global epoll list in epoll_ctl (jBarz)
+
+* zos: change platform name to match python (jBarz)
+
+* android: fix getifaddrs() (Zheng, Lei)
+
+* netbsd: implement uv__tty_is_slave() (Kamil Rytarowski)
+
+* zos: fix readlink for mounts with system variables (jBarz)
+
+* test: sort the tests alphabetically (Sakthipriyan Vairamani)
+
+* windows: fix compilation warnings (Carlo Marcelo Arenas Belón)
+
+* build: avoid -fstrict-aliasing compile option (jBarz)
+
+* win: remove unused variables (Carlo Marcelo Arenas Belón)
+
+* unix: remove unused variables (Sakthipriyan Vairamani)
+
+* netbsd: disable poll_bad_fdtype on NetBSD (Kamil Rytarowski)
+
+* netbsd: use uv__cloexec and uv__nonblock (Kamil Rytarowski)
+
+* test: fix udp_multicast_join6 on NetBSD (Kamil Rytarowski)
+
+* unix,win: add uv_mutex_init_recursive() (Scott Parker)
+
+* netbsd: do not exclude IPv6 functionality (Kamil Rytarowski)
+
+* fsevents: watch files with fsevents on macos 10.7+ (Ben Noordhuis)
+
+* unix: retry on ENOBUFS in sendmsg(2) (Kamil Rytarowski)
+
+
+2017.09.07, Version 1.14.1 (Stable), b0f9fb2a07a5e638b1580fe9a42a356c3ab35f37
+
+Changes since version 1.14.0:
+
+* fs, win: add support for user symlinks (Bartosz Sosnowski)
+
+* cygwin: include uv-posix.h header (Joel Winarske)
+
+* zos: fix semaphore initialization (jBarz)
+
+* zos: improve loop_count benchmark performance (jBarz)
+
+* zos, test: flush out the oob data in callback (jBarz)
+
+* unix,win: check for bad flags in uv_fs_copyfile() (cjihrig)
+
+* unix: modify argv[0] when process title is set (Matthew Taylor)
+
+* unix: don't use req->loop in uv__fs_copyfile() (cjihrig)
+
+* doc: fix a trivial typo (Vladimír Čunát)
+
+* android: fix uv_cond_timedwait on API level < 21 (Gergely Nagy)
+
+* win: add uv__once_init() calls (Bartosz Sosnowski)
+
+* unix,windows: init all requests in fs calls (cjihrig)
+
+* unix,windows: return UV_EINVAL on NULL fs reqs (cjihrig)
+
+* windows: add POST macro to fs functions (cjihrig)
+
+* unix: handle partial sends in uv_fs_copyfile() (A. Hauptmann)
+
+* Revert "win, test: fix double close in test runner" (Bartosz Sosnowski)
+
+* win, test: remove surplus CloseHandle (Bartosz Sosnowski)
+
+
+2017.08.17, Version 1.14.0 (Stable), e0d31e9e21870f88277746b6d59cf07b977cdfea
+
+Changes since version 1.13.1:
+
+* unix: check for NULL in uv_os_unsetenv for parameter name (André Klitzing)
+
+* doc: add thread safety warning for process title (Matthew Taylor)
+
+* unix: always copy process title into local buffer (Matthew Taylor)
+
+* poll: add support for OOB TCP and GPIO interrupts (CurlyMoo)
+
+* win,build: fix appveyor properly (Refael Ackermann)
+
+* win: include filename in dlopen error message (Ben Noordhuis)
+
+* aix: add netmask, mac address into net interfaces (Gireesh Punathil)
+
+* unix, windows: map EREMOTEIO errno (Ben Noordhuis)
+
+* unix: fix wrong MAC of uv_interface_address (XadillaX)
+
+* win,build: fix building from Windows SDK or VS console (Saúl Ibarra Corretgé)
+
+* github: fix link to help repo in issue template (Ben Noordhuis)
+
+* zos: remove nonexistent include from autotools build (Saúl Ibarra Corretgé)
+
+* misc: remove reference to pthread-fixes.h from LICENSE (Saúl Ibarra Corretgé)
+
+* docs: fix guide source code example paths (Anticrisis)
+
+* android: fix compilation with new NDK versions (Saúl Ibarra Corretgé)
+
+* misc: add android-toolchain to .gitignore (Saúl Ibarra Corretgé)
+
+* win, fs: support unusual reparse points (Bartosz Sosnowski)
+
+* android: fix detection of pthread_condattr_setclock (Saúl Ibarra Corretgé)
+
+* android: remove no longer needed check (Saúl Ibarra Corretgé)
+
+* doc: update instructions for building on Android (Saúl Ibarra Corretgé)
+
+* win, process: support semicolons in PATH variable (Bartosz Sosnowski)
+
+* doc: document uv_async_(init|send) return values (Ben Noordhuis)
+
+* doc: add Android as a tier 3 supported platform (Saúl Ibarra Corretgé)
+
+* unix: add missing semicolon (jBarz)
+
+* win, test: fix double close in test runner (Bartosz Sosnowski)
+
+* doc: update supported windows version baseline (Ben Noordhuis)
+
+* test,zos: skip chown root test (jBarz)
+
+* test,zos: use gid=-1 to test spawn_setgid_fails (jBarz)
+
+* zos: fix hr timer resolution (jBarz)
+
+* android: fix blocking recvmsg due to netlink bug (Jacob Segal)
+
+* zos: read more accurate rss info from RSM (jBarz)
+
+* win: allow bound/connected socket in uv_tcp_open() (Maciej Szeptuch
+  (Neverous))
+
+* doc: differentiate SmartOS and SunOS support (cjihrig)
+
+* unix: make uv_poll_stop() remove fd from pollset (Ben Noordhuis)
+
+* unix, windows: add basic uv_fs_copyfile() (cjihrig)
+
+
 2017.07.07, Version 1.13.1 (Stable), 2bb4b68758f07cd8617838e68c44c125bc567ba6
 
 Changes since version 1.13.0:

@@ -86,7 +86,7 @@ With the basics out of the way, lets write our first libuv program. It does
 nothing, except start a loop which will exit immediately.
 
 .. rubric:: helloworld/main.c
-.. literalinclude:: ../code/helloworld/main.c
+.. literalinclude:: ../../code/helloworld/main.c
     :linenos:
 
 This program quits immediately because it has no events to process. A libuv
@@ -136,7 +136,7 @@ Handles are opaque structs named as ``uv_TYPE_t`` where type signifies what the
 handle is used for. 
 
 .. rubric:: libuv watchers
-.. literalinclude:: ../libuv/include/uv.h
+.. literalinclude:: ../../../include/uv.h
     :lines: 197-230
 
 Handles represent long-lived objects. Async operations on such handles are
@@ -170,7 +170,7 @@ watcher is stopped when the count is reached and ``uv_run()`` exits since no
 event watchers are active.
 
 .. rubric:: idle-basic/main.c
-.. literalinclude:: ../code/idle-basic/main.c
+.. literalinclude:: ../../code/idle-basic/main.c
     :emphasize-lines: 6,10,14-17
 
 Storing context

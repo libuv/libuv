@@ -53,7 +53,7 @@ Let's see a simple implementation of ``cat``. We start with registering
 a callback for when the file is opened:
 
 .. rubric:: uvcat/main.c - opening a file
-.. literalinclude:: ../code/uvcat/main.c
+.. literalinclude:: ../../code/uvcat/main.c
     :linenos:
     :lines: 41-53
     :emphasize-lines: 4, 6-7
@@ -62,7 +62,7 @@ The ``result`` field of a ``uv_fs_t`` is the file descriptor in case of the
 ``uv_fs_open`` callback. If the file is successfully opened, we start reading it.
 
 .. rubric:: uvcat/main.c - read callback
-.. literalinclude:: ../code/uvcat/main.c
+.. literalinclude:: ../../code/uvcat/main.c
     :linenos:
     :lines: 26-40
     :emphasize-lines: 2,8,12
@@ -86,7 +86,7 @@ simply drives the next read. Thus read and write proceed in lockstep via
 callbacks.
 
 .. rubric:: uvcat/main.c - write callback
-.. literalinclude:: ../code/uvcat/main.c
+.. literalinclude:: ../../code/uvcat/main.c
     :linenos:
     :lines: 16-24
     :emphasize-lines: 6
@@ -99,7 +99,7 @@ callbacks.
 We set the dominos rolling in ``main()``:
 
 .. rubric:: uvcat/main.c
-.. literalinclude:: ../code/uvcat/main.c
+.. literalinclude:: ../../code/uvcat/main.c
     :linenos:
     :lines: 55-
     :emphasize-lines: 2
@@ -118,7 +118,7 @@ same patterns as the read/write/open calls, returning the result in the
 ``uv_fs_t.result`` field. The full list:
 
 .. rubric:: Filesystem operations
-.. literalinclude:: ../libuv/include/uv.h
+.. literalinclude:: ../../../include/uv.h
     :lines: 1084-1195
 
 .. _buffers-and-streams:
@@ -167,7 +167,7 @@ We start off opening pipes on the files we require. libuv pipes to a file are
 opened as bidirectional by default.
 
 .. rubric:: uvtee/main.c - read on pipes
-.. literalinclude:: ../code/uvtee/main.c
+.. literalinclude:: ../../code/uvtee/main.c
     :linenos:
     :lines: 61-80
     :emphasize-lines: 4,5,15
@@ -182,7 +182,7 @@ buffers are required to hold incoming data. ``read_stdin`` will be called with
 these buffers.
 
 .. rubric:: uvtee/main.c - reading buffers
-.. literalinclude:: ../code/uvtee/main.c
+.. literalinclude:: ../../code/uvtee/main.c
     :linenos:
     :lines: 19-22,44-60
 
@@ -206,7 +206,7 @@ The read callback may be called with ``nread = 0``, indicating that at this
 point there is nothing to be read. Most applications will just ignore this.
 
 .. rubric:: uvtee/main.c - Write to pipe
-.. literalinclude:: ../code/uvtee/main.c
+.. literalinclude:: ../../code/uvtee/main.c
     :linenos:
     :lines: 9-13,23-42
 
@@ -246,7 +246,7 @@ a command whenever any of the watched files change::
 The file change notification is started using ``uv_fs_event_init()``:
 
 .. rubric:: onchange/main.c - The setup
-.. literalinclude:: ../code/onchange/main.c
+.. literalinclude:: ../../code/onchange/main.c
     :linenos:
     :lines: 26-
     :emphasize-lines: 15
@@ -254,7 +254,7 @@ The file change notification is started using ``uv_fs_event_init()``:
 The third argument is the actual file or directory to monitor. The last
 argument, ``flags``, can be:
 
-.. literalinclude:: ../libuv/include/uv.h
+.. literalinclude:: ../../../include/uv.h
     :lines: 1299, 1308, 1315
 
 ``UV_FS_EVENT_WATCH_ENTRY`` and ``UV_FS_EVENT_STAT`` don't do anything (yet).
@@ -276,7 +276,7 @@ In our example we simply print the arguments and run the command using
 ``system()``.
 
 .. rubric:: onchange/main.c - file change notification callback
-.. literalinclude:: ../code/onchange/main.c
+.. literalinclude:: ../../code/onchange/main.c
     :linenos:
     :lines: 9-24
 
