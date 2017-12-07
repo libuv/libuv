@@ -3,7 +3,7 @@ project(libuv C)
 
 option(LIBUV_BUILD_TESTS "builds libuv tests and benchmarks if set to ON" OFF)
 
-set(LIBUVDIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(LIBUVDIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "libuv library" FORCE)
 
 include_directories(${LIBUVDIR}/include ${LIBUVDIR}/src)
 set(SOURCES
