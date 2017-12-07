@@ -106,7 +106,6 @@ else()
             ${LIBUVDIR}/src/unix/kqueue.c
             ${LIBUVDIR}/src/unix/darwin.c
             ${LIBUVDIR}/src/unix/fsevents.c
-            ${LIBUVDIR}/src/unix/pthread-barrier.c
             ${LIBUVDIR}/src/unix/darwin-proctitle.c
             )
 
@@ -174,7 +173,6 @@ else()
             ${LIBUVDIR}/include/android-ifaddrs.h
             ${LIBUVDIR}/include/pthread-barrier.h
             ${LIBUVDIR}/src/unix/android-ifaddrs.c
-            ${LIBUVDIR}/src/unix/pthread-barrier.c
             )
     endif()
 
