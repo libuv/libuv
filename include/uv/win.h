@@ -19,10 +19,6 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef _WIN32_WINNT
-# define _WIN32_WINNT   0x0600
-#endif
-
 #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
 typedef intptr_t ssize_t;
 # define _SSIZE_T_
