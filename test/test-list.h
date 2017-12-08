@@ -805,7 +805,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_access)
   TEST_ENTRY  (fs_chmod)
   TEST_ENTRY  (fs_copyfile)
-  TEST_ENTRY_CUSTOM (fs_huge_copyfile, 0, 0, 60000)
+  TEST_ENTRY_CUSTOM (fs_huge_copyfile, 0, 0, 90000)
   TEST_ENTRY  (fs_unlink_readonly)
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
