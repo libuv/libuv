@@ -77,3 +77,7 @@ ipch
 
 # make dist output
 libuv-*.tar.*
+
+cmake_install.cmake
+*.cbp
+
