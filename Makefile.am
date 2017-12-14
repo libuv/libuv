@@ -217,6 +217,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-poll.c \
                          test/test-process-title.c \
                          test/test-queue-foreach-delete.c \
+                         test/test-randbytes.c \
                          test/test-ref.c \
                          test/test-run-nowait.c \
                          test/test-run-once.c \

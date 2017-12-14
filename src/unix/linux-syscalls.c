@@ -235,7 +235,17 @@
 # elif defined(__arm__)
 #  define __NR_dup3 (UV_SYSCALL_BASE + 358)
 # endif
-#endif /* __NR_pwritev */
+#endif /* __NR_dup3 */
+
+#ifndef __NR_getrandom
+# if defined(__x86_64__)
+#  define __NR_getrandom 318
+# elif defined(__i386__)
+#  define __NR_getrandom 355
+# elif defined(__arm__)
+#  define __NR_getrandom (UV_SYSCALL_BASE + 384)
+# endif
+#endif /* __NR_getrandom */
 
 
 int uv__accept4(int fd, struct sockaddr* addr, socklen_t* addrlen, int flags) {
@@ -465,6 +475,15 @@ ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset)
 int uv__dup3(int oldfd, int newfd, int flags) {
 #if defined(__NR_dup3)
   return syscall(__NR_dup3, oldfd, newfd, flags);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
+
+
+int uv__getrandom(void* buf, size_t len) {
+#if defined(__NR_getrandom)
+  return syscall(__NR_getrandom, buf, len, 0);
 #else
   return errno = ENOSYS, -1;
 #endif

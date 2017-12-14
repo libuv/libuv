@@ -4564,6 +4564,13 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
                 );
 
 /*
+ * Advapi32
+ */
+typedef BOOLEAN (WINAPI *sRtlGenRandom)
+              (PVOID RandomBuffer,
+               ULONG RandomBufferLength);
+
+/*
  * Kernel32 headers
  */
 #ifndef FILE_SKIP_COMPLETION_PORT_ON_SUCCESS
@@ -4668,8 +4675,11 @@ extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 
-/* Kernel32 function pointers */
+/* Advapi32 function pointers */
+sRtlGenRandom pRtlGenRandom;
 
+
+/* Kernel32 function pointers */
 
 
 /* Powrprof.dll function pointer */
