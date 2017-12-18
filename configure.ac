@@ -68,10 +68,5 @@ AS_CASE([$host_os],[mingw*], [
 ])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
-AC_CHECK_PROG(PKG_CONFIG, pkg-config, yes)
-AM_CONDITIONAL([HAVE_PKG_CONFIG], [test "x$PKG_CONFIG" != "x"])
-AS_IF([test "x$PKG_CONFIG" != "x"], [
-    AC_CONFIG_FILES([libuv.pc])
-])
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile libuv.pc])
 AC_OUTPUT
