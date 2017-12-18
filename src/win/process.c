@@ -959,7 +959,8 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
                               UV_PROCESS_WINDOWS_HIDE |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                              UV_PROCESS_WINDOWS_SUSPENDED)));
 
   err = uv_utf8_to_utf16_alloc(options->file, &application);
   if (err)
@@ -1082,6 +1083,10 @@ int uv_spawn(uv_loop_t* loop,
      * breakaway.
      */
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+  }
+
+  if (options->flags & UV_PROCESS_WINDOWS_SUSPENDED) {
+    process_flags |= CREATE_SUSPENDED;
   }
 
   if (!CreateProcessW(application_path,

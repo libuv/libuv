@@ -958,7 +958,12 @@ enum uv_process_flags {
    * option is only meaningful on Windows systems. On Unix it is silently
    * ignored.
    */
-  UV_PROCESS_WINDOWS_HIDE = (1 << 4)
+  UV_PROCESS_WINDOWS_HIDE = (1 << 4),
+  /*
+   * Invoke the process in suspended state. The caller must un-suspend the
+   * the process by calling the undocumented NtResumeProcess() call.
+   */
+  UV_PROCESS_WINDOWS_SUSPENDED = (1 << 5)
 };
 
 /*
