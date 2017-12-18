@@ -958,7 +958,24 @@ enum uv_process_flags {
    * option is only meaningful on Windows systems. On Unix it is silently
    * ignored.
    */
-  UV_PROCESS_WINDOWS_HIDE = (1 << 4)
+  UV_PROCESS_WINDOWS_HIDE = (1 << 4),
+  /*
+   * Invoke the process in suspended state. This is currently only implemented for
+   * Windows, though unix could imlement sending a SIGSTOP if needed.
+   * The purpose of this flag is to allow manipulations of the process before it has
+   * the opportunity to spawn children or exit. If used, the caller *must* un-suspend the
+   * the process by calling the undocumented NtResumeProcess() call in Windows.
+   */
+  UV_PROCESS_START_SUSPENDED = (1 << 5),
+  /*
+   * Internally, libuv may choose to manage a child process automatically in case
+   * this (parent) process terminates before the child. In Windows, this is done by
+   * moving the child immediately to a global/shared job object which may not be desirable
+   * if the caller wishes to move the child into a different job object in older versions
+   * (pre windows 8) where multiple job objects are not allowed. To retain current behavior,
+   * this flag is required to opt-out of any OS-specific management that may exist.
+   */
+  UV_PROCESS_NOMANAGE = (1 << 6)
 };
 
 /*
