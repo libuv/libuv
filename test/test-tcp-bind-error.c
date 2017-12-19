@@ -242,7 +242,7 @@ TEST_IMPL(tcp_bind_writable_flags) {
 #ifdef _WIN32
   ASSERT(r == UV_EPIPE);
 #else
-  ASSERT(r == -ENOTCONN);
+  ASSERT(r == UV_ENOTCONN);
 #endif
   r = uv_read_start((uv_stream_t*) &server, NULL, NULL);
   ASSERT(r == UV_ENOTCONN);
