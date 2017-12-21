@@ -263,7 +263,7 @@ API
 
     :returns: 0 on success, or an error code < 0 on failure.
 
-    .. versionchanged:: 1.15.0 added ``0.0.0.0`` and ``::`` to ``localhost``
+    .. versionchanged:: 1.19.0 added ``0.0.0.0`` and ``::`` to ``localhost``
         mapping
 
 .. c:function:: int uv_udp_try_send(uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr)
