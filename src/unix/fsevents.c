@@ -258,6 +258,8 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
       /* Filter out paths that are outside handle's request */
       if (strncmp(path, handle->realpath, handle->realpath_len) != 0)
         continue;
+      if (len != handle->realpath_len && path[handle->realpath_len] != '/')
+        continue;
 
       if (handle->realpath_len > 1 || *handle->realpath != '/') {
         path += handle->realpath_len;

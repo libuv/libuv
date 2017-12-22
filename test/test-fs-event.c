@@ -932,6 +932,92 @@ TEST_IMPL(fs_event_getpath) {
   return 0;
 }
 
+static uv_timer_t *end_common_prefix_timer;
+static void fs_event_cb_common_prefix(uv_fs_event_t* handle, const char* filename,
+  int events, int status) {
+  char buf[1024];
+  size_t buf_size;
+
+  ASSERT(status == 0);
+  buf_size = sizeof(buf) - 1;
+  uv_fs_event_getpath(handle, buf, &buf_size);
+  if (buf_size >= sizeof(buf))
+    buf_size = sizeof(buf) - 1;
+
+  printf("fs_event_cb: %s/%s\n", buf, filename);
+  ++fs_event_cb_called;
+  uv_timer_again(end_common_prefix_timer);
+}
+
+static void end_common_prefix_test_cb(uv_timer_t *handle) {
+  uv_stop(uv_default_loop());
+}
+
+TEST_IMPL(fs_event_common_prefix) {
+#if defined(NO_FS_EVENTS)
+  RETURN_SKIP(NO_FS_EVENTS);
+#endif
+  uv_loop_t* loop;
+  int r;
+  uv_fs_event_t fs_event1;
+  uv_fs_event_t fs_event2;
+  uv_timer_t timer;
+
+  /* Setup */
+  create_dir("watch_dir");
+  create_dir("watch_dir2");
+  create_file("watch_dir/file1");
+  create_file("watch_dir2/file1");
+
+  loop = uv_default_loop();
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  end_common_prefix_timer = &timer;
+
+  r = uv_fs_event_init(loop, &fs_event1);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event1,
+                        fs_event_cb_common_prefix,
+                        "watch_dir",
+                        0);
+  ASSERT(r == 0);
+  r = uv_fs_event_init(loop, &fs_event2);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event2,
+                        fs_event_cb_common_prefix,
+                        "watch_dir2",
+                        0);
+  ASSERT(r == 0);
+
+  touch_file("watch_dir/file1");
+  touch_file("watch_dir2/file1");
+  /* This is a little sloppy, but we want to let the test run for a little
+   * while to make sure we only get the events we want.  And on OS X - the
+   * fs_event stuff is running in a separate thread.  We'll just set it
+   * for 100 ms, and have each fs_event restart the timer.  We'll effectively
+   * run the test until there are no events for 250 ms.
+   */
+  r = uv_timer_start(&timer, end_common_prefix_test_cb, 250, 250);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(fs_event_cb_called == 2);
+  ASSERT(close_cb_called == 0);
+
+  uv_close((uv_handle_t*) &fs_event2, close_cb);
+  uv_close((uv_handle_t*) &fs_event1, close_cb);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(close_cb_called == 2);
+
+  remove("watch_dir/file1");
+  remove("watch_dir/");
+  remove("watch_dir2/file1");
+  remove("watch_dir2/");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 #if defined(__APPLE__)
 
 static int fs_event_error_reported;
