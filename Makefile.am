@@ -159,6 +159,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-close-fd.c \
                          test/test-close-order.c \
                          test/test-condvar.c \
+                         test/test-connect-unspecified.c \
                          test/test-connection-fail.c \
                          test/test-cwd-and-chdir.c \
                          test/test-default-loop-close.c \
