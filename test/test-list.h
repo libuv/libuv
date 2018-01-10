@@ -214,7 +214,6 @@ TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
 TEST_DECLARE   (async)
 TEST_DECLARE   (async_null_cb)
-TEST_DECLARE   (eintr_handling)
 TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (process_title)
 TEST_DECLARE   (process_title_threadsafe)
@@ -325,6 +324,8 @@ TEST_DECLARE   (fs_read_write_null_arguments)
 TEST_DECLARE   (get_osfhandle_valid_handle)
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
+TEST_DECLARE   (fs_partial_read)
+TEST_DECLARE   (fs_partial_write)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
 TEST_DECLARE   (fs_null_req)
 #ifdef _WIN32
@@ -675,7 +676,6 @@ TASK_LIST_START
 
   TEST_ENTRY  (async)
   TEST_ENTRY  (async_null_cb)
-  TEST_ENTRY  (eintr_handling)
 
   TEST_ENTRY  (get_currentexe)
 
@@ -848,6 +848,8 @@ TASK_LIST_START
   TEST_ENTRY  (fs_write_multiple_bufs)
   TEST_ENTRY  (fs_write_alotof_bufs)
   TEST_ENTRY  (fs_write_alotof_bufs_with_offset)
+  TEST_ENTRY  (fs_partial_read)
+  TEST_ENTRY  (fs_partial_write)
   TEST_ENTRY  (fs_read_write_null_arguments)
   TEST_ENTRY  (fs_file_pos_after_op_with_offset)
   TEST_ENTRY  (fs_null_req)
