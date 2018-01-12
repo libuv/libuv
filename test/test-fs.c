@@ -469,10 +469,19 @@ static void mkdtemp_cb(uv_fs_t* req) {
 static void rmdir_cb(uv_fs_t* req) {
   ASSERT(req == &rmdir_req);
   ASSERT(req->fs_type == UV_FS_RMDIR);
-  ASSERT(req->result == 0);
-  rmdir_cb_count++;
   ASSERT(req->path);
-  ASSERT(memcmp(req->path, "test_dir\0", 9) == 0);
+  switch (rmdir_cb_count++) {
+    default:
+      ASSERT(0);
+    case 0:
+      ASSERT(req->result == UV_ENOTDIR);
+      ASSERT(memcmp(req->path, "test_dir/file1\0", 15) == 0);
+      break;
+    case 1:
+      ASSERT(req->result == 0);
+      ASSERT(memcmp(req->path, "test_dir\0", 9) == 0);
+      break;
+  }
   uv_fs_req_cleanup(req);
 }
 
@@ -986,6 +995,11 @@ TEST_IMPL(fs_async_dir) {
 
   ASSERT(stat_cb_count == 4);
 
+  r = uv_fs_rmdir(loop, &rmdir_req, "test_dir/file1", rmdir_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(rmdir_cb_count == 1);
+
   r = uv_fs_unlink(loop, &unlink_req, "test_dir/file1", unlink_cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
@@ -999,7 +1013,7 @@ TEST_IMPL(fs_async_dir) {
   r = uv_fs_rmdir(loop, &rmdir_req, "test_dir", rmdir_cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(rmdir_cb_count == 1);
+  ASSERT(rmdir_cb_count == 2);
 
   /* Cleanup */
   unlink("test_dir/file1");
