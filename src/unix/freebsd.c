@@ -276,6 +276,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   uv_cpu_info_t* cpu_info;
   const char* maxcpus_key;
   const char* cptimes_key;
+  const char* model_key;
   char model[512];
   long* cp_times;
   int numcpus;
@@ -294,8 +295,20 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   cptimes_key = "kern.cp_times";
 #endif
 
+#if defined(__arm__) || defined(__aarch64__)
+  /* The key hw.model and hw.clockrate are not available on FreeBSD ARM. */
+  model_key = "hw.machine";
+  cpuspeed = 0;
+#else
+  model_key = "hw.model";
+
+  size = sizeof(cpuspeed);
+  if (sysctlbyname("hw.clockrate", &cpuspeed, &size, NULL, 0))
+    return -errno;
+#endif
+
   size = sizeof(model);
-  if (sysctlbyname("hw.model", &model, &size, NULL, 0))
+  if (sysctlbyname(model_key, &model, &size, NULL, 0))
     return -errno;
 
   size = sizeof(numcpus);
@@ -307,12 +320,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return -ENOMEM;
 
   *count = numcpus;
-
-  size = sizeof(cpuspeed);
-  if (sysctlbyname("hw.clockrate", &cpuspeed, &size, NULL, 0)) {
-    uv__free(*cpu_infos);
-    return -errno;
-  }
 
   /* kern.cp_times on FreeBSD i386 gives an array up to maxcpus instead of
    * ncpu.
