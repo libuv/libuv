@@ -278,6 +278,9 @@ TEST_IMPL(fork_signal_to_child_closed) {
   /* A signal handler installed before forking
      doesn't get received anywhere when the child is signalled,
      but isnt running the loop. */
+#ifdef __MVS__
+  RETURN_SKIP("This test leaks system resources on z/OS");
+#endif
   uv_signal_t signal_handle;
   pid_t child_pid;
   int sync_pipe[2];

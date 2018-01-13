@@ -645,6 +645,7 @@ int spawn_tcp_server_helper(void) {
   r = uv_listen((uv_stream_t*)&tcp, SOMAXCONN, NULL);
   ASSERT(r == 0);
 
+  MAKE_VALGRIND_HAPPY();
   return 1;
 }
 

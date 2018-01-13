@@ -341,6 +341,7 @@ HELPER_IMPL(tcp4_echo_server) {
     return 1;
 
   uv_run(loop, UV_RUN_DEFAULT);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
@@ -352,6 +353,7 @@ HELPER_IMPL(tcp6_echo_server) {
     return 1;
 
   uv_run(loop, UV_RUN_DEFAULT);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
@@ -363,6 +365,7 @@ HELPER_IMPL(pipe_echo_server) {
     return 1;
 
   uv_run(loop, UV_RUN_DEFAULT);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
@@ -374,5 +377,6 @@ HELPER_IMPL(udp4_echo_server) {
     return 1;
 
   uv_run(loop, UV_RUN_DEFAULT);
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

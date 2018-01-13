@@ -176,5 +176,6 @@ TEST_IMPL(fs_copyfile) {
   handle_result(&req);
 
   unlink(dst); /* Cleanup */
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

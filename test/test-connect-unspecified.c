@@ -57,5 +57,6 @@ TEST_IMPL(connect_unspecified) {
 
   ASSERT(uv_run(loop, UV_RUN_DEFAULT) == 0);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
