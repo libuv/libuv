@@ -698,7 +698,7 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
     return;
 
   if (uv__cf_loop_signal(loop, NULL, kUVCFLoopSignalRegular) != 0)
-    abort();
+    return;
 
   uv_thread_join(&loop->cf_thread);
   uv_sem_destroy(&loop->cf_sem);

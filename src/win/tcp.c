@@ -355,7 +355,7 @@ static int uv_tcp_try_bind(uv_tcp_t* handle,
 }
 
 
-static void CALLBACK post_completion(void* context, BOOLEAN timed_out) {
+static int CALLBACK post_completion(void* context, BOOLEAN timed_out) {
   uv_req_t* req;
   uv_tcp_t* handle;
 
@@ -369,7 +369,7 @@ static void CALLBACK post_completion(void* context, BOOLEAN timed_out) {
                                   req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    /* swallow error, nothing we can do */
   }
 }
 
@@ -388,7 +388,7 @@ static void CALLBACK post_write_completion(void* context, BOOLEAN timed_out) {
                                   req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    /* swallow error, nothing we can do */
   }
 }
 
@@ -606,7 +606,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     handle->tcp.serv.accept_reqs = (uv_tcp_accept_t*)
       uv__malloc(uv_simultaneous_server_accepts * sizeof(uv_tcp_accept_t));
     if (!handle->tcp.serv.accept_reqs) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+      return WSAENOMEM;
     }
 
     for (i = 0; i < simultaneous_accepts; i++) {
@@ -619,7 +619,11 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
         req->event_handle = CreateEvent(NULL, 0, 0, NULL);
         if (!req->event_handle) {
-          uv_fatal_error(GetLastError(), "CreateEvent");
+          size_t j;
+          for (j = 0; j < i; ++j) {
+            if (!CloseHandle(handle->tcp.serv.accept_reqs[i]))
+              uv_fatal_error(GetLastError(), "CloseHandle");
+          return WSAENOMEM;
         }
       } else {
         req->event_handle = NULL;
@@ -730,7 +734,7 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
         !handle->read_req.event_handle) {
       handle->read_req.event_handle = CreateEvent(NULL, 0, 0, NULL);
       if (!handle->read_req.event_handle) {
-        uv_fatal_error(GetLastError(), "CreateEvent");
+        return uv_translate_sys_error();
       }
     }
     uv_tcp_queue_read(loop, handle);
@@ -873,7 +877,7 @@ int uv_tcp_write(uv_loop_t* loop,
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     req->event_handle = CreateEvent(NULL, 0, 0, NULL);
     if (!req->event_handle) {
-      uv_fatal_error(GetLastError(), "CreateEvent");
+      return uv_translate_sys_error();
     }
     req->u.io.overlapped.hEvent = (HANDLE) ((ULONG_PTR) req->event_handle | 1);
     req->wait_handle = INVALID_HANDLE_VALUE;

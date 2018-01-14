@@ -46,14 +46,14 @@ static int uv_cond_condvar_timedwait(uv_cond_t* cond,
     uv_mutex_t* mutex, uint64_t timeout);
 
 
-static void uv__once_inner(uv_once_t* guard, void (*callback)(void)) {
+static int uv__once_inner(uv_once_t* guard, void (*callback)(void)) {
   DWORD result;
   HANDLE existing_event, created_event;
 
   created_event = CreateEvent(NULL, 1, 0, NULL);
   if (created_event == 0) {
     /* Could fail in a low-memory situation? */
-    uv_fatal_error(GetLastError(), "CreateEvent");
+    return UV_ENOMEM;
   }
 
   existing_event = InterlockedCompareExchangePointer(&guard->event,
@@ -75,16 +75,17 @@ static void uv__once_inner(uv_once_t* guard, void (*callback)(void)) {
     result = WaitForSingleObject(existing_event, INFINITE);
     assert(result == WAIT_OBJECT_0);
   }
+  return 0;
 }
 
 
-void uv_once(uv_once_t* guard, void (*callback)(void)) {
+int uv_once(uv_once_t* guard, void (*callback)(void)) {
   /* Fast case - avoid WaitForSingleObject. */
   if (guard->ran) {
     return;
   }
 
-  uv__once_inner(guard, callback);
+  return uv__once_inner(guard, callback);
 }
 
 

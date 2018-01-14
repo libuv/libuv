@@ -73,7 +73,7 @@ static int uv__tty_is_slave(const int fd) {
 
   /* Lookup stat structure behind the file descriptor. */
   if (fstat(fd, &sb) != 0)
-    abort();
+    return 0;
 
   /* Assert character device. */
   if (!S_ISCHR(sb.st_mode))

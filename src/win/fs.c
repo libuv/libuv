@@ -1411,7 +1411,8 @@ static void fs__sendfile(uv_fs_t* req) {
   int64_t result_offset = 0;
   char* buf = (char*) uv__malloc(buf_size);
   if (!buf) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    SET_REQ_WIN32_ERROR(req, ERROR_OUTOFMEMORY);
+    return;
   }
 
   if (offset != -1) {
@@ -1634,7 +1635,8 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
   /* Allocate the buffer */
   buffer = (REPARSE_DATA_BUFFER*)uv__malloc(needed_buf_size);
   if (!buffer) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+    return;
   }
 
   /* Grab a pointer to the part of the buffer where filenames go */

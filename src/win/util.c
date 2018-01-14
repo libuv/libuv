@@ -389,7 +389,8 @@ int uv_set_process_title(const char* title) {
   /* Convert to wide-char string */
   title_w = (WCHAR*)uv__malloc(sizeof(WCHAR) * length);
   if (!title_w) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    err = ERROR_OUTOFMEMORY;
+    goto done;
   }
 
   length = MultiByteToWideChar(CP_UTF8, 0, title, -1, title_w, length);

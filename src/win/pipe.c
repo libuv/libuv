@@ -503,7 +503,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   handle->pipe.serv.accept_reqs = (uv_pipe_accept_t*)
     uv__malloc(sizeof(uv_pipe_accept_t) * handle->pipe.serv.pending_instances);
   if (!handle->pipe.serv.accept_reqs) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    return UV_ENOMEM;
   }
 
   for (i = 0; i < handle->pipe.serv.pending_instances; i++) {
@@ -518,7 +518,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   nameSize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0) * sizeof(WCHAR);
   handle->name = (WCHAR*)uv__malloc(nameSize);
   if (!handle->name) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    return UV_ENOMEM;
   }
 
   if (!MultiByteToWideChar(CP_UTF8,
@@ -621,23 +621,25 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
 }
 
 
-void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
+int uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     const char* name, uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int err, nameSize;
   HANDLE pipeHandle = INVALID_HANDLE_VALUE;
+  WCHAR *name;
   DWORD duplex_flags;
+
+  /* Convert name to UTF16. */
+  nameSize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0) * sizeof(WCHAR);
+  name = (WCHAR*)uv__malloc(nameSize);
+  if (!name) {
+    return UV_ENOMEM;
+  }
+  handle->name = name;
 
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
-
-  /* Convert name to UTF16. */
-  nameSize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0) * sizeof(WCHAR);
-  handle->name = (WCHAR*)uv__malloc(nameSize);
-  if (!handle->name) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-  }
 
   if (!MultiByteToWideChar(CP_UTF8,
                            0,
@@ -1058,7 +1060,7 @@ static void CALLBACK post_completion_read_wait(void* context, BOOLEAN timed_out)
                                   req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    /* There is no way to report the error.  The best we can do is swallow it. */
   }
 }
 
@@ -1077,7 +1079,7 @@ static void CALLBACK post_completion_write_wait(void* context, BOOLEAN timed_out
                                   req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
+    /* There is no way to report the error.  The best we can do is swallow it. */
   }
 }
 
@@ -1124,7 +1126,8 @@ static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
       if (!req->event_handle) {
         req->event_handle = CreateEvent(NULL, 0, 0, NULL);
         if (!req->event_handle) {
-          uv_fatal_error(GetLastError(), "CreateEvent");
+          SET_REQ_ERROR(req, GetLastError());
+          goto error;
         }
       }
       if (req->wait_handle == INVALID_HANDLE_VALUE) {
@@ -1206,15 +1209,16 @@ static uv_write_t* uv_remove_non_overlapped_write_req(uv_pipe_t* handle) {
 }
 
 
-static void uv_queue_non_overlapped_write(uv_pipe_t* handle) {
+static int uv_queue_non_overlapped_write(uv_pipe_t* handle) {
   uv_write_t* req = uv_remove_non_overlapped_write_req(handle);
   if (req) {
     if (!QueueUserWorkItem(&uv_pipe_writefile_thread_proc,
                            req,
                            WT_EXECUTELONGFUNCTION)) {
-      uv_fatal_error(GetLastError(), "QueueUserWorkItem");
+      return GetLastError();
     }
   }
+  return 0;
 }
 
 
@@ -1256,29 +1260,6 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     assert(!(handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE));
     ipc_frame.header.flags = 0;
 
-    /* Use the IPC framing protocol. */
-    if (send_handle) {
-      tcp_send_handle = (uv_tcp_t*)send_handle;
-
-      if (handle->pipe.conn.ipc_pid == 0) {
-          handle->pipe.conn.ipc_pid = uv_current_pid();
-      }
-
-      err = uv_tcp_duplicate_socket(tcp_send_handle, handle->pipe.conn.ipc_pid,
-          &ipc_frame.socket_info_ex.socket_info);
-      if (err) {
-        return err;
-      }
-
-      ipc_frame.socket_info_ex.delayed_error = tcp_send_handle->delayed_error;
-
-      ipc_frame.header.flags |= UV_IPC_TCP_SERVER;
-
-      if (tcp_send_handle->flags & UV_HANDLE_CONNECTION) {
-        ipc_frame.header.flags |= UV_IPC_TCP_CONNECTION;
-      }
-    }
-
     if (nbufs == 1) {
       ipc_frame.header.flags |= UV_IPC_RAW_DATA;
       ipc_frame.header.raw_data_length = bufs[0].len;
@@ -1301,7 +1282,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       } else {
         ipc_header_req = (uv_write_t*)uv__malloc(sizeof(uv_write_t));
         if (!ipc_header_req) {
-          uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+          return UV_ENOMEM;
         }
       }
 
@@ -1319,7 +1300,31 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
        This write is blocking because ipc_frame is on stack. */
     ipc_header_req->u.io.overlapped.hEvent = CreateEvent(NULL, 1, 0, NULL);
     if (!ipc_header_req->u.io.overlapped.hEvent) {
-      uv_fatal_error(GetLastError(), "CreateEvent");
+      uv__free(ipc_header_req);
+      return uv_translate_sys_error();
+    }
+
+    /* Use the IPC framing protocol. */
+    if (send_handle) {
+      tcp_send_handle = (uv_tcp_t*)send_handle;
+
+      if (handle->pipe.conn.ipc_pid == 0) {
+          handle->pipe.conn.ipc_pid = uv_current_pid();
+      }
+
+      err = uv_tcp_duplicate_socket(tcp_send_handle, handle->pipe.conn.ipc_pid,
+          &ipc_frame.socket_info_ex.socket_info);
+      if (err) {
+        return err;
+      }
+
+      ipc_frame.socket_info_ex.delayed_error = tcp_send_handle->delayed_error;
+
+      ipc_frame.header.flags |= UV_IPC_TCP_SERVER;
+
+      if (tcp_send_handle->flags & UV_HANDLE_CONNECTION) {
+        ipc_frame.header.flags |= UV_IPC_TCP_CONNECTION;
+      }
     }
 
     result = WriteFile(handle->handle,
@@ -1384,7 +1389,10 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     req->write_buffer = bufs[0];
     uv_insert_non_overlapped_write_req(handle, req);
     if (handle->stream.conn.write_reqs_pending == 0) {
-      uv_queue_non_overlapped_write(handle);
+      if ((err = uv_queue_non_overlapped_write(handle))) {
+        CloseHandle(req->u.io.overlapped.hEvent);
+        return err;
+      }
     }
 
     /* Request queued by the kernel. */
@@ -1394,7 +1402,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     /* Using overlapped IO, but wait for completion before returning */
     req->u.io.overlapped.hEvent = CreateEvent(NULL, 1, 0, NULL);
     if (!req->u.io.overlapped.hEvent) {
-      uv_fatal_error(GetLastError(), "CreateEvent");
+      return GetLastError();
     }
 
     result = WriteFile(handle->handle,
@@ -1420,7 +1428,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
           WAIT_OBJECT_0) {
         err = GetLastError();
         CloseHandle(req->u.io.overlapped.hEvent);
-        return uv_translate_sys_error(err);
+        return err;
       }
     }
     CloseHandle(req->u.io.overlapped.hEvent);
@@ -1452,7 +1460,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
       req->event_handle = CreateEvent(NULL, 0, 0, NULL);
       if (!req->event_handle) {
-        uv_fatal_error(GetLastError(), "CreateEvent");
+        return GetLastError();
       }
       if (!RegisterWaitForSingleObject(&req->wait_handle,
           req->u.io.overlapped.hEvent, post_completion_write_wait, (void*) req,
@@ -1533,19 +1541,20 @@ static void uv_pipe_read_error_or_eof(uv_loop_t* loop, uv_pipe_t* handle,
 }
 
 
-void uv__pipe_insert_pending_socket(uv_pipe_t* handle,
+static int uv__pipe_insert_pending_socket(uv_pipe_t* handle,
                                     uv__ipc_socket_info_ex* info,
                                     int tcp_connection) {
   uv__ipc_queue_item_t* item;
 
   item = (uv__ipc_queue_item_t*) uv__malloc(sizeof(*item));
   if (item == NULL)
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    return UV_ENOMEM;
 
   memcpy(&item->socket_info_ex, info, sizeof(item->socket_info_ex));
   item->tcp_connection = tcp_connection;
   QUEUE_INSERT_TAIL(&handle->pipe.conn.pending_ipc_info.queue, &item->member);
   handle->pipe.conn.pending_ipc_info.queue_len++;
+  return 0;
 }
 
 
@@ -1624,10 +1633,14 @@ void uv_process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
             assert(bytes == sizeof(ipc_frame) - sizeof(ipc_frame.header));
 
             /* Store the pending socket info. */
-            uv__pipe_insert_pending_socket(
+            if (uv__pipe_insert_pending_socket(
                 handle,
                 &ipc_frame.socket_info_ex,
-                ipc_frame.header.flags & UV_IPC_TCP_CONNECTION);
+                ipc_frame.header.flags & UV_IPC_TCP_CONNECTION)) {
+              uv_pipe_read_error_or_eof(loop, handle, GetLastError(),
+                uv_null_buf_);
+              break;
+            }
           }
 
           if (ipc_frame.header.flags & UV_IPC_RAW_DATA) {
@@ -1722,8 +1735,10 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&
       handle->pipe.conn.non_overlapped_writes_tail) {
     assert(handle->stream.conn.write_reqs_pending > 0);
-    uv_queue_non_overlapped_write(handle);
-  }
+    if ((err = uv_queue_non_overlapped_write(handle) && req->cb)) {
+      req->cb(req, uv_translate_sys_error(err));
+    }
+ }
 
   if (handle->stream.conn.shutdown_req != NULL &&
       handle->stream.conn.write_reqs_pending == 0) {

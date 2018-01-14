@@ -103,13 +103,16 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
   if (rc == 0)
     if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
-      abort();
+      if (errno != ENOMEM)
+        abort();
+      else
+        return -errno;
 
   return rc;
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+int uv__io_poll(uv_loop_t* loop, int timeout) {
   struct kevent events[1024];
   struct kevent* ev;
   struct timespec spec;
@@ -163,7 +166,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       if (++nevents == ARRAY_SIZE(events)) {
         if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
-          abort();
+          if (errno == ENOMEM)
+            return UV_ENOMEM;
+          else
+            abort();
         nevents = 0;
       }
     }
@@ -173,7 +179,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       if (++nevents == ARRAY_SIZE(events)) {
         if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
-          abort();
+          if (errno == ENOMEM)
+            return -ENOMEM
+          else
+            abort();
         nevents = 0;
       }
     }
@@ -183,7 +192,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       if (++nevents == ARRAY_SIZE(events)) {
         if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
-          abort();
+          if (errno == ENOMEM)
+            return -ENOMEM
+          else
+            abort();
         nevents = 0;
       }
     }
@@ -233,7 +245,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (nfds == -1) {
-      if (errno != EINTR)
+      if (errno != EINTR && errno != ENOMEM)
         abort();
 
       if (timeout == 0)
@@ -400,7 +412,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 }
 
 
-static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
+static int uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
   struct kevent ev;
   int events;
@@ -429,7 +441,7 @@ static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   handle->cb(handle, path, events, 0);
 
   if (handle->event_watcher.fd == -1)
-    return;
+    return 0;
 
   /* Watcher operates in one-shot mode, re-arm it. */
   fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
@@ -437,8 +449,7 @@ static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
 
   EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags, 0, 0);
 
-  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
-    abort();
+  return kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL);
 }
 
 
