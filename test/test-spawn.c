@@ -92,7 +92,7 @@ static void kill_cb(uv_process_t* process,
 #else
   ASSERT(exit_status == 0);
 #endif
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(__MVS__)
   /*
    * At least starting with Darwin Kernel Version 16.4.0, sending a SIGTERM to a
    * process that is still starting up kills it with SIGKILL instead of SIGTERM.
