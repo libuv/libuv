@@ -85,6 +85,7 @@ test/task.h
 test/test-active.c
 test/test-async.c
 test/test-barrier.c
+test/test-buf.c
 test/test-callback-order.c
 test/test-callback-stack.c
 test/test-condvar.c
