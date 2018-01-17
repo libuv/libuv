@@ -646,13 +646,22 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
 int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
   int r;
   struct timespec ts;
+#if defined(__MVS__)
+  struct timeval tv;
+#endif
 
 #if defined(__APPLE__) && defined(__MACH__)
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
   r = pthread_cond_timedwait_relative_np(cond, mutex, &ts);
 #else
+#if defined(__MVS__)
+  if (gettimeofday(&tv, NULL))
+    abort();
+  timeout += tv.tv_sec * NANOSEC + tv.tv_usec * 1e3;
+#else
   timeout += uv__hrtime(UV_CLOCK_PRECISE);
+#endif
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
