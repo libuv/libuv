@@ -1,3 +1,16 @@
+2018.01.20, Version 1.19.1 (Stable)
+
+Changes since version 1.19.0:
+
+* Revert "unix,tcp: avoid marking server sockets connected" (Ben Noordhuis)
+
+* Revert "unix,fs: fix for potential partial reads/writes" (Ben Noordhuis)
+
+* Revert "win: use RemoveDirectoryW() instead of _wmrmdir()" (Ben Noordhuis)
+
+* cygwin: fix compilation of ifaddrs impl (Brad King)
+
+
 2018.01.18, Version 1.19.0 (Stable), effbb7c9d29090b2e085a40867f8cdfa916a66df
 
 Changes since version 1.18.0:
