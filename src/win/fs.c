@@ -723,11 +723,8 @@ void fs__write(uv_fs_t* req) {
 
 
 void fs__rmdir(uv_fs_t* req) {
-  if (RemoveDirectoryW(req->file.pathw)) {
-    SET_REQ_SUCCESS(req);
-  } else {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
-  }
+  int result = _wrmdir(req->file.pathw);
+  SET_REQ_RESULT(req, result);
 }
 
 

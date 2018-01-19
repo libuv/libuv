@@ -131,7 +131,7 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAENETUNREACH:                    return UV_ENETUNREACH;
     case WSAENOBUFS:                        return UV_ENOBUFS;
     case ERROR_BAD_PATHNAME:                return UV_ENOENT;
-    case ERROR_DIRECTORY:                   return UV_ENOTDIR;
+    case ERROR_DIRECTORY:                   return UV_ENOENT;
     case ERROR_FILE_NOT_FOUND:              return UV_ENOENT;
     case ERROR_INVALID_NAME:                return UV_ENOENT;
     case ERROR_INVALID_DRIVE:               return UV_ENOENT;
