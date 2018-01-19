@@ -67,7 +67,7 @@
 #define INIT(subtype)                                                         \
   do {                                                                        \
     if (req == NULL)                                                          \
-      return -EINVAL;                                                         \
+      return UV_EINVAL;                                                       \
     req->type = UV_FS;                                                        \
     if (cb != NULL)                                                           \
       uv__req_init(loop, req, UV_FS);                                         \
@@ -90,7 +90,7 @@
       req->path = uv__strdup(path);                                           \
       if (req->path == NULL) {                                                \
         uv__req_unregister(loop, req);                                        \
-        return -ENOMEM;                                                       \
+        return UV_ENOMEM;                                                     \
       }                                                                       \
     }                                                                         \
   }                                                                           \
@@ -109,7 +109,7 @@
       req->path = uv__malloc(path_len + new_path_len);                        \
       if (req->path == NULL) {                                                \
         uv__req_unregister(loop, req);                                        \
-        return -ENOMEM;                                                       \
+        return UV_ENOMEM;                                                     \
       }                                                                       \
       req->new_path = req->path + path_len;                                   \
       memcpy((void*) req->path, path, path_len);                              \
@@ -782,7 +782,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 
   /* Get the source file's mode. */
   if (fstat(srcfd, &statsbuf)) {
-    err = -errno;
+    err = UV_ERR(errno);
     goto out;
   }
 
@@ -806,7 +806,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   }
 
   if (fchmod(dstfd, statsbuf.st_mode) == -1) {
-    err = -errno;
+    err = UV_ERR(errno);
     goto out;
   }
 
@@ -1085,7 +1085,7 @@ static void uv__fs_work(struct uv__work* w) {
   } while (r == -1 && errno == EINTR && retry_on_eintr);
 
   if (r == -1)
-    req->result = -errno;
+    req->result = UV_ERR(errno);
   else
     req->result = r;
 
@@ -1103,9 +1103,9 @@ static void uv__fs_done(struct uv__work* w, int status) {
   req = container_of(w, uv_fs_t, work_req);
   uv__req_unregister(req->loop, req);
 
-  if (status == -ECANCELED) {
+  if (status == UV_ECANCELED) {
     assert(req->result == 0);
-    req->result = -ECANCELED;
+    req->result = UV_ECANCELED;
   }
 
   req->cb(req);
@@ -1269,7 +1269,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
   if (req->path == NULL) {
     if (cb != NULL)
       uv__req_unregister(loop, req);
-    return -ENOMEM;
+    return UV_ENOMEM;
   }
   POST;
 }
@@ -1298,7 +1298,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   INIT(READ);
 
   if (bufs == NULL || nbufs == 0)
-    return -EINVAL;
+    return UV_EINVAL;
 
   req->file = file;
 
@@ -1310,7 +1310,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   if (req->bufs == NULL) {
     if (cb != NULL)
       uv__req_unregister(loop, req);
-    return -ENOMEM;
+    return UV_ENOMEM;
   }
 
   memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
@@ -1437,7 +1437,7 @@ int uv_fs_write(uv_loop_t* loop,
   INIT(WRITE);
 
   if (bufs == NULL || nbufs == 0)
-    return -EINVAL;
+    return UV_EINVAL;
 
   req->file = file;
 
@@ -1449,7 +1449,7 @@ int uv_fs_write(uv_loop_t* loop,
   if (req->bufs == NULL) {
     if (cb != NULL)
       uv__req_unregister(loop, req);
-    return -ENOMEM;
+    return UV_ENOMEM;
   }
 
   memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
@@ -1492,7 +1492,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
   INIT(COPYFILE);
 
   if (flags & ~UV_FS_COPYFILE_EXCL)
-    return -EINVAL;
+    return UV_EINVAL;
 
   PATH2;
   req->flags = flags;

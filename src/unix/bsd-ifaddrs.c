@@ -68,7 +68,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   int i;
 
   if (getifaddrs(&addrs) != 0)
-    return -errno;
+    return UV_ERR(errno);
 
   *count = 0;
 
@@ -83,7 +83,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   if (*addresses == NULL) {
     freeifaddrs(addrs);
-    return -ENOMEM;
+    return UV_ENOMEM;
   }
 
   address = *addresses;

@@ -29,6 +29,13 @@
 #include <string.h> /* strrchr */
 #include <fcntl.h>  /* O_CLOEXEC, may be */
 #include <stdio.h>
+#include <errno.h>
+
+#if EDOM > 0
+# define UV_ERR(x) (-(x))
+#else
+# define UV_ERR(x) (x)
+#endif
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
