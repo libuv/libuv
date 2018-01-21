@@ -32,9 +32,9 @@
 #include <errno.h>
 
 #if EDOM > 0
-# define UV_ERR(x) (-(x))
+# define UV__ERR(x) (-(x))
 #else
-# define UV_ERR(x) (x)
+# define UV__ERR(x) (x)
 #endif
 
 #if defined(__STRICT_ANSI__)

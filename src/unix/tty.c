@@ -163,7 +163,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   if (saved_flags == -1) {
     if (newfd != -1)
       uv__close(newfd);
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 #endif
 
@@ -234,7 +234,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   fd = uv__stream_fd(tty);
   if (tty->mode == UV_TTY_MODE_NORMAL && mode != UV_TTY_MODE_NORMAL) {
     if (tcgetattr(fd, &tty->orig_termios))
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     /* This is used for uv_tty_reset_mode() */
     uv_spinlock_lock(&termios_spinlock);
@@ -264,7 +264,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 
   /* Apply changes after draining */
   if (tcsetattr(fd, TCSADRAIN, &tmp))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   tty->mode = mode;
   return 0;
@@ -280,7 +280,7 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   while (err == -1 && errno == EINTR);
 
   if (err == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *width = ws.ws_col;
   *height = ws.ws_row;
@@ -363,7 +363,7 @@ int uv_tty_reset_mode(void) {
   err = 0;
   if (orig_termios_fd != -1)
     if (tcsetattr(orig_termios_fd, TCSANOW, &orig_termios))
-      err = UV_ERR(errno);
+      err = UV__ERR(errno);
 
   uv_spinlock_unlock(&termios_spinlock);
   errno = saved_errno;

@@ -782,7 +782,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 
   /* Get the source file's mode. */
   if (fstat(srcfd, &statsbuf)) {
-    err = UV_ERR(errno);
+    err = UV__ERR(errno);
     goto out;
   }
 
@@ -806,7 +806,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   }
 
   if (fchmod(dstfd, statsbuf.st_mode) == -1) {
-    err = UV_ERR(errno);
+    err = UV__ERR(errno);
     goto out;
   }
 
@@ -1085,7 +1085,7 @@ static void uv__fs_work(struct uv__work* w) {
   } while (r == -1 && errno == EINTR && retry_on_eintr);
 
   if (r == -1)
-    req->result = UV_ERR(errno);
+    req->result = UV__ERR(errno);
   else
     req->result = r;
 

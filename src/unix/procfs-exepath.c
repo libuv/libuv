@@ -36,7 +36,7 @@ int uv_exepath(char* buffer, size_t* size) {
     n = readlink("/proc/self/exe", buffer, n);
 
   if (n == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   buffer[n] = '\0';
   *size = n;

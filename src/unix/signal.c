@@ -225,7 +225,7 @@ static int uv__signal_register_handler(int signum, int oneshot) {
 
   /* XXX save old action so we can restore it later on? */
   if (sigaction(signum, &sa, NULL))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }

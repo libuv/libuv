@@ -655,7 +655,7 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   loop->cf_state = state;
 
   /* uv_thread_t is an alias for pthread_t. */
-  err = UV_ERR(pthread_create(&loop->cf_thread, attr, uv__cf_loop_runner, loop));
+  err = UV__ERR(pthread_create(&loop->cf_thread, attr, uv__cf_loop_runner, loop));
 
   if (attr != NULL)
     pthread_attr_destroy(attr);
@@ -817,7 +817,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   /* Get absolute path to file */
   handle->realpath = realpath(handle->path, NULL);
   if (handle->realpath == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   handle->realpath_len = strlen(handle->realpath);
 
   /* Initialize event queue */
@@ -895,7 +895,7 @@ int uv__fsevents_close(uv_fs_event_t* handle) {
   assert(handle != NULL);
   err = uv__cf_loop_signal(handle->loop, handle, kUVCFLoopSignalClosing);
   if (err)
-    return UV_ERR(err);
+    return UV__ERR(err);
 
   /* Wait for deinitialization */
   uv_sem_wait(&state->fsevent_sem);

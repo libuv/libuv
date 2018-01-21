@@ -73,7 +73,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   fd = port_create();
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   err = uv__cloexec(fd, 1);
   if (err) {
@@ -132,7 +132,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
 int uv__io_check_fd(uv_loop_t* loop, int fd) {
   if (port_associate(loop->backend_fd, PORT_SOURCE_FD, fd, POLLIN, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   if (port_dissociate(loop->backend_fd, PORT_SOURCE_FD, fd))
     abort();
@@ -351,7 +351,7 @@ int uv_exepath(char* buffer, size_t* size) {
     res = readlink(buf, buffer, res);
 
   if (res == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   buffer[res] = '\0';
   *size = res;
@@ -385,7 +385,7 @@ static int uv__fs_event_rearm(uv_fs_event_t *handle) {
                      (uintptr_t) &handle->fo,
                      FILE_ATTRIB | FILE_MODIFIED,
                      handle) == -1) {
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
   handle->fd = PORT_LOADED;
 
@@ -468,7 +468,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (handle->loop->fs_fd == -1) {
     portfd = port_create();
     if (portfd == -1)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     handle->loop->fs_fd = portfd;
     first_run = 1;
   }
@@ -552,7 +552,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   fd = open("/proc/self/psinfo", O_RDONLY);
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* FIXME(bnoordhuis) Handle EINTR. */
   err = UV_EINVAL;
@@ -730,11 +730,11 @@ static int uv__set_phys_addr(uv_interface_address_t* address,
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   if (ioctl(sockfd, SIOCGARP, (char*)&arpreq) == -1) {
     uv__close(sockfd);
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
   memcpy(address->phys_addr, arpreq.arp_ha.sa_data, sizeof(address->phys_addr));
   uv__close(sockfd);
@@ -759,7 +759,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifaddrs* ent;
 
   if (getifaddrs(&addrs))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *count = 0;
 

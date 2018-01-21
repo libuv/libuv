@@ -25,9 +25,9 @@
 #include <errno.h>
 #ifndef _WIN32
 # if EDOM > 0
-#  define UV_ERR(x) (-(x))
+#  define UV__ERR(x) (-(x))
 # else
-#  define UV_ERR(x) (x)
+#  define UV__ERR(x) (x)
 # endif
 #endif
 
@@ -53,355 +53,355 @@
  * a fairly common practice for Windows programmers to redefine errno codes.
  */
 #if defined(E2BIG) && !defined(_WIN32)
-# define UV__E2BIG UV_ERR(E2BIG)
+# define UV__E2BIG UV__ERR(E2BIG)
 #else
 # define UV__E2BIG (-4093)
 #endif
 
 #if defined(EACCES) && !defined(_WIN32)
-# define UV__EACCES UV_ERR(EACCES)
+# define UV__EACCES UV__ERR(EACCES)
 #else
 # define UV__EACCES (-4092)
 #endif
 
 #if defined(EADDRINUSE) && !defined(_WIN32)
-# define UV__EADDRINUSE UV_ERR(EADDRINUSE)
+# define UV__EADDRINUSE UV__ERR(EADDRINUSE)
 #else
 # define UV__EADDRINUSE (-4091)
 #endif
 
 #if defined(EADDRNOTAVAIL) && !defined(_WIN32)
-# define UV__EADDRNOTAVAIL UV_ERR(EADDRNOTAVAIL)
+# define UV__EADDRNOTAVAIL UV__ERR(EADDRNOTAVAIL)
 #else
 # define UV__EADDRNOTAVAIL (-4090)
 #endif
 
 #if defined(EAFNOSUPPORT) && !defined(_WIN32)
-# define UV__EAFNOSUPPORT UV_ERR(EAFNOSUPPORT)
+# define UV__EAFNOSUPPORT UV__ERR(EAFNOSUPPORT)
 #else
 # define UV__EAFNOSUPPORT (-4089)
 #endif
 
 #if defined(EAGAIN) && !defined(_WIN32)
-# define UV__EAGAIN UV_ERR(EAGAIN)
+# define UV__EAGAIN UV__ERR(EAGAIN)
 #else
 # define UV__EAGAIN (-4088)
 #endif
 
 #if defined(EALREADY) && !defined(_WIN32)
-# define UV__EALREADY UV_ERR(EALREADY)
+# define UV__EALREADY UV__ERR(EALREADY)
 #else
 # define UV__EALREADY (-4084)
 #endif
 
 #if defined(EBADF) && !defined(_WIN32)
-# define UV__EBADF UV_ERR(EBADF)
+# define UV__EBADF UV__ERR(EBADF)
 #else
 # define UV__EBADF (-4083)
 #endif
 
 #if defined(EBUSY) && !defined(_WIN32)
-# define UV__EBUSY UV_ERR(EBUSY)
+# define UV__EBUSY UV__ERR(EBUSY)
 #else
 # define UV__EBUSY (-4082)
 #endif
 
 #if defined(ECANCELED) && !defined(_WIN32)
-# define UV__ECANCELED UV_ERR(ECANCELED)
+# define UV__ECANCELED UV__ERR(ECANCELED)
 #else
 # define UV__ECANCELED (-4081)
 #endif
 
 #if defined(ECHARSET) && !defined(_WIN32)
-# define UV__ECHARSET UV_ERR(ECHARSET)
+# define UV__ECHARSET UV__ERR(ECHARSET)
 #else
 # define UV__ECHARSET (-4080)
 #endif
 
 #if defined(ECONNABORTED) && !defined(_WIN32)
-# define UV__ECONNABORTED UV_ERR(ECONNABORTED)
+# define UV__ECONNABORTED UV__ERR(ECONNABORTED)
 #else
 # define UV__ECONNABORTED (-4079)
 #endif
 
 #if defined(ECONNREFUSED) && !defined(_WIN32)
-# define UV__ECONNREFUSED UV_ERR(ECONNREFUSED)
+# define UV__ECONNREFUSED UV__ERR(ECONNREFUSED)
 #else
 # define UV__ECONNREFUSED (-4078)
 #endif
 
 #if defined(ECONNRESET) && !defined(_WIN32)
-# define UV__ECONNRESET UV_ERR(ECONNRESET)
+# define UV__ECONNRESET UV__ERR(ECONNRESET)
 #else
 # define UV__ECONNRESET (-4077)
 #endif
 
 #if defined(EDESTADDRREQ) && !defined(_WIN32)
-# define UV__EDESTADDRREQ UV_ERR(EDESTADDRREQ)
+# define UV__EDESTADDRREQ UV__ERR(EDESTADDRREQ)
 #else
 # define UV__EDESTADDRREQ (-4076)
 #endif
 
 #if defined(EEXIST) && !defined(_WIN32)
-# define UV__EEXIST UV_ERR(EEXIST)
+# define UV__EEXIST UV__ERR(EEXIST)
 #else
 # define UV__EEXIST (-4075)
 #endif
 
 #if defined(EFAULT) && !defined(_WIN32)
-# define UV__EFAULT UV_ERR(EFAULT)
+# define UV__EFAULT UV__ERR(EFAULT)
 #else
 # define UV__EFAULT (-4074)
 #endif
 
 #if defined(EHOSTUNREACH) && !defined(_WIN32)
-# define UV__EHOSTUNREACH UV_ERR(EHOSTUNREACH)
+# define UV__EHOSTUNREACH UV__ERR(EHOSTUNREACH)
 #else
 # define UV__EHOSTUNREACH (-4073)
 #endif
 
 #if defined(EINTR) && !defined(_WIN32)
-# define UV__EINTR UV_ERR(EINTR)
+# define UV__EINTR UV__ERR(EINTR)
 #else
 # define UV__EINTR (-4072)
 #endif
 
 #if defined(EINVAL) && !defined(_WIN32)
-# define UV__EINVAL UV_ERR(EINVAL)
+# define UV__EINVAL UV__ERR(EINVAL)
 #else
 # define UV__EINVAL (-4071)
 #endif
 
 #if defined(EIO) && !defined(_WIN32)
-# define UV__EIO UV_ERR(EIO)
+# define UV__EIO UV__ERR(EIO)
 #else
 # define UV__EIO (-4070)
 #endif
 
 #if defined(EISCONN) && !defined(_WIN32)
-# define UV__EISCONN UV_ERR(EISCONN)
+# define UV__EISCONN UV__ERR(EISCONN)
 #else
 # define UV__EISCONN (-4069)
 #endif
 
 #if defined(EISDIR) && !defined(_WIN32)
-# define UV__EISDIR UV_ERR(EISDIR)
+# define UV__EISDIR UV__ERR(EISDIR)
 #else
 # define UV__EISDIR (-4068)
 #endif
 
 #if defined(ELOOP) && !defined(_WIN32)
-# define UV__ELOOP UV_ERR(ELOOP)
+# define UV__ELOOP UV__ERR(ELOOP)
 #else
 # define UV__ELOOP (-4067)
 #endif
 
 #if defined(EMFILE) && !defined(_WIN32)
-# define UV__EMFILE UV_ERR(EMFILE)
+# define UV__EMFILE UV__ERR(EMFILE)
 #else
 # define UV__EMFILE (-4066)
 #endif
 
 #if defined(EMSGSIZE) && !defined(_WIN32)
-# define UV__EMSGSIZE UV_ERR(EMSGSIZE)
+# define UV__EMSGSIZE UV__ERR(EMSGSIZE)
 #else
 # define UV__EMSGSIZE (-4065)
 #endif
 
 #if defined(ENAMETOOLONG) && !defined(_WIN32)
-# define UV__ENAMETOOLONG UV_ERR(ENAMETOOLONG)
+# define UV__ENAMETOOLONG UV__ERR(ENAMETOOLONG)
 #else
 # define UV__ENAMETOOLONG (-4064)
 #endif
 
 #if defined(ENETDOWN) && !defined(_WIN32)
-# define UV__ENETDOWN UV_ERR(ENETDOWN)
+# define UV__ENETDOWN UV__ERR(ENETDOWN)
 #else
 # define UV__ENETDOWN (-4063)
 #endif
 
 #if defined(ENETUNREACH) && !defined(_WIN32)
-# define UV__ENETUNREACH UV_ERR(ENETUNREACH)
+# define UV__ENETUNREACH UV__ERR(ENETUNREACH)
 #else
 # define UV__ENETUNREACH (-4062)
 #endif
 
 #if defined(ENFILE) && !defined(_WIN32)
-# define UV__ENFILE UV_ERR(ENFILE)
+# define UV__ENFILE UV__ERR(ENFILE)
 #else
 # define UV__ENFILE (-4061)
 #endif
 
 #if defined(ENOBUFS) && !defined(_WIN32)
-# define UV__ENOBUFS UV_ERR(ENOBUFS)
+# define UV__ENOBUFS UV__ERR(ENOBUFS)
 #else
 # define UV__ENOBUFS (-4060)
 #endif
 
 #if defined(ENODEV) && !defined(_WIN32)
-# define UV__ENODEV UV_ERR(ENODEV)
+# define UV__ENODEV UV__ERR(ENODEV)
 #else
 # define UV__ENODEV (-4059)
 #endif
 
 #if defined(ENOENT) && !defined(_WIN32)
-# define UV__ENOENT UV_ERR(ENOENT)
+# define UV__ENOENT UV__ERR(ENOENT)
 #else
 # define UV__ENOENT (-4058)
 #endif
 
 #if defined(ENOMEM) && !defined(_WIN32)
-# define UV__ENOMEM UV_ERR(ENOMEM)
+# define UV__ENOMEM UV__ERR(ENOMEM)
 #else
 # define UV__ENOMEM (-4057)
 #endif
 
 #if defined(ENONET) && !defined(_WIN32)
-# define UV__ENONET UV_ERR(ENONET)
+# define UV__ENONET UV__ERR(ENONET)
 #else
 # define UV__ENONET (-4056)
 #endif
 
 #if defined(ENOSPC) && !defined(_WIN32)
-# define UV__ENOSPC UV_ERR(ENOSPC)
+# define UV__ENOSPC UV__ERR(ENOSPC)
 #else
 # define UV__ENOSPC (-4055)
 #endif
 
 #if defined(ENOSYS) && !defined(_WIN32)
-# define UV__ENOSYS UV_ERR(ENOSYS)
+# define UV__ENOSYS UV__ERR(ENOSYS)
 #else
 # define UV__ENOSYS (-4054)
 #endif
 
 #if defined(ENOTCONN) && !defined(_WIN32)
-# define UV__ENOTCONN UV_ERR(ENOTCONN)
+# define UV__ENOTCONN UV__ERR(ENOTCONN)
 #else
 # define UV__ENOTCONN (-4053)
 #endif
 
 #if defined(ENOTDIR) && !defined(_WIN32)
-# define UV__ENOTDIR UV_ERR(ENOTDIR)
+# define UV__ENOTDIR UV__ERR(ENOTDIR)
 #else
 # define UV__ENOTDIR (-4052)
 #endif
 
 #if defined(ENOTEMPTY) && !defined(_WIN32)
-# define UV__ENOTEMPTY UV_ERR(ENOTEMPTY)
+# define UV__ENOTEMPTY UV__ERR(ENOTEMPTY)
 #else
 # define UV__ENOTEMPTY (-4051)
 #endif
 
 #if defined(ENOTSOCK) && !defined(_WIN32)
-# define UV__ENOTSOCK UV_ERR(ENOTSOCK)
+# define UV__ENOTSOCK UV__ERR(ENOTSOCK)
 #else
 # define UV__ENOTSOCK (-4050)
 #endif
 
 #if defined(ENOTSUP) && !defined(_WIN32)
-# define UV__ENOTSUP UV_ERR(ENOTSUP)
+# define UV__ENOTSUP UV__ERR(ENOTSUP)
 #else
 # define UV__ENOTSUP (-4049)
 #endif
 
 #if defined(EPERM) && !defined(_WIN32)
-# define UV__EPERM UV_ERR(EPERM)
+# define UV__EPERM UV__ERR(EPERM)
 #else
 # define UV__EPERM (-4048)
 #endif
 
 #if defined(EPIPE) && !defined(_WIN32)
-# define UV__EPIPE UV_ERR(EPIPE)
+# define UV__EPIPE UV__ERR(EPIPE)
 #else
 # define UV__EPIPE (-4047)
 #endif
 
 #if defined(EPROTO) && !defined(_WIN32)
-# define UV__EPROTO UV_ERR(EPROTO)
+# define UV__EPROTO UV__ERR(EPROTO)
 #else
-# define UV__EPROTO UV_ERR(4046)
+# define UV__EPROTO UV__ERR(4046)
 #endif
 
 #if defined(EPROTONOSUPPORT) && !defined(_WIN32)
-# define UV__EPROTONOSUPPORT UV_ERR(EPROTONOSUPPORT)
+# define UV__EPROTONOSUPPORT UV__ERR(EPROTONOSUPPORT)
 #else
 # define UV__EPROTONOSUPPORT (-4045)
 #endif
 
 #if defined(EPROTOTYPE) && !defined(_WIN32)
-# define UV__EPROTOTYPE UV_ERR(EPROTOTYPE)
+# define UV__EPROTOTYPE UV__ERR(EPROTOTYPE)
 #else
 # define UV__EPROTOTYPE (-4044)
 #endif
 
 #if defined(EROFS) && !defined(_WIN32)
-# define UV__EROFS UV_ERR(EROFS)
+# define UV__EROFS UV__ERR(EROFS)
 #else
 # define UV__EROFS (-4043)
 #endif
 
 #if defined(ESHUTDOWN) && !defined(_WIN32)
-# define UV__ESHUTDOWN UV_ERR(ESHUTDOWN)
+# define UV__ESHUTDOWN UV__ERR(ESHUTDOWN)
 #else
 # define UV__ESHUTDOWN (-4042)
 #endif
 
 #if defined(ESPIPE) && !defined(_WIN32)
-# define UV__ESPIPE UV_ERR(ESPIPE)
+# define UV__ESPIPE UV__ERR(ESPIPE)
 #else
 # define UV__ESPIPE (-4041)
 #endif
 
 #if defined(ESRCH) && !defined(_WIN32)
-# define UV__ESRCH UV_ERR(ESRCH)
+# define UV__ESRCH UV__ERR(ESRCH)
 #else
 # define UV__ESRCH (-4040)
 #endif
 
 #if defined(ETIMEDOUT) && !defined(_WIN32)
-# define UV__ETIMEDOUT UV_ERR(ETIMEDOUT)
+# define UV__ETIMEDOUT UV__ERR(ETIMEDOUT)
 #else
 # define UV__ETIMEDOUT (-4039)
 #endif
 
 #if defined(ETXTBSY) && !defined(_WIN32)
-# define UV__ETXTBSY UV_ERR(ETXTBSY)
+# define UV__ETXTBSY UV__ERR(ETXTBSY)
 #else
 # define UV__ETXTBSY (-4038)
 #endif
 
 #if defined(EXDEV) && !defined(_WIN32)
-# define UV__EXDEV UV_ERR(EXDEV)
+# define UV__EXDEV UV__ERR(EXDEV)
 #else
 # define UV__EXDEV (-4037)
 #endif
 
 #if defined(EFBIG) && !defined(_WIN32)
-# define UV__EFBIG UV_ERR(EFBIG)
+# define UV__EFBIG UV__ERR(EFBIG)
 #else
 # define UV__EFBIG (-4036)
 #endif
 
 #if defined(ENOPROTOOPT) && !defined(_WIN32)
-# define UV__ENOPROTOOPT UV_ERR(ENOPROTOOPT)
+# define UV__ENOPROTOOPT UV__ERR(ENOPROTOOPT)
 #else
 # define UV__ENOPROTOOPT (-4035)
 #endif
 
 #if defined(ERANGE) && !defined(_WIN32)
-# define UV__ERANGE UV_ERR(ERANGE)
+# define UV__ERANGE UV__ERR(ERANGE)
 #else
 # define UV__ERANGE (-4034)
 #endif
 
 #if defined(ENXIO) && !defined(_WIN32)
-# define UV__ENXIO UV_ERR(ENXIO)
+# define UV__ENXIO UV__ERR(ENXIO)
 #else
 # define UV__ENXIO (-4033)
 #endif
 
 #if defined(EMLINK) && !defined(_WIN32)
-# define UV__EMLINK UV_ERR(EMLINK)
+# define UV__EMLINK UV__ERR(EMLINK)
 #else
 # define UV__EMLINK (-4032)
 #endif
@@ -411,7 +411,7 @@
  * icky to hard-code it.
  */
 #if defined(EHOSTDOWN) && !defined(_WIN32)
-# define UV__EHOSTDOWN UV_ERR(EHOSTDOWN)
+# define UV__EHOSTDOWN UV__ERR(EHOSTDOWN)
 #elif defined(__APPLE__) || \
       defined(__DragonFly__) || \
       defined(__FreeBSD__) || \
@@ -424,13 +424,13 @@
 #endif
 
 #if defined(EREMOTEIO) && !defined(_WIN32)
-# define UV__EREMOTEIO UV_ERR(EREMOTEIO)
+# define UV__EREMOTEIO UV__ERR(EREMOTEIO)
 #else
 # define UV__EREMOTEIO (-4030)
 #endif
 
 #if defined(ENOTTY) && !defined(_WIN32)
-# define UV__ENOTTY UV_ERR(ENOTTY)
+# define UV__ENOTTY UV__ERR(ENOTTY)
 #else
 # define UV__ENOTTY (-4029)
 #endif

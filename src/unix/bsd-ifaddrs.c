@@ -68,7 +68,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   int i;
 
   if (getifaddrs(&addrs) != 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *count = 0;
 

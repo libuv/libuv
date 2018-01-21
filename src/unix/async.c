@@ -240,7 +240,7 @@ static int uv__async_eventfd(void) {
     return fd;
 
   if (errno != ENOSYS)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   no_eventfd2 = 1;
 
@@ -257,7 +257,7 @@ skip_eventfd2:
   }
 
   if (errno != ENOSYS)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   no_eventfd = 1;
 

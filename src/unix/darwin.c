@@ -37,7 +37,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   loop->cf_state = NULL;
 
   if (uv__kqueue_init(loop))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -75,7 +75,7 @@ int uv_exepath(char* buffer, size_t* size) {
     return UV_EIO;
 
   if (realpath(exepath, abspath) != abspath)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   abspath_size = strlen(abspath);
   if (abspath_size == 0)
@@ -111,7 +111,7 @@ uint64_t uv_get_total_memory(void) {
   size_t size = sizeof(info);
 
   if (sysctl(which, 2, &info, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return (uint64_t) info;
 }
@@ -158,7 +158,7 @@ int uv_uptime(double* uptime) {
   static int which[] = {CTL_KERN, KERN_BOOTTIME};
 
   if (sysctl(which, 2, &info, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   now = time(NULL);
   *uptime = now - info.tv_sec;
@@ -181,12 +181,12 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   size = sizeof(model);
   if (sysctlbyname("machdep.cpu.brand_string", &model, &size, NULL, 0) &&
       sysctlbyname("hw.model", &model, &size, NULL, 0)) {
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
   size = sizeof(cpuspeed);
   if (sysctlbyname("hw.cpufrequency", &cpuspeed, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numcpus,
                           (processor_info_array_t*)&info,

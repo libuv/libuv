@@ -91,7 +91,7 @@ int uv_exepath(char* buffer, size_t* size) {
   int_size = ARRAY_SIZE(int_buf);
 
   if (sysctl(mib, 4, int_buf, &int_size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* Copy string from the intermediate buffer to outer one with appropriate
    * length.
@@ -111,7 +111,7 @@ uint64_t uv_get_free_memory(void) {
   int which[] = {CTL_VM, VM_UVMEXP};
 
   if (sysctl(which, 2, &info, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return (uint64_t) info.free * sysconf(_SC_PAGESIZE);
 }
@@ -128,7 +128,7 @@ uint64_t uv_get_total_memory(void) {
   size_t size = sizeof(info);
 
   if (sysctl(which, 2, &info, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return (uint64_t) info;
 }
@@ -230,7 +230,7 @@ int uv_uptime(double* uptime) {
   static int which[] = {CTL_KERN, KERN_BOOTTIME};
 
   if (sysctl(which, 2, &info, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   now = time(NULL);
 
@@ -254,12 +254,12 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   size = sizeof(model);
   if (sysctlbyname("machdep.cpu_brand", &model, &size, NULL, 0) &&
       sysctlbyname("hw.model", &model, &size, NULL, 0)) {
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
   size = sizeof(numcpus);
   if (sysctlbyname("hw.ncpu", &numcpus, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   *count = numcpus;
 
   /* Only i386 and amd64 have machdep.tsc_freq */
@@ -273,7 +273,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return UV_ENOMEM;
 
   if (sysctlbyname("kern.cp_time", cp_times, &size, NULL, 0))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos)) {

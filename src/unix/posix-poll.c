@@ -315,7 +315,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   while (rv == -1 && (errno == EINTR || errno == EAGAIN));
 
   if (rv == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   if (p[0].revents & POLLNVAL)
     return UV_EINVAL;

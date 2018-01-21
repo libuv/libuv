@@ -126,7 +126,7 @@ int uv__make_socketpair(int fds[2], int flags) {
    * Anything else is a genuine error.
    */
   if (errno != EINVAL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   no_cloexec = 1;
 
@@ -134,7 +134,7 @@ skip:
 #endif
 
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   uv__cloexec(fds[0], 1);
   uv__cloexec(fds[1], 1);
@@ -159,7 +159,7 @@ int uv__make_pipe(int fds[2], int flags) {
     return 0;
 
   if (errno != ENOSYS)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   no_pipe2 = 1;
 
@@ -167,7 +167,7 @@ skip:
 #endif
 
   if (pipe(fds))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   uv__cloexec(fds[0], 1);
   uv__cloexec(fds[1], 1);
@@ -299,7 +299,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
       continue;
     pipes[fd][1] = fcntl(use_fd, F_DUPFD, stdio_count);
     if (pipes[fd][1] == -1) {
-      uv__write_int(error_fd, UV_ERR(errno));
+      uv__write_int(error_fd, UV__ERR(errno));
       _exit(127);
     }
   }
@@ -319,7 +319,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
         close_fd = use_fd;
 
         if (use_fd == -1) {
-          uv__write_int(error_fd, UV_ERR(errno));
+          uv__write_int(error_fd, UV__ERR(errno));
           _exit(127);
         }
       }
@@ -331,7 +331,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
       fd = dup2(use_fd, fd);
 
     if (fd == -1) {
-      uv__write_int(error_fd, UV_ERR(errno));
+      uv__write_int(error_fd, UV__ERR(errno));
       _exit(127);
     }
 
@@ -350,7 +350,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   if (options->cwd != NULL && chdir(options->cwd)) {
-    uv__write_int(error_fd, UV_ERR(errno));
+    uv__write_int(error_fd, UV__ERR(errno));
     _exit(127);
   }
 
@@ -366,12 +366,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid)) {
-    uv__write_int(error_fd, UV_ERR(errno));
+    uv__write_int(error_fd, UV__ERR(errno));
     _exit(127);
   }
 
   if ((options->flags & UV_PROCESS_SETUID) && setuid(options->uid)) {
-    uv__write_int(error_fd, UV_ERR(errno));
+    uv__write_int(error_fd, UV__ERR(errno));
     _exit(127);
   }
 
@@ -391,7 +391,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (SIG_ERR != signal(n, SIG_DFL))
       continue;
 
-    uv__write_int(error_fd, UV_ERR(errno));
+    uv__write_int(error_fd, UV__ERR(errno));
     _exit(127);
   }
 
@@ -400,12 +400,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
   err = pthread_sigmask(SIG_SETMASK, &set, NULL);
 
   if (err != 0) {
-    uv__write_int(error_fd, UV_ERR(err));
+    uv__write_int(error_fd, UV__ERR(err));
     _exit(127);
   }
 
   execvp(options->file, options->args);
-  uv__write_int(error_fd, UV_ERR(errno));
+  uv__write_int(error_fd, UV__ERR(errno));
   _exit(127);
 }
 #endif
@@ -493,7 +493,7 @@ int uv_spawn(uv_loop_t* loop,
   pid = fork();
 
   if (pid == -1) {
-    err = UV_ERR(errno);
+    err = UV__ERR(errno);
     uv_rwlock_wrunlock(&loop->cloexec_lock);
     uv__close(signal_pipe[0]);
     uv__close(signal_pipe[1]);
@@ -585,7 +585,7 @@ int uv_process_kill(uv_process_t* process, int signum) {
 
 int uv_kill(int pid, int signum) {
   if (kill(pid, signum))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   else
     return 0;
 }

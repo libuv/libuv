@@ -101,7 +101,7 @@ int uv_exepath(char* buffer, size_t* size) {
   /* Case i) and ii) absolute or relative paths */
   if (strchr(args, '/') != NULL) {
     if (realpath(args, abspath) != abspath)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     abspath_size = strlen(abspath);
 
@@ -177,19 +177,19 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   *count = 0;
 
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
   if (ioctl(sockfd, SIOCGSIZIFCONF, &size) == -1) {
     uv__close(sockfd);
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
   ifc.ifc_req = (struct ifreq*)uv__malloc(size);
   ifc.ifc_len = size;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
     uv__close(sockfd);
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
 #define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
@@ -208,7 +208,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
       uv__close(sockfd);
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     }
 
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))

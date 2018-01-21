@@ -200,7 +200,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   if (attr != NULL)
     pthread_attr_destroy(attr);
 
-  return UV_ERR(err);
+  return UV__ERR(err);
 }
 
 
@@ -209,7 +209,7 @@ uv_thread_t uv_thread_self(void) {
 }
 
 int uv_thread_join(uv_thread_t *tid) {
-  return UV_ERR(pthread_join(*tid, NULL));
+  return UV__ERR(pthread_join(*tid, NULL));
 }
 
 
@@ -220,7 +220,7 @@ int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
 
 int uv_mutex_init(uv_mutex_t* mutex) {
 #if defined(NDEBUG) || !defined(PTHREAD_MUTEX_ERRORCHECK)
-  return UV_ERR(pthread_mutex_init(mutex, NULL));
+  return UV__ERR(pthread_mutex_init(mutex, NULL));
 #else
   pthread_mutexattr_t attr;
   int err;
@@ -236,7 +236,7 @@ int uv_mutex_init(uv_mutex_t* mutex) {
   if (pthread_mutexattr_destroy(&attr))
     abort();
 
-  return UV_ERR(err);
+  return UV__ERR(err);
 #endif
 }
 
@@ -256,7 +256,7 @@ int uv_mutex_init_recursive(uv_mutex_t* mutex) {
   if (pthread_mutexattr_destroy(&attr))
     abort();
 
-  return UV_ERR(err);
+  return UV__ERR(err);
 }
 
 
@@ -293,7 +293,7 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
 
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
-  return UV_ERR(pthread_rwlock_init(rwlock, NULL));
+  return UV__ERR(pthread_rwlock_init(rwlock, NULL));
 }
 
 
@@ -433,14 +433,14 @@ int uv_sem_init(uv_sem_t* sem, unsigned int value) {
 
   semid = semget(IPC_PRIVATE, 1, S_IRUSR | S_IWUSR);
   if (semid == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   arg.val = value;
   if (-1 == semctl(semid, 0, SETVAL, arg)) {
     err = errno;
     if (-1 == semctl(*sem, 0, IPC_RMID))
       abort();
-    return UV_ERR(err);
+    return UV__ERR(err);
   }
 
   *sem = semid;
@@ -504,7 +504,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
 
 int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   if (sem_init(sem, 0, value))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   return 0;
 }
 
@@ -555,7 +555,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
 #if defined(__APPLE__) && defined(__MACH__) || defined(__MVS__)
 
 int uv_cond_init(uv_cond_t* cond) {
-  return UV_ERR(pthread_cond_init(cond, NULL));
+  return UV__ERR(pthread_cond_init(cond, NULL));
 }
 
 #else /* !(defined(__APPLE__) && defined(__MACH__)) */
@@ -566,7 +566,7 @@ int uv_cond_init(uv_cond_t* cond) {
 
   err = pthread_condattr_init(&attr);
   if (err)
-    return UV_ERR(err);
+    return UV__ERR(err);
 
 #if !(defined(__ANDROID_API__) && __ANDROID_API__ < 21)
   err = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
@@ -588,7 +588,7 @@ error:
   pthread_cond_destroy(cond);
 error2:
   pthread_condattr_destroy(&attr);
-  return UV_ERR(err);
+  return UV__ERR(err);
 }
 
 #endif /* defined(__APPLE__) && defined(__MACH__) */
@@ -680,7 +680,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 
 
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  return UV_ERR(pthread_barrier_init(barrier, NULL, count));
+  return UV__ERR(pthread_barrier_init(barrier, NULL, count));
 }
 
 
@@ -699,7 +699,7 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
 
 
 int uv_key_create(uv_key_t* key) {
-  return UV_ERR(pthread_key_create(key, NULL));
+  return UV__ERR(pthread_key_create(key, NULL));
 }
 
 

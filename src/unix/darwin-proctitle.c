@@ -50,7 +50,7 @@ static int uv__pthread_setname_np(const char* name) {
 
   err = dynamic_pthread_setname_np(namebuf);
   if (err)
-    return UV_ERR(err);
+    return UV__ERR(err);
 
   return 0;
 }

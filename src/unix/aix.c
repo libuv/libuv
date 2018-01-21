@@ -119,7 +119,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   pc.fd = fd;
 
   if (pollset_ctl(loop->backend_fd, &pc, 1))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   pc.cmd = PS_DELETE;
   if (pollset_ctl(loop->backend_fd, &pc, 1))
@@ -409,22 +409,22 @@ static int uv__is_ahafs_mounted(void){
 
   p = uv__malloc(siz);
   if (p == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* Retrieve all mounted filesystems */
   rv = mntctl(MCTL_QUERY, siz, (char*)p);
   if (rv < 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   if (rv == 0) {
     /* buffer was not large enough, reallocate to correct size */
     siz = *(int*)p;
     uv__free(p);
     p = uv__malloc(siz);
     if (p == NULL)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     rv = mntctl(MCTL_QUERY, siz, (char*)p);
     if (rv < 0)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
   }
 
   /* Look for dev in filesystems mount info */
@@ -495,7 +495,7 @@ static int uv__make_subdirs_p(const char *filename) {
   rc = uv__makedir_p(cmd);
 
   if (rc == -1 && errno != EEXIST){
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
   return rc;
@@ -537,7 +537,7 @@ static int uv__setup_ahafs(const char* filename, int *fd) {
   /* Open the monitor file, creating it if necessary */
   *fd = open(mon_file, O_CREAT|O_RDWR);
   if (*fd < 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* Write out the monitoring specifications.
    * In this case, we are monitoring for a state change event type
@@ -558,7 +558,7 @@ static int uv__setup_ahafs(const char* filename, int *fd) {
 
   rc = write(*fd, mon_file_write_string, strlen(mon_file_write_string)+1);
   if (rc < 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -919,7 +919,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   fd = open(pp, O_RDONLY);
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* FIXME(bnoordhuis) Handle EINTR. */
   err = UV_EINVAL;

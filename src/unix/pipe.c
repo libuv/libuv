@@ -71,7 +71,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   saddr.sun_family = AF_UNIX;
 
   if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
-    err = UV_ERR(errno);
+    err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
       err = UV_EACCES;
@@ -105,7 +105,7 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
 #endif
 
   if (listen(uv__stream_fd(handle), backlog))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   handle->connection_cb = cb;
   handle->io_watcher.cb = uv__server_io;
@@ -180,7 +180,7 @@ void uv_pipe_connect(uv_connect_t* req,
   while (r == -1 && errno == EINTR);
 
   if (r == -1 && errno != EINPROGRESS) {
-    err = UV_ERR(errno);
+    err = UV__ERR(errno);
 #if defined(__CYGWIN__) || defined(__MSYS__)
     /* EBADF is supposed to mean that the socket fd is bad, but
        Cygwin reports EBADF instead of ENOTSOCK when the file is
@@ -234,7 +234,7 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   err = func(uv__stream_fd(handle), (struct sockaddr*) &sa, &addrlen);
   if (err < 0) {
     *size = 0;
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
 #if defined(__linux__)
@@ -320,7 +320,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     return UV_EINVAL;
 
   if (fstat(uv__stream_fd(handle), &pipe_stat) == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   desired_mode = 0;
   if (mode & UV_READABLE)
@@ -353,5 +353,5 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   r = chmod(name_buffer, pipe_stat.st_mode);
   uv__free(name_buffer);
 
-  return r != -1 ? 0 : UV_ERR(errno);
+  return r != -1 ? 0 : UV__ERR(errno);
 }

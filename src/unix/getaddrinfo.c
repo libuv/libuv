@@ -86,7 +86,7 @@ int uv__getaddrinfo_translate_error(int sys_err) {
   case EAI_SOCKTYPE: return UV_EAI_SOCKTYPE;
 #endif
 #if defined(EAI_SYSTEM)
-  case EAI_SYSTEM: return UV_ERR(errno);
+  case EAI_SYSTEM: return UV__ERR(errno);
 #endif
   }
   assert(!"unknown EAI_* error code");
@@ -211,7 +211,7 @@ int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size) {
     return UV_EINVAL;
 
   if (if_indextoname(ifindex, ifname_buf) == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   len = strnlen(ifname_buf, sizeof(ifname_buf));
 

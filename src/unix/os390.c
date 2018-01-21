@@ -122,7 +122,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   ep = epoll_create1(0);
   loop->ep = ep;
   if (ep == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -277,7 +277,7 @@ int uv_exepath(char* buffer, size_t* size) {
   /* Case i) and ii) absolute or relative paths */
   if (strchr(args, '/') != NULL) {
     if (realpath(args, abspath) != abspath)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     abspath_size = strlen(abspath);
 
@@ -452,7 +452,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   maxsize = 16384;
 
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   ifc.__nif6h_version = 1;
   ifc.__nif6h_buflen = maxsize;
@@ -460,7 +460,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
 
   if (ioctl(sockfd, SIOCGIFCONF6, &ifc) == -1) {
     uv__close(sockfd);
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
 
@@ -543,13 +543,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (0 > sockfd)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   ifc.ifc_req = uv__calloc(1, maxsize);
   ifc.ifc_len = maxsize;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
     uv__close(sockfd);
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -569,7 +569,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
       uv__close(sockfd);
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     }
 
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
@@ -722,7 +722,7 @@ int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
 
   rc = __w_pioctl(path, _IOCC_REGFILEINT, sizeof(reg_struct), &reg_struct);
   if (rc != 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   uv__handle_start(handle);
   handle->path = path;

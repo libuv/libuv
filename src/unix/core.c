@@ -208,7 +208,7 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
     r = setsockopt(fd, SOL_SOCKET, optname, (const void*) value, len);
 
   if (r < 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -418,12 +418,12 @@ int uv__socket(int domain, int type, int protocol) {
     return sockfd;
 
   if (errno != EINVAL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 #endif
 
   sockfd = socket(domain, type, protocol);
   if (sockfd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   err = uv__nonblock(sockfd, 1);
   if (err == 0)
@@ -487,7 +487,7 @@ int uv__accept(int sockfd) {
       continue;
 
     if (errno != ENOSYS)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     no_accept4 = 1;
 skip:
@@ -497,7 +497,7 @@ skip:
     if (peerfd == -1) {
       if (errno == EINTR)
         continue;
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     }
 
     err = uv__cloexec(peerfd, 1);
@@ -523,8 +523,8 @@ int uv__close_nocheckstdio(int fd) {
   saved_errno = errno;
   rc = close(fd);
   if (rc == -1) {
-    rc = UV_ERR(errno);
-    if (rc == UV_EINTR || rc == UV_ERR(EINPROGRESS))
+    rc = UV__ERR(errno);
+    if (rc == UV_EINTR || rc == UV__ERR(EINPROGRESS))
       rc = 0;    /* The close is in progress, not an error. */
     errno = saved_errno;
   }
@@ -550,7 +550,7 @@ int uv__nonblock_ioctl(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   if (r)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -565,7 +565,7 @@ int uv__cloexec_ioctl(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   if (r)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -581,7 +581,7 @@ int uv__nonblock_fcntl(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   if (r == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* Bail out now if already set/clear. */
   if (!!(r & O_NONBLOCK) == !!set)
@@ -597,7 +597,7 @@ int uv__nonblock_fcntl(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   if (r)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -612,7 +612,7 @@ int uv__cloexec_fcntl(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   if (r == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   /* Bail out now if already set/clear. */
   if (!!(r & FD_CLOEXEC) == !!set)
@@ -628,7 +628,7 @@ int uv__cloexec_fcntl(int fd, int set) {
   while (r == -1 && errno == EINTR);
 
   if (r)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -643,7 +643,7 @@ int uv__dup(int fd) {
   fd = dup(fd);
 
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   err = uv__cloexec(fd, 1);
   if (err) {
@@ -667,10 +667,10 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
     if (rc != -1)
       return rc;
     if (errno != EINVAL)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     rc = recvmsg(fd, msg, flags);
     if (rc == -1)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     no_msg_cmsg_cloexec = 1;
   } else {
     rc = recvmsg(fd, msg, flags);
@@ -679,7 +679,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   rc = recvmsg(fd, msg, flags);
 #endif
   if (rc == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   if (msg->msg_controllen == 0)
     return rc;
   for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg))
@@ -698,7 +698,7 @@ int uv_cwd(char* buffer, size_t* size) {
     return UV_EINVAL;
 
   if (getcwd(buffer, *size) == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *size = strlen(buffer);
   if (*size > 1 && buffer[*size - 1] == '/') {
@@ -712,7 +712,7 @@ int uv_cwd(char* buffer, size_t* size) {
 
 int uv_chdir(const char* dir) {
   if (chdir(dir))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -931,7 +931,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
   struct rusage usage;
 
   if (getrusage(RUSAGE_SELF, &usage))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   rusage->ru_utime.tv_sec = usage.ru_utime.tv_sec;
   rusage->ru_utime.tv_usec = usage.ru_utime.tv_usec;
@@ -973,7 +973,7 @@ int uv__open_cloexec(const char* path, int flags) {
       return fd;
 
     if (errno != EINVAL)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     /* O_CLOEXEC not supported. */
     no_cloexec = 1;
@@ -982,7 +982,7 @@ int uv__open_cloexec(const char* path, int flags) {
 
   fd = open(path, flags);
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   err = uv__cloexec(fd, 1);
   if (err) {
@@ -999,14 +999,14 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
 #if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || defined(__NetBSD__)
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   return r;
 #elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
   r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
   if (r != -1)
     return r;
   if (errno != EINVAL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   /* Fall through. */
 #elif defined(__linux__)
   static int no_dup3;
@@ -1017,7 +1017,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
     if (r != -1)
       return r;
     if (errno != ENOSYS)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
     /* Fall through. */
     no_dup3 = 1;
   }
@@ -1033,7 +1033,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
 #endif
 
     if (r == -1)
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     err = uv__cloexec(newfd, 1);
     if (err) {
@@ -1293,7 +1293,7 @@ int uv_os_setenv(const char* name, const char* value) {
     return UV_EINVAL;
 
   if (setenv(name, value, 1) != 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -1304,7 +1304,7 @@ int uv_os_unsetenv(const char* name) {
     return UV_EINVAL;
 
   if (unsetenv(name) != 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -1324,7 +1324,7 @@ int uv_os_gethostname(char* buffer, size_t* size) {
     return UV_EINVAL;
 
   if (gethostname(buf, sizeof(buf)) != 0)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   buf[sizeof(buf) - 1] = '\0'; /* Null terminate, just to be safe. */
   len = strlen(buf);

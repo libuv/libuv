@@ -101,7 +101,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   loop->inotify_watchers = NULL;
 
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -175,7 +175,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   rc = 0;
   if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_ADD, fd, &e))
     if (errno != EEXIST)
-      rc = UV_ERR(errno);
+      rc = UV__ERR(errno);
 
   if (rc == 0)
     if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_DEL, fd, &e))
@@ -485,7 +485,7 @@ int uv_resident_set_memory(size_t* rss) {
   while (fd == -1 && errno == EINTR);
 
   if (fd == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   do
     n = read(fd, buf, sizeof(buf) - 1);
@@ -493,7 +493,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   uv__close(fd);
   if (n == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   buf[n] = '\0';
 
   s = strchr(buf, ' ');
@@ -547,7 +547,7 @@ int uv_uptime(double* uptime) {
   }
 
   if (r)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *uptime = now.tv_sec;
   return 0;
@@ -587,7 +587,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   statfile_fp = uv__open_file("/proc/stat");
   if (statfile_fp == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   err = uv__cpu_num(statfile_fp, &numcpus);
   if (err < 0)
@@ -667,7 +667,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     defined(__x86_64__)
   fp = uv__open_file("/proc/cpuinfo");
   if (fp == NULL)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   while (fgets(buf, sizeof(buf), fp)) {
     if (model_idx < numcpus) {
@@ -862,7 +862,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   struct sockaddr_ll *sll;
 
   if (getifaddrs(&addrs))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   *count = 0;
   *addresses = NULL;

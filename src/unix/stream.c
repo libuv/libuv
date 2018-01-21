@@ -282,7 +282,7 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   kq = kqueue();
   if (kq == -1) {
     perror("(libuv) kqueue()");
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 
   EV_SET(&filter[0], *fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
@@ -298,7 +298,7 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   uv__close(kq);
 
   if (ret == -1)
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   if (ret == 0 || (events[0].flags & EV_ERROR) == 0 || events[0].data != EINVAL)
     return 0;
@@ -310,7 +310,7 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
    * NOTE: do it ahead of malloc below to allocate enough space for fd_sets
    */
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds))
-    return UV_ERR(errno);
+    return UV__ERR(errno);
 
   max_fd = *fd;
   if (fds[1] > max_fd)
@@ -402,11 +402,11 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 
   if (stream->type == UV_TCP) {
     if ((stream->flags & UV_TCP_NODELAY) && uv__tcp_nodelay(fd, 1))
-      return UV_ERR(errno);
+      return UV__ERR(errno);
 
     /* TODO Use delay the user passed in. */
     if ((stream->flags & UV_TCP_KEEPALIVE) && uv__tcp_keepalive(fd, 1, 60))
-      return UV_ERR(errno);
+      return UV__ERR(errno);
   }
 
 #if defined(__APPLE__)
@@ -414,7 +414,7 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
   if (setsockopt(fd, SOL_SOCKET, SO_OOBINLINE, &enable, sizeof(enable)) &&
       errno != ENOTSOCK &&
       errno != EINVAL) {
-    return UV_ERR(errno);
+    return UV__ERR(errno);
   }
 #endif
 
@@ -533,7 +533,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     err = uv__accept(uv__stream_fd(stream));
     if (err < 0) {
-      if (err == UV_EAGAIN || err == UV_ERR(EWOULDBLOCK))
+      if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
         return;  /* Not an error. */
 
       if (err == UV_ECONNABORTED)
@@ -541,7 +541,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
       if (err == UV_EMFILE || err == UV_ENFILE) {
         err = uv__emfile_trick(loop, uv__stream_fd(stream));
-        if (err == UV_EAGAIN || err == UV_ERR(EWOULDBLOCK))
+        if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
           break;
       }
 
@@ -680,7 +680,7 @@ static void uv__drain(uv_stream_t* stream) {
 
     err = 0;
     if (shutdown(uv__stream_fd(stream), SHUT_WR))
-      err = UV_ERR(errno);
+      err = UV__ERR(errno);
 
     if (err == 0)
       stream->flags |= UV_STREAM_SHUT;
@@ -860,7 +860,7 @@ start:
 
   if (n < 0) {
     if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENOBUFS) {
-      err = UV_ERR(errno);
+      err = UV__ERR(errno);
       goto error;
     } else if (stream->flags & UV_STREAM_BLOCKING) {
       /* If this is a blocking stream, try again. */
@@ -1192,7 +1192,7 @@ static void uv__read(uv_stream_t* stream) {
 #endif
       } else {
         /* Error. User should call uv_close(). */
-        stream->read_cb(stream, UV_ERR(errno), &buf);
+        stream->read_cb(stream, UV__ERR(errno), &buf);
         if (stream->flags & UV_STREAM_READING) {
           stream->flags &= ~UV_STREAM_READING;
           uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
@@ -1368,10 +1368,10 @@ static void uv__stream_connect(uv_stream_t* stream) {
                SO_ERROR,
                &error,
                &errorsize);
-    error = UV_ERR(error);
+    error = UV__ERR(error);
   }
 
-  if (error == UV_ERR(EINPROGRESS))
+  if (error == UV__ERR(EINPROGRESS))
     return;
 
   stream->connect_req = NULL;
