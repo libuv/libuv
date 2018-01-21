@@ -83,6 +83,35 @@ additional guidelines, are enumerated below.
   logic are either obvious to a reasonably skilled professional, or add a
   comment that explains it.
 
+### AVOIDING ACCIDENTAL MISTAKES
+
+* Always use braces when nesting if/else statements to avoid dangling else (the else branch belongs to the innermost if statement).
+
+```cpp
+if ( var1 ) {
+	if ( var2 ) {
+		someMethod( var1 );
+	} 
+	else {
+		someOtherMethod( var1 );
+	}
+}
+```
+
+* Do not use logic as control flow. For instance: `var1 && someMethod( var1 );` Please use if statements for that purpose.
+
+```cpp
+if( var1 ) {
+	someMethod( var1 );
+}
+```
+* Avoid writing boolean expressions without specifying the operator precedences. For instance, add parentheses to make it explicit that && operators have precedence over || operators.
+
+```cpp
+if ( var1 || (var2 && var3) ) {
+	someMethod( var1 );
+}
+```
 
 ### COMMIT
 
