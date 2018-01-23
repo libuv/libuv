@@ -43,7 +43,7 @@ def run_gyp(args):
 
 if __name__ == '__main__':
   args = sys.argv[1:]
-  args.extend('-I common.gypi uv.gyp'.split(' '))
+  args.extend('-I common.gypi test/test.gyp'.split(' '))
   args.append('--depth=' + uv_root)
 
   # There's a bug with windows which doesn't allow this feature.
