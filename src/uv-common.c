@@ -577,11 +577,15 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 
 int uv_loop_configure(uv_loop_t* loop, uv_loop_option option, ...) {
   va_list ap;
-  int err;
+  int err = 0;
 
   va_start(ap, option);
-  /* Any platform-agnostic options should be handled here. */
-  err = uv__loop_configure(loop, option, ap);
+  if (option == UV_LOOP_TIMEOUT_OBSERVER) {    
+    loop->on_timeout_change = va_arg(ap, uv_timeout_observer_func);
+  } else {
+    /* Any platform-agnostic options should be handled here. */
+    err = uv__loop_configure(loop, option, ap);
+  }
   va_end(ap);
 
   return err;

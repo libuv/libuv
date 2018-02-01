@@ -64,7 +64,9 @@ int uv_timer_start(uv_timer_t* handle,
                    uint64_t timeout,
                    uint64_t repeat) {
   uint64_t clamped_timeout;
-
+  const struct heap_node* heap_node;
+  const uv_timer_t* old;
+  
   if (cb == NULL)
     return -EINVAL;
 
@@ -78,6 +80,19 @@ int uv_timer_start(uv_timer_t* handle,
   handle->timer_cb = cb;
   handle->timeout = clamped_timeout;
   handle->repeat = repeat;
+  
+  if (loop->on_timeout_change) {
+    heap_node = heap_min((const struct heap*) &loop->timer_heap);
+    if(!heap_node){
+      loop->on_timeout_change(loop, timeout);
+    }else{
+      old = container_of(heap_node, uv_timer_t, heap_node);
+      if(handle->timeout < old->timeout){
+        loop->on_timeout_change(loop, timeout);
+      }
+    }
+  }  
+  
   /* start_id is the second index to be compared in uv__timer_cmp() */
   handle->start_id = handle->loop->timer_counter++;
 
