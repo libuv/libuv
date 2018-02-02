@@ -126,7 +126,7 @@ UV_DESTRUCTOR(static void cleanup(void)) {
 #endif
 
 
-static void init_threads(void) {
+static int init_threads(void) {
   unsigned int i;
   const char* val;
   uv_sem_t sem;
@@ -150,24 +150,25 @@ static void init_threads(void) {
   }
 
   if (uv_cond_init(&cond))
-    abort();
+    return UV_ENOMEM;
 
   if (uv_mutex_init(&mutex))
-    abort();
+    return UV_ENOMEM;
 
   QUEUE_INIT(&wq);
 
   if (uv_sem_init(&sem, 0))
-    abort();
+    return UV_ENOMEM;
 
   for (i = 0; i < nthreads; i++)
     if (uv_thread_create(threads + i, worker, &sem))
-      abort();
+      return UV_ENOMEM;
 
   for (i = 0; i < nthreads; i++)
     uv_sem_wait(&sem);
 
   uv_sem_destroy(&sem);
+  return 0;
 }
 
 
@@ -178,7 +179,7 @@ static void reset_once(void) {
 }
 #endif
 
-
+static int init_error;
 static void init_once(void) {
 #ifndef _WIN32
   /* Re-initialize the threadpool after fork.
@@ -188,19 +189,22 @@ static void init_once(void) {
   if (pthread_atfork(NULL, NULL, &reset_once))
     abort();
 #endif
-  init_threads();
+  init_error = init_threads();
 }
 
 
-void uv__work_submit(uv_loop_t* loop,
-                     struct uv__work* w,
-                     void (*work)(struct uv__work* w),
-                     void (*done)(struct uv__work* w, int status)) {
+int uv__work_submit(uv_loop_t* loop,
+                    struct uv__work* w,
+                    void (*work)(struct uv__work* w),
+                    void (*done)(struct uv__work* w, int status)) {
+  if (init_error)
+    return UV_ENOMEM;
   uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
   w->done = done;
   post(&w->wq);
+  return 0;
 }
 
 
@@ -284,8 +288,7 @@ int uv_queue_work(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
-  uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
-  return 0;
+  return uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
 }
 
 

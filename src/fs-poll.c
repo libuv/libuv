@@ -164,8 +164,7 @@ static void timer_cb(uv_timer_t* timer) {
   assert(ctx->parent_handle->poll_ctx == ctx);
   ctx->start_time = uv_now(ctx->loop);
 
-  if (uv_fs_stat(ctx->loop, &ctx->fs_req, ctx->path, poll_cb))
-    abort();
+  uv_fs_stat(ctx->loop, &ctx->fs_req, ctx->path, poll_cb);
 }
 
 
@@ -214,8 +213,8 @@ out:
   interval = ctx->interval;
   interval -= (uv_now(ctx->loop) - ctx->start_time) % interval;
 
-  if (uv_timer_start(&ctx->timer_handle, timer_cb, interval, 0))
-    abort();
+  uv_timer_start(&ctx->timer_handle, timer_cb, interval, 0);
+  return;
 }
 
 

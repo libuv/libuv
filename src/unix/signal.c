@@ -429,7 +429,7 @@ static void uv__signal_event(uv_loop_t* loop,
     if (r == -1 && errno == EINTR)
       continue;
 
-    if (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    if (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOMEM)) {
       /* If there are bytes in the buffer already (which really is extremely
        * unlikely if possible at all) we can't exit the function here. We'll
        * spin until more bytes are read instead.

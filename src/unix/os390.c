@@ -798,7 +798,7 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+int uv__io_poll(uv_loop_t* loop, int timeout) {
   static const int max_safe_timeout = 1789569;
   struct epoll_event events[1024];
   struct epoll_event* pe;
@@ -816,7 +816,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
-    return;
+    return 0;
   }
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
@@ -846,6 +846,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      * events, skip the syscall and squelch the events after epoll_wait().
      */
     if (epoll_ctl(loop->ep, op, w->fd, &e)) {
+      if (errno == ENOMEM)
+        return UV_ENOMEM;
       if (errno != EEXIST)
         abort();
 
@@ -887,7 +889,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
       }
 
-      return;
+      return 0;
     }
 
     if (nfds == -1) {
@@ -899,7 +901,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0)
-        return;
+        return 0;
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
@@ -962,11 +964,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = 0;
         continue;
       }
-      return;
+      return 0;
     }
 
     if (timeout == 0)
-      return;
+      return 0;
 
     if (timeout == -1)
       continue;
@@ -976,7 +978,7 @@ update_timeout:
 
     real_timeout -= (loop->time - base);
     if (real_timeout <= 0)
-      return;
+      return 0;
 
     timeout = real_timeout;
   }

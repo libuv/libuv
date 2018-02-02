@@ -63,9 +63,9 @@ static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
   handle->req_pending = 1;
 }
 
-static void uv_relative_path(const WCHAR* filename,
-                             const WCHAR* dir,
-                             WCHAR** relpath) {
+static int uv_relative_path(const WCHAR* filename,
+                            const WCHAR* dir,
+                            WCHAR** relpath) {
   size_t relpathlen;
   size_t filenamelen = wcslen(filename);
   size_t dirlen = wcslen(dir);
@@ -74,7 +74,7 @@ static void uv_relative_path(const WCHAR* filename,
   relpathlen = filenamelen - dirlen - 1;
   *relpath = uv__malloc((relpathlen + 1) * sizeof(WCHAR));
   if (!*relpath)
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    return UV_ENOMEM;
   wcsncpy(*relpath, filename + dirlen + 1, relpathlen);
   (*relpath)[relpathlen] = L'\0';
 }
@@ -98,7 +98,7 @@ static int uv_split_path(const WCHAR* filename, WCHAR** dir,
     if (dir) {
       *dir = (WCHAR*)uv__malloc((MAX_PATH + 1) * sizeof(WCHAR));
       if (!*dir) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+        return -1;
       }
 
       if (!GetCurrentDirectoryW(MAX_PATH, *dir)) {
@@ -109,11 +109,16 @@ static int uv_split_path(const WCHAR* filename, WCHAR** dir,
     }
 
     *file = wcsdup(filename);
+    if (!*file) {
+      uv__free(*dir);
+      *dir = NULL;
+      return -1;
+    }
   } else {
     if (dir) {
       *dir = (WCHAR*)uv__malloc((i + 2) * sizeof(WCHAR));
       if (!*dir) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+        return -1
       }
       wcsncpy(*dir, filename, i + 1);
       (*dir)[i + 1] = L'\0';
@@ -121,7 +126,9 @@ static int uv_split_path(const WCHAR* filename, WCHAR** dir,
 
     *file = (WCHAR*)uv__malloc((len - i) * sizeof(WCHAR));
     if (!*file) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+      uv__free(*dir);
+      *dir = NULL;
+      return -1;
     }
     wcsncpy(*file, filename + i + 1, len - i - 1);
     (*file)[len - i - 1] = L'\0';
@@ -163,7 +170,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->cb = cb;
   handle->path = uv__strdup(path);
   if (!handle->path) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    return UV_ENOMEM;
   }
 
   uv__handle_start(handle);
@@ -174,7 +181,9 @@ int uv_fs_event_start(uv_fs_event_t* handle,
               sizeof(WCHAR);
   pathw = (WCHAR*)uv__malloc(name_size);
   if (!pathw) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    uv__free(handle->path);
+    handle->path = NULL;
+    return UV_ENOMEM;
   }
 
   if (!MultiByteToWideChar(CP_UTF8,
@@ -257,7 +266,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     handle->buffer = (char*)uv__malloc(uv_directory_watcher_buffer_size);
   }
   if (!handle->buffer) {
-    uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    last_error = ERROR_OUTOFMEMORY;
+    goto error;
   }
 
   memset(&(handle->req.u.io.overlapped), 0,
@@ -437,7 +447,7 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
 
               filenamew = (WCHAR*)uv__malloc(size * sizeof(WCHAR));
               if (!filenamew) {
-                uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+                goto nomem;
               }
 
               _snwprintf(filenamew, size, L"%s\\%.*s", handle->dirw,
@@ -452,7 +462,8 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
               if (size) {
                 long_filenamew = (WCHAR*)uv__malloc(size * sizeof(WCHAR));
                 if (!long_filenamew) {
-                  uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+                  uv__free(filenamew);
+                  goto nomem;
                 }
 
                 size = GetLongPathNameW(filenamew, long_filenamew, size);
@@ -468,14 +479,18 @@ void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
 
               if (long_filenamew) {
                 /* Get the file name out of the long path. */
-                uv_relative_path(long_filenamew,
-                                 handle->dirw,
-                                 &filenamew);
+                if (uv_relative_path(long_filenamew,
+                                     handle->dirw,
+                                     &filenamew)) {
+                  uv__free(long_filenamew);
+                  goto nomem;
+                }
                 uv__free(long_filenamew);
                 long_filenamew = filenamew;
                 sizew = -1;
               } else {
                 /* We couldn't get the long filename, use the one reported. */
+nomem:
                 filenamew = file_info->FileName;
                 sizew = file_info->FileNameLength / sizeof(WCHAR);
               }

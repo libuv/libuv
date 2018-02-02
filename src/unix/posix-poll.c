@@ -52,18 +52,18 @@ int uv__io_fork(uv_loop_t* loop) {
 }
 
 /* Allocate or dynamically resize our poll fds array.  */
-static void uv__pollfds_maybe_resize(uv_loop_t* loop) {
+static int uv__pollfds_maybe_resize(uv_loop_t* loop) {
   size_t i;
   size_t n;
   struct pollfd* p;
 
   if (loop->poll_fds_used < loop->poll_fds_size)
-    return;
+    return 0;
 
   n = loop->poll_fds_size ? loop->poll_fds_size * 2 : 64;
   p = uv__realloc(loop->poll_fds, n * sizeof(*loop->poll_fds));
   if (p == NULL)
-    abort();
+    return UV_ENOMEM;
 
   loop->poll_fds = p;
   for (i = loop->poll_fds_size; i < n; i++) {
@@ -72,6 +72,7 @@ static void uv__pollfds_maybe_resize(uv_loop_t* loop) {
     loop->poll_fds[i].revents = 0;
   }
   loop->poll_fds_size = n;
+  return 0;
 }
 
 /* Primitive swap operation on poll fds array elements.  */
@@ -192,7 +193,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (nfds == -1) {
-      if (errno != EINTR)
+      if (errno != EINTR && errno != ENOMEM)
         abort();
 
       if (timeout == -1)

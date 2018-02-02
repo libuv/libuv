@@ -101,14 +101,14 @@ static unsigned int next_power_of_two(unsigned int val) {
 }
 
 
-static void maybe_resize(uv__os390_epoll* lst, unsigned int len) {
+static int maybe_resize(uv__os390_epoll* lst, unsigned int len) {
   unsigned int newsize;
   unsigned int i;
   struct pollfd* newlst;
   struct pollfd event;
 
   if (len <= lst->size)
-    return;
+    return 0;
 
   if (lst->size == 0)
     event.fd = -1;
@@ -122,7 +122,7 @@ static void maybe_resize(uv__os390_epoll* lst, unsigned int len) {
   newlst = uv__realloc(lst->items, newsize * sizeof(lst->items[0]));
 
   if (newlst == NULL)
-    abort();
+    return UV_ENOMEM;
   for (i = lst->size; i < newsize; ++i)
     newlst[i].fd = -1;
 
@@ -131,10 +131,11 @@ static void maybe_resize(uv__os390_epoll* lst, unsigned int len) {
 
   lst->items = newlst;
   lst->size = newsize;
+  return 0;
 }
 
 
-static void init_message_queue(uv__os390_epoll* lst) {
+static int init_message_queue(uv__os390_epoll* lst) {
   struct {
     long int header;
     char body;
@@ -151,8 +152,10 @@ static void init_message_queue(uv__os390_epoll* lst) {
      can be queried for all message queues belonging to our process id.
   */
   msg.header = 1;
-  if (msgsnd(lst->msg_queue, &msg, sizeof(msg.body), 0) != 0)
+  if (msgsnd(lst->msg_queue, &msg, sizeof(msg.body), 0) != 0) {
+    /* FIXME do not crash! */
     abort();
+  }
 
   /* Clean up the dummy message sent above */
   if (msgrcv(lst->msg_queue, &msg, sizeof(msg.body), 0, 0) != sizeof(msg.body))
@@ -244,7 +247,10 @@ int epoll_ctl(uv__os390_epoll* lst,
      * 'fd'. But we need to guarantee that the last index on the list 
      * is reserved for the message queue. So specify 'fd + 2' instead.
      */
-    maybe_resize(lst, fd + 2);
+    if (maybe_resize(lst, fd + 2)) {
+      errno = ENOMEM;
+      return -1;
+    }
     if (lst->items[fd].fd != -1) {
       uv_mutex_unlock(&global_epoll_lock);
       errno = EEXIST;
