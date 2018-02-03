@@ -31,12 +31,6 @@
 #include <stdio.h>
 #include <errno.h>
 
-#if EDOM > 0
-# define UV__ERR(x) (-(x))
-#else
-# define UV__ERR(x) (x)
-#endif
-
 #if defined(__STRICT_ANSI__)
 # define inline __inline
 #endif

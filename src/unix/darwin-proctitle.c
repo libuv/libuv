@@ -19,6 +19,7 @@
  */
 
 #include "uv.h"
+#include "internal.h"
 
 #include <dlfcn.h>
 #include <errno.h>
