@@ -23,12 +23,10 @@
 #define UV_ERRNO_H_
 
 #include <errno.h>
-#ifndef _WIN32
-# if EDOM > 0
-#  define UV__ERR(x) (-(x))
-# else
-#  define UV__ERR(x) (x)
-# endif
+#if EDOM > 0
+# define UV__ERR(x) (-(x))
+#else
+# define UV__ERR(x) (x)
 #endif
 
 #define UV__EOF     (-4095)
