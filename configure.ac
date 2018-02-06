@@ -67,6 +67,7 @@ AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
 ])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
+AM_CONDITIONAL([SUNOS_NO_IFADDRS], [AS_CASE([$host_os],[solaris*], [AC_CHECK_LIB([socket], [getifaddrs])], [false])])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])
 AC_OUTPUT

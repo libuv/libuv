@@ -437,6 +437,10 @@ endif
 if SUNOS
 include_HEADERS += include/uv-sunos.h
 libuv_la_CFLAGS += -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
+if SUNOS_NO_IFADDRS
+libuv_la_CFLAGS += -DSUNOS_NO_IFADDRS
+endif
+
 libuv_la_SOURCES += src/unix/no-proctitle.c \
                     src/unix/sunos.c
 endif
