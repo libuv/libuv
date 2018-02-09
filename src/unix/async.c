@@ -177,7 +177,8 @@ static int uv__async_start(uv_loop_t* loop) {
       char buf[32];
       int fd;
 
-      snprintf(buf, sizeof(buf), "/proc/self/fd/%d", pipefd[0]);
+      if (snprintf(buf, sizeof(buf), "/proc/self/fd/%d", pipefd[0]) < 0)
+        return -errno;
       fd = uv__open_cloexec(buf, O_RDWR);
       if (fd >= 0) {
         uv__close(pipefd[0]);
@@ -193,7 +194,8 @@ static int uv__async_start(uv_loop_t* loop) {
     return err;
 
   uv__io_init(&loop->async_io_watcher, uv__async_io, pipefd[0]);
-  uv__io_start(loop, &loop->async_io_watcher, POLLIN);
+  if (uv__io_start(loop, &loop->async_io_watcher, POLLIN))
+    return UV_ENOMEM;
   loop->async_wfd = pipefd[1];
 
   return 0;

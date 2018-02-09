@@ -215,7 +215,10 @@ uv__os390_epoll* epoll_create1(int flags) {
     lst->size = 0;
     lst->items = NULL;
     init_message_queue(lst);
-    maybe_resize(lst, 1);
+    if (maybe_resize(lst, 1)) {
+      uv__free(lst);
+      return NULL;
+    }
     lst->items[lst->size - 1].fd = lst->msg_queue;
     lst->items[lst->size - 1].events = POLLIN;
     uv_once(&once, epoll_init);
@@ -248,6 +251,7 @@ int epoll_ctl(uv__os390_epoll* lst,
      * is reserved for the message queue. So specify 'fd + 2' instead.
      */
     if (maybe_resize(lst, fd + 2)) {
+      uv_mutex_unlock(&global_epoll_lock);
       errno = ENOMEM;
       return -1;
     }

@@ -134,7 +134,8 @@ int uv_poll_start(uv_poll_t* handle, int pevents, uv_poll_cb poll_cb) {
   if (pevents & UV_DISCONNECT)
     events |= UV__POLLRDHUP;
 
-  uv__io_start(handle->loop, &handle->io_watcher, events);
+  if (uv__io_start(handle->loop, &handle->io_watcher, events))
+    return UV_ENOMEM;
   uv__handle_start(handle);
   handle->poll_cb = poll_cb;
 

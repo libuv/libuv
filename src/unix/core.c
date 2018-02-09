@@ -852,9 +852,9 @@ int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(w->fd >= 0);
   assert(w->fd < INT_MAX);
 
-  w->pevents |= events;
   if (maybe_resize(loop, w->fd + 1))
     return UV_ENOMEM;
+  w->pevents |= events;
 
 #if !defined(__sun)
   /* The event ports backend needs to rearm all file descriptors on each and

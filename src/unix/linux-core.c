@@ -179,7 +179,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 
   if (rc == 0)
     if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_DEL, fd, &e))
-      rc = -errno;
+      abort();
 
   return rc;
 }
@@ -221,8 +221,6 @@ int uv__io_poll(uv_loop_t* loop, int timeout) {
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
     q = QUEUE_HEAD(&loop->watcher_queue);
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);
 
     w = QUEUE_DATA(q, uv__io_t, watcher_queue);
     assert(w->pevents != 0);
@@ -243,6 +241,8 @@ int uv__io_poll(uv_loop_t* loop, int timeout) {
     if (uv__epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
       if (ENOMEM == errno)
         return UV_ENOMEM;
+      QUEUE_REMOVE(q);
+      QUEUE_INIT(q);
       if (errno != EEXIST)
         abort();
 
@@ -251,6 +251,9 @@ int uv__io_poll(uv_loop_t* loop, int timeout) {
       /* We've reactivated a file descriptor that's been watched before. */
       if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_MOD, w->fd, &e))
         abort();
+    } else {
+      QUEUE_REMOVE(q);
+      QUEUE_INIT(q);
     }
 
     w->events = w->pevents;
@@ -325,7 +328,7 @@ int uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
       }
 
-      if (errno != EINTR && errno != ENOMEM)
+      if (errno != EINTR)
         abort();
 
       if (timeout == -1)

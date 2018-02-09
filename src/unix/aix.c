@@ -767,9 +767,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->cb = cb;
   handle->dir_filename = NULL;
 
-  uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
+  return uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
 
-  return 0;
 #else
   return -ENOSYS;
 #endif

@@ -197,9 +197,9 @@ int uv__work_submit(uv_loop_t* loop,
                     struct uv__work* w,
                     void (*work)(struct uv__work* w),
                     void (*done)(struct uv__work* w, int status)) {
+  uv_once(&once, init_once);
   if (init_error)
     return UV_ENOMEM;
-  uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
   w->done = done;

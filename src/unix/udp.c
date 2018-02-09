@@ -435,9 +435,9 @@ int uv__udp_send(uv_udp_send_t* req,
      * write.
      */
     if (!QUEUE_EMPTY(&handle->write_queue))
-      uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+      return uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
   } else {
-    uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+    return uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
   }
 
   return 0;
@@ -873,7 +873,7 @@ int uv__udp_recv_start(uv_udp_t* handle,
     return -EINVAL;
 
   if (uv__io_active(&handle->io_watcher, POLLIN))
-    return -EALREADY;  /* FIXME(bnoordhuis) Should be -EBUSY. */
+    return -EBUSY;  /* FIXME(bnoordhuis) Should be -EBUSY. */
 
   err = uv__udp_maybe_deferred_bind(handle, AF_INET, 0);
   if (err)
@@ -882,7 +882,8 @@ int uv__udp_recv_start(uv_udp_t* handle,
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
 
-  uv__io_start(handle->loop, &handle->io_watcher, POLLIN);
+  if ((err = uv__io_start(handle->loop, &handle->io_watcher, POLLIN)))
+    return err;
   uv__handle_start(handle);
 
   return 0;

@@ -518,7 +518,8 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(stream->accepted_fd == -1);
   assert(!(stream->flags & UV_CLOSING));
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
+  if (uv__io_start(stream->loop, &stream->io_watcher, POLLIN))
+    return UV_ENOMEM;
 
   /* connection_cb can close the server socket while we're
    * in the loop so check it on each iteration.
@@ -528,13 +529,13 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 #if defined(UV_HAVE_KQUEUE)
     if (w->rcount <= 0)
-      return;
+      return 0;
 #endif /* defined(UV_HAVE_KQUEUE) */
 
     err = uv__accept(uv__stream_fd(stream));
     if (err < 0) {
       if (err == -EAGAIN || err == -EWOULDBLOCK)
-        return;  /* Not an error. */
+        return 0;  /* Not an error. */
 
       if (err == -ECONNABORTED)
         continue;  /* Ignore. Nothing we can do about that. */
@@ -556,7 +557,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     if (stream->accepted_fd != -1) {
       /* The user hasn't yet accepted called uv_accept() */
       uv__io_stop(loop, &stream->io_watcher, POLLIN);
-      return;
+      return 0;
     }
 
     if (stream->type == UV_TCP && (stream->flags & UV_TCP_SINGLE_ACCEPT)) {
@@ -565,6 +566,7 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       nanosleep(&timeout, NULL);
     }
   }
+  return 0;
 }
 
 
@@ -604,11 +606,11 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
       return -EINVAL;
   }
 
-  client->flags |= UV_HANDLE_BOUND;
 
 done:
   /* Process queued fds */
   if (server->queued_fds != NULL) {
+    client->flags |= UV_HANDLE_BOUND;
     uv__stream_queued_fds_t* queued_fds;
 
     queued_fds = server->queued_fds;
@@ -630,7 +632,8 @@ done:
   } else {
     server->accepted_fd = -1;
     if (err == 0)
-      uv__io_start(server->loop, &server->io_watcher, POLLIN);
+      err = uv__io_start(server->loop, &server->io_watcher, POLLIN);
+    client->flags |= UV_HANDLE_BOUND;
   }
   return err;
 }
@@ -921,7 +924,8 @@ start:
   assert(!(stream->flags & UV_STREAM_BLOCKING));
 
   /* We're not done. */
-  uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
+  if ((err = uv__io_start(stream->loop, &stream->io_watcher, POLLOUT)))
+    goto error;
 
   /* Notify select() thread about state change */
   uv__stream_osx_interrupt_select(stream);
@@ -1181,7 +1185,8 @@ static void uv__read(uv_stream_t* stream) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* Wait for the next one. */
         if (stream->flags & UV_STREAM_READING) {
-          uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
+          if (uv__io_start(stream->loop, &stream->io_watcher, POLLIN))
+            goto nomem;
           uv__stream_osx_interrupt_select(stream);
         }
         stream->read_cb(stream, 0, &buf);
@@ -1191,6 +1196,7 @@ static void uv__read(uv_stream_t* stream) {
         return;
 #endif
       } else {
+nomem:
         /* Error. User should call uv_close(). */
         stream->read_cb(stream, -errno, &buf);
         if (stream->flags & UV_STREAM_READING) {
@@ -1281,7 +1287,8 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   stream->shutdown_req = req;
   stream->flags |= UV_STREAM_SHUTTING;
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
+  if (uv__io_start(stream->loop, &stream->io_watcher, POLLOUT))
+    return UV_ENOMEM;
   uv__stream_osx_interrupt_select(stream);
 
   return 0;
@@ -1482,7 +1489,8 @@ int uv_write2(uv_write_t* req,
      * sufficiently flushed in uv__write.
      */
     assert(!(stream->flags & UV_STREAM_BLOCKING));
-    uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
+    if (uv__io_start(stream->loop, &stream->io_watcher, POLLOUT))
+      return UV_ENOMEM;
     uv__stream_osx_interrupt_select(stream);
   }
 
@@ -1583,7 +1591,8 @@ int uv_read_start(uv_stream_t* stream,
   stream->read_cb = read_cb;
   stream->alloc_cb = alloc_cb;
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
+  if (uv__io_start(stream->loop, &stream->io_watcher, POLLIN))
+    return UV_ENOMEM;
   uv__handle_start(stream);
   uv__stream_osx_interrupt_select(stream);
 

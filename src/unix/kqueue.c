@@ -103,12 +103,18 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
   if (rc == 0)
     if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
-      if (errno != ENOMEM)
-        abort();
-      else
-        return -errno;
+      abort();
 
   return rc;
+}
+
+static int uv__loop_enomem(int retval) {
+  if (-1 == retval && ENOMEM == errno)
+    return -1;
+  else if (retval)
+    abort();
+  else
+    return 0;
 }
 
 
@@ -411,11 +417,11 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
       events[i].ident = -1;
 }
 
-
 static int uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
   struct kevent ev;
   int events;
+  int retval;
   const char* path;
 #if defined(F_GETPATH)
   /* MAXPATHLEN == PATH_MAX but the former is what XNU calls it internally. */
@@ -449,7 +455,9 @@ static int uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
 
   EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags, 0, 0);
 
-  return kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL);
+  do
+    retval = kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL);
+  while (uv__loop_enomem(retval));
 }
 
 
@@ -506,9 +514,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 fallback:
 #endif /* defined(__APPLE__) */
 
-  uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
-
-  return 0;
+  return uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
 }
 
 
