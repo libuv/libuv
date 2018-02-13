@@ -2969,6 +2969,131 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
 }
 
 
+#ifdef _WIN32
+
+TEST_IMPL(fs_partial_read) {
+  RETURN_SKIP("Test not implemented on Windows.");
+}
+
+TEST_IMPL(fs_partial_write) {
+  RETURN_SKIP("Test not implemented on Windows.");
+}
+
+#else  /* !_WIN32 */
+
+static void thread_exec(int fd, char* data, int size, int interval, int doread) {
+  pid_t pid;
+  ssize_t result;
+
+  pid = getpid();
+  result = 1;
+
+  while (size > 0 && result > 0) {
+    do {
+      if (doread)
+        result = write(fd, data, size < interval ? size : interval);
+      else
+        result = read(fd, data, size < interval ? size : interval);
+    } while (result == -1 && errno == EINTR);
+
+    kill(pid, SIGUSR1);
+    size -= result;
+    data += result;
+  }
+
+  ASSERT(size == 0);
+  ASSERT(result > 0);
+}
+
+struct thread_ctx {
+  int fd;
+  char *data;
+  int size;
+  int interval;
+  int doread;
+};
+
+static void thread_main(void* arg) {
+  struct thread_ctx *ctx;
+  ctx = (struct thread_ctx*)arg;
+  thread_exec(ctx->fd, ctx->data, ctx->size, ctx->interval, ctx->doread);
+}
+
+static void sig_func(uv_signal_t* handle, int signum) {
+  uv_signal_stop(handle);
+}
+
+static void test_fs_partial(int doread) {
+  struct thread_ctx ctx;
+  uv_thread_t thread;
+  uv_signal_t signal;
+  int pipe_fds[2];
+  size_t iovcount;
+  uv_buf_t* iovs;
+  char* buffer;
+  size_t index;
+  int result;
+
+  iovcount = 54321;
+
+  iovs = malloc(sizeof(*iovs) * iovcount);
+  ASSERT(iovs != NULL);
+
+  ctx.doread = doread;
+  ctx.interval = 1000;
+  ctx.size = sizeof(test_buf) * iovcount;
+  ctx.data = malloc(ctx.size);
+  ASSERT(ctx.data != NULL);
+  buffer = malloc(ctx.size);
+  ASSERT(buffer != NULL);
+
+  for (index = 0; index < iovcount; ++index)
+    iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf), sizeof(test_buf));
+
+  loop = uv_default_loop();
+
+  ASSERT(0 == uv_signal_init(loop, &signal));
+  ASSERT(0 == uv_signal_start(&signal, sig_func, SIGUSR1));
+
+  ASSERT(0 == pipe(pipe_fds));
+
+  ctx.fd = pipe_fds[doread];
+  ASSERT(0 == uv_thread_create(&thread, thread_main, &ctx));
+
+  if (doread)
+    result = uv_fs_read(loop, &read_req, pipe_fds[0], iovs, iovcount, -1, NULL);
+  else
+    result = uv_fs_write(loop, &write_req, pipe_fds[1], iovs, iovcount, -1, NULL);
+
+  ASSERT(result == ctx.size);
+  ASSERT(0 == memcmp(buffer, ctx.data, result));
+
+  ASSERT(0 == uv_thread_join(&thread));
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+
+  ASSERT(0 == close(pipe_fds[0]));
+  ASSERT(0 == close(pipe_fds[1]));
+  uv_close((uv_handle_t*) &signal, NULL);
+
+  free(iovs);
+  free(buffer);
+  free(ctx.data);
+
+  MAKE_VALGRIND_HAPPY();
+}
+
+TEST_IMPL(fs_partial_read) {
+  test_fs_partial(1);
+  return 0;
+}
+
+TEST_IMPL(fs_partial_write) {
+  test_fs_partial(0);
+  return 0;
+}
+
+#endif/* _WIN32 */
+
 TEST_IMPL(fs_read_write_null_arguments) {
   int r;
 
