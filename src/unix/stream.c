@@ -859,7 +859,16 @@ start:
   }
 
   if (n < 0) {
-    if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENOBUFS) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENOBUFS
+#if defined(__APPLE__)
+    /*
+     * EMSGSIZE error happens when there isn't enough room in the socket output
+     * buffer to store the whole message. If that's the case, retry in the next
+     * loop iteration.
+     */
+            && !(errno == EMSGSIZE && req->send_handle)
+#endif
+           ) {
       err = UV__ERR(errno);
       goto error;
     } else if (stream->flags & UV_STREAM_BLOCKING) {
