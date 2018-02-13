@@ -262,6 +262,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 #if defined(__linux__)
   static int no_preadv;
 #endif
+  unsigned int iovmax;
   ssize_t result;
 
 #if defined(_AIX)
@@ -273,6 +274,11 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     return -1;
   }
 #endif /* defined(_AIX) */
+
+  iovmax = uv__getiovmax();
+  if (req->nbufs > iovmax)
+    req->nbufs = iovmax;
+
   if (req->off < 0) {
     if (req->nbufs == 1)
       result = read(req->file, req->bufs[0].base, req->bufs[0].len);
@@ -309,6 +315,12 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   }
 
 done:
+  if (req->bufs != req->bufsml)
+    uv__free(req->bufs);
+
+  req->bufs = NULL;
+  req->nbufs = 0;
+
   return result;
 }
 
@@ -1023,8 +1035,7 @@ static size_t uv__fs_buf_offset(uv_buf_t* bufs, size_t size) {
   return offset;
 }
 
-typedef ssize_t (*uv__fs_buf_iter_processor)(uv_fs_t* req);
-static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) {
+static ssize_t uv__fs_write_all(uv_fs_t* req) {
   unsigned int iovmax;
   unsigned int nbufs;
   uv_buf_t* bufs;
@@ -1042,7 +1053,7 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
       req->nbufs = iovmax;
 
     do
-      result = process(req);
+      result = uv__fs_write(req);
     while (result < 0 && errno == EINTR);
 
     if (result <= 0) {
@@ -1076,7 +1087,8 @@ static void uv__fs_work(struct uv__work* w) {
   ssize_t r;
 
   req = container_of(w, uv_fs_t, work_req);
-  retry_on_eintr = !(req->fs_type == UV_FS_CLOSE);
+  retry_on_eintr = !(req->fs_type == UV_FS_CLOSE ||
+                     req->fs_type == UV_FS_READ);
 
   do {
     errno = 0;
@@ -1105,7 +1117,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(MKDIR, mkdir(req->path, req->mode));
     X(MKDTEMP, uv__fs_mkdtemp(req));
     X(OPEN, uv__fs_open(req));
-    X(READ, uv__fs_buf_iter(req, uv__fs_read));
+    X(READ, uv__fs_read(req));
     X(SCANDIR, uv__fs_scandir(req));
     X(READLINK, uv__fs_readlink(req));
     X(REALPATH, uv__fs_realpath(req));
@@ -1116,7 +1128,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(SYMLINK, symlink(req->path, req->new_path));
     X(UNLINK, unlink(req->path));
     X(UTIME, uv__fs_utime(req));
-    X(WRITE, uv__fs_buf_iter(req, uv__fs_write));
+    X(WRITE, uv__fs_write_all(req));
     default: abort();
     }
 #undef X
