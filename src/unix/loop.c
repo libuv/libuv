@@ -45,7 +45,7 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->handle_queue);
 
   loop->active_handles = 0;
-  loop->active_req_count = 0;
+  loop->active_reqs.count = 0;
   loop->nfds = 0;
   loop->watchers = NULL;
   loop->nwatchers = 0;
