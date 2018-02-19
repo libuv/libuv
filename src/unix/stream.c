@@ -58,6 +58,12 @@ struct uv__stream_select_s {
   fd_set* swrite;
   size_t swrite_sz;
 };
+# define WRITE_RETRY_ON_ERROR(send_handle) \
+    (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS || \
+     (errno == EMSGSIZE && send_handle))
+#else
+# define WRITE_RETRY_ON_ERROR(send_handle) \
+    (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
 #endif /* defined(__APPLE__) */
 
 static void uv__stream_connect(uv_stream_t*);
@@ -859,16 +865,7 @@ start:
   }
 
   if (n < 0) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENOBUFS
-#if defined(__APPLE__)
-    /*
-     * EMSGSIZE error happens when there isn't enough room in the socket output
-     * buffer to store the whole message. If that's the case, retry in the next
-     * loop iteration.
-     */
-            && !(errno == EMSGSIZE && req->send_handle)
-#endif
-           ) {
+    if (!WRITE_RETRY_ON_ERROR(req->send_handle)) {
       err = UV__ERR(errno);
       goto error;
     } else if (stream->flags & UV_STREAM_BLOCKING) {
