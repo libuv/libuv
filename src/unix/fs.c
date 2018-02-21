@@ -1319,8 +1319,11 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
                uv_fs_cb cb) {
   INIT(READ);
 
-  if (bufs == NULL || nbufs == 0)
+  if (bufs == NULL || nbufs == 0) {
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
     return UV_EINVAL;
+  }
 
   req->file = file;
 
@@ -1458,8 +1461,11 @@ int uv_fs_write(uv_loop_t* loop,
                 uv_fs_cb cb) {
   INIT(WRITE);
 
-  if (bufs == NULL || nbufs == 0)
+  if (bufs == NULL || nbufs == 0) {
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
     return UV_EINVAL;
+  }
 
   req->file = file;
 
@@ -1513,8 +1519,11 @@ int uv_fs_copyfile(uv_loop_t* loop,
                    uv_fs_cb cb) {
   INIT(COPYFILE);
 
-  if (flags & ~UV_FS_COPYFILE_EXCL)
+  if (flags & ~UV_FS_COPYFILE_EXCL) {
+    if (cb != NULL)
+      uv__req_unregister(loop, req);
     return UV_EINVAL;
+  }
 
   PATH2;
   req->flags = flags;
