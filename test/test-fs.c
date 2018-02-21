@@ -319,6 +319,9 @@ static void ftruncate_cb(uv_fs_t* req) {
   ASSERT(r == 0);
 }
 
+static void fail_cb(uv_fs_t* req) {
+  FATAL("fail_cb should not have been called");
+}
 
 static void read_cb(uv_fs_t* req) {
   int r;
@@ -2895,6 +2898,31 @@ TEST_IMPL(fs_read_write_null_arguments) {
   iov = uv_buf_init(NULL, 0);
   r = uv_fs_write(NULL, &write_req, 0, &iov, 0, -1, NULL);
   ASSERT(r == UV_EINVAL);
+  uv_fs_req_cleanup(&write_req);
+
+  /* If the arguments are invalid, the loop should not be kept open */
+  loop = uv_default_loop();
+
+  r = uv_fs_read(loop, &read_req, 0, NULL, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&read_req);
+
+  r = uv_fs_write(loop, &write_req, 0, NULL, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&write_req);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_read(loop, &read_req, 0, &iov, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&read_req);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_write(loop, &write_req, 0, &iov, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
   uv_fs_req_cleanup(&write_req);
 
   return 0;
