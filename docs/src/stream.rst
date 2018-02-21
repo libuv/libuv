@@ -6,7 +6,7 @@
 
 Stream handles provide an abstraction of a duplex communication channel.
 :c:type:`uv_stream_t` is an abstract type, libuv provides 3 stream implementations
-in the for of :c:type:`uv_tcp_t`, :c:type:`uv_pipe_t` and :c:type:`uv_tty_t`.
+in the form of :c:type:`uv_tcp_t`, :c:type:`uv_pipe_t` and :c:type:`uv_tty_t`.
 
 
 Data types
@@ -227,5 +227,11 @@ API
         the stream.
 
     .. versionchanged:: 1.4.0 UNIX implementation added.
+
+.. c:function:: size_t uv_stream_get_write_queue_size(const uv_stream_t* stream)
+
+    Returns `stream->write_queue_size`.
+
+    .. versionadded:: 1.19.0
 
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.

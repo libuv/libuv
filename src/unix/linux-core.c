@@ -101,7 +101,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   loop->inotify_watchers = NULL;
 
   if (fd == -1)
-    return -errno;
+    return UV__ERR(errno);
 
   return 0;
 }
@@ -175,7 +175,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   rc = 0;
   if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_ADD, fd, &e))
     if (errno != EEXIST)
-      rc = -errno;
+      rc = UV__ERR(errno);
 
   if (rc == 0)
     if (uv__epoll_ctl(loop->backend_fd, UV__EPOLL_CTL_DEL, fd, &e))
@@ -388,7 +388,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        * free when we switch over to edge-triggered I/O.
        */
       if (pe->events == POLLERR || pe->events == POLLHUP)
-        pe->events |= w->pevents & (POLLIN | POLLOUT);
+        pe->events |= w->pevents & (POLLIN | POLLOUT | UV__POLLPRI);
 
       if (pe->events != 0) {
         /* Run signal watchers last.  This also affects child process watchers
@@ -485,7 +485,7 @@ int uv_resident_set_memory(size_t* rss) {
   while (fd == -1 && errno == EINTR);
 
   if (fd == -1)
-    return -errno;
+    return UV__ERR(errno);
 
   do
     n = read(fd, buf, sizeof(buf) - 1);
@@ -493,7 +493,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   uv__close(fd);
   if (n == -1)
-    return -errno;
+    return UV__ERR(errno);
   buf[n] = '\0';
 
   s = strchr(buf, ' ');
@@ -525,7 +525,7 @@ int uv_resident_set_memory(size_t* rss) {
   return 0;
 
 err:
-  return -EINVAL;
+  return UV_EINVAL;
 }
 
 
@@ -547,7 +547,7 @@ int uv_uptime(double* uptime) {
   }
 
   if (r)
-    return -errno;
+    return UV__ERR(errno);
 
   *uptime = now.tv_sec;
   return 0;
@@ -559,7 +559,7 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
   char buf[1024];
 
   if (!fgets(buf, sizeof(buf), statfile_fp))
-    return -EIO;
+    return UV_EIO;
 
   num = 0;
   while (fgets(buf, sizeof(buf), statfile_fp)) {
@@ -569,7 +569,7 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
   }
 
   if (num == 0)
-    return -EIO;
+    return UV_EIO;
 
   *numcpus = num;
   return 0;
@@ -587,13 +587,13 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   statfile_fp = uv__open_file("/proc/stat");
   if (statfile_fp == NULL)
-    return -errno;
+    return UV__ERR(errno);
 
   err = uv__cpu_num(statfile_fp, &numcpus);
   if (err < 0)
     goto out;
 
-  err = -ENOMEM;
+  err = UV_ENOMEM;
   ci = uv__calloc(numcpus, sizeof(*ci));
   if (ci == NULL)
     goto out;
@@ -667,7 +667,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     defined(__x86_64__)
   fp = uv__open_file("/proc/cpuinfo");
   if (fp == NULL)
-    return -errno;
+    return UV__ERR(errno);
 
   while (fgets(buf, sizeof(buf), fp)) {
     if (model_idx < numcpus) {
@@ -676,7 +676,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
         if (model == NULL) {
           fclose(fp);
-          return -ENOMEM;
+          return UV_ENOMEM;
         }
         ci[model_idx++].model = model;
         continue;
@@ -695,7 +695,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
         if (model == NULL) {
           fclose(fp);
-          return -ENOMEM;
+          return UV_ENOMEM;
         }
         ci[model_idx++].model = model;
         continue;
@@ -725,7 +725,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   while (model_idx < numcpus) {
     model = uv__strndup(inferred_model, strlen(inferred_model));
     if (model == NULL)
-      return -ENOMEM;
+      return UV_ENOMEM;
     ci[model_idx++].model = model;
   }
 
@@ -837,7 +837,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   uv__free(cpu_infos);
 }
 
-static int uv__ifaddr_exclude(struct ifaddrs *ent) {
+static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
   if (ent->ifa_addr == NULL)
@@ -847,14 +847,14 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent) {
    * devices. We're not interested in this information yet.
    */
   if (ent->ifa_addr->sa_family == PF_PACKET)
-    return 1;
-  return 0;
+    return exclude_type;
+  return !exclude_type;
 }
 
 int uv_interface_addresses(uv_interface_address_t** addresses,
   int* count) {
 #ifndef HAVE_IFADDRS_H
-  return -ENOSYS;
+  return UV_ENOSYS;
 #else
   struct ifaddrs *addrs, *ent;
   uv_interface_address_t* address;
@@ -862,14 +862,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   struct sockaddr_ll *sll;
 
   if (getifaddrs(&addrs))
-    return -errno;
+    return UV__ERR(errno);
 
   *count = 0;
   *addresses = NULL;
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (uv__ifaddr_exclude(ent))
+    if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
 
     (*count)++;
@@ -881,13 +881,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   *addresses = uv__malloc(*count * sizeof(**addresses));
   if (!(*addresses)) {
     freeifaddrs(addrs);
-    return -ENOMEM;
+    return UV_ENOMEM;
   }
 
   address = *addresses;
 
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (uv__ifaddr_exclude(ent))
+    if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
 
     address->name = uv__strdup(ent->ifa_name);
@@ -911,7 +911,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
 
   /* Fill in physical addresses for each interface */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (uv__ifaddr_exclude(ent))
+    if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFPHYS))
       continue;
 
     address = *addresses;

@@ -48,6 +48,42 @@ static int uv__tty_is_slave(const int fd) {
   char dummy[256];
 
   result = ioctl(fd, TIOCPTYGNAME, &dummy) != 0;
+#elif defined(__NetBSD__)
+  /*
+   * NetBSD as an extension returns with ptsname(3) and ptsname_r(3) the slave
+   * device name for both descriptors, the master one and slave one.
+   *
+   * Implement function to compare major device number with pts devices.
+   *
+   * The major numbers are machine-dependent, on NetBSD/amd64 they are
+   * respectively:
+   *  - master tty: ptc - major 6
+   *  - slave tty:  pts - major 5
+   */
+
+  struct stat sb;
+  /* Lookup device's major for the pts driver and cache it. */
+  static devmajor_t pts = NODEVMAJOR;
+
+  if (pts == NODEVMAJOR) {
+    pts = getdevmajor("pts", S_IFCHR);
+    if (pts == NODEVMAJOR)
+      abort();
+  }
+
+  /* Lookup stat structure behind the file descriptor. */
+  if (fstat(fd, &sb) != 0)
+    abort();
+
+  /* Assert character device. */
+  if (!S_ISCHR(sb.st_mode))
+    abort();
+
+  /* Assert valid major. */
+  if (major(sb.st_rdev) == NODEVMAJOR)
+    abort();
+
+  result = (pts == major(sb.st_rdev));
 #else
   /* Fallback to ptsname
    */
@@ -70,7 +106,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
    */
   type = uv_guess_handle(fd);
   if (type == UV_FILE || type == UV_UNKNOWN_HANDLE)
-    return -EINVAL;
+    return UV_EINVAL;
 
   flags = 0;
   newfd = -1;
@@ -106,7 +142,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
     newfd = r;
 
     r = uv__dup2_cloexec(newfd, fd);
-    if (r < 0 && r != -EINVAL) {
+    if (r < 0 && r != UV_EINVAL) {
       /* EINVAL means newfd == fd which could conceivably happen if another
        * thread called close(fd) between our calls to isatty() and open().
        * That's a rather unlikely event but let's handle it anyway.
@@ -127,7 +163,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int readable) {
   if (saved_flags == -1) {
     if (newfd != -1)
       uv__close(newfd);
-    return -errno;
+    return UV__ERR(errno);
   }
 #endif
 
@@ -198,7 +234,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   fd = uv__stream_fd(tty);
   if (tty->mode == UV_TTY_MODE_NORMAL && mode != UV_TTY_MODE_NORMAL) {
     if (tcgetattr(fd, &tty->orig_termios))
-      return -errno;
+      return UV__ERR(errno);
 
     /* This is used for uv_tty_reset_mode() */
     uv_spinlock_lock(&termios_spinlock);
@@ -228,7 +264,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 
   /* Apply changes after draining */
   if (tcsetattr(fd, TCSADRAIN, &tmp))
-    return -errno;
+    return UV__ERR(errno);
 
   tty->mode = mode;
   return 0;
@@ -244,7 +280,7 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   while (err == -1 && errno == EINTR);
 
   if (err == -1)
-    return -errno;
+    return UV__ERR(errno);
 
   *width = ws.ws_col;
   *height = ws.ws_row;
@@ -322,12 +358,12 @@ int uv_tty_reset_mode(void) {
 
   saved_errno = errno;
   if (!uv_spinlock_trylock(&termios_spinlock))
-    return -EBUSY;  /* In uv_tty_set_mode(). */
+    return UV_EBUSY;  /* In uv_tty_set_mode(). */
 
   err = 0;
   if (orig_termios_fd != -1)
     if (tcsetattr(orig_termios_fd, TCSANOW, &orig_termios))
-      err = -errno;
+      err = UV__ERR(errno);
 
   uv_spinlock_unlock(&termios_spinlock);
   errno = saved_errno;

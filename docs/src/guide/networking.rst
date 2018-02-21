@@ -37,7 +37,7 @@ Server sockets proceed by:
 Here is a simple echo server
 
 .. rubric:: tcp-echo-server/main.c - The listen socket
-.. literalinclude:: ../code/tcp-echo-server/main.c
+.. literalinclude:: ../../code/tcp-echo-server/main.c
     :linenos:
     :lines: 68-
     :emphasize-lines: 4-5,7-10
@@ -59,7 +59,7 @@ a handle for the client socket and associate the handle using ``uv_accept``.
 In this case we also establish interest in reading from this stream.
 
 .. rubric:: tcp-echo-server/main.c - Accepting the client
-.. literalinclude:: ../code/tcp-echo-server/main.c
+.. literalinclude:: ../../code/tcp-echo-server/main.c
     :linenos:
     :lines: 51-66
     :emphasize-lines: 9-10
@@ -107,7 +107,7 @@ address from a `DHCP`_ server -- DHCP Discover.
     numbers below 1024.
 
 .. rubric:: udp-dhcp/main.c - Setup and send UDP packets
-.. literalinclude:: ../code/udp-dhcp/main.c
+.. literalinclude:: ../../code/udp-dhcp/main.c
     :linenos:
     :lines: 7-11,104-
     :emphasize-lines: 8,10-11,17-18,21
@@ -142,7 +142,7 @@ provided by your allocator was not large enough to hold the data. *In this case
 the OS will discard the data that could not fit* (That's UDP for you!).
 
 .. rubric:: udp-dhcp/main.c - Reading packets
-.. literalinclude:: ../code/udp-dhcp/main.c
+.. literalinclude:: ../../code/udp-dhcp/main.c
     :linenos:
     :lines: 17-40
     :emphasize-lines: 1,23
@@ -167,7 +167,7 @@ Multicast
 
 A socket can (un)subscribe to a multicast group using:
 
-.. literalinclude:: ../libuv/include/uv.h
+.. literalinclude:: ../../../include/uv.h
     :lines: 594-597
 
 where ``membership`` is ``UV_JOIN_GROUP`` or ``UV_LEAVE_GROUP``.
@@ -191,7 +191,7 @@ perform normal socket operations on the retrieved addresses. Let's connect to
 Freenode to see an example of DNS resolution.
 
 .. rubric:: dns/main.c
-.. literalinclude:: ../code/dns/main.c
+.. literalinclude:: ../../code/dns/main.c
     :linenos:
     :lines: 61-
     :emphasize-lines: 12
@@ -207,7 +207,7 @@ addrinfo(s)``. This also demonstrates ``uv_tcp_connect``. It is necessary to
 call ``uv_freeaddrinfo`` in the callback.
 
 .. rubric:: dns/main.c
-.. literalinclude:: ../code/dns/main.c
+.. literalinclude:: ../../code/dns/main.c
     :linenos:
     :lines: 42-60
     :emphasize-lines: 8,16
@@ -225,7 +225,7 @@ interface details so you get an idea of the fields that are available. This is
 useful to allow your service to bind to IP addresses when it starts.
 
 .. rubric:: interfaces/main.c
-.. literalinclude:: ../code/interfaces/main.c
+.. literalinclude:: ../../code/interfaces/main.c
     :linenos:
     :emphasize-lines: 9,17
 

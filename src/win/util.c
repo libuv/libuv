@@ -328,7 +328,12 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
-int uv_parent_pid(void) {
+uv_pid_t uv_os_getpid(void) {
+  return GetCurrentProcessId();
+}
+
+
+uv_pid_t uv_os_getppid(void) {
   int parent_pid = -1;
   HANDLE handle;
   PROCESSENTRY32 pe;
@@ -1313,7 +1318,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
     return uv_translate_sys_error(GetLastError());
 
-  bufsize = sizeof(path);
+  bufsize = ARRAY_SIZE(path);
   if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
     r = GetLastError();
     CloseHandle(token);
@@ -1328,7 +1333,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   CloseHandle(token);
 
   /* Get the username using GetUserNameW() */
-  bufsize = sizeof(username);
+  bufsize = ARRAY_SIZE(username);
   if (!GetUserNameW(username, &bufsize)) {
     r = GetLastError();
 

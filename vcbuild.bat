@@ -43,6 +43,9 @@ shift
 goto next-arg
 :args-done
 
+if defined WindowsSDKDir goto select-target
+if defined VCINSTALLDIR goto select-target
+
 @rem Look for Visual Studio 2017 only if explicitly requested.
 if "%target_env%" NEQ "vs2017" goto vs-set-2015
 echo Looking for Visual Studio 2017
@@ -52,6 +55,8 @@ set "VSINSTALLDIR="
 call tools\vswhere_usability_wrapper.cmd
 if "_%VCINSTALLDIR%_" == "__" goto vs-set-2015
 @rem Need to clear VSINSTALLDIR for vcvarsall to work as expected.
+@rem Keep current working directory after call to vcvarsall
+set "VSCMD_START_DIR=%CD%"
 set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vs_toolset%
 echo calling: %vcvars_call%
 call %vcvars_call%
@@ -118,13 +123,14 @@ goto run
 :msbuild-found
 msbuild uv.sln /t:%target% /p:Configuration=%config% /p:Platform="%msbuild_platform%" /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
 if errorlevel 1 exit /b 1
+msbuild test\test.sln /t:%target% /p:Configuration=%config% /p:Platform="%msbuild_platform%" /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
+if errorlevel 1 exit /b 1
 
 :run
 @rem Run tests if requested.
 if "%run%"=="" goto exit
-if not exist %config%\%run% goto exit
-echo running '%config%\%run%'
-%config%\%run%
+echo running 'test\%config%\%run%'
+test\%config%\%run%
 goto exit
 
 :create-msvs-files-failed
@@ -132,9 +138,7 @@ echo Failed to create vc project files.
 exit /b 1
 
 :help
-
-echo "vcbuild.bat [debug/release] [test/bench] [clean] [noprojgen] [nobuild] [vs2017] [x86/x64] [static/shared]"
-
+echo vcbuild.bat [debug/release] [test/bench] [clean] [noprojgen] [nobuild] [vs2017] [x86/x64] [static/shared]
 echo Examples:
 echo   vcbuild.bat              : builds debug build
 echo   vcbuild.bat test         : builds debug build and runs tests
