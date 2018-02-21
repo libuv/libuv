@@ -2887,7 +2887,19 @@ TEST_IMPL(fs_read_write_null_arguments) {
   uv_fs_req_cleanup(&read_req);
 
   r = uv_fs_write(NULL, &write_req, 0, NULL, 0, -1, NULL);
+  /* Validate some memory management on failed input validation before sending
+     fs work to the thread pool. */
   ASSERT(r == UV_EINVAL);
+  ASSERT(write_req.path == NULL);
+  ASSERT(write_req.ptr == NULL);
+#ifdef _WIN32
+  ASSERT(write_req.file.pathw == NULL);
+  ASSERT(write_req.fs.info.new_pathw == NULL);
+  ASSERT(write_req.fs.info.bufs == NULL);
+#else
+  ASSERT(write_req.new_path == NULL);
+  ASSERT(write_req.bufs == NULL);
+#endif
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init(NULL, 0);
@@ -3112,7 +3124,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
   unlink("test_file");
 
   ASSERT(UV_FS_O_EXLOCK > 0);
-  
+
   r = uv_fs_open(NULL,
                  &open_req1,
                  "test_file",
