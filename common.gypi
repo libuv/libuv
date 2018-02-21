@@ -16,9 +16,9 @@
           'VCCLCompilerTool': {
             'target_conditions': [
               ['uv_library=="static_library"', {
-                'RuntimeLibrary': 1, # static debug
+                'RuntimeLibrary': 1, # /MTd static debug
               }, {
-                'RuntimeLibrary': 3, # DLL debug
+                'RuntimeLibrary': 3, # /MDd DLL debug
               }],
             ],
             'Optimization': 0, # /Od, no optimization
@@ -32,10 +32,9 @@
         },
         'xcode_settings': {
           'GCC_OPTIMIZATION_LEVEL': '0',
-          'OTHER_CFLAGS': [ '-Wno-strict-aliasing' ],
         },
         'conditions': [
-          ['OS != "os390"', {
+          ['OS != "zos"', {
             'cflags': [ '-O0', '-fwrapv' ]
           }],
           ['OS == "android"', {
@@ -48,15 +47,14 @@
         'defines': [ 'NDEBUG' ],
         'cflags': [
           '-O3',
-          '-fstrict-aliasing',
         ],
         'msvs_settings': {
           'VCCLCompilerTool': {
             'target_conditions': [
               ['uv_library=="static_library"', {
-                'RuntimeLibrary': 0, # static release
+                'RuntimeLibrary': 0, # /MT static release
               }, {
-                'RuntimeLibrary': 2, # debug release
+                'RuntimeLibrary': 2, # /MD DLL release
               }],
             ],
             'Optimization': 3, # /Ox, full optimization
@@ -80,7 +78,7 @@
           },
         },
         'conditions': [
-          ['OS != "os390"', {
+          ['OS != "zos"', {
             'cflags': [
               '-fomit-frame-pointer',
               '-fdata-sections',
@@ -160,7 +158,7 @@
             'cflags': [ '-pthreads' ],
             'ldflags': [ '-pthreads' ],
           }],
-          [ 'OS not in "solaris android os390"', {
+          [ 'OS not in "solaris android zos"', {
             'cflags': [ '-pthread' ],
             'ldflags': [ '-pthread' ],
           }],
@@ -178,9 +176,6 @@
           'GCC_THREADSAFE_STATICS': 'NO',           # -fno-threadsafe-statics
           'PREBINDING': 'NO',                       # No -Wl,-prebind
           'USE_HEADERMAP': 'NO',
-          'OTHER_CFLAGS': [
-            '-fstrict-aliasing',
-          ],
           'WARNING_CFLAGS': [
             '-Wall',
             '-Wendif-labels',

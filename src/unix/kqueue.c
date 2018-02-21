@@ -34,13 +34,24 @@
 #include <fcntl.h>
 #include <time.h>
 
+/*
+ * Required on
+ * - Until at least FreeBSD 11.0
+ * - Older versions of Mac OS X
+ *
+ * http://www.boost.org/doc/libs/1_61_0/boost/asio/detail/kqueue_reactor.hpp
+ */
+#ifndef EV_OOBAND
+#define EV_OOBAND  EV_FLAG1
+#endif
+
 static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags);
 
 
 int uv__kqueue_init(uv_loop_t* loop) {
   loop->backend_fd = kqueue();
   if (loop->backend_fd == -1)
-    return -errno;
+    return UV__ERR(errno);
 
   uv__cloexec(loop->backend_fd, 1);
 
@@ -48,11 +59,12 @@ int uv__kqueue_init(uv_loop_t* loop) {
 }
 
 
+#if defined(__APPLE__)
 static int uv__has_forked_with_cfrunloop;
+#endif
 
 int uv__io_fork(uv_loop_t* loop) {
   int err;
-  uv__close(loop->backend_fd);
   loop->backend_fd = -1;
   err = uv__kqueue_init(loop);
   if (err)
@@ -86,7 +98,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   rc = 0;
   EV_SET(&ev, fd, EVFILT_READ, EV_ADD, 0, 0, 0);
   if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
-    rc = -errno;
+    rc = UV__ERR(errno);
 
   EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
   if (rc == 0)
@@ -158,6 +170,16 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if ((w->events & POLLOUT) == 0 && (w->pevents & POLLOUT) != 0) {
       EV_SET(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+
+      if (++nevents == ARRAY_SIZE(events)) {
+        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+          abort();
+        nevents = 0;
+      }
+    }
+
+   if ((w->events & UV__POLLPRI) == 0 && (w->pevents & UV__POLLPRI) != 0) {
+      EV_SET(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
         if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
@@ -264,6 +286,20 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (ev->filter == EVFILT_READ) {
         if (w->pevents & POLLIN) {
           revents |= POLLIN;
+          w->rcount = ev->data;
+        } else {
+          /* TODO batch up */
+          struct kevent events[1];
+          EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
+          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
+            if (errno != ENOENT)
+              abort();
+        }
+      }
+
+      if (ev->filter == EV_OOBAND) {
+        if (w->pevents & UV__POLLPRI) {
+          revents |= UV__POLLPRI;
           w->rcount = ev->data;
         } else {
           /* TODO batch up */
@@ -422,12 +458,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   int fd;
 
   if (uv__is_active(handle))
-    return -EINVAL;
+    return UV_EINVAL;
 
   /* TODO open asynchronously - but how do we report back errors? */
   fd = open(path, O_RDONLY);
   if (fd == -1)
-    return -errno;
+    return UV__ERR(errno);
 
   uv__handle_start(handle);
   uv__io_init(&handle->event_watcher, uv__fs_event, fd);

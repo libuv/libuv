@@ -32,8 +32,12 @@
     defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
 #include <unistd.h> /* unlink, rmdir, etc. */
 #else
+# include <winioctl.h>
 # include <direct.h>
 # include <io.h>
+# ifndef ERROR_SYMLINK_NOT_SUPPORTED
+#  define ERROR_SYMLINK_NOT_SUPPORTED 1464
+# endif
 # define unlink _unlink
 # define rmdir _rmdir
 # define open _open
@@ -114,6 +118,17 @@ static char buf2[32];
 static char test_buf[] = "test-buffer\n";
 static char test_buf2[] = "second-buffer\n";
 static uv_buf_t iov;
+
+#ifdef _WIN32
+/*
+ * This tag and guid have no special meaning, and don't conflict with
+ * reserved ids.
+*/
+static unsigned REPARSE_TAG = 0x9913;
+static GUID REPARSE_GUID = {
+  0x1bf6205f, 0x46ae, 0x4527,
+  0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 };
+#endif
 
 static void check_permission(const char* filename, unsigned int mode) {
   int r;
@@ -295,6 +310,9 @@ static void ftruncate_cb(uv_fs_t* req) {
   ASSERT(r == 0);
 }
 
+static void fail_cb(uv_fs_t* req) {
+  FATAL("fail_cb should not have been called");
+}
 
 static void read_cb(uv_fs_t* req) {
   int r;
@@ -1508,12 +1526,14 @@ TEST_IMPL(fs_chown) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(chown_cb_count == 1);
 
+#ifndef __MVS__
   /* chown to root (fail) */
   chown_cb_count = 0;
   r = uv_fs_chown(loop, &req, "test_file", 0, 0, chown_root_cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(chown_cb_count == 1);
+#endif
 
   /* async fchown */
   r = uv_fs_fchown(loop, &req, file, -1, -1, fchown_cb);
@@ -1861,7 +1881,7 @@ TEST_IMPL(fs_symlink) {
 }
 
 
-TEST_IMPL(fs_symlink_dir) {
+int test_symlink_dir_impl(int type) {
   uv_fs_t req;
   uv_os_fd_t file;
   int r;
@@ -1896,8 +1916,12 @@ TEST_IMPL(fs_symlink_dir) {
   test_dir = "test_dir";
 #endif
 
-  r = uv_fs_symlink(NULL, &req, test_dir, "test_dir_symlink",
-    UV_FS_SYMLINK_JUNCTION, NULL);
+  r = uv_fs_symlink(NULL, &req, test_dir, "test_dir_symlink", type, NULL);
+  if (type == UV_FS_SYMLINK_DIR && (r == UV_ENOTSUP || r == UV_EPERM)) {
+    uv_fs_req_cleanup(&req);
+    RETURN_SKIP("this version of Windows doesn't support unprivileged "
+                "creation of directory symlinks");
+  }
   fprintf(stderr, "r == %i\n", r);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
@@ -1999,6 +2023,116 @@ TEST_IMPL(fs_symlink_dir) {
   return 0;
 }
 
+TEST_IMPL(fs_symlink_dir) {
+  return test_symlink_dir_impl(UV_FS_SYMLINK_DIR);
+}
+
+TEST_IMPL(fs_symlink_junction) {
+  return test_symlink_dir_impl(UV_FS_SYMLINK_JUNCTION);
+}
+
+#ifdef _WIN32
+TEST_IMPL(fs_non_symlink_reparse_point) {
+  uv_fs_t req;
+  int r;
+  HANDLE file_handle;
+  REPARSE_GUID_DATA_BUFFER reparse_buffer;
+  DWORD bytes_returned;
+  uv_dirent_t dent;
+
+  /* set-up */
+  unlink("test_dir/test_file");
+  rmdir("test_dir");
+
+  loop = uv_default_loop();
+
+  uv_fs_mkdir(NULL, &req, "test_dir", 0777, NULL);
+  uv_fs_req_cleanup(&req);
+
+  file_handle = CreateFile("test_dir/test_file",
+                           GENERIC_WRITE | FILE_WRITE_ATTRIBUTES,
+                           0,
+                           NULL,
+                           CREATE_ALWAYS,
+                           FILE_FLAG_OPEN_REPARSE_POINT |
+                             FILE_FLAG_BACKUP_SEMANTICS,
+                           NULL);
+  ASSERT(file_handle != INVALID_HANDLE_VALUE);
+
+  memset(&reparse_buffer, 0, REPARSE_GUID_DATA_BUFFER_HEADER_SIZE);
+  reparse_buffer.ReparseTag = REPARSE_TAG;
+  reparse_buffer.ReparseDataLength = 0;
+  reparse_buffer.ReparseGuid = REPARSE_GUID;
+
+  r = DeviceIoControl(file_handle,
+                      FSCTL_SET_REPARSE_POINT,
+                      &reparse_buffer,
+                      REPARSE_GUID_DATA_BUFFER_HEADER_SIZE,
+                      NULL,
+                      0,
+                      &bytes_returned,
+                      NULL);
+  ASSERT(r != 0);
+
+  CloseHandle(file_handle);
+
+  r = uv_fs_readlink(NULL, &req, "test_dir/test_file", NULL);
+  ASSERT(r == UV_EINVAL && GetLastError() == ERROR_SYMLINK_NOT_SUPPORTED);
+  uv_fs_req_cleanup(&req);
+
+/*
+  Placeholder tests for exercising the behavior fixed in issue #995.
+  To run, update the path with the IP address of a Mac with the hard drive
+  shared via SMB as "Macintosh HD".
+
+  r = uv_fs_stat(NULL, &req, "\\\\<mac_ip>\\Macintosh HD\\.DS_Store", NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_lstat(NULL, &req, "\\\\<mac_ip>\\Macintosh HD\\.DS_Store", NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+*/
+
+/*
+  uv_fs_stat and uv_fs_lstat can only work on non-symlink reparse
+  points when a minifilter driver is registered which intercepts
+  associated filesystem requests. Installing a driver is beyond
+  the scope of this test.
+
+  r = uv_fs_stat(NULL, &req, "test_dir/test_file", NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_lstat(NULL, &req, "test_dir/test_file", NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+*/
+
+  r = uv_fs_scandir(NULL, &scandir_req, "test_dir", 0, NULL);
+  ASSERT(r == 1);
+  ASSERT(scandir_req.result == 1);
+  ASSERT(scandir_req.ptr);
+  while (UV_EOF != uv_fs_scandir_next(&scandir_req, &dent)) {
+    ASSERT(strcmp(dent.name, "test_file") == 0);
+    /* uv_fs_scandir incorrectly identifies non-symlink reparse points
+       as links because it doesn't open the file and verify the reparse
+       point tag. The PowerShell Get-ChildItem command shares this
+       behavior, so it's reasonable to leave it as is. */
+    ASSERT(dent.type == UV_DIRENT_LINK);
+  }
+  uv_fs_req_cleanup(&scandir_req);
+  ASSERT(!scandir_req.ptr);
+
+  /* clean-up */
+  unlink("test_dir/test_file");
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
+
 
 TEST_IMPL(fs_utime) {
   utime_check_t checkme;
@@ -2069,8 +2203,6 @@ TEST_IMPL(fs_utime) {
 #ifdef _WIN32
 TEST_IMPL(fs_stat_root) {
   int r;
-  uv_loop_t* loop = uv_default_loop();
-  (void)loop;
 
   r = uv_fs_stat(NULL, &stat_req, "\\", NULL);
   ASSERT(r == 0);
@@ -2793,19 +2925,60 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
 TEST_IMPL(fs_read_write_null_arguments) {
   int r;
 
-  r = uv_fs_read(NULL, NULL, 0, NULL, 0, -1, NULL);
+  r = uv_fs_read(NULL, &read_req, 0, NULL, 0, -1, NULL);
   ASSERT(r == UV_EINVAL);
+  uv_fs_req_cleanup(&read_req);
 
-  r = uv_fs_write(NULL, NULL, 0, NULL, 0, -1, NULL);
+  r = uv_fs_write(NULL, &write_req, 0, NULL, 0, -1, NULL);
+  /* Validate some memory management on failed input validation before sending
+     fs work to the thread pool. */
   ASSERT(r == UV_EINVAL);
+  ASSERT(write_req.path == NULL);
+  ASSERT(write_req.ptr == NULL);
+#ifdef _WIN32
+  ASSERT(write_req.file.pathw == NULL);
+  ASSERT(write_req.fs.info.new_pathw == NULL);
+  ASSERT(write_req.fs.info.bufs == NULL);
+#else
+  ASSERT(write_req.new_path == NULL);
+  ASSERT(write_req.bufs == NULL);
+#endif
+  uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init(NULL, 0);
-  r = uv_fs_read(NULL, NULL, 0, &iov, 0, -1, NULL);
+  r = uv_fs_read(NULL, &read_req, 0, &iov, 0, -1, NULL);
   ASSERT(r == UV_EINVAL);
+  uv_fs_req_cleanup(&read_req);
 
   iov = uv_buf_init(NULL, 0);
-  r = uv_fs_write(NULL, NULL, 0, &iov, 0, -1, NULL);
+  r = uv_fs_write(NULL, &write_req, 0, &iov, 0, -1, NULL);
   ASSERT(r == UV_EINVAL);
+  uv_fs_req_cleanup(&write_req);
+
+  /* If the arguments are invalid, the loop should not be kept open */
+  loop = uv_default_loop();
+
+  r = uv_fs_read(loop, &read_req, 0, NULL, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&read_req);
+
+  r = uv_fs_write(loop, &write_req, 0, NULL, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&write_req);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_read(loop, &read_req, 0, &iov, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&read_req);
+
+  iov = uv_buf_init(NULL, 0);
+  r = uv_fs_write(loop, &write_req, 0, &iov, 0, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&write_req);
 
   return 0;
 }
@@ -2826,6 +2999,7 @@ TEST_IMPL(fs_invalid_filename) {
 
 TEST_IMPL(fs_file_pos_after_op_with_offset) {
   int r;
+  uv_os_fd_t file;
 
   /* Setup. */
   unlink("test_file");
@@ -2839,9 +3013,10 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
                  NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&open_req1);
+  file = (uv_os_fd_t) open_req1.result;
 
   iov = uv_buf_init(test_buf, sizeof(test_buf));
-  r = uv_fs_write(NULL, &write_req, open_req1.result, &iov, 1, 0, NULL);
+  r = uv_fs_write(NULL, &write_req, file, &iov, 1, 0, NULL);
   ASSERT(r == sizeof(test_buf));
 
 #ifdef _WIN32
@@ -2850,7 +3025,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
 
   zero_offset.QuadPart = 0;
 
-  ASSERT(SetFilePointerEx(open_req1.result,
+  ASSERT(SetFilePointerEx(file,
                           zero_offset,
                           &original_position,
                           FILE_CURRENT) != 0);
@@ -2862,14 +3037,14 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
-  r = uv_fs_read(NULL, &read_req, open_req1.result, &iov, 1, 0, NULL);
+  r = uv_fs_read(NULL, &read_req, file, &iov, 1, 0, NULL);
   ASSERT(r == sizeof(test_buf));
   ASSERT(strcmp(buf, test_buf) == 0);
 
 #ifdef _WIN32
   zero_offset.QuadPart = 0;
 
-  ASSERT(SetFilePointerEx(open_req1.result,
+  ASSERT(SetFilePointerEx(file,
                           zero_offset,
                           &original_position,
                           FILE_CURRENT) != 0);
@@ -2880,7 +3055,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
 
   uv_fs_req_cleanup(&read_req);
 
-  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+  r = uv_fs_close(NULL, &close_req, file, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
@@ -2890,3 +3065,157 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(fs_null_req) {
+  /* Verify that all fs functions return UV_EINVAL when the request is NULL. */
+  int r;
+
+  r = uv_fs_open(NULL, NULL, NULL, 0, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_close(NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_read(NULL, NULL, 0, NULL, 0, -1, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_write(NULL, NULL, 0, NULL, 0, -1, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_unlink(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_mkdir(NULL, NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_mkdtemp(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_rmdir(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_scandir(NULL, NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_link(NULL, NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_symlink(NULL, NULL, NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_readlink(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_realpath(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_chown(NULL, NULL, NULL, 0, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_fchown(NULL, NULL, 0, 0, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_stat(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_lstat(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_fstat(NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_rename(NULL, NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_fsync(NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_fdatasync(NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_ftruncate(NULL, NULL, 0, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_copyfile(NULL, NULL, NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_sendfile(NULL, NULL, 0, 0, 0, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_access(NULL, NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_chmod(NULL, NULL, NULL, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_fchmod(NULL, NULL, 0, 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_utime(NULL, NULL, NULL, 0.0, 0.0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  r = uv_fs_futime(NULL, NULL, 0, 0.0, 0.0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  /* This should be a no-op. */
+  uv_fs_req_cleanup(NULL);
+
+  return 0;
+}
+
+#ifdef _WIN32
+TEST_IMPL(fs_exclusive_sharing_mode) {
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  ASSERT(UV_FS_O_EXLOCK > 0);
+
+  r = uv_fs_open(NULL,
+                 &open_req1,
+                 "test_file",
+                 O_RDWR | O_CREAT | UV_FS_O_EXLOCK,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req1.result >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  r = uv_fs_open(NULL,
+                 &open_req2,
+                 "test_file",
+                 O_RDONLY | UV_FS_O_EXLOCK,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r < 0);
+  ASSERT(open_req2.result < 0);
+  uv_fs_req_cleanup(&open_req2);
+
+  r = uv_fs_close(NULL, &close_req, (uv_os_fd_t) open_req1.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  r = uv_fs_open(NULL,
+                 &open_req2,
+                 "test_file",
+                 O_RDONLY | UV_FS_O_EXLOCK,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req2.result >= 0);
+  uv_fs_req_cleanup(&open_req2);
+
+  r = uv_fs_close(NULL, &close_req, (uv_os_fd_t) open_req2.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif

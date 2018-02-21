@@ -20,6 +20,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <pthread.h>
 
 #define PTHREAD_BARRIER_SERIAL_THREAD  0x12345
+#define UV__PTHREAD_BARRIER_FALLBACK   1
 
 typedef struct {
   pthread_mutex_t  mutex;

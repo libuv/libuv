@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <limits.h>
 #include <wchar.h>
 #include <malloc.h>    /* alloca */
@@ -399,8 +400,15 @@ static WCHAR* search_path(const WCHAR *file,
       /* Next slice starts just after where the previous one ended */
       dir_start = dir_end;
 
+      /* If path is quoted, find quote end */
+      if (*dir_start == L'"' || *dir_start == L'\'') {
+        dir_end = wcschr(dir_start + 1, *dir_start);
+        if (dir_end == NULL) {
+          dir_end = wcschr(dir_start, L'\0');
+        }
+      }
       /* Slice until the next ; or \0 is found */
-      dir_end = wcschr(dir_start, L';');
+      dir_end = wcschr(dir_end, L';');
       if (dir_end == NULL) {
         dir_end = wcschr(dir_start, L'\0');
       }
@@ -1045,14 +1053,22 @@ int uv_spawn(uv_loop_t* loop,
   startup.hStdOutput = uv__stdio_handle(process->child_stdio_buffer, 1);
   startup.hStdError = uv__stdio_handle(process->child_stdio_buffer, 2);
 
+  process_flags = CREATE_UNICODE_ENVIRONMENT;
+
   if (options->flags & UV_PROCESS_WINDOWS_HIDE) {
+    /* Avoid creating console window if stdio is not inherited. */
+    for (i = 0; i < options->stdio_count; i++) {
+      if (options->stdio[i].flags & UV_INHERIT_FD)
+        break;
+      if (i == options->stdio_count - 1)
+        process_flags |= CREATE_NO_WINDOW;
+    }
+
     /* Use SW_HIDE to avoid any potential process window. */
     startup.wShowWindow = SW_HIDE;
   } else {
     startup.wShowWindow = SW_SHOWDEFAULT;
   }
-
-  process_flags = CREATE_UNICODE_ENVIRONMENT;
 
   if (options->flags & UV_PROCESS_DETACHED) {
     /* Note that we're not setting the CREATE_BREAKAWAY_FROM_JOB flag. That
@@ -1157,6 +1173,10 @@ int uv_spawn(uv_loop_t* loop,
 
 
 static int uv__kill(HANDLE process_handle, int signum) {
+  if (signum < 0 || signum >= NSIG) {
+    return UV_EINVAL;
+  }
+
   switch (signum) {
     case SIGTERM:
     case SIGKILL:
@@ -1221,8 +1241,15 @@ int uv_process_kill(uv_process_t* process, int signum) {
 
 int uv_kill(int pid, int signum) {
   int err;
-  HANDLE process_handle = OpenProcess(PROCESS_TERMINATE |
-    PROCESS_QUERY_INFORMATION, FALSE, pid);
+  HANDLE process_handle;
+
+  if (pid == 0) {
+    process_handle = GetCurrentProcess();
+  } else {
+    process_handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION,
+                                 FALSE,
+                                 pid);
+  }
 
   if (process_handle == NULL) {
     err = GetLastError();

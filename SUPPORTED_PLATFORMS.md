@@ -9,8 +9,11 @@
 | AIX | Tier 2 | >= 6 | Maintainers: @libuv/aix |
 | z/OS | Tier 2 | >= V2R2 | Maintainers: @libuv/zos |
 | Linux with musl | Tier 2 | musl >= 1.0 | |
-| SunOS | Tier 2 | Solaris 121 and later | Maintainers: @libuv/sunos |
-| MinGW | Tier 3 | MinGW-w64 | |
+| SmartOS | Tier 2 | >= 14.4 | Maintainers: @libuv/smartos |
+| Android | Tier 3 | NDK >= r15b | |
+| IBM i | Tier 3 | >= IBM i 7.2 | Maintainers: @libuv/ibmi |
+| MinGW | Tier 3 | MinGW32 and MinGW-w64 | |
+| SunOS | Tier 3 | Solaris 121 and later | |
 | Other | Tier 3 | N/A | |
 
 ## Support types
