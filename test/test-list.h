@@ -42,6 +42,7 @@ TEST_DECLARE   (condvar_2)
 TEST_DECLARE   (condvar_3)
 TEST_DECLARE   (condvar_4)
 TEST_DECLARE   (condvar_5)
+TEST_DECLARE   (condvar_6)
 TEST_DECLARE   (semaphore_1)
 TEST_DECLARE   (semaphore_2)
 TEST_DECLARE   (semaphore_3)
@@ -55,6 +56,7 @@ TEST_DECLARE   (tty_file)
 TEST_DECLARE   (tty_pty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (ip6_pton)
+TEST_DECLARE   (connect_unspecified)
 TEST_DECLARE   (ipc_listen_before_write)
 TEST_DECLARE   (ipc_listen_after_write)
 #ifndef _WIN32
@@ -266,6 +268,7 @@ TEST_DECLARE   (spawn_tcp_server)
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (fs_poll_getpath)
 TEST_DECLARE   (kill)
+TEST_DECLARE   (kill_invalid_signum)
 TEST_DECLARE   (fs_file_noent)
 TEST_DECLARE   (fs_file_nametoolong)
 TEST_DECLARE   (fs_file_loop)
@@ -287,6 +290,7 @@ TEST_DECLARE   (fs_realpath)
 TEST_DECLARE   (fs_symlink)
 TEST_DECLARE   (fs_symlink_dir)
 #ifdef _WIN32
+TEST_DECLARE   (fs_symlink_junction)
 TEST_DECLARE   (fs_non_symlink_reparse_point)
 #endif
 TEST_DECLARE   (fs_utime)
@@ -442,6 +446,7 @@ TASK_LIST_START
   TEST_ENTRY  (condvar_3)
   TEST_ENTRY  (condvar_4)
   TEST_ENTRY  (condvar_5)
+  TEST_ENTRY  (condvar_6)
   TEST_ENTRY  (semaphore_1)
   TEST_ENTRY  (semaphore_2)
   TEST_ENTRY  (semaphore_3)
@@ -466,6 +471,7 @@ TASK_LIST_START
   TEST_ENTRY  (tty_pty)
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ip6_pton)
+  TEST_ENTRY  (connect_unspecified)
   TEST_ENTRY  (ipc_listen_before_write)
   TEST_ENTRY  (ipc_listen_after_write)
 #ifndef _WIN32
@@ -756,6 +762,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (kill)
+  TEST_ENTRY  (kill_invalid_signum)
 
   TEST_ENTRY  (poll_close_doesnt_corrupt_stack)
   TEST_ENTRY  (poll_closesocket)
@@ -811,6 +818,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_symlink)
   TEST_ENTRY  (fs_symlink_dir)
 #ifdef _WIN32
+  TEST_ENTRY  (fs_symlink_junction)
   TEST_ENTRY  (fs_non_symlink_reparse_point)
 #endif
   TEST_ENTRY  (fs_stat_missing_path)
@@ -851,14 +859,7 @@ TASK_LIST_START
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
-#if defined(__PPC__) || defined(__PPC64__)  /* For linux PPC and AIX */
-  /* pthread_join takes a while, especially on AIX.
-   * Therefore being gratuitous with timeout.
-   */
-  TEST_ENTRY_CUSTOM (threadpool_multiple_event_loops, 0, 0, 120000)
-#else
   TEST_ENTRY  (threadpool_multiple_event_loops)
-#endif
   TEST_ENTRY  (threadpool_cancel_getaddrinfo)
   TEST_ENTRY  (threadpool_cancel_getnameinfo)
   TEST_ENTRY  (threadpool_cancel_work)
