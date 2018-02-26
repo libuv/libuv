@@ -49,16 +49,14 @@ static int new_socket(uv_tcp_t* handle, int domain, unsigned long flags) {
     /* Bind this new socket to an arbitrary port */
     slen = sizeof(saddr);
     memset(&saddr, 0, sizeof(saddr));
-    err = getsockname(uv__stream_fd(handle), (struct sockaddr*) &saddr, &slen);
-    if (err) {
+    if (getsockname(uv__stream_fd(handle), (struct sockaddr*) &saddr, &slen)) {
       uv__close(sockfd);
-      return err;
+      return UV__ERR(errno);
     }
 
-    err = bind(uv__stream_fd(handle), (struct sockaddr*) &saddr, slen);
-    if (err) {
+    if (bind(uv__stream_fd(handle), (struct sockaddr*) &saddr, slen)) {
       uv__close(sockfd);
-      return err;
+      return UV__ERR(errno);
     }
   }
 
