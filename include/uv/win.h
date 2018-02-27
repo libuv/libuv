@@ -207,7 +207,8 @@ typedef struct {
   struct uv_req_s async_req;                                                  \
   void* async_handles[2];                                                     \
   /* Global queue of loops */                                                 \
-  void* loops_queue[2];
+  void* loops_queue[2];                                                       \
+  uv_loop_stats_t* stats;
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \

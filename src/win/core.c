@@ -206,7 +206,21 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  return UV_ENOSYS;
+  struct uv_loop_stats_s* stats;
+  switch (option) {
+    case UV_LOOP_STATS:
+      stats = va_arg(ap, struct uv_loop_stats_s*);
+      if (stats != NULL) {
+        if (stats->cb == NULL)
+          return UV_EINVAL;
+        memset(&(stats->fields), 0, sizeof(uv_loop_stats_data_t)); 
+      }
+      loop->stats = stats;
+      break;
+    default:
+      return UV_ENOSYS;
+  }
+  return 0;
 }
 
 
@@ -315,26 +329,54 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
+  int emit_stats;
+  size_t count = 0;
+  size_t timers_count = 0;
 
   r = uv__loop_alive(loop);
   if (!r)
     uv_update_time(loop);
 
   while (r != 0 && loop->stop_flag == 0) {
+    /* loop stats will only be emitted if the stats struct was non
+     * NULL at the start of the current loop. The stats struct may
+     * set to NULL at any time during the loop.
+     */
+    emit_stats = loop->stats != NULL;
     uv_update_time(loop);
-    uv__run_timers(loop);
+    uv__update_stats_ts(loop, tick_start);
 
+    uv__update_stats_ts(loop, timers1_start);
+    timers_count = uv__run_timers(loop);
+    uv__update_stats_ts(loop, timers1_end);
+
+    uv__update_stats_ts(loop, pending_start);
     ran_pending = uv_process_reqs(loop);
-    uv__run_idle(loop);
-    uv__run_prepare(loop);
+    uv__update_stats_ts(loop, pending_end);
+
+    uv__update_stats_ts(loop, idle_start);
+    count = uv__run_idle(loop);
+    uv__update_stats_count(loop, idle_count, count);
+    uv__update_stats_ts(loop, idle_end);
+
+    uv__update_stats_ts(loop, prepare_start);
+    count = uv__run_prepare(loop);
+    uv__update_stats_count(loop, prepare_count, count);
+    uv__update_stats_ts(loop, prepare_end);
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
+    uv__update_stats_ts(loop, poll_start);
     uv__loop_poll(loop, timeout == -1 ? INFINITE : timeout);
+    uv__update_stats_ts(loop, poll_end);
 
-    uv__run_check(loop);
+    uv__update_stats_ts(loop, check_start);
+    count = uv__run_check(loop);
+    uv__update_stats_count(loop, check_count, count);
+    uv__update_stats_ts(loop, check_end);
+
     uv_process_endgames(loop);
 
     if (mode == UV_RUN_ONCE) {
@@ -346,8 +388,14 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
        * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
        * the check.
        */
-      uv__run_timers(loop);
+      uv__update_stats_ts(loop, timers2_start);
+      timers_count = uv__run_timers(loop);
+      uv__update_stats_ts(loop, timers2_end);
     }
+    uv__update_stats_count(loop, timers_count, timers_count);
+
+    uv__update_stats_ts(loop, tick_end);
+    uv__loop_stats_notify(emit_stats, loop);
 
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)

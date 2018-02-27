@@ -137,6 +137,8 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
   uv_req_t* req;
   uv_req_t* first;
   uv_req_t* next;
+  size_t count = 0;
+  uv__update_stats_count(loop, pending_count, count);
 
   if (loop->pending_reqs_tail == NULL)
     return 0;
@@ -146,6 +148,7 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
   loop->pending_reqs_tail = NULL;
 
   while (next != NULL) {
+    count++;
     req = next;
     next = req->next_req != first ? req->next_req : NULL;
 
@@ -209,6 +212,7 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
         assert(0);
     }
   }
+  uv__update_stats_count(loop, pending_count, count);
 
   return 1;
 }

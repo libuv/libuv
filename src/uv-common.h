@@ -254,7 +254,7 @@ void uv__prepare_close(uv_prepare_t* handle);
 void uv__check_close(uv_check_t* handle);
 
 /* Timer prototypes */
-void uv__run_timers(uv_loop_t* loop);
+size_t uv__run_timers(uv_loop_t* loop);
 int uv__next_timeout(const uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
 

@@ -180,14 +180,26 @@ void uv__loop_close(uv_loop_t* loop) {
   loop->nwatchers = 0;
 }
 
-
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  if (option != UV_LOOP_BLOCK_SIGNAL)
-    return UV_ENOSYS;
+  struct uv_loop_stats_s* stats;
+  switch (option) {
+    case UV_LOOP_BLOCK_SIGNAL:
+      if (va_arg(ap, int) != SIGPROF)
+        return UV_EINVAL;
+      loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+      break;
+    case UV_LOOP_STATS:
+      stats = va_arg(ap, struct uv_loop_stats_s*);
+      if (stats != NULL) {
+        if (stats->cb == NULL)
+          return UV_EINVAL;
+        memset(&(stats->fields), 0, sizeof(uv_loop_stats_data_t)); 
+      }
+      loop->stats = stats;
+      break;
+    default:
+      return UV_ENOSYS;
+  }
 
-  if (va_arg(ap, int) != SIGPROF)
-    return UV_EINVAL;
-
-  loop->flags |= UV_LOOP_BLOCK_SIGPROF;
   return 0;
 }
