@@ -217,6 +217,17 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
       }
       loop->stats = stats;
       break;
+    case UV_THREADPOOL_STATS:
+      threadpool_stats = va_arg(ap, struct uv_threadpool_stats_s*);
+      if (threadpool_stats == NULL) {
+        if (loop->threadpool_stats != NULL)
+          uv__threadpool_stats_remove(loop->threadpool_stats);
+        loop->threadpool_stats = NULL;
+      } else {
+        loop->threadpool_stats = threadpool_stats;
+        uv__threadpool_stats_add(loop->threadpool_stats);
+      }
+      break;
     default:
       return UV_ENOSYS;
   }

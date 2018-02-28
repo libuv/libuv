@@ -232,10 +232,12 @@ typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_loop_stats_s uv_loop_stats_t;
 typedef struct uv_loop_stats_data_s uv_loop_stats_data_t;
+typedef struct uv_threadpool_stats_s uv_threadpool_stats_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL,
-  UV_LOOP_STATS
+  UV_LOOP_STATS,
+  UV_THREADPOOL_STATS
 } uv_loop_option;
 
 typedef enum {
@@ -321,6 +323,9 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   const char* hostname,
                                   const char* service);
 typedef void (*uv_stats_cb)(uv_loop_stats_data_t* stats, void* data);
+typedef void (*uv_threadpool_stats_cb)(unsigned queued,
+                                       unsigned idle_threads,
+                                       void* data);
 
 typedef struct {
   long tv_sec;
@@ -1627,6 +1632,16 @@ struct uv_loop_stats_s {
   void* reserved[4];
 };
 
+struct uv_threadpool_stats_s {
+  void* data;
+  uv_threadpool_stats_cb submit_cb;
+  uv_threadpool_stats_cb start_cb;
+  uv_threadpool_stats_cb done_cb;
+  void* reserved[4];
+
+  UV_THREADPOOL_STATS_PRIVATE_FIELDS
+};
+
 struct uv_loop_s {
   /* User data - use this for whatever. */
   void* data;
@@ -1662,8 +1677,7 @@ UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 #undef UV_SIGNAL_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_PLATFORM_FIELDS
-#undef UV_STATS_FIELDS
-#undef uv_loop_stats_FIELDS
+#undef UV_THREADPOOL_STATS_PRIVATE_FIELDS
 #undef UV__ERR
 
 #ifdef __cplusplus

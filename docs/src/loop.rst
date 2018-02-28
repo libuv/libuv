@@ -69,6 +69,20 @@ Data types
             size_t reserved_count[4];
         } uv_loop_stats_data_t ;
 
+.. c:type:: uv_threadpool_stats_t
+
+    Threadpool statistics callback configuration
+
+    ::
+
+        typedef struct {
+            void* data;
+            uv_threadpool_stats_cb submit_cb;
+            uv_threadpool_stats_cb start_cb;
+            uv_threadpool_stats_cb done_cb;
+            void* reserved[4];
+        } uv_threadpool_stats_t;
+
 .. c:type:: void (*uv_walk_cb)(uv_handle_t* handle, void* arg)
 
     Type definition for callback passed to :c:func:`uv_walk`.
@@ -76,6 +90,10 @@ Data types
 .. c::type:: void (*uv_stats_cb)(uv_loop_stats_data_t* stats, void* data)
 
     Type definition for stats callback.
+
+.. c::type:: void (*uv_threadpool_stats_cb)(unsigned queued, unsigned idle, void* data)
+
+    Type definition for threadpool stats callback.
 
 Public members
 ^^^^^^^^^^^^^^
@@ -118,6 +136,11 @@ API
       to disable stats collection. The UV_LOOP_STATS configuration may be set
       while the loop is running but stats will not be emitted until the next
       iteration of the loop.
+    
+    - UV_THREADPOOL_STATS: Call the given callbacks to deliver threadpool
+      queue and idle threads statistics. The second argument is a pointer to
+      a :c:type:`uv_threadpool_stats_t` that must remain valid while the loop
+      is running. The second argument may be NULL to disable stats collection.
 
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 
