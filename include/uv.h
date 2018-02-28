@@ -1623,6 +1623,7 @@ struct uv_loop_stats_data_s {
   size_t check_count;
   size_t timers_count;
   size_t reserved_count[4];
+  int timeout;
 };
 
 struct uv_loop_stats_s {

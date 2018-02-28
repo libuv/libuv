@@ -67,6 +67,7 @@ Data types
             size_t check_count;
             size_t timers_count;
             size_t reserved_count[4];
+            int timeout;
         } uv_loop_stats_data_t ;
 
 .. c:type:: uv_threadpool_stats_t
