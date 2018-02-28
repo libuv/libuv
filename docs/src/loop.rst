@@ -87,11 +87,11 @@ Data types
 
     Type definition for callback passed to :c:func:`uv_walk`.
 
-.. c::type:: void (*uv_stats_cb)(uv_loop_stats_data_t* stats, void* data)
+.. c:type:: void (*uv_stats_cb)(uv_loop_stats_data_t* stats, void* data)
 
     Type definition for stats callback.
 
-.. c::type:: void (*uv_threadpool_stats_cb)(unsigned queued, unsigned idle, void* data)
+.. c:type:: void (*uv_threadpool_stats_cb)(unsigned queued, unsigned idle, void* data)
 
     Type definition for threadpool stats callback.
 
