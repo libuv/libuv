@@ -117,6 +117,9 @@ int uv_loop_init(uv_loop_t* loop) {
   if (loop->iocp == NULL)
     return uv_translate_sys_error(GetLastError());
 
+  loop->stats = NULL;
+  loop->threadpool_stats = NULL;
+
   /* To prevent uninitialized memory access, loop->time must be initialized
    * to zero before calling uv_update_time for the first time.
    */
@@ -207,6 +210,7 @@ void uv__loop_close(uv_loop_t* loop) {
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
   struct uv_loop_stats_s* stats;
+  struct uv_threadpool_stats_s* threadpool_stats;
   switch (option) {
     case UV_LOOP_STATS:
       stats = va_arg(ap, struct uv_loop_stats_s*);
@@ -413,7 +417,6 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
   }
-
   /* The if statement lets the compiler compile it to a conditional store.
    * Avoids dirtying a cache line.
    */

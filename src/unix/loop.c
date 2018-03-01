@@ -35,6 +35,8 @@ int uv_loop_init(uv_loop_t* loop) {
   saved_data = loop->data;
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
+  loop->stats = NULL;
+  loop->threadpool_stats = NULL;
 
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);

@@ -22,7 +22,6 @@
 #include "uv.h"
 #include "task.h"
 
-
 static int timer_cb_called;
 
 

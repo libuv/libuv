@@ -121,6 +121,7 @@
         'test-tcp-write-queue-order.c',
         'test-threadpool.c',
         'test-threadpool-cancel.c',
+        'test-threadpool-stats.c',
         'test-thread-equal.c',
         'test-tmpdir.c',
         'test-mutexes.c',
