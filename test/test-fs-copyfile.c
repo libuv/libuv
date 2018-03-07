@@ -175,6 +175,15 @@ TEST_IMPL(fs_copyfile) {
   ASSERT(r == 0);
   handle_result(&req);
 
+  /* Copies file using UV_FS_COPYFILE_FICLONE_FORCE. */
+  unlink(dst);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
+                     NULL);
+  ASSERT(r == 0 || r == UV_ENOSYS || r == UV_ENOTSUP || r == UV_ENOTTY);
+
+  if (r == 0)
+    handle_result(&req);
+
   unlink(dst); /* Cleanup */
   return 0;
 }

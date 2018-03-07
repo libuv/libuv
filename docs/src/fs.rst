@@ -252,6 +252,9 @@ API
     - `UV_FS_COPYFILE_FICLONE`: If present, `uv_fs_copyfile()` will attempt to
       create a copy-on-write reflink. If the underlying platform does not
       support copy-on-write, then a fallback copy mechanism is used.
+    - `UV_FS_COPYFILE_FICLONE_FORCE`: If present, `uv_fs_copyfile()` will
+      attempt to create a copy-on-write reflink. If the underlying platform does
+      not support copy-on-write, then an error is returned.
 
     .. warning::
         If the destination path is created, but an error occurs while copying
@@ -261,7 +264,8 @@ API
 
     .. versionadded:: 1.14.0
 
-    .. versionchanged:: 1.20.0 `UV_FS_COPYFILE_FICLONE` is supported.
+    .. versionchanged:: 1.20.0 `UV_FS_COPYFILE_FICLONE` and
+        `UV_FS_COPYFILE_FICLONE_FORCE` are supported.
 
 .. c:function:: int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd, uv_file in_fd, int64_t in_offset, size_t length, uv_fs_cb cb)
 
