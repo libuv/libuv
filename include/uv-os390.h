@@ -22,6 +22,9 @@
 #ifndef UV_MVS_H
 #define UV_MVS_H
 
+#define _AIO_OS390
+#include <aio.h>
+
 #define UV_PLATFORM_SEM_T int
 
 #define UV_PLATFORM_LOOP_FIELDS                                               \
@@ -29,5 +32,8 @@
 
 #define UV_PLATFORM_FS_EVENT_FIELDS                                           \
   char rfis_rftok[8];                                                         \
+
+#define UV_CONNECT_PRIVATE_PLATFORM_FIELDS                                    \
+  struct aiocb aio;                                                           \
 
 #endif /* UV_MVS_H */
