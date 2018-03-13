@@ -337,6 +337,7 @@ uv_pid_t uv_os_getpid(void) {
 
 
 uv_pid_t uv_os_getppid(void) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   int parent_pid = -1;
   HANDLE handle;
   PROCESSENTRY32 pe;
@@ -356,6 +357,9 @@ uv_pid_t uv_os_getppid(void) {
 
   CloseHandle(handle);
   return parent_pid;
+#else
+	return UV_ENOSYS;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
@@ -373,6 +377,7 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 int uv_set_process_title(const char* title) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   int err;
   int length;
   WCHAR* title_w = NULL;
@@ -418,10 +423,14 @@ int uv_set_process_title(const char* title) {
 done:
   uv__free(title_w);
   return uv_translate_sys_error(err);
+#else
+	return UV_ENOSYS;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
 static int uv__get_process_title(void) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   WCHAR title_w[MAX_TITLE_LENGTH];
 
   if (!GetConsoleTitleW(title_w, sizeof(title_w) / sizeof(WCHAR))) {
@@ -432,6 +441,9 @@ static int uv__get_process_title(void) {
     return -1;
 
   return 0;
+#else
+	return -1;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
@@ -510,6 +522,7 @@ int uv_resident_set_memory(size_t* rss) {
 
 
 int uv_uptime(double* uptime) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   BYTE stack_buffer[4096];
   BYTE* malloced_buffer = NULL;
   BYTE* buffer = (BYTE*) stack_buffer;
@@ -607,10 +620,14 @@ int uv_uptime(double* uptime) {
   uv__free(malloced_buffer);
   *uptime = 0;
   return UV_EIO;
+#else
+  return UV_ENOSYS;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   uv_cpu_info_t* cpu_infos;
   SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* sppi;
   DWORD sppi_size;
@@ -734,6 +751,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   uv__free(sppi);
 
   return uv_translate_sys_error(err);
+#else
+  return UV_ENOSYS;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
@@ -1091,6 +1111,7 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 
 
 int uv_getrusage(uv_rusage_t *uv_rusage) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   FILETIME createTime, exitTime, kernelTime, userTime;
   SYSTEMTIME kernelSystemTime, userSystemTime;
   PROCESS_MEMORY_COUNTERS memCounters;
@@ -1143,6 +1164,9 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
   uv_rusage->ru_inblock = (uint64_t) ioCounters.ReadOperationCount;
 
   return 0;
+#else
+	return UV_ENOSYS;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
@@ -1344,6 +1368,7 @@ int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16) {
 
 
 int uv__getpwuid_r(uv_passwd_t* pwd) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   HANDLE token;
   wchar_t username[UNLEN + 1];
   wchar_t path[MAX_PATH];
@@ -1402,6 +1427,9 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   pwd->gid = -1;
 
   return 0;
+#else
+	return UV_ENOSYS;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 }
 
 
