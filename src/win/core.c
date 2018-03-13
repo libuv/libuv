@@ -195,10 +195,12 @@ static void uv_init(void) {
   /* Initialize tracking of all uv loops */
   uv__loops_init();
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   /* Fetch winapi function pointers. This must be done first because other
    * initialization code might need these function pointers to be loaded.
    */
   uv_winapi_init();
+#endif
 
   /* Initialize winsock */
   uv_winsock_init();
@@ -215,8 +217,10 @@ static void uv_init(void) {
   /* Initialize utilities */
   uv__util_init();
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   /* Initialize system wakeup detection */
   uv__init_detect_system_wakeup();
+#endif
 }
 
 

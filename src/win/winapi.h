@@ -24,6 +24,25 @@
 
 #include <windows.h>
 
+/*
+ * Missing defines on UWP partition
+ */
+#ifndef SEM_FAILCRITICALERRORS
+#define SEM_FAILCRITICALERRORS      0x0001
+#endif // !SEM_FAILCRITICALERRORS
+
+#ifndef SEM_NOGPFAULTERRORBOX
+#define SEM_NOGPFAULTERRORBOX       0x0002
+#endif // !SEM_NOGPFAULTERRORBOX
+
+#ifndef SEM_NOALIGNMENTFAULTEXCEPT
+#define SEM_NOALIGNMENTFAULTEXCEPT  0x0004
+#endif // !SEM_NOALIGNMENTFAULTEXCEPT
+
+#ifndef SEM_NOOPENFILEERRORBOX
+#define SEM_NOOPENFILEERRORBOX      0x8000
+#endif // !SEM_NOOPENFILEERRORBOX
+
 
 /*
  * Ntdll headers
@@ -4085,6 +4104,7 @@
         ((NTSTATUS) (error)) : ((NTSTATUS) (((error) & 0x0000FFFF) | \
         (FACILITY_NTWIN32 << 16) | ERROR_SEVERITY_WARNING)))
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 #ifndef JOB_OBJECT_LIMIT_PROCESS_MEMORY
 # define JOB_OBJECT_LIMIT_PROCESS_MEMORY             0x00000100
 #endif
@@ -4771,6 +4791,7 @@ extern sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
