@@ -4791,9 +4791,9 @@ extern sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
-#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 
 #endif /* UV_WIN_WINAPI_H_ */
