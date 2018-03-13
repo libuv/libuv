@@ -66,6 +66,11 @@ void fs__scandir(uv_fs_t* req) {
 
 
 void uv_fs_req_cleanup(uv_fs_t* req) {
+
+}
+
+void uv_fs_init(void) {
+
 }
 
 
