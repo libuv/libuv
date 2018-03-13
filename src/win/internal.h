@@ -368,6 +368,7 @@ int uv_ntstatus_to_winsock_error(NTSTATUS status);
 BOOL uv_get_acceptex_function(SOCKET socket, LPFN_ACCEPTEX* target);
 BOOL uv_get_connectex_function(SOCKET socket, LPFN_CONNECTEX* target);
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 int WSAAPI uv_wsarecv_workaround(SOCKET socket, WSABUF* buffers,
     DWORD buffer_count, DWORD* bytes, DWORD* flags, WSAOVERLAPPED *overlapped,
     LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
@@ -378,6 +379,7 @@ int WSAAPI uv_wsarecvfrom_workaround(SOCKET socket, WSABUF* buffers,
 
 int WSAAPI uv_msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
     AFD_POLL_INFO* info_out, OVERLAPPED* overlapped);
+#endif
 
 /* Whether there are any non-IFS LSPs stacked on TCP */
 extern int uv_tcp_non_ifs_lsp_ipv4;

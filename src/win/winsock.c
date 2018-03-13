@@ -266,7 +266,7 @@ int uv_ntstatus_to_winsock_error(NTSTATUS status) {
   }
 }
 
-
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 /*
  * This function provides a workaround for a bug in the winsock implementation
  * of WSARecv. The problem is that when SetFileCompletionNotificationModes is
@@ -559,6 +559,7 @@ int WSAAPI uv_msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
     return SOCKET_ERROR;
   }
 }
+#endif
 
 int uv__convert_to_localhost_if_unspecified(const struct sockaddr* addr,
                                             struct sockaddr_storage* storage) {
