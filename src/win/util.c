@@ -767,7 +767,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   uv__free(cpu_infos);
 }
 
-
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 static int is_windows_version_or_greater(DWORD os_major,
                                          DWORD os_minor,
                                          WORD service_pack_major,
@@ -797,7 +797,7 @@ static int is_windows_version_or_greater(DWORD os_major,
     VER_SERVICEPACKMAJOR | VER_SERVICEPACKMINOR,
     condition_mask);
 }
-
+#endif
 
 static int address_prefix_match(int family,
                                 struct sockaddr* address,
@@ -849,6 +849,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   int is_vista_or_greater;
   ULONG flags;
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   is_vista_or_greater = is_windows_version_or_greater(6, 0, 0, 0);
   if (is_vista_or_greater) {
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
@@ -861,7 +862,12 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
       GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_INCLUDE_PREFIX;
   }
-
+#else
+  /* We assume that WinRT apps are >= Vista */
+  is_vista_or_greater = TRUE;
+  flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
+	  GAA_FLAG_SKIP_DNS_SERVER;
+#endif
 
   /* Fetch the size of the adapters reported by windows, and then get the */
   /* list itself. */
