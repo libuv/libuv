@@ -1341,6 +1341,8 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 
 static int uv_tcp_try_cancel_io(uv_tcp_t* tcp) {
   SOCKET socket = tcp->socket;
+
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   int non_ifs_lsp;
 
   /* Check if we have any non-IFS LSPs stacked on top of TCP */
@@ -1364,6 +1366,7 @@ static int uv_tcp_try_cancel_io(uv_tcp_t* tcp) {
       return -1;
     }
   }
+#endif
 
   assert(socket != 0 && socket != INVALID_SOCKET);
 
