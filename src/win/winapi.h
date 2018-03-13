@@ -4104,7 +4104,6 @@
         ((NTSTATUS) (error)) : ((NTSTATUS) (((error) & 0x0000FFFF) | \
         (FACILITY_NTWIN32 << 16) | ERROR_SEVERITY_WARNING)))
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 #ifndef JOB_OBJECT_LIMIT_PROCESS_MEMORY
 # define JOB_OBJECT_LIMIT_PROCESS_MEMORY             0x00000100
 #endif
@@ -4764,8 +4763,8 @@ typedef HWINEVENTHOOK (WINAPI *sSetWinEventHook)
                        DWORD        idThread,
                        UINT         dwflags);
 
-
 /* Ntdll function pointers */
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
@@ -4773,12 +4772,14 @@ extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
-
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 
 /* Kernel32 function pointers */
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+extern sCreateSymbolicLinkW pCreateSymbolicLinkW;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
-extern sCreateSymbolicLinkW pCreateSymbolicLinkW;
 extern sCancelIoEx pCancelIoEx;
 extern sInitializeConditionVariable pInitializeConditionVariable;
 extern sSleepConditionVariableCS pSleepConditionVariableCS;
@@ -4788,11 +4789,13 @@ extern sWakeConditionVariable pWakeConditionVariable;
 extern sCancelSynchronousIo pCancelSynchronousIo;
 extern sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
 
-
 /* Powrprof.dll function pointer */
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 
 /* User32.dll function pointer */
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 extern sSetWinEventHook pSetWinEventHook;
 #endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
 

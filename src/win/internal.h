@@ -351,12 +351,10 @@ int uv__stdio_verify(BYTE* buffer, WORD size);
 WORD uv__stdio_size(BYTE* buffer);
 HANDLE uv__stdio_handle(BYTE* buffer, int fd);
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 /*
  * Winapi and ntapi utility functions
  */
 void uv_winapi_init(void);
-#endif
 
 /*
  * Winsock utility functions
