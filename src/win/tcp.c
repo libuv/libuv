@@ -1416,7 +1416,7 @@ void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
       for (i = 0; i < uv_simultaneous_server_accepts; i++) {
         uv_tcp_accept_t* req = &tcp->tcp.serv.accept_reqs[i];
         if (req->accept_socket != INVALID_SOCKET &&
-            !HasOverlappedIoCompleted(&req->u.io.overlapped)) {
+            req->u.io.overlapped.Internal == STATUS_PENDING) {
           closesocket(req->accept_socket);
           req->accept_socket = INVALID_SOCKET;
         }
