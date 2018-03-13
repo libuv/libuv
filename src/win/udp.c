@@ -85,6 +85,7 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     return GetLastError();
   }
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)  
   if (pSetFileCompletionNotificationModes) {
     /* All known Windows that support SetFileCompletionNotificationModes */
     /* have a bug that makes it impossible to use this function in */
@@ -112,6 +113,7 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
       }
     }
   }
+#endif
 
   handle->socket = socket;
 
