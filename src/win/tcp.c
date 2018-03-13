@@ -107,9 +107,14 @@ static int uv_tcp_set_socket(uv_loop_t* loop,
                              loop->iocp,
                              (ULONG_PTR)socket,
                              0) == NULL) {
+	  /* We only allow to emulate IOCP on non-UWP */
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     if (imported) {
       handle->flags |= UV_HANDLE_EMULATE_IOCP;
-    } else {
+    } 
+#endif
+
+	if (!imported) {
       return GetLastError();
     }
   }
@@ -249,6 +254,7 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
     }
 
     if (!(handle->flags & UV_HANDLE_CONNECTION) && handle->tcp.serv.accept_reqs) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
       if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
         for (i = 0; i < uv_simultaneous_server_accepts; i++) {
           req = &handle->tcp.serv.accept_reqs[i];
@@ -262,11 +268,13 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
           }
         }
       }
+#endif
 
       uv__free(handle->tcp.serv.accept_reqs);
       handle->tcp.serv.accept_reqs = NULL;
     }
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     if (handle->flags & UV_HANDLE_CONNECTION &&
         handle->flags & UV_HANDLE_EMULATE_IOCP) {
       if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
@@ -278,6 +286,7 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
         handle->read_req.event_handle = NULL;
       }
     }
+#endif
 
     uv__handle_close(handle);
     loop->active_tcp_streams--;
@@ -434,9 +443,11 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     req->u.io.overlapped.hEvent = (HANDLE) ((ULONG_PTR) req->event_handle | 1);
   }
+#endif
 
   success = handle->tcp.serv.func_acceptex(handle->socket,
                                           accept_socket,
@@ -456,6 +467,7 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     /* The req will be processed with IOCP. */
     req->accept_socket = accept_socket;
     handle->reqs_pending++;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -464,6 +476,7 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
     }
+#endif
   } else {
     /* Make this req pending reporting an error. */
     SET_REQ_ERROR(req, WSAGetLastError());
@@ -471,11 +484,13 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     handle->reqs_pending++;
     /* Destroy the preallocated client socket. */
     closesocket(accept_socket);
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     /* Destroy the event handle */
     if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
       CloseHandle(req->u.io.overlapped.hEvent);
       req->event_handle = NULL;
     }
+#endif
   }
 }
 
@@ -515,10 +530,12 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     assert(req->event_handle);
     req->u.io.overlapped.hEvent = (HANDLE) ((ULONG_PTR) req->event_handle | 1);
   }
+#endif
 
   flags = 0;
   result = WSARecv(handle->socket,
@@ -539,6 +556,7 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     /* The req will be processed with IOCP. */
     handle->flags |= UV_HANDLE_READ_PENDING;
     handle->reqs_pending++;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -547,6 +565,7 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
     }
+#endif
   } else {
     /* Make this req pending reporting an error. */
     SET_REQ_ERROR(req, WSAGetLastError());
@@ -618,14 +637,15 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       req->data = handle;
 
       req->wait_handle = INVALID_HANDLE_VALUE;
+	  req->event_handle = NULL;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
       if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
         req->event_handle = CreateEvent(NULL, 0, 0, NULL);
         if (!req->event_handle) {
           uv_fatal_error(GetLastError(), "CreateEvent");
         }
-      } else {
-        req->event_handle = NULL;
       }
+#endif
 
       uv_tcp_queue_accept(handle, req);
     }
@@ -728,6 +748,7 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
   /* If reading was stopped and then started again, there could still be a */
   /* read request pending. */
   if (!(handle->flags & UV_HANDLE_READ_PENDING)) {
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         !handle->read_req.event_handle) {
       handle->read_req.event_handle = CreateEvent(NULL, 0, 0, NULL);
@@ -735,6 +756,7 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
         uv_fatal_error(GetLastError(), "CreateEvent");
       }
     }
+#endif
     uv_tcp_queue_read(loop, handle);
   }
 
@@ -872,6 +894,7 @@ int uv_tcp_write(uv_loop_t* loop,
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     req->event_handle = CreateEvent(NULL, 0, 0, NULL);
     if (!req->event_handle) {
@@ -880,6 +903,7 @@ int uv_tcp_write(uv_loop_t* loop,
     req->u.io.overlapped.hEvent = (HANDLE) ((ULONG_PTR) req->event_handle | 1);
     req->wait_handle = INVALID_HANDLE_VALUE;
   }
+#endif
 
   result = WSASend(handle->socket,
                    (WSABUF*) bufs,
@@ -903,6 +927,7 @@ int uv_tcp_write(uv_loop_t* loop,
     handle->stream.conn.write_reqs_pending++;
     REGISTER_HANDLE_REQ(loop, handle, req);
     handle->write_queue_size += req->u.io.queued_bytes;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         !RegisterWaitForSingleObject(&req->wait_handle,
           req->event_handle, post_write_completion, (void*) req,
@@ -910,6 +935,7 @@ int uv_tcp_write(uv_loop_t* loop,
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
     }
+#endif
   } else {
     /* Send failed due to an error, report it later */
     req->u.io.queued_bytes = 0;
@@ -1086,6 +1112,7 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     if (req->wait_handle != INVALID_HANDLE_VALUE) {
       UnregisterWait(req->wait_handle);
@@ -1096,6 +1123,7 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
       req->event_handle = NULL;
     }
   }
+#endif
 
   if (req->cb) {
     err = uv_translate_sys_error(GET_REQ_SOCK_ERROR(req));
