@@ -386,6 +386,7 @@ error:
   return uv_translate_sys_error(err);
 }
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size) {
   NET_LUID luid;
   wchar_t wname[NDIS_IF_MAX_STRING_SIZE + 1]; /* Add one for the NUL. */
@@ -451,3 +452,4 @@ int uv_if_indextoiid(unsigned int ifindex, char* buffer, size_t* size) {
   *size = r;
   return 0;
 }
+#endif
