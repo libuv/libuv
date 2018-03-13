@@ -58,7 +58,9 @@ void uv_fatal_error(const int errorno, const char* syscall) {
     LocalFree(buf);
   }
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
   DebugBreak();
+#endif /* WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) */
   abort();
 }
 
