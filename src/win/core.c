@@ -188,7 +188,7 @@ static void uv_init(void) {
    * functions (eg _get_osfhandle) raise an assert when called with invalid
    * FDs even though they return the proper error code in the release build.
    */
-#if defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP) && defined(_DEBUG) && (defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR))
   _CrtSetReportHook(uv__crt_dbg_report_handler);
 #endif
 
