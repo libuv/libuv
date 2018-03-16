@@ -284,6 +284,9 @@ TEST_DECLARE   (fs_access)
 TEST_DECLARE   (fs_chmod)
 TEST_DECLARE   (fs_copyfile)
 TEST_DECLARE   (fs_unlink_readonly)
+#ifndef _WIN32
+TEST_DECLARE   (fs_unlink_archive_readonly)
+#endif
 TEST_DECLARE   (fs_chown)
 TEST_DECLARE   (fs_link)
 TEST_DECLARE   (fs_readlink)
@@ -812,6 +815,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_chmod)
   TEST_ENTRY  (fs_copyfile)
   TEST_ENTRY  (fs_unlink_readonly)
+#ifndef _WIN32
+  TEST_ENTRY  (fs_unlink_archive_readonly)
+#endif
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
   TEST_ENTRY  (fs_futime)
