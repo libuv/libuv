@@ -229,10 +229,15 @@ int epoll_ctl(uv__os390_epoll* lst,
               int op,
               int fd,
               struct epoll_event *event) {
-  uv_mutex_lock(&global_epoll_lock);
 
+  if (fd < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  uv_mutex_lock(&global_epoll_lock);
   if (op == EPOLL_CTL_DEL) {
-    if (fd >= lst->size || lst->items[fd].fd == -1) {
+    if (fd > lst->size - 2 || lst->items[fd].fd == -1) {
       uv_mutex_unlock(&global_epoll_lock);
       errno = ENOENT;
       return -1;
@@ -253,7 +258,7 @@ int epoll_ctl(uv__os390_epoll* lst,
     lst->items[fd].fd = fd;
     lst->items[fd].events = event->events;
   } else if (op == EPOLL_CTL_MOD) {
-    if (fd >= lst->size || lst->items[fd].fd == -1) {
+    if (fd > lst->size - 2 || lst->items[fd].fd == -1) {
       uv_mutex_unlock(&global_epoll_lock);
       errno = ENOENT;
       return -1;
@@ -308,7 +313,7 @@ int epoll_file_close(int fd) {
     uv__os390_epoll* lst;
 
     lst = QUEUE_DATA(q, uv__os390_epoll, member);
-    if (fd < lst->size && lst->items != NULL && lst->items[fd].fd != -1)
+    if (fd <= lst->size - 2 && lst->items != NULL && lst->items[fd].fd != -1)
       lst->items[fd].fd = -1;
   }
 

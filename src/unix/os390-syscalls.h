@@ -49,7 +49,7 @@ struct epoll_event {
 typedef struct {
   QUEUE member;
   struct pollfd* items;
-  unsigned long size;
+  int size;
   int msg_queue;
 } uv__os390_epoll;
 
