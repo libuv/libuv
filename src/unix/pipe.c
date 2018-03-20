@@ -29,6 +29,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#define MAX_SOCK_NAME_LEN  sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)
+
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
@@ -39,14 +41,22 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   return 0;
 }
 
-
-#define MAX_SOCK_NAME_LEN  sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)
-
-
+/*
+ * If buf is NULL it will return a pointer to allocated memory that
+ * must be released with free() when it is no more used.
+ */
 char * uv_build_abstract_socket_name(char *name, int length, char *buf) {
-  char *dest = buf;
+  char *dest;
 
   if ((length + 1 > MAX_SOCK_NAME_LEN) || (length <= 0)) return NULL;
+
+  if (buf == NULL) {
+    buf = malloc(MAX_SOCK_NAME_LEN);
+    if (buf == NULL)
+      return NULL;
+  }
+
+  dest = buf;
 
   *dest++ = '\0';
   *dest++ = length;
