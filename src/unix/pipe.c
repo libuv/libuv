@@ -40,28 +40,68 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 }
 
 
+#define MAX_SOCK_NAME_LEN  sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)
+
+
+char * uv_build_abstract_socket_name(char *name, int length, char *buf) {
+  char *dest = buf;
+
+  if ((length + 1 > MAX_SOCK_NAME_LEN) || (length <= 0)) return NULL;
+
+  *dest++ = '\0';
+  *dest++ = length;
+  memcpy(dest, name, length);
+  return buf;
+}
+
+
+int uv__get_pipe_name(char *name, char *pipe_name, char **pallocated, int max_len) {
+  int len;
+  if (name[0]==0) {  /* abstract socket */
+    len = name[1];
+    if (len > max_len) return -ENAMETOOLONG;
+    if (pallocated) {
+      pipe_name = uv__malloc(len+1);
+      if (pipe_name == NULL) return UV_ENOMEM;
+    }
+    *pipe_name++ = '\0';  /* store the starting null char */
+    memcpy(pipe_name, &name[2], len);
+    len++;                /* include the first null char */
+  } else {
+    len = (int)strlen(name);
+    if (len > max_len) return -ENAMETOOLONG;
+    if (pallocated) {
+      pipe_name = uv__strdup(name);
+      if (pipe_name == NULL) return UV_ENOMEM;
+    } else {
+      strcpy(pipe_name, name);
+    }
+  }
+  if (pallocated)
+    *pallocated = pipe_name;
+  return len;
+}
+
+
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   struct sockaddr_un saddr;
   const char* pipe_fname;
   int sockfd;
   int err;
-  size_t name_len;
+  int addr_len;
+  int name_len;
 
   pipe_fname = NULL;
   sockfd = -1;
-  name_len = strlen(name);
-
-  if (name_len > sizeof(saddr.sun_path) - 1)
-    return -ENAMETOOLONG;
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
     return UV_EINVAL;
 
-  /* Make a copy of the file name, it outlives this function's scope. */
-  pipe_fname = uv__strdup(name);
-  if (pipe_fname == NULL)
-    return UV_ENOMEM;
+  /* Process the pipe name and get a copy of it that outlives this function's scope. */
+  name_len = uv__get_pipe_name(name, NULL, &pipe_fname, sizeof(saddr.sun_path) - 1);
+  if (name_len <= 0)
+    return name_len;
 
   /* We've got a copy, don't touch the original any more. */
   name = NULL;
@@ -75,7 +115,12 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   memcpy(saddr.sun_path, pipe_fname, name_len);
   saddr.sun_family = AF_UNIX;
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
+  if (pipe_fname[0] == 0)
+    addr_len = offsetof(struct sockaddr_un, sun_path) + name_len;
+  else
+    addr_len = sizeof saddr;
+
+  if (bind(sockfd, (struct sockaddr*)&saddr, addr_len)) {
     err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
@@ -126,6 +171,7 @@ void uv__pipe_close(uv_pipe_t* handle) {
      * Doing it the other way around introduces a race where our process
      * unlinks a socket with the same name that's just been created by
      * another thread or process.
+     * If it is an abstract socket unlink will see it as an empty path.
      */
     unlink(handle->pipe_fname);
     uv__free((void*)handle->pipe_fname);
@@ -163,12 +209,14 @@ void uv_pipe_connect(uv_connect_t* req,
   int new_sock;
   int err;
   int r;
-  size_t name_len;
+  int addr_len;
+  int name_len;
+  char pipe_name[128];
 
-  name_len = strlen(name);
-  
-  if (name_len > sizeof(saddr.sun_path) - 1) {
-    err = -ENAMETOOLONG;
+  /* Process the pipe name */
+  name_len = uv__get_pipe_name(name, pipe_name, NULL, sizeof(saddr.sun_path) - 1);
+  if (name_len <= 0)
+    err = name_len;
     goto out;
   }
 
@@ -182,12 +230,17 @@ void uv_pipe_connect(uv_connect_t* req,
   }
 
   memset(&saddr, 0, sizeof saddr);
-  memcpy(saddr.sun_path, name, name_len);
+  memcpy(saddr.sun_path, pipe_name, name_len);
   saddr.sun_family = AF_UNIX;
+
+  if (pipe_name[0] == 0)  /* abstract socket */
+    addr_len = offsetof(struct sockaddr_un, sun_path) + name_len;
+  else
+    addr_len = sizeof saddr;
 
   do {
     r = connect(uv__stream_fd(handle),
-                (struct sockaddr*)&saddr, sizeof saddr);
+                (struct sockaddr*)&saddr, addr_len);
   }
   while (r == -1 && errno == EINTR);
 
