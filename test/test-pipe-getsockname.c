@@ -194,7 +194,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
   r = uv_pipe_getsockname(&pipe_server, buf, &len);
   ASSERT(r == 0);
 
-  ASSERT(len == name_len);
+  ASSERT((int)len == name_len);
   ASSERT(memcmp(buf, abstract_pipe, name_len) == 0);
 
   uv_close((uv_handle_t*)&pipe_server, pipe_close_cb);
