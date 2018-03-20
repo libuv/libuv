@@ -300,9 +300,6 @@
                 'src/unix/no-fsevents.c',
                 'src/unix/no-proctitle.c',
               ],
-              'defines': [
-                '_PASE=1'
-              ],
             }, {
               'sources': [
                 'src/unix/aix.c'
