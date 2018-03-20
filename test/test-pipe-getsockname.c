@@ -43,6 +43,8 @@ static uv_connect_t connect_req;
 static int pipe_close_cb_called = 0;
 static int pipe_client_connect_cb_called = 0;
 
+#define TEST_ABS_SOCKET "test-abstract-socket"
+
 
 static void pipe_close_cb(uv_handle_t* handle) {
   ASSERT(handle == (uv_handle_t*) &pipe_client ||
@@ -63,8 +65,15 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
   ASSERT(r == 0);
 
-  ASSERT(buf[len - 1] != 0);
-  ASSERT(memcmp(buf, TEST_PIPENAME, len) == 0);
+  if (req->data) {  /* testing abstract socket */
+    ASSERT(len == 1 + strlen(TEST_ABS_SOCKET));
+    ASSERT(buf[0] == 0);
+    ASSERT(memcmp(&buf[1], TEST_ABS_SOCKET, len) == 0);
+  } else {         /* testing filesystem socket */
+    ASSERT(len == strlen(TEST_PIPENAME));
+    ASSERT(buf[len - 1] != 0);
+    ASSERT(memcmp(buf, TEST_PIPENAME, len) == 0);
+  }
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_client, buf, &len);
@@ -161,7 +170,7 @@ TEST_IMPL(pipe_getsockname) {
 }
 
 
-TEST_IMPL(pipe_getsockname_abstract) {
+TEST_IMPL(pipe_getsockname_abstract_1) {
 #if defined(__linux__)
   char buf[1024];
   size_t len;
@@ -204,6 +213,116 @@ TEST_IMPL(pipe_getsockname_abstract) {
   close(sock);
 
   ASSERT(pipe_close_cb_called == 1);
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#else
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
+
+TEST_IMPL(pipe_getsockname_abstract_2) {
+#if defined(__linux__)
+  uv_loop_t* loop;
+  char buf[1024];
+  size_t len;
+  int  r;
+  int  name_len;
+  char *name;
+  char *sock_name;
+
+  name = TEST_ABS_SOCKET;
+  name_len = strlen(name);
+
+  /* test uv_build_abstract_socket_name() */
+
+  sock_name = uv_build_abstract_socket_name(name, 128, buf);
+  ASSERT(sock_name == NULL);
+
+  sock_name = uv_build_abstract_socket_name(name, name_len, buf);
+  ASSERT(sock_name != NULL);
+  ASSERT(sock_name == buf);
+  ASSERT(buf[0] == '\0');
+  ASSERT(buf[1] == name_len);
+  ASSERT(memcmp(&buf[2], name, name_len) == 0);
+
+  sock_name = uv_build_abstract_socket_name(name, name_len, NULL);
+  ASSERT(sock_name != NULL);
+  ASSERT(sock_name[0] == '\0');
+  ASSERT(sock_name[1] == name_len);
+  ASSERT(memcmp(&sock_name[2], name, name_len) == 0);
+
+
+  /* test communication between sockets */
+
+  pipe_client_connect_cb_called = 0;
+  pipe_close_cb_called = 0;
+
+  loop = uv_default_loop();
+  ASSERT(loop != NULL);
+
+  r = uv_pipe_init(loop, &pipe_server, 0);
+  ASSERT(r == 0);
+
+  len = sizeof buf;
+  r = uv_pipe_getsockname(&pipe_server, buf, &len);
+  ASSERT(r == UV_EBADF);
+
+  len = sizeof buf;
+  r = uv_pipe_getpeername(&pipe_server, buf, &len);
+  ASSERT(r == UV_EBADF);
+
+  r = uv_pipe_bind(&pipe_server, sock_name);
+  ASSERT(r == 0);
+
+  len = sizeof buf;
+  memset(buf, 1, len);
+  r = uv_pipe_getsockname(&pipe_server, buf, &len);
+  ASSERT(r == 0);
+  ASSERT((int)len == name_len + 1);
+  ASSERT(buf[0] == '\0');
+  ASSERT(memcmp(&buf[1], name, name_len) == 0);
+
+  len = sizeof buf;
+  r = uv_pipe_getpeername(&pipe_server, buf, &len);
+  ASSERT(r == UV_ENOTCONN);
+
+  r = uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb);
+  ASSERT(r == 0);
+
+  r = uv_pipe_init(loop, &pipe_client, 0);
+  ASSERT(r == 0);
+
+  len = sizeof buf;
+  r = uv_pipe_getsockname(&pipe_client, buf, &len);
+  ASSERT(r == UV_EBADF);
+
+  len = sizeof buf;
+  r = uv_pipe_getpeername(&pipe_client, buf, &len);
+  ASSERT(r == UV_EBADF);
+
+  uv_pipe_connect(&connect_req, &pipe_client, sock_name, pipe_client_connect_cb);
+  connect_req.data = name;  /* flag that we are testing abstract sockets */
+
+  len = sizeof buf;
+  r = uv_pipe_getsockname(&pipe_client, buf, &len);
+  ASSERT(r == 0 && len == 0);
+
+  len = sizeof buf;
+  memset(buf, 1, len);
+  r = uv_pipe_getpeername(&pipe_client, buf, &len);
+  ASSERT(r == 0);
+  ASSERT((int)len == name_len + 1);
+  ASSERT(buf[0] == '\0');
+  ASSERT(memcmp(&buf[1], name, name_len) == 0);
+
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+  ASSERT(pipe_client_connect_cb_called == 1);
+  ASSERT(pipe_close_cb_called == 2);
+
+  free(sock_name);
+
   MAKE_VALGRIND_HAPPY();
   return 0;
 #else

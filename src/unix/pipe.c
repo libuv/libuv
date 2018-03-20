@@ -74,8 +74,8 @@ int uv__get_pipe_name(const char *name, char *pipe_name, const char **pallocated
       pipe_name = uv__malloc(len+1);
       if (pipe_name == NULL) return UV_ENOMEM;
     }
-    *pipe_name++ = '\0';  /* store the starting null char */
-    memcpy(pipe_name, &name[2], len);
+    pipe_name[0] = '\0';  /* store the starting null char */
+    memcpy(&pipe_name[1], &name[2], len);
     len++;                /* include the first null char */
   } else {
     len = (int)strlen(name);
