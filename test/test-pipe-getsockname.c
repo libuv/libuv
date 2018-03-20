@@ -170,15 +170,18 @@ TEST_IMPL(pipe_getsockname_abstract) {
   struct sockaddr_un sun;
   socklen_t sun_len;
   char abstract_pipe[] = "\0test-pipe";
+  int name_len;
 
   sock = socket(AF_LOCAL, SOCK_STREAM, 0);
   ASSERT(sock != -1);
 
-  sun_len = sizeof sun;
-  memset(&sun, 0, sun_len);
-  sun.sun_family = AF_UNIX;
-  memcpy(sun.sun_path, abstract_pipe, sizeof abstract_pipe);
+  name_len = sizeof(abstract_pipe) - 1;  /* do not include the last null char */
 
+  memset(&sun, 0, sizeof sun);
+  sun.sun_family = AF_UNIX;
+  memcpy(sun.sun_path, abstract_pipe, name_len);
+
+  sun_len = offsetof(struct sockaddr_un, sun_path) + name_len;
   r = bind(sock, (struct sockaddr*)&sun, sun_len);
   ASSERT(r == 0);
 
@@ -191,7 +194,8 @@ TEST_IMPL(pipe_getsockname_abstract) {
   r = uv_pipe_getsockname(&pipe_server, buf, &len);
   ASSERT(r == 0);
 
-  ASSERT(memcmp(buf, abstract_pipe, sizeof abstract_pipe) == 0);
+  ASSERT(len == name_len);
+  ASSERT(memcmp(buf, abstract_pipe, name_len) == 0);
 
   uv_close((uv_handle_t*)&pipe_server, pipe_close_cb);
 
