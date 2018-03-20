@@ -29,7 +29,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#define MAX_SOCK_NAME_LEN  sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path)
+#define MAX_SOCK_NAME_LEN  (int)(sizeof(struct sockaddr_un) - offsetof(struct sockaddr_un, sun_path))
 
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
@@ -65,7 +65,7 @@ char * uv_build_abstract_socket_name(char *name, int length, char *buf) {
 }
 
 
-int uv__get_pipe_name(char *name, char *pipe_name, char **pallocated, int max_len) {
+int uv__get_pipe_name(const char *name, char *pipe_name, const char **pallocated, int max_len) {
   int len;
   if (name[0]==0) {  /* abstract socket */
     len = name[1];
@@ -225,7 +225,7 @@ void uv_pipe_connect(uv_connect_t* req,
 
   /* Process the pipe name */
   name_len = uv__get_pipe_name(name, pipe_name, NULL, sizeof(saddr.sun_path) - 1);
-  if (name_len <= 0)
+  if (name_len <= 0) {
     err = name_len;
     goto out;
   }
