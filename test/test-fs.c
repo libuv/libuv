@@ -2833,7 +2833,7 @@ TEST_IMPL(fs_write_multiple_bufs) {
 
 
 TEST_IMPL(fs_write_alotof_bufs) {
-  const size_t iovcount = 54321;
+  size_t iovcount = 54321;
   size_t iovmax;
   uv_buf_t* iovs;
   char* buffer;
@@ -2883,10 +2883,12 @@ TEST_IMPL(fs_write_alotof_bufs) {
 
   ASSERT(lseek(open_req1.result, 0, SEEK_SET) == 0);
   r = uv_fs_read(NULL, &read_req, open_req1.result, iovs, iovcount, -1, NULL);
+  if (iovcount > iovmax)
+    iovcount = iovmax;
   ASSERT(r >= 0);
-  ASSERT((size_t)read_req.result == sizeof(test_buf) * iovmax);
+  ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
 
-  for (index = 0; index < iovmax; ++index)
+  for (index = 0; index < iovcount; ++index)
     ASSERT(strncmp(buffer + index * sizeof(test_buf),
                    test_buf,
                    sizeof(test_buf)) == 0);
