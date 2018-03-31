@@ -74,7 +74,7 @@ ipch
 # Clion / IntelliJ project files
 /.idea/
 
-*.xcodeproj
+xcuserdata
 *.xcworkspace
 
 # make dist output
