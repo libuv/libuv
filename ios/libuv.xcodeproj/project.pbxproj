@@ -283,9 +283,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		3A300800206FDDBB00ABE7C2 /* libuv */ = {
+		3A300800206FDDBB00ABE7C2 /* libuv iOS */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 3A300809206FDDBB00ABE7C2 /* Build configuration list for PBXNativeTarget "libuv" */;
+			buildConfigurationList = 3A300809206FDDBB00ABE7C2 /* Build configuration list for PBXNativeTarget "libuv iOS" */;
 			buildPhases = (
 				3A3007FC206FDDBB00ABE7C2 /* Sources */,
 				3A3007FD206FDDBB00ABE7C2 /* Frameworks */,
@@ -296,7 +296,7 @@
 			);
 			dependencies = (
 			);
-			name = libuv;
+			name = "libuv iOS";
 			productName = libuv;
 			productReference = 3A300801206FDDBB00ABE7C2 /* libuv.framework */;
 			productType = "com.apple.product-type.framework";
@@ -307,7 +307,7 @@
 		3A3007F8206FDDBB00ABE7C2 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0920;
+				LastUpgradeCheck = 0930;
 				ORGANIZATIONNAME = ssrLive;
 				TargetAttributes = {
 					3A300800206FDDBB00ABE7C2 = {
@@ -328,7 +328,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				3A300800206FDDBB00ABE7C2 /* libuv */,
+				3A300800206FDDBB00ABE7C2 /* libuv iOS */,
 			);
 		};
 /* End PBXProject section */
@@ -400,6 +400,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -407,6 +408,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -458,6 +460,7 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
@@ -465,6 +468,7 @@
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -511,7 +515,8 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ssrlive.libuv;
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				PRODUCT_MODULE_NAME = libuv;
+				PRODUCT_NAME = libuv;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -531,7 +536,8 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ssrlive.libuv;
-				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				PRODUCT_MODULE_NAME = libuv;
+				PRODUCT_NAME = libuv;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -549,7 +555,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		3A300809206FDDBB00ABE7C2 /* Build configuration list for PBXNativeTarget "libuv" */ = {
+		3A300809206FDDBB00ABE7C2 /* Build configuration list for PBXNativeTarget "libuv iOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				3A30080A206FDDBB00ABE7C2 /* Debug */,

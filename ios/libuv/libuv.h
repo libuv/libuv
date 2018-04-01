@@ -6,7 +6,7 @@
 //  Copyright © 2018 ssrLive. All rights reserved.
 //
 
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
 
 //! Project version number for libuv.
 FOUNDATION_EXPORT double libuvVersionNumber;
