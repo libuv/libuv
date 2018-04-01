@@ -18,6 +18,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2018 ssrLive. All rights reserved.</string>
 	<key>NSPrincipalClass</key>
 	<string></string>
 </dict>

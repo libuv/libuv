@@ -64,6 +64,63 @@
 		3A3008A7206FDE7500ABE7C2 /* fs-poll.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086B206FDE7400ABE7C2 /* fs-poll.c */; };
 		3A3008A8206FDE7500ABE7C2 /* uv-common.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086C206FDE7400ABE7C2 /* uv-common.c */; };
 		3A3008AA206FE32D00ABE7C2 /* kqueue.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A3008A9206FE32D00ABE7C2 /* kqueue.c */; };
+		3AE1E07A2070AE9500B52995 /* android-ifaddrs.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30081D206FDE3B00ABE7C2 /* android-ifaddrs.h */; };
+		3AE1E07B2070AE9500B52995 /* pthread-barrier.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30080E206FDE3A00ABE7C2 /* pthread-barrier.h */; };
+		3AE1E07C2070AE9500B52995 /* stdint-msvc2008.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300812206FDE3A00ABE7C2 /* stdint-msvc2008.h */; };
+		3AE1E07D2070AE9500B52995 /* tree.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300817206FDE3B00ABE7C2 /* tree.h */; };
+		3AE1E07E2070AE9500B52995 /* uv-aix.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30080D206FDE3A00ABE7C2 /* uv-aix.h */; };
+		3AE1E07F2070AE9500B52995 /* uv-bsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30080F206FDE3A00ABE7C2 /* uv-bsd.h */; };
+		3AE1E0802070AE9A00B52995 /* uv-darwin.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300810206FDE3A00ABE7C2 /* uv-darwin.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3AE1E0812070AEA400B52995 /* uv-errno.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300811206FDE3A00ABE7C2 /* uv-errno.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3AE1E0822070AEAA00B52995 /* uv-linux.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300814206FDE3B00ABE7C2 /* uv-linux.h */; };
+		3AE1E0832070AEAF00B52995 /* uv-os390.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300813206FDE3A00ABE7C2 /* uv-os390.h */; };
+		3AE1E0842070AEB500B52995 /* uv-posix.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300818206FDE3B00ABE7C2 /* uv-posix.h */; };
+		3AE1E0852070AEB900B52995 /* uv-sunos.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300815206FDE3B00ABE7C2 /* uv-sunos.h */; };
+		3AE1E0862070AEBC00B52995 /* uv-threadpool.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300819206FDE3B00ABE7C2 /* uv-threadpool.h */; };
+		3AE1E0872070AEC000B52995 /* uv-unix.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300816206FDE3B00ABE7C2 /* uv-unix.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3AE1E0882070AEC500B52995 /* uv-version.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30081A206FDE3B00ABE7C2 /* uv-version.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3AE1E0892070AECA00B52995 /* uv-win.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30081B206FDE3B00ABE7C2 /* uv-win.h */; };
+		3AE1E08A2070AECE00B52995 /* uv.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30081C206FDE3B00ABE7C2 /* uv.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3AE1E08B2070AF7E00B52995 /* libuv.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300804206FDDBB00ABE7C2 /* libuv.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		3AE1E08C2070AFB000B52995 /* fs-poll.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086B206FDE7400ABE7C2 /* fs-poll.c */; };
+		3AE1E08D2070AFB300B52995 /* heap-inl.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300831206FDE7400ABE7C2 /* heap-inl.h */; };
+		3AE1E08E2070AFC900B52995 /* inet.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300869206FDE7400ABE7C2 /* inet.c */; };
+		3AE1E08F2070AFCD00B52995 /* queue.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300833206FDE7400ABE7C2 /* queue.h */; };
+		3AE1E0902070AFD000B52995 /* threadpool.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086A206FDE7400ABE7C2 /* threadpool.c */; };
+		3AE1E0912070AFD700B52995 /* async.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300838206FDE7400ABE7C2 /* async.c */; };
+		3AE1E0922070AFDA00B52995 /* atomic-ops.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300839206FDE7400ABE7C2 /* atomic-ops.h */; };
+		3AE1E0932070AFDD00B52995 /* bsd-ifaddrs.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30083A206FDE7400ABE7C2 /* bsd-ifaddrs.c */; };
+		3AE1E0942070AFDF00B52995 /* core.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30083B206FDE7400ABE7C2 /* core.c */; };
+		3AE1E0952070AFE200B52995 /* darwin-proctitle.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30083D206FDE7400ABE7C2 /* darwin-proctitle.c */; };
+		3AE1E0962070AFE500B52995 /* darwin.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30083E206FDE7400ABE7C2 /* darwin.c */; };
+		3AE1E0972070AFE800B52995 /* dl.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30083F206FDE7400ABE7C2 /* dl.c */; };
+		3AE1E0982070AFFC00B52995 /* fs.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300841206FDE7400ABE7C2 /* fs.c */; };
+		3AE1E0992070AFFC00B52995 /* fsevents.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300842206FDE7400ABE7C2 /* fsevents.c */; };
+		3AE1E09A2070AFFC00B52995 /* getaddrinfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300843206FDE7400ABE7C2 /* getaddrinfo.c */; };
+		3AE1E09B2070AFFC00B52995 /* getnameinfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300844206FDE7400ABE7C2 /* getnameinfo.c */; };
+		3AE1E09C2070AFFC00B52995 /* linux-syscalls.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30084A206FDE7400ABE7C2 /* linux-syscalls.c */; };
+		3AE1E09D2070AFFC00B52995 /* kqueue.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A3008A9206FE32D00ABE7C2 /* kqueue.c */; };
+		3AE1E09E2070AFFC00B52995 /* loop-watcher.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30084C206FDE7400ABE7C2 /* loop-watcher.c */; };
+		3AE1E09F2070AFFC00B52995 /* loop.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30084D206FDE7400ABE7C2 /* loop.c */; };
+		3AE1E0A02070AFFC00B52995 /* no-proctitle.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300850206FDE7400ABE7C2 /* no-proctitle.c */; };
+		3AE1E0A12070AFFC00B52995 /* pipe.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300855206FDE7400ABE7C2 /* pipe.c */; };
+		3AE1E0A22070AFFC00B52995 /* poll.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300856206FDE7400ABE7C2 /* poll.c */; };
+		3AE1E0A32070AFFC00B52995 /* process.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300859206FDE7400ABE7C2 /* process.c */; };
+		3AE1E0A42070AFFC00B52995 /* pthread-fixes.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30085C206FDE7400ABE7C2 /* pthread-fixes.c */; };
+		3AE1E0A52070AFFC00B52995 /* signal.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30085D206FDE7400ABE7C2 /* signal.c */; };
+		3AE1E0A62070AFFC00B52995 /* stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30085F206FDE7400ABE7C2 /* stream.c */; };
+		3AE1E0A72070AFFC00B52995 /* tcp.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300863206FDE7400ABE7C2 /* tcp.c */; };
+		3AE1E0A82070AFFC00B52995 /* thread.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300864206FDE7400ABE7C2 /* thread.c */; };
+		3AE1E0A92070AFFC00B52995 /* timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300865206FDE7400ABE7C2 /* timer.c */; };
+		3AE1E0AA2070AFFC00B52995 /* tty.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300866206FDE7400ABE7C2 /* tty.c */; };
+		3AE1E0AB2070AFFC00B52995 /* udp.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300867206FDE7400ABE7C2 /* udp.c */; };
+		3AE1E0AC2070AFFC00B52995 /* uv-common.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086C206FDE7400ABE7C2 /* uv-common.c */; };
+		3AE1E0AD2070AFFC00B52995 /* uv-data-getter-setters.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300832206FDE7400ABE7C2 /* uv-data-getter-setters.c */; };
+		3AE1E0AE2070AFFC00B52995 /* version.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A300868206FDE7400ABE7C2 /* version.c */; };
+		3AE1E0AF2070B01A00B52995 /* internal.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300846206FDE7400ABE7C2 /* internal.h */; };
+		3AE1E0B02070B01A00B52995 /* linux-syscalls.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30084B206FDE7400ABE7C2 /* linux-syscalls.h */; };
+		3AE1E0B12070B01A00B52995 /* spinlock.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30085E206FDE7400ABE7C2 /* spinlock.h */; };
+		3AE1E0B22070B01A00B52995 /* uv-common.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300830206FDE7400ABE7C2 /* uv-common.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -126,10 +183,18 @@
 		3A30086B206FDE7400ABE7C2 /* fs-poll.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "fs-poll.c"; path = "../src/fs-poll.c"; sourceTree = "<group>"; };
 		3A30086C206FDE7400ABE7C2 /* uv-common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "uv-common.c"; path = "../src/uv-common.c"; sourceTree = "<group>"; };
 		3A3008A9206FE32D00ABE7C2 /* kqueue.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kqueue.c; sourceTree = "<group>"; };
+		3AE1E0722070ADF300B52995 /* libuv.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = libuv.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		3A3007FD206FDDBB00ABE7C2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3AE1E06E2070ADF300B52995 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -153,6 +218,7 @@
 			isa = PBXGroup;
 			children = (
 				3A300801206FDDBB00ABE7C2 /* libuv.framework */,
+				3AE1E0722070ADF300B52995 /* libuv.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -280,6 +346,38 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3AE1E06F2070ADF300B52995 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3AE1E0882070AEC500B52995 /* uv-version.h in Headers */,
+				3AE1E08A2070AECE00B52995 /* uv.h in Headers */,
+				3AE1E08F2070AFCD00B52995 /* queue.h in Headers */,
+				3AE1E0B02070B01A00B52995 /* linux-syscalls.h in Headers */,
+				3AE1E07E2070AE9500B52995 /* uv-aix.h in Headers */,
+				3AE1E0B22070B01A00B52995 /* uv-common.h in Headers */,
+				3AE1E08B2070AF7E00B52995 /* libuv.h in Headers */,
+				3AE1E0832070AEAF00B52995 /* uv-os390.h in Headers */,
+				3AE1E07D2070AE9500B52995 /* tree.h in Headers */,
+				3AE1E0922070AFDA00B52995 /* atomic-ops.h in Headers */,
+				3AE1E0852070AEB900B52995 /* uv-sunos.h in Headers */,
+				3AE1E07A2070AE9500B52995 /* android-ifaddrs.h in Headers */,
+				3AE1E07C2070AE9500B52995 /* stdint-msvc2008.h in Headers */,
+				3AE1E0AF2070B01A00B52995 /* internal.h in Headers */,
+				3AE1E0822070AEAA00B52995 /* uv-linux.h in Headers */,
+				3AE1E07B2070AE9500B52995 /* pthread-barrier.h in Headers */,
+				3AE1E08D2070AFB300B52995 /* heap-inl.h in Headers */,
+				3AE1E0872070AEC000B52995 /* uv-unix.h in Headers */,
+				3AE1E0802070AE9A00B52995 /* uv-darwin.h in Headers */,
+				3AE1E07F2070AE9500B52995 /* uv-bsd.h in Headers */,
+				3AE1E0B12070B01A00B52995 /* spinlock.h in Headers */,
+				3AE1E0862070AEBC00B52995 /* uv-threadpool.h in Headers */,
+				3AE1E0892070AECA00B52995 /* uv-win.h in Headers */,
+				3AE1E0812070AEA400B52995 /* uv-errno.h in Headers */,
+				3AE1E0842070AEB500B52995 /* uv-posix.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
@@ -301,6 +399,24 @@
 			productReference = 3A300801206FDDBB00ABE7C2 /* libuv.framework */;
 			productType = "com.apple.product-type.framework";
 		};
+		3AE1E0712070ADF300B52995 /* libuv macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3AE1E0772070ADF300B52995 /* Build configuration list for PBXNativeTarget "libuv macOS" */;
+			buildPhases = (
+				3AE1E06D2070ADF300B52995 /* Sources */,
+				3AE1E06E2070ADF300B52995 /* Frameworks */,
+				3AE1E06F2070ADF300B52995 /* Headers */,
+				3AE1E0702070ADF300B52995 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "libuv macOS";
+			productName = libuv;
+			productReference = 3AE1E0722070ADF300B52995 /* libuv.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -312,6 +428,10 @@
 				TargetAttributes = {
 					3A300800206FDDBB00ABE7C2 = {
 						CreatedOnToolsVersion = 9.2;
+						ProvisioningStyle = Automatic;
+					};
+					3AE1E0712070ADF300B52995 = {
+						CreatedOnToolsVersion = 9.3;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -329,12 +449,20 @@
 			projectRoot = "";
 			targets = (
 				3A300800206FDDBB00ABE7C2 /* libuv iOS */,
+				3AE1E0712070ADF300B52995 /* libuv macOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		3A3007FF206FDDBB00ABE7C2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3AE1E0702070ADF300B52995 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -380,6 +508,45 @@
 				3A300895206FDE7500ABE7C2 /* process.c in Sources */,
 				3A300888206FDE7500ABE7C2 /* loop-watcher.c in Sources */,
 				3A300874206FDE7500ABE7C2 /* async.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3AE1E06D2070ADF300B52995 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3AE1E0AE2070AFFC00B52995 /* version.c in Sources */,
+				3AE1E09D2070AFFC00B52995 /* kqueue.c in Sources */,
+				3AE1E0902070AFD000B52995 /* threadpool.c in Sources */,
+				3AE1E0932070AFDD00B52995 /* bsd-ifaddrs.c in Sources */,
+				3AE1E09C2070AFFC00B52995 /* linux-syscalls.c in Sources */,
+				3AE1E09E2070AFFC00B52995 /* loop-watcher.c in Sources */,
+				3AE1E0A62070AFFC00B52995 /* stream.c in Sources */,
+				3AE1E0A72070AFFC00B52995 /* tcp.c in Sources */,
+				3AE1E0A32070AFFC00B52995 /* process.c in Sources */,
+				3AE1E09B2070AFFC00B52995 /* getnameinfo.c in Sources */,
+				3AE1E0942070AFDF00B52995 /* core.c in Sources */,
+				3AE1E0952070AFE200B52995 /* darwin-proctitle.c in Sources */,
+				3AE1E0982070AFFC00B52995 /* fs.c in Sources */,
+				3AE1E0A42070AFFC00B52995 /* pthread-fixes.c in Sources */,
+				3AE1E08C2070AFB000B52995 /* fs-poll.c in Sources */,
+				3AE1E0A22070AFFC00B52995 /* poll.c in Sources */,
+				3AE1E0AD2070AFFC00B52995 /* uv-data-getter-setters.c in Sources */,
+				3AE1E0972070AFE800B52995 /* dl.c in Sources */,
+				3AE1E0912070AFD700B52995 /* async.c in Sources */,
+				3AE1E0A12070AFFC00B52995 /* pipe.c in Sources */,
+				3AE1E0A92070AFFC00B52995 /* timer.c in Sources */,
+				3AE1E09F2070AFFC00B52995 /* loop.c in Sources */,
+				3AE1E0A82070AFFC00B52995 /* thread.c in Sources */,
+				3AE1E0A02070AFFC00B52995 /* no-proctitle.c in Sources */,
+				3AE1E0962070AFE500B52995 /* darwin.c in Sources */,
+				3AE1E09A2070AFFC00B52995 /* getaddrinfo.c in Sources */,
+				3AE1E0992070AFFC00B52995 /* fsevents.c in Sources */,
+				3AE1E0AC2070AFFC00B52995 /* uv-common.c in Sources */,
+				3AE1E08E2070AFC900B52995 /* inet.c in Sources */,
+				3AE1E0A52070AFFC00B52995 /* signal.c in Sources */,
+				3AE1E0AB2070AFFC00B52995 /* udp.c in Sources */,
+				3AE1E0AA2070AFFC00B52995 /* tty.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -543,6 +710,56 @@
 			};
 			name = Release;
 		};
+		3AE1E0782070ADF300B52995 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = "";
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_VERSION = A;
+				INFOPLIST_FILE = libuv/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ssrlive.libuv;
+				PRODUCT_MODULE_NAME = libuv;
+				PRODUCT_NAME = libuv;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		3AE1E0792070ADF300B52995 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = "";
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_VERSION = A;
+				INFOPLIST_FILE = libuv/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ssrlive.libuv;
+				PRODUCT_MODULE_NAME = libuv;
+				PRODUCT_NAME = libuv;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -560,6 +777,15 @@
 			buildConfigurations = (
 				3A30080A206FDDBB00ABE7C2 /* Debug */,
 				3A30080B206FDDBB00ABE7C2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3AE1E0772070ADF300B52995 /* Build configuration list for PBXNativeTarget "libuv macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3AE1E0782070ADF300B52995 /* Debug */,
+				3AE1E0792070ADF300B52995 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
