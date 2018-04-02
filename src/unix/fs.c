@@ -1059,7 +1059,7 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
 
   while (nbufs > 0) {
     req->nbufs = nbufs;
-    if (req->nbufs > iovmax)
+    if (req->nbufs > iovmax && iovmax != -1)
       req->nbufs = iovmax;
 
     result = process(req);

@@ -780,7 +780,7 @@ start:
   iovmax = uv__getiovmax();
 
   /* Limit iov count to avoid EINVALs from writev() */
-  if (iovcnt > iovmax)
+  if (iovcnt > iovmax && iovmax != -1)
     iovcnt = iovmax;
 
   /*
