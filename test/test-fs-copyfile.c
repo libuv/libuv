@@ -70,7 +70,6 @@ static void touch_file(const char* name, unsigned int size) {
   uv_fs_t req;
   uv_buf_t buf;
   int r;
-  unsigned int i;
 
   r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT | O_TRUNC,
                  S_IWUSR | S_IRUSR, NULL);
@@ -78,11 +77,9 @@ static void touch_file(const char* name, unsigned int size) {
   ASSERT(r >= 0);
   file = r;
 
-  buf = uv_buf_init("a", 1);
-
-  /* Inefficient but simple. */
-  for (i = 0; i < size; i++) {
-    r = uv_fs_write(NULL, &req, file, &buf, 1, i, NULL);
+  if (size > 0) {
+    buf = uv_buf_init("a", 1);
+    r = uv_fs_write(NULL, &req, file, &buf, 1, size - 1, NULL);
     uv_fs_req_cleanup(&req);
     ASSERT(r >= 0);
   }
@@ -185,5 +182,37 @@ TEST_IMPL(fs_copyfile) {
     handle_result(&req);
 
   unlink(dst); /* Cleanup */
+  return 0;
+}
+
+TEST_IMPL(fs_huge_copyfile) {
+  char* src;
+  uv_loop_t* loop;
+  uv_fs_t req;
+  int r;
+
+#if defined(_AIX)
+  RETURN_SKIP("AIX does not support files larger than 2GB.");
+#elif defined(_WIN32) || defined(__APPLE__)
+  RETURN_SKIP("Flaky test on CI. It takes excessive time.");
+#endif
+
+
+  src = "test_file_src";
+  loop = uv_default_loop();
+
+  unlink(src);
+  unlink(dst);
+
+  touch_file(src, 0x7ffff000 + 10);
+
+  r = uv_fs_copyfile(loop, &req, src, dst, 0, handle_result);
+  ASSERT(r == 0);
+  ASSERT(result_check_count == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(result_check_count == 1);
+  unlink(src);
+  unlink(dst);
+
   return 0;
 }

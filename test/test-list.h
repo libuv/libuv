@@ -283,6 +283,7 @@ TEST_DECLARE   (fs_fstat)
 TEST_DECLARE   (fs_access)
 TEST_DECLARE   (fs_chmod)
 TEST_DECLARE   (fs_copyfile)
+TEST_DECLARE   (fs_huge_copyfile)
 TEST_DECLARE   (fs_unlink_readonly)
 #ifdef _WIN32
 TEST_DECLARE   (fs_unlink_archive_readonly)
@@ -817,6 +818,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_access)
   TEST_ENTRY  (fs_chmod)
   TEST_ENTRY  (fs_copyfile)
+  TEST_ENTRY_CUSTOM (fs_huge_copyfile, 0, 0, 900000)
   TEST_ENTRY  (fs_unlink_readonly)
 #ifdef _WIN32
   TEST_ENTRY  (fs_unlink_archive_readonly)
