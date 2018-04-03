@@ -290,7 +290,7 @@ A client which wants to connect to a domain socket will use::
 
     void uv_pipe_connect(uv_connect_t *req, uv_pipe_t *handle, const char *name, uv_connect_cb cb);
 
-where ``name`` will be ``echo.sock`` or similar. ``name`` needs to point to a valid file on Unix systems e.g. ``/tmp/echo.sock``, and ``name`` needs the ``\\?\pipe\echo.sock`` format on Windows.
+where ``name`` will be ``echo.sock`` or similar. On Unix systems``name`` needs to point to a valid file e.g. ``/tmp/echo.sock``. On Windows ``name`` needs the ``\\?\pipe\echo.sock`` format.
 
 .. _socat: http://www.dest-unreach.org/socat/
 
