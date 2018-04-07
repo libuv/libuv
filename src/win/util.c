@@ -587,8 +587,8 @@ int uv_uptime(double* uptime) {
         BYTE* address = (BYTE*) object_type + object_type->DefinitionLength +
                         counter_definition->CounterOffset;
         uint64_t value = *((uint64_t*) address);
-        *uptime = (double) (object_type->PerfTime.QuadPart - value) /
-                  (double) object_type->PerfFreq.QuadPart;
+        *uptime = floor((double) (object_type->PerfTime.QuadPart - value) /
+                        (double) object_type->PerfFreq.QuadPart);
         uv__free(malloced_buffer);
         return 0;
       }
