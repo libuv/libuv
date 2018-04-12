@@ -37,10 +37,6 @@
 #include <sys/sem.h>
 #endif
 
-#ifdef __GLIBC__
-#include <features.h>  /* __GLIBC_MINOR__ */
-#endif
-
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
@@ -504,7 +500,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
   return 0;
 }
 
-#elif defined(__GLIBC__) && __GLIBC_MINOR__ < 21
+#elif defined(__GLIBC__)
 
 /* Hack around https://sourceware.org/bugzilla/show_bug.cgi?id=12674
  * by providing a custom implementation for glibc < 2.21 in terms of other
