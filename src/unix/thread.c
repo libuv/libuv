@@ -526,18 +526,18 @@ int uv_sem_init(uv_sem_t* sem_, unsigned int value) {
   int err;
   uv_semaphore_t* sem;
 
-  sem = malloc(sizeof(uv_semaphore_t));
+  sem = uv__malloc(sizeof(uv_semaphore_t));
   if (sem == NULL)
     return UV_ENOMEM;
 
   if ((err = uv_mutex_init(&sem->mutex)) != 0) {
-    free(sem);
+    uv__free(sem);
     return err;
   }
 
   if ((err = uv_cond_init(&sem->cond)) != 0) {
     uv_mutex_destroy(&sem->mutex);
-    free(sem);
+    uv__free(sem);
     return err;
   }
 
@@ -554,7 +554,7 @@ void uv_sem_destroy(uv_sem_t* sem_) {
   sem = *(uv_semaphore_t**)sem_;
   uv_cond_destroy(&sem->cond);
   uv_mutex_destroy(&sem->mutex);
-  free(sem);
+  uv__free(sem);
 }
 
 
