@@ -522,11 +522,12 @@ typedef struct uv_semaphore_s {
 } uv_semaphore_t;
 
 
+STATIC_ASSERT(sizeof(uv_sem_t) >= sizeof(uv_semaphore_t*));
 int uv_sem_init(uv_sem_t* sem_, unsigned int value) {
   int err;
   uv_semaphore_t* sem;
 
-  sem = uv__malloc(sizeof(uv_semaphore_t));
+  sem = uv__malloc(sizeof(*sem));
   if (sem == NULL)
     return UV_ENOMEM;
 
@@ -541,7 +542,6 @@ int uv_sem_init(uv_sem_t* sem_, unsigned int value) {
     return err;
   }
 
-  assert(sizeof(uv_sem_t) >= sizeof(uv_semaphore_t*));
   sem->value = value;
   *(uv_semaphore_t**) sem_ = sem;
   return 0;
