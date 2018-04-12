@@ -37,6 +37,10 @@
 #include <sys/sem.h>
 #endif
 
+#ifdef __GLIBC__
+#include <features.h>  /* __GLIBC_MINOR__ */
+#endif
+
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
@@ -500,7 +504,102 @@ int uv_sem_trywait(uv_sem_t* sem) {
   return 0;
 }
 
-#else /* !(defined(__APPLE__) && defined(__MACH__)) */
+#elif defined(__GLIBC__) && __GLIBC_MINOR__ < 21
+
+/* Hack around https://sourceware.org/bugzilla/show_bug.cgi?id=12674
+ * by providing a custom implementation for glibc < 2.21 in terms of other
+ * concurrency primitives.
+ * Refs: https://github.com/nodejs/node/issues/19903 */
+
+/* To preserve ABI compatibility, we treat the uv_sem_t as storage for
+ * a pointer to the actual struct we're using underneath. */
+
+
+typedef struct uv_semaphore_s {
+  uv_mutex_t mutex;
+  uv_cond_t cond;
+  unsigned int value;
+} uv_semaphore_t;
+
+
+int uv_sem_init(uv_sem_t* sem_, unsigned int value) {
+  int err;
+  uv_semaphore_t* sem;
+
+  sem = malloc(sizeof(uv_semaphore_t));
+  if (sem == NULL)
+    return UV_ENOMEM;
+
+  if ((err = uv_mutex_init(&sem->mutex)) != 0) {
+    free(sem);
+    return err;
+  }
+
+  if ((err = uv_cond_init(&sem->cond)) != 0) {
+    uv_mutex_destroy(&sem->mutex);
+    free(sem);
+    return err;
+  }
+
+  assert(sizeof(uv_sem_t) >= sizeof(uv_semaphore_t*));
+  sem->value = value;
+  *(uv_semaphore_t**) sem_ = sem;
+  return 0;
+}
+
+
+void uv_sem_destroy(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  uv_cond_destroy(&sem->cond);
+  uv_mutex_destroy(&sem->mutex);
+  free(sem);
+}
+
+
+void uv_sem_post(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  uv_mutex_lock(&sem->mutex);
+  sem->value++;
+  uv_cond_signal(&sem->cond);
+  uv_mutex_unlock(&sem->mutex);
+}
+
+
+void uv_sem_wait(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  uv_mutex_lock(&sem->mutex);
+  while (sem->value == 0)
+    uv_cond_wait(&sem->cond, &sem->mutex);
+  sem->value--;
+  uv_mutex_unlock(&sem->mutex);
+}
+
+
+int uv_sem_trywait(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  if (uv_mutex_trylock(&sem->mutex) != 0)
+    return UV_EAGAIN;
+
+  if (sem->value == 0) {
+    uv_mutex_unlock(&sem->mutex);
+    return UV_EAGAIN;
+  }
+
+  sem->value--;
+  uv_mutex_unlock(&sem->mutex);
+
+  return 0;
+}
+
+#else /* !(defined(__APPLE__) && defined(__MACH__) && defined(__GLIBC__)) */
 
 int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   if (sem_init(sem, 0, value))
