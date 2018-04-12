@@ -564,7 +564,8 @@ void uv_sem_post(uv_sem_t* sem_) {
   sem = *(uv_semaphore_t**)sem_;
   uv_mutex_lock(&sem->mutex);
   sem->value++;
-  uv_cond_signal(&sem->cond);
+  if (sem->value == 1)
+    uv_cond_signal(&sem->cond);
   uv_mutex_unlock(&sem->mutex);
 }
 
