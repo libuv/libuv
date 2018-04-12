@@ -519,7 +519,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
 static uv_once_t glibc_version_check_once = UV_ONCE_INIT;
 static int glibc_needs_custom_semaphore = 0;
 
-void glibc_version_check(void) {
+static void glibc_version_check(void) {
   const char* version = gnu_get_libc_version();
   glibc_needs_custom_semaphore =
       version[0] == '2' && version[1] == '.' &&
