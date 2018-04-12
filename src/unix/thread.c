@@ -37,6 +37,10 @@
 #include <sys/sem.h>
 #endif
 
+#ifdef __GLIBC__
+#include <gnu/libc-version.h>  /* gnu_get_libc_version() */
+#endif
+
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
@@ -500,7 +504,9 @@ int uv_sem_trywait(uv_sem_t* sem) {
   return 0;
 }
 
-#elif defined(__GLIBC__)
+#else /* !(defined(__APPLE__) && defined(__MACH__)) */
+
+#ifdef __GLIBC__
 
 /* Hack around https://sourceware.org/bugzilla/show_bug.cgi?id=12674
  * by providing a custom implementation for glibc < 2.21 in terms of other
@@ -510,6 +516,21 @@ int uv_sem_trywait(uv_sem_t* sem) {
 /* To preserve ABI compatibility, we treat the uv_sem_t as storage for
  * a pointer to the actual struct we're using underneath. */
 
+static uv_once_t glibc_version_check_once = UV_ONCE_INIT;
+static int glibc_needs_custom_semaphore = 0;
+
+void glibc_version_check(void) {
+  const char* version = gnu_get_libc_version();
+  glibc_needs_custom_semaphore =
+      version[0] == '2' && version[1] == '.' &&
+      atoi(version + 2) < 21;
+}
+
+#else /* !defined(__GLIBC__) */
+
+#define glibc_needs_custom_semaphore 0
+
+#endif
 
 typedef struct uv_semaphore_s {
   uv_mutex_t mutex;
@@ -519,7 +540,8 @@ typedef struct uv_semaphore_s {
 
 
 STATIC_ASSERT(sizeof(uv_sem_t) >= sizeof(uv_semaphore_t*));
-int uv_sem_init(uv_sem_t* sem_, unsigned int value) {
+
+static int uv__custom_sem_init(uv_sem_t* sem_, unsigned int value) {
   int err;
   uv_semaphore_t* sem;
 
@@ -544,7 +566,7 @@ int uv_sem_init(uv_sem_t* sem_, unsigned int value) {
 }
 
 
-void uv_sem_destroy(uv_sem_t* sem_) {
+static void uv__custom_sem_destroy(uv_sem_t* sem_) {
   uv_semaphore_t* sem;
 
   sem = *(uv_semaphore_t**)sem_;
@@ -554,7 +576,7 @@ void uv_sem_destroy(uv_sem_t* sem_) {
 }
 
 
-void uv_sem_post(uv_sem_t* sem_) {
+static void uv__custom_sem_post(uv_sem_t* sem_) {
   uv_semaphore_t* sem;
 
   sem = *(uv_semaphore_t**)sem_;
@@ -566,7 +588,7 @@ void uv_sem_post(uv_sem_t* sem_) {
 }
 
 
-void uv_sem_wait(uv_sem_t* sem_) {
+static void uv__custom_sem_wait(uv_sem_t* sem_) {
   uv_semaphore_t* sem;
 
   sem = *(uv_semaphore_t**)sem_;
@@ -578,7 +600,7 @@ void uv_sem_wait(uv_sem_t* sem_) {
 }
 
 
-int uv_sem_trywait(uv_sem_t* sem_) {
+static int uv__custom_sem_trywait(uv_sem_t* sem_) {
   uv_semaphore_t* sem;
 
   sem = *(uv_semaphore_t**)sem_;
@@ -596,28 +618,26 @@ int uv_sem_trywait(uv_sem_t* sem_) {
   return 0;
 }
 
-#else /* !(defined(__APPLE__) && defined(__MACH__) && defined(__GLIBC__)) */
-
-int uv_sem_init(uv_sem_t* sem, unsigned int value) {
+static int uv__sem_init(uv_sem_t* sem, unsigned int value) {
   if (sem_init(sem, 0, value))
     return UV__ERR(errno);
   return 0;
 }
 
 
-void uv_sem_destroy(uv_sem_t* sem) {
+static void uv__sem_destroy(uv_sem_t* sem) {
   if (sem_destroy(sem))
     abort();
 }
 
 
-void uv_sem_post(uv_sem_t* sem) {
+static void uv__sem_post(uv_sem_t* sem) {
   if (sem_post(sem))
     abort();
 }
 
 
-void uv_sem_wait(uv_sem_t* sem) {
+static void uv__sem_wait(uv_sem_t* sem) {
   int r;
 
   do
@@ -629,7 +649,7 @@ void uv_sem_wait(uv_sem_t* sem) {
 }
 
 
-int uv_sem_trywait(uv_sem_t* sem) {
+static int uv__sem_trywait(uv_sem_t* sem) {
   int r;
 
   do
@@ -643,6 +663,49 @@ int uv_sem_trywait(uv_sem_t* sem) {
   }
 
   return 0;
+}
+
+int uv_sem_init(uv_sem_t* sem, unsigned int value) {
+#ifdef __GLIBC__
+  uv_once(&glibc_version_check_once, glibc_version_check);
+#endif
+
+  if (glibc_needs_custom_semaphore)
+    return uv__custom_sem_init(sem, value);
+  else
+    return uv__sem_init(sem, value);
+}
+
+
+void uv_sem_destroy(uv_sem_t* sem) {
+  if (glibc_needs_custom_semaphore)
+    uv__custom_sem_destroy(sem);
+  else
+    uv__sem_destroy(sem);
+}
+
+
+void uv_sem_post(uv_sem_t* sem) {
+  if (glibc_needs_custom_semaphore)
+    uv__custom_sem_post(sem);
+  else
+    uv__sem_post(sem);
+}
+
+
+void uv_sem_wait(uv_sem_t* sem) {
+  if (glibc_needs_custom_semaphore)
+    uv__custom_sem_wait(sem);
+  else
+    uv__sem_wait(sem);
+}
+
+
+int uv_sem_trywait(uv_sem_t* sem) {
+  if (glibc_needs_custom_semaphore)
+    return uv__custom_sem_trywait(sem);
+  else
+    return uv__sem_trywait(sem);
 }
 
 #endif /* defined(__APPLE__) && defined(__MACH__) */
