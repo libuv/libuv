@@ -647,8 +647,12 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct epoll_event* events;
   struct epoll_event dummy;
+  struct aiocb aio_cancel;
   uintptr_t i;
   uintptr_t nfds;
+  int rv;
+  int rc;
+  int rsn;
 
   assert(loop->watchers != NULL);
 
@@ -659,6 +663,12 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
     for (i = 0; i < nfds; i++)
       if ((int) events[i].fd == fd)
         events[i].fd = -1;
+
+  memset(&aio_cancel, 0, sizeof(aio_cancel));
+  aio_cancel.aio_cmd = AIO_CANCEL;
+  aio_cancel.aio_fildes = fd;
+  aio_cancel.aio_cflags = AIO_CANCELNONOTIFY;
+  BPX4AIO(sizeof(aio_cancel), &aio_cancel, &rv, &rc, &rsn);
 
   /* Remove the file descriptor from the epoll. */
   if (loop->ep != NULL)
@@ -766,35 +776,104 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
 }
 
 
-static int os390_message_queue_handler(uv__os390_epoll* ep) {
+static int fs_event_message(_RFIM* msg) {
   uv_fs_event_t* handle;
-  int msglen;
   int events;
-  _RFIM msg;
+
+  events = 0;
+  if (msg->__rfim_event == _RFIM_ATTR || msg->__rfim_event == _RFIM_WRITE)
+    events = UV_CHANGE;
+  else if (msg->__rfim_event == _RFIM_RENAME)
+    events = UV_RENAME;
+  else
+    /* Some event that we are not interested in. */
+    return -1;
+
+  handle = *(uv_fs_event_t**)(msg->__rfim_utok);
+  handle->cb(handle, uv__basename_r(handle->path), events, 0);
+  return 0;
+}
+
+
+static int aio_connect_message(struct aiocb* aio) {
+  uv_connect_t* req;
+  uv_stream_t* handle;
+  uv__io_t* w;
+  QUEUE* q;
+  int events;
+  int fd; 
+
+  req = container_of(aio, uv_connect_t, aio);
+  handle = req->handle;
+  w = &handle->io_watcher;
+  
+  events = POLLOUT;
+  if (aio->aio_rv == -1)
+    events = POLLERR;
+
+  /* Clear aio structure now that we are handling it */
+  uv__free(aio->aio_sockaddrptr);
+  memset(aio, 0, sizeof(*aio));
+
+  /* Give users only events they're interested in. Prevents spurious
+   * callbacks when previous callback invocation in this loop has stopped
+   * the current watcher. Also, filters out events that users has not
+   * requested us to watch.
+   */
+  events &= w->pevents | POLLERR;
+  if (events == POLLERR)
+    events |= w->pevents & (POLLIN | POLLOUT);
+
+  /* File descriptor that we've stopped watching, ignore */
+  if (w->fd == -1 || handle->loop->watchers[w->fd] == NULL)
+    return 0;
+
+  /* Set socket to non-blocking mode because now it will be "poll"ed */
+  uv__nonblock(w->fd, 1);
+
+  /* Call callback */
+  w->cb(handle->loop, w, events);
+  return 0;
+}
+
+
+static int os390_message_queue_handler(uv__os390_epoll* ep) {
+  int msglen;
+  int nevents;
+  union {
+    long int type;
+    _RFIM rfim;
+    struct {
+      long int type;
+      struct aiocb* aio;
+    } aiomsg;
+  } msg;
 
   if (ep->msg_queue == -1)
     return 0;
 
-  msglen = msgrcv(ep->msg_queue, &msg, sizeof(msg), 0, IPC_NOWAIT);
+  nevents = 0;
+  for (;;) {
+    msglen = msgrcv(ep->msg_queue, &msg, sizeof(msg), 0, IPC_NOWAIT);
 
-  if (msglen == -1 && errno == ENOMSG)
-    return 0;
+    if (msglen == -1 && errno == ENOMSG)
+      return nevents;
 
-  if (msglen == -1)
-    abort();
+    if (msglen == -1)
+      abort();
 
-  events = 0;
-  if (msg.__rfim_event == _RFIM_ATTR || msg.__rfim_event == _RFIM_WRITE)
-    events = UV_CHANGE;
-  else if (msg.__rfim_event == _RFIM_RENAME)
-    events = UV_RENAME;
-  else
-    /* Some event that we are not interested in. */
-    return 0;
+    if (msg.type == SIGIO) {
+      if (aio_connect_message(msg.aiomsg.aio) == 0)
+        ++nevents;
+    } else {
+      /* File interest event */
+      if (fs_event_message(&msg.rfim) == 0)
+        ++nevents;
+    }
+  }
 
-  handle = *(uv_fs_event_t**)(msg.__rfim_utok);
-  handle->cb(handle, uv__basename_r(handle->path), events, 0);
-  return 1;
+  /* Return total number of events handled */
+  return nevents;
 }
 
 
@@ -819,6 +898,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     return;
   }
 
+  ep = loop->ep;
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
     uv_stream_t* stream;
 
@@ -830,30 +910,37 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->pevents != 0);
     assert(w->fd >= 0);
 
-    stream= container_of(w, uv_stream_t, io_watcher);
+    stream = container_of(w, uv_stream_t, io_watcher);
 
     assert(w->fd < (int) loop->nwatchers);
 
-    e.events = w->pevents;
-    e.fd = w->fd;
+    if (stream->type == UV_TCP && stream->connect_req != NULL) {
+      /* Skip this. The connect request has been dispatched
+       * via BPX4AIO. Wait for it to pop up on message queue.
+       */
+    } else {
+      /* Register this event to be polled. */
+      e.events = w->pevents;
+      e.fd = w->fd;
 
-    if (w->events == 0)
-      op = UV__EPOLL_CTL_ADD;
-    else
-      op = UV__EPOLL_CTL_MOD;
+      if (w->events == 0)
+        op = UV__EPOLL_CTL_ADD;
+      else
+        op = UV__EPOLL_CTL_MOD;
 
-    /* XXX Future optimization: do EPOLL_CTL_MOD lazily if we stop watching
-     * events, skip the syscall and squelch the events after epoll_wait().
-     */
-    if (epoll_ctl(loop->ep, op, w->fd, &e)) {
-      if (errno != EEXIST)
-        abort();
+      /* XXX Future optimization: do EPOLL_CTL_MOD lazily if we stop watching
+       * events, skip the syscall and squelch the events after epoll_wait().
+       */
+      if (epoll_ctl(loop->ep, op, w->fd, &e)) {
+        if (errno != EEXIST)
+          abort();
 
-      assert(op == UV__EPOLL_CTL_ADD);
+        assert(op == UV__EPOLL_CTL_ADD);
 
-      /* We've reactivated a file descriptor that's been watched before. */
-      if (epoll_ctl(loop->ep, UV__EPOLL_CTL_MOD, w->fd, &e))
-        abort();
+        /* We've reactivated a file descriptor that's been watched before. */
+        if (epoll_ctl(loop->ep, UV__EPOLL_CTL_MOD, w->fd, &e))
+          abort();
+      }
     }
 
     w->events = w->pevents;
@@ -917,40 +1004,38 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (fd == -1)
         continue;
 
-      ep = loop->ep;
       if (fd == ep->msg_queue) {
-        os390_message_queue_handler(ep);
-        continue;
-      }
+        nevents += os390_message_queue_handler(ep);
+      } else {
+        assert(fd >= 0);
+        assert((unsigned) fd < loop->nwatchers);
 
-      assert(fd >= 0);
-      assert((unsigned) fd < loop->nwatchers);
+        w = loop->watchers[fd];
 
-      w = loop->watchers[fd];
+        if (w == NULL) {
+          /* File descriptor that we've stopped watching, disarm it.
+           *
+           * Ignore all errors because we may be racing with another thread
+           * when the file descriptor is closed.
+           */
+          epoll_ctl(loop->ep, UV__EPOLL_CTL_DEL, fd, pe);
+          continue;
+        }
 
-      if (w == NULL) {
-        /* File descriptor that we've stopped watching, disarm it.
-         *
-         * Ignore all errors because we may be racing with another thread
-         * when the file descriptor is closed.
+        /* Give users only events they're interested in. Prevents spurious
+         * callbacks when previous callback invocation in this loop has stopped
+         * the current watcher. Also, filters out events that users has not
+         * requested us to watch.
          */
-        epoll_ctl(loop->ep, UV__EPOLL_CTL_DEL, fd, pe);
-        continue;
-      }
+        pe->events &= w->pevents | POLLERR | POLLHUP;
 
-      /* Give users only events they're interested in. Prevents spurious
-       * callbacks when previous callback invocation in this loop has stopped
-       * the current watcher. Also, filters out events that users has not
-       * requested us to watch.
-       */
-      pe->events &= w->pevents | POLLERR | POLLHUP;
+        if (pe->events == POLLERR || pe->events == POLLHUP)
+          pe->events |= w->pevents & (POLLIN | POLLOUT);
 
-      if (pe->events == POLLERR || pe->events == POLLHUP)
-        pe->events |= w->pevents & (POLLIN | POLLOUT);
-
-      if (pe->events != 0) {
-        w->cb(loop, w, pe->events);
-        nevents++;
+        if (pe->events != 0) {
+          w->cb(loop, w, pe->events);
+          nevents++;
+        }
       }
     }
     loop->watchers[loop->nwatchers] = NULL;
@@ -995,4 +1080,52 @@ int uv__io_fork(uv_loop_t* loop) {
 
   uv__platform_loop_delete(loop);
   return uv__platform_loop_init(loop);
+}
+
+
+int uv__os390_connect(uv_connect_t* req, uv_stream_t* handle,
+                      const struct sockaddr* addr, unsigned int addrlen) {
+  struct sockaddr_storage* addr_storage;
+  struct aiocb* aio_connect;
+  uv__io_t* w;
+  uv__os390_epoll* ep;
+  int rv;
+  int rc;
+  int rsn;
+ 
+  w = &handle->io_watcher;
+  ep = handle->loop->ep;
+  aio_connect = &req->aio;
+  memset(aio_connect, 0, sizeof(*aio_connect));
+  aio_connect->aio_fildes = w->fd;
+  aio_connect->aio_notifytype = AIO_MSGQ;
+  aio_connect->aio_cmd = AIO_CONNECT;
+  aio_connect->aio_msgev_qid = ep->msg_queue;
+
+  /* Allocate memory to hold the address information.
+   * This will be freed in aio_connect_message after receiving
+   * notification from message queue.
+   */
+  addr_storage = uv__malloc(sizeof(*addr_storage));
+  if (addr_storage == NULL)
+    return -1;
+  memcpy(addr_storage, addr, addrlen);
+  aio_connect->aio_sockaddrptr = (struct sockaddr_in*)addr_storage;
+  aio_connect->aio_sockaddrlen = addrlen;
+
+  /* The BPX4AIO call requires the socket to be in blocking mode. */
+  rv = uv__nonblock(w->fd, 0);
+  if (rv) {
+    errno = rv;
+    return -1;
+  }
+
+  BPX4AIO(sizeof(req->aio), &req->aio, &rv, &rc, &rsn);
+  if (rv == 0) {
+    errno = EINPROGRESS;
+    return -1;
+  } else {
+    errno = rc;
+    return -1;
+  }
 }

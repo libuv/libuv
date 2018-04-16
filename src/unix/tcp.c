@@ -27,6 +27,14 @@
 #include <assert.h>
 #include <errno.h>
 
+#ifdef __MVS__
+# define platform_connect(req, handle, addr, addrlen) \
+         uv__os390_connect(req, handle, addr, addrlen)
+#else
+# define platform_connect(req, handle, addr, addrlen) \
+         connect(uv__stream_fd(handle), addr, addrlen)
+#endif
+
 
 static int new_socket(uv_tcp_t* handle, int domain, unsigned long flags) {
   struct sockaddr_storage saddr;
@@ -222,7 +230,7 @@ int uv__tcp_connect(uv_connect_t* req,
 
   do {
     errno = 0;
-    r = connect(uv__stream_fd(handle), addr, addrlen);
+    r = platform_connect(req, handle, addr, addrlen);
   } while (r == -1 && errno == EINTR);
 
   /* We not only check the return value, but also check the errno != 0.

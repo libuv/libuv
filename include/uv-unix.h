@@ -116,6 +116,10 @@ struct uv__io_s {
 # define UV_STREAM_PRIVATE_PLATFORM_FIELDS /* empty */
 #endif
 
+#ifndef UV_CONNECT_PRIVATE_PLATFORM_FIELDS
+# define UV_CONNECT_PRIVATE_PLATFORM_FIELDS /* empty */
+#endif
+
 /* Note: May be cast to struct iovec. See writev(2). */
 typedef struct uv_buf_t {
   char* base;
@@ -241,6 +245,7 @@ typedef struct {
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
   void* queue[2];                                                             \
+  UV_CONNECT_PRIVATE_PLATFORM_FIELDS                                          \
 
 #define UV_SHUTDOWN_PRIVATE_FIELDS /* empty */
 
