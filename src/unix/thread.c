@@ -561,7 +561,7 @@ static int uv__custom_sem_init(uv_sem_t* sem_, unsigned int value) {
   }
 
   sem->value = value;
-  *(uv_semaphore_t**) sem_ = sem;
+  *(uv_semaphore_t**)sem_ = sem;
   return 0;
 }
 
