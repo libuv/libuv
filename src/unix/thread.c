@@ -423,87 +423,6 @@ int uv_sem_trywait(uv_sem_t* sem) {
   return UV_EINVAL;  /* Satisfy the compiler. */
 }
 
-#elif defined(__MVS__)
-
-int uv_sem_init(uv_sem_t* sem, unsigned int value) {
-  uv_sem_t semid;
-  int err;
-  union {
-    int val;
-    struct semid_ds* buf;
-    unsigned short* array;
-  } arg;
-
-
-  semid = semget(IPC_PRIVATE, 1, S_IRUSR | S_IWUSR);
-  if (semid == -1)
-    return UV__ERR(errno);
-
-  arg.val = value;
-  if (-1 == semctl(semid, 0, SETVAL, arg)) {
-    err = errno;
-    if (-1 == semctl(*sem, 0, IPC_RMID))
-      abort();
-    return UV__ERR(err);
-  }
-
-  *sem = semid;
-  return 0;
-}
-
-void uv_sem_destroy(uv_sem_t* sem) {
-  if (-1 == semctl(*sem, 0, IPC_RMID))
-    abort();
-}
-
-void uv_sem_post(uv_sem_t* sem) {
-  struct sembuf buf;
-
-  buf.sem_num = 0;
-  buf.sem_op = 1;
-  buf.sem_flg = 0;
-
-  if (-1 == semop(*sem, &buf, 1))
-    abort();
-}
-
-void uv_sem_wait(uv_sem_t* sem) {
-  struct sembuf buf;
-  int op_status;
-
-  buf.sem_num = 0;
-  buf.sem_op = -1;
-  buf.sem_flg = 0;
-
-  do
-    op_status = semop(*sem, &buf, 1);
-  while (op_status == -1 && errno == EINTR);
-
-  if (op_status)
-    abort();
-}
-
-int uv_sem_trywait(uv_sem_t* sem) {
-  struct sembuf buf;
-  int op_status;
-
-  buf.sem_num = 0;
-  buf.sem_op = -1;
-  buf.sem_flg = IPC_NOWAIT;
-
-  do
-    op_status = semop(*sem, &buf, 1);
-  while (op_status == -1 && errno == EINTR);
-
-  if (op_status) {
-    if (errno == EAGAIN)
-      return UV_EAGAIN;
-    abort();
-  }
-
-  return 0;
-}
-
 #else /* !(defined(__APPLE__) && defined(__MACH__)) */
 
 #ifdef __GLIBC__
@@ -517,18 +436,22 @@ int uv_sem_trywait(uv_sem_t* sem) {
  * a pointer to the actual struct we're using underneath. */
 
 static uv_once_t glibc_version_check_once = UV_ONCE_INIT;
-static int glibc_needs_custom_semaphore = 0;
+static int platform_needs_custom_semaphore = 0;
 
 static void glibc_version_check(void) {
   const char* version = gnu_get_libc_version();
-  glibc_needs_custom_semaphore =
+  platform_needs_custom_semaphore =
       version[0] == '2' && version[1] == '.' &&
       atoi(version + 2) < 21;
 }
 
+#elif defined(__MVS__)
+
+#define platform_needs_custom_semaphore 1
+
 #else /* !defined(__GLIBC__) */
 
-#define glibc_needs_custom_semaphore 0
+#define platform_needs_custom_semaphore 0
 
 #endif
 
@@ -670,7 +593,7 @@ int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   uv_once(&glibc_version_check_once, glibc_version_check);
 #endif
 
-  if (glibc_needs_custom_semaphore)
+  if (platform_needs_custom_semaphore)
     return uv__custom_sem_init(sem, value);
   else
     return uv__sem_init(sem, value);
@@ -678,7 +601,7 @@ int uv_sem_init(uv_sem_t* sem, unsigned int value) {
 
 
 void uv_sem_destroy(uv_sem_t* sem) {
-  if (glibc_needs_custom_semaphore)
+  if (platform_needs_custom_semaphore)
     uv__custom_sem_destroy(sem);
   else
     uv__sem_destroy(sem);
@@ -686,7 +609,7 @@ void uv_sem_destroy(uv_sem_t* sem) {
 
 
 void uv_sem_post(uv_sem_t* sem) {
-  if (glibc_needs_custom_semaphore)
+  if (platform_needs_custom_semaphore)
     uv__custom_sem_post(sem);
   else
     uv__sem_post(sem);
@@ -694,7 +617,7 @@ void uv_sem_post(uv_sem_t* sem) {
 
 
 void uv_sem_wait(uv_sem_t* sem) {
-  if (glibc_needs_custom_semaphore)
+  if (platform_needs_custom_semaphore)
     uv__custom_sem_wait(sem);
   else
     uv__sem_wait(sem);
@@ -702,7 +625,7 @@ void uv_sem_wait(uv_sem_t* sem) {
 
 
 int uv_sem_trywait(uv_sem_t* sem) {
-  if (glibc_needs_custom_semaphore)
+  if (platform_needs_custom_semaphore)
     return uv__custom_sem_trywait(sem);
   else
     return uv__sem_trywait(sem);
