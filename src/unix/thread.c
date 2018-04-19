@@ -449,7 +449,7 @@ static void glibc_version_check(void) {
 
 #define platform_needs_custom_semaphore 1
 
-#else /* !defined(__GLIBC__) */
+#else /* !defined(__GLIBC__) && !defined(__MVS__) */
 
 #define platform_needs_custom_semaphore 0
 
@@ -461,8 +461,9 @@ typedef struct uv_semaphore_s {
   unsigned int value;
 } uv_semaphore_t;
 
-
+#if defined(__GLIBC__) || platform_needs_custom_semaphore
 STATIC_ASSERT(sizeof(uv_sem_t) >= sizeof(uv_semaphore_t*));
+#endif
 
 static int uv__custom_sem_init(uv_sem_t* sem_, unsigned int value) {
   int err;
