@@ -615,7 +615,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* sppi;
   DWORD sppi_size;
   SYSTEM_INFO system_info;
-  DWORD cpu_count, r, i;
+  DWORD cpu_count, i;
   NTSTATUS status;
   ULONG result_size;
   int err;
@@ -670,36 +670,33 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
     assert(len > 0 && len < ARRAY_SIZE(key_name));
 
-    r = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-                      key_name,
-                      0,
-                      KEY_QUERY_VALUE,
-                      &processor_key);
-    if (r != ERROR_SUCCESS) {
-      err = r;
+    err = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                        key_name,
+                        0,
+                        KEY_QUERY_VALUE,
+                        &processor_key);
+    if (err != ERROR_SUCCESS) {
       goto error;
     }
 
-    r = RegQueryValueExW(processor_key,
-        L"~MHz",
-        NULL,
-        NULL,
-        (BYTE*)&cpu_speed,
-        &cpu_speed_size);
-    if (r != ERROR_SUCCESS) {
-      err = r;
+    err = RegQueryValueExW(processor_key,
+                           L"~MHz",
+                           NULL,
+                           NULL,
+                           (BYTE*)&cpu_speed,
+                           &cpu_speed_size);
+    if (err != ERROR_SUCCESS) {
       RegCloseKey(processor_key);
       goto error;
     }
 
-    r = RegQueryValueExW(processor_key,
-        L"ProcessorNameString",
-        NULL,
-        NULL,
-        (BYTE*)&cpu_brand,
-        &cpu_brand_size);
-    if (r != ERROR_SUCCESS) {
-      err = r;
+    err = RegQueryValueExW(processor_key,
+                           L"ProcessorNameString",
+                           NULL,
+                           NULL,
+                           (BYTE*)&cpu_brand,
+                           &cpu_brand_size);
+    if (err != ERROR_SUCCESS) {
       RegCloseKey(processor_key);
       goto error;
     }
