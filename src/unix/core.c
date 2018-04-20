@@ -342,6 +342,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
+  uv_trace_tick_info_t trace_info = { UV_TRACE_TICK };
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -349,6 +350,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv__update_time(loop);
+    uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
+
     uv__run_timers(loop);
     ran_pending = uv__run_pending(loop);
     uv__run_idle(loop);
@@ -375,6 +378,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
       uv__run_timers(loop);
     }
 
+    uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
@@ -757,13 +761,17 @@ static int uv__run_pending(uv_loop_t* loop) {
   QUEUE* q;
   QUEUE pq;
   uv__io_t* w;
+  size_t count = 0;
+  uv_trace_pending_info_t trace_info = { UV_TRACE_PENDING, 0 };
 
   if (QUEUE_EMPTY(&loop->pending_queue))
     return 0;
 
+  uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
   QUEUE_MOVE(&loop->pending_queue, &pq);
 
   while (!QUEUE_EMPTY(&pq)) {
+    count++;
     q = QUEUE_HEAD(&pq);
     QUEUE_REMOVE(q);
     QUEUE_INIT(q);
@@ -771,6 +779,8 @@ static int uv__run_pending(uv_loop_t* loop) {
     w->cb(loop, w, POLLOUT);
   }
 
+  trace_info.count = count;
+  uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
   return 1;
 }
 

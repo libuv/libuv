@@ -232,8 +232,39 @@ typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 
+/* Tracing types */
+typedef struct uv_trace_s uv_trace_t;
+typedef struct uv_trace_info_s uv_trace_info_t;
+typedef struct uv_trace_tick_info_s uv_trace_tick_info_t;
+typedef struct uv_trace_timers_info_s uv_trace_timers_info_t;
+typedef struct uv_trace_check_info_s uv_trace_check_info_t;
+typedef struct uv_trace_idle_info_s uv_trace_idle_info_t;
+typedef struct uv_trace_prepare_info_s uv_trace_prepare_info_t;
+typedef struct uv_trace_pending_info_s uv_trace_pending_info_t;
+typedef struct uv_trace_poll_info_s uv_trace_poll_info_t;
+
 typedef enum {
-  UV_LOOP_BLOCK_SIGNAL
+  UV_TRACE_TICK,
+  UV_TRACE_TIMERS,
+  UV_TRACE_CHECK,
+  UV_TRACE_IDLE,
+  UV_TRACE_PREPARE,
+  UV_TRACE_PENDING,
+  UV_TRACE_POLL
+} uv_trace;
+
+#define UV_TRACE_ALL                                                         \
+  ((1 << UV_TRACE_TICK) |                                                    \
+   (1 << UV_TRACE_TIMERS) |                                                  \
+   (1 << UV_TRACE_CHECK) |                                                   \
+   (1 << UV_TRACE_IDLE) |                                                    \
+   (1 << UV_TRACE_PREPARE) |                                                 \
+   (1 << UV_TRACE_PENDING) |                                                 \
+   (1 << UV_TRACE_POLL))
+
+typedef enum {
+  UV_LOOP_BLOCK_SIGNAL,
+  UV_LOOP_TRACE
 } uv_loop_option;
 
 typedef enum {
@@ -241,7 +272,6 @@ typedef enum {
   UV_RUN_ONCE,
   UV_RUN_NOWAIT
 } uv_run_mode;
-
 
 UV_EXTERN unsigned int uv_version(void);
 UV_EXTERN const char* uv_version_string(void);
@@ -318,6 +348,7 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
+typedef void (*uv_trace_cb)(const uv_trace_info_t* info, void* data);
 
 typedef struct {
   long tv_sec;
@@ -1641,6 +1672,57 @@ UV_EXTERN int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg);
 UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
+
+struct uv_trace_s {
+  void* data;
+  int types;
+  uv_trace_cb start_cb;
+  uv_trace_cb end_cb;
+  void* reserved[4];
+};
+
+#define UV_TRACE_INFO_FIELDS                                                  \
+  uv_trace type;
+
+struct uv_trace_info_s {
+  UV_TRACE_INFO_FIELDS
+};
+
+struct uv_trace_tick_info_s {
+  UV_TRACE_INFO_FIELDS
+};
+
+struct uv_trace_timers_info_s {
+  UV_TRACE_INFO_FIELDS
+  size_t count;
+};
+
+struct uv_trace_check_info_s {
+  UV_TRACE_INFO_FIELDS
+  size_t count;
+};
+
+struct uv_trace_idle_info_s {
+  UV_TRACE_INFO_FIELDS
+  size_t count;
+};
+
+struct uv_trace_prepare_info_s {
+  UV_TRACE_INFO_FIELDS
+  size_t count;
+};
+
+struct uv_trace_pending_info_s {
+  UV_TRACE_INFO_FIELDS
+  size_t count;
+};
+
+struct uv_trace_poll_info_s {
+  UV_TRACE_INFO_FIELDS
+  int timeout;
+};
+
+#undef UV_TRACE_INFO_FIELDS
 
 /* The presence of these unions force similar struct layout. */
 #define XX(_, name) uv_ ## name ## _t name;

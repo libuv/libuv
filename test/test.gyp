@@ -56,6 +56,7 @@
         'test-loop-close.c',
         'test-loop-stop.c',
         'test-loop-time.c',
+        'test-loop-trace.c',
         'test-loop-configure.c',
         'test-walk-handles.c',
         'test-watcher-cross-stop.c',

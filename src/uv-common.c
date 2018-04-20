@@ -690,3 +690,20 @@ void uv_loop_delete(uv_loop_t* loop) {
   if (loop != default_loop)
     uv__free(loop);
 }
+
+void uv__trace_start(uv_loop_t* loop, const uv_trace_info_t* info) {
+  if (loop == NULL ||
+      loop->trace == NULL ||
+      loop->trace->start_cb == NULL ||
+      !(loop->trace->types & (1 << info->type))) {
+    return;
+  }
+  loop->trace->start_cb(info, loop->trace->data);
+}
+
+void uv__trace_end(uv_loop_t* loop,
+                   const uv_trace_info_t* info) {
+  if (loop == NULL || loop->trace == NULL || loop->trace->end_cb == NULL)
+    return;
+  loop->trace->end_cb(info, loop->trace->data);
+}

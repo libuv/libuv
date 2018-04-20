@@ -118,6 +118,8 @@ int uv_loop_init(uv_loop_t* loop) {
   if (loop->iocp == NULL)
     return uv_translate_sys_error(GetLastError());
 
+  loop->trace = NULL;
+
   /* To prevent uninitialized memory access, loop->time must be initialized
    * to zero before calling uv_update_time for the first time.
    */
@@ -207,7 +209,16 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  return UV_ENOSYS;
+  struct uv_trace_t* trace;
+  switch (option) {
+    case UV_LOOP_TRACE:
+      trace = va_arg(ap, struct uv_trace_t*);
+      loop->trace = trace;
+      break;
+    default:
+      return UV_ENOSYS;
+  }
+  return 0;
 }
 
 
@@ -249,6 +260,9 @@ static void uv__loop_poll(uv_loop_t* loop, int timeout) {
   ULONG i;
   int repeat;
   uint64_t timeout_time;
+  uv_trace_poll_info_t trace_info = { UV_TRACE_POLL, timeout };
+
+  uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
 
   timeout_time = loop->time + timeout;
 
@@ -297,6 +311,7 @@ static void uv__loop_poll(uv_loop_t* loop, int timeout) {
     }
     break;
   }
+  uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
 }
 
 
@@ -316,6 +331,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
+  uv_trace_tick_info_t trace_info = { UV_TRACE_TICK };
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -323,6 +339,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
+    uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
     uv__run_timers(loop);
 
     ran_pending = uv_process_reqs(loop);
@@ -350,6 +367,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
       uv__run_timers(loop);
     }
 
+    uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;

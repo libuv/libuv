@@ -111,6 +111,7 @@ int run_tests(int benchmark_output) {
     }
 
     test_result = run_test(task->task_name, benchmark_output, current);
+    fflush(stderr);
     switch (test_result) {
     case TEST_OK: passed++; break;
     case TEST_SKIP: skipped++; break;

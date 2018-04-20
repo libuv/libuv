@@ -84,6 +84,7 @@
 
 struct uv__io_s;
 struct uv_loop_s;
+struct uv_trace_s;
 
 typedef void (*uv__io_cb)(struct uv_loop_s* loop,
                           struct uv__io_s* w,
@@ -222,7 +223,8 @@ typedef struct {
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
   int emfile_fd;                                                              \
-  UV_PLATFORM_LOOP_FIELDS                                                     \
+  uv_trace_t* trace;                                                          \
+  UV_PLATFORM_LOOP_FIELDS
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
 

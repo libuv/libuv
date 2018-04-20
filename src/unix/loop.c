@@ -35,6 +35,7 @@ int uv_loop_init(uv_loop_t* loop) {
   saved_data = loop->data;
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
+  loop->trace = NULL;
 
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
@@ -183,12 +184,23 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  if (option != UV_LOOP_BLOCK_SIGNAL)
-    return UV_ENOSYS;
-
-  if (va_arg(ap, int) != SIGPROF)
-    return UV_EINVAL;
-
-  loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+  uv_trace_t* trace;
+  switch (option) {
+    case UV_LOOP_BLOCK_SIGNAL:
+      if (va_arg(ap, int) != SIGPROF)
+        return UV_EINVAL;
+      loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+      break;
+    case UV_LOOP_TRACE:
+      trace = va_arg(ap, uv_trace_t*);
+      loop->trace = trace;
+      if (trace != NULL)
+        loop->flags |= UV_LOOP_TRACE_NOTIFY;
+      else
+        loop->flags &= ~UV_LOOP_TRACE_NOTIFY;
+      break;
+    default:
+      return UV_ENOSYS;
+  }
   return 0;
 }

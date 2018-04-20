@@ -213,11 +213,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int fd;
   int op;
   int i;
+  uv_trace_poll_info_t trace_info = { UV_TRACE_POLL, timeout };
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
     return;
   }
+
+  uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
     q = QUEUE_HEAD(&loop->watcher_queue);
@@ -307,8 +310,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (nfds == 0) {
       assert(timeout != -1);
 
-      if (timeout == 0)
+      if (timeout == 0) {
+        uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
         return;
+      }
 
       /* We may have been inside the system call for longer than |timeout|
        * milliseconds so we need to update the timestamp to avoid drift.
@@ -329,8 +334,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (timeout == -1)
         continue;
 
-      if (timeout == 0)
+      if (timeout == 0) {
+        uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
         return;
+      }
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
@@ -410,8 +417,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers] = NULL;
     loop->watchers[loop->nwatchers + 1] = NULL;
 
-    if (have_signals != 0)
+    if (have_signals != 0) {
+      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
       return;  /* Event loop should cycle now so don't poll again. */
+    }
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -419,11 +428,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = 0;
         continue;
       }
+      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
       return;
     }
 
-    if (timeout == 0)
+    if (timeout == 0) {
+      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
       return;
+    }
 
     if (timeout == -1)
       continue;
@@ -432,11 +444,14 @@ update_timeout:
     assert(timeout > 0);
 
     real_timeout -= (loop->time - base);
-    if (real_timeout <= 0)
+    if (real_timeout <= 0) {
+      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
       return;
+    }
 
     timeout = real_timeout;
   }
+  uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
 }
 
 

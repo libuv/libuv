@@ -125,7 +125,8 @@ typedef struct uv__stream_queued_fds_s uv__stream_queued_fds_t;
 
 /* loop flags */
 enum {
-  UV_LOOP_BLOCK_SIGPROF = 1
+  UV_LOOP_BLOCK_SIGPROF = 1,
+  UV_LOOP_TRACE_NOTIFY = 2
 };
 
 /* flags of excluding ifaddr */
