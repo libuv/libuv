@@ -676,28 +676,30 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
                       KEY_QUERY_VALUE,
                       &processor_key);
     if (r != ERROR_SUCCESS) {
-      err = GetLastError();
+      err = r;
       goto error;
     }
 
-    if (RegQueryValueExW(processor_key,
-                         L"~MHz",
-                         NULL,
-                         NULL,
-                         (BYTE*) &cpu_speed,
-                         &cpu_speed_size) != ERROR_SUCCESS) {
-      err = GetLastError();
+    r = RegQueryValueExW(processor_key,
+        L"~MHz",
+        NULL,
+        NULL,
+        (BYTE*)&cpu_speed,
+        &cpu_speed_size);
+    if (r != ERROR_SUCCESS) {
+      err = r;
       RegCloseKey(processor_key);
       goto error;
     }
 
-    if (RegQueryValueExW(processor_key,
-                         L"ProcessorNameString",
-                         NULL,
-                         NULL,
-                         (BYTE*) &cpu_brand,
-                         &cpu_brand_size) != ERROR_SUCCESS) {
-      err = GetLastError();
+    r = RegQueryValueExW(processor_key,
+        L"ProcessorNameString",
+        NULL,
+        NULL,
+        (BYTE*)&cpu_brand,
+        &cpu_brand_size);
+    if (r != ERROR_SUCCESS) {
+      err = r;
       RegCloseKey(processor_key);
       goto error;
     }
