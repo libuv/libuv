@@ -84,6 +84,8 @@ static void trace_end_cb(const uv_trace_info_t* info, void* data) {
     case UV_TRACE_POLL:
       ASSERT(0 <= ((const uv_trace_poll_info_t*)info)->timeout);
       break;
+    default:
+      break;
   }
 }
 
@@ -92,11 +94,10 @@ TEST_IMPL(loop_trace) {
   uv_check_t check_handle;
   uv_prepare_t prepare_handle;
 
-  uv_trace_t config;
+  uv_loop_trace_t config;
   uv_loop_init(&loop);
 
   config.data = &loop;
-  config.types = UV_TRACE_ALL;
   config.start_cb = trace_start_cb;
   config.end_cb = trace_end_cb;
   uv_loop_configure(&loop, UV_LOOP_TRACE, &config);
@@ -138,5 +139,6 @@ TEST_IMPL(loop_trace) {
   ASSERT(2 == prepare_count);
   ASSERT(0 == pending_count);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }

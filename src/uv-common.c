@@ -664,6 +664,12 @@ int uv_loop_close(uv_loop_t* loop) {
       return UV_EBUSY;
   }
 
+  /* Stop listening for threadpool traces if configured */
+  if (loop->threadpool_trace != NULL) {
+    uv__threadpool_trace_remove(loop->threadpool_trace);
+    loop->threadpool_trace = NULL;
+  }
+
   uv__loop_close(loop);
 
 #ifndef NDEBUG
@@ -692,12 +698,8 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 void uv__trace_start(uv_loop_t* loop, const uv_trace_info_t* info) {
-  if (loop == NULL ||
-      loop->trace == NULL ||
-      loop->trace->start_cb == NULL ||
-      !(loop->trace->types & (1 << info->type))) {
+  if (loop == NULL || loop->trace == NULL || loop->trace->start_cb == NULL)
     return;
-  }
   loop->trace->start_cb(info, loop->trace->data);
 }
 

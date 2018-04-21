@@ -36,6 +36,7 @@ int uv_loop_init(uv_loop_t* loop) {
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
   loop->trace = NULL;
+  loop->threadpool_trace = NULL;
 
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
@@ -184,7 +185,8 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  uv_trace_t* trace;
+  uv_loop_trace_t* trace;
+  uv_threadpool_trace_t* threadpool_trace;
   switch (option) {
     case UV_LOOP_BLOCK_SIGNAL:
       if (va_arg(ap, int) != SIGPROF)
@@ -192,12 +194,23 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
       loop->flags |= UV_LOOP_BLOCK_SIGPROF;
       break;
     case UV_LOOP_TRACE:
-      trace = va_arg(ap, uv_trace_t*);
+      trace = va_arg(ap, uv_loop_trace_t*);
       loop->trace = trace;
       if (trace != NULL)
         loop->flags |= UV_LOOP_TRACE_NOTIFY;
       else
         loop->flags &= ~UV_LOOP_TRACE_NOTIFY;
+      break;
+    case UV_THREADPOOL_TRACE:
+      threadpool_trace = va_arg(ap, uv_threadpool_trace_t*);
+      if (threadpool_trace == NULL) {
+        if (loop->threadpool_trace != NULL)
+          uv__threadpool_trace_remove(loop->threadpool_trace);
+        loop->threadpool_trace = NULL;
+      } else {
+        loop->threadpool_trace = threadpool_trace;
+        uv__threadpool_trace_add(loop->threadpool_trace);
+      }
       break;
     default:
       return UV_ENOSYS;

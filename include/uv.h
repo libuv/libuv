@@ -233,7 +233,8 @@ typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 
 /* Tracing types */
-typedef struct uv_trace_s uv_trace_t;
+typedef struct uv_loop_trace_s uv_loop_trace_t;
+typedef struct uv_threadpool_trace_s uv_threadpool_trace_t;
 typedef struct uv_trace_info_s uv_trace_info_t;
 typedef struct uv_trace_tick_info_s uv_trace_tick_info_t;
 typedef struct uv_trace_timers_info_s uv_trace_timers_info_t;
@@ -242,6 +243,7 @@ typedef struct uv_trace_idle_info_s uv_trace_idle_info_t;
 typedef struct uv_trace_prepare_info_s uv_trace_prepare_info_t;
 typedef struct uv_trace_pending_info_s uv_trace_pending_info_t;
 typedef struct uv_trace_poll_info_s uv_trace_poll_info_t;
+typedef struct uv_trace_threadpool_info_s uv_trace_threadpool_info_t;
 
 typedef enum {
   UV_TRACE_TICK,
@@ -250,21 +252,16 @@ typedef enum {
   UV_TRACE_IDLE,
   UV_TRACE_PREPARE,
   UV_TRACE_PENDING,
-  UV_TRACE_POLL
+  UV_TRACE_POLL,
+  UV_TRACE_THREADPOOL_SUBMIT,
+  UV_TRACE_THREADPOOL_START,
+  UV_TRACE_THREADPOOL_DONE
 } uv_trace;
-
-#define UV_TRACE_ALL                                                         \
-  ((1 << UV_TRACE_TICK) |                                                    \
-   (1 << UV_TRACE_TIMERS) |                                                  \
-   (1 << UV_TRACE_CHECK) |                                                   \
-   (1 << UV_TRACE_IDLE) |                                                    \
-   (1 << UV_TRACE_PREPARE) |                                                 \
-   (1 << UV_TRACE_PENDING) |                                                 \
-   (1 << UV_TRACE_POLL))
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL,
-  UV_LOOP_TRACE
+  UV_LOOP_TRACE,
+  UV_THREADPOOL_TRACE
 } uv_loop_option;
 
 typedef enum {
@@ -1673,12 +1670,19 @@ UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
 
-struct uv_trace_s {
+struct uv_loop_trace_s {
   void* data;
-  int types;
   uv_trace_cb start_cb;
   uv_trace_cb end_cb;
   void* reserved[4];
+};
+
+struct uv_threadpool_trace_s {
+  void* data;
+  uv_trace_cb cb;
+  void* reserved[4];
+
+  UV_THREADPOOL_TRACE_PRIVATE_FIELDS
 };
 
 #define UV_TRACE_INFO_FIELDS                                                  \
@@ -1720,6 +1724,12 @@ struct uv_trace_pending_info_s {
 struct uv_trace_poll_info_s {
   UV_TRACE_INFO_FIELDS
   int timeout;
+};
+
+struct uv_trace_threadpool_info_s {
+  UV_TRACE_INFO_FIELDS
+  unsigned queued;
+  unsigned idle_threads;
 };
 
 #undef UV_TRACE_INFO_FIELDS
@@ -1774,6 +1784,7 @@ UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 #undef UV_SIGNAL_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_PLATFORM_FIELDS
+#undef UV_THREADPOOL_TRACE_PRIVATE_FIELDS
 #undef UV__ERR
 
 #ifdef __cplusplus

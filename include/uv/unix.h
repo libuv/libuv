@@ -223,7 +223,8 @@ typedef struct {
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
   int emfile_fd;                                                              \
-  uv_trace_t* trace;                                                          \
+  uv_loop_trace_t* trace;                                                     \
+  uv_threadpool_trace_t* threadpool_trace;                                    \
   UV_PLATFORM_LOOP_FIELDS
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
@@ -369,6 +370,9 @@ typedef struct {
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
   uv_fs_event_cb cb;                                                          \
   UV_PLATFORM_FS_EVENT_FIELDS                                                 \
+
+#define UV_THREADPOOL_TRACE_PRIVATE_FIELDS                                    \
+  void* q[2];
 
 /* fs open() flags supported on this platform: */
 #if defined(O_APPEND)

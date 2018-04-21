@@ -207,7 +207,8 @@ typedef struct {
   void* async_handles[2];                                                     \
   /* Global queue of loops */                                                 \
   void* loops_queue[2];                                                       \
-  uv_trace_t* trace;
+  uv_loop_trace_t* trace;                                                     \
+  uv_threadpool_trace_t* threadpool_trace;                                    \
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \
@@ -494,6 +495,9 @@ typedef struct {
   RB_ENTRY(uv_signal_s) tree_entry;                                           \
   struct uv_req_s signal_req;                                                 \
   unsigned long pending_signum;
+
+#define UV_THREADPOOL_TRACE_PRIVATE_FIELDS                                    \
+  void* q[2];
 
 #ifndef F_OK
 #define F_OK 0

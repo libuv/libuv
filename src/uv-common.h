@@ -309,4 +309,7 @@ void uv__timer_close(uv_timer_t* handle);
 void uv__trace_start(uv_loop_t* loop, const uv_trace_info_t* info);
 void uv__trace_end(uv_loop_t* loop, const uv_trace_info_t* info);
 
+void uv__threadpool_trace_add(uv_threadpool_trace_t* trace);
+void uv__threadpool_trace_remove(uv_threadpool_trace_t* trace);
+
 #endif /* UV_COMMON_H_ */

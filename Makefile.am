@@ -266,6 +266,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \
                          test/test-threadpool-cancel.c \
+                         test/test-threadpool-trace.c \
                          test/test-threadpool.c \
                          test/test-timer-again.c \
                          test/test-timer-from-check.c \

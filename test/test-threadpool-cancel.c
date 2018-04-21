@@ -41,7 +41,8 @@ static unsigned fs_cb_called;
 static unsigned done_cb_called;
 static unsigned done2_cb_called;
 static unsigned timer_cb_called;
-static uv_work_t pause_reqs[4];
+static unsigned start_size = 4;
+static uv_work_t pause_reqs[8];
 static uv_sem_t pause_sems[ARRAY_SIZE(pause_reqs)];
 
 
@@ -55,29 +56,26 @@ static void done_cb(uv_work_t* req, int status) {
 }
 
 
-static void saturate_threadpool(void) {
+void saturate_threadpool(unsigned start) {
   uv_loop_t* loop;
-  char buf[64];
   size_t i;
 
-  snprintf(buf,
-           sizeof(buf),
-           "UV_THREADPOOL_SIZE=%lu",
-           (unsigned long)ARRAY_SIZE(pause_reqs));
-  putenv(buf);
-
+  if (start > 0) {
+    start_size = start;
+    ASSERT(start <= ARRAY_SIZE(pause_reqs));
+  }
   loop = uv_default_loop();
-  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1) {
+  for (i = 0; i < start_size; i += 1) {
     ASSERT(0 == uv_sem_init(pause_sems + i, 0));
     ASSERT(0 == uv_queue_work(loop, pause_reqs + i, work_cb, done_cb));
   }
 }
 
 
-static void unblock_threadpool(void) {
+void unblock_threadpool(void) {
   size_t i;
 
-  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1)
+  for (i = 0; i < start_size; i += 1)
     uv_sem_post(pause_sems + i);
 }
 
@@ -152,7 +150,7 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
-  saturate_threadpool();
+  saturate_threadpool(0);
 
   r = uv_getaddrinfo(loop, reqs + 0, getaddrinfo_cb, "fail", NULL, NULL);
   ASSERT(r == 0);
@@ -188,7 +186,7 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
-  saturate_threadpool();
+  saturate_threadpool(0);
 
   r = uv_getnameinfo(loop, reqs + 0, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
   ASSERT(r == 0);
@@ -220,7 +218,7 @@ TEST_IMPL(threadpool_cancel_work) {
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
-  saturate_threadpool();
+  saturate_threadpool(0);
 
   for (i = 0; i < ARRAY_SIZE(reqs); i++)
     ASSERT(0 == uv_queue_work(loop, reqs + i, work2_cb, done2_cb));
@@ -245,7 +243,7 @@ TEST_IMPL(threadpool_cancel_fs) {
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
-  saturate_threadpool();
+  saturate_threadpool(0);
   iov = uv_buf_init(NULL, 0);
 
   /* Needs to match ARRAY_SIZE(fs_reqs). */
@@ -294,7 +292,7 @@ TEST_IMPL(threadpool_cancel_single) {
   uv_loop_t* loop;
   uv_work_t req;
 
-  saturate_threadpool();
+  saturate_threadpool(0);
   loop = uv_default_loop();
   ASSERT(0 == uv_queue_work(loop, &req, (uv_work_cb) abort, nop_done_cb));
   ASSERT(0 == uv_cancel((uv_req_t*) &req));

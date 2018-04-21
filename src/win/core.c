@@ -209,11 +209,23 @@ void uv__loop_close(uv_loop_t* loop) {
 
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
-  struct uv_trace_t* trace;
+  uv_loop_trace_t* trace;
+  uv_thread_pool_trace_t* threadpool_trace;
   switch (option) {
     case UV_LOOP_TRACE:
-      trace = va_arg(ap, struct uv_trace_t*);
+      trace = va_arg(ap, struct uv_loop_trace_t*);
       loop->trace = trace;
+      break;
+    case UV_THREADPOOL_TRACE:
+      threadpool_trace = va_arg(ap, uv_threadpool_trace_t*);
+      if (threadpool_trace == NULL) {
+        if (loop->threadpool_trace != NULL)
+          uv__threadpool_trace_remove(loop->threadpool_trace);
+        loop->threadpool_trace = NULL;
+      } else {
+        loop->threadpool_trace = threadpool_trace;
+        uv__threadpool_trace_add(loop->threadpool_trace);
+      }
       break;
     default:
       return UV_ENOSYS;
