@@ -51,6 +51,8 @@ TEST_IMPL(ip6_addr_link_local) {
   int ix;
   int r;
 
+  uv_default_loop();
+
   ASSERT(0 == uv_interface_addresses(&addresses, &count));
 
   for (ix = 0; ix < count; ix++) {
