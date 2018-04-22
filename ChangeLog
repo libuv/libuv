@@ -1,3 +1,16 @@
+2018.04.23, Version 1.20.2 (Stable)
+
+Changes since version 1.20.1:
+
+* zos: use custom semaphore (jBarz)
+
+* win: fix registry API error handling (Kyle Farnung)
+
+* build: add support for 64-bit AIX (Richard Lau)
+
+* aix: guard STATIC_ASSERT for glibc work around (Richard Lau)
+
+
 2018.04.19, Version 1.20.1 (Stable), 36ac2fc8edfd5ff3e9be529be1d4a3f0d5364e94
 
 Changes since version 1.20.0:
