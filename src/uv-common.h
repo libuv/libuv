@@ -41,6 +41,12 @@
 #include "tree.h"
 #include "queue.h"
 
+#if EDOM > 0
+# define UV__ERR(x) (-(x))
+#else
+# define UV__ERR(x) (x)
+#endif
+
 #if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
 extern int snprintf(char*, size_t, const char*, ...);
 #endif
@@ -127,18 +133,18 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
 void uv__fs_scandir_cleanup(uv_fs_t* req);
 
 #define uv__has_active_reqs(loop)                                             \
-  (QUEUE_EMPTY(&(loop)->active_reqs) == 0)
+  ((loop)->active_reqs.count > 0)
 
 #define uv__req_register(loop, req)                                           \
   do {                                                                        \
-    QUEUE_INSERT_TAIL(&(loop)->active_reqs, &(req)->active_queue);            \
+    (loop)->active_reqs.count++;                                              \
   }                                                                           \
   while (0)
 
 #define uv__req_unregister(loop, req)                                         \
   do {                                                                        \
     assert(uv__has_active_reqs(loop));                                        \
-    QUEUE_REMOVE(&(req)->active_queue);                                       \
+    (loop)->active_reqs.count--;                                              \
   }                                                                           \
   while (0)
 

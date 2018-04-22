@@ -16,9 +16,9 @@
           'VCCLCompilerTool': {
             'target_conditions': [
               ['uv_library=="static_library"', {
-                'RuntimeLibrary': 1, # static debug
+                'RuntimeLibrary': 1, # /MTd static debug
               }, {
-                'RuntimeLibrary': 3, # DLL debug
+                'RuntimeLibrary': 3, # /MDd DLL debug
               }],
             ],
             'Optimization': 0, # /Od, no optimization
@@ -52,9 +52,9 @@
           'VCCLCompilerTool': {
             'target_conditions': [
               ['uv_library=="static_library"', {
-                'RuntimeLibrary': 0, # static release
+                'RuntimeLibrary': 0, # /MT static release
               }, {
-                'RuntimeLibrary': 2, # debug release
+                'RuntimeLibrary': 2, # /MD DLL release
               }],
             ],
             'Optimization': 3, # /Ox, full optimization
@@ -134,7 +134,7 @@
           }]
         ]
       }],
-      ['OS in "freebsd dragonflybsd linux openbsd solaris android"', {
+      ['OS in "freebsd dragonflybsd linux openbsd solaris android aix"', {
         'cflags': [ '-Wall' ],
         'cflags_cc': [ '-fno-rtti', '-fno-exceptions' ],
         'target_conditions': [
@@ -161,6 +161,10 @@
           [ 'OS not in "solaris android zos"', {
             'cflags': [ '-pthread' ],
             'ldflags': [ '-pthread' ],
+          }],
+          [ 'OS=="aix" and target_arch=="ppc64"', {
+            'cflags': [ '-maix64' ],
+            'ldflags': [ '-maix64' ],
           }],
         ],
       }],

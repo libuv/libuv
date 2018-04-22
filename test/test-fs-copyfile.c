@@ -36,6 +36,10 @@ static const char dst[] = "test_file_dst";
 static int result_check_count;
 
 
+static void fail_cb(uv_fs_t* req) {
+  FATAL("fail_cb should not have been called");
+}
+
 static void handle_result(uv_fs_t* req) {
   uv_fs_t stat_req;
   uint64_t size;
@@ -158,7 +162,28 @@ TEST_IMPL(fs_copyfile) {
   ASSERT(result_check_count == 5);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(result_check_count == 6);
-  unlink(dst); /* Cleanup */
 
+  /* If the flags are invalid, the loop should not be kept open */
+  unlink(dst);
+  r = uv_fs_copyfile(loop, &req, fixture, dst, -1, fail_cb);
+  ASSERT(r == UV_EINVAL);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  /* Copies file using UV_FS_COPYFILE_FICLONE. */
+  unlink(dst);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE, NULL);
+  ASSERT(r == 0);
+  handle_result(&req);
+
+  /* Copies file using UV_FS_COPYFILE_FICLONE_FORCE. */
+  unlink(dst);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
+                     NULL);
+  ASSERT(r == 0 || r == UV_ENOSYS || r == UV_ENOTSUP || r == UV_ENOTTY);
+
+  if (r == 0)
+    handle_result(&req);
+
+  unlink(dst); /* Cleanup */
   return 0;
 }

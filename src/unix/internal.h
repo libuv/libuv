@@ -29,6 +29,7 @@
 #include <string.h> /* strrchr */
 #include <fcntl.h>  /* O_CLOEXEC, may be */
 #include <stdio.h>
+#include <errno.h>
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
@@ -189,7 +190,7 @@ int uv__cloexec_ioctl(int fd, int set);
 int uv__cloexec_fcntl(int fd, int set);
 int uv__nonblock_ioctl(int fd, int set);
 int uv__nonblock_fcntl(int fd, int set);
-int uv__close(int fd);
+int uv__close(int fd); /* preserves errno */
 int uv__close_nocheckstdio(int fd);
 int uv__socket(int domain, int type, int protocol);
 int uv__dup(int fd);

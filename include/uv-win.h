@@ -20,7 +20,7 @@
  */
 
 #ifndef _WIN32_WINNT
-# define _WIN32_WINNT   0x0502
+# define _WIN32_WINNT   0x0600
 #endif
 
 #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
@@ -222,6 +222,7 @@ typedef struct uv_buf_t {
 typedef int uv_file;
 typedef SOCKET uv_os_sock_t;
 typedef HANDLE uv_os_fd_t;
+typedef int uv_pid_t;
 
 typedef HANDLE uv_thread_t;
 
@@ -663,13 +664,13 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 #define UV_FS_O_WRONLY       _O_WRONLY
 
 /* fs open() flags supported on other platforms (or mapped on this platform): */
-#define UV_FS_O_DIRECT       0x2000000 /* FILE_FLAG_NO_BUFFERING */
+#define UV_FS_O_DIRECT       0x02000000 /* FILE_FLAG_NO_BUFFERING */
 #define UV_FS_O_DIRECTORY    0
-#define UV_FS_O_DSYNC        0x4000000 /* FILE_FLAG_WRITE_THROUGH */
-#define UV_FS_O_EXLOCK       0
+#define UV_FS_O_DSYNC        0x04000000 /* FILE_FLAG_WRITE_THROUGH */
+#define UV_FS_O_EXLOCK       0x10000000 /* EXCLUSIVE SHARING MODE */
 #define UV_FS_O_NOATIME      0
 #define UV_FS_O_NOCTTY       0
 #define UV_FS_O_NOFOLLOW     0
 #define UV_FS_O_NONBLOCK     0
 #define UV_FS_O_SYMLINK      0
-#define UV_FS_O_SYNC         0x8000000 /* FILE_FLAG_WRITE_THROUGH */
+#define UV_FS_O_SYNC         0x08000000 /* FILE_FLAG_WRITE_THROUGH */

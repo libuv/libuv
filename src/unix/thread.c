@@ -37,6 +37,10 @@
 #include <sys/sem.h>
 #endif
 
+#ifdef __GLIBC__
+#include <gnu/libc-version.h>  /* gnu_get_libc_version() */
+#endif
+
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
@@ -200,7 +204,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   if (attr != NULL)
     pthread_attr_destroy(attr);
 
-  return -err;
+  return UV__ERR(err);
 }
 
 
@@ -209,7 +213,7 @@ uv_thread_t uv_thread_self(void) {
 }
 
 int uv_thread_join(uv_thread_t *tid) {
-  return -pthread_join(*tid, NULL);
+  return UV__ERR(pthread_join(*tid, NULL));
 }
 
 
@@ -220,7 +224,7 @@ int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
 
 int uv_mutex_init(uv_mutex_t* mutex) {
 #if defined(NDEBUG) || !defined(PTHREAD_MUTEX_ERRORCHECK)
-  return -pthread_mutex_init(mutex, NULL);
+  return UV__ERR(pthread_mutex_init(mutex, NULL));
 #else
   pthread_mutexattr_t attr;
   int err;
@@ -236,7 +240,7 @@ int uv_mutex_init(uv_mutex_t* mutex) {
   if (pthread_mutexattr_destroy(&attr))
     abort();
 
-  return -err;
+  return UV__ERR(err);
 #endif
 }
 
@@ -256,7 +260,7 @@ int uv_mutex_init_recursive(uv_mutex_t* mutex) {
   if (pthread_mutexattr_destroy(&attr))
     abort();
 
-  return -err;
+  return UV__ERR(err);
 }
 
 
@@ -279,7 +283,7 @@ int uv_mutex_trylock(uv_mutex_t* mutex) {
   if (err) {
     if (err != EBUSY && err != EAGAIN)
       abort();
-    return -EBUSY;
+    return UV_EBUSY;
   }
 
   return 0;
@@ -293,7 +297,7 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
 
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
-  return -pthread_rwlock_init(rwlock, NULL);
+  return UV__ERR(pthread_rwlock_init(rwlock, NULL));
 }
 
 
@@ -316,7 +320,7 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
   if (err) {
     if (err != EBUSY && err != EAGAIN)
       abort();
-    return -EBUSY;
+    return UV_EBUSY;
   }
 
   return 0;
@@ -342,7 +346,7 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
   if (err) {
     if (err != EBUSY && err != EAGAIN)
       abort();
-    return -EBUSY;
+    return UV_EBUSY;
   }
 
   return 0;
@@ -369,12 +373,12 @@ int uv_sem_init(uv_sem_t* sem, unsigned int value) {
   if (err == KERN_SUCCESS)
     return 0;
   if (err == KERN_INVALID_ARGUMENT)
-    return -EINVAL;
+    return UV_EINVAL;
   if (err == KERN_RESOURCE_SHORTAGE)
-    return -ENOMEM;
+    return UV_ENOMEM;
 
   abort();
-  return -EINVAL;  /* Satisfy the compiler. */
+  return UV_EINVAL;  /* Satisfy the compiler. */
 }
 
 
@@ -413,115 +417,151 @@ int uv_sem_trywait(uv_sem_t* sem) {
   if (err == KERN_SUCCESS)
     return 0;
   if (err == KERN_OPERATION_TIMED_OUT)
-    return -EAGAIN;
+    return UV_EAGAIN;
 
   abort();
-  return -EINVAL;  /* Satisfy the compiler. */
-}
-
-#elif defined(__MVS__)
-
-int uv_sem_init(uv_sem_t* sem, unsigned int value) {
-  uv_sem_t semid;
-  int err;
-  union {
-    int val;
-    struct semid_ds* buf;
-    unsigned short* array;
-  } arg;
-
-
-  semid = semget(IPC_PRIVATE, 1, S_IRUSR | S_IWUSR);
-  if (semid == -1)
-    return -errno;
-
-  arg.val = value;
-  if (-1 == semctl(semid, 0, SETVAL, arg)) {
-    err = errno;
-    if (-1 == semctl(*sem, 0, IPC_RMID))
-      abort();
-    return -err;
-  }
-
-  *sem = semid;
-  return 0;
-}
-
-void uv_sem_destroy(uv_sem_t* sem) {
-  if (-1 == semctl(*sem, 0, IPC_RMID))
-    abort();
-}
-
-void uv_sem_post(uv_sem_t* sem) {
-  struct sembuf buf;
-
-  buf.sem_num = 0;
-  buf.sem_op = 1;
-  buf.sem_flg = 0;
-
-  if (-1 == semop(*sem, &buf, 1))
-    abort();
-}
-
-void uv_sem_wait(uv_sem_t* sem) {
-  struct sembuf buf;
-  int op_status;
-
-  buf.sem_num = 0;
-  buf.sem_op = -1;
-  buf.sem_flg = 0;
-
-  do
-    op_status = semop(*sem, &buf, 1);
-  while (op_status == -1 && errno == EINTR);
-
-  if (op_status)
-    abort();
-}
-
-int uv_sem_trywait(uv_sem_t* sem) {
-  struct sembuf buf;
-  int op_status;
-
-  buf.sem_num = 0;
-  buf.sem_op = -1;
-  buf.sem_flg = IPC_NOWAIT;
-
-  do
-    op_status = semop(*sem, &buf, 1);
-  while (op_status == -1 && errno == EINTR);
-
-  if (op_status) {
-    if (errno == EAGAIN)
-      return -EAGAIN;
-    abort();
-  }
-
-  return 0;
+  return UV_EINVAL;  /* Satisfy the compiler. */
 }
 
 #else /* !(defined(__APPLE__) && defined(__MACH__)) */
 
-int uv_sem_init(uv_sem_t* sem, unsigned int value) {
-  if (sem_init(sem, 0, value))
-    return -errno;
+#ifdef __GLIBC__
+
+/* Hack around https://sourceware.org/bugzilla/show_bug.cgi?id=12674
+ * by providing a custom implementation for glibc < 2.21 in terms of other
+ * concurrency primitives.
+ * Refs: https://github.com/nodejs/node/issues/19903 */
+
+/* To preserve ABI compatibility, we treat the uv_sem_t as storage for
+ * a pointer to the actual struct we're using underneath. */
+
+static uv_once_t glibc_version_check_once = UV_ONCE_INIT;
+static int platform_needs_custom_semaphore = 0;
+
+static void glibc_version_check(void) {
+  const char* version = gnu_get_libc_version();
+  platform_needs_custom_semaphore =
+      version[0] == '2' && version[1] == '.' &&
+      atoi(version + 2) < 21;
+}
+
+#elif defined(__MVS__)
+
+#define platform_needs_custom_semaphore 1
+
+#else /* !defined(__GLIBC__) && !defined(__MVS__) */
+
+#define platform_needs_custom_semaphore 0
+
+#endif
+
+typedef struct uv_semaphore_s {
+  uv_mutex_t mutex;
+  uv_cond_t cond;
+  unsigned int value;
+} uv_semaphore_t;
+
+#if defined(__GLIBC__) || platform_needs_custom_semaphore
+STATIC_ASSERT(sizeof(uv_sem_t) >= sizeof(uv_semaphore_t*));
+#endif
+
+static int uv__custom_sem_init(uv_sem_t* sem_, unsigned int value) {
+  int err;
+  uv_semaphore_t* sem;
+
+  sem = uv__malloc(sizeof(*sem));
+  if (sem == NULL)
+    return UV_ENOMEM;
+
+  if ((err = uv_mutex_init(&sem->mutex)) != 0) {
+    uv__free(sem);
+    return err;
+  }
+
+  if ((err = uv_cond_init(&sem->cond)) != 0) {
+    uv_mutex_destroy(&sem->mutex);
+    uv__free(sem);
+    return err;
+  }
+
+  sem->value = value;
+  *(uv_semaphore_t**)sem_ = sem;
   return 0;
 }
 
 
-void uv_sem_destroy(uv_sem_t* sem) {
+static void uv__custom_sem_destroy(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  uv_cond_destroy(&sem->cond);
+  uv_mutex_destroy(&sem->mutex);
+  uv__free(sem);
+}
+
+
+static void uv__custom_sem_post(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  uv_mutex_lock(&sem->mutex);
+  sem->value++;
+  if (sem->value == 1)
+    uv_cond_signal(&sem->cond);
+  uv_mutex_unlock(&sem->mutex);
+}
+
+
+static void uv__custom_sem_wait(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  uv_mutex_lock(&sem->mutex);
+  while (sem->value == 0)
+    uv_cond_wait(&sem->cond, &sem->mutex);
+  sem->value--;
+  uv_mutex_unlock(&sem->mutex);
+}
+
+
+static int uv__custom_sem_trywait(uv_sem_t* sem_) {
+  uv_semaphore_t* sem;
+
+  sem = *(uv_semaphore_t**)sem_;
+  if (uv_mutex_trylock(&sem->mutex) != 0)
+    return UV_EAGAIN;
+
+  if (sem->value == 0) {
+    uv_mutex_unlock(&sem->mutex);
+    return UV_EAGAIN;
+  }
+
+  sem->value--;
+  uv_mutex_unlock(&sem->mutex);
+
+  return 0;
+}
+
+static int uv__sem_init(uv_sem_t* sem, unsigned int value) {
+  if (sem_init(sem, 0, value))
+    return UV__ERR(errno);
+  return 0;
+}
+
+
+static void uv__sem_destroy(uv_sem_t* sem) {
   if (sem_destroy(sem))
     abort();
 }
 
 
-void uv_sem_post(uv_sem_t* sem) {
+static void uv__sem_post(uv_sem_t* sem) {
   if (sem_post(sem))
     abort();
 }
 
 
-void uv_sem_wait(uv_sem_t* sem) {
+static void uv__sem_wait(uv_sem_t* sem) {
   int r;
 
   do
@@ -533,7 +573,7 @@ void uv_sem_wait(uv_sem_t* sem) {
 }
 
 
-int uv_sem_trywait(uv_sem_t* sem) {
+static int uv__sem_trywait(uv_sem_t* sem) {
   int r;
 
   do
@@ -542,11 +582,54 @@ int uv_sem_trywait(uv_sem_t* sem) {
 
   if (r) {
     if (errno == EAGAIN)
-      return -EAGAIN;
+      return UV_EAGAIN;
     abort();
   }
 
   return 0;
+}
+
+int uv_sem_init(uv_sem_t* sem, unsigned int value) {
+#ifdef __GLIBC__
+  uv_once(&glibc_version_check_once, glibc_version_check);
+#endif
+
+  if (platform_needs_custom_semaphore)
+    return uv__custom_sem_init(sem, value);
+  else
+    return uv__sem_init(sem, value);
+}
+
+
+void uv_sem_destroy(uv_sem_t* sem) {
+  if (platform_needs_custom_semaphore)
+    uv__custom_sem_destroy(sem);
+  else
+    uv__sem_destroy(sem);
+}
+
+
+void uv_sem_post(uv_sem_t* sem) {
+  if (platform_needs_custom_semaphore)
+    uv__custom_sem_post(sem);
+  else
+    uv__sem_post(sem);
+}
+
+
+void uv_sem_wait(uv_sem_t* sem) {
+  if (platform_needs_custom_semaphore)
+    uv__custom_sem_wait(sem);
+  else
+    uv__sem_wait(sem);
+}
+
+
+int uv_sem_trywait(uv_sem_t* sem) {
+  if (platform_needs_custom_semaphore)
+    return uv__custom_sem_trywait(sem);
+  else
+    return uv__sem_trywait(sem);
 }
 
 #endif /* defined(__APPLE__) && defined(__MACH__) */
@@ -555,7 +638,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
 #if defined(__APPLE__) && defined(__MACH__) || defined(__MVS__)
 
 int uv_cond_init(uv_cond_t* cond) {
-  return -pthread_cond_init(cond, NULL);
+  return UV__ERR(pthread_cond_init(cond, NULL));
 }
 
 #else /* !(defined(__APPLE__) && defined(__MACH__)) */
@@ -566,7 +649,7 @@ int uv_cond_init(uv_cond_t* cond) {
 
   err = pthread_condattr_init(&attr);
   if (err)
-    return -err;
+    return UV__ERR(err);
 
 #if !(defined(__ANDROID_API__) && __ANDROID_API__ < 21)
   err = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
@@ -588,7 +671,7 @@ error:
   pthread_cond_destroy(cond);
 error2:
   pthread_condattr_destroy(&attr);
-  return -err;
+  return UV__ERR(err);
 }
 
 #endif /* defined(__APPLE__) && defined(__MACH__) */
@@ -646,13 +729,22 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
 int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
   int r;
   struct timespec ts;
+#if defined(__MVS__)
+  struct timeval tv;
+#endif
 
 #if defined(__APPLE__) && defined(__MACH__)
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
   r = pthread_cond_timedwait_relative_np(cond, mutex, &ts);
 #else
+#if defined(__MVS__)
+  if (gettimeofday(&tv, NULL))
+    abort();
+  timeout += tv.tv_sec * NANOSEC + tv.tv_usec * 1e3;
+#else
   timeout += uv__hrtime(UV_CLOCK_PRECISE);
+#endif
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
@@ -672,15 +764,15 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
     return 0;
 
   if (r == ETIMEDOUT)
-    return -ETIMEDOUT;
+    return UV_ETIMEDOUT;
 
   abort();
-  return -EINVAL;  /* Satisfy the compiler. */
+  return UV_EINVAL;  /* Satisfy the compiler. */
 }
 
 
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  return -pthread_barrier_init(barrier, NULL, count);
+  return UV__ERR(pthread_barrier_init(barrier, NULL, count));
 }
 
 
@@ -699,7 +791,7 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
 
 
 int uv_key_create(uv_key_t* key) {
-  return -pthread_key_create(key, NULL);
+  return UV__ERR(pthread_key_create(key, NULL));
 }
 
 

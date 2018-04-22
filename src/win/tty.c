@@ -2235,14 +2235,20 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
 }
 
 
-/* TODO: remove me */
+/*
+ * uv_process_tty_accept_req() is a stub to keep DELEGATE_STREAM_REQ working
+ * TODO: find a way to remove it
+ */
 void uv_process_tty_accept_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* raw_req) {
   abort();
 }
 
 
-/* TODO: remove me */
+/*
+ * uv_process_tty_connect_req() is a stub to keep DELEGATE_STREAM_REQ working
+ * TODO: find a way to remove it
+ */
 void uv_process_tty_connect_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_connect_t* req) {
   abort();
@@ -2285,13 +2291,16 @@ static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
   uv__tty_console_width = sb_info.dwSize.X;
   uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
 
-  if (!SetWinEventHook(EVENT_CONSOLE_LAYOUT,
-                       EVENT_CONSOLE_LAYOUT,
-                       NULL,
-                       uv__tty_console_resize_event,
-                       0,
-                       0,
-                       WINEVENT_OUTOFCONTEXT))
+  if (pSetWinEventHook == NULL)
+    return 0;
+
+  if (!pSetWinEventHook(EVENT_CONSOLE_LAYOUT,
+                        EVENT_CONSOLE_LAYOUT,
+                        NULL,
+                        uv__tty_console_resize_event,
+                        0,
+                        0,
+                        WINEVENT_OUTOFCONTEXT))
     return 0;
 
   while (GetMessage(&msg, NULL, 0, 0)) {
