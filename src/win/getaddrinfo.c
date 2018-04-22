@@ -392,6 +392,8 @@ int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size) {
   DWORD bufsize;
   int r;
 
+  uv__once_init();
+
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
