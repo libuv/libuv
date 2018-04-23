@@ -62,11 +62,18 @@ API
     Supported options:
 
     - UV_LOOP_BLOCK_SIGNAL: Block a signal when polling for new events.  The
-      second argument to :c:func:`uv_loop_configure` is the signal number.
+      third argument to :c:func:`uv_loop_configure` is the signal number.
 
       This operation is currently only implemented for SIGPROF signals,
       to suppress unnecessary wakeups when using a sampling profiler.
       Requesting other signals will fail with UV_EINVAL.
+
+    - UV_LOOP_TRACE: Configure a loop trace events listener. The third
+      argument to :c:func:`uv_loop_configure` is a :c:type:`uv_loop_trace_t`.
+
+    - UV_THREADPOOL_TRACE: Configure a threadpool trace events listener. The
+      third argument to :c:func:`uv_loop_configure` is a
+      :c:type:`uv_threadpool_trace_t`.
 
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 

@@ -31,5 +31,6 @@ API documentation
    dns
    dll
    threading
+   tracing
    misc
 

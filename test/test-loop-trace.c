@@ -57,6 +57,9 @@ static void trace_start_cb(const uv_trace_info_t* info, void* data) {
     case UV_TRACE_POLL:
       ASSERT(0 <= ((const uv_trace_poll_info_t*)info)->timeout);
       break;
+    default:
+      /* Fallthrough */
+      break;
   }
 }
 
@@ -85,6 +88,7 @@ static void trace_end_cb(const uv_trace_info_t* info, void* data) {
       ASSERT(0 <= ((const uv_trace_poll_info_t*)info)->timeout);
       break;
     default:
+      /* Fallthrough */
       break;
   }
 }
