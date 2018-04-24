@@ -710,9 +710,15 @@ TASK_LIST_START
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
   TEST_ENTRY  (getaddrinfo_fail_sync)
 
+#ifdef __MVS__
+  TEST_ENTRY_CUSTOM  (getaddrinfo_basic, 0, 0, 10000)
+  TEST_ENTRY_CUSTOM  (getaddrinfo_basic_sync, 0, 0, 10000)
+  TEST_ENTRY_CUSTOM  (getaddrinfo_concurrent, 0, 0, 10000)
+#else
   TEST_ENTRY  (getaddrinfo_basic)
   TEST_ENTRY  (getaddrinfo_basic_sync)
   TEST_ENTRY  (getaddrinfo_concurrent)
+#endif
 
   TEST_ENTRY  (gethostname)
 
