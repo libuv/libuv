@@ -944,6 +944,10 @@ int uv_spawn(uv_loop_t* loop,
     return UV_ENOTSUP;
   }
 
+  if (options->chroot != NULL) {
+    return UV_ENOTSUP;
+  }
+
   if (options->file == NULL ||
       options->args == NULL) {
     return UV_EINVAL;

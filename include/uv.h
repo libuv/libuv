@@ -987,6 +987,12 @@ typedef struct uv_process_options_s {
    */
   char* cpumask;
   size_t cpumask_size;
+  /*
+   * If non-null this represents a directory the child process should be
+   * chroot()'d into prior to running. This is not supported on windows;
+   * uv_spawn() will fail and set the error to UV_ENOTSUP.
+   */
+  const char* chroot;
 } uv_process_options_t;
 
 /*

@@ -27,6 +27,7 @@ Data types
             char** args;
             char** env;
             const char* cwd;
+            const char* chroot;
             unsigned int flags;
             int stdio_count;
             uv_stdio_container_t* stdio;
@@ -146,6 +147,15 @@ Public members
 .. c:member:: uv_process_options_t.cwd
 
     Current working directory for the subprocess.
+
+.. c:member:: uv_process_options_t.chroot
+
+    Directory to use as root filesystem for the process (requires root
+    or CAP_SYS_CHROOT capability).
+
+    .. note::
+        This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
+        to ``UV_ENOTSUP`` if this property is anything but ``NULL``.
 
 .. c:member:: uv_process_options_t.flags
 

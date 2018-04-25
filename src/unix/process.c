@@ -364,6 +364,11 @@ static void uv__process_child_init(const uv_process_options_t* options,
       uv__close(use_fd);
   }
 
+  if (options->chroot != NULL && chroot(options->chroot)) {
+    uv__write_int(error_fd, UV__ERR(errno));
+    _exit(127);
+  }
+
   if (options->cwd != NULL && chdir(options->cwd)) {
     uv__write_int(error_fd, UV__ERR(errno));
     _exit(127);
