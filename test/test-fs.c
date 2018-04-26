@@ -3233,10 +3233,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
 
 #ifdef _WIN32
 int call_icacls(const char* command, ...) {
-    uv_process_t handle;
-    uv_process_options_t options;
     char icacls_command[1024];
-    char* icacls_args[3];
     va_list args;
     
     va_start(args, command);
