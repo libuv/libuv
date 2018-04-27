@@ -1016,6 +1016,7 @@ uv_handle_type uv__handle_type(int fd) {
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags |= UV_STREAM_READ_EOF;
+  stream->flags &= ~UV_STREAM_READABLE;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   if (!uv__io_active(&stream->io_watcher, POLLOUT))
     uv__handle_stop(stream);
@@ -1198,6 +1199,7 @@ static void uv__read(uv_stream_t* stream) {
 #endif
       } else {
         /* Error. User should call uv_close(). */
+        stream->flags &= ~(UV_STREAM_READABLE | UV_STREAM_WRITABLE);
         stream->read_cb(stream, UV__ERR(errno), &buf);
         if (stream->flags & UV_STREAM_READING) {
           stream->flags &= ~UV_STREAM_READING;
@@ -1286,6 +1288,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   req->cb = cb;
   stream->shutdown_req = req;
   stream->flags |= UV_STREAM_SHUTTING;
+  stream->flags &= ~UV_STREAM_WRITABLE;
 
   uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
   uv__stream_osx_interrupt_select(stream);
