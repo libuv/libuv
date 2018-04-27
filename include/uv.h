@@ -1200,6 +1200,7 @@ typedef enum {
   UV_FS_READLINK,
   UV_FS_CHOWN,
   UV_FS_FCHOWN,
+  UV_FS_LCHOWN,
   UV_FS_REALPATH,
   UV_FS_COPYFILE
 } uv_fs_type;
@@ -1403,6 +1404,12 @@ UV_EXTERN int uv_fs_chown(uv_loop_t* loop,
 UV_EXTERN int uv_fs_fchown(uv_loop_t* loop,
                            uv_fs_t* req,
                            uv_os_fd_t file,
+                           uv_uid_t uid,
+                           uv_gid_t gid,
+                           uv_fs_cb cb);
+UV_EXTERN int uv_fs_lchown(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           const char* path,
                            uv_uid_t uid,
                            uv_gid_t gid,
                            uv_fs_cb cb);

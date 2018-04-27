@@ -86,6 +86,7 @@ static int chmod_cb_count;
 static int fchmod_cb_count;
 static int chown_cb_count;
 static int fchown_cb_count;
+static int lchown_cb_count;
 static int link_cb_count;
 static int symlink_cb_count;
 static int readlink_cb_count;
@@ -242,6 +243,13 @@ static void chown_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_CHOWN);
   ASSERT(req->result == 0);
   chown_cb_count++;
+  uv_fs_req_cleanup(req);
+}
+
+static void lchown_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_LCHOWN);
+  ASSERT(req->result == 0);
+  lchown_cb_count++;
   uv_fs_req_cleanup(req);
 }
 
@@ -1524,6 +1532,7 @@ TEST_IMPL(fs_chown) {
 
   /* Setup. */
   unlink("test_file");
+  unlink("test_file_link");
 
   loop = uv_default_loop();
 
@@ -1567,6 +1576,24 @@ TEST_IMPL(fs_chown) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(fchown_cb_count == 1);
 
+  /* sync link */
+  r = uv_fs_link(NULL, &req, "test_file", "test_file_link", NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /* sync lchown */
+  r = uv_fs_lchown(NULL, &req, "test_file_link", -1, -1, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /* async lchown */
+  r = uv_fs_lchown(loop, &req, "test_file_link", -1, -1, lchown_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(lchown_cb_count == 1);
+
   /* Close file */
   r = uv_fs_close(NULL, &req, file, NULL);
   ASSERT(r == 0);
@@ -1581,6 +1608,7 @@ TEST_IMPL(fs_chown) {
 
   /* Cleanup. */
   unlink("test_file");
+  unlink("test_file_link");
 
   MAKE_VALGRIND_HAPPY();
   return 0;
