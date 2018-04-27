@@ -68,6 +68,24 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
   free(req);
 }
 
+static void dont_linger(uv_handle_t* handle){
+  struct linger so_linger;
+  uv_os_fd_t socket_fd = 0;
+
+  if(UV_TCP != uv_handle_get_type(handle)){
+    return;
+  }
+
+  ASSERT(0 == uv_fileno(handle, &socket_fd));
+
+  so_linger.l_onoff = 1;
+  so_linger.l_linger = 0;
+  ASSERT(0 == setsockopt((uv_os_sock_t)socket_fd,
+                        SOL_SOCKET,
+                        SO_LINGER,
+                        (const void*)&so_linger,
+                        sizeof(so_linger)));
+}
 
 static void after_read(uv_stream_t* handle,
                        ssize_t nread,
@@ -95,11 +113,15 @@ static void after_read(uv_stream_t* handle,
   /*
    * Scan for the letter Q which signals that we should quit the server.
    * If we get QS it means close the stream.
+   * If we get QSH it means disable linger before close the socket.
    */
   if (!server_closed) {
     for (i = 0; i < nread; i++) {
       if (buf->base[i] == 'Q') {
         if (i + 1 < nread && buf->base[i + 1] == 'S') {
+          if(i + 2 < nread && buf->base[i + 2] == 'H'){
+            dont_linger((uv_handle_t*)handle);
+          }
           free(buf->base);
           uv_close((uv_handle_t*)handle, on_close);
           return;
