@@ -46,7 +46,10 @@ TEST_IMPL(kill_invalid_signum) {
 
 /* For Windows we test only signum handling */
 #ifdef _WIN32
+
+#ifndef NSIG
 #define NSIG 32
+#endif
 
 static void signum_test_cb(uv_signal_t* handle, int signum) {
   FATAL("signum_test_cb should not be called");
