@@ -1393,7 +1393,7 @@ UV_EXTERN int uv_fs_fchown(uv_loop_t* loop,
                            uv_uid_t uid,
                            uv_gid_t gid,
                            uv_fs_cb cb);
-UV_EXTERN int uv_ls_chown(uv_loop_t* loop,
+UV_EXTERN int uv_fs_lchown(uv_loop_t* loop,
                           uv_fs_t* req,
                           const char* path,
                           uv_uid_t uid,
