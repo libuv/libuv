@@ -2218,6 +2218,8 @@ int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t hFile, uv_uid_t uid,
 
 int uv_fs_lchown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
     uv_gid_t gid, uv_fs_cb cb) {
+  int err;
+
   INIT(UV_FS_LCHOWN);
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
