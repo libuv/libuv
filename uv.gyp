@@ -54,7 +54,7 @@
           '<@(shared_unix_defines)',
           '<@(shared_zos_defines)',
         ],
-        'include_dirs': [ 'include' ],
+        'include_dirs': [ 'include','src' ],
         'conditions': [
           ['OS == "linux"', {
             'defines': [ '_POSIX_C_SOURCE=200112' ],
