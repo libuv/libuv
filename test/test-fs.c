@@ -26,6 +26,7 @@
 #include <string.h> /* memset */
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 
 /* FIXME we shouldn't need to branch in this file */
 #if defined(__unix__) || defined(__POSIX__) || \
