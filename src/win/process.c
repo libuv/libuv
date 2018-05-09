@@ -831,8 +831,13 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
  */
 static WCHAR* find_path(WCHAR *env) {
   for (; env != NULL && *env != 0; env += wcslen(env) + 1) {
-    if (wcsncmp(env, L"PATH=", 5) == 0)
+    if ((env[0] == L'P' || env[0] == L'p') &&
+        (env[1] == L'A' || env[1] == L'a') &&
+        (env[2] == L'T' || env[2] == L't') &&
+        (env[3] == L'H' || env[3] == L'h') &&
+        (env[4] == L'=')) {
       return &env[5];
+    }
   }
 
   return NULL;
