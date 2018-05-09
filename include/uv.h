@@ -142,6 +142,7 @@ extern "C" {
   XX(EHOSTDOWN, "host is down")                                               \
   XX(EREMOTEIO, "remote I/O error")                                           \
   XX(ENOTTY, "inappropriate ioctl for device")                                \
+  XX(EFTYPE, "inappropriate file type or format")                             \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
