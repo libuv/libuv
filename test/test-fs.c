@@ -3230,3 +3230,89 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
   return 0;
 }
 #endif
+
+#ifdef _WIN32
+int call_icacls(const char* command, ...) {
+    char icacls_command[1024];
+    va_list args;
+    
+    va_start(args, command);
+    vsnprintf(icacls_command, ARRAYSIZE(icacls_command), command, args);
+    va_end(args);
+    return system(icacls_command);
+}
+
+TEST_IMPL(fs_open_readonly_acl) {
+    uv_passwd_t pwd;
+    uv_fs_t req;
+    int r;
+
+    /*
+        Based on Node.js test from
+        https://github.com/nodejs/node/commit/3ba81e34e86a5c32658e218cb6e65b13e8326bc5
+
+        If anything goes wrong, you can delte the test_fle_icacls with:
+
+            icacls test_file_icacls /remove "%USERNAME%" /inheritance:e
+            attrib -r test_file_icacls
+            del test_file_icacls
+    */
+    
+    /* Setup - clear the ACL and remove the file */
+    loop = uv_default_loop();
+    r = uv_os_get_passwd(&pwd);
+    ASSERT(r == 0);
+    call_icacls("icacls test_file_icacls /remove \"%s\" /inheritance:e",
+                pwd.username);
+    uv_fs_chmod(loop, &req, "test_file_icacls", S_IWUSR, NULL);
+    unlink("test_file_icacls");
+
+    /* Create the file */    
+    r = uv_fs_open(loop,
+                   &open_req1,
+                   "test_file_icacls",
+                   O_RDONLY | O_CREAT,
+                   S_IRUSR,
+                   NULL);
+    ASSERT(r >= 0);
+    ASSERT(open_req1.result >= 0);
+    uv_fs_req_cleanup(&open_req1);
+    r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+    ASSERT(r == 0);
+    ASSERT(close_req.result == 0);
+    uv_fs_req_cleanup(&close_req);
+
+    /* Set up ACL */
+    r = call_icacls("icacls test_file_icacls /inheritance:r /remove \"%s\"",
+                    pwd.username);
+    if (r != 0) {
+        goto acl_cleanup;
+    }
+    r = call_icacls("icacls test_file_icacls /grant \"%s\":RX", pwd.username);
+    if (r != 0) {
+        goto acl_cleanup;
+    }
+    
+    /* Try opening the file */
+    r = uv_fs_open(NULL, &open_req1, "test_file_icacls", O_RDONLY, 0, NULL);
+    if (r < 0) {
+        goto acl_cleanup;
+    }
+    uv_fs_req_cleanup(&open_req1);
+    r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+    if (r != 0) {
+        goto acl_cleanup;
+    }
+    uv_fs_req_cleanup(&close_req);
+
+ acl_cleanup:
+    /* Cleanup */
+    call_icacls("icacls test_file_icacls /remove \"%s\" /inheritance:e",
+                pwd.username);
+    unlink("test_file_icacls");
+    uv_os_free_passwd(&pwd);
+    ASSERT(r == 0);
+    MAKE_VALGRIND_HAPPY();
+    return 0;
+}
+#endif
