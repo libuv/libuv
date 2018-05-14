@@ -354,7 +354,7 @@ int uv__stdio_create(uv_loop_t* loop,
         /* Make an inheritable duplicate of the handle. */
         err = uv__duplicate_fd(loop, fdopt.data.fd, &child_handle);
         if (err) {
-          /* If fdopt.data.fd is not valid and fd fd <= 2, then ignore the */
+          /* If fdopt.data.fd is not valid and fd <= 2, then ignore the */
           /* error. */
           if (fdopt.data.fd <= 2 && err == ERROR_INVALID_HANDLE) {
             CHILD_STDIO_CRT_FLAGS(buffer, i) = 0;

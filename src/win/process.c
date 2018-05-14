@@ -890,7 +890,7 @@ void uv_process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   if (GetExitCodeProcess(handle->process_handle, &status)) {
     exit_code = status;
   } else {
-    /* Unable to to obtain the exit code. This should never happen. */
+    /* Unable to obtain the exit code. This should never happen. */
     exit_code = uv_translate_sys_error(GetLastError());
   }
 
