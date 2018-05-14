@@ -627,7 +627,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     }
 
     /* Initialize other unused requests too, because uv_tcp_endgame */
-    /* doesn't know how how many requests were initialized, so it will */
+    /* doesn't know how many requests were initialized, so it will */
     /* try to clean up {uv_simultaneous_server_accepts} requests. */
     for (i = simultaneous_accepts; i < uv_simultaneous_server_accepts; i++) {
       req = &handle->tcp.serv.accept_reqs[i];

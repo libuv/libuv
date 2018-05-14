@@ -165,7 +165,7 @@ error:
 }
 
 
-/* Timeout is is msecs. Set timeout < 0 to never time out. */
+/* Timeout is in msecs. Set timeout < 0 to never time out. */
 /* Returns 0 when all processes are terminated, -2 on timeout. */
 int process_wait(process_info_t *vec, int n, int timeout) {
   int i;

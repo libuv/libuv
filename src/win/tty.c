@@ -205,7 +205,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
       return uv_translate_sys_error(GetLastError());
     }
 
-    /* Obtain the the tty_output_lock because the virtual window state is */
+    /* Obtain the tty_output_lock because the virtual window state is */
     /* shared between all uv_tty_t handles. */
     uv_sem_wait(&uv_tty_output_lock);
 
