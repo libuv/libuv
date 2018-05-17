@@ -337,6 +337,8 @@ TEST_DECLARE   (fs_file_pos_after_op_with_offset)
 TEST_DECLARE   (fs_null_req)
 #ifdef _WIN32
 TEST_DECLARE   (fs_exclusive_sharing_mode)
+TEST_DECLARE   (fs_open_readonly_acl)
+TEST_DECLARE   (fs_fchmod_archive_readolny)
 #endif
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (threadpool_queue_work_einval)
@@ -869,6 +871,8 @@ TASK_LIST_START
   TEST_ENTRY  (fs_null_req)
 #ifdef _WIN32
   TEST_ENTRY  (fs_exclusive_sharing_mode)
+  TEST_ENTRY  (fs_open_readonly_acl)
+  TEST_ENTRY  (fs_fchmod_archive_readolny)
 #endif
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (threadpool_queue_work_simple)

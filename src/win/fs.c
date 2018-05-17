@@ -1490,6 +1490,7 @@ static void fs__chmod(uv_fs_t* req) {
 
 static void fs__fchmod(uv_fs_t* req) {
   int fd = req->file.fd;
+  int clear_archive_flag;
   HANDLE handle;
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
@@ -1497,7 +1498,11 @@ static void fs__fchmod(uv_fs_t* req) {
 
   VERIFY_FD(fd, req);
 
-  handle = uv__get_osfhandle(fd);
+  handle = ReOpenFile(uv__get_osfhandle(fd), FILE_WRITE_ATTRIBUTES, 0, 0);
+  if (handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
+  }
 
   nt_status = pNtQueryInformationFile(handle,
                                       &io_status,
@@ -1507,7 +1512,27 @@ static void fs__fchmod(uv_fs_t* req) {
 
   if (!NT_SUCCESS(nt_status)) {
     SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
-    return;
+    goto fchmod_cleanup;
+  }
+ 
+  /* Test if the Archive attribute is cleared */
+  if ((file_info.FileAttributes & FILE_ATTRIBUTE_ARCHIVE) == 0) {
+      /* Set Archive flag, otherwise setting or clearing the read-olny 
+         flag will not work */
+      file_info.FileAttributes |= FILE_ATTRIBUTE_ARCHIVE;
+      nt_status = pNtSetInformationFile(handle,
+                                        &io_status,
+                                        &file_info,
+                                        sizeof file_info,
+                                        FileBasicInformation);
+      if (!NT_SUCCESS(nt_status)) {
+        SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+        goto fchmod_cleanup;
+      }
+      /* Remeber to clear the flag later on */
+      clear_archive_flag = 1;
+  } else {
+      clear_archive_flag = 0;
   }
 
   if (req->fs.info.mode & _S_IWRITE) {
@@ -1524,10 +1549,28 @@ static void fs__fchmod(uv_fs_t* req) {
 
   if (!NT_SUCCESS(nt_status)) {
     SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
-    return;
+    goto fchmod_cleanup;
+  }
+
+  if (clear_archive_flag) {
+      file_info.FileAttributes &= ~FILE_ATTRIBUTE_ARCHIVE;
+      if (file_info.FileAttributes == 0) {
+          file_info.FileAttributes = FILE_ATTRIBUTE_NORMAL;
+      }
+      nt_status = pNtSetInformationFile(handle,
+                                        &io_status,
+                                        &file_info,
+                                        sizeof file_info,
+                                        FileBasicInformation);
+      if (!NT_SUCCESS(nt_status)) {
+        SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+        goto fchmod_cleanup;
+      }
   }
 
   SET_REQ_SUCCESS(req);
+fchmod_cleanup:
+  CloseHandle(handle);
 }
 
 
