@@ -113,6 +113,7 @@ test/test-homedir.c
 test/test-hrtime.c
 test/test-idle.c
 test/test-ip6-addr.c
+test/test-ipc-heavy-traffic-deadlock-bug.c
 test/test-ipc-send-recv.c
 test/test-ipc.c
 test/test-loop-handles.c
