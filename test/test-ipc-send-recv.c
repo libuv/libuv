@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* See test-ipc.ctx */
+/* See test-ipc.c */
 void spawn_helper(uv_pipe_t* channel,
                   uv_process_t* process,
                   const char* helper);
