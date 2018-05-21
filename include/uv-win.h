@@ -368,10 +368,11 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   } u;                                                                        \
   struct uv_req_s* next_req;
 
-#define UV_WRITE_PRIVATE_FIELDS                                               \
-  int ipc_header;                                                             \
-  uv_buf_t write_buffer;                                                      \
-  HANDLE event_handle;                                                        \
+#define UV_WRITE_PRIVATE_FIELDS                                           \
+  int coalesced; /* This ABI change will be un-done in a later commit. */ \
+  int ipc_header;                                                         \
+  uv_buf_t write_buffer;                                                  \
+  HANDLE event_handle;                                                    \
   HANDLE wait_handle;
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \

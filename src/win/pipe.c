@@ -79,6 +79,12 @@ typedef struct {
   uv__ipc_socket_info_ex socket_info_ex;
 } uv_ipc_frame_uv_stream;
 
+/* Coalesced write request. */
+typedef struct {
+  uv_write_t req;       /* Internal heap-allocated write request. */
+  uv_write_t* user_req; /* Pointer to user-specified uv_write_t. */
+} uv__coalesced_write_t;
+
 static void eof_timer_init(uv_pipe_t* pipe);
 static void eof_timer_start(uv_pipe_t* pipe);
 static void eof_timer_stop(uv_pipe_t* pipe);
@@ -1225,6 +1231,65 @@ static void uv_queue_non_overlapped_write(uv_pipe_t* handle) {
   }
 }
 
+static int uv__build_coalesced_write_req(uv_write_t* user_req,
+                                         const uv_buf_t bufs[],
+                                         size_t nbufs,
+                                         uv_write_t** req_out,
+                                         uv_buf_t* write_buf_out) {
+  /* Pack into a single heap-allocated buffer:
+   *   (a) a uv_write_t structure where libuv stores the actual state.
+   *   (b) a pointer to the original uv_write_t.
+   *   (c) data from all `bufs` entries.
+   */
+  char* heap_buffer;
+  size_t heap_buffer_length, heap_buffer_offset;
+  uv__coalesced_write_t* coalesced_write_req; /* (a) + (b) */
+  char* data_start;                           /* (c) */
+  size_t data_length;
+  unsigned int i;
+
+  /* Compute combined size of all combined buffers from `bufs`. */
+  data_length = 0;
+  for (i = 0; i < nbufs; i++)
+    data_length += bufs[i].len;
+
+  /* The total combined size of data buffers should not exceed UINT32_MAX,
+   * because WriteFile() won't accept buffers larger than that. */
+  if (data_length > UINT32_MAX)
+    return WSAENOBUFS; /* Maps to UV_ENOBUFS. */
+
+  /* Compute heap buffer size. */
+  heap_buffer_length = sizeof *coalesced_write_req + /* (a) + (b) */
+                       data_length;                  /* (c) */
+
+  /* Allocate buffer. */
+  heap_buffer = uv__malloc(heap_buffer_length);
+  if (heap_buffer == NULL)
+    return ERROR_NOT_ENOUGH_MEMORY; /* Maps to UV_ENOMEM. */
+
+  /* Copy uv_write_t information to the buffer. */
+  coalesced_write_req = (uv__coalesced_write_t*) heap_buffer;
+  coalesced_write_req->req = *user_req; /* copy (a) */
+  coalesced_write_req->req.coalesced = 1;
+  coalesced_write_req->user_req = user_req;         /* copy (b) */
+  heap_buffer_offset = sizeof *coalesced_write_req; /* offset (a) + (b) */
+
+  /* Copy data buffers to the heap buffer. */
+  data_start = &heap_buffer[heap_buffer_offset];
+  for (i = 0; i < nbufs; i++) {
+    memcpy(&heap_buffer[heap_buffer_offset],
+           bufs[i].base,
+           bufs[i].len);               /* copy (c) */
+    heap_buffer_offset += bufs[i].len; /* offset (c) */
+  }
+  assert(heap_buffer_offset == heap_buffer_length);
+
+  /* Set out arguments and return. */
+  *req_out = &coalesced_write_req->req;
+  *write_buf_out = uv_buf_init(data_start, (unsigned int) data_length);
+  return 0;
+}
+
 
 static int uv_pipe_write_impl(uv_loop_t* loop,
                               uv_write_t* req,
@@ -1235,13 +1300,10 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
                               uv_write_cb cb) {
   int err;
   int result;
+  uv_buf_t write_buf;
   uv_tcp_t* tcp_send_handle;
   uv_write_t* ipc_header_req = NULL;
   uv_ipc_frame_uv_stream ipc_frame;
-
-  if (nbufs != 1 && (nbufs != 0 || !send_handle)) {
-    return ERROR_NOT_SUPPORTED;
-  }
 
   /* Only TCP handles are supported for sharing. */
   if (send_handle && ((send_handle->type != UV_TCP) ||
@@ -1256,10 +1318,27 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
   req->handle = (uv_stream_t*) handle;
   req->send_handle = send_handle;
   req->cb = cb;
+  /* Private fields. */
+  req->coalesced = 0;
   req->ipc_header = 0;
   req->event_handle = NULL;
   req->wait_handle = INVALID_HANDLE_VALUE;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+  req->write_buffer = uv_null_buf_;
+
+  if (nbufs == 0) {
+    /* Write empty buffer. */
+    write_buf = uv_null_buf_;
+  } else if (nbufs == 1) {
+    /* Write directly from bufs[0]. */
+    write_buf = bufs[0];
+  } else {
+    /* Coalesce all `bufs` into one big buffer. This also creates a new
+     * write-request structure that replaces the old one. */
+    err = uv__build_coalesced_write_req(req, bufs, nbufs, &req, &write_buf);
+    if (err != 0)
+      return err;
+  }
 
   if (handle->ipc) {
     assert(!(handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE));
@@ -1288,9 +1367,9 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       }
     }
 
-    if (nbufs == 1) {
+    if (nbufs > 0) {
       ipc_frame.header.flags |= UV_IPC_RAW_DATA;
-      ipc_frame.header.raw_data_length = bufs[0].len;
+      ipc_frame.header.raw_data_length = write_buf.len;
     }
 
     /*
@@ -1317,6 +1396,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       UV_REQ_INIT(ipc_header_req, UV_WRITE);
       ipc_header_req->handle = (uv_stream_t*) handle;
       ipc_header_req->cb = NULL;
+      ipc_header_req->coalesced = 0;
       ipc_header_req->ipc_header = 1;
     }
 
@@ -1370,11 +1450,8 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) ==
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) {
     DWORD bytes;
-    result = WriteFile(handle->handle,
-                       bufs[0].base,
-                       bufs[0].len,
-                       &bytes,
-                       NULL);
+    result =
+        WriteFile(handle->handle, write_buf.base, write_buf.len, &bytes, NULL);
 
     if (!result) {
       err = GetLastError();
@@ -1390,14 +1467,14 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     POST_COMPLETION_FOR_REQ(loop, req);
     return 0;
   } else if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
-    req->write_buffer = bufs[0];
+    req->write_buffer = write_buf;
     uv_insert_non_overlapped_write_req(handle, req);
     if (handle->stream.conn.write_reqs_pending == 0) {
       uv_queue_non_overlapped_write(handle);
     }
 
     /* Request queued by the kernel. */
-    req->u.io.queued_bytes = bufs[0].len;
+    req->u.io.queued_bytes = write_buf.len;
     handle->write_queue_size += req->u.io.queued_bytes;
   } else if (handle->flags & UV_HANDLE_BLOCKING_WRITES) {
     /* Using overlapped IO, but wait for completion before returning */
@@ -1407,8 +1484,8 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     }
 
     result = WriteFile(handle->handle,
-                       bufs[0].base,
-                       bufs[0].len,
+                       write_buf.base,
+                       write_buf.len,
                        NULL,
                        &req->u.io.overlapped);
 
@@ -1423,7 +1500,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       req->u.io.queued_bytes = 0;
     } else {
       /* Request queued by the kernel. */
-      req->u.io.queued_bytes = bufs[0].len;
+      req->u.io.queued_bytes = write_buf.len;
       handle->write_queue_size += req->u.io.queued_bytes;
       if (WaitForSingleObject(req->u.io.overlapped.hEvent, INFINITE) !=
           WAIT_OBJECT_0) {
@@ -1440,8 +1517,8 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
     return 0;
   } else {
     result = WriteFile(handle->handle,
-                       bufs[0].base,
-                       bufs[0].len,
+                       write_buf.base,
+                       write_buf.len,
                        NULL,
                        &req->u.io.overlapped);
 
@@ -1454,7 +1531,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
       req->u.io.queued_bytes = 0;
     } else {
       /* Request queued by the kernel. */
-      req->u.io.queued_bytes = bufs[0].len;
+      req->u.io.queued_bytes = write_buf.len;
       handle->write_queue_size += req->u.io.queued_bytes;
     }
 
@@ -1720,8 +1797,18 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
       uv__free(req);
     }
   } else {
+    err = GET_REQ_ERROR(req);
+
+    /* If this was a coalesced write, extract pointer to the user_provided
+     * uv_write_t structure so we can pass the expected pointer to the
+     * callback, then free the heap-allocated write req. */
+    if (req->coalesced) {
+      uv__coalesced_write_t* coalesced_write =
+          container_of(req, uv__coalesced_write_t, req);
+      req = coalesced_write->user_req;
+      uv__free(coalesced_write);
+    }
     if (req->cb) {
-      err = GET_REQ_ERROR(req);
       req->cb(req, uv_translate_sys_error(err));
     }
   }
