@@ -1254,6 +1254,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
 
   UV_REQ_INIT(req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
+  req->send_handle = send_handle;
   req->cb = cb;
   req->ipc_header = 0;
   req->event_handle = NULL;
