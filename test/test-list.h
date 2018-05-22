@@ -71,8 +71,11 @@ TEST_DECLARE   (ipc_closed_handle)
 #endif
 TEST_DECLARE   (tcp_alloc_cb_fail)
 TEST_DECLARE   (tcp_ping_pong)
-TEST_DECLARE   (tcp_ping_pong_v6)
+TEST_DECLARE   (tcp_ping_pong_vec)
+TEST_DECLARE   (tcp6_ping_pong)
+TEST_DECLARE   (tcp6_ping_pong_vec)
 TEST_DECLARE   (pipe_ping_pong)
+TEST_DECLARE   (pipe_ping_pong_vec)
 TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (multiple_listen)
 #ifndef _WIN32
@@ -499,11 +502,20 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_ping_pong)
   TEST_HELPER (tcp_ping_pong, tcp4_echo_server)
 
-  TEST_ENTRY  (tcp_ping_pong_v6)
-  TEST_HELPER (tcp_ping_pong_v6, tcp6_echo_server)
+  TEST_ENTRY  (tcp_ping_pong_vec)
+  TEST_HELPER (tcp_ping_pong_vec, tcp4_echo_server)
+
+  TEST_ENTRY  (tcp6_ping_pong)
+  TEST_HELPER (tcp6_ping_pong, tcp6_echo_server)
+
+  TEST_ENTRY  (tcp6_ping_pong_vec)
+  TEST_HELPER (tcp6_ping_pong_vec, tcp6_echo_server)
 
   TEST_ENTRY  (pipe_ping_pong)
   TEST_HELPER (pipe_ping_pong, pipe_echo_server)
+
+  TEST_ENTRY  (pipe_ping_pong_vec)
+  TEST_HELPER (pipe_ping_pong_vec, pipe_echo_server)
 
   TEST_ENTRY  (delayed_accept)
   TEST_ENTRY  (multiple_listen)
