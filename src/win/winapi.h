@@ -4659,10 +4659,6 @@ typedef BOOLEAN (WINAPI* sCreateSymbolicLinkW)
                  LPCWSTR lpTargetFileName,
                  DWORD dwFlags);
 
-typedef BOOL (WINAPI* sCancelIoEx)
-             (HANDLE hFile,
-              LPOVERLAPPED lpOverlapped);
-
 typedef VOID (WINAPI* sInitializeConditionVariable)
              (PCONDITION_VARIABLE ConditionVariable);
 
@@ -4682,9 +4678,6 @@ typedef VOID (WINAPI* sWakeAllConditionVariable)
 
 typedef VOID (WINAPI* sWakeConditionVariable)
              (PCONDITION_VARIABLE ConditionVariable);
-
-typedef BOOL (WINAPI* sCancelSynchronousIo)
-             (HANDLE hThread);
 
 typedef DWORD (WINAPI* sGetFinalPathNameByHandleW)
              (HANDLE hFile,
@@ -4759,13 +4752,11 @@ extern sNtQuerySystemInformation pNtQuerySystemInformation;
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
 extern sCreateSymbolicLinkW pCreateSymbolicLinkW;
-extern sCancelIoEx pCancelIoEx;
 extern sInitializeConditionVariable pInitializeConditionVariable;
 extern sSleepConditionVariableCS pSleepConditionVariableCS;
 extern sSleepConditionVariableSRW pSleepConditionVariableSRW;
 extern sWakeAllConditionVariable pWakeAllConditionVariable;
 extern sWakeConditionVariable pWakeConditionVariable;
-extern sCancelSynchronousIo pCancelSynchronousIo;
 extern sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
 
 

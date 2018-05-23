@@ -468,8 +468,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
     int queue_len;                                                            \
   } pending_ipc_info;                                                         \
   uv_write_t* non_overlapped_writes_tail;                                     \
-  uv_mutex_t readfile_mutex;                                                  \
-  volatile HANDLE readfile_thread;
+  CRITICAL_SECTION readfile_thread_lock;                                      \
+  volatile HANDLE readfile_thread_handle;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
