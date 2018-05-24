@@ -247,7 +247,7 @@ static void chown_cb(uv_fs_t* req) {
 static void lchown_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_LCHOWN);
   ASSERT(req->result == 0);
-  chown_cb_count++;
+  lchown_cb_count++;
   uv_fs_req_cleanup(req);
 }
 
@@ -1557,12 +1557,16 @@ TEST_IMPL(fs_chown) {
   uv_fs_req_cleanup(&req);
 
   /* sync lchown */
-  r = uv_fs_lchown(NULL, &req, "test_file_link", -1, -2, NULL);
+  r = uv_fs_lchown(NULL, &req, "test_file_link", -1, -1, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
   uv_fs_req_cleanup(&req);
 
-  /* TODO: we should check here that the group of the test_file is still -1 */
+  /* async lchown */
+  r = uv_fs_lchown(loop, &req, "test_file_link", -1, -1, lchown_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(lchown_cb_count == 1);
 
   /* Close file */
   r = uv_fs_close(NULL, &req, file, NULL);
@@ -1578,6 +1582,7 @@ TEST_IMPL(fs_chown) {
 
   /* Cleanup. */
   unlink("test_file");
+  unlink("test_file_link");
 
   MAKE_VALGRIND_HAPPY();
   return 0;
