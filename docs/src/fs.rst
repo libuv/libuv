@@ -92,6 +92,7 @@ Data types
             UV_FS_READLINK,
             UV_FS_CHOWN,
             UV_FS_FCHOWN,
+            UV_FS_LCHOWN,
             UV_FS_REALPATH,
             UV_FS_COPYFILE
         } uv_fs_type;
@@ -357,6 +358,8 @@ API
         These functions are not implemented on Windows.
 
     .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
+    .. versionchanged:: 2.0.0 implemented uv_fs_lchown
 
 .. c:function:: uv_fs_type uv_fs_get_type(const uv_fs_t* req)
 
