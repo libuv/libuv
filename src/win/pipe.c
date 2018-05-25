@@ -1428,7 +1428,7 @@ static int uv_pipe_write_impl(uv_loop_t* loop,
           WAIT_OBJECT_0) {
         err = GetLastError();
         CloseHandle(req->u.io.overlapped.hEvent);
-        return uv_translate_sys_error(err);
+        return err;
       }
     }
     CloseHandle(req->u.io.overlapped.hEvent);
