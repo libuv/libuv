@@ -33,11 +33,13 @@ static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
+static unsigned int slow_io_pooled_work;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
 static QUEUE exit_message;
 static QUEUE wq;
+static QUEUE slow_io_pending_wq;
 
 
 static void uv__cancelled(struct uv__work* w) {
@@ -92,8 +94,18 @@ static void worker(void* arg) {
 }
 
 
-static void post(QUEUE* q) {
+static void post(QUEUE* q, enum uv__work_kind kind) {
   uv_mutex_lock(&mutex);
+  if (kind == UV__WORK_SLOW_IO) {
+    if (slow_io_pooled_work >= (nthreads + 1) / 2) {
+      QUEUE_INSERT_TAIL(&slow_io_pending_wq, q);
+      uv_mutex_unlock(&mutex);
+      return;
+    }
+
+    slow_io_pooled_work++;
+  }
+
   QUEUE_INSERT_TAIL(&wq, q);
   if (idle_threads > 0)
     uv_cond_signal(&cond);
@@ -108,7 +120,7 @@ UV_DESTRUCTOR(static void cleanup(void)) {
   if (nthreads == 0)
     return;
 
-  post(&exit_message);
+  post(&exit_message, UV__WORK_CPU);
 
   for (i = 0; i < nthreads; i++)
     if (uv_thread_join(threads + i))
@@ -156,6 +168,7 @@ static void init_threads(void) {
     abort();
 
   QUEUE_INIT(&wq);
+  QUEUE_INIT(&slow_io_pending_wq);
 
   if (uv_sem_init(&sem, 0))
     abort();
@@ -194,13 +207,15 @@ static void init_once(void) {
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
+                     enum uv__work_kind kind,
                      void (*work)(struct uv__work* w),
                      void (*done)(struct uv__work* w, int status)) {
   uv_once(&once, init_once);
   w->loop = loop;
+  w->kind = kind;
   w->work = work;
   w->done = done;
-  post(&w->wq);
+  post(&w->wq, w->kind);
 }
 
 
@@ -234,6 +249,7 @@ void uv__work_done(uv_async_t* handle) {
   struct uv__work* w;
   uv_loop_t* loop;
   QUEUE* q;
+  QUEUE* slow_work;
   QUEUE wq;
   int err;
 
@@ -248,6 +264,20 @@ void uv__work_done(uv_async_t* handle) {
 
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
+
+    if (w->kind == UV__WORK_SLOW_IO) {
+      uv_mutex_lock(&mutex);
+      slow_io_pooled_work--;
+      if (!QUEUE_EMPTY(&slow_io_pending_wq)) {
+        slow_work = QUEUE_HEAD(&slow_io_pending_wq);
+        QUEUE_REMOVE(slow_work);
+        uv_mutex_unlock(&mutex);
+        post(slow_work, UV__WORK_SLOW_IO);
+      } else {
+        uv_mutex_unlock(&mutex);
+      }
+    }
+
     w->done(w, err);
   }
 }
@@ -284,7 +314,11 @@ int uv_queue_work(uv_loop_t* loop,
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
-  uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
+  uv__work_submit(loop,
+                  &req->work_req,
+                  UV__WORK_CPU,
+                  uv__queue_work,
+                  uv__queue_done);
   return 0;
 }
 

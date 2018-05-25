@@ -27,11 +27,18 @@
 #ifndef UV_THREADPOOL_H_
 #define UV_THREADPOOL_H_
 
+enum uv__work_kind {
+  UV__WORK_CPU,
+  UV__WORK_FAST_IO,
+  UV__WORK_SLOW_IO
+};
+
 struct uv__work {
   void (*work)(struct uv__work *w);
   void (*done)(struct uv__work *w, int status);
   struct uv_loop_s* loop;
   void* wq[2];
+  enum uv__work_kind kind;
 };
 
 #endif /* UV_THREADPOOL_H_ */

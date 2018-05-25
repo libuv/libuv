@@ -121,6 +121,7 @@ int uv__getaddrinfo_translate_error(int sys_err);    /* EAI_* error. */
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
+                     enum uv__work_kind kind,
                      void (*work)(struct uv__work *w),
                      void (*done)(struct uv__work *w, int status));
 
