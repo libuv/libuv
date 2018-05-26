@@ -90,7 +90,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
   /* We call shutdown here because when bytes_received == sizeof MESSAGE */
   /* there will be no more data sent nor received, so here it would be */
-  /* possible for a backend to to call shutdown_cb immediately and *not* */
+  /* possible for a backend to call shutdown_cb immediately and *not* */
   /* from a fresh stack. */
   if (bytes_received == sizeof MESSAGE) {
     nested++;

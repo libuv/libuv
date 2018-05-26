@@ -262,7 +262,6 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
   req->ptr = NULL;
   req->path = NULL;
   req->cb = cb;
-  req->fs.info.bufs = NULL;
   memset(&req->fs, 0, sizeof(req->fs));
 }
 
@@ -768,7 +767,9 @@ void fs__unlink(uv_fs_t* req) {
     /* Remove read-only attribute */
     FILE_BASIC_INFORMATION basic = { 0 };
 
-    basic.FileAttributes = info.dwFileAttributes & ~(FILE_ATTRIBUTE_READONLY);
+    basic.FileAttributes = info.dwFileAttributes
+                           & ~(FILE_ATTRIBUTE_READONLY)
+                           | FILE_ATTRIBUTE_ARCHIVE;
 
     status = pNtSetInformationFile(handle,
                                    &iosb,
@@ -1364,6 +1365,12 @@ static void fs__copyfile(uv_fs_t* req) {
   int overwrite;
 
   flags = req->fs.info.file_flags;
+
+  if (flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
+    return;
+  }
+
   overwrite = flags & UV_FS_COPYFILE_EXCL;
 
   if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, overwrite) == 0) {
@@ -1461,12 +1468,19 @@ static void fs__chmod(uv_fs_t* req) {
 
 
 static void fs__fchmod(uv_fs_t* req) {
-  HANDLE handle = req->file.hFile;
+  HANDLE handle;
+  int clear_archive_flag;
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_BASIC_INFORMATION file_info;
 
+  handle = req->file.hFile;
   VERIFY_HANDLE(handle, req);
+  handle = ReOpenFile(handle, FILE_WRITE_ATTRIBUTES, 0, 0);
+  if (handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
+  }
 
   nt_status = pNtQueryInformationFile(handle,
                                       &io_status,
@@ -1476,7 +1490,27 @@ static void fs__fchmod(uv_fs_t* req) {
 
   if (!NT_SUCCESS(nt_status)) {
     SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
-    return;
+    goto fchmod_cleanup;
+  }
+ 
+  /* Test if the Archive attribute is cleared */
+  if ((file_info.FileAttributes & FILE_ATTRIBUTE_ARCHIVE) == 0) {
+      /* Set Archive flag, otherwise setting or clearing the read-olny 
+         flag will not work */
+      file_info.FileAttributes |= FILE_ATTRIBUTE_ARCHIVE;
+      nt_status = pNtSetInformationFile(handle,
+                                        &io_status,
+                                        &file_info,
+                                        sizeof file_info,
+                                        FileBasicInformation);
+      if (!NT_SUCCESS(nt_status)) {
+        SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+        goto fchmod_cleanup;
+      }
+      /* Remeber to clear the flag later on */
+      clear_archive_flag = 1;
+  } else {
+      clear_archive_flag = 0;
   }
 
   if (req->fs.info.mode & _S_IWRITE) {
@@ -1493,10 +1527,28 @@ static void fs__fchmod(uv_fs_t* req) {
 
   if (!NT_SUCCESS(nt_status)) {
     SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
-    return;
+    goto fchmod_cleanup;
+  }
+
+  if (clear_archive_flag) {
+      file_info.FileAttributes &= ~FILE_ATTRIBUTE_ARCHIVE;
+      if (file_info.FileAttributes == 0) {
+          file_info.FileAttributes = FILE_ATTRIBUTE_NORMAL;
+      }
+      nt_status = pNtSetInformationFile(handle,
+                                        &io_status,
+                                        &file_info,
+                                        sizeof file_info,
+                                        FileBasicInformation);
+      if (!NT_SUCCESS(nt_status)) {
+        SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+        goto fchmod_cleanup;
+      }
   }
 
   SET_REQ_SUCCESS(req);
+fchmod_cleanup:
+  CloseHandle(handle);
 }
 
 
@@ -2316,8 +2368,11 @@ int uv_fs_copyfile(uv_loop_t* loop,
 
   INIT(UV_FS_COPYFILE);
 
-  if (flags & ~UV_FS_COPYFILE_EXCL)
+  if (flags & ~(UV_FS_COPYFILE_EXCL |
+                UV_FS_COPYFILE_FICLONE |
+                UV_FS_COPYFILE_FICLONE_FORCE)) {
     return UV_EINVAL;
+  }
 
   err = fs__capture_path(req, path, new_path, cb != NULL);
 

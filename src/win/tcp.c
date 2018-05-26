@@ -446,8 +446,6 @@ static void uv_tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
       SET_REQ_ERROR(req, GetLastError());
       uv_insert_pending_req(loop, (uv_req_t*)req);
-      handle->reqs_pending++;
-      return;
     }
   } else {
     /* Make this req pending reporting an error. */
@@ -598,7 +596,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     }
 
     /* Initialize other unused requests too, because uv_tcp_endgame */
-    /* doesn't know how how many requests were initialized, so it will */
+    /* doesn't know how many requests were initialized, so it will */
     /* try to clean up {uv_simultaneous_server_accepts} requests. */
     for (i = simultaneous_accepts; i < uv_simultaneous_server_accepts; i++) {
       req = &handle->tcp.serv.accept_reqs[i];
@@ -1139,11 +1137,14 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   err = 0;
   if (REQ_SUCCESS(req)) {
-    if (setsockopt(handle->socket,
-                    SOL_SOCKET,
-                    SO_UPDATE_CONNECT_CONTEXT,
-                    NULL,
-                    0) == 0) {
+    if (handle->flags & UV__HANDLE_CLOSING) {
+      /* use UV_ECANCELED for consistency with Unix */
+      err = ERROR_OPERATION_ABORTED;
+    } else if (setsockopt(handle->socket,
+                          SOL_SOCKET,
+                          SO_UPDATE_CONNECT_CONTEXT,
+                          NULL,
+                          0) == 0) {
       uv_connection_init((uv_stream_t*)handle);
       handle->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
     } else {

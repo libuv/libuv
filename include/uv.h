@@ -139,6 +139,7 @@ extern "C" {
   XX(EHOSTDOWN, "host is down")                                               \
   XX(EREMOTEIO, "remote I/O error")                                           \
   XX(ENOTTY, "inappropriate ioctl for device")                                \
+  XX(EFTYPE, "inappropriate file type or format")                             \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
@@ -375,8 +376,7 @@ UV_EXTERN const char* uv_err_name(int err);
   /* read-only */                                                             \
   uv_req_type type;                                                           \
   /* private */                                                               \
-  void* active_queue[2];                                                      \
-  void* reserved[4];                                                          \
+  void* reserved[6];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
 /* Abstract base class of all requests. */
@@ -919,7 +919,13 @@ typedef enum {
    * flags may be specified to create a duplex data stream.
    */
   UV_READABLE_PIPE  = 0x10,
-  UV_WRITABLE_PIPE  = 0x20
+  UV_WRITABLE_PIPE  = 0x20,
+
+  /*
+   * Open the child pipe handle in overlapped mode on Windows.
+   * On Unix it is silently ignored.
+   */
+  UV_OVERLAPPED_PIPE = 0x40
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {
@@ -1257,6 +1263,18 @@ UV_EXTERN int uv_fs_write(uv_loop_t* loop,
  * destination already exists.
  */
 #define UV_FS_COPYFILE_EXCL   0x0001
+
+/*
+ * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+ * If copy-on-write is not supported, a fallback copy mechanism is used.
+ */
+#define UV_FS_COPYFILE_FICLONE 0x0002
+
+/*
+ * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+ * If copy-on-write is not supported, an error is returned.
+ */
+#define UV_FS_COPYFILE_FICLONE_FORCE 0x0004
 
 UV_EXTERN int uv_fs_copyfile(uv_loop_t* loop,
                              uv_fs_t* req,
@@ -1612,7 +1630,10 @@ struct uv_loop_s {
   /* Loop reference counting. */
   unsigned int active_handles;
   void* handle_queue[2];
-  void* active_reqs[2];
+  union {
+    void* unused[2];
+    unsigned int count;
+  } active_reqs;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   void* reserved[4];
