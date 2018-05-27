@@ -3318,7 +3318,7 @@ TEST_IMPL(fs_open_readonly_acl) {
 #endif
 
 #ifdef _WIN32
-TEST_IMPL(fs_fchmod_archive_readolny) {
+TEST_IMPL(fs_fchmod_archive_readonly) {
     uv_fs_t req;
     uv_file file;
     int r;
@@ -3361,5 +3361,6 @@ TEST_IMPL(fs_fchmod_archive_readolny) {
     /* Restore Archive flag for rest of the tests */
     r = SetFileAttributes("test_file", FILE_ATTRIBUTE_ARCHIVE);
     ASSERT(r != 0);
+    return 0;
 }
 #endif
