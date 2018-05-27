@@ -3361,5 +3361,6 @@ TEST_IMPL(fs_fchmod_archive_readonly) {
     /* Restore Archive flag for rest of the tests */
     r = SetFileAttributes("test_file", FILE_ATTRIBUTE_ARCHIVE);
     ASSERT(r != 0);
+    return 0;
 }
 #endif
