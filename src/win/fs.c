@@ -1516,7 +1516,7 @@ static void fs__fchmod(uv_fs_t* req) {
  
   /* Test if the Archive attribute is cleared */
   if ((file_info.FileAttributes & FILE_ATTRIBUTE_ARCHIVE) == 0) {
-      /* Set Archive flag, otherwise setting or clearing the read-olny 
+      /* Set Archive flag, otherwise setting or clearing the read-only 
          flag will not work */
       file_info.FileAttributes |= FILE_ATTRIBUTE_ARCHIVE;
       nt_status = pNtSetInformationFile(handle,
