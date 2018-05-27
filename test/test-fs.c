@@ -1520,7 +1520,7 @@ TEST_IMPL(fs_unlink_readonly) {
 TEST_IMPL(fs_unlink_archive_readonly) {
   int r;
   uv_fs_t req;
-  uv_file file;
+  uv_os_fd_t file;
 
   /* Setup. */
   unlink("test_file");
@@ -1533,9 +1533,9 @@ TEST_IMPL(fs_unlink_archive_readonly) {
                  O_RDWR | O_CREAT,
                  S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT(r >= 0);
+  ASSERT(r == 0);
   ASSERT(req.result >= 0);
-  file = req.result;
+  file = (uv_os_fd_t)req.result;
   uv_fs_req_cleanup(&req);
 
   iov = uv_buf_init(test_buf, sizeof(test_buf));
@@ -1544,7 +1544,10 @@ TEST_IMPL(fs_unlink_archive_readonly) {
   ASSERT(req.result == sizeof(test_buf));
   uv_fs_req_cleanup(&req);
 
-  close(file);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
 
   /* Make the file read-only and clear archive flag */
   r = SetFileAttributes("test_file", FILE_ATTRIBUTE_READONLY);
@@ -3470,6 +3473,7 @@ int call_icacls(const char* command, ...) {
 TEST_IMPL(fs_open_readonly_acl) {
     uv_passwd_t pwd;
     uv_fs_t req;
+    uv_os_fd_t file;
     int r;
 
     /*
@@ -3499,10 +3503,11 @@ TEST_IMPL(fs_open_readonly_acl) {
                    O_RDONLY | O_CREAT,
                    S_IRUSR,
                    NULL);
-    ASSERT(r >= 0);
+    ASSERT(r == 0);
     ASSERT(open_req1.result >= 0);
+    file = (uv_os_fd_t)open_req1.result;
     uv_fs_req_cleanup(&open_req1);
-    r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+    r = uv_fs_close(NULL, &close_req, file, NULL);
     ASSERT(r == 0);
     ASSERT(close_req.result == 0);
     uv_fs_req_cleanup(&close_req);
@@ -3524,7 +3529,8 @@ TEST_IMPL(fs_open_readonly_acl) {
         goto acl_cleanup;
     }
     uv_fs_req_cleanup(&open_req1);
-    r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+    file = (uv_os_fd_t)open_req1.result;
+    r = uv_fs_close(NULL, &close_req, file, NULL);
     if (r != 0) {
         goto acl_cleanup;
     }
@@ -3545,7 +3551,7 @@ TEST_IMPL(fs_open_readonly_acl) {
 #ifdef _WIN32
 TEST_IMPL(fs_fchmod_archive_readolny) {
     uv_fs_t req;
-    uv_file file;
+    uv_os_fd_t file;
     int r;
     /* Test clearing read-only flag from files with Archive flag cleared */
 
@@ -3557,9 +3563,9 @@ TEST_IMPL(fs_fchmod_archive_readolny) {
                    O_WRONLY | O_CREAT,
                    S_IWUSR | S_IRUSR,
                    NULL);
-    ASSERT(r >= 0);
+    ASSERT(r == 0);
     ASSERT(req.result >= 0);
-    file = req.result;
+    file = (uv_os_fd_t)req.result;
     uv_fs_req_cleanup(&req);
     r = uv_fs_close(NULL, &req, file, NULL);
     ASSERT(r == 0);
@@ -3570,9 +3576,9 @@ TEST_IMPL(fs_fchmod_archive_readolny) {
     check_permission("test_file", 0400);
     /* Try fchmod */
     r = uv_fs_open(NULL, &req, "test_file", O_RDONLY, 0, NULL);
-    ASSERT(r >= 0);
+    ASSERT(r == 0);
     ASSERT(req.result >= 0);
-    file = req.result;
+    file = (uv_os_fd_t)req.result;
     uv_fs_req_cleanup(&req);
     r = uv_fs_fchmod(NULL, &req, file, S_IWUSR, NULL);
     ASSERT(r == 0);

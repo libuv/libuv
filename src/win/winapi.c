@@ -36,7 +36,7 @@ sNtQuerySystemInformation pNtQuerySystemInformation;
 
 
 /* Kernel32 function pointers */
-
+sCancelIoEx pCancelIoEx;
 
 /* Powrprof.dll function pointer */
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
@@ -131,4 +131,6 @@ void uv_winapi_init(void) {
     pConvertInterfaceLuidToNameW = (sConvertInterfaceLuidToNameW)
       GetProcAddress(iphlpapi_module, "ConvertInterfaceLuidToNameW");
   }
+
+  pCancelIoEx = (sCancelIoEx) GetProcAddress(kernel32_module, "CancelIoEx");
 }

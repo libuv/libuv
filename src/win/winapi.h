@@ -4680,6 +4680,9 @@ typedef HWINEVENTHOOK (WINAPI *sSetWinEventHook)
                        DWORD        idThread,
                        UINT         dwflags);
 
+typedef BOOL (WINAPI* sCancelIoEx)
+             (HANDLE hFile,
+              LPOVERLAPPED lpOverlapped);
 
 /* Ntdll function pointers */
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
@@ -4692,7 +4695,7 @@ extern sNtQuerySystemInformation pNtQuerySystemInformation;
 
 
 /* Kernel32 function pointers */
-
+extern sCancelIoEx pCancelIoEx;
 
 
 /* Powrprof.dll function pointer */

@@ -42,8 +42,11 @@
 #define UV_FS_FREE_PTR           0x0008
 #define UV_FS_CLEANEDUP          0x0010
 
-/* number of attempts to generate a unique directory name before declaring failure */
-#define TMP_MAX 32767
+/* number of attempts to generate a unique directory name before
+   declaring failure */
+#ifndef TMP_MAX
+# define TMP_MAX 32767
+#endif
 
 #define INIT(subtype)                                                         \
   do {                                                                        \
