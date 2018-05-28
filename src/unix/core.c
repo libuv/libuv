@@ -927,6 +927,11 @@ int uv__io_active(const uv__io_t* w, unsigned int events) {
 }
 
 
+int uv__fd_exists(uv_loop_t* loop, int fd) {
+  return (unsigned) fd < loop->nwatchers && loop->watchers[fd] != NULL;
+}
+
+
 int uv_getrusage(uv_rusage_t* rusage) {
   struct rusage usage;
 
