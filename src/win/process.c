@@ -964,7 +964,9 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
                               UV_PROCESS_WINDOWS_HIDE |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                              UV_PROCESS_NOMANAGE |
+                              UV_PROCESS_START_SUSPENDED)));
 
   err = uv_utf8_to_utf16_alloc(options->file, &application);
   if (err)
@@ -1094,6 +1096,10 @@ int uv_spawn(uv_loop_t* loop,
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
   }
 
+  if (options->flags & UV_PROCESS_START_SUSPENDED) {
+    process_flags |= CREATE_SUSPENDED;
+  }
+
   if (!CreateProcessW(application_path,
                      arguments,
                      NULL,
@@ -1117,7 +1123,7 @@ int uv_spawn(uv_loop_t* loop,
 
   /* If the process isn't spawned as detached, assign to the global job */
   /* object so windows will kill it when the parent process dies. */
-  if (!(options->flags & UV_PROCESS_DETACHED)) {
+  if (!(options->flags & UV_PROCESS_DETACHED) && !(options->flags & UV_PROCESS_NOMANAGE)) {
     uv_once(&uv_global_job_handle_init_guard_, uv__init_global_job_handle);
 
     if (!AssignProcessToJobObject(uv_global_job_handle_, info.hProcess)) {
