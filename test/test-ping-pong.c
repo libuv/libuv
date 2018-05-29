@@ -171,8 +171,8 @@ static void tcp_pinger_v6_new(void) {
   pinger->stream.tcp.data = pinger;
   ASSERT(!r);
 
-  /* We are never doing multiple reads/connects at a time anyway. */
-  /* so these handles can be pre-initialized. */
+  /* We are never doing multiple reads/connects at a time anyway, so these
+   * handles can be pre-initialized. */
   r = uv_tcp_connect(&pinger->connect_req,
                      &pinger->stream.tcp,
                      (const struct sockaddr*) &server_addr,
@@ -200,8 +200,8 @@ static void tcp_pinger_new(void) {
   pinger->stream.tcp.data = pinger;
   ASSERT(!r);
 
-  /* We are never doing multiple reads/connects at a time anyway. */
-  /* so these handles can be pre-initialized. */
+  /* We are never doing multiple reads/connects at a time anyway, so these
+   * handles can be pre-initialized. */
   r = uv_tcp_connect(&pinger->connect_req,
                      &pinger->stream.tcp,
                      (const struct sockaddr*) &server_addr,
@@ -227,9 +227,8 @@ static void pipe_pinger_new(void) {
   pinger->stream.pipe.data = pinger;
   ASSERT(!r);
 
-  /* We are never doing multiple reads/connects at a time anyway. */
-  /* so these handles can be pre-initialized. */
-
+  /* We are never doing multiple reads/connects at a time anyway, so these
+   * handles can be pre-initialized. */
   uv_pipe_connect(&pinger->connect_req, &pinger->stream.pipe, TEST_PIPENAME,
       pinger_on_connect);
 

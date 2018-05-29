@@ -86,8 +86,8 @@ typedef struct pollfd {
 #define SIGKILL               9
 #define SIGWINCH             28
 
-/* The CRT defines SIGABRT_COMPAT as 6, which equals SIGABRT on many */
-/* unix-like platforms. However MinGW doesn't define it, so we do. */
+/* The CRT defines SIGABRT_COMPAT as 6, which equals SIGABRT on many unix-like
+ * platforms. However MinGW doesn't define it, so we do. */
 #ifndef SIGABRT_COMPAT
 # define SIGABRT_COMPAT       6
 #endif
@@ -478,8 +478,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
 
-/* TODO: put the parser states in an union - TTY handles are always */
-/* half-duplex so read-state can safely overlap write-state. */
+/* TODO: put the parser states in an union - TTY handles are always half-duplex
+ * so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   HANDLE handle;                                                              \
   union {                                                                     \

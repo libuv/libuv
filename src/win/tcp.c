@@ -99,8 +99,8 @@ static int uv_tcp_set_socket(uv_loop_t* loop,
   if (!SetHandleInformation((HANDLE) socket, HANDLE_FLAG_INHERIT, 0))
     return GetLastError();
 
-  /* Associate it with the I/O completion port. */
-  /* Use uv_handle_t pointer as completion key. */
+  /* Associate it with the I/O completion port. Use uv_handle_t pointer as
+   * completion key. */
   if (CreateIoCompletionPort((HANDLE)socket,
                              loop->iocp,
                              (ULONG_PTR)socket,
@@ -326,9 +326,9 @@ static int uv_tcp_try_bind(uv_tcp_t* handle,
 
     on = (flags & UV_TCP_IPV6ONLY) != 0;
 
-    /* TODO: how to handle errors? This may fail if there is no ipv4 stack */
-    /* available, or when run on XP/2003 which have no support for dualstack */
-    /* sockets. For now we're silently ignoring the error. */
+    /* TODO: how to handle errors? This may fail if there is no ipv4 stack
+     * available, or when run on XP/2003 which have no support for dualstack
+     * sockets. For now we're silently ignoring the error. */
     setsockopt(handle->socket,
                IPPROTO_IPV6,
                IPV6_V6ONLY,
@@ -626,9 +626,9 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       uv_tcp_queue_accept(handle, req);
     }
 
-    /* Initialize other unused requests too, because uv_tcp_endgame */
-    /* doesn't know how many requests were initialized, so it will */
-    /* try to clean up {uv_simultaneous_server_accepts} requests. */
+    /* Initialize other unused requests too, because uv_tcp_endgame doesn't
+     * know how many requests were initialized, so it will try to clean up
+     * {uv_simultaneous_server_accepts} requests. */
     for (i = simultaneous_accepts; i < uv_simultaneous_server_accepts; i++) {
       req = &handle->tcp.serv.accept_reqs[i];
       UV_REQ_INIT(req, UV_ACCEPT);
@@ -721,8 +721,8 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
   handle->alloc_cb = alloc_cb;
   INCREASE_ACTIVE_COUNT(loop, handle);
 
-  /* If reading was stopped and then started again, there could still be a */
-  /* read request pending. */
+  /* If reading was stopped and then started again, there could still be a read
+   * request pending. */
   if (!(handle->flags & UV_HANDLE_READ_PENDING)) {
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         !handle->read_req.event_handle) {
@@ -965,8 +965,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
       err = GET_REQ_SOCK_ERROR(req);
 
       if (err == WSAECONNABORTED) {
-        /*
-         * Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with Unix.
+        /* Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with Unix.
          */
         err = WSAECONNRESET;
       }
@@ -1046,8 +1045,8 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
           DECREASE_ACTIVE_COUNT(loop, handle);
 
           if (err == WSAECONNABORTED) {
-            /* Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with */
-            /* Unix. */
+            /* Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with
+             * Unix. */
             err = WSAECONNRESET;
           }
 
@@ -1119,10 +1118,9 @@ void uv_process_tcp_accept_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   assert(handle->type == UV_TCP);
 
-  /* If handle->accepted_socket is not a valid socket, then */
-  /* uv_queue_accept must have failed. This is a serious error. We stop */
-  /* accepting connections and report this error to the connection */
-  /* callback. */
+  /* If handle->accepted_socket is not a valid socket, then uv_queue_accept
+   * must have failed. This is a serious error. We stop accepting connections
+   * and report this error to the connection callback. */
   if (req->accept_socket == INVALID_SOCKET) {
     if (handle->flags & UV_HANDLE_LISTENING) {
       handle->flags &= ~UV_HANDLE_LISTENING;
@@ -1147,9 +1145,9 @@ void uv_process_tcp_accept_req(uv_loop_t* loop, uv_tcp_t* handle,
       handle->stream.serv.connection_cb((uv_stream_t*)handle, 0);
     }
   } else {
-    /* Error related to accepted socket is ignored because the server */
-    /* socket may still be healthy. If the server socket is broken */
-    /* uv_queue_accept will detect it. */
+    /* Error related to accepted socket is ignored because the server socket
+     * may still be healthy. If the server socket is broken uv_queue_accept
+     * will detect it. */
     closesocket(req->accept_socket);
     req->accept_socket = INVALID_SOCKET;
     if (handle->flags & UV_HANDLE_LISTENING) {
@@ -1346,8 +1344,8 @@ static int uv_tcp_try_cancel_io(uv_tcp_t* tcp) {
   non_ifs_lsp = (tcp->flags & UV_HANDLE_IPV6) ? uv_tcp_non_ifs_lsp_ipv6 :
                                                 uv_tcp_non_ifs_lsp_ipv4;
 
-  /* If there are non-ifs LSPs then try to obtain a base handle for the */
-  /* socket. This will always fail on Windows XP/3k. */
+  /* If there are non-ifs LSPs then try to obtain a base handle for the socket.
+   * This will always fail on Windows XP/3k. */
   if (non_ifs_lsp) {
     DWORD bytes;
     if (WSAIoctl(socket,
@@ -1379,38 +1377,37 @@ void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
   int close_socket = 1;
 
   if (tcp->flags & UV_HANDLE_READ_PENDING) {
-    /* In order for winsock to do a graceful close there must not be any */
-    /* any pending reads, or the socket must be shut down for writing */
+    /* In order for winsock to do a graceful close there must not be any any
+     * pending reads, or the socket must be shut down for writing */
     if (!(tcp->flags & UV_HANDLE_SHARED_TCP_SOCKET)) {
       /* Just do shutdown on non-shared sockets, which ensures graceful close. */
       shutdown(tcp->socket, SD_SEND);
 
     } else if (uv_tcp_try_cancel_io(tcp) == 0) {
-      /* In case of a shared socket, we try to cancel all outstanding I/O, */
-      /* If that works, don't close the socket yet - wait for the read req to */
-      /* return and close the socket in uv_tcp_endgame. */
+      /* In case of a shared socket, we try to cancel all outstanding I/O,. If
+       * that works, don't close the socket yet - wait for the read req to
+       * return and close the socket in uv_tcp_endgame. */
       close_socket = 0;
 
     } else {
-      /* When cancelling isn't possible - which could happen when an LSP is */
-      /* present on an old Windows version, we will have to close the socket */
-      /* with a read pending. That is not nice because trailing sent bytes */
-      /* may not make it to the other side. */
+      /* When cancelling isn't possible - which could happen when an LSP is
+       * present on an old Windows version, we will have to close the socket
+       * with a read pending. That is not nice because trailing sent bytes may
+       * not make it to the other side. */
     }
 
   } else if ((tcp->flags & UV_HANDLE_SHARED_TCP_SOCKET) &&
              tcp->tcp.serv.accept_reqs != NULL) {
-    /* Under normal circumstances closesocket() will ensure that all pending */
-    /* accept reqs are canceled. However, when the socket is shared the */
-    /* presence of another reference to the socket in another process will */
-    /* keep the accept reqs going, so we have to ensure that these are */
-    /* canceled. */
+    /* Under normal circumstances closesocket() will ensure that all pending
+     * accept reqs are canceled. However, when the socket is shared the
+     * presence of another reference to the socket in another process will keep
+     * the accept reqs going, so we have to ensure that these are canceled. */
     if (uv_tcp_try_cancel_io(tcp) != 0) {
-      /* When cancellation is not possible, there is another option: we can */
-      /* close the incoming sockets, which will also cancel the accept */
-      /* operations. However this is not cool because we might inadvertently */
-      /* close a socket that just accepted a new connection, which will */
-      /* cause the connection to be aborted. */
+      /* When cancellation is not possible, there is another option: we can
+       * close the incoming sockets, which will also cancel the accept
+       * operations. However this is not cool because we might inadvertently
+       * close a socket that just accepted a new connection, which will cause
+       * the connection to be aborted. */
       unsigned int i;
       for (i = 0; i < uv_simultaneous_server_accepts; i++) {
         uv_tcp_accept_t* req = &tcp->tcp.serv.accept_reqs[i];

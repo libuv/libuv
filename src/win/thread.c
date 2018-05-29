@@ -69,8 +69,8 @@ static void uv__once_inner(uv_once_t* guard, void (*callback)(void)) {
     guard->ran = 1;
 
   } else {
-    /* We lost the race. Destroy the event we created and wait for the */
-    /* existing one to become signaled. */
+    /* We lost the race. Destroy the event we created and wait for the existing
+     * one to become signaled. */
     CloseHandle(created_event);
     result = WaitForSingleObject(existing_event, INFINITE);
     assert(result == WAIT_OBJECT_0);
@@ -526,13 +526,13 @@ static int uv_cond_wait_helper(uv_cond_t* cond, uv_mutex_t* mutex,
   cond->fallback.waiters_count++;
   LeaveCriticalSection(&cond->fallback.waiters_count_lock);
 
-  /* It's ok to release the <mutex> here since Win32 manual-reset events */
-  /* maintain state when used with <SetEvent>. This avoids the "lost wakeup" */
-  /* bug. */
+  /* It's ok to release the <mutex> here since Win32 manual-reset events
+   * maintain state when used with <SetEvent>. This avoids the "lost wakeup"
+   * bug. */
   uv_mutex_unlock(mutex);
 
-  /* Wait for either event to become signaled due to <uv_cond_signal> being */
-  /* called or <uv_cond_broadcast> being called. */
+  /* Wait for either event to become signaled due to <uv_cond_signal> being
+   * called or <uv_cond_broadcast> being called. */
   result = WaitForMultipleObjects(2, handles, FALSE, dwMilliseconds);
 
   EnterCriticalSection(&cond->fallback.waiters_count_lock);
@@ -543,8 +543,8 @@ static int uv_cond_wait_helper(uv_cond_t* cond, uv_mutex_t* mutex,
 
   /* Some thread called <pthread_cond_broadcast>. */
   if (last_waiter) {
-    /* We're the last waiter to be notified or to stop waiting, so reset the */
-    /* the manual-reset event. */
+    /* We're the last waiter to be notified or to stop waiting, so reset the
+     * the manual-reset event. */
     ResetEvent(cond->fallback.broadcast_event);
   }
 

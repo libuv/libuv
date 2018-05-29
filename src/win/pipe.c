@@ -52,8 +52,8 @@ static char uv_zero_[] = "";
 /* Null uv_buf_t */
 static const uv_buf_t uv_null_buf_ = { 0, NULL };
 
-/* The timeout that the pipe will wait for the remote end to write data */
-/* when the local ends wants to shut it down. */
+/* The timeout that the pipe will wait for the remote end to write data when
+ * the local ends wants to shut it down. */
 static const int64_t eof_timeout = 50; /* ms */
 
 static const int default_pending_pipe_instances = 4;
@@ -595,8 +595,8 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   loop = handle->loop;
   assert(loop);
 
-  /* We're here because CreateFile on a pipe returned ERROR_PIPE_BUSY. */
-  /* We wait for the pipe to become available with WaitNamedPipe. */
+  /* We're here because CreateFile on a pipe returned ERROR_PIPE_BUSY. We wait
+   * for the pipe to become available with WaitNamedPipe. */
   while (WaitNamedPipeW(handle->name, 30000)) {
     /* The pipe is now available, try to connect. */
     pipeHandle = open_named_pipe(handle->name, &duplex_flags);
@@ -748,8 +748,8 @@ void uv__pipe_stop_read(uv_pipe_t* handle) {
 }
 
 
-/* Cleans up uv_pipe_t (server or connection) and all resources associated */
-/* with it. */
+/* Cleans up uv_pipe_t (server or connection) and all resources associated with
+ * it. */
 void uv_pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
   int i;
   HANDLE pipeHandle;
@@ -889,8 +889,8 @@ int uv_pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
   } else {
     pipe_client = (uv_pipe_t*)client;
 
-    /* Find a connection instance that has been connected, but not yet */
-    /* accepted. */
+    /* Find a connection instance that has been connected, but not yet
+     * accepted. */
     req = server->pipe.serv.pending_accepts;
 
     if (!req) {
@@ -1169,8 +1169,8 @@ int uv_pipe_read_start(uv_pipe_t* handle,
   handle->read_cb = read_cb;
   handle->alloc_cb = alloc_cb;
 
-  /* If reading was stopped and then started again, there could still be a */
-  /* read request pending. */
+  /* If reading was stopped and then started again, there could still be a read
+   * request pending. */
   if (!(handle->flags & UV_HANDLE_READ_PENDING))
     uv_pipe_queue_read(loop, handle);
 
@@ -1505,8 +1505,8 @@ int uv_pipe_write2(uv_loop_t* loop,
 
 static void uv_pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
     uv_buf_t buf) {
-  /* If there is an eof timer running, we don't need it any more, */
-  /* so discard it. */
+  /* If there is an eof timer running, we don't need it any more, so discard
+   * it. */
   eof_timer_destroy(handle);
 
   handle->flags &= ~UV_HANDLE_READABLE;
@@ -1518,8 +1518,8 @@ static void uv_pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
 
 static void uv_pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
     uv_buf_t buf) {
-  /* If there is an eof timer running, we don't need it any more, */
-  /* so discard it. */
+  /* If there is an eof timer running, we don't need it any more, so discard
+   * it. */
   eof_timer_destroy(handle);
 
   uv_read_stop((uv_stream_t*) handle);
@@ -1806,19 +1806,19 @@ void uv_process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   if (handle->flags & UV_HANDLE_READABLE) {
-    /* Initialize and optionally start the eof timer. Only do this if the */
-    /* pipe is readable and we haven't seen EOF come in ourselves. */
+    /* Initialize and optionally start the eof timer. Only do this if the pipe
+     * is readable and we haven't seen EOF come in ourselves. */
     eof_timer_init(handle);
 
-    /* If reading start the timer right now. */
-    /* Otherwise uv_pipe_queue_read will start it. */
+    /* If reading start the timer right now. Otherwise uv_pipe_queue_read will
+     * start it. */
     if (handle->flags & UV_HANDLE_READ_PENDING) {
       eof_timer_start(handle);
     }
 
   } else {
-    /* This pipe is not readable. We can just close it to let the other end */
-    /* know that we're done writing. */
+    /* This pipe is not readable. We can just close it to let the other end
+     * know that we're done writing. */
     close_pipe(handle);
   }
 
@@ -1869,17 +1869,16 @@ static void eof_timer_cb(uv_timer_t* timer) {
 
   assert(pipe->type == UV_NAMED_PIPE);
 
-  /* This should always be true, since we start the timer only */
-  /* in uv_pipe_queue_read after successfully calling ReadFile, */
-  /* or in uv_process_pipe_shutdown_req if a read is pending, */
-  /* and we always immediately stop the timer in */
-  /* uv_process_pipe_read_req. */
+  /* This should always be true, since we start the timer only in
+   * uv_pipe_queue_read after successfully calling ReadFile, or in
+   * uv_process_pipe_shutdown_req if a read is pending, and we always
+   * immediately stop the timer in uv_process_pipe_read_req. */
   assert(pipe->flags & UV_HANDLE_READ_PENDING);
 
-  /* If there are many packets coming off the iocp then the timer callback */
-  /* may be called before the read request is coming off the queue. */
-  /* Therefore we check here if the read request has completed but will */
-  /* be processed later. */
+  /* If there are many packets coming off the iocp then the timer callback may
+   * be called before the read request is coming off the queue. Therefore we
+   * check here if the read request has completed but will be processed later.
+   */
   if ((pipe->flags & UV_HANDLE_READ_PENDING) &&
       HasOverlappedIoCompleted(&pipe->read_req.u.io.overlapped)) {
     return;
@@ -1888,12 +1887,12 @@ static void eof_timer_cb(uv_timer_t* timer) {
   /* Force both ends off the pipe. */
   close_pipe(pipe);
 
-  /* Stop reading, so the pending read that is going to fail will */
-  /* not be reported to the user. */
+  /* Stop reading, so the pending read that is going to fail will not be
+   * reported to the user. */
   uv_read_stop((uv_stream_t*) pipe);
 
-  /* Report the eof and update flags. This will get reported even if the */
-  /* user stopped reading in the meantime. TODO: is that okay? */
+  /* Report the eof and update flags. This will get reported even if the user
+   * stopped reading in the meantime. TODO: is that okay? */
   uv_pipe_read_eof(loop, pipe, uv_null_buf_);
 }
 

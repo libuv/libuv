@@ -326,12 +326,11 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
         reparse_data->SymbolicLinkReparseBuffer.SubstituteNameLength /
         sizeof(WCHAR);
 
-    /* Real symlinks can contain pretty much everything, but the only thing */
-    /* we really care about is undoing the implicit conversion to an NT */
-    /* namespaced path that CreateSymbolicLink will perform on absolute */
-    /* paths. If the path is win32-namespaced then the user must have */
-    /* explicitly made it so, and we better just return the unmodified */
-    /* reparse data. */
+    /* Real symlinks can contain pretty much everything, but the only thing we
+     * really care about is undoing the implicit conversion to an NT namespaced
+     * path that CreateSymbolicLink will perform on absolute paths. If the path
+     * is win32-namespaced then the user must have explicitly made it so, and
+     * we better just return the unmodified reparse data. */
     if (w_target_len >= 4 &&
         w_target[0] == L'\\' &&
         w_target[1] == L'?' &&
@@ -352,8 +351,8 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
                  (w_target[5] == L'N' || w_target[5] == L'n') &&
                  (w_target[6] == L'C' || w_target[6] == L'c') &&
                  w_target[7] == L'\\') {
-        /* \??\UNC\<server>\<share>\ - make sure the final path looks like */
-        /* \\<server>\<share>\ */
+        /* \??\UNC\<server>\<share>\ - make sure the final path looks like
+         * \\<server>\<share>\ */
         w_target += 6;
         w_target[0] = L'\\';
         w_target_len -= 6;
@@ -368,11 +367,11 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
     w_target_len = reparse_data->MountPointReparseBuffer.SubstituteNameLength /
         sizeof(WCHAR);
 
-    /* Only treat junctions that look like \??\<drive>:\ as symlink. */
-    /* Junctions can also be used as mount points, like \??\Volume{<guid>}, */
-    /* but that's confusing for programs since they wouldn't be able to */
-    /* actually understand such a path when returned by uv_readlink(). */
-    /* UNC paths are never valid for junctions so we don't care about them. */
+    /* Only treat junctions that look like \??\<drive>:\ as symlink. Junctions
+     * can also be used as mount points, like \??\Volume{<guid>}, but that's
+     * confusing for programs since they wouldn't be able to actually
+     * understand such a path when returned by uv_readlink(). UNC paths are
+     * never valid for junctions so we don't care about them. */
     if (!(w_target_len >= 6 &&
           w_target[0] == L'\\' &&
           w_target[1] == L'?' &&
@@ -409,8 +408,8 @@ void fs__open(uv_fs_t* req) {
   int fd, current_umask;
   int flags = req->fs.info.file_flags;
 
-  /* Obtain the active umask. umask() never fails and returns the previous */
-  /* umask. */
+  /* Obtain the active umask. umask() never fails and returns the previous
+   * umask. */
   current_umask = umask(0);
   umask(current_umask);
 
@@ -530,8 +529,8 @@ void fs__open(uv_fs_t* req) {
     DWORD error = GetLastError();
     if (error == ERROR_FILE_EXISTS && (flags & UV_FS_O_CREAT) &&
         !(flags & UV_FS_O_EXCL)) {
-      /* Special case: when ERROR_FILE_EXISTS happens and UV_FS_O_CREAT was */
-      /* specified, it means the path referred to a directory. */
+      /* Special case: when ERROR_FILE_EXISTS happens and UV_FS_O_CREAT was
+       * specified, it means the path referred to a directory. */
       SET_REQ_UV_ERROR(req, UV_EISDIR, error);
     } else {
       SET_REQ_WIN32_ERROR(req, GetLastError());
@@ -756,9 +755,9 @@ void fs__unlink(uv_fs_t* req) {
   }
 
   if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    /* Do not allow deletion of directories, unless it is a symlink. When */
-    /* the path refers to a non-symlink directory, report EPERM as mandated */
-    /* by POSIX.1. */
+    /* Do not allow deletion of directories, unless it is a symlink. When the
+     * path refers to a non-symlink directory, report EPERM as mandated by
+     * POSIX.1. */
 
     /* Check if it is a reparse point. If it's not, it's a normal directory. */
     if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
@@ -767,8 +766,8 @@ void fs__unlink(uv_fs_t* req) {
       return;
     }
 
-    /* Read the reparse point and check if it is a valid symlink. */
-    /* If not, don't unlink. */
+    /* Read the reparse point and check if it is a valid symlink. If not, don't
+     * unlink. */
     if (fs__readlink_handle(handle, NULL, NULL) < 0) {
       DWORD error = GetLastError();
       if (error == ERROR_SYMLINK_NOT_SUPPORTED)

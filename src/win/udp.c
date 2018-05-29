@@ -74,8 +74,8 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     return GetLastError();
   }
 
-  /* Associate it with the I/O completion port. */
-  /* Use uv_handle_t pointer as completion key. */
+  /* Associate it with the I/O completion port. Use uv_handle_t pointer as
+   * completion key. */
   if (CreateIoCompletionPort((HANDLE)socket,
                              loop->iocp,
                              (ULONG_PTR)socket,
@@ -84,11 +84,11 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
   }
 
   if (pSetFileCompletionNotificationModes) {
-    /* All known Windows that support SetFileCompletionNotificationModes */
-    /* have a bug that makes it impossible to use this function in */
-    /* conjunction with datagram sockets. We can work around that but only */
-    /* if the user is using the default UDP driver (AFD) and has no other */
-    /* LSPs stacked on top. Here we check whether that is the case. */
+    /* All known Windows that support SetFileCompletionNotificationModes have a
+     * bug that makes it impossible to use this function in conjunction with
+     * datagram sockets. We can work around that but only if the user is using
+     * the default UDP driver (AFD) and has no other. LSPs stacked on top. Here
+     * we check whether that is the case. */
     opt_len = (int) sizeof info;
     if (getsockopt(socket,
                    SOL_SOCKET,
@@ -245,12 +245,12 @@ static int uv_udp_maybe_bind(uv_udp_t* handle,
     handle->flags |= UV_HANDLE_IPV6;
 
   if (addr->sa_family == AF_INET6 && !(flags & UV_UDP_IPV6ONLY)) {
-    /* On windows IPV6ONLY is on by default. */
-    /* If the user doesn't specify it libuv turns it off. */
+    /* On windows IPV6ONLY is on by default. If the user doesn't specify it
+     * libuv turns it off. */
 
-    /* TODO: how to handle errors? This may fail if there is no ipv4 stack */
-    /* available, or when run on XP/2003 which have no support for dualstack */
-    /* sockets. For now we're silently ignoring the error. */
+    /* TODO: how to handle errors? This may fail if there is no ipv4 stack
+     * available, or when run on XP/2003 which have no support for dualstack
+     * sockets. For now we're silently ignoring the error. */
     setsockopt(handle->socket,
                IPPROTO_IPV6,
                IPV6_V6ONLY,
@@ -386,8 +386,8 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
   handle->recv_cb = recv_cb;
   handle->alloc_cb = alloc_cb;
 
-  /* If reading was stopped and then started again, there could still be a */
-  /* recv request pending. */
+  /* If reading was stopped and then started again, there could still be a recv
+   * request pending. */
   if (!(handle->flags & UV_HANDLE_READ_PENDING))
     uv_udp_queue_recv(loop, handle);
 
@@ -467,19 +467,19 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
   if (!REQ_SUCCESS(req)) {
     DWORD err = GET_REQ_SOCK_ERROR(req);
     if (err == WSAEMSGSIZE) {
-      /* Not a real error, it just indicates that the received packet */
-      /* was bigger than the receive buffer. */
+      /* Not a real error, it just indicates that the received packet was
+       * bigger than the receive buffer. */
     } else if (err == WSAECONNRESET || err == WSAENETRESET) {
-      /* A previous sendto operation failed; ignore this error. If */
-      /* zero-reading we need to call WSARecv/WSARecvFrom _without_ the */
-      /* MSG_PEEK flag to clear out the error queue. For nonzero reads, */
-      /* immediately queue a new receive. */
+      /* A previous sendto operation failed; ignore this error. If zero-reading
+       * we need to call WSARecv/WSARecvFrom _without_ the. MSG_PEEK flag to
+       * clear out the error queue. For nonzero reads, immediately queue a new
+       * receive. */
       if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
         goto done;
       }
     } else {
-      /* A real error occurred. Report the error to the user only if we're */
-      /* currently reading. */
+      /* A real error occurred. Report the error to the user only if we're
+       * currently reading. */
       if (handle->flags & UV_HANDLE_READING) {
         uv_udp_recv_stop(handle);
         buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
@@ -503,8 +503,8 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     struct sockaddr_storage from;
     int from_len;
 
-    /* Do a nonblocking receive */
-    /* TODO: try to read multiple datagrams at once. FIONREAD maybe? */
+    /* Do a nonblocking receive.
+     * TODO: try to read multiple datagrams at once. FIONREAD maybe? */
     buf = uv_buf_init(NULL, 0);
     handle->alloc_cb((uv_handle_t*) handle, 65536, &buf);
     if (buf.base == NULL || buf.len == 0) {
