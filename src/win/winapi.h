@@ -4766,19 +4766,4 @@ extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotifi
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
 
-/* iphlpapi.dll function pointer */
-union _NET_LUID_LH;
-typedef DWORD (WINAPI *sConvertInterfaceIndexToLuid)(
-    ULONG InterfaceIndex,
-    union _NET_LUID_LH *InterfaceLuid);
-
-typedef DWORD (WINAPI *sConvertInterfaceLuidToNameW)(
-    const union _NET_LUID_LH *InterfaceLuid,
-    PWSTR InterfaceName,
-    size_t Length);
-
-extern sConvertInterfaceIndexToLuid pConvertInterfaceIndexToLuid;
-extern sConvertInterfaceLuidToNameW pConvertInterfaceLuidToNameW;
-
-
 #endif /* UV_WIN_WINAPI_H_ */
