@@ -958,7 +958,7 @@ static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* arg) {
   uv_loop_t* loop = handle->loop;
   volatile HANDLE* thread_ptr = &handle->pipe.conn.readfile_thread_handle;
   CRITICAL_SECTION* lock = &handle->pipe.conn.readfile_thread_lock;
-  HANDLE prev, thread;
+  HANDLE thread;
   DWORD bytes;
   DWORD err;
 
