@@ -34,10 +34,10 @@
 #include <tlhelp32.h>
 #include <windows.h>
 #include <userenv.h>
+#include <math.h>
 
 #define SECURITY_WIN32
 #include <security.h>
-
 
 /*
  * Max title length; the only thing MSDN tells us about the maximum length
@@ -587,8 +587,8 @@ int uv_uptime(double* uptime) {
         BYTE* address = (BYTE*) object_type + object_type->DefinitionLength +
                         counter_definition->CounterOffset;
         uint64_t value = *((uint64_t*) address);
-        *uptime = (double) (object_type->PerfTime.QuadPart - value) /
-                  (double) object_type->PerfFreq.QuadPart;
+        *uptime = floor((double) (object_type->PerfTime.QuadPart - value) /
+                        (double) object_type->PerfFreq.QuadPart);
         uv__free(malloced_buffer);
         return 0;
       }
@@ -615,7 +615,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* sppi;
   DWORD sppi_size;
   SYSTEM_INFO system_info;
-  DWORD cpu_count, r, i;
+  DWORD cpu_count, i;
   NTSTATUS status;
   ULONG result_size;
   int err;
@@ -670,34 +670,33 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
     assert(len > 0 && len < ARRAY_SIZE(key_name));
 
-    r = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-                      key_name,
-                      0,
-                      KEY_QUERY_VALUE,
-                      &processor_key);
-    if (r != ERROR_SUCCESS) {
-      err = GetLastError();
+    err = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                        key_name,
+                        0,
+                        KEY_QUERY_VALUE,
+                        &processor_key);
+    if (err != ERROR_SUCCESS) {
       goto error;
     }
 
-    if (RegQueryValueExW(processor_key,
-                         L"~MHz",
-                         NULL,
-                         NULL,
-                         (BYTE*) &cpu_speed,
-                         &cpu_speed_size) != ERROR_SUCCESS) {
-      err = GetLastError();
+    err = RegQueryValueExW(processor_key,
+                           L"~MHz",
+                           NULL,
+                           NULL,
+                           (BYTE*)&cpu_speed,
+                           &cpu_speed_size);
+    if (err != ERROR_SUCCESS) {
       RegCloseKey(processor_key);
       goto error;
     }
 
-    if (RegQueryValueExW(processor_key,
-                         L"ProcessorNameString",
-                         NULL,
-                         NULL,
-                         (BYTE*) &cpu_brand,
-                         &cpu_brand_size) != ERROR_SUCCESS) {
-      err = GetLastError();
+    err = RegQueryValueExW(processor_key,
+                           L"ProcessorNameString",
+                           NULL,
+                           NULL,
+                           (BYTE*)&cpu_brand,
+                           &cpu_brand_size);
+    if (err != ERROR_SUCCESS) {
       RegCloseKey(processor_key);
       goto error;
     }
@@ -1042,53 +1041,17 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 int uv_os_homedir(char* buffer, size_t* size) {
   uv_passwd_t pwd;
-  wchar_t path[MAX_PATH];
-  DWORD bufsize;
   size_t len;
   int r;
 
-  if (buffer == NULL || size == NULL || *size == 0)
-    return UV_EINVAL;
+  /* Check if the USERPROFILE environment variable is set first. The task of
+     performing input validation on buffer and size is taken care of by
+     uv_os_getenv(). */
+  r = uv_os_getenv("USERPROFILE", buffer, size);
 
-  /* Check if the USERPROFILE environment variable is set first */
-  len = GetEnvironmentVariableW(L"USERPROFILE", path, MAX_PATH);
-
-  if (len == 0) {
-    r = GetLastError();
-
-    /* Don't return an error if USERPROFILE was not found */
-    if (r != ERROR_ENVVAR_NOT_FOUND)
-      return uv_translate_sys_error(r);
-  } else if (len > MAX_PATH) {
-    /* This should not be possible */
-    return UV_EIO;
-  } else {
-    /* Check how much space we need */
-    bufsize = WideCharToMultiByte(CP_UTF8, 0, path, -1, NULL, 0, NULL, NULL);
-
-    if (bufsize == 0) {
-      return uv_translate_sys_error(GetLastError());
-    } else if (bufsize > *size) {
-      *size = bufsize;
-      return UV_ENOBUFS;
-    }
-
-    /* Convert to UTF-8 */
-    bufsize = WideCharToMultiByte(CP_UTF8,
-                                  0,
-                                  path,
-                                  -1,
-                                  buffer,
-                                  *size,
-                                  NULL,
-                                  NULL);
-
-    if (bufsize == 0)
-      return uv_translate_sys_error(GetLastError());
-
-    *size = bufsize - 1;
-    return 0;
-  }
+  /* Don't return an error if USERPROFILE was not found. */
+  if (r != UV_ENOENT)
+    return r;
 
   /* USERPROFILE is not set, so call uv__getpwuid_r() */
   r = uv__getpwuid_r(&pwd);

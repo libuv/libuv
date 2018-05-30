@@ -125,7 +125,7 @@ int uv_loop_init(uv_loop_t* loop) {
 
   QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->handle_queue);
-  QUEUE_INIT(&loop->active_reqs);
+  loop->active_reqs.count = 0;
   loop->active_handles = 0;
 
   loop->pending_reqs_tail = NULL;
@@ -300,8 +300,8 @@ static void uv__loop_poll(uv_loop_t* loop, int timeout) {
 
 
 static int uv__loop_alive(const uv_loop_t* loop) {
-  return loop->active_handles > 0 ||
-         !QUEUE_EMPTY(&loop->active_reqs) ||
+  return uv__has_active_handles(loop) ||
+         uv__has_active_reqs(loop) ||
          loop->endgame_handles != NULL;
 }
 

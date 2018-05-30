@@ -1311,7 +1311,7 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  /* Ignore POLLHUP here. Even it it's set, there may still be data to read. */
+  /* Ignore POLLHUP here. Even if it's set, there may still be data to read. */
   if (events & (POLLIN | POLLERR | POLLHUP))
     uv__read(stream);
 
@@ -1416,6 +1416,9 @@ int uv_write2(uv_write_t* req,
 
   if (uv__stream_fd(stream) < 0)
     return UV_EBADF;
+
+  if (!(stream->flags & UV_STREAM_WRITABLE))
+    return -EPIPE;
 
   if (send_handle) {
     if (stream->type != UV_NAMED_PIPE || !((uv_pipe_t*)stream)->ipc)
@@ -1567,6 +1570,9 @@ int uv_read_start(uv_stream_t* stream,
 
   if (stream->flags & UV_CLOSING)
     return UV_EINVAL;
+
+  if (!(stream->flags & UV_STREAM_READABLE))
+    return -ENOTCONN;
 
   /* The UV_STREAM_READING flag is irrelevant of the state of the tcp - it just
    * expresses the desired state of the user.

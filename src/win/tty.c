@@ -186,7 +186,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_os_fd_t handle, int readable)
       return uv_translate_sys_error(GetLastError());
     }
 
-    /* Obtain the the tty_output_lock because the virtual window state is */
+    /* Obtain the tty_output_lock because the virtual window state is */
     /* shared between all uv_tty_t handles. */
     uv_sem_wait(&uv_tty_output_lock);
 
@@ -2208,14 +2208,20 @@ void uv_tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
 }
 
 
-/* TODO: remove me */
+/*
+ * uv_process_tty_accept_req() is a stub to keep DELEGATE_STREAM_REQ working
+ * TODO: find a way to remove it
+ */
 void uv_process_tty_accept_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* raw_req) {
   abort();
 }
 
 
-/* TODO: remove me */
+/*
+ * uv_process_tty_connect_req() is a stub to keep DELEGATE_STREAM_REQ working
+ * TODO: find a way to remove it
+ */
 void uv_process_tty_connect_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_connect_t* req) {
   abort();

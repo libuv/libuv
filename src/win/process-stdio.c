@@ -129,12 +129,13 @@ static int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   sa.lpSecurityDescriptor = NULL;
   sa.bInheritHandle = TRUE;
 
+  BOOL overlap = server_pipe->ipc || (flags & UV_OVERLAPPED_PIPE);
   child_pipe = CreateFileA(pipe_name,
                            client_access,
                            0,
                            &sa,
                            OPEN_EXISTING,
-                           server_pipe->ipc ? FILE_FLAG_OVERLAPPED : 0,
+                           overlap ? FILE_FLAG_OVERLAPPED : 0,
                            NULL);
   if (child_pipe == INVALID_HANDLE_VALUE) {
     err = GetLastError();
