@@ -348,7 +348,7 @@ libuv_la_SOURCES += src/unix/android-ifaddrs.c \
 endif
 
 if CYGWIN
-include_HEADERS += include/uv-posix.h
+uvinclude_HEADERS += include/uv/posix.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
 libuv_la_SOURCES += src/unix/cygwin.c \
                     src/unix/bsd-ifaddrs.c \
