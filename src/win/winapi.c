@@ -34,13 +34,6 @@ sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 sNtQueryDirectoryFile pNtQueryDirectoryFile;
 sNtQuerySystemInformation pNtQuerySystemInformation;
 
-
-/* Kernel32 function pointers */
-sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
-sCreateSymbolicLinkW pCreateSymbolicLinkW;
-sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
-
-
 /* Powrprof.dll function pointer */
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
 
@@ -50,7 +43,6 @@ sSetWinEventHook pSetWinEventHook;
 
 void uv_winapi_init(void) {
   HMODULE ntdll_module;
-  HMODULE kernel32_module;
   HMODULE powrprof_module;
   HMODULE user32_module;
 
@@ -105,22 +97,6 @@ void uv_winapi_init(void) {
   if (pNtQuerySystemInformation == NULL) {
     uv_fatal_error(GetLastError(), "GetProcAddress");
   }
-
-  kernel32_module = GetModuleHandleA("kernel32.dll");
-  if (kernel32_module == NULL) {
-    uv_fatal_error(GetLastError(), "GetModuleHandleA");
-  }
-
-  pSetFileCompletionNotificationModes = (sSetFileCompletionNotificationModes)
-    GetProcAddress(kernel32_module, "SetFileCompletionNotificationModes");
-
-  pCreateSymbolicLinkW = (sCreateSymbolicLinkW)
-    GetProcAddress(kernel32_module, "CreateSymbolicLinkW");
-
-
-  pGetFinalPathNameByHandleW = (sGetFinalPathNameByHandleW)
-    GetProcAddress(kernel32_module, "GetFinalPathNameByHandleW");
-
 
   powrprof_module = LoadLibraryA("powrprof.dll");
   if (powrprof_module != NULL) {

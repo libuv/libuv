@@ -4642,22 +4642,6 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
 # define ERROR_MUI_FILE_NOT_LOADED 15105
 #endif
 
-typedef BOOL (WINAPI* sSetFileCompletionNotificationModes)
-             (HANDLE FileHandle,
-              UCHAR Flags);
-
-typedef BOOLEAN (WINAPI* sCreateSymbolicLinkW)
-                (LPCWSTR lpSymlinkFileName,
-                 LPCWSTR lpTargetFileName,
-                 DWORD dwFlags);
-
-
-typedef DWORD (WINAPI* sGetFinalPathNameByHandleW)
-             (HANDLE hFile,
-              LPWSTR lpszFilePath,
-              DWORD cchFilePath,
-              DWORD dwFlags);
-
 /* from powerbase.h */
 #ifndef DEVICE_NOTIFY_CALLBACK
 # define DEVICE_NOTIFY_CALLBACK 2
@@ -4719,14 +4703,6 @@ extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
-
-
-/* Kernel32 function pointers */
-extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
-extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
-extern sCreateSymbolicLinkW pCreateSymbolicLinkW;
-extern sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
-
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;

@@ -1829,17 +1829,13 @@ static void fs__symlink(uv_fs_t* req) {
     fs__create_junction(req, pathw, new_pathw);
     return;
   }
-  if (!pCreateSymbolicLinkW) {
-    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
-    return;
-  }
 
   if (req->fs.info.file_flags & UV_FS_SYMLINK_DIR)
     flags = SYMBOLIC_LINK_FLAG_DIRECTORY | uv__file_symlink_usermode_flag;
   else
     flags = uv__file_symlink_usermode_flag;
 
-  if (pCreateSymbolicLinkW(new_pathw, pathw, flags)) {
+  if (CreateSymbolicLinkW(new_pathw, pathw, flags)) {
     SET_REQ_RESULT(req, 0);
     return;
   }
@@ -1896,7 +1892,7 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   WCHAR* w_realpath_ptr = NULL;
   WCHAR* w_realpath_buf;
 
-  w_realpath_len = pGetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
+  w_realpath_len = GetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
   if (w_realpath_len == 0) {
     return -1;
   }
@@ -1908,10 +1904,8 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   }
   w_realpath_ptr = w_realpath_buf;
 
-  if (pGetFinalPathNameByHandleW(handle,
-                                w_realpath_ptr,
-                                w_realpath_len,
-                                VOLUME_NAME_DOS) == 0) {
+  if (GetFinalPathNameByHandleW(
+          handle, w_realpath_ptr, w_realpath_len, VOLUME_NAME_DOS) == 0) {
     uv__free(w_realpath_buf);
     SetLastError(ERROR_INVALID_HANDLE);
     return -1;
@@ -1942,11 +1936,6 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
 
 static void fs__realpath(uv_fs_t* req) {
   HANDLE handle;
-
-  if (!pGetFinalPathNameByHandleW) {
-    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
-    return;
-  }
 
   handle = CreateFileW(req->file.pathw,
                        0,
