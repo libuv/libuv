@@ -36,7 +36,6 @@ sNtQuerySystemInformation pNtQuerySystemInformation;
 
 
 /* Kernel32 function pointers */
-sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
 sCreateSymbolicLinkW pCreateSymbolicLinkW;
 sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
@@ -111,10 +110,6 @@ void uv_winapi_init(void) {
   if (kernel32_module == NULL) {
     uv_fatal_error(GetLastError(), "GetModuleHandleA");
   }
-
-  pGetQueuedCompletionStatusEx = (sGetQueuedCompletionStatusEx) GetProcAddress(
-      kernel32_module,
-      "GetQueuedCompletionStatusEx");
 
   pSetFileCompletionNotificationModes = (sSetFileCompletionNotificationModes)
     GetProcAddress(kernel32_module, "SetFileCompletionNotificationModes");

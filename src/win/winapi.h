@@ -4642,14 +4642,6 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
 # define ERROR_MUI_FILE_NOT_LOADED 15105
 #endif
 
-typedef BOOL (WINAPI *sGetQueuedCompletionStatusEx)
-             (HANDLE CompletionPort,
-              LPOVERLAPPED_ENTRY lpCompletionPortEntries,
-              ULONG ulCount,
-              PULONG ulNumEntriesRemoved,
-              DWORD dwMilliseconds,
-              BOOL fAlertable);
-
 typedef BOOL (WINAPI* sSetFileCompletionNotificationModes)
              (HANDLE FileHandle,
               UCHAR Flags);
