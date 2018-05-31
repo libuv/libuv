@@ -40,18 +40,12 @@ static char uv_zero_[] = "";
 int uv_udp_getsockname(const uv_udp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
-  int result;
 
-  if (handle->socket == INVALID_SOCKET) {
-    return UV_EINVAL;
-  }
-
-  result = getsockname(handle->socket, name, namelen);
-  if (result != 0) {
-    return uv_translate_sys_error(WSAGetLastError());
-  }
-
-  return 0;
+  return uv__getsockpeername((const uv_handle_t*) handle,
+                             getsockname,
+                             name,
+                             namelen,
+                             0);
 }
 
 

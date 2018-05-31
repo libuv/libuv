@@ -306,4 +306,11 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
 int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
 #endif
 
+typedef int (*uv__peersockfunc)(int, struct sockaddr*, socklen_t*);
+
+int uv__getsockpeername(const uv_handle_t* handle,
+                        uv__peersockfunc func,
+                        struct sockaddr* name,
+                        int* namelen);
+
 #endif /* UV_UNIX_INTERNAL_H_ */
