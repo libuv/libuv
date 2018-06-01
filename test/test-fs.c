@@ -3551,7 +3551,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
 int call_icacls(const char* command, ...) {
     char icacls_command[1024];
     va_list args;
-    
+
     va_start(args, command);
     vsnprintf(icacls_command, ARRAYSIZE(icacls_command), command, args);
     va_end(args);
@@ -3573,7 +3573,7 @@ TEST_IMPL(fs_open_readonly_acl) {
             attrib -r test_file_icacls
             del test_file_icacls
     */
-    
+
     /* Setup - clear the ACL and remove the file */
     loop = uv_default_loop();
     r = uv_os_get_passwd(&pwd);
@@ -3583,7 +3583,7 @@ TEST_IMPL(fs_open_readonly_acl) {
     uv_fs_chmod(loop, &req, "test_file_icacls", S_IWUSR, NULL);
     unlink("test_file_icacls");
 
-    /* Create the file */    
+    /* Create the file */
     r = uv_fs_open(loop,
                    &open_req1,
                    "test_file_icacls",
@@ -3608,7 +3608,7 @@ TEST_IMPL(fs_open_readonly_acl) {
     if (r != 0) {
         goto acl_cleanup;
     }
-    
+
     /* Try opening the file */
     r = uv_fs_open(NULL, &open_req1, "test_file_icacls", O_RDONLY, 0, NULL);
     if (r < 0) {
