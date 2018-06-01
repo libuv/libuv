@@ -68,7 +68,6 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/poll.c \
                     src/win/process-stdio.c \
                     src/win/process.c \
-                    src/win/req.c \
                     src/win/req-inl.h \
                     src/win/signal.c \
                     src/win/stream.c \
