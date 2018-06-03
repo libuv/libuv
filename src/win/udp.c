@@ -741,7 +741,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
     return UV_EINVAL;
   }
 
-  if (!(handle->flags & UV_HANDLE_BOUND))
+  if (handle->socket == INVALID_SOCKET)
     return UV_EBADF;
 
   if (addr_st.ss_family == AF_INET) {
@@ -772,7 +772,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
 int uv_udp_set_broadcast(uv_udp_t* handle, int value) {
   BOOL optval = (BOOL) value;
 
-  if (!(handle->flags & UV_HANDLE_BOUND))
+  if (handle->socket == INVALID_SOCKET)
     return UV_EBADF;
 
   if (setsockopt(handle->socket,
@@ -818,7 +818,7 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
       return UV_EINVAL;                                                       \
     }                                                                         \
                                                                               \
-    if (!(handle->flags & UV_HANDLE_BOUND))                                   \
+    if (handle->socket == INVALID_SOCKET)                                     \
       return UV_EBADF;                                                        \
                                                                               \
     if (!(handle->flags & UV_HANDLE_IPV6)) {                                  \
