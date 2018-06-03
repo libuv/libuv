@@ -51,8 +51,8 @@ The utility function::
 
 applies **only to repeating timers** and is equivalent to stopping the timer
 and then starting it with both initial ``timeout`` and ``repeat`` set to the
-old ``repeat`` value. If the timer hasn't been started it fails (error code
-``UV_EINVAL``) and returns -1.
+old ``repeat`` value. If the timer hasn't been started, or isn't a repeating
+timer, it fails with ``UV_EINVAL``.
 
 An actual timer example is in the :ref:`reference count section
 <reference-count>`.
