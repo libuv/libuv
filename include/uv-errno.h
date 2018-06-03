@@ -439,5 +439,11 @@
 # define UV__EFTYPE (-4028)
 #endif
 
+#if defined(EOPNOTSUPP) && !defined(_WIN32)
+# define UV__EOPNOTSUPP UV__ERR(EOPNOTSUPP)
+#else
+# define UV__EOPNOTSUPP (-4027)
+#endif
+
 
 #endif /* UV_ERRNO_H_ */

@@ -251,6 +251,10 @@ Error constants
 
     operation not supported on socket
 
+.. c:macro:: UV_EOPNOTSUPP
+
+    operation not supported on transport endpoint
+
 .. c:macro:: UV_EPERM
 
     operation not permitted
