@@ -865,9 +865,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
       /* If an error occurred that the sendfile fallback also won't handle, or
          this is a force clone then exit. Otherwise, fall through to try using
          sendfile(). */
-      if ((errno != ENOTTY && errno != EOPNOTSUPP && errno != EXDEV) ||
-          req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-        err = -errno;
+      if (errno != ENOTTY && errno != EOPNOTSUPP && errno != EXDEV) {
+        err = UV__ERR(errno);
+        goto out;
+      } else if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+        err = UV_ENOTSUP;
         goto out;
       }
     } else {
