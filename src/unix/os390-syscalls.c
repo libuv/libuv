@@ -141,7 +141,7 @@ static void init_message_queue(uv__os390_epoll* lst) {
   } msg;
 
   /* initialize message queue */
-  lst->msg_queue = msgget(IPC_PRIVATE, 0622 | IPC_CREAT);
+  lst->msg_queue = msgget(IPC_PRIVATE, 0600 | IPC_CREAT);
   if (lst->msg_queue == -1)
     abort();
 
@@ -255,7 +255,7 @@ int epoll_ctl(uv__os390_epoll* lst,
     lst->items[fd].events = event->events;
     lst->items[fd].revents = 0;
   } else if (op == EPOLL_CTL_MOD) {
-    if (fd >= lst->size || lst->items[fd].fd == -1) {
+    if (fd >= lst->size - 1 || lst->items[fd].fd == -1) {
       uv_mutex_unlock(&global_epoll_lock);
       errno = ENOENT;
       return -1;
