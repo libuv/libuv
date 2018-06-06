@@ -778,6 +778,18 @@ int uv_udp_set_broadcast(uv_udp_t* handle, int value) {
 }
 
 
+int uv__udp_is_bound(uv_udp_t* handle) {
+  struct sockaddr_storage addr;
+  int addrlen;
+
+  addrlen = sizeof(addr);
+  if (uv_udp_getsockname(handle, (struct sockaddr*) &addr, &addrlen) != 0)
+    return 0;
+
+  return addrlen > 0;
+}
+
+
 int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
   WSAPROTOCOL_INFOW protocol_info;
   int opt_len;
@@ -797,7 +809,13 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
                           handle,
                           sock,
                           protocol_info.iAddressFamily);
-  return uv_translate_sys_error(err);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  if (uv__udp_is_bound(handle))
+    handle->flags |= UV_HANDLE_BOUND;
+
+  return 0;
 }
 
 
