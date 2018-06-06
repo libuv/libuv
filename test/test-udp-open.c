@@ -215,3 +215,33 @@ TEST_IMPL(udp_open_twice) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(udp_open_bound) {
+  struct sockaddr_in addr;
+  uv_udp_t client;
+  uv_os_sock_t sock;
+  int r;
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  startup();
+  sock = create_udp_socket();
+
+  r = bind(sock, (struct sockaddr*) &addr, sizeof(addr));
+  ASSERT(r == 0);
+
+  r = uv_udp_init(uv_default_loop(), &client);
+  ASSERT(r == 0);
+
+  r = uv_udp_open(&client, sock);
+  ASSERT(r == 0);
+
+  r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
+  ASSERT(r == 0);
+
+  uv_close((uv_handle_t*) &client, NULL);
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
