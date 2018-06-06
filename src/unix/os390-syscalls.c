@@ -261,6 +261,7 @@ int epoll_ctl(uv__os390_epoll* lst,
       return -1;
     }
     lst->items[fd].events = event->events;
+    lst->items[fd].revents = 0;
   } else
     abort();
 
@@ -275,8 +276,9 @@ int epoll_wait(uv__os390_epoll* lst, struct epoll_event* events,
   struct pollfd* pfds;
   int pollret;
   int reventcount;
+  int nevents;
 
-  size = _SET_FDS_MSGS(size, 1, lst->size - 1);
+  _SET_FDS_MSGS(size, 1, lst->size - 1);
   pfds = lst->items;
   pollret = poll(pfds, size, timeout);
   if (pollret <= 0)
@@ -285,19 +287,28 @@ int epoll_wait(uv__os390_epoll* lst, struct epoll_event* events,
   pollret = _NFDS(pollret) + _NMSGS(pollret);
 
   reventcount = 0;
+  nevents = 0;
   for (int i = 0; 
        i < lst->size && i < maxevents && reventcount < pollret; ++i) {
     struct epoll_event ev;
+    struct pollfd* pfd;
 
-    if (pfds[i].fd == -1 || pfds[i].revents == 0)
+    pfd = &pfds[i];
+    if (pfd->fd == -1 || pfd->revents == 0)
       continue;
 
-    ev.fd = pfds[i].fd;
-    ev.events = pfds[i].revents;
-    events[reventcount++] = ev;
+    ev.fd = pfd->fd;
+    ev.events = pfd->revents;
+    if (pfd->revents & POLLIN && pfd->revents & POLLOUT)
+      reventcount += 2;
+    else if (pfd->revents & (POLLIN | POLLOUT))
+      ++reventcount;
+
+    pfd->revents = 0;
+    events[nevents++] = ev;
   }
 
-  return reventcount;
+  return nevents;
 }
 
 
