@@ -21,7 +21,6 @@
 
 #include <assert.h>
 #include <io.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1294,7 +1293,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
                                size_t nbufs,
                                uv_stream_t* send_handle,
                                uv_write_cb cb,
-                               bool copy_always) {
+                               BOOL copy_always) {
   int err;
   int result;
   uv_buf_t write_buf;
@@ -1536,7 +1535,7 @@ int uv__pipe_write_ipc(uv_loop_t* loop,
   /* Write buffers. We set the `always_copy` flag, so it is not a problem that
    * some of the written data lives on the stack. */
   err = uv__pipe_write_data(
-      loop, req, handle, bufs, buf_count, send_handle, cb, true);
+      loop, req, handle, bufs, buf_count, send_handle, cb, TRUE);
 
   /* If we had to heap-allocate the bufs array, free it now. */
   if (bufs != stack_bufs) {
@@ -1561,7 +1560,7 @@ int uv__pipe_write(uv_loop_t* loop,
     /* Non-IPC pipe write: put data on the wire directly. */
     assert(send_handle == NULL);
     return uv__pipe_write_data(
-        loop, req, handle, bufs, nbufs, NULL, cb, false);
+        loop, req, handle, bufs, nbufs, NULL, cb, FALSE);
   }
 }
 
