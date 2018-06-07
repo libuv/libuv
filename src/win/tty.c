@@ -23,6 +23,7 @@
 #include <io.h>
 #include <string.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "stdint-msvc2008.h"
@@ -39,6 +40,8 @@
 #include "handle-inl.h"
 #include "stream-inl.h"
 #include "req-inl.h"
+
+#include <psapi.h>
 
 #ifndef InterlockedOr
 # define InterlockedOr _InterlockedOr
@@ -2259,25 +2262,95 @@ int uv_tty_reset_mode(void) {
   return 0;
 }
 
+static int uv__guess_tty(HANDLE handle)
+{
+  char env_var[5];
+  DWORD dwMode = 0;
+  DWORD env_length;
+  int result = UV_TTY_NONE;
+
+  if (handle == INVALID_HANDLE_VALUE || !GetConsoleMode(handle, &dwMode)) {
+    return result;
+  }
+
+  env_length = GetEnvironmentVariableA("ConEmuANSI", env_var, sizeof(env_var));
+  if (env_length == 2 && !strncmp(env_var, "ON", 2)) {
+    HANDLE process_handle = GetCurrentProcess();
+
+    while(1) {
+      NTSTATUS status;
+      PROCESS_BASIC_INFORMATION pbi;
+      ULONG return_length;
+      WCHAR parent_file_name[MAX_PATH];
+      DWORD parent_file_name_length;
+      WCHAR* conemu_file_names[] = { L"\\ConEmu.exe", L"\\ConEmu64.exe" };
+      unsigned int i;
+
+      status = pNtQueryInformationProcess(process_handle,
+                                          ProcessBasicInformation,
+                                          &pbi,
+                                          sizeof(pbi),
+                                          &return_length);
+      CloseHandle(process_handle);
+      if (!NT_SUCCESS(status)) {
+        break;
+      }
+
+      process_handle = OpenProcess(PROCESS_QUERY_INFORMATION,
+                                   FALSE,
+                                   pbi.InheritedFromUniqueProcessId);
+      if (!process_handle) {
+        break;
+      }
+
+      parent_file_name_length =
+        GetProcessImageFileNameW(process_handle,
+                                 parent_file_name,
+                                 sizeof(parent_file_name));
+      if (!parent_file_name_length) {
+        break;
+      }
+
+      for (i = 0; i < sizeof(conemu_file_names) / sizeof(WCHAR*); i++) {
+        size_t conemu_file_name_length = wcslen(conemu_file_names[i]);
+        WCHAR* comp_position;
+        if (parent_file_name_length < conemu_file_name_length) {
+          continue;
+        }
+        comp_position = parent_file_name + parent_file_name_length
+          - conemu_file_name_length;
+        if (!wcsncmp(comp_position,
+                     conemu_file_names[i],
+                     conemu_file_name_length)) {
+          result |= UV_TTY_CONEMU;
+          break;
+        }
+      }
+      if (result & UV_TTY_CONEMU) {
+        break;
+      }
+    }
+  }
+
+  dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  if (!SetConsoleMode(handle, dwMode)) {
+    return result |= UV_TTY_LEGACY;
+  }
+
+  return result |= UV_TTY_VTP;
+}
+
 /* Determine whether or not this version of windows supports
  * proper ANSI color codes. Should be supported as of windows
  * 10 version 1511, build number 10.0.10586.
  */
 static void uv__determine_vterm_state(HANDLE handle) {
-  DWORD dwMode = 0;
-
-  if (!GetConsoleMode(handle, &dwMode)) {
+  int tty_type = uv__guess_tty(handle);
+  if (tty_type & UV_TTY_VTP || tty_type & UV_TTY_CONEMU) {
+    uv__vterm_state = UV_SUPPORTED;
+  } else {
     uv__vterm_state = UV_UNSUPPORTED;
-    return;
   }
-
-  dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  if (!SetConsoleMode(handle, dwMode)) {
-    uv__vterm_state = UV_UNSUPPORTED;
-    return;
-  }
-
-  uv__vterm_state = UV_SUPPORTED;
 }
 
 static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
@@ -2330,4 +2403,13 @@ static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
     uv__tty_console_height = height;
     uv__signal_dispatch(SIGWINCH);
   }
+}
+
+int uv_guess_tty(uv_file fd) {
+  HANDLE handle = _get_osfhandle(fd);
+  uv__once_init();
+  if (uv_guess_handle(fd) != UV_TTY) {
+    return UV_TTY_NONE;
+  }
+  return uv__guess_tty(handle);
 }

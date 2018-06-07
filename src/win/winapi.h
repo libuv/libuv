@@ -4117,6 +4117,102 @@ typedef struct _UNICODE_STRING {
 
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
+typedef struct _PEB_LDR_DATA {
+  BYTE Reserved1[8];
+  PVOID Reserved2[3];
+  LIST_ENTRY InMemoryOrderModuleList;
+} PEB_LDR_DATA,*PPEB_LDR_DATA;
+
+typedef struct _RTL_USER_PROCESS_PARAMETERS {
+  BYTE Reserved1[16];
+  PVOID Reserved2[10];
+  UNICODE_STRING ImagePathName;
+  UNICODE_STRING CommandLine;
+} RTL_USER_PROCESS_PARAMETERS,*PRTL_USER_PROCESS_PARAMETERS;
+
+typedef VOID (NTAPI *PPS_POST_PROCESS_INIT_ROUTINE)(VOID);
+
+typedef struct _PEB {
+  BYTE Reserved1[2];
+  BYTE BeingDebugged;
+  BYTE Reserved2[1];
+  PVOID Reserved3[2];
+  PPEB_LDR_DATA Ldr;
+  PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
+  BYTE Reserved4[104];
+  PVOID Reserved5[52];
+  PPS_POST_PROCESS_INIT_ROUTINE PostProcessInitRoutine;
+  BYTE Reserved6[128];
+  PVOID Reserved7[1];
+  ULONG SessionId;
+} PEB,*PPEB;
+
+typedef LONG KPRIORITY;
+
+typedef struct _PROCESS_BASIC_INFORMATION {
+  NTSTATUS ExitStatus;
+  PPEB PebBaseAddress;
+  KAFFINITY AffinityMask;
+  KPRIORITY BasePriority;
+  ULONG_PTR UniqueProcessId;
+  ULONG_PTR InheritedFromUniqueProcessId;
+} PROCESS_BASIC_INFORMATION, *PPROCESS_BASIC_INFORMATION;
+
+typedef enum _PROCESSINFOCLASS {
+  ProcessBasicInformation,
+  ProcessQuotaLimits,
+  ProcessIoCounters,
+  ProcessVmCounters,
+  ProcessTimes,
+  ProcessBasePriority,
+  ProcessRaisePriority,
+  ProcessDebugPort,
+  ProcessExceptionPort,
+  ProcessAccessToken,
+  ProcessLdtInformation,
+  ProcessLdtSize,
+  ProcessDefaultHardErrorMode,
+  ProcessIoPortHandlers,
+  ProcessPooledUsageAndLimits,
+  ProcessWorkingSetWatch,
+  ProcessUserModeIOPL,
+  ProcessEnableAlignmentFaultFixup,
+  ProcessPriorityClass,
+  ProcessWx86Information,
+  ProcessHandleCount,
+  ProcessAffinityMask,
+  ProcessPriorityBoost,
+  ProcessDeviceMap,
+  ProcessSessionInformation,
+  ProcessForegroundInformation,
+  ProcessWow64Information,
+  ProcessImageFileName,
+  ProcessLUIDDeviceMapsEnabled,
+  ProcessBreakOnTermination,
+  ProcessDebugObjectHandle,
+  ProcessDebugFlags,
+  ProcessHandleTracing,
+  ProcessIoPriority,
+  ProcessExecuteFlags,
+  ProcessTlsInformation,
+  ProcessCookie,
+  ProcessImageInformation,
+  ProcessCycleTime,
+  ProcessPagePriority,
+  ProcessInstrumentationCallback,
+  ProcessThreadStackAllocation,
+  ProcessWorkingSetWatchEx,
+  ProcessImageFileNameWin32,
+  ProcessImageFileMapping,
+  ProcessAffinityUpdateMode,
+  ProcessMemoryAllocationMode,
+  ProcessGroupInformation,
+  ProcessTokenVirtualizationEnabled,
+  ProcessConsoleHostProcess,
+  ProcessWindowInformation,
+  MaxProcessInfoClass
+} PROCESSINFOCLASS;
+
 /* from ntifs.h */
 #ifndef DEVICE_TYPE
 # define DEVICE_TYPE DWORD
@@ -4572,6 +4668,13 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
                   BOOLEAN RestartScan
                 );
 
+typedef NTSTATUS (NTAPI *sNtQueryInformationProcess)
+                 (HANDLE PorcessHandle,
+                  PROCESSINFOCLASS ProcessInformationClass,
+                  PVOID ProcessInformation,
+                  ULONG ProcessInformationLength,
+                  PULONG ReturnLength);
+
 /*
  * Kernel32 headers
  */
@@ -4703,6 +4806,7 @@ extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
+extern sNtQueryInformationProcess pNtQueryInformationProcess;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
