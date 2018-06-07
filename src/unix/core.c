@@ -161,7 +161,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
   case UV_FS_POLL:
     uv__fs_poll_close((uv_fs_poll_t*)handle);
-    break;
+    /* Poll handles use file system requests, and one of them may still be
+     * running. The poll code will call uv__make_close_pending() for us. */
+    return;
 
   case UV_SIGNAL:
     uv__signal_close((uv_signal_t*) handle);
