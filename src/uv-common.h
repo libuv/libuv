@@ -119,6 +119,12 @@ void uv__fs_poll_close(uv_fs_poll_t* handle);
 
 int uv__getaddrinfo_translate_error(int sys_err);    /* EAI_* error. */
 
+enum uv__work_kind {
+  UV__WORK_CPU,
+  UV__WORK_FAST_IO,
+  UV__WORK_SLOW_IO
+};
+
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
                      enum uv__work_kind kind,

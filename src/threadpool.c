@@ -33,14 +33,16 @@ static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
-static unsigned int slow_io_pooled_work;
+static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
 static QUEUE exit_message;
 static QUEUE wq;
+static QUEUE run_slow_work_message;
 static QUEUE slow_io_pending_wq;
 
+#define SLOW_WORK_THREAD_THRESHOLD ((nthreads + 1) / 2)
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -53,6 +55,7 @@ static void uv__cancelled(struct uv__work* w) {
 static void worker(void* arg) {
   struct uv__work* w;
   QUEUE* q;
+  int is_slow_work;
 
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
@@ -60,31 +63,66 @@ static void worker(void* arg) {
   for (;;) {
     uv_mutex_lock(&mutex);
 
-    while (QUEUE_EMPTY(&wq)) {
+  wait_for_work:
+    /* Keep waiting while either no work is present or only slow I/O
+       and we're at the threshold for that. */
+    while (QUEUE_EMPTY(&wq) ||
+           (QUEUE_HEAD(&wq) == &run_slow_work_message &&
+            QUEUE_NEXT(&run_slow_work_message) == &wq &&
+            slow_io_work_running >= SLOW_WORK_THREAD_THRESHOLD)) {
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
     }
 
     q = QUEUE_HEAD(&wq);
-
-    if (q == &exit_message)
+    if (q == &exit_message) {
       uv_cond_signal(&cond);
-    else {
+      uv_mutex_unlock(&mutex);
+      break;
+    }
+
+    QUEUE_REMOVE(q);
+    QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is executing. */
+
+    if (q == &run_slow_work_message) {
+      /* If we're at the slow I/O threshold, re-schedule until after all
+         other work in the queue is done. */
+      if (slow_io_work_running >= SLOW_WORK_THREAD_THRESHOLD) {
+        QUEUE_INSERT_TAIL(&wq, q);
+        goto wait_for_work;
+      }
+
+      /* If we encountered a request to run slow I/O work but there is none
+         to run, that means it's cancelled => Start over. */
+      if (QUEUE_EMPTY(&slow_io_pending_wq))
+        goto wait_for_work;
+
+      is_slow_work = 1;
+      slow_io_work_running++;
+
+      q = QUEUE_HEAD(&slow_io_pending_wq);
       QUEUE_REMOVE(q);
-      QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
-                             executing. */
+      QUEUE_INIT(q);
+
+      /* If there is more slow I/O work, schedule it to be run as well. */
+      if (!QUEUE_EMPTY(&slow_io_pending_wq)) {
+        QUEUE_INSERT_TAIL(&wq, &run_slow_work_message);
+        if (idle_threads > 0)
+          uv_cond_signal(&cond);
+      }
+    } else {
+      is_slow_work = 0;
     }
 
     uv_mutex_unlock(&mutex);
-
-    if (q == &exit_message)
-      break;
 
     w = QUEUE_DATA(q, struct uv__work, wq);
     w->work(w);
 
     uv_mutex_lock(&w->loop->wq_mutex);
+    if (is_slow_work)
+      slow_io_work_running--;
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
     QUEUE_INSERT_TAIL(&w->loop->wq, &w->wq);
@@ -97,13 +135,15 @@ static void worker(void* arg) {
 static void post(QUEUE* q, enum uv__work_kind kind) {
   uv_mutex_lock(&mutex);
   if (kind == UV__WORK_SLOW_IO) {
-    if (slow_io_pooled_work >= (nthreads + 1) / 2) {
-      QUEUE_INSERT_TAIL(&slow_io_pending_wq, q);
+    /* Insert into a separate queue. */
+    QUEUE_INSERT_TAIL(&slow_io_pending_wq, q);
+    if (!QUEUE_EMPTY(&run_slow_work_message)) {
+      /* Running slow I/O tasks is already scheduled => Nothing to do here.
+         The worker that runs said other task will schedule this one as well. */
       uv_mutex_unlock(&mutex);
       return;
     }
-
-    slow_io_pooled_work++;
+    q = &run_slow_work_message;
   }
 
   QUEUE_INSERT_TAIL(&wq, q);
@@ -169,6 +209,7 @@ static void init_threads(void) {
 
   QUEUE_INIT(&wq);
   QUEUE_INIT(&slow_io_pending_wq);
+  QUEUE_INIT(&run_slow_work_message);
 
   if (uv_sem_init(&sem, 0))
     abort();
@@ -212,10 +253,9 @@ void uv__work_submit(uv_loop_t* loop,
                      void (*done)(struct uv__work* w, int status)) {
   uv_once(&once, init_once);
   w->loop = loop;
-  w->kind = kind;
   w->work = work;
   w->done = done;
-  post(&w->wq, w->kind);
+  post(&w->wq, kind);
 }
 
 
@@ -249,7 +289,6 @@ void uv__work_done(uv_async_t* handle) {
   struct uv__work* w;
   uv_loop_t* loop;
   QUEUE* q;
-  QUEUE* slow_work;
   QUEUE wq;
   int err;
 
@@ -264,19 +303,6 @@ void uv__work_done(uv_async_t* handle) {
 
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
-
-    if (w->kind == UV__WORK_SLOW_IO) {
-      uv_mutex_lock(&mutex);
-      slow_io_pooled_work--;
-      if (!QUEUE_EMPTY(&slow_io_pending_wq)) {
-        slow_work = QUEUE_HEAD(&slow_io_pending_wq);
-        QUEUE_REMOVE(slow_work);
-        uv_mutex_unlock(&mutex);
-        post(slow_work, UV__WORK_SLOW_IO);
-      } else {
-        uv_mutex_unlock(&mutex);
-      }
-    }
 
     w->done(w, err);
   }
