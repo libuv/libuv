@@ -2304,9 +2304,9 @@ static int uv__guess_tty(HANDLE handle)
       }
 
       parent_file_name_length =
-        GetProcessImageFileNameW(process_handle,
-                                 parent_file_name,
-                                 sizeof(parent_file_name));
+        GetProcessImageFileNameW(
+            process_handle, parent_file_name,
+            sizeof(parent_file_name) / sizeof(parent_file_name[0]));
       if (!parent_file_name_length) {
         break;
       }
