@@ -234,6 +234,10 @@ API
 
     Equivalent to :man:`fsync(2)`.
 
+    .. note::
+        For AIX, `uv_fs_fsync` returns `UV_EBADF` on file descriptors referencing
+        non regular files.
+
 .. c:function:: int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
     Equivalent to :man:`fdatasync(2)`.
