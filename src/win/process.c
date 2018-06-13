@@ -934,9 +934,9 @@ void uv_process_endgame(uv_loop_t* loop, uv_process_t* handle) {
 }
 
 
-int uv_spawn(uv_loop_t* loop,
+int uv_spawn_default(uv_loop_t* loop,
              uv_process_t* process,
-             const uv_process_options_t* options) {
+             const uv_process_options_t* options, bool windowless) {
   int i;
   int err = 0;
   WCHAR* path = NULL, *alloc_path = NULL;
@@ -1094,6 +1094,10 @@ int uv_spawn(uv_loop_t* loop,
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
   }
 
+  if (windowless) {
+    process_flags |= CREATE_NO_WINDOW;
+  }
+
   if (!CreateProcessW(application_path,
                      arguments,
                      NULL,
@@ -1179,6 +1183,19 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   return uv_translate_sys_error(err);
+}
+
+
+int uv_spawn(uv_loop_t* loop,
+             uv_process_t* process,
+             const uv_process_options_t* options) {
+  return uv_spawn_default(loop, process, options, false);
+}
+
+int uv_spawn_windowless(uv_loop_t* loop,
+             uv_process_t* process,
+             const uv_process_options_t* options) {
+  return uv_spawn_default(loop, process, options, true);
 }
 
 
