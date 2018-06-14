@@ -929,7 +929,11 @@ out:
     }
   }
 
-  return result;
+  if (result == 0)
+    return 0;
+
+  errno = UV__ERR(result);
+  return -1;
 #endif
 }
 
