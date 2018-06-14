@@ -26,15 +26,6 @@
 #include "uv.h"
 #include "internal.h"
 
-static int uv_cond_condvar_init(uv_cond_t* cond);
-static void uv_cond_condvar_destroy(uv_cond_t* cond);
-static void uv_cond_condvar_signal(uv_cond_t* cond);
-static void uv_cond_condvar_broadcast(uv_cond_t* cond);
-static void uv_cond_condvar_wait(uv_cond_t* cond, uv_mutex_t* mutex);
-static int uv_cond_condvar_timedwait(uv_cond_t* cond,
-    uv_mutex_t* mutex, uint64_t timeout);
-
-
 static void uv__once_inner(uv_once_t* guard, void (*callback)(void)) {
   DWORD result;
   HANDLE existing_event, created_event;
