@@ -1675,7 +1675,7 @@ static DWORD uv__pipe_read_data(uv_loop_t* loop,
 
 
 static DWORD uv__pipe_read_ipc(uv_loop_t* loop, uv_pipe_t* handle) {
-  DWORD* data_remaining = &handle->pipe.conn.ipc_data_frame.payload_remaining;
+  uint32_t* data_remaining = &handle->pipe.conn.ipc_data_frame.payload_remaining;
   int err;
 
   if (*data_remaining > 0) {
