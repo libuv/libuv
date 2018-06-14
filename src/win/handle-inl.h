@@ -126,7 +126,8 @@ INLINE static void uv_process_endgames(uv_loop_t* loop) {
         break;
 
       case UV_TIMER:
-        uv_timer_endgame(loop, (uv_timer_t*) handle);
+        uv__timer_close((uv_timer_t*) handle);
+        uv__handle_close(handle);
         break;
 
       case UV_PREPARE:

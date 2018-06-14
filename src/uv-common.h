@@ -132,6 +132,10 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
 
 void uv__fs_scandir_cleanup(uv_fs_t* req);
 
+int uv__next_timeout(const uv_loop_t* loop);
+void uv__run_timers(uv_loop_t* loop);
+void uv__timer_close(uv_timer_t* handle);
+
 #define uv__has_active_reqs(loop)                                             \
   ((loop)->active_reqs.count > 0)
 
