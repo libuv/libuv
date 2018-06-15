@@ -42,7 +42,9 @@ static QUEUE wq;
 static QUEUE run_slow_work_message;
 static QUEUE slow_io_pending_wq;
 
-#define SLOW_WORK_THREAD_THRESHOLD ((nthreads + 1) / 2)
+static unsigned int slow_work_thread_threshold(void) {
+  return (nthreads + 1) / 2;
+}
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -69,7 +71,7 @@ static void worker(void* arg) {
     while (QUEUE_EMPTY(&wq) ||
            (QUEUE_HEAD(&wq) == &run_slow_work_message &&
             QUEUE_NEXT(&run_slow_work_message) == &wq &&
-            slow_io_work_running >= SLOW_WORK_THREAD_THRESHOLD)) {
+            slow_io_work_running >= slow_work_thread_threshold())) {
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
@@ -85,10 +87,11 @@ static void worker(void* arg) {
     QUEUE_REMOVE(q);
     QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is executing. */
 
+    is_slow_work = 0;
     if (q == &run_slow_work_message) {
       /* If we're at the slow I/O threshold, re-schedule until after all
          other work in the queue is done. */
-      if (slow_io_work_running >= SLOW_WORK_THREAD_THRESHOLD) {
+      if (slow_io_work_running >= slow_work_thread_threshold()) {
         QUEUE_INSERT_TAIL(&wq, q);
         goto wait_for_work;
       }
@@ -111,8 +114,6 @@ static void worker(void* arg) {
         if (idle_threads > 0)
           uv_cond_signal(&cond);
       }
-    } else {
-      is_slow_work = 0;
     }
 
     uv_mutex_unlock(&mutex);
