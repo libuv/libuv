@@ -304,7 +304,6 @@ void uv__work_done(uv_async_t* handle) {
 
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
-
     w->done(w, err);
   }
 }
