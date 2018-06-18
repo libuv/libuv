@@ -615,8 +615,8 @@ error:
 
 
 int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
-  wchar_t* a_eq;
-  wchar_t* b_eq;
+  const wchar_t* a_eq;
+  const wchar_t* b_eq;
   wchar_t* A;
   wchar_t* B;
   int nb;
@@ -633,8 +633,8 @@ int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   assert(b_eq);
   nb = b_eq - b;
 
-  A = alloca((na+1) * sizeof(wchar_t));
-  B = alloca((nb+1) * sizeof(wchar_t));
+  A = (wchar_t*)alloca((na+1) * sizeof(wchar_t));
+  B = (wchar_t*)alloca((nb+1) * sizeof(wchar_t));
 
   r = LCMapStringW(LOCALE_INVARIANT, LCMAP_UPPERCASE, a, na, A, na);
   assert(r==na);
@@ -692,7 +692,8 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   WCHAR* dst_copy;
   WCHAR** ptr_copy;
   WCHAR** env_copy;
-  DWORD* required_vars_value_len = alloca(n_required_vars * sizeof(DWORD*));
+  DWORD* required_vars_value_len =
+      (DWORD*)alloca(n_required_vars * sizeof(DWORD*));
 
   /* first pass: determine size in UTF-16 */
   for (env = env_block; *env; env++) {
@@ -717,7 +718,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   if (!dst_copy) {
     return ERROR_OUTOFMEMORY;
   }
-  env_copy = alloca(env_block_count * sizeof(WCHAR*));
+  env_copy = (WCHAR**)alloca(env_block_count * sizeof(WCHAR*));
 
   ptr = dst_copy;
   ptr_copy = env_copy;
@@ -771,7 +772,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   }
 
   /* final pass: copy, in sort order, and inserting required variables */
-  dst = uv__malloc((1+env_len) * sizeof(WCHAR));
+  dst = (WCHAR*)uv__malloc((1+env_len) * sizeof(WCHAR));
   if (!dst) {
     uv__free(dst_copy);
     return ERROR_OUTOFMEMORY;

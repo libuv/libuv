@@ -95,7 +95,8 @@ static int uv__loops_add(uv_loop_t* loop) {
 
   if (uv__loops_size == uv__loops_capacity) {
     new_capacity = uv__loops_capacity + UV__LOOPS_CHUNK_SIZE;
-    new_loops = uv__realloc(uv__loops, sizeof(uv_loop_t*) * new_capacity);
+    new_loops = (uv_loop_t**)
+        uv__realloc(uv__loops, sizeof(uv_loop_t*) * new_capacity);
     if (!new_loops)
       goto failed_loops_realloc;
     uv__loops = new_loops;
@@ -148,7 +149,8 @@ static void uv__loops_remove(uv_loop_t* loop) {
   smaller_capacity = uv__loops_capacity / 2;
   if (uv__loops_size >= smaller_capacity)
     goto loop_removed;
-  new_loops = uv__realloc(uv__loops, sizeof(uv_loop_t*) * smaller_capacity);
+  new_loops = (uv_loop_t**)
+      uv__realloc(uv__loops, sizeof(uv_loop_t*) * smaller_capacity);
   if (!new_loops)
     goto loop_removed;
   uv__loops = new_loops;

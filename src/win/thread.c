@@ -101,7 +101,7 @@ static UINT __stdcall uv__thread_start(void* arg) {
   struct thread_ctx *ctx_p;
   struct thread_ctx ctx;
 
-  ctx_p = arg;
+  ctx_p = (struct thread_ctx*)arg;
   ctx = *ctx_p;
   uv__free(ctx_p);
 
@@ -119,7 +119,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   int err;
   HANDLE thread;
 
-  ctx = uv__malloc(sizeof(*ctx));
+  ctx = (struct thread_ctx*)uv__malloc(sizeof(*ctx));
   if (ctx == NULL)
     return UV_ENOMEM;
 

@@ -90,7 +90,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   numcpus = sysconf(_SC_NPROCESSORS_ONLN);
 
-  *cpu_infos = uv__malloc(numcpus * sizeof(uv_cpu_info_t));
+  *cpu_infos = (uv_cpu_info_t*)uv__malloc(numcpus * sizeof(uv_cpu_info_t));
   if (!*cpu_infos) {
     return UV_ENOMEM;
   }

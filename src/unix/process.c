@@ -443,7 +443,7 @@ int uv_spawn(uv_loop_t* loop,
   err = UV_ENOMEM;
   pipes = pipes_storage;
   if (stdio_count > (int) ARRAY_SIZE(pipes_storage))
-    pipes = uv__malloc(stdio_count * sizeof(*pipes));
+    pipes = (int (*)[2])uv__malloc(stdio_count * sizeof(*pipes));
 
   if (pipes == NULL)
     goto error;

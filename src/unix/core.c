@@ -813,15 +813,15 @@ static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = uv__realloc(loop->watchers,
-                         (nwatchers + 2) * sizeof(loop->watchers[0]));
+  watchers = (uv__io_t**)
+      uv__realloc(loop->watchers, (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     abort();
   for (i = loop->nwatchers; i < nwatchers; i++)
     watchers[i] = NULL;
-  watchers[nwatchers] = fake_watcher_list;
-  watchers[nwatchers + 1] = fake_watcher_count;
+  watchers[nwatchers] = (uv__io_t*)fake_watcher_list;
+  watchers[nwatchers + 1] = (uv__io_t*)fake_watcher_count;
 
   loop->watchers = watchers;
   loop->nwatchers = nwatchers;
@@ -1172,7 +1172,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
   for (;;) {
     uv__free(buf);
-    buf = uv__malloc(bufsize);
+    buf = (char*)uv__malloc(bufsize);
 
     if (buf == NULL)
       return UV_ENOMEM;
@@ -1199,7 +1199,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   name_size = strlen(pw.pw_name) + 1;
   homedir_size = strlen(pw.pw_dir) + 1;
   shell_size = strlen(pw.pw_shell) + 1;
-  pwd->username = uv__malloc(name_size + homedir_size + shell_size);
+  pwd->username = (char*)uv__malloc(name_size + homedir_size + shell_size);
 
   if (pwd->username == NULL) {
     uv__free(buf);

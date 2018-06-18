@@ -142,7 +142,7 @@ static void init_threads(void) {
 
   threads = default_threads;
   if (nthreads > ARRAY_SIZE(default_threads)) {
-    threads = uv__malloc(nthreads * sizeof(threads[0]));
+    threads = (uv_thread_t*)uv__malloc(nthreads * sizeof(threads[0]));
     if (threads == NULL) {
       nthreads = ARRAY_SIZE(default_threads);
       threads = default_threads;

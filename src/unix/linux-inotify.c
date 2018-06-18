@@ -306,7 +306,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (w)
     goto no_insert;
 
-  w = uv__malloc(sizeof(*w) + strlen(path) + 1);
+  w = (watcher_list*)uv__malloc(sizeof(*w) + strlen(path) + 1);
   if (w == NULL)
     return UV_ENOMEM;
 

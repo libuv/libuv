@@ -194,7 +194,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return UV_EINVAL;  /* FIXME(bnoordhuis) Translate error. */
   }
 
-  *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
+  *cpu_infos = (uv_cpu_info_t*)uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos)) {
     vm_deallocate(mach_task_self(), (vm_address_t)info, msg_type);
     return UV_ENOMEM;

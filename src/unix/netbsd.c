@@ -268,14 +268,14 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpuspeed = 0;
 
   size = numcpus * CPUSTATES * sizeof(*cp_times);
-  cp_times = uv__malloc(size);
+  cp_times = (u_int64_t*)uv__malloc(size);
   if (cp_times == NULL)
     return UV_ENOMEM;
 
   if (sysctlbyname("kern.cp_time", cp_times, &size, NULL, 0))
     return UV__ERR(errno);
 
-  *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
+  *cpu_infos = (uv_cpu_info_t*)uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos)) {
     uv__free(cp_times);
     uv__free(*cpu_infos);

@@ -336,8 +336,8 @@ UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   loop->time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
 }
 
-UV_UNUSED(static char* uv__basename_r(const char* path)) {
-  char* s;
+UV_UNUSED(static const char* uv__basename_r(const char* path)) {
+  const char* s;
 
   s = strrchr(path, '/');
   if (s == NULL)

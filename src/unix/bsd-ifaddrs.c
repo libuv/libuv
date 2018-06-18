@@ -81,7 +81,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  *addresses = uv__malloc(*count * sizeof(**addresses));
+  *addresses =
+      (uv_interface_address_t*)uv__malloc(*count * sizeof(**addresses));
 
   if (*addresses == NULL) {
     freeifaddrs(addrs);

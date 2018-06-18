@@ -67,7 +67,7 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
 
   loop = handle->loop;
   len = strlen(path);
-  ctx = uv__calloc(1, sizeof(*ctx) + len);
+  ctx = (struct poll_ctx*)uv__calloc(1, sizeof(*ctx) + len);
 
   if (ctx == NULL)
     return UV_ENOMEM;
@@ -107,7 +107,7 @@ int uv_fs_poll_stop(uv_fs_poll_t* handle) {
   if (!uv__is_active(handle))
     return 0;
 
-  ctx = handle->poll_ctx;
+  ctx = (struct poll_ctx*)handle->poll_ctx;
   assert(ctx != NULL);
   assert(ctx->parent_handle != NULL);
   ctx->parent_handle = NULL;
@@ -134,7 +134,7 @@ int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buffer, size_t* size) {
     return UV_EINVAL;
   }
 
-  ctx = handle->poll_ctx;
+  ctx = (struct poll_ctx*)handle->poll_ctx;
   assert(ctx != NULL);
 
   required_len = strlen(ctx->path);
