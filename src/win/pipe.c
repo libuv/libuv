@@ -1658,7 +1658,8 @@ static DWORD uv__pipe_read_data(uv_loop_t* loop,
    *   (a) the length of the user-allocated buffer.
    *   (b) the maximum data length as specified by the `max_bytes` argument.
    */
-  max_bytes = min(buf.len, max_bytes);
+  if (max_bytes > buf.len)
+    max_bytes = buf.len;
 
   /* Read into the user buffer. */
   if (!ReadFile(handle->handle, buf.base, max_bytes, &bytes_read, NULL)) {
