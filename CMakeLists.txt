@@ -13,18 +13,184 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
   list(APPEND uv_cflags -Wno-unused-parameter)
 endif()
 
-file(GLOB uv_sources src/*.c)
+list(APPEND uv_sources
+    src/fs-poll.c
+    src/inet.c
+    src/threadpool.c
+    src/uv-common.c
+    src/uv-data-getter-setters.c
+    src/version.c)
 
 if(BUILD_TESTING)
   enable_testing()
-  list(APPEND uv_test_common_sources
-       test/blackhole-server.c
-       test/echo-server.c
-       test/runner.c)
-  file(GLOB uv_test_sources test/test-*.c)
+  list(APPEND uv_test_sources
+      test/blackhole-server.c
+      test/echo-server.c
+      test/run-tests.c
+      test/runner.c
+      test/test-active.c
+      test/test-async-null-cb.c
+      test/test-async.c
+      test/test-barrier.c
+      test/test-callback-order.c
+      test/test-callback-stack.c
+      test/test-close-fd.c
+      test/test-close-order.c
+      test/test-condvar.c
+      test/test-connect-unspecified.c
+      test/test-connection-fail.c
+      test/test-cwd-and-chdir.c
+      test/test-default-loop-close.c
+      test/test-delayed-accept.c
+      test/test-dlerror.c
+      test/test-eintr-handling.c
+      test/test-embed.c
+      test/test-emfile.c
+      test/test-env-vars.c
+      test/test-error.c
+      test/test-fail-always.c
+      test/test-fork.c
+      test/test-fs-copyfile.c
+      test/test-fs-event.c
+      test/test-fs-poll.c
+      test/test-fs.c
+      test/test-get-currentexe.c
+      test/test-get-loadavg.c
+      test/test-get-memory.c
+      test/test-get-passwd.c
+      test/test-getaddrinfo.c
+      test/test-gethostname.c
+      test/test-getnameinfo.c
+      test/test-getsockname.c
+      test/test-getters-setters.c
+      test/test-handle-fileno.c
+      test/test-homedir.c
+      test/test-hrtime.c
+      test/test-idle.c
+      test/test-ip4-addr.c
+      test/test-ip6-addr.c
+      test/test-ip6-addr.c
+      test/test-ipc-heavy-traffic-deadlock-bug.c
+      test/test-ipc-send-recv.c
+      test/test-ipc.c
+      test/test-loop-alive.c
+      test/test-loop-close.c
+      test/test-loop-configure.c
+      test/test-loop-handles.c
+      test/test-loop-stop.c
+      test/test-loop-time.c
+      test/test-multiple-listen.c
+      test/test-mutexes.c
+      test/test-osx-select.c
+      test/test-pass-always.c
+      test/test-ping-pong.c
+      test/test-pipe-bind-error.c
+      test/test-pipe-close-stdout-read-stdin.c
+      test/test-pipe-connect-error.c
+      test/test-pipe-connect-multiple.c
+      test/test-pipe-connect-prepare.c
+      test/test-pipe-getsockname.c
+      test/test-pipe-pending-instances.c
+      test/test-pipe-sendmsg.c
+      test/test-pipe-server-close.c
+      test/test-pipe-set-fchmod.c
+      test/test-pipe-set-non-blocking.c
+      test/test-platform-output.c
+      test/test-poll-close-doesnt-corrupt-stack.c
+      test/test-poll-close.c
+      test/test-poll-closesocket.c
+      test/test-poll-oob.c
+      test/test-poll.c
+      test/test-process-title-threadsafe.c
+      test/test-process-title.c
+      test/test-queue-foreach-delete.c
+      test/test-ref.c
+      test/test-run-nowait.c
+      test/test-run-once.c
+      test/test-semaphore.c
+      test/test-shutdown-close.c
+      test/test-shutdown-eof.c
+      test/test-shutdown-twice.c
+      test/test-signal-multiple-loops.c
+      test/test-signal.c
+      test/test-socket-buffer-size.c
+      test/test-spawn.c
+      test/test-stdio-over-pipes.c
+      test/test-tcp-alloc-cb-fail.c
+      test/test-tcp-bind-error.c
+      test/test-tcp-bind6-error.c
+      test/test-tcp-close-accept.c
+      test/test-tcp-close-while-connecting.c
+      test/test-tcp-close.c
+      test/test-tcp-connect-error-after-write.c
+      test/test-tcp-connect-error.c
+      test/test-tcp-connect-timeout.c
+      test/test-tcp-connect6-error.c
+      test/test-tcp-create-socket-early.c
+      test/test-tcp-flags.c
+      test/test-tcp-oob.c
+      test/test-tcp-open.c
+      test/test-tcp-read-stop.c
+      test/test-tcp-shutdown-after-write.c
+      test/test-tcp-try-write.c
+      test/test-tcp-unexpected-read.c
+      test/test-tcp-write-after-connect.c
+      test/test-tcp-write-fail.c
+      test/test-tcp-write-queue-order.c
+      test/test-tcp-write-to-half-open-connection.c
+      test/test-tcp-writealot.c
+      test/test-thread-equal.c
+      test/test-thread.c
+      test/test-threadpool-cancel.c
+      test/test-threadpool.c
+      test/test-timer-again.c
+      test/test-timer-from-check.c
+      test/test-timer.c
+      test/test-tmpdir.c
+      test/test-tty.c
+      test/test-udp-alloc-cb-fail.c
+      test/test-udp-bind.c
+      test/test-udp-create-socket-early.c
+      test/test-udp-dgram-too-big.c
+      test/test-udp-ipv6.c
+      test/test-udp-multicast-interface.c
+      test/test-udp-multicast-interface6.c
+      test/test-udp-multicast-join.c
+      test/test-udp-multicast-join6.c
+      test/test-udp-multicast-ttl.c
+      test/test-udp-open.c
+      test/test-udp-options.c
+      test/test-udp-send-and-recv.c
+      test/test-udp-send-hang-loop.c
+      test/test-udp-send-immediate.c
+      test/test-udp-send-unreachable.c
+      test/test-udp-try-send.c
+      test/test-walk-handles.c
+      test/test-watcher-cross-stop.c)
 
   if(BUILD_BENCHMARKING)
-    file(GLOB uv_benchmark_sources test/benchmark-*.c)
+      list(APPEND uv_benchmark_sources
+           test/blackhole-server.c
+           test/echo-server.c
+           test/run-benchmarks.c
+           test/runner.c
+           test/benchmark-async-pummel.c
+           test/benchmark-async.c
+           test/benchmark-fs-stat.c
+           test/benchmark-getaddrinfo.c
+           test/benchmark-list.h
+           test/benchmark-loop-count.c
+           test/benchmark-million-async.c
+           test/benchmark-million-timers.c
+           test/benchmark-multi-accept.c
+           test/benchmark-ping-pongs.c
+           test/benchmark-pound.c
+           test/benchmark-pump.c
+           test/benchmark-sizes.c
+           test/benchmark-spawn.c
+           test/benchmark-tcp-write-batch.c
+           test/benchmark-thread.c
+           test/benchmark-udp-pummel.c)
   endif()
 endif()
 
@@ -38,13 +204,39 @@ if(WIN32)
        user32
        userenv
        ws2_32)
-  file(GLOB uv_win_sources src/win/*.c)
-  list(APPEND uv_sources ${uv_win_sources})
+  list(APPEND uv_sources
+       src/win/async.c
+       src/win/core.c
+       src/win/detect-wakeup.c
+       src/win/dl.c
+       src/win/error.c
+       src/win/fs.c
+       src/win/fs-event.c
+       src/win/getaddrinfo.c
+       src/win/getnameinfo.c
+       src/win/handle.c
+       src/win/loop-watcher.c
+       src/win/pipe.c
+       src/win/thread.c
+       src/win/poll.c
+       src/win/process.c
+       src/win/process-stdio.c
+       src/win/req.c
+       src/win/signal.c
+       src/win/snprintf.c
+       src/win/stream.c
+       src/win/tcp.c
+       src/win/tty.c
+       src/win/timer.c
+       src/win/udp.c
+       src/win/util.c
+       src/win/winapi.c
+       src/win/winsock.c)
   list(APPEND uv_test_libraries ws2_32)
   if(BUILD_TESTING)
-    list(APPEND uv_test_common_sources src/win/snprintf.c test/runner-win.c)
+    list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
     if(BUILD_BENCHMARKING)
-      list(APPEND uv_test_common_sources src/win/snprintf.c test/runner-win.c)
+      list(APPEND uv_benchmark_sources src/win/snprintf.c test/runner-win.c)
     endif()
   endif()
 else()
@@ -69,7 +261,12 @@ else()
        src/unix/timer.c
        src/unix/tty.c
        src/unix/udp.c)
-  list(APPEND uv_test_common_sources test/runner-unix.c)
+  if(BUILD_TESTING)
+    list(APPEND uv_test_sources test/runner-unix.c)
+    if(BUILD_BENCHMARKING)
+      list(APPEND uv_benchmark_sources test/runner-unix.c)
+    endif()
+  endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
@@ -184,7 +381,7 @@ target_link_libraries(uv_a ${uv_libraries})
 
 if(BUILD_TESTING)
   include(CTest)
-  add_executable(uv_run_tests ${uv_test_sources} ${uv_test_common_sources} test/run-tests.c)
+  add_executable(uv_run_tests ${uv_test_sources})
   target_compile_definitions(uv_run_tests PRIVATE ${uv_defines} USING_UV_SHARED=1)
   target_compile_options(uv_run_tests PRIVATE ${uv_cflags})
   target_include_directories(uv_run_tests PRIVATE include)
@@ -192,7 +389,7 @@ if(BUILD_TESTING)
   add_test(NAME uv_test
            COMMAND uv_run_tests
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_executable(uv_run_tests_a ${uv_test_sources} ${uv_test_common_sources} test/run-tests.c)
+  add_executable(uv_run_tests_a ${uv_test_sources})
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
   target_include_directories(uv_run_tests_a PRIVATE include)
@@ -202,7 +399,7 @@ if(BUILD_TESTING)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
   if(BUILD_BENCHMARKING)
-    add_executable(uv_run_benchmarks ${uv_test_common_sources} ${uv_benchmark_sources} test/run-benchmarks.c)
+    add_executable(uv_run_benchmarks ${uv_benchmark_sources})
     target_compile_definitions(uv_run_benchmarks PRIVATE ${uv_defines} USING_UV_SHARED=1)
     target_compile_options(uv_run_benchmarks PRIVATE ${uv_cflags})
     target_include_directories(uv_run_benchmarks PRIVATE include)
@@ -210,7 +407,7 @@ if(BUILD_TESTING)
     add_test(NAME uv_benchmark
              COMMAND uv_run_benchmarks
              WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    add_executable(uv_run_benchmarks_a ${uv_test_common_sources} ${uv_benchmark_sources} test/run-benchmarks.c)
+    add_executable(uv_run_benchmarks_a ${uv_benchmark_sources})
     target_compile_definitions(uv_run_benchmarks_a PRIVATE ${uv_defines})
     target_compile_options(uv_run_benchmarks_a PRIVATE ${uv_cflags})
     target_include_directories(uv_run_benchmarks_a PRIVATE include)
