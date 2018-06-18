@@ -1121,6 +1121,7 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
 #ifdef __clang__
 # pragma clang diagnostic push
 # pragma clang diagnostic ignored "-Wgnu-folding-constant"
+# pragma clang diagnostic ignored "-Wvla-extension"
 #endif
 
 static void uv__read(uv_stream_t* stream) {
