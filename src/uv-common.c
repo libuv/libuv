@@ -575,6 +575,11 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 }
 
 
+#ifdef __clang__
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wvarargs"
+#endif
+
 int uv_loop_configure(uv_loop_t* loop, uv_loop_option option, ...) {
   va_list ap;
   int err;
@@ -586,6 +591,10 @@ int uv_loop_configure(uv_loop_t* loop, uv_loop_option option, ...) {
 
   return err;
 }
+
+#ifdef __clang__
+# pragma clang diagnostic pop
+#endif
 
 
 static uv_loop_t default_loop_struct;
