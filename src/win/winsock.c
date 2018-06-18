@@ -26,6 +26,8 @@
 #include "internal.h"
 
 
+#pragma comment(lib, "Ws2_32.lib")
+
 /* Whether there are any non-IFS LSPs stacked on TCP */
 int uv_tcp_non_ifs_lsp_ipv4;
 int uv_tcp_non_ifs_lsp_ipv6;

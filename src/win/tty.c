@@ -40,6 +40,8 @@
 #include "stream-inl.h"
 #include "req-inl.h"
 
+#pragma comment(lib, "User32.lib")
+
 #ifndef InterlockedOr
 # define InterlockedOr _InterlockedOr
 #endif
