@@ -77,3 +77,16 @@ ipch
 
 # make dist output
 libuv-*.tar.*
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
+cmake-build-debug/
+cmake_install.cmake
+uv_run_tests
+uv_run_tests_a
+watch_dir/
+watch_file
