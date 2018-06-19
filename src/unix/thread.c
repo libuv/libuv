@@ -180,6 +180,18 @@ static size_t thread_stack_size(void) {
 }
 
 
+void uv_thread_set_name(const char* name) {
+#if defined(__APPLE__) && defined(__MACH__)
+  pthread_setname_np(name);
+#elif defined(__NetBSD__) || ((__GLIBC__ >= 2) && (__GLIBC_MINOR__ > 12))
+  pthread_setname_np(pthread_self(), name);
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+  pthread_set_name_np(pthread_self(), name);
+#else
+  /* nothing */
+#endif
+}
+
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   int err;
   size_t stack_size;
