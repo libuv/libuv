@@ -20,6 +20,12 @@ Data types
 
     The base libuv handle type.
 
+.. c:type:: struct uv_handle_s
+
+    Alternative spelling of :c:type:`uv_handle_t` that may be used to
+    prevent header file pollution. Similarly named structure tags are
+    available for all derived handle types.
+
 .. c:type:: uv_handle_type
 
     The kind of the libuv handle.

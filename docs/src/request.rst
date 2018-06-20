@@ -17,6 +17,12 @@ Data types
 
     The base libuv request structure.
 
+.. c:type:: struct uv_req_s
+
+    Alternative spelling of :c:type:`uv_req_t` that may be used to
+    prevent header file pollution. Similarly named structure tags are
+    available for all derived request types.
+
 .. c:type:: uv_any_req
 
     Union of all request types.
