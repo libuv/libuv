@@ -370,7 +370,10 @@ typedef enum {
 UV_EXTERN int uv_translate_sys_error(int sys_errno);
 
 UV_EXTERN const char* uv_strerror(int err);
+UV_EXTERN char* uv_strerror_r(int err, char* buf, size_t buflen);
+
 UV_EXTERN const char* uv_err_name(int err);
+UV_EXTERN char* uv_err_name_r(int err, char* buf, size_t buflen);
 
 
 #define UV_REQ_FIELDS                                                         \
