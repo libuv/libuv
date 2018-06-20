@@ -49,6 +49,11 @@ TEST_IMPL(error_message) {
   ASSERT(strcmp(uv_strerror(1337), "Unknown error") == 0);
   ASSERT(strcmp(uv_strerror(-1337), "Unknown error") == 0);
 
+  char buf[32];
+  ASSERT(strstr(uv_strerror_r(UV_EINVAL, buf, sizeof(buf)), "Success") == NULL);
+  ASSERT(strstr(uv_strerror_r(1337, buf, sizeof(buf)), "1337") != NULL);
+  ASSERT(strstr(uv_strerror_r(-1337, buf, sizeof(buf)), "-1337") != NULL);
+
   return 0;
 }
 
