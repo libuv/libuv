@@ -197,6 +197,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-loop-handles.c \
                          test/test-loop-alive.c \
                          test/test-loop-close.c \
+                         test/test-loop-stats.c \
                          test/test-loop-stop.c \
                          test/test-loop-time.c \
                          test/test-loop-configure.c \
@@ -263,6 +264,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \
                          test/test-threadpool-cancel.c \
+                         test/test-threadpool-stats.c \
                          test/test-threadpool.c \
                          test/test-timer-again.c \
                          test/test-timer-from-check.c \

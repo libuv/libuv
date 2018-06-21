@@ -51,9 +51,6 @@
  */
 #define MAX_TITLE_LENGTH 8192
 
-/* The number of nanoseconds in one second. */
-#define UV__NANOSEC 1000000000
-
 /* Max user name length, from iphlpapi.h */
 #ifndef UNLEN
 # define UNLEN 256

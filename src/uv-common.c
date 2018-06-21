@@ -639,6 +639,12 @@ int uv_loop_close(uv_loop_t* loop) {
       return UV_EBUSY;
   }
 
+  /* Stop listening for threadpool stats if configured */
+  if (loop->threadpool_stats != NULL) {
+    uv__threadpool_stats_remove(loop->threadpool_stats);
+    loop->threadpool_stats = NULL;
+  }
+
   uv__loop_close(loop);
 
 #ifndef NDEBUG

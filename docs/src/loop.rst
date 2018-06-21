@@ -28,10 +28,73 @@ Data types
             UV_RUN_NOWAIT
         } uv_run_mode;
 
+.. c:type:: uv_loop_stats_t
+
+    Loop statistics callback configuration
+
+    ::
+
+        typedef struct {
+            void* data;
+            uv_loop_stats_data_t fields;
+            uv_stats_cb cb;
+            void* reserved[4];
+        } uv_loop_stats_t;
+
+.. c:type:: uv_loop_stats_data_t
+
+    Loop statistics data
+
+    ::
+
+        typedef struct {
+            uint64_t tick_start;
+            uint64_t tick_end;
+            uint64_t pending_start;
+            uint64_t pending_end;
+            uint64_t idle_start;
+            uint64_t idle_end;
+            uint64_t prepare_start;
+            uint64_t prepare_end;
+            uint64_t poll_start;
+            uint64_t poll_end;
+            uint64_t check_start;
+            uint64_t check_end;
+            uint64_t reserved[4];
+            size_t pending_count;
+            size_t idle_count;
+            size_t prepare_count;
+            size_t check_count;
+            size_t timers_count;
+            size_t reserved_count[4];
+            int timeout;
+        } uv_loop_stats_data_t ;
+
+.. c:type:: uv_threadpool_stats_t
+
+    Threadpool statistics callback configuration
+
+    ::
+
+        typedef struct {
+            void* data;
+            uv_threadpool_stats_cb submit_cb;
+            uv_threadpool_stats_cb start_cb;
+            uv_threadpool_stats_cb done_cb;
+            void* reserved[4];
+        } uv_threadpool_stats_t;
+
 .. c:type:: void (*uv_walk_cb)(uv_handle_t* handle, void* arg)
 
     Type definition for callback passed to :c:func:`uv_walk`.
 
+.. c:type:: void (*uv_stats_cb)(uv_loop_stats_data_t* stats, void* data)
+
+    Type definition for stats callback.
+
+.. c:type:: void (*uv_threadpool_stats_cb)(unsigned queued, unsigned idle, void* data)
+
+    Type definition for threadpool stats callback.
 
 Public members
 ^^^^^^^^^^^^^^
@@ -67,6 +130,18 @@ API
       This operation is currently only implemented for SIGPROF signals,
       to suppress unnecessary wakeups when using a sampling profiler.
       Requesting other signals will fail with UV_EINVAL.
+
+    - UV_LOOP_STATS: Call the given callback to deliver loop timing data. The
+      second argument is a pointer to a :c:type:`uv_loop_stats_t` that must
+      remain valid while the loop is running. The second argument may be NULL
+      to disable stats collection. The UV_LOOP_STATS configuration may be set
+      while the loop is running but stats will not be emitted until the next
+      iteration of the loop.
+    
+    - UV_THREADPOOL_STATS: Call the given callbacks to deliver threadpool
+      queue and idle threads statistics. The second argument is a pointer to
+      a :c:type:`uv_threadpool_stats_t` that must remain valid while the loop
+      is running. The second argument may be NULL to disable stats collection.
 
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 

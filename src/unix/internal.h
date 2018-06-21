@@ -145,7 +145,8 @@ enum {
 
 /* loop flags */
 enum {
-  UV_LOOP_BLOCK_SIGPROF = 1
+  UV_LOOP_BLOCK_SIGPROF = 1,
+  UV_LOOP_STATS_NOTIFY = 2
 };
 
 /* flags of excluding ifaddr */
@@ -210,9 +211,9 @@ int uv__async_fork(uv_loop_t* loop);
 
 
 /* loop */
-void uv__run_idle(uv_loop_t* loop);
-void uv__run_check(uv_loop_t* loop);
-void uv__run_prepare(uv_loop_t* loop);
+size_t uv__run_idle(uv_loop_t* loop);
+size_t uv__run_check(uv_loop_t* loop);
+size_t uv__run_prepare(uv_loop_t* loop);
 
 /* stream */
 void uv__stream_init(uv_loop_t* loop, uv_stream_t* stream,
@@ -286,6 +287,24 @@ int uv__fsevents_close(uv_fs_event_t* handle);
 void uv__fsevents_loop_delete(uv_loop_t* loop);
 
 #endif /* defined(__APPLE__) */
+
+#define uv__update_stats_ts(loop, field)                                     \
+  do {                                                                       \
+    if (loop->stats != NULL)                                                 \
+      loop->stats->fields.field = uv__hrtime(UV_CLOCK_PRECISE);              \
+  } while (0)
+
+#define uv__update_stats_count(loop, field, value)                           \
+  do {                                                                       \
+    if (loop->stats != NULL)                                                 \
+      loop->stats->fields.field = value;                                     \
+  } while(0)
+
+#define uv__loop_stats_notify(emit_stats, loop)                              \
+  do {                                                                       \
+      if (emit_stats && loop->stats != NULL)                                 \
+        loop->stats->cb(&(loop->stats->fields), loop->stats->data);          \
+  } while (0)
 
 UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   /* Use a fast time source if available.  We only need millisecond precision.

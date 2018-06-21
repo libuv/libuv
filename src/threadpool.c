@@ -38,7 +38,33 @@ static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
 static QUEUE exit_message;
 static QUEUE wq;
+static int wq_length;
+static QUEUE stats;
 
+#define REPORT_STAGE(stage)                                                   \
+  void uv__threadpool_report_##stage(void) {                                  \
+    QUEUE* q;                                                                 \
+    QUEUE sq;                                                                 \
+    uv_threadpool_stats_t* s;                                                 \
+    unsigned length = wq_length;                                              \
+    unsigned threads = idle_threads;                                          \
+    if (QUEUE_EMPTY(&stats))                                                  \
+      return;                                                                 \
+    QUEUE_MOVE(&stats, &sq);                                                  \
+    while (!QUEUE_EMPTY(&sq)) {                                               \
+      q = QUEUE_HEAD(&sq);                                                    \
+      QUEUE_REMOVE(q);                                                        \
+      s = QUEUE_DATA(q, struct uv_threadpool_stats_s, q);                     \
+      QUEUE_INSERT_TAIL(&stats, q);                                           \
+      uv_mutex_unlock(&mutex);                                                \
+      s->stage##_cb(length, threads, s->data);                                \
+      uv_mutex_lock(&mutex);                                                  \
+    }                                                                         \
+  }
+REPORT_STAGE(submit)
+REPORT_STAGE(start)
+REPORT_STAGE(done)
+#undef REPORT_STAGE
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -72,6 +98,8 @@ static void worker(void* arg) {
       QUEUE_REMOVE(q);
       QUEUE_INIT(q);  /* Signal uv_cancel() that the work req is
                              executing. */
+      wq_length--;
+      uv__threadpool_report_start();
     }
 
     uv_mutex_unlock(&mutex);
@@ -95,6 +123,8 @@ static void worker(void* arg) {
 static void post(QUEUE* q) {
   uv_mutex_lock(&mutex);
   QUEUE_INSERT_TAIL(&wq, q);
+  wq_length++;
+  uv__threadpool_report_submit();
   if (idle_threads > 0)
     uv_cond_signal(&cond);
   uv_mutex_unlock(&mutex);
@@ -156,6 +186,7 @@ static void init_threads(void) {
     abort();
 
   QUEUE_INIT(&wq);
+  QUEUE_INIT(&stats);
 
   if (uv_sem_init(&sem, 0))
     abort();
@@ -211,8 +242,10 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_lock(&w->loop->wq_mutex);
 
   cancelled = !QUEUE_EMPTY(&w->wq) && w->work != NULL;
-  if (cancelled)
+  if (cancelled) {
+    wq_length--;
     QUEUE_REMOVE(&w->wq);
+  }
 
   uv_mutex_unlock(&w->loop->wq_mutex);
   uv_mutex_unlock(&mutex);
@@ -236,11 +269,16 @@ void uv__work_done(uv_async_t* handle) {
   QUEUE* q;
   QUEUE wq;
   int err;
+  int reporting;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   uv_mutex_lock(&loop->wq_mutex);
   QUEUE_MOVE(&loop->wq, &wq);
   uv_mutex_unlock(&loop->wq_mutex);
+
+  uv_mutex_lock(&mutex);
+  reporting = !QUEUE_EMPTY(&stats);
+  uv_mutex_unlock(&mutex);
 
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
@@ -249,6 +287,12 @@ void uv__work_done(uv_async_t* handle) {
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     w->done(w, err);
+
+    if (reporting) {
+      uv_mutex_lock(&mutex);
+      uv__threadpool_report_done();
+      uv_mutex_unlock(&mutex);
+    }
   }
 }
 
@@ -315,4 +359,17 @@ int uv_cancel(uv_req_t* req) {
   }
 
   return uv__work_cancel(loop, req, wreq);
+}
+
+void uv__threadpool_stats_add(uv_threadpool_stats_t* s) {
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+  QUEUE_INSERT_TAIL(&stats, &s->q);
+  uv_mutex_unlock(&mutex);
+}
+
+void uv__threadpool_stats_remove(uv_threadpool_stats_t* s) {
+  uv_mutex_lock(&mutex);
+  QUEUE_REMOVE(&s->q);
+  uv_mutex_unlock(&mutex);
 }

@@ -340,24 +340,51 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
   int ran_pending;
+  int emit_stats;
+  size_t count = 0;
+  size_t timers_count = 0;
 
   r = uv__loop_alive(loop);
   if (!r)
     uv__update_time(loop);
 
   while (r != 0 && loop->stop_flag == 0) {
+    emit_stats = loop->stats != NULL;
     uv__update_time(loop);
-    uv__run_timers(loop);
+    uv__update_stats_ts(loop, tick_start);
+  
+    uv__update_stats_ts(loop, timers1_start);
+    timers_count = uv__run_timers(loop);
+    uv__update_stats_ts(loop, timers1_end);
+
+    uv__update_stats_ts(loop, pending_start);
     ran_pending = uv__run_pending(loop);
-    uv__run_idle(loop);
-    uv__run_prepare(loop);
+    uv__update_stats_ts(loop, pending_end);
+
+    uv__update_stats_ts(loop, idle_start);
+    count = uv__run_idle(loop);
+    uv__update_stats_count(loop, idle_count, count);
+    uv__update_stats_ts(loop, idle_end);
+
+    uv__update_stats_ts(loop, prepare_start);
+    count = uv__run_prepare(loop);
+    uv__update_stats_count(loop, prepare_count, count);
+    uv__update_stats_ts(loop, prepare_end);
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
+    uv__update_stats_count(loop, timeout, timeout);
 
+    uv__update_stats_ts(loop, poll_start);
     uv__io_poll(loop, timeout);
-    uv__run_check(loop);
+    uv__update_stats_ts(loop, poll_end);
+
+    uv__update_stats_ts(loop, check_start);
+    count = uv__run_check(loop);
+    uv__update_stats_count(loop, check_count, count);
+    uv__update_stats_ts(loop, check_end);
+
     uv__run_closing_handles(loop);
 
     if (mode == UV_RUN_ONCE) {
@@ -370,8 +397,14 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
        * the check.
        */
       uv__update_time(loop);
-      uv__run_timers(loop);
+      uv__update_stats_ts(loop, timers2_start);
+      timers_count += uv__run_timers(loop);
+      uv__update_stats_ts(loop, timers2_end);
     }
+    uv__update_stats_count(loop, timers_count, timers_count);
+
+    uv__update_stats_ts(loop, tick_end);
+    uv__loop_stats_notify(emit_stats, loop);
 
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
@@ -755,6 +788,8 @@ static int uv__run_pending(uv_loop_t* loop) {
   QUEUE* q;
   QUEUE pq;
   uv__io_t* w;
+  size_t count = 0;
+  uv__update_stats_count(loop, pending_count, count);
 
   if (QUEUE_EMPTY(&loop->pending_queue))
     return 0;
@@ -762,12 +797,14 @@ static int uv__run_pending(uv_loop_t* loop) {
   QUEUE_MOVE(&loop->pending_queue, &pq);
 
   while (!QUEUE_EMPTY(&pq)) {
+    count++;
     q = QUEUE_HEAD(&pq);
     QUEUE_REMOVE(q);
     QUEUE_INIT(q);
     w = QUEUE_DATA(q, uv__io_t, pending_queue);
     w->cb(loop, w, POLLOUT);
   }
+  uv__update_stats_count(loop, pending_count, count);
 
   return 1;
 }

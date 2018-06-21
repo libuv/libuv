@@ -222,4 +222,7 @@ UNUSED static int can_ipv6(void) {
   "affinity not supported on this platform."
 #endif
 
+void saturate_threadpool(unsigned start);
+void unblock_threadpool(void);
+
 #endif /* TASK_H_ */

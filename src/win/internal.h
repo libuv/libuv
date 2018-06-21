@@ -91,6 +91,8 @@
 /* Only used by uv_poll_t handles. */
 #define UV_HANDLE_POLL_SLOW                     0x02000000
 
+/* The number of nanoseconds in one second. */
+#define UV__NANOSEC 1000000000
 
 /*
  * Requests: see req-inl.h
@@ -227,9 +229,9 @@ void uv_poll_endgame(uv_loop_t* loop, uv_poll_t* handle);
  * Loop watchers
  */
 void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle);
-void uv__run_prepare(uv_loop_t* loop);
-void uv__run_check(uv_loop_t* loop);
-void uv__run_idle(uv_loop_t* loop);
+size_t uv__run_prepare(uv_loop_t* loop);
+size_t uv__run_check(uv_loop_t* loop);
+size_t uv__run_idle(uv_loop_t* loop);
 
 void uv__once_init(void);
 
@@ -355,5 +357,23 @@ void uv__wake_all_loops(void);
  * Init system wake-up detection
  */
 void uv__init_detect_system_wakeup(void);
+
+#define uv__update_stats_ts(loop, field)                                     \
+  do {                                                                       \
+    if (loop->stats != NULL)                                                 \
+      loop->stats->fields.field = uv__hrtime(UV__NANOSEC);                   \
+  } while (0)
+
+#define uv__update_stats_count(loop, field, value)                           \
+  do {                                                                       \
+    if (loop->stats != NULL)                                                 \
+      loop->stats->fields.field = value;                                     \
+  } while (0)
+
+#define uv__loop_stats_notify(emit_stats, loop)                              \
+  do {                                                                       \
+      if (emit_stats && loop->stats != NULL)                                 \
+        loop->stats->cb(&(loop->stats->fields), loop->stats->data);          \
+  } while (0)
 
 #endif /* UV_WIN_INTERNAL_H_ */

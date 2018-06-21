@@ -84,6 +84,7 @@
 
 struct uv__io_s;
 struct uv_loop_s;
+struct uv_loop_stats_s;
 
 typedef void (*uv__io_cb)(struct uv_loop_s* loop,
                           struct uv__io_s* w,
@@ -222,6 +223,8 @@ typedef struct {
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
   int emfile_fd;                                                              \
+  uv_loop_stats_t* stats;                                                     \
+  uv_threadpool_stats_t* threadpool_stats;                                    \
   UV_PLATFORM_LOOP_FIELDS                                                     \
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
@@ -367,6 +370,9 @@ typedef struct {
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
   uv_fs_event_cb cb;                                                          \
   UV_PLATFORM_FS_EVENT_FIELDS                                                 \
+
+#define UV_THREADPOOL_STATS_PRIVATE_FIELDS                                    \
+  void* q[2];
 
 /* fs open() flags supported on this platform: */
 #if defined(O_APPEND)

@@ -45,18 +45,21 @@
     return 0;                                                                 \
   }                                                                           \
                                                                               \
-  void uv__run_##name(uv_loop_t* loop) {                                      \
+  size_t uv__run_##name(uv_loop_t* loop) {                                    \
+    size_t count = 0;                                                         \
     uv_##name##_t* h;                                                         \
     QUEUE queue;                                                              \
     QUEUE* q;                                                                 \
     QUEUE_MOVE(&loop->name##_handles, &queue);                                \
     while (!QUEUE_EMPTY(&queue)) {                                            \
+      count++;                                                                \
       q = QUEUE_HEAD(&queue);                                                 \
       h = QUEUE_DATA(q, uv_##name##_t, queue);                                \
       QUEUE_REMOVE(q);                                                        \
       QUEUE_INSERT_TAIL(&loop->name##_handles, q);                            \
       h->name##_cb(h);                                                        \
     }                                                                         \
+    return count;                                                             \
   }                                                                           \
                                                                               \
   void uv__##name##_close(uv_##name##_t* handle) {                            \

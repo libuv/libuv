@@ -230,9 +230,14 @@ typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
+typedef struct uv_loop_stats_s uv_loop_stats_t;
+typedef struct uv_loop_stats_data_s uv_loop_stats_data_t;
+typedef struct uv_threadpool_stats_s uv_threadpool_stats_t;
 
 typedef enum {
-  UV_LOOP_BLOCK_SIGNAL
+  UV_LOOP_BLOCK_SIGNAL,
+  UV_LOOP_STATS,
+  UV_THREADPOOL_STATS
 } uv_loop_option;
 
 typedef enum {
@@ -317,6 +322,10 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
+typedef void (*uv_stats_cb)(uv_loop_stats_data_t* stats, void* data);
+typedef void (*uv_threadpool_stats_cb)(unsigned queued,
+                                       unsigned idle_threads,
+                                       void* data);
 
 typedef struct {
   long tv_sec;
@@ -1612,6 +1621,49 @@ union uv_any_req {
 };
 #undef XX
 
+struct uv_loop_stats_data_s {
+  uint64_t tick_start;
+  uint64_t tick_end;
+  uint64_t pending_start;
+  uint64_t pending_end;
+  uint64_t idle_start;
+  uint64_t idle_end;
+  uint64_t prepare_start;
+  uint64_t prepare_end;
+  uint64_t poll_start;
+  uint64_t poll_end;
+  uint64_t check_start;
+  uint64_t check_end;
+  uint64_t timers1_start;
+  uint64_t timers1_end;
+  uint64_t timers2_start;
+  uint64_t timers2_end;
+  uint64_t reserved[4];
+  size_t pending_count;
+  size_t idle_count;
+  size_t prepare_count;
+  size_t check_count;
+  size_t timers_count;
+  size_t reserved_count[4];
+  int timeout;
+};
+
+struct uv_loop_stats_s {
+  void* data;
+  uv_loop_stats_data_t fields;
+  uv_stats_cb cb;
+  void* reserved[4];
+};
+
+struct uv_threadpool_stats_s {
+  void* data;
+  uv_threadpool_stats_cb submit_cb;
+  uv_threadpool_stats_cb start_cb;
+  uv_threadpool_stats_cb done_cb;
+  void* reserved[4];
+
+  UV_THREADPOOL_STATS_PRIVATE_FIELDS
+};
 
 struct uv_loop_s {
   /* User data - use this for whatever. */
@@ -1648,6 +1700,7 @@ UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 #undef UV_SIGNAL_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_PLATFORM_FIELDS
+#undef UV_THREADPOOL_STATS_PRIVATE_FIELDS
 #undef UV__ERR
 
 #ifdef __cplusplus
