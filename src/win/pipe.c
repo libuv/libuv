@@ -1293,7 +1293,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
                                size_t nbufs,
                                uv_stream_t* send_handle,
                                uv_write_cb cb,
-                               BOOL copy_always) {
+                               int copy_always) {
   int err;
   int result;
   uv_buf_t write_buf;
@@ -1535,7 +1535,7 @@ int uv__pipe_write_ipc(uv_loop_t* loop,
   /* Write buffers. We set the `always_copy` flag, so it is not a problem that
    * some of the written data lives on the stack. */
   err = uv__pipe_write_data(
-      loop, req, handle, bufs, buf_count, send_handle, cb, TRUE);
+      loop, req, handle, bufs, buf_count, send_handle, cb, 1);
 
   /* If we had to heap-allocate the bufs array, free it now. */
   if (bufs != stack_bufs) {
@@ -1560,7 +1560,7 @@ int uv__pipe_write(uv_loop_t* loop,
     /* Non-IPC pipe write: put data on the wire directly. */
     assert(send_handle == NULL);
     return uv__pipe_write_data(
-        loop, req, handle, bufs, nbufs, NULL, cb, FALSE);
+        loop, req, handle, bufs, nbufs, NULL, cb, 0);
   }
 }
 
