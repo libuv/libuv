@@ -37,9 +37,9 @@
  * See https://github.com/joyent/libuv/issues/210
  */
 TEST_IMPL(error_message) {
-  /* Cop out. Can't do proper checks on systems with
-   * i18n-ized error messages...
-   */
+  char buf[32];
+
+  // Cop out. Can't do proper checks on systems with i18n-ized error messages...
   if (strcmp(uv_strerror(0), "Success") != 0) {
     printf("i18n error messages detected, skipping test.\n");
     return 0;
@@ -49,7 +49,6 @@ TEST_IMPL(error_message) {
   ASSERT(strcmp(uv_strerror(1337), "Unknown error") == 0);
   ASSERT(strcmp(uv_strerror(-1337), "Unknown error") == 0);
 
-  char buf[32];
   ASSERT(strstr(uv_strerror_r(UV_EINVAL, buf, sizeof(buf)), "Success") == NULL);
   ASSERT(strstr(uv_strerror_r(1337, buf, sizeof(buf)), "1337") != NULL);
   ASSERT(strstr(uv_strerror_r(-1337, buf, sizeof(buf)), "-1337") != NULL);
