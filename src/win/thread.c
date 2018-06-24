@@ -372,9 +372,8 @@ int uv_cond_init(uv_cond_t* cond) {
 }
 
 
-void uv_cond_destroy(uv_cond_t* cond) {
+void uv_cond_destroy(uv_cond_t* UV__UNUSED cond) {
   /* nothing to do */
-  UV__UNUSED(cond);
 }
 
 
