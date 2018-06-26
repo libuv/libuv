@@ -155,14 +155,14 @@ static const char* uv__unknown_err_code(int err) {
   return copy != NULL ? copy : "Unknown system error";
 }
 
-#define UV_ERR_NAME_GEN_R(name, _) case UV_ ## name: { snprintf(buf, #name, buflen); break; }
-char* uv_err_name_r(int err, char* buf, size_t buflen) {
+#define UV_ERR_NAME_GEN_R(name, _) case UV_## name: \
+  snprintf(buf, buflen, "%s", #name); break;
+char * uv_err_name_r(int err, char* buf, size_t buflen) {
   switch (err) {
     UV_ERRNO_MAP(UV_ERR_NAME_GEN_R)
-    default:
-      snprintf(buf, buflen, "Unknown system error %d", err);
-      break;
+    default: snprintf(buf, buflen, "Unknown system error %d", err);
   }
+  return buf;
 }
 #undef UV_ERR_NAME_GEN_R
 
@@ -177,14 +177,14 @@ const char* uv_err_name(int err) {
 #undef UV_ERR_NAME_GEN
 
 
-#define UV_STRERROR_GEN_R(name, msg) case UV_ ## name: { snprintf(buf, msg, buflen); break; }
+#define UV_STRERROR_GEN_R(name, msg) case UV_ ## name: \
+  snprintf(buf, buflen, "%s", msg); break;
 char* uv_strerror_r(int err, char* buf, size_t buflen) {
   switch (err) {
     UV_ERRNO_MAP(UV_STRERROR_GEN_R)
-    default:
-      snprintf(buf, buflen, "Unknown system error %d", err);
-      break;
+    default: snprintf(buf, buflen, "Unknown system error %d", err); break;
   }
+  return buf;
 }
 #undef UV_STRERROR_GEN_R
 
