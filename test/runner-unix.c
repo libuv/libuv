@@ -40,6 +40,8 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#include "uv/uv_ssize_t.h"
+
 extern char** environ;
 
 static void closefd(int fd) {
@@ -91,7 +93,7 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   char* args[16];
   int pipefd[2];
   char fdstr[8];
-  ssize_t rc;
+  uv_ssize_t rc;
   int n;
   pid_t pid;
 
@@ -215,7 +217,7 @@ static void* dowait(void* data) {
 
   if (args->pipe[1] >= 0) {
     /* Write a character to the main thread to notify it about this. */
-    ssize_t r;
+    uv_ssize_t r;
 
     do
       r = write(args->pipe[1], "", 1);

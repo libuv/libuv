@@ -49,7 +49,7 @@ Data types
     Type definition for callback passed to :c:func:`uv_udp_send`, which is
     called after the data was sent.
 
-.. c:type:: void (*uv_udp_recv_cb)(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
+.. c:type:: void (*uv_udp_recv_cb)(uv_udp_t* handle, uv_ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
 
     Type definition for callback passed to :c:func:`uv_udp_recv_start`, which
     is called when the endpoint receives data.

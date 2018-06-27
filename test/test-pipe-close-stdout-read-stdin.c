@@ -37,7 +37,7 @@ void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t* buf)
   buf->len = sizeof(buffer);
 }
 
-void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t* buf)
+void read_stdin(uv_stream_t *stream, uv_ssize_t nread, const uv_buf_t* buf)
 {
   if (nread < 0) {
     uv_close((uv_handle_t*)stream, NULL);

@@ -263,7 +263,7 @@ static void uv__process_close_stream(uv_stdio_container_t* container) {
 
 
 static void uv__write_int(int fd, int val) {
-  ssize_t n;
+  uv_ssize_t n;
 
   do
     n = write(fd, &val, sizeof(val));
@@ -454,7 +454,7 @@ int uv_spawn(uv_loop_t* loop,
   int pipes_storage[8][2];
   int (*pipes)[2];
   int stdio_count;
-  ssize_t r;
+  uv_ssize_t r;
   pid_t pid;
   int err;
   int exec_errorno;

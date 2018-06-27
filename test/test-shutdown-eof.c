@@ -45,7 +45,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 
-static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* t, uv_ssize_t nread, const uv_buf_t* buf) {
   ASSERT((uv_tcp_t*)t == &tcp);
 
   if (nread == 0) {

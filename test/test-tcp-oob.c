@@ -55,7 +55,7 @@ static void idle_cb(uv_idle_t* idle) {
 }
 
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* handle, uv_ssize_t nread, const uv_buf_t* buf) {
 #ifdef __MVS__
   char lbuf[12];
 #endif

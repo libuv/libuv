@@ -104,7 +104,7 @@ static int conn_connect(conn *c);
 static void conn_connect_done(uv_connect_t *req, int status);
 static void conn_read(conn *c);
 static void conn_read_done(uv_stream_t *handle,
-                           ssize_t nread,
+                           uv_ssize_t nread,
                            const uv_buf_t *buf);
 static void conn_alloc(uv_handle_t *handle, size_t size, uv_buf_t *buf);
 static void conn_write(conn *c, const void *data, unsigned int len);
@@ -660,7 +660,7 @@ static void conn_read(conn *c) {
 }
 
 static void conn_read_done(uv_stream_t *handle,
-                           ssize_t nread,
+                           uv_ssize_t nread,
                            const uv_buf_t *buf) {
   conn *c;
 

@@ -134,7 +134,7 @@ static void on_alloc(uv_handle_t* handle,
 }
 
 
-static void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void on_read(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
     output_used += nread;
   } else if (nread < 0) {
@@ -144,7 +144,7 @@ static void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 }
 
 
-static void on_read_once(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void on_read_once(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   uv_read_stop(tcp);
   on_read(tcp, nread, buf);
 }
@@ -1926,7 +1926,7 @@ int spawn_stdin_stdout(void) {
   char buf[1024];
   char* pbuf;
   for (;;) {
-    ssize_t r, w, c;
+    uv_ssize_t r, w, c;
     do {
       r = read(0, buf, sizeof buf);
     } while (r == -1 && errno == EINTR);

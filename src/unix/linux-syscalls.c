@@ -311,7 +311,7 @@ int uv__recvmmsg(int fd,
 }
 
 
-ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
+uv_ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
 #if defined(__NR_preadv)
   return syscall(__NR_preadv, fd, iov, iovcnt, (long)offset, (long)(offset >> 32));
 #else
@@ -320,7 +320,7 @@ ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset) 
 }
 
 
-ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
+uv_ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
 #if defined(__NR_pwritev)
   return syscall(__NR_pwritev, fd, iov, iovcnt, (long)offset, (long)(offset >> 32));
 #else

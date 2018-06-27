@@ -31,7 +31,7 @@ void echo_write(uv_write_t *req, int status) {
     free_write_req(req);
 }
 
-void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+void echo_read(uv_stream_t *client, uv_ssize_t nread, const uv_buf_t *buf) {
     if (nread > 0) {
         write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
         req->buf = uv_buf_init(buf->base, nread);
@@ -48,7 +48,7 @@ void echo_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     free(buf->base);
 }
 
-void on_new_connection(uv_stream_t *q, ssize_t nread, const uv_buf_t *buf) {
+void on_new_connection(uv_stream_t *q, uv_ssize_t nread, const uv_buf_t *buf) {
     if (nread < 0) {
         if (nread != UV_EOF)
             fprintf(stderr, "Read error %s\n", uv_err_name(nread));

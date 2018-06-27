@@ -140,7 +140,7 @@ Public members
 
     Path affecting the request.
 
-.. c:member:: ssize_t uv_fs_t.result
+.. c:member:: uv_ssize_t uv_fs_t.result
 
     Result of the request. < 0 means error, success otherwise. On requests such
     as :c:func:`uv_fs_read` or :c:func:`uv_fs_write` it indicates the amount of
@@ -403,7 +403,7 @@ API
 
     .. versionadded:: 1.19.0
 
-.. c:function:: ssize_t uv_fs_get_result(const uv_fs_t* req)
+.. c:function:: uv_ssize_t uv_fs_get_result(const uv_fs_t* req)
 
     Returns `req->result`.
 

@@ -14,7 +14,7 @@ void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->len = suggested_size;
 }
 
-void on_read(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
+void on_read(uv_udp_t *req, uv_ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
     if (nread < 0) {
         fprintf(stderr, "Read error %s\n", uv_err_name(nread));
         uv_close((uv_handle_t*) req, NULL);

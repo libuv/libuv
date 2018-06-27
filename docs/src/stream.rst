@@ -32,7 +32,7 @@ Data types
     behaviour. It is safe to reuse the ``uv_write_t`` object only after the
     callback passed to ``uv_write`` is fired.
 
-.. c:type:: void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
+.. c:type:: void (*uv_read_cb)(uv_stream_t* stream, uv_ssize_t nread, const uv_buf_t* buf)
 
     Callback called when data was read on a stream.
 

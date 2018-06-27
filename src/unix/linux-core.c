@@ -450,7 +450,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
 int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
   const char* s;
-  ssize_t n;
+  uv_ssize_t n;
   long val;
   int fd;
   int i;

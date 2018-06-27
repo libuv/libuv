@@ -434,10 +434,10 @@ char* mkdtemp(char* path) {
 }
 
 
-ssize_t os390_readlink(const char* path, char* buf, size_t len) {
-  ssize_t rlen;
-  ssize_t vlen;
-  ssize_t plen;
+uv_ssize_t os390_readlink(const char* path, char* buf, size_t len) {
+  uv_ssize_t rlen;
+  uv_ssize_t vlen;
+  uv_ssize_t plen;
   char* delimiter;
   char old_delim;
   char* tmpbuf;

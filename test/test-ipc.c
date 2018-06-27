@@ -141,7 +141,7 @@ static void make_many_connections(void) {
 
 
 static void on_read(uv_stream_t* handle,
-                    ssize_t nread,
+                    uv_ssize_t nread,
                     const uv_buf_t* buf) {
   int r;
   uv_pipe_t* pipe;
@@ -209,7 +209,7 @@ static void on_read(uv_stream_t* handle,
 
 #ifdef _WIN32
 static void on_read_listen_after_bound_twice(uv_stream_t* handle,
-                                             ssize_t nread,
+                                             uv_ssize_t nread,
                                              const uv_buf_t* buf) {
   int r;
   uv_pipe_t* pipe;
@@ -330,7 +330,7 @@ static void on_read_alloc(uv_handle_t* handle,
 }
 
 
-static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void on_tcp_read(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nread > 0);
   ASSERT(memcmp("hello again\n", buf->base, nread) == 0);
   ASSERT(tcp == (uv_stream_t*)&tcp_connection);
@@ -344,7 +344,7 @@ static void on_tcp_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void on_read_connection(uv_stream_t* handle,
-                               ssize_t nread,
+                               uv_ssize_t nread,
                                const uv_buf_t* buf) {
   int r;
   uv_buf_t outbuf;
@@ -402,7 +402,7 @@ static void on_read_connection(uv_stream_t* handle,
 
 #ifndef _WIN32
 static void on_read_closed_handle(uv_stream_t* handle,
-                                  ssize_t nread,
+                                  uv_ssize_t nread,
                                   const uv_buf_t* buf) {
   if (nread == 0 || nread == UV_EOF) {
     free(buf->base);
@@ -582,7 +582,7 @@ static void closed_handle_write_cb(uv_write_t* req, int status) {
 
 
 static void on_tcp_child_process_read(uv_stream_t* tcp,
-                                      ssize_t nread,
+                                      uv_ssize_t nread,
                                       const uv_buf_t* buf) {
   uv_buf_t outbuf;
   int r;

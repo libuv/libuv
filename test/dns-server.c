@@ -54,7 +54,7 @@ static uv_tcp_t server;
 
 
 static void after_write(uv_write_t* req, int status);
-static void after_read(uv_stream_t*, ssize_t nread, const uv_buf_t* buf);
+static void after_read(uv_stream_t*, uv_ssize_t nread, const uv_buf_t* buf);
 static void on_close(uv_handle_t* peer);
 static void on_connection(uv_stream_t*, int status);
 
@@ -125,7 +125,7 @@ static void addrsp(write_req_t* wr, char* hdr) {
 }
 
 static void process_req(uv_stream_t* handle,
-                        ssize_t nread,
+                        uv_ssize_t nread,
                         const uv_buf_t* buf) {
   write_req_t* wr;
   dnshandle* dns = (dnshandle*)handle;
@@ -232,7 +232,7 @@ static void process_req(uv_stream_t* handle,
 }
 
 static void after_read(uv_stream_t* handle,
-                       ssize_t nread,
+                       uv_ssize_t nread,
                        const uv_buf_t* buf) {
   uv_shutdown_t* req;
 

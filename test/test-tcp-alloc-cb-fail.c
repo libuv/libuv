@@ -50,7 +50,7 @@ static void conn_alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 static void conn_read_cb(uv_stream_t* stream,
-                         ssize_t nread,
+                         uv_ssize_t nread,
                          const uv_buf_t* buf) {
   ASSERT(nread == UV_ENOBUFS);
   ASSERT(buf->base == NULL);

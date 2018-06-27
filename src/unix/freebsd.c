@@ -60,7 +60,7 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 #ifdef __DragonFly__
 int uv_exepath(char* buffer, size_t* size) {
   char abspath[PATH_MAX * 2 + 1];
-  ssize_t abspath_size;
+  uv_ssize_t abspath_size;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;

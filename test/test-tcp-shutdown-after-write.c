@@ -73,7 +73,7 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* handle, uv_ssize_t nread, const uv_buf_t* buf) {
 }
 
 

@@ -90,8 +90,8 @@ static void alloc_cb(uv_handle_t* handle,
 #include <unistd.h>
 #endif
 
-static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
-  ssize_t i;
+static void read_cb(uv_stream_t* handle, uv_ssize_t nread, const uv_buf_t* buf) {
+  uv_ssize_t i;
   int r;
 
   ASSERT(nread >= 0);
