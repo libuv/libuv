@@ -39,7 +39,9 @@
 TEST_IMPL(error_message) {
   char buf[32];
 
-  // Cop out. Can't do proper checks on systems with i18n-ized error messages...
+  /* Cop out. Can't do proper checks on systems with
+   * i18n-ized error messages...
+   */
   if (strcmp(uv_strerror(0), "Success") != 0) {
     printf("i18n error messages detected, skipping test.\n");
     return 0;
