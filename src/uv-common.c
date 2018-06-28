@@ -357,7 +357,7 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->handle_queue, q);
 
-    if (h->flags & UV__HANDLE_INTERNAL) continue;
+    if (h->flags & UV_HANDLE_INTERNAL) continue;
     walk_cb(h, arg);
   }
 }
@@ -386,9 +386,9 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
 
     fprintf(stream,
             "[%c%c%c] %-8s %p\n",
-            "R-"[!(h->flags & UV__HANDLE_REF)],
-            "A-"[!(h->flags & UV__HANDLE_ACTIVE)],
-            "I-"[!(h->flags & UV__HANDLE_INTERNAL)],
+            "R-"[!(h->flags & UV_HANDLE_REF)],
+            "A-"[!(h->flags & UV_HANDLE_ACTIVE)],
+            "I-"[!(h->flags & UV_HANDLE_INTERNAL)],
             type,
             (void*)h);
   }
@@ -632,7 +632,7 @@ int uv_loop_close(uv_loop_t* loop) {
 
   QUEUE_FOREACH(q, &loop->handle_queue) {
     h = QUEUE_DATA(q, uv_handle_t, handle_queue);
-    if (!(h->flags & UV__HANDLE_INTERNAL))
+    if (!(h->flags & UV_HANDLE_INTERNAL))
       return UV_EBUSY;
   }
 

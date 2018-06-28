@@ -279,7 +279,7 @@ int uv_loop_init(uv_loop_t* loop) {
     goto fail_async_init;
 
   uv__handle_unref(&loop->wq_async);
-  loop->wq_async.flags |= UV__HANDLE_INTERNAL;
+  loop->wq_async.flags |= UV_HANDLE_INTERNAL;
 
   err = uv__loops_add(loop);
   if (err)
