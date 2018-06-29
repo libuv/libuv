@@ -331,7 +331,9 @@ API
 .. c:function:: char* uv_strerror_r(int err, char* buf, size_t buflen)
 
     Returns the error message for the given error code. The zero-terminated
-    message is stored the user-supplied buffer buf of at most buflen bytes.
+    message is stored in the user-supplied buffer `buf` of at most `buflen` bytes.
+
+    .. versionadded:: 1.22.0
 
 .. c:function:: const char* uv_err_name(int err)
 
@@ -341,7 +343,9 @@ API
 .. c:function:: char* uv_err_name_r(int err, char* buf, size_t buflen)
 
     Returns the error name for the given error code. The zero-terminated
-    name is stored the user-supplied buffer buf of at most buflen bytes.
+    name is stored in the user-supplied buffer `buf` of at most `buflen` bytes.
+
+    .. versionadded:: 1.22.0
 
 .. c:function:: int uv_translate_sys_error(int sys_errno)
 
