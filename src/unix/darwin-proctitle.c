@@ -26,9 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <TargetConditionals.h>
-
-#if !TARGET_OS_IPHONE
+#if HAVE_APPLICATIONSERVICES_APPLICATIONSERVICES_H
 # include <CoreFoundation/CoreFoundation.h>
 # include <ApplicationServices/ApplicationServices.h>
 #endif
@@ -58,7 +56,7 @@ static int uv__pthread_setname_np(const char* name) {
 
 
 int uv__set_process_title(const char* title) {
-#if TARGET_OS_IPHONE
+#if !HAVE_APPLICATIONSERVICES_APPLICATIONSERVICES_H
   return uv__pthread_setname_np(title);
 #else
   CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
@@ -205,5 +203,5 @@ out:
     dlclose(application_services_handle);
 
   return err;
-#endif  /* !TARGET_OS_IPHONE */
+#endif  /* HAVE_APPLICATIONSERVICES_APPLICATIONSERVICES_H */
 }

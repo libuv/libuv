@@ -69,4 +69,6 @@ AS_CASE([$host_os],[mingw*], [
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])
+AC_CHECK_HEADERS(ApplicationServices/ApplicationServices.h)
+AC_CHECK_HEADERS(CoreServices/CoreServices.h)
 AC_OUTPUT

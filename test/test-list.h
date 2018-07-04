@@ -229,7 +229,9 @@ TEST_DECLARE   (get_passwd)
 TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (homedir)
 TEST_DECLARE   (tmpdir)
+#if !__APPLE__
 TEST_DECLARE   (hrtime)
+#endif
 TEST_DECLARE   (getaddrinfo_fail)
 TEST_DECLARE   (getaddrinfo_fail_sync)
 TEST_DECLARE   (getaddrinfo_basic)
@@ -306,6 +308,7 @@ TEST_DECLARE   (fs_futime)
 TEST_DECLARE   (fs_file_open_append)
 TEST_DECLARE   (fs_stat_missing_path)
 TEST_DECLARE   (fs_read_file_eof)
+#if !__APPLE__ || HAVE_CORESERVICES_CORESERVICES_H
 TEST_DECLARE   (fs_event_watch_dir)
 TEST_DECLARE   (fs_event_watch_dir_recursive)
 #ifdef _WIN32
@@ -327,6 +330,7 @@ TEST_DECLARE   (fs_event_close_in_callback)
 TEST_DECLARE   (fs_event_start_and_close)
 TEST_DECLARE   (fs_event_error_reporting)
 TEST_DECLARE   (fs_event_getpath)
+#endif
 TEST_DECLARE   (fs_scandir_empty_dir)
 TEST_DECLARE   (fs_scandir_non_existent_dir)
 TEST_DECLARE   (fs_scandir_file)
@@ -426,9 +430,11 @@ TEST_DECLARE  (fork_socketpair)
 TEST_DECLARE  (fork_socketpair_started)
 TEST_DECLARE  (fork_signal_to_child)
 TEST_DECLARE  (fork_signal_to_child_closed)
+#if !__APPLE__ || HAVE_CORESERVICES_CORESERVICES_H
 TEST_DECLARE  (fork_fs_events_child)
 TEST_DECLARE  (fork_fs_events_child_dir)
 TEST_DECLARE  (fork_fs_events_file_parent_child)
+#endif
 #ifndef __MVS__
 TEST_DECLARE  (fork_threadpool_queue_work_simple)
 #endif
@@ -721,7 +727,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (tmpdir)
 
+#if !__APPLE__
   TEST_ENTRY  (hrtime)
+#endif
 
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
   TEST_ENTRY_CUSTOM (getaddrinfo_fail_sync, 0, 0, 10000)
@@ -851,6 +859,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_stat_missing_path)
   TEST_ENTRY  (fs_read_file_eof)
   TEST_ENTRY  (fs_file_open_append)
+#if !__APPLE__ || HAVE_CORESERVICES_CORESERVICES_H
   TEST_ENTRY  (fs_event_watch_dir)
   TEST_ENTRY  (fs_event_watch_dir_recursive)
 #ifdef _WIN32
@@ -872,6 +881,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_start_and_close)
   TEST_ENTRY  (fs_event_error_reporting)
   TEST_ENTRY  (fs_event_getpath)
+#endif
   TEST_ENTRY  (fs_scandir_empty_dir)
   TEST_ENTRY  (fs_scandir_non_existent_dir)
   TEST_ENTRY  (fs_scandir_file)
@@ -921,9 +931,11 @@ TASK_LIST_START
   TEST_ENTRY  (fork_socketpair_started)
   TEST_ENTRY  (fork_signal_to_child)
   TEST_ENTRY  (fork_signal_to_child_closed)
+#if !__APPLE__ || HAVE_CORESERVICES_CORESERVICES_H
   TEST_ENTRY  (fork_fs_events_child)
   TEST_ENTRY  (fork_fs_events_child_dir)
   TEST_ENTRY  (fork_fs_events_file_parent_child)
+#endif
 #ifndef __MVS__
   TEST_ENTRY  (fork_threadpool_queue_work_simple)
 #endif
