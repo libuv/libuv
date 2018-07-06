@@ -326,6 +326,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin|DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
 
+check_include_file(CoreServices/CoreServices.h HAVE_CORESERVICES_CORESERVICES_H)
+check_include_file(ApplicationServices/ApplicationServices.h HAVE_APPLICATIONSERVICES_APPLICATIONSERVICES_H)
+
 add_library(uv SHARED ${uv_sources})
 target_compile_definitions(uv PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
 target_compile_options(uv PRIVATE ${uv_cflags})
