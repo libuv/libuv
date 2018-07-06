@@ -229,6 +229,12 @@
             '_DARWIN_UNLIMITED_SELECT=1',
           ]
         }],
+        [ 'OS in "mac"', {
+              'defines': [
+                'HAVE_CORESERVICES_CORESERVICES_H',
+		'HAVE_APPLICATIONSERVICES_APPLICATIONSERVICES_H'
+              ],
+        }],
         [ 'OS=="linux"', {
           'defines': [ '_GNU_SOURCE' ],
           'sources': [
