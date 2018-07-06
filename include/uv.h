@@ -1144,9 +1144,9 @@ typedef enum {
   UV_FS_READLINK,
   UV_FS_CHOWN,
   UV_FS_FCHOWN,
-  UV_FS_LCHOWN,
   UV_FS_REALPATH,
-  UV_FS_COPYFILE
+  UV_FS_COPYFILE,
+  UV_FS_LCHOWN
 } uv_fs_type;
 
 /* uv_fs_t is a subclass of uv_req_t. */
