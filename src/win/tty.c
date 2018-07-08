@@ -157,6 +157,8 @@ typedef enum {
 static uv_vtermstate_t uv__vterm_state = UV_UNCHECKED;
 static void uv__determine_vterm_state(HANDLE handle);
 
+static int uv__tty_type = UV_TTY_NONE;
+
 void uv_console_init(void) {
   if (uv_sem_init(&uv_tty_output_lock, 1))
     abort();
@@ -2406,14 +2408,16 @@ static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
 }
 
 int uv_guess_tty(uv_file fd) {
-  int result = UV_TTY_NONE;
   HANDLE handle = _get_osfhandle(fd);
   uv__once_init();
-  if (uv_guess_handle(fd) != UV_TTY) {
-    return result;
-  }
   uv_sem_wait(&uv_tty_output_lock);
-  result = uv__guess_tty(handle);
+  if (uv__tty_type != UV_TTY_NONE) {
+    uv_sem_post(&uv_tty_output_lock);
+    return uv__tty_type;
+  }
+  if (uv_guess_handle(fd) == UV_TTY) {
+    uv__tty_type = uv__guess_tty(handle);
+  }
   uv_sem_post(&uv_tty_output_lock);
-  return result;
+  return uv__tty_type;
 }
