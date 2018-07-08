@@ -2406,10 +2406,14 @@ static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
 }
 
 int uv_guess_tty(uv_file fd) {
+  int result = UV_TTY_NONE;
   HANDLE handle = _get_osfhandle(fd);
   uv__once_init();
   if (uv_guess_handle(fd) != UV_TTY) {
-    return UV_TTY_NONE;
+    return result;
   }
-  return uv__guess_tty(handle);
+  uv_sem_wait(&uv_tty_output_lock);
+  result = uv__guess_tty(handle);
+  uv_sem_post(&uv_tty_output_lock);
+  return result;
 }
