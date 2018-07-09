@@ -156,7 +156,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   DWORD attr, last_error;
   WCHAR* dir = NULL, *dir_to_watch, *pathw = NULL;
   WCHAR short_path_buffer[MAX_PATH];
-  WCHAR* short_path, *long_path;
+  WCHAR* short_path, *long_path = NULL;
 
   if (uv__is_active(handle))
     return UV_EINVAL;
