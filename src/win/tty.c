@@ -2184,7 +2184,7 @@ void uv_tty_close(uv_tty_t* handle) {
   if (handle->u.fd == -1)
     CloseHandle(handle->handle);
   else
-    close(handle->u.fd);
+    _close(handle->u.fd);
 
   if (handle->flags & UV_HANDLE_READING)
     uv_tty_read_stop(handle);
