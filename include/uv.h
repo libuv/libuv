@@ -655,10 +655,22 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
                           unsigned int nbufs,
                           const struct sockaddr* addr,
                           uv_udp_send_cb send_cb);
+UV_EXTERN int uv_udp_send_ex(uv_udp_send_t* req,
+                             uv_udp_t* handle,
+                             const uv_buf_t bufs[],
+                             unsigned int nbufs,
+                             const struct sockaddr* addr,
+                             unsigned int addrlen,
+                             uv_udp_send_cb send_cb);
 UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
                               const uv_buf_t bufs[],
                               unsigned int nbufs,
                               const struct sockaddr* addr);
+UV_EXTERN int uv_udp_try_send_ex(uv_udp_t* handle,
+                                 const uv_buf_t bufs[],
+                                 unsigned int nbufs,
+                                 const struct sockaddr* addr,
+                                 unsigned int addrlen);
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
                                 uv_udp_recv_cb recv_cb);
