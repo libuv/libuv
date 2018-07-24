@@ -157,3 +157,8 @@ int uv_is_closing(const uv_handle_t* handle) {
 uv_os_fd_t uv_get_osfhandle(int fd) {
   return uv__get_osfhandle(fd);
 }
+
+
+int uv_open_osfhandle(uv_os_fd_t handle) {
+  return _open_osfhandle((HANDLE)handle);
+}
