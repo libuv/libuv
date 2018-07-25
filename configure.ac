@@ -67,6 +67,9 @@ AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
 ])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
+AS_CASE([$host_os], [kfreebsd*], [
+    LIBS="$LIBS -lfreebsd-glue"
+])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])
 AC_OUTPUT
