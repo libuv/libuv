@@ -37,6 +37,9 @@
 
 #include <wincrypt.h>
 
+#pragma comment(lib, "Shlwapi.lib")
+#include <Shlwapi.h>
+
 
 #define UV_FS_FREE_PATHS         0x0002
 #define UV_FS_FREE_PTR           0x0008
@@ -1301,6 +1304,34 @@ static void fs__fstat(uv_fs_t* req) {
 
 
 static void fs__rename(uv_fs_t* req) {
+  WCHAR* pathw = req->file.pathw;
+  WCHAR* new_pathw = req->fs.info.new_pathw;
+
+   // These checks allow us to mimic the rename behavior on Unix platforms when
+   // dealing with directories:
+   // If the new path is a directory, check if it is empty.
+   // If it is, remove the directory so MoveFileExW and rename will succeed.
+   // If the directory is not empty, return by throwing a ENOTEMPY error,
+   // like on Unix, rather than a EPERM error that MoveFileXW will throw on
+   // a nonempty directory.
+  if (PathIsDirectoryW(new_pathw)) {
+
+    if (PathIsDirectoryEmptyW(new_pathw)) {
+
+      // Attempt deletion of empty directory so MoveFileExW will succeed on rename.
+      if(!RemoveDirectoryW(new_pathw)) {
+            SET_REQ_WIN32_ERROR(req, GetLastError());
+            return;
+      }
+
+    } else {
+      // Directory is not empty, so throw a non-empty directory error.
+      SET_REQ_WIN32_ERROR(req, ERROR_DIR_NOT_EMPTY);
+      return;
+    }
+
+  }
+
   if (!MoveFileExW(req->file.pathw, req->fs.info.new_pathw, MOVEFILE_REPLACE_EXISTING)) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     return;
