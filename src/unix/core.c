@@ -1338,6 +1338,9 @@ uv_os_fd_t uv_get_osfhandle(int fd) {
   return fd;
 }
 
+int uv_open_osfhandle(uv_os_fd_t os_fd) {
+  return os_fd;
+}
 
 uv_pid_t uv_os_getpid(void) {
   return getpid();
