@@ -12,6 +12,8 @@ otherwise it will be performed asynchronously.
 All file operations are run on the threadpool. See :ref:`threadpool` for information
 on the threadpool size.
 
+.. note::
+     On Windows `uv_fs_*` functions use utf-8 encoding.
 
 Data types
 ----------
