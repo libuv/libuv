@@ -2183,7 +2183,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
                                       FileNameInformation);
   if (nt_status == STATUS_BUFFER_OVERFLOW) {
     name_size = sizeof(*name_info) + tmp_name_info.FileNameLength;
-    name_info = uv__malloc(name_size);
+    name_info = (FILE_NAME_INFORMATION*)uv__malloc(name_size);
     if (!name_info) {
       *size = 0;
       err = UV_ENOMEM;

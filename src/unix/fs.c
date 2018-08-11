@@ -106,7 +106,7 @@
       size_t new_path_len;                                                    \
       path_len = strlen(path) + 1;                                            \
       new_path_len = strlen(new_path) + 1;                                    \
-      req->path = uv__malloc(path_len + new_path_len);                        \
+      req->path = (char*)uv__malloc(path_len + new_path_len);                 \
       if (req->path == NULL)                                                  \
         return UV_ENOMEM;                                                     \
       req->new_path = req->path + path_len;                                   \
@@ -437,7 +437,7 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   char* buf;
 
   len = uv__fs_pathmax_size(req->path);
-  buf = uv__malloc(len + 1);
+  buf = (char*)uv__malloc(len + 1);
 
   if (buf == NULL) {
     errno = ENOMEM;
@@ -467,7 +467,7 @@ static ssize_t uv__fs_realpath(uv_fs_t* req) {
   char* buf;
 
   len = uv__fs_pathmax_size(req->path);
-  buf = uv__malloc(len + 1);
+  buf = (char*)uv__malloc(len + 1);
 
   if (buf == NULL) {
     errno = ENOMEM;
@@ -1380,7 +1380,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   req->nbufs = nbufs;
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->bufs = (uv_buf_t*)uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL)
     return UV_ENOMEM;
@@ -1516,7 +1516,7 @@ int uv_fs_write(uv_loop_t* loop,
   req->nbufs = nbufs;
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->bufs = (uv_buf_t*)uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL)
     return UV_ENOMEM;

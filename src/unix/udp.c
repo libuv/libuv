@@ -177,7 +177,7 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
     assert(buf.base != NULL);
 
     h.msg_namelen = sizeof(peer);
-    h.msg_iov = (void*) &buf;
+    h.msg_iov = (iovec*) &buf;
     h.msg_iovlen = 1;
 
     do {
@@ -414,7 +414,7 @@ int uv__udp_send(uv_udp_send_t* req,
 
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(bufs[0]));
+    req->bufs = (uv_buf_t*)uv__malloc(nbufs * sizeof(bufs[0]));
 
   if (req->bufs == NULL) {
     uv__req_unregister(handle->loop, req);

@@ -191,7 +191,7 @@ static struct nlmsghdr *getNetlinkResponse(int p_socket, pid_t p_pid, int *p_siz
 
 static NetlinkList *newListItem(struct nlmsghdr *p_data, unsigned int p_size)
 {
-    NetlinkList *l_item = uv__malloc(sizeof(NetlinkList));
+    NetlinkList *l_item = (NetlinkList*)uv__malloc(sizeof(NetlinkList));
     if (l_item == NULL)
     {
         return NULL;
@@ -357,7 +357,7 @@ static int interpretLink(struct nlmsghdr *p_hdr, struct ifaddrs **p_resultList)
         }
     }
 
-    l_entry = uv__malloc(sizeof(struct ifaddrs) + sizeof(int) + l_nameSize + l_addrSize + l_dataSize);
+    l_entry = (struct ifaddrs*)uv__malloc(sizeof(struct ifaddrs) + sizeof(int) + l_nameSize + l_addrSize + l_dataSize);
     if (l_entry == NULL)
     {
         return -1;
@@ -486,7 +486,7 @@ static int interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_resultList, 
         }
     }
 
-    l_entry = uv__malloc(sizeof(struct ifaddrs) + l_nameSize + l_addrSize);
+    l_entry = (struct ifaddrs*)uv__malloc(sizeof(struct ifaddrs) + l_nameSize + l_addrSize);
     if (l_entry == NULL)
     {
         return -1;

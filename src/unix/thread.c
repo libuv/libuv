@@ -59,7 +59,7 @@ int pthread_barrier_init(pthread_barrier_t* barrier,
   if (barrier_attr != NULL)
     return ENOTSUP;
 
-  b = uv__malloc(sizeof(*b));
+  b = (_uv_barrier*)uv__malloc(sizeof(*b));
   if (b == NULL)
     return ENOMEM;
 
@@ -469,7 +469,7 @@ static int uv__custom_sem_init(uv_sem_t* sem_, unsigned int value) {
   int err;
   uv_semaphore_t* sem;
 
-  sem = uv__malloc(sizeof(*sem));
+  sem = (uv_semaphore_t*)uv__malloc(sizeof(*sem));
   if (sem == NULL)
     return UV_ENOMEM;
 

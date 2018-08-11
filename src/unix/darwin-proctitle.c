@@ -138,8 +138,9 @@ int uv__set_process_title(const char* title) {
   if (pLSSetApplicationInformationItem == NULL)
     goto out;
 
-  display_name_key = pCFBundleGetDataPointerForName(launch_services_bundle,
-                                                    S("_kLSDisplayNameKey"));
+  display_name_key = (CFStringRef*)
+      pCFBundleGetDataPointerForName(launch_services_bundle,
+                                     S("_kLSDisplayNameKey"));
 
   if (display_name_key == NULL || *display_name_key == NULL)
     goto out;

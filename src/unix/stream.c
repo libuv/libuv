@@ -118,7 +118,7 @@ static void uv__stream_osx_interrupt_select(uv_stream_t* stream) {
   uv__stream_select_t* s;
   int r;
 
-  s = stream->select;
+  s = (uv__stream_select_t*)stream->select;
   if (s == NULL)
     return;
 
@@ -147,8 +147,8 @@ static void uv__stream_osx_select(void* arg) {
   int r;
   int max_fd;
 
-  stream = arg;
-  s = stream->select;
+  stream = (uv_stream_t*)arg;
+  s = (uv__stream_select_t*)stream->select;
   fd = s->fd;
 
   if (fd > s->int_fd)
@@ -325,7 +325,7 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   sread_sz = ROUND_UP(max_fd + 1, sizeof(uint32_t) * NBBY) / NBBY;
   swrite_sz = sread_sz;
 
-  s = uv__malloc(sizeof(*s) + sread_sz + swrite_sz);
+  s = (uv__stream_select_t*)uv__malloc(sizeof(*s) + sread_sz + swrite_sz);
   if (s == NULL) {
     err = UV_ENOMEM;
     goto failed_malloc;
@@ -620,7 +620,7 @@ done:
   if (server->queued_fds != NULL) {
     uv__stream_queued_fds_t* queued_fds;
 
-    queued_fds = server->queued_fds;
+    queued_fds = (uv__stream_queued_fds_t*)(server->queued_fds);
 
     /* Read first */
     server->accepted_fd = queued_fds->fds[0];
@@ -828,7 +828,7 @@ start:
     /* silence aliasing warning */
     {
       void* pv = CMSG_DATA(cmsg);
-      int* pi = pv;
+      int* pi = (int*)pv;
       *pi = fd_to_send;
     }
 
@@ -1032,11 +1032,12 @@ static int uv__stream_queue_fd(uv_stream_t* stream, int fd) {
   uv__stream_queued_fds_t* queued_fds;
   unsigned int queue_size;
 
-  queued_fds = stream->queued_fds;
+  queued_fds = (uv__stream_queued_fds_t*)stream->queued_fds;
   if (queued_fds == NULL) {
     queue_size = 8;
-    queued_fds = uv__malloc((queue_size - 1) * sizeof(*queued_fds->fds) +
-                            sizeof(*queued_fds));
+    queued_fds = (uv__stream_queued_fds_t*)
+        uv__malloc((queue_size - 1) * sizeof(*queued_fds->fds) +
+                   sizeof(*queued_fds));
     if (queued_fds == NULL)
       return UV_ENOMEM;
     queued_fds->size = queue_size;
@@ -1046,9 +1047,9 @@ static int uv__stream_queue_fd(uv_stream_t* stream, int fd) {
     /* Grow */
   } else if (queued_fds->size == queued_fds->offset) {
     queue_size = queued_fds->size + 8;
-    queued_fds = uv__realloc(queued_fds,
-                             (queue_size - 1) * sizeof(*queued_fds->fds) +
-                              sizeof(*queued_fds));
+    queued_fds = (uv__stream_queued_fds_t*)
+        uv__realloc(queued_fds, (queue_size - 1) * sizeof(*queued_fds->fds) +
+                    sizeof(*queued_fds));
 
     /*
      * Allocation failure, report back.
@@ -1091,7 +1092,7 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
 
     /* silence aliasing warning */
     pv = CMSG_DATA(cmsg);
-    pi = pv;
+    pi = (int*)pv;
 
     /* Count available fds */
     start = (char*) cmsg;
@@ -1462,7 +1463,7 @@ int uv_write2(uv_write_t* req,
 
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(bufs[0]));
+    req->bufs = (uv_buf_t*)uv__malloc(nbufs * sizeof(bufs[0]));
 
   if (req->bufs == NULL)
     return UV_ENOMEM;
@@ -1635,7 +1636,7 @@ int uv___stream_fd(const uv_stream_t* handle) {
          handle->type == UV_TTY ||
          handle->type == UV_NAMED_PIPE);
 
-  s = handle->select;
+  s = (const uv__stream_select_t*)handle->select;
   if (s != NULL)
     return s->fd;
 
@@ -1653,7 +1654,7 @@ void uv__stream_close(uv_stream_t* handle) {
   if (handle->select != NULL) {
     uv__stream_select_t* s;
 
-    s = handle->select;
+    s = (uv__stream_select_t*)handle->select;
 
     uv_sem_post(&s->close_sem);
     uv_sem_post(&s->async_sem);
@@ -1687,7 +1688,7 @@ void uv__stream_close(uv_stream_t* handle) {
 
   /* Close all queued fds */
   if (handle->queued_fds != NULL) {
-    queued_fds = handle->queued_fds;
+    queued_fds = (uv__stream_queued_fds_t*)(handle->queued_fds);
     for (i = 0; i < queued_fds->offset; i++)
       uv__close(queued_fds->fds[i]);
     uv__free(handle->queued_fds);

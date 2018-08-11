@@ -618,14 +618,14 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   GetSystemInfo(&system_info);
   cpu_count = system_info.dwNumberOfProcessors;
 
-  cpu_infos = uv__calloc(cpu_count, sizeof *cpu_infos);
+  cpu_infos = (uv_cpu_info_t*)uv__calloc(cpu_count, sizeof *cpu_infos);
   if (cpu_infos == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;
   }
 
   sppi_size = cpu_count * sizeof(*sppi);
-  sppi = uv__malloc(sppi_size);
+  sppi = (SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION*)uv__malloc(sppi_size);
   if (sppi == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;
@@ -856,7 +856,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
       case ERROR_BUFFER_OVERFLOW:
         /* This happens when win_address_buf is NULL or too small to hold all
          * adapters. */
-        win_address_buf = uv__malloc(win_address_buf_size);
+        win_address_buf =
+            (IP_ADAPTER_ADDRESSES*)uv__malloc(win_address_buf_size);
         if (win_address_buf == NULL)
           return UV_ENOMEM;
 
@@ -864,7 +865,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
       case ERROR_NO_DATA: {
         /* No adapters were found. */
-        uv_address_buf = uv__malloc(1);
+        uv_address_buf = (uv_interface_address_t*)uv__malloc(1);
         if (uv_address_buf == NULL)
           return UV_ENOMEM;
 
@@ -941,7 +942,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   }
 
   /* Allocate space to store interface data plus adapter names. */
-  uv_address_buf = uv__malloc(uv_address_buf_size);
+  uv_address_buf = (uv_interface_address_t*)uv__malloc(uv_address_buf_size);
   if (uv_address_buf == NULL) {
     uv__free(win_address_buf);
     return UV_ENOMEM;
@@ -1263,7 +1264,7 @@ int uv__convert_utf16_to_utf8(const WCHAR* utf16, int utf16len, char** utf8) {
   /* Allocate the destination buffer adding an extra byte for the terminating
    * NULL. If utf16len is not -1 WideCharToMultiByte will not add it, so
    * we do it ourselves always, just in case. */
-  *utf8 = uv__malloc(bufsize + 1);
+  *utf8 = (char*)uv__malloc(bufsize + 1);
 
   if (*utf8 == NULL)
     return UV_ENOMEM;
@@ -1311,7 +1312,7 @@ int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16) {
   /* Allocate the destination buffer adding an extra byte for the terminating
    * NULL. If utf8len is not -1 MultiByteToWideChar will not add it, so
    * we do it ourselves always, just in case. */
-  *utf16 = uv__malloc(sizeof(WCHAR) * (bufsize + 1));
+  *utf16 = (WCHAR*)uv__malloc(sizeof(WCHAR) * (bufsize + 1));
 
   if (*utf16 == NULL)
     return UV_ENOMEM;

@@ -315,7 +315,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   if (sysctlbyname("hw.ncpu", &numcpus, &size, NULL, 0))
     return UV__ERR(errno);
 
-  *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
+  *cpu_infos = (uv_cpu_info_t*)uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos))
     return UV_ENOMEM;
 
@@ -332,7 +332,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   size = maxcpus * CPUSTATES * sizeof(long);
 
-  cp_times = uv__malloc(size);
+  cp_times = (long*)uv__malloc(size);
   if (cp_times == NULL) {
     uv__free(*cpu_infos);
     return UV_ENOMEM;

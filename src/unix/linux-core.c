@@ -340,8 +340,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     nevents = 0;
 
     assert(loop->watchers != NULL);
-    loop->watchers[loop->nwatchers] = (void*) events;
-    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    loop->watchers[loop->nwatchers] = (uv__io_t*) events;
+    loop->watchers[loop->nwatchers + 1] = (uv__io_t*) (uintptr_t) nfds;
     for (i = 0; i < nfds; i++) {
       pe = events + i;
       fd = pe->data;
@@ -595,7 +595,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     goto out;
 
   err = UV_ENOMEM;
-  ci = uv__calloc(numcpus, sizeof(*ci));
+  ci = (uv_cpu_info_t*)uv__calloc(numcpus, sizeof(*ci));
   if (ci == NULL)
     goto out;
 
@@ -879,7 +879,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   if (*count == 0)
     return 0;
 
-  *addresses = uv__malloc(*count * sizeof(**addresses));
+  *addresses =
+      (uv_interface_address_t*)uv__malloc(*count * sizeof(**addresses));
   if (!(*addresses)) {
     freeifaddrs(addrs);
     return UV_ENOMEM;

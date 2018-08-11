@@ -277,7 +277,7 @@ static int fs__wide_to_utf8(WCHAR* w_source_ptr,
     return 0;
   }
 
-  target = uv__malloc(target_len + 1);
+  target = (char*)uv__malloc(target_len + 1);
   if (target == NULL) {
     SetLastError(ERROR_OUTOFMEMORY);
     return -1;
@@ -984,7 +984,7 @@ void fs__scandir(uv_fs_t* req) {
       if (dirents_used >= dirents_size) {
         size_t new_dirents_size =
             dirents_size == 0 ? dirents_initial_size : dirents_size << 1;
-        uv__dirent_t** new_dirents =
+        uv__dirent_t** new_dirents = (uv__dirent_t**)
             uv__realloc(dirents, new_dirents_size * sizeof *dirents);
 
         if (new_dirents == NULL)
@@ -998,7 +998,7 @@ void fs__scandir(uv_fs_t* req) {
        * includes room for the first character of the filename, but `utf8_len`
        * doesn't count the NULL terminator at this point.
        */
-      dirent = uv__malloc(sizeof *dirent + utf8_len);
+      dirent = (uv__dirent_t*)uv__malloc(sizeof *dirent + utf8_len);
       if (dirent == NULL)
         goto out_of_memory_error;
 
@@ -1897,7 +1897,7 @@ static size_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
     return -1;
   }
 
-  w_realpath_buf = uv__malloc((w_realpath_len + 1) * sizeof(WCHAR));
+  w_realpath_buf = (WCHAR*)uv__malloc((w_realpath_len + 1) * sizeof(WCHAR));
   if (w_realpath_buf == NULL) {
     SetLastError(ERROR_OUTOFMEMORY);
     return -1;
@@ -2104,7 +2104,7 @@ int uv_fs_read(uv_loop_t* loop,
   req->fs.info.nbufs = nbufs;
   req->fs.info.bufs = req->fs.info.bufsml;
   if (nbufs > ARRAY_SIZE(req->fs.info.bufsml))
-    req->fs.info.bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->fs.info.bufs = (uv_buf_t*)uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->fs.info.bufs == NULL)
     return UV_ENOMEM;
@@ -2133,7 +2133,7 @@ int uv_fs_write(uv_loop_t* loop,
   req->fs.info.nbufs = nbufs;
   req->fs.info.bufs = req->fs.info.bufsml;
   if (nbufs > ARRAY_SIZE(req->fs.info.bufsml))
-    req->fs.info.bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->fs.info.bufs = (uv_buf_t*)uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->fs.info.bufs == NULL)
     return UV_ENOMEM;

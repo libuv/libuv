@@ -68,7 +68,7 @@ char** uv_setup_args(int argc, char** argv) {
   /* Add space for the argv pointers. */
   size += (argc + 1) * sizeof(char*);
 
-  new_argv = uv__malloc(size);
+  new_argv = (char**)uv__malloc(size);
   if (new_argv == NULL)
     return argv;
   args_mem = new_argv;
