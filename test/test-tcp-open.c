@@ -176,7 +176,7 @@ static void timer_cb(uv_timer_t* handle) {
   int r;
 
   /* Shutdown on drain. */
-  r = uv_shutdown(&shutdown_req, &client, shutdown_cb);
+  r = uv_shutdown(&shutdown_req, (uv_stream_t*) &client, shutdown_cb);
   ASSERT(r == 0);
   shutdown_requested++;
 }
