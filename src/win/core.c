@@ -223,7 +223,7 @@ static void uv_init(void) {
 
 int uv_loop_init(uv_loop_t* loop) {
   struct heap* timer_heap;
-  int err;
+  int err = 0;
 
   /* Initialize libuv itself first */
   uv__once_init();
