@@ -260,7 +260,11 @@ int uv__accept4(int fd, struct sockaddr* addr, socklen_t* addrlen, int flags) {
 
   return r;
 #elif defined(__NR_accept4)
+#if defined(AVOID_SYSCALL_API)
+  return accept4(fd, addr, addrlen, flags);
+#else
   return syscall(__NR_accept4, fd, addr, addrlen, flags);
+#endif
 #else
   return errno = ENOSYS, -1;
 #endif
@@ -287,7 +291,11 @@ int uv__eventfd2(unsigned int count, int flags) {
 
 int uv__epoll_create(int size) {
 #if defined(__NR_epoll_create)
+#if defined(AVOID_SYSCALL_API)
+  return epoll_create(size);
+#else
   return syscall(__NR_epoll_create, size);
+#endif
 #else
   return errno = ENOSYS, -1;
 #endif
@@ -296,7 +304,11 @@ int uv__epoll_create(int size) {
 
 int uv__epoll_create1(int flags) {
 #if defined(__NR_epoll_create1)
+#if defined(AVOID_SYSCALL_API)
+  return epoll_create1(flags);
+#else
   return syscall(__NR_epoll_create1, flags);
+#endif
 #else
   return errno = ENOSYS, -1;
 #endif
@@ -305,7 +317,11 @@ int uv__epoll_create1(int flags) {
 
 int uv__epoll_ctl(int epfd, int op, int fd, struct uv__epoll_event* events) {
 #if defined(__NR_epoll_ctl)
+#if defined(AVOID_SYSCALL_API)
+  return epoll_ctl(epfd, op, fd, (struct epoll_event*)events);
+#else
   return syscall(__NR_epoll_ctl, epfd, op, fd, events);
+#endif
 #else
   return errno = ENOSYS, -1;
 #endif
@@ -318,7 +334,11 @@ int uv__epoll_wait(int epfd,
                    int timeout) {
 #if defined(__NR_epoll_wait)
   int result;
+#if defined(AVOID_SYSCALL_API)
+  result = epoll_wait(epfd, (struct epoll_event *)events, nevents, timeout);
+#else
   result = syscall(__NR_epoll_wait, epfd, events, nevents, timeout);
+#endif
 #if MSAN_ACTIVE
   if (result > 0)
     __msan_unpoison(events, sizeof(events[0]) * result);

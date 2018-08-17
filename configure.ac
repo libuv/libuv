@@ -22,6 +22,12 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects] UV_EXTRA_AUTOMAKE_FLAGS)
 AC_CANONICAL_HOST
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC
+AC_ARG_ENABLE([syscall],
+  AS_HELP_STRING([--disable-syscall], [Disable syscall api [default=no]]))
+AS_IF([test "x$enable_syscall" = "xno"], [
+  dnl Set macro to override syscall api as needed
+  CFLAGS="$CFLAGS -DAVOID_SYSCALL_API"
+])
 AC_PROG_CC
 AM_PROG_CC_C_O
 AS_IF([AS_CASE([$host_os],[openedition*],  [false], [true])], [

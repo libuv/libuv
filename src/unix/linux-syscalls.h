@@ -30,6 +30,9 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#if defined(AVOID_SYSCALL_API)
+#include <sys/epoll.h>
+#endif
 
 #if defined(__alpha__)
 # define UV__O_CLOEXEC        0x200000
