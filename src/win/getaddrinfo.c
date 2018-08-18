@@ -48,8 +48,8 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 }
 
 
-/* adjust size value to be multiple of 4. Use to keep pointer aligned */
-/* Do we need different versions of this for different architectures? */
+/* Adjust size value to be multiple of 4. Use to keep pointer aligned.
+ * Do we need different versions of this for different architectures? */
 #define ALIGNED_SIZE(X)     ((((X) + 3) >> 2) << 2)
 
 #ifndef NDIS_IF_MAX_STRING_SIZE
@@ -101,8 +101,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   }
 
   if (req->retcode == 0) {
-    /* convert addrinfoW to addrinfo */
-    /* first calculate required length */
+    /* Convert addrinfoW to addrinfo. First calculate required length. */
     addrinfow_ptr = req->addrinfow;
     while (addrinfow_ptr != NULL) {
       addrinfo_len += addrinfo_struct_len +
@@ -290,8 +289,8 @@ int uv_getaddrinfo(uv_loop_t* loop,
   /* save alloc_ptr now so we can free if error */
   req->alloc = (void*)alloc_ptr;
 
-  /* convert node string to UTF16 into allocated memory and save pointer in */
-  /* the request. */
+  /* Convert node string to UTF16 into allocated memory and save pointer in the
+   * request. */
   if (node != NULL) {
     req->node = (WCHAR*)alloc_ptr;
     if (MultiByteToWideChar(CP_UTF8,
@@ -308,8 +307,8 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->node = NULL;
   }
 
-  /* convert service string to UTF16 into allocated memory and save pointer */
-  /* in the req. */
+  /* Convert service string to UTF16 into allocated memory and save pointer in
+   * the req. */
   if (service != NULL) {
     req->service = (WCHAR*)alloc_ptr;
     if (MultiByteToWideChar(CP_UTF8,

@@ -107,7 +107,7 @@ uint64_t uv_hrtime(void) {
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   assert(!uv__is_closing(handle));
 
-  handle->flags |= UV_CLOSING;
+  handle->flags |= UV_HANDLE_CLOSING;
   handle->close_cb = close_cb;
 
   switch (handle->type) {
@@ -165,8 +165,8 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
   case UV_SIGNAL:
     uv__signal_close((uv_signal_t*) handle);
-    /* Signal handles may not be closed immediately. The signal code will */
-    /* itself close uv__make_close_pending whenever appropriate. */
+    /* Signal handles may not be closed immediately. The signal code will
+     * itself close uv__make_close_pending whenever appropriate. */
     return;
 
   default:
@@ -205,8 +205,8 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
 }
 
 void uv__make_close_pending(uv_handle_t* handle) {
-  assert(handle->flags & UV_CLOSING);
-  assert(!(handle->flags & UV_CLOSED));
+  assert(handle->flags & UV_HANDLE_CLOSING);
+  assert(!(handle->flags & UV_HANDLE_CLOSED));
   handle->next_closing = handle->loop->closing_handles;
   handle->loop->closing_handles = handle;
 }
@@ -232,15 +232,17 @@ int uv__getiovmax(void) {
 
 
 static void uv__finish_close(uv_handle_t* handle) {
-  /* Note: while the handle is in the UV_CLOSING state now, it's still possible
-   * for it to be active in the sense that uv__is_active() returns true.
+  /* Note: while the handle is in the UV_HANDLE_CLOSING state now, it's still
+   * possible for it to be active in the sense that uv__is_active() returns
+   * true.
+   *
    * A good example is when the user calls uv_shutdown(), immediately followed
    * by uv_close(). The handle is considered active at this point because the
    * completion of the shutdown req is still pending.
    */
-  assert(handle->flags & UV_CLOSING);
-  assert(!(handle->flags & UV_CLOSED));
-  handle->flags |= UV_CLOSED;
+  assert(handle->flags & UV_HANDLE_CLOSING);
+  assert(!(handle->flags & UV_HANDLE_CLOSED));
+  handle->flags |= UV_HANDLE_CLOSED;
 
   switch (handle->type) {
     case UV_PREPARE:
@@ -527,7 +529,7 @@ int uv__close_nocheckstdio(int fd) {
 int uv__close(int fd) {
   assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
 #if defined(__MVS__)
-  epoll_file_close(fd);
+  SAVE_ERRNO(epoll_file_close(fd));
 #endif
   return uv__close_nocheckstdio(fd);
 }
@@ -918,6 +920,11 @@ int uv__io_active(const uv__io_t* w, unsigned int events) {
 }
 
 
+int uv__fd_exists(uv_loop_t* loop, int fd) {
+  return (unsigned) fd < loop->nwatchers && loop->watchers[fd] != NULL;
+}
+
+
 int uv_getrusage(uv_rusage_t* rusage) {
   struct rusage usage;
 
@@ -1039,29 +1046,16 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
 
 int uv_os_homedir(char* buffer, size_t* size) {
   uv_passwd_t pwd;
-  char* buf;
   size_t len;
   int r;
 
-  if (buffer == NULL || size == NULL || *size == 0)
-    return UV_EINVAL;
+  /* Check if the HOME environment variable is set first. The task of
+     performing input validation on buffer and size is taken care of by
+     uv_os_getenv(). */
+  r = uv_os_getenv("HOME", buffer, size);
 
-  /* Check if the HOME environment variable is set first */
-  buf = getenv("HOME");
-
-  if (buf != NULL) {
-    len = strlen(buf);
-
-    if (len >= *size) {
-      *size = len + 1;
-      return UV_ENOBUFS;
-    }
-
-    memcpy(buffer, buf, len + 1);
-    *size = len;
-
-    return 0;
-  }
+  if (r != UV_ENOENT)
+    return r;
 
   /* HOME is not set, so call uv__getpwuid_r() */
   r = uv__getpwuid_r(&pwd);
@@ -1357,6 +1351,12 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   return 0;
 }
 
+
+int uv_open_osfhandle(uv_os_fd_t os_fd) {
+  return os_fd;
+}
+
+
 uv_pid_t uv_os_getpid(void) {
   return getpid();
 }
@@ -1372,4 +1372,31 @@ int uv_cpumask_size(void) {
 #else
   return UV_ENOTSUP;
 #endif
+}
+
+int uv_os_getpriority(uv_pid_t pid, int* priority) {
+  int r;
+
+  if (priority == NULL)
+    return UV_EINVAL;
+
+  errno = 0;
+  r = getpriority(PRIO_PROCESS, (int) pid);
+
+  if (r == -1 && errno != 0)
+    return UV__ERR(errno);
+
+  *priority = r;
+  return 0;
+}
+
+
+int uv_os_setpriority(uv_pid_t pid, int priority) {
+  if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)
+    return UV_EINVAL;
+
+  if (setpriority(PRIO_PROCESS, (int) pid, priority) != 0)
+    return UV__ERR(errno);
+
+  return 0;
 }

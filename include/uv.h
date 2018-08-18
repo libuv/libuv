@@ -139,6 +139,7 @@ extern "C" {
   XX(EHOSTDOWN, "host is down")                                               \
   XX(EREMOTEIO, "remote I/O error")                                           \
   XX(ENOTTY, "inappropriate ioctl for device")                                \
+  XX(EFTYPE, "inappropriate file type or format")                             \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
@@ -366,7 +367,10 @@ typedef enum {
 UV_EXTERN int uv_translate_sys_error(int sys_errno);
 
 UV_EXTERN const char* uv_strerror(int err);
+UV_EXTERN char* uv_strerror_r(int err, char* buf, size_t buflen);
+
 UV_EXTERN const char* uv_err_name(int err);
+UV_EXTERN char* uv_err_name_r(int err, char* buf, size_t buflen);
 
 
 #define UV_REQ_FIELDS                                                         \
@@ -375,8 +379,7 @@ UV_EXTERN const char* uv_err_name(int err);
   /* read-only */                                                             \
   uv_req_type type;                                                           \
   /* private */                                                               \
-  void* active_queue[2];                                                      \
-  void* reserved[4];                                                          \
+  void* reserved[6];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
 /* Abstract base class of all requests. */
@@ -558,7 +561,7 @@ UV_EXTERN int uv_try_write(uv_stream_t* handle,
 struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
-  uv_stream_t* send_handle;
+  uv_stream_t* send_handle; /* TODO: make private and unix-only in v2.x. */
   uv_stream_t* handle;
   UV_WRITE_PRIVATE_FIELDS
 };
@@ -919,7 +922,13 @@ typedef enum {
    * flags may be specified to create a duplex data stream.
    */
   UV_READABLE_PIPE  = 0x10,
-  UV_WRITABLE_PIPE  = 0x20
+  UV_WRITABLE_PIPE  = 0x20,
+
+  /*
+   * Open the child pipe handle in overlapped mode on Windows.
+   * On Unix it is silently ignored.
+   */
+  UV_OVERLAPPED_PIPE = 0x40
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {
@@ -1064,16 +1073,18 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
 
+struct uv_cpu_times_s {
+  uint64_t user;
+  uint64_t nice;
+  uint64_t sys;
+  uint64_t idle;
+  uint64_t irq;
+};
+
 struct uv_cpu_info_s {
   char* model;
   int speed;
-  struct uv_cpu_times_s {
-    uint64_t user;
-    uint64_t nice;
-    uint64_t sys;
-    uint64_t idle;
-    uint64_t irq;
-  } cpu_times;
+  struct uv_cpu_times_s cpu_times;
 };
 
 struct uv_interface_address_s {
@@ -1120,6 +1131,8 @@ UV_EXTERN int uv_get_process_title(char* buffer, size_t size);
 UV_EXTERN int uv_set_process_title(const char* title);
 UV_EXTERN int uv_resident_set_memory(size_t* rss);
 UV_EXTERN int uv_uptime(double* uptime);
+UV_EXTERN uv_os_fd_t uv_get_osfhandle(int fd);
+UV_EXTERN int uv_open_osfhandle(uv_os_fd_t os_fd);
 
 typedef struct {
   long tv_sec;
@@ -1153,6 +1166,16 @@ UV_EXTERN int uv_os_get_passwd(uv_passwd_t* pwd);
 UV_EXTERN void uv_os_free_passwd(uv_passwd_t* pwd);
 UV_EXTERN uv_pid_t uv_os_getpid(void);
 UV_EXTERN uv_pid_t uv_os_getppid(void);
+
+#define UV_PRIORITY_LOW 19
+#define UV_PRIORITY_BELOW_NORMAL 10
+#define UV_PRIORITY_NORMAL 0
+#define UV_PRIORITY_ABOVE_NORMAL -7
+#define UV_PRIORITY_HIGH -14
+#define UV_PRIORITY_HIGHEST -20
+
+UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
+UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
@@ -1258,6 +1281,18 @@ UV_EXTERN int uv_fs_write(uv_loop_t* loop,
  * destination already exists.
  */
 #define UV_FS_COPYFILE_EXCL   0x0001
+
+/*
+ * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+ * If copy-on-write is not supported, a fallback copy mechanism is used.
+ */
+#define UV_FS_COPYFILE_FICLONE 0x0002
+
+/*
+ * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+ * If copy-on-write is not supported, an error is returned.
+ */
+#define UV_FS_COPYFILE_FICLONE_FORCE 0x0004
 
 UV_EXTERN int uv_fs_copyfile(uv_loop_t* loop,
                              uv_fs_t* req,
@@ -1404,6 +1439,12 @@ UV_EXTERN int uv_fs_chown(uv_loop_t* loop,
 UV_EXTERN int uv_fs_fchown(uv_loop_t* loop,
                            uv_fs_t* req,
                            uv_os_fd_t file,
+                           uv_uid_t uid,
+                           uv_gid_t gid,
+                           uv_fs_cb cb);
+UV_EXTERN int uv_fs_lchown(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           const char* path,
                            uv_uid_t uid,
                            uv_gid_t gid,
                            uv_fs_cb cb);
@@ -1619,7 +1660,10 @@ struct uv_loop_s {
   /* Loop reference counting. */
   unsigned int active_handles;
   void* handle_queue[2];
-  void* active_reqs[2];
+  union {
+    void* unused[2];
+    unsigned int count;
+  } active_reqs;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   void* reserved[4];
