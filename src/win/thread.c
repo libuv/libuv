@@ -52,8 +52,8 @@ static void uv__once_inner(uv_once_t* guard, void (*callback)(void)) {
     guard->ran = 1;
 
   } else {
-    /* We lost the race. Destroy the event we created and wait for the */
-    /* existing one to become signaled. */
+    /* We lost the race. Destroy the event we created and wait for the existing
+     * one to become signaled. */
     CloseHandle(created_event);
     result = WaitForSingleObject(existing_event, INFINITE);
     assert(result == WAIT_OBJECT_0);
@@ -368,6 +368,7 @@ int uv_cond_init(uv_cond_t* cond) {
 
 void uv_cond_destroy(uv_cond_t* cond) {
   /* Nothing to do. */
+  (void) &cond;
 }
 
 

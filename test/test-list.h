@@ -43,7 +43,6 @@ TEST_DECLARE   (condvar_2)
 TEST_DECLARE   (condvar_3)
 TEST_DECLARE   (condvar_4)
 TEST_DECLARE   (condvar_5)
-TEST_DECLARE   (condvar_6)
 TEST_DECLARE   (semaphore_1)
 TEST_DECLARE   (semaphore_2)
 TEST_DECLARE   (semaphore_3)
@@ -61,6 +60,7 @@ TEST_DECLARE   (ip6_pton)
 TEST_DECLARE   (ip6_invalid_interface)
 #endif
 TEST_DECLARE   (connect_unspecified)
+TEST_DECLARE   (ipc_heavy_traffic_deadlock_bug)
 TEST_DECLARE   (ipc_listen_before_write)
 TEST_DECLARE   (ipc_listen_after_write)
 #ifndef _WIN32
@@ -75,8 +75,11 @@ TEST_DECLARE   (ipc_closed_handle)
 #endif
 TEST_DECLARE   (tcp_alloc_cb_fail)
 TEST_DECLARE   (tcp_ping_pong)
-TEST_DECLARE   (tcp_ping_pong_v6)
+TEST_DECLARE   (tcp_ping_pong_vec)
+TEST_DECLARE   (tcp6_ping_pong)
+TEST_DECLARE   (tcp6_ping_pong_vec)
 TEST_DECLARE   (pipe_ping_pong)
+TEST_DECLARE   (pipe_ping_pong_vec)
 TEST_DECLARE   (delayed_accept)
 TEST_DECLARE   (multiple_listen)
 #ifndef _WIN32
@@ -99,6 +102,7 @@ TEST_DECLARE   (tcp_bind_error_fault)
 TEST_DECLARE   (tcp_bind_error_inval)
 TEST_DECLARE   (tcp_bind_localhost_ok)
 TEST_DECLARE   (tcp_bind_invalid_flags)
+TEST_DECLARE   (tcp_bind_writable_flags)
 TEST_DECLARE   (tcp_listen_without_bind)
 TEST_DECLARE   (tcp_connect_error_fault)
 TEST_DECLARE   (tcp_connect_timeout)
@@ -121,6 +125,7 @@ TEST_DECLARE   (tcp_bind6_error_addrnotavail)
 TEST_DECLARE   (tcp_bind6_error_fault)
 TEST_DECLARE   (tcp_bind6_error_inval)
 TEST_DECLARE   (tcp_bind6_localhost_ok)
+TEST_DECLARE   (tcp_write_ready)
 TEST_DECLARE   (udp_alloc_cb_fail)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
@@ -219,6 +224,7 @@ TEST_DECLARE   (pipe_close_stdout_read_stdin)
 TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
 TEST_DECLARE   (process_ref)
+TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
@@ -295,6 +301,9 @@ TEST_DECLARE   (fs_access)
 TEST_DECLARE   (fs_chmod)
 TEST_DECLARE   (fs_copyfile)
 TEST_DECLARE   (fs_unlink_readonly)
+#ifdef _WIN32
+TEST_DECLARE   (fs_unlink_archive_readonly)
+#endif
 TEST_DECLARE   (fs_chown)
 TEST_DECLARE   (fs_link)
 TEST_DECLARE   (fs_readlink)
@@ -314,6 +323,9 @@ TEST_DECLARE   (fs_stat_missing_path)
 TEST_DECLARE   (fs_read_file_eof)
 TEST_DECLARE   (fs_event_watch_dir)
 TEST_DECLARE   (fs_event_watch_dir_recursive)
+#ifdef _WIN32
+TEST_DECLARE   (fs_event_watch_dir_short_path)
+#endif
 TEST_DECLARE   (fs_event_watch_file)
 TEST_DECLARE   (fs_event_watch_file_exact_path)
 TEST_DECLARE   (fs_event_watch_file_twice)
@@ -340,12 +352,15 @@ TEST_DECLARE   (fs_read_write_null_arguments)
 #ifdef _WIN32
 TEST_DECLARE   (fs_invalid_filename)
 #endif
+TEST_DECLARE   (open_osfhandle_valid_handle)
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
 TEST_DECLARE   (fs_null_req)
 #ifdef _WIN32
 TEST_DECLARE   (fs_exclusive_sharing_mode)
+TEST_DECLARE   (fs_open_readonly_acl)
+TEST_DECLARE   (fs_fchmod_archive_readonly)
 #endif
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (threadpool_queue_work_einval)
@@ -463,7 +478,6 @@ TASK_LIST_START
   TEST_ENTRY  (condvar_3)
   TEST_ENTRY  (condvar_4)
   TEST_ENTRY  (condvar_5)
-  TEST_ENTRY  (condvar_6)
   TEST_ENTRY  (semaphore_1)
   TEST_ENTRY  (semaphore_2)
   TEST_ENTRY  (semaphore_3)
@@ -495,6 +509,7 @@ TASK_LIST_START
   TEST_ENTRY  (ip6_invalid_interface)
 #endif
   TEST_ENTRY  (connect_unspecified)
+  TEST_ENTRY  (ipc_heavy_traffic_deadlock_bug)
   TEST_ENTRY  (ipc_listen_before_write)
   TEST_ENTRY  (ipc_listen_after_write)
 #ifndef _WIN32
@@ -513,11 +528,20 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_ping_pong)
   TEST_HELPER (tcp_ping_pong, tcp4_echo_server)
 
-  TEST_ENTRY  (tcp_ping_pong_v6)
-  TEST_HELPER (tcp_ping_pong_v6, tcp6_echo_server)
+  TEST_ENTRY  (tcp_ping_pong_vec)
+  TEST_HELPER (tcp_ping_pong_vec, tcp4_echo_server)
+
+  TEST_ENTRY  (tcp6_ping_pong)
+  TEST_HELPER (tcp6_ping_pong, tcp6_echo_server)
+
+  TEST_ENTRY  (tcp6_ping_pong_vec)
+  TEST_HELPER (tcp6_ping_pong_vec, tcp6_echo_server)
 
   TEST_ENTRY  (pipe_ping_pong)
   TEST_HELPER (pipe_ping_pong, pipe_echo_server)
+
+  TEST_ENTRY  (pipe_ping_pong_vec)
+  TEST_HELPER (pipe_ping_pong_vec, pipe_echo_server)
 
   TEST_ENTRY  (delayed_accept)
   TEST_ENTRY  (multiple_listen)
@@ -546,6 +570,8 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_open_bound)
   TEST_ENTRY  (tcp_open_connected)
   TEST_HELPER (tcp_open_connected, tcp4_echo_server)
+  TEST_ENTRY  (tcp_write_ready)
+  TEST_HELPER (tcp_write_ready, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_shutdown_after_write)
   TEST_HELPER (tcp_shutdown_after_write, tcp4_echo_server)
@@ -558,6 +584,7 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_bind_error_inval)
   TEST_ENTRY  (tcp_bind_localhost_ok)
   TEST_ENTRY  (tcp_bind_invalid_flags)
+  TEST_ENTRY  (tcp_bind_writable_flags)
   TEST_ENTRY  (tcp_listen_without_bind)
   TEST_ENTRY  (tcp_connect_error_fault)
   TEST_ENTRY  (tcp_connect_timeout)
@@ -689,6 +716,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_ref4)
   TEST_HELPER (pipe_ref4, pipe_echo_server)
   TEST_ENTRY  (process_ref)
+  TEST_ENTRY  (process_priority)
   TEST_ENTRY  (has_ref)
 
   TEST_ENTRY  (loop_handles)
@@ -726,7 +754,7 @@ TASK_LIST_START
   TEST_ENTRY  (hrtime)
 
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
-  TEST_ENTRY  (getaddrinfo_fail_sync)
+  TEST_ENTRY_CUSTOM (getaddrinfo_fail_sync, 0, 0, 10000)
 
   TEST_ENTRY  (getaddrinfo_basic)
   TEST_ENTRY  (getaddrinfo_basic_sync)
@@ -838,6 +866,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_chmod)
   TEST_ENTRY  (fs_copyfile)
   TEST_ENTRY  (fs_unlink_readonly)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_unlink_archive_readonly)
+#endif
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
   TEST_ENTRY  (fs_utime_ex)
@@ -856,6 +887,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_file_open_append)
   TEST_ENTRY  (fs_event_watch_dir)
   TEST_ENTRY  (fs_event_watch_dir_recursive)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_event_watch_dir_short_path)
+#endif
   TEST_ENTRY  (fs_event_watch_file)
   TEST_ENTRY  (fs_event_watch_file_exact_path)
   TEST_ENTRY  (fs_event_watch_file_twice)
@@ -888,7 +922,10 @@ TASK_LIST_START
   TEST_ENTRY  (fs_null_req)
 #ifdef _WIN32
   TEST_ENTRY  (fs_exclusive_sharing_mode)
+  TEST_ENTRY  (fs_open_readonly_acl)
+  TEST_ENTRY  (fs_fchmod_archive_readonly)
 #endif
+  TEST_ENTRY  (open_osfhandle_valid_handle)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
   TEST_ENTRY  (threadpool_multiple_event_loops)
