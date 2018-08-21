@@ -182,7 +182,7 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
   ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
-  return uv__utimesat(req->file, NULL, ts, 0);
+  return futimens(req->file, ts);
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
@@ -667,11 +667,7 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
-#if defined(__linux__)
-  return uv__utimesat(AT_FDCWD, req->path, ts, 0);
-#else
   return utimensat(AT_FDCWD, req->path, ts, 0);
-#endif
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
