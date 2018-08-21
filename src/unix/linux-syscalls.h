@@ -140,10 +140,6 @@ int uv__sendmmsg(int fd,
                  struct uv__mmsghdr* mmsg,
                  unsigned int vlen,
                  unsigned int flags);
-int uv__utimesat(int dirfd,
-                 const char* path,
-                 const struct timespec times[2],
-                 int flags);
 ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset);
 int uv__dup3(int oldfd, int newfd, int flags);

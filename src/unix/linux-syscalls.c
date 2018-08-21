@@ -431,19 +431,6 @@ int uv__recvmmsg(int fd,
 }
 
 
-int uv__utimesat(int dirfd,
-                 const char* path,
-                 const struct timespec times[2],
-                 int flags)
-{
-#if defined(__NR_utimensat)
-  return syscall(__NR_utimensat, dirfd, path, times, flags);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
 ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
 #if defined(__NR_preadv)
   return syscall(__NR_preadv, fd, iov, iovcnt, (long)offset, (long)(offset >> 32));
