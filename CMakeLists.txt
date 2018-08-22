@@ -14,6 +14,7 @@ endif()
 set(uv_sources
     src/fs-poll.c
     src/inet.c
+    src/loop-watcher.c
     src/threadpool.c
     src/timer.c
     src/uv-common.c
@@ -29,6 +30,7 @@ set(uv_test_sources
     test/test-async-null-cb.c
     test/test-async.c
     test/test-barrier.c
+    test/test-buf.c
     test/test-callback-order.c
     test/test-callback-stack.c
     test/test-close-fd.c
@@ -187,7 +189,6 @@ if(WIN32)
        src/win/getaddrinfo.c
        src/win/getnameinfo.c
        src/win/handle.c
-       src/win/loop-watcher.c
        src/win/pipe.c
        src/win/thread.c
        src/win/poll.c
@@ -215,7 +216,6 @@ else()
        src/unix/fs.c
        src/unix/getaddrinfo.c
        src/unix/getnameinfo.c
-       src/unix/loop-watcher.c
        src/unix/loop.c
        src/unix/pipe.c
        src/unix/poll.c
