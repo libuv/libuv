@@ -137,10 +137,12 @@ static HANDLE open_named_pipe(const WCHAR* name, DWORD* duplex_flags) {
 
   /*
    * Assume that we have a duplex pipe first, so attempt to
-   * connect with GENERIC_READ | GENERIC_WRITE.
+   * connect with GENERIC_READ | FILE_WRITE_DATA. No reason
+   * to ask for GENERIC_WRITE, FILE_WRITE_DATA is enough
+   * to write data to a pipe.
    */
   pipeHandle = CreateFileW(name,
-                           GENERIC_READ | GENERIC_WRITE,
+                           GENERIC_READ | FILE_WRITE_DATA,
                            0,
                            NULL,
                            OPEN_EXISTING,
