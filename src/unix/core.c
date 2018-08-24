@@ -761,7 +761,7 @@ static int uv__run_pending(uv_loop_t* loop) {
   QUEUE* q;
   QUEUE pq;
   uv__io_t* w;
-  size_t count = 0;
+  size_t count;
   uv_trace_pending_info_t trace_info = { UV_TRACE_PENDING, 0 };
 
   if (QUEUE_EMPTY(&loop->pending_queue))
@@ -770,6 +770,7 @@ static int uv__run_pending(uv_loop_t* loop) {
   uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
   QUEUE_MOVE(&loop->pending_queue, &pq);
 
+  count = 0;
   while (!QUEUE_EMPTY(&pq)) {
     count++;
     q = QUEUE_HEAD(&pq);

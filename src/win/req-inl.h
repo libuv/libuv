@@ -137,7 +137,7 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
   uv_req_t* req;
   uv_req_t* first;
   uv_req_t* next;
-  size_t count = 0;
+  size_t count;
   uv_trace_pending_info_t trace_info = { UV_TRACE_PENDING, 0 };
 
   if (loop->pending_reqs_tail == NULL)
@@ -149,6 +149,7 @@ INLINE static int uv_process_reqs(uv_loop_t* loop) {
   next = first;
   loop->pending_reqs_tail = NULL;
 
+  count = 0;
   while (next != NULL) {
     count++;
     req = next;

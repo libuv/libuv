@@ -46,13 +46,14 @@
   }                                                                           \
                                                                               \
   void uv__run_##name(uv_loop_t* loop) {                                      \
-    size_t count = 0;                                                         \
+    size_t count;                                                             \
     uv_##name##_t* h;                                                         \
     QUEUE queue;                                                              \
     QUEUE* q;                                                                 \
     uv_trace_##name##_info_t trace_info = { UV_TRACE_##type, 0 };             \
     uv__trace_start(loop, (uv_trace_info_t*)&trace_info);                     \
     QUEUE_MOVE(&loop->name##_handles, &queue);                                \
+    count = 0;                                                                \
     while (!QUEUE_EMPTY(&queue)) {                                            \
       count++;                                                                \
       q = QUEUE_HEAD(&queue);                                                 \

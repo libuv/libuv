@@ -311,8 +311,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       assert(timeout != -1);
 
       if (timeout == 0) {
-        uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
-        return;
+        goto trace_end;
       }
 
       /* We may have been inside the system call for longer than |timeout|
@@ -335,8 +334,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0) {
-        uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
-        return;
+        goto trace_end;
       }
 
       /* Interrupted by a signal. Update timeout and poll again. */
@@ -418,8 +416,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (have_signals != 0) {
-      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
-      return;  /* Event loop should cycle now so don't poll again. */
+      goto trace_end;
     }
 
     if (nevents != 0) {
@@ -428,13 +425,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = 0;
         continue;
       }
-      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
-      return;
+      goto trace_end;
     }
 
     if (timeout == 0) {
-      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
-      return;
+      goto trace_end;
     }
 
     if (timeout == -1)
@@ -445,12 +440,13 @@ update_timeout:
 
     real_timeout -= (loop->time - base);
     if (real_timeout <= 0) {
-      uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
-      return;
+      goto trace_end;
     }
 
     timeout = real_timeout;
   }
+
+trace_end:
   uv__trace_end(loop, (uv_trace_info_t*)&trace_info);
 }
 

@@ -1,4 +1,4 @@
-/* Copyright libuv project contributors. All rights reserved.
+/* Copyright The libuv project and contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -22,13 +22,13 @@
 #include "uv.h"
 #include "task.h"
 
-static int submitted = 0;
-static int started = 0;
-static int done = 0;
+static int submitted;
+static int started;
+static int done;
 #define START_SIZE 8
-static unsigned idle_max = 0;
+static unsigned idle_max;
 static unsigned idle_min = 2 * START_SIZE;
-static unsigned queued_max = 0;
+static unsigned queued_max;
  
 static void update(const uv_trace_info_t* info) {
   const uv_trace_threadpool_info_t* trace_info =

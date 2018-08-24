@@ -145,12 +145,13 @@ int uv__next_timeout(const uv_loop_t* loop) {
 
 
 void uv__run_timers(uv_loop_t* loop) {
-  size_t count = 0;
+  size_t count;
   struct heap_node* heap_node;
   uv_timer_t* handle;
   uv_trace_timers_info_t trace_info = { UV_TRACE_TIMERS, 0 };
 
   uv__trace_start(loop, (uv_trace_info_t*)&trace_info);
+  count = 0;
   for (;;) {
     heap_node = heap_min((struct heap*) &loop->timer_heap);
     if (heap_node == NULL)
