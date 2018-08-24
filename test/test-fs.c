@@ -2866,6 +2866,38 @@ TEST_IMPL(fs_rename_to_existing_file) {
   return 0;
 }
 
+TEST_IMPL(fs_rename_to_existing_empty_directory) {
+  int r;
+  uv_fs_t req;
+
+  // Setup
+  rmdir("test_dirA");
+  rmdir("test_dirB");
+
+  loop = uv_default_loop();
+
+  // Create directory test_dirA
+  uv_fs_mkdir(NULL, &req, "test_dirA", 0777, NULL);
+  uv_fs_req_cleanup(&req);
+
+  // Create directory test_dirB
+  uv_fs_mkdir(NULL, &req, "test_dirB", 0777, NULL);
+  uv_fs_req_cleanup(&req);
+
+  // Rename test_dirA to (empty) test_dirB
+  r = uv_fs_rename(NULL, &rename_req, "test_dirA", "test_dirB", NULL);
+  ASSERT(r == 0);
+  ASSERT(rename_req.result == 0);
+  uv_fs_req_cleanup(&rename_req);
+
+  // Cleanup
+  rmdir("test_dirA");
+  rmdir("test_dirB");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 
 TEST_IMPL(fs_read_file_eof) {
 #if defined(__CYGWIN__) || defined(__MSYS__)
