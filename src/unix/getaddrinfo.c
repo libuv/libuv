@@ -204,6 +204,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->hostname = memcpy(buf + len, hostname, hostname_len);
 
   if (cb) {
+    /* TODO uv_queue_work. See code from prev. projects. */
     uv__work_submit(loop,
                     &req->work_req,
                     UV__WORK_SLOW_IO,

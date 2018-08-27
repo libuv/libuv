@@ -124,6 +124,8 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   }                                                                           \
   while (0)
 
+/* TODO uv_queue_work. See code from prev. projects.
+ * I believe that for v1.x compatibility we must allocate a uv_work_t here and in the other internal users of TP. */
 #define POST                                                                  \
   do {                                                                        \
     if (cb != NULL) {                                                         \

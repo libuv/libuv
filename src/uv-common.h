@@ -171,13 +171,18 @@ enum uv__work_kind {
   UV__WORK_SLOW_IO
 };
 
-void uv__work_submit(uv_loop_t* loop,
-                     struct uv__work *w,
-                     enum uv__work_kind kind,
-                     void (*work)(struct uv__work *w),
-                     void (*done)(struct uv__work *w, int status));
+/* Get the default executor. */
+uv_executor_t * uv__default_executor(void);
 
-void uv__work_done(uv_async_t* handle);
+/* Get current executor. */
+uv_executor_t * uv__executor(void);
+
+/* Called from event loop when executor has completed work. */
+void uv__executor_work_done(uv_async_t* handle);
+
+/* If a uv_work_t is successfully uv_cancel'd, its work CB is set
+ * to this magic value. */
+void uv__executor_work_cancelled(uv_work_t* work);
 
 size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
 

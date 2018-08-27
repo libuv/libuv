@@ -51,6 +51,7 @@
   }                                                                           \
   while (0)
 
+/* TODO uv_queue_work. See code from prev. projects. */
 #define POST                                                                  \
   do {                                                                        \
     if (cb != NULL) {                                                         \

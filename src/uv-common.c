@@ -669,6 +669,9 @@ int uv_loop_close(uv_loop_t* loop) {
       return UV_EBUSY;
   }
 
+  /* TODO It's not clear when and where we should call this, if at all. I'm not sure how the threadpool is cleaned up at the moment. Look at this further. */
+  uv__executor()->destroy(uv__executor()); 
+
   uv__loop_close(loop);
 
 #ifndef NDEBUG

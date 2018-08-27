@@ -39,6 +39,7 @@ When a function makes use of the default executor (i.e. when using :c:func:`uv_q
 libuv preallocates and initializes the maximum number of threads allowed by
 ``UV_THREADPOOL_SIZE``. This causes a relatively minor memory overhead
 (~1MB for 128 threads) but increases the performance of threading at runtime.
+The maximum size of the default libuv executor's threadpool is 128.
 
 .. note::
     Even though a global thread pool which is shared across all events
@@ -60,27 +61,45 @@ Data types
 .. c:type:: void (*uv_after_work_cb)(uv_work_t* req, int status)
 
     Callback passed to :c:func:`uv_queue_work` which will be called on the loop
-    thread after the work on the threadpool has been completed. If the work
-    was cancelled using :c:func:`uv_cancel` `status` will be ``UV_ECANCELED``.
+    thread after the work on the executor has been completed or cancelled.
+    If the work was cancelled using :c:func:`uv_cancel`,
+    then `status` will be ``UV_ECANCELED``.
 
 .. c:type:: uv_executor_t
 
     Executor type. Use when overriding the default threadpool.
 
-.. c:type:: void (*uv_executor_submit_func)(uv_work_t* req, uv_work_options_t* opts)
+.. c:type:: void (*uv_executor_init_func)(uv_executor_t* executor)
 
-    Instruct the executor to eventually handle this request off of the loop thread.
+    Called once, the first time :c:func:`uv_executor_queue_work` is called.
+    Do any initialization you want.
 
-.. c:type:: int (*uv_executor_cancel_func)(uv_work_t* req)
+.. c:type:: void (*uv_executor_destroy_func)(uv_executor_t* executor)
 
-    Instruct the executor to cancel this request.
+    Called at some point ???
+
+.. c:type:: void (*uv_executor_submit_func)(uv_executor_t* executor, uv_work_t* req, uv_work_options_t* opts)
+
+    Called when the executor should handle this request.
+
+.. c:type:: int (*uv_executor_cancel_func)(uv_executor_t* executor, uv_work_t* req)
+
+    Called when someone wants to cancel a previously-submit'ed request.
+    Return ``UV_EBUSY`` if you cannot cancel it.
 
 .. seealso:: :c:func:`uv_cancel_t`.
 
-.. c:type:: int (*uv_executor_replace)(uv_executor_t* executor)
+.. c:type:: int (*uv_executor_done_cb)(uv_work_t* req)
+
+    libuv sets this during a successful call to uv_executor_replace.
+    An executor should invoke this CB once finished with a request.
+    This CB is thread safe.
+
+.. c:type:: int uv_executor_replace(uv_executor_t* executor)
 
     Replace the default libuv executor with this user-defined one.
     Must be called before any work is submitted to the default libuv executor.
+    Returns 0 on successs.
 
 .. c:type:: uv_work_options_t
 
@@ -89,6 +108,10 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
+.. c:member:: void* uv_work_t.reserved[0]
+
+    Space for user-defined arbitrary data. libuv does not use this field.
+
 .. c:member:: uv_loop_t* uv_work_t.loop
 
     Loop that started this request and where completion will be reported.
@@ -96,9 +119,32 @@ Public members
 
 .. seealso:: The :c:type:`uv_req_t` members also apply.
 
+.. c:member:: uv_executor_init_func uv_executor_t.init
+
+    Invoked once.
+    Can be NULL.
+
+.. c:member:: uv_executor_destroy_func uv_executor_t.destroy
+
+    Can be NULL.
+
 .. c:member:: uv_executor_submit_func uv_executor_t.submit
 
+    Must be non-NULL.
+
 .. c:member:: uv_executor_cancel_func uv_executor_t.cancel
+
+    Can be NULL.
+
+.. c:member:: uv_executor_done_func uv_executor_t.done
+
+    Assigned by libuv.
+    Executor should invoke this when work is done or successfully
+    cancelled.
+
+.. c:member:: void * uv_executor_t.data
+
+    Space for user-defined arbitrary data. libuv does not use this field.
 
 .. c:member:: uv_work_type uv_work_options_t.type
 
@@ -113,7 +159,7 @@ Public members
             UV_WORK_USER_IO,
             UV_WORK_USER_CPU,
             UV_WORK_PRIVATE,
-            UV_WORK_TYPE_MAX
+            UV_WORK_MAX = 255
         } uv_work_type;
 
 .. c:member:: int uv_work_options_t.priority
@@ -124,8 +170,8 @@ Public members
 .. c:member:: int uv_work_options_t.cancelable
 
     Boolean.
-    If truth-y, it is safe to abort this work while it is being handled
-    by a thread.
+    If non-zero, it is safe to abort this work while it is being handled
+    by a thread (e.g. by pthread_cancel'ing the thread on which it is running).
     In addition, work that has not yet been assigned to a thread can be
     cancelled.
 

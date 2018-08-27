@@ -36,6 +36,7 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/queue.h \
                    src/strscpy.c \
                    src/strscpy.h \
+                   src/executor.c \
                    src/threadpool.c \
                    src/timer.c \
                    src/uv-data-getter-setters.c \

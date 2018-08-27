@@ -107,6 +107,7 @@ int uv_getnameinfo(uv_loop_t* loop,
   req->retcode = 0;
 
   if (getnameinfo_cb) {
+    /* TODO uv_queue_work. See code from prev. projects. */
     uv__work_submit(loop,
                     &req->work_req,
                     UV__WORK_SLOW_IO,
