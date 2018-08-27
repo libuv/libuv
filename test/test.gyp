@@ -14,6 +14,7 @@
         'task.h',
         'test-active.c',
         'test-async.c',
+        'test-async-multi.c',
         'test-async-null-cb.c',
         'test-callback-stack.c',
         'test-callback-order.c',

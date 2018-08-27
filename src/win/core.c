@@ -308,6 +308,7 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
   ULONG i;
   int repeat;
   uint64_t timeout_time;
+  BOOL gotwakeup = FALSE;
 
   timeout_time = loop->time + timeout;
 
@@ -326,6 +327,16 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
          */
         if (overlappeds[i].lpOverlapped) {
           req = container_of(overlappeds[i].lpOverlapped, uv_req_t, u.io.overlapped);
+          /* If multiple async handles were triggered we might end up with
+           * multiple UV_WAKEUP requests (IOCP completion events). They all
+           * share the same req however, so we need to be careful to only make
+           * it pending once.
+           */
+          if (req->type == UV_WAKEUP) {
+            if (gotwakeup)
+              continue;
+            gotwakeup = TRUE;
+          }
           uv_insert_pending_req(loop, req);
         }
       }

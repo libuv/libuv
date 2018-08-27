@@ -155,6 +155,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/task.h \
                          test/test-active.c \
                          test/test-async.c \
+                         test/test-async-multi.c \
                          test/test-async-null-cb.c \
                          test/test-barrier.c \
                          test/test-buf.c \

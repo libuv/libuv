@@ -248,6 +248,7 @@ TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
 TEST_DECLARE   (async)
+TEST_DECLARE   (async_multi)
 TEST_DECLARE   (async_null_cb)
 TEST_DECLARE   (eintr_handling)
 TEST_DECLARE   (get_currentexe)
@@ -808,6 +809,7 @@ TASK_LIST_START
   TEST_ENTRY  (embed)
 
   TEST_ENTRY  (async)
+  TEST_ENTRY  (async_multi)
   TEST_ENTRY  (async_null_cb)
   TEST_ENTRY  (eintr_handling)
 

@@ -40,6 +40,7 @@ set(uv_test_sources
     test/test-active.c
     test/test-async-null-cb.c
     test/test-async.c
+    test/test-async-multi.c
     test/test-barrier.c
     test/test-buf.c
     test/test-callback-order.c
