@@ -37,6 +37,7 @@
 
 #include <wincrypt.h>
 
+#pragma comment(lib, "Advapi32.lib")
 
 #define UV_FS_FREE_PATHS         0x0002
 #define UV_FS_FREE_PTR           0x0008

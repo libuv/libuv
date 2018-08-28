@@ -77,6 +77,11 @@ static CRITICAL_SECTION process_title_lock;
 /* Interval (in seconds) of the high-resolution clock. */
 static double hrtime_interval_ = 0;
 
+#pragma comment(lib, "Advapi32.lib")
+#pragma comment(lib, "IPHLPAPI.lib")
+#pragma comment(lib, "Psapi.lib")
+#pragma comment(lib, "Userenv.lib")
+#pragma comment(lib, "kernel32.lib")
 
 /*
  * One-time initialization code for functionality defined in util.c.
