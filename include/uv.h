@@ -1131,8 +1131,6 @@ UV_EXTERN int uv_get_process_title(char* buffer, size_t size);
 UV_EXTERN int uv_set_process_title(const char* title);
 UV_EXTERN int uv_resident_set_memory(size_t* rss);
 UV_EXTERN int uv_uptime(double* uptime);
-UV_EXTERN uv_os_fd_t uv_get_osfhandle(int fd);
-UV_EXTERN int uv_open_osfhandle(uv_os_fd_t os_fd);
 
 typedef struct {
   long tv_sec;
