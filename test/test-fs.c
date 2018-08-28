@@ -3590,7 +3590,7 @@ TEST_IMPL(fs_fchmod_archive_readonly) {
                    NULL);
     ASSERT(r >= 0);
     ASSERT(req.result >= 0);
-    file = req.result;
+    file = (uv_os_fd_t) req.result;
     uv_fs_req_cleanup(&req);
     r = uv_fs_close(NULL, &req, file, NULL);
     ASSERT(r == 0);
@@ -3603,7 +3603,7 @@ TEST_IMPL(fs_fchmod_archive_readonly) {
     r = uv_fs_open(NULL, &req, "test_file", O_RDONLY, 0, NULL);
     ASSERT(r >= 0);
     ASSERT(req.result >= 0);
-    file = req.result;
+    file = (uv_os_fd_t) req.result;
     uv_fs_req_cleanup(&req);
     r = uv_fs_fchmod(NULL, &req, file, S_IWUSR, NULL);
     ASSERT(r == 0);
