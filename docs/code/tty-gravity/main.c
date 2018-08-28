@@ -32,7 +32,7 @@ void update(uv_timer_t *req) {
 int main() {
     loop = uv_default_loop();
 
-    uv_tty_init(loop, &tty, 1, 0);
+    uv_tty_init(loop, &tty, STDOUT_FILENO, 0);
     uv_tty_set_mode(&tty, 0);
     
     if (uv_tty_get_winsize(&tty, &width, &height)) {

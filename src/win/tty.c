@@ -172,9 +172,12 @@ void uv_console_init(void) {
 }
 
 
-int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
+int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
+  BOOL readable;
+  DWORD NumberOfEvents;
   HANDLE handle;
   CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
+  (void)unused;
 
   uv__once_init();
   handle = (HANDLE) uv__get_osfhandle(fd);
@@ -199,6 +202,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int readable) {
     fd = -1;
   }
 
+  readable = GetNumberOfConsoleInputEvents(handle, &NumberOfEvents);
   if (!readable) {
     /* Obtain the screen buffer info with the output handle. */
     if (!GetConsoleScreenBufferInfo(handle, &screen_buffer_info)) {
