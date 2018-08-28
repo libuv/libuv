@@ -21,6 +21,10 @@
 
 #include "uv-common.h"
 
+#if !defined(_WIN32)
+# include "unix/internal.h"
+#endif
+
 #include <stdlib.h>  /* abort() */
 
 static uv_executor_t *executor = NULL;
@@ -63,8 +67,7 @@ void uv__executor_work_done(uv_async_t* handle) {
   QUEUE_MOVE(&loop->wq, &wq);
   uv_mutex_unlock(&loop->wq_mutex);
 
-  /* Pull uv__work's off of wq.
-   * Run their uv_work_t's after_work_cb, if any. */
+  /* Handle each uv__work on wq. */
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
     QUEUE_REMOVE(q);
@@ -80,7 +83,7 @@ void uv__executor_work_done(uv_async_t* handle) {
   }
 }
 
-int uv_executor_replace(uv_executor_t* _executor) {
+int uv_replace_executor(uv_executor_t* _executor) {
   /* Reject if no longer safe to replace. */
   if (!safe_to_replace_executor)
     return 1;
@@ -103,7 +106,7 @@ int uv_executor_replace(uv_executor_t* _executor) {
 static void uv__executor_init(void) {
   /* Assign executor to default if none was set. */
   if (executor == NULL) {
-    executor = uv__default_executor();
+    assert(!uv_replace_executor(uv__default_executor()));
   }
 
   executor->init(executor);
@@ -114,17 +117,18 @@ int uv_executor_queue_work(uv_loop_t* loop,
                            uv_work_options_t* opts,
                            uv_work_cb work_cb,
                            uv_after_work_cb after_work_cb) {
-  /* Once work is queued, it is no longer safe to replace the executor. */
-  safe_to_replace_executor = 0;
-
   /* Initialize the executor once. */
   uv_once(&once, uv__executor_init);
+
+  /* Once work is queued, it is no longer safe to replace the executor. */
+  safe_to_replace_executor = 0;
 
   /* Check validity. */
   if (loop == NULL || req == NULL || work_cb == NULL)
     return UV_EINVAL;
 
   /* Register req on loop. */
+  printf("uv_executor_queue_work: req %p\n", req);
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
@@ -144,24 +148,41 @@ int uv_queue_work(uv_loop_t* loop,
   return uv_executor_queue_work(loop, req, NULL, work_cb, after_work_cb);
 }
 
+static int uv__cancel_ask_executor(uv_work_t* work) {
+  int r;
+
+  r = UV_EINVAL;
+  printf("Trying to call cancel\n");
+  if (executor->cancel != NULL) {
+    printf("Calling cancel!\n");
+    r = executor->cancel(executor, work);
+    if (r == 0)
+      work->work_cb = uv__executor_work_cancelled;
+  }
+
+  return r;
+}
+
 int uv_cancel(uv_req_t* req) {
   uv_work_t* work;
   int r;
 
+  printf("uv_cancel: req %p\n", req);
+
   r = UV_EINVAL;
   switch (req->type) {
-  /* Currently, only requests submitted to an executor can be cancelled. */
   case UV_FS:
   case UV_GETADDRINFO:
   case UV_GETNAMEINFO:
+    /* These prepare and submit requests to the executor. */
+    work = (uv_work_t *) req->reserved[0];
+    r = uv__cancel_ask_executor(work);
+    break;
   case UV_WORK:
-    if (executor->cancel != NULL) {
-      work = (uv_work_t *) req;
-      r = executor->cancel(executor, work);
-      if (r == 0) {
-        work->work_cb = uv__executor_work_cancelled;
-      }
-    }
+    /* This is a direct request to the executor. */
+    work = (uv_work_t *) req;
+    r = uv__cancel_ask_executor(work);
+    break;
   default:
     return UV_EINVAL;
   }
@@ -173,3 +194,13 @@ int uv_cancel(uv_req_t* req) {
 void uv__executor_work_cancelled(uv_work_t* work) {
   abort();
 }
+
+#ifndef _WIN32
+UV_DESTRUCTOR(static void cleanup(void)) {
+  if (!executor)
+    return;
+
+  if (executor->destroy)
+    executor->destroy(executor);
+}
+#endif

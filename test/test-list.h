@@ -361,14 +361,15 @@ TEST_DECLARE   (fs_open_readonly_acl)
 TEST_DECLARE   (fs_fchmod_archive_readonly)
 #endif
 TEST_DECLARE   (strscpy)
-TEST_DECLARE   (threadpool_queue_work_simple)
-TEST_DECLARE   (threadpool_queue_work_einval)
-TEST_DECLARE   (threadpool_multiple_event_loops)
-TEST_DECLARE   (threadpool_cancel_getaddrinfo)
-TEST_DECLARE   (threadpool_cancel_getnameinfo)
-TEST_DECLARE   (threadpool_cancel_work)
-TEST_DECLARE   (threadpool_cancel_fs)
-TEST_DECLARE   (threadpool_cancel_single)
+TEST_DECLARE   (executor_queue_work_simple)
+TEST_DECLARE   (executor_queue_work_einval)
+TEST_DECLARE   (executor_multiple_event_loops)
+TEST_DECLARE   (executor_cancel_getaddrinfo)
+TEST_DECLARE   (executor_cancel_getnameinfo)
+TEST_DECLARE   (executor_cancel_work)
+TEST_DECLARE   (executor_cancel_fs)
+TEST_DECLARE   (executor_cancel_single)
+TEST_DECLARE   (executor_replace)
 TEST_DECLARE   (thread_local_storage)
 TEST_DECLARE   (thread_stack_size)
 TEST_DECLARE   (thread_stack_size_explicit)
@@ -452,7 +453,7 @@ TEST_DECLARE  (fork_fs_events_child_dir)
 TEST_DECLARE  (fork_fs_events_file_parent_child)
 #endif
 #ifndef __MVS__
-TEST_DECLARE  (fork_threadpool_queue_work_simple)
+TEST_DECLARE  (fork_executor_queue_work_simple)
 #endif
 #endif
 
@@ -932,6 +933,7 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (open_osfhandle_valid_handle)
+<<<<<<< HEAD
   TEST_ENTRY  (strscpy)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
@@ -941,6 +943,17 @@ TASK_LIST_START
   TEST_ENTRY  (threadpool_cancel_work)
   TEST_ENTRY  (threadpool_cancel_fs)
   TEST_ENTRY  (threadpool_cancel_single)
+=======
+  TEST_ENTRY  (executor_queue_work_simple)
+  TEST_ENTRY  (executor_queue_work_einval)
+  TEST_ENTRY  (executor_multiple_event_loops)
+  TEST_ENTRY  (executor_cancel_getaddrinfo)
+  TEST_ENTRY  (executor_cancel_getnameinfo)
+  TEST_ENTRY  (executor_cancel_work)
+  TEST_ENTRY  (executor_cancel_fs)
+  TEST_ENTRY  (executor_cancel_single)
+  TEST_ENTRY  (executor_replace)
+>>>>>>> threadpool: tests for pluggable threadpool
   TEST_ENTRY  (thread_local_storage)
   TEST_ENTRY  (thread_stack_size)
   TEST_ENTRY  (thread_stack_size_explicit)
@@ -972,7 +985,7 @@ TASK_LIST_START
   TEST_ENTRY  (fork_fs_events_file_parent_child)
 #endif
 #ifndef __MVS__
-  TEST_ENTRY  (fork_threadpool_queue_work_simple)
+  TEST_ENTRY  (fork_executor_queue_work_simple)
 #endif
 #endif
 

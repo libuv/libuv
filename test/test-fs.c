@@ -1295,6 +1295,8 @@ TEST_IMPL(fs_access) {
   unlink("test_file");
   rmdir("test_dir");
 
+  printf("Hello world\n");
+
   loop = uv_default_loop();
 
   /* File should not exist */

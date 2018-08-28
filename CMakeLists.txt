@@ -143,8 +143,8 @@ set(uv_test_sources
     test/test-tcp-writealot.c
     test/test-thread-equal.c
     test/test-thread.c
-    test/test-threadpool-cancel.c
-    test/test-threadpool.c
+    test/test-executor-cancel.c
+    test/test-executor.c
     test/test-timer-again.c
     test/test-timer-from-check.c
     test/test-timer.c

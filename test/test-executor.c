@@ -1,0 +1,255 @@
+/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
+#include "uv.h"
+#include "task.h"
+
+static int work_cb_count;
+static int after_work_cb_count;
+static uv_work_t work_req;
+static char data;
+
+
+static void work_cb(uv_work_t* req) {
+  ASSERT(req == &work_req);
+  ASSERT(req->data == &data);
+  work_cb_count++;
+}
+
+
+static void after_work_cb(uv_work_t* req, int status) {
+  ASSERT(status == 0);
+  ASSERT(req == &work_req);
+  ASSERT(req->data == &data);
+  after_work_cb_count++;
+}
+
+
+TEST_IMPL(executor_queue_work_simple) {
+  int r;
+
+  work_req.data = &data;
+  r = uv_queue_work(uv_default_loop(), &work_req, work_cb, after_work_cb);
+  ASSERT(r == 0);
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(work_cb_count == 1);
+  ASSERT(after_work_cb_count == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(executor_queue_work_einval) {
+  int r;
+
+  work_req.data = &data;
+  r = uv_queue_work(uv_default_loop(), &work_req, NULL, after_work_cb);
+  ASSERT(r == UV_EINVAL);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(work_cb_count == 0);
+  ASSERT(after_work_cb_count == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+/* Define an toy_executor.
+ * This is a trivial one-thread producer-consumer setup with a fixed buffer of work. */
+#define TOY_EXECUTOR_MAX_REQUESTS 100
+static uv_executor_t toy_executor;
+static struct toy_executor_data {
+  uv_mutex_t mutex;
+
+  int init_called;
+  int submit_called;
+  int cancel_called;
+
+  int n_completed;
+
+  int head;
+  int tail;
+  uv_work_t* queued_work[TOY_EXECUTOR_MAX_REQUESTS];
+
+  int no_more_work_coming;
+  int thread_exiting;
+
+  uv_thread_t thread;
+  uv_executor_t *executor;
+} toy_executor_data;
+
+static void worker(void* arg) {
+  struct toy_executor_data* data;
+  uv_work_t* work;
+  int should_break;
+
+  data = (struct toy_executor_data *) arg;
+
+  should_break = 0;
+  while (1) {
+    /* Run until we (1) have no work, and (2) see data->no_more_work_coming. */
+    uv_mutex_lock(&data->mutex);
+
+    while (data->head < data->tail) {
+      printf("worker: found %d work -- head %d tail %d\n", data->tail - data->head, data->head, data->tail);
+      ASSERT(0 <= data->head && data->head <= data->tail);
+      ASSERT(data->tail <= TOY_EXECUTOR_MAX_REQUESTS);
+
+      /* Handle one. */
+      work = data->queued_work[data->head];
+      printf("worker: Running work %p\n", work);
+      work->work_cb(work);
+
+      /* Tell libuv we're done with this work. */
+      printf("worker: Telling libuv we're done with %p\n", work);
+      data->executor->done(work);
+
+      /* Advance. */
+      printf("worker: Advancing\n");
+      data->head++;
+      data->n_completed++;
+    }
+
+    if (data->no_more_work_coming) {
+      printf("worker exiting\n");
+      should_break = 1;
+      data->thread_exiting = 1;
+    }
+
+    uv_mutex_unlock(&data->mutex);
+
+    if (should_break)
+      break;
+  }
+}
+
+static void toy_executor_init(uv_executor_t* executor) {
+  struct toy_executor_data* data;
+  int i;
+  
+  data = (struct toy_executor_data *) executor->data;
+  data->init_called = 1;
+  data->submit_called = 0;
+  data->cancel_called = 0;
+  data->n_completed = 0;
+  data->head = 0;
+  data->tail = 0;
+  data->no_more_work_coming = 0;
+  data->thread_exiting = 0;
+  data->executor = executor;
+  ASSERT(0 == uv_mutex_init(&data->mutex));
+
+  ASSERT(0 == uv_thread_create(&data->thread, worker, data));
+}
+
+static void toy_executor_destroy(uv_executor_t* executor) {
+  struct toy_executor_data* data;
+  
+  data = (struct toy_executor_data *) executor->data;
+
+}
+
+static void toy_executor_submit(uv_executor_t* executor,
+                                uv_work_t* req,
+                                const uv_work_options_t* opts) {
+  struct toy_executor_data* data;
+  printf("toy_executor_submit: req %p\n", req);
+  
+  data = (struct toy_executor_data *) executor->data;
+  data->submit_called++;
+
+  uv_mutex_lock(&data->mutex);
+  data->queued_work[data->tail] = req;
+  data->tail++;
+  uv_mutex_unlock(&data->mutex);
+}
+
+static int toy_executor_cancel(uv_executor_t* executor, uv_work_t* req) {
+  struct toy_executor_data* data;
+  
+  data = (struct toy_executor_data *) executor->data;
+  printf("toy_executor_cancel: req %p\n", req);
+  data->cancel_called++;
+
+  return UV_EINVAL;
+}
+
+static void toy_work(uv_work_t* req) {
+  printf("toy_work: req %p\n", req);
+  ASSERT(req);
+}
+
+TEST_IMPL(executor_replace) {
+  uv_work_t work[100];
+  uv_work_t cancel_work;
+  int i;
+
+  /* Replace the builtin executor with our toy_executor. */
+  toy_executor.init = toy_executor_init;
+  toy_executor.destroy = toy_executor_destroy;
+  toy_executor.submit = toy_executor_submit;
+  toy_executor.cancel = toy_executor_cancel;
+  toy_executor.data = &toy_executor_data;
+  ASSERT(0 == uv_replace_executor(&toy_executor));
+
+  /* Submit work. */
+  for (i = 0; i < TOY_EXECUTOR_MAX_REQUESTS; i++) {
+    printf("Queuing work %p\n", &work[i]);
+    ASSERT(0 == uv_executor_queue_work(uv_default_loop(), &work[i], NULL, toy_work, NULL));
+  }
+
+  /* Having queued work, we should no longer be able to replace. */
+  ASSERT(0 != uv_replace_executor(&toy_executor));
+
+  /* Try cancelling one. Must be assured it hasn't yet been completed, so
+   * fake a request ourselves.
+   * TODO This is unsound. */
+  cancel_work.type = UV_WORK;
+  ASSERT(UV_EINVAL == uv_cancel(&cancel_work));
+
+  /* Side channel: tell pool we're done. */
+  printf("Telling pool we're done\n");
+  uv_mutex_lock(&toy_executor_data.mutex);
+  toy_executor_data.no_more_work_coming = 1;
+  uv_mutex_unlock(&toy_executor_data.mutex);
+
+  /* Side channel: Wait until pool finishes. */
+  printf("Waiting for pool\n");
+  while (1) {
+    uv_mutex_lock(&toy_executor_data.mutex);
+    if (toy_executor_data.thread_exiting)
+      break;
+    uv_mutex_unlock(&toy_executor_data.mutex);
+  }
+
+  /* Validate. */
+  printf("Validating\n");
+  ASSERT(1 == toy_executor_data.init_called);
+  ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.submit_called);
+  ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.n_completed);
+  ASSERT(1 == toy_executor_data.cancel_called);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

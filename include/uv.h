@@ -1057,7 +1057,7 @@ struct uv_executor_s {
   uv_executor_done_cb done;
 };
 
-UV_EXTERN int uv_executor_replace(uv_executor_t* executor);
+UV_EXTERN int uv_replace_executor(uv_executor_t* executor);
 
 /* Deprecated. */
 UV_EXTERN int uv_queue_work(uv_loop_t* loop,

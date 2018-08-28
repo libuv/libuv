@@ -68,8 +68,11 @@ static void worker(void* arg) {
   struct default_executor_fields* fields;
 
   executor = ((struct worker_arg*) arg)->executor;
+	assert(executor);
   fields = (struct default_executor_fields*) executor->data;
+	assert(fields);
 
+  /* Signal we're ready. */
   uv_sem_post(((struct worker_arg*) arg)->ready);
   arg = NULL;
 
@@ -106,7 +109,14 @@ static void worker(void* arg) {
     req = container_of(w, uv_work_t, work_req);
 
     /* Do the work. */
+//    printf("Worker: running work_cb for req %p\n", req);
     req->work_cb(req);
+//    printf("Worker: Done with req %p\n", req);
+
+    /* Signal uv_cancel() that the work req is done executing. */
+    uv_mutex_lock(&fields->mutex);
+    w->work = NULL;
+    uv_mutex_unlock(&fields->mutex);
 
     /* Tell libuv we finished with this request. */
     executor->done(req);
@@ -168,7 +178,7 @@ static void init_workers(struct default_executor_fields* fields) {
 }
 
 #ifndef _WIN32
-UV_DESTRUCTOR(static void cleanup(struct default_executor_fields* fields)) {
+static void cleanup(struct default_executor_fields* fields) {
   unsigned int i;
 
   if (fields->nworkers == 0)
@@ -224,10 +234,12 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   struct uv__work* wreq;
 
   fields = (struct default_executor_fields *) executor->data;
+	assert(fields);
 
   /* Put executor-specific data into req->reserved[0]. */
   wreq = &req->work_req;
   req->reserved[0] = wreq;
+  wreq->work = 0xdeadbeef; /* Non-NULL: "Not yet completed". */
 
   uv_mutex_lock(&fields->mutex);
 
@@ -240,22 +252,37 @@ static void uv__default_executor_submit(uv_executor_t* executor,
 static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) {
   struct default_executor_fields* fields;
   struct uv__work* wreq;
-  int cancelled;
+  int assigned;
+  int already_completed;
+  int still_on_queue;
+  int can_cancel;
 
   fields = (struct default_executor_fields *) executor->data;
+	assert(fields);
   wreq = (struct uv__work *) req->reserved[0];
+	assert(wreq);
 
   uv_mutex_lock(&fields->mutex);
 
-  /* Cancellable if it is still on the TP queue. */
-  cancelled = !QUEUE_EMPTY(&wreq->wq);
-  if (cancelled)
+  /* Check if we can cancel it. Determine what state req is in. */
+  assigned = QUEUE_EMPTY(&wreq->wq);
+  already_completed = (wreq->work == NULL);
+  still_on_queue = !assigned && !already_completed;
+  
+  printf("assigned %d already_completed %d still_on_queue\n", assigned, already_completed, still_on_queue); 
+
+  can_cancel = still_on_queue;
+  if (can_cancel)
     QUEUE_REMOVE(&wreq->wq);
 
   uv_mutex_unlock(&fields->mutex);
 
-  if (cancelled) {
-    /* We are now done with req. Notify libuv. */
+	printf("uv__default_executor_cancel: can_cancel %d\n", can_cancel);
+  if (can_cancel) {
+    /* We are now done with req. Notify libuv.
+     * Note that event loop can't tell we were cancelled yet,
+     * not until later in uv_cancel, but event loop won't go until
+     * uv_cancel returns b/c libuv is single-threaded. */
     executor->done(req);
     return 0;
   }

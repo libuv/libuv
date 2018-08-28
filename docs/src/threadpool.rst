@@ -26,7 +26,7 @@ The size can be controlled by setting the ``UV_THREADPOOL_SIZE`` environment
 variable to the desired number of threads.
 
 libuv also permits users to replace the default executor with their own
-implementation via :c:func:`uv_executor_replace`.
+implementation via :c:func:`uv_replace_executor`.
 Users may thus define a more sophisticated executor if desired,
 e.g. handling I/O and CPU in different pools.
 
@@ -91,11 +91,11 @@ Data types
 
 .. c:type:: int (*uv_executor_done_cb)(uv_work_t* req)
 
-    libuv sets this during a successful call to uv_executor_replace.
+    libuv sets this during a successful call to :c:func:`uv_replace_executor`.
     An executor should invoke this CB once finished with a request.
     This CB is thread safe.
 
-.. c:type:: int uv_executor_replace(uv_executor_t* executor)
+.. c:type:: int uv_replace_executor(uv_executor_t* executor)
 
     Replace the default libuv executor with this user-defined one.
     Must be called before any work is submitted to the default libuv executor.
