@@ -370,9 +370,9 @@ terminal information.
 The first thing to do is to initialize a ``uv_tty_t`` with the file descriptor
 it reads/writes from. This is achieved with::
 
-    int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int readable)
+    int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int unused)
 
-Set ``readable`` to true if you plan to use ``uv_read_start()`` on the stream.
+The ``unused`` parameter is now auto-detected.
 
 It is then best to use ``uv_tty_set_mode`` to set the mode to *normal*
 which enables most TTY formatting, flow-control and other settings. Other_ modes
