@@ -148,8 +148,3 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
 int uv_is_closing(const uv_handle_t* handle) {
   return !!(handle->flags & (UV_HANDLE_CLOSING | UV_HANDLE_CLOSED));
 }
-
-
-int uv_open_osfhandle(uv_os_fd_t os_fd) {
-  return _open_osfhandle((intptr_t) os_fd, 0);
-}

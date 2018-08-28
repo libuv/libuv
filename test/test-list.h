@@ -352,7 +352,6 @@ TEST_DECLARE   (fs_read_write_null_arguments)
 #ifdef _WIN32
 TEST_DECLARE   (fs_invalid_filename)
 #endif
-TEST_DECLARE   (open_osfhandle_valid_handle)
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
@@ -925,7 +924,6 @@ TASK_LIST_START
   TEST_ENTRY  (fs_open_readonly_acl)
   TEST_ENTRY  (fs_fchmod_archive_readonly)
 #endif
-  TEST_ENTRY  (open_osfhandle_valid_handle)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
   TEST_ENTRY  (threadpool_multiple_event_loops)
