@@ -93,7 +93,7 @@ static struct toy_executor_data {
   uv_work_t* queued_work[TOY_EXECUTOR_MAX_REQUESTS];
 
   int no_more_work_coming;
-  int thread_exiting;
+  uv_sem_t thread_exiting;
 
   uv_thread_t thread;
   uv_executor_t *executor;
@@ -134,7 +134,7 @@ static void worker(void* arg) {
     if (data->no_more_work_coming) {
       printf("worker exiting\n");
       should_break = 1;
-      data->thread_exiting = 1;
+      uv_sem_post(&data->thread_exiting);
     }
 
     uv_mutex_unlock(&data->mutex);
@@ -146,7 +146,6 @@ static void worker(void* arg) {
 
 static void toy_executor_init(uv_executor_t* executor) {
   struct toy_executor_data* data;
-  int i;
   
   data = (struct toy_executor_data *) executor->data;
   data->init_called = 1;
@@ -156,9 +155,9 @@ static void toy_executor_init(uv_executor_t* executor) {
   data->head = 0;
   data->tail = 0;
   data->no_more_work_coming = 0;
-  data->thread_exiting = 0;
   data->executor = executor;
   ASSERT(0 == uv_mutex_init(&data->mutex));
+  ASSERT(0 == uv_sem_init(&data->thread_exiting, 0));
 
   ASSERT(0 == uv_thread_create(&data->thread, worker, data));
 }
@@ -168,6 +167,8 @@ static void toy_executor_destroy(uv_executor_t* executor) {
   
   data = (struct toy_executor_data *) executor->data;
 
+  uv_thread_join(&data->thread);
+  uv_mutex_destroy(&data->mutex);
 }
 
 static void toy_executor_submit(uv_executor_t* executor,
@@ -214,9 +215,12 @@ TEST_IMPL(executor_replace) {
   ASSERT(0 == uv_replace_executor(&toy_executor));
 
   /* Submit work. */
-  for (i = 0; i < TOY_EXECUTOR_MAX_REQUESTS; i++) {
+  for (i = 0; i < TOY_EXECUTOR_MAX_REQUESTS/2; i++) {
     printf("Queuing work %p\n", &work[i]);
-    ASSERT(0 == uv_executor_queue_work(uv_default_loop(), &work[i], NULL, toy_work, NULL));
+    if (i < TOY_EXECUTOR_MAX_REQUESTS/2)
+      ASSERT(0 == uv_queue_work(uv_default_loop(), &work[i], toy_work, NULL));
+    else
+      ASSERT(0 == uv_executor_queue_work(uv_default_loop(), &work[i], NULL, toy_work, NULL));
   }
 
   /* Having queued work, we should no longer be able to replace. */
@@ -226,22 +230,17 @@ TEST_IMPL(executor_replace) {
    * fake a request ourselves.
    * TODO This is unsound. */
   cancel_work.type = UV_WORK;
-  ASSERT(UV_EINVAL == uv_cancel(&cancel_work));
+  ASSERT(UV_EINVAL == uv_cancel((uv_req_t *) &cancel_work));
 
-  /* Side channel: tell pool we're done. */
+  /* Side channel: tell pool we're done and wait until it finishes.
+   * Do this so we can be confident the subsequent asserts will fail. */
   printf("Telling pool we're done\n");
   uv_mutex_lock(&toy_executor_data.mutex);
   toy_executor_data.no_more_work_coming = 1;
   uv_mutex_unlock(&toy_executor_data.mutex);
 
-  /* Side channel: Wait until pool finishes. */
   printf("Waiting for pool\n");
-  while (1) {
-    uv_mutex_lock(&toy_executor_data.mutex);
-    if (toy_executor_data.thread_exiting)
-      break;
-    uv_mutex_unlock(&toy_executor_data.mutex);
-  }
+  uv_sem_wait(&toy_executor_data.thread_exiting);
 
   /* Validate. */
   printf("Validating\n");
