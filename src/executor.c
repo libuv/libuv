@@ -29,8 +29,9 @@
 
 static uv_executor_t *executor = NULL;
 
-static int safe_to_replace_executor = 1;
 static uv_once_t once = UV_ONCE_INIT;
+static volatile int initialized = 1; /* Protected by once in
+                    uv_executor_queue_work, but not in uv_replace_executor. */
 
 uv_executor_t * uv__executor(void) {
   return executor;
@@ -85,7 +86,7 @@ void uv__executor_work_done(uv_async_t* handle) {
 
 int uv_replace_executor(uv_executor_t* _executor) {
   /* Reject if no longer safe to replace. */
-  if (!safe_to_replace_executor)
+  if (!initialized)
     return 1;
 
   /* Check validity of _executor. */
@@ -110,6 +111,9 @@ static void uv__executor_init(void) {
   }
 
   executor->init(executor);
+
+  /* Once initialized, it is no longer safe to replace. */
+  initialized = 0;
 }
 
 int uv_executor_queue_work(uv_loop_t* loop,
@@ -119,9 +123,6 @@ int uv_executor_queue_work(uv_loop_t* loop,
                            uv_after_work_cb after_work_cb) {
   /* Initialize the executor once. */
   uv_once(&once, uv__executor_init);
-
-  /* Once work is queued, it is no longer safe to replace the executor. */
-  safe_to_replace_executor = 0;
 
   /* Check validity. */
   if (loop == NULL || req == NULL || work_cb == NULL)
