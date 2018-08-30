@@ -240,6 +240,14 @@ void uv_freeaddrinfo(struct addrinfo* ai) {
   uv__free(alloc_ptr);
 }
 
+static void uv__getaddrinfo_executor_work(uv_work_t* req) {
+  uv__getaddrinfo_work(&((uv_getaddrinfo_t*) req->data)->work_req);
+}
+
+static void uv__getaddrinfo_executor_done(uv_work_t* req, int status) {
+  uv__getaddrinfo_done(&((uv_getaddrinfo_t*) req->data)->work_req, status);
+  uv__free(req);
+}
 
 /*
  * Entry point for getaddrinfo
@@ -260,6 +268,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
                    const char* node,
                    const char* service,
                    const struct addrinfo* hints) {
+  uv_work_t* work;
   char hostname_ascii[256];
   int nodesize = 0;
   int servicesize = 0;
@@ -321,6 +330,14 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   /* save alloc_ptr now so we can free if error */
   req->alloc = (void*)alloc_ptr;
+  work = NULL;
+  if (getaddrinfo_cb) {
+    work = uv__malloc(sizeof(*work));
+    if (!work) {
+      err = WSAENOBUFS;
+      goto error;
+    }
+  }
 
   /* Convert node string to UTF16 into allocated memory and save pointer in the
    * request. */
@@ -376,12 +393,14 @@ int uv_getaddrinfo(uv_loop_t* loop,
   uv__req_register(loop, req);
 
   if (getaddrinfo_cb) {
-    /* TODO uv_queue_work. See code from prev. projects. */
-    uv__work_submit(loop,
-                    &req->work_req,
-                    UV__WORK_SLOW_IO,
-                    uv__getaddrinfo_work,
-                    uv__getaddrinfo_done);
+    /* TODO options should indicate type. */
+    work->data = req;
+    req->reserved[0] = work; /* For uv_cancel. */
+    uv_executor_queue_work(loop,
+                           work,
+                           NULL,
+                           uv__getaddrinfo_executor_work,
+                           uv__getaddrinfo_executor_done);
     return 0;
   } else {
     uv__getaddrinfo_work(&req->work_req);
@@ -394,6 +413,10 @@ error:
     uv__free(req->alloc);
     req->alloc = NULL;
   }
+
+  if (work != NULL)
+    uv__free(work);
+
   return uv_translate_sys_error(err);
 }
 
