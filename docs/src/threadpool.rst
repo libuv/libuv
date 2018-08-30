@@ -196,6 +196,11 @@ API
     Once `work_cb` is completed, `after_work_cb` will be
     called on loop's loop thread.
 
+    The `opts` can guide the executor used by libuv.
+
+    `req` must remain valid until `after_work_cb` is executed.
+    `opts` need not remain valid once `uv_executor_queue_work` returns.
+
     This request can be cancelled with :c:func:`uv_cancel`.
 
 .. seealso:: The :c:type:`uv_req_t` API functions also apply.
