@@ -184,7 +184,9 @@ static void cleanup(struct default_executor_fields* fields) {
   if (fields->nworkers == 0)
     return;
 
+  uv_mutex_lock(&fields->mutex);
   post(fields, &fields->exit_message);
+  uv_mutex_unlock(&fields->mutex);
 
   for (i = 0; i < fields->nworkers; i++)
     if (uv_thread_join(fields->workers + i))
