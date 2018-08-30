@@ -27,6 +27,8 @@
 
 #include <stdlib.h>  /* abort() */
 
+#include <stdio.h> /* Debug */
+
 static uv_executor_t *executor = NULL;
 
 static uv_once_t once = UV_ONCE_INIT;
@@ -121,6 +123,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
                            uv_work_options_t* opts,
                            uv_work_cb work_cb,
                            uv_after_work_cb after_work_cb) {
+  char work_type[16];
   /* Initialize the executor once. */
   uv_once(&once, uv__executor_init);
 
@@ -129,11 +132,40 @@ int uv_executor_queue_work(uv_loop_t* loop,
     return UV_EINVAL;
 
   /* Register req on loop. */
-  printf("uv_executor_queue_work: req %p\n", req);
+  printf("uv_executor_queue_work: req %p\n", (void *) req);
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
+
+  if (opts) {
+    switch(opts->type) {
+    case UV_WORK_UNKNOWN:
+      sprintf(work_type, "%s", "UV_WORK_UNKNOWN");
+      break;
+    case UV_WORK_FS:
+      sprintf(work_type, "%s", "UV_WORK_FS");
+      break;
+    case UV_WORK_DNS:
+      sprintf(work_type, "%s", "UV_WORK_DNS");
+      break;
+    case UV_WORK_USER_IO:
+      sprintf(work_type, "%s", "UV_WORK_USER_IO");
+      break;
+    case UV_WORK_USER_CPU:
+      sprintf(work_type, "%s", "UV_WORK_USER_CPU");
+      break;
+    case UV_WORK_PRIVATE:
+      sprintf(work_type, "%s", "UV_WORK_PRIVATE");
+      break;
+    default:
+      sprintf(work_type, "%s", "UNKNOWN");
+      break;
+    }
+    fprintf(stderr, "uv_executor_queue_work: type %d: %s\n", opts->type, work_type);
+  }
+  else
+    fprintf(stderr, "uv_executor_queue_work: no options provided\n");
 
   /* Submit to the executor. */
   executor->submit(executor, req, opts);
@@ -146,7 +178,12 @@ int uv_queue_work(uv_loop_t* loop,
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
   /* Deprecated. */
-  return uv_executor_queue_work(loop, req, NULL, work_cb, after_work_cb);
+  uv_work_options_t options;
+  options.type = UV_WORK_UNKNOWN;
+  options.priority = -1;
+  options.cancelable = 0;
+  options.data = NULL;
+  return uv_executor_queue_work(loop, req, &options, work_cb, after_work_cb);
 }
 
 static int uv__cancel_ask_executor(uv_work_t* work) {
@@ -168,7 +205,7 @@ int uv_cancel(uv_req_t* req) {
   uv_work_t* work;
   int r;
 
-  printf("uv_cancel: req %p\n", req);
+  printf("uv_cancel: req %p\n", (void *) req);
 
   r = UV_EINVAL;
   switch (req->type) {

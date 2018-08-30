@@ -93,6 +93,7 @@ int uv_getnameinfo(uv_loop_t* loop,
                    const struct sockaddr* addr,
                    int flags) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   if (req == NULL || addr == NULL)
     return UV_EINVAL;
@@ -126,17 +127,21 @@ int uv_getnameinfo(uv_loop_t* loop,
   req->retcode = 0;
 
   if (getnameinfo_cb) {
-    /* TODO options should indicate type. */
     work->data = req;
     req->reserved[0] = work; /* For uv_cancel. */
+    options.type = UV_WORK_DNS;
+    options.priority = -1;
+    options.cancelable = 0;
+    options.data = NULL;
     printf("getnameinfo: req %p work %p\n", req, work);
     uv_executor_queue_work(loop,
                            work,
-                           NULL,
+                           &options,
                            uv__getnameinfo_executor_work,
                            uv__getnameinfo_executor_done);
     return 0;
   } else {
+    /* TODO uv__getworkinfo_work and done APIs should take req directly. Windows too. */
     uv__getnameinfo_work(&req->work_req);
     uv__getnameinfo_done(&req->work_req, 0);
     return req->retcode;

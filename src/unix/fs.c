@@ -137,16 +137,19 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   }                                                                           \
   while (0)
 
-/* TODO options should indicate type. */
 #define POST                                                                  \
   do {                                                                        \
     if (cb != NULL) {                                                         \
-      printf("fs POST: req %p work %p\n", req, work);                         \
+      printf("fs POST: req %p work %p\n", (void *) req, (void *) work);       \
       uv__req_init(loop, req, UV_FS);                                         \
       req->reserved[0] = work; /* For uv_cancel. */                           \
+      options.type = UV_WORK_FS;                                              \
+      options.priority = -1;                                                  \
+      options.cancelable = 0;                                                 \
+      options.data = NULL;                                                    \
       uv_executor_queue_work(loop,                                            \
                       work,                                                   \
-                      NULL,                                                   \
+                      &options,                                               \
                       uv__fs_executor_work,                                   \
                       uv__fs_executor_done);                                  \
       return 0;                                                               \
@@ -1243,7 +1246,7 @@ static ssize_t uv__fs_write_all(uv_fs_t* req) {
   return total;
 }
 
-/* TODO uv__fs_work and done APIs should take req directly. */
+/* TODO uv__fs_work and done APIs should take req directly. Windows too. */
 static void uv__fs_work(struct uv__work* w) {
   int retry_on_eintr;
   uv_fs_t* req;
@@ -1338,6 +1341,7 @@ int uv_fs_access(uv_loop_t* loop,
                  int flags,
                  uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(ACCESS);
   PATH;
@@ -1352,6 +1356,7 @@ int uv_fs_chmod(uv_loop_t* loop,
                 int mode,
                 uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(CHMOD);
   PATH;
@@ -1367,6 +1372,7 @@ int uv_fs_chown(uv_loop_t* loop,
                 uv_gid_t gid,
                 uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(CHOWN);
   PATH;
@@ -1378,6 +1384,7 @@ int uv_fs_chown(uv_loop_t* loop,
 
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(CLOSE);
   req->file = file;
@@ -1391,6 +1398,7 @@ int uv_fs_fchmod(uv_loop_t* loop,
                  int mode,
                  uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FCHMOD);
   req->file = file;
@@ -1406,6 +1414,7 @@ int uv_fs_fchown(uv_loop_t* loop,
                  uv_gid_t gid,
                  uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FCHOWN);
   req->file = file;
@@ -1422,6 +1431,7 @@ int uv_fs_lchown(uv_loop_t* loop,
                  uv_gid_t gid,
                  uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(LCHOWN);
   PATH;
@@ -1433,6 +1443,7 @@ int uv_fs_lchown(uv_loop_t* loop,
 
 int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FDATASYNC);
   req->file = file;
@@ -1442,6 +1453,7 @@ int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 
 int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FSTAT);
   req->file = file;
@@ -1451,6 +1463,7 @@ int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 
 int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FSYNC);
   req->file = file;
@@ -1464,6 +1477,7 @@ int uv_fs_ftruncate(uv_loop_t* loop,
                     int64_t off,
                     uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FTRUNCATE);
   req->file = file;
@@ -1479,6 +1493,7 @@ int uv_fs_futime(uv_loop_t* loop,
                  double mtime,
                  uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(FUTIME);
   req->file = file;
@@ -1490,6 +1505,7 @@ int uv_fs_futime(uv_loop_t* loop,
 
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(LSTAT);
   PATH;
@@ -1503,6 +1519,7 @@ int uv_fs_link(uv_loop_t* loop,
                const char* new_path,
                uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(LINK);
   PATH2;
@@ -1516,6 +1533,7 @@ int uv_fs_mkdir(uv_loop_t* loop,
                 int mode,
                 uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(MKDIR);
   PATH;
@@ -1529,6 +1547,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
                   const char* tpl,
                   uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(MKDTEMP);
   req->path = uv__strdup(tpl);
@@ -1548,6 +1567,7 @@ int uv_fs_open(uv_loop_t* loop,
                int mode,
                uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(OPEN);
   PATH;
@@ -1564,6 +1584,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
                int64_t off,
                uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(READ);
 
@@ -1599,6 +1620,7 @@ int uv_fs_scandir(uv_loop_t* loop,
                   int flags,
                   uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(SCANDIR);
   PATH;
@@ -1612,6 +1634,7 @@ int uv_fs_readlink(uv_loop_t* loop,
                    const char* path,
                    uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(READLINK);
   PATH;
@@ -1624,6 +1647,7 @@ int uv_fs_realpath(uv_loop_t* loop,
                   const char * path,
                   uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(REALPATH);
   PATH;
@@ -1637,6 +1661,7 @@ int uv_fs_rename(uv_loop_t* loop,
                  const char* new_path,
                  uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(RENAME);
   PATH2;
@@ -1646,6 +1671,7 @@ int uv_fs_rename(uv_loop_t* loop,
 
 int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(RMDIR);
   PATH;
@@ -1661,6 +1687,7 @@ int uv_fs_sendfile(uv_loop_t* loop,
                    size_t len,
                    uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(SENDFILE);
   req->flags = in_fd; /* hack */
@@ -1673,6 +1700,7 @@ int uv_fs_sendfile(uv_loop_t* loop,
 
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(STAT);
   PATH;
@@ -1687,6 +1715,7 @@ int uv_fs_symlink(uv_loop_t* loop,
                   int flags,
                   uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(SYMLINK);
   PATH2;
@@ -1697,6 +1726,7 @@ int uv_fs_symlink(uv_loop_t* loop,
 
 int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(UNLINK);
   PATH;
@@ -1711,6 +1741,7 @@ int uv_fs_utime(uv_loop_t* loop,
                 double mtime,
                 uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(UTIME);
   PATH;
@@ -1728,6 +1759,7 @@ int uv_fs_write(uv_loop_t* loop,
                 int64_t off,
                 uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(WRITE);
 
@@ -1791,6 +1823,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
                    int flags,
                    uv_fs_cb cb) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   INIT(COPYFILE);
 

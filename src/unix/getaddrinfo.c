@@ -151,6 +151,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
                    const char* service,
                    const struct addrinfo* hints) {
   uv_work_t* work;
+  uv_work_options_t options;
   char hostname_ascii[256];
   size_t hostname_len;
   size_t service_len;
@@ -222,18 +223,21 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->hostname = memcpy(buf + len, hostname, hostname_len);
 
   if (getaddrinfo_cb) {
-    /* TODO options should indicate type. */
     work->data = req;
     req->reserved[0] = work; /* For uv_cancel. */
+    options.type = UV_WORK_DNS;
+    options.priority = -1;
+    options.cancelable = 0;
+    options.data = NULL;
     printf("getaddrinfo: req %p work %p\n", req, work);
     uv_executor_queue_work(loop,
                            work,
-                           NULL,
+                           &options,
                            uv__getaddrinfo_executor_work,
                            uv__getaddrinfo_executor_done);
     return 0;
   } else {
-    /* TODO uv__getaddrinfo_work and done APIs should take req directly. */
+    /* TODO uv__getaddrinfo_work and done APIs should take req directly. Windows too. */
     uv__getaddrinfo_work(&req->work_req);
     uv__getaddrinfo_done(&req->work_req, 0);
     return req->retcode;
