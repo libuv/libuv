@@ -146,7 +146,7 @@ static void uv__getaddrinfo_executor_done(uv_work_t* req, int status) {
 
 int uv_getaddrinfo(uv_loop_t* loop,
                    uv_getaddrinfo_t* req,
-                   uv_getaddrinfo_cb cb,
+                   uv_getaddrinfo_cb getaddrinfo_cb,
                    const char* hostname,
                    const char* service,
                    const struct addrinfo* hints) {
@@ -188,7 +188,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     return UV_ENOMEM;
 
   work = NULL;
-  if (cb) {
+  if (getaddrinfo_cb) {
     work = uv__malloc(sizeof(*work));
     if (work == NULL) {
       uv__free(buf);
@@ -198,7 +198,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   uv__req_init(loop, req, UV_GETADDRINFO);
   req->loop = loop;
-  req->cb = cb;
+  req->cb = getaddrinfo_cb;
   req->addrinfo = NULL;
   req->hints = NULL;
   req->service = NULL;
@@ -221,7 +221,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   if (hostname)
     req->hostname = memcpy(buf + len, hostname, hostname_len);
 
-  if (cb) {
+  if (getaddrinfo_cb) {
     /* TODO options should indicate type. */
     work->data = req;
     req->reserved[0] = work; /* For uv_cancel. */
