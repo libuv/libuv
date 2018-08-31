@@ -31,6 +31,30 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+#ifdef _DEBUG
+#  define DEBUG_ONLY(x) x
+#else
+#  define DEBUG_ONLY(x) (void) 0
+#endif
+
+#undef DEBUG_LOG
+#ifdef DEBUG_LOG
+#include <stdio.h> /* UV_LOG */
+#define LOG_0(fmt) DEBUG_ONLY(fprintf(stderr, fmt))
+#define LOG_1(fmt, a1) DEBUG_ONLY(fprintf(stderr, fmt, a1))
+#define LOG_2(fmt, a1, a2) DEBUG_ONLY(fprintf(stderr, fmt, a1, a2))
+#define LOG_3(fmt, a1, a2, a3) DEBUG_ONLY(fprintf(stderr, fmt, a1, a2, a3))
+#define LOG_4(fmt, a1, a2, a3, a4) DEBUG_ONLY(fprintf(stderr, fmt, a1, a2, a3, a4))
+#define LOG_5(fmt, a1, a2, a3, a4, a5) DEBUG_ONLY(fprintf(stderr, fmt, a1, a2, a3, a4, a5))
+#else
+#define LOG_0(fmt) (void) 0
+#define LOG_1(fmt, a1) (void) 0
+#define LOG_2(fmt, a1, a2) (void) 0
+#define LOG_3(fmt, a1, a2, a3) (void) 0
+#define LOG_4(fmt, a1, a2, a3, a4) (void) 0
+#define LOG_5(fmt, a1, a2, a3, a4, a5) (void) 0
+#endif
+
 #if defined(_MSC_VER) && _MSC_VER < 1600
 # include "uv/stdint-msvc2008.h"
 #else

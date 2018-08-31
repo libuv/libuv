@@ -133,7 +133,7 @@ int uv_getnameinfo(uv_loop_t* loop,
     options.priority = -1;
     options.cancelable = 0;
     options.data = NULL;
-    printf("getnameinfo: req %p work %p\n", req, work);
+    LOG_2("getnameinfo: req %p work %p\n", req, work);
     uv_executor_queue_work(loop,
                            work,
                            &options,

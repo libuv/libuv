@@ -132,7 +132,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
     return UV_EINVAL;
 
   /* Register req on loop. */
-  printf("uv_executor_queue_work: req %p\n", (void *) req);
+  LOG_1("uv_executor_queue_work: req %p\n", (void *) req);
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
@@ -162,10 +162,10 @@ int uv_executor_queue_work(uv_loop_t* loop,
       sprintf(work_type, "%s", "UNKNOWN");
       break;
     }
-    fprintf(stderr, "uv_executor_queue_work: type %d: %s\n", opts->type, work_type);
+    LOG_2("uv_executor_queue_work: type %d: %s\n", opts->type, work_type);
   }
   else
-    fprintf(stderr, "uv_executor_queue_work: no options provided\n");
+    LOG_0("uv_executor_queue_work: no options provided\n");
 
   /* Submit to the executor. */
   executor->submit(executor, req, opts);
@@ -190,9 +190,9 @@ static int uv__cancel_ask_executor(uv_work_t* work) {
   int r;
 
   r = UV_EINVAL;
-  printf("Trying to call cancel\n");
+  LOG_0("Trying to call cancel\n");
   if (executor->cancel != NULL) {
-    printf("Calling cancel!\n");
+    LOG_0("Calling cancel!\n");
     r = executor->cancel(executor, work);
     if (r == 0)
       work->work_cb = uv__executor_work_cancelled;
@@ -205,7 +205,7 @@ int uv_cancel(uv_req_t* req) {
   uv_work_t* work;
   int r;
 
-  printf("uv_cancel: req %p\n", (void *) req);
+  LOG_1("uv_cancel: req %p\n", (void *) req);
 
   r = UV_EINVAL;
   switch (req->type) {

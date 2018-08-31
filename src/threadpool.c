@@ -109,9 +109,9 @@ static void worker(void* arg) {
     req = container_of(w, uv_work_t, work_req);
 
     /* Do the work. */
-//    printf("Worker: running work_cb for req %p\n", req);
+    LOG_1("Worker: running work_cb for req %p\n", req);
     req->work_cb(req);
-//    printf("Worker: Done with req %p\n", req);
+    LOG_1("Worker: Done with req %p\n", req);
 
     /* Signal uv_cancel() that the work req is done executing. */
     uv_mutex_lock(&fields->mutex);
@@ -271,7 +271,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   already_completed = (wreq->work == NULL);
   still_on_queue = !assigned && !already_completed;
   
-  printf("assigned %d already_completed %d still_on_queue\n", assigned, already_completed, still_on_queue); 
+  LOG_3("assigned %d already_completed %d still_on_queue\n", assigned, already_completed, still_on_queue); 
 
   can_cancel = still_on_queue;
   if (can_cancel)
@@ -279,7 +279,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
 
   uv_mutex_unlock(&fields->mutex);
 
-	printf("uv__default_executor_cancel: can_cancel %d\n", can_cancel);
+	LOG_1("uv__default_executor_cancel: can_cancel %d\n", can_cancel);
   if (can_cancel) {
     /* We are now done with req. Notify libuv.
      * Note that event loop can't tell we were cancelled yet,

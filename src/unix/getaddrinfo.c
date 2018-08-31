@@ -229,7 +229,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     options.priority = -1;
     options.cancelable = 0;
     options.data = NULL;
-    printf("getaddrinfo: req %p work %p\n", req, work);
+    LOG_2("getaddrinfo: req %p work %p\n", req, work);
     uv_executor_queue_work(loop,
                            work,
                            &options,
