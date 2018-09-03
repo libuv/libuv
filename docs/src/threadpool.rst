@@ -110,12 +110,22 @@ Public members
 
 .. c:member:: void* uv_work_t.reserved[0]
 
-    Space for user-defined arbitrary data. libuv does not use this field.
+    Space for arbitrary data. libuv does not use this field.
+    This is intended for use by an executor implementation.
 
 .. c:member:: uv_loop_t* uv_work_t.loop
 
     Loop that started this request and where completion will be reported.
     Readonly.
+
+.. c:member:: uv_work_cb uv_work_t.work_cb
+
+    Executed off of the event loop.
+
+.. c:member:: uv_after_work_cb uv_work_t.after_work_cb
+
+    Executed on the main loop once the work_cb has returned.
+    May be NULL.
 
 .. seealso:: The :c:type:`uv_req_t` members also apply.
 
