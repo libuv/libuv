@@ -120,12 +120,7 @@ Public members
 
 .. c:member:: uv_work_cb uv_work_t.work_cb
 
-    Executed off of the event loop.
-
-.. c:member:: uv_after_work_cb uv_work_t.after_work_cb
-
-    Executed on the main loop once the work_cb has returned.
-    May be NULL.
+    Executor should invoke this, not on the event loop.
 
 .. seealso:: The :c:type:`uv_req_t` members also apply.
 
