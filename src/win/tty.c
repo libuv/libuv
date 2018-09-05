@@ -382,12 +382,6 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 }
 
 
-int uv_is_tty(uv_file file) {
-  DWORD result;
-  return GetConsoleMode((HANDLE) _get_osfhandle(file), &result) != 0;
-}
-
-
 int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
   CONSOLE_SCREEN_BUFFER_INFO info;
 
