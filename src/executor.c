@@ -235,7 +235,9 @@ void uv__executor_work_cancelled(uv_work_t* work) {
 
 #ifndef _WIN32
 UV_DESTRUCTOR(static void cleanup(void)) {
-  if (!executor)
+  // No guarantee that a plugged-in executor will still point to valid memory at this point.
+  // TODO Remove 'destroy' from the API.
+  if (!executor || executor != uv__default_executor())
     return;
 
   if (executor->destroy)
