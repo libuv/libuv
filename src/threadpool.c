@@ -28,6 +28,7 @@
 #include <stdlib.h>
 
 #define MAX_THREADPOOL_SIZE 128
+#define MAX_THREADPOOL_SIZE_IN_STR 4
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
@@ -183,8 +184,23 @@ static void init_threads(void) {
   unsigned int i;
   const char* val;
   uv_sem_t sem;
+  char* pbuf;
+  size_t szbuf;
 
   nthreads = ARRAY_SIZE(default_threads);
+  pbuf = uv__malloc(MAX_THREADPOOL_SIZE_IN_STR * sizeof(char));
+  if (pbuf) {
+	  szbuf = MAX_THREADPOOL_SIZE_IN_STR;
+	  memset(pbuf, 0, MAX_THREADPOOL_SIZE_IN_STR * sizeof(char));
+	  uv_os_getenv("UV_THREADPOOL_SIZE", pbuf, &szbuf);
+	  if (szbuf > 0 && szbuf < MAX_THREADPOOL_SIZE_IN_STR)
+	  {
+		  pbuf[szbuf] = 0;
+		  nthreads = atoi(pbuf);
+	  }
+	  uv__free(pbuf);
+	  pbuf = NULL;
+  }
   val = getenv("UV_THREADPOOL_SIZE");
   if (val != NULL)
     nthreads = atoi(val);
