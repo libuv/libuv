@@ -392,6 +392,13 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
 test_run_tests_LDFLAGS += -lutil
 endif
 
+if HURD
+uvinclude_HEADERS += include/uv/posix.h
+libuv_la_SOURCES += src/unix/no-fsevents.c \
+                    src/unix/posix-hrtime.c \
+                    src/unix/posix-poll.c
+endif
+
 if LINUX
 uvinclude_HEADERS += include/uv/linux.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
