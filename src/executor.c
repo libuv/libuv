@@ -123,7 +123,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
                            uv_work_options_t* opts,
                            uv_work_cb work_cb,
                            uv_after_work_cb after_work_cb) {
-  char work_type[16];
+  char work_type[32];
   /* Initialize the executor once. */
   uv_once(&once, uv__executor_init);
 
