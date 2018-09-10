@@ -181,7 +181,7 @@ UV_DESTRUCTOR(static void cleanup(void)) {
 
 static void init_threads(void) {
   unsigned int i;
-  const char* val;
+  //const char* val;
   uv_sem_t sem;
   // Check UV_THREADPOOL_SIZE
   char buf[16];
