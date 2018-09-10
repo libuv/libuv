@@ -188,14 +188,12 @@ static void init_threads(void) {
   size_t buf_size = sizeof(buf);
   
   nthreads = ARRAY_SIZE(default_threads);
-#ifdef _WIN32
   if (uv_os_getenv("UV_THREADPOOL_SIZE", buf, &buf_size) == 0) {
     nthreads = atoi(buf);
   }
-#endif
-  val = getenv("UV_THREADPOOL_SIZE");
-  if (val != NULL)
-    nthreads = atoi(val);
+  //val = getenv("UV_THREADPOOL_SIZE");
+  //if (val != NULL)
+  //  nthreads = atoi(val);
   if (nthreads == 0)
     nthreads = 1;
   if (nthreads > MAX_THREADPOOL_SIZE)
