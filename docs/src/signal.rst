@@ -6,7 +6,10 @@
 
 Signal handles implement Unix style signal handling on a per-event loop bases.
 
-Reception of some signals is emulated on Windows:
+Windows notes
+-------------
+
+Reception of some signals is emulated:
 
 * SIGINT is normally delivered when the user presses CTRL+C. However, like
   on Unix, it is not generated when terminal raw mode is enabled.
@@ -24,12 +27,25 @@ are never received. These signals are: `SIGILL`, `SIGABRT`, `SIGFPE`, `SIGSEGV`,
 Calls to raise() or abort() to programmatically raise a signal are
 not detected by libuv; these will not trigger a signal watcher.
 
-.. note::
-    On Linux SIGRT0 and SIGRT1 (signals 32 and 33) are used by the NPTL pthreads library to
-    manage threads. Installing watchers for those signals will lead to unpredictable behavior
-    and is strongly discouraged. Future versions of libuv may simply reject them.
-
 .. versionchanged:: 1.15.0 SIGWINCH support on Windows was improved.
+
+Unix notes
+----------
+
+* SIGKILL and SIGSTOP are impossible to catch.
+
+* Handling SIGBUS, SIGFPE, SIGILL or SIGSEGV via libuv results into undefined behavior.
+  Also, calls to `abort()`, e.g. through `assert()`, will not be caught
+  and the process will terminate.
+
+  In vanilla C it is possible to catch all those, but it is very difficult
+  to recover from them.
+  These are all consequences of the callback being deferred to an event loop.
+
+* On Linux SIGRT0 and SIGRT1 (signals 32 and 33) are used by the NPTL pthreads library to
+  manage threads. Installing watchers for those signals will lead to unpredictable behavior
+  and is strongly discouraged. Future versions of libuv may simply reject them.
+
 
 Data types
 ----------
