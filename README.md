@@ -282,8 +282,31 @@ Make sure that you specify the architecture you wish to build for in the
 
 Run:
 
+For arm
+
 ```bash
-$ source ./android-configure NDK_PATH gyp [API_LEVEL]
+$ source ./android-configure-arm NDK_PATH gyp [API_LEVEL]
+$ make -C out
+```
+
+or for arm64
+
+```bash
+$ source ./android-configure-arm64 NDK_PATH gyp [API_LEVEL]
+$ make -C out
+```
+
+or for x86
+
+```bash
+$ source ./android-configure-x86 NDK_PATH gyp [API_LEVEL]
+$ make -C out
+```
+
+or for x86_64
+
+```bash
+$ source ./android-configure-x86_64 NDK_PATH gyp [API_LEVEL]
 $ make -C out
 ```
 
