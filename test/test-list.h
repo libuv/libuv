@@ -50,6 +50,7 @@ TEST_DECLARE   (tty)
 TEST_DECLARE   (tty_raw)
 TEST_DECLARE   (tty_empty_write)
 TEST_DECLARE   (tty_large_write)
+TEST_DECLARE   (tty_raw_cancel)
 #endif
 TEST_DECLARE   (tty_file)
 TEST_DECLARE   (tty_pty)
@@ -480,6 +481,7 @@ TASK_LIST_START
   TEST_ENTRY  (tty_raw)
   TEST_ENTRY  (tty_empty_write)
   TEST_ENTRY  (tty_large_write)
+  TEST_ENTRY  (tty_raw_cancel)
 #endif
   TEST_ENTRY  (tty_file)
   TEST_ENTRY  (tty_pty)
