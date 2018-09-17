@@ -330,7 +330,6 @@ TEST_IMPL(tty_raw_cancel) {
   r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
   ASSERT(r == 0);
 
-  Sleep(100);
   r = uv_read_stop((uv_stream_t*) &tty_in);
   ASSERT(r == 0);
 
