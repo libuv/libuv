@@ -267,11 +267,13 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 
 #if defined(_AIX)
   struct stat buf;
-  if(fstat(req->file, &buf))
-    return -1;
-  if(S_ISDIR(buf.st_mode)) {
+  result = fstat(req->file, &buf);
+  if (result)
+    goto done;
+  if (S_ISDIR(buf.st_mode)) {
     errno = EISDIR;
-    return -1;
+    result -1;
+    goto done;
   }
 #endif /* defined(_AIX) */
 
@@ -315,6 +317,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   }
 
 done:
+  /* Early cleanup of bufs allocation, since we're done with it. */
   if (req->bufs != req->bufsml)
     uv__free(req->bufs);
 

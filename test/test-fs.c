@@ -123,7 +123,7 @@ static uv_buf_t iov;
 
 #ifdef _WIN32
 int uv_test_getiovmax(void) {
-    return INT32_MAX; /* emulated by libuv, so no real limit */
+  return INT32_MAX; /* Emulated by libuv, so no real limit. */
 }
 #else
 int uv_test_getiovmax(void) {
@@ -2834,12 +2834,14 @@ TEST_IMPL(fs_write_multiple_bufs) {
 
 
 TEST_IMPL(fs_write_alotof_bufs) {
-  size_t iovcount = 54321;
+  size_t iovcount;
   size_t iovmax;
   uv_buf_t* iovs;
   char* buffer;
   size_t index;
   int r;
+
+  iovcount = 54321;
 
   /* Setup. */
   unlink("test_file");
@@ -2932,9 +2934,11 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   size_t index;
   int r;
   int64_t offset;
-  char* filler = "0123456789";
-  int filler_len = strlen(filler);
+  char* filler;
+  int filler_len;
 
+  filler = "0123456789";
+  filler_len = strlen(filler);
   iovcount = 54321;
 
   /* Setup. */
@@ -3049,16 +3053,16 @@ TEST_IMPL(fs_partial_write) {
 struct thread_ctx {
   pthread_t pid;
   int fd;
-  char *data;
+  char* data;
   int size;
   int interval;
   int doread;
 };
 
 static void thread_main(void* arg) {
-  const struct thread_ctx *ctx;
+  const struct thread_ctx* ctx;
   int size;
-  char *data;
+  char* data;
 
   ctx = (struct thread_ctx*)arg;
   size = ctx->size;
