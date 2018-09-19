@@ -80,6 +80,7 @@ TEST_IMPL(executor_queue_work_einval) {
 #define TOY_EXECUTOR_MAX_REQUESTS 100
 static uv_executor_t toy_executor;
 static struct toy_executor_data {
+  /* Do not hold while executing work. */
   uv_mutex_t mutex;
 
   int times_submit_called;
@@ -89,7 +90,8 @@ static struct toy_executor_data {
 
   int head;
   int tail;
-  uv_work_t* queued_work[TOY_EXECUTOR_MAX_REQUESTS];
+  /* Queue with space for some extras */
+  uv_work_t* queued_work[TOY_EXECUTOR_MAX_REQUESTS + 10];
 
   int no_more_work_coming;
   uv_sem_t thread_exiting;
@@ -108,12 +110,18 @@ static void worker(void* arg) {
   should_break = 0;
   while (1) {
     /* Run until we (1) have no work, and (2) see data->no_more_work_coming. */
-    uv_mutex_lock(&data->mutex);
 
-    while (data->head < data->tail) {
+    /* Run pending work. */
+    while (1) {
+      uv_mutex_lock(&data->mutex);
+      if (data->head == data->tail) {
+        uv_mutex_unlock(&data->mutex);
+        break;
+      }
+
       printf("worker: found %d work -- head %d tail %d\n", data->tail - data->head, data->head, data->tail);
       ASSERT(0 <= data->head && data->head <= data->tail);
-      ASSERT(data->tail <= TOY_EXECUTOR_MAX_REQUESTS);
+      uv_mutex_unlock(&data->mutex);
 
       /* Handle one. */
       work = data->queued_work[data->head];
@@ -125,17 +133,21 @@ static void worker(void* arg) {
       data->executor->done(work);
 
       /* Advance. */
+      uv_mutex_lock(&data->mutex);
       printf("worker: Advancing\n");
       data->head++;
       data->n_completed++;
+      uv_mutex_unlock(&data->mutex);
     }
 
-    if (data->no_more_work_coming) {
+    /* Loop unless (1) no work, and (2) no_more_work_coming. */
+    uv_mutex_lock(&data->mutex);
+    if (data->head == data->tail && data->no_more_work_coming) {
       printf("worker exiting\n");
+      fflush(stdout);
       should_break = 1;
       uv_sem_post(&data->thread_exiting);
     }
-
     uv_mutex_unlock(&data->mutex);
 
     if (should_break)
@@ -178,6 +190,7 @@ static void toy_executor_submit(uv_executor_t* executor,
   data->times_submit_called++;
 
   uv_mutex_lock(&data->mutex);
+  ASSERT(data->tail < ARRAY_SIZE(data->queued_work));
   data->queued_work[data->tail] = req;
   data->tail++;
   uv_mutex_unlock(&data->mutex);
@@ -198,10 +211,21 @@ static void toy_work(uv_work_t* req) {
   ASSERT(req);
 }
 
+static void toy_slow_work(uv_work_t* req) {
+  printf("toy_slow_work: req %p\n", req);
+  ASSERT(req);
+  uv_sem_wait((uv_sem_t *) req->data);
+}
+
 TEST_IMPL(executor_replace) {
   uv_work_t work[100];
+  int n_extra_requests;
+  uv_sem_t finish_slow_work;
+  uv_work_t slow_work;
   uv_work_t cancel_work;
   int i;
+
+  n_extra_requests = 0;
 
   /* Replace the builtin executor with our toy_executor. */
   toy_executor.submit = toy_executor_submit;
@@ -222,14 +246,21 @@ TEST_IMPL(executor_replace) {
   /* Having queued work, we should no longer be able to replace. */
   ASSERT(0 != uv_replace_executor(&toy_executor));
 
-  /* Try cancelling one. Must be assured it hasn't yet been completed, so
-   * fake a request ourselves.
-   * TODO This is unsound. */
-  cancel_work.type = UV_WORK;
+  /* Submit a slow request so a subsequent request will be cancelable. */
+  n_extra_requests++;
+  ASSERT(0 == uv_sem_init(&finish_slow_work, 0));
+  slow_work.data = &finish_slow_work;
+  ASSERT(0 == uv_queue_work(uv_default_loop(), &slow_work, toy_slow_work, NULL));
+
+  /* Submit and try to cancel some work. */
+  n_extra_requests++;
+  ASSERT(0 == uv_queue_work(uv_default_loop(), &cancel_work, toy_work, NULL));
   ASSERT(UV_EINVAL == uv_cancel((uv_req_t *) &cancel_work));
 
-  /* Side channel: tell pool we're done and wait until it finishes.
-   * Do this so we can be confident the subsequent asserts will fail. */
+  /* Let the slow work finish. */
+  uv_sem_post(&finish_slow_work);
+
+  /* Side channel: tell pool we're done and wait until it finishes. */
   printf("Telling pool we're done\n");
   uv_mutex_lock(&toy_executor_data.mutex);
   toy_executor_data.no_more_work_coming = 1;
@@ -240,9 +271,49 @@ TEST_IMPL(executor_replace) {
 
   /* Validate. */
   printf("Validating\n");
-  ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.times_submit_called);
-  ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.n_completed);
+  ASSERT(TOY_EXECUTOR_MAX_REQUESTS + n_extra_requests == toy_executor_data.times_submit_called);
+  ASSERT(TOY_EXECUTOR_MAX_REQUESTS + n_extra_requests == toy_executor_data.n_completed);
   ASSERT(1 == toy_executor_data.times_cancel_called);
+
+  toy_executor_destroy(&toy_executor);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+TEST_IMPL(executor_replace_nocancel) {
+  uv_work_t slow_work;
+  uv_sem_t finish_slow_work;
+  uv_work_t cancel_work;
+
+  /* Replace the builtin executor with our toy_executor. */
+  toy_executor.submit = toy_executor_submit;
+  toy_executor.cancel = NULL;
+  toy_executor.data = &toy_executor_data;
+  toy_executor_init(&toy_executor);
+  ASSERT(0 == uv_replace_executor(&toy_executor));
+
+  /* Submit a slow request so a subsequent request will be cancelable. */
+  ASSERT(0 == uv_sem_init(&finish_slow_work, 0));
+  slow_work.data = &finish_slow_work;
+  ASSERT(0 == uv_queue_work(uv_default_loop(), &slow_work, toy_slow_work, NULL));
+
+  /* Submit and then try to cancel a slow request.
+   * With toy_executor.cancel == NULL, should return UV_ENOSYS. */
+  ASSERT(0 == uv_queue_work(uv_default_loop(), &cancel_work, toy_work, NULL));
+  ASSERT(UV_ENOSYS == uv_cancel((uv_req_t *) &cancel_work));
+
+  /* Let the slow work finish. */
+  uv_sem_post(&finish_slow_work);
+
+  /* Side channel: tell pool we're done and wait until it finishes. */
+  printf("Telling pool we're done\n");
+  uv_mutex_lock(&toy_executor_data.mutex);
+  toy_executor_data.no_more_work_coming = 1;
+  uv_mutex_unlock(&toy_executor_data.mutex);
+
+  printf("Waiting for pool\n");
+  uv_sem_wait(&toy_executor_data.thread_exiting);
 
   toy_executor_destroy(&toy_executor);
 

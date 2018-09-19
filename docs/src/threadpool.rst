@@ -122,6 +122,7 @@ Public members
 .. c:member:: uv_executor_cancel_func uv_executor_t.cancel
 
     Can be NULL.
+    If NULL, calls to :c:function:`uv_cancel` will return ``UV_ENOSYS``.
 
 .. c:member:: uv_executor_done_func uv_executor_t.done
 

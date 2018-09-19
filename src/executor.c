@@ -188,7 +188,7 @@ int uv_queue_work(uv_loop_t* loop,
 static int uv__cancel_ask_executor(uv_work_t* work) {
   int r;
 
-  r = UV_EINVAL;
+  r = UV_ENOSYS;
   LOG_0("Trying to call cancel\n");
   if (executor->cancel != NULL) {
     LOG_0("Calling cancel!\n");
