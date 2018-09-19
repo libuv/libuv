@@ -228,6 +228,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->fd >= 0);
     assert(w->fd < (int) loop->nwatchers);
 
+    memset(&e, 0, sizeof(e));
     e.events = w->pevents;
     e.data.fd = w->fd;
 
