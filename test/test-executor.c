@@ -82,9 +82,8 @@ static uv_executor_t toy_executor;
 static struct toy_executor_data {
   uv_mutex_t mutex;
 
-  int init_called;
-  int submit_called;
-  int cancel_called;
+  int times_submit_called;
+  int times_cancel_called;
 
   int n_completed;
 
@@ -148,9 +147,8 @@ static void toy_executor_init(uv_executor_t* executor) {
   struct toy_executor_data* data;
   
   data = (struct toy_executor_data *) executor->data;
-  data->init_called = 1;
-  data->submit_called = 0;
-  data->cancel_called = 0;
+  data->times_submit_called = 0;
+  data->times_cancel_called = 0;
   data->n_completed = 0;
   data->head = 0;
   data->tail = 0;
@@ -166,7 +164,6 @@ static void toy_executor_destroy(uv_executor_t* executor) {
   struct toy_executor_data* data;
   
   data = (struct toy_executor_data *) executor->data;
-
   uv_thread_join(&data->thread);
   uv_mutex_destroy(&data->mutex);
 }
@@ -178,7 +175,7 @@ static void toy_executor_submit(uv_executor_t* executor,
   printf("toy_executor_submit: req %p\n", req);
   
   data = (struct toy_executor_data *) executor->data;
-  data->submit_called++;
+  data->times_submit_called++;
 
   uv_mutex_lock(&data->mutex);
   data->queued_work[data->tail] = req;
@@ -191,7 +188,7 @@ static int toy_executor_cancel(uv_executor_t* executor, uv_work_t* req) {
   
   data = (struct toy_executor_data *) executor->data;
   printf("toy_executor_cancel: req %p\n", req);
-  data->cancel_called++;
+  data->times_cancel_called++;
 
   return UV_EINVAL;
 }
@@ -207,15 +204,14 @@ TEST_IMPL(executor_replace) {
   int i;
 
   /* Replace the builtin executor with our toy_executor. */
-  toy_executor.init = toy_executor_init;
-  toy_executor.destroy = toy_executor_destroy;
   toy_executor.submit = toy_executor_submit;
   toy_executor.cancel = toy_executor_cancel;
   toy_executor.data = &toy_executor_data;
+  toy_executor_init(&toy_executor);
   ASSERT(0 == uv_replace_executor(&toy_executor));
 
   /* Submit work. */
-  for (i = 0; i < TOY_EXECUTOR_MAX_REQUESTS/2; i++) {
+  for (i = 0; i < TOY_EXECUTOR_MAX_REQUESTS; i++) {
     printf("Queuing work %p\n", &work[i]);
     if (i < TOY_EXECUTOR_MAX_REQUESTS/2)
       ASSERT(0 == uv_queue_work(uv_default_loop(), &work[i], toy_work, NULL));
@@ -244,10 +240,11 @@ TEST_IMPL(executor_replace) {
 
   /* Validate. */
   printf("Validating\n");
-  ASSERT(1 == toy_executor_data.init_called);
-  ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.submit_called);
+  ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.times_submit_called);
   ASSERT(TOY_EXECUTOR_MAX_REQUESTS == toy_executor_data.n_completed);
-  ASSERT(1 == toy_executor_data.cancel_called);
+  ASSERT(1 == toy_executor_data.times_cancel_called);
+
+  toy_executor_destroy(&toy_executor);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

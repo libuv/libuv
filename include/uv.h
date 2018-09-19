@@ -336,8 +336,6 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
-typedef void (*uv_executor_init_func)(uv_executor_t *executor);
-typedef void (*uv_executor_destroy_func)(uv_executor_t *executor);
 typedef void (*uv_executor_submit_func)(uv_executor_t *executor,
                                         uv_work_t* req,
                                         const uv_work_options_t* opts);
@@ -1048,13 +1046,12 @@ struct uv_work_options_s {
 struct uv_executor_s {
   /* public */
   /* Defined by embedder. */
-  uv_executor_init_func init;
-  uv_executor_destroy_func destroy;
   uv_executor_submit_func submit;
   uv_executor_cancel_func cancel;
   void *data;
   /* Set by libuv. */
   uv_executor_done_cb done;
+  /* TODO Private and/or reserved fields? */
 };
 
 UV_EXTERN int uv_replace_executor(uv_executor_t* executor);

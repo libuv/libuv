@@ -112,8 +112,6 @@ static void uv__executor_init(void) {
     assert(!uv_replace_executor(uv__default_executor()));
   }
 
-  executor->init(executor);
-
   /* Once initialized, it is no longer safe to replace. */
   initialized = 0;
 }
@@ -138,6 +136,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
 
+  /* TODO Just some logging. */
   if (opts) {
     switch(opts->type) {
     case UV_WORK_UNKNOWN:
@@ -232,15 +231,3 @@ int uv_cancel(uv_req_t* req) {
 void uv__executor_work_cancelled(uv_work_t* work) {
   abort();
 }
-
-#ifndef _WIN32
-UV_DESTRUCTOR(static void cleanup(void)) {
-  // No guarantee that a plugged-in executor will still point to valid memory at this point.
-  // TODO Remove 'destroy' from the API.
-  if (!executor || executor != uv__default_executor())
-    return;
-
-  if (executor->destroy)
-    executor->destroy(executor);
-}
-#endif

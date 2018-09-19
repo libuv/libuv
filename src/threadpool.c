@@ -29,7 +29,14 @@
 
 #define MAX_THREADPOOL_SIZE 128
 
+/* executor */
+uv_once_t init_default_executor_once = UV_ONCE_INIT;
+static uv_executor_t default_executor;
+
+/* default_executor.data */
+uv_once_t start_workers_once = UV_ONCE_INIT;
 static struct default_executor_fields {
+  uv_once_t init;
   uv_cond_t cond;
   uv_mutex_t mutex;
   unsigned int idle_workers;
@@ -38,15 +45,14 @@ static struct default_executor_fields {
   uv_thread_t default_workers[4];
   QUEUE exit_message;
   QUEUE wq;
+  int used;
 } _fields;
 
+/* For worker initialization. */
 static struct worker_arg {
   uv_executor_t* executor;
   uv_sem_t *ready;
 } worker_arg;
-
-/* executor */
-static uv_executor_t default_executor;
 
 /* Helpers for the default executor implementation. */
 
@@ -123,43 +129,44 @@ static void worker(void* arg) {
   }
 }
 
-/* Initialize (fields members and) the workers. */
-static void init_workers(struct default_executor_fields* fields) {
+/* (Initialize _fields and) start the workers. */
+static void start_workers(void) {
   unsigned int i;
   const char* val;
   uv_sem_t sem;
   unsigned int n_default_workers;
 
   /* Initialize various fields members. */
+  _fields.used = 1;
 
   /* How many workers? */
-  n_default_workers = ARRAY_SIZE(fields->default_workers);
-  fields->nworkers = n_default_workers;
+  n_default_workers = ARRAY_SIZE(_fields.default_workers);
+  _fields.nworkers = n_default_workers;
   val = getenv("UV_THREADPOOL_SIZE");
   if (val != NULL)
-    fields->nworkers = atoi(val);
-  if (fields->nworkers == 0)
-    fields->nworkers = 1;
-  if (fields->nworkers > MAX_THREADPOOL_SIZE)
-    fields->nworkers = MAX_THREADPOOL_SIZE;
+    _fields.nworkers = atoi(val);
+  if (_fields.nworkers == 0)
+    _fields.nworkers = 1;
+  if (_fields.nworkers > MAX_THREADPOOL_SIZE)
+    _fields.nworkers = MAX_THREADPOOL_SIZE;
 
   /* Try to use the statically declared workers instead of malloc. */
-  fields->workers = fields->default_workers;
-  if (fields->nworkers > n_default_workers) {
-    fields->workers = uv__malloc(fields->nworkers * sizeof(fields->workers[0]));
-    if (fields->workers == NULL) {
-      fields->nworkers = n_default_workers;
-      fields->workers = fields->default_workers;
+  _fields.workers = _fields.default_workers;
+  if (_fields.nworkers > n_default_workers) {
+    _fields.workers = uv__malloc(_fields.nworkers * sizeof(_fields.workers[0]));
+    if (_fields.workers == NULL) {
+      _fields.nworkers = n_default_workers;
+      _fields.workers = _fields.default_workers;
     }
   }
 
-  if (uv_cond_init(&fields->cond))
+  if (uv_cond_init(&_fields.cond))
     abort();
 
-  if (uv_mutex_init(&fields->mutex))
+  if (uv_mutex_init(&_fields.mutex))
     abort();
 
-  QUEUE_INIT(&fields->wq);
+  QUEUE_INIT(&_fields.wq);
 
   if (uv_sem_init(&sem, 0))
     abort();
@@ -167,42 +174,43 @@ static void init_workers(struct default_executor_fields* fields) {
   /* Start the workers. */
   worker_arg.executor = &default_executor;
   worker_arg.ready = &sem;
-  for (i = 0; i < fields->nworkers; i++)
-    if (uv_thread_create(fields->workers + i, worker, &worker_arg))
+  for (i = 0; i < _fields.nworkers; i++)
+    if (uv_thread_create(_fields.workers + i, worker, &worker_arg))
       abort();
 
   /* Wait for workers to start. */
-  for (i = 0; i < fields->nworkers; i++)
+  for (i = 0; i < _fields.nworkers; i++)
     uv_sem_wait(&sem);
   uv_sem_destroy(&sem);
 }
 
 #ifndef _WIN32
-static void cleanup(struct default_executor_fields* fields) {
+/* cleanup of the default_executor if necessary. */
+UV_DESTRUCTOR(static void cleanup()) {
   unsigned int i;
 
-  if (fields->nworkers == 0)
+  if (!_fields.used)
     return;
 
-  uv_mutex_lock(&fields->mutex);
-  post(fields, &fields->exit_message);
-  uv_mutex_unlock(&fields->mutex);
+  if (_fields.nworkers == 0)
+    return;
 
-  for (i = 0; i < fields->nworkers; i++)
-    if (uv_thread_join(fields->workers + i))
+  uv_mutex_lock(&_fields.mutex);
+  post(&_fields, &_fields.exit_message);
+  uv_mutex_unlock(&_fields.mutex);
+
+  for (i = 0; i < _fields.nworkers; i++)
+    if (uv_thread_join(_fields.workers + i))
       abort();
 
-  if (fields->workers != fields->default_workers)
-    uv__free(fields->workers);
+  if (_fields.workers != _fields.default_workers)
+    uv__free(_fields.workers);
 
-  uv_mutex_destroy(&fields->mutex);
-  uv_cond_destroy(&fields->cond);
+  uv_mutex_destroy(&_fields.mutex);
+  uv_cond_destroy(&_fields.cond);
 
-  fields->workers = NULL;
-  fields->nworkers = 0;
-
-  /* fields itself is static, nothing to do. */
-  assert(fields == &_fields);
+  _fields.workers = NULL;
+  _fields.nworkers = 0;
 }
 #endif
 
@@ -210,30 +218,15 @@ static void cleanup(struct default_executor_fields* fields) {
  * Default libuv threadpool, implemented using the executor API.
 *******************************/
 
-static void uv__default_executor_init(uv_executor_t* executor) {
-  struct default_executor_fields* fields;
-
-  assert(executor == &default_executor);
-
-  fields = (struct default_executor_fields *) executor->data;
-
-  /* TODO Behavior on fork. */
-
-  init_workers(fields);
-}
-
-static void uv__default_executor_destroy(uv_executor_t* executor) {
-  struct default_executor_fields* fields;
-
-  fields = (struct default_executor_fields *) executor->data;
-  cleanup(fields);
-}
-
 static void uv__default_executor_submit(uv_executor_t* executor,
                                         uv_work_t* req,
                                         const uv_work_options_t* opts) {
   struct default_executor_fields* fields;
   struct uv__work* wreq;
+
+  assert(executor == &default_executor);
+  /* Make sure we are initialized internally. */
+  uv_once(&start_workers_once, start_workers);
 
   fields = (struct default_executor_fields *) executor->data;
 	assert(fields);
@@ -258,6 +251,10 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   int already_completed;
   int still_on_queue;
   int can_cancel;
+
+  assert(executor == &default_executor);
+  /* Make sure we are initialized internally. */
+  uv_once(&start_workers_once, start_workers);
 
   fields = (struct default_executor_fields *) executor->data;
 	assert(fields);
@@ -296,14 +293,14 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   }
 }
 
-uv_executor_t * uv__default_executor(void) {
-  /* This is only called once, internally by uv__executor_init.
-   * So it's safe to set these fields here. */
+void uv__default_executor_init(void) {
+  /* TODO Behavior on fork? */
   default_executor.data = &_fields;
-  default_executor.init = uv__default_executor_init;
-  default_executor.destroy = uv__default_executor_destroy;
   default_executor.submit = uv__default_executor_submit;
   default_executor.cancel = uv__default_executor_cancel;
+}
 
+uv_executor_t * uv__default_executor(void) {
+  uv_once(&init_default_executor_once, uv__default_executor_init);
   return &default_executor;
 }

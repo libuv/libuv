@@ -31,7 +31,7 @@ Users may thus define a more sophisticated executor if desired,
 e.g. handling I/O and CPU in different pools.
 
 .. note::
-    The default executor must be overridden prior to queuing any work on it.
+    The default executor cannot be overriden after any work is queued.
 
 The executor is global and shared across all event loops.
 
@@ -69,15 +69,6 @@ Data types
 
     Executor type. Use when overriding the default threadpool.
 
-.. c:type:: void (*uv_executor_init_func)(uv_executor_t* executor)
-
-    Called once, the first time :c:func:`uv_executor_queue_work` is called.
-    Do any initialization you want.
-
-.. c:type:: void (*uv_executor_destroy_func)(uv_executor_t* executor)
-
-    Called at some point ???
-
 .. c:type:: void (*uv_executor_submit_func)(uv_executor_t* executor, uv_work_t* req, uv_work_options_t* opts)
 
     Called when the executor should handle this request.
@@ -99,7 +90,7 @@ Data types
 
     Replace the default libuv executor with this user-defined one.
     Must be called before any work is submitted to the default libuv executor.
-    Returns 0 on successs.
+    Returns 0 on success.
 
 .. c:type:: uv_work_options_t
 
@@ -123,15 +114,6 @@ Public members
     Executor should invoke this, not on the event loop.
 
 .. seealso:: The :c:type:`uv_req_t` members also apply.
-
-.. c:member:: uv_executor_init_func uv_executor_t.init
-
-    Invoked once.
-    Can be NULL.
-
-.. c:member:: uv_executor_destroy_func uv_executor_t.destroy
-
-    Can be NULL.
 
 .. c:member:: uv_executor_submit_func uv_executor_t.submit
 
