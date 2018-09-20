@@ -107,9 +107,12 @@ int uv_replace_executor(uv_executor_t* _executor) {
 }
 
 static void uv__executor_init(void) {
+  int rc;
+
   /* Assign executor to default if none was set. */
   if (executor == NULL) {
-    assert(!uv_replace_executor(uv__default_executor()));
+    rc = uv_replace_executor(uv__default_executor());
+    assert(!rc);
   }
 
   /* Once initialized, it is no longer safe to replace. */
