@@ -186,7 +186,7 @@ static void start_workers(void) {
 
 #ifndef _WIN32
 /* cleanup of the default_executor if necessary. */
-UV_DESTRUCTOR(static void cleanup()) {
+UV_DESTRUCTOR(static void cleanup(void)) {
   unsigned int i;
 
   if (!_fields.used)
