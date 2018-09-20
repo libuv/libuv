@@ -12,6 +12,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
 endif()
 
 set(uv_sources
+    src/executor.c
     src/fs-poll.c
     src/idna.c
     src/inet.c
