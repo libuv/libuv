@@ -174,8 +174,6 @@ API
 .. c:function:: int uv_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_cb work_cb, uv_after_work_cb after_work_cb)
 
     Calls :c:func:`uv_executor_queue_work` with NULL options.
-    This API is deprecated.
-    Use :c:func:`uv_executor_queue_work` instead.
 
 .. c:function:: int uv_executor_queue_work(uv_loop_t* loop, uv_work_t* req, uv_work_options_t* opts, uv_work_cb work_cb, uv_after_work_cb after_work_cb)
 
