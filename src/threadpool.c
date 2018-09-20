@@ -74,9 +74,9 @@ static void worker(void* arg) {
   struct default_executor_fields* fields;
 
   executor = ((struct worker_arg*) arg)->executor;
-	assert(executor);
+  assert(executor);
   fields = (struct default_executor_fields*) executor->data;
-	assert(fields);
+  assert(fields);
 
   /* Signal we're ready. */
   uv_sem_post(((struct worker_arg*) arg)->ready);
@@ -229,7 +229,7 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   uv_once(&start_workers_once, start_workers);
 
   fields = (struct default_executor_fields*) executor->data;
-	assert(fields);
+  assert(fields);
 
   /* Put executor-specific data into req->executor_data. */
   wreq = &req->work_req;
@@ -257,9 +257,9 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   uv_once(&start_workers_once, start_workers);
 
   fields = (struct default_executor_fields*) executor->data;
-	assert(fields);
+  assert(fields);
   wreq = (struct uv__work*) req->executor_data;
-	assert(wreq);
+  assert(wreq);
 
   uv_mutex_lock(&fields->mutex);
 
@@ -276,7 +276,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
 
   uv_mutex_unlock(&fields->mutex);
 
-	LOG_1("uv__default_executor_cancel: can_cancel %d\n", can_cancel);
+  LOG_1("uv__default_executor_cancel: can_cancel %d\n", can_cancel);
   if (can_cancel) {
     /* We are now done with req. Notify libuv.
      * Note that event loop can't tell we were cancelled yet,
