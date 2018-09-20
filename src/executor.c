@@ -89,13 +89,13 @@ void uv__executor_work_done(uv_async_t* handle) {
 int uv_replace_executor(uv_executor_t* _executor) {
   /* Reject if no longer safe to replace. */
   if (!initialized)
-    return 1;
+    return UV_EINVAL;
 
   /* Check validity of _executor. */
   if (_executor == NULL)
-    return 1;
+    return UV_EINVAL;
   if (_executor->submit == NULL)
-    return 1;
+    return UV_EINVAL;
 
   /* Set private fields. */
   _executor->done = uv__executor_done;
