@@ -51,7 +51,7 @@ static struct default_executor_fields {
 /* For worker initialization. */
 static struct worker_arg {
   uv_executor_t* executor;
-  uv_sem_t *ready;
+  uv_sem_t* ready;
 } worker_arg;
 
 /* Helpers for the default executor implementation. */
@@ -228,7 +228,7 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   /* Make sure we are initialized internally. */
   uv_once(&start_workers_once, start_workers);
 
-  fields = (struct default_executor_fields *) executor->data;
+  fields = (struct default_executor_fields*) executor->data;
 	assert(fields);
 
   /* Put executor-specific data into req->executor_data. */
@@ -256,9 +256,9 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   /* Make sure we are initialized internally. */
   uv_once(&start_workers_once, start_workers);
 
-  fields = (struct default_executor_fields *) executor->data;
+  fields = (struct default_executor_fields*) executor->data;
 	assert(fields);
-  wreq = (struct uv__work *) req->executor_data;
+  wreq = (struct uv__work*) req->executor_data;
 	assert(wreq);
 
   uv_mutex_lock(&fields->mutex);
@@ -300,7 +300,7 @@ void uv__default_executor_init(void) {
   default_executor.cancel = uv__default_executor_cancel;
 }
 
-uv_executor_t * uv__default_executor(void) {
+uv_executor_t* uv__default_executor(void) {
   uv_once(&init_default_executor_once, uv__default_executor_init);
   return &default_executor;
 }

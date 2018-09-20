@@ -196,10 +196,10 @@ enum uv__work_kind {
 };
 
 /* Get the default executor. */
-uv_executor_t * uv__default_executor(void);
+uv_executor_t* uv__default_executor(void);
 
 /* Get current executor. */
-uv_executor_t * uv__executor(void);
+uv_executor_t* uv__executor(void);
 
 /* Called from event loop when executor has completed work. */
 void uv__executor_work_done(uv_async_t* handle);

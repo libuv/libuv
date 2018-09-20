@@ -29,13 +29,13 @@
 
 #include <stdio.h> /* Debug */
 
-static uv_executor_t *executor = NULL;
+static uv_executor_t* executor = NULL;
 
 static uv_once_t once = UV_ONCE_INIT;
 static volatile int initialized = 1; /* Protected by once in
                     uv_executor_queue_work, but not in uv_replace_executor. */
 
-uv_executor_t * uv__executor(void) {
+uv_executor_t* uv__executor(void) {
   return executor;
 }
 
@@ -130,7 +130,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
     return UV_EINVAL;
 
   /* Register req on loop. */
-  LOG_1("uv_executor_queue_work: req %p\n", (void *) req);
+  LOG_1("uv_executor_queue_work: req %p\n", (void*) req);
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
   req->work_cb = work_cb;
@@ -203,7 +203,7 @@ int uv_cancel(uv_req_t* req) {
   uv_work_t* work;
   int r;
 
-  LOG_1("uv_cancel: req %p\n", (void *) req);
+  LOG_1("uv_cancel: req %p\n", (void*) req);
 
   r = UV_EINVAL;
   switch (req->type) {
@@ -211,12 +211,12 @@ int uv_cancel(uv_req_t* req) {
   case UV_GETADDRINFO:
   case UV_GETNAMEINFO:
     /* These internal users prepare and submit requests to the executor. */
-    work = (uv_work_t *) req->executor_data;
+    work = (uv_work_t*) req->executor_data;
     r = uv__cancel_ask_executor(work);
     break;
   case UV_WORK:
     /* This is a direct request to the executor. */
-    work = (uv_work_t *) req;
+    work = (uv_work_t*) req;
     r = uv__cancel_ask_executor(work);
     break;
   default:
