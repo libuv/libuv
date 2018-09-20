@@ -75,7 +75,7 @@ Data types
 
 .. c:type:: int (*uv_executor_cancel_func)(uv_executor_t* executor, uv_work_t* req)
 
-    Called when someone wants to cancel a previously-submit'ed request.
+    Called when someone wants to cancel a previously submitted request.
     Return ``UV_EBUSY`` if you cannot cancel it.
 
 .. seealso:: :c:func:`uv_cancel_t`.
@@ -83,8 +83,8 @@ Data types
 .. c:type:: int (*uv_executor_done_cb)(uv_work_t* req)
 
     libuv sets this during a successful call to :c:func:`uv_replace_executor`.
-    An executor should invoke this CB once finished with a request.
-    This CB is thread safe.
+    An executor should invoke this callback once finished with a request.
+    This callback is thread safe.
 
 .. c:type:: int uv_replace_executor(uv_executor_t* executor)
 
