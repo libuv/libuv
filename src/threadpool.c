@@ -295,6 +295,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
 
 void uv__default_executor_init(void) {
   /* TODO Behavior on fork? */
+  bzero(&default_executor, sizeof(default_executor));
   default_executor.data = &_fields;
   default_executor.submit = uv__default_executor_submit;
   default_executor.cancel = uv__default_executor_cancel;

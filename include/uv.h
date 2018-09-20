@@ -1051,7 +1051,8 @@ struct uv_executor_s {
   void* data;
   /* Set by libuv. */
   uv_executor_done_cb done;
-  /* TODO Private and/or reserved fields? */
+
+  void* reserved[4];
 };
 
 UV_EXTERN int uv_replace_executor(uv_executor_t* executor);

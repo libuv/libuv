@@ -68,6 +68,7 @@ Data types
 .. c:type:: uv_executor_t
 
     Executor type. Use when overriding the default threadpool.
+    Zero out objects of this type before use.
 
 .. c:type:: void (*uv_executor_submit_func)(uv_executor_t* executor, uv_work_t* req, uv_work_options_t* opts)
 
