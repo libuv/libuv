@@ -41,13 +41,14 @@ TEST_IMPL(hrtime) {
 
     diff = b - a;
 
-    /*  printf("i= %d diff = %llu\n", i, (unsigned long long int) diff); */
+    printf("i= %d diff = %llu\n", i, (unsigned long long int) diff);
 
-    /* The windows Sleep() function has only a resolution of 10-20 ms. Check
-     * that the difference between the two hrtime values is somewhat in the
-     * range we expect it to be. */
-    ASSERT(diff > (uint64_t) 25 * NANOSEC / MILLISEC);
-    ASSERT(diff < (uint64_t) 80 * NANOSEC / MILLISEC);
+    /* The Windows Sleep() function has a resolution of 10-20 ms.
+     * The MacOS sleep resolution is XXX.
+     * So be a bit generous with assertions about the difference between the
+     * two hrtime values. */
+    ASSERT(diff > (uint64_t) 20 * NANOSEC / MILLISEC);
+    ASSERT(diff < (uint64_t) 200 * NANOSEC / MILLISEC);
     --i;
   }
   return 0;
