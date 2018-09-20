@@ -211,8 +211,8 @@ int uv_cancel(uv_req_t* req) {
   case UV_FS:
   case UV_GETADDRINFO:
   case UV_GETNAMEINFO:
-    /* These prepare and submit requests to the executor. */
-    work = (uv_work_t *) req->reserved[0];
+    /* These internal users prepare and submit requests to the executor. */
+    work = (uv_work_t *) req->executor_data;
     r = uv__cancel_ask_executor(work);
     break;
   case UV_WORK:

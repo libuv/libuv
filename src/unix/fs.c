@@ -142,7 +142,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     if (cb != NULL) {                                                         \
       LOG_2("fs POST: req %p work %p\n", (void *) req, (void *) work);        \
       uv__req_init(loop, req, UV_FS);                                         \
-      req->reserved[0] = work; /* For uv_cancel. */                           \
+      req->executor_data = work; /* For uv_cancel. */                         \
       options.type = UV_WORK_FS;                                              \
       options.priority = -1;                                                  \
       options.cancelable = 0;                                                 \

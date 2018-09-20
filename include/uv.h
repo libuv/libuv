@@ -402,8 +402,8 @@ UV_EXTERN char* uv_err_name_r(int err, char* buf, size_t buflen);
   void* data;                                                                 \
   /* read-only */                                                             \
   uv_req_type type;                                                           \
-  /* reserved[0] is used by the executor API. reserved[1-5] remain unused. */ \
-  void* reserved[6];                                                          \
+  void* executor_data;                                                        \
+  void* reserved[5];                                                          \
   UV_REQ_PRIVATE_FIELDS                                                       \
 
 /* Abstract base class of all requests. */

@@ -395,7 +395,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   if (getaddrinfo_cb) {
     /* TODO options should indicate type. */
     work->data = req;
-    req->reserved[0] = work; /* For uv_cancel. */
+    req->executor_data = work; /* For uv_cancel. */
     uv_executor_queue_work(loop,
                            work,
                            NULL,

@@ -99,7 +99,7 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
-.. c:member:: void* uv_work_t.reserved[0]
+.. c:member:: void* uv_work_t.executor_data
 
     Space for arbitrary data. libuv does not use this field.
     This is intended for use by an executor implementation.

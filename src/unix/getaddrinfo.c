@@ -224,7 +224,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   if (getaddrinfo_cb) {
     work->data = req;
-    req->reserved[0] = work; /* For uv_cancel. */
+    req->executor_data = work; /* For uv_cancel. */
     options.type = UV_WORK_DNS;
     options.priority = -1;
     options.cancelable = 0;

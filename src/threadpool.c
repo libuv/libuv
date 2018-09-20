@@ -231,9 +231,9 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   fields = (struct default_executor_fields *) executor->data;
 	assert(fields);
 
-  /* Put executor-specific data into req->reserved[0]. */
+  /* Put executor-specific data into req->executor_data. */
   wreq = &req->work_req;
-  req->reserved[0] = wreq;
+  req->executor_data = wreq;
   wreq->work = 0xdeadbeef; /* Non-NULL: "Not yet completed". */
 
   uv_mutex_lock(&fields->mutex);
@@ -258,7 +258,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
 
   fields = (struct default_executor_fields *) executor->data;
 	assert(fields);
-  wreq = (struct uv__work *) req->reserved[0];
+  wreq = (struct uv__work *) req->executor_data;
 	assert(wreq);
 
   uv_mutex_lock(&fields->mutex);
