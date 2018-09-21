@@ -86,14 +86,14 @@ static struct toy_executor_data {
   int times_submit_called;
   int times_cancel_called;
 
-  int n_completed;
+  unsigned n_completed;
 
-  int head;
-  int tail;
-  /* Queue with space for some extras */
+  unsigned head;
+  unsigned tail;
+  /* Queue with space for some extras. */
   uv_work_t* queued_work[TOY_EXECUTOR_MAX_REQUESTS + 10];
 
-  int no_more_work_coming;
+  unsigned no_more_work_coming;
   uv_sem_t thread_exiting;
 
   uv_thread_t thread;
