@@ -992,8 +992,17 @@ static void fs_event_error_report_close_cb(uv_handle_t* handle) {
   /* handle is allocated on-stack, no need to free it */
 }
 
+/* e.g. LOG_TIME("%lld: ...\n", additional, parms); */
+#define LOG_TIME(fmt, ...)                                                     \
+  do {                                                                         \
+    uint64_t diff;                                                             \
+    diff = uv_hrtime() - start_time;                                           \
+    printf(fmt, diff, ##__VA_ARGS__);                                          \
+  }                                                                            \
+  while (0)
 
 TEST_IMPL(fs_event_error_reporting) {
+  uint64_t start_time;
   unsigned int i;
   uv_loop_t loops[1024];
   uv_fs_event_t events[ARRAY_SIZE(loops)];
@@ -1001,6 +1010,9 @@ TEST_IMPL(fs_event_error_reporting) {
   uv_fs_event_t* event;
 
   TEST_FILE_LIMIT(ARRAY_SIZE(loops) * 3);
+
+  start_time = uv_hrtime();
+  LOG_TIME("%lld: Test started\n");
 
   remove("watch_dir/");
   create_dir("watch_dir");
@@ -1010,6 +1022,7 @@ TEST_IMPL(fs_event_error_reporting) {
    * fail.
    */
   for (i = 0; i < ARRAY_SIZE(loops); i++) {
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d\n", i, ARRAY_SIZE(loops));
     loop = &loops[i];
     ASSERT(0 == uv_loop_init(loop));
     event = &events[i];
@@ -1038,6 +1051,7 @@ TEST_IMPL(fs_event_error_reporting) {
 
   /* Stop and close all events, and destroy loops */
   do {
+    LOG_TIME("%lld: stopping events on loop %d/%d\n", i, ARRAY_SIZE(loops));
     loop = &loops[i];
     event = &events[i];
 
@@ -1052,8 +1066,12 @@ TEST_IMPL(fs_event_error_reporting) {
     uv_loop_close(loop);
   } while (i-- != 0);
 
+  LOG_TIME("%lld: cleaning up\n");
+
   remove("watch_dir/");
   MAKE_VALGRIND_HAPPY();
+
+  LOG_TIME("%lld: returning\n");
   return 0;
 }
 
