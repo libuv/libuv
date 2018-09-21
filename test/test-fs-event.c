@@ -1022,14 +1022,17 @@ TEST_IMPL(fs_event_error_reporting) {
    * fail.
    */
   for (i = 0; i < ARRAY_SIZE(loops); i++) {
-    LOG_TIME("%lld: uv_loop_init loop iter %d/%d\n", i, ARRAY_SIZE(loops));
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d: begin\n", i, ARRAY_SIZE(loops));
     loop = &loops[i];
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d: uv_loop_init\n", i, ARRAY_SIZE(loops));
     ASSERT(0 == uv_loop_init(loop));
     event = &events[i];
 
     timer_cb_called = 0;
     close_cb_called = 0;
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d: uv_fs_event_init\n", i, ARRAY_SIZE(loops));
     ASSERT(0 == uv_fs_event_init(loop, event));
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d: uv_fs_event_start\n", i, ARRAY_SIZE(loops));
     ASSERT(0 == uv_fs_event_start(event,
                                   fs_event_error_report_cb,
                                   "watch_dir",
@@ -1037,8 +1040,10 @@ TEST_IMPL(fs_event_error_reporting) {
     uv_unref((uv_handle_t*) event);
 
     /* Let loop run for some time */
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d: uv_timer_init\n", i, ARRAY_SIZE(loops));
     ASSERT(0 == uv_timer_init(loop, &timer));
     ASSERT(0 == uv_timer_start(&timer, timer_cb_nop, 2, 0));
+    LOG_TIME("%lld: uv_loop_init loop iter %d/%d: uv_run\n", i, ARRAY_SIZE(loops));
     uv_run(loop, UV_RUN_DEFAULT);
     ASSERT(1 == timer_cb_called);
     ASSERT(1 == close_cb_called);
@@ -1055,14 +1060,18 @@ TEST_IMPL(fs_event_error_reporting) {
     loop = &loops[i];
     event = &events[i];
 
+    LOG_TIME("%lld: stopping events on loop %d/%d: uv_fs_event_stop\n", i, ARRAY_SIZE(loops));
     ASSERT(0 == uv_fs_event_stop(event));
     uv_ref((uv_handle_t*) event);
+    LOG_TIME("%lld: stopping events on loop %d/%d: uv_close\n", i, ARRAY_SIZE(loops));
     uv_close((uv_handle_t*) event, fs_event_error_report_close_cb);
 
     close_cb_called = 0;
+    LOG_TIME("%lld: stopping events on loop %d/%d: uv_run\n", i, ARRAY_SIZE(loops));
     uv_run(loop, UV_RUN_DEFAULT);
     ASSERT(close_cb_called == 1);
 
+    LOG_TIME("%lld: stopping events on loop %d/%d: uv_loop_close\n", i, ARRAY_SIZE(loops));
     uv_loop_close(loop);
   } while (i-- != 0);
 
