@@ -238,6 +238,7 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   /* Put executor-specific data into req->executor_data. */
   wreq = &req->work_req;
   req->executor_data = wreq;
+  /* TODO Don't do this. */
   wreq->work = 0xdeadbeef; /* Non-NULL: "Not yet completed". */
 
   uv_mutex_lock(&fields->mutex);
