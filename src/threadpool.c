@@ -67,20 +67,24 @@ static void post(struct default_executor_fields* fields, QUEUE* q) {
 /* This is the entry point for each worker in the threadpool.
  * arg is a worker_arg*. */
 static void worker(void* arg) {
+  struct worker_arg* warg;
   uv_executor_t* executor;
   struct uv__work* w;
   uv_work_t* req;
   QUEUE* q;
   struct default_executor_fields* fields;
 
-  executor = ((struct worker_arg*) arg)->executor;
-  assert(executor);
-  fields = (struct default_executor_fields*) executor->data;
-  assert(fields);
+  /* Extract fields from warg. */
+  warg = arg;
+  executor = warg->executor;
+  assert(executor != NULL);
+  fields = executor->data;
+  assert(fields != NULL);
 
   /* Signal we're ready. */
-  uv_sem_post(((struct worker_arg*) arg)->ready);
+  uv_sem_post(warg->ready);
   arg = NULL;
+  warg = NULL;
 
   uv_mutex_lock(&mutex);
   for (;;) {
@@ -229,7 +233,7 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   uv_once(&start_workers_once, start_workers);
 
   fields = (struct default_executor_fields*) executor->data;
-  assert(fields);
+  assert(fields != NULL);
 
   /* Put executor-specific data into req->executor_data. */
   wreq = &req->work_req;
@@ -257,9 +261,9 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   uv_once(&start_workers_once, start_workers);
 
   fields = (struct default_executor_fields*) executor->data;
-  assert(fields);
+  assert(fields != NULL);
   wreq = (struct uv__work*) req->executor_data;
-  assert(wreq);
+  assert(wreq != NULL);
 
   uv_mutex_lock(&fields->mutex);
 
