@@ -105,7 +105,7 @@ static void worker(void* arg) {
   uv_work_t* work;
   int should_break;
 
-  data = (struct toy_executor_data *) arg;
+  data = arg;
 
   should_break = 0;
   for (;;) {
@@ -158,7 +158,7 @@ static void worker(void* arg) {
 static void toy_executor_init(uv_executor_t* executor) {
   struct toy_executor_data* data;
   
-  data = (struct toy_executor_data *) executor->data;
+  data = executor->data;
   data->times_submit_called = 0;
   data->times_cancel_called = 0;
   data->n_completed = 0;
@@ -175,7 +175,7 @@ static void toy_executor_init(uv_executor_t* executor) {
 static void toy_executor_destroy(uv_executor_t* executor) {
   struct toy_executor_data* data;
   
-  data = (struct toy_executor_data *) executor->data;
+  data = executor->data;
   uv_thread_join(&data->thread);
   uv_mutex_destroy(&data->mutex);
 }
@@ -186,7 +186,7 @@ static void toy_executor_submit(uv_executor_t* executor,
   struct toy_executor_data* data;
   printf("toy_executor_submit: req %p\n", req);
   
-  data = (struct toy_executor_data *) executor->data;
+  data = executor->data;
   data->times_submit_called++;
 
   uv_mutex_lock(&data->mutex);
@@ -199,7 +199,7 @@ static void toy_executor_submit(uv_executor_t* executor,
 static int toy_executor_cancel(uv_executor_t* executor, uv_work_t* req) {
   struct toy_executor_data* data;
   
-  data = (struct toy_executor_data *) executor->data;
+  data = executor->data;
   printf("toy_executor_cancel: req %p\n", req);
   data->times_cancel_called++;
 

@@ -232,7 +232,7 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   /* Make sure we are initialized internally. */
   uv_once(&start_workers_once, start_workers);
 
-  fields = (struct default_executor_fields*) executor->data;
+  fields = executor->data;
   assert(fields != NULL);
 
   /* Put executor-specific data into req->executor_data. */
@@ -260,9 +260,9 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   /* Make sure we are initialized internally. */
   uv_once(&start_workers_once, start_workers);
 
-  fields = (struct default_executor_fields*) executor->data;
+  fields = executor->data;
   assert(fields != NULL);
-  wreq = (struct uv__work*) req->executor_data;
+  wreq = req->executor_data;
   assert(wreq != NULL);
 
   uv_mutex_lock(&fields->mutex);
