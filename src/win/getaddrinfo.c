@@ -287,6 +287,8 @@ int uv_getaddrinfo(uv_loop_t* loop,
   req->loop = loop;
   req->retcode = 0;
 
+  work = NULL;
+
   /* calculate required memory size for all input values */
   if (node != NULL) {
     rc = uv__idna_toascii(node,
@@ -330,10 +332,9 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   /* save alloc_ptr now so we can free if error */
   req->alloc = (void*)alloc_ptr;
-  work = NULL;
   if (getaddrinfo_cb != NULL) {
     work = uv__malloc(sizeof(*work));
-    if (!work) {
+    if (work == NULL) {
       err = WSAENOBUFS;
       goto error;
     }
