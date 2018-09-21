@@ -22,6 +22,8 @@
 #include "uv.h"
 #include "task.h"
 
+#include "strings.h" /* bzero */
+
 static int work_cb_count;
 static int after_work_cb_count;
 static uv_work_t work_req;
@@ -158,22 +160,21 @@ static void worker(void* arg) {
   }
 }
 
-static void toy_executor_init(uv_executor_t* executor) {
-  struct toy_executor_data* data;
-  
-  data = executor->data;
-  data->times_submit_called = 0;
-  data->times_cancel_called = 0;
-  data->n_completed = 0;
-  data->head = 0;
-  data->tail = 0;
-  data->no_more_work_coming = 0;
-  ASSERT(0 == uv_sem_init(&data->finish_slow_work, 0));
-  data->executor = executor;
-  ASSERT(0 == uv_mutex_init(&data->mutex));
-  ASSERT(0 == uv_sem_init(&data->thread_exiting, 0));
+static void toy_executor_init(void) {
+  bzero(&toy_executor, sizeof(toy_executor));
 
-  ASSERT(0 == uv_thread_create(&data->thread, worker, data));
+  toy_executor_data.times_submit_called = 0;
+  toy_executor_data.times_cancel_called = 0;
+  toy_executor_data.n_completed = 0;
+  toy_executor_data.head = 0;
+  toy_executor_data.tail = 0;
+  toy_executor_data.no_more_work_coming = 0;
+  ASSERT(0 == uv_sem_init(&toy_executor_data.finish_slow_work, 0));
+  toy_executor_data.executor = &toy_executor;
+  ASSERT(0 == uv_mutex_init(&toy_executor_data.mutex));
+  ASSERT(0 == uv_sem_init(&toy_executor_data.thread_exiting, 0));
+
+  ASSERT(0 == uv_thread_create(&toy_executor_data.thread, worker, &toy_executor_data));
 }
 
 static void toy_executor_destroy(uv_executor_t* executor) {
@@ -231,10 +232,10 @@ TEST_IMPL(executor_replace) {
   n_extra_requests = 0;
 
   /* Replace the builtin executor with our toy_executor. */
+  toy_executor_init();
   toy_executor.submit = toy_executor_submit;
   toy_executor.cancel = toy_executor_cancel;
   toy_executor.data = &toy_executor_data;
-  toy_executor_init(&toy_executor);
   ASSERT(0 == uv_replace_executor(&toy_executor));
 
   /* Submit work. */
@@ -286,11 +287,13 @@ TEST_IMPL(executor_replace_nocancel) {
   uv_work_t slow_work;
   uv_work_t cancel_work;
 
-  /* Replace the builtin executor with our toy_executor. */
+  /* Replace the builtin executor with our toy_executor.
+   * This executor does not implement a cancel CB.
+   * uv_cancel should fail with UV_ENOSYS. */
+  toy_executor_init();
   toy_executor.submit = toy_executor_submit;
   toy_executor.cancel = NULL;
   toy_executor.data = &toy_executor_data;
-  toy_executor_init(&toy_executor);
   ASSERT(0 == uv_replace_executor(&toy_executor));
 
   /* Submit a slow request so a subsequent request will be cancelable. */
