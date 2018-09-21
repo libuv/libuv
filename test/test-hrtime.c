@@ -33,7 +33,8 @@
 
 TEST_IMPL(hrtime) {
   uint64_t a, b, diff;
-  int i = 75;
+  /* 50 iterations * 300 ms max (assert-enforced) = 15 seconds. */
+  int i = 50;
   while (i > 0) {
     a = uv_hrtime();
     uv_sleep(45);
@@ -41,14 +42,14 @@ TEST_IMPL(hrtime) {
 
     diff = b - a;
 
-    printf("i= %d diff = %llu\n", i, (unsigned long long int) diff);
+    /* printf("i= %d diff = %llu\n", i, (unsigned long long int) diff); */
 
-    /* The Windows Sleep() function has a resolution of 10-20 ms.
-     * The MacOS sleep resolution is XXX.
-     * So be a bit generous with assertions about the difference between the
-     * two hrtime values. */
+    /* Be generous with assertions about the difference between the
+     * two hrtime values.
+     * - The Windows Sleep() function has a resolution of 10-20 ms.
+     * - On MacOSX 12 CI we observed diff values between (48, 195) ms. */
     ASSERT(diff > (uint64_t) 20 * NANOSEC / MILLISEC);
-    ASSERT(diff < (uint64_t) 200 * NANOSEC / MILLISEC);
+    ASSERT(diff < (uint64_t) 300 * NANOSEC / MILLISEC);
     --i;
   }
   return 0;
