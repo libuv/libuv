@@ -287,8 +287,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
      * this API must be called by the event loop (single-threaded). */
     uv_executor_return_work(req);
     return 0;
-  }
-  else {
+  } else {
     /* Failed to cancel.
      * Work is either already done or is still to be executed.
      * Either way we need not call done here. */

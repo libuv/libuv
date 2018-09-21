@@ -104,7 +104,7 @@ static void uv__getnameinfo_done(struct uv__work* w, int status) {
     service = req->service;
   }
 
-  if (req->getnameinfo_cb)
+  if (req->getnameinfo_cb != NULL)
     req->getnameinfo_cb(req, req->retcode, host, service);
 }
 
@@ -145,7 +145,7 @@ int uv_getnameinfo(uv_loop_t* loop,
   }
 
   work = NULL;
-  if (getnameinfo_cb) {
+  if (getnameinfo_cb != NULL) {
     work = uv__malloc(sizeof(*work));
     if (work == NULL)
       return UV_ENOMEM;
@@ -159,7 +159,7 @@ int uv_getnameinfo(uv_loop_t* loop,
   req->loop = loop;
   req->retcode = 0;
 
-  if (getnameinfo_cb) {
+  if (getnameinfo_cb != NULL) {
     /* TODO options should indicate type. */
     work->data = req;
     req->executor_data = work; /* For uv_cancel. */

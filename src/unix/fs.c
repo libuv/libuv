@@ -80,7 +80,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     if (req == NULL)                                                          \
       return UV_EINVAL;                                                       \
     work = NULL;                                                              \
-    if (cb) {                                                                 \
+    if (cb != NULL) {                                                         \
       work = uv__malloc(sizeof(*work));                                       \
       if (work == NULL)                                                       \
         return UV_ENOMEM;                                                     \
@@ -106,7 +106,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     } else {                                                                  \
       req->path = uv__strdup(path);                                           \
       if (req->path == NULL) {                                                \
-        if (work)                                                             \
+        if (work != NULL)                                                     \
           uv__free(work);                                                     \
         return UV_ENOMEM;                                                     \
       }                                                                       \
@@ -126,7 +126,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
       new_path_len = strlen(new_path) + 1;                                    \
       req->path = uv__malloc(path_len + new_path_len);                        \
       if (req->path == NULL) {                                                \
-        if (work)                                                             \
+        if (work != NULL)                                                     \
           uv__free(work);                                                     \
         return UV_ENOMEM;                                                     \
       }                                                                       \
@@ -148,10 +148,10 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
       options.cancelable = 0;                                                 \
       options.data = NULL;                                                    \
       uv_executor_queue_work(loop,                                            \
-                      work,                                                   \
-                      &options,                                               \
-                      uv__fs_executor_work,                                   \
-                      uv__fs_executor_done);                                  \
+                             work,                                            \
+                             &options,                                        \
+                             uv__fs_executor_work,                            \
+                             uv__fs_executor_done);                           \
       return 0;                                                               \
     }                                                                         \
     else {                                                                    \
@@ -1552,7 +1552,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
   INIT(MKDTEMP);
   req->path = uv__strdup(tpl);
   if (req->path == NULL) {
-    if (work)
+    if (work != NULL)
       uv__free(work);
     return UV_ENOMEM;
   }
@@ -1589,7 +1589,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   INIT(READ);
 
   if (bufs == NULL || nbufs == 0) {
-    if (work)
+    if (work != NULL)
       uv__free(work);
     return UV_EINVAL;
   }
@@ -1602,7 +1602,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL) {
-    if (work)
+    if (work != NULL)
       uv__free(work);
     return UV_ENOMEM;
   }
@@ -1764,7 +1764,7 @@ int uv_fs_write(uv_loop_t* loop,
   INIT(WRITE);
 
   if (bufs == NULL || nbufs == 0) {
-    if (work)
+    if (work != NULL)
       uv__free(work);
     return UV_EINVAL;
   }
@@ -1776,7 +1776,7 @@ int uv_fs_write(uv_loop_t* loop,
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->bufs == NULL) {
-    if (work)
+    if (work != NULL)
       uv__free(work);
     return UV_ENOMEM;
   }
@@ -1830,7 +1830,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
   if (flags & ~(UV_FS_COPYFILE_EXCL |
                 UV_FS_COPYFILE_FICLONE |
                 UV_FS_COPYFILE_FICLONE_FORCE)) {
-    if (work)
+    if (work != NULL)
       uv__free(work);
     return UV_EINVAL;
   }

@@ -131,7 +131,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
     req->retcode = UV_EAI_CANCELED;
   }
 
-  if (req->cb)
+  if (req->cb != NULL)
     req->cb(req, req->retcode, req->addrinfo);
 }
 
@@ -189,7 +189,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     return UV_ENOMEM;
 
   work = NULL;
-  if (getaddrinfo_cb) {
+  if (getaddrinfo_cb != NULL) {
     work = uv__malloc(sizeof(*work));
     if (work == NULL) {
       uv__free(buf);
@@ -222,7 +222,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   if (hostname)
     req->hostname = memcpy(buf + len, hostname, hostname_len);
 
-  if (getaddrinfo_cb) {
+  if (getaddrinfo_cb != NULL) {
     work->data = req;
     req->executor_data = work; /* For uv_cancel. */
     options.type = UV_WORK_DNS;

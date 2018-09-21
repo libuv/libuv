@@ -108,11 +108,11 @@ static void worker(void* arg) {
   data = (struct toy_executor_data *) arg;
 
   should_break = 0;
-  while (1) {
+  for (;;) {
     /* Run until we (1) have no work, and (2) see data->no_more_work_coming. */
 
     /* Run pending work. */
-    while (1) {
+    for (;;) {
       uv_mutex_lock(&data->mutex);
       if (data->head == data->tail) {
         uv_mutex_unlock(&data->mutex);

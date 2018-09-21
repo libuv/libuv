@@ -228,7 +228,7 @@ complete:
   uv__req_unregister(req->loop, req);
 
   /* finally do callback with converted result */
-  if (req->getaddrinfo_cb)
+  if (req->getaddrinfo_cb != NULL)
     req->getaddrinfo_cb(req, req->retcode, req->addrinfo);
 }
 
@@ -331,7 +331,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   /* save alloc_ptr now so we can free if error */
   req->alloc = (void*)alloc_ptr;
   work = NULL;
-  if (getaddrinfo_cb) {
+  if (getaddrinfo_cb != NULL) {
     work = uv__malloc(sizeof(*work));
     if (!work) {
       err = WSAENOBUFS;
@@ -392,7 +392,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   uv__req_register(loop, req);
 
-  if (getaddrinfo_cb) {
+  if (getaddrinfo_cb != NULL) {
     /* TODO options should indicate type. */
     work->data = req;
     req->executor_data = work; /* For uv_cancel. */
