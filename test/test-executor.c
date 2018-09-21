@@ -96,6 +96,9 @@ static struct toy_executor_data {
   unsigned no_more_work_coming;
   uv_sem_t thread_exiting;
 
+  /* For signaling toy_slow_work. */
+  uv_sem_t finish_slow_work;
+
   uv_thread_t thread;
   uv_executor_t *executor;
 } toy_executor_data;
@@ -165,6 +168,7 @@ static void toy_executor_init(uv_executor_t* executor) {
   data->head = 0;
   data->tail = 0;
   data->no_more_work_coming = 0;
+  ASSERT(0 == uv_sem_init(&data->finish_slow_work, 0));
   data->executor = executor;
   ASSERT(0 == uv_mutex_init(&data->mutex));
   ASSERT(0 == uv_sem_init(&data->thread_exiting, 0));
@@ -214,13 +218,12 @@ static void toy_work(uv_work_t* req) {
 static void toy_slow_work(uv_work_t* req) {
   printf("toy_slow_work: req %p\n", req);
   ASSERT(req);
-  uv_sem_wait((uv_sem_t *) req->data);
+  uv_sem_wait(&toy_executor_data.finish_slow_work);
 }
 
 TEST_IMPL(executor_replace) {
   uv_work_t work[100];
   int n_extra_requests;
-  uv_sem_t finish_slow_work;
   uv_work_t slow_work;
   uv_work_t cancel_work;
   int i;
@@ -248,8 +251,6 @@ TEST_IMPL(executor_replace) {
 
   /* Submit a slow request so a subsequent request will be cancelable. */
   n_extra_requests++;
-  ASSERT(0 == uv_sem_init(&finish_slow_work, 0));
-  slow_work.data = &finish_slow_work;
   ASSERT(0 == uv_queue_work(uv_default_loop(), &slow_work, toy_slow_work, NULL));
 
   /* Submit and try to cancel some work. */
@@ -258,7 +259,7 @@ TEST_IMPL(executor_replace) {
   ASSERT(UV_EINVAL == uv_cancel((uv_req_t *) &cancel_work));
 
   /* Let the slow work finish. */
-  uv_sem_post(&finish_slow_work);
+  uv_sem_post(&toy_executor_data.finish_slow_work);
 
   /* Side channel: tell pool we're done and wait until it finishes. */
   printf("Telling pool we're done\n");
@@ -283,7 +284,6 @@ TEST_IMPL(executor_replace) {
 
 TEST_IMPL(executor_replace_nocancel) {
   uv_work_t slow_work;
-  uv_sem_t finish_slow_work;
   uv_work_t cancel_work;
 
   /* Replace the builtin executor with our toy_executor. */
@@ -294,8 +294,6 @@ TEST_IMPL(executor_replace_nocancel) {
   ASSERT(0 == uv_replace_executor(&toy_executor));
 
   /* Submit a slow request so a subsequent request will be cancelable. */
-  ASSERT(0 == uv_sem_init(&finish_slow_work, 0));
-  slow_work.data = &finish_slow_work;
   ASSERT(0 == uv_queue_work(uv_default_loop(), &slow_work, toy_slow_work, NULL));
 
   /* Submit and then try to cancel a slow request.
@@ -304,7 +302,7 @@ TEST_IMPL(executor_replace_nocancel) {
   ASSERT(UV_ENOSYS == uv_cancel((uv_req_t *) &cancel_work));
 
   /* Let the slow work finish. */
-  uv_sem_post(&finish_slow_work);
+  uv_sem_post(&toy_executor_data.finish_slow_work);
 
   /* Side channel: tell pool we're done and wait until it finishes. */
   printf("Telling pool we're done\n");
