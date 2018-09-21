@@ -124,8 +124,8 @@ static void worker(void* arg) {
     w->work = NULL;
     uv_mutex_unlock(&fields->mutex);
 
-    /* Tell libuv we finished with this request. */
-    executor->done(req);
+    /* Tell event loop we finished with this request. */
+    uv_executor_return_work(req);
   }
 }
 
@@ -279,10 +279,9 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   LOG_1("uv__default_executor_cancel: can_cancel %d\n", can_cancel);
   if (can_cancel) {
     /* We are now done with req. Notify libuv.
-     * Note that event loop can't tell we were cancelled yet,
-     * not until later in uv_cancel, but event loop won't go until
-     * uv_cancel returns b/c libuv is single-threaded. */
-    executor->done(req);
+     * The cancellation is not yet complete, but that's OK because
+     * this API must be called by the event loop (single-threaded). */
+    uv_executor_return_work(req);
     return 0;
   }
   else {

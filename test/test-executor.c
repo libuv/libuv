@@ -130,7 +130,7 @@ static void worker(void* arg) {
 
       /* Tell libuv we're done with this work. */
       printf("worker: Telling libuv we're done with %p\n", work);
-      data->executor->done(work);
+      uv_executor_return_work(work);
 
       /* Advance. */
       uv_mutex_lock(&data->mutex);

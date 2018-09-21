@@ -81,12 +81,6 @@ Data types
 
 .. seealso:: :c:func:`uv_cancel_t`.
 
-.. c:type:: int (*uv_executor_done_cb)(uv_work_t* req)
-
-    libuv sets this during a successful call to :c:func:`uv_replace_executor`.
-    An executor should invoke this callback once finished with a request.
-    This callback is thread safe.
-
 .. c:type:: int uv_replace_executor(uv_executor_t* executor)
 
     Replace the default libuv executor with this user-defined one.
@@ -124,12 +118,6 @@ Public members
 
     Can be NULL.
     If NULL, calls to :c:function:`uv_cancel` will return ``UV_ENOSYS``.
-
-.. c:member:: uv_executor_done_func uv_executor_t.done
-
-    Assigned by libuv.
-    Executor should invoke this when work is done or successfully
-    cancelled.
 
 .. c:member:: void * uv_executor_t.data
 
@@ -190,4 +178,12 @@ API
 
     This request can be cancelled with :c:func:`uv_cancel`.
 
-.. seealso:: The :c:type:`uv_req_t` API functions also apply.
+.. c:function:: void uv_executor_return_work(uv_work_t* req)
+
+    An executor should invoke this function once it finishes with a request.
+    The effect is to return control over the `req` to libuv.
+
+    This function is thread safe. <-- TODO This seems desirable so the executor workers don't have to centralize returns through the event loop, but thread safety requires locking loop->wq_mutex. I'm having trouble imagining how this could lead to deadlock in a "reasonable" executor implementation, but wanted to discuss.
+
+.. seealso:: The :c:type:`uv_req_t` API functions also apply
+             to a :c:type:`uv_work_t`.

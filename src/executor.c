@@ -39,14 +39,14 @@ uv_executor_t* uv__executor(void) {
   return executor;
 }
 
-/* CB: Executor has finished this request. */
-static void uv__executor_done(uv_work_t* req) {
+/* Executor has finished this request. */
+void uv_executor_return_work(uv_work_t* req) {
   uv_mutex_lock(&req->loop->wq_mutex);
 
   /* Place in the associated loop's queue.
    * NB We are re-purposing req->work_req.wq here.
    * This field is also used by the default executor, but
-   * not after the default executor has called done() to get here. */
+   * after this call the executor will no longer touch it. */
   QUEUE_INSERT_TAIL(&req->loop->wq, &req->work_req.wq);
 
   /* Signal to loop that there's a pending task. */
@@ -96,9 +96,6 @@ int uv_replace_executor(uv_executor_t* _executor) {
     return UV_EINVAL;
   if (_executor->submit == NULL)
     return UV_EINVAL;
-
-  /* Set private fields. */
-  _executor->done = uv__executor_done;
 
   /* Replace our executor. */
   executor = _executor;

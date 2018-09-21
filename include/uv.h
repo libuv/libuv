@@ -341,7 +341,6 @@ typedef void (*uv_executor_submit_func)(uv_executor_t* executor,
                                         const uv_work_options_t* opts);
 typedef int (*uv_executor_cancel_func)(uv_executor_t* executor,
                                        uv_work_t* req);
-typedef void (*uv_executor_done_cb)(uv_work_t* req);
 
 typedef struct {
   long tv_sec;
@@ -1049,8 +1048,6 @@ struct uv_executor_s {
   uv_executor_submit_func submit;
   uv_executor_cancel_func cancel;
   void* data;
-  /* Set by libuv. */
-  uv_executor_done_cb done;
 
   void* reserved[4];
 };
@@ -1071,6 +1068,7 @@ UV_EXTERN int uv_executor_queue_work(uv_loop_t* loop,
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
+UV_EXTERN void uv_executor_return_work(uv_work_t* req);
 
 struct uv_cpu_times_s {
   uint64_t user;
