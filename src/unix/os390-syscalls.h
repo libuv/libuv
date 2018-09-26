@@ -40,6 +40,7 @@
 struct epoll_event {
   int events;
   int fd;
+  int is_msg;
 };
 
 typedef struct {
