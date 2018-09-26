@@ -1033,6 +1033,7 @@ int uv_tty_read_stop(uv_tty_t* handle) {
     /* Cancel raw read. Write some bullshit event to force the console wait to
      * return. */
     memset(&record, 0, sizeof record);
+    record.EventType = FOCUS_EVENT;
     if (!WriteConsoleInputW(handle->handle, &record, 1, &written)) {
       return GetLastError();
     }
