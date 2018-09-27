@@ -874,7 +874,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_close_with_pending_event)
   TEST_ENTRY  (fs_event_close_in_callback)
   TEST_ENTRY  (fs_event_start_and_close)
-  TEST_ENTRY  (fs_event_error_reporting)
+  TEST_ENTRY_CUSTOM  (fs_event_error_reporting, 0, 1, 5000)
   TEST_ENTRY  (fs_event_getpath)
   TEST_ENTRY  (fs_scandir_empty_dir)
   TEST_ENTRY  (fs_scandir_non_existent_dir)
