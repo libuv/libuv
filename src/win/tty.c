@@ -2180,13 +2180,13 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 void uv_tty_close(uv_tty_t* handle) {
   assert(handle->u.fd == -1 || handle->u.fd > 2);
+  if (handle->flags & UV_HANDLE_READING)
+    uv_tty_read_stop(handle);
+
   if (handle->u.fd == -1)
     CloseHandle(handle->handle);
   else
     close(handle->u.fd);
-
-  if (handle->flags & UV_HANDLE_READING)
-    uv_tty_read_stop(handle);
 
   handle->u.fd = -1;
   handle->handle = INVALID_HANDLE_VALUE;
