@@ -269,6 +269,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
                    const char* service,
                    const struct addrinfo* hints) {
   uv_work_t* work;
+  uv_work_options_t options;
   char hostname_ascii[256];
   int nodesize = 0;
   int servicesize = 0;
@@ -397,9 +398,13 @@ int uv_getaddrinfo(uv_loop_t* loop,
     /* TODO options should indicate type. */
     work->data = req;
     req->executor_data = work; /* For uv_cancel. */
+    options.type = UV_WORK_DNS;
+    options.priority = -1;
+    options.cancelable = 0;
+    options.data = NULL;
     uv_executor_queue_work(loop,
                            work,
-                           NULL,
+                           &options,
                            uv__getaddrinfo_executor_work,
                            uv__getaddrinfo_executor_done);
     return 0;

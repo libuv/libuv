@@ -128,6 +128,7 @@ int uv_getnameinfo(uv_loop_t* loop,
                    const struct sockaddr* addr,
                    int flags) {
   uv_work_t* work;
+  uv_work_options_t options;
 
   if (req == NULL || addr == NULL)
     return UV_EINVAL;
@@ -160,12 +161,15 @@ int uv_getnameinfo(uv_loop_t* loop,
   req->retcode = 0;
 
   if (getnameinfo_cb != NULL) {
-    /* TODO options should indicate type. */
     work->data = req;
     req->executor_data = work; /* For uv_cancel. */
+    options.type = UV_WORK_DNS;
+    options.priority = -1;
+    options.cancelable = 0;
+    options.data = NULL;
     uv_executor_queue_work(loop,
                            work,
-                           NULL,
+                           &options,
                            uv__getnameinfo_executor_work,
                            uv__getnameinfo_executor_done);
     return 0;
