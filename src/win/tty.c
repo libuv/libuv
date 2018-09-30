@@ -67,6 +67,17 @@
 #define CURSOR_SIZE_SMALL     25
 #define CURSOR_SIZE_LARGE     100
 
+#define UV_TTY_MOUSE_ENC_X10      0x00
+#define UV_TTY_MOUSE_ENC_EXT      0x02
+#define UV_TTY_MOUSE_ENC_SGR      0x04
+#define UV_TTY_MOUSE_ENC_URXVT    0x08
+
+#define UV_TTY_MOUSE_MODE_NONE    0x00
+#define UV_TTY_MOUSE_MODE_X10     0x02
+#define UV_TTY_MOUSE_MODE_NORMAL  0x04
+#define UV_TTY_MOUSE_MODE_BT      0x08
+#define UV_TTY_MOUSE_MODE_ANY     0x10
+
 static void uv_tty_capture_initial_style(
     CONSOLE_SCREEN_BUFFER_INFO* screen_buffer_info,
     CONSOLE_CURSOR_INFO* cursor_info);
@@ -124,7 +135,8 @@ static int uv_tty_virtual_width = -1;
  * handle signalling SIGWINCH
  */
 
-static HANDLE uv__tty_console_handle = INVALID_HANDLE_VALUE;
+static HANDLE uv__tty_console_output_handle = INVALID_HANDLE_VALUE;
+static HANDLE uv__tty_console_input_handle = INVALID_HANDLE_VALUE;
 static int uv__tty_console_height = -1;
 static int uv__tty_console_width = -1;
 static HANDLE uv__tty_console_resized = INVALID_HANDLE_VALUE;
@@ -163,27 +175,37 @@ static BOOL uv__need_check_vterm_state = TRUE;
 static uv_tty_vtermstate_t uv__vterm_state = UV_TTY_UNSUPPORTED;
 static void uv__determine_vterm_state(HANDLE handle);
 
+static int uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
+static int uv__tty_mouse_enc = UV_TTY_MOUSE_ENC_X10;
+
 void uv_console_init(void) {
   if (uv_sem_init(&uv_tty_output_lock, 1))
     abort();
-  uv__tty_console_handle = CreateFileW(L"CONOUT$",
-                                       GENERIC_READ | GENERIC_WRITE,
-                                       FILE_SHARE_WRITE,
-                                       0,
-                                       OPEN_EXISTING,
-                                       0,
-                                       0);
-  if (uv__tty_console_handle != INVALID_HANDLE_VALUE) {
+  uv__tty_console_output_handle = CreateFileW(L"CONOUT$",
+                                              GENERIC_READ | GENERIC_WRITE,
+                                              FILE_SHARE_WRITE,
+                                              0,
+                                              OPEN_EXISTING,
+                                              0,
+                                              0);
+  if (uv__tty_console_output_handle != INVALID_HANDLE_VALUE) {
     CONSOLE_SCREEN_BUFFER_INFO sb_info;
     QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
                       NULL,
                       WT_EXECUTELONGFUNCTION);
     uv_mutex_init(&uv__tty_console_resize_mutex);
-    if (GetConsoleScreenBufferInfo(uv__tty_console_handle, &sb_info)) {
+    if (GetConsoleScreenBufferInfo(uv__tty_console_output_handle, &sb_info)) {
       uv__tty_console_width = sb_info.dwSize.X;
       uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
     }
   }
+  uv__tty_console_input_handle = CreateFileW(L"CONIN$",
+                                             GENERIC_READ | GENERIC_WRITE,
+                                             FILE_SHARE_READ,
+                                             0,
+                                             OPEN_EXISTING,
+                                             0,
+                                             0);
 }
 
 
@@ -263,6 +285,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
     tty->tty.rd.read_raw_wait = NULL;
 
     /* Init keycode-to-vt100 mapper state. */
+    tty->tty.rd.last_key = NULL;
     tty->tty.rd.last_key_len = 0;
     tty->tty.rd.last_key_offset = 0;
     tty->tty.rd.last_utf16_high_surrogate = 0;
@@ -693,10 +716,58 @@ static const char* get_vt100_fn_key(DWORD code, char shift, char ctrl,
 }
 
 
+static COORD uv_tty_make_mouse_coord(MOUSE_EVENT_RECORD mer) {
+  COORD result = {0, 0};
+  CONSOLE_SCREEN_BUFFER_INFO info;
+
+  if (!GetConsoleScreenBufferInfo(uv__tty_console_output_handle, &info)) {
+    return result;
+  }
+
+  result.X = mer.dwMousePosition.X + 1;
+  result.Y = mer.dwMousePosition.Y - info.srWindow.Top + 1;
+  if (uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_X10 ||
+      uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_EXT) {
+    /* Add ' '(32) to convert it to printable characters */
+    result.X += ' ';
+    result.Y += ' ';
+  }
+  if (!uv__tty_mouse_enc) {
+    result.X = result.X > 255 ? ' ' : result.X;
+    result.Y = result.Y > 255 ? ' ' : result.Y;
+  }
+  if (uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_EXT) {
+    result.X = result.X > 2047 ? ' ' : result.X;
+    result.Y = result.Y > 2047 ? ' ' : result.Y;
+  }
+
+  return result;
+}
+
+static int uv_tty_get_mouse_button_number(DWORD button_state) {
+  static DWORD number_of_buttons = 0;
+
+  if (number_of_buttons == 0 &&
+      !GetNumberOfConsoleMouseButtons(&number_of_buttons)) {
+    number_of_buttons = 2;
+  }
+  if (button_state & FROM_LEFT_1ST_BUTTON_PRESSED) {
+    return 0;
+  }
+  if (button_state &  RIGHTMOST_BUTTON_PRESSED) {
+    return number_of_buttons > 2 ? 2 : 1;
+  }
+  if (button_state &  FROM_LEFT_2ND_BUTTON_PRESSED) {
+    return 1;
+  }
+  return -1;
+}
+
 void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req) {
   /* Shortcut for handle->tty.rd.last_input_record.Event.KeyEvent. */
 #define KEV handle->tty.rd.last_input_record.Event.KeyEvent
+#define MEV handle->tty.rd.last_input_record.Event.MouseEvent
 
   DWORD records_left, records_read;
   uv_buf_t buf;
@@ -737,6 +808,9 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
   buf = uv_null_buf_;
   buf_used = 0;
 
+  /* When reading is restarted, no buffer is allocated. */
+  handle->tty.rd.last_key =
+    handle->tty.rd.last_key ? handle->tty.rd.last_key : uv__malloc(32);
   while ((records_left > 0 || handle->tty.rd.last_key_len > 0) &&
          (handle->flags & UV_HANDLE_READING)) {
     if (handle->tty.rd.last_key_len == 0) {
@@ -760,8 +834,213 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
         uv__tty_console_signal_resize();
       }
 
-      /* Ignore other events that are not key events. */
-      if (handle->tty.rd.last_input_record.EventType != KEY_EVENT) {
+      /* Ignore other events that are not key or mouse events. */
+      if (handle->tty.rd.last_input_record.EventType != KEY_EVENT &&
+          handle->tty.rd.last_input_record.EventType != MOUSE_EVENT) {
+        continue;
+      }
+
+      /* See https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Mouse-Tracking */
+      if (handle->tty.rd.last_input_record.EventType == MOUSE_EVENT &&
+          uv__tty_mouse_mode &&
+          ((uv__tty_mouse_mode != UV_TTY_MOUSE_MODE_X10) ||
+           (uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_X10 &&
+            uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_X10))) {
+        COORD pos;
+        char button, c, fbyte = 'M';
+        static COORD old_pos = {-1, -1};
+        static DWORD prev_button_state = 0;
+        DWORD button_state_changed;
+        int i;
+
+        uv_sem_wait(&uv_tty_output_lock);
+        switch (MEV.dwEventFlags) {
+          case 0:
+            fbyte = 'M';
+            /* There is a button that has not been pressed last time and is
+             * pressed this time. Press mouse button event. */
+            button_state_changed =
+              ((MEV.dwButtonState & ((1 << 5) - 1)) & ~(prev_button_state));
+            if (button_state_changed) {
+              button = uv_tty_get_mouse_button_number(button_state_changed);
+            } else {
+              /* There is a button that was not pushed this time and was pressed
+               * last time. Release mouse button event. */
+              button_state_changed =
+                (~(MEV.dwButtonState & ((1 << 5) - 1)) & prev_button_state);
+              if (button_state_changed) {
+                /* In the X10 compatibility mode, no button release event
+                 * occurs. */
+                button = uv_tty_get_mouse_button_number(button_state_changed);
+                if (uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_X10) {
+                  prev_button_state = (MEV.dwButtonState & ((1 << 5) - 1));
+                  uv_sem_post(&uv_tty_output_lock);
+                  continue;
+                }
+                if (uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_SGR) {
+                  fbyte = 'm';
+                } else {
+                  button = button < 0 ? button : 3;
+                }
+              } else {
+                /* Is the condition abnormal? */
+                prev_button_state = (MEV.dwButtonState & ((1 << 5) - 1));
+                uv_sem_post(&uv_tty_output_lock);
+                continue;
+              }
+            }
+            prev_button_state = (MEV.dwButtonState & ((1 << 5) - 1));
+            pos = uv_tty_make_mouse_coord(MEV);
+            break;
+          case MOUSE_MOVED:
+            /* Ignore moved events in X10 compatibility mode and Normal
+            * tracking mode.
+            * Ignore moved events if button is not pressed in Button-event
+            * tracking mode. */
+            if (uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_X10 ||
+                uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_NORMAL ||
+                (uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_BT &&
+                 !((MEV.dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) ||
+                  (MEV.dwButtonState & FROM_LEFT_2ND_BUTTON_PRESSED) ||
+                  (MEV.dwButtonState & RIGHTMOST_BUTTON_PRESSED)))) {
+              uv_sem_post(&uv_tty_output_lock);
+              continue;
+            }
+            /* Ignore moved events that occurred in same cell as before */
+            pos = uv_tty_make_mouse_coord(MEV);
+            if (pos.X == old_pos.Y && pos.Y == old_pos.Y) {
+              uv_sem_post(&uv_tty_output_lock);
+              continue;
+            }
+            /* Although not described in the document, the button number(Cb)
+             * when the mouse is moved when the mouse button is not pressed
+             * in the Any-event tracking mode is 35. */
+            if (uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_ANY &&
+                !MEV.dwButtonState) {
+              button = 35;
+            } else {
+              /* When multiple buttons are pressed, the correct button number
+               * is not generated. This is a problem with xtem encoding. */
+              button = uv_tty_get_mouse_button_number(MEV.dwButtonState);
+              button |= 32;
+            }
+            break;
+          case MOUSE_WHEELED:
+            /* X10 compatibility mode does not support mouse wheel. */
+            if (uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_X10) {
+              uv_sem_post(&uv_tty_output_lock);
+              continue;
+            }
+            /* If high word of dwButtonState is positive then forward rotation,
+             * otherwise backword rotation. Therefore, backward rotation if the
+             * most significant bit is set, forward rotation otherwise. */
+            if (((DWORD)1 << 31) & MEV.dwButtonState) {
+              button = 65;
+            } else {
+              button = 64;
+            }
+            pos = uv_tty_make_mouse_coord(MEV);
+            /* Wheel evnet doesn't cause a button relase event. */
+            break;
+          default:
+            uv_sem_post(&uv_tty_output_lock);
+            continue;
+        }
+
+        /* The 3rd and 4th left buttons are not supported and will be ignored.
+         */
+        if (button < 0) {
+          uv_sem_post(&uv_tty_output_lock);
+          continue;
+        }
+
+        old_pos = pos;
+
+        if (uv__tty_mouse_mode != UV_TTY_MOUSE_MODE_X10) {
+          if (MEV.dwControlKeyState & SHIFT_PRESSED) {
+            button += 4;
+          }
+          if (MEV.dwControlKeyState & LEFT_ALT_PRESSED ||
+              MEV.dwControlKeyState & RIGHT_ALT_PRESSED) {
+            button += 8;
+          }
+          if (MEV.dwControlKeyState & LEFT_CTRL_PRESSED ||
+              MEV.dwControlKeyState & RIGHT_CTRL_PRESSED) {
+            button += 16;
+          }
+        } else {
+          /* In X10 compatibility mode, key modification is not supported. */
+          if(MEV.dwControlKeyState & SHIFT_PRESSED ||
+             MEV.dwControlKeyState & LEFT_ALT_PRESSED ||
+             MEV.dwControlKeyState & RIGHT_ALT_PRESSED ||
+             MEV.dwControlKeyState & LEFT_CTRL_PRESSED ||
+             MEV.dwControlKeyState & RIGHT_CTRL_PRESSED) {
+            uv_sem_post(&uv_tty_output_lock);
+            continue;
+          }
+        }
+
+        if (uv__tty_mouse_enc != UV_TTY_MOUSE_ENC_SGR) {
+          /* Add ' '(32) to convert it to printable characters */
+          button += ' ';
+        }
+
+        switch (uv__tty_mouse_enc) {
+          case UV_TTY_MOUSE_ENC_X10:
+            /* CSI M CbCxCy */
+            snprintf(handle->tty.rd.last_key, 32, "\033[%c%c%c%c",
+                fbyte, button, (unsigned char)pos.X, (unsigned char)pos.Y);
+            break;
+          case UV_TTY_MOUSE_ENC_EXT:
+            /* CSI M CbCxCy */
+            snprintf(handle->tty.rd.last_key, 32, "\033[%c%c", fbyte, button);
+            i = strnlen(handle->tty.rd.last_key, 32);
+            if (pos.X < 0x80) {
+              /* ASCII */
+              handle->tty.rd.last_key[i] = (unsigned char)pos.X;
+              i++;
+            } else {
+              /* Encode upper 5bits to UTF-8 */
+              c = (unsigned char)(0xC0 + ((pos.X >> 6) & 0x1F));
+              handle->tty.rd.last_key[i] = c;
+              i++;
+              /* Encode lower 6bits to UTF-8 */
+              c = (unsigned char)(0x80 + (pos.X & 0x3F));
+              handle->tty.rd.last_key[i] = c;
+              i++;
+            }
+            if (pos.Y < 0x80) {
+              /* ASCII */
+              handle->tty.rd.last_key[i] = (unsigned char)pos.Y;
+              i++;
+            } else {
+              /* Encode upper 5bits to UTF-8 */
+              c = (unsigned char)(0xC0 + ((pos.Y >> 6) & 0x1F));
+              handle->tty.rd.last_key[i] = c;
+              i++;
+              /* Encode lower 6bits to UTF-8 */
+              c = (unsigned char)(0x80 + (pos.Y & 0x3F));
+              handle->tty.rd.last_key[i] = c;
+              i++;
+            }
+            handle->tty.rd.last_key[i] = '\0';
+            break;
+          case UV_TTY_MOUSE_ENC_SGR:
+            /* CSI  < Cb ; Cx ; Cy M or m */
+            snprintf(handle->tty.rd.last_key, 32, "\033[<%d;%d;%d%c",
+                button, pos.X, pos.Y, fbyte);
+            break;
+          case UV_TTY_MOUSE_ENC_URXVT:
+            /* CSI Cb ; Cx ; Cy M */
+            snprintf(handle->tty.rd.last_key, 32, "\033[%d;%d;%d%c",
+                button, pos.X, pos.Y, fbyte);
+            break;
+        }
+
+        handle->tty.rd.last_key_len = strnlen(handle->tty.rd.last_key, 32);
+        handle->tty.rd.last_key_offset = 0;
+
+        uv_sem_post(&uv_tty_output_lock);
         continue;
       }
 
@@ -927,7 +1206,8 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
       }
 
       /* Apply dwRepeat from the last input record. */
-      if (--KEV.wRepeatCount > 0) {
+      if (handle->tty.rd.last_input_record.EventType == KEY_EVENT &&
+          --KEV.wRepeatCount > 0) {
         handle->tty.rd.last_key_offset = 0;
         continue;
       }
@@ -943,6 +1223,12 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
  out:
+   /* If there is a possibility that the user stopped the reading halfway during the
+    * key event processing, the memory is not released. */
+  if (handle->tty.rd.last_key_len == 0) {
+    uv__free(handle->tty.rd.last_key);
+    handle->tty.rd.last_key = NULL;
+  }
   /* Wait for more input events. */
   if ((handle->flags & UV_HANDLE_READING) &&
       !(handle->flags & UV_HANDLE_READ_PENDING)) {
@@ -951,6 +1237,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
   DECREASE_PENDING_REQ_COUNT(handle);
 
+#undef MEV
 #undef KEV
 }
 
@@ -1061,6 +1348,8 @@ int uv_tty_read_stop(uv_tty_t* handle) {
     return 0;
 
   if (handle->flags & UV_HANDLE_TTY_RAW) {
+    /* There may be times when there are buffers allocated, so release them here. */
+    uv__free(handle->tty.rd.last_key);
     /* Cancel raw read. Write some bullshit event to force the console wait to
      * return. */
     memset(&record, 0, sizeof record);
@@ -1669,6 +1958,80 @@ static int uv_tty_set_cursor_shape(uv_tty_t* handle, int style, DWORD* error) {
 }
 
 
+static void uv_tty_set_mouse_tracking_encoding(uv_tty_t* handle,
+                                         int enc,
+                                         BOOL enable) {
+  if (enable) {
+    switch (enc) {
+      case 1005:
+        uv__tty_mouse_enc = UV_TTY_MOUSE_ENC_EXT;
+        break;
+      case 1006:
+        uv__tty_mouse_enc = UV_TTY_MOUSE_ENC_SGR;
+        break;
+      case 1015:
+        uv__tty_mouse_enc = UV_TTY_MOUSE_ENC_URXVT;
+        break;
+    }
+  } else {
+    if ((enc == 1005 && uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_EXT) ||
+        (enc == 1006 && uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_SGR) ||
+        (enc == 1015 && uv__tty_mouse_enc == UV_TTY_MOUSE_ENC_URXVT)) {
+          uv__tty_mouse_enc = UV_TTY_MOUSE_ENC_X10;
+    }
+  }
+}
+
+static void uv_tty_set_mouse_tracking_mode(uv_tty_t* handle,
+                                         int mode,
+                                         BOOL enable,
+                                         DWORD* error) {
+  static DWORD dwSavedMode = 0;
+  DWORD dwMode;
+  if (!GetConsoleMode(uv__tty_console_input_handle, &dwMode)) {
+    uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
+    *error = GetLastError();
+    return;
+  }
+
+  if (!dwSavedMode) {
+    dwSavedMode = dwMode;
+  }
+
+  if (enable) {
+    dwMode |= (ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT);
+    if (!SetConsoleMode(uv__tty_console_input_handle, dwMode)) {
+      uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
+      *error = GetLastError();
+      return;
+    }
+    switch (mode) {
+      case 9:
+        uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_X10;
+        break;
+      case 1000:
+        uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NORMAL;
+        break;
+      case 1002:
+        uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_BT;
+        break;
+      case 1003:
+        uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_ANY;
+        break;
+    }
+  } else {
+    if ((mode == 9 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_X10) ||
+        (mode == 1000 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_NORMAL) ||
+        (mode == 1002 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_BT) ||
+        (mode == 1003 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_ANY)) {
+      if (!SetConsoleMode(uv__tty_console_input_handle, dwSavedMode)) {
+        *error = GetLastError();
+      }
+      uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
+    }
+  }
+}
+
 static int uv_tty_write_bufs(uv_tty_t* handle,
                              const uv_buf_t bufs[],
                              unsigned int nbufs,
@@ -1943,19 +2306,43 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
             switch (utf8_codepoint) {
               case 'l':
                 /* Hide the cursor */
-                if (handle->tty.wr.ansi_csi_argc == 1 &&
-                    handle->tty.wr.ansi_csi_argv[0] == 25) {
-                  FLUSH_TEXT();
-                  uv_tty_set_cursor_visibility(handle, 0, error);
+                if (handle->tty.wr.ansi_csi_argc == 1) {
+                  int argv0 = handle->tty.wr.ansi_csi_argv[0];
+                  if (argv0 == 25) {
+                    FLUSH_TEXT();
+                    uv_tty_set_cursor_visibility(handle, 0, error);
+                  }
+                  /* unset the mouse tracking */
+                  if (argv0 == 1005 || argv0 == 1006 || argv0 == 1015) {
+                    FLUSH_TEXT();
+                    uv_tty_set_mouse_tracking_encoding(handle, argv0, FALSE);
+                  }
+                  if (argv0 == 9 || argv0 == 1000 ||
+                      argv0 == 1002 || argv0 == 1003) {
+                    FLUSH_TEXT();
+                    uv_tty_set_mouse_tracking_mode(handle, argv0, FALSE, error);
+                  }
                 }
                 break;
 
               case 'h':
                 /* Show the cursor */
-                if (handle->tty.wr.ansi_csi_argc == 1 &&
-                    handle->tty.wr.ansi_csi_argv[0] == 25) {
-                  FLUSH_TEXT();
-                  uv_tty_set_cursor_visibility(handle, 1, error);
+                if (handle->tty.wr.ansi_csi_argc == 1) {
+                  int argv0 = handle->tty.wr.ansi_csi_argv[0];
+                  if (argv0 == 25) {
+                    FLUSH_TEXT();
+                    uv_tty_set_cursor_visibility(handle, 1, error);
+                  }
+                  /* set the mouse tracking */
+                  if (argv0 == 1005 || argv0 == 1006 || argv0 == 1015) {
+                    FLUSH_TEXT();
+                    uv_tty_set_mouse_tracking_encoding(handle, argv0, TRUE);
+                  }
+                  if (argv0 == 9 || argv0 == 1000 ||
+                      argv0 == 1002 || argv0 == 1003) {
+                    FLUSH_TEXT();
+                    uv_tty_set_mouse_tracking_mode(handle, argv0, TRUE, error);
+                  }
                 }
                 break;
             }
@@ -2418,8 +2805,12 @@ static void uv__tty_console_signal_resize(void) {
   CONSOLE_SCREEN_BUFFER_INFO sb_info;
   int width, height;
 
-  if (!GetConsoleScreenBufferInfo(uv__tty_console_handle, &sb_info))
+  uv_sem_wait(&uv_tty_output_lock);
+  if (!GetConsoleScreenBufferInfo(uv__tty_console_output_handle, &sb_info)) {
+    uv_sem_post(&uv_tty_output_lock);
     return;
+  }
+  uv_sem_post(&uv_tty_output_lock);
 
   width = sb_info.dwSize.X;
   height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;

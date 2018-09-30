@@ -287,6 +287,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tmpdir.c \
                          test/test-tty-duplicate-key.c \
                          test/test-tty-escape-sequence-processing.c \
+                         test/test-tty-mouse-tracking.c \
                          test/test-tty.c \
                          test/test-udp-alloc-cb-fail.c \
                          test/test-udp-bind.c \

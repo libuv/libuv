@@ -491,6 +491,14 @@ typedef struct {
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
 
+/* Changed from char last_key[8]; to char *last_key; to keep ABI compatibility,
+ * because it is necessary to increase the buffer when implementing mouse
+ * tracking. For 32bit, padding of 4 bytes is required. */
+#ifdef WIN64
+# define LAST_KEY char *last_key;
+#else
+# define LAST_KEY char *last_key; char padding[4];
+#endif
 /* TODO: put the parser states in an union - TTY handles are always half-duplex
  * so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
@@ -503,7 +511,7 @@ typedef struct {
       uv_buf_t read_line_buffer;                                              \
       HANDLE read_raw_wait;                                                   \
       /* Fields used for translating win keystrokes into vt100 characters */  \
-      char last_key[8];                                                       \
+      LAST_KEY                                                                \
       unsigned char last_key_offset;                                          \
       unsigned char last_key_len;                                             \
       WCHAR last_utf16_high_surrogate;                                        \
