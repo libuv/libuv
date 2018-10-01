@@ -777,10 +777,24 @@ int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
 
 
 void uv_barrier_destroy(uv_barrier_t* barrier) {
-  if (pthread_barrier_destroy(barrier))
-    abort();
+  /* Can fail legally with EBUSY or EINVAL. */
+  pthread_barrier_destroy(barrier);
 }
 
+int uv_barrier_try_destroy(uv_barrier_t* barrier) {
+  int rc;
+
+  rc = pthread_barrier_destroy(barrier);
+  if (!rc)
+    return 0;
+  /* Can fail legally with EBUSY or EINVAL. */
+  else if (rc == EBUSY)
+    return UV_EBUSY;
+  else if (rc == EINVAL)
+    return UV_EINVAL;
+  else
+    abort();
+}
 
 int uv_barrier_wait(uv_barrier_t* barrier) {
   int r = pthread_barrier_wait(barrier);
