@@ -1533,6 +1533,7 @@ UV_EXTERN void uv_cond_broadcast(uv_cond_t* cond);
 
 UV_EXTERN int uv_barrier_init(uv_barrier_t* barrier, unsigned int count);
 UV_EXTERN void uv_barrier_destroy(uv_barrier_t* barrier);
+UV_EXTERN int uv_barrier_try_destroy(uv_barrier_t* barrier);
 UV_EXTERN int uv_barrier_wait(uv_barrier_t* barrier);
 
 UV_EXTERN void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex);

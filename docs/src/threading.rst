@@ -155,14 +155,17 @@ Functions return 0 on success or an error code < 0 (unless the
 return type is void, of course).
 
 .. note::
-    :c:func:`uv_barrier_wait` returns a value > 0 to an arbitrarily chosen "serializer" thread
-    to facilitate cleanup, i.e.
+    1. :c:func:`uv_barrier_wait` returns a value > 0 to
+       an arbitrarily chosen "serializer" thread to facilitate cleanup.
 
-    ::
+       ::
 
-        if (uv_barrier_wait(&barrier) > 0)
-            uv_barrier_destroy(&barrier);
+           if (uv_barrier_wait(&barrier) > 0)
+               uv_barrier_destroy(&barrier);
+    2. :c:func:`uv_barrier_destroy` may fail silently.
+       Use `:c:func:`uv_barrier_try_destroy` instead.
 
 .. c:function:: int uv_barrier_init(uv_barrier_t* barrier, unsigned int count)
 .. c:function:: void uv_barrier_destroy(uv_barrier_t* barrier)
+.. c:function:: int uv_barrier_try_destroy(uv_barrier_t* barrier)
 .. c:function:: int uv_barrier_wait(uv_barrier_t* barrier)
