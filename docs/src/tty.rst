@@ -33,6 +33,23 @@ Data types
           UV_TTY_MODE_IO
       } uv_tty_mode_t;
 
+.. c:type:: uv_tty_vtermstate_t
+
+    Console virtual terminal mode type:
+
+    ::
+
+      typedef enum {
+          /* unchecked */
+          UV_TTY_AUTODETEC,
+          /* Legacy conhost */
+          UV_TTY_LEAGCY,
+          /* Modern conhost */
+          UV_TTY_VTP,
+          /* ConEmu, mintty, etc. */
+          uv_TTY_ANSI
+      } uv_tty_vtermstate_t;
+
 
 
 Public members
@@ -96,5 +113,11 @@ API
 .. c:function:: int uv_tty_get_winsize(uv_tty_t* handle, int* width, int* height)
 
     Gets the current Window size. On success it returns 0.
+
+.. c:function:: int uv_tty_set_vterm_state(uv_tty_t* handle, uv_vtermstate_t state)
+
+    Set the Console using the specified virtual terminal mode.
+
+    This function is only implemented on Windows.
 
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.

@@ -145,13 +145,8 @@ static char uv_tty_default_fg_bright = 0;
 static char uv_tty_default_bg_bright = 0;
 static char uv_tty_default_inverse = 0;
 
-typedef enum {
-  UV_SUPPORTED,
-  UV_UNCHECKED,
-  UV_UNSUPPORTED
-} uv_vtermstate_t;
 /* Determine whether or not ANSI support is enabled. */
-static uv_vtermstate_t uv__vterm_state = UV_UNCHECKED;
+static uv_tty_vtermstate_t uv__vterm_state = UV_TTY_AUTODETECT;
 static void uv__determine_vterm_state(HANDLE handle);
 
 void uv_console_init(void) {
@@ -213,7 +208,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
      * between all uv_tty_t handles. */
     uv_sem_wait(&uv_tty_output_lock);
 
-    if (uv__vterm_state == UV_UNCHECKED)
+    if (uv__vterm_state == UV_TTY_AUTODETECT)
       uv__determine_vterm_state(handle);
 
     /* Remember the original console text attributes. */
@@ -1657,7 +1652,7 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
     uv_buf_t buf = bufs[i];
     unsigned int j;
 
-    if (uv__vterm_state == UV_SUPPORTED && buf.len > 0) {
+    if (uv__vterm_state != UV_TTY_LEGACY && buf.len > 0) {
       utf16_buf_used = MultiByteToWideChar(CP_UTF8,
                                            0,
                                            buf.base,
@@ -2255,25 +2250,63 @@ int uv_tty_reset_mode(void) {
   return 0;
 }
 
+static int uv__set_vtp(HANDLE handle, BOOL vtp) {
+  DWORD dwMode = 0;
+
+  if (!GetConsoleMode(handle, &dwMode)) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  if (vtp) {
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  } else {
+    dwMode &= ~(ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  }
+  if (!SetConsoleMode(handle, dwMode)) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  return 0;
+}
+
 /* Determine whether or not this version of windows supports
  * proper ANSI color codes. Should be supported as of windows
  * 10 version 1511, build number 10.0.10586.
  */
 static void uv__determine_vterm_state(HANDLE handle) {
-  DWORD dwMode = 0;
-
-  if (!GetConsoleMode(handle, &dwMode)) {
-    uv__vterm_state = UV_UNSUPPORTED;
+  if (uv__set_vtp(handle, TRUE)) {
+    uv__vterm_state = UV_TTY_LEGACY;
     return;
   }
 
-  dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  if (!SetConsoleMode(handle, dwMode)) {
-    uv__vterm_state = UV_UNSUPPORTED;
-    return;
-  }
+  uv__vterm_state = UV_TTY_VTP;
+}
 
-  uv__vterm_state = UV_SUPPORTED;
+int uv_tty_set_vterm_state(uv_tty_t* tty, uv_tty_vtermstate_t state) {
+  int ret = 0;
+
+  uv_sem_wait(&uv_tty_output_lock);
+  switch (state) {
+    case UV_TTY_AUTODETECT:
+      uv__determine_vterm_state(tty->handle);
+      break;
+    case UV_TTY_VTP:
+      if (!(ret = uv__set_vtp(tty->handle, TRUE))) {
+        uv__vterm_state = UV_TTY_VTP;
+      }
+      break;
+    case UV_TTY_LEGACY:
+      if (!(ret = uv__set_vtp(tty->handle, FALSE))) {
+        uv__vterm_state = UV_TTY_LEGACY;
+      }
+      break;
+    case UV_TTY_ANSI:
+      uv__vterm_state = UV_TTY_ANSI;
+      break;
+  }
+  uv_sem_post(&uv_tty_output_lock);
+
+  return ret;
 }
 
 static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {

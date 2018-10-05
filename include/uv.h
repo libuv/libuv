@@ -57,6 +57,7 @@ extern "C" {
 #endif
 
 #if defined(_WIN32)
+typedef struct uv_tty_s uv_tty_t;
 # include "uv/win.h"
 #else
 # include "uv/unix.h"
@@ -206,7 +207,9 @@ typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
 typedef struct uv_pipe_s uv_pipe_t;
+#ifndef WIN32
 typedef struct uv_tty_s uv_tty_t;
+#endif
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
