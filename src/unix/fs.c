@@ -272,7 +272,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     goto done;
   if (S_ISDIR(buf.st_mode)) {
     errno = EISDIR;
-    result -1;
+    result = -1;
     goto done;
   }
 #endif /* defined(_AIX) */
