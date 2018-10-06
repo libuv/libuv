@@ -346,6 +346,7 @@ TEST_DECLARE   (fs_partial_read)
 TEST_DECLARE   (fs_partial_write)
 TEST_DECLARE   (fs_file_pos_after_op_with_offset)
 TEST_DECLARE   (fs_null_req)
+TEST_DECLARE   (fs_read_dir)
 #ifdef _WIN32
 TEST_DECLARE   (fs_exclusive_sharing_mode)
 TEST_DECLARE   (fs_open_readonly_acl)
@@ -897,6 +898,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_read_write_null_arguments)
   TEST_ENTRY  (fs_file_pos_after_op_with_offset)
   TEST_ENTRY  (fs_null_req)
+  TEST_ENTRY  (fs_read_dir)
 #ifdef _WIN32
   TEST_ENTRY  (fs_exclusive_sharing_mode)
   TEST_ENTRY  (fs_open_readonly_acl)
