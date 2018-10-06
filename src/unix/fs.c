@@ -265,7 +265,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   unsigned int iovmax;
   ssize_t result;
 
-#if defined(_AIX)
+  /* Make sure that the read request is not for a directory */
   struct stat buf;
   result = fstat(req->file, &buf);
   if (result)
@@ -275,7 +275,6 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     result = -1;
     goto done;
   }
-#endif /* defined(_AIX) */
 
   iovmax = uv__getiovmax();
   if (req->nbufs > iovmax)
