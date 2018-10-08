@@ -49,7 +49,7 @@ STATIC_ASSERT(sizeof(uv_barrier_t) == sizeof(pthread_barrier_t));
 #endif
 
 /* Note: guard clauses should match uv_barrier_t's in include/uv/uv-unix.h. */
-#if !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+#if defined(_AIX) || !defined(PTHREAD_BARRIER_SERIAL_THREAD)
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   struct _uv_barrier* b;
   int rc;
