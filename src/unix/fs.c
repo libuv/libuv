@@ -265,18 +265,6 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   unsigned int iovmax;
   ssize_t result;
 
-#if defined(_AIX)
-  struct stat buf;
-  result = fstat(req->file, &buf);
-  if (result)
-    goto done;
-  if (S_ISDIR(buf.st_mode)) {
-    errno = EISDIR;
-    result -1;
-    goto done;
-  }
-#endif /* defined(_AIX) */
-
   iovmax = uv__getiovmax();
   if (req->nbufs > iovmax)
     req->nbufs = iovmax;
