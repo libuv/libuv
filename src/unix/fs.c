@@ -388,11 +388,13 @@ static ssize_t uv__fs_pathmax_size(const char* path) {
 }
 
 static ssize_t uv__fs_readlink(uv_fs_t* req) {
+  ssize_t maxlen;
   ssize_t len;
   char* buf;
+  char* newbuf;
 
-  len = uv__fs_pathmax_size(req->path);
-  buf = uv__malloc(len + 1);
+  maxlen = uv__fs_pathmax_size(req->path);
+  buf = uv__malloc(maxlen);
 
   if (buf == NULL) {
     errno = ENOMEM;
@@ -400,15 +402,26 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   }
 
 #if defined(__MVS__)
-  len = os390_readlink(req->path, buf, len);
+  len = os390_readlink(req->path, buf, maxlen);
 #else
-  len = readlink(req->path, buf, len);
+  len = readlink(req->path, buf, maxlen);
 #endif
-
 
   if (len == -1) {
     uv__free(buf);
     return -1;
+  }
+
+  /* Uncommon case: resize to make room for the trailing nul byte. */
+  if (len == maxlen) {
+    newbuf = uv__realloc(buf, len + 1);
+
+    if (newbuf == NULL) {
+      uv__free(buf);
+      return -1;
+    }
+
+    buf = newbuf;
   }
 
   buf[len] = '\0';
