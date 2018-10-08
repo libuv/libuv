@@ -86,6 +86,7 @@ error2:
 
 int uv_barrier_wait(uv_barrier_t* barrier) {
   struct _uv_barrier* b;
+  int last;
 
   if (barrier == NULL || barrier->b == NULL)
     return UV_EINVAL;
@@ -95,23 +96,20 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
 
   if (++b->in == b->threshold) {
     b->in = 0;
-    b->out = b->threshold - 1;
+    b->out = b->threshold;
     uv_cond_signal(&b->cond);
-    uv_mutex_unlock(&b->mutex);
-    return 1;  /* This is the first thread to reach the threshold. */
+  } else {
+    do
+      uv_cond_wait(&b->cond, &b->mutex);
+    while (b->in != 0);
   }
 
-  /* Otherwise, wait for other threads until in is set to 0,
-     then return 0 to indicate this is not the first thread. */
-  do
-    uv_cond_wait(&b->cond, &b->mutex);
-  while (b->in != 0);
+  last = (--b->out == 0);
+  if (!last)
+    uv_cond_signal(&b->cond);  /* Not needed for last thread. */
 
-  /* mark thread exit */
-  b->out--;
-  uv_cond_signal(&b->cond);
   uv_mutex_unlock(&b->mutex);
-  return 0;
+  return last;
 }
 
 
