@@ -357,13 +357,11 @@ uint64_t uv_get_total_memory(void) {
 
 
 int uv_resident_set_memory(size_t* rss) {
-  char* psa;
   char* ascb;
   char* rax;
   size_t nframes;
 
-  psa = PSA_PTR;
-  ascb  = *(char* __ptr32 *)(psa + PSAAOLD);
+  ascb  = *(char* __ptr32 *)(PSA_PTR + PSAAOLD);
   rax = *(char* __ptr32 *)(ascb + ASCBRSME);
   nframes = *(unsigned int*)(rax + RAXFMCT);
 
