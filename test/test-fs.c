@@ -3057,19 +3057,25 @@ TEST_IMPL(fs_read_dir) {
                  O_RDONLY | O_DIRECTORY,
                  S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT(r > 0);
+  ASSERT(r >= 0);
   uv_fs_req_cleanup(&open_req1);
 
   /* Try to read data from the directory */
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, open_req1.result, &iov, 1, 0, NULL);
-#if defined(__FreeBSD__) || \
-    defined(__OpenBSD__) || \
-    defined(__NetBSD__)  || \
-    defined(_BSD_SOURCE) || \
-    defined(_AIX)
-  /* As of now, only BSDs and AIX support reading from a directory. */
-  ASSERT(r == 0)
+#if defined(__FreeBSD__)   || \
+    defined(__OpenBSD__)   || \
+    defined(__NetBSD__)    || \
+    defined(_BSD_SOURCE)   || \
+    defined(_AIX)          || \
+    defined(__DragonFly__) || \
+    defined(__sun)
+  /*
+   * As of now, only BSDs, AIX, and SmartOS support reading from a directory,
+   * that too depends on the filesystem this temporary test directory is
+   * created on. That is why this assertion is a bit lenient.
+   */
+  ASSERT((r >= 0) || (r == UV_EISDIR));
 #else
   ASSERT(r == UV_EISDIR);
 #endif
