@@ -3054,7 +3054,7 @@ TEST_IMPL(fs_read_dir) {
   r = uv_fs_open(loop,
                  &open_req1,
                  "test_dir",
-                 O_RDONLY | O_DIRECTORY,
+                 UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
                  S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT(r >= 0);
