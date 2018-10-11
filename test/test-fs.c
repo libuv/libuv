@@ -3063,19 +3063,15 @@ TEST_IMPL(fs_read_dir) {
   /* Try to read data from the directory */
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, open_req1.result, &iov, 1, 0, NULL);
-#if defined(__MVS__)
+#if defined(__FreeBSD__)   || \
+    defined(__OpenBSD__)   || \
+    defined(__NetBSD__)    || \
+    defined(__DragonFly__) || \
+    defined(_AIX)          || \
+    defined(__sun)         || \
+    defined(__MVS__)
   /*
-   * Z/OS allows reading of directories, but number of bytes read will be zero.
-   */
-  ASSERT(r == 0);
-#elif defined(__FreeBSD__)   || \
-      defined(__OpenBSD__)   || \
-      defined(__NetBSD__)    || \
-      defined(__DragonFly__) || \
-      defined(_AIX)          || \
-      defined(__sun)
-  /*
-   * As of now, only BSDs, AIX, and SmartOS support reading from a directory,
+   * As of now, these operating systems support reading from a directory,
    * that too depends on the filesystem this temporary test directory is
    * created on. That is why this assertion is a bit lenient.
    */
