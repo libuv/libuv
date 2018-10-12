@@ -87,11 +87,11 @@ typedef struct pollfd {
 #define SIGWINCH             28
 
 /* Redefine NSIG to take SIGWINCH into consideration */
-#if defined(NSIG) && NSIG < 29
+#if defined(NSIG) && NSIG <= SIGWINCH
 # undef NSIG
 #endif
 #ifndef NSIG
-# define NSIG 29
+# define NSIG SIGWINCH + 1
 #endif
 
 /* The CRT defines SIGABRT_COMPAT as 6, which equals SIGABRT on many unix-like
