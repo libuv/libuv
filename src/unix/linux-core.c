@@ -829,6 +829,8 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
 int uv_interface_addresses(uv_interface_address_t** addresses,
   int* count) {
 #ifndef HAVE_IFADDRS_H
+  *count = 0;
+  *addresses = NULL;
   return UV_ENOSYS;
 #else
   struct ifaddrs *addrs, *ent;
@@ -836,11 +838,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   int i;
   struct sockaddr_ll *sll;
 
-  if (getifaddrs(&addrs))
-    return UV__ERR(errno);
-
   *count = 0;
   *addresses = NULL;
+
+  if (getifaddrs(&addrs))
+    return UV__ERR(errno);
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
@@ -850,8 +852,10 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
     (*count)++;
   }
 
-  if (*count == 0)
+  if (*count == 0) {
+    freeifaddrs(addrs);
     return 0;
+  }
 
   *addresses = uv__malloc(*count * sizeof(**addresses));
   if (!(*addresses)) {

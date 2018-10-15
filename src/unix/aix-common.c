@@ -175,6 +175,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
   struct sockaddr_dl* sa_addr;
 
   *count = 0;
+  *addresses = NULL;
 
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
     return UV__ERR(errno);
@@ -215,6 +216,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses,
       continue;
 
     (*count)++;
+  }
+
+  if (*count == 0) {
+    uv__close(sockfd);
+    return 0;
   }
 
   /* Alloc the return interface structs */

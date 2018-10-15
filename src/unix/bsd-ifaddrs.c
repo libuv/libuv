@@ -69,16 +69,22 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
   int i;
 
+  *count = 0;
+  *addresses = NULL;
+
   if (getifaddrs(&addrs) != 0)
     return UV__ERR(errno);
-
-  *count = 0;
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
     if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
     (*count)++;
+  }
+
+  if (*count == 0) {
+    freeifaddrs(addrs);
+    return 0;
   }
 
   *addresses = uv__malloc(*count * sizeof(**addresses));
