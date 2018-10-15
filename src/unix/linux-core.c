@@ -826,8 +826,7 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   return !exclude_type;
 }
 
-int uv_interface_addresses(uv_interface_address_t** addresses,
-  int* count) {
+int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 #ifndef HAVE_IFADDRS_H
   *count = 0;
   *addresses = NULL;
