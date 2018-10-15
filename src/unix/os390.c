@@ -529,12 +529,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifreq* p;
   int count_v6;
 
+  *count = 0;
+  *addresses = NULL;
+
   /* get the ipv6 addresses first */
   uv_interface_address_t* addresses_v6;
   uv__interface_addresses_v6(&addresses_v6, &count_v6);
 
   /* now get the ipv4 addresses */
-  *count = 0;
 
   /* Assume maximum buffer size allowable */
   maxsize = 16384;
@@ -574,6 +576,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
       continue;
 
     (*count)++;
+  }
+
+  if (*count == 0) {
+    uv__close(sockfd);
+    return 0;
   }
 
   /* Alloc the return interface structs */
@@ -750,7 +757,7 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   memcpy(reg_struct.__rfis_rftok, handle->rfis_rftok,
          sizeof(handle->rfis_rftok));
 
-  /* 
+  /*
    * This call will take "/" as the path argument in case we
    * don't care to supply the correct path. The system will simply
    * ignore it.
@@ -986,7 +993,7 @@ void uv__set_process_title(const char* title) {
 }
 
 int uv__io_fork(uv_loop_t* loop) {
-  /* 
+  /*
     Nullify the msg queue but don't close it because
     it is still being used by the parent.
   */
