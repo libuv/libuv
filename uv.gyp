@@ -326,7 +326,10 @@
           'sources': [ 'src/unix/netbsd.c' ],
         }],
         [ 'OS in "freebsd dragonflybsd openbsd netbsd".split()', {
-          'sources': [ 'src/unix/posix-hrtime.c' ],
+          'sources': [
+            'src/unix/posix-hrtime.c',
+            'src/unix/bsd-proctitle.c'
+          ],
         }],
         [ 'OS in "ios mac freebsd dragonflybsd openbsd netbsd".split()', {
           'sources': [
