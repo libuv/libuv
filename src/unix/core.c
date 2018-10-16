@@ -636,21 +636,36 @@ int uv__cloexec_fcntl(int fd, int set) {
 }
 
 
-/* This function is not execve-safe, there is a race window
- * between the call to dup() and fcntl(FD_CLOEXEC).
- */
 int uv__dup(int fd) {
-  int err;
+  int r;
+#if defined(F_DUPFD_CLOEXEC)
+  static int no_dupfd_cloexec;
+  if (!no_dupfd_cloexec) {
+    r = fcntl(fd, F_DUPFD_CLOEXEC, /* >= stdio */3);
+    if (r != -1)
+      return r;
+    if (errno != EINVAL)
+      return UV__ERR(errno);
+    no_dupfd_cloexec = 1;
+    /* Fall through. */
+  }
+#endif
 
-  fd = dup(fd);
+  do
+    fd = dup(fd);
+#elif defined(__APPLE__)
+  while (r == -1 && errno == EINTR);
+#else
+  while (0);  /* Never retry. */
+#endif
 
   if (fd == -1)
     return UV__ERR(errno);
 
-  err = uv__cloexec(fd, 1);
-  if (err) {
+  r = uv__cloexec(fd, 1);
+  if (r) {
     uv__close(fd);
-    return err;
+    return r;
   }
 
   return fd;
@@ -1035,6 +1050,8 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
       r = dup2(oldfd, newfd);
 #if defined(__linux__)
     while (r == -1 && errno == EBUSY);
+#elif defined(__APPLE__)
+    while (r == -1 && errno == EINTR);
 #else
     while (0);  /* Never retry. */
 #endif
