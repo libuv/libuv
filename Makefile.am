@@ -374,6 +374,7 @@ endif
 if DRAGONFLY
 uvinclude_HEADERS += include/uv/bsd.h
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/bsd-proctitle.c \
                     src/unix/freebsd.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c
@@ -383,6 +384,7 @@ endif
 if FREEBSD
 uvinclude_HEADERS += include/uv/bsd.h
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/bsd-proctitle.c \
                     src/unix/freebsd.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c
@@ -426,6 +428,7 @@ endif
 if NETBSD
 uvinclude_HEADERS += include/uv/bsd.h
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/bsd-proctitle.c \
                     src/unix/kqueue.c \
                     src/unix/netbsd.c \
                     src/unix/posix-hrtime.c
@@ -435,6 +438,7 @@ endif
 if OPENBSD
 uvinclude_HEADERS += include/uv/bsd.h
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/bsd-proctitle.c \
                     src/unix/kqueue.c \
                     src/unix/openbsd.c \
                     src/unix/posix-hrtime.c
