@@ -37,7 +37,6 @@ static void init_process_title_mutex_once(void) {
 }
 
 
-
 char** uv_setup_args(int argc, char** argv) {
   process_title = argc > 0 ? uv__strdup(argv[0]) : NULL;
   return argv;
