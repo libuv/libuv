@@ -938,7 +938,7 @@ int uv_spawn(uv_loop_t* loop,
   BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
          *env = NULL, *cwd = NULL;
-  STARTUPINFOW startup;
+  STARTUPINFOEXW startup;
   PROCESS_INFORMATION info;
   DWORD process_flags;
 
@@ -1051,20 +1051,22 @@ int uv_spawn(uv_loop_t* loop,
     goto done;
   }
 
-  startup.cb = sizeof(startup);
-  startup.lpReserved = NULL;
-  startup.lpDesktop = NULL;
-  startup.lpTitle = NULL;
-  startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+  startup.StartupInfo.cb = sizeof(startup);
+  startup.StartupInfo.lpReserved = NULL;
+  startup.StartupInfo.lpDesktop = NULL;
+  startup.StartupInfo.lpTitle = NULL;
+  startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 
-  startup.cbReserved2 = uv__stdio_size(process->child_stdio_buffer);
-  startup.lpReserved2 = (BYTE*) process->child_stdio_buffer;
+  startup.StartupInfo.cbReserved2 = uv__stdio_size(process->child_stdio_buffer);
+  startup.StartupInfo.lpReserved2 = (BYTE*) process->child_stdio_buffer;
 
-  startup.hStdInput = uv__stdio_handle(process->child_stdio_buffer, 0);
-  startup.hStdOutput = uv__stdio_handle(process->child_stdio_buffer, 1);
-  startup.hStdError = uv__stdio_handle(process->child_stdio_buffer, 2);
+  startup.StartupInfo.hStdInput = uv__stdio_handle(process->child_stdio_buffer, 0);
+  startup.StartupInfo.hStdOutput = uv__stdio_handle(process->child_stdio_buffer, 1);
+  startup.StartupInfo.hStdError = uv__stdio_handle(process->child_stdio_buffer, 2);
 
-  process_flags = CREATE_UNICODE_ENVIRONMENT;
+  startup.lpAttributeList = options->attribute_list;
+
+  process_flags = CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT;
 
   if (options->flags & UV_PROCESS_WINDOWS_HIDE) {
     /* Avoid creating console window if stdio is not inherited. */
@@ -1076,9 +1078,9 @@ int uv_spawn(uv_loop_t* loop,
     }
 
     /* Use SW_HIDE to avoid any potential process window. */
-    startup.wShowWindow = SW_HIDE;
+    startup.StartupInfo.wShowWindow = SW_HIDE;
   } else {
-    startup.wShowWindow = SW_SHOWDEFAULT;
+    startup.StartupInfo.wShowWindow = SW_SHOWDEFAULT;
   }
 
   if (options->flags & UV_PROCESS_DETACHED) {
@@ -1109,7 +1111,7 @@ int uv_spawn(uv_loop_t* loop,
                      process_flags,
                      env,
                      cwd,
-                     &startup,
+                     (STARTUPINFOW*)&startup,
                      &info)) {
     /* CreateProcessW failed. */
     err = GetLastError();

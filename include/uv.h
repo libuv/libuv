@@ -1000,6 +1000,12 @@ typedef struct uv_process_options_s {
    */
   char* cpumask;
   size_t cpumask_size;
+  /*
+   * Represents a set of attributes that passed with STARTUPINFOEXW
+   * on Windows. This is not supported on unix; uv_spawn() will fail
+   * and set the error to UV_ENOTSUP.
+  */
+  void *attribute_list;
 } uv_process_options_t;
 
 /*

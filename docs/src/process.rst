@@ -34,6 +34,7 @@ Data types
             uv_gid_t gid;
             char* cpumask;
             size_t cpumask_size;
+            void *attribute_list;
         } uv_process_options_t;
 
 .. c:type:: void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal)
@@ -193,6 +194,17 @@ Public members
 
         If enabled on an unsupported platform, :c:func:`uv_spawn` will fail
         with ``UV_ENOTSUP``.
+
+    .. versionadded:: 2.0.0
+
+.. c:member:: uv_process_options_t.attribute_list
+
+    Represents a set of attributes that passed with STARTUPINFOEXW
+    on Windows.
+
+    .. note::
+        This is not supported on *nix, :c:func:`uv_spawn` will fail and set the error
+        to ``UV_ENOTSUP`` if this property is anything but ``NULL``.
 
     .. versionadded:: 2.0.0
 
