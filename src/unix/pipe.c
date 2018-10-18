@@ -321,11 +321,69 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
 }
 
 
+int uv__pipe_allocname(const uv_pipe_t* handle, char** name_buffer) {
+  size_t name_len = 0;
+  int rc = 0;
+
+  rc = uv_pipe_getsockname(handle, NULL, &name_len);
+  if (rc != UV_ENOBUFS) {
+    return rc;
+  }
+
+  *name_buffer = uv__malloc(name_len);
+  if (*name_buffer == NULL) {
+    return UV_ENOMEM;
+  }
+
+  return uv_pipe_getsockname(handle, *name_buffer, &name_len);
+}
+
+
+int uv__pipe_stat(const uv_pipe_t* handle, struct stat* status) {
+  /* fstat cannot be used on socket descriptor -- use stat */
+  char *bound_path = NULL;
+  int rc = 0;
+
+  rc = uv__pipe_allocname(handle, &bound_path);
+  if (rc != 0) {
+    uv__free(bound_path);
+    return rc;
+  }
+
+  rc = stat(bound_path, status);
+  if (rc != 0) {
+    rc = UV__ERR(errno);
+  }
+
+  uv__free(bound_path);
+  return rc;
+}
+
+
+int uv__pipe_chmod(const uv_pipe_t* handle, mode_t mode) {
+  /* fchmod cannot be used on socket descripto -- use chmod */
+  char *bound_path = NULL;
+  int rc = 0;
+
+  rc = uv__pipe_allocname(handle, &bound_path);
+  if (rc != 0) {
+    uv__free(bound_path);
+    return rc;
+  }
+
+  rc = chmod(bound_path, mode);
+  if (rc != 0) {
+    rc = UV__ERR(errno);
+  }
+
+  uv__free(bound_path);
+  return rc;
+}
+
+
 int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   unsigned desired_mode;
   struct stat pipe_stat;
-  char* name_buffer;
-  size_t name_len;
   int r;
 
   if (handle == NULL || uv__stream_fd(handle) == -1)
@@ -336,26 +394,9 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
       mode != (UV_WRITABLE | UV_READABLE))
     return UV_EINVAL;
 
-  /* Unfortunately fchmod does not work on all platforms, we will use chmod. */
-  name_len = 0;
-  r = uv_pipe_getsockname(handle, NULL, &name_len);
-  if (r != UV_ENOBUFS)
-    return r;
-
-  name_buffer = uv__malloc(name_len);
-  if (name_buffer == NULL)
-    return UV_ENOMEM;
-
-  r = uv_pipe_getsockname(handle, name_buffer, &name_len);
+  r = uv__pipe_stat(handle, &pipe_stat);
   if (r != 0) {
-    uv__free(name_buffer);
     return r;
-  }
-
-  /* stat must be used as fstat has a bug on Darwin */
-  if (stat(name_buffer, &pipe_stat) == -1) {
-    uv__free(name_buffer);
-    return -errno;
   }
 
   desired_mode = 0;
@@ -366,14 +407,10 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   /* Exit early if pipe already has desired mode. */
   if ((pipe_stat.st_mode & desired_mode) == desired_mode) {
-    uv__free(name_buffer);
     return 0;
   }
 
   pipe_stat.st_mode |= desired_mode;
 
-  r = chmod(name_buffer, pipe_stat.st_mode);
-  uv__free(name_buffer);
-
-  return r != -1 ? 0 : UV__ERR(errno);
+  return uv__pipe_chmod(handle, pipe_stat.st_mode);
 }
