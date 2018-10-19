@@ -13,6 +13,7 @@ endif()
 
 set(uv_sources
     src/fs-poll.c
+    src/idna.c
     src/inet.c
     src/threadpool.c
     src/timer.c
@@ -64,6 +65,7 @@ set(uv_test_sources
     test/test-homedir.c
     test/test-hrtime.c
     test/test-idle.c
+    test/test-idna.c
     test/test-ip4-addr.c
     test/test-ip6-addr.c
     test/test-ip6-addr.c

@@ -70,6 +70,8 @@
         'include/uv/version.h',
         'src/fs-poll.c',
         'src/heap-inl.h',
+        'src/idna.c',
+        'src/idna.h',
         'src/inet.c',
         'src/queue.h',
         'src/threadpool.c',
