@@ -442,6 +442,9 @@ TEST_DECLARE  (fork_threadpool_queue_work_simple)
 #endif
 #endif
 
+TEST_DECLARE  (idna_toascii)
+TEST_DECLARE  (utf8_decode1)
+
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -944,6 +947,13 @@ TASK_LIST_START
 #ifndef __MVS__
   TEST_ENTRY  (fork_threadpool_queue_work_simple)
 #endif
+#endif
+
+  TEST_ENTRY  (utf8_decode1)
+
+/* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
+#ifndef __MVS__
+  TEST_ENTRY  (idna_toascii)
 #endif
 
 #if 0

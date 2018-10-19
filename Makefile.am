@@ -29,6 +29,7 @@ libuv_la_CFLAGS = @CFLAGS@
 libuv_la_LDFLAGS = -no-undefined -version-info 1:0:0
 libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
+                   src/idna.c \
                    src/inet.c \
                    src/queue.h \
                    src/threadpool.c \
@@ -189,6 +190,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-homedir.c \
                          test/test-hrtime.c \
                          test/test-idle.c \
+                         test/test-idna.c \
                          test/test-ip4-addr.c \
                          test/test-ip6-addr.c \
                          test/test-ipc-heavy-traffic-deadlock-bug.c \
