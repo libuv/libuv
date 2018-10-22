@@ -1335,7 +1335,7 @@ static void fs__rename(uv_fs_t* req) {
   int sys_errno;
   int result;
   int try_rmdir;
-  WCHAR *src, *dst;
+  WCHAR* src, *dst;
   DWORD src_attrib, dst_attrib;
 
   src = req->file.pathw;
@@ -1358,9 +1358,8 @@ static void fs__rename(uv_fs_t* req) {
      * Windows. We will try to delete target folder first.
      */
     if (src_attrib & FILE_ATTRIBUTE_DIRECTORY &&
-        dst_attrib & FILE_ATTRIBUTE_DIRECTORY) {
+        dst_attrib & FILE_ATTRIBUTE_DIRECTORY)
         try_rmdir = 1;
-    }
   }
 
   /* Sometimes an antivirus or indexing software can lock the target or the
@@ -1368,15 +1367,11 @@ static void fs__rename(uv_fs_t* req) {
    * retry couple of times with some delay before failing.
    */
   for (tries = 0; tries < UV__RENAME_RETRIES; ++tries) {
-    if (tries > 0) {
+    if (tries > 0)
       Sleep(UV__RENAME_WAIT);
-    }
+
     if (try_rmdir) {
-      if (_wrmdir(dst) == 0) {
-        result = 0;
-      } else {
-        result = uv_translate_sys_error(_doserrno);
-      }
+      result = _wrmdir(dst) == 0 ? 0 : uv_translate_sys_error(_doserrno);
       switch (result)
       {
       case 0:
@@ -1403,13 +1398,11 @@ static void fs__rename(uv_fs_t* req) {
 
     sys_errno = GetLastError();
     result = uv_translate_sys_error(sys_errno);
-    if (result != UV_EBUSY && result != UV_EPERM && result != UV_EACCES) {
+    if (result != UV_EBUSY && result != UV_EPERM && result != UV_EACCES)
       break;
-    }
   }
   req->sys_errno_ = sys_errno;
   req->result = result;
-  return;
 }
 
 
