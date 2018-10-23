@@ -544,6 +544,11 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
         return;  /* Not an error. */
 
+ #if defined(__ANDROID__)
+      if (err == UV__ERR(EINVAL))
+        return; /* Once Android got EINVAL errno, it would got the error forever, break the infinite loop  */
+#endif
+
       if (err == UV_ECONNABORTED)
         continue;  /* Ignore. Nothing we can do about that. */
 
