@@ -83,6 +83,7 @@ static int fstat_cb_count;
 static int access_cb_count;
 static int chmod_cb_count;
 static int fchmod_cb_count;
+static int lchmod_cb_count;
 static int chown_cb_count;
 static int fchown_cb_count;
 static int lchown_cb_count;
@@ -262,6 +263,13 @@ static void chmod_cb(uv_fs_t* req) {
   chmod_cb_count++;
   uv_fs_req_cleanup(req);
   check_permission("test_file", *(int*)req->data);
+}
+
+static void lchmod_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_LCHMOD);
+  ASSERT(req->result == 0 || req->result == UV_ENOTSUP);
+  lchmod_cb_count++;
+  uv_fs_req_cleanup(req);
 }
 
 
@@ -1436,6 +1444,25 @@ TEST_IMPL(fs_chmod) {
 
   close(file);
 
+  /* sync link */
+  unlink("test_file_link");
+  r = uv_fs_link(NULL, &req, "test_file", "test_file_link", NULL);
+  ASSERT(r == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /* sync lchmod */
+  r = uv_fs_lchmod(NULL, &req, "test_file_link", 0400, NULL);
+  ASSERT(r == 0 || r == UV_ENOTSUP);
+  ASSERT(req.result == 0 || req.result == UV_ENOTSUP);
+  uv_fs_req_cleanup(&req);
+
+  /* async lchmod */
+  r = uv_fs_lchmod(loop, &req, "test_file_link", 0600, lchmod_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(lchmod_cb_count == 1);
+
   /*
    * Run the loop just to check we don't have make any extraneous uv_ref()
    * calls. This should drop out immediately.
@@ -1444,6 +1471,7 @@ TEST_IMPL(fs_chmod) {
 
   /* Cleanup. */
   unlink("test_file");
+  unlink("test_file_link");
 
   MAKE_VALGRIND_HAPPY();
   return 0;

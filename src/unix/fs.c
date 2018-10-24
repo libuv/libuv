@@ -159,6 +159,27 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
 }
 
 
+static int uv__fs_lchmod(const char *path, mode_t mode) {
+#if defined(__APPLE__)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__FreeBSD_kernel__)                                            \
+    || defined(__NetBSD__)        
+    return lchmod(path, mode);
+#elif defined(AT_SYMLINK_NOFOLLOW)
+    int r;
+    r = fchmodat(AT_FDCWD, path, mode, AT_SYMLINK_NOFOLLOW);
+    if (r == -1 && errno == EOPNOTSUPP)
+      errno = ENOTSUP;
+
+    return r;
+#else
+    errno = ENOTSUP;
+    return -1;
+#endif    
+}
+
+
 static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 #if defined(__linux__) || defined(__sun) || defined(__NetBSD__)
   return fdatasync(req->file);
@@ -1140,6 +1161,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(CLOSE, close(req->file));
     X(COPYFILE, uv__fs_copyfile(req));
     X(FCHMOD, fchmod(req->file, req->mode));
+    X(LCHMOD, uv__fs_lchmod(req->path, req->mode));
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
     X(LCHOWN, lchown(req->path, req->uid, req->gid));
     X(FDATASYNC, uv__fs_fdatasync(req));
@@ -1249,6 +1271,17 @@ int uv_fs_fchmod(uv_loop_t* loop,
                  uv_fs_cb cb) {
   INIT(FCHMOD);
   req->file = file;
+  req->mode = mode;
+  POST;
+}
+
+int uv_fs_lchmod(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 int mode,
+                 uv_fs_cb cb) {
+  INIT(LCHMOD);
+  PATH;
   req->mode = mode;
   POST;
 }

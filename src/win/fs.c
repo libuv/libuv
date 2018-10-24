@@ -1577,6 +1577,11 @@ fchmod_cleanup:
 }
 
 
+static void fs__lchmod(uv_fs_t* req) {
+  SET_REQ_RESULT(req, UV_ENOTSUP);
+}
+
+
 INLINE static int fs__utime_handle(HANDLE handle, double atime, double mtime) {
   FILETIME filetime_a, filetime_m;
 
@@ -2002,6 +2007,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(ACCESS, access)
     XX(CHMOD, chmod)
     XX(FCHMOD, fchmod)
+    XX(LCHMOD, lchmod)
     XX(FSYNC, fsync)
     XX(FDATASYNC, fdatasync)
     XX(UNLINK, unlink)
@@ -2459,6 +2465,19 @@ int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file fd, int mode,
   INIT(UV_FS_FCHMOD);
   req->file.fd = fd;
   req->fs.info.mode = mode;
+  POST;
+}
+
+int uv_fs_lchmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
+    uv_fs_cb cb) {
+  int err;
+
+  INIT(UV_FS_LCHMOD);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err) {
+    return uv_translate_sys_error(err);
+  }
+
   POST;
 }
 

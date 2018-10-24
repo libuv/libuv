@@ -96,7 +96,8 @@ Data types
             UV_FS_FCHOWN,
             UV_FS_REALPATH,
             UV_FS_COPYFILE,
-            UV_FS_LCHOWN
+            UV_FS_LCHOWN,
+            UV_FS_LCHMOD
         } uv_fs_type;
 
 .. c:type:: uv_dirent_t
@@ -284,8 +285,15 @@ API
 
 .. c:function:: int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 .. c:function:: int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode, uv_fs_cb cb)
+.. c:function:: int uv_fs_lchmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
-    Equivalent to :man:`chmod(2)` and :man:`fchmod(2)` respectively.
+    Equivalent to :man:`chmod(2)`, :man:`fchmod(2)` and :man:`lchmod(2)` respectively.
+
+    .. note::
+        `uv_fs_lchmod` is not supported on many platforms such as `glibc Linux`,
+        `Windows` and `OpenBSD`. In such cases it returns ``UV_ENOTSUP``.
+
+    .. versionchanged:: 1.24.0 implemented uv_fs_lchmod
 
 .. c:function:: int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb)
 .. c:function:: int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime, double mtime, uv_fs_cb cb)
