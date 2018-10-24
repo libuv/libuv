@@ -2469,7 +2469,7 @@ int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file fd, int mode,
 }
 
 int uv_fs_lchmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
-    uv_fs_cb cb) {
+                 uv_fs_cb cb) {
   int err;
 
   INIT(UV_FS_LCHMOD);
