@@ -40,6 +40,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+extern char** environ;
 
 /* Do platform-specific initialization. */
 int platform_init(int argc, char **argv) {
@@ -107,8 +108,8 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
     /* child */
     dup2(stdout_fd, STDOUT_FILENO);
     dup2(stdout_fd, STDERR_FILENO);
-    execvp(args[0], args);
-    perror("execvp()");
+    execve(args[0], args, environ);
+    perror("execve()");
     _exit(127);
   }
 
