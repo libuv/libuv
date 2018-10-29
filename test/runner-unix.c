@@ -67,6 +67,25 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   int n;
   pid_t pid;
 
+  arg = getenv("UV_USE_VALGRIND");
+  n = 0;
+
+  /* Disable valgrind for helpers, it complains about helpers leaking memory.
+   * They're killed after the test and as such never get a chance to clean up.
+   */
+  if (is_helper == 0 && arg != NULL && atoi(arg) != 0) {
+    args[n++] = "valgrind";
+    args[n++] = "--quiet";
+    args[n++] = "--leak-check=full";
+    args[n++] = "--show-reachable=yes";
+    args[n++] = "--error-exitcode=125";
+  }
+
+  args[n++] = executable_path;
+  args[n++] = name;
+  args[n++] = part;
+  args[n++] = NULL;
+
   stdout_file = tmpfile();
   stdout_fd = fileno(stdout_file);
   if (!stdout_file) {
@@ -86,25 +105,6 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
 
   if (pid == 0) {
     /* child */
-    arg = getenv("UV_USE_VALGRIND");
-    n = 0;
-
-    /* Disable valgrind for helpers, it complains about helpers leaking memory.
-     * They're killed after the test and as such never get a chance to clean up.
-     */
-    if (is_helper == 0 && arg != NULL && atoi(arg) != 0) {
-      args[n++] = "valgrind";
-      args[n++] = "--quiet";
-      args[n++] = "--leak-check=full";
-      args[n++] = "--show-reachable=yes";
-      args[n++] = "--error-exitcode=125";
-    }
-
-    args[n++] = executable_path;
-    args[n++] = name;
-    args[n++] = part;
-    args[n++] = NULL;
-
     dup2(stdout_fd, STDOUT_FILENO);
     dup2(stdout_fd, STDERR_FILENO);
     execvp(args[0], args);
