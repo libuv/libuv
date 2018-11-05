@@ -71,6 +71,10 @@
 # include <utime.h>
 #endif
 
+#if defined(_AIX) && _XOPEN_SOURCE <= 600
+extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
+#endif
+
 #define INIT(subtype)                                                         \
   do {                                                                        \
     if (req == NULL)                                                          \
@@ -723,7 +727,7 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   atr.att_atimechg = 1;
   atr.att_mtime = req->mtime;
   atr.att_atime = req->atime;
-  return __lchattr(req->path, &atr, sizeof(atr));
+  return __lchattr((char*) req->path, &atr, sizeof(atr));
 #else
   errno = ENOSYS;
   return -1;
