@@ -154,7 +154,7 @@ int uv_test_getiovmax(void) {
 static unsigned REPARSE_TAG = 0x9913;
 static GUID REPARSE_GUID = {
   0x1bf6205f, 0x46ae, 0x4527,
-  0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 };
+  { 0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 }};
 #endif
 
 static void check_permission(const char* filename, unsigned int mode) {
@@ -2331,9 +2331,6 @@ TEST_IMPL(fs_stat_root) {
 
 
 TEST_IMPL(fs_futime) {
-#if defined(_AIX) && !defined(_AIX71)
-  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
-#else
   utime_check_t checkme;
   const char* path = "test_file";
   double atime;
@@ -2341,6 +2338,9 @@ TEST_IMPL(fs_futime) {
   uv_file file;
   uv_fs_t req;
   int r;
+#if defined(_AIX) && !defined(_AIX71)
+  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
+#endif
 
   /* Setup. */
   loop = uv_default_loop();
@@ -2402,7 +2402,6 @@ TEST_IMPL(fs_futime) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-#endif
 }
 
 
