@@ -165,8 +165,11 @@ void uv_console_init(void) {
 }
 
 
-int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_os_fd_t handle, int readable) {
+int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_os_fd_t handle, int unused) {
+  BOOL readable;
+  DWORD NumberOfEvents;
   CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
+  (void)unused;
 
   if (handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
@@ -180,6 +183,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_os_fd_t handle, int readable)
       return dup_err;
   }
 
+  readable = GetNumberOfConsoleInputEvents(handle, &NumberOfEvents);
   if (!readable) {
     /* Obtain the screen buffer info with the output handle. */
     if (!GetConsoleScreenBufferInfo(handle, &screen_buffer_info)) {
@@ -357,12 +361,6 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   return 0;
-}
-
-
-int uv_is_tty(uv_os_fd_t file) {
-  DWORD result;
-  return GetConsoleMode(file, &result) != 0;
 }
 
 
@@ -1013,6 +1011,7 @@ int uv_tty_read_stop(uv_tty_t* handle) {
     /* Cancel raw read. Write some bullshit event to force the console wait to
      * return. */
     memset(&record, 0, sizeof record);
+    record.EventType = FOCUS_EVENT;
     if (!WriteConsoleInputW(handle->handle, &record, 1, &written)) {
       return GetLastError();
     }
@@ -2158,11 +2157,10 @@ void uv_process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 
 void uv_tty_close(uv_tty_t* handle) {
-  CloseHandle(handle->handle);
-
   if (handle->flags & UV_HANDLE_READING)
     uv_tty_read_stop(handle);
 
+  CloseHandle(handle->handle);
   handle->handle = INVALID_HANDLE_VALUE;
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   uv__handle_closing(handle);

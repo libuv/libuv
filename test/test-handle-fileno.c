@@ -26,7 +26,7 @@
 static uv_os_fd_t get_tty_fd(void) {
   /* Make sure we have an FD that refers to a tty */
 #ifdef _WIN32
-  return CreateFileA("conout$",
+  return CreateFileA("conin$",
                      GENERIC_READ | GENERIC_WRITE,
                      FILE_SHARE_READ | FILE_SHARE_WRITE,
                      NULL,
@@ -103,11 +103,15 @@ TEST_IMPL(handle_fileno) {
   } else {
     r = uv_tty_init(loop, &tty, tty_fd, 0);
     ASSERT(r == 0);
+    ASSERT(uv_is_readable((uv_stream_t*) &tty));
+    ASSERT(!uv_is_writable((uv_stream_t*) &tty));
     r = uv_fileno((uv_handle_t*) &tty, &fd);
     ASSERT(r == 0);
     uv_close((uv_handle_t*) &tty, NULL);
     r = uv_fileno((uv_handle_t*) &tty, &fd);
     ASSERT(r == UV_EBADF);
+    ASSERT(!uv_is_readable((uv_stream_t*) &tty));
+    ASSERT(!uv_is_writable((uv_stream_t*) &tty));
   }
 
   uv_run(loop, UV_RUN_DEFAULT);

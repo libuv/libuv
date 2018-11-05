@@ -4628,6 +4628,14 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
 # define ERROR_MUI_FILE_NOT_LOADED 15105
 #endif
 
+typedef BOOL (WINAPI *sGetQueuedCompletionStatusEx)
+             (HANDLE CompletionPort,
+              LPOVERLAPPED_ENTRY lpCompletionPortEntries,
+              ULONG ulCount,
+              PULONG ulNumEntriesRemoved,
+              DWORD dwMilliseconds,
+              BOOL fAlertable);
+
 /* from powerbase.h */
 #ifndef DEVICE_NOTIFY_CALLBACK
 # define DEVICE_NOTIFY_CALLBACK 2
@@ -4689,6 +4697,9 @@ extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
+
+/* Kernel32 function pointers */
+extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;

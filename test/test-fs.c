@@ -27,6 +27,7 @@
 #include <math.h>
 #include <string.h> /* memset */
 #include <sys/stat.h>
+#include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 
 /* FIXME we shouldn't need to branch in this file */
 #if defined(__unix__) || defined(__POSIX__) || \
@@ -121,6 +122,48 @@ static char buf2[32];
 static char test_buf[] = "test-buffer\n";
 static char test_buf2[] = "second-buffer\n";
 static uv_buf_t iov;
+
+#ifdef _WIN32
+int uv_test_getiovmax(void) {
+  return INT32_MAX; /* Emulated by libuv, so no real limit. */
+}
+
+
+off_t uv_test_lseek(HANDLE fd, off_t offset, int whence) {
+  LARGE_INTEGER offset_;
+  LARGE_INTEGER tell;
+  offset_.QuadPart = offset;
+  if (SetFilePointerEx(fd, offset_, &tell, whence))
+    return tell.QuadPart;
+  return -1;
+}
+
+#else
+
+int uv_test_getiovmax(void) {
+#if defined(IOV_MAX)
+  return IOV_MAX;
+#elif defined(_SC_IOV_MAX)
+  static int iovmax = -1;
+  if (iovmax == -1) {
+    iovmax = sysconf(_SC_IOV_MAX);
+    /* On some embedded devices (arm-linux-uclibc based ip camera),
+     * sysconf(_SC_IOV_MAX) can not get the correct value. The return
+     * value is -1 and the errno is EINPROGRESS. Degrade the value to 1.
+     */
+    if (iovmax == -1) iovmax = 1;
+  }
+  return iovmax;
+#else
+  return 1024;
+#endif
+}
+
+
+int uv_test_lseek(int fd, off_t offset, int whence) {
+  return lseek(fd, offset, whence);
+}
+#endif
 
 #ifdef _WIN32
 /*
@@ -2971,16 +3014,41 @@ TEST_IMPL(fs_write_multiple_bufs) {
   /* Read the strings back to separate buffers. */
   iovs[0] = uv_buf_init(buf, sizeof(test_buf));
   iovs[1] = uv_buf_init(buf2, sizeof(test_buf2));
+  ASSERT(uv_test_lseek(file, 0, SEEK_CUR) == 0);
+  r = uv_fs_read(NULL, &read_req, file, iovs, 2, -1, NULL);
+  ASSERT(r >= 0);
+  ASSERT(read_req.result == sizeof(test_buf) + sizeof(test_buf2));
+  ASSERT(strcmp(buf, test_buf) == 0);
+  ASSERT(strcmp(buf2, test_buf2) == 0);
+  uv_fs_req_cleanup(&read_req);
+
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(NULL, &read_req, file, &iov, 1, -1, NULL);
+  ASSERT(r == 0);
+  ASSERT(read_req.result == 0);
+  uv_fs_req_cleanup(&read_req);
+
+  /* Read the strings back to separate buffers. */
+  iovs[0] = uv_buf_init(buf, sizeof(test_buf));
+  iovs[1] = uv_buf_init(buf2, sizeof(test_buf2));
   r = uv_fs_read(NULL, &read_req, file, iovs, 2, 0, NULL);
   ASSERT(r >= 0);
-  ASSERT(read_req.result >= 0);
+  if (read_req.result == sizeof(test_buf)) {
+    /* Infer that preadv is not available. */
+    uv_fs_req_cleanup(&read_req);
+    r = uv_fs_read(NULL, &read_req, file, &iovs[1], 1, read_req.result, NULL);
+    ASSERT(r >= 0);
+    ASSERT(read_req.result == sizeof(test_buf2));
+  } else {
+    ASSERT(read_req.result == sizeof(test_buf) + sizeof(test_buf2));
+  }
   ASSERT(strcmp(buf, test_buf) == 0);
   ASSERT(strcmp(buf2, test_buf2) == 0);
   uv_fs_req_cleanup(&read_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, file, &iov, 1,
-                 read_req.result, NULL);
+                 sizeof(test_buf) + sizeof(test_buf2), NULL);
   ASSERT(r == 0);
   ASSERT(read_req.result == 0);
   uv_fs_req_cleanup(&read_req);
@@ -2999,12 +3067,15 @@ TEST_IMPL(fs_write_multiple_bufs) {
 
 
 TEST_IMPL(fs_write_alotof_bufs) {
-  const size_t iovcount = 54321;
+  size_t iovcount;
+  size_t iovmax;
   uv_buf_t* iovs;
   char* buffer;
   size_t index;
   int r;
   uv_os_fd_t file;
+
+  iovcount = 54321;
 
   /* Setup. */
   unlink("test_file");
@@ -3013,6 +3084,7 @@ TEST_IMPL(fs_write_alotof_bufs) {
 
   iovs = malloc(sizeof(*iovs) * iovcount);
   ASSERT(iovs != NULL);
+  iovmax = uv_test_getiovmax();
 
   r = uv_fs_open(NULL,
                  &open_req1,
@@ -3047,7 +3119,10 @@ TEST_IMPL(fs_write_alotof_bufs) {
     iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf),
                               sizeof(test_buf));
 
-  r = uv_fs_read(NULL, &read_req, file, iovs, iovcount, 0, NULL);
+  ASSERT(uv_test_lseek(file, 0, SEEK_SET) == 0);
+  r = uv_fs_read(NULL, &read_req, file, iovs, iovcount, -1, NULL);
+  if (iovcount > iovmax)
+    iovcount = iovmax;
   ASSERT(r >= 0);
   ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
 
@@ -3059,13 +3134,14 @@ TEST_IMPL(fs_write_alotof_bufs) {
   uv_fs_req_cleanup(&read_req);
   free(buffer);
 
+  ASSERT(uv_test_lseek(file, write_req.result, SEEK_SET) == write_req.result);
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL,
                  &read_req,
                  file,
                  &iov,
                  1,
-                 read_req.result,
+                 -1,
                  NULL);
   ASSERT(r == 0);
   ASSERT(read_req.result == 0);
@@ -3086,15 +3162,20 @@ TEST_IMPL(fs_write_alotof_bufs) {
 
 
 TEST_IMPL(fs_write_alotof_bufs_with_offset) {
-  const size_t iovcount = 54321;
+  size_t iovcount;
+  size_t iovmax;
   uv_buf_t* iovs;
   char* buffer;
   size_t index;
   int r;
   int64_t offset;
-  char* filler = "0123456789";
-  int filler_len = strlen(filler);
   uv_os_fd_t file;
+  char* filler;
+  int filler_len;
+
+  filler = "0123456789";
+  filler_len = strlen(filler);
+  iovcount = 54321;
 
   /* Setup. */
   unlink("test_file");
@@ -3103,6 +3184,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
 
   iovs = malloc(sizeof(*iovs) * iovcount);
   ASSERT(iovs != NULL);
+  iovmax = uv_test_getiovmax();
 
   r = uv_fs_open(NULL,
                  &open_req1,
@@ -3147,6 +3229,10 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   r = uv_fs_read(NULL, &read_req, file,
                  iovs, iovcount, offset, NULL);
   ASSERT(r >= 0);
+  if (r == sizeof(test_buf))
+    iovcount = 1; /* Infer that preadv is not available. */
+  else if (iovcount > iovmax)
+    iovcount = iovmax;
   ASSERT((size_t)read_req.result == sizeof(test_buf) * iovcount);
 
   for (index = 0; index < iovcount; ++index)
@@ -3160,7 +3246,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   r = uv_fs_stat(NULL, &stat_req, "test_file", NULL);
   ASSERT(r == 0);
   ASSERT((int64_t)((uv_stat_t*)stat_req.ptr)->st_size ==
-         offset + (int64_t)(iovcount * sizeof(test_buf)));
+         offset + (int64_t)write_req.result);
   uv_fs_req_cleanup(&stat_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
@@ -3169,7 +3255,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
                  file,
                  &iov,
                  1,
-                 read_req.result + offset,
+                 offset + write_req.result,
                  NULL);
   ASSERT(r == 0);
   ASSERT(read_req.result == 0);
@@ -3188,6 +3274,175 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   return 0;
 }
 
+
+#ifdef _WIN32
+
+TEST_IMPL(fs_partial_read) {
+  RETURN_SKIP("Test not implemented on Windows.");
+}
+
+TEST_IMPL(fs_partial_write) {
+  RETURN_SKIP("Test not implemented on Windows.");
+}
+
+#else  /* !_WIN32 */
+
+struct thread_ctx {
+  pthread_t pid;
+  int fd;
+  char* data;
+  int size;
+  int interval;
+  int doread;
+};
+
+static void thread_main(void* arg) {
+  const struct thread_ctx* ctx;
+  int size;
+  char* data;
+
+  ctx = (struct thread_ctx*)arg;
+  size = ctx->size;
+  data = ctx->data;
+
+  while (size > 0) {
+    ssize_t result;
+    int nbytes;
+    nbytes = size < ctx->interval ? size : ctx->interval;
+    if (ctx->doread) {
+      result = write(ctx->fd, data, nbytes);
+      /* Should not see EINTR (or other errors) */
+      ASSERT(result == nbytes);
+    } else {
+      result = read(ctx->fd, data, nbytes);
+      /* Should not see EINTR (or other errors),
+       * but might get a partial read if we are faster than the writer
+       */
+      ASSERT(result > 0 && result <= nbytes);
+    }
+
+    pthread_kill(ctx->pid, SIGUSR1);
+    size -= result;
+    data += result;
+  }
+}
+
+static void sig_func(uv_signal_t* handle, int signum) {
+  uv_signal_stop(handle);
+}
+
+static size_t uv_test_fs_buf_offset(uv_buf_t* bufs, size_t size) {
+  size_t offset;
+  /* Figure out which bufs are done */
+  for (offset = 0; size > 0 && bufs[offset].len <= size; ++offset)
+    size -= bufs[offset].len;
+
+  /* Fix a partial read/write */
+  if (size > 0) {
+    bufs[offset].base += size;
+    bufs[offset].len -= size;
+  }
+  return offset;
+}
+
+static void test_fs_partial(int doread) {
+  struct thread_ctx ctx;
+  uv_thread_t thread;
+  uv_signal_t signal;
+  int pipe_fds[2];
+  size_t iovcount;
+  uv_buf_t* iovs;
+  char* buffer;
+  size_t index;
+
+  iovcount = 54321;
+
+  iovs = malloc(sizeof(*iovs) * iovcount);
+  ASSERT(iovs != NULL);
+
+  ctx.pid = pthread_self();
+  ctx.doread = doread;
+  ctx.interval = 1000;
+  ctx.size = sizeof(test_buf) * iovcount;
+  ctx.data = malloc(ctx.size);
+  ASSERT(ctx.data != NULL);
+  buffer = malloc(ctx.size);
+  ASSERT(buffer != NULL);
+
+  for (index = 0; index < iovcount; ++index)
+    iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf), sizeof(test_buf));
+
+  loop = uv_default_loop();
+
+  ASSERT(0 == uv_signal_init(loop, &signal));
+  ASSERT(0 == uv_signal_start(&signal, sig_func, SIGUSR1));
+
+  ASSERT(0 == pipe(pipe_fds));
+
+  ctx.fd = pipe_fds[doread];
+  ASSERT(0 == uv_thread_create(&thread, thread_main, &ctx));
+
+  if (doread) {
+    uv_buf_t* read_iovs;
+    int nread;
+    read_iovs = iovs;
+    nread = 0;
+    while (nread < ctx.size) {
+      int result;
+      result = uv_fs_read(loop, &read_req, pipe_fds[0], read_iovs, iovcount, -1, NULL);
+      if (result > 0) {
+        size_t read_iovcount;
+        read_iovcount = uv_test_fs_buf_offset(read_iovs, result);
+        read_iovs += read_iovcount;
+        iovcount -= read_iovcount;
+        nread += result;
+      } else {
+        ASSERT(result == UV_EINTR);
+      }
+      uv_fs_req_cleanup(&read_req);
+    }
+  } else {
+    int result;
+    result = uv_fs_write(loop, &write_req, pipe_fds[1], iovs, iovcount, -1, NULL);
+    ASSERT(write_req.result == result);
+    ASSERT(result == ctx.size);
+    uv_fs_req_cleanup(&write_req);
+  }
+
+  ASSERT(0 == memcmp(buffer, ctx.data, ctx.size));
+
+  ASSERT(0 == uv_thread_join(&thread));
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+
+  ASSERT(0 == close(pipe_fds[1]));
+  uv_close((uv_handle_t*) &signal, NULL);
+
+  { /* Make sure we read everything that we wrote. */
+      int result;
+      result = uv_fs_read(loop, &read_req, pipe_fds[0], iovs, 1, -1, NULL);
+      ASSERT(result == 0);
+      uv_fs_req_cleanup(&read_req);
+  }
+  ASSERT(0 == close(pipe_fds[0]));
+
+  free(iovs);
+  free(buffer);
+  free(ctx.data);
+
+  MAKE_VALGRIND_HAPPY();
+}
+
+TEST_IMPL(fs_partial_read) {
+  test_fs_partial(1);
+  return 0;
+}
+
+TEST_IMPL(fs_partial_write) {
+  test_fs_partial(0);
+  return 0;
+}
+
+#endif/* _WIN32 */
 
 TEST_IMPL(fs_read_write_null_arguments) {
   int r;
@@ -3286,20 +3541,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   r = uv_fs_write(NULL, &write_req, file, &iov, 1, 0, NULL);
   ASSERT(r == sizeof(test_buf));
 
-#ifdef _WIN32
-  LARGE_INTEGER original_position;
-  LARGE_INTEGER zero_offset;
-
-  zero_offset.QuadPart = 0;
-
-  ASSERT(SetFilePointerEx(file,
-                          zero_offset,
-                          &original_position,
-                          FILE_CURRENT) != 0);
-  ASSERT(original_position.QuadPart == 0);
-#else
-  ASSERT(lseek(open_req1.result, 0, SEEK_CUR) == 0);
-#endif
+  ASSERT(uv_test_lseek(file, 0, SEEK_CUR) == 0);
 
   uv_fs_req_cleanup(&write_req);
 
@@ -3308,17 +3550,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   ASSERT(r == sizeof(test_buf));
   ASSERT(strcmp(buf, test_buf) == 0);
 
-#ifdef _WIN32
-  zero_offset.QuadPart = 0;
-
-  ASSERT(SetFilePointerEx(file,
-                          zero_offset,
-                          &original_position,
-                          FILE_CURRENT) != 0);
-  ASSERT(original_position.QuadPart == 0);
-#else
-  ASSERT(lseek(open_req1.result, 0, SEEK_CUR) == 0);
-#endif
+  ASSERT(uv_test_lseek(file, 0, SEEK_CUR) == 0);
 
   uv_fs_req_cleanup(&read_req);
 
@@ -3491,7 +3723,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
 int call_icacls(const char* command, ...) {
     char icacls_command[1024];
     va_list args;
-    
+
     va_start(args, command);
     vsnprintf(icacls_command, ARRAYSIZE(icacls_command), command, args);
     va_end(args);
@@ -3513,7 +3745,7 @@ TEST_IMPL(fs_open_readonly_acl) {
             attrib -r test_file_icacls
             del test_file_icacls
     */
-    
+
     /* Setup - clear the ACL and remove the file */
     loop = uv_default_loop();
     r = uv_os_get_passwd(&pwd);
@@ -3523,7 +3755,7 @@ TEST_IMPL(fs_open_readonly_acl) {
     uv_fs_chmod(loop, &req, "test_file_icacls", S_IWUSR, NULL);
     unlink("test_file_icacls");
 
-    /* Create the file */    
+    /* Create the file */
     r = uv_fs_open(loop,
                    &open_req1,
                    "test_file_icacls",
@@ -3548,7 +3780,7 @@ TEST_IMPL(fs_open_readonly_acl) {
     if (r != 0) {
         goto acl_cleanup;
     }
-    
+
     /* Try opening the file */
     r = uv_fs_open(NULL, &open_req1, "test_file_icacls", O_RDONLY, 0, NULL);
     if (r < 0) {

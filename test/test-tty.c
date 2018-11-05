@@ -93,9 +93,13 @@ TEST_IMPL(tty) {
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
   ASSERT(r == 0);
+  ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
+  ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0);  /* Writable. */
   ASSERT(r == 0);
+  ASSERT(!uv_is_readable((uv_stream_t*) &tty_out));
+  ASSERT(uv_is_writable((uv_stream_t*) &tty_out));
 
   r = uv_tty_get_winsize(&tty_out, &width, &height);
   ASSERT(r == 0);
@@ -180,6 +184,8 @@ TEST_IMPL(tty_raw) {
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
   ASSERT(r == 0);
+  ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
+  ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
   ASSERT(r == 0);
@@ -231,6 +237,8 @@ TEST_IMPL(tty_empty_write) {
 
   r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0);  /* Writable. */
   ASSERT(r == 0);
+  ASSERT(!uv_is_readable((uv_stream_t*) &tty_out));
+  ASSERT(uv_is_writable((uv_stream_t*) &tty_out));
 
   bufs[0].len = 0;
   bufs[0].base = &dummy[0];
@@ -286,6 +294,38 @@ TEST_IMPL(tty_large_write) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(tty_raw_cancel) {
+  int r;
+  uv_tty_t tty_in;
+  uv_loop_t* loop;
+  HANDLE handle;
+
+  loop = uv_default_loop();
+  /* Make sure we have an FD that refers to a tty */
+  handle = CreateFileA("conin$",
+                       GENERIC_READ | GENERIC_WRITE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       NULL);
+  ASSERT(handle != INVALID_HANDLE_VALUE);
+  ASSERT(UV_TTY == uv_guess_handle(handle));
+
+  r = uv_tty_init(uv_default_loop(), &tty_in, handle, 1);  /* Readable. */
+  ASSERT(r == 0);
+  r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
+  ASSERT(r == 0);
+  r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
+  ASSERT(r == 0);
+
+  r = uv_read_stop((uv_stream_t*) &tty_in);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
 #endif
 
 
@@ -293,6 +333,8 @@ TEST_IMPL(tty_file) {
 #ifndef _WIN32
   uv_loop_t loop;
   uv_tty_t tty;
+  uv_tty_t tty_ro;
+  uv_tty_t tty_wo;
   int fd;
 
   ASSERT(0 == uv_loop_init(&loop));
@@ -318,12 +360,39 @@ TEST_IMPL(tty_file) {
     ASSERT(0 == close(fd));
   }
 
-  fd = open("/dev/tty", O_RDONLY);
+  fd = open("/dev/tty", O_RDWR);
   if (fd != -1) {
     ASSERT(0 == uv_tty_init(&loop, &tty, fd, 1));
-    ASSERT(0 == close(fd));
+    ASSERT(0 == close(fd)); /* TODO: it's indeterminate who owns fd now */
+    ASSERT(uv_is_readable((uv_stream_t*) &tty));
+    ASSERT(uv_is_writable((uv_stream_t*) &tty));
     uv_close((uv_handle_t*) &tty, NULL);
+    ASSERT(!uv_is_readable((uv_stream_t*) &tty));
+    ASSERT(!uv_is_writable((uv_stream_t*) &tty));
   }
+
+  fd = open("/dev/tty", O_RDONLY);
+  if (fd != -1) {
+    ASSERT(0 == uv_tty_init(&loop, &tty_ro, fd, 1));
+    ASSERT(0 == close(fd)); /* TODO: it's indeterminate who owns fd now */
+    ASSERT(uv_is_readable((uv_stream_t*) &tty_ro));
+    ASSERT(!uv_is_writable((uv_stream_t*) &tty_ro));
+    uv_close((uv_handle_t*) &tty_ro, NULL);
+    ASSERT(!uv_is_readable((uv_stream_t*) &tty_ro));
+    ASSERT(!uv_is_writable((uv_stream_t*) &tty_ro));
+  }
+
+  fd = open("/dev/tty", O_WRONLY);
+  if (fd != -1) {
+    ASSERT(0 == uv_tty_init(&loop, &tty_wo, fd, 0));
+    ASSERT(0 == close(fd)); /* TODO: it's indeterminate who owns fd now */
+    ASSERT(!uv_is_readable((uv_stream_t*) &tty_wo));
+    ASSERT(uv_is_writable((uv_stream_t*) &tty_wo));
+    uv_close((uv_handle_t*) &tty_wo, NULL);
+    ASSERT(!uv_is_readable((uv_stream_t*) &tty_wo));
+    ASSERT(!uv_is_writable((uv_stream_t*) &tty_wo));
+  }
+
 
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
   ASSERT(0 == uv_loop_close(&loop));
@@ -354,6 +423,10 @@ TEST_IMPL(tty_pty) {
 
   ASSERT(0 == uv_tty_init(&loop, &slave_tty, slave_fd, 0));
   ASSERT(0 == uv_tty_init(&loop, &master_tty, master_fd, 0));
+  ASSERT(uv_is_readable((uv_stream_t*) &slave_tty));
+  ASSERT(uv_is_writable((uv_stream_t*) &slave_tty));
+  ASSERT(uv_is_readable((uv_stream_t*) &master_tty));
+  ASSERT(uv_is_writable((uv_stream_t*) &master_tty));
   /* Check if the file descriptor was reopened. If it is,
    * UV_HANDLE_BLOCKING_WRITES (value 0x100000) isn't set on flags.
    */

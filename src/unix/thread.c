@@ -44,27 +44,24 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
-
-#if defined(UV__PTHREAD_BARRIER_FALLBACK)
-/* TODO: support barrier_attr */
-int pthread_barrier_init(pthread_barrier_t* barrier,
-                         const void* barrier_attr,
-                         unsigned count) {
+/* Note: guard clauses should match uv_barrier_t's in include/uv/uv-unix.h. */
+#if defined(_AIX) || !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   int rc;
 
   if (barrier == NULL || count == 0)
-    return EINVAL;
-
-  if (barrier_attr != NULL)
-    return ENOTSUP;
+    return UV_EINVAL;
 
   barrier->in = 0;
   barrier->out = 0;
   barrier->threshold = count;
 
-  if ((rc = pthread_mutex_init(&barrier->mutex, NULL)) != 0)
+  rc = uv_mutex_init(&barrier->mutex);
+  if (rc != 0)
     return rc;
-  if ((rc = pthread_cond_init(&barrier->cond, NULL)) != 0)
+
+  rc = uv_cond_init(&barrier->cond);
+  if (rc != 0)
     goto error;
 
   return 0;
@@ -74,63 +71,72 @@ error:
   return rc;
 }
 
-int pthread_barrier_wait(pthread_barrier_t* barrier) {
-  int rc;
+
+int uv_barrier_wait(uv_barrier_t* barrier) {
+  int last;
 
   if (barrier == NULL)
-    return EINVAL;
+    return UV_EINVAL;
 
-  /* Lock the mutex*/
-  if ((rc = pthread_mutex_lock(&barrier->mutex)) != 0)
-    return rc;
+  uv_mutex_lock(&barrier->mutex);
 
-  /* Increment the count. If this is the first thread to reach the threshold,
-     wake up waiters, unlock the mutex, then return
-     PTHREAD_BARRIER_SERIAL_THREAD. */
   if (++barrier->in == barrier->threshold) {
     barrier->in = 0;
-    barrier->out = barrier->threshold - 1;
-    rc = pthread_cond_signal(&barrier->cond);
-    assert(rc == 0);
-
-    pthread_mutex_unlock(&barrier->mutex);
-    return PTHREAD_BARRIER_SERIAL_THREAD;
+    barrier->out = barrier->threshold;
+    uv_cond_signal(&barrier->cond);
+  } else {
+    do
+      uv_cond_wait(&barrier->cond, &barrier->mutex);
+    while (barrier->in != 0);
   }
-  /* Otherwise, wait for other threads until in is set to 0,
-     then return 0 to indicate this is not the first thread. */
-  do {
-    if ((rc = pthread_cond_wait(&barrier->cond, &barrier->mutex)) != 0)
-      break;
-  } while (barrier->in != 0);
 
-  /* mark thread exit */
-  barrier->out--;
-  pthread_cond_signal(&barrier->cond);
-  pthread_mutex_unlock(&barrier->mutex);
-  return rc;
+  last = (--barrier->out == 0);
+  if (!last)
+    uv_cond_signal(&barrier->cond);  /* Not needed for last thread. */
+
+  uv_mutex_unlock(&barrier->mutex);
+  return last;
 }
 
-int pthread_barrier_destroy(pthread_barrier_t* barrier) {
+
+void uv_barrier_destroy(uv_barrier_t* barrier) {
+  uv_mutex_lock(&barrier->mutex);
+
+  assert(barrier->in == 0);
+  assert(barrier->out == 0);
+
+  if (barrier->in != 0 || barrier->out != 0)
+    abort();
+
+  uv_mutex_unlock(&barrier->mutex);
+  uv_mutex_destroy(&barrier->mutex);
+  uv_cond_destroy(&barrier->cond);
+}
+
+#else
+
+int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
+  return UV__ERR(pthread_barrier_init(barrier, NULL, count));
+}
+
+
+int uv_barrier_wait(uv_barrier_t* barrier) {
   int rc;
 
-  if (barrier == NULL)
-    return EINVAL;
+  rc = pthread_barrier_wait(barrier);
+  if (rc != 0)
+    if (rc != PTHREAD_BARRIER_SERIAL_THREAD)
+      abort();
 
-  if ((rc = pthread_mutex_lock(&barrier->mutex)) != 0)
-    return rc;
-
-  if (barrier->in > 0 || barrier->out > 0)
-    rc = EBUSY;
-
-  pthread_mutex_unlock(&barrier->mutex);
-
-  if (rc)
-    return rc;
-
-  pthread_cond_destroy(&barrier->cond);
-  pthread_mutex_destroy(&barrier->mutex);
-  return 0;
+  return rc == PTHREAD_BARRIER_SERIAL_THREAD;
 }
+
+
+void uv_barrier_destroy(uv_barrier_t* barrier) {
+  if (pthread_barrier_destroy(barrier))
+    abort();
+}
+
 #endif
 
 
@@ -753,25 +759,6 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 
   abort();
   return UV_EINVAL;  /* Satisfy the compiler. */
-}
-
-
-int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  return UV__ERR(pthread_barrier_init(barrier, NULL, count));
-}
-
-
-void uv_barrier_destroy(uv_barrier_t* barrier) {
-  if (pthread_barrier_destroy(barrier))
-    abort();
-}
-
-
-int uv_barrier_wait(uv_barrier_t* barrier) {
-  int r = pthread_barrier_wait(barrier);
-  if (r && r != PTHREAD_BARRIER_SERIAL_THREAD)
-    abort();
-  return r == PTHREAD_BARRIER_SERIAL_THREAD;
 }
 
 
