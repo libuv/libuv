@@ -59,6 +59,14 @@ typedef intptr_t ssize_t;
 #define SIGABRT              22
 #define SIGWINCH             28
 
+/* Redefine NSIG to take SIGWINCH into consideration */
+#if defined(NSIG) && NSIG <= SIGWINCH
+# undef NSIG
+#endif
+#ifndef NSIG
+# define NSIG SIGWINCH + 1
+#endif
+
 typedef int (WSAAPI* LPFN_WSARECV)
             (SOCKET socket,
              LPWSABUF buffers,

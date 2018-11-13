@@ -116,20 +116,24 @@ static int maybe_run_test(int argc, char **argv) {
   }
 
   if (strcmp(argv[1], "spawn_helper1") == 0) {
+    notify_parent_process();
     return 1;
   }
 
   if (strcmp(argv[1], "spawn_helper2") == 0) {
+    notify_parent_process();
     printf("hello world\n");
     return 1;
   }
 
   if (strcmp(argv[1], "spawn_tcp_server_helper") == 0) {
+    notify_parent_process();
     return spawn_tcp_server_helper();
   }
 
   if (strcmp(argv[1], "spawn_helper3") == 0) {
     char buffer[256];
+    notify_parent_process();
     ASSERT(buffer == fgets(buffer, sizeof(buffer) - 1, stdin));
     buffer[sizeof(buffer) - 1] = '\0';
     fputs(buffer, stdout);
@@ -137,12 +141,14 @@ static int maybe_run_test(int argc, char **argv) {
   }
 
   if (strcmp(argv[1], "spawn_helper4") == 0) {
+    notify_parent_process();
     /* Never surrender, never return! */
     while (1) uv_sleep(10000);
   }
 
   if (strcmp(argv[1], "spawn_helper5") == 0) {
     const char out[] = "fourth stdio!\n";
+    notify_parent_process();
 #ifdef _WIN32
     DWORD bytes;
     WriteFile((HANDLE) _get_osfhandle(3), out, sizeof(out) - 1, &bytes, NULL);
@@ -163,6 +169,8 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper6") == 0) {
     int r;
 
+    notify_parent_process();
+
     r = fprintf(stdout, "hello world\n");
     ASSERT(r > 0);
 
@@ -175,6 +183,9 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper7") == 0) {
     int r;
     char *test;
+
+    notify_parent_process();
+
     /* Test if the test value from the parent is still set */
     test = getenv("ENV_TEST");
     ASSERT(test != NULL);
@@ -188,6 +199,8 @@ static int maybe_run_test(int argc, char **argv) {
 #ifndef _WIN32
   if (strcmp(argv[1], "spawn_helper8") == 0) {
     int fd;
+
+    notify_parent_process();
     ASSERT(sizeof(fd) == read(0, &fd, sizeof(fd)));
     ASSERT(fd > 2);
     ASSERT(-1 == write(fd, "x", 1));
@@ -197,6 +210,7 @@ static int maybe_run_test(int argc, char **argv) {
 #endif  /* !_WIN32 */
 
   if (strcmp(argv[1], "spawn_helper9") == 0) {
+    notify_parent_process();
     return spawn_stdin_stdout();
   }
 
@@ -207,6 +221,7 @@ static int maybe_run_test(int argc, char **argv) {
 
     ASSERT(uid == getuid());
     ASSERT(gid == getgid());
+    notify_parent_process();
 
     return 1;
   }

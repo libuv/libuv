@@ -13,6 +13,7 @@ endif()
 
 set(uv_sources
     src/fs-poll.c
+    src/idna.c
     src/inet.c
     src/loop-watcher.c
     src/threadpool.c
@@ -66,6 +67,7 @@ set(uv_test_sources
     test/test-homedir.c
     test/test-hrtime.c
     test/test-idle.c
+    test/test-idna.c
     test/test-ip4-addr.c
     test/test-ip6-addr.c
     test/test-ip6-addr.c
@@ -262,7 +264,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD")
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|NetBSD|OpenBSD")
-  list(APPEND uv_sources src/unix/posix-hrtime.c)
+  list(APPEND uv_sources src/unix/posix-hrtime.c src/unix/bsd-proctitle.c)
   list(APPEND uv_libraries kvm)
 endif()
 

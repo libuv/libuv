@@ -56,6 +56,7 @@ AM_CONDITIONAL([CYGWIN],   [AS_CASE([$host_os],[cygwin*],       [true], [false])
 AM_CONDITIONAL([DARWIN],   [AS_CASE([$host_os],[darwin*],       [true], [false])])
 AM_CONDITIONAL([DRAGONFLY],[AS_CASE([$host_os],[dragonfly*],    [true], [false])])
 AM_CONDITIONAL([FREEBSD],  [AS_CASE([$host_os],[*freebsd*],     [true], [false])])
+AM_CONDITIONAL([HURD],     [AS_CASE([$host_os],[gnu*],          [true], [false])])
 AM_CONDITIONAL([LINUX],    [AS_CASE([$host_os],[linux*],        [true], [false])])
 AM_CONDITIONAL([MSYS],     [AS_CASE([$host_os],[msys*],         [true], [false])])
 AM_CONDITIONAL([NETBSD],   [AS_CASE([$host_os],[netbsd*],       [true], [false])])
@@ -67,6 +68,9 @@ AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -lsecur32 -luserenv -luser32"
 ])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
+AS_CASE([$host_os], [kfreebsd*], [
+    LIBS="$LIBS -lfreebsd-glue"
+])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])
 AC_OUTPUT

@@ -750,6 +750,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   int count;
   ULONG flags;
 
+  *addresses_ptr = NULL;
+  *count_ptr = 0;
+
   flags = GAA_FLAG_SKIP_ANYCAST |
           GAA_FLAG_SKIP_MULTICAST |
           GAA_FLAG_SKIP_DNS_SERVER;
