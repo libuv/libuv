@@ -29,10 +29,8 @@
 #include <sys/stat.h>
 #include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 
-/* FIXME we shouldn't need to branch in this file */
-#if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
-#include <unistd.h> /* unlink, rmdir, etc. */
+#ifndef _WIN32
+# include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <winioctl.h>
 # include <direct.h>
@@ -129,7 +127,7 @@ int uv_test_getiovmax(void) {
 }
 
 
-off_t uv_test_lseek(HANDLE fd, off_t offset, int whence) {
+uint64_t uv_test_lseek(HANDLE fd, uint64_t offset, int whence) {
   LARGE_INTEGER offset_;
   LARGE_INTEGER tell;
   offset_.QuadPart = offset;
@@ -160,7 +158,7 @@ int uv_test_getiovmax(void) {
 }
 
 
-int uv_test_lseek(int fd, off_t offset, int whence) {
+off_t uv_test_lseek(int fd, off_t offset, int whence) {
   return lseek(fd, offset, whence);
 }
 #endif

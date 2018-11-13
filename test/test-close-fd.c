@@ -21,8 +21,9 @@
 
 #include "uv.h"
 #include "task.h"
-#include <fcntl.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 static unsigned int read_cb_called;
 

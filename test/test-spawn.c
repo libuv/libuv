@@ -34,6 +34,7 @@
 # endif
 # include <shellapi.h>
 # include <wchar.h>
+  typedef BOOL WINAPI (*sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
 #else
 # include <unistd.h>
 # include <sys/wait.h>
@@ -1636,7 +1637,6 @@ TEST_IMPL(spawn_fs_open) {
 #ifdef _WIN32
   const char dev_null[] = "NUL";
   HMODULE kernelbase_module;
-  typedef BOOL WINAPI (*sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
   sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
 #else
   const char dev_null[] = "/dev/null";

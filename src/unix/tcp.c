@@ -432,13 +432,14 @@ void uv__tcp_close(uv_tcp_t* handle) {
 int uv_socketpair(int type, int protocol, int fds[2], int flags0, int flags1) {
 #if defined(__linux__)
   static int no_cloexec;
-  int flags = type | UV__SOCK_CLOEXEC;
+  int flags;
+  flags = type | UV__SOCK_CLOEXEC;
 
   if (!no_cloexec) {
     if ((flags0 & UV_NONBLOCK_PIPE) && (flags1 & UV_NONBLOCK_PIPE))
       flags |= UV__O_NONBLOCK;
 
-    if (socketpair(AF_UNIX, type, protocol, fds) == 0) {
+    if (socketpair(AF_UNIX, flags, protocol, fds) == 0) {
       if (flags & UV__O_NONBLOCK)
         return 0;
       goto success;

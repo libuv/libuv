@@ -17,7 +17,9 @@
 #include "task.h"
 
 #include <string.h> /* memset */
+#ifndef _WIN32
 #include <unistd.h> /* close */
+#endif
 
 struct thread_ctx {
   uv_barrier_t barrier;
@@ -60,6 +62,11 @@ static void write_cb(uv_write_t* req, int status) {
 }
 #endif
 
+#ifdef _WIN32
+#define NWRITES (10 << 16)
+#else
+#define NWRITES (10 << 20)
+#endif
 
 
 TEST_IMPL(pipe_set_non_blocking) {
@@ -90,7 +97,7 @@ TEST_IMPL(pipe_set_non_blocking) {
   memset(data, '.', sizeof(data));
 
   nwritten = 0;
-  while (nwritten < 10 << 20) {
+  while (nwritten < NWRITES) {
     /* The stream is in blocking mode so uv_try_write() should always succeed
      * with the exact number of bytes that we wanted written.
      */

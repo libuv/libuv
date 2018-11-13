@@ -228,9 +228,8 @@ static int uv__pipe_server(
   return 0;
 
  error:
-  if (pipeHandle != INVALID_HANDLE_VALUE) {
+  if (pipeHandle != INVALID_HANDLE_VALUE)
     CloseHandle(pipeHandle);
-  }
 
   return err;
 }
@@ -243,12 +242,16 @@ static int uv__create_pipe_pair(
   /* allowed flags are: UV_READABLE_PIPE | UV_WRITABLE_PIPE | UV_NONBLOCK_PIPE */
   char pipe_name[64];
   SECURITY_ATTRIBUTES sa;
-  DWORD server_access = 0;
-  DWORD client_access = 0;
-  HANDLE server_pipe = INVALID_HANDLE_VALUE;
-  HANDLE client_pipe = INVALID_HANDLE_VALUE;
+  DWORD server_access;
+  DWORD client_access;
+  HANDLE server_pipe;
+  HANDLE client_pipe;
   int err;
 
+  server_pipe = INVALID_HANDLE_VALUE;
+  client_pipe = INVALID_HANDLE_VALUE;
+
+  server_access = 0;
   if (server_flags & UV_READABLE_PIPE)
     server_access |= PIPE_ACCESS_INBOUND;
   if (server_flags & UV_WRITABLE_PIPE)
@@ -257,6 +260,7 @@ static int uv__create_pipe_pair(
     server_access |= FILE_FLAG_OVERLAPPED;
   server_access |= WRITE_DAC;
 
+  client_access = 0;
   if (client_flags & UV_READABLE_PIPE)
     client_access |= GENERIC_READ;
   else
@@ -297,13 +301,8 @@ static int uv__create_pipe_pair(
   /* Validate that the pipe was opened in the right mode. */
   {
     DWORD mode;
-    BOOL r = GetNamedPipeHandleState(client_pipe,
-                                     &mode,
-                                     NULL,
-                                     NULL,
-                                     NULL,
-                                     NULL,
-                                     0);
+    BOOL r;
+    r = GetNamedPipeHandleState(client_pipe, &mode, NULL, NULL, NULL, NULL, 0);
     if (r == TRUE) {
       assert(mode == (PIPE_READMODE_BYTE | PIPE_WAIT));
     } else {
@@ -326,13 +325,11 @@ static int uv__create_pipe_pair(
   return 0;
 
  error:
-  if (server_pipe != INVALID_HANDLE_VALUE) {
+  if (server_pipe != INVALID_HANDLE_VALUE)
     CloseHandle(server_pipe);
-  }
 
-  if (client_pipe != INVALID_HANDLE_VALUE) {
+  if (client_pipe != INVALID_HANDLE_VALUE)
     CloseHandle(client_pipe);
-  }
 
   return err;
 }
@@ -356,12 +353,17 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   /* parent_pipe is always the server_pipe and kept by libuv. */
   /* child_pipe is always the client_pipe and is passed to the child. */
   /* flags are specified with respect to their usage in the child. */
-  HANDLE server_pipe = INVALID_HANDLE_VALUE;
-  HANDLE client_pipe = INVALID_HANDLE_VALUE;
-  unsigned int server_flags = 0;
-  unsigned int client_flags = 0;
+  HANDLE server_pipe;
+  HANDLE client_pipe;
+  unsigned int server_flags;
+  unsigned int client_flags;
   int err;
 
+  server_pipe = INVALID_HANDLE_VALUE;
+  client_pipe = INVALID_HANDLE_VALUE;
+
+  server_flags = 0;
+  client_flags = 0;
   if (flags & UV_READABLE_PIPE) {
     /* The server needs inbound (read) access too, otherwise CreateNamedPipe() */
     /* won't give us the FILE_READ_ATTRIBUTES permission. We need that to */
@@ -405,13 +407,11 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   return 0;
 
  error:
-  if (server_pipe != INVALID_HANDLE_VALUE) {
+  if (server_pipe != INVALID_HANDLE_VALUE)
     CloseHandle(server_pipe);
-  }
 
-  if (client_pipe != INVALID_HANDLE_VALUE) {
+  if (client_pipe != INVALID_HANDLE_VALUE)
     CloseHandle(client_pipe);
-  }
 
   return err;
 }
@@ -859,9 +859,8 @@ error:
     handle->name = NULL;
   }
 
-  if (pipeHandle != INVALID_HANDLE_VALUE) {
+  if (pipeHandle != INVALID_HANDLE_VALUE)
     CloseHandle(pipeHandle);
-  }
 
   /* Make this req pending reporting an error. */
   SET_REQ_ERROR(req, err);

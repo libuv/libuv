@@ -471,8 +471,6 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
 
   req = &handle->read_req;
-  UV_REQ_INIT(req, UV_READ);
-  req->data = handle;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
   handle->flags |= UV_HANDLE_ZERO_READ;
   buf.base = "";
@@ -499,13 +497,11 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     handle->flags |= UV_HANDLE_READ_PENDING;
     req->u.io.overlapped.InternalHigh = bytes;
     handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* The req will be processed with IOCP. */
     handle->flags |= UV_HANDLE_READ_PENDING;
     handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -516,7 +512,6 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     }
   } else {
     /* Make this req pending reporting an error. */
-    REGISTER_HANDLE_REQ(loop, handle, req);
     SET_REQ_ERROR(req, WSAGetLastError());
     uv_insert_pending_req(loop, (uv_req_t*)req);
     handle->reqs_pending++;
@@ -901,7 +896,6 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
   assert(handle->type == UV_TCP);
 
   handle->flags &= ~UV_HANDLE_READ_PENDING;
-  UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   if (!REQ_SUCCESS(req)) {
     /* An error occurred doing the read. */
@@ -1499,8 +1493,8 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t socket_vector[2], int fla
   if (flags1 & UV_NONBLOCK_PIPE)
       client1_flags |= WSA_FLAG_OVERLAPPED;
 
-  server = WSASocket(AF_INET, type, protocol, NULL, 0,
-                     WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
+  server = WSASocketW(AF_INET, type, protocol, NULL, 0,
+                      WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
   if (server == INVALID_SOCKET)
     goto wsaerror;
   if (!SetHandleInformation((HANDLE)server, HANDLE_FLAG_INHERIT, 0))
@@ -1515,14 +1509,14 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t socket_vector[2], int fla
   namelen = sizeof(name);
   if (getsockname(server, (SOCKADDR*)&name, &namelen) != 0)
     goto wsaerror;
-  client0 = WSASocket(AF_INET, type, protocol, NULL, 0, client0_flags);
+  client0 = WSASocketW(AF_INET, type, protocol, NULL, 0, client0_flags);
   if (client0 == INVALID_SOCKET)
     goto wsaerror;
   if (!SetHandleInformation((HANDLE)client0, HANDLE_FLAG_INHERIT, 0))
     goto error;
   if (connect(client0, (SOCKADDR*)&name, sizeof(name)) != 0)
     goto wsaerror;
-  client1 = WSASocket(AF_INET, type, protocol, NULL, 0, client1_flags);
+  client1 = WSASocketW(AF_INET, type, protocol, NULL, 0, client1_flags);
   if (client1 == INVALID_SOCKET)
     goto wsaerror;
   if (!SetHandleInformation((HANDLE)client1, HANDLE_FLAG_INHERIT, 0))

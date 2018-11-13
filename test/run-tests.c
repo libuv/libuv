@@ -55,6 +55,10 @@ int spawn_tcp_server_helper(void);
 
 static int maybe_run_test(int argc, char **argv);
 
+#ifdef _WIN32
+typedef BOOL WINAPI (*sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
+#endif
+
 
 int main(int argc, char **argv) {
   if (platform_init(argc, argv))
@@ -190,7 +194,6 @@ static int maybe_run_test(int argc, char **argv) {
 #ifdef _WIN32
     DWORD flags;
     HMODULE kernelbase_module;
-    typedef BOOL WINAPI (*sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
     sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
 #endif
     ASSERT(sizeof(closed_fd) == read(0, &closed_fd, sizeof(closed_fd)));
