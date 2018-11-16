@@ -69,6 +69,9 @@ ipch
 # sphinx generated files
 /docs/build/
 
+# cmake generated files
+build/
+
 # Clion / IntelliJ project files
 /.idea/
 
@@ -77,3 +80,6 @@ ipch
 
 # make dist output
 libuv-*.tar.*
+
+# run-tests dump files
+*.stackdump
