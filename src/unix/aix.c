@@ -733,7 +733,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
 
   /* Figure out whether filename is absolute or not */
-  if (filename[0] == '/') {
+  if (filename[0] == '\0') {
+    /* Missing a pathname */
+    return UV_ENOENT;
+  }
+  else if (filename[0] == '/') {
     /* We have absolute pathname */
     /* TODO(bnoordhuis) Check uv__strscpy() return value. */
     uv__strscpy(absolute_path, filename, sizeof(absolute_path));
