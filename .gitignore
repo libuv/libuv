@@ -69,9 +69,6 @@ ipch
 # sphinx generated files
 /docs/build/
 
-# cmake generated files
-build/
-
 # Clion / IntelliJ project files
 /.idea/
 
