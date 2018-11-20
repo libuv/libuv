@@ -97,6 +97,12 @@ API
     Returns the size of the given request type. Useful for FFI binding writers
     who don't want to know the structure layout.
 
+.. c:function:: uv_loop_t* uv_req_get_loop(const uv_req_t* req)
+
+    Returns `req->loop`.
+
+    .. versionadded:: 2.0.0
+
 .. c:function:: void* uv_req_get_data(const uv_req_t* req)
 
     Returns `req->data`.

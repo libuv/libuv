@@ -448,6 +448,7 @@ UV_EXTERN void uv_handle_set_data(uv_handle_t* handle, void* data);
 UV_EXTERN size_t uv_req_size(uv_req_type type);
 UV_EXTERN void* uv_req_get_data(const uv_req_t* req);
 UV_EXTERN void uv_req_set_data(uv_req_t* req, void* data);
+UV_EXTERN uv_loop_t* uv_req_get_loop(const uv_req_t* handle);
 UV_EXTERN uv_req_type uv_req_get_type(const uv_req_t* req);
 UV_EXTERN const char* uv_req_type_name(uv_req_type type);
 
