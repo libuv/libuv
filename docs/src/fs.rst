@@ -164,11 +164,6 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
-.. c:member:: uv_loop_t* uv_fs_t.loop
-
-    Loop that started this request and where completion will be reported.
-    Readonly.
-
 .. c:member:: uv_fs_type uv_fs_t.fs_type
 
     FS request type.

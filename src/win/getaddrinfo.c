@@ -249,10 +249,9 @@ int uv_getaddrinfo(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
-  UV_REQ_INIT(req, UV_GETADDRINFO);
+  UV_REQ_INIT(loop, req, UV_GETADDRINFO);
   req->getaddrinfo_cb = getaddrinfo_cb;
   req->addrinfo = NULL;
-  req->loop = loop;
   req->retcode = 0;
 
   /* calculate required memory size for all input values */

@@ -303,15 +303,17 @@ void uv__threadpool_cleanup(void);
  * a circular dependency between src/uv-common.h and src/win/internal.h.
  */
 #if defined(_WIN32)
-# define UV_REQ_INIT(req, typ)                                                \
+# define UV_REQ_INIT(loop_, req, typ)                                         \
   do {                                                                        \
+    (req)->loop = (loop_);                                                    \
     (req)->type = (typ);                                                      \
     (req)->u.io.overlapped.Internal = 0;  /* SET_REQ_SUCCESS() */             \
   }                                                                           \
   while (0)
 #else
-# define UV_REQ_INIT(req, typ)                                                \
+# define UV_REQ_INIT(loop_, req, typ)                                         \
   do {                                                                        \
+    (req)->loop = (loop_);                                                    \
     (req)->type = (typ);                                                      \
   }                                                                           \
   while (0)
@@ -319,7 +321,7 @@ void uv__threadpool_cleanup(void);
 
 #define uv__req_init(loop, req, typ)                                          \
   do {                                                                        \
-    UV_REQ_INIT(req, typ);                                                    \
+    UV_REQ_INIT(loop, req, typ);                                              \
     uv__req_register(loop, req);                                              \
   }                                                                           \
   while (0)

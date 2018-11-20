@@ -464,11 +464,11 @@ int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle,
 
   /* Initialize 2 poll reqs. */
   handle->submitted_events_1 = 0;
-  UV_REQ_INIT(&handle->poll_req_1, UV_POLL_REQ);
+  UV_REQ_INIT(loop, &handle->poll_req_1, UV_POLL_REQ);
   handle->poll_req_1.data = handle;
 
   handle->submitted_events_2 = 0;
-  UV_REQ_INIT(&handle->poll_req_2, UV_POLL_REQ);
+  UV_REQ_INIT(loop, &handle->poll_req_2, UV_POLL_REQ);
   handle->poll_req_2.data = handle;
 
   return 0;

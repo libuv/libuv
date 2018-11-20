@@ -144,7 +144,7 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
   handle->short_filew = NULL;
   handle->dirw = NULL;
 
-  UV_REQ_INIT(&handle->req, UV_FS_EVENT_REQ);
+  UV_REQ_INIT(loop, &handle->req, UV_FS_EVENT_REQ);
   handle->req.data = handle;
 
   return 0;

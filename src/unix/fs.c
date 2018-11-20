@@ -136,11 +136,10 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   do {                                                                        \
     if (req == NULL)                                                          \
       return UV_EINVAL;                                                       \
-    UV_REQ_INIT(req, UV_FS);                                                  \
+    UV_REQ_INIT(loop, req, UV_FS);                                            \
     req->fs_type = UV_FS_ ## subtype;                                         \
     req->result = 0;                                                          \
     req->ptr = NULL;                                                          \
-    req->loop = loop;                                                         \
     req->path = NULL;                                                         \
     req->new_path = NULL;                                                     \
     req->bufs = NULL;                                                         \
