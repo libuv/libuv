@@ -360,6 +360,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
     }
   } else {
     was_reading = 0;
+    alloc_cb = NULL;
+    read_cb = NULL;
   }
 
   uv_sem_wait(&uv_tty_output_lock);
