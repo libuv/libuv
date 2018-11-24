@@ -324,8 +324,8 @@ static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info) {
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   DWORD flags;
   unsigned char was_reading;
-  uv_alloc_cb alloc_cb;
-  uv_read_cb read_cb;
+  uv_alloc_cb alloc_cb = NULL;
+  uv_read_cb read_cb = NULL;
   int err;
 
   if (!(tty->flags & UV_HANDLE_TTY_READABLE)) {
