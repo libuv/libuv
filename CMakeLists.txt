@@ -1,7 +1,6 @@
 # TODO: determine CMAKE_SYSTEM_NAME on OS/390.  Currently assumes "OS/390".
 cmake_minimum_required(VERSION 3.0)
 project(libuv)
-enable_testing()
 
 if(MSVC)
   list(APPEND uv_cflags /W4)
@@ -351,8 +350,11 @@ target_compile_options(uv_a PRIVATE ${uv_cflags})
 target_include_directories(uv_a PRIVATE include src)
 target_link_libraries(uv_a ${uv_libraries})
 
-if(BUILD_TESTING)
-  include(CTest)
+option(libuv_buildtests "Build the unit tests when BUILD_TESTING is enabled." ON)
+
+include(CTest)
+if(BUILD_TESTING AND libuv_buildtests)
+  enable_testing()
   add_executable(uv_run_tests ${uv_test_sources})
   target_compile_definitions(uv_run_tests
                              PRIVATE ${uv_defines} USING_UV_SHARED=1)
