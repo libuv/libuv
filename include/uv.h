@@ -1329,6 +1329,12 @@ UV_EXTERN int uv_fs_link(uv_loop_t* loop,
  */
 #define UV_FS_SYMLINK_JUNCTION     0x0002
 
+/*
+ * This flag can be used with rename() on Windows to specify whether
+ * to use incremental backoff (i.e. graceful) retry semantics.
+ */
+#define UV_FS_GRACEFUL             0x0004
+
 UV_EXTERN int uv_fs_symlink(uv_loop_t* loop,
                             uv_fs_t* req,
                             const char* path,

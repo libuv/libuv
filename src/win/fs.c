@@ -1331,6 +1331,7 @@ static void fs__fstat(uv_fs_t* req) {
 
 
 static void fs__rename(uv_fs_t* req) {
+  int allowed_retries = 1;
   int tries;
   int sys_errno;
   int result;
@@ -1366,7 +1367,9 @@ static void fs__rename(uv_fs_t* req) {
    * source file/directory. This is annoying for users, in such cases we will
    * retry couple of times with some delay before failing.
    */
-  for (tries = 0; tries < UV__RENAME_RETRIES; ++tries) {
+  if (req->fs.info.file_flags & UV_FS_GRACEFUL)
+    allowed_retries = UV__RENAME_RETRIES;
+  for (tries = 0; tries < allowed_retries; ++tries) {
     if (tries > 0)
       Sleep(UV__RENAME_WAIT);
 
