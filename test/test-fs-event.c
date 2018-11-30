@@ -480,6 +480,7 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 #ifdef _WIN32
 TEST_IMPL(fs_event_watch_dir_short_path) {
   uv_loop_t* loop;
+  uv_fs_t req;
   int r;
 
   /* Setup */
@@ -489,20 +490,25 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
   create_dir("watch_dir");
   create_file("watch_dir/file1");
 
-  r = uv_fs_event_init(loop, &fs_event);
-  ASSERT(r == 0);
-  r = uv_fs_event_start(&fs_event, fs_event_cb_dir, "watch_~1", 0);
-  ASSERT(r == 0);
-  r = uv_timer_init(loop, &timer);
-  ASSERT(r == 0);
-  r = uv_timer_start(&timer, timer_cb_file, 100, 0);
-  ASSERT(r == 0);
+  /* Newer version of Windows ship with HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\NtfsDisable8dot3NameCreation != 0
+   * So we verify the files we created are addressable by a 8.3 short name */
+  r = uv_fs_stat(NULL, &req, "watch_~1", NULL);
+  if (r != UV_ENOENT) {
+    r = uv_fs_event_init(loop, &fs_event);
+    ASSERT(r == 0);
+    r = uv_fs_event_start(&fs_event, fs_event_cb_dir, "watch_~1", 0);
+    ASSERT(r == 0);
+    r = uv_timer_init(loop, &timer);
+    ASSERT(r == 0);
+    r = uv_timer_start(&timer, timer_cb_file, 100, 0);
+    ASSERT(r == 0);
+  
+    uv_run(loop, UV_RUN_DEFAULT);
 
-  uv_run(loop, UV_RUN_DEFAULT);
-
-  ASSERT(fs_event_cb_called == 1);
-  ASSERT(timer_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+    ASSERT(fs_event_cb_called == 1);
+    ASSERT(timer_cb_called == 1);
+    ASSERT(close_cb_called == 1);
+  }
 
   /* Cleanup */
   remove("watch_dir/file1");
