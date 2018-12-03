@@ -365,12 +365,7 @@ static char *uv__rawname(char *cp) {
   if (dp == 0)
     return 0;
 
-  *dp = 0;
-  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-  uv__strscpy(rawbuf, cp, sizeof(rawbuf));
-  *dp = '/';
-  strcat(rawbuf, "/r");
-  strcat(rawbuf, dp+1);
+  snprintf(rawbuf, sizeof(rawbuf), "%.*s/r/%s", (int) (cp - dp), cp, dp + 1);
   return rawbuf;
 }
 
