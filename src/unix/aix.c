@@ -358,15 +358,15 @@ void uv_loadavg(double avg[3]) {
 
 
 #ifdef HAVE_SYS_AHAFS_EVPRODS_H
-static char *uv__rawname(char *cp) {
-  static char rawbuf[FILENAME_MAX+1];
-  char *dp = rindex(cp, '/');
+static char* uv__rawname(const char* cp, char (*dst)[FILENAME_MAX+1]) {
+  char* dp;
 
+  dp = rindex(cp, '/');
   if (dp == 0)
     return 0;
 
-  snprintf(rawbuf, sizeof(rawbuf), "%.*s/r/%s", (int) (cp - dp), cp, dp + 1);
-  return rawbuf;
+  snprintf(*dst, sizeof(*dst), "%.*s/r%s", (int) (dp - cp), cp, dp + 1);
+  return *dst;
 }
 
 
@@ -395,6 +395,7 @@ static int uv__path_is_a_directory(char* filename) {
  * Returns 0 if AHAFS is mounted, or an error code < 0 on failure
  */
 static int uv__is_ahafs_mounted(void){
+  char rawbuf[FILENAME_MAX+1];
   int rv, i = 2;
   struct vmount *p;
   int size_multiplier = 10;
@@ -428,7 +429,7 @@ static int uv__is_ahafs_mounted(void){
     obj = vmt2dataptr(vmt, VMT_OBJECT);     /* device */
     stub = vmt2dataptr(vmt, VMT_STUB);      /* mount point */
 
-    if (EQ(obj, dev) || EQ(uv__rawname(obj), dev) || EQ(stub, dev)) {
+    if (EQ(obj, dev) || EQ(uv__rawname(obj, &rawbuf), dev) || EQ(stub, dev)) {
       uv__free(p);  /* Found a match */
       return 0;
     }
