@@ -237,7 +237,7 @@ static int getexe(const int pid, char* buf, size_t len) {
     return -1;
   }
 
-  strncpy(buf, Output_path->path, len);
+  uv__strscpy(buf, Output_path->path, len);
 
   return 0;
 }

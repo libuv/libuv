@@ -15,6 +15,7 @@ set(uv_sources
     src/fs-poll.c
     src/idna.c
     src/inet.c
+    src/strscpy.c
     src/threadpool.c
     src/timer.c
     src/uv-common.c
@@ -116,6 +117,7 @@ set(uv_test_sources
     test/test-socket-buffer-size.c
     test/test-spawn.c
     test/test-stdio-over-pipes.c
+    test/test-strscpy.c
     test/test-tcp-alloc-cb-fail.c
     test/test-tcp-bind-error.c
     test/test-tcp-bind6-error.c

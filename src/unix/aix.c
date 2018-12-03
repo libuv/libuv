@@ -366,7 +366,8 @@ static char *uv__rawname(char *cp) {
     return 0;
 
   *dp = 0;
-  strcpy(rawbuf, cp);
+  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
+  uv__strscpy(rawbuf, cp, sizeof(rawbuf));
   *dp = '/';
   strcat(rawbuf, "/r");
   strcat(rawbuf, dp+1);
@@ -453,7 +454,8 @@ static int uv__makedir_p(const char *dir) {
   size_t len;
   int err;
 
-  snprintf(tmp, sizeof(tmp),"%s",dir);
+  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
+  uv__strscpy(tmp, dir, sizeof(tmp));
   len = strlen(tmp);
   if (tmp[len - 1] == '/')
     tmp[len - 1] = 0;
@@ -702,9 +704,9 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
     else
       p++;
   }
-  strncpy(fname, p, sizeof(fname) - 1);
-  /* Just in case */
-  fname[sizeof(fname) - 1] = '\0';
+
+  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
+  uv__strscpy(fname, p, sizeof(fname));
 
   handle->cb(handle, fname, events, 0);
 }
@@ -735,7 +737,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   /* Figure out whether filename is absolute or not */
   if (filename[0] == '/') {
     /* We have absolute pathname */
-    snprintf(absolute_path, sizeof(absolute_path), "%s", filename);
+    /* TODO(bnoordhuis) Check uv__strscpy() return value. */
+    uv__strscpy(absolute_path, filename, sizeof(absolute_path));
   } else {
     /* We have a relative pathname, compose the absolute pathname */
     snprintf(cwd, sizeof(cwd), "/proc/%lu/cwd", (unsigned long) getpid());
@@ -986,7 +989,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return UV_ENOMEM;
   }
 
-  strcpy(cpu_id.name, FIRST_CPU);
+  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
+  uv__strscpy(cpu_id.name, FIRST_CPU, sizeof(cpu_id.name));
   result = perfstat_cpu(&cpu_id, ps_cpus, sizeof(perfstat_cpu_t), ncpus);
   if (result == -1) {
     uv__free(ps_cpus);
