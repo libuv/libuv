@@ -518,7 +518,7 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
   
   /* `UV_ENOENT` could only be from when we tried to open with an 8.3 name. */
   if (r == UV_ENOENT) {
-    RETURN_SKIP("Was not able to address files with 8.3 short name.")
+    RETURN_SKIP("Was not able to address files with 8.3 short name.");
   }
   return 0;
 }
