@@ -108,22 +108,23 @@ void uv_update_time(uv_loop_t* loop) {
 
 
 int uv_loop_init(uv_loop_t* loop) {
-  int err;
+  int err, ioCompletionThreads = 1;
+  char *numProcessors = NULL;
 
   /* Initialize libuv itself first */
   uv__once_init();
 
-  /* determine NumberOfConcurrentThreads for I/O completion port, 2 works better for single core */
-  int coreCount = -1, ioCompletionThreads = 1;
-  char *coreCountStr = getenv("NUMBER_OF_PROCESSORS");
-  if (coreCountStr) {
-    coreCount = atoi(coreCountStr);
-    if (coreCount == 1)
-      ioCompletionThreads = 2;
-  }
+  /* determine NumberOfConcurrentThreads for I/O completion port, 2 works better
+     for single core */
+  numProcessors = getenv("NUMBER_OF_PROCESSORS");
+  if (numProcessors && strcmp(numProcessors, "1") == 0)
+    ioCompletionThreads = 2;
 
   /* Create an I/O completion port */
-  loop->iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, ioCompletionThreads);
+  loop->iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE,
+                                      NULL,
+                                      0,
+                                      ioCompletionThreads);
   if (loop->iocp == NULL)
     return uv_translate_sys_error(GetLastError());
 
