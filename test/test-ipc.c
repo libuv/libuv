@@ -92,6 +92,7 @@ static void exit_cb(uv_process_t* process,
   printf("exit_cb\n");
   exit_cb_called++;
   ASSERT(exit_status == 0);
+  ASSERT(term_signal == 0);
   uv_close((uv_handle_t*)process, NULL);
 }
 
