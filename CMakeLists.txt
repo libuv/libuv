@@ -210,7 +210,11 @@ if(WIN32)
   list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
-  list(APPEND uv_libraries pthread)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+    # Android has pthread as part of its c library, not as a separate 
+    # libpthread.so.
+    list(APPEND uv_libraries pthread)
+  endif()
   list(APPEND uv_sources
        src/unix/async.c
        src/unix/core.c
