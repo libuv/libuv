@@ -733,8 +733,9 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
       /* Ignore keyup events, unless the left alt key was held and a valid
        * unicode character was emitted. */
-      if (!KEV.bKeyDown && !(((KEV.dwControlKeyState & LEFT_ALT_PRESSED) ||
-          KEV.wVirtualKeyCode==VK_MENU) && KEV.uChar.UnicodeChar != 0)) {
+      if (!KEV.bKeyDown &&
+          KEV.wVirtualKeyCode != VK_MENU &&
+          KEV.uChar.UnicodeChar != 0) {
         continue;
       }
 
