@@ -181,7 +181,8 @@ if(WIN32)
        shell32
        user32
        userenv
-       ws2_32)
+       ws2_32
+       secur32)
   list(APPEND uv_sources
        src/win/async.c
        src/win/core.c
