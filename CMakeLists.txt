@@ -199,7 +199,6 @@ if(WIN32)
        src/win/process.c
        src/win/process-stdio.c
        src/win/signal.c
-       src/win/snprintf.c
        src/win/stream.c
        src/win/tcp.c
        src/win/tty.c
@@ -208,7 +207,7 @@ if(WIN32)
        src/win/winapi.c
        src/win/winsock.c)
   list(APPEND uv_test_libraries ws2_32)
-  list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
+  list(APPEND uv_test_sources test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   list(APPEND uv_libraries pthread)
