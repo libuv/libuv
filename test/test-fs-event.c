@@ -481,7 +481,7 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 TEST_IMPL(fs_event_watch_dir_short_path) {
   uv_loop_t* loop;
   uv_fs_t req;
-  int r;
+  int r, has_shortnames;
 
   /* Setup */
   loop = uv_default_loop();
@@ -492,8 +492,8 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
 
   /* Newer version of Windows ship with HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\NtfsDisable8dot3NameCreation != 0
    * So we verify the files we created are addressable by a 8.3 short name */
-  r = uv_fs_stat(NULL, &req, "watch_~1", NULL);
-  if (r != UV_ENOENT) {
+  has_shortnames = uv_fs_stat(NULL, &req, "watch_~1", NULL) != UV_ENOENT;
+  if (has_shortnames) {
     r = uv_fs_event_init(loop, &fs_event);
     ASSERT(r == 0);
     r = uv_fs_event_start(&fs_event, fs_event_cb_dir, "watch_~1", 0);
@@ -516,8 +516,7 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
 
   MAKE_VALGRIND_HAPPY();
   
-  /* `UV_ENOENT` could only be from when we tried to open with an 8.3 name. */
-  if (r == UV_ENOENT) {
+  if (!has_shortnames) {
     RETURN_SKIP("Was not able to address files with 8.3 short name.");
   }
   return 0;
