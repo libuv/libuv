@@ -758,7 +758,7 @@ static void uv__write(uv_stream_t* stream) {
   uv_write_t* req;
   int iovmax;
   int iovcnt;
-  ssize_t n;
+  uv_ssize_t n;
   int err;
 
 start:
@@ -1133,7 +1133,7 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
 
 static void uv__read(uv_stream_t* stream) {
   uv_buf_t buf;
-  ssize_t nread;
+  uv_ssize_t nread;
   struct msghdr msg;
   char cmsg_space[CMSG_SPACE(UV__CMSG_FD_SIZE)];
   int count;
@@ -1221,7 +1221,7 @@ static void uv__read(uv_stream_t* stream) {
       return;
     } else {
       /* Successful read */
-      ssize_t buflen = buf.len;
+      uv_ssize_t buflen = buf.len;
 
       if (is_ipc) {
         err = uv__stream_recv_cmsg(stream, &msg);

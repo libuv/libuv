@@ -3360,7 +3360,7 @@ static void thread_main(void* arg) {
   data = ctx->data;
 
   while (size > 0) {
-    ssize_t result;
+    uv_ssize_t result;
     int nbytes;
     nbytes = size < ctx->interval ? size : ctx->interval;
     if (ctx->doread) {

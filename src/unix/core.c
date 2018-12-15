@@ -627,9 +627,9 @@ int uv__cloexec_fcntl(int fd, int set) {
 }
 
 
-ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
+uv_ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   struct cmsghdr* cmsg;
-  ssize_t rc;
+  uv_ssize_t rc;
   int* pfd;
   int* end;
 #if defined(__linux__)

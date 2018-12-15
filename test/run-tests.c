@@ -154,7 +154,7 @@ static int maybe_run_test(int argc, char **argv) {
     WriteFile((HANDLE) _get_osfhandle(3), out, sizeof(out) - 1, &bytes, NULL);
 #else
     {
-      ssize_t r;
+      uv_ssize_t r;
 
       do
         r = write(3, out, sizeof(out) - 1);

@@ -41,7 +41,7 @@ void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb cb) {
     uv_write((uv_write_t*) req, (uv_stream_t*)dest, &req->buf, 1, cb);
 }
 
-void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
+void read_stdin(uv_stream_t *stream, uv_ssize_t nread, const uv_buf_t *buf) {
     if (nread < 0){
         if (nread == UV_EOF){
             // end of file

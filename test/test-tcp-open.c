@@ -110,7 +110,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   ASSERT(tcp != NULL);
 
   if (nread >= 0) {
@@ -124,7 +124,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 }
 
 
-static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read1_cb(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   int i;
   ASSERT(tcp != NULL);
 

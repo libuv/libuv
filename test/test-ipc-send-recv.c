@@ -84,7 +84,7 @@ static void alloc_cb(uv_handle_t* handle,
 
 
 static void recv_cb(uv_stream_t* handle,
-                    ssize_t nread,
+                    uv_ssize_t nread,
                     const uv_buf_t* buf) {
   uv_handle_type pending;
   uv_pipe_t* pipe;
@@ -297,7 +297,7 @@ static void write2_cb(uv_write_t* req, int status) {
 }
 
 static void read_cb(uv_stream_t* handle,
-                    ssize_t nread,
+                    uv_ssize_t nread,
                     const uv_buf_t* rdbuf) {
   uv_buf_t wrbuf;
   uv_pipe_t* pipe;

@@ -71,7 +71,7 @@ uv_fs_type uv_fs_get_type(const uv_fs_t* req) {
   return req->fs_type;
 }
 
-ssize_t uv_fs_get_result(const uv_fs_t* req) {
+uv_ssize_t uv_fs_get_result(const uv_fs_t* req) {
   return req->result;
 }
 

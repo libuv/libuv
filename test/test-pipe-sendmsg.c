@@ -71,7 +71,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 
 static void read_cb(uv_stream_t* handle,
-                    ssize_t nread,
+                    uv_ssize_t nread,
                     const uv_buf_t* buf) {
   uv_pipe_t* p;
   uv_pipe_t* inc;

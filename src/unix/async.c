@@ -76,7 +76,7 @@ void uv__async_close(uv_async_t* handle) {
 
 static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   char buf[1024];
-  ssize_t r;
+  uv_ssize_t r;
   QUEUE queue;
   QUEUE* q;
   uv_async_t* h;
@@ -122,7 +122,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 static void uv__async_send(uv_loop_t* loop) {
   const void* buf;
-  ssize_t len;
+  uv_ssize_t len;
   int fd;
   int r;
 

@@ -115,7 +115,7 @@ static void start_server(void) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   /* The server will not send anything, it should close gracefully. */
 
   if (buf->base) {

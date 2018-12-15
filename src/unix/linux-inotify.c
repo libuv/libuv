@@ -200,7 +200,7 @@ static void uv__inotify_read(uv_loop_t* loop,
   QUEUE queue;
   QUEUE* q;
   const char* path;
-  ssize_t size;
+  uv_ssize_t size;
   const char *p;
   /* needs to be large enough for sizeof(inotify_event) + strlen(path) */
   char buf[4096];

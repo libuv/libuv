@@ -151,7 +151,7 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
 static void uv__udp_recvmsg(uv_udp_t* handle) {
   struct sockaddr_storage peer;
   struct msghdr h;
-  ssize_t nread;
+  uv_ssize_t nread;
   uv_buf_t buf;
   int flags;
   int count;
@@ -217,7 +217,7 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   uv_udp_send_t* req;
   QUEUE* q;
   struct msghdr h;
-  ssize_t size;
+  uv_ssize_t size;
 
   while (!QUEUE_EMPTY(&handle->write_queue)) {
     q = QUEUE_HEAD(&handle->write_queue);
@@ -505,7 +505,7 @@ int uv__udp_try_send(uv_udp_t* handle,
                      unsigned int addrlen) {
   int err;
   struct msghdr h;
-  ssize_t size;
+  uv_ssize_t size;
 
   assert(nbufs > 0);
 

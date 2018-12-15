@@ -75,7 +75,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   if (nread < 0) {
     uv_close((uv_handle_t*) tcp, close_cb);
     uv_close((uv_handle_t*) &server, close_cb);

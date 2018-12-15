@@ -61,7 +61,7 @@ static void after_shutdown(uv_shutdown_t* req, int status) {
 
 
 static void after_read(uv_stream_t* handle,
-                       ssize_t nread,
+                       uv_ssize_t nread,
                        const uv_buf_t* buf) {
   uv_shutdown_t* req;
   int r;
@@ -236,7 +236,7 @@ static void tcp_connector(void) {
 
 
 static void udp_recv(uv_udp_t* handle,
-                     ssize_t nread,
+                     uv_ssize_t nread,
                      const uv_buf_t* buf,
                      const struct sockaddr* addr,
                      unsigned flags) {

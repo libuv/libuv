@@ -39,7 +39,7 @@ struct thread_ctx {
 static void thread_main(void* arg) {
   struct thread_ctx* ctx;
   char buf[4096];
-  ssize_t n;
+  uv_ssize_t n;
 
   ctx = arg;
   uv_barrier_wait(&ctx->barrier);

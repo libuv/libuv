@@ -94,7 +94,7 @@ static void after_write(uv_write_t* req, int status) {
 }
 
 
-static void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* rdbuf) {
+static void on_read(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* rdbuf) {
   uv_write_t* req;
   uv_buf_t wrbuf;
   int r;
@@ -163,7 +163,7 @@ static int after_write_called;
 static uv_pipe_t stdin_pipe;
 static uv_pipe_t stdout_pipe;
 
-static void on_pipe_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+static void on_pipe_read(uv_stream_t* tcp, uv_ssize_t nread, const uv_buf_t* buf) {
   ASSERT(nread > 0);
   ASSERT(memcmp("hello world\n", buf->base, nread) == 0);
   on_pipe_read_called++;

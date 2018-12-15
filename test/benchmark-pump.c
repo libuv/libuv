@@ -168,7 +168,7 @@ static void start_stats_collection(void) {
 }
 
 
-static void read_cb(uv_stream_t* stream, ssize_t bytes, const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* stream, uv_ssize_t bytes, const uv_buf_t* buf) {
   if (nrecv_total == 0) {
     ASSERT(start_time == 0);
     uv_update_time(loop);
