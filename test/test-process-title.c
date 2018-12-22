@@ -24,6 +24,7 @@
 #include <string.h>
 
 
+#if !defined(__sun) && !defined(_AIX) && !defined(__MVS__)
 static void set_title(const char* title) {
   char buffer[512];
   int err;
@@ -39,6 +40,7 @@ static void set_title(const char* title) {
 
   ASSERT(strcmp(buffer, title) == 0);
 }
+#endif
 
 
 static void uv_get_process_title_edge_cases(void) {
