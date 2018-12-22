@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h> /* PATH_MAX */
+#include <stdlib.h> /* mkdtemp */
 
 #include <sys/types.h>
 #include <sys/socket.h>
