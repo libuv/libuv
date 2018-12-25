@@ -728,6 +728,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   char cwd[PATH_MAX];
   char absolute_path[PATH_MAX];
   char readlink_cwd[PATH_MAX];
+  struct timeval zt = {0, 0};
+  fd_set pollfd;
 
 
   /* Figure out whether filename is absolute or not */
@@ -767,6 +769,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->dir_filename = NULL;
 
   uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
+
+  /* AHAFS wants someone to poll for it to start mointoring.
+     so kick-start it so that we don't miss an event in the
+     eventuality of an event that occurs in the current loop. */
+  pollfd.fds_bits[0] = fd; 
+  select(1, &pollfd, NULL, NULL, &zt);
 
   return 0;
 #else
