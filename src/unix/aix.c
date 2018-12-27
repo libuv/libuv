@@ -728,7 +728,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   char cwd[PATH_MAX];
   char absolute_path[PATH_MAX];
   char readlink_cwd[PATH_MAX];
-  struct timeval zt = {0, 0};
+  struct timeval zt;
   fd_set pollfd;
 
 
@@ -771,11 +771,14 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
 
   /* AHAFS wants someone to poll for it to start mointoring.
-     so kick-start it so that we don't miss an event in the
-     eventuality of an event that occurs in the current loop. */
-  pollfd.fds_bits[0] = fd; 
-  select(1, &pollfd, NULL, NULL, &zt);
-
+   *  so kick-start it so that we don't miss an event in the
+   *  eventuality of an event that occurs in the current loop. */
+  FD_ZERO(&pollfd);
+  FD_SET(fd, &pollfd);
+  do {
+    memset(&zt, 0, sizeof(zt));
+    rc = select(1, &pollfd, NULL, NULL, &zt);
+  } while (rc == -1 && errno == EINTR);
   return 0;
 #else
   return UV_ENOSYS;
