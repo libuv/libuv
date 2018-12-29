@@ -555,7 +555,7 @@ static int uv__setup_ahafs(const char* filename, int *fd) {
     sprintf(mon_file_write_string, "CHANGED=YES;WAIT_TYPE=WAIT_IN_SELECT;INFO_LVL=1");
 
   rc = write(*fd, mon_file_write_string, strlen(mon_file_write_string)+1);
-  if (rc < 0)
+  if (rc < 0 && errno != EBUSY)
     return UV__ERR(errno);
 
   return 0;
@@ -777,7 +777,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   FD_SET(fd, &pollfd);
   do {
     memset(&zt, 0, sizeof(zt));
-    rc = select(1, &pollfd, NULL, NULL, &zt);
+    rc = select(fd + 1, &pollfd, NULL, NULL, &zt);
   } while (rc == -1 && errno == EINTR);
   return 0;
 #else
