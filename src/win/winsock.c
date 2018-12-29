@@ -131,21 +131,14 @@ void uv_winsock_init(void) {
   if (dummy != INVALID_SOCKET) {
     opt_len = (int) sizeof protocol_info;
     if (getsockopt(dummy,
-                   SOL_SOCKET,
-                   SO_PROTOCOL_INFOW,
-                   (char*) &protocol_info,
-                   &opt_len) == SOCKET_ERROR)
-      uv_fatal_error(WSAGetLastError(), "getsockopt");
-
-    if (!(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES))
-      uv_tcp_non_ifs_lsp_ipv6 = 1;
-
-    if (closesocket(dummy) == SOCKET_ERROR)
-      uv_fatal_error(WSAGetLastError(), "closesocket");
-
-  } else if (!error_means_no_support(WSAGetLastError())) {
-    /* Any error other than "socket type not supported" is fatal. */
-    uv_fatal_error(WSAGetLastError(), "socket");
+        SOL_SOCKET,
+        SO_PROTOCOL_INFOW,
+        (char*)&protocol_info,
+        &opt_len) == 0) {
+        if (!(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES))
+            uv_tcp_non_ifs_lsp_ipv6 = 1;
+    }
+    closesocket(dummy);
   }
 }
 
