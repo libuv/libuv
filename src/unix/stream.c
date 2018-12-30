@@ -882,6 +882,10 @@ start:
     do
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
     while (n == -1 && RETRY_ON_WRITE_ERROR(errno));
+
+    /* Ensure the handle isn't sent again in case this is a partial write. */
+    if (n >= 0)
+      req->send_handle = NULL;
   } else {
     do
       n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
