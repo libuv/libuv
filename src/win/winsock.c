@@ -136,7 +136,7 @@ void uv_winsock_init(void) {
         (char*)&protocol_info,
         &opt_len) == 0) {
         if (!(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES))
-            uv_tcp_non_ifs_lsp_ipv6 = 1;
+          uv_tcp_non_ifs_lsp_ipv6 = 1;
     }
     closesocket(dummy);
   }
