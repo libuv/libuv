@@ -58,11 +58,11 @@ struct uv__stream_select_s {
   fd_set* swrite;
   size_t swrite_sz;
 };
-# define WRITE_RETRY_ON_ERROR(send_handle) \
+# define IS_TRANSIENT_WRITE_ERROR(errno, send_handle) \
     (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS || \
-     (errno == EMSGSIZE && send_handle))
+     (errno == EMSGSIZE && send_handle != NULL))
 #else
-# define WRITE_RETRY_ON_ERROR(send_handle) \
+# define IS_TRANSIENT_WRITE_ERROR(errno, send_handle) \
     (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
 #endif /* defined(__APPLE__) */
 
@@ -868,7 +868,7 @@ start:
   }
 
   if (n < 0) {
-    if (!WRITE_RETRY_ON_ERROR(req->send_handle)) {
+    if (!IS_TRANSIENT_WRITE_ERROR(errno, req->send_handle)) {
       err = UV__ERR(errno);
       goto error;
     } else if (stream->flags & UV_HANDLE_BLOCKING_WRITES) {
