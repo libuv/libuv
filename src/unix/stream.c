@@ -58,10 +58,18 @@ struct uv__stream_select_s {
   fd_set* swrite;
   size_t swrite_sz;
 };
+
+/* Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
+ * EPROTOTYPE can be returned while trying to write to a socket that is
+ * shutting down. If we retry the write, we should get the expected EPIPE
+ * instead.
+ */
+# define RETRY_ON_WRITE_ERROR(errno) (errno == EINTR || errno == EPROTOTYPE)
 # define IS_TRANSIENT_WRITE_ERROR(errno, send_handle) \
     (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS || \
      (errno == EMSGSIZE && send_handle != NULL))
 #else
+# define RETRY_ON_WRITE_ERROR(errno) (errno == EINTR)
 # define IS_TRANSIENT_WRITE_ERROR(errno, send_handle) \
     (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
 #endif /* defined(__APPLE__) */
@@ -700,6 +708,14 @@ static void uv__drain(uv_stream_t* stream) {
 }
 
 
+static ssize_t uv__writev(int fd, struct iovec* vec, size_t n) {
+  if (n == 1)
+    return write(fd, vec->iov_base, vec->iov_len);
+  else
+    return writev(fd, vec, n);
+}
+
+
 static size_t uv__write_req_size(uv_write_t* req) {
   size_t size;
 
@@ -832,39 +848,13 @@ start:
       *pi = fd_to_send;
     }
 
-    do {
+    do
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
-    }
-#if defined(__APPLE__)
-    /*
-     * Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
-     * EPROTOTYPE can be returned while trying to write to a socket that is
-     * shutting down. If we retry the write, we should get the expected EPIPE
-     * instead.
-     */
-    while (n == -1 && (errno == EINTR || errno == EPROTOTYPE));
-#else
-    while (n == -1 && errno == EINTR);
-#endif
+    while (n == -1 && RETRY_ON_WRITE_ERROR(errno));
   } else {
-    do {
-      if (iovcnt == 1) {
-        n = write(uv__stream_fd(stream), iov[0].iov_base, iov[0].iov_len);
-      } else {
-        n = writev(uv__stream_fd(stream), iov, iovcnt);
-      }
-    }
-#if defined(__APPLE__)
-    /*
-     * Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
-     * EPROTOTYPE can be returned while trying to write to a socket that is
-     * shutting down. If we retry the write, we should get the expected EPIPE
-     * instead.
-     */
-    while (n == -1 && (errno == EINTR || errno == EPROTOTYPE));
-#else
-    while (n == -1 && errno == EINTR);
-#endif
+    do
+      n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
+    while (n == -1 && RETRY_ON_WRITE_ERROR(errno));
   }
 
   if (n < 0) {
