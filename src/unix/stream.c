@@ -728,6 +728,37 @@ static size_t uv__write_req_size(uv_write_t* req) {
 }
 
 
+/* Returns 1 if all write request data has been written, or 0 if there is still
+ * more data to write.
+ *
+ * Note: the return value only says something about the *current* request.
+ * There may still be other write requests sitting in the queue.
+ */
+static int uv__write_req_update(uv_stream_t* stream,
+                                uv_write_t* req,
+                                size_t n) {
+  uv_buf_t* buf;
+  size_t len;
+
+  assert(n <= stream->write_queue_size);
+  stream->write_queue_size -= n;
+
+  buf = req->bufs + req->write_index;
+
+  while (n > 0) {
+    len = n < buf->len ? n : buf->len;
+    buf->base += len;
+    buf->len -= len;
+    buf += (buf->len == 0);  /* Advance to next buffer if this one is empty. */
+    n -= len;
+  }
+
+  req->write_index = buf - req->bufs;
+
+  return req->write_index == req->nbufs;
+}
+
+
 static void uv__write_req_finish(uv_write_t* req) {
   uv_stream_t* stream = req->handle;
 
@@ -857,67 +888,19 @@ start:
     while (n == -1 && RETRY_ON_WRITE_ERROR(errno));
   }
 
-  if (n < 0) {
-    if (!IS_TRANSIENT_WRITE_ERROR(errno, req->send_handle)) {
-      err = UV__ERR(errno);
-      goto error;
-    } else if (stream->flags & UV_HANDLE_BLOCKING_WRITES) {
-      /* If this is a blocking stream, try again. */
-      goto start;
-    }
-  } else {
-    /* Successful write */
-
-    while (n >= 0) {
-      uv_buf_t* buf = &(req->bufs[req->write_index]);
-      size_t len = buf->len;
-
-      assert(req->write_index < req->nbufs);
-
-      if ((size_t)n < len) {
-        buf->base += n;
-        buf->len -= n;
-        stream->write_queue_size -= n;
-        n = 0;
-
-        /* There is more to write. */
-        if (stream->flags & UV_HANDLE_BLOCKING_WRITES) {
-          /*
-           * If we're blocking then we should not be enabling the write
-           * watcher - instead we need to try again.
-           */
-          goto start;
-        } else {
-          /* Break loop and ensure the watcher is pending. */
-          break;
-        }
-
-      } else {
-        /* Finished writing the buf at index req->write_index. */
-        req->write_index++;
-
-        assert((size_t)n >= len);
-        n -= len;
-
-        assert(stream->write_queue_size >= len);
-        stream->write_queue_size -= len;
-
-        if (req->write_index == req->nbufs) {
-          /* Then we're done! */
-          assert(n == 0);
-          uv__write_req_finish(req);
-          /* TODO: start trying to write the next request. */
-          return;
-        }
-      }
-    }
+  if (n == -1 && !IS_TRANSIENT_WRITE_ERROR(errno, req->send_handle)) {
+    err = UV__ERR(errno);
+    goto error;
   }
 
-  /* Either we've counted n down to zero or we've got EAGAIN. */
-  assert(n == 0 || n == -1);
+  if (n > 0 && uv__write_req_update(stream, req, n)) {
+    uv__write_req_finish(req);
+    return;  /* TODO(bnoordhuis) Start trying to write the next request. */
+  }
 
-  /* Only non-blocking streams should use the write_watcher. */
-  assert(!(stream->flags & UV_HANDLE_BLOCKING_WRITES));
+  /* If this is a blocking stream, try again. */
+  if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
+    goto start;
 
   /* We're not done. */
   uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
