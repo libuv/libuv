@@ -773,10 +773,10 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   /* AHAFS wants someone to poll for it to start mointoring.
    *  so kick-start it so that we don't miss an event in the
    *  eventuality of an event that occurs in the current loop. */
-  FD_ZERO(&pollfd);
-  FD_SET(fd, &pollfd);
   do {
     memset(&zt, 0, sizeof(zt));
+    FD_ZERO(&pollfd);
+    FD_SET(fd, &pollfd);
     rc = select(fd + 1, &pollfd, NULL, NULL, &zt);
   } while (rc == -1 && errno == EINTR);
   return 0;
