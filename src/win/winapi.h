@@ -4108,12 +4108,15 @@
 # define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x00000002
 #endif
 
+#if !defined(__UNICODE_STRING_DEFINED) && defined(__MINGW32__)
+#define __UNICODE_STRING_DEFINED
 /* from winternl.h */
 typedef struct _UNICODE_STRING {
   USHORT Length;
   USHORT MaximumLength;
   PWSTR  Buffer;
 } UNICODE_STRING, *PUNICODE_STRING;
+#endif // !__UNICODE_STRING_DEFINED && __MINGW32__
 
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
