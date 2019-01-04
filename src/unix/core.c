@@ -579,7 +579,7 @@ int uv__nonblock_ioctl(int fd, int set) {
 }
 
 
-#if !defined(__CYGWIN__) && !defined(__MSYS__)
+#if !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__HAIKU__)
 int uv__cloexec_ioctl(int fd, int set) {
   int r;
 
@@ -947,7 +947,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_stime.tv_sec = usage.ru_stime.tv_sec;
   rusage->ru_stime.tv_usec = usage.ru_stime.tv_usec;
 
-#if !defined(__MVS__)
+#if !defined(__MVS__) && !defined(__HAIKU__)
   rusage->ru_maxrss = usage.ru_maxrss;
   rusage->ru_ixrss = usage.ru_ixrss;
   rusage->ru_idrss = usage.ru_idrss;
