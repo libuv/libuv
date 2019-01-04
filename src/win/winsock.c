@@ -130,12 +130,12 @@ void uv_winsock_init(void) {
 
   if (dummy != INVALID_SOCKET) {
     opt_len = (int) sizeof protocol_info;
-    if (getsockopt(dummy,
+    errorno = getsockopt(dummy,
         SOL_SOCKET,
         SO_PROTOCOL_INFOW,
         (char*)&protocol_info,
-        &opt_len) == 0) {
-        if (!(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES))
+        &opt_len);
+    if (errorno == 0 && !(protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES)) {
           uv_tcp_non_ifs_lsp_ipv6 = 1;
     }
     closesocket(dummy);
