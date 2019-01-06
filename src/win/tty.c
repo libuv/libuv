@@ -2285,6 +2285,10 @@ static void uv__determine_vterm_state(HANDLE handle) {
 int uv_tty_set_vterm_state(uv_tty_t* tty, uv_tty_vtermstate_t state) {
   int ret = 0;
 
+  if (!(tty->flags & UV_HANDLE_WRITABLE)) {
+    return UV_EINVAL;
+  }
+
   uv_sem_wait(&uv_tty_output_lock);
   switch (state) {
     case UV_TTY_AUTODETECT:
