@@ -43,7 +43,7 @@ Data types
           /* unchecked */
           UV_TTY_AUTODETECT,
           /* Legacy conhost */
-          UV_TTY_LEAGCY,
+          UV_TTY_LEGACY,
           /* Modern conhost */
           UV_TTY_VTP,
           /* ConEmu, mintty, etc. */
