@@ -119,5 +119,7 @@ API
     Set the Console using the specified virtual terminal mode.
 
     This function is only implemented on Windows.
+    .. versionadded:: 1.25.0
+
 
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.
