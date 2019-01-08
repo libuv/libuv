@@ -116,7 +116,7 @@ API
 
 .. c:function:: int uv_tty_set_vterm_state(uv_tty_t* handle, uv_vtermstate_t state)
 
-    Set the Console using the specified virtual terminal mode.
+    Set the Console to use the specified virtual terminal mode.
 
     This function is only implemented on Windows.
     .. versionadded:: 1.25.0
