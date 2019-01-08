@@ -683,12 +683,3 @@ typedef struct {
 #define UV_FS_O_NONBLOCK     0
 #define UV_FS_O_SYMLINK      0
 #define UV_FS_O_SYNC         0x08000000 /* FILE_FLAG_WRITE_THROUGH */
-
-typedef enum {
-  UV_TTY_AUTODETECT, /* unchecked */
-  UV_TTY_LEGACY,
-  UV_TTY_VTP, /* modern conhost */
-  UV_TTY_ANSI /* conemu, mintty, etc. */
-} uv_tty_vtermstate_t;
-
-UV_EXTERN int uv_tty_set_vterm_state(uv_tty_t* tty, uv_tty_vtermstate_t state);

@@ -57,7 +57,6 @@ extern "C" {
 #endif
 
 #if defined(_WIN32)
-typedef struct uv_tty_s uv_tty_t;
 # include "uv/win.h"
 #else
 # include "uv/unix.h"
@@ -207,9 +206,7 @@ typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
 typedef struct uv_pipe_s uv_pipe_t;
-#ifndef WIN32
 typedef struct uv_tty_s uv_tty_t;
-#endif
 typedef struct uv_poll_s uv_poll_t;
 typedef struct uv_timer_s uv_timer_t;
 typedef struct uv_prepare_s uv_prepare_t;
@@ -684,10 +681,18 @@ typedef enum {
   UV_TTY_MODE_IO
 } uv_tty_mode_t;
 
+typedef enum {
+  UV_TTY_AUTODETECT, /* unchecked */
+  UV_TTY_LEGACY,
+  UV_TTY_VTP, /* modern conhost */
+  UV_TTY_ANSI /* conemu, mintty, etc. */
+} uv_tty_vtermstate_t;
+
 UV_EXTERN int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int readable);
 UV_EXTERN int uv_tty_set_mode(uv_tty_t*, uv_tty_mode_t mode);
 UV_EXTERN int uv_tty_reset_mode(void);
 UV_EXTERN int uv_tty_get_winsize(uv_tty_t*, int* width, int* height);
+UV_EXTERN int uv_tty_set_vterm_state(uv_tty_t* tty, uv_tty_vtermstate_t state);
 
 #ifdef __cplusplus
 extern "C++" {
