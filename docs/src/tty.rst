@@ -41,7 +41,7 @@ Data types
 
       typedef enum {
           /* unchecked */
-          UV_TTY_AUTODETEC,
+          UV_TTY_AUTODETECT,
           /* Legacy conhost */
           UV_TTY_LEAGCY,
           /* Modern conhost */
