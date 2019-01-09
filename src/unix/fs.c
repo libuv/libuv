@@ -155,7 +155,7 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
   int r;
 
   r = fcntl(req->file, F_FULLFSYNC);
-  if (r != 0 && errno == ENOTTY)
+  if (r != 0)
     r = fsync(req->file);
   return r;
 #else
