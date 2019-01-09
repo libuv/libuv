@@ -119,6 +119,7 @@ API
     Set the Console to use the specified virtual terminal mode.
 
     This function is only implemented on Windows.
+
     .. versionadded:: 1.25.0
 
 
