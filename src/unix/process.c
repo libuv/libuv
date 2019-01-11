@@ -315,7 +315,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
         use_fd = open("/dev/null", fd == 0 ? O_RDONLY : O_RDWR);
         close_fd = use_fd;
 
-        if (use_fd == -1) {
+        if (use_fd < 0) {
           uv__write_int(error_fd, UV__ERR(errno));
           _exit(127);
         }
