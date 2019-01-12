@@ -164,7 +164,7 @@ void uv_console_init(void) {
                                        OPEN_EXISTING,
                                        0,
                                        0);
-  if (uv__tty_console_handle != NULL) {
+  if (uv__tty_console_handle != INVALID_HANDLE_VALUE) {
     QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
                       NULL,
                       WT_EXECUTELONGFUNCTION);
