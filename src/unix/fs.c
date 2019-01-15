@@ -317,6 +317,18 @@ done:
   req->bufs = NULL;
   req->nbufs = 0;
 
+#ifdef __PASE__
+  /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
+  if (result == -1 && errno == EOPNOTSUPP) {
+    struct stat buf;
+    ssize_t rc;
+    rc = fstat(req->file, &buf);
+    if (rc == 0 && S_ISDIR(buf.st_mode)) {
+      errno = EISDIR;
+    }
+  }
+#endif
+
   return result;
 }
 
