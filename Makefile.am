@@ -334,6 +334,12 @@ test_run_tests_CFLAGS += -D_UNIX03_THREADS \
                          -qFLOAT=IEEE
 endif
 
+if OS400
+test_run_tests_CFLAGS += -D_ALL_SOURCE \
+                         -D_XOPEN_SOURCE=500 \
+                         -D_LINUX_SOURCE_COMPAT
+endif
+
 if AIX
 libuv_la_CFLAGS += -D_ALL_SOURCE \
                    -D_XOPEN_SOURCE=500 \
@@ -478,6 +484,18 @@ libuv_la_SOURCES += src/unix/pthread-fixes.c \
                     src/unix/os390.c \
                     src/unix/os390-syscalls.c \
                     src/unix/proctitle.c
+endif
+if OS400
+libuv_la_CFLAGS += -D_ALL_SOURCE \
+                   -D_XOPEN_SOURCE=500 \
+                   -D_LINUX_SOURCE_COMPAT \
+                   -D_THREAD_SAFE
+uvinclude_HEADERS += include/uv/posix.h
+libuv_la_SOURCES += src/unix/aix-common.c \
+                    src/unix/ibmi.c \
+                    src/unix/posix-poll.c \
+                    src/unix/no-fsevents.c \
+                    src/unix/no-proctitle.c
 endif
 
 pkgconfigdir = $(libdir)/pkgconfig
