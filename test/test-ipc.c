@@ -47,6 +47,7 @@ static int tcp_conn_read_cb_called;
 static int tcp_conn_write_cb_called;
 static int closed_handle_data_read;
 static int closed_handle_write;
+static int send_zero_write;
 
 typedef struct {
   uv_connect_t conn_req;
@@ -431,6 +432,14 @@ static void on_read_closed_handle(uv_stream_t* handle,
 #endif
 
 
+static void on_read_send_zero(uv_stream_t* handle,
+                              ssize_t nread,
+                              const uv_buf_t* buf) {
+  ASSERT(nread == 0 || nread == UV_EOF);
+  free(buf->base);
+}
+
+
 static int run_ipc_test(const char* helper, uv_read_cb read_cb) {
   uv_process_t process;
   int r;
@@ -555,6 +564,13 @@ TEST_IMPL(ipc_listen_after_bind_twice) {
 }
 #endif
 
+TEST_IMPL(ipc_send_zero) {
+  int r;
+  r = run_ipc_test("ipc_helper_send_zero", on_read_send_zero);
+  ASSERT(r == 0);
+  return 0;
+}
+
 
 /* Everything here runs in a child process. */
 
@@ -597,6 +613,11 @@ static void closed_handle_write_cb(uv_write_t* req, int status) {
   closed_handle_write = 1;
 }
 
+
+static void send_zero_write_cb(uv_write_t* req, int status) {
+  ASSERT(status == 0);
+  send_zero_write++;
+}
 
 static void on_tcp_child_process_read(uv_stream_t* tcp,
                                       ssize_t nread,
@@ -915,6 +936,38 @@ int ipc_helper_bind_twice(void) {
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+int ipc_helper_send_zero(void) {
+  int r;
+  uv_buf_t zero_buf;
+
+  zero_buf = uv_buf_init(0, 0);
+
+  r = uv_pipe_init(uv_default_loop(), &channel, 0);
+  ASSERT(r == 0);
+
+  uv_pipe_open(&channel, 0);
+
+  ASSERT(1 == uv_is_readable((uv_stream_t*) &channel));
+  ASSERT(1 == uv_is_writable((uv_stream_t*) &channel));
+  ASSERT(0 == uv_is_closing((uv_handle_t*) &channel));
+
+  r = uv_write(&write_req,
+               (uv_stream_t*)&channel,
+               &zero_buf,
+               1,
+               send_zero_write_cb);
+
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(send_zero_write == 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
