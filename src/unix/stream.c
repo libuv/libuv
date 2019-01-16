@@ -745,13 +745,13 @@ static int uv__write_req_update(uv_stream_t* stream,
 
   buf = req->bufs + req->write_index;
 
-  while (n > 0) {
+  do {
     len = n < buf->len ? n : buf->len;
     buf->base += len;
     buf->len -= len;
     buf += (buf->len == 0);  /* Advance to next buffer if this one is empty. */
     n -= len;
-  }
+  } while (n > 0);
 
   req->write_index = buf - req->bufs;
 
@@ -897,7 +897,7 @@ start:
     goto error;
   }
 
-  if (n > 0 && uv__write_req_update(stream, req, n)) {
+  if (n >= 0 && uv__write_req_update(stream, req, n)) {
     uv__write_req_finish(req);
     return;  /* TODO(bnoordhuis) Start trying to write the next request. */
   }
