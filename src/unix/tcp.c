@@ -235,10 +235,10 @@ int uv__tcp_connect(uv_connect_t* req,
   if (r == -1 && errno != 0) {
     if (errno == EINPROGRESS)
       ; /* not an error */
-    else if (errno == ECONNREFUSED)
-    /* If we get a ECONNREFUSED wait until the next tick to report the
-     * error. Solaris wants to report immediately--other unixes want to
-     * wait.
+    else if (errno == ECONNREFUSED || errno == EINVAL)
+    /* If we get ECONNREFUSED (Solaris) or EINVAL (OpenBSD) wait until the
+     * next tick to report the error. Solaris and OpenBSD wants to report 
+     * immediately -- other unixes want to wait.
      */
       handle->delayed_error = UV__ERR(errno);
     else
