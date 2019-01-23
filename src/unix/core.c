@@ -845,8 +845,12 @@ void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     return;
 #endif
 
-  if (QUEUE_EMPTY(&w->watcher_queue))
+  if (QUEUE_EMPTY(&w->watcher_queue)) {
     QUEUE_INSERT_TAIL(&loop->watcher_queue, &w->watcher_queue);
+    if (loop->on_watcher_queue_updated)
+      loop->on_watcher_queue_updated(loop);
+  }
+
 
   if (loop->watchers[w->fd] == NULL) {
     loop->watchers[w->fd] = w;
@@ -882,8 +886,12 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       w->events = 0;
     }
   }
-  else if (QUEUE_EMPTY(&w->watcher_queue))
+  else if (QUEUE_EMPTY(&w->watcher_queue)) {
     QUEUE_INSERT_TAIL(&loop->watcher_queue, &w->watcher_queue);
+    if (loop->on_watcher_queue_updated)
+      loop->on_watcher_queue_updated(loop);
+  }
+
 }
 
 
@@ -899,6 +907,8 @@ void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
 void uv__io_feed(uv_loop_t* loop, uv__io_t* w) {
   if (QUEUE_EMPTY(&w->pending_queue))
     QUEUE_INSERT_TAIL(&loop->pending_queue, &w->pending_queue);
+  if (loop->on_watcher_queue_updated)
+    loop->on_watcher_queue_updated(loop);
 }
 
 

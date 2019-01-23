@@ -33,6 +33,7 @@ TEST_DECLARE   (loop_stop)
 TEST_DECLARE   (loop_update_time)
 TEST_DECLARE   (loop_backend_timeout)
 TEST_DECLARE   (loop_configure)
+TEST_DECLARE   (loop_queue_watcher_test)
 TEST_DECLARE   (default_loop_close)
 TEST_DECLARE   (barrier_1)
 TEST_DECLARE   (barrier_2)
@@ -459,6 +460,7 @@ TASK_LIST_START
 #if 0
   TEST_ENTRY  (callback_order)
 #endif
+
   TEST_ENTRY  (close_order)
   TEST_ENTRY  (run_once)
   TEST_ENTRY  (run_nowait)
@@ -469,6 +471,7 @@ TASK_LIST_START
   TEST_ENTRY  (loop_update_time)
   TEST_ENTRY  (loop_backend_timeout)
   TEST_ENTRY  (loop_configure)
+  TEST_ENTRY  (loop_queue_watcher_test)
   TEST_ENTRY  (default_loop_close)
   TEST_ENTRY  (barrier_1)
   TEST_ENTRY  (barrier_2)
@@ -975,4 +978,5 @@ TASK_LIST_START
   TEST_ENTRY  (fail_always)
   TEST_ENTRY  (pass_always)
 #endif
+
 TASK_LIST_END
