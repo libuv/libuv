@@ -161,6 +161,7 @@
             'runner-win.c',
             'runner-win.h',
             '../src/win/snprintf.c',
+            'test-tty-duplicate-key.c',
           ],
           'libraries': [ '-lws2_32' ]
         }, { # POSIX

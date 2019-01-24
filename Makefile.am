@@ -299,7 +299,8 @@ test_run_tests_LDADD = libuv.la
 
 if WINNT
 test_run_tests_SOURCES += test/runner-win.c \
-                          test/runner-win.h
+                          test/runner-win.h \
+                          test-tty-duplicate-key.c
 else
 test_run_tests_SOURCES += test/runner-unix.c \
                           test/runner-unix.h

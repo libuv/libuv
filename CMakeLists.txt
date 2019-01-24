@@ -207,7 +207,7 @@ if(WIN32)
        src/win/winapi.c
        src/win/winsock.c)
   list(APPEND uv_test_libraries ws2_32)
-  list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
+  list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c test/test-tty-duplicate-key.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
