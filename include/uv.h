@@ -1741,6 +1741,7 @@ union uv_any_req {
 };
 #undef XX
 
+typedef void (*uv_loop_cb)(uv_loop_t*);
 
 struct uv_loop_s {
   /* User data - use this for whatever. */
@@ -1754,9 +1755,14 @@ struct uv_loop_s {
   } active_reqs;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
-  void* reserved[4];
+  uv_loop_cb watcher_queue_updated_cb;
+  void* reserved[3];
   UV_LOOP_PRIVATE_FIELDS
 };
+
+UV_EXTERN uv_loop_cb uv_loop_get_watcher_queue_changed_callback(uv_loop_t* loop);
+UV_EXTERN void uv_loop_set_watcher_queue_changed_callback(uv_loop_t* loop,
+                                                          uv_loop_cb cb);
 
 UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);

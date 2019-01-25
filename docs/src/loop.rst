@@ -228,6 +228,15 @@ API
        invalid. That function must be called again to determine the
        correct backend file descriptor.
 
+.. c:function:: uv_loop_cb uv_loop_get_watcher_queue_changed_callback(uv_loop_t* loop)
+
+    Returns `loop->watcher_queue_updated_cb`.
+
+.. c:function:: void uv_loop_set_watcher_queue_changed_callback(uv_loop_t* loop,
+                                                                uv_loop_cb cb)
+
+    Sets `loop->watcher_queue_updated_cb` to `cb`.
+
 .. c:function:: void* uv_loop_get_data(const uv_loop_t* loop)
 
     Returns `loop->data`.

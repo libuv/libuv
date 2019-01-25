@@ -127,6 +127,10 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->handle_queue);
   loop->active_reqs.count = 0;
+  QUEUE_INIT(&loop->active_reqs);
+
+  loop->watcher_queue_updated_cb = NULL;
+
   loop->active_handles = 0;
 
   loop->pending_reqs_tail = NULL;

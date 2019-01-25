@@ -1105,6 +1105,88 @@ TEST_IMPL(fs_event_error_reporting) {
 
 #endif  /* defined(__APPLE__) */
 
+static int lqw_fs_called;
+static int lqw_file_changed;
+static int lqw_watcher_called;
+
+static void lqw_test_fs_cb(uv_fs_t* fst) {
+  lqw_fs_called++;
+}
+
+static void lqw_file_changed_cb(uv_fs_event_t* handle, 
+                                const char* filename,
+                                int events,
+                                int status) {
+  uv_fs_event_stop(handle);
+  lqw_file_changed++;
+}
+static void lqw_test_watcher_cb(uv_loop_t* loop) {
+  lqw_watcher_called++;
+}
+
+TEST_IMPL(loop_queue_watcher_test) {
+
+  /* Create an open temp file */
+  static const char filename[] = "test.txt";
+  int r;
+  uv_os_fd_t file;
+  uv_fs_t req;
+  uv_loop_t loop;
+
+  r = uv_fs_open(NULL,
+                 &req,
+                 filename,
+                 O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r == 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+
+  /* Create the loop */
+  r = uv_loop_init(&loop);
+  ASSERT(r == 0);
+
+  /* Listen for watcher queue changes */
+  uv_loop_set_watcher_queue_changed_callback(&loop, lqw_test_watcher_cb);
+
+  /* Watch the file for changes */
+  r = uv_fs_event_init(&loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, lqw_file_changed_cb, filename, 0);
+  ASSERT(r == 0);
+
+  /* Queue an async write */
+  uv_buf_t buf;
+  buf.base = "Hello, world!";
+  buf.len = strlen(buf.base);
+  r = uv_fs_write(&loop, &req, file, &buf, 1, 0, lqw_test_fs_cb);
+  ASSERT(r == 0);
+
+  /* Run the loop. Confirm that the write finished, fs event fired */
+  r = uv_run(&loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+  ASSERT(lqw_file_changed == 1);
+  ASSERT(lqw_fs_called == 1);
+
+  uv_fs_req_cleanup(&req);
+
+  /* Confirm the Loop Queue Watcher was called */
+  ASSERT(lqw_watcher_called == 1);
+
+  /* Cleanup */
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_unlink(NULL, &req, filename, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+
+  uv_loop_close(&loop);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 TEST_IMPL(fs_event_watch_invalid_path) {
 #if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);

@@ -96,3 +96,13 @@ void* uv_loop_get_data(const uv_loop_t* loop) {
 void uv_loop_set_data(uv_loop_t* loop, void* data) {
   loop->data = data;
 }
+
+uv_loop_cb uv_loop_get_watcher_queue_changed_callback(uv_loop_t* loop) {
+  return loop->watcher_queue_updated_cb;
+}
+
+void uv_loop_set_watcher_queue_changed_callback(uv_loop_t* loop,
+                                                uv_loop_cb cb) {
+  loop->watcher_queue_updated_cb = cb;
+}
+
