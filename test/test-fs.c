@@ -3781,3 +3781,53 @@ TEST_IMPL(fs_fchmod_archive_readonly) {
     return 0;
 }
 #endif
+
+#ifdef _WIN32
+TEST_IMPL(fs_wtf) {
+  int r;
+  HANDLE file_handle;
+  uv_dirent_t dent;
+  static char test_file_buf[PATHMAX];
+
+  /* set-up */
+  _wunlink(L"test_dir/hi\xD801\x0037");
+  rmdir("test_dir");
+
+  loop = uv_default_loop();
+
+  uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0777, NULL);
+  uv_fs_req_cleanup(&mkdir_req);
+
+  file_handle = CreateFileW(L"test_dir/hi\xD801\x0037",
+                            GENERIC_WRITE | FILE_WRITE_ATTRIBUTES,
+                            0,
+                            NULL,
+                            CREATE_ALWAYS,
+                            FILE_FLAG_OPEN_REPARSE_POINT |
+                              FILE_FLAG_BACKUP_SEMANTICS,
+                            NULL);
+  ASSERT(file_handle != INVALID_HANDLE_VALUE);
+
+  CloseHandle(file_handle);
+
+  r = uv_fs_scandir(NULL, &scandir_req, "test_dir", 0, NULL);
+  ASSERT(r == 1);
+  ASSERT(scandir_req.result == 1);
+  ASSERT(scandir_req.ptr);
+  while (UV_EOF != uv_fs_scandir_next(&scandir_req, &dent)) {
+    strcpy(test_file_buf, "test_dir\\");
+    strcat(test_file_buf, dent.name);
+    r = uv_fs_stat(NULL, &stat_req, test_file_buf, NULL);
+    ASSERT(r == 0);
+  }
+  uv_fs_req_cleanup(&scandir_req);
+  ASSERT(!scandir_req.ptr);
+
+  /* clean-up */
+  _wunlink(L"test_dir/hi\xD801\x0037");
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
