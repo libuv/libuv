@@ -431,7 +431,10 @@ API
 
     .. versionadded:: 1.9.0
 
-.. uint64_t uv_get_free_memory(void)
+.. c:function:: uint64_t uv_get_free_memory(void)
+
+    Gets memory information (in bytes).
+
 .. c:function:: uint64_t uv_get_total_memory(void)
 
     Gets memory information (in bytes).
