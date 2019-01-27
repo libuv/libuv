@@ -28,25 +28,27 @@
 #include <string.h>
 #include <errno.h>
 
-#define EUR  "\xe2\x82\xac"
+#define ESC "\x1b"
+#define EUR_UTF8 "\xe2\x82\xac"
+#define EUR_UNICODE 0x20AC
 
 
 const char* expect_str = NULL;
 ssize_t expect_nread = 0;
 
-static void dump_str(const char* str) {
-  size_t len = strlen(str);
+static void dump_str(const char* str, ssize_t len) {
   size_t i;
   for (i = 0; i < len; i++) {
     fprintf(stderr, "%#02x ", *(str + i));
   }
 }
 
-static void print_err_msg(const char* expect, const char* found) {
+static void print_err_msg(const char* expect, ssize_t expect_len,
+    const char* found, ssize_t found_len) {
   fprintf(stderr, "expect ");
-  dump_str(expect);
+  dump_str(expect, expect_len);
   fprintf(stderr, ", but found ");
-  dump_str(found);
+  dump_str(found, found_len);
   fprintf(stderr, "\n");
 }
 
@@ -60,36 +62,17 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
     if (nread != expect_nread) {
       fprintf(stderr, "expected nread %ld, but found %ld\n",
           (long)expect_nread, (long)nread);
-      print_err_msg(expect_str, buf->base);
+      print_err_msg(expect_str, expect_nread, buf->base, nread);
       ASSERT(FALSE);
     }
     if (strncmp(buf->base, expect_str, nread) != 0) {
-      print_err_msg(expect_str, buf->base);
+      print_err_msg(expect_str, expect_nread, buf->base, nread);
       ASSERT(FALSE);
     }
     uv_close((uv_handle_t*) tty_in, NULL);
   } else {
     ASSERT(nread == 0);
   }
-}
-
-static void make_key_inputs(WORD virt_key, BOOL is_scancode, INPUT* inputs) {
-  inputs[0].type = inputs[1].type = INPUT_KEYBOARD;
-  inputs[0].ki.wVk = inputs[1].ki.wVk = virt_key;
-  inputs[0].ki.time = inputs[1].ki.time = 0;
-  inputs[0].ki.dwExtraInfo = inputs[1].ki.dwExtraInfo = 0;
-  inputs[0].ki.wScan = inputs[1].ki.wScan =
-    MapVirtualKey(virt_key, MAPVK_VK_TO_VSC);
-  inputs[0].ki.dwFlags = inputs[1].ki.dwFlags = 0;
-  if ((virt_key >= 0x21 && virt_key <= 0x2F) ||
-      (virt_key >= 0x5b && virt_key <= 0x5) ||
-      (virt_key >= 0xA6 && virt_key <= 0xB)) {
-    inputs[0].ki.dwFlags = inputs[1].ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
-  }
-  if (is_scancode) {
-    inputs[0].ki.dwFlags = inputs[1].ki.dwFlags |= KEYEVENTF_SCANCODE;
-  }
-  inputs[1].ki.dwFlags |= KEYEVENTF_KEYUP;
 }
 
 static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
@@ -153,7 +136,8 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
   uv_tty_t tty_in;
   uv_loop_t* loop = uv_default_loop();
   HANDLE handle;
-  INPUT inputs[2];
+  INPUT_RECORD records[2];
+  DWORD written;
 
   /* Make sure we have an FD that refers to a tty */
   handle = CreateFileA("conin$",
@@ -176,7 +160,7 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
   r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
   ASSERT(r == 0);
 
-  expect_str = "\x1b[[A";
+  expect_str = ESC"[[A";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
@@ -187,9 +171,9 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
    * Send F1 keystrokes. Test of issue cause by #2114 that vt100 fn key
    * duplicate.
    */
-  make_key_inputs(VK_F1, FALSE, inputs);
-  r = SendInput(ARRAY_SIZE(inputs), inputs, sizeof(INPUT));
-  ASSERT(r == ARRAY_SIZE(inputs));
+  make_key_event_records(VK_F1, 0, TRUE, records);
+  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  ASSERT(written == ARRAY_SIZE(records));
 
   Sleep(100);
 
@@ -230,7 +214,7 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
   ASSERT(r == 0);
 
-  expect_str = "\x1b""a""\x1b""a";
+  expect_str = ESC"a"ESC"a";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
@@ -242,7 +226,7 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   WriteConsoleInputW(handle, &alt_records[0], 1, &written);
   ASSERT(written == 1);
   make_key_event_records(L'A', LEFT_ALT_PRESSED, FALSE, records);
-  WriteConsoleInputW(handle, records, 2, &written);
+  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
   ASSERT(written == 2);
   WriteConsoleInputW(handle, &alt_records[1], 1, &written);
   ASSERT(written == 1);
@@ -271,8 +255,9 @@ TEST_IMPL(tty_composing_character) {
   uv_tty_t tty_in;
   uv_loop_t* loop = uv_default_loop();
   HANDLE handle;
-  INPUT inputs[2];
-  INPUT alt_inputs[2];
+  INPUT_RECORD records[2];
+  INPUT_RECORD alt_records[2];
+  DWORD written;
 
   /* Make sure we have an FD that refers to a tty */
   handle = CreateFileA("conin$",
@@ -295,31 +280,30 @@ TEST_IMPL(tty_composing_character) {
   r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
   ASSERT(r == 0);
 
-  expect_str = EUR;
+  expect_str = EUR_UTF8;
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
   ASSERT(r == 0);
 
-  /* Emulate EUR inputs by LEFT ALT+NUMPAD ASCII Key Combos */
-  make_key_inputs(VK_LMENU, TRUE, alt_inputs);
-  r = SendInput(1, &alt_inputs[0], sizeof(INPUT));
-  ASSERT(r == 1);
-  make_key_inputs(VK_NUMPAD0, FALSE, inputs);
-  r = SendInput(ARRAY_SIZE(inputs), inputs, sizeof(INPUT));
-  ASSERT(r == ARRAY_SIZE(inputs));
-  make_key_inputs(VK_NUMPAD1, FALSE, inputs);
-  r = SendInput(ARRAY_SIZE(inputs), inputs, sizeof(INPUT));
-  ASSERT(r == ARRAY_SIZE(inputs));
-  make_key_inputs(VK_NUMPAD2, FALSE, inputs);
-  r = SendInput(ARRAY_SIZE(inputs), inputs, sizeof(INPUT));
-  ASSERT(r == ARRAY_SIZE(inputs));
-  make_key_inputs(VK_NUMPAD8, FALSE, inputs);
-  r = SendInput(ARRAY_SIZE(inputs), inputs, sizeof(INPUT));
-  ASSERT(r == ARRAY_SIZE(inputs));
-  r = SendInput(1, &alt_inputs[1], sizeof(INPUT));
-  ASSERT(r == 1);
+  /* Emulate EUR inputs by LEFT ALT+NUMPAD ASCII KeyComos */
+  make_key_event_records(VK_MENU, 0, FALSE, alt_records);
+  alt_records[1].Event.KeyEvent.uChar.UnicodeChar = EUR_UNICODE;
+  WriteConsoleInputW(handle, &alt_records[0], 1, &written);
+  make_key_event_records(VK_NUMPAD0, LEFT_ALT_PRESSED, FALSE, records);
+  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  ASSERT(written == ARRAY_SIZE(records));
+  make_key_event_records(VK_NUMPAD1, LEFT_ALT_PRESSED, FALSE, records);
+  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  ASSERT(written == ARRAY_SIZE(records));
+  make_key_event_records(VK_NUMPAD2, LEFT_ALT_PRESSED, FALSE, records);
+  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  ASSERT(written == ARRAY_SIZE(records));
+  make_key_event_records(VK_NUMPAD8, LEFT_ALT_PRESSED, FALSE, records);
+  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  ASSERT(written == ARRAY_SIZE(records));
+  WriteConsoleInputW(handle, &alt_records[1], 1, &written);
 
   Sleep(100);
 
