@@ -37,7 +37,7 @@ const char* expect_str = NULL;
 ssize_t expect_nread = 0;
 
 static void dump_str(const char* str, ssize_t len) {
-  size_t i;
+  ssize_t i;
   for (i = 0; i < len; i++) {
     fprintf(stderr, "%#02x ", *(str + i));
   }
@@ -78,7 +78,7 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
 static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
     BOOL is_wsl, INPUT_RECORD* records) {
 # define KEV(I) records[(I)].Event.KeyEvent
-  BYTE kb_state[256];
+  BYTE kb_state[256] = {0};
   WCHAR buf[2];
   int ret;
 
@@ -90,7 +90,6 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
   KEV(0).wVirtualScanCode = KEV(1).wVirtualScanCode =
     MapVirtualKeyW(virt_key, MAPVK_VK_TO_VSC);
   KEV(0).dwControlKeyState = KEV(1).dwControlKeyState = ctr_key_state;
-  GetKeyboardState(kb_state);
   if (ctr_key_state & LEFT_ALT_PRESSED) {
     kb_state[VK_LMENU] = 0x01;
   }
