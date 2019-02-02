@@ -684,12 +684,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
                            NULL,
                            (BYTE*)&cpu_brand,
                            &cpu_brand_size);
-    if (err != ERROR_SUCCESS) {
-      RegCloseKey(processor_key);
-      goto error;
-    }
-
     RegCloseKey(processor_key);
+    if (err != ERROR_SUCCESS)
+      goto error;
 
     cpu_info = &cpu_infos[i];
     cpu_info->speed = cpu_speed;
