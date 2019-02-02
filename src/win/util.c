@@ -1624,6 +1624,10 @@ int uv_os_uname(uv_utsname_t* buffer) {
      https://github.com/gagern/gnulib/blob/master/lib/uname.c */
   OSVERSIONINFOW os_info;
   SYSTEM_INFO system_info;
+  HKEY registry_key;
+  WCHAR product_name_w[256];
+  DWORD product_name_w_size;
+  int version_size;
   int processor_level;
   int r;
 
@@ -1648,16 +1652,56 @@ int uv_os_uname(uv_utsname_t* buffer) {
   }
 
   /* Populate the version field. */
-  if (WideCharToMultiByte(CP_UTF8,
-                          0,
-                          os_info.szCSDVersion,
-                          -1,
-                          buffer->version,
-                          sizeof(buffer->version),
-                          NULL,
-                          NULL) == 0) {
-    r = uv_translate_sys_error(GetLastError());
-    goto error;
+  version_size = 0;
+  r = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                    L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                    0,
+                    KEY_QUERY_VALUE,
+                    &registry_key);
+
+  if (r == ERROR_SUCCESS) {
+    product_name_w_size = sizeof(product_name_w);
+    r = RegGetValueW(registry_key,
+                     NULL,
+                     L"ProductName",
+                     RRF_RT_REG_SZ,
+                     NULL,
+                     (PVOID) product_name_w,
+                     &product_name_w_size);
+    RegCloseKey(registry_key);
+
+    if (r == ERROR_SUCCESS) {
+      version_size = WideCharToMultiByte(CP_UTF8,
+                                         0,
+                                         product_name_w,
+                                         -1,
+                                         buffer->version,
+                                         sizeof(buffer->version),
+                                         NULL,
+                                         NULL);
+      if (version_size == 0) {
+        r = uv_translate_sys_error(GetLastError());
+        goto error;
+      }
+    }
+  }
+
+  /* Append service pack information to the version if present. */
+  if (os_info.szCSDVersion[0] != L'\0') {
+    if (version_size > 0)
+      buffer->version[version_size - 1] = ' ';
+
+    if (WideCharToMultiByte(CP_UTF8,
+                            0,
+                            os_info.szCSDVersion,
+                            -1,
+                            buffer->version + version_size,
+                            sizeof(buffer->version) - version_size,
+                            NULL,
+                            NULL) == 0) {
+      r = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
   }
 
   /* Populate the sysname field. */
