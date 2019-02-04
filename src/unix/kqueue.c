@@ -236,7 +236,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (errno != EINTR)
         abort();
 
-      if (timeout == 0)
+      if (timeout == 0 || loop->stop_flag)
         return;
 
       if (timeout == -1)

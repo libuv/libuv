@@ -231,7 +231,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     SAVE_ERRNO(uv__update_time(loop));
 
     if (events[0].portev_source == 0) {
-      if (timeout == 0)
+      if (timeout == 0 || loop->stop_flag)
         return;
 
       if (timeout == -1)
