@@ -534,6 +534,10 @@ API
 
     .. versionadded:: 1.12.0
 
+    .. versionchanged:: 1.26.0 `UV_MAXHOSTNAMESIZE` is available and represents
+                               the maximum `buffer` size required to store a
+                               hostname and terminating `nul` character.
+
 .. c:function:: int uv_os_getpriority(uv_pid_t pid, int* priority)
 
     Retrieves the scheduling priority of the process specified by `pid`. The

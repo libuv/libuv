@@ -43,7 +43,6 @@
 #include <sys/utsname.h>
 
 #ifdef __sun
-# include <netdb.h> /* MAXHOSTNAMELEN on Solaris */
 # include <sys/filio.h>
 # include <sys/types.h>
 # include <sys/wait.h>
@@ -86,15 +85,6 @@
 
 #if defined(__MVS__)
 #include <sys/ioctl.h>
-#endif
-
-#if !defined(__MVS__)
-#include <sys/param.h> /* MAXHOSTNAMELEN on Linux and the BSDs */
-#endif
-
-/* Fallback for the maximum hostname length */
-#ifndef MAXHOSTNAMELEN
-# define MAXHOSTNAMELEN 256
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
@@ -1291,7 +1281,7 @@ int uv_os_gethostname(char* buffer, size_t* size) {
     instead by creating a large enough buffer and comparing the hostname length
     to the size input.
   */
-  char buf[MAXHOSTNAMELEN + 1];
+  char buf[UV_MAXHOSTNAMESIZE];
   size_t len;
 
   if (buffer == NULL || size == NULL || *size == 0)
