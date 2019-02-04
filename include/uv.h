@@ -1144,6 +1144,17 @@ UV_EXTERN int uv_os_getenv(const char* name, char* buffer, size_t* size);
 UV_EXTERN int uv_os_setenv(const char* name, const char* value);
 UV_EXTERN int uv_os_unsetenv(const char* name);
 
+#ifdef MAXHOSTNAMELEN
+# define UV_MAXHOSTNAMESIZE (MAXHOSTNAMELEN + 1)
+#else
+  /*
+    Fallback for the maximum hostname size, including the null terminator. The
+    Windows gethostname() documentation states that 256 bytes will always be
+    large enough to hold the null-terminated hostname.
+  */
+# define UV_MAXHOSTNAMESIZE 256
+#endif
+
 UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
 
 UV_EXTERN int uv_os_uname(uv_utsname_t* buffer);

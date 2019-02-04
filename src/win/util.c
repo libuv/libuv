@@ -59,13 +59,6 @@
 # define UNLEN 256
 #endif
 
-/*
-  Max hostname length. The Windows gethostname() documentation states that 256
-  bytes will always be large enough to hold the null-terminated hostname.
-*/
-#ifndef MAXHOSTNAMELEN
-# define MAXHOSTNAMELEN 256
-#endif
 
 /* Maximum environment variable size, including the terminating null */
 #define MAX_ENV_VAR_LENGTH 32767
@@ -1507,7 +1500,7 @@ int uv_os_unsetenv(const char* name) {
 
 
 int uv_os_gethostname(char* buffer, size_t* size) {
-  char buf[MAXHOSTNAMELEN + 1];
+  char buf[UV_MAXHOSTNAMESIZE];
   size_t len;
 
   if (buffer == NULL || size == NULL || *size == 0)
