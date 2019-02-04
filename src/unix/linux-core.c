@@ -306,7 +306,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (timeout == -1)
         continue;
 
-      if (timeout == 0)
+      if (timeout == 0 || loop->stop_flag)
         return;
 
       /* Interrupted by a signal. Update timeout and poll again. */
