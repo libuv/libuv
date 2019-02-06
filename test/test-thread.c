@@ -212,7 +212,7 @@ TEST_IMPL(thread_local_storage) {
 static void thread_check_stack(void* arg) {
 #if defined(__APPLE__)
   size_t expected;
-  expected = arg == NULL ? 0 : *(size_t*)arg;
+  expected = arg == NULL ? 0 : ((uv_thread_options_t*)arg)->stack_size;
   /* 512 kB is the default stack size of threads other than the main thread
    * on MacOS. */
   if (expected == 0)
@@ -228,7 +228,7 @@ static void thread_check_stack(void* arg) {
     lim.rlim_cur = 2 << 20;  /* glibc default. */
   ASSERT(0 == pthread_getattr_np(pthread_self(), &attr));
   ASSERT(0 == pthread_attr_getstacksize(&attr, &stack_size));
-  expected = arg == NULL ? 0 : *(size_t*)arg;
+  expected = arg == NULL ? 0 : ((uv_thread_options_t*)arg)->stack_size;
   if (expected == 0)
     expected = (size_t)lim.rlim_cur;
   ASSERT(stack_size >= expected);
