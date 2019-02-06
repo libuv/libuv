@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <string.h> /* memset */
 
+#ifdef __POSIX__
+#include <pthread.h>
+#endif
+
 struct getaddrinfo_req {
   uv_thread_t thread_id;
   unsigned int counter;
@@ -206,8 +210,8 @@ TEST_IMPL(thread_local_storage) {
 
 
 static void thread_check_stack(void* arg) {
-  size_t expected;
 #if defined(__APPLE__)
+  size_t expected;
   expected = arg == NULL ? 0 : *(size_t*)arg;
   /* 512 kB is the default stack size of threads other than the main thread
    * on MacOS. */
@@ -215,6 +219,7 @@ static void thread_check_stack(void* arg) {
     expected = 512 * 1024;
   ASSERT(pthread_get_stacksize_np(pthread_self()) >= expected);
 #elif defined(__linux__) && defined(__GLIBC__)
+  size_t expected;
   struct rlimit lim;
   size_t stack_size;
   pthread_attr_t attr;
@@ -254,6 +259,7 @@ TEST_IMPL(thread_stack_size_explicit) {
   ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
   ASSERT(0 == uv_thread_join(&thread));
 
+#ifdef PTHREAD_STACK_MIN
   size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
   ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
   ASSERT(0 == uv_thread_join(&thread));
@@ -261,6 +267,7 @@ TEST_IMPL(thread_stack_size_explicit) {
   size = PTHREAD_STACK_MIN / 2 - 42;  /* unaligned size */
   ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
   ASSERT(0 == uv_thread_join(&thread));
+#endif
 
   size = 1234567;  /* unaligned size, should be larger than PTHREAD_STACK_MIN */
   ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
