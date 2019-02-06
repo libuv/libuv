@@ -69,6 +69,9 @@ Threads
           size_t stack_size;
         } uv_process_options_t;
 
+    More fields may be added to this struct at any time, so its exact
+    layout and size should not be relied upon.
+
     .. versionadded:: 1.26.0
 
 .. c:function:: int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg)

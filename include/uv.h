@@ -1594,6 +1594,7 @@ typedef enum {
 struct uv_thread_options_s {
   uv_thread_create_flags flags;
   size_t stack_size;
+  /* More fields may be added at any time. */
 };
 
 typedef struct uv_thread_options_s uv_thread_options_t;
