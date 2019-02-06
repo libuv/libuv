@@ -194,13 +194,26 @@ static size_t thread_stack_size(void) {
 
 
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
+  return uv_thread_create_ex(tid, 0, entry, arg);
+}
+
+int uv_thread_create_ex(uv_thread_t* tid,
+                        size_t stack_size,
+                        void (*entry)(void *arg),
+                        void *arg) {
   int err;
-  size_t stack_size;
   pthread_attr_t* attr;
   pthread_attr_t attr_storage;
+  int pagesize;
 
   attr = NULL;
-  stack_size = thread_stack_size();
+  if (stack_size == 0) {
+    stack_size = thread_stack_size();
+  } else {
+    pagesize = getpagesize();
+    if (stack_size % pagesize != 0)
+      stack_size += pagesize - (stack_size % pagesize);
+  }
 
   if (stack_size > 0) {
     attr = &attr_storage;

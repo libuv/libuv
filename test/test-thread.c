@@ -213,13 +213,15 @@ static void thread_check_stack(void* arg) {
 #elif defined(__linux__) && defined(__GLIBC__)
   struct rlimit lim;
   size_t stack_size;
+  size_t expected;
   pthread_attr_t attr;
   ASSERT(0 == getrlimit(RLIMIT_STACK, &lim));
   if (lim.rlim_cur == RLIM_INFINITY)
     lim.rlim_cur = 2 << 20;  /* glibc default. */
   ASSERT(0 == pthread_getattr_np(pthread_self(), &attr));
   ASSERT(0 == pthread_attr_getstacksize(&attr, &stack_size));
-  ASSERT(stack_size >= lim.rlim_cur);
+  expected = arg == NULL ? (size_t)lim.rlim_cur : *(size_t*)arg;
+  ASSERT(stack_size >= expected);
 #endif
 }
 
@@ -228,5 +230,28 @@ TEST_IMPL(thread_stack_size) {
   uv_thread_t thread;
   ASSERT(0 == uv_thread_create(&thread, thread_check_stack, NULL));
   ASSERT(0 == uv_thread_join(&thread));
+  return 0;
+}
+
+TEST_IMPL(thread_stack_size_explicit) {
+  uv_thread_t thread;
+  size_t size;
+
+  size = 1024 * 1024;
+  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  ASSERT(0 == uv_thread_join(&thread));
+
+  size = 8 * 1024 * 1024;  /* larger than most default os sizes */
+  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  ASSERT(0 == uv_thread_join(&thread));
+
+  size = 0;
+  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  ASSERT(0 == uv_thread_join(&thread));
+
+  size = 12345;  /* unaligned size */
+  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  ASSERT(0 == uv_thread_join(&thread));
+
   return 0;
 }

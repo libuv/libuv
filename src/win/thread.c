@@ -112,9 +112,26 @@ static UINT __stdcall uv__thread_start(void* arg) {
 
 
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
+  return uv_thread_create_ex(tid, 0, entry, arg);
+}
+
+int uv_thread_create_ex(uv_thread_t* tid,
+                        size_t stack_size,
+                        void (*entry)(void *arg),
+                        void *arg) {
   struct thread_ctx* ctx;
   int err;
   HANDLE thread;
+  SYSTEM_INFO sysinfo;
+
+  if (stack_size != 0) {
+    GetNativeSystemInfo(&sysinfo);
+    if (stack_size % sysinfo.dwPageSize != 0)
+      stack_size += sysinfo.dwPageSize - (stack_size % sysinfo.dwPageSize);
+
+    if ((unsigned)stack_size != stack_size)
+      return UV_EINVAL;
+  }
 
   ctx = uv__malloc(sizeof(*ctx));
   if (ctx == NULL)
@@ -126,7 +143,7 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   /* Create the thread in suspended state so we have a chance to pass
    * its own creation handle to it */
   thread = (HANDLE) _beginthreadex(NULL,
-                                   0,
+                                   (unsigned)stack_size,
                                    uv__thread_start,
                                    ctx,
                                    CREATE_SUSPENDED,

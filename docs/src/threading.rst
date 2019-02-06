@@ -59,6 +59,14 @@ Threads
 
     .. versionchanged:: 1.4.1 returns a UV_E* error code on failure
 
+.. c:function:: int uv_thread_create_ex(uv_thread_t* tid, size_t stack_size, uv_thread_cb entry, void* arg)
+
+    Like `uv_thread_create`, but additionally specifies a stack size for the new thread.
+    `0` indicates that the default value should be used. Other values will be rounded up
+    to the nearest page boundary.
+
+    .. versionadded:: 1.26.0
+
 .. c:function:: uv_thread_t uv_thread_self(void)
 .. c:function:: int uv_thread_join(uv_thread_t *tid)
 .. c:function:: int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2)
