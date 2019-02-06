@@ -30,6 +30,19 @@
 #define CHECK_HANDLE(handle) \
   ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client)
 
+#if defined(__APPLE__)          || \
+    defined(_AIX)               || \
+    defined(__MVS__)            || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__NetBSD__)         || \
+    defined(__OpenBSD__)
+  #define MULTICAST_ADDR "ff02::1%lo0"
+  #define INTERFACE_ADDR "::1%lo0"
+#else
+  #define MULTICAST_ADDR "ff02::1"
+  #define INTERFACE_ADDR NULL
+#endif
+
 static uv_udp_t server;
 static uv_udp_t client;
 
@@ -105,7 +118,7 @@ TEST_IMPL(udp_multicast_join6) {
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
 
-  ASSERT(0 == uv_ip6_addr("::1", TEST_PORT, &addr));
+  ASSERT(0 == uv_ip6_addr("::", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
@@ -117,17 +130,7 @@ TEST_IMPL(udp_multicast_join6) {
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
-  /* join the multicast channel */
-#if defined(__APPLE__)          || \
-    defined(_AIX)               || \
-    defined(__MVS__)            || \
-    defined(__FreeBSD_kernel__) || \
-    defined(__NetBSD__)         || \
-    defined(__OpenBSD__)
-  r = uv_udp_set_membership(&client, "ff02::1", "::1%lo0", UV_JOIN_GROUP);
-#else
-  r = uv_udp_set_membership(&client, "ff02::1", NULL, UV_JOIN_GROUP);
-#endif
+  r = uv_udp_set_membership(&client, MULTICAST_ADDR, INTERFACE_ADDR, UV_JOIN_GROUP);
   if (r == UV_ENODEV) {
     MAKE_VALGRIND_HAPPY();
     RETURN_SKIP("No ipv6 multicast route");
@@ -139,6 +142,8 @@ TEST_IMPL(udp_multicast_join6) {
   ASSERT(r == 0);
 
   buf = uv_buf_init("PING", 4);
+
+  ASSERT(0 == uv_ip6_addr(MULTICAST_ADDR, TEST_PORT, &addr));
 
   /* server sends "PING" */
   r = uv_udp_send(&req,
