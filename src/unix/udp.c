@@ -690,14 +690,14 @@ static int uv__udp_set_source_membership4(uv_udp_t* handle,
   else if (membership == UV_LEAVE_GROUP)
     optname = IP_DROP_SOURCE_MEMBERSHIP;
   else
-    return -EINVAL;
+    return UV_EINVAL;
 
   if (setsockopt(handle->io_watcher.fd,
                  IPPROTO_IP,
                  optname,
                  &mreq,
                  sizeof(mreq))) {
-    return -errno;
+    return UV__ERR(errno);
   }
 
   return 0;
@@ -736,19 +736,19 @@ static int uv__udp_set_source_membership6(uv_udp_t* handle,
   else if (membership == UV_LEAVE_GROUP)
     optname = IP_DROP_SOURCE_MEMBERSHIP;
   else
-    return -EINVAL;
+    return UV_EINVAL;
 
   if (setsockopt(handle->io_watcher.fd,
                  IPPROTO_IPV6,
                  optname,
                  &mreq,
                  sizeof(mreq))) {
-    return -errno;
+    return UV__ERR(errno);
   }
 
   return 0;
 #else
-  return -EPROTONOSUPPORT;
+  return UV_EPROTONOSUPPORT;
 #endif /* IPV6_SSM_SUPPORT */
 }
 

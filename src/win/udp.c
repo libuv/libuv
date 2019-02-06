@@ -740,7 +740,7 @@ static int uv__udp_set_source_membership4(uv_udp_t* handle,
   else if (membership == UV_LEAVE_GROUP)
     optname = IP_DROP_SOURCE_MEMBERSHIP;
   else
-    return -EINVAL;
+    return UV_EINVAL;
 
   if (setsockopt(handle->socket,
                  IPPROTO_IP,
@@ -793,7 +793,7 @@ int uv__udp_set_source_membership6(uv_udp_t* handle,
   else if (membership == UV_LEAVE_GROUP)
     optname = IP_DROP_SOURCE_MEMBERSHIP;
   else
-    return -EINVAL;
+    return UV_EINVAL;
 
   if (setsockopt(handle->socket,
                  IPPROTO_IPV6,
