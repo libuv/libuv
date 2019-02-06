@@ -112,17 +112,23 @@ static UINT __stdcall uv__thread_start(void* arg) {
 
 
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
-  return uv_thread_create_ex(tid, 0, entry, arg);
+  uv_thread_options_t params;
+  params.flags = UV_THREAD_NO_FLAGS;
+  return uv_thread_create_ex(tid, &params, entry, arg);
 }
 
 int uv_thread_create_ex(uv_thread_t* tid,
-                        size_t stack_size,
+                        const uv_thread_options_t* params,
                         void (*entry)(void *arg),
                         void *arg) {
   struct thread_ctx* ctx;
   int err;
   HANDLE thread;
   SYSTEM_INFO sysinfo;
+  size_t stack_size;
+
+  stack_size =
+      params->flags & UV_THREAD_HAS_STACK_SIZE ? params->stack_size : 0;
 
   if (stack_size != 0) {
     GetNativeSystemInfo(&sysinfo);

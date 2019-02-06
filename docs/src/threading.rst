@@ -55,15 +55,33 @@ API
 Threads
 ^^^^^^^
 
+.. c:type:: uv_thread_options_t
+
+    Options for spawning a new thread (passed to :c:func:`uv_thread_create_ex`).
+
+    ::
+
+        typedef struct uv_process_options_s {
+          enum {
+            UV_THREAD_NO_FLAGS = 0x00,
+            UV_THREAD_HAS_STACK_SIZE = 0x01
+          } flags;
+          size_t stack_size;
+        } uv_process_options_t;
+
+    .. versionadded:: 1.26.0
+
 .. c:function:: int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg)
 
     .. versionchanged:: 1.4.1 returns a UV_E* error code on failure
 
-.. c:function:: int uv_thread_create_ex(uv_thread_t* tid, size_t stack_size, uv_thread_cb entry, void* arg)
+.. c:function:: int uv_thread_create_ex(uv_thread_t* tid, const uv_thread_options_t* params, uv_thread_cb entry, void* arg)
 
-    Like `uv_thread_create`, but additionally specifies a stack size for the new thread.
-    `0` indicates that the default value should be used. Other values will be rounded up
-    to the nearest page boundary.
+    Like :c:func:`uv_thread_create`, but additionally specifies options for creating a new thread.
+
+    If `UV_THREAD_HAS_STACK_SIZE` is set, `stack_size` specifies a stack size for the new thread.
+    `0` indicates that the default value should be used, i.e. behaves as if the flag was not set.
+    Other values will be rounded up to the nearest page boundary.
 
     .. versionadded:: 1.26.0
 

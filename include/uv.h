@@ -1585,8 +1585,21 @@ UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
 typedef void (*uv_thread_cb)(void* arg);
 
 UV_EXTERN int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg);
+
+typedef enum {
+  UV_THREAD_NO_FLAGS = 0x00,
+  UV_THREAD_HAS_STACK_SIZE = 0x01
+} uv_thread_create_flags;
+
+struct uv_thread_options_s {
+  uv_thread_create_flags flags;
+  size_t stack_size;
+};
+
+typedef struct uv_thread_options_s uv_thread_options_t;
+
 UV_EXTERN int uv_thread_create_ex(uv_thread_t* tid,
-                                  size_t stack_size,
+                                  const uv_thread_options_t* params,
                                   uv_thread_cb entry,
                                   void* arg);
 UV_EXTERN uv_thread_t uv_thread_self(void);

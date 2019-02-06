@@ -245,32 +245,40 @@ TEST_IMPL(thread_stack_size) {
 
 TEST_IMPL(thread_stack_size_explicit) {
   uv_thread_t thread;
-  size_t size;
+  uv_thread_options_t options;
 
-  size = 1024 * 1024;
-  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  options.flags = UV_THREAD_HAS_STACK_SIZE;
+  options.stack_size = 1024 * 1024;
+  ASSERT(0 == uv_thread_create_ex(&thread, &options,
+                                  thread_check_stack, &options));
   ASSERT(0 == uv_thread_join(&thread));
 
-  size = 8 * 1024 * 1024;  /* larger than most default os sizes */
-  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  options.stack_size = 8 * 1024 * 1024;  /* larger than most default os sizes */
+  ASSERT(0 == uv_thread_create_ex(&thread, &options,
+                                  thread_check_stack, &options));
   ASSERT(0 == uv_thread_join(&thread));
 
-  size = 0;
-  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  options.stack_size = 0;
+  ASSERT(0 == uv_thread_create_ex(&thread, &options,
+                                  thread_check_stack, &options));
   ASSERT(0 == uv_thread_join(&thread));
 
 #ifdef PTHREAD_STACK_MIN
-  size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
-  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  options.stack_size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
+  ASSERT(0 == uv_thread_create_ex(&thread, &options,
+                                  thread_check_stack, &options));
   ASSERT(0 == uv_thread_join(&thread));
 
-  size = PTHREAD_STACK_MIN / 2 - 42;  /* unaligned size */
-  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  options.stack_size = PTHREAD_STACK_MIN / 2 - 42;  /* unaligned size */
+  ASSERT(0 == uv_thread_create_ex(&thread, &options,
+                                  thread_check_stack, &options));
   ASSERT(0 == uv_thread_join(&thread));
 #endif
 
-  size = 1234567;  /* unaligned size, should be larger than PTHREAD_STACK_MIN */
-  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  /* unaligned size, should be larger than PTHREAD_STACK_MIN */
+  options.stack_size = 1234567;
+  ASSERT(0 == uv_thread_create_ex(&thread, &options,
+                                  thread_check_stack, &options));
   ASSERT(0 == uv_thread_join(&thread));
 
   return 0;
