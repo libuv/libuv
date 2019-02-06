@@ -254,7 +254,15 @@ TEST_IMPL(thread_stack_size_explicit) {
   ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
   ASSERT(0 == uv_thread_join(&thread));
 
-  size = 12345;  /* unaligned size */
+  size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
+  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  ASSERT(0 == uv_thread_join(&thread));
+
+  size = PTHREAD_STACK_MIN / 2 - 42;  /* unaligned size */
+  ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
+  ASSERT(0 == uv_thread_join(&thread));
+
+  size = 1234567;  /* unaligned size, should be larger than PTHREAD_STACK_MIN */
   ASSERT(0 == uv_thread_create_ex(&thread, size, thread_check_stack, &size));
   ASSERT(0 == uv_thread_join(&thread));
 

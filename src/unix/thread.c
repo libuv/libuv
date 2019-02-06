@@ -213,6 +213,8 @@ int uv_thread_create_ex(uv_thread_t* tid,
     pagesize = getpagesize();
     if (stack_size % pagesize != 0)
       stack_size += pagesize - (stack_size % pagesize);
+    if (stack_size < PTHREAD_STACK_MIN)
+      stack_size = PTHREAD_STACK_MIN;
   }
 
   if (stack_size > 0) {
