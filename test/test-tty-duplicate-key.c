@@ -112,14 +112,14 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
          (ctr_key_state & RIGHT_ALT_PRESSED))) {
       /*
        * If ALT key is pressed, the UnicodeChar value of the keyup event is
-       * set to 0 on nomal console. Emulate this behaviro.
+       * set to 0 on nomal console. Emulate this behavior.
        * See https://github.com/Microsoft/console/issues/320
        */
       KEV(0).uChar.UnicodeChar = buf[0];
       KEV(1).uChar.UnicodeChar = 0;
     } else{
       /*
-       * In WSL UnicodeChar is normally set. This behaviro cause #2111.
+       * In WSL UnicodeChar is normally set. This behavior cause #2111.
        */
       KEV(0).uChar.UnicodeChar = KEV(1).uChar.UnicodeChar = buf[0];
     }
