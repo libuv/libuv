@@ -206,7 +206,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
   int err;
   pthread_attr_t* attr;
   pthread_attr_t attr_storage;
-  int pagesize;
+  size_t pagesize;
   size_t stack_size;
 
   stack_size =
@@ -216,9 +216,9 @@ int uv_thread_create_ex(uv_thread_t* tid,
   if (stack_size == 0) {
     stack_size = thread_stack_size();
   } else {
-    pagesize = getpagesize();
-    if (stack_size % pagesize != 0)
-      stack_size += pagesize - (stack_size % pagesize);
+    pagesize = (size_t)getpagesize();
+    // Round up to the nearest page boundary.
+    stack_size = (stack_size + pagesize - 1) &~ (pagesize - 1);
     if (stack_size < PTHREAD_STACK_MIN)
       stack_size = PTHREAD_STACK_MIN;
   }

@@ -126,14 +126,16 @@ int uv_thread_create_ex(uv_thread_t* tid,
   HANDLE thread;
   SYSTEM_INFO sysinfo;
   size_t stack_size;
+  size_t pagesize;
 
   stack_size =
       params->flags & UV_THREAD_HAS_STACK_SIZE ? params->stack_size : 0;
 
   if (stack_size != 0) {
     GetNativeSystemInfo(&sysinfo);
-    if (stack_size % sysinfo.dwPageSize != 0)
-      stack_size += sysinfo.dwPageSize - (stack_size % sysinfo.dwPageSize);
+    pagesize = (size_t)sysinfo.dwPageSize;
+    // Round up to the nearest page boundary.
+    stack_size = (stack_size + pagesize - 1) &~ (pagesize - 1);
 
     if ((unsigned)stack_size != stack_size)
       return UV_EINVAL;
