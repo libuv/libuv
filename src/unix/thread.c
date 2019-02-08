@@ -217,7 +217,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
     stack_size = thread_stack_size();
   } else {
     pagesize = (size_t)getpagesize();
-    // Round up to the nearest page boundary.
+    /* Round up to the nearest page boundary. */
     stack_size = (stack_size + pagesize - 1) &~ (pagesize - 1);
     if (stack_size < PTHREAD_STACK_MIN)
       stack_size = PTHREAD_STACK_MIN;
