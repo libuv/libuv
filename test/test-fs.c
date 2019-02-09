@@ -1248,6 +1248,16 @@ TEST_IMPL(fs_fstat) {
 #endif
 #endif
 
+#if defined(__linux__)
+  /* If statx() is supported, the birth time should be equal to the change time
+   * because we just created the file. On older kernels, it's set to zero.
+   */
+  ASSERT(s->st_birthtim.tv_sec == 0 ||
+         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == 0 ||
+         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+#endif
+
   uv_fs_req_cleanup(&req);
 
   /* Now do the uv_fs_fstat call asynchronously */
