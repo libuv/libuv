@@ -178,8 +178,6 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
   WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
 
-  Sleep(100);
-
   uv_run(loop, UV_RUN_DEFAULT);
 
   MAKE_VALGRIND_HAPPY();
@@ -246,8 +244,6 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   WriteConsoleInputW(handle, &alt_records[1], 1, &written);
   ASSERT(written == 1);
 
-  Sleep(100);
-
   uv_run(loop, UV_RUN_DEFAULT);
 
   MAKE_VALGRIND_HAPPY();
@@ -311,8 +307,6 @@ TEST_IMPL(tty_composing_character) {
   WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
   WriteConsoleInputW(handle, &alt_records[1], 1, &written);
-
-  Sleep(100);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
