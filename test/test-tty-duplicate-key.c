@@ -22,11 +22,10 @@
 #include "uv.h"
 #include "task.h"
 
-#include <io.h>
-#include <windows.h>
-
-#include <string.h>
 #include <errno.h>
+#include <io.h>
+#include <string.h>
+#include <windows.h>
 
 #define ESC "\x1b"
 #define EUR_UTF8 "\xe2\x82\xac"
