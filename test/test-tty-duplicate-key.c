@@ -45,7 +45,7 @@ static void dump_str(const char* str, ssize_t len) {
 }
 
 static void print_err_msg(const char* expect, ssize_t expect_len,
-    const char* found, ssize_t found_len) {
+                          const char* found, ssize_t found_len) {
   fprintf(stderr, "expect ");
   dump_str(expect, expect_len);
   fprintf(stderr, ", but found ");
@@ -55,6 +55,7 @@ static void print_err_msg(const char* expect, ssize_t expect_len,
 
 static void tty_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->base = malloc(size);
+  ASSERT(buf->base != NULL);
   buf->len = size;
 }
 
@@ -62,7 +63,7 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
     if (nread != expect_nread) {
       fprintf(stderr, "expected nread %ld, but found %ld\n",
-          (long)expect_nread, (long)nread);
+              (long)expect_nread, (long)nread);
       print_err_msg(expect_str, expect_nread, buf->base, nread);
       ASSERT(FALSE);
     }
@@ -77,7 +78,7 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
 }
 
 static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
-    BOOL is_wsl, INPUT_RECORD* records) {
+                                   BOOL is_wsl, INPUT_RECORD* records) {
 # define KEV(I) records[(I)].Event.KeyEvent
   BYTE kb_state[256] = {0};
   WCHAR buf[2];
@@ -134,10 +135,12 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
   int r;
   int ttyin_fd;
   uv_tty_t tty_in;
-  uv_loop_t* loop = uv_default_loop();
+  uv_loop_t* loop;
   HANDLE handle;
   INPUT_RECORD records[2];
   DWORD written;
+
+  loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
   handle = CreateFileA("conin$",
@@ -187,11 +190,13 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   int r;
   int ttyin_fd;
   uv_tty_t tty_in;
-  uv_loop_t* loop = uv_default_loop();
+  uv_loop_t* loop;
   HANDLE handle;
   INPUT_RECORD records[2];
   INPUT_RECORD alt_records[2];
   DWORD written;
+
+  loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
   handle = CreateFileA("conin$",
@@ -253,11 +258,13 @@ TEST_IMPL(tty_composing_character) {
   int r;
   int ttyin_fd;
   uv_tty_t tty_in;
-  uv_loop_t* loop = uv_default_loop();
+  uv_loop_t* loop;
   HANDLE handle;
   INPUT_RECORD records[2];
   INPUT_RECORD alt_records[2];
   DWORD written;
+
+  loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
   handle = CreateFileA("conin$",
