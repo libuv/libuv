@@ -882,7 +882,8 @@ void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
   QUEUE_REMOVE(&w->pending_queue);
 
   /* Remove stale events for this file descriptor */
-  uv__platform_invalidate_fd(loop, w->fd);
+  if (w->fd != -1)
+    uv__platform_invalidate_fd(loop, w->fd);
 }
 
 
