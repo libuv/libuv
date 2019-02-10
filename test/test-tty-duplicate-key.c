@@ -19,6 +19,8 @@
  * IN THE SOFTWARE.
  */
 
+#ifdef _WIN32
+
 #include "uv.h"
 #include "task.h"
 
@@ -310,3 +312,9 @@ TEST_IMPL(tty_composing_character) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+#else
+
+typedef int file_has_no_tests;  /* ISO C forbids an empty translation unit. */
+
+#endif  /* ifndef _WIN32 */
