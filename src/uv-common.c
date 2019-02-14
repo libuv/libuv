@@ -222,6 +222,9 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
   memset(addr, 0, sizeof(*addr));
   addr->sin6_family = AF_INET6;
   addr->sin6_port = htons(port);
+#ifdef SIN6_LEN
+  addr->sin6_len = sizeof(*addr);
+#endif
 
   zone_index = strchr(ip, '%');
   if (zone_index != NULL) {
