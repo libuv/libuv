@@ -1861,7 +1861,9 @@ int spawn_stdin_stdout(void) {
       c = c - w;
     }
   }
+#ifndef __SUNPRO_C
   return 2;
+#endif
 }
 #else
 int spawn_stdin_stdout(void) {
