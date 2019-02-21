@@ -805,13 +805,17 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
                         IPV6_UNICAST_HOPS,
                         &ttl,
                         sizeof(ttl));
-#endif /* defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
-          defined(__MVS__) */
+
+#else /* !(defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
+           defined(__MVS__)) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_TTL,
                                    IPV6_UNICAST_HOPS,
                                    ttl);
+
+#endif /* defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
+          defined(__MVS__) */
 }
 
 

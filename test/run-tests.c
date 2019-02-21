@@ -67,7 +67,9 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+#ifndef __SUNPRO_C
   return EXIT_SUCCESS;
+#endif
 }
 
 
