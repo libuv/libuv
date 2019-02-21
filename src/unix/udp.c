@@ -725,15 +725,17 @@ static int uv__udp_set_source_membership6(uv_udp_t* handle,
     if (err)
       return err;
     mreq.gsr_interface = addr6.sin6_scope_id;
+  } else {
+    mreq.gsr_interface = 0;
   }
 
   memcpy(&mreq.gsr_group, multicast_addr, sizeof(mreq.gsr_group));
   memcpy(&mreq.gsr_source, source_addr, sizeof(mreq.gsr_source));
 
   if (membership == UV_JOIN_GROUP)
-    optname = IP_ADD_SOURCE_MEMBERSHIP;
+    optname = MCAST_JOIN_SOURCE_GROUP;
   else if (membership == UV_LEAVE_GROUP)
-    optname = IP_DROP_SOURCE_MEMBERSHIP;
+    optname = MCAST_LEAVE_SOURCE_GROUP;
   else
     return UV_EINVAL;
 
