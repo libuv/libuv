@@ -709,7 +709,6 @@ static int uv__udp_set_source_membership6(uv_udp_t* handle,
                                           const char* interface_addr,
                                           const struct sockaddr_in6* source_addr,
                                           uv_membership membership) {
-#ifdef IPV6_SSM_SUPPORT
   struct group_source_req mreq;
   struct sockaddr_in6 addr6;
   int optname;
@@ -747,9 +746,6 @@ static int uv__udp_set_source_membership6(uv_udp_t* handle,
   }
 
   return 0;
-#else
-  return UV_EPROTONOSUPPORT;
-#endif /* IPV6_SSM_SUPPORT */
 }
 
 

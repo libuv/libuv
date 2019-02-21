@@ -364,17 +364,6 @@ typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
 
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
 
-#if defined(MCAST_JOIN_SOURCE_GROUP) && defined(MCAST_LEAVE_SOURCE_GROUP)
-# ifndef IPV6_SSM_SUPPORT
-#  define IPV6_SSM_SUPPORT
-# endif
-# ifndef IPV6_ADD_SOURCE_MEMBERSHIP
-#  define IPV6_ADD_SOURCE_MEMBERSHIP MCAST_JOIN_SOURCE_GROUP
-# endif
-# ifndef IPV6_DROP_SOURCE_MEMBERSHIP
-#  define IPV6_DROP_SOURCE_MEMBERSHIP MCAST_LEAVE_SOURCE_GROUP
-# endif
-#endif
 
 typedef enum {
   UV_LEAVE_GROUP = 0,
