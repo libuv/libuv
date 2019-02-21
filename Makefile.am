@@ -121,11 +121,13 @@ EXTRA_DIST = test/fixtures/empty_file \
              docs \
              img \
              samples \
-             android-configure \
+             android-configure-arm \
+             android-configure-arm64 \
+             android-configure-x86 \
+             android-configure-x86_64 \
              CONTRIBUTING.md \
              LICENSE \
              README.md \
-             checksparse.sh \
              vcbuild.bat \
              common.gypi \
              gyp_uv.py \
