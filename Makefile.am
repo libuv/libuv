@@ -519,6 +519,7 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -D_XOPEN_SOURCE_EXTENDED \
                    -D_ALL_SOURCE \
                    -D_LARGE_TIME_API \
+                   -D_OPEN_SYS_SOCK_EXT3 \
                    -D_OPEN_SYS_SOCK_IPV6 \
                    -D_OPEN_SYS_FILE_EXT \
                    -DUV_PLATFORM_SEM_T=int \
