@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include "../src/strscpy.h"
-#include "../src/strscpy.c"
 
 TEST_IMPL(strscpy) {
   char d[4];

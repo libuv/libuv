@@ -20,7 +20,7 @@
  */
 
 #include "task.h"
-#include "../src/idna.c"
+#include "../src/idna.h"
 #include <string.h>
 
 TEST_IMPL(utf8_decode1) {
