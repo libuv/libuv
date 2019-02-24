@@ -79,6 +79,9 @@ static int error_means_no_support(DWORD error) {
          error == WSAEPFNOSUPPORT || error == WSAEAFNOSUPPORT;
 }
 
+static BOOL is_fail_safe_boot_without_network() {
+  return 1 == GetSystemMetrics(SM_CLEANBOOT);
+}
 
 void uv_winsock_init(void) {
   WSADATA wsa_data;
@@ -86,6 +89,9 @@ void uv_winsock_init(void) {
   SOCKET dummy;
   WSAPROTOCOL_INFOW protocol_info;
   int opt_len;
+
+  /* Skip initialization in safe mode without network support */
+  if (is_fail_safe_boot_without_network()) return;
 
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
