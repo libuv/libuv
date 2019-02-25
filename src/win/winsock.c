@@ -89,11 +89,11 @@ void uv_winsock_init(void) {
 
   /* Set implicit binding address used by connectEx */
   if (uv_ip4_addr("0.0.0.0", 0, &uv_addr_ip4_any_)) {
-	  abort();
+    abort();
   }
 
   if (uv_ip6_addr("::", 0, &uv_addr_ip6_any_)) {
-	  abort();
+    abort();
   }
 
   /* Skip initialization in safe mode without network support */
