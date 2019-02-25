@@ -79,6 +79,7 @@ static int error_means_no_support(DWORD error) {
          error == WSAEPFNOSUPPORT || error == WSAEAFNOSUPPORT;
 }
 
+
 void uv_winsock_init(void) {
   WSADATA wsa_data;
   int errorno;
