@@ -22,10 +22,25 @@
 #ifndef UV_LINUX_H
 #define UV_LINUX_H
 
+#define UV_LINUX_MAX_EVENTS_TO_LISTEN 1024
+/* Best repeat count for poll in case when we obtain maximal number of events from epoll
+ * Benchmarks suggest this gives the best throughput. */
+#define UV_LINUX_EVENT_REPEAT_POLL_COUNT 48;
+
+struct uv__removed_event_s;
+
+typedef struct uv__removed_events_s {                                                                    \
+  struct uv__removed_event_s *rbh_root; /*RB tree entry*/
+  struct uv__removed_event_s *memory; /* predefined memory */
+  int used_count; /*used count of entries in memory above*/
+} uv__removed_events_t;
+
 #define UV_PLATFORM_LOOP_FIELDS                                               \
   uv__io_t inotify_read_watcher;                                              \
   void* inotify_watchers;                                                     \
   int inotify_fd;                                                             \
+  /*next field only available inside uv__io_poll e.g. in poll callbacks*/     \
+  struct uv__removed_events_s removed_events;                                 \
 
 #define UV_PLATFORM_FS_EVENT_FIELDS                                           \
   void* watchers[2];                                                          \

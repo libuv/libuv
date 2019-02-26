@@ -25,6 +25,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "uv/tree.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -73,6 +74,18 @@
 #ifndef CLOCK_BOOTTIME
 # define CLOCK_BOOTTIME 7
 #endif
+
+typedef struct uv__removed_event_s {
+  int fd;
+  uint32_t events_to_ignore;
+  RB_ENTRY(uv__removed_event_s) rb_entry;
+} uv__removed_event_t;
+
+static int removed_event_cmp(uv__removed_event_t* re1, uv__removed_event_t* re2) {
+  return re1->fd - re2->fd;
+}
+
+RB_GENERATE_STATIC(uv__removed_events_s, uv__removed_event_s, rb_entry, removed_event_cmp)
 
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
 static int read_times(FILE* statfile_fp,
@@ -135,20 +148,28 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
-  struct epoll_event* events;
+  uv__removed_events_t* removed_events;
+  uv__removed_event_t *removed_event;
+  uv__removed_event_t lookup;
   struct epoll_event dummy;
-  uintptr_t i;
-  uintptr_t nfds;
 
-  assert(loop->watchers != NULL);
-
-  events = (struct epoll_event*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
-  if (events != NULL)
-    /* Invalidate events with same file descriptor */
-    for (i = 0; i < nfds; i++)
-      if (events[i].data.fd == fd)
-        events[i].data.fd = -1;
+  removed_events = &loop->removed_events;
+  lookup.fd = fd;
+  removed_event = RB_FIND(uv__removed_events_s, removed_events, &lookup);
+    if (removed_events->memory != NULL) {
+    if (removed_event == NULL) {
+      // we shouldn't change other descriptors while hadn't obtained poll from them
+      if (removed_events->used_count == UV_LINUX_MAX_EVENTS_TO_LISTEN)
+        abort();
+      removed_event = removed_events->memory + removed_events->used_count;
+      removed_event->fd = fd;
+      removed_event->events_to_ignore = -1; // all events are ignored
+      removed_events->used_count++;
+      RB_INSERT(uv__removed_events_s, removed_events, removed_event);
+    } else {
+      removed_event->events_to_ignore = -1;
+    }
+  }
 
   /* Remove the file descriptor from the epoll.
    * This avoids a problem where the same file description remains open
@@ -169,6 +190,10 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 int uv__io_check_fd(uv_loop_t* loop, int fd) {
   struct epoll_event e;
   int rc;
+
+  e.data.ptr = NULL;
+  e.data.u32 = 0;
+  e.data.u64 = 0;
 
   e.events = POLLIN;
   e.data.fd = -1;
@@ -196,7 +221,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
    * that being the largest value I have seen in the wild (and only once.)
    */
   static const int max_safe_timeout = 1789569;
-  struct epoll_event events[1024];
+  uv__removed_event_t removed_events[UV_LINUX_MAX_EVENTS_TO_LISTEN];
+  uv__removed_event_t lookup;
+  uv__removed_event_t *find_result;
+  struct epoll_event obtained_events[UV_LINUX_MAX_EVENTS_TO_LISTEN];
   struct epoll_event* pe;
   struct epoll_event e;
   int real_timeout;
@@ -217,6 +245,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
     return;
   }
+  e.data.ptr = NULL;
+  e.data.u32 = 0;
+  e.data.u64 = 0;
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
     q = QUEUE_HEAD(&loop->watcher_queue);
@@ -262,8 +293,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
   assert(timeout >= -1);
   base = loop->time;
-  count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
+  count = UV_LINUX_EVENT_REPEAT_POLL_COUNT;
 
   for (;;) {
     /* See the comment for max_safe_timeout for an explanation of why
@@ -273,10 +304,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       timeout = max_safe_timeout;
 
     nfds = epoll_pwait(loop->backend_fd,
-                       events,
-                       ARRAY_SIZE(events),
+                       obtained_events,
+                       ARRAY_SIZE(obtained_events),
                        timeout,
                        psigset);
+
 
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
@@ -312,17 +344,20 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     have_signals = 0;
     nevents = 0;
-
-    assert(loop->watchers != NULL);
-    loop->watchers[loop->nwatchers] = (void*) events;
-    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    loop->removed_events.memory = (uv__removed_event_t *)removed_events;
+    loop->removed_events.used_count = 0;
+    RB_INIT(&loop->removed_events);
     for (i = 0; i < nfds; i++) {
-      pe = events + i;
+      pe = obtained_events + i;
       fd = pe->data.fd;
-
-      /* Skip invalidated events, see uv__platform_invalidate_fd */
-      if (fd == -1)
-        continue;
+      lookup.fd = fd;
+      find_result = RB_FIND(uv__removed_events_s, &loop->removed_events, &lookup);
+      /* if we reach tail then nothing more left, see uv__platform_invalidate_fd */
+      if (find_result != NULL) {
+        if ((find_result->events_to_ignore & pe->events) == pe->events)
+          continue; // all events are ignored
+        pe->events &= ~find_result->events_to_ignore;
+      }
 
       assert(fd >= 0);
       assert((unsigned) fd < loop->nwatchers);
@@ -381,14 +416,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (have_signals != 0)
       loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
 
-    loop->watchers[loop->nwatchers] = NULL;
-    loop->watchers[loop->nwatchers + 1] = NULL;
+    loop->removed_events.memory = NULL;
+    loop->removed_events.used_count = 0;
+    RB_INIT(&loop->removed_events);
 
     if (have_signals != 0)
       return;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
-      if (nfds == ARRAY_SIZE(events) && --count != 0) {
+      if (nfds == ARRAY_SIZE(obtained_events) && --count != 0) {
         /* Poll for more events but don't block this time. */
         timeout = 0;
         continue;

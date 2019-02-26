@@ -767,6 +767,7 @@ static unsigned int next_power_of_two(unsigned int val) {
 
 static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   uv__io_t** watchers;
+  // to remove from code in v.2.0:
   void* fake_watcher_list;
   void* fake_watcher_count;
   unsigned int nwatchers;
