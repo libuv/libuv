@@ -68,7 +68,7 @@ static void getaddrinfo_do(struct getaddrinfo_req* req) {
   r = uv_getaddrinfo(req->loop,
                      &req->handle,
                      getaddrinfo_cb,
-                     "localhost",
+                     "127.0.0.1",
                      NULL,
                      NULL);
   ASSERT(r == 0);
