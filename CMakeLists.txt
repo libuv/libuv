@@ -22,11 +22,29 @@ set(uv_sources
     src/uv-data-getter-setters.c
     src/version.c)
 
-set(uv_test_sources
+set(uv_test_common
     test/blackhole-server.c
     test/echo-server.c
-    test/run-tests.c
     test/runner.c
+)
+
+if(WIN32)
+  list(APPEND uv_test_common src/win/snprintf.c test/runner-win.c)
+else()
+  list(APPEND uv_test_common test/runner-unix.c)
+endif()
+
+file( GLOB uv_bench_sources test/benchmark*.c)
+
+set(uv_bench_sources
+  ${uv_bench_sources}
+  ${uv_test_common}
+  test/run-benchmarks.c
+)
+
+set(uv_test_sources
+    ${uv_test_common}
+    test/run-tests.c
     test/test-active.c
     test/test-async-null-cb.c
     test/test-async.c
@@ -208,7 +226,6 @@ if(WIN32)
        src/win/winapi.c
        src/win/winsock.c)
   list(APPEND uv_test_libraries ws2_32)
-  list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   list(APPEND uv_libraries pthread)
@@ -229,7 +246,6 @@ else()
        src/unix/thread.c
        src/unix/tty.c
        src/unix/udp.c)
-  list(APPEND uv_test_sources test/runner-unix.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
@@ -352,6 +368,7 @@ if(BUILD_TESTING)
   add_test(NAME uv_test
            COMMAND uv_run_tests
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
   add_executable(uv_run_tests_a ${uv_test_sources})
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
@@ -359,6 +376,24 @@ if(BUILD_TESTING)
   target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
+           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+  add_executable(uv_run_bench ${uv_bench_sources})
+  target_compile_definitions(uv_run_bench PRIVATE ${uv_defines})
+  target_compile_options(uv_run_bench PRIVATE ${uv_cflags})
+  target_include_directories(uv_run_bench PRIVATE include)
+  target_link_libraries(uv_run_bench uv ${uv_test_libraries})
+  add_test(NAME uv_bench
+           COMMAND uv_run_bench
+           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+  add_executable(uv_run_bench_a ${uv_bench_sources})
+  target_compile_definitions(uv_run_bench_a PRIVATE ${uv_defines})
+  target_compile_options(uv_run_bench_a PRIVATE ${uv_cflags})
+  target_include_directories(uv_run_bench_a PRIVATE include)
+  target_link_libraries(uv_run_bench_a uv_a ${uv_test_libraries})
+  add_test(NAME uv_bench_a
+           COMMAND uv_run_bench_a
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 

@@ -806,6 +806,7 @@ UV_EXTERN int uv_poll_init(uv_loop_t* loop,
                            uv_os_sock_t socket);
 UV_EXTERN int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb);
 UV_EXTERN int uv_poll_stop(uv_poll_t* handle);
+UV_EXTERN int uv_poll_change_events(uv_poll_t* handle, int events);
 
 
 struct uv_prepare_s {

@@ -292,6 +292,9 @@ update_timeout:
   }
 }
 
+void uv__platform_validate_fd(uv_loop_t* , int , uint32_t) {
+
+}
 /* Remove the given fd from our poll fds array because no one
  * is interested in its events anymore.
  */

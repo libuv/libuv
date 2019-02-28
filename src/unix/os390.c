@@ -649,6 +649,9 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   uv__free(addresses);
 }
 
+void uv__platform_validate_fd(uv_loop_t* , int , uint32_t) {
+
+}
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct epoll_event* events;

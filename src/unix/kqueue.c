@@ -380,6 +380,9 @@ update_timeout:
   }
 }
 
+void uv__platform_validate_fd(uv_loop_t* , int , uint32_t) {
+
+}
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct kevent* events;

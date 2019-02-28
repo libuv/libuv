@@ -1018,6 +1018,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   return 0;
 }
 
+void uv__platform_validate_fd(uv_loop_t* , int , uint32_t) {
+
+}
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct pollfd* events;

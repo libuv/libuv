@@ -110,6 +110,9 @@ int uv__io_fork(uv_loop_t* loop) {
   return uv__platform_loop_init(loop);
 }
 
+void uv__platform_validate_fd(uv_loop_t* , int , uint32_t) {
+
+}
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct port_event* events;

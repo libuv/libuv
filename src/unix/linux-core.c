@@ -138,7 +138,6 @@ int uv__io_fork(uv_loop_t* loop) {
   return uv__inotify_fork(loop, old_watchers);
 }
 
-
 void uv__platform_loop_delete(uv_loop_t* loop) {
   if (loop->inotify_fd == -1) return;
   uv__io_stop(loop, &loop->inotify_read_watcher, POLLIN);
@@ -146,6 +145,20 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
   loop->inotify_fd = -1;
 }
 
+void uv__platform_validate_fd(uv_loop_t* loop, int fd, uint32_t events) {
+  uv__removed_event_t *removed_event;
+  uv__removed_event_t lookup;
+
+  lookup.fd = fd;
+  if (loop->removed_events.memory != NULL) {
+    lookup.fd = fd;
+    removed_event = RB_FIND(uv__removed_events_s, &loop->removed_events, &lookup);
+    if (removed_event != NULL) {
+      // all events are valid again inside current obtained ones
+      removed_event->events_to_ignore &= ~events;
+    }
+  }
+}
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   uv__removed_events_t* removed_events;
@@ -154,9 +167,9 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct epoll_event dummy;
 
   removed_events = &loop->removed_events;
-  lookup.fd = fd;
-  removed_event = RB_FIND(uv__removed_events_s, removed_events, &lookup);
-    if (removed_events->memory != NULL) {
+  if (removed_events->memory != NULL) {
+    lookup.fd = fd;
+    removed_event = RB_FIND(uv__removed_events_s, removed_events, &lookup);
     if (removed_event == NULL) {
       // we shouldn't change other descriptors while hadn't obtained poll from them
       if (removed_events->used_count == UV_LINUX_MAX_EVENTS_TO_LISTEN)
@@ -185,7 +198,6 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
     epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
   }
 }
-
 
 int uv__io_check_fd(uv_loop_t* loop, int fd) {
   struct epoll_event e;
@@ -352,7 +364,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       fd = pe->data.fd;
       lookup.fd = fd;
       find_result = RB_FIND(uv__removed_events_s, &loop->removed_events, &lookup);
-      /* if we reach tail then nothing more left, see uv__platform_invalidate_fd */
+      /* see uv__platform_invalidate_fd */
       if (find_result != NULL) {
         if ((find_result->events_to_ignore & pe->events) == pe->events)
           continue; // all events are ignored

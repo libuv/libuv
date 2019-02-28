@@ -108,7 +108,6 @@ int uv_poll_stop(uv_poll_t* handle) {
   return 0;
 }
 
-
 int uv_poll_start(uv_poll_t* handle, int pevents, uv_poll_cb poll_cb) {
   int events;
 
@@ -133,11 +132,11 @@ int uv_poll_start(uv_poll_t* handle, int pevents, uv_poll_cb poll_cb) {
 
   uv__io_start(handle->loop, &handle->io_watcher, events);
   uv__handle_start(handle);
+  uv__platform_validate_fd(handle->loop, handle->io_watcher.fd, events);
   handle->poll_cb = poll_cb;
 
   return 0;
 }
-
 
 void uv__poll_close(uv_poll_t* handle) {
   uv__poll_stop(handle);
