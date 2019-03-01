@@ -154,7 +154,7 @@ void uv__platform_validate_fd(uv_loop_t* loop, int fd, uint32_t events) {
     lookup.fd = fd;
     removed_event = RB_FIND(uv__removed_events_s, &loop->removed_events, &lookup);
     if (removed_event != NULL) {
-      // all events are valid again inside current obtained ones
+      // 'events' are valid again inside current obtained ones
       removed_event->events_to_ignore &= ~events;
     }
   }
@@ -162,28 +162,28 @@ void uv__platform_validate_fd(uv_loop_t* loop, int fd, uint32_t events) {
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   uv__removed_events_t* removed_events;
-  uv__removed_event_t *removed_event;
-  uv__removed_event_t lookup;
+  uv__removed_event_t *event_to_insert;
+  uv__removed_event_t *event_found;
   struct epoll_event dummy;
 
   removed_events = &loop->removed_events;
   if (removed_events->memory != NULL) {
-    lookup.fd = fd;
-    removed_event = RB_FIND(uv__removed_events_s, removed_events, &lookup);
-    if (removed_event == NULL) {
-      // we shouldn't change other descriptors while hadn't obtained poll from them
-      if (removed_events->used_count == UV_LINUX_MAX_EVENTS_TO_LISTEN)
-        abort();
-      removed_event = removed_events->memory + removed_events->used_count;
-      removed_event->fd = fd;
-      removed_event->events_to_ignore = -1; // all events are ignored
+    // we shouldn't change other descriptors while hadn't obtained poll from them
+    // one more for buffer
+    if (removed_events->used_count == UV_LINUX_MAX_EVENTS_TO_LISTEN + 1)
+      abort();
+    event_to_insert = removed_events->memory + removed_events->used_count;
+    event_to_insert->fd = fd;
+    event_found = RB_INSERT(uv__removed_events_s, removed_events, event_to_insert);
+    if (event_found == NULL) {
+      // this is actually new element
       removed_events->used_count++;
-      RB_INSERT(uv__removed_events_s, removed_events, removed_event);
+      event_to_insert->events_to_ignore = -1; // all events are ignored
     } else {
-      removed_event->events_to_ignore = -1;
+      // there was another before, see how RB_INSERT is implemented
+      event_found->events_to_ignore = -1; // all events are ignored
     }
   }
-
   /* Remove the file descriptor from the epoll.
    * This avoids a problem where the same file description remains open
    * in another process, causing repeated junk epoll events.
@@ -233,7 +233,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
    * that being the largest value I have seen in the wild (and only once.)
    */
   static const int max_safe_timeout = 1789569;
-  uv__removed_event_t removed_events[UV_LINUX_MAX_EVENTS_TO_LISTEN];
+  uv__removed_event_t removed_events[UV_LINUX_MAX_EVENTS_TO_LISTEN + 1];
   uv__removed_event_t lookup;
   uv__removed_event_t *find_result;
   struct epoll_event obtained_events[UV_LINUX_MAX_EVENTS_TO_LISTEN];

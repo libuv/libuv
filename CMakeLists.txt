@@ -28,13 +28,30 @@ set(uv_test_common
     test/runner.c
 )
 
+set(uv_bench_sources
+  test/benchmark-async.c
+  test/benchmark-async-pummel.c
+  test/benchmark-fs-stat.c
+  test/benchmark-getaddrinfo.c
+  test/benchmark-loop-count.c
+  test/benchmark-million-async.c
+  test/benchmark-million-timers.c
+  test/benchmark-multi-accept.c
+  test/benchmark-ping-pongs.c
+  test/benchmark-pound.c
+  test/benchmark-pump.c
+  test/benchmark-sizes.c
+  test/benchmark-spawn.c
+  test/benchmark-tcp-write-batch.c
+  test/benchmark-thread.c
+  test/benchmark-udp-pummel.c)
+
 if(WIN32)
   list(APPEND uv_test_common src/win/snprintf.c test/runner-win.c)
 else()
   list(APPEND uv_test_common test/runner-unix.c)
+  list(APPEND uv_bench_sources test/benchmark-poll-2k-ping-pongs.c)
 endif()
-
-file( GLOB uv_bench_sources test/benchmark*.c)
 
 set(uv_bench_sources
   ${uv_bench_sources}
