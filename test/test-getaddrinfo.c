@@ -25,7 +25,7 @@
 
 #define CONCURRENT_COUNT    10
 
-static const char* name = "127.0.0.1";
+static const char* name = "google.com";
 
 static int getaddrinfo_cbs = 0;
 
