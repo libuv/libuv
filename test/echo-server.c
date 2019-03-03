@@ -78,7 +78,10 @@ static void after_read(uv_stream_t* handle,
 
   if (nread < 0) {
     /* Error or EOF */
-    ASSERT(nread == UV_EOF);
+    if (nread != UV_EOF) {
+      fprintf(stderr, "after_read: %s\n", uv_strerror(nread));
+      fflush(stderr);
+    }
 
     free(buf->base);
     sreq = malloc(sizeof* sreq);
