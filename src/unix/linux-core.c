@@ -85,12 +85,16 @@ static unsigned long read_cpufreq(unsigned int cpunum);
 int uv__platform_loop_init(uv_loop_t* loop) {
   int fd;
 
+#if !(defined(__ANDROID_API__) && __ANDROID_API__ < 21)
   fd = epoll_create1(EPOLL_CLOEXEC);
 
   /* epoll_create1() can fail either because it's not implemented (old kernel)
    * or because it doesn't understand the EPOLL_CLOEXEC flag.
    */
   if (fd == -1 && (errno == ENOSYS || errno == EINVAL)) {
+#else
+  {
+#endif
     fd = epoll_create(256);
 
     if (fd != -1)
