@@ -56,6 +56,17 @@ static struct worker_arg {
 
 /* Helpers for the default executor implementation. */
 
+/* Magic functions to track work state.
+ * The default libuv executor implementation uses these
+ * to implement uv_cancel. */
+static void WORK_QUEUED (struct uv__work *w) {
+  abort();
+}
+
+static void WORK_COMPLETED (struct uv__work *w) {
+  abort();
+}
+
 /* Post item q to the TP queue.
  * Caller must hold fields->lock. */
 static void post(struct default_executor_fields* fields, QUEUE* q) {
@@ -86,7 +97,6 @@ static void worker(void* arg) {
   arg = NULL;
   warg = NULL;
 
-  uv_mutex_lock(&mutex);
   for (;;) {
     /* Get the next work. */
     uv_mutex_lock(&fields->mutex);
@@ -125,7 +135,7 @@ static void worker(void* arg) {
 
     /* Signal uv_cancel() that the work req is done executing. */
     uv_mutex_lock(&fields->mutex);
-    w->work = NULL;
+    w->work = WORK_COMPLETED;
     uv_mutex_unlock(&fields->mutex);
 
     /* Tell event loop we finished with this request. */
@@ -237,15 +247,12 @@ static void uv__default_executor_submit(uv_executor_t* executor,
 
   /* Put executor-specific data into req->executor_data. */
   wreq = &req->work_req;
+  wreq->work = WORK_QUEUED;
   req->executor_data = wreq;
-  /* TODO Don't do this. */
-  wreq->work = 0xdeadbeef; /* Non-NULL: "Not yet completed". */
 
+  /* Add to queue. */
   uv_mutex_lock(&fields->mutex);
-
-  /* Add to our queue. */
   post(fields, &wreq->wq);
-
   uv_mutex_unlock(&fields->mutex);
 }
 
@@ -263,14 +270,15 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
 
   fields = executor->data;
   assert(fields != NULL);
+
   wreq = req->executor_data;
   assert(wreq != NULL);
 
   uv_mutex_lock(&fields->mutex);
 
-  /* Check if we can cancel it. Determine what state req is in. */
+  /* Check if we can cancel it -- Determine what state req is in. */
   assigned = QUEUE_EMPTY(&wreq->wq);
-  already_completed = (wreq->work == NULL);
+  already_completed = (wreq->work == WORK_COMPLETED);
   still_on_queue = !assigned && !already_completed;
   
   LOG_3("assigned %d already_completed %d still_on_queue\n", assigned, already_completed, still_on_queue); 
@@ -291,7 +299,7 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   } else {
     /* Failed to cancel.
      * Work is either already done or is still to be executed.
-     * Either way we need not call done here. */
+     * Either way we don't need to call done here. */
     return UV_EBUSY;
   }
 }

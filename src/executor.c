@@ -226,7 +226,7 @@ int uv_cancel(uv_req_t* req) {
   return r;
 }
 
-/* This is just a magic, it should never be called. */
+/* This is a magic, it should never be called. */
 void uv__executor_work_cancelled(uv_work_t* work) {
   abort();
 }
