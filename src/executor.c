@@ -29,14 +29,14 @@
 
 #include <stdio.h> /* Debug */
 
-static uv_executor_t* executor = NULL;
+static uv_executor_t executor;
 
 static uv_once_t once = UV_ONCE_INIT;
-static volatile int initialized = 0; /* Protected by once in
+static volatile int executor_is_set = 0; /* Protected by once in
                     uv_executor_queue_work, but not in uv_replace_executor. */
 
 uv_executor_t* uv__executor(void) {
-  return executor;
+  return &executor;
 }
 
 /* Executor has finished this request. */
@@ -87,8 +87,8 @@ void uv__executor_work_done(uv_async_t* handle) {
 }
 
 int uv_replace_executor(uv_executor_t* _executor) {
-  /* Reject if no longer safe to replace. */
-  if (initialized)
+  /* Reject if already set. */
+  if (executor_is_set)
     return UV_EINVAL;
 
   /* Check validity of _executor. */
@@ -98,7 +98,8 @@ int uv_replace_executor(uv_executor_t* _executor) {
     return UV_EINVAL;
 
   /* Replace our executor. */
-  executor = _executor;
+  memcpy(&executor, _executor, sizeof(executor));
+  executor_is_set = 1;
 
   return 0;
 }
@@ -107,13 +108,11 @@ static void uv__executor_init(void) {
   int rc;
 
   /* Assign executor to default if none was set. */
-  if (executor == NULL) {
+  if (!executor_is_set) {
     rc = uv_replace_executor(uv__default_executor());
     assert(!rc);
+    executor_is_set = 1;
   }
-
-  /* Once initialized, it is no longer safe to replace. */
-  initialized = 1;
 }
 
 int uv_executor_queue_work(uv_loop_t* loop,
@@ -122,7 +121,9 @@ int uv_executor_queue_work(uv_loop_t* loop,
                            uv_work_cb work_cb,
                            uv_after_work_cb after_work_cb) {
   char work_type[32];
-  /* Initialize the executor once. */
+  /* Attempt to initialize the executor once.
+   * If user did not replace the executor, this will
+   * apply the default executor. */
   uv_once(&once, uv__executor_init);
 
   /* Check validity. */
@@ -167,7 +168,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
     LOG_0("uv_executor_queue_work: no options provided\n");
 
   /* Submit to the executor. */
-  executor->submit(executor, req, opts);
+  executor.submit(&executor, req, opts);
 
   return 0;
 }
@@ -189,9 +190,9 @@ static int uv__cancel_ask_executor(uv_work_t* work) {
 
   r = UV_ENOSYS;
   LOG_0("Trying to call cancel\n");
-  if (executor->cancel != NULL) {
+  if (executor.cancel != NULL) {
     LOG_0("Calling cancel!\n");
-    r = executor->cancel(executor, work);
+    r = executor.cancel(&executor, work);
     if (r == 0)
       work->work_cb = uv__executor_work_cancelled;
   }

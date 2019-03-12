@@ -238,7 +238,6 @@ static void uv__default_executor_submit(uv_executor_t* executor,
   struct default_executor_fields* fields;
   struct uv__work* wreq;
 
-  assert(executor == &default_executor);
   /* Make sure we are initialized internally. */
   uv_once(&start_workers_once, start_workers);
 
@@ -264,7 +263,6 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   int still_on_queue;
   int can_cancel;
 
-  assert(executor == &default_executor);
   /* Make sure we are initialized internally. */
   uv_once(&start_workers_once, start_workers);
 

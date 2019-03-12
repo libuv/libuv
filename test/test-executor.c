@@ -237,6 +237,8 @@ TEST_IMPL(executor_replace) {
   toy_executor.cancel = toy_executor_cancel;
   toy_executor.data = &toy_executor_data;
   ASSERT(0 == uv_replace_executor(&toy_executor));
+  /* uv_replace_executor should work at most once. */
+  ASSERT(UV_EINVAL == uv_replace_executor(&toy_executor));
 
   /* Submit work. */
   for (i = 0; i < TOY_EXECUTOR_MAX_REQUESTS; i++) {
@@ -246,9 +248,6 @@ TEST_IMPL(executor_replace) {
     else
       ASSERT(0 == uv_executor_queue_work(uv_default_loop(), &work[i], NULL, toy_work, NULL));
   }
-
-  /* Having queued work, we should no longer be able to replace. */
-  ASSERT(0 != uv_replace_executor(&toy_executor));
 
   /* Submit a slow request so a subsequent request will be cancelable. */
   n_extra_requests++;

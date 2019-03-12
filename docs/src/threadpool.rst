@@ -84,7 +84,14 @@ Data types
 .. c:type:: int uv_replace_executor(uv_executor_t* executor)
 
     Replace the default libuv executor with this user-defined one.
-    Must be called before any work is submitted to the default libuv executor.
+    Call at most once.
+
+    If you wish to replace the default libuv executor, call this before
+    any work is submitted to the executor (including when as a result of
+    internal operations like FS or DNS).
+
+    libuv copies the executor supplied by the user.
+
     Returns 0 on success.
 
 .. c:type:: uv_work_options_t
