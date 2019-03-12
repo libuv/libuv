@@ -191,7 +191,11 @@ API
     An executor should invoke this function once it finishes with a request.
     The effect is to return control over the `req` to libuv.
 
-    This function is thread safe. <-- TODO This seems desirable so the executor workers don't have to centralize returns through the event loop, but thread safety requires locking loop->wq_mutex. I'm having trouble imagining how this could lead to deadlock in a "reasonable" executor implementation, but wanted to discuss.
+  .. note::
+    This function is thread safe so that executor workers do not have to
+    centralize returns through the event loop.
+    For thread safety, it locks `loop->wq_mutex`.
+    This exposes the possibility of deadlock in "unreasonable" executor implementations.
 
 .. seealso:: The :c:type:`uv_req_t` API functions also apply
              to a :c:type:`uv_work_t`.
