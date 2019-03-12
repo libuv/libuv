@@ -27,9 +27,14 @@
 #ifndef UV_THREADPOOL_H_
 #define UV_THREADPOOL_H_
 
+/* As of PTP this is a bit deprecated, but still present to avoid
+ * ABI breakage. PTP uses it in the default threadpool implementation
+ * as an indicator. This should be changed in v2. */
 struct uv__work {
-  void (*work)(struct uv__work *w);
-  void (*done)(struct uv__work *w, int status);
+  void (*work)(struct uv__work *w); /* Used to check if uv_cancel
+                                     * should succeed.
+                                     * Protected by executor-level lock. */
+  void (*done)(struct uv__work *w, int status); /* Unused. */
   struct uv_loop_s* loop;
   void* wq[2]; /* This is used by the executor API
                 * to queue completed work on the event loop. */
