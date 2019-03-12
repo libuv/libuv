@@ -120,7 +120,7 @@ Public members
     Can be NULL.
     If NULL, calls to :c:function:`uv_cancel` will return ``UV_ENOSYS``.
 
-.. c:member:: void * uv_executor_t.data
+.. c:member:: void* uv_executor_t.data
 
     Space for user-defined arbitrary data. libuv does not use this field.
 
@@ -153,7 +153,7 @@ Public members
     In addition, work that has not yet been assigned to a thread can be
     cancelled.
 
-.. c:member:: void * uv_work_options_t.data
+.. c:member:: void* uv_work_options_t.data
 
     Space for user-defined arbitrary data. libuv does not use this field.
 
