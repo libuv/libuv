@@ -96,8 +96,9 @@ Public members
 
 .. c:member:: void* uv_work_t.executor_data
 
-    Space for arbitrary data. libuv does not use this field.
-    This is intended for use by an executor implementation.
+    Space for arbitrary data, intended for use by an executor implementation.
+    If you use the default libuv executor, libuv controls this field.
+    Otherwise libuv does not interact with this field.
 
 .. c:member:: uv_loop_t* uv_work_t.loop
 
