@@ -297,11 +297,13 @@ TEST_IMPL(executor_replace_nocancel) {
   ASSERT(0 == uv_replace_executor(&toy_executor));
 
   /* Submit a slow request so a subsequent request will be cancelable. */
-  ASSERT(0 == uv_queue_work(uv_default_loop(), &slow_work, toy_slow_work, NULL));
+  ASSERT(0 ==
+    uv_queue_work(uv_default_loop(), &slow_work, toy_slow_work, NULL));
 
   /* Submit and then try to cancel a slow request.
    * With toy_executor.cancel == NULL, should return UV_ENOSYS. */
-  ASSERT(0 == uv_queue_work(uv_default_loop(), &cancel_work, toy_work, NULL));
+  ASSERT(0 ==
+    uv_queue_work(uv_default_loop(), &cancel_work, toy_work, NULL));
   ASSERT(UV_ENOSYS == uv_cancel((uv_req_t *) &cancel_work));
 
   /* Let the slow work finish. */
