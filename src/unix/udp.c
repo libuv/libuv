@@ -847,35 +847,40 @@ int uv_udp_set_source_membership(uv_udp_t* handle,
                                  const char* source_addr,
                                  uv_membership membership) {
   int err;
-  union sockaddr {
-    struct sockaddr_in sa_in;
-    struct sockaddr_in6 sa_in6;
-  };
+  struct sockaddr_storage mcast_addr;
+  struct sockaddr_in* mcast_addr4;
+  struct sockaddr_in6* mcast_addr6;
+  struct sockaddr_storage src_addr;
+  struct sockaddr_in* src_addr4;
+  struct sockaddr_in6* src_addr6;
 
-  union sockaddr mcast_addr;
-  union sockaddr src_addr;
+  mcast_addr4 = (struct sockaddr_in*)&mcast_addr;
+  mcast_addr6 = (struct sockaddr_in6*)&mcast_addr;
+  src_addr4 = (struct sockaddr_in*)&src_addr;
+  src_addr6 = (struct sockaddr_in6*)&src_addr;
 
-  err = uv_ip4_addr(multicast_addr, 0, &mcast_addr.sa_in);
+  err = uv_ip4_addr(multicast_addr, 0, mcast_addr4);
   if (err) {
-    err = uv_ip6_addr(multicast_addr, 0, &mcast_addr.sa_in6);
+    err = uv_ip6_addr(multicast_addr, 0, mcast_addr6);
     if (err)
       return err;
-    err = uv_ip6_addr(source_addr, 0, &src_addr.sa_in6);
+    err = uv_ip6_addr(source_addr, 0, src_addr6);
     if (err)
       return err;
     return uv__udp_set_source_membership6(handle,
-                                          &mcast_addr.sa_in6,
+                                          mcast_addr6,
                                           interface_addr,
-                                          &src_addr.sa_in6,
+                                          src_addr6,
                                           membership);
   }
-  err = uv_ip4_addr(source_addr, 0, &src_addr.sa_in);
+  
+  err = uv_ip4_addr(source_addr, 0, src_addr4);
   if (err)
     return err;
   return uv__udp_set_source_membership4(handle,
-                                        &mcast_addr.sa_in,
+                                        mcast_addr4,
                                         interface_addr,
-                                        &src_addr.sa_in,
+                                        src_addr4,
                                         membership);
 }
 
