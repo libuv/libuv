@@ -45,7 +45,7 @@ static struct default_executor_fields {
   uv_thread_t default_workers[4];
   QUEUE exit_message;
   QUEUE wq;
-  int used;
+  int used; /* Flag: 1 if pool was initialized. */
 } _fields;
 
 /* For worker initialization. */
@@ -302,12 +302,21 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
   }
 }
 
+static void uv__default_executor_fork(uv_executor_t* executor) {
+  printf("uv__default_executor_fork\n");
+  /* TODO: This calls uv_cond_init on already-initialized and not-destroyed cond.
+   * According to the pthreads spec this yields undefined behavior.
+   * This is the same thing that the old threadpool code did so apparently
+   * it's "safe"? */
+  start_workers();
+}
+
 void uv__default_executor_init(void) {
-  /* TODO Behavior on fork? */
   bzero(&default_executor, sizeof(default_executor));
   default_executor.data = &_fields;
   default_executor.submit = uv__default_executor_submit;
   default_executor.cancel = uv__default_executor_cancel;
+  default_executor.fork = uv__default_executor_fork;
 }
 
 uv_executor_t* uv__default_executor(void) {

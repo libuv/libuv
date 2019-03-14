@@ -81,6 +81,11 @@ Data types
 
 .. seealso:: :c:func:`uv_cancel_t`.
 
+.. c:type:: void (*uv_executor_fork_func)(uv_executor_t* executor)
+
+    Called once to re-initialize the executor after fork.
+    Set this to NULL if no post-fork re-initialization is necessary.
+
 .. c:type:: int uv_replace_executor(uv_executor_t* executor)
 
     Replace the default libuv executor with this user-defined one.

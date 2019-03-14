@@ -104,14 +104,36 @@ int uv_replace_executor(uv_executor_t* _executor) {
   return 0;
 }
 
-static void uv__executor_init(void) {
+#ifndef _WIN32
+static void uv__executor_reset_once(void) {
+  /* The next call to uv_once(&once, ...) will enter. */
+  uv_once_t child_once = UV_ONCE_INIT;
+  memcpy(&once, &child_once, sizeof(child_once));
+}
+#endif
+
+/* Enter once per process.
+ * We come here for two reasons: (1) Initialize; (2) Reset after fork. */
+static void uv__executor_init_once(void) {
   int rc;
 
-  /* Assign executor to default if none was set. */
   if (!executor_is_set) {
+    /* Use the default executor. */
     rc = uv_replace_executor(uv__default_executor());
     assert(!rc);
     executor_is_set = 1;
+
+    #ifndef _WIN32
+    /* Prepare to re-initialize after fork. */
+    if (pthread_atfork(NULL, NULL, &uv__executor_reset_once))
+      abort();
+    #endif
+  } else {
+    /* We have already been here, which means that &once must have been reset.
+     * I guess we forked. Call the executor's fork(). */
+     if (executor.fork != NULL) {
+       executor.fork(&executor);
+     }
   }
 }
 
@@ -124,7 +146,7 @@ int uv_executor_queue_work(uv_loop_t* loop,
   /* Attempt to initialize the executor once.
    * If user did not replace the executor, this will
    * apply the default executor. */
-  uv_once(&once, uv__executor_init);
+  uv_once(&once, uv__executor_init_once);
 
   /* Check validity. */
   if (loop == NULL || req == NULL || work_cb == NULL)

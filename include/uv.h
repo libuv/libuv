@@ -341,6 +341,7 @@ typedef void (*uv_executor_submit_func)(uv_executor_t* executor,
                                         const uv_work_options_t* opts);
 typedef int (*uv_executor_cancel_func)(uv_executor_t* executor,
                                        uv_work_t* req);
+typedef void (*uv_executor_fork_func)(uv_executor_t* executor);
 
 typedef struct {
   long tv_sec;
@@ -1047,6 +1048,7 @@ struct uv_executor_s {
   /* Defined by embedder. */
   uv_executor_submit_func submit;
   uv_executor_cancel_func cancel;
+  uv_executor_fork_func fork;
   void* data;
 
   void* reserved[4];
