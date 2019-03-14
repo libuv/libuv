@@ -303,7 +303,6 @@ static int uv__default_executor_cancel(uv_executor_t* executor, uv_work_t* req) 
 }
 
 static void uv__default_executor_fork(uv_executor_t* executor) {
-  printf("uv__default_executor_fork\n");
   /* TODO: This calls uv_cond_init on already-initialized and not-destroyed cond.
    * According to the pthreads spec this yields undefined behavior.
    * This is the same thing that the old threadpool code did so apparently
