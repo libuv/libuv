@@ -311,7 +311,7 @@ static void uv__default_executor_fork(uv_executor_t* executor) {
 }
 
 void uv__default_executor_init(void) {
-  bzero(&default_executor, sizeof(default_executor));
+  memset(&default_executor, 0, sizeof(default_executor));
   default_executor.data = &_fields;
   default_executor.submit = uv__default_executor_submit;
   default_executor.cancel = uv__default_executor_cancel;
