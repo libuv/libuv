@@ -25,7 +25,7 @@
 
 #define CONCURRENT_COUNT    10
 
-static const char* name = "google.com";
+static const char* name = "libuv.org";
 
 static int getaddrinfo_cbs = 0;
 
