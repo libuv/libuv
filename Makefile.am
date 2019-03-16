@@ -32,6 +32,7 @@ libuv_la_LDFLAGS = -no-undefined -version-info 1:0:0
 libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
                    src/idna.c \
+                   src/idna.h \
                    src/inet.c \
                    src/queue.h \
                    src/strscpy.c \
