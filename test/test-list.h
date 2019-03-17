@@ -155,6 +155,9 @@ TEST_DECLARE   (udp_open)
 TEST_DECLARE   (udp_open_twice)
 TEST_DECLARE   (udp_open_bound)
 TEST_DECLARE   (udp_open_connect)
+#ifndef _WIN32
+TEST_DECLARE   (udp_send_unix)
+#endif
 TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
@@ -657,6 +660,9 @@ TASK_LIST_START
   TEST_ENTRY  (udp_open_bound)
   TEST_ENTRY  (udp_open_connect)
   TEST_HELPER (udp_open_connect, udp4_echo_server)
+#ifndef _WIN32
+  TEST_ENTRY  (udp_send_unix)
+#endif
 
   TEST_ENTRY  (pipe_bind_error_addrinuse)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)
