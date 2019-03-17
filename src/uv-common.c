@@ -34,6 +34,7 @@
 # include <malloc.h> /* malloc */
 #else
 # include <net/if.h> /* if_nametoindex */
+# include <sys/un.h> /* AF_UNIX, sockaddr_un */
 #endif
 
 
@@ -376,6 +377,10 @@ int uv__udp_check_before_send(uv_udp_t* handle, const struct sockaddr* addr) {
       addrlen = sizeof(struct sockaddr_in);
     else if (addr->sa_family == AF_INET6)
       addrlen = sizeof(struct sockaddr_in6);
+#if defined(AF_UNIX) && !defined(_WIN32)
+    else if (addr->sa_family == AF_UNIX)
+      addrlen = sizeof(struct sockaddr_un);
+#endif
     else
       return UV_EINVAL;
   } else {

@@ -30,6 +30,7 @@
 #if defined(__MVS__)
 #include <xti.h>
 #endif
+#include <sys/un.h>
 
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
@@ -232,8 +233,16 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
       h.msg_namelen = 0;
     } else {
       h.msg_name = &req->addr;
-      h.msg_namelen = req->addr.ss_family == AF_INET6 ?
-        sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+      if (req->addr.ss_family == AF_INET6)
+        h.msg_namelen = sizeof(struct sockaddr_in6);
+      else if (req->addr.ss_family == AF_INET)
+        h.msg_namelen = sizeof(struct sockaddr_in);
+      else if (req->addr.ss_family == AF_UNIX)
+        h.msg_namelen = sizeof(struct sockaddr_un);
+      else {
+        assert(0 && "unsupported address family");
+        abort();
+      }
     }
     h.msg_iov = (struct iovec*) req->bufs;
     h.msg_iovlen = req->nbufs;
