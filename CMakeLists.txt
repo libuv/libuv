@@ -62,6 +62,7 @@ set(uv_test_sources
     test/test-getnameinfo.c
     test/test-getsockname.c
     test/test-getters-setters.c
+    test/test-gettimeofday.c
     test/test-handle-fileno.c
     test/test-homedir.c
     test/test-hrtime.c

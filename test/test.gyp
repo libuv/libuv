@@ -43,6 +43,7 @@
         'test-gethostname.c',
         'test-getnameinfo.c',
         'test-getsockname.c',
+        'test-gettimeofday.c',
         'test-handle-fileno.c',
         'test-homedir.c',
         'test-hrtime.c',
