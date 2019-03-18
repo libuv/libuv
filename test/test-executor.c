@@ -22,7 +22,7 @@
 #include "uv.h"
 #include "task.h"
 
-#include "strings.h" /* bzero */
+#include "string.h"
 
 static int work_cb_count;
 static int after_work_cb_count;
@@ -161,7 +161,7 @@ static void worker(void* arg) {
 }
 
 static void toy_executor_init(void) {
-  bzero(&toy_executor, sizeof(toy_executor));
+  memset(&toy_executor, 0, sizeof(toy_executor));
 
   toy_executor_data.times_submit_called = 0;
   toy_executor_data.times_cancel_called = 0;
