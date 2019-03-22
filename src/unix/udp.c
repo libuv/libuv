@@ -268,12 +268,13 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
  * AF_UNIX  
  */
 static int uv__set_reuse(int fd) {
-  int yes = 1;
+  int yes;
+  yes = 1;
 
 #if defined(SO_REUSEPORT) && defined(__MVS__)                 
   struct sockaddr_in sockfd;
   unsigned int sockfd_len = sizeof (sockfd);
-  if (getsockname(fd, (struct sockaddr *) &sockfd, &sockfd_len) == -1)
+  if (getsockname(fd, (struct sockaddr*) &sockfd, &sockfd_len) == -1)
       return UV__ERR(errno);
   if (sockfd.sin_family == AF_UNIX) {
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)))
