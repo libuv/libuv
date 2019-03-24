@@ -12,6 +12,8 @@ otherwise it will be performed asynchronously.
 All file operations are run on the threadpool. See :ref:`threadpool` for information
 on the threadpool size.
 
+.. note::
+     On Windows `uv_fs_*` functions use utf-8 encoding.
 
 Data types
 ----------
@@ -93,7 +95,8 @@ Data types
             UV_FS_CHOWN,
             UV_FS_FCHOWN,
             UV_FS_REALPATH,
-            UV_FS_COPYFILE
+            UV_FS_COPYFILE,
+            UV_FS_LCHOWN
         } uv_fs_type;
 
 .. c:type:: uv_dirent_t
@@ -234,6 +237,10 @@ API
 
     Equivalent to :man:`fsync(2)`.
 
+    .. note::
+        For AIX, `uv_fs_fsync` returns `UV_EBADF` on file descriptors referencing
+        non regular files.
+
 .. c:function:: int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
     Equivalent to :man:`fdatasync(2)`.
@@ -345,11 +352,14 @@ API
 
 .. c:function:: int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
 .. c:function:: int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
+.. c:function:: int uv_fs_lchown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
 
-    Equivalent to :man:`chown(2)` and :man:`fchown(2)` respectively.
+    Equivalent to :man:`chown(2)`, :man:`fchown(2)` and :man:`lchown(2)` respectively.
 
     .. note::
         These functions are not implemented on Windows.
+
+    .. versionchanged:: 1.21.0 implemented uv_fs_lchown
 
 .. c:function:: uv_fs_type uv_fs_get_type(const uv_fs_t* req)
 
@@ -394,6 +404,15 @@ Helper functions
    any attempts to close it or to use it after closing the fd may lead to malfunction.
 
     .. versionadded:: 1.12.0
+
+.. c:function:: int uv_open_osfhandle(uv_os_fd_t os_fd)
+
+   For a OS-dependent handle, get the file descriptor in the C runtime.
+   On UNIX, returns the ``os_fd`` intact. On Windows, this calls `_open_osfhandle <https://msdn.microsoft.com/en-us/library/bdts1c9x.aspx>`_.
+   Note that the return value is still owned by the CRT,
+   any attempts to close it or to use it after closing the handle may lead to malfunction.
+
+    .. versionadded:: 1.23.0
 
 File open constants
 -------------------

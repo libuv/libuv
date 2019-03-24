@@ -44,7 +44,7 @@ CMakeFiles/
 /android-toolchain
 
 /out/
-/build/gyp
+/build/
 
 /test/.libs/
 /test/run-tests
@@ -76,6 +76,8 @@ ipch
 
 xcuserdata
 *.xcworkspace
+CMakeCache.txt
+CTestTestfile.cmake
 
 # make dist output
 libuv-*.tar.*

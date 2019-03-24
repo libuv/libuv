@@ -25,6 +25,7 @@
 
 #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
 typedef intptr_t ssize_t;
+# define SSIZE_MAX INTPTR_MAX
 # define _SSIZE_T_
 # define _SSIZE_T_DEFINED
 #endif
@@ -53,13 +54,13 @@ typedef struct pollfd {
 #include <sys/stat.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1600
-# include "stdint-msvc2008.h"
+# include "uv/stdint-msvc2008.h"
 #else
 # include <stdint.h>
 #endif
 
-#include "tree.h"
-#include "uv-threadpool.h"
+#include "uv/tree.h"
+#include "uv/threadpool.h"
 
 #define MAX_PIPENAME_LEN 256
 
@@ -86,8 +87,16 @@ typedef struct pollfd {
 #define SIGKILL               9
 #define SIGWINCH             28
 
-/* The CRT defines SIGABRT_COMPAT as 6, which equals SIGABRT on many */
-/* unix-like platforms. However MinGW doesn't define it, so we do. */
+/* Redefine NSIG to take SIGWINCH into consideration */
+#if defined(NSIG) && NSIG <= SIGWINCH
+# undef NSIG
+#endif
+#ifndef NSIG
+# define NSIG SIGWINCH + 1
+#endif
+
+/* The CRT defines SIGABRT_COMPAT as 6, which equals SIGABRT on many unix-like
+ * platforms. However MinGW doesn't define it, so we do. */
 #ifndef SIGABRT_COMPAT
 # define SIGABRT_COMPAT       6
 #endif
@@ -244,7 +253,7 @@ typedef union {
     CRITICAL_SECTION waiters_count_lock;
     HANDLE signal_event;
     HANDLE broadcast_event;
-  } fallback;
+  } unused_; /* TODO: retained for ABI compatibility; remove me in v2.x. */
 } uv_cond_t;
 
 typedef union {
@@ -308,8 +317,6 @@ typedef struct {
   char* errmsg;
 } uv_lib_t;
 
-RB_HEAD(uv_timer_tree_s, uv_timer_s);
-
 #define UV_LOOP_PRIVATE_FIELDS                                                \
     /* The loop's I/O completion port */                                      \
   HANDLE iocp;                                                                \
@@ -321,8 +328,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   uv_req_t* pending_reqs_tail;                                                \
   /* Head of a single-linked list of closed handles */                        \
   uv_handle_t* endgame_handles;                                               \
-  /* The head of the timers tree */                                           \
-  struct uv_timer_tree_s timers;                                              \
+  /* TODO(bnoordhuis) Stop heap-allocating |timer_heap| in libuv v2.x. */     \
+  void* timer_heap;                                                           \
     /* Lists of active loop (prepare / check / idle) watchers */              \
   uv_prepare_t* prepare_handles;                                              \
   uv_check_t* check_handles;                                                  \
@@ -368,10 +375,10 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   } u;                                                                        \
   struct uv_req_s* next_req;
 
-#define UV_WRITE_PRIVATE_FIELDS                                               \
-  int ipc_header;                                                             \
-  uv_buf_t write_buffer;                                                      \
-  HANDLE event_handle;                                                        \
+#define UV_WRITE_PRIVATE_FIELDS \
+  int coalesced;                \
+  uv_buf_t write_buffer;        \
+  HANDLE event_handle;          \
   HANDLE wait_handle;
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
@@ -459,16 +466,17 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
 
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
-  uv_write_t ipc_header_write_req;                                            \
-  int ipc_pid;                                                                \
-  uint64_t remaining_ipc_rawdata_bytes;                                       \
-  struct {                                                                    \
-    void* queue[2];                                                           \
-    int queue_len;                                                            \
-  } pending_ipc_info;                                                         \
+  uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
+  DWORD ipc_remote_pid;                                                       \
+  union {                                                                     \
+    uint32_t payload_remaining;                                               \
+    uint64_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
+  } ipc_data_frame;                                                           \
+  void* ipc_xfer_queue[2];                                                    \
+  int ipc_xfer_queue_length;                                                  \
   uv_write_t* non_overlapped_writes_tail;                                     \
-  uv_mutex_t readfile_mutex;                                                  \
-  volatile HANDLE readfile_thread;
+  CRITICAL_SECTION readfile_thread_lock;                                      \
+  volatile HANDLE readfile_thread_handle;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
@@ -478,8 +486,8 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
 
-/* TODO: put the parser states in an union - TTY handles are always */
-/* half-duplex so read-state can safely overlap write-state. */
+/* TODO: put the parser states in an union - TTY handles are always half-duplex
+ * so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   HANDLE handle;                                                              \
   union {                                                                     \
@@ -528,8 +536,9 @@ RB_HEAD(uv_timer_tree_s, uv_timer_s);
   unsigned char events;
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
-  RB_ENTRY(uv_timer_s) tree_entry;                                            \
-  uint64_t due;                                                               \
+  void* heap_node[3];                                                         \
+  int unused;                                                                 \
+  uint64_t timeout;                                                           \
   uint64_t repeat;                                                            \
   uint64_t start_id;                                                          \
   uv_timer_cb timer_cb;

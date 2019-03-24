@@ -37,7 +37,7 @@
 #include <tlhelp32.h>
 #include <windows.h>
 #include <userenv.h>
-
+#include <math.h>
 
 /*
  * Max title length; the only thing MSDN tells us about the maximum length
@@ -59,13 +59,6 @@
 # define UNLEN 256
 #endif
 
-/*
-  Max hostname length. The Windows gethostname() documentation states that 256
-  bytes will always be large enough to hold the null-terminated hostname.
-*/
-#ifndef MAXHOSTNAMELEN
-# define MAXHOSTNAMELEN 256
-#endif
 
 /* Maximum environment variable size, including the terminating null */
 #define MAX_ENV_VAR_LENGTH 32767
@@ -73,10 +66,6 @@
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
-
-/* Cached copy of the process id, written once. */
-static DWORD current_pid = 0;
-
 
 /* Interval (in seconds) of the high-resolution clock. */
 static double hrtime_interval_ = 0;
@@ -149,8 +138,8 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 
   uv__free(utf16_buffer);
 
-  /* utf8_len *does* include the terminating null at this point, but the */
-  /* returned size shouldn't. */
+  /* utf8_len *does* include the terminating null at this point, but the
+   * returned size shouldn't. */
   *size_ptr = utf8_len - 1;
   return 0;
 
@@ -173,16 +162,16 @@ int uv_cwd(char* buffer, size_t* size) {
   if (utf16_len == 0) {
     return uv_translate_sys_error(GetLastError());
   } else if (utf16_len > MAX_PATH) {
-    /* This should be impossible;  however the CRT has a code path to deal */
-    /* with this scenario, so I added a check anyway. */
+    /* This should be impossible; however the CRT has a code path to deal with
+     * this scenario, so I added a check anyway. */
     return UV_EIO;
   }
 
   /* utf16_len contains the length, *not* including the terminating null. */
   utf16_buffer[utf16_len] = L'\0';
 
-  /* The returned directory should not have a trailing slash, unless it */
-  /* points at a drive root, like c:\. Remove it if needed.*/
+  /* The returned directory should not have a trailing slash, unless it points
+   * at a drive root, like c:\. Remove it if needed. */
   if (utf16_buffer[utf16_len - 1] == L'\\' &&
       !(utf16_len == 3 && utf16_buffer[1] == L':')) {
     utf16_len--;
@@ -239,9 +228,9 @@ int uv_chdir(const char* dir) {
                           utf16_buffer,
                           MAX_PATH) == 0) {
     DWORD error = GetLastError();
-    /* The maximum length of the current working directory is 260 chars, */
-    /* including terminating null. If it doesn't fit, the path name must be */
-    /* too long. */
+    /* The maximum length of the current working directory is 260 chars,
+     * including terminating null. If it doesn't fit, the path name must be too
+     * long. */
     if (error == ERROR_INSUFFICIENT_BUFFER) {
       return UV_ENAMETOOLONG;
     } else {
@@ -253,9 +242,9 @@ int uv_chdir(const char* dir) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  /* Windows stores the drive-local path in an "hidden" environment variable, */
-  /* which has the form "=C:=C:\Windows". SetCurrentDirectory does not */
-  /* update this, so we'll have to do it. */
+  /* Windows stores the drive-local path in an "hidden" environment variable,
+   * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
+   * this, so we'll have to do it. */
   utf16_len = GetCurrentDirectoryW(MAX_PATH, utf16_buffer);
   if (utf16_len == 0) {
     return uv_translate_sys_error(GetLastError());
@@ -263,8 +252,8 @@ int uv_chdir(const char* dir) {
     return UV_EIO;
   }
 
-  /* The returned directory should not have a trailing slash, unless it */
-  /* points at a drive root, like c:\. Remove it if needed. */
+  /* The returned directory should not have a trailing slash, unless it points
+   * at a drive root, like c:\. Remove it if needed. */
   if (utf16_buffer[utf16_len - 1] == L'\\' &&
       !(utf16_len == 3 && utf16_buffer[1] == L':')) {
     utf16_len--;
@@ -272,8 +261,8 @@ int uv_chdir(const char* dir) {
   }
 
   if (utf16_len < 2 || utf16_buffer[1] != L':') {
-    /* Doesn't look like a drive letter could be there - probably an UNC */
-    /* path. TODO: Need to handle win32 namespaces like \\?\C:\ ? */
+    /* Doesn't look like a drive letter could be there - probably an UNC path.
+     * TODO: Need to handle win32 namespaces like \\?\C:\ ? */
     drive_letter = 0;
   } else if (utf16_buffer[0] >= L'A' && utf16_buffer[0] <= L'Z') {
     drive_letter = utf16_buffer[0];
@@ -356,14 +345,6 @@ uv_pid_t uv_os_getppid(void) {
 
   CloseHandle(handle);
   return parent_pid;
-}
-
-
-int uv_current_pid(void) {
-  if (current_pid == 0) {
-    current_pid = GetCurrentProcessId();
-  }
-  return current_pid;
 }
 
 
@@ -696,12 +677,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
                            NULL,
                            (BYTE*)&cpu_brand,
                            &cpu_brand_size);
-    if (err != ERROR_SUCCESS) {
-      RegCloseKey(processor_key);
-      goto error;
-    }
-
     RegCloseKey(processor_key);
+    if (err != ERROR_SUCCESS)
+      goto error;
 
     cpu_info = &cpu_infos[i];
     cpu_info->speed = cpu_speed;
@@ -828,6 +806,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   int is_vista_or_greater;
   ULONG flags;
 
+  *addresses_ptr = NULL;
+  *count_ptr = 0;
+
   is_vista_or_greater = is_windows_version_or_greater(6, 0, 0, 0);
   if (is_vista_or_greater) {
     flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
@@ -842,17 +823,17 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   }
 
 
-  /* Fetch the size of the adapters reported by windows, and then get the */
-  /* list itself. */
+  /* Fetch the size of the adapters reported by windows, and then get the list
+   * itself. */
   win_address_buf_size = 0;
   win_address_buf = NULL;
 
   for (;;) {
     ULONG r;
 
-    /* If win_address_buf is 0, then GetAdaptersAddresses will fail with */
-    /* ERROR_BUFFER_OVERFLOW, and the required buffer size will be stored in */
-    /* win_address_buf_size. */
+    /* If win_address_buf is 0, then GetAdaptersAddresses will fail with.
+     * ERROR_BUFFER_OVERFLOW, and the required buffer size will be stored in
+     * win_address_buf_size. */
     r = GetAdaptersAddresses(AF_UNSPEC,
                              flags,
                              NULL,
@@ -866,8 +847,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
     switch (r) {
       case ERROR_BUFFER_OVERFLOW:
-        /* This happens when win_address_buf is NULL or too small to hold */
-        /* all adapters. */
+        /* This happens when win_address_buf is NULL or too small to hold all
+         * adapters. */
         win_address_buf = uv__malloc(win_address_buf_size);
         if (win_address_buf == NULL)
           return UV_ENOMEM;
@@ -901,15 +882,15 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
         return UV_ENOBUFS;
 
       default:
-        /* Other (unspecified) errors can happen, but we don't have any */
-        /* special meaning for them. */
+        /* Other (unspecified) errors can happen, but we don't have any special
+         * meaning for them. */
         assert(r != ERROR_SUCCESS);
         return uv_translate_sys_error(r);
     }
   }
 
-  /* Count the number of enabled interfaces and compute how much space is */
-  /* needed to store their info. */
+  /* Count the number of enabled interfaces and compute how much space is
+   * needed to store their info. */
   count = 0;
   uv_address_buf_size = 0;
 
@@ -919,9 +900,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     IP_ADAPTER_UNICAST_ADDRESS* unicast_address;
     int name_size;
 
-    /* Interfaces that are not 'up' should not be reported. Also skip */
-    /* interfaces that have no associated unicast address, as to avoid */
-    /* allocating space for the name for this interface. */
+    /* Interfaces that are not 'up' should not be reported. Also skip
+     * interfaces that have no associated unicast address, as to avoid
+     * allocating space for the name for this interface. */
     if (adapter->OperStatus != IfOperStatusUp ||
         adapter->FirstUnicastAddress == NULL)
       continue;
@@ -941,8 +922,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     }
     uv_address_buf_size += name_size;
 
-    /* Count the number of addresses associated with this interface, and */
-    /* compute the size. */
+    /* Count the number of addresses associated with this interface, and
+     * compute the size. */
     for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS*)
                            adapter->FirstUnicastAddress;
          unicast_address != NULL;
@@ -959,8 +940,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     return UV_ENOMEM;
   }
 
-  /* Compute the start of the uv_interface_address_t array, and the place in */
-  /* the buffer where the interface names will be stored. */
+  /* Compute the start of the uv_interface_address_t array, and the place in
+   * the buffer where the interface names will be stored. */
   uv_address = uv_address_buf;
   name_buf = (char*) (uv_address_buf + count);
 
@@ -1199,8 +1180,8 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
     return UV_EIO;
   }
 
-  /* The returned directory should not have a trailing slash, unless it */
-  /* points at a drive root, like c:\. Remove it if needed.*/
+  /* The returned directory should not have a trailing slash, unless it points
+   * at a drive root, like c:\. Remove it if needed. */
   if (path[len - 1] == L'\\' &&
       !(len == 3 && path[1] == L':')) {
     len--;
@@ -1519,7 +1500,7 @@ int uv_os_unsetenv(const char* name) {
 
 
 int uv_os_gethostname(char* buffer, size_t* size) {
-  char buf[MAXHOSTNAMELEN + 1];
+  char buf[UV_MAXHOSTNAMESIZE];
   size_t len;
 
   if (buffer == NULL || size == NULL || *size == 0)
@@ -1541,4 +1522,259 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   memcpy(buffer, buf, len + 1);
   *size = len;
   return 0;
+}
+
+
+static int uv__get_handle(uv_pid_t pid, int access, HANDLE* handle) {
+  int r;
+
+  if (pid == 0)
+    *handle = GetCurrentProcess();
+  else
+    *handle = OpenProcess(access, FALSE, pid);
+
+  if (*handle == NULL) {
+    r = GetLastError();
+
+    if (r == ERROR_INVALID_PARAMETER)
+      return UV_ESRCH;
+    else
+      return uv_translate_sys_error(r);
+  }
+
+  return 0;
+}
+
+
+int uv_os_getpriority(uv_pid_t pid, int* priority) {
+  HANDLE handle;
+  int r;
+
+  if (priority == NULL)
+    return UV_EINVAL;
+
+  r = uv__get_handle(pid, PROCESS_QUERY_LIMITED_INFORMATION, &handle);
+
+  if (r != 0)
+    return r;
+
+  r = GetPriorityClass(handle);
+
+  if (r == 0) {
+    r = uv_translate_sys_error(GetLastError());
+  } else {
+    /* Map Windows priority classes to Unix nice values. */
+    if (r == REALTIME_PRIORITY_CLASS)
+      *priority = UV_PRIORITY_HIGHEST;
+    else if (r == HIGH_PRIORITY_CLASS)
+      *priority = UV_PRIORITY_HIGH;
+    else if (r == ABOVE_NORMAL_PRIORITY_CLASS)
+      *priority = UV_PRIORITY_ABOVE_NORMAL;
+    else if (r == NORMAL_PRIORITY_CLASS)
+      *priority = UV_PRIORITY_NORMAL;
+    else if (r == BELOW_NORMAL_PRIORITY_CLASS)
+      *priority = UV_PRIORITY_BELOW_NORMAL;
+    else  /* IDLE_PRIORITY_CLASS */
+      *priority = UV_PRIORITY_LOW;
+
+    r = 0;
+  }
+
+  CloseHandle(handle);
+  return r;
+}
+
+
+int uv_os_setpriority(uv_pid_t pid, int priority) {
+  HANDLE handle;
+  int priority_class;
+  int r;
+
+  /* Map Unix nice values to Windows priority classes. */
+  if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)
+    return UV_EINVAL;
+  else if (priority < UV_PRIORITY_HIGH)
+    priority_class = REALTIME_PRIORITY_CLASS;
+  else if (priority < UV_PRIORITY_ABOVE_NORMAL)
+    priority_class = HIGH_PRIORITY_CLASS;
+  else if (priority < UV_PRIORITY_NORMAL)
+    priority_class = ABOVE_NORMAL_PRIORITY_CLASS;
+  else if (priority < UV_PRIORITY_BELOW_NORMAL)
+    priority_class = NORMAL_PRIORITY_CLASS;
+  else if (priority < UV_PRIORITY_LOW)
+    priority_class = BELOW_NORMAL_PRIORITY_CLASS;
+  else
+    priority_class = IDLE_PRIORITY_CLASS;
+
+  r = uv__get_handle(pid, PROCESS_SET_INFORMATION, &handle);
+
+  if (r != 0)
+    return r;
+
+  if (SetPriorityClass(handle, priority_class) == 0)
+    r = uv_translate_sys_error(GetLastError());
+
+  CloseHandle(handle);
+  return r;
+}
+
+
+int uv_os_uname(uv_utsname_t* buffer) {
+  /* Implementation loosely based on
+     https://github.com/gagern/gnulib/blob/master/lib/uname.c */
+  OSVERSIONINFOW os_info;
+  SYSTEM_INFO system_info;
+  HKEY registry_key;
+  WCHAR product_name_w[256];
+  DWORD product_name_w_size;
+  int version_size;
+  int processor_level;
+  int r;
+
+  if (buffer == NULL)
+    return UV_EINVAL;
+
+  uv__once_init();
+  os_info.dwOSVersionInfoSize = sizeof(os_info);
+  os_info.szCSDVersion[0] = L'\0';
+
+  /* Try calling RtlGetVersion(), and fall back to the deprecated GetVersionEx()
+     if RtlGetVersion() is not available. */
+  if (pRtlGetVersion) {
+    pRtlGetVersion(&os_info);
+  } else {
+    /* Silence GetVersionEx() deprecation warning. */
+    #pragma warning(suppress : 4996)
+    if (GetVersionExW(&os_info) == 0) {
+      r = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+  }
+
+  /* Populate the version field. */
+  version_size = 0;
+  r = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                    L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                    0,
+                    KEY_QUERY_VALUE,
+                    &registry_key);
+
+  if (r == ERROR_SUCCESS) {
+    product_name_w_size = sizeof(product_name_w);
+    r = RegGetValueW(registry_key,
+                     NULL,
+                     L"ProductName",
+                     RRF_RT_REG_SZ,
+                     NULL,
+                     (PVOID) product_name_w,
+                     &product_name_w_size);
+    RegCloseKey(registry_key);
+
+    if (r == ERROR_SUCCESS) {
+      version_size = WideCharToMultiByte(CP_UTF8,
+                                         0,
+                                         product_name_w,
+                                         -1,
+                                         buffer->version,
+                                         sizeof(buffer->version),
+                                         NULL,
+                                         NULL);
+      if (version_size == 0) {
+        r = uv_translate_sys_error(GetLastError());
+        goto error;
+      }
+    }
+  }
+
+  /* Append service pack information to the version if present. */
+  if (os_info.szCSDVersion[0] != L'\0') {
+    if (version_size > 0)
+      buffer->version[version_size - 1] = ' ';
+
+    if (WideCharToMultiByte(CP_UTF8,
+                            0,
+                            os_info.szCSDVersion,
+                            -1,
+                            buffer->version + version_size,
+                            sizeof(buffer->version) - version_size,
+                            NULL,
+                            NULL) == 0) {
+      r = uv_translate_sys_error(GetLastError());
+      goto error;
+    }
+  }
+
+  /* Populate the sysname field. */
+#ifdef __MINGW32__
+  r = snprintf(buffer->sysname,
+               sizeof(buffer->sysname),
+               "MINGW32_NT-%u.%u",
+               (unsigned int) os_info.dwMajorVersion,
+               (unsigned int) os_info.dwMinorVersion);
+  assert(r < sizeof(buffer->sysname));
+#else
+  uv__strscpy(buffer->sysname, "Windows_NT", sizeof(buffer->sysname));
+#endif
+
+  /* Populate the release field. */
+  r = snprintf(buffer->release,
+               sizeof(buffer->release),
+               "%d.%d.%d",
+               (unsigned int) os_info.dwMajorVersion,
+               (unsigned int) os_info.dwMinorVersion,
+               (unsigned int) os_info.dwBuildNumber);
+  assert(r < sizeof(buffer->release));
+
+  /* Populate the machine field. */
+  GetSystemInfo(&system_info);
+
+  switch (system_info.wProcessorArchitecture) {
+    case PROCESSOR_ARCHITECTURE_AMD64:
+      uv__strscpy(buffer->machine, "x86_64", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_IA64:
+      uv__strscpy(buffer->machine, "ia64", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_INTEL:
+      uv__strscpy(buffer->machine, "i386", sizeof(buffer->machine));
+
+      if (system_info.wProcessorLevel > 3) {
+        processor_level = system_info.wProcessorLevel < 6 ?
+                          system_info.wProcessorLevel : 6;
+        buffer->machine[1] = '0' + processor_level;
+      }
+
+      break;
+    case PROCESSOR_ARCHITECTURE_IA32_ON_WIN64:
+      uv__strscpy(buffer->machine, "i686", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_MIPS:
+      uv__strscpy(buffer->machine, "mips", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_ALPHA:
+    case PROCESSOR_ARCHITECTURE_ALPHA64:
+      uv__strscpy(buffer->machine, "alpha", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_PPC:
+      uv__strscpy(buffer->machine, "powerpc", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_SHX:
+      uv__strscpy(buffer->machine, "sh", sizeof(buffer->machine));
+      break;
+    case PROCESSOR_ARCHITECTURE_ARM:
+      uv__strscpy(buffer->machine, "arm", sizeof(buffer->machine));
+      break;
+    default:
+      uv__strscpy(buffer->machine, "unknown", sizeof(buffer->machine));
+      break;
+  }
+
+  return 0;
+
+error:
+  buffer->sysname[0] = '\0';
+  buffer->release[0] = '\0';
+  buffer->version[0] = '\0';
+  buffer->machine[0] = '\0';
+  return r;
 }

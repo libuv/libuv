@@ -43,12 +43,11 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <utime.h>
 #include <poll.h>
 
 #if defined(__DragonFly__)        ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel_)    ||                                      \
+    defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # define HAVE_PREADV 1
@@ -62,9 +61,18 @@
 
 #if defined(__APPLE__)
 # include <copyfile.h>
+# include <sys/sysctl.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
 # define FICLONE _IOW(0x94, 9, int)
+#endif
+
+#if defined(_AIX) && !defined(_AIX71)
+# include <utime.h>
+#endif
+
+#if defined(_AIX) && _XOPEN_SOURCE <= 600
+extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 #endif
 
 #define INIT(subtype)                                                         \
@@ -120,7 +128,11 @@
   do {                                                                        \
     if (cb != NULL) {                                                         \
       uv__req_register(loop, req);                                            \
-      uv__work_submit(loop, &req->work_req, uv__fs_work, uv__fs_done);        \
+      uv__work_submit(loop,                                                   \
+                      &req->work_req,                                         \
+                      UV__WORK_FAST_IO,                                       \
+                      uv__fs_work,                                            \
+                      uv__fs_done);                                           \
       return 0;                                                               \
     }                                                                         \
     else {                                                                    \
@@ -143,7 +155,7 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
   int r;
 
   r = fcntl(req->file, F_FULLFSYNC);
-  if (r != 0 && errno == ENOTTY)
+  if (r != 0)
     r = fsync(req->file);
   return r;
 #else
@@ -165,59 +177,17 @@ static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_futime(uv_fs_t* req) {
-#if defined(__linux__)
+#if defined(__linux__)                                                        \
+    || defined(_AIX71)
   /* utimesat() has nanosecond resolution but we stick to microseconds
    * for the sake of consistency with other platforms.
    */
-  static int no_utimesat;
   struct timespec ts[2];
-  struct timeval tv[2];
-  char path[sizeof("/proc/self/fd/") + 3 * sizeof(int)];
-  int r;
-
-  if (no_utimesat)
-    goto skip;
-
   ts[0].tv_sec  = req->atime;
   ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
-
-  r = uv__utimesat(req->file, NULL, ts, 0);
-  if (r == 0)
-    return r;
-
-  if (errno != ENOSYS)
-    return r;
-
-  no_utimesat = 1;
-
-skip:
-
-  tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
-  tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
-  snprintf(path, sizeof(path), "/proc/self/fd/%d", (int) req->file);
-
-  r = utimes(path, tv);
-  if (r == 0)
-    return r;
-
-  switch (errno) {
-  case ENOENT:
-    if (fcntl(req->file, F_GETFL) == -1 && errno == EBADF)
-      break;
-    /* Fall through. */
-
-  case EACCES:
-  case ENOTDIR:
-    errno = ENOSYS;
-    break;
-  }
-
-  return r;
-
+  return futimens(req->file, ts);
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
@@ -235,13 +205,6 @@ skip:
 # else
   return futimes(req->file, tv);
 # endif
-#elif defined(_AIX71)
-  struct timespec ts[2];
-  ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
-  ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
-  return futimens(req->file, ts);
 #elif defined(__MVS__)
   attrib_t atr;
   memset(&atr, 0, sizeof(atr));
@@ -304,17 +267,13 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 #if defined(__linux__)
   static int no_preadv;
 #endif
+  unsigned int iovmax;
   ssize_t result;
 
-#if defined(_AIX)
-  struct stat buf;
-  if(fstat(req->file, &buf))
-    return -1;
-  if(S_ISDIR(buf.st_mode)) {
-    errno = EISDIR;
-    return -1;
-  }
-#endif /* defined(_AIX) */
+  iovmax = uv__getiovmax();
+  if (req->nbufs > iovmax)
+    req->nbufs = iovmax;
+
   if (req->off < 0) {
     if (req->nbufs == 1)
       result = read(req->file, req->bufs[0].base, req->bufs[0].len);
@@ -333,25 +292,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     if (no_preadv) retry:
 # endif
     {
-      off_t nread;
-      size_t index;
-
-      nread = 0;
-      index = 0;
-      result = 1;
-      do {
-        if (req->bufs[index].len > 0) {
-          result = pread(req->file,
-                         req->bufs[index].base,
-                         req->bufs[index].len,
-                         req->off + nread);
-          if (result > 0)
-            nread += result;
-        }
-        index++;
-      } while (index < req->nbufs && result > 0);
-      if (nread > 0)
-        result = nread;
+      result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
     }
 # if defined(__linux__)
     else {
@@ -369,6 +310,25 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   }
 
 done:
+  /* Early cleanup of bufs allocation, since we're done with it. */
+  if (req->bufs != req->bufsml)
+    uv__free(req->bufs);
+
+  req->bufs = NULL;
+  req->nbufs = 0;
+
+#ifdef __PASE__
+  /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
+  if (result == -1 && errno == EOPNOTSUPP) {
+    struct stat buf;
+    ssize_t rc;
+    rc = fstat(req->file, &buf);
+    if (rc == 0 && S_ISDIR(buf.st_mode)) {
+      errno = EISDIR;
+    }
+  }
+#endif
+
   return result;
 }
 
@@ -415,29 +375,55 @@ static ssize_t uv__fs_scandir(uv_fs_t* req) {
   return n;
 }
 
+#if defined(_POSIX_PATH_MAX)
+# define UV__FS_PATH_MAX _POSIX_PATH_MAX
+#elif defined(PATH_MAX)
+# define UV__FS_PATH_MAX PATH_MAX
+#else
+# define UV__FS_PATH_MAX_FALLBACK 8192
+# define UV__FS_PATH_MAX UV__FS_PATH_MAX_FALLBACK
+#endif
 
 static ssize_t uv__fs_pathmax_size(const char* path) {
   ssize_t pathmax;
 
   pathmax = pathconf(path, _PC_PATH_MAX);
 
-  if (pathmax == -1) {
-#if defined(PATH_MAX)
-    return PATH_MAX;
-#else
-#error "PATH_MAX undefined in the current platform"
-#endif
-  }
+  if (pathmax == -1)
+    pathmax = UV__FS_PATH_MAX;
 
   return pathmax;
 }
 
 static ssize_t uv__fs_readlink(uv_fs_t* req) {
+  ssize_t maxlen;
   ssize_t len;
   char* buf;
+  char* newbuf;
 
-  len = uv__fs_pathmax_size(req->path);
-  buf = uv__malloc(len + 1);
+#if defined(UV__FS_PATH_MAX_FALLBACK)
+  /* We may not have a real PATH_MAX.  Read size of link.  */
+  struct stat st;
+  int ret;
+  ret = lstat(req->path, &st);
+  if (ret != 0)
+    return -1;
+  if (!S_ISLNK(st.st_mode)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  maxlen = st.st_size;
+
+  /* According to readlink(2) lstat can report st_size == 0
+     for some symlinks, such as those in /proc or /sys.  */
+  if (maxlen == 0)
+    maxlen = uv__fs_pathmax_size(req->path);
+#else
+  maxlen = uv__fs_pathmax_size(req->path);
+#endif
+
+  buf = uv__malloc(maxlen);
 
   if (buf == NULL) {
     errno = ENOMEM;
@@ -445,15 +431,26 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   }
 
 #if defined(__MVS__)
-  len = os390_readlink(req->path, buf, len);
+  len = os390_readlink(req->path, buf, maxlen);
 #else
-  len = readlink(req->path, buf, len);
+  len = readlink(req->path, buf, maxlen);
 #endif
-
 
   if (len == -1) {
     uv__free(buf);
     return -1;
+  }
+
+  /* Uncommon case: resize to make room for the trailing nul byte. */
+  if (len == maxlen) {
+    newbuf = uv__realloc(buf, len + 1);
+
+    if (newbuf == NULL) {
+      uv__free(buf);
+      return -1;
+    }
+
+    buf = newbuf;
   }
 
   buf[len] = '\0';
@@ -463,8 +460,14 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
 }
 
 static ssize_t uv__fs_realpath(uv_fs_t* req) {
-  ssize_t len;
   char* buf;
+
+#if defined(_POSIX_VERSION) && _POSIX_VERSION >= 200809L
+  buf = realpath(req->path, NULL);
+  if (buf == NULL)
+    return -1;
+#else
+  ssize_t len;
 
   len = uv__fs_pathmax_size(req->path);
   buf = uv__malloc(len + 1);
@@ -478,6 +481,7 @@ static ssize_t uv__fs_realpath(uv_fs_t* req) {
     uv__free(buf);
     return -1;
   }
+#endif
 
   req->ptr = buf;
 
@@ -698,10 +702,48 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_utime(uv_fs_t* req) {
+#if defined(__linux__)                                                         \
+    || defined(_AIX71)                                                         \
+    || defined(__sun)
+  /* utimesat() has nanosecond resolution but we stick to microseconds
+   * for the sake of consistency with other platforms.
+   */
+  struct timespec ts[2];
+  ts[0].tv_sec  = req->atime;
+  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
+  ts[1].tv_sec  = req->mtime;
+  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  return utimensat(AT_FDCWD, req->path, ts, 0);
+#elif defined(__APPLE__)                                                      \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__FreeBSD_kernel__)                                            \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)
+  struct timeval tv[2];
+  tv[0].tv_sec  = req->atime;
+  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
+  tv[1].tv_sec  = req->mtime;
+  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  return utimes(req->path, tv);
+#elif defined(_AIX)                                                           \
+    && !defined(_AIX71)
   struct utimbuf buf;
   buf.actime = req->atime;
   buf.modtime = req->mtime;
-  return utime(req->path, &buf); /* TODO use utimes() where available */
+  return utime(req->path, &buf);
+#elif defined(__MVS__)
+  attrib_t atr;
+  memset(&atr, 0, sizeof(atr));
+  atr.att_mtimechg = 1;
+  atr.att_atimechg = 1;
+  atr.att_mtime = req->mtime;
+  atr.att_atime = req->atime;
+  return __lchattr((char*) req->path, &atr, sizeof(atr));
+#else
+  errno = ENOSYS;
+  return -1;
+#endif
 }
 
 
@@ -739,25 +781,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     if (no_pwritev) retry:
 # endif
     {
-      off_t written;
-      size_t index;
-
-      written = 0;
-      index = 0;
-      r = 0;
-      do {
-        if (req->bufs[index].len > 0) {
-          r = pwrite(req->file,
-                     req->bufs[index].base,
-                     req->bufs[index].len,
-                     req->off + written);
-          if (r > 0)
-            written += r;
-        }
-        index++;
-      } while (index < req->nbufs && r >= 0);
-      if (written > 0)
-        r = written;
+      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
     }
 # if defined(__linux__)
     else {
@@ -786,25 +810,40 @@ done:
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
   /* On macOS, use the native copyfile(3). */
+  static int can_clone;
   copyfile_flags_t flags;
+  char buf[64];
+  size_t len;
+  int major;
 
   flags = COPYFILE_ALL;
 
   if (req->flags & UV_FS_COPYFILE_EXCL)
     flags |= COPYFILE_EXCL;
 
-#ifdef COPYFILE_CLONE
-  if (req->flags & UV_FS_COPYFILE_FICLONE)
-    flags |= COPYFILE_CLONE;
-#endif
-
+  /* Check OS version. Cloning is only supported on macOS >= 10.12. */
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-#ifdef COPYFILE_CLONE_FORCE
-    flags |= COPYFILE_CLONE_FORCE;
-#else
-    return UV_ENOSYS;
-#endif
+    if (can_clone == 0) {
+      len = sizeof(buf);
+      if (sysctlbyname("kern.osrelease", buf, &len, NULL, 0))
+        return UV__ERR(errno);
+
+      if (1 != sscanf(buf, "%d", &major))
+        abort();
+
+      can_clone = -1 + 2 * (major >= 16);  /* macOS >= 10.12 */
+    }
+
+    if (can_clone < 0)
+      return UV_ENOSYS;
   }
+
+  /* copyfile() simply ignores COPYFILE_CLONE if it's not supported. */
+  if (req->flags & UV_FS_COPYFILE_FICLONE)
+    flags |= 1 << 24;  /* COPYFILE_CLONE */
+
+  if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
+    flags |= 1 << 25;  /* COPYFILE_CLONE_FORCE */
 
   return copyfile(req->path, req->new_path, NULL, flags);
 #else
@@ -865,9 +904,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
       /* If an error occurred that the sendfile fallback also won't handle, or
          this is a force clone then exit. Otherwise, fall through to try using
          sendfile(). */
-      if ((errno != ENOTTY && errno != EOPNOTSUPP && errno != EXDEV) ||
-          req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-        err = -errno;
+      if (errno != ENOTTY && errno != EOPNOTSUPP && errno != EXDEV) {
+        err = UV__ERR(errno);
+        goto out;
+      } else if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+        err = UV_ENOTSUP;
         goto out;
       }
     } else {
@@ -927,7 +968,11 @@ out:
     }
   }
 
-  return result;
+  if (result == 0)
+    return 0;
+
+  errno = UV__ERR(result);
+  return -1;
 #endif
 }
 
@@ -1008,9 +1053,81 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
 }
 
 
+static int uv__fs_statx(int fd,
+                        const char* path,
+                        int is_fstat,
+                        int is_lstat,
+                        uv_stat_t* buf) {
+  STATIC_ASSERT(UV_ENOSYS != -1);
+#ifdef __linux__
+  static int no_statx;
+  struct uv__statx statxbuf;
+  int dirfd;
+  int flags;
+  int mode;
+  int rc;
+
+  if (no_statx)
+    return UV_ENOSYS;
+
+  dirfd = AT_FDCWD;
+  flags = 0; /* AT_STATX_SYNC_AS_STAT */
+  mode = 0xFFF; /* STATX_BASIC_STATS + STATX_BTIME */
+
+  if (is_fstat) {
+    dirfd = fd;
+    flags |= 0x1000; /* AT_EMPTY_PATH */
+  }
+
+  if (is_lstat)
+    flags |= AT_SYMLINK_NOFOLLOW;
+
+  rc = uv__statx(dirfd, path, flags, mode, &statxbuf);
+
+  if (rc == -1) {
+    /* EPERM happens when a seccomp filter rejects the system call.
+     * Has been observed with libseccomp < 2.3.3 and docker < 18.04.
+     */
+    if (errno != EINVAL && errno != EPERM && errno != ENOSYS)
+      return -1;
+
+    no_statx = 1;
+    return UV_ENOSYS;
+  }
+
+  buf->st_dev = 256 * statxbuf.stx_dev_major + statxbuf.stx_dev_minor;
+  buf->st_mode = statxbuf.stx_mode;
+  buf->st_nlink = statxbuf.stx_nlink;
+  buf->st_uid = statxbuf.stx_uid;
+  buf->st_gid = statxbuf.stx_gid;
+  buf->st_rdev = statxbuf.stx_rdev_major;
+  buf->st_ino = statxbuf.stx_ino;
+  buf->st_size = statxbuf.stx_size;
+  buf->st_blksize = statxbuf.stx_blksize;
+  buf->st_blocks = statxbuf.stx_blocks;
+  buf->st_atim.tv_sec = statxbuf.stx_atime.tv_sec;
+  buf->st_atim.tv_nsec = statxbuf.stx_atime.tv_nsec;
+  buf->st_mtim.tv_sec = statxbuf.stx_mtime.tv_sec;
+  buf->st_mtim.tv_nsec = statxbuf.stx_mtime.tv_nsec;
+  buf->st_ctim.tv_sec = statxbuf.stx_ctime.tv_sec;
+  buf->st_ctim.tv_nsec = statxbuf.stx_ctime.tv_nsec;
+  buf->st_birthtim.tv_sec = statxbuf.stx_btime.tv_sec;
+  buf->st_birthtim.tv_nsec = statxbuf.stx_btime.tv_nsec;
+
+  return 0;
+#else
+  return UV_ENOSYS;
+#endif /* __linux__ */
+}
+
+
 static int uv__fs_stat(const char *path, uv_stat_t *buf) {
   struct stat pbuf;
   int ret;
+
+  ret = uv__fs_statx(-1, path, /* is_fstat */ 0, /* is_lstat */ 0, buf);
+  if (ret != UV_ENOSYS)
+    return ret;
 
   ret = stat(path, &pbuf);
   if (ret == 0)
@@ -1024,6 +1141,10 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
   struct stat pbuf;
   int ret;
 
+  ret = uv__fs_statx(-1, path, /* is_fstat */ 0, /* is_lstat */ 1, buf);
+  if (ret != UV_ENOSYS)
+    return ret;
+
   ret = lstat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
@@ -1036,6 +1157,10 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   struct stat pbuf;
   int ret;
 
+  ret = uv__fs_statx(fd, "", /* is_fstat */ 1, /* is_lstat */ 0, buf);
+  if (ret != UV_ENOSYS)
+    return ret;
+
   ret = fstat(fd, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
@@ -1043,9 +1168,21 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   return ret;
 }
 
+static size_t uv__fs_buf_offset(uv_buf_t* bufs, size_t size) {
+  size_t offset;
+  /* Figure out which bufs are done */
+  for (offset = 0; size > 0 && bufs[offset].len <= size; ++offset)
+    size -= bufs[offset].len;
 
-typedef ssize_t (*uv__fs_buf_iter_processor)(uv_fs_t* req);
-static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) {
+  /* Fix a partial read/write */
+  if (size > 0) {
+    bufs[offset].base += size;
+    bufs[offset].len -= size;
+  }
+  return offset;
+}
+
+static ssize_t uv__fs_write_all(uv_fs_t* req) {
   unsigned int iovmax;
   unsigned int nbufs;
   uv_buf_t* bufs;
@@ -1062,7 +1199,10 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     if (req->nbufs > iovmax)
       req->nbufs = iovmax;
 
-    result = process(req);
+    do
+      result = uv__fs_write(req);
+    while (result < 0 && errno == EINTR);
+
     if (result <= 0) {
       if (total == 0)
         total = result;
@@ -1072,13 +1212,11 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
     if (req->off >= 0)
       req->off += result;
 
+    req->nbufs = uv__fs_buf_offset(req->bufs, result);
     req->bufs += req->nbufs;
     nbufs -= req->nbufs;
     total += result;
   }
-
-  if (errno == EINTR && total == -1)
-    return total;
 
   if (bufs != req->bufsml)
     uv__free(bufs);
@@ -1096,7 +1234,8 @@ static void uv__fs_work(struct uv__work* w) {
   ssize_t r;
 
   req = container_of(w, uv_fs_t, work_req);
-  retry_on_eintr = !(req->fs_type == UV_FS_CLOSE);
+  retry_on_eintr = !(req->fs_type == UV_FS_CLOSE ||
+                     req->fs_type == UV_FS_READ);
 
   do {
     errno = 0;
@@ -1114,6 +1253,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(COPYFILE, uv__fs_copyfile(req));
     X(FCHMOD, fchmod(req->file, req->mode));
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
+    X(LCHOWN, lchown(req->path, req->uid, req->gid));
     X(FDATASYNC, uv__fs_fdatasync(req));
     X(FSTAT, uv__fs_fstat(req->file, &req->statbuf));
     X(FSYNC, uv__fs_fsync(req));
@@ -1124,7 +1264,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(MKDIR, mkdir(req->path, req->mode));
     X(MKDTEMP, uv__fs_mkdtemp(req));
     X(OPEN, uv__fs_open(req));
-    X(READ, uv__fs_buf_iter(req, uv__fs_read));
+    X(READ, uv__fs_read(req));
     X(SCANDIR, uv__fs_scandir(req));
     X(READLINK, uv__fs_readlink(req));
     X(REALPATH, uv__fs_realpath(req));
@@ -1135,7 +1275,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(SYMLINK, symlink(req->path, req->new_path));
     X(UNLINK, unlink(req->path));
     X(UTIME, uv__fs_utime(req));
-    X(WRITE, uv__fs_buf_iter(req, uv__fs_write));
+    X(WRITE, uv__fs_write_all(req));
     default: abort();
     }
 #undef X
@@ -1234,6 +1374,20 @@ int uv_fs_fchown(uv_loop_t* loop,
                  uv_fs_cb cb) {
   INIT(FCHOWN);
   req->file = file;
+  req->uid = uid;
+  req->gid = gid;
+  POST;
+}
+
+
+int uv_fs_lchown(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 uv_uid_t uid,
+                 uv_gid_t gid,
+                 uv_fs_cb cb) {
+  INIT(LCHOWN);
+  PATH;
   req->uid = uid;
   req->gid = gid;
   POST;
