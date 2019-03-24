@@ -90,7 +90,7 @@ else()
         ${LIBUVDIR}/src/unix/dl.c
         # ${LIBUVDIR}/src/unix/freebsd.c
         ${LIBUVDIR}/src/unix/fs.c
-        ${LIBUVDIR}/src/unix/fsevents.c
+        # ${LIBUVDIR}/src/unix/fsevents.c
         ${LIBUVDIR}/src/unix/getaddrinfo.c
         ${LIBUVDIR}/src/unix/getnameinfo.c
         # ${LIBUVDIR}/src/unix/ibmi.c
