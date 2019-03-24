@@ -98,7 +98,7 @@ else()
         ${LIBUVDIR}/src/unix/loop.c
         ${LIBUVDIR}/src/unix/loop-watcher.c
         # ${LIBUVDIR}/src/unix/netbsd.c
-        ${LIBUVDIR}/src/unix/no-fsevents.c
+        # ${LIBUVDIR}/src/unix/no-fsevents.c
         ${LIBUVDIR}/src/unix/no-proctitle.c
         # ${LIBUVDIR}/src/unix/openbsd.c
         # ${LIBUVDIR}/src/unix/os390-syscalls.c
@@ -106,7 +106,7 @@ else()
         # ${LIBUVDIR}/src/unix/os390.c
         ${LIBUVDIR}/src/unix/pipe.c
         ${LIBUVDIR}/src/unix/poll.c
-        ${LIBUVDIR}/src/unix/posix-hrtime.c
+        # ${LIBUVDIR}/src/unix/posix-hrtime.c
         # ${LIBUVDIR}/src/unix/posix-poll.c
         ${LIBUVDIR}/src/unix/process.c
         ${LIBUVDIR}/src/unix/procfs-exepath.c
