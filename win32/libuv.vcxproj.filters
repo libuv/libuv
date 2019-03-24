@@ -78,9 +78,6 @@
     <ClCompile Include="..\src\win\process-stdio.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\win\req.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\win\signal.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -96,9 +93,6 @@
     <ClCompile Include="..\src\win\thread.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\win\timer.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\win\tty.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -112,6 +106,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\win\winsock.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\timer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\strscpy.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\idna.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -145,6 +148,12 @@
     </ClInclude>
     <ClInclude Include="..\src\win\winsock.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\strscpy.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\idna.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
