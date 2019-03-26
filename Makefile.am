@@ -120,7 +120,6 @@ endif  # WINNT
 EXTRA_DIST = test/fixtures/empty_file \
              test/fixtures/load_error.node \
              include \
-             test \
              docs \
              img \
              samples \
