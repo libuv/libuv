@@ -265,7 +265,7 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
  * on other platforms so we don't enable it.
  *
  * zOS does not support getsockname with SO_REUSEPORT option when using 
- * AF_UNIX  
+ * AF_UNIX.  
  */
 static int uv__set_reuse(int fd) {
   int yes;
