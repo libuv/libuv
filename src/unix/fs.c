@@ -60,7 +60,6 @@
 #endif
 
 #if defined(__APPLE__)
-# include <copyfile.h>
 # include <sys/sysctl.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
