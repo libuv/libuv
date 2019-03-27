@@ -45,11 +45,9 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/version.c
 
 if SUNOS
-if GCC
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
 # on other platforms complain that the argument is unused during compilation.
 libuv_la_CFLAGS += -pthreads
-endif
 endif
 
 if WINNT
@@ -143,19 +141,13 @@ check_PROGRAMS = test/run-tests
 if OS390
 test_run_tests_CFLAGS =
 else
-if GCC
 test_run_tests_CFLAGS = -Wno-long-long
-else
-test_run_tests_CFLAGS =
-endif
 endif
 
 if SUNOS
-if GCC
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
 # on other platforms complain that the argument is unused during compilation.
 test_run_tests_CFLAGS += -pthreads
-endif
 endif
 
 test_run_tests_LDFLAGS =
