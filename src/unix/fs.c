@@ -143,6 +143,18 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   while (0)
 
 
+static int uv__fs_close(int fd) {
+  int rc;
+
+  rc = close(fd);
+  if (rc == -1)
+    if (errno == EINTR || errno == EINPROGRESS)
+      rc = 0;  /* The close is in progress, not an error. */
+
+  return rc;
+}
+
+
 static ssize_t uv__fs_fsync(uv_fs_t* req) {
 #if defined(__APPLE__)
   /* Apple's fdatasync and fsync explicitly do NOT flush the drive write cache
@@ -1330,7 +1342,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(ACCESS, access(req->path, req->flags));
     X(CHMOD, chmod(req->path, req->mode));
     X(CHOWN, chown(req->path, req->uid, req->gid));
-    X(CLOSE, close(req->file));
+    X(CLOSE, uv__fs_close(req->file));
     X(COPYFILE, uv__fs_copyfile(req));
     X(FCHMOD, fchmod(req->file, req->mode));
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
