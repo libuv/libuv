@@ -1444,3 +1444,18 @@ int uv_gettimeofday(uv_timeval_t* tv) {
   tv->tv_usec = time.tv_usec;
   return 0;
 }
+
+int64_t uv_get_usec_since_epoch() {
+  int64_t ret;
+  struct timeval time;
+
+  if (gettimeofday(&time, NULL) != 0)
+    return UV__ERR(errno);
+
+  /* cast to unsigned to prefer Y2K38 over dates < 1970 */
+  ret = (int64_t)(uint32_t)time.tv_sec * 1000000;
+  /* assert we didn't overflow when converting sec to usec */
+  assert(ret > 0);
+  ret += (int64_t)time.tv_usec;
+  return ret;
+}

@@ -583,5 +583,18 @@ API
 
     Cross-platform implementation of :man:`gettimeofday(2)`. The timezone
     argument to `gettimeofday()` is not supported, as it is considered obsolete.
+    `uv_gettimeofday()` uses a real-time clock (TZ aware, and can jump back in time),
+    whereas `uv_hrtime()` uses a monotonic clock (might slow down but not jump back).
+    It is not recommanded to use `uv_gettimeofday()` to measure time differences.
+    Refs: https://blog.habets.se/2010/09/gettimeofday-should-never-be-used-to-measure-time.html
+
+    .. versionadded:: 1.28.0
+
+.. c:function:: int64_t uv_get_usec_since_epoch(void)
+
+    Cross-platform implementation of micro-seconds since epoch. Similar to
+    :man:`gettimeofday(2)`. Negative returned values are error codes.
+    In order to support dates after Y2K38 this does not support system dates
+    before epoch (2017-01-01).
 
     .. versionadded:: 1.28.0

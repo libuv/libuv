@@ -1610,6 +1610,7 @@ UV_EXTERN void* uv_key_get(uv_key_t* key);
 UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
 
 UV_EXTERN int uv_gettimeofday(uv_timeval_t* tv);
+UV_EXTERN int64_t uv_get_usec_since_epoch(void);
 
 typedef void (*uv_thread_cb)(void* arg);
 

@@ -27,13 +27,27 @@ TEST_IMPL(gettimeofday) {
   int r;
 
   tv.tv_sec = 0;
+  tv.tv_nsec = -1;
   r = uv_gettimeofday(&tv);
   ASSERT(r == 0);
   ASSERT(tv.tv_sec != 0);
+  ASSERT(tv.tv_usec != -1);
 
   /* Test invalid input. */
   r = uv_gettimeofday(NULL);
   ASSERT(r == UV_EINVAL);
+
+  return 0;
+}
+
+TEST_IMPL(get_usec_since_epoch) {
+  int64_t r;
+
+  r = uv_get_usec_since_epoch();
+  /* didn't overflow or error */
+  ASSERT(r > 0);
+  /* bigger then value at time of writing this test */
+  ASSERT(r > 1554131909151939);
 
   return 0;
 }

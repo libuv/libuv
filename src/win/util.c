@@ -1779,9 +1779,12 @@ error:
   return r;
 }
 
+/* Difference between Windows epoch 1601-01-01_00:00:00 (UTC)          *
+ * and POSIX epoch 1970-01-01_00:00:00 in 100-nanoseconds intervals.   *
+ * Based on https://doxygen.postgresql.org/gettimeofday_8c_source.html */
+static const uint64_t epoch_diff = 116444736000000000ULL;
+
 int uv_gettimeofday(uv_timeval_t* tv) {
-  /* Based on https://doxygen.postgresql.org/gettimeofday_8c_source.html */
-  const uint64_t epoch = (uint64_t) 116444736000000000ULL;
   FILETIME file_time;
   ULARGE_INTEGER ularge;
 
@@ -1794,4 +1797,16 @@ int uv_gettimeofday(uv_timeval_t* tv) {
   tv->tv_sec = (long) ((ularge.QuadPart - epoch) / 10000000L);
   tv->tv_usec = (long) (((ularge.QuadPart - epoch) % 10000000L) / 10);
   return 0;
+}
+
+int64_t uv_get_usec_since_epoch() {
+  FILETIME file_time;
+  ULARGE_INTEGER ularge;
+
+  GetSystemTimeAsFileTime(&file_time);
+  ularge.LowPart = file_time.dwLowDateTime;
+  ularge.HighPart = file_time.dwHighDateTime;
+  ularge.QuadPart -= epoch_diff;
+  /* GetSystemTimeAsFileTime returns value in 100*nsec resolution. */
+  return ularge.QuadPart / 10;
 }
