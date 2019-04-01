@@ -71,8 +71,10 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT(addr != NULL);
 
   ASSERT(memcmp("EXIT", rcvbuf->base, nread) == 0);
-  uv_close((uv_handle_t*) handle, close_cb);
-  uv_close((uv_handle_t*) &client, close_cb);
+  if (sv_recv_cb_called > 0) {
+    uv_close((uv_handle_t*) handle, close_cb);
+    uv_close((uv_handle_t*) &client, close_cb);
+  }
 
   sv_recv_cb_called++;
 }
@@ -104,14 +106,22 @@ TEST_IMPL(udp_try_send) {
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
   ASSERT(r == UV_EMSGSIZE);
 
+  buf = uv_buf_init(buffer, sizeof(buffer));
+  r = uv_udp_try_send_ex(&client, &buf, 1, (const struct sockaddr*) &addr, sizeof(struct sockaddr_in));
+  ASSERT(r == UV_EMSGSIZE);
+
   buf = uv_buf_init("EXIT", 4);
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
+  ASSERT(r == 4);
+
+  buf = uv_buf_init("EXIT", 4);
+  r = uv_udp_try_send_ex(&client, &buf, 1, (const struct sockaddr*) &addr, sizeof(struct sockaddr_in));
   ASSERT(r == 4);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   ASSERT(close_cb_called == 2);
-  ASSERT(sv_recv_cb_called == 1);
+  ASSERT(sv_recv_cb_called == 2);
 
   ASSERT(client.send_queue_size == 0);
   ASSERT(server.send_queue_size == 0);

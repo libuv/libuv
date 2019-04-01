@@ -81,9 +81,10 @@ static void cl_recv_cb(uv_udp_t* handle,
   ASSERT(nread == 4);
   ASSERT(!memcmp("PONG", buf->base, nread));
 
+  if (cl_recv_cb_called > 0) {
+    uv_close((uv_handle_t*) handle, close_cb);
+  }
   cl_recv_cb_called++;
-
-  uv_close((uv_handle_t*) handle, close_cb);
 }
 
 
@@ -94,8 +95,10 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
 
-  r = uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb);
-  ASSERT(r == 0);
+  if (cl_send_cb_called == 0) {
+    r = uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb);
+    ASSERT(r == 0);
+  }
 
   cl_send_cb_called++;
 }
@@ -106,7 +109,9 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
 
-  uv_close((uv_handle_t*) req->handle, close_cb);
+  if (sv_send_cb_called > 0) {
+    uv_close((uv_handle_t*) req->handle, close_cb);
+  }
   free(req);
 
   sv_send_cb_called++;
@@ -143,8 +148,10 @@ static void sv_recv_cb(uv_udp_t* handle,
     * anymore. That's problematic because the read buffer won't be returned
     * either... Not sure I like that but it's consistent with `uv_read_stop`.
     */
-  r = uv_udp_recv_stop(handle);
-  ASSERT(r == 0);
+  if (sv_recv_cb_called > 1) {
+    r = uv_udp_recv_stop(handle);
+    ASSERT(r == 0);
+  }
 
   req = malloc(sizeof *req);
   ASSERT(req != NULL);
@@ -160,6 +167,7 @@ static void sv_recv_cb(uv_udp_t* handle,
 TEST_IMPL(udp_send_and_recv) {
   struct sockaddr_in addr;
   uv_udp_send_t req;
+  uv_udp_send_t req_ex;
   uv_buf_t buf;
   int r;
 
@@ -190,6 +198,19 @@ TEST_IMPL(udp_send_and_recv) {
                   cl_send_cb);
   ASSERT(r == 0);
 
+  /* client sends "ping", expects "pong" */
+  buf = uv_buf_init("PING", 4);
+
+  r = uv_udp_send_ex(&req_ex,
+                  &client,
+                  &buf,
+                  1,
+                  (const struct sockaddr*) &addr,
+                  sizeof(struct sockaddr_in),
+                  cl_send_cb);
+  ASSERT(r == 0);
+
+
   ASSERT(close_cb_called == 0);
   ASSERT(cl_send_cb_called == 0);
   ASSERT(cl_recv_cb_called == 0);
@@ -198,10 +219,10 @@ TEST_IMPL(udp_send_and_recv) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(cl_send_cb_called == 1);
-  ASSERT(cl_recv_cb_called == 1);
-  ASSERT(sv_send_cb_called == 1);
-  ASSERT(sv_recv_cb_called == 1);
+  ASSERT(cl_send_cb_called == 2);
+  ASSERT(cl_recv_cb_called == 2);
+  ASSERT(sv_send_cb_called == 2);
+  ASSERT(sv_recv_cb_called == 2);
   ASSERT(close_cb_called == 2);
 
   ASSERT(client.send_queue_size == 0);
