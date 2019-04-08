@@ -1779,7 +1779,7 @@ error:
   return r;
 }
 
-int uv_gettimeofday(uv_timeval_t* tv) {
+int uv_gettimeofday(uv_timeval64_t* tv) {
   /* Based on https://doxygen.postgresql.org/gettimeofday_8c_source.html */
   const uint64_t epoch = (uint64_t) 116444736000000000ULL;
   FILETIME file_time;
@@ -1791,7 +1791,7 @@ int uv_gettimeofday(uv_timeval_t* tv) {
   GetSystemTimeAsFileTime(&file_time);
   ularge.LowPart = file_time.dwLowDateTime;
   ularge.HighPart = file_time.dwHighDateTime;
-  tv->tv_sec = (long) ((ularge.QuadPart - epoch) / 10000000L);
-  tv->tv_usec = (long) (((ularge.QuadPart - epoch) % 10000000L) / 10);
+  tv->tv_sec = (int64_t) ((ularge.QuadPart - epoch) / 10000000L);
+  tv->tv_usec = (int32_t) (((ularge.QuadPart - epoch) % 10000000L) / 10);
   return 0;
 }

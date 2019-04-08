@@ -1431,7 +1431,7 @@ int uv__getsockpeername(const uv_handle_t* handle,
   return 0;
 }
 
-int uv_gettimeofday(uv_timeval_t* tv) {
+int uv_gettimeofday(uv_timeval64_t* tv) {
   struct timeval time;
 
   if (tv == NULL)
@@ -1440,7 +1440,7 @@ int uv_gettimeofday(uv_timeval_t* tv) {
   if (gettimeofday(&time, NULL) != 0)
     return UV__ERR(errno);
 
-  tv->tv_sec = time.tv_sec;
-  tv->tv_usec = time.tv_usec;
+  tv->tv_sec = (int64_t) time.tv_sec;
+  tv->tv_usec = (int32_t) time.tv_usec;
   return 0;
 }
