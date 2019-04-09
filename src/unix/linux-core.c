@@ -899,13 +899,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address = *addresses;
 
     for (i = 0; i < (*count); i++) {
-      if (strcmp(address->name, ent->ifa_name) == 0) {
-        sll = (struct sockaddr_ll*)ent->ifa_addr;
-        memcpy(address->phys_addr, sll->sll_addr, sizeof(address->phys_addr));
-      } else {
-        /* memset(address->phys_addr, 0, sizeof(address->phys_addr)); */
-      }
-      address++;
+      size_t namelen = strlen(ent->ifa_name);
+      /* Alias interface share the same physical address */
+      if ((strncmp(address->name, ent->ifa_name, namelen) == 0) &&
+          ((address->name[namelen] == 0) || (address->name[namelen] == ':'))) {
+         sll = (struct sockaddr_ll*)ent->ifa_addr;
+         memcpy(address->phys_addr, sll->sll_addr, sizeof(address->phys_addr));
+       }      address++;
     }
   }
 
