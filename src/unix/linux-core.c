@@ -905,7 +905,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
           ((address->name[namelen] == 0) || (address->name[namelen] == ':'))) {
          sll = (struct sockaddr_ll*)ent->ifa_addr;
          memcpy(address->phys_addr, sll->sll_addr, sizeof(address->phys_addr));
-       }      address++;
+       }
+       address++;
     }
   }
 
