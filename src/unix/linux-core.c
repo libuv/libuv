@@ -903,7 +903,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
         sll = (struct sockaddr_ll*)ent->ifa_addr;
         memcpy(address->phys_addr, sll->sll_addr, sizeof(address->phys_addr));
       } else {
-        memset(address->phys_addr, 0, sizeof(address->phys_addr));
+        // memset(address->phys_addr, 0, sizeof(address->phys_addr));
       }
       address++;
     }
