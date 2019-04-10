@@ -578,3 +578,10 @@ API
     zero on success, and a non-zero error value otherwise.
 
     .. versionadded:: 1.25.0
+
+.. c:function:: int uv_gettimeofday(uv_timeval_t* tv)
+
+    Cross-platform implementation of :man:`gettimeofday(2)`. The timezone
+    argument to `gettimeofday()` is not supported, as it is considered obsolete.
+
+    .. versionadded:: 1.28.0
