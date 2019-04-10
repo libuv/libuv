@@ -1530,7 +1530,10 @@ static void fs__fchmod(uv_fs_t* req) {
 
   VERIFY_FD(fd, req);
 
-  handle = ReOpenFile(uv__get_osfhandle(fd), FILE_WRITE_ATTRIBUTES, 0, 0);
+  if (pReOpenFile == NULL) {
+    return;
+  }
+  handle = pReOpenFile(uv__get_osfhandle(fd), FILE_WRITE_ATTRIBUTES, 0, 0);
   if (handle == INVALID_HANDLE_VALUE) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     return;
@@ -1868,7 +1871,10 @@ static void fs__symlink(uv_fs_t* req) {
   else
     flags = uv__file_symlink_usermode_flag;
 
-  if (CreateSymbolicLinkW(new_pathw, pathw, flags)) {
+  if (pCreateSymbolicLinkW == NULL) {
+    return;
+  }
+  if (pCreateSymbolicLinkW(new_pathw, pathw, flags)) {
     SET_REQ_RESULT(req, 0);
     return;
   }
@@ -1925,7 +1931,10 @@ static ssize_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   WCHAR* w_realpath_ptr = NULL;
   WCHAR* w_realpath_buf;
 
-  w_realpath_len = GetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
+  if (pGetFinalPathNameByHandleW == NULL) {
+    return -1;
+  }
+  w_realpath_len = pGetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
   if (w_realpath_len == 0) {
     return -1;
   }
@@ -1937,7 +1946,7 @@ static ssize_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   }
   w_realpath_ptr = w_realpath_buf;
 
-  if (GetFinalPathNameByHandleW(
+  if (pGetFinalPathNameByHandleW(
           handle, w_realpath_ptr, w_realpath_len, VOLUME_NAME_DOS) == 0) {
     uv__free(w_realpath_buf);
     SetLastError(ERROR_INVALID_HANDLE);

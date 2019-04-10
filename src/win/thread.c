@@ -389,7 +389,10 @@ int uv_sem_trywait(uv_sem_t* sem) {
 
 
 int uv_cond_init(uv_cond_t* cond) {
-  InitializeConditionVariable(&cond->cond_var);
+  if (pInitializeConditionVariable == NULL) {
+    return -1;
+  }
+  pInitializeConditionVariable(&cond->cond_var);
   return 0;
 }
 
@@ -401,22 +404,34 @@ void uv_cond_destroy(uv_cond_t* cond) {
 
 
 void uv_cond_signal(uv_cond_t* cond) {
-  WakeConditionVariable(&cond->cond_var);
+  if (pWakeConditionVariable == NULL) {
+    return;
+  }
+  pWakeConditionVariable(&cond->cond_var);
 }
 
 
 void uv_cond_broadcast(uv_cond_t* cond) {
-  WakeAllConditionVariable(&cond->cond_var);
+  if (pWakeAllConditionVariable == NULL) {
+    return;
+  }
+  pWakeAllConditionVariable(&cond->cond_var);
 }
 
 
 void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
-  if (!SleepConditionVariableCS(&cond->cond_var, mutex, INFINITE))
+  if (pSleepConditionVariableCS == NULL) {
+    abort();
+  }
+  if (!pSleepConditionVariableCS(&cond->cond_var, mutex, INFINITE))
     abort();
 }
 
 int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
-  if (SleepConditionVariableCS(&cond->cond_var, mutex, (DWORD)(timeout / 1e6)))
+  if (pSleepConditionVariableCS == NULL) {
+    abort();
+  }
+  if (pSleepConditionVariableCS(&cond->cond_var, mutex, (DWORD)(timeout / 1e6)))
     return 0;
   if (GetLastError() != ERROR_TIMEOUT)
     abort();

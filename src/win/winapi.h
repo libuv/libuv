@@ -23,6 +23,7 @@
 #define UV_WIN_WINAPI_H_
 
 #include <windows.h>
+#include <iphlpapi.h>
 
 
 /*
@@ -4727,5 +4728,45 @@ extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotifi
 
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
+
+typedef  NETIO_STATUS(NETIOAPI_API_ *sConvertInterfaceIndexToLuid)(NET_IFINDEX InterfaceIndex, PNET_LUID InterfaceLuid);
+extern sConvertInterfaceIndexToLuid pConvertInterfaceIndexToLuid;
+
+typedef NETIO_STATUS(NETIOAPI_API_ *sConvertInterfaceLuidToNameW)(CONST NET_LUID *InterfaceLuid, PWSTR InterfaceName, SIZE_T Length);
+extern sConvertInterfaceLuidToNameW pConvertInterfaceLuidToNameW;
+
+typedef BOOL (WINAPI *sCancelSynchronousIo)(HANDLE hThread);
+extern sCancelSynchronousIo pCancelSynchronousIo;
+
+typedef BOOL(WINAPI *sCancelIoEx)(HANDLE hFile, LPOVERLAPPED lpOverlapped);
+extern sCancelIoEx pCancelIoEx;
+
+typedef DWORD (WINAPI *sGetFinalPathNameByHandleW)(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
+extern sGetFinalPathNameByHandleW pGetFinalPathNameByHandleW;
+
+typedef BOOLEAN (APIENTRY *sCreateSymbolicLinkW)(LPCWSTR lpSymlinkFileName, LPCWSTR lpTargetFileName, DWORD dwFlags);
+extern sCreateSymbolicLinkW pCreateSymbolicLinkW;
+
+typedef HANDLE (WINAPI *sReOpenFile)(HANDLE hOriginalFile, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwFlagsAndAttributes);
+extern sReOpenFile pReOpenFile;
+
+typedef BOOL(WINAPI *sSetFileCompletionNotificationModes)(HANDLE FileHandle, UCHAR Flags);
+extern sSetFileCompletionNotificationModes pSetFileCompletionNotificationModes;
+
+typedef VOID(WINAPI *sInitializeConditionVariable)(PCONDITION_VARIABLE ConditionVariable);
+extern sInitializeConditionVariable pInitializeConditionVariable;
+
+typedef VOID(WINAPI *sWakeConditionVariable)(PCONDITION_VARIABLE ConditionVariable);
+extern sWakeConditionVariable pWakeConditionVariable;
+
+typedef VOID(WINAPI *sWakeAllConditionVariable)(PCONDITION_VARIABLE ConditionVariable);
+extern sWakeAllConditionVariable pWakeAllConditionVariable;
+
+typedef BOOL(WINAPI *sSleepConditionVariableCS)(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
+extern sSleepConditionVariableCS pSleepConditionVariableCS;
+
+typedef LSTATUS(APIENTRY *sRegGetValueW)(HKEY hkey, LPCWSTR lpSubKey, LPCWSTR lpValue, DWORD dwFlags, LPDWORD pdwType, PVOID pvData, LPDWORD pcbData);
+extern sRegGetValueW pRegGetValueW;
+
 
 #endif /* UV_WIN_WINAPI_H_ */

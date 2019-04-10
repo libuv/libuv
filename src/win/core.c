@@ -444,7 +444,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
   timeout_time = loop->time + timeout;
 
   for (repeat = 0; ; repeat++) {
-    success = GetQueuedCompletionStatusEx(loop->iocp,
+    success = pGetQueuedCompletionStatusEx(loop->iocp,
                                           overlappeds,
                                           ARRAY_SIZE(overlappeds),
                                           &count,
