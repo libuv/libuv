@@ -65,6 +65,28 @@ Data types
 
     .. versionadded:: 1.16.0
 
+.. c:type:: uv_timeval_t
+
+    Data type for storing times.
+
+    ::
+
+        typedef struct {
+            long tv_sec;
+            long tv_usec;
+        } uv_timeval_t;
+
+.. c:type:: uv_timeval64_t
+
+    Alternative data type for storing times.
+
+    ::
+
+        typedef struct {
+            int64_t tv_sec;
+            int32_t tv_usec;
+        } uv_timeval64_t;
+
 .. c:type:: uv_rusage_t
 
     Data type for resource usage results.
