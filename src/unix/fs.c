@@ -1165,6 +1165,8 @@ static int uv__fs_statx(int fd,
   buf->st_ctim.tv_nsec = statxbuf.stx_ctime.tv_nsec;
   buf->st_birthtim.tv_sec = statxbuf.stx_btime.tv_sec;
   buf->st_birthtim.tv_nsec = statxbuf.stx_btime.tv_nsec;
+  buf->st_flags = 0;
+  buf->st_gen = 0;
 
   return 0;
 #else

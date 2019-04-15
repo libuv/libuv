@@ -1171,6 +1171,7 @@ TEST_IMPL(fs_fstat) {
   ASSERT(req.result == sizeof(test_buf));
   uv_fs_req_cleanup(&req);
 
+  memset(&req.statbuf, 0xaa, sizeof(uv_stat_t));
   r = uv_fs_fstat(NULL, &req, file, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
@@ -1257,6 +1258,8 @@ TEST_IMPL(fs_fstat) {
          s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
   ASSERT(s->st_birthtim.tv_nsec == 0 ||
          s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+  ASSERT(s->st_flags == 0);
+  ASSERT(s->st_gen == 0);
 #endif
 
   uv_fs_req_cleanup(&req);
