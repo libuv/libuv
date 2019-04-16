@@ -703,8 +703,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   return 0;
 
  error:
-  /* This is safe because the cpu_infos array is zeroed on allocation. */
   if (cpu_infos != NULL) {
+    /* This is safe because the cpu_infos array is zeroed on allocation. */
     for (i = 0; i < cpu_count; i++)
       uv__free(cpu_infos[i].model);
   }
