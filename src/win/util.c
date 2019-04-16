@@ -704,8 +704,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
  error:
   /* This is safe because the cpu_infos array is zeroed on allocation. */
-  for (i = 0; i < cpu_count; i++)
-    uv__free(cpu_infos[i].model);
+  if (cpu_infos != NULL) {
+    for (i = 0; i < cpu_count; i++)
+      uv__free(cpu_infos[i].model);
+  }
 
   uv__free(cpu_infos);
   uv__free(sppi);
