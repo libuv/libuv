@@ -80,6 +80,7 @@
         'test-pipe-close-stdout-read-stdin.c',
         'test-pipe-set-non-blocking.c',
         'test-pipe-set-fchmod.c',
+        'test-pipe-get-creds.c',
         'test-platform-output.c',
         'test-poll.c',
         'test-poll-close.c',

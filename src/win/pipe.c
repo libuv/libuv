@@ -2299,6 +2299,22 @@ int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
 }
 
 
+int uv_pipe_get_creds(const uv_pipe_t* handle, uv_pipe_creds_t *creds) {
+  BOOL r;
+  ULONG pid;
+
+  r = GetNamedPipeClientProcessId(handle->handle, &pid);
+  if (!r)
+    return uv_translate_sys_error(GetLastError());
+
+  creds->pid = pid;
+  creds->euid = -1;
+  creds->egid = -1;
+
+  return 0;
+}
+
+
 uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
   if (!handle->ipc)
     return UV_UNKNOWN_HANDLE;

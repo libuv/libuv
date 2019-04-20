@@ -17,6 +17,19 @@ Data types
 
     Pipe handle type.
 
+.. c:type:: uv_pipe_creds_t
+
+    Used to retrieve the process ID and effective user and group IDs
+    from a connected pipe stream.
+
+    ::
+
+        typedef struct {
+            uv_pid_t pid;
+            long euid;
+            long egid;
+        } uv_pipe_creds_t;
+
 
 Public members
 ^^^^^^^^^^^^^^
@@ -26,6 +39,26 @@ Public members
     Whether this pipe is suitable for handle passing between processes.
 
 .. seealso:: The :c:type:`uv_stream_t` members also apply.
+
+.. c:member:: uv_pid_t uv_pipe_creds_t.pid
+
+    The process ID (PID) belonging to the process that initiatied
+    the pipe connection.
+
+.. c:member:: long uv_pipe_creds_t.euid
+.. c:member:: long uv_pipe_creds_t.egid
+
+    The effective user ID (UID) and group ID (GID) under which the
+    connected pipe stream's process is running.
+
+    .. note::
+        The UID and GID may not be the user/group IDs that initially
+        executed the process. However, they should be considered the
+        user and group that the process cares to identify as when it
+        connects to the listening pipe server.
+
+        These values cannot be spoofed, so they can safely be used in
+        authentication or access control logic.
 
 
 API
@@ -113,3 +146,20 @@ API
     function is blocking.
 
     .. versionadded:: 1.16.0
+
+.. c:function:: int uv_pipe_get_creds(uv_pipe_t* handle, uv_pipe_creds_t* creds)
+
+    Retrieves the remote PID and effective UID/GID of a connected pipe.
+
+    On Windows, only the ``pid`` field of the credentials object is populated; ``euid``
+    and ``egid`` are set to ``-1``.
+
+    On BSD platforms (except for Darwin), only the ``euid`` and ``egid`` fields of the
+    credentials object are populated; ``pid`` is set to ``-1``.
+
+    .. note::
+        This information is considered secure, as it cannot be spoofed by the connecting
+        process. On non-Windows systems, the UID and GID can be used to safely enforce access
+        control to a listening pipe, for example.
+
+    .. versionadded:: 1.32.0

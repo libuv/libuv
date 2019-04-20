@@ -287,6 +287,67 @@ int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
 }
 
 
+int uv_pipe_get_creds(const uv_pipe_t* handle, uv_pipe_creds_t* creds) {
+  int r;
+  uv_os_fd_t os_fd;
+
+  r = uv_fileno((uv_handle_t*) handle, &os_fd);
+  if (r != 0)
+    return UV_EBADF;
+
+#if defined(__APPLE__) || defined(BSD)
+  {
+    /* https://stackoverflow.com/a/38207320 */
+    unsigned int euid;
+    unsigned int egid;
+
+#if defined(__APPLE__)
+    socklen_t pid_len;
+
+    pid_len = sizeof(creds->pid);
+    r = getsockopt(os_fd,
+                   SOCK_STREAM,
+                   LOCAL_PEERPID,
+                   &creds->pid,
+                   &pid_len);
+#else
+    creds->pid = -1;
+#endif
+
+    if (r < 0)
+      return UV__ERR(errno);
+
+    r = getpeereid(os_fd, &euid, &egid);
+    if (r < 0)
+      return UV__ERR(errno);
+
+    creds->euid = (long) euid;
+    creds->egid = (long) egid;
+
+    return 0;
+  }
+#else
+  {
+    /* https://stackoverflow.com/a/35827184/510036 */
+    struct ucred ucreds;
+    socklen_t len;
+
+    len = sizeof(ucreds);
+    r = getsockopt(os_fd, SOL_SOCKET, SO_PEERCRED, &ucreds, &len);
+
+    if (r == -1)
+      return UV__ERR(errno);
+
+    creds->pid = ucreds.pid;
+    creds->euid = ucreds.uid;
+    creds->egid = ucreds.gid;
+
+    return 0;
+  }
+#endif
+}
+
+
 void uv_pipe_pending_instances(uv_pipe_t* handle, int count) {
 }
 

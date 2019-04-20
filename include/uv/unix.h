@@ -39,6 +39,7 @@
 #if !defined(__MVS__)
 #include <semaphore.h>
 #include <sys/param.h> /* MAXHOSTNAMELEN on Linux and the BSDs */
+                       /* BSD on BSDs and Darwin */
 #endif
 #include <pthread.h>
 #include <signal.h>

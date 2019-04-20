@@ -238,6 +238,7 @@ typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_utsname_s uv_utsname_t;
 typedef struct uv_statfs_s uv_statfs_t;
+typedef struct uv_pipe_creds_s uv_pipe_creds_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL
@@ -719,6 +720,12 @@ struct uv_pipe_s {
   UV_PIPE_PRIVATE_FIELDS
 };
 
+struct uv_pipe_creds_s {
+  uv_pid_t pid;
+  long euid;
+  long egid;
+};
+
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
@@ -736,6 +743,8 @@ UV_EXTERN void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
 UV_EXTERN int uv_pipe_pending_count(uv_pipe_t* handle);
 UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
 UV_EXTERN int uv_pipe_chmod(uv_pipe_t* handle, int flags);
+UV_EXTERN int uv_pipe_get_creds(const uv_pipe_t* handle,
+                                uv_pipe_creds_t* credentials);
 
 
 struct uv_poll_s {
