@@ -85,10 +85,14 @@ static unsigned long read_cpufreq(unsigned int cpunum);
 int uv__platform_loop_init(uv_loop_t* loop) {
   int fd;
 
-  fd = epoll_create1(EPOLL_CLOEXEC);
+  /* It was reported that EPOLL_CLOEXEC is not defined on Android API < 21,
+   * a.k.a. Lollipop. Since EPOLL_CLOEXEC is an alias for O_CLOEXEC on all
+   * architectures, we just use that instead.
+   */
+  fd = epoll_create1(O_CLOEXEC);
 
   /* epoll_create1() can fail either because it's not implemented (old kernel)
-   * or because it doesn't understand the EPOLL_CLOEXEC flag.
+   * or because it doesn't understand the O_CLOEXEC flag.
    */
   if (fd == -1 && (errno == ENOSYS || errno == EINVAL)) {
     fd = epoll_create(256);
