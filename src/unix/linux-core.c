@@ -936,3 +936,75 @@ void uv__set_process_title(const char* title) {
   prctl(PR_SET_NAME, title);  /* Only copies first 16 characters. */
 #endif
 }
+
+
+static uint64_t uv__read_proc_meminfo(const char* what) {
+  unsigned long rc;
+  ssize_t n;
+  char* p;
+  int fd;
+  char buf[4096];  /* Large enough to hold all of /proc/meminfo. */
+
+  rc = 0;
+  fd = uv__open_cloexec("/proc/meminfo", O_RDONLY);
+
+  if (fd == -1)
+    return 0;
+
+  n = read(fd, buf, sizeof(buf) - 1);
+
+  if (n <= 0)
+    goto out;
+
+  buf[n] = '\0';
+  p = strstr(buf, what);
+
+  if (p == NULL)
+    goto out;
+
+  p += strlen(what);
+
+  if (1 != sscanf(p, "%lu kB", &rc))
+    goto out;
+
+  rc *= 1024;
+
+out:
+
+  if (uv__close_nocheckstdio(fd))
+    abort();
+
+  return rc;
+}
+
+
+uint64_t uv_get_free_memory(void) {
+  struct sysinfo info;
+  uint64_t rc;
+
+  rc = uv__read_proc_meminfo("MemFree:");
+
+  if (rc != 0)
+    return rc;
+
+  if (0 == sysinfo(&info))
+    return (uint64_t) info.freeram * info.mem_unit;
+
+  return 0;
+}
+
+
+uint64_t uv_get_total_memory(void) {
+  struct sysinfo info;
+  uint64_t rc;
+
+  rc = uv__read_proc_meminfo("MemTotal:");
+
+  if (rc != 0)
+    return rc;
+
+  if (0 == sysinfo(&info))
+    return (uint64_t) info.totalram * info.mem_unit;
+
+  return 0;
+}
