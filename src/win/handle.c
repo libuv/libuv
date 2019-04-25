@@ -72,6 +72,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
     return;
   }
 
+  handle->flags &= ~UV_HANDLE_AUTOCLOSE;
   handle->close_cb = cb;
 
   /* Handle-specific close actions */

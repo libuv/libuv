@@ -24,6 +24,8 @@
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (close_order)
+TEST_DECLARE   (autoclose)
+TEST_DECLARE   (autoclose_manual_close)
 TEST_DECLARE   (run_once)
 TEST_DECLARE   (run_nowait)
 TEST_DECLARE   (loop_alive)
@@ -479,6 +481,8 @@ TASK_LIST_START
   TEST_ENTRY  (callback_order)
 #endif
   TEST_ENTRY  (close_order)
+  TEST_ENTRY  (autoclose)
+  TEST_ENTRY  (autoclose_manual_close)
   TEST_ENTRY  (run_once)
   TEST_ENTRY  (run_nowait)
   TEST_ENTRY  (loop_alive)

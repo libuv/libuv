@@ -546,6 +546,22 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     }
 
     r = uv__loop_alive(loop);
+
+    if (r == 0 && !QUEUE_EMPTY(&loop->handle_queue)) {
+      QUEUE* q;
+      uv_handle_t* handle;
+
+      QUEUE_FOREACH(q, &loop->handle_queue) {
+        handle = QUEUE_DATA(q, uv_handle_t, handle_queue);
+
+        if ((handle->flags & UV_HANDLE_AUTOCLOSE) != 0 && handle->close_cb) {
+          uv_close(handle, handle->close_cb);
+        }
+      }
+
+      r = uv__loop_alive(loop);
+    }
+
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
       break;
   }

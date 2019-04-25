@@ -175,6 +175,17 @@ API
     Returns the size of the given handle type. Useful for FFI binding writers
     who don't want to know the structure layout.
 
+.. c:function:: void uv_autoclose(uv_handle_t* handle, uv_close_cb close_cb)
+
+    Un-reference the given handle and automatically close it if the loop's
+    active handle count reaches zero. This is useful for handles that need
+    to be cleaned up at the end of a loop's lifecycle, but are not mandatory
+    for the loop to remain alive.
+
+    See :ref:`refcount`.
+
+    .. versionadded:: 1.29.0
+
 
 Miscellaneous API functions
 ---------------------------

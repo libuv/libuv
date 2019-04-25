@@ -19,6 +19,7 @@
         'test-callback-order.c',
         'test-close-fd.c',
         'test-close-order.c',
+        'test-autoclose.c',
         'test-connect-unspecified.c',
         'test-connection-fail.c',
         'test-cwd-and-chdir.c',

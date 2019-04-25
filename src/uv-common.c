@@ -515,6 +515,11 @@ int uv_has_ref(const uv_handle_t* handle) {
 }
 
 
+void uv_autoclose(uv_handle_t* handle, uv_close_cb cb) {
+  uv__handle_autoclose(handle, cb);
+}
+
+
 void uv_stop(uv_loop_t* loop) {
   loop->stop_flag = 1;
 }

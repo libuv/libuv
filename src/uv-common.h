@@ -65,6 +65,7 @@ enum {
   /* Used by all handles. */
   UV_HANDLE_CLOSING                     = 0x00000001,
   UV_HANDLE_CLOSED                      = 0x00000002,
+  UV_HANDLE_AUTOCLOSE                   = 0x00800000,
   UV_HANDLE_ACTIVE                      = 0x00000004,
   UV_HANDLE_REF                         = 0x00000008,
   UV_HANDLE_INTERNAL                    = 0x00000010,
@@ -270,6 +271,14 @@ void uv__timer_close(uv_timer_t* handle);
     if (((h)->flags & UV_HANDLE_ACTIVE) != 0) uv__active_handle_rm(h);        \
   }                                                                           \
   while (0)
+
+#define uv__handle_autoclose(h, cb)                                           \
+  do {                                                                        \
+    uv__handle_unref(h);                                                      \
+    if (((h)->flags & UV_HANDLE_CLOSING) != 0) break;                         \
+    (h)->flags |= UV_HANDLE_AUTOCLOSE;                                        \
+    (h)->close_cb = cb;                                                       \
+  } while (0);
 
 #define uv__has_ref(h)                                                        \
   (((h)->flags & UV_HANDLE_REF) != 0)
