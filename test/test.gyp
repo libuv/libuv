@@ -108,6 +108,7 @@
         'test-tcp-bind6-error.c',
         'test-tcp-close.c',
         'test-tcp-close-accept.c',
+        'test-tcp-close-reset.c',
         'test-tcp-close-while-connecting.c',
         'test-tcp-create-socket-early.c',
         'test-tcp-connect-error-after-write.c',
