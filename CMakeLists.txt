@@ -128,6 +128,7 @@ set(uv_test_sources
     test/test-tcp-close-accept.c
     test/test-tcp-close-while-connecting.c
     test/test-tcp-close.c
+    test/test-tcp-close-reset.c
     test/test-tcp-connect-error-after-write.c
     test/test-tcp-connect-error.c
     test/test-tcp-connect-timeout.c
