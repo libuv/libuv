@@ -1011,3 +1011,42 @@ uint64_t uv_get_total_memory(void) {
 
   return 0;
 }
+
+
+static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
+  char filename[256];
+  uint64_t rc;
+  int fd;
+  ssize_t n;
+  char buf[32];  /* Large enough to hold an encoded uint64_t. */
+
+  snprintf(filename, 256, "/sys/fs/cgroup/%s/%s", cgroup, param);
+
+  rc = 0;
+  fd = uv__open_cloexec(filename, O_RDONLY);
+
+  if (fd < 0)
+    return 0;
+
+  n = read(fd, buf, sizeof(buf) - 1);
+
+  if (n > 0) {
+    buf[n] = '\0';
+    sscanf(buf, "%llu", &rc);
+  }
+
+  if (uv__close_nocheckstdio(fd))
+    abort();
+
+  return rc;
+}
+
+
+uint64_t uv_get_constrained_memory(void) {
+  /*
+   * This might return 0 if there was a problem getting the memory limit from
+   * cgroups. This is OK because a return value of 0 signifies that the memory
+   * limit is unknown.
+   */
+  return uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
+}
