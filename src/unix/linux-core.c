@@ -1011,3 +1011,50 @@ uint64_t uv_get_total_memory(void) {
 
   return 0;
 }
+
+
+static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
+  uint64_t rc;
+  ssize_t n;
+  int fd;
+  char filename[256];
+  char buf[32];  /* Large enough to hold an encoded uint64_t. */
+
+  sprintf(filename, "/sys/fs/cgroup/%s/%s", cgroup, param);
+
+  rc = 0;
+  fd = uv__open_cloexec(filename, O_RDONLY);
+
+  if (fd == -1)
+    return 0;
+
+  n = read(fd, buf, sizeof(buf) - 1);
+
+  if (n <= 0)
+    goto out;
+
+  buf[n] = '\0';
+
+  if (1 != sscanf(buf, "%llu", &rc))
+    goto out;
+
+out:
+
+  if (uv__close_nocheckstdio(fd))
+    abort();
+
+  return rc;
+}
+
+
+uint64_t uv_get_usable_memory(void) {
+  uint64_t rc;
+
+  rc = uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
+
+  if (rc != 0)
+    return rc;
+
+  /* Maximum value that could be stored in memory.limit_in_bytes. */
+  return 0x7FFFFFFFFFFFF000;
+}
