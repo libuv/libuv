@@ -1014,31 +1014,26 @@ uint64_t uv_get_total_memory(void) {
 
 
 static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
-  uint64_t rc;
-  ssize_t n;
-  int fd;
   char filename[256];
+  uint64_t rc;
+  int fd;
+  ssize_t n;
   char buf[32];  /* Large enough to hold an encoded uint64_t. */
 
-  sprintf(filename, "/sys/fs/cgroup/%s/%s", cgroup, param);
+  snprintf(filename, "/sys/fs/cgroup/%s/%s", cgroup, param);
 
   rc = 0;
   fd = uv__open_cloexec(filename, O_RDONLY);
 
-  if (fd == -1)
+  if (fd < 0)
     return 0;
 
   n = read(fd, buf, sizeof(buf) - 1);
 
-  if (n <= 0)
-    goto out;
-
-  buf[n] = '\0';
-
-  if (1 != sscanf(buf, "%llu", &rc))
-    goto out;
-
-out:
+  if (n > 0) {
+    buf[n] = '\0';
+    sscanf(buf, "%llu", &rc);
+  }
 
   if (uv__close_nocheckstdio(fd))
     abort();
@@ -1047,7 +1042,7 @@ out:
 }
 
 
-uint64_t uv_get_usable_memory(void) {
+uint64_t uv_get_constrained_memory(void) {
   uint64_t rc;
 
   rc = uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
@@ -1055,6 +1050,6 @@ uint64_t uv_get_usable_memory(void) {
   if (rc != 0)
     return rc;
 
-  /* Maximum value that could be stored in memory.limit_in_bytes. */
-  return 1LL << 63;
+  /* Usable memory is not constrained by cgroups. */
+  return 0;
 }
