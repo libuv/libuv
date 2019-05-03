@@ -1056,5 +1056,5 @@ uint64_t uv_get_usable_memory(void) {
     return rc;
 
   /* Maximum value that could be stored in memory.limit_in_bytes. */
-  return 0x7FFFFFFFFFFFF000;
+  return 1LL << 63;
 }

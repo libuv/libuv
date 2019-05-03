@@ -126,6 +126,11 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
+uint64_t uv_get_usable_memory(void) {
+  return 1LL << 63;
+}
+
+
 int uv_resident_set_memory(size_t* rss) {
   kvm_t *kd = NULL;
   struct kinfo_proc2 *kinfo = NULL;

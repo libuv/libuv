@@ -344,6 +344,11 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
+uint64_t uv_get_usable_memory(void) {
+  return 1LL << 63;
+}
+
+
 void uv_loadavg(double avg[3]) {
   perfstat_cpu_total_t ps_total;
   int result = perfstat_cpu_total(NULL, &ps_total, sizeof(ps_total), 1);

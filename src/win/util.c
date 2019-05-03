@@ -320,6 +320,11 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
+uint64_t uv_get_usable_memory(void) {
+  return 1LL << 63;
+}
+
+
 uv_pid_t uv_os_getpid(void) {
   return GetCurrentProcessId();
 }
