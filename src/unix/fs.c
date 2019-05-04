@@ -145,7 +145,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 static int uv__fs_close(int fd) {
   int rc;
 
-  rc = close(fd);
+  rc = uv__close_nocancel(fd);
   if (rc == -1)
     if (errno == EINTR || errno == EINPROGRESS)
       rc = 0;  /* The close is in progress, not an error. */
