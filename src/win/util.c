@@ -57,20 +57,27 @@
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
 
-/* The tick frequency of the high-resolution clock. */
-static uint64_t hrtime_frequency_ = 0;
+/* Interval (in seconds) of the high-resolution clock. */
+static double hrtime_interval_ = 0;
 
 
 /*
  * One-time intialization code for functionality defined in util.c.
  */
 void uv__util_init() {
+  LARGE_INTEGER perf_frequency;
+
   /* Initialize process title access mutex. */
   InitializeCriticalSection(&process_title_lock);
 
-  /* Retrieve high-resolution timer frequency. */
-  if (!QueryPerformanceFrequency((LARGE_INTEGER*) &hrtime_frequency_))
-    hrtime_frequency_ = 0;
+  /* Retrieve high-resolution timer frequency
+   * and precompute its reciprocal.
+   */
+  if (QueryPerformanceFrequency(&perf_frequency)) {
+    hrtime_interval_ = 1.0 / perf_frequency.QuadPart;
+  } else {
+    hrtime_interval_= 0;
+  }
 }
 
 
@@ -442,8 +449,8 @@ uint64_t uv_hrtime(void) {
 
   uv__once_init();
 
-  /* If the performance frequency is zero, there's no support. */
-  if (!hrtime_frequency_) {
+  /* If the performance interval is zero, there's no support. */
+  if (!hrtime_interval_) {
     /* uv__set_sys_error(loop, ERROR_NOT_SUPPORTED); */
     return 0;
   }
@@ -453,12 +460,11 @@ uint64_t uv_hrtime(void) {
     return 0;
   }
 
-  /* Because we have no guarantee about the order of magnitude of the */
-  /* performance counter frequency, and there may not be much headroom to */
-  /* multiply by NANOSEC without overflowing, we use 128-bit math instead. */
-  return ((uint64_t) counter.LowPart * NANOSEC / hrtime_frequency_) +
-         (((uint64_t) counter.HighPart * NANOSEC / hrtime_frequency_)
-         << 32);
+  /* Because we have no guarantee about the order of magnitude of the
+   * performance counter interval, integer math could cause this computation
+   * to overflow. Therefore we resort to floating point math.
+   */
+  return (uint64_t) ((double) counter.QuadPart * hrtime_interval_ * NANOSEC);
 }
 
 
