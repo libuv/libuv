@@ -1043,13 +1043,10 @@ static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  uint64_t rc;
-
-  rc = uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
-
-  if (rc != 0)
-    return rc;
-
-  /* Usable memory is not constrained by cgroups. */
-  return 0;
+  /*
+   * This might return 0 if there was a problem getting the memory limit from
+   * cgroups. This is OK because a return value of 0 signifies that the memory
+   * limit is unknown.
+   */
+  return uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
 }
