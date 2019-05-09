@@ -534,6 +534,14 @@ File open constants
 
     .. versionchanged:: 1.17.0 support is added for Windows.
 
+.. c:macro:: UV_FS_O_FILEMAP
+
+    Use a memory file mapping to access the file. When using this flag, the
+    file cannot be open multiple times concurrently.
+
+    .. note::
+        `UV_FS_O_FILEMAP` is only supported on Windows.
+
 .. c:macro:: UV_FS_O_NOATIME
 
     Do not update the file access time when the file is read.
