@@ -472,6 +472,8 @@ API
         This function currently only returns a non-zero value on Linux, based
         on cgroups if it is present.
 
+    .. versionadded:: 1.29.0
+
 .. c:function:: uint64_t uv_hrtime(void)
 
     Returns the current high-resolution real time. This is expressed in

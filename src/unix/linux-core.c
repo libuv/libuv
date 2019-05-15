@@ -1020,7 +1020,7 @@ static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
   ssize_t n;
   char buf[32];  /* Large enough to hold an encoded uint64_t. */
 
-  snprintf(filename, "/sys/fs/cgroup/%s/%s", cgroup, param);
+  snprintf(filename, 256, "/sys/fs/cgroup/%s/%s", cgroup, param);
 
   rc = 0;
   fd = uv__open_cloexec(filename, O_RDONLY);

@@ -27,7 +27,7 @@ TEST_IMPL(get_memory) {
   uint64_t total_mem = uv_get_total_memory();
   uint64_t constrained_mem = uv_get_constrained_memory();
 
-  printf("free_mem=%llu, total_mem=%llu, constrained_mem=$llu\n",
+  printf("free_mem=%llu, total_mem=%llu, constrained_mem=%llu\n",
          (unsigned long long) free_mem,
          (unsigned long long) total_mem,
          (unsigned long long) constrained_mem);
