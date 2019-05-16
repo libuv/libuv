@@ -27,8 +27,6 @@
 
 #include <stdlib.h>
 
-#define MAX_THREADPOOL_SIZE 128
-
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
@@ -196,8 +194,6 @@ static void init_threads(void) {
     nthreads = atoi(val);
   if (nthreads == 0)
     nthreads = 1;
-  if (nthreads > MAX_THREADPOOL_SIZE)
-    nthreads = MAX_THREADPOOL_SIZE;
 
   threads = default_threads;
   if (nthreads > ARRAY_SIZE(default_threads)) {
