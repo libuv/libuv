@@ -947,7 +947,8 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_t fs_req;
   uv_file srcfd;
   uv_file dstfd;
-  struct stat statsbuf;
+  struct stat src_statsbuf;
+  struct stat dst_statsbuf;
   int dst_flags;
   int result;
   int err;
@@ -965,7 +966,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     return srcfd;
 
   /* Get the source file's mode. */
-  if (fstat(srcfd, &statsbuf)) {
+  if (fstat(srcfd, &src_statsbuf)) {
     err = UV__ERR(errno);
     goto out;
   }
@@ -980,7 +981,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
                      &fs_req,
                      req->new_path,
                      dst_flags,
-                     statsbuf.st_mode,
+                     src_statsbuf.st_mode,
                      NULL);
   uv_fs_req_cleanup(&fs_req);
 
@@ -989,7 +990,19 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
-  if (fchmod(dstfd, statsbuf.st_mode) == -1) {
+  /* Get the destination file's mode. */
+  if (fstat(dstfd, &dst_statsbuf)) {
+    err = UV__ERR(errno);
+    goto out;
+  }
+
+  /* Check if srcfd and dstfd refer to the same file */
+  if (src_statsbuf.st_dev == dst_statsbuf.st_dev &&
+      src_statsbuf.st_ino == dst_statsbuf.st_ino) {
+    goto out;
+  }
+
+  if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
     goto out;
   }
@@ -1019,7 +1032,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   }
 #endif
 
-  bytes_to_send = statsbuf.st_size;
+  bytes_to_send = src_statsbuf.st_size;
   in_offset = 0;
   while (bytes_to_send != 0) {
     err = uv_fs_sendfile(NULL,
