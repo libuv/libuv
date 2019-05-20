@@ -963,7 +963,7 @@ TASK_LIST_START
   TEST_ENTRY  (strscpy)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
-  TEST_ENTRY  (threadpool_multiple_event_loops)
+  TEST_ENTRY_CUSTOM (threadpool_multiple_event_loops, 0, 0, 60000)
   TEST_ENTRY  (threadpool_cancel_getaddrinfo)
   TEST_ENTRY  (threadpool_cancel_getnameinfo)
   TEST_ENTRY  (threadpool_cancel_work)
