@@ -1,3 +1,14 @@
+2019.05.22, Version 1.29.1 (Stable)
+
+Changes since version 1.29.0:
+
+* unix: simplify uv/posix.h include logic (cjihrig)
+
+* test: increase test timeout (cjihrig)
+
+* linux: fix sscanf() overflows reading from /proc (Ben Noordhuis)
+
+
 2019.05.16, Version 1.29.0 (Stable), 43957efd92c167b352b4c948b617ca7afbee0ed1
 
 Changes since version 1.28.0:
