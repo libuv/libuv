@@ -526,8 +526,13 @@ int uv__close_nocancel(int fd) {
 #if defined(__APPLE__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
+#if defined(__LP64__)
   extern int close$NOCANCEL(int);
   return close$NOCANCEL(fd);
+#else
+  extern int close$NOCANCEL$UNIX2003(int);
+  return close$NOCANCEL$UNIX2003(fd);
+#endif
 #pragma GCC diagnostic pop
 #elif defined(__linux__)
   return syscall(SYS_close, fd);
