@@ -49,19 +49,9 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 #include <CoreFoundation/CFRunLoop.h>
 #include <CoreServices/CoreServices.h>
 
-/* These are macros to avoid "initializer element is not constant" errors
+/* Macro to avoid "initializer element is not constant" errors
  * with old versions of gcc.
  */
-#define kFSEventsModified (kFSEventStreamEventFlagItemFinderInfoMod |         \
-                           kFSEventStreamEventFlagItemModified |              \
-                           kFSEventStreamEventFlagItemInodeMetaMod |          \
-                           kFSEventStreamEventFlagItemChangeOwner |           \
-                           kFSEventStreamEventFlagItemXattrMod)
-
-#define kFSEventsRenamed  (kFSEventStreamEventFlagItemCreated |               \
-                           kFSEventStreamEventFlagItemRemoved |               \
-                           kFSEventStreamEventFlagItemRenamed)
-
 #define kFSEventsSystem   (kFSEventStreamEventFlagUserDropped |               \
                            kFSEventStreamEventFlagKernelDropped |             \
                            kFSEventStreamEventFlagEventIdsWrapped |           \
@@ -289,8 +279,6 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
             path--;
             len++;
           }
-          /* Created and Removed seem to be always set, but don't make sense */
-          flags &= ~kFSEventsRenamed;
         } else {
           /* Skip forward slash */
           path++;
@@ -311,12 +299,12 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
 
       memset(event, 0, sizeof(*event));
       memcpy(event->path, path, len + 1);
-      event->events = UV_RENAME;
+      event->events = UV_CHANGE;
 
-      if (0 == (flags & kFSEventsRenamed)) {
-        if (0 != (flags & kFSEventsModified) ||
-            0 == (flags & kFSEventStreamEventFlagItemIsDir))
-          event->events = UV_CHANGE;
+      if ((flags & kFSEventStreamEventFlagItemIsDir) ||
+          (flags & kFSEventStreamEventFlagItemRemoved) ||
+          (flags & kFSEventStreamEventFlagItemRenamed)) {
+        event->events = UV_RENAME;
       }
 
       QUEUE_INSERT_TAIL(&head, &event->member);

@@ -619,6 +619,65 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
   return 0;
 }
 
+static void file_remove_cb(uv_fs_event_t* handle,
+                           const char* path,
+                           int events,
+                           int status) {
+  fs_event_cb_called++;
+
+  ASSERT(0 == strcmp(path, "file1"));
+  /* TODO(bnoordhuis) Harmonize the behavior across platforms. Right now
+   * this test merely ensures the status quo doesn't regress.
+   */
+#ifdef __linux__
+  ASSERT(UV_CHANGE == events);
+#else
+  ASSERT(UV_RENAME == events);
+#endif
+  ASSERT(0 == status);
+
+  uv_close((uv_handle_t*) handle, NULL);
+}
+
+static void file_remove_next(uv_timer_t* handle) {
+  uv_close((uv_handle_t*) handle, NULL);
+  remove("watch_dir/file1");
+}
+
+static void file_remove_start(uv_timer_t* handle) {
+  uv_fs_event_t* watcher;
+  uv_loop_t* loop;
+
+  loop = handle->loop;
+  watcher = handle->data;
+
+  ASSERT(0 == uv_fs_event_init(loop, watcher));
+  ASSERT(0 == uv_fs_event_start(watcher, file_remove_cb, "watch_dir/file1", 0));
+  ASSERT(0 == uv_timer_start(handle, file_remove_next, 50, 0));
+}
+
+TEST_IMPL(fs_event_watch_file_remove) {
+  uv_fs_event_t watcher;
+  uv_timer_t timer;
+  uv_loop_t* loop;
+
+  remove("watch_dir/file1");
+  remove("watch_dir/");
+  create_dir("watch_dir");
+  create_file("watch_dir/file1");
+
+  loop = uv_default_loop();
+  timer.data = &watcher;
+
+  ASSERT(0 == uv_timer_init(loop, &timer));
+  ASSERT(0 == uv_timer_start(&timer, file_remove_start, 500, 0));
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT(1 == fs_event_cb_called);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 TEST_IMPL(fs_event_watch_file_twice) {
 #if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);

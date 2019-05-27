@@ -333,6 +333,7 @@ TEST_DECLARE   (fs_event_watch_dir_short_path)
 #endif
 TEST_DECLARE   (fs_event_watch_file)
 TEST_DECLARE   (fs_event_watch_file_exact_path)
+TEST_DECLARE   (fs_event_watch_file_remove)
 TEST_DECLARE   (fs_event_watch_file_twice)
 TEST_DECLARE   (fs_event_watch_file_current_dir)
 #ifdef _WIN32
@@ -920,6 +921,7 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (fs_event_watch_file)
   TEST_ENTRY  (fs_event_watch_file_exact_path)
+  TEST_ENTRY  (fs_event_watch_file_remove)
   TEST_ENTRY  (fs_event_watch_file_twice)
   TEST_ENTRY  (fs_event_watch_file_current_dir)
 #ifdef _WIN32
