@@ -62,6 +62,15 @@ static char fs_event_filename[1024];
 static int timer_cb_touch_called;
 static int timer_cb_exact_called;
 
+static void expect_filename(const char* path, const char* expected) {
+#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+  ASSERT(0 == strcmp(path, expected));
+#else
+  if (path != NULL)
+    ASSERT(0 == strcmp(path, expected));
+#endif
+}
+
 static void fs_event_fail(uv_fs_event_t* handle,
                           const char* filename,
                           int events,
@@ -130,11 +139,7 @@ static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   ASSERT(handle == &fs_event);
   ASSERT(status == 0);
   ASSERT(events == UV_CHANGE);
-  #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
-  ASSERT(strcmp(filename, "file1") == 0);
-  #else
-  ASSERT(filename == NULL || strcmp(filename, "file1") == 0);
-  #endif
+  expect_filename(filename, "file1");
   ASSERT(0 == uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
 }
@@ -312,11 +317,7 @@ static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   ASSERT(handle == &fs_event);
   ASSERT(status == 0);
   ASSERT(events == UV_CHANGE);
-  #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
-  ASSERT(strcmp(filename, "file2") == 0);
-  #else
-  ASSERT(filename == NULL || strcmp(filename, "file2") == 0);
-  #endif
+  expect_filename(filename, "file2");
   ASSERT(0 == uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
 }
@@ -339,11 +340,7 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
   ASSERT(handle == &fs_event);
   ASSERT(status == 0);
   ASSERT(events == UV_CHANGE);
-  #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
-  ASSERT(strcmp(filename, "watch_file") == 0);
-  #else
-  ASSERT(filename == NULL || strcmp(filename, "watch_file") == 0);
-  #endif
+  expect_filename(filename, "watch_file");
 
   /* Regression test for SunOS: touch should generate just one event. */
   {
@@ -625,7 +622,7 @@ static void file_remove_cb(uv_fs_event_t* handle,
                            int status) {
   fs_event_cb_called++;
 
-  ASSERT(0 == strcmp(path, "file1"));
+  expect_filename(path, "file1");
   /* TODO(bnoordhuis) Harmonize the behavior across platforms. Right now
    * this test merely ensures the status quo doesn't regress.
    */
