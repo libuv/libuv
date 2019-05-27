@@ -626,7 +626,7 @@ static void file_remove_cb(uv_fs_event_t* handle,
   /* TODO(bnoordhuis) Harmonize the behavior across platforms. Right now
    * this test merely ensures the status quo doesn't regress.
    */
-#ifdef __linux__
+#if defined(_AIX) || defined(__linux__)
   ASSERT(UV_CHANGE == events);
 #else
   ASSERT(UV_RENAME == events);
@@ -657,6 +657,10 @@ TEST_IMPL(fs_event_watch_file_remove) {
   uv_fs_event_t watcher;
   uv_timer_t timer;
   uv_loop_t* loop;
+
+#if defined(__MVS__)
+  RETURN_SKIP("test does not work on this OS");
+#endif
 
   remove("watch_dir/file1");
   remove("watch_dir/");
