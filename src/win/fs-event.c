@@ -213,11 +213,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
         uv__free(long_path);
         long_path = NULL;
       }
-    }
 
-    if (long_path) {
-      uv__free(pathw);
-      pathw = long_path;
+      if (long_path) {
+        uv__free(pathw);
+        pathw = long_path;
+      }
     }
 
     dir_to_watch = pathw;
@@ -228,8 +228,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
      */
 
     /* Convert to short path. */
-    short_path = short_path_buffer;
-    if (!GetShortPathNameW(pathw, short_path, ARRAY_SIZE(short_path))) {
+    if (GetShortPathNameW(pathw,
+                          short_path_buffer,
+                          ARRAY_SIZE(short_path_buffer))) {
+      short_path = short_path_buffer;
+    } else {
       short_path = NULL;
     }
 

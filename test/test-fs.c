@@ -31,7 +31,8 @@
 
 /* FIXME we shouldn't need to branch in this file */
 #if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(_AIX) || defined(__MVS__)
+    defined(__APPLE__) || defined(__sun) || \
+    defined(_AIX) || defined(__MVS__)
 #include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <winioctl.h>
@@ -173,7 +174,7 @@ int uv_test_lseek(int fd, off_t offset, int whence) {
 static unsigned REPARSE_TAG = 0x9913;
 static GUID REPARSE_GUID = {
   0x1bf6205f, 0x46ae, 0x4527,
-  0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 };
+  { 0xb1, 0x0c, 0xc5, 0x09, 0xb7, 0x55, 0x22, 0x80 }};
 #endif
 
 static void check_permission(const char* filename, unsigned int mode) {
@@ -621,6 +622,15 @@ static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
   ASSERT(req->fs_type == UV_FS_SENDFILE);
   ASSERT(req->result == 65546);
+  sendfile_cb_count++;
+  uv_fs_req_cleanup(req);
+}
+
+
+static void sendfile_nodata_cb(uv_fs_t* req) {
+  ASSERT(req == &sendfile_req);
+  ASSERT(req->fs_type == UV_FS_SENDFILE);
+  ASSERT(req->result == 0);
   sendfile_cb_count++;
   uv_fs_req_cleanup(req);
 }
@@ -1096,7 +1106,7 @@ TEST_IMPL(fs_async_dir) {
 }
 
 
-TEST_IMPL(fs_async_sendfile) {
+static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   int f, r;
   struct stat s1, s2;
   uv_os_fd_t file1, file2;
@@ -1110,14 +1120,8 @@ TEST_IMPL(fs_async_sendfile) {
   f = open("test_file", O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR);
   ASSERT(f != -1);
 
-  r = write(f, "begin\n", 6);
-  ASSERT(r == 6);
-
-  r = lseek(f, 65536, SEEK_CUR);
-  ASSERT(r == 65542);
-
-  r = write(f, "end\n", 4);
-  ASSERT(r != -1);
+  if (setup != NULL)
+    setup(f);
 
   r = close(f);
   ASSERT(r == 0);
@@ -1137,7 +1141,7 @@ TEST_IMPL(fs_async_sendfile) {
   uv_fs_req_cleanup(&open_req2);
 
   r = uv_fs_sendfile(loop, &sendfile_req, file2, file1,
-      0, 131072, sendfile_cb);
+      0, 131072, cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
 
@@ -1150,9 +1154,10 @@ TEST_IMPL(fs_async_sendfile) {
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
-  stat("test_file", &s1);
-  stat("test_file2", &s2);
-  ASSERT(65546 == s2.st_size && s1.st_size == s2.st_size);
+  ASSERT(0 == stat("test_file", &s1));
+  ASSERT(0 == stat("test_file2", &s2));
+  ASSERT(s1.st_size == s2.st_size);
+  ASSERT(s2.st_size == expected_size);
 
   /* Cleanup. */
   unlink("test_file");
@@ -1160,6 +1165,23 @@ TEST_IMPL(fs_async_sendfile) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+}
+
+
+static void sendfile_setup(int f) {
+  ASSERT(6 == write(f, "begin\n", 6));
+  ASSERT(65542 == lseek(f, 65536, SEEK_CUR));
+  ASSERT(4 == write(f, "end\n", 4));
+}
+
+
+TEST_IMPL(fs_async_sendfile) {
+  return test_sendfile(sendfile_setup, sendfile_cb, 65546);
+}
+
+
+TEST_IMPL(fs_async_sendfile_nodata) {
+  return test_sendfile(NULL, sendfile_nodata_cb, 0);
 }
 
 
@@ -1221,6 +1243,7 @@ TEST_IMPL(fs_fstat) {
   ASSERT(req.result == sizeof(test_buf));
   uv_fs_req_cleanup(&req);
 
+  memset(&req.statbuf, 0xaa, sizeof(req.statbuf));
   r = uv_fs_fstat(NULL, &req, file, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
@@ -1297,6 +1320,18 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_ctim.tv_sec == t.st_ctime);
   ASSERT(s->st_ctim.tv_nsec == 0);
 #endif
+#endif
+
+#if defined(__linux__)
+  /* If statx() is supported, the birth time should be equal to the change time
+   * because we just created the file. On older kernels, it's set to zero.
+   */
+  ASSERT(s->st_birthtim.tv_sec == 0 ||
+         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == 0 ||
+         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+  ASSERT(s->st_flags == 0);
+  ASSERT(s->st_gen == 0);
 #endif
 
   uv_fs_req_cleanup(&req);
@@ -2459,9 +2494,6 @@ TEST_IMPL(fs_stat_root) {
 
 
 TEST_IMPL(fs_futime) {
-#if defined(_AIX) && !defined(_AIX71)
-  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
-#else
   utime_check_t checkme;
   const char path[] = "test_file";
   double atime;
@@ -2469,6 +2501,9 @@ TEST_IMPL(fs_futime) {
   uv_os_fd_t file;
   uv_fs_t req;
   int r;
+#if defined(_AIX) && !defined(_AIX71)
+  RETURN_SKIP("futime is not implemented for AIX versions below 7.1");
+#endif
 
   /* Setup. */
   loop = uv_default_loop();
@@ -2536,7 +2571,6 @@ TEST_IMPL(fs_futime) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-#endif
 }
 
 
@@ -3764,6 +3798,53 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
   ASSERT(r == 0);
   ASSERT(close_req.result == 0);
   uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
+
+#ifdef _WIN32
+TEST_IMPL(fs_file_flag_no_buffering) {
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  ASSERT(UV_FS_O_APPEND > 0);
+  ASSERT(UV_FS_O_CREAT > 0);
+  ASSERT(UV_FS_O_DIRECT > 0);
+  ASSERT(UV_FS_O_RDWR > 0);
+
+  /* FILE_APPEND_DATA must be excluded from FILE_GENERIC_WRITE: */
+  r = uv_fs_open(NULL,
+                 &open_req1,
+                 "test_file",
+                 UV_FS_O_RDWR | UV_FS_O_CREAT | UV_FS_O_DIRECT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r >= 0);
+  ASSERT(open_req1.result >= 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+  ASSERT(r == 0);
+  ASSERT(close_req.result == 0);
+  uv_fs_req_cleanup(&close_req);
+
+  /* FILE_APPEND_DATA and FILE_FLAG_NO_BUFFERING are mutually exclusive: */
+  r = uv_fs_open(NULL,
+                 &open_req2,
+                 "test_file",
+                 UV_FS_O_APPEND | UV_FS_O_DIRECT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT(r == UV_EINVAL);
+  ASSERT(open_req2.result == UV_EINVAL);
+  uv_fs_req_cleanup(&open_req2);
 
   /* Cleanup */
   unlink("test_file");

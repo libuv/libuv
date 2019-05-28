@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -22,19 +22,18 @@
 #include "uv.h"
 #include "task.h"
 
-TEST_IMPL(get_memory) {
-  uint64_t free_mem = uv_get_free_memory();
-  uint64_t total_mem = uv_get_total_memory();
-  uint64_t constrained_mem = uv_get_constrained_memory();
+TEST_IMPL(gettimeofday) {
+  uv_timeval64_t tv;
+  int r;
 
-  printf("free_mem=%llu, total_mem=%llu, constrained_mem=%llu\n",
-         (unsigned long long) free_mem,
-         (unsigned long long) total_mem,
-         (unsigned long long) constrained_mem);
+  tv.tv_sec = 0;
+  r = uv_gettimeofday(&tv);
+  ASSERT(r == 0);
+  ASSERT(tv.tv_sec != 0);
 
-  ASSERT(free_mem > 0);
-  ASSERT(total_mem > 0);
-  ASSERT(total_mem > free_mem);
+  /* Test invalid input. */
+  r = uv_gettimeofday(NULL);
+  ASSERT(r == UV_EINVAL);
 
   return 0;
 }

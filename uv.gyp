@@ -75,6 +75,8 @@
         'src/inet.c',
         'src/loop-watcher.c',
         'src/queue.h',
+        'src/strscpy.c',
+        'src/strscpy.h',
         'src/threadpool.c',
         'src/timer.c',
         'src/uv-data-getter-setters.c',
@@ -237,7 +239,6 @@
             'src/unix/linux-syscalls.h',
             'src/unix/procfs-exepath.c',
             'src/unix/sysinfo-loadavg.c',
-            'src/unix/sysinfo-memory.c',
           ],
           'link_settings': {
             'libraries': [ '-ldl', '-lrt' ],

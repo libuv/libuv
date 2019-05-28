@@ -73,4 +73,6 @@ AS_CASE([$host_os], [kfreebsd*], [
 ])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])
+AC_CONFIG_LINKS([test/fixtures/empty_file:test/fixtures/empty_file])
+AC_CONFIG_LINKS([test/fixtures/load_error.node:test/fixtures/load_error.node])
 AC_OUTPUT

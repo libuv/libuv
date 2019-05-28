@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -21,20 +21,49 @@
 
 #include "uv.h"
 #include "task.h"
+#include <string.h>
 
-TEST_IMPL(get_memory) {
-  uint64_t free_mem = uv_get_free_memory();
-  uint64_t total_mem = uv_get_total_memory();
-  uint64_t constrained_mem = uv_get_constrained_memory();
+#ifndef _WIN32
+# include <sys/utsname.h>
+#endif
 
-  printf("free_mem=%llu, total_mem=%llu, constrained_mem=%llu\n",
-         (unsigned long long) free_mem,
-         (unsigned long long) total_mem,
-         (unsigned long long) constrained_mem);
+TEST_IMPL(uname) {
+#ifndef _WIN32
+  struct utsname buf;
+#endif
+#ifdef _AIX
+  char temp[256];
+#endif
+  uv_utsname_t buffer;
+  int r;
 
-  ASSERT(free_mem > 0);
-  ASSERT(total_mem > 0);
-  ASSERT(total_mem > free_mem);
+  /* Verify that NULL is handled properly. */
+  r = uv_os_uname(NULL);
+  ASSERT(r == UV_EINVAL);
+
+  /* Verify the happy path. */
+  r = uv_os_uname(&buffer);
+  ASSERT(r == 0);
+
+#ifndef _WIN32
+  ASSERT(uname(&buf) != -1);
+  ASSERT(strcmp(buffer.sysname, buf.sysname) == 0);
+  ASSERT(strcmp(buffer.version, buf.version) == 0);
+
+# ifdef _AIX
+  snprintf(temp, sizeof(temp), "%s.%s", buf.version, buf.release);
+  ASSERT(strcmp(buffer.release, temp) == 0);
+# else
+  ASSERT(strcmp(buffer.release, buf.release) == 0);
+# endif /* _AIX */
+
+# if defined(_AIX) || defined(__PASE__)
+  ASSERT(strcmp(buffer.machine, "ppc64") == 0);
+# else
+  ASSERT(strcmp(buffer.machine, buf.machine) == 0);
+# endif /* defined(_AIX) || defined(__PASE__) */
+
+#endif /* _WIN32 */
 
   return 0;
 }

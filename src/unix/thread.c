@@ -55,8 +55,10 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
-/* Note: guard clauses should match uv_barrier_t's in include/uv/uv-unix.h. */
-#if defined(_AIX) || !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+/* Note: guard clauses should match uv_barrier_t's in include/uv/unix.h. */
+#if defined(_AIX) || \
+    defined(__OpenBSD__) || \
+    !defined(PTHREAD_BARRIER_SERIAL_THREAD)
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   int rc;
 
@@ -183,13 +185,36 @@ static size_t thread_stack_size(void) {
 
 
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
+  uv_thread_options_t params;
+  params.flags = UV_THREAD_NO_FLAGS;
+  return uv_thread_create_ex(tid, &params, entry, arg);
+}
+
+int uv_thread_create_ex(uv_thread_t* tid,
+                        const uv_thread_options_t* params,
+                        void (*entry)(void *arg),
+                        void *arg) {
   int err;
-  size_t stack_size;
   pthread_attr_t* attr;
   pthread_attr_t attr_storage;
+  size_t pagesize;
+  size_t stack_size;
+
+  stack_size =
+      params->flags & UV_THREAD_HAS_STACK_SIZE ? params->stack_size : 0;
 
   attr = NULL;
-  stack_size = thread_stack_size();
+  if (stack_size == 0) {
+    stack_size = thread_stack_size();
+  } else {
+    pagesize = (size_t)getpagesize();
+    /* Round up to the nearest page boundary. */
+    stack_size = (stack_size + pagesize - 1) &~ (pagesize - 1);
+#ifdef PTHREAD_STACK_MIN
+    if (stack_size < PTHREAD_STACK_MIN)
+      stack_size = PTHREAD_STACK_MIN;
+#endif
+  }
 
   if (stack_size > 0) {
     attr = &attr_storage;
@@ -845,7 +870,9 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
     return UV_ETIMEDOUT;
 
   abort();
+#ifndef __SUNPRO_C
   return UV_EINVAL;  /* Satisfy the compiler. */
+#endif
 }
 
 

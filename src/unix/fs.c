@@ -48,7 +48,7 @@
 
 #if defined(__DragonFly__)        ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel_)    ||                                      \
+    defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # define HAVE_PREADV 1
@@ -61,7 +61,6 @@
 #endif
 
 #if defined(__APPLE__)
-# include <copyfile.h>
 # include <sys/attr.h>
 
 static void uv__prepare_setattrlist_args(uv_fs_t* req,
@@ -112,6 +111,10 @@ static void uv__prepare_setattrlist_args(uv_fs_t* req,
 
 #if defined(_AIX) && !defined(_AIX71)
 # include <utime.h>
+#endif
+
+#if defined(_AIX) && _XOPEN_SOURCE <= 600
+extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 #endif
 
 #define INIT(subtype)                                                         \
@@ -202,6 +205,18 @@ static void uv__prepare_setattrlist_args(uv_fs_t* req,
   while (0)
 
 
+static int uv__fs_close(int fd) {
+  int rc;
+
+  rc = uv__close_nocancel(fd);
+  if (rc == -1)
+    if (errno == EINTR || errno == EINPROGRESS)
+      rc = 0;  /* The close is in progress, not an error. */
+
+  return rc;
+}
+
+
 static ssize_t uv__fs_fsync(uv_fs_t* req) {
 #if defined(__APPLE__)
   /* Apple's fdatasync and fsync explicitly do NOT flush the drive write cache
@@ -214,7 +229,7 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
   int r;
 
   r = fcntl(req->file, F_FULLFSYNC);
-  if (r != 0 && errno == ENOTTY)
+  if (r != 0)
     r = fsync(req->file);
   return r;
 #else
@@ -383,6 +398,18 @@ done:
   req->bufs = NULL;
   req->nbufs = 0;
 
+#ifdef __PASE__
+  /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
+  if (result == -1 && errno == EOPNOTSUPP) {
+    struct stat buf;
+    ssize_t rc;
+    rc = fstat(req->file, &buf);
+    if (rc == 0 && S_ISDIR(buf.st_mode)) {
+      errno = EISDIR;
+    }
+  }
+#endif
+
   return result;
 }
 
@@ -398,7 +425,7 @@ static int uv__fs_scandir_sort(const uv__dirent_t** a, const uv__dirent_t** b) {
 
 
 static ssize_t uv__fs_scandir(uv_fs_t* req) {
-  uv__dirent_t **dents;
+  uv__dirent_t** dents;
   int n;
 
   dents = NULL;
@@ -420,6 +447,87 @@ static ssize_t uv__fs_scandir(uv_fs_t* req) {
   req->ptr = dents;
 
   return n;
+}
+
+static int uv__fs_opendir(uv_fs_t* req) {
+  uv_dir_t* dir;
+
+  dir = uv__malloc(sizeof(*dir));
+  if (dir == NULL)
+    goto error;
+
+  dir->dir = opendir(req->path);
+  if (dir->dir == NULL)
+    goto error;
+
+  req->ptr = dir;
+  return 0;
+
+error:
+  uv__free(dir);
+  req->ptr = NULL;
+  return -1;
+}
+
+static int uv__fs_readdir(uv_fs_t* req) {
+  uv_dir_t* dir;
+  uv_dirent_t* dirent;
+  struct dirent* res;
+  unsigned int dirent_idx;
+  unsigned int i;
+
+  dir = req->ptr;
+  dirent_idx = 0;
+
+  while (dirent_idx < dir->nentries) {
+    /* readdir() returns NULL on end of directory, as well as on error. errno
+       is used to differentiate between the two conditions. */
+    errno = 0;
+    res = readdir(dir->dir);
+
+    if (res == NULL) {
+      if (errno != 0)
+        goto error;
+      break;
+    }
+
+    if (strcmp(res->d_name, ".") == 0 || strcmp(res->d_name, "..") == 0)
+      continue;
+
+    dirent = &dir->dirents[dirent_idx];
+    dirent->name = uv__strdup(res->d_name);
+
+    if (dirent->name == NULL)
+      goto error;
+
+    dirent->type = uv__fs_get_dirent_type(res);
+    ++dirent_idx;
+  }
+
+  return dirent_idx;
+
+error:
+  for (i = 0; i < dirent_idx; ++i) {
+    uv__free((char*) dir->dirents[i].name);
+    dir->dirents[i].name = NULL;
+  }
+
+  return -1;
+}
+
+static int uv__fs_closedir(uv_fs_t* req) {
+  uv_dir_t* dir;
+
+  dir = req->ptr;
+
+  if (dir->dir != NULL) {
+    closedir(dir->dir);
+    dir->dir = NULL;
+  }
+
+  uv__free(req->ptr);
+  req->ptr = NULL;
+  return 0;
 }
 
 #if defined(_POSIX_PATH_MAX)
@@ -793,7 +901,7 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   atr.att_atimechg = 1;
   atr.att_mtime = req->mtime;
   atr.att_atime = req->atime;
-  return __lchattr(req->path, &atr, sizeof(atr));
+  return __lchattr((char*) req->path, &atr, sizeof(atr));
 #else
   errno = ENOSYS;
   return -1;
@@ -862,30 +970,6 @@ done:
 }
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
-#if defined(__APPLE__) && !TARGET_OS_IPHONE
-  /* On macOS, use the native copyfile(3). */
-  copyfile_flags_t flags;
-
-  flags = COPYFILE_ALL;
-
-  if (req->flags & UV_FS_COPYFILE_EXCL)
-    flags |= COPYFILE_EXCL;
-
-#ifdef COPYFILE_CLONE
-  if (req->flags & UV_FS_COPYFILE_FICLONE)
-    flags |= COPYFILE_CLONE;
-#endif
-
-  if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-#ifdef COPYFILE_CLONE_FORCE
-    flags |= COPYFILE_CLONE_FORCE;
-#else
-    return UV_ENOSYS;
-#endif
-  }
-
-  return copyfile(req->path, req->new_path, NULL, flags);
-#else
   uv_fs_t fs_req;
   uv_os_fd_t srcfd;
   uv_os_fd_t dstfd;
@@ -1014,7 +1098,6 @@ out:
 
   errno = UV__ERR(result);
   return -1;
-#endif
 }
 
 static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
@@ -1094,9 +1177,83 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
 }
 
 
+static int uv__fs_statx(int fd,
+                        const char* path,
+                        int is_fstat,
+                        int is_lstat,
+                        uv_stat_t* buf) {
+  STATIC_ASSERT(UV_ENOSYS != -1);
+#ifdef __linux__
+  static int no_statx;
+  struct uv__statx statxbuf;
+  int dirfd;
+  int flags;
+  int mode;
+  int rc;
+
+  if (no_statx)
+    return UV_ENOSYS;
+
+  dirfd = AT_FDCWD;
+  flags = 0; /* AT_STATX_SYNC_AS_STAT */
+  mode = 0xFFF; /* STATX_BASIC_STATS + STATX_BTIME */
+
+  if (is_fstat) {
+    dirfd = fd;
+    flags |= 0x1000; /* AT_EMPTY_PATH */
+  }
+
+  if (is_lstat)
+    flags |= AT_SYMLINK_NOFOLLOW;
+
+  rc = uv__statx(dirfd, path, flags, mode, &statxbuf);
+
+  if (rc == -1) {
+    /* EPERM happens when a seccomp filter rejects the system call.
+     * Has been observed with libseccomp < 2.3.3 and docker < 18.04.
+     */
+    if (errno != EINVAL && errno != EPERM && errno != ENOSYS)
+      return -1;
+
+    no_statx = 1;
+    return UV_ENOSYS;
+  }
+
+  buf->st_dev = 256 * statxbuf.stx_dev_major + statxbuf.stx_dev_minor;
+  buf->st_mode = statxbuf.stx_mode;
+  buf->st_nlink = statxbuf.stx_nlink;
+  buf->st_uid = statxbuf.stx_uid;
+  buf->st_gid = statxbuf.stx_gid;
+  buf->st_rdev = statxbuf.stx_rdev_major;
+  buf->st_ino = statxbuf.stx_ino;
+  buf->st_size = statxbuf.stx_size;
+  buf->st_blksize = statxbuf.stx_blksize;
+  buf->st_blocks = statxbuf.stx_blocks;
+  buf->st_atim.tv_sec = statxbuf.stx_atime.tv_sec;
+  buf->st_atim.tv_nsec = statxbuf.stx_atime.tv_nsec;
+  buf->st_mtim.tv_sec = statxbuf.stx_mtime.tv_sec;
+  buf->st_mtim.tv_nsec = statxbuf.stx_mtime.tv_nsec;
+  buf->st_ctim.tv_sec = statxbuf.stx_ctime.tv_sec;
+  buf->st_ctim.tv_nsec = statxbuf.stx_ctime.tv_nsec;
+  buf->st_birthtim.tv_sec = statxbuf.stx_btime.tv_sec;
+  buf->st_birthtim.tv_nsec = statxbuf.stx_btime.tv_nsec;
+  buf->st_flags = 0;
+  buf->st_gen = 0;
+
+  return 0;
+#else
+  return UV_ENOSYS;
+#endif /* __linux__ */
+}
+
+
 static int uv__fs_stat(const char *path, uv_stat_t *buf) {
   struct stat pbuf;
   int ret;
+
+  ret = uv__fs_statx(-1, path, /* is_fstat */ 0, /* is_lstat */ 0, buf);
+  if (ret != UV_ENOSYS)
+    return ret;
 
   ret = stat(path, &pbuf);
   if (ret == 0)
@@ -1110,6 +1267,10 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
   struct stat pbuf;
   int ret;
 
+  ret = uv__fs_statx(-1, path, /* is_fstat */ 0, /* is_lstat */ 1, buf);
+  if (ret != UV_ENOSYS)
+    return ret;
+
   ret = lstat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
@@ -1121,6 +1282,10 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
 static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   struct stat pbuf;
   int ret;
+
+  ret = uv__fs_statx(fd, "", /* is_fstat */ 1, /* is_lstat */ 0, buf);
+  if (ret != UV_ENOSYS)
+    return ret;
 
   ret = fstat(fd, &pbuf);
   if (ret == 0)
@@ -1210,7 +1375,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(ACCESS, access(req->path, req->flags));
     X(CHMOD, chmod(req->path, req->mode));
     X(CHOWN, chown(req->path, req->uid, req->gid));
-    X(CLOSE, close(req->file));
+    X(CLOSE, uv__fs_close(req->file));
     X(COPYFILE, uv__fs_copyfile(req));
     X(FCHMOD, fchmod(req->file, req->mode));
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
@@ -1227,6 +1392,9 @@ static void uv__fs_work(struct uv__work* w) {
     X(OPEN, uv__fs_open(req));
     X(READ, uv__fs_read(req));
     X(SCANDIR, uv__fs_scandir(req));
+    X(OPENDIR, uv__fs_opendir(req));
+    X(READDIR, uv__fs_readdir(req));
+    X(CLOSEDIR, uv__fs_closedir(req));
     X(READLINK, uv__fs_readlink(req));
     X(REALPATH, uv__fs_realpath(req));
     X(RENAME, rename(req->path, req->new_path));
@@ -1509,6 +1677,40 @@ int uv_fs_scandir(uv_loop_t* loop,
   POST;
 }
 
+int uv_fs_opendir(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char* path,
+                  uv_fs_cb cb) {
+  INIT(OPENDIR);
+  PATH;
+  POST;
+}
+
+int uv_fs_readdir(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  uv_dir_t* dir,
+                  uv_fs_cb cb) {
+  INIT(READDIR);
+
+  if (dir == NULL || dir->dir == NULL || dir->dirents == NULL)
+    return UV_EINVAL;
+
+  req->ptr = dir;
+  POST;
+}
+
+int uv_fs_closedir(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   uv_dir_t* dir,
+                   uv_fs_cb cb) {
+  INIT(CLOSEDIR);
+
+  if (dir == NULL)
+    return UV_EINVAL;
+
+  req->ptr = dir;
+  POST;
+}
 
 int uv_fs_readlink(uv_loop_t* loop,
                    uv_fs_t* req,
@@ -1661,6 +1863,9 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   req->path = NULL;
   req->new_path = NULL;
 
+  if (req->fs_type == UV_FS_READDIR && req->ptr != NULL)
+    uv__fs_readdir_cleanup(req);
+
   if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
     uv__fs_scandir_cleanup(req);
 
@@ -1668,7 +1873,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
     uv__free(req->bufs);
   req->bufs = NULL;
 
-  if (req->ptr != &req->statbuf)
+  if (req->fs_type != UV_FS_OPENDIR && req->ptr != &req->statbuf)
     uv__free(req->ptr);
   req->ptr = NULL;
 }

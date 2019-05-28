@@ -30,6 +30,7 @@
 #if defined(__MVS__)
 #include <xti.h>
 #endif
+#include <sys/un.h>
 
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
@@ -232,8 +233,16 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
       h.msg_namelen = 0;
     } else {
       h.msg_name = &req->addr;
-      h.msg_namelen = req->addr.ss_family == AF_INET6 ?
-        sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+      if (req->addr.ss_family == AF_INET6)
+        h.msg_namelen = sizeof(struct sockaddr_in6);
+      else if (req->addr.ss_family == AF_INET)
+        h.msg_namelen = sizeof(struct sockaddr_in);
+      else if (req->addr.ss_family == AF_UNIX)
+        h.msg_namelen = sizeof(struct sockaddr_un);
+      else {
+        assert(0 && "unsupported address family");
+        abort();
+      }
     }
     h.msg_iov = (struct iovec*) req->bufs;
     h.msg_iovlen = req->nbufs;
@@ -268,16 +277,30 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
  * are different from the BSDs: it _shares_ the port rather than steal it
  * from the current listener.  While useful, it's not something we can emulate
  * on other platforms so we don't enable it.
+ *
+ * zOS does not support getsockname with SO_REUSEPORT option when using
+ * AF_UNIX.
  */
 static int uv__set_reuse(int fd) {
   int yes;
-
-#if defined(SO_REUSEPORT) && !defined(__linux__)
   yes = 1;
+
+#if defined(SO_REUSEPORT) && defined(__MVS__)
+  struct sockaddr_in sockfd;
+  unsigned int sockfd_len = sizeof(sockfd);
+  if (getsockname(fd, (struct sockaddr*) &sockfd, &sockfd_len) == -1)
+      return UV__ERR(errno);
+  if (sockfd.sin_family == AF_UNIX) {
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)))
+      return UV__ERR(errno);
+  } else {
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
+       return UV__ERR(errno);
+  }
+#elif defined(SO_REUSEPORT) && !defined(__linux__)
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
     return UV__ERR(errno);
 #else
-  yes = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)))
     return UV__ERR(errno);
 #endif
@@ -801,13 +824,17 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
                         IPV6_UNICAST_HOPS,
                         &ttl,
                         sizeof(ttl));
-#endif /* defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
-          defined(__MVS__) */
+
+#else /* !(defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
+           defined(__MVS__)) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_TTL,
                                    IPV6_UNICAST_HOPS,
                                    ttl);
+
+#endif /* defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
+          defined(__MVS__) */
 }
 
 
@@ -818,14 +845,16 @@ int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl) {
  * IP_MULTICAST_TTL, so hardcode the size of the option in the IPv6 case,
  * and use the general uv__setsockopt_maybe_char call otherwise.
  */
-#if defined(__sun) || defined(_AIX) || defined(__MVS__)
+#if defined(__sun) || defined(_AIX) || defined(__OpenBSD__) || \
+    defined(__MVS__)
   if (handle->flags & UV_HANDLE_IPV6)
     return uv__setsockopt(handle,
                           IP_MULTICAST_TTL,
                           IPV6_MULTICAST_HOPS,
                           &ttl,
                           sizeof(ttl));
-#endif /* defined(__sun) || defined(_AIX) || defined(__MVS__) */
+#endif /* defined(__sun) || defined(_AIX) || defined(__OpenBSD__) || \
+    defined(__MVS__) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_MULTICAST_TTL,
@@ -841,14 +870,16 @@ int uv_udp_set_multicast_loop(uv_udp_t* handle, int on) {
  * IP_MULTICAST_LOOP, so hardcode the size of the option in the IPv6 case,
  * and use the general uv__setsockopt_maybe_char call otherwise.
  */
-#if defined(__sun) || defined(_AIX) || defined(__MVS__)
+#if defined(__sun) || defined(_AIX) || defined(__OpenBSD__) || \
+    defined(__MVS__) 
   if (handle->flags & UV_HANDLE_IPV6)
     return uv__setsockopt(handle,
                           IP_MULTICAST_LOOP,
                           IPV6_MULTICAST_LOOP,
                           &on,
                           sizeof(on));
-#endif /* defined(__sun) || defined(_AIX) || defined(__MVS__) */
+#endif /* defined(__sun) || defined(_AIX) ||defined(__OpenBSD__) ||
+    defined(__MVS__) */
 
   return uv__setsockopt_maybe_char(handle,
                                    IP_MULTICAST_LOOP,

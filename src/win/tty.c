@@ -157,7 +157,7 @@ void uv_console_init(void) {
                                        OPEN_EXISTING,
                                        0,
                                        0);
-  if (uv__tty_console_handle != NULL) {
+  if (uv__tty_console_handle != INVALID_HANDLE_VALUE) {
     QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
                       NULL,
                       WT_EXECUTELONGFUNCTION);
@@ -338,6 +338,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
     }
   } else {
     was_reading = 0;
+    alloc_cb = NULL;
+    read_cb = NULL;
   }
 
   uv_sem_wait(&uv_tty_output_lock);
@@ -711,8 +713,9 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
       /* Ignore keyup events, unless the left alt key was held and a valid
        * unicode character was emitted. */
-      if (!KEV.bKeyDown && !(((KEV.dwControlKeyState & LEFT_ALT_PRESSED) ||
-          KEV.wVirtualKeyCode==VK_MENU) && KEV.uChar.UnicodeChar != 0)) {
+      if (!KEV.bKeyDown &&
+          (KEV.wVirtualKeyCode != VK_MENU ||
+           KEV.uChar.UnicodeChar == 0)) {
         continue;
       }
 
@@ -769,8 +772,9 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
         if (KEV.uChar.UnicodeChar >= 0xDC00 &&
             KEV.uChar.UnicodeChar < 0xE000) {
           /* UTF-16 surrogate pair */
-          WCHAR utf16_buffer[2] = { handle->tty.rd.last_utf16_high_surrogate,
-                                    KEV.uChar.UnicodeChar};
+          WCHAR utf16_buffer[2];
+          utf16_buffer[0] = handle->tty.rd.last_utf16_high_surrogate;
+          utf16_buffer[1] = KEV.uChar.UnicodeChar;
           char_len = WideCharToMultiByte(CP_UTF8,
                                          0,
                                          utf16_buffer,

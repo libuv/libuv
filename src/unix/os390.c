@@ -229,15 +229,15 @@ static int getexe(const int pid, char* buf, size_t len) {
   assert(((Output_buf.Output_data.offsetPath >>24) & 0xFF) == 'A');
 
   /* Get the offset from the lowest 3 bytes */
-  Output_path = (char*)(&Output_buf) +
-                (Output_buf.Output_data.offsetPath & 0x00FFFFFF);
+  Output_path = (struct Output_path_type*) ((char*) (&Output_buf) +
+      (Output_buf.Output_data.offsetPath & 0x00FFFFFF));
 
   if (Output_path->len >= len) {
     errno = ENOBUFS;
     return -1;
   }
 
-  strncpy(buf, Output_path->path, len);
+  uv__strscpy(buf, Output_path->path, len);
 
   return 0;
 }
@@ -353,6 +353,11 @@ uint64_t uv_get_total_memory(void) {
   rcep.assign = *(data_area_ptr_assign_type*)(cvt.deref + CVTRCEP_OFFSET);
   totalram = *((uint64_t*)(rcep.deref + RCEPOOL_OFFSET)) * 4;
   return totalram;
+}
+
+
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
 }
 
 
@@ -657,6 +662,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   uintptr_t nfds;
 
   assert(loop->watchers != NULL);
+  assert(fd >= 0);
 
   events = (struct epoll_event*) loop->watchers[loop->nwatchers];
   nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];

@@ -62,6 +62,28 @@ Data types
 
     .. versionadded:: 1.16.0
 
+.. c:type:: uv_timeval_t
+
+    Data type for storing times.
+
+    ::
+
+        typedef struct {
+            long tv_sec;
+            long tv_usec;
+        } uv_timeval_t;
+
+.. c:type:: uv_timeval64_t
+
+    Alternative data type for storing times.
+
+    ::
+
+        typedef struct {
+            int64_t tv_sec;
+            int32_t tv_usec;
+        } uv_timeval64_t;
+
 .. c:type:: uv_rusage_t
 
     Data type for resource usage results.
@@ -142,6 +164,19 @@ Data types
             char* homedir;
             char* gecos;
         } uv_passwd_t;
+
+.. c:type:: uv_utsname_t
+
+    Data type for operating system name and version information.
+
+    ::
+
+        typedef struct uv_utsname_s {
+            char sysname[256];
+            char release[256];
+            char version[256];
+            char machine[256];
+        } uv_utsname_t;
 
 
 API
@@ -431,10 +466,26 @@ API
 
     .. versionadded:: 1.9.0
 
-.. uint64_t uv_get_free_memory(void)
+.. c:function:: uint64_t uv_get_free_memory(void)
+
+    Gets memory information (in bytes).
+
 .. c:function:: uint64_t uv_get_total_memory(void)
 
     Gets memory information (in bytes).
+
+.. c:function:: uint64_t uv_get_constrained_memory(void)
+
+    Gets the amount of memory available to the process (in bytes) based on
+    limits imposed by the OS. If there is no such constraint, or the constraint
+    is unknown, `0` is returned. Note that it is not unusual for this value to
+    be less than or greater than :c:func:`uv_get_total_memory`.
+
+    .. note::
+        This function currently only returns a non-zero value on Linux, based
+        on cgroups if it is present.
+
+    .. versionadded:: 1.29.0
 
 .. c:function:: uint64_t uv_hrtime(void)
 
@@ -531,6 +582,10 @@ API
 
     .. versionadded:: 1.12.0
 
+    .. versionchanged:: 1.26.0 `UV_MAXHOSTNAMESIZE` is available and represents
+                               the maximum `buffer` size required to store a
+                               hostname and terminating `nul` character.
+
 .. c:function:: int uv_os_getpriority(uv_pid_t pid, int* priority)
 
     Retrieves the scheduling priority of the process specified by `pid`. The
@@ -562,3 +617,19 @@ API
         for others it will be silently reduced to `PRIORITY_HIGH`.
 
     .. versionadded:: 1.23.0
+
+.. c:function:: int uv_os_uname(uv_utsname_t* buffer)
+
+    Retrieves system information in `buffer`. The populated data includes the
+    operating system name, release, version, and machine. On non-Windows
+    systems, `uv_os_uname()` is a thin wrapper around :man:`uname(3)`. Returns
+    zero on success, and a non-zero error value otherwise.
+
+    .. versionadded:: 1.25.0
+
+.. c:function:: int uv_gettimeofday(uv_timeval64_t* tv)
+
+    Cross-platform implementation of :man:`gettimeofday(2)`. The timezone
+    argument to `gettimeofday()` is not supported, as it is considered obsolete.
+
+    .. versionadded:: 1.28.0

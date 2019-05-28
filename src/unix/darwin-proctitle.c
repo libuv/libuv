@@ -187,7 +187,7 @@ void uv__set_process_title(const char* title) {
   }
 #endif  /* !TARGET_OS_IPHONE */
 
-  strncpy(namebuf, title, sizeof(namebuf) - 1);
+  uv__strscpy(namebuf, title, sizeof(namebuf));
   namebuf[sizeof(namebuf) - 1] = '\0';
   pthread_setname_np(namebuf);
 }

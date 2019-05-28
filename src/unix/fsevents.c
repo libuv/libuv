@@ -21,9 +21,10 @@
 #include "uv.h"
 #include "internal.h"
 
-#if TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE || MAC_OS_X_VERSION_MAX_ALLOWED < 1070
 
 /* iOS (currently) doesn't provide the FSEvents-API (nor CoreServices) */
+/* macOS prior to 10.7 doesn't provide the full FSEvents API so use kqueue */
 
 int uv__fsevents_init(uv_fs_event_t* handle) {
   return 0;
@@ -255,27 +256,50 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
       path = paths[i];
       len = strlen(path);
 
+      if (handle->realpath_len == 0)
+        continue; /* This should be unreachable */
+
       /* Filter out paths that are outside handle's request */
-      if (strncmp(path, handle->realpath, handle->realpath_len) != 0)
+      if (len < handle->realpath_len)
         continue;
 
-      if (handle->realpath_len > 1 || *handle->realpath != '/') {
+      if (handle->realpath_len != len &&
+          path[handle->realpath_len] != '/')
+        /* Make sure that realpath actually named a directory,
+         * or that we matched the whole string */
+        continue;
+
+      if (memcmp(path, handle->realpath, handle->realpath_len) != 0)
+        continue;
+
+      if (!(handle->realpath_len == 1 && handle->realpath[0] == '/')) {
+        /* Remove common prefix, unless the watched folder is "/" */
         path += handle->realpath_len;
         len -= handle->realpath_len;
 
-        /* Skip forward slash */
-        if (*path != '\0') {
+        /* Ignore events with path equal to directory itself */
+        if (len <= 1 && (flags & kFSEventStreamEventFlagItemIsDir))
+          continue;
+
+        if (len == 0) {
+          /* Since we're using fsevents to watch the file itself,
+           * realpath == path, and we now need to get the basename of the file back
+           * (for commonality with other codepaths and platforms). */
+          while (len < handle->realpath_len && path[-1] != '/') {
+            path--;
+            len++;
+          }
+          /* Created and Removed seem to be always set, but don't make sense */
+          flags &= ~kFSEventsRenamed;
+        } else {
+          /* Skip forward slash */
           path++;
           len--;
         }
       }
 
-      /* Ignore events with path equal to directory itself */
-      if (len == 0)
-        continue;
-
       /* Do not emit events from subdirectories (without option set) */
-      if ((handle->cf_flags & UV_FS_EVENT_RECURSIVE) == 0 && *path != 0) {
+      if ((handle->cf_flags & UV_FS_EVENT_RECURSIVE) == 0 && *path != '\0') {
         pos = strchr(path + 1, '/');
         if (pos != NULL)
           continue;
@@ -289,14 +313,10 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
       memcpy(event->path, path, len + 1);
       event->events = UV_RENAME;
 
-      if (0 != (flags & kFSEventsModified) &&
-          0 != (flags & kFSEventStreamEventFlagItemIsDir) &&
-          0 == (flags & kFSEventStreamEventFlagItemRenamed)) {
-        event->events = UV_CHANGE;
-      }
-      if (0 == (flags & kFSEventStreamEventFlagItemIsDir) &&
-          0 == (flags & kFSEventStreamEventFlagItemRenamed)) {
-        event->events = UV_CHANGE;
+      if (0 == (flags & kFSEventsRenamed)) {
+        if (0 != (flags & kFSEventsModified) ||
+            0 == (flags & kFSEventStreamEventFlagItemIsDir))
+          event->events = UV_CHANGE;
       }
 
       QUEUE_INSERT_TAIL(&head, &event->member);

@@ -172,11 +172,14 @@ $ make install
 To build with [CMake](https://cmake.org/):
 
 ```bash
-$ mkdir -p out/cmake ; cd out/cmake ; cmake -DBUILD_TESTING=ON ../..
-$ make all test
-# Or manually:
-$ ./uv_run_tests    # shared library build
-$ ./uv_run_tests_a  # static library build
+$ mkdir -p out/cmake ; cd out/cmake   # create build directory
+$ cmake ../.. -DBUILD_TESTING=ON      # generate project with test
+$ cmake --build .                     # build
+$ ctest -C Debug --output-on-failure  # run tests
+
+# Or manually run tests:
+$ ./out/cmake/uv_run_tests    # shared library build
+$ ./out/cmake/uv_run_tests_a  # static library build
 ```
 
 To build with GYP, first run:
@@ -262,8 +265,7 @@ Run:
 
 ```bash
 $ ./gyp_uv.py -f xcode
-$ xcodebuild -ARCHS="x86_64" -project uv.xcodeproj \
-     -configuration Release -target All
+$ xcodebuild -ARCHS="x86_64" -project out/uv.xcodeproj -configuration Release -alltargets
 ```
 
 Using Homebrew:
@@ -313,7 +315,7 @@ $ make -C out
 The default API level is 24, but a different one can be selected as follows:
 
 ```bash
-$ source ./android-configure ~/android-ndk-r15b gyp 21
+$ source ./android-configure-arm ~/android-ndk-r15b gyp 21
 $ make -C out
 ```
 
