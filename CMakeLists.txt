@@ -137,6 +137,7 @@ set(uv_test_sources
     test/test-tcp-read-stop.c
     test/test-tcp-shutdown-after-write.c
     test/test-tcp-try-write.c
+    test/test-tcp-try-write-error.c
     test/test-tcp-unexpected-read.c
     test/test-tcp-write-after-connect.c
     test/test-tcp-write-fail.c
