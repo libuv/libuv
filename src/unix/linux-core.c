@@ -75,6 +75,13 @@
 # define CLOCK_BOOTTIME 7
 #endif
 
+/* Constant values for cgroups. */
+#define PROC_SELF_MOUNTINFO "/proc/self/mountinfo"
+#define PROC_SELF_CGROUP "/proc/self/cgroup"
+#define CGROUPS_VERSION_UNKNOWN 0x0
+#define CGROUPS_VERSION_1 0x1
+#define CGROUPS_VERSION_2 0x2
+
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
 static int read_times(FILE* statfile_fp,
                       unsigned int numcpus,
@@ -793,27 +800,376 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
-static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
-  char filename[256];
-  char buf[32];  /* Large enough to hold an encoded uint64_t. */
-  uint64_t rc;
+/*
+ * Holds information about a given cgroups subsystem.
+ */
+typedef struct {
+  /* cgroups version, one of CGROUPS_VERSION_*. */
+  uint8_t cgroups_version;
+  /* Path in which param files are found for a subsystem. */
+  char* path;
+} uv__cgroups_subsystem_info_t;
+
+
+/*
+ * Given a `separator`-delimited string `haystack`, return 1 if `needle` exactly
+ * matches at least one of the elements in that sequence, 0 if this is not the
+ * case or an error occurred (due to invalid inputs or OOM).
+ */
+static int uv__find_in_delimited_string(const char* haystack,
+                                        const char* needle,
+                                        const char* separator) {
+  char* haystack_mutable;
+  size_t haystack_len;
+  char* candidate;
+  char* haystack_ptr;
+  haystack_len = strlen(haystack);
+  if (needle == NULL || strlen(needle) > haystack_len)
+    return 0;
+  haystack_mutable = uv__strndup(haystack, haystack_len);
+  if (haystack_mutable == NULL)
+    return 0;
+  haystack_ptr = haystack_mutable;
+  do {
+    candidate = strsep(&haystack_ptr, separator);
+    if (strcmp(candidate, needle) == 0) {
+      uv__free(haystack_mutable);
+      return 1;
+    }
+  } while (haystack_ptr != NULL);
+  uv__free(haystack_mutable);
+  return 0;
+}
+
+
+/*
+ * Read /proc/self/mountinfo and /proc/self/cgroup to get info about how the
+ * given subsystem is controlled for this process, and the path to the
+ * subsystem's parameter files, if possible.
+ * 
+ * If info->cgroups_version == CGROUPS_VERSION_UNKNOWN, info->path will be NULL.
+ * Otherwise, info->path will be a heap pointer and the caller is responsible
+ * for freeing it.
+ * 
+ * == cgroups v1 example ==
+ * 
+ * /proc/self/mountinfo:
+ * ...
+ * 490 486 0:31 /docker/8b1b53f /sys/fs/cgroup/blkio ro master:21 - cgroup blkio rw,blkio
+ * 491 486 0:32 /docker/8b1b53f /sys/fs/cgroup/memory ro master:22 - cgroup memory rw,memory
+ * 492 486 0:33 /docker/8b1b53f /sys/fs/cgroup/devices ro master:23 - cgroup devices rw,devices
+ * ...
+ * 
+ * /proc/self/cgroup
+ * ...
+ * 6:devices:/docker/8b1b53f/foo-slice
+ * 5:memory:/docker/8b1b53f/foo-slice
+ * 4:blkio:/docker/8b1b53f/foo-slice
+ * ...
+ * 
+ * If we are looking for the path to the memory parameter files, we substitute
+ * the portion of the path corresponding to "memory" in /proc/self/cgroup that
+ * matches the root in /proc/self/mountinfo (/docker/8b1b53f) with the mount
+ * point (/sys/fs/cgroup/memory), resulting in the path
+ * /sys/fs/cgroup/memory/foo-slice.
+ * 
+ * == cgroups v2 example ==
+ * 
+ * /proc/self/mountinfo:
+ * ...
+ * 26 17 0:22 / /sys/fs/cgroup rw shared:9 - cgroup2 cgroup rw
+ * ...
+ * 
+ * /proc/self/cgroup (in entirety):
+ * 0::/foo-slice
+ * 
+ * If we are looking for the path to the memory parameter files, we substitute
+ * the portion of the path in the only entry in /proc/self/cgroup that matches
+ * the root (/) with the mount point (/sys/fs/cgroup), resulting in the path
+ * /sys/fs/cgroup/foo-slice.
+ */
+static int uv__read_cgroups_proc_files(uv__cgroups_subsystem_info_t* info,
+                                       const char* subsystem) {
+  int rc;
+  FILE* fp;
+  /* Buffer to be dynamically (re-)sized by getline(). */
+  char* buf;
+  /*
+   * Length of the string contained in `buf` immediately after it's written by
+   * getline().
+   */
+  size_t buf_strlen;
+  /* Current allocated size of `buf`. */
+  size_t buf_size;
+
+  /* From /proc/self/mountinfo */
+  char* root;
+  char* mount_point;
+  /* From /proc/self/cgroup */
+  char* hierarchy_path;
+
+  /* Values used when reading /proc/self/mountinfo */
+  char* field_ptr;
+  char* curr_root;
+  char* curr_mount_point;
+  char* curr_fs_type;
+  char* curr_super_options;
+  /* Values used when reading /proc/self/cgroup */
+  const char* hierarchy_path_search_ptr;
+  const char* hierarchy_path_inner;
+  char* subsystem_search_string;
 
   rc = 0;
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/%s", cgroup, param);
+  fp = NULL;
+  buf = NULL;
+  buf_strlen = 0;
+  buf_size = 0;
+  root = NULL;
+  mount_point = NULL;
+  hierarchy_path = NULL;
+  subsystem_search_string = NULL;
+
+  info->cgroups_version = CGROUPS_VERSION_UNKNOWN;
+  info->path = NULL;
+
+  /* Read /proc/self/mountinfo to get controller path. */
+
+  fp = uv__open_file(PROC_SELF_MOUNTINFO);
+  if (fp == NULL) {
+    rc = UV__ERR(errno);
+    goto cleanup;
+  }
+
+  root = uv__malloc(UV__PATH_MAX);
+  mount_point = uv__malloc(UV__PATH_MAX);
+  if (root == NULL || mount_point == NULL) {
+    rc = UV_ENOMEM;
+    goto cleanup;
+  }
+
+  /*
+   * Loop once per line; try to find the mount location for the given subsystem.
+   */
+  while ((buf_strlen = getline(&buf, &buf_size, fp)) != -1) {
+    if ('\n' == buf[buf_strlen - 1])
+      buf[buf_strlen - 1] = '\0';
+
+    field_ptr = buf;
+    strsep(&field_ptr, " "); /* mount ID */
+    strsep(&field_ptr, " "); /* parent ID */
+    strsep(&field_ptr, " "); /* st_dev major:minor */
+    curr_root = strsep(&field_ptr, " ");
+    if (curr_root == NULL)
+      continue;
+    curr_mount_point = strsep(&field_ptr, " ");
+    if (curr_mount_point == NULL)
+      continue;
+    strsep(&field_ptr, " "); /* mount options */
+    /* A hyphen marks the end of variable-length optional fields. */
+    while (field_ptr != NULL && '-' != field_ptr[0])
+      strsep(&field_ptr, " ");
+    strsep(&field_ptr, " "); /* separator (hyphen) */
+    curr_fs_type = strsep(&field_ptr, " ");
+    if (curr_fs_type == NULL)
+      continue;
+    strsep(&field_ptr, " "); /* mount source */
+    curr_super_options = strsep(&field_ptr, " ");
+    if (curr_super_options == NULL)
+      continue;
+
+    /*
+     * If the fs type (9) is "cgroup" and super options (11) contains the name
+     * of the subsystem, then we've found the correct mount location, so save
+     * the values of root (4) and mount point (5) and break.
+     * Otherwise, if the fs type is "cgroup2", we've potentially found the
+     * correct mount location, so save the above values, but don't break,
+     * because we don't know yet whether the input subsystem is controlled by
+     * cgroups v1 or v2.
+     */
+    if (strcmp(curr_fs_type, "cgroup") == 0) {
+      /* cgroups v1 */
+      if (0 !=
+          uv__find_in_delimited_string(curr_super_options, subsystem, ",")) {
+        if (uv__strscpy(root, curr_root, UV__PATH_MAX - 1) < 0 ||
+            uv__strscpy(mount_point, curr_mount_point, UV__PATH_MAX - 1) < 0) {
+          rc = UV_E2BIG;
+          goto cleanup;
+        }
+        info->cgroups_version = CGROUPS_VERSION_1;
+        break;
+      }
+    } else if (strcmp(curr_fs_type, "cgroup2") == 0) {
+      /* cgroups v2 */
+      if (uv__strscpy(root, curr_root, UV__PATH_MAX - 1) < 0 ||
+          uv__strscpy(mount_point, curr_mount_point, UV__PATH_MAX - 1) < 0) {
+        rc = UV_E2BIG;
+        goto cleanup;
+      }
+      info->cgroups_version = CGROUPS_VERSION_2;
+      /*
+       * Don't break, as we're not certain that this subsystem is controlled
+       * by cgroups v2.
+       */
+    }
+  }
+
+  if (ferror(fp)) {
+    rc = UV__ERR(errno);
+    goto cleanup;
+  }
+
+  fclose(fp);
+  fp = NULL;
+  free(buf);
+  buf = NULL;
+  buf_strlen = 0;
+  buf_size = 0;
+
+  /*
+   * If cgroups version wasn't determined, assume this subsystem isn't enabled
+   * in cgroups, so don't bother reading /proc/self/cgroup.
+   */
+  if (CGROUPS_VERSION_UNKNOWN == info->cgroups_version) {
+    goto cleanup;
+  }
+  
+  /* Read /proc/self/cgroup to get hierarchy path. */
+
+  fp = uv__open_file(PROC_SELF_CGROUP);
+  if (fp == NULL) {
+    rc = UV__ERR(errno);
+    goto cleanup;
+  }
+  
+  hierarchy_path = uv__malloc(UV__PATH_MAX);
+  /* + 3 for two colons, and terminal character. */
+  subsystem_search_string = uv__malloc(strlen(subsystem) + 3);
+  if (hierarchy_path == NULL || subsystem_search_string == NULL) {
+    rc = UV_ENOMEM;
+    goto cleanup;
+  }
+
+  hierarchy_path[0] = '\0';
+  snprintf(subsystem_search_string, strlen(subsystem) + 3, ":%s:", subsystem);
+
+  while (feof(fp) == 0) {
+    if (getline(&buf, &buf_size, fp) < 0) {
+      if (feof(fp) != 0)
+        break;
+      rc = UV_EIO;
+      goto cleanup;
+    }
+    buf_strlen = strlen(buf);
+    if ('\n' == buf[buf_strlen - 1])
+      buf[buf_strlen - 1] = '\0';
+
+    if (CGROUPS_VERSION_1 == info->cgroups_version) {
+      hierarchy_path_search_ptr = strstr(buf, subsystem_search_string);
+      if (hierarchy_path_search_ptr != NULL)
+        hierarchy_path_search_ptr += strlen(subsystem_search_string);
+    } else { /* if (CGROUPS_VERSION_2 == info->cgroups_version) */
+      /* 3 is the string length of "0::". */
+      if (strncmp(buf, "0::", 3) == 0)
+        hierarchy_path_search_ptr = buf + 3;
+    }
+    if (hierarchy_path_search_ptr != NULL) {
+      if (uv__strscpy(hierarchy_path,
+                      hierarchy_path_search_ptr,
+                      UV__PATH_MAX - 1) < 0) {
+        rc = UV_E2BIG;
+        goto cleanup;
+      }
+      break;
+    }
+  }
+
+  fclose(fp);
+  fp = NULL;
+
+  /*
+   * The hierarchy path should be prefixed with the root path from mountinfo,
+   * and should be replaced with the mount point.
+   */
+  if (strncmp(hierarchy_path, root, strlen(root)) == 0) {
+    size_t path_size;
+    hierarchy_path_inner = hierarchy_path + strlen(root);
+    /* +2 for "/" and null terminator. */
+    path_size = strlen(mount_point) + strlen(hierarchy_path_inner) + 2;
+    info->path = uv__malloc(path_size);
+    if (info->path == NULL)
+      rc = UV_ENOMEM;
+    else
+      snprintf(info->path,
+               path_size,
+               "%s/%s",
+               mount_point,
+               hierarchy_path_inner);
+  } else {
+    info->cgroups_version = CGROUPS_VERSION_UNKNOWN;
+  }
+
+
+cleanup:
+  if (fp != NULL)
+    fclose(fp);
+  /* buf is (re-)allocated via getline, so use standard free. */
+  free(buf);
+  uv__free(root);
+  uv__free(mount_point);
+  uv__free(hierarchy_path);
+  uv__free(subsystem_search_string);
+  return rc;
+}
+
+
+static uint64_t uv__read_cgroups_uint64(const char* path, const char* param) {
+
+  char filename[UV__PATH_MAX];
+  char buf[32];  /* Large enough to hold an encoded uint64_t. */
+  uint64_t rc = 0;
+
+  snprintf(filename, sizeof(filename), "%s/%s", path, param);
   if (0 == uv__slurp(filename, buf, sizeof(buf)))
-    sscanf(buf, "%" PRIu64, &rc);
+    if (0 != strcmp(buf, "max"))
+      sscanf(buf, "%" PRIu64, &rc);
 
   return rc;
 }
 
 
 uint64_t uv_get_constrained_memory(void) {
-  /*
-   * This might return 0 if there was a problem getting the memory limit from
-   * cgroups. This is OK because a return value of 0 signifies that the memory
-   * limit is unknown.
-   */
-  return uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
+  uv__cgroups_subsystem_info_t info;
+  uint64_t rc;
+  /* For v2 only. */
+  uint64_t max;
+  uint64_t high;
+
+  rc = 0;
+
+  if (uv__read_cgroups_proc_files(&info, "memory") == 0) {
+    /*
+     * uv__read_cgroups_uint64 might return 0 if there was a problem getting the
+     * memory limit from cgroups. This is OK because a return value of 0
+     * signifies that the memory limit is unknown.
+     */
+
+    if (CGROUPS_VERSION_1 == info.cgroups_version)
+      rc = uv__read_cgroups_uint64(info.path, "memory.limit_in_bytes");
+    else if (CGROUPS_VERSION_2 == info.cgroups_version) {
+      max = uv__read_cgroups_uint64(info.path, "memory.max");
+      high = uv__read_cgroups_uint64(info.path, "memory.high");
+      if (max == 0)
+        rc = high;
+      else if (high == 0)
+        rc = max;
+      else
+        rc = max < high ? max : high;
+    }
+
+    uv__free(info.path);
+  }
+
+  return rc;
 }
 
 
