@@ -47,7 +47,7 @@ static void incoming_close_cb(uv_handle_t* handle) {
   buf = uv_buf_init("meow", 4);
   while (r > 0)
     r = uv_try_write((uv_stream_t*) &client, &buf, 1);
-  ASSERT(r != UV_EAGAIN);
+  ASSERT(r == UV_EPIPE);
   ASSERT(client.write_queue_size == 0);
 }
 
