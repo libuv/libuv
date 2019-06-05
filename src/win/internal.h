@@ -241,12 +241,6 @@ int uv_translate_sys_error(int sys_errno);
 
 
 /*
- * FS
- */
-void uv_fs_init(void);
-
-
-/*
  * FS Event
  */
 void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,

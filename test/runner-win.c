@@ -55,6 +55,7 @@ int platform_init(int argc, char **argv) {
   _setmode(0, _O_BINARY);
   _setmode(1, _O_BINARY);
   _setmode(2, _O_BINARY);
+  _set_fmode(_O_BINARY);
 
   /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);

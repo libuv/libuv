@@ -137,10 +137,6 @@ const WCHAR UNC_PATH_PREFIX_LEN = 8;
 
 static int uv__file_symlink_usermode_flag = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
 
-void uv_fs_init(void) {
-  _fmode = _O_BINARY;
-}
-
 
 INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     const char* new_path, const int copy_path) {
