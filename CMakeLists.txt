@@ -184,6 +184,7 @@ if(WIN32)
        advapi32
        iphlpapi
        psapi
+       secur32
        shell32
        user32
        userenv
