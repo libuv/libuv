@@ -160,12 +160,15 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
    * to the drive platters. This is in contrast to Linux's fdatasync and fsync
    * which do, according to recent man pages. F_FULLFSYNC is Apple's equivalent
    * for flushing buffered data to permanent storage. If F_FULLFSYNC is not
-   * supported by the file system we should fall back to fsync(). This is the
-   * same approach taken by sqlite.
+   * supported by the file system we fall back to F_BARRIERFSYNC or fsync().
+   * This is the same approach taken by sqlite, except sqlite does not issue
+   * an F_BARRIERFSYNC call.
    */
   int r;
 
   r = fcntl(req->file, F_FULLFSYNC);
+  if (r != 0)
+    r = fcntl(req->file, F_BARRIERFSYNC);  /* fsync + barrier */
   if (r != 0)
     r = fsync(req->file);
   return r;
