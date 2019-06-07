@@ -385,6 +385,11 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (n == SIGKILL || n == SIGSTOP)
       continue;  /* Can't be changed. */
 
+#if defined(__HAIKU__)
+    if (n == SIGKILLTHR)
+      continue;  /* Can't be changed. */
+#endif
+
     if (SIG_ERR != signal(n, SIG_DFL))
       continue;
 

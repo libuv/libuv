@@ -320,6 +320,10 @@ test_run_tests_CFLAGS += -D_ALL_SOURCE \
                          -D_LINUX_SOURCE_COMPAT
 endif
 
+if HAIKU
+test_run_tests_CFLAGS += -D_BSD_SOURCE
+endif
+
 if LINUX
 test_run_tests_CFLAGS += -D_GNU_SOURCE
 endif
@@ -407,6 +411,17 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
+endif
+
+if HAIKU
+uvinclude_HEADERS += include/uv/posix.h
+libuv_la_CFLAGS += -D_BSD_SOURCE
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/haiku.c \
+                    src/unix/no-fsevents.c \
+                    src/unix/no-proctitle.c \
+                    src/unix/posix-hrtime.c \
+                    src/unix/posix-poll.c
 endif
 
 if HURD
