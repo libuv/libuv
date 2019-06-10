@@ -303,7 +303,8 @@ typedef struct {
   LPFN_ACCEPTEX func_acceptex;
 
 #define uv_tcp_connection_fields                                              \
-  uv_buf_t read_buffer;                                                       \
+  uv_tcp_accept_t* dummy1; /* Mirror of union field, keep as NULL */          \
+  unsigned int dummy2; /* Mirror of union field, keep as 0 */                 \
   LPFN_CONNECTEX func_connectex;
 
 #define UV_TCP_PRIVATE_FIELDS                                                 \
@@ -319,7 +320,6 @@ typedef struct {
   unsigned int reqs_pending;                                                  \
   int activecnt;                                                              \
   uv_req_t recv_req;                                                          \
-  uv_buf_t recv_buffer;                                                       \
   struct sockaddr_storage recv_from;                                          \
   int recv_from_len;                                                          \
   uv_udp_recv_cb recv_cb;                                                     \
@@ -334,11 +334,9 @@ typedef struct {
 
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
-  uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
   DWORD ipc_remote_pid;                                                       \
-  union {                                                                     \
+  struct {                                                                    \
     uint32_t payload_remaining;                                               \
-    uint64_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
   } ipc_data_frame;                                                           \
   void* ipc_xfer_queue[2];                                                    \
   int ipc_xfer_queue_length;                                                  \

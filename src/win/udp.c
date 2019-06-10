@@ -34,8 +34,6 @@
  */
 const unsigned int uv_active_udp_streams_threshold = 0;
 
-/* A zero-size buffer for use by uv_udp_read */
-static char uv_zero_[] = "";
 int uv_udp_getpeername(const uv_udp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
@@ -283,7 +281,6 @@ static void uv_udp_queue_recv(uv_loop_t* loop, uv_udp_t* handle) {
 
   req = &handle->recv_req;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
-  handle->flags |= UV_HANDLE_ZERO_READ;
   buf.base = "";
   buf.len = 0;
   flags = MSG_PEEK;
@@ -408,7 +405,6 @@ static int uv__send(uv_udp_send_t* req,
 void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     uv_req_t* req) {
   uv_buf_t buf;
-  int partial;
 
   assert(handle->type == UV_UDP);
 
@@ -420,35 +416,22 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
       /* Not a real error, it just indicates that the received packet was
        * bigger than the receive buffer. */
     } else if (err == WSAECONNRESET || err == WSAENETRESET) {
-      /* A previous sendto operation failed; ignore this error. If zero-reading
-       * we need to call WSARecv/WSARecvFrom _without_ the. MSG_PEEK flag to
-       * clear out the error queue. For nonzero reads, immediately queue a new
-       * receive. */
-      if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
-        goto done;
-      }
+      /* A previous sendto operation failed; ignore this error.
+       * We need to call WSARecv/WSARecvFrom _without_ the MSG_PEEK flag to
+       * clear out the error queue. */
     } else {
       /* A real error occurred. Report the error to the user only if we're
        * currently reading. */
       if (handle->flags & UV_HANDLE_READING) {
         uv_udp_recv_stop(handle);
-        buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
-              uv_buf_init(NULL, 0) : handle->recv_buffer;
+        buf = uv_buf_init(NULL, 0);
         handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
       }
       goto done;
     }
   }
 
-  if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
-    /* Successful read */
-    partial = !REQ_SUCCESS(req);
-    handle->recv_cb(handle,
-                    req->u.io.overlapped.InternalHigh,
-                    &handle->recv_buffer,
-                    (const struct sockaddr*) &handle->recv_from,
-                    partial ? UV_UDP_PARTIAL : 0);
-  } else if (handle->flags & UV_HANDLE_READING) {
+  if (handle->flags & UV_HANDLE_READING) {
     DWORD bytes, err, flags;
     struct sockaddr_storage from;
     int from_len;
