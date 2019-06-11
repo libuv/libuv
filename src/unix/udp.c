@@ -165,9 +165,6 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
    */
   count = 32;
 
-  memset(&h, 0, sizeof(h));
-  h.msg_name = &peer;
-
   do {
     buf = uv_buf_init(NULL, 0);
     handle->alloc_cb((uv_handle_t*) handle, 64 * 1024, &buf);
@@ -177,6 +174,9 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
     }
     assert(buf.base != NULL);
 
+    memset(&h, 0, sizeof(h));
+    memset(&peer, 0, sizeof(peer));
+    h.msg_name = &peer;
     h.msg_namelen = sizeof(peer);
     h.msg_iov = (void*) &buf;
     h.msg_iovlen = 1;
@@ -193,17 +193,11 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
         handle->recv_cb(handle, UV__ERR(errno), &buf, NULL, 0);
     }
     else {
-      const struct sockaddr *addr;
-      if (h.msg_namelen == 0)
-        addr = NULL;
-      else
-        addr = (const struct sockaddr*) &peer;
-
       flags = 0;
       if (h.msg_flags & MSG_TRUNC)
         flags |= UV_UDP_PARTIAL;
 
-      handle->recv_cb(handle, nread, &buf, addr, flags);
+      handle->recv_cb(handle, nread, &buf, (const struct sockaddr*) &peer, flags);
     }
   }
   /* recv_cb callback may decide to pause or close the handle */
