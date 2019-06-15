@@ -168,7 +168,7 @@ static ssize_t uv__fs_fsync(uv_fs_t* req) {
 
   r = fcntl(req->file, F_FULLFSYNC);
   if (r != 0)
-    r = fcntl(req->file, F_BARRIERFSYNC);  /* fsync + barrier */
+    r = fcntl(req->file, 85 /* F_BARRIERFSYNC */);  /* fsync + barrier */
   if (r != 0)
     r = fsync(req->file);
   return r;
