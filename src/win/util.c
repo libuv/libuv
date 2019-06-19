@@ -1171,18 +1171,18 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
 
 int uv_os_tmpdir(char* buffer, size_t* size) {
-  wchar_t path[MAX_PATH + 1];
+  wchar_t path[MAX_PATH + 2];
   DWORD bufsize;
   size_t len;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  len = GetTempPathW(MAX_PATH + 1, path);
+  len = GetTempPathW(ARRAY_SIZE(path), path);
 
   if (len == 0) {
     return uv_translate_sys_error(GetLastError());
-  } else if (len > MAX_PATH + 1) {
+  } else if (len > ARRAY_SIZE(path)) {
     /* This should not be possible */
     return UV_EIO;
   }
