@@ -471,22 +471,13 @@ static int uv__fs_closedir(uv_fs_t* req) {
   return 0;
 }
 
-#if defined(_POSIX_PATH_MAX)
-# define UV__FS_PATH_MAX _POSIX_PATH_MAX
-#elif defined(PATH_MAX)
-# define UV__FS_PATH_MAX PATH_MAX
-#else
-# define UV__FS_PATH_MAX_FALLBACK 8192
-# define UV__FS_PATH_MAX UV__FS_PATH_MAX_FALLBACK
-#endif
-
 static ssize_t uv__fs_pathmax_size(const char* path) {
   ssize_t pathmax;
 
   pathmax = pathconf(path, _PC_PATH_MAX);
 
   if (pathmax == -1)
-    pathmax = UV__FS_PATH_MAX;
+    pathmax = UV__PATH_MAX;
 
   return pathmax;
 }
@@ -497,7 +488,9 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   char* buf;
   char* newbuf;
 
-#if defined(UV__FS_PATH_MAX_FALLBACK)
+#if defined(_POSIX_PATH_MAX) || defined(PATH_MAX)
+  maxlen = uv__fs_pathmax_size(req->path);
+#else
   /* We may not have a real PATH_MAX.  Read size of link.  */
   struct stat st;
   int ret;
@@ -515,8 +508,6 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
      for some symlinks, such as those in /proc or /sys.  */
   if (maxlen == 0)
     maxlen = uv__fs_pathmax_size(req->path);
-#else
-  maxlen = uv__fs_pathmax_size(req->path);
 #endif
 
   buf = uv__malloc(maxlen);

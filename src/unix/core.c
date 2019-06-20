@@ -701,16 +701,38 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
 
 
 int uv_cwd(char* buffer, size_t* size) {
+  char scratch[1 + UV__PATH_MAX];
+
   if (buffer == NULL || size == NULL)
     return UV_EINVAL;
 
-  if (getcwd(buffer, *size) == NULL)
+  /* Try to read directly into the user's buffer first... */
+  if (getcwd(buffer, *size) != NULL)
+    goto fixup;
+
+  if (errno != ERANGE)
     return UV__ERR(errno);
 
+  /* ...or into scratch space if the user's buffer is too small
+   * so we can report how much space to provide on the next try.
+   */
+  if (getcwd(scratch, sizeof(scratch)) == NULL)
+    return UV__ERR(errno);
+
+  buffer = scratch;
+
+fixup:
+
   *size = strlen(buffer);
+
   if (*size > 1 && buffer[*size - 1] == '/') {
-    buffer[*size-1] = '\0';
-    (*size)--;
+    *size -= 1;
+    buffer[*size] = '\0';
+  }
+
+  if (buffer == scratch) {
+    *size += 1;
+    return UV_ENOBUFS;
   }
 
   return 0;
