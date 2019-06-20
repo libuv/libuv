@@ -278,6 +278,54 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
+static ssize_t uv__fs_preadv(uv_file fd,
+                             uv_buf_t* bufs,
+                             unsigned int nbufs,
+                             off_t off) {
+  uv_buf_t* buf;
+  uv_buf_t* end;
+  ssize_t result;
+  ssize_t rc;
+  size_t pos;
+
+  assert(nbufs > 0);
+
+  result = 0;
+  pos = 0;
+  buf = bufs + 0;
+  end = bufs + nbufs;
+
+  for (;;) {
+    do
+      rc = pread(fd, buf->base + pos, buf->len - pos, off + result);
+    while (rc == -1 && errno == EINTR);
+
+    if (rc == 0)
+      break;
+
+    if (rc == -1 && result == 0)
+      return UV__ERR(errno);
+
+    if (rc == -1)
+      break;  /* We read some data so return that, ignore the error. */
+
+    pos += rc;
+    result += rc;
+
+    if (pos < buf->len)
+      continue;
+
+    pos = 0;
+    buf += 1;
+
+    if (buf == end)
+      break;
+  }
+
+  return result;
+}
+
+
 static ssize_t uv__fs_read(uv_fs_t* req) {
 #if defined(__linux__)
   static int no_preadv;
@@ -307,7 +355,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     if (no_preadv) retry:
 # endif
     {
-      result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
+      result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
     }
 # if defined(__linux__)
     else {

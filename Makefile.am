@@ -117,6 +117,7 @@ endif  # WINNT
 
 EXTRA_DIST = test/fixtures/empty_file \
              test/fixtures/load_error.node \
+             test/fixtures/lorem_ipsum.txt \
              include \
              docs \
              img \
