@@ -646,11 +646,29 @@ static const char* get_vt100_fn_key(DWORD code, char shift, char ctrl,
         return "\033" normal_str;                                             \
       }
 
+  /* Keys that do _not_ start with an escape. These keys don't have a
+   * shift-only mapping - all extra mappings include control. Also, NULL is
+   * a valid option here, which causes the key press to be ignored. */
+#define VK_CASE_NE(vk, normal_str, ctrl_str, shift_ctrl_str)                  \
+    case (vk):                                                                \
+      if (ctrl) {                                                             \
+        if (shift) {                                                          \
+          *len = (shift_ctrl_str) ? (sizeof shift_ctrl_str) - 1 : 0;          \
+          return shift_ctrl_str;                                              \
+        }                                                                     \
+        *len = (ctrl_str) ? (sizeof ctrl_str) - 1 : 0;                        \
+        return ctrl_str;                                                      \
+      } else {                                                                \
+        *len = (normal_str) ? (sizeof normal_str) - 1 : 0;                    \
+        return normal_str;                                                    \
+      }
+
   switch (code) {
     /* These mappings are the same as Cygwin's. Unmodified and alt-modified
      * keypad keys comply with linux console, modifiers comply with xterm
      * modifier usage. F1. f12 and shift-f1. f10 comply with linux console, f6.
      * f12 with and without modifiers comply with rxvt. */
+
     VK_CASE(VK_INSERT,  "[2~",  "[2;2~", "[2;5~", "[2;6~")
     VK_CASE(VK_END,     "[4~",  "[4;2~", "[4;5~", "[4;6~")
     VK_CASE(VK_DOWN,    "[B",   "[1;2B", "[1;5B", "[1;6B")
@@ -686,11 +704,26 @@ static const char* get_vt100_fn_key(DWORD code, char shift, char ctrl,
     VK_CASE(VK_F11,     "[23~", "[23$",  "[23^",  "[23@" )
     VK_CASE(VK_F12,     "[24~", "[24$",  "[24^",  "[24@" )
 
+    /* Special cases:
+     *   C-/, C-S-/ => ^_ ().
+     *   C-2, C-S-2 => ^@ (NUL).
+     *   C-Space => ^@ (NUL).
+     *   S-Space => Space.
+     *   C-S-Space => ignored.
+     * Regarding the '/' key: This is not the actual VK code, which depends on
+     * the user's keyboard layout. Because of this, we check the Unicode value
+     * and replace it with the ASCII '/'. */
+    VK_CASE_NE('/', "/", "\x1f", "\x1f")
+    VK_CASE_NE('_', "_", "\x1f", "\x1f")
+    VK_CASE_NE('2', "2", "\0",   "\0"  )
+    VK_CASE_NE(' ', " ", "\0",   NULL  )
+
     default:
       *len = 0;
       return NULL;
   }
 #undef VK_CASE
+#undef VK_CASE_NE
 }
 
 
@@ -824,6 +857,36 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
           prefix_len = 0;
         }
 
+        /* Handle a couple of special cases here that may not hit the standard
+         * get_vt100_fn_key path. These match the behavior of zsh under
+         * WSL/conhost. There is a little bit of duplicate handling here and
+         * in get_vt100_fn_key. This is needed because of slight differences
+         * in the way conhost generates key presses directly or over a PTY. */
+        if (KEV.uChar.UnicodeChar == '\t') {
+          if (KEV.dwControlKeyState &
+              (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) {
+            continue; /* Ignore C-tab */
+          } else if (KEV.dwControlKeyState & SHIFT_PRESSED) {
+            /* Sort of a hack, but it works - set the prefix to "^[[" and change
+             * the character value to 'Z' to get a backtab. */
+            handle->tty.rd.last_key[0] = '\033';
+            handle->tty.rd.last_key[1] = '[';
+            prefix_len = 2;
+            KEV.uChar.UnicodeChar = 'Z';
+          }
+          /* Otherwise fall through - it's just a regular tab. */
+        } else if (KEV.uChar.UnicodeChar == '2' ||
+                   KEV.uChar.UnicodeChar == ' ') {
+          /* Ctrl-2 or Ctrl-Space generate a NUL. */
+          if (KEV.dwControlKeyState &
+              (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) {
+            handle->tty.rd.last_key[prefix_len] = 0;
+            handle->tty.rd.last_key_len = 1 + prefix_len;
+            handle->tty.rd.last_key_offset = 0;
+            continue;
+          }
+        }
+
         if (KEV.uChar.UnicodeChar >= 0xDC00 &&
             KEV.uChar.UnicodeChar < 0xE000) {
           /* UTF-16 surrogate pair */
@@ -835,7 +898,8 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
                                          utf16_buffer,
                                          2,
                                          &handle->tty.rd.last_key[prefix_len],
-                                         sizeof handle->tty.rd.last_key,
+                                         sizeof handle->tty.rd.last_key
+                                           - prefix_len,
                                          NULL,
                                          NULL);
         } else {
@@ -845,7 +909,8 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
                                          &KEV.uChar.UnicodeChar,
                                          1,
                                          &handle->tty.rd.last_key[prefix_len],
-                                         sizeof handle->tty.rd.last_key,
+                                         sizeof handle->tty.rd.last_key
+                                           - prefix_len,
                                          NULL,
                                          NULL);
         }
@@ -872,6 +937,17 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
         /* Function key pressed */
         const char* vt100;
         size_t prefix_len, vt100_len;
+
+        /* The key codes for the '/' and '_' keys depend on the user's keyboard
+         * layout.  Since the layout may change, and is actually very likely to
+         * change for devs that don't use EN-US by default, just look it up each
+         * loop and replace them with the ASCII codes, which get_vt100_fn_key
+         * knows how to translate. */
+        if (KEV.wVirtualKeyCode == LOBYTE(VkKeyScanA('/'))) {
+          KEV.wVirtualKeyCode = '/';
+        } else if (KEV.wVirtualKeyCode == LOBYTE(VkKeyScanA('_'))) {
+          KEV.wVirtualKeyCode = '_';
+        }
 
         vt100 = get_vt100_fn_key(KEV.wVirtualKeyCode,
                                   !!(KEV.dwControlKeyState & SHIFT_PRESSED),
