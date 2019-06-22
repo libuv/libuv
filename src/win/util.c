@@ -1860,3 +1860,16 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
   tv->tv_usec = (int32_t) (((ularge.QuadPart - epoch) % 10000000L) / 10);
   return 0;
 }
+
+int uv__random_rtlgenrandom(void* buf, size_t buflen) {
+  if (pRtlGenRandom == NULL)
+    return UV_ENOSYS;
+
+  if (buflen == 0)
+    return 0;
+
+  if (pRtlGenRandom(buf, buflen) == FALSE)
+    return UV_EIO;
+
+  return 0;
+}

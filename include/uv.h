@@ -177,6 +177,7 @@ extern "C" {
   XX(WORK, work)                                                              \
   XX(GETADDRINFO, getaddrinfo)                                                \
   XX(GETNAMEINFO, getnameinfo)                                                \
+  XX(RANDOM, random)                                                          \
 
 typedef enum {
 #define XX(code, _) UV_ ## code = UV__ ## code,
@@ -234,6 +235,7 @@ typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_udp_send_s uv_udp_send_t;
 typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_work_s uv_work_t;
+typedef struct uv_random_s uv_random_t;
 
 /* None of the above. */
 typedef struct uv_env_item_s uv_env_item_t;
@@ -330,6 +332,10 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
+typedef void (*uv_random_cb)(uv_random_t* req,
+                             int status,
+                             void* buf,
+                             size_t buflen);
 
 typedef struct {
   long tv_sec;
@@ -1573,6 +1579,26 @@ UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size
 
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
 UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
+
+
+struct uv_random_s {
+  UV_REQ_FIELDS
+  /* read-only */
+  uv_loop_t* loop;
+  /* private */
+  int status;
+  void* buf;
+  size_t buflen;
+  uv_random_cb cb;
+  struct uv__work work_req;
+};
+
+UV_EXTERN int uv_random(uv_loop_t* loop,
+                        uv_random_t* req,
+                        void *buf,
+                        size_t buflen,
+                        unsigned flags,  /* For future extension; must be 0. */
+                        uv_random_cb cb);
 
 #if defined(IF_NAMESIZE)
 # define UV_IF_NAMESIZE (IF_NAMESIZE + 1)

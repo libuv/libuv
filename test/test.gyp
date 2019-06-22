@@ -90,6 +90,7 @@
         'test-process-title.c',
         'test-process-title-threadsafe.c',
         'test-queue-foreach-delete.c',
+        'test-random.c',
         'test-ref.c',
         'test-run-nowait.c',
         'test-run-once.c',

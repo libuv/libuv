@@ -14,6 +14,7 @@ set(uv_sources
     src/fs-poll.c
     src/idna.c
     src/inet.c
+    src/random.c
     src/strscpy.c
     src/threadpool.c
     src/timer.c
@@ -108,6 +109,7 @@ set(uv_test_sources
     test/test-process-title-threadsafe.c
     test/test-process-title.c
     test/test-queue-foreach-delete.c
+    test/test-random.c
     test/test-ref.c
     test/test-run-nowait.c
     test/test-run-once.c
@@ -236,6 +238,7 @@ else()
        src/unix/pipe.c
        src/unix/poll.c
        src/unix/process.c
+       src/unix/random-devurandom.c
        src/unix/signal.c
        src/unix/stream.c
        src/unix/tcp.c
@@ -284,6 +287,14 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|NetBSD|OpenBSD")
   list(APPEND uv_sources src/unix/bsd-ifaddrs.c src/unix/kqueue.c)
 endif()
 
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+  list(APPEND uv_sources src/unix/random-getrandom.c)
+endif()
+
+if(APPLE OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+  list(APPEND uv_sources src/unix/random-getentropy.c)
+endif()
+
 if(APPLE)
   list(APPEND uv_defines _DARWIN_UNLIMITED_SELECT=1 _DARWIN_USE_64_BIT_INODE=1)
   list(APPEND uv_sources
@@ -300,6 +311,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
        src/unix/linux-inotify.c
        src/unix/linux-syscalls.c
        src/unix/procfs-exepath.c
+       src/unix/random-getrandom.c
+       src/unix/random-sysctl.c
        src/unix/sysinfo-loadavg.c)
 endif()
 
