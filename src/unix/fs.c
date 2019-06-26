@@ -883,8 +883,27 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
     ssize_t r;
 
     off = req->off;
+
+#ifdef __linux__
+    {
+      static int copy_file_range_support = 1;
+
+      if (copy_file_range_support) {
+        r = uv__fs_copy_file_range(in_fd, NULL, out_fd, &off, req->bufsml[0].len, 0);
+
+        if (r == -1 && errno == ENOSYS) {
+          errno = 0;
+          copy_file_range_support = 0;
+        } else {
+          goto ok;
+        }
+      }
+    }
+#endif
+
     r = sendfile(out_fd, in_fd, &off, req->bufsml[0].len);
 
+ok:
     /* sendfile() on SunOS returns EINVAL if the target fd is not a socket but
      * it still writes out data. Fortunately, we can detect it by checking if
      * the offset has been updated.
