@@ -76,8 +76,14 @@ Mutexes
 The mutex functions are a **direct** map to the pthread equivalents.
 
 .. rubric:: libuv mutex functions
-.. literalinclude:: ../../../include/uv.h
-    :lines: 1575-1580
+.. code-block:: c
+
+    int uv_mutex_init(uv_mutex_t* handle);
+    int uv_mutex_init_recursive(uv_mutex_t* handle);
+    void uv_mutex_destroy(uv_mutex_t* handle);
+    void uv_mutex_lock(uv_mutex_t* handle);
+    int uv_mutex_trylock(uv_mutex_t* handle);
+    void uv_mutex_unlock(uv_mutex_t* handle);
 
 The ``uv_mutex_init()``, ``uv_mutex_init_recursive()`` and ``uv_mutex_trylock()``
 functions will return 0 on success, and an error code otherwise.

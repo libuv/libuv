@@ -181,8 +181,16 @@ The file descriptors of the child process are set using the ``stdio`` field in
 file descriptors being set. ``uv_process_options_t.stdio`` is an array of
 ``uv_stdio_container_t``, which is:
 
-.. literalinclude:: ../../../include/uv.h
-    :lines: 826-834
+.. code-block:: c
+
+    typedef struct uv_stdio_container_s {
+        uv_stdio_flags flags;
+
+        union {
+            uv_stream_t* stream;
+            int fd;
+        } data;
+    } uv_stdio_container_t;
 
 where flags can have several values. Use ``UV_IGNORE`` if it isn't going to be
 used. If the first three ``stdio`` fields are marked as ``UV_IGNORE`` they'll

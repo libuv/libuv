@@ -167,8 +167,9 @@ Multicast
 
 A socket can (un)subscribe to a multicast group using:
 
-.. literalinclude:: ../../../include/uv.h
-    :lines: 594-597
+.. code::block:: c
+
+    int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr, const char* interface_addr, uv_membership membership);
 
 where ``membership`` is ``UV_JOIN_GROUP`` or ``UV_LEAVE_GROUP``.
 
