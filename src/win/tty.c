@@ -2253,18 +2253,16 @@ int uv_tty_reset_mode(void) {
 static int uv__set_vtp(HANDLE handle, BOOL vtp) {
   DWORD dwMode = 0;
 
-  if (!GetConsoleMode(handle, &dwMode)) {
+  if (0 == GetConsoleMode(handle, &dwMode))
     return uv_translate_sys_error(GetLastError());
-  }
 
   if (vtp) {
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   } else {
     dwMode &= ~(ENABLE_VIRTUAL_TERMINAL_PROCESSING);
   }
-  if (!SetConsoleMode(handle, dwMode)) {
+  if (0 == SetConsoleMode(handle, dwMode))
     return uv_translate_sys_error(GetLastError());
-  }
 
   return 0;
 }
@@ -2285,9 +2283,9 @@ static void uv__determine_vterm_state(HANDLE handle) {
 int uv_tty_set_vterm_state(uv_tty_t* tty, uv_tty_vtermstate_t state) {
   int ret = 0;
 
-  if (!(tty->flags & UV_HANDLE_WRITABLE)) {
+  if (!(tty->flags & UV_HANDLE_WRITABLE))
     return UV_EINVAL;
-  }
+
 
   uv_sem_wait(&uv_tty_output_lock);
   switch (state) {
