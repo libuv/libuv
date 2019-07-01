@@ -47,7 +47,7 @@ Data types
           /* Modern conhost */
           UV_TTY_VTP,
           /* ConEmu, mintty, etc. */
-          uv_TTY_ANSI
+          UV_TTY_ANSI
       } uv_tty_vtermstate_t;
 
 
@@ -114,9 +114,9 @@ API
 
     Gets the current Window size. On success it returns 0.
 
-.. c:function:: int uv_tty_set_vterm_state(uv_tty_t* handle, uv_vtermstate_t state)
+.. c:function:: int uv_tty_set_vterm_state(uv_tty_t* handle, uv_tty_vtermstate_t state)
 
-    Set the Console to use the specified virtual terminal mode.
+    Set the console to use the specified virtual terminal mode.
 
     This function is only implemented on Windows.
 
