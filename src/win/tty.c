@@ -2256,11 +2256,11 @@ static int uv__set_vtp(HANDLE handle, BOOL vtp) {
   if (0 == GetConsoleMode(handle, &dwMode))
     return uv_translate_sys_error(GetLastError());
 
-  if (vtp) {
+  if (vtp)
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  } else {
+  else
     dwMode &= ~(ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-  }
+
   if (0 == SetConsoleMode(handle, dwMode))
     return uv_translate_sys_error(GetLastError());
 
@@ -2285,22 +2285,18 @@ int uv_tty_set_vterm_state(uv_tty_t* tty, uv_tty_vtermstate_t state) {
 
   if (!(tty->flags & UV_HANDLE_WRITABLE))
     return UV_EINVAL;
-
-
   uv_sem_wait(&uv_tty_output_lock);
   switch (state) {
     case UV_TTY_AUTODETECT:
       uv__determine_vterm_state(tty->handle);
       break;
     case UV_TTY_VTP:
-      if (!(ret = uv__set_vtp(tty->handle, TRUE))) {
+      if (!(ret = uv__set_vtp(tty->handle, TRUE)))
         uv__vterm_state = UV_TTY_VTP;
-      }
       break;
     case UV_TTY_LEGACY:
-      if (!(ret = uv__set_vtp(tty->handle, FALSE))) {
+      if (!(ret = uv__set_vtp(tty->handle, FALSE)))
         uv__vterm_state = UV_TTY_LEGACY;
-      }
       break;
     case UV_TTY_ANSI:
       uv__vterm_state = UV_TTY_ANSI;

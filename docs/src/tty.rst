@@ -120,7 +120,7 @@ API
 
     This function is only implemented on Windows.
 
-    .. versionadded:: 1.25.0
+    .. versionadded:: 1.31.0
 
 
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.
