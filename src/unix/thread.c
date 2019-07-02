@@ -222,6 +222,12 @@ int uv_thread_create_ex(uv_thread_t* tid,
   size_t pagesize;
   size_t stack_size;
 
+  /* Used to squelch a -Wcast-function-type warning. */
+  union {
+    void (*in)(void*);
+    void* (*out)(void*);
+  } f;
+
   stack_size =
       params->flags & UV_THREAD_HAS_STACK_SIZE ? params->stack_size : 0;
 
@@ -248,7 +254,8 @@ int uv_thread_create_ex(uv_thread_t* tid,
       abort();
   }
 
-  err = pthread_create(tid, attr, (void*(*)(void*)) entry, arg);
+  f.in = entry;
+  err = pthread_create(tid, attr, f.out, arg);
 
   if (attr != NULL)
     pthread_attr_destroy(attr);
