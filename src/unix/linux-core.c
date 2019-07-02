@@ -203,6 +203,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
    * that being the largest value I have seen in the wild (and only once.)
    */
   static const int max_safe_timeout = 1789569;
+  static int no_epoll_pwait;
+  static int no_epoll_wait;
   struct epoll_event events[1024];
   struct epoll_event* pe;
   struct epoll_event e;
@@ -210,7 +212,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   QUEUE* q;
   uv__io_t* w;
   sigset_t sigset;
-  sigset_t* psigset;
+  uint64_t sigmask;
   uint64_t base;
   int have_signals;
   int nevents;
@@ -262,11 +264,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w->events = w->pevents;
   }
 
-  psigset = NULL;
+  sigmask = 0;
   if (loop->flags & UV_LOOP_BLOCK_SIGPROF) {
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGPROF);
-    psigset = &sigset;
+    sigmask |= 1 << (SIGPROF - 1);
   }
 
   assert(timeout >= -1);
@@ -281,11 +283,30 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
       timeout = max_safe_timeout;
 
-    nfds = epoll_pwait(loop->backend_fd,
-                       events,
-                       ARRAY_SIZE(events),
-                       timeout,
-                       psigset);
+    if (sigmask != 0 && no_epoll_pwait != 0)
+      if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
+        abort();
+
+    if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
+      nfds = epoll_pwait(loop->backend_fd,
+                         events,
+                         ARRAY_SIZE(events),
+                         timeout,
+                         &sigset);
+      if (nfds == -1 && errno == ENOSYS)
+        no_epoll_pwait = 1;
+    } else {
+      nfds = epoll_wait(loop->backend_fd,
+                        events,
+                        ARRAY_SIZE(events),
+                        timeout);
+      if (nfds == -1 && errno == ENOSYS)
+        no_epoll_wait = 1;
+    }
+
+    if (sigmask != 0 && no_epoll_pwait != 0)
+      if (pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
+        abort();
 
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
@@ -306,6 +327,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (nfds == -1) {
+      if (errno == ENOSYS) {
+        /* epoll_wait() or epoll_pwait() failed, try the other system call. */
+        assert(no_epoll_wait == 0 || no_epoll_pwait == 0);
+        continue;
+      }
+
       if (errno != EINTR)
         abort();
 
