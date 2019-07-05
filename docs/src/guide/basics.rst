@@ -82,7 +82,7 @@ libuv's event loop is explained in more detail in the `documentation
 Hello World
 -----------
 
-With the basics out of the way, lets write our first libuv program. It does
+With the basics out of the way, let's write our first libuv program. It does
 nothing, except start a loop which will exit immediately.
 
 .. rubric:: helloworld/main.c
