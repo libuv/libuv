@@ -292,6 +292,7 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
+#if !HAVE_PREADV
 static ssize_t uv__fs_preadv(uv_file fd,
                              uv_buf_t* bufs,
                              unsigned int nbufs,
@@ -338,6 +339,7 @@ static ssize_t uv__fs_preadv(uv_file fd,
 
   return result;
 }
+#endif
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
