@@ -2736,13 +2736,13 @@ TEST_IMPL(fs_rename_to_existing_file) {
 }
 
 
-TEST_IMPL(fs_read_bufs) {
+static void fs_read_bufs(int add_flags) {
   char scratch[768];
   uv_buf_t bufs[4];
 
   ASSERT(0 <= uv_fs_open(NULL, &open_req1,
                          "test/fixtures/lorem_ipsum.txt",
-                         O_RDONLY, 0, NULL));
+                         O_RDONLY | add_flags, 0, NULL));
   ASSERT(open_req1.result >= 0);
   uv_fs_req_cleanup(&open_req1);
 
@@ -2784,6 +2784,10 @@ TEST_IMPL(fs_read_bufs) {
   ASSERT(0 == uv_fs_close(NULL, &close_req, open_req1.result, NULL));
   ASSERT(close_req.result == 0);
   uv_fs_req_cleanup(&close_req);
+}
+TEST_IMPL(fs_read_bufs) {
+  fs_read_bufs(0);
+  fs_read_bufs(UV_FS_O_FILEMAP);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
