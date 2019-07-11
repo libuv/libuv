@@ -374,6 +374,7 @@ TEST_DECLARE   (fs_exclusive_sharing_mode)
 TEST_DECLARE   (fs_file_flag_no_buffering)
 TEST_DECLARE   (fs_open_readonly_acl)
 TEST_DECLARE   (fs_fchmod_archive_readonly)
+TEST_DECLARE   (fs_invalid_mkdir_name)
 #endif
 TEST_DECLARE   (strscpy)
 TEST_DECLARE   (threadpool_queue_work_simple)
@@ -961,6 +962,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_file_flag_no_buffering)
   TEST_ENTRY  (fs_open_readonly_acl)
   TEST_ENTRY  (fs_fchmod_archive_readonly)
+  TEST_ENTRY  (fs_invalid_mkdir_name)
 #endif
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (open_osfhandle_valid_handle)
