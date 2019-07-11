@@ -1180,8 +1180,13 @@ void fs__unlink(uv_fs_t* req) {
 
 void fs__mkdir(uv_fs_t* req) {
   /* TODO: use req->mode. */
-  int result = _wmkdir(req->file.pathw);
-  SET_REQ_RESULT(req, result);
+  req->result = _wmkdir(req->file.pathw);
+  if (req->result == -1) {
+    req->sys_errno_ = _doserrno;
+    req->result = req->sys_errno_ == ERROR_INVALID_NAME
+                ? UV_EINVAL
+                : uv_translate_sys_error(req->sys_errno_);
+  }
 }
 
 

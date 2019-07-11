@@ -4060,4 +4060,16 @@ TEST_IMPL(fs_fchmod_archive_readonly) {
 
     return 0;
 }
+
+TEST_IMPL(fs_invalid_mkdir_name) {
+  uv_loop_t* loop;
+  uv_fs_t req;
+  int r;
+
+  loop = uv_default_loop();
+  r = uv_fs_mkdir(loop, &req, "invalid>", 0, NULL);
+  ASSERT(r == UV_EINVAL);
+
+  return 0;
+}
 #endif
