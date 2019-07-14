@@ -109,14 +109,33 @@ static void cl_recv_cb(uv_udp_t* handle,
 }
 
 
+static int can_ipv6_external(void) {
+  uv_interface_address_t* addr;
+  int supported;
+  int count;
+  int i;
+
+  if (uv_interface_addresses(&addr, &count))
+    return 0;  /* Assume no IPv6 support on failure. */
+
+  supported = 0;
+  for (i = 0; supported == 0 && i < count; i += 1)
+    supported = (AF_INET6 == addr[i].address.address6.sin6_family &&
+                 !addr[i].is_internal);
+
+  uv_free_interface_addresses(addr, count);
+  return supported;
+}
+
+
 TEST_IMPL(udp_multicast_join6) {
   int r;
   uv_udp_send_t req;
   uv_buf_t buf;
   struct sockaddr_in6 addr;
 
-  if (!can_ipv6())
-    RETURN_SKIP("IPv6 not supported");
+  if (!can_ipv6_external())
+    RETURN_SKIP("No external IPv6 interface available");
 
   ASSERT(0 == uv_ip6_addr("::", TEST_PORT, &addr));
 
