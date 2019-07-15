@@ -525,7 +525,7 @@ static ssize_t uv__fs_pathmax_size(const char* path) {
   pathmax = pathconf(path, _PC_PATH_MAX);
 
   if (pathmax == -1)
-    pathmax = UV__PATH_MAX;
+    pathmax = UV_PATH_MAX_BYTES;
 
   return pathmax;
 }

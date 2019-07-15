@@ -701,7 +701,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
 
 
 int uv_cwd(char* buffer, size_t* size) {
-  char scratch[1 + UV__PATH_MAX];
+  char scratch[1 + UV_PATH_MAX_BYTES];
 
   if (buffer == NULL || size == NULL)
     return UV_EINVAL;

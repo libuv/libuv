@@ -35,6 +35,7 @@
 
 #include <termios.h>
 #include <pwd.h>
+#include <limits.h>
 
 #if !defined(__MVS__)
 #include <semaphore.h>
@@ -80,6 +81,12 @@
 
 #ifndef UV_IO_PRIVATE_PLATFORM_FIELDS
 # define UV_IO_PRIVATE_PLATFORM_FIELDS /* empty */
+#endif
+
+#if defined(_POSIX_PATH_MAX)
+# define UV_PATH_MAX_BYTES _POSIX_PATH_MAX
+#elif defined(PATH_MAX)
+# define UV_PATH_MAX_BYTES PATH_MAX
 #endif
 
 struct uv__io_s;

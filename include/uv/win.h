@@ -62,6 +62,9 @@ typedef struct pollfd {
 #include "uv/tree.h"
 #include "uv/threadpool.h"
 
+/* MAX_PATH is in characters, not bytes. Make sure we have enough headroom. */
+#define UV_PATH_MAX_BYTES (MAX_PATH * 4)
+
 #define MAX_PIPENAME_LEN 256
 
 #ifndef S_IFLNK
