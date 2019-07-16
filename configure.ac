@@ -63,6 +63,7 @@ AM_CONDITIONAL([MSYS],     [AS_CASE([$host_os],[msys*],         [true], [false])
 AM_CONDITIONAL([NETBSD],   [AS_CASE([$host_os],[netbsd*],       [true], [false])])
 AM_CONDITIONAL([OPENBSD],  [AS_CASE([$host_os],[openbsd*],      [true], [false])])
 AM_CONDITIONAL([OS390],    [AS_CASE([$host_os],[openedition*],  [true], [false])])
+AM_CONDITIONAL([OS400],    [AS_CASE([$host_os],[os400],         [true], [false])])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
 AS_CASE([$host_os],[mingw*], [
