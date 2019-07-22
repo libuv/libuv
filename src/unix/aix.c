@@ -82,9 +82,9 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   /* Passing maxfd of -1 should mean the limit is determined
    * by the user's ulimit or the global limit as per the doc */
-  loop->backend_fd = pollset_create(-1);
+  uv__set_backend_fd(loop, pollset_create(-1));
 
-  if (loop->backend_fd == -1)
+  if (uv__get_backend_fd(loop) == -1)
     return -1;
 
   return 0;
@@ -97,9 +97,9 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
     loop->fs_fd = -1;
   }
 
-  if (loop->backend_fd != -1) {
-    pollset_destroy(loop->backend_fd);
-    loop->backend_fd = -1;
+  if (uv__get_backend_fd(loop) != -1) {
+    pollset_destroy(uv__get_backend_fd(loop));
+    uv__set_backend_fd(loop, -1);
   }
 }
 
@@ -118,11 +118,11 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   pc.cmd = PS_MOD;  /* Equivalent to PS_ADD if the fd is not in the pollset. */
   pc.fd = fd;
 
-  if (pollset_ctl(loop->backend_fd, &pc, 1))
+  if (pollset_ctl(uv__get_backend_fd(loop), &pc, 1))
     return UV__ERR(errno);
 
   pc.cmd = PS_DELETE;
-  if (pollset_ctl(loop->backend_fd, &pc, 1))
+  if (pollset_ctl(uv__get_backend_fd(loop), &pc, 1))
     abort();
 
   return 0;
@@ -169,14 +169,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     add_failed = 0;
     if (w->events == 0) {
       pc.cmd = PS_ADD;
-      if (pollset_ctl(loop->backend_fd, &pc, 1)) {
+      if (pollset_ctl(uv__get_backend_fd(loop), &pc, 1)) {
         if (errno != EINVAL) {
           assert(0 && "Failed to add file descriptor (pc.fd) to pollset");
           abort();
         }
         /* Check if the fd is already in the pollset */
         pqry.fd = pc.fd;
-        rc = pollset_query(loop->backend_fd, &pqry);
+        rc = pollset_query(uv__get_backend_fd(loop), &pqry);
         switch (rc) {
         case -1:
           assert(0 && "Failed to query pollset for file descriptor");
@@ -198,12 +198,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        * compared to a PS_DELETE to be worth optimizing. Alternatively, could
        * lazily remove events, squelching them in the mean time. */
       pc.cmd = PS_DELETE;
-      if (pollset_ctl(loop->backend_fd, &pc, 1)) {
+      if (pollset_ctl(uv__get_backend_fd(loop), &pc, 1)) {
         assert(0 && "Failed to delete file descriptor (pc.fd) from pollset");
         abort();
       }
       pc.cmd = PS_ADD;
-      if (pollset_ctl(loop->backend_fd, &pc, 1)) {
+      if (pollset_ctl(uv__get_backend_fd(loop), &pc, 1)) {
         assert(0 && "Failed to add file descriptor (pc.fd) to pollset");
         abort();
       }
@@ -231,7 +231,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
 
-    nfds = pollset_poll(loop->backend_fd,
+    nfds = pollset_poll(uv__get_backend_fd(loop),
                         events,
                         ARRAY_SIZE(events),
                         timeout);
@@ -303,7 +303,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          * Ignore all errors because we may be racing with another thread
          * when the file descriptor is closed.
          */
-        pollset_ctl(loop->backend_fd, &pc, 1);
+        pollset_ctl(uv__get_backend_fd(loop), &pc, 1);
         continue;
       }
 
@@ -1288,6 +1288,6 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   pc.events = 0;
   pc.cmd = PS_DELETE;
   pc.fd = fd;
-  if(loop->backend_fd >= 0)
-    pollset_ctl(loop->backend_fd, &pc, 1);
+  if(uv__get_backend_fd(loop) >= 0)
+    pollset_ctl(uv__get_backend_fd(loop), &pc, 1);
 }

@@ -49,11 +49,11 @@ static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags);
 
 
 int uv__kqueue_init(uv_loop_t* loop) {
-  loop->backend_fd = kqueue();
-  if (loop->backend_fd == -1)
+  uv__set_backend_fd(loop, kqueue());
+  if (uv__get_backend_fd(loop) == -1)
     return UV__ERR(errno);
 
-  uv__cloexec(loop->backend_fd, 1);
+  uv__cloexec(uv__get_backend_fd(loop), 1);
 
   return 0;
 }
@@ -65,7 +65,7 @@ static int uv__has_forked_with_cfrunloop;
 
 int uv__io_fork(uv_loop_t* loop) {
   int err;
-  loop->backend_fd = -1;
+  uv__set_backend_fd(loop, -1);
   err = uv__kqueue_init(loop);
   if (err)
     return err;
@@ -97,12 +97,12 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 
   rc = 0;
   EV_SET(&ev, fd, EVFILT_READ, EV_ADD, 0, 0, 0);
-  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
+  if (kevent(uv__get_backend_fd(loop), &ev, 1, NULL, 0, NULL))
     rc = UV__ERR(errno);
 
   EV_SET(&ev, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
   if (rc == 0)
-    if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
+    if (kevent(uv__get_backend_fd(loop), &ev, 1, NULL, 0, NULL))
       abort();
 
   return rc;
@@ -164,7 +164,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+        if (kevent(uv__get_backend_fd(loop), events, nevents, NULL, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -174,7 +174,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       EV_SET(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+        if (kevent(uv__get_backend_fd(loop), events, nevents, NULL, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -184,7 +184,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       EV_SET(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+        if (kevent(uv__get_backend_fd(loop), events, nevents, NULL, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -227,7 +227,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (pset != NULL)
       pthread_sigmask(SIG_BLOCK, pset, NULL);
 
-    nfds = kevent(loop->backend_fd,
+    nfds = kevent(uv__get_backend_fd(loop),
                   events,
                   nevents,
                   events,
@@ -296,7 +296,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         struct kevent events[1];
 
         EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-        if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
+        if (kevent(uv__get_backend_fd(loop), events, 1, NULL, 0, NULL))
           if (errno != EBADF && errno != ENOENT)
             abort();
 
@@ -322,7 +322,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
           /* TODO batch up */
           struct kevent events[1];
           EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
+          if (kevent(uv__get_backend_fd(loop), events, 1, NULL, 0, NULL))
             if (errno != ENOENT)
               abort();
         }
@@ -336,7 +336,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
           /* TODO batch up */
           struct kevent events[1];
           EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
+          if (kevent(uv__get_backend_fd(loop), events, 1, NULL, 0, NULL))
             if (errno != ENOENT)
               abort();
         }
@@ -350,7 +350,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
           /* TODO batch up */
           struct kevent events[1];
           EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
+          if (kevent(uv__get_backend_fd(loop), events, 1, NULL, 0, NULL))
             if (errno != ENOENT)
               abort();
         }
@@ -478,7 +478,7 @@ static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
 
   EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags, 0, 0);
 
-  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
+  if (kevent(uv__get_backend_fd(loop), &ev, 1, NULL, 0, NULL))
     abort();
 }
 

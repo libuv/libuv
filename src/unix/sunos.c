@@ -69,7 +69,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   int fd;
 
   loop->fs_fd = -1;
-  loop->backend_fd = -1;
+  uv__set_backend_fd(loop, -1);
 
   fd = port_create();
   if (fd == -1)
@@ -80,7 +80,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
     uv__close(fd);
     return err;
   }
-  loop->backend_fd = fd;
+  uv__set_backend_fd(loop, fd);
 
   return 0;
 }
@@ -92,9 +92,9 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
     loop->fs_fd = -1;
   }
 
-  if (loop->backend_fd != -1) {
-    uv__close(loop->backend_fd);
-    loop->backend_fd = -1;
+  if (uv__get_backend_fd(loop) != -1) {
+    uv__close(uv__get_backend_fd(loop));
+    uv__set_backend_fd(loop, -1);
   }
 }
 
@@ -132,10 +132,10 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
 
 int uv__io_check_fd(uv_loop_t* loop, int fd) {
-  if (port_associate(loop->backend_fd, PORT_SOURCE_FD, fd, POLLIN, 0))
+  if (port_associate(uv__get_backend_fd(loop), PORT_SOURCE_FD, fd, POLLIN, 0))
     return UV__ERR(errno);
 
-  if (port_dissociate(loop->backend_fd, PORT_SOURCE_FD, fd)) {
+  if (port_dissociate(uv__get_backend_fd(loop), PORT_SOURCE_FD, fd)) {
     perror("(libuv) port_dissociate()");
     abort();
   }
@@ -179,7 +179,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w = QUEUE_DATA(q, uv__io_t, watcher_queue);
     assert(w->pevents != 0);
 
-    if (port_associate(loop->backend_fd,
+    if (port_associate(uv__get_backend_fd(loop),
                        PORT_SOURCE_FD,
                        w->fd,
                        w->pevents,
@@ -231,7 +231,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (pset != NULL)
       pthread_sigmask(SIG_BLOCK, pset, NULL);
 
-    err = port_getn(loop->backend_fd,
+    err = port_getn(uv__get_backend_fd(loop),
                     events,
                     ARRAY_SIZE(events),
                     &nfds,

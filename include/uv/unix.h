@@ -220,7 +220,10 @@ typedef struct {
 
 #define UV_LOOP_PRIVATE_FIELDS                                                \
   unsigned long flags;                                                        \
-  int backend_fd;                                                             \
+  union {                                                                     \
+    int fd;                                                                   \
+    void* data;                                                               \
+  } backend;                                                                  \
   void* pending_queue[2];                                                     \
   void* watcher_queue[2];                                                     \
   uv__io_t** watchers;                                                        \

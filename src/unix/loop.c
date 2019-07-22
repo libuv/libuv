@@ -68,7 +68,7 @@ int uv_loop_init(uv_loop_t* loop) {
   loop->async_wfd = -1;
   loop->signal_pipefd[0] = -1;
   loop->signal_pipefd[1] = -1;
-  loop->backend_fd = -1;
+  uv__set_backend_fd(loop, -1);
   loop->emfile_fd = -1;
 
   loop->timer_counter = 0;
@@ -174,9 +174,9 @@ void uv__loop_close(uv_loop_t* loop) {
     loop->emfile_fd = -1;
   }
 
-  if (loop->backend_fd != -1) {
-    uv__close(loop->backend_fd);
-    loop->backend_fd = -1;
+  if (uv__get_backend_fd(loop) != -1) {
+    uv__close(uv__get_backend_fd(loop));
+    uv__set_backend_fd(loop, -1);
   }
 
   uv_mutex_lock(&loop->wq_mutex);

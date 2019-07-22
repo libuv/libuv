@@ -97,7 +97,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
       uv__cloexec(fd, 1);
   }
 
-  loop->backend_fd = fd;
+  uv__set_backend_fd(loop, fd);
   loop->inotify_fd = -1;
   loop->inotify_watchers = NULL;
 
@@ -114,8 +114,8 @@ int uv__io_fork(uv_loop_t* loop) {
 
   old_watchers = loop->inotify_watchers;
 
-  uv__close(loop->backend_fd);
-  loop->backend_fd = -1;
+  uv__close(uv__get_backend_fd(loop));
+  uv__set_backend_fd(loop, -1);
   uv__platform_loop_delete(loop);
 
   err = uv__platform_loop_init(loop);
@@ -157,12 +157,12 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
    *
    * We pass in a dummy epoll_event, to work around a bug in old kernels.
    */
-  if (loop->backend_fd >= 0) {
+  if (uv__get_backend_fd(loop) >= 0) {
     /* Work around a bug in kernels 3.10 to 3.19 where passing a struct that
      * has the EPOLLWAKEUP flag set generates spurious audit syslog warnings.
      */
     memset(&dummy, 0, sizeof(dummy));
-    epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
+    epoll_ctl(uv__get_backend_fd(loop), EPOLL_CTL_DEL, fd, &dummy);
   }
 }
 
@@ -176,12 +176,12 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   e.data.fd = -1;
 
   rc = 0;
-  if (epoll_ctl(loop->backend_fd, EPOLL_CTL_ADD, fd, &e))
+  if (epoll_ctl(uv__get_backend_fd(loop), EPOLL_CTL_ADD, fd, &e))
     if (errno != EEXIST)
       rc = UV__ERR(errno);
 
   if (rc == 0)
-    if (epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &e))
+    if (epoll_ctl(uv__get_backend_fd(loop), EPOLL_CTL_DEL, fd, &e))
       abort();
 
   return rc;
@@ -249,14 +249,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     /* XXX Future optimization: do EPOLL_CTL_MOD lazily if we stop watching
      * events, skip the syscall and squelch the events after epoll_wait().
      */
-    if (epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
+    if (epoll_ctl(uv__get_backend_fd(loop), op, w->fd, &e)) {
       if (errno != EEXIST)
         abort();
 
       assert(op == EPOLL_CTL_ADD);
 
       /* We've reactivated a file descriptor that's been watched before. */
-      if (epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, w->fd, &e))
+      if (epoll_ctl(uv__get_backend_fd(loop), EPOLL_CTL_MOD, w->fd, &e))
         abort();
     }
 
@@ -310,7 +310,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         abort();
 
     if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
-      nfds = epoll_pwait(loop->backend_fd,
+      nfds = epoll_pwait(uv__get_backend_fd(loop),
                          events,
                          ARRAY_SIZE(events),
                          timeout,
@@ -320,7 +320,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         no_epoll_pwait = 1;
       }
     } else {
-      nfds = epoll_wait(loop->backend_fd,
+      nfds = epoll_wait(uv__get_backend_fd(loop),
                         events,
                         ARRAY_SIZE(events),
                         timeout);
@@ -420,7 +420,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          * Ignore all errors because we may be racing with another thread
          * when the file descriptor is closed.
          */
-        epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, pe);
+        epoll_ctl(uv__get_backend_fd(loop), EPOLL_CTL_DEL, fd, pe);
         continue;
       }
 

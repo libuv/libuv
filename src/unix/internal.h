@@ -139,6 +139,14 @@ enum {
   UV_LOOP_BLOCK_SIGPROF = 1
 };
 
+UV_UNUSED(static int uv__get_backend_fd(const uv_loop_t* loop)) {
+  return loop->backend.fd;
+}
+
+UV_UNUSED(static void uv__set_backend_fd(uv_loop_t* loop, int fd)) {
+  loop->backend.fd = fd;
+}
+
 /* flags of excluding ifaddr */
 enum {
   UV__EXCLUDE_IFPHYS,
