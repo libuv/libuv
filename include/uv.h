@@ -236,6 +236,7 @@ typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_utsname_s uv_utsname_t;
+typedef struct uv_statfs_s uv_statfs_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL
@@ -1070,6 +1071,17 @@ struct uv_utsname_s {
      to as meaningless in the docs. */
 };
 
+struct uv_statfs_s {
+  uint64_t f_type;
+  uint64_t f_bsize;
+  uint64_t f_blocks;
+  uint64_t f_bfree;
+  uint64_t f_bavail;
+  uint64_t f_files;
+  uint64_t f_ffree;
+  uint64_t f_spare[4];
+};
+
 typedef enum {
   UV_DIRENT_UNKNOWN,
   UV_DIRENT_FILE,
@@ -1205,7 +1217,8 @@ typedef enum {
   UV_FS_LCHOWN,
   UV_FS_OPENDIR,
   UV_FS_READDIR,
-  UV_FS_CLOSEDIR
+  UV_FS_CLOSEDIR,
+  UV_FS_STATFS
 } uv_fs_type;
 
 struct uv_dir_s {
@@ -1432,6 +1445,10 @@ UV_EXTERN int uv_fs_lchown(uv_loop_t* loop,
                            const char* path,
                            uv_uid_t uid,
                            uv_gid_t gid,
+                           uv_fs_cb cb);
+UV_EXTERN int uv_fs_statfs(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           const char* path,
                            uv_fs_cb cb);
 
 

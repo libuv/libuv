@@ -102,6 +102,24 @@ Data types
             UV_FS_CLOSEDIR
         } uv_fs_type;
 
+.. c:type:: uv_statfs_t
+
+    Reduced cross platform equivalent of ``struct statfs``.
+    Used in :c:func:`uv_fs_statfs`.
+
+    ::
+
+        typedef struct uv_statfs_s {
+            uint64_t f_type;
+            uint64_t f_bsize;
+            uint64_t f_blocks;
+            uint64_t f_bfree;
+            uint64_t f_bavail;
+            uint64_t f_files;
+            uint64_t f_ffree;
+            uint64_t f_spare[4];
+        } uv_statfs_t;
+
 .. c:type:: uv_dirent_t
 
     Cross platform (reduced) equivalent of ``struct dirent``.
@@ -289,6 +307,17 @@ API
 .. c:function:: int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     Equivalent to :man:`stat(2)`, :man:`fstat(2)` and :man:`lstat(2)` respectively.
+
+.. c:function:: int uv_fs_statfs(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
+
+    Equivalent to :man:`statfs(2)`. On success, a `uv_statfs_t` is allocated
+    and returned via `req->ptr`. This memory is freed by `uv_fs_req_cleanup()`.
+
+    .. note::
+        Any fields in the resulting `uv_statfs_t` that are not supported by the
+        underlying operating system are set to zero.
+
+    .. versionadded:: 1.31.0
 
 .. c:function:: int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 

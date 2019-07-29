@@ -94,6 +94,7 @@ static int readlink_cb_count;
 static int realpath_cb_count;
 static int utime_cb_count;
 static int futime_cb_count;
+static int statfs_cb_count;
 
 static uv_loop_t* loop;
 
@@ -327,6 +328,38 @@ static void fstat_cb(uv_fs_t* req) {
   ASSERT(s->st_size == sizeof(test_buf));
   uv_fs_req_cleanup(req);
   fstat_cb_count++;
+}
+
+
+static void statfs_cb(uv_fs_t* req) {
+  uv_statfs_t* stats;
+
+  ASSERT(req->fs_type == UV_FS_STATFS);
+  ASSERT(req->result == 0);
+  ASSERT(req->ptr != NULL);
+  stats = req->ptr;
+
+#if defined(_WIN32) || defined(__sun) || defined(_AIX) || defined(__MVS__)
+  ASSERT(stats->f_type == 0);
+#else
+  ASSERT(stats->f_type > 0);
+#endif
+
+  ASSERT(stats->f_bsize > 0);
+  ASSERT(stats->f_blocks > 0);
+  ASSERT(stats->f_bfree <= stats->f_blocks);
+  ASSERT(stats->f_bavail <= stats->f_bfree);
+
+#ifdef _WIN32
+  ASSERT(stats->f_files == 0);
+  ASSERT(stats->f_ffree == 0);
+#else
+  ASSERT(stats->f_files > 0);
+  ASSERT(stats->f_ffree <= stats->f_files);
+#endif
+  uv_fs_req_cleanup(req);
+  ASSERT(req->ptr == NULL);
+  statfs_cb_count++;
 }
 
 
@@ -3817,6 +3850,9 @@ TEST_IMPL(fs_null_req) {
   r = uv_fs_futime(NULL, NULL, 0, 0.0, 0.0, NULL);
   ASSERT(r == UV_EINVAL);
 
+  r = uv_fs_statfs(NULL, NULL, NULL, NULL);
+  ASSERT(r == UV_EINVAL);
+
   /* This should be a no-op. */
   uv_fs_req_cleanup(NULL);
 
@@ -4073,3 +4109,24 @@ TEST_IMPL(fs_invalid_mkdir_name) {
   return 0;
 }
 #endif
+
+TEST_IMPL(fs_statfs) {
+  uv_fs_t req;
+  int r;
+
+  loop = uv_default_loop();
+
+  /* Test the synchronous version. */
+  r = uv_fs_statfs(NULL, &req, ".", NULL);
+  ASSERT(r == 0);
+  statfs_cb(&req);
+  ASSERT(statfs_cb_count == 1);
+
+  /* Test the asynchronous version. */
+  r = uv_fs_statfs(loop, &req, ".", statfs_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(statfs_cb_count == 2);
+
+  return 0;
+}

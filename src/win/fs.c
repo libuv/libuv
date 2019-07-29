@@ -2548,6 +2548,41 @@ static void fs__lchown(uv_fs_t* req) {
   req->result = 0;
 }
 
+
+static void fs__statfs(uv_fs_t* req) {
+  uv_statfs_t* stat_fs;
+  DWORD sectors_per_cluster;
+  DWORD bytes_per_sector;
+  DWORD free_clusters;
+  DWORD total_clusters;
+
+  if (0 == GetDiskFreeSpaceW(req->file.pathw,
+                             &sectors_per_cluster,
+                             &bytes_per_sector,
+                             &free_clusters,
+                             &total_clusters)) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
+  }
+
+  stat_fs = uv__malloc(sizeof(*stat_fs));
+  if (stat_fs == NULL) {
+    SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+    return;
+  }
+
+  stat_fs->f_type = 0;
+  stat_fs->f_bsize = bytes_per_sector * sectors_per_cluster;
+  stat_fs->f_blocks = total_clusters;
+  stat_fs->f_bfree = free_clusters;
+  stat_fs->f_bavail = free_clusters;
+  stat_fs->f_files = 0;
+  stat_fs->f_ffree = 0;
+  req->ptr = stat_fs;
+  SET_REQ_RESULT(req, 0);
+}
+
+
 static void uv__fs_work(struct uv__work* w) {
   uv_fs_t* req;
 
@@ -2589,6 +2624,7 @@ static void uv__fs_work(struct uv__work* w) {
     XX(CHOWN, chown)
     XX(FCHOWN, fchown)
     XX(LCHOWN, lchown)
+    XX(STATFS, statfs)
     default:
       assert(!"bad uv_fs_type");
   }
@@ -3098,5 +3134,20 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file fd, double atime,
   req->file.fd = fd;
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
+  POST;
+}
+
+
+int uv_fs_statfs(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 uv_fs_cb cb) {
+  int err;
+
+  INIT(UV_FS_STATFS);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err)
+    return uv_translate_sys_error(err);
+
   POST;
 }
