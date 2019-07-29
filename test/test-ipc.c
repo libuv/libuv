@@ -825,7 +825,7 @@ int ipc_helper_tcp_connection(void) {
   return 0;
 }
 
-static unsigned int write_until_data_queued() {
+static unsigned int write_until_data_queued(void) {
   unsigned int i;
   int r;
 
@@ -844,7 +844,7 @@ static unsigned int write_until_data_queued() {
   return ((uv_stream_t*)&channel)->write_queue_size;
 }
 
-static void send_handle_and_close() {
+static void send_handle_and_close(void) {
   int r;
   struct sockaddr_in addr;
 
