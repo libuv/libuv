@@ -450,6 +450,9 @@ static int run_ipc_test(const char* helper, uv_read_cb read_cb) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
 
+  if (read_cb == on_read_closed_handle)
+    ASSERT(closed_handle_data_read == LARGE_SIZE);
+
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
@@ -599,7 +602,6 @@ static void tcp_connection_write_cb(uv_write_t* req, int status) {
 
 static void closed_handle_large_write_cb(uv_write_t* req, int status) {
   ASSERT(status == 0);
-  ASSERT(closed_handle_data_read = LARGE_SIZE);
   if (++write_reqs_completed == ARRAY_SIZE(write_reqs)) {
     write_reqs_completed = 0;
     if (write_until_data_queued() > 0)
