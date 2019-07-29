@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{a03fa7b1-8dc1-4b06-9301-389d51386cb5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\fs-poll.c">
@@ -154,6 +157,54 @@
     </ClInclude>
     <ClInclude Include="..\src\idna.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\aix.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\android-ifaddrs.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\bsd.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\darwin.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\errno.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\linux.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\os390.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\posix.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\stdint-msvc2008.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\sunos.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\threadpool.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\tree.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\unix.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\version.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\win.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv.h">
+      <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -55,6 +55,22 @@
     <ClCompile Include="..\src\win\winsock.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\uv.h" />
+    <ClInclude Include="..\include\uv\aix.h" />
+    <ClInclude Include="..\include\uv\android-ifaddrs.h" />
+    <ClInclude Include="..\include\uv\bsd.h" />
+    <ClInclude Include="..\include\uv\darwin.h" />
+    <ClInclude Include="..\include\uv\errno.h" />
+    <ClInclude Include="..\include\uv\linux.h" />
+    <ClInclude Include="..\include\uv\os390.h" />
+    <ClInclude Include="..\include\uv\posix.h" />
+    <ClInclude Include="..\include\uv\stdint-msvc2008.h" />
+    <ClInclude Include="..\include\uv\sunos.h" />
+    <ClInclude Include="..\include\uv\threadpool.h" />
+    <ClInclude Include="..\include\uv\tree.h" />
+    <ClInclude Include="..\include\uv\unix.h" />
+    <ClInclude Include="..\include\uv\version.h" />
+    <ClInclude Include="..\include\uv\win.h" />
     <ClInclude Include="..\src\heap-inl.h" />
     <ClInclude Include="..\src\idna.h" />
     <ClInclude Include="..\src\queue.h" />
