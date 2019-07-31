@@ -1947,7 +1947,6 @@ static void fs__ftruncate(uv_fs_t* req) {
 static void fs__copyfile(uv_fs_t* req) {
   int flags;
   int overwrite;
-  DWORD error;
   uv_stat_t statbuf;
   uv_stat_t new_statbuf;
 
@@ -2588,8 +2587,8 @@ static void uv__fs_work(struct uv__work* w) {
     XX(READLINK, readlink)
     XX(REALPATH, realpath)
     XX(CHOWN, chown)
-    XX(FCHOWN, fchown);
-    XX(LCHOWN, lchown);
+    XX(FCHOWN, fchown)
+    XX(LCHOWN, lchown)
     default:
       assert(!"bad uv_fs_type");
   }
