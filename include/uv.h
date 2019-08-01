@@ -231,6 +231,7 @@ typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_work_s uv_work_t;
 
 /* None of the above. */
+typedef struct uv_env_item_s uv_env_item_t;
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
@@ -1162,6 +1163,13 @@ UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
 UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
                                            int count);
 
+struct uv_env_item_s {
+  char* name;
+  char* value;
+};
+
+UV_EXTERN int uv_os_environ(uv_env_item_t** envitems, int* count);
+UV_EXTERN void uv_os_free_environ(uv_env_item_t* envitems, int count);
 UV_EXTERN int uv_os_getenv(const char* name, char* buffer, size_t* size);
 UV_EXTERN int uv_os_setenv(const char* name, const char* value);
 UV_EXTERN int uv_os_unsetenv(const char* name);

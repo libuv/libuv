@@ -1397,6 +1397,75 @@ int uv_os_get_passwd(uv_passwd_t* pwd) {
 }
 
 
+int uv_os_environ(uv_env_item_t** envitems, int* count) {
+  wchar_t* env;
+  wchar_t* penv;
+  int i, cnt;
+  uv_env_item_t* envitem;
+
+  *envitems = NULL;
+  *count = 0;
+
+  env = GetEnvironmentStringsW();
+  if (env == NULL)
+    return 0;
+
+  for (penv = env, i = 0; *penv != L'\0'; penv += wcslen(penv) + 1, i++);
+
+  *envitems = uv__calloc(i, sizeof(**envitems));
+  if (envitems == NULL) {
+    FreeEnvironmentStringsW(env);
+    return UV_ENOMEM;
+  }
+
+  penv = env;
+  cnt = 0;
+
+  while (*penv != L'\0' && cnt < i) {
+    char* buf;
+    char* ptr;
+
+    if (uv__convert_utf16_to_utf8(penv, -1, &buf) != 0)
+      goto fail;
+
+    ptr = strchr(buf, '=');
+    if (ptr == NULL) {
+      uv__free(buf);
+      goto do_continue;
+    }
+
+    *ptr = '\0';
+
+    envitem = &(*envitems)[cnt];
+    envitem->name = buf;
+    envitem->value = ptr + 1;
+
+    cnt++;
+
+  do_continue:
+    penv += wcslen(penv) + 1;
+  }
+
+  FreeEnvironmentStringsW(env);
+
+  *count = cnt;
+  return 0;
+
+fail:
+  FreeEnvironmentStringsW(env);
+
+  for (i = 0; i < cnt; i++) {
+    envitem = &(*envitems)[cnt];
+    uv__free(envitem->name);
+  }
+  uv__free(*envitems);
+
+  *envitems = NULL;
+  *count = 0;
+  return UV_ENOMEM;
+}
+
+
 int uv_os_getenv(const char* name, char* buffer, size_t* size) {
   wchar_t var[MAX_ENV_VAR_LENGTH];
   wchar_t* name_w;
