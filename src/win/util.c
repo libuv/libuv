@@ -854,11 +854,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     IP_ADAPTER_UNICAST_ADDRESS* unicast_address;
     int name_size;
 
-    /* Interfaces that are not 'up' should not be reported. Also skip
-     * interfaces that have no associated unicast address, as to avoid
-     * allocating space for the name for this interface. */
-    if (adapter->OperStatus != IfOperStatusUp ||
-        adapter->FirstUnicastAddress == NULL)
+    /* Also skip interfaces that have no associated unicast address,
+     * as to avoid allocating space for the name for this interface. */
+    if (adapter->FirstUnicastAddress == NULL)
       continue;
 
     /* Compute the size of the interface name. */
@@ -907,8 +905,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     int name_size;
     size_t max_name_size;
 
-    if (adapter->OperStatus != IfOperStatusUp ||
-        adapter->FirstUnicastAddress == NULL)
+    if (adapter->FirstUnicastAddress == NULL)
       continue;
 
     /* Convert the interface name to UTF8. */
@@ -945,6 +942,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
       memset(uv_address, 0, sizeof *uv_address);
 
       uv_address->name = name_buf;
+      uv_address->status = adapter->OperStatus == IfOperStatusOp ? UV_INTERFACE_UP : UV_INTERFACE_DOWN;
 
       if (adapter->PhysicalAddressLength == sizeof(uv_address->phys_addr)) {
         memcpy(uv_address->phys_addr,

@@ -1149,10 +1149,16 @@ struct uv_cpu_info_s {
   struct uv_cpu_times_s cpu_times;
 };
 
+typedef enum {
+  UV_INTERFACE_DOWN = 1,
+  UV_INTERFACE_UP = 2
+} uv_interface_status_t;
+
 struct uv_interface_address_s {
   char* name;
   char phys_addr[6];
   int is_internal;
+  uv_interface_status_t status;
   union {
     struct sockaddr_in address4;
     struct sockaddr_in6 address6;

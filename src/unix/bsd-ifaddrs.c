@@ -36,8 +36,6 @@
 #endif
 
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
-  if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
-    return 1;
   if (ent->ifa_addr == NULL)
     return 1;
 #if !defined(__CYGWIN__) && !defined(__MSYS__)
@@ -63,6 +61,12 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
     return 1;
 #endif
   return 0;
+}
+
+static uv_interface_status_t uv__ifaddr_status(struct ifaddrs *ent) {
+  if ((ent->ifa_flags & IFF_UP) != 0 || (ent->ifa_flags & IFF_RUNNING) != 0)
+    return UV_INTERFACE_UP;
+  return UV_INTERFACE_DOWN;
 }
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
@@ -106,6 +110,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
       continue;
 
     address->name = uv__strdup(ent->ifa_name);
+    address->status = uv__ifaddr_status(ent);
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);
