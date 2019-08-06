@@ -205,6 +205,9 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-loop-configure.c \
                          test/test-multiple-listen.c \
                          test/test-mutexes.c \
+                         test/test-not-readable-nor-writable-on-read-error.c \
+                         test/test-not-readable-on-eof.c \
+                         test/test-not-writable-after-shutdown.c \
                          test/test-osx-select.c \
                          test/test-pass-always.c \
                          test/test-ping-pong.c \

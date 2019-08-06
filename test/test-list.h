@@ -496,6 +496,10 @@ TEST_DECLARE   (handle_type_name)
 TEST_DECLARE   (req_type_name)
 TEST_DECLARE   (getters_setters)
 
+TEST_DECLARE   (not_writable_after_shutdown)
+TEST_DECLARE   (not_readable_nor_writable_on_read_error)
+TEST_DECLARE   (not_readable_on_eof)
+
 #ifndef _WIN32
 TEST_DECLARE  (fork_timer)
 TEST_DECLARE  (fork_socketpair)
@@ -1099,6 +1103,13 @@ TASK_LIST_START
 #ifndef __MVS__
   TEST_ENTRY  (idna_toascii)
 #endif
+
+  TEST_ENTRY    (not_writable_after_shutdown)
+  TEST_HELPER   (not_writable_after_shutdown, tcp4_echo_server)
+  TEST_ENTRY    (not_readable_nor_writable_on_read_error)
+  TEST_HELPER   (not_readable_nor_writable_on_read_error, tcp4_echo_server)
+  TEST_ENTRY    (not_readable_on_eof)
+  TEST_HELPER   (not_readable_on_eof, tcp4_echo_server)
 
 #if 0
   /* These are for testing the test runner. */
