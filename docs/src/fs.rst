@@ -218,6 +218,11 @@ API
 
     Equivalent to :man:`preadv(2)`.
 
+    .. warning::
+        On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
+        to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
+        crash if the memory mapped read operation fails.
+
 .. c:function:: int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     Equivalent to :man:`unlink(2)`.
@@ -225,6 +230,11 @@ API
 .. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`pwritev(2)`.
+
+    .. warning::
+        On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
+        to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
+        crash if the memory mapped write operation fails.
 
 .. c:function:: int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
