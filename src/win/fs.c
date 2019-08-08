@@ -786,10 +786,13 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
     int err = 0;
     size_t this_read_size = MIN(req->fs.info.bufs[index].len,
                                 read_size - done_read);
+#ifdef _MSC_VER
     __try {
+#endif
       memcpy(req->fs.info.bufs[index].base,
              (char*)view + view_offset + done_read,
              this_read_size);
+#ifdef _MSC_VER
     }
     __except (fs__filemap_ex_filter(GetExceptionCode(),
                                     GetExceptionInformation(), &err)) {
@@ -797,6 +800,7 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
       UnmapViewOfFile(view);
       return;
     }
+#endif
     done_read += this_read_size;
   }
   assert(done_read == read_size);
@@ -978,10 +982,13 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
   done_write = 0;
   for (index = 0; index < req->fs.info.nbufs; ++index) {
     int err = 0;
+#ifdef _MSC_VER
     __try {
+#endif
       memcpy((char*)view + view_offset + done_write,
              req->fs.info.bufs[index].base,
              req->fs.info.bufs[index].len);
+#ifdef _MSC_VER
     }
     __except (fs__filemap_ex_filter(GetExceptionCode(),
                                     GetExceptionInformation(), &err)) {
@@ -989,6 +996,7 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
       UnmapViewOfFile(view);
       return;
     }
+#endif
     done_write += req->fs.info.bufs[index].len;
   }
   assert(done_write == write_size);
