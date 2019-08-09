@@ -233,10 +233,17 @@ TEST_IMPL(spawn_fails_check_for_waitpid_cleanup) {
 
 
 TEST_IMPL(spawn_empty_env) {
-#ifdef __sun
-  RETURN_SKIP("fails on smartos");
-#else  /* !__sun */
   char* env[1];
+
+  /* The autotools dynamic library build requires the presence of
+   * DYLD_LIBARY_PATH (macOS) or LD_LIBRARY_PATH (other Unices)
+   * in the environment, but of course that doesn't work with
+   * the empty environment that we're testing here.
+   */
+  if (NULL != getenv("DYLD_LIBARY_PATH") ||
+      NULL != getenv("LD_LIBRARY_PATH")) {
+    RETURN_SKIP("doesn't work with DYLD_LIBRARY_PATH/LD_LIBRARY_PATH");
+  }
 
   init_process_options("spawn_helper1", exit_cb);
   options.env = env;
@@ -250,7 +257,6 @@ TEST_IMPL(spawn_empty_env) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
-#endif  /* !__sun */
 }
 
 
