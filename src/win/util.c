@@ -1325,7 +1325,7 @@ int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  (*utf16)[bufsize] = '\0';
+  (*utf16)[bufsize] = L'\0';
   return 0;
 }
 
