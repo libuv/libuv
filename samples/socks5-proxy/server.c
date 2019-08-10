@@ -169,7 +169,7 @@ static void do_bind(uv_getaddrinfo_t *req, int status, struct addrinfo *addrs) {
              uv_strerror(err));
       while (n > 0) {
         n -= 1;
-        uv_close((uv_handle_t *) (state->servers + n), NULL);
+        uv_close((uv_handle_t *) ((state->servers + n)->tcp_handle), NULL);
       }
       break;
     }
