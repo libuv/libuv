@@ -116,6 +116,7 @@ set(uv_test_sources
     test/test-shutdown-eof.c
     test/test-shutdown-twice.c
     test/test-signal-multiple-loops.c
+    test/test-signal-pending-on-close.c
     test/test-signal.c
     test/test-socket-buffer-size.c
     test/test-spawn.c

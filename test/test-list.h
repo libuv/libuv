@@ -445,6 +445,7 @@ TEST_DECLARE   (we_get_signals)
 TEST_DECLARE   (we_get_signal_one_shot)
 TEST_DECLARE   (we_get_signals_mixed)
 TEST_DECLARE   (signal_multiple_loops)
+TEST_DECLARE   (signal_pending_on_close)
 TEST_DECLARE   (closed_fd_events)
 #endif
 #ifdef __APPLE__
@@ -886,6 +887,7 @@ TASK_LIST_START
   TEST_ENTRY  (we_get_signal_one_shot)
   TEST_ENTRY  (we_get_signals_mixed)
   TEST_ENTRY  (signal_multiple_loops)
+  TEST_ENTRY  (signal_pending_on_close)
   TEST_ENTRY  (closed_fd_events)
 #endif
 
