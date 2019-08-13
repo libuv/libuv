@@ -99,6 +99,7 @@
         'test-shutdown-twice.c',
         'test-signal.c',
         'test-signal-multiple-loops.c',
+        'test-signal-pending-on-close.c',
         'test-socket-buffer-size.c',
         'test-spawn.c',
         'test-strscpy.c',
