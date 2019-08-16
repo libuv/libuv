@@ -68,6 +68,8 @@ static void do_close(uv_tcp_t* handle) {
     ASSERT(0 == uv_tcp_close_reset(handle, close_cb));
     ASSERT(UV_ENOTCONN == uv_shutdown(&shutdown_req, (uv_stream_t*) handle, shutdown_cb));
   }
+
+  uv_close((uv_handle_t*) &tcp_server, NULL);
 }
 
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
@@ -155,8 +157,6 @@ static void start_server(uv_loop_t* loop, uv_tcp_t* handle) {
 
   r = uv_listen((uv_stream_t*)handle, 128, connection_cb);
   ASSERT(r == 0);
-
-  uv_unref((uv_handle_t*)handle);
 }
 
 
