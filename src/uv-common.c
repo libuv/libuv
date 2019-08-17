@@ -797,3 +797,18 @@ void uv_os_free_environ(uv_env_item_t* envitems, int count) {
 
   uv__free(envitems);
 }
+
+
+void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
+#if defined(__CYGWIN__)
+  (void)cpu_infos;
+  (void)count;
+#else
+  int i;
+
+  for (i = 0; i < count; i++)
+    uv__free(cpu_infos[i].model);
+
+  uv__free(cpu_infos);
+#endif
+}
