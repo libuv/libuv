@@ -366,6 +366,14 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   return 0;
 }
 
+#if defined(__FreeBSD__)
+int uv__tcp_setid(int fd, uint32_t id) {
+  if (setsockopt(fd, SOL_SOCKET, SO_USER_COOKIE, &id, sizeof(id)))
+    return UV__ERR(errno);
+  return 0;
+}
+#endif
+
 
 int uv__tcp_nodelay(int fd, int on) {
   if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)))
