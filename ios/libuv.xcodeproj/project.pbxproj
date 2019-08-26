@@ -432,11 +432,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3A300809206FDDBB00ABE7C2 /* Build configuration list for PBXNativeTarget "libuv iOS" */;
 			buildPhases = (
+				3AA50F3B22474F6B004026C4 /* CopyFiles */,
 				3A3007FC206FDDBB00ABE7C2 /* Sources */,
 				3A3007FD206FDDBB00ABE7C2 /* Frameworks */,
 				3A3007FE206FDDBB00ABE7C2 /* Headers */,
 				3A3007FF206FDDBB00ABE7C2 /* Resources */,
-				3AA50F3B22474F6B004026C4 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -451,11 +451,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3AE1E0772070ADF300B52995 /* Build configuration list for PBXNativeTarget "libuv macOS" */;
 			buildPhases = (
+				3AA50F5022477474004026C4 /* CopyFiles */,
 				3AE1E06D2070ADF300B52995 /* Sources */,
 				3AE1E06E2070ADF300B52995 /* Frameworks */,
 				3AE1E06F2070ADF300B52995 /* Headers */,
 				3AE1E0702070ADF300B52995 /* Resources */,
-				3AA50F5022477474004026C4 /* CopyFiles */,
 			);
 			buildRules = (
 			);
