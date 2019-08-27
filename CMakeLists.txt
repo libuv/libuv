@@ -345,13 +345,15 @@ endif()
 add_library(uv SHARED ${uv_sources})
 target_compile_definitions(uv PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
 target_compile_options(uv PRIVATE ${uv_cflags})
-target_include_directories(uv PRIVATE include src)
+target_include_directories(uv PUBLIC include)
+target_include_directories(uv PRIVATE src)
 target_link_libraries(uv ${uv_libraries})
 
 add_library(uv_a STATIC ${uv_sources})
 target_compile_definitions(uv_a PRIVATE ${uv_defines})
 target_compile_options(uv_a PRIVATE ${uv_cflags})
-target_include_directories(uv_a PRIVATE include src)
+target_include_directories(uv_a PUBLIC include)
+target_include_directories(uv_a PRIVATE src)
 target_link_libraries(uv_a ${uv_libraries})
 
 option(libuv_buildtests "Build the unit tests when BUILD_TESTING is enabled." ON)
@@ -363,7 +365,6 @@ if(BUILD_TESTING AND libuv_buildtests)
   target_compile_definitions(uv_run_tests
                              PRIVATE ${uv_defines} USING_UV_SHARED=1)
   target_compile_options(uv_run_tests PRIVATE ${uv_cflags})
-  target_include_directories(uv_run_tests PRIVATE include)
   target_link_libraries(uv_run_tests uv ${uv_test_libraries})
   add_test(NAME uv_test
            COMMAND uv_run_tests
@@ -371,7 +372,6 @@ if(BUILD_TESTING AND libuv_buildtests)
   add_executable(uv_run_tests_a ${uv_test_sources})
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
-  target_include_directories(uv_run_tests_a PRIVATE include)
   target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
