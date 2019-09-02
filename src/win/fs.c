@@ -440,10 +440,9 @@ void fs__open(uv_fs_t* req) {
     }
 
     if (flags & UV_FS_O_APPEND) {
-      /* Clear the append flag and ensure RDRW mode */
-      flags &= ~UV_FS_O_APPEND;
-      flags &= ~(UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
-      flags |= UV_FS_O_RDWR;
+      /* Emulate Unix behavior */
+      SET_REQ_UV_ERROR(req, UV_EACCES, ERROR_NOACCESS);
+      return;
     }
   }
 
@@ -900,7 +899,6 @@ void fs__read(uv_fs_t* req) {
 void fs__write_filemap(uv_fs_t* req, HANDLE file,
                        struct uv__fd_info_s* fd_info) {
   int fd = req->file.fd; /* VERIFY_FD done in fs__write */
-  int force_append = fd_info->flags & UV_FS_O_APPEND;
   int rw_flags = fd_info->flags &
     (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
   size_t write_size, done_write;
@@ -931,9 +929,7 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
   }
 
   zero.QuadPart = 0;
-  if (force_append) {
-    pos = fd_info->size;
-  } else if (req->fs.info.offset == -1) {
+  if (req->fs.info.offset == -1) {
     pos = fd_info->current_pos;
   } else {
     pos.QuadPart = req->fs.info.offset;

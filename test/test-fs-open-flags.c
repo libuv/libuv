@@ -350,9 +350,17 @@ static void fs_open_flags(int add_flags) {
   openFail(empty_file, UV_EEXIST);
   openFail(dummy_file, UV_EEXIST);
   openFail(empty_dir, UV_EEXIST);
+}
+TEST_IMPL(fs_open_flags) {
+  setup();
 
+  /* Flags excluding append */
+  fs_open_flags(0);
+  fs_open_flags(UV_FS_O_FILEMAP);
+
+  /* Append without UV_FS_O_FILEMAP */
   /* a */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY;
+  flags = UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY;
   writeExpect(absent_file, "bc", 2);
   readFail(absent_file, UV_EPERM);
   writeExpect(empty_file, "bc", 2);
@@ -363,7 +371,7 @@ static void fs_open_flags(int add_flags) {
   readFail(empty_dir, UV_EPERM);
 
   /* ax */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
+  flags = UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
     UV_FS_O_EXCL;
   writeExpect(absent_file, "bc", 2);
   readFail(absent_file, UV_EPERM);
@@ -372,8 +380,7 @@ static void fs_open_flags(int add_flags) {
   openFail(empty_dir, UV_EEXIST);
 
   /* as */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
-    UV_FS_O_SYNC;
+  flags = UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY | UV_FS_O_SYNC;
   writeExpect(absent_file, "bc", 2);
   readFail(absent_file, UV_EPERM);
   writeExpect(empty_file, "bc", 2);
@@ -384,7 +391,7 @@ static void fs_open_flags(int add_flags) {
   readFail(empty_dir, UV_EPERM);
 
   /* a+ */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR;
+  flags = UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR;
   writeExpect(absent_file, "bc", 2);
   readExpect(absent_file, "", 0);
   writeExpect(empty_file, "bc", 2);
@@ -395,8 +402,7 @@ static void fs_open_flags(int add_flags) {
   readFail(empty_dir, UV_EISDIR);
 
   /* ax+ */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR |
-    UV_FS_O_EXCL;
+  flags = UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR | UV_FS_O_EXCL;
   writeExpect(absent_file, "bc", 2);
   readExpect(absent_file, "", 0);
   openFail(empty_file, UV_EEXIST);
@@ -404,8 +410,7 @@ static void fs_open_flags(int add_flags) {
   openFail(empty_dir, UV_EEXIST);
 
   /* as+ */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR |
-    UV_FS_O_SYNC;
+  flags = UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR | UV_FS_O_SYNC;
   writeExpect(absent_file, "bc", 2);
   readExpect(absent_file, "", 0);
   writeExpect(empty_file, "bc", 2);
@@ -414,12 +419,53 @@ static void fs_open_flags(int add_flags) {
   readExpect(dummy_file, "a", 1);
   writeFail(empty_dir, UV_EISDIR);
   readFail(empty_dir, UV_EISDIR);
-}
-TEST_IMPL(fs_open_flags) {
-  setup();
 
-  fs_open_flags(0);
-  fs_open_flags(UV_FS_O_FILEMAP);
+  /* Append with UV_FS_O_FILEMAP */
+  /* a */
+  flags = UV_FS_O_FILEMAP | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY;
+  openFail(absent_file, UV_EACCES);
+  openFail(empty_file, UV_EACCES);
+  openFail(dummy_file, UV_EACCES);
+  openFail(empty_dir, UV_EACCES);
+
+  /* ax */
+  flags = UV_FS_O_FILEMAP | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
+    UV_FS_O_EXCL;
+  openFail(absent_file, UV_EACCES);
+  openFail(empty_file, UV_EACCES);
+  openFail(dummy_file, UV_EACCES);
+  openFail(empty_dir, UV_EACCES);
+
+  /* as */
+  flags = UV_FS_O_FILEMAP | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
+    UV_FS_O_SYNC;
+  openFail(absent_file, UV_EACCES);
+  openFail(empty_file, UV_EACCES);
+  openFail(dummy_file, UV_EACCES);
+  openFail(empty_dir, UV_EACCES);
+
+  /* a+ */
+  flags = UV_FS_O_FILEMAP | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR;
+  openFail(absent_file, UV_EACCES);
+  openFail(empty_file, UV_EACCES);
+  openFail(dummy_file, UV_EACCES);
+  openFail(empty_dir, UV_EACCES);
+
+  /* ax+ */
+  flags = UV_FS_O_FILEMAP | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR |
+    UV_FS_O_EXCL;
+  openFail(absent_file, UV_EACCES);
+  openFail(empty_file, UV_EACCES);
+  openFail(dummy_file, UV_EACCES);
+  openFail(empty_dir, UV_EACCES);
+
+  /* as+ */
+  flags = UV_FS_O_FILEMAP | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR |
+    UV_FS_O_SYNC;
+  openFail(absent_file, UV_EACCES);
+  openFail(empty_file, UV_EACCES);
+  openFail(dummy_file, UV_EACCES);
+  openFail(empty_dir, UV_EACCES);
 
   /* Cleanup. */
   rmdir(empty_dir);
