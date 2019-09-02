@@ -90,7 +90,7 @@ Public members
 
 .. c:member:: uv_loop_t* uv_handle_t.loop
 
-    Pointer to the :c:type:`uv_loop_t` where the handle is running on. Readonly.
+    Pointer to the :c:type:`uv_loop_t` the handle is running on. Readonly.
 
 .. c:member:: uv_handle_type uv_handle_t.type
 
