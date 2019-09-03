@@ -1183,6 +1183,7 @@ static void uv__read(uv_stream_t* stream) {
 #elif defined(_AIX)
       } else if (errno == ECONNRESET && (stream->flags & UV_DISCONNECT)) {
         uv__stream_eof(stream, &buf);
+        return;
 #endif
       } else {
         /* Error. User should call uv_close(). */
