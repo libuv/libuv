@@ -49,7 +49,7 @@
 # include <sys/wait.h>
 #endif
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <crt_externs.h>
 # include <mach-o/dyld.h> /* _NSGetExecutablePath */
 # include <sys/filio.h>
