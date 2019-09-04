@@ -49,17 +49,22 @@
 # include <sys/wait.h>
 #endif
 
-#ifdef __APPLE__
-# include <crt_externs.h>
-# include <mach-o/dyld.h> /* _NSGetExecutablePath */
+#if defined(__APPLE__)
 # include <sys/filio.h>
 # if defined(O_CLOEXEC)
 #  define UV__O_CLOEXEC O_CLOEXEC
-# endif
+# endif /* defined(O_CLOEXEC) */
+# endif /* defined(__APPLE__) */
+
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+# include <crt_externs.h>
+# include <mach-o/dyld.h> /* _NSGetExecutablePath */
 # define environ (*_NSGetEnviron())
-#else
+#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
 extern char** environ;
-#endif
+#endif /* !(defined(__APPLE__) && !TARGET_OS_IPHONE) */
+
 
 #if defined(__DragonFly__)      || \
     defined(__FreeBSD__)        || \
