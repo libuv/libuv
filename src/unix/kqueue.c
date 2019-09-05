@@ -59,7 +59,7 @@ int uv__kqueue_init(uv_loop_t* loop) {
 }
 
 
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
+#if defined(__APPLE__)
 static int uv__has_forked_with_cfrunloop;
 #endif
 
@@ -70,7 +70,7 @@ int uv__io_fork(uv_loop_t* loop) {
   if (err)
     return err;
 
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
+#if defined(__APPLE__)
   if (loop->cf_state != NULL) {
     /* We cannot start another CFRunloop and/or thread in the child
        process; CF aborts if you try or if you try to touch the thread
@@ -86,7 +86,7 @@ int uv__io_fork(uv_loop_t* loop) {
     uv__free(loop->cf_state);
     loop->cf_state = NULL;
   }
-#endif /* #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070 */
+#endif
   return err;
 }
 
@@ -453,51 +453,49 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
                       const char* path,
                       unsigned int flags) {
+#if defined(__APPLE__)
+  struct stat statbuf;
+#endif /* defined(__APPLE__) */
   int fd;
 
   if (uv__is_active(handle))
     return UV_EINVAL;
-
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-  /* Nullify field to perform checks later */
-  handle->cf_cb = NULL;
-  handle->realpath = NULL;
-  handle->realpath_len = 0;
-  handle->cf_flags = flags;
-
-  if (!uv__has_forked_with_cfrunloop) {
-    int r;
-    /* The fallback fd is not used */
-    handle->event_watcher.fd = -1;
-    handle->path = uv__strdup(path);
-    if (handle->path == NULL)
-      return UV_ENOMEM;
-    handle->cb = cb;
-    r = uv__fsevents_init(handle);
-    if (r == 0) {
-      uv__handle_start(handle);
-    } else {
-      uv__free(handle->path);
-      handle->path = NULL;
-    }
-    return r;
-  }
-#endif /* #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070 */
 
   /* TODO open asynchronously - but how do we report back errors? */
   fd = open(path, O_RDONLY);
   if (fd == -1)
     return UV__ERR(errno);
 
-  handle->path = uv__strdup(path);
-  if (handle->path == NULL) {
-    uv__close_nocheckstdio(fd);
-    return UV_ENOMEM;
-  }
-
-  handle->cb = cb;
   uv__handle_start(handle);
   uv__io_init(&handle->event_watcher, uv__fs_event, fd);
+  handle->path = uv__strdup(path);
+  handle->cb = cb;
+
+#if defined(__APPLE__)
+  if (uv__has_forked_with_cfrunloop)
+    goto fallback;
+
+  /* Nullify field to perform checks later */
+  handle->cf_cb = NULL;
+  handle->realpath = NULL;
+  handle->realpath_len = 0;
+  handle->cf_flags = flags;
+
+  if (fstat(fd, &statbuf))
+    goto fallback;
+  /* FSEvents works only with directories */
+  if (!(statbuf.st_mode & S_IFDIR))
+    goto fallback;
+
+  /* The fallback fd is no longer needed */
+  uv__close(fd);
+  handle->event_watcher.fd = -1;
+
+  return uv__fsevents_init(handle);
+
+fallback:
+#endif /* defined(__APPLE__) */
+
   uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
 
   return 0;
@@ -505,29 +503,29 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
 
 int uv_fs_event_stop(uv_fs_event_t* handle) {
-  int r;
-  r = 0;
-
   if (!uv__is_active(handle))
     return 0;
 
   uv__handle_stop(handle);
 
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-  if (!uv__has_forked_with_cfrunloop)
-    r = uv__fsevents_close(handle);
-#endif
-
-  if (handle->event_watcher.fd != -1) {
+#if defined(__APPLE__)
+  if (uv__has_forked_with_cfrunloop || uv__fsevents_close(handle))
+#endif /* defined(__APPLE__) */
+  {
     uv__io_close(handle->loop, &handle->event_watcher);
-    uv__close(handle->event_watcher.fd);
-    handle->event_watcher.fd = -1;
   }
 
   uv__free(handle->path);
   handle->path = NULL;
 
-  return r;
+  if (handle->event_watcher.fd != -1) {
+    /* When FSEvents is used, we don't use the event_watcher's fd under certain
+     * confitions. (see uv_fs_event_start) */
+    uv__close(handle->event_watcher.fd);
+    handle->event_watcher.fd = -1;
+  }
+
+  return 0;
 }
 
 
