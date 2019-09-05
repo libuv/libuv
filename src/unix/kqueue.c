@@ -466,10 +466,15 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (fd == -1)
     return UV__ERR(errno);
 
+  handle->path = uv__strdup(path);
+  if (handle->path == NULL) {
+    uv__close_nocheckstdio(fd);
+    return UV_ENOMEM;
+  }
+
+  handle->cb = cb;
   uv__handle_start(handle);
   uv__io_init(&handle->event_watcher, uv__fs_event, fd);
-  handle->path = uv__strdup(path);
-  handle->cb = cb;
 
 #if defined(__APPLE__)
   if (uv__has_forked_with_cfrunloop)
