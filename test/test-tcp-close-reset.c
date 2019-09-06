@@ -50,7 +50,8 @@ static int read_size;
 
 static void do_write(uv_tcp_t* handle) {
   uv_buf_t buf;
-  int i, r;
+  unsigned i;
+  int r;
 
   buf = uv_buf_init("PING", 4);
   for (i = 0; i < ARRAY_SIZE(write_reqs); i++) {
