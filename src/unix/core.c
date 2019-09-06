@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <fcntl.h>  /* O_CLOEXEC */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -51,9 +51,6 @@
 
 #if defined(__APPLE__)
 # include <sys/filio.h>
-# if defined(O_CLOEXEC)
-#  define UV__O_CLOEXEC O_CLOEXEC
-# endif /* defined(O_CLOEXEC) */
 # endif /* defined(__APPLE__) */
 
 
@@ -73,7 +70,6 @@ extern char** environ;
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
-# define UV__O_CLOEXEC O_CLOEXEC
 # if defined(__FreeBSD__) && __FreeBSD__ >= 10
 #  define uv__accept4 accept4
 # endif
@@ -1005,24 +1001,17 @@ int uv_getrusage(uv_rusage_t* rusage) {
 
 
 int uv__open_cloexec(const char* path, int flags) {
-  int err;
+#if defined(O_CLOEXEC)
   int fd;
 
-#if defined(UV__O_CLOEXEC)
-  static int no_cloexec;
+  fd = open(path, flags | O_CLOEXEC);
+  if (fd == -1)
+    return UV__ERR(errno);
 
-  if (!no_cloexec) {
-    fd = open(path, flags | UV__O_CLOEXEC);
-    if (fd != -1)
-      return fd;
-
-    if (errno != EINVAL)
-      return UV__ERR(errno);
-
-    /* O_CLOEXEC not supported. */
-    no_cloexec = 1;
-  }
-#endif
+  return fd;
+#else  /* O_CLOEXEC */
+  int err;
+  int fd;
 
   fd = open(path, flags);
   if (fd == -1)
@@ -1035,6 +1024,7 @@ int uv__open_cloexec(const char* path, int flags) {
   }
 
   return fd;
+#endif  /* O_CLOEXEC */
 }
 
 
@@ -1056,7 +1046,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
   static int no_dup3;
   if (!no_dup3) {
     do
-      r = uv__dup3(oldfd, newfd, UV__O_CLOEXEC);
+      r = uv__dup3(oldfd, newfd, O_CLOEXEC);
     while (r == -1 && errno == EBUSY);
     if (r != -1)
       return r;
