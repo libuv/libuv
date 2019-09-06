@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+#if defined(BUILDING_UV_SHARED) && defined(USING_UV_SHARED)
+#error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
+#endif
+
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)

@@ -343,7 +343,9 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
 endif()
 
 add_library(uv SHARED ${uv_sources})
-target_compile_definitions(uv PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
+target_compile_definitions(uv
+                           INTERFACE USING_UV_SHARED=1
+                           PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
 target_compile_options(uv PRIVATE ${uv_cflags})
 target_include_directories(uv PUBLIC include PRIVATE src)
 target_link_libraries(uv ${uv_libraries})
