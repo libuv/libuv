@@ -386,6 +386,10 @@ if(UNIX)
   endforeach(x)
   file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
   string(REGEX MATCH [0-9]+[.][0-9]+[.][0-9]+ PACKAGE_VERSION "${configure_ac}")
+  string(REGEX MATCH ^[0-9]+ UV_VERSION_MAJOR "${PACKAGE_VERSION}")
+  # The version in the filename is mirroring the behaviour of autotools.
+  set_target_properties(uv PROPERTIES VERSION ${UV_VERSION_MAJOR}.0.0
+				      SOVERSION ${UV_VERSION_MAJOR})
   set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
   set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
   set(prefix ${CMAKE_INSTALL_PREFIX})
