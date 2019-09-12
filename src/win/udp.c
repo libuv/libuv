@@ -29,6 +29,13 @@
 #include "req-inl.h"
 
 
+#ifndef MCAST_JOIN_SOURCE_GROUP
+# define MCAST_JOIN_SOURCE_GROUP  45
+#endif
+#ifndef MCAST_LEAVE_SOURCE_GROUP
+# define MCAST_LEAVE_SOURCE_GROUP 46
+#endif
+
 /*
  * Threshold of active udp streams for which to preallocate udp read buffers.
  */
