@@ -339,16 +339,32 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
 
+if (LIBUV_EXPORT_CMAKE)
+  message("-- Exporting for CMake")
+endif()
+
 add_library(uv SHARED ${uv_sources})
 target_compile_definitions(uv PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
 target_compile_options(uv PRIVATE ${uv_cflags})
-target_include_directories(uv PRIVATE include src)
+if(LIBUV_EXPORT_CMAKE)
+  target_include_directories(uv
+    PUBLIC $<INSTALL_INTERFACE:include>
+    PRIVATE include src)
+else()
+  target_include_directories(uv PRIVATE include src)
+endif()
 target_link_libraries(uv ${uv_libraries})
 
 add_library(uv_a STATIC ${uv_sources})
 target_compile_definitions(uv_a PRIVATE ${uv_defines})
 target_compile_options(uv_a PRIVATE ${uv_cflags})
-target_include_directories(uv_a PRIVATE include src)
+if (LIBUV_EXPORT_CMAKE)
+  target_include_directories(uv_a
+    PUBLIC $<INSTALL_INTERFACE:include>
+    PRIVATE include src)
+else()
+  target_include_directories(uv_a PRIVATE include src)
+endif()
 target_link_libraries(uv_a ${uv_libraries})
 
 if(BUILD_TESTING)
@@ -372,23 +388,79 @@ if(BUILD_TESTING)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-if(UNIX)
-  # Now for some gibbering horrors from beyond the stars...
-  include(GNUInstallDirs)
-  foreach(x ${uv_libraries})
-    set(LIBS "${LIBS} -l${x}")
-  endforeach(x)
-  file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
-  string(REGEX MATCH [0-9]+[.][0-9]+[.][0-9]+ PACKAGE_VERSION "${configure_ac}")
-  set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
-  set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-  set(prefix ${CMAKE_INSTALL_PREFIX})
-  configure_file(libuv.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libuv.pc @ONLY)
+# Now for some gibbering horrors from beyond the stars...
 
-  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-  install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuv.pc
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+if(LIBUV_NO_GNUINSTALLDIRS)
+  set(CMAKE_INSTALL_LIBDIR lib)
+  set(CMAKE_INSTALL_BINDIR bin)
+  set(CMAKE_INSTALL_INCLUDEDIR include)
+  set(CMAKE_INSTALL_DOCDIR share/doc/libuv)
+else()
+  include(GNUInstallDirs)
+endif()
+
+foreach(x ${uv_libraries})
+  set(LIBS "${LIBS} -l${x}")
+endforeach(x)
+file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
+string(REGEX MATCH [0-9]+[.][0-9]+[.][0-9]+ PACKAGE_VERSION "${configure_ac}")
+set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
+set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+set(prefix ${CMAKE_INSTALL_PREFIX})
+configure_file(libuv.pc.in ${CMAKE_CURRENT_BINARY_DIR}/libuv.pc @ONLY)
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuv.pc
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+if(LIBUV_EXPORT_CMAKE)
+  export(TARGETS uv uv_a FILE ${CMAKE_BINARY_DIR}/libuv-targets.cmake)
+  install(
+    EXPORT libuv-targets
+    NAMESPACE libuv::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
+    COMPONENT dev)
+
+  install(TARGETS uv
+          EXPORT libuv-targets
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install(TARGETS uv_a
+          EXPORT libuv-targets
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+  # Generate the libuv-config.cmake for find_package()
+  file(WRITE ${CMAKE_BINARY_DIR}/libuv-config.cmake
+"# libuv-config.cmake
+
+# Config file for the libuv package.
+# It defines the following variables:
+#  LIBUV_INCLUDE_DIRS - include directories for libuv
+#  LIBUV_LIBRARIES    - libraries to link against
+
+# Dependencies
+#  - These could be added but are not required for now as all dependencies are
+#    platform specific and provided by the OS
+# find_package(Threads REQUIRED)
+
+if(LIBUV_CMAKE_DIR)
+  # already imported
+endif()
+
+# Compute paths
+get_filename_component(LIBUV_CMAKE_DIR \"\${CMAKE_CURRENT_LIST_FILE}\" PATH)
+
+# Set include dir
+set(LIBUV_INCLUDE_DIRS include)
+set(LIBUV_LIBRARIES uv_a uv)
+
+include(\${LIBUV_CMAKE_DIR}/libuv-targets.cmake)
+")
+
+  install(FILES ${CMAKE_BINARY_DIR}/libuv-config.cmake
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
+          COMPONENT dev)
+else()
   install(TARGETS uv LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
   install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
