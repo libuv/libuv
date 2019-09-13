@@ -1417,7 +1417,9 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
     if (uv__convert_utf16_to_utf8(penv, -1, &buf) != 0)
       goto fail;
 
-    ptr = strchr(buf, '=');
+    /* Using buf + 1 here because we know that `buf` has length at least 1,
+     * and some special environment variables on Windows start with a = sign. */
+    ptr = strchr(buf + 1, '=');
     if (ptr == NULL) {
       uv__free(buf);
       goto do_continue;
