@@ -24,20 +24,22 @@ void init_ssl() {
   sslContext = SSL_CTX_new(sslMethod);
   SSL_CTX_set_verify(sslContext, SSL_VERIFY_NONE, NULL);
   SSL_CTX_use_certificate_file(sslContext, "cert.pem", SSL_FILETYPE_PEM) == 1
-      ? printf("SSL CERT OK\n")
-      : printf("SSL CERT ERROR\n");
+      ? printf("+ SSL CERT LOAD OK\n")
+      : printf("- SSL CERT LOAD ERROR\n");
   SSL_CTX_use_PrivateKey_file(sslContext, "key.pem", SSL_FILETYPE_PEM) == 1
-      ? printf("SSL KEY OK\n")
-      : printf("SSL KEY ERROR\n");
+      ? printf("+ SSL KEY LOAD OK\n")
+      : printf("- SSL KEY LOAD ERROR\n");
   ;
 }
 
+// struct to hold header of http protocol
 typedef struct header {
   char *field;
   char *value;
   struct header *next;
 } header;
 
+// a single http request
 typedef struct {
   char *method;
   char *url;
@@ -48,8 +50,10 @@ typedef struct {
   size_t body_lenght;
 } request;
 
-enum parsing_stat { FIELD = 0, VALUE };
+// read the http_parser doc for it
+enum parsing_stat { FIELD = 0x0, VALUE = 0x1 };
 
+// http sesson
 typedef struct {
   uv_tcp_t connection;
   request rqst;
@@ -63,14 +67,12 @@ typedef struct {
 
 } session;
 
+// uv write request as allways
 typedef struct {
   uv_write_t req;
   uv_buf_t buf;
 } write_req_t;
 
-/*********************************
- * HTTP_Parser functions and callbacks
- * ******************************/
 void free_write_req(uv_write_t *req) {
   write_req_t *wr = (write_req_t *)req;
   free(wr->buf.base);
@@ -79,6 +81,9 @@ void free_write_req(uv_write_t *req) {
 
 void write_cb(uv_write_t *req, int status) { free_write_req(req); }
 
+/**
+ * HTTP_Parser functions and callbacks
+ */
 int on_message_begin(http_parser *parser) {
   session *ses = (session *)parser->data;
   memset(&ses->rqst, 0, sizeof(request));
@@ -100,17 +105,24 @@ int on_message_complete(http_parser *parser) {
   session *ses = (session *)parser->data;
   uv_read_stop((uv_stream_t *)&ses->connection);
 
-  char *resp =
-      "HTTP/1.1 200 "
-      "OK\r\nserver:SimpleHTTPD\r\nContent-length:2\r\n\r\nOK\r\n\r\n";
+  char *resp = "HTTP/1.1 200 "
+               "OK\r\nserver:SimpleHTTPD\r\nContent-length:2\r\n\r\nOK\r\n\r\n";
+  SSL_write(ses->ssl, resp, strlen(resp));
+  // fetch encrypted data from ses->wbio
+  size_t pending = BIO_pending(ses->wbio);
+  char *dat = (char *)malloc(pending);
+  BIO_read(ses->wbio, dat, pending);
+
   uv_buf_t buf;
-  buf.base = resp;
-  buf.len = strlen(resp);
+  buf.base = dat;
+  buf.len = pending;
+
   uv_write_t req1;
   uv_write(&req1, (uv_stream_t *)&ses->connection, &buf, 1, write_cb);
   header *hdr = ses->rqst.headers;
   return 0;
 }
+
 int on_chunk_header(http_parser *parser);
 int on_chunk_complete(http_parser *parser);
 
@@ -207,15 +219,12 @@ void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
 
       int error = SSL_get_error(ses->ssl, SSL_do_handshake(ses->ssl));
       printf("State: %s\n", SSL_state_string_long(ses->ssl));
-      if (error == SSL_ERROR_WANT_WRITE) {
-        printf("WANT WRITE -->\n");
-      }
-      if (error == SSL_ERROR_WANT_READ) {
-        printf("WANT READ <--\n");
+      if (error == SSL_ERROR_WANT_WRITE || error == SSL_ERROR_WANT_READ) {
+        printf("+ WANT IO\n");
       }
       if (error == SSL_ERROR_NONE) {
         int num = SSL_pending(ses->ssl);
-        printf("NO ERROR: %d Bytes ready to decrypt\n",num);
+        printf("NO ERROR: %d Bytes ready to decrypt\n", num);
       }
       printf("PENDING: %d\n", BIO_pending(ses->wbio));
 
@@ -231,7 +240,7 @@ void read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
     } else {
       BIO_write(ses->rbio, buf->base, nread);
       int num = SSL_pending(ses->ssl);
-      printf("%d Bytes ready to decrypt\n",num);
+      printf("%d Bytes ready to decrypt\n", num);
       http_parser_execute(&ses->parser, &ses->parser_settings, buf->base,
                           buf->len);
     }
