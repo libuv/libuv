@@ -14,6 +14,7 @@ vgcore.*
 .buildstamp
 .dirstamp
 .deps/
+.vscode
 /.libs/
 /aclocal.m4
 /ar-lib
