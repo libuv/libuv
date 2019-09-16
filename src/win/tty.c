@@ -169,10 +169,15 @@ void uv_console_init(void) {
                                        0,
                                        0);
   if (uv__tty_console_handle != INVALID_HANDLE_VALUE) {
+    CONSOLE_SCREEN_BUFFER_INFO sb_info;
     QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
                       NULL,
                       WT_EXECUTELONGFUNCTION);
     uv_mutex_init(&uv__tty_console_resize_mutex);
+    if (GetConsoleScreenBufferInfo(uv__tty_console_handle, &sb_info)) {
+      uv__tty_console_width = sb_info.dwSize.X;
+      uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
+    }
   }
 }
 
@@ -2290,16 +2295,9 @@ static void uv__determine_vterm_state(HANDLE handle) {
 }
 
 static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
-  CONSOLE_SCREEN_BUFFER_INFO sb_info;
   NTSTATUS status;
   ULONG_PTR conhost_pid;
   MSG msg;
-
-  if (!GetConsoleScreenBufferInfo(uv__tty_console_handle, &sb_info))
-    return 0;
-
-  uv__tty_console_width = sb_info.dwSize.X;
-  uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
 
   if (pSetWinEventHook == NULL || pNtQueryInformationProcess == NULL)
     return 0;
