@@ -216,7 +216,11 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
   ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
+  return utimensat(req->file, NULL, ts, 0);
+#else
   return futimens(req->file, ts);
+#endif
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
