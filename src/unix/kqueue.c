@@ -522,7 +522,7 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   uv__handle_stop(handle);
 
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-  if (!uv__has_forked_with_cfrunloop && handle->cf_cb)
+  if (!uv__has_forked_with_cfrunloop && handle->cf_cb != NULL)
     r = uv__fsevents_close(handle);
 #endif
 
