@@ -394,8 +394,10 @@ static void timer_cb_watch_twice(uv_timer_t* handle) {
   uv_close((uv_handle_t*) handle, NULL);
 }
 
-static void fs_event_cb_close(uv_fs_event_t* handle, const char* filename,
-    int events, int status) {
+static void fs_event_cb_close(uv_fs_event_t* handle,
+                              const char* filename,
+                              int events,
+                              int status) {
   ASSERT(status == 0);
 
   ASSERT(fs_event_cb_called < 3);
@@ -467,7 +469,10 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT(r == 0);
-  r = uv_fs_event_start(&fs_event, fs_event_cb_dir_multi_file_in_subdir, "watch_dir", UV_FS_EVENT_RECURSIVE);
+  r = uv_fs_event_start(&fs_event,
+                        fs_event_cb_dir_multi_file_in_subdir,
+                        "watch_dir",
+                        UV_FS_EVENT_RECURSIVE);
   ASSERT(r == 0);
   r = uv_timer_init(loop, &timer);
   ASSERT(r == 0);
@@ -479,11 +484,15 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
    * This will be noisier, so we're just checking for any couple events to happen. */
   r = uv_fs_event_init(loop, &fs_event_root);
   ASSERT(r == 0);
-  r = uv_fs_event_start(&fs_event_root, fs_event_cb_close, "/", UV_FS_EVENT_RECURSIVE);
+  r = uv_fs_event_start(&fs_event_root,
+                        fs_event_cb_close,
+                        "/",
+                        UV_FS_EVENT_RECURSIVE);
   ASSERT(r == 0);
 #else
   fs_event_cb_called += 3;
   close_cb_called += 1;
+  (void)fs_event_root;
 #endif
 
   uv_run(loop, UV_RUN_DEFAULT);
