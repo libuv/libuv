@@ -344,7 +344,13 @@ if (LIBUV_EXPORT_CMAKE)
 endif()
 
 add_library(uv SHARED ${uv_sources})
-target_compile_definitions(uv PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
+target_compile_definitions(
+  uv
+  PRIVATE
+    ${uv_defines}
+    BUILDING_UV_SHARED=1
+  INTERFACE
+    USING_UV_SHARED=1)
 target_compile_options(uv PRIVATE ${uv_cflags})
 if(LIBUV_EXPORT_CMAKE)
   target_include_directories(uv
