@@ -236,7 +236,7 @@
             'src/unix/linux-syscalls.h',
           ],
           'link_settings': {
-            'libraries': [ '-ldl', '-lrt' ],
+            'libraries': [ '-ldl' ],
           },
         }],
         [ 'OS=="android"', {
