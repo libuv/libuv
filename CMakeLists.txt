@@ -82,7 +82,6 @@ set(uv_test_sources
     test/test-idna.c
     test/test-ip4-addr.c
     test/test-ip6-addr.c
-    test/test-ip6-addr.c
     test/test-ipc-heavy-traffic-deadlock-bug.c
     test/test-ipc-send-recv.c
     test/test-ipc.c
