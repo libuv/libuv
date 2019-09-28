@@ -1,6 +1,15 @@
 # TODO: determine CMAKE_SYSTEM_NAME on OS/390.  Currently assumes "OS/390".
-cmake_minimum_required(VERSION 2.8.12)
-project(libuv)
+cmake_minimum_required(VERSION 3.4)
+project(libuv LANGUAGES C)
+
+include(CMakePackageConfigHelpers)
+include(CMakeDependentOption)
+include(GNUInstallDirs)
+include(CTest)
+
+cmake_dependent_option(LIBUV_BUILD_TESTS
+  "Build the unit tests when BUILD_TESTING is enabled and we are the root project" ON
+  "BUILD_TESTING;CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
 
 if(MSVC)
   list(APPEND uv_cflags /W4)
@@ -369,11 +378,7 @@ target_compile_options(uv_a PRIVATE ${uv_cflags})
 target_include_directories(uv_a PUBLIC include PRIVATE src)
 target_link_libraries(uv_a ${uv_libraries})
 
-option(libuv_buildtests "Build the unit tests when BUILD_TESTING is enabled." ON)
-
-include(CTest)
-if(BUILD_TESTING AND libuv_buildtests)
-  enable_testing()
+if(LIBUV_BUILD_TESTS)
   add_executable(uv_run_tests ${uv_test_sources})
   target_compile_definitions(uv_run_tests
                              PRIVATE ${uv_defines} USING_UV_SHARED=1)
@@ -393,7 +398,6 @@ endif()
 
 if(UNIX)
   # Now for some gibbering horrors from beyond the stars...
-  include(GNUInstallDirs)
   foreach(x ${uv_libraries})
     set(LIBS "${LIBS} -l${x}")
   endforeach(x)
