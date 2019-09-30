@@ -1,7 +1,9 @@
 # Number of days of inactivity before an issue becomes stale
-daysUntilStale: 90
+daysUntilStale: 21
 # Number of days of inactivity before a stale issue is closed
-daysUntilClose: 7
+# Set to false to disable. If disabled, issues still need to be closed
+# manually, but will remain marked as stale.
+daysUntilClose: 120
 # Issues with these labels will never be considered stale
 exemptLabels:
   - v2
