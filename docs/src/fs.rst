@@ -295,7 +295,8 @@ API
 
     .. note::
         On success this function allocates memory that must be freed using
-        `uv_fs_req_cleanup()`.
+        `uv_fs_req_cleanup()`. `uv_fs_req_cleanup()` must be called before
+        closing the directory with `uv_fs_closedir()`.
 
 .. c:function:: int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
 .. c:function:: int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
