@@ -706,10 +706,25 @@ typedef enum {
   UV_TTY_MODE_IO
 } uv_tty_mode_t;
 
+typedef enum {
+  /*
+   * The console supports handling of virtual terminal sequences
+   * (Windows10 new console, ConEmu)
+   */
+  UV_TTY_SUPPORTED,
+  /* The console cannot process the virtual terminal sequence.  (Legacy
+   * console)
+   */
+  UV_TTY_UNSUPPORTED
+} uv_tty_vtermstate_t;
+
+
 UV_EXTERN int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int readable);
 UV_EXTERN int uv_tty_set_mode(uv_tty_t*, uv_tty_mode_t mode);
 UV_EXTERN int uv_tty_reset_mode(void);
 UV_EXTERN int uv_tty_get_winsize(uv_tty_t*, int* width, int* height);
+UV_EXTERN void uv_tty_set_vterm_state(uv_tty_vtermstate_t state);
+UV_EXTERN int uv_tty_get_vterm_state(uv_tty_vtermstate_t* state);
 
 #ifdef __cplusplus
 extern "C++" {
