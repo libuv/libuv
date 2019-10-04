@@ -127,3 +127,13 @@ API
     ignored.
 
     .. versionadded:: 1.33.0
+
+.. c:function:: int uv_tty_get_vterm_state(uv_tty_vtermstate_t* state)
+
+    Get the current state of whether console virtual terminal sequences are
+    handled by libuv or the console.
+
+    This function is not implemented on Unix, where it returns ``UV_ENOTSUP``.
+
+    .. versionadded:: 1.33.0
+

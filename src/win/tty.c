@@ -2385,3 +2385,10 @@ void uv_tty_set_vterm_state(uv_tty_vtermstate_t state) {
   uv__vterm_state = state;
   uv_sem_post(&uv_tty_output_lock);
 }
+
+int uv_tty_get_vterm_state(uv_tty_vtermstate_t* state) {
+  uv_sem_wait(&uv_tty_output_lock);
+  *state = uv__vterm_state;
+  uv_sem_post(&uv_tty_output_lock);
+  return 0;
+}
