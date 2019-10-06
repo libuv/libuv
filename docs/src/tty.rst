@@ -44,7 +44,7 @@ Data types
            * (Windows10 new console, ConEmu)
            */
           UV_TTY_SUPPORTED,
-          /* The console cannot process the virtual terminal sequence.  (Legacy
+          /* The console cannot process virtual terminal sequences.  (Legacy
            * console)
            */
           UV_TTY_UNSUPPORTED
