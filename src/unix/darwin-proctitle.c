@@ -23,6 +23,7 @@
 
 #include <dlfcn.h>
 #include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,7 +37,6 @@
 #define S(s) pCFStringCreateWithCString(NULL, (s), kCFStringEncodingUTF8)
 
 
-static int (*dynamic_pthread_setname_np)(const char* name);
 #if !TARGET_OS_IPHONE
 static CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
                                                  const char*,
@@ -77,13 +77,9 @@ UV_DESTRUCTOR(static void uv__set_process_title_platform_fini(void)) {
 
 
 void uv__set_process_title_platform_init(void) {
+#if !TARGET_OS_IPHONE
   OSStatus (*pSetApplicationIsDaemon)(int);
 
-  /* pthread_setname_np() first appeared in OS X 10.6 and iOS 3.2. */
-  *(void **)(&dynamic_pthread_setname_np) =
-      dlsym(RTLD_DEFAULT, "pthread_setname_np");
-
-#if !TARGET_OS_IPHONE
   application_services_handle = dlopen("/System/Library/Frameworks/"
                                        "ApplicationServices.framework/"
                                        "Versions/A/ApplicationServices",
@@ -181,6 +177,8 @@ out:
 
 
 void uv__set_process_title(const char* title) {
+  char namebuf[64 /* MAXTHREADNAMESIZE */];
+
 #if !TARGET_OS_IPHONE
   if (core_foundation_handle != NULL) {
     CFTypeRef asn;
@@ -193,9 +191,6 @@ void uv__set_process_title(const char* title) {
   }
 #endif  /* !TARGET_OS_IPHONE */
 
-  if (dynamic_pthread_setname_np != NULL) {
-    char namebuf[64];  /* MAXTHREADNAMESIZE */
-    uv__strscpy(namebuf, title, sizeof(namebuf));
-    dynamic_pthread_setname_np(namebuf);
-  }
+  uv__strscpy(namebuf, title, sizeof(namebuf));
+  pthread_setname_np(namebuf);
 }
