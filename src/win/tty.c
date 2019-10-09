@@ -2382,6 +2382,7 @@ static void uv__tty_console_signal_resize(void) {
 
 void uv_tty_set_vterm_state(uv_tty_vtermstate_t state) {
   uv_sem_wait(&uv_tty_output_lock);
+  uv__need_check_vterm_state = FALSE;
   uv__vterm_state = state;
   uv_sem_post(&uv_tty_output_lock);
 }
