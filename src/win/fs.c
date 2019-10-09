@@ -2575,6 +2575,7 @@ static void fs__statfs(uv_fs_t* req) {
   stat_fs->f_files = 0;
   stat_fs->f_ffree = 0;
   req->ptr = stat_fs;
+  req->flags |= UV_FS_FREE_PTR;
   SET_REQ_RESULT(req, 0);
 }
 
