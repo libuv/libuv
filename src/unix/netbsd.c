@@ -95,6 +95,8 @@ int uv_exepath(char* buffer, size_t* size) {
 
   /* Set new size. */
   *size = (size_t)bufferlen;
+  /* In case the buffer might not be C-string complete, adding trailing end */
+  buffer[bufferlen] = '\0';
 
   return 0;
 }
