@@ -20,6 +20,9 @@ set(CMAKE_C_STANDARD 90)
 cmake_dependent_option(LIBUV_BUILD_TESTS
   "Build the unit tests when BUILD_TESTING is enabled and we are the root project" ON
   "BUILD_TESTING;CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
+cmake_dependent_option(LIBUV_BUILD_BENCH
+  "Build the benchmarks when building unit tests and we are the root project" ON
+  "LIBUV_BUILD_TESTS" OFF)
 
 if(MSVC)
   list(APPEND uv_cflags /W4)
