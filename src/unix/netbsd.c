@@ -69,17 +69,19 @@ int uv_exepath(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  errno = 0;
   mib[0] = CTL_KERN;
   mib[1] = KERN_PROC_ARGS;
   mib[2] = -1;
   mib[3] = KERN_PROC_PATHNAME;
+  errno = 0;
 
-  if (sysctl(mib, ARRAY_SIZE(mib), buffer, size, NULL, 0) != 0 && errno != ENOSPC)
-    return UV__ERR(errno);
+  if (sysctl(mib, ARRAY_SIZE(mib), buffer, size, NULL, 0)) {
+    if (errno != ENOSPC)
+      return UV__ERR(errno);
+  }
 
   /* In case the buffer might not be C-string complete, adding trailing end */
-  if (!errno)
+  if (errno == 0)
     (*size)--;
   buffer[*size] = '\0';
 
