@@ -25,13 +25,14 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
   "Build the benchmarks when building unit tests and we are the root project" ON
   "LIBUV_BUILD_TESTS" OFF)
 
-# Unfortunately, MSVC and clang-cl both support -Wall, but we don't actually
-# want that, as its equivalent to -Weverything :/
-if (MSVC OR CMAKE_C_SIMULATED_ID STREQUAL "MSVC")
-  check_c_compiler_flag(/W4 UV_LINT_DEFAULT)
-else()
-  check_c_compiler_flag(-Wall UV_LINT_DEFAULT)
-endif()
+# Compiler check
+string(CONCAT is-msvc $<OR:
+  $<C_COMPILER_ID:MSVC>,
+  $<STREQUAL:${CMAKE_C_SIMULATED_ID},MSVC>
+>)
+
+check_c_compiler_flag(/W4 UV_LINT_W4)
+check_c_compiler_flag(-Wall UV_LINT_WALL) # DO NOT use this under MSVC
 
 # TODO: Place these into its own function
 check_c_compiler_flag(-Wno-unused-parameter UV_LINT_NO_UNUSED_PARAMETER)
@@ -41,8 +42,13 @@ check_c_compiler_flag(-Wextra UV_LINT_EXTRA)
 set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter) 
 set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-prototypes>)
 set(lint-extra $<$<BOOL:${UV_LINT_EXTRA}>:-Wextra>)
+set(lint-w4 $<$<BOOL:${UV_LINT_W4}>:/W4>)
+# Unfortunately, this one is complicated because MSVC and clang-cl support -Wall
+string(CONCAT lint-default $<
+  $<AND:$<BOOL:${UV_LINT_WALL}>,$<NOT:${is-msvc}>>:-Wall
+>)
 
-list(APPEND uv_cflags ${lint-strict-prototypes} ${lint-extra} ${lint-default})
+list(APPEND uv_cflags ${lint-strict-prototypes} ${lint-extra} ${lint-default} ${lint-w4})
 list(APPEND uv_cflags ${lint-no-unused-parameter})
 
 set(uv_sources
