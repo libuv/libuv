@@ -9,6 +9,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 include(CMakePackageConfigHelpers)
 include(CMakeDependentOption)
+include(CheckCCompilerFlag)
 include(GNUInstallDirs)
 include(CTest)
 
@@ -24,12 +25,25 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
   "Build the benchmarks when building unit tests and we are the root project" ON
   "LIBUV_BUILD_TESTS" OFF)
 
-if(MSVC)
-  list(APPEND uv_cflags /W4)
-elseif(CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
-  list(APPEND uv_cflags -Wall -Wextra -Wstrict-prototypes)
-  list(APPEND uv_cflags -Wno-unused-parameter)
+# Unfortunately, MSVC and clang-cl both support -Wall, but we don't actually
+# want that, as its equivalent to -Weverything :/
+if (MSVC OR CMAKE_C_SIMULATED_ID STREQUAL "MSVC")
+  check_c_compiler_flag(/W4 UV_LINT_DEFAULT)
+else()
+  check_c_compiler_flag(-Wall UV_LINT_DEFAULT)
 endif()
+
+# TODO: Place these into its own function
+check_c_compiler_flag(-Wno-unused-parameter UV_LINT_NO_UNUSED_PARAMETER)
+check_c_compiler_flag(-Wstrict-prototypes UV_LINT_STRICT_PROTOTYPES)
+check_c_compiler_flag(-Wextra UV_LINT_EXTRA)
+
+set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter) 
+set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-prototypes>)
+set(lint-extra $<$<BOOL:${UV_LINT_EXTRA}>:-Wextra>)
+
+list(APPEND uv_cflags ${lint-strict-prototypes} ${lint-extra} ${lint-default})
+list(APPEND uv_cflags ${lint-no-unused-parameter})
 
 set(uv_sources
     src/fs-poll.c
