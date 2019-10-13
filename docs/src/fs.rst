@@ -158,6 +158,11 @@ Data types
             size_t nentries;
         } uv_dir_t;
 
+.. c:type:: void (*uv_fs_cb)(uv_fs_t* req)
+
+    Type definition for callback passed to ``uv_fs_*`` functions.
+
+
 
 Public members
 ^^^^^^^^^^^^^^
@@ -216,7 +221,7 @@ API
 
 .. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`preadv(2)`.
+    Equivalent to :man:`preadv(2)` or :man:`readv(2)` if `offset < 0`.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
