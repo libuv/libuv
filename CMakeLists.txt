@@ -5,6 +5,8 @@ project(libuv LANGUAGES C)
 cmake_policy(SET CMP0057 NEW) # Enable IN_LIST operator
 cmake_policy(SET CMP0064 NEW) # Support if (TEST) operator
 
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+
 include(CMakePackageConfigHelpers)
 include(CMakeDependentOption)
 include(GNUInstallDirs)
