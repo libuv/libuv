@@ -65,6 +65,7 @@ void uv_loadavg(double avg[3]) {
 
 int uv_exepath(char* buffer, size_t* size) {
   int mib[4];
+  int saved_errno;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
@@ -73,17 +74,22 @@ int uv_exepath(char* buffer, size_t* size) {
   mib[1] = KERN_PROC_ARGS;
   mib[2] = -1;
   mib[3] = KERN_PROC_PATHNAME;
+  saved_errno = errno;
   errno = 0;
 
   if (sysctl(mib, ARRAY_SIZE(mib), buffer, size, NULL, 0)) {
-    if (errno != ENOSPC)
-      return UV__ERR(errno);
+    if (errno != ENOSPC) {
+      int err = UV__ERR(errno);
+      errno = saved_errno;
+      return err;
+    }
   }
 
   /* In case the buffer might not be C-string complete, adding trailing end */
-  if (errno == 0)
+  if (errno == 0 || errno == ENOSPC)
     (*size)--;
   buffer[*size] = '\0';
+  errno = saved_errno;
 
   return 0;
 }
