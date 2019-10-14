@@ -25,6 +25,10 @@
 #include <string.h>
 #include <fcntl.h>
 
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+# include <AvailabilityMacros.h>
+#endif
+
 #ifndef HAVE_KQUEUE
 # if defined(__APPLE__) ||                                                    \
      defined(__DragonFly__) ||                                                \
