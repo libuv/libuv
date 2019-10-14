@@ -140,11 +140,7 @@ EXTRA_DIST = test/fixtures/empty_file \
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
-if OS390
 test_run_tests_CFLAGS =
-else
-test_run_tests_CFLAGS = -Wno-long-long
-endif
 
 if SUNOS
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers

@@ -32,6 +32,7 @@ CC_CHECK_CFLAGS_APPEND([-g])
 CC_CHECK_CFLAGS_APPEND([-std=gnu89])
 CC_CHECK_CFLAGS_APPEND([-Wall])
 CC_CHECK_CFLAGS_APPEND([-Wextra])
+CC_CHECK_CFLAGS_APPEND([-Wno-long-long])
 CC_CHECK_CFLAGS_APPEND([-Wno-unused-parameter])
 CC_CHECK_CFLAGS_APPEND([-Wstrict-prototypes])
 # AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
