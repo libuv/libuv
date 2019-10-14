@@ -1055,18 +1055,14 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #ifdef FICLONE
   if (req->flags & UV_FS_COPYFILE_FICLONE ||
       req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-    if (ioctl(dstfd, FICLONE, srcfd) == -1) {
-      /* If an error occurred that the sendfile fallback also won't handle, or
-         this is a force clone then exit. Otherwise, fall through to try using
-         sendfile(). */
-      if (errno != ENOTTY && errno != EOPNOTSUPP && errno != EXDEV) {
-        err = UV__ERR(errno);
-        goto out;
-      } else if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-        err = UV_ENOTSUP;
-        goto out;
-      }
-    } else {
+    if (ioctl(dstfd, FICLONE, srcfd) == 0) {
+      /* ioctl() with FICLONE succeeded. */
+      goto out;
+    }
+    /* If an error occurred and force was set, return the error to the caller;
+     * fall back to sendfile() when force was not set. */
+    if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+      err = UV__ERR(errno);
       goto out;
     }
   }
