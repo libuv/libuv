@@ -638,6 +638,7 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
    * versions. Give a long delay here to let the system settle before running
    * the test. */
   uv_sleep(1100);
+  uv_update_time(loop);
 #endif
 
   r = uv_fs_event_init(loop, &fs_event);
@@ -703,6 +704,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
    * create_file events prior to macOS 10.11.6 in the subsequent fs_event_start
    * So let the system settle before running the test. */
   uv_sleep(1100);
+  uv_update_time(loop);
 #endif
 
   r = uv_fs_event_init(loop, &fs_event);
