@@ -188,7 +188,7 @@ TEST_IMPL(fs_copyfile) {
   unlink(dst);
   r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
                      NULL);
-  ASSERT(r == 0 || r == UV_ENOSYS || r < 0);
+  ASSERT(r <= 0 || r == UV_ENOSYS);
 
   if (r == 0)
     handle_result(&req);
