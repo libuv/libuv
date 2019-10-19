@@ -65,9 +65,18 @@ int uv__random_sysctl(void* buf, size_t buflen) {
      * an okay trade-off for the fallback of the fallback: this function is
      * only called when neither getrandom(2) nor /dev/urandom are available.
      * Fails with ENOSYS on kernels configured without CONFIG_SYSCTL_SYSCALL.
+     * At least arm64 never had a _sysctl system call and therefore doesn't
+     * have a SYS__sysctl define either.
      */
+#ifdef SYS__sysctl
     if (syscall(SYS__sysctl, &args) == -1)
       return UV__ERR(errno);
+#else
+    {
+      (void) &args;
+      return UV_ENOSYS;
+    }
+#endif
 
     if (n != sizeof(uuid))
       return UV_EIO;  /* Can't happen. */
