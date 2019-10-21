@@ -76,8 +76,8 @@ static void uv__random_devurandom_init(void) {
 
   /* Linux's random(4) man page suggests applications should read at least
    * once from /dev/random before switching to /dev/urandom in order to seed
-   * to seed the system RNG. Reads from /dev/random can of course block
-   * indefinitely until entropy is available but that's the point.
+   * the system RNG. Reads from /dev/random can of course block indefinitely
+   * until entropy is available but that's the point.
    */
   status = uv__random_readpath("/dev/random", &c, 1);
 }
