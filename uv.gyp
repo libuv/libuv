@@ -338,7 +338,10 @@
           'link_settings': {
             'libraries': [ '-lkvm' ],
           },
-          'sources': [ 'src/unix/netbsd.c' ],
+          'sources': [
+            'src/unix/netbsd.c',
+            'src/unix/random-sysctl-bsd.c',
+          ],
         }],
         [ 'OS in "freebsd dragonflybsd openbsd netbsd".split()', {
           'sources': [
