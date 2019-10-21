@@ -325,7 +325,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
-  list(APPEND uv_sources src/unix/netbsd.c)
+  list(APPEND uv_sources
+       src/unix/netbsd.c
+       src/unix/random-sysctl-bsd.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
