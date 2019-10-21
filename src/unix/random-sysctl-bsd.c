@@ -30,22 +30,26 @@
 
 int uv__random_sysctl(void* buf, size_t buflen) {
   static int name[] = {CTL_KERN, KERN_ARND};
-  unsigned char uuid[16];
+  unsigned char rbytes[32];
   char* p;
   char* pe;
-  size_t n = sizeof(uuid);
+  size_t n = sizeof(rbytes);
 
   p = buf;
   pe = p + buflen;
 
   while (p < pe) {
-    if (sysctl(name, ARRAY_SIZE(name), &uuid, &n, NULL, 0) == -1)
+    if (sysctl(name, ARRAY_SIZE(name), &rbytes, &n, NULL, 0) == -1)
       return UV__ERR(errno);
 
-    if (n != sizeof(uuid))
+    if (n != sizeof(rbytes))
       return UV_EIO;  /* Can't happen. */
 
-    memcpy(p, uuid, n);
+    n = pe - p;
+    if (n > sizeof(rbytes))
+      n = sizeof(rbytes);
+
+    memcpy(p, rbytes, n);
     p += n;
   }
 
