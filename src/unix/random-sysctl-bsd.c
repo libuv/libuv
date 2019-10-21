@@ -39,7 +39,7 @@ int uv__random_sysctl(void* buf, size_t buflen) {
   pe = p + buflen;
 
   while (p < pe) {
-    if (sysctl(name, ARRAY_SIZE(name), &rbytes, &n, NULL, 0) == -1)
+    if (sysctl(name, ARRAY_SIZE(name), rbytes, &n, NULL, 0) == -1)
       return UV__ERR(errno);
 
     if (n != sizeof(rbytes))
