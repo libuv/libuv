@@ -28,29 +28,23 @@
 #include <sys/sysctl.h>
 #include <unistd.h>
 
-int uv__random_sysctl(void* buf, size_t buflen) {
+int uv__random_sysctl(void* buf, size_t len) {
   static int name[] = {CTL_KERN, KERN_ARND};
-  unsigned char rbytes[32];
-  char* p;
-  char* pe;
-  size_t n = sizeof(rbytes);
+  size_t count, req;
+  unsigned char *p = buf;
 
-  p = buf;
-  pe = p + buflen;
+  while (len) {
+    req = len < 32 ? len : 32;
+    count = req;
 
-  while (p < pe) {
-    if (sysctl(name, ARRAY_SIZE(name), rbytes, &n, NULL, 0) == -1)
+    if (sysctl(name, ARRAY_SIZE(name), p, &count, NULL, 0) == -1)
       return UV__ERR(errno);
 
-    if (n != sizeof(rbytes))
+    if (count != req)
       return UV_EIO;  /* Can't happen. */
 
-    n = pe - p;
-    if (n > sizeof(rbytes))
-      n = sizeof(rbytes);
-
-    memcpy(p, rbytes, n);
-    p += n;
+    p += count;
+    len -= count;
   }
 
   return 0;
