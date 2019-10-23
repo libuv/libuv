@@ -491,7 +491,6 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/bsd-proctitle.c \
                     src/unix/kqueue.c \
                     src/unix/netbsd.c \
-                    src/unix/random-sysctl-bsd.c \
                     src/unix/posix-hrtime.c
 test_run_tests_LDFLAGS += -lutil
 endif
