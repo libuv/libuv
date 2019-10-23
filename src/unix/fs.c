@@ -1254,7 +1254,6 @@ static int uv__fs_statx(int fd,
     return UV_ENOSYS; 
   }
   
-
   buf->st_dev = 256 * statxbuf.stx_dev_major + statxbuf.stx_dev_minor;
   buf->st_mode = statxbuf.stx_mode;
   buf->st_nlink = statxbuf.stx_nlink;
