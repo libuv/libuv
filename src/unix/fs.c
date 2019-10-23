@@ -1243,7 +1243,17 @@ static int uv__fs_statx(int fd,
 
     no_statx = 1;
     return UV_ENOSYS;
+  } else if (rc == 1) { 
+    /* statx is not implemented on RHEL 7 and trying to call it from
+     * within a docker container might result in a ret value of 1 
+     * (which is not an expected value according to statx man page, 
+     * expected values are 0 or -1), in which case assume statx is not 
+     * implemented.
+     */  
+    no_statx = 1;
+    return UV_ENOSYS; 
   }
+  
 
   buf->st_dev = 256 * statxbuf.stx_dev_major + statxbuf.stx_dev_minor;
   buf->st_mode = statxbuf.stx_mode;
