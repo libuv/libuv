@@ -238,8 +238,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 int uv__random_sysctl(void* buf, size_t len) {
   static int name[] = {CTL_KERN, KERN_ARND};
   size_t count, req;
-  unsigned char *p = buf;
+  unsigned char* p;
 
+  p = buf;
   while (len) {
     req = len < 32 ? len : 32;
     count = req;
