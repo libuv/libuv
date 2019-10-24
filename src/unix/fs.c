@@ -1235,33 +1235,14 @@ static int uv__fs_statx(int fd,
   rc = uv__statx(dirfd, path, flags, mode, &statxbuf);
 
   if (rc != 0) {
-    if (errno == 0) {
-    /* statx is not implemented on RHEL 7 and trying to call it from
-     * within a docker container might result in a ret value of 1 
-     * (which is not an expected value according to statx man page, 
-     * expected values are 0 or -1) and errno is set to 0, in which 
-     * case assume statx is not implemented.
-     */  
-      no_statx = 1;
-      return UV_ENOSYS;
-    }
     /* EPERM happens when a seccomp filter rejects the system call.
      * Has been observed with libseccomp < 2.3.3 and docker < 18.04.
      */
-    if (errno != EINVAL && errno != EPERM && errno != ENOSYS)
+    if (errno != 0 && errno != EINVAL && errno != EPERM && errno != ENOSYS)
       return -1;
 
     no_statx = 1;
     return UV_ENOSYS;
-  } else if (rc == 1) { 
-    /* statx is not implemented on RHEL 7 and trying to call it from
-     * within a docker container might result in a ret value of 1 
-     * (which is not an expected value according to statx man page, 
-     * expected values are 0 or -1), in which case assume statx is not 
-     * implemented.
-     */  
-    no_statx = 1;
-    return UV_ENOSYS; 
   }
 
   buf->st_dev = 256 * statxbuf.stx_dev_major + statxbuf.stx_dev_minor;
