@@ -1232,8 +1232,7 @@ static int uv__fs_statx(int fd,
   if (is_lstat)
     flags |= AT_SYMLINK_NOFOLLOW;
 
-  rc = uv__statx(dirfd, path, flags, mode, &statxbuf);
- 
+  rc = uv__statx(dirfd, path, flags, mode, &statxbuf); 
   /* Normally on success, zero is returned and On error, -1 is returned.
    * Observed on S390 RHEL running in a docker container with statx not
    * implemented, rc might return 1 with 0 set as the error code in which 
