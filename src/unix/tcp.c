@@ -380,9 +380,19 @@ int uv__tcp_nodelay(int fd, int on) {
   return 0;
 }
 
-
+/*
+ * On Linux/FreeBSD the qlen value passed in to the function limits the number
+ * of outstanding TFO requests as a simple defense against IP spoofing attacks
+ * (see RFC7413).
+ *
+ * Note on OS X the qlen MUST be 1 (the actual value is set via the
+ * net.inet.tcp.fastopen_backlog kernel parameter).
+ */
 int uv__tcp_fastopen(int fd, int qlen) {
 #ifdef TCP_FASTOPEN
+#if defined(__APPLE__)
+  qlen = 1;
+#endif
   if (setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &qlen, sizeof(qlen)))
     return UV__ERR(errno);
   return 0;
