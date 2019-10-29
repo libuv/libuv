@@ -1245,6 +1245,11 @@ static int uv__fs_statx(int fd,
       return -1;
     /* Fall through. */
   default:
+    /* Normally on success, zero is returned and On error, -1 is returned.
+     * Observed on S390 RHEL running in a docker container with statx not
+     * implemented, rc might return 1 with 0 set as the error code in which 
+     * case we return ENOSYS.
+     */    
     no_statx = 1;
     return UV_ENOSYS;
   }
