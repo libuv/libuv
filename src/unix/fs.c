@@ -1233,18 +1233,18 @@ static int uv__fs_statx(int fd,
     flags |= AT_SYMLINK_NOFOLLOW;
 
   rc = uv__statx(dirfd, path, flags, mode, &statxbuf); 
-  /* Normally on success, zero is returned and On error, -1 is returned.
-   * Observed on S390 RHEL running in a docker container with statx not
-   * implemented, rc might return 1 with 0 set as the error code in which 
-   * case we return ENOSYS.
-   */   
-  if (rc != 0) {
+  
+  switch (rc) {
+  case 0:
+    break;
+  case -1:
     /* EPERM happens when a seccomp filter rejects the system call.
      * Has been observed with libseccomp < 2.3.3 and docker < 18.04.
      */
-    if (errno != 0 && errno != EINVAL && errno != EPERM && errno != ENOSYS)
+    if (errno != EINVAL && errno != EPERM && errno != ENOSYS)
       return -1;
-
+    /* Fall through. */
+  default:
     no_statx = 1;
     return UV_ENOSYS;
   }
