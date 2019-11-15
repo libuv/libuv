@@ -5,6 +5,11 @@ daysUntilClose: 7
 # Issues with these labels will never be considered stale
 exemptLabels:
   - v2
+  - enhancement
+  - good first issue
+  - feature-request
+  - doc
+  - bug
   - not-stale
 # Label to use when marking an issue as stale
 staleLabel: stale
