@@ -22,6 +22,7 @@
     <ClCompile Include="..\src\fs-poll.c" />
     <ClCompile Include="..\src\idna.c" />
     <ClCompile Include="..\src\inet.c" />
+    <ClCompile Include="..\src\random.c" />
     <ClCompile Include="..\src\strscpy.c" />
     <ClCompile Include="..\src\threadpool.c" />
     <ClCompile Include="..\src\unix\aix-common.c">

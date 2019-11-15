@@ -4110,7 +4110,7 @@
 #endif
 
 /* from winternl.h */
-#if !defined(__UNICODE_STRING_DEFINED) && defined(__MINGW32_)
+#if !defined(__UNICODE_STRING_DEFINED) && defined(__MINGW32__)
 #define __UNICODE_STRING_DEFINED
 #endif
 typedef struct _UNICODE_STRING {
@@ -4437,6 +4437,10 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 # define SystemProcessorPerformanceInformation 8
 #endif
 
+#ifndef ProcessConsoleHostProcess
+# define ProcessConsoleHostProcess 49
+#endif
+
 #ifndef FILE_DEVICE_FILE_SYSTEM
 # define FILE_DEVICE_FILE_SYSTEM 0x00000009
 #endif
@@ -4579,6 +4583,18 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
                   BOOLEAN RestartScan
                 );
 
+typedef NTSTATUS (NTAPI *sNtQueryInformationProcess)
+                 (HANDLE ProcessHandle,
+                  UINT ProcessInformationClass,
+                  PVOID ProcessInformation,
+                  ULONG Length,
+                  PULONG ReturnLength);
+
+/*
+ * Advapi32 headers
+ */
+typedef BOOLEAN (WINAPI *sRtlGenRandom)(PVOID Buffer, ULONG BufferLength);
+
 /*
  * Kernel32 headers
  */
@@ -4719,6 +4735,10 @@ extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
+extern sNtQueryInformationProcess pNtQueryInformationProcess;
+
+/* Advapi32 function pointers */
+extern sRtlGenRandom pRtlGenRandom;
 
 /* Kernel32 function pointers */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;

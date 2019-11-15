@@ -117,6 +117,11 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
+}
+
+
 void uv_loadavg(double avg[3]) {
   struct loadavg info;
   size_t size = sizeof(info);
@@ -217,15 +222,4 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   vm_deallocate(mach_task_self(), (vm_address_t)info, msg_type);
 
   return 0;
-}
-
-
-void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
-  int i;
-
-  for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
-  }
-
-  uv__free(cpu_infos);
 }

@@ -261,6 +261,9 @@
     <ClCompile Include="..\src\unix\udp.c">
       <Filter>unix</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\random.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\heap-inl.h">

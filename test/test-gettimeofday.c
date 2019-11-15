@@ -23,7 +23,7 @@
 #include "task.h"
 
 TEST_IMPL(gettimeofday) {
-  uv_timeval_t tv;
+  uv_timeval64_t tv;
   int r;
 
   tv.tv_sec = 0;

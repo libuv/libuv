@@ -27,7 +27,7 @@
 
 #include <stdlib.h>
 
-#define MAX_THREADPOOL_SIZE 128
+#define MAX_THREADPOOL_SIZE 1024
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
@@ -371,6 +371,10 @@ int uv_cancel(uv_req_t* req) {
   case UV_GETNAMEINFO:
     loop = ((uv_getnameinfo_t*) req)->loop;
     wreq = &((uv_getnameinfo_t*) req)->work_req;
+    break;
+  case UV_RANDOM:
+    loop = ((uv_random_t*) req)->loop;
+    wreq = &((uv_random_t*) req)->work_req;
     break;
   case UV_WORK:
     loop =  ((uv_work_t*) req)->loop;

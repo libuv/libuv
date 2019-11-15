@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <fcntl.h>  /* O_CLOEXEC */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -49,29 +49,36 @@
 # include <sys/wait.h>
 #endif
 
-#ifdef __APPLE__
-# include <mach-o/dyld.h> /* _NSGetExecutablePath */
+#if defined(__APPLE__)
 # include <sys/filio.h>
-# if defined(O_CLOEXEC)
-#  define UV__O_CLOEXEC O_CLOEXEC
-# endif
-#endif
+# endif /* defined(__APPLE__) */
+
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+# include <crt_externs.h>
+# include <mach-o/dyld.h> /* _NSGetExecutablePath */
+# define environ (*_NSGetEnviron())
+#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
+extern char** environ;
+#endif /* !(defined(__APPLE__) && !TARGET_OS_IPHONE) */
+
 
 #if defined(__DragonFly__)      || \
     defined(__FreeBSD__)        || \
     defined(__FreeBSD_kernel__) || \
-    defined(__NetBSD__)
+    defined(__NetBSD__)         || \
+    defined(__OpenBSD__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
-# define UV__O_CLOEXEC O_CLOEXEC
 # if defined(__FreeBSD__) && __FreeBSD__ >= 10
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
 #  define uv__accept4(a, b, c, d) paccept((a), (b), (c), NULL, (d))
 # endif
-# if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || defined(__NetBSD__)
+# if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || \
+      defined(__NetBSD__) || defined(__OpenBSD__)
 #  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
 #  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
 # endif
@@ -86,6 +93,10 @@
 
 #if defined(__MVS__)
 #include <sys/ioctl.h>
+#endif
+
+#if defined(__linux__)
+#include <sys/syscall.h>
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
@@ -510,6 +521,34 @@ skip:
 }
 
 
+/* close() on macos has the "interesting" quirk that it fails with EINTR
+ * without closing the file descriptor when a thread is in the cancel state.
+ * That's why libuv calls close$NOCANCEL() instead.
+ *
+ * glibc on linux has a similar issue: close() is a cancellation point and
+ * will unwind the thread when it's in the cancel state. Work around that
+ * by making the system call directly. Musl libc is unaffected.
+ */
+int uv__close_nocancel(int fd) {
+#if defined(__APPLE__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
+#if defined(__LP64__)
+  extern int close$NOCANCEL(int);
+  return close$NOCANCEL(fd);
+#else
+  extern int close$NOCANCEL$UNIX2003(int);
+  return close$NOCANCEL$UNIX2003(fd);
+#endif
+#pragma GCC diagnostic pop
+#elif defined(__linux__)
+  return syscall(SYS_close, fd);
+#else
+  return close(fd);
+#endif
+}
+
+
 int uv__close_nocheckstdio(int fd) {
   int saved_errno;
   int rc;
@@ -517,7 +556,7 @@ int uv__close_nocheckstdio(int fd) {
   assert(fd > -1);  /* Catch uninitialized io_watcher.fd bugs. */
 
   saved_errno = errno;
-  rc = close(fd);
+  rc = uv__close_nocancel(fd);
   if (rc == -1) {
     rc = UV__ERR(errno);
     if (rc == UV_EINTR || rc == UV__ERR(EINPROGRESS))
@@ -552,7 +591,7 @@ int uv__nonblock_ioctl(int fd, int set) {
 }
 
 
-#if !defined(__CYGWIN__) && !defined(__MSYS__)
+#if !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__HAIKU__)
 int uv__cloexec_ioctl(int fd, int set) {
   int r;
 
@@ -669,16 +708,38 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
 
 
 int uv_cwd(char* buffer, size_t* size) {
+  char scratch[1 + UV__PATH_MAX];
+
   if (buffer == NULL || size == NULL)
     return UV_EINVAL;
 
-  if (getcwd(buffer, *size) == NULL)
+  /* Try to read directly into the user's buffer first... */
+  if (getcwd(buffer, *size) != NULL)
+    goto fixup;
+
+  if (errno != ERANGE)
     return UV__ERR(errno);
 
+  /* ...or into scratch space if the user's buffer is too small
+   * so we can report how much space to provide on the next try.
+   */
+  if (getcwd(scratch, sizeof(scratch)) == NULL)
+    return UV__ERR(errno);
+
+  buffer = scratch;
+
+fixup:
+
   *size = strlen(buffer);
+
   if (*size > 1 && buffer[*size - 1] == '/') {
-    buffer[*size-1] = '\0';
-    (*size)--;
+    *size -= 1;
+    buffer[*size] = '\0';
+  }
+
+  if (buffer == scratch) {
+    *size += 1;
+    return UV_ENOBUFS;
   }
 
   return 0;
@@ -920,7 +981,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_stime.tv_sec = usage.ru_stime.tv_sec;
   rusage->ru_stime.tv_usec = usage.ru_stime.tv_usec;
 
-#if !defined(__MVS__)
+#if !defined(__MVS__) && !defined(__HAIKU__)
   rusage->ru_maxrss = usage.ru_maxrss;
   rusage->ru_ixrss = usage.ru_ixrss;
   rusage->ru_idrss = usage.ru_idrss;
@@ -942,24 +1003,17 @@ int uv_getrusage(uv_rusage_t* rusage) {
 
 
 int uv__open_cloexec(const char* path, int flags) {
-  int err;
+#if defined(O_CLOEXEC)
   int fd;
 
-#if defined(UV__O_CLOEXEC)
-  static int no_cloexec;
+  fd = open(path, flags | O_CLOEXEC);
+  if (fd == -1)
+    return UV__ERR(errno);
 
-  if (!no_cloexec) {
-    fd = open(path, flags | UV__O_CLOEXEC);
-    if (fd != -1)
-      return fd;
-
-    if (errno != EINVAL)
-      return UV__ERR(errno);
-
-    /* O_CLOEXEC not supported. */
-    no_cloexec = 1;
-  }
-#endif
+  return fd;
+#else  /* O_CLOEXEC */
+  int err;
+  int fd;
 
   fd = open(path, flags);
   if (fd == -1)
@@ -972,6 +1026,7 @@ int uv__open_cloexec(const char* path, int flags) {
   }
 
   return fd;
+#endif  /* O_CLOEXEC */
 }
 
 
@@ -993,7 +1048,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
   static int no_dup3;
   if (!no_dup3) {
     do
-      r = uv__dup3(oldfd, newfd, UV__O_CLOEXEC);
+      r = uv__dup3(oldfd, newfd, O_CLOEXEC);
     while (r == -1 && errno == EBUSY);
     if (r != -1)
       return r;
@@ -1230,6 +1285,62 @@ int uv_translate_sys_error(int sys_errno) {
 }
 
 
+int uv_os_environ(uv_env_item_t** envitems, int* count) {
+  int i, j, cnt;
+  uv_env_item_t* envitem;
+
+  *envitems = NULL;
+  *count = 0;
+
+  for (i = 0; environ[i] != NULL; i++);
+
+  *envitems = uv__calloc(i, sizeof(**envitems));
+
+  if (envitems == NULL)
+    return UV_ENOMEM;
+
+  for (j = 0, cnt = 0; j < i; j++) {
+    char* buf;
+    char* ptr;
+
+    if (environ[j] == NULL)
+      break;
+
+    buf = uv__strdup(environ[j]);
+    if (buf == NULL)
+      goto fail;
+
+    ptr = strchr(buf, '=');
+    if (ptr == NULL) {
+      uv__free(buf);
+      continue;
+    }
+
+    *ptr = '\0';
+
+    envitem = &(*envitems)[cnt];
+    envitem->name = buf;
+    envitem->value = ptr + 1;
+
+    cnt++;
+  }
+
+  *count = cnt;
+  return 0;
+
+fail:
+  for (i = 0; i < cnt; i++) {
+    envitem = &(*envitems)[cnt];
+    uv__free(envitem->name);
+  }
+  uv__free(*envitems);
+
+  *envitems = NULL;
+  *count = 0;
+  return UV_ENOMEM;
+}
+
+
 int uv_os_getenv(const char* name, char* buffer, size_t* size) {
   char* var;
   size_t len;
@@ -1431,7 +1542,7 @@ int uv__getsockpeername(const uv_handle_t* handle,
   return 0;
 }
 
-int uv_gettimeofday(uv_timeval_t* tv) {
+int uv_gettimeofday(uv_timeval64_t* tv) {
   struct timeval time;
 
   if (tv == NULL)
@@ -1440,7 +1551,7 @@ int uv_gettimeofday(uv_timeval_t* tv) {
   if (gettimeofday(&time, NULL) != 0)
     return UV__ERR(errno);
 
-  tv->tv_sec = time.tv_sec;
-  tv->tv_usec = time.tv_usec;
+  tv->tv_sec = (int64_t) time.tv_sec;
+  tv->tv_usec = (int32_t) time.tv_usec;
   return 0;
 }

@@ -53,6 +53,7 @@ CMakeFiles/
 /test/run-benchmarks
 /test/run-benchmarks.exe
 /test/run-benchmarks.dSYM
+test_file_*
 
 *.sln
 *.sln.cache
@@ -67,6 +68,7 @@ UpgradeLog*.XML
 Debug
 Release
 ipch
+.vscode/
 
 # sphinx generated files
 /docs/build/

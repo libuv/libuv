@@ -35,6 +35,7 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/idna.h \
                    src/inet.c \
                    src/queue.h \
+                   src/random.c \
                    src/strscpy.c \
                    src/strscpy.h \
                    src/threadpool.c \
@@ -45,11 +46,9 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/version.c
 
 if SUNOS
-if GCC
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
 # on other platforms complain that the argument is unused during compilation.
 libuv_la_CFLAGS += -pthreads
-endif
 endif
 
 if WINNT
@@ -107,6 +106,7 @@ libuv_la_SOURCES += src/unix/async.c \
                    src/unix/pipe.c \
                    src/unix/poll.c \
                    src/unix/process.c \
+                   src/unix/random-devurandom.c \
                    src/unix/signal.c \
                    src/unix/spinlock.h \
                    src/unix/stream.c \
@@ -119,8 +119,8 @@ endif  # WINNT
 
 EXTRA_DIST = test/fixtures/empty_file \
              test/fixtures/load_error.node \
+             test/fixtures/lorem_ipsum.txt \
              include \
-             test \
              docs \
              img \
              samples \
@@ -140,22 +140,12 @@ EXTRA_DIST = test/fixtures/empty_file \
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
-if OS390
 test_run_tests_CFLAGS =
-else
-if GCC
-test_run_tests_CFLAGS = -Wno-long-long
-else
-test_run_tests_CFLAGS =
-endif
-endif
 
 if SUNOS
-if GCC
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
 # on other platforms complain that the argument is unused during compilation.
 test_run_tests_CFLAGS += -pthreads
-endif
 endif
 
 test_run_tests_LDFLAGS =
@@ -192,6 +182,8 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-fs-poll.c \
                          test/test-fs.c \
                          test/test-fs-readdir.c \
+                         test/test-fs-fd-hash.c \
+                         test/test-fs-open-flags.c \
                          test/test-fork.c \
                          test/test-getters-setters.c \
                          test/test-get-currentexe.c \
@@ -246,6 +238,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-process-title.c \
                          test/test-process-title-threadsafe.c \
                          test/test-queue-foreach-delete.c \
+                         test/test-random.c \
                          test/test-ref.c \
                          test/test-run-nowait.c \
                          test/test-run-once.c \
@@ -254,6 +247,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-shutdown-eof.c \
                          test/test-shutdown-twice.c \
                          test/test-signal-multiple-loops.c \
+                         test/test-signal-pending-on-close.c \
                          test/test-signal.c \
                          test/test-socket-buffer-size.c \
                          test/test-spawn.c \
@@ -265,6 +259,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-close-accept.c \
                          test/test-tcp-close-while-connecting.c \
                          test/test-tcp-close.c \
+                         test/test-tcp-close-reset.c \
                          test/test-tcp-create-socket-early.c \
                          test/test-tcp-connect-error-after-write.c \
                          test/test-tcp-connect-error.c \
@@ -281,6 +276,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-writealot.c \
                          test/test-tcp-write-fail.c \
                          test/test-tcp-try-write.c \
+                         test/test-tcp-try-write-error.c \
                          test/test-tcp-write-queue-order.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \
@@ -329,6 +325,16 @@ test_run_tests_CFLAGS += -D_ALL_SOURCE \
                          -D_LINUX_SOURCE_COMPAT
 endif
 
+if OS400
+test_run_tests_CFLAGS += -D_ALL_SOURCE \
+                         -D_XOPEN_SOURCE=500 \
+                         -D_LINUX_SOURCE_COMPAT
+endif
+
+if HAIKU
+test_run_tests_CFLAGS += -D_BSD_SOURCE
+endif
+
 if LINUX
 test_run_tests_CFLAGS += -D_GNU_SOURCE
 endif
@@ -365,6 +371,19 @@ uvinclude_HEADERS += include/uv/aix.h
 libuv_la_SOURCES += src/unix/aix.c src/unix/aix-common.c
 endif
 
+if OS400
+libuv_la_CFLAGS += -D_ALL_SOURCE \
+                   -D_XOPEN_SOURCE=500 \
+                   -D_LINUX_SOURCE_COMPAT \
+                   -D_THREAD_SAFE
+uvinclude_HEADERS += include/uv/posix.h
+libuv_la_SOURCES += src/unix/aix-common.c \
+                    src/unix/ibmi.c \
+                    src/unix/posix-poll.c \
+                    src/unix/no-fsevents.c \
+                    src/unix/no-proctitle.c
+endif
+
 if ANDROID
 uvinclude_HEADERS += include/uv/android-ifaddrs.h
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
@@ -394,7 +413,8 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/darwin-proctitle.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
-                    src/unix/proctitle.c
+                    src/unix/proctitle.c \
+                    src/unix/random-getentropy.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -414,8 +434,20 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/bsd-proctitle.c \
                     src/unix/freebsd.c \
                     src/unix/kqueue.c \
-                    src/unix/posix-hrtime.c
+                    src/unix/posix-hrtime.c \
+                    src/unix/random-getrandom.c
 test_run_tests_LDFLAGS += -lutil
+endif
+
+if HAIKU
+uvinclude_HEADERS += include/uv/posix.h
+libuv_la_CFLAGS += -D_BSD_SOURCE
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/haiku.c \
+                    src/unix/no-fsevents.c \
+                    src/unix/no-proctitle.c \
+                    src/unix/posix-hrtime.c \
+                    src/unix/posix-poll.c
 endif
 
 if HURD
@@ -434,8 +466,9 @@ libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/linux-syscalls.h \
                     src/unix/procfs-exepath.c \
                     src/unix/proctitle.c \
-                    src/unix/sysinfo-loadavg.c \
-                    src/unix/sysinfo-memory.c
+                    src/unix/random-getrandom.c \
+                    src/unix/random-sysctl-linux.c \
+                    src/unix/sysinfo-loadavg.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -468,7 +501,8 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/bsd-proctitle.c \
                     src/unix/kqueue.c \
                     src/unix/openbsd.c \
-                    src/unix/posix-hrtime.c
+                    src/unix/posix-hrtime.c \
+                    src/unix/random-getentropy.c
 test_run_tests_LDFLAGS += -lutil
 endif
 
@@ -489,6 +523,7 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -D_XOPEN_SOURCE_EXTENDED \
                    -D_ALL_SOURCE \
                    -D_LARGE_TIME_API \
+                   -D_OPEN_SYS_SOCK_EXT3 \
                    -D_OPEN_SYS_SOCK_IPV6 \
                    -D_OPEN_SYS_FILE_EXT \
                    -DUV_PLATFORM_SEM_T=int \

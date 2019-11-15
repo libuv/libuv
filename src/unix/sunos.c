@@ -380,6 +380,11 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
+}
+
+
 void uv_loadavg(double avg[3]) {
   (void) getloadavg(avg, 3);
 }
@@ -690,16 +695,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   return 0;
 }
 
-
-void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
-  int i;
-
-  for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
-  }
-
-  uv__free(cpu_infos);
-}
 
 #ifdef SUNOS_NO_IFADDRS
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {

@@ -23,6 +23,7 @@
 
 #include <dlfcn.h>
 #include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,7 +37,6 @@
 #define S(s) pCFStringCreateWithCString(NULL, (s), kCFStringEncodingUTF8)
 
 
-static int (*dynamic_pthread_setname_np)(const char* name);
 #if !TARGET_OS_IPHONE
 static CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
                                                  const char*,
@@ -57,7 +57,6 @@ static CFStringRef* display_name_key;
 static CFDictionaryRef (*pCFBundleGetInfoDictionary)(CFBundleRef);
 static CFBundleRef (*pCFBundleGetMainBundle)(void);
 static CFBundleRef hi_services_bundle;
-static OSStatus (*pSetApplicationIsDaemon)(int);
 static CFDictionaryRef (*pLSApplicationCheckIn)(int, CFDictionaryRef);
 static void (*pLSSetApplicationLaunchServicesServerConnectionStatus)(uint64_t,
                                                                      void*);
@@ -78,11 +77,9 @@ UV_DESTRUCTOR(static void uv__set_process_title_platform_fini(void)) {
 
 
 void uv__set_process_title_platform_init(void) {
-  /* pthread_setname_np() first appeared in OS X 10.6 and iOS 3.2. */
-  *(void **)(&dynamic_pthread_setname_np) =
-      dlsym(RTLD_DEFAULT, "pthread_setname_np");
-
 #if !TARGET_OS_IPHONE
+  OSStatus (*pSetApplicationIsDaemon)(int);
+
   application_services_handle = dlopen("/System/Library/Frameworks/"
                                        "ApplicationServices.framework/"
                                        "Versions/A/ApplicationServices",
@@ -169,6 +166,8 @@ void uv__set_process_title_platform_init(void) {
     goto out;
   }
 
+  /* Prevent crash when LaunchServices cannot be connected to. */
+  pSetApplicationIsDaemon(1);
   return;
 
 out:
@@ -178,8 +177,10 @@ out:
 
 
 void uv__set_process_title(const char* title) {
+  char namebuf[64 /* MAXTHREADNAMESIZE */];
+
 #if !TARGET_OS_IPHONE
-  if (core_foundation_handle != NULL && pSetApplicationIsDaemon(1) != noErr) {
+  if (core_foundation_handle != NULL) {
     CFTypeRef asn;
     pLSSetApplicationLaunchServicesServerConnectionStatus(0, NULL);
     pLSApplicationCheckIn(/* Magic value */ -2,
@@ -190,9 +191,6 @@ void uv__set_process_title(const char* title) {
   }
 #endif  /* !TARGET_OS_IPHONE */
 
-  if (dynamic_pthread_setname_np != NULL) {
-    char namebuf[64];  /* MAXTHREADNAMESIZE */
-    uv__strscpy(namebuf, title, sizeof(namebuf));
-    dynamic_pthread_setname_np(namebuf);
-  }
+  uv__strscpy(namebuf, title, sizeof(namebuf));
+  pthread_setname_np(namebuf);
 }

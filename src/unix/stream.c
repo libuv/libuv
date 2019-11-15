@@ -1000,12 +1000,12 @@ uv_handle_type uv__handle_type(int fd) {
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags |= UV_HANDLE_READ_EOF;
+  stream->flags &= ~UV_HANDLE_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   if (!uv__io_active(&stream->io_watcher, POLLOUT))
     uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
   stream->read_cb(stream, UV_EOF, buf);
-  stream->flags &= ~UV_HANDLE_READING;
 }
 
 
@@ -1178,6 +1178,10 @@ static void uv__read(uv_stream_t* stream) {
         stream->read_cb(stream, 0, &buf);
 #if defined(__CYGWIN__) || defined(__MSYS__)
       } else if (errno == ECONNRESET && stream->type == UV_NAMED_PIPE) {
+        uv__stream_eof(stream, &buf);
+        return;
+#elif defined(_AIX)
+      } else if (errno == ECONNRESET && (stream->flags & UV_DISCONNECT)) {
         uv__stream_eof(stream, &buf);
         return;
 #endif
@@ -1403,7 +1407,7 @@ int uv_write2(uv_write_t* req,
     return UV_EBADF;
 
   if (!(stream->flags & UV_HANDLE_WRITABLE))
-    return -EPIPE;
+    return UV_EPIPE;
 
   if (send_handle) {
     if (stream->type != UV_NAMED_PIPE || !((uv_pipe_t*)stream)->ipc)
@@ -1541,7 +1545,7 @@ int uv_try_write(uv_stream_t* stream,
   }
 
   if (written == 0 && req_size != 0)
-    return UV_EAGAIN;
+    return req.error < 0 ? req.error : UV_EAGAIN;
   else
     return written;
 }
@@ -1557,7 +1561,7 @@ int uv_read_start(uv_stream_t* stream,
     return UV_EINVAL;
 
   if (!(stream->flags & UV_HANDLE_READABLE))
-    return -ENOTCONN;
+    return UV_ENOTCONN;
 
   /* The UV_HANDLE_READING flag is irrelevant of the state of the tcp - it just
    * expresses the desired state of the user.
