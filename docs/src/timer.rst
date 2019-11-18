@@ -50,6 +50,9 @@ API
 .. c:function:: int uv_timer_stop(uv_timer_t* handle)
 
     Stop the timer, the callback will not be called anymore.
+    
+    .. note::
+        Does not close the handle and a call to :c:func:`uv_close` is still required.
 
 .. c:function:: int uv_timer_again(uv_timer_t* handle)
 
