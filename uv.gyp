@@ -261,6 +261,8 @@
             'src/unix/pthread-fixes.c',
             'src/unix/android-ifaddrs.c',
             'src/unix/procfs-exepath.c',
+            'src/unix/random-getrandom.c',
+            'src/unix/random-sysctl-linux.c',
             'src/unix/sysinfo-loadavg.c',
             'src/unix/sysinfo-memory.c',
           ],
