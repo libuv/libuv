@@ -30,7 +30,7 @@ SOURCES := client.c defs.h getopt.c main.c s5.c s5.h server.c util.c
 all: $(BUILDDIR)/$(BUILDTYPE)/s5-proxy
 
 clean:
-	$(RM) $(BUILDDIR)
+	$(RM) -r $(BUILDDIR)
 
 $(BUILDDIR)/$(BUILDTYPE)/s5-proxy: $(BUILDDIR)/Makefile $(SOURCES)
 	$(MAKE) -C $(BUILDDIR) V=$(V)
