@@ -159,7 +159,7 @@ int uv_exepath(char* buffer, size_t* size) {
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
-  int sockfd, sock6fd, inet6, r, size = 1;
+  int sockfd, sock6fd, inet6, i, r, size = 1;
   struct ifconf ifc;
   struct ifreq *ifr, *p, flg;
   struct in6_ifreq if6;
@@ -261,9 +261,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     else
       address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
 
-    sa_addr = (struct sockaddr_dl*) &p->ifr_addr;
-    memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
-
     if (inet6) {
       memset(&if6, 0, sizeof(if6));
       r = uv__strscpy(if6.ifr_name, p->ifr_name, sizeof(if6.ifr_name));
@@ -287,6 +284,26 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
 
     address++;
+  }
+
+  /* Fill in physical addresses. */
+  ifr = ifc.ifc_req;
+  while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
+    p = ifr;
+    ifr = (struct ifreq*)
+      ((char*)ifr + sizeof(ifr->ifr_name) + ADDR_SIZE(ifr->ifr_addr));
+
+    if (p->ifr_addr.sa_family != AF_LINK)
+      continue;
+
+    address = *addresses;
+    for (i = 0; i < *count; i++) {
+      if (strcmp(address->name, p->ifr_name) == 0) {
+        sa_addr = (struct sockaddr_dl*) &p->ifr_addr;
+        memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
+      }
+      address++;
+    }
   }
 
 #undef ADDR_SIZE
