@@ -159,36 +159,42 @@ int uv_exepath(char* buffer, size_t* size) {
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
-  int sockfd, sock6fd, inet6, size = 1;
+  int sockfd, sock6fd, inet6, r, size = 1;
   struct ifconf ifc;
   struct ifreq *ifr, *p, flg;
   struct in6_ifreq if6;
   struct sockaddr_dl* sa_addr;
 
+  ifc.ifc_req = NULL;
+  sock6fd = -1;
+  r = 0;
   *count = 0;
   *addresses = NULL;
 
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
-    return UV__ERR(errno);
+    r = UV__ERR(errno);
+    goto cleanup;
   }
 
   if (0 > (sock6fd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP))) {
-    uv__close(sockfd);
-    return UV__ERR(errno);
+    r = UV__ERR(errno);
+    goto cleanup;
   }
 
   if (ioctl(sockfd, SIOCGSIZIFCONF, &size) == -1) {
-    uv__close(sockfd);
-    uv__close(sock6fd);
-    return UV__ERR(errno);
+    r = UV__ERR(errno);
+    goto cleanup;
   }
 
   ifc.ifc_req = (struct ifreq*)uv__malloc(size);
+  if (ifc.ifc_req == NULL) {
+    r = UV_ENOMEM;
+    goto cleanup;
+  }
   ifc.ifc_len = size;
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
-    uv__close(sockfd);
-    uv__close(sock6fd);
-    return UV__ERR(errno);
+    r = UV__ERR(errno);
+    goto cleanup;
   }
 
 #define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
@@ -206,9 +212,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
-      uv__close(sockfd);
-      uv__close(sock6fd);
-      return UV__ERR(errno);
+      r = UV__ERR(errno);
+      goto cleanup;
     }
 
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
@@ -217,18 +222,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  if (*count == 0) {
-    uv__close(sockfd);
-    uv__close(sock6fd);
-    return 0;
-  }
+  if (*count == 0)
+    goto cleanup;
 
   /* Alloc the return interface structs */
-  *addresses = uv__malloc(*count * sizeof(uv_interface_address_t));
+  *addresses = uv__calloc(*count, sizeof(**addresses));
   if (!(*addresses)) {
-    uv__close(sockfd);
-    uv__close(sock6fd);
-    return UV_ENOMEM;
+    r = UV_ENOMEM;
+    goto cleanup;
   }
   address = *addresses;
 
@@ -245,11 +246,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     inet6 = (p->ifr_addr.sa_family == AF_INET6);
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
-    if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
-      uv__close(sockfd);
-      uv__close(sock6fd);
-      return UV_ENOSYS;
-    }
+    if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1)
+      goto syserror;
 
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
       continue;
@@ -268,22 +266,19 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     if (inet6) {
       memset(&if6, 0, sizeof(if6));
-      uv__strscpy(if6.ifr_name, p->ifr_name, sizeof(if6.ifr_name));
+      r = uv__strscpy(if6.ifr_name, p->ifr_name, sizeof(if6.ifr_name));
+      if (r == UV_E2BIG)
+        goto cleanup;
+      r = 0;
       memcpy(&if6.ifr_Addr, &p->ifr_addr, sizeof(if6.ifr_Addr));
-      if (ioctl(sock6fd, SIOCGIFNETMASK6, &if6) == -1) {
-        uv__close(sockfd);
-        uv__close(sock6fd);
-        return UV_ENOSYS;
-      }
+      if (ioctl(sock6fd, SIOCGIFNETMASK6, &if6) == -1)
+        goto syserror;
       address->netmask.netmask6 = *((struct sockaddr_in6*) &if6.ifr_Addr);
       /* Explicitly set family as the ioctl call appears to return it as 0. */
       address->netmask.netmask6.sin6_family = AF_INET6;
     } else {
-      if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
-        uv__close(sockfd);
-        uv__close(sock6fd);
-        return UV_ENOSYS;
-      }
+      if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1)
+        goto syserror;
       address->netmask.netmask4 = *((struct sockaddr_in*) &p->ifr_addr);
       /* Explicitly set family as the ioctl call appears to return it as 0. */
       address->netmask.netmask4.sin_family = AF_INET;
@@ -295,10 +290,21 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   }
 
 #undef ADDR_SIZE
+  goto cleanup;
 
-  uv__close(sockfd);
-  uv__close(sock6fd);
-  return 0;
+syserror:
+  uv_free_interface_addresses(*addresses, *count);
+  *addresses = NULL;
+  *count = 0;
+  r = UV_ENOSYS;
+
+cleanup:
+  if (sockfd != -1)
+    uv__close(sockfd);
+  if (sock6fd != -1)
+    uv__close(sock6fd);
+  uv__free(ifc.ifc_req);
+  return r;
 }
 
 
