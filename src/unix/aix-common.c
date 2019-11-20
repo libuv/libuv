@@ -157,8 +157,8 @@ int uv_exepath(char* buffer, size_t* size) {
     return UV_EINVAL;
   }
 }
-int getkerninfo(int, char *, int *, int32long64_t);
 
+int getkerninfo(int, char *, int *, int32long64_t);
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
@@ -255,8 +255,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     else
       address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
 
-    sa_addr = (struct sockaddr_dl*) &p->ifr_addr;
-    memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
+    /* Clear phys_addr to be filled in later. */
     memset(address->phys_addr, 0, sizeof(address->phys_addr));
 
     if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
@@ -274,6 +273,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address++;
   }
 
+  /* Fill in physical addresses. */
   size = getkerninfo(KINFO_NDD, 0, 0, 0);
   if (size > 0) {
     nddps = (struct kinfo_ndd *)uv__malloc(size);
@@ -283,18 +283,16 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
         nddp = nddps;
         while ((void *)nddp < end) {
           address = *addresses;
-          for (i=0; i<*count; i++) {
-printf("%s, %s, %s\n", nddp->ndd_alias, nddp->ndd_name, address->name);
+          for (i = 0; i < *count; i++) {
             if (!strcmp(nddp->ndd_alias, address->name) ||
               !strcmp(nddp->ndd_name, address->name)) {
-    memcpy(address->phys_addr, nddp->ndd_addr, 6);
+              memcpy(address->phys_addr, nddp->ndd_addr, 6);
             }
             address++;
           }
           nddp++;
         }
       }
-
       uv__free(nddps);
     }
   }
