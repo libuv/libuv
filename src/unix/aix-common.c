@@ -165,7 +165,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   int sockfd, inet6, size = 1, i;
   struct ifconf ifc;
   struct ifreq *ifr, *p, flg;
-  struct sockaddr_dl* sa_addr;
   struct kinfo_ndd *nddps, *nddp;
   void* end;
   *count = 0;
@@ -279,7 +278,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     nddps = (struct kinfo_ndd *)uv__malloc(size);
     if (nddps) {
       if (getkerninfo(KINFO_NDD, (char*)nddps, &size, 0) >= 0) {
-        end = (void*) nddps + size;
+        end = (void*)(nddps + size);
         nddp = nddps;
         while ((void *)nddp < end) {
           address = *addresses;
