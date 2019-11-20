@@ -36,6 +36,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <sys/ndd_var.h>
+#include <sys/kinfo.h>
+
 #include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -154,15 +157,17 @@ int uv_exepath(char* buffer, size_t* size) {
     return UV_EINVAL;
   }
 }
+int getkerninfo(int, char *, int *, int32long64_t);
 
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
-  int sockfd, inet6, size = 1;
+  int sockfd, inet6, size = 1, i;
   struct ifconf ifc;
   struct ifreq *ifr, *p, flg;
   struct sockaddr_dl* sa_addr;
-
+  struct kinfo_ndd *nddps, *nddp;
+  void* end;
   *count = 0;
   *addresses = NULL;
 
@@ -252,6 +257,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     sa_addr = (struct sockaddr_dl*) &p->ifr_addr;
     memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
+    memset(address->phys_addr, 0, sizeof(address->phys_addr));
 
     if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
       uv__close(sockfd);
@@ -266,6 +272,31 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
 
     address++;
+  }
+
+  size = getkerninfo(KINFO_NDD, 0, 0, 0);
+  if (size > 0) {
+    nddps = (struct kinfo_ndd *)uv__malloc(size);
+    if (nddps) {
+      if (getkerninfo(KINFO_NDD, (char*)nddps, &size, 0) >= 0) {
+        end = (void*) nddps + size;
+        nddp = nddps;
+        while ((void *)nddp < end) {
+          address = *addresses;
+          for (i=0; i<*count; i++) {
+printf("%s, %s, %s\n", nddp->ndd_alias, nddp->ndd_name, address->name);
+            if (!strcmp(nddp->ndd_alias, address->name) ||
+              !strcmp(nddp->ndd_name, address->name)) {
+    memcpy(address->phys_addr, nddp->ndd_addr, 6);
+            }
+            address++;
+          }
+          nddp++;
+        }
+      }
+
+      uv__free(nddps);
+    }
   }
 
 #undef ADDR_SIZE
