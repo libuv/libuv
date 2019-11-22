@@ -1641,6 +1641,7 @@ UV_EXTERN uint64_t uv_get_total_memory(void);
 UV_EXTERN uint64_t uv_get_constrained_memory(void);
 
 UV_EXTERN uint64_t uv_hrtime(void);
+UV_EXTERN void uv_sleep(unsigned int msec);
 
 UV_EXTERN void uv_disable_stdio_inheritance(void);
 

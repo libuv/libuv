@@ -1555,3 +1555,15 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
   tv->tv_usec = (int32_t) time.tv_usec;
   return 0;
 }
+
+void uv_sleep(unsigned int msec) {
+  unsigned int sec;
+  unsigned int usec;
+
+  sec = msec / 1000;
+  usec = (msec % 1000) * 1000;
+  if (sec > 0)
+    sleep(sec);
+  if (usec > 0)
+    usleep(usec);
+}
