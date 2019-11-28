@@ -1558,8 +1558,14 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
 
 void uv_sleep(unsigned int msec) {
   struct timespec timeout;
+  int rc;
 
   timeout.tv_sec = msec / 1000;
   timeout.tv_nsec = (msec % 1000) * 1000 * 1000;
-  nanosleep(&timeout, NULL);
+
+  do
+    rc = nanosleep(&timeout, &timeout);
+  while (rc == -1 && errno == EINTR);
+
+  assert(rc == 0);
 }
