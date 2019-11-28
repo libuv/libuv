@@ -222,9 +222,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  if (*count == 0) {
+  if (*count == 0)
     goto cleanup;
-  }
 
   /* Alloc the return interface structs */
   *addresses = uv__calloc(*count, sizeof(**addresses));
