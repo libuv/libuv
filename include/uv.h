@@ -1258,7 +1258,8 @@ typedef enum {
   UV_FS_OPENDIR,
   UV_FS_READDIR,
   UV_FS_CLOSEDIR,
-  UV_FS_STATFS
+  UV_FS_STATFS,
+  UV_FS_MKSTEMP
 } uv_fs_type;
 
 struct uv_dir_s {
@@ -1346,6 +1347,10 @@ UV_EXTERN int uv_fs_mkdir(uv_loop_t* loop,
                           int mode,
                           uv_fs_cb cb);
 UV_EXTERN int uv_fs_mkdtemp(uv_loop_t* loop,
+                            uv_fs_t* req,
+                            const char* tpl,
+                            uv_fs_cb cb);
+UV_EXTERN int uv_fs_mkstemp(uv_loop_t* loop,
                             uv_fs_t* req,
                             const char* tpl,
                             uv_fs_cb cb);
