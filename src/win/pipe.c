@@ -955,6 +955,10 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     return ERROR_NOT_SUPPORTED;
   }
 
+  if (handle->ipc) {
+    return WSAEINVAL;
+  }
+
   handle->flags |= UV_HANDLE_LISTENING;
   INCREASE_ACTIVE_COUNT(loop, handle);
   handle->stream.serv.connection_cb = cb;
