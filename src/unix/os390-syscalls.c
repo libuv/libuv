@@ -27,6 +27,7 @@
 #include <termios.h>
 #include <sys/msg.h>
 
+#define CW_INTRPT 1
 #define CW_CONDVAR 32
 
 #pragma linkage(BPX4CTW, OS)
