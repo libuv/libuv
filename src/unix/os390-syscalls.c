@@ -354,7 +354,7 @@ int nanosleep(const struct timespec* req, struct timespec* rem) {
 
   nano = (int)req->tv_nsec;
   seconds = req->tv_sec;
-  events = CW_CONDVAR;
+  events = CW_CONDVAR | CW_INTRPT;
   secrem = 0;
   nanorem = 0;
 
