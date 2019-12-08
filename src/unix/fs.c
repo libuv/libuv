@@ -286,7 +286,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
 
 #ifdef O_CLOEXEC
   if (no_cloexec_support == 0) {
-    *(int**)(&mkostemp_function) = dlsym(RTLD_DEFAULT, "mkostemp");
+    mkostemp_function = (int (*)(char*, int)) dlsym(RTLD_DEFAULT, "mkostemp");
 
     /* We don't care about errors, but we do want to clean them up.
        If there has been no error, then dlerror() will just return
