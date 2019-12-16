@@ -343,7 +343,8 @@ static void statfs_cb(uv_fs_t* req) {
   ASSERT(req->ptr != NULL);
   stats = req->ptr;
 
-#if defined(_WIN32) || defined(__sun) || defined(_AIX) || defined(__MVS__)
+#if defined(_WIN32) || defined(__sun) || defined(_AIX) || defined(__MVS__) || \
+  defined(__OpenBSD__) || defined(__NetBSD__)
   ASSERT(stats->f_type == 0);
 #else
   ASSERT(stats->f_type > 0);
