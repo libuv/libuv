@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/utime.h>
 #include <stdio.h>
+#include <winioctl.h>
 
 #include "uv.h"
 #include "internal.h"
@@ -2009,21 +2010,138 @@ static void fs__ftruncate(uv_fs_t* req) {
   }
 }
 
+static BOOL fs__clonefile_dup_extents(HANDLE src, HANDLE dst, int64_t offset, int64_t clone_size) {
+  DWORD lpBytesReturned;
+  DUPLICATE_EXTENTS_DATA dup = {
+    .FileHandle = src,
+    .SourceFileOffset = { .QuadPart = offset },
+    .TargetFileOffset = { .QuadPart = offset },
+    .ByteCount = clone_size
+  };
+  return DeviceIoControl(
+    dst,
+    FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+    &dup,
+    sizeof dup,
+    NULL,
+    0,
+    &lpBytesReturned,
+    NULL
+  );
+}
+
+static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
+  DWORD error = 0;
+  HANDLE src_handle, dst_handle;
+
+  uv_stat_t statbuf;
+  FILE_END_OF_FILE_INFORMATION eof_info;
+  NTSTATUS status;
+  IO_STATUS_BLOCK io_status;
+
+  int64_t src_size;
+  int64_t offset = 0;
+  const int64_t GIG = 1 << 30;
+  const int64_t CLUSTERSIZES[] = { 1 << 16, 1 << 12 };
+
+  src_handle = CreateFileW(src,
+                           GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                           NULL,
+                           OPEN_EXISTING,
+                           0,
+                           NULL);
+
+  if (src_handle == INVALID_HANDLE_VALUE) {
+    error = GetLastError();
+    goto exit;
+  }
+
+  dst_handle = CreateFileW(dst,
+                           GENERIC_WRITE,
+                           0,
+                           NULL,
+                           flags & UV_FS_COPYFILE_EXCL ? OPEN_EXISTING : 0,
+                           0,
+                           NULL);
+  if (dst_handle == INVALID_HANDLE_VALUE) {
+    error = GetLastError();
+    goto exit1;
+  }
+
+  if (fs__stat_handle(src_handle, &statbuf, 0) != 0) {
+    error = GetLastError();
+    goto exit2;
+  }
+
+  /* Truncate the file. Wish there was a ftruncate_handle. */
+  eof_info.EndOfFile.QuadPart = src_size = statbuf.st_size;
+  status = pNtSetInformationFile(dst_handle,
+                                 &io_status,
+                                 &eof_info,
+                                 sizeof eof_info,
+                                 FileEndOfFileInformation);
+
+  if (!NT_SUCCESS(status)) {
+    error = pRtlNtStatusToDosError(status);
+    goto exit2;
+  }
+
+  /* Do the cloning. Clones must fall by cluster boundary and may not be
+   * larger than 4GiB. */
+  for (; offset < src_size - GIG; offset += GIG) {
+    if (! fs__clonefile_dup_extents(src_handle, dst_handle, offset, GIG)) {
+      error = GetLastError();
+      goto exit2;
+    }
+  }
+
+  /* Try to clone the rest with cluster size. Size overflow is fine here. */
+  for (int i = 0; i < 2, i++) {
+    int64_t size = (src_size - offset + (CLUSTERSIZES[i] - 1)) / CLUSTERSIZES[i];
+    if (! fs__clonefile_dup_extents(src_handle, dst_handle, offset, size)) {
+      error = GetLastError();
+      goto exit2;
+    }
+    break;
+  }
+
+exit2:
+  CloseHandle(dst_handle);
+exit1:
+  CloseHandle(src_handle);
+exit:
+  return error;
+}
+
 
 static void fs__copyfile(uv_fs_t* req) {
   int flags;
   int overwrite;
   uv_stat_t statbuf;
   uv_stat_t new_statbuf;
-
+  DWORD error;
   flags = req->fs.info.file_flags;
 
-  if (flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
-    return;
-  }
-
   overwrite = flags & UV_FS_COPYFILE_EXCL;
+
+  if (flags & UV_FS_COPYFILE_FICLONE ||
+      flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+    error = fs__clonefile(req->file.pathw, req->fs.info.new_pathw, flags);
+    if (error) {
+      if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+        SET_REQ_WIN32_ERROR(req, error);
+        goto err;
+      }
+      /* If it's not EEXIST we probably hit a copy error. Removing is hard, so
+         we do this. (If it's some other error it won't hurt to hit it again.) */
+      if (error != ERROR_ALREADY_EXISTS) {
+        overwrite = 1;
+      }
+    } else {
+      return;
+    }
+  }
 
   if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, overwrite) != 0) {
     SET_REQ_RESULT(req, 0);
@@ -2031,6 +2149,7 @@ static void fs__copyfile(uv_fs_t* req) {
   }
 
   SET_REQ_WIN32_ERROR(req, GetLastError());
+err:
   if (req->result != UV_EBUSY)
     return;
 
