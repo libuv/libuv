@@ -1077,6 +1077,8 @@ done:
 }
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
+  uv_file dstfd;
+  int dst_flags;
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
   /* On macOS, use the native copyfile(3). */
   static int can_clone;
@@ -1086,9 +1088,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   int major;
 
   flags = COPYFILE_ALL;
+  dst_flags = O_WRONLY | O_CREAT | O_TRUNC;
 
+  /* Copyfile has its own, but let's emulate everything */
   if (req->flags & UV_FS_COPYFILE_EXCL)
-    flags |= COPYFILE_EXCL;
+    dst_flags |= O_EXCL;
 
   /* Check OS version. Cloning is only supported on macOS >= 10.12. */
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
@@ -1114,20 +1118,37 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
     flags |= 1 << 25;  /* COPYFILE_CLONE_FORCE */
 
+  /* Respect target permissions by trying to open. */
+  dstfd = uv_fs_open(NULL,
+                     &fs_req,
+                     req->new_path,
+                     dst_flags,
+                     src_statsbuf.st_mode,
+                     NULL);
+  uv_fs_req_cleanup(&fs_req);
+
+  if (dstfd < 0) {
+    return -dstfd;
+  } else {
+    err = uv__close_nocheckstdio(dstfd);
+    if (err) {
+      return err;
+    }
+    /* We might have created it. */
+    unlink(req->new_path);
+  }
+
   return copyfile(req->path, req->new_path, NULL, flags);
 #else
   uv_fs_t fs_req;
   uv_file srcfd;
-  uv_file dstfd;
   struct stat src_statsbuf;
   struct stat dst_statsbuf;
-  int dst_flags;
   int result;
   int err;
   size_t bytes_to_send;
   int64_t in_offset;
   ssize_t bytes_written;
-
   dstfd = -1;
   err = 0;
 
