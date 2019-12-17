@@ -1088,11 +1088,6 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   int major;
 
   flags = COPYFILE_ALL;
-  dst_flags = O_WRONLY | O_CREAT | O_TRUNC;
-
-  /* Copyfile has its own, but let's emulate everything. */
-  if (req->flags & UV_FS_COPYFILE_EXCL)
-    dst_flags |= O_EXCL;
 
   /* Check OS version. Cloning is only supported on macOS >= 10.12. */
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
@@ -1117,6 +1112,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
     flags |= 1 << 25;  /* COPYFILE_CLONE_FORCE */
+
+  dst_flags = O_WRONLY | O_CREAT | O_TRUNC;
+  /* Copyfile has its own, but let's do our own. */
+  if (req->flags & UV_FS_COPYFILE_EXCL)
+    dst_flags |= O_EXCL;
 
   /* Copyfile(2) tries to chmod the file when a rw open fails. This causes
    * nodejs/node#26936.
