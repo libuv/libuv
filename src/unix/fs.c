@@ -1086,6 +1086,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   char buf[64];
   size_t len;
   int major;
+  int err;
 
   flags = COPYFILE_ALL;
 
@@ -1126,7 +1127,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
                      &fs_req,
                      req->new_path,
                      dst_flags,
-                     src_statsbuf.st_mode,
+                     S_IRWXU,
                      NULL);
   uv_fs_req_cleanup(&fs_req);
 
@@ -1142,7 +1143,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     unlink(req->new_path);
   }
 
-  return copyfile(req->path, req->new_path, NULL, flags);
+  if (copyfile(req->path, req->new_path, NULL, flags)) {
+    return UV__ERR(errno);
+  }
+  return 0;
 #else
   uv_fs_t fs_req;
   uv_file srcfd;
