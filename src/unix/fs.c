@@ -1077,12 +1077,12 @@ done:
 }
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
-  uv_file dstfd;
-  int dst_flags;
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
   /* On macOS, use the native copyfile(3). */
   static int can_clone;
   copyfile_flags_t flags;
+  uv_file dstfd;
+  int dst_flags;
   char buf[64];
   size_t len;
   int major;
@@ -1090,7 +1090,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   flags = COPYFILE_ALL;
   dst_flags = O_WRONLY | O_CREAT | O_TRUNC;
 
-  /* Copyfile has its own, but let's emulate everything */
+  /* Copyfile has its own, but let's emulate everything. */
   if (req->flags & UV_FS_COPYFILE_EXCL)
     dst_flags |= O_EXCL;
 
@@ -1118,7 +1118,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
     flags |= 1 << 25;  /* COPYFILE_CLONE_FORCE */
 
-  /* Respect target permissions by trying to open. */
+  /* Copyfile(2) tries to chmod the file when a rw open fails. This causes
+   * nodejs/node#26936.
+   * Make it behave by doing our own open-test, because faccessat(2) is not
+   * present on OS X < 10.10. */
   dstfd = uv_fs_open(NULL,
                      &fs_req,
                      req->new_path,
@@ -1128,13 +1131,14 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_req_cleanup(&fs_req);
 
   if (dstfd < 0) {
-    return -dstfd;
+    return dstfd;
   } else {
     err = uv__close_nocheckstdio(dstfd);
     if (err) {
       return err;
     }
-    /* We might have created it. */
+    /* We might have created it. We also don't want clone to fail without
+     * UV_FS_COPYFILE_EXCL. */
     unlink(req->new_path);
   }
 
@@ -1142,6 +1146,8 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #else
   uv_fs_t fs_req;
   uv_file srcfd;
+  uv_file dstfd;
+  int dst_flags;
   struct stat src_statsbuf;
   struct stat dst_statsbuf;
   int result;
