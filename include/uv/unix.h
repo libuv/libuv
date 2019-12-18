@@ -211,6 +211,8 @@ typedef struct {
   void* pending_queue[2];                                                     \
   void* watcher_queue[2];                                                     \
   uv__io_t** watchers;                                                        \
+  void* poll_events;                                                          \
+  int poll_nfds;                                                              \
   unsigned int nwatchers;                                                     \
   unsigned int nfds;                                                          \
   void* wq[2];                                                                \
