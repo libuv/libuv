@@ -250,8 +250,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     nevents = 0;
 
     assert(loop->watchers != NULL);
-    loop->watchers[loop->nwatchers] = (void*) events;
-    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    loop->poll_events = (void*) events;
+    loop->poll_nfds = nfds;
 
     for (i = 0; i < nfds; i++) {
       pe = events + i;
@@ -291,8 +291,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (have_signals != 0)
       loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
 
-    loop->watchers[loop->nwatchers] = NULL;
-    loop->watchers[loop->nwatchers + 1] = NULL;
+    loop->poll_events = NULL;
 
     if (have_signals != 0)
       return;  /* Event loop should cycle now so don't poll again. */

@@ -919,8 +919,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
 
     assert(loop->watchers != NULL);
-    loop->watchers[loop->nwatchers] = (void*) events;
-    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    loop->poll_events = (void*) events;
+    loop->poll_nfds = nfds;
     for (i = 0; i < nfds; i++) {
       pe = events + i;
       fd = pe->fd;
@@ -965,8 +965,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         nevents++;
       }
     }
-    loop->watchers[loop->nwatchers] = NULL;
-    loop->watchers[loop->nwatchers + 1] = NULL;
+    loop->poll_events = NULL;
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
