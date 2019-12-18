@@ -1040,15 +1040,14 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct pollfd* events;
-  uintptr_t i;
-  uintptr_t nfds;
+  int i;
+  int nfds;
   struct poll_ctl pc;
 
-  assert(loop->watchers != NULL);
   assert(fd >= 0);
 
-  events = (struct pollfd*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
+  events = (struct pollfd*) loop->poll_events;
+  nfds = loop->poll_nfds;
 
   if (events != NULL)
     /* Invalidate events with same file descriptor */

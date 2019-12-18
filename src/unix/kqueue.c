@@ -382,14 +382,13 @@ update_timeout:
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct kevent* events;
-  uintptr_t i;
-  uintptr_t nfds;
+  int i;
+  int nfds;
 
-  assert(loop->watchers != NULL);
   assert(fd >= 0);
 
-  events = (struct kevent*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
+  events = (struct kevent*) loop->poll_events;
+  nfds = loop->poll_nfds;
   if (events == NULL)
     return;
 

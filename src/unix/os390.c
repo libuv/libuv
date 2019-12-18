@@ -658,14 +658,13 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct epoll_event* events;
   struct epoll_event dummy;
-  uintptr_t i;
-  uintptr_t nfds;
+  int i;
+  int nfds;
 
-  assert(loop->watchers != NULL);
   assert(fd >= 0);
 
-  events = (struct epoll_event*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
+  events = (struct epoll_event*) loop->poll_events;
+  nfds = loop->poll_nfds;
   if (events != NULL)
     /* Invalidate events with same file descriptor */
     for (i = 0; i < nfds; i++)

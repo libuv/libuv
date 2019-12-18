@@ -113,14 +113,13 @@ int uv__io_fork(uv_loop_t* loop) {
 
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct port_event* events;
-  uintptr_t i;
-  uintptr_t nfds;
+  int i;
+  int nfds;
 
-  assert(loop->watchers != NULL);
   assert(fd >= 0);
 
-  events = (struct port_event*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
+  events = (struct port_event*) loop->poll_events;
+  nfds = loop->poll_nfds;
   if (events == NULL)
     return;
 
