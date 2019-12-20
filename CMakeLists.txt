@@ -28,7 +28,7 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
 # Compiler check
 string(CONCAT is-msvc $<OR:
   $<C_COMPILER_ID:MSVC>,
-  $<STREQUAL:${CMAKE_C_SIMULATED_ID},MSVC>
+  $<STREQUAL:${CMAKE_C_COMPILER_FRONTEND_VARIANT},MSVC>
 >)
 
 check_c_compiler_flag(/W4 UV_LINT_W4)
@@ -39,7 +39,7 @@ check_c_compiler_flag(-Wno-unused-parameter UV_LINT_NO_UNUSED_PARAMETER)
 check_c_compiler_flag(-Wstrict-prototypes UV_LINT_STRICT_PROTOTYPES)
 check_c_compiler_flag(-Wextra UV_LINT_EXTRA)
 
-set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter) 
+set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter>) 
 set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-prototypes>)
 set(lint-extra $<$<BOOL:${UV_LINT_EXTRA}>:-Wextra>)
 set(lint-w4 $<$<BOOL:${UV_LINT_W4}>:/W4>)
