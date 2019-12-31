@@ -51,7 +51,9 @@ UV_UNUSED(static int cmpxchgi(int* ptr, int oldval, int newval)) {
 }
 
 UV_UNUSED(static void cpu_relax(void)) {
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__aarch64__)
+  __asm__ __volatile__ ("yield" ::: "memory");
+#elif defined(__i386__) || defined(__x86_64__)
   __asm__ __volatile__ ("rep; nop");  /* a.k.a. PAUSE */
 #endif
 }
