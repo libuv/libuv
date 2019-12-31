@@ -55,6 +55,8 @@ UV_UNUSED(static void cpu_relax(void)) {
   __asm__ __volatile__ ("yield" ::: "memory");
 #elif defined(__i386__) || defined(__x86_64__)
   __asm__ __volatile__ ("rep; nop" ::: "memory");  /* a.k.a. PAUSE */
+#elif defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__)
+  __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
 #endif
 }
 
