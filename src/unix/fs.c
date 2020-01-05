@@ -1137,7 +1137,28 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
+#ifdef __linux__
+    if (err != UV_EPERM)
+      goto out;
+
+    {
+      struct statfs s;
+
+      /* fchmod() on CIFS shares always fails with EPERM unless the share is
+       * mounted with "noperm". As fchmod() is a meaningless operation on such
+       * shares anyway, detect that condition and squelch the error.
+       */
+      if (fstatfs(dstfd, &s) == -1)
+        goto out;
+
+      if (s.f_type != /* CIFS */ 0xFF534D42u)
+        goto out;
+    }
+
+    err = 0;
+#else  /* !__linux__ */
     goto out;
+#endif  /* !__linux__ */
   }
 
 #ifdef FICLONE
