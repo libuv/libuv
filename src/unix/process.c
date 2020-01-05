@@ -177,34 +177,46 @@ fail:
  * Used for initializing stdio streams like options.stdin_stream. Returns
  * zero on success. See also the cleanup section in uv_spawn().
  */
-static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
+static int uv__process_init_stdio(const uv_stdio_container_t stdio[],
+                                  int (*pipes)[2],
+                                  int i) {
   int mask;
+  int j;
   int fd;
 
   mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM;
 
-  switch (container->flags & mask) {
+  switch (stdio[i].flags & mask) {
   case UV_IGNORE:
     return 0;
 
   case UV_CREATE_PIPE:
-    assert(container->data.stream != NULL);
-    if (container->data.stream->type != UV_NAMED_PIPE)
+    assert(stdio[i].data.stream != NULL);
+
+    for (j = 0; j < i; j++) {
+      if ((stdio[j].flags & UV_CREATE_PIPE) &&
+          stdio[j].data.stream == stdio[i].data.stream) {
+        pipes[i][1] = pipes[j][1];
+        return 0;
+      }
+    }
+
+    if (stdio[i].data.stream->type != UV_NAMED_PIPE)
       return UV_EINVAL;
     else
-      return uv__make_socketpair(fds);
+      return uv__make_socketpair(pipes[i]);
 
   case UV_INHERIT_FD:
   case UV_INHERIT_STREAM:
-    if (container->flags & UV_INHERIT_FD)
-      fd = container->data.fd;
+    if (stdio[i].flags & UV_INHERIT_FD)
+      fd = stdio[i].data.fd;
     else
-      fd = uv__stream_fd(container->data.stream);
+      fd = uv__stream_fd(stdio[i].data.stream);
 
     if (fd == -1)
       return UV_EINVAL;
 
-    fds[1] = fd;
+    pipes[i][1] = fd;
     return 0;
 
   default:
@@ -453,7 +465,7 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   for (i = 0; i < options->stdio_count; i++) {
-    err = uv__process_init_stdio(options->stdio + i, pipes[i]);
+    err = uv__process_init_stdio(options->stdio, pipes, i);
     if (err)
       goto error;
   }
@@ -555,14 +567,19 @@ int uv_spawn(uv_loop_t* loop,
 
 error:
   if (pipes != NULL) {
-    for (i = 0; i < stdio_count; i++) {
-      if (i < options->stdio_count)
-        if (options->stdio[i].flags & (UV_INHERIT_FD | UV_INHERIT_STREAM))
-          continue;
-      if (pipes[i][0] != -1)
+    for (i = 0; i < options->stdio_count; i++) {
+      /* Close each pipe once.  We call socketpair() on the first
+       * occurrence of each pipe: that's the only case where pipes[i][0]
+       * != -1 and the only fds to close here.  Subsequent occurrences
+       * of an identical pipe only set pipes[i][1] (akin to
+       * UV_INHERIT_FD and UV_INHERIT_STREAM) and that file descriptor
+       * was closed here upon the first occurrence: don't double-close.
+       * Don't close UV_INHERIT_FD or UV_INHERIT_STREAM.
+       */
+      if (pipes[i][0] != -1) {
         uv__close_nocheckstdio(pipes[i][0]);
-      if (pipes[i][1] != -1)
         uv__close_nocheckstdio(pipes[i][1]);
+      }
     }
 
     if (pipes != pipes_storage)

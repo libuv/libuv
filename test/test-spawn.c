@@ -313,6 +313,40 @@ TEST_IMPL(spawn_stdout) {
 }
 
 
+TEST_IMPL(spawn_stdout_and_stderr) {
+  int r;
+  uv_pipe_t out;
+  uv_stdio_container_t stdio[3];
+
+  init_process_options("spawn_helper6", exit_cb);
+
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_IGNORE;
+  options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  options.stdio[1].data.stream = (uv_stream_t*)&out;
+  options.stdio[2] = options.stdio[1];
+  options.stdio_count = 3;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
+  printf("output is: %s", output);
+  ASSERT(strcmp("hello world\nhello errworld\n", output) == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
 TEST_IMPL(spawn_stdout_to_file) {
   int r;
   uv_file file;
