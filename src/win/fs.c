@@ -1189,7 +1189,8 @@ void fs__mkdir(uv_fs_t* req) {
   req->result = _wmkdir(req->file.pathw);
   if (req->result == -1) {
     req->sys_errno_ = _doserrno;
-    req->result = req->sys_errno_ == ERROR_INVALID_NAME
+    req->result = req->sys_errno_ == ERROR_INVALID_NAME ||
+                  req->sys_errno_ == ERROR_DIRECTORY
                 ? UV_EINVAL
                 : uv_translate_sys_error(req->sys_errno_);
   }

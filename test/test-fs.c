@@ -4202,6 +4202,8 @@ TEST_IMPL(fs_invalid_mkdir_name) {
   loop = uv_default_loop();
   r = uv_fs_mkdir(loop, &req, "invalid>", 0, NULL);
   ASSERT(r == UV_EINVAL);
+  r = uv_fs_mkdir(loop, &req, "test:lol", 0, NULL);
+  ASSERT(r == UV_EINVAL);
 
   return 0;
 }
