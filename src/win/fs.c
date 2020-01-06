@@ -1218,7 +1218,8 @@ void fs__mkdir(uv_fs_t* req) {
     SET_REQ_RESULT(req, 0);
   } else {
     SET_REQ_WIN32_ERROR(req, GetLastError());
-    if (req->sys_errno_ == ERROR_INVALID_NAME)
+    if (req->sys_errno_ == ERROR_INVALID_NAME ||
+        req->sys_errno_ == ERROR_DIRECTORY)
       req->result = UV_EINVAL;
   }
 }
