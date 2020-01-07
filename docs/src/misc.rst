@@ -192,10 +192,10 @@ Data types
 
     ::
 
-    typedef struct uv_env_item_s {
-        char* name;
-        char* value;
-    } uv_env_item_t;
+        typedef struct uv_env_item_s {
+            char* name;
+            char* value;
+        } uv_env_item_t;
 
 .. c:type:: uv_random_t
 
@@ -687,7 +687,7 @@ API
     - Other UNIX: `/dev/urandom` after reading from `/dev/random` once.
 
     :returns: 0 on success, or an error code < 0 on failure. The contents of
-    `buf` is undefined after an error.
+        `buf` is undefined after an error.
 
     .. note::
         When using the synchronous version, both `loop` and `req` parameters
