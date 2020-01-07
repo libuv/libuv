@@ -243,26 +243,35 @@ is great. Just be warned that creating processes is a costly task.
 
 .. _pipes:
 
-Pipes
------
-
-libuv's ``uv_pipe_t`` structure is slightly confusing to Unix programmers,
-because it immediately conjures up ``|`` and `pipe(7)`_. But ``uv_pipe_t`` is
-not related to anonymous pipes, rather it is an IPC mechanism. ``uv_pipe_t``
-can be backed by a `Unix Domain Socket`_ or `Windows Named Pipe`_ to allow
-multiple processes to communicate. This is discussed below.
-
-.. _pipe(7): http://man7.org/linux/man-pages/man7/pipe.7.html
-.. _Unix Domain Socket: http://man7.org/linux/man-pages/man7/unix.7.html
-.. _Windows Named Pipe: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
-
 Parent-child IPC
-++++++++++++++++
+----------------
 
 A parent and child can have one or two way communication over a pipe created by
 settings ``uv_stdio_container_t.flags`` to a bit-wise combination of
 ``UV_CREATE_PIPE`` and ``UV_READABLE_PIPE`` or ``UV_WRITABLE_PIPE``. The
-read/write flag is from the perspective of the child process.
+read/write flag is from the perspective of the child process.  In this case,
+the ``uv_stream_t* stream`` field must be set to point to an initialized,
+unopened ``uv_pipe_t`` instance.
+
+New stdio Pipes
++++++++++++++++
+
+The ``uv_pipe_t`` structure represents more than just `pipe(7)`_ (or ``|``),
+but supports any streaming file-like objects. On Windows, the only object of
+that description is the `Named Pipe`_.  On Unix, this could be any of `Unix
+Domain Socket`_, or derived from `mkfifo(1)`_, or it could actually be a
+`pipe(7)`_.  When ``uv_spawn`` initializes a ``uv_pipe_t`` due to the
+`UV_CREATE_PIPE` flag, it opts for creating a `socketpair(2)`_.
+
+This is intended for the purpose of allowing multiple libuv processes to
+communicate with IPC. This is discussed below.
+
+.. _pipe(7): http://man7.org/linux/man-pages/man7/pipe.7.html
+.. _mkfifo(1): http://man7.org/linux/man-pages/man1/mkfifo.1.html
+.. _socketpair(2): http://man7.org/linux/man-pages/man2/socketpair.2.html
+.. _Unix Domain Socket: http://man7.org/linux/man-pages/man7/unix.7.html
+.. _Named Pipe: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
+
 
 Arbitrary process IPC
 +++++++++++++++++++++
