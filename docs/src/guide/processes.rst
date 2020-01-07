@@ -42,11 +42,9 @@ exits. This is achieved using ``uv_spawn``.
 The ``uv_process_t`` struct only acts as the handle, all options are set via
 ``uv_process_options_t``. To simply launch a process, you need to set only the
 ``file`` and ``args`` fields. ``file`` is the program to execute. Since
-``uv_spawn`` uses execvp_ internally, there is no need to supply the full
+``uv_spawn`` uses :man:`execvp(3)` internally, there is no need to supply the full
 path. Finally as per underlying conventions, **the arguments array has to be
 one larger than the number of arguments, with the last element being NULL**.
-
-.. _execvp: http://man7.org/linux/man-pages/man3/exec.3.html
 
 After the call to ``uv_spawn``, ``uv_process_t.pid`` will contain the process
 ID of the child process.

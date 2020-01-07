@@ -12,7 +12,7 @@ asynchronously that is actually blocking, by spawning a thread and collecting
 the result when it is done.
 
 Today there are two predominant thread libraries: the Windows threads
-implementation and POSIX's `pthreads`_. libuv's thread API is analogous to
+implementation and POSIX's :man:`pthreads(7)`. libuv's thread API is analogous to
 the pthreads API and often has similar semantics.
 
 A notable aspect of libuv's thread facilities is that it is a self contained
@@ -68,7 +68,7 @@ Synchronization Primitives
 
 This section is purposely spartan. This book is not about threads, so I only
 catalogue any surprises in the libuv APIs here. For the rest you can look at
-the pthreads `man pages <pthreads>`_.
+the :man:`pthreads(7)` man pages.
 
 Mutexes
 ~~~~~~~
@@ -378,8 +378,6 @@ which binds a third party library. It may go something like this:
 
 4. The async callback, invoked in the main loop thread, which is the v8 thread,
    then interacts with v8 to invoke the JavaScript callback.
-
-.. _pthreads: http://man7.org/linux/man-pages/man7/pthreads.7.html
 
 ----
 
