@@ -46,7 +46,7 @@ The ``uv_process_t`` struct only acts as the handle, all options are set via
 path. Finally as per underlying conventions, **the arguments array has to be
 one larger than the number of arguments, with the last element being NULL**.
 
-.. _execvp: http://www.kernel.org/doc/man-pages/online/pages/man3/exec.3.html
+.. _execvp: http://man7.org/linux/man-pages/man3/exec.3.html
 
 After the call to ``uv_spawn``, ``uv_process_t.pid`` will contain the process
 ID of the child process.
@@ -213,7 +213,7 @@ to ``UV_INHERIT_STREAM`` and setting ``data.stream`` to the stream in the
 parent process, the child process can treat that stream as standard I/O. This
 can be used to implement something like CGI_.
 
-.. _CGI: http://en.wikipedia.org/wiki/Common_Gateway_Interface
+.. _CGI: https://en.wikipedia.org/wiki/Common_Gateway_Interface
 
 A sample CGI script/executable is:
 
@@ -254,9 +254,9 @@ not related to anonymous pipes, rather it is an IPC mechanism. ``uv_pipe_t``
 can be backed by a `Unix Domain Socket`_ or `Windows Named Pipe`_ to allow
 multiple processes to communicate. This is discussed below.
 
-.. _pipe(7): http://www.kernel.org/doc/man-pages/online/pages/man7/pipe.7.html
-.. _Unix Domain Socket: http://www.kernel.org/doc/man-pages/online/pages/man7/unix.7.html
-.. _Windows Named Pipe: http://msdn.microsoft.com/en-us/library/windows/desktop/aa365590(v=vs.85).aspx
+.. _pipe(7): http://man7.org/linux/man-pages/man7/pipe.7.html
+.. _Unix Domain Socket: http://man7.org/linux/man-pages/man7/unix.7.html
+.. _Windows Named Pipe: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
 
 Parent-child IPC
 ++++++++++++++++
@@ -276,7 +276,7 @@ notification. Various applications can then react when a contact comes online
 or new hardware is detected. The MySQL server also runs a domain socket on
 which clients can interact with it.
 
-.. _D-BUS: http://www.freedesktop.org/wiki/Software/dbus
+.. _D-BUS: https://www.freedesktop.org/wiki/Software/dbus
 
 When using domain sockets, a client-server pattern is usually followed with the
 creator/owner of the socket acting as the server. After the initial setup,

@@ -175,7 +175,7 @@ where ``membership`` is ``UV_JOIN_GROUP`` or ``UV_LEAVE_GROUP``.
 
 The concepts of multicasting are nicely explained in `this guide`_.
 
-.. _this guide: http://www.tldp.org/HOWTO/Multicast-HOWTO-2.html
+.. _this guide: https://www.tldp.org/HOWTO/Multicast-HOWTO-2.html
 
 Local loopback of multicast packets is enabled by default [#]_, use
 ``uv_udp_set_multicast_loop`` to switch it off.
@@ -234,17 +234,17 @@ useful to allow your service to bind to IP addresses when it starts.
 interface has multiple IPv4/IPv6 addresses, the name will be reported multiple
 times, with each address being reported once.
 
-.. _c-ares: http://c-ares.haxx.se
-.. _getaddrinfo: http://www.kernel.org/doc/man-pages/online/pages/man3/getaddrinfo.3.html
+.. _c-ares: https://c-ares.haxx.se
+.. _getaddrinfo: https://www.kernel.org/doc/man-pages/online/pages/man3/getaddrinfo.3.html
 
-.. _User Datagram Protocol: http://en.wikipedia.org/wiki/User_Datagram_Protocol
-.. _DHCP: http://tools.ietf.org/html/rfc2131
+.. _User Datagram Protocol: https://en.wikipedia.org/wiki/User_Datagram_Protocol
+.. _DHCP: https://tools.ietf.org/html/rfc2131
 
 ----
 
-.. [#] http://beej.us/guide/bgnet/output/html/multipage/advanced.html#broadcast
+.. [#] https://beej.us/guide/bgnet/html/#broadcast-packetshello-world
 .. [#] on Windows only supported on Windows Vista and later.
-.. [#] http://www.tldp.org/HOWTO/Multicast-HOWTO-6.html#ss6.1
+.. [#] https://www.tldp.org/HOWTO/Multicast-HOWTO-6.html#ss6.1
 .. [#] libuv use the system ``getaddrinfo`` in the libuv threadpool. libuv
     v0.8.0 and earlier also included c-ares_ as an alternative, but this has been
     removed in v0.9.0.

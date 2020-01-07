@@ -141,9 +141,9 @@ Others
 libuv also supports semaphores_, `condition variables`_ and barriers_ with APIs
 very similar to their pthread counterparts.
 
-.. _semaphores: http://en.wikipedia.org/wiki/Semaphore_(programming)
-.. _condition variables: http://en.wikipedia.org/wiki/Condition_variable#Waiting_and_signaling
-.. _barriers: http://en.wikipedia.org/wiki/Barrier_(computer_science)
+.. _semaphores: https://en.wikipedia.org/wiki/Semaphore_(programming)
+.. _condition variables: https://en.wikipedia.org/wiki/Monitor_(synchronization)#Condition_variables_2
+.. _barriers: https://en.wikipedia.org/wiki/Barrier_(computer_science)
 
 In addition, libuv provides a convenience function ``uv_once()``. Multiple
 threads can attempt to call ``uv_once()`` with a given guard and a function
@@ -383,5 +383,5 @@ which binds a third party library. It may go something like this:
 
 ----
 
-.. _node.js is cancer: http://teddziuba.github.io/2011/10/node-js-is-cancer.html
+.. _node.js is cancer: http://widgetsandshit.com/teddziuba/2011/10/node-js-is-cancer.html
 .. _bnoordhuis: https://github.com/bnoordhuis
