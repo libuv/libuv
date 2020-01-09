@@ -1310,11 +1310,13 @@ TEST_IMPL(fs_fstat) {
 #ifndef _WIN32
   struct stat t;
 #endif
+  uv_timeval64_t now;
 
   /* Setup. */
   unlink("test_file");
 
   loop = uv_default_loop();
+  uv_gettimeofday(&now);
 
   r = uv_fs_open(NULL, &req, "test_file", O_RDWR | O_CREAT,
       S_IWUSR | S_IRUSR, NULL);
@@ -1409,13 +1411,14 @@ TEST_IMPL(fs_fstat) {
 #endif
 
 #if defined(__linux__)
-  /* If statx() is supported, the birth time should be equal to the change time
-   * because we just created the file. On older kernels, it's set to zero.
-   */
+  /* If statx() is supported, the birth time should be recent and before the
+   * most recent change. On older kernels, it's set to zero. I've observed now
+   * being 1578590026.1812 and birth being 1578590025.996949689 in a short test
+   * run on Ubuntu 18.04.2 LTS Linux 4.15.0-72-generic x86_64, so we give a 10
+   * minute window to account for file-system clock skew. */
   ASSERT(s->st_birthtim.tv_sec == 0 ||
-         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
-  ASSERT(s->st_birthtim.tv_nsec == 0 ||
-         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+         s->st_birthtim.tv_sec >= now.tv_sec - 600);
+  ASSERT(s->st_birthtim.tv_sec <= s->st_mtim.tv_sec);
   ASSERT(s->st_flags == 0);
   ASSERT(s->st_gen == 0);
 #endif
