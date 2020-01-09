@@ -53,7 +53,7 @@ void uv_req_set_data(uv_req_t* req, void* data) {
   req->data = data;
 }
 
-size_t uv_stream_get_write_queue_size(const uv_stream_t* stream) {
+uint64_t uv_stream_get_write_queue_size(const uv_stream_t* stream) {
   return stream->write_queue_size;
 }
 
