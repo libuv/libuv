@@ -43,13 +43,18 @@ static void after_read(uv_stream_t*, ssize_t nread, const uv_buf_t* buf);
 static void on_close(uv_handle_t* peer);
 static void on_server_close(uv_handle_t* handle);
 static void on_connection(uv_stream_t*, int status);
-
+static void echo_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf);
 
 static void after_write(uv_write_t* req, int status) {
   write_req_t* wr;
+  wr = (write_req_t*) req;
+
+  if (req->handle->read_cb == NULL && uv_stream_get_write_queue_size(req->handle) < (size_t)wr->buf.len * 2) {
+    /* Crude flow control */
+    ASSERT(0 == uv_read_start(req->handle, echo_alloc, after_read));
+  }
 
   /* Free the read/write buffer and the request */
-  wr = (write_req_t*) req;
   free(wr->buf.base);
   free(wr);
 
@@ -118,6 +123,14 @@ static void after_read(uv_stream_t* handle,
   if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
     FATAL("uv_write failed");
   }
+
+  if (uv_stream_get_write_queue_size(handle) > (size_t)nread * 8) {
+    /* Crude flow control */
+    ASSERT(0 == uv_read_stop(handle));
+#ifdef _WIN32
+    handle->read_cb = NULL;
+#endif
+  }
 }
 
 
@@ -126,13 +139,13 @@ static void on_close(uv_handle_t* peer) {
 }
 
 
-static void echo_alloc(uv_handle_t* handle,
-                       size_t suggested_size,
-                       uv_buf_t* buf) {
-  if (suggested_size > INT32_MAX)
-    suggested_size = INT32_MAX;
-  buf->base = malloc(suggested_size);
-  buf->len = suggested_size;
+static void echo_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  if (size < 1u << 20u)
+    size = 1u << 20u; /* The libuv default is too low for optimal performance */
+  if (size > INT32_MAX)
+    size = INT32_MAX;
+  buf->base = malloc(size);
+  buf->len = size;
 }
 
 

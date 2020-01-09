@@ -67,8 +67,11 @@ typedef struct {
 
 
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+  if (size < 1u << 20u)
+    size = 1u << 20u; /* The libuv default is too low for optimal performance */
   if (size > INT32_MAX)
-    size = INT32_MAX; /* ensure that alloc size doesn't overlap with error codes in read_cb */
+    /* ensure that alloc size doesn't overlap with error codes in read_cb */
+    size = INT32_MAX;
   do {
     buf->base = malloc(size);
     buf->len = size;
