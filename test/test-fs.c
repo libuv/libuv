@@ -3714,7 +3714,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
 }
 
 #ifdef _WIN32
-static void fs_file_pos_common() {
+static void fs_file_pos_common(void) {
   int r;
 
   iov = uv_buf_init("abc", 3);
