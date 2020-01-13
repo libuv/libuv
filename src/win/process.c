@@ -455,6 +455,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
   size_t len = wcslen(source);
   size_t i;
   int quote_hit;
+  int has_parens;
   WCHAR* start;
 
   if (len == 0) {
@@ -464,7 +465,9 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
     return target;
   }
 
-  if (NULL == wcspbrk(source, L" \t\"")) {
+  has_parens = wcspbrk(source, L"()") != NULL;
+
+  if (!has_parens && NULL == wcspbrk(source, L" \t\"")) {
     /* No quotation needed */
     wcsncpy(target, source, len);
     target += len;
@@ -477,9 +480,11 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
      * quote marks around the whole thing.
      */
     *(target++) = L'"';
+    if (has_parens) *(target++) = L'"';
     wcsncpy(target, source, len);
     target += len;
     *(target++) = L'"';
+    if (has_parens) *(target++) = L'"';
     return target;
   }
 
@@ -502,6 +507,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
    */
 
   *(target++) = L'"';
+  if (has_parens) *(target++) = L'"';
   start = target;
   quote_hit = 1;
 
@@ -520,6 +526,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
   target[0] = L'\0';
   wcsrev(start);
   *(target++) = L'"';
+  if (has_parens) *(target++) = L'"';
   return target;
 }
 
