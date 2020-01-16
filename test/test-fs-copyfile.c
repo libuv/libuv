@@ -185,13 +185,11 @@ TEST_IMPL(fs_copyfile) {
   handle_result(&req);
 
   /* Don't test on Windows until we got ReFS set up. */
-#if !defined(_WIN32) || defined(UV_WIN32_WE_CAN_HAZ_REFS)
   /* Copies file using UV_FS_COPYFILE_FICLONE_FORCE. */
   unlink(dst);
   r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
                      NULL);
   ASSERT(r <= 0);
-#endif
 
   if (r == 0)
     handle_result(&req);

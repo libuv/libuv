@@ -2010,7 +2010,10 @@ static void fs__ftruncate(uv_fs_t* req) {
   }
 }
 
-static BOOL fs__clonefile_dup_extents(HANDLE src, HANDLE dst, int64_t offset, int64_t clone_size) {
+static BOOL fs__clonefile_dup_extents(HANDLE src, 
+                                      HANDLE dst, 
+                                      int64_t offset,
+                                      int64_t clone_size) {
   DWORD lpBytesReturned;
   DUPLICATE_EXTENTS_DATA dup = {
     .FileHandle = src,
@@ -2090,7 +2093,7 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
   /* Do the cloning. Clones must fall by cluster boundary and may not be
    * larger than 4GiB. */
   for (; offset < src_size - GIG; offset += GIG) {
-    if (! fs__clonefile_dup_extents(src_handle, dst_handle, offset, GIG)) {
+    if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, GIG)) {
       error = GetLastError();
       goto exit2;
     }
@@ -2099,7 +2102,7 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
   /* Try to clone the rest with cluster size. Size overflow is fine here. */
   for (int i = 0; i < 2, i++) {
     int64_t size = (src_size - offset + (CLUSTERSIZES[i] - 1)) / CLUSTERSIZES[i];
-    if (! fs__clonefile_dup_extents(src_handle, dst_handle, offset, size)) {
+    if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, size)) {
       error = GetLastError();
       goto exit2;
     }
@@ -2139,6 +2142,7 @@ static void fs__copyfile(uv_fs_t* req) {
         overwrite = 1;
       }
     } else {
+      SET_REQ_RESULT(req, 0);
       return;
     }
   }
