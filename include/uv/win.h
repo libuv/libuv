@@ -493,8 +493,9 @@ typedef struct {
 
 /* Changed from char last_key[8]; to char *last_key; to keep ABI compatibility,
  * because it is necessary to increase the buffer when implementing mouse
- * tracking. For 32bit, padding of 4 bytes is required. */
-#ifdef WIN64
+ * tracking. For 32bit, padding of 4 bytes is required.
+ * TODO: remove me in v2.x. */
+#ifdef _WIN64
 # define LAST_KEY char *last_key;
 #else
 # define LAST_KEY char *last_key; char padding[4];

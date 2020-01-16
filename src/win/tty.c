@@ -754,10 +754,10 @@ static int uv_tty_get_mouse_button_number(DWORD button_state) {
   if (button_state & FROM_LEFT_1ST_BUTTON_PRESSED) {
     return 0;
   }
-  if (button_state &  RIGHTMOST_BUTTON_PRESSED) {
+  if (button_state & RIGHTMOST_BUTTON_PRESSED) {
     return number_of_buttons > 2 ? 2 : 1;
   }
-  if (button_state &  FROM_LEFT_2ND_BUTTON_PRESSED) {
+  if (button_state & FROM_LEFT_2ND_BUTTON_PRESSED) {
     return 1;
   }
   return -1;

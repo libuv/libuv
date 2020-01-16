@@ -169,11 +169,11 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
     uv_buf_t *actual;
 
     ASSERT(nread <= BUF_SIZE);
-    actual = (uv_buf_t*)uv_handle_get_data((uv_handle_t*)tty_in);
+    actual = tty_in->data;
     memcpy(actual->base, buf->base, nread);
     actual->len = nread;
     free(buf->base);
-    uv_stop(uv_handle_get_loop((uv_handle_t*)tty_in));
+    uv_stop(tty_in->loop);
   } else {
     ASSERT(nread == 0);
   }
@@ -338,7 +338,7 @@ static void initialize_tty(uv_tty_t *tty_in, uv_tty_t *tty_out) {
   r = uv_tty_set_mode(tty_in, UV_TTY_MODE_RAW);
   ASSERT(r == 0);
 
-  r = uv_read_start((uv_stream_t*)tty_in, tty_alloc, tty_read);
+  r = uv_read_start((uv_stream_t*) tty_in, tty_alloc, tty_read);
   ASSERT(r == 0);
 
   fd = get_fd("conout$");
@@ -583,7 +583,7 @@ TEST_IMPL(tty_mouse_tracking_mode_x10) {
   uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
 
   /*
-   * X10 compatbility mode.
+   * X10 compatibility mode.
    * On button press, sends CSI M CbCxCy.
    * On button release, sends none.
    * Mouse wheel event will not send anything.
