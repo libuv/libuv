@@ -98,7 +98,7 @@ static void print_err_msg(const char* expect, ssize_t expect_len,
   fprintf(stderr, "\n");
 }
 
-static BOOL assert_same(uv_buf_t *expected, uv_buf_t *actual) {
+static BOOL assert_same(uv_buf_t* expected, uv_buf_t* actual) {
   if (expected->len != actual->len) {
     fprintf(stderr, "expected nread %ld, but found %ld\n",
         (long)expected->len, (long)actual->len);
@@ -112,7 +112,7 @@ static BOOL assert_same(uv_buf_t *expected, uv_buf_t *actual) {
   return TRUE;
 }
 
-static void append_expected(uv_buf_t *expected, char cb, short x, short y,
+static void append_expected(uv_buf_t* expected, char cb, short x, short y,
                           char fbyte, encording_t type) {
   int written, utf8_len;
   WCHAR buf[BUF_SIZE];
@@ -166,7 +166,7 @@ static void tty_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
-    uv_buf_t *actual;
+    uv_buf_t* actual;
 
     ASSERT(nread <= BUF_SIZE);
     actual = tty_in->data;
@@ -248,7 +248,7 @@ static void make_mouse_event_records(uv_tty_t* tty_out, COORD position,
 #undef MEV
 }
 
-static void write_console(uv_tty_t *tty_out, char* src) {
+static void write_console(uv_tty_t* tty_out, char* src) {
   int r;
   uv_buf_t buf;
 
@@ -301,7 +301,7 @@ static void write_console_mouse_wheel(uv_tty_t* tty_out, uv_tty_t* tty_in,
   ASSERT(written == 1);
 }
 
-static int get_fd(const char *name) {
+static int get_fd(const char* name) {
   int fd;
   HANDLE handle;
 
@@ -320,14 +320,9 @@ static int get_fd(const char *name) {
   return fd;
 }
 
-static void initialize_tty(uv_tty_t *tty_in, uv_tty_t *tty_out) {
+static void initialize_tty(uv_tty_t* tty_in, uv_tty_t* tty_out) {
   int r, fd;
 
-  /*
-   * FIXME Testing may fail due to key input and mouse input from the actual
-   * console. If possible, it is necessary to block input from the actual
-   * console.
-   */
   fd = get_fd("conin$");
   r = uv_tty_init(uv_default_loop(), tty_in, fd, 1);  /* Readable .*/
   ASSERT(r == 0);
@@ -358,7 +353,7 @@ static void initialize_buf(uv_buf_t **buf) {
   ASSERT((*buf)->base);
 }
 
-static void finalize_buf(uv_buf_t *buf) {
+static void finalize_buf(uv_buf_t* buf) {
   free(buf->base);
   free(buf);
 }
@@ -366,7 +361,8 @@ static void finalize_buf(uv_buf_t *buf) {
 TEST_IMPL(tty_mouse_tracking_button) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t  *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   COORD start = {1, 1}, end = {2, 2};
   DWORD number_of_buttons;
   char button;
@@ -568,7 +564,8 @@ TEST_IMPL(tty_mouse_tracking_button) {
 TEST_IMPL(tty_mouse_tracking_mode_x10) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t  *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   INPUT_RECORD key_records[2];
   COORD start = {1, 1}, end = {4, 4}, current_pos;
   DWORD written;
@@ -1003,7 +1000,8 @@ TEST_IMPL(tty_mouse_tracking_mode_button) {
 TEST_IMPL(tty_mouse_tracking_mode_any) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   INPUT_RECORD key_records[2];
   COORD start = {1, 1}, end = {4, 4}, current_pos;
   DWORD written;
@@ -1147,7 +1145,8 @@ TEST_IMPL(tty_mouse_tracking_mode_any) {
 TEST_IMPL(tty_mouse_tracking_enc_x10) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   COORD pos = {1, 1};
 
   loop = uv_default_loop();
@@ -1199,7 +1198,8 @@ TEST_IMPL(tty_mouse_tracking_enc_x10) {
 TEST_IMPL(tty_mouse_tracking_enc_ext) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   COORD pos = {1, 1};
 
   loop = uv_default_loop();
@@ -1306,7 +1306,8 @@ TEST_IMPL(tty_mouse_tracking_enc_ext) {
 TEST_IMPL(tty_mouse_tracking_enc_urxvt) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   COORD pos = {1, 1};
 
   loop = uv_default_loop();
@@ -1369,7 +1370,8 @@ TEST_IMPL(tty_mouse_tracking_enc_urxvt) {
 TEST_IMPL(tty_mouse_tracking_enc_sgr) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
-  uv_buf_t *expected, *actual;
+  uv_buf_t* expected;
+  uv_buf_t* actual;
   COORD pos = {1, 1};
 
   loop = uv_default_loop();

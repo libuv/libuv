@@ -1959,8 +1959,8 @@ static int uv_tty_set_cursor_shape(uv_tty_t* handle, int style, DWORD* error) {
 
 
 static void uv_tty_set_mouse_tracking_encoding(uv_tty_t* handle,
-                                         int enc,
-                                         BOOL enable) {
+                                               int enc,
+                                               BOOL enable) {
   if (enable) {
     switch (enc) {
       case 1005:
@@ -1983,9 +1983,9 @@ static void uv_tty_set_mouse_tracking_encoding(uv_tty_t* handle,
 }
 
 static void uv_tty_set_mouse_tracking_mode(uv_tty_t* handle,
-                                         int mode,
-                                         BOOL enable,
-                                         DWORD* error) {
+                                           int mode,
+                                           BOOL enable,
+                                           DWORD* error) {
   static DWORD dwSavedMode = 0;
   DWORD dwMode;
   if (!GetConsoleMode(uv__tty_console_input_handle, &dwMode)) {
