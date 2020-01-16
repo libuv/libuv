@@ -747,6 +747,8 @@ static void* uv__cf_loop_runner(void* arg) {
                          state->signal_source,
                          *pkCFRunLoopDefaultMode);
 
+  state->loop = NULL;
+
   return NULL;
 }
 
