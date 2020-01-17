@@ -346,10 +346,10 @@ static void initialize_tty(uv_tty_t* tty_in, uv_tty_t* tty_out) {
 }
 
 static void initialize_buf(uv_buf_t **buf) {
-  *buf = (uv_buf_t*)malloc(sizeof(uv_buf_t));
+  *buf = malloc(sizeof(uv_buf_t));
   ASSERT(*buf);
   (*buf)->len = 0;
-  (*buf)->base = (char*)malloc(BUF_SIZE);
+  (*buf)->base = malloc(BUF_SIZE);
   ASSERT((*buf)->base);
 }
 
@@ -377,7 +377,7 @@ TEST_IMPL(tty_mouse_tracking_button) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /*
    * The button number(Cb) is as follows. Test if this is correct.
@@ -577,7 +577,7 @@ TEST_IMPL(tty_mouse_tracking_mode_x10) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /*
    * X10 compatibility mode.
@@ -756,7 +756,7 @@ TEST_IMPL(tty_mouse_tracking_mode_normal) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /*
    * Normal tracking mode.
@@ -878,7 +878,7 @@ TEST_IMPL(tty_mouse_tracking_mode_button) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /*
    * Button-event tracking mode.
@@ -1013,7 +1013,7 @@ TEST_IMPL(tty_mouse_tracking_mode_any) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /*
    * Button-event tracking mode.
@@ -1155,7 +1155,7 @@ TEST_IMPL(tty_mouse_tracking_enc_x10) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /* Normal coordinates. */
   write_console(&tty_out, SET_MODE_X10);
@@ -1208,7 +1208,7 @@ TEST_IMPL(tty_mouse_tracking_enc_ext) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /* UTF-8 extended coordinates. */
   write_console(&tty_out, SET_MODE_NORMAL SET_ENC_EXT);
@@ -1316,7 +1316,7 @@ TEST_IMPL(tty_mouse_tracking_enc_urxvt) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /* URXVT extended coordinates. */
   write_console(&tty_out, SET_MODE_NORMAL SET_ENC_URXVT);
@@ -1380,7 +1380,7 @@ TEST_IMPL(tty_mouse_tracking_enc_sgr) {
   initialize_buf(&expected);
   initialize_buf(&actual);
 
-  uv_handle_set_data((uv_handle_t*)&tty_in, (void*)actual);
+  uv_handle_set_data((uv_handle_t*) &tty_in, actual);
 
   /*
    * SGR extended mode.
