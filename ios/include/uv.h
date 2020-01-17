@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+#if defined(BUILDING_UV_SHARED) && defined(USING_UV_SHARED)
+#error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
+#endif
+
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)
@@ -143,6 +147,7 @@ extern "C" {
   XX(EREMOTEIO, "remote I/O error")                                           \
   XX(ENOTTY, "inappropriate ioctl for device")                                \
   XX(EFTYPE, "inappropriate file type or format")                             \
+  XX(EILSEQ, "illegal byte sequence")                                         \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
@@ -172,6 +177,7 @@ extern "C" {
   XX(WORK, work)                                                              \
   XX(GETADDRINFO, getaddrinfo)                                                \
   XX(GETNAMEINFO, getnameinfo)                                                \
+  XX(RANDOM, random)                                                          \
 
 typedef enum {
 #define XX(code, _) UV_ ## code = UV__ ## code,
@@ -229,13 +235,16 @@ typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_udp_send_s uv_udp_send_t;
 typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_work_s uv_work_t;
+typedef struct uv_random_s uv_random_t;
 
 /* None of the above. */
+typedef struct uv_env_item_s uv_env_item_t;
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_utsname_s uv_utsname_t;
+typedef struct uv_statfs_s uv_statfs_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL
@@ -323,6 +332,10 @@ typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
                                   const char* service);
+typedef void (*uv_random_cb)(uv_random_t* req,
+                             int status,
+                             void* buf,
+                             size_t buflen);
 
 typedef struct {
   long tv_sec;
@@ -557,6 +570,7 @@ UV_EXTERN int uv_tcp_getsockname(const uv_tcp_t* handle,
 UV_EXTERN int uv_tcp_getpeername(const uv_tcp_t* handle,
                                  struct sockaddr* name,
                                  int* namelen);
+UV_EXTERN int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb);
 UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
                              const struct sockaddr* addr,
@@ -643,6 +657,11 @@ UV_EXTERN int uv_udp_set_membership(uv_udp_t* handle,
                                     const char* multicast_addr,
                                     const char* interface_addr,
                                     uv_membership membership);
+UV_EXTERN int uv_udp_set_source_membership(uv_udp_t* handle,
+                                           const char* multicast_addr,
+                                           const char* interface_addr,
+                                           const char* source_addr,
+                                           uv_membership membership);
 UV_EXTERN int uv_udp_set_multicast_loop(uv_udp_t* handle, int on);
 UV_EXTERN int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl);
 UV_EXTERN int uv_udp_set_multicast_interface(uv_udp_t* handle,
@@ -687,10 +706,25 @@ typedef enum {
   UV_TTY_MODE_IO
 } uv_tty_mode_t;
 
+typedef enum {
+  /*
+   * The console supports handling of virtual terminal sequences
+   * (Windows10 new console, ConEmu)
+   */
+  UV_TTY_SUPPORTED,
+  /* The console cannot process the virtual terminal sequence.  (Legacy
+   * console)
+   */
+  UV_TTY_UNSUPPORTED
+} uv_tty_vtermstate_t;
+
+
 UV_EXTERN int uv_tty_init(uv_loop_t*, uv_tty_t*, uv_file fd, int readable);
 UV_EXTERN int uv_tty_set_mode(uv_tty_t*, uv_tty_mode_t mode);
 UV_EXTERN int uv_tty_reset_mode(void);
 UV_EXTERN int uv_tty_get_winsize(uv_tty_t*, int* width, int* height);
+UV_EXTERN void uv_tty_set_vterm_state(uv_tty_vtermstate_t state);
+UV_EXTERN int uv_tty_get_vterm_state(uv_tty_vtermstate_t* state);
 
 #ifdef __cplusplus
 extern "C++" {
@@ -1070,6 +1104,17 @@ struct uv_utsname_s {
      to as meaningless in the docs. */
 };
 
+struct uv_statfs_s {
+  uint64_t f_type;
+  uint64_t f_bsize;
+  uint64_t f_blocks;
+  uint64_t f_bfree;
+  uint64_t f_bavail;
+  uint64_t f_files;
+  uint64_t f_ffree;
+  uint64_t f_spare[4];
+};
+
 typedef enum {
   UV_DIRENT_UNKNOWN,
   UV_DIRENT_FILE,
@@ -1098,6 +1143,11 @@ typedef struct {
   long tv_sec;
   long tv_usec;
 } uv_timeval_t;
+
+typedef struct {
+  int64_t tv_sec;
+  int32_t tv_usec;
+} uv_timeval64_t;
 
 typedef struct {
    uv_timeval_t ru_utime; /* user CPU time used */
@@ -1145,6 +1195,13 @@ UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
 UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
                                            int count);
 
+struct uv_env_item_s {
+  char* name;
+  char* value;
+};
+
+UV_EXTERN int uv_os_environ(uv_env_item_t** envitems, int* count);
+UV_EXTERN void uv_os_free_environ(uv_env_item_t* envitems, int count);
 UV_EXTERN int uv_os_getenv(const char* name, char* buffer, size_t* size);
 UV_EXTERN int uv_os_setenv(const char* name, const char* value);
 UV_EXTERN int uv_os_unsetenv(const char* name);
@@ -1200,7 +1257,8 @@ typedef enum {
   UV_FS_LCHOWN,
   UV_FS_OPENDIR,
   UV_FS_READDIR,
-  UV_FS_CLOSEDIR
+  UV_FS_CLOSEDIR,
+  UV_FS_STATFS
 } uv_fs_type;
 
 struct uv_dir_s {
@@ -1428,6 +1486,10 @@ UV_EXTERN int uv_fs_lchown(uv_loop_t* loop,
                            uv_uid_t uid,
                            uv_gid_t gid,
                            uv_fs_cb cb);
+UV_EXTERN int uv_fs_statfs(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           const char* path,
+                           uv_fs_cb cb);
 
 
 enum uv_fs_event {
@@ -1533,6 +1595,26 @@ UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
 UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
 
+
+struct uv_random_s {
+  UV_REQ_FIELDS
+  /* read-only */
+  uv_loop_t* loop;
+  /* private */
+  int status;
+  void* buf;
+  size_t buflen;
+  uv_random_cb cb;
+  struct uv__work work_req;
+};
+
+UV_EXTERN int uv_random(uv_loop_t* loop,
+                        uv_random_t* req,
+                        void *buf,
+                        size_t buflen,
+                        unsigned flags,  /* For future extension; must be 0. */
+                        uv_random_cb cb);
+
 #if defined(IF_NAMESIZE)
 # define UV_IF_NAMESIZE (IF_NAMESIZE + 1)
 #elif defined(IFNAMSIZ)
@@ -1556,6 +1638,7 @@ UV_EXTERN int uv_chdir(const char* dir);
 
 UV_EXTERN uint64_t uv_get_free_memory(void);
 UV_EXTERN uint64_t uv_get_total_memory(void);
+UV_EXTERN uint64_t uv_get_constrained_memory(void);
 
 UV_EXTERN uint64_t uv_hrtime(void);
 
@@ -1609,7 +1692,7 @@ UV_EXTERN void uv_key_delete(uv_key_t* key);
 UV_EXTERN void* uv_key_get(uv_key_t* key);
 UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
 
-UV_EXTERN int uv_gettimeofday(uv_timeval_t* tv);
+UV_EXTERN int uv_gettimeofday(uv_timeval64_t* tv);
 
 typedef void (*uv_thread_cb)(void* arg);
 

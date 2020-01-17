@@ -46,6 +46,14 @@
 		3A3008A7206FDE7500ABE7C2 /* fs-poll.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086B206FDE7400ABE7C2 /* fs-poll.c */; };
 		3A3008A8206FDE7500ABE7C2 /* uv-common.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A30086C206FDE7400ABE7C2 /* uv-common.c */; };
 		3A3008AA206FE32D00ABE7C2 /* kqueue.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A3008A9206FE32D00ABE7C2 /* kqueue.c */; };
+		3A9C7E9A23D1F65D00D045ED /* random.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9923D1F65D00D045ED /* random.c */; };
+		3A9C7E9B23D1F65D00D045ED /* random.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9923D1F65D00D045ED /* random.c */; };
+		3A9C7EA023D1F75B00D045ED /* random-getrandom.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9C23D1F75B00D045ED /* random-getrandom.c */; };
+		3A9C7EA123D1F75B00D045ED /* random-getrandom.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9C23D1F75B00D045ED /* random-getrandom.c */; };
+		3A9C7EA423D1F75B00D045ED /* random-getentropy.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9E23D1F75B00D045ED /* random-getentropy.c */; };
+		3A9C7EA523D1F75B00D045ED /* random-getentropy.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9E23D1F75B00D045ED /* random-getentropy.c */; };
+		3A9C7EA623D1F75B00D045ED /* random-devurandom.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9F23D1F75B00D045ED /* random-devurandom.c */; };
+		3A9C7EA723D1F75B00D045ED /* random-devurandom.c in Sources */ = {isa = PBXBuildFile; fileRef = 3A9C7E9F23D1F75B00D045ED /* random-devurandom.c */; };
 		3AA50F1A2246B519004026C4 /* darwin.h in Headers */ = {isa = PBXBuildFile; fileRef = 3AA50F0B2246B517004026C4 /* darwin.h */; };
 		3AA50F1B2246B519004026C4 /* stdint-msvc2008.h in Headers */ = {isa = PBXBuildFile; fileRef = 3AA50F0C2246B518004026C4 /* stdint-msvc2008.h */; };
 		3AA50F1C2246B519004026C4 /* aix.h in Headers */ = {isa = PBXBuildFile; fileRef = 3AA50F0D2246B518004026C4 /* aix.h */; };
@@ -74,7 +82,6 @@
 		3AA50F3A2246B5FF004026C4 /* version.h in Headers */ = {isa = PBXBuildFile; fileRef = 3AA50F112246B518004026C4 /* version.h */; };
 		3AA50F3F22475245004026C4 /* version.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3AA50F112246B518004026C4 /* version.h */; };
 		3AA50F4122475288004026C4 /* darwin.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3AA50F0B2246B517004026C4 /* darwin.h */; };
-		3AA50F4222475288004026C4 /* posix.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3AA50F0F2246B518004026C4 /* posix.h */; };
 		3AA50F4322475288004026C4 /* threadpool.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3AA50F182246B518004026C4 /* threadpool.h */; };
 		3AA50F4422475288004026C4 /* tree.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3AA50F162246B518004026C4 /* tree.h */; };
 		3AA50F4522475288004026C4 /* unix.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 3AA50F122246B518004026C4 /* unix.h */; };
@@ -140,7 +147,6 @@
 			files = (
 				3AA50F4F224772D3004026C4 /* uv-errno.h in CopyFiles */,
 				3AA50F4122475288004026C4 /* darwin.h in CopyFiles */,
-				3AA50F4222475288004026C4 /* posix.h in CopyFiles */,
 				3AA50F4322475288004026C4 /* threadpool.h in CopyFiles */,
 				3AA50F4422475288004026C4 /* tree.h in CopyFiles */,
 				3AA50F4522475288004026C4 /* unix.h in CopyFiles */,
@@ -208,6 +214,10 @@
 		3A30086B206FDE7400ABE7C2 /* fs-poll.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "fs-poll.c"; path = "../src/fs-poll.c"; sourceTree = "<group>"; };
 		3A30086C206FDE7400ABE7C2 /* uv-common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "uv-common.c"; path = "../src/uv-common.c"; sourceTree = "<group>"; };
 		3A3008A9206FE32D00ABE7C2 /* kqueue.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = kqueue.c; sourceTree = "<group>"; };
+		3A9C7E9923D1F65D00D045ED /* random.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = random.c; path = ../src/random.c; sourceTree = "<group>"; };
+		3A9C7E9C23D1F75B00D045ED /* random-getrandom.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "random-getrandom.c"; sourceTree = "<group>"; };
+		3A9C7E9E23D1F75B00D045ED /* random-getentropy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "random-getentropy.c"; sourceTree = "<group>"; };
+		3A9C7E9F23D1F75B00D045ED /* random-devurandom.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = "random-devurandom.c"; sourceTree = "<group>"; };
 		3AA50F0B2246B517004026C4 /* darwin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = darwin.h; path = ../include/uv/darwin.h; sourceTree = "<group>"; };
 		3AA50F0C2246B518004026C4 /* stdint-msvc2008.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "stdint-msvc2008.h"; path = "../include/uv/stdint-msvc2008.h"; sourceTree = "<group>"; };
 		3AA50F0D2246B518004026C4 /* aix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = aix.h; path = ../include/uv/aix.h; sourceTree = "<group>"; };
@@ -296,6 +306,7 @@
 				3AA50F322246B59F004026C4 /* idna.h */,
 				3A300869206FDE7400ABE7C2 /* inet.c */,
 				3A300833206FDE7400ABE7C2 /* queue.h */,
+				3A9C7E9923D1F65D00D045ED /* random.c */,
 				3AA50F2D2246B58A004026C4 /* strscpy.c */,
 				3AA50F2C2246B58A004026C4 /* strscpy.h */,
 				3A30086A206FDE7400ABE7C2 /* threadpool.c */,
@@ -334,6 +345,9 @@
 				3A300856206FDE7400ABE7C2 /* poll.c */,
 				3A300859206FDE7400ABE7C2 /* process.c */,
 				3A30085C206FDE7400ABE7C2 /* pthread-fixes.c */,
+				3A9C7E9F23D1F75B00D045ED /* random-devurandom.c */,
+				3A9C7E9E23D1F75B00D045ED /* random-getentropy.c */,
+				3A9C7E9C23D1F75B00D045ED /* random-getrandom.c */,
 				3A30085D206FDE7400ABE7C2 /* signal.c */,
 				3A30085E206FDE7400ABE7C2 /* spinlock.h */,
 				3A30085F206FDE7400ABE7C2 /* stream.c */,
@@ -528,8 +542,10 @@
 				3A30087A206FDE7500ABE7C2 /* darwin.c in Sources */,
 				3A30088C206FDE7500ABE7C2 /* no-proctitle.c in Sources */,
 				3A3008AA206FE32D00ABE7C2 /* kqueue.c in Sources */,
+				3A9C7E9A23D1F65D00D045ED /* random.c in Sources */,
 				3A300899206FDE7500ABE7C2 /* signal.c in Sources */,
 				3AA50F302246B58A004026C4 /* strscpy.c in Sources */,
+				3A9C7EA023D1F75B00D045ED /* random-getrandom.c in Sources */,
 				3A3008A5206FDE7500ABE7C2 /* inet.c in Sources */,
 				3A3008A8206FDE7500ABE7C2 /* uv-common.c in Sources */,
 				3A3008A7206FDE7500ABE7C2 /* fs-poll.c in Sources */,
@@ -539,6 +555,7 @@
 				3A30086F206FDE7400ABE7C2 /* uv-data-getter-setters.c in Sources */,
 				3A300898206FDE7500ABE7C2 /* pthread-fixes.c in Sources */,
 				3A300877206FDE7500ABE7C2 /* core.c in Sources */,
+				3A9C7EA623D1F75B00D045ED /* random-devurandom.c in Sources */,
 				3A300886206FDE7500ABE7C2 /* linux-syscalls.c in Sources */,
 				3A3008A0206FDE7500ABE7C2 /* thread.c in Sources */,
 				3A300876206FDE7500ABE7C2 /* bsd-ifaddrs.c in Sources */,
@@ -552,6 +569,7 @@
 				3A30087E206FDE7500ABE7C2 /* fsevents.c in Sources */,
 				3A300891206FDE7500ABE7C2 /* pipe.c in Sources */,
 				3AA50F2A2246B55B004026C4 /* timer.c in Sources */,
+				3A9C7EA423D1F75B00D045ED /* random-getentropy.c in Sources */,
 				3A30087F206FDE7500ABE7C2 /* getaddrinfo.c in Sources */,
 				3A300879206FDE7500ABE7C2 /* darwin-proctitle.c in Sources */,
 				3AA50F362246B59F004026C4 /* idna.c in Sources */,
@@ -569,8 +587,10 @@
 				3AE1E0AE2070AFFC00B52995 /* version.c in Sources */,
 				3AE1E09D2070AFFC00B52995 /* kqueue.c in Sources */,
 				3AE1E0902070AFD000B52995 /* threadpool.c in Sources */,
+				3A9C7E9B23D1F65D00D045ED /* random.c in Sources */,
 				3AE1E0932070AFDD00B52995 /* bsd-ifaddrs.c in Sources */,
 				3AA50F312246B58A004026C4 /* strscpy.c in Sources */,
+				3A9C7EA123D1F75B00D045ED /* random-getrandom.c in Sources */,
 				3AE1E09C2070AFFC00B52995 /* linux-syscalls.c in Sources */,
 				3AE1E09E2070AFFC00B52995 /* loop-watcher.c in Sources */,
 				3AE1E0A62070AFFC00B52995 /* stream.c in Sources */,
@@ -580,6 +600,7 @@
 				3AE1E0942070AFDF00B52995 /* core.c in Sources */,
 				3AE1E0952070AFE200B52995 /* darwin-proctitle.c in Sources */,
 				3AE1E0982070AFFC00B52995 /* fs.c in Sources */,
+				3A9C7EA723D1F75B00D045ED /* random-devurandom.c in Sources */,
 				3AE1E0A42070AFFC00B52995 /* pthread-fixes.c in Sources */,
 				3AE1E08C2070AFB000B52995 /* fs-poll.c in Sources */,
 				3AE1E0A22070AFFC00B52995 /* poll.c in Sources */,
@@ -593,6 +614,7 @@
 				3AE1E0962070AFE500B52995 /* darwin.c in Sources */,
 				3AE1E09A2070AFFC00B52995 /* getaddrinfo.c in Sources */,
 				3AA50F2B2246B55B004026C4 /* timer.c in Sources */,
+				3A9C7EA523D1F75B00D045ED /* random-getentropy.c in Sources */,
 				3AE1E0992070AFFC00B52995 /* fsevents.c in Sources */,
 				3AE1E0AC2070AFFC00B52995 /* uv-common.c in Sources */,
 				3AA50F372246B59F004026C4 /* idna.c in Sources */,
