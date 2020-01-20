@@ -1182,12 +1182,22 @@ UV_EXTERN void uv_os_free_passwd(uv_passwd_t* pwd);
 UV_EXTERN uv_pid_t uv_os_getpid(void);
 UV_EXTERN uv_pid_t uv_os_getppid(void);
 
-#define UV_PRIORITY_LOW 19
-#define UV_PRIORITY_BELOW_NORMAL 10
-#define UV_PRIORITY_NORMAL 0
-#define UV_PRIORITY_ABOVE_NORMAL -7
-#define UV_PRIORITY_HIGH -14
-#define UV_PRIORITY_HIGHEST -20
+#if defined(__PASE__)
+/* On IBM i PASE, the highest process priority is -10 */
+# define UV_PRIORITY_LOW 39            // RUNPTY(99)
+# define UV_PRIORITY_BELOW_NORMAL 15   // RUNPTY(50)
+# define UV_PRIORITY_NORMAL 0          // RUNPTY(20)
+# define UV_PRIORITY_ABOVE_NORMAL -4   // RUNTY(12)
+# define UV_PRIORITY_HIGH -7           // RUNPTY(6)
+# define UV_PRIORITY_HIGHEST -10       // RUNPTY(1)
+#else
+# define UV_PRIORITY_LOW 19
+# define UV_PRIORITY_BELOW_NORMAL 10
+# define UV_PRIORITY_NORMAL 0
+# define UV_PRIORITY_ABOVE_NORMAL -7
+# define UV_PRIORITY_HIGH -14
+# define UV_PRIORITY_HIGHEST -20
+#endif
 
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
