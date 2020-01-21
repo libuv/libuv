@@ -402,6 +402,10 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       return UV_EINVAL;
   }
 
+  if (uv__tty_mouse_mode != UV_TTY_MOUSE_MODE_NONE) {
+    flags |= ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS;
+  }
+
   /* If currently reading, stop, and restart reading. */
   if (tty->flags & UV_HANDLE_READING) {
     was_reading = 1;
@@ -1990,7 +1994,9 @@ static void uv_tty_set_mouse_tracking_mode(uv_tty_t* handle,
                                            int mode,
                                            BOOL enable,
                                            DWORD* error) {
-  static DWORD dwSavedMode = 0;
+  static BOOL need_check_mode = TRUE;
+  static BOOL need_restoer_mouse_input = FALSE;
+  static BOOL need_restoer_extended_flags = FALSE;
   DWORD dwMode;
   if (!GetConsoleMode(uv__tty_console_input_handle, &dwMode)) {
     uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
@@ -1998,12 +2004,18 @@ static void uv_tty_set_mouse_tracking_mode(uv_tty_t* handle,
     return;
   }
 
-  if (!dwSavedMode) {
-    dwSavedMode = dwMode;
+  if (need_check_mode) {
+    if (!(dwMode & ENABLE_MOUSE_INPUT)) {
+      need_restoer_mouse_input = TRUE;
+    }
+    if (!(dwMode & ENABLE_EXTENDED_FLAGS)) {
+      need_restoer_extended_flags = TRUE;
+    }
+    need_check_mode = FALSE;
   }
 
   if (enable) {
-    dwMode |= (ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS | ENABLE_WINDOW_INPUT);
+    dwMode |= ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS;
     if (!SetConsoleMode(uv__tty_console_input_handle, dwMode)) {
       uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
       *error = GetLastError();
@@ -2028,7 +2040,17 @@ static void uv_tty_set_mouse_tracking_mode(uv_tty_t* handle,
         (mode == 1000 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_NORMAL) ||
         (mode == 1002 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_BT) ||
         (mode == 1003 && uv__tty_mouse_mode == UV_TTY_MOUSE_MODE_ANY)) {
-      if (!SetConsoleMode(uv__tty_console_input_handle, dwSavedMode)) {
+      if (GetConsoleMode(uv__tty_console_input_handle, &dwMode)) {
+          if (need_restoer_mouse_input) {
+            dwMode &= ~ENABLE_MOUSE_INPUT;
+          }
+          if (need_restoer_extended_flags) {
+            dwMode &= ~ENABLE_EXTENDED_FLAGS;
+          }
+          if (!SetConsoleMode(uv__tty_console_input_handle, dwMode)) {
+            *error = GetLastError();
+          }
+      } else {
         *error = GetLastError();
       }
       uv__tty_mouse_mode = UV_TTY_MOUSE_MODE_NONE;
