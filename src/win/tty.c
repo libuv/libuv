@@ -207,7 +207,7 @@ void uv_console_init(void) {
                                              OPEN_EXISTING,
                                              0,
                                              0);
-  if(!GetConsoleMode(uv__tty_console_input_handle, &dwOriginMode)) {
+  if (!GetConsoleMode(uv__tty_console_input_handle, &dwOriginMode)) {
     dwOriginMode = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
   }
 }
