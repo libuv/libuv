@@ -25,6 +25,7 @@
 #include "uv-common.h"
 
 #include <assert.h>
+#include <limits.h> /* _POSIX_PATH_MAX, PATH_MAX */
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
 #include <fcntl.h>  /* O_CLOEXEC, may be */
@@ -54,6 +55,14 @@
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <AvailabilityMacros.h>
+#endif
+
+#if defined(_POSIX_PATH_MAX)
+# define UV__PATH_MAX _POSIX_PATH_MAX
+#elif defined(PATH_MAX)
+# define UV__PATH_MAX PATH_MAX
+#else
+# define UV__PATH_MAX 8192
 #endif
 
 #if defined(__ANDROID__)
@@ -254,6 +263,12 @@ uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
 
+/* random */
+int uv__random_devurandom(void* buf, size_t buflen);
+int uv__random_getrandom(void* buf, size_t buflen);
+int uv__random_getentropy(void* buf, size_t buflen);
+int uv__random_readpath(const char* path, void* buf, size_t buflen);
+int uv__random_sysctl(void* buf, size_t buflen);
 
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);

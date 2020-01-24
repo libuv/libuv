@@ -99,8 +99,27 @@ Data types
             UV_FS_COPYFILE,
             UV_FS_OPENDIR,
             UV_FS_READDIR,
-            UV_FS_CLOSEDIR
+            UV_FS_CLOSEDIR,
+            UV_FS_MKSTEMP
         } uv_fs_type;
+
+.. c:type:: uv_statfs_t
+
+    Reduced cross platform equivalent of ``struct statfs``.
+    Used in :c:func:`uv_fs_statfs`.
+
+    ::
+
+        typedef struct uv_statfs_s {
+            uint64_t f_type;
+            uint64_t f_bsize;
+            uint64_t f_blocks;
+            uint64_t f_bfree;
+            uint64_t f_bavail;
+            uint64_t f_files;
+            uint64_t f_ffree;
+            uint64_t f_spare[4];
+        } uv_statfs_t;
 
 .. c:type:: uv_dirent_t
 
@@ -202,6 +221,11 @@ API
 
     Equivalent to :man:`preadv(2)`.
 
+    .. warning::
+        On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
+        to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
+        crash if the memory mapped read operation fails.
+
     .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
@@ -211,6 +235,11 @@ API
 .. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`pwritev(2)`.
+
+    .. warning::
+        On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
+        to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
+        crash if the memory mapped write operation fails.
 
     .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
@@ -223,10 +252,14 @@ API
 
 .. c:function:: int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb)
 
-    Equivalent to :man:`mkdtemp(3)`.
+    Equivalent to :man:`mkdtemp(3)`. The result can be found as a null terminated string at `req->path`.
 
-    .. note::
-        The result can be found as a null terminated string at `req->path`.
+.. c:function:: int uv_fs_mkstemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb)
+
+    Equivalent to :man:`mkstemp(3)`. The created file path can be found as a null terminated string at `req->path`.
+    The file descriptor can be found as an integer at `req->result`.
+
+    .. versionadded:: 1.34.0
 
 .. c:function:: int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
@@ -273,7 +306,8 @@ API
 
     .. note::
         On success this function allocates memory that must be freed using
-        `uv_fs_req_cleanup()`.
+        `uv_fs_req_cleanup()`. `uv_fs_req_cleanup()` must be called before
+        closing the directory with `uv_fs_closedir()`.
 
 .. c:function:: int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb)
 .. c:function:: int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent)
@@ -297,6 +331,17 @@ API
     Equivalent to :man:`stat(2)`, :man:`fstat(2)` and :man:`lstat(2)` respectively.
 
     .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
+.. c:function:: int uv_fs_statfs(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
+
+    Equivalent to :man:`statfs(2)`. On success, a `uv_statfs_t` is allocated
+    and returned via `req->ptr`. This memory is freed by `uv_fs_req_cleanup()`.
+
+    .. note::
+        Any fields in the resulting `uv_statfs_t` that are not supported by the
+        underlying operating system are set to zero.
+
+    .. versionadded:: 1.31.0
 
 .. c:function:: int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 
@@ -333,10 +378,13 @@ API
       is to overwrite the destination if it exists.
     - `UV_FS_COPYFILE_FICLONE`: If present, `uv_fs_copyfile()` will attempt to
       create a copy-on-write reflink. If the underlying platform does not
-      support copy-on-write, then a fallback copy mechanism is used.
+      support copy-on-write, or an error occurs while attempting to use
+      copy-on-write, a fallback copy mechanism based on
+      :c:func:`uv_fs_sendfile()` is used.
     - `UV_FS_COPYFILE_FICLONE_FORCE`: If present, `uv_fs_copyfile()` will
       attempt to create a copy-on-write reflink. If the underlying platform does
-      not support copy-on-write, then an error is returned.
+      not support copy-on-write, or an error occurs while attempting to use
+      copy-on-write, then an error is returned.
 
     .. warning::
         If the destination path is created, but an error occurs while copying
@@ -348,6 +396,10 @@ API
 
     .. versionchanged:: 1.20.0 `UV_FS_COPYFILE_FICLONE` and
         `UV_FS_COPYFILE_FICLONE_FORCE` are supported.
+
+    .. versionchanged:: 1.33.0 If an error occurs while using
+        `UV_FS_COPYFILE_FICLONE_FORCE`, that error is returned. Previously,
+        all errors were mapped to `UV_ENOTSUP`.
 
 .. c:function:: int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t out_fd, uv_os_fd_t in_fd, int64_t in_offset, size_t length, uv_fs_cb cb)
 
@@ -369,7 +421,7 @@ API
 .. c:function:: int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb)
 .. c:function:: int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, double atime, double mtime, uv_fs_cb cb)
 
-    Equivalent to :man:`utime(2)` and :man:`futime(2)` respectively.
+    Equivalent to :man:`utime(2)` and :man:`futimes(3)` respectively.
 
     .. note::
       AIX: This function only works for AIX 7.1 and newer. It can still be called on older
@@ -411,7 +463,7 @@ API
 
 .. c:function:: int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
-    Equivalent to :man:`realpath(3)` on Unix. Windows uses `GetFinalPathNameByHandle <https://msdn.microsoft.com/en-us/library/windows/desktop/aa364962(v=vs.85).aspx>`_.
+    Equivalent to :man:`realpath(3)` on Unix. Windows uses `GetFinalPathNameByHandle <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea>`_.
     The resulting string is stored in `req->ptr`.
 
     .. warning::
@@ -499,13 +551,13 @@ Helper functions
 .. c:function:: uv_os_fd_t uv_get_osfhandle(int fd)
 
    For a file descriptor in the C runtime, get the OS-dependent handle.
-   On UNIX, returns the ``fd`` intact. On Windows, this calls `_get_osfhandle <https://msdn.microsoft.com/en-us/library/ks2530z6.aspx>`_.
+   On UNIX, returns the ``fd`` intact. On Windows, this calls `_get_osfhandle <https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/get-osfhandle?view=vs-2019>`_.
    Note that the return value is still owned by the C runtime,
    any attempts to close it or to use it after closing the fd may lead to malfunction.
 
     .. versionadded:: 1.12.0
 
-    .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t
+    .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t and remove ``uv_open_osfhandle``
 
 File open constants
 -------------------
@@ -527,7 +579,7 @@ File open constants
 
     .. note::
         `UV_FS_O_DIRECT` is supported on Linux, and on Windows via
-        `FILE_FLAG_NO_BUFFERING <https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx>`_.
+        `FILE_FLAG_NO_BUFFERING <https://docs.microsoft.com/en-us/windows/win32/fileio/file-buffering>`_.
         `UV_FS_O_DIRECT` is not supported on macOS.
 
 .. c:macro:: UV_FS_O_DIRECTORY
@@ -544,7 +596,7 @@ File open constants
 
     .. note::
         `UV_FS_O_DSYNC` is supported on Windows via
-        `FILE_FLAG_WRITE_THROUGH <https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx>`_.
+        `FILE_FLAG_WRITE_THROUGH <https://docs.microsoft.com/en-us/windows/win32/fileio/file-buffering>`_.
 
 .. c:macro:: UV_FS_O_EXCL
 
@@ -565,6 +617,14 @@ File open constants
         `UV_FS_O_EXLOCK` is only supported on macOS and Windows.
 
     .. versionchanged:: 1.17.0 support is added for Windows.
+
+.. c:macro:: UV_FS_O_FILEMAP
+
+    Use a memory file mapping to access the file. When using this flag, the
+    file cannot be open multiple times concurrently.
+
+    .. note::
+        `UV_FS_O_FILEMAP` is only supported on Windows.
 
 .. c:macro:: UV_FS_O_NOATIME
 
@@ -603,7 +663,7 @@ File open constants
 
     .. note::
         `UV_FS_O_RANDOM` is only supported on Windows via
-        `FILE_FLAG_RANDOM_ACCESS <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
+        `FILE_FLAG_RANDOM_ACCESS <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
 
 .. c:macro:: UV_FS_O_RDONLY
 
@@ -620,7 +680,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SEQUENTIAL` is only supported on Windows via
-        `FILE_FLAG_SEQUENTIAL_SCAN <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
+        `FILE_FLAG_SEQUENTIAL_SCAN <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
 
 .. c:macro:: UV_FS_O_SHORT_LIVED
 
@@ -628,7 +688,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SHORT_LIVED` is only supported on Windows via
-        `FILE_ATTRIBUTE_TEMPORARY <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
+        `FILE_ATTRIBUTE_TEMPORARY <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
 
 .. c:macro:: UV_FS_O_SYMLINK
 
@@ -641,7 +701,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SYNC` is supported on Windows via
-        `FILE_FLAG_WRITE_THROUGH <https://msdn.microsoft.com/en-us/library/windows/desktop/cc644950.aspx>`_.
+        `FILE_FLAG_WRITE_THROUGH <https://docs.microsoft.com/en-us/windows/win32/fileio/file-buffering>`_.
 
 .. c:macro:: UV_FS_O_TEMPORARY
 
@@ -649,7 +709,7 @@ File open constants
 
     .. note::
         `UV_FS_O_TEMPORARY` is only supported on Windows via
-        `FILE_ATTRIBUTE_TEMPORARY <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363858.aspx>`_.
+        `FILE_ATTRIBUTE_TEMPORARY <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
 
 .. c:macro:: UV_FS_O_TRUNC
 

@@ -223,6 +223,12 @@ int uv_translate_sys_error(int sys_errno);
 
 
 /*
+ * FS
+ */
+void uv_fs_init(void);
+
+
+/*
  * FS Event
  */
 void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
@@ -255,6 +261,8 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         struct sockaddr* name,
                         int* namelen,
                         int delayed_error);
+
+int uv__random_rtlgenrandom(void* buf, size_t buflen);
 
 
 /*

@@ -62,12 +62,12 @@ static void empty_readdir_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_READDIR);
   ASSERT(req->result == 0);
   dir = req->ptr;
+  uv_fs_req_cleanup(req);
   r = uv_fs_closedir(uv_default_loop(),
                      &closedir_req,
                      dir,
                      empty_closedir_cb);
   ASSERT(r == 0);
-  uv_fs_req_cleanup(req);
 }
 
 static void empty_opendir_cb(uv_fs_t* req) {
@@ -348,6 +348,7 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   uv_fs_t create_req;
   uv_fs_t close_req;
   uv_dir_t* dir;
+  uv_os_fd_t file;
   int r;
 
   cleanup_test_files();
@@ -361,12 +362,11 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
                  "test_dir/file1",
                  O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT(r >= 0);
+  ASSERT(r == 0);
+  ASSERT(create_req.result >= 0);
+  file = (uv_os_fd_t) create_req.result;
   uv_fs_req_cleanup(&create_req);
-  r = uv_fs_close(uv_default_loop(),
-                  &close_req,
-                  create_req.result,
-                  NULL);
+  r = uv_fs_close(uv_default_loop(), &close_req, file, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
@@ -375,12 +375,11 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
                  "test_dir/file2",
                  O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT(r >= 0);
+  ASSERT(r == 0);
+  ASSERT(create_req.result >= 0);
+  file = (uv_os_fd_t) create_req.result;
   uv_fs_req_cleanup(&create_req);
-  r = uv_fs_close(uv_default_loop(),
-                  &close_req,
-                  create_req.result,
-                  NULL);
+  r = uv_fs_close(uv_default_loop(), &close_req, file, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
