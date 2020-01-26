@@ -44,6 +44,7 @@ set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-proto
 set(lint-extra $<$<BOOL:${UV_LINT_EXTRA}>:-Wextra>)
 set(lint-w4 $<$<BOOL:${UV_LINT_W4}>:/W4>)
 # Unfortunately, this one is complicated because MSVC and clang-cl support -Wall
+# but using it is like calling -Weverything
 string(CONCAT lint-default $<
   $<AND:$<BOOL:${UV_LINT_WALL}>,$<NOT:${is-msvc}>>:-Wall
 >)
@@ -65,13 +66,23 @@ set(uv_sources
 
 
 if(WIN32)
-  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0600)
+  if (CMAKE_SYSTEM_VERSION VERSION_GREATER 10) # Windows 10
+    set(windows-version 0x0A00)
+  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.3) # Windows 8.1
+    set(windows-version 0x0603)
+  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.2) # Windows 8
+    set(windows-version 0x0602)
+  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.1) # Windows 7
+    set(windows-version 0x0601)
+  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.0) # Windows Vista
+    set(windows-version 0x0600)
+  else()
+    message(FATAL_ERROR "Windows Vista is the minimum version supported")
+  endif()
+  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=${windows-version})
   list(APPEND uv_libraries
-       advapi32
+       $<$<STREQUAL:${windows-version},0x0600>>:psapi>
        iphlpapi
-       psapi
-       shell32
-       user32
        userenv
        ws2_32)
   list(APPEND uv_sources
@@ -105,6 +116,7 @@ if(WIN32)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+    # TODO: This should be replaced with find_package(Threads) if possible
     # Android has pthread as part of its c library, not as a separate
     # libpthread.so.
     list(APPEND uv_libraries pthread)
@@ -242,8 +254,11 @@ endif()
 
 add_library(uv SHARED ${uv_sources})
 target_compile_definitions(uv
-                           INTERFACE USING_UV_SHARED=1
-                           PRIVATE ${uv_defines} BUILDING_UV_SHARED=1)
+  INTERFACE
+    USING_UV_SHARED=1
+  PRIVATE
+    BUILDING_UV_SHARED=1
+    ${uv_defines})
 target_compile_options(uv PRIVATE ${uv_cflags})
 target_include_directories(uv
   PUBLIC
