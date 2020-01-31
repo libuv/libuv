@@ -33,6 +33,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#define ASYNC_PENDING (1<<0)
+#define ASYNC_BUSY    (1<<1)
+
 static void uv__async_send(uv_loop_t* loop);
 static int uv__async_start(uv_loop_t* loop);
 static int uv__async_eventfd(void);
@@ -62,32 +65,27 @@ int uv_async_send(uv_async_t* handle) {
     return 0;
 
   /* Tell the other thread we're busy with the handle. */
-  if (cmpxchgi(&handle->pending, 0, 1) != 0)
+  if (cmpxchgi(&handle->pending, 0, ASYNC_BUSY | ASYNC_PENDING) & ASYNC_PENDING)
     return 0;
 
   /* Wake up the other thread's event loop. */
   uv__async_send(handle->loop);
 
-  /* Tell the other thread we're done. */
-  if (cmpxchgi(&handle->pending, 1, 2) != 1)
-    abort();
+  /* Tell the other thread we're done by clearing BUSY FLAG */
+  cmpxchgi(&handle->pending, ASYNC_BUSY | ASYNC_PENDING, ASYNC_PENDING);
+  cmpxchgi(&handle->pending, ASYNC_BUSY, 0);
 
   return 0;
 }
-
 
 /* Only call this from the event loop thread. */
 static int uv__async_spin(uv_async_t* handle) {
   int rc;
 
   for (;;) {
-    /* rc=0 -- handle is not pending.
-     * rc=1 -- handle is pending, other thread is still working with it.
-     * rc=2 -- handle is pending, other thread is done.
-     */
-    rc = cmpxchgi(&handle->pending, 2, 0);
+    rc = cmpxchgi(&handle->pending, ASYNC_PENDING, 0);
 
-    if (rc != 1)
+    if (!(rc & ASYNC_BUSY))
       return rc;
 
     /* Other thread is busy with this handle, spin until it's done. */
@@ -138,8 +136,10 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
-    if (0 == uv__async_spin(h))
+    if (!(cmpxchgi(&h->pending, ASYNC_PENDING, 0) & ASYNC_PENDING))
       continue;  /* Not pending. */
+
+    cmpxchgi(&h->pending, ASYNC_PENDING | ASYNC_BUSY, ASYNC_BUSY); /*  Clear Pending */
 
     if (h->async_cb == NULL)
       continue;
