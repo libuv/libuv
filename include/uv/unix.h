@@ -394,6 +394,9 @@ typedef struct {
   uv_fs_event_cb cb;                                                          \
   UV_PLATFORM_FS_EVENT_FIELDS                                                 \
 
+#define UV_STREAM_INFO_PRIVATE_FIELDS                                         \
+  int fd;
+
 /* fs open() flags supported on this platform: */
 #if defined(O_APPEND)
 # define UV_FS_O_APPEND       O_APPEND

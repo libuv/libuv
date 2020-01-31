@@ -224,6 +224,7 @@ typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
+typedef struct uv_stream_info_s uv_stream_info_t;
 
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
@@ -575,6 +576,28 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
+
+/*
+ * uv_stream_info_t is used to store exported stream (using uv_export),
+ * which can be imported into a different event-loop within the same process
+ * (using uv_import).
+ */
+struct uv_stream_info_s {
+  uv_handle_type type;
+  UV_STREAM_INFO_PRIVATE_FIELDS
+};
+
+/*
+ * Exports uv_stream_t as uv_stream_info_t value, which could
+ * be used to initialize shared streams within the same process.
+ */
+UV_EXTERN int uv_export(uv_stream_t* stream, uv_stream_info_t* info);
+
+/*
+ * Imports uv_stream_info_t value into uv_stream_t to initialize
+ * shared stream.
+ */
+UV_EXTERN int uv_import(uv_stream_t* stream, uv_stream_info_t* info);
 
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {

@@ -651,6 +651,11 @@ typedef struct {
   struct uv_req_s signal_req;                                                 \
   unsigned long pending_signum;
 
+#define UV_STREAM_INFO_PRIVATE_FIELDS                                         \
+  union {                                                                     \
+    WSAPROTOCOL_INFOW socket_info;                                            \
+  };
+
 #ifndef F_OK
 #define F_OK 0
 #endif

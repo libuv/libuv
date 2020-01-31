@@ -124,6 +124,8 @@ TEST_DECLARE   (tcp_create_early_accept)
 TEST_DECLARE   (tcp_close_accept)
 TEST_DECLARE   (tcp_oob)
 #endif
+TEST_DECLARE   (tcp_exportimport_listen_after_write)
+TEST_DECLARE   (tcp_exportimport_listen_before_write)
 TEST_DECLARE   (tcp_flags)
 TEST_DECLARE   (tcp_write_to_half_open_connection)
 TEST_DECLARE   (tcp_unexpected_read)
@@ -646,6 +648,8 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_close_accept)
   TEST_ENTRY  (tcp_oob)
 #endif
+  TEST_ENTRY  (tcp_exportimport_listen_after_write)
+  TEST_ENTRY  (tcp_exportimport_listen_before_write)
   TEST_ENTRY  (tcp_flags)
   TEST_ENTRY  (tcp_write_to_half_open_connection)
   TEST_ENTRY  (tcp_unexpected_read)
