@@ -48,6 +48,7 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_ASYNC);
   handle->async_cb = async_cb;
   handle->pending = 0;
+  handle->busy = 0;
 
   QUEUE_INSERT_TAIL(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
@@ -61,15 +62,19 @@ int uv_async_send(uv_async_t* handle) {
   if (ACCESS_ONCE(int, handle->pending) != 0)
     return 0;
 
-  /* Tell the other thread we're busy with the handle. */
+  /* Set async pending  */
   if (cmpxchgi(&handle->pending, 0, 1) != 0)
+    return 0;
+
+  /* Tell the other thread we're busy with the handle. */
+  if (cmpxchgi(&handle->busy, 0, 1) != 0)
     return 0;
 
   /* Wake up the other thread's event loop. */
   uv__async_send(handle->loop);
 
   /* Tell the other thread we're done. */
-  if (cmpxchgi(&handle->pending, 1, 2) != 1)
+  if (cmpxchgi(&handle->busy, 1, 0) != 1)
     abort();
 
   return 0;
@@ -77,18 +82,13 @@ int uv_async_send(uv_async_t* handle) {
 
 
 /* Only call this from the event loop thread. */
-static int uv__async_spin(uv_async_t* handle) {
-  int rc;
-
+static void uv__async_spin(uv_async_t* handle) {
   for (;;) {
-    /* rc=0 -- handle is not pending.
-     * rc=1 -- handle is pending, other thread is still working with it.
-     * rc=2 -- handle is pending, other thread is done.
-     */
-    rc = cmpxchgi(&handle->pending, 2, 0);
-
-    if (rc != 1)
-      return rc;
+    /* busy=1: spin wait other thread to not busy
+     * busy=0: set to 2 and return -> other thread will not trigger handler
+     * */
+    if (cmpxchgi(&handle->busy, 0, 2) == 0)
+        break;
 
     /* Other thread is busy with this handle, spin until it's done. */
     cpu_relax();
@@ -138,7 +138,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
-    if (0 == uv__async_spin(h))
+    if (cmpxchgi(&h->pending, 1, 0) == 0)
       continue;  /* Not pending. */
 
     if (h->async_cb == NULL)
