@@ -61,8 +61,12 @@ int uv_async_send(uv_async_t* handle) {
   if (ACCESS_ONCE(int, handle->pending) != 0)
     return 0;
 
+  /* The cmpxchgi may permit another thread to immediately destroy the handle,
+   * so be careful not to dereference it again after that point. */
+  uv_loop_t* loop = ACCESS_ONCE(uv_loop_t*, handle->loop);
+
   if (cmpxchgi(&handle->pending, 0, 1) == 0)
-    uv__async_send(handle->loop);
+    uv__async_send(loop);
 
   return 0;
 }

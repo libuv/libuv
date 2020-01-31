@@ -64,7 +64,7 @@ void uv_async_close(uv_loop_t* loop, uv_async_t* handle) {
 
 
 int uv_async_send(uv_async_t* handle) {
-  uv_loop_t* loop = handle->loop;
+  uv_loop_t* loop = *(uv_loop_t* volatile*) &handle->loop;
 
   if (handle->type != UV_ASYNC) {
     /* Can't set errno because that's not thread-safe. */

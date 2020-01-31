@@ -78,7 +78,7 @@ int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
 #endif
 
 #define ACCESS_ONCE(type, var)                                                \
-  (*(volatile type*) &(var))
+  (*(type volatile*) &(var))
 
 #define ROUND_UP(a, b)                                                        \
   ((a) % (b) ? ((a) + (b)) - ((a) % (b)) : (a))
