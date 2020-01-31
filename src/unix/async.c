@@ -62,12 +62,12 @@ int uv_async_send(uv_async_t* handle) {
   if (ACCESS_ONCE(int, handle->pending) != 0)
     return 0;
 
-  /* Set async pending  */
-  if (cmpxchgi(&handle->pending, 0, 1) != 0)
-    return 0;
-
   /* Tell the other thread we're busy with the handle. */
   if (cmpxchgi(&handle->busy, 0, 1) != 0)
+    return 0;
+
+  /* Set async pending  */
+  if (cmpxchgi(&handle->pending, 0, 1) != 0)
     return 0;
 
   /* Wake up the other thread's event loop. */
