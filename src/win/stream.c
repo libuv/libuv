@@ -250,3 +250,13 @@ int uv_stream_set_blocking(uv_stream_t* handle, int blocking) {
 
   return 0;
 }
+
+
+int uv_tcp_export(uv_tcp_t* stream, int* fd) {
+  return UV_ENOSYS;
+}
+
+
+int uv_tcp_import(uv_loop_t* loop, int fd, uv_tcp_t* out, unsigned int flags) {
+  return UV_ENOSYS;
+}

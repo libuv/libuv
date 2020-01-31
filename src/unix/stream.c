@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <errno.h>
 
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -1476,6 +1477,50 @@ int uv_read_stop(uv_stream_t* stream) {
   return 0;
 }
 
+
+int uv_tcp_export(uv_tcp_t* stream, int* fd) {
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  int err;
+#endif
+
+  if (stream->type != UV_TCP)
+    return UV_EINVAL;
+
+  /* Clone the inner fd. Start from a safe number (3). */
+#ifdef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  *fd = fcntl(stream->io_watcher.fd, F_DUPFD_CLOEXEC, 3);
+#else
+  *fd = fcntl(stream->io_watcher.fd, F_DUPFD, 3);
+#endif
+  if (*fd == -1)
+    return UV__ERR(errno);
+
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  err = uv__cloexec(fd, 1);
+  if (err != 0) {
+    uv__close(fd);
+    return err;
+  }
+#endif
+  return 0;
+}
+
+
+int uv_tcp_import(uv_loop_t* loop, int fd, uv_tcp_t* out, unsigned int flags) {
+  int err;
+
+  err = uv_tcp_init_ex(loop, out, flags);
+  if (err)
+    return err;
+
+  err = uv_tcp_open(out, fd);
+  if (err) {
+    uv_close((uv_handle_t*)out, NULL);
+    return err;
+  }
+
+  return 0;
+}
 
 int uv_is_readable(const uv_stream_t* stream) {
   return !!(stream->flags & UV_HANDLE_READABLE);

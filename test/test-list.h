@@ -148,6 +148,8 @@ TEST_DECLARE   (tcp_create_early_accept)
 #ifndef _WIN32
 TEST_DECLARE   (tcp_close_accept)
 TEST_DECLARE   (tcp_oob)
+TEST_DECLARE   (tcp_exportimport_listen_after_write)
+TEST_DECLARE   (tcp_exportimport_listen_before_write)
 #endif
 TEST_DECLARE   (tcp_flags)
 TEST_DECLARE   (tcp_write_to_half_open_connection)
@@ -770,6 +772,8 @@ TASK_LIST_START
 #ifndef _WIN32
   TEST_ENTRY  (tcp_close_accept)
   TEST_ENTRY  (tcp_oob)
+  TEST_ENTRY  (tcp_exportimport_listen_after_write)
+  TEST_ENTRY  (tcp_exportimport_listen_before_write)
 #endif
   TEST_ENTRY  (tcp_flags)
   TEST_ENTRY  (tcp_write_to_half_open_connection)
