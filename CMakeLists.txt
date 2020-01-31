@@ -81,7 +81,7 @@ if(WIN32)
   endif()
   list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=${windows-version})
   list(APPEND uv_libraries
-       $<$<STREQUAL:${windows-version},0x0600>>:psapi>
+       $<$<STREQUAL:${windows-version},0x0600>:psapi>
        iphlpapi
        userenv
        ws2_32)
