@@ -455,13 +455,13 @@ if(LIBUV_BUILD_TESTS)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-if (UNIX)
+if(UNIX)
   # Now for some gibbering horrors from beyond the stars...
   foreach(lib IN LISTS uv_libraries)
     list(APPEND LIBS "-l${lib}")
   endforeach()
   string(REPLACE ";" " " LIBS "${LIBS}")
-  #Consider setting project version via project() call?
+  # Consider setting project version via project() call?
   file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
   string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
   set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
