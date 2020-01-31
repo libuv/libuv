@@ -561,6 +561,72 @@ TEST_IMPL(tty_mouse_tracking_button) {
   return 0;
 }
 
+TEST_IMPL(tty_mouse_tracking_console_mode_with_disable) {
+  uv_tty_t tty_in, tty_out;
+  DWORD dwMode;
+  BOOL result;
+
+  initialize_tty(&tty_in, &tty_out);
+
+  /*
+   * If ENABLE_MOUSE_INPUT and ENABLE_EXTENDED_FLAGS are disabled before the
+   * first call to uv_tty_set_mouse_tracking_mode, make sure that disabling
+   * mouse mode returns the flags to their original state.
+   */
+  result = GetConsoleMode(tty_in.handle, &dwMode);
+  ASSERT(result == TRUE);
+  dwMode &= ~ENABLE_MOUSE_INPUT & ~ENABLE_EXTENDED_FLAGS;
+  result = SetConsoleMode(tty_in.handle, dwMode);
+  ASSERT(result == TRUE);
+  write_console(&tty_out, SET_MODE_ANY);
+  result = GetConsoleMode(tty_in.handle, &dwMode);
+  ASSERT(result == TRUE);
+  ASSERT(dwMode & ENABLE_MOUSE_INPUT);
+  ASSERT(dwMode & ENABLE_EXTENDED_FLAGS);
+  write_console(&tty_out, RESET_MODE_ANY);
+  result = GetConsoleMode(tty_in.handle, &dwMode);
+  ASSERT(result == TRUE);
+  ASSERT(!(dwMode & ENABLE_MOUSE_INPUT));
+  ASSERT(!(dwMode & ENABLE_EXTENDED_FLAGS));
+
+  uv_tty_reset_mode();
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+TEST_IMPL(tty_mouse_tracking_console_mode_with_enable) {
+  uv_tty_t tty_in, tty_out;
+  DWORD dwMode;
+  BOOL result;
+
+  initialize_tty(&tty_in, &tty_out);
+
+  /*
+   * If ENABLE_MOUSE_INPUT and ENABLE_EXTENDED_FLAGS were enabled before the
+   * first call to uv_tty_set_mouse_tracking_mode, make sure the flag remains
+   * enabled even if mouse mode is disabled.
+   */
+  result = GetConsoleMode(tty_in.handle, &dwMode);
+  ASSERT(result == TRUE);
+  dwMode |= ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS;
+  result = SetConsoleMode(tty_in.handle, dwMode);
+  ASSERT(result == TRUE);
+  write_console(&tty_out, SET_MODE_ANY);
+  result = GetConsoleMode(tty_in.handle, &dwMode);
+  ASSERT(result == TRUE);
+  ASSERT(dwMode & ENABLE_MOUSE_INPUT);
+  ASSERT(dwMode & ENABLE_EXTENDED_FLAGS);
+  write_console(&tty_out, RESET_MODE_ANY);
+  result = GetConsoleMode(tty_in.handle, &dwMode);
+  ASSERT(result == TRUE);
+  ASSERT(dwMode & ENABLE_MOUSE_INPUT);
+  ASSERT(dwMode & ENABLE_EXTENDED_FLAGS);
+
+  uv_tty_reset_mode();
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 TEST_IMPL(tty_mouse_tracking_mode_x10) {
   uv_tty_t tty_in, tty_out;
   uv_loop_t* loop;
