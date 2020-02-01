@@ -491,7 +491,7 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
           UnregisterWait(handle->read_req.wait_handle);
           handle->read_req.wait_handle = INVALID_HANDLE_VALUE;
         }
-        if (handle->read_req.event_handle) {
+        if (handle->read_req.event_handle != NULL) {
           CloseHandle(handle->read_req.event_handle);
           handle->read_req.event_handle = NULL;
         }
@@ -1134,6 +1134,7 @@ static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   } else {
     memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
     if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
+      assert(req->event_handle != NULL);
       req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
     }
 
