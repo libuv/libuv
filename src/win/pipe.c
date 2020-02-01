@@ -1152,15 +1152,9 @@ static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
     }
 
     if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
-      if (!req->event_handle) {
-        req->event_handle = CreateEvent(NULL, 0, 0, NULL);
-        if (!req->event_handle) {
-          uv_fatal_error(GetLastError(), "CreateEvent");
-        }
-      }
       if (req->wait_handle == INVALID_HANDLE_VALUE) {
         if (!RegisterWaitForSingleObject(&req->wait_handle,
-            req->u.io.overlapped.hEvent, post_completion_read_wait, (void*) req,
+            req->event_handle, post_completion_read_wait, (void*) req,
             INFINITE, WT_EXECUTEINWAITTHREAD)) {
           SET_REQ_ERROR(req, GetLastError());
           goto error;
@@ -1343,7 +1337,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
   if (handle->flags & (UV_HANDLE_EMULATE_IOCP | UV_HANDLE_BLOCKING_WRITES)) {
     req->event_handle = CreateEvent(NULL, 0, 0, NULL);
-    if (!req->event_handle) {
+    if (req->event_handle == NULL) {
       uv_fatal_error(GetLastError(), "CreateEvent");
     }
     req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
@@ -1404,7 +1398,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
     if (!result && GetLastError() != ERROR_IO_PENDING) {
       err = GetLastError();
-      CloseHandle(req->u.io.overlapped.hEvent);
+      CloseHandle(req->event_handle);
       return err;
     }
 
@@ -1415,14 +1409,14 @@ static int uv__pipe_write_data(uv_loop_t* loop,
       /* Request queued by the kernel. */
       req->u.io.queued_bytes = write_buf.len;
       handle->write_queue_size += req->u.io.queued_bytes;
-      if (WaitForSingleObject(req->u.io.overlapped.hEvent, INFINITE) !=
+      if (WaitForSingleObject(req->event_handle, INFINITE) !=
           WAIT_OBJECT_0) {
         err = GetLastError();
-        CloseHandle(req->u.io.overlapped.hEvent);
+        CloseHandle(req->event_handle);
         return err;
       }
     }
-    CloseHandle(req->u.io.overlapped.hEvent);
+    CloseHandle(req->event_handle);
 
     REGISTER_HANDLE_REQ(loop, handle, req);
     handle->reqs_pending++;
@@ -1450,7 +1444,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
     if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
       if (!RegisterWaitForSingleObject(&req->wait_handle,
-          req->u.io.overlapped.hEvent, post_completion_write_wait, (void*) req,
+          req->event_handle, post_completion_write_wait, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD)) {
         return GetLastError();
       }
