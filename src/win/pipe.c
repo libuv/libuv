@@ -1399,6 +1399,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     if (!result && GetLastError() != ERROR_IO_PENDING) {
       err = GetLastError();
       CloseHandle(req->event_handle);
+      req->event_handle = NULL;
       return err;
     }
 
@@ -1413,10 +1414,12 @@ static int uv__pipe_write_data(uv_loop_t* loop,
           WAIT_OBJECT_0) {
         err = GetLastError();
         CloseHandle(req->event_handle);
+        req->event_handle = NULL;
         return err;
       }
     }
     CloseHandle(req->event_handle);
+    req->event_handle = NULL;
 
     REGISTER_HANDLE_REQ(loop, handle, req);
     handle->reqs_pending++;
