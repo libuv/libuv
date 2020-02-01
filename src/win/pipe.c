@@ -328,17 +328,19 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
 
 
 static int pipe_alloc_accept(uv_loop_t* loop, uv_pipe_t* handle,
-  uv_pipe_accept_t* req, BOOL firstInstance) {
+                             uv_pipe_accept_t* req, BOOL firstInstance) {
   assert(req->pipeHandle == INVALID_HANDLE_VALUE);
 
-  req->pipeHandle = CreateNamedPipeW(handle->name,
-      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | WRITE_DAC |
-      (firstInstance ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0),
-      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-      PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, NULL);
+  req->pipeHandle =
+      CreateNamedPipeW(handle->name,
+                       PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | WRITE_DAC |
+                         (firstInstance ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0),
+                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                       PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, NULL);
 
-  if (req->pipeHandle == INVALID_HANDLE_VALUE)
+  if (req->pipeHandle == INVALID_HANDLE_VALUE) {
     return 0;
+  }
 
   /* Associate it with IOCP so we can get events. */
   if (CreateIoCompletionPort(req->pipeHandle,
