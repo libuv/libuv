@@ -246,18 +246,18 @@ int uv_export(uv_stream_t* stream, uv_stream_info_t* info) {
   uv__ipc_socket_xfer_info_t xfer_info;
   uv__ipc_socket_xfer_type_t xfer_type = UV__IPC_SOCKET_XFER_NONE;
 
-  if (stream->type != UV_TCP) {
+  if (stream->type != UV_TCP)
     return UV_EINVAL;
-  }
-  int r = uv__tcp_xfer_export((uv_tcp_t *) stream,
+
+  int r = uv__tcp_xfer_export((uv_tcp_t*) stream,
                               GetCurrentProcessId(),
                               &xfer_type, &xfer_info);
-  if (r != 0) {
-    return (r);
-  }
-  if (xfer_info.delayed_error != 0) {
+  if (r != 0)
+    return r;
+
+  if (xfer_info.delayed_error != 0)
     return xfer_info.delayed_error;
-  }
+
   info->type = UV_TCP;
   info->socket_info = xfer_info.socket_info;
   return 0;
@@ -266,13 +266,12 @@ int uv_export(uv_stream_t* stream, uv_stream_info_t* info) {
 int uv_import(uv_stream_t* stream, uv_stream_info_t* info) {
   uv__ipc_socket_xfer_info_t xfer_info;
 
-  if (stream->type != UV_TCP || info->type != UV_TCP) {
+  if (stream->type != UV_TCP || info->type != UV_TCP)
     return UV_EINVAL;
-  }
 
   xfer_info.socket_info = info->socket_info;
   xfer_info.delayed_error = 0;
-  return uv__tcp_xfer_import((uv_tcp_t *) stream,
+  return uv__tcp_xfer_import((uv_tcp_t*) stream,
                              UV__IPC_SOCKET_XFER_TCP_SERVER,
                              &xfer_info);
 }

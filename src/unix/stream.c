@@ -1605,15 +1605,13 @@ int uv_read_stop(uv_stream_t* stream) {
 int uv_export(uv_stream_t* stream, uv_stream_info_t* info) {
   int fd;
 
-  if (stream->type != UV_TCP) {
+  if (stream->type != UV_TCP)
     return UV_EINVAL;
-  }
 
   fd = uv__dup(stream->io_watcher.fd);
 
-  if (fd < 0) {
+  if (fd < 0)
     return fd;
-  }
 
   info->type = stream->type;
   info->fd = fd;
@@ -1622,15 +1620,13 @@ int uv_export(uv_stream_t* stream, uv_stream_info_t* info) {
 }
 
 int uv_import(uv_stream_t* stream, uv_stream_info_t* info) {
-  if (info->type != UV_TCP) {
+  if (info->type != UV_TCP)
     return UV_EINVAL;
-  }
 
-  if (stream->io_watcher.fd != -1) {
-    return UV_EALREADY;
-  }
+  if (stream->io_watcher.fd != -1)
+    return UV_EBUSY;
 
-  return uv_tcp_open((uv_tcp_t *)stream, info->fd);
+  return uv_tcp_open((uv_tcp_t*)stream, info->fd);
 }
 
 int uv_is_readable(const uv_stream_t* stream) {
