@@ -131,7 +131,7 @@ void on_parent_msg(uv_async_t* handle) {
   parent.server.data = &parent;
 
   r = uv_import((uv_stream_t*)&parent.server,
-    (uv_stream_info_t*)&dup_stream);
+               (uv_stream_info_t*)&dup_stream);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&parent.server, 12, on_connection);
