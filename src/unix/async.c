@@ -48,7 +48,13 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_ASYNC);
   handle->async_cb = async_cb;
   handle->pending = 0;
-  handle->busy = 0;
+
+  /* fd as a state flag of the handle
+   * fd=0: handle idle (any thread can call uv_async_send to set pending flag)
+   * fd=1: handle busy (one thread is exclusively using uv_async_send)
+   * fd=2: handle closed (any thread can call uv_async_send, but do nothing)
+   * */
+  handle->u.fd = 0;
 
   QUEUE_INSERT_TAIL(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
@@ -63,7 +69,7 @@ int uv_async_send(uv_async_t* handle) {
     return 0;
 
   /* Tell the other thread we're busy with the handle. */
-  if (cmpxchgi(&handle->busy, 0, 1) != 0)
+  if (cmpxchgi(&handle->u.fd, 0, 1) != 0)
     return 0;
 
   /* Set async pending  */
@@ -74,7 +80,7 @@ int uv_async_send(uv_async_t* handle) {
   uv__async_send(handle->loop);
 
   /* Tell the other thread we're done. */
-  if (cmpxchgi(&handle->busy, 1, 0) != 1)
+  if (cmpxchgi(&handle->u.fd, 1, 0) != 1)
     abort();
 
   return 0;
@@ -84,10 +90,8 @@ int uv_async_send(uv_async_t* handle) {
 /* Only call this from the event loop thread. */
 static void uv__async_spin(uv_async_t* handle) {
   for (;;) {
-    /* busy=1: spin wait other thread to not busy
-     * busy=0: set to 2 and return -> other thread will not trigger handler
-     * */
-    if (cmpxchgi(&handle->busy, 0, 2) == 0)
+    /* mark the handle to be closed if not busy */
+    if (cmpxchgi(&handle->u.fd, 0, 2) == 0)
         break;
 
     /* Other thread is busy with this handle, spin until it's done. */
