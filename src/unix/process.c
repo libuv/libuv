@@ -119,11 +119,20 @@ static int uv__make_socketpair(int fds[2]) {
 
   return 0;
 #else
+  int err;
+
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds))
     return UV__ERR(errno);
 
-  uv__cloexec(fds[0], 1);
-  uv__cloexec(fds[1], 1);
+  err = uv__cloexec(fds[0], 1);
+  if (err == 0)
+    err = uv__cloexec(fds[1], 1);
+
+  if (err != 0) {
+    uv__close(fds[0]);
+    uv__close(fds[1]);
+    return UV__ERR(errno);
+  }
 
   return 0;
 #endif
