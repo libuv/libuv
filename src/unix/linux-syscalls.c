@@ -33,12 +33,6 @@
 # endif
 #endif
 
-#if defined(__i386__)
-# ifndef __NR_socketcall
-#  define __NR_socketcall 102
-# endif
-#endif
-
 #if defined(__arm__)
 # if defined(__thumb__) || defined(__ARM_EABI__)
 #  define UV_SYSCALL_BASE 0
@@ -46,16 +40,6 @@
 #  define UV_SYSCALL_BASE 0x900000
 # endif
 #endif /* __arm__ */
-
-#ifndef __NR_accept4
-# if defined(__x86_64__)
-#  define __NR_accept4 288
-# elif defined(__i386__)
-   /* Nothing. Handled through socketcall(). */
-# elif defined(__arm__)
-#  define __NR_accept4 (UV_SYSCALL_BASE + 366)
-# endif
-#endif /* __NR_accept4 */
 
 #ifndef __NR_eventfd
 # if defined(__x86_64__)
@@ -218,35 +202,6 @@
 #  define __NR_getrandom 349
 # endif
 #endif /* __NR_getrandom */
-
-int uv__accept4(int fd, struct sockaddr* addr, socklen_t* addrlen, int flags) {
-#if defined(__i386__)
-  unsigned long args[4];
-  int r;
-
-  args[0] = (unsigned long) fd;
-  args[1] = (unsigned long) addr;
-  args[2] = (unsigned long) addrlen;
-  args[3] = (unsigned long) flags;
-
-  r = syscall(__NR_socketcall, 18 /* SYS_ACCEPT4 */, args);
-
-  /* socketcall() raises EINVAL when SYS_ACCEPT4 is not supported but so does
-   * a bad flags argument. Try to distinguish between the two cases.
-   */
-  if (r == -1)
-    if (errno == EINVAL)
-      if ((flags & ~(UV__SOCK_CLOEXEC|UV__SOCK_NONBLOCK)) == 0)
-        errno = ENOSYS;
-
-  return r;
-#elif defined(__NR_accept4)
-  return syscall(__NR_accept4, fd, addr, addrlen, flags);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
 
 int uv__eventfd(unsigned int count) {
 #if defined(__NR_eventfd)

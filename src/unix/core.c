@@ -71,16 +71,11 @@ extern char** environ;
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
-# if defined(__FreeBSD__)
+# if defined(__FreeBSD__) || defined(__linux__)
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
 #  define uv__accept4(a, b, c, d) paccept((a), (b), (c), NULL, (d))
-# endif
-# if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || \
-      defined(__NetBSD__) || defined(__OpenBSD__)
-#  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
-#  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
 # endif
 #endif
 
@@ -469,50 +464,32 @@ int uv__accept(int sockfd) {
   int peerfd;
   int err;
 
+  (void) &err;
   assert(sockfd >= 0);
 
-  while (1) {
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)
-    static int no_accept4;
+  do
+#ifdef uv__accept4
+    peerfd = uv__accept4(sockfd, NULL, NULL, SOCK_NONBLOCK|SOCK_CLOEXEC);
+#else
+    peerfd = accept(sockfd, NULL, NULL);
+#endif
+  while (peerfd == -1 && errno == EINTR);
 
-    if (no_accept4)
-      goto skip;
+  if (peerfd == -1)
+    return UV__ERR(errno);
 
-    peerfd = uv__accept4(sockfd,
-                         NULL,
-                         NULL,
-                         UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
-    if (peerfd != -1)
-      return peerfd;
+#ifndef uv__accept4
+  err = uv__cloexec(peerfd, 1);
+  if (err == 0)
+    err = uv__nonblock(peerfd, 1);
 
-    if (errno == EINTR)
-      continue;
-
-    if (errno != ENOSYS)
-      return UV__ERR(errno);
-
-    no_accept4 = 1;
-skip:
+  if (err != 0) {
+    uv__close(peerfd);
+    return err;
+  }
 #endif
 
-    peerfd = accept(sockfd, NULL, NULL);
-    if (peerfd == -1) {
-      if (errno == EINTR)
-        continue;
-      return UV__ERR(errno);
-    }
-
-    err = uv__cloexec(peerfd, 1);
-    if (err == 0)
-      err = uv__nonblock(peerfd, 1);
-
-    if (err) {
-      uv__close(peerfd);
-      return err;
-    }
-
-    return peerfd;
-  }
+  return peerfd;
 }
 
 

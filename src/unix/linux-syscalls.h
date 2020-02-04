@@ -123,7 +123,6 @@ struct uv__mmsghdr {
   unsigned int msg_len;
 };
 
-int uv__accept4(int fd, struct sockaddr* addr, socklen_t* addrlen, int flags);
 int uv__eventfd(unsigned int count);
 int uv__eventfd2(unsigned int count, int flags);
 int uv__inotify_init(void);
