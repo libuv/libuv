@@ -112,39 +112,21 @@ static void uv__chld(uv_signal_t* handle, int signum) {
 }
 
 
-int uv__make_socketpair(int fds[2], int flags) {
-#if defined(__linux__)
-  static int no_cloexec;
-
-  if (no_cloexec)
-    goto skip;
-
-  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | flags, 0, fds) == 0)
-    return 0;
-
-  /* Retry on EINVAL, it means SOCK_CLOEXEC is not supported.
-   * Anything else is a genuine error.
-   */
-  if (errno != EINVAL)
+static int uv__make_socketpair(int fds[2]) {
+#if defined(__FreeBSD__) || defined(__linux__)
+  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds))
     return UV__ERR(errno);
 
-  no_cloexec = 1;
-
-skip:
-#endif
-
+  return 0;
+#else
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds))
     return UV__ERR(errno);
 
   uv__cloexec(fds[0], 1);
   uv__cloexec(fds[1], 1);
 
-  if (flags & UV__F_NONBLOCK) {
-    uv__nonblock(fds[0], 1);
-    uv__nonblock(fds[1], 1);
-  }
-
   return 0;
+#endif
 }
 
 
@@ -200,7 +182,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
     if (container->data.stream->type != UV_NAMED_PIPE)
       return UV_EINVAL;
     else
-      return uv__make_socketpair(fds, 0);
+      return uv__make_socketpair(fds);
 
   case UV_INHERIT_FD:
   case UV_INHERIT_STREAM:

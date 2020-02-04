@@ -290,7 +290,6 @@ int uv___stream_fd(const uv_stream_t* handle);
 # define UV__F_NONBLOCK 1
 #endif
 
-int uv__make_socketpair(int fds[2], int flags);
 int uv__make_pipe(int fds[2], int flags);
 
 #if defined(__APPLE__)
