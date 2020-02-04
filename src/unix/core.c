@@ -1003,47 +1003,30 @@ int uv__open_cloexec(const char* path, int flags) {
 
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__linux__)
   int r;
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return UV__ERR(errno);
+
   return r;
-#elif defined(__linux__)
-  static int no_dup3;
-  if (!no_dup3) {
-    do
-      r = uv__dup3(oldfd, newfd, O_CLOEXEC);
-    while (r == -1 && errno == EBUSY);
-    if (r != -1)
-      return r;
-    if (errno != ENOSYS)
-      return UV__ERR(errno);
-    /* Fall through. */
-    no_dup3 = 1;
-  }
-#endif
-  {
-    int err;
-    do
-      r = dup2(oldfd, newfd);
-#if defined(__linux__)
-    while (r == -1 && errno == EBUSY);
 #else
-    while (0);  /* Never retry. */
-#endif
+  int err;
+  int r;
 
-    if (r == -1)
-      return UV__ERR(errno);
+  r = dup2(oldfd, newfd);  /* Never retry. */
+  if (r == -1)
+    return UV__ERR(errno);
 
-    err = uv__cloexec(newfd, 1);
-    if (err) {
-      uv__close(newfd);
-      return err;
-    }
-
-    return r;
+  err = uv__cloexec(newfd, 1);
+  if (err != 0) {
+    uv__close(newfd);
+    return err;
   }
+
+  return r;
+#endif
 }
 
 
