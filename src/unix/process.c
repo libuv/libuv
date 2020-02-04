@@ -149,15 +149,26 @@ int uv__make_pipe(int fds[2], int flags) {
   if (pipe(fds))
     return UV__ERR(errno);
 
-  uv__cloexec(fds[0], 1);
-  uv__cloexec(fds[1], 1);
+  if (uv__cloexec(fds[0], 1))
+    goto fail;
+
+  if (uv__cloexec(fds[1], 1))
+    goto fail;
 
   if (flags & UV__F_NONBLOCK) {
-    uv__nonblock(fds[0], 1);
-    uv__nonblock(fds[1], 1);
+    if (uv__nonblock(fds[0], 1))
+      goto fail;
+
+    if (uv__nonblock(fds[1], 1))
+      goto fail;
   }
 
   return 0;
+
+fail:
+  uv__close(fds[0]);
+  uv__close(fds[1]);
+  return UV__ERR(errno);
 #endif
 }
 
