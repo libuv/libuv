@@ -31,9 +31,6 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 
-#define UV__EFD_CLOEXEC       O_CLOEXEC
-#define UV__EFD_NONBLOCK      O_NONBLOCK
-
 #define UV__IN_CLOEXEC        O_CLOEXEC
 #define UV__IN_NONBLOCK       O_NONBLOCK
 
@@ -94,8 +91,6 @@ struct uv__mmsghdr {
   unsigned int msg_len;
 };
 
-int uv__eventfd(unsigned int count);
-int uv__eventfd2(unsigned int count, int flags);
 int uv__inotify_init(void);
 int uv__inotify_init1(int flags);
 int uv__inotify_add_watch(int fd, const char* path, uint32_t mask);

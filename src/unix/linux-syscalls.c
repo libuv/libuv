@@ -34,26 +34,6 @@
 # endif
 #endif /* __arm__ */
 
-#ifndef __NR_eventfd
-# if defined(__x86_64__)
-#  define __NR_eventfd 284
-# elif defined(__i386__)
-#  define __NR_eventfd 323
-# elif defined(__arm__)
-#  define __NR_eventfd (UV_SYSCALL_BASE + 351)
-# endif
-#endif /* __NR_eventfd */
-
-#ifndef __NR_eventfd2
-# if defined(__x86_64__)
-#  define __NR_eventfd2 290
-# elif defined(__i386__)
-#  define __NR_eventfd2 328
-# elif defined(__arm__)
-#  define __NR_eventfd2 (UV_SYSCALL_BASE + 356)
-# endif
-#endif /* __NR_eventfd2 */
-
 #ifndef __NR_inotify_init
 # if defined(__x86_64__)
 #  define __NR_inotify_init 253
@@ -185,23 +165,6 @@
 #  define __NR_getrandom 349
 # endif
 #endif /* __NR_getrandom */
-
-int uv__eventfd(unsigned int count) {
-#if defined(__NR_eventfd)
-  return syscall(__NR_eventfd, count);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__eventfd2(unsigned int count, int flags) {
-#if defined(__NR_eventfd2)
-  return syscall(__NR_eventfd2, count, flags);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
 
 
 int uv__inotify_init(void) {
