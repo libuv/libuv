@@ -31,33 +31,11 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 
-#if defined(__alpha__)
-# define UV__O_CLOEXEC        0x200000
-#elif defined(__hppa__)
-# define UV__O_CLOEXEC        0x200000
-#elif defined(__sparc__)
-# define UV__O_CLOEXEC        0x400000
-#else
-# define UV__O_CLOEXEC        0x80000
-#endif
+#define UV__EFD_CLOEXEC       O_CLOEXEC
+#define UV__EFD_NONBLOCK      O_NONBLOCK
 
-#if defined(__alpha__)
-# define UV__O_NONBLOCK       0x4
-#elif defined(__hppa__)
-# define UV__O_NONBLOCK       O_NONBLOCK
-#elif defined(__mips__)
-# define UV__O_NONBLOCK       0x80
-#elif defined(__sparc__)
-# define UV__O_NONBLOCK       0x4000
-#else
-# define UV__O_NONBLOCK       0x800
-#endif
-
-#define UV__EFD_CLOEXEC       UV__O_CLOEXEC
-#define UV__EFD_NONBLOCK      UV__O_NONBLOCK
-
-#define UV__IN_CLOEXEC        UV__O_CLOEXEC
-#define UV__IN_NONBLOCK       UV__O_NONBLOCK
+#define UV__IN_CLOEXEC        O_CLOEXEC
+#define UV__IN_NONBLOCK       O_NONBLOCK
 
 /* inotify flags */
 #define UV__IN_ACCESS         0x001
@@ -122,7 +100,6 @@ int uv__inotify_init(void);
 int uv__inotify_init1(int flags);
 int uv__inotify_add_watch(int fd, const char* path, uint32_t mask);
 int uv__inotify_rm_watch(int fd, int32_t wd);
-int uv__pipe2(int pipefd[2], int flags);
 int uv__recvmmsg(int fd,
                  struct uv__mmsghdr* mmsg,
                  unsigned int vlen,

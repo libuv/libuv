@@ -26,13 +26,6 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#if defined(__has_feature)
-# if __has_feature(memory_sanitizer)
-#  define MSAN_ACTIVE 1
-#  include <sanitizer/msan_interface.h>
-# endif
-#endif
-
 #if defined(__arm__)
 # if defined(__thumb__) || defined(__ARM_EABI__)
 #  define UV_SYSCALL_BASE 0
@@ -100,16 +93,6 @@
 #  define __NR_inotify_rm_watch (UV_SYSCALL_BASE + 318)
 # endif
 #endif /* __NR_inotify_rm_watch */
-
-#ifndef __NR_pipe2
-# if defined(__x86_64__)
-#  define __NR_pipe2 293
-# elif defined(__i386__)
-#  define __NR_pipe2 331
-# elif defined(__arm__)
-#  define __NR_pipe2 (UV_SYSCALL_BASE + 359)
-# endif
-#endif /* __NR_pipe2 */
 
 #ifndef __NR_recvmmsg
 # if defined(__x86_64__)
@@ -251,21 +234,6 @@ int uv__inotify_add_watch(int fd, const char* path, uint32_t mask) {
 int uv__inotify_rm_watch(int fd, int32_t wd) {
 #if defined(__NR_inotify_rm_watch)
   return syscall(__NR_inotify_rm_watch, fd, wd);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__pipe2(int pipefd[2], int flags) {
-#if defined(__NR_pipe2)
-  int result;
-  result = syscall(__NR_pipe2, pipefd, flags);
-#if MSAN_ACTIVE
-  if (!result)
-    __msan_unpoison(pipefd, sizeof(int[2]));
-#endif
-  return result;
 #else
   return errno = ENOSYS, -1;
 #endif

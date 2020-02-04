@@ -140,23 +140,12 @@ static int uv__make_socketpair(int fds[2]) {
 
 
 int uv__make_pipe(int fds[2], int flags) {
-#if defined(__linux__)
-  static int no_pipe2;
-
-  if (no_pipe2)
-    goto skip;
-
-  if (uv__pipe2(fds, flags | UV__O_CLOEXEC) == 0)
-    return 0;
-
-  if (errno != ENOSYS)
+#if defined(__FreeBSD__) || defined(__linux__)
+  if (pipe2(fds, flags | O_CLOEXEC))
     return UV__ERR(errno);
 
-  no_pipe2 = 1;
-
-skip:
-#endif
-
+  return 0;
+#else
   if (pipe(fds))
     return UV__ERR(errno);
 
@@ -169,6 +158,7 @@ skip:
   }
 
   return 0;
+#endif
 }
 
 
