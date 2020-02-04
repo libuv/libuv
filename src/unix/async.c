@@ -72,7 +72,7 @@ int uv_async_send(uv_async_t* handle) {
   if (cmpxchgi(&handle->u.fd, 0, 1) != 0)
     return 0;
 
-  /* Set async pending  */
+  /* Set async pending. */
   if (cmpxchgi(&handle->pending, 0, 1) != 0)
     return 0;
 
@@ -87,21 +87,15 @@ int uv_async_send(uv_async_t* handle) {
 }
 
 
-/* Only call this from the event loop thread. */
-static void uv__async_spin(uv_async_t* handle) {
+void uv__async_close(uv_async_t* handle) {
   for (;;) {
-    /* mark the handle to be closed if not busy */
+    /* Mark the handle to be closed if not busy. */
     if (cmpxchgi(&handle->u.fd, 0, 2) == 0)
-        break;
+      break;
 
     /* Other thread is busy with this handle, spin until it's done. */
     cpu_relax();
   }
-}
-
-
-void uv__async_close(uv_async_t* handle) {
-  uv__async_spin(handle);
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 }
