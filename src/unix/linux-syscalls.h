@@ -31,23 +31,6 @@
 #include <sys/time.h>
 #include <sys/socket.h>
 
-#define UV__IN_CLOEXEC        O_CLOEXEC
-#define UV__IN_NONBLOCK       O_NONBLOCK
-
-/* inotify flags */
-#define UV__IN_ACCESS         0x001
-#define UV__IN_MODIFY         0x002
-#define UV__IN_ATTRIB         0x004
-#define UV__IN_CLOSE_WRITE    0x008
-#define UV__IN_CLOSE_NOWRITE  0x010
-#define UV__IN_OPEN           0x020
-#define UV__IN_MOVED_FROM     0x040
-#define UV__IN_MOVED_TO       0x080
-#define UV__IN_CREATE         0x100
-#define UV__IN_DELETE         0x200
-#define UV__IN_DELETE_SELF    0x400
-#define UV__IN_MOVE_SELF      0x800
-
 struct uv__statx_timestamp {
   int64_t tv_sec;
   uint32_t tv_nsec;
@@ -78,23 +61,11 @@ struct uv__statx {
   uint64_t unused1[14];
 };
 
-struct uv__inotify_event {
-  int32_t wd;
-  uint32_t mask;
-  uint32_t cookie;
-  uint32_t len;
-  /* char name[0]; */
-};
-
 struct uv__mmsghdr {
   struct msghdr msg_hdr;
   unsigned int msg_len;
 };
 
-int uv__inotify_init(void);
-int uv__inotify_init1(int flags);
-int uv__inotify_add_watch(int fd, const char* path, uint32_t mask);
-int uv__inotify_rm_watch(int fd, int32_t wd);
 int uv__recvmmsg(int fd,
                  struct uv__mmsghdr* mmsg,
                  unsigned int vlen,

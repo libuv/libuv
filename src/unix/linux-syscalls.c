@@ -34,46 +34,6 @@
 # endif
 #endif /* __arm__ */
 
-#ifndef __NR_inotify_init
-# if defined(__x86_64__)
-#  define __NR_inotify_init 253
-# elif defined(__i386__)
-#  define __NR_inotify_init 291
-# elif defined(__arm__)
-#  define __NR_inotify_init (UV_SYSCALL_BASE + 316)
-# endif
-#endif /* __NR_inotify_init */
-
-#ifndef __NR_inotify_init1
-# if defined(__x86_64__)
-#  define __NR_inotify_init1 294
-# elif defined(__i386__)
-#  define __NR_inotify_init1 332
-# elif defined(__arm__)
-#  define __NR_inotify_init1 (UV_SYSCALL_BASE + 360)
-# endif
-#endif /* __NR_inotify_init1 */
-
-#ifndef __NR_inotify_add_watch
-# if defined(__x86_64__)
-#  define __NR_inotify_add_watch 254
-# elif defined(__i386__)
-#  define __NR_inotify_add_watch 292
-# elif defined(__arm__)
-#  define __NR_inotify_add_watch (UV_SYSCALL_BASE + 317)
-# endif
-#endif /* __NR_inotify_add_watch */
-
-#ifndef __NR_inotify_rm_watch
-# if defined(__x86_64__)
-#  define __NR_inotify_rm_watch 255
-# elif defined(__i386__)
-#  define __NR_inotify_rm_watch 293
-# elif defined(__arm__)
-#  define __NR_inotify_rm_watch (UV_SYSCALL_BASE + 318)
-# endif
-#endif /* __NR_inotify_rm_watch */
-
 #ifndef __NR_recvmmsg
 # if defined(__x86_64__)
 #  define __NR_recvmmsg 299
@@ -165,42 +125,6 @@
 #  define __NR_getrandom 349
 # endif
 #endif /* __NR_getrandom */
-
-
-int uv__inotify_init(void) {
-#if defined(__NR_inotify_init)
-  return syscall(__NR_inotify_init);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__inotify_init1(int flags) {
-#if defined(__NR_inotify_init1)
-  return syscall(__NR_inotify_init1, flags);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__inotify_add_watch(int fd, const char* path, uint32_t mask) {
-#if defined(__NR_inotify_add_watch)
-  return syscall(__NR_inotify_add_watch, fd, path, mask);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__inotify_rm_watch(int fd, int32_t wd) {
-#if defined(__NR_inotify_rm_watch)
-  return syscall(__NR_inotify_rm_watch, fd, wd);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
 
 
 int uv__sendmmsg(int fd,
