@@ -59,13 +59,6 @@
 #define UV__IN_CLOEXEC        UV__O_CLOEXEC
 #define UV__IN_NONBLOCK       UV__O_NONBLOCK
 
-#define UV__SOCK_CLOEXEC      UV__O_CLOEXEC
-#if defined(SOCK_NONBLOCK)
-# define UV__SOCK_NONBLOCK    SOCK_NONBLOCK
-#else
-# define UV__SOCK_NONBLOCK    UV__O_NONBLOCK
-#endif
-
 /* inotify flags */
 #define UV__IN_ACCESS         0x001
 #define UV__IN_MODIFY         0x002

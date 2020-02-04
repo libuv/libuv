@@ -119,7 +119,7 @@ int uv__make_socketpair(int fds[2], int flags) {
   if (no_cloexec)
     goto skip;
 
-  if (socketpair(AF_UNIX, SOCK_STREAM | UV__SOCK_CLOEXEC | flags, 0, fds) == 0)
+  if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | flags, 0, fds) == 0)
     return 0;
 
   /* Retry on EINVAL, it means SOCK_CLOEXEC is not supported.
