@@ -111,9 +111,6 @@ if(WIN32)
        src/win/util.c
        src/win/winapi.c
        src/win/winsock.c)
-  list(APPEND uv_test_sources
-    ${PROJECT_SOURCE_DIR}/src/win/snprintf.c
-    ${PROJECT_SOURCE_DIR}/test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
@@ -263,7 +260,7 @@ target_include_directories(uv
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
-target_link_libraries(uv PUBLIC ${uv_libraries})
+target_link_libraries(uv ${uv_libraries})
 
 add_library(uv_a STATIC ${uv_sources})
 target_compile_definitions(uv_a PRIVATE ${uv_defines})
@@ -274,7 +271,7 @@ target_include_directories(uv_a
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
-  target_link_libraries(uv_a PUBLIC ${uv_libraries})
+target_link_libraries(uv_a ${uv_libraries})
 
 if(LIBUV_BUILD_TESTS)
   add_subdirectory(test)
