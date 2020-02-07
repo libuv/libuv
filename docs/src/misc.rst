@@ -261,9 +261,9 @@ API
 
 .. c:function:: char** uv_setup_args(int argc, char** argv)
 
-    Store the program arguments. Required for getting / setting the process title.
-    Libuv may take ownership of the memory that `argv` points to. This function
-    should be called exactly once, at program start-up.
+    Store the program arguments. Required for getting / setting the process title
+    or the executable path. Libuv may take ownership of the memory that `argv` 
+    points to. This function should be called exactly once, at program start-up.
 
     Example:
 
@@ -440,7 +440,8 @@ API
 
 .. c:function:: int uv_exepath(char* buffer, size_t* size)
 
-    Gets the executable path.
+    Gets the executable path. You *must* call `uv_setup_args` before calling
+    this function.
 
 .. c:function:: int uv_cwd(char* buffer, size_t* size)
 

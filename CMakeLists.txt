@@ -285,7 +285,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
     src/unix/aix-common.c
     src/unix/ibmi.c
     src/unix/no-fsevents.c
-    src/unix/no-proctitle.c
     src/unix/posix-poll.c)
 endif()
 

@@ -380,8 +380,7 @@ uvinclude_HEADERS += include/uv/posix.h
 libuv_la_SOURCES += src/unix/aix-common.c \
                     src/unix/ibmi.c \
                     src/unix/posix-poll.c \
-                    src/unix/no-fsevents.c \
-                    src/unix/no-proctitle.c
+                    src/unix/no-fsevents.c
 endif
 
 if ANDROID
