@@ -45,6 +45,7 @@ int ipc_helper_bind_twice(void);
 int ipc_helper_send_zero(void);
 int stdio_over_pipes_helper(void);
 void spawn_stdin_stdout(void);
+void process_title_big_argv(void);
 int spawn_tcp_server_helper(void);
 
 static int maybe_run_test(int argc, char **argv);
@@ -234,6 +235,12 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 #endif  /* !_WIN32 */
+
+  if (strcmp(argv[1], "process_title_big_argv_helper") == 0) {
+    notify_parent_process();
+    process_title_big_argv();
+    return 0;
+  }
 
   return run_test(argv[1], 0, 1);
 }

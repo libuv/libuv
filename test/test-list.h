@@ -242,6 +242,7 @@ TEST_DECLARE   (async_null_cb)
 TEST_DECLARE   (eintr_handling)
 TEST_DECLARE   (get_currentexe)
 TEST_DECLARE   (process_title)
+TEST_DECLARE   (process_title_big_argv)
 TEST_DECLARE   (process_title_threadsafe)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
@@ -788,6 +789,7 @@ TASK_LIST_START
   TEST_ENTRY  (get_currentexe)
 
   TEST_ENTRY  (process_title)
+  TEST_ENTRY  (process_title_big_argv)
   TEST_ENTRY  (process_title_threadsafe)
 
   TEST_ENTRY  (cwd_and_chdir)
