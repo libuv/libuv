@@ -24,16 +24,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct uv__process_title {
+  char* str;
+  size_t len;
+};
+
 extern void uv__set_process_title(const char* title);
 
 static uv_mutex_t process_title_mutex;
 static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
+static struct uv__process_title process_title;
 static void* args_mem;
-
-static struct {
-  char* str;
-  size_t len;
-} process_title;
 
 
 static void init_process_title_mutex_once(void) {
@@ -42,6 +43,7 @@ static void init_process_title_mutex_once(void) {
 
 
 char** uv_setup_args(int argc, char** argv) {
+  struct uv__process_title pt;
   char** new_argv;
   size_t size;
   char* s;
@@ -57,12 +59,12 @@ char** uv_setup_args(int argc, char** argv) {
 
 #if defined(__MVS__)
   /* argv is not adjacent. So just use argv[0] */
-  process_title.str = argv[0];
-  process_title.len = strlen(argv[0]);
+  pt.str = argv[0];
+  pt.len = strlen(argv[0]);
 #else
-  process_title.str = argv[0];
-  process_title.len = argv[argc - 1] + strlen(argv[argc - 1]) - argv[0];
-  assert(process_title.len + 1 == size);  /* argv memory should be adjacent. */
+  pt.str = argv[0];
+  pt.len = argv[argc - 1] + strlen(argv[argc - 1]) - argv[0];
+  assert(pt.len + 1 == size);  /* argv memory should be adjacent. */
 #endif
 
   /* Add space for the argv pointers. */
@@ -71,7 +73,6 @@ char** uv_setup_args(int argc, char** argv) {
   new_argv = uv__malloc(size);
   if (new_argv == NULL)
     return argv;
-  args_mem = new_argv;
 
   /* Copy over the strings and set up the pointer table. */
   s = (char*) &new_argv[argc + 1];
@@ -82,6 +83,9 @@ char** uv_setup_args(int argc, char** argv) {
     s += size;
   }
   new_argv[i] = NULL;
+
+  args_mem = new_argv;
+  process_title = pt;
 
   return new_argv;
 }
