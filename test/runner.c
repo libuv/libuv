@@ -256,7 +256,7 @@ int run_test(const char* test,
   do {
     const char* var;
 
-    var = getenv("UV_TIMEOUT_MULTIPLIER");
+    var = getenv("UV_TEST_TIMEOUT_MULTIPLIER");
     if (var == NULL)
       break;
 
