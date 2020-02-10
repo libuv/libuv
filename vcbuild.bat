@@ -128,8 +128,8 @@ if defined noprojgen goto msbuild
 
 @rem Generate the VS project.
 if exist build\gyp goto have_gyp
-echo git clone https://chromium.googlesource.com/external/gyp build/gyp
-git clone https://chromium.googlesource.com/external/gyp build/gyp
+echo git clone https://github.com/libuv/gyp build/gyp
+git clone https://github.com/libuv/gyp build/gyp
 if errorlevel 1 goto gyp_install_failed
 goto have_gyp
 

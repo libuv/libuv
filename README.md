@@ -182,7 +182,7 @@ $ ./out/cmake/uv_run_tests_a  # static library build
 To build with GYP, first run:
 
 ```bash
-$ git clone https://chromium.googlesource.com/external/gyp build/gyp
+$ git clone https://github.com/libuv/gyp build/gyp
 ```
 
 ### Windows
