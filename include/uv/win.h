@@ -44,9 +44,9 @@ typedef struct pollfd {
 # define LOCALE_INVARIANT 0x007f
 #endif
 
-#include <mswsock.h>
-#include <ws2tcpip.h>
-#include <windows.h>
+#include <MSWSock.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
 
 #include <process.h>
 #include <signal.h>

@@ -22,11 +22,11 @@
 #ifndef UV_WIN_WINSOCK_H_
 #define UV_WIN_WINSOCK_H_
 
-#include <winsock2.h>
+#include <WinSock2.h>
 #include <iptypes.h>
-#include <mswsock.h>
-#include <ws2tcpip.h>
-#include <windows.h>
+#include <MSWSock.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
 
 #include "winapi.h"
 
