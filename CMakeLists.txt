@@ -64,7 +64,6 @@ set(uv_sources
     src/uv-data-getter-setters.c
     src/version.c)
 
-
 if(WIN32)
   if (CMAKE_SYSTEM_VERSION VERSION_GREATER 10) # Windows 10
     set(windows-version 0x0A00)
@@ -416,6 +415,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-timer.c
        test/test-tmpdir.c
        test/test-tty-duplicate-key.c
+       test/test-tty-escape-sequence-processing.c
        test/test-tty.c
        test/test-udp-alloc-cb-fail.c
        test/test-udp-bind.c
