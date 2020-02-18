@@ -62,7 +62,9 @@
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
-static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info);
+static void uv_tty_capture_initial_style(
+    CONSOLE_SCREEN_BUFFER_INFO* screen_buffer_info,
+    CONSOLE_CURSOR_INFO* cursor_info);
 static void uv_tty_update_virtual_window(CONSOLE_SCREEN_BUFFER_INFO* info);
 static int uv__cancel_read_console(uv_tty_t* handle);
 
@@ -149,6 +151,8 @@ static char uv_tty_default_fg_bright = 0;
 static char uv_tty_default_bg_bright = 0;
 static char uv_tty_default_inverse = 0;
 
+static CONSOLE_CURSOR_INFO uv_tty_default_cursor_info;
+
 /* Determine whether or not ANSI support is enabled. */
 static BOOL uv__need_check_vterm_state = TRUE;
 static uv_tty_vtermstate_t uv__vterm_state = UV_TTY_UNSUPPORTED;
@@ -183,6 +187,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
   DWORD NumberOfEvents;
   HANDLE handle;
   CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
+  CONSOLE_CURSOR_INFO cursor_info;
   (void)unused;
 
   uv__once_init();
@@ -215,6 +220,11 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
       return uv_translate_sys_error(GetLastError());
     }
 
+    /* Obtain the cursor info with the output handle. */
+    if (!GetConsoleCursorInfo(handle, &cursor_info)) {
+      return uv_translate_sys_error(GetLastError());
+    }
+
     /* Obtain the tty_output_lock because the virtual window state is shared
      * between all uv_tty_t handles. */
     uv_sem_wait(&uv_tty_output_lock);
@@ -222,8 +232,8 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
     if (uv__need_check_vterm_state)
       uv__determine_vterm_state(handle);
 
-    /* Remember the original console text attributes. */
-    uv_tty_capture_initial_style(&screen_buffer_info);
+    /* Remember the original console text attributes and cursor info. */
+    uv_tty_capture_initial_style(&screen_buffer_info, &cursor_info);
 
     uv_tty_update_virtual_window(&screen_buffer_info);
 
@@ -274,7 +284,9 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
 /* Set the default console text attributes based on how the console was
  * configured when libuv started.
  */
-static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info) {
+static void uv_tty_capture_initial_style(
+    CONSOLE_SCREEN_BUFFER_INFO* screen_buffer_info,
+    CONSOLE_CURSOR_INFO* cursor_info) {
   static int style_captured = 0;
 
   /* Only do this once.
@@ -283,7 +295,7 @@ static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info) {
     return;
 
   /* Save raw win32 attributes. */
-  uv_tty_default_text_attributes = info->wAttributes;
+  uv_tty_default_text_attributes = screen_buffer_info->wAttributes;
 
   /* Convert black text on black background to use white text. */
   if (uv_tty_default_text_attributes == 0)
@@ -322,6 +334,9 @@ static void uv_tty_capture_initial_style(CONSOLE_SCREEN_BUFFER_INFO* info) {
 
   if (uv_tty_default_text_attributes & COMMON_LVB_REVERSE_VIDEO)
     uv_tty_default_inverse = 1;
+
+  /* Save the cursor size and the cursor state. */
+  uv_tty_default_cursor_info = *cursor_info;
 
   style_captured = 1;
 }
@@ -1230,7 +1245,7 @@ static int uv_tty_move_caret(uv_tty_t* handle, int x, unsigned char x_relative,
 static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
   const COORD origin = {0, 0};
   const WORD char_attrs = uv_tty_default_text_attributes;
-  CONSOLE_SCREEN_BUFFER_INFO info;
+  CONSOLE_SCREEN_BUFFER_INFO screen_buffer_info;
   DWORD count, written;
 
   if (*error != ERROR_SUCCESS) {
@@ -1251,12 +1266,12 @@ static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
 
   /* Clear the screen buffer. */
  retry:
-  if (!GetConsoleScreenBufferInfo(handle->handle, &info)) {
-    *error = GetLastError();
-    return -1;
+   if (!GetConsoleScreenBufferInfo(handle->handle, &screen_buffer_info)) {
+     *error = GetLastError();
+     return -1;
   }
 
-  count = info.dwSize.X * info.dwSize.Y;
+  count = screen_buffer_info.dwSize.X * screen_buffer_info.dwSize.Y;
 
   if (!(FillConsoleOutputCharacterW(handle->handle,
                                     L'\x20',
@@ -1279,7 +1294,13 @@ static int uv_tty_reset(uv_tty_t* handle, DWORD* error) {
 
   /* Move the virtual window up to the top. */
   uv_tty_virtual_offset = 0;
-  uv_tty_update_virtual_window(&info);
+  uv_tty_update_virtual_window(&screen_buffer_info);
+
+  /* Reset the cursor size and the cursor state. */
+  if (!SetConsoleCursorInfo(handle->handle, &uv_tty_default_cursor_info)) {
+    *error = GetLastError();
+    return -1;
+  }
 
   return 0;
 }
