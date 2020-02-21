@@ -84,7 +84,7 @@ int scandir(const char* maindir, struct dirent*** namelist,
   *namelist = nl;
   return count;
 
- error:
+error:
   while (count) {
     dirent = nl[--count];
     uv__free(dirent);
