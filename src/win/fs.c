@@ -2627,8 +2627,86 @@ static void fs__statfs(uv_fs_t* req) {
                              &bytes_per_sector,
                              &free_clusters,
                              &total_clusters)) {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
-    return;
+    DWORD err;
+
+    err = GetLastError();
+    if (err == ERROR_DIRECTORY) {
+      WCHAR* pathw;
+      size_t len;
+      DWORD ret;
+
+      len = MAX_PATH + 1;
+      pathw = uv__malloc(len * sizeof(*pathw));
+retry:
+      ret = GetFullPathNameW(req->file.pathw,
+                             len,
+                             pathw,
+                             NULL);
+      if (ret == 0) {
+        uv__free(pathw);
+        SET_REQ_WIN32_ERROR(req, err);
+        return;
+      } else if (ret > len) {
+        WCHAR* saved_pathw;
+
+        len = ret;
+        saved_pathw = pathw;
+        pathw = uv__realloc(pathw, len * sizeof(*pathw));
+        if (pathw == NULL) {
+          uv__free(saved_pathw);
+          SET_REQ_WIN32_ERROR(req, err);
+          return;
+        }
+        goto retry;
+      }
+
+      if (((pathw[0] >= L'A' && pathw[0] <= L'Z')
+            || (pathw[0] >= L'a' && pathw[0] <= L'z'))
+          && pathw[1] == L':' && (pathw[2] == L'\\' || pathw[2] == L'/')) {
+        /* Start with <dirve>:[\/]. Absolute paths. */
+        pathw[3] = L'\0';
+      } else if ((pathw[0] == L'\\' || pathw[0] == L'/')
+                  && (pathw[0] == L'\\' || pathw[1] == L'/')) {
+        /* Start with [\/][\/]. The path is either a UNC path(\\server\share\)
+         * or a DOS device path(\\.\C:\Windows, \\?\C:\Windows,
+         * \\?\Volume{...}\Test), so the second path separator is end of the
+         * root directory. */
+        WCHAR* ptr;
+        int count;
+
+        count = 0;
+        ptr = pathw + 3;
+        while (*ptr) {
+          if (*ptr == L'\\' || *ptr == L'/')
+            count++;
+          if (count == 2) {
+            *++ptr = L'\0';
+            break;
+          }
+          ptr++;
+        }
+        if (count != 2) {
+          /* Invalid path? */
+          uv__free(pathw);
+          SET_REQ_WIN32_ERROR(req, err);
+          return;
+        }
+      }
+
+      if (0 == GetDiskFreeSpaceW(pathw,
+                                 &sectors_per_cluster,
+                                 &bytes_per_sector,
+                                 &free_clusters,
+                                 &total_clusters)) {
+        uv__free(pathw);
+        SET_REQ_WIN32_ERROR(req, GetLastError());
+        return;
+      }
+      uv__free(pathw);
+    } else {
+      SET_REQ_WIN32_ERROR(req, err);
+      return;
+    }
   }
 
   stat_fs = uv__malloc(sizeof(*stat_fs));
