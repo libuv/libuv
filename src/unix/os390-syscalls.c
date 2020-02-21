@@ -69,7 +69,7 @@ int scandir(const char* maindir, struct dirent*** namelist,
 
       nl = uv__realloc(nl, sizeof(*copy) * (count + 1));
       if (nl == NULL) {
-        free(copy);
+        uv__free(copy);
         goto error;
       }
       nl[count++] = copy;
