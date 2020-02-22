@@ -2660,17 +2660,19 @@ retry:
         goto retry;
       }
 
-      if (((pathw[0] >= L'A' && pathw[0] <= L'Z')
-            || (pathw[0] >= L'a' && pathw[0] <= L'z'))
-          && pathw[1] == L':' && (pathw[2] == L'\\' || pathw[2] == L'/')) {
-        /* Start with <drive>:[\/]. Absolute paths. */
+      /* The slash is a legal path separator, but it doesn't need to be
+       * considered because GetFullPathNameW converts it to a backslash. */
+      if (((pathw[0] >= L'A' && pathw[0] <= L'Z') ||
+            (pathw[0] >= L'a' && pathw[0] <= L'z')) &&
+           pathw[1] == L':' && pathw[2] == L'\\') {
+        /* Start with '<drive>:\'. Absolute paths. */
         pathw[3] = L'\0';
-      } else if ((pathw[0] == L'\\' || pathw[0] == L'/')
-                  && (pathw[1] == L'\\' || pathw[1] == L'/')) {
-        /* Start with [\/][\/]. The path is either a UNC path(\\server\share\)
+      } else if (pathw[0] == L'\\' && pathw[1] == L'\\' && pathw[2] != L'\0') {
+        /* Start with '\\'. The path is either a UNC path(\\server\share\)
          * or a DOS device path(\\.\C:\Windows, \\?\C:\Windows,
-         * \\?\Volume{...}\Test), so the second path separator is end of the
-         * root directory. */
+         * \\?\Volume{...}\Test), so the second path separator or end of string
+         * is end of the root directory. We do not need to consider duplicate
+         * path separators because GetFullPathNameW removes them.*/
         WCHAR* ptr;
         int count;
 
@@ -2685,12 +2687,16 @@ retry:
           }
           ptr++;
         }
+        /* Add a trailing backslash as required by GetDiskFreeSpaceW. */
         if (count != 2) {
-          /* Invalid path? */
-          uv__free(pathw);
-          SET_REQ_WIN32_ERROR(req, err);
-          return;
+          *ptr++ = L'\\';
+          *ptr = L'\0';
         }
+      } else {
+        /* Invalid paths? */
+        uv__free(pathw);
+        SET_REQ_WIN32_ERROR(req, err);
+        return;
       }
 
       if (0 == GetDiskFreeSpaceW(pathw,
