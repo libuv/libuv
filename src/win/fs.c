@@ -2663,10 +2663,10 @@ retry:
       if (((pathw[0] >= L'A' && pathw[0] <= L'Z')
             || (pathw[0] >= L'a' && pathw[0] <= L'z'))
           && pathw[1] == L':' && (pathw[2] == L'\\' || pathw[2] == L'/')) {
-        /* Start with <dirve>:[\/]. Absolute paths. */
+        /* Start with <drive>:[\/]. Absolute paths. */
         pathw[3] = L'\0';
       } else if ((pathw[0] == L'\\' || pathw[0] == L'/')
-                  && (pathw[0] == L'\\' || pathw[1] == L'/')) {
+                  && (pathw[1] == L'\\' || pathw[1] == L'/')) {
         /* Start with [\/][\/]. The path is either a UNC path(\\server\share\)
          * or a DOS device path(\\.\C:\Windows, \\?\C:\Windows,
          * \\?\Volume{...}\Test), so the second path separator is end of the
@@ -2676,7 +2676,7 @@ retry:
 
         count = 0;
         ptr = pathw + 3;
-        while (*ptr) {
+        while (*ptr != L'\0') {
           if (*ptr == L'\\' || *ptr == L'/')
             count++;
           if (count == 2) {
