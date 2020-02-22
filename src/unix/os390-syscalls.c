@@ -62,9 +62,8 @@ int scandir(const char* maindir, struct dirent*** namelist,
     if (!filter || filter(dirent)) {
       struct dirent* copy;
       copy = uv__malloc(sizeof(*copy));
-      if (!copy) {
+      if (!copy)
         goto error;
-      }
       memcpy(copy, dirent, sizeof(*copy));
 
       nl = uv__realloc(nl, sizeof(*copy) * (count + 1));
@@ -85,7 +84,7 @@ int scandir(const char* maindir, struct dirent*** namelist,
   return count;
 
 error:
-  while (count) {
+  while (count > 0) {
     dirent = nl[--count];
     uv__free(dirent);
   }
