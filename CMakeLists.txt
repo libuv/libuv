@@ -546,7 +546,7 @@ if(LIBUV_BUILD_TESTS)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-if(UNIX)
+if(UNIX OR MINGW)
   # Now for some gibbering horrors from beyond the stars...
   foreach(lib IN LISTS uv_libraries)
     list(APPEND LIBS "-l${lib}")
@@ -573,7 +573,7 @@ if(UNIX)
   install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
-if(WIN32)
+if(MSVC)
   install(DIRECTORY include/ DESTINATION include)
   install(FILES LICENSE DESTINATION .)
   install(TARGETS uv uv_a
