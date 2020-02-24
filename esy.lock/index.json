@@ -1,0 +1,120 @@
+{
+  "checksum": "f7f6275e68a509f3db74c4c40186e444",
+  "root": "esy-libuv@link-dev:./package.json",
+  "node": {
+    "texinfo@github:esy-packages/esy-texinfo#4a05feafbbcc4c57d5d25899fbdab98961b9a69c@d41d8cd9": {
+      "id":
+        "texinfo@github:esy-packages/esy-texinfo#4a05feafbbcc4c57d5d25899fbdab98961b9a69c@d41d8cd9",
+      "name": "texinfo",
+      "version":
+        "github:esy-packages/esy-texinfo#4a05feafbbcc4c57d5d25899fbdab98961b9a69c",
+      "source": {
+        "type": "install",
+        "source": [
+          "github:esy-packages/esy-texinfo#4a05feafbbcc4c57d5d25899fbdab98961b9a69c"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [],
+      "devDependencies": []
+    },
+    "esy-libuv@link-dev:./package.json": {
+      "id": "esy-libuv@link-dev:./package.json",
+      "name": "esy-libuv",
+      "version": "link-dev:./package.json",
+      "source": {
+        "type": "link-dev",
+        "path": ".",
+        "manifest": "package.json"
+      },
+      "overrides": [],
+      "dependencies": [
+        "esy-libtools@github:bryphe/esy-libtools#62766a2@d41d8cd9",
+        "esy-cmake@0.3.5@d41d8cd9"
+      ],
+      "devDependencies": []
+    },
+    "esy-libtools@github:bryphe/esy-libtools#62766a2@d41d8cd9": {
+      "id": "esy-libtools@github:bryphe/esy-libtools#62766a2@d41d8cd9",
+      "name": "esy-libtools",
+      "version": "github:bryphe/esy-libtools#62766a2",
+      "source": {
+        "type": "install",
+        "source": [ "github:bryphe/esy-libtools#62766a2" ]
+      },
+      "overrides": [],
+      "dependencies": [
+        "texinfo@github:esy-packages/esy-texinfo#4a05feafbbcc4c57d5d25899fbdab98961b9a69c@d41d8cd9",
+        "automake@github:esy-packages/esy-automake#f4fecab89169dd64cc363ec902d828c55c257fc0@d41d8cd9",
+        "autoconf@github:esy-packages/esy-autoconf#ea58671a08c7ebf89b0cebd41f4950ca67157b01@d41d8cd9"
+      ],
+      "devDependencies": []
+    },
+    "esy-help2man@github:esy-packages/esy-help2man#c8e6931d1dcf58a81bd801145a777fd3b115c443@d41d8cd9": {
+      "id":
+        "esy-help2man@github:esy-packages/esy-help2man#c8e6931d1dcf58a81bd801145a777fd3b115c443@d41d8cd9",
+      "name": "esy-help2man",
+      "version":
+        "github:esy-packages/esy-help2man#c8e6931d1dcf58a81bd801145a777fd3b115c443",
+      "source": {
+        "type": "install",
+        "source": [
+          "github:esy-packages/esy-help2man#c8e6931d1dcf58a81bd801145a777fd3b115c443"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [],
+      "devDependencies": []
+    },
+    "esy-cmake@0.3.5@d41d8cd9": {
+      "id": "esy-cmake@0.3.5@d41d8cd9",
+      "name": "esy-cmake",
+      "version": "0.3.5",
+      "source": {
+        "type": "install",
+        "source": [
+          "archive:https://registry.npmjs.org/esy-cmake/-/esy-cmake-0.3.5.tgz#sha1:2df0bdfe9317fbcded5f463fca1f346464494c7a"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [],
+      "devDependencies": []
+    },
+    "automake@github:esy-packages/esy-automake#f4fecab89169dd64cc363ec902d828c55c257fc0@d41d8cd9": {
+      "id":
+        "automake@github:esy-packages/esy-automake#f4fecab89169dd64cc363ec902d828c55c257fc0@d41d8cd9",
+      "name": "automake",
+      "version":
+        "github:esy-packages/esy-automake#f4fecab89169dd64cc363ec902d828c55c257fc0",
+      "source": {
+        "type": "install",
+        "source": [
+          "github:esy-packages/esy-automake#f4fecab89169dd64cc363ec902d828c55c257fc0"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [
+        "autoconf@github:esy-packages/esy-autoconf#ea58671a08c7ebf89b0cebd41f4950ca67157b01@d41d8cd9"
+      ],
+      "devDependencies": []
+    },
+    "autoconf@github:esy-packages/esy-autoconf#ea58671a08c7ebf89b0cebd41f4950ca67157b01@d41d8cd9": {
+      "id":
+        "autoconf@github:esy-packages/esy-autoconf#ea58671a08c7ebf89b0cebd41f4950ca67157b01@d41d8cd9",
+      "name": "autoconf",
+      "version":
+        "github:esy-packages/esy-autoconf#ea58671a08c7ebf89b0cebd41f4950ca67157b01",
+      "source": {
+        "type": "install",
+        "source": [
+          "github:esy-packages/esy-autoconf#ea58671a08c7ebf89b0cebd41f4950ca67157b01"
+        ]
+      },
+      "overrides": [],
+      "dependencies": [
+        "esy-help2man@github:esy-packages/esy-help2man#c8e6931d1dcf58a81bd801145a777fd3b115c443@d41d8cd9"
+      ],
+      "devDependencies": []
+    }
+  }
+}

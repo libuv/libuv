@@ -6,8 +6,8 @@ steps:
       versionSpec: '8.9'
   - script: git submodule update --init
     displayName: 'git submodule update --init'
-  - script: npm install -g esy@0.5.8
-    displayName: 'npm install -g esy@0.5.8'
+  - script: npm install -g esy@0.6.2
+    displayName: 'npm install -g esy@0.6.2'
   - script: esy install
     displayName: 'esy install'
   - script: esy build

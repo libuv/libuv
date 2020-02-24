@@ -1,0 +1,27 @@
+
+{
+  "name": "esy-libuv",
+  "version": "1.34.2",
+  "description": "Esy-enabled libuv build",
+  "license": "MIT",
+  "esy": {
+    "build": [
+        ["bash", "#{os=='windows' ? './esy/build-windows.sh':'./esy/build.sh'}"]
+    ],
+    "buildsInSource":true,
+    "exportedEnv": {
+        "LIBUV_INCLUDE_PATH": {
+            "val": "#{self.install / 'include'}",
+            "scope": "global"
+        },
+        "LIBUV_LIB_PATH": {
+            "val": "#{self.lib}",
+            "scope": "global"
+        }
+    }
+  },
+  "dependencies": {
+    "esy-cmake": "^0.3.2",
+    "esy-libtools": "github:bryphe/esy-libtools#62766a2"
+  }
+}
