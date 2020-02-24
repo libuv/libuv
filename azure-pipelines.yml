@@ -1,0 +1,30 @@
+# Cross-platform build pipeline + NPM publish
+
+name: $(Build.SourceVersion)
+jobs:
+- job: Linux
+  displayName: "Linux - Ubuntu 16.04"
+  pool:
+    vmImage: 'Ubuntu 16.04'
+  steps:
+  - template: .ci/esy-build-steps.yml
+
+- job: MacOS13
+  displayName: "MacOS Mojave"
+  pool:
+    vmImage: 'macOS 10.13'
+  steps:
+  - template: .ci/esy-build-steps.yml
+
+- job: MacOS14
+  displayName: "MacOS High Sierra"
+  pool:
+    vmImage: 'macOS 10.14'
+  steps:
+  - template: .ci/esy-build-steps.yml
+
+- job: Windows
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: .ci/esy-build-steps.yml
