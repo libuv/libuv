@@ -1,3 +1,7 @@
+Esy-enabled build: [![Build Status](https://dev.azure.com/revery-ui/revery/_apis/build/status/revery-ui.esy-libuv?branchName=v1.x)](https://dev.azure.com/revery-ui/revery/_build/latest?definitionId=27&branchName=v1.x)
+
+---
+
 ![libuv][libuv_banner]
 
 ## Overview
