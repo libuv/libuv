@@ -455,16 +455,17 @@ if(LIBUV_BUILD_TESTS)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
+# Consider setting project version via project() call?
+file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
+string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
+set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
+
 if(UNIX)
   # Now for some gibbering horrors from beyond the stars...
   foreach(lib IN LISTS uv_libraries)
     list(APPEND LIBS "-l${lib}")
   endforeach()
   string(REPLACE ";" " " LIBS "${LIBS}")
-  # Consider setting project version via project() call?
-  file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
-  string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
-  set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
   # The version in the filename is mirroring the behaviour of autotools.
   set_target_properties(uv PROPERTIES
     VERSION ${UV_VERSION_MAJOR}.0.0
@@ -478,14 +479,40 @@ if(UNIX)
   install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
   install(FILES ${PROJECT_BINARY_DIR}/libuv.pc
           DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-  install(TARGETS uv LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  set(INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}")
 endif()
 
 if(WIN32)
   install(DIRECTORY include/ DESTINATION include)
   install(FILES LICENSE DESTINATION .)
-  install(TARGETS uv uv_a
-          RUNTIME DESTINATION lib/$<CONFIG>
-          ARCHIVE DESTINATION lib/$<CONFIG>)
+  get_property(MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(MULTI_CONFIG)
+      set(INSTALL_DIR "lib/$<CONFIG>")
+    else()
+      set(INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}")
+    endif()
 endif()
+
+install(TARGETS uv uv_a
+        EXPORT uvTargets
+        RUNTIME DESTINATION "${INSTALL_DIR}"
+        LIBRARY DESTINATION "${INSTALL_DIR}"
+        ARCHIVE DESTINATION "${INSTALL_DIR}")
+
+write_basic_package_version_file(libuvConfigVersion.cmake
+                                 VERSION ${PACKAGE_VERSION}
+                                 COMPATIBILITY ExactVersion)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuvConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
+
+install(EXPORT uvTargets
+        FILE libuvConfig.cmake
+        NAMESPACE libuv::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
+
+export(EXPORT uvTargets
+       NAMESPACE libuv::
+       FILE libuvConfig.cmake)
+
+export(PACKAGE libuv)
