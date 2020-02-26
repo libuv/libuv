@@ -179,12 +179,6 @@ $ ./out/cmake/uv_run_tests    # shared library build
 $ ./out/cmake/uv_run_tests_a  # static library build
 ```
 
-To build with GYP, first run:
-
-```bash
-$ git clone https://chromium.googlesource.com/external/gyp build/gyp
-```
-
 ### Windows
 
 Prerequisites:
@@ -207,8 +201,8 @@ Prerequisites:
 
 To build, launch a git shell (e.g. Cmd or PowerShell), run `vcbuild.bat`
 (to build with VS2017 you need to explicitly add a `vs2017` argument),
-which will checkout the GYP code into `build/gyp`, generate `uv.sln`
-as well as the necesery related project files, and start building.
+which will generate `uv.sln` as well as the necesery related project files, and
+start building.
 
 ```console
 > vcbuild

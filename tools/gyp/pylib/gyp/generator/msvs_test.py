@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+# Copyright (c) 2012 Google Inc. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+""" Unit tests for the msvs.py file. """
+
+import gyp.generator.msvs as msvs
+import unittest
+
+try:
+  from StringIO import StringIO  # Python 2
+except ImportError:
+  from io import StringIO  # Python 3
+
+
+class TestSequenceFunctions(unittest.TestCase):
+
+  def setUp(self):
+    self.stderr = StringIO()
+
+  def test_GetLibraries(self):
+    self.assertEqual(
+      msvs._GetLibraries({}),
+      [])
+    self.assertEqual(
+      msvs._GetLibraries({'libraries': []}),
+      [])
+    self.assertEqual(
+      msvs._GetLibraries({'other':'foo', 'libraries': ['a.lib']}),
+      ['a.lib'])
+    self.assertEqual(
+      msvs._GetLibraries({'libraries': ['-la']}),
+      ['a.lib'])
+    self.assertEqual(
+      msvs._GetLibraries({'libraries': ['a.lib', 'b.lib', 'c.lib', '-lb.lib',
+                                   '-lb.lib', 'd.lib', 'a.lib']}),
+      ['c.lib', 'b.lib', 'd.lib', 'a.lib'])
+
+if __name__ == '__main__':
+  unittest.main()
