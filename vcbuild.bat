@@ -1,4 +1,4 @@
-@echo off
+@if not defined DEBUG_HELPER @ECHO OFF
 
 cd %~dp0
 
@@ -15,7 +15,8 @@ if /i "%1"=="/?" goto help
 set config=
 set target=Build
 set target_arch=ia32
-set target_env=
+set vs_ver=
+set vs_ver_num=
 set noprojgen=
 set nobuild=
 set run=
@@ -30,7 +31,8 @@ if /i "%1"=="release"      set config=Release&goto arg-ok
 if /i "%1"=="test"         set run=run-tests.exe&goto arg-ok
 if /i "%1"=="bench"        set run=run-benchmarks.exe&goto arg-ok
 if /i "%1"=="clean"        set target=Clean&goto arg-ok
-if /i "%1"=="vs2017"       set target_env=vs2017&goto arg-ok
+if /i "%1"=="vs2017"       set vs_ver=2017&set vs_ver_num=15.0&goto arg-ok
+if /i "%1"=="vs2019"       set vs_ver=2019&set vs_ver_num=16.0&goto arg-ok
 if /i "%1"=="noprojgen"    set noprojgen=1&goto arg-ok
 if /i "%1"=="nobuild"      set nobuild=1&goto arg-ok
 if /i "%1"=="x86"          set target_arch=ia32&set msbuild_platform=WIN32&set vs_toolset=x86&goto arg-ok
@@ -46,13 +48,13 @@ goto next-arg
 if defined WindowsSDKDir goto select-target
 if defined VCINSTALLDIR goto select-target
 
-@rem Look for Visual Studio 2017 only if explicitly requested.
-if "%target_env%" NEQ "vs2017" goto vs-set-2015
-echo Looking for Visual Studio 2017
+@rem Look for Visual Studio 2017 and 2019 only if explicitly requested.
+if "%vs_ver%"=="" goto vs-set-2015
+echo Looking for Visual Studio %vs_ver%
 @rem Check if VS2017 is already setup, and for the requested arch.
-if "_%VisualStudioVersion%_" == "_15.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%vs_toolset%_" goto found_vs2017
+if "_%VisualStudioVersion%_" == "_%vs_ver_num%_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%vs_toolset%_" goto found_vs201x
 set "VSINSTALLDIR="
-call tools\vswhere_usability_wrapper.cmd
+call tools\vswhere_usability_wrapper.cmd %vs_ver%
 if "_%VCINSTALLDIR%_" == "__" goto vs-set-2015
 @rem Need to clear VSINSTALLDIR for vcvarsall to work as expected.
 @rem Keep current working directory after call to vcvarsall
@@ -61,10 +63,10 @@ set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vs_toolset%
 echo calling: %vcvars_call%
 call %vcvars_call%
 
-:found_vs2017
+:found_vs201x
 echo Found MSVS version %VisualStudioVersion%
 if %VSCMD_ARG_TGT_ARCH%==x64 set target_arch=x64&set msbuild_platform=x64&set vs_toolset=x64
-set GYP_MSVS_VERSION=2017
+set GYP_MSVS_VERSION=%vs_ver%
 goto select-target
 
 
@@ -161,7 +163,7 @@ echo Failed to create vc project files.
 exit /b 1
 
 :help
-echo vcbuild.bat [debug/release] [test/bench] [clean] [noprojgen] [nobuild] [vs2017] [x86/x64] [static/shared]
+echo vcbuild.bat [debug/release] [test/bench] [clean] [noprojgen] [nobuild] [vs2017] [vs2019] [x86/x64] [static/shared]
 echo Examples:
 echo   vcbuild.bat              : builds debug build
 echo   vcbuild.bat test         : builds debug build and runs tests

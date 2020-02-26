@@ -6,7 +6,17 @@
 
 @if not defined DEBUG_HELPER @ECHO OFF
 setlocal
-if "%~1"=="prerelease" set VSWHERE_WITH_PRERELEASE=1
+set VSWHERE_LMT=-version "[16.0,17.0)"
+:next-arg
+if "%~1"=="" goto args-done
+if "%~1"=="prerelease" set VSWHERE_WITH_PRERELEASE=1&goto arg-ok
+if "%~1"=="2017" set VSWHERE_LMT=-version "[15.0,16.0)"&goto arg-ok
+if "%~1"=="2019" set VSWHERE_LMT=-version "[16.0,17.0)"&goto arg-ok
+:arg-ok
+shift
+goto next-arg
+:args-done
+
 set "InstallerPath=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
 if not exist "%InstallerPath%" set "InstallerPath=%ProgramFiles%\Microsoft Visual Studio\Installer"
 if not exist "%InstallerPath%" goto :no-vswhere
@@ -16,7 +26,7 @@ where vswhere 2> nul > nul
 if errorlevel 1 goto :no-vswhere
 set VSWHERE_REQ=-requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
 set VSWHERE_PRP=-property installationPath
-set VSWHERE_LMT=-version "[15.0,16.0)"
+
 vswhere -prerelease > nul
 if not errorlevel 1 if "%VSWHERE_WITH_PRERELEASE%"=="1" set "VSWHERE_LMT=%VSWHERE_LMT% -prerelease"
 SET VSWHERE_ARGS=-latest -products * %VSWHERE_REQ% %VSWHERE_PRP% %VSWHERE_LMT%
