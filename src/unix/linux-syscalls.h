@@ -30,9 +30,32 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <linux/fs.h>
+#include <linux/types.h>
 
 #if defined(__alpha__)
 # define UV__O_CLOEXEC        0x200000
+# ifndef UV__NR_io_uring_setup
+#  define UV__NR_io_uring_setup		535
+# endif
+# ifndef UV__NR_io_uring_enter
+#  define UV__NR_io_uring_enter		536
+# endif
+# ifndef UV__NR_io_uring_register
+#  define UV__NR_io_uring_register	537
+# endif
+#else /* !__alpha__ */
+# ifndef UV__NR_io_uring_setup
+#  define UV__NR_io_uring_setup		425
+# endif
+# ifndef UV__NR_io_uring_enter
+#  define UV__NR_io_uring_enter		426
+# endif
+# ifndef UV__NR_io_uring_register
+#  define UV__NR_io_uring_register	427
+# endif
+#endif
+
 #elif defined(__hppa__)
 # define UV__O_CLOEXEC        0x200000
 #elif defined(__sparc__)
@@ -123,6 +146,69 @@ struct uv__mmsghdr {
   unsigned int msg_len;
 };
 
+struct uv__io_uring_sqe {
+	__u8	opcode;		/* type of operation for this sqe */
+	__u8	flags;		/* IOSQE_ flags */
+	__u16	ioprio;		/* ioprio for the request */
+	__s32	fd;		/* file descriptor to do IO on */
+	__u64	off;		/* offset into file */
+	__u64	addr;		/* pointer to buffer or iovecs */
+	__u32	len;		/* buffer size or number of iovecs */
+	union {
+		__kernel_rwf_t	rw_flags;
+		__u32		fsync_flags;
+		__u16		poll_events;
+		__u32		sync_range_flags;
+		__u32		msg_flags;
+		__u32		timeout_flags;
+	};
+	__u64	user_data;	/* data to be passed back at completion time */
+	union {
+		__u16	buf_index;	/* index into fixed buffers, if used */
+		__u64	__pad2[3];
+	};
+};
+
+struct uv__io_uring_cqe {
+	__u64	user_data;	/* sqe->data submission passed back */
+	__s32	res;		/* result code for this event */
+	__u32	flags;
+};
+
+struct uv__io_sqring_offsets {
+	__u32 head;
+	__u32 tail;
+	__u32 ring_mask;
+	__u32 ring_entries;
+	__u32 flags;
+	__u32 dropped;
+	__u32 array;
+	__u32 resv1;
+	__u64 resv2;
+};
+
+struct uv__io_cqring_offsets {
+	__u32 head;
+	__u32 tail;
+	__u32 ring_mask;
+	__u32 ring_entries;
+	__u32 overflow;
+	__u32 cqes;
+	__u64 resv[2];
+};
+
+struct uv__io_uring_params {
+	__u32 sq_entries;
+	__u32 cq_entries;
+	__u32 flags;
+	__u32 sq_thread_cpu;
+	__u32 sq_thread_idle;
+	__u32 features;
+	__u32 resv[4];
+	struct uv__io_sqring_offsets sq_off;
+	struct uv__io_cqring_offsets cq_off;
+};
+
 int uv__accept4(int fd, struct sockaddr* addr, socklen_t* addrlen, int flags);
 int uv__eventfd(unsigned int count);
 int uv__eventfd2(unsigned int count, int flags);
@@ -148,5 +234,11 @@ int uv__statx(int dirfd,
               int flags,
               unsigned int mask,
               struct uv__statx* statxbuf);
+
+int uv__io_uring_register(int fd, unsigned int opcode, void *arg,
+		      unsigned int nr_args);
+int uv__io_uring_setup(unsigned int entries, struct uv__io_uring_params *p);
+int uv__io_uring_enter(int fd, unsigned int to_submit, unsigned int min_complete,
+		   unsigned int flags, sigset_t *sig);
 
 #endif /* UV_LINUX_SYSCALL_H_ */

@@ -367,3 +367,18 @@ int uv__statx(int dirfd,
   return errno = ENOSYS, -1;
 #endif
 }
+
+int uv__io_uring_register(int fd, unsigned int opcode, void *arg,
+		      unsigned int nr_args) {
+	return syscall(UV__NR_io_uring_register, fd, opcode, arg, nr_args);
+}
+
+int uv__io_uring_setup(unsigned int entries, struct uv__io_uring_params *p) {
+	return syscall(UV__NR_io_uring_setup, entries, p);
+}
+
+int uv__io_uring_enter(int fd, unsigned int to_submit, unsigned int min_complete,
+		   unsigned int flags, sigset_t *sig) {
+	return syscall(UV__NR_io_uring_enter, fd, to_submit, min_complete,
+			flags, sig, _NSIG / 8);
+}
