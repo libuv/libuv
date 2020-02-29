@@ -151,7 +151,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     }                                                                         \
     else {                                                                    \
       uv__fs_work(&req->work_req);                                            \
-      return req->result;                                                     \
+      return (int)req->result;                                                \
     }                                                                         \
   }                                                                           \
   while (0)
@@ -494,7 +494,10 @@ done:
 }
 
 
-#if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8)
+#if defined(__APPLE__)                                                        \
+    && defined(TARGET_OS_MAC)                                                 \
+    && !defined(TARGET_OS_IPHONE)                                             \
+    && !defined(MAC_OS_X_VERSION_10_8)
 #define UV_CONST_DIRENT uv__dirent_t
 #else
 #define UV_CONST_DIRENT const uv__dirent_t
