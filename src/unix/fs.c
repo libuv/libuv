@@ -254,6 +254,37 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 }
 
 
+static ssize_t uv__fs_lutime(uv_fs_t* req) {
+#if defined(__linux__)                                                         \
+    || defined(_AIX71)                                                         \
+    || defined(__sun)                                                          \
+    || defined(__HAIKU__)
+  struct timespec ts[2];
+  ts[0].tv_sec  = req->atime;
+  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
+  ts[1].tv_sec  = req->mtime;
+  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
+#elif defined(__APPLE__)                                                      \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__FreeBSD_kernel__)                                            \
+    || defined(__NetBSD__)
+  struct timeval tv[2];
+  tv[0].tv_sec  = req->atime;
+  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
+  tv[1].tv_sec  = req->mtime;
+  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  return lutimes(req->path, tv);
+#elif defined(__MVS__)
+  return uv__fs_utime(req);
+#else
+errno = ENOSYS;
+return -1;
+#endif
+}
+
+
 static ssize_t uv__fs_mkdtemp(uv_fs_t* req) {
   return mkdtemp((char*) req->path) ? 0 : -1;
 }
@@ -1528,6 +1559,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(FSYNC, uv__fs_fsync(req));
     X(FTRUNCATE, ftruncate(req->file, req->off));
     X(FUTIME, uv__fs_futime(req));
+    X(LUTIME, uv__fs_lutime(req));
     X(LSTAT, uv__fs_lstat(req->path, &req->statbuf));
     X(LINK, link(req->path, req->new_path));
     X(MKDIR, mkdir(req->path, req->mode));
@@ -1709,6 +1741,19 @@ int uv_fs_futime(uv_loop_t* loop,
                  uv_fs_cb cb) {
   INIT(FUTIME);
   req->file = file;
+  req->atime = atime;
+  req->mtime = mtime;
+  POST;
+}
+
+int uv_fs_lutime(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 double atime,
+                 double mtime,
+                 uv_fs_cb cb) {
+  INIT(LUTIME);
+  PATH;
   req->atime = atime;
   req->mtime = mtime;
   POST;
