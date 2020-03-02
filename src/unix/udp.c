@@ -1087,7 +1087,7 @@ static int uv__setsockopt(uv_udp_t* handle,
                          int option4,
                          int option6,
                          const void* val,
-                         size_t size) {
+                         socklen_t size) {
   int r;
 
   if (handle->flags & UV_HANDLE_IPV6)
