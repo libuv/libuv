@@ -807,7 +807,10 @@ TEST_IMPL(fs_file_loop) {
   return 0;
 }
 
-static void check_utime(const char* path, double atime, double mtime, int test_lutime) {
+static void check_utime(const char* path,
+                        double atime,
+                        double mtime,
+                        int test_lutime) {
   uv_stat_t* s;
   uv_fs_t req;
   int r;
