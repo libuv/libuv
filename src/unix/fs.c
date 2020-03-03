@@ -205,6 +205,20 @@ static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 }
 
 
+static struct timespec uv__fs_to_timespec(double time) {
+  struct timespec ts;
+  ts.tv_sec  = time;
+  ts.tv_nsec = (uint64_t)(time * 1000000) % 1000000 * 1000;
+  return ts;
+}
+
+static struct timeval uv__fs_to_timeval(double time) {
+  struct timeval tv;
+  tv.tv_sec  = time;
+  tv.tv_usec = (uint64_t)(time * 1000000) % 1000000;
+  return tv;
+}
+
 static ssize_t uv__fs_futime(uv_fs_t* req) {
 #if defined(__linux__)                                                        \
     || defined(_AIX71)                                                        \
@@ -213,10 +227,8 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
    * for the sake of consistency with other platforms.
    */
   struct timespec ts[2];
-  ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
-  ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
   return utimensat(req->file, NULL, ts, 0);
 #else
@@ -230,10 +242,8 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
     || defined(__OpenBSD__)                                                   \
     || defined(__sun)
   struct timeval tv[2];
-  tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
-  tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
 # if defined(__sun)
   return futimesat(req->file, NULL, tv);
 # else
@@ -260,10 +270,8 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
     defined(__sun)                ||                                           \
     defined(__HAIKU__)
   struct timespec ts[2];
-  ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
-  ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
 #elif defined(__APPLE__)          ||                                          \
       defined(__DragonFly__)      ||                                          \
@@ -271,10 +279,8 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
       defined(__FreeBSD_kernel__) ||                                          \
       defined(__NetBSD__)
   struct timeval tv[2];
-  tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
-  tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
   return lutimes(req->path, tv);
 #elif defined(__MVS__)
   return uv__fs_utime(req);
@@ -1008,10 +1014,8 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
    * for the sake of consistency with other platforms.
    */
   struct timespec ts[2];
-  ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
-  ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, 0);
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
@@ -1020,10 +1024,8 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)
   struct timeval tv[2];
-  tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
-  tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
   return utimes(req->path, tv);
 #elif defined(_AIX)                                                           \
     && !defined(_AIX71)
