@@ -407,8 +407,8 @@ API
     Equivalent to :man:`utime(2)`, :man:`futimes(3)` and :man:`lutimes(3)` respectively.
 
     .. note::
-      AIX: uv_fs_futime and uv_fs_lutime functions only work for AIX 7.1 and newer. They can still be called on older
-      versions but will return ``UV_ENOSYS``.
+      AIX: `uv_fs_futime` and `uv_fs_lutime` functions only work for AIX 7.1 and newer.
+      They can still be called on older versions but will return ``UV_ENOSYS``.
 
     .. versionchanged:: 1.10.0 sub-second precission is supported on Windows
 

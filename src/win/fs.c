@@ -2284,7 +2284,7 @@ INLINE static void fs__utime_impl(uv_fs_t* req, int do_lutime) {
 }
 
 static void fs__utime(uv_fs_t* req) {
-  fs__utime_impl(req, 0);
+  fs__utime_impl(req, /* do_lutime */ 0);
 }
 
 
@@ -2309,7 +2309,7 @@ static void fs__futime(uv_fs_t* req) {
 }
 
 static void fs__lutime(uv_fs_t* req) {
-  fs__utime_impl(req, 1);
+  fs__utime_impl(req, /* do_lutime */ 1);
 }
 
 

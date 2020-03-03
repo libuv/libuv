@@ -812,11 +812,11 @@ static void check_utime(const char* path, double atime, double mtime, int test_l
   uv_fs_t req;
   int r;
 
-  if (test_lutime) {
+  if (test_lutime)
     r = uv_fs_lstat(loop, &req, path, NULL);
-  } else {
+  else
     r = uv_fs_stat(loop, &req, path, NULL);
-  }
+
   ASSERT(r == 0);
 
   ASSERT(req.result == 0);
@@ -837,7 +837,7 @@ static void utime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_UTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime, 0);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 0);
 
   uv_fs_req_cleanup(req);
   utime_cb_count++;
@@ -852,7 +852,7 @@ static void futime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_FUTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime, 0);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 0);
 
   uv_fs_req_cleanup(req);
   futime_cb_count++;
@@ -866,7 +866,7 @@ static void lutime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_LUTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime, 1);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 1);
 
   uv_fs_req_cleanup(req);
   lutime_cb_count++;
@@ -2646,7 +2646,8 @@ TEST_IMPL(fs_lutime) {
      * Creating a symlink before Windows 10 Creators Update was only allowed
      * when running elevated console (with admin rights)
      */
-    RETURN_SKIP("Symlink creation requires elevated console (with admin rights)");
+    RETURN_SKIP(
+        "Symlink creation requires elevated console (with admin rights)");
   }
 #endif
   ASSERT(s == 0);

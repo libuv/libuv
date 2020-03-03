@@ -1242,7 +1242,6 @@ typedef enum {
   UV_FS_FTRUNCATE,
   UV_FS_UTIME,
   UV_FS_FUTIME,
-  UV_FS_LUTIME,
   UV_FS_ACCESS,
   UV_FS_CHMOD,
   UV_FS_FCHMOD,
@@ -1266,7 +1265,8 @@ typedef enum {
   UV_FS_READDIR,
   UV_FS_CLOSEDIR,
   UV_FS_STATFS,
-  UV_FS_MKSTEMP
+  UV_FS_MKSTEMP,
+  UV_FS_LUTIME
 } uv_fs_type;
 
 struct uv_dir_s {

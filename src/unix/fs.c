@@ -255,21 +255,21 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_lutime(uv_fs_t* req) {
-#if defined(__linux__)                                                         \
-    || defined(_AIX71)                                                         \
-    || defined(__sun)                                                          \
-    || defined(__HAIKU__)
+#if defined(__linux__)            ||                                           \
+    defined(_AIX71)               ||                                           \
+    defined(__sun)                ||                                           \
+    defined(__HAIKU__)
   struct timespec ts[2];
   ts[0].tv_sec  = req->atime;
   ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
   return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
-#elif defined(__APPLE__)                                                      \
-    || defined(__DragonFly__)                                                 \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__FreeBSD_kernel__)                                            \
-    || defined(__NetBSD__)
+#elif defined(__APPLE__)          ||                                          \
+      defined(__DragonFly__)      ||                                          \
+      defined(__FreeBSD__)        ||                                          \
+      defined(__FreeBSD_kernel__) ||                                          \
+      defined(__NetBSD__)
   struct timeval tv[2];
   tv[0].tv_sec  = req->atime;
   tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
