@@ -1395,7 +1395,7 @@ static int uv__fs_stat(const char *path, uv_stat_t *buf) {
   int ret;
 
   ret = uv__fs_statx(-1, path, /* is_fstat */ 0, /* is_lstat */ 0, buf);
-  if (ret != UV_ENOSYS)
+  if (ret != UV_ENOSYS && ret != UV_EPERM)
     return ret;
 
   ret = stat(path, &pbuf);
@@ -1411,7 +1411,7 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
   int ret;
 
   ret = uv__fs_statx(-1, path, /* is_fstat */ 0, /* is_lstat */ 1, buf);
-  if (ret != UV_ENOSYS)
+  if (ret != UV_ENOSYS && ret != UV_EPERM)
     return ret;
 
   ret = lstat(path, &pbuf);
@@ -1427,7 +1427,7 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   int ret;
 
   ret = uv__fs_statx(fd, "", /* is_fstat */ 1, /* is_lstat */ 0, buf);
-  if (ret != UV_ENOSYS)
+  if (ret != UV_ENOSYS && ret != UV_EPERM)
     return ret;
 
   ret = fstat(fd, &pbuf);
@@ -1987,7 +1987,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
 
   /* Only necessary for asychronous requests, i.e., requests with a callback.
    * Synchronous ones don't copy their arguments and have req->path and
-   * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP and 
+   * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP and
    * UV_FS_MKSTEMP are the exception to the rule, they always allocate memory.
    */
   if (req->path != NULL &&
