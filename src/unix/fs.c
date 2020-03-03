@@ -279,8 +279,8 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 #elif defined(__MVS__)
   return uv__fs_utime(req);
 #else
-errno = ENOSYS;
-return -1;
+  errno = ENOSYS;
+  return -1;
 #endif
 }
 
