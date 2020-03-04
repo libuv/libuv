@@ -1,0 +1,19 @@
+image:
+  file: .gitpod.Dockerfile
+tasks:
+  - init: |
+      sh autogen.sh
+      ./configure
+      make
+      make check
+  - init: |
+      git clone https://chromium.googlesource.com/external/gyp build/gyp
+      ./gyp_uv.py -f make
+      make -C out
+    openMode: split-right
+ports:
+  - port: 9123
+    onOpen: ignore
+vscode:
+  extensions:
+    - ms-vscode.cpptools@0.26.2:Pq/tmf2WN3SanVzB4xZc1g==

@@ -152,6 +152,10 @@ $ gpg --verify libuv-1.7.0.tar.gz.sign
 
 ## Build Instructions
 
+Try it in Gitpod, no configuration required!
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/libuv/libuv)
+
 For GCC there are two build methods: via autotools or via [GYP][].
 GYP is a meta-build system which can generate MSVS, Makefile, and XCode
 backends. It is best used for integration into other projects.
