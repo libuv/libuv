@@ -2492,7 +2492,7 @@ TEST_IMPL(fs_utime) {
   r = uv_fs_stat(NULL, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  check_utime(path, atime, mtime, 0);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
   uv_fs_req_cleanup(&req);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
@@ -2598,7 +2598,7 @@ TEST_IMPL(fs_futime) {
   r = uv_fs_stat(NULL, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  check_utime(path, atime, mtime, 0);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
   uv_fs_req_cleanup(&req);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
