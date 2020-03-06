@@ -100,7 +100,8 @@ Data types
             UV_FS_OPENDIR,
             UV_FS_READDIR,
             UV_FS_CLOSEDIR,
-            UV_FS_MKSTEMP
+            UV_FS_MKSTEMP,
+            UV_FS_LUTIME
         } uv_fs_type;
 
 .. c:type:: uv_statfs_t
