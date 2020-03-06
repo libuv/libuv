@@ -149,7 +149,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
        _THREAD_SAFE
        _XOPEN_SOURCE=500)
   list(APPEND uv_libraries perfstat)
-  list(APPEND uv_sources src/unix/aix.c)
+  list(APPEND uv_sources
+    src/unix/aix.c
+    src/unix/aix-common.c
+    )
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
