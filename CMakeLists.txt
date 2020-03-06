@@ -245,6 +245,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS/390")
        src/unix/os390-syscalls.c)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
+  list(APPEND uv_defines
+       _ALL_SOURCE
+       _LINUX_SOURCE_COMPAT
+       _THREAD_SAFE
+       _XOPEN_SOURCE=500)
+  list(APPEND uv_sources
+    src/unix/aix-common.c
+    src/unix/ibmi.c
+    src/unix/no-fsevents.c
+    src/unix/no-proctitle.c
+    src/unix/posix-poll.c)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500)
   list(APPEND uv_libraries kstat nsl sendfile socket)
