@@ -264,33 +264,6 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_lutime(uv_fs_t* req) {
-#if defined(__linux__)            ||                                           \
-    defined(_AIX71)               ||                                           \
-    defined(__sun)                ||                                           \
-    defined(__HAIKU__)
-  struct timespec ts[2];
-  ts[0] = uv__fs_to_timespec(req->atime);
-  ts[1] = uv__fs_to_timespec(req->mtime);
-  return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
-#elif defined(__APPLE__)          ||                                          \
-      defined(__DragonFly__)      ||                                          \
-      defined(__FreeBSD__)        ||                                          \
-      defined(__FreeBSD_kernel__) ||                                          \
-      defined(__NetBSD__)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-  return lutimes(req->path, tv);
-#elif defined(__MVS__)
-  return uv__fs_utime(req);
-#else
-  errno = ENOSYS;
-  return -1;
-#endif
-}
-
-
 static ssize_t uv__fs_mkdtemp(uv_fs_t* req) {
   return mkdtemp((char*) req->path) ? 0 : -1;
 }
@@ -1041,6 +1014,33 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   atr.att_mtime = req->mtime;
   atr.att_atime = req->atime;
   return __lchattr((char*) req->path, &atr, sizeof(atr));
+#else
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
+
+static ssize_t uv__fs_lutime(uv_fs_t* req) {
+#if defined(__linux__)            ||                                           \
+    defined(_AIX71)               ||                                           \
+    defined(__sun)                ||                                           \
+    defined(__HAIKU__)
+  struct timespec ts[2];
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
+  return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
+#elif defined(__APPLE__)          ||                                          \
+      defined(__DragonFly__)      ||                                          \
+      defined(__FreeBSD__)        ||                                          \
+      defined(__FreeBSD_kernel__) ||                                          \
+      defined(__NetBSD__)
+  struct timeval tv[2];
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
+  return lutimes(req->path, tv);
+#elif defined(__MVS__)
+  return uv__fs_utime(req);
 #else
   errno = ENOSYS;
   return -1;
