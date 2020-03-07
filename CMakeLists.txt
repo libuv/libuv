@@ -251,10 +251,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
   list(APPEND uv_sources
     src/unix/aix-common.c
     src/unix/ibmi.c
-    src/unix/posix-poll.c
     src/unix/no-fsevents.c
     src/unix/no-proctitle.c
-    )
+    src/unix/posix-poll.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
