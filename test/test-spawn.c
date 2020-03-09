@@ -1729,7 +1729,6 @@ TEST_IMPL(spawn_reads_child_path) {
   }
 
   options.file = file;
-  options.args[0] = file;
   options.env = env;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
