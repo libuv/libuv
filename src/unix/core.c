@@ -171,9 +171,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
   case UV_SIGNAL:
     uv__signal_close((uv_signal_t*) handle);
-    /* Signal handles may not be closed immediately. The signal code will
-     * itself close uv__make_close_pending whenever appropriate. */
-    return;
+    break;
 
   default:
     assert(0);
@@ -238,6 +236,8 @@ int uv__getiovmax(void) {
 
 
 static void uv__finish_close(uv_handle_t* handle) {
+  uv_signal_t* sh;
+
   /* Note: while the handle is in the UV_HANDLE_CLOSING state now, it's still
    * possible for it to be active in the sense that uv__is_active() returns
    * true.
@@ -260,7 +260,20 @@ static void uv__finish_close(uv_handle_t* handle) {
     case UV_FS_EVENT:
     case UV_FS_POLL:
     case UV_POLL:
+      break;
+
     case UV_SIGNAL:
+      /* If there are any caught signals "trapped" in the signal pipe,
+       * we can't call the close callback yet. Reinserting the handle
+       * into the closing queue makes the event loop spin but that's
+       * okay because we only need to deliver the pending events.
+       */
+      sh = (uv_signal_t*) handle;
+      if (sh->caught_signals > sh->dispatched_signals) {
+        handle->flags ^= UV_HANDLE_CLOSED;
+        uv__make_close_pending(handle);  /* Back into the queue. */
+        return;
+      }
       break;
 
     case UV_NAMED_PIPE:
