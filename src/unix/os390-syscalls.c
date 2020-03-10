@@ -128,7 +128,7 @@ static void maybe_resize(uv__os390_epoll* lst, unsigned int len) {
   }
 
   newsize = next_power_of_two(len);
-  newlst = uv__realloc(lst->items, newsize * sizeof(lst->items[0]));
+  newlst = uv__reallocf(lst->items, newsize * sizeof(lst->items[0]));
 
   if (newlst == NULL)
     abort();
