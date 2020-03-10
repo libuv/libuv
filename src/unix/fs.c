@@ -666,7 +666,6 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   ssize_t maxlen;
   ssize_t len;
   char* buf;
-  char* newbuf;
 
 #if defined(_POSIX_PATH_MAX) || defined(PATH_MAX)
   maxlen = uv__fs_pathmax_size(req->path);
@@ -710,14 +709,10 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
 
   /* Uncommon case: resize to make room for the trailing nul byte. */
   if (len == maxlen) {
-    newbuf = uv__realloc(buf, len + 1);
+    buf = uv__reallocf(buf, len + 1);
 
-    if (newbuf == NULL) {
-      uv__free(buf);
+    if (buf == NULL)
       return -1;
-    }
-
-    buf = newbuf;
   }
 
   buf[len] = '\0';
