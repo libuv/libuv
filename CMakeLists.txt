@@ -147,7 +147,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
        _ALL_SOURCE
        _LINUX_SOURCE_COMPAT
        _THREAD_SAFE
-       _XOPEN_SOURCE=500)
+       _XOPEN_SOURCE=500
+       HAVE_SYS_AHAFS_EVPRODS_H)
   list(APPEND uv_libraries perfstat)
   list(APPEND uv_sources
        src/unix/aix.c
