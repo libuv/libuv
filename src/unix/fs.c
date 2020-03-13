@@ -1039,8 +1039,6 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
   tv[0] = uv__fs_to_timeval(req->atime);
   tv[1] = uv__fs_to_timeval(req->mtime);
   return lutimes(req->path, tv);
-#elif defined(__MVS__)
-  return uv__fs_utime(req);
 #else
   errno = ENOSYS;
   return -1;

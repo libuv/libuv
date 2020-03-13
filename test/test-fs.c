@@ -2670,9 +2670,10 @@ TEST_IMPL(fs_lutime) {
   req.data = &checkme;
 
   r = uv_fs_lutime(NULL, &req, symlink_path, atime, mtime, NULL);
-#if defined(_AIX) && !defined(_AIX71)
+#if (defined(_AIX) && !defined(_AIX71)) ||                                    \
+     defined(__MVS__)
   ASSERT(r == UV_ENOSYS);
-  RETURN_SKIP("lutime is not implemented for AIX versions below 7.1");
+  RETURN_SKIP("lutime is not implemented for z/OS and AIX versions below 7.1");
 #endif
   ASSERT(r == 0);
   lutime_cb(&req);
