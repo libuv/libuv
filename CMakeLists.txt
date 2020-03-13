@@ -1,4 +1,3 @@
-# TODO: determine CMAKE_SYSTEM_NAME on OS/390.  Currently assumes "OS/390".
 cmake_minimum_required(VERSION 3.4)
 project(libuv LANGUAGES C)
 
@@ -114,7 +113,7 @@ if(WIN32)
   list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+  if(NOT CMAKE_SYSTEM_NAME MATCHES "Android|OS390")
     # TODO: This should be replaced with find_package(Threads) if possible
     # Android has pthread as part of its c library, not as a separate
     # libpthread.so.
@@ -170,7 +169,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
        src/unix/sysinfo-loadavg.c)
 endif()
 
-if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux|OS/390")
+if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux|OS390")
   list(APPEND uv_sources src/unix/proctitle.c)
 endif()
 
@@ -224,7 +223,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
   list(APPEND uv_sources src/unix/openbsd.c)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "OS/390")
+if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   list(APPEND uv_defines PATH_MAX=255)
   list(APPEND uv_defines _AE_BIMODAL)
   list(APPEND uv_defines _ALL_SOURCE)
@@ -240,9 +239,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS/390")
   list(APPEND uv_defines _XOPEN_SOURCE_EXTENDED)
   list(APPEND uv_sources
        src/unix/pthread-fixes.c
-       src/unix/pthread-barrier.c
        src/unix/os390.c
        src/unix/os390-syscalls.c)
+  list(APPEND uv_cflags -Wc,DLL -Wc,exportall -Wc,xplink)
+  list(APPEND uv_libraries -Wl,xplink)
+  list(APPEND uv_test_libraries -Wl,xplink)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
@@ -464,6 +465,10 @@ if(LIBUV_BUILD_TESTS)
   add_test(NAME uv_test
            COMMAND uv_run_tests
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+    set_tests_properties(uv_test PROPERTIES ENVIRONMENT
+                         "LIBPATH=${CMAKE_BINARY_DIR}:$ENV{LIBPATH}")
+  endif()
   add_executable(uv_run_tests_a ${uv_test_sources})
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
