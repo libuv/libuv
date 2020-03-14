@@ -346,7 +346,8 @@ test_run_tests_CFLAGS += -D__EXTENSIONS__ \
 endif
 
 if OS390
-test_run_tests_CFLAGS += -D_UNIX03_THREADS \
+test_run_tests_CFLAGS += -D_ISOC99_SOURCE \
+                         -D_UNIX03_THREADS \
                          -D_UNIX03_SOURCE \
                          -D_OPEN_SYS_IF_EXT=1 \
                          -D_OPEN_SYS_SOCK_IPV6 \

@@ -16,6 +16,7 @@
       }],
       ['OS=="zos"', {
         'shared_zos_defines': [
+          '_ISOC99_SOURCE',
           '_UNIX03_THREADS',
           '_UNIX03_SOURCE',
           '_UNIX03_WITHDRAWN',
