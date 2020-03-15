@@ -278,6 +278,8 @@ int epoll_ctl(uv__os390_epoll* lst,
   return 0;
 }
 
+#define EP_MAX_PFDS (ULONG_MAX / sizeof(struct pollfd))
+#define EP_MAX_EVENTS (INT_MAX / sizeof(struct epoll_event))
 
 int epoll_wait(uv__os390_epoll* lst, struct epoll_event* events,
                int maxevents, int timeout) {
@@ -289,11 +291,31 @@ int epoll_wait(uv__os390_epoll* lst, struct epoll_event* events,
   struct pollfd msg_fd;
   int i;
 
-  _SET_FDS_MSGS(size, 1, lst->size - 1);
+  if (!lst || !lst->items || !events) {
+    errno = EFAULT;
+    return -1;
+  }
+
+  if (lst->size > EP_MAX_PFDS) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (maxevents <= 0 || maxevents > EP_MAX_EVENTS) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (lst->size > 0)
+    _SET_FDS_MSGS(size, 1, lst->size - 1);
+  else
+    _SET_FDS_MSGS(size, 0, 0);
   pfds = lst->items;
   pollret = poll(pfds, size, timeout);
   if (pollret <= 0)
     return pollret;
+
+  assert(lst->size > 0);
 
   pollret = _NFDS(pollret) + _NMSGS(pollret);
 
