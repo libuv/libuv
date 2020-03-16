@@ -2662,13 +2662,9 @@ retry_get_full_path_name:
       SET_REQ_WIN32_ERROR(req, err);
       return;
     } else if (ret > len) {
-      WCHAR* saved_pathw;
-
       len = ret;
-      saved_pathw = pathw;
-      pathw = uv__realloc(pathw, len * sizeof(*pathw));
+      pathw = uv__reallocf(pathw, len * sizeof(*pathw));
       if (pathw == NULL) {
-        uv__free(saved_pathw);
         SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
         return;
       }
