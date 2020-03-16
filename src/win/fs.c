@@ -2634,12 +2634,12 @@ retry_get_disk_free_space:
     WCHAR* fpart;
     size_t len;
     DWORD ret;
-    BOOL is_secound;
+    BOOL is_second;
 
     err = GetLastError();
-    is_secound = pathw != req->file.pathw;
-    if (err != ERROR_DIRECTORY || is_secound) {
-      if (is_secound)
+    is_second = pathw != req->file.pathw;
+    if (err != ERROR_DIRECTORY || is_second) {
+      if (is_second)
         uv__free(pathw);
 
       SET_REQ_WIN32_ERROR(req, err);
@@ -2648,7 +2648,7 @@ retry_get_disk_free_space:
 
     len = MAX_PATH + 1;
     pathw = uv__malloc(len * sizeof(*pathw));
-    if (pathw  == NULL) {
+    if (pathw == NULL) {
       SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
       return;
     }
