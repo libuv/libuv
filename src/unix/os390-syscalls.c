@@ -408,10 +408,12 @@ int nanosleep(const struct timespec* req, struct timespec* rem) {
    * Don't leak EAGAIN, that just means the timeout expired.
    */
   if (rv == -1)
-    if (err != EAGAIN)
+    if (err == EAGAIN)
+      rv = 0;
+    else
       errno = err;
 
-  if (rem != NULL && (rv == 0 || err == EINTR || err == EAGAIN)) {
+  if (rem != NULL && (rv == 0 || err == EINTR)) {
     rem->tv_nsec = nanorem;
     rem->tv_sec = secrem;
   }
