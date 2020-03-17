@@ -556,3 +556,28 @@ size_t strnlen(const char* str, size_t maxlen) {
   else
     return p - str;
 }
+
+
+int sem_init(UV_PLATFORM_SEM_T* semid, int pshared, unsigned int value) {
+  UNREACHABLE();
+}
+
+
+int sem_destroy(UV_PLATFORM_SEM_T* semid) {
+  UNREACHABLE();
+}
+
+
+int sem_post(UV_PLATFORM_SEM_T* semid) {
+  UNREACHABLE();
+}
+
+
+int sem_trywait(UV_PLATFORM_SEM_T* semid) {
+  UNREACHABLE();
+}
+
+
+int sem_wait(UV_PLATFORM_SEM_T* semid) {
+  UNREACHABLE();
+}
