@@ -29,6 +29,9 @@
 /* EAI_* constants. */
 #include <winsock2.h>
 
+/* Some versions of MinGW do not include the required wincrypt.h in
+ * iphlpapi.h */
+#include <wincrypt.h>
 /* Needed for ConvertInterfaceIndexToLuid and ConvertInterfaceLuidToNameA */
 #include <iphlpapi.h>
 
