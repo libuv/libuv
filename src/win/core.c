@@ -233,6 +233,11 @@ int uv_loop_init(uv_loop_t* loop) {
   if (loop->iocp == NULL)
     return uv_translate_sys_error(GetLastError());
 
+  lfields = (uv__loop_internal_fields_t*) uv__calloc(1, sizeof(*lfields));
+  if (lfields == NULL)
+    return UV_ENOMEM;
+  loop->internal_fields = lfields;
+
   /* To prevent uninitialized memory access, loop->time must be initialized
    * to zero before calling uv_update_time for the first time.
    */
@@ -297,6 +302,8 @@ fail_mutex_init:
   loop->timer_heap = NULL;
 
 fail_timers_alloc:
+  uv__free(lfields);
+  loop->internal_fields = NULL;
   CloseHandle(loop->iocp);
   loop->iocp = INVALID_HANDLE_VALUE;
 
@@ -346,6 +353,10 @@ void uv__loop_close(uv_loop_t* loop) {
 
   uv__free(loop->timer_heap);
   loop->timer_heap = NULL;
+
+  lfields = uv__get_internal_fields(loop);
+  uv__free(lfields);
+  loop->internal_fields = NULL;
 
   CloseHandle(loop->iocp);
 }

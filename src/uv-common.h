@@ -333,6 +333,9 @@ void uv__threadpool_cleanup(void);
   }                                                                           \
   while (0)
 
+#define uv__get_internal_fields(loop)                                         \
+  ((uv__loop_internal_fields_t*) loop->internal_fields)
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);
@@ -341,5 +344,11 @@ void* uv__malloc(size_t size);
 void uv__free(void* ptr);
 void* uv__realloc(void* ptr, size_t size);
 void* uv__reallocf(void* ptr, size_t size);
+
+typedef struct uv__loop_internal_fields_s uv__loop_internal_fields_t;
+
+struct uv__loop_internal_fields_s {
+  unsigned int flags;
+};
 
 #endif /* UV_COMMON_H_ */

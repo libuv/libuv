@@ -28,6 +28,7 @@
 #include <unistd.h>
 
 int uv_loop_init(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lfields;
   void* saved_data;
   int err;
 
@@ -35,6 +36,11 @@ int uv_loop_init(uv_loop_t* loop) {
   saved_data = loop->data;
   memset(loop, 0, sizeof(*loop));
   loop->data = saved_data;
+
+  lfields = (uv__loop_internal_fields_t*) uv__calloc(1, sizeof(*lfields));
+  if (lfields == NULL)
+    return UV_ENOMEM;
+  loop->internal_fields = lfields;
 
   heap_init((struct heap*) &loop->timer_heap);
   QUEUE_INIT(&loop->wq);
@@ -105,6 +111,8 @@ fail_rwlock_init:
 
 fail_signal_init:
   uv__platform_loop_delete(loop);
+  uv__free(lfields);
+  loop->internal_fields = NULL;
 
   uv__free(loop->watchers);
   loop->nwatchers = 0;
@@ -146,6 +154,8 @@ int uv_loop_fork(uv_loop_t* loop) {
 
 
 void uv__loop_close(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lfields;
+
   uv__signal_loop_cleanup(loop);
   uv__platform_loop_delete(loop);
   uv__async_stop(loop);
@@ -181,6 +191,10 @@ void uv__loop_close(uv_loop_t* loop) {
   uv__free(loop->watchers);
   loop->watchers = NULL;
   loop->nwatchers = 0;
+
+  lfields = uv__get_internal_fields(loop);
+  uv__free(lfields);
+  loop->internal_fields = NULL;
 }
 
 

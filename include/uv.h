@@ -1775,9 +1775,11 @@ struct uv_loop_s {
   unsigned int active_handles;
   void* handle_queue[2];
   union {
-    void* unused[2];
+    void* unused;
     unsigned int count;
   } active_reqs;
+  /* Internal storage for future extensions. */
+  void* internal_fields;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   UV_LOOP_PRIVATE_FIELDS
