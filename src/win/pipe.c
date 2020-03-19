@@ -29,7 +29,7 @@
 #include "internal.h"
 #include "req-inl.h"
 #include "stream-inl.h"
-#include "uv-common.h"
+#include "../uv-common.h"
 #include "uv.h"
 
 #include <aclapi.h>

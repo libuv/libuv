@@ -24,7 +24,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "req-inl.h"
-#include "idna.h"
+#include "../idna.h"
 
 /* EAI_* constants. */
 #include <winsock2.h>
