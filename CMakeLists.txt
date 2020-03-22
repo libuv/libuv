@@ -64,22 +64,9 @@ set(uv_sources
     src/version.c)
 
 if(WIN32)
-  if (CMAKE_SYSTEM_VERSION VERSION_GREATER 10) # Windows 10
-    set(windows-version 0x0A00)
-  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.3) # Windows 8.1
-    set(windows-version 0x0603)
-  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.2) # Windows 8
-    set(windows-version 0x0602)
-  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.1) # Windows 7
-    set(windows-version 0x0601)
-  elseif (CMAKE_SYSTEM_VERSION VERSION_GREATER 6.0) # Windows Vista
-    set(windows-version 0x0600)
-  else()
-    message(FATAL_ERROR "Windows Vista is the minimum version supported")
-  endif()
-  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=${windows-version})
+  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0600)
   list(APPEND uv_libraries
-       $<$<STREQUAL:${windows-version},0x0600>:psapi>
+       psapi
        iphlpapi
        userenv
        ws2_32)
