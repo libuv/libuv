@@ -816,13 +816,44 @@ static void check_utime(const char* path,
   else
     r = uv_fs_stat(loop, &req, path, NULL);
 
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(req.result == 0);
+  ASSERT_EQ(req.result, 0);
   s = &req.statbuf;
 
-  ASSERT(s->st_atim.tv_sec + (s->st_atim.tv_nsec / 1000000000.0) == atime);
-  ASSERT(s->st_mtim.tv_sec + (s->st_mtim.tv_nsec / 1000000000.0) == mtime);
+  if (s->st_atim.tv_nsec == 0 && s->st_mtim.tv_nsec == 0) {
+    /*
+     * Test sub-second timestamps only when supported (such as Windows with
+     * NTFS). Some other platforms support sub-second timestamps, but that
+     * support is filesystem-dependent. Notably OS X (HFS Plus) does NOT
+     * support sub-second timestamps. But kernels may round or truncate in
+     * either direction, so we may accept either possible answer.
+     */
+#ifdef _WIN32
+    ASSERT_DOUBLE_EQ(atime, (long) atime);
+    ASSERT_DOUBLE_EQ(mtime, (long) atime);
+#endif
+    if (atime > 0 || (long) atime == atime)
+      ASSERT_EQ(s->st_atim.tv_sec, (long) atime);
+    if (mtime > 0 || (long) mtime == mtime)
+      ASSERT_EQ(s->st_mtim.tv_sec, (long) mtime);
+    ASSERT_GE(s->st_atim.tv_sec, (long) atime - 1);
+    ASSERT_GE(s->st_mtim.tv_sec, (long) mtime - 1);
+    ASSERT_LE(s->st_atim.tv_sec, (long) atime);
+    ASSERT_LE(s->st_mtim.tv_sec, (long) mtime);
+  } else {
+    double st_atim;
+    double st_mtim;
+#ifndef __APPLE__
+    /* TODO(vtjnash): would it be better to normalize this? */
+    ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
+    ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
+#endif
+    st_atim = s->st_atim.tv_sec + s->st_atim.tv_nsec / 1e9;
+    st_mtim = s->st_mtim.tv_sec + s->st_mtim.tv_nsec / 1e9;
+    ASSERT_DOUBLE_EQ(st_atim, atime);
+    ASSERT_DOUBLE_EQ(st_mtim, mtime);
+  }
 
   uv_fs_req_cleanup(&req);
 }
@@ -2523,16 +2554,7 @@ TEST_IMPL(fs_utime) {
   uv_fs_req_cleanup(&req);
   uv_fs_close(loop, &req, r, NULL);
 
-  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
-
-  /*
-   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
-   * platforms support sub-second timestamps, but that support is filesystem-
-   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
-   */
-#ifdef _WIN32
-  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
-#endif
+  atime = mtime = 400497753.25; /* 1982-09-10 11:22:33.25 */
 
   r = uv_fs_utime(NULL, &req, path, atime, mtime, NULL);
   ASSERT(r == 0);
@@ -2541,7 +2563,7 @@ TEST_IMPL(fs_utime) {
 
   check_utime(path, atime, mtime, /* test_lutime */ 0);
 
-  atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
+  atime = mtime = 1291404900.25; /* 2010-12-03 20:35:00.25 - mees <3 */
   checkme.path = path;
   checkme.atime = atime;
   checkme.mtime = mtime;
@@ -2554,6 +2576,45 @@ TEST_IMPL(fs_utime) {
   ASSERT(utime_cb_count == 1);
 
   /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(fs_utime_round) {
+  const char path[] = "test_file";
+  double atime;
+  double mtime;
+  uv_fs_t req;
+  int r;
+
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(req.result, 0);
+  uv_fs_req_cleanup(&req);
+  ASSERT_EQ(0, uv_fs_close(loop, &req, r, NULL));
+
+  atime = mtime = -14245440.25;  /* 1969-07-20T02:56:00.25Z */
+
+  r = uv_fs_utime(NULL, &req, path, atime, mtime, NULL);
+#if !defined(__linux__)     && \
+    !defined(_WIN32)        && \
+    !defined(__APPLE__)     && \
+    !defined(__FreeBSD__)   && \
+    !defined(__sun)
+  if (r != 0) {
+    ASSERT_EQ(r, UV_EINVAL);
+    RETURN_SKIP("utime on some OS (z/OS, IBM i PASE, AIX) or filesystems may reject pre-epoch timestamps");
+  }
+#endif
+  ASSERT_EQ(0, r);
+  ASSERT_EQ(0, req.result);
+  uv_fs_req_cleanup(&req);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
   unlink(path);
 
   MAKE_VALGRIND_HAPPY();
@@ -2614,16 +2675,7 @@ TEST_IMPL(fs_futime) {
   uv_fs_req_cleanup(&req);
   uv_fs_close(loop, &req, r, NULL);
 
-  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
-
-  /*
-   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
-   * platforms support sub-second timestamps, but that support is filesystem-
-   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
-   */
-#ifdef _WIN32
-  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
-#endif
+  atime = mtime = 400497753.25; /* 1982-09-10 11:22:33.25 */
 
   r = uv_fs_open(NULL, &req, path, O_RDWR, 0, NULL);
   ASSERT(r >= 0);
@@ -2700,11 +2752,7 @@ TEST_IMPL(fs_lutime) {
   uv_fs_req_cleanup(&req);
 
   /* Test the synchronous version. */
-  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
-
-#ifdef _WIN32
-  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
-#endif
+  atime = mtime = 400497753.25; /* 1982-09-10 11:22:33.25 */
 
   checkme.atime = atime;
   checkme.mtime = mtime;
