@@ -53,8 +53,8 @@
 static int isreallyatty(int file) {
   int rc;
  
-  rc = ioctl(file, TXISATTY + 0x81, NULL);
-  if (rc != 0 && errno != EBADF)
+  rc = !ioctl(file, TXISATTY + 0x81, NULL);
+  if (!rc && errno != EBADF)
       errno = ENOTTY;
 
   return rc;
