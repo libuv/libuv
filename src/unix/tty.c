@@ -50,7 +50,7 @@
  * Here, we create our own version of isatty() that uses ioctl() to identify
  * whether the fd is *really* a TTY or not.
  */
-static int isatty(int file) {
+static int isreallyatty(int file) {
   int rc;
  
   rc = ioctl(file, TXISATTY + 0x81, NULL);
@@ -59,6 +59,7 @@ static int isatty(int file) {
 
   return rc;
 }
+#define isatty(fd) isreallyatty(fd)
 #endif
 
 static int orig_termios_fd = -1;
