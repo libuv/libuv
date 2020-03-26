@@ -524,6 +524,10 @@ TEST_DECLARE  (idna_toascii)
 TEST_DECLARE  (utf8_decode1)
 TEST_DECLARE  (uname)
 
+TEST_DECLARE  (metrics_idle_time)
+TEST_DECLARE  (metrics_idle_time_thread)
+TEST_DECLARE  (metrics_idle_time_zero)
+
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -1115,6 +1119,10 @@ TASK_LIST_START
   TEST_HELPER   (not_readable_nor_writable_on_read_error, tcp4_echo_server)
   TEST_ENTRY    (not_readable_on_eof)
   TEST_HELPER   (not_readable_on_eof, tcp4_echo_server)
+
+  TEST_ENTRY  (metrics_idle_time)
+  TEST_ENTRY  (metrics_idle_time_thread)
+  TEST_ENTRY  (metrics_idle_time_zero)
 
 #if 0
   /* These are for testing the test runner. */
