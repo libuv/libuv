@@ -55,7 +55,7 @@
 #endif
 
 #define TOO_LONG_NAME_LENGTH 65536
-#define PATHMAX 1024
+#define PATHMAX 4096
 
 typedef struct {
   const char* path;

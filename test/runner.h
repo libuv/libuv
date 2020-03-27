@@ -84,11 +84,7 @@ typedef struct {
 #define TEST_HELPER       HELPER_ENTRY
 #define BENCHMARK_HELPER  HELPER_ENTRY
 
-#ifdef PATH_MAX
-extern char executable_path[PATH_MAX];
-#else
 extern char executable_path[4096];
-#endif
 
 /*
  * Include platform-dependent definitions

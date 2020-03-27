@@ -26,7 +26,7 @@
 #include <stdint.h> /* uintptr_t */
 
 #include <errno.h>
-#include <unistd.h> /* readlink, usleep */
+#include <unistd.h> /* usleep */
 #include <string.h> /* strdup */
 #include <stdio.h>
 #include <stdlib.h>
@@ -72,12 +72,7 @@ int platform_init(int argc, char **argv) {
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
   signal(SIGPIPE, SIG_IGN);
-
-  if (realpath(argv[0], executable_path) == NULL) {
-    perror("realpath");
-    return -1;
-  }
-
+  snprintf(executable_path, sizeof(executable_path), "%s", argv[0]);
   return 0;
 }
 
