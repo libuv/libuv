@@ -24,7 +24,6 @@
 #include <string.h>
 
 #define PATHMAX 1024
-extern char executable_path[];
 
 TEST_IMPL(cwd_and_chdir) {
   char buffer_orig[PATHMAX];
