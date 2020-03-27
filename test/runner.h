@@ -132,7 +132,7 @@ void print_lines(const char* buffer, size_t size, FILE* stream);
  */
 
 /* Do platform-specific initialization. */
-int platform_init(int argc, char** argv);
+void platform_init(int argc, char** argv);
 
 /* Invoke "argv[0] test-name [test-part]". Store process info in *p. Make sure
  * that all stdio output of the processes is buffered up. */

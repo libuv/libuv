@@ -67,13 +67,12 @@ void notify_parent_process(void) {
 
 
 /* Do platform-specific initialization. */
-int platform_init(int argc, char **argv) {
+void platform_init(int argc, char **argv) {
   /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
   signal(SIGPIPE, SIG_IGN);
   snprintf(executable_path, sizeof(executable_path), "%s", argv[0]);
-  return 0;
 }
 
 
