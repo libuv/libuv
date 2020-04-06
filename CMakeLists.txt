@@ -299,6 +299,37 @@ target_include_directories(uv_a
 target_link_libraries(uv_a ${uv_libraries})
 
 if(LIBUV_BUILD_TESTS)
+  # Small hack: use ${uv_test_sources} now to get the runner skeleton,
+  # before the actual tests are added.
+  add_executable(
+    uv_run_benchmarks_a
+    ${uv_test_sources}
+    test/benchmark-async-pummel.c
+    test/benchmark-async.c
+    test/benchmark-fs-stat.c
+    test/benchmark-getaddrinfo.c
+    test/benchmark-loop-count.c
+    test/benchmark-million-async.c
+    test/benchmark-million-timers.c
+    test/benchmark-multi-accept.c
+    test/benchmark-ping-pongs.c
+    test/benchmark-ping-udp.c
+    test/benchmark-pound.c
+    test/benchmark-pump.c
+    test/benchmark-sizes.c
+    test/benchmark-spawn.c
+    test/benchmark-tcp-write-batch.c
+    test/benchmark-thread.c
+    test/benchmark-udp-pummel.c
+    test/blackhole-server.c
+    test/dns-server.c
+    test/echo-server.c
+    test/run-benchmarks.c
+    test/runner.c)
+  target_compile_definitions(uv_run_benchmarks_a PRIVATE ${uv_defines})
+  target_compile_options(uv_run_benchmarks_a PRIVATE ${uv_cflags})
+  target_link_libraries(uv_run_benchmarks_a uv_a ${uv_test_libraries})
+
   list(APPEND uv_test_sources
        test/blackhole-server.c
        test/echo-server.c
