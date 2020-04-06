@@ -63,6 +63,9 @@
 /* Maximum environment variable size, including the terminating null */
 #define MAX_ENV_VAR_LENGTH 32767
 
+/* A RtlGenRandom() by any other name... */
+extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
+
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
@@ -1862,13 +1865,10 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
 }
 
 int uv__random_rtlgenrandom(void* buf, size_t buflen) {
-  if (pRtlGenRandom == NULL)
-    return UV_ENOSYS;
-
   if (buflen == 0)
     return 0;
 
-  if (pRtlGenRandom(buf, buflen) == FALSE)
+  if (SystemFunction036(buf, buflen) == FALSE)
     return UV_EIO;
 
   return 0;
