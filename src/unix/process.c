@@ -180,38 +180,41 @@ fail:
 static int uv__process_init_stdio(const uv_stdio_container_t stdio[],
                                   int (*pipes)[2],
                                   int i) {
+  const uv_stdio_container_t* a;
+  const uv_stdio_container_t* b;
   int mask;
   int j;
   int fd;
 
   mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM;
 
-  switch (stdio[i].flags & mask) {
+  a = stdio + i;
+  switch (a->flags & mask) {
   case UV_IGNORE:
     return 0;
 
   case UV_CREATE_PIPE:
-    assert(stdio[i].data.stream != NULL);
+    assert(a->data.stream != NULL);
 
     for (j = 0; j < i; j++) {
-      if ((stdio[j].flags & UV_CREATE_PIPE) &&
-          stdio[j].data.stream == stdio[i].data.stream) {
+      b = stdio + j;
+      if ((b->flags & UV_CREATE_PIPE) && b->data.stream == a->data.stream) {
         pipes[i][1] = pipes[j][1];
         return 0;
       }
     }
 
-    if (stdio[i].data.stream->type != UV_NAMED_PIPE)
+    if (a->data.stream->type != UV_NAMED_PIPE)
       return UV_EINVAL;
     else
       return uv__make_socketpair(pipes[i]);
 
   case UV_INHERIT_FD:
   case UV_INHERIT_STREAM:
-    if (stdio[i].flags & UV_INHERIT_FD)
-      fd = stdio[i].data.fd;
+    if (a->flags & UV_INHERIT_FD)
+      fd = a->data.fd;
     else
-      fd = uv__stream_fd(stdio[i].data.stream);
+      fd = uv__stream_fd(a->data.stream);
 
     if (fd == -1)
       return UV_EINVAL;
