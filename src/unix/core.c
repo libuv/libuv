@@ -518,7 +518,7 @@ int uv__close_nocancel(int fd) {
 #if defined(__APPLE__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#if defined(__LP64__) || defined(TARGET_OS_IPHONE)
+#if defined(__LP64__) || TARGET_OS_IPHONE
   extern int close$NOCANCEL(int);
   return close$NOCANCEL(fd);
 #else
