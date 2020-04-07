@@ -200,6 +200,15 @@ $ build/uv_run_tests                        # shared library build
 $ build/uv_run_tests_a                      # static library build
 ```
 
+To cross-compile with [CMake][] (unsupported but generally works):
+
+```bash
+$ cmake ../..                 \
+  -DCMAKE_SYSTEM_NAME=Windows \
+  -DCMAKE_SYSTEM_VERSION=6.1  \
+  -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc
+```
+
 ### Install with Homebrew
 
 ```bash
