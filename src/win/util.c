@@ -1405,7 +1405,7 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
   for (penv = env, i = 0; *penv != L'\0'; penv += wcslen(penv) + 1, i++);
 
   *envitems = uv__calloc(i, sizeof(**envitems));
-  if (envitems == NULL) {
+  if (*envitems == NULL) {
     FreeEnvironmentStringsW(env);
     return UV_ENOMEM;
   }
