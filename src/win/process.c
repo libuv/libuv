@@ -692,7 +692,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   WCHAR* dst_copy;
   WCHAR** ptr_copy;
   WCHAR** env_copy;
-  DWORD* required_vars_value_len = alloca(n_required_vars * sizeof(DWORD*));
+  DWORD* required_vars_value_len = alloca(n_required_vars * sizeof(DWORD));
 
   /* first pass: determine size in UTF-16 */
   for (env = env_block; *env; env++) {
