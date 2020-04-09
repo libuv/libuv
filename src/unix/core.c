@@ -1258,7 +1258,7 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
 
   *envitems = uv__calloc(i, sizeof(**envitems));
 
-  if (envitems == NULL)
+  if (*envitems == NULL)
     return UV_ENOMEM;
 
   for (j = 0, cnt = 0; j < i; j++) {
