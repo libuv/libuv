@@ -484,11 +484,11 @@ API
 
 .. c:function:: uint64_t uv_get_free_memory(void)
 
-    Gets memory information (in bytes).
+    Gets the information of free amount of memory available (in bytes).
 
 .. c:function:: uint64_t uv_get_total_memory(void)
 
-    Gets memory information (in bytes).
+    Gets the information of total amount of memory available (in bytes).
 
 .. c:function:: uint64_t uv_get_constrained_memory(void)
 
