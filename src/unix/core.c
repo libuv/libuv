@@ -71,7 +71,7 @@ extern char** environ;
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
-# if defined(__FreeBSD__) || defined(__linux__)
+# if defined(__FreeBSD__)
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
@@ -88,7 +88,8 @@ extern char** environ;
 #endif
 
 #if defined(__linux__)
-#include <sys/syscall.h>
+# include <sys/syscall.h>
+# define uv__accept4 accept4
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
