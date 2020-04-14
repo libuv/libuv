@@ -33,6 +33,9 @@ TEST_IMPL(platform_output) {
   uv_pid_t ppid;
   uv_rusage_t rusage;
   uv_cpu_info_t* cpus;
+  uv_cpu_info_t* cpus2;
+  uint64_t cpu1_total;
+  uint64_t cpu2_total;
   uv_interface_address_t* interfaces;
   uv_passwd_t pwd;
   uv_utsname_t uname;
@@ -102,6 +105,27 @@ TEST_IMPL(platform_output) {
     printf("  times.nice: %llu\n",
            (unsigned long long) cpus[i].cpu_times.nice);
   }
+
+  uv_sleep(100);
+  err = uv_cpu_info(&cpus2, &count);
+  ASSERT(err == 0);
+
+  cpu1_total = cpus[0].cpu_times.user +
+               cpus[0].cpu_times.nice +
+               cpus[0].cpu_times.sys +
+               cpus[0].cpu_times.idle +
+               cpus[0].cpu_times.irq;
+  cpu2_total = cpus2[0].cpu_times.user +
+               cpus2[0].cpu_times.nice +
+               cpus2[0].cpu_times.sys +
+               cpus2[0].cpu_times.idle +
+               cpus2[0].cpu_times.irq;
+
+  /* Check that total CPU times has increased by 100ms +/- 25ms. */
+  printf("uv_cpu_info cpu_times delta: %lu\n", cpu2_total - cpu1_total);
+  ASSERT(abs(cpu2_total - 100 - cpu1_total) < 25);
+
+  uv_free_cpu_info(cpus2, count);
 #endif
   uv_free_cpu_info(cpus, count);
 

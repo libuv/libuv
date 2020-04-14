@@ -131,11 +131,11 @@ Data types
             char* model;
             int speed;
             struct uv_cpu_times_s {
-                uint64_t user;
-                uint64_t nice;
-                uint64_t sys;
-                uint64_t idle;
-                uint64_t irq;
+                uint64_t user; /* milliseconds */
+                uint64_t nice; /* milliseconds */
+                uint64_t sys; /* milliseconds */
+                uint64_t idle; /* milliseconds */
+                uint64_t irq; /* milliseconds */
             } cpu_times;
         } uv_cpu_info_t;
 
