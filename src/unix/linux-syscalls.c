@@ -126,7 +126,6 @@
 # endif
 #endif /* __NR_getrandom */
 
-struct uv__mmsghdr;
 
 int uv__sendmmsg(int fd,
                  struct uv__mmsghdr* mmsg,
