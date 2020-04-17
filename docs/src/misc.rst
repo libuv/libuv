@@ -657,7 +657,7 @@ API
 
     .. note::
         On IBM i PASE, you are not allowed to change your priority unless you
-        have the *JOBCTL special authority (even to lower it).
+        have the \*JOBCTL special authority (even to lower it).
 
     .. versionadded:: 1.23.0
 
