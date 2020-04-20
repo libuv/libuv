@@ -4347,3 +4347,21 @@ TEST_IMPL(fs_statfs) {
 
   return 0;
 }
+
+TEST_IMPL(fs_get_system_error) {
+  uv_fs_t req;
+  int r;
+  int system_error;
+
+  r = uv_fs_statfs(NULL, &req, "non_existing_file", NULL);
+  ASSERT(r != 0);
+
+  system_error = uv_fs_get_system_error(&req);
+#ifdef _WIN32
+  ASSERT(system_error == ERROR_FILE_NOT_FOUND);
+#else
+  ASSERT(system_error == ENOENT);
+#endif
+
+  return 0;
+}
