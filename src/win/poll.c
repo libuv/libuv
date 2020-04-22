@@ -226,28 +226,6 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
 }
 
 
-static int uv__fast_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
-  assert(handle->type == UV_POLL);
-  assert(!(handle->flags & UV_HANDLE_CLOSING));
-  assert((events & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT)) == 0);
-
-  handle->events = events;
-
-  if (handle->events != 0) {
-    uv__handle_start(handle);
-  } else {
-    uv__handle_stop(handle);
-  }
-
-  if ((handle->events & ~(handle->submitted_events_1 |
-      handle->submitted_events_2)) != 0) {
-    uv__fast_poll_submit_poll_req(handle->loop, handle);
-  }
-
-  return 0;
-}
-
-
 static int uv__fast_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   handle->events = 0;
   uv__handle_closing(handle);
@@ -469,28 +447,6 @@ static void uv__slow_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
 }
 
 
-static int uv__slow_poll_set(uv_loop_t* loop, uv_poll_t* handle, int events) {
-  assert(handle->type == UV_POLL);
-  assert(!(handle->flags & UV_HANDLE_CLOSING));
-  assert((events & ~(UV_READABLE | UV_WRITABLE)) == 0);
-
-  handle->events = events;
-
-  if (handle->events != 0) {
-    uv__handle_start(handle);
-  } else {
-    uv__handle_stop(handle);
-  }
-
-  if ((handle->events &
-      ~(handle->submitted_events_1 | handle->submitted_events_2)) != 0) {
-    uv__slow_poll_submit_poll_req(handle->loop, handle);
-  }
-
-  return 0;
-}
-
-
 static int uv__slow_poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   handle->events = 0;
   uv__handle_closing(handle);
@@ -582,35 +538,43 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
 }
 
 
-int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb) {
-  int err;
+static int uv__poll_set(uv_poll_t* handle, int events, uv_poll_cb cb) {
+  int submitted_events;
 
-  if (!(handle->flags & UV_HANDLE_POLL_SLOW)) {
-    err = uv__fast_poll_set(handle->loop, handle, events);
-  } else {
-    err = uv__slow_poll_set(handle->loop, handle, events);
-  }
+  assert(handle->type == UV_POLL);
+  assert(!(handle->flags & UV_HANDLE_CLOSING));
+  assert((events & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT)) == 0);
 
-  if (err) {
-    return uv_translate_sys_error(err);
-  }
-
+  handle->events = events;
   handle->poll_cb = cb;
+
+  if (handle->events == 0) {
+    uv__handle_stop(handle);
+    return 0;
+  }
+
+  uv__handle_start(handle);
+  submitted_events = handle->submitted_events_1 | handle->submitted_events_2;
+
+  if (handle->events & ~submitted_events) {
+    if (handle->flags & UV_HANDLE_POLL_SLOW) {
+      uv__slow_poll_submit_poll_req(handle->loop, handle);
+    } else {
+      uv__fast_poll_submit_poll_req(handle->loop, handle);
+    }
+  }
 
   return 0;
 }
 
 
+int uv_poll_start(uv_poll_t* handle, int events, uv_poll_cb cb) {
+  return uv__poll_set(handle, events, cb);
+}
+
+
 int uv_poll_stop(uv_poll_t* handle) {
-  int err;
-
-  if (!(handle->flags & UV_HANDLE_POLL_SLOW)) {
-    err = uv__fast_poll_set(handle->loop, handle, 0);
-  } else {
-    err = uv__slow_poll_set(handle->loop, handle, 0);
-  }
-
-  return uv_translate_sys_error(err);
+  return uv__poll_set(handle, 0, handle->poll_cb);
 }
 
 
