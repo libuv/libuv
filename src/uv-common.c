@@ -821,3 +821,19 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
 
   uv__free(cpu_infos);
 }
+
+
+#ifdef __GNUC__  /* Also covers __clang__ and __INTEL_COMPILER. */
+__attribute__((destructor))
+#endif
+void uv_library_shutdown(void) {
+  static int was_shutdown;
+
+  if (was_shutdown)
+    return;
+
+  uv__process_title_cleanup();
+  uv__signal_cleanup();
+  uv__threadpool_cleanup();
+  was_shutdown = 1;
+}

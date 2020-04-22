@@ -201,6 +201,10 @@ int uv__next_timeout(const uv_loop_t* loop);
 void uv__run_timers(uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
 
+void uv__process_title_cleanup(void);
+void uv__signal_cleanup(void);
+void uv__threadpool_cleanup(void);
+
 #define uv__has_active_reqs(loop)                                             \
   ((loop)->active_reqs.count > 0)
 

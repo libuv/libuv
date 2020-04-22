@@ -265,6 +265,8 @@ typedef void* (*uv_realloc_func)(void* ptr, size_t size);
 typedef void* (*uv_calloc_func)(size_t count, size_t size);
 typedef void (*uv_free_func)(void* ptr);
 
+UV_EXTERN void uv_library_shutdown(void);
+
 UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func,
                                    uv_realloc_func realloc_func,
                                    uv_calloc_func calloc_func,
