@@ -1213,7 +1213,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   in_offset = 0;
   while (bytes_to_send != 0) {
     bytes_chunk = SSIZE_MAX;
-    if (bytes_to_send < bytes_chunk)
+    if (bytes_to_send < (off_t) bytes_chunk)
       bytes_chunk = bytes_to_send;
     uv_fs_sendfile(NULL, &fs_req, dstfd, srcfd, in_offset, bytes_chunk, NULL);
     bytes_written = fs_req.result;
