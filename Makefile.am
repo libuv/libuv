@@ -410,8 +410,8 @@ libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/darwin.c \
-                    src/unix/darwin-proctitle.c \
-                    src/unix/fsevents.c \
+                    src/unix/darwin-proctitle.m \
+                    src/unix/fsevents.m \
                     src/unix/kqueue.c \
                     src/unix/proctitle.c \
                     src/unix/random-getentropy.c

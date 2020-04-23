@@ -197,9 +197,14 @@ endif()
 if(APPLE)
   list(APPEND uv_defines _DARWIN_UNLIMITED_SELECT=1 _DARWIN_USE_64_BIT_INODE=1)
   list(APPEND uv_sources
-       src/unix/darwin-proctitle.c
+       src/unix/darwin-proctitle.m
        src/unix/darwin.c
-       src/unix/fsevents.c)
+       src/unix/fsevents.m)
+  enable_language(OBJC)
+  set_source_files_properties(
+       src/unix/darwin-proctitle.m
+       src/unix/fsevents.m
+       PROPERTIES LANGUAGE OBJC)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
