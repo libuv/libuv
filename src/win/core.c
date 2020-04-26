@@ -306,12 +306,12 @@ fail_timers_alloc:
 
 void uv_update_time(uv_loop_t* loop) {
   uint64_t new_time = uv__hrtime(1000);
-  // new_time should always be at least loop->time, as per the API contract for
-  // QueryPerformanceCounter() and hence also uv__hrtime().
-  // However, there appears to be a bug that keeps Windows from guaranteeing
-  // that behavior on some CPUs, so we act as if no time had passed in that
-  // case.
-  // See https://github.com/libuv/libuv/issues/1633 for more details.
+  /* new_time should always be at least loop->time, as per the API contract for
+   * QueryPerformanceCounter() and hence also uv__hrtime().
+   * However, there appears to be a bug that keeps Windows from guaranteeing
+   * that behavior on some CPUs, so we act as if no time had passed in that
+   * case.
+   * See https://github.com/libuv/libuv/issues/1633 for more details. */
   if (new_time > loop->time)
     loop->time = new_time;
 }
