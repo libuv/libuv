@@ -115,7 +115,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
   unsigned bias;
   unsigned delta;
   unsigned todo;
-  int first;
+  BOOLEAN first;
 
   h = 0;
   ss = s;
@@ -161,7 +161,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
   n = 128;
   bias = 72;
   delta = 0;
-  first = 1;
+  first = TRUE;
 
   while (todo > 0) {
     m = -1;
@@ -221,7 +221,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
 
       if (first) {
         delta /= 350;
-        first = 0;
+        first = FALSE;
       }
 
       /* No overflow check is needed because |delta| was just
