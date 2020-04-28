@@ -948,16 +948,13 @@ int uv__udp_init_ex(uv_loop_t* loop,
                     uv_udp_t* handle,
                     unsigned flags,
                     int domain) {
-  int err;
   int fd;
 
+  fd = -1;
   if (domain != AF_UNSPEC) {
-    err = uv__socket(domain, SOCK_DGRAM, 0);
-    if (err < 0)
-      return err;
-    fd = err;
-  } else {
-    fd = -1;
+    fd = uv__socket(domain, SOCK_DGRAM, 0);
+    if (fd < 0)
+      return fd;
   }
 
   uv__handle_init(loop, (uv_handle_t*)handle, UV_UDP);
