@@ -510,7 +510,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-walk-handles.c
        test/test-watcher-cross-stop.c)
 
-  add_executable(uv_run_tests ${uv_test_sources})
+  add_executable(uv_run_tests ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests
                              PRIVATE ${uv_defines} USING_UV_SHARED=1)
   target_compile_options(uv_run_tests PRIVATE ${uv_cflags})
@@ -522,7 +522,7 @@ if(LIBUV_BUILD_TESTS)
     set_tests_properties(uv_test PROPERTIES ENVIRONMENT
                          "LIBPATH=${CMAKE_BINARY_DIR}:$ENV{LIBPATH}")
   endif()
-  add_executable(uv_run_tests_a ${uv_test_sources})
+  add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
   target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
