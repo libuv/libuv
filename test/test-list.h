@@ -116,7 +116,8 @@ TEST_DECLARE   (tcp_open_bound)
 TEST_DECLARE   (tcp_open_connected)
 TEST_DECLARE   (tcp_connect_error_after_write)
 TEST_DECLARE   (tcp_shutdown_after_write)
-TEST_DECLARE   (tcp_bind_error_addrinuse)
+TEST_DECLARE   (tcp_bind_error_addrinuse_connect)
+TEST_DECLARE   (tcp_bind_error_addrinuse_listen)
 TEST_DECLARE   (tcp_bind_error_addrnotavail_1)
 TEST_DECLARE   (tcp_bind_error_addrnotavail_2)
 TEST_DECLARE   (tcp_bind_error_fault)
@@ -671,7 +672,13 @@ TASK_LIST_START
   TEST_HELPER (tcp_shutdown_after_write, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_connect_error_after_write)
-  TEST_ENTRY  (tcp_bind_error_addrinuse)
+  TEST_ENTRY  (tcp_bind_error_addrinuse_connect)
+  /* tcp4_echo_server steals the port. It needs to be a separate process
+   * because libuv sets setsockopt(SO_REUSEADDR) that lets you steal an
+   * existing bind if it originates from the same process.
+   */
+  TEST_HELPER (tcp_bind_error_addrinuse_connect, tcp4_echo_server)
+  TEST_ENTRY  (tcp_bind_error_addrinuse_listen)
   TEST_ENTRY  (tcp_bind_error_addrnotavail_1)
   TEST_ENTRY  (tcp_bind_error_addrnotavail_2)
   TEST_ENTRY  (tcp_bind_error_fault)

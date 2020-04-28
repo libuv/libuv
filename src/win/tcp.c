@@ -800,9 +800,8 @@ static int uv_tcp_try_connect(uv_connect_t* req,
   if (err)
     return err;
 
-  if (handle->delayed_error) {
-    return handle->delayed_error;
-  }
+  if (handle->delayed_error != 0)
+    goto out;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
     if (addrlen == sizeof(uv_addr_ip4_any_)) {
@@ -815,8 +814,8 @@ static int uv_tcp_try_connect(uv_connect_t* req,
     err = uv_tcp_try_bind(handle, bind_addr, addrlen, 0);
     if (err)
       return err;
-    if (handle->delayed_error)
-      return handle->delayed_error;
+    if (handle->delayed_error != 0)
+      goto out;
   }
 
   if (!handle->tcp.conn.func_connectex) {
@@ -844,10 +843,20 @@ static int uv_tcp_try_connect(uv_connect_t* req,
              NULL);
   }
 
+out:
+
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+
+  if (handle->delayed_error != 0) {
+    /* Process the req without IOCP. */
+    handle->reqs_pending++;
+    REGISTER_HANDLE_REQ(loop, handle, req);
+    uv_insert_pending_req(loop, (uv_req_t*)req);
+    return 0;
+  }
 
   success = handle->tcp.conn.func_connectex(handle->socket,
                                             (const struct sockaddr*) &converted,
@@ -1215,7 +1224,14 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   err = 0;
-  if (REQ_SUCCESS(req)) {
+  if (handle->delayed_error) {
+    /* To smooth over the differences between unixes errors that
+     * were reported synchronously on the first connect can be delayed
+     * until the next tick--which is now.
+     */
+    err = handle->delayed_error;
+    handle->delayed_error = 0;
+  } else if (REQ_SUCCESS(req)) {
     if (handle->flags & UV_HANDLE_CLOSING) {
       /* use UV_ECANCELED for consistency with Unix */
       err = ERROR_OPERATION_ABORTED;

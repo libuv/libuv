@@ -214,13 +214,14 @@ int uv__tcp_connect(uv_connect_t* req,
   if (handle->connect_req != NULL)
     return UV_EALREADY;  /* FIXME(bnoordhuis) UV_EINVAL or maybe UV_EBUSY. */
 
+  if (handle->delayed_error != 0)
+    goto out;
+
   err = maybe_new_socket(handle,
                          addr->sa_family,
                          UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   if (err)
     return err;
-
-  handle->delayed_error = 0;
 
   do {
     errno = 0;
@@ -248,6 +249,8 @@ int uv__tcp_connect(uv_connect_t* req,
     else
       return UV__ERR(errno);
   }
+
+out:
 
   uv__req_init(handle->loop, req, UV_CONNECT);
   req->cb = cb;
