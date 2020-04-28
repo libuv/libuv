@@ -81,10 +81,9 @@ API
     initialized ``struct sockaddr_in`` or ``struct sockaddr_in6``.
 
     When the port is already taken, you can expect to see an ``UV_EADDRINUSE``
-    error from either :c:func:`uv_tcp_bind`, :c:func:`uv_listen` or
-    :c:func:`uv_tcp_connect`. That is, a successful call to this function does
-    not guarantee that the call to :c:func:`uv_listen` or :c:func:`uv_tcp_connect`
-    will succeed as well.
+    error from :c:func:`uv_listen` or :c:func:`uv_tcp_connect`. That is,
+    a successful call to this function does not guarantee that the call
+    to :c:func:`uv_listen` or :c:func:`uv_tcp_connect` will succeed as well.
 
     `flags` can contain ``UV_TCP_IPV6ONLY``, in which case dual-stack support
     is disabled and only IPv6 is used.
