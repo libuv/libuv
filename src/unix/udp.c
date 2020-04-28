@@ -202,6 +202,9 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
     msgs[k].msg_hdr.msg_iovlen = 1;
     msgs[k].msg_hdr.msg_name = peers + k;
     msgs[k].msg_hdr.msg_namelen = sizeof(peers[0]);
+    msgs[k].msg_hdr.msg_control = NULL;
+    msgs[k].msg_hdr.msg_controllen = 0;
+    msgs[k].msg_hdr.msg_flags = 0;
   }
 
   do
