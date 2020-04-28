@@ -60,9 +60,6 @@
 #endif
 
 
-/* Maximum environment variable size, including the terminating null */
-#define MAX_ENV_VAR_LENGTH 32767
-
 /* A RtlGenRandom() by any other name... */
 extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
 
@@ -1515,7 +1512,9 @@ fail:
 
 
 int uv_os_getenv(const char* name, char* buffer, size_t* size) {
-  wchar_t var[MAX_ENV_VAR_LENGTH];
+  wchar_t fastvar[512];
+  wchar_t* var;
+  DWORD varlen;
   wchar_t* name_w;
   DWORD bufsize;
   size_t len;
@@ -1529,25 +1528,52 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
   if (r != 0)
     return r;
 
-  SetLastError(ERROR_SUCCESS);
-  len = GetEnvironmentVariableW(name_w, var, MAX_ENV_VAR_LENGTH);
+  var = fastvar;
+  varlen = ARRAY_SIZE(fastvar);
+
+  for (;;) {
+    SetLastError(ERROR_SUCCESS);
+    len = GetEnvironmentVariableW(name_w, var, varlen);
+
+    if (len < varlen)
+      break;
+
+    /* Try repeatedly because we might have been preempted by another thread
+     * modifying the environment variable just as we're trying to read it.
+     */
+    if (var != fastvar)
+      uv__free(var);
+
+    varlen = 1 + len;
+    var = uv__malloc(varlen * sizeof(*var));
+
+    if (var == NULL) {
+      r = UV_ENOMEM;
+      goto fail;
+    }
+  }
+
   uv__free(name_w);
-  assert(len < MAX_ENV_VAR_LENGTH); /* len does not include the null */
+  name_w = NULL;
 
   if (len == 0) {
     r = GetLastError();
-    if (r != ERROR_SUCCESS)
-      return uv_translate_sys_error(r);
+    if (r != ERROR_SUCCESS) {
+      r = uv_translate_sys_error(r);
+      goto fail;
+    }
   }
 
   /* Check how much space we need */
   bufsize = WideCharToMultiByte(CP_UTF8, 0, var, -1, NULL, 0, NULL, NULL);
 
   if (bufsize == 0) {
-    return uv_translate_sys_error(GetLastError());
+    r = uv_translate_sys_error(GetLastError());
+    goto fail;
   } else if (bufsize > *size) {
     *size = bufsize;
-    return UV_ENOBUFS;
+    r = UV_ENOBUFS;
+    goto fail;
   }
 
   /* Convert to UTF-8 */
@@ -1560,11 +1586,23 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
                                 NULL,
                                 NULL);
 
-  if (bufsize == 0)
-    return uv_translate_sys_error(GetLastError());
+  if (bufsize == 0) {
+    r = uv_translate_sys_error(GetLastError());
+    goto fail;
+  }
 
   *size = bufsize - 1;
-  return 0;
+  r = 0;
+
+fail:
+
+  if (name_w != NULL)
+    uv__free(name_w);
+
+  if (var != fastvar)
+    uv__free(var);
+
+  return r;
 }
 
 
