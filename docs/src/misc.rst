@@ -233,6 +233,8 @@ API
                  sure the allocator is changed while no memory was allocated with
                  the previous allocator, or that they are compatible.
 
+    .. warning:: Allocator must be thread-safe.
+
 .. c:function:: void uv_library_shutdown(void);
 
     .. versionadded:: 1.38.0
