@@ -228,7 +228,7 @@ static int tcp4_echo_start(int port) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("0.0.0.0", port, &addr));
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", port, &addr));
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
