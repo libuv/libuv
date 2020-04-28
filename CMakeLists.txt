@@ -31,6 +31,18 @@ string(CONCAT is-msvc $<OR:
 >)
 
 check_c_compiler_flag(/W4 UV_LINT_W4)
+check_c_compiler_flag(/wd4100 UV_LINT_NO_UNUSED_PARAMETER_MSVC)
+check_c_compiler_flag(/wd4127 UV_LINT_NO_CONDITIONAL_CONSTANT_MSVC)
+check_c_compiler_flag(/wd4201 UV_LINT_NO_NONSTANDARD_MSVC)
+check_c_compiler_flag(/wd4206 UV_LINT_NO_NONSTANDARD_EMPTY_TU_MSVC)
+check_c_compiler_flag(/wd4210 UV_LINT_NO_NONSTANDARD_FILE_SCOPE_MSVC)
+check_c_compiler_flag(/wd4232 UV_LINT_NO_NONSTANDARD_NONSTATIC_DLIMPORT_MSVC)
+check_c_compiler_flag(/wd4456 UV_LINT_NO_HIDES_LOCAL)
+check_c_compiler_flag(/wd4457 UV_LINT_NO_HIDES_PARAM)
+check_c_compiler_flag(/wd4459 UV_LINT_NO_HIDES_GLOBAL)
+check_c_compiler_flag(/wd4706 UV_LINT_NO_CONDITIONAL_ASSIGNMENT_MSVC)
+check_c_compiler_flag(/wd4996 UV_LINT_NO_UNSAFE_MSVC)
+
 check_c_compiler_flag(-Wall UV_LINT_WALL) # DO NOT use this under MSVC
 
 # TODO: Place these into its own function
@@ -38,10 +50,21 @@ check_c_compiler_flag(-Wno-unused-parameter UV_LINT_NO_UNUSED_PARAMETER)
 check_c_compiler_flag(-Wstrict-prototypes UV_LINT_STRICT_PROTOTYPES)
 check_c_compiler_flag(-Wextra UV_LINT_EXTRA)
 
-set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter>) 
+set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter>)
 set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-prototypes>)
 set(lint-extra $<$<BOOL:${UV_LINT_EXTRA}>:-Wextra>)
 set(lint-w4 $<$<BOOL:${UV_LINT_W4}>:/W4>)
+set(lint-no-unused-parameter-msvc $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER_MSVC}>:/wd4100>)
+set(lint-no-conditional-constant-msvc $<$<BOOL:${UV_LINT_NO_CONDITIONAL_CONSTANT_MSVC}>:/wd4127>)
+set(lint-no-nonstandard-msvc $<$<BOOL:${UV_LINT_NO_NONSTANDARD_MSVC}>:/wd4201>)
+set(lint-no-nonstandard-empty-tu-msvc $<$<BOOL:${UV_LINT_NO_NONSTANDARD_EMPTY_TU_MSVC}>:/wd4206>)
+set(lint-no-nonstandard-file-scope-msvc $<$<BOOL:${UV_LINT_NO_NONSTANDARD_FILE_SCOPE_MSVC}>:/wd4210>)
+set(lint-no-nonstandard-nonstatic-dlimport-msvc $<$<BOOL:${UV_LINT_NO_NONSTANDARD_NONSTATIC_DLIMPORT_MSVC}>:/wd4232>)
+set(lint-no-hides-local-msvc $<$<BOOL:${UV_LINT_NO_HIDES_LOCAL}>:/wd4456>)
+set(lint-no-hides-param-msvc $<$<BOOL:${UV_LINT_NO_HIDES_PARAM}>:/wd4457>)
+set(lint-no-hides-global-msvc $<$<BOOL:${UV_LINT_NO_HIDES_GLOBAL}>:/wd4459>)
+set(lint-no-conditional-assignment-msvc $<$<BOOL:${UV_LINT_NO_CONDITIONAL_ASSIGNMENT_MSVC}>:/wd4706>)
+set(lint-no-unsafe-msvc $<$<BOOL:${UV_LINT_NO_UNSAFE_MSVC}>:/wd4996>)
 # Unfortunately, this one is complicated because MSVC and clang-cl support -Wall
 # but using it is like calling -Weverything
 string(CONCAT lint-default $<
@@ -50,6 +73,17 @@ string(CONCAT lint-default $<
 
 list(APPEND uv_cflags ${lint-strict-prototypes} ${lint-extra} ${lint-default} ${lint-w4})
 list(APPEND uv_cflags ${lint-no-unused-parameter})
+list(APPEND uv_cflags ${lint-no-unused-parameter-msvc})
+list(APPEND uv_cflags ${lint-no-conditional-constant-msvc})
+list(APPEND uv_cflags ${lint-no-nonstandard-msvc})
+list(APPEND uv_cflags ${lint-no-nonstandard-empty-tu-msvc})
+list(APPEND uv_cflags ${lint-no-nonstandard-file-scope-msvc})
+list(APPEND uv_cflags ${lint-no-nonstandard-nonstatic-dlimport-msvc})
+list(APPEND uv_cflags ${lint-no-hides-local-msvc})
+list(APPEND uv_cflags ${lint-no-hides-param-msvc})
+list(APPEND uv_cflags ${lint-no-hides-global-msvc})
+list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
+list(APPEND uv_cflags ${lint-no-unsafe-msvc})
 
 set(uv_sources
     src/fs-poll.c
