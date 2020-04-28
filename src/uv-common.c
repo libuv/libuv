@@ -293,6 +293,36 @@ int uv_tcp_bind(uv_tcp_t* handle,
 }
 
 
+int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned flags) {
+  unsigned extra_flags;
+  int domain;
+  int rc;
+
+  /* Use the lower 8 bits for the domain. */
+  domain = flags & 0xFF;
+  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+    return UV_EINVAL;
+
+  /* Use the higher bits for extra flags. */
+  extra_flags = flags & ~0xFF;
+  if (extra_flags & ~UV_UDP_RECVMMSG)
+    return UV_EINVAL;
+
+  rc = uv__udp_init_ex(loop, handle, flags, domain);
+
+  if (rc == 0)
+    if (extra_flags & UV_UDP_RECVMMSG)
+      handle->flags |= UV_HANDLE_UDP_RECVMMSG;
+
+  return rc;
+}
+
+
+int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
+  return uv_udp_init_ex(loop, handle, AF_UNSPEC);
+}
+
+
 int uv_udp_bind(uv_udp_t* handle,
                 const struct sockaddr* addr,
                 unsigned int flags) {

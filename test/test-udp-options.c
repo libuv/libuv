@@ -133,7 +133,7 @@ TEST_IMPL(udp_no_autobind) {
   uv_close((uv_handle_t*) &h, NULL);
 
   /* Test a non-lazily initialized socket. */
-  ASSERT(0 == uv_udp_init_ex(loop, &h2, AF_INET));
+  ASSERT(0 == uv_udp_init_ex(loop, &h2, AF_INET | UV_UDP_RECVMMSG));
   ASSERT(0 == uv_udp_set_multicast_ttl(&h2, 32));
   ASSERT(0 == uv_udp_set_broadcast(&h2, 1));
 

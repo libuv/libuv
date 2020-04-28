@@ -139,6 +139,11 @@ int uv__tcp_connect(uv_connect_t* req,
                    unsigned int addrlen,
                    uv_connect_cb cb);
 
+int uv__udp_init_ex(uv_loop_t* loop,
+                    uv_udp_t* handle,
+                    unsigned flags,
+                    int domain);
+
 int uv__udp_bind(uv_udp_t* handle,
                  const struct sockaddr* addr,
                  unsigned int  addrlen,
