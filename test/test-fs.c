@@ -4347,3 +4347,88 @@ TEST_IMPL(fs_statfs) {
 
   return 0;
 }
+
+#if defined(__APPLE__)
+static void pipe_close_cb(uv_stream_t* req) {
+  close_cb_count++;
+}
+
+
+static void pipe_write_cb(uv_write_t* req, int status) {
+  ASSERT(status == 0);
+  write_cb_count++;
+  uv_close((uv_handle_t*)req->handle, pipe_close_cb);;
+}
+#endif
+
+
+TEST_IMPL(big_write) {
+  const unsigned nzeros = (1u << 24u) + 1u; /* 256 MB */
+#ifdef _LP64 /* 8 GB */
+  #define nbufs 512
+#else
+  /* 1 GB (uv_fs_t->result too small to hold > 2 GB) */
+  #define nbufs 64
+#endif
+  uv_buf_t iovs[nbufs];
+  uv_file file;
+  int r;
+  void* zeros;
+  const char dev_null[] =
+#ifdef _WIN32
+      "NUL";
+#else
+      "/dev/null";
+#endif
+#if defined(__APPLE__)
+  uv_write_t pipe_write;
+  uv_pipe_t p;
+#endif
+
+  /* Setup. */
+  loop = uv_default_loop();
+
+  r = uv_fs_open(loop,
+                 &open_req1,
+                 dev_null,
+                 O_WRONLY,
+                 0,
+                 NULL);
+  ASSERT(r > 0);
+  ASSERT(open_req1.result >= 0);
+  file = (uv_file)open_req1.result;
+  uv_fs_req_cleanup(&open_req1);
+
+  zeros = calloc(1, nzeros);
+  ASSERT(zeros);
+  for (r = 0; r < nbufs; r++)
+    iovs[r] = uv_buf_init(zeros, nzeros);
+
+#if defined(__APPLE__)
+  /* It's usually not OK to treat a fd as a pipe, but Mach is OK with it. */
+  uv_pipe_init(loop, &p, 0);
+  uv_pipe_open(&p, file);
+  uv_write(&pipe_write, (uv_stream_t*) &p, iovs, nbufs, pipe_write_cb);
+  ASSERT(close_cb_count == 0);
+  ASSERT(write_cb_count == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(write_cb_count == 1);
+  ASSERT(close_cb_count == 1);
+#endif
+
+  r = uv_fs_write(NULL, &write_req, file, iovs, nbufs, 0, NULL);
+  ASSERT(r > 0);
+#ifdef _LP64
+  /* The uv_fs_write return value is too small to hold actual result so libuv
+   * should saturate the counter */
+  ASSERT(r == INT32_MAX);
+#else
+  ASSERT(r == write_req.result);
+#endif
+  ASSERT(write_req.result == nzeros * (uint64_t) nbufs);
+  uv_fs_req_cleanup(&write_req);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+  #undef nbufs
+}

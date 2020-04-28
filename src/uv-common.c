@@ -570,13 +570,13 @@ uint64_t uv_now(const uv_loop_t* loop) {
 
 
 
-size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
+uint64_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
   unsigned int i;
-  size_t bytes;
+  uint64_t bytes;
 
   bytes = 0;
   for (i = 0; i < nbufs; i++)
-    bytes += (size_t) bufs[i].len;
+    bytes += bufs[i].len;
 
   return bytes;
 }

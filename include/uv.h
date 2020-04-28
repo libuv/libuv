@@ -477,7 +477,7 @@ UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
 #define UV_STREAM_FIELDS                                                      \
   /* number of bytes queued for writing */                                    \
-  size_t write_queue_size;                                                    \
+  uint64_t write_queue_size;                                                  \
   uv_alloc_cb alloc_cb;                                                       \
   uv_read_cb read_cb;                                                         \
   /* private */                                                               \
@@ -495,7 +495,7 @@ struct uv_stream_s {
   UV_STREAM_FIELDS
 };
 
-UV_EXTERN size_t uv_stream_get_write_queue_size(const uv_stream_t* stream);
+UV_EXTERN uint64_t uv_stream_get_write_queue_size(const uv_stream_t* stream);
 
 UV_EXTERN int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb);
 UV_EXTERN int uv_accept(uv_stream_t* server, uv_stream_t* client);

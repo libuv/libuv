@@ -1362,8 +1362,11 @@ static int uv__pipe_write_data(uv_loop_t* loop,
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) ==
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) {
     DWORD bytes;
-    result =
-        WriteFile(handle->handle, write_buf.base, write_buf.len, &bytes, NULL);
+    result = WriteFile(handle->handle,
+                       write_buf.base,
+                       write_buf.len,
+                       &bytes,
+                       NULL);
 
     if (!result) {
       err = GetLastError();
