@@ -1307,6 +1307,7 @@ struct uv_fs_s {
 
 UV_EXTERN uv_fs_type uv_fs_get_type(const uv_fs_t*);
 UV_EXTERN ssize_t uv_fs_get_result(const uv_fs_t*);
+UV_EXTERN int uv_fs_get_system_error(const uv_fs_t*);
 UV_EXTERN void* uv_fs_get_ptr(const uv_fs_t*);
 UV_EXTERN const char* uv_fs_get_path(const uv_fs_t*);
 UV_EXTERN uv_stat_t* uv_fs_get_statbuf(uv_fs_t*);

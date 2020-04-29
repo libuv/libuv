@@ -2086,3 +2086,7 @@ int uv_fs_statfs(uv_loop_t* loop,
   PATH;
   POST;
 }
+
+int uv_fs_get_system_error(const uv_fs_t* req) {
+  return -req->result;
+}
