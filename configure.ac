@@ -38,15 +38,17 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_PROG_LIBTOOL
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_INIT
-# TODO(bnoordhuis) Check for -pthread vs. -pthreads
+AX_PTHREAD([
+    LIBS="$LIBS $PTHREAD_LIBS"
+    CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+])
 AC_CHECK_LIB([dl], [dlopen])
-AC_CHECK_LIB([kstat], [kstat_lookup])
-AC_CHECK_LIB([nsl], [gethostbyname])
-AC_CHECK_LIB([perfstat], [perfstat_cpu])
-AC_CHECK_LIB([pthread], [pthread_mutex_init])
-AC_CHECK_LIB([rt], [clock_gettime])
-AC_CHECK_LIB([sendfile], [sendfile])
-AC_CHECK_LIB([socket], [socket])
+AC_SEARCH_LIBS([kstat_lookup], [kstat])
+AC_SEARCH_LIBS([gethostbyname], [nsl])
+AC_SEARCH_LIBS([perfstat_cpu], [perfstat])
+AC_SEARCH_LIBS([clock_gettime], [rt])
+AC_SEARCH_LIBS([sendfile], [sendfile])
+AC_SEARCH_LIBS([socket], [socket])
 AC_SYS_LARGEFILE
 AM_CONDITIONAL([AIX],      [AS_CASE([$host_os],[aix*],          [true], [false])])
 AM_CONDITIONAL([ANDROID],  [AS_CASE([$host_os],[linux-android*],[true], [false])])
