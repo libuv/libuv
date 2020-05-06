@@ -614,6 +614,12 @@ enum uv_udp_flags {
    * must not be freed by the recv_cb callback.
    */
   UV_UDP_MMSG_CHUNK = 8,
+  /*
+   * Indicates that the buffer provided has been fully utilized by recvmmsg and
+   * that it should now be freed by the recv_cb callback. When this flag is set
+   * in uv_udp_recv_cb, nread will always be 0 and addr will always be NULL.
+   */
+  UV_UDP_MMSG_FREE = 16,
 
   /*
    * Indicates that recvmmsg should be used, if available.
