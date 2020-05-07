@@ -106,7 +106,8 @@ fail_rwlock_init:
 fail_signal_init:
   uv__platform_loop_delete(loop);
 
-  free(loop->watchers);
+  uv__free(loop->watchers);
+  loop->nwatchers = 0;
   return err;
 }
 
