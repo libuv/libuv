@@ -1,0 +1,22 @@
+language: c
+os:
+  - linux
+compiler:
+  - clang
+  - gcc
+env:
+  matrix:
+    - BUILD_ARCH="x86"
+    - BUILD_ARCH="x86_64"
+  global:
+    - MAKEFLAGS="-j 2"
+matrix:
+  exclude:
+    - os: linux
+      compiler: clang
+      env: BUILD_ARCH="x86" # Only do the gcc x86 build to reduce clutter
+before_install:
+  - EXTRA_CFLAGS="-Werror"
+script:
+  - ./configure && make
+  - make runtests

@@ -1,0 +1,3 @@
+man/io_uring_setup.2
+man/io_uring_enter.2
+man/io_uring_register.2

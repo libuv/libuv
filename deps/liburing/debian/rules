@@ -1,0 +1,80 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow
+DEB_CFLAGS_MAINT_PREPEND = -Wall
+
+include /usr/share/dpkg/default.mk
+include /usr/share/dpkg/buildtools.mk
+
+export CC
+
+lib := liburing1
+libdbg := $(lib)-dbg
+libudeb := $(lib)-udeb
+libdev := liburing-dev
+
+build-indep:
+
+build-arch:
+	dh_testdir
+
+	$(MAKE) CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+
+build: build-indep build-arch
+
+clean:
+	dh_testdir
+	dh_testroot
+
+	$(MAKE) clean
+
+	dh_clean
+
+check-arch: build-arch
+	dh_testdir
+
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	$(MAKE) CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
+	        partcheck
+endif
+
+install-arch: check-arch
+	dh_testdir
+	dh_testroot
+	dh_clean
+	dh_installdirs
+
+	$(MAKE) install \
+	  DESTDIR=$(CURDIR)/debian/tmp \
+	  libdir=/lib/$(DEB_HOST_MULTIARCH) \
+	  libdevdir=/usr/lib/$(DEB_HOST_MULTIARCH)
+
+binary: binary-indep binary-arch
+
+binary-indep:
+	# Nothing to do.
+
+binary-arch: install-arch
+	dh_testdir
+	dh_testroot
+	dh_install -a
+	dh_installdocs -a
+	dh_installexamples -a
+	dh_installman -a
+	dh_lintian -a
+	dh_link -a
+	dh_strip -a --ddeb-migration='$(libdbg) (<< 0.3)'
+	dh_compress -a
+	dh_fixperms -a
+	dh_makeshlibs -a --add-udeb '$(libudeb)'
+	dh_shlibdeps -a
+	dh_installdeb -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+
+.PHONY: clean build-indep build-arch build
+.PHONY: install-arch binary-indep binary-arch binary
