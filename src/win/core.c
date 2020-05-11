@@ -746,3 +746,7 @@ int uv__getsockpeername(const uv_handle_t* handle,
 
   return 0;
 }
+
+int uv__platform_work_cancel(uv_req_t* req) {
+  return UV_ENOSYS;
+}

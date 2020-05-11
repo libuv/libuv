@@ -69,7 +69,9 @@ static int close_cb_count;
 static int create_cb_count;
 static int open_cb_count;
 static int read_cb_count;
+static int read_posn_cb_count;
 static int write_cb_count;
+static int write_posn_cb_count;
 static int unlink_cb_count;
 static int mkdir_cb_count;
 static int mkdtemp_cb_count;
@@ -102,6 +104,7 @@ static uv_loop_t* loop;
 
 static uv_fs_t open_req1;
 static uv_fs_t open_req2;
+static uv_fs_t open_req3;
 static uv_fs_t read_req;
 static uv_fs_t write_req;
 static uv_fs_t unlink_req;
@@ -423,6 +426,20 @@ static void read_cb(uv_fs_t* req) {
 }
 
 
+static void read_posn_cb(uv_fs_t* req) {
+  int r;
+  uv_os_fd_t file = (uv_os_fd_t)open_req3.result;
+  ASSERT(req == &read_req);
+  ASSERT(req->fs_type == UV_FS_READ);
+  ASSERT(req->result == sizeof(test_buf));
+  read_posn_cb_count++;
+  uv_fs_req_cleanup(req);
+  ASSERT(strcmp(buf, test_buf) == 0);
+  r = uv_fs_close(loop, &close_req, file, dummy_cb);
+  ASSERT(r == 0);
+}
+
+
 static void open_cb(uv_fs_t* req) {
   int r;
   ASSERT(req == &open_req1);
@@ -487,6 +504,23 @@ static void write_cb(uv_fs_t* req) {
   write_cb_count++;
   uv_fs_req_cleanup(req);
   r = uv_fs_fdatasync(loop, &fdatasync_req, open_req1.result, fdatasync_cb);
+  ASSERT(r == 0);
+}
+
+
+static void write_posn_cb(uv_fs_t* req) {
+  int r;
+  uv_os_fd_t file;
+  file = (uv_os_fd_t)open_req3.result;
+  ASSERT(req == &write_req);
+  ASSERT(req->fs_type == UV_FS_WRITE);
+  ASSERT(req->result == sizeof(test_buf));
+  write_posn_cb_count++;
+  uv_fs_req_cleanup(req);
+
+  memset(buf, 0, sizeof(buf));
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(loop, &read_req, file, &iov, 1, 0, read_posn_cb);
   ASSERT(r == 0);
 }
 
@@ -933,6 +967,37 @@ TEST_IMPL(fs_file_async) {
   /* Cleanup. */
   unlink("test_file");
   unlink("test_file2");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+/* On Linux, uv_fs_read/write use io_uring if off >= 0 */
+TEST_IMPL(fs_file_async_preadwrite) {
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_open(NULL, &open_req3, "test_file", O_RDWR | O_CREAT,
+                 S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r >= 0);
+
+  open_req3.file = open_req3.result;
+  iov = uv_buf_init(test_buf, sizeof(test_buf));
+  r = uv_fs_write(loop, &write_req, open_req3.file, &iov, 1, 0, write_posn_cb);
+  ASSERT(r == 0);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(write_posn_cb_count == 1);
+  ASSERT(read_posn_cb_count == 1);
+
+  /* Cleanup. */
+  unlink("test_file");
 
   MAKE_VALGRIND_HAPPY();
   return 0;

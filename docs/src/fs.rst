@@ -9,8 +9,11 @@ operations. All functions defined in this document take a callback, which is
 allowed to be NULL. If the callback is NULL the request is completed synchronously,
 otherwise it will be performed asynchronously.
 
-All file operations are run on the threadpool. See :ref:`threadpool` for information
-on the threadpool size.
+All asynchronous file operations are run on the threadpool, except when
+`io_uring`_ is available. See :ref:`threadpool` for information on the
+threadpool size. When io_uring is available (Linux kernel v5.1 and later), it is
+used for `uv_fs_fsync`, and for `uv_fs_read` and `uv_fs_write` when the `offset`
+parameter is not -1 (i.e. when performing a positional read/write).
 
 .. note::
      On Windows `uv_fs_*` functions use utf-8 encoding.
@@ -224,6 +227,10 @@ API
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
         to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
         crash if the memory mapped read operation fails.
+    .. note::
+        On Linux v5.1 and later, `io_uring`_ is used instead of the threadpool
+        when `offset` is specified (i.e. not `-1`). Performance may be
+        significantly better when this parameter is specified.
 
 .. c:function:: int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
@@ -237,6 +244,10 @@ API
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
         to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
         crash if the memory mapped write operation fails.
+    .. note::
+        On Linux v5.1 and later, `io_uring`_ is used instead of the threadpool
+        when `offset` is specified (i.e. not `-1`). Performance may be
+        significantly better when this parameter is specified.
 
 .. c:function:: int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
@@ -700,3 +711,5 @@ File open constants
 .. c:macro:: UV_FS_O_WRONLY
 
     Open the file for write-only access.
+
+.. _io_uring: http://kernel.dk/io_uring.pdf

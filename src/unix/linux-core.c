@@ -25,6 +25,8 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "liburing.h"
+#include "uv/threadpool.h"
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -75,16 +77,32 @@
 # define CLOCK_BOOTTIME 7
 #endif
 
+/* The io_uring submission and completion queues have fixed sizes (CQ twice the
+ * size of the SQ). This must be a power of two, in the range
+ * [1, IORING_MAX_ENTRIES (currently 4096)]. Currently, if more reqs that use
+ * io_uring are issued in one loop iteration than the queues can hold, then the
+ * overflowing requests are handled by the threadpool impl.
+ */
+#ifndef IOURING_SQ_SIZE
+# define IOURING_SQ_SIZE 256
+#endif
+
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
 static int read_times(FILE* statfile_fp,
                       unsigned int numcpus,
                       uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static uint64_t read_cpufreq(unsigned int cpunum);
+void uv__io_uring_done(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 
 
 int uv__platform_loop_init(uv_loop_t* loop) {
   int fd;
+  int rc;
+  static int no_uring;
+  struct uv__backend_data_io_uring* backend_data;
+  struct io_uring* ring;
+
   fd = epoll_create1(O_CLOEXEC);
 
   /* epoll_create1() can fail either because it's not implemented (old kernel)
@@ -97,14 +115,119 @@ int uv__platform_loop_init(uv_loop_t* loop) {
       uv__cloexec(fd, 1);
   }
 
-  uv__set_backend_fd(loop, fd);
   loop->inotify_fd = -1;
   loop->inotify_watchers = NULL;
 
   if (fd == -1)
     return UV__ERR(errno);
 
+  if (no_uring) fallback: {
+    loop->backend.fd = fd;
+  } else {
+    /* Use io_uring when available. */
+    backend_data = uv__malloc(sizeof(*backend_data));
+    if (backend_data == NULL)
+      return UV_ENOMEM;
+
+    ring = &backend_data->ring;
+
+    rc = io_uring_queue_init(IOURING_SQ_SIZE, ring, 0);
+
+    if (rc != 0) {
+      uv__free(backend_data);
+      backend_data = NULL;
+      if (rc == UV_ENOSYS) {
+        no_uring = 1;
+        goto fallback;
+      }
+      return UV__ERR(rc);
+    }
+
+    rc = uv__cloexec(fd, 1);
+    if (rc) {
+      io_uring_queue_exit(ring);
+      uv__free(backend_data);
+      backend_data = NULL;
+      return UV__ERR(rc);
+    }
+
+    backend_data->fd = fd;
+
+    uv__handle_init(loop, &backend_data->poll_handle, UV_POLL);
+    backend_data->poll_handle.flags |= UV_HANDLE_INTERNAL;
+    uv__io_init(&backend_data->poll_handle.io_watcher,
+                uv__io_uring_done,
+                ring->ring_fd);
+
+    loop->flags |= UV_LOOP_USE_IOURING;
+    loop->backend.data = backend_data;
+  }
+
   return 0;
+}
+
+
+void uv__io_uring_done(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+  uv_poll_t* handle;
+  struct io_uring* ring;
+  struct uv__backend_data_io_uring* backend_data;
+  struct io_uring_cqe* cqe;
+  uv_fs_t* req;
+  int finished1;
+
+  handle = container_of(w, uv_poll_t, io_watcher);
+  backend_data = loop->backend.data;
+  ring = &backend_data->ring;
+
+  finished1 = 0;
+  while (1) { /* Drain the CQ. */
+    io_uring_peek_cqe(ring, &cqe);
+
+    if (cqe == NULL)
+      break;
+
+    assert(backend_data->pending > 0);
+    if (--backend_data->pending == 0)
+      uv_poll_stop(handle);
+
+    req = (void*) (uintptr_t) cqe->user_data;
+
+    /* uv_cancel sets result to UV_ECANCELED. Don't overwrite that. */
+    if (req->result == 0)
+      req->result = cqe->res;
+
+    io_uring_cq_advance(ring, 1);
+
+    if (req->result == -EINVAL) {
+      /* io_uring doesn't support some operations that read/write do (e.g. readv
+       * on stdin). Retry with the threadpool impl.
+       */
+      req->result = 0;
+      req->priv.fs_req_engine = UV__ENGINE_THREADPOOL;
+
+      switch (req->fs_type) {
+        case UV_FS_WRITE:
+        case UV_FS_READ:
+        case UV_FS_FSYNC:
+          uv__req_register(loop, req);
+          uv__work_submit(loop,
+                          &req->work_req,
+                          UV__WORK_FAST_IO,
+                          uv__fs_work,
+                          uv__fs_done);
+          break;
+        default:
+          UNREACHABLE();
+      }
+
+    } else {
+      req->cb(req);
+    }
+
+    finished1 = 1;
+  }
+
+  assert(finished1 && "io_uring signal raised but no CQEs retrieved");
 }
 
 
@@ -127,6 +250,19 @@ int uv__io_fork(uv_loop_t* loop) {
 
 
 void uv__platform_loop_delete(uv_loop_t* loop) {
+  struct uv__backend_data_io_uring* backend_data;
+  int backend_fd;
+
+  if (loop->flags & UV_LOOP_USE_IOURING) {
+    /* Free data and switch back to fd (other cleanup code needs the fd). */
+    backend_data = loop->backend.data;
+    backend_fd = backend_data->fd;
+    io_uring_queue_exit(&backend_data->ring);
+    uv__free(backend_data);
+    loop->flags ^= UV_LOOP_USE_IOURING;
+    loop->backend.fd = backend_fd;
+  }
+
   if (loop->inotify_fd == -1) return;
   uv__io_stop(loop, &loop->inotify_read_watcher, POLLIN);
   uv__close(loop->inotify_fd);

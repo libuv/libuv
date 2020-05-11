@@ -284,6 +284,11 @@ int uv__random_rtlgenrandom(void* buf, size_t buflen);
 
 
 /*
+ * Platform-specific.
+ */
+int uv__platform_work_cancel(uv_req_t* req);
+
+/*
  * Process stdio handles.
  */
 int uv__stdio_create(uv_loop_t* loop,

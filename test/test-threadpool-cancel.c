@@ -289,7 +289,7 @@ TEST_IMPL(threadpool_cancel_fs) {
   saturate_threadpool();
   iov = uv_buf_init(NULL, 0);
 
-  /* Needs to match ARRAY_SIZE(fs_reqs). */
+  /* Needs to match ARRAY_SIZE(reqs). */
   n = 0;
   ASSERT(0 == uv_fs_chmod(loop, reqs + n++, "/", 0, fs_cb));
   ASSERT(0 == uv_fs_chown(loop, reqs + n++, "/", 0, 0, fs_cb));

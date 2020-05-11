@@ -358,6 +358,11 @@ int uv_queue_work(uv_loop_t* loop,
 int uv_cancel(uv_req_t* req) {
   struct uv__work* wreq;
   uv_loop_t* loop;
+  int rc;
+
+  rc = uv__platform_work_cancel(req);
+  if (rc != UV_ENOSYS)
+    return rc;
 
   switch (req->type) {
   case UV_FS:
