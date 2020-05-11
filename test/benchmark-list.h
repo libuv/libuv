@@ -63,6 +63,7 @@ BENCHMARK_DECLARE (udp_timed_pummel_100v1000)
 BENCHMARK_DECLARE (udp_timed_pummel_1000v1000)
 
 BENCHMARK_DECLARE (getaddrinfo)
+BENCHMARK_DECLARE (fs_read)
 BENCHMARK_DECLARE (fs_stat)
 BENCHMARK_DECLARE (async1)
 BENCHMARK_DECLARE (async2)
@@ -146,6 +147,7 @@ TASK_LIST_START
 
   BENCHMARK_ENTRY  (getaddrinfo)
 
+  BENCHMARK_ENTRY  (fs_read)
   BENCHMARK_ENTRY  (fs_stat)
 
   BENCHMARK_ENTRY  (async1)

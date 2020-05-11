@@ -38,7 +38,7 @@ static int compare_task(const void* va, const void* vb) {
 
 
 const char* fmt(double d) {
-  static char buf[1024];
+  static char buf[2048];
   static char* p;
   uint64_t v;
 
