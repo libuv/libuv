@@ -1,0 +1,12 @@
+- [ ] cancellation test is failing. It relies on saturating the threadpool and
+      starting the loop later AFAIR. I think I had this working at some point...
+      How should it be fixed?
+- [ ] automake needs to build liburing. All build systems need static hidden
+      linkage for liburing.
+- [ ] Android build: include io_uring?
+- [ ] Windows: uv__platform_work_cancel stuff seems incorrect
+- [ ] Verify that liburing returns ENOSYS if io_uring is not available
+      (linux-core.c:151)
+- [ ] Look into using iouring's support for cancellation (kernel-dependent).
+- [ ] Use io_uring for current-position reads where possible (kernel-dependent).
+- [ ] (later PRs) add support for statx, openat/openat2, close
