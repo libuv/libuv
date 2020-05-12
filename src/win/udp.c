@@ -774,8 +774,10 @@ int uv__udp_set_source_membership6(uv_udp_t* handle,
     mreq.gsr_interface = 0;
   }
 
-  memcpy(&mreq.gsr_group, multicast_addr, sizeof(mreq.gsr_group));
-  memcpy(&mreq.gsr_source, source_addr, sizeof(mreq.gsr_source));
+  STATIC_ASSERT(sizeof(mreq.gsr_group) >= sizeof(*multicast_addr));
+  STATIC_ASSERT(sizeof(mreq.gsr_source) >= sizeof(*source_addr));
+  memcpy(&mreq.gsr_group, multicast_addr, sizeof(*multicast_addr));
+  memcpy(&mreq.gsr_source, source_addr, sizeof(*source_addr));
 
   if (membership == UV_JOIN_GROUP)
     optname = MCAST_JOIN_SOURCE_GROUP;
