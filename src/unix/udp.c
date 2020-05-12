@@ -42,6 +42,11 @@
 # define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
 #endif
 
+union uv__sockaddr {
+  struct sockaddr_in6 in6;
+  struct sockaddr_in in;
+  struct sockaddr addr;
+};
 
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
@@ -567,11 +572,7 @@ int uv__udp_bind(uv_udp_t* handle,
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
                                        int domain,
                                        unsigned int flags) {
-  union {
-    struct sockaddr_in6 in6;
-    struct sockaddr_in in;
-    struct sockaddr addr;
-  } taddr;
+  union uv__sockaddr taddr;
   socklen_t addrlen;
 
   if (handle->io_watcher.fd != -1)
@@ -1030,40 +1031,31 @@ int uv_udp_set_source_membership(uv_udp_t* handle,
                                  uv_membership membership) {
 #if !defined(__OpenBSD__) && !defined(__NetBSD__) && !defined(__ANDROID__)
   int err;
-  struct sockaddr_storage mcast_addr;
-  struct sockaddr_in* mcast_addr4;
-  struct sockaddr_in6* mcast_addr6;
-  struct sockaddr_storage src_addr;
-  struct sockaddr_in* src_addr4;
-  struct sockaddr_in6* src_addr6;
+  union uv__sockaddr mcast_addr;
+  union uv__sockaddr src_addr;
 
-  mcast_addr4 = (struct sockaddr_in*)&mcast_addr;
-  mcast_addr6 = (struct sockaddr_in6*)&mcast_addr;
-  src_addr4 = (struct sockaddr_in*)&src_addr;
-  src_addr6 = (struct sockaddr_in6*)&src_addr;
-
-  err = uv_ip4_addr(multicast_addr, 0, mcast_addr4);
+  err = uv_ip4_addr(multicast_addr, 0, &mcast_addr.in);
   if (err) {
-    err = uv_ip6_addr(multicast_addr, 0, mcast_addr6);
+    err = uv_ip6_addr(multicast_addr, 0, &mcast_addr.in6);
     if (err)
       return err;
-    err = uv_ip6_addr(source_addr, 0, src_addr6);
+    err = uv_ip6_addr(source_addr, 0, &src_addr.in6);
     if (err)
       return err;
     return uv__udp_set_source_membership6(handle,
-                                          mcast_addr6,
+                                          &mcast_addr.in6,
                                           interface_addr,
-                                          src_addr6,
+                                          &src_addr.in6,
                                           membership);
   }
 
-  err = uv_ip4_addr(source_addr, 0, src_addr4);
+  err = uv_ip4_addr(source_addr, 0, &src_addr.in);
   if (err)
     return err;
   return uv__udp_set_source_membership4(handle,
-                                        mcast_addr4,
+                                        &mcast_addr.in,
                                         interface_addr,
-                                        src_addr4,
+                                        &src_addr.in,
                                         membership);
 #else
   return UV_ENOSYS;
