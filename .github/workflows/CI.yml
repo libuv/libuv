@@ -48,4 +48,5 @@ jobs:
       - name: Build
         run: |
           mkdir build
+          cd build && cmake .. -DBUILD_TESTING=ON
           cmake --build build
