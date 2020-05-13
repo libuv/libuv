@@ -5,6 +5,7 @@ on: [push, pull_request]
 jobs:
   build-cross-qemu:
     runs-on: ubuntu-latest
+    container: gengjiawen/v8-build:android
     name: build-cross-qemu-${{ matrix.config.target }}
 
     strategy:
