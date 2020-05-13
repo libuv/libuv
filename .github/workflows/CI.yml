@@ -6,7 +6,6 @@ jobs:
   build-cross-qemu:
     runs-on: ubuntu-latest
     name: build-cross-qemu-${{ matrix.config.target }}
-    timeout-minutes: 10
 
     strategy:
       fail-fast: false
@@ -51,3 +50,6 @@ jobs:
           mkdir build
           cd build && cmake .. -DBUILD_TESTING=ON
           cmake --build .
+      - name: Test
+        run: |
+          ${{ matrix.config.qemu }} ./test/run-tests
