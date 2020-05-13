@@ -565,3 +565,11 @@ if(WIN32)
           RUNTIME DESTINATION lib/$<CONFIG>
           ARCHIVE DESTINATION lib/$<CONFIG>)
 endif()
+
+message(STATUS "summary of build options:
+    Install prefix:  ${CMAKE_INSTALL_PREFIX}
+    Target system:   ${CMAKE_SYSTEM_NAME}
+    Compiler:
+      C compiler:    ${CMAKE_C_COMPILER}
+      CFLAGS:        ${CMAKE_C_FLAGS_${_build_type}} ${CMAKE_C_FLAGS}
+")
