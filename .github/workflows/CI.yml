@@ -52,4 +52,4 @@ jobs:
           cmake --build .
       - name: Test
         run: |
-          ${{ matrix.config.qemu }} ./test/run-tests
+          ${{ matrix.config.qemu }} build/uv_run_tests_a
