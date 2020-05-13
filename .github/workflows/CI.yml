@@ -47,7 +47,7 @@ jobs:
           sudo apt install ${{ matrix.config.toolchain }}
       - name: Build
         run: |
-          export CC=${{ matrix.config.toolchain }}
+          export CC=${{ matrix.config.cc }}
           mkdir build
           cd build && cmake .. -DBUILD_TESTING=ON
           cmake --build .
