@@ -529,9 +529,9 @@ if(LIBUV_BUILD_TESTS)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
   if(QEMU)
-    target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
-  else()
     target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)
+  else()
+    target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
   endif()
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
