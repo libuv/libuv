@@ -25,7 +25,7 @@
 
 
 TEST_IMPL(platform_output) {
-//  TODO fix test on qemu
+/* TODO(gengjiawen): Fix test on QEMU. */
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif

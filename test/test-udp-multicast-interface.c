@@ -54,7 +54,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
 
 
 TEST_IMPL(udp_multicast_interface) {
-//  TODO fix test on qemu
+/* TODO(gengjiawen): Fix test on QEMU. */
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif

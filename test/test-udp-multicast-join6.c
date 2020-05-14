@@ -138,10 +138,6 @@ static void cl_recv_cb(uv_udp_t* handle,
     r = uv_udp_set_membership(&server, MULTICAST_ADDR, INTERFACE_ADDR, UV_LEAVE_GROUP);
     ASSERT(r == 0);
 
-//  TODO fix test on qemu
-#if defined(__QEMU__)
-  RETURN_SKIP("Test does not currently work in QEMU");
-#endif
     r = uv_udp_set_source_membership(&server, MULTICAST_ADDR, INTERFACE_ADDR, source_addr, UV_JOIN_GROUP);
     ASSERT(r == 0);
 
@@ -197,6 +193,10 @@ TEST_IMPL(udp_multicast_join6) {
 
   ASSERT(r == 0);
 
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
   ASSERT(r == 0);
   
