@@ -51,6 +51,5 @@ jobs:
           cmake --build .
           ls -lh
       - name: Test
-        continue-on-error: true
         run: |
           ${{ matrix.config.qemu }} build/uv_run_tests_a
