@@ -27,7 +27,7 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
 # Qemu Build
 option(QEMU "build for qemu" OFF)
 if(QEMU)
-  add_definitions(__QEMU=1)
+  add_definitions(-D__QEMU=1)
 endif()
 
 # Compiler check
