@@ -37,7 +37,6 @@ jobs:
           QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
           QEMU_VER: "qemu-user-static_4\\.2-.*_amd64.deb$"
         run: |
-          apt install wget
           DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER`
           wget $QEMU_SRC/$DEB
           sudo dpkg -i $DEB
