@@ -35,8 +35,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install QEMU
         run: |
-          apt install sudo -y
           sudo apt update
+          apt install sudo -y
           sudo apt install qemu-user-static -y
       - name: Install ${{ matrix.config.toolchain }}
         run: |
