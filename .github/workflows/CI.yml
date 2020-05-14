@@ -5,7 +5,6 @@ on: [push, pull_request]
 jobs:
   build-cross-qemu:
     runs-on: ubuntu-latest
-    container: gengjiawen/v8-build:android
     name: build-cross-qemu-${{ matrix.config.target }}
 
     strategy:
@@ -52,6 +51,7 @@ jobs:
           mkdir build
           cd build && cmake .. -DBUILD_TESTING=ON
           cmake --build .
+          ls -lh
       - name: Test
         run: |
           ${{ matrix.config.qemu }} build/uv_run_tests_a
