@@ -26,7 +26,7 @@
 TEST_IMPL(get_passwd) {
 //  TODO fix test on qemu
 #if defined(__QEMU__)
-  return
+  RETURN_SKIP("Test does not currently work in QEMU");
 #endif
 
   uv_passwd_t pwd;

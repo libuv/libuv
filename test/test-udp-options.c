@@ -130,7 +130,7 @@ TEST_IMPL(udp_no_autobind) {
   ASSERT(UV_EBADF == uv_udp_set_multicast_loop(&h, 1));
 //  TODO fix test on qemu
 #if defined(__QEMU__)
-  return
+  RETURN_SKIP("Test does not currently work in QEMU");
 #endif
   ASSERT(UV_EBADF == uv_udp_set_multicast_interface(&h, "0.0.0.0"));
 

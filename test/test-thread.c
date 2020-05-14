@@ -80,7 +80,7 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
                            struct addrinfo* res) {
 //  TODO fix test on qemu
 #if defined(__QEMU__)
-  return
+  RETURN_SKIP("Test does not currently work in QEMU");
 #endif
   struct getaddrinfo_req* req;
 

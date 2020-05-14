@@ -108,7 +108,7 @@ TEST_IMPL(getaddrinfo_fail) {
 TEST_IMPL(getaddrinfo_fail_sync) {
 //  TODO fix test on qemu
 #if defined(__QEMU__)
-  return
+  RETURN_SKIP("Test does not currently work in QEMU");
 #endif
   uv_getaddrinfo_t req;
 
