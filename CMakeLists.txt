@@ -24,6 +24,9 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
   "Build the benchmarks when building unit tests and we are the root project" ON
   "LIBUV_BUILD_TESTS" OFF)
 
+# Qemu Build
+option(QEMU "build for qemu" OFF)
+
 # Compiler check
 string(CONCAT is-msvc $<OR:
   $<C_COMPILER_ID:MSVC>,
@@ -525,7 +528,11 @@ if(LIBUV_BUILD_TESTS)
   add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
-  target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)
+  if(QEMU)
+    target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
+  else()
+    target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)
+  endif()
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

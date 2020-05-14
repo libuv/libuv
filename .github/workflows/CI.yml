@@ -42,7 +42,7 @@ jobs:
       - name: Build
         run: |
           mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
+          cd build && cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
           cmake --build .
           ls -lh
       - name: Test
