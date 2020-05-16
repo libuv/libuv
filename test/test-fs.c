@@ -315,7 +315,7 @@ static void chown_root_cb(uv_fs_t* req) {
      * User may grant qsecofr's privileges, including changing 
      * the file's ownership to uid 0.
      */
-    ASSERT(req->result == 0);
+    ASSERT(req->result == 0 || req->result == UV_EPERM);
 #   else
     ASSERT(req->result == UV_EPERM);
 #   endif
