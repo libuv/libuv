@@ -275,21 +275,36 @@ API
 .. c:function:: int uv_get_process_title(char* buffer, size_t size)
 
     Gets the title of the current process. You *must* call `uv_setup_args`
-    before calling this function. If `buffer` is `NULL` or `size` is zero,
-    `UV_EINVAL` is returned. If `size` cannot accommodate the process title and
-    terminating `NULL` character, the function returns `UV_ENOBUFS`.
+    before calling this function on Unix and AIX systems. If `uv_setup_args`
+    has not been called on systems that require it, then `UV_ENOBUFS` is
+    returned. If `buffer` is `NULL` or `size` is zero, `UV_EINVAL` is returned.
+    If `size` cannot accommodate the process title and terminating `nul`
+    character, the function returns `UV_ENOBUFS`.
+
+    .. note::
+        On BSD systems, `uv_setup_args` is needed for getting the initial process
+        title. The process title returned will be an empty string until either
+        `uv_setup_args` or `uv_set_process_title` is called.
 
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
+
+    .. versionchanged:: 1.39.0 now returns an error if `uv_setup_args` is needed
+                        but hasn't been called.
 
 .. c:function:: int uv_set_process_title(const char* title)
 
     Sets the current process title. You *must* call `uv_setup_args` before
-    calling this function. On platforms with a fixed size buffer for the process
-    title the contents of `title` will be copied to the buffer and truncated if
-    larger than the available space. Other platforms will return `UV_ENOMEM` if
-    they cannot allocate enough space to duplicate the contents of `title`.
+    calling this function on Unix and AIX systems. If `uv_setup_args` has not
+    been called on systems that require it, then `UV_ENOBUFS` is returned. On
+    platforms with a fixed size buffer for the process title the contents of
+    `title` will be copied to the buffer and truncated if larger than the
+    available space. Other platforms will return `UV_ENOMEM` if they cannot
+    allocate enough space to duplicate the contents of `title`.
 
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
+
+    .. versionchanged:: 1.39.0 now returns an error if `uv_setup_args` is needed
+                        but hasn't been called.
 
 .. c:function:: int uv_resident_set_memory(size_t* rss)
 

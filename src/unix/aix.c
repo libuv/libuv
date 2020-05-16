@@ -914,6 +914,10 @@ char** uv_setup_args(int argc, char** argv) {
 int uv_set_process_title(const char* title) {
   char* new_title;
 
+  /* If uv_setup_args wasn't called or failed, we can't continue. */
+  if (process_argv == NULL || args_mem == NULL)
+    return UV_ENOBUFS;
+
   /* We cannot free this pointer when libuv shuts down,
    * the process may still be using it.
    */
@@ -946,6 +950,10 @@ int uv_get_process_title(char* buffer, size_t size) {
   size_t len;
   if (buffer == NULL || size == 0)
     return UV_EINVAL;
+
+  /* If uv_setup_args wasn't called, we can't continue. */
+  if (process_argv == NULL)
+    return UV_ENOBUFS;
 
   uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
