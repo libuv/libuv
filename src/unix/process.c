@@ -19,6 +19,7 @@
  * IN THE SOFTWARE.
  */
 
+#define _GNU_SOURCE
 #include "uv.h"
 #include "internal.h"
 
