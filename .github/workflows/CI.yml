@@ -3,6 +3,20 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    container: reactnativecommunity/react-native-android:2020-5-20
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Build android arm64
+        # see build options you can use in https://developer.android.com/ndk/guides/cmake
+        run: |
+          mkdir build && cd build
+          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-21 ..
+          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build .
+
   build-cross-qemu:
     runs-on: ubuntu-latest
     name: build-cross-qemu-${{ matrix.config.target }}
