@@ -182,6 +182,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+  list(APPEND uv_defines _GNU_SOURCE)
   list(APPEND uv_libraries dl)
   list(APPEND uv_sources
        src/unix/android-ifaddrs.c
