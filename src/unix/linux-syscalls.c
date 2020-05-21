@@ -89,10 +89,12 @@
 #  define __NR_dup3 292
 # elif defined(__i386__)
 #  define __NR_dup3 330
+# elif defined(__aarch64__)
+#  define __NR_dup3 24
 # elif defined(__arm__)
 #  define __NR_dup3 (UV_SYSCALL_BASE + 358)
 # endif
-#endif /* __NR_pwritev */
+#endif /* __NR_dup3 */
 
 #ifndef __NR_statx
 # if defined(__x86_64__)
@@ -125,6 +127,38 @@
 #  define __NR_getrandom 349
 # endif
 #endif /* __NR_getrandom */
+
+#ifndef __NR_inotify_init1
+# if defined(__x86_64__)
+#  define __NR_inotify_init1 294
+# elif defined(__i386__)
+#  define __NR_inotify_init1 332
+# elif defined (__aarch64__)
+#  define __NR_inotify_init1 26
+# elif defined (__arm__)
+#  define __NR_inotify_init1 (UV_SYSCALL_BASE + 360)
+# elif defined(__ppc__)
+#  define __NR_inotify_init1 318
+# elif defined(__s390__)
+#  define __NR_inotify_init1 324
+# endif
+#endif /* __NR_inotify_init1 */
+
+#ifndef __NR_close
+# if defined(__x86_64__)
+#  define __NR_close 3
+# elif defined(__i386__)
+#  define __NR_close 6
+# elif defined (__aarch64__)
+#  define __NR_close 57
+# elif defined (__arm__)
+#  define __NR_close (UV_SYSCALL_BASE + 6)
+# elif defined(__ppc__)
+#  define __NR_close 6
+# elif defined(__s390__)
+#  define __NR_close 6
+# endif
+#endif /* __NR_close */
 
 struct uv__mmsghdr;
 
@@ -199,6 +233,24 @@ int uv__statx(int dirfd,
 ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags) {
 #if defined(__NR_getrandom)
   return syscall(__NR_getrandom, buf, buflen, flags);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
+
+
+int uv__inotify_init1(int flags) {
+#if defined(__NR_inotify_init1)
+  return syscall(__NR_inotify_init1, flags);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
+
+
+int uv__sys_close(int fd) {
+#if defined(__NR_close)
+  return syscall(__NR_close, fd);
 #else
   return errno = ENOSYS, -1;
 #endif

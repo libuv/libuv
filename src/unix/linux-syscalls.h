@@ -70,5 +70,7 @@ int uv__statx(int dirfd,
               unsigned int mask,
               struct uv__statx* statxbuf);
 ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags);
+int uv__inotify_init1(int flags);
+int uv__sys_close(int fd);
 
 #endif /* UV_LINUX_SYSCALL_H_ */

@@ -87,9 +87,15 @@ extern char** environ;
 #include <sys/ioctl.h>
 #endif
 
-#if defined(__linux__)
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+# define uv__dup3 dup3
+#endif
+
+#if defined(__linux__) && !(defined(__ANDROID__) && defined(__arm__))
 # include <sys/syscall.h>
+# define uv__dup3 dup3
 # define uv__accept4 accept4
+# define uv__sys_close(fd) syscall(SYS_close, (fd))
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
@@ -528,7 +534,7 @@ int uv__close_nocancel(int fd) {
 #endif
 #pragma GCC diagnostic pop
 #elif defined(__linux__)
-  return syscall(SYS_close, fd);
+  return uv__sys_close(fd);
 #else
   return close(fd);
 #endif
@@ -1017,10 +1023,10 @@ int uv__open_cloexec(const char* path, int flags) {
 
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__linux__)
+#ifdef uv__dup3
   int r;
 
-  r = dup3(oldfd, newfd, O_CLOEXEC);
+  r = uv__dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return UV__ERR(errno);
 
