@@ -37,7 +37,7 @@ jobs:
           QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
           QEMU_VER: "qemu-user-static_4\\.2-.*_amd64.deb$"
         run: |
-          DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER`
+          DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER | tail -1`
           wget $QEMU_SRC/$DEB
           sudo dpkg -i $DEB
       - name: Install ${{ matrix.config.toolchain }}
