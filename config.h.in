@@ -1,0 +1,10 @@
+#cmakedefine UV_HAVE_EVENTFD
+#cmakedefine UV_HAVE_ACCEPT4
+#cmakedefine UV_HAVE_DUP3
+#cmakedefine UV_HAVE_PIPE2
+#cmakedefine UV_HAVE_EPOLL_CREATE1
+#cmakedefine UV_HAVE_INOTIFY_INIT1
+
+#cmakedefine UV_HAVE_EVENTFD_H
+#cmakedefine UV_HAVE_STATVFS_H
+#cmakedefine UV_HAVE_STATFS_H

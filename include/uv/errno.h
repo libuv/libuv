@@ -86,7 +86,7 @@
 # define UV__EAGAIN (-4088)
 #endif
 
-#if defined(EALREADY) && !defined(_WIN32)
+#if defined(EALREADY) && !defined(_WIN32) && !defined(__QNX__)
 # define UV__EALREADY UV__ERR(EALREADY)
 #else
 # define UV__EALREADY (-4084)
@@ -164,7 +164,7 @@
 # define UV__EINTR (-4072)
 #endif
 
-#if defined(EINVAL) && !defined(_WIN32)
+#if defined(EINVAL) && !defined(_WIN32) && !defined(__QNX__)
 # define UV__EINVAL UV__ERR(EINVAL)
 #else
 # define UV__EINVAL (-4071)

@@ -41,6 +41,7 @@
 #include "uv/tree.h"
 #include "queue.h"
 #include "strscpy.h"
+#include "config.h"
 
 #if EDOM > 0
 # define UV__ERR(x) (-(x))

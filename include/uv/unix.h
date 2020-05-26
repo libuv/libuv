@@ -67,7 +67,7 @@
       defined(__MSYS__)   || \
       defined(__GNU__)
 # include "uv/posix.h"
-#elif defined(__HAIKU__)
+#elif defined(__HAIKU__) || defined(__QNX__)
 # include "uv/posix.h"
 #endif
 

@@ -176,11 +176,251 @@ static const char* uv__unknown_err_code(int err) {
 case UV_## name: \
   uv__strscpy(buf, #name, buflen); break;
 char* uv_err_name_r(int err, char* buf, size_t buflen) {
-  switch (err) {
-    UV_ERRNO_MAP(UV_ERR_NAME_GEN_R)
-    default: snprintf(buf, buflen, "Unknown system error %d", err);
-  }
-  return buf;
+    switch(err) {
+    case UV_E2BIG:
+        uv__strscpy(buf, "E2BIG", buflen);
+        break;
+    case UV_EACCES:
+        uv__strscpy(buf, "EACCES", buflen);
+        break;
+    case UV_EADDRINUSE:
+        uv__strscpy(buf, "EADDRINUSE", buflen);
+        break;
+    case UV_EADDRNOTAVAIL:
+        uv__strscpy(buf, "EADDRNOTAVAIL", buflen);
+        break;
+    case UV_EAFNOSUPPORT:
+        uv__strscpy(buf, "EAFNOSUPPORT", buflen);
+        break;
+    case UV_EAGAIN:
+        uv__strscpy(buf, "EAGAIN", buflen);
+        break;
+    case UV_EAI_ADDRFAMILY:
+        uv__strscpy(buf, "EAI_ADDRFAMILY", buflen);
+        break;
+    case UV_EAI_AGAIN:
+        uv__strscpy(buf, "EAI_AGAIN", buflen);
+        break;
+    case UV_EAI_BADFLAGS:
+        uv__strscpy(buf, "EAI_BADFLAGS", buflen);
+        break;
+    case UV_EAI_BADHINTS:
+        uv__strscpy(buf, "EAI_BADHINTS", buflen);
+        break;
+    case UV_EAI_CANCELED:
+        uv__strscpy(buf, "EAI_CANCELED", buflen);
+        break;
+    case UV_EAI_FAIL:
+        uv__strscpy(buf, "EAI_FAIL", buflen);
+        break;
+    case UV_EAI_FAMILY:
+        uv__strscpy(buf, "EAI_FAMILY", buflen);
+        break;
+    case UV_EAI_MEMORY:
+        uv__strscpy(buf, "EAI_MEMORY", buflen);
+        break;
+    case UV_EAI_NODATA:
+        uv__strscpy(buf, "EAI_NODATA", buflen);
+        break;
+    case UV_EAI_NONAME:
+        uv__strscpy(buf, "EAI_NONAME", buflen);
+        break;
+    case UV_EAI_OVERFLOW:
+        uv__strscpy(buf, "EAI_OVERFLOW", buflen);
+        break;
+    case UV_EAI_PROTOCOL:
+        uv__strscpy(buf, "EAI_PROTOCOL", buflen);
+        break;
+    case UV_EAI_SERVICE:
+        uv__strscpy(buf, "EAI_SERVICE", buflen);
+        break;
+    case UV_EAI_SOCKTYPE:
+        uv__strscpy(buf, "EAI_SOCKTYPE", buflen);
+        break;
+    case UV_EALREADY:
+        uv__strscpy(buf, "EALREADY", buflen);
+        break;
+    case UV_EBADF:
+        uv__strscpy(buf, "EBADF", buflen);
+        break;
+    case UV_EBUSY:
+        uv__strscpy(buf, "EBUSY", buflen);
+        break;
+    case UV_ECANCELED:
+        uv__strscpy(buf, "ECANCELED", buflen);
+        break;
+    case UV_ECHARSET:
+        uv__strscpy(buf, "ECHARSET", buflen);
+        break;
+    case UV_ECONNABORTED:
+        uv__strscpy(buf, "ECONNABORTED", buflen);
+        break;
+    case UV_ECONNREFUSED:
+        uv__strscpy(buf, "ECONNREFUSED", buflen);
+        break;
+    case UV_ECONNRESET:
+        uv__strscpy(buf, "ECONNRESET", buflen);
+        break;
+    case UV_EDESTADDRREQ:
+        uv__strscpy(buf, "EDESTADDRREQ", buflen);
+        break;
+    case UV_EEXIST:
+        uv__strscpy(buf, "EEXIST", buflen);
+        break;
+    case UV_EFAULT:
+        uv__strscpy(buf, "EFAULT", buflen);
+        break;
+    case UV_EFBIG:
+        uv__strscpy(buf, "EFBIG", buflen);
+        break;
+    case UV_EHOSTUNREACH:
+        uv__strscpy(buf, "EHOSTUNREACH", buflen);
+        break;
+    case UV_EINTR:
+        uv__strscpy(buf, "EINTR", buflen);
+        break;
+    case UV_EINVAL:
+        uv__strscpy(buf, "EINVAL", buflen);
+        break;
+    case UV_EIO:
+        uv__strscpy(buf, "EIO", buflen);
+        break;
+    case UV_EISCONN:
+        uv__strscpy(buf, "EISCONN", buflen);
+        break;
+    case UV_EISDIR:
+        uv__strscpy(buf, "EISDIR", buflen);
+        break;
+    case UV_ELOOP:
+        uv__strscpy(buf, "ELOOP", buflen);
+        break;
+    case UV_EMFILE:
+        uv__strscpy(buf, "EMFILE", buflen);
+        break;
+    case UV_EMSGSIZE:
+        uv__strscpy(buf, "EMSGSIZE", buflen);
+        break;
+    case UV_ENAMETOOLONG:
+        uv__strscpy(buf, "ENAMETOOLONG", buflen);
+        break;
+    case UV_ENETDOWN:
+        uv__strscpy(buf, "ENETDOWN", buflen);
+        break;
+    case UV_ENETUNREACH:
+        uv__strscpy(buf, "ENETUNREACH", buflen);
+        break;
+    case UV_ENFILE:
+        uv__strscpy(buf, "ENFILE", buflen);
+        break;
+    case UV_ENOBUFS:
+        uv__strscpy(buf, "ENOBUFS", buflen);
+        break;
+    case UV_ENODEV:
+        uv__strscpy(buf, "ENODEV", buflen);
+        break;
+    case UV_ENOENT:
+        uv__strscpy(buf, "ENOENT", buflen);
+        break;
+    case UV_ENOMEM:
+        uv__strscpy(buf, "ENOMEM", buflen);
+        break;
+    case UV_ENONET:
+        uv__strscpy(buf, "ENONET", buflen);
+        break;
+    case UV_ENOPROTOOPT:
+        uv__strscpy(buf, "ENOPROTOOPT", buflen);
+        break;
+    case UV_ENOSPC:
+        uv__strscpy(buf, "ENOSPC", buflen);
+        break;
+    case UV_ENOSYS:
+        uv__strscpy(buf, "ENOSYS", buflen);
+        break;
+    case UV_ENOTCONN:
+        uv__strscpy(buf, "ENOTCONN", buflen);
+        break;
+    case UV_ENOTDIR:
+        uv__strscpy(buf, "ENOTDIR", buflen);
+        break;
+    case UV_ENOTEMPTY:
+        uv__strscpy(buf, "ENOTEMPTY", buflen);
+        break;
+    case UV_ENOTSOCK:
+        uv__strscpy(buf, "ENOTSOCK", buflen);
+        break;
+    case UV_ENOTSUP:
+        uv__strscpy(buf, "ENOTSUP", buflen);
+        break;
+    case UV_EPERM:
+        uv__strscpy(buf, "EPERM", buflen);
+        break;
+    case UV_EPIPE:
+        uv__strscpy(buf, "EPIPE", buflen);
+        break;
+    case UV_EPROTO:
+        uv__strscpy(buf, "EPROTO", buflen);
+        break;
+    case UV_EPROTONOSUPPORT:
+        uv__strscpy(buf, "EPROTONOSUPPORT", buflen);
+        break;
+    case UV_EPROTOTYPE:
+        uv__strscpy(buf, "EPROTOTYPE", buflen);
+        break;
+    case UV_ERANGE:
+        uv__strscpy(buf, "ERANGE", buflen);
+        break;
+    case UV_EROFS:
+        uv__strscpy(buf, "EROFS", buflen);
+        break;
+    case UV_ESHUTDOWN:
+        uv__strscpy(buf, "ESHUTDOWN", buflen);
+        break;
+    case UV_ESPIPE:
+        uv__strscpy(buf, "ESPIPE", buflen);
+        break;
+    case UV_ESRCH:
+        uv__strscpy(buf, "ESRCH", buflen);
+        break;
+    case UV_ETIMEDOUT:
+        uv__strscpy(buf, "ETIMEDOUT", buflen);
+        break;
+    case UV_ETXTBSY:
+        uv__strscpy(buf, "ETXTBSY", buflen);
+        break;
+    case UV_EXDEV:
+        uv__strscpy(buf, "EXDEV", buflen);
+        break;
+    case UV_UNKNOWN:
+        uv__strscpy(buf, "UNKNOWN", buflen);
+        break;
+    case UV_EOF:
+        uv__strscpy(buf, "EOF", buflen);
+        break;
+    case UV_ENXIO:
+        uv__strscpy(buf, "ENXIO", buflen);
+        break;
+    case UV_EMLINK:
+        uv__strscpy(buf, "EMLINK", buflen);
+        break;
+    case UV_EHOSTDOWN:
+        uv__strscpy(buf, "EHOSTDOWN", buflen);
+        break;
+    case UV_EREMOTEIO:
+        uv__strscpy(buf, "EREMOTEIO", buflen);
+        break;
+    case UV_ENOTTY:
+        uv__strscpy(buf, "ENOTTY", buflen);
+        break;
+    case UV_EFTYPE:
+        uv__strscpy(buf, "EFTYPE", buflen);
+        break;
+    case UV_EILSEQ:
+        uv__strscpy(buf, "EILSEQ", buflen);
+        break;
+    default:
+        snprintf(buf, buflen, "Unknown system error %d", err);
+    }
+    return buf;
 }
 #undef UV_ERR_NAME_GEN_R
 
