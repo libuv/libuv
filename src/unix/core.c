@@ -89,7 +89,9 @@ extern char** environ;
 
 #if defined(__linux__)
 # include <sys/syscall.h>
-# define uv__accept4 accept4
+# ifdef UV_HAVE_ACCEPT4
+#  define uv__accept4 accept4
+# endif
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
@@ -1017,7 +1019,7 @@ int uv__open_cloexec(const char* path, int flags) {
 
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__linux__)
+#if defined(UV_HAVE_DUP3)
   int r;
 
   r = dup3(oldfd, newfd, O_CLOEXEC);

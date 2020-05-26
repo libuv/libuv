@@ -11,6 +11,10 @@ include(CMakeDependentOption)
 include(CheckCCompilerFlag)
 include(GNUInstallDirs)
 include(CTest)
+include(CheckFunctionExists)
+include(CheckSymbolExists)
+include(CheckIncludeFile)
+include(CheckIncludeFiles)
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -90,6 +94,15 @@ list(APPEND uv_cflags ${lint-no-hides-param-msvc})
 list(APPEND uv_cflags ${lint-no-hides-global-msvc})
 list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
+
+check_include_file(sys/eventfd.h UV_HAVE_EVENTFD_H)
+check_function_exists(eventfd UV_HAVE_EVENTFD)
+check_function_exists(accept4 UV_HAVE_ACCEPT4)
+check_function_exists(dup3 UV_HAVE_DUP3)
+check_function_exists(pipe2 UV_HAVE_PIPE2)
+check_function_exists(epoll_create1 UV_HAVE_EPOLL_CREATE1)
+check_function_exists(inotify_init1 UV_HAVE_INOTIFY_INIT1)
+
 
 set(uv_sources
     src/fs-poll.c

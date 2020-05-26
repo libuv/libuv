@@ -43,7 +43,9 @@ extern char **environ;
 #if defined(__linux__) || defined(__GLIBC__)
 # include <grp.h>
 #endif
-
+#ifndef SOCK_CLOEXEC
+# define SOCK_CLOEXEC 0
+#endif
 
 static void uv__chld(uv_signal_t* handle, int signum) {
   uv_process_t* process;
@@ -140,7 +142,7 @@ static int uv__make_socketpair(int fds[2]) {
 
 
 int uv__make_pipe(int fds[2], int flags) {
-#if defined(__FreeBSD__) || defined(__linux__)
+#if defined(UV_HAVE_PIPE2)
   if (pipe2(fds, flags | O_CLOEXEC))
     return UV__ERR(errno);
 

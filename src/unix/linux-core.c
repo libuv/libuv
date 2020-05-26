@@ -90,11 +90,11 @@ int uv__platform_loop_init(uv_loop_t* loop) {
    * a.k.a. Lollipop. Since EPOLL_CLOEXEC is an alias for O_CLOEXEC on all
    * architectures, we just use that instead.
    */
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
+#if defined(UV_HAVE_EPOLL_CREATE1)
+  fd = epoll_create1(O_CLOEXEC);
+#else
   fd = -1;
   errno = ENOSYS;
-#else
-  fd = epoll_create1(O_CLOEXEC);
 #endif
 
   /* epoll_create1() can fail either because it's not implemented (old kernel)

@@ -70,8 +70,11 @@ static int init_inotify(uv_loop_t* loop) {
 
   if (loop->inotify_fd != -1)
     return 0;
-
+#if defined(UV_HAVE_INOTIFY_INIT1)
   fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+#else
+  fd = inotify_init();
+#endif
   if (fd < 0)
     return UV__ERR(errno);
 
