@@ -99,12 +99,19 @@ check_include_file(sys/eventfd.h UV_HAVE_EVENTFD_H)
 check_include_file(sys/statvfs.h UV_HAVE_STATVFS_H)
 check_include_file(sys/statfs.h UV_HAVE_STATFS_H)
 
-check_function_exists(eventfd UV_HAVE_EVENTFD)
+#check_function_exists(eventfd UV_HAVE_EVENTFD)
 check_function_exists(accept4 UV_HAVE_ACCEPT4)
 check_function_exists(dup3 UV_HAVE_DUP3)
 check_function_exists(pipe2 UV_HAVE_PIPE2)
 check_function_exists(epoll_create1 UV_HAVE_EPOLL_CREATE1)
 check_function_exists(inotify_init1 UV_HAVE_INOTIFY_INIT1)
+check_c_source_compiles(
+  "
+  #include <sys/eventfd.h>
+  int main(int argc, char **argv) 
+  { eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK); return 0; }
+  " UV_HAVE_ASYNC_EVENTFD)
+
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 set(uv_sources
