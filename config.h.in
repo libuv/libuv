@@ -1,0 +1,26 @@
+/* Define to 1 if `eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);` compiled */
+#cmakedefine UV_HAVE_ASYNC_EVENTFD
+
+/* Define to 1 if accept4() exists */
+#cmakedefine UV_HAVE_ACCEPT4
+
+/* Define to 1 if dup3() exists */
+#cmakedefine UV_HAVE_DUP3
+
+/* Define to 1 if pipe2() exists */
+#cmakedefine UV_HAVE_PIPE2
+
+/* Define to 1 if epoll_create1() exists */
+#cmakedefine UV_HAVE_EPOLL_CREATE1
+
+/* Define to 1 if inotify_init1() exists */
+#cmakedefine UV_HAVE_INOTIFY_INIT1
+
+/* Defined if you have the <sys/eventfd.h> header file. */
+#cmakedefine UV_HAVE_EVENTFD_H
+
+/* Defined if you have the <sys/statvfs.h> header file. */
+#cmakedefine UV_HAVE_STATVFS_H
+
+/* Defined if you have the <sys/statfs.h> header file. */
+#cmakedefine UV_HAVE_STATFS_H

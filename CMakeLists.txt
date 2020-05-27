@@ -11,6 +11,10 @@ include(CMakeDependentOption)
 include(CheckCCompilerFlag)
 include(GNUInstallDirs)
 include(CTest)
+include(CheckFunctionExists)
+include(CheckSymbolExists)
+include(CheckIncludeFile)
+include(CheckIncludeFiles)
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -91,6 +95,24 @@ list(APPEND uv_cflags ${lint-no-hides-global-msvc})
 list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
 
+check_include_file(sys/eventfd.h UV_HAVE_EVENTFD_H)
+check_include_file(sys/statvfs.h UV_HAVE_STATVFS_H)
+check_include_file(sys/statfs.h UV_HAVE_STATFS_H)
+
+check_function_exists(accept4 UV_HAVE_ACCEPT4)
+check_function_exists(dup3 UV_HAVE_DUP3)
+check_function_exists(pipe2 UV_HAVE_PIPE2)
+check_function_exists(epoll_create1 UV_HAVE_EPOLL_CREATE1)
+check_function_exists(inotify_init1 UV_HAVE_INOTIFY_INIT1)
+check_c_source_compiles(
+  "
+  #include <sys/eventfd.h>
+  int main(int argc, char **argv) 
+  { eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK); return 0; }
+  " UV_HAVE_ASYNC_EVENTFD)
+
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
 set(uv_sources
     src/fs-poll.c
     src/idna.c
@@ -140,7 +162,7 @@ if(WIN32)
   list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
-  if(NOT CMAKE_SYSTEM_NAME MATCHES "Android|OS390")
+  if(NOT CMAKE_SYSTEM_NAME MATCHES "Android|OS390|QNX")
     # TODO: This should be replaced with find_package(Threads) if possible
     # Android has pthread as part of its c library, not as a separate
     # libpthread.so.
@@ -294,6 +316,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_sources src/unix/no-proctitle.c src/unix/sunos.c)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
+  list(APPEND uv_sources src/unix/posix-hrtime.c src/unix/posix-poll.c)
+  list(APPEND uv_cflags -fno-strict-aliasing)
+endif()
+ 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
@@ -311,7 +338,8 @@ target_include_directories(uv
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>)
 target_link_libraries(uv ${uv_libraries})
 
 add_library(uv_a STATIC ${uv_sources})
@@ -322,7 +350,8 @@ target_include_directories(uv_a
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>)
 target_link_libraries(uv_a ${uv_libraries})
 
 if(LIBUV_BUILD_TESTS)
