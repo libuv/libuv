@@ -19,6 +19,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 90)
 
+cmake_dependent_option(LIBUV_BUILD_DLL
+        "Build DLL/so/dylib" ON
+        "CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
+
 cmake_dependent_option(LIBUV_BUILD_TESTS
   "Build the unit tests when BUILD_TESTING is enabled and we are the root project" ON
   "BUILD_TESTING;CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
@@ -300,6 +304,8 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
 
+if(LIBUV_BUILD_DLL)
+
 add_library(uv SHARED ${uv_sources})
 target_compile_definitions(uv
   INTERFACE
@@ -315,6 +321,8 @@ target_include_directories(uv
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
 target_link_libraries(uv ${uv_libraries})
+
+endif(LIBUV_BUILD_DLL)
 
 add_library(uv_a STATIC ${uv_sources})
 target_compile_definitions(uv_a PRIVATE ${uv_defines})
@@ -543,7 +551,7 @@ if(LIBUV_BUILD_TESTS)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-if(UNIX)
+if(UNIX AND LIBUV_BUILD_DLL)
   # Now for some gibbering horrors from beyond the stars...
   foreach(lib IN LISTS uv_libraries)
     list(APPEND LIBS "-l${lib}")
