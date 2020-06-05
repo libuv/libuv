@@ -30,6 +30,7 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -204,6 +205,20 @@ static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 }
 
 
+UV_UNUSED(static struct timespec uv__fs_to_timespec(double time)) {
+  struct timespec ts;
+  ts.tv_sec  = time;
+  ts.tv_nsec = (uint64_t)(time * 1000000) % 1000000 * 1000;
+  return ts;
+}
+
+UV_UNUSED(static struct timeval uv__fs_to_timeval(double time)) {
+  struct timeval tv;
+  tv.tv_sec  = time;
+  tv.tv_usec = (uint64_t)(time * 1000000) % 1000000;
+  return tv;
+}
+
 static ssize_t uv__fs_futime(uv_fs_t* req) {
 #if defined(__linux__)                                                        \
     || defined(_AIX71)                                                        \
@@ -212,10 +227,8 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
    * for the sake of consistency with other platforms.
    */
   struct timespec ts[2];
-  ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
-  ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
 #if defined(__ANDROID_API__) && __ANDROID_API__ < 21
   return utimensat(req->file, NULL, ts, 0);
 #else
@@ -229,10 +242,8 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
     || defined(__OpenBSD__)                                                   \
     || defined(__sun)
   struct timeval tv[2];
-  tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
-  tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
 # if defined(__sun)
   return futimesat(req->file, NULL, tv);
 # else
@@ -255,6 +266,92 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 
 static ssize_t uv__fs_mkdtemp(uv_fs_t* req) {
   return mkdtemp((char*) req->path) ? 0 : -1;
+}
+
+
+static int (*uv__mkostemp)(char*, int);
+
+
+static void uv__mkostemp_initonce(void) {
+  /* z/os doesn't have RTLD_DEFAULT but that's okay
+   * because it doesn't have mkostemp(O_CLOEXEC) either.
+   */
+#ifdef RTLD_DEFAULT
+  uv__mkostemp = (int (*)(char*, int)) dlsym(RTLD_DEFAULT, "mkostemp");
+
+  /* We don't care about errors, but we do want to clean them up.
+   * If there has been no error, then dlerror() will just return
+   * NULL.
+   */
+  dlerror();
+#endif  /* RTLD_DEFAULT */
+}
+
+
+static int uv__fs_mkstemp(uv_fs_t* req) {
+  static uv_once_t once = UV_ONCE_INIT;
+  int r;
+#ifdef O_CLOEXEC
+  static int no_cloexec_support;
+#endif
+  static const char pattern[] = "XXXXXX";
+  static const size_t pattern_size = sizeof(pattern) - 1;
+  char* path;
+  size_t path_length;
+
+  path = (char*) req->path;
+  path_length = strlen(path);
+
+  /* EINVAL can be returned for 2 reasons:
+      1. The template's last 6 characters were not XXXXXX
+      2. open() didn't support O_CLOEXEC
+     We want to avoid going to the fallback path in case
+     of 1, so it's manually checked before. */
+  if (path_length < pattern_size ||
+      strcmp(path + path_length - pattern_size, pattern)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  uv_once(&once, uv__mkostemp_initonce);
+
+#ifdef O_CLOEXEC
+  if (no_cloexec_support == 0 && uv__mkostemp != NULL) {
+    r = uv__mkostemp(path, O_CLOEXEC);
+
+    if (r >= 0)
+      return r;
+
+    /* If mkostemp() returns EINVAL, it means the kernel doesn't
+       support O_CLOEXEC, so we just fallback to mkstemp() below. */
+    if (errno != EINVAL)
+      return r;
+
+    /* We set the static variable so that next calls don't even
+       try to use mkostemp. */
+    no_cloexec_support = 1;
+  }
+#endif  /* O_CLOEXEC */
+
+  if (req->cb != NULL)
+    uv_rwlock_rdlock(&req->loop->cloexec_lock);
+
+  r = mkstemp(path);
+
+  /* In case of failure `uv__cloexec` will leave error in `errno`,
+   * so it is enough to just set `r` to `-1`.
+   */
+  if (r >= 0 && uv__cloexec(r, 1) != 0) {
+    r = uv__close(r);
+    if (r != 0)
+      abort();
+    r = -1;
+  }
+
+  if (req->cb != NULL)
+    uv_rwlock_rdunlock(&req->loop->cloexec_lock);
+
+  return r;
 }
 
 
@@ -579,7 +676,6 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   ssize_t maxlen;
   ssize_t len;
   char* buf;
-  char* newbuf;
 
 #if defined(_POSIX_PATH_MAX) || defined(PATH_MAX)
   maxlen = uv__fs_pathmax_size(req->path);
@@ -623,14 +719,10 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
 
   /* Uncommon case: resize to make room for the trailing nul byte. */
   if (len == maxlen) {
-    newbuf = uv__realloc(buf, len + 1);
+    buf = uv__reallocf(buf, len + 1);
 
-    if (newbuf == NULL) {
-      uv__free(buf);
+    if (buf == NULL)
       return -1;
-    }
-
-    buf = newbuf;
   }
 
   buf[len] = '\0';
@@ -890,10 +982,8 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
    * for the sake of consistency with other platforms.
    */
   struct timespec ts[2];
-  ts[0].tv_sec  = req->atime;
-  ts[0].tv_nsec = (uint64_t)(req->atime * 1000000) % 1000000 * 1000;
-  ts[1].tv_sec  = req->mtime;
-  ts[1].tv_nsec = (uint64_t)(req->mtime * 1000000) % 1000000 * 1000;
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, 0);
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
@@ -902,10 +992,8 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)
   struct timeval tv[2];
-  tv[0].tv_sec  = req->atime;
-  tv[0].tv_usec = (uint64_t)(req->atime * 1000000) % 1000000;
-  tv[1].tv_sec  = req->mtime;
-  tv[1].tv_usec = (uint64_t)(req->mtime * 1000000) % 1000000;
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
   return utimes(req->path, tv);
 #elif defined(_AIX)                                                           \
     && !defined(_AIX71)
@@ -921,6 +1009,31 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   atr.att_mtime = req->mtime;
   atr.att_atime = req->atime;
   return __lchattr((char*) req->path, &atr, sizeof(atr));
+#else
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
+
+static ssize_t uv__fs_lutime(uv_fs_t* req) {
+#if defined(__linux__)            ||                                           \
+    defined(_AIX71)               ||                                           \
+    defined(__sun)                ||                                           \
+    defined(__HAIKU__)
+  struct timespec ts[2];
+  ts[0] = uv__fs_to_timespec(req->atime);
+  ts[1] = uv__fs_to_timespec(req->mtime);
+  return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
+#elif defined(__APPLE__)          ||                                          \
+      defined(__DragonFly__)      ||                                          \
+      defined(__FreeBSD__)        ||                                          \
+      defined(__FreeBSD_kernel__) ||                                          \
+      defined(__NetBSD__)
+  struct timeval tv[2];
+  tv[0] = uv__fs_to_timeval(req->atime);
+  tv[1] = uv__fs_to_timeval(req->mtime);
+  return lutimes(req->path, tv);
 #else
   errno = ENOSYS;
   return -1;
@@ -997,9 +1110,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   int dst_flags;
   int result;
   int err;
-  size_t bytes_to_send;
-  int64_t in_offset;
-  ssize_t bytes_written;
+  off_t bytes_to_send;
+  off_t in_offset;
+  off_t bytes_written;
+  size_t bytes_chunk;
 
   dstfd = -1;
   err = 0;
@@ -1050,7 +1164,28 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
+#ifdef __linux__
+    if (err != UV_EPERM)
+      goto out;
+
+    {
+      struct statfs s;
+
+      /* fchmod() on CIFS shares always fails with EPERM unless the share is
+       * mounted with "noperm". As fchmod() is a meaningless operation on such
+       * shares anyway, detect that condition and squelch the error.
+       */
+      if (fstatfs(dstfd, &s) == -1)
+        goto out;
+
+      if (s.f_type != /* CIFS */ 0xFF534D42u)
+        goto out;
+    }
+
+    err = 0;
+#else  /* !__linux__ */
     goto out;
+#endif  /* !__linux__ */
   }
 
 #ifdef FICLONE
@@ -1077,7 +1212,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   bytes_to_send = src_statsbuf.st_size;
   in_offset = 0;
   while (bytes_to_send != 0) {
-    uv_fs_sendfile(NULL, &fs_req, dstfd, srcfd, in_offset, bytes_to_send, NULL);
+    bytes_chunk = SSIZE_MAX;
+    if (bytes_to_send < (off_t) bytes_chunk)
+      bytes_chunk = bytes_to_send;
+    uv_fs_sendfile(NULL, &fs_req, dstfd, srcfd, in_offset, bytes_chunk, NULL);
     bytes_written = fs_req.result;
     uv_fs_req_cleanup(&fs_req);
 
@@ -1234,13 +1372,22 @@ static int uv__fs_statx(int fd,
 
   rc = uv__statx(dirfd, path, flags, mode, &statxbuf);
 
-  if (rc == -1) {
+  switch (rc) {
+  case 0:
+    break;
+  case -1:
     /* EPERM happens when a seccomp filter rejects the system call.
      * Has been observed with libseccomp < 2.3.3 and docker < 18.04.
      */
     if (errno != EINVAL && errno != EPERM && errno != ENOSYS)
       return -1;
-
+    /* Fall through. */
+  default:
+    /* Normally on success, zero is returned and On error, -1 is returned.
+     * Observed on S390 RHEL running in a docker container with statx not
+     * implemented, rc might return 1 with 0 set as the error code in which
+     * case we return ENOSYS.
+     */
     no_statx = 1;
     return UV_ENOSYS;
   }
@@ -1411,10 +1558,12 @@ static void uv__fs_work(struct uv__work* w) {
     X(FSYNC, uv__fs_fsync(req));
     X(FTRUNCATE, ftruncate(req->file, req->off));
     X(FUTIME, uv__fs_futime(req));
+    X(LUTIME, uv__fs_lutime(req));
     X(LSTAT, uv__fs_lstat(req->path, &req->statbuf));
     X(LINK, link(req->path, req->new_path));
     X(MKDIR, mkdir(req->path, req->mode));
     X(MKDTEMP, uv__fs_mkdtemp(req));
+    X(MKSTEMP, uv__fs_mkstemp(req));
     X(OPEN, uv__fs_open(req));
     X(READ, uv__fs_read(req));
     X(SCANDIR, uv__fs_scandir(req));
@@ -1596,6 +1745,19 @@ int uv_fs_futime(uv_loop_t* loop,
   POST;
 }
 
+int uv_fs_lutime(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 const char* path,
+                 double atime,
+                 double mtime,
+                 uv_fs_cb cb) {
+  INIT(LUTIME);
+  PATH;
+  req->atime = atime;
+  req->mtime = mtime;
+  POST;
+}
+
 
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(LSTAT);
@@ -1632,6 +1794,18 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
                   const char* tpl,
                   uv_fs_cb cb) {
   INIT(MKDTEMP);
+  req->path = uv__strdup(tpl);
+  if (req->path == NULL)
+    return UV_ENOMEM;
+  POST;
+}
+
+
+int uv_fs_mkstemp(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char* tpl,
+                  uv_fs_cb cb) {
+  INIT(MKSTEMP);
   req->path = uv__strdup(tpl);
   if (req->path == NULL)
     return UV_ENOMEM;
@@ -1857,10 +2031,12 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
 
   /* Only necessary for asychronous requests, i.e., requests with a callback.
    * Synchronous ones don't copy their arguments and have req->path and
-   * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP is the
-   * exception to the rule, it always allocates memory.
+   * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP and 
+   * UV_FS_MKSTEMP are the exception to the rule, they always allocate memory.
    */
-  if (req->path != NULL && (req->cb != NULL || req->fs_type == UV_FS_MKDTEMP))
+  if (req->path != NULL &&
+      (req->cb != NULL ||
+        req->fs_type == UV_FS_MKDTEMP || req->fs_type == UV_FS_MKSTEMP))
     uv__free((void*) req->path);  /* Memory is shared with req->new_path. */
 
   req->path = NULL;
@@ -1909,4 +2085,8 @@ int uv_fs_statfs(uv_loop_t* loop,
   INIT(STATFS);
   PATH;
   POST;
+}
+
+int uv_fs_get_system_error(const uv_fs_t* req) {
+  return -req->result;
 }

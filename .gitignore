@@ -44,6 +44,7 @@ CMakeFiles/
 /android-toolchain
 
 /out/
+
 /build/
 
 /test/.libs/
@@ -75,6 +76,8 @@ ipch
 
 # Clion / IntelliJ project files
 /.idea/
+cmake-build-debug/
+cmake-build-release/
 
 xcuserdata
 *.xcworkspace

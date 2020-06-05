@@ -48,11 +48,11 @@ the [Google C/C++ style guide]. Some of the key points, as well as some
 additional guidelines, are enumerated below.
 
 * Code that is specific to unix-y platforms should be placed in `src/unix`, and
-  declarations go into `include/uv-unix.h`.
+  declarations go into `include/uv/unix.h`.
 
 * Source code that is Windows-specific goes into `src/win`, and related
   publicly exported types, functions and macro declarations should generally
-  be declared in `include/uv-win.h`.
+  be declared in `include/uv/win.h`.
 
 * Names should be descriptive and concise.
 
@@ -142,7 +142,6 @@ Bug fixes and features should come with tests.  Add your tests in the
 If you add a new test file, it needs to be registered in three places:
 - `CMakeLists.txt`: add the file's name to the `uv_test_sources` list.
 - `Makefile.am`: add the file's name to the `test_run_tests_SOURCES` list.
-- `uv.gyp`: add the file's name to the `sources` list in the `run-tests` target.
 
 Look at other tests to see how they should be structured (license boilerplate,
 the way entry points are declared, etc.).

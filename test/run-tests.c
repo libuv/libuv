@@ -45,15 +45,21 @@ int ipc_helper_bind_twice(void);
 int ipc_helper_send_zero(void);
 int stdio_over_pipes_helper(void);
 void spawn_stdin_stdout(void);
+void process_title_big_argv(void);
 int spawn_tcp_server_helper(void);
 
 static int maybe_run_test(int argc, char **argv);
 
 
 int main(int argc, char **argv) {
-  if (platform_init(argc, argv))
+#ifndef _WIN32
+  if (0 == geteuid() && NULL == getenv("UV_RUN_AS_ROOT")) {
+    fprintf(stderr, "The libuv test suite cannot be run as root.\n");
     return EXIT_FAILURE;
+  }
+#endif
 
+  platform_init(argc, argv);
   argv = uv_setup_args(argc, argv);
 
   switch (argc) {
@@ -203,7 +209,11 @@ static int maybe_run_test(int argc, char **argv) {
     notify_parent_process();
     ASSERT(sizeof(fd) == read(0, &fd, sizeof(fd)));
     ASSERT(fd > 2);
+# if defined(__PASE__)  /* On IBMi PASE, write() returns 1 */
+    ASSERT(1 == write(fd, "x", 1));
+# else
     ASSERT(-1 == write(fd, "x", 1));
+# endif  /* !__PASE__ */
 
     return 1;
   }
@@ -227,6 +237,12 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 #endif  /* !_WIN32 */
+
+  if (strcmp(argv[1], "process_title_big_argv_helper") == 0) {
+    notify_parent_process();
+    process_title_big_argv();
+    return 0;
+  }
 
   return run_test(argv[1], 0, 1);
 }

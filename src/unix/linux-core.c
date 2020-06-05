@@ -359,9 +359,19 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     have_signals = 0;
     nevents = 0;
 
-    assert(loop->watchers != NULL);
-    loop->watchers[loop->nwatchers] = (void*) events;
-    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    {
+      /* Squelch a -Waddress-of-packed-member warning with gcc >= 9. */
+      union {
+        struct epoll_event* events;
+        uv__io_t* watchers;
+      } x;
+
+      x.events = events;
+      assert(loop->watchers != NULL);
+      loop->watchers[loop->nwatchers] = x.watchers;
+      loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    }
+
     for (i = 0; i < nfds; i++) {
       pe = events + i;
       fd = pe->data.fd;
@@ -758,7 +768,8 @@ static int read_times(FILE* statfile_fp,
                       unsigned int numcpus,
                       uv_cpu_info_t* ci) {
   struct uv_cpu_times_s ts;
-  uint64_t clock_ticks;
+  unsigned int ticks;
+  unsigned int multiplier;
   uint64_t user;
   uint64_t nice;
   uint64_t sys;
@@ -769,9 +780,10 @@ static int read_times(FILE* statfile_fp,
   uint64_t len;
   char buf[1024];
 
-  clock_ticks = sysconf(_SC_CLK_TCK);
-  assert(clock_ticks != (uint64_t) -1);
-  assert(clock_ticks != 0);
+  ticks = (unsigned int)sysconf(_SC_CLK_TCK);
+  multiplier = ((uint64_t)1000L / ticks);
+  assert(ticks != (unsigned int) -1);
+  assert(ticks != 0);
 
   rewind(statfile_fp);
 
@@ -813,11 +825,11 @@ static int read_times(FILE* statfile_fp,
                     &irq))
       abort();
 
-    ts.user = clock_ticks * user;
-    ts.nice = clock_ticks * nice;
-    ts.sys  = clock_ticks * sys;
-    ts.idle = clock_ticks * idle;
-    ts.irq  = clock_ticks * irq;
+    ts.user = user * multiplier;
+    ts.nice = nice * multiplier;
+    ts.sys  = sys * multiplier;
+    ts.idle = idle * multiplier;
+    ts.irq  = irq * multiplier;
     ci[num++].cpu_times = ts;
   }
   assert(num == numcpus);
@@ -980,7 +992,7 @@ static uint64_t uv__read_proc_meminfo(const char* what) {
   rc = 0;
   fd = uv__open_cloexec("/proc/meminfo", O_RDONLY);
 
-  if (fd == -1)
+  if (fd < 0)
     return 0;
 
   n = read(fd, buf, sizeof(buf) - 1);

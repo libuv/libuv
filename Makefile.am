@@ -123,18 +123,9 @@ EXTRA_DIST = test/fixtures/empty_file \
              include \
              docs \
              img \
-             samples \
-             android-configure-arm \
-             android-configure-arm64 \
-             android-configure-x86 \
-             android-configure-x86_64 \
              CONTRIBUTING.md \
              LICENSE \
-             README.md \
-             vcbuild.bat \
-             common.gypi \
-             gyp_uv.py \
-             uv.gyp
+             README.md
 
 
 
@@ -287,6 +278,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-timer.c \
                          test/test-tmpdir.c \
                          test/test-tty-duplicate-key.c \
+                         test/test-tty-escape-sequence-processing.c \
                          test/test-tty.c \
                          test/test-udp-alloc-cb-fail.c \
                          test/test-udp-bind.c \
@@ -346,7 +338,8 @@ test_run_tests_CFLAGS += -D__EXTENSIONS__ \
 endif
 
 if OS390
-test_run_tests_CFLAGS += -D_UNIX03_THREADS \
+test_run_tests_CFLAGS += -D_ISOC99_SOURCE \
+                         -D_UNIX03_THREADS \
                          -D_UNIX03_SOURCE \
                          -D_OPEN_SYS_IF_EXT=1 \
                          -D_OPEN_SYS_SOCK_IPV6 \
@@ -387,7 +380,14 @@ endif
 if ANDROID
 uvinclude_HEADERS += include/uv/android-ifaddrs.h
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c
+                    src/unix/linux-core.c \
+                    src/unix/linux-inotify.c \
+                    src/unix/linux-syscalls.c \
+                    src/unix/procfs-exepath.c \
+                    src/unix/pthread-fixes.c \
+                    src/unix/random-getrandom.c \
+                    src/unix/random-sysctl-linux.c \
+                    src/unix/sysinfo-loadavg.c
 endif
 
 if CYGWIN
@@ -409,8 +409,9 @@ uvinclude_HEADERS += include/uv/darwin.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
-                    src/unix/darwin.c \
                     src/unix/darwin-proctitle.c \
+                    src/unix/darwin-stub.h \
+                    src/unix/darwin.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
                     src/unix/proctitle.c \

@@ -100,6 +100,17 @@ void* uv__realloc(void* ptr, size_t size) {
   return NULL;
 }
 
+void* uv__reallocf(void* ptr, size_t size) {
+  void* newptr;
+
+  newptr = uv__realloc(ptr, size);
+  if (newptr == NULL)
+    if (size > 0)
+      uv__free(ptr);
+
+  return newptr;
+}
+
 int uv_replace_allocator(uv_malloc_func malloc_func,
                          uv_realloc_func realloc_func,
                          uv_calloc_func calloc_func,
@@ -279,6 +290,36 @@ int uv_tcp_bind(uv_tcp_t* handle,
     return UV_EINVAL;
 
   return uv__tcp_bind(handle, addr, addrlen, flags);
+}
+
+
+int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned flags) {
+  unsigned extra_flags;
+  int domain;
+  int rc;
+
+  /* Use the lower 8 bits for the domain. */
+  domain = flags & 0xFF;
+  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+    return UV_EINVAL;
+
+  /* Use the higher bits for extra flags. */
+  extra_flags = flags & ~0xFF;
+  if (extra_flags & ~UV_UDP_RECVMMSG)
+    return UV_EINVAL;
+
+  rc = uv__udp_init_ex(loop, handle, flags, domain);
+
+  if (rc == 0)
+    if (extra_flags & UV_UDP_RECVMMSG)
+      handle->flags |= UV_HANDLE_UDP_RECVMMSG;
+
+  return rc;
+}
+
+
+int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
+  return uv_udp_init_ex(loop, handle, AF_UNSPEC);
 }
 
 
@@ -809,4 +850,20 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
     uv__free(cpu_infos[i].model);
 
   uv__free(cpu_infos);
+}
+
+
+#ifdef __GNUC__  /* Also covers __clang__ and __INTEL_COMPILER. */
+__attribute__((destructor))
+#endif
+void uv_library_shutdown(void) {
+  static int was_shutdown;
+
+  if (was_shutdown)
+    return;
+
+  uv__process_title_cleanup();
+  uv__signal_cleanup();
+  uv__threadpool_cleanup();
+  was_shutdown = 1;
 }
