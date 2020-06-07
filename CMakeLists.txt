@@ -206,7 +206,6 @@ endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|NetBSD|OpenBSD")
   list(APPEND uv_sources src/unix/posix-hrtime.c src/unix/bsd-proctitle.c)
-  list(APPEND uv_libraries kvm)
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|NetBSD|OpenBSD")
@@ -244,6 +243,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
   list(APPEND uv_sources src/unix/netbsd.c)
+  list(APPEND uv_libraries kvm)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
