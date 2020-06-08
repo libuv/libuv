@@ -835,6 +835,9 @@ void uv_loop_delete(uv_loop_t* loop) {
 int uv_read_start(uv_stream_t* stream,
                   uv_alloc_cb alloc_cb,
                   uv_read_cb read_cb) {
+  if (stream == NULL || alloc_cb == NULL || read_cb == NULL)
+    return UV_EINVAL;
+
   if (stream->flags & UV_HANDLE_CLOSING)
     return UV_EINVAL;
 
