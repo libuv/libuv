@@ -93,6 +93,9 @@ static void connect_cb(uv_connect_t *req, int status) {
 
   /* Check error handling. */
   ASSERT_EQ(UV_EALREADY, uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
+  ASSERT_EQ(UV_EINVAL, uv_read_start(NULL, alloc_cb, read_cb));
+  ASSERT_EQ(UV_EINVAL, uv_read_start((uv_stream_t*)&tcp, NULL, read_cb));
+  ASSERT_EQ(UV_EINVAL, uv_read_start((uv_stream_t*)&tcp, alloc_cb, NULL));
 
   /*
    * Write the letter 'Q' to gracefully kill the echo-server. This will not

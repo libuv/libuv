@@ -283,7 +283,9 @@ TEST_IMPL(tcp_bind_writable_flags) {
   ASSERT(r == UV_EPIPE);
   r = uv_shutdown(&shutdown_req, (uv_stream_t*) &server, NULL);
   ASSERT(r == UV_ENOTCONN);
-  r = uv_read_start((uv_stream_t*) &server, NULL, NULL);
+  r = uv_read_start((uv_stream_t*) &server,
+                    (uv_alloc_cb) abort,
+                    (uv_read_cb) abort);
   ASSERT(r == UV_ENOTCONN);
 
   uv_close((uv_handle_t*)&server, close_cb);
