@@ -294,7 +294,7 @@ static int fs__wide_to_utf8(WCHAR* w_source_ptr,
     return 0;
   }
 
-  target = uv__malloc(target_len + 1);
+  target = (char *)uv__malloc(target_len + 1);
   if (target == NULL) {
     SetLastError(ERROR_OUTOFMEMORY);
     return -1;
@@ -1454,7 +1454,7 @@ void fs__scandir(uv_fs_t* req) {
         size_t new_dirents_size =
             dirents_size == 0 ? dirents_initial_size : dirents_size << 1;
         uv__dirent_t** new_dirents =
-            uv__realloc(dirents, new_dirents_size * sizeof *dirents);
+            (uv__dirent_t **)uv__realloc(dirents, new_dirents_size * sizeof *dirents);
 
         if (new_dirents == NULL)
           goto out_of_memory_error;
@@ -1467,7 +1467,7 @@ void fs__scandir(uv_fs_t* req) {
        * includes room for the first character of the filename, but `utf8_len`
        * doesn't count the NULL terminator at this point.
        */
-      dirent = uv__malloc(sizeof *dirent + utf8_len);
+      dirent = (uv__dirent_t *)uv__malloc(sizeof *dirent + utf8_len);
       if (dirent == NULL)
         goto out_of_memory_error;
 
@@ -1578,7 +1578,7 @@ void fs__opendir(uv_fs_t* req) {
     goto error;
   }
 
-  dir = uv__malloc(sizeof(*dir));
+  dir = (uv_dir_t *)uv__malloc(sizeof(*dir));
   if (dir == NULL) {
     SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
     goto error;
@@ -1593,7 +1593,7 @@ void fs__opendir(uv_fs_t* req) {
   else
     fmt = L"%s\\*";
 
-  find_path = uv__malloc(sizeof(WCHAR) * (len + 4));
+  find_path = (WCHAR *)uv__malloc(sizeof(WCHAR) * (len + 4));
   if (find_path == NULL) {
     SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
     goto error;
@@ -1630,7 +1630,7 @@ void fs__readdir(uv_fs_t* req) {
   int r;
 
   req->flags |= UV_FS_FREE_PTR;
-  dir = req->ptr;
+  dir = (uv_dir_t *)req->ptr;
   dirents = dir->dirents;
   memset(dirents, 0, dir->nentries * sizeof(*dir->dirents));
   find_data = &dir->find_data;
@@ -1687,7 +1687,7 @@ error:
 void fs__closedir(uv_fs_t* req) {
   uv_dir_t* dir;
 
-  dir = req->ptr;
+  dir = (uv_dir_t *)req->ptr;
   FindClose(dir->dir_handle);
   uv__free(req->ptr);
   SET_REQ_RESULT(req, 0);
@@ -2609,7 +2609,7 @@ static ssize_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
     return -1;
   }
 
-  w_realpath_buf = uv__malloc((w_realpath_len + 1) * sizeof(WCHAR));
+  w_realpath_buf = (WCHAR *)uv__malloc((w_realpath_len + 1) * sizeof(WCHAR));
   if (w_realpath_buf == NULL) {
     SetLastError(ERROR_OUTOFMEMORY);
     return -1;
@@ -2720,7 +2720,7 @@ retry_get_disk_free_space:
     }
 
     len = MAX_PATH + 1;
-    pathw = uv__malloc(len * sizeof(*pathw));
+    pathw = (WCHAR *)uv__malloc(len * sizeof(*pathw));
     if (pathw == NULL) {
       SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
       return;
@@ -2736,7 +2736,7 @@ retry_get_full_path_name:
       return;
     } else if (ret > len) {
       len = ret;
-      pathw = uv__reallocf(pathw, len * sizeof(*pathw));
+      pathw = (WCHAR *)uv__reallocf(pathw, len * sizeof(*pathw));
       if (pathw == NULL) {
         SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
         return;
@@ -2752,7 +2752,7 @@ retry_get_full_path_name:
     uv__free(pathw);
   }
 
-  stat_fs = uv__malloc(sizeof(*stat_fs));
+  stat_fs = (uv_statfs_t *)uv__malloc(sizeof(*stat_fs));
   if (stat_fs == NULL) {
     SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
     return;
@@ -2911,7 +2911,7 @@ int uv_fs_read(uv_loop_t* loop,
   req->fs.info.nbufs = nbufs;
   req->fs.info.bufs = req->fs.info.bufsml;
   if (nbufs > ARRAY_SIZE(req->fs.info.bufsml))
-    req->fs.info.bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->fs.info.bufs = (uv_buf_t *)uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->fs.info.bufs == NULL) {
     SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
@@ -2944,7 +2944,7 @@ int uv_fs_write(uv_loop_t* loop,
   req->fs.info.nbufs = nbufs;
   req->fs.info.bufs = req->fs.info.bufsml;
   if (nbufs > ARRAY_SIZE(req->fs.info.bufsml))
-    req->fs.info.bufs = uv__malloc(nbufs * sizeof(*bufs));
+    req->fs.info.bufs = (uv_buf_t *)uv__malloc(nbufs * sizeof(*bufs));
 
   if (req->fs.info.bufs == NULL) {
     SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);

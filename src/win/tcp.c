@@ -615,7 +615,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
 
   if (handle->tcp.serv.accept_reqs == NULL) {
     handle->tcp.serv.accept_reqs =
-      uv__malloc(uv_simultaneous_server_accepts * sizeof(uv_tcp_accept_t));
+      (uv_tcp_accept_t *)uv__malloc(uv_simultaneous_server_accepts * sizeof(uv_tcp_accept_t));
     if (!handle->tcp.serv.accept_reqs) {
       uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
     }

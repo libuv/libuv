@@ -124,7 +124,7 @@ INLINE static void uv__fd_hash_add(int fd, struct uv__fd_info_s* info) {
 
     if (bucket_ptr->size != 0 && i == 0) {
       struct uv__fd_hash_entry_group_s* new_group_ptr =
-        uv__malloc(sizeof(*new_group_ptr));
+        (struct uv__fd_hash_entry_group_s *)uv__malloc(sizeof(*new_group_ptr));
       if (new_group_ptr == NULL) {
         uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
       }

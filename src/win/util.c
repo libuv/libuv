@@ -59,16 +59,17 @@
 # define UNLEN 256
 #endif
 
-
-/* A RtlGenRandom() by any other name... */
-extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
+/* RtlGenRandom() */
+#define SystemFunction036 NTAPI SystemFunction036
+#include <ntsecapi.h>
+#undef SystemFunction036
 
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
 
-/* Frequency of the high-resolution clock. */
-static uint64_t hrtime_frequency_ = 0;
+/* Interval (in seconds) of the high-resolution clock. */
+static double hrtime_interval_ = 0;
 
 
 /*
@@ -84,9 +85,9 @@ void uv__util_init(void) {
    * and precompute its reciprocal.
    */
   if (QueryPerformanceFrequency(&perf_frequency)) {
-    hrtime_frequency_ = perf_frequency.QuadPart;
+    hrtime_interval_ = 1.0 / perf_frequency.QuadPart;
   } else {
-    uv_fatal_error(GetLastError(), "QueryPerformanceFrequency");
+    hrtime_interval_= 0;
   }
 }
 
@@ -162,7 +163,7 @@ int uv_cwd(char* buffer, size_t* size) {
   if (utf16_len == 0) {
     return uv_translate_sys_error(GetLastError());
   }
-  utf16_buffer = uv__malloc(utf16_len * sizeof(WCHAR));
+  utf16_buffer = (WCHAR *)uv__malloc(utf16_len * sizeof(WCHAR));
   if (utf16_buffer == NULL) {
     return UV_ENOMEM;
   }
@@ -240,7 +241,7 @@ int uv_chdir(const char* dir) {
   if (utf16_len == 0) {
     return uv_translate_sys_error(GetLastError());
   }
-  utf16_buffer = uv__malloc(utf16_len * sizeof(WCHAR));
+  utf16_buffer = (WCHAR *)uv__malloc(utf16_len * sizeof(WCHAR));
   if (utf16_buffer == NULL) {
     return UV_ENOMEM;
   }
@@ -266,7 +267,7 @@ int uv_chdir(const char* dir) {
   new_utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
   if (new_utf16_len > utf16_len ) {
     uv__free(utf16_buffer);
-    utf16_buffer = uv__malloc(new_utf16_len * sizeof(WCHAR));
+    utf16_buffer = (WCHAR *)uv__malloc(new_utf16_len * sizeof(WCHAR));
     if (utf16_buffer == NULL) {
       /* When updating the environment variable fails, return UV_OK anyway.
        * We did successfully change current working directory, only updating
@@ -490,23 +491,23 @@ uint64_t uv_hrtime(void) {
   return uv__hrtime(UV__NANOSEC);
 }
 
-uint64_t uv__hrtime(unsigned int scale) {
+uint64_t uv__hrtime(double scale) {
   LARGE_INTEGER counter;
 
-  assert(hrtime_frequency_ != 0);
-  assert(scale != 0);
-  if (!QueryPerformanceCounter(&counter)) {
-    uv_fatal_error(GetLastError(), "QueryPerformanceCounter");
+  /* If the performance interval is zero, there's no support. */
+  if (hrtime_interval_ == 0) {
+    return 0;
   }
-  assert(counter.QuadPart != 0);
+
+  if (!QueryPerformanceCounter(&counter)) {
+    return 0;
+  }
 
   /* Because we have no guarantee about the order of magnitude of the
    * performance counter interval, integer math could cause this computation
    * to overflow. Therefore we resort to floating point math.
    */
-  double scaled_freq = (double)hrtime_frequency_ / scale;
-  double result = (double) counter.QuadPart / scaled_freq;
-  return (uint64_t) result;
+  return (uint64_t) ((double) counter.QuadPart * hrtime_interval_ * scale);
 }
 
 
@@ -647,14 +648,14 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   GetSystemInfo(&system_info);
   cpu_count = system_info.dwNumberOfProcessors;
 
-  cpu_infos = uv__calloc(cpu_count, sizeof *cpu_infos);
+  cpu_infos = (uv_cpu_info_t *)uv__calloc(cpu_count, sizeof *cpu_infos);
   if (cpu_infos == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;
   }
 
   sppi_size = cpu_count * sizeof(*sppi);
-  sppi = uv__malloc(sppi_size);
+  sppi = (SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION *)uv__malloc(sppi_size);
   if (sppi == NULL) {
     err = ERROR_OUTOFMEMORY;
     goto error;
@@ -876,7 +877,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
       case ERROR_BUFFER_OVERFLOW:
         /* This happens when win_address_buf is NULL or too small to hold all
          * adapters. */
-        win_address_buf = uv__malloc(win_address_buf_size);
+        win_address_buf = (IP_ADAPTER_ADDRESSES *)uv__malloc(win_address_buf_size);
         if (win_address_buf == NULL)
           return UV_ENOMEM;
 
@@ -884,7 +885,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
       case ERROR_NO_DATA: {
         /* No adapters were found. */
-        uv_address_buf = uv__malloc(1);
+        uv_address_buf = (uv_interface_address_t *)uv__malloc(1);
         if (uv_address_buf == NULL)
           return UV_ENOMEM;
 
@@ -961,7 +962,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   }
 
   /* Allocate space to store interface data plus adapter names. */
-  uv_address_buf = uv__malloc(uv_address_buf_size);
+  uv_address_buf = (uv_interface_address_t *)uv__malloc(uv_address_buf_size);
   if (uv_address_buf == NULL) {
     uv__free(win_address_buf);
     return UV_ENOMEM;
@@ -1205,7 +1206,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
   }
   /* Include space for terminating null char. */
   len += 1;
-  path = uv__malloc(len * sizeof(wchar_t));
+  path = (wchar_t *)uv__malloc(len * sizeof(wchar_t));
   if (path == NULL) {
     return UV_ENOMEM;
   }
@@ -1295,7 +1296,7 @@ int uv__convert_utf16_to_utf8(const WCHAR* utf16, int utf16len, char** utf8) {
   /* Allocate the destination buffer adding an extra byte for the terminating
    * NULL. If utf16len is not -1 WideCharToMultiByte will not add it, so
    * we do it ourselves always, just in case. */
-  *utf8 = uv__malloc(bufsize + 1);
+  *utf8 = (char *)uv__malloc(bufsize + 1);
 
   if (*utf8 == NULL)
     return UV_ENOMEM;
@@ -1343,7 +1344,7 @@ int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16) {
   /* Allocate the destination buffer adding an extra byte for the terminating
    * NULL. If utf8len is not -1 MultiByteToWideChar will not add it, so
    * we do it ourselves always, just in case. */
-  *utf16 = uv__malloc(sizeof(WCHAR) * (bufsize + 1));
+  *utf16 = (WCHAR *)uv__malloc(sizeof(WCHAR) * (bufsize + 1));
 
   if (*utf16 == NULL)
     return UV_ENOMEM;
@@ -1384,7 +1385,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
     return uv_translate_sys_error(r);
   }
 
-  path = uv__malloc(bufsize * sizeof(wchar_t));
+  path = (wchar_t *)uv__malloc(bufsize * sizeof(wchar_t));
   if (path == NULL) {
     CloseHandle(token);
     return UV_ENOMEM;
@@ -1455,7 +1456,7 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
 
   for (penv = env, i = 0; *penv != L'\0'; penv += wcslen(penv) + 1, i++);
 
-  *envitems = uv__calloc(i, sizeof(**envitems));
+  *envitems = (uv_env_item_t *)uv__calloc(i, sizeof(**envitems));
   if (*envitems == NULL) {
     FreeEnvironmentStringsW(env);
     return UV_ENOMEM;
@@ -1545,7 +1546,7 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
       uv__free(var);
 
     varlen = 1 + len;
-    var = uv__malloc(varlen * sizeof(*var));
+    var = (wchar_t *)uv__malloc(varlen * sizeof(*var));
 
     if (var == NULL) {
       r = UV_ENOMEM;
@@ -1960,7 +1961,7 @@ int uv__random_rtlgenrandom(void* buf, size_t buflen) {
   if (buflen == 0)
     return 0;
 
-  if (SystemFunction036(buf, buflen) == FALSE)
+  if (RtlGenRandom(buf, buflen) == FALSE)
     return UV_EIO;
 
   return 0;

@@ -73,7 +73,7 @@ static void uv_relative_path(const WCHAR* filename,
   if (dirlen > 0 && dir[dirlen - 1] == '\\')
     dirlen--;
   relpathlen = filenamelen - dirlen - 1;
-  *relpath = uv__malloc((relpathlen + 1) * sizeof(WCHAR));
+  *relpath = (WCHAR *)uv__malloc((relpathlen + 1) * sizeof(WCHAR));
   if (!*relpath)
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   wcsncpy(*relpath, filename + dirlen + 1, relpathlen);
@@ -242,7 +242,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     if (short_path_buffer_len == 0) {
       goto short_path_done;
     }
-    short_path_buffer = uv__malloc(short_path_buffer_len * sizeof(WCHAR));
+    short_path_buffer = (WCHAR *)uv__malloc(short_path_buffer_len * sizeof(WCHAR));
     if (short_path_buffer == NULL) {
       goto short_path_done;
     }
