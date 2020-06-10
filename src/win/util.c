@@ -492,6 +492,7 @@ uint64_t uv_hrtime(void) {
 
 uint64_t uv__hrtime(unsigned int scale) {
   LARGE_INTEGER counter;
+  double scaled_freq, result;
 
   assert(hrtime_frequency_ != 0);
   assert(scale != 0);
@@ -504,8 +505,8 @@ uint64_t uv__hrtime(unsigned int scale) {
    * performance counter interval, integer math could cause this computation
    * to overflow. Therefore we resort to floating point math.
    */
-  double scaled_freq = (double)hrtime_frequency_ / scale;
-  double result = (double) counter.QuadPart / scaled_freq;
+  scaled_freq = (double)hrtime_frequency_ / scale;
+  result = (double) counter.QuadPart / scaled_freq;
   return (uint64_t) result;
 }
 
@@ -1821,10 +1822,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
 
   if (r == ERROR_SUCCESS) {
     product_name_w_size = sizeof(product_name_w);
-    if (pRegGetValueW == NULL) {
-      abort();
-    }
-    r = pRegGetValueW(registry_key,
+    r = RegGetValueW(registry_key,
                      NULL,
                      L"ProductName",
                      RRF_RT_REG_SZ,

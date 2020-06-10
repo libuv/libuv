@@ -405,18 +405,12 @@ int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  if (pConvertInterfaceIndexToLuid == NULL) {
-    return UV_EINVAL;
-  }
-  r = pConvertInterfaceIndexToLuid(ifindex, &luid);
+  r = ConvertInterfaceIndexToLuid(ifindex, &luid);
 
   if (r != 0)
     return uv_translate_sys_error(r);
 
-  if (pConvertInterfaceLuidToNameW == NULL) {
-    return UV_EINVAL;
-  }
-  r = pConvertInterfaceLuidToNameW(&luid, wname, ARRAY_SIZE(wname));
+  r = ConvertInterfaceLuidToNameW(&luid, wname, ARRAY_SIZE(wname));
 
   if (r != 0)
     return uv_translate_sys_error(r);

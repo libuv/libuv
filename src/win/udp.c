@@ -101,10 +101,7 @@ static int uv_udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
   }
 
   if (info.ProtocolChain.ChainLen == 1) {
-    if (pSetFileCompletionNotificationModes == NULL) {
-      return UV_EINVAL;
-    }
-    if (pSetFileCompletionNotificationModes(
+    if (SetFileCompletionNotificationModes(
             (HANDLE) socket,
             FILE_SKIP_SET_EVENT_ON_HANDLE |
                 FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
