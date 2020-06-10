@@ -32,7 +32,7 @@
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(__sun) || \
     defined(_AIX) || defined(__MVS__) || \
-    defined(__HAIKU__)
+    defined(__HAIKU__) || defined(__QNX__)
 #include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <winioctl.h>
