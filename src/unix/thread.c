@@ -704,16 +704,13 @@ int uv_cond_init(uv_cond_t* cond) {
 int uv_cond_init(uv_cond_t* cond) {
   pthread_condattr_t attr;
   int err;
-
   err = pthread_condattr_init(&attr);
   if (err)
     return UV__ERR(err);
 
-#if !(defined(__ANDROID_API__) && __ANDROID_API__ < 21)
   err = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
   if (err)
     goto error2;
-#endif
 
   err = pthread_cond_init(cond, &attr);
   if (err)
@@ -805,16 +802,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 #endif
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-
-  /*
-   * The bionic pthread implementation doesn't support CLOCK_MONOTONIC,
-   * but has this alternative function instead.
-   */
-  r = pthread_cond_timedwait_monotonic_np(cond, mutex, &ts);
-#else
   r = pthread_cond_timedwait(cond, mutex, &ts);
-#endif /* __ANDROID_API__ */
 #endif
 
 

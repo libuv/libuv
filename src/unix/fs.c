@@ -229,11 +229,7 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-  return utimensat(req->file, NULL, ts, 0);
-#else
   return futimens(req->file, ts);
-#endif
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
