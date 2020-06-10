@@ -57,12 +57,8 @@ extern int snprintf(char*, size_t, const char*, ...);
 #define container_of(ptr, type, member) \
   ((type *) ((char *) (ptr) - offsetof(type, member)))
 
-#if defined(_MSC_VER) && (_MSC_VER <= 1600)
-#define STATIC_ASSERT(expr) static_assert( (expr), # expr )
-#else
 #define STATIC_ASSERT(expr)                                                   \
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
-#endif
 
 /* Handle flags. Some flags are specific to Windows or UNIX. */
 enum {
