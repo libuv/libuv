@@ -37,7 +37,6 @@ int uv_exepath(char* buffer, size_t* size) {
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
-
   n = *size - 1;
   if (n > 0) {
     fd = open("/proc/self/exefile", O_RDONLY);
@@ -76,12 +75,12 @@ uint64_t uv_get_constrained_memory(void) {
 
 
 int uv_resident_set_memory(size_t* rss) {
-  return UV_EPERM;
+  return UV_ENOSYS;
 }
 
 
 int uv_uptime(double* uptime) {
-  return UV__ERR(errno);
+  return UV_ENOSYS;
 }
 
 
