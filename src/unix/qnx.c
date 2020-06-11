@@ -44,6 +44,7 @@ int uv_exepath(char* buffer, size_t* size) {
     fd = open("/proc/self/exefile", O_RDONLY);
     if (fd < 0)
       return UV__ERR(errno); 
+  }
   
   n = read(fd, buffer, n);
   if (n < 0 ) {
