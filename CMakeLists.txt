@@ -295,7 +295,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
 endif()
 
  if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
-  list(APPEND uv_sources src/unix/posix-hrtime.c src/unix/posix-poll.c src/unix/qnx.c src/unix/bsd-ifaddrs.c src/unix/no-proctitle.c src/unix/no-fsevents.c)
+  list(APPEND uv_sources 
+    src/unix/posix-hrtime.c 
+    src/unix/posix-poll.c 
+    src/unix/qnx.c 
+    src/unix/bsd-ifaddrs.c 
+    src/unix/no-proctitle.c 
+    src/unix/no-fsevents.c)
   list(APPEND uv_cflags -fno-strict-aliasing)
   list(APPEND uv_libraries socket)
 endif() 

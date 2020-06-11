@@ -629,7 +629,11 @@ static int uv__fs_closedir(uv_fs_t* req) {
 
 static int uv__fs_statfs(uv_fs_t* req) {
   uv_statfs_t* stat_fs;
-#if defined(__sun) || defined(__MVS__) || defined(__NetBSD__) || defined(__HAIKU__) || defined(__QNX__)
+#if defined(__sun)      || \
+    defined(__MVS__)    || \
+    defined(__NetBSD__) || \
+    defined(__HAIKU__)  || \
+    defined(__QNX__)
   struct statvfs buf;
 
   if (0 != statvfs(req->path, &buf))
@@ -646,7 +650,12 @@ static int uv__fs_statfs(uv_fs_t* req) {
     return -1;
   }
 
-#if defined(__sun) || defined(__MVS__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__HAIKU__) || defined(__QNX__)
+#if defined(__sun)        || \
+    defined(__MVS__)      || \
+    defined(__OpenBSD__)  || \
+    defined(__NetBSD__)   || \
+    defined(__HAIKU__)    || \
+    defined(__QNX__)
   stat_fs->f_type = 0;  /* f_type is not supported. */
 #else
   stat_fs->f_type = buf.f_type;
