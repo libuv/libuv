@@ -469,12 +469,7 @@ update_timeout:
   }
 }
 
-
-uint64_t uv__hrtime(uv_clocktype_t type) {
-  static clock_t fast_clock_id = -1;
-  struct timespec t;
-  clock_t clock_id;
-
+clock_t uv__hrtime_fast_clock_id() {
   /* Prefer CLOCK_MONOTONIC_COARSE if available but only when it has
    * millisecond granularity or better.  CLOCK_MONOTONIC_COARSE is
    * serviced entirely from the vDSO, whereas CLOCK_MONOTONIC may
@@ -483,14 +478,18 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
   /* TODO(bnoordhuis) Use CLOCK_MONOTONIC_COARSE for UV_CLOCK_PRECISE
    * when it has microsecond granularity or better (unlikely).
    */
-  if (type == UV_CLOCK_FAST && fast_clock_id == -1) {
-    if (clock_getres(CLOCK_MONOTONIC_COARSE, &t) == 0 &&
-        t.tv_nsec <= 1 * 1000 * 1000) {
-      fast_clock_id = CLOCK_MONOTONIC_COARSE;
-    } else {
-      fast_clock_id = CLOCK_MONOTONIC;
-    }
+  if (clock_getres(CLOCK_MONOTONIC_COARSE, &t) == 0 &&
+    t.tv_nsec <= 1 * 1000 * 1000) {
+    return CLOCK_MONOTONIC_COARSE;
+  } else {
+    return CLOCK_MONOTONIC;
   }
+}
+
+uint64_t uv__hrtime(uv_clocktype_t type) {
+  static clock_t fast_clock_id = uv__hrtime_fast_clock_id();
+  struct timespec t;
+  clock_t clock_id;
 
   clock_id = CLOCK_MONOTONIC;
   if (type == UV_CLOCK_FAST)
