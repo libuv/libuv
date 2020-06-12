@@ -79,10 +79,6 @@ extern char** environ;
 # endif
 #endif
 
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-# include <dlfcn.h>  /* for dlsym */
-#endif
-
 #if defined(__MVS__)
 #include <sys/ioctl.h>
 #endif
@@ -1142,13 +1138,6 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   size_t shell_size;
   long initsize;
   int r;
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-  int (*getpwuid_r)(uid_t, struct passwd*, char*, size_t, struct passwd**);
-
-  getpwuid_r = dlsym(RTLD_DEFAULT, "getpwuid_r");
-  if (getpwuid_r == NULL)
-    return UV_ENOSYS;
-#endif
 
   if (pwd == NULL)
     return UV_EINVAL;
