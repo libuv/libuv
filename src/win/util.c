@@ -492,6 +492,8 @@ uint64_t uv_hrtime(void) {
 
 uint64_t uv__hrtime(unsigned int scale) {
   LARGE_INTEGER counter;
+  double scaled_freq;
+  double result;
 
   assert(hrtime_frequency_ != 0);
   assert(scale != 0);
@@ -504,8 +506,8 @@ uint64_t uv__hrtime(unsigned int scale) {
    * performance counter interval, integer math could cause this computation
    * to overflow. Therefore we resort to floating point math.
    */
-  double scaled_freq = (double)hrtime_frequency_ / scale;
-  double result = (double) counter.QuadPart / scaled_freq;
+  scaled_freq = (double) hrtime_frequency_ / scale;
+  result = (double) counter.QuadPart / scaled_freq;
   return (uint64_t) result;
 }
 
