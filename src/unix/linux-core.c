@@ -982,43 +982,51 @@ void uv__set_process_title(const char* title) {
 }
 
 
-static uint64_t uv__read_proc_meminfo(const char* what) {
-  uint64_t rc;
+static int uv__slurp(const char* filename, char* buf, size_t len) {
   ssize_t n;
-  char* p;
   int fd;
-  char buf[4096];  /* Large enough to hold all of /proc/meminfo. */
 
-  rc = 0;
-  fd = uv__open_cloexec("/proc/meminfo", O_RDONLY);
+  assert(len > 0);
 
+  fd = uv__open_cloexec(filename, O_RDONLY);
   if (fd < 0)
-    return 0;
+    return fd;
 
-  n = read(fd, buf, sizeof(buf) - 1);
-
-  if (n <= 0)
-    goto out;
-
-  buf[n] = '\0';
-  p = strstr(buf, what);
-
-  if (p == NULL)
-    goto out;
-
-  p += strlen(what);
-
-  if (1 != sscanf(p, "%" PRIu64 " kB", &rc))
-    goto out;
-
-  rc *= 1024;
-
-out:
+  do
+    n = read(fd, buf, len - 1);
+  while (n == -1 && errno == EINTR);
 
   if (uv__close_nocheckstdio(fd))
     abort();
 
-  return rc;
+  if (n < 0)
+    return UV__ERR(errno);
+
+  buf[n] = '\0';
+
+  return 0;
+}
+
+
+static uint64_t uv__read_proc_meminfo(const char* what) {
+  uint64_t rc;
+  char* p;
+  char buf[4096];  /* Large enough to hold all of /proc/meminfo. */
+
+  if (uv__slurp("/proc/meminfo", buf, sizeof(buf)))
+    return 0;
+
+  p = strstr(buf, what);
+
+  if (p == NULL)
+    return 0;
+
+  p += strlen(what);
+
+  rc = 0;
+  sscanf(p, "%" PRIu64 " kB", &rc);
+
+  return rc * 1024;
 }
 
 
@@ -1056,28 +1064,13 @@ uint64_t uv_get_total_memory(void) {
 
 static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
   char filename[256];
-  uint64_t rc;
-  int fd;
-  ssize_t n;
   char buf[32];  /* Large enough to hold an encoded uint64_t. */
-
-  snprintf(filename, 256, "/sys/fs/cgroup/%s/%s", cgroup, param);
+  uint64_t rc;
 
   rc = 0;
-  fd = uv__open_cloexec(filename, O_RDONLY);
-
-  if (fd < 0)
-    return 0;
-
-  n = read(fd, buf, sizeof(buf) - 1);
-
-  if (n > 0) {
-    buf[n] = '\0';
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/%s", cgroup, param);
+  if (0 == uv__slurp(filename, buf, sizeof(buf)))
     sscanf(buf, "%" PRIu64, &rc);
-  }
-
-  if (uv__close_nocheckstdio(fd))
-    abort();
 
   return rc;
 }
