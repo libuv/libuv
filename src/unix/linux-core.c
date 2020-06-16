@@ -198,8 +198,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
    * that being the largest value I have seen in the wild (and only once.)
    */
   static const int max_safe_timeout = 1789569;
-  static int no_epoll_pwait;
-  static int no_epoll_wait;
+  static int no_epoll_pwait_cached;
+  static int no_epoll_wait_cached;
+  int no_epoll_pwait;
+  int no_epoll_wait;
   struct epoll_event events[1024];
   struct epoll_event* pe;
   struct epoll_event e;
@@ -271,6 +273,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
 
+  /* You could argue there is a dependency between these two but
+   * ultimately we don't care about their ordering with respect
+   * to one another. Worst case, we make a few system calls that
+   * could have been avoided because another thread already knows
+   * they fail with ENOSYS. Hardly the end of the world.
+   */
+  no_epoll_pwait = uv__load_relaxed(&no_epoll_pwait_cached);
+  no_epoll_wait = uv__load_relaxed(&no_epoll_wait_cached);
+
   for (;;) {
     /* See the comment for max_safe_timeout for an explanation of why
      * this is necessary.  Executive summary: kernel bug workaround.
@@ -288,15 +299,19 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
                          ARRAY_SIZE(events),
                          timeout,
                          &sigset);
-      if (nfds == -1 && errno == ENOSYS)
+      if (nfds == -1 && errno == ENOSYS) {
+        uv__store_relaxed(&no_epoll_pwait_cached, 1);
         no_epoll_pwait = 1;
+      }
     } else {
       nfds = epoll_wait(loop->backend_fd,
                         events,
                         ARRAY_SIZE(events),
                         timeout);
-      if (nfds == -1 && errno == ENOSYS)
+      if (nfds == -1 && errno == ENOSYS) {
+        uv__store_relaxed(&no_epoll_wait_cached, 1);
         no_epoll_wait = 1;
+      }
     }
 
     if (sigmask != 0 && no_epoll_pwait != 0)
