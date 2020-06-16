@@ -125,6 +125,11 @@ TEST_IMPL(fs_copyfile) {
   r = uv_fs_copyfile(NULL, &req, src, src, 0, NULL);
   ASSERT(r == 0);
   uv_fs_req_cleanup(&req);
+  /* Verify that the src file did not get truncated. */
+  r = uv_fs_stat(NULL, &req, src, NULL);
+  ASSERT_EQ(r, 0);
+  ASSERT_EQ(req.statbuf.st_size, 12);
+  uv_fs_req_cleanup(&req);
   unlink(src);
 
   /* Copies file synchronously. Creates new file. */
@@ -199,8 +204,11 @@ TEST_IMPL(fs_copyfile) {
   touch_file(dst, 0);
   chmod(dst, S_IRUSR|S_IRGRP|S_IROTH); /* Sets file mode to 444 (read-only). */
   r = uv_fs_copyfile(NULL, &req, fixture, dst, 0, NULL);
+  /* On IBMi PASE, qsecofr users can overwrite read-only files */
+# ifndef __PASE__
   ASSERT(req.result == UV_EACCES);
   ASSERT(r == UV_EACCES);
+# endif
   uv_fs_req_cleanup(&req);
 #endif
 

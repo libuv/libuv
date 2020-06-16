@@ -53,7 +53,8 @@ static struct uv__fd_hash_bucket_s uv__fd_hash[UV__FD_HASH_SIZE];
 
 
 INLINE static void uv__fd_hash_init(void) {
-  int i, err;
+  size_t i;
+  int err;
 
   err = uv_mutex_init(&uv__fd_hash_mutex);
   if (err) {

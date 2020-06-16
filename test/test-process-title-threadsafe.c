@@ -25,7 +25,11 @@
 
 #include <string.h>
 
-#define NUM_ITERATIONS 50
+#ifdef __APPLE__
+# define NUM_ITERATIONS 5
+#else
+# define NUM_ITERATIONS 50
+#endif
 
 static const char* titles[] = {
   "8L2NY0Kdj0XyNFZnmUZigIOfcWjyNr0SkMmUhKw99VLUsZFrvCQQC3XIRfNR8pjyMjXObllled",
@@ -35,15 +39,27 @@ static const char* titles[] = {
 };
 
 static void getter_thread_body(void* arg) {
+  uv_sem_t* getter_sem;
   char buffer[512];
+  size_t len;
 
-  for (;;) {
+  getter_sem = arg;
+
+  while (UV_EAGAIN == uv_sem_trywait(getter_sem)) {
     ASSERT(0 == uv_get_process_title(buffer, sizeof(buffer)));
+
+    /* The maximum size of the process title on some platforms depends on
+     * the total size of the argv vector. It's therefore possible to read
+     * back a title that's shorter than what we submitted.
+     */
+    len = strlen(buffer);
+    ASSERT_GT(len, 0);
+
     ASSERT(
-      0 == strcmp(buffer, titles[0]) ||
-      0 == strcmp(buffer, titles[1]) ||
-      0 == strcmp(buffer, titles[2]) ||
-      0 == strcmp(buffer, titles[3]));
+      0 == strncmp(buffer, titles[0], len) ||
+      0 == strncmp(buffer, titles[1], len) ||
+      0 == strncmp(buffer, titles[2], len) ||
+      0 == strncmp(buffer, titles[3], len));
 
     uv_sleep(0);
   }
@@ -65,21 +81,29 @@ static void setter_thread_body(void* arg) {
 TEST_IMPL(process_title_threadsafe) {
   uv_thread_t setter_threads[4];
   uv_thread_t getter_thread;
+  uv_sem_t getter_sem;
   int i;
 
 #if defined(__sun) || defined(__CYGWIN__) || defined(__MSYS__) || \
-    defined(__MVS__)
+    defined(__MVS__) || defined(__PASE__)
   RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
 #endif
 
   ASSERT(0 == uv_set_process_title(titles[0]));
-  ASSERT(0 == uv_thread_create(&getter_thread, getter_thread_body, NULL));
+
+  ASSERT_EQ(0, uv_sem_init(&getter_sem, 0));
+  ASSERT_EQ(0,
+            uv_thread_create(&getter_thread, getter_thread_body, &getter_sem));
 
   for (i = 0; i < (int) ARRAY_SIZE(setter_threads); i++)
     ASSERT(0 == uv_thread_create(&setter_threads[i], setter_thread_body, NULL));
 
   for (i = 0; i < (int) ARRAY_SIZE(setter_threads); i++)
     ASSERT(0 == uv_thread_join(&setter_threads[i]));
+
+  uv_sem_post(&getter_sem);
+  ASSERT_EQ(0, uv_thread_join(&getter_thread));
+  uv_sem_destroy(&getter_sem);
 
   return 0;
 }

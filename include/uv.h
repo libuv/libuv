@@ -247,7 +247,8 @@ typedef struct uv_utsname_s uv_utsname_t;
 typedef struct uv_statfs_s uv_statfs_t;
 
 typedef enum {
-  UV_LOOP_BLOCK_SIGNAL
+  UV_LOOP_BLOCK_SIGNAL = 0,
+  UV_METRICS_IDLE_TIME
 } uv_loop_option;
 
 typedef enum {
@@ -264,6 +265,8 @@ typedef void* (*uv_malloc_func)(size_t size);
 typedef void* (*uv_realloc_func)(void* ptr, size_t size);
 typedef void* (*uv_calloc_func)(size_t count, size_t size);
 typedef void (*uv_free_func)(void* ptr);
+
+UV_EXTERN void uv_library_shutdown(void);
 
 UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func,
                                    uv_realloc_func realloc_func,
@@ -605,7 +608,17 @@ enum uv_udp_flags {
    * (provided they all set the flag) but only the last one to bind will receive
    * any traffic, in effect "stealing" the port from the previous listener.
    */
-  UV_UDP_REUSEADDR = 4
+  UV_UDP_REUSEADDR = 4,
+  /*
+   * Indicates that the message was received by recvmmsg, so the buffer provided
+   * must not be freed by the recv_cb callback.
+   */
+  UV_UDP_MMSG_CHUNK = 8,
+
+  /*
+   * Indicates that recvmmsg should be used, if available.
+   */
+  UV_UDP_RECVMMSG = 256
 };
 
 typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
@@ -681,6 +694,7 @@ UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
                                 uv_udp_recv_cb recv_cb);
+UV_EXTERN int uv_udp_using_recvmmsg(const uv_udp_t* handle);
 UV_EXTERN int uv_udp_recv_stop(uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_size(const uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_count(const uv_udp_t* handle);
@@ -1059,11 +1073,11 @@ UV_EXTERN int uv_cancel(uv_req_t* req);
 
 
 struct uv_cpu_times_s {
-  uint64_t user;
-  uint64_t nice;
-  uint64_t sys;
-  uint64_t idle;
-  uint64_t irq;
+  uint64_t user; /* milliseconds */
+  uint64_t nice; /* milliseconds */
+  uint64_t sys; /* milliseconds */
+  uint64_t idle; /* milliseconds */
+  uint64_t irq; /* milliseconds */
 };
 
 struct uv_cpu_info_s {
@@ -1177,12 +1191,22 @@ UV_EXTERN void uv_os_free_passwd(uv_passwd_t* pwd);
 UV_EXTERN uv_pid_t uv_os_getpid(void);
 UV_EXTERN uv_pid_t uv_os_getppid(void);
 
-#define UV_PRIORITY_LOW 19
-#define UV_PRIORITY_BELOW_NORMAL 10
-#define UV_PRIORITY_NORMAL 0
-#define UV_PRIORITY_ABOVE_NORMAL -7
-#define UV_PRIORITY_HIGH -14
-#define UV_PRIORITY_HIGHEST -20
+#if defined(__PASE__)
+/* On IBM i PASE, the highest process priority is -10 */
+# define UV_PRIORITY_LOW 39          /* RUNPTY(99) */
+# define UV_PRIORITY_BELOW_NORMAL 15 /* RUNPTY(50) */
+# define UV_PRIORITY_NORMAL 0        /* RUNPTY(20) */
+# define UV_PRIORITY_ABOVE_NORMAL -4 /* RUNTY(12) */
+# define UV_PRIORITY_HIGH -7         /* RUNPTY(6) */
+# define UV_PRIORITY_HIGHEST -10     /* RUNPTY(1) */
+#else
+# define UV_PRIORITY_LOW 19
+# define UV_PRIORITY_BELOW_NORMAL 10
+# define UV_PRIORITY_NORMAL 0
+# define UV_PRIORITY_ABOVE_NORMAL -7
+# define UV_PRIORITY_HIGH -14
+# define UV_PRIORITY_HIGHEST -20
+#endif
 
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
@@ -1221,6 +1245,7 @@ UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
 
 UV_EXTERN int uv_os_uname(uv_utsname_t* buffer);
 
+UV_EXTERN uint64_t uv_metrics_idle_time(uv_loop_t* loop);
 
 typedef enum {
   UV_FS_UNKNOWN = -1,
@@ -1259,7 +1284,8 @@ typedef enum {
   UV_FS_READDIR,
   UV_FS_CLOSEDIR,
   UV_FS_STATFS,
-  UV_FS_MKSTEMP
+  UV_FS_MKSTEMP,
+  UV_FS_LUTIME
 } uv_fs_type;
 
 struct uv_dir_s {
@@ -1284,6 +1310,7 @@ struct uv_fs_s {
 
 UV_EXTERN uv_fs_type uv_fs_get_type(const uv_fs_t*);
 UV_EXTERN ssize_t uv_fs_get_result(const uv_fs_t*);
+UV_EXTERN int uv_fs_get_system_error(const uv_fs_t*);
 UV_EXTERN void* uv_fs_get_ptr(const uv_fs_t*);
 UV_EXTERN const char* uv_fs_get_path(const uv_fs_t*);
 UV_EXTERN uv_stat_t* uv_fs_get_statbuf(uv_fs_t*);
@@ -1429,6 +1456,12 @@ UV_EXTERN int uv_fs_utime(uv_loop_t* loop,
 UV_EXTERN int uv_fs_futime(uv_loop_t* loop,
                            uv_fs_t* req,
                            uv_file file,
+                           double atime,
+                           double mtime,
+                           uv_fs_cb cb);
+UV_EXTERN int uv_fs_lutime(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           const char* path,
                            double atime,
                            double mtime,
                            uv_fs_cb cb);
@@ -1744,9 +1777,11 @@ struct uv_loop_s {
   unsigned int active_handles;
   void* handle_queue[2];
   union {
-    void* unused[2];
+    void* unused;
     unsigned int count;
   } active_reqs;
+  /* Internal storage for future extensions. */
+  void* internal_fields;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
   UV_LOOP_PRIVATE_FIELDS

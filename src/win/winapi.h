@@ -4152,6 +4152,10 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
       struct {
         UCHAR  DataBuffer[1];
       } GenericReparseBuffer;
+      struct {
+        ULONG StringCount;
+        WCHAR StringList[1];
+      } AppExecLinkReparseBuffer;
     };
   } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 #endif
@@ -4517,6 +4521,9 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 #ifndef IO_REPARSE_TAG_SYMLINK
 # define IO_REPARSE_TAG_SYMLINK (0xA000000CL)
 #endif
+#ifndef IO_REPARSE_TAG_APPEXECLINK
+# define IO_REPARSE_TAG_APPEXECLINK (0x8000001BL)
+#endif
 
 typedef VOID (NTAPI *PIO_APC_ROUTINE)
              (PVOID ApcContext,
@@ -4588,11 +4595,6 @@ typedef NTSTATUS (NTAPI *sNtQueryInformationProcess)
                   PVOID ProcessInformation,
                   ULONG Length,
                   PULONG ReturnLength);
-
-/*
- * Advapi32 headers
- */
-typedef BOOLEAN (WINAPI *sRtlGenRandom)(PVOID Buffer, ULONG BufferLength);
 
 /*
  * Kernel32 headers
@@ -4735,9 +4737,6 @@ extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
 extern sNtQueryInformationProcess pNtQueryInformationProcess;
-
-/* Advapi32 function pointers */
-extern sRtlGenRandom pRtlGenRandom;
 
 /* Kernel32 function pointers */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
