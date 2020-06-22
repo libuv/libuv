@@ -204,7 +204,7 @@ out:
  * synchronization, as this function manipulates both the SQ and CQ side.
  */
 int io_uring_wait_cqes(struct io_uring *ring, struct io_uring_cqe **cqe_ptr,
-		       unsigned wait_nr, struct __kernel_timespec *ts,
+		       unsigned wait_nr, struct uv__kernel_timespec *ts,
 		       sigset_t *sigmask)
 {
 	unsigned to_submit = 0;
@@ -239,7 +239,7 @@ int io_uring_wait_cqes(struct io_uring *ring, struct io_uring_cqe **cqe_ptr,
  */
 int io_uring_wait_cqe_timeout(struct io_uring *ring,
 			      struct io_uring_cqe **cqe_ptr,
-			      struct __kernel_timespec *ts)
+			      struct uv__kernel_timespec *ts)
 {
 	return io_uring_wait_cqes(ring, cqe_ptr, 1, ts, NULL);
 }

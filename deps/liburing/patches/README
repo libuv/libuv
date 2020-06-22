@@ -1,0 +1,32 @@
+== Patches applied on top of liburing ==
+
+ - 0000-kernel-compat.patch: Whereas configure tests for several kernel-defined
+   types, we need these defined always to support the oldest Linux kernels that
+   libuv supports.
+
+== Procedure to create a patch file ==
+
+ - Commit the changes
+ - git format-patch -1 --stdout > foo.patch # where naming follows an increasing
+                                            # number plus patch description.
+ - git add foo.patch
+ - git commit --amend
+
+  As patches created in this way will feature a ChangeLog, there is no longer
+the need to append this file with a description of what the patch does.
+
+  If a change modifies enough things inside the root directory that the
+intention is not immediately clear, generate a .patch file to go with your
+change. If the change's modifications in the root directory are small, like:
+
+#ifdef FEATURE_FLAG
+use_special_feature();
+#elif
+use_default_behavior();
+#endif
+
+  then the intent is clear and a .patch file doesn't need to be generated (since
+it would not provide much value).
+
+  Ideally local changes should have a merge request featured in:
+ - https://github.com/axboe/liburing

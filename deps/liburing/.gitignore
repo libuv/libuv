@@ -8,7 +8,6 @@
 
 /src/liburing.a
 /src/liburing.so*
-/src/include/liburing/compat.h
 
 /examples/io_uring-cp
 /examples/io_uring-test
