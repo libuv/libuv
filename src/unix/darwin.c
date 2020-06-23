@@ -32,6 +32,15 @@
 #include <sys/sysctl.h>
 #include <unistd.h>  /* sysconf */
 
+/* mach_continuous_time() was introduced in macOS 10.12. Unfortunately we must
+ * use it on platforms that have it because mach_absolute_time() has been
+ * observed to go backwards on newer releases of macOS.
+ *
+ * This line acts as a re-declaration of the function and makes sure this code
+ * will still load on older macOS releases. Callers must verify that it's not
+ * NULL before calling.
+ */
+uint64_t mach_continuous_time(void) __attribute__((weak_import));
 
 int uv__platform_loop_init(uv_loop_t* loop) {
   loop->cf_state = NULL;
@@ -50,13 +59,19 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 
 uint64_t uv__hrtime(uv_clocktype_t type) {
   static mach_timebase_info_data_t info;
+  uint64_t mach_time;
 
   if ((ACCESS_ONCE(uint32_t, info.numer) == 0 ||
        ACCESS_ONCE(uint32_t, info.denom) == 0) &&
       mach_timebase_info(&info) != KERN_SUCCESS)
     abort();
 
-  return mach_continuous_time() * info.numer / info.denom;
+  if (mach_continuous_time) {
+    mach_time = mach_continuous_time();
+  } else {
+    mach_time = mach_absolute_time();
+  }
+  return mach_time * info.numer / info.denom;
 }
 
 
