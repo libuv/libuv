@@ -56,7 +56,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
       mach_timebase_info(&info) != KERN_SUCCESS)
     abort();
 
-  return mach_absolute_time() * info.numer / info.denom;
+  return mach_continuous_time() * info.numer / info.denom;
 }
 
 
