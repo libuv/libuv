@@ -351,7 +351,7 @@ static int uv__signal_start(uv_signal_t* handle,
                             uv_signal_cb signal_cb,
                             int signum,
                             int oneshot) {
-  sigset_t saved_sigmask;
+  sigset_t saved_sigmask = 0;
   int err;
   uv_signal_t* first_handle;
 
@@ -517,7 +517,7 @@ int uv_signal_stop(uv_signal_t* handle) {
 
 static void uv__signal_stop(uv_signal_t* handle) {
   uv_signal_t* removed_handle;
-  sigset_t saved_sigmask;
+  sigset_t saved_sigmask = 0;
   uv_signal_t* first_handle;
   int rem_oneshot;
   int first_oneshot;
