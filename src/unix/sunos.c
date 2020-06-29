@@ -176,16 +176,29 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w = QUEUE_DATA(q, uv__io_t, watcher_queue);
     assert(w->pevents != 0);
 
-    if (port_associate(loop->backend_fd,
-                       PORT_SOURCE_FD,
-                       w->fd,
-                       w->pevents,
-                       0)) {
-      perror("(libuv) port_associate()");
-      abort();
-    }
+    int rc = port_associate( loop->backend_fd,
+                             PORT_SOURCE_FD,
+                             w->fd,
+                             w->pevents,
+                             0);
+    if (rc) {
+      fprintf( stderr,
+               "(libuv) port_associate() errno=%i:  %s",
+               rc,
+               strerror(rc));
 
-    w->events = w->pevents;
+      /* Trigger a EOF to inform the owner that connection closed. */
+      uv_buf_t buf = { NULL, 0 };
+      uv_stream_t* stream;
+      stream = container_of(w, uv_stream_t, io_watcher);
+      stream->read_cb(stream, UV_EOF, &buf);
+
+      /* Cleanup descriptor */
+      uv__io_close(loop, w);
+    }
+    else {
+        w->events = w->pevents;
+    }
   }
 
   pset = NULL;
