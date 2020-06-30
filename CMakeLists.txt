@@ -508,6 +508,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-send-and-recv.c
        test/test-udp-send-hang-loop.c
        test/test-udp-send-immediate.c
+       test/test-udp-sendmmsg-error.c
        test/test-udp-send-unreachable.c
        test/test-udp-try-send.c
        test/test-uname.c
