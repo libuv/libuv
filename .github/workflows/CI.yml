@@ -65,4 +65,4 @@ jobs:
           ls -lh
       - name: Test
         run: |
-          ${{ matrix.config.qemu }} build/uv_run_tests_a
+          ${{ matrix.config.qemu }} build/test/uv_run_tests_a
