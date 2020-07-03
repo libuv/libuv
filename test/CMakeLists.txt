@@ -184,6 +184,7 @@ list(APPEND uv_test_sources
      test-udp-send-and-recv.c
      test-udp-send-hang-loop.c
      test-udp-send-immediate.c
+     test-udp-sendmmsg-error.c
      test-udp-send-unreachable.c
      test-udp-try-send.c
      test-uname.c
