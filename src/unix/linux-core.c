@@ -483,18 +483,22 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
   /* TODO(bnoordhuis) Use CLOCK_MONOTONIC_COARSE for UV_CLOCK_PRECISE
    * when it has microsecond granularity or better (unlikely).
    */
-  if (type == UV_CLOCK_FAST && fast_clock_id == -1) {
-    if (clock_getres(CLOCK_MONOTONIC_COARSE, &t) == 0 &&
-        t.tv_nsec <= 1 * 1000 * 1000) {
-      fast_clock_id = CLOCK_MONOTONIC_COARSE;
-    } else {
-      fast_clock_id = CLOCK_MONOTONIC;
-    }
-  }
+  clock_id = CLOCK_MONOTONIC;
+  if (type != UV_CLOCK_FAST)
+    goto done;
+
+  clock_id = uv__load_relaxed(&fast_clock_id);
+  if (clock_id != -1)
+    goto done;
 
   clock_id = CLOCK_MONOTONIC;
-  if (type == UV_CLOCK_FAST)
-    clock_id = fast_clock_id;
+  if (0 == clock_getres(CLOCK_MONOTONIC_COARSE, &t))
+    if (t.tv_nsec <= 1 * 1000 * 1000)
+      clock_id = CLOCK_MONOTONIC_COARSE;
+
+  uv__store_relaxed(&fast_clock_id, clock_id);
+
+done:
 
   if (clock_gettime(clock_id, &t))
     return 0;  /* Not really possible. */
