@@ -2123,9 +2123,9 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
       }
 
       /* We wouldn't mind emitting utf-16 surrogate pairs. Too bad, the windows
-       * console doesn't really support UTF-16, so just emit the replacement
-       * character. */
-      if (utf8_codepoint > 0xffff) {
+       * console before Windows 10 doesn't really support UTF-16, so just emit
+       * the replacement character. */
+      if (!is_windows_10_or_greater && utf8_codepoint > 0xffff) {
         utf8_codepoint = UNICODE_REPLACEMENT_CHARACTER;
       }
 

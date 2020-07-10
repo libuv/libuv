@@ -20,10 +20,12 @@
  */
 
 #include <assert.h>
+#include <string.h>
 
 #include "uv.h"
 #include "internal.h"
 
+int is_windows_10_or_greater;
 
 /* Ntdll function pointers */
 sRtlGetVersion pRtlGetVersion;
@@ -51,6 +53,7 @@ void uv_winapi_init(void) {
   HMODULE powrprof_module;
   HMODULE user32_module;
   HMODULE kernel32_module;
+  OSVERSIONINFOW info;
 
   ntdll_module = GetModuleHandleA("ntdll.dll");
   if (ntdll_module == NULL) {
@@ -59,6 +62,12 @@ void uv_winapi_init(void) {
 
   pRtlGetVersion = (sRtlGetVersion) GetProcAddress(ntdll_module,
                                                    "RtlGetVersion");
+  if (pRtlGetVersion != NULL) {
+    memset(&info, 0, sizeof(info));
+    info.dwOSVersionInfoSize = sizeof(info);
+    pRtlGetVersion(&info);
+    is_windows_10_or_greater = (info.dwMajorVersion >= 10);
+  }
 
   pRtlNtStatusToDosError = (sRtlNtStatusToDosError) GetProcAddress(
       ntdll_module,
