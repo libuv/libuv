@@ -185,8 +185,8 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
-int uv__get_cpu_speed(uint64_t* speed) {
-  // IOKit
+static int uv__get_cpu_speed(uint64_t* speed) {
+  /* IOKit */
   void (*pIOObjectRelease)(io_object_t);
   kern_return_t (*pIOMasterPort)(mach_port_t, mach_port_t*);
   CFMutableDictionaryRef (*pIOServiceMatching)(const char*);
@@ -199,7 +199,7 @@ int uv__get_cpu_speed(uint64_t* speed) {
                                                 CFAllocatorRef,
                                                 IOOptionBits);
 
-  // CoreFoundation
+  /* CoreFoundation */
   CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
                                             const char*,
                                             CFStringEncoding);
@@ -214,7 +214,11 @@ int uv__get_cpu_speed(uint64_t* speed) {
   int err;
 
   kern_return_t kr;
-  mach_port_t mach_port = 0;
+  mach_port_t mach_port;
+  io_iterator_t it;
+  io_object_t service;
+
+  mach_port = 0;
 
   err = UV_ENOENT;
   core_foundation_handle = dlopen("/System/Library/Frameworks/"
@@ -225,9 +229,8 @@ int uv__get_cpu_speed(uint64_t* speed) {
                         "Versions/A/IOKit",
                         RTLD_LAZY | RTLD_LOCAL);
 
-  if (core_foundation_handle == NULL || iokit_handle == NULL) {
+  if (core_foundation_handle == NULL || iokit_handle == NULL)
     goto out;
-  }
 
 #define V(handle, symbol)                                                     \
   do {                                                                        \
@@ -251,54 +254,52 @@ int uv__get_cpu_speed(uint64_t* speed) {
 #undef V
 
 #define S(s) pCFStringCreateWithCString(NULL, (s), kCFStringEncodingUTF8)
-  io_iterator_t it;
-  io_object_t service;
 
   kr = pIOMasterPort(MACH_PORT_NULL, &mach_port);
-  // TODO(evanlucas) handle non KERN_SUCCESS return values
+  assert(kr == KERN_SUCCESS);
   CFMutableDictionaryRef classes_to_match
       = pIOServiceMatching("IOPlatformDevice");
   kr = pIOServiceGetMatchingServices(mach_port, classes_to_match, &it);
-  // TODO(evanlucas) handle non KERN_SUCCESS return values
+  assert(kr == KERN_SUCCESS);
   service = pIOIteratorNext(it);
 
   CFStringRef device_type_str = S("device_type");
   CFStringRef clock_frequency_str = S("clock-frequency");
 
-  do {
-    if (service) {
-      CFDataRef data = NULL;
-      data = pIORegistryEntryCreateCFProperty(service,
-                                              device_type_str,
-                                              NULL,
-                                              0);
-      if (data) {
-        const UInt8 *raw = pCFDataGetBytePtr(data);
-        if (strncmp((char *)raw, "cpu", 3) == 0
-          || strncmp((char *)raw, "processor", 9) == 0) {
+  while (service != 0) {
+    CFDataRef data;
+    data = pIORegistryEntryCreateCFProperty(service,
+                                            device_type_str,
+                                            NULL,
+                                            0);
+    if (data) {
+      const UInt8* raw = pCFDataGetBytePtr(data);
+      if (strncmp((char*)raw, "cpu", 3) == 0
+        || strncmp((char*)raw, "processor", 9) == 0) {
+        CFDataRef freq_ref;
+        freq_ref = pIORegistryEntryCreateCFProperty(service,
+                                                    clock_frequency_str,
+                                                    NULL,
+                                                    0);
+        if (freq_ref) {
+          uint32_t freq;
+          CFIndex len = pCFDataGetLength(freq_ref);
+          CFRange range;
+          range.location = 0;
+          range.length = len;
 
-          data = pIORegistryEntryCreateCFProperty(service,
-                                                  clock_frequency_str,
-                                                  NULL,
-                                                  0);
-          if (data) {
-            uint32_t freq;
-            CFIndex len = pCFDataGetLength(data);
-            CFRange range;
-            range.location = 0;
-            range.length = len;
-
-            pCFDataGetBytes(data, range, (UInt8 *)&freq);
-            *speed = freq;
-            pCFRelease(data);
-            break;
-          }
+          pCFDataGetBytes(freq_ref, range, (UInt8*)&freq);
+          *speed = freq;
+          pCFRelease(freq_ref);
+          pCFRelease(data);
+          break;
         }
-        pCFRelease(data);
       }
+      pCFRelease(data);
     }
+
     service = pIOIteratorNext(it);
-  } while (service != 0);
+  }
 
   pIOObjectRelease(it);
 
@@ -316,10 +317,6 @@ out:
 }
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  uint64_t cpuspeed = 0;
-  if (uv__get_cpu_speed(&cpuspeed))
-    return UV__ERR(errno);
-
   unsigned int ticks = (unsigned int)sysconf(_SC_CLK_TCK),
                multiplier = ((uint64_t)1000L / ticks);
   char model[512];
@@ -329,12 +326,18 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   mach_msg_type_number_t msg_type;
   processor_cpu_load_info_data_t *info;
   uv_cpu_info_t* cpu_info;
+  uint64_t cpuspeed;
+  int err;
 
   size = sizeof(model);
   if (sysctlbyname("machdep.cpu.brand_string", &model, &size, NULL, 0) &&
       sysctlbyname("hw.model", &model, &size, NULL, 0)) {
     return UV__ERR(errno);
   }
+
+  err = uv__get_cpu_speed(&cpuspeed);
+  if (err < 0)
+    return err;
 
   if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numcpus,
                           (processor_info_array_t*)&info,
