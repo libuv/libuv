@@ -33,10 +33,15 @@
 #include <sys/sysctl.h>
 #include <unistd.h>  /* sysconf */
 
+#if !TARGET_OS_IPHONE
+#include "darwin-stub.h"
+#endif
+
 static uv_once_t once = UV_ONCE_INIT;
 static uint64_t (*time_func)(void);
 static mach_timebase_info_data_t timebase;
 
+typedef unsigned char UInt8;
 
 int uv__platform_loop_init(uv_loop_t* loop) {
   loop->cf_state = NULL;
@@ -180,11 +185,144 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
+int uv__get_cpu_speed(uint64_t* speed) {
+  // IOKit
+  void (*pIOObjectRelease)(io_object_t);
+  kern_return_t (*pIOMasterPort)(mach_port_t, mach_port_t*);
+  CFMutableDictionaryRef (*pIOServiceMatching)(const char*);
+  kern_return_t (*pIOServiceGetMatchingServices)(mach_port_t,
+                                                 CFMutableDictionaryRef,
+                                                 io_iterator_t*);
+  io_service_t (*pIOIteratorNext)(io_iterator_t);
+  CFTypeRef (*pIORegistryEntryCreateCFProperty)(io_registry_entry_t,
+                                                CFStringRef,
+                                                CFAllocatorRef,
+                                                IOOptionBits);
+
+  // CoreFoundation
+  CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
+                                            const char*,
+                                            CFStringEncoding);
+  CFStringEncoding (*pCFStringGetSystemEncoding)(void);
+  UInt8 *(*pCFDataGetBytePtr)(CFDataRef);
+  CFIndex (*pCFDataGetLength)(CFDataRef);
+  void (*pCFDataGetBytes)(CFDataRef, CFRange, UInt8*);
+  void (*pCFRelease)(CFTypeRef);
+
+  void* core_foundation_handle;
+  void* iokit_handle;
+  int err;
+
+  kern_return_t kr;
+  mach_port_t mach_port = 0;
+
+  err = UV_ENOENT;
+  core_foundation_handle = dlopen("/System/Library/Frameworks/"
+                                  "CoreFoundation.framework/"
+                                  "Versions/A/CoreFoundation",
+                                  RTLD_LAZY | RTLD_LOCAL);
+  iokit_handle = dlopen("/System/Library/Frameworks/IOKit.framework/"
+                        "Versions/A/IOKit",
+                        RTLD_LAZY | RTLD_LOCAL);
+
+  if (core_foundation_handle == NULL || iokit_handle == NULL) {
+    goto out;
+  }
+
+#define V(handle, symbol)                                                     \
+  do {                                                                        \
+    *(void **)(&p ## symbol) = dlsym((handle), #symbol);                      \
+    if (p ## symbol == NULL)                                                  \
+      goto out;                                                               \
+  }                                                                           \
+  while (0)
+  V(iokit_handle, IOMasterPort);
+  V(iokit_handle, IOServiceMatching);
+  V(iokit_handle, IOServiceGetMatchingServices);
+  V(iokit_handle, IOIteratorNext);
+  V(iokit_handle, IOObjectRelease);
+  V(iokit_handle, IORegistryEntryCreateCFProperty);
+  V(core_foundation_handle, CFStringCreateWithCString);
+  V(core_foundation_handle, CFStringGetSystemEncoding);
+  V(core_foundation_handle, CFDataGetBytePtr);
+  V(core_foundation_handle, CFDataGetLength);
+  V(core_foundation_handle, CFDataGetBytes);
+  V(core_foundation_handle, CFRelease);
+#undef V
+
+#define S(s) pCFStringCreateWithCString(NULL, (s), kCFStringEncodingUTF8)
+  io_iterator_t it;
+  io_object_t service;
+
+  kr = pIOMasterPort(MACH_PORT_NULL, &mach_port);
+  // TODO(evanlucas) handle non KERN_SUCCESS return values
+  CFMutableDictionaryRef classes_to_match
+      = pIOServiceMatching("IOPlatformDevice");
+  kr = pIOServiceGetMatchingServices(mach_port, classes_to_match, &it);
+  // TODO(evanlucas) handle non KERN_SUCCESS return values
+  service = pIOIteratorNext(it);
+
+  CFStringRef device_type_str = S("device_type");
+  CFStringRef clock_frequency_str = S("clock-frequency");
+
+  do {
+    if (service) {
+      CFDataRef data = NULL;
+      data = pIORegistryEntryCreateCFProperty(service,
+                                              device_type_str,
+                                              NULL,
+                                              0);
+      if (data) {
+        const UInt8 *raw = pCFDataGetBytePtr(data);
+        if (strncmp((char *)raw, "cpu", 3) == 0
+          || strncmp((char *)raw, "processor", 9) == 0) {
+
+          data = pIORegistryEntryCreateCFProperty(service,
+                                                  clock_frequency_str,
+                                                  NULL,
+                                                  0);
+          if (data) {
+            uint32_t freq;
+            CFIndex len = pCFDataGetLength(data);
+            CFRange range;
+            range.location = 0;
+            range.length = len;
+
+            pCFDataGetBytes(data, range, (UInt8 *)&freq);
+            *speed = freq;
+            pCFRelease(data);
+            break;
+          }
+        }
+        pCFRelease(data);
+      }
+    }
+    service = pIOIteratorNext(it);
+  } while (service != 0);
+
+  pIOObjectRelease(it);
+
+  err = 0;
+out:
+  if (core_foundation_handle != NULL)
+    dlclose(core_foundation_handle);
+
+  if (iokit_handle != NULL)
+    dlclose(iokit_handle);
+
+  mach_port_deallocate(mach_task_self(), mach_port);
+
+  return err;
+}
+
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
+  uint64_t cpuspeed = 0;
+  if (uv__get_cpu_speed(&cpuspeed))
+    return UV__ERR(errno);
+
   unsigned int ticks = (unsigned int)sysconf(_SC_CLK_TCK),
                multiplier = ((uint64_t)1000L / ticks);
   char model[512];
-  uint64_t cpuspeed;
   size_t size;
   unsigned int i;
   natural_t numcpus;
@@ -197,10 +335,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
       sysctlbyname("hw.model", &model, &size, NULL, 0)) {
     return UV__ERR(errno);
   }
-
-  size = sizeof(cpuspeed);
-  if (sysctlbyname("hw.cpufrequency", &cpuspeed, &size, NULL, 0))
-    return UV__ERR(errno);
 
   if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numcpus,
                           (processor_info_array_t*)&info,
