@@ -136,6 +136,10 @@ TEST_IMPL(tcp6_local_connect_timeout) {
   struct sockaddr_in6 addr;
   int r;
 
+  if (!can_ipv6()) {
+    RETURN_SKIP("IPv6 not supported");
+  }
+
   ASSERT_EQ(0, uv_ip6_addr("::1", 9999, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
