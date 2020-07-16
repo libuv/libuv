@@ -776,6 +776,7 @@ static int uv_tcp_try_connect(uv_connect_t* req,
                               uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   TCP_INITIAL_RTO_PARAMETERS retransmit_ioctl;
+  OSVERSIONINFOW os_info;
   const struct sockaddr* bind_addr;
   struct sockaddr_storage converted;
   BOOL success;
@@ -813,22 +814,25 @@ static int uv_tcp_try_connect(uv_connect_t* req,
 
   /* This makes connect() fail instantly if the target port on the localhost
    * is not reachable, instead of waiting for 2s. We do not care if this fails.
+   * This only works on Windows 10 / Windows Server 2016 and later.
    */
-  if (uv__is_loopback(&converted)) {
-    memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
-    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
-    retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
-    WSAIoctl(handle->socket,
-             SIO_TCP_INITIAL_RTO,
-             &retransmit_ioctl,
-             sizeof(retransmit_ioctl),
-             NULL,
-             0,
-             &bytes,
-             NULL,
-             NULL);
+  if (pRtlGetVersion) {
+    pRtlGetVersion(&os_info);
+    if (os_info.dwMajorVersion >= 10 && uv__is_loopback(&converted)) {
+      memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
+      retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+      retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+      WSAIoctl(handle->socket,
+              SIO_TCP_INITIAL_RTO,
+              &retransmit_ioctl,
+              sizeof(retransmit_ioctl),
+              NULL,
+              0,
+              &bytes,
+              NULL,
+              NULL);
+    }
   }
-
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;

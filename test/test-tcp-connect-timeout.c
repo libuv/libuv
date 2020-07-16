@@ -100,11 +100,24 @@ static void connect_local_cb(uv_connect_t* req, int status) {
   connect_cb_called++;
 }
 
+static int is_supported_system() {
+  uv_utsname_t uname;
+  ASSERT_EQ(uv_os_uname(&uname), 0);
+  if (strcmp(uname.sysname, "Windows_NT") == 0) {
+    // relase >= 10.x.x.x
+    return (uname.release[0] >= '1' && uname.release[0] <= '9' &&
+            uname.release[1] >= '0' && uname.release[1] <= '9');
+  }
+  return 1;
+}
 
 TEST_IMPL(tcp_local_connect_timeout) {
   struct sockaddr_in addr;
   int r;
 
+  if (!is_supported_system()) {
+    RETURN_SKIP("Unsupported system");
+  }
   ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", 9999, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
@@ -136,6 +149,9 @@ TEST_IMPL(tcp6_local_connect_timeout) {
   struct sockaddr_in6 addr;
   int r;
 
+  if (!is_supported_system()) {
+    RETURN_SKIP("Unsupported system");
+  }
   if (!can_ipv6()) {
     RETURN_SKIP("IPv6 not supported");
   }
