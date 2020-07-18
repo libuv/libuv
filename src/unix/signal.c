@@ -143,6 +143,8 @@ static void uv__signal_block_and_lock(sigset_t* saved_sigmask) {
   if (sigfillset(&new_mask))
     abort();
 
+  /*  to shut up valgrind */
+  sigemptyset(saved_sigmask);
   if (pthread_sigmask(SIG_SETMASK, &new_mask, saved_sigmask))
     abort();
 
@@ -357,8 +359,6 @@ static int uv__signal_start(uv_signal_t* handle,
 
   assert(!uv__is_closing(handle));
 
-  sigemptyset(&saved_sigmask);
-
   /* If the user supplies signum == 0, then return an error already. If the
    * signum is otherwise invalid then uv__signal_register will find out
    * eventually.
@@ -528,8 +528,6 @@ static void uv__signal_stop(uv_signal_t* handle) {
   /* If the watcher wasn't started, this is a no-op. */
   if (handle->signum == 0)
     return;
-
-  sigemptyset(&saved_sigmask);
 
   uv__signal_block_and_lock(&saved_sigmask);
 
