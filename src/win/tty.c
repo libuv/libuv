@@ -2155,6 +2155,12 @@ static int uv_tty_write_bufs(uv_tty_t* handle,
         ENSURE_BUFFER_SPACE(1);
         utf16_buf[utf16_buf_used++] = (WCHAR) utf8_codepoint;
         previous_eol = 0;
+      } else {
+        ENSURE_BUFFER_SPACE(2);
+        utf8_codepoint -= 0x10000;
+        utf16_buf[utf16_buf_used++] = (WCHAR) (utf8_codepoint / 0x400 + 0xD800);
+        utf16_buf[utf16_buf_used++] = (WCHAR) (utf8_codepoint % 0x400 + 0xDC00);
+        previous_eol = 0;
       }
     }
   }
