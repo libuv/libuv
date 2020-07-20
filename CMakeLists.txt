@@ -167,7 +167,7 @@ else()
        src/unix/thread.c
        src/unix/tty.c
        src/unix/udp.c)
-     list(APPEND uv_test_sources ${PROJECT_SOURCE_DIR}/test/runner-unix.c)
+  list(APPEND uv_test_sources ${PROJECT_SOURCE_DIR}/test/runner-unix.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
