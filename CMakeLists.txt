@@ -107,6 +107,8 @@ if(WIN32)
   list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0600)
   list(APPEND uv_libraries
        psapi
+       user32
+       advapi32
        iphlpapi
        userenv
        ws2_32)
