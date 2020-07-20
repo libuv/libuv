@@ -211,4 +211,3 @@ target_link_libraries(uv_run_tests_a PRIVATE uv_a ${uv_test_libraries} $<$<BOOL:
 add_test(NAME uv_test_a
          COMMAND uv_run_tests_a
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
