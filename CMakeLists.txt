@@ -138,8 +138,8 @@ if(WIN32)
        src/win/winsock.c)
   list(APPEND uv_test_libraries ws2_32)
   list(APPEND uv_test_sources
-    ${PROJECT_SOURCE_DIR}/src/win/snprintf.c
-    ${PROJECT_SOURCE_DIR}/test/runner-win.c)
+       ${PROJECT_SOURCE_DIR}/src/win/snprintf.c
+       ${PROJECT_SOURCE_DIR}/test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   if(NOT CMAKE_SYSTEM_NAME MATCHES "Android|OS390")
