@@ -101,12 +101,24 @@ static void connect_local_cb(uv_connect_t* req, int status) {
 }
 
 static int is_supported_system() {
+  int semver[3];
+  int min_semver[3] = {10, 0, 16299};
+  int cnt;
   uv_utsname_t uname;
   ASSERT_EQ(uv_os_uname(&uname), 0);
-  if (strcmp(uname.sysname, "Windows_NT") == 0) {
-    // relase >= 10.x.x.x
-    return (uname.release[0] >= '1' && uname.release[0] <= '9' &&
-            uname.release[1] >= '0' && uname.release[1] <= '9');
+  if (strcmp(uname.sysname, "Windows_NT") == 0) {    
+    cnt = sscanf(uname.release, "%d.%d.%d", &semver[0], &semver[1], &semver[2]);
+    if (cnt !=3) {
+      return 0;
+    }
+    // relase >= 10.0.16299
+    for (cnt = 0; cnt < 3; ++cnt) {
+      if (semver[cnt] > min_semver[cnt])
+        return 1;
+      if (semver[cnt] < min_semver[cnt])
+        return 0;
+    }
+    return 1;
   }
   return 1;
 }
