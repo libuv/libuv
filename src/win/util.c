@@ -62,15 +62,15 @@
 #endif
 
 
-/* Maximum environment variable size, including the terminating null */
-#define MAX_ENV_VAR_LENGTH 32767
+/* A RtlGenRandom() by any other name... */
+extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
 
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
 
-/* Interval (in seconds) of the high-resolution clock. */
-static double hrtime_interval_ = 0;
+/* Frequency of the high-resolution clock. */
+static uint64_t hrtime_frequency_ = 0;
 
 
 /*
@@ -86,9 +86,9 @@ void uv__util_init(void) {
    * and precompute its reciprocal.
    */
   if (QueryPerformanceFrequency(&perf_frequency)) {
-    hrtime_interval_ = 1.0 / perf_frequency.QuadPart;
+    hrtime_frequency_ = perf_frequency.QuadPart;
   } else {
-    hrtime_interval_= 0;
+    uv_fatal_error(GetLastError(), "QueryPerformanceFrequency");
   }
 }
 
@@ -153,20 +153,26 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 
 int uv_cwd(char* buffer, size_t* size) {
   DWORD utf16_len;
-  WCHAR utf16_buffer[MAX_PATH];
+  WCHAR *utf16_buffer;
   int r;
 
   if (buffer == NULL || size == NULL) {
     return UV_EINVAL;
   }
 
-  utf16_len = GetCurrentDirectoryW(MAX_PATH, utf16_buffer);
+  utf16_len = GetCurrentDirectoryW(0, NULL);
   if (utf16_len == 0) {
     return uv_translate_sys_error(GetLastError());
-  } else if (utf16_len > MAX_PATH) {
-    /* This should be impossible; however the CRT has a code path to deal with
-     * this scenario, so I added a check anyway. */
-    return UV_EIO;
+  }
+  utf16_buffer = uv__malloc(utf16_len * sizeof(WCHAR));
+  if (utf16_buffer == NULL) {
+    return UV_ENOMEM;
+  }
+
+  utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
+  if (utf16_len == 0) {
+    uv__free(utf16_buffer);
+    return uv_translate_sys_error(GetLastError());
   }
 
   /* utf16_len contains the length, *not* including the terminating null. */
@@ -190,8 +196,10 @@ int uv_cwd(char* buffer, size_t* size) {
                           NULL,
                           NULL);
   if (r == 0) {
+    uv__free(utf16_buffer);
     return uv_translate_sys_error(GetLastError());
   } else if (r > (int) *size) {
+    uv__free(utf16_buffer);
     *size = r;
     return UV_ENOBUFS;
   }
@@ -205,6 +213,8 @@ int uv_cwd(char* buffer, size_t* size) {
                           *size > INT_MAX ? INT_MAX : (int) *size,
                           NULL,
                           NULL);
+  uv__free(utf16_buffer);
+
   if (r == 0) {
     return uv_translate_sys_error(GetLastError());
   }
@@ -215,12 +225,26 @@ int uv_cwd(char* buffer, size_t* size) {
 
 
 int uv_chdir(const char* dir) {
-  WCHAR utf16_buffer[MAX_PATH];
-  size_t utf16_len;
+  WCHAR *utf16_buffer;
+  size_t utf16_len, new_utf16_len;
   WCHAR drive_letter, env_var[4];
 
   if (dir == NULL) {
     return UV_EINVAL;
+  }
+
+  utf16_len = MultiByteToWideChar(CP_UTF8,
+                                  0,
+                                  dir,
+                                  -1,
+                                  NULL,
+                                  0);
+  if (utf16_len == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+  utf16_buffer = uv__malloc(utf16_len * sizeof(WCHAR));
+  if (utf16_buffer == NULL) {
+    return UV_ENOMEM;
   }
 
   if (MultiByteToWideChar(CP_UTF8,
@@ -228,30 +252,34 @@ int uv_chdir(const char* dir) {
                           dir,
                           -1,
                           utf16_buffer,
-                          MAX_PATH) == 0) {
-    DWORD error = GetLastError();
-    /* The maximum length of the current working directory is 260 chars,
-     * including terminating null. If it doesn't fit, the path name must be too
-     * long. */
-    if (error == ERROR_INSUFFICIENT_BUFFER) {
-      return UV_ENAMETOOLONG;
-    } else {
-      return uv_translate_sys_error(error);
-    }
+                          utf16_len) == 0) {
+    uv__free(utf16_buffer);
+    return uv_translate_sys_error(GetLastError());
   }
 
   if (!SetCurrentDirectoryW(utf16_buffer)) {
+    uv__free(utf16_buffer);
     return uv_translate_sys_error(GetLastError());
   }
 
   /* Windows stores the drive-local path in an "hidden" environment variable,
    * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
    * this, so we'll have to do it. */
-  utf16_len = GetCurrentDirectoryW(MAX_PATH, utf16_buffer);
+  new_utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
+  if (new_utf16_len > utf16_len ) {
+    uv__free(utf16_buffer);
+    utf16_buffer = uv__malloc(new_utf16_len * sizeof(WCHAR));
+    if (utf16_buffer == NULL) {
+      /* When updating the environment variable fails, return UV_OK anyway.
+       * We did successfully change current working directory, only updating
+       * hidden env variable failed. */
+      return 0;
+    }
+    new_utf16_len = GetCurrentDirectoryW(new_utf16_len, utf16_buffer);
+  }
   if (utf16_len == 0) {
-    return uv_translate_sys_error(GetLastError());
-  } else if (utf16_len > MAX_PATH) {
-    return UV_EIO;
+    uv__free(utf16_buffer);
+    return 0;
   }
 
   /* The returned directory should not have a trailing slash, unless it points
@@ -283,11 +311,10 @@ int uv_chdir(const char* dir) {
     env_var[2] = L':';
     env_var[3] = L'\0';
 
-    if (!SetEnvironmentVariableW(env_var, utf16_buffer)) {
-      return uv_translate_sys_error(GetLastError());
-    }
+    SetEnvironmentVariableW(env_var, utf16_buffer);
   }
 
+  uv__free(utf16_buffer);
   return 0;
 }
 
@@ -357,6 +384,10 @@ uv_pid_t uv_os_getppid(void) {
 
 char** uv_setup_args(int argc, char** argv) {
   return argv;
+}
+
+
+void uv__process_title_cleanup(void) {
 }
 
 
@@ -461,23 +492,25 @@ uint64_t uv_hrtime(void) {
   return uv__hrtime(UV__NANOSEC);
 }
 
-uint64_t uv__hrtime(double scale) {
+uint64_t uv__hrtime(unsigned int scale) {
   LARGE_INTEGER counter;
+  double scaled_freq;
+  double result;
 
-  /* If the performance interval is zero, there's no support. */
-  if (hrtime_interval_ == 0) {
-    return 0;
-  }
-
+  assert(hrtime_frequency_ != 0);
+  assert(scale != 0);
   if (!QueryPerformanceCounter(&counter)) {
-    return 0;
+    uv_fatal_error(GetLastError(), "QueryPerformanceCounter");
   }
+  assert(counter.QuadPart != 0);
 
   /* Because we have no guarantee about the order of magnitude of the
    * performance counter interval, integer math could cause this computation
    * to overflow. Therefore we resort to floating point math.
    */
-  return (uint64_t) ((double) counter.QuadPart * hrtime_interval_ * scale);
+  scaled_freq = (double) hrtime_frequency_ / scale;
+  result = (double) counter.QuadPart / scaled_freq;
+  return (uint64_t) result;
 }
 
 
@@ -1056,20 +1089,29 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
 
 int uv_os_tmpdir(char* buffer, size_t* size) {
-  wchar_t path[MAX_PATH + 2];
+  wchar_t *path;
   DWORD bufsize;
   size_t len;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  len = GetTempPathW(ARRAY_SIZE(path), path);
-
+  len = 0;
+  len = GetTempPathW(0, NULL);
   if (len == 0) {
     return uv_translate_sys_error(GetLastError());
-  } else if (len > ARRAY_SIZE(path)) {
-    /* This should not be possible */
-    return UV_EIO;
+  }
+  /* Include space for terminating null char. */
+  len += 1;
+  path = uv__malloc(len * sizeof(wchar_t));
+  if (path == NULL) {
+    return UV_ENOMEM;
+  }
+  len  = GetTempPathW(len, path);
+
+  if (len == 0) {
+    uv__free(path);
+    return uv_translate_sys_error(GetLastError());
   }
 
   /* The returned directory should not have a trailing slash, unless it points
@@ -1084,8 +1126,10 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
   bufsize = WideCharToMultiByte(CP_UTF8, 0, path, -1, NULL, 0, NULL, NULL);
 
   if (bufsize == 0) {
+    uv__free(path);
     return uv_translate_sys_error(GetLastError());
   } else if (bufsize > *size) {
+    uv__free(path);
     *size = bufsize;
     return UV_ENOBUFS;
   }
@@ -1099,6 +1143,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
                                 *size,
                                 NULL,
                                 NULL);
+  uv__free(path);
 
   if (bufsize == 0)
     return uv_translate_sys_error(GetLastError());
@@ -1220,7 +1265,7 @@ int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16) {
 int uv__getpwuid_r(uv_passwd_t* pwd) {
   HANDLE token;
   wchar_t username[UNLEN + 1];
-  wchar_t path[MAX_PATH];
+  wchar_t *path;
   DWORD bufsize;
   wchar_t* gecosbuf;
   ULONG gecos_size;
@@ -1234,15 +1279,24 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token) == 0)
     return uv_translate_sys_error(GetLastError());
 
-  bufsize = ARRAY_SIZE(path);
+  bufsize = 0;
+  GetUserProfileDirectoryW(token, NULL, &bufsize);
+  if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+    r = GetLastError();
+    CloseHandle(token);
+    return uv_translate_sys_error(r);
+  }
+
+  path = uv__malloc(bufsize * sizeof(wchar_t));
+  if (path == NULL) {
+    CloseHandle(token);
+    return UV_ENOMEM;
+  }
+
   if (!GetUserProfileDirectoryW(token, path, &bufsize)) {
     r = GetLastError();
     CloseHandle(token);
-
-    /* This should not be possible */
-    if (r == ERROR_INSUFFICIENT_BUFFER)
-      return UV_ENOMEM;
-
+    uv__free(path);
     return uv_translate_sys_error(r);
   }
 
@@ -1252,6 +1306,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   bufsize = ARRAY_SIZE(username);
   if (!GetUserNameW(username, &bufsize)) {
     r = GetLastError();
+    uv__free(path);
 
     /* This should not be possible */
     if (r == ERROR_INSUFFICIENT_BUFFER)
@@ -1298,6 +1353,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
   /* Populate the uv_passwd_t structure. */
   r = uv__convert_utf16_to_utf8(path, -1, &pwd->homedir);
+  uv__free(path);
 
   if (r != 0)
     goto error;
@@ -1352,7 +1408,7 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
   for (penv = env, i = 0; *penv != L'\0'; penv += wcslen(penv) + 1, i++);
 
   *envitems = uv__calloc(i, sizeof(**envitems));
-  if (envitems == NULL) {
+  if (*envitems == NULL) {
     FreeEnvironmentStringsW(env);
     return UV_ENOMEM;
   }
@@ -1408,7 +1464,9 @@ fail:
 
 
 int uv_os_getenv(const char* name, char* buffer, size_t* size) {
-  wchar_t var[MAX_ENV_VAR_LENGTH];
+  wchar_t fastvar[512];
+  wchar_t* var;
+  DWORD varlen;
   wchar_t* name_w;
   DWORD bufsize;
   size_t len;
@@ -1422,25 +1480,52 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
   if (r != 0)
     return r;
 
-  SetLastError(ERROR_SUCCESS);
-  len = GetEnvironmentVariableW(name_w, var, MAX_ENV_VAR_LENGTH);
+  var = fastvar;
+  varlen = ARRAY_SIZE(fastvar);
+
+  for (;;) {
+    SetLastError(ERROR_SUCCESS);
+    len = GetEnvironmentVariableW(name_w, var, varlen);
+
+    if (len < varlen)
+      break;
+
+    /* Try repeatedly because we might have been preempted by another thread
+     * modifying the environment variable just as we're trying to read it.
+     */
+    if (var != fastvar)
+      uv__free(var);
+
+    varlen = 1 + len;
+    var = uv__malloc(varlen * sizeof(*var));
+
+    if (var == NULL) {
+      r = UV_ENOMEM;
+      goto fail;
+    }
+  }
+
   uv__free(name_w);
-  assert(len < MAX_ENV_VAR_LENGTH); /* len does not include the null */
+  name_w = NULL;
 
   if (len == 0) {
     r = GetLastError();
-    if (r != ERROR_SUCCESS)
-      return uv_translate_sys_error(r);
+    if (r != ERROR_SUCCESS) {
+      r = uv_translate_sys_error(r);
+      goto fail;
+    }
   }
 
   /* Check how much space we need */
   bufsize = WideCharToMultiByte(CP_UTF8, 0, var, -1, NULL, 0, NULL, NULL);
 
   if (bufsize == 0) {
-    return uv_translate_sys_error(GetLastError());
+    r = uv_translate_sys_error(GetLastError());
+    goto fail;
   } else if (bufsize > *size) {
     *size = bufsize;
-    return UV_ENOBUFS;
+    r = UV_ENOBUFS;
+    goto fail;
   }
 
   /* Convert to UTF-8 */
@@ -1453,11 +1538,23 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
                                 NULL,
                                 NULL);
 
-  if (bufsize == 0)
-    return uv_translate_sys_error(GetLastError());
+  if (bufsize == 0) {
+    r = uv_translate_sys_error(GetLastError());
+    goto fail;
+  }
 
   *size = bufsize - 1;
-  return 0;
+  r = 0;
+
+fail:
+
+  if (name_w != NULL)
+    uv__free(name_w);
+
+  if (var != fastvar)
+    uv__free(var);
+
+  return r;
 }
 
 
@@ -1812,13 +1909,10 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
 }
 
 int uv__random_rtlgenrandom(void* buf, size_t buflen) {
-  if (pRtlGenRandom == NULL)
-    return UV_ENOSYS;
-
   if (buflen == 0)
     return 0;
 
-  if (pRtlGenRandom(buf, buflen) == FALSE)
+  if (SystemFunction036(buf, buflen) == FALSE)
     return UV_EIO;
 
   return 0;

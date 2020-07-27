@@ -56,7 +56,7 @@
 #endif
 
 #define TOO_LONG_NAME_LENGTH 65536
-#define PATHMAX 1024
+#define PATHMAX 4096
 
 typedef struct {
   const char* path;
@@ -97,6 +97,7 @@ static int readlink_cb_count;
 static int realpath_cb_count;
 static int utime_cb_count;
 static int futime_cb_count;
+static int lutime_cb_count;
 static int statfs_cb_count;
 
 static uv_loop_t* loop;
@@ -318,6 +319,12 @@ static void chown_root_cb(uv_fs_t* req) {
 #   if defined(__CYGWIN__)
     /* On Cygwin, uid 0 is invalid (no root). */
     ASSERT(req->result == UV_EINVAL);
+#   elif defined(__PASE__)
+    /* On IBMi PASE, there is no root user. uid 0 is user qsecofr.
+     * User may grant qsecofr's privileges, including changing 
+     * the file's ownership to uid 0.
+     */
+    ASSERT(req->result == 0 || req->result == UV_EPERM);
 #   else
     ASSERT(req->result == UV_EPERM);
 #   endif
@@ -819,12 +826,17 @@ TEST_IMPL(fs_file_loop) {
 static void check_utime_ex(const char* path,
                            double btime,
                            double atime,
-                           double mtime) {
+                           double mtime,
+                           int test_lutime) {
   uv_stat_t* s;
   uv_fs_t req;
   int r;
 
-  r = uv_fs_stat(loop, &req, path, NULL);
+  if (test_lutime)
+    r = uv_fs_lstat(loop, &req, path, NULL);
+  else
+    r = uv_fs_stat(loop, &req, path, NULL);
+
   ASSERT(r == 0);
   ASSERT(req.result == 0);
   s = &req.statbuf;
@@ -852,8 +864,8 @@ static void check_utime_ex(const char* path,
 }
 
 
-static void check_utime(const char* path, double atime, double mtime) {
-  check_utime_ex(path, NAN, atime, mtime);
+static void check_utime(const char* path, double atime, double mtime, int test_lutime) {
+  check_utime_ex(path, NAN, atime, mtime, test_lutime);
 }
 
 
@@ -865,7 +877,7 @@ static void utime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_UTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 0);
 
   uv_fs_req_cleanup(req);
   utime_cb_count++;
@@ -880,10 +892,24 @@ static void futime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_FUTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 0);
 
   uv_fs_req_cleanup(req);
   futime_cb_count++;
+}
+
+
+static void lutime_cb(uv_fs_t* req) {
+  utime_check_t* c;
+
+  ASSERT(req->result == 0);
+  ASSERT(req->fs_type == UV_FS_LUTIME);
+
+  c = req->data;
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 1);
+
+  uv_fs_req_cleanup(req);
+  lutime_cb_count++;
 }
 
 
@@ -2287,7 +2313,12 @@ int test_symlink_dir_impl(int type) {
 #ifdef _WIN32
   ASSERT(((uv_stat_t*)req.ptr)->st_size == strlen(test_dir + 4));
 #else
+# ifdef __PASE__
+  /* On IBMi PASE, st_size returns the length of the symlink itself. */
+  ASSERT(((uv_stat_t*)req.ptr)->st_size == strlen("test_dir_symlink"));
+# else
   ASSERT(((uv_stat_t*)req.ptr)->st_size == strlen(test_dir));
+# endif
 #endif
   uv_fs_req_cleanup(&req);
 
@@ -2477,6 +2508,57 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(fs_lstat_windows_store_apps) {
+  uv_loop_t* loop;
+  char localappdata[MAX_PATH];
+  char windowsapps_path[MAX_PATH];
+  char file_path[MAX_PATH];
+  size_t len;
+  int r;
+  uv_fs_t req;
+  uv_fs_t stat_req;
+  uv_dirent_t dirent;
+
+  loop = uv_default_loop();
+  ASSERT_NOT_NULL(loop);
+  len = sizeof(localappdata);
+  r = uv_os_getenv("LOCALAPPDATA", localappdata, &len);
+  if (r == UV_ENOENT) {
+    MAKE_VALGRIND_HAPPY();
+    return TEST_SKIP;
+  }
+  ASSERT_EQ(r, 0);
+  r = snprintf(windowsapps_path,
+              sizeof(localappdata),
+              "%s\\Microsoft\\WindowsApps",
+              localappdata);
+  ASSERT_GT(r, 0);
+  if (uv_fs_opendir(loop, &req, windowsapps_path, NULL) != 0) {
+    /* If we cannot read the directory, skip the test. */
+    MAKE_VALGRIND_HAPPY();
+    return TEST_SKIP;
+  }
+  if (uv_fs_scandir(loop, &req, windowsapps_path, 0, NULL) <= 0) {
+    MAKE_VALGRIND_HAPPY();
+    return TEST_SKIP;
+  }
+  while (uv_fs_scandir_next(&req, &dirent) != UV_EOF) {
+    if (dirent.type != UV_DIRENT_LINK) {
+      continue;
+    }
+    if (snprintf(file_path,
+                 sizeof(file_path),
+                 "%s\\%s",
+                 windowsapps_path,
+                 dirent.name) < 0) {
+      continue;
+    }
+    ASSERT_EQ(uv_fs_lstat(loop, &stat_req, file_path, NULL), 0);
+  }
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
 #endif
 
 
@@ -2523,7 +2605,7 @@ TEST_IMPL(fs_utime) {
   r = uv_fs_stat(NULL, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  check_utime(path, atime, mtime);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
   uv_fs_req_cleanup(&req);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
@@ -2590,7 +2672,7 @@ TEST_IMPL(fs_utime_ex) {
   r = uv_fs_stat(NULL, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  check_utime_ex(path, btime, atime, mtime);
+  check_utime_ex(path, btime, atime, mtime, 0);
   uv_fs_req_cleanup(&req);
 
   atime = btime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
@@ -2703,7 +2785,7 @@ TEST_IMPL(fs_futime) {
   r = uv_fs_stat(NULL, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  check_utime(path, atime, mtime);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
   uv_fs_req_cleanup(&req);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
@@ -2762,6 +2844,7 @@ TEST_IMPL(fs_futime_ex) {
    * platforms support sub-second timestamps, but that support is filesystem-
    * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
    */
+
 #ifdef _WIN32
   mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
 #endif
@@ -2785,7 +2868,7 @@ TEST_IMPL(fs_futime_ex) {
   r = uv_fs_stat(NULL, &req, path, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  check_utime_ex(path, btime, atime, mtime);
+  check_utime_ex(path, btime, atime, mtime, 0);
   uv_fs_req_cleanup(&req);
 
   atime = btime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
@@ -2808,6 +2891,83 @@ TEST_IMPL(fs_futime_ex) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 #endif
+}
+
+TEST_IMPL(fs_lutime) {
+  utime_check_t checkme;
+  const char* path = "test_file";
+  const char* symlink_path = "test_file_symlink";
+  double atime;
+  double mtime;
+  uv_fs_t req;
+  int r, s;
+
+
+  /* Setup */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r >= 0);
+  ASSERT(req.result >= 0);
+  uv_fs_req_cleanup(&req);
+  uv_fs_close(loop, &req, r, NULL);
+
+  unlink(symlink_path);
+  s = uv_fs_symlink(NULL, &req, path, symlink_path, 0, NULL);
+#ifdef _WIN32
+  if (s == UV_EPERM) {
+    /*
+     * Creating a symlink before Windows 10 Creators Update was only allowed
+     * when running elevated console (with admin rights)
+     */
+    RETURN_SKIP(
+        "Symlink creation requires elevated console (with admin rights)");
+  }
+#endif
+  ASSERT(s == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /* Test the synchronous version. */
+  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
+
+#ifdef _WIN32
+  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
+#endif
+
+  checkme.atime = atime;
+  checkme.mtime = mtime;
+  checkme.path = symlink_path;
+  req.data = &checkme;
+
+  r = uv_fs_lutime(NULL, &req, symlink_path, atime, mtime, NULL);
+#if (defined(_AIX) && !defined(_AIX71)) ||                                    \
+     defined(__MVS__)
+  ASSERT(r == UV_ENOSYS);
+  RETURN_SKIP("lutime is not implemented for z/OS and AIX versions below 7.1");
+#endif
+  ASSERT(r == 0);
+  lutime_cb(&req);
+  ASSERT(lutime_cb_count == 1);
+
+  /* Test the asynchronous version. */
+  atime = mtime = 1291404900; /* 2010-12-03 20:35:00 */
+
+  checkme.atime = atime;
+  checkme.mtime = mtime;
+  checkme.path = symlink_path;
+
+  r = uv_fs_lutime(loop, &req, symlink_path, atime, mtime, lutime_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(lutime_cb_count == 2);
+
+  /* Cleanup. */
+  unlink(path);
+  unlink(symlink_path);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
 }
 
 
@@ -4424,6 +4584,24 @@ TEST_IMPL(fs_statfs) {
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(statfs_cb_count == 2);
+
+  return 0;
+}
+
+TEST_IMPL(fs_get_system_error) {
+  uv_fs_t req;
+  int r;
+  int system_error;
+
+  r = uv_fs_statfs(NULL, &req, "non_existing_file", NULL);
+  ASSERT(r != 0);
+
+  system_error = uv_fs_get_system_error(&req);
+#ifdef _WIN32
+  ASSERT(system_error == ERROR_FILE_NOT_FOUND);
+#else
+  ASSERT(system_error == ENOENT);
+#endif
 
   return 0;
 }

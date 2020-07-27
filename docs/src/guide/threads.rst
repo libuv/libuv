@@ -293,7 +293,7 @@ informing the user of the status of running downloads.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 7-8,34-
+    :lines: 7-8,35-
     :emphasize-lines: 2,11
 
 The async thread communication works *on loops* so although any thread can be
@@ -318,7 +318,7 @@ with the async watcher whenever it receives a message.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 10-23
+    :lines: 10-24
     :emphasize-lines: 7-8
 
 In the download function, we modify the progress indicator and queue the message
@@ -328,7 +328,7 @@ non-blocking and will return immediately.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 30-33
+    :lines: 31-34
 
 The callback is a standard libuv pattern, extracting the data from the watcher.
 
@@ -337,7 +337,7 @@ Finally it is important to remember to clean up the watcher.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 25-28
+    :lines: 26-29
     :emphasize-lines: 3
 
 After this example, which showed the abuse of the ``data`` field, bnoordhuis_

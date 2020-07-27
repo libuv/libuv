@@ -51,6 +51,14 @@
 #define STATIC_ASSERT(expr)                                                   \
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
 
+#if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)
+#define uv__store_relaxed(p, v) __atomic_store_n(p, v, __ATOMIC_RELAXED)
+#else
+#define uv__load_relaxed(p) (*p)
+#define uv__store_relaxed(p, v) do *p = v; while (0)
+#endif
+
 /* Handle flags. Some flags are specific to Windows or UNIX. */
 enum {
   /* Used by all handles. */
@@ -95,6 +103,7 @@ enum {
   /* Only used by uv_udp_t handles. */
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
+  UV_HANDLE_UDP_RECVMMSG                = 0x04000000,
 
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
@@ -128,6 +137,11 @@ int uv__tcp_connect(uv_connect_t* req,
                    const struct sockaddr* addr,
                    unsigned int addrlen,
                    uv_connect_cb cb);
+
+int uv__udp_init_ex(uv_loop_t* loop,
+                    uv_udp_t* handle,
+                    unsigned flags,
+                    int domain);
 
 int uv__udp_bind(uv_udp_t* handle,
                  const struct sockaddr* addr,
@@ -190,6 +204,10 @@ uv_dirent_type_t uv__fs_get_dirent_type(uv__dirent_t* dent);
 int uv__next_timeout(const uv_loop_t* loop);
 void uv__run_timers(uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
+
+void uv__process_title_cleanup(void);
+void uv__signal_cleanup(void);
+void uv__threadpool_cleanup(void);
 
 #define uv__has_active_reqs(loop)                                             \
   ((loop)->active_reqs.count > 0)
@@ -313,6 +331,7 @@ char *uv__strndup(const char* s, size_t n);
 void* uv__malloc(size_t size);
 void uv__free(void* ptr);
 void* uv__realloc(void* ptr, size_t size);
+void* uv__reallocf(void* ptr, size_t size);
 
 /* Loop watcher prototypes */
 void uv__idle_close(uv_idle_t* handle);

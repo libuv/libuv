@@ -313,12 +313,12 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
   timeout_time = loop->time + timeout;
 
   for (repeat = 0; ; repeat++) {
-    success = GetQueuedCompletionStatusEx(loop->iocp,
-                                          overlappeds,
-                                          ARRAY_SIZE(overlappeds),
-                                          &count,
-                                          timeout,
-                                          FALSE);
+    success = pGetQueuedCompletionStatusEx(loop->iocp,
+                                           overlappeds,
+                                           ARRAY_SIZE(overlappeds),
+                                           &count,
+                                           timeout,
+                                           FALSE);
 
     if (success) {
       for (i = 0; i < count; i++) {
