@@ -73,12 +73,12 @@ static void uv__udp_mmsg_init(void) {
   s = uv__socket(AF_INET, SOCK_DGRAM, 0);
   if (s < 0)
     return;
-  ret = uv__sendmmsg(s, NULL, 0, 0);
+  ret = uv__sendmmsg(s, NULL, 0);
   if (ret == 0 || errno != ENOSYS) {
     uv__sendmmsg_avail = 1;
     uv__recvmmsg_avail = 1;
   } else {
-    ret = uv__recvmmsg(s, NULL, 0, 0, NULL);
+    ret = uv__recvmmsg(s, NULL, 0);
     if (ret == 0 || errno != ENOSYS)
       uv__recvmmsg_avail = 1;
   }
@@ -213,7 +213,7 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
   }
 
   do
-    nread = uv__recvmmsg(handle->io_watcher.fd, msgs, chunks, 0, NULL);
+    nread = uv__recvmmsg(handle->io_watcher.fd, msgs, chunks);
   while (nread == -1 && errno == EINTR);
 
   if (nread < 1) {
@@ -359,7 +359,7 @@ write_queue_drain:
   }
 
   do
-    npkts = uv__sendmmsg(handle->io_watcher.fd, h, pkts, 0);
+    npkts = uv__sendmmsg(handle->io_watcher.fd, h, pkts);
   while (npkts == -1 && errno == EINTR);
 
   if (npkts < 1) {
