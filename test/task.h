@@ -131,9 +131,9 @@ typedef enum {
   }                                                          \
  } while (0)
 
-#define ASSERT_BASE_STR(func, a, b, operator, res, type, conv) \
+#define ASSERT_BASE_STR(expr, a, operator, b, type, conv)      \
  do {                                                          \
-  if (!(func(a,b) operator res)) {                             \
+  if (!(expr)) {                                               \
     fprintf(stderr,                                            \
             "Assertion failed in %s on line %d: `%s %s %s` "   \
             "(%"conv" %s %"conv")\n",                          \
@@ -214,10 +214,10 @@ typedef enum {
 #define ASSERT_UINT64_NE(a, b) ASSERT_INT_BASE(a, !=, b, uint64_t, PRIu64)
 
 #define ASSERT_STR_EQ(a, b) \
-  ASSERT_BASE_STR(strcmp, a, b, ==, 0, char*, "s")
+  ASSERT_BASE_STR(strcmp(a, b) == 0, a, == , b, char*, "s")
 
 #define ASSERT_STR_NE(a, b) \
-  ASSERT_BASE_STR(strcmp, a, b, !=, 0, char*, "s")
+  ASSERT_BASE_STR(strcmp(a, b) != 0, a, !=, b, char*, "s")
 
 #define ASSERT_MEM_EQ(a, b, size) \
   ASSERT_BASE_LEN(memcmp(a, b, size) == 0, a, ==, b, s, size)
