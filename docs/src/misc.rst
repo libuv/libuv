@@ -488,7 +488,7 @@ API
 
 .. c:function:: uint64_t uv_get_total_memory(void)
 
-    Gets the information of total amount of memory available (in bytes).
+    Gets the total amount of physical memory in the system (in bytes).
 
 .. c:function:: uint64_t uv_get_constrained_memory(void)
 
