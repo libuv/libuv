@@ -484,7 +484,7 @@ API
 
 .. c:function:: uint64_t uv_get_free_memory(void)
 
-    Gets the information of free amount of memory available (in bytes).
+    Gets the amount of free memory available in the system, as reported by the kernel (in bytes).
 
 .. c:function:: uint64_t uv_get_total_memory(void)
 
