@@ -478,6 +478,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-oob.c
        test/test-tcp-open.c
        test/test-tcp-read-stop.c
+       test/test-tcp-read-stop-start.c
        test/test-tcp-shutdown-after-write.c
        test/test-tcp-try-write.c
        test/test-tcp-try-write-error.c
