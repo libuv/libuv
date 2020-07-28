@@ -502,11 +502,11 @@ API
 
 .. c:function:: uint64_t uv_get_free_memory(void)
 
-    Gets memory information (in bytes).
+    Gets the amount of free memory available in the system, as reported by the kernel (in bytes).
 
 .. c:function:: uint64_t uv_get_total_memory(void)
 
-    Gets memory information (in bytes).
+    Gets the total amount of physical memory in the system (in bytes).
 
 .. c:function:: uint64_t uv_get_constrained_memory(void)
 
