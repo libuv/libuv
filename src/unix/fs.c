@@ -306,7 +306,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   if (path_length < pattern_size ||
       strcmp(path + path_length - pattern_size, pattern)) {
     errno = EINVAL;
-    return -1;
+    goto clobber;
   }
 
   uv_once(&once, uv__mkostemp_initonce);
@@ -321,7 +321,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
     /* If mkostemp() returns EINVAL, it means the kernel doesn't
        support O_CLOEXEC, so we just fallback to mkstemp() below. */
     if (errno != EINVAL)
-      return r;
+      goto clobber;
 
     /* We set the static variable so that next calls don't even
        try to use mkostemp. */
@@ -347,6 +347,9 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   if (req->cb != NULL)
     uv_rwlock_rdunlock(&req->loop->cloexec_lock);
 
+clobber:
+  if (r < 0)
+    *(path) = '\0';
   return r;
 }
 
