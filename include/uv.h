@@ -693,6 +693,7 @@ UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
                                 uv_udp_recv_cb recv_cb);
+UV_EXTERN int uv_udp_using_recvmmsg(const uv_udp_t* handle);
 UV_EXTERN int uv_udp_recv_stop(uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_size(const uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_count(const uv_udp_t* handle);

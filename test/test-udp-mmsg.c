@@ -30,7 +30,7 @@
   ASSERT((uv_udp_t*)(handle) == &recver || (uv_udp_t*)(handle) == &sender)
 
 #define BUFFER_MULTIPLIER 4
-#define BUFFER_SIZE (BUFFER_MULTIPLIER * 64 * 1024)
+#define MAX_DGRAM_SIZE (64 * 1024)
 #define NUM_SENDS 8
 #define EXPECTED_MMSG_ALLOCS (NUM_SENDS / BUFFER_MULTIPLIER)
 
@@ -44,11 +44,18 @@ static int alloc_cb_called;
 static void alloc_cb(uv_handle_t* handle,
                      size_t suggested_size,
                      uv_buf_t* buf) {
+  size_t buffer_size;
   CHECK_HANDLE(handle);
+
+  /* Only allocate enough room for multiple dgrams if we can actually recv them */
+  buffer_size = MAX_DGRAM_SIZE;
+  if (uv_udp_using_recvmmsg((uv_udp_t*)handle))
+    buffer_size *= BUFFER_MULTIPLIER;
+
   /* Actually malloc to exercise free'ing the buffer later */
-  buf->base = malloc(BUFFER_SIZE);
+  buf->base = malloc(buffer_size);
   ASSERT(buf->base != NULL);
-  buf->len = BUFFER_SIZE;
+  buf->len = buffer_size;
   alloc_cb_called++;
 }
 
@@ -119,7 +126,10 @@ TEST_IMPL(udp_mmsg) {
   printf("%d allocs for %d recvs\n", alloc_cb_called, recv_cb_called);
 
   /* On platforms that don't support mmsg, each recv gets its own alloc */
-  ASSERT(alloc_cb_called == EXPECTED_MMSG_ALLOCS || alloc_cb_called == recv_cb_called);
+  if (uv_udp_using_recvmmsg(&recver))
+    ASSERT_EQ(alloc_cb_called, EXPECTED_MMSG_ALLOCS);
+  else
+    ASSERT_EQ(alloc_cb_called, recv_cb_called);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

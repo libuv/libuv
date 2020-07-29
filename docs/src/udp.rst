@@ -391,6 +391,16 @@ API
     .. versionchanged:: 1.37.0 :man:`recvmmsg(2)` support is no longer enabled implicitly,
                         it must be explicitly requested by passing the `UV_UDP_RECVMMSG` flag to
                         :c:func:`uv_udp_init_ex`.
+    .. versionchanged:: 1.39.0 :c:func:`uv_udp_using_recvmmsg` can be used in `alloc_cb` to
+                        determine if a buffer sized for use with :man:`recvmmsg(2)` should be 
+                        allocated for the current handle/platform.
+
+.. c:function:: int uv_udp_using_recvmmsg(uv_udp_t* handle)
+
+    Returns 1 if the UDP handle was created with the `UV_UDP_RECVMMSG` flag
+    and the platform supports :man:`recvmmsg(2)`, 0 otherwise.
+
+    .. versionadded:: 1.39.0
 
 .. c:function:: int uv_udp_recv_stop(uv_udp_t* handle)
 
