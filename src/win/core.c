@@ -144,7 +144,7 @@ int uv_loop_init(uv_loop_t* loop) {
   QUEUE_INIT(&loop->idle_handles);
 
   QUEUE_INIT(&loop->async_handles);
-  UV_REQ_INIT(&loop->async_req, UV_WAKEUP);
+  UV_REQ_INIT(loop, &loop->async_req, UV_WAKEUP);
 
   memset(&loop->poll_peer_sockets, 0, sizeof loop->poll_peer_sockets);
 
