@@ -394,6 +394,7 @@ UV_EXTERN char* uv_err_name_r(int err, char* buf, size_t buflen);
   /* public */                                                                \
   void* data;                                                                 \
   /* read-only */                                                             \
+  uv_loop_t* loop;                                                            \
   uv_req_type type;                                                           \
   /* private */                                                               \
   void* reserved[6];                                                          \
@@ -447,6 +448,7 @@ UV_EXTERN void uv_handle_set_data(uv_handle_t* handle, void* data);
 UV_EXTERN size_t uv_req_size(uv_req_type type);
 UV_EXTERN void* uv_req_get_data(const uv_req_t* req);
 UV_EXTERN void uv_req_set_data(uv_req_t* req, void* data);
+UV_EXTERN uv_loop_t* uv_req_get_loop(const uv_req_t* handle);
 UV_EXTERN uv_req_type uv_req_get_type(const uv_req_t* req);
 UV_EXTERN const char* uv_req_type_name(uv_req_type type);
 
@@ -925,7 +927,6 @@ UV_EXTERN uint64_t uv_timer_get_repeat(const uv_timer_t* handle);
 struct uv_getaddrinfo_s {
   UV_REQ_FIELDS
   /* read-only */
-  uv_loop_t* loop;
   /* struct addrinfo* addrinfo is marked as private, but it really isn't. */
   UV_GETADDRINFO_PRIVATE_FIELDS
 };
@@ -948,7 +949,6 @@ UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 struct uv_getnameinfo_s {
   UV_REQ_FIELDS
   /* read-only */
-  uv_loop_t* loop;
   /* host and service are marked as private, but they really aren't. */
   UV_GETNAMEINFO_PRIVATE_FIELDS
 };
@@ -1121,7 +1121,6 @@ UV_EXTERN uv_pid_t uv_process_get_pid(const uv_process_t*);
  */
 struct uv_work_s {
   UV_REQ_FIELDS
-  uv_loop_t* loop;
   uv_work_cb work_cb;
   uv_after_work_cb after_work_cb;
   UV_WORK_PRIVATE_FIELDS
@@ -1361,7 +1360,6 @@ struct uv_dir_s {
 struct uv_fs_s {
   UV_REQ_FIELDS
   uv_fs_type fs_type;
-  uv_loop_t* loop;
   uv_fs_cb cb;
   ssize_t result;
   void* ptr;
@@ -1712,8 +1710,6 @@ UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
 
 struct uv_random_s {
   UV_REQ_FIELDS
-  /* read-only */
-  uv_loop_t* loop;
   /* private */
   int status;
   void* buf;

@@ -107,7 +107,6 @@ int uv_random(uv_loop_t* loop,
     return uv__random(buf, buflen);
 
   uv__req_init(loop, req, UV_RANDOM);
-  req->loop = loop;
   req->status = 0;
   req->cb = cb;
   req->buf = buf;
