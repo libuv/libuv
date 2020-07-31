@@ -1221,8 +1221,9 @@ void fs__unlink(uv_fs_t* req) {
 
 void fs__mkdir(uv_fs_t* req) {
   /* TODO: use req->mode. */
-  req->result = CreateDirectoryW(req->file.pathw, NULL);
-  if (req->result == -1) {
+  if (CreateDirectoryW(req->file.pathw, NULL)) {
+    SET_REQ_RESULT(req, 0);
+  } else {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     if (req->sys_errno_ == ERROR_INVALID_NAME)
       req->result = UV_EINVAL;
