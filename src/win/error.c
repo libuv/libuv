@@ -20,10 +20,8 @@
  */
 
 #include <assert.h>
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <stdio.h> /* printf */
 
 #include "uv.h"
 #include "internal.h"
@@ -69,6 +67,7 @@ int uv_translate_sys_error(int sys_errno) {
   }
 
   switch (sys_errno) {
+    case ERROR_ACCESS_DENIED:               return UV_EACCES;
     case ERROR_NOACCESS:                    return UV_EACCES;
     case WSAEACCES:                         return UV_EACCES;
     case ERROR_ELEVATION_REQUIRED:          return UV_EACCES;
@@ -101,6 +100,7 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAEHOSTUNREACH:                   return UV_EHOSTUNREACH;
     case ERROR_INSUFFICIENT_BUFFER:         return UV_EINVAL;
     case ERROR_INVALID_DATA:                return UV_EINVAL;
+    case ERROR_INVALID_NAME:                return UV_EINVAL;
     case ERROR_INVALID_PARAMETER:           return UV_EINVAL;
     case ERROR_SYMLINK_NOT_SUPPORTED:       return UV_EINVAL;
     case WSAEINVAL:                         return UV_EINVAL;
@@ -135,7 +135,6 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_DIRECTORY:                   return UV_ENOENT;
     case ERROR_ENVVAR_NOT_FOUND:            return UV_ENOENT;
     case ERROR_FILE_NOT_FOUND:              return UV_ENOENT;
-    case ERROR_INVALID_NAME:                return UV_ENOENT;
     case ERROR_INVALID_DRIVE:               return UV_ENOENT;
     case ERROR_INVALID_REPARSE_DATA:        return UV_ENOENT;
     case ERROR_MOD_NOT_FOUND:               return UV_ENOENT;
@@ -155,7 +154,6 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAENOTSOCK:                       return UV_ENOTSOCK;
     case ERROR_NOT_SUPPORTED:               return UV_ENOTSUP;
     case ERROR_BROKEN_PIPE:                 return UV_EOF;
-    case ERROR_ACCESS_DENIED:               return UV_EPERM;
     case ERROR_PRIVILEGE_NOT_HELD:          return UV_EPERM;
     case ERROR_BAD_PIPE:                    return UV_EPIPE;
     case ERROR_NO_DATA:                     return UV_EPIPE;

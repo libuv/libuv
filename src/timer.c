@@ -26,15 +26,6 @@
 #include <limits.h>
 
 
-static struct heap *timer_heap(const uv_loop_t* loop) {
-#ifdef _WIN32
-  return (struct heap*) loop->timer_heap;
-#else
-  return (struct heap*) &loop->timer_heap;
-#endif
-}
-
-
 static int timer_less_than(const struct heap_node* ha,
                            const struct heap_node* hb) {
   const uv_timer_t* a;
@@ -85,7 +76,7 @@ int uv_timer_start(uv_timer_t* handle,
   /* start_id is the second index to be compared in timer_less_than() */
   handle->start_id = handle->loop->timer_counter++;
 
-  heap_insert(timer_heap(handle->loop),
+  heap_insert((struct heap*) &handle->loop->timer_heap,
               (struct heap_node*) &handle->heap_node,
               timer_less_than);
   uv__handle_start(handle);
@@ -98,7 +89,7 @@ int uv_timer_stop(uv_timer_t* handle) {
   if (!uv__is_active(handle))
     return 0;
 
-  heap_remove(timer_heap(handle->loop),
+  heap_remove((struct heap*) &handle->loop->timer_heap,
               (struct heap_node*) &handle->heap_node,
               timer_less_than);
   uv__handle_stop(handle);
@@ -108,13 +99,10 @@ int uv_timer_stop(uv_timer_t* handle) {
 
 
 int uv_timer_again(uv_timer_t* handle) {
-  if (handle->timer_cb == NULL)
+  if (handle->timer_cb == NULL || handle->repeat == 0)
     return UV_EINVAL;
 
-  if (handle->repeat) {
-    uv_timer_stop(handle);
-    uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
-  }
+  uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
 
   return 0;
 }
@@ -135,7 +123,7 @@ int uv__next_timeout(const uv_loop_t* loop) {
   const uv_timer_t* handle;
   uint64_t diff;
 
-  heap_node = heap_min(timer_heap(loop));
+  heap_node = heap_min((const struct heap*) &loop->timer_heap);
   if (heap_node == NULL)
     return -1; /* block indefinitely */
 
@@ -156,7 +144,7 @@ void uv__run_timers(uv_loop_t* loop) {
   uv_timer_t* handle;
 
   for (;;) {
-    heap_node = heap_min(timer_heap(loop));
+    heap_node = heap_min((struct heap*) &loop->timer_heap);
     if (heap_node == NULL)
       break;
 

@@ -20,7 +20,7 @@
  */
 
 #include "uv.h"
-#include "internal.h"
+#include "uv-common.h"
 
 #define UV_LOOP_WATCHER_DEFINE(name, type)                                    \
   int uv_##name##_init(uv_loop_t* loop, uv_##name##_t* handle) {              \

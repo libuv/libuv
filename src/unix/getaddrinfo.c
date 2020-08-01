@@ -181,7 +181,6 @@ int uv_getaddrinfo(uv_loop_t* loop,
     return UV_ENOMEM;
 
   uv__req_init(loop, req, UV_GETADDRINFO);
-  req->loop = loop;
   req->cb = cb;
   req->addrinfo = NULL;
   req->hints = NULL;

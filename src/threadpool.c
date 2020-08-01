@@ -343,7 +343,6 @@ int uv_queue_work(uv_loop_t* loop,
     return UV_EINVAL;
 
   uv__req_init(loop, req, UV_WORK);
-  req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
   uv__work_submit(loop,

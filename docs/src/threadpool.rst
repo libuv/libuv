@@ -47,11 +47,6 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
-.. c:member:: uv_loop_t* uv_work_t.loop
-
-    Loop that started this request and where completion will be reported.
-    Readonly.
-
 .. seealso:: The :c:type:`uv_req_t` members also apply.
 
 

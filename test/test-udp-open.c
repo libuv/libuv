@@ -299,6 +299,7 @@ TEST_IMPL(udp_open_connect) {
   return 0;
 }
 
+
 #ifndef _WIN32
 TEST_IMPL(udp_send_unix) {
   /* Test that "uv_udp_send()" supports sending over

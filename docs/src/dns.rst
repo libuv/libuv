@@ -34,11 +34,6 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
-.. c:member:: uv_loop_t* uv_getaddrinfo_t.loop
-
-    Loop that started this getaddrinfo request and where completion will be
-    reported. Readonly.
-
 .. c:member:: struct addrinfo* uv_getaddrinfo_t.addrinfo
 
     Pointer to a `struct addrinfo` containing the result. Must be freed by the user

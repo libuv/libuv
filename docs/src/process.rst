@@ -32,6 +32,8 @@ Data types
             uv_stdio_container_t* stdio;
             uv_uid_t uid;
             uv_gid_t gid;
+            char* cpumask;
+            size_t cpumask_size;
         } uv_process_options_t;
 
 .. c:type:: void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal)
@@ -176,7 +178,7 @@ Public members
 
     .. note::
         On Windows file descriptors greater than 2 are available to the child process only if
-        the child processes uses the MSVCRT runtime.
+        the child executable uses the MSVCRT runtime.
 
 .. c:member:: uv_process_options_t.uid
 .. c:member:: uv_process_options_t.gid
@@ -188,6 +190,23 @@ Public members
         This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
         to ``UV_ENOTSUP``.
 
+.. c:member:: uv_process_options_t.cpumask
+.. c:member:: uv_process_options_t.cpumask_size
+
+    Libuv can set the child process' CPU affinity mask.  This happens when
+    `cpumask` is non-NULL.  It must point to an array of char values
+    of length `cpumask_size`, whose value must be at least that returned by
+    :c:func:`uv_cpumask_size`.  Each byte in the mask can be either
+    zero (false) or non-zero (true) to indicate whether the corresponding
+    processor at that index is included.
+
+    .. note::
+
+        If enabled on an unsupported platform, :c:func:`uv_spawn` will fail
+        with ``UV_ENOTSUP``.
+
+    .. versionadded:: 2.0.0
+
 .. c:member:: uv_stdio_container_t.flags
 
     Flags specifying how the stdio container should be passed to the child. See
@@ -195,7 +214,7 @@ Public members
 
 .. c:member:: uv_stdio_container_t.data
 
-    Union containing either the stream or fd to be passed on to the child
+    Union containing either the stream or fd handle to be passed on to the child
     process.
 
 

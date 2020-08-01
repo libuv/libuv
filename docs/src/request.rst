@@ -25,6 +25,14 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
+.. c:member:: uv_loop_t* uv_req_t.loop
+
+    Loop that started this request and where completion will be reported.
+    Readonly.
+    
+    .. versionadded:: 2.0.0
+       Moved from derived types (uv_connect_t, uv_fs_t, etc.) to uv_req_t.
+
 .. c:member:: void* uv_req_t.data
 
     Space for user-defined arbitrary data. libuv does not use this field.
@@ -88,6 +96,12 @@ API
 
     Returns the size of the given request type. Useful for FFI binding writers
     who don't want to know the structure layout.
+
+.. c:function:: uv_loop_t* uv_req_get_loop(const uv_req_t* req)
+
+    Returns `req->loop`.
+
+    .. versionadded:: 2.0.0
 
 .. c:function:: void* uv_req_get_data(const uv_req_t* req)
 

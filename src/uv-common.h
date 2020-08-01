@@ -30,12 +30,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stddef.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #include "uv.h"
 #include "uv/tree.h"
@@ -46,10 +41,6 @@
 # define UV__ERR(x) (-(x))
 #else
 # define UV__ERR(x) (x)
-#endif
-
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
-extern int snprintf(char*, size_t, const char*, ...);
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -93,7 +84,7 @@ enum {
   UV_HANDLE_WRITABLE                    = 0x00008000,
   UV_HANDLE_READ_PENDING                = 0x00010000,
   UV_HANDLE_SYNC_BYPASS_IOCP            = 0x00020000,
-  UV_HANDLE_ZERO_READ                   = 0x00040000,
+  /*UV_HANDLE_FLAG_UNUSED               = 0x00040000,*/
   UV_HANDLE_EMULATE_IOCP                = 0x00080000,
   UV_HANDLE_BLOCKING_WRITES             = 0x00100000,
   UV_HANDLE_CANCELLATION_PENDING        = 0x00200000,
@@ -293,7 +284,7 @@ void uv__threadpool_cleanup(void);
   (((h)->flags & UV_HANDLE_REF) != 0)
 
 #if defined(_WIN32)
-# define uv__handle_platform_init(h) ((h)->u.fd = -1)
+# define uv__handle_platform_init(h)
 #else
 # define uv__handle_platform_init(h) ((h)->next_closing = NULL)
 #endif
@@ -312,15 +303,17 @@ void uv__threadpool_cleanup(void);
  * a circular dependency between src/uv-common.h and src/win/internal.h.
  */
 #if defined(_WIN32)
-# define UV_REQ_INIT(req, typ)                                                \
+# define UV_REQ_INIT(loop_, req, typ)                                         \
   do {                                                                        \
+    (req)->loop = (loop_);                                                    \
     (req)->type = (typ);                                                      \
     (req)->u.io.overlapped.Internal = 0;  /* SET_REQ_SUCCESS() */             \
   }                                                                           \
   while (0)
 #else
-# define UV_REQ_INIT(req, typ)                                                \
+# define UV_REQ_INIT(loop_, req, typ)                                         \
   do {                                                                        \
+    (req)->loop = (loop_);                                                    \
     (req)->type = (typ);                                                      \
   }                                                                           \
   while (0)
@@ -328,7 +321,7 @@ void uv__threadpool_cleanup(void);
 
 #define uv__req_init(loop, req, typ)                                          \
   do {                                                                        \
-    UV_REQ_INIT(req, typ);                                                    \
+    UV_REQ_INIT(loop, req, typ);                                              \
     uv__req_register(loop, req);                                              \
   }                                                                           \
   while (0)
@@ -341,5 +334,15 @@ void* uv__malloc(size_t size);
 void uv__free(void* ptr);
 void* uv__realloc(void* ptr, size_t size);
 void* uv__reallocf(void* ptr, size_t size);
+
+/* Loop watcher prototypes */
+void uv__idle_close(uv_idle_t* handle);
+void uv__prepare_close(uv_prepare_t* handle);
+void uv__check_close(uv_check_t* handle);
+
+/* Timer prototypes */
+void uv__run_timers(uv_loop_t* loop);
+int uv__next_timeout(const uv_loop_t* loop);
+void uv__timer_close(uv_timer_t* handle);
 
 #endif /* UV_COMMON_H_ */

@@ -53,7 +53,7 @@ static void print_err_msg(const char* expect, ssize_t expect_len,
   fprintf(stderr, "\n");
 }
 
-static void tty_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+static void tty_alloc(uv_handle_t* ttyin_fd, size_t size, uv_buf_t* buf) {
   buf->base = malloc(size);
   ASSERT(buf->base != NULL);
   buf->len = size;
@@ -133,26 +133,23 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
 
 TEST_IMPL(tty_duplicate_vt100_fn_key) {
   int r;
-  int ttyin_fd;
+  uv_os_fd_t ttyin_fd;
   uv_tty_t tty_in;
   uv_loop_t* loop;
-  HANDLE handle;
   INPUT_RECORD records[2];
   DWORD written;
 
   loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
-  handle = CreateFileA("conin$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
-  ASSERT(ttyin_fd >= 0);
+  ttyin_fd = CreateFileA("conin$",
+                         GENERIC_READ | GENERIC_WRITE,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL,
+                         NULL);
+  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
@@ -175,7 +172,7 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
    * duplicate.
    */
   make_key_event_records(VK_F1, 0, TRUE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
 
   uv_run(loop, UV_RUN_DEFAULT);
@@ -186,10 +183,9 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
 
 TEST_IMPL(tty_duplicate_alt_modifier_key) {
   int r;
-  int ttyin_fd;
+  uv_os_fd_t ttyin_fd;
   uv_tty_t tty_in;
   uv_loop_t* loop;
-  HANDLE handle;
   INPUT_RECORD records[2];
   INPUT_RECORD alt_records[2];
   DWORD written;
@@ -197,16 +193,14 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
-  handle = CreateFileA("conin$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
-  ASSERT(ttyin_fd >= 0);
+  ttyin_fd = CreateFileA("conin$",
+                        GENERIC_READ | GENERIC_WRITE,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        NULL,
+                        OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL,
+                        NULL);
+  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
@@ -226,22 +220,22 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
 
   /* Emulate transmission of M-a at normal console */
   make_key_event_records(VK_MENU, 0, TRUE, alt_records);
-  WriteConsoleInputW(handle, &alt_records[0], 1, &written);
+  WriteConsoleInputW(ttyin_fd, &alt_records[0], 1, &written);
   ASSERT(written == 1);
   make_key_event_records(L'A', LEFT_ALT_PRESSED, FALSE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == 2);
-  WriteConsoleInputW(handle, &alt_records[1], 1, &written);
+  WriteConsoleInputW(ttyin_fd, &alt_records[1], 1, &written);
   ASSERT(written == 1);
 
   /* Emulate transmission of M-a at WSL(#2111) */
   make_key_event_records(VK_MENU, 0, TRUE, alt_records);
-  WriteConsoleInputW(handle, &alt_records[0], 1, &written);
+  WriteConsoleInputW(ttyin_fd, &alt_records[0], 1, &written);
   ASSERT(written == 1);
   make_key_event_records(L'A', LEFT_ALT_PRESSED, TRUE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == 2);
-  WriteConsoleInputW(handle, &alt_records[1], 1, &written);
+  WriteConsoleInputW(ttyin_fd, &alt_records[1], 1, &written);
   ASSERT(written == 1);
 
   uv_run(loop, UV_RUN_DEFAULT);
@@ -252,10 +246,9 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
 
 TEST_IMPL(tty_composing_character) {
   int r;
-  int ttyin_fd;
+  uv_os_fd_t ttyin_fd;
   uv_tty_t tty_in;
   uv_loop_t* loop;
-  HANDLE handle;
   INPUT_RECORD records[2];
   INPUT_RECORD alt_records[2];
   DWORD written;
@@ -263,16 +256,14 @@ TEST_IMPL(tty_composing_character) {
   loop = uv_default_loop();
 
   /* Make sure we have an FD that refers to a tty */
-  handle = CreateFileA("conin$",
-                       GENERIC_READ | GENERIC_WRITE,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
-  ASSERT(ttyin_fd >= 0);
+  ttyin_fd = CreateFileA("conin$",
+                         GENERIC_READ | GENERIC_WRITE,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL,
+                         NULL);
+  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
@@ -293,20 +284,20 @@ TEST_IMPL(tty_composing_character) {
   /* Emulate EUR inputs by LEFT ALT+NUMPAD ASCII KeyComos */
   make_key_event_records(VK_MENU, 0, FALSE, alt_records);
   alt_records[1].Event.KeyEvent.uChar.UnicodeChar = EUR_UNICODE;
-  WriteConsoleInputW(handle, &alt_records[0], 1, &written);
+  WriteConsoleInputW(ttyin_fd, &alt_records[0], 1, &written);
   make_key_event_records(VK_NUMPAD0, LEFT_ALT_PRESSED, FALSE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
   make_key_event_records(VK_NUMPAD1, LEFT_ALT_PRESSED, FALSE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
   make_key_event_records(VK_NUMPAD2, LEFT_ALT_PRESSED, FALSE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
   make_key_event_records(VK_NUMPAD8, LEFT_ALT_PRESSED, FALSE, records);
-  WriteConsoleInputW(handle, records, ARRAY_SIZE(records), &written);
+  WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
   ASSERT(written == ARRAY_SIZE(records));
-  WriteConsoleInputW(handle, &alt_records[1], 1, &written);
+  WriteConsoleInputW(ttyin_fd, &alt_records[1], 1, &written);
 
   uv_run(loop, UV_RUN_DEFAULT);
 

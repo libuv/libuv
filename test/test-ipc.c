@@ -321,9 +321,9 @@ void spawn_helper(uv_pipe_t* channel,
   stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE | UV_WRITABLE_PIPE;
   stdio[0].data.stream = (uv_stream_t*) channel;
   stdio[1].flags = UV_INHERIT_FD;
-  stdio[1].data.fd = 1;
+  stdio[1].data.file = uv_get_osfhandle(1);
   stdio[2].flags = UV_INHERIT_FD;
-  stdio[2].data.fd = 2;
+  stdio[2].data.file = uv_get_osfhandle(2);
 
   r = uv_spawn(uv_default_loop(), process, &options);
   ASSERT_EQ(r, 0);
@@ -733,13 +733,14 @@ int ipc_helper(int listen_after_write) {
   struct sockaddr_in addr;
   int r;
   uv_buf_t buf;
+  uv_os_fd_t stdin_handle = uv_convert_fd_to_handle(0);
 
   ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT_EQ(r, 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, stdin_handle);
 
   ASSERT_EQ(1, uv_is_readable((uv_stream_t*) &channel));
   ASSERT_EQ(1, uv_is_writable((uv_stream_t*) &channel));
@@ -786,11 +787,12 @@ int ipc_helper_tcp_connection(void) {
 
   int r;
   struct sockaddr_in addr;
+  uv_os_fd_t stdin_handle = uv_convert_fd_to_handle(0);
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT_EQ(r, 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, stdin_handle);
 
   ASSERT_EQ(1, uv_is_readable((uv_stream_t*) &channel));
   ASSERT_EQ(1, uv_is_writable((uv_stream_t*) &channel));
@@ -908,13 +910,14 @@ int ipc_helper_bind_twice(void) {
   struct sockaddr_in addr;
   int r;
   uv_buf_t buf;
+  uv_os_fd_t stdin_handle = uv_convert_fd_to_handle(0);
 
   ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_pipe_init(uv_default_loop(), &channel, 1);
   ASSERT_EQ(r, 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, stdin_handle);
 
   ASSERT_EQ(1, uv_is_readable((uv_stream_t*) &channel));
   ASSERT_EQ(1, uv_is_writable((uv_stream_t*) &channel));
@@ -955,7 +958,7 @@ int ipc_helper_send_zero(void) {
   r = uv_pipe_init(uv_default_loop(), &channel, 0);
   ASSERT_EQ(r, 0);
 
-  uv_pipe_open(&channel, 0);
+  uv_pipe_open(&channel, UV_STDIN_FD);
 
   ASSERT_EQ(1, uv_is_readable((uv_stream_t*) &channel));
   ASSERT_EQ(1, uv_is_writable((uv_stream_t*) &channel));

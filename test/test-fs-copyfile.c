@@ -22,6 +22,8 @@
 #include "uv.h"
 #include "task.h"
 
+#include <fcntl.h>
+
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(__sun) || \
     defined(_AIX) || defined(__MVS__) || \
@@ -68,7 +70,7 @@ static void handle_result(uv_fs_t* req) {
 
 
 static void touch_file(const char* name, unsigned int size) {
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t req;
   uv_buf_t buf;
   int r;
@@ -77,8 +79,8 @@ static void touch_file(const char* name, unsigned int size) {
   r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT | O_TRUNC,
                  S_IWUSR | S_IRUSR, NULL);
   uv_fs_req_cleanup(&req);
-  ASSERT(r >= 0);
-  file = r;
+  ASSERT(r == 0);
+  file = (uv_os_fd_t) req.result;
 
   buf = uv_buf_init("a", 1);
 

@@ -284,6 +284,8 @@ TEST_IMPL(loop_handles) {
 
   r = uv_prepare_init(uv_default_loop(), &prepare_1_handle);
   ASSERT(r == 0);
+  r = uv_prepare_start(&prepare_1_handle, NULL);
+  ASSERT(r == UV_EINVAL);
   r = uv_prepare_start(&prepare_1_handle, prepare_1_cb);
   ASSERT(r == 0);
 

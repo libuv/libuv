@@ -40,7 +40,7 @@ File descriptors are closed using
 
 .. code-block:: c
 
-    int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
+    int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t fd, uv_fs_cb cb)
 
 
 Filesystem operation callbacks have the signature:
