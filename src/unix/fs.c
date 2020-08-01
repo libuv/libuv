@@ -350,7 +350,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
 
 clobber:
   if (r < 0)
-    *(path) = '\0';
+    path[0] = '\0';
   return r;
 }
 
