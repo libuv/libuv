@@ -492,16 +492,15 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
                    &req->u.io.overlapped,
                    NULL);
 
+  handle->flags |= UV_HANDLE_READ_PENDING;
+  handle->reqs_pending++;
+
   if (UV_SUCCEEDED_WITHOUT_IOCP(result == 0)) {
     /* Process the req without IOCP. */
-    handle->flags |= UV_HANDLE_READ_PENDING;
     req->u.io.overlapped.InternalHigh = bytes;
-    handle->reqs_pending++;
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* The req will be processed with IOCP. */
-    handle->flags |= UV_HANDLE_READ_PENDING;
-    handle->reqs_pending++;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -514,7 +513,6 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     /* Make this req pending reporting an error. */
     SET_REQ_ERROR(req, WSAGetLastError());
     uv_insert_pending_req(loop, (uv_req_t*)req);
-    handle->reqs_pending++;
   }
 }
 
@@ -927,6 +925,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
          */
         err = WSAECONNRESET;
       }
+      handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
       handle->read_cb((uv_stream_t*)handle,
                       uv_translate_sys_error(err),
@@ -982,6 +981,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
              * Unix. */
             err = WSAECONNRESET;
           }
+          handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
           handle->read_cb((uv_stream_t*)handle,
                           uv_translate_sys_error(err),

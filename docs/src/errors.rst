@@ -319,6 +319,18 @@ Error constants
 
     too many links
 
+.. c:macro:: UV_ENOTTY
+
+    inappropriate ioctl for device
+
+.. c:macro:: UV_EFTYPE
+
+    inappropriate file type or format
+
+.. c:macro:: UV_EILSEQ
+
+    illegal byte sequence
+
 
 API
 ---
