@@ -1242,6 +1242,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   unsigned int tries, i;
   size_t len;
   uint64_t v;
+  char *path = req->path;
 
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
@@ -1265,8 +1266,8 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
 
     if (func(req)) {
       if (req->result >= 0) {
-        len = strlen(req->path);
-        wcstombs((char*) req->path + len - num_x, ep - num_x, num_x);
+        len = strlen(path);
+        wcstombs(path + len - num_x, ep - num_x, num_x);
       }
       return;
     }
@@ -1275,7 +1276,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   SET_REQ_RESULT(req, -1);
 
 clobber:
-  (char) *(req->path) = '\0';
+  path[0] = '\0';
 }
 
 
