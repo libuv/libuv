@@ -375,7 +375,6 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   if (path_length < pattern_size ||
       strcmp(path + path_length - pattern_size, pattern)) {
     errno = EINVAL;
-    r = -1;
     goto clobber;
   }
 

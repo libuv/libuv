@@ -1320,7 +1320,6 @@ TEST_IMPL(fs_mkstemp) {
   int r;
   uv_os_fd_t fd1, fd2;
   const char path_template[] = "test_file_XXXXXX";
-  const char test_file[] = "test_file";
   uv_fs_t req;
 
   loop = uv_default_loop();
@@ -1343,10 +1342,7 @@ TEST_IMPL(fs_mkstemp) {
   ASSERT(strcmp(mkstemp_req1.path, mkstemp_req2.path) != 0);
 
   /* invalid template returns EINVAL */
-  ASSERT(uv_fs_mkstemp(NULL, &mkstemp_req3, test_file, NULL) == UV_EINVAL);
-
-  /* Make sure that path is empty string */
-  ASSERT(strlen(mkstemp_req3.path) == 0);
+  ASSERT(uv_fs_mkstemp(NULL, &mkstemp_req3, "test_file", NULL) == UV_EINVAL);
 
   /* We can write to the opened file */
   iov = uv_buf_init(test_buf, sizeof(test_buf));
