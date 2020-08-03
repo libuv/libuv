@@ -645,11 +645,7 @@ if(LIBUV_BUILD_TESTS)
   add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
-  if(QEMU)
-    target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)
-  else()
-    target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
-  endif()
+  target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries})
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
