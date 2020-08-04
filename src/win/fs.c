@@ -816,10 +816,10 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
   for (index = 0;
        index < req->fs.info.nbufs && done_read < read_size;
        ++index) {
-    int err = 0;
     size_t this_read_size = MIN(req->fs.info.bufs[index].len,
                                 read_size - done_read);
 #ifdef _MSC_VER
+    int err = 0;
     __try {
 #endif
       memcpy(req->fs.info.bufs[index].base,
@@ -938,7 +938,7 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
     (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
   size_t write_size, done_write;
   unsigned int index;
-  LARGE_INTEGER zero, pos, end_pos;
+  LARGE_INTEGER pos, end_pos;
   size_t view_offset;
   LARGE_INTEGER view_base;
   void* view;
@@ -963,7 +963,6 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
     return;
   }
 
-  zero.QuadPart = 0;
   if (force_append) {
     pos = fd_info->size;
   } else if (req->fs.info.offset == -1) {
@@ -1014,8 +1013,8 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
 
   done_write = 0;
   for (index = 0; index < req->fs.info.nbufs; ++index) {
-    int err = 0;
 #ifdef _MSC_VER
+    int err = 0;
     __try {
 #endif
       memcpy((char*)view + view_offset + done_write,
