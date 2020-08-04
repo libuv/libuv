@@ -30,12 +30,14 @@
 #include "uv.h"
 #include "internal.h"
 
+/* clang-format off */
 #include <winsock2.h>
 #include <winperf.h>
 #include <iphlpapi.h>
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <windows.h>
+/* clang-format on */
 #include <userenv.h>
 #include <math.h>
 
