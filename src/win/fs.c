@@ -737,7 +737,7 @@ void fs__close(uv_fs_t* req) {
 
 LONG fs__filemap_ex_filter(LONG excode, PEXCEPTION_POINTERS pep,
                            int* perror) {
-  if (excode != EXCEPTION_IN_PAGE_ERROR) {
+  if (excode != (LONG)EXCEPTION_IN_PAGE_ERROR) {
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
@@ -1407,7 +1407,7 @@ void fs__scandir(uv_fs_t* req) {
   /* If the handle is not a directory, we'll get STATUS_INVALID_PARAMETER.
    * This should be reported back as UV_ENOTDIR.
    */
-  if (status == STATUS_INVALID_PARAMETER)
+  if (status == (NTSTATUS)STATUS_INVALID_PARAMETER)
     goto not_a_directory_error;
 
   while (NT_SUCCESS(status)) {

@@ -1873,7 +1873,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
                "MINGW32_NT-%u.%u",
                (unsigned int) os_info.dwMajorVersion,
                (unsigned int) os_info.dwMinorVersion);
-  assert(r < sizeof(buffer->sysname));
+  assert((size_t)r < sizeof(buffer->sysname));
 #else
   uv__strscpy(buffer->sysname, "Windows_NT", sizeof(buffer->sysname));
 #endif
@@ -1885,7 +1885,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
                (unsigned int) os_info.dwMajorVersion,
                (unsigned int) os_info.dwMinorVersion,
                (unsigned int) os_info.dwBuildNumber);
-  assert(r < sizeof(buffer->release));
+  assert((size_t)r < sizeof(buffer->release));
 
   /* Populate the machine field. */
   GetSystemInfo(&system_info);
