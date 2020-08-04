@@ -274,8 +274,8 @@ static int uv__get_cpu_speed(uint64_t* speed) {
                                             0);
     if (data) {
       const UInt8* raw = pCFDataGetBytePtr(data);
-      if (strncmp((char*)raw, "cpu", 3) == 0
-        || strncmp((char*)raw, "processor", 9) == 0) {
+      if (strncmp((char*)raw, "cpu", 3) == 0 ||
+          strncmp((char*)raw, "processor", 9) == 0) {
         CFDataRef freq_ref;
         freq_ref = pIORegistryEntryCreateCFProperty(service,
                                                     clock_frequency_str,
