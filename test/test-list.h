@@ -857,7 +857,7 @@ TASK_LIST_START
 
   TEST_ENTRY  (tmpdir)
 
-  TEST_ENTRY_CUSTOM (hrtime, 0, 0, 10000)
+  TEST_ENTRY_CUSTOM (hrtime, 0, 0, 20000)
 
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
   TEST_ENTRY_CUSTOM (getaddrinfo_fail_sync, 0, 0, 10000)
