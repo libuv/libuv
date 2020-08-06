@@ -70,10 +70,7 @@
 #define SET_REQ_RESULT(req, result_value)                                   \
   do {                                                                      \
     req->result = (result_value);                                           \
-    if (req->result == -1) {                                                \
-      req->sys_errno_ = _doserrno;                                          \
-      req->result = uv_translate_sys_error(req->sys_errno_);                \
-    }                                                                       \
+    assert(req->result != -1);                                              \
   } while (0)
 
 #define SET_REQ_WIN32_ERROR(req, sys_errno)                                 \
@@ -730,7 +727,7 @@ void fs__close(uv_fs_t* req) {
     assert(errno == EBADF);
     SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
   } else {
-    req->result = 0;
+    SET_REQ_RESULT(req, 0);
   }
 }
 
@@ -1127,7 +1124,10 @@ void fs__write(uv_fs_t* req) {
 
 void fs__rmdir(uv_fs_t* req) {
   int result = _wrmdir(req->file.pathw);
-  SET_REQ_RESULT(req, result);
+  if (result == -1)
+    SET_REQ_WIN32_ERROR(req, _doserrno);
+  else
+    SET_REQ_RESULT(req, 0);
 }
 
 
@@ -1272,7 +1272,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   } while (--tries);
 
   if (tries == 0) {
-    SET_REQ_RESULT(req, -1);
+    SET_REQ_WIN32_ERROR(req, GetLastError());
   }
 }
 
@@ -1285,7 +1285,7 @@ static int fs__mkdtemp_func(uv_fs_t* req) {
   }
   error = GetLastError();
   if (error != ERROR_ALREADY_EXISTS) {
-    SET_REQ_RESULT(req, -1);
+    SET_REQ_WIN32_ERROR(req, error);
     return 1;
   }
 
@@ -1897,7 +1897,7 @@ INLINE static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
   }
 
   req->ptr = &req->statbuf;
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 
@@ -1932,7 +1932,7 @@ static void fs__fstat(uv_fs_t* req) {
   }
 
   req->ptr = &req->statbuf;
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 
@@ -2159,7 +2159,10 @@ static void fs__access(uv_fs_t* req) {
 
 static void fs__chmod(uv_fs_t* req) {
   int result = _wchmod(req->file.pathw, req->fs.info.mode);
-  SET_REQ_RESULT(req, result);
+  if (result == -1)
+    SET_REQ_WIN32_ERROR(req, _doserrno);
+  else
+    SET_REQ_RESULT(req, 0);
 }
 
 
@@ -2317,7 +2320,7 @@ INLINE static void fs__utime_impl(uv_fs_t* req, int do_lutime) {
     return;
   }
 
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 static void fs__utime(uv_fs_t* req) {
@@ -2342,7 +2345,7 @@ static void fs__futime(uv_fs_t* req) {
     return;
   }
 
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 static void fs__lutime(uv_fs_t* req) {
@@ -2352,11 +2355,10 @@ static void fs__lutime(uv_fs_t* req) {
 
 static void fs__link(uv_fs_t* req) {
   DWORD r = CreateHardLinkW(req->fs.info.new_pathw, req->file.pathw, NULL);
-  if (r == 0) {
+  if (r == 0)
     SET_REQ_WIN32_ERROR(req, GetLastError());
-  } else {
-    req->result = 0;
-  }
+  else
+    SET_REQ_RESULT(req, 0);
 }
 
 
@@ -2676,17 +2678,17 @@ static void fs__realpath(uv_fs_t* req) {
 
 
 static void fs__chown(uv_fs_t* req) {
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 
 static void fs__fchown(uv_fs_t* req) {
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 
 static void fs__lchown(uv_fs_t* req) {
-  req->result = 0;
+  SET_REQ_RESULT(req, 0);
 }
 
 
@@ -2831,7 +2833,7 @@ static void uv__fs_done(struct uv__work* w, int status) {
 
   if (status == UV_ECANCELED) {
     assert(req->result == 0);
-    req->result = UV_ECANCELED;
+    SET_REQ_UV_ERROR(req, UV_ECANCELED, 0);
   }
 
   req->cb(req);
