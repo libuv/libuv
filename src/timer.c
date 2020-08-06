@@ -130,8 +130,10 @@ uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
 }
 
 
-uint64_t uv_timer_get_due(const uv_timer_t* handle) {
-  return handle->due;
+uint64_t uv_timer_get_due_in(const uv_timer_t* handle) {
+  uint64_t due = handle->timeout;
+  uint64_t now = uv_now(handle->loop);
+  return due - now;
 }
 
 

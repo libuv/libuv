@@ -78,7 +78,7 @@ API
 
     Get the timer repeat value.
 
-.. c:function:: uint64_t uv_timer_get_due(const uv_timer_t* handle)
+.. c:function:: uint64_t uv_timer_get_due_in(const uv_timer_t* handle)
 
     Get the timer due value.
 
