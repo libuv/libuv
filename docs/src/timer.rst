@@ -78,10 +78,10 @@ API
 
     Get the timer repeat value.
 
-.. c:function:: uint64_t uv_timer_get_timeout(const uv_timer_t* handle)
+.. c:function:: uint64_t uv_timer_get_due(const uv_timer_t* handle)
 
-    Get the timer timeout value.
+    Get the timer due value.
 
-    .. versionadded:: 1.12.0
+    .. versionadded:: 1.39.0
 
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.
