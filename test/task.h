@@ -113,12 +113,12 @@ typedef enum {
 
 #define ASSERT_BASE(a, operator, b, type, conv)              \
  do {                                                        \
-  type eval_a = (type) a;                                    \
-  type eval_b = (type) b;                                    \
+  type eval_a = (type) (a);                                  \
+  type eval_b = (type) (b);                                  \
   if (!(eval_a operator eval_b)) {                           \
     fprintf(stderr,                                          \
             "Assertion failed in %s on line %d: `%s %s %s` " \
-            "(%"conv" %s %"conv")\n",                      \
+            "(%"conv" %s %"conv")\n",                        \
             __FILE__,                                        \
             __LINE__,                                        \
             #a,                                              \
