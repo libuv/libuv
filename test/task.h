@@ -124,9 +124,9 @@ typedef enum {
             #a,                                              \
             #operator,                                       \
             #b,                                              \
-            (type)eval_a,                                    \
+            eval_a,                                          \
             #operator,                                       \
-            (type)eval_b);                                   \
+            eval_b);                                         \
     abort();                                                 \
   }                                                          \
  } while (0)

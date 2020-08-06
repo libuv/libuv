@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -28,13 +28,15 @@ int test_macros_evil(void) {
 
 
 TEST_IMPL(test_macros) {
-  char * a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  char * b = "ABCDEFGHIJKLMNOPQRSTUVWXYz";
-  char * c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  int i = test_macros_evil();
-  ASSERT_STR_NE(a,b);
-  ASSERT_STR_EQ(a,c);
-  ASSERT_EQ(i+1,test_macros_evil());
-  ASSERT_EQ(i+2,test_macros_evil());
+  char* a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  char* b = "ABCDEFGHIJKLMNOPQRSTUVWXYz";
+  char* c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  int i;
+
+  i = test_macros_evil();
+  ASSERT_STR_NE(a, b);
+  ASSERT_STR_EQ(a, c);
+  ASSERT_EQ(i + 1, test_macros_evil());
+  ASSERT_EQ(i + 2, test_macros_evil());
   return 0;
 }
