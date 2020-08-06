@@ -1242,8 +1242,9 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   unsigned int tries, i;
   size_t len;
   uint64_t v;
-  char *path = req->path;
-
+  char* path;
+  
+  path = req->path;
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
   if (len < num_x || wcsncmp(ep - num_x, L"XXXXXX", num_x)) {
