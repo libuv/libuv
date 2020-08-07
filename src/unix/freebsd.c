@@ -56,31 +56,6 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
-
-#ifdef __DragonFly__
-int uv_exepath(char* buffer, size_t* size) {
-  char abspath[PATH_MAX * 2 + 1];
-  ssize_t abspath_size;
-
-  if (buffer == NULL || size == NULL || *size == 0)
-    return UV_EINVAL;
-
-  abspath_size = readlink("/proc/curproc/file", abspath, sizeof(abspath));
-  if (abspath_size < 0)
-    return UV__ERR(errno);
-
-  assert(abspath_size > 0);
-  *size -= 1;
-
-  if (*size > abspath_size)
-    *size = abspath_size;
-
-  memcpy(buffer, abspath, *size);
-  buffer[*size] = '\0';
-
-  return 0;
-}
-#else
 int uv_exepath(char* buffer, size_t* size) {
   char abspath[PATH_MAX * 2 + 1];
   int mib[4];
@@ -110,7 +85,6 @@ int uv_exepath(char* buffer, size_t* size) {
 
   return 0;
 }
-#endif
 
 uint64_t uv_get_free_memory(void) {
   int freecount;
