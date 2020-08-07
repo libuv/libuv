@@ -56,6 +56,7 @@ jobs:
           sudo dpkg -i $DEB
       - name: Install ${{ matrix.config.toolchain }}
         run: |
+          sudo apt update
           sudo apt install ${{ matrix.config.toolchain }} -y
       - name: Build
         run: |
