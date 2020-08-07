@@ -535,8 +535,8 @@ Helper functions
 
    For a OS-dependent handle, get the file descriptor in the C runtime.
    On UNIX, returns the ``os_fd`` intact. On Windows, this calls `_open_osfhandle <https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/open-osfhandle?view=vs-2019>`_.
-   Note that the return value is still owned by the CRT,
-   any attempts to close it or to use it after closing the handle may lead to malfunction.
+   Note that this consumes the argument, any attempts to close it or to use it
+   after closing the return value may lead to malfunction.
 
     .. versionadded:: 1.23.0
 
