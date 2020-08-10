@@ -212,6 +212,9 @@ int main(int argc, char *argv[])
 	struct io_uring_params p;
 	int ret, no_sqthread = 0;
 
+	if (argc > 1)
+		return 0;
+
 	memset(&p, 0, sizeof(p));
 	ret = io_uring_queue_init_params(1000, &ring, &p);
 	if (ret) {

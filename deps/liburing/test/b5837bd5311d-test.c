@@ -16,6 +16,9 @@ int main(int argc, char *argv[])
 		.tv_nsec = 10000000
 	};
 
+	if (argc > 1)
+		return 0;
+
 	if (io_uring_queue_init(4, &ring, 0) != 0) {
 		fprintf(stderr, "ring setup failed\n");
 		return 1;

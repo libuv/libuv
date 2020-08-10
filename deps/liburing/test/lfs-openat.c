@@ -78,9 +78,12 @@ static int prepare_file(int dfd, const char* fn)
 int main(int argc, char *argv[])
 {
 	const char *fn = "io_uring_openat_test";
-	int dfd = open("/tmp", O_RDONLY | O_DIRECTORY);
+	int dfd = open("/tmp", O_PATH);
 	struct io_uring ring;
 	int ret;
+
+	if (argc > 1)
+		return 0;
 
 	if (dfd < 0)
 		DIE("open /tmp: %s\n", strerror(errno));

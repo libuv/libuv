@@ -55,6 +55,9 @@ int main(int argc, char *argv[])
 	int ret;
 	unsigned ready;
 
+	if (argc > 1)
+		return 0;
+
 	ret = io_uring_queue_init(4, &ring, 0);
 	if (ret) {
 		printf("ring setup failed\n");

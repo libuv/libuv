@@ -672,11 +672,18 @@ err:
 int main(int argc, char *argv[])
 {
 	int i, ret, nr;
+	char *fname;
 
-	if (create_file(".basic-rw")) {
-		fprintf(stderr, "file creation failed\n");
-		goto err;
+	if (argc > 1) {
+		fname = argv[1];
+	} else {
+		fname = ".basic-rw";
+		if (create_file(fname)) {
+			fprintf(stderr, "file creation failed\n");
+			goto err;
+		}
 	}
+
 	if (create_buffers()) {
 		fprintf(stderr, "file creation failed\n");
 		goto err;
@@ -697,7 +704,7 @@ int main(int argc, char *argv[])
 		v4 = (i & 8) != 0;
 		v5 = (i & 16) != 0;
 		v6 = (i & 32) != 0;
-		ret = test_io(".basic-rw", v1, v2, v3, v4, v5, v6);
+		ret = test_io(fname, v1, v2, v3, v4, v5, v6);
 		if (ret) {
 			fprintf(stderr, "test_io failed %d/%d/%d/%d/%d/%d\n",
 					v1, v2, v3, v4, v5, v6);
@@ -705,25 +712,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = test_buf_select(".basic-rw", 1);
+	ret = test_buf_select(fname, 1);
 	if (ret) {
 		fprintf(stderr, "test_buf_select nonvec failed\n");
 		goto err;
 	}
 
-	ret = test_buf_select(".basic-rw", 0);
+	ret = test_buf_select(fname, 0);
 	if (ret) {
 		fprintf(stderr, "test_buf_select vec failed\n");
 		goto err;
 	}
 
-	ret = test_buf_select_short(".basic-rw", 1);
+	ret = test_buf_select_short(fname, 1);
 	if (ret) {
 		fprintf(stderr, "test_buf_select_short nonvec failed\n");
 		goto err;
 	}
 
-	ret = test_buf_select_short(".basic-rw", 0);
+	ret = test_buf_select_short(fname, 0);
 	if (ret) {
 		fprintf(stderr, "test_buf_select_short vec failed\n");
 		goto err;
@@ -735,13 +742,13 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	ret = read_poll_link(".basic-rw");
+	ret = read_poll_link(fname);
 	if (ret) {
 		fprintf(stderr, "read_poll_link failed\n");
 		goto err;
 	}
 
-	ret = test_io_link(".basic-rw");
+	ret = test_io_link(fname);
 	if (ret) {
 		fprintf(stderr, "test_io_link failed\n");
 		goto err;
@@ -753,9 +760,11 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	unlink(".basic-rw");
+	if (fname != argv[1])
+		unlink(fname);
 	return 0;
 err:
-	unlink(".basic-rw");
+	if (fname != argv[1])
+		unlink(fname);
 	return 1;
 }

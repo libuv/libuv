@@ -139,6 +139,9 @@ int main(int argc, char *argv[])
 	struct io_uring r1, r2, r3;
 	int ret;
 
+	if (argc > 1)
+		return 0;
+
 	if (io_uring_queue_init(8, &r1, 0) ||
 	    io_uring_queue_init(8, &r2, 0) ||
 	    io_uring_queue_init(8, &r3, 0)) {

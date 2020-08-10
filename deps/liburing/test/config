@@ -1,0 +1,4 @@
+# Define raw test devices (or files) for test cases, if any
+# Copy this to config.local, and uncomment + define test files
+#
+# TEST_FILES="/dev/nvme0n1p2 /data/file"

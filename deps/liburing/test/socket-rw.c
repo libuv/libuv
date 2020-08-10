@@ -23,14 +23,17 @@
 int main(int argc, char *argv[])
 {
 	int p_fd[2];
-
-	int32_t recv_s0 = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
-
+	int32_t recv_s0;
 	int32_t val = 1;
+	struct sockaddr_in addr;
+
+	if (argc > 1)
+		return 0;
+
+	recv_s0 = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+
 	assert(setsockopt(recv_s0, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)) != -1);
 	assert(setsockopt(recv_s0, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)) != -1);
-
-	struct sockaddr_in addr;
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = 0x1235;

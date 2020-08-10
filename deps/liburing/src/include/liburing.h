@@ -2,19 +2,22 @@
 #ifndef LIB_URING_H
 #define LIB_URING_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <time.h>
+#include <linux/swab.h>
 #include "liburing/compat.h"
 #include "liburing/io_uring.h"
 #include "liburing/barrier.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Library interface to io_uring
@@ -41,6 +44,7 @@ struct io_uring_cq {
 	unsigned *ktail;
 	unsigned *kring_mask;
 	unsigned *kring_entries;
+	unsigned *kflags;
 	unsigned *koverflow;
 	struct io_uring_cqe *cqes;
 
@@ -250,10 +254,13 @@ static inline void io_uring_prep_sendmsg(struct io_uring_sqe *sqe, int fd,
 }
 
 static inline void io_uring_prep_poll_add(struct io_uring_sqe *sqe, int fd,
-					  short poll_mask)
+					  unsigned poll_mask)
 {
 	io_uring_prep_rw(IORING_OP_POLL_ADD, sqe, fd, NULL, 0, 0);
-	sqe->poll_events = poll_mask;
+#if __BYTE_ORDER == __BIG_ENDIAN
+	poll_mask = __swahw32(poll_mask);
+#endif
+	sqe->poll32_events = poll_mask;
 }
 
 static inline void io_uring_prep_poll_remove(struct io_uring_sqe *sqe,
@@ -315,7 +322,7 @@ static inline void io_uring_prep_link_timeout(struct io_uring_sqe *sqe,
 }
 
 static inline void io_uring_prep_connect(struct io_uring_sqe *sqe, int fd,
-					 struct sockaddr *addr,
+					 const struct sockaddr *addr,
 					 socklen_t addrlen)
 {
 	io_uring_prep_rw(IORING_OP_CONNECT, sqe, fd, addr, 0, addrlen);
@@ -444,30 +451,35 @@ static inline unsigned io_uring_cq_ready(struct io_uring *ring)
 	return io_uring_smp_load_acquire(ring->cq.ktail) - *ring->cq.khead;
 }
 
-static int __io_uring_peek_cqe(struct io_uring *ring, struct io_uring_cqe **cqe_ptr)
+static inline bool io_uring_cq_eventfd_enabled(struct io_uring *ring)
 {
-	struct io_uring_cqe *cqe;
-	unsigned head;
-	int err = 0;
+	if (!ring->cq.kflags)
+		return true;
 
-	do {
-		io_uring_for_each_cqe(ring, head, cqe)
-			break;
-		if (cqe) {
-			if (cqe->user_data == LIBURING_UDATA_TIMEOUT) {
-				if (cqe->res < 0)
-					err = cqe->res;
-				io_uring_cq_advance(ring, 1);
-				if (!err)
-					continue;
-				cqe = NULL;
-			}
-		}
-		break;
-	} while (1);
+	return !(*ring->cq.kflags & IORING_CQ_EVENTFD_DISABLED);
+}
 
-	*cqe_ptr = cqe;
-	return err;
+static inline int io_uring_cq_eventfd_toggle(struct io_uring *ring,
+					     bool enabled)
+{
+	uint32_t flags;
+
+	if (!!enabled == io_uring_cq_eventfd_enabled(ring))
+		return 0;
+
+	if (!ring->cq.kflags)
+		return -EOPNOTSUPP;
+
+	flags = *ring->cq.kflags;
+
+	if (enabled)
+		flags &= ~IORING_CQ_EVENTFD_DISABLED;
+	else
+		flags |= IORING_CQ_EVENTFD_DISABLED;
+
+	IO_URING_WRITE_ONCE(*ring->cq.kflags, flags);
+
+	return 0;
 }
 
 /*
@@ -479,12 +491,6 @@ static inline int io_uring_wait_cqe_nr(struct io_uring *ring,
 				      struct io_uring_cqe **cqe_ptr,
 				      unsigned wait_nr)
 {
-	int err;
-
-	err = __io_uring_peek_cqe(ring, cqe_ptr);
-	if (err || *cqe_ptr)
-		return err;
-
 	return __io_uring_get_cqe(ring, cqe_ptr, 0, wait_nr, NULL);
 }
 

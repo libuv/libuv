@@ -120,25 +120,39 @@ struct io_uring_sqe {
         __u64   off;            /* offset into file */
         __u64   addr2;
     };
-    __u64   addr;           /* pointer to buffer or iovecs */
+    union {
+        __u64   addr;       /* pointer to buffer or iovecs */
+        __u64   splice_off_in;
+    }
     __u32   len;            /* buffer size or number of iovecs */
     union {
         __kernel_rwf_t  rw_flags;
         __u32    fsync_flags;
-        __u16    poll_events;
+        __u16    poll_events;   /* compatibility */
+        __u32    poll32_events; /* word-reversed for BE */
         __u32    sync_range_flags;
         __u32    msg_flags;
         __u32    timeout_flags;
         __u32    accept_flags;
         __u32    cancel_flags;
+        __u32    open_flags;
+        __u32    statx_flags;
+        __u32    fadvise_advice;
+        __u32    splice_flags;
     };
     __u64    user_data;     /* data to be passed back at completion time */
     union {
 	struct {
 	    /* index into fixed buffers, if used */
-            __u16    buf_index;
+            union {
+                /* index into fixed buffers, if used */
+                __u16    buf_index;
+                /* for grouped buffer selection */
+                __u16    buf_group;
+            }
 	    /* personality to use, if used */
 	    __u16    personality;
+            __s32    splice_fd_in;
 	};
         __u64    __pad2[3];
     };
@@ -207,7 +221,7 @@ will contain
 
 .TP
 .B IORING_OP_EPOLL_CTL
-Add, remove or modify entries in the interest list of 
+Add, remove or modify entries in the interest list of
 .BR epoll (7).
 See
 .BR epoll_ctl (2)
@@ -232,9 +246,9 @@ field is the file descriptor to sync, the
 field holds the offset in bytes, the
 .I len
 field holds the length in bytes, and the
-.I flags
+.I sync_range_flags
 field holds the flags for the command. See also
-.BR sync_file_range (2).
+.BR sync_file_range (2)
 for the general description of the related system call. Available since 5.2.
 
 .TP
@@ -246,9 +260,9 @@ system call.
 must be set to the socket file descriptor,
 .I addr
 must contain a pointer to the msghdr structure, and
-.I flags
+.I msg_flags
 holds the flags associated with the system call. See also
-.BR sendmsg (2).
+.BR sendmsg (2)
 for the general description of the related system call. Available since 5.3.
 
 .TP
@@ -268,9 +282,9 @@ must be set to the socket file descriptor,
 must contain a pointer to the buffer,
 .I len
 denotes the length of the buffer to send, and
-.I flags
+.I msg_flags
 holds the flags associated with the system call. See also
-.BR send(2).
+.BR send(2)
 for the general description of the related system call. Available since 5.6.
 
 .TP
@@ -290,11 +304,12 @@ must contain 1 to signify one timespec64 structure,
 may contain IORING_TIMEOUT_ABS
 for an absolute timeout value, or 0 for a relative timeout.
 .I off
-may contain a completion event count. If not set, this defaults to 1. A timeout
+may contain a completion event count. A timeout
 will trigger a wakeup event on the completion ring for anyone waiting for
 events. A timeout condition is met when either the specified timeout expires,
 or the specified number of events have completed. Either condition will
-trigger the event. io_uring timeouts use the
+trigger the event. If set to 0, completed events are not counted, which
+effectively acts like a timer. io_uring timeouts use the
 .B CLOCK_MONOTONIC
 clock source. The request will complete with
 .I -ETIME
@@ -387,7 +402,7 @@ system call.
 .I fd
 must be set to the socket file descriptor,
 .I addr
-must contain the pointer to the sockaddr structure, and
+must contain the const pointer to the sockaddr structure, and
 .I off
 must contain the socklen_t addrlen field. See also
 .BR connect(2)
@@ -548,11 +563,13 @@ system call.
 .I splice_fd_in
 is the file descriptor to read from,
 .I splice_off_in
-is a pointer to an offset to read from,
+is an offset to read from,
 .I fd
 is the file descriptor to write to,
 .I off
-is a pointer to an offset to from which to start writing to.
+is an offset from which to start writing to. A sentinel value of -1 is used
+to pass the equivalent of a NULL for the offsets to
+.BR splice(2).
 .I len
 contains the number of bytes to copy.
 .I splice_flags
@@ -561,6 +578,24 @@ Please note that one of the file descriptors must refer to a pipe.
 See also
 .BR splice(2)
 for the general description of the related system call. Available since 5.7.
+
+.TP
+.B IORING_OP_TEE
+Issue the equivalent of a
+.BR tee(2)
+system call.
+.I splice_fd_in
+is the file descriptor to read from,
+.I fd
+is the file descriptor to write to,
+.I len
+contains the number of bytes to copy, and
+.I splice_flags
+contains a bit mask for the flag field associated with the system call.
+Please note that both of the file descriptors must refer to a pipe.
+See also
+.BR tee(2)
+for the general description of the related system call. Available since 5.8.
 
 .TP
 .B IORING_OP_FILES_UPDATE

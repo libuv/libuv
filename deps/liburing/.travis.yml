@@ -1,4 +1,4 @@
-language: c
+language: cpp
 os:
   - linux
 compiler:
@@ -19,4 +19,4 @@ before_install:
   - EXTRA_CFLAGS="-Werror"
 script:
   - ./configure && make
-  - make runtests
+  - sudo make runtests || true

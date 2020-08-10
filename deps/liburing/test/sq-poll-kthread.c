@@ -147,6 +147,9 @@ int main(int argc, char *argv[])
 {
 	int ret;
 
+	if (argc > 1)
+		return 0;
+
 	ret = test_sq_poll_kthread_stopped(true);
 	if (ret == TEST_SKIPPED) {
 		printf("test_sq_poll_kthread_stopped_exit: skipped\n");

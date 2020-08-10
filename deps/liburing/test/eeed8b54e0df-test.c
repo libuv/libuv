@@ -67,6 +67,9 @@ int main(int argc, char *argv[])
 	struct iovec iov;
 	int ret, fd;
 
+	if (argc > 1)
+		return 0;
+
 	iov.iov_base = malloc(4096);
 	iov.iov_len = 4096;
 

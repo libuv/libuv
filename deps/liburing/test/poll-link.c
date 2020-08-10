@@ -203,6 +203,9 @@ static int test_poll_timeout(int do_connect, unsigned long timeout)
 
 int main(int argc, char *argv[])
 {
+	if (argc > 1)
+		return 0;
+
 	srand(getpid());
 
 	if (test_poll_timeout(0, 200000000)) {

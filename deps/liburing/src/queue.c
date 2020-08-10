@@ -32,6 +32,38 @@ static inline bool sq_ring_needs_enter(struct io_uring *ring,
 	return false;
 }
 
+static inline bool cq_ring_needs_flush(struct io_uring *ring)
+{
+	return IO_URING_READ_ONCE(*ring->sq.kflags) & IORING_SQ_CQ_OVERFLOW;
+}
+
+static int __io_uring_peek_cqe(struct io_uring *ring,
+			       struct io_uring_cqe **cqe_ptr)
+{
+	struct io_uring_cqe *cqe;
+	unsigned head;
+	int err = 0;
+
+	do {
+		io_uring_for_each_cqe(ring, head, cqe)
+			break;
+		if (cqe) {
+			if (cqe->user_data == LIBURING_UDATA_TIMEOUT) {
+				if (cqe->res < 0)
+					err = cqe->res;
+				io_uring_cq_advance(ring, 1);
+				if (!err)
+					continue;
+				cqe = NULL;
+			}
+		}
+		break;
+	} while (1);
+
+	*cqe_ptr = cqe;
+	return err;
+}
+
 int __io_uring_get_cqe(struct io_uring *ring, struct io_uring_cqe **cqe_ptr,
 		       unsigned submit, unsigned wait_nr, sigset_t *sigmask)
 {
@@ -40,27 +72,40 @@ int __io_uring_get_cqe(struct io_uring *ring, struct io_uring_cqe **cqe_ptr,
 	int ret = 0, err;
 
 	do {
+		bool cq_overflow_flush = false;
 		unsigned flags = 0;
 
 		err = __io_uring_peek_cqe(ring, &cqe);
 		if (err)
 			break;
 		if (!cqe && !to_wait && !submit) {
-			err = -EAGAIN;
-			break;
+			if (!cq_ring_needs_flush(ring)) {
+				err = -EAGAIN;
+				break;
+			}
+			cq_overflow_flush = true;
 		}
-		if (wait_nr)
+		if (wait_nr && cqe)
+			wait_nr--;
+		if (wait_nr || cq_overflow_flush)
 			flags = IORING_ENTER_GETEVENTS;
 		if (submit)
 			sq_ring_needs_enter(ring, submit, &flags);
-		if (wait_nr || submit)
+		if (wait_nr || submit || cq_overflow_flush)
 			ret = __sys_io_uring_enter(ring->ring_fd, submit,
 						   wait_nr, flags, sigmask);
 		if (ret < 0) {
 			err = -errno;
 		} else if (ret == (int)submit) {
 			submit = 0;
-			wait_nr = 0;
+			/*
+			 * When SETUP_IOPOLL is set, __sys_io_uring enter()
+			 * must be called to reap new completions but the call
+			 * won't be made if both wait_nr and submit are zero
+			 * so preserve wait_nr.
+			 */
+			if (!(ring->flags & IORING_SETUP_IOPOLL))
+				wait_nr = 0;
 		} else {
 			submit -= ret;
 		}
@@ -80,7 +125,9 @@ unsigned io_uring_peek_batch_cqe(struct io_uring *ring,
 				 struct io_uring_cqe **cqes, unsigned count)
 {
 	unsigned ready;
+	bool overflow_checked = false;
 
+again:
 	ready = io_uring_cq_ready(ring);
 	if (ready) {
 		unsigned head = *ring->cq.khead;
@@ -96,6 +143,17 @@ unsigned io_uring_peek_batch_cqe(struct io_uring *ring,
 		return count;
 	}
 
+	if (overflow_checked)
+		goto done;
+
+	if (cq_ring_needs_flush(ring)) {
+		__sys_io_uring_enter(ring->ring_fd, 0, 0,
+				     IORING_ENTER_GETEVENTS, NULL);
+		overflow_checked = true;
+		goto again;
+	}
+
+done:
 	return 0;
 }
 
@@ -237,16 +295,18 @@ int io_uring_submit_and_wait(struct io_uring *ring, unsigned wait_nr)
 	return __io_uring_submit_and_wait(ring, wait_nr);
 }
 
-#define __io_uring_get_sqe(sq, __head) ({				\
-	unsigned __next = (sq)->sqe_tail + 1;				\
-	struct io_uring_sqe *__sqe = NULL;				\
-									\
-	if (__next - __head <= *(sq)->kring_entries) {			\
-		__sqe = &(sq)->sqes[(sq)->sqe_tail & *(sq)->kring_mask];\
-		(sq)->sqe_tail = __next;				\
-	}								\
-	__sqe;								\
-})
+static inline struct io_uring_sqe *
+__io_uring_get_sqe(struct io_uring_sq *sq, unsigned int __head)
+{
+	unsigned int __next = (sq)->sqe_tail + 1;
+	struct io_uring_sqe *__sqe = NULL;
+
+	if (__next - __head <= *(sq)->kring_entries) {
+		__sqe = &(sq)->sqes[(sq)->sqe_tail & *(sq)->kring_mask];
+		(sq)->sqe_tail = __next;
+	}
+	return __sqe;
+}
 
 /*
  * Return an sqe to fill. Application must later call io_uring_submit()

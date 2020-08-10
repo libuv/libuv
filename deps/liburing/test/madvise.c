@@ -172,11 +172,18 @@ int main(int argc, char *argv[])
 {
 	struct io_uring ring;
 	int ret, i, good, bad;
+	char *fname;
 
-	if (create_file(".madvise.tmp")) {
-		fprintf(stderr, "file creation failed\n");
-		goto err;
+	if (argc > 1) {
+		fname = argv[1];
+	} else {
+		fname = ".madvise.tmp";
+		if (create_file(".madvise.tmp")) {
+			fprintf(stderr, "file creation failed\n");
+			goto err;
+		}
 	}
+
 	if (io_uring_queue_init(8, &ring, 0)) {
 		fprintf(stderr, "ring creation failed\n");
 		goto err;
@@ -184,7 +191,7 @@ int main(int argc, char *argv[])
 
 	good = bad = 0;
 	for (i = 0; i < LOOPS; i++) {
-		ret = test_madvise(&ring, ".madvise.tmp");
+		ret = test_madvise(&ring, fname);
 		if (ret == 1) {
 			fprintf(stderr, "test_madvise failed\n");
 			goto err;
@@ -198,10 +205,12 @@ int main(int argc, char *argv[])
 
 	if (bad > good)
 		fprintf(stderr, "Suspicious timings (%u > %u)\n", bad, good);
-	unlink(".madvise.tmp");
+	if (fname != argv[1])
+		unlink(fname);
 	io_uring_queue_exit(&ring);
 	return 0;
 err:
-	unlink(".madvise.tmp");
+	if (fname != argv[1])
+		unlink(fname);
 	return 1;
 }

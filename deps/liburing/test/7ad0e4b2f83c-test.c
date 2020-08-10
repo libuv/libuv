@@ -39,6 +39,9 @@ int main(int argc, char *argv[])
 	struct timeval tv;
 	int ret;
 
+	if (argc > 1)
+		return 0;
+
 	ret = io_uring_queue_init(32, &ring, 0);
 	if (ret) {
 		fprintf(stderr, "io_uring_queue_init=%d\n", ret);

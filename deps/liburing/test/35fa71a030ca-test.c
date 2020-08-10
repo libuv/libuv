@@ -315,10 +315,12 @@ static void sig_int(int sig)
 	exit(0);
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
-  signal(SIGINT, sig_int);
-  mmap((void *) 0x20000000, 0x1000000, 3, 0x32, -1, 0);
-  loop();
-  return 0;
+	if (argc > 1)
+		return 0;
+	signal(SIGINT, sig_int);
+	mmap((void *) 0x20000000, 0x1000000, 3, 0x32, -1, 0);
+	loop();
+	return 0;
 }

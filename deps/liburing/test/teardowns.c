@@ -31,9 +31,12 @@ static void loop(void)
 	exit(ret);
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	int i, ret, status;
+
+	if (argc > 1)
+		return 0;
 
 	for (i = 0; i < 12; i++) {
 		if (!fork()) {

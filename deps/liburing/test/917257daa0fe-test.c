@@ -15,8 +15,11 @@
 #define __NR_io_uring_setup 425
 #endif
 
-int main(void)
+int main(int argc, char *argv[])
 {
+  if (argc > 1)
+    return 0;
+
   mmap((void *) 0x20000000, 0x1000000, 3, 0x32, -1, 0);
 
   *(uint32_t*)0x20000000 = 0;

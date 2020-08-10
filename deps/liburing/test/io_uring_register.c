@@ -491,6 +491,9 @@ main(int argc, char **argv)
 	struct io_uring_params p;
 	struct rlimit rlim;
 
+	if (argc > 1)
+		return 0;
+
 	/* setup globals */
 	pagesize = getpagesize();
 	ret = getrlimit(RLIMIT_MEMLOCK, &rlim);

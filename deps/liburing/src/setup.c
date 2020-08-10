@@ -76,13 +76,15 @@ err:
 	cq->kring_entries = cq->ring_ptr + p->cq_off.ring_entries;
 	cq->koverflow = cq->ring_ptr + p->cq_off.overflow;
 	cq->cqes = cq->ring_ptr + p->cq_off.cqes;
+	if (p->cq_off.flags)
+		cq->kflags = cq->ring_ptr + p->cq_off.flags;
 	return 0;
 }
 
 /*
  * For users that want to specify sq_thread_cpu or sq_thread_idle, this
  * interface is a convenient helper for mmap()ing the rings.
- * Returns -1 on error, or zero on success.  On success, 'ring'
+ * Returns -errno on error, or zero on success.  On success, 'ring'
  * contains the necessary information to read/write to the rings.
  */
 int io_uring_queue_mmap(int fd, struct io_uring_params *p, struct io_uring *ring)
@@ -147,7 +149,7 @@ int io_uring_queue_init_params(unsigned entries, struct io_uring *ring,
 }
 
 /*
- * Returns -1 on error, or zero on success. On success, 'ring'
+ * Returns -errno on error, or zero on success. On success, 'ring'
  * contains the necessary information to read/write to the rings.
  */
 int io_uring_queue_init(unsigned entries, struct io_uring *ring, unsigned flags)

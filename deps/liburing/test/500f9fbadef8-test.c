@@ -25,9 +25,12 @@ int main(int argc, char *argv[])
 	unsigned blocks;
 	int ret, fd;
 
-	if (posix_memalign(&iov.iov_base, 4096, 4096)) {
-		fprintf(stderr, "memalign failed\n");
-		return 1;
+	if (argc > 1)
+		return 0;
+
+    	if (posix_memalign(&iov.iov_base, 4096, 4096)) {
+    		fprintf(stderr, "memalign failed\n");
+    		return 1;
 	}
 	iov.iov_len = 4096;
 

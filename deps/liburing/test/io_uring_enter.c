@@ -212,6 +212,9 @@ main(int argc, char **argv)
 	unsigned sq_entries;
 	unsigned completed, dropped;
 
+	if (argc > 1)
+		return 0;
+
 	ret = io_uring_queue_init(IORING_MAX_ENTRIES, &ring, 0);
 	if (ret < 0) {
 		perror("io_uring_queue_init");

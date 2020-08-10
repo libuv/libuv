@@ -36,6 +36,9 @@ int main(int argc, char *argv[])
 	struct sigaction act;
 	int ret;
 
+	if (argc > 1)
+		return 0;
+
 	if (pipe(pipe1) != 0) {
 		perror("pipe");
 		return 1;

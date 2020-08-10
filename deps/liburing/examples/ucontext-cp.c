@@ -85,25 +85,22 @@ int await_poll(async_context *pctx, int fd, short poll_mask) {
 }
 
 int await_delay(async_context *pctx, time_t seconds) {
-	struct itimerspec exp = {
-		.it_interval = {},
-		.it_value = { seconds, 0 },
+	struct io_uring_sqe *sqe = io_uring_get_sqe(pctx->ring);
+	struct io_uring_cqe *cqe;
+	struct __kernel_timespec ts = {
+		.tv_sec = seconds,
+		.tv_nsec = 0
 	};
-	int tfd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-	if (tfd < 0) {
-		perror("timerfd_create");
-		return -1;
-	}
-	if (timerfd_settime(tfd, 0, &exp, NULL)) {
-		perror("timerfd_settime");
-		close(tfd);
-		return -1;
-	}
 
-	int ret = await_poll(pctx, tfd, POLLIN);
-	assert(ret == POLLIN);
+	if (!sqe)
+		return -1;
 
-	close(tfd);
+	io_uring_prep_timeout(sqe, &ts, 0, 0);
+	io_uring_sqe_set_data(sqe, pctx);
+	swapcontext(&pctx->ctx_fnew, &pctx->ctx_main);
+	io_uring_peek_cqe(pctx->ring, &cqe);
+	assert(cqe);
+	io_uring_cqe_seen(pctx->ring, cqe);
 
 	return 0;
 }

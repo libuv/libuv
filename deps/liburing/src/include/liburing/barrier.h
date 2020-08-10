@@ -21,40 +21,53 @@ after the acquire operation executes. This is implemented using
 :c:func:`smp_acquire__after_ctrl_dep`.
 */
 
-/* From tools/include/linux/compiler.h */
-/* Optimization barrier */
-/* The "volatile" is due to gcc bugs */
-#define io_uring_barrier()	__asm__ __volatile__("": : :"memory")
+#ifdef __cplusplus
+#include <atomic>
 
-/* From tools/virtio/linux/compiler.h */
-#define IO_URING_WRITE_ONCE(var, val) \
-	(*((volatile __typeof(val) *)(&(var))) = (val))
-#define IO_URING_READ_ONCE(var) (*((volatile __typeof(var) *)(&(var))))
+template <typename T>
+static inline void IO_URING_WRITE_ONCE(T &var, T val)
+{
+	std::atomic_store_explicit(reinterpret_cast<std::atomic<T> *>(&var),
+				   val, std::memory_order_relaxed);
+}
+template <typename T>
+static inline T IO_URING_READ_ONCE(const T &var)
+{
+	return std::atomic_load_explicit(
+		reinterpret_cast<const std::atomic<T> *>(&var),
+		std::memory_order_relaxed);
+}
 
+template <typename T>
+static inline void io_uring_smp_store_release(T *p, T v)
+{
+	std::atomic_store_explicit(reinterpret_cast<std::atomic<T> *>(p), v,
+				   std::memory_order_release);
+}
 
-#if defined(__x86_64__) || defined(__i386__)
-/* Adapted from arch/x86/include/asm/barrier.h */
-#define io_uring_smp_store_release(p, v)	\
-do {						\
-	io_uring_barrier();			\
-	IO_URING_WRITE_ONCE(*(p), (v));		\
-} while (0)
+template <typename T>
+static inline T io_uring_smp_load_acquire(const T *p)
+{
+	return std::atomic_load_explicit(
+		reinterpret_cast<const std::atomic<T> *>(p),
+		std::memory_order_acquire);
+}
+#else
+#include <stdatomic.h>
 
-#define io_uring_smp_load_acquire(p)			\
-({							\
-	__typeof(*p) ___p1 = IO_URING_READ_ONCE(*(p));	\
-	io_uring_barrier();				\
-	___p1;						\
-})
+#define IO_URING_WRITE_ONCE(var, val)				\
+	atomic_store_explicit((_Atomic typeof(var) *)&(var),	\
+			      (val), memory_order_relaxed)
+#define IO_URING_READ_ONCE(var)					\
+	atomic_load_explicit((_Atomic typeof(var) *)&(var),	\
+			     memory_order_relaxed)
 
-#else /* defined(__x86_64__) || defined(__i386__) */
-/*
- * Add arch appropriate definitions. Use built-in atomic operations for
- * archs we don't have support for.
- */
-#define io_uring_smp_store_release(p, v) \
-	__atomic_store_n(p, v, __ATOMIC_RELEASE)
-#define io_uring_smp_load_acquire(p) __atomic_load_n(p, __ATOMIC_ACQUIRE)
-#endif /* defined(__x86_64__) || defined(__i386__) */
+#define io_uring_smp_store_release(p, v)			\
+	atomic_store_explicit((_Atomic typeof(*(p)) *)(p), (v), \
+			      memory_order_release)
+#define io_uring_smp_load_acquire(p)				\
+	atomic_load_explicit((_Atomic typeof(*(p)) *)(p),	\
+			     memory_order_acquire)
+#endif
 
 #endif /* defined(LIBURING_BARRIER_H) */

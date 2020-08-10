@@ -133,6 +133,9 @@ main(int argc, char **argv)
 	unsigned int status = 0;
 	struct io_uring_params p;
 
+	if (argc > 1)
+		return 0;
+
 	memset(&p, 0, sizeof(p));
 	status |= try_io_uring_setup(0, &p, -1, EINVAL);
 	status |= try_io_uring_setup(1, NULL, -1, EFAULT);

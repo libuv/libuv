@@ -31,7 +31,7 @@ static int create_file(const char *file, size_t size)
 	return ret != size;
 }
 
-static int test_close(struct io_uring *ring, int fd)
+static int test_close(struct io_uring *ring, int fd, int is_ring_fd)
 {
 	struct io_uring_cqe *cqe;
 	struct io_uring_sqe *sqe;
@@ -52,8 +52,11 @@ static int test_close(struct io_uring *ring, int fd)
 
 	ret = io_uring_wait_cqe(ring, &cqe);
 	if (ret < 0) {
-		fprintf(stderr, "wait completion %d\n", ret);
-		goto err;
+		if (!(is_ring_fd && ret == -EBADF)) {
+			fprintf(stderr, "wait completion %d\n", ret);
+			goto err;
+		}
+		return ret;
 	}
 	ret = cqe->res;
 	io_uring_cqe_seen(ring, cqe);
@@ -140,13 +143,13 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	ret = test_close(&ring, ret);
+	ret = test_close(&ring, ret, 0);
 	if (ret) {
 		fprintf(stderr, "test_close normal failed\n");
 		goto err;
 	}
 
-	ret = test_close(&ring, ring.ring_fd);
+	ret = test_close(&ring, ring.ring_fd, 1);
 	if (ret != -EBADF) {
 		fprintf(stderr, "test_close ring_fd failed\n");
 		goto err;

@@ -15,11 +15,18 @@
 
 #include "liburing.h"
 
-#if defined(__x86_64)
+#ifdef __NR_statx
 static int do_statx(int dfd, const char *path, int flags, unsigned mask,
 		    struct statx *statxbuf)
 {
-	return syscall(332, dfd, path, flags, mask, statxbuf);
+	return syscall(__NR_statx, dfd, path, flags, mask, statxbuf);
+}
+#else
+static int do_statx(int dfd, const char *path, int flags, unsigned mask,
+		    struct statx *statxbuf)
+{
+	errno = ENOSYS;
+	return -1;
 }
 #endif
 
@@ -42,14 +49,16 @@ static int create_file(const char *file, size_t size)
 	return ret != size;
 }
 
+static int statx_syscall_supported(void)
+{
+	return errno == ENOSYS ? 0 : -1;
+}
+
 static int test_statx(struct io_uring *ring, const char *path)
 {
 	struct io_uring_cqe *cqe;
 	struct io_uring_sqe *sqe;
-	struct statx x1;
-#if defined(__x86_64)
-	struct statx x2;
-#endif
+	struct statx x1, x2;
 	int ret;
 
 	sqe = io_uring_get_sqe(ring);
@@ -74,15 +83,13 @@ static int test_statx(struct io_uring *ring, const char *path)
 	io_uring_cqe_seen(ring, cqe);
 	if (ret)
 		return ret;
-#if defined(__x86_64)
 	ret = do_statx(-1, path, 0, STATX_ALL, &x2);
 	if (ret < 0)
-		return -1;
+		return statx_syscall_supported();
 	if (memcmp(&x1, &x2, sizeof(x1))) {
 		fprintf(stderr, "Miscompare between io_uring and statx\n");
 		goto err;
 	}
-#endif
 	return 0;
 err:
 	return -1;
@@ -92,10 +99,7 @@ static int test_statx_fd(struct io_uring *ring, const char *path)
 {
 	struct io_uring_cqe *cqe;
 	struct io_uring_sqe *sqe;
-	struct statx x1;
-#if defined(__x86_64)
-	struct statx x2;
-#endif
+	struct statx x1, x2;
 	int ret, fd;
 
 	fd = open(path, O_RDONLY);
@@ -128,16 +132,14 @@ static int test_statx_fd(struct io_uring *ring, const char *path)
 	io_uring_cqe_seen(ring, cqe);
 	if (ret)
 		return ret;
-#if defined(__x86_64)
 	memset(&x2, 0, sizeof(x2));
 	ret = do_statx(fd, "", AT_EMPTY_PATH, STATX_ALL, &x2);
 	if (ret < 0)
-		return -1;
+		return statx_syscall_supported();
 	if (memcmp(&x1, &x2, sizeof(x1))) {
 		fprintf(stderr, "Miscompare between io_uring and statx\n");
 		goto err;
 	}
-#endif
 	return 0;
 err:
 	return -1;

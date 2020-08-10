@@ -97,6 +97,9 @@ int main(int argc, char *argv[])
 	struct io_uring ring;
 	int dfd, ret;
 
+	if (argc > 1)
+		return 0;
+
 	dfd = open("/tmp", O_RDONLY | O_DIRECTORY);
 	if (dfd < 0)
 		DIE("open /tmp: %s\n", strerror(errno));

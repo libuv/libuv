@@ -17,6 +17,9 @@ int main(int argc, char *argv[])
 	struct io_uring ring;
 	int ret;
 
+	if (argc > 1)
+		return 0;
+
 	memset(&p, 0, sizeof(p));
 	p.flags = IORING_SETUP_CQSIZE;
 	p.cq_entries = 64;

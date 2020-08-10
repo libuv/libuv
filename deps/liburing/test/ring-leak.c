@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
 {
 	int sp[2], pid, ring_fd, ret;
 
+	if (argc > 1)
+		return 0;
+
 	if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sp) != 0) {
 		perror("Failed to create Unix-domain socket pair\n");
 		return 1;

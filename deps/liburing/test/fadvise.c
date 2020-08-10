@@ -177,10 +177,16 @@ int main(int argc, char *argv[])
 {
 	struct io_uring ring;
 	int ret, i, good, bad;
+	char *fname;
 
-	if (create_file(".fadvise.tmp")) {
-		fprintf(stderr, "file creation failed\n");
-		goto err;
+	if (argc > 1) {
+		fname = argv[1];
+	} else {
+		fname = ".fadvise.tmp";
+		if (create_file(".fadvise.tmp")) {
+			fprintf(stderr, "file creation failed\n");
+			goto err;
+		}
 	}
 	if (io_uring_queue_init(8, &ring, 0)) {
 		fprintf(stderr, "ring creation failed\n");
@@ -189,7 +195,7 @@ int main(int argc, char *argv[])
 
 	good = bad = 0;
 	for (i = 0; i < LOOPS; i++) {
-		ret = test_fadvise(&ring, ".fadvise.tmp");
+		ret = test_fadvise(&ring, fname);
 		if (ret == 1) {
 			fprintf(stderr, "read_fadvise failed\n");
 			goto err;
@@ -205,10 +211,12 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	unlink(".fadvise.tmp");
+	if (fname != argv[1])
+		unlink(fname);
 	io_uring_queue_exit(&ring);
 	return 0;
 err:
-	unlink(".fadvise.tmp");
+	if (fname != argv[1])
+		unlink(fname);
 	return 1;
 }

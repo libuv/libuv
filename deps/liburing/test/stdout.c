@@ -84,7 +84,7 @@ static int test_pipe_io_fixed(struct io_uring *ring)
 					(unsigned long) cqe->user_data);
 			goto err;
 		}
-		if (cqe->user_data == 2 && strcmp(str, buffer)) {
+		if (cqe->user_data == 2 && memcmp(str, buffer, strlen(str))) {
 			fprintf(stderr, "read data mismatch\n");
 			goto err;
 		}
@@ -205,6 +205,9 @@ int main(int argc, char *argv[])
 {
 	struct io_uring ring;
 	int ret;
+
+	if (argc > 1)
+		return 0;
 
 	ret = io_uring_queue_init(8, &ring, 0);
 	if (ret) {

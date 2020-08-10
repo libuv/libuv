@@ -44,6 +44,9 @@ int main(int argc, char **argv)
 	socklen_t sa_size = sizeof(sa);
 	int ret, listen_fd, connect_fd, val, i;
 
+	if (argc > 1)
+		return 0;
+
 	memset(&params, 0, sizeof(params));
 	ret = io_uring_queue_init_params(1024, &io_uring, &params);
 	if (ret) {

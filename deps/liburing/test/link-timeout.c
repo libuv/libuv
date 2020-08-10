@@ -997,6 +997,9 @@ int main(int argc, char *argv[])
 	struct io_uring ring;
 	int ret;
 
+	if (argc > 1)
+		return 0;
+
 	ret = io_uring_queue_init(8, &ring, 0);
 	if (ret) {
 		printf("ring setup failed\n");

@@ -21,6 +21,9 @@ int main(int argc, char *argv[])
 	struct io_uring_sqe *sqe;
 	int ret, evfd1, evfd2;
 
+	if (argc > 1)
+		return 0;
+
 	ret = io_uring_queue_init_params(8, &ring1, &p);
 	if (ret) {
 		fprintf(stderr, "ring setup failed: %d\n", ret);

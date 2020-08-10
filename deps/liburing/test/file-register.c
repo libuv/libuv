@@ -413,7 +413,7 @@ static int test_fixed_read_write(struct io_uring *ring, int index)
 	struct io_uring_sqe *sqe;
 	struct io_uring_cqe *cqe;
 	struct iovec iov[2];
-	int ret, i;
+	int ret;
 
 	iov[0].iov_base = malloc(4096);
 	iov[0].iov_len = 4096;
@@ -431,6 +431,23 @@ static int test_fixed_read_write(struct io_uring *ring, int index)
 	sqe->flags |= IOSQE_FIXED_FILE;
 	sqe->user_data = 1;
 
+	ret = io_uring_submit(ring);
+	if (ret != 1) {
+		fprintf(stderr, "%s: got %d, wanted 1\n", __FUNCTION__, ret);
+		return 1;
+	}
+
+	ret = io_uring_wait_cqe(ring, &cqe);
+	if (ret < 0) {
+		fprintf(stderr, "%s: io_uring_wait_cqe=%d\n", __FUNCTION__, ret);
+		return 1;
+	}
+	if (cqe->res != 4096) {
+		fprintf(stderr, "%s: write cqe->res=%d\n", __FUNCTION__, cqe->res);
+		return 1;
+	}
+	io_uring_cqe_seen(ring, cqe);
+
 	sqe = io_uring_get_sqe(ring);
 	if (!sqe) {
 		fprintf(stderr, "%s: failed to get sqe\n", __FUNCTION__);
@@ -441,28 +458,25 @@ static int test_fixed_read_write(struct io_uring *ring, int index)
 	sqe->user_data = 2;
 
 	ret = io_uring_submit(ring);
-	if (ret != 2) {
-		fprintf(stderr, "%s: got %d, wanted 2\n", __FUNCTION__, ret);
+	if (ret != 1) {
+		fprintf(stderr, "%s: got %d, wanted 1\n", __FUNCTION__, ret);
 		return 1;
 	}
 
-	for (i = 0; i < 2; i++) {
-		ret = io_uring_wait_cqe(ring, &cqe);
-		if (ret < 0) {
-			fprintf(stderr, "%s: io_uring_wait_cqe=%d\n", __FUNCTION__, ret);
-			return 1;
-		}
-		if (cqe->res != 4096) {
-			fprintf(stderr, "%s: cqe->res=%d\n", __FUNCTION__, cqe->res);
-			return 1;
-		}
-		if (cqe->user_data == 2) {
-			if (memcmp(iov[1].iov_base, iov[0].iov_base, 4096)) {
-				fprintf(stderr, "%s: data mismatch\n", __FUNCTION__);
-				return 1;
-			}
-		}
-		io_uring_cqe_seen(ring, cqe);
+	ret = io_uring_wait_cqe(ring, &cqe);
+	if (ret < 0) {
+		fprintf(stderr, "%s: io_uring_wait_cqe=%d\n", __FUNCTION__, ret);
+		return 1;
+	}
+	if (cqe->res != 4096) {
+		fprintf(stderr, "%s: read cqe->res=%d\n", __FUNCTION__, cqe->res);
+		return 1;
+	}
+	io_uring_cqe_seen(ring, cqe);
+
+	if (memcmp(iov[1].iov_base, iov[0].iov_base, 4096)) {
+		fprintf(stderr, "%s: data mismatch\n", __FUNCTION__);
+		return 1;
 	}
 
 	free(iov[0].iov_base);
@@ -586,6 +600,9 @@ int main(int argc, char *argv[])
 {
 	struct io_uring ring;
 	int ret;
+
+	if (argc > 1)
+		return 0;
 
 	ret = io_uring_queue_init(8, &ring, 0);
 	if (ret) {

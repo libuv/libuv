@@ -223,6 +223,8 @@ static int test_accept_timeout(int do_connect, unsigned long timeout)
 
 int main(int argc, char *argv[])
 {
+	if (argc < 1)
+		return 0;
 	if (test_accept_timeout(0, 200000000)) {
 		fprintf(stderr, "accept timeout 0 failed\n");
 		return 1;

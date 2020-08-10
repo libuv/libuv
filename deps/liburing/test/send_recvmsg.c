@@ -90,8 +90,13 @@ static int do_recvmsg(struct io_uring *ring, struct iovec *iov,
 		      struct recv_data *rd)
 {
 	struct io_uring_cqe *cqe;
+	int ret;
 
-	io_uring_wait_cqe(ring, &cqe);
+	ret = io_uring_wait_cqe(ring, &cqe);
+	if (ret) {
+		fprintf(stdout, "wait_cqe: %d\n", ret);
+		goto err;
+	}
 	if (cqe->res < 0) {
 		if (rd->no_buf_add && rd->buf_select)
 			return 0;
@@ -157,7 +162,11 @@ static void *recv_fn(void *data)
 			goto err;
 		}
 
-		io_uring_wait_cqe(&ring, &cqe);
+		ret = io_uring_wait_cqe(&ring, &cqe);
+		if (ret) {
+			fprintf(stderr, "wait_cqe=%d\n", ret);
+			goto err;
+		}
 		ret = cqe->res;
 		io_uring_cqe_seen(&ring, cqe);
 		if (ret == -EINVAL) {
@@ -281,6 +290,9 @@ static int test(int buf_select, int no_buf_add)
 int main(int argc, char *argv[])
 {
 	int ret;
+
+	if (argc > 1)
+		return 0;
 
 	ret = test(0, 0);
 	if (ret) {

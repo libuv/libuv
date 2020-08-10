@@ -18,6 +18,9 @@ int main(int argc, char *argv[])
 	struct io_uring ring;
 	int i, fd, ret;
 
+	if (argc > 1)
+		return 0;
+
 	fd = open("/dev/zero", O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to open /dev/zero\n");

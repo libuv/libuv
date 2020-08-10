@@ -8,133 +8,450 @@
 
 #include "liburing.h"
 
-static int no_splice = 0;
+#define BUF_SIZE (16 * 4096)
 
-static int copy_single(struct io_uring *ring,
+struct test_ctx {
+	int real_pipe1[2];
+	int real_pipe2[2];
+	int real_fd_in;
+	int real_fd_out;
+
+	/* fds or for registered files */
+	int pipe1[2];
+	int pipe2[2];
+	int fd_in;
+	int fd_out;
+
+	void *buf_in;
+	void *buf_out;
+};
+
+static unsigned int splice_flags = 0;
+static unsigned int sqe_flags = 0;
+static int has_splice = 0;
+static int has_tee = 0;
+
+static int read_buf(int fd, void *buf, int len)
+{
+	int ret;
+
+	while (len) {
+		ret = read(fd, buf, len);
+		if (ret < 0)
+			return ret;
+		len -= ret;
+		buf += ret;
+	}
+	return 0;
+}
+
+static int write_buf(int fd, const void *buf, int len)
+{
+	int ret;
+
+	while (len) {
+		ret = write(fd, buf, len);
+		if (ret < 0)
+			return ret;
+		len -= ret;
+		buf += ret;
+	}
+	return 0;
+}
+
+static int check_content(int fd, void *buf, int len, const void *src)
+{
+	int ret;
+
+	ret = read_buf(fd, buf, len);
+	if (ret)
+		return ret;
+
+	ret = memcmp(buf, src, len);
+	return (ret != 0) ? -1 : 0;
+}
+
+static int create_file(const char *filename)
+{
+	int fd, save_errno;
+
+	fd = open(filename, O_RDWR | O_CREAT, 0644);
+	save_errno = errno;
+	unlink(filename);
+	errno = save_errno;
+	return fd;
+}
+
+static int init_splice_ctx(struct test_ctx *ctx)
+{
+	int ret, rnd_fd;
+
+	ctx->buf_in = calloc(BUF_SIZE, 1);
+	if (!ctx->buf_in)
+		return 1;
+	ctx->buf_out = calloc(BUF_SIZE, 1);
+	if (!ctx->buf_out)
+		return 1;
+
+	ctx->fd_in = create_file(".splice-test-in");
+	if (ctx->fd_in < 0) {
+		perror("file open");
+		return 1;
+	}
+
+	ctx->fd_out = create_file(".splice-test-out");
+	if (ctx->fd_out < 0) {
+		perror("file open");
+		return 1;
+	}
+
+	/* get random data */
+	rnd_fd = open("/dev/urandom", O_RDONLY);
+	if (rnd_fd < 0)
+		return 1;
+
+	ret = read_buf(rnd_fd, ctx->buf_in, BUF_SIZE);
+	if (ret != 0)
+		return 1;
+	close(rnd_fd);
+
+	/* populate file */
+	ret = write_buf(ctx->fd_in, ctx->buf_in, BUF_SIZE);
+	if (ret)
+		return ret;
+
+	if (pipe(ctx->pipe1) < 0)
+		return 1;
+	if (pipe(ctx->pipe2) < 0)
+		return 1;
+
+	ctx->real_pipe1[0] = ctx->pipe1[0];
+	ctx->real_pipe1[1] = ctx->pipe1[1];
+	ctx->real_pipe2[0] = ctx->pipe2[0];
+	ctx->real_pipe2[1] = ctx->pipe2[1];
+	ctx->real_fd_in = ctx->fd_in;
+	ctx->real_fd_out = ctx->fd_out;
+	return 0;
+}
+
+static int do_splice_op(struct io_uring *ring,
 			int fd_in, loff_t off_in,
 			int fd_out, loff_t off_out,
-			int pipe_fds[2],
 			unsigned int len,
-			unsigned flags1, unsigned flags2)
+			__u8 opcode)
 {
 	struct io_uring_cqe *cqe;
 	struct io_uring_sqe *sqe;
-	int i, ret = -1;
+	int ret = -1;
 
-	sqe = io_uring_get_sqe(ring);
-	if (!sqe) {
-		fprintf(stderr, "get sqe failed\n");
-		return -1;
-	}
-	io_uring_prep_splice(sqe, fd_in, off_in, pipe_fds[1], -1,
-			     len, flags1);
-	sqe->flags = IOSQE_IO_LINK;
-
-	sqe = io_uring_get_sqe(ring);
-	if (!sqe) {
-		fprintf(stderr, "get sqe failed\n");
-		return -1;
-	}
-	io_uring_prep_splice(sqe, pipe_fds[0], -1, fd_out, off_out,
-			     len, flags2);
-
-	ret = io_uring_submit(ring);
-	if (ret < 2) {
-		/* submitted just one, kernel likely doesn't support splice */
-		if (!io_uring_peek_cqe(ring, &cqe) &&
-		    cqe->res == -EINVAL) {
-			no_splice = 1;
+	do {
+		sqe = io_uring_get_sqe(ring);
+		if (!sqe) {
+			fprintf(stderr, "get sqe failed\n");
 			return -1;
 		}
-		fprintf(stderr, "sqe submit failed: %d\n", ret);
-		return -1;
-	}
+		io_uring_prep_splice(sqe, fd_in, off_in, fd_out, off_out,
+				     len, splice_flags);
+		sqe->flags |= sqe_flags;
+		sqe->user_data = 42;
+		sqe->opcode = opcode;
 
-	for (i = 0; i < 2; i++) {
+		ret = io_uring_submit(ring);
+		if (ret != 1) {
+			fprintf(stderr, "sqe submit failed: %d\n", ret);
+			return ret;
+		}
+
 		ret = io_uring_wait_cqe(ring, &cqe);
 		if (ret < 0) {
 			fprintf(stderr, "wait completion %d\n", cqe->res);
 			return ret;
 		}
 
-		ret = cqe->res;
-		if (ret != len) {
-			fprintf(stderr, "splice: returned %i, expected %i\n",
-				cqe->res, len);
-			return ret < 0 ? ret : -1;
+		if (cqe->res <= 0) {
+			io_uring_cqe_seen(ring, cqe);
+			return cqe->res;
 		}
+
+		len -= cqe->res;
+		if (off_in != -1)
+			off_in += cqe->res;
+		if (off_out != -1)
+			off_out += cqe->res;
 		io_uring_cqe_seen(ring, cqe);
-	}
+	} while (len);
+
 	return 0;
 }
 
-static int test_splice(struct io_uring *ring)
+static int do_splice(struct io_uring *ring,
+			int fd_in, loff_t off_in,
+			int fd_out, loff_t off_out,
+			unsigned int len)
 {
-	int ret = -1, len = 4 * 4096;
-	int fd_out = -1, fd_in = -1;
-	int pipe_fds[2] = {-1, -1};
+	return do_splice_op(ring, fd_in, off_in, fd_out, off_out, len,
+			    IORING_OP_SPLICE);
+}
 
-	if (pipe(pipe_fds) < 0)
-		goto exit;
-	fd_in = open("/dev/urandom", O_RDONLY);
-	if (fd_in < 0)
-		goto exit;
-	fd_out = open(".splice_fd_out", O_CREAT | O_WRONLY, 0644);
-	if (fd_out < 0)
-		goto exit;
-	if (ftruncate(fd_out, len) == -1)
-		goto exit;
+static int do_tee(struct io_uring *ring, int fd_in, int fd_out, 
+		  unsigned int len)
+{
+	return do_splice_op(ring, fd_in, 0, fd_out, 0, len, IORING_OP_TEE);
+}
 
-	ret = copy_single(ring, fd_in, -1, fd_out, -1, pipe_fds,
-			  len, SPLICE_F_MOVE | SPLICE_F_MORE, 0);
-	if (ret == -EINVAL) {
-		no_splice = 1;
-		goto exit;
-	}
+static void check_splice_support(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_splice(ring, -1, 0, -1, 0, BUF_SIZE);
+	has_splice = (ret == -EBADF);
+}
+
+static void check_tee_support(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_tee(ring, -1, -1, BUF_SIZE);
+	has_tee = (ret == -EBADF);
+}
+
+static int check_zero_splice(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_splice(ring, ctx->fd_in, -1, ctx->pipe1[1], -1, 0);
+	if (ret)
+		return ret;
+
+	ret = do_splice(ring, ctx->pipe2[0], -1, ctx->pipe1[1], -1, 0);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int splice_to_pipe(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = lseek(ctx->real_fd_in, 0, SEEK_SET);
+	if (ret)
+		return ret;
+
+	/* implicit file offset */
+	ret = do_splice(ring, ctx->fd_in, -1, ctx->pipe1[1], -1, BUF_SIZE);
+	if (ret)
+		return ret;
+
+	ret = check_content(ctx->real_pipe1[0], ctx->buf_out, BUF_SIZE,
+			     ctx->buf_in);
+	if (ret)
+		return ret;
+
+	/* explicit file offset */
+	ret = do_splice(ring, ctx->fd_in, 0, ctx->pipe1[1], -1, BUF_SIZE);
+	if (ret)
+		return ret;
+
+	return check_content(ctx->real_pipe1[0], ctx->buf_out, BUF_SIZE,
+			     ctx->buf_in);
+}
+
+static int splice_from_pipe(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = write_buf(ctx->real_pipe1[1], ctx->buf_in, BUF_SIZE);
+	if (ret)
+		return ret;
+	ret = do_splice(ring, ctx->pipe1[0], -1, ctx->fd_out, 0, BUF_SIZE);
+	if (ret)
+		return ret;
+	ret = check_content(ctx->real_fd_out, ctx->buf_out, BUF_SIZE,
+			     ctx->buf_in);
+	if (ret)
+		return ret;
+
+	ret = ftruncate(ctx->real_fd_out, 0);
+	if (ret)
+		return ret;
+	return lseek(ctx->real_fd_out, 0, SEEK_SET);
+}
+
+static int splice_pipe_to_pipe(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_splice(ring, ctx->fd_in, 0, ctx->pipe1[1], -1, BUF_SIZE);
+	if (ret)
+		return ret;
+	ret = do_splice(ring, ctx->pipe1[0], -1, ctx->pipe2[1], -1, BUF_SIZE);
+	if (ret)
+		return ret;
+
+	return check_content(ctx->real_pipe2[0], ctx->buf_out, BUF_SIZE,
+				ctx->buf_in);
+}
+
+static int fail_splice_pipe_offset(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_splice(ring, ctx->fd_in, 0, ctx->pipe1[1], 0, BUF_SIZE);
+	if (ret != -ESPIPE && ret != -EINVAL)
+		return ret;
+
+	ret = do_splice(ring, ctx->pipe1[0], 0, ctx->fd_out, 0, BUF_SIZE);
+	if (ret != -ESPIPE && ret != -EINVAL)
+		return ret;
+
+	return 0;
+}
+
+static int fail_tee_nonpipe(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_tee(ring, ctx->fd_in, ctx->pipe1[1], BUF_SIZE);
+	if (ret != -ESPIPE && ret != -EINVAL)
+		return ret;
+
+	return 0;
+}
+
+static int fail_tee_offset(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = do_splice_op(ring, ctx->pipe2[0], -1, ctx->pipe1[1], 0,
+			   BUF_SIZE, IORING_OP_TEE);
+	if (ret != -ESPIPE && ret != -EINVAL)
+		return ret;
+
+	ret = do_splice_op(ring, ctx->pipe2[0], 0, ctx->pipe1[1], -1,
+			   BUF_SIZE, IORING_OP_TEE);
+	if (ret != -ESPIPE && ret != -EINVAL)
+		return ret;
+
+	return 0;
+}
+
+static int check_tee(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	ret = write_buf(ctx->real_pipe1[1], ctx->buf_in, BUF_SIZE);
+	if (ret)
+		return ret;
+	ret = do_tee(ring, ctx->pipe1[0], ctx->pipe2[1], BUF_SIZE);
+	if (ret)
+		return ret;
+
+	ret = check_content(ctx->real_pipe1[0], ctx->buf_out, BUF_SIZE,
+				ctx->buf_in);
 	if (ret) {
-		fprintf(stderr, "basic splice-copy failed\n");
-		goto exit;
+		fprintf(stderr, "tee(), invalid src data\n");
+		return ret;
 	}
 
-	ret = copy_single(ring, fd_in, 0, fd_out, 0, pipe_fds,
-			  len, 0, SPLICE_F_MOVE | SPLICE_F_MORE);
+	ret = check_content(ctx->real_pipe2[0], ctx->buf_out, BUF_SIZE,
+				ctx->buf_in);
 	if (ret) {
-		fprintf(stderr, "basic splice with offset failed\n");
-		goto exit;
+		fprintf(stderr, "tee(), invalid dst data\n");
+		return ret;
 	}
 
-	ret = io_uring_register_files(ring, &fd_in, 1);
-	if (ret) {
-		fprintf(stderr, "%s: register ret=%d\n", __FUNCTION__, ret);
-		goto exit;
+	return 0;
+}
+
+static int check_zero_tee(struct io_uring *ring, struct test_ctx *ctx)
+{
+	return do_tee(ring, ctx->pipe2[0], ctx->pipe1[1], 0);
+}
+
+static int test_splice(struct io_uring *ring, struct test_ctx *ctx)
+{
+	int ret;
+
+	if (has_splice) {
+		ret = check_zero_splice(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "check_zero_splice failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = splice_to_pipe(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "splice_to_pipe failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = splice_from_pipe(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "splice_from_pipe failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = splice_pipe_to_pipe(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "splice_pipe_to_pipe failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = fail_splice_pipe_offset(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "fail_splice_pipe_offset failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
 	}
 
-	ret = copy_single(ring, 0, 0, fd_out, 0, pipe_fds,
-			  len, SPLICE_F_FD_IN_FIXED, 0);
-	if (ret) {
-		fprintf(stderr, "basic splice with reg files failed\n");
-		goto exit;
+	if (has_tee) {
+		ret = check_zero_tee(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "check_zero_tee() failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = fail_tee_nonpipe(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "fail_tee_nonpipe() failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = fail_tee_offset(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "fail_tee_offset failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
+
+		ret = check_tee(ring, ctx);
+		if (ret) {
+			fprintf(stderr, "check_tee() failed %i %i\n",
+				ret, errno);
+			return ret;
+		}
 	}
 
-	ret = 0;
-exit:
-	if (fd_out >= 0) {
-		unlink(".splice_fd_out");
-		close(fd_out);
-	}
-	if (fd_in >= 0)
-		close(fd_in);
-	if (pipe_fds[0] >= 0) {
-		close(pipe_fds[0]);
-		close(pipe_fds[1]);
-	}
-	return ret;
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
 	struct io_uring ring;
+	struct test_ctx ctx;
 	int ret;
+	int reg_fds[6];
+
+	if (argc > 1)
+		return 0;
 
 	ret = io_uring_queue_init(8, &ring, 0);
 	if (ret) {
@@ -142,15 +459,51 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	ret = test_splice(&ring);
-	if (ret && no_splice) {
-		fprintf(stdout, "skip, doesn't support splice()\n");
-		return 0;
-	}
+	ret = init_splice_ctx(&ctx);
 	if (ret) {
-		fprintf(stderr, "test_splice failed %i %i\n", ret, errno);
+		fprintf(stderr, "init failed %i %i\n", ret, errno);
+		return 1;
+	}
+
+	check_splice_support(&ring, &ctx);
+	if (!has_splice)
+		fprintf(stdout, "skip, doesn't support splice()\n");
+	check_tee_support(&ring, &ctx);
+	if (!has_tee)
+		fprintf(stdout, "skip, doesn't support tee()\n");
+
+	ret = test_splice(&ring, &ctx);
+	if (ret) {
+		fprintf(stderr, "basic splice tests failed\n");
 		return ret;
 	}
 
+	reg_fds[0] = ctx.real_pipe1[0];
+	reg_fds[1] = ctx.real_pipe1[1];
+	reg_fds[2] = ctx.real_pipe2[0];
+	reg_fds[3] = ctx.real_pipe2[1];
+	reg_fds[4] = ctx.real_fd_in;
+	reg_fds[5] = ctx.real_fd_out;
+	ret = io_uring_register_files(&ring, reg_fds, 6);
+	if (ret) {
+		fprintf(stderr, "%s: register ret=%d\n", __FUNCTION__, ret);
+		return 1;
+	}
+
+	/* remap fds to registered */
+	ctx.pipe1[0] = 0;
+	ctx.pipe1[1] = 1;
+	ctx.pipe2[0] = 2;
+	ctx.pipe2[1] = 3;
+	ctx.fd_in = 4;
+	ctx.fd_out = 5;
+
+	splice_flags = SPLICE_F_FD_IN_FIXED;
+	sqe_flags = IOSQE_FIXED_FILE;
+	ret = test_splice(&ring, &ctx);
+	if (ret) {
+		fprintf(stderr, "registered fds splice tests failed\n");
+		return ret;
+	}
 	return 0;
 }

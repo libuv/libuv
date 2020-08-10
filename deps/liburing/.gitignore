@@ -30,16 +30,20 @@
 /test/across-fork
 /test/b19062a56726-test
 /test/b5837bd5311d-test
+/test/ce593a6c480a-test
 /test/connect
+/test/close-opath
 /test/cq-full
 /test/cq-overflow
 /test/cq-peek-batch
 /test/cq-ready
 /test/cq-size
+/test/d4ae271dfaae-test
 /test/d77a67ed5f27-test
 /test/defer
 /test/eeed8b54e0df-test
 /test/eventfd
+/test/eventfd-disable
 /test/eventfd-ring
 /test/fadvise
 /test/fallocate
@@ -78,6 +82,7 @@
 /test/socket-rw
 /test/splice
 /test/sq-full
+/test/sq-full-cpp
 /test/sq-poll-kthread
 /test/sq-space_left
 /test/statx
@@ -86,6 +91,10 @@
 /test/teardowns
 /test/timeout
 /test/timeout-overflow
+/test/iopoll
+/test/cq-overflow-peek
+/test/config.local
+/test/*.dmesg
 
 config-host.h
 config-host.mak

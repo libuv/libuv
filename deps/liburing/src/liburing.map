@@ -54,3 +54,6 @@ LIBURING_0.6 {
 	global:
 		io_uring_register_eventfd_async;
 } LIBURING_0.5;
+
+LIBURING_0.7 {
+} LIBURING_0.6;

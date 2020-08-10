@@ -40,6 +40,9 @@ int main(int argc, char *argv[])
 	struct io_uring_cqe *cqe;
 	struct iovec vec;
 
+	if (argc > 1)
+		return 0;
+
 	vec.iov_base = malloc(BUF_SIZE);
 	vec.iov_len = BUF_SIZE;
 

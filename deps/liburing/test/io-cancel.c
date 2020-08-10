@@ -232,6 +232,9 @@ int main(int argc, char *argv[])
 {
 	int i, ret;
 
+	if (argc > 1)
+		return 0;
+
 	if (create_file(".basic-rw")) {
 		fprintf(stderr, "file creation failed\n");
 		goto err;

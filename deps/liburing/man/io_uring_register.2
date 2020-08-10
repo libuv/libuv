@@ -168,6 +168,14 @@ must contain a pointer to the eventfd file descriptor, and
 .I nr_args
 must be 1. Available since 5.2.
 
+An application can temporarily disable notifications, coming through the
+registered eventfd, by setting the
+.B IORING_CQ_EVENTFD_DISABLED
+bit in the
+.I flags
+field of the CQ ring.
+Available since 5.8.
+
 .TP
 .B IORING_REGISTER_EVENTFD_ASYNC
 This works just like

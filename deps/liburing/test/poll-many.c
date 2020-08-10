@@ -143,6 +143,9 @@ int main(int argc, char *argv[])
 	struct rlimit rlim;
 	int i, ret;
 
+	if (argc > 1)
+		return 0;
+
 	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0) {
 		perror("getrlimit");
 		goto err_noring;

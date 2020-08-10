@@ -266,6 +266,9 @@ int main(int argc, char *argv[])
 	void *res1, *res2;
 	int i, exit_val = 0;
 
+	if (argc > 1)
+		return 0;
+
 	for (i = 0; i < 4; i++) {
 		p.tcp = i & 1;
 		p.non_blocking = (i & 2) >> 1;

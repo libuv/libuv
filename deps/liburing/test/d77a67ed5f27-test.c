@@ -20,6 +20,9 @@ int main(int argc, char *argv[])
 	struct io_uring ring;
 	int ret, data;
 
+	if (argc > 1)
+		return 0;
+
 	signal(SIGALRM, sig_alrm);
 
 	memset(&p, 0, sizeof(p));
