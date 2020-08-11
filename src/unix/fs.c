@@ -1155,7 +1155,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
     flags |= 1 << 25;  /* COPYFILE_CLONE_FORCE */
 
-  dst_flags = O_WRONLY | O_CREAT | O_TRUNC;
+  dst_flags = O_WRONLY | O_CREAT;
   /* Copyfile has its own, but let's do our own. */
   if (req->flags & UV_FS_COPYFILE_EXCL)
     dst_flags |= O_EXCL;
