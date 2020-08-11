@@ -285,7 +285,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
     src/unix/aix-common.c
     src/unix/ibmi.c
     src/unix/no-fsevents.c
-    src/unix/no-proctitle.c
     src/unix/posix-poll.c)
 endif()
 
@@ -418,6 +417,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-loop-handles.c
        test/test-loop-stop.c
        test/test-loop-time.c
+       test/test-metrics.c
        test/test-multiple-listen.c
        test/test-mutexes.c
        test/test-not-readable-nor-writable-on-read-error.c

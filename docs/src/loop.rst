@@ -68,6 +68,11 @@ API
       to suppress unnecessary wakeups when using a sampling profiler.
       Requesting other signals will fail with UV_EINVAL.
 
+    - UV_METRICS_IDLE_TIME: Accumulate the amount of idle time the event loop
+      spends in the event provider.
+
+      This option is necessary to use :c:func:`uv_metrics_idle_time`.
+
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 
     Releases all internal loop resources. Call this function only when the loop
