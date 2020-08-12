@@ -16,7 +16,7 @@ Data types
 
     Loop data type.
 
-.. c:type:: uv_run_mode
+.. c:enum:: uv_run_mode
 
     Mode used to run the loop with :c:func:`uv_run`.
 

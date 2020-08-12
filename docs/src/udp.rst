@@ -88,7 +88,7 @@ Data types
         nothing to read, and with `nread` == 0 and `addr` != NULL when an empty UDP packet is
         received.
 
-.. c:type:: uv_membership
+.. c:enum:: uv_membership
 
     Membership type for a multicast address.
 
