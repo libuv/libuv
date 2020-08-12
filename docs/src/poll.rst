@@ -141,8 +141,8 @@ API
     Stop polling the file descriptor, the callback will no longer be called.
 
     .. note::
-        Calling :c:func:`uv_poll_stop` on a handle that its socket state has
-        already been changed, but the callback has not been called yet, would
-        also cancel the pending callback.
+        Calling :c:func:`uv_poll_stop` is effective immediately: any pending
+        callback is also canceled, even if the socket state change notification
+        was already pending.
 
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.
