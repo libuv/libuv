@@ -754,17 +754,18 @@ static int uv__is_loopback(const struct sockaddr_storage* storage) {
   const struct sockaddr_in* in4;
   const struct sockaddr_in6* in6;
   int i;
+
   if (storage->ss_family == AF_INET) {
     in4 = (const struct sockaddr_in*) storage;
     return in4->sin_addr.S_un.S_un_b.s_b1 == 127;
   }
   if (storage->ss_family == AF_INET6) {
     in6 = (const struct sockaddr_in6*) storage;
-    for (i=0; i<7; ++i) {
+    for (i = 0; i < 7; ++i) {
       if (in6->sin6_addr.u.Word[i] != 0)
         return 0;
     }
-    return in6->sin6_addr.u.Word[7] == ntohs(1);
+    return in6->sin6_addr.u.Word[7] == htons(1);
   }
   return 0;
 }
@@ -835,14 +836,14 @@ static int uv_tcp_try_connect(uv_connect_t* req,
     retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
     retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
     WSAIoctl(handle->socket,
-            SIO_TCP_INITIAL_RTO,
-            &retransmit_ioctl,
-            sizeof(retransmit_ioctl),
-            NULL,
-            0,
-            &bytes,
-            NULL,
-            NULL);
+             SIO_TCP_INITIAL_RTO,
+             &retransmit_ioctl,
+             sizeof(retransmit_ioctl),
+             NULL,
+             0,
+             &bytes,
+             NULL,
+             NULL);
   }
 
   UV_REQ_INIT(req, UV_CONNECT);

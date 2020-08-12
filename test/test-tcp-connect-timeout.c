@@ -108,7 +108,7 @@ static int is_supported_system() {
   ASSERT_EQ(uv_os_uname(&uname), 0);
   if (strcmp(uname.sysname, "Windows_NT") == 0) {    
     cnt = sscanf(uname.release, "%d.%d.%d", &semver[0], &semver[1], &semver[2]);
-    if (cnt !=3) {
+    if (cnt != 3) {
       return 0;
     }
     // relase >= 10.0.16299
@@ -130,7 +130,7 @@ TEST_IMPL(tcp_local_connect_timeout) {
   if (!is_supported_system()) {
     RETURN_SKIP("Unsupported system");
   }
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", 9999, &addr));
+  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
   ASSERT_EQ(r, 0);
