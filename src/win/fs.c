@@ -1241,19 +1241,21 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   unsigned int tries, i;
   size_t len;
   uint64_t v;
-
+  char* path;
+  
+  path = req->path;
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
   if (len < num_x || wcsncmp(ep - num_x, L"XXXXXX", num_x)) {
     SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
-    return;
+    goto clobber;
   }
 
   tries = TMP_MAX;
   do {
     if (uv__random_rtlgenrandom((void *)&v, sizeof(v)) < 0) {
       SET_REQ_UV_ERROR(req, UV_EIO, ERROR_IO_DEVICE);
-      break;
+      goto clobber;
     }
 
     cp = ep - num_x;
@@ -1264,16 +1266,17 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
 
     if (func(req)) {
       if (req->result >= 0) {
-        len = strlen(req->path);
-        wcstombs((char*) req->path + len - num_x, ep - num_x, num_x);
+        len = strlen(path);
+        wcstombs(path + len - num_x, ep - num_x, num_x);
       }
-      break;
+      return;
     }
   } while (--tries);
 
-  if (tries == 0) {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
-  }
+  SET_REQ_WIN32_ERROR(req, GetLastError());
+
+clobber:
+  path[0] = '\0';
 }
 
 
