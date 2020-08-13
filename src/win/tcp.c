@@ -748,6 +748,40 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
   return 0;
 }
 
+static int uv__is_loopback(const struct sockaddr_storage* storage) {
+  const struct sockaddr_in* in4;
+  const struct sockaddr_in6* in6;
+  int i;
+
+  if (storage->ss_family == AF_INET) {
+    in4 = (const struct sockaddr_in*) storage;
+    return in4->sin_addr.S_un.S_un_b.s_b1 == 127;
+  }
+  if (storage->ss_family == AF_INET6) {
+    in6 = (const struct sockaddr_in6*) storage;
+    for (i = 0; i < 7; ++i) {
+      if (in6->sin6_addr.u.Word[i] != 0)
+        return 0;
+    }
+    return in6->sin6_addr.u.Word[7] == htons(1);
+  }
+  return 0;
+}
+
+// Check if Windows version is 10.0.16299 or later
+static int uv__is_fast_loopback_fail_supported() {
+  OSVERSIONINFOW os_info;
+  if (!pRtlGetVersion)
+    return 0;
+  pRtlGetVersion(&os_info);
+  if (os_info.dwMajorVersion < 10)
+    return 0;
+  if (os_info.dwMajorVersion > 10)
+    return 1;
+  if (os_info.dwMinorVersion > 0)
+    return 1;
+  return os_info.dwBuildNumber >= 16299;
+}
 
 static int uv_tcp_try_connect(uv_connect_t* req,
                               uv_tcp_t* handle,
@@ -755,6 +789,7 @@ static int uv_tcp_try_connect(uv_connect_t* req,
                               unsigned int addrlen,
                               uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
+  TCP_INITIAL_RTO_PARAMETERS retransmit_ioctl;
   const struct sockaddr* bind_addr;
   struct sockaddr_storage converted;
   BOOL success;
@@ -788,6 +823,25 @@ static int uv_tcp_try_connect(uv_connect_t* req,
     if (!uv_get_connectex_function(handle->socket, &handle->tcp.conn.func_connectex)) {
       return WSAEAFNOSUPPORT;
     }
+  }
+
+  /* This makes connect() fail instantly if the target port on the localhost
+   * is not reachable, instead of waiting for 2s. We do not care if this fails.
+   * This only works on Windows version 10.0.16299 and later.
+   */
+  if (uv__is_fast_loopback_fail_supported() && uv__is_loopback(&converted)) {
+    memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
+    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    WSAIoctl(handle->socket,
+             SIO_TCP_INITIAL_RTO,
+             &retransmit_ioctl,
+             sizeof(retransmit_ioctl),
+             NULL,
+             0,
+             &bytes,
+             NULL,
+             NULL);
   }
 
   UV_REQ_INIT(req, UV_CONNECT);
