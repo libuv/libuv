@@ -4,8 +4,8 @@
 :c:type:`uv_pipe_t` --- Pipe handle
 ===================================
 
-Pipe handles provide an abstraction over local domain sockets on Unix and named
-pipes on Windows.
+Pipe handles provide an abstraction over streaming files on Unix (including
+local domain sockets, pipes, and FIFOs) and named pipes on Windows.
 
 :c:type:`uv_pipe_t` is a 'subclass' of :c:type:`uv_stream_t`.
 
@@ -24,6 +24,8 @@ Public members
 .. c:member:: int uv_pipe_t.ipc
 
     Whether this pipe is suitable for handle passing between processes.
+    Only a connected pipe that will be passing the handles should have this flag
+    set, not the listening pipe that uv_accept is called on.
 
 .. seealso:: The :c:type:`uv_stream_t` members also apply.
 
@@ -34,7 +36,10 @@ API
 .. c:function:: int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc)
 
     Initialize a pipe handle. The `ipc` argument is a boolean to indicate if
-    this pipe will be used for handle passing between processes.
+    this pipe will be used for handle passing between processes (which may
+    change the bytes on the wire). Only a connected pipe that will be
+    passing the handles should have this flag set, not the listening pipe
+    that uv_accept is called on.
 
 .. c:function:: int uv_pipe_open(uv_pipe_t* handle, uv_file file)
 

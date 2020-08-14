@@ -12,7 +12,7 @@ asynchronously that is actually blocking, by spawning a thread and collecting
 the result when it is done.
 
 Today there are two predominant thread libraries: the Windows threads
-implementation and POSIX's `pthreads`_. libuv's thread API is analogous to
+implementation and POSIX's :man:`pthreads(7)`. libuv's thread API is analogous to
 the pthreads API and often has similar semantics.
 
 A notable aspect of libuv's thread facilities is that it is a self contained
@@ -68,7 +68,7 @@ Synchronization Primitives
 
 This section is purposely spartan. This book is not about threads, so I only
 catalogue any surprises in the libuv APIs here. For the rest you can look at
-the pthreads `man pages <pthreads>`_.
+the :man:`pthreads(7)` man pages.
 
 Mutexes
 ~~~~~~~
@@ -141,9 +141,9 @@ Others
 libuv also supports semaphores_, `condition variables`_ and barriers_ with APIs
 very similar to their pthread counterparts.
 
-.. _semaphores: http://en.wikipedia.org/wiki/Semaphore_(programming)
-.. _condition variables: http://en.wikipedia.org/wiki/Condition_variable#Waiting_and_signaling
-.. _barriers: http://en.wikipedia.org/wiki/Barrier_(computer_science)
+.. _semaphores: https://en.wikipedia.org/wiki/Semaphore_(programming)
+.. _condition variables: https://en.wikipedia.org/wiki/Monitor_(synchronization)#Condition_variables_2
+.. _barriers: https://en.wikipedia.org/wiki/Barrier_(computer_science)
 
 In addition, libuv provides a convenience function ``uv_once()``. Multiple
 threads can attempt to call ``uv_once()`` with a given guard and a function
@@ -293,7 +293,7 @@ informing the user of the status of running downloads.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 7-8,34-
+    :lines: 7-8,35-
     :emphasize-lines: 2,11
 
 The async thread communication works *on loops* so although any thread can be
@@ -318,7 +318,7 @@ with the async watcher whenever it receives a message.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 10-23
+    :lines: 10-24
     :emphasize-lines: 7-8
 
 In the download function, we modify the progress indicator and queue the message
@@ -328,7 +328,7 @@ non-blocking and will return immediately.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 30-33
+    :lines: 31-34
 
 The callback is a standard libuv pattern, extracting the data from the watcher.
 
@@ -337,7 +337,7 @@ Finally it is important to remember to clean up the watcher.
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
     :linenos:
-    :lines: 25-28
+    :lines: 26-29
     :emphasize-lines: 3
 
 After this example, which showed the abuse of the ``data`` field, bnoordhuis_
@@ -379,9 +379,7 @@ which binds a third party library. It may go something like this:
 4. The async callback, invoked in the main loop thread, which is the v8 thread,
    then interacts with v8 to invoke the JavaScript callback.
 
-.. _pthreads: http://man7.org/linux/man-pages/man7/pthreads.7.html
-
 ----
 
-.. _node.js is cancer: http://teddziuba.github.io/2011/10/node-js-is-cancer.html
+.. _node.js is cancer: http://widgetsandshit.com/teddziuba/2011/10/node-js-is-cancer.html
 .. _bnoordhuis: https://github.com/bnoordhuis

@@ -222,7 +222,10 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
       case 1: {
         /* Read a couple of bytes. */
         static char buffer[74];
-        r = recv(context->sock, buffer, sizeof buffer, 0);
+
+        do
+          r = recv(context->sock, buffer, sizeof buffer, 0);
+        while (r == -1 && errno == EINTR);
         ASSERT(r >= 0);
 
         if (r > 0) {
@@ -240,12 +243,16 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
       case 3: {
         /* Read until EAGAIN. */
         static char buffer[931];
-        r = recv(context->sock, buffer, sizeof buffer, 0);
-        ASSERT(r >= 0);
 
-        while (r > 0) {
+        for (;;) {
+          do
+            r = recv(context->sock, buffer, sizeof buffer, 0);
+          while (r == -1 && errno == EINTR);
+
+          if (r <= 0)
+            break;
+
           context->read += r;
-          r = recv(context->sock, buffer, sizeof buffer, 0);
         }
 
         if (r == 0) {
@@ -301,7 +308,9 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
           int send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
           ASSERT(send_bytes > 0);
 
-          r = send(context->sock, buffer, send_bytes, 0);
+          do
+            r = send(context->sock, buffer, send_bytes, 0);
+          while (r == -1 && errno == EINTR);
 
           if (r < 0) {
             ASSERT(got_eagain());
@@ -323,7 +332,9 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
           int send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
           ASSERT(send_bytes > 0);
 
-          r = send(context->sock, buffer, send_bytes, 0);
+          do
+            r = send(context->sock, buffer, send_bytes, 0);
+          while (r == -1 && errno == EINTR);
 
           if (r < 0) {
             ASSERT(got_eagain());
@@ -339,12 +350,18 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
             send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
             ASSERT(send_bytes > 0);
 
-            r = send(context->sock, buffer, send_bytes, 0);
+            do
+              r = send(context->sock, buffer, send_bytes, 0);
+            while (r == -1 && errno == EINTR);
+            ASSERT(r != 0);
 
-            if (r <= 0) break;
+            if (r < 0) {
+              ASSERT(got_eagain());
+              break;
+            }
+
             context->sent += r;
           }
-          ASSERT(r > 0 || got_eagain());
           break;
         }
 
@@ -575,10 +592,19 @@ static void start_poll_test(void) {
   MAKE_VALGRIND_HAPPY();
 }
 
-
+ 
+/* Issuing a shutdown() on IBM i PASE with parameter SHUT_WR
+ * also sends a normal close sequence to the partner program.
+ * This leads to timing issues and ECONNRESET failures in the
+ * test 'poll_duplex' and 'poll_unidirectional'.
+ * 
+ * https://www.ibm.com/support/knowledgecenter/en/ssw_ibm_i_74/apis/shutdn.htm
+ */
 TEST_IMPL(poll_duplex) {
 #if defined(NO_SELF_CONNECT)
   RETURN_SKIP(NO_SELF_CONNECT);
+#elif defined(__PASE__)
+  RETURN_SKIP("API shutdown() may lead to timing issue on IBM i PASE");
 #endif
   test_mode = DUPLEX;
   start_poll_test();
@@ -589,6 +615,8 @@ TEST_IMPL(poll_duplex) {
 TEST_IMPL(poll_unidirectional) {
 #if defined(NO_SELF_CONNECT)
   RETURN_SKIP(NO_SELF_CONNECT);
+#elif defined(__PASE__)
+  RETURN_SKIP("API shutdown() may lead to timing issue on IBM i PASE");
 #endif
   test_mode = UNIDIRECTIONAL;
   start_poll_test();

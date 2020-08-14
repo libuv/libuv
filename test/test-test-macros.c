@@ -1,4 +1,4 @@
-/* Copyright StrongLoop, Inc. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,54 +19,24 @@
  * IN THE SOFTWARE.
  */
 
-#include "defs.h"
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "task.h"
 
-static void pr_do(FILE *stream,
-                  const char *label,
-                  const char *fmt,
-                  va_list ap);
-
-void *xmalloc(size_t size) {
-  void *ptr;
-
-  ptr = malloc(size);
-  if (ptr == NULL) {
-    pr_err("out of memory, need %lu bytes", (unsigned long) size);
-    exit(1);
-  }
-
-  return ptr;
+int test_macros_evil(void) {
+  static int x;
+  return x++;
 }
 
-void pr_info(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stdout, "info", fmt, ap);
-  va_end(ap);
-}
 
-void pr_warn(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stderr, "warn", fmt, ap);
-  va_end(ap);
-}
+TEST_IMPL(test_macros) {
+  char* a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  char* b = "ABCDEFGHIJKLMNOPQRSTUVWXYz";
+  char* c = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  int i;
 
-void pr_err(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stderr, "error", fmt, ap);
-  va_end(ap);
-}
-
-static void pr_do(FILE *stream,
-                  const char *label,
-                  const char *fmt,
-                  va_list ap) {
-  char fmtbuf[1024];
-  vsnprintf(fmtbuf, sizeof(fmtbuf), fmt, ap);
-  fprintf(stream, "%s:%s: %s\n", _getprogname(), label, fmtbuf);
+  i = test_macros_evil();
+  ASSERT_STR_NE(a, b);
+  ASSERT_STR_EQ(a, c);
+  ASSERT_EQ(i + 1, test_macros_evil());
+  ASSERT_EQ(i + 2, test_macros_evil());
+  return 0;
 }

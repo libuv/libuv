@@ -123,18 +123,9 @@ EXTRA_DIST = test/fixtures/empty_file \
              include \
              docs \
              img \
-             samples \
-             android-configure-arm \
-             android-configure-arm64 \
-             android-configure-x86 \
-             android-configure-x86_64 \
              CONTRIBUTING.md \
              LICENSE \
-             README.md \
-             vcbuild.bat \
-             common.gypi \
-             gyp_uv.py \
-             uv.gyp
+             README.md
 
 
 
@@ -212,8 +203,12 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-loop-stop.c \
                          test/test-loop-time.c \
                          test/test-loop-configure.c \
+                         test/test-metrics.c \
                          test/test-multiple-listen.c \
                          test/test-mutexes.c \
+                         test/test-not-readable-nor-writable-on-read-error.c \
+                         test/test-not-readable-on-eof.c \
+                         test/test-not-writable-after-shutdown.c \
                          test/test-osx-select.c \
                          test/test-pass-always.c \
                          test/test-ping-pong.c \
@@ -268,6 +263,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-flags.c \
                          test/test-tcp-open.c \
                          test/test-tcp-read-stop.c \
+                         test/test-tcp-read-stop-start.c \
                          test/test-tcp-shutdown-after-write.c \
                          test/test-tcp-unexpected-read.c \
                          test/test-tcp-oob.c \
@@ -278,6 +274,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-try-write-error.c \
                          test/test-tcp-write-queue-order.c \
+                         test/test-test-macros.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \
                          test/test-threadpool-cancel.c \
@@ -287,6 +284,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-timer.c \
                          test/test-tmpdir.c \
                          test/test-tty-duplicate-key.c \
+                         test/test-tty-escape-sequence-processing.c \
                          test/test-tty.c \
                          test/test-udp-alloc-cb-fail.c \
                          test/test-udp-bind.c \
@@ -294,6 +292,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-create-socket-early.c \
                          test/test-udp-dgram-too-big.c \
                          test/test-udp-ipv6.c \
+                         test/test-udp-mmsg.c \
                          test/test-udp-multicast-interface.c \
                          test/test-udp-multicast-interface6.c \
                          test/test-udp-multicast-join.c \
@@ -304,6 +303,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-send-and-recv.c \
                          test/test-udp-send-hang-loop.c \
                          test/test-udp-send-immediate.c \
+                         test/test-udp-sendmmsg-error.c \
                          test/test-udp-send-unreachable.c \
                          test/test-udp-try-send.c \
                          test/test-uname.c \
@@ -346,7 +346,8 @@ test_run_tests_CFLAGS += -D__EXTENSIONS__ \
 endif
 
 if OS390
-test_run_tests_CFLAGS += -D_UNIX03_THREADS \
+test_run_tests_CFLAGS += -D_ISOC99_SOURCE \
+                         -D_UNIX03_THREADS \
                          -D_UNIX03_SOURCE \
                          -D_OPEN_SYS_IF_EXT=1 \
                          -D_OPEN_SYS_SOCK_IPV6 \
@@ -380,12 +381,12 @@ uvinclude_HEADERS += include/uv/posix.h
 libuv_la_SOURCES += src/unix/aix-common.c \
                     src/unix/ibmi.c \
                     src/unix/posix-poll.c \
-                    src/unix/no-fsevents.c \
-                    src/unix/no-proctitle.c
+                    src/unix/no-fsevents.c
 endif
 
 if ANDROID
 uvinclude_HEADERS += include/uv/android-ifaddrs.h
+libuv_la_CFLAGS += -D_GNU_SOURCE
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
                     src/unix/linux-core.c \
                     src/unix/linux-inotify.c \
@@ -393,8 +394,7 @@ libuv_la_SOURCES += src/unix/android-ifaddrs.c \
                     src/unix/procfs-exepath.c \
                     src/unix/pthread-fixes.c \
                     src/unix/random-getrandom.c \
-                    src/unix/random-sysctl-linux.c \
-                    src/unix/sysinfo-loadavg.c
+                    src/unix/random-sysctl-linux.c
 endif
 
 if CYGWIN
@@ -416,8 +416,9 @@ uvinclude_HEADERS += include/uv/darwin.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
 libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
-                    src/unix/darwin.c \
                     src/unix/darwin-proctitle.c \
+                    src/unix/darwin-stub.h \
+                    src/unix/darwin.c \
                     src/unix/fsevents.c \
                     src/unix/kqueue.c \
                     src/unix/proctitle.c \
@@ -474,8 +475,7 @@ libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/procfs-exepath.c \
                     src/unix/proctitle.c \
                     src/unix/random-getrandom.c \
-                    src/unix/random-sysctl-linux.c \
-                    src/unix/sysinfo-loadavg.c
+                    src/unix/random-sysctl-linux.c
 test_run_tests_LDFLAGS += -lutil
 endif
 

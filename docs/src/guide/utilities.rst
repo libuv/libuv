@@ -196,7 +196,7 @@ to access the underlying file descriptors and provide functions that process
 tasks in small increments as decided by your application. Some libraries though
 will not allow such access, providing only a standard blocking function which
 will perform the entire I/O transaction and only then return. It is unwise to
-use these in the event loop thread, use the :ref:`libuv-work-queue` instead. Of
+use these in the event loop thread, use the :ref:`threadpool` instead. Of
 course, this will also mean losing granular control on the library.
 
 The ``uv_poll`` section of libuv simply watches file descriptors using the
@@ -210,8 +210,8 @@ download files. Rather than give all control to libcurl, we'll instead be
 using the libuv event loop, and use the non-blocking, async multi_ interface to
 progress with the download whenever libuv notifies of I/O readiness.
 
-.. _libcurl: http://curl.haxx.se/libcurl/
-.. _multi: http://curl.haxx.se/libcurl/c/libcurl-multi.html
+.. _libcurl: https://curl.haxx.se/libcurl/
+.. _multi: https://curl.haxx.se/libcurl/c/libcurl-multi.html
 
 .. rubric:: uvwget/main.c - The setup
 .. literalinclude:: ../../code/uvwget/main.c
@@ -352,7 +352,7 @@ to get the error message.
 argument. ``init_plugin_function`` is a function pointer to the sort of
 function we are looking for in the application's plugins.
 
-.. _shared libraries: http://en.wikipedia.org/wiki/Shared_library#Shared_libraries
+.. _shared libraries: https://en.wikipedia.org/wiki/Shared_library#Shared_libraries
 
 TTY
 ---
@@ -365,7 +365,7 @@ implement the ANSI escape codes across all platforms. By this I mean that libuv
 converts ANSI codes to the Windows equivalent, and provides functions to get
 terminal information.
 
-.. _pretty standardised: http://en.wikipedia.org/wiki/ANSI_escape_sequences
+.. _pretty standardised: https://en.wikipedia.org/wiki/ANSI_escape_sequences
 
 The first thing to do is to initialize a ``uv_tty_t`` with the file descriptor
 it reads/writes from. This is achieved with::
@@ -422,7 +422,7 @@ As you can see this is very useful to produce nicely formatted output, or even
 console based arcade games if that tickles your fancy. For fancier control you
 can try `ncurses`_.
 
-.. _ncurses: http://www.gnu.org/software/ncurses/ncurses.html
+.. _ncurses: https://www.gnu.org/software/ncurses/ncurses.html
 
 .. versionchanged:: 1.23.1: the `readable` parameter is now unused and ignored.
                     The appropriate value will now be auto-detected from the kernel.
@@ -431,7 +431,7 @@ can try `ncurses`_.
 
 .. [#] I was first introduced to the term baton in this context, in Konstantin
        Käfer's excellent slides on writing node.js bindings --
-       http://kkaefer.github.com/node-cpp-modules/#baton
+       https://kkaefer.com/node-cpp-modules/#baton
 .. [#] mfp is My Fancy Plugin
 
 .. _libev man page: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#COMMON_OR_USEFUL_IDIOMS_OR_BOTH
