@@ -43,6 +43,10 @@ int uv__getaddrinfo_translate_error(int sys_err) {
     case WSAHOST_NOT_FOUND:       return UV_EAI_NONAME;
     case WSATYPE_NOT_FOUND:       return UV_EAI_SERVICE;
     case WSAESOCKTNOSUPPORT:      return UV_EAI_SOCKTYPE;
+    case WSANO_DATA:              return UV_EAI_NODATA;
+    case WSAEPFNOSUPPORT:         return UV_EAI_PROTOCOL;
+    case WSAEFAULT:               return UV_EAI_OVERFLOW;
+    case WSAECANCELLED:           return UV_EAI_CANCELED;
     default:                      return uv_translate_sys_error(sys_err);
   }
 }
