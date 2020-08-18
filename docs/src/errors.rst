@@ -335,7 +335,7 @@ Error constants
 API
 ---
 
-.. c:function:: UV_ERRNO_MAP(iter_macro)
+.. c:macro:: UV_ERRNO_MAP(iter_macro)
 
     Macro that expands to a series of invocations of `iter_macro` for
     each of the error constants above. `iter_macro` is invoked with two
