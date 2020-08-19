@@ -151,6 +151,9 @@ void uv_fs_init(void) {
   uv__fd_hash_init();
 }
 
+INLINE static uint64_t roundup(uint64_t n, uint64_t multiple) {
+  return (n + multiple - 1) / multiple * multiple;
+}
 
 INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     const char* new_path, const int copy_path) {
@@ -2010,7 +2013,7 @@ static void fs__ftruncate(uv_fs_t* req) {
   }
 }
 
-static BOOL fs__clonefile_dup_extents(HANDLE src, 
+INLINE static BOOL fs__clonefile_dup_extents(HANDLE src,
                                       HANDLE dst, 
                                       int64_t offset,
                                       int64_t clone_size) {
@@ -2104,7 +2107,7 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags, int* n
    * but at the same time we can't have extra clusters hanging. So we can't
    * just use some big number here. */
   for (int i = 0; i < 2; i++) {
-    int64_t size = (src_size - offset + (CLUSTERSIZES[i] - 1)) / CLUSTERSIZES[i];
+    int64_t size = roundup(src_size - offset, CLUSTERSIZES);
     if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, size)) {
       error = GetLastError();
       continue;
