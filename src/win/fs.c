@@ -2032,7 +2032,7 @@ static BOOL fs__clonefile_dup_extents(HANDLE src,
   );
 }
 
-static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
+static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags, int* no_overwrite) {
   DWORD error = 0;
   HANDLE src_handle;
   HANDLE dst_handle;
@@ -2104,12 +2104,15 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
     int64_t size = (src_size - offset + (CLUSTERSIZES[i] - 1)) / CLUSTERSIZES[i];
     if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, size)) {
       error = GetLastError();
-      goto exit2;
+      continue;
     }
     break;
   }
 
 exit2:
+  /* Error with truncate or clone. No CreateFileW business. */
+  if (error)
+    no_overwrite = 0;
   CloseHandle(dst_handle);
 exit1:
   CloseHandle(src_handle);
@@ -2120,26 +2123,21 @@ exit:
 
 static void fs__copyfile(uv_fs_t* req) {
   int flags;
-  int overwrite;
+  int no_overwrite;
   uv_stat_t statbuf;
   uv_stat_t new_statbuf;
   DWORD error;
   flags = req->fs.info.file_flags;
 
-  overwrite = flags & UV_FS_COPYFILE_EXCL;
+  no_overwrite = flags & UV_FS_COPYFILE_EXCL;
 
   if (flags & UV_FS_COPYFILE_FICLONE ||
       flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-    error = fs__clonefile(req->file.pathw, req->fs.info.new_pathw, flags);
+    error = fs__clonefile(req->file.pathw, req->fs.info.new_pathw, flags, &no_overwrite);
     if (error) {
       if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
         SET_REQ_WIN32_ERROR(req, error);
         goto err;
-      }
-      /* If it's not EEXIST we probably hit a copy error. Removing is hard, so
-         we do this. (If it's some other error it won't hurt to hit it again.) */
-      if (error != ERROR_ALREADY_EXISTS) {
-        overwrite = 1;
       }
     } else {
       SET_REQ_RESULT(req, 0);
@@ -2147,7 +2145,7 @@ static void fs__copyfile(uv_fs_t* req) {
     }
   }
 
-  if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, overwrite) != 0) {
+  if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, no_overwrite) != 0) {
     SET_REQ_RESULT(req, 0);
     return;
   }
