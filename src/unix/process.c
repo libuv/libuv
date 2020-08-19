@@ -269,7 +269,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
                                    int (*pipes)[2],
                                    int error_fd) {
   sigset_t set;
-  int close_fd;
   int use_fd;
   int err;
   int fd;
@@ -294,7 +293,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
   }
 
   for (fd = 0; fd < stdio_count; fd++) {
-    close_fd = pipes[fd][0];
     use_fd = pipes[fd][1];
 
     if (use_fd < 0) {
@@ -304,8 +302,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
         /* redirect stdin, stdout and stderr to /dev/null even if UV_IGNORE is
          * set
          */
-        use_fd = open("/dev/null", fd == 0 ? O_RDONLY : O_RDWR);
-        close_fd = use_fd;
+        use_fd = open("/dev/null", (fd == 0 ? O_RDONLY : O_RDWR) | O_CLOEXEC);
 
         if (use_fd < 0) {
           uv__write_int(error_fd, UV__ERR(errno));
@@ -326,9 +323,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
 
     if (fd <= 2)
       uv__nonblock_fcntl(fd, 0);
-
-    if (close_fd >= stdio_count)
-      uv__close(close_fd);
   }
 
   for (fd = 0; fd < stdio_count; fd++) {
