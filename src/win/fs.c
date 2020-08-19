@@ -2015,12 +2015,11 @@ static BOOL fs__clonefile_dup_extents(HANDLE src,
                                       int64_t offset,
                                       int64_t clone_size) {
   DWORD lpBytesReturned;
-  DUPLICATE_EXTENTS_DATA dup = {
-    .FileHandle = src,
-    .SourceFileOffset = { .QuadPart = offset },
-    .TargetFileOffset = { .QuadPart = offset },
-    .ByteCount = clone_size
-  };
+  DUPLICATE_EXTENTS_DATA dup;
+  dup.FileHandle = src;
+  dup.SourceFileOffset.QuadPart = offset;
+  dup.TargetFileOffset.QuadPart = offset;
+  dup.ByteCount = clone_size;
   return DeviceIoControl(
     dst,
     FSCTL_DUPLICATE_EXTENTS_TO_FILE,
@@ -2035,7 +2034,8 @@ static BOOL fs__clonefile_dup_extents(HANDLE src,
 
 static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
   DWORD error = 0;
-  HANDLE src_handle, dst_handle;
+  HANDLE src_handle;
+  HANDLE dst_handle;
 
   uv_stat_t statbuf;
   FILE_END_OF_FILE_INFORMATION eof_info;
@@ -2044,8 +2044,8 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags) {
 
   int64_t src_size;
   int64_t offset = 0;
-  const int64_t GIG = 1 << 30;
-  const int64_t CLUSTERSIZES[] = { 1 << 16, 1 << 12 };
+  const int64_t GIG = 0x40000000; /* 1 << 30 */
+  const int64_t CLUSTERSIZES[] = { 0x10000, 0x1000 }; /* 1 << 16, 1 << 12 */
 
   src_handle = CreateFileW(src,
                            GENERIC_READ,
