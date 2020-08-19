@@ -328,7 +328,8 @@ static void uv__process_child_init(const uv_process_options_t* options,
   for (fd = 0; fd < stdio_count; fd++) {
     use_fd = pipes[fd][1];
 
-    if (use_fd >= stdio_count)
+    if (use_fd >= stdio_count ||
+       (use_fd >= 3 && pipes[use_fd][1] < 0))
       uv__close(use_fd);
   }
 
