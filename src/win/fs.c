@@ -2044,7 +2044,7 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags, int* n
 
   int64_t src_size;
   int64_t offset = 0;
-  const int64_t GIG = 0x40000000; /* 1 << 30 */
+  const int64_t BATCH = 0xFFFF0000; /* 1 << 32 - 1 << 16 */
   const int64_t CLUSTERSIZES[] = { 0x10000, 0x1000 }; /* 1 << 16, 1 << 12 */
 
   src_handle = CreateFileW(src,
@@ -2091,16 +2091,19 @@ static DWORD fs__clonefile(const WCHAR* src, const WCHAR* dst, int flags, int* n
   }
 
   /* Do the cloning. Clones must fall by cluster boundary and may not be
-   * larger than 4GiB. */
-  for (; offset < src_size - GIG; offset += GIG) {
-    if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, GIG)) {
+   * larger than 4 GiB. 0xFFFF0000 is the maximum we can use without knowing
+   * the actual cluster size（4K or 64K). */
+  for (; offset < src_size - BATCH; offset += BATCH) {
+    if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, BATCH)) {
       error = GetLastError();
       goto exit2;
     }
   }
 
-  /* Try to clone the rest with cluster size. Size overflow is fine here. */
-  for (int i = 0; i < 2, i++) {
+  /* Clone the rest. We need to round up to a multiple of cluster size,
+   * but at the same time we can't have extra clusters hanging. So we can't
+   * just use some big number here. */
+  for (int i = 0; i < 2; i++) {
     int64_t size = (src_size - offset + (CLUSTERSIZES[i] - 1)) / CLUSTERSIZES[i];
     if (!fs__clonefile_dup_extents(src_handle, dst_handle, offset, size)) {
       error = GetLastError();
