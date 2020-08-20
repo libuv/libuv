@@ -36,6 +36,8 @@
 
 #ifdef __linux__
 #include <sys/eventfd.h>
+#include <sys/prctl.h>
+#include <time.h>
 #endif
 
 static void uv__async_send(uv_loop_t* loop);
@@ -82,8 +84,12 @@ int uv_async_send(uv_async_t* handle) {
 
 /* Only call this from the event loop thread. */
 static int uv__async_spin(uv_async_t* handle) {
+  unsigned long slack;
   int i;
   int rc;
+
+  slack = (unsigned long)-1;
+  (void) &slack;
 
   for (;;) {
     /* 997 is not completely chosen at random. It's a prime number, acyclical
@@ -97,18 +103,43 @@ static int uv__async_spin(uv_async_t* handle) {
       rc = cmpxchgi(&handle->pending, 2, 0);
 
       if (rc != 1)
-        return rc;
+        goto done;
 
       /* Other thread is busy with this handle, spin until it's done. */
       cpu_relax();
     }
 
+#ifdef __linux__
+    if (slack == (unsigned long) -1) {
+      if (prctl(PR_GET_TIMERSLACK, &slack) < 0)
+        abort();
+      if (prctl(PR_SET_TIMERSLACK, 3000))
+        abort();
+    }
+
+    {
+      struct timespec ts;
+      ts.tv_sec = 0;
+      ts.tv_nsec = 0;
+      nanosleep(&ts, NULL);
+    }
+#else
     /* Yield the CPU. We may have preempted the other thread while it's
      * inside the critical section and if it's running on the same CPU
      * as us, we'll just burn CPU cycles until the end of our time slice.
      */
     sched_yield();
+#endif
   }
+
+done:
+
+#ifdef __linux__
+  if (slack != (unsigned long) -1)
+    if (prctl(PR_SET_TIMERSLACK, slack))
+      abort();
+#endif
+  return rc;
 }
 
 
