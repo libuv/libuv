@@ -39,7 +39,11 @@ static void connect_cb(uv_connect_t* req, int status) {
   r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
   ASSERT(r == 0);
 
+#ifdef _WIN32
+  /* TODO(cjihrig): This assertion should happen on all platforms.
+     Refs: https://github.com/libuv/libuv/issues/2943 */
   ASSERT(0 == uv_is_writable(req->handle));
+#endif
 }
 
 TEST_IMPL(not_writable_after_shutdown) {

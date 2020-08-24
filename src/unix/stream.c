@@ -1278,7 +1278,10 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   req->cb = cb;
   stream->shutdown_req = req;
   stream->flags |= UV_HANDLE_SHUTTING;
+  /* TODO(cjihrig): The following line should be uncommented.
+     Refs: https://github.com/libuv/libuv/issues/2943
   stream->flags &= ~UV_HANDLE_WRITABLE;
+  */
 
   uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
   uv__stream_osx_interrupt_select(stream);
