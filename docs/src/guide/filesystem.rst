@@ -33,7 +33,7 @@ A file descriptor is obtained using
     int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb)
 
 ``flags`` and ``mode`` are standard
-`Unix flags <http://man7.org/linux/man-pages/man2/open.2.html>`_.
+`Unix flags <https://man7.org/linux/man-pages/man2/open.2.html>`_.
 libuv takes care of converting to the appropriate Windows flags.
 
 File descriptors are closed using

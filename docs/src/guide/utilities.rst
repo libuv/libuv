@@ -243,7 +243,7 @@ We let libcurl directly write the data to a file, but much more is possible if
 you so desire.
 
 ``start_timeout`` will be called immediately the first time by libcurl, so
-things are set in motion. This simply starts a libuv `timer <Timers>`_ which
+things are set in motion. This simply starts a libuv `timer <#timers>`_ which
 drives ``curl_multi_socket_action`` with ``CURL_SOCKET_TIMEOUT`` whenever it
 times out. ``curl_multi_socket_action`` is what drives libcurl, and what we
 call whenever sockets change state. But before we go into that, we need to poll

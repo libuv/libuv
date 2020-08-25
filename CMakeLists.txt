@@ -56,6 +56,8 @@ check_c_compiler_flag(-Wno-unused-parameter UV_LINT_NO_UNUSED_PARAMETER)
 check_c_compiler_flag(-Wstrict-prototypes UV_LINT_STRICT_PROTOTYPES)
 check_c_compiler_flag(-Wextra UV_LINT_EXTRA)
 
+check_c_compiler_flag(/utf-8 UV_LINT_UTF8_MSVC)
+
 set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter>)
 set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-prototypes>)
 set(lint-extra $<$<BOOL:${UV_LINT_EXTRA}>:-Wextra>)
@@ -76,6 +78,7 @@ set(lint-no-unsafe-msvc $<$<BOOL:${UV_LINT_NO_UNSAFE_MSVC}>:/wd4996>)
 string(CONCAT lint-default $<
   $<AND:$<BOOL:${UV_LINT_WALL}>,$<NOT:${is-msvc}>>:-Wall
 >)
+set(lint-utf8-msvc $<$<BOOL:${UV_LINT_UTF8_MSVC}>:/utf-8>)
 
 list(APPEND uv_cflags ${lint-strict-prototypes} ${lint-extra} ${lint-default} ${lint-w4})
 list(APPEND uv_cflags ${lint-no-unused-parameter})
@@ -90,6 +93,7 @@ list(APPEND uv_cflags ${lint-no-hides-param-msvc})
 list(APPEND uv_cflags ${lint-no-hides-global-msvc})
 list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
+list(APPEND uv_cflags ${lint-utf8-msvc} )
 
 set(uv_sources
     src/fs-poll.c
@@ -109,6 +113,8 @@ if(WIN32)
   list(APPEND uv_libraries
        psapi
        secur32
+       user32
+       advapi32
        iphlpapi
        userenv
        ws2_32)
@@ -282,7 +288,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
     src/unix/aix-common.c
     src/unix/ibmi.c
     src/unix/no-fsevents.c
-    src/unix/no-proctitle.c
     src/unix/posix-poll.c)
 endif()
 
@@ -417,6 +422,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-loop-handles.c
        test/test-loop-stop.c
        test/test-loop-time.c
+       test/test-metrics.c
        test/test-multiple-listen.c
        test/test-mutexes.c
        test/test-osx-select.c
@@ -474,6 +480,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-oob.c
        test/test-tcp-open.c
        test/test-tcp-read-stop.c
+       test/test-tcp-read-stop-start.c
        test/test-tcp-shutdown-after-write.c
        test/test-tcp-try-write-error.c
        test/test-tcp-try-write.c
@@ -483,6 +490,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
+       test/test-test-macros.c
        test/test-thread-affinity.c
        test/test-thread-equal.c
        test/test-thread.c
@@ -501,6 +509,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-create-socket-early.c
        test/test-udp-dgram-too-big.c
        test/test-udp-ipv6.c
+       test/test-udp-mmsg.c
        test/test-udp-multicast-interface.c
        test/test-udp-multicast-interface6.c
        test/test-udp-multicast-join.c
@@ -543,7 +552,7 @@ if(LIBUV_BUILD_TESTS)
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-if(UNIX)
+if(UNIX OR MINGW)
   # Now for some gibbering horrors from beyond the stars...
   foreach(lib IN LISTS uv_libraries)
     list(APPEND LIBS "-l${lib}")
@@ -570,7 +579,7 @@ if(UNIX)
   install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
-if(WIN32)
+if(MSVC)
   install(DIRECTORY include/ DESTINATION include)
   install(FILES LICENSE DESTINATION .)
   install(TARGETS uv uv_a

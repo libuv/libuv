@@ -29,12 +29,8 @@
 #include <sys/stat.h>
 #include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 
-/* FIXME we shouldn't need to branch in this file */
-#if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(__sun) || \
-    defined(_AIX) || defined(__MVS__) || \
-    defined(__HAIKU__)
-#include <unistd.h> /* unlink, rmdir, etc. */
+#ifndef _WIN32
+# include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <winioctl.h>
 # include <direct.h>
@@ -1342,7 +1338,10 @@ TEST_IMPL(fs_mkstemp) {
   ASSERT(strcmp(mkstemp_req1.path, mkstemp_req2.path) != 0);
 
   /* invalid template returns EINVAL */
-  ASSERT(uv_fs_mkstemp(NULL, &mkstemp_req3, "test_file", NULL) == UV_EINVAL);
+  ASSERT_EQ(UV_EINVAL, uv_fs_mkstemp(NULL, &mkstemp_req3, "test_file", NULL));
+
+  /* Make sure that path is empty string */
+  ASSERT_EQ(0, strlen(mkstemp_req3.path));
 
   /* We can write to the opened file */
   iov = uv_buf_init(test_buf, sizeof(test_buf));

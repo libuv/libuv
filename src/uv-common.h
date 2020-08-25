@@ -201,10 +201,6 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
 void uv__fs_readdir_cleanup(uv_fs_t* req);
 uv_dirent_type_t uv__fs_get_dirent_type(uv__dirent_t* dent);
 
-int uv__next_timeout(const uv_loop_t* loop);
-void uv__run_timers(uv_loop_t* loop);
-void uv__timer_close(uv_timer_t* handle);
-
 void uv__process_title_cleanup(void);
 void uv__signal_cleanup(void);
 void uv__threadpool_cleanup(void);
@@ -326,6 +322,12 @@ void uv__threadpool_cleanup(void);
   }                                                                           \
   while (0)
 
+#define uv__get_internal_fields(loop)                                         \
+  ((uv__loop_internal_fields_t*) loop->internal_fields)
+
+#define uv__get_loop_metrics(loop)                                            \
+  (&uv__get_internal_fields(loop)->loop_metrics)
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);
@@ -344,5 +346,23 @@ void uv__check_close(uv_check_t* handle);
 void uv__run_timers(uv_loop_t* loop);
 int uv__next_timeout(const uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
+
+/* Metrics prototypes */
+typedef struct uv__loop_metrics_s uv__loop_metrics_t;
+typedef struct uv__loop_internal_fields_s uv__loop_internal_fields_t;
+
+struct uv__loop_metrics_s {
+  uint64_t provider_entry_time;
+  uint64_t provider_idle_time;
+  uv_mutex_t lock;
+};
+
+void uv__metrics_update_idle_time(uv_loop_t* loop);
+void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
+
+struct uv__loop_internal_fields_s {
+  unsigned int flags;
+  uv__loop_metrics_t loop_metrics;
+};
 
 #endif /* UV_COMMON_H_ */
