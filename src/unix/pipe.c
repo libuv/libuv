@@ -382,6 +382,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
 
 int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
+  uv_os_fd_t temp[2];
   int err;
 #if defined(__FreeBSD__) || defined(__linux__)
   int flags = O_CLOEXEC;
@@ -389,35 +390,40 @@ int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
   if ((read_flags & UV_NONBLOCK_PIPE) && (write_flags & UV_NONBLOCK_PIPE))
     flags |= UV_FS_O_NONBLOCK;
 
-  if (pipe2(fds, flags))
+  if (pipe2(temp, flags))
     return UV__ERR(errno);
 
-  if (flags & UV_FS_O_NONBLOCK)
+  if (flags & UV_FS_O_NONBLOCK) {
+    fds[0] = temp[0];
+    fds[1] = temp[1];
     return 0;
+  }
 #else
-  if (pipe(fds))
+  if (pipe(temp))
     return UV__ERR(errno);
 
-  if ((err = uv__cloexec(fds[0], 1)))
+  if ((err = uv__cloexec(temp[0], 1)))
     goto fail;
 
-  if ((err = uv__cloexec(fds[1], 1)))
+  if ((err = uv__cloexec(temp[1], 1)))
     goto fail;
 #endif
 
   if (read_flags & UV_NONBLOCK_PIPE)
-    if ((err = uv__nonblock(fds[0], 1)))
+    if ((err = uv__nonblock(temp[0], 1)))
       goto fail;
 
   if (write_flags & UV_NONBLOCK_PIPE)
-    if ((err = uv__nonblock(fds[1], 1)))
+    if ((err = uv__nonblock(temp[1], 1)))
       goto fail;
 
+  fds[0] = temp[0];
+  fds[1] = temp[1];
   return 0;
 
 fail:
-  uv__close(fds[0]);
-  uv__close(fds[1]);
+  uv__close(temp[0]);
+  uv__close(temp[1]);
   return err;
 }
 

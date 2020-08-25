@@ -134,7 +134,7 @@ API
     The resulting handles can be passed to `uv_tcp_open`, used with `uv_spawn`,
     or for any other purpose.
 
-    Valid values for `flags` are:
+    Valid values for `flags0` and `flags1` are:
 
       - UV_NONBLOCK_PIPE: Opens the specified socket handle for `OVERLAPPED`
         or `FIONBIO`/`O_NONBLOCK` I/O usage.

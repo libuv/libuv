@@ -1594,7 +1594,7 @@ int uv__tcp_connect(uv_connect_t* req,
 #define WSA_FLAG_NO_HANDLE_INHERIT 0x80
 #endif
 
-int uv_socketpair(int type, int protocol, uv_os_sock_t socket_vector[2], int flags0, int flags1) {
+int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int flags1) {
   SOCKET server = INVALID_SOCKET;
   SOCKET client0 = INVALID_SOCKET;
   SOCKET client1 = INVALID_SOCKET;
@@ -1678,8 +1678,8 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t socket_vector[2], int fla
 
   closesocket(server);
 
-  socket_vector[0] = client0;
-  socket_vector[1] = client1;
+  fds[0] = client0;
+  fds[1] = client1;
 
   return 0;
 

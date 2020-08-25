@@ -343,6 +343,7 @@ static int uv__create_pipe_pair(
 
 
 int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
+  uv_file temp[2];
   int err;
   HANDLE readh;
   HANDLE writeh;
@@ -355,8 +356,8 @@ int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
   err = uv__create_pipe_pair(&readh, &writeh, read_flags, write_flags, 0, (char*) &fds[0]);
   if (err != 0)
     return err;
-  fds[0] = _open_osfhandle((intptr_t) readh, 0);
-  if (fds[0] == -1) {
+  temp[0] = _open_osfhandle((intptr_t) readh, 0);
+  if (temp[0] == -1) {
     if (errno == UV_EMFILE)
       err = UV_EMFILE;
     else
@@ -365,16 +366,18 @@ int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
     CloseHandle(writeh);
     return err;
   }
-  fds[1] = _open_osfhandle((intptr_t) writeh, 0);
-  if (fds[1] == -1) {
+  temp[1] = _open_osfhandle((intptr_t) writeh, 0);
+  if (temp[1] == -1) {
     if (errno == UV_EMFILE)
       err = UV_EMFILE;
     else
       err = UV_UNKNOWN;
-    _close(fds[0]);
+    _close(temp[0]);
     CloseHandle(writeh);
     return err;
   }
+  fds[0] = temp[0];
+  fds[1] = temp[1];
   return 0;
 }
 

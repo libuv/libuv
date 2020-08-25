@@ -31,7 +31,7 @@
 #ifdef _WIN32
 # include <shellapi.h>
 # include <wchar.h>
-  typedef BOOL (*WINAPI sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
+  typedef BOOL (WINAPI *sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
 #else
 # include <unistd.h>
 # include <sys/wait.h>
