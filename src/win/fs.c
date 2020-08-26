@@ -148,12 +148,9 @@ void uv_fs_init(void) {
 }
 
 
-static int fs__decode_wtf8_char(const char** input) {
-  unsigned int code_point;
-  unsigned char b;
-  unsigned char b2;
-  unsigned char b3;
-  unsigned char b4;
+static int32_t fs__decode_wtf8_char(const char** input) {
+  uint32_t code_point;
+  uint8_t b, b2, b3, b4;
 
   b = **input;
   if (b <= 0x7F) {
@@ -182,14 +179,14 @@ static int fs__decode_wtf8_char(const char** input) {
   }
   if (code_point > 0x10ffff)
     return -1;
-  return (int)code_point;
+  return (int32_t)code_point;
 }
 
 
 static int fs__get_length_wtf8(const char* source_ptr) {
   int w_target_len = 0;
   do {
-    int code_point;
+    int32_t code_point;
     code_point = fs__decode_wtf8_char(&source_ptr);
     if (code_point < 0)
       return -1;
@@ -203,7 +200,7 @@ static int fs__get_length_wtf8(const char* source_ptr) {
 
 static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
   do {
-    int code_point;
+    int32_t code_point;
     code_point = fs__decode_wtf8_char(&source_ptr);
     // fs__get_length_wtf8 should have been called and checked first
     assert(code_point >= 0);
@@ -306,7 +303,7 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
 }
 
 
-static unsigned int fs__get_surrogate_value(const WCHAR* w_source_ptr,
+static int32_t fs__get_surrogate_value(const WCHAR* w_source_ptr,
     DWORD w_source_len) {
   WCHAR u = w_source_ptr[0];
   if (u >= 0xD800 && u <= 0xDBFF && w_source_len > 1) {
@@ -320,10 +317,12 @@ static unsigned int fs__get_surrogate_value(const WCHAR* w_source_ptr,
 
 static int fs__get_length_wide(const WCHAR* w_source_ptr, DWORD w_source_len) {
   int target_len;
-  int code_point;
+  int32_t code_point;
 
   for (target_len = 0; w_source_len; w_source_len--, w_source_ptr++) {
     code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
+    // can be invalid UTF-8 but must be valid WTF-8
+    assert(code_point >= 0);
     if (code_point < 0x80)
       target_len += 1;
     else if (code_point < 0x800)
@@ -341,11 +340,13 @@ static int fs__get_length_wide(const WCHAR* w_source_ptr, DWORD w_source_len) {
 
 
 static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
-    char** target_ptr, size_t* target_len_ptr) {
+    char** target_ptr, int* target_len_ptr) {
   int target_len;
   char* target;
   if (target_len_ptr == NULL || *target_len_ptr == 0) {
     target_len = fs__get_length_wide(w_source_ptr, w_source_len);
+    // can be invalid UTF-8 but must be valid WTF-8
+    assert(target_len >= 0);
 
     if (target_len_ptr != NULL) {
       *target_len_ptr = target_len;
@@ -370,8 +371,10 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
   }
 
   for (; w_source_len; w_source_len--, w_source_ptr++) {
-    int code_point;
+    int32_t code_point;
     code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
+    // can be invalid UTF-8 but must be valid WTF-8
+    assert(code_point >= 0);
 
     if (code_point < 0x80) {
       *target++ = code_point;
@@ -398,7 +401,7 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
 
 
 INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
-    size_t* target_len_ptr) {
+    int* target_len_ptr) {
   char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
   REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*) buffer;
   WCHAR* w_target;
@@ -1506,7 +1509,7 @@ void fs__scandir(uv_fs_t* req) {
       uv__dirent_t* dirent;
 
       size_t wchar_len;
-      size_t wtf8_len;
+      int wtf8_len;
       char* wtf8;
 
       /* Obtain a pointer to the current directory entry. */
@@ -1536,6 +1539,8 @@ void fs__scandir(uv_fs_t* req) {
 
       /* Compute the space required to store the filename as WTF-8. */
       wtf8_len = fs__get_length_wide(&info->FileName[0], wchar_len);
+      // can be invalid UTF-8 but must be valid WTF-8
+      assert(wtf8_len >= 0);
 
       /* Resize the dirent array if needed. */
       if (dirents_used >= dirents_size) {
@@ -1774,7 +1779,7 @@ void fs__closedir(uv_fs_t* req) {
 
 INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     int do_lstat) {
-  size_t target_length = 0;
+  int target_length = 0;
   FILE_ALL_INFORMATION file_info;
   FILE_FS_VOLUME_INFORMATION volume_info;
   NTSTATUS nt_status;
