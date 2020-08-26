@@ -150,39 +150,39 @@ void uv_fs_init(void) {
 
 static int32_t fs__decode_wtf8_char(const char** input) {
   uint32_t code_point;
-  uint8_t b;
+  uint8_t b1;
   uint8_t b2;
   uint8_t b3;
   uint8_t b4;
 
-  b = **input;
-  if (b <= 0x7F) {
-    code_point = b;
-  } else if (b >= 0xC2 && b <= 0xDF) {
-    b2 = *++*input;
-    if (b2 == '\0' || (b2 & 0xc0) != 0x80)
-      return -1;
-    code_point = ((b & 0x1F) << 6) + (b2 & 0x3F);
-  } else if (b >= 0xE0 && b <= 0xEF) {
-    if (!(*input)[1] || !(*input)[2])
-      return -1;
-    b2 = *++*input;
-    b3 = *++*input;
-    code_point = ((b & 0x0F) << 12) + ((b2 & 0x3F) << 6) + (b3 & 0x3F);
-  } else if (b >= 0xF0 && b <= 0xF0) {
-    if (!(*input)[1] || !(*input)[2] || !(*input)[3])
-      return -1;
-    b2 = *++*input;
-    b3 = *++*input;
-    b4 = *++*input;
-    code_point = ((b & 0x07) << 18) + ((b2 & 0x3F) << 12) +
-      ((b3 & 0x3F) << 6) + (b4 & 0x3F);
-  } else {
+  b1 = **input;
+  if (b1 <= 0x7f)
+    return b1;
+  code_point = b1;
+
+  b2 = *++*input;
+  if ((b2 & 0xc0) != 0x80)
     return -1;
-  }
-  if (code_point > 0x10ffff)
+  code_point = (code_point << 6) | (b2 & 0x3f);
+  if (b1 <= 0xc0)
+    return 0x7ff & code_point;
+
+  b3 = *++*input;
+  if ((b3 & 0xc0) != 0x80)
     return -1;
-  return (int32_t)code_point;
+  code_point = (code_point << 6) | (b3 & 0x3f);
+  if (b1 <= 0xe0)
+    return 0xffff & code_point;
+
+  b4 = *++*input;
+  if ((b4 & 0xc0) != 0x80)
+    return -1;
+  code_point = (code_point << 6) | (b4 & 0x3f);
+  if (code_point <= 0x03d0ffff) /* implies b1 <= 0xe0 */
+    return 0x1fffff & code_point;
+
+  /* code point too large */
+  return -1;
 }
 
 
