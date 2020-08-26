@@ -193,7 +193,7 @@ static int fs__get_length_wtf8(const char* source_ptr) {
     code_point = fs__decode_wtf8_char(&source_ptr);
     if (code_point < 0)
       return -1;
-    if (code_point > 0xFFFF)
+    if (code_point > 0xffff)
       w_target_len++;
     w_target_len++;
   } while (*source_ptr++);
@@ -208,8 +208,8 @@ static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
     /* fs__get_length_wtf8 should have been called and checked first. */
     assert(code_point >= 0);
     if (code_point > 0x10000) {
-      *w_target++ = (((code_point - 0x10000) >> 10) + 0xD800);
-      *w_target++ = ((code_point - 0x10000) & 0x3FF) + 0xDC00;
+      *w_target++ = (((code_point - 0x10000) >> 10) + 0xd800);
+      *w_target++ = ((code_point - 0x10000) & 0x3ff) + 0xdc00;
     } else {
       *w_target++ = code_point;
     }
@@ -310,11 +310,11 @@ static int32_t fs__get_surrogate_value(const WCHAR* w_source_ptr,
     DWORD w_source_len) {
   WCHAR u;
   u = w_source_ptr[0];
-  if (u >= 0xD800 && u <= 0xDBFF && w_source_len > 1) {
+  if (u >= 0xd800 && u <= 0xdbff && w_source_len > 1) {
     WCHAR next;
     next = w_source_ptr[1];
-    if (next >= 0xDC00 && next <= 0xDFFF)
-      return 0x10000 + ((u - 0xD800) << 10) + (next - 0xDC00);
+    if (next >= 0xdc00 && next <= 0xdfff)
+      return 0x10000 + ((u - 0xd800) << 10) + (next - 0xdc00);
   }
   return u;
 }
@@ -384,17 +384,17 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
     if (code_point < 0x80) {
       *target++ = code_point;
     } else if (code_point < 0x800) {
-      *target++ = 0xC0 | (code_point >> 6);
-      *target++ = 0x80 | (code_point & 0x3F);
+      *target++ = 0xc0 | (code_point >> 6);
+      *target++ = 0x80 | (code_point & 0x3f);
     } else if (code_point < 0x10000) {
-      *target++ = 0xE0 | (code_point >> 12);
-      *target++ = 0x80 | ((code_point >> 6) & 0x3F);
-      *target++ = 0x80 | (code_point & 0x3F);
+      *target++ = 0xe0 | (code_point >> 12);
+      *target++ = 0x80 | ((code_point >> 6) & 0x3f);
+      *target++ = 0x80 | (code_point & 0x3f);
     } else {
-      *target++ = 0xF0 | (code_point >> 18);
-      *target++ = 0x80 | ((code_point >> 12) & 0x3F);
-      *target++ = 0x80 | ((code_point >> 6) & 0x3F);
-      *target++ = 0x80 | (code_point & 0x3F);
+      *target++ = 0xf0 | (code_point >> 18);
+      *target++ = 0x80 | ((code_point >> 12) & 0x3f;
+      *target++ = 0x80 | ((code_point >> 6) & 0x3f);
+      *target++ = 0x80 | (code_point & 0x3f);
       w_source_ptr++;
       w_source_len--;
     }
