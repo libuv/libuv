@@ -21,9 +21,10 @@
 #include "uv.h"
 #include "internal.h"
 
-#if TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE || MAC_OS_X_VERSION_MAX_ALLOWED < 1070
 
 /* iOS (currently) doesn't provide the FSEvents-API (nor CoreServices) */
+/* macOS prior to 10.7 doesn't provide the full FSEvents API so use kqueue */
 
 int uv__fsevents_init(uv_fs_event_t* handle) {
   return 0;
@@ -40,34 +41,33 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 
 #else /* TARGET_OS_IPHONE */
 
+#include "darwin-stub.h"
+
 #include <dlfcn.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <pthread.h>
 
-#include <CoreFoundation/CFRunLoop.h>
-#include <CoreServices/CoreServices.h>
+static const int kFSEventsModified =
+    kFSEventStreamEventFlagItemChangeOwner |
+    kFSEventStreamEventFlagItemFinderInfoMod |
+    kFSEventStreamEventFlagItemInodeMetaMod |
+    kFSEventStreamEventFlagItemModified |
+    kFSEventStreamEventFlagItemXattrMod;
 
-/* These are macros to avoid "initializer element is not constant" errors
- * with old versions of gcc.
- */
-#define kFSEventsModified (kFSEventStreamEventFlagItemFinderInfoMod |         \
-                           kFSEventStreamEventFlagItemModified |              \
-                           kFSEventStreamEventFlagItemInodeMetaMod |          \
-                           kFSEventStreamEventFlagItemChangeOwner |           \
-                           kFSEventStreamEventFlagItemXattrMod)
+static const int kFSEventsRenamed =
+    kFSEventStreamEventFlagItemCreated |
+    kFSEventStreamEventFlagItemRemoved |
+    kFSEventStreamEventFlagItemRenamed;
 
-#define kFSEventsRenamed  (kFSEventStreamEventFlagItemCreated |               \
-                           kFSEventStreamEventFlagItemRemoved |               \
-                           kFSEventStreamEventFlagItemRenamed)
-
-#define kFSEventsSystem   (kFSEventStreamEventFlagUserDropped |               \
-                           kFSEventStreamEventFlagKernelDropped |             \
-                           kFSEventStreamEventFlagEventIdsWrapped |           \
-                           kFSEventStreamEventFlagHistoryDone |               \
-                           kFSEventStreamEventFlagMount |                     \
-                           kFSEventStreamEventFlagUnmount |                   \
-                           kFSEventStreamEventFlagRootChanged)
+static const int kFSEventsSystem =
+    kFSEventStreamEventFlagUserDropped |
+    kFSEventStreamEventFlagKernelDropped |
+    kFSEventStreamEventFlagEventIdsWrapped |
+    kFSEventStreamEventFlagHistoryDone |
+    kFSEventStreamEventFlagMount |
+    kFSEventStreamEventFlagUnmount |
+    kFSEventStreamEventFlagRootChanged;
 
 typedef struct uv__fsevents_event_s uv__fsevents_event_t;
 typedef struct uv__cf_loop_signal_s uv__cf_loop_signal_t;
@@ -147,7 +147,7 @@ static void (*pFSEventStreamRelease)(FSEventStreamRef);
 static void (*pFSEventStreamScheduleWithRunLoop)(FSEventStreamRef,
                                                  CFRunLoopRef,
                                                  CFStringRef);
-static Boolean (*pFSEventStreamStart)(FSEventStreamRef);
+static int (*pFSEventStreamStart)(FSEventStreamRef);
 static void (*pFSEventStreamStop)(FSEventStreamRef);
 
 #define UV__FSEVENTS_PROCESS(handle, block)                                   \
@@ -214,7 +214,7 @@ static void uv__fsevents_push_event(uv_fs_event_t* handle,
 
 
 /* Runs in CF thread, when there're events in FSEventStream */
-static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
+static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
                                   void* info,
                                   size_t numEvents,
                                   void* eventPaths,
@@ -262,10 +262,12 @@ static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
       if (len < handle->realpath_len)
         continue;
 
+      /* Make sure that realpath actually named a directory,
+       * (unless watching root, which alone keeps a trailing slash on the realpath)
+       * or that we matched the whole string */
       if (handle->realpath_len != len &&
+          handle->realpath_len > 1 &&
           path[handle->realpath_len] != '/')
-        /* Make sure that realpath actually named a directory,
-         * or that we matched the whole string */
         continue;
 
       if (memcmp(path, handle->realpath, handle->realpath_len) != 0)
@@ -337,11 +339,8 @@ static int uv__fsevents_create_stream(uv_loop_t* loop, CFArrayRef paths) {
   FSEventStreamCreateFlags flags;
 
   /* Initialize context */
-  ctx.version = 0;
+  memset(&ctx, 0, sizeof(ctx));
   ctx.info = loop;
-  ctx.retain = NULL;
-  ctx.release = NULL;
-  ctx.copyDescription = NULL;
 
   latency = 0.05;
 
@@ -744,6 +743,8 @@ static void* uv__cf_loop_runner(void* arg) {
                          state->signal_source,
                          *pkCFRunLoopDefaultMode);
 
+  state->loop = NULL;
+
   return NULL;
 }
 
@@ -796,12 +797,13 @@ int uv__cf_loop_signal(uv_loop_t* loop,
 
   uv_mutex_lock(&loop->cf_mutex);
   QUEUE_INSERT_TAIL(&loop->cf_signals, &item->member);
-  uv_mutex_unlock(&loop->cf_mutex);
 
   state = loop->cf_state;
   assert(state != NULL);
   pCFRunLoopSourceSignal(state->signal_source);
   pCFRunLoopWakeUp(state->loop);
+
+  uv_mutex_unlock(&loop->cf_mutex);
 
   return 0;
 }

@@ -301,6 +301,11 @@ typedef struct uv__dirent_s {
   char d_name[1];
 } uv__dirent_t;
 
+#define UV_DIR_PRIVATE_FIELDS \
+  HANDLE dir_handle;          \
+  WIN32_FIND_DATAW find_data; \
+  BOOL need_find_call;
+
 #define HAVE_DIRENT_TYPES
 #define UV__DT_DIR     UV_DIRENT_DIR
 #define UV__DT_FILE    UV_DIRENT_FILE
@@ -512,7 +517,7 @@ typedef struct {
       /* eol conversion state */                                              \
       unsigned char previous_eol;                                             \
       /* ansi parser state */                                                 \
-      unsigned char ansi_parser_state;                                        \
+      unsigned short ansi_parser_state;                                       \
       unsigned char ansi_csi_argc;                                            \
       unsigned short ansi_csi_argv[4];                                        \
       COORD saved_position;                                                   \
@@ -663,6 +668,7 @@ typedef struct {
 #define UV_FS_O_APPEND       _O_APPEND
 #define UV_FS_O_CREAT        _O_CREAT
 #define UV_FS_O_EXCL         _O_EXCL
+#define UV_FS_O_FILEMAP      0x20000000
 #define UV_FS_O_RANDOM       _O_RANDOM
 #define UV_FS_O_RDONLY       _O_RDONLY
 #define UV_FS_O_RDWR         _O_RDWR

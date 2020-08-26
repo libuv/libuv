@@ -95,8 +95,12 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   if (uv__stream_fd(handle) == -1)
     return UV_EINVAL;
 
-#if defined(__MVS__)
+  if (handle->ipc)
+    return UV_EINVAL;
+
+#if defined(__MVS__) || defined(__PASE__)
   /* On zOS, backlog=0 has undefined behaviour */
+  /* On IBMi PASE, backlog=0 leads to "Connection refused" error */
   if (backlog == 0)
     backlog = 1;
   else if (backlog < 0)
@@ -215,7 +219,7 @@ void uv_pipe_connect(uv_connect_t* req,
   }
 
   if (err == 0)
-    uv__io_start(handle->loop, &handle->io_watcher, POLLIN | POLLOUT);
+    uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
 
 out:
   handle->delayed_error = err;
@@ -233,9 +237,6 @@ out:
 }
 
 
-typedef int (*uv__peersockfunc)(int, struct sockaddr*, socklen_t*);
-
-
 static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
                                     uv__peersockfunc func,
                                     char* buffer,
@@ -246,10 +247,13 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
 
   addrlen = sizeof(sa);
   memset(&sa, 0, addrlen);
-  err = func(uv__stream_fd(handle), (struct sockaddr*) &sa, &addrlen);
+  err = uv__getsockpeername((const uv_handle_t*) handle,
+                            func,
+                            (struct sockaddr*) &sa,
+                            (int*) &addrlen);
   if (err < 0) {
     *size = 0;
-    return UV__ERR(errno);
+    return err;
   }
 
 #if defined(__linux__)
@@ -261,7 +265,7 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
     addrlen = strlen(sa.sun_path);
 
 
-  if (addrlen >= *size) {
+  if ((size_t)addrlen >= *size) {
     *size = addrlen + 1;
     return UV_ENOBUFS;
   }

@@ -1,4 +1,4 @@
-/* Copyright StrongLoop, Inc. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,54 +19,21 @@
  * IN THE SOFTWARE.
  */
 
-#include "defs.h"
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "uv.h"
+#include "task.h"
 
-static void pr_do(FILE *stream,
-                  const char *label,
-                  const char *fmt,
-                  va_list ap);
+TEST_IMPL(gettimeofday) {
+  uv_timeval64_t tv;
+  int r;
 
-void *xmalloc(size_t size) {
-  void *ptr;
+  tv.tv_sec = 0;
+  r = uv_gettimeofday(&tv);
+  ASSERT(r == 0);
+  ASSERT(tv.tv_sec != 0);
 
-  ptr = malloc(size);
-  if (ptr == NULL) {
-    pr_err("out of memory, need %lu bytes", (unsigned long) size);
-    exit(1);
-  }
+  /* Test invalid input. */
+  r = uv_gettimeofday(NULL);
+  ASSERT(r == UV_EINVAL);
 
-  return ptr;
-}
-
-void pr_info(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stdout, "info", fmt, ap);
-  va_end(ap);
-}
-
-void pr_warn(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stderr, "warn", fmt, ap);
-  va_end(ap);
-}
-
-void pr_err(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stderr, "error", fmt, ap);
-  va_end(ap);
-}
-
-static void pr_do(FILE *stream,
-                  const char *label,
-                  const char *fmt,
-                  va_list ap) {
-  char fmtbuf[1024];
-  vsnprintf(fmtbuf, sizeof(fmtbuf), fmt, ap);
-  fprintf(stream, "%s:%s: %s\n", _getprogname(), label, fmtbuf);
+  return 0;
 }

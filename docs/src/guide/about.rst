@@ -1,7 +1,7 @@
 About
 =====
 
-`Nikhil Marathe <http://nikhilism.com>`_ started writing this book one
+`Nikhil Marathe <https://nikhilism.com>`_ started writing this book one
 afternoon (June 16, 2012) when he didn't feel like programming. He had recently
 been stung by the lack of good documentation on libuv while working on
 `node-taglib <https://github.com/nikhilm/node-taglib>`_. Although reference
@@ -13,8 +13,8 @@ Nikhil is indebted to Marc Lehmann's comprehensive `man page
 <http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod>`_ about libev which
 describes much of the semantics of the two libraries.
 
-This book was made using `Sphinx <http://sphinx.pocoo.org/>`_ and `vim
-<http://www.vim.org>`_.
+This book was made using `Sphinx <https://www.sphinx-doc.org>`_ and `vim
+<https://www.vim.org>`_.
 
 .. note::
     In 2017 the libuv project incorporated the Nikhil's work into the official
