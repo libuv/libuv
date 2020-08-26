@@ -150,15 +150,18 @@ void uv_fs_init(void) {
 
 static int32_t fs__decode_wtf8_char(const char** input) {
   uint32_t code_point;
-  uint8_t b, b2, b3, b4;
+  uint8_t b;
+  uint8_t b2;
+  uint8_t b3;
+  uint8_t b4;
 
   b = **input;
   if (b <= 0x7F) {
     code_point = b;
   } else if (b >= 0xC2 && b <= 0xDF) {
-    if (!(*input)[1])
-      return -1;
     b2 = *++*input;
+    if (b2 == '\0' || (b2 & 0xc0) != 0x80)
+      return -1;
     code_point = ((b & 0x1F) << 6) + (b2 & 0x3F);
   } else if (b >= 0xE0 && b <= 0xEF) {
     if (!(*input)[1] || !(*input)[2])
@@ -202,7 +205,7 @@ static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
   do {
     int32_t code_point;
     code_point = fs__decode_wtf8_char(&source_ptr);
-    // fs__get_length_wtf8 should have been called and checked first
+    /* fs__get_length_wtf8 should have been called and checked first. */
     assert(code_point >= 0);
     if (code_point > 0x10000) {
       *w_target++ = (((code_point - 0x10000) >> 10) + 0xD800);
@@ -305,9 +308,11 @@ INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
 
 static int32_t fs__get_surrogate_value(const WCHAR* w_source_ptr,
     DWORD w_source_len) {
-  WCHAR u = w_source_ptr[0];
+  WCHAR u;
+  u = w_source_ptr[0];
   if (u >= 0xD800 && u <= 0xDBFF && w_source_len > 1) {
-    WCHAR next = w_source_ptr[1];
+    WCHAR next;
+    next = w_source_ptr[1];
     if (next >= 0xDC00 && next <= 0xDFFF)
       return 0x10000 + ((u - 0xD800) << 10) + (next - 0xDC00);
   }
@@ -321,7 +326,7 @@ static int fs__get_length_wide(const WCHAR* w_source_ptr, DWORD w_source_len) {
 
   for (target_len = 0; w_source_len; w_source_len--, w_source_ptr++) {
     code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
-    // can be invalid UTF-8 but must be valid WTF-8
+    /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(code_point >= 0);
     if (code_point < 0x80)
       target_len += 1;
@@ -345,7 +350,7 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
   char* target;
   if (target_len_ptr == NULL || *target_len_ptr == 0) {
     target_len = fs__get_length_wide(w_source_ptr, w_source_len);
-    // can be invalid UTF-8 but must be valid WTF-8
+    /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(target_len >= 0);
 
     if (target_len_ptr != NULL) {
@@ -373,7 +378,7 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
   for (; w_source_len; w_source_len--, w_source_ptr++) {
     int32_t code_point;
     code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
-    // can be invalid UTF-8 but must be valid WTF-8
+    /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(code_point >= 0);
 
     if (code_point < 0x80) {
@@ -1539,7 +1544,7 @@ void fs__scandir(uv_fs_t* req) {
 
       /* Compute the space required to store the filename as WTF-8. */
       wtf8_len = fs__get_length_wide(&info->FileName[0], wchar_len);
-      // can be invalid UTF-8 but must be valid WTF-8
+      /* Can be invalid UTF-8 but must be valid WTF-8. */
       assert(wtf8_len >= 0);
 
       /* Resize the dirent array if needed. */
