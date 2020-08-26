@@ -144,27 +144,38 @@ void uv_fs_init(void) {
 
 static unsigned int fs__decode_wtf8_char(const char** input) {
   unsigned int code_point;
-  unsigned char b = **input, b2, b3, b4;
-  if (b >= 0x00 && b <= 0x7F) {
+  unsigned char b;
+  unsigned char b2;
+  unsigned char b3;
+  unsigned char b4;
+
+  b = **input;
+  if (b <= 0x7F) {
     code_point = b;
   } else if (b >= 0xC2 && b <= 0xDF) {
-    assert((*input)[1]);
+    if (!(*input)[1])
+      return STATUS_INVALID_PARAMETER;
     b2 = *++*input;
     code_point = ((b & 0x1F) << 6) + (b2 & 0x3F);
   } else if (b >= 0xE0 && b <= 0xEF) {
-    assert((*input)[1] && (*input)[2]);
+    if (!(*input)[1] || !(*input)[2])
+      return STATUS_INVALID_PARAMETER;
     b2 = *++*input;
     b3 = *++*input;
     code_point = ((b & 0x0F) << 12) + ((b2 & 0x3F) << 6) + (b3 & 0x3F);
   } else if (b >= 0xF0 && b <= 0xF0) {
-    assert((*input)[1] && (*input)[2] && (*input)[3]);
+    if (!(*input)[1] || !(*input)[2] || !(*input)[3])
+      return STATUS_INVALID_PARAMETER;
     b2 = *++*input;
     b3 = *++*input;
     b4 = *++*input;
     code_point = ((b & 0x07) << 18) + ((b2 & 0x3F) << 12) +
       ((b3 & 0x3F) << 6) + (b4 & 0x3F);
+  } else {
+    return STATUS_INVALID_PARAMETER;
   }
-  assert(code_point <= 1114111);
+  if (code_point > 0x10ffff)
+    return STATUS_INVALID_PARAMETER;
   return code_point;
 }
 
@@ -182,7 +193,8 @@ static int fs__get_length_wtf8(const char* source_ptr) {
 
 static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
   do {
-    unsigned int code_point = fs__decode_wtf8_char(&source_ptr);
+    unsigned int code_point;
+    code_point = fs__decode_wtf8_char(&source_ptr);
     if (code_point > 0x10000) {
       *w_target++ = (((code_point - 0x10000) >> 10) + 0xD800);
       *w_target++ = ((code_point - 0x10000) & 0x3FF) + 0xDC00;
@@ -311,10 +323,8 @@ static int fs__get_length_wide(const WCHAR* w_source_ptr, DWORD w_source_len) {
 }
 
 
-static int fs__wide_to_wtf8(WCHAR* w_source_ptr,
-                               DWORD w_source_len,
-                               char** target_ptr,
-                               size_t* target_len_ptr) {
+static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
+    char** target_ptr, size_t* target_len_ptr) {
   int target_len;
   char* target;
   if (target_len_ptr == NULL || *target_len_ptr == 0) {
@@ -342,9 +352,9 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr,
     target = *target_ptr;
   }
 
-  for (; w_source_len; w_source_len--, w_source_ptr++)
-  {
-    unsigned int code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
+  for (; w_source_len; w_source_len--, w_source_ptr++) {
+    unsigned int code_point;
+    code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
 
     if (code_point < 0x80) {
       *target++ = code_point;
