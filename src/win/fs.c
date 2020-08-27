@@ -158,6 +158,8 @@ static int32_t fs__decode_wtf8_char(const char** input) {
   b1 = **input;
   if (b1 <= 0x7f)
     return b1;
+  if (b1 <= 0xbf)
+    return -1;
   code_point = b1;
 
   b2 = *++*input;
@@ -178,7 +180,7 @@ static int32_t fs__decode_wtf8_char(const char** input) {
   if ((b4 & 0xc0) != 0x80)
     return -1;
   code_point = (code_point << 6) | (b4 & 0x3f);
-  if (code_point <= 0x03d0ffff) /* implies b1 <= 0xe0 */
+  if (code_point <= 0x3d0ffff) /* implies b1 <= 0xf0 */
     return 0x1fffff & code_point;
 
   /* code point too large */
