@@ -157,31 +157,31 @@ static int32_t fs__decode_wtf8_char(const char** input) {
 
   b1 = **input;
   if (b1 <= 0x7f)
-    return b1;
+    return b1; /* ASCII code point */
   if (b1 <= 0xbf)
-    return -1;
+    return -1; /* invalid: continuation byte */
   code_point = b1;
 
   b2 = *++*input;
   if ((b2 & 0xc0) != 0x80)
-    return -1;
+    return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b2 & 0x3f);
   if (b1 <= 0xc0)
-    return 0x7ff & code_point;
+    return 0x7ff & code_point; /* two-byte character */
 
   b3 = *++*input;
   if ((b3 & 0xc0) != 0x80)
-    return -1;
+    return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b3 & 0x3f);
   if (b1 <= 0xe0)
-    return 0xffff & code_point;
+    return 0xffff & code_point; /* three-byte character */
 
   b4 = *++*input;
   if ((b4 & 0xc0) != 0x80)
-    return -1;
+    return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b4 & 0x3f);
   if (code_point <= 0x3d0ffff) /* implies b1 <= 0xf0 */
-    return 0x1fffff & code_point;
+    return 0x1fffff & code_point; /* four-byte character */
 
   /* code point too large */
   return -1;
