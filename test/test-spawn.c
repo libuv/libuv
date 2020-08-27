@@ -1615,7 +1615,7 @@ TEST_IMPL(spawn_fs_open) {
   kernelbase_module = GetModuleHandleA("kernelbase.dll");
   pCompareObjectHandles = (sCompareObjectHandles)
       GetProcAddress(kernelbase_module, "CompareObjectHandles");
-  ASSERT(pCompareObjectHandles(fd, dup_fd));
+  ASSERT(pCompareObjectHandles == NULL || pCompareObjectHandles(fd, dup_fd));
 #else
   dup_fd = dup(fd);
 #endif
