@@ -266,9 +266,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
-  list(APPEND uv_defines PATH_MAX=255)
+  list(APPEND uv_defines PATH_MAX=1024)
   list(APPEND uv_defines _AE_BIMODAL)
   list(APPEND uv_defines _ALL_SOURCE)
+  list(APPEND uv_defines _ENHANCED_ASCII_EXT=0xFFFFFFFF)
   list(APPEND uv_defines _ISOC99_SOURCE)
   list(APPEND uv_defines _LARGE_TIME_API)
   list(APPEND uv_defines _OPEN_MSGQ_EXT)
@@ -279,14 +280,24 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   list(APPEND uv_defines _UNIX03_SOURCE)
   list(APPEND uv_defines _UNIX03_THREADS)
   list(APPEND uv_defines _UNIX03_WITHDRAWN)
+  list(APPEND uv_defines _XOPEN_SOURCE=600)
   list(APPEND uv_defines _XOPEN_SOURCE_EXTENDED)
   list(APPEND uv_sources
        src/unix/pthread-fixes.c
        src/unix/os390.c
        src/unix/os390-syscalls.c)
-  list(APPEND uv_cflags -Wc,DLL -Wc,exportall -Wc,xplink)
-  list(APPEND uv_libraries -Wl,xplink)
-  list(APPEND uv_test_libraries -Wl,xplink)
+  list(APPEND uv_cflags
+       -q64
+       -qascii
+       -qexportall
+       -qgonumber
+       -qlongname
+       -qlibansi
+       -qfloat=IEEE
+       -qtune=10
+       -qarch=10
+       -qasm
+       -qasmlib=sys1.maclib:sys1.modgen)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
