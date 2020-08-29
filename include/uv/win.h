@@ -471,6 +471,10 @@ typedef struct {
   LPFN_WSARECV func_wsarecv;                                                  \
   LPFN_WSARECVFROM func_wsarecvfrom;
 
+#define UV_DEVICE_PRIVATE_FIELDS                                              \
+  HANDLE handle;                                                              \
+  uv_buf_t read_buffer;
+
 #define uv_pipe_server_fields                                                 \
   int pending_instances;                                                      \
   uv_pipe_accept_t* accept_reqs;                                              \
@@ -497,6 +501,14 @@ typedef struct {
     struct { uv_pipe_server_fields } serv;                                    \
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
+
+/* struct parameters for DeviceIoControl */
+typedef struct uv_ioargs_s {
+  void* input;
+  uint32_t input_len;
+  void* output;
+  uint32_t output_len;
+} uv_ioargs_t;
 
 /* TODO: put the parser states in an union - TTY handles are always half-duplex
  * so read-state can safely overlap write-state. */

@@ -257,6 +257,12 @@ void uv__threadpool_cleanup(void);
 #define uv__is_active(h)                                                      \
   (((h)->flags & UV_HANDLE_ACTIVE) != 0)
 
+#define uv__is_stream(h)                                                      \
+  ((h)->type == UV_TCP ||                                                     \
+   (h)->type == UV_TTY ||                                                     \
+   (h)->type == UV_DEVICE ||                                                  \
+   (h)->type == UV_NAMED_PIPE)
+
 #define uv__is_closing(h)                                                     \
   (((h)->flags & (UV_HANDLE_CLOSING | UV_HANDLE_CLOSED)) != 0)
 

@@ -290,6 +290,9 @@ int uv__random_getentropy(void* buf, size_t buflen);
 int uv__random_readpath(const char* path, void* buf, size_t buflen);
 int uv__random_sysctl(void* buf, size_t buflen);
 
+/* device */
+void uv__device_close(uv_device_t* handle);
+
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);
 #define uv__stream_fd(handle) (uv___stream_fd((const uv_stream_t*) (handle)))

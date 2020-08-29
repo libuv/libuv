@@ -144,6 +144,7 @@ if(WIN32)
        src/win/async.c
        src/win/core.c
        src/win/detect-wakeup.c
+       src/win/device.c
        src/win/dl.c
        src/win/error.c
        src/win/fs.c
@@ -179,6 +180,7 @@ else()
   list(APPEND uv_sources
        src/unix/async.c
        src/unix/core.c
+       src/unix/device.c
        src/unix/dl.c
        src/unix/fs.c
        src/unix/getaddrinfo.c
@@ -457,6 +459,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-cwd-and-chdir.c
        test/test-default-loop-close.c
        test/test-delayed-accept.c
+       test/test-device-tun-echo.c
        test/test-dlerror.c
        test/test-eintr-handling.c
        test/test-embed.c
