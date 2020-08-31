@@ -36,6 +36,16 @@
 /* Actual tests and helpers are defined in test-list.h */
 #include "test-list.h"
 
+#ifdef __MVS__
+#include "zos-base.h"
+/* Initialize environment and zoslib */
+__attribute__((constructor)) void init() {
+  zoslib_config_t config;
+  init_zoslib_config(&config);
+  init_zoslib(config);
+}
+#endif
+
 int ipc_helper(int listen_after_write);
 int ipc_helper_heavy_traffic_deadlock_bug(void);
 int ipc_helper_tcp_connection(void);

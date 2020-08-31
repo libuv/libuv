@@ -266,6 +266,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+  enable_language(CXX)
   list(APPEND uv_defines PATH_MAX=1024)
   list(APPEND uv_defines _AE_BIMODAL)
   list(APPEND uv_defines _ALL_SOURCE)
@@ -298,6 +299,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
        -qarch=10
        -qasm
        -qasmlib=sys1.maclib:sys1.modgen)
+  find_library(ZOSLIB
+    NAMES zoslib
+    PATHS ${ZOSLIB_DIR}
+    PATH_SUFFIXES lib
+  )
+  list(APPEND uv_libraries ${ZOSLIB})
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
@@ -360,6 +367,10 @@ target_include_directories(uv
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+  target_include_directories(uv PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
+  set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
+endif()
 target_link_libraries(uv ${uv_libraries})
 
 add_library(uv_a STATIC ${uv_sources})
@@ -371,6 +382,10 @@ target_include_directories(uv_a
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+  target_include_directories(uv_a PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
+  set_target_properties(uv_a PROPERTIES LINKER_LANGUAGE CXX)
+endif()
 target_link_libraries(uv_a ${uv_libraries})
 
 if(LIBUV_BUILD_TESTS)
@@ -593,6 +608,11 @@ if(LIBUV_BUILD_TESTS)
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+    set_target_properties(uv_run_benchmarks_a PROPERTIES LINKER_LANGUAGE CXX)
+    set_target_properties(uv_run_tests PROPERTIES LINKER_LANGUAGE CXX)
+    set_target_properties(uv_run_tests_a PROPERTIES LINKER_LANGUAGE CXX)
+  endif()
 endif()
 
 if(UNIX OR MINGW)
