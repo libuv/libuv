@@ -220,6 +220,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int i;
   int user_timeout;
   int reset_timeout;
+  user_timeout = 0;
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
