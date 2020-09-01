@@ -639,6 +639,10 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
     /* Some event that we are not interested in. */
     return 0;
 
+  /* `__rfim_utok` is treated as text when it should be treated as binary while
+   * running in ASCII mode, resulting in an unwanted autoconversion.
+   */
+  __a2e_l(msg.__rfim_utok, sizeof(msg.__rfim_utok));
   handle = *(uv_fs_event_t**)(msg.__rfim_utok);
   handle->cb(handle, uv__basename_r(handle->path), events, 0);
   return 1;
