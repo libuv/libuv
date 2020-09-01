@@ -394,7 +394,7 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
       *target++ = 0x80 | (code_point & 0x3f);
     } else {
       *target++ = 0xf0 | (code_point >> 18);
-      *target++ = 0x80 | ((code_point >> 12) & 0x3f;
+      *target++ = 0x80 | ((code_point >> 12) & 0x3f);
       *target++ = 0x80 | ((code_point >> 6) & 0x3f);
       *target++ = 0x80 | (code_point & 0x3f);
       w_source_ptr++;
