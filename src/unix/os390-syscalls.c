@@ -550,15 +550,6 @@ ssize_t os390_readlink(const char* path, char* buf, size_t len) {
 }
 
 
-size_t strnlen(const char* str, size_t maxlen) {
-  char* p = memchr(str, 0, maxlen);
-  if (p == NULL)
-    return maxlen;
-  else
-    return p - str;
-}
-
-
 int sem_init(UV_PLATFORM_SEM_T* semid, int pshared, unsigned int value) {
   UNREACHABLE();
 }
