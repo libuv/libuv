@@ -27,12 +27,6 @@
 #include <termios.h>
 #include <sys/msg.h>
 
-#define CW_INTRPT 1
-#define CW_CONDVAR 32
-
-#pragma linkage(BPX4CTW, OS)
-#pragma linkage(BPX1CTW, OS)
-
 static QUEUE global_epoll_queue;
 static uv_mutex_t global_epoll_lock;
 static uv_once_t once = UV_ONCE_INIT;
@@ -378,46 +372,6 @@ void epoll_queue_close(uv__os390_epoll* lst) {
   lst->msg_queue = -1;
   uv__free(lst->items);
   lst->items = NULL;
-}
-
-
-int nanosleep(const struct timespec* req, struct timespec* rem) {
-  unsigned nano;
-  unsigned seconds;
-  unsigned events;
-  unsigned secrem;
-  unsigned nanorem;
-  int rv;
-  int err;
-  int rsn;
-
-  nano = (int)req->tv_nsec;
-  seconds = req->tv_sec;
-  events = CW_CONDVAR | CW_INTRPT;
-  secrem = 0;
-  nanorem = 0;
-
-#if defined(_LP64)
-  BPX4CTW(&seconds, &nano, &events, &secrem, &nanorem, &rv, &err, &rsn);
-#else
-  BPX1CTW(&seconds, &nano, &events, &secrem, &nanorem, &rv, &err, &rsn);
-#endif
-
-  /* Don't clobber errno unless BPX1CTW/BPX4CTW errored.
-   * Don't leak EAGAIN, that just means the timeout expired.
-   */
-  if (rv == -1)
-    if (err == EAGAIN)
-      rv = 0;
-    else
-      errno = err;
-
-  if (rem != NULL && (rv == 0 || err == EINTR)) {
-    rem->tv_nsec = nanorem;
-    rem->tv_sec = secrem;
-  }
-
-  return rv;
 }
 
 
