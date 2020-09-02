@@ -44,6 +44,10 @@ extern char **environ;
 # include <grp.h>
 #endif
 
+#if defined(__MVS__)
+# include "zos-base.h"
+#endif
+
 
 static void uv__chld(uv_signal_t* handle, int signum) {
   uv_process_t* process;
@@ -336,7 +340,11 @@ static void uv__process_child_init(const uv_process_options_t* options,
     _exit(127);
   }
 
+#ifdef __MVS__
+  execvpe(options->file, options->args, environ);
+#else
   execvp(options->file, options->args);
+#endif
   uv__write_int(error_fd, UV__ERR(errno));
   _exit(127);
 }
