@@ -89,7 +89,7 @@ Data types
     the `UV_UDP_MMSG_CHUNK` flag cleared and the `UV_UDP_MMSG_FREE` flag set.
     The callee can now safely free the provided buffer.
 
-    .. versionchanged:: 1.39.0 added the `UV_UDP_MMSG_FREE` flag.
+    .. versionchanged:: 1.40.0 added the `UV_UDP_MMSG_FREE` flag.
 
     .. note::
         The receive callback will be called with `nread` == 0 and `addr` == NULL when there is
@@ -400,7 +400,7 @@ API
                         it must be explicitly requested by passing the `UV_UDP_RECVMMSG` flag to
                         :c:func:`uv_udp_init_ex`.
     .. versionchanged:: 1.39.0 :c:func:`uv_udp_using_recvmmsg` can be used in `alloc_cb` to
-                        determine if a buffer sized for use with :man:`recvmmsg(2)` should be 
+                        determine if a buffer sized for use with :man:`recvmmsg(2)` should be
                         allocated for the current handle/platform.
 
 .. c:function:: int uv_udp_using_recvmmsg(uv_udp_t* handle)
