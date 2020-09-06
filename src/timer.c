@@ -131,9 +131,7 @@ uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
 
 
 uint64_t uv_timer_get_due_in(const uv_timer_t* handle) {
-  uint64_t due = handle->timeout;
-  uint64_t now = uv_now(handle->loop);
-  return due - now;
+  return handle->timeout - handle->loop->time;
 }
 
 
