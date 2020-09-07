@@ -317,7 +317,7 @@
 #if defined(EPROTO) && !defined(_WIN32)
 # define UV__EPROTO UV__ERR(EPROTO)
 #else
-# define UV__EPROTO UV__ERR(4046)
+# define UV__EPROTO UV__ERR(-4046)
 #endif
 
 #if defined(EPROTONOSUPPORT) && !defined(_WIN32)
@@ -439,5 +439,10 @@
 # define UV__EFTYPE (-4028)
 #endif
 
+#if defined(EILSEQ) && !defined(_WIN32)
+# define UV__EILSEQ UV__ERR(EILSEQ)
+#else
+# define UV__EILSEQ (-4027)
+#endif
 
 #endif /* UV_ERRNO_H_ */

@@ -16,7 +16,7 @@ Data types
 
     Loop data type.
 
-.. c:type:: uv_run_mode
+.. c:enum:: uv_run_mode
 
     Mode used to run the loop with :c:func:`uv_run`.
 
@@ -68,6 +68,13 @@ API
       to suppress unnecessary wakeups when using a sampling profiler.
       Requesting other signals will fail with UV_EINVAL.
 
+    - UV_METRICS_IDLE_TIME: Accumulate the amount of idle time the event loop
+      spends in the event provider.
+
+      This option is necessary to use :c:func:`uv_metrics_idle_time`.
+
+    .. versionchanged:: 1.39.0 added the UV_METRICS_IDLE_TIME option.
+
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 
     Releases all internal loop resources. Call this function only when the loop
@@ -106,6 +113,8 @@ API
       pending callbacks. Returns zero if done (no active handles
       or requests left), or non-zero if more callbacks are expected (meaning
       you should run the event loop again sometime in the future).
+
+    :c:func:`uv_run` is not reentrant. It must not be called from a callback.
 
 .. c:function:: int uv_loop_alive(const uv_loop_t* loop)
 

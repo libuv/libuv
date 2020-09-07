@@ -26,6 +26,7 @@
 
 
 /* Ntdll function pointers */
+sRtlGetVersion pRtlGetVersion;
 sRtlNtStatusToDosError pRtlNtStatusToDosError;
 sNtDeviceIoControlFile pNtDeviceIoControlFile;
 sNtQueryInformationFile pNtQueryInformationFile;
@@ -33,6 +34,7 @@ sNtSetInformationFile pNtSetInformationFile;
 sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 sNtQueryDirectoryFile pNtQueryDirectoryFile;
 sNtQuerySystemInformation pNtQuerySystemInformation;
+sNtQueryInformationProcess pNtQueryInformationProcess;
 
 /* Kernel32 function pointers */
 sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
@@ -54,6 +56,9 @@ void uv_winapi_init(void) {
   if (ntdll_module == NULL) {
     uv_fatal_error(GetLastError(), "GetModuleHandleA");
   }
+
+  pRtlGetVersion = (sRtlGetVersion) GetProcAddress(ntdll_module,
+                                                   "RtlGetVersion");
 
   pRtlNtStatusToDosError = (sRtlNtStatusToDosError) GetProcAddress(
       ntdll_module,
@@ -102,6 +107,13 @@ void uv_winapi_init(void) {
     uv_fatal_error(GetLastError(), "GetProcAddress");
   }
 
+  pNtQueryInformationProcess = (sNtQueryInformationProcess) GetProcAddress(
+      ntdll_module,
+      "NtQueryInformationProcess");
+  if (pNtQueryInformationProcess == NULL) {
+    uv_fatal_error(GetLastError(), "GetProcAddress");
+  }
+
   kernel32_module = GetModuleHandleA("kernel32.dll");
   if (kernel32_module == NULL) {
     uv_fatal_error(GetLastError(), "GetModuleHandleA");
@@ -122,5 +134,4 @@ void uv_winapi_init(void) {
     pSetWinEventHook = (sSetWinEventHook)
       GetProcAddress(user32_module, "SetWinEventHook");
   }
-
 }

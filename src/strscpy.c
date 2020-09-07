@@ -1,4 +1,4 @@
-/* Copyright StrongLoop, Inc. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,54 +19,20 @@
  * IN THE SOFTWARE.
  */
 
-#include "defs.h"
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "strscpy.h"
+#include <limits.h>  /* SSIZE_MAX */
 
-static void pr_do(FILE *stream,
-                  const char *label,
-                  const char *fmt,
-                  va_list ap);
+ssize_t uv__strscpy(char* d, const char* s, size_t n) {
+  size_t i;
 
-void *xmalloc(size_t size) {
-  void *ptr;
+  for (i = 0; i < n; i++)
+    if ('\0' == (d[i] = s[i]))
+      return i > SSIZE_MAX ? UV_E2BIG : (ssize_t) i;
 
-  ptr = malloc(size);
-  if (ptr == NULL) {
-    pr_err("out of memory, need %lu bytes", (unsigned long) size);
-    exit(1);
-  }
+  if (i == 0)
+    return 0;
 
-  return ptr;
-}
+  d[--i] = '\0';
 
-void pr_info(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stdout, "info", fmt, ap);
-  va_end(ap);
-}
-
-void pr_warn(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stderr, "warn", fmt, ap);
-  va_end(ap);
-}
-
-void pr_err(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  pr_do(stderr, "error", fmt, ap);
-  va_end(ap);
-}
-
-static void pr_do(FILE *stream,
-                  const char *label,
-                  const char *fmt,
-                  va_list ap) {
-  char fmtbuf[1024];
-  vsnprintf(fmtbuf, sizeof(fmtbuf), fmt, ap);
-  fprintf(stream, "%s:%s: %s\n", _getprogname(), label, fmtbuf);
+  return UV_E2BIG;
 }

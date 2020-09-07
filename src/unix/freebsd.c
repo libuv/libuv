@@ -95,7 +95,7 @@ int uv_exepath(char* buffer, size_t* size) {
   mib[3] = -1;
 
   abspath_size = sizeof abspath;
-  if (sysctl(mib, 4, abspath, &abspath_size, NULL, 0))
+  if (sysctl(mib, ARRAY_SIZE(mib), abspath, &abspath_size, NULL, 0))
     return UV__ERR(errno);
 
   assert(abspath_size > 0);
@@ -130,10 +130,15 @@ uint64_t uv_get_total_memory(void) {
 
   size_t size = sizeof(info);
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
     return UV__ERR(errno);
 
   return (uint64_t) info;
+}
+
+
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
 }
 
 
@@ -142,7 +147,7 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0) return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -163,7 +168,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   kinfo_size = sizeof(kinfo);
 
-  if (sysctl(mib, 4, &kinfo, &kinfo_size, NULL, 0))
+  if (sysctl(mib, ARRAY_SIZE(mib), &kinfo, &kinfo_size, NULL, 0))
     return UV__ERR(errno);
 
   page_size = getpagesize();
@@ -285,12 +290,26 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 }
 
 
-void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
-  int i;
+int uv__sendmmsg(int fd,
+                 struct uv__mmsghdr* mmsg,
+                 unsigned int vlen,
+                 unsigned int flags) {
+#if __FreeBSD__ >= 11
+  return sendmmsg(fd, mmsg, vlen, flags);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
 
-  for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
-  }
 
-  uv__free(cpu_infos);
+int uv__recvmmsg(int fd,
+                 struct uv__mmsghdr* mmsg,
+                 unsigned int vlen,
+                 unsigned int flags,
+                 struct timespec* timeout) {
+#if __FreeBSD__ >= 11
+  return recvmmsg(fd, mmsg, vlen, flags, timeout);
+#else
+  return errno = ENOSYS, -1;
+#endif
 }

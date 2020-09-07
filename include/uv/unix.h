@@ -31,13 +31,14 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <netdb.h>
+#include <netdb.h>  /* MAXHOSTNAMELEN on Solaris */
 
 #include <termios.h>
 #include <pwd.h>
 
 #if !defined(__MVS__)
 #include <semaphore.h>
+#include <sys/param.h> /* MAXHOSTNAMELEN on Linux and the BSDs */
 #endif
 #include <pthread.h>
 #include <signal.h>
@@ -48,8 +49,8 @@
 # include "uv/linux.h"
 #elif defined (__MVS__)
 # include "uv/os390.h"
-#elif defined(__PASE__)
-# include "uv/posix.h"
+#elif defined(__PASE__)  /* __PASE__ and _AIX are both defined on IBM i */
+# include "uv/posix.h"  /* IBM i needs uv/posix.h, not uv/aix.h */
 #elif defined(_AIX)
 # include "uv/aix.h"
 #elif defined(__sun)
@@ -62,9 +63,11 @@
       defined(__OpenBSD__)         || \
       defined(__NetBSD__)
 # include "uv/bsd.h"
-#elif defined(__CYGWIN__) || defined(__MSYS__)
+#elif defined(__CYGWIN__) || \
+      defined(__MSYS__)   || \
+      defined(__GNU__)
 # include "uv/posix.h"
-#elif defined(__GNU__)
+#elif defined(__HAIKU__)
 # include "uv/posix.h"
 #endif
 
@@ -136,7 +139,9 @@ typedef pthread_cond_t uv_cond_t;
 typedef pthread_key_t uv_key_t;
 
 /* Note: guard clauses should match uv_barrier_init's in src/unix/thread.c. */
-#if defined(_AIX) || !defined(PTHREAD_BARRIER_SERIAL_THREAD)
+#if defined(_AIX) || \
+    defined(__OpenBSD__) || \
+    !defined(PTHREAD_BARRIER_SERIAL_THREAD)
 /* TODO(bnoordhuis) Merge into uv_barrier_t in v2. */
 struct _uv_barrier {
   uv_mutex_t mutex;
@@ -162,6 +167,9 @@ typedef gid_t uv_gid_t;
 typedef uid_t uv_uid_t;
 
 typedef struct dirent uv__dirent_t;
+
+#define UV_DIR_PRIVATE_FIELDS \
+  DIR* dir;
 
 #if defined(DT_UNKNOWN)
 # define HAVE_DIRENT_TYPES
@@ -397,11 +405,25 @@ typedef struct {
 #else
 # define UV_FS_O_CREAT        0
 #endif
-#if defined(O_DIRECT)
+
+#if defined(__linux__) && defined(__arm__)
+# define UV_FS_O_DIRECT       0x10000
+#elif defined(__linux__) && defined(__m68k__)
+# define UV_FS_O_DIRECT       0x10000
+#elif defined(__linux__) && defined(__mips__)
+# define UV_FS_O_DIRECT       0x08000
+#elif defined(__linux__) && defined(__powerpc__)
+# define UV_FS_O_DIRECT       0x20000
+#elif defined(__linux__) && defined(__s390x__)
+# define UV_FS_O_DIRECT       0x04000
+#elif defined(__linux__) && defined(__x86_64__)
+# define UV_FS_O_DIRECT       0x04000
+#elif defined(O_DIRECT)
 # define UV_FS_O_DIRECT       O_DIRECT
 #else
 # define UV_FS_O_DIRECT       0
 #endif
+
 #if defined(O_DIRECTORY)
 # define UV_FS_O_DIRECTORY    O_DIRECTORY
 #else
@@ -474,6 +496,7 @@ typedef struct {
 #endif
 
 /* fs open() flags supported on other platforms: */
+#define UV_FS_O_FILEMAP       0
 #define UV_FS_O_RANDOM        0
 #define UV_FS_O_SHORT_LIVED   0
 #define UV_FS_O_SEQUENTIAL    0

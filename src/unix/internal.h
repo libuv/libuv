@@ -25,11 +25,13 @@
 #include "uv-common.h"
 
 #include <assert.h>
+#include <limits.h> /* _POSIX_PATH_MAX, PATH_MAX */
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
-#include <fcntl.h>  /* O_CLOEXEC, may be */
+#include <fcntl.h>  /* O_CLOEXEC and O_NONBLOCK, if supported. */
 #include <stdio.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
@@ -58,6 +60,12 @@
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <AvailabilityMacros.h>
+#endif
+
+#if defined(PATH_MAX)
+# define UV__PATH_MAX PATH_MAX
+#else
+# define UV__PATH_MAX 8192
 #endif
 
 #if defined(__ANDROID__)
@@ -95,12 +103,9 @@ int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
  */
 #if defined(__clang__) ||                                                     \
     defined(__GNUC__) ||                                                      \
-    defined(__INTEL_COMPILER) ||                                              \
-    defined(__SUNPRO_C)
-# define UV_DESTRUCTOR(declaration) __attribute__((destructor)) declaration
+    defined(__INTEL_COMPILER)
 # define UV_UNUSED(declaration)     __attribute__((unused)) declaration
 #else
-# define UV_DESTRUCTOR(declaration) declaration
 # define UV_UNUSED(declaration)     declaration
 #endif
 
@@ -184,6 +189,7 @@ int uv__nonblock_ioctl(int fd, int set);
 int uv__nonblock_fcntl(int fd, int set);
 int uv__close(int fd); /* preserves errno */
 int uv__close_nocheckstdio(int fd);
+int uv__close_nocancel(int fd);
 int uv__socket(int domain, int type, int protocol);
 ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
 void uv__make_close_pending(uv_handle_t* handle);
@@ -260,7 +266,14 @@ void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
+int uv__search_path(const char* prog, char* buf, size_t* buflen);
 
+/* random */
+int uv__random_devurandom(void* buf, size_t buflen);
+int uv__random_getrandom(void* buf, size_t buflen);
+int uv__random_getentropy(void* buf, size_t buflen);
+int uv__random_readpath(const char* path, void* buf, size_t buflen);
+int uv__random_sysctl(void* buf, size_t buflen);
 
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);
@@ -269,13 +282,12 @@ int uv___stream_fd(const uv_stream_t* handle);
 #define uv__stream_fd(handle) ((handle)->io_watcher.fd)
 #endif /* defined(__APPLE__) */
 
-#ifdef UV__O_NONBLOCK
-# define UV__F_NONBLOCK UV__O_NONBLOCK
+#ifdef O_NONBLOCK
+# define UV__F_NONBLOCK O_NONBLOCK
 #else
 # define UV__F_NONBLOCK 1
 #endif
 
-int uv__make_socketpair(int fds[2], int flags);
 int uv__make_pipe(int fds[2], int flags);
 
 #if defined(__APPLE__)
@@ -283,24 +295,6 @@ int uv__make_pipe(int fds[2], int flags);
 int uv__fsevents_init(uv_fs_event_t* handle);
 int uv__fsevents_close(uv_fs_event_t* handle);
 void uv__fsevents_loop_delete(uv_loop_t* loop);
-
-/* OSX < 10.7 has no file events, polyfill them */
-#ifndef MAC_OS_X_VERSION_10_7
-
-static const int kFSEventStreamCreateFlagFileEvents = 0x00000010;
-static const int kFSEventStreamEventFlagItemCreated = 0x00000100;
-static const int kFSEventStreamEventFlagItemRemoved = 0x00000200;
-static const int kFSEventStreamEventFlagItemInodeMetaMod = 0x00000400;
-static const int kFSEventStreamEventFlagItemRenamed = 0x00000800;
-static const int kFSEventStreamEventFlagItemModified = 0x00001000;
-static const int kFSEventStreamEventFlagItemFinderInfoMod = 0x00002000;
-static const int kFSEventStreamEventFlagItemChangeOwner = 0x00004000;
-static const int kFSEventStreamEventFlagItemXattrMod = 0x00008000;
-static const int kFSEventStreamEventFlagItemIsFile = 0x00010000;
-static const int kFSEventStreamEventFlagItemIsDir = 0x00020000;
-static const int kFSEventStreamEventFlagItemIsSymlink = 0x00040000;
-
-#endif /* __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070 */
 
 #endif /* defined(__APPLE__) */
 
@@ -323,5 +317,35 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
 #if defined(__linux__)
 int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
 #endif
+
+typedef int (*uv__peersockfunc)(int, struct sockaddr*, socklen_t*);
+
+int uv__getsockpeername(const uv_handle_t* handle,
+                        uv__peersockfunc func,
+                        struct sockaddr* name,
+                        int* namelen);
+
+#if defined(__linux__)            ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__FreeBSD_kernel__)
+#define HAVE_MMSG 1
+struct uv__mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
+};
+
+int uv__recvmmsg(int fd,
+                 struct uv__mmsghdr* mmsg,
+                 unsigned int vlen,
+                 unsigned int flags,
+                 struct timespec* timeout);
+int uv__sendmmsg(int fd,
+                 struct uv__mmsghdr* mmsg,
+                 unsigned int vlen,
+                 unsigned int flags);
+#else
+#define HAVE_MMSG 0
+#endif
+
 
 #endif /* UV_UNIX_INTERNAL_H_ */

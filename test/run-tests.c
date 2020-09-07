@@ -42,17 +42,24 @@ int ipc_helper_tcp_connection(void);
 int ipc_helper_closed_handle(void);
 int ipc_send_recv_helper(void);
 int ipc_helper_bind_twice(void);
+int ipc_helper_send_zero(void);
 int stdio_over_pipes_helper(void);
-int spawn_stdin_stdout(void);
+void spawn_stdin_stdout(void);
+void process_title_big_argv(void);
 int spawn_tcp_server_helper(void);
 
 static int maybe_run_test(int argc, char **argv);
 
 
 int main(int argc, char **argv) {
-  if (platform_init(argc, argv))
+#ifndef _WIN32
+  if (0 == geteuid() && NULL == getenv("UV_RUN_AS_ROOT")) {
+    fprintf(stderr, "The libuv test suite cannot be run as root.\n");
     return EXIT_FAILURE;
+  }
+#endif
 
+  platform_init(argc, argv);
   argv = uv_setup_args(argc, argv);
 
   switch (argc) {
@@ -66,7 +73,9 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+#ifndef __SUNPRO_C
   return EXIT_SUCCESS;
+#endif
 }
 
 
@@ -102,6 +111,10 @@ static int maybe_run_test(int argc, char **argv) {
 
   if (strcmp(argv[1], "ipc_helper_bind_twice") == 0) {
     return ipc_helper_bind_twice();
+  }
+
+  if (strcmp(argv[1], "ipc_helper_send_zero") == 0) {
+    return ipc_helper_send_zero();
   }
 
   if (strcmp(argv[1], "stdio_over_pipes_helper") == 0) {
@@ -142,11 +155,11 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper5") == 0) {
     const char out[] = "fourth stdio!\n";
     notify_parent_process();
-#ifdef _WIN32
-    DWORD bytes;
-    WriteFile((HANDLE) _get_osfhandle(3), out, sizeof(out) - 1, &bytes, NULL);
-#else
     {
+#ifdef _WIN32
+      DWORD bytes;
+      WriteFile((HANDLE) _get_osfhandle(3), out, sizeof(out) - 1, &bytes, NULL);
+#else
       ssize_t r;
 
       do
@@ -154,8 +167,8 @@ static int maybe_run_test(int argc, char **argv) {
       while (r == -1 && errno == EINTR);
 
       fsync(3);
-    }
 #endif
+    }
     return 1;
   }
 
@@ -196,7 +209,11 @@ static int maybe_run_test(int argc, char **argv) {
     notify_parent_process();
     ASSERT(sizeof(fd) == read(0, &fd, sizeof(fd)));
     ASSERT(fd > 2);
+# if defined(__PASE__)  /* On IBMi PASE, write() returns 1 */
+    ASSERT(1 == write(fd, "x", 1));
+# else
     ASSERT(-1 == write(fd, "x", 1));
+# endif  /* !__PASE__ */
 
     return 1;
   }
@@ -204,7 +221,8 @@ static int maybe_run_test(int argc, char **argv) {
 
   if (strcmp(argv[1], "spawn_helper9") == 0) {
     notify_parent_process();
-    return spawn_stdin_stdout();
+    spawn_stdin_stdout();
+    return 1;
   }
 
 #ifndef _WIN32
@@ -219,6 +237,12 @@ static int maybe_run_test(int argc, char **argv) {
     return 1;
   }
 #endif  /* !_WIN32 */
+
+  if (strcmp(argv[1], "process_title_big_argv_helper") == 0) {
+    notify_parent_process();
+    process_title_big_argv();
+    return 0;
+  }
 
   return run_test(argv[1], 0, 1);
 }
