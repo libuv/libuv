@@ -53,9 +53,9 @@ API
 
 .. c:function:: int uv_timer_again(uv_timer_t* handle)
 
-    Stop the timer, and if it is repeating restart it using the repeat value
-    as the timeout. If the timer has never been started before it returns
-    UV_EINVAL.
+    Stop the timer and restart it using the repeat value as the timeout. If the
+    timer has never been started before, or the timer is not a repeating timer,
+    it returns `UV_EINVAL`.
 
 .. c:function:: void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat)
 

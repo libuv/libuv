@@ -23,6 +23,7 @@
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 #ifdef _WIN32
@@ -127,6 +128,30 @@ TEST_IMPL(pipe_listen_without_bind) {
 
   r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
   ASSERT(r == UV_EINVAL);
+
+  uv_close((uv_handle_t*)&server, close_cb);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(close_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(pipe_bind_error_long_path) {
+  char path[2048];
+  uv_pipe_t server;
+  int r;
+
+  memset(path, '.', sizeof(path) - 1);
+  path[sizeof(path) - 1] = '\0';
+
+  r = uv_pipe_init(uv_default_loop(), &server, 0);
+  ASSERT(r == 0);
+  r = uv_pipe_bind(&server, path);
+  ASSERT(r == UV_ENAMETOOLONG);
 
   uv_close((uv_handle_t*)&server, close_cb);
 

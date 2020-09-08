@@ -349,23 +349,19 @@ static BOOL compare_screen(uv_tty_t* tty_out,
 
 static void initialize_tty(uv_tty_t* tty_out) {
   int r;
-  int ttyout_fd;
   /* Make sure we have an FD that refers to a tty */
-  HANDLE handle;
+  HANDLE ttyout;
 
   uv_tty_set_vterm_state(UV_TTY_UNSUPPORTED);
 
-  handle = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE,
+  ttyout = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE,
                                      FILE_SHARE_READ | FILE_SHARE_WRITE,
                                      NULL,
                                      CONSOLE_TEXTMODE_BUFFER,
                                      NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-
-  ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
-  ASSERT(ttyout_fd >= 0);
-  ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
-  r = uv_tty_init(uv_default_loop(), tty_out, ttyout_fd, 0); /* Writable. */
+  ASSERT(ttyout != INVALID_HANDLE_VALUE);
+  ASSERT(UV_TTY == uv_guess_handle(ttyout));
+  r = uv_tty_init(uv_default_loop(), tty_out, ttyout, 0); /* Writable. */
   ASSERT(r == 0);
 }
 

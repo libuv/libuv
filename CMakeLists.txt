@@ -99,6 +99,7 @@ set(uv_sources
     src/fs-poll.c
     src/idna.c
     src/inet.c
+    src/loop-watcher.c
     src/random.c
     src/strscpy.c
     src/threadpool.c
@@ -111,6 +112,7 @@ if(WIN32)
   list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0600)
   list(APPEND uv_libraries
        psapi
+       secur32
        user32
        advapi32
        iphlpapi
@@ -127,14 +129,12 @@ if(WIN32)
        src/win/getaddrinfo.c
        src/win/getnameinfo.c
        src/win/handle.c
-       src/win/loop-watcher.c
        src/win/pipe.c
        src/win/thread.c
        src/win/poll.c
        src/win/process.c
        src/win/process-stdio.c
        src/win/signal.c
-       src/win/snprintf.c
        src/win/stream.c
        src/win/tcp.c
        src/win/tty.c
@@ -143,7 +143,7 @@ if(WIN32)
        src/win/winapi.c
        src/win/winsock.c)
   list(APPEND uv_test_libraries ws2_32)
-  list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
+  list(APPEND uv_test_sources test/runner-win.c)
 else()
   list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   if(NOT CMAKE_SYSTEM_NAME MATCHES "Android|OS390|QNX")
@@ -159,7 +159,6 @@ else()
        src/unix/fs.c
        src/unix/getaddrinfo.c
        src/unix/getnameinfo.c
-       src/unix/loop-watcher.c
        src/unix/loop.c
        src/unix/pipe.c
        src/unix/poll.c
@@ -379,9 +378,11 @@ if(LIBUV_BUILD_TESTS)
        test/run-tests.c
        test/runner.c
        test/test-active.c
+       test/test-async-multi.c
        test/test-async-null-cb.c
        test/test-async.c
        test/test-barrier.c
+       test/test-buf.c
        test/test-callback-order.c
        test/test-callback-stack.c
        test/test-close-fd.c
@@ -402,11 +403,11 @@ if(LIBUV_BUILD_TESTS)
        test/test-fork.c
        test/test-fs-copyfile.c
        test/test-fs-event.c
-       test/test-fs-poll.c
-       test/test-fs.c
-       test/test-fs-readdir.c
        test/test-fs-fd-hash.c
        test/test-fs-open-flags.c
+       test/test-fs-poll.c
+       test/test-fs-readdir.c
+       test/test-fs.c
        test/test-get-currentexe.c
        test/test-get-loadavg.c
        test/test-get-memory.c
@@ -479,9 +480,9 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-bind-error.c
        test/test-tcp-bind6-error.c
        test/test-tcp-close-accept.c
+       test/test-tcp-close-reset.c
        test/test-tcp-close-while-connecting.c
        test/test-tcp-close.c
-       test/test-tcp-close-reset.c
        test/test-tcp-connect-error-after-write.c
        test/test-tcp-connect-error.c
        test/test-tcp-connect-timeout.c
@@ -493,8 +494,8 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-read-stop.c
        test/test-tcp-read-stop-start.c
        test/test-tcp-shutdown-after-write.c
-       test/test-tcp-try-write.c
        test/test-tcp-try-write-error.c
+       test/test-tcp-try-write.c
        test/test-tcp-unexpected-read.c
        test/test-tcp-write-after-connect.c
        test/test-tcp-write-fail.c
@@ -502,6 +503,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
        test/test-test-macros.c
+       test/test-thread-affinity.c
        test/test-thread-equal.c
        test/test-thread.c
        test/test-threadpool-cancel.c
@@ -530,8 +532,8 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-send-and-recv.c
        test/test-udp-send-hang-loop.c
        test/test-udp-send-immediate.c
-       test/test-udp-sendmmsg-error.c
        test/test-udp-send-unreachable.c
+       test/test-udp-sendmmsg-error.c
        test/test-udp-try-send.c
        test/test-uname.c
        test/test-walk-handles.c

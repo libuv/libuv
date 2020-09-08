@@ -33,9 +33,6 @@ static int completed_pingers = 0;
 #define NUM_PINGS 1000
 #endif
 
-/* 64 bytes is enough for a pinger */
-#define BUFSIZE 10240
-
 static char PING[] = "PING\n";
 static int pinger_on_connect_count;
 
@@ -49,7 +46,6 @@ typedef struct {
     uv_pipe_t pipe;
   } stream;
   uv_connect_t connect_req;
-  char read_buffer[BUFSIZE];
 } pinger_t;
 
 

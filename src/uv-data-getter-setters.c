@@ -70,6 +70,10 @@ void* uv_req_get_data(const uv_req_t* req) {
   return req->data;
 }
 
+uv_loop_t* uv_req_get_loop(const uv_req_t* req) {
+  return req->loop;
+}
+
 void uv_req_set_data(uv_req_t* req, void* data) {
   req->data = data;
 }

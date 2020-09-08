@@ -112,6 +112,10 @@ TEST_IMPL(timer_again) {
   ASSERT(r == 0);
   ASSERT(uv_timer_get_repeat(&repeat_1) == 0);
 
+  /* Verify that it is not possible to uv_timer_again a non-repeating timer. */
+  r = uv_timer_again(&repeat_1);
+  ASSERT(r == UV_EINVAL);
+
   /* Actually make repeat_1 repeating. */
   uv_timer_set_repeat(&repeat_1, 50);
   ASSERT(uv_timer_get_repeat(&repeat_1) == 50);

@@ -138,8 +138,8 @@ static void connection_cb(uv_stream_t* handle, int status) {
   ASSERT(0 == status);
   ASSERT(0 == uv_accept(handle, (uv_stream_t*) &peer_handle));
   ASSERT(0 == uv_fileno((uv_handle_t*) &peer_handle, &server_fd));
-  ASSERT(0 == uv_poll_init_socket(uv_default_loop(), &poll_req[0], client_fd));
-  ASSERT(0 == uv_poll_init_socket(uv_default_loop(), &poll_req[1], server_fd));
+  ASSERT(0 == uv_poll_init(uv_default_loop(), &poll_req[0], client_fd));
+  ASSERT(0 == uv_poll_init(uv_default_loop(), &poll_req[1], server_fd));
   ASSERT(0 == uv_poll_start(&poll_req[0],
                             UV_PRIORITIZED | UV_READABLE | UV_WRITABLE,
                             poll_cb));

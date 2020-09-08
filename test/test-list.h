@@ -37,6 +37,7 @@ TEST_DECLARE   (default_loop_close)
 TEST_DECLARE   (barrier_1)
 TEST_DECLARE   (barrier_2)
 TEST_DECLARE   (barrier_3)
+TEST_DECLARE   (buf_large)
 TEST_DECLARE   (barrier_serial_thread)
 TEST_DECLARE   (barrier_serial_thread_single)
 TEST_DECLARE   (condvar_1)
@@ -78,6 +79,9 @@ TEST_DECLARE   (tty_pty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (stdio_emulate_iocp)
 TEST_DECLARE   (ip6_pton)
+#ifndef _WIN32
+TEST_DECLARE   (ip6_invalid_interface)
+#endif
 TEST_DECLARE   (connect_unspecified)
 TEST_DECLARE   (ipc_heavy_traffic_deadlock_bug)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -189,10 +193,16 @@ TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
 TEST_DECLARE   (pipe_bind_error_inval)
+#ifndef _WIN32
+TEST_DECLARE   (pipe_bind_error_long_path)
+#endif
 TEST_DECLARE   (pipe_connect_multiple)
 TEST_DECLARE   (pipe_listen_without_bind)
 TEST_DECLARE   (pipe_connect_bad_name)
 TEST_DECLARE   (pipe_connect_to_file)
+#ifndef _WIN32
+TEST_DECLARE   (pipe_connect_to_long_path)
+#endif
 TEST_DECLARE   (pipe_connect_on_prepare)
 TEST_DECLARE   (pipe_getsockname)
 TEST_DECLARE   (pipe_getsockname_abstract)
@@ -260,6 +270,7 @@ TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
 TEST_DECLARE   (async)
+TEST_DECLARE   (async_multi)
 TEST_DECLARE   (async_null_cb)
 TEST_DECLARE   (eintr_handling)
 TEST_DECLARE   (get_currentexe)
@@ -306,6 +317,8 @@ TEST_DECLARE   (spawn_and_ping)
 TEST_DECLARE   (spawn_preserve_env)
 TEST_DECLARE   (spawn_setuid_fails)
 TEST_DECLARE   (spawn_setgid_fails)
+TEST_DECLARE   (spawn_affinity)
+TEST_DECLARE   (spawn_affinity_invalid_mask)
 TEST_DECLARE   (spawn_stdout_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file2)
@@ -359,7 +372,9 @@ TEST_DECLARE   (fs_open_flags)
 TEST_DECLARE   (fs_fd_hash)
 #endif
 TEST_DECLARE   (fs_utime)
+TEST_DECLARE   (fs_utime_ex)
 TEST_DECLARE   (fs_futime)
+TEST_DECLARE   (fs_futime_ex)
 TEST_DECLARE   (fs_lutime)
 TEST_DECLARE   (fs_file_open_append)
 TEST_DECLARE   (fs_statfs)
@@ -398,8 +413,9 @@ TEST_DECLARE   (fs_readdir_non_existing_dir)
 TEST_DECLARE   (fs_rename_to_existing_file)
 TEST_DECLARE   (fs_write_multiple_bufs)
 TEST_DECLARE   (fs_read_write_null_arguments)
-TEST_DECLARE   (get_osfhandle_valid_handle)
-TEST_DECLARE   (open_osfhandle_valid_handle)
+#ifdef _WIN32
+TEST_DECLARE   (fs_invalid_filename)
+#endif
 TEST_DECLARE   (fs_write_alotof_bufs)
 TEST_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_DECLARE   (fs_partial_read)
@@ -436,6 +452,7 @@ TEST_DECLARE   (thread_rwlock)
 TEST_DECLARE   (thread_rwlock_trylock)
 TEST_DECLARE   (thread_create)
 TEST_DECLARE   (thread_equal)
+TEST_DECLARE   (thread_affinity)
 TEST_DECLARE   (dlerror)
 #if (defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))) && \
     !defined(__sun)
@@ -548,6 +565,7 @@ TASK_LIST_START
   TEST_ENTRY  (barrier_1)
   TEST_ENTRY  (barrier_2)
   TEST_ENTRY  (barrier_3)
+  TEST_ENTRY  (buf_large)
   TEST_ENTRY  (barrier_serial_thread)
   TEST_ENTRY  (barrier_serial_thread_single)
   TEST_ENTRY  (condvar_1)
@@ -561,6 +579,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (pipe_connect_bad_name)
   TEST_ENTRY  (pipe_connect_to_file)
+#ifndef _WIN32
+  TEST_ENTRY  (pipe_connect_to_long_path)
+#endif
   TEST_ENTRY  (pipe_connect_on_prepare)
 
   TEST_ENTRY  (pipe_server_close)
@@ -600,6 +621,9 @@ TASK_LIST_START
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (stdio_emulate_iocp)
   TEST_ENTRY  (ip6_pton)
+#ifndef _WIN32
+  TEST_ENTRY  (ip6_invalid_interface)
+#endif
   TEST_ENTRY  (connect_unspecified)
   TEST_ENTRY  (ipc_heavy_traffic_deadlock_bug)
   TEST_ENTRY  (ipc_listen_before_write)
@@ -750,6 +774,9 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_bind_error_addrinuse)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)
   TEST_ENTRY  (pipe_bind_error_inval)
+#ifndef _WIN32
+  TEST_ENTRY  (pipe_bind_error_long_path)
+#endif
   TEST_ENTRY  (pipe_connect_multiple)
   TEST_ENTRY  (pipe_listen_without_bind)
   TEST_ENTRY  (pipe_getsockname)
@@ -836,6 +863,7 @@ TASK_LIST_START
   TEST_ENTRY  (embed)
 
   TEST_ENTRY  (async)
+  TEST_ENTRY  (async_multi)
   TEST_ENTRY  (async_null_cb)
   TEST_ENTRY  (eintr_handling)
 
@@ -914,6 +942,8 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_preserve_env)
   TEST_ENTRY  (spawn_setuid_fails)
   TEST_ENTRY  (spawn_setgid_fails)
+  TEST_ENTRY  (spawn_affinity)
+  TEST_ENTRY  (spawn_affinity_invalid_mask)
   TEST_ENTRY  (spawn_stdout_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file2)
@@ -988,7 +1018,9 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
+  TEST_ENTRY  (fs_utime_ex)
   TEST_ENTRY  (fs_futime)
+  TEST_ENTRY  (fs_futime_ex)
   TEST_ENTRY  (fs_lutime)
   TEST_ENTRY  (fs_readlink)
   TEST_ENTRY  (fs_realpath)
@@ -1044,6 +1076,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_partial_read)
   TEST_ENTRY  (fs_partial_write)
   TEST_ENTRY  (fs_read_write_null_arguments)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_invalid_filename)
+#endif
   TEST_ENTRY  (fs_file_pos_after_op_with_offset)
   TEST_ENTRY  (fs_null_req)
   TEST_ENTRY  (fs_read_dir)
@@ -1057,8 +1092,6 @@ TASK_LIST_START
   TEST_ENTRY  (fs_invalid_mkdir_name)
 #endif
   TEST_ENTRY  (fs_get_system_error)
-  TEST_ENTRY  (get_osfhandle_valid_handle)
-  TEST_ENTRY  (open_osfhandle_valid_handle)
   TEST_ENTRY  (strscpy)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
@@ -1078,6 +1111,7 @@ TASK_LIST_START
   TEST_ENTRY  (thread_rwlock_trylock)
   TEST_ENTRY  (thread_create)
   TEST_ENTRY  (thread_equal)
+  TEST_ENTRY  (thread_affinity)
   TEST_ENTRY  (dlerror)
   TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)

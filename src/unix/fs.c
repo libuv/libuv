@@ -30,6 +30,7 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <math.h>
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,7 +62,49 @@
 #endif
 
 #if defined(__APPLE__)
-# include <sys/sysctl.h>
+# include <sys/attr.h>
+
+static void uv__prepare_setattrlist_args(uv_fs_t* req,
+                                         struct attrlist* attr_list,
+                                         struct timespec (*times)[3],
+                                         unsigned int* size) {
+  memset(attr_list, 0, sizeof(*attr_list));
+  memset(times, 0, sizeof(*times));
+
+  attr_list->bitmapcount = ATTR_BIT_MAP_COUNT;
+
+  *size = 0;
+
+  if (!isnan(req->btime)) {
+    attr_list->commonattr |= ATTR_CMN_CRTIME;
+
+    (*times)[*size].tv_sec = req->btime;
+    (*times)[*size].tv_nsec =
+      (unsigned long)(req->btime * 1000000) % 1000000 * 1000;
+
+    ++*size;
+  }
+
+  if (!isnan(req->mtime)) {
+    attr_list->commonattr |= ATTR_CMN_MODTIME;
+
+    (*times)[*size].tv_sec = req->mtime;
+    (*times)[*size].tv_nsec =
+      (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
+
+    ++*size;
+  }
+
+  if (!isnan(req->atime)) {
+    attr_list->commonattr |= ATTR_CMN_ACCTIME;
+
+    (*times)[*size].tv_sec = req->atime;
+    (*times)[*size].tv_nsec =
+      (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
+
+    ++*size;
+  }
+}
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
 # define FICLONE _IOW(0x94, 9, int)
@@ -97,11 +140,10 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   do {                                                                        \
     if (req == NULL)                                                          \
       return UV_EINVAL;                                                       \
-    UV_REQ_INIT(req, UV_FS);                                                  \
+    UV_REQ_INIT(loop, req, UV_FS);                                            \
     req->fs_type = UV_FS_ ## subtype;                                         \
     req->result = 0;                                                          \
     req->ptr = NULL;                                                          \
-    req->loop = loop;                                                         \
     req->path = NULL;                                                         \
     req->new_path = NULL;                                                     \
     req->bufs = NULL;                                                         \
@@ -156,6 +198,26 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     else {                                                                    \
       uv__fs_work(&req->work_req);                                            \
       return req->result;                                                     \
+    }                                                                         \
+  }                                                                           \
+  while (0)
+
+#define POST0                                                                 \
+  do {                                                                        \
+    if (cb != NULL) {                                                         \
+      uv__req_register(loop, req);                                            \
+      uv__work_submit(loop,                                                   \
+                      &req->work_req,                                         \
+                      UV__WORK_FAST_IO,                                       \
+                      uv__fs_work,                                            \
+                      uv__fs_done);                                           \
+      return 0;                                                               \
+    }                                                                         \
+    else {                                                                    \
+      uv__fs_work(&req->work_req);                                            \
+      if (req->result < 0)                                                    \
+        return req->result;                                                   \
+      return 0;                                                               \
     }                                                                         \
   }                                                                           \
   while (0)
@@ -234,8 +296,15 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
   return futimens(req->file, ts);
-#elif defined(__APPLE__)                                                      \
-    || defined(__DragonFly__)                                                 \
+#elif defined(__APPLE__)
+  struct attrlist attr_list;
+  unsigned i;
+  struct timespec times[3];
+
+  uv__prepare_setattrlist_args(req, &attr_list, &times, &i);
+
+  return fsetattrlist(req->file, &attr_list, &times, i * sizeof(times[0]), 0);
+#elif defined(__DragonFly__)                                                  \
     || defined(__FreeBSD__)                                                   \
     || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
@@ -389,7 +458,7 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 
 
 #if !HAVE_PREADV
-static ssize_t uv__fs_preadv(uv_file fd,
+static ssize_t uv__fs_preadv(uv_os_fd_t fd,
                              uv_buf_t* bufs,
                              unsigned int nbufs,
                              off_t off) {
@@ -508,19 +577,12 @@ done:
 }
 
 
-#if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8)
-#define UV_CONST_DIRENT uv__dirent_t
-#else
-#define UV_CONST_DIRENT const uv__dirent_t
-#endif
-
-
-static int uv__fs_scandir_filter(UV_CONST_DIRENT* dent) {
+static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
 }
 
 
-static int uv__fs_scandir_sort(UV_CONST_DIRENT** a, UV_CONST_DIRENT** b) {
+static int uv__fs_scandir_sort(const uv__dirent_t** a, const uv__dirent_t** b) {
   return strcmp((*a)->d_name, (*b)->d_name);
 }
 
@@ -1017,8 +1079,15 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, 0);
-#elif defined(__APPLE__)                                                      \
-    || defined(__DragonFly__)                                                 \
+#elif defined(__APPLE__)
+  struct attrlist attr_list;
+  unsigned i;
+  struct timespec times[3];
+
+  uv__prepare_setattrlist_args(req, &attr_list, &times, &i);
+
+  return setattrlist(req->path, &attr_list, &times, i * sizeof(times[0]), 0);
+#elif defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
     || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
@@ -1135,8 +1204,8 @@ done:
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_t fs_req;
-  uv_file srcfd;
-  uv_file dstfd;
+  uv_os_fd_t srcfd;
+  uv_os_fd_t dstfd;
   struct stat src_statsbuf;
   struct stat dst_statsbuf;
   int dst_flags;
@@ -1148,14 +1217,15 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   size_t bytes_chunk;
 
   dstfd = -1;
-  err = 0;
 
   /* Open the source file. */
-  srcfd = uv_fs_open(NULL, &fs_req, req->path, O_RDONLY, 0, NULL);
+  err = uv_fs_open(NULL, &fs_req, req->path, O_RDONLY, 0, NULL);
   uv_fs_req_cleanup(&fs_req);
 
-  if (srcfd < 0)
-    return srcfd;
+  if (err < 0)
+    return err;
+
+  srcfd = fs_req.result;
 
   /* Get the source file's mode. */
   if (fstat(srcfd, &src_statsbuf)) {
@@ -1169,7 +1239,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     dst_flags |= O_EXCL;
 
   /* Open the destination file. */
-  dstfd = uv_fs_open(NULL,
+  err = uv_fs_open(NULL,
                      &fs_req,
                      req->new_path,
                      dst_flags,
@@ -1177,10 +1247,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
                      NULL);
   uv_fs_req_cleanup(&fs_req);
 
-  if (dstfd < 0) {
-    err = dstfd;
+  if (err < 0) {
     goto out;
   }
+
+  dstfd = fs_req.result;
 
   /* If the file is not being opened exclusively, verify that the source and
      destination are not the same file. If they are the same, bail out early. */
@@ -1694,7 +1765,7 @@ int uv_fs_chown(uv_loop_t* loop,
 }
 
 
-int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(CLOSE);
   req->file = file;
   POST;
@@ -1703,7 +1774,7 @@ int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 
 int uv_fs_fchmod(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_file file,
+                 uv_os_fd_t file,
                  int mode,
                  uv_fs_cb cb) {
   INIT(FCHMOD);
@@ -1715,7 +1786,7 @@ int uv_fs_fchmod(uv_loop_t* loop,
 
 int uv_fs_fchown(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_file file,
+                 uv_os_fd_t file,
                  uv_uid_t uid,
                  uv_gid_t gid,
                  uv_fs_cb cb) {
@@ -1741,21 +1812,21 @@ int uv_fs_lchown(uv_loop_t* loop,
 }
 
 
-int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(FDATASYNC);
   req->file = file;
   POST;
 }
 
 
-int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(FSTAT);
   req->file = file;
   POST;
 }
 
 
-int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
+int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb) {
   INIT(FSYNC);
   req->file = file;
   POST;
@@ -1764,7 +1835,7 @@ int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 
 int uv_fs_ftruncate(uv_loop_t* loop,
                     uv_fs_t* req,
-                    uv_file file,
+                    uv_os_fd_t file,
                     int64_t off,
                     uv_fs_cb cb) {
   INIT(FTRUNCATE);
@@ -1776,12 +1847,24 @@ int uv_fs_ftruncate(uv_loop_t* loop,
 
 int uv_fs_futime(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_file file,
+                 uv_os_fd_t file,
                  double atime,
                  double mtime,
                  uv_fs_cb cb) {
+  return uv_fs_futime_ex(loop, req, file, NAN, atime, mtime, cb);
+}
+
+
+int uv_fs_futime_ex(uv_loop_t* loop,
+                    uv_fs_t* req,
+                    uv_os_fd_t file,
+                    double btime,
+                    double atime,
+                    double mtime,
+                    uv_fs_cb cb) {
   INIT(FUTIME);
   req->file = file;
+  req->btime = btime;
   req->atime = atime;
   req->mtime = mtime;
   POST;
@@ -1851,7 +1934,7 @@ int uv_fs_mkstemp(uv_loop_t* loop,
   req->path = uv__strdup(tpl);
   if (req->path == NULL)
     return UV_ENOMEM;
-  POST;
+  POST0;
 }
 
 
@@ -1865,12 +1948,12 @@ int uv_fs_open(uv_loop_t* loop,
   PATH;
   req->flags = flags;
   req->mode = mode;
-  POST;
+  POST0;
 }
 
 
 int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
-               uv_file file,
+               uv_os_fd_t file,
                const uv_buf_t bufs[],
                unsigned int nbufs,
                int64_t off,
@@ -1983,8 +2066,8 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
 
 int uv_fs_sendfile(uv_loop_t* loop,
                    uv_fs_t* req,
-                   uv_file out_fd,
-                   uv_file in_fd,
+                   uv_os_fd_t out_fd,
+                   uv_os_fd_t in_fd,
                    int64_t off,
                    size_t len,
                    uv_fs_cb cb) {
@@ -2030,8 +2113,20 @@ int uv_fs_utime(uv_loop_t* loop,
                 double atime,
                 double mtime,
                 uv_fs_cb cb) {
+  return uv_fs_utime_ex(loop, req, path, NAN, atime, mtime, cb);
+}
+
+
+int uv_fs_utime_ex(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   const char* path,
+                   double btime,
+                   double atime,
+                   double mtime,
+                   uv_fs_cb cb) {
   INIT(UTIME);
   PATH;
+  req->btime = btime;
   req->atime = atime;
   req->mtime = mtime;
   POST;
@@ -2040,7 +2135,7 @@ int uv_fs_utime(uv_loop_t* loop,
 
 int uv_fs_write(uv_loop_t* loop,
                 uv_fs_t* req,
-                uv_file file,
+                uv_os_fd_t file,
                 const uv_buf_t bufs[],
                 unsigned int nbufs,
                 int64_t off,

@@ -161,6 +161,17 @@ TEST_IMPL(ip6_pton) {
 #undef GOOD_ADDR_LIST
 #undef BAD_ADDR_LIST
 
+#ifndef _WIN32
+TEST_IMPL(ip6_invalid_interface) {
+  struct sockaddr_in6 s;
+  int r;
+
+  r = uv_ip6_addr("::0%bad", 0, &s);
+  ASSERT(r < 0);
+  return 0;
+}
+#endif
+
 #ifdef SIN6_LEN
 TEST_IMPL(ip6_sin6_len) {
   struct sockaddr_in6 s;

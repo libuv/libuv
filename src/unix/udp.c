@@ -840,10 +840,6 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
                  optname,
                  &mreq,
                  sizeof(mreq))) {
-#if defined(__MVS__)
-  if (errno == ENXIO)
-    return UV_ENODEV;
-#endif
     return UV__ERR(errno);
   }
 

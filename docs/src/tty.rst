@@ -64,7 +64,7 @@ N/A
 API
 ---
 
-.. c:function:: int uv_tty_init(uv_loop_t* loop, uv_tty_t* handle, uv_file fd, int unused)
+.. c:function:: int uv_tty_init(uv_loop_t* loop, uv_tty_t* handle, uv_os_fd_t fd, int unused)
 
     Initialize a new TTY stream with the given file descriptor. Usually the
     file descriptor will be:

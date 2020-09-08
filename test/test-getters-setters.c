@@ -92,6 +92,7 @@ TEST_IMPL(getters_setters) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(r == 0);
 
+  ASSERT(uv_req_get_loop((uv_req_t*)fs) == loop);
   ASSERT(uv_fs_get_type(fs) == UV_FS_STAT);
   ASSERT(uv_fs_get_result(fs) == 0);
   ASSERT(uv_fs_get_ptr(fs) == uv_fs_get_statbuf(fs));

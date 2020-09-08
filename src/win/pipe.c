@@ -20,9 +20,8 @@
  */
 
 #include <assert.h>
-#include <io.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h> /* printf */
 #include <string.h>
 
 #include "handle-inl.h"
@@ -191,13 +190,7 @@ static HANDLE open_named_pipe(const WCHAR* name, DWORD* duplex_flags) {
 
 
 static void close_pipe(uv_pipe_t* pipe) {
-  assert(pipe->u.fd == -1 || pipe->u.fd > 2);
-  if (pipe->u.fd == -1)
-    CloseHandle(pipe->handle);
-  else
-    close(pipe->u.fd);
-
-  pipe->u.fd = -1;
+  CloseHandle(pipe->handle);
   pipe->handle = INVALID_HANDLE_VALUE;
 }
 
@@ -254,7 +247,6 @@ int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
 static int uv_set_pipe_handle(uv_loop_t* loop,
                               uv_pipe_t* handle,
                               HANDLE pipeHandle,
-                              int fd,
                               DWORD duplex_flags) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
@@ -319,7 +311,6 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
   }
 
   handle->handle = pipeHandle;
-  handle->u.fd = fd;
   handle->flags |= duplex_flags;
 
   return 0;
@@ -545,7 +536,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
 
   for (i = 0; i < handle->pipe.serv.pending_instances; i++) {
     req = &handle->pipe.serv.accept_reqs[i];
-    UV_REQ_INIT(req, UV_ACCEPT);
+    UV_REQ_INIT(loop, req, UV_ACCEPT);
     req->data = handle;
     req->pipeHandle = INVALID_HANDLE_VALUE;
     req->next_pending = NULL;
@@ -627,7 +618,7 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   }
 
   if (pipeHandle != INVALID_HANDLE_VALUE &&
-      !uv_set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags)) {
+      !uv_set_pipe_handle(loop, handle, pipeHandle, duplex_flags)) {
     SET_REQ_SUCCESS(req);
   } else {
     SET_REQ_ERROR(req, GetLastError());
@@ -647,7 +638,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   HANDLE pipeHandle = INVALID_HANDLE_VALUE;
   DWORD duplex_flags;
 
-  UV_REQ_INIT(req, UV_CONNECT);
+  UV_REQ_INIT(loop, req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
 
@@ -694,7 +685,6 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   if (uv_set_pipe_handle(loop,
                          (uv_pipe_t*) req->handle,
                          pipeHandle,
-                         -1,
                          duplex_flags)) {
     err = GetLastError();
     goto error;
@@ -1322,7 +1312,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
   assert(handle->handle != INVALID_HANDLE_VALUE);
 
-  UV_REQ_INIT(req, UV_WRITE);
+  UV_REQ_INIT(loop, req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
   req->send_handle = NULL;
   req->cb = cb;
@@ -2078,8 +2068,7 @@ static void eof_timer_close_cb(uv_handle_t* handle) {
 }
 
 
-int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
-  HANDLE os_handle = uv__get_osfhandle(file);
+int uv_pipe_open(uv_pipe_t* pipe, uv_os_fd_t os_handle) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_ACCESS_INFORMATION access;
@@ -2088,23 +2077,13 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   if (os_handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
 
-  uv__once_init();
-  /* In order to avoid closing a stdio file descriptor 0-2, duplicate the
-   * underlying OS handle and forget about the original fd.
-   * We could also opt to use the original OS handle and just never close it,
-   * but then there would be no reliable way to cancel pending read operations
-   * upon close.
+  /* In order to avoid closing a stdio pseudo-handle, or having it get replaced under us,
+   * duplicate the underlying OS handle and forget about the original one.
    */
-  if (file <= 2) {
-    if (!DuplicateHandle(INVALID_HANDLE_VALUE,
-                         os_handle,
-                         INVALID_HANDLE_VALUE,
-                         &os_handle,
-                         0,
-                         FALSE,
-                         DUPLICATE_SAME_ACCESS))
-      return uv_translate_sys_error(GetLastError());
-    file = -1;
+  if (os_handle == UV_STDIN_FD || os_handle == UV_STDOUT_FD || os_handle == UV_STDERR_FD) {
+    int dup_err = uv__dup(os_handle, &os_handle);
+    if (dup_err)
+      return dup_err;
   }
 
   /* Determine what kind of permissions we have on this handle.
@@ -2135,7 +2114,6 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
       uv_set_pipe_handle(pipe->loop,
                          pipe,
                          os_handle,
-                         file,
                          duplex_flags) == -1) {
     return UV_EINVAL;
   }

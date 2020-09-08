@@ -211,7 +211,6 @@ TEST_IMPL(pipe_getsockname_abstract) {
 TEST_IMPL(pipe_getsockname_blocking) {
 #ifdef _WIN32
   HANDLE readh, writeh;
-  int readfd;
   char buf1[1024], buf2[1024];
   size_t len1, len2;
   int r;
@@ -221,9 +220,7 @@ TEST_IMPL(pipe_getsockname_blocking) {
 
   r = uv_pipe_init(uv_default_loop(), &pipe_client, 0);
   ASSERT(r == 0);
-  readfd = _open_osfhandle((intptr_t)readh, _O_RDONLY);
-  ASSERT(r != -1);
-  r = uv_pipe_open(&pipe_client, readfd);
+  r = uv_pipe_open(&pipe_client, readh);
   ASSERT(r == 0);
   r = uv_read_start((uv_stream_t*)&pipe_client, NULL, NULL);
   ASSERT(r == 0);

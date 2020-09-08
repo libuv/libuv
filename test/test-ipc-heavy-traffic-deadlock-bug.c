@@ -147,7 +147,7 @@ int ipc_helper_heavy_traffic_deadlock_bug(void) {
 
   r = uv_pipe_init(uv_default_loop(), &pipe, 1);
   ASSERT(r == 0);
-  r = uv_pipe_open(&pipe, 0);
+  r = uv_pipe_open(&pipe, uv_convert_fd_to_handle(0));
   ASSERT(r == 0);
 
   notify_parent_process();

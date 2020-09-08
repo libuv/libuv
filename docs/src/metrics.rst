@@ -23,5 +23,3 @@ API
         The event loop will not begin accumulating the event provider's idle
         time until calling :c:type:`uv_loop_configure` with
         :c:type:`UV_METRICS_IDLE_TIME`.
-
-    .. versionadded:: 1.39.0

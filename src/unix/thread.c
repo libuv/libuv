@@ -41,98 +41,89 @@
 #include <gnu/libc-version.h>  /* gnu_get_libc_version() */
 #endif
 
+#if defined(__linux__)
+# include <sched.h>
+# define uv__cpu_set_t cpu_set_t
+#elif defined(__FreeBSD__)
+# include <sys/param.h>
+# include <sys/cpuset.h>
+# include <pthread_np.h>
+# define uv__cpu_set_t cpuset_t
+#endif
+
+
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
-
-#if defined(PTHREAD_BARRIER_SERIAL_THREAD)
-STATIC_ASSERT(sizeof(uv_barrier_t) == sizeof(pthread_barrier_t));
-#endif
 
 /* Note: guard clauses should match uv_barrier_t's in include/uv/unix.h. */
 #if defined(_AIX) || \
     defined(__OpenBSD__) || \
     !defined(PTHREAD_BARRIER_SERIAL_THREAD)
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  struct _uv_barrier* b;
   int rc;
 
   if (barrier == NULL || count == 0)
     return UV_EINVAL;
 
-  b = uv__malloc(sizeof(*b));
-  if (b == NULL)
-    return UV_ENOMEM;
+  barrier->in = 0;
+  barrier->out = 0;
+  barrier->threshold = count;
 
-  b->in = 0;
-  b->out = 0;
-  b->threshold = count;
-
-  rc = uv_mutex_init(&b->mutex);
+  rc = uv_mutex_init(&barrier->mutex);
   if (rc != 0)
-    goto error2;
+    return rc;
 
-  rc = uv_cond_init(&b->cond);
+  rc = uv_cond_init(&barrier->cond);
   if (rc != 0)
     goto error;
 
-  barrier->b = b;
   return 0;
 
 error:
-  uv_mutex_destroy(&b->mutex);
-error2:
-  uv__free(b);
+  pthread_mutex_destroy(&barrier->mutex);
   return rc;
 }
 
 
 int uv_barrier_wait(uv_barrier_t* barrier) {
-  struct _uv_barrier* b;
   int last;
 
-  if (barrier == NULL || barrier->b == NULL)
+  if (barrier == NULL)
     return UV_EINVAL;
 
-  b = barrier->b;
-  uv_mutex_lock(&b->mutex);
+  uv_mutex_lock(&barrier->mutex);
 
-  if (++b->in == b->threshold) {
-    b->in = 0;
-    b->out = b->threshold;
-    uv_cond_signal(&b->cond);
+  if (++barrier->in == barrier->threshold) {
+    barrier->in = 0;
+    barrier->out = barrier->threshold;
+    uv_cond_signal(&barrier->cond);
   } else {
     do
-      uv_cond_wait(&b->cond, &b->mutex);
-    while (b->in != 0);
+      uv_cond_wait(&barrier->cond, &barrier->mutex);
+    while (barrier->in != 0);
   }
 
-  last = (--b->out == 0);
+  last = (--barrier->out == 0);
   if (!last)
-    uv_cond_signal(&b->cond);  /* Not needed for last thread. */
+    uv_cond_signal(&barrier->cond);  /* Not needed for last thread. */
 
-  uv_mutex_unlock(&b->mutex);
+  uv_mutex_unlock(&barrier->mutex);
   return last;
 }
 
 
 void uv_barrier_destroy(uv_barrier_t* barrier) {
-  struct _uv_barrier* b;
+  uv_mutex_lock(&barrier->mutex);
 
-  b = barrier->b;
-  uv_mutex_lock(&b->mutex);
+  assert(barrier->in == 0);
+  assert(barrier->out == 0);
 
-  assert(b->in == 0);
-  assert(b->out == 0);
-
-  if (b->in != 0 || b->out != 0)
+  if (barrier->in != 0 || barrier->out != 0)
     abort();
 
-  uv_mutex_unlock(&b->mutex);
-  uv_mutex_destroy(&b->mutex);
-  uv_cond_destroy(&b->cond);
-
-  uv__free(barrier->b);
-  barrier->b = NULL;
+  uv_mutex_unlock(&barrier->mutex);
+  uv_mutex_destroy(&barrier->mutex);
+  uv_cond_destroy(&barrier->cond);
 }
 
 #else
@@ -262,6 +253,82 @@ int uv_thread_create_ex(uv_thread_t* tid,
     pthread_attr_destroy(attr);
 
   return UV__ERR(err);
+}
+
+
+#if defined(__linux__) || defined(__FreeBSD__)
+
+int uv_thread_setaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          char* oldmask,
+                          size_t mask_size) {
+  int i;
+  int r;
+  uv__cpu_set_t cpuset;
+  int cpumasksize;
+
+  cpumasksize = uv_cpumask_size();
+  if (cpumasksize < 0)
+    return cpumasksize;
+  if (mask_size < (size_t)cpumasksize)
+    return UV_EINVAL;
+
+  if (oldmask != NULL) {
+    r = uv_thread_getaffinity(tid, oldmask, mask_size);
+    if (r < 0)
+      return r;
+  }
+
+  CPU_ZERO(&cpuset);
+  for (i = 0; i < cpumasksize; i++)
+    if (cpumask[i])
+      CPU_SET(i, &cpuset);
+
+  return UV__ERR(pthread_setaffinity_np(*tid, sizeof(cpuset), &cpuset));
+}
+
+
+int uv_thread_getaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          size_t mask_size) {
+  int r;
+  int i;
+  uv__cpu_set_t cpuset;
+  int cpumasksize;
+
+  cpumasksize = uv_cpumask_size();
+  if (cpumasksize < 0)
+    return cpumasksize;
+  if (mask_size < (size_t)cpumasksize)
+    return UV_EINVAL;
+
+  CPU_ZERO(&cpuset);
+  r = pthread_getaffinity_np(*tid, sizeof(cpuset), &cpuset);
+  if (r)
+    return UV__ERR(r);
+  for (i = 0; i < cpumasksize; i++)
+    cpumask[i] = !!CPU_ISSET(i, &cpuset);
+
+  return 0;
+}
+#else
+int uv_thread_setaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          char* oldmask,
+                          size_t mask_size) {
+  return UV_ENOTSUP;
+}
+
+
+int uv_thread_getaffinity(uv_thread_t* tid,
+                          char* cpumask,
+                          size_t mask_size) {
+  return UV_ENOTSUP;
+}
+#endif /* defined(__linux__) || defined(UV_BSD_H) */
+
+int uv_thread_detach(uv_thread_t* tid) {
+  return UV__ERR(pthread_detach(*tid));
 }
 
 

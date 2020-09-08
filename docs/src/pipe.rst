@@ -41,7 +41,7 @@ API
     passing the handles should have this flag set, not the listening pipe
     that uv_accept is called on.
 
-.. c:function:: int uv_pipe_open(uv_pipe_t* handle, uv_file file)
+.. c:function:: int uv_pipe_open(uv_pipe_t* handle, uv_os_fd_t file)
 
     Open an existing file descriptor or HANDLE as a pipe.
 
@@ -56,16 +56,20 @@ API
     Bind the pipe to a file path (Unix) or a name (Windows).
 
     .. note::
-        Paths on Unix get truncated to ``sizeof(sockaddr_un.sun_path)`` bytes, typically between
-        92 and 108 bytes.
+        If a path on Unix exceeds ``sizeof(sockaddr_un.sun_path)`` bytes, typically between
+        92 and 108 bytes, ``uv_pipe_bind`` will fail with ``UV_ENAMETOOLONG``.
+
+    .. versionchanged: 2.0.0 long filenames will lead to an error rather than being truncated
 
 .. c:function:: void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle, const char* name, uv_connect_cb cb)
 
     Connect to the Unix domain socket or the named pipe.
 
     .. note::
-        Paths on Unix get truncated to ``sizeof(sockaddr_un.sun_path)`` bytes, typically between
-        92 and 108 bytes.
+        If a path on Unix exceeds ``sizeof(sockaddr_un.sun_path)`` bytes, typically between
+        92 and 108 bytes, ``uv_pipe_bind`` will fail with ``UV_ENAMETOOLONG``.
+
+    .. versionchanged: 2.0.0 long filenames will lead to an error rather than being truncated
 
 .. c:function:: int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size)
 

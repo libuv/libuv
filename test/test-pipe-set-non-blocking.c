@@ -31,7 +31,7 @@ TEST_IMPL(pipe_set_non_blocking) {
 
 struct thread_ctx {
   uv_barrier_t barrier;
-  uv_file fd;
+  uv_os_fd_t fd;
 };
 
 static void thread_main(void* arg) {
@@ -64,7 +64,7 @@ TEST_IMPL(pipe_set_non_blocking) {
   size_t nwritten;
   char data[4096];
   uv_buf_t buf;
-  uv_file fd[2];
+  uv_os_fd_t fd[2];
   int n;
 
   ASSERT(0 == uv_pipe_init(uv_default_loop(), &pipe_handle, 0));

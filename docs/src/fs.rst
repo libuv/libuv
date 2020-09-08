@@ -94,9 +94,9 @@ Data types
             UV_FS_READLINK,
             UV_FS_CHOWN,
             UV_FS_FCHOWN,
+            UV_FS_LCHOWN,
             UV_FS_REALPATH,
             UV_FS_COPYFILE,
-            UV_FS_LCHOWN,
             UV_FS_OPENDIR,
             UV_FS_READDIR,
             UV_FS_CLOSEDIR,
@@ -164,11 +164,6 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
-.. c:member:: uv_loop_t* uv_fs_t.loop
-
-    Loop that started this request and where completion will be reported.
-    Readonly.
-
 .. c:member:: uv_fs_type uv_fs_t.fs_type
 
     FS request type.
@@ -203,9 +198,11 @@ API
     Cleanup request. Must be called after a request is finished to deallocate
     any memory libuv might have allocated.
 
-.. c:function:: int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
+.. c:function:: int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb)
 
     Equivalent to :man:`close(2)`.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb)
 
@@ -216,7 +213,7 @@ API
         in binary mode. Because of this the O_BINARY and O_TEXT flags are not
         supported.
 
-.. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
+.. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`preadv(2)`.
 
@@ -225,11 +222,13 @@ API
         to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
         crash if the memory mapped read operation fails.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     Equivalent to :man:`unlink(2)`.
 
-.. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
+.. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`pwritev(2)`.
 
@@ -237,6 +236,8 @@ API
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
         to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
         crash if the memory mapped write operation fails.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
@@ -320,10 +321,12 @@ API
         ext3 and ext4 at the time of this writing), check the :man:`getdents(2)` man page.
 
 .. c:function:: int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
-.. c:function:: int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
+.. c:function:: int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb)
 .. c:function:: int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     Equivalent to :man:`stat(2)`, :man:`fstat(2)` and :man:`lstat(2)` respectively.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_statfs(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
@@ -340,7 +343,7 @@ API
 
     Equivalent to :man:`rename(2)`.
 
-.. c:function:: int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
+.. c:function:: int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb)
 
     Equivalent to :man:`fsync(2)`.
 
@@ -348,13 +351,19 @@ API
         For AIX, `uv_fs_fsync` returns `UV_EBADF` on file descriptors referencing
         non regular files.
 
-.. c:function:: int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
+.. c:function:: int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_fs_cb cb)
 
     Equivalent to :man:`fdatasync(2)`.
 
-.. c:function:: int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_file file, int64_t offset, uv_fs_cb cb)
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
+.. c:function:: int uv_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`ftruncate(2)`.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_copyfile(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, int flags, uv_fs_cb cb)
 
@@ -388,21 +397,25 @@ API
         `UV_FS_COPYFILE_FICLONE_FORCE`, that error is returned. Previously,
         all errors were mapped to `UV_ENOTSUP`.
 
-.. c:function:: int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file out_fd, uv_file in_fd, int64_t in_offset, size_t length, uv_fs_cb cb)
+.. c:function:: int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t out_fd, uv_os_fd_t in_fd, int64_t in_offset, size_t length, uv_fs_cb cb)
 
     Limited equivalent to :man:`sendfile(2)`.
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: int uv_fs_access(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
 
     Equivalent to :man:`access(2)` on Unix. Windows uses ``GetFileAttributesW()``.
 
 .. c:function:: int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb)
-.. c:function:: int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_file file, int mode, uv_fs_cb cb)
+.. c:function:: int uv_fs_fchmod(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, int mode, uv_fs_cb cb)
 
     Equivalent to :man:`chmod(2)` and :man:`fchmod(2)` respectively.
 
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb)
-.. c:function:: int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime, double mtime, uv_fs_cb cb)
+.. c:function:: int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, double atime, double mtime, uv_fs_cb cb)
 .. c:function:: int uv_fs_lutime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb)
 
     Equivalent to :man:`utime(2)`, :man:`futimes(3)` and :man:`lutimes(3)` respectively.
@@ -415,7 +428,17 @@ API
       AIX: `uv_fs_futime()` and `uv_fs_lutime()` functions only work for AIX 7.1 and newer.
       They can still be called on older versions but will return ``UV_ENOSYS``.
 
-    .. versionchanged:: 1.10.0 sub-second precission is supported on Windows
+    .. versionchanged:: 1.10.0 sub-second precision is supported on Windows
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
+
+.. c:function:: int uv_fs_utime_ex(uv_loop_t* loop, uv_fs_t* req, const char* path, double btime, double atime, double mtime, uv_fs_cb cb)
+.. c:function:: int uv_fs_futime_ex(uv_loop_t* loop, uv_fs_t* req, uv_file file, double btime, double atime, double mtime, uv_fs_cb cb)
+
+    Equivalent to :c:func:`uv_fs_utime` and :c:func:`uv_fs_futime` except on
+    macOS and Windows, in which case these variants also allow the
+    birth/creation time to be set.
+
+    .. versionadded:: 2.0.0
 
 .. c:function:: int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 
@@ -463,14 +486,10 @@ API
         The background story and some more details on these issues can be checked
         `here <https://github.com/nodejs/node/issues/7726>`_.
 
-    .. note::
-      This function is not implemented on Windows XP and Windows Server 2003.
-      On these systems, UV_ENOSYS is returned.
-
     .. versionadded:: 1.8.0
 
 .. c:function:: int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
-.. c:function:: int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
+.. c:function:: int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
 .. c:function:: int uv_fs_lchown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)
 
     Equivalent to :man:`chown(2)`, :man:`fchown(2)` and :man:`lchown(2)` respectively.
@@ -479,6 +498,8 @@ API
         These functions are not implemented on Windows.
 
     .. versionchanged:: 1.21.0 implemented uv_fs_lchown
+
+    .. versionchanged:: 2.0.0 replace uv_file with uv_os_fd_t
 
 .. c:function:: uv_fs_type uv_fs_get_type(const uv_fs_t* req)
 
@@ -522,6 +543,19 @@ API
 Helper functions
 ----------------
 
+.. c:function:: uv_os_fd_t uv_convert_fd_to_handle(int fd)
+
+   Destructively converts a file descriptor in the C runtime
+   to the OS-dependent handle.
+   Upon return, the input ``fd`` parameter is invalid and closed.
+
+   This is only useful on Windows, where it calls DuplicateHandle
+   to make a new HANDLE independent from the MSVCRT library,
+   and then closes the handle out of the C runtime to avoid leaks
+   and to avoid having multiple handles open for the same underlying resource.
+
+    .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t
+
 .. c:function:: uv_os_fd_t uv_get_osfhandle(int fd)
 
    For a file descriptor in the C runtime, get the OS-dependent handle.
@@ -531,14 +565,7 @@ Helper functions
 
     .. versionadded:: 1.12.0
 
-.. c:function:: int uv_open_osfhandle(uv_os_fd_t os_fd)
-
-   For a OS-dependent handle, get the file descriptor in the C runtime.
-   On UNIX, returns the ``os_fd`` intact. On Windows, this calls `_open_osfhandle <https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/open-osfhandle?view=vs-2019>`_.
-   Note that this consumes the argument, any attempts to close it or to use it
-   after closing the return value may lead to malfunction.
-
-    .. versionadded:: 1.23.0
+    .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t and remove ``uv_open_osfhandle``
 
 File open constants
 -------------------

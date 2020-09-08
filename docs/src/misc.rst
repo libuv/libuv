@@ -52,18 +52,15 @@ Data types
     error. The `buf` pointer is the same pointer that was passed to
     :c:func:`uv_random`.
 
-.. c:type:: uv_file
+.. c:type:: uv_os_fd_t
 
     Cross platform representation of a file handle.
+    On Unix systems this is a `typedef` of `int` and on Windows a `HANDLE`.
 
 .. c:type:: uv_os_sock_t
 
     Cross platform representation of a socket handle.
-
-.. c:type:: uv_os_fd_t
-
-    Abstract representation of a file descriptor. On Unix systems this is a
-    `typedef` of `int` and on Windows a `HANDLE`.
+    On Unix systems this is a `typedef` of `int` and on Windows a `SOCKET`.
 
 .. c:type:: uv_pid_t
 
@@ -171,6 +168,7 @@ Data types
             long gid;
             char* shell;
             char* homedir;
+            char* gecos;
         } uv_passwd_t;
 
 .. c:type:: uv_utsname_t
@@ -204,7 +202,7 @@ Data types
 API
 ---
 
-.. c:function:: uv_handle_type uv_guess_handle(uv_file file)
+.. c:function:: uv_handle_type uv_guess_handle(uv_os_fd_t file)
 
     Used to detect what type of stream should be used with a given file
     descriptor. Usually this will be used during initialization to guess the
@@ -212,6 +210,9 @@ API
 
     For :man:`isatty(3)` equivalent functionality use this function and test
     for ``UV_TTY``.
+
+    STDIO file descriptor pseudo-handles ``UV_STDIN_FD``, ``UV_STDOUT_FD``, and ``UV_STDERR_FD``
+    can be passed to any uv_os_fd_t field for cross-platform support of stdio.
 
 .. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_realloc_func realloc_func, uv_calloc_func calloc_func, uv_free_func free_func)
 
@@ -343,6 +344,13 @@ API
 
     Frees the `cpu_infos` array previously allocated with :c:func:`uv_cpu_info`.
 
+.. c:function:: int uv_cpumask_size(void)
+
+    Returns the maximum size of the mask used for process/thread affinities,
+    or ``UV_ENOTSUP`` if affinities are not supported on the current platform.
+
+    .. versionadded:: 2.0.0
+
 .. c:function:: int uv_interface_addresses(uv_interface_address_t** addresses, int* count)
 
     Gets address information about the network interfaces on the system. An
@@ -368,6 +376,9 @@ API
 .. c:function:: int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr)
 
     Convert a string containing an IPv6 addresses to a binary structure.
+
+    .. versionchanged:: 2.0.0: :man:`if_nametoindex(3)` errors are no longer
+                        ignored on Unix platforms.
 
 .. c:function:: int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size)
 
@@ -509,6 +520,8 @@ API
     :c:func:`uv_os_free_passwd`.
 
     .. versionadded:: 1.9.0
+
+    .. versionchanged:: 2.0.0 `gecos` support is added.
 
 .. c:function:: void uv_os_free_passwd(uv_passwd_t* pwd)
 

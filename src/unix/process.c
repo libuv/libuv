@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sched.h>
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <crt_externs.h>
@@ -44,6 +45,14 @@ extern char **environ;
 # include <grp.h>
 #endif
 
+#if defined(__linux__)
+# define uv__cpu_set_t cpu_set_t
+#elif defined(__FreeBSD__)
+# include <sys/param.h>
+# include <sys/cpuset.h>
+# include <pthread_np.h>
+# define uv__cpu_set_t cpuset_t
+#endif
 
 static void uv__chld(uv_signal_t* handle, int signum) {
   uv_process_t* process;
@@ -197,7 +206,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   case UV_INHERIT_FD:
   case UV_INHERIT_STREAM:
     if (container->flags & UV_INHERIT_FD)
-      fd = container->data.fd;
+      fd = container->data.file;
     else
       fd = uv__stream_fd(container->data.stream);
 
@@ -274,6 +283,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
   int err;
   int fd;
   int n;
+#if defined(__linux__) || defined(__FreeBSD__)
+  int r;
+  int i;
+  int cpumask_size;
+  uv__cpu_set_t cpuset;
+#endif
 
   if (options->flags & UV_PROCESS_DETACHED)
     setsid();
@@ -364,6 +379,26 @@ static void uv__process_child_init(const uv_process_options_t* options,
     _exit(127);
   }
 
+#if defined(__linux__) || defined(__FreeBSD__)
+  if (options->cpumask != NULL) {
+    cpumask_size = uv_cpumask_size();
+    assert(options->cpumask_size >= (size_t)cpumask_size);
+
+    CPU_ZERO(&cpuset);
+    for (i = 0; i < cpumask_size; ++i) {
+      if (options->cpumask[i]) {
+        CPU_SET(i, &cpuset);
+      }
+    }
+
+    r = -pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+    if (r != 0) {
+      uv__write_int(error_fd, r);
+      _exit(127);
+    }
+  }
+#endif
+
   if (options->env != NULL) {
     environ = options->env;
   }
@@ -422,6 +457,16 @@ int uv_spawn(uv_loop_t* loop,
   int exec_errorno;
   int i;
   int status;
+
+  if (options->cpumask != NULL) {
+#if defined(__linux__) || defined(__FreeBSD__)
+    if (options->cpumask_size < (size_t)uv_cpumask_size()) {
+      return UV_EINVAL;
+    }
+#else
+    return UV_ENOTSUP;
+#endif
+  }
 
   assert(options->file != NULL);
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |

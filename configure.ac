@@ -13,7 +13,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 AC_PREREQ(2.57)
-AC_INIT([libuv], [1.39.0], [https://github.com/libuv/libuv/issues])
+AC_INIT([libuv], [2.0.0], [https://github.com/libuv/libuv/issues])
 AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/libuv-extra-automake-flags.m4])
 m4_include([m4/as_case.m4])
@@ -26,7 +26,7 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 CC_FLAG_VISIBILITY #[-fvisibility=hidden]
 CC_CHECK_CFLAGS_APPEND([-g])
-CC_CHECK_CFLAGS_APPEND([-std=gnu89])
+CC_CHECK_CFLAGS_APPEND([-std=gnu99])
 CC_CHECK_CFLAGS_APPEND([-Wall])
 CC_CHECK_CFLAGS_APPEND([-Wextra])
 CC_CHECK_CFLAGS_APPEND([-Wno-long-long])
@@ -67,7 +67,7 @@ AM_CONDITIONAL([OS400],    [AS_CASE([$host_os],[os400],         [true], [false])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
 AS_CASE([$host_os],[mingw*], [
-    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
+    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -lsecur32 -luserenv -luser32"
 ])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
 AS_CASE([$host_os], [kfreebsd*], [

@@ -136,7 +136,7 @@ static void test_stdio_over_pipes(int overlapped) {
       (overlapped ? UV_OVERLAPPED_PIPE : 0);
   options.stdio[1].data.stream = (uv_stream_t*) &out;
   options.stdio[2].flags = UV_INHERIT_FD;
-  options.stdio[2].data.fd = 2;
+  options.stdio[2].data.file = uv_get_osfhandle(2);
   options.stdio_count = 3;
 
   r = uv_spawn(loop, &process, &options);
@@ -222,8 +222,8 @@ int stdio_over_pipes_helper(void) {
   int r;
   uv_loop_t* loop = uv_default_loop();
 
-  ASSERT(UV_NAMED_PIPE == uv_guess_handle(0));
-  ASSERT(UV_NAMED_PIPE == uv_guess_handle(1));
+  ASSERT(UV_NAMED_PIPE == uv_guess_handle(UV_STDIN_FD));
+  ASSERT(UV_NAMED_PIPE == uv_guess_handle(UV_STDOUT_FD));
 
   r = uv_pipe_init(loop, &stdin_pipe1, 0);
   ASSERT(r == 0);
@@ -234,10 +234,14 @@ int stdio_over_pipes_helper(void) {
   r = uv_pipe_init(loop, &stdout_pipe2, 0);
   ASSERT(r == 0);
 
-  uv_pipe_open(&stdin_pipe1, 0);
-  uv_pipe_open(&stdout_pipe1, 1);
-  uv_pipe_open(&stdin_pipe2, 0);
-  uv_pipe_open(&stdout_pipe2, 1);
+  r = uv_pipe_open(&stdin_pipe1, UV_STDIN_FD);
+  ASSERT(r == 0);
+  r = uv_pipe_open(&stdout_pipe1, UV_STDOUT_FD);
+  ASSERT(r == 0);
+  r = uv_pipe_open(&stdin_pipe2, UV_STDIN_FD);
+  ASSERT(r == 0);
+  r = uv_pipe_open(&stdout_pipe2, UV_STDOUT_FD);
+  ASSERT(r == 0);
 
   for (j = 0; j < 2; j++) {
     /* Unref both stdio handles to make sure that all writes complete. */

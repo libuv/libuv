@@ -349,12 +349,12 @@ TEST_IMPL(fork_signal_to_child_closed) {
 
 static void create_file(const char* name) {
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t req;
 
   r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r >= 0);
-  file = r;
+  ASSERT(r == 0);
+  file = req.result;
   uv_fs_req_cleanup(&req);
   r = uv_fs_close(NULL, &req, file, NULL);
   ASSERT(r == 0);
@@ -364,13 +364,13 @@ static void create_file(const char* name) {
 
 static void touch_file(const char* name) {
   int r;
-  uv_file file;
+  uv_os_fd_t file;
   uv_fs_t req;
   uv_buf_t buf;
 
   r = uv_fs_open(NULL, &req, name, O_RDWR, 0, NULL);
-  ASSERT(r >= 0);
-  file = r;
+  ASSERT(r == 0);
+  file = req.result;
   uv_fs_req_cleanup(&req);
 
   buf = uv_buf_init("foo", 4);

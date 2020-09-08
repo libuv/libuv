@@ -79,9 +79,19 @@ TEST_IMPL(udp_multicast_interface6) {
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
   r = uv_udp_set_multicast_interface(&server, "::1%lo0");
+#elif defined(__MVS__)
+  r = uv_udp_set_multicast_interface(&server, "::1%LOOPBACK6");
 #else
   r = uv_udp_set_multicast_interface(&server, NULL);
 #endif
+
+#if defined(__MVS__)
+  if (r == UV_EADDRNOTAVAIL) {
+    MAKE_VALGRIND_HAPPY();
+    RETURN_SKIP("No ipv6 multicast route");
+  }
+#endif
+
   ASSERT(r == 0);
 
   /* server sends "PING" */

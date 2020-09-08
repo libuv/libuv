@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stddef.h> /* NULL */
-#include <stdio.h>
+#include <stdio.h> /* FILE, printf */
 #include <stdlib.h> /* malloc */
 #include <string.h> /* memset */
 
@@ -154,7 +154,7 @@ size_t uv_loop_size(void) {
 }
 
 
-uv_buf_t uv_buf_init(char* base, unsigned int len) {
+uv_buf_t uv_buf_init(char* base, size_t len) {
   uv_buf_t buf;
   buf.base = base;
   buf.len = len;
@@ -252,11 +252,14 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
     ip = address_part;
 
     zone_index++; /* skip '%' */
-    /* NOTE: unknown interface (id=0) is silently ignored */
 #ifdef _WIN32
+    /* NOTE: unknown interfaces are silently ignored on Windows */
     addr->sin6_scope_id = atoi(zone_index);
 #else
     addr->sin6_scope_id = if_nametoindex(zone_index);
+
+    if (addr->sin6_scope_id == 0)
+      return -errno;
 #endif
   }
 
@@ -502,7 +505,7 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
 }
 
 
-static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
+static void uv__print_handles(uv_loop_t* loop, int only_active, void* stream) {
   const char* type;
   QUEUE* q;
   uv_handle_t* h;
@@ -534,12 +537,12 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
 }
 
 
-void uv_print_all_handles(uv_loop_t* loop, FILE* stream) {
+void uv_print_all_handles(uv_loop_t* loop, void* stream) {
   uv__print_handles(loop, 0, stream);
 }
 
 
-void uv_print_active_handles(uv_loop_t* loop, FILE* stream) {
+void uv_print_active_handles(uv_loop_t* loop, void* stream) {
   uv__print_handles(loop, 1, stream);
 }
 
