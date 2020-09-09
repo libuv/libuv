@@ -143,7 +143,6 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_MOD_NOT_FOUND:               return UV_ENOENT;
     case ERROR_PATH_NOT_FOUND:              return UV_ENOENT;
     case WSAHOST_NOT_FOUND:                 return UV_ENOENT;
-    case WSANO_DATA:                        return UV_EADDRNOTAVAIL;
     case ERROR_NOT_ENOUGH_MEMORY:           return UV_ENOMEM;
     case ERROR_OUTOFMEMORY:                 return UV_ENOMEM;
     case ERROR_CANNOT_MAKE:                 return UV_ENOSPC;
@@ -170,12 +169,12 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_NOT_SAME_DEVICE:             return UV_EXDEV;
     case ERROR_INVALID_FUNCTION:            return UV_EISDIR;
     case ERROR_META_EXPANSION_TOO_LONG:     return UV_E2BIG;
-    case WSAEBADF:                          return UV_EINVAL;
+    case WSAEBADF:                          return UV_EBADF;
     case WSAEDESTADDRREQ:                   return UV_EDESTADDRREQ;
     case WSAEPROTOTYPE:                     return UV_EPROTOTYPE;
     case WSAENOPROTOOPT:                    return UV_ENOPROTOOPT;
-    case WSAESTALE:                         return UV_EBADF;
-    case WSAEHOSTDOWN:                      return UV_EHOSTUNREACH;
+    case WSAESTALE:                         return UV_ESTALE;
+    case WSAEHOSTDOWN:                      return UV_EHOSTDOWN;
     case WSAENAMETOOLONG:                   return UV_ENAMETOOLONG;
     case WSAENETRESET:                      return UV_ECONNRESET;
     case WSAENETDOWN:                       return UV_ENETDOWN;

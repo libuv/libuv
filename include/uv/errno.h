@@ -445,6 +445,8 @@
 # define UV__EILSEQ (-4027)
 #endif
 
+
+
 #if defined(EOVERFLOW) && !defined(_WIN32)
 # define UV__EOVERFLOW UV__ERR(EOVERFLOW)
 #else
@@ -455,6 +457,12 @@
 # define UV__ESOCKTNOSUPPORT UV__ERR(ESOCKTNOSUPPORT)
 #else
 # define UV__ESOCKTNOSUPPORT (-4025)
+#endif
+
+#if defined(ESTALE) && !defined(_WIN32)
+# define UV__ESTALE UV__ERR(ESTALE)
+#else
+# define UV__ESTALE (-4024)
 #endif
 
 #endif /* UV_ERRNO_H_ */
