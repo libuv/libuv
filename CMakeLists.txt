@@ -298,6 +298,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_sources src/unix/no-proctitle.c src/unix/sunos.c)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
+  list(APPEND uv_defines _BSD_SOURCE)
+  list(APPEND uv_libraries bsd network)
+  list(APPEND uv_sources
+	  src/unix/haiku.c
+	  src/unix/bsd-ifaddrs.c
+	  src/unix/no-fsevents.c
+	  src/unix/no-proctitle.c
+	  src/unix/posix-hrtime.c
+	  src/unix/posix-poll.c)
+endif()
+
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
