@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -25,6 +25,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #define CHECK_HANDLE(handle) \
   ASSERT((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client)
@@ -67,6 +71,8 @@ static void cl_recv_cb(uv_udp_t* handle,
   CHECK_HANDLE(handle);
   ASSERT_EQ(flags, 0);
 
+  fprintf(stderr, "client received\n");
+
   if (nread < 0)
     ASSERT(0 && "unexpected error");
 
@@ -80,19 +86,20 @@ static void cl_recv_cb(uv_udp_t* handle,
   ASSERT_EQ(nread, 4);
   ASSERT_EQ(memcmp("PONG", buf->base, nread), 0);
 
-  if (cl_recv_cb_called > 0)
-    uv_close((uv_handle_t*) handle, close_cb);
   cl_recv_cb_called++;
+  uv_close((uv_handle_t*) handle, close_cb);
 }
 
 
 static void cl_send_cb(uv_udp_send_t* req, int status) {
+  int r;
+
   ASSERT_NOT_NULL(req);
   ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
 
-  if (cl_send_cb_called == 0)
-    ASSERT_EQ(0, uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb));
+  r = uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb);
+  ASSERT_EQ(r, 0);
 
   cl_send_cb_called++;
 }
@@ -103,9 +110,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
 
-  if (sv_send_cb_called > 0)
-    uv_close((uv_handle_t*) req->handle, close_cb);
-
+  uv_close((uv_handle_t*) req->handle, close_cb);
   free(req);
 
   sv_send_cb_called++;
@@ -120,6 +125,8 @@ static void sv_recv_cb(uv_udp_t* handle,
   uv_udp_send_t* req;
   uv_buf_t sndbuf;
   int r;
+
+  fprintf(stderr, "test\n");
 
   if (nread < 0)
     ASSERT(0 && "unexpected error");
@@ -149,57 +156,74 @@ static void sv_recv_cb(uv_udp_t* handle,
   req = malloc(sizeof *req);
   ASSERT_NOT_NULL(req);
 
+  fprintf(stderr, "request came from path %s\n", ((struct sockaddr_un*) addr)->sun_path);
+
   sndbuf = uv_buf_init("PONG", 4);
-  r = uv_udp_send(req, handle, &sndbuf, 1, addr, sv_send_cb);
+  r = uv_udp_send_ex(req, handle, &sndbuf, 1, addr, sizeof(struct sockaddr_un), sv_send_cb);
   ASSERT_EQ(r, 0);
 
   sv_recv_cb_called++;
 }
 
+static const char* server_socket_path = "./test_socket_server";
+static const char* client_socket_path = "./test_socket_client";
 
-TEST_IMPL(udp_send_and_recv) {
-  struct sockaddr_in addr;
+TEST_IMPL(udp_send_ex) {
+  struct sockaddr_un server_addr;
+  struct sockaddr_un client_addr;
   uv_udp_send_t req;
-  uv_udp_send_t req_ex;
   uv_buf_t buf;
   int r;
+  int server_sock;
+  int client_sock;
 
-  ASSERT_EQ(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr), 0);
+  unlink(client_socket_path);
+  unlink(server_socket_path);
+
+  server_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  ASSERT_GE(server_sock, 0);
+
+  memset(&server_addr, 0, sizeof(server_addr));
+  server_addr.sun_family = AF_UNIX;
+  strncpy(server_addr.sun_path, server_socket_path, sizeof(server_addr.sun_path));
+
+  r = bind(server_sock, (struct sockaddr*) &server_addr, sizeof(server_addr));
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &server);
   ASSERT_EQ(r, 0);
 
-  r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
+  r = uv_udp_open(&server, server_sock);
   ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
   ASSERT_EQ(r, 0);
 
-  ASSERT_EQ(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr), 0);
+  client_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+  ASSERT_GE(client_sock, 0);
+
+  memset(&client_addr, 0, sizeof(client_addr));
+  client_addr.sun_family = AF_UNIX;
+  strncpy(client_addr.sun_path, client_socket_path, sizeof(client_addr.sun_path));
 
   r = uv_udp_init(uv_default_loop(), &client);
+  ASSERT_EQ(r, 0);
+
+  r = bind(client_sock, (struct sockaddr*) &client_addr, sizeof(client_addr));
+  ASSERT_EQ(r, 0);
+
+  r = uv_udp_open(&client, client_sock);
   ASSERT_EQ(r, 0);
 
   /* client sends "PING", expects "PONG" */
   buf = uv_buf_init("PING", 4);
 
-  r = uv_udp_send(&req,
-                  &client,
-                  &buf,
-                  1,
-                  (const struct sockaddr*) &addr,
-                  cl_send_cb);
-  ASSERT_EQ(r, 0);
-
-  /* client sends "ping", expects "pong" */
-  buf = uv_buf_init("PING", 4);
-
-  r = uv_udp_send_ex(&req_ex,
+  r = uv_udp_send_ex(&req,
                      &client,
                      &buf,
                      1,
-                     (const struct sockaddr*) &addr,
-                     sizeof(addr),
+                     (const struct sockaddr*) &server_addr,
+                     sizeof(server_addr),
                      cl_send_cb);
   ASSERT_EQ(r, 0);
 
@@ -212,14 +236,20 @@ TEST_IMPL(udp_send_and_recv) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(cl_send_cb_called, 2);
-  ASSERT_EQ(cl_recv_cb_called, 2);
-  ASSERT_EQ(sv_send_cb_called, 2);
-  ASSERT_EQ(sv_recv_cb_called, 2);
+  ASSERT_EQ(cl_send_cb_called, 1);
+  ASSERT_EQ(cl_recv_cb_called, 1);
+  ASSERT_EQ(sv_send_cb_called, 1);
+  ASSERT_EQ(sv_recv_cb_called, 1);
   ASSERT_EQ(close_cb_called, 2);
 
   ASSERT_EQ(client.send_queue_size, 0);
   ASSERT_EQ(server.send_queue_size, 0);
+
+  close(client_sock);
+  close(server_sock);
+
+  unlink(client_socket_path);
+  unlink(server_socket_path);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

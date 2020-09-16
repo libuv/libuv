@@ -162,6 +162,9 @@ TEST_DECLARE   (udp_create_early)
 TEST_DECLARE   (udp_create_early_bad_bind)
 TEST_DECLARE   (udp_create_early_bad_domain)
 TEST_DECLARE   (udp_send_and_recv)
+#ifndef _WIN32
+TEST_DECLARE   (udp_send_ex)
+#endif
 TEST_DECLARE   (udp_send_hang_loop)
 TEST_DECLARE   (udp_send_immediate)
 TEST_DECLARE   (udp_send_unreachable)
@@ -721,6 +724,7 @@ TASK_LIST_START
   TEST_ENTRY  (udp_create_early_bad_bind)
   TEST_ENTRY  (udp_create_early_bad_domain)
   TEST_ENTRY  (udp_send_and_recv)
+  TEST_ENTRY  (udp_send_ex)
   TEST_ENTRY  (udp_send_hang_loop)
   TEST_ENTRY  (udp_send_immediate)
   TEST_ENTRY  (udp_send_unreachable)
