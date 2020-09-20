@@ -171,5 +171,6 @@ TEST_IMPL(platform_output) {
   printf("  version: %s\n", uname.version);
   printf("  machine: %s\n", uname.machine);
 
+  uv_os_free_passwd(&pwd);
   return 0;
 }
