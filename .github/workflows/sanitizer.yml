@@ -1,4 +1,4 @@
-name: Santilizer checks
+name: Sanitizer checks
 
 on: [push, pull_request]
 
