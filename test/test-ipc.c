@@ -722,6 +722,9 @@ static void ipc_on_connection_tcp_conn(uv_stream_t* server, int status) {
   ASSERT_EQ(r, 0);
 
   uv_close((uv_handle_t*)conn, close_cb);
+
+  //  make asan happy
+  free(conn);
 }
 
 
