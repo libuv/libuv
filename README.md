@@ -315,3 +315,6 @@ See the [guidelines for contributing][].
 [Visual Studio 2015 Update 3]: https://www.visualstudio.com/vs/older-downloads/
 [Visual Studio 2017]: https://www.visualstudio.com/downloads/
 [Git for Windows]: http://git-scm.com/download/win
+
+## Pre-built binaries
+[v1.38.1] https://github.com/BrainCoTech/libuv-prebuild/releases/tag/v1.38.1
