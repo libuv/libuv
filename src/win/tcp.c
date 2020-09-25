@@ -1015,6 +1015,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
          */
         err = WSAECONNRESET;
       }
+      handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
       handle->read_cb((uv_stream_t*)handle,
                       uv_translate_sys_error(err),
@@ -1096,6 +1097,7 @@ void uv_process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
              * Unix. */
             err = WSAECONNRESET;
           }
+          handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
           handle->read_cb((uv_stream_t*)handle,
                           uv_translate_sys_error(err),
