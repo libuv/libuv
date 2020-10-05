@@ -13,6 +13,5 @@ jobs:
         run: |
           mkdir build
           cd build && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
-          cmake --build .
-          ./uv_run_tests_a
+          cmake --build . && ./uv_run_tests_a
 
