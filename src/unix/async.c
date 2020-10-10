@@ -125,6 +125,8 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   QUEUE queue;
   QUEUE* q;
   uv_async_t* h;
+  int busy;
+  int rc;
 
   assert(w == &loop->async_io_watcher);
 
@@ -146,6 +148,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     abort();
   }
 
+  busy = 0;
   QUEUE_MOVE(&loop->async_handles, &queue);
   while (!QUEUE_EMPTY(&queue)) {
     q = QUEUE_HEAD(&queue);
@@ -154,14 +157,24 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
-    if (0 == uv__async_spin(h))
+    rc = cmpxchgi(&h->pending, 2, 0);
+
+    if (rc == 0)
       continue;  /* Not pending. */
+
+    if (rc == 1) {
+      busy++;
+      continue;
+    }
 
     if (h->async_cb == NULL)
       continue;
 
     h->async_cb(h);
   }
+
+  if (busy)
+    uv__async_send(loop);  /* Check again. */
 }
 
 
