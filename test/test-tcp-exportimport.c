@@ -86,14 +86,8 @@ static void on_connection(uv_stream_t* server, int status) {
 }
 
 
-static void close_client_conn_cb(uv_handle_t* handle) {
-  tcp_conn* p = (tcp_conn*)handle->data;
-  free(p);
-}
-
-
 static void connect_cb(uv_connect_t* req, int status) {
-  uv_close((uv_handle_t*)req->handle, close_client_conn_cb);
+  uv_close((uv_handle_t*)req->handle, NULL);
 }
 
 
