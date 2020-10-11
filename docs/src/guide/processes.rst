@@ -266,10 +266,10 @@ Domain Socket`_, or derived from `mkfifo(1)`_, or it could actually be a
 This is intended for the purpose of allowing multiple libuv processes to
 communicate with IPC. This is discussed below.
 
-.. _pipe(7): http://man7.org/linux/man-pages/man7/pipe.7.html
-.. _mkfifo(1): http://man7.org/linux/man-pages/man1/mkfifo.1.html
-.. _socketpair(2): http://man7.org/linux/man-pages/man2/socketpair.2.html
-.. _Unix Domain Socket: http://man7.org/linux/man-pages/man7/unix.7.html
+.. _pipe(7): https://man7.org/linux/man-pages/man7/pipe.7.html
+.. _mkfifo(1): https://man7.org/linux/man-pages/man1/mkfifo.1.html
+.. _socketpair(2): https://man7.org/linux/man-pages/man2/socketpair.2.html
+.. _Unix Domain Socket: https://man7.org/linux/man-pages/man7/unix.7.html
 .. _Named Pipe: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
 
 

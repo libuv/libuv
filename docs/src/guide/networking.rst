@@ -200,7 +200,7 @@ Freenode to see an example of DNS resolution.
 If ``uv_getaddrinfo`` returns non-zero, something went wrong in the setup and
 your callback won't be invoked at all. All arguments can be freed immediately
 after ``uv_getaddrinfo`` returns. The `hostname`, `servname` and `hints`
-structures are documented in `the getaddrinfo man page <getaddrinfo>`_. The
+structures are documented in `the getaddrinfo man page <getaddrinfo_>`_. The
 callback can be ``NULL`` in which case the function will run synchronously.
 
 In the resolver callback, you can pick any IP from the linked list of ``struct
@@ -235,7 +235,7 @@ interface has multiple IPv4/IPv6 addresses, the name will be reported multiple
 times, with each address being reported once.
 
 .. _c-ares: https://c-ares.haxx.se
-.. _getaddrinfo: https://www.kernel.org/doc/man-pages/online/pages/man3/getaddrinfo.3.html
+.. _getaddrinfo: https://man7.org/linux/man-pages/man3/getaddrinfo.3.html
 
 .. _User Datagram Protocol: https://en.wikipedia.org/wiki/User_Datagram_Protocol
 .. _DHCP: https://tools.ietf.org/html/rfc2131

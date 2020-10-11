@@ -41,7 +41,22 @@ Data types
             * (provided they all set the flag) but only the last one to bind will receive
             * any traffic, in effect "stealing" the port from the previous listener.
             */
-            UV_UDP_REUSEADDR = 4
+            UV_UDP_REUSEADDR = 4,
+            /*
+             * Indicates that the message was received by recvmmsg, so the buffer provided
+             * must not be freed by the recv_cb callback.
+             */
+            UV_UDP_MMSG_CHUNK = 8,
+            /*
+             * Indicates that the buffer provided has been fully utilized by recvmmsg and
+             * that it should now be freed by the recv_cb callback. When this flag is set
+             * in uv_udp_recv_cb, nread will always be 0 and addr will always be NULL.
+             */
+            UV_UDP_MMSG_FREE = 16,
+            /*
+            * Indicates that recvmmsg should be used, if available.
+            */
+            UV_UDP_RECVMMSG = 256
         };
 
 .. c:type:: void (*uv_udp_send_cb)(uv_udp_send_t* req, int status)
@@ -62,19 +77,26 @@ Data types
     * `buf`: :c:type:`uv_buf_t` with the received data.
     * `addr`: ``struct sockaddr*`` containing the address of the sender.
       Can be NULL. Valid for the duration of the callback only.
-    * `flags`: One or more or'ed UV_UDP_* constants. Right now only
-      ``UV_UDP_PARTIAL`` is used.
+    * `flags`: One or more or'ed UV_UDP_* constants.
 
     The callee is responsible for freeing the buffer, libuv does not reuse it.
     The buffer may be a null buffer (where `buf->base` == NULL and `buf->len` == 0)
     on error.
+
+    When using :man:`recvmmsg(2)`, chunks will have the `UV_UDP_MMSG_CHUNK` flag set,
+    those must not be freed. There will be a final callback with `nread` set to 0,
+    `addr` set to NULL and the buffer pointing at the initially allocated data with
+    the `UV_UDP_MMSG_CHUNK` flag cleared and the `UV_UDP_MMSG_FREE` flag set.
+    The callee can now safely free the provided buffer.
+
+    .. versionchanged:: 1.40.0 added the `UV_UDP_MMSG_FREE` flag.
 
     .. note::
         The receive callback will be called with `nread` == 0 and `addr` == NULL when there is
         nothing to read, and with `nread` == 0 and `addr` != NULL when an empty UDP packet is
         received.
 
-.. c:type:: uv_membership
+.. c:enum:: uv_membership
 
     Membership type for a multicast address.
 
@@ -115,12 +137,17 @@ API
 
 .. c:function:: int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned int flags)
 
-    Initialize the handle with the specified flags. At the moment the lower 8 bits
-    of the `flags` parameter are used as the socket domain. A socket will be created
-    for the given domain. If the specified domain is ``AF_UNSPEC`` no socket is created,
-    just like :c:func:`uv_udp_init`.
+    Initialize the handle with the specified flags. The lower 8 bits of the `flags`
+    parameter are used as the socket domain. A socket will be created for the given domain.
+    If the specified domain is ``AF_UNSPEC`` no socket is created, just like :c:func:`uv_udp_init`.
+
+    The remaining bits can be used to set one of these flags:
+
+    * `UV_UDP_RECVMMSG`: if set, and the platform supports it, :man:`recvmmsg(2)` will
+      be used.
 
     .. versionadded:: 1.7.0
+    .. versionchanged:: 1.37.0 added the `UV_UDP_RECVMMSG` flag.
 
 .. c:function:: int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock)
 
@@ -365,6 +392,23 @@ API
     :param recv_cb: Callback to invoke with received data.
 
     :returns: 0 on success, or an error code < 0 on failure.
+
+    .. versionchanged:: 1.35.0 added support for :man:`recvmmsg(2)` on supported platforms).
+                        The use of this feature requires a buffer larger than
+                        2 * 64KB to be passed to `alloc_cb`.
+    .. versionchanged:: 1.37.0 :man:`recvmmsg(2)` support is no longer enabled implicitly,
+                        it must be explicitly requested by passing the `UV_UDP_RECVMMSG` flag to
+                        :c:func:`uv_udp_init_ex`.
+    .. versionchanged:: 1.39.0 :c:func:`uv_udp_using_recvmmsg` can be used in `alloc_cb` to
+                        determine if a buffer sized for use with :man:`recvmmsg(2)` should be
+                        allocated for the current handle/platform.
+
+.. c:function:: int uv_udp_using_recvmmsg(uv_udp_t* handle)
+
+    Returns 1 if the UDP handle was created with the `UV_UDP_RECVMMSG` flag
+    and the platform supports :man:`recvmmsg(2)`, 0 otherwise.
+
+    .. versionadded:: 1.39.0
 
 .. c:function:: int uv_udp_recv_stop(uv_udp_t* handle)
 

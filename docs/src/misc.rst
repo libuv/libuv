@@ -131,11 +131,11 @@ Data types
             char* model;
             int speed;
             struct uv_cpu_times_s {
-                uint64_t user;
-                uint64_t nice;
-                uint64_t sys;
-                uint64_t idle;
-                uint64_t irq;
+                uint64_t user; /* milliseconds */
+                uint64_t nice; /* milliseconds */
+                uint64_t sys; /* milliseconds */
+                uint64_t idle; /* milliseconds */
+                uint64_t irq; /* milliseconds */
             } cpu_times;
         } uv_cpu_info_t;
 
@@ -233,6 +233,24 @@ API
                  sure the allocator is changed while no memory was allocated with
                  the previous allocator, or that they are compatible.
 
+    .. warning:: Allocator must be thread-safe.
+
+.. c:function:: void uv_library_shutdown(void);
+
+    .. versionadded:: 1.38.0
+
+    Release any global state that libuv is holding onto. Libuv will normally
+    do so automatically when it is unloaded but it can be instructed to perform
+    cleanup manually.
+
+    .. warning:: Only call :c:func:`uv_library_shutdown()` once.
+
+    .. warning:: Don't call :c:func:`uv_library_shutdown()` when there are
+                 still event loops or I/O requests active.
+
+    .. warning:: Don't call libuv functions after calling
+                 :c:func:`uv_library_shutdown()`.
+
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 
     Constructor for :c:type:`uv_buf_t`.
@@ -243,26 +261,50 @@ API
 
 .. c:function:: char** uv_setup_args(int argc, char** argv)
 
-    Store the program arguments. Required for getting / setting the process title.
+    Store the program arguments. Required for getting / setting the process title
+    or the executable path. Libuv may take ownership of the memory that `argv` 
+    points to. This function should be called exactly once, at program start-up.
+
+    Example:
+
+    ::
+
+        argv = uv_setup_args(argc, argv);  /* May return a copy of argv. */
+
 
 .. c:function:: int uv_get_process_title(char* buffer, size_t size)
 
     Gets the title of the current process. You *must* call `uv_setup_args`
-    before calling this function. If `buffer` is `NULL` or `size` is zero,
-    `UV_EINVAL` is returned. If `size` cannot accommodate the process title and
-    terminating `NULL` character, the function returns `UV_ENOBUFS`.
+    before calling this function on Unix and AIX systems. If `uv_setup_args`
+    has not been called on systems that require it, then `UV_ENOBUFS` is
+    returned. If `buffer` is `NULL` or `size` is zero, `UV_EINVAL` is returned.
+    If `size` cannot accommodate the process title and terminating `nul`
+    character, the function returns `UV_ENOBUFS`.
+
+    .. note::
+        On BSD systems, `uv_setup_args` is needed for getting the initial process
+        title. The process title returned will be an empty string until either
+        `uv_setup_args` or `uv_set_process_title` is called.
 
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
+
+    .. versionchanged:: 1.39.0 now returns an error if `uv_setup_args` is needed
+                        but hasn't been called.
 
 .. c:function:: int uv_set_process_title(const char* title)
 
     Sets the current process title. You *must* call `uv_setup_args` before
-    calling this function. On platforms with a fixed size buffer for the process
-    title the contents of `title` will be copied to the buffer and truncated if
-    larger than the available space. Other platforms will return `UV_ENOMEM` if
-    they cannot allocate enough space to duplicate the contents of `title`.
+    calling this function on Unix and AIX systems. If `uv_setup_args` has not
+    been called on systems that require it, then `UV_ENOBUFS` is returned. On
+    platforms with a fixed size buffer for the process title the contents of
+    `title` will be copied to the buffer and truncated if larger than the
+    available space. Other platforms will return `UV_ENOMEM` if they cannot
+    allocate enough space to duplicate the contents of `title`.
 
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
+
+    .. versionchanged:: 1.39.0 now returns an error if `uv_setup_args` is needed
+                        but hasn't been called.
 
 .. c:function:: int uv_resident_set_memory(size_t* rss)
 
@@ -398,7 +440,8 @@ API
 
 .. c:function:: int uv_exepath(char* buffer, size_t* size)
 
-    Gets the executable path.
+    Gets the executable path. You *must* call `uv_setup_args` before calling
+    this function.
 
 .. c:function:: int uv_cwd(char* buffer, size_t* size)
 
@@ -475,11 +518,11 @@ API
 
 .. c:function:: uint64_t uv_get_free_memory(void)
 
-    Gets memory information (in bytes).
+    Gets the amount of free memory available in the system, as reported by the kernel (in bytes).
 
 .. c:function:: uint64_t uv_get_total_memory(void)
 
-    Gets memory information (in bytes).
+    Gets the total amount of physical memory in the system (in bytes).
 
 .. c:function:: uint64_t uv_get_constrained_memory(void)
 
@@ -639,6 +682,16 @@ API
     .. note::
         On Windows, setting `PRIORITY_HIGHEST` will only work for elevated user,
         for others it will be silently reduced to `PRIORITY_HIGH`.
+
+    .. note::
+        On IBM i PASE, the highest process priority is -10. The constant
+        `UV_PRIORITY_HIGHEST` is -10, `UV_PRIORITY_HIGH` is -7, 
+        `UV_PRIORITY_ABOVE_NORMAL` is -4, `UV_PRIORITY_NORMAL` is 0,
+        `UV_PRIORITY_BELOW_NORMAL` is 15 and `UV_PRIORITY_LOW` is 39.
+
+    .. note::
+        On IBM i PASE, you are not allowed to change your priority unless you
+        have the \*JOBCTL special authority (even to lower it).
 
     .. versionadded:: 1.23.0
 

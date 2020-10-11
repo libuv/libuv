@@ -58,6 +58,9 @@
 #include <as400_protos.h>
 #include <as400_types.h>
 
+char* original_exepath = NULL;
+uv_mutex_t process_title_mutex;
+uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 
 typedef struct {
   int bytes_available;
@@ -171,6 +174,9 @@ static void iconv_a2e(const char* src, unsigned char dst[], size_t length) {
     dst[i] = a2e[' '];
 }
 
+void init_process_title_mutex_once(void) {
+  uv_mutex_init(&process_title_mutex);
+}
 
 static int get_ibmi_system_status(SSTS0200* rcvr) {
   /* rcvrlen is input parameter 2 to QWCRSSTS */
@@ -225,22 +231,7 @@ uint64_t uv_get_free_memory(void) {
   if (get_ibmi_system_status(&rcvr))
     return 0;
 
-  /* The amount of main storage, in kilobytes, in the system. */
-  uint64_t main_storage_size = rcvr.main_storage_size;
-
-  /* The current amount of storage in use for temporary objects.
-   * in millions (M) of bytes.
-   */
-  uint64_t current_unprotected_storage_used =
-    rcvr.current_unprotected_storage_used * 1024ULL;
-
-  /* Current unprotected storage includes the storage used for memory
-   * and disks so it is possible to exceed the amount of main storage.
-   */
-  if (main_storage_size <= current_unprotected_storage_used)
-    return 0ULL;
-
-  return (main_storage_size - current_unprotected_storage_used) * 1024ULL;
+  return (uint64_t)rcvr.main_storage_size * 1024ULL;
 }
 
 
@@ -473,4 +464,38 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses, int count) {
   }
 
   uv__free(addresses);
+}
+
+char** uv_setup_args(int argc, char** argv) {
+  char exepath[UV__PATH_MAX];
+  char* s;
+  size_t size;
+
+  if (argc > 0) {
+    /* Use argv[0] to determine value for uv_exepath(). */
+    size = sizeof(exepath);
+    if (uv__search_path(argv[0], exepath, &size) == 0) {
+      uv_once(&process_title_mutex_once, init_process_title_mutex_once);
+      uv_mutex_lock(&process_title_mutex);
+      original_exepath = uv__strdup(exepath);
+      uv_mutex_unlock(&process_title_mutex);
+    }
+  }
+
+  return argv;
+}
+
+int uv_set_process_title(const char* title) {
+  return 0;
+}
+
+int uv_get_process_title(char* buffer, size_t size) {
+  if (buffer == NULL || size == 0)
+    return UV_EINVAL;
+
+  buffer[0] = '\0';
+  return 0;
+}
+
+void uv__process_title_cleanup(void) {
 }

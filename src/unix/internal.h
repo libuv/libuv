@@ -28,9 +28,10 @@
 #include <limits.h> /* _POSIX_PATH_MAX, PATH_MAX */
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
-#include <fcntl.h>  /* O_CLOEXEC, may be */
+#include <fcntl.h>  /* O_CLOEXEC and O_NONBLOCK, if supported. */
 #include <stdio.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
@@ -61,9 +62,7 @@
 # include <AvailabilityMacros.h>
 #endif
 
-#if defined(_POSIX_PATH_MAX)
-# define UV__PATH_MAX _POSIX_PATH_MAX
-#elif defined(PATH_MAX)
+#if defined(PATH_MAX)
 # define UV__PATH_MAX PATH_MAX
 #else
 # define UV__PATH_MAX 8192
@@ -105,10 +104,8 @@ int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
 #if defined(__clang__) ||                                                     \
     defined(__GNUC__) ||                                                      \
     defined(__INTEL_COMPILER)
-# define UV_DESTRUCTOR(declaration) __attribute__((destructor)) declaration
 # define UV_UNUSED(declaration)     __attribute__((unused)) declaration
 #else
-# define UV_DESTRUCTOR(declaration) declaration
 # define UV_UNUSED(declaration)     declaration
 #endif
 
@@ -270,6 +267,7 @@ void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
+int uv__search_path(const char* prog, char* buf, size_t* buflen);
 
 /* random */
 int uv__random_devurandom(void* buf, size_t buflen);
@@ -285,13 +283,12 @@ int uv___stream_fd(const uv_stream_t* handle);
 #define uv__stream_fd(handle) ((handle)->io_watcher.fd)
 #endif /* defined(__APPLE__) */
 
-#ifdef UV__O_NONBLOCK
-# define UV__F_NONBLOCK UV__O_NONBLOCK
+#ifdef O_NONBLOCK
+# define UV__F_NONBLOCK O_NONBLOCK
 #else
 # define UV__F_NONBLOCK 1
 #endif
 
-int uv__make_socketpair(int fds[2], int flags);
 int uv__make_pipe(int fds[2], int flags);
 
 #if defined(__APPLE__)
@@ -328,5 +325,21 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         uv__peersockfunc func,
                         struct sockaddr* name,
                         int* namelen);
+
+#if defined(__linux__)            ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__FreeBSD_kernel__)
+#define HAVE_MMSG 1
+struct uv__mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
+};
+
+int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
+int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
+#else
+#define HAVE_MMSG 0
+#endif
+
 
 #endif /* UV_UNIX_INTERNAL_H_ */

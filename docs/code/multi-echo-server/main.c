@@ -70,7 +70,7 @@ void setup_workers() {
 
     child_worker_count = cpu_count;
 
-    workers = calloc(sizeof(struct child_worker), cpu_count);
+    workers = calloc(cpu_count, sizeof(struct child_worker));
     while (cpu_count--) {
         struct child_worker *worker = &workers[cpu_count];
         uv_pipe_init(loop, &worker->pipe, 1);
