@@ -42,7 +42,7 @@ static uv_async_t recv_channel;
 static worker_t parent;
 static worker_t child;
 
-static volatile uv_stream_info_t dup_stream;
+static uv_stream_info_t dup_stream;
 
 typedef struct {
   uv_connect_t conn_req;
@@ -50,10 +50,11 @@ typedef struct {
 } tcp_conn;
 
 #define CONN_COUNT 100
+static tcp_conn conns[CONN_COUNT];
 
 static void close_cb(uv_handle_t* handle) {
   worker_t* worker = (worker_t*)handle->data;
-  ASSERT(worker);
+  ASSERT(worker != NULL);
   worker->close_cb_called++;
 }
 
@@ -102,7 +103,7 @@ static void make_many_connections(void) {
   int r, i;
 
   for (i = 0; i < CONN_COUNT; i++) {
-    conn = malloc(sizeof(*conn));
+    conn = &conns[i];
     ASSERT(conn);
 
     r = uv_tcp_init(uv_default_loop(), &conn->conn);
@@ -111,7 +112,10 @@ static void make_many_connections(void) {
     r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
     ASSERT(r == 0);
 
-    r = uv_tcp_connect(&conn->conn_req, (uv_tcp_t*)&conn->conn, (struct sockaddr *) &addr, connect_cb);
+    r = uv_tcp_connect(&conn->conn_req,
+                       (uv_tcp_t*)&conn->conn,
+                       (struct sockaddr*) &addr,
+                       connect_cb);
     ASSERT(r == 0);
 
     conn->conn.data = conn;
