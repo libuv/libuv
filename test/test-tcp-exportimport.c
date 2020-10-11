@@ -228,7 +228,6 @@ static void run_tcp_exportimport_test(int listen_after_write) {
    * test runner.
    */
   uv_loop_delete(child.loop);
-  uv_loop_delete(uv_default_loop());
 }
 
 
