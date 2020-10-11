@@ -124,8 +124,9 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   ssize_t r;
   QUEUE queue;
   QUEUE* q;
+  QUEUE* next;
   uv_async_t* h;
-  int busy;
+  int passes;
   int rc;
 
   assert(w == &loop->async_io_watcher);
@@ -148,33 +149,31 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     abort();
   }
 
-  busy = 0;
   QUEUE_MOVE(&loop->async_handles, &queue);
-  while (!QUEUE_EMPTY(&queue)) {
-    q = QUEUE_HEAD(&queue);
-    h = QUEUE_DATA(q, uv_async_t, queue);
 
-    QUEUE_REMOVE(q);
-    QUEUE_INSERT_TAIL(&loop->async_handles, q);
+  for (passes = 0; !QUEUE_EMPTY(&queue) && passes < 2; passes++) {
+    for (q = QUEUE_NEXT(&queue); q != &queue; q = next) {
+      next = QUEUE_NEXT(q);
+      h = QUEUE_DATA(q, uv_async_t, queue);
 
-    rc = cmpxchgi(&h->pending, 2, 0);
+      rc = cmpxchgi(&h->pending, 2, 0);
 
-    if (rc == 0)
-      continue;  /* Not pending. */
+      if (rc != 1) {                    /* (!pending) or (pending and done) */
+        QUEUE_REMOVE(q);
+        QUEUE_INSERT_TAIL(&loop->async_handles, q);
+      }
 
-    if (rc == 1) {
-      busy++;
-      continue;
+      if (rc == 2 && h->async_cb != NULL)
+        h->async_cb(h);
     }
-
-    if (h->async_cb == NULL)
-      continue;
-
-    h->async_cb(h);
   }
 
-  if (busy)
-    uv__async_send(loop);  /* Check again. */
+  if (!QUEUE_EMPTY(&queue)) {
+    /* Check any leftovers in next event loop cycle
+     */
+    QUEUE_ADD(&loop->async_handles, &queue);
+    uv__async_send(loop);
+  }
 }
 
 
