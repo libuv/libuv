@@ -59,6 +59,7 @@ int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
   handle->timer_cb = NULL;
   handle->repeat = 0;
+  handle->timeout = 0;
   return 0;
 }
 
