@@ -131,6 +131,13 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(w == &loop->async_io_watcher);
 
+  /* POLLIN  : called from uv__io_poll
+   * POLLOUT : called from uv__run_pending
+   */
+
+  if (events & POLLOUT)
+    goto skip_read;
+
   for (;;) {
     r = read(w->fd, buf, sizeof(buf));
 
@@ -149,30 +156,44 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     abort();
   }
 
+  if(!QUEUE_EMPTY(&w->pending_queue)) {
+    QUEUE_REMOVE(&w->pending_queue);
+    QUEUE_INIT(&w->pending_queue);
+  }
+
+skip_read:
+
   QUEUE_MOVE(&loop->async_handles, &queue);
 
-  for (passes = 0; !QUEUE_EMPTY(&queue) && passes < 2; passes++) {
+  for (passes = 0; passes < 2; passes++) {
     for (q = QUEUE_NEXT(&queue); q != &queue; q = next) {
       next = QUEUE_NEXT(q);
       h = QUEUE_DATA(q, uv_async_t, queue);
 
       rc = cmpxchgi(&h->pending, 2, 0);
 
-      if (rc != 1) {                    /* (!pending) or (pending and done) */
-        QUEUE_REMOVE(q);
-        QUEUE_INSERT_TAIL(&loop->async_handles, q);
-      }
+      if (rc == 1)
+        continue;  /* Busy. */
 
-      if (rc == 2 && h->async_cb != NULL)
-        h->async_cb(h);
+      QUEUE_REMOVE(q);
+      QUEUE_INSERT_TAIL(&loop->async_handles, q);
+
+      if (rc == 0)
+        continue;  /* Not pending */
+
+      if (h->async_cb == NULL)
+        continue;
+
+      h->async_cb(h);
     }
+
+    if (QUEUE_EMPTY(&queue))
+      break;
   }
 
   if (!QUEUE_EMPTY(&queue)) {
-    /* Check any leftovers in next event loop cycle
-     */
     QUEUE_ADD(&loop->async_handles, &queue);
-    uv__async_send(loop);
+    uv__io_feed(loop, w);
   }
 }
 
