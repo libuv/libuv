@@ -124,10 +124,10 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   ssize_t r;
   QUEUE queue;
   QUEUE* q;
-  QUEUE* next;
   uv_async_t* h;
   int passes;
   int rc;
+  int run_pending;
 
   assert(w == &loop->async_io_watcher);
 
@@ -135,7 +135,8 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    * POLLOUT : called from uv__run_pending
    */
 
-  if (events & POLLOUT)
+  run_pending = (events & POLLOUT) != 0;
+  if (run_pending)
     goto skip_read;
 
   for (;;) {
@@ -166,20 +167,27 @@ skip_read:
   QUEUE_MOVE(&loop->async_handles, &queue);
 
   for (passes = 0; passes < 2; passes++) {
-    for (q = QUEUE_NEXT(&queue); q != &queue; q = next) {
-      next = QUEUE_NEXT(q);
+    q = QUEUE_HEAD(&queue);
+    while (q != &queue) {
       h = QUEUE_DATA(q, uv_async_t, queue);
+      q = QUEUE_NEXT(q);
 
-      rc = cmpxchgi(&h->pending, 2, 0);
+      rc = 0;
+      if (!run_pending || (h->flags & UV_HANDLE_READ_PENDING))
+        rc = cmpxchgi(&h->pending, 2, 0);
 
-      if (rc == 1)
+      if (rc == 1) {
+        h->flags |= UV_HANDLE_READ_PENDING;
         continue;  /* Busy. */
+      }
 
-      QUEUE_REMOVE(q);
-      QUEUE_INSERT_TAIL(&loop->async_handles, q);
+      QUEUE_REMOVE(&h->queue);
+      QUEUE_INSERT_TAIL(&loop->async_handles, &h->queue);
 
       if (rc == 0)
         continue;  /* Not pending */
+
+      h->flags &= ~UV_HANDLE_READ_PENDING;
 
       if (h->async_cb == NULL)
         continue;
@@ -193,8 +201,9 @@ skip_read:
 
   if (!QUEUE_EMPTY(&queue)) {
     QUEUE_ADD(&loop->async_handles, &queue);
-    uv__io_feed(loop, w);
-  }
+    loop->wq_async.flags |= UV_HANDLE_POLL_SLOW;
+  } else
+    loop->wq_async.flags &= ~UV_HANDLE_POLL_SLOW;
 }
 
 
@@ -283,4 +292,14 @@ void uv__async_stop(uv_loop_t* loop) {
   uv__io_stop(loop, &loop->async_io_watcher, POLLIN);
   uv__close(loop->async_io_watcher.fd);
   loop->async_io_watcher.fd = -1;
+}
+
+
+int uv__async_prepare_busy(uv_loop_t* loop) {
+  if (loop->wq_async.flags & UV_HANDLE_POLL_SLOW) {
+    uv__io_feed(loop, &loop->async_io_watcher);
+    return 1;
+  }
+
+  return 0;
 }

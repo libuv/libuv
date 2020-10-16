@@ -209,6 +209,7 @@ int uv__fd_exists(uv_loop_t* loop, int fd);
 /* async */
 void uv__async_stop(uv_loop_t* loop);
 int uv__async_fork(uv_loop_t* loop);
+int uv__async_prepare_busy(uv_loop_t* loop);
 
 
 /* loop */
