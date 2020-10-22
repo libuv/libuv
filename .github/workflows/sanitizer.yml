@@ -15,3 +15,14 @@ jobs:
           cd build && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build . && ./uv_run_tests_a
 
+  tsan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: TSAN
+        run: |
+          mkdir build
+          cd build && cmake .. -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake --build . && ./uv_run_tests_a

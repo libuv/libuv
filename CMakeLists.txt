@@ -37,6 +37,13 @@ if(ASAN AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
   set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 endif()
 
+option(TSAN "Enable ThreadSanitizer (TSan)" OFF)
+if(TSAN AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
+  add_definitions(-D__TSAN__=1)
+  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
+  set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=thread")
+endif()
+
 # Compiler check
 string(CONCAT is-msvc $<OR:
   $<C_COMPILER_ID:MSVC>,
