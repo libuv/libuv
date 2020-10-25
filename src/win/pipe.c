@@ -328,6 +328,14 @@ static int uv_set_pipe_handle(uv_loop_t* loop,
 
 static int pipe_alloc_accept(uv_loop_t* loop, uv_pipe_t* handle,
                              uv_pipe_accept_t* req, BOOL firstInstance) {
+  SECURITY_ATTRIBUTES sa = { 0 };
+  SECURITY_DESCRIPTOR sd = { 0 };
+  InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION);
+  SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
+  sa.bInheritHandle = FALSE;
+  sa.lpSecurityDescriptor = &sd;
+  sa.nLength = sizeof(sa);
+
   assert(req->pipeHandle == INVALID_HANDLE_VALUE);
 
   req->pipeHandle =
@@ -335,7 +343,7 @@ static int pipe_alloc_accept(uv_loop_t* loop, uv_pipe_t* handle,
                        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | WRITE_DAC |
                          (firstInstance ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0),
                        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                       PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, NULL);
+                       PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, &sa);
 
   if (req->pipeHandle == INVALID_HANDLE_VALUE) {
     return 0;
