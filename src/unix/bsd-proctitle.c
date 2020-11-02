@@ -45,7 +45,10 @@ void uv__process_title_cleanup(void) {
 
 
 char** uv_setup_args(int argc, char** argv) {
-  process_title = argc > 0 ? uv__strdup(argv[0]) : NULL;
+  if (argc > 0)
+    process_title = uv__strdup(argv[0]);
+  else
+    process_title = NULL;
   return argv;
 }
 
