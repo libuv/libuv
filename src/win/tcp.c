@@ -237,11 +237,7 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
       handle->reqs_pending == 0) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
 
-    if (!(handle->flags & UV_HANDLE_TCP_SOCKET_CLOSED)) {
-      closesocket(handle->socket);
-      handle->socket = INVALID_SOCKET;
-      handle->flags |= UV_HANDLE_TCP_SOCKET_CLOSED;
-    }
+    assert(handle->flags & UV_HANDLE_TCP_SOCKET_CLOSED);
 
     if (!(handle->flags & UV_HANDLE_CONNECTION) && handle->tcp.serv.accept_reqs) {
       if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
@@ -769,7 +765,7 @@ static int uv__is_loopback(const struct sockaddr_storage* storage) {
 }
 
 // Check if Windows version is 10.0.16299 or later
-static int uv__is_fast_loopback_fail_supported() {
+static int uv__is_fast_loopback_fail_supported(void) {
   OSVERSIONINFOW os_info;
   if (!pRtlGetVersion)
     return 0;
@@ -1402,13 +1398,16 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 }
 
 
-static int uv_tcp_try_cancel_io(uv_tcp_t* tcp) {
-  SOCKET socket = tcp->socket;
+static void uv_tcp_try_cancel_read(uv_tcp_t* tcp) {
+  SOCKET socket;
   int non_ifs_lsp;
+
+  CancelIoEx((HANDLE) tcp->socket, &tcp->read_req.u.io.overlapped);
 
   /* Check if we have any non-IFS LSPs stacked on top of TCP */
   non_ifs_lsp = (tcp->flags & UV_HANDLE_IPV6) ? uv_tcp_non_ifs_lsp_ipv6 :
                                                 uv_tcp_non_ifs_lsp_ipv4;
+  socket = tcp->socket;
 
   /* If there are non-ifs LSPs then try to obtain a base handle for the socket.
    * This will always fail on Windows XP/3k. */
@@ -1424,83 +1423,44 @@ static int uv_tcp_try_cancel_io(uv_tcp_t* tcp) {
                  NULL,
                  NULL) != 0) {
       /* Failed. We can't do CancelIo. */
-      return -1;
+      return;
     }
   }
 
   assert(socket != 0 && socket != INVALID_SOCKET);
 
-  if (!CancelIo((HANDLE) socket)) {
-    return GetLastError();
+  if (socket != tcp->socket) {
+    CancelIoEx((HANDLE) socket, &tcp->read_req.u.io.overlapped);
   }
-
-  /* It worked. */
-  return 0;
 }
 
 
 void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
-  int close_socket = 1;
-
-  if (tcp->flags & UV_HANDLE_READ_PENDING) {
-    /* In order for winsock to do a graceful close there must not be any any
-     * pending reads, or the socket must be shut down for writing */
-    if (!(tcp->flags & UV_HANDLE_SHARED_TCP_SOCKET)) {
-      /* Just do shutdown on non-shared sockets, which ensures graceful close. */
-      shutdown(tcp->socket, SD_SEND);
-
-    } else if (uv_tcp_try_cancel_io(tcp) == 0) {
-      /* In case of a shared socket, we try to cancel all outstanding I/O,. If
-       * that works, don't close the socket yet - wait for the read req to
-       * return and close the socket in uv_tcp_endgame. */
-      close_socket = 0;
-
-    } else {
-      /* When cancelling isn't possible - which could happen when an LSP is
-       * present on an old Windows version, we will have to close the socket
-       * with a read pending. That is not nice because trailing sent bytes may
-       * not make it to the other side. */
-    }
-
-  } else if ((tcp->flags & UV_HANDLE_SHARED_TCP_SOCKET) &&
-             tcp->tcp.serv.accept_reqs != NULL) {
-    /* Under normal circumstances closesocket() will ensure that all pending
-     * accept reqs are canceled. However, when the socket is shared the
-     * presence of another reference to the socket in another process will keep
-     * the accept reqs going, so we have to ensure that these are canceled. */
-    if (uv_tcp_try_cancel_io(tcp) != 0) {
-      /* When cancellation is not possible, there is another option: we can
-       * close the incoming sockets, which will also cancel the accept
-       * operations. However this is not cool because we might inadvertently
-       * close a socket that just accepted a new connection, which will cause
-       * the connection to be aborted. */
-      unsigned int i;
-      for (i = 0; i < uv_simultaneous_server_accepts; i++) {
-        uv_tcp_accept_t* req = &tcp->tcp.serv.accept_reqs[i];
-        if (req->accept_socket != INVALID_SOCKET &&
-            !HasOverlappedIoCompleted(&req->u.io.overlapped)) {
-          closesocket(req->accept_socket);
-          req->accept_socket = INVALID_SOCKET;
-        }
+  if (tcp->tcp.serv.accept_reqs != NULL) {
+    /* First close the incoming sockets to cancel the accept operations before
+     * we free their resources. */
+    unsigned int i;
+    for (i = 0; i < uv_simultaneous_server_accepts; i++) {
+      uv_tcp_accept_t* req = &tcp->tcp.serv.accept_reqs[i];
+      if (req->accept_socket != INVALID_SOCKET) {
+        closesocket(req->accept_socket);
+        req->accept_socket = INVALID_SOCKET;
       }
     }
   }
 
   if (tcp->flags & UV_HANDLE_READING) {
-    tcp->flags &= ~UV_HANDLE_READING;
-    DECREASE_ACTIVE_COUNT(loop, tcp);
+    uv_tcp_try_cancel_read(tcp);
+    uv_read_stop((uv_stream_t*) tcp);
   }
-
   if (tcp->flags & UV_HANDLE_LISTENING) {
     tcp->flags &= ~UV_HANDLE_LISTENING;
     DECREASE_ACTIVE_COUNT(loop, tcp);
   }
 
-  if (close_socket) {
-    closesocket(tcp->socket);
-    tcp->socket = INVALID_SOCKET;
-    tcp->flags |= UV_HANDLE_TCP_SOCKET_CLOSED;
-  }
+  closesocket(tcp->socket);
+  tcp->socket = INVALID_SOCKET;
+  tcp->flags |= UV_HANDLE_TCP_SOCKET_CLOSED;
 
   tcp->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   uv__handle_closing(tcp);
