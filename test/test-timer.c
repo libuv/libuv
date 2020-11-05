@@ -169,12 +169,14 @@ TEST_IMPL(timer_init) {
 
 
 static void order_cb_a(uv_timer_t *handle) {
-  ASSERT(order_cb_called++ == *(int*)handle->data);
+  ASSERT_EQ(order_cb_called, *(int*)handle->data);
+  order_cb_called++;
 }
 
 
 static void order_cb_b(uv_timer_t *handle) {
-  ASSERT(order_cb_called++ == *(int*)handle->data);
+  ASSERT_EQ(order_cb_called, *(int*)handle->data);
+  order_cb_called++;
 }
 
 
