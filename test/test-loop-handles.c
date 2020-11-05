@@ -332,7 +332,7 @@ TEST_IMPL(loop_handles) {
   ASSERT(idle_1_close_cb_called == IDLE_COUNT);
 
   ASSERT(idle_2_close_cb_called == idle_2_cb_started);
-  ASSERT(idle_2_is_active == 0);
+  ASSERT_EQ(idle_2_is_active, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

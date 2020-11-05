@@ -51,7 +51,7 @@ static void handle_result(uv_fs_t* req) {
   int r;
 
   ASSERT(req->fs_type == UV_FS_COPYFILE);
-  ASSERT(req->result == 0);
+  ASSERT_EQ(req->result, 0);
 
   /* Verify that the file size and mode are the same. */
   r = uv_fs_stat(NULL, &stat_req, req->path, NULL);

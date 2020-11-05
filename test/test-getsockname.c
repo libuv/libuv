@@ -353,7 +353,7 @@ TEST_IMPL(getsockname_udp) {
 
   ASSERT(getsocknamecount == 2);
 
-  ASSERT(udp.send_queue_size == 0);
+  ASSERT_EQ(udp.send_queue_size, 0);
   ASSERT(udpServer.send_queue_size == 0);
 
   MAKE_VALGRIND_HAPPY();

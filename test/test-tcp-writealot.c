@@ -71,7 +71,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
   tcp = (uv_tcp_t*)(req->handle);
 
   /* The write buffer should be empty by now. */
-  ASSERT(tcp->write_queue_size == 0);
+  ASSERT_EQ(tcp->write_queue_size, 0);
 
   /* Now we wait for the EOF */
   shutdown_cb_called++;

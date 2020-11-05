@@ -70,7 +70,7 @@ static void setup(void) {
 
   r = uv_fs_mkdir(NULL, &mkdir_req, empty_dir, 0755, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(mkdir_req.result == 0);
+  ASSERT_EQ(mkdir_req.result, 0);
   uv_fs_req_cleanup(&mkdir_req);
 }
 
@@ -99,7 +99,7 @@ static void refresh(void) {
 
   r = uv_fs_close(NULL, &close_req, file, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 
   /* dummy_file */
@@ -120,7 +120,7 @@ static void refresh(void) {
 
   r = uv_fs_close(NULL, &close_req, file, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 }
 
@@ -185,7 +185,7 @@ static void writeExpect(char *file, char *expected, int size) {
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 
   /* Check contents */
@@ -204,7 +204,7 @@ static void writeExpect(char *file, char *expected, int size) {
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 
   cleanup();
@@ -232,7 +232,7 @@ static void writeFail(char *file, int error) {
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 
   cleanup();
@@ -255,7 +255,7 @@ static void readExpect(char *file, char *expected, int size) {
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 
   cleanup();
@@ -283,7 +283,7 @@ static void readFail(char *file, int error) {
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(close_req.result == 0);
+  ASSERT_EQ(close_req.result, 0);
   uv_fs_req_cleanup(&close_req);
 
   cleanup();

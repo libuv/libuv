@@ -40,7 +40,7 @@ static void worker(void* arg) {
     uv_sleep(c->delay);
 
   uv_mutex_lock(&c->mutex);
-  ASSERT(c->posted == 0);
+  ASSERT_EQ(c->posted, 0);
   uv_sem_post(&c->sem);
   c->posted = 1;
   uv_mutex_unlock(&c->mutex);

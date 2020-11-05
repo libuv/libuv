@@ -54,7 +54,7 @@ static void conn_read_cb(uv_stream_t* stream,
                          const uv_buf_t* buf) {
   ASSERT(nread == UV_ENOBUFS);
   ASSERT(buf->base == NULL);
-  ASSERT(buf->len == 0);
+  ASSERT_EQ(buf->len, 0);
 
   uv_close((uv_handle_t*) &incoming, close_cb);
   uv_close((uv_handle_t*) &client, close_cb);

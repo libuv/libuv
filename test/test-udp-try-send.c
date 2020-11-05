@@ -113,8 +113,8 @@ TEST_IMPL(udp_try_send) {
   ASSERT(close_cb_called == 2);
   ASSERT(sv_recv_cb_called == 1);
 
-  ASSERT(client.send_queue_size == 0);
-  ASSERT(server.send_queue_size == 0);
+  ASSERT_EQ(client.send_queue_size, 0);
+  ASSERT_EQ(server.send_queue_size, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
