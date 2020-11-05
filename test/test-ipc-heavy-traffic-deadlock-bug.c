@@ -98,7 +98,7 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   bytes_read += nread;
 
   for (i = 0; i < nread; i++)
-    ASSERT(buf->base[i] == BUFFER_CONTENT);
+    ASSERT_EQ(buf->base[i], BUFFER_CONTENT);
   free(buf->base);
 
   if (bytes_read >= XFER_SIZE) {

@@ -3300,7 +3300,7 @@ static void fs_read_bufs(int add_flags) {
                            2,  /* 2x 128 bytes. */
                            256,  /* Positional read. */
                            NULL));
-  ASSERT(read_req.result == /* 446 - 256 */ 190);
+  ASSERT_EQ(read_req.result, /* 446 - 256 */ 190);
   uv_fs_req_cleanup(&read_req);
 
   ASSERT(0 == memcmp(bufs[1].base + 0, bufs[2].base, 128));

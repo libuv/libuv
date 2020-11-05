@@ -66,7 +66,7 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     if (&getaddrinfo_handles[i] == handle) {
-      ASSERT(i == *data);
+      ASSERT_EQ(i, *data);
 
       callback_counts[i]++;
       break;

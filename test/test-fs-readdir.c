@@ -301,11 +301,11 @@ static void non_empty_readdir_cb(uv_fs_t* req) {
            strcmp(dirents[0].name, "test_subdir") == 0);
 #ifdef HAVE_DIRENT_TYPES
     if (!strcmp(dirents[0].name, "test_subdir"))
-      ASSERT(dirents[0].type == UV_DIRENT_DIR);
+      ASSERT_EQ(dirents[0].type, UV_DIRENT_DIR);
     else
-      ASSERT(dirents[0].type == UV_DIRENT_FILE);
+      ASSERT_EQ(dirents[0].type, UV_DIRENT_FILE);
 #else
-    ASSERT(dirents[0].type == UV_DIRENT_UNKNOWN);
+    ASSERT_EQ(dirents[0].type, UV_DIRENT_UNKNOWN);
 #endif /* HAVE_DIRENT_TYPES */
 
     ++non_empty_readdir_cb_count;
@@ -416,11 +416,11 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
          strcmp(dirents[0].name, "test_subdir") == 0);
 #ifdef HAVE_DIRENT_TYPES
     if (!strcmp(dirents[0].name, "test_subdir"))
-      ASSERT(dirents[0].type == UV_DIRENT_DIR);
+      ASSERT_EQ(dirents[0].type, UV_DIRENT_DIR);
     else
-      ASSERT(dirents[0].type == UV_DIRENT_FILE);
+      ASSERT_EQ(dirents[0].type, UV_DIRENT_FILE);
 #else
-    ASSERT(dirents[0].type == UV_DIRENT_UNKNOWN);
+    ASSERT_EQ(dirents[0].type, UV_DIRENT_UNKNOWN);
 #endif /* HAVE_DIRENT_TYPES */
     uv_fs_req_cleanup(&readdir_req);
     ++entries_count;

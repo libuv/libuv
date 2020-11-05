@@ -113,9 +113,9 @@ static const unsigned first_handle_number_fs_event = 0;
 
 #define END_ASSERTS(name)                                                     \
   do {                                                                        \
-    ASSERT(name##_cb_calls[0] == 1);                                          \
-    ASSERT(name##_cb_calls[1] == 0);                                          \
-    ASSERT(name##_cb_calls[2] == 1);                                          \
+    ASSERT_EQ(name##_cb_calls[0], 1);                                         \
+    ASSERT_EQ(name##_cb_calls[1], 0);                                         \
+    ASSERT_EQ(name##_cb_calls[2], 1);                                         \
   } while (0)
 
 DEFINE_GLOBALS_AND_CBS(idle, uv_idle_t* handle)

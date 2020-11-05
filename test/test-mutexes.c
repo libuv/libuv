@@ -101,7 +101,7 @@ static void synchronize(void) {
   synchronize_nowait();
   /* Wait for the other thread.  Guard against spurious wakeups. */
   for (current = step; current == step; uv_cond_wait(&condvar, &mutex));
-  ASSERT(step == current + 1);
+  ASSERT_EQ(step, current + 1);
 }
 
 

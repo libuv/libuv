@@ -96,7 +96,7 @@ static void pinger_read_cb(uv_udp_t* udp,
 
   /* Now we count the pings */
   for (i = 0; i < nread; i++) {
-    ASSERT(buf->base[i] == PING[pinger->state]);
+    ASSERT_EQ(buf->base[i], PING[pinger->state]);
     pinger->state = (pinger->state + 1) % (sizeof(PING) - 1);
     if (pinger->state == 0) {
       pinger->pongs++;

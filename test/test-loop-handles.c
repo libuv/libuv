@@ -322,7 +322,7 @@ TEST_IMPL(loop_handles) {
   ASSERT_EQ(prepare_1_cb_called, ITERATIONS);
   ASSERT_EQ(prepare_1_close_cb_called, 1);
 
-  ASSERT(prepare_2_cb_called == ITERATIONS / 2);
+  ASSERT_EQ(prepare_2_cb_called, ITERATIONS / 2);
   ASSERT_EQ(prepare_2_close_cb_called, 1);
 
   ASSERT_EQ(check_cb_called, ITERATIONS);

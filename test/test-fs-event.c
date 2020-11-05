@@ -449,7 +449,7 @@ TEST_IMPL(fs_event_watch_dir) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_event_cb_called == fs_event_created + fs_event_removed);
+  ASSERT_EQ(fs_event_cb_called, fs_event_created + fs_event_removed);
   ASSERT_EQ(close_cb_called, 2);
 
   /* Cleanup */
@@ -509,7 +509,7 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_multievent_cb_called == fs_event_created + fs_event_removed);
+  ASSERT_EQ(fs_multievent_cb_called, fs_event_created + fs_event_removed);
   ASSERT_EQ(fs_event_cb_called, 3);
   ASSERT_EQ(close_cb_called, 3);
 

@@ -585,9 +585,9 @@ static void start_poll_test(void) {
          (valid_writable_wakeups + spurious_writable_wakeups) /
          spurious_writable_wakeups > 20);
 
-  ASSERT(closed_connections == NUM_CLIENTS * 2);
+  ASSERT_EQ(closed_connections, NUM_CLIENTS * 2);
 #if !defined(__sun) && !defined(_AIX) && !defined(__MVS__)
-  ASSERT(disconnects == NUM_CLIENTS * 2);
+  ASSERT_EQ(disconnects, NUM_CLIENTS * 2);
 #endif
   MAKE_VALGRIND_HAPPY();
 }

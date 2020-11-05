@@ -282,8 +282,8 @@ int stdio_over_pipes_helper(void) {
 
     uv_run(loop, UV_RUN_DEFAULT);
 
-    ASSERT(after_write_called == 7 * (j + 1));
-    ASSERT(on_pipe_read_called == j + 1);
+    ASSERT_EQ(after_write_called, 7 * (j + 1));
+    ASSERT_EQ(on_pipe_read_called, j + 1);
     ASSERT_EQ(close_cb_called, 0);
   }
 

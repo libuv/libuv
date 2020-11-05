@@ -195,7 +195,7 @@ TEST_IMPL(callback_stack) {
   ASSERT(connect_cb_called == 1 && "connect_cb must be called exactly once");
   ASSERT(write_cb_called == 1 && "write_cb must be called exactly once");
   ASSERT(timer_cb_called == 1 && "timer_cb must be called exactly once");
-  ASSERT(bytes_received == sizeof MESSAGE);
+  ASSERT_EQ(bytes_received, sizeof MESSAGE);
   ASSERT(shutdown_cb_called == 1 && "shutdown_cb must be called exactly once");
   ASSERT(close_cb_called == 2 && "close_cb must be called exactly twice");
 

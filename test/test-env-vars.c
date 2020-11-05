@@ -67,7 +67,7 @@ TEST_IMPL(env_vars) {
   r = uv_os_getenv(name, buf, &size);
   ASSERT_EQ(r, 0);
   ASSERT(strcmp(buf, "123456789") == 0);
-  ASSERT(size == BUF_SIZE - 1);
+  ASSERT_EQ(size, BUF_SIZE - 1);
 
   /* Return UV_ENOBUFS if the buffer cannot hold the environment variable */
   size = BUF_SIZE - 1;

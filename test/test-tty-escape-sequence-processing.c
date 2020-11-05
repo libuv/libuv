@@ -390,7 +390,7 @@ TEST_IMPL(tty_cursor_up) {
   snprintf(buffer, sizeof(buffer), "%sA", CSI);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y - 1 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y - 1, cursor_pos.Y);
   ASSERT_EQ(cursor_pos_old.X, cursor_pos.X);
 
   /* cursor up nth times */
@@ -398,7 +398,7 @@ TEST_IMPL(tty_cursor_up) {
   snprintf(buffer, sizeof(buffer), "%s%dA", CSI, si.height / 4);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y - si.height / 4 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y - si.height / 4, cursor_pos.Y);
   ASSERT_EQ(cursor_pos_old.X, cursor_pos.X);
 
   /* cursor up from Window top does nothing */
@@ -441,7 +441,7 @@ TEST_IMPL(tty_cursor_down) {
   snprintf(buffer, sizeof(buffer), "%sB", CSI);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y + 1 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y + 1, cursor_pos.Y);
   ASSERT_EQ(cursor_pos_old.X, cursor_pos.X);
 
   /* cursor down nth times */
@@ -449,7 +449,7 @@ TEST_IMPL(tty_cursor_down) {
   snprintf(buffer, sizeof(buffer), "%s%dB", CSI, si.height / 4);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y + si.height / 4 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y + si.height / 4, cursor_pos.Y);
   ASSERT_EQ(cursor_pos_old.X, cursor_pos.X);
 
   /* cursor down from bottom line does nothing */
@@ -493,7 +493,7 @@ TEST_IMPL(tty_cursor_forward) {
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(cursor_pos_old.Y, cursor_pos.Y);
-  ASSERT(cursor_pos_old.X + 1 == cursor_pos.X);
+  ASSERT_EQ(cursor_pos_old.X + 1, cursor_pos.X);
 
   /* cursor forward nth times */
   cursor_pos_old = cursor_pos;
@@ -501,7 +501,7 @@ TEST_IMPL(tty_cursor_forward) {
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(cursor_pos_old.Y, cursor_pos.Y);
-  ASSERT(cursor_pos_old.X + si.width / 4 == cursor_pos.X);
+  ASSERT_EQ(cursor_pos_old.X + si.width / 4, cursor_pos.X);
 
   /* cursor forward from end of line does nothing*/
   cursor_pos_old.X = si.width;
@@ -554,7 +554,7 @@ TEST_IMPL(tty_cursor_back) {
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(cursor_pos_old.Y, cursor_pos.Y);
-  ASSERT(cursor_pos_old.X - 1 == cursor_pos.X);
+  ASSERT_EQ(cursor_pos_old.X - 1, cursor_pos.X);
 
   /* cursor back nth times */
   cursor_pos_old = cursor_pos;
@@ -562,7 +562,7 @@ TEST_IMPL(tty_cursor_back) {
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(cursor_pos_old.Y, cursor_pos.Y);
-  ASSERT(cursor_pos_old.X - si.width / 4 == cursor_pos.X);
+  ASSERT_EQ(cursor_pos_old.X - si.width / 4, cursor_pos.X);
 
   /* cursor back from beginning of line does nothing */
   cursor_pos_old.X = 1;
@@ -614,7 +614,7 @@ TEST_IMPL(tty_cursor_next_line) {
   snprintf(buffer, sizeof(buffer), "%sE", CSI);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y + 1 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y + 1, cursor_pos.Y);
   ASSERT_EQ(cursor_pos.X, 1);
 
   /* cursor next line nth times */
@@ -622,7 +622,7 @@ TEST_IMPL(tty_cursor_next_line) {
   snprintf(buffer, sizeof(buffer), "%s%dE", CSI, si.height / 4);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y + si.height / 4 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y + si.height / 4, cursor_pos.Y);
   ASSERT_EQ(cursor_pos.X, 1);
 
   /* cursor next line from buttom row moves beginning of line */
@@ -665,7 +665,7 @@ TEST_IMPL(tty_cursor_previous_line) {
   snprintf(buffer, sizeof(buffer), "%sF", CSI);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y - 1 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y - 1, cursor_pos.Y);
   ASSERT_EQ(cursor_pos.X, 1);
 
   /* cursor previous line nth times */
@@ -673,7 +673,7 @@ TEST_IMPL(tty_cursor_previous_line) {
   snprintf(buffer, sizeof(buffer), "%s%dF", CSI, si.height / 4);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos_old.Y - si.height / 4 == cursor_pos.Y);
+  ASSERT_EQ(cursor_pos_old.Y - si.height / 4, cursor_pos.Y);
   ASSERT_EQ(cursor_pos.X, 1);
 
   /* cursor previous line from top of screen does nothing */
@@ -723,7 +723,7 @@ TEST_IMPL(tty_cursor_horizontal_move_absolute) {
   snprintf(buffer, sizeof(buffer), "%s%dG", CSI, si.width / 4);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(si.width / 4 == cursor_pos.X);
+  ASSERT_EQ(si.width / 4, cursor_pos.X);
   ASSERT_EQ(cursor_pos_old.Y, cursor_pos.Y);
 
   /* Moving out of screen will fit within screen */
@@ -770,8 +770,8 @@ TEST_IMPL(tty_cursor_move_absolute) {
       buffer, sizeof(buffer), "%s%d;%df", CSI, si.height / 2, si.width / 2);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(si.width / 2 == cursor_pos.X);
-  ASSERT(si.height / 2 == cursor_pos.Y);
+  ASSERT_EQ(si.width / 2, cursor_pos.X);
+  ASSERT_EQ(si.height / 2, cursor_pos.Y);
 
   /* Moving out of screen will fit within screen */
   snprintf(
@@ -779,13 +779,13 @@ TEST_IMPL(tty_cursor_move_absolute) {
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(si.width, cursor_pos.X);
-  ASSERT(si.height / 2 == cursor_pos.Y);
+  ASSERT_EQ(si.height / 2, cursor_pos.Y);
 
   snprintf(
       buffer, sizeof(buffer), "%s%d;%df", CSI, si.height + 1, si.width / 2);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(si.width / 2 == cursor_pos.X);
+  ASSERT_EQ(si.width / 2, cursor_pos.X);
   ASSERT_EQ(si.height, cursor_pos.Y);
   ASSERT(!is_scrolling(&tty_out, si));
 

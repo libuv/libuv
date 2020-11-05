@@ -106,7 +106,7 @@ TEST_IMPL(fs_fd_hash) {
   {
     struct uv__fd_info_s info = { 0 };
     ASSERT(uv__fd_hash_get((uv_os_fd_t) 0, &info));
-    ASSERT(info.flags == FD_DIFF + FD_DIFF);
+    ASSERT_EQ(info.flags, FD_DIFF + FD_DIFF);
   }
   {
     /* Leave as it was, will be again tested below */

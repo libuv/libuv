@@ -52,7 +52,7 @@ TEST_IMPL(gethostname) {
   r = uv_os_gethostname(buf, &size);
   ASSERT_EQ(r, 0);
   ASSERT(size > 0 && size == strlen(buf));
-  ASSERT(size + 1 == enobufs_size);
+  ASSERT_EQ(size + 1, enobufs_size);
 
   return 0;
 }
