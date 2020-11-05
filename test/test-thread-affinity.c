@@ -91,13 +91,13 @@ TEST_IMPL(thread_affinity) {
 
   ASSERT(cpumask[t1first + 0] == (ncpus == 1));
   ASSERT(cpumask[t1first + 1] == (ncpus >= 2));
-  ASSERT(cpumask[t1first + 2] == 0);
+  ASSERT_EQ(cpumask[t1first + 2], 0);
   ASSERT(cpumask[t1first + 3] == (ncpus >= 4));
 
   ASSERT(cpumask[t2first + 0] == 1);
-  ASSERT(cpumask[t2first + 1] == 0);
+  ASSERT_EQ(cpumask[t2first + 1], 0);
   ASSERT(cpumask[t2first + 2] == (ncpus >= 3));
-  ASSERT(cpumask[t2first + 3] == 0);
+  ASSERT_EQ(cpumask[t2first + 3], 0);
 
   free(cpumask);
 

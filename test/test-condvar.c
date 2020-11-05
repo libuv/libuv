@@ -87,7 +87,7 @@ static void condvar_signal(worker_config* c, int* flag) {
   uv_mutex_lock(&c->mutex);
 
   /* Help waiter differentiate between spurious and legitimate wakeup. */
-  ASSERT(*flag == 0);
+  ASSERT_EQ(*flag, 0);
   *flag = 1;
 
   if (c->use_broadcast)

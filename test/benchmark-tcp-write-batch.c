@@ -79,7 +79,7 @@ static void write_cb(uv_write_t* req, int status) {
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT(req->handle == (uv_stream_t*)&tcp_client);
-  ASSERT(req->handle->write_queue_size == 0);
+  ASSERT_EQ(req->handle->write_queue_size, 0);
 
   uv_close((uv_handle_t*)req->handle, close_cb);
   free(write_reqs);

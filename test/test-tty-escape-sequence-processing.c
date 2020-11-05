@@ -1324,7 +1324,7 @@ TEST_IMPL(tty_full_reset) {
   ASSERT(compare_screen(&tty_out, &actual, &expect));
   ASSERT(get_cursor_size(&tty_out) == saved_cursor_size);
   ASSERT(get_cursor_visibility(&tty_out) == saved_cursor_visibility);
-  ASSERT(actual.si.csbi.srWindow.Top == 0);
+  ASSERT_EQ(actual.si.csbi.srWindow.Top, 0);
 
   terminate_tty(&tty_out);
 

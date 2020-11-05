@@ -68,7 +68,8 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_client, buf, &len);
-  ASSERT(r == 0 && len == 0);
+  ASSERT_EQ(r, 0);
+  ASSERT_EQ(len, 0);
 
   pipe_client_connect_cb_called++;
 
@@ -142,7 +143,8 @@ TEST_IMPL(pipe_getsockname) {
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_client, buf, &len);
-  ASSERT(r == 0 && len == 0);
+  ASSERT_EQ(r, 0);
+  ASSERT_EQ(len, 0);
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
