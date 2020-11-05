@@ -59,14 +59,14 @@ static void connect_cb(uv_connect_t* conn_req, int status) {
 static void write_cb(uv_write_t* req, int status) {
   /* write callbacks should run before the close callback */
   ASSERT_EQ(close_cb_called, 0);
-  ASSERT(req->handle == (uv_stream_t*)&tcp_handle);
+  ASSERT_EQ(req->handle, (uv_stream_t*)&tcp_handle);
   write_cb_called++;
   free(req);
 }
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*)&tcp_handle);
+  ASSERT_EQ(handle, (uv_handle_t*)&tcp_handle);
   close_cb_called++;
 }
 

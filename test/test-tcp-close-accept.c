@@ -118,7 +118,7 @@ static void connection_cb(uv_stream_t* server, int status) {
   unsigned int i;
   uv_tcp_t* incoming;
 
-  ASSERT(server == (uv_stream_t*) &tcp_server);
+  ASSERT_EQ(server, (uv_stream_t*) &tcp_server);
 
   /* Ignore tcp_check connection */
   if (got_connections == ARRAY_SIZE(tcp_incoming))

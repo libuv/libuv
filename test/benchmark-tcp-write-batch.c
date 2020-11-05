@@ -55,7 +55,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   int i;
   int r;
 
-  ASSERT(req->handle == (uv_stream_t*)&tcp_client);
+  ASSERT_EQ(req->handle, (uv_stream_t*)&tcp_client);
 
   for (i = 0; i < NUM_WRITE_REQS; i++) {
     w = &write_reqs[i];
@@ -78,7 +78,7 @@ static void write_cb(uv_write_t* req, int status) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(req->handle == (uv_stream_t*)&tcp_client);
+  ASSERT_EQ(req->handle, (uv_stream_t*)&tcp_client);
   ASSERT_EQ(req->handle->write_queue_size, 0);
 
   uv_close((uv_handle_t*)req->handle, close_cb);
@@ -89,7 +89,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*)&tcp_client);
+  ASSERT_EQ(handle, (uv_handle_t*)&tcp_client);
   close_cb_called++;
 }
 

@@ -45,7 +45,7 @@ static void connection_cb(uv_stream_t* server, int status) {
   int r;
   uv_buf_t buf;
 
-  ASSERT(server == (uv_stream_t*)&tcp_server);
+  ASSERT_EQ(server, (uv_stream_t*)&tcp_server);
   ASSERT_EQ(status, 0);
 
   r = uv_tcp_init(server->loop, &tcp_peer);

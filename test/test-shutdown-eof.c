@@ -46,7 +46,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 
 static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT((uv_tcp_t*)t == &tcp);
+  ASSERT_EQ((uv_tcp_t*)t, &tcp);
 
   if (nread == 0) {
     free(buf->base);
@@ -106,7 +106,7 @@ static void connect_cb(uv_connect_t *req, int status) {
 
 
 static void tcp_close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*) &tcp);
+  ASSERT_EQ(handle, (uv_handle_t*) &tcp);
 
   ASSERT_EQ(called_connect_cb, 1);
   ASSERT(got_q);
@@ -118,7 +118,7 @@ static void tcp_close_cb(uv_handle_t* handle) {
 
 
 static void timer_close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*) &timer);
+  ASSERT_EQ(handle, (uv_handle_t*) &timer);
   called_timer_close_cb++;
 }
 

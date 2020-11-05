@@ -359,7 +359,7 @@ static void send_recv_start(void) {
 
 static void listen_cb(uv_stream_t* handle, int status) {
   int r;
-  ASSERT(handle == (uv_stream_t*)&ctx2.listen);
+  ASSERT_EQ(handle, (uv_stream_t*)&ctx2.listen);
   ASSERT_EQ(status, 0);
 
   r = uv_accept((uv_stream_t*)&ctx2.listen, (uv_stream_t*)&ctx2.channel);

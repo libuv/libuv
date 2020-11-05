@@ -60,13 +60,13 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void connect_cb(uv_connect_t* req, int status) {
-  ASSERT(req->handle == (uv_stream_t*) &client_handle);
+  ASSERT_EQ(req->handle, (uv_stream_t*) &client_handle);
   ASSERT_EQ(status, 0);
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(req->handle == (uv_stream_t*) &peer_handle);
+  ASSERT_EQ(req->handle, (uv_stream_t*) &peer_handle);
   ASSERT_EQ(status, 0);
 }
 

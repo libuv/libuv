@@ -80,7 +80,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 static void read_cb2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT((uv_tcp_t*)stream == &tcp_client);
+  ASSERT_EQ((uv_tcp_t*)stream, &tcp_client);
   if (nread == UV_EOF)
     uv_close((uv_handle_t*) stream, NULL);
 }
@@ -98,32 +98,32 @@ static void connect_cb(uv_connect_t* conn_req, int status) {
 static void write_cb(uv_write_t* req, int status) {
   /* write callbacks should run before the close callback */
   ASSERT_EQ(close_cb_called, 0);
-  ASSERT(req->handle == (uv_stream_t*)&tcp_client);
+  ASSERT_EQ(req->handle, (uv_stream_t*)&tcp_client);
   write_cb_called++;
 }
 
 
 static void close_cb(uv_handle_t* handle) {
   if (client_close)
-    ASSERT(handle == (uv_handle_t*) &tcp_client);
+    ASSERT_EQ(handle, (uv_handle_t*) &tcp_client);
   else
-    ASSERT(handle == (uv_handle_t*) &tcp_accepted);
+    ASSERT_EQ(handle, (uv_handle_t*) &tcp_accepted);
 
   close_cb_called++;
 }
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   if (client_close)
-    ASSERT(req->handle == (uv_stream_t*) &tcp_client);
+    ASSERT_EQ(req->handle, (uv_stream_t*) &tcp_client);
   else
-    ASSERT(req->handle == (uv_stream_t*) &tcp_accepted);
+    ASSERT_EQ(req->handle, (uv_stream_t*) &tcp_accepted);
 
   shutdown_cb_called++;
 }
 
 
 static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT((uv_tcp_t*)stream == &tcp_accepted);
+  ASSERT_EQ((uv_tcp_t*)stream, &tcp_accepted);
   if (nread < 0) {
     uv_close((uv_handle_t*) stream, NULL);
   } else {

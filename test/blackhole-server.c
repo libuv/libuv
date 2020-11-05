@@ -44,7 +44,7 @@ static void connection_cb(uv_stream_t* stream, int status) {
   int r;
 
   ASSERT_EQ(status, 0);
-  ASSERT(stream == (uv_stream_t*)&tcp_server);
+  ASSERT_EQ(stream, (uv_stream_t*)&tcp_server);
 
   conn = malloc(sizeof *conn);
   ASSERT(conn != NULL);

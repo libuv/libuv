@@ -66,7 +66,7 @@ static void timer_cb(uv_timer_t* handle) {
 
 
 static void on_connect_with_close(uv_connect_t *req, int status) {
-  ASSERT((uv_stream_t*) &tcp == req->handle);
+  ASSERT_EQ((uv_stream_t*) &tcp, req->handle);
   ASSERT_EQ(status, UV_ECONNREFUSED);
   connect_cb_calls++;
 

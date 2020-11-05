@@ -116,7 +116,7 @@ static void idle_2_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "IDLE_2_CLOSE_CB\n");
   fflush(stderr);
 
-  ASSERT(handle == (uv_handle_t*)&idle_2_handle);
+  ASSERT_EQ(handle, (uv_handle_t*)&idle_2_handle);
 
   ASSERT(idle_2_is_active);
 
@@ -179,7 +179,7 @@ static void idle_1_close_cb(uv_handle_t* handle) {
 static void prepare_1_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "PREPARE_1_CLOSE_CB");
   fflush(stderr);
-  ASSERT(handle == (uv_handle_t*)&prepare_1_handle);
+  ASSERT_EQ(handle, (uv_handle_t*)&prepare_1_handle);
 
   prepare_1_close_cb_called++;
 }
@@ -188,7 +188,7 @@ static void prepare_1_close_cb(uv_handle_t* handle) {
 static void check_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "CHECK_CLOSE_CB\n");
   fflush(stderr);
-  ASSERT(handle == (uv_handle_t*)&check_handle);
+  ASSERT_EQ(handle, (uv_handle_t*)&check_handle);
 
   check_close_cb_called++;
 }
@@ -197,7 +197,7 @@ static void check_close_cb(uv_handle_t* handle) {
 static void prepare_2_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "PREPARE_2_CLOSE_CB\n");
   fflush(stderr);
-  ASSERT(handle == (uv_handle_t*)&prepare_2_handle);
+  ASSERT_EQ(handle, (uv_handle_t*)&prepare_2_handle);
 
   prepare_2_close_cb_called++;
 }

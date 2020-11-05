@@ -36,7 +36,7 @@ TEST_IMPL(loop_close) {
 
   loop.data = &loop;
   ASSERT(0 == uv_loop_init(&loop));
-  ASSERT(loop.data == (void*) &loop);
+  ASSERT_EQ(loop.data, (void*) &loop);
 
   uv_timer_init(&loop, &timer_handle);
   uv_timer_start(&timer_handle, timer_cb, 100, 100);
@@ -49,9 +49,9 @@ TEST_IMPL(loop_close) {
   r = uv_run(&loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(loop.data == (void*) &loop);
+  ASSERT_EQ(loop.data, (void*) &loop);
   ASSERT(0 == uv_loop_close(&loop));
-  ASSERT(loop.data == (void*) &loop);
+  ASSERT_EQ(loop.data, (void*) &loop);
 
   return 0;
 }
