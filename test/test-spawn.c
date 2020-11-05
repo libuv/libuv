@@ -226,7 +226,7 @@ TEST_IMPL(spawn_fails_check_for_waitpid_cleanup) {
     err = waitpid(process.pid, &status, 0);
   while (err == -1 && errno == EINTR);
 
-  ASSERT(err == -1);
+  ASSERT_EQ(err, -1);
   ASSERT_EQ(errno, ECHILD);
 
   uv_close((uv_handle_t*) &process, NULL);

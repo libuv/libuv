@@ -58,7 +58,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 static void pinger_on_close(uv_handle_t* handle) {
   pinger_t* pinger = (pinger_t*)handle->data;
 
-  ASSERT(NUM_PINGS == pinger->pongs);
+  ASSERT_EQ(NUM_PINGS, pinger->pongs);
 
   free(pinger);
 

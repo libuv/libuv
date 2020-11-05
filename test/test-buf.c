@@ -27,12 +27,12 @@ TEST_IMPL(buf_large) {
   WSABUF* wbuf;
 
   wbuf = (WSABUF*) &buf;
-  ASSERT(wbuf->len == buf.len);
+  ASSERT_EQ(wbuf->len, buf.len);
 #else
   struct iovec* iobuf;
 
   iobuf = (struct iovec*) &buf;
-  ASSERT(iobuf->iov_len == buf.len);
+  ASSERT_EQ(iobuf->iov_len, buf.len);
 
   /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
   ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));

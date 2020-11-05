@@ -92,7 +92,7 @@ static int is_from_client(const struct sockaddr* addr) {
 
   /* Debugging output, and filter out unwanted network traffic */
   if (addr != NULL) {
-    ASSERT(addr->sa_family == AF_INET6);
+    ASSERT_EQ(addr->sa_family, AF_INET6);
     addr6 = (struct sockaddr_in6*) addr;
     r = uv_inet_ntop(addr->sa_family, &addr6->sin6_addr, dst, sizeof(dst));
     if (r == 0)

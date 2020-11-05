@@ -104,7 +104,7 @@ struct signal_ctx {
 
 static void signal_cb(uv_signal_t* handle, int signum) {
   struct signal_ctx* ctx = container_of(handle, struct signal_ctx, handle);
-  ASSERT(signum == ctx->signum);
+  ASSERT_EQ(signum, ctx->signum);
   if (++ctx->ncalls == NSIGNALS) {
     if (ctx->stop_or_close == STOP)
       uv_signal_stop(handle);
@@ -117,7 +117,7 @@ static void signal_cb(uv_signal_t* handle, int signum) {
 
 static void signal_cb_one_shot(uv_signal_t* handle, int signum) {
   struct signal_ctx* ctx = container_of(handle, struct signal_ctx, handle);
-  ASSERT(signum == ctx->signum);
+  ASSERT_EQ(signum, ctx->signum);
   ASSERT(++ctx->ncalls == 1);
   if (ctx->stop_or_close == CLOSE)
     uv_close((uv_handle_t*)handle, NULL);

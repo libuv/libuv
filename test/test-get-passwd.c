@@ -64,8 +64,8 @@ TEST_IMPL(get_passwd) {
 #endif
 
 #ifdef _WIN32
-  ASSERT(pwd.uid == -1);
-  ASSERT(pwd.gid == -1);
+  ASSERT_EQ(pwd.uid, -1);
+  ASSERT_EQ(pwd.gid, -1);
 #else
   ASSERT(pwd.uid >= 0);
   ASSERT(pwd.gid >= 0);

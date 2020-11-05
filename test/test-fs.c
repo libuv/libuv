@@ -1409,8 +1409,8 @@ TEST_IMPL(fs_fstat) {
   ASSERT_EQ(req.result, 0);
   s = req.ptr;
 # if defined(__APPLE__)
-  ASSERT(s->st_birthtim.tv_sec == t.st_birthtimespec.tv_sec);
-  ASSERT(s->st_birthtim.tv_nsec == t.st_birthtimespec.tv_nsec);
+  ASSERT_EQ(s->st_birthtim.tv_sec, t.st_birthtimespec.tv_sec);
+  ASSERT_EQ(s->st_birthtim.tv_nsec, t.st_birthtimespec.tv_nsec);
 # elif defined(__linux__)
   /* If statx() is supported, the birth time should be equal to the change time
    * because we just created the file. On older kernels, it's set to zero.
@@ -1450,26 +1450,26 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_blksize == (uint64_t) t.st_blksize);
   ASSERT(s->st_blocks == (uint64_t) t.st_blocks);
 #if defined(__APPLE__)
-  ASSERT(s->st_atim.tv_sec == t.st_atimespec.tv_sec);
-  ASSERT(s->st_atim.tv_nsec == t.st_atimespec.tv_nsec);
-  ASSERT(s->st_mtim.tv_sec == t.st_mtimespec.tv_sec);
-  ASSERT(s->st_mtim.tv_nsec == t.st_mtimespec.tv_nsec);
-  ASSERT(s->st_ctim.tv_sec == t.st_ctimespec.tv_sec);
-  ASSERT(s->st_ctim.tv_nsec == t.st_ctimespec.tv_nsec);
+  ASSERT_EQ(s->st_atim.tv_sec, t.st_atimespec.tv_sec);
+  ASSERT_EQ(s->st_atim.tv_nsec, t.st_atimespec.tv_nsec);
+  ASSERT_EQ(s->st_mtim.tv_sec, t.st_mtimespec.tv_sec);
+  ASSERT_EQ(s->st_mtim.tv_nsec, t.st_mtimespec.tv_nsec);
+  ASSERT_EQ(s->st_ctim.tv_sec, t.st_ctimespec.tv_sec);
+  ASSERT_EQ(s->st_ctim.tv_nsec, t.st_ctimespec.tv_nsec);
 #elif defined(_AIX)
-  ASSERT(s->st_atim.tv_sec == t.st_atime);
+  ASSERT_EQ(s->st_atim.tv_sec, t.st_atime);
   ASSERT_EQ(s->st_atim.tv_nsec, 0);
-  ASSERT(s->st_mtim.tv_sec == t.st_mtime);
+  ASSERT_EQ(s->st_mtim.tv_sec, t.st_mtime);
   ASSERT_EQ(s->st_mtim.tv_nsec, 0);
-  ASSERT(s->st_ctim.tv_sec == t.st_ctime);
+  ASSERT_EQ(s->st_ctim.tv_sec, t.st_ctime);
   ASSERT_EQ(s->st_ctim.tv_nsec, 0);
 #elif defined(__ANDROID__)
-  ASSERT(s->st_atim.tv_sec == t.st_atime);
-  ASSERT(s->st_atim.tv_nsec == t.st_atimensec);
-  ASSERT(s->st_mtim.tv_sec == t.st_mtime);
-  ASSERT(s->st_mtim.tv_nsec == t.st_mtimensec);
-  ASSERT(s->st_ctim.tv_sec == t.st_ctime);
-  ASSERT(s->st_ctim.tv_nsec == t.st_ctimensec);
+  ASSERT_EQ(s->st_atim.tv_sec, t.st_atime);
+  ASSERT_EQ(s->st_atim.tv_nsec, t.st_atimensec);
+  ASSERT_EQ(s->st_mtim.tv_sec, t.st_mtime);
+  ASSERT_EQ(s->st_mtim.tv_nsec, t.st_mtimensec);
+  ASSERT_EQ(s->st_ctim.tv_sec, t.st_ctime);
+  ASSERT_EQ(s->st_ctim.tv_nsec, t.st_ctimensec);
 #elif defined(__sun)           || \
       defined(__DragonFly__)   || \
       defined(__FreeBSD__)     || \
@@ -1480,30 +1480,30 @@ TEST_IMPL(fs_fstat) {
       defined(_SVID_SOURCE)    || \
       defined(_XOPEN_SOURCE)   || \
       defined(_DEFAULT_SOURCE)
-  ASSERT(s->st_atim.tv_sec == t.st_atim.tv_sec);
-  ASSERT(s->st_atim.tv_nsec == t.st_atim.tv_nsec);
-  ASSERT(s->st_mtim.tv_sec == t.st_mtim.tv_sec);
-  ASSERT(s->st_mtim.tv_nsec == t.st_mtim.tv_nsec);
-  ASSERT(s->st_ctim.tv_sec == t.st_ctim.tv_sec);
-  ASSERT(s->st_ctim.tv_nsec == t.st_ctim.tv_nsec);
+  ASSERT_EQ(s->st_atim.tv_sec, t.st_atim.tv_sec);
+  ASSERT_EQ(s->st_atim.tv_nsec, t.st_atim.tv_nsec);
+  ASSERT_EQ(s->st_mtim.tv_sec, t.st_mtim.tv_sec);
+  ASSERT_EQ(s->st_mtim.tv_nsec, t.st_mtim.tv_nsec);
+  ASSERT_EQ(s->st_ctim.tv_sec, t.st_ctim.tv_sec);
+  ASSERT_EQ(s->st_ctim.tv_nsec, t.st_ctim.tv_nsec);
 # if defined(__FreeBSD__)    || \
      defined(__NetBSD__)
-  ASSERT(s->st_birthtim.tv_sec == t.st_birthtim.tv_sec);
-  ASSERT(s->st_birthtim.tv_nsec == t.st_birthtim.tv_nsec);
+  ASSERT_EQ(s->st_birthtim.tv_sec, t.st_birthtim.tv_sec);
+  ASSERT_EQ(s->st_birthtim.tv_nsec, t.st_birthtim.tv_nsec);
 # endif
 #else
-  ASSERT(s->st_atim.tv_sec == t.st_atime);
+  ASSERT_EQ(s->st_atim.tv_sec, t.st_atime);
   ASSERT_EQ(s->st_atim.tv_nsec, 0);
-  ASSERT(s->st_mtim.tv_sec == t.st_mtime);
+  ASSERT_EQ(s->st_mtim.tv_sec, t.st_mtime);
   ASSERT_EQ(s->st_mtim.tv_nsec, 0);
-  ASSERT(s->st_ctim.tv_sec == t.st_ctime);
+  ASSERT_EQ(s->st_ctim.tv_sec, t.st_ctime);
   ASSERT_EQ(s->st_ctim.tv_nsec, 0);
 #endif
 #endif
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__)
-  ASSERT(s->st_flags == t.st_flags);
-  ASSERT(s->st_gen == t.st_gen);
+  ASSERT_EQ(s->st_flags, t.st_flags);
+  ASSERT_EQ(s->st_gen, t.st_gen);
 #else
   ASSERT_EQ(s->st_flags, 0);
   ASSERT_EQ(s->st_gen, 0);
