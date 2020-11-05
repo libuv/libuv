@@ -61,13 +61,13 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
 
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(req->handle == (uv_stream_t*) &client_handle);
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
   ASSERT(req->handle == (uv_stream_t*) &peer_handle);
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 }
 
 
@@ -76,7 +76,7 @@ static void connection_cb(uv_stream_t* handle, int status) {
 
   buf = uv_buf_init("PING", 4);
 
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
   ASSERT(0 == uv_accept(handle, (uv_stream_t*) &peer_handle));
   ASSERT(0 == uv_read_start((uv_stream_t*) &peer_handle, alloc_cb, read_cb));
   ASSERT(0 == uv_write(&write_req, (uv_stream_t*) &peer_handle,

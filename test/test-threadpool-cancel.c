@@ -187,7 +187,7 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -223,7 +223,7 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -243,10 +243,10 @@ TEST_IMPL(threadpool_cancel_random) {
                         0,
                         nop_random_cb));
   ASSERT(0 == uv_cancel((uv_req_t*) &req));
-  ASSERT(0 == done_cb_called);
+  ASSERT_EQ(done_cb_called, 0);
   unblock_threadpool();
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == done_cb_called);
+  ASSERT_EQ(done_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -269,7 +269,7 @@ TEST_IMPL(threadpool_cancel_work) {
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 1);
   ASSERT(ARRAY_SIZE(reqs) == done2_cb_called);
 
   MAKE_VALGRIND_HAPPY();
@@ -323,7 +323,7 @@ TEST_IMPL(threadpool_cancel_fs) {
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(n == fs_cb_called);
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 1);
 
 
   MAKE_VALGRIND_HAPPY();
@@ -339,10 +339,10 @@ TEST_IMPL(threadpool_cancel_single) {
   loop = uv_default_loop();
   ASSERT(0 == uv_queue_work(loop, &req, (uv_work_cb) abort, nop_done_cb));
   ASSERT(0 == uv_cancel((uv_req_t*) &req));
-  ASSERT(0 == done_cb_called);
+  ASSERT_EQ(done_cb_called, 0);
   unblock_threadpool();
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == done_cb_called);
+  ASSERT_EQ(done_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

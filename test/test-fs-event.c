@@ -1110,8 +1110,8 @@ TEST_IMPL(fs_event_error_reporting) {
     ASSERT(0 == uv_timer_init(loop, &timer));
     ASSERT(0 == uv_timer_start(&timer, timer_cb_nop, 2, 0));
     uv_run(loop, UV_RUN_DEFAULT);
-    ASSERT(1 == timer_cb_called);
-    ASSERT(1 == close_cb_called);
+    ASSERT_EQ(timer_cb_called, 1);
+    ASSERT_EQ(close_cb_called, 1);
     if (fs_event_error_reported != 0)
       break;
   }

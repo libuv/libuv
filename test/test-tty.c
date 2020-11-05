@@ -133,7 +133,7 @@ TEST_IMPL(tty) {
   ASSERT(0 == uv_tty_reset_mode());
   ASSERT(0 == uv_tty_reset_mode());
   ASSERT(0 == uv_tty_reset_mode());
-  ASSERT(0 == errno);
+  ASSERT_EQ(errno, 0);
 
   /* TODO check the actual mode! */
 

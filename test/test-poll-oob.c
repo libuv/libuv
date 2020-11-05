@@ -92,7 +92,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
       ASSERT(n >= 0 || errno != EINVAL);
       if (cli_rd_check == 1) {
         ASSERT(strncmp(buffer, "world", n) == 0);
-        ASSERT(5 == n);
+        ASSERT_EQ(n, 5);
         cli_rd_check = 2;
       }
       if (cli_rd_check == 0) {
@@ -118,7 +118,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
         n = recv(server_fd, &buffer, 3, 0);
       while (n == -1 && errno == EINTR);
       ASSERT(n >= 0 || errno != EINVAL);
-      ASSERT(3 == n);
+      ASSERT_EQ(n, 3);
       ASSERT(strncmp(buffer, "foo", n) == 0);
       srv_rd_check = 1;
       uv_poll_stop(&poll_req[1]);
@@ -128,14 +128,14 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
     do {
       n = send(client_fd, "foo", 3, 0);
     } while (n < 0 && errno == EINTR);
-    ASSERT(3 == n);
+    ASSERT_EQ(n, 3);
   }
 }
 
 static void connection_cb(uv_stream_t* handle, int status) {
   int r;
 
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
   ASSERT(0 == uv_accept(handle, (uv_stream_t*) &peer_handle));
   ASSERT(0 == uv_fileno((uv_handle_t*) &peer_handle, &server_fd));
   ASSERT(0 == uv_poll_init(uv_default_loop(), &poll_req[0], client_fd));
@@ -149,12 +149,12 @@ static void connection_cb(uv_stream_t* handle, int status) {
   do {
     r = send(server_fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
-  ASSERT(5 == r);
+  ASSERT_EQ(r, 5);
 
   do {
     r = send(server_fd, "world", 5, 0);
   } while (r < 0 && errno == EINTR);
-  ASSERT(5 == r);
+  ASSERT_EQ(r, 5);
 
   ASSERT(0 == uv_idle_start(&idle, idle_cb));
 }

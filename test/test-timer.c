@@ -278,11 +278,11 @@ TEST_IMPL(timer_run_once) {
   ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
   ASSERT(0 == uv_timer_start(&timer_handle, timer_run_once_timer_cb, 0, 0));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
-  ASSERT(1 == timer_run_once_timer_cb_called);
+  ASSERT_EQ(timer_run_once_timer_cb_called, 1);
 
   ASSERT(0 == uv_timer_start(&timer_handle, timer_run_once_timer_cb, 1, 0));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
-  ASSERT(2 == timer_run_once_timer_cb_called);
+  ASSERT_EQ(timer_run_once_timer_cb_called, 2);
 
   uv_close((uv_handle_t*) &timer_handle, NULL);
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));

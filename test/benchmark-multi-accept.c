@@ -153,7 +153,7 @@ static void ipc_close_cb(uv_handle_t* handle) {
 static void ipc_connect_cb(uv_connect_t* req, int status) {
   struct ipc_client_ctx* ctx;
   ctx = container_of(req, struct ipc_client_ctx, connect_req);
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
   ASSERT(0 == uv_read_start((uv_stream_t*) &ctx->ipc_pipe,
                             ipc_alloc_cb,
                             ipc_read_cb));
@@ -330,7 +330,7 @@ static void sv_read_cb(uv_stream_t* handle,
 static void cl_connect_cb(uv_connect_t* req, int status) {
   struct client_ctx* ctx = container_of(req, struct client_ctx, connect_req);
   uv_idle_start(&ctx->idle_handle, cl_idle_cb);
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 }
 
 

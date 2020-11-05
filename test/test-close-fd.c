@@ -62,11 +62,11 @@ TEST_IMPL(close_fd) {
   fd[1] = -1;
   ASSERT(0 == uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT(1 == read_cb_called);
+  ASSERT_EQ(read_cb_called, 1);
   ASSERT(0 == uv_is_active((const uv_handle_t *) &pipe_handle));
   ASSERT(0 == uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT(2 == read_cb_called);
+  ASSERT_EQ(read_cb_called, 2);
   ASSERT(0 != uv_is_closing((const uv_handle_t *) &pipe_handle));
 
   MAKE_VALGRIND_HAPPY();

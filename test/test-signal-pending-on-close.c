@@ -81,7 +81,7 @@ TEST_IMPL(signal_pending_on_close) {
   buffer = uv_buf_init(buf, 1<<24);
 
   r = uv_write(&write_req, (uv_stream_t *) &pipe_hdl, &buffer, 1, write_cb);
-  ASSERT(0 == r);
+  ASSERT_EQ(r, 0);
 
   /* cause a SIGPIPE on write in next iteration */
   close(pipefds[0]);
@@ -90,7 +90,7 @@ TEST_IMPL(signal_pending_on_close) {
 
   ASSERT(0 == uv_loop_close(&loop));
 
-  ASSERT(2 == close_cb_called);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -110,7 +110,7 @@ TEST_IMPL(signal_close_loop_alive) {
 
   ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
   ASSERT(0 == uv_loop_close(&loop));
-  ASSERT(1 == close_cb_called);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

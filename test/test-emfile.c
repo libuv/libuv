@@ -84,7 +84,7 @@ TEST_IMPL(emfile) {
                              (const struct sockaddr*) &addr,
                              connect_cb));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == connect_cb_called);
+  ASSERT_EQ(connect_cb_called, 1);
 
   /* Close the dups again. Ignore errors in the unlikely event that the
    * file descriptors were not contiguous.
@@ -108,7 +108,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   /* |status| should equal 0 because the connection should have been accepted,
    * it's just that the server immediately closes it again.
    */
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
   connect_cb_called += 1;
   uv_close((uv_handle_t*) &server_handle, NULL);
   uv_close((uv_handle_t*) &client_handle, NULL);

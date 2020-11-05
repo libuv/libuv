@@ -33,7 +33,7 @@ static void random_cb(uv_random_t* req, int status, void* buf, size_t buflen) {
 
   memset(zero, 0, sizeof(zero));
 
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
   ASSERT(buf == (void*) scratch);
 
   if (random_cb_called == 0) {
@@ -59,16 +59,16 @@ TEST_IMPL(random_async) {
   ASSERT(UV_E2BIG == uv_random(loop, &req, scratch, -1, -1, random_cb));
 
   ASSERT(0 == uv_random(loop, &req, scratch, 0, 0, random_cb));
-  ASSERT(0 == random_cb_called);
+  ASSERT_EQ(random_cb_called, 0);
 
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == random_cb_called);
+  ASSERT_EQ(random_cb_called, 1);
 
   ASSERT(0 == uv_random(loop, &req, scratch, sizeof(scratch), 0, random_cb));
-  ASSERT(1 == random_cb_called);
+  ASSERT_EQ(random_cb_called, 1);
 
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(2 == random_cb_called);
+  ASSERT_EQ(random_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

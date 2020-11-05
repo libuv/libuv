@@ -33,14 +33,14 @@ static uv_connect_t connect_req;
 static void on_read2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 
 static void on_write_close_immediately(uv_write_t* req, int status) {
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 
   uv_close((uv_handle_t*)req->handle, NULL); /* Close immediately */
   free(req);
 }
 
 static void on_write(uv_write_t* req, int status) {
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 
   free(req);
 }
@@ -86,7 +86,7 @@ static void on_read2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 }
 
 static void on_connection(uv_stream_t* server, int status) {
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 
   ASSERT(0 == uv_tcp_init(server->loop, &connection));
 
@@ -96,7 +96,7 @@ static void on_connection(uv_stream_t* server, int status) {
 }
 
 static void on_connect(uv_connect_t* req, int status) {
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
 
   do_write((uv_stream_t*)&client, on_write_close_immediately);
 }

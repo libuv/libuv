@@ -80,7 +80,7 @@ TEST_IMPL(ip6_addr_link_local) {
 
     interface_id_len = sizeof(interface_id);
     r = uv_if_indextoiid(iface_index, interface_id, &interface_id_len);
-    ASSERT(0 == r);
+    ASSERT_EQ(r, 0);
 #ifdef _WIN32
     /* On Windows, the interface identifier is the numeric string of the index. */
     ASSERT(strtoul(interface_id, NULL, 10) == iface_index);

@@ -47,7 +47,7 @@ static char socket_cb_read_buf[1024];
 static void socket_cb(uv_poll_t* poll, int status, int events) {
   ssize_t cnt;
   socket_cb_called++;
-  ASSERT(0 == status);
+  ASSERT_EQ(status, 0);
   printf("Socket cb got events %d\n", events);
   ASSERT(UV_READABLE == (events & UV_READABLE));
   if (socket_cb_read_fd) {
@@ -69,7 +69,7 @@ static void run_timer_loop_once(void) {
   ASSERT(0 == uv_timer_init(loop, &timer_handle));
   ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 1, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 1);
 }
 
 
@@ -141,11 +141,11 @@ TEST_IMPL(fork_socketpair) {
   } else {
     /* child */
     ASSERT(0 == uv_loop_fork(uv_default_loop()));
-    ASSERT(0 == socket_cb_called);
+    ASSERT_EQ(socket_cb_called, 0);
     ASSERT(0 == uv_poll_start(&poll_handle, UV_READABLE, socket_cb));
     printf("Going to run the loop in the child\n");
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-    ASSERT(1 == socket_cb_called);
+    ASSERT_EQ(socket_cb_called, 1);
   }
 
   MAKE_VALGRIND_HAPPY();
@@ -188,12 +188,12 @@ TEST_IMPL(fork_socketpair_started) {
     ASSERT(0 == uv_poll_stop(&poll_handle));
     uv_close((uv_handle_t*)&poll_handle, NULL);
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-    ASSERT(0 == socket_cb_called);
+    ASSERT_EQ(socket_cb_called, 0);
     ASSERT(1 == write(sync_pipe[1], "1", 1)); /* alert child */
     ASSERT(3 == send(socket_fds[1], "hi\n", 3, 0));
 
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-    ASSERT(0 == socket_cb_called);
+    ASSERT_EQ(socket_cb_called, 0);
 
     assert_wait_child(child_pid);
   } else {
@@ -201,13 +201,13 @@ TEST_IMPL(fork_socketpair_started) {
     printf("Child is %d\n", getpid());
     ASSERT(1 == read(sync_pipe[0], sync_buf, 1)); /* wait for parent */
     ASSERT(0 == uv_loop_fork(uv_default_loop()));
-    ASSERT(0 == socket_cb_called);
+    ASSERT_EQ(socket_cb_called, 0);
 
     printf("Going to run the loop in the child\n");
     socket_cb_read_fd = socket_fds[0];
     socket_cb_read_size = 3;
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-    ASSERT(1 == socket_cb_called);
+    ASSERT_EQ(socket_cb_called, 1);
     printf("Buf %s\n", socket_cb_read_buf);
     ASSERT(0 == strcmp("hi\n", socket_cb_read_buf));
   }
@@ -255,7 +255,7 @@ TEST_IMPL(fork_signal_to_child) {
     printf("Running loop in parent\n");
     uv_unref((uv_handle_t*)&signal_handle);
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_NOWAIT));
-    ASSERT(0 == fork_signal_cb_called);
+    ASSERT_EQ(fork_signal_cb_called, 0);
     printf("Waiting for child in parent\n");
     assert_wait_child(child_pid);
   } else {
@@ -313,7 +313,7 @@ TEST_IMPL(fork_signal_to_child_closed) {
                               have something active. */
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
     printf("Signal in parent %d\n", fork_signal_cb_called);
-    ASSERT(0 == fork_signal_cb_called);
+    ASSERT_EQ(fork_signal_cb_called, 0);
     ASSERT(1 == write(sync_pipe2[1], "1", 1)); /* alert child */
     printf("Waiting for child in parent\n");
     assert_wait_child(child_pid);
@@ -331,7 +331,7 @@ TEST_IMPL(fork_signal_to_child_closed) {
     */
     r = read(sync_pipe2[0], sync_buf, 1);
     ASSERT(-1 <= r && r <= 1);
-    ASSERT(0 == fork_signal_cb_called);
+    ASSERT_EQ(fork_signal_cb_called, 0);
     printf("Exiting child \n");
     /* Note that we're deliberately not running the loop
      * in the child, and also not closing the loop's handles,

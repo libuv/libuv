@@ -42,7 +42,7 @@ TEST_IMPL(default_loop_close) {
   ASSERT(0 == uv_timer_init(loop, &timer_handle));
   ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 1, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 1);
   ASSERT(0 == uv_loop_close(loop));
 
   loop = uv_default_loop();
@@ -51,7 +51,7 @@ TEST_IMPL(default_loop_close) {
   ASSERT(0 == uv_timer_init(loop, &timer_handle));
   ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 1, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(2 == timer_cb_called);
+  ASSERT_EQ(timer_cb_called, 2);
   ASSERT(0 == uv_loop_close(loop));
 
   MAKE_VALGRIND_HAPPY();
