@@ -1439,16 +1439,16 @@ TEST_IMPL(fs_fstat) {
   r = fstat(file, &t);
   ASSERT_EQ(r, 0);
 
-  ASSERT(s->st_dev == (uint64_t) t.st_dev);
-  ASSERT(s->st_mode == (uint64_t) t.st_mode);
-  ASSERT(s->st_nlink == (uint64_t) t.st_nlink);
-  ASSERT(s->st_uid == (uint64_t) t.st_uid);
-  ASSERT(s->st_gid == (uint64_t) t.st_gid);
-  ASSERT(s->st_rdev == (uint64_t) t.st_rdev);
-  ASSERT(s->st_ino == (uint64_t) t.st_ino);
-  ASSERT(s->st_size == (uint64_t) t.st_size);
-  ASSERT(s->st_blksize == (uint64_t) t.st_blksize);
-  ASSERT(s->st_blocks == (uint64_t) t.st_blocks);
+  ASSERT_EQ(s->st_dev, (uint64_t) t.st_dev);
+  ASSERT_EQ(s->st_mode, (uint64_t) t.st_mode);
+  ASSERT_EQ(s->st_nlink, (uint64_t) t.st_nlink);
+  ASSERT_EQ(s->st_uid, (uint64_t) t.st_uid);
+  ASSERT_EQ(s->st_gid, (uint64_t) t.st_gid);
+  ASSERT_EQ(s->st_rdev, (uint64_t) t.st_rdev);
+  ASSERT_EQ(s->st_ino, (uint64_t) t.st_ino);
+  ASSERT_EQ(s->st_size, (uint64_t) t.st_size);
+  ASSERT_EQ(s->st_blksize, (uint64_t) t.st_blksize);
+  ASSERT_EQ(s->st_blocks, (uint64_t) t.st_blocks);
 #if defined(__APPLE__)
   ASSERT_EQ(s->st_atim.tv_sec, t.st_atimespec.tv_sec);
   ASSERT_EQ(s->st_atim.tv_nsec, t.st_atimespec.tv_nsec);

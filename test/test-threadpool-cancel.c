@@ -154,7 +154,7 @@ static void nop_random_cb(uv_random_t* req, int status, void* buf, size_t len) {
   ri = container_of(req, struct random_info, random_req);
 
   ASSERT_EQ(status, UV_ECANCELED);
-  ASSERT(buf == (void*) ri->buf);
+  ASSERT_EQ(buf, (void *) ri->buf);
   ASSERT(len == sizeof(ri->buf));
 
   done_cb_called++;

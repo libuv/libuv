@@ -31,7 +31,7 @@ static uv_timer_t timer;
 
 
 static void walk_cb(uv_handle_t* handle, void* arg) {
-  ASSERT(arg == (void*)magic_cookie);
+  ASSERT_EQ(arg, (void*)magic_cookie);
 
   if (handle == (uv_handle_t*)&timer) {
     seen_timer_handle++;

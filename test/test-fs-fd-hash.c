@@ -43,7 +43,7 @@ void assert_nonexistent(uv_os_fd_t fd) {
 void assert_existent(uv_os_fd_t fd) {
   struct uv__fd_info_s info = { 0 };
   ASSERT(uv__fd_hash_get(fd, &info));
-  ASSERT(info.flags == (intptr_t) fd + FD_DIFF);
+  ASSERT_EQ(info.flags, (intptr_t) fd + FD_DIFF);
 }
 
 void assert_insertion(uv_os_fd_t fd) {
@@ -58,7 +58,7 @@ void assert_removal(uv_os_fd_t fd) {
   struct uv__fd_info_s info = { 0 };
   assert_existent(fd);
   uv__fd_hash_remove(fd, &info);
-  ASSERT(info.flags == (intptr_t) fd + FD_DIFF);
+  ASSERT_EQ(info.flags, (intptr_t) fd + FD_DIFF);
   assert_nonexistent(fd);
 }
 

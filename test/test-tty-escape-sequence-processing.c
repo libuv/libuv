@@ -166,7 +166,7 @@ static void write_console(uv_tty_t* tty_out, char* src) {
 
   r = uv_try_write((uv_stream_t*) tty_out, &buf, 1);
   ASSERT(r >= 0);
-  ASSERT((unsigned int) r == buf.len);
+  ASSERT_EQ((unsigned int) r, buf.len);
 }
 
 static void setup_screen(uv_tty_t* tty_out) {
@@ -217,10 +217,10 @@ static void capture_screen(uv_tty_t* tty_out, struct captured_screen* cs) {
   ASSERT(cs->attributes != NULL);
   ASSERT(ReadConsoleOutputCharacter(
       tty_out->handle, cs->text, cs->si.length, origin, &length));
-  ASSERT((unsigned int) cs->si.length == length);
+  ASSERT_EQ((unsigned int) cs->si.length, length);
   ASSERT(ReadConsoleOutputAttribute(
       tty_out->handle, cs->attributes, cs->si.length, origin, &length));
-  ASSERT((unsigned int) cs->si.length == length);
+  ASSERT_EQ((unsigned int) cs->si.length, length);
 }
 
 static void make_expect_screen_erase(struct captured_screen* cs,

@@ -142,7 +142,7 @@ static void do_work(void* arg) {
 
 
 static void thread_entry(void* arg) {
-  ASSERT(arg == (void *) 42);
+  ASSERT_EQ(arg, (void *) 42);
   thread_called++;
 }
 

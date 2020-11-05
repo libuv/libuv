@@ -105,8 +105,8 @@ static int test_async(int nthreads) {
     ctx = threads + i;
     ASSERT_EQ(ctx->worker_sent, NUM_PINGS);
     ASSERT_EQ(ctx->worker_seen, NUM_PINGS);
-    ASSERT(ctx->main_sent == (unsigned int) NUM_PINGS);
-    ASSERT(ctx->main_seen == (unsigned int) NUM_PINGS);
+    ASSERT_EQ(ctx->main_sent, (unsigned int) NUM_PINGS);
+    ASSERT_EQ(ctx->main_seen, (unsigned int) NUM_PINGS);
   }
 
   printf("async%d: %.2f sec (%s/sec)\n",
