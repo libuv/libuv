@@ -94,7 +94,7 @@ TEST_IMPL(thread_affinity) {
   ASSERT_EQ(cpumask[t1first + 2], 0);
   ASSERT(cpumask[t1first + 3] == (ncpus >= 4));
 
-  ASSERT(cpumask[t2first + 0] == 1);
+  ASSERT_EQ(cpumask[t2first + 0], 1);
   ASSERT_EQ(cpumask[t2first + 1], 0);
   ASSERT(cpumask[t2first + 2] == (ncpus >= 3));
   ASSERT_EQ(cpumask[t2first + 3], 0);

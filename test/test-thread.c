@@ -186,7 +186,7 @@ TEST_IMPL(threadpool_multiple_event_loops) {
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_join(&threads[i].thread_id);
     ASSERT_EQ(r, 0);
-    ASSERT(threads[i].thread_called == 1);
+    ASSERT_EQ(threads[i].thread_called, 1);
   }
 
   return 0;

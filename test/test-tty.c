@@ -155,7 +155,7 @@ static void tty_raw_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 static void tty_raw_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
-    ASSERT(nread  == 1);
+    ASSERT_EQ(nread, 1);
     ASSERT(buf->base[0] == ' ');
     uv_close((uv_handle_t*) tty_in, NULL);
   } else {

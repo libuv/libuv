@@ -207,7 +207,7 @@ TEST_IMPL(getaddrinfo_concurrent) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
-    ASSERT(callback_counts[i] == 1);
+    ASSERT_EQ(callback_counts[i], 1);
   }
 
   MAKE_VALGRIND_HAPPY();

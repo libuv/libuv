@@ -258,8 +258,8 @@ TEST_IMPL(we_get_signals_mixed) {
   sc[1].stop_or_close = CLOSE;
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc[0].ncalls == 1);
-  ASSERT(sc[1].ncalls == 1);
+  ASSERT_EQ(sc[0].ncalls, 1);
+  ASSERT_EQ(sc[1].ncalls, 1);
 
   /* 2 one-shot, 1 normal then remove normal */
   start_timer(loop, SIGCHLD, &tc);
@@ -271,8 +271,8 @@ TEST_IMPL(we_get_signals_mixed) {
   uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc[0].ncalls == 1);
-  ASSERT(sc[1].ncalls == 1);
+  ASSERT_EQ(sc[0].ncalls, 1);
+  ASSERT_EQ(sc[1].ncalls, 1);
   ASSERT_EQ(sc[2].ncalls, 0);
 
   /* 2 normal, 1 one-shot then remove one-shot */
@@ -303,8 +303,8 @@ TEST_IMPL(we_get_signals_mixed) {
   ASSERT(tc.ncalls == NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, 0);
   ASSERT_EQ(sc[1].ncalls, 0);
-  ASSERT(sc[2].ncalls == 1);
-  ASSERT(sc[2].ncalls == 1);
+  ASSERT_EQ(sc[2].ncalls, 1);
+  ASSERT_EQ(sc[2].ncalls, 1);
 
   /* 1 normal, 1 one-shot, 2 normal then remove 1st normal, 2nd normal */
   start_timer(loop, SIGCHLD, &tc);
@@ -318,7 +318,7 @@ TEST_IMPL(we_get_signals_mixed) {
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(tc.ncalls == NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, 0);
-  ASSERT(sc[1].ncalls == 1);
+  ASSERT_EQ(sc[1].ncalls, 1);
   ASSERT_EQ(sc[2].ncalls, 0);
   ASSERT(sc[3].ncalls == NSIGNALS);
 
