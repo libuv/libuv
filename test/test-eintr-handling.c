@@ -54,7 +54,7 @@ static void thread_main(void* arg) {
     nwritten = write(pipe_fds[1], test_buf, sizeof(test_buf));
   while (nwritten == -1 && errno == EINTR);
 
-  ASSERT(nwritten == sizeof(test_buf));
+  ASSERT_EQ(nwritten, sizeof(test_buf));
 }
 
 static void sig_func(uv_signal_t* handle, int signum) {
@@ -78,7 +78,7 @@ TEST_IMPL(eintr_handling) {
 
   nread = uv_fs_read(loop, &read_req, pipe_fds[0], &iov, 1, -1, NULL);
 
-  ASSERT(nread == sizeof(test_buf));
+  ASSERT_EQ(nread, sizeof(test_buf));
   ASSERT(0 == strcmp(buf, test_buf));
 
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));

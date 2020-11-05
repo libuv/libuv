@@ -43,7 +43,7 @@ TEST_IMPL(ip4_addr) {
   ASSERT(UV_EINVAL == uv_ip4_addr("255", TEST_PORT, &addr));
 
 #ifdef SIN6_LEN
-  ASSERT(addr.sin_len == sizeof(addr));
+  ASSERT_EQ(addr.sin_len, sizeof(addr));
 #endif
 
   /* for broken address family */

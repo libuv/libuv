@@ -88,7 +88,7 @@ TEST_IMPL(pipe_set_non_blocking) {
      * with the exact number of bytes that we wanted written.
      */
     n = uv_try_write((uv_stream_t*) &pipe_handle, &buf, 1);
-    ASSERT(n == sizeof(data));
+    ASSERT_EQ(n, sizeof(data));
     nwritten += n;
   }
 

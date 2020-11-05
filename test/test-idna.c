@@ -113,11 +113,11 @@ TEST_IMPL(utf8_decode1) {
     char d2[256] = {0};                                                       \
     static const char s[] = "" input "";                                      \
     n = uv__idna_toascii(s, s + sizeof(s) - 1, d1, d1 + sizeof(d1));          \
-    ASSERT(n == sizeof(expected));                                            \
+    ASSERT_EQ(n, sizeof(expected));                                            \
     ASSERT(0 == memcmp(d1, expected, n));                                     \
     /* Sanity check: encoding twice should not change the output. */          \
     n = uv__idna_toascii(d1, d1 + strlen(d1), d2, d2 + sizeof(d2));           \
-    ASSERT(n == sizeof(expected));                                            \
+    ASSERT_EQ(n, sizeof(expected));                                            \
     ASSERT(0 == memcmp(d2, expected, n));                                     \
     ASSERT(0 == memcmp(d1, d2, sizeof(d2)));                                  \
   } while (0)

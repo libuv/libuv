@@ -40,7 +40,7 @@ static void random_cb(uv_random_t* req, int status, void* buf, size_t buflen) {
     ASSERT_EQ(buflen, 0);
     ASSERT(0 == memcmp(scratch, zero, sizeof(zero)));
   } else {
-    ASSERT(buflen == sizeof(scratch));
+    ASSERT_EQ(buflen, sizeof(scratch));
     /* Buy a lottery ticket if you manage to trip this assertion. */
     ASSERT(0 != memcmp(scratch, zero, sizeof(zero)));
   }

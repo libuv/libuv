@@ -35,10 +35,10 @@ TEST_IMPL(buf_large) {
   ASSERT_EQ(iobuf->iov_len, buf.len);
 
   /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
-  ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
-  ASSERT(sizeof(&((uv_buf_t*) 0)->base) ==
-         sizeof(((struct iovec*) 0)->iov_base));
-  ASSERT(sizeof(&((uv_buf_t*) 0)->len) == sizeof(((struct iovec*) 0)->iov_len));
+  ASSERT_EQ(sizeof(uv_buf_t), sizeof(struct iovec));
+  ASSERT_EQ(sizeof(&((uv_buf_t*) 0)->base),
+            sizeof(((struct iovec*) 0)->iov_base));
+  ASSERT_EQ(sizeof(&((uv_buf_t*) 0)->len), sizeof(((struct iovec*) 0)->iov_len));
   ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
   ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
 #endif

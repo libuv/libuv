@@ -155,7 +155,7 @@ static void nop_random_cb(uv_random_t* req, int status, void* buf, size_t len) {
 
   ASSERT_EQ(status, UV_ECANCELED);
   ASSERT_EQ(buf, (void *) ri->buf);
-  ASSERT(len == sizeof(ri->buf));
+  ASSERT_EQ(len, sizeof(ri->buf));
 
   done_cb_called++;
 }
