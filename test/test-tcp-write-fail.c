@@ -41,13 +41,13 @@ static void close_socket(uv_tcp_t* sock) {
   int r;
 
   r = uv_fileno((uv_handle_t*)sock, &fd);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #ifdef _WIN32
   r = closesocket((uv_os_sock_t)fd);
 #else
   r = close(fd);
 #endif
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -74,7 +74,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   stream = req->handle;
   connect_cb_called++;
@@ -84,7 +84,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
   buf = uv_buf_init("hello\n", 6);
   r = uv_write(&write_req, stream, &buf, 1, write_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -96,13 +96,13 @@ TEST_IMPL(tcp_write_fail) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

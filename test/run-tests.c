@@ -277,7 +277,7 @@ static int maybe_run_test(int argc, char **argv) {
 #else
     CPU_ZERO(&cpuset);
     r = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     for (i = 0; i < cpumask_size; ++i) {
       ASSERT(CPU_ISSET(i, &cpuset) == (i == cpu));
     }

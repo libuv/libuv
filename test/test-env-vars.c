@@ -59,13 +59,13 @@ TEST_IMPL(env_vars) {
 
   /* Successfully set an environment variable */
   r = uv_os_setenv(name, "123456789");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Successfully read an environment variable */
   size = BUF_SIZE;
   buf[0] = '\0';
   r = uv_os_getenv(name, buf, &size);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(strcmp(buf, "123456789") == 0);
   ASSERT(size == BUF_SIZE - 1);
 
@@ -78,7 +78,7 @@ TEST_IMPL(env_vars) {
 
   /* Successfully delete an environment variable */
   r = uv_os_unsetenv(name);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Return UV_ENOENT retrieving an environment variable that does not exist */
   r = uv_os_getenv(name, buf, &size);
@@ -86,31 +86,31 @@ TEST_IMPL(env_vars) {
 
   /* Successfully delete an environment variable that does not exist */
   r = uv_os_unsetenv(name);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Setting an environment variable to the empty string does not delete it. */
   r = uv_os_setenv(name, "");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   size = BUF_SIZE;
   r = uv_os_getenv(name, buf, &size);
-  ASSERT(r == 0);
-  ASSERT(size == 0);
+  ASSERT_EQ(r, 0);
+  ASSERT_EQ(size, 0);
   ASSERT(strlen(buf) == 0);
 
   /* Check getting all env variables. */
   r = uv_os_setenv(name, "123456789");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_os_setenv(name2, "");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #ifdef _WIN32
   /* Create a special environment variable on Windows in case there are no
      naturally occurring ones. */
   r = uv_os_setenv("=Z:", "\\");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #endif
 
   r = uv_os_environ(&envitems, &envcount);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(envcount > 0);
 
   found = 0;
@@ -137,10 +137,10 @@ TEST_IMPL(env_vars) {
   uv_os_free_environ(envitems, envcount);
 
   r = uv_os_unsetenv(name);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_os_unsetenv(name2);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   for (i = 1; i <= 4; i++) {
     size_t n;

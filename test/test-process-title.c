@@ -29,13 +29,13 @@ static void set_title(const char* title) {
   int err;
 
   err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
 
   err = uv_set_process_title(title);
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
 
   err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
 
   ASSERT(strcmp(buffer, title) == 0);
 }
@@ -77,8 +77,8 @@ TEST_IMPL(process_title) {
 
 
 static void exit_cb(uv_process_t* process, int64_t status, int signo) {
-  ASSERT(status == 0);
-  ASSERT(signo == 0);
+  ASSERT_EQ(status, 0);
+  ASSERT_EQ(signo, 0);
   uv_close((uv_handle_t*) process, NULL);
 }
 

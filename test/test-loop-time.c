@@ -44,18 +44,18 @@ TEST_IMPL(loop_backend_timeout) {
   int r;
 
   r = uv_timer_init(loop, &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(!uv_loop_alive(loop));
   ASSERT(uv_backend_timeout(loop) == 0);
 
   r = uv_timer_start(&timer, cb, 1000, 0); /* 1 sec */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_backend_timeout(loop) > 100); /* 0.1 sec */
   ASSERT(uv_backend_timeout(loop) <= 1000); /* 1 sec */
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_backend_timeout(loop) == 0);
 
   MAKE_VALGRIND_HAPPY();

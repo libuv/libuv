@@ -47,7 +47,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   write_cb_called++;
 }
 
@@ -68,7 +68,7 @@ static void connect_cb(uv_connect_t* req, int status) {
     return;
   }
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(connect_reqs <= req);
   ASSERT(req <= connect_reqs + ARRAY_SIZE(connect_reqs));
   i = req - connect_reqs;

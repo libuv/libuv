@@ -67,13 +67,13 @@ TEST_IMPL(tcp_connect_timeout) {
   ASSERT(0 == uv_ip4_addr("8.8.8.8", 9999, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timer, timer_cb, 50, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_init(uv_default_loop(), &conn);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &conn,
@@ -81,10 +81,10 @@ TEST_IMPL(tcp_connect_timeout) {
                      connect_cb);
   if (r == UV_ENETUNREACH)
     RETURN_SKIP("Network unreachable.");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -151,7 +151,7 @@ TEST_IMPL(tcp_local_connect_timeout) {
   ASSERT_EQ(r, 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

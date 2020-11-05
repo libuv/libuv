@@ -54,13 +54,13 @@ static void incoming_close_cb(uv_handle_t* handle) {
 
 
 static void connect_cb(uv_connect_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   connect_cb_called++;
 }
 
 
 static void connection_cb(uv_stream_t* tcp, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   ASSERT(0 == uv_tcp_init(tcp->loop, &incoming));
   ASSERT(0 == uv_accept(tcp, (uv_stream_t*) &incoming));

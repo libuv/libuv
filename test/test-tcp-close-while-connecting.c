@@ -77,7 +77,7 @@ TEST_IMPL(tcp_close_while_connecting) {
                      connect_cb);
   if (r == UV_ENETUNREACH)
     RETURN_SKIP("Network unreachable.");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(0 == uv_timer_init(loop, &timer1_handle));
   ASSERT(0 == uv_timer_start(&timer1_handle, timer1_cb, 1, 0));
   ASSERT(0 == uv_timer_init(loop, &timer2_handle));

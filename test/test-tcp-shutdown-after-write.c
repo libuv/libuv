@@ -66,10 +66,10 @@ static void timer_cb(uv_timer_t* handle) {
 
   buf = uv_buf_init("TEST", 4);
   r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_shutdown(&shutdown_req, (uv_stream_t*)&conn, shutdown_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -80,22 +80,22 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
 static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   connect_cb_called++;
 
   r = uv_read_start((uv_stream_t*)&conn, alloc_cb, read_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   write_cb_called++;
 }
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   shutdown_cb_called++;
   uv_close((uv_handle_t*)&conn, close_cb);
 }
@@ -110,22 +110,22 @@ TEST_IMPL(tcp_shutdown_after_write) {
   loop = uv_default_loop();
 
   r = uv_timer_init(loop, &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timer, timer_cb, 125, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_init(loop, &conn);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &conn,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(connect_cb_called == 1);
   ASSERT(write_cb_called == 1);

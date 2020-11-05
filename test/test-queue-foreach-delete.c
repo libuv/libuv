@@ -104,10 +104,10 @@ static const unsigned first_handle_number_fs_event = 0;
     for (i = 0; i < ARRAY_SIZE(name); i++) {                                  \
       int r;                                                                  \
       r = uv_##name##_init((loop), &(name)[i]);                               \
-      ASSERT(r == 0);                                                         \
+      ASSERT_EQ(r, 0);                                                         \
                                                                               \
       r = uv_##name##_start(&(name)[i], name##_cbs[i]);                       \
-      ASSERT(r == 0);                                                         \
+      ASSERT_EQ(r, 0);                                                         \
     }                                                                         \
   } while (0)
 
@@ -139,13 +139,13 @@ static void init_and_start_fs_events(uv_loop_t* loop) {
   for (i = 0; i < ARRAY_SIZE(fs_event); i++) {
     int r;
     r = uv_fs_event_init(loop, &fs_event[i]);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_fs_event_start(&fs_event[i],
                           (uv_fs_event_cb)fs_event_cbs[i],
                           watched_dir,
                           0);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 }
 
@@ -155,7 +155,7 @@ static void helper_timer_cb(uv_timer_t* thandle) {
 
   /* fire all fs_events */
   r = uv_fs_utime(thandle->loop, &fs_req, watched_dir, 0, 0, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(fs_req.result == 0);
   ASSERT(fs_req.fs_type == UV_FS_UTIME);
   ASSERT(strcmp(fs_req.path, watched_dir) == 0);
@@ -181,10 +181,10 @@ TEST_IMPL(queue_foreach_delete) {
 
   /* helper timer to trigger async and fs_event callbacks */
   r = uv_timer_init(loop, &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timer, helper_timer_cb, 0, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #endif
 
   r = uv_run(loop, UV_RUN_NOWAIT);

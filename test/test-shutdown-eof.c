@@ -76,16 +76,16 @@ static void shutdown_cb(uv_shutdown_t *req, int status) {
 
   ASSERT(called_connect_cb == 1);
   ASSERT(!got_eof);
-  ASSERT(called_tcp_close_cb == 0);
-  ASSERT(called_timer_close_cb == 0);
-  ASSERT(called_timer_cb == 0);
+  ASSERT_EQ(called_tcp_close_cb, 0);
+  ASSERT_EQ(called_timer_close_cb, 0);
+  ASSERT_EQ(called_timer_cb, 0);
 
   called_shutdown_cb++;
 }
 
 
 static void connect_cb(uv_connect_t *req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(req == &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
@@ -101,7 +101,7 @@ static void connect_cb(uv_connect_t *req, int status) {
   uv_shutdown(&shutdown_req, (uv_stream_t*) &tcp, shutdown_cb);
 
   called_connect_cb++;
-  ASSERT(called_shutdown_cb == 0);
+  ASSERT_EQ(called_shutdown_cb, 0);
 }
 
 
@@ -131,7 +131,7 @@ static void timer_cb(uv_timer_t* handle) {
    * The most important assert of the test: we have not received
    * tcp_close_cb yet.
    */
-  ASSERT(called_tcp_close_cb == 0);
+  ASSERT_EQ(called_tcp_close_cb, 0);
   uv_close((uv_handle_t*) &tcp, tcp_close_cb);
 
   called_timer_cb++;
@@ -152,7 +152,7 @@ TEST_IMPL(shutdown_eof) {
   qbuf.len = 1;
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_timer_start(&timer, timer_cb, 100, 0);
 

@@ -35,7 +35,7 @@ TEST_IMPL(get_passwd) {
 
   /* Test the normal case */
   r = uv_os_get_passwd(&pwd);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   len = strlen(pwd.username);
   ASSERT(len > 0);
 

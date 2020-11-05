@@ -184,7 +184,7 @@ TEST_IMPL(poll_oob) {
     errno = 0;
     r = connect(client_fd, (const struct sockaddr*)&addr, sizeof(addr));
   } while (r == -1 && errno == EINTR);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 

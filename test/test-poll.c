@@ -116,12 +116,12 @@ static uv_os_sock_t create_bound_socket (struct sockaddr_in bind_addr) {
     /* Allow reuse of the port. */
     int yes = 1;
     r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 #endif
 
   r = bind(sock, (const struct sockaddr*) &bind_addr, sizeof bind_addr);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   return sock;
 }
@@ -163,12 +163,12 @@ static connection_context_t* create_connection_context(
   r = uv_poll_init(uv_default_loop(), &context->poll_handle, sock);
   context->open_handles++;
   context->poll_handle.data = context;
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_init(uv_default_loop(), &context->timer_handle);
   context->open_handles++;
   context->timer_handle.data = context;
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   return context;
 }
@@ -208,7 +208,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
   unsigned int new_events;
   int r;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(events & context->events);
   ASSERT(!(events & ~context->events));
 
@@ -403,7 +403,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
 #else
       r = shutdown(context->sock, SHUT_WR);
 #endif
-      ASSERT(r == 0);
+      ASSERT_EQ(r, 0);
       context->sent_fin = 1;
       new_events &= ~UV_WRITABLE;
     }
@@ -454,7 +454,7 @@ static void delay_timer_cb(uv_timer_t* timer) {
   r = uv_poll_start(&context->poll_handle,
                     context->events,
                     connection_poll_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -471,7 +471,7 @@ static server_context_t* create_server_context(
 
   r = uv_poll_init(uv_default_loop(), &context->poll_handle, sock);
   context->poll_handle.data = context;
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   return context;
 }
@@ -510,7 +510,7 @@ static void server_poll_cb(uv_poll_t* handle, int status, int events) {
   r = uv_poll_start(&connection_context->poll_handle,
                     UV_READABLE | UV_WRITABLE | UV_DISCONNECT,
                     connection_poll_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   if (++server_context->connections == NUM_CLIENTS) {
     close_socket(server_context->sock);
@@ -530,10 +530,10 @@ static void start_server(void) {
   context = create_server_context(sock);
 
   r = listen(sock, 100);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_poll_start(&context->poll_handle, UV_READABLE, server_poll_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -554,7 +554,7 @@ static void start_client(void) {
   r = uv_poll_start(&context->poll_handle,
                     UV_READABLE | UV_WRITABLE | UV_DISCONNECT,
                     connection_poll_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = connect(sock, (struct sockaddr*) &server_addr, sizeof server_addr);
   ASSERT(r == 0 || got_eagain());
@@ -568,7 +568,7 @@ static void start_poll_test(void) {
   {
     struct WSAData wsa_data;
     int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 #endif
 
@@ -578,7 +578,7 @@ static void start_poll_test(void) {
     start_client();
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Assert that at most five percent of the writable wakeups was spurious. */
   ASSERT(spurious_writable_wakeups == 0 ||

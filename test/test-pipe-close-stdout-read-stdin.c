@@ -57,7 +57,7 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
   uv_pipe_t stdin_pipe;
 
   r = pipe(fd);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   if ((pid = fork()) == 0) {
     /*
@@ -74,13 +74,13 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
 
     /* Create a stream that reads from the pipe. */
     r = uv_pipe_init(uv_default_loop(), (uv_pipe_t *)&stdin_pipe, 0);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_pipe_open((uv_pipe_t *)&stdin_pipe, 0);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_read_start((uv_stream_t *)&stdin_pipe, alloc_buffer, read_stdin);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     /*
      * Because the other end of the pipe was closed, there should

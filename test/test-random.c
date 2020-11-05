@@ -37,7 +37,7 @@ static void random_cb(uv_random_t* req, int status, void* buf, size_t buflen) {
   ASSERT(buf == (void*) scratch);
 
   if (random_cb_called == 0) {
-    ASSERT(buflen == 0);
+    ASSERT_EQ(buflen, 0);
     ASSERT(0 == memcmp(scratch, zero, sizeof(zero)));
   } else {
     ASSERT(buflen == sizeof(scratch));

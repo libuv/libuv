@@ -52,8 +52,8 @@ static void exit_cb(uv_process_t* process,
                     int term_signal) {
   printf("exit_cb\n");
   exit_cb_called++;
-  ASSERT(exit_status == 0);
-  ASSERT(term_signal == 0);
+  ASSERT_EQ(exit_status, 0);
+  ASSERT_EQ(term_signal, 0);
   uv_close((uv_handle_t*)process, close_cb);
   uv_close((uv_handle_t*)&in, close_cb);
   uv_close((uv_handle_t*)&out, close_cb);
@@ -62,7 +62,7 @@ static void exit_cb(uv_process_t* process,
 
 static void init_process_options(char* test, uv_exit_cb exit_cb) {
   int r = uv_exepath(exepath, &exepath_size);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   exepath[exepath_size] = '\0';
   args[0] = exepath;
   args[1] = test;
@@ -108,7 +108,7 @@ static void on_read(uv_stream_t* pipe, ssize_t nread, const uv_buf_t* rdbuf) {
       wrbuf = uv_buf_init(output, 12);
       req = malloc(sizeof(*req));
       r = uv_write(req, (uv_stream_t*) &in, &wrbuf, 1, after_write);
-      ASSERT(r == 0);
+      ASSERT_EQ(r, 0);
     }
   }
 
@@ -140,13 +140,13 @@ static void test_stdio_over_pipes(int overlapped) {
   options.stdio_count = 3;
 
   r = uv_spawn(loop, &process, &options);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(on_read_cb_called > 1);
   ASSERT(after_write_cb_called == 2);
@@ -190,7 +190,7 @@ static void on_pipe_read(uv_stream_t* pipe, ssize_t nread, const uv_buf_t* buf) 
 
 
 static void after_pipe_write(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   after_write_called++;
 }
 
@@ -226,22 +226,22 @@ int stdio_over_pipes_helper(void) {
   ASSERT(UV_NAMED_PIPE == uv_guess_handle(UV_STDOUT_FD));
 
   r = uv_pipe_init(loop, &stdin_pipe1, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_pipe_init(loop, &stdout_pipe1, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_pipe_init(loop, &stdin_pipe2, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_pipe_init(loop, &stdout_pipe2, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_pipe_open(&stdin_pipe1, UV_STDIN_FD);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_pipe_open(&stdout_pipe1, UV_STDOUT_FD);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_pipe_open(&stdin_pipe2, UV_STDIN_FD);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_pipe_open(&stdout_pipe2, UV_STDOUT_FD);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   for (j = 0; j < 2; j++) {
     /* Unref both stdio handles to make sure that all writes complete. */
@@ -260,7 +260,7 @@ int stdio_over_pipes_helper(void) {
                    &buf[i],
                    1,
                    after_pipe_write);
-      ASSERT(r == 0);
+      ASSERT_EQ(r, 0);
     }
 
     notify_parent_process();
@@ -268,7 +268,7 @@ int stdio_over_pipes_helper(void) {
 
     ASSERT(after_write_called == 7 * (j + 1));
     ASSERT(on_pipe_read_called == j);
-    ASSERT(close_cb_called == 0);
+    ASSERT_EQ(close_cb_called, 0);
 
     uv_ref((uv_handle_t*) &stdout_pipe1);
     uv_ref((uv_handle_t*) &stdin_pipe1);
@@ -278,13 +278,13 @@ int stdio_over_pipes_helper(void) {
     r = uv_read_start((uv_stream_t*) (j == 0 ? &stdin_pipe1 : &stdin_pipe2),
                       on_read_alloc,
                       on_pipe_read);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     uv_run(loop, UV_RUN_DEFAULT);
 
     ASSERT(after_write_called == 7 * (j + 1));
     ASSERT(on_pipe_read_called == j + 1);
-    ASSERT(close_cb_called == 0);
+    ASSERT_EQ(close_cb_called, 0);
   }
 
   uv_close((uv_handle_t*)&stdin_pipe1, close_cb);

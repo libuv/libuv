@@ -42,7 +42,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 }
 
 static void conn_alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
@@ -65,17 +65,17 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
   uv_buf_t buf;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   connect_cb_called++;
 
   buf = uv_buf_init(hello, sizeof(hello));
   r = uv_write(&write_req, req->handle, &buf, 1, write_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
 static void connection_cb(uv_stream_t* tcp, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   ASSERT(0 == uv_tcp_init(tcp->loop, &incoming));
   ASSERT(0 == uv_accept(tcp, (uv_stream_t*) &incoming));

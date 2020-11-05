@@ -176,7 +176,7 @@ static int condvar_timedwait(worker_config* c, const int* flag) {
   /* Wait until I get a non-spurious signal. */
   do {
     r = uv_cond_timedwait(&c->cond, &c->mutex, (uint64_t)(1 * 1e9)); /* 1 s */
-    ASSERT(r == 0); /* Should not time out. */
+    ASSERT_EQ(r, 0); /* Should not time out. */
   } while (*flag == 0);
   ASSERT(*flag == 1);
 

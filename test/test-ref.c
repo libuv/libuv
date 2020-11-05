@@ -47,7 +47,7 @@ static void close_cb(uv_handle_t* handle) {
 static void do_close(void* handle) {
   close_cb_called = 0;
   uv_close((uv_handle_t*)handle, close_cb);
-  ASSERT(close_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(close_cb_called == 1);
 }
@@ -84,7 +84,7 @@ static void write_cb(uv_write_t* req, int status) {
 static void connect_and_write(uv_connect_t* req, int status) {
   uv_buf_t buf = uv_buf_init(buffer, sizeof buffer);
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   uv_write(&write_req, req->handle, &buf, 1, write_cb);
   connect_cb_called++;
 }
@@ -93,7 +93,7 @@ static void connect_and_write(uv_connect_t* req, int status) {
 
 static void connect_and_shutdown(uv_connect_t* req, int status) {
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
   connect_cb_called++;
 }
@@ -410,7 +410,7 @@ TEST_IMPL(process_ref) {
   exepath_size = sizeof(exepath);
 
   r = uv_exepath(exepath, &exepath_size);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   argv[0] = exepath;
   options.file = exepath;
@@ -418,13 +418,13 @@ TEST_IMPL(process_ref) {
   options.exit_cb = NULL;
 
   r = uv_spawn(uv_default_loop(), &h, &options);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   r = uv_process_kill(&h, /* SIGTERM */ 15);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   do_close(&h);
 

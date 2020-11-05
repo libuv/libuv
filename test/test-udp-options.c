@@ -36,29 +36,29 @@ static int udp_options_test(const struct sockaddr* addr) {
   loop = uv_default_loop();
 
   r = uv_udp_init(loop, &h);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_unref((uv_handle_t*)&h); /* don't keep the loop alive */
 
   r = uv_udp_bind(&h, addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_set_broadcast(&h, 1);
   r |= uv_udp_set_broadcast(&h, 1);
   r |= uv_udp_set_broadcast(&h, 0);
   r |= uv_udp_set_broadcast(&h, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* values 1-255 should work */
   for (i = 1; i <= 255; i++) {
     r = uv_udp_set_ttl(&h, i);
 #if defined(__MVS__)
     if (addr->sa_family == AF_INET6)
-      ASSERT(r == 0);
+      ASSERT_EQ(r, 0);
     else
       ASSERT(r == UV_ENOTSUP);
 #else
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 #endif
   }
 
@@ -71,12 +71,12 @@ static int udp_options_test(const struct sockaddr* addr) {
   r |= uv_udp_set_multicast_loop(&h, 1);
   r |= uv_udp_set_multicast_loop(&h, 0);
   r |= uv_udp_set_multicast_loop(&h, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* values 0-255 should work */
   for (i = 0; i <= 255; i++) {
     r = uv_udp_set_multicast_ttl(&h, i);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 
   /* anything >255 should fail */
@@ -85,7 +85,7 @@ static int udp_options_test(const struct sockaddr* addr) {
   /* don't test ttl=-1, it's a valid value on some platforms */
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

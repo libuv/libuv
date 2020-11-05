@@ -52,10 +52,10 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(0 == uv_is_closing((uv_handle_t*) req->handle));
   uv_close((uv_handle_t*) req->handle, close_cb);
   ASSERT(1 == uv_is_closing((uv_handle_t*) req->handle));
@@ -71,14 +71,14 @@ TEST_IMPL(shutdown_close_tcp) {
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   r = uv_tcp_init(uv_default_loop(), &h);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_connect(&connect_req,
                      &h,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(connect_cb_called == 1);
   ASSERT(shutdown_cb_called == 1);
@@ -94,10 +94,10 @@ TEST_IMPL(shutdown_close_pipe) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &h, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_pipe_connect(&connect_req, &h, TEST_PIPENAME, connect_cb);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(connect_cb_called == 1);
   ASSERT(shutdown_cb_called == 1);

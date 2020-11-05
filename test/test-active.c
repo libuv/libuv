@@ -45,26 +45,26 @@ TEST_IMPL(active) {
   uv_timer_t timer;
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* uv_is_active() and uv_is_closing() should always return either 0 or 1. */
   ASSERT(0 == uv_is_active((uv_handle_t*) &timer));
   ASSERT(0 == uv_is_closing((uv_handle_t*) &timer));
 
   r = uv_timer_start(&timer, timer_cb, 1000, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(1 == uv_is_active((uv_handle_t*) &timer));
   ASSERT(0 == uv_is_closing((uv_handle_t*) &timer));
 
   r = uv_timer_stop(&timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_is_active((uv_handle_t*) &timer));
   ASSERT(0 == uv_is_closing((uv_handle_t*) &timer));
 
   r = uv_timer_start(&timer, timer_cb, 1000, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(1 == uv_is_active((uv_handle_t*) &timer));
   ASSERT(0 == uv_is_closing((uv_handle_t*) &timer));
@@ -75,7 +75,7 @@ TEST_IMPL(active) {
   ASSERT(1 == uv_is_closing((uv_handle_t*) &timer));
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(close_cb_called == 1);
 

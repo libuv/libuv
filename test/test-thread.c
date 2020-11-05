@@ -71,7 +71,7 @@ static void getaddrinfo_do(struct getaddrinfo_req* req) {
                      "localhost",
                      NULL,
                      NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -84,7 +84,7 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
 #endif
   struct getaddrinfo_req* req;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   req = container_of(handle, struct getaddrinfo_req, handle);
   uv_freeaddrinfo(res);
@@ -98,7 +98,7 @@ static void fs_do(struct fs_req* req) {
   int r;
 
   r = uv_fs_stat(req->loop, &req->handle, ".", fs_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -152,10 +152,10 @@ TEST_IMPL(thread_create) {
   int r;
 
   r = uv_thread_create(&tid, thread_entry, (void *) 42);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_thread_join(&tid);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(thread_called == 1);
 
@@ -180,12 +180,12 @@ TEST_IMPL(threadpool_multiple_event_loops) {
 
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_create(&threads[i].thread_id, do_work, &threads[i]);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_join(&threads[i].thread_id);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     ASSERT(threads[i].thread_called == 1);
   }
 

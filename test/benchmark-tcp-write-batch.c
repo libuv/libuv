@@ -60,11 +60,11 @@ static void connect_cb(uv_connect_t* req, int status) {
   for (i = 0; i < NUM_WRITE_REQS; i++) {
     w = &write_reqs[i];
     r = uv_write(&w->req, req->handle, &w->buf, 1, write_cb);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 
   r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   connect_cb_called++;
 }
@@ -72,7 +72,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 static void write_cb(uv_write_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   write_cb_called++;
 }
 
@@ -115,18 +115,18 @@ BENCHMARK_IMPL(tcp_write_batch) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(loop, &tcp_client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &tcp_client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   start = uv_hrtime();
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   stop = uv_hrtime();
 

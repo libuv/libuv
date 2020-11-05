@@ -277,7 +277,7 @@ static void on_connection(uv_stream_t* server, int status) {
   dnshandle* handle;
   int r;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   handle = (dnshandle*) malloc(sizeof *handle);
   ASSERT(handle != NULL);
@@ -288,13 +288,13 @@ static void on_connection(uv_stream_t* server, int status) {
   handle->state.prevbuf_rem = 0;
 
   r = uv_tcp_init(loop, (uv_tcp_t*)handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_accept(server, (uv_stream_t*)handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_read_start((uv_stream_t*)handle, buf_alloc, after_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 

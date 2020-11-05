@@ -43,20 +43,20 @@ static void connection_cb(uv_stream_t* stream, int status) {
   conn_rec* conn;
   int r;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(stream == (uv_stream_t*)&tcp_server);
 
   conn = malloc(sizeof *conn);
   ASSERT(conn != NULL);
 
   r = uv_tcp_init(stream->loop, &conn->handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_accept(stream, (uv_stream_t*)&conn->handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_read_start((uv_stream_t*)&conn->handle, alloc_cb, read_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -81,7 +81,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   conn = container_of(stream, conn_rec, handle);
 
   r = uv_shutdown(&conn->shutdown_req, stream, shutdown_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -106,13 +106,13 @@ HELPER_IMPL(tcp4_blackhole_server) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(loop, &tcp_server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 128, connection_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(0 && "Blackhole server dropped out of event loop.");

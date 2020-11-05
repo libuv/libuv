@@ -40,7 +40,7 @@ TEST_IMPL(thread_mutex) {
   int r;
 
   r = uv_mutex_init(&mutex);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_mutex_lock(&mutex);
   uv_mutex_unlock(&mutex);
@@ -55,7 +55,7 @@ TEST_IMPL(thread_mutex_recursive) {
   int r;
 
   r = uv_mutex_init_recursive(&mutex);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&mutex);
@@ -75,7 +75,7 @@ TEST_IMPL(thread_rwlock) {
   int r;
 
   r = uv_rwlock_init(&rwlock);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_rwlock_rdlock(&rwlock);
   uv_rwlock_rdunlock(&rwlock);

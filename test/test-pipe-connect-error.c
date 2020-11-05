@@ -70,7 +70,7 @@ TEST_IMPL(pipe_connect_bad_name) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &client, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_pipe_connect(&req, &client, BAD_PIPENAME, connect_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -90,7 +90,7 @@ TEST_IMPL(pipe_connect_to_file) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &client, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_pipe_connect(&req, &client, path, connect_cb_file);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -113,7 +113,7 @@ TEST_IMPL(pipe_connect_to_long_path) {
   path[sizeof(path) - 1] = '\0';
 
   r = uv_pipe_init(uv_default_loop(), &client, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_pipe_connect(&req, &client, path, connect_cb_long_path);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

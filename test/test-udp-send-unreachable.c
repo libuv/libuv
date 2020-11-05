@@ -59,7 +59,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
   send_cb_called++;
 }
@@ -103,19 +103,19 @@ TEST_IMPL(udp_send_unreachable) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT_2, &addr2));
 
   r = uv_timer_init( uv_default_loop(), &timer );
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start( &timer, timer_cb, 1000, 0 );
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr2, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* client sends "PING", then "PANG" */
   buf = uv_buf_init("PING", 4);
@@ -126,7 +126,7 @@ TEST_IMPL(udp_send_unreachable) {
                   1,
                   (const struct sockaddr*) &addr,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   buf = uv_buf_init("PANG", 4);
 
@@ -136,7 +136,7 @@ TEST_IMPL(udp_send_unreachable) {
                   1,
                   (const struct sockaddr*) &addr,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

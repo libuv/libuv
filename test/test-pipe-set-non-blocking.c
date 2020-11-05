@@ -54,7 +54,7 @@ static void thread_main(void* arg) {
     uv_fs_req_cleanup(&req);
   } while (n > 0 || (n == -1 && uv_errno == UV_EINTR));
 
-  ASSERT(n == 0);
+  ASSERT_EQ(n, 0);
 }
 
 TEST_IMPL(pipe_set_non_blocking) {

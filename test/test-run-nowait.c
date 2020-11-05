@@ -39,7 +39,7 @@ TEST_IMPL(run_nowait) {
 
   r = uv_run(uv_default_loop(), UV_RUN_NOWAIT);
   ASSERT(r != 0);
-  ASSERT(timer_called == 0);
+  ASSERT_EQ(timer_called, 0);
 
   return 0;
 }

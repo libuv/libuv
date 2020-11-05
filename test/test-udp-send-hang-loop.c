@@ -61,7 +61,7 @@ static void idle_cb(uv_idle_t* handle) {
                   1,
                   (const struct sockaddr*) &addr,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 

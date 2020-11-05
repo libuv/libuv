@@ -46,7 +46,7 @@ TEST_IMPL(process_priority) {
     if (r == UV_EACCES)
       continue;
 
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     ASSERT(uv_os_getpriority(0, &priority) == 0);
 
     /* Verify that the priority values match on Unix, and are range mapped

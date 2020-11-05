@@ -41,26 +41,26 @@ TEST_IMPL(udp_create_early) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init_ex(uv_default_loop(), &client, AF_INET);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_fileno((const uv_handle_t*) &client, &fd);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(fd != INVALID_FD);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
 #ifndef _WIN32
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(sockname.sin_family == AF_INET);
 #endif
 
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(memcmp(&addr.sin_addr,
                 &sockname.sin_addr,
                 sizeof(addr.sin_addr)) == 0);
@@ -85,10 +85,10 @@ TEST_IMPL(udp_create_early_bad_bind) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init_ex(uv_default_loop(), &client, AF_INET6);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_fileno((const uv_handle_t*) &client, &fd);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(fd != INVALID_FD);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
@@ -98,7 +98,7 @@ TEST_IMPL(udp_create_early_bad_bind) {
     struct sockaddr_in6 sockname;
     namelen = sizeof sockname;
     r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     ASSERT(sockname.sin6_family == AF_INET6);
   }
 #endif

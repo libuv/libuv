@@ -47,7 +47,7 @@ TEST_IMPL(loop_close) {
 
   uv_close((uv_handle_t*) &timer_handle, NULL);
   r = uv_run(&loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(loop.data == (void*) &loop);
   ASSERT(0 == uv_loop_close(&loop));

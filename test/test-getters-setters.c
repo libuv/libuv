@@ -60,7 +60,7 @@ TEST_IMPL(getters_setters) {
   loop = malloc(uv_loop_size());
   ASSERT(loop != NULL);
   r = uv_loop_init(loop);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_loop_set_data(loop, &cookie1);
   ASSERT(loop->data == &cookie1);
@@ -84,13 +84,13 @@ TEST_IMPL(getters_setters) {
   uv_close((uv_handle_t*)pipe, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   fs = malloc(uv_req_size(UV_FS));
   uv_fs_stat(loop, fs, ".", NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(uv_req_get_loop((uv_req_t*)fs) == loop);
   ASSERT(uv_fs_get_type(fs) == UV_FS_STAT);
@@ -101,7 +101,7 @@ TEST_IMPL(getters_setters) {
   uv_fs_req_cleanup(fs);
 
   r = uv_loop_close(loop);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   free(pipe);
   free(fs);

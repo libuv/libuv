@@ -173,16 +173,16 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   saturate_threadpool();
 
   r = uv_getaddrinfo(loop, reqs + 0, getaddrinfo_cb, "fail", NULL, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_getaddrinfo(loop, reqs + 1, getaddrinfo_cb, NULL, "fail", NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_getaddrinfo(loop, reqs + 2, getaddrinfo_cb, "fail", "fail", NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_getaddrinfo(loop, reqs + 3, getaddrinfo_cb, "fail", NULL, &hints);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
@@ -202,23 +202,23 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   int r;
 
   r = uv_ip4_addr("127.0.0.1", 80, &addr4);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
   saturate_threadpool();
 
   r = uv_getnameinfo(loop, reqs + 0, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_getnameinfo(loop, reqs + 1, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_getnameinfo(loop, reqs + 2, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_getnameinfo(loop, reqs + 3, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));

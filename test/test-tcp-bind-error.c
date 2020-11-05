@@ -41,17 +41,17 @@ TEST_IMPL(tcp_bind_error_addrinuse) {
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
   r = uv_tcp_init(uv_default_loop(), &server1);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server1, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_init(uv_default_loop(), &server2);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server2, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_listen((uv_stream_t*)&server1, 128, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
   ASSERT(r == UV_EADDRINUSE);
 
@@ -75,7 +75,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_1) {
   ASSERT(0 == uv_ip4_addr("127.255.255.255", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* It seems that Linux is broken here - bind succeeds. */
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
@@ -100,7 +100,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_2) {
   ASSERT(0 == uv_ip4_addr("4.4.4.4", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == UV_EADDRNOTAVAIL);
 
@@ -125,7 +125,7 @@ TEST_IMPL(tcp_bind_error_fault) {
   garbage_addr = (struct sockaddr_in*) &garbage;
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) garbage_addr, 0);
   ASSERT(r == UV_EINVAL);
 
@@ -151,9 +151,9 @@ TEST_IMPL(tcp_bind_error_inval) {
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT_2, &addr2));
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr1, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr2, 0);
   ASSERT(r == UV_EINVAL);
 
@@ -176,9 +176,9 @@ TEST_IMPL(tcp_bind_localhost_ok) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -193,7 +193,7 @@ TEST_IMPL(tcp_bind_invalid_flags) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, UV_TCP_IPV6ONLY);
   ASSERT(r == UV_EINVAL);
 
@@ -207,9 +207,9 @@ TEST_IMPL(tcp_listen_without_bind) {
   uv_tcp_t server;
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_listen((uv_stream_t*)&server, 128, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -226,11 +226,11 @@ TEST_IMPL(tcp_bind_writable_flags) {
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_listen((uv_stream_t*)&server, 128, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_is_writable((uv_stream_t*) &server));
   ASSERT(0 == uv_is_readable((uv_stream_t*) &server));

@@ -60,7 +60,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(nested == 0 && "shutdown_cb must be called from a fresh stack");
 
   shutdown_cb_called++;
@@ -125,7 +125,7 @@ static void timer_cb(uv_timer_t* handle) {
 static void write_cb(uv_write_t* req, int status) {
   int r;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(nested == 0 && "write_cb must be called from a fresh stack");
 
   puts("Data written. 500ms timeout...");
@@ -136,9 +136,9 @@ static void write_cb(uv_write_t* req, int status) {
    * for the backend to use dirty stack for calling read_cb. */
   nested++;
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_timer_start(&timer, timer_cb, 500, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   nested--;
 
   write_cb_called++;
@@ -150,7 +150,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
   puts("Connected. Write some data to echo server...");
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT(nested == 0 && "connect_cb must be called from a fresh stack");
 
   nested++;
@@ -191,7 +191,7 @@ TEST_IMPL(callback_stack) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(nested == 0);
+  ASSERT_EQ(nested, 0);
   ASSERT(connect_cb_called == 1 && "connect_cb must be called exactly once");
   ASSERT(write_cb_called == 1 && "write_cb must be called exactly once");
   ASSERT(timer_cb_called == 1 && "timer_cb must be called exactly once");

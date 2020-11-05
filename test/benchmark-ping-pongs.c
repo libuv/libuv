@@ -90,7 +90,7 @@ static void pinger_close_cb(uv_handle_t* handle) {
 
 
 static void pinger_write_cb(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   free(req);
 }
@@ -110,14 +110,14 @@ static void pinger_write_ping(pinger_t* pinger) {
 
 
 static void pinger_shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   pinger_shutdown_cb_called++;
 
   /*
    * The close callback has not been triggered yet. We must wait for EOF
    * until we close the connection.
    */
-  ASSERT(completed_pingers == 0);
+  ASSERT_EQ(completed_pingers, 0);
 }
 
 
@@ -166,7 +166,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
 static void pinger_connect_cb(uv_connect_t* req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   pinger_write_ping(pinger);
 

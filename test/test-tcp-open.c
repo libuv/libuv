@@ -46,7 +46,7 @@ static void startup(void) {
 #ifdef _WIN32
     struct WSAData wsa_data;
     int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 #endif
 }
 
@@ -66,7 +66,7 @@ static uv_os_sock_t create_tcp_socket(void) {
     /* Allow reuse of the port. */
     int yes = 1;
     int r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 #endif
 
@@ -81,7 +81,7 @@ static void close_socket(uv_os_sock_t sock) {
 #else
   r = close(sock);
 #endif
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -103,7 +103,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT(req == &shutdown_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   /* Now we wait for the EOF */
   shutdown_cb_called++;
@@ -166,7 +166,7 @@ static void write1_cb(uv_write_t* req, int status) {
 
   buf = uv_buf_init("P", 1);
   r = uv_write(&write_req, req->handle, &buf, 1, write1_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   write_cb_called++;
 }
@@ -177,7 +177,7 @@ static void timer_cb(uv_timer_t* handle) {
 
   /* Shutdown on drain. */
   r = uv_shutdown(&shutdown_req, (uv_stream_t*) &client, shutdown_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   shutdown_requested++;
 }
 
@@ -188,21 +188,21 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   stream = req->handle;
   connect_cb_called++;
 
   r = uv_write(&write_req, stream, &buf, 1, write_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Shutdown on drain. */
   r = uv_shutdown(&shutdown_req, stream, shutdown_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Start reading */
   r = uv_read_start(stream, alloc_cb, read_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -212,24 +212,24 @@ static void connect1_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   stream = req->handle;
   connect_cb_called++;
 
   r = uv_timer_init(uv_default_loop(), &tm);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&tm, timer_cb, 2000, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   buf = uv_buf_init("P", 1);
   r = uv_write(&write_req, stream, &buf, 1, write1_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Start reading */
   r = uv_read_start(stream, alloc_cb, read1_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -244,23 +244,23 @@ TEST_IMPL(tcp_open) {
   sock = create_tcp_socket();
 
   r = uv_tcp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_open(&client, sock);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
 #ifndef _WIN32
   {
     uv_tcp_t client2;
 
     r = uv_tcp_init(uv_default_loop(), &client2);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_tcp_open(&client2, sock);
     ASSERT(r == UV_EEXIST);
@@ -291,10 +291,10 @@ TEST_IMPL(tcp_open_twice) {
   sock2 = create_tcp_socket();
 
   r = uv_tcp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_open(&client, sock1);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_open(&client, sock2);
   ASSERT(r == UV_EBUSY);
@@ -376,16 +376,16 @@ TEST_IMPL(tcp_write_ready) {
   sock = create_tcp_socket();
 
   r = uv_tcp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_open(&client, sock);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &client,
                      (const struct sockaddr*) &addr,
                      connect1_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

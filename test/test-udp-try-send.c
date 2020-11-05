@@ -87,18 +87,18 @@ TEST_IMPL(udp_try_send) {
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   buf = uv_buf_init(buffer, sizeof(buffer));
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);

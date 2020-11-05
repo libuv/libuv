@@ -43,7 +43,7 @@ TEST_IMPL(uname) {
 
   /* Verify the happy path. */
   r = uv_os_uname(&buffer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
 #ifndef _WIN32
   ASSERT(uname(&buf) != -1);

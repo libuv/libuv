@@ -65,7 +65,7 @@ static void cl_recv_cb(uv_udp_t* handle,
                        const struct sockaddr* addr,
                        unsigned flags) {
   CHECK_HANDLE(handle);
-  ASSERT(flags == 0);
+  ASSERT_EQ(flags, 0);
 
   if (nread < 0) {
     ASSERT(0 && "unexpected error");
@@ -91,11 +91,11 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
   int r;
 
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
 
   r = uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   cl_send_cb_called++;
 }
@@ -103,7 +103,7 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
 
   uv_close((uv_handle_t*) req->handle, close_cb);
@@ -133,7 +133,7 @@ static void sv_recv_cb(uv_udp_t* handle,
   }
 
   CHECK_HANDLE(handle);
-  ASSERT(flags == 0);
+  ASSERT_EQ(flags, 0);
 
   ASSERT(addr != NULL);
   ASSERT(nread == 4);
@@ -144,14 +144,14 @@ static void sv_recv_cb(uv_udp_t* handle,
     * either... Not sure I like that but it's consistent with `uv_read_stop`.
     */
   r = uv_udp_recv_stop(handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   req = malloc(sizeof *req);
   ASSERT(req != NULL);
 
   sndbuf = uv_buf_init("PONG", 4);
   r = uv_udp_send(req, handle, &sndbuf, 1, addr, sv_send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   sv_recv_cb_called++;
 }
@@ -166,18 +166,18 @@ TEST_IMPL(udp_send_and_recv) {
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* client sends "PING", expects "PONG" */
   buf = uv_buf_init("PING", 4);
@@ -188,13 +188,13 @@ TEST_IMPL(udp_send_and_recv) {
                   1,
                   (const struct sockaddr*) &addr,
                   cl_send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(close_cb_called == 0);
-  ASSERT(cl_send_cb_called == 0);
-  ASSERT(cl_recv_cb_called == 0);
-  ASSERT(sv_send_cb_called == 0);
-  ASSERT(sv_recv_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(cl_send_cb_called, 0);
+  ASSERT_EQ(cl_recv_cb_called, 0);
+  ASSERT_EQ(sv_send_cb_called, 0);
+  ASSERT_EQ(sv_recv_cb_called, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

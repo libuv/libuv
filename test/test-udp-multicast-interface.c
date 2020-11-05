@@ -68,14 +68,14 @@ TEST_IMPL(udp_multicast_interface) {
   ASSERT(0 == uv_ip4_addr("239.255.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_ip4_addr("0.0.0.0", 0, &baddr));
   r = uv_udp_bind(&server, (const struct sockaddr*)&baddr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_set_multicast_interface(&server, "0.0.0.0");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* server sends "PING" */
   buf = uv_buf_init("PING", 4);
@@ -85,10 +85,10 @@ TEST_IMPL(udp_multicast_interface) {
                   1,
                   (const struct sockaddr*)&addr,
                   sv_send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(close_cb_called == 0);
-  ASSERT(sv_send_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(sv_send_cb_called, 0);
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

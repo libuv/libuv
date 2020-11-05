@@ -45,7 +45,7 @@ static void set_nonblocking(uv_os_sock_t sock) {
 #ifdef _WIN32
   unsigned long on = 1;
   r = ioctlsocket(sock, FIONBIO, &on);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #else
   int flags = fcntl(sock, F_GETFL, 0);
   ASSERT(flags >= 0);

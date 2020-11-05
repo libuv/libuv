@@ -43,7 +43,7 @@ static void pipe_close_cb(uv_handle_t* handle) {
 
 static void pipe_client_connect_cb(uv_connect_t* req, int status) {
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   pipe_client_connect_cb_called++;
 
@@ -56,7 +56,7 @@ static void pipe_server_connection_cb(uv_stream_t* handle, int status) {
   /* This function *may* be called, depending on whether accept or the
    * connection callback is called first.
    */
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 }
 
 
@@ -71,21 +71,21 @@ TEST_IMPL(pipe_server_close) {
   ASSERT(loop != NULL);
 
   r = uv_pipe_init(loop, &pipe_server, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_pipe_bind(&pipe_server, TEST_PIPENAME);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_pipe_init(loop, &pipe_client, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_pipe_connect(&connect_req, &pipe_client, TEST_PIPENAME, pipe_client_connect_cb);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(pipe_client_connect_cb_called == 1);
   ASSERT(pipe_close_cb_called == 2);
 

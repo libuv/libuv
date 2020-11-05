@@ -62,7 +62,7 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
   int r;
 
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
   if (++cl_send_cb_called == 1) {
     uv_udp_connect(&client, NULL);
@@ -74,7 +74,7 @@ static void cl_send_cb(uv_udp_send_t* req, int status) {
                     1,
                     (const struct sockaddr*) &lo_addr,
                     cl_send_cb);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 
 }
@@ -111,16 +111,16 @@ TEST_IMPL(udp_connect) {
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &lo_addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&server, (const struct sockaddr*) &lo_addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   buf = uv_buf_init("EXIT", 4);
 
@@ -128,13 +128,13 @@ TEST_IMPL(udp_connect) {
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &lo_addr));
 
   r = uv_udp_connect(&client, (const struct sockaddr*) &lo_addr);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_udp_connect(&client, (const struct sockaddr*) &ext_addr);
   ASSERT(r == UV_EISCONN);
 
   addrlen = sizeof(tmp_addr);
   r = uv_udp_getpeername(&client, (struct sockaddr*) &tmp_addr, &addrlen);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* To send messages in connected UDP sockets addr must be NULL */
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &lo_addr);
@@ -145,7 +145,7 @@ TEST_IMPL(udp_connect) {
   ASSERT(r == UV_EISCONN);
 
   r = uv_udp_connect(&client, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_udp_connect(&client, NULL);
   ASSERT(r == UV_ENOTCONN);
 
@@ -161,7 +161,7 @@ TEST_IMPL(udp_connect) {
 
 
   r = uv_udp_connect(&client, (const struct sockaddr*) &lo_addr);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_udp_send(&req,
                   &client,
                   &buf,
@@ -170,7 +170,7 @@ TEST_IMPL(udp_connect) {
                   cl_send_cb);
   ASSERT(r == UV_EISCONN);
   r = uv_udp_send(&req, &client, &buf, 1, NULL, cl_send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

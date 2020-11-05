@@ -121,7 +121,7 @@ static void udp_pinger_new(void) {
 
   /* Try to do NUM_PINGS ping-pongs (connection-less). */
   r = uv_udp_init(loop, &pinger->udp);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   pinger->udp.data = pinger;
 

@@ -36,7 +36,7 @@ static void thread_cb(void* dummy) {
 
 
 static void check_cb(uv_check_t* handle) {
-  ASSERT(check_cb_called == 0);
+  ASSERT_EQ(check_cb_called, 0);
   uv_close((uv_handle_t*) &async_handle, NULL);
   uv_close((uv_handle_t*) &check_handle, NULL);
   check_cb_called++;

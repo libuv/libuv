@@ -19,9 +19,9 @@ static void check_affinity(void* arg) {
   ASSERT(cpumasksize > 0);
   tid = uv_thread_self();
   r = uv_thread_setaffinity(&tid, cpumask, NULL, cpumasksize);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_thread_setaffinity(&tid, cpumask + cpumasksize, cpumask, cpumasksize);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -49,7 +49,7 @@ TEST_IMPL(thread_affinity) {
   ASSERT(cpumask);
 
   r = uv_thread_getaffinity(&threads[0], cpumask, cpumasksize);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(cpumask[0] && "test must be run with cpu 0 affinity");
   ncpus = 0;
   while (cpumask[++ncpus]) { }

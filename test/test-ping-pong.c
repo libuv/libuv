@@ -67,7 +67,7 @@ static void pinger_on_close(uv_handle_t* handle) {
 
 
 static void pinger_after_write(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   free(req);
 }
 
@@ -149,7 +149,7 @@ static void pinger_on_connect(uv_connect_t* req, int status) {
 
   pinger_on_connect_count++;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   ASSERT(1 == uv_is_readable(req->handle));
   ASSERT(1 == uv_is_writable(req->handle));
@@ -189,7 +189,7 @@ static void tcp_pinger_v6_new(int vectored_writes) {
   ASSERT(!r);
 
   /* Synchronous connect callbacks are not allowed. */
-  ASSERT(pinger_on_connect_count == 0);
+  ASSERT_EQ(pinger_on_connect_count, 0);
 }
 
 
@@ -219,7 +219,7 @@ static void tcp_pinger_new(int vectored_writes) {
   ASSERT(!r);
 
   /* Synchronous connect callbacks are not allowed. */
-  ASSERT(pinger_on_connect_count == 0);
+  ASSERT_EQ(pinger_on_connect_count, 0);
 }
 
 
@@ -244,7 +244,7 @@ static void pipe_pinger_new(int vectored_writes) {
       pinger_on_connect);
 
   /* Synchronous connect callbacks are not allowed. */
-  ASSERT(pinger_on_connect_count == 0);
+  ASSERT_EQ(pinger_on_connect_count, 0);
 }
 
 

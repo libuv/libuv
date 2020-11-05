@@ -65,7 +65,7 @@ TEST_IMPL(udp_dgram_too_big) {
   memset(dgram, 42, sizeof dgram); /* silence valgrind */
 
   r = uv_udp_init(uv_default_loop(), &handle_);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   buf = uv_buf_init(dgram, sizeof dgram);
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
@@ -76,10 +76,10 @@ TEST_IMPL(udp_dgram_too_big) {
                   1,
                   (const struct sockaddr*) &addr,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(close_cb_called == 0);
-  ASSERT(send_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(send_cb_called, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

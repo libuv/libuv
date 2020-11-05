@@ -73,7 +73,7 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
     }
     uv_close((uv_handle_t*) tty_in, NULL);
   } else {
-    ASSERT(nread == 0);
+    ASSERT_EQ(nread, 0);
   }
 }
 
@@ -153,19 +153,19 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   expect_str = ESC"[[A";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /*
    * Send F1 keystrokes. Test of issue cause by #2114 that vt100 fn key
@@ -204,19 +204,19 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   expect_str = ESC"a"ESC"a";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Emulate transmission of M-a at normal console */
   make_key_event_records(VK_MENU, 0, TRUE, alt_records);
@@ -267,19 +267,19 @@ TEST_IMPL(tty_composing_character) {
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   expect_str = EUR_UTF8;
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Emulate EUR inputs by LEFT ALT+NUMPAD ASCII KeyComos */
   make_key_event_records(VK_MENU, 0, FALSE, alt_records);

@@ -117,21 +117,21 @@ static void poll_cb(uv_fs_poll_t* handle,
     break;
 
   case 1:
-    ASSERT(status == 0);
+    ASSERT_EQ(status, 0);
     ASSERT(0 == memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 20, 0));
     break;
 
   case 2:
-    ASSERT(status == 0);
+    ASSERT_EQ(status, 0);
     ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 200, 0));
     break;
 
   case 3:
-    ASSERT(status == 0);
+    ASSERT_EQ(status, 0);
     ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 != memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
     remove(FIXTURE);

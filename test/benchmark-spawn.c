@@ -68,7 +68,7 @@ static void exit_cb(uv_process_t* process,
                     int64_t exit_status,
                     int term_signal) {
   ASSERT(exit_status == 42);
-  ASSERT(term_signal == 0);
+  ASSERT_EQ(term_signal, 0);
   uv_close((uv_handle_t*)process, process_close_cb);
 }
 
@@ -104,8 +104,8 @@ static void spawn(void) {
   uv_stdio_container_t stdio[2];
   int r;
 
-  ASSERT(process_open == 0);
-  ASSERT(pipe_open == 0);
+  ASSERT_EQ(process_open, 0);
+  ASSERT_EQ(pipe_open, 0);
 
   args[0] = exepath;
   args[1] = "spawn_helper";
@@ -123,14 +123,14 @@ static void spawn(void) {
   options.stdio[1].data.stream = (uv_stream_t*)&out;
 
   r = uv_spawn(loop, &process, &options);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   process_open = 1;
   pipe_open = 1;
   output_used = 0;
 
   r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -141,7 +141,7 @@ BENCHMARK_IMPL(spawn) {
   loop = uv_default_loop();
 
   r = uv_exepath(exepath, &exepath_size);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   exepath[exepath_size] = '\0';
 
   uv_update_time(loop);
@@ -150,7 +150,7 @@ BENCHMARK_IMPL(spawn) {
   spawn();
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_update_time(loop);
   end_time = uv_now(loop);

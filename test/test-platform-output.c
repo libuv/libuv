@@ -46,19 +46,19 @@ TEST_IMPL(platform_output) {
   int err;
 
   err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
   printf("uv_get_process_title: %s\n", buffer);
 
   size = sizeof(buffer);
   err = uv_cwd(buffer, &size);
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
   printf("uv_cwd: %s\n", buffer);
 
   err = uv_resident_set_memory(&rss);
 #if defined(__MSYS__)
   ASSERT(err == UV_ENOSYS);
 #else
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
   printf("uv_resident_set_memory: %llu\n", (unsigned long long) rss);
 #endif
 
@@ -66,13 +66,13 @@ TEST_IMPL(platform_output) {
 #if defined(__PASE__)
   ASSERT(err == UV_ENOSYS);
 #else
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
   ASSERT(uptime > 0);
   printf("uv_uptime: %f\n", uptime);
 #endif
 
   err = uv_getrusage(&rusage);
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
   ASSERT(rusage.ru_utime.tv_sec >= 0);
   ASSERT(rusage.ru_utime.tv_usec >= 0);
   ASSERT(rusage.ru_stime.tv_sec >= 0);
@@ -92,7 +92,7 @@ TEST_IMPL(platform_output) {
 #if defined(__CYGWIN__) || defined(__MSYS__)
   ASSERT(err == UV_ENOSYS);
 #else
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
 
   printf("uv_cpu_info:\n");
   for (i = 0; i < count; i++) {
@@ -111,7 +111,7 @@ TEST_IMPL(platform_output) {
   uv_free_cpu_info(cpus, count);
 
   err = uv_interface_addresses(&interfaces, &count);
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
 
   printf("uv_interface_addresses:\n");
   for (i = 0; i < count; i++) {
@@ -147,7 +147,7 @@ TEST_IMPL(platform_output) {
   uv_free_interface_addresses(interfaces, count);
 
   err = uv_os_get_passwd(&pwd);
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
 
   printf("uv_os_get_passwd:\n");
   printf("  euid: %ld\n", pwd.uid);
@@ -165,7 +165,7 @@ TEST_IMPL(platform_output) {
   printf("uv_os_getppid: %d\n", (int) ppid);
 
   err = uv_os_uname(&uname);
-  ASSERT(err == 0);
+  ASSERT_EQ(err, 0);
   printf("uv_os_uname:\n");
   printf("  sysname: %s\n", uname.sysname);
   printf("  release: %s\n", uname.release);

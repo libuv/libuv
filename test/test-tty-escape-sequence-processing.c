@@ -362,7 +362,7 @@ static void initialize_tty(uv_tty_t* tty_out) {
   ASSERT(ttyout != INVALID_HANDLE_VALUE);
   ASSERT(UV_TTY == uv_guess_handle(ttyout));
   r = uv_tty_init(uv_default_loop(), tty_out, ttyout, 0); /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 static void terminate_tty(uv_tty_t* tty_out) {

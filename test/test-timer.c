@@ -101,24 +101,24 @@ TEST_IMPL(timer) {
   for (i = 0; i < ARRAY_SIZE(once_timers); i++) {
     once = once_timers + i;
     r = uv_timer_init(uv_default_loop(), once);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     r = uv_timer_start(once, once_cb, i * 50, 0);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 
   /* The 11th timer is a repeating timer that runs 4 times */
   r = uv_timer_init(uv_default_loop(), &repeat);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_timer_start(&repeat, repeat_cb, 100, 100);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* The 12th timer should not do anything. */
   r = uv_timer_init(uv_default_loop(), &never);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_timer_start(&never, never_cb, 100, 100);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_timer_stop(&never);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_unref((uv_handle_t*)&never);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -141,13 +141,13 @@ TEST_IMPL(timer_start_twice) {
   int r;
 
   r = uv_timer_init(uv_default_loop(), &once);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_timer_start(&once, never_cb, 86400 * 1000, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_timer_start(&once, once_cb, 10, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(once_cb_called == 1);
 

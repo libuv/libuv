@@ -34,10 +34,10 @@ TEST_IMPL(pipe_set_chmod) {
   loop = uv_default_loop();
 
   r = uv_pipe_init(loop, &pipe_handle, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_pipe_bind(&pipe_handle, TEST_PIPENAME);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* No easy way to test if this works, we will only make sure that the call is
    * successful. */
@@ -46,7 +46,7 @@ TEST_IMPL(pipe_set_chmod) {
     MAKE_VALGRIND_HAPPY();
     RETURN_SKIP("Insufficient privileges to alter pipe fmode");
   }
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #ifndef _WIN32
   stat(TEST_PIPENAME, &stat_buf);
   ASSERT(stat_buf.st_mode & S_IRUSR);
@@ -55,7 +55,7 @@ TEST_IMPL(pipe_set_chmod) {
 #endif
 
   r = uv_pipe_chmod(&pipe_handle, UV_WRITABLE);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #ifndef _WIN32
   stat(TEST_PIPENAME, &stat_buf);
   ASSERT(stat_buf.st_mode & S_IWUSR);
@@ -64,7 +64,7 @@ TEST_IMPL(pipe_set_chmod) {
 #endif
 
   r = uv_pipe_chmod(&pipe_handle, UV_WRITABLE | UV_READABLE);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 #ifndef _WIN32
   stat(TEST_PIPENAME, &stat_buf);
   ASSERT(stat_buf.st_mode & S_IRUSR);

@@ -61,7 +61,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
 
   sv_send_cb_called++;
@@ -95,7 +95,7 @@ static void cl_recv_cb(uv_udp_t* handle,
                        const struct sockaddr* addr,
                        unsigned flags) {
   CHECK_HANDLE(handle);
-  ASSERT(flags == 0);
+  ASSERT_EQ(flags, 0);
 
   if (nread < 0) {
     ASSERT(0 && "unexpected error");
@@ -121,18 +121,18 @@ static void cl_recv_cb(uv_udp_t* handle,
     char source_addr[64];
 
     r = uv_ip4_name((const struct sockaddr_in*)addr, source_addr, sizeof(source_addr));
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_udp_set_membership(&server, MULTICAST_ADDR, NULL, UV_LEAVE_GROUP);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
 #if !defined(__OpenBSD__) && !defined(__NetBSD__)
     r = uv_udp_set_source_membership(&server, MULTICAST_ADDR, NULL, source_addr, UV_JOIN_GROUP);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 #endif
 
     r = do_send(&req_ss);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 }
 
@@ -144,30 +144,30 @@ TEST_IMPL(udp_multicast_join) {
   ASSERT(0 == uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* bind to the desired port */
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* join the multicast channel */
   r = uv_udp_set_membership(&server, MULTICAST_ADDR, NULL, UV_JOIN_GROUP);
   if (r == UV_ENODEV)
     RETURN_SKIP("No multicast support.");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = do_send(&req);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(close_cb_called == 0);
-  ASSERT(cl_recv_cb_called == 0);
-  ASSERT(sv_send_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(cl_recv_cb_called, 0);
+  ASSERT_EQ(sv_send_cb_called, 0);
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -353,11 +353,11 @@ static void create_file(const char* name) {
   uv_fs_t req;
 
   r = uv_fs_open(NULL, &req, name, O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   file = req.result;
   uv_fs_req_cleanup(&req);
   r = uv_fs_close(NULL, &req, file, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_fs_req_cleanup(&req);
 }
 
@@ -369,7 +369,7 @@ static void touch_file(const char* name) {
   uv_buf_t buf;
 
   r = uv_fs_open(NULL, &req, name, O_RDWR, 0, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   file = req.result;
   uv_fs_req_cleanup(&req);
 
@@ -379,7 +379,7 @@ static void touch_file(const char* name) {
   uv_fs_req_cleanup(&req);
 
   r = uv_fs_close(NULL, &req, file, NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_fs_req_cleanup(&req);
 }
 
@@ -399,9 +399,9 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
                                          const char* filename,
                                          int events,
                                          int status) {
-  ASSERT(fs_event_cb_called == 0);
+  ASSERT_EQ(fs_event_cb_called, 0);
   ++fs_event_cb_called;
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 #if defined(__APPLE__) || defined(__linux__)
   ASSERT(strcmp(filename, "watch_file") == 0);
 #else
@@ -421,23 +421,23 @@ static void assert_watch_file_current_dir(uv_loop_t* const loop, int file_or_dir
   create_file("watch_file");
 
   r = uv_fs_event_init(loop, &fs_event);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   /* watching a dir is the only way to get fsevents involved on apple
      platforms */
   r = uv_fs_event_start(&fs_event,
                         fs_event_cb_file_current_dir,
                         file_or_dir == 1 ? "." : "watch_file",
                         0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_init(loop, &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timer, timer_cb_touch, 100, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(timer_cb_touch_called == 0);
-  ASSERT(fs_event_cb_called == 0);
+  ASSERT_EQ(timer_cb_touch_called, 0);
+  ASSERT_EQ(fs_event_cb_called, 0);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
@@ -558,15 +558,15 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
   create_file("watch_file");
 
   r = uv_fs_event_init(loop, &fs_event);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_fs_event_start(&fs_event,
                         fs_event_cb_file_current_dir,
                         "watch_file",
                         0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_init(loop, &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   child_pid = fork();
   ASSERT(child_pid != -1);
@@ -579,10 +579,10 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
     ASSERT(0 == uv_loop_fork(loop));
 
     r = uv_timer_start(&timer, timer_cb_touch, 100, 0);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
-    ASSERT(timer_cb_touch_called == 0);
-    ASSERT(fs_event_cb_called == 0);
+    ASSERT_EQ(timer_cb_touch_called, 0);
+    ASSERT_EQ(fs_event_cb_called, 0);
     printf("Running loop in child \n");
     uv_run(loop, UV_RUN_DEFAULT);
 
@@ -613,7 +613,7 @@ static void work_cb(uv_work_t* req) {
 
 
 static void after_work_cb(uv_work_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   after_work_cb_count++;
 }
 
@@ -622,11 +622,11 @@ static void assert_run_work(uv_loop_t* const loop) {
   uv_work_t work_req;
   int r;
 
-  ASSERT(work_cb_count == 0);
-  ASSERT(after_work_cb_count == 0);
+  ASSERT_EQ(work_cb_count, 0);
+  ASSERT_EQ(after_work_cb_count, 0);
   printf("Queue in %d\n", getpid());
   r = uv_queue_work(loop, &work_req, work_cb, after_work_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   printf("Running in %d\n", getpid());
   uv_run(loop, UV_RUN_DEFAULT);
 

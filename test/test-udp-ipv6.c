@@ -81,7 +81,7 @@ static void close_cb(uv_handle_t* handle) {
 static void send_cb(uv_udp_send_t* req, int status) {
   CHECK_REQ(req);
   CHECK_HANDLE(req->handle);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   send_cb_called++;
 }
 
@@ -154,10 +154,10 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   ASSERT(0 == uv_ip6_addr("::0", TEST_PORT, &addr6));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr6, bind_flags);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   addr6_len = sizeof(addr6);
   ASSERT(uv_udp_getsockname(&server, (struct sockaddr*) &addr6, &addr6_len) == 0);
@@ -165,10 +165,10 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   printf("on [%.*s]:%d\n", (int) sizeof(dst), dst, addr6.sin6_port);
 
   r = uv_udp_recv_start(&server, alloc_cb, recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   ASSERT(uv_inet_ntop(addr.sin_family, &addr.sin_addr, dst, sizeof(dst)) == 0);
@@ -185,7 +185,7 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
                   1,
                   (const struct sockaddr*) &addr,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   addr_len = sizeof(addr);
   ASSERT(uv_udp_getsockname(&client, (struct sockaddr*) &addr, &addr_len) == 0);
@@ -194,14 +194,14 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   client_port = addr.sin_port;
 
   r = uv_timer_init(uv_default_loop(), &timeout);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timeout, timeout_cb, 500, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(close_cb_called == 0);
-  ASSERT(send_cb_called == 0);
-  ASSERT(recv_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(send_cb_called, 0);
+  ASSERT_EQ(recv_cb_called, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -244,7 +244,7 @@ TEST_IMPL(udp_ipv6_only) {
 
   do_test(ipv6_recv_fail, UV_UDP_IPV6ONLY);
 
-  ASSERT(recv_cb_called == 0);
+  ASSERT_EQ(recv_cb_called, 0);
   ASSERT(send_cb_called == 1);
 
   return 0;

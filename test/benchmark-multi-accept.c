@@ -292,7 +292,7 @@ static void sv_connection_cb(uv_stream_t* server_handle, int status) {
   struct server_ctx* ctx;
 
   ctx = container_of(server_handle, struct server_ctx, server_handle);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   storage = malloc(sizeof(*storage));
   ASSERT(storage != NULL);

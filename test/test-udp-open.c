@@ -41,7 +41,7 @@ static void startup(void) {
 #ifdef _WIN32
     struct WSAData wsa_data;
     int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 #endif
 }
 
@@ -61,7 +61,7 @@ static uv_os_sock_t create_udp_socket(void) {
     /* Allow reuse of the port. */
     int yes = 1;
     int r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 #endif
 
@@ -76,7 +76,7 @@ static void close_socket(uv_os_sock_t sock) {
 #else
   r = close(sock);
 #endif
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -113,14 +113,14 @@ static void recv_cb(uv_udp_t* handle,
     return;
   }
 
-  ASSERT(flags == 0);
+  ASSERT_EQ(flags, 0);
 
   ASSERT(addr != NULL);
   ASSERT(nread == 4);
   ASSERT(memcmp("PING", buf->base, nread) == 0);
 
   r = uv_udp_recv_stop(handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_close((uv_handle_t*) handle, close_cb);
 }
@@ -128,7 +128,7 @@ static void recv_cb(uv_udp_t* handle,
 
 static void send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   send_cb_called++;
   uv_close((uv_handle_t*)req->handle, close_cb);
@@ -148,16 +148,16 @@ TEST_IMPL(udp_open) {
   sock = create_udp_socket();
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_open(&client, sock);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_send(&send_req,
                   &client,
@@ -165,14 +165,14 @@ TEST_IMPL(udp_open) {
                   1,
                   (const struct sockaddr*) &addr,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
 #ifndef _WIN32
   {
     uv_udp_t client2;
 
     r = uv_udp_init(uv_default_loop(), &client2);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_udp_open(&client2, sock);
     ASSERT(r == UV_EEXIST);
@@ -203,10 +203,10 @@ TEST_IMPL(udp_open_twice) {
   sock2 = create_udp_socket();
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_open(&client, sock1);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_open(&client, sock2);
   ASSERT(r == UV_EBUSY);
@@ -231,16 +231,16 @@ TEST_IMPL(udp_open_bound) {
   sock = create_udp_socket();
 
   r = bind(sock, (struct sockaddr*) &addr, sizeof(addr));
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_open(&client, sock);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&client, alloc_cb, recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_close((uv_handle_t*) &client, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -263,22 +263,22 @@ TEST_IMPL(udp_open_connect) {
   sock = create_udp_socket();
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = connect(sock, (const struct sockaddr*) &addr, sizeof(addr));
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_open(&client, sock);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_recv_start(&server, alloc_cb, recv_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_udp_send(&send_req,
                   &client,
@@ -286,7 +286,7 @@ TEST_IMPL(udp_open_connect) {
                   1,
                   NULL,
                   send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -327,9 +327,9 @@ TEST_IMPL(udp_send_unix) {
   ASSERT(0 == listen(fd, 1));
 
   r = uv_udp_init(loop, &handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_udp_open(&handle, fd);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_run(loop, UV_RUN_DEFAULT);
 
   r = uv_udp_send(&req,
@@ -338,7 +338,7 @@ TEST_IMPL(udp_send_unix) {
                   1,
                   (const struct sockaddr*) &addr,
                   NULL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_close((uv_handle_t*)&handle, NULL);
   uv_run(loop, UV_RUN_DEFAULT);

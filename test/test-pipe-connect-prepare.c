@@ -65,15 +65,15 @@ TEST_IMPL(pipe_connect_on_prepare) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &pipe_handle, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_prepare_init(uv_default_loop(), &prepare_handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_prepare_start(&prepare_handle, prepare_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(close_cb_called == 2);
   ASSERT(connect_cb_called == 1);

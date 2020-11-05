@@ -63,7 +63,7 @@ TEST_IMPL(loop_stop) {
   ASSERT(prepare_called > 1);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(timer_called == 10);
   ASSERT(prepare_called == 10);
 

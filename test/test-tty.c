@@ -92,17 +92,17 @@ TEST_IMPL(tty) {
   ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0);  /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(!uv_is_readable((uv_stream_t*) &tty_out));
   ASSERT(uv_is_writable((uv_stream_t*) &tty_out));
 
   r = uv_tty_get_winsize(&tty_out, &width, &height);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   printf("width=%d height=%d\n", width, height);
 
@@ -122,11 +122,11 @@ TEST_IMPL(tty) {
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Turn off raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_NORMAL);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Calling uv_tty_reset_mode() repeatedly should not clobber errno. */
   errno = 0;
@@ -159,7 +159,7 @@ static void tty_raw_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf
     ASSERT(buf->base[0] == ' ');
     uv_close((uv_handle_t*) tty_in, NULL);
   } else {
-    ASSERT(nread == 0);
+    ASSERT_EQ(nread, 0);
   }
 }
 
@@ -183,19 +183,19 @@ TEST_IMPL(tty_raw) {
   ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Give uv_tty_line_read_thread time to block on ReadConsoleW */
   Sleep(100);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* Write ' ' that should be read in raw mode */
   record.EventType = KEY_EVENT;
@@ -236,7 +236,7 @@ TEST_IMPL(tty_empty_write) {
   ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0);  /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   ASSERT(!uv_is_readable((uv_stream_t*) &tty_out));
   ASSERT(uv_is_writable((uv_stream_t*) &tty_out));
 
@@ -244,7 +244,7 @@ TEST_IMPL(tty_empty_write) {
   bufs[0].base = &dummy[0];
 
   r = uv_try_write((uv_stream_t*) &tty_out, bufs, 1);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_close((uv_handle_t*) &tty_out, NULL);
 
@@ -277,7 +277,7 @@ TEST_IMPL(tty_large_write) {
   ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
 
   r = uv_tty_init(uv_default_loop(), &tty_out, ttyout_fd, 0);  /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   memset(dummy, '.', sizeof(dummy) - 1);
   dummy[sizeof(dummy) - 1] = '\n';
@@ -312,14 +312,14 @@ TEST_IMPL(tty_raw_cancel) {
   ASSERT(UV_TTY == uv_guess_handle(handle));
 
   r = uv_tty_init(uv_default_loop(), &tty_in, handle, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_read_stop((uv_stream_t*) &tty_in);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

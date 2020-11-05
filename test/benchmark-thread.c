@@ -47,10 +47,10 @@ BENCHMARK_IMPL(thread_create) {
 
   for (i = 0; i < NUM_THREADS; i++) {
     r = uv_thread_create(&tid, thread_entry, (void *) 42);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
 
     r = uv_thread_join(&tid);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
 
   duration = (uv_hrtime() - start_time) / 1e9;

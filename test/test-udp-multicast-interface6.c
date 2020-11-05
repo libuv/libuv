@@ -44,7 +44,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
 
   sv_send_cb_called++;
@@ -71,11 +71,11 @@ TEST_IMPL(udp_multicast_interface6) {
   ASSERT(0 == uv_ip6_addr("::1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(0 == uv_ip6_addr("::", 0, &baddr));
   r = uv_udp_bind(&server, (const struct sockaddr*)&baddr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
   r = uv_udp_set_multicast_interface(&server, "::1%lo0");
@@ -92,7 +92,7 @@ TEST_IMPL(udp_multicast_interface6) {
   }
 #endif
 
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   /* server sends "PING" */
   buf = uv_buf_init("PING", 4);
@@ -102,10 +102,10 @@ TEST_IMPL(udp_multicast_interface6) {
                   1,
                   (const struct sockaddr*)&addr,
                   sv_send_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(close_cb_called == 0);
-  ASSERT(sv_send_cb_called == 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(sv_send_cb_called, 0);
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -54,11 +54,11 @@ static void do_accept(uv_timer_t* timer_handle) {
   ASSERT(accepted_handle != NULL);
 
   r = uv_tcp_init(uv_default_loop(), accepted_handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   server = (uv_tcp_t*)timer_handle->data;
   r = uv_accept((uv_stream_t*)server, (uv_stream_t*)accepted_handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   do_accept_called++;
 
@@ -79,19 +79,19 @@ static void connection_cb(uv_stream_t* tcp, int status) {
   int r;
   uv_timer_t* timer_handle;
 
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   timer_handle = (uv_timer_t*)malloc(sizeof *timer_handle);
   ASSERT(timer_handle != NULL);
 
   /* Accept the client after 1 second */
   r = uv_timer_init(uv_default_loop(), timer_handle);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   timer_handle->data = tcp;
 
   r = uv_timer_start(timer_handle, do_accept, 1000, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   connection_cb_called++;
 }
@@ -106,12 +106,12 @@ static void start_server(void) {
   ASSERT(server != NULL);
 
   r = uv_tcp_init(uv_default_loop(), server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   r = uv_tcp_bind(server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_listen((uv_stream_t*)server, 128, connection_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -123,7 +123,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   }
 
   if (nread >= 0) {
-    ASSERT(nread == 0);
+    ASSERT_EQ(nread, 0);
   } else {
     ASSERT(tcp != NULL);
     ASSERT(nread == UV_EOF);
@@ -136,12 +136,12 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT(req != NULL);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   /* Not that the server will send anything, but otherwise we'll never know
    * when the server closes the connection. */
   r = uv_read_start((uv_stream_t*)(req->handle), alloc_cb, read_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   connect_cb_called++;
 
@@ -160,13 +160,13 @@ static void client_connect(void) {
   ASSERT(connect_req != NULL);
 
   r = uv_tcp_init(uv_default_loop(), client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(connect_req,
                      client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 

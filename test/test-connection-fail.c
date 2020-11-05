@@ -54,7 +54,7 @@ static void timer_cb(uv_timer_t* handle) {
    * but libuv hasn't automatically closed the socket. The user must
    * uv_close the handle manually.
    */
-  ASSERT(close_cb_calls == 0);
+  ASSERT_EQ(close_cb_calls, 0);
   ASSERT(connect_cb_calls == 1);
 
   /* Close the tcp handle. */
@@ -70,7 +70,7 @@ static void on_connect_with_close(uv_connect_t *req, int status) {
   ASSERT(status == UV_ECONNREFUSED);
   connect_cb_calls++;
 
-  ASSERT(close_cb_calls == 0);
+  ASSERT_EQ(close_cb_calls, 0);
   uv_close((uv_handle_t*)req->handle, on_close);
 }
 
@@ -81,7 +81,7 @@ static void on_connect_without_close(uv_connect_t *req, int status) {
 
   uv_timer_start(&timer, timer_cb, 100, 0);
 
-  ASSERT(close_cb_calls == 0);
+  ASSERT_EQ(close_cb_calls, 0);
 }
 
 
@@ -127,8 +127,8 @@ TEST_IMPL(connection_fail) {
 
   connection_fail(on_connect_with_close);
 
-  ASSERT(timer_close_cb_calls == 0);
-  ASSERT(timer_cb_calls == 0);
+  ASSERT_EQ(timer_close_cb_calls, 0);
+  ASSERT_EQ(timer_cb_calls, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -149,7 +149,7 @@ TEST_IMPL(connection_fail_doesnt_auto_close) {
   int r;
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   connection_fail(on_connect_without_close);
 

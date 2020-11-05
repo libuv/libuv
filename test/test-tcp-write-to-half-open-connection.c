@@ -46,22 +46,22 @@ static void connection_cb(uv_stream_t* server, int status) {
   uv_buf_t buf;
 
   ASSERT(server == (uv_stream_t*)&tcp_server);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   r = uv_tcp_init(server->loop, &tcp_peer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_accept(server, (uv_stream_t*)&tcp_peer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_read_start((uv_stream_t*)&tcp_peer, alloc_cb, read_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   buf.base = "hello\n";
   buf.len = 6;
 
   r = uv_write(&write_req, (uv_stream_t*)&tcp_peer, &buf, 1, write_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
@@ -89,7 +89,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT(req == &connect_req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   /* Close the client. */
   uv_close((uv_handle_t*)&tcp_client, NULL);
@@ -97,7 +97,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   write_cb_called++;
 }
 
@@ -113,25 +113,25 @@ TEST_IMPL(tcp_write_to_half_open_connection) {
   ASSERT(loop != NULL);
 
   r = uv_tcp_init(loop, &tcp_server);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 1, connection_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_init(loop, &tcp_client);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &tcp_client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   ASSERT(write_cb_called > 0);
   ASSERT(read_cb_called > 0);
