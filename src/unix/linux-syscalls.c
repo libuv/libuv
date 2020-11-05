@@ -222,9 +222,9 @@ int uv__dup3(int oldfd, int newfd, int flags) {
 
 ssize_t
 uv__fs_copy_file_range(int fd_in,
-                       ssize_t* off_in,
+                       off_t* off_in,
                        int fd_out,
-                       ssize_t* off_out,
+                       off_t* off_out,
                        size_t len,
                        unsigned int flags)
 {
