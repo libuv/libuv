@@ -41,7 +41,7 @@ TEST_IMPL(tmpdir) {
   ASSERT_EQ(r, 0);
   ASSERT(strlen(tmpdir) == len);
   ASSERT(len > 0);
-  ASSERT(tmpdir[len] == '\0');
+  ASSERT_EQ(tmpdir[len], '\0');
 
   if (len > 1) {
     last = tmpdir[len - 1];

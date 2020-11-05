@@ -77,7 +77,7 @@ TEST_IMPL(get_currentexe) {
   r = uv_exepath(buffer, &size);
   ASSERT_EQ(r, 0);
   ASSERT_EQ(size, 0);
-  ASSERT(buffer[0] == '\0');
+  ASSERT_EQ(buffer[0], '\0');
 
   memset(buffer, -1, sizeof(buffer));
 
@@ -86,7 +86,7 @@ TEST_IMPL(get_currentexe) {
   ASSERT_EQ(r, 0);
   ASSERT_EQ(size, 1);
   ASSERT(buffer[0] != '\0');
-  ASSERT(buffer[1] == '\0');
+  ASSERT_EQ(buffer[1], '\0');
 
   /* Verify uv_exepath is not affected by uv_set_process_title(). */
   r = uv_set_process_title("foobar");

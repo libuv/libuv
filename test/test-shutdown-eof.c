@@ -56,7 +56,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   if (!got_q) {
     ASSERT_EQ(nread, 1);
     ASSERT(!got_eof);
-    ASSERT(buf->base[0] == 'Q');
+    ASSERT_EQ(buf->base[0], 'Q');
     free(buf->base);
     got_q = 1;
     puts("got Q");

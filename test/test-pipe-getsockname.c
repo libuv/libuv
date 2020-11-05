@@ -118,7 +118,7 @@ TEST_IMPL(pipe_getsockname) {
   ASSERT_EQ(r, 0);
 
   ASSERT(buf[len - 1] != 0);
-  ASSERT(buf[len] == '\0');
+  ASSERT_EQ(buf[len], '\0');
   ASSERT(memcmp(buf, TEST_PIPENAME, len) == 0);
 
   len = sizeof buf;

@@ -130,7 +130,7 @@ static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
   if (nread >= 0) {
     for (i = 0; i < nread; ++i)
-      ASSERT(buf->base[i] == 'P');
+      ASSERT_EQ(buf->base[i], 'P');
   } else {
     ASSERT_EQ(nread, UV_EOF);
     printf("GOT EOF\n");

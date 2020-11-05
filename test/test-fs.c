@@ -4073,7 +4073,7 @@ static void fs_file_pos_common(uv_os_fd_t file) {
   iov = uv_buf_init(buf, 1);
   r = uv_fs_read(NULL, &read_req, file, &iov, 1, 1, NULL);
   ASSERT_EQ(r, 1);
-  ASSERT(buf[0] == 'b');
+  ASSERT_EQ(buf[0], 'b');
   uv_fs_req_cleanup(&read_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
@@ -4193,7 +4193,7 @@ static void fs_file_pos_append(int add_flags) {
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, file, &iov, 1, -1, NULL);
   ASSERT_EQ(r, 1);
-  ASSERT(buf[0] == 'e');
+  ASSERT_EQ(buf[0], 'e');
   uv_fs_req_cleanup(&read_req);
 
   fs_file_pos_close_check(file, "abcde", 5);

@@ -39,16 +39,16 @@ TEST_IMPL(homedir) {
   ASSERT_EQ(r, 0);
   ASSERT(strlen(homedir) == len);
   ASSERT(len > 0);
-  ASSERT(homedir[len] == '\0');
+  ASSERT_EQ(homedir[len], '\0');
 
 #ifdef _WIN32
   if (len == 3 && homedir[1] == ':')
-    ASSERT(homedir[2] == '\\');
+    ASSERT_EQ(homedir[2], '\\');
   else
     ASSERT(homedir[len - 1] != '\\');
 #else
   if (len == 1)
-    ASSERT(homedir[0] == '/');
+    ASSERT_EQ(homedir[0], '/');
   else
     ASSERT(homedir[len - 1] != '/');
 #endif

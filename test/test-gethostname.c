@@ -44,7 +44,7 @@ TEST_IMPL(gethostname) {
   buf[0] = '\0';
   r = uv_os_gethostname(buf, &enobufs_size);
   ASSERT_EQ(r, UV_ENOBUFS);
-  ASSERT(buf[0] == '\0');
+  ASSERT_EQ(buf[0], '\0');
   ASSERT(enobufs_size > 1);
 
   /* Successfully get the hostname */
