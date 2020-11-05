@@ -76,14 +76,14 @@ TEST_IMPL(pipe_set_chmod) {
 #endif
 
   r = uv_pipe_chmod(NULL, UV_WRITABLE | UV_READABLE);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   r = uv_pipe_chmod(&pipe_handle, 12345678);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   uv_close((uv_handle_t*)&pipe_handle, NULL);
   r = uv_pipe_chmod(&pipe_handle, UV_WRITABLE | UV_READABLE);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

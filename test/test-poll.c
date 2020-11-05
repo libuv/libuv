@@ -179,13 +179,13 @@ static void connection_close_cb(uv_handle_t* handle) {
 
   if (--context->open_handles == 0) {
     if (test_mode == DUPLEX || context->is_server_connection) {
-      ASSERT(context->read == TRANSFER_BYTES);
+      ASSERT_EQ(context->read, TRANSFER_BYTES);
     } else {
       ASSERT_EQ(context->read, 0);
     }
 
     if (test_mode == DUPLEX || !context->is_server_connection) {
-      ASSERT(context->sent == TRANSFER_BYTES);
+      ASSERT_EQ(context->sent, TRANSFER_BYTES);
     } else {
       ASSERT_EQ(context->sent, 0);
     }

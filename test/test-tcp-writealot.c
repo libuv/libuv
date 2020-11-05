@@ -77,7 +77,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
   shutdown_cb_called++;
 
   /* We should have had all the writes called already. */
-  ASSERT(write_cb_called == WRITES);
+  ASSERT_EQ(write_cb_called, WRITES);
 }
 
 
@@ -88,7 +88,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     bytes_received_done += nread;
   }
   else {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     printf("GOT EOF\n");
     uv_close((uv_handle_t*)tcp, close_cb);
   }
@@ -167,11 +167,11 @@ TEST_IMPL(tcp_writealot) {
 
   ASSERT_EQ(shutdown_cb_called, 1);
   ASSERT_EQ(connect_cb_called, 1);
-  ASSERT(write_cb_called == WRITES);
+  ASSERT_EQ(write_cb_called, WRITES);
   ASSERT_EQ(close_cb_called, 1);
-  ASSERT(bytes_sent == TOTAL_BYTES);
-  ASSERT(bytes_sent_done == TOTAL_BYTES);
-  ASSERT(bytes_received_done == TOTAL_BYTES);
+  ASSERT_EQ(bytes_sent, TOTAL_BYTES);
+  ASSERT_EQ(bytes_sent_done, TOTAL_BYTES);
+  ASSERT_EQ(bytes_received_done, TOTAL_BYTES);
 
   free(send_buffer);
 

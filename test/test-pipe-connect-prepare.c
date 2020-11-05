@@ -48,7 +48,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void connect_cb(uv_connect_t* connect_req, int status) {
-  ASSERT(status == UV_ENOENT);
+  ASSERT_EQ(status, UV_ENOENT);
   connect_cb_called++;
   uv_close((uv_handle_t*)&prepare_handle, close_cb);
   uv_close((uv_handle_t*)&pipe_handle, close_cb);

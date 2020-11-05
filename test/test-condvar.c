@@ -251,7 +251,7 @@ TEST_IMPL(condvar_5) {
   uv_mutex_unlock(&wc.mutex);
 
   /* It timed out. */
-  ASSERT(r == UV_ETIMEDOUT);
+  ASSERT_EQ(r, UV_ETIMEDOUT);
 
   /* It must have taken at least timeout, modulo system timer ticks.
    * But it should not take too much longer.

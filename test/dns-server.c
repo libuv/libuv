@@ -238,7 +238,7 @@ static void after_read(uv_stream_t* handle,
 
   if (nread < 0) {
     /* Error or EOF */
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
 
     if (buf->base) {
       free(buf->base);

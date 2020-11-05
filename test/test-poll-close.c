@@ -66,7 +66,7 @@ TEST_IMPL(poll_close) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == NUM_SOCKETS);
+  ASSERT_EQ(close_cb_called, NUM_SOCKETS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

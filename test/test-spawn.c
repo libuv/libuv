@@ -118,7 +118,7 @@ static void kill_cb(uv_process_t* process,
    * This process should be dead.
    */
   err = uv_kill(process->pid, 0);
-  ASSERT(err == UV_ESRCH);
+  ASSERT_EQ(err, UV_ESRCH);
 }
 
 static void detach_failure_cb(uv_process_t* process,
@@ -140,7 +140,7 @@ static void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
     output_used += nread;
   } else if (nread < 0) {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     uv_close((uv_handle_t*) tcp, close_cb);
   }
 }
@@ -227,7 +227,7 @@ TEST_IMPL(spawn_fails_check_for_waitpid_cleanup) {
   while (err == -1 && errno == EINTR);
 
   ASSERT(err == -1);
-  ASSERT(errno == ECHILD);
+  ASSERT_EQ(errno, ECHILD);
 
   uv_close((uv_handle_t*) &process, NULL);
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
@@ -1447,9 +1447,9 @@ TEST_IMPL(spawn_setuid_fails) {
 
   r = uv_spawn(uv_default_loop(), &process, &options);
 #if defined(__CYGWIN__)
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 #else
-  ASSERT(r == UV_EPERM);
+  ASSERT_EQ(r, UV_EPERM);
 #endif
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -1492,9 +1492,9 @@ TEST_IMPL(spawn_setgid_fails) {
 
   r = uv_spawn(uv_default_loop(), &process, &options);
 #if defined(__CYGWIN__) || defined(__MVS__)
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 #else
-  ASSERT(r == UV_EPERM);
+  ASSERT_EQ(r, UV_EPERM);
 #endif
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -1602,7 +1602,7 @@ TEST_IMPL(spawn_affinity_invalid_mask) {
   options.cpumask = newmask;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   ASSERT_EQ(exit_cb_called, 0);
 
@@ -1629,7 +1629,7 @@ TEST_IMPL(spawn_setuid_fails) {
   options.uid = (uv_uid_t) -42424242;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-  ASSERT(r == UV_ENOTSUP);
+  ASSERT_EQ(r, UV_ENOTSUP);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
@@ -1650,7 +1650,7 @@ TEST_IMPL(spawn_setgid_fails) {
   options.gid = (uv_gid_t) -42424242;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-  ASSERT(r == UV_ENOTSUP);
+  ASSERT_EQ(r, UV_ENOTSUP);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);

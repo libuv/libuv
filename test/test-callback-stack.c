@@ -77,7 +77,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     return;
 
   } else if (nread < 0) {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
 
     nested++;
     uv_close((uv_handle_t*)tcp, close_cb);

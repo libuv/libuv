@@ -39,7 +39,7 @@ TEST_IMPL(uname) {
 
   /* Verify that NULL is handled properly. */
   r = uv_os_uname(NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Verify the happy path. */
   r = uv_os_uname(&buffer);

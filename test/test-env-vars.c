@@ -35,27 +35,27 @@ TEST_IMPL(env_vars) {
 
   /* Reject invalid inputs when setting an environment variable */
   r = uv_os_setenv(NULL, "foo");
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_setenv(name, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_setenv(NULL, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Reject invalid inputs when retrieving an environment variable */
   size = BUF_SIZE;
   r = uv_os_getenv(NULL, buf, &size);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_getenv(name, NULL, &size);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_getenv(name, buf, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   size = 0;
   r = uv_os_getenv(name, buf, &size);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Reject invalid inputs when deleting an environment variable */
   r = uv_os_unsetenv(NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Successfully set an environment variable */
   r = uv_os_setenv(name, "123456789");
@@ -73,8 +73,8 @@ TEST_IMPL(env_vars) {
   size = BUF_SIZE - 1;
   buf[0] = '\0';
   r = uv_os_getenv(name, buf, &size);
-  ASSERT(r == UV_ENOBUFS);
-  ASSERT(size == BUF_SIZE);
+  ASSERT_EQ(r, UV_ENOBUFS);
+  ASSERT_EQ(size, BUF_SIZE);
 
   /* Successfully delete an environment variable */
   r = uv_os_unsetenv(name);
@@ -82,7 +82,7 @@ TEST_IMPL(env_vars) {
 
   /* Return UV_ENOENT retrieving an environment variable that does not exist */
   r = uv_os_getenv(name, buf, &size);
-  ASSERT(r == UV_ENOENT);
+  ASSERT_EQ(r, UV_ENOENT);
 
   /* Successfully delete an environment variable that does not exist */
   r = uv_os_unsetenv(name);

@@ -126,7 +126,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ASSERT_EQ(nread, 0);
   } else {
     ASSERT(tcp != NULL);
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     uv_close((uv_handle_t*)tcp, close_cb);
   }
 }

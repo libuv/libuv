@@ -99,8 +99,8 @@ TEST_IMPL(pipe_connect_multiple) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(connection_cb_called == NUM_CLIENTS);
-  ASSERT(connect_cb_called == NUM_CLIENTS);
+  ASSERT_EQ(connection_cb_called, NUM_CLIENTS);
+  ASSERT_EQ(connect_cb_called, NUM_CLIENTS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

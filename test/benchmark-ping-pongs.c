@@ -130,7 +130,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
   pinger = (pinger_t*)tcp->data;
 
   if (nread < 0) {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
 
     if (buf->base) {
       buf_free(buf);

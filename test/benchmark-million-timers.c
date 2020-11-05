@@ -71,8 +71,8 @@ BENCHMARK_IMPL(million_timers) {
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   after_all = uv_hrtime();
 
-  ASSERT(timer_cb_called == NUM_TIMERS);
-  ASSERT(close_cb_called == NUM_TIMERS);
+  ASSERT_EQ(timer_cb_called, NUM_TIMERS);
+  ASSERT_EQ(close_cb_called, NUM_TIMERS);
   free(timers);
 
   fprintf(stderr, "%.2f seconds total\n", (after_all - before_all) / 1e9);

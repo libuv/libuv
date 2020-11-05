@@ -56,7 +56,7 @@ TEST_IMPL(platform_output) {
 
   err = uv_resident_set_memory(&rss);
 #if defined(__MSYS__)
-  ASSERT(err == UV_ENOSYS);
+  ASSERT_EQ(err, UV_ENOSYS);
 #else
   ASSERT_EQ(err, 0);
   printf("uv_resident_set_memory: %llu\n", (unsigned long long) rss);
@@ -64,7 +64,7 @@ TEST_IMPL(platform_output) {
 
   err = uv_uptime(&uptime);
 #if defined(__PASE__)
-  ASSERT(err == UV_ENOSYS);
+  ASSERT_EQ(err, UV_ENOSYS);
 #else
   ASSERT_EQ(err, 0);
   ASSERT(uptime > 0);
@@ -90,7 +90,7 @@ TEST_IMPL(platform_output) {
 
   err = uv_cpu_info(&cpus, &count);
 #if defined(__CYGWIN__) || defined(__MSYS__)
-  ASSERT(err == UV_ENOSYS);
+  ASSERT_EQ(err, UV_ENOSYS);
 #else
   ASSERT_EQ(err, 0);
 

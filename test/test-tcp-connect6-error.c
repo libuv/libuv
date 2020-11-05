@@ -57,7 +57,7 @@ TEST_IMPL(tcp_connect6_error_fault) {
                      &server,
                      (const struct sockaddr*) garbage_addr,
                      connect_cb);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   uv_close((uv_handle_t*)&server, close_cb);
 

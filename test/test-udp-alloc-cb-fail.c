@@ -72,7 +72,7 @@ static void cl_recv_cb(uv_udp_t* handle,
                        unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT_EQ(flags, 0);
-  ASSERT(nread == UV_ENOBUFS);
+  ASSERT_EQ(nread, UV_ENOBUFS);
 
   cl_recv_cb_called++;
 
@@ -121,7 +121,7 @@ static void sv_recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer. Don't count towards sv_recv_cb_called */
-    ASSERT(addr == NULL);
+    ASSERT_EQ(addr, NULL);
     return;
   }
 

@@ -75,7 +75,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
   ASSERT(req != NULL);
 
   if (status != 0) {
-    ASSERT(status == UV_ECANCELED);
+    ASSERT_EQ(status, UV_ECANCELED);
     return;
   }
 
@@ -115,11 +115,11 @@ static void recv_cb(uv_udp_t* handle,
     return;
 
   if (nread < 0) {
-    ASSERT(nread == UV_ECANCELED);
+    ASSERT_EQ(nread, UV_ECANCELED);
     return;
   }
 
-  ASSERT(addr->sa_family == AF_INET);
+  ASSERT_EQ(addr->sa_family, AF_INET);
   ASSERT(!memcmp(buf->base, EXPECTED, nread));
 
   recv_cb_called++;

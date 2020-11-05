@@ -103,8 +103,8 @@ static int test_async(int nthreads) {
 
   for (i = 0; i < nthreads; i++) {
     ctx = threads + i;
-    ASSERT(ctx->worker_sent == NUM_PINGS);
-    ASSERT(ctx->worker_seen == NUM_PINGS);
+    ASSERT_EQ(ctx->worker_sent, NUM_PINGS);
+    ASSERT_EQ(ctx->worker_seen, NUM_PINGS);
     ASSERT(ctx->main_sent == (unsigned int) NUM_PINGS);
     ASSERT(ctx->main_seen == (unsigned int) NUM_PINGS);
   }

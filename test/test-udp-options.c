@@ -56,7 +56,7 @@ static int udp_options_test(const struct sockaddr* addr) {
     if (addr->sa_family == AF_INET6)
       ASSERT_EQ(r, 0);
     else
-      ASSERT(r == UV_ENOTSUP);
+      ASSERT_EQ(r, UV_ENOTSUP);
 #else
     ASSERT_EQ(r, 0);
 #endif
@@ -64,7 +64,7 @@ static int udp_options_test(const struct sockaddr* addr) {
 
   for (i = 0; i < (int) ARRAY_SIZE(invalid_ttls); i++) {
     r = uv_udp_set_ttl(&h, invalid_ttls[i]);
-    ASSERT(r == UV_EINVAL);
+    ASSERT_EQ(r, UV_EINVAL);
   }
 
   r = uv_udp_set_multicast_loop(&h, 1);
@@ -81,7 +81,7 @@ static int udp_options_test(const struct sockaddr* addr) {
 
   /* anything >255 should fail */
   r = uv_udp_set_multicast_ttl(&h, 256);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   /* don't test ttl=-1, it's a valid value on some platforms */
 
   r = uv_run(loop, UV_RUN_DEFAULT);

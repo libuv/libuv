@@ -32,13 +32,13 @@ uv_buf_t buf = { "HELLO", 4 };
 
 
 static void write_cb(uv_write_t *req, int status) {
-  ASSERT(status == UV_ECANCELED);
+  ASSERT_EQ(status, UV_ECANCELED);
   uv_close((uv_handle_t*) req->handle, NULL);
 }
 
 
 static void connect_cb(uv_connect_t *req, int status) {
-  ASSERT(status == UV_ECONNREFUSED);
+  ASSERT_EQ(status, UV_ECONNREFUSED);
 }
 
 

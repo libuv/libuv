@@ -56,17 +56,17 @@ TEST_IMPL(homedir) {
   /* Test the case where the buffer is too small */
   len = SMALLPATH;
   r = uv_os_homedir(homedir, &len);
-  ASSERT(r == UV_ENOBUFS);
+  ASSERT_EQ(r, UV_ENOBUFS);
   ASSERT(len > SMALLPATH);
 
   /* Test invalid inputs */
   r = uv_os_homedir(NULL, &len);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_homedir(homedir, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   len = 0;
   r = uv_os_homedir(homedir, &len);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   return 0;
 }

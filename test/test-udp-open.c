@@ -109,7 +109,7 @@ static void recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer. Don't count towards sv_recv_cb_called */
-    ASSERT(addr == NULL);
+    ASSERT_EQ(addr, NULL);
     return;
   }
 
@@ -175,7 +175,7 @@ TEST_IMPL(udp_open) {
     ASSERT_EQ(r, 0);
 
     r = uv_udp_open(&client2, sock);
-    ASSERT(r == UV_EEXIST);
+    ASSERT_EQ(r, UV_EEXIST);
 
     uv_close((uv_handle_t*) &client2, NULL);
   }
@@ -209,7 +209,7 @@ TEST_IMPL(udp_open_twice) {
   ASSERT_EQ(r, 0);
 
   r = uv_udp_open(&client, sock2);
-  ASSERT(r == UV_EBUSY);
+  ASSERT_EQ(r, UV_EBUSY);
   close_socket(sock2);
 
   uv_close((uv_handle_t*) &client, NULL);

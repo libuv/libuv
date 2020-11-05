@@ -75,7 +75,7 @@ TEST_IMPL(tcp_connect_error_after_write) {
   ASSERT_EQ(r, 0);
 
   r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   r = uv_tcp_connect(&connect_req,
                      &conn,

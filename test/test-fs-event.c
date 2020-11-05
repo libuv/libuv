@@ -134,7 +134,7 @@ static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   ++fs_event_cb_called;
   ASSERT(handle == &fs_event);
   ASSERT_EQ(status, 0);
-  ASSERT(events == UV_CHANGE);
+  ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   ASSERT(strcmp(filename, "file1") == 0);
   #else
@@ -324,7 +324,7 @@ static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   ++fs_event_cb_called;
   ASSERT(handle == &fs_event);
   ASSERT_EQ(status, 0);
-  ASSERT(events == UV_CHANGE);
+  ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   ASSERT(strcmp(filename, "file2") == 0);
   #else
@@ -351,7 +351,7 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
 
   ASSERT(handle == &fs_event);
   ASSERT_EQ(status, 0);
-  ASSERT(events == UV_CHANGE);
+  ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   ASSERT(strcmp(filename, "watch_file") == 0);
   #else
@@ -1024,12 +1024,12 @@ TEST_IMPL(fs_event_getpath) {
     ASSERT_EQ(r, 0);
     len = sizeof buf;
     r = uv_fs_event_getpath(&fs_event, buf, &len);
-    ASSERT(r == UV_EINVAL);
+    ASSERT_EQ(r, UV_EINVAL);
     r = uv_fs_event_start(&fs_event, fail_cb, watch_dir[i], 0);
     ASSERT_EQ(r, 0);
     len = 0;
     r = uv_fs_event_getpath(&fs_event, buf, &len);
-    ASSERT(r == UV_ENOBUFS);
+    ASSERT_EQ(r, UV_ENOBUFS);
     ASSERT(len < sizeof buf); /* sanity check */
     ASSERT(len == strlen(watch_dir[i]) + 1);
     r = uv_fs_event_getpath(&fs_event, buf, &len);
@@ -1117,7 +1117,7 @@ TEST_IMPL(fs_event_error_reporting) {
   }
 
   /* At least one loop should fail */
-  ASSERT(fs_event_error_reported == UV_EMFILE);
+  ASSERT_EQ(fs_event_error_reported, UV_EMFILE);
 
   /* Stop and close all events, and destroy loops */
   do {

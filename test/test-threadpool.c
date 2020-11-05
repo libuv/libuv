@@ -64,7 +64,7 @@ TEST_IMPL(threadpool_queue_work_einval) {
 
   work_req.data = &data;
   r = uv_queue_work(uv_default_loop(), &work_req, NULL, after_work_cb);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

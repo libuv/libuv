@@ -50,7 +50,7 @@ static void handle_result(uv_fs_t* req) {
   uint64_t mode;
   int r;
 
-  ASSERT(req->fs_type == UV_FS_COPYFILE);
+  ASSERT_EQ(req->fs_type, UV_FS_COPYFILE);
   ASSERT_EQ(req->result, 0);
 
   /* Verify that the file size and mode are the same. */
@@ -107,15 +107,15 @@ TEST_IMPL(fs_copyfile) {
 
   /* Fails with EINVAL if bad flags are passed. */
   r = uv_fs_copyfile(NULL, &req, src, dst, -1, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   uv_fs_req_cleanup(&req);
 
   /* Fails with ENOENT if source does not exist. */
   unlink(src);
   unlink(dst);
   r = uv_fs_copyfile(NULL, &req, src, dst, 0, NULL);
-  ASSERT(req.result == UV_ENOENT);
-  ASSERT(r == UV_ENOENT);
+  ASSERT_EQ(req.result, UV_ENOENT);
+  ASSERT_EQ(r, UV_ENOENT);
   uv_fs_req_cleanup(&req);
   /* The destination should not exist. */
   r = uv_fs_stat(NULL, &req, dst, NULL);
@@ -154,7 +154,7 @@ TEST_IMPL(fs_copyfile) {
 
   /* Fails to overwrites existing file. */
   r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_EXCL, NULL);
-  ASSERT(r == UV_EEXIST);
+  ASSERT_EQ(r, UV_EEXIST);
   uv_fs_req_cleanup(&req);
 
   /* Truncates when an existing destination is larger than the source file. */
@@ -182,7 +182,7 @@ TEST_IMPL(fs_copyfile) {
   /* If the flags are invalid, the loop should not be kept open */
   unlink(dst);
   r = uv_fs_copyfile(loop, &req, fixture, dst, -1, fail_cb);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Copies file using UV_FS_COPYFILE_FICLONE. */
@@ -208,8 +208,8 @@ TEST_IMPL(fs_copyfile) {
   r = uv_fs_copyfile(NULL, &req, fixture, dst, 0, NULL);
   /* On IBMi PASE, qsecofr users can overwrite read-only files */
 # ifndef __PASE__
-  ASSERT(req.result == UV_EACCES);
-  ASSERT(r == UV_EACCES);
+  ASSERT_EQ(req.result, UV_EACCES);
+  ASSERT_EQ(r, UV_EACCES);
 # endif
   uv_fs_req_cleanup(&req);
 #endif

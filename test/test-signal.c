@@ -167,13 +167,13 @@ TEST_IMPL(we_get_signal) {
   start_watcher(loop, SIGCHLD, &sc, 0);
   sc.stop_or_close = STOP; /* stop, don't close the signal handle */
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
+  ASSERT_EQ(sc.ncalls, NSIGNALS);
 
   start_timer(loop, SIGCHLD, &tc);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
+  ASSERT_EQ(sc.ncalls, NSIGNALS);
 
   sc.ncalls = 0;
   sc.stop_or_close = CLOSE; /* now close it when it's done */
@@ -181,8 +181,8 @@ TEST_IMPL(we_get_signal) {
 
   start_timer(loop, SIGCHLD, &tc);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
+  ASSERT_EQ(sc.ncalls, NSIGNALS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -205,10 +205,10 @@ TEST_IMPL(we_get_signals) {
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
   for (i = 0; i < ARRAY_SIZE(sc); i++)
-    ASSERT(sc[i].ncalls == NSIGNALS);
+    ASSERT_EQ(sc[i].ncalls, NSIGNALS);
 
   for (i = 0; i < ARRAY_SIZE(tc); i++)
-    ASSERT(tc[i].ncalls == NSIGNALS);
+    ASSERT_EQ(tc[i].ncalls, NSIGNALS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -224,7 +224,7 @@ TEST_IMPL(we_get_signal_one_shot) {
   start_watcher(loop, SIGCHLD, &sc, 1);
   sc.stop_or_close = NOOP;
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc.ncalls, 1);
 
   start_timer(loop, SIGCHLD, &tc);
@@ -236,7 +236,7 @@ TEST_IMPL(we_get_signal_one_shot) {
   uv_signal_start_oneshot(&sc.handle, signal_cb_one_shot, SIGCHLD);
   start_timer(loop, SIGCHLD, &tc);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc.ncalls, 1);
 
   MAKE_VALGRIND_HAPPY();
@@ -257,7 +257,7 @@ TEST_IMPL(we_get_signals_mixed) {
   sc[0].stop_or_close = CLOSE;
   sc[1].stop_or_close = CLOSE;
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, 1);
   ASSERT_EQ(sc[1].ncalls, 1);
 
@@ -270,7 +270,7 @@ TEST_IMPL(we_get_signals_mixed) {
   start_watcher(loop, SIGCHLD, sc + 2, 0);
   uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, 1);
   ASSERT_EQ(sc[1].ncalls, 1);
   ASSERT_EQ(sc[2].ncalls, 0);
@@ -284,9 +284,9 @@ TEST_IMPL(we_get_signals_mixed) {
   start_watcher(loop, SIGCHLD, sc + 2, 1);
   uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc[0].ncalls == NSIGNALS);
-  ASSERT(sc[1].ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
+  ASSERT_EQ(sc[0].ncalls, NSIGNALS);
+  ASSERT_EQ(sc[1].ncalls, NSIGNALS);
   ASSERT_EQ(sc[2].ncalls, 0);
 
   /* 2 normal, 2 one-shot then remove 2 normal */
@@ -300,7 +300,7 @@ TEST_IMPL(we_get_signals_mixed) {
   uv_close((uv_handle_t*)&(sc[0]).handle, NULL);
   uv_close((uv_handle_t*)&(sc[1]).handle, NULL);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, 0);
   ASSERT_EQ(sc[1].ncalls, 0);
   ASSERT_EQ(sc[2].ncalls, 1);
@@ -316,11 +316,11 @@ TEST_IMPL(we_get_signals_mixed) {
   uv_close((uv_handle_t*)&(sc[0]).handle, NULL);
   uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(tc.ncalls == NSIGNALS);
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, 0);
   ASSERT_EQ(sc[1].ncalls, 1);
   ASSERT_EQ(sc[2].ncalls, 0);
-  ASSERT(sc[3].ncalls == NSIGNALS);
+  ASSERT_EQ(sc[3].ncalls, NSIGNALS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

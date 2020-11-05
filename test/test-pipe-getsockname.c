@@ -104,11 +104,11 @@ TEST_IMPL(pipe_getsockname) {
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_server, buf, &len);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_server, buf, &len);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   r = uv_pipe_bind(&pipe_server, TEST_PIPENAME);
   ASSERT_EQ(r, 0);
@@ -123,7 +123,7 @@ TEST_IMPL(pipe_getsockname) {
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_server, buf, &len);
-  ASSERT(r == UV_ENOTCONN);
+  ASSERT_EQ(r, UV_ENOTCONN);
 
   r = uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb);
   ASSERT_EQ(r, 0);
@@ -133,11 +133,11 @@ TEST_IMPL(pipe_getsockname) {
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_client, buf, &len);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
-  ASSERT(r == UV_EBADF);
+  ASSERT_EQ(r, UV_EBADF);
 
   uv_pipe_connect(&connect_req, &pipe_client, TEST_PIPENAME, pipe_client_connect_cb);
 

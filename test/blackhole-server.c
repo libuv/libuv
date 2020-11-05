@@ -76,7 +76,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   if (nread >= 0)
     return;
 
-  ASSERT(nread == UV_EOF);
+  ASSERT_EQ(nread, UV_EOF);
 
   conn = container_of(stream, conn_rec, handle);
 

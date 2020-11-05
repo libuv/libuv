@@ -88,7 +88,7 @@ static void unblock_threadpool(void) {
 
 
 static void fs_cb(uv_fs_t* req) {
-  ASSERT(req->result == UV_ECANCELED);
+  ASSERT_EQ(req->result, UV_ECANCELED);
   uv_fs_req_cleanup(req);
   fs_cb_called++;
 }
@@ -97,8 +97,8 @@ static void fs_cb(uv_fs_t* req) {
 static void getaddrinfo_cb(uv_getaddrinfo_t* req,
                            int status,
                            struct addrinfo* res) {
-  ASSERT(status == UV_EAI_CANCELED);
-  ASSERT(res == NULL);
+  ASSERT_EQ(status, UV_EAI_CANCELED);
+  ASSERT_EQ(res, NULL);
   uv_freeaddrinfo(res);  /* Should not crash. */
 }
 
@@ -107,9 +107,9 @@ static void getnameinfo_cb(uv_getnameinfo_t* handle,
                            int status,
                            const char* hostname,
                            const char* service) {
-  ASSERT(status == UV_EAI_CANCELED);
-  ASSERT(hostname == NULL);
-  ASSERT(service == NULL);
+  ASSERT_EQ(status, UV_EAI_CANCELED);
+  ASSERT_EQ(hostname, NULL);
+  ASSERT_EQ(service, NULL);
 }
 
 
@@ -119,7 +119,7 @@ static void work2_cb(uv_work_t* req) {
 
 
 static void done2_cb(uv_work_t* req, int status) {
-  ASSERT(status == UV_ECANCELED);
+  ASSERT_EQ(status, UV_ECANCELED);
   done2_cb_called++;
 }
 
@@ -143,7 +143,7 @@ static void timer_cb(uv_timer_t* handle) {
 
 
 static void nop_done_cb(uv_work_t* req, int status) {
-  ASSERT(status == UV_ECANCELED);
+  ASSERT_EQ(status, UV_ECANCELED);
   done_cb_called++;
 }
 
@@ -153,7 +153,7 @@ static void nop_random_cb(uv_random_t* req, int status, void* buf, size_t len) {
 
   ri = container_of(req, struct random_info, random_req);
 
-  ASSERT(status == UV_ECANCELED);
+  ASSERT_EQ(status, UV_ECANCELED);
   ASSERT(buf == (void*) ri->buf);
   ASSERT(len == sizeof(ri->buf));
 

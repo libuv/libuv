@@ -63,7 +63,7 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT(nread > 0);
 
   if (nread == 0) {
-    ASSERT(addr == NULL);
+    ASSERT_EQ(addr, NULL);
     return;
   }
 
@@ -102,7 +102,7 @@ TEST_IMPL(udp_try_send) {
 
   buf = uv_buf_init(buffer, sizeof(buffer));
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
-  ASSERT(r == UV_EMSGSIZE);
+  ASSERT_EQ(r, UV_EMSGSIZE);
 
   buf = uv_buf_init("EXIT", 4);
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);

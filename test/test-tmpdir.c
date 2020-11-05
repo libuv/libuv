@@ -55,17 +55,17 @@ TEST_IMPL(tmpdir) {
   /* Test the case where the buffer is too small */
   len = SMALLPATH;
   r = uv_os_tmpdir(tmpdir, &len);
-  ASSERT(r == UV_ENOBUFS);
+  ASSERT_EQ(r, UV_ENOBUFS);
   ASSERT(len > SMALLPATH);
 
   /* Test invalid inputs */
   r = uv_os_tmpdir(NULL, &len);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_tmpdir(tmpdir, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   len = 0;
   r = uv_os_tmpdir(tmpdir, &len);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
 #ifdef _WIN32
   const char *name = "TMP";

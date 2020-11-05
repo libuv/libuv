@@ -55,7 +55,7 @@ BENCHMARK_IMPL(thread_create) {
 
   duration = (uv_hrtime() - start_time) / 1e9;
 
-  ASSERT(num_threads == NUM_THREADS);
+  ASSERT_EQ(num_threads, NUM_THREADS);
 
   printf("%d threads created in %.2f seconds (%.0f/s)\n",
       NUM_THREADS, duration, NUM_THREADS / duration);

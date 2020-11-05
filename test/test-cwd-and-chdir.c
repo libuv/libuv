@@ -34,7 +34,7 @@ TEST_IMPL(cwd_and_chdir) {
 
   size1 = 1;
   err = uv_cwd(buffer_orig, &size1);
-  ASSERT(err == UV_ENOBUFS);
+  ASSERT_EQ(err, UV_ENOBUFS);
   ASSERT(size1 > 1);
 
   size1 = sizeof buffer_orig;

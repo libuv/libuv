@@ -32,18 +32,18 @@ TEST_IMPL(gethostname) {
   /* Reject invalid inputs */
   size = 1;
   r = uv_os_gethostname(NULL, &size);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_os_gethostname(buf, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   size = 0;
   r = uv_os_gethostname(buf, &size);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Return UV_ENOBUFS if the buffer cannot hold the hostname */
   enobufs_size = 1;
   buf[0] = '\0';
   r = uv_os_gethostname(buf, &enobufs_size);
-  ASSERT(r == UV_ENOBUFS);
+  ASSERT_EQ(r, UV_ENOBUFS);
   ASSERT(buf[0] == '\0');
   ASSERT(enobufs_size > 1);
 

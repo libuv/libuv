@@ -64,7 +64,7 @@ static void NO_INLINE close_socket_and_verify_stack(void) {
   uv_sleep(VERIFY_AFTER);
 
   for (i = 0; i < ARRAY_SIZE(data); i++)
-    ASSERT(data[i] == MARKER);
+    ASSERT_EQ(data[i], MARKER);
 }
 #endif
 

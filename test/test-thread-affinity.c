@@ -109,7 +109,7 @@ TEST_IMPL(thread_affinity) {
 TEST_IMPL(thread_affinity) {
   int cpumasksize;
   cpumasksize = uv_cpumask_size();
-  ASSERT(cpumasksize == UV_ENOTSUP);
+  ASSERT_EQ(cpumasksize, UV_ENOTSUP);
   return 0;
 }
 

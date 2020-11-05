@@ -102,7 +102,7 @@ TEST_IMPL(timer_again) {
   r = uv_timer_init(uv_default_loop(), &dummy);
   ASSERT_EQ(r, 0);
   r = uv_timer_again(&dummy);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   uv_unref((uv_handle_t*)&dummy);
 
   /* Start timer repeat_1. */
@@ -114,7 +114,7 @@ TEST_IMPL(timer_again) {
 
   /* Verify that it is not possible to uv_timer_again a non-repeating timer. */
   r = uv_timer_again(&repeat_1);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Actually make repeat_1 repeating. */
   uv_timer_set_repeat(&repeat_1, 50);

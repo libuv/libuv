@@ -79,7 +79,7 @@ static void after_read(uv_stream_t* handle,
 
   if (nread < 0) {
     /* Error or EOF */
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
 
     free(buf->base);
     sreq = malloc(sizeof* sreq);
@@ -216,7 +216,7 @@ static void on_recv(uv_udp_t* handle,
   }
 
   ASSERT(nread > 0);
-  ASSERT(addr->sa_family == AF_INET);
+  ASSERT_EQ(addr->sa_family, AF_INET);
 
   uv_udp_send_t* req = send_alloc();
   ASSERT(req != NULL);

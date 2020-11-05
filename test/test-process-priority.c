@@ -35,7 +35,7 @@ TEST_IMPL(process_priority) {
 
   /* Verify that passing a NULL pointer returns UV_EINVAL. */
   r = uv_os_getpriority(0, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Verify that all valid values work. */
   for (i = UV_PRIORITY_HIGHEST; i <= UV_PRIORITY_LOW; i++) {
@@ -59,15 +59,15 @@ TEST_IMPL(process_priority) {
     if (i < UV_PRIORITY_HIGH)
       ASSERT(priority == UV_PRIORITY_HIGHEST || priority == UV_PRIORITY_HIGH);
     else if (i < UV_PRIORITY_ABOVE_NORMAL)
-      ASSERT(priority == UV_PRIORITY_HIGH);
+      ASSERT_EQ(priority, UV_PRIORITY_HIGH);
     else if (i < UV_PRIORITY_NORMAL)
-      ASSERT(priority == UV_PRIORITY_ABOVE_NORMAL);
+      ASSERT_EQ(priority, UV_PRIORITY_ABOVE_NORMAL);
     else if (i < UV_PRIORITY_BELOW_NORMAL)
-      ASSERT(priority == UV_PRIORITY_NORMAL);
+      ASSERT_EQ(priority, UV_PRIORITY_NORMAL);
     else if (i < UV_PRIORITY_LOW)
-      ASSERT(priority == UV_PRIORITY_BELOW_NORMAL);
+      ASSERT_EQ(priority, UV_PRIORITY_BELOW_NORMAL);
     else
-      ASSERT(priority == UV_PRIORITY_LOW);
+      ASSERT_EQ(priority, UV_PRIORITY_LOW);
 #endif
 
     /* Verify that the current PID and 0 are equivalent. */

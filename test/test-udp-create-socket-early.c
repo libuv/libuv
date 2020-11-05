@@ -52,7 +52,7 @@ TEST_IMPL(udp_create_early) {
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
   ASSERT_EQ(r, 0);
-  ASSERT(sockname.sin_family == AF_INET);
+  ASSERT_EQ(sockname.sin_family, AF_INET);
 #endif
 
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
@@ -105,9 +105,9 @@ TEST_IMPL(udp_create_early_bad_bind) {
 
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
 #if !defined(_WIN32) && !defined(__CYGWIN__) && !defined(__MSYS__)
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 #else
-  ASSERT(r == UV_EFAULT);
+  ASSERT_EQ(r, UV_EFAULT);
 #endif
 
   uv_close((uv_handle_t*) &client, NULL);
@@ -123,10 +123,10 @@ TEST_IMPL(udp_create_early_bad_domain) {
   int r;
 
   r = uv_udp_init_ex(uv_default_loop(), &client, 47);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   r = uv_udp_init_ex(uv_default_loop(), &client, 1024);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

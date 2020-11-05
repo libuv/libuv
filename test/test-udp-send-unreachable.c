@@ -77,7 +77,7 @@ static void recv_cb(uv_udp_t* handle,
     ASSERT(0 && "unexpected error");
   } else if (nread == 0) {
     /* Returning unused buffer */
-    ASSERT(addr == NULL);
+    ASSERT_EQ(addr, NULL);
   } else {
     ASSERT(addr != NULL);
   }

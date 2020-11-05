@@ -33,7 +33,7 @@ TEST_IMPL(gettimeofday) {
 
   /* Test invalid input. */
   r = uv_gettimeofday(NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   return 0;
 }

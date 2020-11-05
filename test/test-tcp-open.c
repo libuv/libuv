@@ -118,7 +118,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     ASSERT(memcmp("PING", buf->base, nread) == 0);
   }
   else {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     uv_close((uv_handle_t*)tcp, close_cb);
   }
 }
@@ -132,7 +132,7 @@ static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
     for (i = 0; i < nread; ++i)
       ASSERT(buf->base[i] == 'P');
   } else {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     printf("GOT EOF\n");
     uv_close((uv_handle_t*)tcp, close_cb);
   }
@@ -263,7 +263,7 @@ TEST_IMPL(tcp_open) {
     ASSERT_EQ(r, 0);
 
     r = uv_tcp_open(&client2, sock);
-    ASSERT(r == UV_EEXIST);
+    ASSERT_EQ(r, UV_EEXIST);
 
     uv_close((uv_handle_t*) &client2, NULL);
   }
@@ -297,7 +297,7 @@ TEST_IMPL(tcp_open_twice) {
   ASSERT_EQ(r, 0);
 
   r = uv_tcp_open(&client, sock2);
-  ASSERT(r == UV_EBUSY);
+  ASSERT_EQ(r, UV_EBUSY);
   close_socket(sock2);
 
   uv_close((uv_handle_t*) &client, NULL);

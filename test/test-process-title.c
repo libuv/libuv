@@ -47,15 +47,15 @@ static void uv_get_process_title_edge_cases(void) {
 
   /* Test a NULL buffer */
   r = uv_get_process_title(NULL, 100);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Test size of zero */
   r = uv_get_process_title(buffer, 0);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Test for insufficient buffer size */
   r = uv_get_process_title(buffer, 1);
-  ASSERT(r == UV_ENOBUFS);
+  ASSERT_EQ(r, UV_ENOBUFS);
 }
 
 

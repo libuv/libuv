@@ -42,7 +42,7 @@ static void getaddrinfo_fail_cb(uv_getaddrinfo_t* req,
 
   ASSERT_EQ(fail_cb_called, 0);
   ASSERT(status < 0);
-  ASSERT(res == NULL);
+  ASSERT_EQ(res, NULL);
   uv_freeaddrinfo(res);  /* Should not crash. */
   fail_cb_called++;
 }

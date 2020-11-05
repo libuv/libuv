@@ -111,7 +111,7 @@ static void pinger_read_cb(uv_stream_t* stream,
   pinger = (pinger_t*) stream->data;
 
   if (nread < 0) {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
 
     puts("got EOF");
     free(buf->base);

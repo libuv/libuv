@@ -53,7 +53,7 @@ TEST_IMPL(tcp_bind_error_addrinuse) {
   r = uv_listen((uv_stream_t*)&server1, 128, NULL);
   ASSERT_EQ(r, 0);
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
-  ASSERT(r == UV_EADDRINUSE);
+  ASSERT_EQ(r, UV_EADDRINUSE);
 
   uv_close((uv_handle_t*)&server1, close_cb);
   uv_close((uv_handle_t*)&server2, close_cb);
@@ -102,7 +102,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_2) {
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == UV_EADDRNOTAVAIL);
+  ASSERT_EQ(r, UV_EADDRNOTAVAIL);
 
   uv_close((uv_handle_t*)&server, close_cb);
 
@@ -127,7 +127,7 @@ TEST_IMPL(tcp_bind_error_fault) {
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) garbage_addr, 0);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   uv_close((uv_handle_t*)&server, close_cb);
 
@@ -155,7 +155,7 @@ TEST_IMPL(tcp_bind_error_inval) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr1, 0);
   ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr2, 0);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   uv_close((uv_handle_t*)&server, close_cb);
 
@@ -195,7 +195,7 @@ TEST_IMPL(tcp_bind_invalid_flags) {
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT_EQ(r, 0);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, UV_TCP_IPV6ONLY);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -237,11 +237,11 @@ TEST_IMPL(tcp_bind_writable_flags) {
 
   buf = uv_buf_init("PING", 4);
   r = uv_write(&write_req, (uv_stream_t*) &server, &buf, 1, NULL);
-  ASSERT(r == UV_EPIPE);
+  ASSERT_EQ(r, UV_EPIPE);
   r = uv_shutdown(&shutdown_req, (uv_stream_t*) &server, NULL);
-  ASSERT(r == UV_ENOTCONN);
+  ASSERT_EQ(r, UV_ENOTCONN);
   r = uv_read_start((uv_stream_t*) &server, NULL, NULL);
-  ASSERT(r == UV_ENOTCONN);
+  ASSERT_EQ(r, UV_ENOTCONN);
 
   uv_close((uv_handle_t*)&server, close_cb);
 

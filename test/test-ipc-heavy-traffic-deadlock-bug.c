@@ -126,8 +126,8 @@ static void do_writes_and_reads(uv_stream_t* handle) {
   r = uv_run(handle->loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(bytes_written == XFER_SIZE);
-  ASSERT(bytes_read == XFER_SIZE);
+  ASSERT_EQ(bytes_written, XFER_SIZE);
+  ASSERT_EQ(bytes_read, XFER_SIZE);
 }
 
 TEST_IMPL(ipc_heavy_traffic_deadlock_bug) {

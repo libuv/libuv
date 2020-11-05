@@ -86,8 +86,8 @@ static void check_sockname(struct sockaddr* addr, const char* compare_ip,
   ASSERT(0 == uv_ip4_addr(compare_ip, compare_port, &compare_addr));
 
   /* Both addresses should be ipv4 */
-  ASSERT(check_addr.sin_family == AF_INET);
-  ASSERT(compare_addr.sin_family == AF_INET);
+  ASSERT_EQ(check_addr.sin_family, AF_INET);
+  ASSERT_EQ(compare_addr.sin_family, AF_INET);
 
   /* Check if the ip matches */
   ASSERT(memcmp(&check_addr.sin_addr,
@@ -201,7 +201,7 @@ static int tcp_listener(void) {
 
   namelen = sizeof sockname;
   r = uv_tcp_getpeername(&tcpServer, &peername, &namelen);
-  ASSERT(r == UV_ENOTCONN);
+  ASSERT_EQ(r, UV_ENOTCONN);
   getpeernamecount++;
 
   return 0;
@@ -229,7 +229,7 @@ static void tcp_connector(void) {
   namelen = sizeof sockname;
   r = uv_tcp_getsockname(&tcp, &sockname, &namelen);
   ASSERT(!r);
-  ASSERT(sockname.sa_family == AF_INET);
+  ASSERT_EQ(sockname.sa_family, AF_INET);
   connect_port = ntohs(((struct sockaddr_in*) &sockname)->sin_port);
   ASSERT(connect_port > 0);
 }

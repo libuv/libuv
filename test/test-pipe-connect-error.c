@@ -44,7 +44,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void connect_cb(uv_connect_t* connect_req, int status) {
-  ASSERT(status == UV_ENOENT);
+  ASSERT_EQ(status, UV_ENOENT);
   uv_close((uv_handle_t*)connect_req->handle, close_cb);
   connect_cb_called++;
 }
@@ -58,7 +58,7 @@ static void connect_cb_file(uv_connect_t* connect_req, int status) {
 
 
 static void connect_cb_long_path(uv_connect_t* connect_req, int status) {
-  ASSERT(status == UV_ENAMETOOLONG);
+  ASSERT_EQ(status, UV_ENAMETOOLONG);
   uv_close((uv_handle_t*)connect_req->handle, close_cb);
   connect_cb_called++;
 }

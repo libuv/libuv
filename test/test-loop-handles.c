@@ -285,7 +285,7 @@ TEST_IMPL(loop_handles) {
   r = uv_prepare_init(uv_default_loop(), &prepare_1_handle);
   ASSERT_EQ(r, 0);
   r = uv_prepare_start(&prepare_1_handle, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(r, UV_EINVAL);
   r = uv_prepare_start(&prepare_1_handle, prepare_1_cb);
   ASSERT_EQ(r, 0);
 
@@ -317,19 +317,19 @@ TEST_IMPL(loop_handles) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(loop_iteration == ITERATIONS);
+  ASSERT_EQ(loop_iteration, ITERATIONS);
 
-  ASSERT(prepare_1_cb_called == ITERATIONS);
+  ASSERT_EQ(prepare_1_cb_called, ITERATIONS);
   ASSERT_EQ(prepare_1_close_cb_called, 1);
 
   ASSERT(prepare_2_cb_called == ITERATIONS / 2);
   ASSERT_EQ(prepare_2_close_cb_called, 1);
 
-  ASSERT(check_cb_called == ITERATIONS);
+  ASSERT_EQ(check_cb_called, ITERATIONS);
   ASSERT_EQ(check_close_cb_called, 1);
 
   /* idle_1_cb should be called a lot */
-  ASSERT(idle_1_close_cb_called == IDLE_COUNT);
+  ASSERT_EQ(idle_1_close_cb_called, IDLE_COUNT);
 
   ASSERT(idle_2_close_cb_called == idle_2_cb_started);
   ASSERT_EQ(idle_2_is_active, 0);

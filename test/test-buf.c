@@ -22,7 +22,7 @@ TEST_IMPL(buf_large) {
   uv_buf_t buf;
 
   buf = uv_buf_init(NULL, SIZE_MAX);
-  ASSERT(buf.len == SIZE_MAX);
+  ASSERT_EQ(buf.len, SIZE_MAX);
 #ifdef _WIN32
   WSABUF* wbuf;
 

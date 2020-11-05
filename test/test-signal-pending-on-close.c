@@ -35,7 +35,7 @@ static int close_cb_called;
 
 
 static void stop_loop_cb(uv_signal_t* signal, int signum) {
-  ASSERT(signum == SIGPIPE);
+  ASSERT_EQ(signum, SIGPIPE);
   uv_stop(signal->loop);
 }
 
@@ -50,7 +50,7 @@ static void close_cb(uv_handle_t *handle) {
 
 static void write_cb(uv_write_t* req, int status) {
   ASSERT(req != NULL);
-  ASSERT(status == UV_EPIPE);
+  ASSERT_EQ(status, UV_EPIPE);
   free(buf);
   uv_close((uv_handle_t *) &pipe_hdl, close_cb);
   uv_close((uv_handle_t *) &signal_hdl, close_cb);

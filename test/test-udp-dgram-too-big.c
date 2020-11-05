@@ -49,7 +49,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
   CHECK_REQ(req);
   CHECK_HANDLE(req->handle);
 
-  ASSERT(status == UV_EMSGSIZE);
+  ASSERT_EQ(status, UV_EMSGSIZE);
 
   uv_close((uv_handle_t*)req->handle, close_cb);
   send_cb_called++;

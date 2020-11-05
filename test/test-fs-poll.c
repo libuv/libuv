@@ -110,7 +110,7 @@ static void poll_cb(uv_fs_poll_t* handle,
 
   switch (poll_cb_called++) {
   case 0:
-    ASSERT(status == UV_ENOENT);
+    ASSERT_EQ(status, UV_ENOENT);
     ASSERT(0 == memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 == memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
     touch_file(FIXTURE);
@@ -138,7 +138,7 @@ static void poll_cb(uv_fs_poll_t* handle,
     break;
 
   case 4:
-    ASSERT(status == UV_ENOENT);
+    ASSERT_EQ(status, UV_ENOENT);
     ASSERT(0 != memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT(0 == memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
     uv_close((uv_handle_t*)handle, close_cb);

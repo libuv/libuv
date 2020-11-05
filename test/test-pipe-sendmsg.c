@@ -83,7 +83,7 @@ static void read_cb(uv_stream_t* handle,
 
   while (uv_pipe_pending_count(p) != 0) {
     pending = uv_pipe_pending_type(p);
-    ASSERT(pending == UV_NAMED_PIPE);
+    ASSERT_EQ(pending, UV_NAMED_PIPE);
 
     ASSERT(incoming_count < ARRAY_SIZE(incoming));
     inc = &incoming[incoming_count++];

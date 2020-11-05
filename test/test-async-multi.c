@@ -38,7 +38,7 @@ void close_cb(uv_handle_t* handle) {
 
 
 void connect_cb(uv_connect_t* req, int status) {
-  ASSERT(status == UV_ENOENT);
+  ASSERT_EQ(status, UV_ENOENT);
   uv_close((uv_handle_t*) req->handle, close_cb);
 }
 

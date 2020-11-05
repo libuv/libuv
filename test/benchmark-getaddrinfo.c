@@ -80,8 +80,8 @@ BENCHMARK_IMPL(getaddrinfo) {
   uv_update_time(loop);
   end_time = uv_now(loop);
 
-  ASSERT(calls_initiated == TOTAL_CALLS);
-  ASSERT(calls_completed == TOTAL_CALLS);
+  ASSERT_EQ(calls_initiated, TOTAL_CALLS);
+  ASSERT_EQ(calls_completed, TOTAL_CALLS);
 
   fprintf(stderr, "getaddrinfo: %.0f req/s\n",
           (double) calls_completed / (double) (end_time - start_time) * 1000.0);

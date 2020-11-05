@@ -47,7 +47,7 @@ TEST_IMPL(udp_bind) {
   ASSERT_EQ(r, 0);
 
   r = uv_udp_bind(&h2, (const struct sockaddr*) &addr, 0);
-  ASSERT(r == UV_EADDRINUSE);
+  ASSERT_EQ(r, UV_EADDRINUSE);
 
   uv_close((uv_handle_t*) &h1, NULL);
   uv_close((uv_handle_t*) &h2, NULL);

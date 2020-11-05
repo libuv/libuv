@@ -41,7 +41,7 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
     uv_read_stop(handle);
     break;
   case 2:
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     uv_close((uv_handle_t *) handle, NULL);
     break;
   default:

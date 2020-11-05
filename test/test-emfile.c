@@ -54,7 +54,7 @@ TEST_IMPL(emfile) {
   /* Lower the file descriptor limit and use up all fds save one. */
   limits.rlim_cur = limits.rlim_max = maxfd + 1;
   if (setrlimit(RLIMIT_NOFILE, &limits)) {
-    ASSERT(errno == EPERM);  /* Valgrind blocks the setrlimit() call. */
+    ASSERT_EQ(errno, EPERM);  /* Valgrind blocks the setrlimit() call. */
     RETURN_SKIP("setrlimit(RLIMIT_NOFILE) failed, running under valgrind?");
   }
 
@@ -72,7 +72,7 @@ TEST_IMPL(emfile) {
   ASSERT(first_fd > 0);
 
   while (dup(0) != -1 || errno == EINTR);
-  ASSERT(errno == EMFILE);
+  ASSERT_EQ(errno, EMFILE);
   close(maxfd);
 
   /* Now connect and use up the last available file descriptor.  The EMFILE
