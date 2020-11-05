@@ -56,7 +56,7 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
   size_t len;
   int r;
 
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
 
   len = sizeof buf;

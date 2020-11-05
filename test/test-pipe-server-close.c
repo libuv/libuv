@@ -42,7 +42,7 @@ static void pipe_close_cb(uv_handle_t* handle) {
 
 
 static void pipe_client_connect_cb(uv_connect_t* req, int status) {
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
 
   pipe_client_connect_cb_called++;

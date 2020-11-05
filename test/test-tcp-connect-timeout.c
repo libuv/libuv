@@ -38,14 +38,14 @@ static void close_cb(uv_handle_t* handle);
 
 
 static void connect_cb(uv_connect_t* req, int status) {
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, UV_ECANCELED);
   connect_cb_called++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer);
+  ASSERT_EQ(handle, &timer);
   uv_close((uv_handle_t*)&conn, close_cb);
   uv_close((uv_handle_t*)&timer, close_cb);
 }

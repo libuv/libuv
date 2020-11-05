@@ -65,7 +65,7 @@ static void close_cb(uv_handle_t* handle) {
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   uv_tcp_t* tcp;
 
-  ASSERT(req == &shutdown_req);
+  ASSERT_EQ(req, &shutdown_req);
   ASSERT_EQ(status, 0);
 
   tcp = (uv_tcp_t*)(req->handle);
@@ -115,7 +115,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   uv_stream_t* stream;
   int i, j, r;
 
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
 
   stream = req->handle;

@@ -132,7 +132,7 @@ static void fail_cb(uv_fs_event_t* handle,
 static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   int events, int status) {
   ++fs_event_cb_called;
-  ASSERT(handle == &fs_event);
+  ASSERT_EQ(handle, &fs_event);
   ASSERT_EQ(status, 0);
   ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
@@ -202,7 +202,7 @@ static void fs_event_cb_dir_multi_file(uv_fs_event_t* handle,
                                        int events,
                                        int status) {
   fs_event_cb_called++;
-  ASSERT(handle == &fs_event);
+  ASSERT_EQ(handle, &fs_event);
   ASSERT_EQ(status, 0);
   ASSERT(events == UV_CHANGE || events == UV_RENAME);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
@@ -292,7 +292,7 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
     return;
 
   fs_multievent_cb_called++;
-  ASSERT(handle == &fs_event);
+  ASSERT_EQ(handle, &fs_event);
   ASSERT_EQ(status, 0);
   ASSERT(events == UV_CHANGE || events == UV_RENAME);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
@@ -322,7 +322,7 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
 static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   int events, int status) {
   ++fs_event_cb_called;
-  ASSERT(handle == &fs_event);
+  ASSERT_EQ(handle, &fs_event);
   ASSERT_EQ(status, 0);
   ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
@@ -349,7 +349,7 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
   ASSERT_EQ(fs_event_cb_called, 0);
   ++fs_event_cb_called;
 
-  ASSERT(handle == &fs_event);
+  ASSERT_EQ(handle, &fs_event);
   ASSERT_EQ(status, 0);
   ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)

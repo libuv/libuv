@@ -103,7 +103,7 @@ static void poll_cb(uv_fs_poll_t* handle,
 
   memset(&zero_statbuf, 0, sizeof(zero_statbuf));
 
-  ASSERT(handle == &poll_handle);
+  ASSERT_EQ(handle, &poll_handle);
   ASSERT(1 == uv_is_active((uv_handle_t*) handle));
   ASSERT(prev != NULL);
   ASSERT(curr != NULL);

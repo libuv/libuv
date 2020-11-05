@@ -40,7 +40,7 @@ static void poll_cb(uv_poll_t* h, int status, int events) {
   int r;
 
   ASSERT_EQ(status, 0);
-  ASSERT(h == &handle);
+  ASSERT_EQ(h, &handle);
 
   r = uv_poll_start(&handle, UV_READABLE, poll_cb);
   ASSERT_EQ(r, 0);

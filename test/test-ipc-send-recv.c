@@ -92,7 +92,7 @@ static void recv_cb(uv_stream_t* handle,
   union handles* recv;
 
   pipe = (uv_pipe_t*) handle;
-  ASSERT(pipe == &ctx.channel);
+  ASSERT_EQ(pipe, &ctx.channel);
 
   do {
     if (++recv_cb_count == 1) {
@@ -139,7 +139,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
   uv_buf_t buf;
 
-  ASSERT(req == &ctx.connect_req);
+  ASSERT_EQ(req, &ctx.connect_req);
   ASSERT_EQ(status, 0);
 
   buf = uv_buf_init(".", 1);
@@ -318,7 +318,7 @@ static void read_cb(uv_stream_t* handle,
       write_req = &ctx2.write_req2;
     }
 
-    ASSERT(pipe == &ctx2.channel);
+    ASSERT_EQ(pipe, &ctx2.channel);
     ASSERT(nread >= 0);
     ASSERT(uv_pipe_pending_count(pipe) > 0);
 

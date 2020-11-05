@@ -29,7 +29,7 @@ static char data;
 
 
 static void work_cb(uv_work_t* req) {
-  ASSERT(req == &work_req);
+  ASSERT_EQ(req, &work_req);
   ASSERT(req->data == &data);
   work_cb_count++;
 }
@@ -37,7 +37,7 @@ static void work_cb(uv_work_t* req) {
 
 static void after_work_cb(uv_work_t* req, int status) {
   ASSERT_EQ(status, 0);
-  ASSERT(req == &work_req);
+  ASSERT_EQ(req, &work_req);
   ASSERT(req->data == &data);
   after_work_cb_count++;
 }

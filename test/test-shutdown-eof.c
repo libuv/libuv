@@ -72,7 +72,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void shutdown_cb(uv_shutdown_t *req, int status) {
-  ASSERT(req == &shutdown_req);
+  ASSERT_EQ(req, &shutdown_req);
 
   ASSERT_EQ(called_connect_cb, 1);
   ASSERT(!got_eof);
@@ -86,7 +86,7 @@ static void shutdown_cb(uv_shutdown_t *req, int status) {
 
 static void connect_cb(uv_connect_t *req, int status) {
   ASSERT_EQ(status, 0);
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
   uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb);
@@ -124,7 +124,7 @@ static void timer_close_cb(uv_handle_t* handle) {
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer);
+  ASSERT_EQ(handle, &timer);
   uv_close((uv_handle_t*) handle, timer_close_cb);
 
   /*

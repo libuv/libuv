@@ -56,7 +56,7 @@ static void connect_cb(uv_connect_t* connect_req, int status) {
 
 
 static void prepare_cb(uv_prepare_t* handle) {
-  ASSERT(handle == &prepare_handle);
+  ASSERT_EQ(handle, &prepare_handle);
   uv_pipe_connect(&conn_req, &pipe_handle, BAD_PIPENAME, connect_cb);
 }
 

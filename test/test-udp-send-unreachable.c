@@ -85,7 +85,7 @@ static void recv_cb(uv_udp_t* handle,
 
 
 static void timer_cb(uv_timer_t* h) {
-  ASSERT(h == &timer);
+  ASSERT_EQ(h, &timer);
   timer_cb_called++;
   uv_close((uv_handle_t*) &client, close_cb);
   uv_close((uv_handle_t*) h, close_cb);

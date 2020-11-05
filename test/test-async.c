@@ -78,7 +78,7 @@ static void close_cb(uv_handle_t* handle) {
 static void async_cb(uv_async_t* handle) {
   int n;
 
-  ASSERT(handle == &async);
+  ASSERT_EQ(handle, &async);
 
   uv_mutex_lock(&mutex);
   n = ++async_cb_called;
@@ -94,7 +94,7 @@ static void async_cb(uv_async_t* handle) {
 static void prepare_cb(uv_prepare_t* handle) {
   int r;
 
-  ASSERT(handle == &prepare);
+  ASSERT_EQ(handle, &prepare);
 
   if (prepare_cb_called++)
     return;

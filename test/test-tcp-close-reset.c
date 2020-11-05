@@ -87,7 +87,7 @@ static void read_cb2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void connect_cb(uv_connect_t* conn_req, int status) {
-  ASSERT(conn_req == &connect_req);
+  ASSERT_EQ(conn_req, &connect_req);
   uv_read_start((uv_stream_t*) &tcp_client, alloc_cb, read_cb2);
   do_write(&tcp_client);
   if (client_close)

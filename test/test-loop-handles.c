@@ -108,7 +108,7 @@ static int idle_2_is_active = 0;
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer_handle);
+  ASSERT_EQ(handle, &timer_handle);
 }
 
 
@@ -129,7 +129,7 @@ static void idle_2_cb(uv_idle_t* handle) {
   fprintf(stderr, "%s", "IDLE_2_CB\n");
   fflush(stderr);
 
-  ASSERT(handle == &idle_2_handle);
+  ASSERT_EQ(handle, &idle_2_handle);
 
   idle_2_cb_called++;
 
@@ -208,7 +208,7 @@ static void check_cb(uv_check_t* handle) {
 
   fprintf(stderr, "%s", "CHECK_CB\n");
   fflush(stderr);
-  ASSERT(handle == &check_handle);
+  ASSERT_EQ(handle, &check_handle);
 
   if (loop_iteration < ITERATIONS) {
     /* Make some idle watchers active */
@@ -244,7 +244,7 @@ static void prepare_2_cb(uv_prepare_t* handle) {
 
   fprintf(stderr, "%s", "PREPARE_2_CB\n");
   fflush(stderr);
-  ASSERT(handle == &prepare_2_handle);
+  ASSERT_EQ(handle, &prepare_2_handle);
 
   /* Prepare_2 gets started by prepare_1 when (loop_iteration % 2 == 0), and it
    * stops itself immediately. A started watcher is not queued until the next
@@ -264,7 +264,7 @@ static void prepare_1_cb(uv_prepare_t* handle) {
 
   fprintf(stderr, "%s", "PREPARE_1_CB\n");
   fflush(stderr);
-  ASSERT(handle == &prepare_1_handle);
+  ASSERT_EQ(handle, &prepare_1_handle);
 
   if (loop_iteration % 2 == 0) {
     r = uv_prepare_start(&prepare_2_handle, prepare_2_cb);

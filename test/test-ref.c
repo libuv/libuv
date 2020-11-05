@@ -69,13 +69,13 @@ static void req_cb(uv_handle_t* req, int status) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(req == &shutdown_req);
+  ASSERT_EQ(req, &shutdown_req);
   shutdown_cb_called++;
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(req == &write_req);
+  ASSERT_EQ(req, &write_req);
   uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
   write_cb_called++;
 }
@@ -83,7 +83,7 @@ static void write_cb(uv_write_t* req, int status) {
 
 static void connect_and_write(uv_connect_t* req, int status) {
   uv_buf_t buf = uv_buf_init(buffer, sizeof buffer);
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
   uv_write(&write_req, req->handle, &buf, 1, write_cb);
   connect_cb_called++;
@@ -92,7 +92,7 @@ static void connect_and_write(uv_connect_t* req, int status) {
 
 
 static void connect_and_shutdown(uv_connect_t* req, int status) {
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
   uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
   connect_cb_called++;

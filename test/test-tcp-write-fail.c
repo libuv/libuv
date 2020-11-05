@@ -73,7 +73,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   uv_stream_t* stream;
   int r;
 
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
 
   stream = req->handle;

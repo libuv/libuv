@@ -47,7 +47,7 @@ static void cleanup_test_files(void) {
 }
 
 static void empty_closedir_cb(uv_fs_t* req) {
-  ASSERT(req == &closedir_req);
+  ASSERT_EQ(req, &closedir_req);
   ASSERT_EQ(req->fs_type, UV_FS_CLOSEDIR);
   ASSERT_EQ(req->result, 0);
   ++empty_closedir_cb_count;
@@ -58,7 +58,7 @@ static void empty_readdir_cb(uv_fs_t* req) {
   uv_dir_t* dir;
   int r;
 
-  ASSERT(req == &readdir_req);
+  ASSERT_EQ(req, &readdir_req);
   ASSERT_EQ(req->fs_type, UV_FS_READDIR);
   ASSERT_EQ(req->result, 0);
   dir = req->ptr;
@@ -74,7 +74,7 @@ static void empty_opendir_cb(uv_fs_t* req) {
   uv_dir_t* dir;
   int r;
 
-  ASSERT(req == &opendir_req);
+  ASSERT_EQ(req, &opendir_req);
   ASSERT_EQ(req->fs_type, UV_FS_OPENDIR);
   ASSERT_EQ(req->result, 0);
   ASSERT(req->ptr != NULL);
@@ -168,7 +168,7 @@ TEST_IMPL(fs_readdir_empty_dir) {
 static int non_existing_opendir_cb_count;
 
 static void non_existing_opendir_cb(uv_fs_t* req) {
-  ASSERT(req == &opendir_req);
+  ASSERT_EQ(req, &opendir_req);
   ASSERT_EQ(req->fs_type, UV_FS_OPENDIR);
   ASSERT_EQ(req->result, UV_ENOENT);
   ASSERT_EQ(req->ptr, NULL);
@@ -220,7 +220,7 @@ TEST_IMPL(fs_readdir_non_existing_dir) {
 static int file_opendir_cb_count;
 
 static void file_opendir_cb(uv_fs_t* req) {
-  ASSERT(req == &opendir_req);
+  ASSERT_EQ(req, &opendir_req);
   ASSERT_EQ(req->fs_type, UV_FS_OPENDIR);
   ASSERT_EQ(req->result, UV_ENOTDIR);
   ASSERT_EQ(req->ptr, NULL);
@@ -273,7 +273,7 @@ static int non_empty_readdir_cb_count;
 static int non_empty_closedir_cb_count;
 
 static void non_empty_closedir_cb(uv_fs_t* req) {
-  ASSERT(req == &closedir_req);
+  ASSERT_EQ(req, &closedir_req);
   ASSERT_EQ(req->result, 0);
   uv_fs_req_cleanup(req);
   ++non_empty_closedir_cb_count;
@@ -282,7 +282,7 @@ static void non_empty_closedir_cb(uv_fs_t* req) {
 static void non_empty_readdir_cb(uv_fs_t* req) {
   uv_dir_t* dir;
 
-  ASSERT(req == &readdir_req);
+  ASSERT_EQ(req, &readdir_req);
   ASSERT_EQ(req->fs_type, UV_FS_READDIR);
   dir = req->ptr;
 
@@ -323,7 +323,7 @@ static void non_empty_opendir_cb(uv_fs_t* req) {
   uv_dir_t* dir;
   int r;
 
-  ASSERT(req == &opendir_req);
+  ASSERT_EQ(req, &opendir_req);
   ASSERT_EQ(req->fs_type, UV_FS_OPENDIR);
   ASSERT_EQ(req->result, 0);
   ASSERT(req->ptr != NULL);

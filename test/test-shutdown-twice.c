@@ -37,7 +37,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(req == &req1);
+  ASSERT_EQ(req, &req1);
   ASSERT_EQ(status, 0);
   shutdown_cb_called++;
   uv_close((uv_handle_t*) req->handle, close_cb);

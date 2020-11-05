@@ -27,7 +27,7 @@ static int timer_called = 0;
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer_handle);
+  ASSERT_EQ(handle, &timer_handle);
   timer_called = 1;
 }
 

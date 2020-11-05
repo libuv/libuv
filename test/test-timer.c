@@ -218,7 +218,7 @@ TEST_IMPL(timer_order) {
 
 
 static void tiny_timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &tiny_timer);
+  ASSERT_EQ(handle, &tiny_timer);
   uv_close((uv_handle_t*) &tiny_timer, NULL);
   uv_close((uv_handle_t*) &huge_timer1, NULL);
   uv_close((uv_handle_t*) &huge_timer2, NULL);
@@ -242,9 +242,9 @@ static void huge_repeat_cb(uv_timer_t* handle) {
   static int ncalls;
 
   if (ncalls == 0)
-    ASSERT(handle == &huge_timer1);
+    ASSERT_EQ(handle, &huge_timer1);
   else
-    ASSERT(handle == &tiny_timer);
+    ASSERT_EQ(handle, &tiny_timer);
 
   if (++ncalls == 10) {
     uv_close((uv_handle_t*) &tiny_timer, NULL);

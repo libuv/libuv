@@ -102,7 +102,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(req == &shutdown_req);
+  ASSERT_EQ(req, &shutdown_req);
   ASSERT_EQ(status, 0);
 
   /* Now we wait for the EOF */
@@ -187,7 +187,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   uv_stream_t* stream;
   int r;
 
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
 
   stream = req->handle;
@@ -211,7 +211,7 @@ static void connect1_cb(uv_connect_t* req, int status) {
   uv_stream_t* stream;
   int r;
 
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(req, &connect_req);
   ASSERT_EQ(status, 0);
 
   stream = req->handle;

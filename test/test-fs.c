@@ -330,7 +330,7 @@ static void chown_root_cb(uv_fs_t* req) {
 }
 
 static void unlink_cb(uv_fs_t* req) {
-  ASSERT(req == &unlink_req);
+  ASSERT_EQ(req, &unlink_req);
   ASSERT_EQ(req->fs_type, UV_FS_UNLINK);
   ASSERT_EQ(req->result, 0);
   unlink_cb_count++;
@@ -382,7 +382,7 @@ static void statfs_cb(uv_fs_t* req) {
 
 static void close_cb(uv_fs_t* req) {
   int r;
-  ASSERT(req == &close_req);
+  ASSERT_EQ(req, &close_req);
   ASSERT_EQ(req->fs_type, UV_FS_CLOSE);
   ASSERT_EQ(req->result, 0);
   close_cb_count++;
@@ -397,7 +397,7 @@ static void close_cb(uv_fs_t* req) {
 static void ftruncate_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &ftruncate_req);
+  ASSERT_EQ(req, &ftruncate_req);
   ASSERT_EQ(req->fs_type, UV_FS_FTRUNCATE);
   ASSERT_EQ(req->result, 0);
   ftruncate_cb_count++;
@@ -413,7 +413,7 @@ static void fail_cb(uv_fs_t* req) {
 static void read_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &read_req);
+  ASSERT_EQ(req, &read_req);
   ASSERT_EQ(req->fs_type, UV_FS_READ);
   ASSERT(req->result >= 0);  /* FIXME(bnoordhuis) Check if requested size? */
   read_cb_count++;
@@ -433,7 +433,7 @@ static void read_cb(uv_fs_t* req) {
 static void open_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &open_req1);
+  ASSERT_EQ(req, &open_req1);
   ASSERT_EQ(req->fs_type, UV_FS_OPEN);
   if (req->result < 0) {
     fprintf(stderr, "async open error: %d\n", (int) req->result);
@@ -466,7 +466,7 @@ static void open_cb_simple(uv_fs_t* req) {
 static void fsync_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &fsync_req);
+  ASSERT_EQ(req, &fsync_req);
   ASSERT_EQ(req->fs_type, UV_FS_FSYNC);
   ASSERT_EQ(req->result, 0);
   fsync_cb_count++;
@@ -479,7 +479,7 @@ static void fsync_cb(uv_fs_t* req) {
 static void fdatasync_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &fdatasync_req);
+  ASSERT_EQ(req, &fdatasync_req);
   ASSERT_EQ(req->fs_type, UV_FS_FDATASYNC);
   ASSERT_EQ(req->result, 0);
   fdatasync_cb_count++;
@@ -492,7 +492,7 @@ static void fdatasync_cb(uv_fs_t* req) {
 static void write_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &write_req);
+  ASSERT_EQ(req, &write_req);
   ASSERT_EQ(req->fs_type, UV_FS_WRITE);
   ASSERT(req->result >= 0);  /* FIXME(bnoordhuis) Check if requested size? */
   write_cb_count++;
@@ -505,7 +505,7 @@ static void write_cb(uv_fs_t* req) {
 static void create_cb(uv_fs_t* req) {
   int r;
   uv_os_fd_t file = (uv_os_fd_t) open_req1.result;
-  ASSERT(req == &open_req1);
+  ASSERT_EQ(req, &open_req1);
   ASSERT_EQ(req->fs_type, UV_FS_OPEN);
   ASSERT(req->result >= 0);
   create_cb_count++;
@@ -517,7 +517,7 @@ static void create_cb(uv_fs_t* req) {
 
 
 static void rename_cb(uv_fs_t* req) {
-  ASSERT(req == &rename_req);
+  ASSERT_EQ(req, &rename_req);
   ASSERT_EQ(req->fs_type, UV_FS_RENAME);
   ASSERT_EQ(req->result, 0);
   rename_cb_count++;
@@ -526,7 +526,7 @@ static void rename_cb(uv_fs_t* req) {
 
 
 static void mkdir_cb(uv_fs_t* req) {
-  ASSERT(req == &mkdir_req);
+  ASSERT_EQ(req, &mkdir_req);
   ASSERT_EQ(req->fs_type, UV_FS_MKDIR);
   ASSERT_EQ(req->result, 0);
   mkdir_cb_count++;
@@ -556,7 +556,7 @@ static void check_mkdtemp_result(uv_fs_t* req) {
 
 
 static void mkdtemp_cb(uv_fs_t* req) {
-  ASSERT(req == &mkdtemp_req1);
+  ASSERT_EQ(req, &mkdtemp_req1);
   check_mkdtemp_result(req);
   mkdtemp_cb_count++;
 }
@@ -582,14 +582,14 @@ static void check_mkstemp_result(uv_fs_t* req) {
 
 
 static void mkstemp_cb(uv_fs_t* req) {
-  ASSERT(req == &mkstemp_req1);
+  ASSERT_EQ(req, &mkstemp_req1);
   check_mkstemp_result(req);
   mkstemp_cb_count++;
 }
 
 
 static void rmdir_cb(uv_fs_t* req) {
-  ASSERT(req == &rmdir_req);
+  ASSERT_EQ(req, &rmdir_req);
   ASSERT_EQ(req->fs_type, UV_FS_RMDIR);
   ASSERT_EQ(req->result, 0);
   rmdir_cb_count++;
@@ -623,7 +623,7 @@ static void assert_is_file_type(uv_dirent_t dent) {
 
 static void scandir_cb(uv_fs_t* req) {
   uv_dirent_t dent;
-  ASSERT(req == &scandir_req);
+  ASSERT_EQ(req, &scandir_req);
   ASSERT_EQ(req->fs_type, UV_FS_SCANDIR);
   ASSERT_EQ(req->result, 2);
   ASSERT(req->ptr);
@@ -643,7 +643,7 @@ static void scandir_cb(uv_fs_t* req) {
 static void empty_scandir_cb(uv_fs_t* req) {
   uv_dirent_t dent;
 
-  ASSERT(req == &scandir_req);
+  ASSERT_EQ(req, &scandir_req);
   ASSERT_EQ(req->fs_type, UV_FS_SCANDIR);
   ASSERT_EQ(req->result, 0);
   ASSERT_EQ(req->ptr, NULL);
@@ -655,7 +655,7 @@ static void empty_scandir_cb(uv_fs_t* req) {
 static void non_existent_scandir_cb(uv_fs_t* req) {
   uv_dirent_t dent;
 
-  ASSERT(req == &scandir_req);
+  ASSERT_EQ(req, &scandir_req);
   ASSERT_EQ(req->fs_type, UV_FS_SCANDIR);
   ASSERT_EQ(req->result, UV_ENOENT);
   ASSERT_EQ(req->ptr, NULL);
@@ -666,7 +666,7 @@ static void non_existent_scandir_cb(uv_fs_t* req) {
 
 
 static void file_scandir_cb(uv_fs_t* req) {
-  ASSERT(req == &scandir_req);
+  ASSERT_EQ(req, &scandir_req);
   ASSERT_EQ(req->fs_type, UV_FS_SCANDIR);
   ASSERT_EQ(req->result, UV_ENOTDIR);
   ASSERT_EQ(req->ptr, NULL);
@@ -676,7 +676,7 @@ static void file_scandir_cb(uv_fs_t* req) {
 
 
 static void stat_cb(uv_fs_t* req) {
-  ASSERT(req == &stat_req);
+  ASSERT_EQ(req, &stat_req);
   ASSERT(req->fs_type == UV_FS_STAT || req->fs_type == UV_FS_LSTAT);
   ASSERT_EQ(req->result, 0);
   ASSERT(req->ptr);
@@ -687,7 +687,7 @@ static void stat_cb(uv_fs_t* req) {
 
 
 static void sendfile_cb(uv_fs_t* req) {
-  ASSERT(req == &sendfile_req);
+  ASSERT_EQ(req, &sendfile_req);
   ASSERT_EQ(req->fs_type, UV_FS_SENDFILE);
   ASSERT_EQ(req->result, 65546);
   sendfile_cb_count++;
@@ -696,7 +696,7 @@ static void sendfile_cb(uv_fs_t* req) {
 
 
 static void sendfile_nodata_cb(uv_fs_t* req) {
-  ASSERT(req == &sendfile_req);
+  ASSERT_EQ(req, &sendfile_req);
   ASSERT_EQ(req->fs_type, UV_FS_SENDFILE);
   ASSERT_EQ(req->result, 0);
   sendfile_cb_count++;
@@ -868,7 +868,7 @@ static void check_utime(const char* path, double atime, double mtime, int test_l
 static void utime_cb(uv_fs_t* req) {
   utime_check_t* c;
 
-  ASSERT(req == &utime_req);
+  ASSERT_EQ(req, &utime_req);
   ASSERT_EQ(req->result, 0);
   ASSERT_EQ(req->fs_type, UV_FS_UTIME);
 
@@ -883,7 +883,7 @@ static void utime_cb(uv_fs_t* req) {
 static void futime_cb(uv_fs_t* req) {
   utime_check_t* c;
 
-  ASSERT(req == &futime_req);
+  ASSERT_EQ(req, &futime_req);
   ASSERT_EQ(req->result, 0);
   ASSERT_EQ(req->fs_type, UV_FS_FUTIME);
 
