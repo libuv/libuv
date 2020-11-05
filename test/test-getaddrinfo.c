@@ -51,7 +51,7 @@ static void getaddrinfo_fail_cb(uv_getaddrinfo_t* req,
 static void getaddrinfo_basic_cb(uv_getaddrinfo_t* handle,
                                  int status,
                                  struct addrinfo* res) {
-  ASSERT(handle == getaddrinfo_handle);
+  ASSERT_EQ(handle, getaddrinfo_handle);
   getaddrinfo_cbs++;
   free(handle);
   uv_freeaddrinfo(res);

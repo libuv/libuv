@@ -322,7 +322,7 @@ TEST_IMPL(threadpool_cancel_fs) {
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(n == fs_cb_called);
+  ASSERT_EQ(n, fs_cb_called);
   ASSERT_EQ(timer_cb_called, 1);
 
 

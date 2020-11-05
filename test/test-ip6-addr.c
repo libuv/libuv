@@ -105,7 +105,7 @@ TEST_IMPL(ip6_addr_link_local) {
     ASSERT(0 == uv_ip6_addr(scoped_addr, TEST_PORT, &addr));
     fprintf(stderr, "Got scope_id 0x%02x\n", addr.sin6_scope_id);
     fflush(stderr);
-    ASSERT(iface_index == addr.sin6_scope_id);
+    ASSERT_EQ(iface_index, addr.sin6_scope_id);
   }
 
   uv_free_interface_addresses(addresses, count);

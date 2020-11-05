@@ -114,7 +114,7 @@ static void recv_cb(uv_stream_t* handle,
       ASSERT(uv_pipe_pending_count(pipe) > 0);
 
       pending = uv_pipe_pending_type(pipe);
-      ASSERT(pending == ctx.expected_type);
+      ASSERT_EQ(pending, ctx.expected_type);
 
       if (pending == UV_NAMED_PIPE)
         r = uv_pipe_init(ctx.channel.loop, &recv->pipe, 0);

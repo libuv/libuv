@@ -61,8 +61,8 @@ static void handle_result(uv_fs_t* req) {
   uv_fs_req_cleanup(&stat_req);
   r = uv_fs_stat(NULL, &stat_req, dst, NULL);
   ASSERT_EQ(r, 0);
-  ASSERT(stat_req.statbuf.st_size == size);
-  ASSERT(stat_req.statbuf.st_mode == mode);
+  ASSERT_EQ(stat_req.statbuf.st_size, size);
+  ASSERT_EQ(stat_req.statbuf.st_mode, mode);
   uv_fs_req_cleanup(&stat_req);
   uv_fs_req_cleanup(req);
   result_check_count++;

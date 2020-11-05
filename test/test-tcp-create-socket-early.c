@@ -159,7 +159,7 @@ TEST_IMPL(tcp_create_early_bad_bind) {
     namelen = sizeof sockname;
     r = uv_tcp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
     ASSERT_EQ(r, 0);
-    ASSERT(sockname.sin6_family == AF_INET6);
+    ASSERT_EQ(sockname.sin6_family, AF_INET6);
   }
 #endif
 

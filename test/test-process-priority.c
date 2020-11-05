@@ -52,7 +52,7 @@ TEST_IMPL(process_priority) {
     /* Verify that the priority values match on Unix, and are range mapped
        on Windows. */
 #ifndef _WIN32
-    ASSERT(priority == i);
+    ASSERT_EQ(priority, i);
 #else
     /* On Windows, only elevated users can set UV_PRIORITY_HIGHEST. Other
        users will silently be set to UV_PRIORITY_HIGH. */
@@ -72,7 +72,7 @@ TEST_IMPL(process_priority) {
 
     /* Verify that the current PID and 0 are equivalent. */
     ASSERT(uv_os_getpriority(uv_os_getpid(), &r) == 0);
-    ASSERT(priority == r);
+    ASSERT_EQ(priority, r);
   }
 
   /* Verify that invalid priorities return UV_EINVAL. */

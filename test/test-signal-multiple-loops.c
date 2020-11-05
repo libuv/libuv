@@ -66,14 +66,14 @@ static void increment_counter(volatile int* counter) {
 
 
 static void signal1_cb(uv_signal_t* handle, int signum) {
-  ASSERT(signum == SIGUSR1);
+  ASSERT_EQ(signum, SIGUSR1);
   increment_counter(&signal1_cb_counter);
   uv_signal_stop(handle);
 }
 
 
 static void signal2_cb(uv_signal_t* handle, int signum) {
-  ASSERT(signum == SIGUSR2);
+  ASSERT_EQ(signum, SIGUSR2);
   increment_counter(&signal2_cb_counter);
   uv_signal_stop(handle);
 }

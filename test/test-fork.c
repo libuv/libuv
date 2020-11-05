@@ -52,7 +52,7 @@ static void socket_cb(uv_poll_t* poll, int status, int events) {
   ASSERT(UV_READABLE == (events & UV_READABLE));
   if (socket_cb_read_fd) {
     cnt = read(socket_cb_read_fd, socket_cb_read_buf, socket_cb_read_size);
-    ASSERT(cnt == socket_cb_read_size);
+    ASSERT_EQ(cnt, socket_cb_read_size);
   }
   uv_close((uv_handle_t*) poll, NULL);
 }
@@ -82,7 +82,7 @@ static void assert_wait_child(pid_t child_pid) {
   if (waited_pid == -1) {
     perror("Failed to wait");
   }
-  ASSERT(child_pid == waited_pid);
+  ASSERT_EQ(child_pid, waited_pid);
   ASSERT(WIFEXITED(child_stat)); /* Clean exit, not a signal. */
   ASSERT(!WIFSIGNALED(child_stat));
   ASSERT(0 == WEXITSTATUS(child_stat));
@@ -266,7 +266,7 @@ TEST_IMPL(fork_signal_to_child) {
     ASSERT(0 != uv_loop_alive(uv_default_loop()));
     printf("Running loop in child\n");
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
-    ASSERT(SIGUSR1 == fork_signal_cb_called);
+    ASSERT_EQ(SIGUSR1, fork_signal_cb_called);
   }
 
   MAKE_VALGRIND_HAPPY();

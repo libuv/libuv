@@ -278,7 +278,7 @@ static void connection_cb(uv_stream_t* s, int status) {
   uv_stream_t* stream;
   int r;
 
-  ASSERT(server == s);
+  ASSERT_EQ(server, s);
   ASSERT_EQ(status, 0);
 
   if (type == TCP) {

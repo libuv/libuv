@@ -133,7 +133,7 @@ TEST_IMPL(tcp_oob) {
                              connect_cb));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
-  ASSERT(ticks == kMaxTicks);
+  ASSERT_EQ(ticks, kMaxTicks);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

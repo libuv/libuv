@@ -188,7 +188,7 @@ TEST_IMPL(poll_oob) {
 
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
-  ASSERT(ticks == kMaxTicks);
+  ASSERT_EQ(ticks, kMaxTicks);
 
   /* Did client receive the POLLPRI message */
   ASSERT_EQ(cli_pr_check, 1);

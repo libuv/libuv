@@ -138,14 +138,14 @@ static void openFail(char *file, int error) {
   refresh();
 
   r = uv_fs_open(NULL, &open_req, file, flags, S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r == error);
-  ASSERT(open_req.result == error);
+  ASSERT_EQ(r, error);
+  ASSERT_EQ(open_req.result, error);
   uv_fs_req_cleanup(&open_req);
 
   /* Ensure the first call does not create the file */
   r = uv_fs_open(NULL, &open_req, file, flags, S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r == error);
-  ASSERT(open_req.result == error);
+  ASSERT_EQ(r, error);
+  ASSERT_EQ(open_req.result, error);
   uv_fs_req_cleanup(&open_req);
 
   cleanup();
@@ -197,8 +197,8 @@ static void writeExpect(char *file, char *expected, int size) {
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == size);
-  ASSERT(read_req.result == size);
+  ASSERT_EQ(r, size);
+  ASSERT_EQ(read_req.result, size);
   ASSERT(strncmp(buf, expected, size) == 0);
   uv_fs_req_cleanup(&read_req);
 
@@ -220,14 +220,14 @@ static void writeFail(char *file, int error) {
 
   iov = uv_buf_init("z", 1);
   r = uv_fs_write(NULL, &write_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == error);
-  ASSERT(write_req.result == error);
+  ASSERT_EQ(r, error);
+  ASSERT_EQ(write_req.result, error);
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init("z", 1);
   r = uv_fs_write(NULL, &write_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == error);
-  ASSERT(write_req.result == error);
+  ASSERT_EQ(r, error);
+  ASSERT_EQ(write_req.result, error);
   uv_fs_req_cleanup(&write_req);
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);
@@ -248,8 +248,8 @@ static void readExpect(char *file, char *expected, int size) {
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == size);
-  ASSERT(read_req.result == size);
+  ASSERT_EQ(r, size);
+  ASSERT_EQ(read_req.result, size);
   ASSERT(strncmp(buf, expected, size) == 0);
   uv_fs_req_cleanup(&read_req);
 
@@ -271,14 +271,14 @@ static void readFail(char *file, int error) {
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == error);
-  ASSERT(read_req.result == error);
+  ASSERT_EQ(r, error);
+  ASSERT_EQ(read_req.result, error);
   uv_fs_req_cleanup(&read_req);
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == error);
-  ASSERT(read_req.result == error);
+  ASSERT_EQ(r, error);
+  ASSERT_EQ(read_req.result, error);
   uv_fs_req_cleanup(&read_req);
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);

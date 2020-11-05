@@ -50,7 +50,7 @@ TEST_IMPL(cwd_and_chdir) {
   err = uv_cwd(buffer_new, &size2);
   ASSERT_EQ(err, 0);
 
-  ASSERT(size1 == size2);
+  ASSERT_EQ(size1, size2);
   ASSERT(strcmp(buffer_orig, buffer_new) == 0);
 
   return 0;

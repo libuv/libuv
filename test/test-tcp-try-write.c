@@ -127,7 +127,7 @@ TEST_IMPL(tcp_try_write) {
   ASSERT_EQ(connect_cb_called, 1);
   ASSERT_EQ(close_cb_called, 3);
   ASSERT_EQ(connection_cb_called, 1);
-  ASSERT(bytes_read == bytes_written);
+  ASSERT_EQ(bytes_read, bytes_written);
   ASSERT(bytes_written > 0);
 
   MAKE_VALGRIND_HAPPY();

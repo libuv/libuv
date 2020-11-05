@@ -331,7 +331,7 @@ TEST_IMPL(loop_handles) {
   /* idle_1_cb should be called a lot */
   ASSERT_EQ(idle_1_close_cb_called, IDLE_COUNT);
 
-  ASSERT(idle_2_close_cb_called == idle_2_cb_started);
+  ASSERT_EQ(idle_2_close_cb_called, idle_2_cb_started);
   ASSERT_EQ(idle_2_is_active, 0);
 
   MAKE_VALGRIND_HAPPY();

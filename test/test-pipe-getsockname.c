@@ -247,7 +247,7 @@ TEST_IMPL(pipe_getsockname_blocking) {
   r = uv_read_stop((uv_stream_t*)&pipe_client);
   ASSERT_EQ(r, 0);
 
-  ASSERT(len1 == len2);
+  ASSERT_EQ(len1, len2);
   ASSERT(memcmp(buf1, buf2, len1) == 0);
 
   pipe_close_cb_called = 0;

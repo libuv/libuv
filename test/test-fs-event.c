@@ -312,7 +312,7 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
     ASSERT(0 == uv_timer_start(&timer, fs_event_unlink_files_in_subdir, 1, 0));
   } else if (fs_multievent_cb_called == 2 * fs_event_file_count) {
     /* Once we've processed all create and delete events, stop watching */
-    ASSERT(fs_event_removed == fs_event_file_count);
+    ASSERT_EQ(fs_event_removed, fs_event_file_count);
     uv_close((uv_handle_t*) &timer, close_cb);
     uv_close((uv_handle_t*) handle, close_cb);
   }

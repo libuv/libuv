@@ -1252,8 +1252,8 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
 
   ASSERT(0 == stat("test_file", &s1));
   ASSERT(0 == stat("test_file2", &s2));
-  ASSERT(s1.st_size == s2.st_size);
-  ASSERT(s2.st_size == expected_size);
+  ASSERT_EQ(s1.st_size, s2.st_size);
+  ASSERT_EQ(s2.st_size, expected_size);
 
   /* Cleanup. */
   unlink("test_file");
@@ -3633,8 +3633,8 @@ static void fs_write_alotof_bufs_with_offset(int add_flags) {
 
   iov = uv_buf_init(filler, filler_len);
   r = uv_fs_write(NULL, &write_req, file, &iov, 1, -1, NULL);
-  ASSERT(r == filler_len);
-  ASSERT(write_req.result == filler_len);
+  ASSERT_EQ(r, filler_len);
+  ASSERT_EQ(write_req.result, filler_len);
   uv_fs_req_cleanup(&write_req);
   offset = (int64_t) r;
 
@@ -3807,7 +3807,7 @@ static void thread_main(void* arg) {
     if (ctx->doread) {
       result = write(ctx->fd, data, nbytes);
       /* Should not see EINTR (or other errors) */
-      ASSERT(result == nbytes);
+      ASSERT_EQ(result, nbytes);
     } else {
       result = read(ctx->fd, data, nbytes);
       /* Should not see EINTR (or other errors),
@@ -3899,8 +3899,8 @@ static void test_fs_partial(int doread) {
   } else {
     int result;
     result = uv_fs_write(loop, &write_req, pipe_fds[1], iovs, iovcount, -1, NULL);
-    ASSERT(write_req.result == result);
-    ASSERT(result == ctx.size);
+    ASSERT_EQ(write_req.result, result);
+    ASSERT_EQ(result, ctx.size);
     uv_fs_req_cleanup(&write_req);
   }
 
@@ -4110,7 +4110,7 @@ static void fs_file_pos_close_check(uv_os_fd_t file, const char *contents, int s
 
   iov = uv_buf_init(buf, sizeof(buf));
   r = uv_fs_read(NULL, &read_req, file, &iov, 1, -1, NULL);
-  ASSERT(r == size);
+  ASSERT_EQ(r, size);
   ASSERT(strncmp(buf, contents, size) == 0);
   uv_fs_req_cleanup(&read_req);
 
@@ -4338,7 +4338,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
                  S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT(r < 0);
-  ASSERT(open_req2.result == r);
+  ASSERT_EQ(open_req2.result, r);
   uv_fs_req_cleanup(&open_req2);
 
   r = uv_fs_close(NULL, &close_req, file, NULL);

@@ -141,7 +141,7 @@ TEST_IMPL(udp_send_unreachable) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   ASSERT_EQ(send_cb_called, 2);
-  ASSERT(recv_cb_called == alloc_cb_called);
+  ASSERT_EQ(recv_cb_called, alloc_cb_called);
   ASSERT_EQ(timer_cb_called, 1);
   ASSERT_EQ(close_cb_called, 2);
 

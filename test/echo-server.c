@@ -184,7 +184,7 @@ static void on_connection(uv_stream_t* server, int status) {
 
 
 static void on_server_close(uv_handle_t* handle) {
-  ASSERT(handle == server);
+  ASSERT_EQ(handle, server);
 }
 
 static uv_udp_send_t* send_alloc(void) {
