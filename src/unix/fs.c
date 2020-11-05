@@ -1220,7 +1220,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
       if (fstatfs(dstfd, &s) == -1)
         goto out;
 
-      if (s.f_type != /* CIFS */ 0xFF534D42u)
+      if ((unsigned) s.f_type != /* CIFS */ 0xFF534D42u)
         goto out;
     }
 
