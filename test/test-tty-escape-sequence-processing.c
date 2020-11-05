@@ -1113,7 +1113,7 @@ TEST_IMPL(tty_set_style) {
   }
 
   /* Set foregroud and background color */
-  ASSERT(ARRAY_SIZE(fg_attrs) == ARRAY_SIZE(bg_attrs));
+  ASSERT_EQ(ARRAY_SIZE(fg_attrs), ARRAY_SIZE(bg_attrs));
   length = ARRAY_SIZE(bg_attrs);
   for (i = 0; i < length; i++) {
     capture_screen(&tty_out, &expect);

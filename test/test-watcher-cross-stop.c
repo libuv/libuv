@@ -104,8 +104,8 @@ TEST_IMPL(watcher_cross_stop) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(ARRAY_SIZE(sockets) == send_cb_called);
-  ASSERT(ARRAY_SIZE(sockets) == close_cb_called);
+  ASSERT_EQ(send_cb_called, ARRAY_SIZE(sockets));
+  ASSERT_EQ(close_cb_called, ARRAY_SIZE(sockets));
 
   MAKE_VALGRIND_HAPPY();
   return 0;

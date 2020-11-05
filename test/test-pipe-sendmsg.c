@@ -118,7 +118,7 @@ TEST_IMPL(pipe_sendmsg) {
   ASSERT(0 == socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
   for (i = 0; i < ARRAY_SIZE(send_fds); i += 2)
     ASSERT(0 == socketpair(AF_UNIX, SOCK_STREAM, 0, send_fds + i));
-  ASSERT(i == ARRAY_SIZE(send_fds));
+  ASSERT_EQ(i, ARRAY_SIZE(send_fds));
   ASSERT(0 == uv_pipe_init(uv_default_loop(), &p, 1));
   ASSERT(0 == uv_pipe_open(&p, fds[1]));
 
@@ -154,8 +154,8 @@ TEST_IMPL(pipe_sendmsg) {
   ASSERT_EQ(r, 1);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(ARRAY_SIZE(incoming) == incoming_count);
-  ASSERT(ARRAY_SIZE(incoming) + 1 == close_called);
+  ASSERT_EQ(incoming_count, ARRAY_SIZE(incoming));
+  ASSERT_EQ(close_called, ARRAY_SIZE(incoming) + 1);
   close(fds[0]);
 
   MAKE_VALGRIND_HAPPY();

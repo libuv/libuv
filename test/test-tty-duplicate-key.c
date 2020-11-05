@@ -173,7 +173,7 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
    */
   make_key_event_records(VK_F1, 0, TRUE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == ARRAY_SIZE(records));
+  ASSERT_EQ(written, ARRAY_SIZE(records));
 
   uv_run(loop, UV_RUN_DEFAULT);
 
@@ -287,16 +287,16 @@ TEST_IMPL(tty_composing_character) {
   WriteConsoleInputW(ttyin_fd, &alt_records[0], 1, &written);
   make_key_event_records(VK_NUMPAD0, LEFT_ALT_PRESSED, FALSE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == ARRAY_SIZE(records));
+  ASSERT_EQ(written, ARRAY_SIZE(records));
   make_key_event_records(VK_NUMPAD1, LEFT_ALT_PRESSED, FALSE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == ARRAY_SIZE(records));
+  ASSERT_EQ(written, ARRAY_SIZE(records));
   make_key_event_records(VK_NUMPAD2, LEFT_ALT_PRESSED, FALSE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == ARRAY_SIZE(records));
+  ASSERT_EQ(written, ARRAY_SIZE(records));
   make_key_event_records(VK_NUMPAD8, LEFT_ALT_PRESSED, FALSE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == ARRAY_SIZE(records));
+  ASSERT_EQ(written, ARRAY_SIZE(records));
   WriteConsoleInputW(ttyin_fd, &alt_records[1], 1, &written);
 
   uv_run(loop, UV_RUN_DEFAULT);

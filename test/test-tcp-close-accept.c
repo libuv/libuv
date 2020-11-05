@@ -182,9 +182,9 @@ TEST_IMPL(tcp_close_accept) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(ARRAY_SIZE(tcp_outgoing) == got_connections);
-  ASSERT((ARRAY_SIZE(tcp_outgoing) + 2) == close_cb_called);
-  ASSERT(ARRAY_SIZE(tcp_outgoing) == write_cb_called);
+  ASSERT_EQ(got_connections, ARRAY_SIZE(tcp_outgoing));
+  ASSERT_EQ(close_cb_called, ARRAY_SIZE(tcp_outgoing) + 2);
+  ASSERT_EQ(write_cb_called, ARRAY_SIZE(tcp_outgoing));
   ASSERT_EQ(read_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();

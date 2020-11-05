@@ -270,7 +270,7 @@ TEST_IMPL(threadpool_cancel_work) {
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(timer_cb_called, 1);
-  ASSERT(ARRAY_SIZE(reqs) == done2_cb_called);
+  ASSERT_EQ(done2_cb_called, ARRAY_SIZE(reqs));
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -317,7 +317,7 @@ TEST_IMPL(threadpool_cancel_fs) {
   ASSERT(0 == uv_fs_unlink(loop, reqs + n++, "/", fs_cb));
   ASSERT(0 == uv_fs_utime(loop, reqs + n++, "/", 0, 0, fs_cb));
   ASSERT(0 == uv_fs_write(loop, reqs + n++, 0, &iov, 1, 0, fs_cb));
-  ASSERT(n == ARRAY_SIZE(reqs));
+  ASSERT_EQ(n, ARRAY_SIZE(reqs));
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
   ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
