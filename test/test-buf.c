@@ -39,8 +39,8 @@ TEST_IMPL(buf_large) {
   ASSERT_EQ(sizeof(&((uv_buf_t*) 0)->base),
             sizeof(((struct iovec*) 0)->iov_base));
   ASSERT_EQ(sizeof(&((uv_buf_t*) 0)->len), sizeof(((struct iovec*) 0)->iov_len));
-  ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
-  ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
+  ASSERT_EQ(offsetof(uv_buf_t, base), offsetof(struct iovec, iov_base));
+  ASSERT_EQ(offsetof(uv_buf_t, len),  offsetof(struct iovec, iov_len));
 #endif
 
   return 0;
