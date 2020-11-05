@@ -853,8 +853,8 @@ static void check_utime_ex(const char* path,
   }
 #endif
 
-  ASSERT(s->st_atim.tv_sec + (s->st_atim.tv_nsec / 1000000000.0) == atime);
-  ASSERT(s->st_mtim.tv_sec + (s->st_mtim.tv_nsec / 1000000000.0) == mtime);
+  ASSERT_EQ(s->st_atim.tv_sec + (s->st_atim.tv_nsec / 1000000000.0), atime);
+  ASSERT_EQ(s->st_mtim.tv_sec + (s->st_mtim.tv_nsec / 1000000000.0), mtime);
 
   uv_fs_req_cleanup(&req);
 }

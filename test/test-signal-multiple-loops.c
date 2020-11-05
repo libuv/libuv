@@ -288,8 +288,8 @@ TEST_IMPL(signal_multiple_loops) {
   /* The division by three reflects the fact that we spawn three different
    * thread groups of (NUM_SIGNAL_HANDLING_THREADS / 3) threads each.
    */
-  ASSERT(signal1_cb_counter == 8 * (NUM_SIGNAL_HANDLING_THREADS / 3));
-  ASSERT(signal2_cb_counter == 4 * (NUM_SIGNAL_HANDLING_THREADS / 3));
+  ASSERT_EQ(signal1_cb_counter, 8 * (NUM_SIGNAL_HANDLING_THREADS / 3));
+  ASSERT_EQ(signal2_cb_counter, 4 * (NUM_SIGNAL_HANDLING_THREADS / 3));
 
   /* We don't know exactly how much loops will be created and destroyed, but at
    * least there should be 1 for every loop creating thread.

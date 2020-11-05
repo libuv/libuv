@@ -85,7 +85,7 @@ static void assert_wait_child(pid_t child_pid) {
   ASSERT_EQ(child_pid, waited_pid);
   ASSERT(WIFEXITED(child_stat)); /* Clean exit, not a signal. */
   ASSERT(!WIFSIGNALED(child_stat));
-  ASSERT(0 == WEXITSTATUS(child_stat));
+  ASSERT_EQ(WEXITSTATUS(child_stat), 0);
 }
 
 
