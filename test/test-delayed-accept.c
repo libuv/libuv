@@ -179,10 +179,10 @@ TEST_IMPL(delayed_accept) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(connection_cb_called == 2);
-  ASSERT(do_accept_called == 2);
-  ASSERT(connect_cb_called == 2);
-  ASSERT(close_cb_called == 7);
+  ASSERT_EQ(connection_cb_called, 2);
+  ASSERT_EQ(do_accept_called, 2);
+  ASSERT_EQ(connect_cb_called, 2);
+  ASSERT_EQ(close_cb_called, 7);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

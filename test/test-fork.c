@@ -441,8 +441,8 @@ static void assert_watch_file_current_dir(uv_loop_t* const loop, int file_or_dir
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(timer_cb_touch_called == 1);
-  ASSERT(fs_event_cb_called == 1);
+  ASSERT_EQ(timer_cb_touch_called, 1);
+  ASSERT_EQ(fs_event_cb_called, 1);
 
   /* Cleanup */
   remove("watch_file");
@@ -586,8 +586,8 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
     printf("Running loop in child \n");
     uv_run(loop, UV_RUN_DEFAULT);
 
-    ASSERT(timer_cb_touch_called == 1);
-    ASSERT(fs_event_cb_called == 1);
+    ASSERT_EQ(timer_cb_touch_called, 1);
+    ASSERT_EQ(fs_event_cb_called, 1);
 
     /* Cleanup */
     remove("watch_file");
@@ -630,8 +630,8 @@ static void assert_run_work(uv_loop_t* const loop) {
   printf("Running in %d\n", getpid());
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(work_cb_count == 1);
-  ASSERT(after_work_cb_count == 1);
+  ASSERT_EQ(work_cb_count, 1);
+  ASSERT_EQ(after_work_cb_count, 1);
 
   /* cleanup  */
   work_cb_count = 0;

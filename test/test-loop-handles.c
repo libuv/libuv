@@ -320,13 +320,13 @@ TEST_IMPL(loop_handles) {
   ASSERT(loop_iteration == ITERATIONS);
 
   ASSERT(prepare_1_cb_called == ITERATIONS);
-  ASSERT(prepare_1_close_cb_called == 1);
+  ASSERT_EQ(prepare_1_close_cb_called, 1);
 
   ASSERT(prepare_2_cb_called == ITERATIONS / 2);
-  ASSERT(prepare_2_close_cb_called == 1);
+  ASSERT_EQ(prepare_2_close_cb_called, 1);
 
   ASSERT(check_cb_called == ITERATIONS);
-  ASSERT(check_close_cb_called == 1);
+  ASSERT_EQ(check_close_cb_called, 1);
 
   /* idle_1_cb should be called a lot */
   ASSERT(idle_1_close_cb_called == IDLE_COUNT);

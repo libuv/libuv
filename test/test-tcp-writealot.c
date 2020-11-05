@@ -165,10 +165,10 @@ TEST_IMPL(tcp_writealot) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(connect_cb_called, 1);
   ASSERT(write_cb_called == WRITES);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
   ASSERT(bytes_sent == TOTAL_BYTES);
   ASSERT(bytes_sent_done == TOTAL_BYTES);
   ASSERT(bytes_received_done == TOTAL_BYTES);

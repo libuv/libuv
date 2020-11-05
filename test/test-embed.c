@@ -163,7 +163,7 @@ TEST_IMPL(embed) {
   uv_thread_join(&embed_thread);
   uv_loop_close(&external);
 
-  ASSERT(embed_timer_called == 1);
+  ASSERT_EQ(embed_timer_called, 1);
 
   return 0;
 #else

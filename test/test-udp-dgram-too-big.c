@@ -83,8 +83,8 @@ TEST_IMPL(udp_dgram_too_big) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(send_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(send_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

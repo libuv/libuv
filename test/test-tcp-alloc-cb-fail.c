@@ -114,9 +114,9 @@ TEST_IMPL(tcp_alloc_cb_fail) {
 
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT(connect_cb_called == 1);
-  ASSERT(connection_cb_called == 1);
-  ASSERT(close_cb_called == 3);
+  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(connection_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 3);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

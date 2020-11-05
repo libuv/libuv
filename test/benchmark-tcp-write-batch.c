@@ -130,10 +130,10 @@ BENCHMARK_IMPL(tcp_write_batch) {
 
   stop = uv_hrtime();
 
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(connect_cb_called, 1);
   ASSERT(write_cb_called == NUM_WRITE_REQS);
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   printf("%ld write requests in %.2fs.\n",
          (long)NUM_WRITE_REQS,

@@ -136,7 +136,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
       buf_free(buf);
     }
 
-    ASSERT(pinger_shutdown_cb_called == 1);
+    ASSERT_EQ(pinger_shutdown_cb_called, 1);
     uv_close((uv_handle_t*)tcp, pinger_close_cb);
 
     return;
@@ -214,7 +214,7 @@ BENCHMARK_IMPL(ping_pongs) {
   pinger_new();
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(completed_pingers == 1);
+  ASSERT_EQ(completed_pingers, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

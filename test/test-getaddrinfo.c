@@ -104,7 +104,7 @@ TEST_IMPL(getaddrinfo_fail) {
                              NULL,
                              NULL));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT(fail_cb_called == 1);
+  ASSERT_EQ(fail_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -151,7 +151,7 @@ TEST_IMPL(getaddrinfo_basic) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(getaddrinfo_cbs == 1);
+  ASSERT_EQ(getaddrinfo_cbs, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

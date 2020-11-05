@@ -225,11 +225,11 @@ TEST_IMPL(we_get_signal_one_shot) {
   sc.stop_or_close = NOOP;
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc.ncalls == 1);
+  ASSERT_EQ(sc.ncalls, 1);
 
   start_timer(loop, SIGCHLD, &tc);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(sc.ncalls == 1);
+  ASSERT_EQ(sc.ncalls, 1);
 
   sc.ncalls = 0;
   sc.stop_or_close = CLOSE; /* now close it when it's done */
@@ -237,7 +237,7 @@ TEST_IMPL(we_get_signal_one_shot) {
   start_timer(loop, SIGCHLD, &tc);
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(tc.ncalls == NSIGNALS);
-  ASSERT(sc.ncalls == 1);
+  ASSERT_EQ(sc.ncalls, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

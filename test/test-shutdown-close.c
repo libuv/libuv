@@ -80,9 +80,9 @@ TEST_IMPL(shutdown_close_tcp) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(connect_cb_called == 1);
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -99,9 +99,9 @@ TEST_IMPL(shutdown_close_pipe) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(connect_cb_called == 1);
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

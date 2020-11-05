@@ -285,7 +285,7 @@ TEST_IMPL(tty_large_write) {
   bufs[0] = uv_buf_init(dummy, sizeof(dummy));
 
   r = uv_try_write((uv_stream_t*) &tty_out, bufs, 1);
-  ASSERT(r == 10000);
+  ASSERT_EQ(r, 10000);
 
   uv_close((uv_handle_t*) &tty_out, NULL);
 

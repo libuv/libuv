@@ -188,14 +188,14 @@ TEST_IMPL(queue_foreach_delete) {
 #endif
 
   r = uv_run(loop, UV_RUN_NOWAIT);
-  ASSERT(r == 1);
+  ASSERT_EQ(r, 1);
 
   END_ASSERTS(idle);
   END_ASSERTS(prepare);
   END_ASSERTS(check);
 
 #ifdef __linux__
-  ASSERT(helper_timer_cb_calls == 1);
+  ASSERT_EQ(helper_timer_cb_calls, 1);
 #endif
 
   MAKE_VALGRIND_HAPPY();

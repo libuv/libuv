@@ -152,8 +152,8 @@ TEST_IMPL(fs_readdir_empty_dir) {
   ASSERT_EQ(empty_closedir_cb_count, 0);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(empty_opendir_cb_count == 1);
-  ASSERT(empty_closedir_cb_count == 1);
+  ASSERT_EQ(empty_opendir_cb_count, 1);
+  ASSERT_EQ(empty_closedir_cb_count, 1);
   uv_fs_rmdir(uv_default_loop(), &rmdir_req, path, NULL);
   uv_fs_req_cleanup(&rmdir_req);
   MAKE_VALGRIND_HAPPY();
@@ -206,7 +206,7 @@ TEST_IMPL(fs_readdir_non_existing_dir) {
   ASSERT_EQ(non_existing_opendir_cb_count, 0);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(non_existing_opendir_cb_count == 1);
+  ASSERT_EQ(non_existing_opendir_cb_count, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -257,7 +257,7 @@ TEST_IMPL(fs_readdir_file) {
   ASSERT_EQ(file_opendir_cb_count, 0);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(file_opendir_cb_count == 1);
+  ASSERT_EQ(file_opendir_cb_count, 1);
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
@@ -288,13 +288,13 @@ static void non_empty_readdir_cb(uv_fs_t* req) {
 
   if (req->result == 0) {
     uv_fs_req_cleanup(req);
-    ASSERT(non_empty_readdir_cb_count == 3);
+    ASSERT_EQ(non_empty_readdir_cb_count, 3);
     uv_fs_closedir(uv_default_loop(),
                    &closedir_req,
                    dir,
                    non_empty_closedir_cb);
   } else {
-    ASSERT(req->result == 1);
+    ASSERT_EQ(req->result, 1);
     ASSERT(dir->dirents == dirents);
     ASSERT(strcmp(dirents[0].name, "file1") == 0 ||
            strcmp(dirents[0].name, "file2") == 0 ||
@@ -426,7 +426,7 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
     ++entries_count;
   }
 
-  ASSERT(entries_count == 3);
+  ASSERT_EQ(entries_count, 3);
   uv_fs_req_cleanup(&readdir_req);
 
   /* Fill the req to ensure that required fields are cleaned up. */
@@ -449,8 +449,8 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   ASSERT_EQ(non_empty_closedir_cb_count, 0);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(non_empty_opendir_cb_count == 1);
-  ASSERT(non_empty_closedir_cb_count == 1);
+  ASSERT_EQ(non_empty_opendir_cb_count, 1);
+  ASSERT_EQ(non_empty_closedir_cb_count, 1);
 
   uv_fs_rmdir(uv_default_loop(), &rmdir_req, "test_subdir", NULL);
   uv_fs_req_cleanup(&rmdir_req);

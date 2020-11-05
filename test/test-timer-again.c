@@ -132,9 +132,9 @@ TEST_IMPL(timer_again) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(repeat_1_cb_called == 10);
-  ASSERT(repeat_2_cb_called == 2);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(repeat_1_cb_called, 10);
+  ASSERT_EQ(repeat_2_cb_called, 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   fprintf(stderr, "Test took %ld ms (expected ~700 ms)\n",
           (long int)(uv_now(uv_default_loop()) - start_time));

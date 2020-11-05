@@ -221,22 +221,22 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   /* Emulate transmission of M-a at normal console */
   make_key_event_records(VK_MENU, 0, TRUE, alt_records);
   WriteConsoleInputW(ttyin_fd, &alt_records[0], 1, &written);
-  ASSERT(written == 1);
+  ASSERT_EQ(written, 1);
   make_key_event_records(L'A', LEFT_ALT_PRESSED, FALSE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == 2);
+  ASSERT_EQ(written, 2);
   WriteConsoleInputW(ttyin_fd, &alt_records[1], 1, &written);
-  ASSERT(written == 1);
+  ASSERT_EQ(written, 1);
 
   /* Emulate transmission of M-a at WSL(#2111) */
   make_key_event_records(VK_MENU, 0, TRUE, alt_records);
   WriteConsoleInputW(ttyin_fd, &alt_records[0], 1, &written);
-  ASSERT(written == 1);
+  ASSERT_EQ(written, 1);
   make_key_event_records(L'A', LEFT_ALT_PRESSED, TRUE, records);
   WriteConsoleInputW(ttyin_fd, records, ARRAY_SIZE(records), &written);
-  ASSERT(written == 2);
+  ASSERT_EQ(written, 2);
   WriteConsoleInputW(ttyin_fd, &alt_records[1], 1, &written);
-  ASSERT(written == 1);
+  ASSERT_EQ(written, 1);
 
   uv_run(loop, UV_RUN_DEFAULT);
 

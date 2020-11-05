@@ -75,7 +75,7 @@ static void exit_cb(uv_process_t* process,
                     int term_signal) {
   printf("exit_cb\n");
   exit_cb_called++;
-  ASSERT(exit_status == 1);
+  ASSERT_EQ(exit_status, 1);
   ASSERT_EQ(term_signal, 0);
   uv_close((uv_handle_t*) process, close_cb);
 }
@@ -96,7 +96,7 @@ static void kill_cb(uv_process_t* process,
   printf("exit_cb\n");
   exit_cb_called++;
 #ifdef _WIN32
-  ASSERT(exit_status == 1);
+  ASSERT_EQ(exit_status, 1);
 #else
   ASSERT_EQ(exit_status, 0);
 #endif
@@ -259,8 +259,8 @@ TEST_IMPL(spawn_empty_env) {
   ASSERT(0 == uv_spawn(uv_default_loop(), &process, &options));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -278,8 +278,8 @@ TEST_IMPL(spawn_exit_code) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -309,8 +309,8 @@ TEST_IMPL(spawn_stdout) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2); /* Once for process once for the pipe. */
   printf("output is: %s", output);
   ASSERT(strcmp("hello world\n", output) == 0);
 
@@ -349,12 +349,12 @@ TEST_IMPL(spawn_stdout_to_file) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   buf = uv_buf_init(output, sizeof(output));
   r = uv_fs_read(NULL, &fs_req, file, &buf, 1, 0, NULL);
-  ASSERT(r == 12);
+  ASSERT_EQ(r, 12);
   uv_fs_req_cleanup(&fs_req);
 
   r = uv_fs_close(NULL, &fs_req, file, NULL);
@@ -404,12 +404,12 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   buf = uv_buf_init(output, sizeof(output));
   r = uv_fs_read(NULL, &fs_req, file, &buf, 1, 0, NULL);
-  ASSERT(r == 27);
+  ASSERT_EQ(r, 27);
   uv_fs_req_cleanup(&fs_req);
 
   r = uv_fs_close(NULL, &fs_req, file, NULL);
@@ -467,12 +467,12 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   buf = uv_buf_init(output, sizeof(output));
   r = uv_fs_read(NULL, &fs_req, file, &buf, 1, 0, NULL);
-  ASSERT(r == 27);
+  ASSERT_EQ(r, 27);
   uv_fs_req_cleanup(&fs_req);
 
   r = uv_fs_close(NULL, &fs_req, file, NULL);
@@ -546,8 +546,8 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   buf = uv_buf_init(output, sizeof(output));
 
@@ -621,8 +621,8 @@ TEST_IMPL(spawn_stdin) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 3); /* Once for process twice for the pipe. */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 3); /* Once for process twice for the pipe. */
   ASSERT(strcmp(buffer, output) == 0);
 
   MAKE_VALGRIND_HAPPY();
@@ -655,8 +655,8 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2); /* Once for process once for the pipe. */
   printf("output from stdio[3] is: %s", output);
   ASSERT(strcmp("fourth stdio!\n", output) == 0);
 
@@ -725,8 +725,8 @@ TEST_IMPL(spawn_tcp_server) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -747,8 +747,8 @@ TEST_IMPL(spawn_ignored_stdio) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -772,8 +772,8 @@ TEST_IMPL(spawn_and_kill) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* Once for process and once for timer. */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2); /* Once for process and once for timer. */
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -809,8 +809,8 @@ TEST_IMPL(spawn_preserve_env) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2);
 
   printf("output is: %s", output);
   ASSERT(strcmp("testval", output) == 0);
@@ -900,8 +900,8 @@ TEST_IMPL(spawn_and_kill_with_std) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 5); /* process x 1, timer x 1, stdio x 3. */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 5); /* process x 1, timer x 1, stdio x 3. */
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -947,7 +947,7 @@ TEST_IMPL(spawn_and_ping) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
   ASSERT(strcmp(output, "TEST") == 0);
 
   MAKE_VALGRIND_HAPPY();
@@ -994,7 +994,7 @@ TEST_IMPL(spawn_same_stdout_stderr) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
   ASSERT(strcmp(output, "TEST") == 0);
 
   MAKE_VALGRIND_HAPPY();
@@ -1026,8 +1026,8 @@ TEST_IMPL(spawn_closed_process_io) {
 
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* process, child stdin */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2); /* process, child stdin */
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -1080,8 +1080,8 @@ TEST_IMPL(kill) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -1130,8 +1130,8 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2); /* Once for process once for the pipe. */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2); /* Once for process once for the pipe. */
   printf("output is: %s", output);
   ASSERT(strcmp("hello world\n", output) == 0);
 
@@ -1401,8 +1401,8 @@ TEST_IMPL(spawn_setuid_setgid) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -1573,8 +1573,8 @@ TEST_IMPL(spawn_affinity) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   free(newmask);
 
@@ -1707,8 +1707,8 @@ TEST_IMPL(spawn_fs_open) {
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(0 == uv_fs_close(NULL, &fs_req, fd, NULL));
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 2);  /* One for `in`, one for process */
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2);  /* One for `in`, one for process */
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -1749,7 +1749,7 @@ TEST_IMPL(closed_fd_events) {
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
 
   /* should have received just one byte */
-  ASSERT(output_used == 1);
+  ASSERT_EQ(output_used, 1);
 
   /* close the pipe and see if we still get events */
   uv_close((uv_handle_t*) &pipe_handle, close_cb);
@@ -1764,7 +1764,7 @@ TEST_IMPL(closed_fd_events) {
     /* have to run again to really trigger the timer */
     ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
 
-  ASSERT(timer_counter == 1);
+  ASSERT_EQ(timer_counter, 1);
 
   /* cleanup */
   ASSERT(0 == uv_process_kill(&process, /* SIGTERM */ 15));
@@ -1837,8 +1837,8 @@ TEST_IMPL(spawn_reads_child_path) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -1942,8 +1942,8 @@ TEST_IMPL(spawn_inherit_streams) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 3);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 3);
 
   r = memcmp(ubuf, output, sizeof ubuf);
   ASSERT_EQ(r, 0);

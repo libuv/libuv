@@ -155,8 +155,8 @@ TEST_IMPL(pipe_getsockname) {
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(pipe_client_connect_cb_called == 1);
-  ASSERT(pipe_close_cb_called == 2);
+  ASSERT_EQ(pipe_client_connect_cb_called, 1);
+  ASSERT_EQ(pipe_close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -201,7 +201,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
 
   close(sock);
 
-  ASSERT(pipe_close_cb_called == 1);
+  ASSERT_EQ(pipe_close_cb_called, 1);
   MAKE_VALGRIND_HAPPY();
   return 0;
 #else
@@ -255,7 +255,7 @@ TEST_IMPL(pipe_getsockname_blocking) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(pipe_close_cb_called == 1);
+  ASSERT_EQ(pipe_close_cb_called, 1);
 
   CloseHandle(writeh);
 #endif

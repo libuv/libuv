@@ -129,7 +129,7 @@ TEST_IMPL(env_vars) {
     }
   }
 
-  ASSERT(found == 2);
+  ASSERT_EQ(found, 2);
 #ifdef _WIN32
   ASSERT(found_win_special > 0);
 #endif

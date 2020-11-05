@@ -78,7 +78,7 @@ TEST_IMPL(shutdown_twice) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(shutdown_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

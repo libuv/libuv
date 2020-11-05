@@ -40,7 +40,7 @@ static void close_cb(uv_handle_t* handle) {
 /* check_cb should run before any close_cb */
 static void check_cb(uv_check_t* handle) {
   ASSERT_EQ(check_cb_called, 0);
-  ASSERT(timer_cb_called == 1);
+  ASSERT_EQ(timer_cb_called, 1);
   ASSERT_EQ(close_cb_called, 0);
   uv_close((uv_handle_t*) handle, close_cb);
   uv_close((uv_handle_t*) &timer_handle2, close_cb);
@@ -71,9 +71,9 @@ TEST_IMPL(close_order) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(check_cb_called == 1);
-  ASSERT(close_cb_called == 3);
-  ASSERT(timer_cb_called == 1);
+  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 3);
+  ASSERT_EQ(timer_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

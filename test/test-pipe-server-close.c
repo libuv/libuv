@@ -86,8 +86,8 @@ TEST_IMPL(pipe_server_close) {
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(pipe_client_connect_cb_called == 1);
-  ASSERT(pipe_close_cb_called == 2);
+  ASSERT_EQ(pipe_client_connect_cb_called, 1);
+  ASSERT_EQ(pipe_close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

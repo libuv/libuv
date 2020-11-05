@@ -157,7 +157,7 @@ TEST_IMPL(thread_create) {
   r = uv_thread_join(&tid);
   ASSERT_EQ(r, 0);
 
-  ASSERT(thread_called == 1);
+  ASSERT_EQ(thread_called, 1);
 
   return 0;
 }

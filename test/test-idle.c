@@ -91,8 +91,8 @@ TEST_IMPL(idle_starvation) {
   ASSERT_EQ(r, 0);
 
   ASSERT(idle_cb_called > 0);
-  ASSERT(timer_cb_called == 1);
-  ASSERT(close_cb_called == 3);
+  ASSERT_EQ(timer_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 3);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

@@ -65,7 +65,7 @@ TEST_IMPL(walk_handles) {
   ASSERT_EQ(seen_timer_handle, 0);
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(seen_timer_handle == 1);
+  ASSERT_EQ(seen_timer_handle, 1);
 
   /* Loop is finished, walk_cb should not see our timer handle. */
   seen_timer_handle = 0;

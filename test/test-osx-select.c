@@ -77,7 +77,7 @@ TEST_IMPL(osx_select) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(read_count == 3);
+  ASSERT_EQ(read_count, 3);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -131,7 +131,7 @@ TEST_IMPL(osx_select_many_fds) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(read_count == 3);
+  ASSERT_EQ(read_count, 3);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

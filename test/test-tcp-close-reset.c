@@ -200,8 +200,8 @@ TEST_IMPL(tcp_close_reset_client) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(write_cb_called == 4);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(write_cb_called, 4);
+  ASSERT_EQ(close_cb_called, 1);
   ASSERT_EQ(shutdown_cb_called, 0);
 
   MAKE_VALGRIND_HAPPY();
@@ -227,9 +227,9 @@ TEST_IMPL(tcp_close_reset_client_after_shutdown) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(write_cb_called == 4);
+  ASSERT_EQ(write_cb_called, 4);
   ASSERT_EQ(close_cb_called, 0);
-  ASSERT(shutdown_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -254,8 +254,8 @@ TEST_IMPL(tcp_close_reset_accepted) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(write_cb_called == 4);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(write_cb_called, 4);
+  ASSERT_EQ(close_cb_called, 1);
   ASSERT_EQ(shutdown_cb_called, 0);
 
   MAKE_VALGRIND_HAPPY();
@@ -281,9 +281,9 @@ TEST_IMPL(tcp_close_reset_accepted_after_shutdown) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(write_cb_called == 4);
+  ASSERT_EQ(write_cb_called, 4);
   ASSERT_EQ(close_cb_called, 0);
-  ASSERT(shutdown_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

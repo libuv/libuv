@@ -149,11 +149,11 @@ static void test_stdio_over_pipes(int overlapped) {
   ASSERT_EQ(r, 0);
 
   ASSERT(on_read_cb_called > 1);
-  ASSERT(after_write_cb_called == 2);
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 3);
+  ASSERT_EQ(after_write_cb_called, 2);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 3);
   ASSERT(memcmp("hello world\nhello world\n", output, 24) == 0);
-  ASSERT(output_used == 24);
+  ASSERT_EQ(output_used, 24);
 
   MAKE_VALGRIND_HAPPY();
 }
@@ -294,9 +294,9 @@ int stdio_over_pipes_helper(void) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(after_write_called == 14);
-  ASSERT(on_pipe_read_called == 2);
-  ASSERT(close_cb_called == 4);
+  ASSERT_EQ(after_write_called, 14);
+  ASSERT_EQ(on_pipe_read_called, 2);
+  ASSERT_EQ(close_cb_called, 4);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

@@ -70,7 +70,7 @@ TEST_IMPL(socket_buffer_size) {
 
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

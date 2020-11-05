@@ -114,8 +114,8 @@ static void refresh(void) {
 
   iov = uv_buf_init("a", 1);
   r = uv_fs_write(NULL, &write_req, file, &iov, 1, -1, NULL);
-  ASSERT(r == 1);
-  ASSERT(write_req.result == 1);
+  ASSERT_EQ(r, 1);
+  ASSERT_EQ(write_req.result, 1);
   uv_fs_req_cleanup(&write_req);
 
   r = uv_fs_close(NULL, &close_req, file, NULL);
@@ -173,14 +173,14 @@ static void writeExpect(char *file, char *expected, int size) {
 
   iov = uv_buf_init("b", 1);
   r = uv_fs_write(NULL, &write_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == 1);
-  ASSERT(write_req.result == 1);
+  ASSERT_EQ(r, 1);
+  ASSERT_EQ(write_req.result, 1);
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init("c", 1);
   r = uv_fs_write(NULL, &write_req, fd, &iov, 1, -1, NULL);
-  ASSERT(r == 1);
-  ASSERT(write_req.result == 1);
+  ASSERT_EQ(r, 1);
+  ASSERT_EQ(write_req.result, 1);
   uv_fs_req_cleanup(&write_req);
 
   r = uv_fs_close(NULL, &close_req, fd, NULL);

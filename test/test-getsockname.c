@@ -333,8 +333,8 @@ TEST_IMPL(getsockname_tcp) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(getsocknamecount == 3);
-  ASSERT(getpeernamecount == 3);
+  ASSERT_EQ(getsocknamecount, 3);
+  ASSERT_EQ(getpeernamecount, 3);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -351,7 +351,7 @@ TEST_IMPL(getsockname_udp) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(getsocknamecount == 2);
+  ASSERT_EQ(getsocknamecount, 2);
 
   ASSERT_EQ(udp.send_queue_size, 0);
   ASSERT_EQ(udpServer.send_queue_size, 0);

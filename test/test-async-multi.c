@@ -78,8 +78,8 @@ TEST_IMPL(async_multi) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(async_cb_called == 2);
-  ASSERT(close_cb_called == 4);
+  ASSERT_EQ(async_cb_called, 2);
+  ASSERT_EQ(close_cb_called, 4);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

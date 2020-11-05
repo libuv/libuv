@@ -1506,8 +1506,8 @@ TEST_IMPL(tty_escape_sequence_processing) {
   snprintf(buffer, sizeof(buffer), "%s1;%dH", CSI, UINT16_MAX + 1);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos.X == 1);
-  ASSERT(cursor_pos.Y == 1);
+  ASSERT_EQ(cursor_pos.X, 1);
+  ASSERT_EQ(cursor_pos.Y, 1);
 
   /* Too many argument are ignored */
   cursor_pos.X = 1;
@@ -1540,8 +1540,8 @@ TEST_IMPL(tty_escape_sequence_processing) {
            expect.si.width / 2);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
-  ASSERT(cursor_pos.X == 1);
-  ASSERT(cursor_pos.Y == 1);
+  ASSERT_EQ(cursor_pos.X, 1);
+  ASSERT_EQ(cursor_pos.Y, 1);
 
   /* Invalid sequence are ignored */
   saved_cursor_size = get_cursor_size(&tty_out);

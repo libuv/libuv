@@ -89,9 +89,9 @@ TEST_IMPL(tcp_connect_error_after_write) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
 
-  ASSERT(connect_cb_called == 1);
-  ASSERT(write_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(write_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

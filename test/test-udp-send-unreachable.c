@@ -140,10 +140,10 @@ TEST_IMPL(udp_send_unreachable) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(send_cb_called == 2);
+  ASSERT_EQ(send_cb_called, 2);
   ASSERT(recv_cb_called == alloc_cb_called);
-  ASSERT(timer_cb_called == 1);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(timer_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

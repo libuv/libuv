@@ -93,8 +93,8 @@ TEST_IMPL(udp_multicast_interface) {
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(sv_send_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(sv_send_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   ASSERT_EQ(client.send_queue_size, 0);
   ASSERT_EQ(server.send_queue_size, 0);

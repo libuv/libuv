@@ -175,9 +175,9 @@ TEST_IMPL(fs_copyfile) {
   unlink(dst);
   r = uv_fs_copyfile(loop, &req, fixture, dst, 0, handle_result);
   ASSERT_EQ(r, 0);
-  ASSERT(result_check_count == 5);
+  ASSERT_EQ(result_check_count, 5);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(result_check_count == 6);
+  ASSERT_EQ(result_check_count, 6);
 
   /* If the flags are invalid, the loop should not be kept open */
   unlink(dst);

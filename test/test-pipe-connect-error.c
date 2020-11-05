@@ -75,8 +75,8 @@ TEST_IMPL(pipe_connect_bad_name) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 1);
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(connect_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -95,8 +95,8 @@ TEST_IMPL(pipe_connect_to_file) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 1);
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(connect_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -118,8 +118,8 @@ TEST_IMPL(pipe_connect_to_long_path) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 1);
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(connect_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

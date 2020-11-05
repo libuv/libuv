@@ -450,7 +450,7 @@ TEST_IMPL(fs_event_watch_dir) {
   uv_run(loop, UV_RUN_DEFAULT);
 
   ASSERT(fs_event_cb_called == fs_event_created + fs_event_removed);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   /* Cleanup */
   fs_event_unlink_files(NULL);
@@ -510,8 +510,8 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
   uv_run(loop, UV_RUN_DEFAULT);
 
   ASSERT(fs_multievent_cb_called == fs_event_created + fs_event_removed);
-  ASSERT(fs_event_cb_called == 3);
-  ASSERT(close_cb_called == 3);
+  ASSERT_EQ(fs_event_cb_called, 3);
+  ASSERT_EQ(close_cb_called, 3);
 
   /* Cleanup */
   fs_event_unlink_files_in_subdir(NULL);
@@ -558,9 +558,9 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
 
     uv_run(loop, UV_RUN_DEFAULT);
 
-    ASSERT(fs_event_cb_called == 1);
-    ASSERT(timer_cb_called == 1);
-    ASSERT(close_cb_called == 1);
+    ASSERT_EQ(fs_event_cb_called, 1);
+    ASSERT_EQ(timer_cb_called, 1);
+    ASSERT_EQ(close_cb_called, 1);
   }
 
   /* Cleanup */
@@ -604,9 +604,9 @@ TEST_IMPL(fs_event_watch_file) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(fs_event_cb_called == 1);
-  ASSERT(timer_cb_called == 2);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(fs_event_cb_called, 1);
+  ASSERT_EQ(timer_cb_called, 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   /* Cleanup */
   remove("watch_dir/file2");
@@ -659,7 +659,7 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
   ASSERT_EQ(r, 0);
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_EQ(r, 0);
-  ASSERT(timer_cb_exact_called == 2);
+  ASSERT_EQ(timer_cb_exact_called, 2);
 
   /* Cleanup */
   remove("watch_dir/file.js");
@@ -736,9 +736,9 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(timer_cb_touch_called == 1);
-  ASSERT(fs_event_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(timer_cb_touch_called, 1);
+  ASSERT_EQ(fs_event_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   /* Cleanup */
   remove("watch_file");
@@ -802,7 +802,7 @@ TEST_IMPL(fs_event_no_callback_after_close) {
   uv_run(loop, UV_RUN_DEFAULT);
 
   ASSERT_EQ(fs_event_cb_called, 0);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   /* Cleanup */
   remove("watch_dir/file1");
@@ -839,7 +839,7 @@ TEST_IMPL(fs_event_no_callback_on_close) {
   uv_run(loop, UV_RUN_DEFAULT);
 
   ASSERT_EQ(fs_event_cb_called, 0);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   /* Cleanup */
   remove("watch_dir/file1");
@@ -881,7 +881,7 @@ TEST_IMPL(fs_event_immediate_close) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -912,7 +912,7 @@ TEST_IMPL(fs_event_close_with_pending_event) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   /* Clean up */
   remove("watch_dir/file");
@@ -952,8 +952,8 @@ TEST_IMPL(fs_event_close_in_callback) {
 
   uv_run(loop, UV_RUN_ONCE);
 
-  ASSERT(close_cb_called == 2);
-  ASSERT(fs_event_cb_called == 3);
+  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(fs_event_cb_called, 3);
 
   /* Clean up */
   fs_event_unlink_files(NULL);
@@ -991,7 +991,7 @@ TEST_IMPL(fs_event_start_and_close) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   remove("watch_dir/");
   MAKE_VALGRIND_HAPPY();
@@ -1042,7 +1042,7 @@ TEST_IMPL(fs_event_getpath) {
 
     uv_run(loop, UV_RUN_DEFAULT);
 
-    ASSERT(close_cb_called == 1);
+    ASSERT_EQ(close_cb_called, 1);
     close_cb_called = 0;
   }
 
@@ -1130,7 +1130,7 @@ TEST_IMPL(fs_event_error_reporting) {
 
     close_cb_called = 0;
     uv_run(loop, UV_RUN_DEFAULT);
-    ASSERT(close_cb_called == 1);
+    ASSERT_EQ(close_cb_called, 1);
 
     uv_loop_close(loop);
   } while (i-- != 0);

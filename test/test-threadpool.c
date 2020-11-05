@@ -51,8 +51,8 @@ TEST_IMPL(threadpool_queue_work_simple) {
   ASSERT_EQ(r, 0);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(work_cb_count == 1);
-  ASSERT(after_work_cb_count == 1);
+  ASSERT_EQ(work_cb_count, 1);
+  ASSERT_EQ(after_work_cb_count, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

@@ -86,7 +86,7 @@ static void sv_recv_cb(uv_udp_t* handle,
                        const struct sockaddr* addr,
                        unsigned flags) {
   if (nread > 0) {
-    ASSERT(nread == 4);
+    ASSERT_EQ(nread, 4);
     ASSERT(addr != NULL);
     ASSERT(memcmp("EXIT", rcvbuf->base, nread) == 0);
     if (++sv_recv_cb_called == 4) {
@@ -140,7 +140,7 @@ TEST_IMPL(udp_connect) {
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &lo_addr);
   ASSERT(r == UV_EISCONN);
   r = uv_udp_try_send(&client, &buf, 1, NULL);
-  ASSERT(r == 4);
+  ASSERT_EQ(r, 4);
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &ext_addr);
   ASSERT(r == UV_EISCONN);
 
@@ -155,7 +155,7 @@ TEST_IMPL(udp_connect) {
 
   /* To send messages in disconnected UDP sockets addr must be set */
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &lo_addr);
-  ASSERT(r == 4);
+  ASSERT_EQ(r, 4);
   r = uv_udp_try_send(&client, &buf, 1, NULL);
   ASSERT(r == UV_EDESTADDRREQ);
 
@@ -174,9 +174,9 @@ TEST_IMPL(udp_connect) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(close_cb_called == 2);
-  ASSERT(sv_recv_cb_called == 4);
-  ASSERT(cl_send_cb_called == 2);
+  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(sv_recv_cb_called, 4);
+  ASSERT_EQ(cl_send_cb_called, 2);
 
   ASSERT_EQ(client.send_queue_size, 0);
   ASSERT_EQ(server.send_queue_size, 0);

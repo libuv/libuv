@@ -122,7 +122,7 @@ static void cl_recv_cb(uv_udp_t* handle,
   }
 
   ASSERT(addr != NULL);
-  ASSERT(nread == 4);
+  ASSERT_EQ(nread, 4);
   ASSERT(!memcmp("PING", buf->base, nread));
 
   cl_recv_cb_called++;
@@ -217,9 +217,9 @@ TEST_IMPL(udp_multicast_join6) {
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(cl_recv_cb_called == 2);
-  ASSERT(sv_send_cb_called == 2);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(cl_recv_cb_called, 2);
+  ASSERT_EQ(sv_send_cb_called, 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

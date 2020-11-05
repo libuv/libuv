@@ -100,9 +100,9 @@ TEST_IMPL(multiple_listen) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(connection_cb_called == 1);
-  ASSERT(connect_cb_called == 1);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(connection_cb_called, 1);
+  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

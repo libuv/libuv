@@ -83,7 +83,7 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT_EQ(flags, 0);
 
   ASSERT(addr != NULL);
-  ASSERT(nread == 4);
+  ASSERT_EQ(nread, 4);
   ASSERT(memcmp("PING", rcvbuf->base, nread) == 0 ||
          memcmp("PANG", rcvbuf->base, nread) == 0);
 
@@ -139,9 +139,9 @@ TEST_IMPL(udp_send_immediate) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(cl_send_cb_called == 2);
-  ASSERT(sv_recv_cb_called == 2);
-  ASSERT(close_cb_called == 2);
+  ASSERT_EQ(cl_send_cb_called, 2);
+  ASSERT_EQ(sv_recv_cb_called, 2);
+  ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

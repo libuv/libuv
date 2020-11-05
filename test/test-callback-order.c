@@ -39,7 +39,7 @@ static void idle_cb(uv_idle_t* handle) {
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(idle_cb_called == 1);
+  ASSERT_EQ(idle_cb_called, 1);
   ASSERT_EQ(timer_cb_called, 0);
   uv_timer_stop(handle);
   timer_cb_called++;
@@ -69,8 +69,8 @@ TEST_IMPL(callback_order) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(idle_cb_called == 1);
-  ASSERT(timer_cb_called == 1);
+  ASSERT_EQ(idle_cb_called, 1);
+  ASSERT_EQ(timer_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

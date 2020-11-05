@@ -96,7 +96,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
         cli_rd_check = 2;
       }
       if (cli_rd_check == 0) {
-        ASSERT(n == 4);
+        ASSERT_EQ(n, 4);
         ASSERT(strncmp(buffer, "hello", n) == 0);
         cli_rd_check = 1;
         do {
@@ -104,7 +104,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
             n = recv(server_fd, &buffer, 5, 0);
           while (n == -1 && errno == EINTR);
           if (n > 0) {
-            ASSERT(n == 5);
+            ASSERT_EQ(n, 5);
             ASSERT(strncmp(buffer, "world", n) == 0);
             cli_rd_check = 2;
           }
@@ -191,13 +191,13 @@ TEST_IMPL(poll_oob) {
   ASSERT(ticks == kMaxTicks);
 
   /* Did client receive the POLLPRI message */
-  ASSERT(cli_pr_check == 1);
+  ASSERT_EQ(cli_pr_check, 1);
   /* Did client receive the POLLIN message */
-  ASSERT(cli_rd_check == 2);
+  ASSERT_EQ(cli_rd_check, 2);
   /* Could we write with POLLOUT and did the server receive our POLLOUT message
    * through POLLIN.
    */
-  ASSERT(srv_rd_check == 1);
+  ASSERT_EQ(srv_rd_check, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

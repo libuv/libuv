@@ -114,7 +114,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   ASSERT(tcp != NULL);
 
   if (nread >= 0) {
-    ASSERT(nread == 4);
+    ASSERT_EQ(nread, 4);
     ASSERT(memcmp("PING", buf->base, nread) == 0);
   }
   else {
@@ -271,10 +271,10 @@ TEST_IMPL(tcp_open) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(connect_cb_called == 1);
-  ASSERT(write_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(write_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -356,9 +356,9 @@ TEST_IMPL(tcp_open_connected) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(write_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(write_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -389,11 +389,11 @@ TEST_IMPL(tcp_write_ready) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(shutdown_cb_called == 1);
-  ASSERT(shutdown_requested == 1);
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(shutdown_requested, 1);
+  ASSERT_EQ(connect_cb_called, 1);
   ASSERT(write_cb_called > 0);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
