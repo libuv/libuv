@@ -113,8 +113,8 @@ typedef enum {
 
 #define ASSERT_BASE(a, operator, b, type, conv)              \
  do {                                                        \
-  type eval_a = (type) (a);                                  \
-  type eval_b = (type) (b);                                  \
+  volatile type eval_a = (type) (a);                         \
+  volatile type eval_b = (type) (b);                         \
   if (!(eval_a operator eval_b)) {                           \
     fprintf(stderr,                                          \
             "Assertion failed in %s on line %d: `%s %s %s` " \
