@@ -472,9 +472,9 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
 
   flags = type | SOCK_CLOEXEC;
   if ((flags0 & UV_NONBLOCK_PIPE) && (flags1 & UV_NONBLOCK_PIPE))
-    flags |= UV_FS_O_NONBLOCK;
+    flags |= SOCK_NONBLOCK;
 
-  if (socketpair(AF_UNIX, type, protocol, temp))
+  if (socketpair(AF_UNIX, flags, protocol, temp))
     return UV__ERR(errno);
 
   if (flags & UV_FS_O_NONBLOCK) {
