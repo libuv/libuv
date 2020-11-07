@@ -274,7 +274,7 @@ int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 
 
 int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
-#if __FreeBSD__ >= 11 && !__DragonFly__
+#if __FreeBSD__ >= 11 && !defined(__DragonFly__)
   return recvmmsg(fd, mmsg, vlen, 0 /* flags */, NULL /* timeout */);
 #else
   return errno = ENOSYS, -1;
