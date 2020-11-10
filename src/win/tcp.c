@@ -1403,16 +1403,28 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 }
 
 
-static void uv_tcp_try_cancel_read(uv_tcp_t* tcp) {
+static void uv_tcp_try_cancel_reqs(uv_tcp_t* tcp) {
   SOCKET socket;
   int non_ifs_lsp;
+  int reading;
+  int writing;
 
-  CancelIoEx((HANDLE) tcp->socket, &tcp->read_req.u.io.overlapped);
+  socket = tcp->socket;
+  reading = tcp->flags & UV_HANDLE_READING;
+  writing = tcp->stream.conn.write_reqs_pending > 0;
+  if (!reading && !writing)
+    return;
+
+  /* TODO: in libuv v2, keep explicit track of write_reqs, so we can cancel
+   * them each explicitly with CancelIoEx (like unix). */
+  if (reading)
+    CancelIoEx((HANDLE) socket, &tcp->read_req.u.io.overlapped);
+  if (writing)
+    CancelIo((HANDLE) socket);
 
   /* Check if we have any non-IFS LSPs stacked on top of TCP */
   non_ifs_lsp = (tcp->flags & UV_HANDLE_IPV6) ? uv_tcp_non_ifs_lsp_ipv6 :
                                                 uv_tcp_non_ifs_lsp_ipv4;
-  socket = tcp->socket;
 
   /* If there are non-ifs LSPs then try to obtain a base handle for the socket.
    * This will always fail on Windows XP/3k. */
@@ -1435,28 +1447,34 @@ static void uv_tcp_try_cancel_read(uv_tcp_t* tcp) {
   assert(socket != 0 && socket != INVALID_SOCKET);
 
   if (socket != tcp->socket) {
-    CancelIoEx((HANDLE) socket, &tcp->read_req.u.io.overlapped);
+    if (reading)
+      CancelIoEx((HANDLE) socket, &tcp->read_req.u.io.overlapped);
+    if (writing)
+      CancelIo((HANDLE) socket);
   }
 }
 
 
 void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
-  if (tcp->tcp.serv.accept_reqs != NULL) {
-    /* First close the incoming sockets to cancel the accept operations before
-     * we free their resources. */
-    unsigned int i;
-    for (i = 0; i < uv_simultaneous_server_accepts; i++) {
-      uv_tcp_accept_t* req = &tcp->tcp.serv.accept_reqs[i];
-      if (req->accept_socket != INVALID_SOCKET) {
-        closesocket(req->accept_socket);
-        req->accept_socket = INVALID_SOCKET;
+  if (tcp->flags & UV_HANDLE_CONNECTION) {
+    uv_tcp_try_cancel_reqs(tcp);
+    if (tcp->flags & UV_HANDLE_READING) {
+      uv_read_stop((uv_stream_t*) tcp);
+    }
+  } else {
+    if (tcp->tcp.serv.accept_reqs != NULL) {
+      /* First close the incoming sockets to cancel the accept operations before
+       * we free their resources. */
+      unsigned int i;
+      for (i = 0; i < uv_simultaneous_server_accepts; i++) {
+        uv_tcp_accept_t* req = &tcp->tcp.serv.accept_reqs[i];
+        if (req->accept_socket != INVALID_SOCKET) {
+          closesocket(req->accept_socket);
+          req->accept_socket = INVALID_SOCKET;
+        }
       }
     }
-  }
-
-  if (tcp->flags & UV_HANDLE_READING) {
-    uv_tcp_try_cancel_read(tcp);
-    uv_read_stop((uv_stream_t*) tcp);
+    assert(!(tcp->flags & UV_HANDLE_READING));
   }
 
   if (tcp->flags & UV_HANDLE_LISTENING) {
@@ -1464,6 +1482,11 @@ void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
     DECREASE_ACTIVE_COUNT(loop, tcp);
   }
 
+  /* If any overlapped req failed to cancel, calling `closesocket` now would
+   * cause Win32 to send an RST packet. Try to avoid that for writes, if
+   * possibly applicable, by waiting to process the completion notifications
+   * first (which typically should be cancellations). There's not much we can
+   * do about canceled reads, which also will generate an RST packet. */
   if (!(tcp->flags & UV_HANDLE_CONNECTION) ||
       tcp->stream.conn.write_reqs_pending == 0) {
     closesocket(tcp->socket);
