@@ -236,8 +236,7 @@ void uv_tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
   if (handle->flags & UV_HANDLE_CLOSING &&
       handle->reqs_pending == 0) {
     assert(!(handle->flags & UV_HANDLE_CLOSED));
-
-    assert(handle->flags & UV_HANDLE_TCP_SOCKET_CLOSED);
+    assert(handle->socket == INVALID_SOCKET);
 
     if (!(handle->flags & UV_HANDLE_CONNECTION) && handle->tcp.serv.accept_reqs) {
       if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
@@ -595,6 +594,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     }
   }
 
+  /* If this flag is set, we already made this listen call in xfer. */
   if (!(handle->flags & UV_HANDLE_SHARED_TCP_SOCKET) &&
       listen(handle->socket, backlog) == SOCKET_ERROR) {
     return WSAGetLastError();
@@ -1154,9 +1154,14 @@ void uv_process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   }
 
   handle->stream.conn.write_reqs_pending--;
-  if (handle->stream.conn.shutdown_req != NULL &&
-      handle->stream.conn.write_reqs_pending == 0) {
-    uv_want_endgame(loop, (uv_handle_t*)handle);
+  if (handle->stream.conn.write_reqs_pending == 0) {
+    if (handle->flags & UV_HANDLE_CLOSING) {
+      closesocket(handle->socket);
+      handle->socket = INVALID_SOCKET;
+    }
+    if (handle->stream.conn.shutdown_req != NULL) {
+      uv_want_endgame(loop, (uv_handle_t*)handle);
+    }
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
@@ -1453,14 +1458,17 @@ void uv_tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
     uv_tcp_try_cancel_read(tcp);
     uv_read_stop((uv_stream_t*) tcp);
   }
+
   if (tcp->flags & UV_HANDLE_LISTENING) {
     tcp->flags &= ~UV_HANDLE_LISTENING;
     DECREASE_ACTIVE_COUNT(loop, tcp);
   }
 
-  closesocket(tcp->socket);
-  tcp->socket = INVALID_SOCKET;
-  tcp->flags |= UV_HANDLE_TCP_SOCKET_CLOSED;
+  if (!(tcp->flags & UV_HANDLE_CONNECTION) ||
+      tcp->stream.conn.write_reqs_pending == 0) {
+    closesocket(tcp->socket);
+    tcp->socket = INVALID_SOCKET;
+  }
 
   tcp->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   uv__handle_closing(tcp);
