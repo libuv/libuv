@@ -127,3 +127,20 @@ API
     :c:func:`uv_tcp_close_reset` calls is not allowed.
 
     .. versionadded:: 1.32.0
+
+.. c:function:: int uv_socketpair(int type, int protocol, uv_os_sock_t socket_vector[2], int flags0, int flags1)
+
+    Create a pair of connected sockets with the specified properties.
+    The resulting handles can be passed to `uv_tcp_open`, used with `uv_spawn`,
+    or for any other purpose.
+
+    Valid values for `flags0` and `flags1` are:
+
+      - UV_NONBLOCK_PIPE: Opens the specified socket handle for `OVERLAPPED`
+        or `FIONBIO`/`O_NONBLOCK` I/O usage.
+        This is recommended for handles that will be used by libuv,
+        and not usually recommended otherwise.
+
+    Equivalent to :man:`socketpair(2)` with a domain of AF_UNIX.
+
+    .. versionadded:: 1.x.0
