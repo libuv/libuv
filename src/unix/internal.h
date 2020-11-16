@@ -246,6 +246,7 @@ int uv__signal_loop_fork(uv_loop_t* loop);
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
 int uv__kqueue_init(uv_loop_t* loop);
+int uv__epoll_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);

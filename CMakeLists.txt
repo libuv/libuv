@@ -209,7 +209,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
        src/unix/pthread-fixes.c
        src/unix/random-getentropy.c
        src/unix/random-getrandom.c
-       src/unix/random-sysctl-linux.c)
+       src/unix/random-sysctl-linux.c
+       src/unix/epoll.c)
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux|OS390")
@@ -253,7 +254,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
        src/unix/linux-syscalls.c
        src/unix/procfs-exepath.c
        src/unix/random-getrandom.c
-       src/unix/random-sysctl-linux.c)
+       src/unix/random-sysctl-linux.c
+       src/unix/epoll.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
@@ -305,7 +307,10 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500)
   list(APPEND uv_libraries kstat nsl sendfile socket)
-  list(APPEND uv_sources src/unix/no-proctitle.c src/unix/sunos.c)
+  list(APPEND uv_sources
+       src/unix/no-proctitle.c
+       src/unix/sunos.c
+       src/unix/epoll.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")

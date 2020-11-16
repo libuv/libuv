@@ -65,24 +65,9 @@
 
 
 int uv__platform_loop_init(uv_loop_t* loop) {
-  int err;
-  int fd;
-
   loop->fs_fd = -1;
-  loop->backend_fd = -1;
 
-  fd = port_create();
-  if (fd == -1)
-    return UV__ERR(errno);
-
-  err = uv__cloexec(fd, 1);
-  if (err) {
-    uv__close(fd);
-    return err;
-  }
-  loop->backend_fd = fd;
-
-  return 0;
+  return uv__epoll_init(loop);
 }
 
 
@@ -109,40 +94,6 @@ int uv__io_fork(uv_loop_t* loop) {
   uv__platform_loop_delete(loop);
   return uv__platform_loop_init(loop);
 }
-
-
-void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
-  struct port_event* events;
-  uintptr_t i;
-  uintptr_t nfds;
-
-  assert(loop->watchers != NULL);
-  assert(fd >= 0);
-
-  events = (struct port_event*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
-  if (events == NULL)
-    return;
-
-  /* Invalidate events with same file descriptor */
-  for (i = 0; i < nfds; i++)
-    if ((int) events[i].portev_object == fd)
-      events[i].portev_object = -1;
-}
-
-
-int uv__io_check_fd(uv_loop_t* loop, int fd) {
-  if (port_associate(loop->backend_fd, PORT_SOURCE_FD, fd, POLLIN, 0))
-    return UV__ERR(errno);
-
-  if (port_dissociate(loop->backend_fd, PORT_SOURCE_FD, fd)) {
-    perror("(libuv) port_dissociate()");
-    abort();
-  }
-
-  return 0;
-}
-
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct port_event events[1024];
