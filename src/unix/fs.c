@@ -1420,8 +1420,9 @@ static int uv__fs_statx(int fd,
   case -1:
     /* EPERM happens when a seccomp filter rejects the system call.
      * Has been observed with libseccomp < 2.3.3 and docker < 18.04.
+     * EOPNOTSUPP is used on DVS exported filesystems
      */
-    if (errno != EINVAL && errno != EPERM && errno != ENOSYS)
+    if (errno != EINVAL && errno != EPERM && errno != ENOSYS && errno != EOPNOTSUPP)
       return -1;
     /* Fall through. */
   default:
