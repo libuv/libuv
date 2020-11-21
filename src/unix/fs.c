@@ -58,6 +58,7 @@
 
 #if defined(__linux__) || defined(__sun)
 # include <sys/sendfile.h>
+# include <sys/sysmacros.h>
 #endif
 
 #if defined(__APPLE__)
@@ -1444,12 +1445,12 @@ static int uv__fs_statx(int fd,
     return UV_ENOSYS;
   }
 
-  buf->st_dev = 256 * statxbuf.stx_dev_major + statxbuf.stx_dev_minor;
+  buf->st_dev = makedev(statxbuf.stx_dev_major, statxbuf.stx_dev_minor);
   buf->st_mode = statxbuf.stx_mode;
   buf->st_nlink = statxbuf.stx_nlink;
   buf->st_uid = statxbuf.stx_uid;
   buf->st_gid = statxbuf.stx_gid;
-  buf->st_rdev = statxbuf.stx_rdev_major;
+  buf->st_rdev = makedev(statxbuf.stx_rdev_major, statxbuf.stx_rdev_minor);
   buf->st_ino = statxbuf.stx_ino;
   buf->st_size = statxbuf.stx_size;
   buf->st_blksize = statxbuf.stx_blksize;
