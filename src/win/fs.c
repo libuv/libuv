@@ -918,7 +918,7 @@ void fs__read(uv_fs_t* req) {
     SET_REQ_RESULT(req, bytes);
   } else {
     error = GetLastError();
-    if (error == ERROR_HANDLE_EOF) {
+    if (error == ERROR_HANDLE_EOF || error == ERROR_BROKEN_PIPE) {
       SET_REQ_RESULT(req, bytes);
     } else {
       SET_REQ_WIN32_ERROR(req, error);
