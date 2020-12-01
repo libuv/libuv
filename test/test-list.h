@@ -489,6 +489,7 @@ TEST_DECLARE   (win32_signum_number)
 #else
 TEST_DECLARE   (emfile)
 TEST_DECLARE   (close_fd)
+TEST_DECLARE   (close_rx_fd)
 TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
@@ -980,6 +981,7 @@ TASK_LIST_START
 #else
   TEST_ENTRY  (emfile)
   TEST_ENTRY  (close_fd)
+  TEST_ENTRY  (close_rx_fd)
   TEST_ENTRY  (spawn_fs_open)
   TEST_ENTRY  (spawn_setuid_setgid)
   TEST_ENTRY  (we_get_signal)

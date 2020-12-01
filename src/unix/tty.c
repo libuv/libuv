@@ -219,6 +219,8 @@ skip:
 
   if (mode != O_WRONLY)
     flags |= UV_HANDLE_READABLE;
+  else
+    flags |= UV_HANDLE_READABLE_CLOSED;
   if (mode != O_RDONLY)
     flags |= UV_HANDLE_WRITABLE;
 

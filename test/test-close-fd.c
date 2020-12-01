@@ -26,7 +26,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-static unsigned int read_cb_called;
+static unsigned int read_cb_called, rx_read_cb_called, tx_read_cb_called;
 
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   static char slab[1];
@@ -47,6 +47,31 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   default:
     ASSERT(!"read_cb_called > 2");
   }
+}
+
+static void rx_read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+    switch (++rx_read_cb_called) {
+        case 1:
+            ASSERT(nread == 1);
+            uv_read_stop(handle);
+            uv_close((uv_handle_t *) handle, NULL);
+            break;
+        default:
+            ASSERT(!"rx_read_cb_called > 1");
+    }
+}
+
+static void tx_read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+    switch (++tx_read_cb_called) {
+        case 1:
+            printf("nread = %ld\n", nread);
+            ASSERT(nread == UV_EBADF);
+            uv_read_stop(handle);
+            uv_close((uv_handle_t *) handle, NULL);
+            break;
+        default:
+            ASSERT(!"tx_read_cb_called > 1");
+    }
 }
 
 TEST_IMPL(close_fd) {
@@ -71,6 +96,30 @@ TEST_IMPL(close_fd) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+}
+
+TEST_IMPL(close_rx_fd) {
+    uv_pipe_t rx_handle, tx_handle;
+    int fd[2];
+
+    ASSERT(0 == pipe(fd));
+    ASSERT(0 == uv_pipe_init(uv_default_loop(), &rx_handle, 0));
+    ASSERT(0 == uv_pipe_init(uv_default_loop(), &tx_handle, 0));
+    ASSERT(0 == uv_pipe_open(&rx_handle, fd[0]));
+    fd[0] = -1;  /* uv_pipe_open() takes ownership of the file descriptor. */
+    ASSERT(1 == write(fd[1], "", 1));
+    ASSERT(0 == uv_pipe_open(&tx_handle, fd[1]));
+    fd[1] = -1;  /* uv_pipe_open() takes ownership of the file descriptor. */
+    ASSERT(0 == uv_read_start((uv_stream_t *) &rx_handle, alloc_cb, rx_read_cb));
+    ASSERT(0 == uv_read_start((uv_stream_t *) &tx_handle, alloc_cb, tx_read_cb));
+    ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+    ASSERT(1 == rx_read_cb_called);
+    ASSERT(1 == tx_read_cb_called);
+    ASSERT(0 != uv_is_closing((const uv_handle_t *) &tx_handle));
+    ASSERT(0 != uv_is_closing((const uv_handle_t *) &rx_handle));
+
+    MAKE_VALGRIND_HAPPY();
+    return 0;
 }
 
 #else
