@@ -461,6 +461,7 @@ TEST_DECLARE   (ip6_addr_link_local)
 TEST_DECLARE   (poll_close_doesnt_corrupt_stack)
 TEST_DECLARE   (poll_closesocket)
 TEST_DECLARE   (close_fd)
+TEST_DECLARE   (close_rx_fd)
 TEST_DECLARE   (closed_fd_events)
 TEST_DECLARE   (spawn_fs_open)
 #ifdef _WIN32
@@ -947,6 +948,7 @@ TASK_LIST_START
   TEST_ENTRY  (poll_close_doesnt_corrupt_stack)
   TEST_ENTRY  (poll_closesocket)
   TEST_ENTRY  (close_fd)
+  TEST_ENTRY  (close_rx_fd)
   TEST_ENTRY  (closed_fd_events)
   TEST_ENTRY  (spawn_fs_open)
 #ifdef _WIN32

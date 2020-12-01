@@ -101,6 +101,13 @@ enum {
   /* Used by uv_tcp_t and uv_udp_t handles */
   UV_HANDLE_IPV6                        = 0x00400000,
 
+  /*
+   * Used on write-only streams to enable polling to
+   * detect a closed connection without having to write
+   * anything to the stream.
+   */
+  UV_HANDLE_READABLE_CLOSED             = 0x00800000,
+
   /* Only used by uv_tcp_t handles. */
   UV_HANDLE_TCP_NODELAY                 = 0x01000000,
   UV_HANDLE_TCP_KEEPALIVE               = 0x02000000,
