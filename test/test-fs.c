@@ -673,7 +673,7 @@ static void stat_cb(uv_fs_t* req) {
 static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
   ASSERT(req->fs_type == UV_FS_SENDFILE);
-  ASSERT(req->result == 65546);
+  ASSERT(req->result == 65545);
   sendfile_cb_count++;
   uv_fs_req_cleanup(req);
 }
@@ -1190,6 +1190,8 @@ TEST_IMPL(fs_async_dir) {
 static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   int f, r;
   struct stat s1, s2;
+  uv_fs_t req;
+  char buf1[1];
 
   loop = uv_default_loop();
 
@@ -1219,7 +1221,7 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   uv_fs_req_cleanup(&open_req2);
 
   r = uv_fs_sendfile(loop, &sendfile_req, open_req2.result, open_req1.result,
-      0, 131072, cb);
+      1, 131072, cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
 
@@ -1234,8 +1236,25 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
 
   ASSERT(0 == stat("test_file", &s1));
   ASSERT(0 == stat("test_file2", &s2));
-  ASSERT(s1.st_size == s2.st_size);
   ASSERT(s2.st_size == expected_size);
+
+  if (expected_size > 0) {
+    ASSERT_UINT64_EQ(s1.st_size, s2.st_size + 1);
+    r = uv_fs_open(NULL, &open_req1, "test_file2", O_RDWR, 0, NULL);
+    ASSERT(r >= 0);
+    ASSERT(open_req1.result >= 0);
+    uv_fs_req_cleanup(&open_req1);
+
+    memset(buf1, 0, sizeof(buf1));
+    iov = uv_buf_init(buf1, sizeof(buf1));
+    r = uv_fs_read(NULL, &req, open_req1.result, &iov, 1, -1, NULL);
+    ASSERT(r >= 0);
+    ASSERT(req.result >= 0);
+    ASSERT_EQ(buf1[0], 'e'); /* 'e' from begin */
+    uv_fs_req_cleanup(&req);
+  } else {
+    ASSERT_UINT64_EQ(s1.st_size, s2.st_size);
+  }
 
   /* Cleanup. */
   unlink("test_file");
@@ -1254,7 +1273,7 @@ static void sendfile_setup(int f) {
 
 
 TEST_IMPL(fs_async_sendfile) {
-  return test_sendfile(sendfile_setup, sendfile_cb, 65546);
+  return test_sendfile(sendfile_setup, sendfile_cb, 65545);
 }
 
 

@@ -919,7 +919,7 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
       static int copy_file_range_support = 1;
 
       if (copy_file_range_support) {
-        r = uv__fs_copy_file_range(in_fd, NULL, out_fd, &off, req->bufsml[0].len, 0);
+        r = uv__fs_copy_file_range(in_fd, &off, out_fd, NULL, req->bufsml[0].len, 0);
 
         if (r == -1 && errno == ENOSYS) {
           errno = 0;
