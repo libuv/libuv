@@ -212,7 +212,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
        src/unix/random-sysctl-linux.c)
 endif()
 
-if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux|OS390")
+if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux")
   list(APPEND uv_sources src/unix/proctitle.c)
 endif()
 
@@ -286,7 +286,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   list(APPEND uv_sources
        src/unix/pthread-fixes.c
        src/unix/os390.c
-       src/unix/os390-syscalls.c)
+       src/unix/os390-syscalls.c
+       src/unix/os390-proctitle.c)
   list(APPEND uv_cflags
        -q64
        -qascii
