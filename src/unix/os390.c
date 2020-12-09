@@ -28,6 +28,7 @@
 #include <builtins.h>
 #include <termios.h>
 #include <sys/msg.h>
+#include <sys/resource.h>
 #include "zos-base.h"
 #if defined(__clang__)
 #include "csrsic.h"
@@ -199,7 +200,13 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  struct rlimit rl;
+
+  /* RLIMIT_MEMLIMIT return value is in megabytes rather than bytes. */
+  if (getrlimit(RLIMIT_MEMLIMIT, &rl) == 0)
+    return rl.rlim_cur * 1024 * 1024;
+
+  return 0; /* There is no memory limit set. */
 }
 
 
