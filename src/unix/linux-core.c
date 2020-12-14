@@ -633,7 +633,7 @@ int uv_uptime(double* uptime) {
   struct timespec now;
   int r;
 
-  // Try /proc/uptime first, then fallback to the previous implementation
+  /* Try /proc/uptime first, then fallback to clock_gettime(). */
   
   if (0 == uv__slurp("/proc/uptime", buf, sizeof(buf)) ) {
     if (1 == sscanf(buf, "%lf", uptime) ) {
