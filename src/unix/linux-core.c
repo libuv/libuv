@@ -635,11 +635,9 @@ int uv_uptime(double* uptime) {
 
   /* Try /proc/uptime first, then fallback to clock_gettime(). */
   
-  if (0 == uv__slurp("/proc/uptime", buf, sizeof(buf)) ) {
-    if (1 == sscanf(buf, "%lf", uptime) ) {
+  if (0 == uv__slurp("/proc/uptime", buf, sizeof(buf)))
+    if (1 == sscanf(buf, "%f", uptime))
       return 0;
-    }
-  }
 
   /* Try CLOCK_BOOTTIME first, fall back to CLOCK_MONOTONIC if not available
    * (pre-2.6.39 kernels). CLOCK_MONOTONIC doesn't increase when the system
