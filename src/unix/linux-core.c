@@ -656,7 +656,6 @@ int uv_uptime(double* uptime) {
 
   *uptime = now.tv_sec;
   return 0;
-  
 }
 
 
