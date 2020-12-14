@@ -909,8 +909,12 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
         r = uv__fs_copy_file_range(in_fd, NULL, out_fd, &off, req->bufsml[0].len, 0);
 
         if (r == -1 && errno == ENOSYS) {
+          /* ENOSYS - it will never work */
           errno = 0;
           copy_file_range_support = 0;
+        } else if (r == -1 && errno == ENOTSUP) {
+          /* ENOTSUP - it could work on another file system type */
+          errno = 0;
         } else {
           goto ok;
         }
