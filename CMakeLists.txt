@@ -155,9 +155,13 @@ if(WIN32)
   list(APPEND uv_test_libraries ws2_32)
   list(APPEND uv_test_sources src/win/snprintf.c test/runner-win.c)
 else()
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+
+  try_compile(WITH_FILE_OFFSET_BITS_64 ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/test/check-file-offset-bits.c COMPILE_DEFINITIONS -D_FILE_OFFSET_BITS=64)
+
+  if(WITH_FILE_OFFSET_BITS_64)
     list(APPEND uv_defines _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
   endif()
+
   if(NOT CMAKE_SYSTEM_NAME MATCHES "Android|OS390|QNX")
     # TODO: This should be replaced with find_package(Threads) if possible
     # Android has pthread as part of its c library, not as a separate
