@@ -34,9 +34,13 @@ uv_src = []
 # Neither AIX, nor OS390, nor OS400 nor QNX
 
 if target == 'windows'
-  if cc.get_id() == 'msvc' and get_option('default_library') == 'shared'
-    uv_dep_cargs += '-DUSING_UV_SHARED'
-    uv_lib_cargs += '-DBUILDING_UV_SHARED'
+  if cc.get_id() == 'msvc'
+    default_library = get_option('default_library')
+    assert(default_library != 'both', 'With MSVC, either static or shared')
+    if default_library == 'shared'
+      uv_dep_cargs += '-DUSING_UV_SHARED'
+      uv_lib_cargs += '-DBUILDING_UV_SHARED'
+    endif
   endif
   uv_lib_cargs += ['-DWIN32_LEAN_AND_MEAN', '-D_WIN32_WINNT=0x0600']
   # Are AdvAPI32 and User32 required?
