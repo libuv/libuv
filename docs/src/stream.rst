@@ -145,6 +145,9 @@ API
     no longer be called.
 
     This function is idempotent and may be safely called on a stopped stream.
+    
+    On most platforms, this function will always succeed; hence, checking its
+    return value is unnecessary.
 
 .. c:function:: int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb)
 
