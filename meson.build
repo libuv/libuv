@@ -67,6 +67,7 @@ elif target == 'haiku'
   uv_lib_cargs += '-D_BSD_SOURCE'
   uv_deps += [dependency('bsd'), dependency('network')]
 elif target == 'linux'
+  uv_dep_cargs += ['-D_POSIX_C_SOURCE=200112UL']
   uv_lib_cargs += ['-D_GNU_SOURCE', '-D_POSIX_C_SOURCE=200112UL']
   uv_deps += [
     cc.find_library('dl', required: false),
@@ -220,6 +221,7 @@ pc.generate(uv_lib,
   name: 'libuv',
 )
 
+uv_test_cargs = []
 uv_test_deps = [uv_dep]
 uv_test_src = files(
   'test/blackhole-server.c',
@@ -394,6 +396,9 @@ else
   if target != 'android'
     uv_test_deps += dependency('threads')
   endif
+  if target == 'linux'
+    uv_test_cargs += '-D_GNU_SOURCE'
+  endif
   if target in 'darwin dragonfly freebsd linux netbsd openbsd'.split()
     uv_test_deps += cc.find_library('util')
   endif
@@ -401,7 +406,7 @@ else
 endif
 
 uv_test = executable('uv_test', uv_test_src,
-  c_args: uv_lib_cargs,
+  c_args: uv_test_cargs,
   dependencies: uv_test_deps,
 )
 
