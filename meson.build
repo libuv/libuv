@@ -21,12 +21,13 @@ add_project_arguments(cc.get_supported_arguments([
   '-Wno-error=declaration-after-statement', # FIXME
 ]), language: 'c')
 
-uv_dep_args = []
-uv_lib_args = [
+uv_dep_cargs = []
+uv_lib_cargs = [
   # https://github.com/libuv/libuv/commit/cbcd0cfc2
   cc.get_supported_arguments('-fno-strict-aliasing'),
   cc.get_supported_arguments('-fvisibility=hidden'),
 ]
+uv_lib_largs = []
 uv_deps = []
 uv_src = []
 
@@ -34,10 +35,10 @@ uv_src = []
 
 if target == 'windows'
   if cc.get_id() == 'msvc' and get_option('default_library') == 'shared'
-    uv_dep_args += '-DUSING_UV_SHARED'
-    uv_lib_args += '-DBUILDING_UV_SHARED'
+    uv_dep_cargs += '-DUSING_UV_SHARED'
+    uv_lib_cargs += '-DBUILDING_UV_SHARED'
   endif
-  uv_lib_args += ['-DWIN32_LEAN_AND_MEAN', '-D_WIN32_WINNT=0x0600']
+  uv_lib_cargs += ['-DWIN32_LEAN_AND_MEAN', '-D_WIN32_WINNT=0x0600']
   # Are AdvAPI32 and User32 required?
   uv_deps += [
     cc.find_library('Psapi'),
@@ -46,12 +47,23 @@ if target == 'windows'
     cc.find_library('iphlpapi'),
   ]
 elif target == 'darwin'
-  uv_lib_args += ['-D_DARWIN_UNLIMITED_SELECT=1', '-D_DARWIN_USE_64_BIT_INODE=1']
+  uv_lib_cargs += ['-D_DARWIN_UNLIMITED_SELECT=1', '-D_DARWIN_USE_64_BIT_INODE=1']
+elif target == 'freebsd'
+  # ld: error: undefined symbol: environ
+  # See https://gitlab.gnome.org/GNOME/glib/-/merge_requests/1306#note_677553
+  #  The reason that environ can't be found is that it doesn't exist in
+  #  libc.so.7. Instead, environ is defined in crt1.o, which is only pulled in
+  #  when linking an executable. This is not a new problem. You can see the same
+  #  problem in an old bug report: https://bugs.webkit.org/show_bug.cgi?id=138420
+  larg = '-Wl,--warn-unresolved-symbols'
+  if get_option('default_library') != 'static' and cc.has_link_argument(larg)
+    uv_lib_largs += larg
+  endif
 elif target == 'haiku'
-  uv_lib_args += '-D_BSD_SOURCE'
+  uv_lib_cargs += '-D_BSD_SOURCE'
   uv_deps += [dependency('bsd'), dependency('network')]
 elif target == 'linux'
-  uv_lib_args += ['-D_GNU_SOURCE', '-D_POSIX_C_SOURCE=200112UL']
+  uv_lib_cargs += ['-D_GNU_SOURCE', '-D_POSIX_C_SOURCE=200112UL']
   uv_deps += [
     cc.find_library('dl', required: false),
     cc.find_library('m', required: false),
@@ -59,7 +71,7 @@ elif target == 'linux'
 elif target == 'netbsd'
   uv_deps += dependency('kvm')
 elif target == 'sunos'
-  uv_lib_args += ['-D_XOPEN_SOURCE=500', '-D__EXTENSIONS__']
+  uv_lib_cargs += ['-D_XOPEN_SOURCE=500', '-D__EXTENSIONS__']
   uv_deps += [
     dependency('kstat'),
     dependency('nsl'),
@@ -176,14 +188,15 @@ message(uv_src)
 uv_src = files(uv_src)
 
 uv_lib = library('uv', uv_src,
-  c_args: uv_lib_args,
+  c_args: uv_lib_cargs,
   dependencies: uv_deps,
   include_directories: include_directories('include', 'src'),
+  link_args: uv_lib_largs,
   version: meson.project_version().split('-')[0],
 )
 
 uv_dep = declare_dependency(
-  compile_args: uv_dep_args,
+  compile_args: uv_dep_cargs,
   include_directories: include_directories('include'),
   link_with: uv_lib,
 )
@@ -197,7 +210,7 @@ install_subdir('include', install_dir: 'include', strip_directory: true)
 pc = import('pkgconfig')
 pc.generate(uv_lib,
   description: 'Cross-platform asynchronous I/O',
-  extra_cflags: uv_dep_args,
+  extra_cflags: uv_dep_cargs,
   url: 'https://libuv.org',
   # This is WRONG! It should simply by “uv”
   name: 'libuv',
@@ -384,7 +397,7 @@ else
 endif
 
 uv_test = executable('uv_test', uv_test_src,
-  c_args: uv_lib_args,
+  c_args: uv_lib_cargs,
   dependencies: uv_test_deps,
 )
 
