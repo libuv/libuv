@@ -1281,7 +1281,7 @@ int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
   } else {
     handle->flags &= ~UV_HANDLE_TCP_KEEPALIVE;
   }
-
+  /* TODO: Store delay if handle->socket isn't created yet. */
   return 0;
 }
 
