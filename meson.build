@@ -52,7 +52,7 @@ if target == 'windows'
   ]
 elif target == 'darwin'
   uv_lib_cargs += ['-D_DARWIN_UNLIMITED_SELECT=1', '-D_DARWIN_USE_64_BIT_INODE=1']
-elif target == 'freebsd'
+elif target == 'dragonfly' or target == 'freebsd'
   # ld: error: undefined symbol: environ
   # See https://gitlab.gnome.org/GNOME/glib/-/merge_requests/1306#note_677553
   #  The reason that environ can't be found is that it doesn't exist in
