@@ -453,6 +453,7 @@ TEST_DECLARE   (poll_nested_epoll)
 #ifdef UV_HAVE_KQUEUE
 TEST_DECLARE   (poll_nested_kqueue)
 #endif
+TEST_DECLARE   (poll_multiple_handles)
 
 TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
@@ -903,6 +904,7 @@ TASK_LIST_START
 #ifdef UV_HAVE_KQUEUE
   TEST_ENTRY  (poll_nested_kqueue)
 #endif
+  TEST_ENTRY  (poll_multiple_handles)
 
   TEST_ENTRY  (socket_buffer_size)
 

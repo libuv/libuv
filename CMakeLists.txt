@@ -475,6 +475,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-poll-close-doesnt-corrupt-stack.c
        test/test-poll-close.c
        test/test-poll-closesocket.c
+       test/test-poll-multiple-handles.c
        test/test-poll-oob.c
        test/test-poll.c
        test/test-process-priority.c
