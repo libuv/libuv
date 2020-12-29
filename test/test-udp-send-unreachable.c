@@ -58,7 +58,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void send_cb(uv_udp_send_t* req, int status) {
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
   send_cb_called++;
@@ -77,9 +77,9 @@ static void recv_cb(uv_udp_t* handle,
     ASSERT(0 && "unexpected error");
   } else if (nread == 0) {
     /* Returning unused buffer */
-    ASSERT(addr == NULL);
+    ASSERT_NULL(addr);
   } else {
-    ASSERT(addr != NULL);
+    ASSERT_NOT_NULL(addr);
   }
 }
 

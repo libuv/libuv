@@ -113,7 +113,7 @@ static void after_read(uv_stream_t* handle,
   }
 
   wr = (write_req_t*) malloc(sizeof *wr);
-  ASSERT(wr != NULL);
+  ASSERT_NOT_NULL(wr);
   wr->buf = uv_buf_init(buf->base, nread);
 
   if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
@@ -155,14 +155,14 @@ static void on_connection(uv_stream_t* server, int status) {
   switch (serverType) {
   case TCP:
     stream = malloc(sizeof(uv_tcp_t));
-    ASSERT(stream != NULL);
+    ASSERT_NOT_NULL(stream);
     r = uv_tcp_init(loop, (uv_tcp_t*)stream);
     ASSERT(r == 0);
     break;
 
   case PIPE:
     stream = malloc(sizeof(uv_pipe_t));
-    ASSERT(stream != NULL);
+    ASSERT_NOT_NULL(stream);
     r = uv_pipe_init(loop, (uv_pipe_t*)stream, 0);
     ASSERT(r == 0);
     break;
@@ -197,7 +197,7 @@ static uv_udp_send_t* send_alloc(void) {
 }
 
 static void on_send(uv_udp_send_t* req, int status) {
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   ASSERT(status == 0);
   req->data = send_freelist;
   send_freelist = req;
@@ -220,7 +220,7 @@ static void on_recv(uv_udp_t* handle,
   ASSERT(addr->sa_family == AF_INET);
 
   req = send_alloc();
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   sndbuf = uv_buf_init(rcvbuf->base, nread);
   ASSERT(0 <= uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
 }
