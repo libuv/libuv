@@ -77,7 +77,7 @@ static void empty_opendir_cb(uv_fs_t* req) {
   ASSERT(req == &opendir_req);
   ASSERT(req->fs_type == UV_FS_OPENDIR);
   ASSERT(req->result == 0);
-  ASSERT(req->ptr != NULL);
+  ASSERT_NOT_NULL(req->ptr);
   dir = req->ptr;
   dir->dirents = dirents;
   dir->nentries = ARRAY_SIZE(dirents);
@@ -171,7 +171,7 @@ static void non_existing_opendir_cb(uv_fs_t* req) {
   ASSERT(req == &opendir_req);
   ASSERT(req->fs_type == UV_FS_OPENDIR);
   ASSERT(req->result == UV_ENOENT);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
 
   uv_fs_req_cleanup(req);
   ++non_existing_opendir_cb_count;
@@ -223,7 +223,7 @@ static void file_opendir_cb(uv_fs_t* req) {
   ASSERT(req == &opendir_req);
   ASSERT(req->fs_type == UV_FS_OPENDIR);
   ASSERT(req->result == UV_ENOTDIR);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
 
   uv_fs_req_cleanup(req);
   ++file_opendir_cb_count;
@@ -329,7 +329,7 @@ static void non_empty_opendir_cb(uv_fs_t* req) {
   ASSERT(req == &opendir_req);
   ASSERT(req->fs_type == UV_FS_OPENDIR);
   ASSERT(req->result == 0);
-  ASSERT(req->ptr != NULL);
+  ASSERT_NOT_NULL(req->ptr);
 
   dir = req->ptr;
   dir->dirents = dirents;

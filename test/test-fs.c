@@ -343,7 +343,7 @@ static void statfs_cb(uv_fs_t* req) {
 
   ASSERT(req->fs_type == UV_FS_STATFS);
   ASSERT(req->result == 0);
-  ASSERT(req->ptr != NULL);
+  ASSERT_NOT_NULL(req->ptr);
   stats = req->ptr;
 
 #if defined(_WIN32) || defined(__sun) || defined(_AIX) || defined(__MVS__) || \
@@ -366,7 +366,7 @@ static void statfs_cb(uv_fs_t* req) {
   ASSERT(stats->f_ffree <= stats->f_files);
 #endif
   uv_fs_req_cleanup(req);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   statfs_cb_count++;
 }
 
@@ -630,7 +630,7 @@ static void empty_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
   ASSERT(req->fs_type == UV_FS_SCANDIR);
   ASSERT(req->result == 0);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   ASSERT(UV_EOF == uv_fs_scandir_next(req, &dent));
   uv_fs_req_cleanup(req);
   scandir_cb_count++;
@@ -642,7 +642,7 @@ static void non_existent_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
   ASSERT(req->fs_type == UV_FS_SCANDIR);
   ASSERT(req->result == UV_ENOENT);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   ASSERT(UV_ENOENT == uv_fs_scandir_next(req, &dent));
   uv_fs_req_cleanup(req);
   scandir_cb_count++;
@@ -653,7 +653,7 @@ static void file_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
   ASSERT(req->fs_type == UV_FS_SCANDIR);
   ASSERT(req->result == UV_ENOTDIR);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   uv_fs_req_cleanup(req);
   scandir_cb_count++;
 }

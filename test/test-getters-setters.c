@@ -34,7 +34,7 @@ TEST_IMPL(handle_type_name) {
   ASSERT(strcmp(uv_handle_type_name(UV_UDP), "udp") == 0);
   ASSERT(strcmp(uv_handle_type_name(UV_FILE), "file") == 0);
   ASSERT_NULL(uv_handle_type_name(UV_HANDLE_TYPE_MAX));
-  ASSERT(uv_handle_type_name(UV_HANDLE_TYPE_MAX + 1) == NULL);
+  ASSERT_NULL(uv_handle_type_name(UV_HANDLE_TYPE_MAX + 1));
   ASSERT_NULL(uv_handle_type_name(UV_UNKNOWN_HANDLE));
   return 0;
 }
@@ -45,7 +45,7 @@ TEST_IMPL(req_type_name) {
   ASSERT(strcmp(uv_req_type_name(UV_UDP_SEND), "udp_send") == 0);
   ASSERT(strcmp(uv_req_type_name(UV_WORK), "work") == 0);
   ASSERT_NULL(uv_req_type_name(UV_REQ_TYPE_MAX));
-  ASSERT(uv_req_type_name(UV_REQ_TYPE_MAX + 1) == NULL);
+  ASSERT_NULL(uv_req_type_name(UV_REQ_TYPE_MAX + 1));
   ASSERT_NULL(uv_req_type_name(UV_UNKNOWN_REQ));
   return 0;
 }
