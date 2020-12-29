@@ -39,6 +39,7 @@ wait for it to close using ``uv_thread_join()``.
 
 .. rubric:: thread-create/main.c
 .. literalinclude:: ../../code/thread-create/main.c
+    :language: c
     :linenos:
     :lines: 26-36
     :emphasize-lines: 3-7
@@ -55,6 +56,7 @@ thread, scheduled pre-emptively by the operating system:
 
 .. rubric:: thread-create/main.c
 .. literalinclude:: ../../code/thread-create/main.c
+    :language: c
     :linenos:
     :lines: 6-14
     :emphasize-lines: 2
@@ -124,6 +126,7 @@ example.
 
 .. rubric:: locks/main.c - simple rwlocks
 .. literalinclude:: ../../code/locks/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 13,16,27,31,42,55
 
@@ -208,6 +211,7 @@ event loop from performing other activities.
 
 .. rubric:: queue-work/main.c - lazy fibonacci
 .. literalinclude:: ../../code/queue-work/main.c
+    :language: c
     :linenos:
     :lines: 17-29
 
@@ -221,6 +225,7 @@ The trigger is ``uv_queue_work``:
 
 .. rubric:: queue-work/main.c
 .. literalinclude:: ../../code/queue-work/main.c
+    :language: c
     :linenos:
     :lines: 31-44
     :emphasize-lines: 10
@@ -248,6 +253,7 @@ up a signal handler for termination.
 
 .. rubric:: queue-cancel/main.c
 .. literalinclude:: ../../code/queue-cancel/main.c
+    :language: c
     :linenos:
     :lines: 43-
 
@@ -256,6 +262,7 @@ When the user triggers the signal by pressing ``Ctrl+C`` we send
 
 .. rubric:: queue-cancel/main.c
 .. literalinclude:: ../../code/queue-cancel/main.c
+    :language: c
     :linenos:
     :lines: 33-41
     :emphasize-lines: 6
@@ -265,6 +272,7 @@ with ``status`` set to ``UV_ECANCELED``.
 
 .. rubric:: queue-cancel/main.c
 .. literalinclude:: ../../code/queue-cancel/main.c
+    :language: c
     :linenos:
     :lines: 28-31
     :emphasize-lines: 2
@@ -292,6 +300,7 @@ informing the user of the status of running downloads.
 
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
+    :language: c
     :linenos:
     :lines: 7-8,35-
     :emphasize-lines: 2,11
@@ -317,6 +326,7 @@ with the async watcher whenever it receives a message.
 
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
+    :language: c
     :linenos:
     :lines: 10-24
     :emphasize-lines: 7-8
@@ -327,6 +337,7 @@ non-blocking and will return immediately.
 
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
+    :language: c
     :linenos:
     :lines: 31-34
 
@@ -336,6 +347,7 @@ Finally it is important to remember to clean up the watcher.
 
 .. rubric:: progress/main.c
 .. literalinclude:: ../../code/progress/main.c
+    :language: c
     :linenos:
     :lines: 26-29
     :emphasize-lines: 3
