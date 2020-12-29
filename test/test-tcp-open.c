@@ -96,7 +96,7 @@ static void alloc_cb(uv_handle_t* handle,
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle != NULL);
+  ASSERT_NOT_NULL(handle);
   close_cb_called++;
 }
 
@@ -111,7 +111,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 
 
 static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT(tcp != NULL);
+  ASSERT_NOT_NULL(tcp);
 
   if (nread >= 0) {
     ASSERT(nread == 4);
@@ -126,7 +126,7 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
 static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   int i;
-  ASSERT(tcp != NULL);
+  ASSERT_NOT_NULL(tcp);
 
   if (nread >= 0) {
     for (i = 0; i < nread; ++i)
@@ -140,7 +140,7 @@ static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
 
   if (status) {
     fprintf(stderr, "uv_write error: %s\n", uv_strerror(status));
@@ -155,7 +155,7 @@ static void write1_cb(uv_write_t* req, int status) {
   uv_buf_t buf;
   int r;
 
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   if (status) {
     ASSERT(shutdown_cb_called);
     return;

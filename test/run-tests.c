@@ -198,7 +198,7 @@ static int maybe_run_test(int argc, char **argv) {
 
     /* Test if the test value from the parent is still set */
     test = getenv("ENV_TEST");
-    ASSERT(test != NULL);
+    ASSERT_NOT_NULL(test);
 
     r = fprintf(stdout, "%s", test);
     ASSERT(r > 0);
