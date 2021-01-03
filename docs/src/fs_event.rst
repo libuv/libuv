@@ -83,7 +83,12 @@ Data types
             * (is ignoring) changes in its subdirectories.
             * This flag will override this behaviour on platforms that support it.
             */
-            UV_FS_EVENT_RECURSIVE = 4
+            UV_FS_EVENT_RECURSIVE = 4,
+            /*
+            * By default, changes to the last access timestamp are reported.
+            * This flag makes fs_event ignore such changes.
+            */
+            UV_FS_EVENT_IGNORE_LAST_ACCESS = 8,
         };
 
 

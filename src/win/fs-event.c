@@ -49,7 +49,7 @@ static void uv_fs_event_queue_readdirchanges(uv_loop_t* loop,
                                FILE_NOTIFY_CHANGE_ATTRIBUTES   |
                                FILE_NOTIFY_CHANGE_SIZE         |
                                FILE_NOTIFY_CHANGE_LAST_WRITE   |
-                               FILE_NOTIFY_CHANGE_LAST_ACCESS  |
+                               ((handle->flags & UV_FS_EVENT_IGNORE_LAST_ACCESS) ? 0 : FILE_NOTIFY_CHANGE_LAST_ACCESS) |
                                FILE_NOTIFY_CHANGE_CREATION     |
                                FILE_NOTIFY_CHANGE_SECURITY,
                              NULL,
@@ -317,7 +317,7 @@ short_path_done:
                                FILE_NOTIFY_CHANGE_ATTRIBUTES   |
                                FILE_NOTIFY_CHANGE_SIZE         |
                                FILE_NOTIFY_CHANGE_LAST_WRITE   |
-                               FILE_NOTIFY_CHANGE_LAST_ACCESS  |
+                               ((handle->flags & UV_FS_EVENT_IGNORE_LAST_ACCESS) ? 0 : FILE_NOTIFY_CHANGE_LAST_ACCESS) |
                                FILE_NOTIFY_CHANGE_CREATION     |
                                FILE_NOTIFY_CHANGE_SECURITY,
                              NULL,

@@ -297,12 +297,14 @@ argument, ``flags``, can be:
     enum uv_fs_event_flags {
         UV_FS_EVENT_WATCH_ENTRY = 1,
         UV_FS_EVENT_STAT = 2,
-        UV_FS_EVENT_RECURSIVE = 4
+        UV_FS_EVENT_RECURSIVE = 4,
+        UV_FS_EVENT_IGNORE_LAST_ACCESS = 8,
     };
 
 ``UV_FS_EVENT_WATCH_ENTRY`` and ``UV_FS_EVENT_STAT`` don't do anything (yet).
 ``UV_FS_EVENT_RECURSIVE`` will start watching subdirectories as well on
-supported platforms.
+supported platforms. ``UV_FS_EVENT_IGNORE_LAST_ACCESS`` ignores changes to the
+last access timestamp.
 
 The callback will receive the following arguments:
 
