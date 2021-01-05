@@ -308,6 +308,13 @@ describes the package in more detail.
 
 ### z/OS Notes
 
+z/OS compilation requires [ZOSLIB](https://github.com/ibmruntimes/zoslib) to be installed. When building with [CMake][], use the flag `-DZOSLIB_DIR` to specify the path to [ZOSLIB](https://github.com/ibmruntimes/zoslib):
+
+```bash
+$ (cd build && cmake .. -DBUILD_TESTING=ON -DZOSLIB_DIR=/path/to/zoslib)
+$ cmake --build build
+```
+
 z/OS creates System V semaphores and message queues. These persist on the system
 after the process terminates unless the event loop is closed.
 
