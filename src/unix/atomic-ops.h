@@ -36,6 +36,19 @@ UV_UNUSED(static int cmpxchgi(int* ptr, int oldval, int newval)) {
                         : "r" (newval), "0" (oldval)
                         : "memory");
   return out;
+#elif defined(__aarch64__)
+  int tmpa, tmpb;
+  __asm__ volatile(
+	"1:mov %w0, #0\n"
+	"ldaxr %w1, %2\n"
+	"cmp %w1, %w3\n"
+	"b.ne 2f\n"
+	"stlxr %w0, %w4, %2\n"
+	"cbnz %w0, 1b\n"
+	"2:\n"
+	: "=&r"(tmpa), "=&r"(tmpb), "+Q"(*(volatile int *)ptr)
+	: "r"(oldval), "r"(newval) : "memory", "cc");
+  return *(int *)ptr;
 #elif defined(__MVS__)
   unsigned int op4;
   if (__plo_CSST(ptr, (unsigned int*) &oldval, newval,
