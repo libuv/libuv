@@ -1148,6 +1148,16 @@ done:
   return r;
 }
 
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+static int (*uv__clonefile)(const char*, const char*, int);
+
+static void uv__clonefile_initonce(void) {
+  uv__clonefile =
+      (int (*)(const char*, const char*, int)) dlsym(RTLD_DEFAULT, "clonefile");
+  dlerror();
+}
+#endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
+
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_t fs_req;
   uv_file srcfd;
@@ -1161,6 +1171,39 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   off_t in_offset;
   off_t bytes_written;
   size_t bytes_chunk;
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  static uv_once_t once = UV_ONCE_INIT;
+  int tries;
+
+  if (req->flags & UV_FS_COPYFILE_FICLONE ||
+      req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+    uv_once(&once, uv__clonefile_initonce);
+
+    if (uv__clonefile == NULL) {
+      if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
+        return UV_ENOSYS;
+    } else {
+      for (tries = 0; tries < 2; tries++) {
+        if (uv__clonefile(req->path, req->new_path, 0) == 0)
+          return 0;
+
+        if (errno == ENOTSUP) {
+          if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
+            return UV_ENOSYS;
+          break;
+        }
+
+        /* clonefile() fails with EEXIST if the destination exists. If the file
+           is not being opened exclusively, try unlinking and attempting the
+           clone operation again.
+        */
+        if (errno == EEXIST && (req->flags & UV_FS_COPYFILE_EXCL) == 0)
+          unlink(req->new_path);
+      }
+    }
+  }
+#endif
 
   dstfd = -1;
   err = 0;
