@@ -143,4 +143,4 @@ API
 
     Equivalent to :man:`socketpair(2)` with a domain of AF_UNIX.
 
-    .. versionadded:: 1.x.0
+    .. versionadded:: 1.41.0
