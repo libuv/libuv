@@ -83,10 +83,10 @@ TEST_IMPL(poll_multiple_handles) {
   /* Closing an already stopped polling handle is safe in any case */
   uv_close((uv_handle_t*) &first_poll_handle, close_cb);
 
-  uv_unref(&second_poll_handle);
+  uv_unref((uv_handle_t*) &second_poll_handle);
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(close_cb_called == 1);
-  uv_ref(&second_poll_handle);
+  uv_ref((uv_handle_t*) &second_poll_handle);
 
   ASSERT(uv_is_active((uv_handle_t*) &second_poll_handle));
   uv_close((uv_handle_t*) &second_poll_handle, close_cb);
