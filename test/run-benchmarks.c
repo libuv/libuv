@@ -54,8 +54,6 @@ int main(int argc, char **argv) {
     fflush(stderr);
     return EXIT_FAILURE;
   }
-
-  return EXIT_SUCCESS;
 }
 
 
