@@ -117,6 +117,28 @@ static void touch_file(const char* name) {
   uv_fs_req_cleanup(&req);
 }
 
+static void access_file(const char* name) {
+  int r;
+  uv_file file;
+  uv_fs_t req;
+  uv_buf_t iov;
+
+  r = uv_fs_open(NULL, &req, name, O_RDONLY, 0, NULL);
+  ASSERT(r >= 0);
+  file = r;
+  uv_fs_req_cleanup(&req);
+
+  char buf[4];
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(NULL, &req, file, &iov, sizeof(buf), 0, NULL);
+  ASSERT(r >= 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT(r == 0);
+  uv_fs_req_cleanup(&req);
+}
+
 static void close_cb(uv_handle_t* handle) {
   ASSERT(handle != NULL);
   close_cb_called++;
@@ -334,6 +356,11 @@ static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   uv_close((uv_handle_t*)handle, close_cb);
 }
 
+static void fs_event_cb_ignore_last_access(uv_fs_event_t* handle, const char* filename,
+  int events, int status) {
+  ++fs_event_cb_called;
+}
+
 static void timer_cb_close_handle(uv_timer_t* timer) {
   uv_handle_t* handle;
 
@@ -404,6 +431,21 @@ static void timer_cb_watch_twice(uv_timer_t* handle) {
   uv_close((uv_handle_t*) (handles + 0), NULL);
   uv_close((uv_handle_t*) (handles + 1), NULL);
   uv_close((uv_handle_t*) handle, NULL);
+}
+
+static void timer_cb_ignore_last_access(uv_timer_t* handle) {
+  int r;
+
+  if (timer_cb_called == 0) {
+    access_file("ignore_last_access");
+  } else {
+    uv_close((uv_handle_t*)handle, NULL);
+    r = uv_fs_event_stop(&fs_event);
+    ASSERT(r == 0);
+    uv_close((uv_handle_t*) &fs_event, NULL);
+  }
+
+  ++timer_cb_called;
 }
 
 static void fs_event_cb_close(uv_fs_event_t* handle,
@@ -851,6 +893,37 @@ TEST_IMPL(fs_event_no_callback_on_close) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+#ifdef _WIN32
+TEST_IMPL(fs_event_ignore_last_access) {
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+
+  /* Setup */
+  remove("ignore_last_access");
+  create_file("ignore_last_access");
+  touch_file("ignore_last_access");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_ignore_last_access, "ignore_last_access", UV_FS_EVENT_IGNORE_LAST_ACCESS);
+  ASSERT(r == 0);
+  r = uv_timer_init(loop, &timer);
+  ASSERT(r == 0);
+  r = uv_timer_start(&timer, timer_cb_ignore_last_access, 100, 100);
+  ASSERT(r == 0);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(fs_event_cb_called == 0);
+
+  /* Cleanup */
+  remove("ignore_last_access");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+#endif
 
 
 static void timer_cb(uv_timer_t* handle) {

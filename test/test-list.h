@@ -389,6 +389,9 @@ TEST_DECLARE   (fs_event_close_in_callback)
 TEST_DECLARE   (fs_event_start_and_close)
 TEST_DECLARE   (fs_event_error_reporting)
 TEST_DECLARE   (fs_event_getpath)
+#ifdef _WIN32
+TEST_DECLARE   (fs_event_ignore_last_access)
+#endif
 TEST_DECLARE   (fs_scandir_empty_dir)
 TEST_DECLARE   (fs_scandir_non_existent_dir)
 TEST_DECLARE   (fs_scandir_file)
@@ -1041,6 +1044,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_start_and_close)
   TEST_ENTRY_CUSTOM (fs_event_error_reporting, 0, 0, 60000)
   TEST_ENTRY  (fs_event_getpath)
+#ifdef _WIN32
+  TEST_ENTRY  (fs_event_ignore_last_access)
+#endif
   TEST_ENTRY  (fs_scandir_empty_dir)
   TEST_ENTRY  (fs_scandir_non_existent_dir)
   TEST_ENTRY  (fs_scandir_file)
