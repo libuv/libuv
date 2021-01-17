@@ -539,6 +539,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-pipe-bind-error.c
        test/test-pipe-close-stdout-read-stdin.c
        test/test-pipe-connect-error.c
+       test/test-pipe-connect2.c
        test/test-pipe-connect-multiple.c
        test/test-pipe-connect-prepare.c
        test/test-pipe-getsockname.c

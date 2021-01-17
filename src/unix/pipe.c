@@ -39,10 +39,23 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   return 0;
 }
 
+int uv__pipe_bind(uv_pipe_t* handle, const char* name,
+                  size_t namelen, int flags);
+
+int uv_pipe_bind2(uv_pipe_t* handle, const char* name,
+                  size_t namelen, int flags) {
+  return uv__pipe_bind(handle, name, namelen, flags);
+}
 
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
+  return uv__pipe_bind(handle, name, strlen(name), 0);
+}
+
+int uv__pipe_bind(uv_pipe_t* handle, const char* name,
+                  size_t namelen, int flags) {
   struct sockaddr_un saddr;
-  const char* pipe_fname;
+  socklen_t saddr_len;
+  char *pipe_fname;
   int sockfd;
   int err;
 
@@ -54,10 +67,21 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   if (uv__is_closing(handle)) {
     return UV_EINVAL;
   }
+  /* no flags defined yet, so passing any is an error */
+  if (flags != 0)
+    return UV_EINVAL;
+
+  if (namelen + 1 > sizeof(saddr.sun_path)) {
+    return UV_EINVAL;
+  }
+
   /* Make a copy of the file name, it outlives this function's scope. */
-  pipe_fname = uv__strdup(name);
+  size_t len = namelen + 1;
+  pipe_fname = uv__malloc(len);
   if (pipe_fname == NULL)
     return UV_ENOMEM;
+  memcpy(pipe_fname, name, namelen);
+  pipe_fname[namelen] = '\0';
 
   /* We've got a copy, don't touch the original any more. */
   name = NULL;
@@ -68,10 +92,19 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   sockfd = err;
 
   memset(&saddr, 0, sizeof saddr);
-  uv__strscpy(saddr.sun_path, pipe_fname, sizeof(saddr.sun_path));
+  memcpy(saddr.sun_path, pipe_fname, len);
   saddr.sun_family = AF_UNIX;
+#if defined(__linux__)
+  if (namelen > 0) {
+#endif
+    saddr_len = sizeof saddr;
+#if defined(__linux__)
+  } else {
+    saddr_len = sizeof(sa_family_t);
+  }
+#endif
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
+  if (bind(sockfd, (struct sockaddr*)&saddr, saddr_len)) {
     err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
@@ -80,6 +113,20 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     uv__close(sockfd);
     goto err_socket;
   }
+
+#if defined(__linux__)
+  if (namelen == 0) {
+    saddr_len = sizeof saddr;
+    if (getsockname(sockfd, (struct sockaddr*)&saddr, &saddr_len)==0) {
+      len = saddr_len - offsetof(struct sockaddr_un, sun_path);
+      uv__free((void*)pipe_fname);
+      pipe_fname = uv__malloc(len);
+      if (pipe_fname == NULL)
+        return UV_ENOMEM;
+      memcpy(pipe_fname, saddr.sun_path, len);
+    }
+  }
+#endif
 
   /* Success. */
   handle->flags |= UV_HANDLE_BOUND;
@@ -171,17 +218,36 @@ int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
   return uv__stream_open((uv_stream_t*)handle, fd, flags);
 }
 
-
 void uv_pipe_connect(uv_connect_t* req,
+                     uv_pipe_t* handle,
+                     const char* name,
+                     uv_connect_cb cb) {
+  uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+}
+
+void uv_pipe_connect2(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,
+                    size_t namelen,
+                    int flags,
                     uv_connect_cb cb) {
   struct sockaddr_un saddr;
   int new_sock;
   int err;
   int r;
 
+  /* no flags defined yet, so passing any is an error */
+  if (flags != 0) {
+    err = UV_EINVAL;
+    goto out;
+  }
+
   new_sock = (uv__stream_fd(handle) == -1);
+
+  if (namelen + 1 > sizeof(saddr.sun_path)) {
+    err = UV_EINVAL;
+    goto out;
+  }
 
   if (new_sock) {
     err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
@@ -191,7 +257,7 @@ void uv_pipe_connect(uv_connect_t* req,
   }
 
   memset(&saddr, 0, sizeof saddr);
-  uv__strscpy(saddr.sun_path, name, sizeof(saddr.sun_path));
+  memcpy(saddr.sun_path, name, namelen);
   saddr.sun_family = AF_UNIX;
 
   do {
@@ -259,10 +325,17 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   }
 
 #if defined(__linux__)
-  if (sa.sun_path[0] == 0)
+  if (sa.sun_path[0] == 0) {
     /* Linux abstract namespace */
     addrlen -= offsetof(struct sockaddr_un, sun_path);
-  else
+    socklen_t i;
+    for (i = 1; i < addrlen; ++i) {
+      if (sa.sun_path[i] == 0) {
+        addrlen = i+1;
+        break; /* not really needed, loop would terminate */
+      }
+    }
+  } else
 #endif
     addrlen = strlen(sa.sun_path);
 

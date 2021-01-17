@@ -208,6 +208,38 @@ TEST_IMPL(pipe_getsockname_abstract) {
 #endif
 }
 
+TEST_IMPL(pipe_getsockname_abstract_bind2) {
+#if defined(__linux__)
+  char buf[1024];
+  size_t len;
+  int r;
+  char abstract_pipe[] = "\0test-pipe";
+
+  r = uv_pipe_init(uv_default_loop(), &pipe_server, 0);
+  ASSERT(r == 0);
+
+  r = uv_pipe_bind2(&pipe_server, abstract_pipe, sizeof abstract_pipe, 0);
+  ASSERT(r == 0);
+
+  len = sizeof buf;
+  r = uv_pipe_getsockname(&pipe_server, buf, &len);
+  ASSERT(r == 0);
+
+  ASSERT(memcmp(buf, abstract_pipe, sizeof abstract_pipe) == 0);
+
+  uv_close((uv_handle_t*)&pipe_server, pipe_close_cb);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(pipe_close_cb_called == 1);
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#else
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
+
 TEST_IMPL(pipe_getsockname_blocking) {
 #ifdef _WIN32
   HANDLE readh, writeh;
