@@ -363,6 +363,33 @@ API
 
     .. versionchanged:: 1.27.0 added support for connected sockets
 
+.. c:function:: int uv_udp_send_ex(uv_udp_send_t* req, uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr, unsigned int addrlen, uv_udp_send_cb send_cb)
+
+    Same as :c:func:`uv_udp_send`, but accepts any `struct sockaddr`.
+    :c:func:`uv_udp_send` does not take an addrlen parameter, as it performs an
+    internal addrlen lookup based on the address family (AF_INET, AF_INET6 and
+    AF_UNIX are supported). This function supports arbitrary address families
+    (e.g. AF_NETLINK).
+
+    :param req: UDP request handle. Need not be initialized.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init`.
+
+    :param bufs: List of buffers to send.
+
+    :param nbufs: Number of buffers in `bufs`.
+
+    :param addr: any `struct sockaddr`
+
+    :param addrlen: Length of given `struct sockaddr`
+
+    :param send_cb: Callback to invoke when the data has been sent out.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+
+    .. versionadded:: 1.40.0
+
 .. c:function:: int uv_udp_try_send(uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr)
 
     Same as :c:func:`uv_udp_send`, but won't queue a send request if it can't
@@ -379,6 +406,17 @@ API
         can't be sent immediately).
 
     .. versionchanged:: 1.27.0 added support for connected sockets
+
+.. c:function:: int uv_udp_try_send_ex(uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr, unsigned int addrlen)
+
+    Same as :c:func:`uv_udp_send_ex`, but won't queue a send request if it can't
+    be completed immediately.
+
+    :returns: >= 0: number of bytes sent (it matches the given buffer size).
+        < 0: negative error code (``UV_EAGAIN`` is returned when the message
+        can't be sent immediately).
+
+    .. versionadded:: 1.40.0
 
 .. c:function:: int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb, uv_udp_recv_cb recv_cb)
 

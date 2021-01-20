@@ -450,6 +450,16 @@ int uv_udp_send(uv_udp_send_t* req,
   return uv__udp_send(req, handle, bufs, nbufs, addr, addrlen, send_cb);
 }
 
+int uv_udp_send_ex(uv_udp_send_t* req,
+                   uv_udp_t* handle,
+                   const uv_buf_t bufs[],
+                   unsigned int nbufs,
+                   const struct sockaddr* addr,
+                   unsigned int addrlen,
+                   uv_udp_send_cb send_cb) {
+  return uv__udp_send(req, handle, bufs, nbufs, addr, addrlen, send_cb);
+}
+
 
 int uv_udp_try_send(uv_udp_t* handle,
                     const uv_buf_t bufs[],
@@ -464,6 +474,13 @@ int uv_udp_try_send(uv_udp_t* handle,
   return uv__udp_try_send(handle, bufs, nbufs, addr, addrlen);
 }
 
+int uv_udp_try_send_ex(uv_udp_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs,
+                       const struct sockaddr* addr,
+                       unsigned int addrlen) {
+  return uv__udp_try_send(handle, bufs, nbufs, addr, addrlen);
+}
 
 int uv_udp_recv_start(uv_udp_t* handle,
                       uv_alloc_cb alloc_cb,
