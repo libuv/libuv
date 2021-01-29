@@ -33,9 +33,7 @@
 #include <sys/sysctl.h>
 #include <unistd.h>  /* sysconf */
 
-#if !TARGET_OS_IPHONE
 #include "darwin-stub.h"
-#endif
 
 static uv_once_t once = UV_ONCE_INIT;
 static uint64_t (*time_func)(void);
@@ -223,10 +221,10 @@ static int uv__get_cpu_speed(uint64_t* speed) {
   err = UV_ENOENT;
   core_foundation_handle = dlopen("/System/Library/Frameworks/"
                                   "CoreFoundation.framework/"
-                                  "Versions/A/CoreFoundation",
+                                  "CoreFoundation",
                                   RTLD_LAZY | RTLD_LOCAL);
   iokit_handle = dlopen("/System/Library/Frameworks/IOKit.framework/"
-                        "Versions/A/IOKit",
+                        "IOKit",
                         RTLD_LAZY | RTLD_LOCAL);
 
   if (core_foundation_handle == NULL || iokit_handle == NULL)
