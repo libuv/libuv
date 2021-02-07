@@ -461,7 +461,6 @@ TEST_DECLARE   (ip6_addr_link_local)
 TEST_DECLARE   (poll_close_doesnt_corrupt_stack)
 TEST_DECLARE   (poll_closesocket)
 TEST_DECLARE   (close_fd)
-TEST_DECLARE   (close_rx_fd)
 TEST_DECLARE   (closed_fd_events)
 TEST_DECLARE   (spawn_fs_open)
 #ifdef _WIN32
@@ -486,6 +485,7 @@ TEST_DECLARE   (we_get_signals_mixed)
 TEST_DECLARE   (signal_multiple_loops)
 TEST_DECLARE   (signal_pending_on_close)
 TEST_DECLARE   (signal_close_loop_alive)
+TEST_DECLARE   (close_rx_fd)
 #endif
 #ifdef __APPLE__
 TEST_DECLARE   (osx_select)
@@ -948,7 +948,6 @@ TASK_LIST_START
   TEST_ENTRY  (poll_close_doesnt_corrupt_stack)
   TEST_ENTRY  (poll_closesocket)
   TEST_ENTRY  (close_fd)
-  TEST_ENTRY  (close_rx_fd)
   TEST_ENTRY  (closed_fd_events)
   TEST_ENTRY  (spawn_fs_open)
 #ifdef _WIN32
@@ -973,6 +972,7 @@ TASK_LIST_START
   TEST_ENTRY  (signal_multiple_loops)
   TEST_ENTRY  (signal_pending_on_close)
   TEST_ENTRY  (signal_close_loop_alive)
+  TEST_ENTRY  (close_rx_fd)
 #endif
 
 #ifdef __APPLE__

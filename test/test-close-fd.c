@@ -57,7 +57,7 @@ static void close_rx_read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t*
     uv_close((uv_handle_t *) handle, NULL);
     break;
   case 2:
-    ASSERT_EQ(nread, UV_EBADF);
+    ASSERT_EQ(nread, UV_EOF);
     uv_read_stop(handle);
     uv_close((uv_handle_t *) handle, NULL);
     break;
@@ -101,6 +101,7 @@ TEST_IMPL(close_fd) {
   return 0;
 }
 
+#ifndef _WIN32
 TEST_IMPL(close_rx_fd) {
   uv_pipe_t rx_handle;
   uv_pipe_t tx_handle;
@@ -124,3 +125,4 @@ TEST_IMPL(close_rx_fd) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+#endif

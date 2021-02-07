@@ -1186,6 +1186,11 @@ static void uv__read(uv_stream_t* stream) {
         uv__stream_eof(stream, &buf);
         return;
 #endif
+#if !defined(__FreeBSD__) && !defined(__sun)
+      } else if (errno == EBADF && stream->flags & UV_HANDLE_READABLE_CLOSED) {
+        uv__stream_eof(stream, &buf);
+        return;
+#endif
       } else {
         /* Error. User should call uv_close(). */
         stream->read_cb(stream, UV__ERR(errno), &buf);
