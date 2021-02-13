@@ -926,13 +926,13 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
           /* ENOSYS - it will never work */
           errno = 0;
           copy_file_range_support = 0;
-        } else if (r == -1 && errno == ENOTSUP) {
+        } else if (r == -1 && (errno == ENOTSUP || errno == EXDEV)) {
           /* ENOTSUP - it could work on another file system type */
-          errno = 0;
-        } else if (r == -1 && errno == EXDEV) {
+
           /* EXDEV - it will not work when in_fd and out_fd
            * are not on the same mounted filesystem (pre Linux 5.3)
            */
+
           errno = 0;
         } else {
           goto ok;
