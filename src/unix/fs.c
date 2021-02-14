@@ -916,25 +916,16 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
     off = req->off;
 
 #ifdef __linux__
-    {
-      static int copy_file_range_support = 1;
+    r = uv__fs_copy_file_range(in_fd, &off, out_fd, NULL, req->bufsml[0].len, 0);
 
-      if (copy_file_range_support) {
-        r = uv__fs_copy_file_range(in_fd, &off, out_fd, NULL, req->bufsml[0].len, 0);
-
-        if (r == -1 && errno == ENOSYS) {
-          /* ENOSYS - it will never work */
-          errno = 0;
-          copy_file_range_support = 0;
-        } else if (r == -1 && (errno == ENOTSUP || errno == EXDEV)) {
-          /* ENOTSUP - it could work on another file system type */
-          /* EXDEV - it will not work when in_fd and out_fd are not on the same
-                     mounted filesystem (pre Linux 5.3) */
-          errno = 0;
-        } else {
-          goto ok;
-        }
-      }
+    if (r == -1 && (errno == ENOSYS || errno == ENOTSUP || errno == EXDEV)) {
+      /* ENOSYS - it will never work */
+      /* ENOTSUP - it could work on another file system type */
+      /* EXDEV - it will not work when in_fd and out_fd are not on the same
+                 mounted filesystem (pre Linux 5.3) */
+      errno = 0;
+    } else {
+      goto ok;
     }
 #endif
 
