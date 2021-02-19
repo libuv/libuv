@@ -43,7 +43,7 @@ AX_PTHREAD([
     LIBS="$LIBS $PTHREAD_LIBS"
     CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 ])
-AC_CHECK_LIB([dl], [dlopen])
+AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([kstat_lookup], [kstat])
 AC_SEARCH_LIBS([gethostbyname], [nsl])
 AC_SEARCH_LIBS([perfstat_cpu], [perfstat])
