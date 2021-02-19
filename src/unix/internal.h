@@ -62,6 +62,17 @@
 # include <AvailabilityMacros.h>
 #endif
 
+/*
+ * Define common detection for active Thread Sanitizer
+ * - clang uses __has_feature(thread_sanitizer)
+ * - gcc-7+ uses __SANITIZE_THREAD__
+ */
+#if defined(__has_feature)
+# if __has_feature(thread_sanitizer)
+#  define __SANITIZE_THREAD__ 1
+# endif
+#endif
+
 #if defined(PATH_MAX)
 # define UV__PATH_MAX PATH_MAX
 #else
