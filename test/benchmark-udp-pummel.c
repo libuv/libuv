@@ -179,11 +179,11 @@ static int pummel(unsigned int n_senders,
     uv_unref((uv_handle_t*)&s->udp_handle);
   }
 
-  bufs[0] = uv_buf_init(EXPECTED + 0,  10);
-  bufs[1] = uv_buf_init(EXPECTED + 10, 10);
-  bufs[2] = uv_buf_init(EXPECTED + 20, 10);
-  bufs[3] = uv_buf_init(EXPECTED + 30, 10);
-  bufs[4] = uv_buf_init(EXPECTED + 40, 5);
+  bufs[0] = uv_buf_init(&EXPECTED[0],  10);
+  bufs[1] = uv_buf_init(&EXPECTED[10], 10);
+  bufs[2] = uv_buf_init(&EXPECTED[20], 10);
+  bufs[3] = uv_buf_init(&EXPECTED[30], 10);
+  bufs[4] = uv_buf_init(&EXPECTED[40], 5);
 
   for (i = 0; i < n_senders; i++) {
     struct sender_state* s = senders + i;
