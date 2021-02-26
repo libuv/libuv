@@ -965,11 +965,10 @@ int uv__fd_exists(uv_loop_t* loop, int fd) {
   return (unsigned) fd < loop->nwatchers && loop->watchers[fd] != NULL;
 }
 
-
-int uv_getrusage(uv_rusage_t* rusage) {
+int uv__getrusage(int who, uv_rusage_t* rusage) {
   struct rusage usage;
 
-  if (getrusage(RUSAGE_SELF, &usage))
+  if (getrusage(who, &usage))
     return UV__ERR(errno);
 
   rusage->ru_utime.tv_sec = usage.ru_utime.tv_sec;
@@ -998,6 +997,17 @@ int uv_getrusage(uv_rusage_t* rusage) {
   return 0;
 }
 
+int uv_getrusage(uv_rusage_t* rusage) {
+  return uv__getrusage(RUSAGE_SELF, rusage);
+}
+
+int uv_getrusage_thread(uv_rusage_t* rusage) {
+#ifndef RUSAGE_THREAD
+  return UV_ENOTSUP;
+#else
+  return uv__getrusage(RUSAGE_THREAD, rusage);
+#endif
+}
 
 int uv__open_cloexec(const char* path, int flags) {
 #if defined(O_CLOEXEC)

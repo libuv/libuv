@@ -88,6 +88,28 @@ TEST_IMPL(platform_output) {
   printf("  maximum resident set size: %llu\n",
          (unsigned long long) rusage.ru_maxrss);
 
+#ifndef RUSAGE_THREAD
+  err = uv_getrusage_thread(&rusage);
+  ASSERT(err = UV_ENOTSUP);
+#else
+  err = uv_getrusage_thread(&rusage);
+  ASSERT_EQ(err, 0);
+  ASSERT_UINT64_GE(rusage.ru_utime.tv_sec, 0);
+  ASSERT_UINT64_GE(rusage.ru_utime.tv_usec, 0);
+  ASSERT_UINT64_GE(rusage.ru_stime.tv_sec, 0);
+  ASSERT_UINT64_GE(rusage.ru_stime.tv_usec, 0);
+  printf("uv_getrusage_thread:\n");
+  printf("  user: %llu sec %llu microsec\n",
+         (unsigned long long) rusage.ru_utime.tv_sec,
+         (unsigned long long) rusage.ru_utime.tv_usec);
+  printf("  system: %llu sec %llu microsec\n",
+         (unsigned long long) rusage.ru_stime.tv_sec,
+         (unsigned long long) rusage.ru_stime.tv_usec);
+  printf("  page faults: %llu\n", (unsigned long long) rusage.ru_majflt);
+  printf("  maximum resident set size: %llu\n",
+         (unsigned long long) rusage.ru_maxrss);
+#endif
+
   err = uv_cpu_info(&cpus, &count);
 #if defined(__CYGWIN__) || defined(__MSYS__)
   ASSERT(err == UV_ENOSYS);
