@@ -326,7 +326,7 @@ UNUSED static int can_ipv6(void) {
 
   supported = 0;
   for (i = 0; supported == 0 && i < count; i += 1)
-    supported = (AF_INET6 == addr[i].address.address6.sin6_family);
+    supported |= (AF_INET6 == addr[i].address.address6.sin6_family);
 
   uv_free_interface_addresses(addr, count);
   return supported;
