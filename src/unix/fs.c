@@ -907,10 +907,16 @@ out:
 
 #ifdef __linux__
 static unsigned uv__kernel_version(void) {
+  static unsigned cached_version;
   struct utsname u;
+  unsigned version;
   unsigned major;
   unsigned minor;
   unsigned patch;
+
+  version = uv__load_relaxed(&cached_version);
+  if (version != 0)
+    return version;
 
   if (-1 == uname(&u))
     return 0;
@@ -918,7 +924,10 @@ static unsigned uv__kernel_version(void) {
   if (3 != sscanf(u.release, "%u.%u.%u", &major, &minor, &patch))
     return 0;
 
-  return major * 65536 + minor * 256 + patch;
+  version = major * 65536 + minor * 256 + patch;
+  uv__store_relaxed(&cached_version, version);
+
+  return version;
 }
 
 
