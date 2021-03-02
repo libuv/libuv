@@ -31,6 +31,11 @@ extern "C" {
 #error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
 #endif
 
+#if defined(BUILDING_UV_SHARED)
+/* Always expose symbols when building as a shared library */
+#undef UV_HIDE_SYMBOLS
+#endif
+
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)
@@ -43,7 +48,7 @@ extern "C" {
     /* Building static library. */
 #   define UV_EXTERN /* nothing */
 # endif
-#elif __GNUC__ >= 4
+#elif __GNUC__ >= 4 && !defined(UV_HIDE_SYMBOLS)
 # define UV_EXTERN __attribute__((visibility("default")))
 #else
 # define UV_EXTERN /* nothing */
