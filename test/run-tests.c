@@ -163,7 +163,7 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper4") == 0) {
     notify_parent_process();
     /* Never surrender, never return! */
-    while (1) uv_sleep(10000);
+    for (;;) uv_sleep(10000);
   }
 
   if (strcmp(argv[1], "spawn_helper5") == 0) {
