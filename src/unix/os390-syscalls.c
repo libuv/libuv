@@ -49,7 +49,7 @@ int scandir(const char* maindir, struct dirent*** namelist,
   if (!mdir)
     return -1;
 
-  while (1) {
+  for (;;) {
     dirent = readdir(mdir);
     if (!dirent)
       break;
