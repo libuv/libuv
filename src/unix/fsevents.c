@@ -642,15 +642,15 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
   }
 
   /* In the unlikely event that pthread_attr_init() fails, create the thread
-   * with the default stack size. We'll use a little more address space but
-   * that in itself is not a fatal error.
+   * with the default stack size. We'll likely use less address space but that
+   * in itself is not a fatal error.
    */
   attr = &attr_storage;
   if (pthread_attr_init(attr))
     attr = NULL;
 
   if (attr != NULL)
-    if (pthread_attr_setstacksize(attr, 4 * PTHREAD_STACK_MIN))
+    if (pthread_attr_setstacksize(attr, uv__thread_stack_size()))
       abort();
 
   loop->cf_state = state;
