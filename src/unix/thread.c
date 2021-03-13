@@ -168,7 +168,7 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
  * On Linux, threads created by musl have a much smaller stack than threads
  * created by glibc (80 vs. 2048 or 4096 kB.)  Follow glibc for consistency.
  */
-static size_t thread_stack_size(void) {
+size_t uv__thread_stack_size(void) {
 #if defined(__APPLE__) || defined(__linux__)
   struct rlimit lim;
 
@@ -234,7 +234,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
 
   attr = NULL;
   if (stack_size == 0) {
-    stack_size = thread_stack_size();
+    stack_size = uv__thread_stack_size();
   } else {
     pagesize = (size_t)getpagesize();
     /* Round up to the nearest page boundary. */
