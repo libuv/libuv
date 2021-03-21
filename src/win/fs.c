@@ -2064,7 +2064,12 @@ static void fs__copyfile(uv_fs_t* req) {
 
   overwrite = flags & UV_FS_COPYFILE_EXCL;
 
-  if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, overwrite) != 0) {
+  if (CopyFileExW(req->file.pathw,
+                  req->fs.info.new_pathw,
+                  NULL,
+                  NULL,
+                  FALSE,
+                  overwrite) != 0) {
     SET_REQ_RESULT(req, 0);
     return;
   }
