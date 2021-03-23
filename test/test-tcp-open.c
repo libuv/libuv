@@ -237,6 +237,7 @@ TEST_IMPL(tcp_open) {
   struct sockaddr_in addr;
   uv_os_sock_t sock;
   int r;
+  uv_tcp_t client2;
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
@@ -257,8 +258,6 @@ TEST_IMPL(tcp_open) {
 
 #ifndef _WIN32
   {
-    uv_tcp_t client2;
-
     r = uv_tcp_init(uv_default_loop(), &client2);
     ASSERT(r == 0);
 
@@ -267,7 +266,9 @@ TEST_IMPL(tcp_open) {
 
     uv_close((uv_handle_t*) &client2, NULL);
   }
-#endif  /* !_WIN32 */
+#else  /* _WIN32 */
+  (void)client2;
+#endif
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
