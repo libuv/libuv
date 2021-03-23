@@ -192,7 +192,7 @@ static void uv__async_send(uv_loop_t* loop) {
     return;
 
   if (r == -1)
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EBADF)
       return;
 
   abort();
