@@ -970,8 +970,11 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
       if (uv__load_relaxed(&no_copy_file_range_support) == 0) {
         r = uv__fs_copy_file_range(in_fd, &off, out_fd, NULL, req->bufsml[0].len, 0);
 
-        if (r == -1 && ((errno == ENOSYS) || (errno == EACCES && uv__is_buggy_cephfs(in_fd)))) {
+        if (r == -1 && errno == ENOSYS) {
           /* ENOSYS - it will never work */
+          errno = 0;
+          uv__store_relaxed(&no_copy_file_range_support, 1);
+        } else if (r == -1 && errno == EACCES && uv__is_buggy_cephfs(in_fd)) {
           /* EACCES - pre-4.20 kernels have a bug where CephFS uses the RADOS
                       copy-from command when it shouldn't */
           errno = 0;
