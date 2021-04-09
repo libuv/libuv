@@ -251,6 +251,10 @@ Error constants
 
     operation not supported on socket
 
+.. c:macro:: UV_EOVERFLOW
+
+    value too large for defined data types
+
 .. c:macro:: UV_EPERM
 
     operation not permitted
