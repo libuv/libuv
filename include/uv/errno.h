@@ -446,9 +446,9 @@
 #endif
 
 #if defined(EOVERFLOW) && !defined(_WIN32)
-# define UV__OVERFLOW UV__ERR(EOVERFLOW)
+# define UV__EOVERFLOW UV__ERR(EOVERFLOW)
 #else
-# define UV__OVERFLOW (-4026)
+# define UV__EOVERFLOW (-4026)
 #endif
 
 #endif /* UV_ERRNO_H_ */
