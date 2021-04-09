@@ -302,12 +302,6 @@
 # define UV__ENOTSUP (-4049)
 #endif
 
-#if defined(EOVERFLOW) && !defined(_WIN32)
-# define UV__OVERFLOW UV__ERR(EOVERFLOW)
-#else
-# define UV__OVERFLOW (-4026)
-#endif
-
 #if defined(EPERM) && !defined(_WIN32)
 # define UV__EPERM UV__ERR(EPERM)
 #else
@@ -449,6 +443,12 @@
 # define UV__EILSEQ UV__ERR(EILSEQ)
 #else
 # define UV__EILSEQ (-4027)
+#endif
+
+#if defined(EOVERFLOW) && !defined(_WIN32)
+# define UV__OVERFLOW UV__ERR(EOVERFLOW)
+#else
+# define UV__OVERFLOW (-4026)
 #endif
 
 #endif /* UV_ERRNO_H_ */
