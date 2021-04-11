@@ -253,7 +253,7 @@ Error constants
 
 .. c:macro:: UV_EOVERFLOW
 
-    value too large for defined data types
+    value too large for defined data type
 
 .. c:macro:: UV_EPERM
 
