@@ -1676,14 +1676,27 @@ int uv_os_gethostname(char* buffer, size_t* size) {
     return uv_translate_sys_error(WSAGetLastError());
 
   buf[sizeof(buf) - 1] = '\0'; /* Null terminate, just to be safe. */
-  len = strlen(buf);
+  int utf16StrBufSize = MultiByteToWideChar(CP_ACP, 0, buf, -1, NULL, 0);
+  WCHAR* utf16Str = uv__malloc(sizeof(WCHAR) * utf16StrBufSize);
+  MultiByteToWideChar(CP_ACP, 0, buf, -1, utf16Str, utf16StrBufSize);
 
+  char* utf8Str = uv__malloc(sizeof(char) * UV_MAXHOSTNAMESIZE);
+  int res = uv__convert_utf16_to_utf8(utf16Str, utf16StrBufSize, &utf8Str);
+  uv__free(utf16Str);
+  if (res != 0) {
+    uv__free(utf8Str);
+    return res;
+  }
+
+  len = strlen(utf8Str);
   if (len >= *size) {
     *size = len + 1;
+    uv__free(utf8Str);
     return UV_ENOBUFS;
   }
 
-  memcpy(buffer, buf, len + 1);
+  memcpy(buffer, utf8Str, len + 1);
+  uv__free(utf8Str);
   *size = len;
   return 0;
 }
