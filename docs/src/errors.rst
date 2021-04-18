@@ -331,6 +331,10 @@ Error constants
 
     illegal byte sequence
 
+.. c:macro:: UV_ESOCKTNOSUPPORT
+
+    socket type not supported
+
 
 API
 ---

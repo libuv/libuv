@@ -445,4 +445,10 @@
 # define UV__EILSEQ (-4027)
 #endif
 
+#if defined(ESOCKTNOSUPPORT) && !defined(_WIN32)
+# define UV__ESOCKTNOSUPPORT UV__ERR(ESOCKTNOSUPPORT)
+#else
+# define UV__ESOCKTNOSUPPORT (-4026)
+#endif
+
 #endif /* UV_ERRNO_H_ */
