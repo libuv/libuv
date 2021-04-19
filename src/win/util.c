@@ -1666,6 +1666,10 @@ int uv_os_unsetenv(const char* name) {
 int uv_os_gethostname(char* buffer, size_t* size) {
   char buf[UV_MAXHOSTNAMESIZE];
   size_t len;
+  char* utf8_str;
+  WCHAR* utf16_str;
+  int utf16_str_buf_size;
+  int convert_result;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
@@ -1676,27 +1680,37 @@ int uv_os_gethostname(char* buffer, size_t* size) {
     return uv_translate_sys_error(WSAGetLastError());
 
   buf[sizeof(buf) - 1] = '\0'; /* Null terminate, just to be safe. */
-  int utf16StrBufSize = MultiByteToWideChar(CP_ACP, 0, buf, -1, NULL, 0);
-  WCHAR* utf16Str = uv__malloc(sizeof(WCHAR) * utf16StrBufSize);
-  MultiByteToWideChar(CP_ACP, 0, buf, -1, utf16Str, utf16StrBufSize);
+  utf16_str_buf_size = MultiByteToWideChar(CP_ACP, 0, buf, -1, NULL, 0);
+  utf16_str = uv__malloc(sizeof(WCHAR) * utf16_str_buf_size);
 
-  char* utf8Str = uv__malloc(sizeof(char) * UV_MAXHOSTNAMESIZE);
-  int res = uv__convert_utf16_to_utf8(utf16Str, utf16StrBufSize, &utf8Str);
-  uv__free(utf16Str);
-  if (res != 0) {
-    uv__free(utf8Str);
-    return res;
+  if (utf16_str == NULL) {
+    *size = 0;
+    return UV_ENOMEM;
   }
 
-  len = strlen(utf8Str);
+  MultiByteToWideChar(CP_ACP, 0, buf, -1, utf16_str, utf16_str_buf_size);
+  convert_result = uv__convert_utf16_to_utf8(utf16_str, utf16_str_buf_size, &utf8_str);
+  uv__free(utf16_str);
+
+  if (utf8_str == NULL) {
+    *size = 0;
+    return UV_ENOMEM;
+  }
+
+  if (convert_result != 0) {
+    uv__free(utf8_str);
+    return convert_result;
+  }
+
+  len = strlen(utf8_str);
   if (len >= *size) {
     *size = len + 1;
-    uv__free(utf8Str);
+    uv__free(utf8_str);
     return UV_ENOBUFS;
   }
 
-  memcpy(buffer, utf8Str, len + 1);
-  uv__free(utf8Str);
+  memcpy(buffer, utf8_str, len + 1);
+  uv__free(utf8_str);
   *size = len;
   return 0;
 }
