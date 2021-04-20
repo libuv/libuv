@@ -867,12 +867,11 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 }
 
 #if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L
-size_t strnlen(const char *s, size_t maxlen) {
-  const char *end;
+size_t strnlen(const char* s, size_t maxlen) {
+  const char* end;
   end = memchr(s, '\0', maxlen);
-  if (! end) {
+  if (end == NULL)
     return maxlen;
-  }
   return end - s;
 }
 #endif
