@@ -1664,11 +1664,9 @@ int uv_os_unsetenv(const char* name) {
 
 
 int uv_os_gethostname(char* buffer, size_t* size) {
-  char buf[UV_MAXHOSTNAMESIZE];
+  WCHAR* buf;
   size_t len;
   char* utf8_str;
-  WCHAR* utf16_str;
-  int utf16_str_buf_size;
   int convert_result;
 
   if (buffer == NULL || size == NULL || *size == 0)
@@ -1676,26 +1674,18 @@ int uv_os_gethostname(char* buffer, size_t* size) {
 
   uv__once_init(); /* Initialize winsock */
 
-  if (gethostname(buf, sizeof(buf)) != 0)
+  buf = uv__malloc(sizeof(WCHAR) * UV_MAXHOSTNAMESIZE);
+  if (buf == NULL)
+    return UV_ENOMEM;
+
+  if (GetHostNameW(buf, UV_MAXHOSTNAMESIZE) != 0)
     return uv_translate_sys_error(WSAGetLastError());
 
-  buf[sizeof(buf) - 1] = '\0'; /* Null terminate, just to be safe. */
-  utf16_str_buf_size = MultiByteToWideChar(CP_ACP, 0, buf, -1, NULL, 0);
-  utf16_str = uv__malloc(sizeof(WCHAR) * utf16_str_buf_size);
+  convert_result = uv__convert_utf16_to_utf8(buf, -1, &utf8_str);
+  uv__free(buf);
 
-  if (utf16_str == NULL) {
-    *size = 0;
+  if (utf8_str == NULL)
     return UV_ENOMEM;
-  }
-
-  MultiByteToWideChar(CP_ACP, 0, buf, -1, utf16_str, utf16_str_buf_size);
-  convert_result = uv__convert_utf16_to_utf8(utf16_str, utf16_str_buf_size, &utf8_str);
-  uv__free(utf16_str);
-
-  if (utf8_str == NULL) {
-    *size = 0;
-    return UV_ENOMEM;
-  }
 
   if (convert_result != 0) {
     uv__free(utf8_str);
