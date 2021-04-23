@@ -87,6 +87,7 @@ JS object and can be ref/unrefed.
 
 .. rubric:: ref-timer/main.c
 .. literalinclude:: ../../code/ref-timer/main.c
+    :language: c
     :linenos:
     :lines: 5-8, 17-
     :emphasize-lines: 9
@@ -111,6 +112,7 @@ idle watcher to keep the UI operational.
 
 .. rubric:: idle-compute/main.c
 .. literalinclude:: ../../code/idle-compute/main.c
+    :language: c
     :linenos:
     :lines: 5-9, 34-
     :emphasize-lines: 13
@@ -123,6 +125,7 @@ keep calling the idle callback again.
 
 .. rubric:: idle-compute/main.c
 .. literalinclude:: ../../code/idle-compute/main.c
+    :language: c
     :linenos:
     :lines: 10-19
 
@@ -215,6 +218,7 @@ progress with the download whenever libuv notifies of I/O readiness.
 
 .. rubric:: uvwget/main.c - The setup
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 1-9,140-
     :emphasize-lines: 7,21,24-25
@@ -235,6 +239,7 @@ So we add each argument as an URL
 
 .. rubric:: uvwget/main.c - Adding urls
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 39-56
     :emphasize-lines: 13-14
@@ -243,7 +248,7 @@ We let libcurl directly write the data to a file, but much more is possible if
 you so desire.
 
 ``start_timeout`` will be called immediately the first time by libcurl, so
-things are set in motion. This simply starts a libuv `timer <Timers>`_ which
+things are set in motion. This simply starts a libuv `timer <#timers>`_ which
 drives ``curl_multi_socket_action`` with ``CURL_SOCKET_TIMEOUT`` whenever it
 times out. ``curl_multi_socket_action`` is what drives libcurl, and what we
 call whenever sockets change state. But before we go into that, we need to poll
@@ -251,6 +256,7 @@ on sockets whenever ``handle_socket`` is called.
 
 .. rubric:: uvwget/main.c - Setting up polling
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 102-140
     :emphasize-lines: 9,11,15,21,24
@@ -271,6 +277,7 @@ mask with the new value. ``curl_perform`` is the crux of this program.
 
 .. rubric:: uvwget/main.c - Driving libcurl.
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 81-95
     :emphasize-lines: 2,6-7,12
@@ -288,6 +295,7 @@ transfers are done.
 
 .. rubric:: uvwget/main.c - Reading transfer status.
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 58-79
     :emphasize-lines: 6,9-10,13-14
@@ -312,6 +320,7 @@ Let us first look at the interface provided to plugin authors.
 
 .. rubric:: plugin/plugin.h
 .. literalinclude:: ../../code/plugin/plugin.h
+    :language: c
     :linenos:
 
 You can similarly add more functions that plugin authors can use to do useful
@@ -319,6 +328,7 @@ things in your application [#]_. A sample plugin using this API is:
 
 .. rubric:: plugin/hello.c
 .. literalinclude:: ../../code/plugin/hello.c
+    :language: c
     :linenos:
 
 Our interface defines that all plugins should have an ``initialize`` function
@@ -340,6 +350,7 @@ This is done by using ``uv_dlopen`` to first load the shared library
 
 .. rubric:: plugin/main.c
 .. literalinclude:: ../../code/plugin/main.c
+    :language: c
     :linenos:
     :lines: 7-
     :emphasize-lines: 15, 18, 24
@@ -393,6 +404,7 @@ Here is a simple example which prints white text on a red background:
 
 .. rubric:: tty/main.c
 .. literalinclude:: ../../code/tty/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 11-12,14,17,27
 
@@ -403,6 +415,7 @@ escape codes.
 
 .. rubric:: tty-gravity/main.c
 .. literalinclude:: ../../code/tty-gravity/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 19,25,38
 

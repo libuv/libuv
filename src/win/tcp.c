@@ -523,16 +523,15 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
                    &req->u.io.overlapped,
                    NULL);
 
+  handle->flags |= UV_HANDLE_READ_PENDING;
+  handle->reqs_pending++;
+
   if (UV_SUCCEEDED_WITHOUT_IOCP(result == 0)) {
     /* Process the req without IOCP. */
-    handle->flags |= UV_HANDLE_READ_PENDING;
     req->u.io.overlapped.InternalHigh = bytes;
-    handle->reqs_pending++;
     uv_insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* The req will be processed with IOCP. */
-    handle->flags |= UV_HANDLE_READ_PENDING;
-    handle->reqs_pending++;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         req->wait_handle == INVALID_HANDLE_VALUE &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -545,7 +544,6 @@ static void uv_tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
     /* Make this req pending reporting an error. */
     SET_REQ_ERROR(req, WSAGetLastError());
     uv_insert_pending_req(loop, (uv_req_t*)req);
-    handle->reqs_pending++;
   }
 }
 
@@ -750,6 +748,40 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
   return 0;
 }
 
+static int uv__is_loopback(const struct sockaddr_storage* storage) {
+  const struct sockaddr_in* in4;
+  const struct sockaddr_in6* in6;
+  int i;
+
+  if (storage->ss_family == AF_INET) {
+    in4 = (const struct sockaddr_in*) storage;
+    return in4->sin_addr.S_un.S_un_b.s_b1 == 127;
+  }
+  if (storage->ss_family == AF_INET6) {
+    in6 = (const struct sockaddr_in6*) storage;
+    for (i = 0; i < 7; ++i) {
+      if (in6->sin6_addr.u.Word[i] != 0)
+        return 0;
+    }
+    return in6->sin6_addr.u.Word[7] == htons(1);
+  }
+  return 0;
+}
+
+// Check if Windows version is 10.0.16299 or later
+static int uv__is_fast_loopback_fail_supported() {
+  OSVERSIONINFOW os_info;
+  if (!pRtlGetVersion)
+    return 0;
+  pRtlGetVersion(&os_info);
+  if (os_info.dwMajorVersion < 10)
+    return 0;
+  if (os_info.dwMajorVersion > 10)
+    return 1;
+  if (os_info.dwMinorVersion > 0)
+    return 1;
+  return os_info.dwBuildNumber >= 16299;
+}
 
 static int uv_tcp_try_connect(uv_connect_t* req,
                               uv_tcp_t* handle,
@@ -757,6 +789,7 @@ static int uv_tcp_try_connect(uv_connect_t* req,
                               unsigned int addrlen,
                               uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
+  TCP_INITIAL_RTO_PARAMETERS retransmit_ioctl;
   const struct sockaddr* bind_addr;
   struct sockaddr_storage converted;
   BOOL success;
@@ -767,9 +800,8 @@ static int uv_tcp_try_connect(uv_connect_t* req,
   if (err)
     return err;
 
-  if (handle->delayed_error) {
-    return handle->delayed_error;
-  }
+  if (handle->delayed_error != 0)
+    goto out;
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
     if (addrlen == sizeof(uv_addr_ip4_any_)) {
@@ -782,8 +814,8 @@ static int uv_tcp_try_connect(uv_connect_t* req,
     err = uv_tcp_try_bind(handle, bind_addr, addrlen, 0);
     if (err)
       return err;
-    if (handle->delayed_error)
-      return handle->delayed_error;
+    if (handle->delayed_error != 0)
+      goto out;
   }
 
   if (!handle->tcp.conn.func_connectex) {
@@ -792,10 +824,39 @@ static int uv_tcp_try_connect(uv_connect_t* req,
     }
   }
 
+  /* This makes connect() fail instantly if the target port on the localhost
+   * is not reachable, instead of waiting for 2s. We do not care if this fails.
+   * This only works on Windows version 10.0.16299 and later.
+   */
+  if (uv__is_fast_loopback_fail_supported() && uv__is_loopback(&converted)) {
+    memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
+    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    WSAIoctl(handle->socket,
+             SIO_TCP_INITIAL_RTO,
+             &retransmit_ioctl,
+             sizeof(retransmit_ioctl),
+             NULL,
+             0,
+             &bytes,
+             NULL,
+             NULL);
+  }
+
+out:
+
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+
+  if (handle->delayed_error != 0) {
+    /* Process the req without IOCP. */
+    handle->reqs_pending++;
+    REGISTER_HANDLE_REQ(loop, handle, req);
+    uv_insert_pending_req(loop, (uv_req_t*)req);
+    return 0;
+  }
 
   success = handle->tcp.conn.func_connectex(handle->socket,
                                             (const struct sockaddr*) &converted,
@@ -1163,7 +1224,14 @@ void uv_process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   err = 0;
-  if (REQ_SUCCESS(req)) {
+  if (handle->delayed_error) {
+    /* To smooth over the differences between unixes errors that
+     * were reported synchronously on the first connect can be delayed
+     * until the next tick--which is now.
+     */
+    err = handle->delayed_error;
+    handle->delayed_error = 0;
+  } else if (REQ_SUCCESS(req)) {
     if (handle->flags & UV_HANDLE_CLOSING) {
       /* use UV_ECANCELED for consistency with Unix */
       err = ERROR_OPERATION_ABORTED;
@@ -1518,4 +1586,119 @@ int uv__tcp_connect(uv_connect_t* req,
     return uv_translate_sys_error(err);
 
   return 0;
+}
+
+#ifndef WSA_FLAG_NO_HANDLE_INHERIT
+/* Added in Windows 7 SP1. Specify this to avoid race conditions, */
+/* but also manually clear the inherit flag in case this failed. */
+#define WSA_FLAG_NO_HANDLE_INHERIT 0x80
+#endif
+
+int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int flags1) {
+  SOCKET server = INVALID_SOCKET;
+  SOCKET client0 = INVALID_SOCKET;
+  SOCKET client1 = INVALID_SOCKET;
+  SOCKADDR_IN name;
+  LPFN_ACCEPTEX func_acceptex;
+  WSAOVERLAPPED overlap;
+  char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];
+  int namelen;
+  int err;
+  DWORD bytes;
+  DWORD flags;
+  DWORD client0_flags = WSA_FLAG_NO_HANDLE_INHERIT;
+  DWORD client1_flags = WSA_FLAG_NO_HANDLE_INHERIT;
+
+  if (flags0 & UV_NONBLOCK_PIPE)
+      client0_flags |= WSA_FLAG_OVERLAPPED;
+  if (flags1 & UV_NONBLOCK_PIPE)
+      client1_flags |= WSA_FLAG_OVERLAPPED;
+
+  server = WSASocketW(AF_INET, type, protocol, NULL, 0,
+                      WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
+  if (server == INVALID_SOCKET)
+    goto wsaerror;
+  if (!SetHandleInformation((HANDLE) server, HANDLE_FLAG_INHERIT, 0))
+    goto error;
+  name.sin_family = AF_INET;
+  name.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  name.sin_port = 0;
+  if (bind(server, (SOCKADDR*) &name, sizeof(name)) != 0)
+    goto wsaerror;
+  if (listen(server, 1) != 0)
+    goto wsaerror;
+  namelen = sizeof(name);
+  if (getsockname(server, (SOCKADDR*) &name, &namelen) != 0)
+    goto wsaerror;
+  client0 = WSASocketW(AF_INET, type, protocol, NULL, 0, client0_flags);
+  if (client0 == INVALID_SOCKET)
+    goto wsaerror;
+  if (!SetHandleInformation((HANDLE) client0, HANDLE_FLAG_INHERIT, 0))
+    goto error;
+  if (connect(client0, (SOCKADDR*) &name, sizeof(name)) != 0)
+    goto wsaerror;
+  client1 = WSASocketW(AF_INET, type, protocol, NULL, 0, client1_flags);
+  if (client1 == INVALID_SOCKET)
+    goto wsaerror;
+  if (!SetHandleInformation((HANDLE) client1, HANDLE_FLAG_INHERIT, 0))
+    goto error;
+  if (!uv_get_acceptex_function(server, &func_acceptex)) {
+    err = WSAEAFNOSUPPORT;
+    goto cleanup;
+  }
+  memset(&overlap, 0, sizeof(overlap));
+  if (!func_acceptex(server,
+                     client1,
+                     accept_buffer,
+                     0,
+                     sizeof(struct sockaddr_storage),
+                     sizeof(struct sockaddr_storage),
+                     &bytes,
+                     &overlap)) {
+    err = WSAGetLastError();
+    if (err == ERROR_IO_PENDING) {
+      /* Result should complete immediately, since we already called connect,
+       * but emperically, we sometimes have to poll the kernel a couple times
+       * until it notices that. */
+      while (!WSAGetOverlappedResult(client1, &overlap, &bytes, FALSE, &flags)) {
+        err = WSAGetLastError();
+        if (err != WSA_IO_INCOMPLETE)
+          goto cleanup;
+        SwitchToThread();
+      }
+    }
+    else {
+      goto cleanup;
+    }
+  }
+  if (setsockopt(client1, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
+                  (char*) &server, sizeof(server)) != 0) {
+    goto wsaerror;
+  }
+
+  closesocket(server);
+
+  fds[0] = client0;
+  fds[1] = client1;
+
+  return 0;
+
+ wsaerror:
+    err = WSAGetLastError();
+    goto cleanup;
+
+ error:
+    err = GetLastError();
+    goto cleanup;
+
+ cleanup:
+    if (server != INVALID_SOCKET)
+      closesocket(server);
+    if (client0 != INVALID_SOCKET)
+      closesocket(client0);
+    if (client1 != INVALID_SOCKET)
+      closesocket(client1);
+
+    assert(err);
+    return uv_translate_sys_error(err);
 }

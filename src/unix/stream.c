@@ -164,7 +164,7 @@ static void uv__stream_osx_select(void* arg) {
   else
     max_fd = s->int_fd;
 
-  while (1) {
+  for (;;) {
     /* Terminate on semaphore */
     if (uv_sem_trywait(&s->close_sem) == 0)
       break;
@@ -195,7 +195,7 @@ static void uv__stream_osx_select(void* arg) {
 
     /* Empty socketpair's buffer in case of interruption */
     if (FD_ISSET(s->int_fd, s->sread))
-      while (1) {
+      for (;;) {
         r = read(s->int_fd, buf, sizeof(buf));
 
         if (r == sizeof(buf))
@@ -1552,17 +1552,11 @@ int uv_try_write(uv_stream_t* stream,
 }
 
 
-int uv_read_start(uv_stream_t* stream,
-                  uv_alloc_cb alloc_cb,
-                  uv_read_cb read_cb) {
+int uv__read_start(uv_stream_t* stream,
+                   uv_alloc_cb alloc_cb,
+                   uv_read_cb read_cb) {
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
       stream->type == UV_TTY);
-
-  if (stream->flags & UV_HANDLE_CLOSING)
-    return UV_EINVAL;
-
-  if (!(stream->flags & UV_HANDLE_READABLE))
-    return UV_ENOTCONN;
 
   /* The UV_HANDLE_READING flag is irrelevant of the state of the tcp - it just
    * expresses the desired state of the user.
