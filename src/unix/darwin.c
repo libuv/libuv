@@ -215,6 +215,8 @@ static int uv__get_cpu_speed(uint64_t* speed) {
   mach_port_t mach_port;
   io_iterator_t it;
   io_object_t service;
+  CFStringRef device_type_str = NULL;
+  CFStringRef clock_frequency_str = NULL;
 
   mach_port = 0;
 
@@ -261,8 +263,8 @@ static int uv__get_cpu_speed(uint64_t* speed) {
   assert(kr == KERN_SUCCESS);
   service = pIOIteratorNext(it);
 
-  CFStringRef device_type_str = S("device_type");
-  CFStringRef clock_frequency_str = S("clock-frequency");
+  device_type_str = S("device_type");
+  clock_frequency_str = S("clock-frequency");
 
   while (service != 0) {
     CFDataRef data;
