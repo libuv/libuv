@@ -954,8 +954,8 @@ static int uv__udp_set_source_membership6(uv_udp_t* handle,
     mreq.gsr_interface = 0;
   }
 
-  STATIC_ASSERT(sizeof(mreq.gsr_group) >= sizeof(*multicast_addr));
-  STATIC_ASSERT(sizeof(mreq.gsr_source) >= sizeof(*source_addr));
+  assert(sizeof(mreq.gsr_group) >= sizeof(*multicast_addr));
+  assert(sizeof(mreq.gsr_source) >= sizeof(*source_addr));
   memcpy(&mreq.gsr_group, multicast_addr, sizeof(*multicast_addr));
   memcpy(&mreq.gsr_source, source_addr, sizeof(*source_addr));
 

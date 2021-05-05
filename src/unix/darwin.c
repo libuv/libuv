@@ -210,6 +210,7 @@ static int uv__get_cpu_speed(uint64_t* speed) {
   void* core_foundation_handle;
   void* iokit_handle;
   int err;
+  CFMutableDictionaryRef classes_to_match;
 
   kern_return_t kr;
   mach_port_t mach_port;
@@ -257,8 +258,7 @@ static int uv__get_cpu_speed(uint64_t* speed) {
 
   kr = pIOMasterPort(MACH_PORT_NULL, &mach_port);
   assert(kr == KERN_SUCCESS);
-  CFMutableDictionaryRef classes_to_match
-      = pIOServiceMatching("IOPlatformDevice");
+  classes_to_match = pIOServiceMatching("IOPlatformDevice");
   kr = pIOServiceGetMatchingServices(mach_port, classes_to_match, &it);
   assert(kr == KERN_SUCCESS);
   service = pIOIteratorNext(it);
