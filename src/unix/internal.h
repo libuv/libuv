@@ -176,9 +176,11 @@ struct uv__stream_queued_fds_s {
     defined(__NetBSD__)
 #define uv__cloexec uv__cloexec_ioctl
 #define uv__nonblock uv__nonblock_ioctl
+#define UV__NONBLOCK_IS_IOCTL 1
 #else
 #define uv__cloexec uv__cloexec_fcntl
 #define uv__nonblock uv__nonblock_fcntl
+#define UV__NONBLOCK_IS_IOCTL 0
 #endif
 
 /* On Linux, uv__nonblock_fcntl() and uv__nonblock_ioctl() do not commute
