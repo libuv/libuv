@@ -21,10 +21,6 @@
 
 /* See https://github.com/libuv/libuv#documentation for documentation. */
 
-#ifndef _GNU_SOURCE
-# define _GNU_SOURCE
-#endif
-
 #ifndef UV_H
 #define UV_H
 #ifdef __cplusplus
