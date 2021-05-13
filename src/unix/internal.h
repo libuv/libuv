@@ -62,6 +62,17 @@
 # include <AvailabilityMacros.h>
 #endif
 
+/*
+ * Define common detection for active Thread Sanitizer
+ * - clang uses __has_feature(thread_sanitizer)
+ * - gcc-7+ uses __SANITIZE_THREAD__
+ */
+#if defined(__has_feature)
+# if __has_feature(thread_sanitizer)
+#  define __SANITIZE_THREAD__ 1
+# endif
+#endif
+
 #if defined(PATH_MAX)
 # define UV__PATH_MAX PATH_MAX
 #else
@@ -261,6 +272,7 @@ void uv__prepare_close(uv_prepare_t* handle);
 void uv__process_close(uv_process_t* handle);
 void uv__stream_close(uv_stream_t* handle);
 void uv__tcp_close(uv_tcp_t* handle);
+size_t uv__thread_stack_size(void);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
@@ -281,12 +293,6 @@ int uv___stream_fd(const uv_stream_t* handle);
 #else
 #define uv__stream_fd(handle) ((handle)->io_watcher.fd)
 #endif /* defined(__APPLE__) */
-
-#ifdef O_NONBLOCK
-# define UV__F_NONBLOCK O_NONBLOCK
-#else
-# define UV__F_NONBLOCK 1
-#endif
 
 int uv__make_pipe(int fds[2], int flags);
 

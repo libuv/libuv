@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.4)
-project(libuv LANGUAGES C)
 
 cmake_policy(SET CMP0057 NEW) # Enable IN_LIST operator
 cmake_policy(SET CMP0064 NEW) # Support if (TEST) operator
+cmake_policy(SET CMP0091 NEW) # Enable CMAKE_MSVC_RUNTIME_LIBRARY
+
+project(libuv LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -28,6 +30,22 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
 option(QEMU "build for qemu" OFF)
 if(QEMU)
   add_definitions(-D__QEMU__=1)
+endif()
+
+option(ASAN "Enable AddressSanitizer (ASan)" OFF)
+if(ASAN AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
+  add_definitions(-D__ASAN__=1)
+  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+  set (CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+# MSVC options
+if(MSVC)
+  option(STATIC_VCRT "Force /MT for static VC runtimes" OFF)
+  if(STATIC_VCRT)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
 endif()
 
 # Compiler check
@@ -95,6 +113,9 @@ list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
 list(APPEND uv_cflags ${lint-utf8-msvc} )
 
+check_c_compiler_flag(-fno-strict-aliasing UV_F_STRICT_ALIASING)
+list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
+
 set(uv_sources
     src/fs-poll.c
     src/idna.c
@@ -108,7 +129,7 @@ set(uv_sources
     src/version.c)
 
 if(WIN32)
-  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0600)
+  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0602)
   list(APPEND uv_libraries
        psapi
        user32
@@ -202,7 +223,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
        src/unix/random-sysctl-linux.c)
 endif()
 
-if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux|OS390")
+if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux")
   list(APPEND uv_sources src/unix/proctitle.c)
 endif()
 
@@ -256,9 +277,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
-  list(APPEND uv_defines PATH_MAX=255)
+  enable_language(CXX)
+  list(APPEND uv_defines PATH_MAX=1024)
   list(APPEND uv_defines _AE_BIMODAL)
   list(APPEND uv_defines _ALL_SOURCE)
+  list(APPEND uv_defines _ENHANCED_ASCII_EXT=0xFFFFFFFF)
   list(APPEND uv_defines _ISOC99_SOURCE)
   list(APPEND uv_defines _LARGE_TIME_API)
   list(APPEND uv_defines _OPEN_MSGQ_EXT)
@@ -269,14 +292,31 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   list(APPEND uv_defines _UNIX03_SOURCE)
   list(APPEND uv_defines _UNIX03_THREADS)
   list(APPEND uv_defines _UNIX03_WITHDRAWN)
+  list(APPEND uv_defines _XOPEN_SOURCE=600)
   list(APPEND uv_defines _XOPEN_SOURCE_EXTENDED)
   list(APPEND uv_sources
        src/unix/pthread-fixes.c
        src/unix/os390.c
-       src/unix/os390-syscalls.c)
-  list(APPEND uv_cflags -Wc,DLL -Wc,exportall -Wc,xplink)
-  list(APPEND uv_libraries -Wl,xplink)
-  list(APPEND uv_test_libraries -Wl,xplink)
+       src/unix/os390-syscalls.c
+       src/unix/os390-proctitle.c)
+  list(APPEND uv_cflags
+       -q64
+       -qascii
+       -qexportall
+       -qgonumber
+       -qlongname
+       -qlibansi
+       -qfloat=IEEE
+       -qtune=10
+       -qarch=10
+       -qasm
+       -qasmlib=sys1.maclib:sys1.modgen)
+  find_library(ZOSLIB
+    NAMES zoslib
+    PATHS ${ZOSLIB_DIR}
+    PATH_SUFFIXES lib
+  )
+  list(APPEND uv_libraries ${ZOSLIB})
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
@@ -318,7 +358,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
     src/unix/bsd-ifaddrs.c
     src/unix/no-proctitle.c
     src/unix/no-fsevents.c)
-  list(APPEND uv_cflags -fno-strict-aliasing)
   list(APPEND uv_libraries socket)
 endif()
 
@@ -340,6 +379,10 @@ target_include_directories(uv
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+  target_include_directories(uv PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
+  set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
+endif()
 target_link_libraries(uv ${uv_libraries})
 
 add_library(uv_a STATIC ${uv_sources})
@@ -351,6 +394,10 @@ target_include_directories(uv_a
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   PRIVATE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+  target_include_directories(uv_a PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
+  set_target_properties(uv_a PROPERTIES LINKER_LANGUAGE CXX)
+endif()
 target_link_libraries(uv_a ${uv_libraries})
 
 if(LIBUV_BUILD_TESTS)
@@ -466,6 +513,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-poll-close-doesnt-corrupt-stack.c
        test/test-poll-close.c
        test/test-poll-closesocket.c
+       test/test-poll-multiple-handles.c
        test/test-poll-oob.c
        test/test-poll.c
        test/test-process-priority.c
@@ -572,6 +620,11 @@ if(LIBUV_BUILD_TESTS)
   add_test(NAME uv_test_a
            COMMAND uv_run_tests_a
            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
+    set_target_properties(uv_run_benchmarks_a PROPERTIES LINKER_LANGUAGE CXX)
+    set_target_properties(uv_run_tests PROPERTIES LINKER_LANGUAGE CXX)
+    set_target_properties(uv_run_tests_a PROPERTIES LINKER_LANGUAGE CXX)
+  endif()
 endif()
 
 if(UNIX OR MINGW)

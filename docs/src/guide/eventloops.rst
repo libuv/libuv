@@ -20,6 +20,7 @@ these things can be a bit difficult to understand, so let's look at
 
 .. rubric:: src/unix/core.c - uv_run
 .. literalinclude:: ../../../src/unix/core.c
+    :language: c
     :linenos:
     :lines: 304-324
     :emphasize-lines: 10,19,21
@@ -43,6 +44,7 @@ iteration of the loop still takes places.
 
 .. rubric:: uvstop/main.c
 .. literalinclude:: ../../code/uvstop/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 11
 
