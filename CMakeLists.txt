@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.4)
-project(libuv LANGUAGES C)
 
 cmake_policy(SET CMP0057 NEW) # Enable IN_LIST operator
 cmake_policy(SET CMP0064 NEW) # Support if (TEST) operator
+cmake_policy(SET CMP0091 NEW) # Enable CMAKE_MSVC_RUNTIME_LIBRARY
+
+project(libuv LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -36,6 +38,14 @@ if(ASAN AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
   set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+# MSVC options
+if(MSVC)
+  option(STATIC_VCRT "Force /MT for static VC runtimes" OFF)
+  if(STATIC_VCRT)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
 endif()
 
 # Compiler check
