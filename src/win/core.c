@@ -638,6 +638,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
        * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
        * the check.
        */
+      uv_update_time(loop);
       uv__run_timers(loop);
     }
 
