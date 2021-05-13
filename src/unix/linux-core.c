@@ -855,9 +855,9 @@ static int read_times(FILE* statfile_fp,
   char buf[1024];
 
   ticks = (unsigned int)sysconf(_SC_CLK_TCK);
-  multiplier = ((uint64_t)1000L / ticks);
   assert(ticks != (unsigned int) -1);
   assert(ticks != 0);
+  multiplier = ((uint64_t)1000L / ticks);
 
   rewind(statfile_fp);
 
