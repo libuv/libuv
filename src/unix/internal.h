@@ -327,7 +327,7 @@ int uv__getsockpeername(const uv_handle_t* handle,
 
 #if defined(__linux__)            ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel__)   ||					  \
+    defined(__FreeBSD_kernel__)   ||                                       \
     defined(__DragonFly__)
 #define HAVE_MMSG 1
 struct uv__mmsghdr {
