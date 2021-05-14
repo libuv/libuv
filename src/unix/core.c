@@ -577,7 +577,7 @@ int uv__close_nocheckstdio(int fd) {
 
 
 int uv__close(int fd) {
-  assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
+  assert(fd > STDERR_FILENO || !isatty(fd));  /* Catch stdio close bugs. */
 #if defined(__MVS__)
   SAVE_ERRNO(epoll_file_close(fd));
 #endif
