@@ -528,6 +528,7 @@ TEST_DECLARE  (fork_threadpool_queue_work_simple)
 
 TEST_DECLARE  (idna_toascii)
 TEST_DECLARE  (utf8_decode1)
+TEST_DECLARE  (utf8_decode1_overrun)
 TEST_DECLARE  (uname)
 
 TEST_DECLARE  (metrics_idle_time)
@@ -1124,6 +1125,7 @@ TASK_LIST_START
 #endif
 
   TEST_ENTRY  (utf8_decode1)
+  TEST_ENTRY  (utf8_decode1_overrun)
   TEST_ENTRY  (uname)
 
 /* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
