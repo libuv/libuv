@@ -1184,7 +1184,9 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
     if (buf == NULL)
       return UV_ENOMEM;
 
-    r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+    do
+      r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+    while (r == EINTR);
 
     if (r != ERANGE)
       break;
@@ -1194,7 +1196,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
   if (r != 0) {
     uv__free(buf);
-    return -r;
+    return UV__ERR(r);
   }
 
   if (result == NULL) {
