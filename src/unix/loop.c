@@ -158,6 +158,8 @@ int uv_loop_fork(uv_loop_t* loop) {
     }
   }
 
+  uv__update_time(loop);
+
   return 0;
 }
 
