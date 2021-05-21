@@ -202,6 +202,14 @@ API
     * < 0: negative error code (``UV_EAGAIN`` is returned if no data can be sent
       immediately).
 
+.. c:function:: int uv_try_write2(uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_stream_t* send_handle)
+
+    Same as :c:func:`uv_try_write` and extended write function for sending
+    handles over a pipe like c:func:`uv_write2`.
+
+    Try to send a handle is not supported on Windows,
+    where it returns ``UV_EAGAIN``.
+
 .. c:function:: int uv_is_readable(const uv_stream_t* handle)
 
     Returns 1 if the stream is readable, 0 otherwise.
