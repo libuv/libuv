@@ -210,6 +210,8 @@ API
     Try to send a handle is not supported on Windows,
     where it returns ``UV_EAGAIN``.
 
+    .. versionadded:: 1.42.0
+    
 .. c:function:: int uv_is_readable(const uv_stream_t* handle)
 
     Returns 1 if the stream is readable, 0 otherwise.

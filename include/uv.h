@@ -528,9 +528,9 @@ UV_EXTERN int uv_try_write(uv_stream_t* handle,
                            const uv_buf_t bufs[],
                            unsigned int nbufs);
 UV_EXTERN int uv_try_write2(uv_stream_t* handle,
-                           const uv_buf_t bufs[],
-                           unsigned int nbufs,
-                           uv_stream_t* send_handle);
+                            const uv_buf_t bufs[],
+                            unsigned int nbufs,
+                            uv_stream_t* send_handle);
 
 /* uv_write_t is a subclass of uv_req_t. */
 struct uv_write_s {

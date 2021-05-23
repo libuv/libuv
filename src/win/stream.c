@@ -189,12 +189,12 @@ int uv_try_write(uv_stream_t* stream,
 
 
 int uv_try_write2(uv_stream_t* stream,
-                 const uv_buf_t bufs[],
-                 unsigned int nbufs,
-                 uv_stream_t* send_handle) {
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  uv_stream_t* send_handle) {
   if (send_handle != NULL)
     return UV_EAGAIN;
-  return uv_try_write(stream, bufs, nbufs, NULL);
+  return uv_try_write(stream, bufs, nbufs);
 }
 
 

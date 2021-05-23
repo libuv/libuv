@@ -1522,14 +1522,14 @@ int uv_write(uv_write_t* req,
 int uv_try_write(uv_stream_t* stream,
                  const uv_buf_t bufs[],
                  unsigned int nbufs) {
-    return uv_try_write2(stream, bufs, nbufs, NULL);
+  return uv_try_write2(stream, bufs, nbufs, NULL);
 }
 
 
 int uv_try_write2(uv_stream_t* stream,
-                 const uv_buf_t bufs[],
-                 unsigned int nbufs,
-                 uv_stream_t* send_handle) {
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  uv_stream_t* send_handle) {
   int err;
 
   /* Connecting or already writing some data */
