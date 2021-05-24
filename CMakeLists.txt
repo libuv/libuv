@@ -8,6 +8,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 include(CMakePackageConfigHelpers)
 include(CMakeDependentOption)
+include(CheckCSourceCompiles)
 include(CheckCCompilerFlag)
 include(GNUInstallDirs)
 include(CTest)
@@ -94,6 +95,13 @@ list(APPEND uv_cflags ${lint-no-hides-global-msvc})
 list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
 list(APPEND uv_cflags ${lint-utf8-msvc} )
+
+check_c_source_compiles("
+  #include <assert.h>
+  int main() { static_assert(1>0, \"true\"); return 0; }" 
+  STATIC_ASSERT_FOUND)
+set(have-static-assert $<$<BOOL:${STATIC_ASSERT_FOUND}>:-DHAVE_STATIC_ASSERT>)
+list(APPEND uv_cflags ${have-static-assert})
 
 set(uv_sources
     src/fs-poll.c

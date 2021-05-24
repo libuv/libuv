@@ -48,8 +48,15 @@
 #define container_of(ptr, type, member) \
   ((type *) ((char *) (ptr) - offsetof(type, member)))
 
-#define STATIC_ASSERT(expr)                                                   \
-  void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
+#if !defined(STATIC_ASSERT)
+# if defined(HAVE_STATIC_ASSERT)
+#  include <assert.h>
+#  define STATIC_ASSERT(expr) static_assert((expr), #expr)
+# else
+#  define STATIC_ASSERT(expr)                                                   \
+    void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
+# endif
+#endif
 
 #if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
 #define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)
