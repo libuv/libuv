@@ -25,6 +25,11 @@
 
 
 TEST_IMPL(platform_output) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+
   char buffer[512];
   size_t rss;
   size_t size;
@@ -150,6 +155,7 @@ TEST_IMPL(platform_output) {
   printf("  username: %s\n", pwd.username);
   printf("  shell: %s\n", pwd.shell);
   printf("  home directory: %s\n", pwd.homedir);
+  uv_os_free_passwd(&pwd);
 
   pid = uv_os_getpid();
   ASSERT(pid > 0);

@@ -41,34 +41,33 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 
 #else /* TARGET_OS_IPHONE */
 
+#include "darwin-stub.h"
+
 #include <dlfcn.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <pthread.h>
 
-#include <CoreFoundation/CFRunLoop.h>
-#include <CoreServices/CoreServices.h>
+static const int kFSEventsModified =
+    kFSEventStreamEventFlagItemChangeOwner |
+    kFSEventStreamEventFlagItemFinderInfoMod |
+    kFSEventStreamEventFlagItemInodeMetaMod |
+    kFSEventStreamEventFlagItemModified |
+    kFSEventStreamEventFlagItemXattrMod;
 
-/* These are macros to avoid "initializer element is not constant" errors
- * with old versions of gcc.
- */
-#define kFSEventsModified (kFSEventStreamEventFlagItemFinderInfoMod |         \
-                           kFSEventStreamEventFlagItemModified |              \
-                           kFSEventStreamEventFlagItemInodeMetaMod |          \
-                           kFSEventStreamEventFlagItemChangeOwner |           \
-                           kFSEventStreamEventFlagItemXattrMod)
+static const int kFSEventsRenamed =
+    kFSEventStreamEventFlagItemCreated |
+    kFSEventStreamEventFlagItemRemoved |
+    kFSEventStreamEventFlagItemRenamed;
 
-#define kFSEventsRenamed  (kFSEventStreamEventFlagItemCreated |               \
-                           kFSEventStreamEventFlagItemRemoved |               \
-                           kFSEventStreamEventFlagItemRenamed)
-
-#define kFSEventsSystem   (kFSEventStreamEventFlagUserDropped |               \
-                           kFSEventStreamEventFlagKernelDropped |             \
-                           kFSEventStreamEventFlagEventIdsWrapped |           \
-                           kFSEventStreamEventFlagHistoryDone |               \
-                           kFSEventStreamEventFlagMount |                     \
-                           kFSEventStreamEventFlagUnmount |                   \
-                           kFSEventStreamEventFlagRootChanged)
+static const int kFSEventsSystem =
+    kFSEventStreamEventFlagUserDropped |
+    kFSEventStreamEventFlagKernelDropped |
+    kFSEventStreamEventFlagEventIdsWrapped |
+    kFSEventStreamEventFlagHistoryDone |
+    kFSEventStreamEventFlagMount |
+    kFSEventStreamEventFlagUnmount |
+    kFSEventStreamEventFlagRootChanged;
 
 typedef struct uv__fsevents_event_s uv__fsevents_event_t;
 typedef struct uv__cf_loop_signal_s uv__cf_loop_signal_t;
@@ -148,7 +147,7 @@ static void (*pFSEventStreamRelease)(FSEventStreamRef);
 static void (*pFSEventStreamScheduleWithRunLoop)(FSEventStreamRef,
                                                  CFRunLoopRef,
                                                  CFStringRef);
-static Boolean (*pFSEventStreamStart)(FSEventStreamRef);
+static int (*pFSEventStreamStart)(FSEventStreamRef);
 static void (*pFSEventStreamStop)(FSEventStreamRef);
 
 #define UV__FSEVENTS_PROCESS(handle, block)                                   \
@@ -215,7 +214,7 @@ static void uv__fsevents_push_event(uv_fs_event_t* handle,
 
 
 /* Runs in CF thread, when there're events in FSEventStream */
-static void uv__fsevents_event_cb(ConstFSEventStreamRef streamRef,
+static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
                                   void* info,
                                   size_t numEvents,
                                   void* eventPaths,
@@ -340,11 +339,8 @@ static int uv__fsevents_create_stream(uv_loop_t* loop, CFArrayRef paths) {
   FSEventStreamCreateFlags flags;
 
   /* Initialize context */
-  ctx.version = 0;
+  memset(&ctx, 0, sizeof(ctx));
   ctx.info = loop;
-  ctx.retain = NULL;
-  ctx.release = NULL;
-  ctx.copyDescription = NULL;
 
   latency = 0.05;
 
@@ -599,8 +595,7 @@ out:
 static int uv__fsevents_loop_init(uv_loop_t* loop) {
   CFRunLoopSourceContext ctx;
   uv__cf_loop_state_t* state;
-  pthread_attr_t attr_storage;
-  pthread_attr_t* attr;
+  pthread_attr_t attr;
   int err;
 
   if (loop->cf_state != NULL)
@@ -645,25 +640,19 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
     goto fail_signal_source_create;
   }
 
-  /* In the unlikely event that pthread_attr_init() fails, create the thread
-   * with the default stack size. We'll use a little more address space but
-   * that in itself is not a fatal error.
-   */
-  attr = &attr_storage;
-  if (pthread_attr_init(attr))
-    attr = NULL;
+  if (pthread_attr_init(&attr))
+    abort();
 
-  if (attr != NULL)
-    if (pthread_attr_setstacksize(attr, 4 * PTHREAD_STACK_MIN))
-      abort();
+  if (pthread_attr_setstacksize(&attr, uv__thread_stack_size()))
+    abort();
 
   loop->cf_state = state;
 
   /* uv_thread_t is an alias for pthread_t. */
-  err = UV__ERR(pthread_create(&loop->cf_thread, attr, uv__cf_loop_runner, loop));
+  err = UV__ERR(pthread_create(&loop->cf_thread, &attr, uv__cf_loop_runner, loop));
 
-  if (attr != NULL)
-    pthread_attr_destroy(attr);
+  if (pthread_attr_destroy(&attr))
+    abort();
 
   if (err)
     goto fail_thread_create;
@@ -747,6 +736,8 @@ static void* uv__cf_loop_runner(void* arg) {
                          state->signal_source,
                          *pkCFRunLoopDefaultMode);
 
+  state->loop = NULL;
+
   return NULL;
 }
 
@@ -799,12 +790,13 @@ int uv__cf_loop_signal(uv_loop_t* loop,
 
   uv_mutex_lock(&loop->cf_mutex);
   QUEUE_INSERT_TAIL(&loop->cf_signals, &item->member);
-  uv_mutex_unlock(&loop->cf_mutex);
 
   state = loop->cf_state;
   assert(state != NULL);
   pCFRunLoopSourceSignal(state->signal_source);
   pCFRunLoopWakeUp(state->loop);
+
+  uv_mutex_unlock(&loop->cf_mutex);
 
   return 0;
 }

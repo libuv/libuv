@@ -160,8 +160,7 @@ static void post(QUEUE* q, enum uv__work_kind kind) {
 }
 
 
-#ifndef _WIN32
-UV_DESTRUCTOR(static void cleanup(void)) {
+void uv__threadpool_cleanup(void) {
   unsigned int i;
 
   if (nthreads == 0)
@@ -182,7 +181,6 @@ UV_DESTRUCTOR(static void cleanup(void)) {
   threads = NULL;
   nthreads = 0;
 }
-#endif
 
 
 static void init_threads(void) {

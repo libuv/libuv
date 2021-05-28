@@ -360,6 +360,8 @@ TEST_IMPL(tty_file) {
   if (fd != -1) {
     ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
     ASSERT(0 == close(fd));
+    /* test EBADF handling */
+    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
   }
 
 /* Bug on AIX where '/dev/random' returns 1 from isatty() */
@@ -420,6 +422,14 @@ TEST_IMPL(tty_file) {
 }
 
 TEST_IMPL(tty_pty) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+#if defined(__ASAN__)
+  RETURN_SKIP("Test does not currently work in ASAN");
+#endif
+
 #if defined(__APPLE__)                            || \
     defined(__DragonFly__)                        || \
     defined(__FreeBSD__)                          || \

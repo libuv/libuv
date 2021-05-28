@@ -65,14 +65,15 @@
 #define RDWR_BUF_SIZE   4096
 #define EQ(a,b)         (strcmp(a,b) == 0)
 
-static uv_mutex_t process_title_mutex;
-static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
+char* original_exepath = NULL;
+uv_mutex_t process_title_mutex;
+uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 static void* args_mem = NULL;
 static char** process_argv = NULL;
 static int process_argc = 0;
 static char* process_title_ptr = NULL;
 
-static void init_process_title_mutex_once(void) {
+void init_process_title_mutex_once(void) {
   uv_mutex_init(&process_title_mutex);
 }
 
@@ -145,6 +146,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int i;
   int rc;
   int add_failed;
+  int user_timeout;
+  int reset_timeout;
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
@@ -214,7 +217,21 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
 
+  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+    reset_timeout = 1;
+    user_timeout = timeout;
+    timeout = 0;
+  } else {
+    reset_timeout = 0;
+  }
+
   for (;;) {
+    /* Only need to set the provider_entry_time if timeout != 0. The function
+     * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
+     */
+    if (timeout != 0)
+      uv__metrics_set_provider_entry_time(loop);
+
     nfds = pollset_poll(loop->backend_fd,
                         events,
                         ARRAY_SIZE(events),
@@ -227,6 +244,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     SAVE_ERRNO(uv__update_time(loop));
 
     if (nfds == 0) {
+      if (reset_timeout != 0) {
+        timeout = user_timeout;
+        reset_timeout = 0;
+        if (timeout == -1)
+          continue;
+        if (timeout > 0)
+          goto update_timeout;
+      }
+
       assert(timeout != -1);
       return;
     }
@@ -234,6 +260,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (nfds == -1) {
       if (errno != EINTR) {
         abort();
+      }
+
+      if (reset_timeout != 0) {
+        timeout = user_timeout;
+        reset_timeout = 0;
       }
 
       if (timeout == -1)
@@ -280,16 +311,25 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       /* Run signal watchers last.  This also affects child process watchers
        * because those are implemented in terms of signal watchers.
        */
-      if (w == &loop->signal_io_watcher)
+      if (w == &loop->signal_io_watcher) {
         have_signals = 1;
-      else
+      } else {
+        uv__metrics_update_idle_time(loop);
         w->cb(loop, w, pe->revents);
+      }
 
       nevents++;
     }
 
-    if (have_signals != 0)
+    if (reset_timeout != 0) {
+      timeout = user_timeout;
+      reset_timeout = 0;
+    }
+
+    if (have_signals != 0) {
+      uv__metrics_update_idle_time(loop);
       loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+    }
 
     loop->watchers[loop->nwatchers] = NULL;
     loop->watchers[loop->nwatchers + 1] = NULL;
@@ -830,6 +870,7 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
 
 
 char** uv_setup_args(int argc, char** argv) {
+  char exepath[UV__PATH_MAX];
   char** new_argv;
   size_t size;
   char* s;
@@ -844,6 +885,15 @@ char** uv_setup_args(int argc, char** argv) {
    */
   process_argv = argv;
   process_argc = argc;
+
+  /* Use argv[0] to determine value for uv_exepath(). */
+  size = sizeof(exepath);
+  if (uv__search_path(argv[0], exepath, &size) == 0) {
+    uv_once(&process_title_mutex_once, init_process_title_mutex_once);
+    uv_mutex_lock(&process_title_mutex); 
+    original_exepath = uv__strdup(exepath);
+    uv_mutex_unlock(&process_title_mutex);
+  }
 
   /* Calculate how much memory we need for the argv strings. */
   size = 0;
@@ -874,6 +924,10 @@ char** uv_setup_args(int argc, char** argv) {
 
 int uv_set_process_title(const char* title) {
   char* new_title;
+
+  /* If uv_setup_args wasn't called or failed, we can't continue. */
+  if (process_argv == NULL || args_mem == NULL)
+    return UV_ENOBUFS;
 
   /* We cannot free this pointer when libuv shuts down,
    * the process may still be using it.
@@ -908,6 +962,10 @@ int uv_get_process_title(char* buffer, size_t size) {
   if (buffer == NULL || size == 0)
     return UV_EINVAL;
 
+  /* If uv_setup_args wasn't called, we can't continue. */
+  if (process_argv == NULL)
+    return UV_ENOBUFS;
+
   uv_once(&process_title_mutex_once, init_process_title_mutex_once);
   uv_mutex_lock(&process_title_mutex);
 
@@ -926,7 +984,7 @@ int uv_get_process_title(char* buffer, size_t size) {
 }
 
 
-UV_DESTRUCTOR(static void free_args_mem(void)) {
+void uv__process_title_cleanup(void) {
   uv__free(args_mem);  /* Keep valgrind happy. */
   args_mem = NULL;
 }
@@ -1036,6 +1094,186 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   uv__free(ps_cpus);
   return 0;
+}
+
+
+int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+  uv_interface_address_t* address;
+  int sockfd, sock6fd, inet6, i, r, size = 1;
+  struct ifconf ifc;
+  struct ifreq *ifr, *p, flg;
+  struct in6_ifreq if6;
+  struct sockaddr_dl* sa_addr;
+
+  ifc.ifc_req = NULL;
+  sock6fd = -1;
+  r = 0;
+  *count = 0;
+  *addresses = NULL;
+
+  if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP))) {
+    r = UV__ERR(errno);
+    goto cleanup;
+  }
+
+  if (0 > (sock6fd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP))) {
+    r = UV__ERR(errno);
+    goto cleanup;
+  }
+
+  if (ioctl(sockfd, SIOCGSIZIFCONF, &size) == -1) {
+    r = UV__ERR(errno);
+    goto cleanup;
+  }
+
+  ifc.ifc_req = (struct ifreq*)uv__malloc(size);
+  if (ifc.ifc_req == NULL) {
+    r = UV_ENOMEM;
+    goto cleanup;
+  }
+  ifc.ifc_len = size;
+  if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
+    r = UV__ERR(errno);
+    goto cleanup;
+  }
+
+#define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
+
+  /* Count all up and running ipv4/ipv6 addresses */
+  ifr = ifc.ifc_req;
+  while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
+    p = ifr;
+    ifr = (struct ifreq*)
+      ((char*)ifr + sizeof(ifr->ifr_name) + ADDR_SIZE(ifr->ifr_addr));
+
+    if (!(p->ifr_addr.sa_family == AF_INET6 ||
+          p->ifr_addr.sa_family == AF_INET))
+      continue;
+
+    memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
+    if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
+      r = UV__ERR(errno);
+      goto cleanup;
+    }
+
+    if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
+      continue;
+
+    (*count)++;
+  }
+
+  if (*count == 0)
+    goto cleanup;
+
+  /* Alloc the return interface structs */
+  *addresses = uv__calloc(*count, sizeof(**addresses));
+  if (!(*addresses)) {
+    r = UV_ENOMEM;
+    goto cleanup;
+  }
+  address = *addresses;
+
+  ifr = ifc.ifc_req;
+  while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
+    p = ifr;
+    ifr = (struct ifreq*)
+      ((char*)ifr + sizeof(ifr->ifr_name) + ADDR_SIZE(ifr->ifr_addr));
+
+    if (!(p->ifr_addr.sa_family == AF_INET6 ||
+          p->ifr_addr.sa_family == AF_INET))
+      continue;
+
+    inet6 = (p->ifr_addr.sa_family == AF_INET6);
+
+    memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
+    if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1)
+      goto syserror;
+
+    if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
+      continue;
+
+    /* All conditions above must match count loop */
+
+    address->name = uv__strdup(p->ifr_name);
+
+    if (inet6)
+      address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);
+    else
+      address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
+
+    if (inet6) {
+      memset(&if6, 0, sizeof(if6));
+      r = uv__strscpy(if6.ifr_name, p->ifr_name, sizeof(if6.ifr_name));
+      if (r == UV_E2BIG)
+        goto cleanup;
+      r = 0;
+      memcpy(&if6.ifr_Addr, &p->ifr_addr, sizeof(if6.ifr_Addr));
+      if (ioctl(sock6fd, SIOCGIFNETMASK6, &if6) == -1)
+        goto syserror;
+      address->netmask.netmask6 = *((struct sockaddr_in6*) &if6.ifr_Addr);
+      /* Explicitly set family as the ioctl call appears to return it as 0. */
+      address->netmask.netmask6.sin6_family = AF_INET6;
+    } else {
+      if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1)
+        goto syserror;
+      address->netmask.netmask4 = *((struct sockaddr_in*) &p->ifr_addr);
+      /* Explicitly set family as the ioctl call appears to return it as 0. */
+      address->netmask.netmask4.sin_family = AF_INET;
+    }
+
+    address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
+
+    address++;
+  }
+
+  /* Fill in physical addresses. */
+  ifr = ifc.ifc_req;
+  while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
+    p = ifr;
+    ifr = (struct ifreq*)
+      ((char*)ifr + sizeof(ifr->ifr_name) + ADDR_SIZE(ifr->ifr_addr));
+
+    if (p->ifr_addr.sa_family != AF_LINK)
+      continue;
+
+    address = *addresses;
+    for (i = 0; i < *count; i++) {
+      if (strcmp(address->name, p->ifr_name) == 0) {
+        sa_addr = (struct sockaddr_dl*) &p->ifr_addr;
+        memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
+      }
+      address++;
+    }
+  }
+
+#undef ADDR_SIZE
+  goto cleanup;
+
+syserror:
+  uv_free_interface_addresses(*addresses, *count);
+  *addresses = NULL;
+  *count = 0;
+  r = UV_ENOSYS;
+
+cleanup:
+  if (sockfd != -1)
+    uv__close(sockfd);
+  if (sock6fd != -1)
+    uv__close(sock6fd);
+  uv__free(ifc.ifc_req);
+  return r;
+}
+
+
+void uv_free_interface_addresses(uv_interface_address_t* addresses,
+  int count) {
+  int i;
+
+  for (i = 0; i < count; ++i) {
+    uv__free(addresses[i].name);
+  }
+
+  uv__free(addresses);
 }
 
 

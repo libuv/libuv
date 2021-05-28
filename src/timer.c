@@ -51,18 +51,14 @@ static int timer_less_than(const struct heap_node* ha,
   /* Compare start_id when both have the same timeout. start_id is
    * allocated with loop->timer_counter in uv_timer_start().
    */
-  if (a->start_id < b->start_id)
-    return 1;
-  if (b->start_id < a->start_id)
-    return 0;
-
-  return 0;
+  return a->start_id < b->start_id;
 }
 
 
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
   handle->timer_cb = NULL;
+  handle->timeout = 0;
   handle->repeat = 0;
   return 0;
 }
@@ -87,7 +83,7 @@ int uv_timer_start(uv_timer_t* handle,
   handle->timer_cb = cb;
   handle->timeout = clamped_timeout;
   handle->repeat = repeat;
-  /* start_id is the second index to be compared in uv__timer_cmp() */
+  /* start_id is the second index to be compared in timer_less_than() */
   handle->start_id = handle->loop->timer_counter++;
 
   heap_insert(timer_heap(handle->loop),
@@ -132,6 +128,14 @@ void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat) {
 
 uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
   return handle->repeat;
+}
+
+
+uint64_t uv_timer_get_due_in(const uv_timer_t* handle) {
+  if (handle->loop->time >= handle->timeout)
+    return 0;
+
+  return handle->timeout - handle->loop->time;
 }
 
 

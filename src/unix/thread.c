@@ -168,14 +168,15 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
  * On Linux, threads created by musl have a much smaller stack than threads
  * created by glibc (80 vs. 2048 or 4096 kB.)  Follow glibc for consistency.
  */
-static size_t thread_stack_size(void) {
+size_t uv__thread_stack_size(void) {
 #if defined(__APPLE__) || defined(__linux__)
   struct rlimit lim;
 
-  if (getrlimit(RLIMIT_STACK, &lim))
-    abort();
-
-  if (lim.rlim_cur != RLIM_INFINITY) {
+  /* getrlimit() can fail on some aarch64 systems due to a glibc bug where
+   * the system call wrapper invokes the wrong system call. Don't treat
+   * that as fatal, just use the default stack size instead.
+   */
+  if (0 == getrlimit(RLIMIT_STACK, &lim) && lim.rlim_cur != RLIM_INFINITY) {
     /* pthread_attr_setstacksize() expects page-aligned values. */
     lim.rlim_cur -= lim.rlim_cur % (rlim_t) getpagesize();
 
@@ -233,7 +234,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
 
   attr = NULL;
   if (stack_size == 0) {
-    stack_size = thread_stack_size();
+    stack_size = uv__thread_stack_size();
   } else {
     pagesize = (size_t)getpagesize();
     /* Round up to the nearest page boundary. */
@@ -708,11 +709,9 @@ int uv_cond_init(uv_cond_t* cond) {
   if (err)
     return UV__ERR(err);
 
-#if !(defined(__ANDROID_API__) && __ANDROID_API__ < 21)
   err = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
   if (err)
     goto error2;
-#endif
 
   err = pthread_cond_init(cond, &attr);
   if (err)
@@ -804,16 +803,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 #endif
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-
-  /*
-   * The bionic pthread implementation doesn't support CLOCK_MONOTONIC,
-   * but has this alternative function instead.
-   */
-  r = pthread_cond_timedwait_monotonic_np(cond, mutex, &ts);
-#else
   r = pthread_cond_timedwait(cond, mutex, &ts);
-#endif /* __ANDROID_API__ */
 #endif
 
 

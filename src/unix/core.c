@@ -71,24 +71,12 @@ extern char** environ;
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
-# if defined(__FreeBSD__) && __FreeBSD__ >= 10
+# if defined(__FreeBSD__)
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
 #  define uv__accept4(a, b, c, d) paccept((a), (b), (c), NULL, (d))
 # endif
-# if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || \
-      defined(__NetBSD__) || defined(__OpenBSD__)
-#  define UV__SOCK_NONBLOCK SOCK_NONBLOCK
-#  define UV__SOCK_CLOEXEC  SOCK_CLOEXEC
-# endif
-# if !defined(F_DUP2FD_CLOEXEC) && defined(_F_DUP2FD_CLOEXEC)
-#  define F_DUP2FD_CLOEXEC  _F_DUP2FD_CLOEXEC
-# endif
-#endif
-
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-# include <dlfcn.h>  /* for dlsym */
 #endif
 
 #if defined(__MVS__)
@@ -96,7 +84,12 @@ extern char** environ;
 #endif
 
 #if defined(__linux__)
-#include <sys/syscall.h>
+# include <sys/syscall.h>
+# define uv__accept4 accept4
+#endif
+
+#if defined(__linux__) && defined(__SANITIZE_THREAD__) && defined(__clang__)
+# include <sanitizer/linux_syscall_hooks.h>
 #endif
 
 static int uv__run_pending(uv_loop_t* loop);
@@ -179,9 +172,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
   case UV_SIGNAL:
     uv__signal_close((uv_signal_t*) handle);
-    /* Signal handles may not be closed immediately. The signal code will
-     * itself close uv__make_close_pending whenever appropriate. */
-    return;
+    break;
 
   default:
     assert(0);
@@ -229,15 +220,23 @@ int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
-  static int iovmax = -1;
-  if (iovmax == -1) {
-    iovmax = sysconf(_SC_IOV_MAX);
-    /* On some embedded devices (arm-linux-uclibc based ip camera),
-     * sysconf(_SC_IOV_MAX) can not get the correct value. The return
-     * value is -1 and the errno is EINPROGRESS. Degrade the value to 1.
-     */
-    if (iovmax == -1) iovmax = 1;
-  }
+  static int iovmax_cached = -1;
+  int iovmax;
+
+  iovmax = uv__load_relaxed(&iovmax_cached);
+  if (iovmax != -1)
+    return iovmax;
+
+  /* On some embedded devices (arm-linux-uclibc based ip camera),
+   * sysconf(_SC_IOV_MAX) can not get the correct value. The return
+   * value is -1 and the errno is EINPROGRESS. Degrade the value to 1.
+   */
+  iovmax = sysconf(_SC_IOV_MAX);
+  if (iovmax == -1)
+    iovmax = 1;
+
+  uv__store_relaxed(&iovmax_cached, iovmax);
+
   return iovmax;
 #else
   return 1024;
@@ -246,6 +245,8 @@ int uv__getiovmax(void) {
 
 
 static void uv__finish_close(uv_handle_t* handle) {
+  uv_signal_t* sh;
+
   /* Note: while the handle is in the UV_HANDLE_CLOSING state now, it's still
    * possible for it to be active in the sense that uv__is_active() returns
    * true.
@@ -268,7 +269,20 @@ static void uv__finish_close(uv_handle_t* handle) {
     case UV_FS_EVENT:
     case UV_FS_POLL:
     case UV_POLL:
+      break;
+
     case UV_SIGNAL:
+      /* If there are any caught signals "trapped" in the signal pipe,
+       * we can't call the close callback yet. Reinserting the handle
+       * into the closing queue makes the event loop spin but that's
+       * okay because we only need to deliver the pending events.
+       */
+      sh = (uv_signal_t*) handle;
+      if (sh->caught_signals > sh->dispatched_signals) {
+        handle->flags ^= UV_HANDLE_CLOSED;
+        uv__make_close_pending(handle);  /* Back into the queue. */
+        return;
+      }
       break;
 
     case UV_NAMED_PIPE:
@@ -373,6 +387,14 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
       timeout = uv_backend_timeout(loop);
 
     uv__io_poll(loop, timeout);
+
+    /* Run one final update on the provider_idle_time in case uv__io_poll
+     * returned because the timeout expired, but no events were received. This
+     * call will be ignored if the provider_entry_time was either never set (if
+     * the timeout == 0) or was already updated b/c an event was received.
+     */
+    uv__metrics_update_idle_time(loop);
+
     uv__run_check(loop);
     uv__run_closing_handles(loop);
 
@@ -472,52 +494,32 @@ int uv__accept(int sockfd) {
   int peerfd;
   int err;
 
+  (void) &err;
   assert(sockfd >= 0);
 
-  while (1) {
-#if defined(__linux__)                          || \
-    (defined(__FreeBSD__) && __FreeBSD__ >= 10) || \
-    defined(__NetBSD__)
-    static int no_accept4;
+  do
+#ifdef uv__accept4
+    peerfd = uv__accept4(sockfd, NULL, NULL, SOCK_NONBLOCK|SOCK_CLOEXEC);
+#else
+    peerfd = accept(sockfd, NULL, NULL);
+#endif
+  while (peerfd == -1 && errno == EINTR);
 
-    if (no_accept4)
-      goto skip;
+  if (peerfd == -1)
+    return UV__ERR(errno);
 
-    peerfd = uv__accept4(sockfd,
-                         NULL,
-                         NULL,
-                         UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
-    if (peerfd != -1)
-      return peerfd;
+#ifndef uv__accept4
+  err = uv__cloexec(peerfd, 1);
+  if (err == 0)
+    err = uv__nonblock(peerfd, 1);
 
-    if (errno == EINTR)
-      continue;
-
-    if (errno != ENOSYS)
-      return UV__ERR(errno);
-
-    no_accept4 = 1;
-skip:
+  if (err != 0) {
+    uv__close(peerfd);
+    return err;
+  }
 #endif
 
-    peerfd = accept(sockfd, NULL, NULL);
-    if (peerfd == -1) {
-      if (errno == EINTR)
-        continue;
-      return UV__ERR(errno);
-    }
-
-    err = uv__cloexec(peerfd, 1);
-    if (err == 0)
-      err = uv__nonblock(peerfd, 1);
-
-    if (err) {
-      uv__close(peerfd);
-      return err;
-    }
-
-    return peerfd;
-  }
+  return peerfd;
 }
 
 
@@ -533,7 +535,7 @@ int uv__close_nocancel(int fd) {
 #if defined(__APPLE__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#if defined(__LP64__)
+#if defined(__LP64__) || TARGET_OS_IPHONE
   extern int close$NOCANCEL(int);
   return close$NOCANCEL(fd);
 #else
@@ -541,7 +543,13 @@ int uv__close_nocancel(int fd) {
   return close$NOCANCEL$UNIX2003(fd);
 #endif
 #pragma GCC diagnostic pop
-#elif defined(__linux__)
+#elif defined(__linux__) && defined(__SANITIZE_THREAD__) && defined(__clang__)
+  long rc;
+  __sanitizer_syscall_pre_close(fd);
+  rc = syscall(SYS_close, fd);
+  __sanitizer_syscall_post_close(rc, fd);
+  return rc;
+#elif defined(__linux__) && !defined(__SANITIZE_THREAD__)
   return syscall(SYS_close, fd);
 #else
   return close(fd);
@@ -676,7 +684,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   int* end;
 #if defined(__linux__)
   static int no_msg_cmsg_cloexec;
-  if (no_msg_cmsg_cloexec == 0) {
+  if (0 == uv__load_relaxed(&no_msg_cmsg_cloexec)) {
     rc = recvmsg(fd, msg, flags | 0x40000000);  /* MSG_CMSG_CLOEXEC */
     if (rc != -1)
       return rc;
@@ -685,7 +693,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
     rc = recvmsg(fd, msg, flags);
     if (rc == -1)
       return UV__ERR(errno);
-    no_msg_cmsg_cloexec = 1;
+    uv__store_relaxed(&no_msg_cmsg_cloexec, 1);
   } else {
     rc = recvmsg(fd, msg, flags);
   }
@@ -849,8 +857,8 @@ static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = uv__realloc(loop->watchers,
-                         (nwatchers + 2) * sizeof(loop->watchers[0]));
+  watchers = uv__reallocf(loop->watchers,
+                          (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     abort();
@@ -927,13 +935,12 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (w->pevents == 0) {
     QUEUE_REMOVE(&w->watcher_queue);
     QUEUE_INIT(&w->watcher_queue);
+    w->events = 0;
 
-    if (loop->watchers[w->fd] != NULL) {
-      assert(loop->watchers[w->fd] == w);
+    if (w == loop->watchers[w->fd]) {
       assert(loop->nfds > 0);
       loop->watchers[w->fd] = NULL;
       loop->nfds--;
-      w->events = 0;
     }
   }
   else if (QUEUE_EMPTY(&w->watcher_queue))
@@ -1031,54 +1038,30 @@ int uv__open_cloexec(const char* path, int flags) {
 
 
 int uv__dup2_cloexec(int oldfd, int newfd) {
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__linux__)
   int r;
-#if (defined(__FreeBSD__) && __FreeBSD__ >= 10) || defined(__NetBSD__)
+
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return UV__ERR(errno);
+
   return r;
-#elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
-  r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
-  if (r != -1)
-    return r;
-  if (errno != EINVAL)
-    return UV__ERR(errno);
-  /* Fall through. */
-#elif defined(__linux__)
-  static int no_dup3;
-  if (!no_dup3) {
-    do
-      r = uv__dup3(oldfd, newfd, O_CLOEXEC);
-    while (r == -1 && errno == EBUSY);
-    if (r != -1)
-      return r;
-    if (errno != ENOSYS)
-      return UV__ERR(errno);
-    /* Fall through. */
-    no_dup3 = 1;
-  }
-#endif
-  {
-    int err;
-    do
-      r = dup2(oldfd, newfd);
-#if defined(__linux__)
-    while (r == -1 && errno == EBUSY);
 #else
-    while (0);  /* Never retry. */
-#endif
+  int err;
+  int r;
 
-    if (r == -1)
-      return UV__ERR(errno);
+  r = dup2(oldfd, newfd);  /* Never retry. */
+  if (r == -1)
+    return UV__ERR(errno);
 
-    err = uv__cloexec(newfd, 1);
-    if (err) {
-      uv__close(newfd);
-      return err;
-    }
-
-    return r;
+  err = uv__cloexec(newfd, 1);
+  if (err != 0) {
+    uv__close(newfd);
+    return err;
   }
+
+  return r;
+#endif
 }
 
 
@@ -1180,13 +1163,6 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   size_t shell_size;
   long initsize;
   int r;
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 21
-  int (*getpwuid_r)(uid_t, struct passwd*, char*, size_t, struct passwd**);
-
-  getpwuid_r = dlsym(RTLD_DEFAULT, "getpwuid_r");
-  if (getpwuid_r == NULL)
-    return UV_ENOSYS;
-#endif
 
   if (pwd == NULL)
     return UV_EINVAL;
@@ -1208,7 +1184,9 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
     if (buf == NULL)
       return UV_ENOMEM;
 
-    r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+    do
+      r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+    while (r == EINTR);
 
     if (r != ERANGE)
       break;
@@ -1218,7 +1196,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
   if (r != 0) {
     uv__free(buf);
-    return -r;
+    return UV__ERR(r);
   }
 
   if (result == NULL) {
@@ -1296,7 +1274,7 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
 
   *envitems = uv__calloc(i, sizeof(**envitems));
 
-  if (envitems == NULL)
+  if (*envitems == NULL)
     return UV_ENOMEM;
 
   for (j = 0, cnt = 0; j < i; j++) {
@@ -1568,4 +1546,79 @@ void uv_sleep(unsigned int msec) {
   while (rc == -1 && errno == EINTR);
 
   assert(rc == 0);
+}
+
+int uv__search_path(const char* prog, char* buf, size_t* buflen) {
+  char abspath[UV__PATH_MAX];
+  size_t abspath_size;
+  char trypath[UV__PATH_MAX];
+  char* cloned_path;
+  char* path_env;
+  char* token;
+
+  if (buf == NULL || buflen == NULL || *buflen == 0)
+    return UV_EINVAL;
+
+  /*
+   * Possibilities for prog:
+   * i) an absolute path such as: /home/user/myprojects/nodejs/node
+   * ii) a relative path such as: ./node or ../myprojects/nodejs/node
+   * iii) a bare filename such as "node", after exporting PATH variable
+   *     to its location.
+   */
+
+  /* Case i) and ii) absolute or relative paths */
+  if (strchr(prog, '/') != NULL) {
+    if (realpath(prog, abspath) != abspath)
+      return UV__ERR(errno);
+
+    abspath_size = strlen(abspath);
+
+    *buflen -= 1;
+    if (*buflen > abspath_size)
+      *buflen = abspath_size;
+
+    memcpy(buf, abspath, *buflen);
+    buf[*buflen] = '\0';
+
+    return 0;
+  }
+
+  /* Case iii). Search PATH environment variable */
+  cloned_path = NULL;
+  token = NULL;
+  path_env = getenv("PATH");
+
+  if (path_env == NULL)
+    return UV_EINVAL;
+
+  cloned_path = uv__strdup(path_env);
+  if (cloned_path == NULL)
+    return UV_ENOMEM;
+
+  token = strtok(cloned_path, ":");
+  while (token != NULL) {
+    snprintf(trypath, sizeof(trypath) - 1, "%s/%s", token, prog);
+    if (realpath(trypath, abspath) == abspath) {
+      /* Check the match is executable */
+      if (access(abspath, X_OK) == 0) {
+        abspath_size = strlen(abspath);
+
+        *buflen -= 1;
+        if (*buflen > abspath_size)
+          *buflen = abspath_size;
+
+        memcpy(buf, abspath, *buflen);
+        buf[*buflen] = '\0';
+
+        uv__free(cloned_path);
+        return 0;
+      }
+    }
+    token = strtok(NULL, ":");
+  }
+  uv__free(cloned_path);
+
+  /* Out of tokens (path entries), and no match found */
+  return UV_EINVAL;
 }

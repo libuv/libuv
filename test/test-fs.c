@@ -28,12 +28,8 @@
 #include <sys/stat.h>
 #include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
 
-/* FIXME we shouldn't need to branch in this file */
-#if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(__sun) || \
-    defined(_AIX) || defined(__MVS__) || \
-    defined(__HAIKU__)
-#include <unistd.h> /* unlink, rmdir, etc. */
+#ifndef _WIN32
+# include <unistd.h> /* unlink, rmdir, etc. */
 #else
 # include <winioctl.h>
 # include <direct.h>
@@ -55,7 +51,7 @@
 #endif
 
 #define TOO_LONG_NAME_LENGTH 65536
-#define PATHMAX 1024
+#define PATHMAX 4096
 
 typedef struct {
   const char* path;
@@ -95,6 +91,7 @@ static int readlink_cb_count;
 static int realpath_cb_count;
 static int utime_cb_count;
 static int futime_cb_count;
+static int lutime_cb_count;
 static int statfs_cb_count;
 
 static uv_loop_t* loop;
@@ -309,6 +306,12 @@ static void chown_root_cb(uv_fs_t* req) {
 #   if defined(__CYGWIN__)
     /* On Cygwin, uid 0 is invalid (no root). */
     ASSERT(req->result == UV_EINVAL);
+#   elif defined(__PASE__)
+    /* On IBMi PASE, there is no root user. uid 0 is user qsecofr.
+     * User may grant qsecofr's privileges, including changing 
+     * the file's ownership to uid 0.
+     */
+    ASSERT(req->result == 0 || req->result == UV_EPERM);
 #   else
     ASSERT(req->result == UV_EPERM);
 #   endif
@@ -340,7 +343,7 @@ static void statfs_cb(uv_fs_t* req) {
 
   ASSERT(req->fs_type == UV_FS_STATFS);
   ASSERT(req->result == 0);
-  ASSERT(req->ptr != NULL);
+  ASSERT_NOT_NULL(req->ptr);
   stats = req->ptr;
 
 #if defined(_WIN32) || defined(__sun) || defined(_AIX) || defined(__MVS__) || \
@@ -363,7 +366,7 @@ static void statfs_cb(uv_fs_t* req) {
   ASSERT(stats->f_ffree <= stats->f_files);
 #endif
   uv_fs_req_cleanup(req);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   statfs_cb_count++;
 }
 
@@ -627,7 +630,7 @@ static void empty_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
   ASSERT(req->fs_type == UV_FS_SCANDIR);
   ASSERT(req->result == 0);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   ASSERT(UV_EOF == uv_fs_scandir_next(req, &dent));
   uv_fs_req_cleanup(req);
   scandir_cb_count++;
@@ -639,7 +642,7 @@ static void non_existent_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
   ASSERT(req->fs_type == UV_FS_SCANDIR);
   ASSERT(req->result == UV_ENOENT);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   ASSERT(UV_ENOENT == uv_fs_scandir_next(req, &dent));
   uv_fs_req_cleanup(req);
   scandir_cb_count++;
@@ -650,7 +653,7 @@ static void file_scandir_cb(uv_fs_t* req) {
   ASSERT(req == &scandir_req);
   ASSERT(req->fs_type == UV_FS_SCANDIR);
   ASSERT(req->result == UV_ENOTDIR);
-  ASSERT(req->ptr == NULL);
+  ASSERT_NULL(req->ptr);
   uv_fs_req_cleanup(req);
   scandir_cb_count++;
 }
@@ -670,7 +673,7 @@ static void stat_cb(uv_fs_t* req) {
 static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
   ASSERT(req->fs_type == UV_FS_SENDFILE);
-  ASSERT(req->result == 65546);
+  ASSERT(req->result == 65545);
   sendfile_cb_count++;
   uv_fs_req_cleanup(req);
 }
@@ -800,19 +803,57 @@ TEST_IMPL(fs_file_loop) {
   return 0;
 }
 
-static void check_utime(const char* path, double atime, double mtime) {
+static void check_utime(const char* path,
+                        double atime,
+                        double mtime,
+                        int test_lutime) {
   uv_stat_t* s;
   uv_fs_t req;
   int r;
 
-  r = uv_fs_stat(loop, &req, path, NULL);
-  ASSERT(r == 0);
+  if (test_lutime)
+    r = uv_fs_lstat(loop, &req, path, NULL);
+  else
+    r = uv_fs_stat(loop, &req, path, NULL);
 
-  ASSERT(req.result == 0);
+  ASSERT_EQ(r, 0);
+
+  ASSERT_EQ(req.result, 0);
   s = &req.statbuf;
 
-  ASSERT(s->st_atim.tv_sec + (s->st_atim.tv_nsec / 1000000000.0) == atime);
-  ASSERT(s->st_mtim.tv_sec + (s->st_mtim.tv_nsec / 1000000000.0) == mtime);
+  if (s->st_atim.tv_nsec == 0 && s->st_mtim.tv_nsec == 0) {
+    /*
+     * Test sub-second timestamps only when supported (such as Windows with
+     * NTFS). Some other platforms support sub-second timestamps, but that
+     * support is filesystem-dependent. Notably OS X (HFS Plus) does NOT
+     * support sub-second timestamps. But kernels may round or truncate in
+     * either direction, so we may accept either possible answer.
+     */
+#ifdef _WIN32
+    ASSERT_DOUBLE_EQ(atime, (long) atime);
+    ASSERT_DOUBLE_EQ(mtime, (long) atime);
+#endif
+    if (atime > 0 || (long) atime == atime)
+      ASSERT_EQ(s->st_atim.tv_sec, (long) atime);
+    if (mtime > 0 || (long) mtime == mtime)
+      ASSERT_EQ(s->st_mtim.tv_sec, (long) mtime);
+    ASSERT_GE(s->st_atim.tv_sec, (long) atime - 1);
+    ASSERT_GE(s->st_mtim.tv_sec, (long) mtime - 1);
+    ASSERT_LE(s->st_atim.tv_sec, (long) atime);
+    ASSERT_LE(s->st_mtim.tv_sec, (long) mtime);
+  } else {
+    double st_atim;
+    double st_mtim;
+#ifndef __APPLE__
+    /* TODO(vtjnash): would it be better to normalize this? */
+    ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
+    ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
+#endif
+    st_atim = s->st_atim.tv_sec + s->st_atim.tv_nsec / 1e9;
+    st_mtim = s->st_mtim.tv_sec + s->st_mtim.tv_nsec / 1e9;
+    ASSERT_DOUBLE_EQ(st_atim, atime);
+    ASSERT_DOUBLE_EQ(st_mtim, mtime);
+  }
 
   uv_fs_req_cleanup(&req);
 }
@@ -826,7 +867,7 @@ static void utime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_UTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 0);
 
   uv_fs_req_cleanup(req);
   utime_cb_count++;
@@ -841,10 +882,24 @@ static void futime_cb(uv_fs_t* req) {
   ASSERT(req->fs_type == UV_FS_FUTIME);
 
   c = req->data;
-  check_utime(c->path, c->atime, c->mtime);
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 0);
 
   uv_fs_req_cleanup(req);
   futime_cb_count++;
+}
+
+
+static void lutime_cb(uv_fs_t* req) {
+  utime_check_t* c;
+
+  ASSERT(req->result == 0);
+  ASSERT(req->fs_type == UV_FS_LUTIME);
+
+  c = req->data;
+  check_utime(c->path, c->atime, c->mtime, /* test_lutime */ 1);
+
+  uv_fs_req_cleanup(req);
+  lutime_cb_count++;
 }
 
 
@@ -1135,6 +1190,8 @@ TEST_IMPL(fs_async_dir) {
 static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   int f, r;
   struct stat s1, s2;
+  uv_fs_t req;
+  char buf1[1];
 
   loop = uv_default_loop();
 
@@ -1164,7 +1221,7 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   uv_fs_req_cleanup(&open_req2);
 
   r = uv_fs_sendfile(loop, &sendfile_req, open_req2.result, open_req1.result,
-      0, 131072, cb);
+      1, 131072, cb);
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
 
@@ -1179,8 +1236,25 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
 
   ASSERT(0 == stat("test_file", &s1));
   ASSERT(0 == stat("test_file2", &s2));
-  ASSERT(s1.st_size == s2.st_size);
   ASSERT(s2.st_size == expected_size);
+
+  if (expected_size > 0) {
+    ASSERT_UINT64_EQ(s1.st_size, s2.st_size + 1);
+    r = uv_fs_open(NULL, &open_req1, "test_file2", O_RDWR, 0, NULL);
+    ASSERT(r >= 0);
+    ASSERT(open_req1.result >= 0);
+    uv_fs_req_cleanup(&open_req1);
+
+    memset(buf1, 0, sizeof(buf1));
+    iov = uv_buf_init(buf1, sizeof(buf1));
+    r = uv_fs_read(NULL, &req, open_req1.result, &iov, 1, -1, NULL);
+    ASSERT(r >= 0);
+    ASSERT(req.result >= 0);
+    ASSERT_EQ(buf1[0], 'e'); /* 'e' from begin */
+    uv_fs_req_cleanup(&req);
+  } else {
+    ASSERT_UINT64_EQ(s1.st_size, s2.st_size);
+  }
 
   /* Cleanup. */
   unlink("test_file");
@@ -1199,7 +1273,7 @@ static void sendfile_setup(int f) {
 
 
 TEST_IMPL(fs_async_sendfile) {
-  return test_sendfile(sendfile_setup, sendfile_cb, 65546);
+  return test_sendfile(sendfile_setup, sendfile_cb, 65545);
 }
 
 
@@ -1262,7 +1336,10 @@ TEST_IMPL(fs_mkstemp) {
   ASSERT(strcmp(mkstemp_req1.path, mkstemp_req2.path) != 0);
 
   /* invalid template returns EINVAL */
-  ASSERT(uv_fs_mkstemp(NULL, &mkstemp_req3, "test_file", NULL) == UV_EINVAL);
+  ASSERT_EQ(UV_EINVAL, uv_fs_mkstemp(NULL, &mkstemp_req3, "test_file", NULL));
+
+  /* Make sure that path is empty string */
+  ASSERT_EQ(0, strlen(mkstemp_req3.path));
 
   /* We can write to the opened file */
   iov = uv_buf_init(test_buf, sizeof(test_buf));
@@ -1323,6 +1400,25 @@ TEST_IMPL(fs_fstat) {
   file = req.result;
   uv_fs_req_cleanup(&req);
 
+#ifndef _WIN32
+  ASSERT(0 == fstat(file, &t));
+  ASSERT(0 == uv_fs_fstat(NULL, &req, file, NULL));
+  ASSERT(req.result == 0);
+  s = req.ptr;
+# if defined(__APPLE__)
+  ASSERT(s->st_birthtim.tv_sec == t.st_birthtimespec.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == t.st_birthtimespec.tv_nsec);
+# elif defined(__linux__)
+  /* If statx() is supported, the birth time should be equal to the change time
+   * because we just created the file. On older kernels, it's set to zero.
+   */
+  ASSERT(s->st_birthtim.tv_sec == 0 ||
+         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
+  ASSERT(s->st_birthtim.tv_nsec == 0 ||
+         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+# endif
+#endif
+
   iov = uv_buf_init(test_buf, sizeof(test_buf));
   r = uv_fs_write(NULL, &req, file, &iov, 1, -1, NULL);
   ASSERT(r == sizeof(test_buf));
@@ -1357,11 +1453,8 @@ TEST_IMPL(fs_fstat) {
   ASSERT(s->st_mtim.tv_nsec == t.st_mtimespec.tv_nsec);
   ASSERT(s->st_ctim.tv_sec == t.st_ctimespec.tv_sec);
   ASSERT(s->st_ctim.tv_nsec == t.st_ctimespec.tv_nsec);
-  ASSERT(s->st_birthtim.tv_sec == t.st_birthtimespec.tv_sec);
-  ASSERT(s->st_birthtim.tv_nsec == t.st_birthtimespec.tv_nsec);
-  ASSERT(s->st_flags == t.st_flags);
-  ASSERT(s->st_gen == t.st_gen);
-#elif defined(_AIX)
+#elif defined(_AIX)    || \
+      defined(__MVS__)
   ASSERT(s->st_atim.tv_sec == t.st_atime);
   ASSERT(s->st_atim.tv_nsec == 0);
   ASSERT(s->st_mtim.tv_sec == t.st_mtime);
@@ -1395,8 +1488,6 @@ TEST_IMPL(fs_fstat) {
      defined(__NetBSD__)
   ASSERT(s->st_birthtim.tv_sec == t.st_birthtim.tv_sec);
   ASSERT(s->st_birthtim.tv_nsec == t.st_birthtim.tv_nsec);
-  ASSERT(s->st_flags == t.st_flags);
-  ASSERT(s->st_gen == t.st_gen);
 # endif
 #else
   ASSERT(s->st_atim.tv_sec == t.st_atime);
@@ -1408,14 +1499,10 @@ TEST_IMPL(fs_fstat) {
 #endif
 #endif
 
-#if defined(__linux__)
-  /* If statx() is supported, the birth time should be equal to the change time
-   * because we just created the file. On older kernels, it's set to zero.
-   */
-  ASSERT(s->st_birthtim.tv_sec == 0 ||
-         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
-  ASSERT(s->st_birthtim.tv_nsec == 0 ||
-         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__)
+  ASSERT(s->st_flags == t.st_flags);
+  ASSERT(s->st_gen == t.st_gen);
+#else
   ASSERT(s->st_flags == 0);
   ASSERT(s->st_gen == 0);
 #endif
@@ -1925,12 +2012,12 @@ TEST_IMPL(fs_readlink) {
   ASSERT(0 == uv_fs_readlink(loop, &req, "no_such_file", dummy_cb));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(dummy_cb_count == 1);
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
   ASSERT(req.result == UV_ENOENT);
   uv_fs_req_cleanup(&req);
 
   ASSERT(UV_ENOENT == uv_fs_readlink(NULL, &req, "no_such_file", NULL));
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
   ASSERT(req.result == UV_ENOENT);
   uv_fs_req_cleanup(&req);
 
@@ -1946,7 +2033,7 @@ TEST_IMPL(fs_realpath) {
   ASSERT(0 == uv_fs_realpath(loop, &req, "no_such_file", dummy_cb));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(dummy_cb_count == 1);
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
 #ifdef _WIN32
   /*
    * Windows XP and Server 2003 don't support GetFinalPathNameByHandleW()
@@ -1960,7 +2047,7 @@ TEST_IMPL(fs_realpath) {
   uv_fs_req_cleanup(&req);
 
   ASSERT(UV_ENOENT == uv_fs_realpath(NULL, &req, "no_such_file", NULL));
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
   ASSERT(req.result == UV_ENOENT);
   uv_fs_req_cleanup(&req);
 
@@ -2214,7 +2301,12 @@ int test_symlink_dir_impl(int type) {
 #ifdef _WIN32
   ASSERT(((uv_stat_t*)req.ptr)->st_size == strlen(test_dir + 4));
 #else
+# ifdef __PASE__
+  /* On IBMi PASE, st_size returns the length of the symlink itself. */
+  ASSERT(((uv_stat_t*)req.ptr)->st_size == strlen("test_dir_symlink"));
+# else
   ASSERT(((uv_stat_t*)req.ptr)->st_size == strlen(test_dir));
+# endif
 #endif
   uv_fs_req_cleanup(&req);
 
@@ -2411,6 +2503,57 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+TEST_IMPL(fs_lstat_windows_store_apps) {
+  uv_loop_t* loop;
+  char localappdata[MAX_PATH];
+  char windowsapps_path[MAX_PATH];
+  char file_path[MAX_PATH];
+  size_t len;
+  int r;
+  uv_fs_t req;
+  uv_fs_t stat_req;
+  uv_dirent_t dirent;
+
+  loop = uv_default_loop();
+  ASSERT_NOT_NULL(loop);
+  len = sizeof(localappdata);
+  r = uv_os_getenv("LOCALAPPDATA", localappdata, &len);
+  if (r == UV_ENOENT) {
+    MAKE_VALGRIND_HAPPY();
+    return TEST_SKIP;
+  }
+  ASSERT_EQ(r, 0);
+  r = snprintf(windowsapps_path,
+              sizeof(localappdata),
+              "%s\\Microsoft\\WindowsApps",
+              localappdata);
+  ASSERT_GT(r, 0);
+  if (uv_fs_opendir(loop, &req, windowsapps_path, NULL) != 0) {
+    /* If we cannot read the directory, skip the test. */
+    MAKE_VALGRIND_HAPPY();
+    return TEST_SKIP;
+  }
+  if (uv_fs_scandir(loop, &req, windowsapps_path, 0, NULL) <= 0) {
+    MAKE_VALGRIND_HAPPY();
+    return TEST_SKIP;
+  }
+  while (uv_fs_scandir_next(&req, &dirent) != UV_EOF) {
+    if (dirent.type != UV_DIRENT_LINK) {
+      continue;
+    }
+    if (snprintf(file_path,
+                 sizeof(file_path),
+                 "%s\\%s",
+                 windowsapps_path,
+                 dirent.name) < 0) {
+      continue;
+    }
+    ASSERT_EQ(uv_fs_lstat(loop, &stat_req, file_path, NULL), 0);
+  }
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
 #endif
 
 
@@ -2431,29 +2574,16 @@ TEST_IMPL(fs_utime) {
   uv_fs_req_cleanup(&req);
   uv_fs_close(loop, &req, r, NULL);
 
-  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
-
-  /*
-   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
-   * platforms support sub-second timestamps, but that support is filesystem-
-   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
-   */
-#ifdef _WIN32
-  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
-#endif
+  atime = mtime = 400497753.25; /* 1982-09-10 11:22:33.25 */
 
   r = uv_fs_utime(NULL, &req, path, atime, mtime, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
   uv_fs_req_cleanup(&req);
 
-  r = uv_fs_stat(NULL, &req, path, NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  check_utime(path, atime, mtime);
-  uv_fs_req_cleanup(&req);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
 
-  atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
+  atime = mtime = 1291404900.25; /* 2010-12-03 20:35:00.25 - mees <3 */
   checkme.path = path;
   checkme.atime = atime;
   checkme.mtime = mtime;
@@ -2466,6 +2596,45 @@ TEST_IMPL(fs_utime) {
   ASSERT(utime_cb_count == 1);
 
   /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(fs_utime_round) {
+  const char path[] = "test_file";
+  double atime;
+  double mtime;
+  uv_fs_t req;
+  int r;
+
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(req.result, 0);
+  uv_fs_req_cleanup(&req);
+  ASSERT_EQ(0, uv_fs_close(loop, &req, r, NULL));
+
+  atime = mtime = -14245440.25;  /* 1969-07-20T02:56:00.25Z */
+
+  r = uv_fs_utime(NULL, &req, path, atime, mtime, NULL);
+#if !defined(__linux__)     && \
+    !defined(_WIN32)        && \
+    !defined(__APPLE__)     && \
+    !defined(__FreeBSD__)   && \
+    !defined(__sun)
+  if (r != 0) {
+    ASSERT_EQ(r, UV_EINVAL);
+    RETURN_SKIP("utime on some OS (z/OS, IBM i PASE, AIX) or filesystems may reject pre-epoch timestamps");
+  }
+#endif
+  ASSERT_EQ(0, r);
+  ASSERT_EQ(0, req.result);
+  uv_fs_req_cleanup(&req);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
   unlink(path);
 
   MAKE_VALGRIND_HAPPY();
@@ -2526,16 +2695,7 @@ TEST_IMPL(fs_futime) {
   uv_fs_req_cleanup(&req);
   uv_fs_close(loop, &req, r, NULL);
 
-  atime = mtime = 400497753; /* 1982-09-10 11:22:33 */
-
-  /*
-   * Test sub-second timestamps only on Windows (assuming NTFS). Some other
-   * platforms support sub-second timestamps, but that support is filesystem-
-   * dependent. Notably OS X (HFS Plus) does NOT support sub-second timestamps.
-   */
-#ifdef _WIN32
-  mtime += 0.444;            /* 1982-09-10 11:22:33.444 */
-#endif
+  atime = mtime = 400497753.25; /* 1982-09-10 11:22:33.25 */
 
   r = uv_fs_open(NULL, &req, path, O_RDWR, 0, NULL);
   ASSERT(r >= 0);
@@ -2553,11 +2713,7 @@ TEST_IMPL(fs_futime) {
 #endif
   uv_fs_req_cleanup(&req);
 
-  r = uv_fs_stat(NULL, &req, path, NULL);
-  ASSERT(r == 0);
-  ASSERT(req.result == 0);
-  check_utime(path, atime, mtime);
-  uv_fs_req_cleanup(&req);
+  check_utime(path, atime, mtime, /* test_lutime */ 0);
 
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 - mees <3 */
 
@@ -2574,6 +2730,80 @@ TEST_IMPL(fs_futime) {
 
   /* Cleanup. */
   unlink(path);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(fs_lutime) {
+  utime_check_t checkme;
+  const char* path = "test_file";
+  const char* symlink_path = "test_file_symlink";
+  double atime;
+  double mtime;
+  uv_fs_t req;
+  int r, s;
+
+
+  /* Setup */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT(r >= 0);
+  ASSERT(req.result >= 0);
+  uv_fs_req_cleanup(&req);
+  uv_fs_close(loop, &req, r, NULL);
+
+  unlink(symlink_path);
+  s = uv_fs_symlink(NULL, &req, path, symlink_path, 0, NULL);
+#ifdef _WIN32
+  if (s == UV_EPERM) {
+    /*
+     * Creating a symlink before Windows 10 Creators Update was only allowed
+     * when running elevated console (with admin rights)
+     */
+    RETURN_SKIP(
+        "Symlink creation requires elevated console (with admin rights)");
+  }
+#endif
+  ASSERT(s == 0);
+  ASSERT(req.result == 0);
+  uv_fs_req_cleanup(&req);
+
+  /* Test the synchronous version. */
+  atime = mtime = 400497753.25; /* 1982-09-10 11:22:33.25 */
+
+  checkme.atime = atime;
+  checkme.mtime = mtime;
+  checkme.path = symlink_path;
+  req.data = &checkme;
+
+  r = uv_fs_lutime(NULL, &req, symlink_path, atime, mtime, NULL);
+#if (defined(_AIX) && !defined(_AIX71)) ||                                    \
+     defined(__MVS__)
+  ASSERT(r == UV_ENOSYS);
+  RETURN_SKIP("lutime is not implemented for z/OS and AIX versions below 7.1");
+#endif
+  ASSERT(r == 0);
+  lutime_cb(&req);
+  ASSERT(lutime_cb_count == 1);
+
+  /* Test the asynchronous version. */
+  atime = mtime = 1291404900; /* 2010-12-03 20:35:00 */
+
+  checkme.atime = atime;
+  checkme.mtime = mtime;
+  checkme.path = symlink_path;
+
+  r = uv_fs_lutime(loop, &req, symlink_path, atime, mtime, lutime_cb);
+  ASSERT(r == 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(lutime_cb_count == 2);
+
+  /* Cleanup. */
+  unlink(path);
+  unlink(symlink_path);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -2614,7 +2844,7 @@ TEST_IMPL(fs_scandir_empty_dir) {
   r = uv_fs_scandir(NULL, &req, path, 0, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
   ASSERT(UV_EOF == uv_fs_scandir_next(&req, &dent));
   uv_fs_req_cleanup(&req);
 
@@ -2651,7 +2881,7 @@ TEST_IMPL(fs_scandir_non_existent_dir) {
   r = uv_fs_scandir(NULL, &req, path, 0, NULL);
   ASSERT(r == UV_ENOENT);
   ASSERT(req.result == UV_ENOENT);
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
   ASSERT(UV_ENOENT == uv_fs_scandir_next(&req, &dent));
   uv_fs_req_cleanup(&req);
 
@@ -2667,6 +2897,9 @@ TEST_IMPL(fs_scandir_non_existent_dir) {
 }
 
 TEST_IMPL(fs_scandir_file) {
+#if defined(__ASAN__)
+  RETURN_SKIP("Test does not currently work in ASAN");
+#endif
   const char* path;
   int r;
 
@@ -2700,7 +2933,7 @@ TEST_IMPL(fs_open_dir) {
   r = uv_fs_open(NULL, &req, path, O_RDONLY, 0, NULL);
   ASSERT(r >= 0);
   ASSERT(req.result >= 0);
-  ASSERT(req.ptr == NULL);
+  ASSERT_NULL(req.ptr);
   file = r;
   uv_fs_req_cleanup(&req);
 
@@ -2913,6 +3146,9 @@ static void fs_read_bufs(int add_flags) {
   uv_fs_req_cleanup(&close_req);
 }
 TEST_IMPL(fs_read_bufs) {
+#if defined(__ASAN__)
+  RETURN_SKIP("Test does not currently work in ASAN");
+#endif
   fs_read_bufs(0);
   fs_read_bufs(UV_FS_O_FILEMAP);
 
@@ -3097,7 +3333,7 @@ static void fs_write_alotof_bufs(int add_flags) {
   loop = uv_default_loop();
 
   iovs = malloc(sizeof(*iovs) * iovcount);
-  ASSERT(iovs != NULL);
+  ASSERT_NOT_NULL(iovs);
   iovmax = uv_test_getiovmax();
 
   r = uv_fs_open(NULL,
@@ -3126,7 +3362,7 @@ static void fs_write_alotof_bufs(int add_flags) {
 
   /* Read the strings back to separate buffers. */
   buffer = malloc(sizeof(test_buf) * iovcount);
-  ASSERT(buffer != NULL);
+  ASSERT_NOT_NULL(buffer);
 
   for (index = 0; index < iovcount; ++index)
     iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf),
@@ -3209,7 +3445,7 @@ static void fs_write_alotof_bufs_with_offset(int add_flags) {
   loop = uv_default_loop();
 
   iovs = malloc(sizeof(*iovs) * iovcount);
-  ASSERT(iovs != NULL);
+  ASSERT_NOT_NULL(iovs);
   iovmax = uv_test_getiovmax();
 
   r = uv_fs_open(NULL,
@@ -3245,7 +3481,7 @@ static void fs_write_alotof_bufs_with_offset(int add_flags) {
 
   /* Read the strings back to separate buffers. */
   buffer = malloc(sizeof(test_buf) * iovcount);
-  ASSERT(buffer != NULL);
+  ASSERT_NOT_NULL(buffer);
 
   for (index = 0; index < iovcount; ++index)
     iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf),
@@ -3441,16 +3677,16 @@ static void test_fs_partial(int doread) {
   iovcount = 54321;
 
   iovs = malloc(sizeof(*iovs) * iovcount);
-  ASSERT(iovs != NULL);
+  ASSERT_NOT_NULL(iovs);
 
   ctx.pid = pthread_self();
   ctx.doread = doread;
   ctx.interval = 1000;
   ctx.size = sizeof(test_buf) * iovcount;
   ctx.data = malloc(ctx.size);
-  ASSERT(ctx.data != NULL);
+  ASSERT_NOT_NULL(ctx.data);
   buffer = malloc(ctx.size);
-  ASSERT(buffer != NULL);
+  ASSERT_NOT_NULL(buffer);
 
   for (index = 0; index < iovcount; ++index)
     iovs[index] = uv_buf_init(buffer + index * sizeof(test_buf), sizeof(test_buf));
@@ -3538,15 +3774,15 @@ TEST_IMPL(fs_read_write_null_arguments) {
   /* Validate some memory management on failed input validation before sending
      fs work to the thread pool. */
   ASSERT(r == UV_EINVAL);
-  ASSERT(write_req.path == NULL);
-  ASSERT(write_req.ptr == NULL);
+  ASSERT_NULL(write_req.path);
+  ASSERT_NULL(write_req.ptr);
 #ifdef _WIN32
-  ASSERT(write_req.file.pathw == NULL);
-  ASSERT(write_req.fs.info.new_pathw == NULL);
-  ASSERT(write_req.fs.info.bufs == NULL);
+  ASSERT_NULL(write_req.file.pathw);
+  ASSERT_NULL(write_req.fs.info.new_pathw);
+  ASSERT_NULL(write_req.fs.info.bufs);
 #else
-  ASSERT(write_req.new_path == NULL);
-  ASSERT(write_req.bufs == NULL);
+  ASSERT_NULL(write_req.new_path);
+  ASSERT_NULL(write_req.bufs);
 #endif
   uv_fs_req_cleanup(&write_req);
 
@@ -3714,7 +3950,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
 }
 
 #ifdef _WIN32
-static void fs_file_pos_common() {
+static void fs_file_pos_common(void) {
   int r;
 
   iov = uv_buf_init("abc", 3);
@@ -4202,6 +4438,7 @@ TEST_IMPL(fs_invalid_mkdir_name) {
   loop = uv_default_loop();
   r = uv_fs_mkdir(loop, &req, "invalid>", 0, NULL);
   ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(UV_EINVAL, uv_fs_mkdir(loop, &req, "test:lol", 0, NULL));
 
   return 0;
 }
@@ -4224,6 +4461,24 @@ TEST_IMPL(fs_statfs) {
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(statfs_cb_count == 2);
+
+  return 0;
+}
+
+TEST_IMPL(fs_get_system_error) {
+  uv_fs_t req;
+  int r;
+  int system_error;
+
+  r = uv_fs_statfs(NULL, &req, "non_existing_file", NULL);
+  ASSERT(r != 0);
+
+  system_error = uv_fs_get_system_error(&req);
+#ifdef _WIN32
+  ASSERT(system_error == ERROR_FILE_NOT_FOUND);
+#else
+  ASSERT(system_error == ENOENT);
+#endif
 
   return 0;
 }

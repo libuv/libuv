@@ -214,13 +214,14 @@ int uv__tcp_connect(uv_connect_t* req,
   if (handle->connect_req != NULL)
     return UV_EALREADY;  /* FIXME(bnoordhuis) UV_EINVAL or maybe UV_EBUSY. */
 
+  if (handle->delayed_error != 0)
+    goto out;
+
   err = maybe_new_socket(handle,
                          addr->sa_family,
                          UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   if (err)
     return err;
-
-  handle->delayed_error = 0;
 
   do {
     errno = 0;
@@ -248,6 +249,8 @@ int uv__tcp_connect(uv_connect_t* req,
     else
       return UV__ERR(errno);
   }
+
+out:
 
   uv__req_init(handle->loop, req, UV_CONNECT);
   req->cb = cb;
@@ -326,16 +329,19 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
 
 
 int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
-  static int single_accept = -1;
+  static int single_accept_cached = -1;
   unsigned long flags;
+  int single_accept;
   int err;
 
   if (tcp->delayed_error)
     return tcp->delayed_error;
 
+  single_accept = uv__load_relaxed(&single_accept_cached);
   if (single_accept == -1) {
     const char* val = getenv("UV_TCP_SINGLE_ACCEPT");
     single_accept = (val != NULL && atoi(val) != 0);  /* Off by default. */
+    uv__store_relaxed(&single_accept_cached, single_accept);
   }
 
   if (single_accept)
@@ -379,8 +385,16 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
     return UV__ERR(errno);
 
 #ifdef TCP_KEEPIDLE
-  if (on && setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
-    return UV__ERR(errno);
+  if (on) {
+    int intvl = 1;  /*  1 second; same as default on Win32 */
+    int cnt = 10;  /* 10 retries; same as hardcoded on Win32 */
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
+      return UV__ERR(errno);
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
+      return UV__ERR(errno);
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
+      return UV__ERR(errno);
+  }
 #endif
 
   /* Solaris/SmartOS, if you don't support keep-alive,
@@ -447,4 +461,50 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 
 void uv__tcp_close(uv_tcp_t* handle) {
   uv__stream_close((uv_stream_t*)handle);
+}
+
+
+int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int flags1) {
+  uv_os_sock_t temp[2];
+  int err;
+#if defined(__FreeBSD__) || defined(__linux__)
+  int flags;
+
+  flags = type | SOCK_CLOEXEC;
+  if ((flags0 & UV_NONBLOCK_PIPE) && (flags1 & UV_NONBLOCK_PIPE))
+    flags |= SOCK_NONBLOCK;
+
+  if (socketpair(AF_UNIX, flags, protocol, temp))
+    return UV__ERR(errno);
+
+  if (flags & UV_FS_O_NONBLOCK) {
+    fds[0] = temp[0];
+    fds[1] = temp[1];
+    return 0;
+  }
+#else
+  if (socketpair(AF_UNIX, type, protocol, temp))
+    return UV__ERR(errno);
+
+  if ((err = uv__cloexec(temp[0], 1)))
+    goto fail;
+  if ((err = uv__cloexec(temp[1], 1)))
+    goto fail;
+#endif
+
+  if (flags0 & UV_NONBLOCK_PIPE)
+    if ((err = uv__nonblock(temp[0], 1)))
+        goto fail;
+  if (flags1 & UV_NONBLOCK_PIPE)
+    if ((err = uv__nonblock(temp[1], 1)))
+      goto fail;
+
+  fds[0] = temp[0];
+  fds[1] = temp[1];
+  return 0;
+
+fail:
+  uv__close(temp[0]);
+  uv__close(temp[1]);
+  return err;
 }

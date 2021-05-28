@@ -60,6 +60,14 @@ extern int snprintf(char*, size_t, const char*, ...);
 #define STATIC_ASSERT(expr)                                                   \
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
 
+#if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)
+#define uv__store_relaxed(p, v) __atomic_store_n(p, v, __ATOMIC_RELAXED)
+#else
+#define uv__load_relaxed(p) (*p)
+#define uv__store_relaxed(p, v) do *p = v; while (0)
+#endif
+
 /* Handle flags. Some flags are specific to Windows or UNIX. */
 enum {
   /* Used by all handles. */
@@ -104,6 +112,7 @@ enum {
   /* Only used by uv_udp_t handles. */
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
+  UV_HANDLE_UDP_RECVMMSG                = 0x04000000,
 
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
@@ -127,6 +136,10 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
 void uv__loop_close(uv_loop_t* loop);
 
+int uv__read_start(uv_stream_t* stream,
+                   uv_alloc_cb alloc_cb,
+                   uv_read_cb read_cb);
+
 int uv__tcp_bind(uv_tcp_t* tcp,
                  const struct sockaddr* addr,
                  unsigned int addrlen,
@@ -137,6 +150,11 @@ int uv__tcp_connect(uv_connect_t* req,
                    const struct sockaddr* addr,
                    unsigned int addrlen,
                    uv_connect_cb cb);
+
+int uv__udp_init_ex(uv_loop_t* loop,
+                    uv_udp_t* handle,
+                    unsigned flags,
+                    int domain);
 
 int uv__udp_bind(uv_udp_t* handle,
                  const struct sockaddr* addr,
@@ -199,6 +217,10 @@ uv_dirent_type_t uv__fs_get_dirent_type(uv__dirent_t* dent);
 int uv__next_timeout(const uv_loop_t* loop);
 void uv__run_timers(uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
+
+void uv__process_title_cleanup(void);
+void uv__signal_cleanup(void);
+void uv__threadpool_cleanup(void);
 
 #define uv__has_active_reqs(loop)                                             \
   ((loop)->active_reqs.count > 0)
@@ -315,6 +337,12 @@ void uv__timer_close(uv_timer_t* handle);
   }                                                                           \
   while (0)
 
+#define uv__get_internal_fields(loop)                                         \
+  ((uv__loop_internal_fields_t*) loop->internal_fields)
+
+#define uv__get_loop_metrics(loop)                                            \
+  (&uv__get_internal_fields(loop)->loop_metrics)
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);
@@ -322,5 +350,23 @@ char *uv__strndup(const char* s, size_t n);
 void* uv__malloc(size_t size);
 void uv__free(void* ptr);
 void* uv__realloc(void* ptr, size_t size);
+void* uv__reallocf(void* ptr, size_t size);
+
+typedef struct uv__loop_metrics_s uv__loop_metrics_t;
+typedef struct uv__loop_internal_fields_s uv__loop_internal_fields_t;
+
+struct uv__loop_metrics_s {
+  uint64_t provider_entry_time;
+  uint64_t provider_idle_time;
+  uv_mutex_t lock;
+};
+
+void uv__metrics_update_idle_time(uv_loop_t* loop);
+void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
+
+struct uv__loop_internal_fields_s {
+  unsigned int flags;
+  uv__loop_metrics_t loop_metrics;
+};
 
 #endif /* UV_COMMON_H_ */

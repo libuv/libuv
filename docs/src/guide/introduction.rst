@@ -66,10 +66,10 @@ There is no need to ``make install``. To build the examples run ``make`` in the
 .. _Clone: https://github.com/nikhilm/uvbook
 .. _Download: https://github.com/nikhilm/uvbook/downloads
 .. _v1.3.0: https://github.com/libuv/libuv/tags
-.. _V8: http://code.google.com/p/v8/
+.. _V8: https://v8.dev
 .. _libev: http://software.schmorp.de/pkg/libev.html
 .. _libuv: https://github.com/libuv/libuv
-.. _node.js: http://www.nodejs.org
+.. _node.js: https://www.nodejs.org
 .. _libev was removed: https://github.com/joyent/libuv/issues/485
-.. _Rust: http://rust-lang.org
+.. _Rust: https://www.rust-lang.org
 .. _variety: https://github.com/libuv/libuv/wiki/Projects-that-use-libuv

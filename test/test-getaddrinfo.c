@@ -39,9 +39,10 @@ static int fail_cb_called;
 static void getaddrinfo_fail_cb(uv_getaddrinfo_t* req,
                                 int status,
                                 struct addrinfo* res) {
+
   ASSERT(fail_cb_called == 0);
   ASSERT(status < 0);
-  ASSERT(res == NULL);
+  ASSERT_NULL(res);
   uv_freeaddrinfo(res);  /* Should not crash. */
   fail_cb_called++;
 }
@@ -81,6 +82,11 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
 
 
 TEST_IMPL(getaddrinfo_fail) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+  
   uv_getaddrinfo_t req;
 
   ASSERT(UV_EINVAL == uv_getaddrinfo(uv_default_loop(),
@@ -94,7 +100,7 @@ TEST_IMPL(getaddrinfo_fail) {
   ASSERT(0 == uv_getaddrinfo(uv_default_loop(),
                              &req,
                              getaddrinfo_fail_cb,
-                             "xyzzy.xyzzy.xyzzy.",
+                             "example.invalid.",
                              NULL,
                              NULL));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
@@ -106,13 +112,17 @@ TEST_IMPL(getaddrinfo_fail) {
 
 
 TEST_IMPL(getaddrinfo_fail_sync) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
   uv_getaddrinfo_t req;
 
   /* Use a FQDN by ending in a period */
   ASSERT(0 > uv_getaddrinfo(uv_default_loop(),
                             &req,
                             NULL,
-                            "xyzzy.xyzzy.xyzzy.",
+                            "example.invalid.",
                             NULL,
                             NULL));
   uv_freeaddrinfo(req.addrinfo);
@@ -123,6 +133,11 @@ TEST_IMPL(getaddrinfo_fail_sync) {
 
 
 TEST_IMPL(getaddrinfo_basic) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+
   int r;
   getaddrinfo_handle = (uv_getaddrinfo_t*)malloc(sizeof(uv_getaddrinfo_t));
 
@@ -144,6 +159,10 @@ TEST_IMPL(getaddrinfo_basic) {
 
 
 TEST_IMPL(getaddrinfo_basic_sync) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
   uv_getaddrinfo_t req;
 
   ASSERT(0 == uv_getaddrinfo(uv_default_loop(),
@@ -160,6 +179,11 @@ TEST_IMPL(getaddrinfo_basic_sync) {
 
 
 TEST_IMPL(getaddrinfo_concurrent) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+  
   int i, r;
   int* data;
 
@@ -167,7 +191,7 @@ TEST_IMPL(getaddrinfo_concurrent) {
     callback_counts[i] = 0;
 
     data = (int*)malloc(sizeof(int));
-    ASSERT(data != NULL);
+    ASSERT_NOT_NULL(data);
     *data = i;
     getaddrinfo_handles[i].data = data;
 

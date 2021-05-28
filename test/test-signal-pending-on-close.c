@@ -34,6 +34,11 @@ static char* buf;
 static int close_cb_called;
 
 
+static void stop_loop_cb(uv_signal_t* signal, int signum) {
+  ASSERT(signum == SIGPIPE);
+  uv_stop(signal->loop);
+}
+
 static void signal_cb(uv_signal_t* signal, int signum) {
   ASSERT(0);
 }
@@ -44,7 +49,7 @@ static void close_cb(uv_handle_t *handle) {
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   ASSERT(status == UV_EPIPE);
   free(buf);
   uv_close((uv_handle_t *) &pipe_hdl, close_cb);
@@ -71,7 +76,7 @@ TEST_IMPL(signal_pending_on_close) {
 
   /* Write data large enough so it needs loop iteration */
   buf = malloc(1<<24);
-  ASSERT(buf != NULL);
+  ASSERT_NOT_NULL(buf);
   memset(buf, '.', 1<<24);
   buffer = uv_buf_init(buf, 1<<24);
 
@@ -86,6 +91,26 @@ TEST_IMPL(signal_pending_on_close) {
   ASSERT(0 == uv_loop_close(&loop));
 
   ASSERT(2 == close_cb_called);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(signal_close_loop_alive) {
+  ASSERT(0 == uv_loop_init(&loop));
+  ASSERT(0 == uv_signal_init(&loop, &signal_hdl));
+  ASSERT(0 == uv_signal_start(&signal_hdl, stop_loop_cb, SIGPIPE));
+  uv_unref((uv_handle_t*) &signal_hdl);
+
+  ASSERT(0 == uv_kill(uv_os_getpid(), SIGPIPE));
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+  uv_close((uv_handle_t*) &signal_hdl, close_cb);
+  ASSERT(1 == uv_loop_alive(&loop));
+
+  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT(0 == uv_loop_close(&loop));
+  ASSERT(1 == close_cb_called);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

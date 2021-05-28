@@ -78,6 +78,10 @@ static void getaddrinfo_do(struct getaddrinfo_req* req) {
 static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
                            int status,
                            struct addrinfo* res) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
   struct getaddrinfo_req* req;
 
   ASSERT(status == 0);
@@ -163,6 +167,11 @@ TEST_IMPL(thread_create) {
  * that each "finished" callback is run in its originating thread.
  */
 TEST_IMPL(threadpool_multiple_event_loops) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+  
   struct test_thread threads[8];
   size_t i;
   int r;
@@ -185,11 +194,11 @@ TEST_IMPL(threadpool_multiple_event_loops) {
 
 
 static void tls_thread(void* arg) {
-  ASSERT(NULL == uv_key_get(&tls_key));
+  ASSERT_NULL(uv_key_get(&tls_key));
   uv_key_set(&tls_key, arg);
   ASSERT(arg == uv_key_get(&tls_key));
   uv_key_set(&tls_key, NULL);
-  ASSERT(NULL == uv_key_get(&tls_key));
+  ASSERT_NULL(uv_key_get(&tls_key));
 }
 
 
@@ -197,7 +206,7 @@ TEST_IMPL(thread_local_storage) {
   char name[] = "main";
   uv_thread_t threads[2];
   ASSERT(0 == uv_key_create(&tls_key));
-  ASSERT(NULL == uv_key_get(&tls_key));
+  ASSERT_NULL(uv_key_get(&tls_key));
   uv_key_set(&tls_key, name);
   ASSERT(name == uv_key_get(&tls_key));
   ASSERT(0 == uv_thread_create(threads + 0, tls_thread, threads + 0));
@@ -232,6 +241,7 @@ static void thread_check_stack(void* arg) {
   if (expected == 0)
     expected = (size_t)lim.rlim_cur;
   ASSERT(stack_size >= expected);
+  ASSERT(0 == pthread_attr_destroy(&attr));
 #endif
 }
 
