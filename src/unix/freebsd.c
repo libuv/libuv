@@ -266,7 +266,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
 int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 #if __FreeBSD__ >= 11 && !defined(__DragonFly__)
-  return sendmmsg(fd, mmsg, vlen, /* flags */ 0);
+  return sendmmsg(fd,
+                  (struct mmsghdr*) mmsg,
+                  vlen,
+                  0 /* flags */);
 #else
   return errno = ENOSYS, -1;
 #endif
@@ -275,7 +278,11 @@ int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 
 int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 #if __FreeBSD__ >= 11 && !defined(__DragonFly__)
-  return recvmmsg(fd, mmsg, vlen, 0 /* flags */, NULL /* timeout */);
+  return recvmmsg(fd,
+                  (struct mmsghdr*) mmsg,
+                  vlen,
+                  0 /* flags */,
+                  NULL /* timeout */);
 #else
   return errno = ENOSYS, -1;
 #endif
