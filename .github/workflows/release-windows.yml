@@ -11,31 +11,31 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - name: cmake build
+      - name: CMake build
         run: |
              cmake .
       - name: Setup MSBuild.exe
         uses: microsoft/setup-msbuild@v1.0.2
-      - name: msbuild & test
+      - name: MSBuild and tests
         run: |
              msbuild INSTALL.vcxproj /p:Configuration=Release
       - name: Create binary archive from build
         run: |
-             mkdir uv-${{ github.event.release.tag_name }}\bin
-             mkdir uv-${{ github.event.release.tag_name }}\lib
-             move include uv-${{ github.event.release.tag_name }}\
-             move Release/uv_a.lib uv-${{ github.event.release.tag_name }}\lib\
-             move Release/uv.lib uv-${{ github.event.release.tag_name }}\lib\
-             move Release/uv.exp uv-${{ github.event.release.tag_name }}\lib\
-             move Release/uv.dll uv-${{ github.event.release.tag_name }}\bin\
-             7z a uv-${{ github.event.release.tag_name }}.zip uv-${{ github.event.release.tag_name }}\* -tzip -y
+             mkdir libuv-${{ github.event.release.tag_name }}\bin
+             mkdir libuv-${{ github.event.release.tag_name }}\lib
+             move include libuv-${{ github.event.release.tag_name }}\
+             move Release/uv_a.lib libuv-${{ github.event.release.tag_name }}\lib\
+             move Release/uv.lib libuv-${{ github.event.release.tag_name }}\lib\
+             move Release/uv.exp libuv-${{ github.event.release.tag_name }}\lib\
+             move Release/uv.dll libuv-${{ github.event.release.tag_name }}\bin\
+             7z a libuv-${{ github.event.release.tag_name }}.zip libuv-${{ github.event.release.tag_name }}\* -tzip -y
       - name: Upload the windows binary artifacts
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: uv-${{ github.event.release.tag_name }}.zip
-          asset_name: uv-${{ github.event.release.tag_name }}
-          tag: uv-${{ github.event.release.tag_name }}
+          file: libuv-${{ github.event.release.tag_name }}.zip
+          asset_name: libuv-${{ github.event.release.tag_name }}-windows
+          tag: libuv-${{ github.event.release.tag_name }}-windows
           overwrite: true
           file_glob: true
-          body: "Window's binary - 'libuv' .dll, .lib, and .h headers."
+          body: "Windows binary - 'libuv' .dll, .lib, and .h headers."
