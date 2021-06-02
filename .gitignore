@@ -74,3 +74,10 @@ cmake-build-debug/
 
 # make dist output
 libuv-*.tar.*
+*.cmake
+*.rule
+*.stamp
+*.depend
+CMakeFiles/*
+CMakeCache.txt
+DartConfiguration.tcl
