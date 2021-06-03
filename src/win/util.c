@@ -376,7 +376,7 @@ uv_pid_t uv_os_getppid(void) {
         parent_pid = pe.th32ParentProcessID;
         break;
       }
-    } while( Process32Next(handle, &pe));
+    } while (Process32Next(handle, &pe));
   }
 
   CloseHandle(handle);
