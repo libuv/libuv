@@ -1338,7 +1338,7 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int enable) {
   if (handle->socket != INVALID_SOCKET) {
     err = uv__tcp_nodelay(handle, handle->socket, enable);
     if (err)
-      return err;
+      return uv_translate_sys_error(err);
   }
 
   if (enable) {
@@ -1357,7 +1357,7 @@ int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
   if (handle->socket != INVALID_SOCKET) {
     err = uv__tcp_keepalive(handle, handle->socket, enable, delay);
     if (err)
-      return err;
+      return uv_translate_sys_error(err);
   }
 
   if (enable) {
