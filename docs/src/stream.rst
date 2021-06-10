@@ -193,8 +193,9 @@ API
     initialized with `ipc` == 1.
 
     .. note::
-        `send_handle` must be a TCP socket or pipe, which is a server or a connection (listening
-        or connected state). Bound sockets or pipes will be assumed to be servers.
+        `send_handle` must be a TCP, pipe and UDP handle on Unix, or a TCP
+        handle on Windows, which is a server or a connection (listening or
+        connected state). Bound sockets or pipes will be assumed to be servers.
 
 .. c:function:: int uv_try_write(uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs)
 
