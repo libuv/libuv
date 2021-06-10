@@ -58,7 +58,9 @@ TEST_IMPL(tcp_bind_error_addrinuse) {
   ASSERT(r == 0);
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
   #if defined(SO_REUSEPORT) && defined(__linux__)
-    ASSERT(r == 0);
+    const char* val = getenv("SO_REUSEPORT");
+    int enable = (val != NULL && atoi(val) == 1); 
+    ASSERT(enable ? r == 0 : r == UV_EADDRINUSE);
   #else 
     ASSERT(r == UV_EADDRINUSE);
   #endif
