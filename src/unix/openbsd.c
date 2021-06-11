@@ -238,3 +238,8 @@ error:
   *cpu_infos = NULL;
   return UV__ERR(errno);
 }
+
+int uv__random_arc4random(void* buf, size_t buflen) {
+  arc4random_buf(buf, buflen);
+  return 0;
+}
