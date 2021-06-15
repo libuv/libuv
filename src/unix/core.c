@@ -584,7 +584,7 @@ int uv__close(int fd) {
   return uv__close_nocheckstdio(fd);
 }
 
-
+#if UV__NONBLOCK_IS_IOCTL
 int uv__nonblock_ioctl(int fd, int set) {
   int r;
 
@@ -599,7 +599,6 @@ int uv__nonblock_ioctl(int fd, int set) {
 }
 
 
-#if !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__HAIKU__)
 int uv__cloexec_ioctl(int fd, int set) {
   int r;
 
