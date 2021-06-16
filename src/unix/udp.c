@@ -645,7 +645,7 @@ int uv__udp_connect(uv_udp_t* handle,
     err = connect(handle->io_watcher.fd, addr, addrlen);
   } while (err == -1 && errno == EINTR);
 
-  if (err)
+  if (err && errno != EINPROGRESS)
     return UV__ERR(errno);
 
   handle->flags |= UV_HANDLE_UDP_CONNECTED;
