@@ -410,10 +410,10 @@ int uv__udp_check_before_send(uv_udp_t* handle, const struct sockaddr* addr) {
   if (handle->type != UV_UDP)
     return UV_EINVAL;
 
-  if (addr != NULL && (handle->flags & UV_HANDLE_UDP_CONNECTED))
+  if (addr != NULL && (handle->flags & UV_HANDLE_UDP_CONNECTED || handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS))
     return UV_EISCONN;
 
-  if (addr == NULL && !(handle->flags & UV_HANDLE_UDP_CONNECTED))
+  if (addr == NULL && !(handle->flags & UV_HANDLE_UDP_CONNECTED || handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS))
     return UV_EDESTADDRREQ;
 
   if (addr != NULL) {

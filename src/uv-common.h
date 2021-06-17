@@ -112,6 +112,7 @@ enum {
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
   UV_HANDLE_UDP_RECVMMSG                = 0x04000000,
+  UV_HANDLE_UDP_CONNECT_IN_PROGRESS     = 0x08000000,
 
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
