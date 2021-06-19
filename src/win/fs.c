@@ -748,6 +748,8 @@ LONG fs__filemap_ex_filter(LONG excode, PEXCEPTION_POINTERS pep,
 
 void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
   int fd = req->file.fd; /* VERIFY_FD done in fs__read */
+  int rw_flags = fd_info->flags &
+    (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
   size_t read_size, done_read;
   unsigned int index;
   LARGE_INTEGER pos, end_pos;
@@ -755,6 +757,10 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
   LARGE_INTEGER view_base;
   void* view;
 
+  if (rw_flags == UV_FS_O_WRONLY) {
+    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
+    return;
+  }
   if (fd_info->is_directory) {
     SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FUNCTION);
     return;
@@ -927,6 +933,8 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
                        struct uv__fd_info_s* fd_info) {
   int fd = req->file.fd; /* VERIFY_FD done in fs__write */
   int force_append = fd_info->flags & UV_FS_O_APPEND;
+  int rw_flags = fd_info->flags &
+    (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
   size_t write_size, done_write;
   unsigned int index;
   LARGE_INTEGER pos, end_pos;
@@ -935,6 +943,10 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
   void* view;
   FILETIME ft;
 
+  if (rw_flags == UV_FS_O_RDONLY) {
+    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
+    return;
+  }
   if (fd_info->is_directory) {
     SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FUNCTION);
     return;
