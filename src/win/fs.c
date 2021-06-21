@@ -758,7 +758,7 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
   void* view;
 
   if (rw_flags == UV_FS_O_WRONLY) {
-    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
+    SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
     return;
   }
   if (fd_info->is_directory) {
@@ -936,7 +936,7 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
   FILETIME ft;
 
   if (rw_flags == UV_FS_O_RDONLY) {
-    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
+    SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
     return;
   }
   if (fd_info->is_directory) {
