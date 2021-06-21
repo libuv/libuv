@@ -48,9 +48,8 @@ The documentation is licensed under the CC BY 4.0 license. Check the [LICENSE-do
 
 ## Community
 
- * [Support](https://github.com/libuv/help)
+ * [Support](https://github.com/libuv/libuv/discussions)
  * [Mailing list](http://groups.google.com/group/libuv)
- * [IRC chatroom (#libuv@irc.freenode.org)](http://webchat.freenode.net?channels=libuv&uio=d4)
 
 ## Documentation
 
