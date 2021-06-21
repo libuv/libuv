@@ -72,4 +72,4 @@ There is no need to ``make install``. To build the examples run ``make`` in the
 .. _node.js: https://www.nodejs.org
 .. _libev was removed: https://github.com/joyent/libuv/issues/485
 .. _Rust: https://www.rust-lang.org
-.. _variety: https://github.com/libuv/libuv/wiki/Projects-that-use-libuv
+.. _variety: https://github.com/libuv/libuv/blob/v1.x/LINKS.md
