@@ -323,7 +323,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   } else {
     /* Timeout. Kill all the children. */
     for (i = 0; i < n; i++) {
-      p = (process_info_t*)(vec + i);
+      p = &vec[i];
       kill(p->pid, SIGTERM);
     }
     retval = -2;
