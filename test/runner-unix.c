@@ -197,7 +197,7 @@ static void* dowait(void* data) {
   process_info_t* p;
 
   for (i = 0; i < args->n; i++) {
-    p = (process_info_t*)(args->vec + i);
+    p = &args->vec[i];
     if (p->terminated) continue;
     r = waitpid(p->pid, &p->status, 0);
     if (r < 0) {
