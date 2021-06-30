@@ -66,4 +66,8 @@ API
 
     This request can be cancelled with :c:func:`uv_cancel`.
 
+.. c:function:: int uv_queue_work_idle_threads()
+
+    Returns the count of idle threads.
+
 .. seealso:: The :c:type:`uv_req_t` API functions also apply.

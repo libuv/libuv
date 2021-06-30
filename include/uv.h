@@ -1100,6 +1100,8 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
 
+UV_EXTERN unsigned int uv_queue_work_idle_threads();
+
 
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */
