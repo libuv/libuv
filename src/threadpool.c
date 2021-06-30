@@ -161,7 +161,7 @@ static void post(QUEUE* q, enum uv__work_kind kind) {
 
 
 unsigned int uv_queue_work_idle_threads(void) {
-    return idle_threads;
+  return idle_threads;
 }
 
 
