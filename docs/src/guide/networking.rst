@@ -193,7 +193,7 @@ Querying DNS
 libuv provides asynchronous DNS resolution. For this it provides its own
 ``getaddrinfo`` replacement [#]_. In the callback you can
 perform normal socket operations on the retrieved addresses. Let's connect to
-Freenode to see an example of DNS resolution.
+Libera.chat to see an example of DNS resolution.
 
 .. rubric:: dns/main.c
 .. literalinclude:: ../../code/dns/main.c
