@@ -248,7 +248,7 @@ static void uv__tty_make_raw(struct termios* tio) {
    * least one byte becomes available.  As per termio(7I), this requires
    * setting the MIN and TIME parameters appropriately.
    *
-   * As a somewhat unfortunate artefact of history, the MIN and TIME slots
+   * As a somewhat unfortunate artifact of history, the MIN and TIME slots
    * in the control character array overlap with the EOF and EOL slots used
    * for canonical mode processing.  Because the EOF character needs to be
    * the ASCII EOT value (aka Control-D), it has the byte value 4.  When
