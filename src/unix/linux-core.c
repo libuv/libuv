@@ -349,14 +349,19 @@ static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-/* Also reads the CPU frequency on x86. The other architectures only have
- * a BogoMIPS field, which may not be very accurate.
+/* Also reads the CPU frequency on ppc and x86. The other architectures only
+ * have a BogoMIPS field, which may not be very accurate.
  *
  * Note: Simply returns on error, uv_cpu_info() takes care of the cleanup.
  */
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
+#if defined(__PPC__)
+  static const char model_marker[] = "cpu\t\t: ";
+  static const char speed_marker[] = "clock\t\t: ";
+#else
   static const char model_marker[] = "model name\t: ";
   static const char speed_marker[] = "cpu MHz\t\t: ";
+#endif
   const char* inferred_model;
   unsigned int model_idx;
   unsigned int speed_idx;
@@ -378,6 +383,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 #if defined(__arm__) || \
     defined(__i386__) || \
     defined(__mips__) || \
+    defined(__PPC__) || \
     defined(__x86_64__)
   fp = uv__open_file("/proc/cpuinfo");
   if (fp == NULL)
@@ -426,7 +432,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   }
 
   fclose(fp);
-#endif  /* __arm__ || __i386__ || __mips__ || __x86_64__ */
+#endif  /* __arm__ || __i386__ || __mips__ || __PPC__ || __x86_64__ */
 
   /* Now we want to make sure that all the models contain *something* because
    * it's not safe to leave them as null. Copy the last entry unless there
