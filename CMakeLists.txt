@@ -520,6 +520,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-semaphore.c
        test/test-shutdown-close.c
        test/test-shutdown-eof.c
+       test/test-shutdown-simultaneous.c
        test/test-shutdown-twice.c
        test/test-signal-multiple-loops.c
        test/test-signal-pending-on-close.c
