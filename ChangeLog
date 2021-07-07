@@ -1,3 +1,10 @@
+2021.07.08, Version 1.41.1 (Stable)
+
+Changes since version 1.41.0:
+
+* idna: fix OOB read in punycode decoder (Ben Noordhuis)
+
+
 2021.02.14, Version 1.41.0 (Stable), 1dff88e5161cba5c59276d2070d2e304e4dcb242
 
 Changes since version 1.40.0:
