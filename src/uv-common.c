@@ -832,6 +832,25 @@ void uv_loop_delete(uv_loop_t* loop) {
 }
 
 
+int uv_read_start(uv_stream_t* stream,
+                  uv_alloc_cb alloc_cb,
+                  uv_read_cb read_cb) {
+  if (stream == NULL || alloc_cb == NULL || read_cb == NULL)
+    return UV_EINVAL;
+
+  if (stream->flags & UV_HANDLE_CLOSING)
+    return UV_EINVAL;
+
+  if (stream->flags & UV_HANDLE_READING)
+    return UV_EALREADY;
+
+  if (!(stream->flags & UV_HANDLE_READABLE))
+    return UV_ENOTCONN;
+
+  return uv__read_start(stream, alloc_cb, read_cb);
+}
+
+
 void uv_os_free_environ(uv_env_item_t* envitems, int count) {
   int i;
 
@@ -853,7 +872,11 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
 }
 
 
-#ifdef __GNUC__  /* Also covers __clang__ and __INTEL_COMPILER. */
+/* Also covers __clang__ and __INTEL_COMPILER. Disabled on Windows because
+ * threads have already been forcibly terminated by the operating system
+ * by the time destructors run, ergo, it's not safe to try to clean them up.
+ */
+#if defined(__GNUC__) && !defined(_WIN32)
 __attribute__((destructor))
 #endif
 void uv_library_shutdown(void) {

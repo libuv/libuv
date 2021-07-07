@@ -33,7 +33,7 @@ A file descriptor is obtained using
     int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb)
 
 ``flags`` and ``mode`` are standard
-`Unix flags <http://man7.org/linux/man-pages/man2/open.2.html>`_.
+`Unix flags <https://man7.org/linux/man-pages/man2/open.2.html>`_.
 libuv takes care of converting to the appropriate Windows flags.
 
 File descriptors are closed using
@@ -54,6 +54,7 @@ a callback for when the file is opened:
 
 .. rubric:: uvcat/main.c - opening a file
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
     :lines: 41-53
     :emphasize-lines: 4, 6-7
@@ -63,6 +64,7 @@ The ``result`` field of a ``uv_fs_t`` is the file descriptor in case of the
 
 .. rubric:: uvcat/main.c - read callback
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
     :lines: 26-40
     :emphasize-lines: 2,8,12
@@ -87,6 +89,7 @@ callbacks.
 
 .. rubric:: uvcat/main.c - write callback
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
     :lines: 16-24
     :emphasize-lines: 6
@@ -100,6 +103,7 @@ We set the dominos rolling in ``main()``:
 
 .. rubric:: uvcat/main.c
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
     :lines: 55-
     :emphasize-lines: 2
@@ -203,6 +207,7 @@ opened as bidirectional by default.
 
 .. rubric:: uvtee/main.c - read on pipes
 .. literalinclude:: ../../code/uvtee/main.c
+    :language: c
     :linenos:
     :lines: 61-80
     :emphasize-lines: 4,5,15
@@ -218,6 +223,7 @@ these buffers.
 
 .. rubric:: uvtee/main.c - reading buffers
 .. literalinclude:: ../../code/uvtee/main.c
+    :language: c
     :linenos:
     :lines: 19-22,44-60
 
@@ -242,6 +248,7 @@ point there is nothing to be read. Most applications will just ignore this.
 
 .. rubric:: uvtee/main.c - Write to pipe
 .. literalinclude:: ../../code/uvtee/main.c
+    :language: c
     :linenos:
     :lines: 9-13,23-42
 
@@ -282,6 +289,7 @@ The file change notification is started using ``uv_fs_event_init()``:
 
 .. rubric:: onchange/main.c - The setup
 .. literalinclude:: ../../code/onchange/main.c
+    :language: c
     :linenos:
     :lines: 26-
     :emphasize-lines: 15
@@ -320,6 +328,7 @@ In our example we simply print the arguments and run the command using
 
 .. rubric:: onchange/main.c - file change notification callback
 .. literalinclude:: ../../code/onchange/main.c
+    :language: c
     :linenos:
     :lines: 9-24
 
