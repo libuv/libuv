@@ -75,12 +75,18 @@
 # define CLOCK_BOOTTIME 7
 #endif
 
-static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(FILE* statfile_fp,
-                      unsigned int numcpus,
-                      uv_cpu_info_t* ci);
-static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
+static int read_models(unsigned int numcpus,
+                       uv_cpu_info_t* ci,
+                       unsigned int num_conf_cpus,
+                       int* switches);
+static int read_times(unsigned int numcpus,
+                      uv_cpu_info_t* ci,
+                      unsigned int num_conf_cpus,
+                      int* switches);
+#if defined(__arm__) || defined(__mips__)
 static uint64_t read_cpufreq(unsigned int cpunum);
+#endif
+static int test_switches_off(unsigned int numswitches, int* switches);
 
 int uv__platform_loop_init(uv_loop_t* loop) {
   
@@ -268,64 +274,66 @@ int uv_uptime(double* uptime) {
 }
 
 
-static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
-  unsigned int num;
-  char buf[1024];
-
-  if (!fgets(buf, sizeof(buf), statfile_fp))
-    return UV_EIO;
-
-  num = 0;
-  while (fgets(buf, sizeof(buf), statfile_fp)) {
-    if (strncmp(buf, "cpu", 3))
-      break;
-    num++;
-  }
-
-  if (num == 0)
-    return UV_EIO;
-
-  *numcpus = num;
-  return 0;
-}
-
-
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  unsigned int numcpus;
+  long numcpus;
+  long num_conf_cpus;
   uv_cpu_info_t* ci;
-  int err;
-  FILE* statfile_fp;
+  int err = 0;
+  int numtries = 1;
+  int* switches;
 
   *cpu_infos = NULL;
   *count = 0;
 
-  statfile_fp = uv__open_file("/proc/stat");
-  if (statfile_fp == NULL)
+  num_conf_cpus = sysconf(_SC_NPROCESSORS_CONF);
+  if (num_conf_cpus < 0)
     return UV__ERR(errno);
 
-  err = uv__cpu_num(statfile_fp, &numcpus);
-  if (err < 0)
-    goto out;
+  /* Using switches to make sure online cpus found in 
+   * /proc/stat matches online cpus found in
+   * /proc/cpuinfo.
+   */
+  switches = uv__calloc(num_conf_cpus, sizeof(*switches));
+  if (switches == NULL)
+    return UV_ENOMEM;
 
-  err = UV_ENOMEM;
-  ci = uv__calloc(numcpus, sizeof(*ci));
-  if (ci == NULL)
-    goto out;
+  while (numtries--)
+  {
+    numcpus = sysconf(_SC_NPROCESSORS_ONLN);
+    if (numcpus < 0) {
+      uv__free(switches);
+      return UV__ERR(errno);
+    }
 
-  err = read_models(numcpus, ci);
-  if (err == 0)
-    err = read_times(statfile_fp, numcpus, ci);
+    ci = uv__calloc(numcpus, sizeof(*ci));
+    if (ci == NULL) {
+      uv__free(switches);
+      return UV_ENOMEM;
+    }
+    
+    /* If error occur while reading /proc/stat or /proc/cpuinfo
+     * or there exists an on switch after read_models then
+     * deallocate cpu_info, switch all switches to 0
+     * and skip this iteration 
+     */
+    if ((err = read_times(numcpus, ci, num_conf_cpus, switches)) != 0)
+      goto while_out;
 
-  if (err) {
+    if ((err = read_models(numcpus, ci, num_conf_cpus, switches)) != 0)
+      goto while_out;
+
+    if ((err = test_switches_off(num_conf_cpus, switches)) == 0)
+      break;
+
+while_out:
+
     uv_free_cpu_info(ci, numcpus);
-    goto out;
+    switches = memset(switches, 0, num_conf_cpus * sizeof(*switches));
+
   }
 
-  /* read_models() on x86 also reads the CPU speed from /proc/cpuinfo.
-   * We don't check for errors here. Worst case, the field is left zero.
-   */
-  if (ci[0].speed == 0)
-    read_speeds(numcpus, ci);
+  if (err)
+    goto out;
 
   *cpu_infos = ci;
   *count = numcpus;
@@ -333,19 +341,19 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
 out:
 
-  if (fclose(statfile_fp))
-    if (errno != EINTR && errno != EINPROGRESS)
-      abort();
+  uv__free(switches);
 
   return err;
 }
 
 
-static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci) {
-  unsigned int num;
+static int test_switches_off(unsigned int numswitches, int* switches) {
+  unsigned int i;
+  for (i = 0; i < numswitches; i++)
+    if (switches[i])
+      return UV_UNKNOWN;
 
-  for (num = 0; num < numcpus; num++)
-    ci[num].speed = read_cpufreq(num) / 1000;
+  return 0;
 }
 
 
@@ -354,12 +362,17 @@ static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci) {
  *
  * Note: Simply returns on error, uv_cpu_info() takes care of the cleanup.
  */
-static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
+static int read_models(unsigned int numcpus,
+                       uv_cpu_info_t* ci,
+                       unsigned int num_conf_cpus,
+                       int* switches) {
   static const char model_marker[] = "model name\t: ";
   static const char speed_marker[] = "cpu MHz\t\t: ";
+  static const char processor_field[] = "processor\t: %" PRIu32;
   const char* inferred_model;
   unsigned int model_idx;
   unsigned int speed_idx;
+  unsigned int num;
   char buf[1024];
   char* model;
   FILE* fp;
@@ -384,6 +397,19 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
     return UV__ERR(errno);
 
   while (fgets(buf, sizeof(buf), fp)) {
+
+    /* handle processor field */
+    if (strncmp(buf, "processor\t:", strlen("processor\t:")) == 0) {
+      int r = sscanf(buf, processor_field, &num);
+      assert(r == 1);
+      assert(num < num_conf_cpus);
+      if (!(switches[num])) {
+        fclose(fp);
+        return UV_UNKNOWN;
+      }
+      switches[num] = !(switches[num]);
+    }
+
     if (model_idx < numcpus) {
       if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
         model = buf + sizeof(model_marker) - 1;
@@ -415,6 +441,15 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         continue;
       }
     }
+    /* For ARM, /proc/cpuinfo may only contain bogoMIPS which is not cpu 
+     * frequency we are interested in here. As an alternative, try to read
+     * it from sysfs if freq scaling is supported as per kernel doc v3.10:
+     * github.com/torvalds/linux/blob/v3.10/Documentation
+     * /cpu-freq/user-guide.txt
+     * In worst case, speed field is set to zero
+     */
+    if (speed_idx < numcpus)
+      ci[speed_idx++].speed = read_cpufreq(num) / 1000;
 #else  /* !__arm__ && !__mips__ */
     if (speed_idx < numcpus) {
       if (strncmp(buf, speed_marker, sizeof(speed_marker) - 1) == 0) {
@@ -447,9 +482,10 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-static int read_times(FILE* statfile_fp,
-                      unsigned int numcpus,
-                      uv_cpu_info_t* ci) {
+static int read_times(unsigned int numcpus,
+                      uv_cpu_info_t* ci,
+                      unsigned int num_conf_cpus,
+                      int* switches) {
   struct uv_cpu_times_s ts;
   unsigned int ticks;
   unsigned int multiplier;
@@ -462,13 +498,16 @@ static int read_times(FILE* statfile_fp,
   uint64_t num;
   uint64_t len;
   char buf[1024];
+  FILE* statfile_fp;
 
   ticks = (unsigned int)sysconf(_SC_CLK_TCK);
   assert(ticks != (unsigned int) -1);
   assert(ticks != 0);
   multiplier = ((uint64_t)1000L / ticks);
 
-  rewind(statfile_fp);
+  statfile_fp = uv__open_file("/proc/stat");
+  if (statfile_fp == NULL)
+    return UV__ERR(errno);
 
   if (!fgets(buf, sizeof(buf), statfile_fp))
     abort();
@@ -476,18 +515,25 @@ static int read_times(FILE* statfile_fp,
   num = 0;
 
   while (fgets(buf, sizeof(buf), statfile_fp)) {
-    if (num >= numcpus)
-      break;
 
     if (strncmp(buf, "cpu", 3))
       break;
 
-    /* skip "cpu<num> " marker */
+    /* handle "cpu<num> " marker */
     {
       unsigned int n;
       int r = sscanf(buf, "cpu%u ", &n);
       assert(r == 1);
-      (void) r;  /* silence build warning */
+      assert(n < num_conf_cpus);
+      /* if found more online cpus than expected, return */
+      if (num + 1 > numcpus) {
+        if (fclose(statfile_fp))
+          if (errno != EINTR && errno != EINPROGRESS)
+            abort();
+
+        return UV_UNKNOWN;
+      }        
+      switches[n] = !(switches[n]);
       for (len = sizeof("cpu0"); n /= 10; len++);
     }
 
@@ -515,12 +561,16 @@ static int read_times(FILE* statfile_fp,
     ts.irq  = irq * multiplier;
     ci[num++].cpu_times = ts;
   }
-  assert(num == numcpus);
 
-  return 0;
+  if (fclose(statfile_fp))
+    if (errno != EINTR && errno != EINPROGRESS)
+      abort();
+
+  return (num == numcpus) ? 0 : UV_UNKNOWN;
 }
 
 
+#if defined(__arm__) || defined(__mips__)
 static uint64_t read_cpufreq(unsigned int cpunum) {
   uint64_t val;
   char buf[1024];
@@ -542,6 +592,7 @@ static uint64_t read_cpufreq(unsigned int cpunum) {
 
   return val;
 }
+#endif
 
 
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
