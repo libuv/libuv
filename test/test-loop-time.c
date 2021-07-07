@@ -51,6 +51,9 @@ TEST_IMPL(loop_backend_timeout) {
 
   r = uv_timer_start(&timer, cb, 1000, 0); /* 1 sec */
   ASSERT(r == 0);
+  while (uv_backend_timeout(loop) == 0) {
+    uv_run(loop, UV_RUN_NOWAIT);
+  }
   ASSERT(uv_backend_timeout(loop) > 100); /* 0.1 sec */
   ASSERT(uv_backend_timeout(loop) <= 1000); /* 1 sec */
 
