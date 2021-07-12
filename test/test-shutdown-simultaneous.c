@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project and contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -133,4 +133,3 @@ TEST_IMPL(shutdown_simultaneous) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
-
