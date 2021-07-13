@@ -32,8 +32,6 @@
 #endif
 #include <sys/un.h>
 
-#define UV__UDP_DGRAM_MAXSIZE (64 * 1024)
-
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
 #endif
