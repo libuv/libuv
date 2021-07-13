@@ -926,10 +926,9 @@ static void uv__write(uv_stream_t* stream) {
   }
 
   req->error = n;
+  // XXX(jwn): this must call uv__stream_flush_write_queue(stream, n) here, since we won't generate any more events
   uv__write_req_finish(req);
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-  if (!uv__io_active(&stream->io_watcher, POLLIN))
-    uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
 }
 
@@ -1013,8 +1012,7 @@ static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags &= ~UV_HANDLE_READING;
   stream->flags &= ~UV_HANDLE_READABLE;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
-  if (!uv__io_active(&stream->io_watcher, POLLOUT))
-    uv__handle_stop(stream);
+  uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
   stream->read_cb(stream, UV_EOF, buf);
 }
@@ -1204,8 +1202,7 @@ static void uv__read(uv_stream_t* stream) {
         if (stream->flags & UV_HANDLE_READING) {
           stream->flags &= ~UV_HANDLE_READING;
           uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
-          if (!uv__io_active(&stream->io_watcher, POLLOUT))
-            uv__handle_stop(stream);
+          uv__handle_stop(stream);
           uv__stream_osx_interrupt_select(stream);
         }
       }
@@ -1582,8 +1579,7 @@ int uv_read_stop(uv_stream_t* stream) {
 
   stream->flags &= ~UV_HANDLE_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
-  if (!uv__io_active(&stream->io_watcher, POLLOUT))
-    uv__handle_stop(stream);
+  uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
 
   stream->read_cb = NULL;
