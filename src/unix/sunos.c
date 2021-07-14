@@ -866,6 +866,7 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   uv__free(addresses);
 }
 
+
 #if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L
 size_t strnlen(const char* s, size_t maxlen) {
   const char* end;
