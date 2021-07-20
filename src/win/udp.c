@@ -432,7 +432,7 @@ void uv_process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     /* Do a nonblocking receive.
      * TODO: try to read multiple datagrams at once. FIONREAD maybe? */
     buf = uv_buf_init(NULL, 0);
-    handle->alloc_cb((uv_handle_t*) handle, 65536, &buf);
+    handle->alloc_cb((uv_handle_t*) handle, UV__UDP_DGRAM_MAXSIZE, &buf);
     if (buf.base == NULL || buf.len == 0) {
       handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
       goto done;
@@ -1004,7 +1004,7 @@ int uv__udp_connect(uv_udp_t* handle,
 
   err = connect(handle->socket, addr, addrlen);
   if (err)
-    return uv_translate_sys_error(err);
+    return uv_translate_sys_error(WSAGetLastError());
 
   handle->flags |= UV_HANDLE_UDP_CONNECTED;
 
@@ -1020,7 +1020,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
 
     err = connect(handle->socket, &addr, sizeof(addr));
     if (err)
-      return uv_translate_sys_error(err);
+      return uv_translate_sys_error(WSAGetLastError());
 
     handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
     return 0;

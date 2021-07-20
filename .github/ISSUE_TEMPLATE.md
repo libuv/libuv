@@ -2,7 +2,7 @@
 If you want to report a bug, you are in the right place!
 
 If you need help or have a question, go here:
-https://github.com/libuv/help/issues/new
+https://github.com/libuv/libuv/discussions
 
 If you are reporting a libuv test failure, please ensure that you are not
 running the test as root.

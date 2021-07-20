@@ -38,6 +38,7 @@ Here is a simple echo server
 
 .. rubric:: tcp-echo-server/main.c - The listen socket
 .. literalinclude:: ../../code/tcp-echo-server/main.c
+    :language: c
     :linenos:
     :lines: 68-
     :emphasize-lines: 4-5,7-10
@@ -60,6 +61,7 @@ In this case we also establish interest in reading from this stream.
 
 .. rubric:: tcp-echo-server/main.c - Accepting the client
 .. literalinclude:: ../../code/tcp-echo-server/main.c
+    :language: c
     :linenos:
     :lines: 51-66
     :emphasize-lines: 9-10
@@ -108,6 +110,7 @@ address from a `DHCP`_ server -- DHCP Discover.
 
 .. rubric:: udp-dhcp/main.c - Setup and send UDP packets
 .. literalinclude:: ../../code/udp-dhcp/main.c
+    :language: c
     :linenos:
     :lines: 7-11,104-
     :emphasize-lines: 8,10-11,17-18,21
@@ -143,6 +146,7 @@ the OS will discard the data that could not fit* (That's UDP for you!).
 
 .. rubric:: udp-dhcp/main.c - Reading packets
 .. literalinclude:: ../../code/udp-dhcp/main.c
+    :language: c
     :linenos:
     :lines: 17-40
     :emphasize-lines: 1,23
@@ -189,10 +193,11 @@ Querying DNS
 libuv provides asynchronous DNS resolution. For this it provides its own
 ``getaddrinfo`` replacement [#]_. In the callback you can
 perform normal socket operations on the retrieved addresses. Let's connect to
-Freenode to see an example of DNS resolution.
+Libera.chat to see an example of DNS resolution.
 
 .. rubric:: dns/main.c
 .. literalinclude:: ../../code/dns/main.c
+    :language: c
     :linenos:
     :lines: 61-
     :emphasize-lines: 12
@@ -209,6 +214,7 @@ call ``uv_freeaddrinfo`` in the callback.
 
 .. rubric:: dns/main.c
 .. literalinclude:: ../../code/dns/main.c
+    :language: c
     :linenos:
     :lines: 42-60
     :emphasize-lines: 8,16
@@ -227,6 +233,7 @@ useful to allow your service to bind to IP addresses when it starts.
 
 .. rubric:: interfaces/main.c
 .. literalinclude:: ../../code/interfaces/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 9,17
 

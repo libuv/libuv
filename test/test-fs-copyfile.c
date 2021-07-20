@@ -27,7 +27,7 @@
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(__sun) || \
     defined(_AIX) || defined(__MVS__) || \
-    defined(__HAIKU__)
+    defined(__HAIKU__) || defined(__QNX__)
 #include <unistd.h> /* unlink, etc. */
 #else
 # include <direct.h>
@@ -98,6 +98,9 @@ static void touch_file(const char* name, unsigned int size) {
 
 
 TEST_IMPL(fs_copyfile) {
+#if defined(__ASAN__)
+  RETURN_SKIP("Test does not currently work in ASAN");
+#endif
   const char src[] = "test_file_src";
   uv_loop_t* loop;
   uv_fs_t req;

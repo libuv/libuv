@@ -104,8 +104,7 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
   }
 
   last = (--barrier->out == 0);
-  if (!last)
-    uv_cond_signal(&barrier->cond);  /* Not needed for last thread. */
+  uv_cond_signal(&barrier->cond);
 
   uv_mutex_unlock(&barrier->mutex);
   return last;
@@ -116,9 +115,10 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
   uv_mutex_lock(&barrier->mutex);
 
   assert(barrier->in == 0);
-  assert(barrier->out == 0);
+  while (barrier->out != 0)
+    uv_cond_wait(&barrier->cond, &barrier->mutex);
 
-  if (barrier->in != 0 || barrier->out != 0)
+  if (barrier->in != 0)
     abort();
 
   uv_mutex_unlock(&barrier->mutex);
@@ -159,7 +159,7 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
  * On Linux, threads created by musl have a much smaller stack than threads
  * created by glibc (80 vs. 2048 or 4096 kB.)  Follow glibc for consistency.
  */
-static size_t thread_stack_size(void) {
+size_t uv__thread_stack_size(void) {
 #if defined(__APPLE__) || defined(__linux__)
   struct rlimit lim;
 
@@ -225,7 +225,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
 
   attr = NULL;
   if (stack_size == 0) {
-    stack_size = thread_stack_size();
+    stack_size = uv__thread_stack_size();
   } else {
     pagesize = (size_t)getpagesize();
     /* Round up to the nearest page boundary. */
