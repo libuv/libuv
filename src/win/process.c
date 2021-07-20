@@ -170,8 +170,8 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   WCHAR *result, *result_pos;
   DWORD attrs;
   if (dir_len > 2 && (
-	(dir[0] == L'\\' && dir[1] == L'\\') ||
-	(dir[0] == L'/' && dir[1] == L'/') 
+	(dir[0] == L'\\' || dir[0] == L'/') &&
+	(dir[1] == L'\\' || dir[1] == L'/') 
 	 ) {
     /* It's a UNC path so ignore cwd */
     cwd_len = 0;
