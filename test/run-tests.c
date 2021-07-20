@@ -304,7 +304,11 @@ static int maybe_run_test(int argc, char **argv) {
     }
 #else
     CPU_ZERO(&cpuset);
+#ifdef __linux__
+    r = sched_getaffinity(0, sizeof(cpuset), &cpuset);
+#else
     r = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+#endif
     ASSERT(r == 0);
     for (i = 0; i < cpumask_size; ++i) {
       ASSERT(CPU_ISSET(i, &cpuset) == (i == cpu));

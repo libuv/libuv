@@ -284,7 +284,13 @@ int uv_thread_setaffinity(uv_thread_t* tid,
     if (cpumask[i])
       CPU_SET(i, &cpuset);
 
-  return UV__ERR(pthread_setaffinity_np(*tid, sizeof(cpuset), &cpuset));
+#if defined(__ANDROID__)
+  r = sched_setaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset);
+#else
+  r = pthread_setaffinity_np(*tid, sizeof(cpuset), &cpuset);
+#endif
+
+  return UV__ERR(r);
 }
 
 
@@ -303,7 +309,11 @@ int uv_thread_getaffinity(uv_thread_t* tid,
     return UV_EINVAL;
 
   CPU_ZERO(&cpuset);
+#if defined(__ANDROID__)
+  r = sched_getaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset);
+#else
   r = pthread_getaffinity_np(*tid, sizeof(cpuset), &cpuset);
+#endif
   if (r)
     return UV__ERR(r);
   for (i = 0; i < cpumasksize; i++)
