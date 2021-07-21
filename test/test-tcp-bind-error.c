@@ -55,7 +55,6 @@ TEST_IMPL(tcp_bind_error_addrinuse) {
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
   ASSERT(r == UV_EADDRINUSE);
 
-
   uv_close((uv_handle_t*)&server1, close_cb);
   uv_close((uv_handle_t*)&server2, close_cb);
 
@@ -81,10 +80,6 @@ TEST_IMPL(tcp_bind_reuseport_ok) {
   r = uv_tcp_init(uv_default_loop(), &server2);
   ASSERT(r == 0);
   r = uv_tcp_bind(&server2, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
-  /*
-    when bind is get EADDRINUSE error, it will set delayed_error = EADDRINUSE, 
-    and return by listen call, so here is 0
-  */
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&server1, 128, NULL);

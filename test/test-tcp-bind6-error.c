@@ -59,7 +59,6 @@ TEST_IMPL(tcp_bind6_error_addrinuse) {
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
   ASSERT(r == UV_EADDRINUSE);
 
-
   uv_close((uv_handle_t*)&server1, close_cb);
   uv_close((uv_handle_t*)&server2, close_cb);
 
@@ -95,7 +94,6 @@ TEST_IMPL(tcp_bind6_reuseport_ok) {
   ASSERT(r == 0);
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
   ASSERT(r == 0);
-
 
   uv_close((uv_handle_t*)&server1, close_cb);
   uv_close((uv_handle_t*)&server2, close_cb);
