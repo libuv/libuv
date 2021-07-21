@@ -57,13 +57,7 @@ TEST_IMPL(tcp_bind6_error_addrinuse) {
   r = uv_listen((uv_stream_t*)&server1, 128, NULL);
   ASSERT(r == 0);
   r = uv_listen((uv_stream_t*)&server2, 128, NULL);
-  #if defined(SO_REUSEPORT) && defined(__linux__)
-    const char* val = getenv("SO_REUSEPORT");
-    int enable = (val != NULL && atoi(val) == 1); 
-    ASSERT(enable ? r == 0 : r == UV_EADDRINUSE);
-  #else 
-    ASSERT(r == UV_EADDRINUSE);
-  #endif
+  ASSERT(r == UV_EADDRINUSE);
 
 
   uv_close((uv_handle_t*)&server1, close_cb);
@@ -77,6 +71,42 @@ TEST_IMPL(tcp_bind6_error_addrinuse) {
   return 0;
 }
 
+TEST_IMPL(tcp_bind6_reuseport_ok) {
+  struct sockaddr_in6 addr;
+  uv_tcp_t server1, server2;
+  int r;
+
+  if (!can_ipv6())
+    RETURN_SKIP("IPv6 not supported");
+
+  ASSERT(0 == uv_ip6_addr("::", TEST_PORT, &addr));
+
+  r = uv_tcp_init(uv_default_loop(), &server1);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&server1, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
+  ASSERT(r == 0);
+
+  r = uv_tcp_init(uv_default_loop(), &server2);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&server2, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
+  ASSERT(r == 0);
+
+  r = uv_listen((uv_stream_t*)&server1, 128, NULL);
+  ASSERT(r == 0);
+  r = uv_listen((uv_stream_t*)&server2, 128, NULL);
+  ASSERT(r == 0);
+
+
+  uv_close((uv_handle_t*)&server1, close_cb);
+  uv_close((uv_handle_t*)&server2, close_cb);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(close_cb_called == 2);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
 
 TEST_IMPL(tcp_bind6_error_addrnotavail) {
   struct sockaddr_in6 addr;

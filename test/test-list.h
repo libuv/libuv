@@ -464,6 +464,10 @@ TEST_DECLARE   (poll_close)
 TEST_DECLARE   (poll_bad_fdtype)
 #ifdef __linux__
 TEST_DECLARE   (poll_nested_epoll)
+  #if defined(SO_REUSEPORT)
+    TEST_DECLARE  (tcp_bind_reuseport_ok)
+    TEST_DECLARE  (tcp_bind6_reuseport_ok)
+  #endif
 #endif
 #ifdef UV_HAVE_KQUEUE
 TEST_DECLARE   (poll_nested_kqueue)
@@ -918,6 +922,10 @@ TASK_LIST_START
 
 #ifdef __linux__
   TEST_ENTRY  (poll_nested_epoll)
+  #if defined(SO_REUSEPORT)
+    TEST_ENTRY  (tcp_bind_reuseport_ok)
+    TEST_ENTRY  (tcp_bind6_reuseport_ok)
+  #endif
 #endif
 #ifdef UV_HAVE_KQUEUE
   TEST_ENTRY  (poll_nested_kqueue)
