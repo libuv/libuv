@@ -163,8 +163,9 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   on = 1;
   if (setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
     return UV__ERR(errno);
-  on = 1;  
+  
 #if defined(SO_REUSEPORT) && defined(__linux__) 
+  on = 1;  
   if ((flags & UV_TCP_REUSEPORT) && setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)))
     return UV__ERR(errno);
 #endif
