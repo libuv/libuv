@@ -232,7 +232,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
   int fd;
   int n;
 #if defined(__linux__) || defined(__FreeBSD__)
-  int r;
   int i;
   int cpumask_size;
   uv__cpu_set_t cpuset;
@@ -327,9 +326,15 @@ static void uv__process_child_init(const uv_process_options_t* options,
       }
     }
 
-    r = -pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
-    if (r != 0) {
-      uv__write_int(error_fd, r);
+#if defined(__linux__)
+    err = sched_setaffinity(0, sizeof(cpuset), &cpuset);
+#else
+    err = pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+    if (err)
+      err = errno;
+#endif
+    if (err) {
+      uv__write_int(error_fd, UV__ERR(err));
       _exit(127);
     }
   }

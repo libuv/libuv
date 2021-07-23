@@ -1539,7 +1539,11 @@ TEST_IMPL(spawn_affinity) {
   }
 #else
   CPU_ZERO(&cpuset);
+#ifdef __linux__
+  r = sched_getaffinity(0, sizeof(cpuset), &cpuset);
+#else
   r = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+#endif
   ASSERT(r == 0);
   for (i = 0; i < cpumask_size; ++i) {
     if (CPU_ISSET(i, &cpuset)) {
