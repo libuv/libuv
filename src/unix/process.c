@@ -675,8 +675,12 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
    * to be used, the environment used for path resolution as well for the
    * child process is that of the parent process, so posix_spawnp is the
    * way to go. */
-  if (strchr(options->file, '/') != NULL || options->env == NULL)
-    return posix_spawnp(pid, options->file, actions, attrs, options->args, env);
+  if (strchr(options->file, '/') != NULL || options->env == NULL) {
+    do
+      err = posix_spawnp(pid, options->file, actions, attrs, options->args, env);
+    while (err == EINTR);
+    return err;
+  }
 
   /* Look for the definition of PATH in the provided env */
   path = uv__spawn_find_path_in_env(options->env);
@@ -716,7 +720,10 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
     /* Try to spawn the new process file. If it fails with ENOENT, the
      * new process file is not in this PATH entry, continue with the next
      * PATH entry. */
-    err = posix_spawn(pid, b, actions, attrs, options->args, env);
+    do
+      err = posix_spawn(pid, b, actions, attrs, options->args, env);
+    while (err == EINTR);
+
     if (err != ENOENT)
       return err;
 
