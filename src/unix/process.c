@@ -608,6 +608,7 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   size_t l;
   size_t k;
   int err;
+  int seen_eacces;
 
   path = NULL;
   err = -1;
@@ -638,9 +639,9 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   /* Look for the definition of PATH in the provided env */
   path = uv__spawn_find_path_in_env(options->env);
 
-  /* The following resolution logic (execvpe emulation) is taken from
-   * https://github.com/JuliaLang/libuv/commit/9af3af617138d6a6de7d72819ed362996ff255d9
-   * and adapted to work around our own situations */
+  /* The following resolution logic (execvpe emulation) is copied from
+   * https://git.musl-libc.org/cgit/musl/tree/src/process/execvp.c
+   * and adapted to work for our specific usage */
 
   /* If no path was provided in options->env, use the default value
    * to look for the executable */
@@ -677,13 +678,23 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
       err = posix_spawn(pid, b, actions, attrs, options->args, env);
     while (err == EINTR);
 
-    if (err != ENOENT)
+    switch (err) {
+    case EACCES:
+      seen_eacces = 1;
+      break; /* continue search */
+    case ENOENT:
+    case ENOTDIR:
+      break; /* continue search */
+    default:
       return err;
+    }
 
     if (!*z++)
       break;
   }
 
+  if (seen_eacces)
+    return EACCESS;
   return err;
 }
 
