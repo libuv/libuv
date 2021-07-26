@@ -936,46 +936,44 @@ int uv_spawn(uv_loop_t* loop,
   uv_rwlock_wrlock(&loop->cloexec_lock);
 
   /* Spawn the child */
-  err = uv__spawn_and_init_child(options, stdio_count, pipes, signal_pipe[1], &pid);
-  if (err != 0) {
-    uv_rwlock_wrunlock(&loop->cloexec_lock);
-    uv__close(signal_pipe[0]);
-    uv__close(signal_pipe[1]);
-    goto error;
-  }
+  exec_errorno = uv__spawn_and_init_child(options, stdio_count, pipes, signal_pipe[1], &pid);
 
   /* Release lock in parent process */
   uv_rwlock_wrunlock(&loop->cloexec_lock);
 
   uv__close(signal_pipe[1]);
 
-  if (pid == -1) {
-    uv__close(signal_pipe[0]);
-    goto error;
+  process->status = 0;
+  if (exec_errorno == 0) {
+    do
+      r = read(signal_pipe[0], &exec_errorno, sizeof(exec_errorno));
+    while (r == -1 && errno == EINTR);
+
+    if (r == 0)
+      ; /* okay, EOF */
+    else if (r == sizeof(exec_errorno)) {
+      do
+        err = waitpid(pid, &status, 0); /* okay, read errorno */
+      while (err == -1 && errno == EINTR);
+      assert(err == pid);
+    } else if (r == -1 && errno == EPIPE) {
+      do
+        err = waitpid(pid, &status, 0); /* okay, got EPIPE */
+      while (err == -1 && errno == EINTR);
+      assert(err == pid);
+    } else
+      abort();
   }
 
-  process->status = 0;
-  exec_errorno = 0;
-  do
-    r = read(signal_pipe[0], &exec_errorno, sizeof(exec_errorno));
-  while (r == -1 && errno == EINTR);
-
-  if (r == 0)
-    ; /* okay, EOF */
-  else if (r == sizeof(exec_errorno)) {
-    do
-      err = waitpid(pid, &status, 0); /* okay, read errorno */
-    while (err == -1 && errno == EINTR);
-    assert(err == pid);
-  } else if (r == -1 && errno == EPIPE) {
-    do
-      err = waitpid(pid, &status, 0); /* okay, got EPIPE */
-    while (err == -1 && errno == EINTR);
-    assert(err == pid);
-  } else
-    abort();
-
   uv__close_nocheckstdio(signal_pipe[0]);
+
+#if 0
+  /* This runs into a nodejs issue (it expects initialized streams, even if the
+   * exec failed).
+   * See https://github.com/libuv/libuv/pull/3107#issuecomment-782482608 */
+  if (exec_errorno != 0)
+      goto error;
+#endif
 
   for (i = 0; i < options->stdio_count; i++) {
     err = uv__process_open_stream(options->stdio + i, pipes[i]);
