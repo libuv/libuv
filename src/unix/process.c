@@ -363,12 +363,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
 #if defined(__APPLE__)
 typedef struct uv__posix_spawn_fncs_tag {
   struct {
-    int (*set_uid_np)(const posix_spawnattr_t *, uid_t);
-    int (*set_gid_np)(const posix_spawnattr_t *, gid_t);
-    int (*set_groups_np)(const posix_spawnattr_t*, int, gid_t*, uid_t);
-  } spawnattr;
-
-  struct {
     int (*addchdir_np)(const posix_spawn_file_actions_t *, const char *);
   } file_actions;
 } uv__posix_spawn_fncs_t;
@@ -381,12 +375,6 @@ static int posix_spawn_can_use_setsid;
 
 void uv__spawn_init_posix_spawn_fncs(void) {
   /* Try to locate all non-portable functions at runtime */
-  posix_spawn_fncs.spawnattr.set_uid_np =
-    dlsym(RTLD_DEFAULT, "posix_spawnattr_set_uid_np");
-  posix_spawn_fncs.spawnattr.set_gid_np =
-    dlsym(RTLD_DEFAULT, "posix_spawnattr_set_gid_np");
-  posix_spawn_fncs.spawnattr.set_groups_np =
-    dlsym(RTLD_DEFAULT, "posix_spawnattr_set_groups_np");
   posix_spawn_fncs.file_actions.addchdir_np =
     dlsym(RTLD_DEFAULT, "posix_spawn_file_actions_addchdir_np");
 }
@@ -445,48 +433,13 @@ int uv__spawn_set_posix_spawn_attrs(posix_spawnattr_t* attrs,
     return err;
   }
 
-  if (options->flags & UV_PROCESS_SETUID) {
-    if (posix_spawn_fncs->spawnattr.set_uid_np == NULL) {
-      err = ENOSYS;
-      goto error;
-    }
-
-    err = posix_spawn_fncs->spawnattr.set_uid_np(attrs, options->uid);
-    if (err != 0)
-      goto error;
-  }
-
-  if (options->flags & UV_PROCESS_SETGID) {
-    if (posix_spawn_fncs->spawnattr.set_gid_np == NULL) {
-      err = ENOSYS;
-      goto error;
-    }
-
-    err = posix_spawn_fncs->spawnattr.set_gid_np(attrs, options->gid);
-    if (err != 0)
-      goto error;
-  }
-
   if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID)) {
-    /* Using ngroups = 0 implied the group_array is empty, and so
-     * its contents are never traversed. Still the
-     * posix_spawn_set_groups_np function seems to require that the
-     * group_array pointer be non-null */
-    const int ngroups = 0;
-    gid_t group_array = KAUTH_GID_NONE;
-
-    if (posix_spawn_fncs->spawnattr.set_groups_np == NULL) {
-      err = ENOSYS;
-      goto error;
-    }
-
-    /* See the comment on the call to setgroups in uv__process_child_init above
-     * for why this is not a fatal error */
-    SAVE_ERRNO(posix_spawn_fncs->spawnattr.set_groups_np(
-      attrs,
-      ngroups,
-      &group_array,
-      KAUTH_UID_NONE));
+      /* kauth_cred_issuser currently requires exactly uid == 0 for these
+       * posixspawn_attrs (set_groups_np, setuid_np, setgid_np), which deviates
+       * from the normal specification of setuid (which also uses euid), and
+       * they are also undocumented syscalls, so we do not use them. */
+    err = ENOSYS;
+    goto error;
   }
 
   /* Set flags for spawn behavior
