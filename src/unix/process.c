@@ -694,7 +694,7 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   }
 
   if (seen_eacces)
-    return EACCESS;
+    return EACCES;
   return err;
 }
 
