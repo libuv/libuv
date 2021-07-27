@@ -612,6 +612,7 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
 
   path = NULL;
   err = -1;
+  seen_eacces = 0;
 
   /* Short circuit for erroneous case */
   if (options->file == NULL)
