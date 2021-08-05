@@ -375,8 +375,11 @@ write_queue_drain:
     return;
   }
 
+  /* Safety: npkts known to be >0 below. Hence cast from ssize_t
+   * to size_t safe.
+   */
   for (i = 0, q = QUEUE_HEAD(&handle->write_queue);
-       i < pkts && q != &handle->write_queue;
+       i < (size_t)npkts && q != &handle->write_queue;
        ++i, q = QUEUE_HEAD(&handle->write_queue)) {
     assert(q != NULL);
     req = QUEUE_DATA(q, uv_udp_send_t, queue);
