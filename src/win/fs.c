@@ -1678,6 +1678,75 @@ void fs__closedir(uv_fs_t* req) {
   SET_REQ_RESULT(req, 0);
 }
 
+/* This function is called when fs__stat_impl_from_path
+*  CreateFileW fails with the code ERROR_ACCESS_DENIED (0x5)
+*  It's a fallback when the user doesn't have the permission
+*  To open a handle to the desired file, this queries less
+*  Information, but still have the most important ones.
+*
+*  These are the values we can access in this method:
+*  - File Attributes
+*  - Creation Time
+*  - Last Access Time
+*  - Last Write Time
+*  - File Size
+*/
+INLINE static int fs__stat_nohandle(WCHAR* path, uv_stat_t* statbuf) {
+  WIN32_FIND_DATAW find_data;
+  HANDLE handle;
+
+  handle = FindFirstFileW(path, &find_data);
+
+  if (handle == INVALID_HANDLE_VALUE)
+    return -1;
+
+  memset(statbuf, 0, sizeof(*statbuf));
+
+  uv__filetime_to_timespec(&statbuf->st_atim,
+    (uint64_t)find_data.ftLastAccessTime.dwHighDateTime << 32 |
+          find_data.ftLastAccessTime.dwLowDateTime
+  );
+
+  uv__filetime_to_timespec(&statbuf->st_ctim,
+      (uint64_t)find_data.ftCreationTime.dwHighDateTime << 32 |
+          find_data.ftCreationTime.dwLowDateTime
+  );
+
+  uv__filetime_to_timespec(&statbuf->st_mtim,
+    (uint64_t)find_data.ftLastWriteTime.dwHighDateTime << 32 |
+          find_data.ftLastWriteTime.dwLowDateTime
+  );
+
+  uv__filetime_to_timespec(&statbuf->st_birthtim,
+    (uint64_t)find_data.ftCreationTime.dwHighDateTime << 32 |
+        find_data.ftCreationTime.dwLowDateTime
+  );
+
+  if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    statbuf->st_size = 0;
+    statbuf->st_mode |= _S_IFDIR;
+  } else {
+    statbuf->st_mode |= _S_IFREG;
+    statbuf->st_size =
+        find_data.nFileSizeLow | ((uint64_t)find_data.nFileSizeHigh << 32);
+  }
+
+  if (find_data.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+    statbuf->st_mode |=
+        _S_IREAD | (_S_IREAD >> 3) | (_S_IREAD >> 6);
+  } else {
+    statbuf->st_mode |= (_S_IREAD | _S_IWRITE) |
+                        ((_S_IREAD | _S_IWRITE) >> 3) |
+                        ((_S_IREAD | _S_IWRITE) >> 6);
+  }
+
+  statbuf->st_blksize = 4096;
+
+  FindClose(handle);
+
+  return 0;
+}
+
 INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     int do_lstat) {
   FILE_ALL_INFORMATION file_info;
@@ -1853,10 +1922,17 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                        flags,
                        NULL);
 
-  if (handle == INVALID_HANDLE_VALUE)
-    return GetLastError();
+  if (handle == INVALID_HANDLE_VALUE) {
+    ret = GetLastError();
 
-  if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
+    if (ret == ERROR_ACCESS_DENIED) {
+      if (fs__stat_nohandle(path, statbuf) != 0)
+        ret = GetLastError();
+      else
+        ret = 0;
+    }
+  }
+  else if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
     ret = GetLastError();
   else
     ret = 0;
