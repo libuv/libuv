@@ -129,7 +129,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
   while (s < se) {
     c = uv__utf8_decode1(&s, se);
 
-    if (c == -1u)
+    if (c == UINT_MAX)
       return UV_EINVAL;
 
     if (c < 128)
@@ -151,7 +151,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
   s = ss;
   while (s < se) {
     c = uv__utf8_decode1(&s, se);
-    assert(c != -1u);
+    assert(c != UINT_MAX);
 
     if (c > 127)
       continue;
@@ -182,7 +182,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
 
     while (s < se) {
       c = uv__utf8_decode1(&s, se);
-      assert(c != -1u);
+      assert(c != UINT_MAX);
 
       if (c >= n)
         if (c < m)
@@ -201,7 +201,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
     s = ss;
     while (s < se) {
       c = uv__utf8_decode1(&s, se);
-      assert(c != -1u);
+      assert(c != UINT_MAX);
 
       if (c < n)
         if (++delta == 0)
@@ -280,7 +280,7 @@ long uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
     st = si;
     c = uv__utf8_decode1(&si, se);
 
-    if (c == -1u)
+    if (c == UINT_MAX)
       return UV_EINVAL;
 
     if (c != '.')
