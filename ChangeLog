@@ -1,3 +1,16 @@
+2021.08.24, Version 1.42.1 (Stable)
+
+Changes since version 1.42.0:
+
+* run test named ip6_sin6_len (Jameson Nash)
+
+* docs: fix wrong information about scheduling (Mohamed Edrah)
+
+* unix: protect fork in uv_spawn from signals (Jameson Nash)
+
+* drop only successfully sent packets post sendmmsg (Supragya Raj)
+
+
 2021.07.21, Version 1.42.0 (Stable), 6ce14710da7079eb248868171f6343bc409ea3a4
 
 Changes since version 1.41.0:
