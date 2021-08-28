@@ -271,7 +271,7 @@ static void make_expect_screen_erase(struct captured_screen* cs,
 static void make_expect_screen_write(struct captured_screen* cs,
                                      COORD cursor_position,
                                      const char* text) {
-  /* postion of cursor */
+  /* position of cursor */
   char* start;
   start = cs->text + cs->si.width * (cursor_position.Y - 1) +
                 cursor_position.X - 1;
@@ -1261,7 +1261,7 @@ TEST_IMPL(tty_save_restore_cursor_position) {
   cursor_pos.Y = si.height / 4;
   set_cursor_position(&tty_out, cursor_pos);
 
-  /* restore the cursor postion */
+  /* restore the cursor position */
   snprintf(buffer, sizeof(buffer), "%su", CSI);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
@@ -1280,7 +1280,7 @@ TEST_IMPL(tty_save_restore_cursor_position) {
   cursor_pos.Y = si.height / 4;
   set_cursor_position(&tty_out, cursor_pos);
 
-  /* restore the cursor postion */
+  /* restore the cursor position */
   snprintf(buffer, sizeof(buffer), "%s8", ESC);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
