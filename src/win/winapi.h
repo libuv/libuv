@@ -4762,8 +4762,8 @@ extern sSetWinEventHook pSetWinEventHook;
 /* ws2_32.dll function pointer */
 /* mingw doesn't have this definition, so let's declare it here locally */
 typedef int (WINAPI *uv_sGetHostNameW)
-            (PWSTR,
-             int);
+            (PWSTR name,
+             int   namelen);
 extern uv_sGetHostNameW pGetHostNameW;
 
 #endif /* UV_WIN_WINAPI_H_ */
