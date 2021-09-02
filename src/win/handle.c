@@ -64,7 +64,8 @@ int uv_is_active(const uv_handle_t* handle) {
 }
 
 
-void uv_close(uv_handle_t* handle, uv_close_cb cb) {
+void uv_close(uv_handle_ptr handleptr, uv_close_cb cb) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   uv_loop_t* loop = handle->loop;
 
   if (handle->flags & UV_HANDLE_CLOSING) {
@@ -148,7 +149,8 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
 }
 
 
-int uv_is_closing(const uv_handle_t* handle) {
+int uv_is_closing(const_uv_handle_ptr handleptr) {
+  const uv_handle_t* handle = (const uv_handle_t*) handleptr;
   return !!(handle->flags & (UV_HANDLE_CLOSING | UV_HANDLE_CLOSED));
 }
 

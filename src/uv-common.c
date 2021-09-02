@@ -558,17 +558,20 @@ void uv_print_active_handles(uv_loop_t* loop, FILE* stream) {
 }
 
 
-void uv_ref(uv_handle_t* handle) {
+void uv_ref(uv_handle_ptr handleptr) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   uv__handle_ref(handle);
 }
 
 
-void uv_unref(uv_handle_t* handle) {
+void uv_unref(uv_handle_ptr handleptr) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   uv__handle_unref(handle);
 }
 
 
-int uv_has_ref(const uv_handle_t* handle) {
+int uv_has_ref(const_uv_handle_ptr handleptr) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   return uv__has_ref(handle);
 }
 
@@ -595,11 +598,13 @@ size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
   return bytes;
 }
 
-int uv_recv_buffer_size(uv_handle_t* handle, int* value) {
+int uv_recv_buffer_size(uv_handle_ptr handleptr, int* value) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   return uv__socket_sockopt(handle, SO_RCVBUF, value);
 }
 
-int uv_send_buffer_size(uv_handle_t* handle, int *value) {
+int uv_send_buffer_size(uv_handle_ptr handleptr, int *value) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   return uv__socket_sockopt(handle, SO_SNDBUF, value);
 }
 

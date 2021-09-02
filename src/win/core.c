@@ -655,7 +655,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 }
 
 
-int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
+int uv_fileno(const_uv_handle_ptr handleptr, uv_os_fd_t* fd) {
+  const uv_handle_t *handle = (const uv_handle_t*) handleptr;
   uv_os_fd_t fd_out;
 
   switch (handle->type) {
@@ -691,7 +692,9 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
 }
 
 
-int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
+int uv__socket_sockopt(uv_handle_ptr handleptr, int optname, int* value) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
+
   int r;
   int len;
   SOCKET socket;

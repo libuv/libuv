@@ -33,19 +33,23 @@ const char* uv_handle_type_name(uv_handle_type type) {
   return NULL;
 }
 
-uv_handle_type uv_handle_get_type(const uv_handle_t* handle) {
+uv_handle_type uv_handle_get_type(const_uv_handle_ptr handleptr) {
+  const uv_handle_t* handle = (const uv_handle_t*) handleptr;
   return handle->type;
 }
 
-void* uv_handle_get_data(const uv_handle_t* handle) {
+void* uv_handle_get_data(const_uv_handle_ptr handleptr) {
+  const uv_handle_t* handle = (const uv_handle_t*) handleptr;
   return handle->data;
 }
 
-uv_loop_t* uv_handle_get_loop(const uv_handle_t* handle) {
+uv_loop_t* uv_handle_get_loop(const_uv_handle_ptr handleptr) {
+  const uv_handle_t *handle = (const uv_handle_t*) handleptr;
   return handle->loop;
 }
 
-void uv_handle_set_data(uv_handle_t* handle, void* data) {
+void uv_handle_set_data(uv_handle_ptr handleptr, void* data) {
+  uv_handle_t *handle = (uv_handle_t*) handleptr;
   handle->data = data;
 }
 

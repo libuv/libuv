@@ -111,7 +111,8 @@ uint64_t uv_hrtime(void) {
 }
 
 
-void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
+void uv_close(uv_handle_ptr handleptr, uv_close_cb close_cb) {
+  uv_handle_t* handle = (uv_handle_t*) handleptr;
   assert(!uv__is_closing(handle));
 
   handle->flags |= UV_HANDLE_CLOSING;
@@ -335,7 +336,8 @@ static void uv__run_closing_handles(uv_loop_t* loop) {
 }
 
 
-int uv_is_closing(const uv_handle_t* handle) {
+int uv_is_closing(const_uv_handle_ptr handleptr) {
+  const uv_handle_t* handle = (const uv_handle_t*) handleptr;
   return uv__is_closing(handle);
 }
 
@@ -447,7 +449,8 @@ void uv_update_time(uv_loop_t* loop) {
 }
 
 
-int uv_is_active(const uv_handle_t* handle) {
+int uv_is_active(const_uv_handle_ptr handleptr) {
+  const uv_handle_t *handle = (const uv_handle_t*) handleptr;
   return uv__is_active(handle);
 }
 
@@ -759,7 +762,8 @@ void uv_disable_stdio_inheritance(void) {
 }
 
 
-int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
+int uv_fileno(const_uv_handle_ptr handleptr, uv_os_fd_t* fd) {
+  const uv_handle_t *handle = (const uv_handle_t*) handleptr;
   int fd_out;
 
   switch (handle->type) {

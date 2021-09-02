@@ -229,6 +229,61 @@ typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
 
+/* Handle pointer alias; avoid casting in C, type checks in C++. */
+#if !defined(__cplusplus)
+  typedef void* uv_handle_ptr;
+  typedef const void* const_uv_handle_ptr;
+#else
+  struct uv_handle_ptr {  /* standard layout, same as lone void* */
+    void *p;
+    /* Allow construction from any handle pointer subclass */
+    uv_handle_ptr (uv_loop_t* p) : p (p) {}
+    uv_handle_ptr (uv_handle_t* p) : p (p) {}
+    uv_handle_ptr (uv_dir_t* p) : p (p) {}
+    uv_handle_ptr (uv_stream_t* p) : p (p) {}
+    uv_handle_ptr (uv_tcp_t* p) : p (p) {}
+    uv_handle_ptr (uv_udp_t* p) : p (p) {}
+    uv_handle_ptr (uv_pipe_t* p) : p (p) {}
+    uv_handle_ptr (uv_tty_t* p) : p (p) {}
+    uv_handle_ptr (uv_poll_t* p) : p (p) {}
+    uv_handle_ptr (uv_timer_t* p) : p (p) {}
+    uv_handle_ptr (uv_prepare_t* p) : p (p) {}
+    uv_handle_ptr (uv_check_t* p) : p (p) {}
+    uv_handle_ptr (uv_idle_t* p) : p (p) {}
+    uv_handle_ptr (uv_async_t* p) : p (p) {}
+    uv_handle_ptr (uv_process_t* p) : p (p) {}
+    uv_handle_ptr (uv_fs_event_t* p) : p (p) {}
+    uv_handle_ptr (uv_fs_poll_t* p) : p (p) {}
+    uv_handle_ptr (uv_signal_t* p) : p (p) {}
+    /* Allow cast to handle_t* to mimic cast of plain C void* */
+    operator uv_handle_t*() { return (uv_handle_t*)p; }
+  };
+  struct const_uv_handle_ptr {  /* standard layout, same as lone void* */
+    const void *p;
+    /* Allow construction from any const handle pointer subclass */
+    const_uv_handle_ptr (const uv_loop_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_handle_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_dir_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_stream_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_tcp_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_udp_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_pipe_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_tty_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_poll_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_timer_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_prepare_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_check_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_idle_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_async_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_process_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_fs_event_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_fs_poll_t* p) : p (p) {}
+    const_uv_handle_ptr (const uv_signal_t* p) : p (p) {}
+    /* Allow cast to const handle_t* to mimic cast of plain C void* */
+    operator const uv_handle_t*() const { return (const uv_handle_t*)p; }
+  };
+#endif
+
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
@@ -300,9 +355,9 @@ UV_EXTERN int uv_loop_fork(uv_loop_t* loop);
 UV_EXTERN int uv_run(uv_loop_t*, uv_run_mode mode);
 UV_EXTERN void uv_stop(uv_loop_t*);
 
-UV_EXTERN void uv_ref(uv_handle_t*);
-UV_EXTERN void uv_unref(uv_handle_t*);
-UV_EXTERN int uv_has_ref(const uv_handle_t*);
+UV_EXTERN void uv_ref(uv_handle_ptr);
+UV_EXTERN void uv_unref(uv_handle_ptr);
+UV_EXTERN int uv_has_ref(const_uv_handle_ptr);
 
 UV_EXTERN void uv_update_time(uv_loop_t*);
 UV_EXTERN uint64_t uv_now(const uv_loop_t*);
@@ -450,11 +505,11 @@ struct uv_handle_s {
 };
 
 UV_EXTERN size_t uv_handle_size(uv_handle_type type);
-UV_EXTERN uv_handle_type uv_handle_get_type(const uv_handle_t* handle);
+UV_EXTERN uv_handle_type uv_handle_get_type(const_uv_handle_ptr handle);
 UV_EXTERN const char* uv_handle_type_name(uv_handle_type type);
-UV_EXTERN void* uv_handle_get_data(const uv_handle_t* handle);
-UV_EXTERN uv_loop_t* uv_handle_get_loop(const uv_handle_t* handle);
-UV_EXTERN void uv_handle_set_data(uv_handle_t* handle, void* data);
+UV_EXTERN void* uv_handle_get_data(const_uv_handle_ptr handle);
+UV_EXTERN uv_loop_t* uv_handle_get_loop(const_uv_handle_ptr handle);
+UV_EXTERN void uv_handle_set_data(uv_handle_ptr handle, void* data);
 
 UV_EXTERN size_t uv_req_size(uv_req_type type);
 UV_EXTERN void* uv_req_get_data(const uv_req_t* req);
@@ -462,7 +517,7 @@ UV_EXTERN void uv_req_set_data(uv_req_t* req, void* data);
 UV_EXTERN uv_req_type uv_req_get_type(const uv_req_t* req);
 UV_EXTERN const char* uv_req_type_name(uv_req_type type);
 
-UV_EXTERN int uv_is_active(const uv_handle_t* handle);
+UV_EXTERN int uv_is_active(const_uv_handle_ptr handle);
 
 UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
 
@@ -470,12 +525,12 @@ UV_EXTERN void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg);
 UV_EXTERN void uv_print_all_handles(uv_loop_t* loop, FILE* stream);
 UV_EXTERN void uv_print_active_handles(uv_loop_t* loop, FILE* stream);
 
-UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
+UV_EXTERN void uv_close(uv_handle_ptr handle, uv_close_cb close_cb);
 
-UV_EXTERN int uv_send_buffer_size(uv_handle_t* handle, int* value);
-UV_EXTERN int uv_recv_buffer_size(uv_handle_t* handle, int* value);
+UV_EXTERN int uv_send_buffer_size(uv_handle_ptr handle, int* value);
+UV_EXTERN int uv_recv_buffer_size(uv_handle_ptr handle, int* value);
 
-UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
+UV_EXTERN int uv_fileno(const_uv_handle_ptr handle, uv_os_fd_t* fd);
 
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
@@ -550,7 +605,7 @@ UV_EXTERN int uv_is_writable(const uv_stream_t* handle);
 
 UV_EXTERN int uv_stream_set_blocking(uv_stream_t* handle, int blocking);
 
-UV_EXTERN int uv_is_closing(const uv_handle_t* handle);
+UV_EXTERN int uv_is_closing(const_uv_handle_ptr handle);
 
 
 /*
