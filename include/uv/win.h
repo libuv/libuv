@@ -259,13 +259,13 @@ typedef struct {
   /* empty */
 
 #define UV_PRIVATE_REQ_TYPES                                                  \
-  typedef struct uv_pipe_accept_s {                                           \
+  typedef struct UV_MAY_ALIAS uv_pipe_accept_s {                              \
     UV_REQ_FIELDS                                                             \
     HANDLE pipeHandle;                                                        \
     struct uv_pipe_accept_s* next_pending;                                    \
   } uv_pipe_accept_t;                                                         \
                                                                               \
-  typedef struct uv_tcp_accept_s {                                            \
+  typedef struct UV_MAY_ALIAS uv_tcp_accept_s {                               \
     UV_REQ_FIELDS                                                             \
     SOCKET accept_socket;                                                     \
     char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];             \
@@ -274,7 +274,7 @@ typedef struct {
     struct uv_tcp_accept_s* next_pending;                                     \
   } uv_tcp_accept_t;                                                          \
                                                                               \
-  typedef struct uv_read_s {                                                  \
+  typedef struct UV_MAY_ALIAS uv_read_s {                                     \
     UV_REQ_FIELDS                                                             \
     HANDLE event_handle;                                                      \
     HANDLE wait_handle;                                                       \
@@ -450,7 +450,7 @@ typedef struct {
   int retcode;
 
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
-  struct uv_process_exit_s {                                                  \
+  struct UV_MAY_ALIAS uv_process_exit_s {                                     \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
   BYTE* child_stdio_buffer;                                                   \
@@ -490,7 +490,7 @@ typedef struct {
   struct uv__work work_req;
 
 #define UV_FS_EVENT_PRIVATE_FIELDS                                            \
-  struct uv_fs_event_req_s {                                                  \
+  struct UV_MAY_ALIAS uv_fs_event_req_s {                                     \
     UV_REQ_FIELDS                                                             \
   } req;                                                                      \
   HANDLE dir_handle;                                                          \
