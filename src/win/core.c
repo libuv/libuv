@@ -148,6 +148,7 @@ int uv_loop_init(uv_loop_t* loop) {
 
   heap_init((struct heap*) &loop->timer_heap);
   loop->timer_counter = 0;
+  loop->timer_started_cb = NULL;
 
   QUEUE_INIT(&loop->check_handles);
   QUEUE_INIT(&loop->prepare_handles);

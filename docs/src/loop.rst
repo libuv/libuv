@@ -32,6 +32,10 @@ Data types
 
     Type definition for callback passed to :c:func:`uv_walk`.
 
+.. c:type:: void (*uv_timer_started_cb)(uv_loop_t* loop)
+
+    Type definition for callback passed to :c:func:`uv_loop_set_timer_started_callback`.
+
 
 Public members
 ^^^^^^^^^^^^^^
@@ -246,3 +250,18 @@ API
     Sets `loop->data` to `data`.
 
     .. versionadded:: 1.19.0
+
+.. c:function:: uv_timer_started_cb uv_loop_get_timer_started_callback(const uv_loop_t* loop)
+
+    Returns the callback set by :c:func:`uv_loop_set_timer_started_callback`.
+
+    .. versionadded:: 2.0.0
+
+.. c:function:: void uv_loop_set_timer_started_callback(uv_loop_t* loop, uv_timer_started_cb callback)
+
+    Sets the callback which will be called whenever a timer has been started.
+
+    This is usually used together with :c:func:`uv_backend_fd` and
+    :c:func:`uv_backend_timeout` for implementing event loop integrations.
+
+    .. versionadded:: 2.0.0

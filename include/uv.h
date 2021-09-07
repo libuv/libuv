@@ -324,6 +324,7 @@ typedef void (*uv_check_cb)(uv_check_t* handle);
 typedef void (*uv_idle_cb)(uv_idle_t* handle);
 typedef void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal);
 typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
+typedef void (*uv_timer_started_cb)(uv_loop_t* loop);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
 typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
@@ -1895,12 +1896,19 @@ struct uv_loop_s {
   void* internal_fields;
   /* Internal flag to signal loop stop. */
   unsigned int stop_flag;
+  /* Callback when a timer is started. */
+  uv_timer_started_cb timer_started_cb;
   void* reserved[4];
   UV_LOOP_PRIVATE_FIELDS
 };
 
 UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
+
+UV_EXTERN uv_timer_started_cb uv_loop_get_timer_started_callback(
+    const uv_loop_t* loop);
+UV_EXTERN void uv_loop_set_timer_started_callback(uv_loop_t* loop,
+                                                  uv_timer_started_cb callback);
 
 /* Don't export the private CPP symbols. */
 #undef UV_HANDLE_TYPE_PRIVATE

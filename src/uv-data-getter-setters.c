@@ -121,3 +121,12 @@ void* uv_loop_get_data(const uv_loop_t* loop) {
 void uv_loop_set_data(uv_loop_t* loop, void* data) {
   loop->data = data;
 }
+
+uv_timer_started_cb uv_loop_get_timer_started_callback(const uv_loop_t* loop) {
+  return loop->timer_started_cb;
+}
+
+void uv_loop_set_timer_started_callback(uv_loop_t* loop,
+                                        uv_timer_started_cb callback) {
+  loop->timer_started_cb = callback;
+}

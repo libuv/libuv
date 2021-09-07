@@ -234,6 +234,7 @@ TEST_DECLARE   (timer_from_check)
 TEST_DECLARE   (timer_is_closing)
 TEST_DECLARE   (timer_null_callback)
 TEST_DECLARE   (timer_early_check)
+TEST_DECLARE   (timer_started_callback)
 TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
@@ -271,6 +272,7 @@ TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
+TEST_DECLARE   (embed_with_external_timer)
 TEST_DECLARE   (async)
 TEST_DECLARE   (async_multi)
 TEST_DECLARE   (async_null_cb)
@@ -838,6 +840,7 @@ TASK_LIST_START
   TEST_ENTRY  (timer_is_closing)
   TEST_ENTRY  (timer_null_callback)
   TEST_ENTRY  (timer_early_check)
+  TEST_ENTRY  (timer_started_callback)
 
   TEST_ENTRY  (idle_starvation)
 
@@ -880,6 +883,7 @@ TASK_LIST_START
   TEST_ENTRY  (active)
 
   TEST_ENTRY  (embed)
+  TEST_ENTRY  (embed_with_external_timer)
 
   TEST_ENTRY  (async)
   TEST_ENTRY  (async_multi)

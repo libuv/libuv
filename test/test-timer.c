@@ -345,3 +345,33 @@ TEST_IMPL(timer_early_check) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
+
+
+static int timer_started_callback_called = 0;
+
+
+static void timer_started_callback(uv_loop_t* loop) {
+  timer_started_callback_called = 1;
+}
+
+
+static void noop_timer_callback(uv_timer_t* handle) {
+}
+
+
+TEST_IMPL(timer_started_callback) {
+  uv_loop_t loop;
+  uv_loop_init(&loop);
+  uv_loop_set_timer_started_callback(&loop, timer_started_callback);
+
+  uv_timer_t timer_handle;
+  ASSERT(0 == uv_timer_init(&loop, &timer_handle));
+  ASSERT(0 == timer_started_callback_called);
+
+  ASSERT(0 == uv_timer_start(&timer_handle, noop_timer_callback, 10, 0));
+  ASSERT(1 == timer_started_callback_called);
+
+  uv_loop_close(&loop);
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

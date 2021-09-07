@@ -82,6 +82,9 @@ int uv_timer_start(uv_timer_t* handle,
               timer_less_than);
   uv__handle_start(handle);
 
+  if (handle->loop->timer_started_cb)
+    handle->loop->timer_started_cb(handle->loop);
+
   return 0;
 }
 
