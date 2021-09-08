@@ -37,6 +37,7 @@
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <windows.h>
+#include <svcguid.h>
 /* clang-format on */
 #include <userenv.h>
 #include <math.h>
@@ -1663,9 +1664,140 @@ int uv_os_unsetenv(const char* name) {
 }
 
 
+int uv__gethostnamew_nt60(WCHAR* name, int name_len)
+{
+  int result_len;
+  int error_code = NO_ERROR;
+
+  // WSALookupService stuff
+  GUID guid_host_name = SVCID_HOSTNAME;
+  AFPROTOCOLS af_protocols[2] = { {AF_INET, IPPROTO_UDP},
+                                  {AF_INET, IPPROTO_TCP} };
+  // Avoid dynamic memory allocation if possible
+  const size_t local_buf_len = sizeof(WSAQUERYSETW) + 512;
+  CHAR local_buf[local_buf_len];
+  DWORD dwlen = (DWORD)local_buf_len;
+  WSAQUERYSETW *pwsaq = (WSAQUERYSETW*)local_buf;
+  // hostname returned from WSALookupService stage
+  WCHAR* result_name = NULL;
+  // WSALookupService handle
+  HANDLE hlookup;
+  // Fallback to heap allocation if stack buffer is too small
+  WSAQUERYSETW* heap_data = NULL;
+
+
+  // check input
+  if (name == NULL) {
+    error_code = WSAEFAULT;
+    goto cleanup;
+  }
+
+  // Stage 1: Check environment variable
+  // _CLUSTER_NETWORK_NAME_ len = ComputeName(NETBIOS) len.
+  // i.e 15 characters + null.
+  // It overrides the actual hostname, so application can
+  // work when network name and computer name are different
+  result_len = GetEnvironmentVariableW(L"_CLUSTER_NETWORK_NAME_",
+                                       name,
+                                       name_len);
+  if (result_len != 0) {
+    if (result_len > name_len) {
+      error_code = WSAEFAULT;
+    }
+    goto cleanup;
+  }
+
+
+  // Stage 2: Do normal lookup through WSALookupServiceLookup
+  // That's why we depend on the Winsock.
+  memset(pwsaq, 0, sizeof(*pwsaq));
+  pwsaq->dwSize                  = sizeof(*pwsaq);
+  pwsaq->lpszServiceInstanceName = NULL;
+  pwsaq->lpServiceClassId        = &guid_host_name;
+  pwsaq->dwNameSpace             = NS_ALL;
+  pwsaq->lpafpProtocols          = &af_protocols[0];
+  pwsaq->dwNumberOfProtocols     = 2;
+
+  error_code = WSALookupServiceBeginW(pwsaq, LUP_RETURN_NAME, &hlookup);
+  if (error_code == NO_ERROR) {
+    // Try stack allocation first
+    error_code = WSALookupServiceNextW(hlookup, 0, &dwlen, pwsaq);
+    if (error_code == NO_ERROR) {
+      result_name = pwsaq->lpszServiceInstanceName;
+    }
+    else {
+      error_code = WSAGetLastError();
+
+      if ((error_code == WSAEFAULT) && ((size_t)dwlen > local_buf_len)) {
+        // Should never happen
+        assert(sizeof(CHAR) * dwlen >= sizeof(WSAQUERYSETW));
+
+        // Fallback to the heap allocation
+        heap_data = (WSAQUERYSETW*)uv__malloc(sizeof(CHAR) * dwlen);
+        if (heap_data != NULL)
+        {
+          error_code = WSALookupServiceNextW(hlookup, 0, &dwlen, heap_data);
+          if (error_code == NO_ERROR) {
+            result_name = heap_data->lpszServiceInstanceName;
+          }
+          else {
+            error_code = WSAGetLastError();
+          }
+        }
+        else {
+          error_code = WSA_NOT_ENOUGH_MEMORY;
+        }
+      }
+    }
+
+    WSALookupServiceEnd(hlookup);
+
+    if(error_code != NO_ERROR) {
+      WSASetLastError(error_code);
+    }
+  }
+
+  if (result_name != NULL)
+  {
+    size_t wlen = wcslen(result_name) + 1;
+
+    if (wlen <= (size_t)name_len) {
+      wmemcpy(name, result_name, wlen);
+    }
+    else {
+      error_code = WSAEFAULT;
+    }
+    goto cleanup;
+  }
+
+
+  // Stage 3: If WSALookupServiceLookup fails, fallback to GetComputerName
+  result_len = name_len;
+  // Reset error code
+  error_code = NO_ERROR;
+  if (GetComputerNameW(name, (PDWORD)&result_len) == FALSE) {
+    error_code = WSAENETDOWN;
+    if (result_len >= name_len) {
+      error_code = WSAEFAULT;
+    }
+  }
+
+
+cleanup:
+  uv__free(heap_data);
+
+  if (error_code == NO_ERROR) {
+    return NO_ERROR;
+  }
+  else {
+    WSASetLastError(error_code);
+    return (SOCKET_ERROR);
+  }
+}
+
+
 int uv_os_gethostname(char* buffer, size_t* size) {
   WCHAR buf[UV_MAXHOSTNAMESIZE];
-  DWORD buf_len = UV_MAXHOSTNAMESIZE;
   size_t len;
   char* utf8_str;
   int convert_result;
@@ -1673,8 +1805,10 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  if (GetComputerNameExW(ComputerNameDnsFullyQualified, buf, &buf_len) == 0)
-    return uv_translate_sys_error(GetLastError());
+  uv__once_init(); /* Initialize winsock */
+
+  if (uv__gethostnamew_nt60(buf, UV_MAXHOSTNAMESIZE) != 0)
+    return uv_translate_sys_error(WSAGetLastError());
 
   convert_result = uv__convert_utf16_to_utf8(buf, -1, &utf8_str);
 
