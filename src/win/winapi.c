@@ -45,12 +45,16 @@ sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
 /* User32.dll function pointer */
 sSetWinEventHook pSetWinEventHook;
 
+/* ws2_32.dll function pointer */
+sGetHostNameW pGetHostNameW;
+
 
 void uv_winapi_init(void) {
   HMODULE ntdll_module;
   HMODULE powrprof_module;
   HMODULE user32_module;
   HMODULE kernel32_module;
+  HMODULE ws2_32_module;
 
   ntdll_module = GetModuleHandleA("ntdll.dll");
   if (ntdll_module == NULL) {
@@ -133,5 +137,11 @@ void uv_winapi_init(void) {
   if (user32_module != NULL) {
     pSetWinEventHook = (sSetWinEventHook)
       GetProcAddress(user32_module, "SetWinEventHook");
+  }
+
+  ws2_32_module = LoadLibraryA("ws2_32.dll");
+  if (ws2_32_module != NULL) {
+    pGetHostNameW = (sGetHostNameW)
+      GetProcAddress(ws2_32_module, "GetHostNameW");
   }
 }

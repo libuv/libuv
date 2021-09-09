@@ -1805,7 +1805,10 @@ int uv_os_gethostname(char* buffer, size_t* size) {
 
   uv__once_init(); /* Initialize winsock */
 
-  if (uv__gethostnamew_nt60(buf, UV_MAXHOSTNAMESIZE) != 0)
+  sGetHostNameW gethostnamew =
+      pGetHostNameW == NULL ? uv__gethostnamew_nt60 : pGetHostNameW;
+
+  if (gethostnamew(buf, UV_MAXHOSTNAMESIZE) != 0)
     return uv_translate_sys_error(WSAGetLastError());
 
   convert_result = uv__convert_utf16_to_utf8(buf, -1, &utf8_str);

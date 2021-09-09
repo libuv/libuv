@@ -4739,6 +4739,11 @@ typedef struct _TCP_INITIAL_RTO_PARAMETERS {
 # define  SIO_TCP_INITIAL_RTO _WSAIOW(IOC_VENDOR,17)
 #endif
 
+/* From winsock2.h */
+typedef int (WINAPI *sGetHostNameW)
+            (PWSTR name,
+             int   namelen);
+
 /* Ntdll function pointers */
 extern sRtlGetVersion pRtlGetVersion;
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
@@ -4758,5 +4763,8 @@ extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotifi
 
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
+
+/* ws2_32.dll function pointer */
+extern sGetHostNameW pGetHostNameW;
 
 #endif /* UV_WIN_WINAPI_H_ */
