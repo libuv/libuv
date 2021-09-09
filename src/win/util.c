@@ -57,6 +57,10 @@
 /* The number of nanoseconds in one second. */
 #define UV__NANOSEC 1000000000
 
+/* Local buffer size for WSAQUERYSETW data inside uv__gethostnamew_nt60
+   sizeof(WSAQUERYSET) + 512 = 632 bytes to match GetHostNameW behavior */
+#define WSAQ_LOCAL_BUF_LEN (sizeof(WSAQUERYSET) + 512)
+
 /* Max user name length, from iphlpapi.h */
 #ifndef UNLEN
 # define UNLEN 256
@@ -72,6 +76,11 @@ static CRITICAL_SECTION process_title_lock;
 
 /* Frequency of the high-resolution clock. */
 static uint64_t hrtime_frequency_ = 0;
+
+/* Parameters for WSAQUERYSETW inside uv__gethostnamew_nt60 */
+static GUID guid_host_name = SVCID_HOSTNAME;
+static AFPROTOCOLS af_protocols[2] = { {AF_INET, IPPROTO_UDP},
+                                       {AF_INET, IPPROTO_TCP} };
 
 
 /*
@@ -1664,39 +1673,35 @@ int uv_os_unsetenv(const char* name) {
 }
 
 
-int uv__gethostnamew_nt60(WCHAR* name, int name_len)
-{
+static int uv__gethostnamew_nt60(WCHAR* name, int name_len) {
   int result_len;
   int error_code = NO_ERROR;
 
-  // WSALookupService stuff
-  GUID guid_host_name = SVCID_HOSTNAME;
-  AFPROTOCOLS af_protocols[2] = { {AF_INET, IPPROTO_UDP},
-                                  {AF_INET, IPPROTO_TCP} };
-  // Avoid dynamic memory allocation if possible
-  const size_t local_buf_len = sizeof(WSAQUERYSETW) + 512;
-  CHAR local_buf[local_buf_len];
-  DWORD dwlen = (DWORD)local_buf_len;
-  WSAQUERYSETW *pwsaq = (WSAQUERYSETW*)local_buf;
-  // hostname returned from WSALookupService stage
+  /* WSALookupService stuff
+   * Avoid dynamic memory allocation if possible */
+  CHAR local_buf[WSAQ_LOCAL_BUF_LEN];
+  DWORD dwlen = (DWORD)WSAQ_LOCAL_BUF_LEN;
+  WSAQUERYSETW* pwsaq;
+  /* hostname returned from WSALookupService stage */
   WCHAR* result_name = NULL;
-  // WSALookupService handle
+  /* WSALookupService handle */
   HANDLE hlookup;
-  // Fallback to heap allocation if stack buffer is too small
+  /* Fallback to heap allocation if stack buffer is too small */
   WSAQUERYSETW* heap_data = NULL;
 
-
-  // check input
+  /* check input */
   if (name == NULL) {
     error_code = WSAEFAULT;
     goto cleanup;
   }
 
-  // Stage 1: Check environment variable
-  // _CLUSTER_NETWORK_NAME_ len = ComputeName(NETBIOS) len.
-  // i.e 15 characters + null.
-  // It overrides the actual hostname, so application can
-  // work when network name and computer name are different
+  /* 
+   * Stage 1: Check environment variable
+   * _CLUSTER_NETWORK_NAME_ len == ComputeName(NETBIOS) len.
+   * i.e 15 characters + null.
+   * It overrides the actual hostname, so application can
+   * work when network name and computer name are different 
+   */ 
   result_len = GetEnvironmentVariableW(L"_CLUSTER_NETWORK_NAME_",
                                        name,
                                        name_len);
@@ -1707,9 +1712,8 @@ int uv__gethostnamew_nt60(WCHAR* name, int name_len)
     goto cleanup;
   }
 
-
-  // Stage 2: Do normal lookup through WSALookupServiceLookup
-  // That's why we depend on the Winsock.
+  /* Stage 2: Do normal lookup through WSALookupServiceLookup */
+  pwsaq = (WSAQUERYSETW*)local_buf;
   memset(pwsaq, 0, sizeof(*pwsaq));
   pwsaq->dwSize                  = sizeof(*pwsaq);
   pwsaq->lpszServiceInstanceName = NULL;
@@ -1720,31 +1724,28 @@ int uv__gethostnamew_nt60(WCHAR* name, int name_len)
 
   error_code = WSALookupServiceBeginW(pwsaq, LUP_RETURN_NAME, &hlookup);
   if (error_code == NO_ERROR) {
-    // Try stack allocation first
+    /* Try stack allocation first */
     error_code = WSALookupServiceNextW(hlookup, 0, &dwlen, pwsaq);
     if (error_code == NO_ERROR) {
       result_name = pwsaq->lpszServiceInstanceName;
-    }
-    else {
+    } else {
       error_code = WSAGetLastError();
 
-      if ((error_code == WSAEFAULT) && ((size_t)dwlen > local_buf_len)) {
-        // Should never happen
+      if ((error_code == WSAEFAULT) && (dwlen > WSAQ_LOCAL_BUF_LEN)) {
+        /* Should never happen */
         assert(sizeof(CHAR) * dwlen >= sizeof(WSAQUERYSETW));
 
-        // Fallback to the heap allocation
-        heap_data = (WSAQUERYSETW*)uv__malloc(sizeof(CHAR) * dwlen);
+        /* Fallback to the heap allocation */
+        heap_data = (WSAQUERYSETW*)uv__malloc(sizeof(CHAR) * (size_t)dwlen);
         if (heap_data != NULL)
         {
           error_code = WSALookupServiceNextW(hlookup, 0, &dwlen, heap_data);
           if (error_code == NO_ERROR) {
             result_name = heap_data->lpszServiceInstanceName;
-          }
-          else {
+          } else {
             error_code = WSAGetLastError();
           }
-        }
-        else {
+        } else {
           error_code = WSA_NOT_ENOUGH_MEMORY;
         }
       }
@@ -1763,18 +1764,17 @@ int uv__gethostnamew_nt60(WCHAR* name, int name_len)
 
     if (wlen <= (size_t)name_len) {
       wmemcpy(name, result_name, wlen);
-    }
-    else {
+    } else {
       error_code = WSAEFAULT;
     }
     goto cleanup;
   }
 
-
-  // Stage 3: If WSALookupServiceLookup fails, fallback to GetComputerName
+  /* Stage 3: If WSALookupServiceLookup fails, fallback to GetComputerName */
   result_len = name_len;
-  // Reset error code
+  /* Reset error code */
   error_code = NO_ERROR;
+
   if (GetComputerNameW(name, (PDWORD)&result_len) == FALSE) {
     error_code = WSAENETDOWN;
     if (result_len >= name_len) {
@@ -1782,16 +1782,14 @@ int uv__gethostnamew_nt60(WCHAR* name, int name_len)
     }
   }
 
-
 cleanup:
   uv__free(heap_data);
 
   if (error_code == NO_ERROR) {
     return NO_ERROR;
-  }
-  else {
+  } else {
     WSASetLastError(error_code);
-    return (SOCKET_ERROR);
+    return SOCKET_ERROR;
   }
 }
 
