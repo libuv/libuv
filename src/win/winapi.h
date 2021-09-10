@@ -4740,7 +4740,7 @@ typedef struct _TCP_INITIAL_RTO_PARAMETERS {
 #endif
 
 /* From winsock2.h */
-typedef int (WINAPI *sGetHostNameW)
+typedef int (WSAAPI *sGetHostNameW)
             (PWSTR name,
              int   namelen);
 

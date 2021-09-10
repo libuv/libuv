@@ -58,8 +58,8 @@
 #define UV__NANOSEC 1000000000
 
 /* Local buffer size for WSAQUERYSETW data inside uv__gethostnamew_nt60
-   sizeof(WSAQUERYSET) + 512 = 632 bytes to match GetHostNameW behavior */
-#define WSAQ_LOCAL_BUF_LEN (sizeof(WSAQUERYSET) + 512)
+   sizeof(WSAQUERYSETW) + 512 = 632 bytes to match GetHostNameW behavior */
+#define WSAQ_LOCAL_BUF_LEN (sizeof(WSAQUERYSETW) + 512)
 
 /* Max user name length, from iphlpapi.h */
 #ifndef UNLEN
@@ -1673,14 +1673,14 @@ int uv_os_unsetenv(const char* name) {
 }
 
 
-static int uv__gethostnamew_nt60(WCHAR* name, int name_len) {
+static int WSAAPI uv__gethostnamew_nt60(PWSTR name, int name_len) {
   int result_len;
   int error_code = NO_ERROR;
 
   /* WSALookupService stuff
    * Avoid dynamic memory allocation if possible */
   CHAR local_buf[WSAQ_LOCAL_BUF_LEN];
-  DWORD dwlen = (DWORD)WSAQ_LOCAL_BUF_LEN;
+  DWORD dwlen = WSAQ_LOCAL_BUF_LEN;
   WSAQUERYSETW* pwsaq;
   /* hostname returned from WSALookupService stage */
   WCHAR* result_name = NULL;
@@ -1713,7 +1713,7 @@ static int uv__gethostnamew_nt60(WCHAR* name, int name_len) {
   }
 
   /* Stage 2: Do normal lookup through WSALookupServiceLookup */
-  pwsaq = (WSAQUERYSETW*)local_buf;
+  pwsaq = (WSAQUERYSETW*) local_buf;
   memset(pwsaq, 0, sizeof(*pwsaq));
   pwsaq->dwSize                  = sizeof(*pwsaq);
   pwsaq->lpszServiceInstanceName = NULL;
@@ -1736,7 +1736,7 @@ static int uv__gethostnamew_nt60(WCHAR* name, int name_len) {
         assert(sizeof(CHAR) * dwlen >= sizeof(WSAQUERYSETW));
 
         /* Fallback to the heap allocation */
-        heap_data = (WSAQUERYSETW*)uv__malloc(sizeof(CHAR) * (size_t)dwlen);
+        heap_data = uv__malloc(sizeof(CHAR) * (size_t) dwlen);
         if (heap_data != NULL)
         {
           error_code = WSALookupServiceNextW(hlookup, 0, &dwlen, heap_data);
@@ -1753,16 +1753,15 @@ static int uv__gethostnamew_nt60(WCHAR* name, int name_len) {
 
     WSALookupServiceEnd(hlookup);
 
-    if(error_code != NO_ERROR) {
+    if (error_code != NO_ERROR) {
       WSASetLastError(error_code);
     }
   }
 
-  if (result_name != NULL)
-  {
+  if (result_name != NULL) {
     size_t wlen = wcslen(result_name) + 1;
 
-    if (wlen <= (size_t)name_len) {
+    if (wlen <= (size_t) name_len) {
       wmemcpy(name, result_name, wlen);
     } else {
       error_code = WSAEFAULT;
