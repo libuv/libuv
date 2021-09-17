@@ -217,6 +217,11 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
     return 0;
   }
 
+  if (option == UV_LOOP_INTERRUPT_ON_IO_CHANGE) {
+    lfields->flags |= UV_LOOP_INTERRUPT_ON_IO_CHANGE;
+    return 0;
+  }
+
   if (option != UV_LOOP_BLOCK_SIGNAL)
     return UV_ENOSYS;
 
@@ -225,4 +230,38 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
 
   loop->flags |= UV_LOOP_BLOCK_SIGPROF;
   return 0;
+}
+
+
+void uv__loop_interrupt(uv_loop_t* loop) {
+  const void* buf;
+  ssize_t len;
+  int fd;
+  int r;
+
+  buf = "";
+  len = 1;
+  fd = loop->async_wfd;
+
+#if defined(__linux__)
+  if (fd == -1) {
+    static const uint64_t val = 1;
+    buf = &val;
+    len = sizeof(val);
+    fd = loop->async_io_watcher.fd;  /* eventfd */
+  }
+#endif
+
+  do
+    r = write(fd, buf, len);
+  while (r == -1 && errno == EINTR);
+
+  if (r == len)
+    return;
+
+  if (r == -1)
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+      return;
+
+  abort();
 }

@@ -38,7 +38,6 @@
 #include <sys/eventfd.h>
 #endif
 
-static void uv__async_send(uv_loop_t* loop);
 static int uv__async_start(uv_loop_t* loop);
 static void uv__cpu_relax(void);
 
@@ -77,7 +76,7 @@ int uv_async_send(uv_async_t* handle) {
     return 0;
 
   /* Wake up the other thread's event loop. */
-  uv__async_send(handle->loop);
+  uv__loop_interrupt(handle->loop);
 
   /* Tell the other thread we're done. */
   expected = 1;
@@ -174,40 +173,6 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     h->async_cb(h);
   }
-}
-
-
-static void uv__async_send(uv_loop_t* loop) {
-  const void* buf;
-  ssize_t len;
-  int fd;
-  int r;
-
-  buf = "";
-  len = 1;
-  fd = loop->async_wfd;
-
-#if defined(__linux__)
-  if (fd == -1) {
-    static const uint64_t val = 1;
-    buf = &val;
-    len = sizeof(val);
-    fd = loop->async_io_watcher.fd;  /* eventfd */
-  }
-#endif
-
-  do
-    r = write(fd, buf, len);
-  while (r == -1 && errno == EINTR);
-
-  if (r == len)
-    return;
-
-  if (r == -1)
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-      return;
-
-  abort();
 }
 
 

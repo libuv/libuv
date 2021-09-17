@@ -265,6 +265,7 @@ TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
+TEST_DECLARE   (embed_with_external_timer)
 TEST_DECLARE   (async)
 TEST_DECLARE   (async_null_cb)
 TEST_DECLARE   (eintr_handling)
@@ -868,6 +869,7 @@ TASK_LIST_START
   TEST_ENTRY  (active)
 
   TEST_ENTRY  (embed)
+  TEST_ENTRY  (embed_with_external_timer)
 
   TEST_ENTRY  (async)
   TEST_ENTRY  (async_null_cb)

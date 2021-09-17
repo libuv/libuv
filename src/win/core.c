@@ -384,7 +384,17 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
     return 0;
   }
 
+  if (option == UV_LOOP_INTERRUPT_ON_IO_CHANGE) {
+    lfields->flags |= UV_LOOP_INTERRUPT_ON_IO_CHANGE;
+    return 0;
+  }
+
   return UV_ENOSYS;
+}
+
+
+void uv__loop_interrupt(uv_loop_t* loop) {
+  PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
 }
 
 

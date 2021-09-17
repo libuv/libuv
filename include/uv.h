@@ -247,7 +247,8 @@ typedef struct uv_statfs_s uv_statfs_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL = 0,
-  UV_METRICS_IDLE_TIME
+  UV_METRICS_IDLE_TIME,
+  UV_LOOP_INTERRUPT_ON_IO_CHANGE
 } uv_loop_option;
 
 typedef enum {
