@@ -418,7 +418,6 @@ if(LIBUV_BUILD_TESTS)
     test/benchmark-thread.c
     test/benchmark-udp-pummel.c
     test/blackhole-server.c
-    test/dns-server.c
     test/echo-server.c
     test/run-benchmarks.c
     test/runner.c)
