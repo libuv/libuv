@@ -1731,14 +1731,13 @@ static int WSAAPI uv__gethostnamew_nt60(PWSTR name, int name_len) {
     } else {
       error_code = WSAGetLastError();
 
-      if ((error_code == WSAEFAULT) && (dwlen > WSAQ_LOCAL_BUF_LEN)) {
+      if (error_code == WSAEFAULT) {
         /* Should never happen */
         assert(sizeof(CHAR) * dwlen >= sizeof(WSAQUERYSETW));
 
         /* Fallback to the heap allocation */
         heap_data = uv__malloc(sizeof(CHAR) * (size_t) dwlen);
-        if (heap_data != NULL)
-        {
+        if (heap_data != NULL) {
           error_code = WSALookupServiceNextW(hlookup, 0, &dwlen, heap_data);
           if (error_code == NO_ERROR) {
             result_name = heap_data->lpszServiceInstanceName;
