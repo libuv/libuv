@@ -22,8 +22,8 @@
 #include "uv.h"
 #include "task.h"
 
-static int work_cb_count;
-static int after_work_cb_count;
+static int unsigned work_cb_count;
+static int unsigned after_work_cb_count;
 static uv_work_t work_req;
 static char data;
 
@@ -40,6 +40,24 @@ static void after_work_cb(uv_work_t* req, int status) {
   ASSERT(req == &work_req);
   ASSERT(req->data == &data);
   after_work_cb_count++;
+}
+
+
+static void work_cb_increment(uv_work_t* req) {
+  InterlockedIncrement ((&work_cb_count));
+}
+
+
+static void after_work_cb_increment(uv_work_t* req, int status) {
+  InterlockedIncrement ((&after_work_cb_count));
+  printf("finised: %d\n", after_work_cb_count);
+}
+
+
+static void start_thread(uv_work_t* req) {
+  int r = uv_queue_work(uv_default_loop(), req,
+    work_cb_increment, after_work_cb_increment);
+  ASSERT(r == 0);
 }
 
 
@@ -70,6 +88,29 @@ TEST_IMPL(threadpool_queue_work_einval) {
 
   ASSERT(work_cb_count == 0);
   ASSERT(after_work_cb_count == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(threadpool_queue_work_multiple) {
+  const unsigned int tasks = 10;
+  uv_thread_t thread[10];
+  uv_work_t work_reqs[10];
+
+  for(unsigned int i = 0; i < tasks; i++) {
+    ASSERT(0 == uv_thread_create(&thread[i], start_thread, &work_reqs[i]));
+  }
+
+  for(unsigned int i = 0; i < tasks; i++) {
+    ASSERT(0 == uv_thread_join(&thread[i]));
+  }
+  
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT(work_cb_count == tasks);
+  ASSERT(after_work_cb_count == tasks);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

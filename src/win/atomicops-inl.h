@@ -26,7 +26,7 @@
 #include "internal.h"
 
 
-/* Atomic set operation on char */
+/* Atomic set operation on char or unsigned int */
 #ifdef _MSC_VER /* MSVC */
 
 /* _InterlockedOr8 is supported by MSVC on x32 and x64. It is slightly less
@@ -35,8 +35,16 @@
  * aligned. */
 #pragma intrinsic(_InterlockedOr8)
 
-static char INLINE uv__atomic_exchange_set(char volatile* target) {
+static char inline uv__atomic_exchange_set(char volatile* target) {
   return _InterlockedOr8(target, 1);
+}
+
+static void inline uv__atomic_increment(volatile unsigned int* target) {
+  InterlockedIncrement64 ((target));
+}
+
+static void inline uv__atomic_decrement(volatile unsigned int* target) {
+  InterlockedDecrement64 ((target));
 }
 
 #else /* GCC, Clang in mingw mode */
