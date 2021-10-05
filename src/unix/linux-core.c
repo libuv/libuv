@@ -882,14 +882,7 @@ static int uv__read_cgroups_proc_files(uv__cgroups_subsystem_info_t* info,
   /*
    * Loop once per line; try to find the mount location for the given subsystem.
    */
-  while (feof(fp) == 0) {
-    if (getline(&buf, &buf_size, fp) < 0) {
-      if (feof(fp) != 0)
-        break;
-      rc = UV_EIO;
-      goto cleanup;
-    }
-    buf_strlen = strlen(buf);
+  while ((buf_strlen = getline(&buf, &buf_size, fp)) != -1) {
     if ('\n' == buf[buf_strlen - 1])
       buf[buf_strlen - 1] = '\0';
 
@@ -905,7 +898,7 @@ static int uv__read_cgroups_proc_files(uv__cgroups_subsystem_info_t* info,
       continue;
     strsep(&field_ptr, " "); /* mount options */
     /* A hyphen marks the end of variable-length optional fields. */
-    while ('-' != field_ptr[0])
+    while (field_ptr != NULL && '-' != field_ptr[0])
       strsep(&field_ptr, " ");
     strsep(&field_ptr, " "); /* separator (hyphen) */
     curr_fs_type = strsep(&field_ptr, " ");
@@ -950,6 +943,11 @@ static int uv__read_cgroups_proc_files(uv__cgroups_subsystem_info_t* info,
        * by cgroups v2.
        */
     }
+  }
+
+  if (ferror(fp)) {
+    rc = UV__ERR(errno);
+    goto cleanup;
   }
 
   fclose(fp);
@@ -1047,16 +1045,11 @@ cleanup:
   if (fp != NULL)
     fclose(fp);
   /* buf is (re-)allocated via getline, so use standard free. */
-  if (buf != NULL)
-    free(buf);
-  if (root != NULL)
-    uv__free(root);
-  if (mount_point != NULL)
-    uv__free(mount_point);
-  if (hierarchy_path != NULL)
-    uv__free(hierarchy_path);
-  if (subsystem_search_string != NULL)
-    uv__free(subsystem_search_string);
+  free(buf);
+  uv__free(root);
+  uv__free(mount_point);
+  uv__free(hierarchy_path);
+  uv__free(subsystem_search_string);
   return rc;
 }
 
@@ -1065,7 +1058,7 @@ static uint64_t uv__read_cgroups_uint64(const char* path, const char* param) {
 
   char filename[UV__PATH_MAX];
   char buf[32];  /* Large enough to hold an encoded uint64_t. */
-  uint64_t rc;
+  uint64_t rc = 0;
 
   snprintf(filename, sizeof(filename), "%s/%s", path, param);
   if (0 == uv__slurp(filename, buf, sizeof(buf)))
