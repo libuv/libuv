@@ -404,6 +404,11 @@ API
 
     :returns: 0 on success, or an error code < 0 on failure.
 
+    .. note::
+        When using :man:`recvmmsg(2)`, the number of messages received at a time is limited
+        by the number of max size dgrams that will fit into the buffer allocated in `alloc_cb`, and
+        `suggested_size` in `alloc_cb` for udp_recv is always set to the size of 1 max size dgram.
+
     .. versionchanged:: 1.35.0 added support for :man:`recvmmsg(2)` on supported platforms).
                         The use of this feature requires a buffer larger than
                         2 * 64KB to be passed to `alloc_cb`.

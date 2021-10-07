@@ -350,5 +350,11 @@ int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
 #define HAVE_MMSG 0
 #endif
 
+#if defined(__sun)
+#if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L
+size_t strnlen(const char* s, size_t maxlen);
+#endif
+#endif
+
 
 #endif /* UV_UNIX_INTERNAL_H_ */

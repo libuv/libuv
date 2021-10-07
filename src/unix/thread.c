@@ -107,8 +107,7 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
   }
 
   last = (--b->out == 0);
-  if (!last)
-    uv_cond_signal(&b->cond);  /* Not needed for last thread. */
+  uv_cond_signal(&b->cond);
 
   uv_mutex_unlock(&b->mutex);
   return last;
@@ -122,9 +121,10 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
   uv_mutex_lock(&b->mutex);
 
   assert(b->in == 0);
-  assert(b->out == 0);
+  while (b->out != 0)
+    uv_cond_wait(&b->cond, &b->mutex);
 
-  if (b->in != 0 || b->out != 0)
+  if (b->in != 0)
     abort();
 
   uv_mutex_unlock(&b->mutex);

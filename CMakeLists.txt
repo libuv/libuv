@@ -325,12 +325,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
-  list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500)
+  list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500 _REENTRANT)
   list(APPEND uv_libraries kstat nsl sendfile socket)
   list(APPEND uv_sources
        src/unix/no-proctitle.c
-       src/unix/sunos.c
-       src/unix/epoll.c)
+       src/unix/sunos.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
@@ -525,6 +524,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-semaphore.c
        test/test-shutdown-close.c
        test/test-shutdown-eof.c
+       test/test-shutdown-simultaneous.c
        test/test-shutdown-twice.c
        test/test-signal-multiple-loops.c
        test/test-signal-pending-on-close.c
@@ -625,40 +625,34 @@ if(LIBUV_BUILD_TESTS)
   endif()
 endif()
 
-if(UNIX OR MINGW)
-  # Now for some gibbering horrors from beyond the stars...
-  foreach(lib IN LISTS uv_libraries)
-    list(APPEND LIBS "-l${lib}")
-  endforeach()
-  string(REPLACE ";" " " LIBS "${LIBS}")
-  # Consider setting project version via project() call?
-  file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
-  string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
-  set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
-  # The version in the filename is mirroring the behaviour of autotools.
-  set_target_properties(uv PROPERTIES
-    VERSION ${UV_VERSION_MAJOR}.0.0
-    SOVERSION ${UV_VERSION_MAJOR})
-  set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
-  set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-  set(prefix ${CMAKE_INSTALL_PREFIX})
-  configure_file(libuv.pc.in libuv.pc @ONLY)
-  configure_file(libuv-static.pc.in libuv-static.pc @ONLY)
+# Now for some gibbering horrors from beyond the stars...
+foreach(lib IN LISTS uv_libraries)
+  list(APPEND LIBS "-l${lib}")
+endforeach()
+string(REPLACE ";" " " LIBS "${LIBS}")
+# Consider setting project version via project() call?
+file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
+string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
+set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
+# The version in the filename is mirroring the behaviour of autotools.
+set_target_properties(uv PROPERTIES
+  VERSION ${UV_VERSION_MAJOR}.0.0
+  SOVERSION ${UV_VERSION_MAJOR})
+set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
+set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+set(prefix ${CMAKE_INSTALL_PREFIX})
+configure_file(libuv.pc.in libuv.pc @ONLY)
+configure_file(libuv-static.pc.in libuv-static.pc @ONLY)
 
-  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-  install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
-  install(FILES ${PROJECT_BINARY_DIR}/libuv.pc ${PROJECT_BINARY_DIR}/libuv-static.pc
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-  install(TARGETS uv LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES ${PROJECT_BINARY_DIR}/libuv.pc ${PROJECT_BINARY_DIR}/libuv-static.pc
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+install(TARGETS uv LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(MSVC)
-  install(DIRECTORY include/ DESTINATION include)
-  install(FILES LICENSE DESTINATION .)
-  install(TARGETS uv uv_a
-          RUNTIME DESTINATION lib/$<CONFIG>
-          ARCHIVE DESTINATION lib/$<CONFIG>)
+  set(CMAKE_DEBUG_POSTFIX d)
 endif()
 
 message(STATUS "summary of build options:

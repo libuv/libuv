@@ -241,6 +241,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-semaphore.c \
                          test/test-shutdown-close.c \
                          test/test-shutdown-eof.c \
+                         test/test-shutdown-simultaneous.c \
                          test/test-shutdown-twice.c \
                          test/test-signal-multiple-loops.c \
                          test/test-signal-pending-on-close.c \
@@ -518,7 +519,6 @@ libuv_la_CFLAGS += -D__EXTENSIONS__ \
                    -D_XOPEN_SOURCE=500 \
                    -D_REENTRANT
 libuv_la_SOURCES += src/unix/no-proctitle.c \
-                    src/unix/epoll.c \
                     src/unix/sunos.c
 endif
 
