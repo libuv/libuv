@@ -7,11 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Setup
+        run: |
+          sudo apt-get install ninja-build
       - name: Envinfo
         run: npx envinfo
       - name: ASAN
         run: |
-          mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
-          cmake --build . && ./uv_run_tests_a
-
+          mkdir build-asan
+          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-asan
+          ./build-asan/uv_run_tests_a
