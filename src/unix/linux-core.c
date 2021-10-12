@@ -365,6 +365,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   const char* inferred_model;
   unsigned int model_idx;
   unsigned int speed_idx;
+  unsigned int part_idx;
   char buf[1024];
   char* model;
   FILE* fp;
@@ -373,16 +374,19 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   (void) &model_marker;
   (void) &speed_marker;
   (void) &speed_idx;
+  (void) &part_idx;
   (void) &model;
   (void) &buf;
   (void) &fp;
 
   model_idx = 0;
   speed_idx = 0;
+  part_idx = 0;
 
 #if defined(__arm__) || \
     defined(__i386__) || \
     defined(__mips__) || \
+    defined(__aarch64__) || \
     defined(__PPC__) || \
     defined(__x86_64__)
   fp = uv__open_file("/proc/cpuinfo");
@@ -402,11 +406,90 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         continue;
       }
     }
-#if defined(__arm__) || defined(__mips__)
+#if defined(__arm__) || defined(__mips__) || defined(__aarch64__)
     if (model_idx < numcpus) {
 #if defined(__arm__)
       /* Fallback for pre-3.8 kernels. */
       static const char model_marker[] = "Processor\t: ";
+#elif defined(__aarch64__)
+      static const char part_marker[] = "CPU part\t: ";
+
+      // This code is an adaptation of: https://raw.githubusercontent.com/karelzak/util-linux/master/sys-utils/lscpu-arm.c
+      struct id_part {
+        const int id;
+        const char* name;
+      };
+
+      static const struct id_part arm_part[] = {
+        { 0x811, "ARM810" },
+        { 0x920, "ARM920" },
+        { 0x922, "ARM922" },
+        { 0x926, "ARM926" },
+        { 0x940, "ARM940" },
+        { 0x946, "ARM946" },
+        { 0x966, "ARM966" },
+        { 0xa20, "ARM1020" },
+        { 0xa22, "ARM1022" },
+        { 0xa26, "ARM1026" },
+        { 0xb02, "ARM11 MPCore" },
+        { 0xb36, "ARM1136" },
+        { 0xb56, "ARM1156" },
+        { 0xb76, "ARM1176" },
+        { 0xc05, "Cortex-A5" },
+        { 0xc07, "Cortex-A7" },
+        { 0xc08, "Cortex-A8" },
+        { 0xc09, "Cortex-A9" },
+        { 0xc0d, "Cortex-A17" },  /* Originally A12 */
+        { 0xc0f, "Cortex-A15" },
+        { 0xc0e, "Cortex-A17" },
+        { 0xc14, "Cortex-R4" },
+        { 0xc15, "Cortex-R5" },
+        { 0xc17, "Cortex-R7" },
+        { 0xc18, "Cortex-R8" },
+        { 0xc20, "Cortex-M0" },
+        { 0xc21, "Cortex-M1" },
+        { 0xc23, "Cortex-M3" },
+        { 0xc24, "Cortex-M4" },
+        { 0xc27, "Cortex-M7" },
+        { 0xc60, "Cortex-M0+" },
+        { 0xd01, "Cortex-A32" },
+        { 0xd03, "Cortex-A53" },
+        { 0xd04, "Cortex-A35" },
+        { 0xd05, "Cortex-A55" },
+        { 0xd06, "Cortex-A65" },
+        { 0xd07, "Cortex-A57" },
+        { 0xd08, "Cortex-A72" },
+        { 0xd09, "Cortex-A73" },
+        { 0xd0a, "Cortex-A75" },
+        { 0xd0b, "Cortex-A76" },
+        { 0xd0c, "Neoverse-N1" },
+        { 0xd0d, "Cortex-A77" },
+        { 0xd0e, "Cortex-A76AE" },
+        { 0xd13, "Cortex-R52" },
+        { 0xd20, "Cortex-M23" },
+        { 0xd21, "Cortex-M33" },
+        { 0xd41, "Cortex-A78" },
+        { 0xd42, "Cortex-A78AE" },
+        { 0xd4a, "Neoverse-E1" },
+        { 0xd4b, "Cortex-A78C" },
+        { -1, "unknown" },
+      };
+
+      if (strncmp(buf, part_marker, sizeof(part_marker) - 1) == 0) {
+        model = buf + sizeof(part_marker) - 1;
+        model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
+        if (model == NULL) {
+          fclose(fp);
+          return UV_ENOMEM;
+        }
+        const int model_id = (int) strtol(model, NULL, 0);
+        for (part_idx = 0; arm_part[part_idx].id != -1; part_idx++) {
+          if (model_id == arm_part[part_idx].id) {
+            ci[model_idx++].model = strdup(arm_part[part_idx].name);
+            continue;
+          }
+        }
+      }
 #else	/* defined(__mips__) */
       static const char model_marker[] = "cpu model\t\t: ";
 #endif
@@ -421,18 +504,18 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         continue;
       }
     }
-#else  /* !__arm__ && !__mips__ */
+#else  /* !__arm__ && !__mips__ && !__aarch64__ */
     if (speed_idx < numcpus) {
       if (strncmp(buf, speed_marker, sizeof(speed_marker) - 1) == 0) {
         ci[speed_idx++].speed = atoi(buf + sizeof(speed_marker) - 1);
         continue;
       }
     }
-#endif  /* __arm__ || __mips__ */
+#endif  /* __arm__ || __mips__ || __aarch64__ */
   }
 
   fclose(fp);
-#endif  /* __arm__ || __i386__ || __mips__ || __PPC__ || __x86_64__ */
+#endif  /* __arm__ || __i386__ || __mips__ || __PPC__ || __x86_64__ || __aarch__ */
 
   /* Now we want to make sure that all the models contain *something* because
    * it's not safe to leave them as null. Copy the last entry unless there
