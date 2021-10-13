@@ -472,7 +472,6 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         { 0xd42, "Cortex-A78AE" },
         { 0xd4a, "Neoverse-E1" },
         { 0xd4b, "Cortex-A78C" },
-        { -1, "unknown" },
       };
 
       if (strncmp(buf, part_marker, sizeof(part_marker) - 1) == 0) {
@@ -482,11 +481,23 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
           fclose(fp);
           return UV_ENOMEM;
         }
-        const int model_id = (int) strtol(model, NULL, 0);
-        for (part_idx = 0; arm_part[part_idx].id != -1; part_idx++) {
+
+        errno = 0;
+        int model_id = strtol(model, NULL, 0);
+        if (errno != 0)
+          goto err;
+        if (model_id < 0)
+          goto err;
+
+        for (part_idx = 0; part_idx < ARRAY_SIZE(arm_part); part_idx++) {
           if (model_id == arm_part[part_idx].id) {
-            ci[model_idx++].model = strdup(arm_part[part_idx].name);
-            continue;
+            model = uv__strndup(arm_part[part_idx].name, strlen(arm_part[part_idx].name));
+            if (model == NULL) {
+              fclose(fp);
+              return UV_ENOMEM;
+            }
+            ci[model_idx++].model = model;
+            break;
           }
         }
       }
@@ -533,6 +544,9 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   }
 
   return 0;
+
+err:
+  return UV_EINVAL;
 }
 
 
