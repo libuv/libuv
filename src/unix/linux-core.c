@@ -483,7 +483,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
         }
 
         errno = 0;
-        int model_id = strtol(model, NULL, 0);
+        const int model_id = strtol(model, NULL, 16);
         if (errno != 0)
           goto err;
         if (model_id < 0)
