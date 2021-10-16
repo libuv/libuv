@@ -48,7 +48,7 @@ jobs:
           $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build .
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-10.15
     steps:
       - uses: actions/checkout@v2
       - name: Envinfo
