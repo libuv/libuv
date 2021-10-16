@@ -53,15 +53,18 @@ jobs:
       - uses: actions/checkout@v2
       - name: Envinfo
         run: npx envinfo
+      - name: Setup
+        run: |
+          brew install ninja
       - name: Build
         run: |
           mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON
+          cd build && cmake .. -DBUILD_TESTING=ON -G Ninja
           cmake --build .
           ls -lh
       - name: Test
         run: |
-          build/uv_run_tests_a
+          cd build && ctest -V
 
   build-cross-qemu:
     runs-on: ubuntu-latest
