@@ -31,11 +31,24 @@ if(QEMU)
 endif()
 
 option(ASAN "Enable AddressSanitizer (ASan)" OFF)
-if(ASAN AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
+option(TSAN "Enable ThreadSanitizer (TSan)" OFF)
+
+if((ASAN OR TSAN) AND NOT (CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang"))
+  message(SEND_ERROR "Sanitizer support requires clang or gcc. Try again with -DCMAKE_C_COMPILER.")
+endif()
+
+if(ASAN)
   add_definitions(-D__ASAN__=1)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+if(TSAN)
+  add_definitions(-D__TSAN__=1)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
 endif()
 
 # Compiler check
