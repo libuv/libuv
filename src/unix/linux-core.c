@@ -369,6 +369,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   char buf[1024];
   char* model;
   FILE* fp;
+  int model_id;
 
   /* Most are unused on non-ARM, non-MIPS and non-x86 architectures. */
   (void) &model_marker;
@@ -378,6 +379,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   (void) &model;
   (void) &buf;
   (void) &fp;
+  (void) &model_id;
 
   model_idx = 0;
   speed_idx = 0;
@@ -414,13 +416,13 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 #elif defined(__aarch64__)
       static const char part_marker[] = "CPU part\t: ";
 
-      // This code is an adaptation of: https://raw.githubusercontent.com/karelzak/util-linux/master/sys-utils/lscpu-arm.c
-      struct id_part {
+      /* Adapted from: https://github.com/karelzak/util-linux */
+      struct vendor_part {
         const int id;
         const char* name;
       };
 
-      static const struct id_part arm_part[] = {
+      static const struct vendor_part arm_chips[] = {
         { 0x811, "ARM810" },
         { 0x920, "ARM920" },
         { 0x922, "ARM922" },
@@ -476,22 +478,17 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 
       if (strncmp(buf, part_marker, sizeof(part_marker) - 1) == 0) {
         model = buf + sizeof(part_marker) - 1;
-        model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
-        if (model == NULL) {
-          fclose(fp);
-          return UV_ENOMEM;
-        }
 
         errno = 0;
-        const int model_id = strtol(model, NULL, 16);
+        model_id = strtol(model, NULL, 16);
         if (errno != 0)
           goto err;
         if (model_id < 0)
           goto err;
 
-        for (part_idx = 0; part_idx < ARRAY_SIZE(arm_part); part_idx++) {
-          if (model_id == arm_part[part_idx].id) {
-            model = uv__strndup(arm_part[part_idx].name, strlen(arm_part[part_idx].name));
+        for (part_idx = 0; part_idx < ARRAY_SIZE(arm_chips); part_idx++) {
+          if (model_id == arm_chips[part_idx].id) {
+            model = uv__strdup(arm_chips[part_idx].name);
             if (model == NULL) {
               fclose(fp);
               return UV_ENOMEM;
