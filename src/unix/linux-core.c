@@ -481,10 +481,10 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 
         errno = 0;
         model_id = strtol(model, NULL, 16);
-        if (errno != 0)
-          goto err;
-        if (model_id < 0)
-          goto err;
+        if ((errno != 0) || model_id < 0) {
+          fclose(fp);
+          return UV_EINVAL;
+        }
 
         for (part_idx = 0; part_idx < ARRAY_SIZE(arm_chips); part_idx++) {
           if (model_id == arm_chips[part_idx].id) {
@@ -541,9 +541,6 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
   }
 
   return 0;
-
-err:
-  return UV_EINVAL;
 }
 
 
