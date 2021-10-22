@@ -140,8 +140,8 @@ void uv_winapi_init(void) {
 
   ws2_32_module = LoadLibraryA("ws2_32.dll");
   if (ws2_32_module != NULL) {
-      pGetHostNameW = (uv_sGetHostNameW)GetProcAddress(
-          ws2_32_module,
-          "GetHostNameW");
+    pGetHostNameW = (uv_sGetHostNameW)GetProcAddress(
+        ws2_32_module,
+        "GetHostNameW");
   }
 }

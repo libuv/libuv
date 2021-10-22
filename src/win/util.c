@@ -1674,9 +1674,8 @@ int uv_os_gethostname(char* buffer, size_t* size) {
 
   uv__once_init(); /* Initialize winsock */
 
-  /* Is there a better error value for "Unsupported" ? */
   if (pGetHostNameW == NULL)
-    return UV_UNKNOWN;
+    return UV_ENOSYS;
 
   if (pGetHostNameW(buf, UV_MAXHOSTNAMESIZE) != 0)
     return uv_translate_sys_error(WSAGetLastError());
