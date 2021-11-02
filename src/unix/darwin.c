@@ -302,12 +302,13 @@ static int uv__get_cpu_speed(uint64_t* speed) {
   pIOObjectRelease(it);
 
   err = 0;
-out:
+
   if (device_type_str != NULL)
     pCFRelease(device_type_str);
   if (clock_frequency_str != NULL)
     pCFRelease(clock_frequency_str);
 
+out:
   if (core_foundation_handle != NULL)
     dlclose(core_foundation_handle);
 

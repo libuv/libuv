@@ -42,7 +42,7 @@ as other activities and other I/O operations are kept waiting.
 
 One of the standard solutions is to use threads. Each blocking I/O operation is
 started in a separate thread (or in a thread pool). When the blocking function
-gets invoked in the thread, the processor can schedule another thread to run,
+gets invoked in the thread, the operating system can schedule another thread to run,
 which actually needs the CPU.
 
 The approach followed by libuv uses another style, which is the **asynchronous,

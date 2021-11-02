@@ -69,8 +69,8 @@ int main() {
     hints.ai_flags = 0;
 
     uv_getaddrinfo_t resolver;
-    fprintf(stderr, "irc.freenode.net is... ");
-    int r = uv_getaddrinfo(loop, &resolver, on_resolved, "irc.freenode.net", "6667", &hints);
+    fprintf(stderr, "irc.libera.chat is... ");
+    int r = uv_getaddrinfo(loop, &resolver, on_resolved, "irc.libera.chat", "6667", &hints);
 
     if (r) {
         fprintf(stderr, "getaddrinfo call error %s\n", uv_err_name(r));

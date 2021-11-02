@@ -584,7 +584,7 @@ int uv__close(int fd) {
   return uv__close_nocheckstdio(fd);
 }
 
-
+#if UV__NONBLOCK_IS_IOCTL
 int uv__nonblock_ioctl(int fd, int set) {
   int r;
 
@@ -599,7 +599,6 @@ int uv__nonblock_ioctl(int fd, int set) {
 }
 
 
-#if !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__HAIKU__)
 int uv__cloexec_ioctl(int fd, int set) {
   int r;
 
@@ -1184,7 +1183,9 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
     if (buf == NULL)
       return UV_ENOMEM;
 
-    r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+    do
+      r = getpwuid_r(uid, &pw, buf, bufsize, &result);
+    while (r == EINTR);
 
     if (r != ERANGE)
       break;
@@ -1194,7 +1195,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
   if (r != 0) {
     uv__free(buf);
-    return -r;
+    return UV__ERR(r);
   }
 
   if (result == NULL) {

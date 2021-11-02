@@ -2897,9 +2897,6 @@ TEST_IMPL(fs_scandir_non_existent_dir) {
 }
 
 TEST_IMPL(fs_scandir_file) {
-#if defined(__ASAN__)
-  RETURN_SKIP("Test does not currently work in ASAN");
-#endif
   const char* path;
   int r;
 
@@ -3146,9 +3143,6 @@ static void fs_read_bufs(int add_flags) {
   uv_fs_req_cleanup(&close_req);
 }
 TEST_IMPL(fs_read_bufs) {
-#if defined(__ASAN__)
-  RETURN_SKIP("Test does not currently work in ASAN");
-#endif
   fs_read_bufs(0);
   fs_read_bufs(UV_FS_O_FILEMAP);
 

@@ -141,7 +141,6 @@ endif
 
 test_run_tests_LDFLAGS =
 test_run_tests_SOURCES = test/blackhole-server.c \
-                         test/dns-server.c \
                          test/echo-server.c \
                          test/run-tests.c \
                          test/runner.c \
@@ -206,6 +205,9 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-metrics.c \
                          test/test-multiple-listen.c \
                          test/test-mutexes.c \
+                         test/test-not-readable-nor-writable-on-read-error.c \
+                         test/test-not-readable-on-eof.c \
+                         test/test-not-writable-after-shutdown.c \
                          test/test-osx-select.c \
                          test/test-pass-always.c \
                          test/test-ping-pong.c \
@@ -238,6 +240,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-semaphore.c \
                          test/test-shutdown-close.c \
                          test/test-shutdown-eof.c \
+                         test/test-shutdown-simultaneous.c \
                          test/test-shutdown-twice.c \
                          test/test-signal-multiple-loops.c \
                          test/test-signal-pending-on-close.c \
@@ -386,9 +389,7 @@ if ANDROID
 uvinclude_HEADERS += include/uv/android-ifaddrs.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
 libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c \
-                    src/unix/random-getrandom.c \
-                    src/unix/random-sysctl-linux.c
+                    src/unix/pthread-fixes.c
 endif
 
 if CYGWIN
@@ -469,7 +470,8 @@ libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/procfs-exepath.c \
                     src/unix/proctitle.c \
                     src/unix/random-getrandom.c \
-                    src/unix/random-sysctl-linux.c
+                    src/unix/random-sysctl-linux.c \
+                    src/unix/epoll.c
 test_run_tests_LDFLAGS += -lutil
 endif
 

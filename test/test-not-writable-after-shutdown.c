@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright the libuv project contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,25 +19,51 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef UV_VERSION_H
-#define UV_VERSION_H
+#include "uv.h"
+#include "task.h"
 
- /*
- * Versions with the same major number are ABI stable. API is allowed to
- * evolve between minor releases, but only in a backwards compatible way.
- * Make sure you update the -soname directives in configure.ac
- * whenever you bump UV_VERSION_MAJOR or UV_VERSION_MINOR (but
- * not UV_VERSION_PATCH.)
- */
+static uv_shutdown_t shutdown_req;
 
-#define UV_VERSION_MAJOR 1
-#define UV_VERSION_MINOR 42
-#define UV_VERSION_PATCH 1
-#define UV_VERSION_IS_RELEASE 0
-#define UV_VERSION_SUFFIX "dev"
+static void close_cb(uv_handle_t* handle) {
 
-#define UV_VERSION_HEX  ((UV_VERSION_MAJOR << 16) | \
-                         (UV_VERSION_MINOR <<  8) | \
-                         (UV_VERSION_PATCH))
+}
 
-#endif /* UV_VERSION_H */
+static void shutdown_cb(uv_shutdown_t* req, int status) {
+  uv_close((uv_handle_t*) req->handle, close_cb);
+}
+
+static void connect_cb(uv_connect_t* req, int status) {
+  int r;
+  ASSERT(status == 0);
+
+  r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
+  ASSERT(r == 0);
+
+  ASSERT(0 == uv_is_writable(req->handle));
+}
+
+TEST_IMPL(not_writable_after_shutdown) {
+  int r;
+  struct sockaddr_in addr;
+  uv_loop_t* loop;
+  uv_tcp_t socket;
+  uv_connect_t connect_req;
+
+  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  loop = uv_default_loop();
+
+  r = uv_tcp_init(loop, &socket);
+  ASSERT(r == 0);
+
+  r = uv_tcp_connect(&connect_req,
+                     &socket,
+                     (const struct sockaddr*) &addr,
+                     connect_cb);
+  ASSERT(r == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

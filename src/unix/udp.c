@@ -32,8 +32,6 @@
 #endif
 #include <sys/un.h>
 
-#define UV__UDP_DGRAM_MAXSIZE (64 * 1024)
-
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
 #endif
@@ -377,8 +375,11 @@ write_queue_drain:
     return;
   }
 
+  /* Safety: npkts known to be >0 below. Hence cast from ssize_t
+   * to size_t safe.
+   */
   for (i = 0, q = QUEUE_HEAD(&handle->write_queue);
-       i < pkts && q != &handle->write_queue;
+       i < (size_t)npkts && q != &handle->write_queue;
        ++i, q = QUEUE_HEAD(&handle->write_queue)) {
     assert(q != NULL);
     req = QUEUE_DATA(q, uv_udp_send_t, queue);
@@ -882,7 +883,7 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
 #if !defined(__OpenBSD__) &&                                        \
     !defined(__NetBSD__) &&                                         \
     !defined(__ANDROID__) &&                                        \
-    !defined(__DragonFly__) &                                       \
+    !defined(__DragonFly__) &&                                      \
     !defined(__QNX__)
 static int uv__udp_set_source_membership4(uv_udp_t* handle,
                                           const struct sockaddr_in* multicast_addr,

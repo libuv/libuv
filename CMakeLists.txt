@@ -37,11 +37,24 @@ if(QEMU)
 endif()
 
 option(ASAN "Enable AddressSanitizer (ASan)" OFF)
-if(ASAN AND CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
+option(TSAN "Enable ThreadSanitizer (TSan)" OFF)
+
+if((ASAN OR TSAN) AND NOT (CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang"))
+  message(SEND_ERROR "Sanitizer support requires clang or gcc. Try again with -DCMAKE_C_COMPILER.")
+endif()
+
+if(ASAN)
   add_definitions(-D__ASAN__=1)
-  set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
-  set (CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+if(TSAN)
+  add_definitions(-D__TSAN__=1)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
 endif()
 
 # Compiler check
@@ -216,7 +229,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
        src/unix/pthread-fixes.c
        src/unix/random-getentropy.c
        src/unix/random-getrandom.c
-       src/unix/random-sysctl-linux.c)
+       src/unix/random-sysctl-linux.c
+       src/unix/epoll.c)
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux")
@@ -260,7 +274,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
        src/unix/linux-syscalls.c
        src/unix/procfs-exepath.c
        src/unix/random-getrandom.c
-       src/unix/random-sysctl-linux.c)
+       src/unix/random-sysctl-linux.c
+       src/unix/epoll.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
@@ -329,9 +344,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
-  list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500)
+  list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500 _REENTRANT)
   list(APPEND uv_libraries kstat nsl sendfile socket)
-  list(APPEND uv_sources src/unix/no-proctitle.c src/unix/sunos.c)
+  list(APPEND uv_sources
+       src/unix/no-proctitle.c
+       src/unix/sunos.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
@@ -424,7 +441,6 @@ if(LIBUV_BUILD_TESTS)
     test/benchmark-thread.c
     test/benchmark-udp-pummel.c
     test/blackhole-server.c
-    test/dns-server.c
     test/echo-server.c
     test/run-benchmarks.c
     test/runner.c)
@@ -495,6 +511,9 @@ if(LIBUV_BUILD_TESTS)
        test/test-metrics.c
        test/test-multiple-listen.c
        test/test-mutexes.c
+       test/test-not-readable-nor-writable-on-read-error.c
+       test/test-not-readable-on-eof.c
+       test/test-not-writable-after-shutdown.c
        test/test-osx-select.c
        test/test-pass-always.c
        test/test-ping-pong.c
@@ -527,6 +546,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-semaphore.c
        test/test-shutdown-close.c
        test/test-shutdown-eof.c
+       test/test-shutdown-simultaneous.c
        test/test-shutdown-twice.c
        test/test-signal-multiple-loops.c
        test/test-signal-pending-on-close.c
@@ -628,31 +648,34 @@ if(LIBUV_BUILD_TESTS)
 endif()
 
 if((UNIX OR MINGW) AND LIBUV_BUILD_DLL)
-  # Now for some gibbering horrors from beyond the stars...
-  foreach(lib IN LISTS uv_libraries)
-    list(APPEND LIBS "-l${lib}")
-  endforeach()
-  string(REPLACE ";" " " LIBS "${LIBS}")
-  # Consider setting project version via project() call?
-  file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
-  string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
-  set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
-  # The version in the filename is mirroring the behaviour of autotools.
-  set_target_properties(uv PROPERTIES
-    VERSION ${UV_VERSION_MAJOR}.0.0
-    SOVERSION ${UV_VERSION_MAJOR})
-  set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
-  set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-  set(prefix ${CMAKE_INSTALL_PREFIX})
-  configure_file(libuv.pc.in libuv.pc @ONLY)
-  configure_file(libuv-static.pc.in libuv-static.pc @ONLY)
 
-  install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-  install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
-  install(FILES ${PROJECT_BINARY_DIR}/libuv.pc ${PROJECT_BINARY_DIR}/libuv-static.pc
-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-  install(TARGETS uv LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+# Now for some gibbering horrors from beyond the stars...
+foreach(lib IN LISTS uv_libraries)
+  list(APPEND LIBS "-l${lib}")
+endforeach()
+string(REPLACE ";" " " LIBS "${LIBS}")
+# Consider setting project version via project() call?
+file(STRINGS configure.ac configure_ac REGEX ^AC_INIT)
+string(REGEX MATCH "([0-9]+)[.][0-9]+[.][0-9]+" PACKAGE_VERSION "${configure_ac}")
+set(UV_VERSION_MAJOR "${CMAKE_MATCH_1}")
+# The version in the filename is mirroring the behaviour of autotools.
+set_target_properties(uv PROPERTIES
+  VERSION ${UV_VERSION_MAJOR}.0.0
+  SOVERSION ${UV_VERSION_MAJOR})
+set(includedir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
+set(libdir ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+set(prefix ${CMAKE_INSTALL_PREFIX})
+configure_file(libuv.pc.in libuv.pc @ONLY)
+configure_file(libuv-static.pc.in libuv-static.pc @ONLY)
+
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES ${PROJECT_BINARY_DIR}/libuv.pc ${PROJECT_BINARY_DIR}/libuv-static.pc
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+install(TARGETS uv EXPORT libuvConfig LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(EXPORT libuvConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
+
 endif()
 
 if(MSVC AND LIBUV_BUILD_DLL)
@@ -663,10 +686,14 @@ if(MSVC AND LIBUV_BUILD_DLL)
           ARCHIVE DESTINATION lib/$<CONFIG>)
 endif()
 
+if(MSVC)
+  set(CMAKE_DEBUG_POSTFIX d)
+endif()
+
 message(STATUS "summary of build options:
     Install prefix:  ${CMAKE_INSTALL_PREFIX}
     Target system:   ${CMAKE_SYSTEM_NAME}
     Compiler:
-      C compiler:    ${CMAKE_C_COMPILER}
+      C compiler:    ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID})
       CFLAGS:        ${CMAKE_C_FLAGS_${_build_type}} ${CMAKE_C_FLAGS}
 ")
