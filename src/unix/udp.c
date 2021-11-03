@@ -657,11 +657,15 @@ int uv__udp_connect(uv_udp_t* handle,
 
 int uv__udp_disconnect(uv_udp_t* handle) {
     int r;
-
-    struct sockaddr_storage addr; 
-    socklen_t len = sizeof(addr);
-    getsockname(handle->io_watcher.fd, (struct sockaddr*)&addr, &len);
-
+    socklen_t len;
+    struct sockaddr_storage addr;
+    
+    len = sizeof(addr);
+#if defined(__APPLE__)
+    r = getsockname(handle->io_watcher.fd, (struct sockaddr*)&addr, &len);
+    if (r != 0)
+      return UV__ERR(errno);
+#endif
     memset(&addr, 0, sizeof(addr));
     addr.ss_family = AF_UNSPEC;
 
