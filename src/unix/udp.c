@@ -657,15 +657,16 @@ int uv__udp_connect(uv_udp_t* handle,
 
 int uv__udp_disconnect(uv_udp_t* handle) {
     int r;
-    struct sockaddr addr;
-
+    socklen_t len = 0;
+    struct sockaddr_storage addr; 
     memset(&addr, 0, sizeof(addr));
+    getsockname(handle->io_watcher.fd, (struct sockaddr*)&addr, &len);
 
-    addr.sa_family = AF_UNSPEC;
+    addr.ss_family = AF_UNSPEC;
 
     do {
       errno = 0;
-      r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
+      r = connect(handle->io_watcher.fd, (struct sockaddr*)&addr, len);
     } while (r == -1 && errno == EINTR);
 
     if (r == -1 && errno != EAFNOSUPPORT)
