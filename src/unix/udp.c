@@ -657,11 +657,12 @@ int uv__udp_connect(uv_udp_t* handle,
 
 int uv__udp_disconnect(uv_udp_t* handle) {
     int r;
-    socklen_t len = 0;
+
     struct sockaddr_storage addr; 
-    memset(&addr, 0, sizeof(addr));
+    socklen_t len = sizeof(addr);
     getsockname(handle->io_watcher.fd, (struct sockaddr*)&addr, &len);
 
+    memset(&addr, 0, sizeof(addr));
     addr.ss_family = AF_UNSPEC;
 
     do {
