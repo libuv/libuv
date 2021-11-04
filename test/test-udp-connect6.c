@@ -108,7 +108,7 @@ TEST_IMPL(udp_connect6) {
   int r;
   int addrlen;
 
-  if (!can_ipv6_external())
+  if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
 
   ASSERT_EQ(0, uv_ip6_addr("::", TEST_PORT, &lo_addr));
