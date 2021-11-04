@@ -657,30 +657,27 @@ int uv__udp_connect(uv_udp_t* handle,
 
 int uv__udp_disconnect(uv_udp_t* handle) {
     int r;
-    socklen_t len;
-    struct sockaddr_storage addr;
-    
-    len = sizeof(addr);
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
-    r = getsockname(handle->io_watcher.fd, (struct sockaddr*)&addr, &len);
-    if (r != 0)
-      return UV__ERR(errno);
-#endif
+    struct sockaddr addr;
+
     memset(&addr, 0, sizeof(addr));
-    addr.ss_family = AF_UNSPEC;
+
+    addr.sa_family = AF_UNSPEC;
 
     do {
       errno = 0;
-      r = connect(handle->io_watcher.fd, (struct sockaddr*)&addr, len);
+      r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
     } while (r == -1 && errno == EINTR);
 
-    if (r == -1 && errno != EAFNOSUPPORT)
+    /* Handle BSDs always try to connect by the new addr will fail with EAFNOSUPPORT or EINVAL, but actually, disconnect succeed
+     * a. EAFNOSUPPORT: family mismatch
+     * b. EINVAL: addrlen mismatch 
+     */
+    if (r == -1 && errno != EAFNOSUPPORT && errno != EINVAL)
       return UV__ERR(errno);
 
     handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
     return 0;
 }
-
 
 int uv__udp_send(uv_udp_send_t* req,
                  uv_udp_t* handle,
