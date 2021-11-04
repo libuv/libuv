@@ -661,7 +661,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
     struct sockaddr_storage addr;
     
     len = sizeof(addr);
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
     r = getsockname(handle->io_watcher.fd, (struct sockaddr*)&addr, &len);
     if (r != 0)
       return UV__ERR(errno);
