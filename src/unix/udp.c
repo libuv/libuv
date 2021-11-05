@@ -668,7 +668,8 @@ int uv__udp_disconnect(uv_udp_t* handle) {
       r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
     } while (r == -1 && errno == EINTR);
 
-    /* Handle BSDs always try to connect by the new addr will fail with EAFNOSUPPORT or EINVAL, but actually, disconnect succeed
+    /* Handle BSDs always try to connect by the new addr will fail with 
+     * EAFNOSUPPORT or EINVAL, but actually, disconnect succeed
      * a. EAFNOSUPPORT: family mismatch
      * b. EINVAL: addrlen mismatch 
      */
