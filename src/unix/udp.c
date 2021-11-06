@@ -668,13 +668,13 @@ int uv__udp_disconnect(uv_udp_t* handle) {
       r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
     } while (r == -1 && errno == EINTR);
 
+    if (r == -1) {
     /* Handle BSDs always try to connect by the new addr will fail with 
      * EAFNOSUPPORT or EINVAL, but actually, disconnect succeed
      * a. EAFNOSUPPORT: family mismatch
      * b. EINVAL: addrlen mismatch 
      */
-    if (r == -1) {
-#if defined(BSD)
+#if defined(BSD) || defined(__APPLE__)
       if(errno != EAFNOSUPPORT && errno != EINVAL)
         return UV__ERR(errno);
 #endif
