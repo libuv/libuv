@@ -674,11 +674,12 @@ int uv__udp_disconnect(uv_udp_t* handle) {
      * a. EAFNOSUPPORT: family mismatch
      * b. EINVAL: addrlen mismatch 
      */
-#if defined(BSD) || defined(__APPLE__)
+#if defined(BSD) // The macro BSD is from sys/param.h
       if(errno != EAFNOSUPPORT && errno != EINVAL)
         return UV__ERR(errno);
-#endif
+#else
       return UV__ERR(errno);
+#endif
     }
 
     handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
