@@ -673,8 +673,13 @@ int uv__udp_disconnect(uv_udp_t* handle) {
      * a. EAFNOSUPPORT: family mismatch
      * b. EINVAL: addrlen mismatch 
      */
-    if (r == -1 && errno != EAFNOSUPPORT && errno != EINVAL)
+    if (r == -1) {
+#if defined(BSD)
+      if(errno != EAFNOSUPPORT && errno != EINVAL)
+        return UV__ERR(errno);
+#endif
       return UV__ERR(errno);
+    }
 
     handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
     return 0;
