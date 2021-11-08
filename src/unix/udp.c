@@ -657,11 +657,11 @@ int uv__udp_connect(uv_udp_t* handle,
 
 int uv__udp_disconnect(uv_udp_t* handle) {
     int r;
-    struct sockaddr addr;
+    struct sockaddr_storage addr;
 
     memset(&addr, 0, sizeof(addr));
 
-    addr.sa_family = AF_UNSPEC;
+    addr.ss_family = AF_UNSPEC;
 
     do {
       errno = 0;
