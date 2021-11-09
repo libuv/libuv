@@ -708,7 +708,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
 
     if (r == -1) {
 #if defined(BSD) // The macro BSD is from sys/param.h
-      if(errno != EAFNOSUPPORT && errno != EINVAL)
+      if (errno != EAFNOSUPPORT && errno != EINVAL)
         return UV__ERR(errno);
 #else
       return UV__ERR(errno);
