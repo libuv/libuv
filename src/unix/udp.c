@@ -694,8 +694,12 @@ int uv__udp_disconnect(uv_udp_t* handle) {
 #endif
 
     memset(&addr, 0, sizeof(addr));
-
+    
+#if defined(__MVS__)
     addr.ss_family = AF_UNSPEC;
+#else
+    addr.sa_family = AF_UNSPEC;
+#endif
     
     do {
       errno = 0;
