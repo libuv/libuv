@@ -4765,6 +4765,8 @@ extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotifi
 extern sSetWinEventHook pSetWinEventHook;
 
 /* ws2_32.dll function pointer */
+/* mingw doesn't have this definition, so let's declare it here locally */
 extern sGetHostNameW pGetHostNameW;
+
 
 #endif /* UV_WIN_WINAPI_H_ */

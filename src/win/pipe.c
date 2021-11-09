@@ -1252,7 +1252,6 @@ static DWORD WINAPI uv_pipe_writefile_thread_proc(void* parameter) {
   assert(req != NULL);
   assert(req->type == UV_WRITE);
   assert(handle->type == UV_NAMED_PIPE);
-  assert(req->write_buffer.base);
 
   result = WriteFile(handle->handle,
                      req->write_buffer.base,
