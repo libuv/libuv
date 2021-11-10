@@ -1796,7 +1796,6 @@ static void uv_pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
    * it. */
   eof_timer_destroy(handle);
 
-  handle->flags &= ~UV_HANDLE_READABLE;
   uv_read_stop((uv_stream_t*) handle);
 
   handle->read_cb((uv_stream_t*) handle, UV_EOF, &buf);
