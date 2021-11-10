@@ -703,7 +703,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
     
     do {
       errno = 0;
-      r = connect(handle->io_watcher.fd, (struct sockaddr*)&addr, sizeof(addr));
+      r = connect(handle->io_watcher.fd, (struct sockaddr*) &addr, sizeof(addr));
     } while (r == -1 && errno == EINTR);
 
     if (r == -1) {
