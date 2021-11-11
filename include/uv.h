@@ -43,6 +43,8 @@ extern "C" {
     /* Building static library. */
 #   define UV_EXTERN /* nothing */
 # endif
+#elif defined(__sun)
+# define UV_EXTERN __global
 #elif __GNUC__ >= 4
 # define UV_EXTERN __attribute__((visibility("default")))
 #else
