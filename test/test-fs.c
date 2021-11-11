@@ -844,8 +844,7 @@ static void check_utime(const char* path,
   } else {
     double st_atim;
     double st_mtim;
-#if !defined(__APPLE__)     && \
-    !defined(__sun)
+#if !defined(__APPLE__) && !defined(__sun)
     /* TODO(vtjnash): would it be better to normalize this? */
     ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
     ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
