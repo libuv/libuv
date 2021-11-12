@@ -274,6 +274,20 @@ int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size) {
 }
 
 
+int uv_ip_name(const struct sockaddr *src, char *dst, size_t size) {
+  switch (src->sa_family) {
+  case AF_INET:
+    return uv_inet_ntop(AF_INET, &((struct sockaddr_in *)src)->sin_addr,
+                        dst, size);
+  case AF_INET6:
+    return uv_inet_ntop(AF_INET6, &((struct sockaddr_in6 *)src)->sin6_addr,
+                        dst, size);
+  default:
+    return UV_EAFNOSUPPORT;
+  }
+}
+
+
 int uv_tcp_bind(uv_tcp_t* handle,
                 const struct sockaddr* addr,
                 unsigned int flags) {
