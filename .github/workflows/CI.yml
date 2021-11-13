@@ -127,7 +127,7 @@ jobs:
       - name: Install mingw32 environment
         run: |
           sudo apt update
-          sudo apt install mingw-w64 -y
+          sudo apt install mingw-w64 ninja-build -y
       - name: Build
         run: |
           mkdir build
