@@ -131,7 +131,7 @@ jobs:
       - name: Build
         run: |
           mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_TOOLCHAIN_FILE=../cmake-toolchains/cross-mingw32-linux.cmake
+          cd build && cmake .. -G Ninja -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=../cmake-toolchains/cross-mingw32-linux.cmake
           cmake --build .
           ls -lh
       - name: Upload build artifacts
