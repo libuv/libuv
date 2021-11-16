@@ -283,9 +283,12 @@ static int uv__get_cpu_speed(uint64_t* speed) {
           const UInt8* freq_ref_ptr = pCFDataGetBytePtr(freq_ref);
           CFIndex len = pCFDataGetLength(freq_ref);
           if (len == 8)
-            *speed = *(const uint64_t*) freq_ref_ptr;
-          else if (len == 4)
-            *speed = *(const uint32_t*) freq_ref_ptr;
+            memcpy(speed, freq_ref_ptr, 8);
+          else if (len == 4) {
+            uint32_t v;
+            memcpy(&v, freq_ref_ptr, 4);
+            *speed = static_cast<uint32_t>(v);
+          }
           else
             *speed = 0;
 
