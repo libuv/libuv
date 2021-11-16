@@ -287,7 +287,7 @@ static int uv__get_cpu_speed(uint64_t* speed) {
           else if (len == 4) {
             uint32_t v;
             memcpy(&v, freq_ref_ptr, 4);
-            *speed = static_cast<uint32_t>(v);
+            *speed = static_cast<uint64_t>(v);
           }
           else
             *speed = 0;
