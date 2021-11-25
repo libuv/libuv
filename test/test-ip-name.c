@@ -57,8 +57,8 @@ TEST_IMPL(ip_name) {
 
     /* test other sa_family */
     addr->sa_family = AF_UNIX;
-    // size is not concerned
-    ASSERT(UV_EAFNOSUPPORT == uv_ip_name(addr, dst, INET6_ADDRSTRLEN));
+    /* size is not a concern here */
+    ASSERT_EQ(UV_EAFNOSUPPORT, uv_ip_name(addr, dst, INET6_ADDRSTRLEN));
 
     MAKE_VALGRIND_HAPPY();
     return 0;
