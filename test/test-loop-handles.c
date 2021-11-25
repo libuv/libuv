@@ -143,7 +143,7 @@ static void idle_1_cb(uv_idle_t* handle) {
   fprintf(stderr, "%s", "IDLE_1_CB\n");
   fflush(stderr);
 
-  ASSERT(handle != NULL);
+  ASSERT_NOT_NULL(handle);
   ASSERT(idles_1_active > 0);
 
   /* Init idle_2 and make it active */
@@ -170,7 +170,7 @@ static void idle_1_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "IDLE_1_CLOSE_CB\n");
   fflush(stderr);
 
-  ASSERT(handle != NULL);
+  ASSERT_NOT_NULL(handle);
 
   idle_1_close_cb_called++;
 }
@@ -322,7 +322,7 @@ TEST_IMPL(loop_handles) {
   ASSERT(prepare_1_cb_called == ITERATIONS);
   ASSERT(prepare_1_close_cb_called == 1);
 
-  ASSERT(prepare_2_cb_called == floor(ITERATIONS / 2.0));
+  ASSERT(prepare_2_cb_called == ITERATIONS / 2);
   ASSERT(prepare_2_close_cb_called == 1);
 
   ASSERT(check_cb_called == ITERATIONS);

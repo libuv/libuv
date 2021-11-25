@@ -27,7 +27,7 @@
 
 #include <stdlib.h>
 
-#define MAX_THREADPOOL_SIZE 128
+#define MAX_THREADPOOL_SIZE 1024
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
@@ -160,8 +160,7 @@ static void post(QUEUE* q, enum uv__work_kind kind) {
 }
 
 
-#ifndef _WIN32
-UV_DESTRUCTOR(static void cleanup(void)) {
+void uv__threadpool_cleanup(void) {
   unsigned int i;
 
   if (nthreads == 0)
@@ -182,7 +181,6 @@ UV_DESTRUCTOR(static void cleanup(void)) {
   threads = NULL;
   nthreads = 0;
 }
-#endif
 
 
 static void init_threads(void) {
@@ -343,7 +341,6 @@ int uv_queue_work(uv_loop_t* loop,
     return UV_EINVAL;
 
   uv__req_init(loop, req, UV_WORK);
-  req->loop = loop;
   req->work_cb = work_cb;
   req->after_work_cb = after_work_cb;
   uv__work_submit(loop,
@@ -371,6 +368,10 @@ int uv_cancel(uv_req_t* req) {
   case UV_GETNAMEINFO:
     loop = ((uv_getnameinfo_t*) req)->loop;
     wreq = &((uv_getnameinfo_t*) req)->work_req;
+    break;
+  case UV_RANDOM:
+    loop = ((uv_random_t*) req)->loop;
+    wreq = &((uv_random_t*) req)->work_req;
     break;
   case UV_WORK:
     loop =  ((uv_work_t*) req)->loop;

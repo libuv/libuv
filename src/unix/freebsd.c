@@ -56,31 +56,6 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
-
-#ifdef __DragonFly__
-int uv_exepath(char* buffer, size_t* size) {
-  char abspath[PATH_MAX * 2 + 1];
-  ssize_t abspath_size;
-
-  if (buffer == NULL || size == NULL || *size == 0)
-    return UV_EINVAL;
-
-  abspath_size = readlink("/proc/curproc/file", abspath, sizeof(abspath));
-  if (abspath_size < 0)
-    return UV__ERR(errno);
-
-  assert(abspath_size > 0);
-  *size -= 1;
-
-  if (*size > abspath_size)
-    *size = abspath_size;
-
-  memcpy(buffer, abspath, *size);
-  buffer[*size] = '\0';
-
-  return 0;
-}
-#else
 int uv_exepath(char* buffer, size_t* size) {
   char abspath[PATH_MAX * 2 + 1];
   int mib[4];
@@ -95,7 +70,7 @@ int uv_exepath(char* buffer, size_t* size) {
   mib[3] = -1;
 
   abspath_size = sizeof abspath;
-  if (sysctl(mib, 4, abspath, &abspath_size, NULL, 0))
+  if (sysctl(mib, ARRAY_SIZE(mib), abspath, &abspath_size, NULL, 0))
     return UV__ERR(errno);
 
   assert(abspath_size > 0);
@@ -110,7 +85,6 @@ int uv_exepath(char* buffer, size_t* size) {
 
   return 0;
 }
-#endif
 
 uint64_t uv_get_free_memory(void) {
   int freecount;
@@ -130,10 +104,15 @@ uint64_t uv_get_total_memory(void) {
 
   size_t size = sizeof(info);
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
     return UV__ERR(errno);
 
   return (uint64_t) info;
+}
+
+
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
 }
 
 
@@ -142,7 +121,7 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0) return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -163,7 +142,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   kinfo_size = sizeof(kinfo);
 
-  if (sysctl(mib, 4, &kinfo, &kinfo_size, NULL, 0))
+  if (sysctl(mib, ARRAY_SIZE(mib), &kinfo, &kinfo_size, NULL, 0))
     return UV__ERR(errno);
 
   page_size = getpagesize();
@@ -285,12 +264,26 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 }
 
 
-void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
-  int i;
+int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
+#if __FreeBSD__ >= 11 && !defined(__DragonFly__)
+  return sendmmsg(fd,
+                  (struct mmsghdr*) mmsg,
+                  vlen,
+                  0 /* flags */);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
 
-  for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
-  }
 
-  uv__free(cpu_infos);
+int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
+#if __FreeBSD__ >= 11 && !defined(__DragonFly__)
+  return recvmmsg(fd,
+                  (struct mmsghdr*) mmsg,
+                  vlen,
+                  0 /* flags */,
+                  NULL /* timeout */);
+#else
+  return errno = ENOSYS, -1;
+#endif
 }

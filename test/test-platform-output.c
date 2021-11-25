@@ -25,6 +25,11 @@
 
 
 TEST_IMPL(platform_output) {
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+
   char buffer[512];
   size_t rss;
   size_t size;
@@ -35,6 +40,7 @@ TEST_IMPL(platform_output) {
   uv_cpu_info_t* cpus;
   uv_interface_address_t* interfaces;
   uv_passwd_t pwd;
+  uv_utsname_t uname;
   int count;
   int i;
   int err;
@@ -49,7 +55,7 @@ TEST_IMPL(platform_output) {
   printf("uv_cwd: %s\n", buffer);
 
   err = uv_resident_set_memory(&rss);
-#if defined(__CYGWIN__) || defined(__MSYS__)
+#if defined(__MSYS__)
   ASSERT(err == UV_ENOSYS);
 #else
   ASSERT(err == 0);
@@ -57,9 +63,13 @@ TEST_IMPL(platform_output) {
 #endif
 
   err = uv_uptime(&uptime);
+#if defined(__PASE__)
+  ASSERT(err == UV_ENOSYS);
+#else
   ASSERT(err == 0);
   ASSERT(uptime > 0);
   printf("uv_uptime: %f\n", uptime);
+#endif
 
   err = uv_getrusage(&rusage);
   ASSERT(err == 0);
@@ -146,6 +156,7 @@ TEST_IMPL(platform_output) {
   printf("  shell: %s\n", pwd.shell);
   printf("  home directory: %s\n", pwd.homedir);
   printf("  gecos: %s\n", pwd.gecos);
+  uv_os_free_passwd(&pwd);
 
   pid = uv_os_getpid();
   ASSERT(pid > 0);
@@ -153,6 +164,14 @@ TEST_IMPL(platform_output) {
   ppid = uv_os_getppid();
   ASSERT(ppid > 0);
   printf("uv_os_getppid: %d\n", (int) ppid);
+
+  err = uv_os_uname(&uname);
+  ASSERT(err == 0);
+  printf("uv_os_uname:\n");
+  printf("  sysname: %s\n", uname.sysname);
+  printf("  release: %s\n", uname.release);
+  printf("  version: %s\n", uname.version);
+  printf("  machine: %s\n", uname.machine);
 
   return 0;
 }

@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include "uv.h"
 #include "internal.h"
@@ -43,6 +44,11 @@ void uv_signals_init(void) {
   InitializeCriticalSection(&uv__signal_lock);
   if (!SetConsoleCtrlHandler(uv__signal_control_handler, TRUE))
     abort();
+}
+
+
+void uv__signal_cleanup(void) {
+  /* TODO(bnoordhuis) Undo effects of uv_signal_init()? */
 }
 
 
@@ -145,7 +151,7 @@ int uv_signal_init(uv_loop_t* loop, uv_signal_t* handle) {
   handle->signum = 0;
   handle->signal_cb = NULL;
 
-  UV_REQ_INIT(&handle->signal_req, UV_SIGNAL_REQ);
+  UV_REQ_INIT(loop, &handle->signal_req, UV_SIGNAL_REQ);
   handle->signal_req.data = handle;
 
   return 0;

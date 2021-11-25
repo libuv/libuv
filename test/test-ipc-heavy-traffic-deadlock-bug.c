@@ -55,7 +55,7 @@ static void write_cb(uv_write_t* req, int status) {
 }
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(status == 0);
+  ASSERT(status == 0 || status == UV_ENOTCONN);
   uv_close((uv_handle_t*) req->handle, NULL);
 }
 
@@ -66,7 +66,7 @@ static void do_write(uv_stream_t* handle) {
   int r;
 
   write_info = malloc(sizeof *write_info);
-  ASSERT(write_info != NULL);
+  ASSERT_NOT_NULL(write_info);
 
   for (i = 0; i < BUFFERS_PER_WRITE; i++) {
     memset(&write_info->buffers[i], BUFFER_CONTENT, BUFFER_SIZE);

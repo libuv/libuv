@@ -32,10 +32,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sched.h>  /* sched_yield() */
+
+#ifdef __linux__
+#include <sys/eventfd.h>
+#endif
 
 static void uv__async_send(uv_loop_t* loop);
 static int uv__async_start(uv_loop_t* loop);
-static int uv__async_eventfd(void);
 
 
 int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
@@ -61,14 +65,55 @@ int uv_async_send(uv_async_t* handle) {
   if (ACCESS_ONCE(int, handle->pending) != 0)
     return 0;
 
-  if (cmpxchgi(&handle->pending, 0, 1) == 0)
-    uv__async_send(handle->loop);
+  /* Tell the other thread we're busy with the handle. */
+  if (cmpxchgi(&handle->pending, 0, 1) != 0)
+    return 0;
+
+  /* Wake up the other thread's event loop. */
+  uv__async_send(handle->loop);
+
+  /* Tell the other thread we're done. */
+  if (cmpxchgi(&handle->pending, 1, 2) != 1)
+    abort();
 
   return 0;
 }
 
 
+/* Only call this from the event loop thread. */
+static int uv__async_spin(uv_async_t* handle) {
+  int i;
+  int rc;
+
+  for (;;) {
+    /* 997 is not completely chosen at random. It's a prime number, acyclical
+     * by nature, and should therefore hopefully dampen sympathetic resonance.
+     */
+    for (i = 0; i < 997; i++) {
+      /* rc=0 -- handle is not pending.
+       * rc=1 -- handle is pending, other thread is still working with it.
+       * rc=2 -- handle is pending, other thread is done.
+       */
+      rc = cmpxchgi(&handle->pending, 2, 0);
+
+      if (rc != 1)
+        return rc;
+
+      /* Other thread is busy with this handle, spin until it's done. */
+      cpu_relax();
+    }
+
+    /* Yield the CPU. We may have preempted the other thread while it's
+     * inside the critical section and if it's running on the same CPU
+     * as us, we'll just burn CPU cycles until the end of our time slice.
+     */
+    sched_yield();
+  }
+}
+
+
 void uv__async_close(uv_async_t* handle) {
+  uv__async_spin(handle);
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 }
@@ -109,8 +154,8 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
-    if (cmpxchgi(&h->pending, 1, 0) == 0)
-      continue;
+    if (0 == uv__async_spin(h))
+      continue;  /* Not pending. */
 
     if (h->async_cb == NULL)
       continue;
@@ -161,36 +206,18 @@ static int uv__async_start(uv_loop_t* loop) {
   if (loop->async_io_watcher.fd != -1)
     return 0;
 
-  err = uv__async_eventfd();
-  if (err >= 0) {
-    pipefd[0] = err;
-    pipefd[1] = -1;
-  }
-  else if (err == UV_ENOSYS) {
-    err = uv__make_pipe(pipefd, UV__F_NONBLOCK);
-#if defined(__linux__)
-    /* Save a file descriptor by opening one of the pipe descriptors as
-     * read/write through the procfs.  That file descriptor can then
-     * function as both ends of the pipe.
-     */
-    if (err == 0) {
-      char buf[32];
-      int fd;
+#ifdef __linux__
+  err = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+  if (err < 0)
+    return UV__ERR(errno);
 
-      snprintf(buf, sizeof(buf), "/proc/self/fd/%d", pipefd[0]);
-      fd = uv__open_cloexec(buf, O_RDWR);
-      if (fd >= 0) {
-        uv__close(pipefd[0]);
-        uv__close(pipefd[1]);
-        pipefd[0] = fd;
-        pipefd[1] = fd;
-      }
-    }
-#endif
-  }
-
+  pipefd[0] = err;
+  pipefd[1] = -1;
+#else
+  err = uv__make_pipe(pipefd, UV_NONBLOCK_PIPE);
   if (err < 0)
     return err;
+#endif
 
   uv__io_init(&loop->async_io_watcher, uv__async_io, pipefd[0]);
   uv__io_start(loop, &loop->async_io_watcher, POLLIN);
@@ -223,47 +250,4 @@ void uv__async_stop(uv_loop_t* loop) {
   uv__io_stop(loop, &loop->async_io_watcher, POLLIN);
   uv__close(loop->async_io_watcher.fd);
   loop->async_io_watcher.fd = -1;
-}
-
-
-static int uv__async_eventfd(void) {
-#if defined(__linux__)
-  static int no_eventfd2;
-  static int no_eventfd;
-  int fd;
-
-  if (no_eventfd2)
-    goto skip_eventfd2;
-
-  fd = uv__eventfd2(0, UV__EFD_CLOEXEC | UV__EFD_NONBLOCK);
-  if (fd != -1)
-    return fd;
-
-  if (errno != ENOSYS)
-    return UV__ERR(errno);
-
-  no_eventfd2 = 1;
-
-skip_eventfd2:
-
-  if (no_eventfd)
-    goto skip_eventfd;
-
-  fd = uv__eventfd(0);
-  if (fd != -1) {
-    uv__cloexec(fd, 1);
-    uv__nonblock(fd, 1);
-    return fd;
-  }
-
-  if (errno != ENOSYS)
-    return UV__ERR(errno);
-
-  no_eventfd = 1;
-
-skip_eventfd:
-
-#endif
-
-  return UV_ENOSYS;
 }

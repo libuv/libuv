@@ -58,11 +58,19 @@ struct uv__stream_select_s {
   fd_set* swrite;
   size_t swrite_sz;
 };
-# define WRITE_RETRY_ON_ERROR(send_handle) \
+
+/* Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
+ * EPROTOTYPE can be returned while trying to write to a socket that is
+ * shutting down. If we retry the write, we should get the expected EPIPE
+ * instead.
+ */
+# define RETRY_ON_WRITE_ERROR(errno) (errno == EINTR || errno == EPROTOTYPE)
+# define IS_TRANSIENT_WRITE_ERROR(errno, send_handle) \
     (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS || \
-     (errno == EMSGSIZE && send_handle))
+     (errno == EMSGSIZE && send_handle != NULL))
 #else
-# define WRITE_RETRY_ON_ERROR(send_handle) \
+# define RETRY_ON_WRITE_ERROR(errno) (errno == EINTR)
+# define IS_TRANSIENT_WRITE_ERROR(errno, send_handle) \
     (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
 #endif /* defined(__APPLE__) */
 
@@ -156,7 +164,7 @@ static void uv__stream_osx_select(void* arg) {
   else
     max_fd = s->int_fd;
 
-  while (1) {
+  for (;;) {
     /* Terminate on semaphore */
     if (uv_sem_trywait(&s->close_sem) == 0)
       break;
@@ -187,7 +195,7 @@ static void uv__stream_osx_select(void* arg) {
 
     /* Empty socketpair's buffer in case of interruption */
     if (FD_ISSET(s->int_fd, s->sread))
-      while (1) {
+      for (;;) {
         r = read(s->int_fd, buf, sizeof(buf));
 
         if (r == sizeof(buf))
@@ -700,6 +708,14 @@ static void uv__drain(uv_stream_t* stream) {
 }
 
 
+static ssize_t uv__writev(int fd, struct iovec* vec, size_t n) {
+  if (n == 1)
+    return write(fd, vec->iov_base, vec->iov_len);
+  else
+    return writev(fd, vec, n);
+}
+
+
 static size_t uv__write_req_size(uv_write_t* req) {
   size_t size;
 
@@ -709,6 +725,37 @@ static size_t uv__write_req_size(uv_write_t* req) {
   assert(req->handle->write_queue_size >= size);
 
   return size;
+}
+
+
+/* Returns 1 if all write request data has been written, or 0 if there is still
+ * more data to write.
+ *
+ * Note: the return value only says something about the *current* request.
+ * There may still be other write requests sitting in the queue.
+ */
+static int uv__write_req_update(uv_stream_t* stream,
+                                uv_write_t* req,
+                                size_t n) {
+  uv_buf_t* buf;
+  size_t len;
+
+  assert(n <= stream->write_queue_size);
+  stream->write_queue_size -= n;
+
+  buf = req->bufs + req->write_index;
+
+  do {
+    len = n < buf->len ? n : buf->len;
+    buf->base += len;
+    buf->len -= len;
+    buf += (buf->len == 0);  /* Advance to next buffer if this one is empty. */
+    n -= len;
+  } while (n > 0);
+
+  req->write_index = buf - req->bufs;
+
+  return req->write_index == req->nbufs;
 }
 
 
@@ -752,33 +799,21 @@ static int uv__handle_fd(uv_handle_t* handle) {
   }
 }
 
-static void uv__write(uv_stream_t* stream) {
+static int uv__try_write(uv_stream_t* stream,
+                         const uv_buf_t bufs[],
+                         unsigned int nbufs,
+                         uv_stream_t* send_handle) {
   struct iovec* iov;
-  QUEUE* q;
-  uv_write_t* req;
   int iovmax;
   int iovcnt;
   ssize_t n;
-  int err;
-
-start:
-
-  assert(uv__stream_fd(stream) >= 0);
-
-  if (QUEUE_EMPTY(&stream->write_queue))
-    return;
-
-  q = QUEUE_HEAD(&stream->write_queue);
-  req = QUEUE_DATA(q, uv_write_t, queue);
-  assert(req->handle == stream);
 
   /*
    * Cast to iovec. We had to have our own uv_buf_t instead of iovec
    * because Windows's WSABUF is not an iovec.
    */
-  assert(sizeof(uv_buf_t) == sizeof(struct iovec));
-  iov = (struct iovec*) &(req->bufs[req->write_index]);
-  iovcnt = req->nbufs - req->write_index;
+  iov = (struct iovec*) bufs;
+  iovcnt = nbufs;
 
   iovmax = uv__getiovmax();
 
@@ -790,8 +825,7 @@ start:
    * Now do the actual writev. Note that we've been updating the pointers
    * inside the iov each time we write. So there is no need to offset it.
    */
-
-  if (req->send_handle) {
+  if (send_handle != NULL) {
     int fd_to_send;
     struct msghdr msg;
     struct cmsghdr *cmsg;
@@ -800,12 +834,10 @@ start:
       struct cmsghdr alias;
     } scratch;
 
-    if (uv__is_closing(req->send_handle)) {
-      err = UV_EBADF;
-      goto error;
-    }
+    if (uv__is_closing(send_handle))
+      return UV_EBADF;
 
-    fd_to_send = uv__handle_fd((uv_handle_t*) req->send_handle);
+    fd_to_send = uv__handle_fd((uv_handle_t*) send_handle);
 
     memset(&scratch, 0, sizeof(scratch));
 
@@ -832,117 +864,71 @@ start:
       *pi = fd_to_send;
     }
 
-    do {
+    do
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
-    }
-#if defined(__APPLE__)
-    /*
-     * Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
-     * EPROTOTYPE can be returned while trying to write to a socket that is
-     * shutting down. If we retry the write, we should get the expected EPIPE
-     * instead.
-     */
-    while (n == -1 && (errno == EINTR || errno == EPROTOTYPE));
-#else
-    while (n == -1 && errno == EINTR);
-#endif
+    while (n == -1 && RETRY_ON_WRITE_ERROR(errno));
   } else {
-    do {
-      if (iovcnt == 1) {
-        n = write(uv__stream_fd(stream), iov[0].iov_base, iov[0].iov_len);
-      } else {
-        n = writev(uv__stream_fd(stream), iov, iovcnt);
-      }
-    }
-#if defined(__APPLE__)
-    /*
-     * Due to a possible kernel bug at least in OS X 10.10 "Yosemite",
-     * EPROTOTYPE can be returned while trying to write to a socket that is
-     * shutting down. If we retry the write, we should get the expected EPIPE
-     * instead.
-     */
-    while (n == -1 && (errno == EINTR || errno == EPROTOTYPE));
-#else
-    while (n == -1 && errno == EINTR);
-#endif
+    do
+      n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
+    while (n == -1 && RETRY_ON_WRITE_ERROR(errno));
   }
 
-  if (n < 0) {
-    if (!WRITE_RETRY_ON_ERROR(req->send_handle)) {
-      err = UV__ERR(errno);
-      goto error;
-    } else if (stream->flags & UV_HANDLE_BLOCKING_WRITES) {
-      /* If this is a blocking stream, try again. */
-      goto start;
-    }
-  } else {
-    /* Successful write */
+  if (n >= 0)
+    return n;
 
-    while (n >= 0) {
-      uv_buf_t* buf = &(req->bufs[req->write_index]);
-      size_t len = buf->len;
+  if (IS_TRANSIENT_WRITE_ERROR(errno, send_handle))
+    return UV_EAGAIN;
 
-      assert(req->write_index < req->nbufs);
+  return UV__ERR(errno);
+}
 
-      if ((size_t)n < len) {
-        buf->base += n;
-        buf->len -= n;
-        stream->write_queue_size -= n;
-        n = 0;
+static void uv__write(uv_stream_t* stream) {
+  QUEUE* q;
+  uv_write_t* req;
+  ssize_t n;
 
-        /* There is more to write. */
-        if (stream->flags & UV_HANDLE_BLOCKING_WRITES) {
-          /*
-           * If we're blocking then we should not be enabling the write
-           * watcher - instead we need to try again.
-           */
-          goto start;
-        } else {
-          /* Break loop and ensure the watcher is pending. */
-          break;
-        }
+  assert(uv__stream_fd(stream) >= 0);
 
-      } else {
-        /* Finished writing the buf at index req->write_index. */
-        req->write_index++;
+  for (;;) {
+    if (QUEUE_EMPTY(&stream->write_queue))
+      return;
 
-        assert((size_t)n >= len);
-        n -= len;
+    q = QUEUE_HEAD(&stream->write_queue);
+    req = QUEUE_DATA(q, uv_write_t, queue);
+    assert(req->handle == stream);
 
-        assert(stream->write_queue_size >= len);
-        stream->write_queue_size -= len;
+    n = uv__try_write(stream,
+                      &(req->bufs[req->write_index]),
+                      req->nbufs - req->write_index,
+                      req->send_handle);
 
-        if (req->write_index == req->nbufs) {
-          /* Then we're done! */
-          assert(n == 0);
-          uv__write_req_finish(req);
-          /* TODO: start trying to write the next request. */
-          return;
-        }
+    /* Ensure the handle isn't sent again in case this is a partial write. */
+    if (n >= 0) {
+      req->send_handle = NULL;
+      if (uv__write_req_update(stream, req, n)) {
+        uv__write_req_finish(req);
+        return;  /* TODO(bnoordhuis) Start trying to write the next request. */
       }
-    }
+    } else if (n != UV_EAGAIN)
+      break;
+
+    /* If this is a blocking stream, try again. */
+    if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
+      continue;
+
+    /* We're not done. */
+    uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
+
+    /* Notify select() thread about state change */
+    uv__stream_osx_interrupt_select(stream);
+
+    return;
   }
 
-  /* Either we've counted n down to zero or we've got EAGAIN. */
-  assert(n == 0 || n == -1);
-
-  /* Only non-blocking streams should use the write_watcher. */
-  assert(!(stream->flags & UV_HANDLE_BLOCKING_WRITES));
-
-  /* We're not done. */
-  uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
-
-  /* Notify select() thread about state change */
-  uv__stream_osx_interrupt_select(stream);
-
-  return;
-
-error:
-  req->error = err;
+  req->error = n;
+  // XXX(jwn): this must call uv__stream_flush_write_queue(stream, n) here, since we won't generate any more events
   uv__write_req_finish(req);
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-  if (!uv__io_active(&stream->io_watcher, POLLIN))
-    uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
 }
 
@@ -1023,12 +1009,12 @@ uv_handle_type uv__handle_type(int fd) {
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags |= UV_HANDLE_READ_EOF;
+  stream->flags &= ~UV_HANDLE_READING;
+  stream->flags &= ~UV_HANDLE_READABLE;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
-  if (!uv__io_active(&stream->io_watcher, POLLOUT))
-    uv__handle_stop(stream);
+  uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
   stream->read_cb(stream, UV_EOF, buf);
-  stream->flags &= ~UV_HANDLE_READING;
 }
 
 
@@ -1071,7 +1057,12 @@ static int uv__stream_queue_fd(uv_stream_t* stream, int fd) {
 }
 
 
-#define UV__CMSG_FD_COUNT 64
+#if defined(__PASE__)
+/* on IBMi PASE the control message length can not exceed 256. */
+# define UV__CMSG_FD_COUNT 60
+#else
+# define UV__CMSG_FD_COUNT 64
+#endif
 #define UV__CMSG_FD_SIZE (UV__CMSG_FD_COUNT * sizeof(int))
 
 
@@ -1206,12 +1197,12 @@ static void uv__read(uv_stream_t* stream) {
 #endif
       } else {
         /* Error. User should call uv_close(). */
+        stream->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
         stream->read_cb(stream, UV__ERR(errno), &buf);
         if (stream->flags & UV_HANDLE_READING) {
           stream->flags &= ~UV_HANDLE_READING;
           uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
-          if (!uv__io_active(&stream->io_watcher, POLLOUT))
-            uv__handle_stop(stream);
+          uv__handle_stop(stream);
           uv__stream_osx_interrupt_select(stream);
         }
       }
@@ -1294,6 +1285,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   req->cb = cb;
   stream->shutdown_req = req;
   stream->flags |= UV_HANDLE_SHUTTING;
+  stream->flags &= ~UV_HANDLE_WRITABLE;
 
   uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
   uv__stream_osx_interrupt_select(stream);
@@ -1408,14 +1400,9 @@ static void uv__stream_connect(uv_stream_t* stream) {
 }
 
 
-int uv_write2(uv_write_t* req,
-              uv_stream_t* stream,
-              const uv_buf_t bufs[],
-              unsigned int nbufs,
-              uv_stream_t* send_handle,
-              uv_write_cb cb) {
-  int empty_queue;
-
+static int uv__check_before_write(uv_stream_t* stream,
+                                  unsigned int nbufs,
+                                  uv_stream_t* send_handle) {
   assert(nbufs > 0);
   assert((stream->type == UV_TCP ||
           stream->type == UV_NAMED_PIPE ||
@@ -1426,9 +1413,9 @@ int uv_write2(uv_write_t* req,
     return UV_EBADF;
 
   if (!(stream->flags & UV_HANDLE_WRITABLE))
-    return -EPIPE;
+    return UV_EPIPE;
 
-  if (send_handle) {
+  if (send_handle != NULL) {
     if (stream->type != UV_NAMED_PIPE || !((uv_pipe_t*)stream)->ipc)
       return UV_EINVAL;
 
@@ -1447,6 +1434,22 @@ int uv_write2(uv_write_t* req,
     return UV_ENOSYS;
 #endif
   }
+
+  return 0;
+}
+
+int uv_write2(uv_write_t* req,
+              uv_stream_t* stream,
+              const uv_buf_t bufs[],
+              unsigned int nbufs,
+              uv_stream_t* send_handle,
+              uv_write_cb cb) {
+  int empty_queue;
+  int err;
+
+  err = uv__check_before_write(stream, nbufs, send_handle);
+  if (err < 0)
+    return err;
 
   /* It's legal for write_queue_size > 0 even when the write_queue is empty;
    * it means there are error-state requests in the write_completed_queue that
@@ -1516,71 +1519,36 @@ int uv_write(uv_write_t* req,
 }
 
 
-void uv_try_write_cb(uv_write_t* req, int status) {
-  /* Should not be called */
-  abort();
-}
-
-
 int uv_try_write(uv_stream_t* stream,
                  const uv_buf_t bufs[],
                  unsigned int nbufs) {
-  int r;
-  int has_pollout;
-  size_t written;
-  size_t req_size;
-  uv_write_t req;
+  return uv_try_write2(stream, bufs, nbufs, NULL);
+}
+
+
+int uv_try_write2(uv_stream_t* stream,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  uv_stream_t* send_handle) {
+  int err;
 
   /* Connecting or already writing some data */
   if (stream->connect_req != NULL || stream->write_queue_size != 0)
     return UV_EAGAIN;
 
-  has_pollout = uv__io_active(&stream->io_watcher, POLLOUT);
+  err = uv__check_before_write(stream, nbufs, NULL);
+  if (err < 0)
+    return err;
 
-  r = uv_write(&req, stream, bufs, nbufs, uv_try_write_cb);
-  if (r != 0)
-    return r;
-
-  /* Remove not written bytes from write queue size */
-  written = uv__count_bufs(bufs, nbufs);
-  if (req.bufs != NULL)
-    req_size = uv__write_req_size(&req);
-  else
-    req_size = 0;
-  written -= req_size;
-  stream->write_queue_size -= req_size;
-
-  /* Unqueue request, regardless of immediateness */
-  QUEUE_REMOVE(&req.queue);
-  uv__req_unregister(stream->loop, &req);
-  if (req.bufs != req.bufsml)
-    uv__free(req.bufs);
-  req.bufs = NULL;
-
-  /* Do not poll for writable, if we wasn't before calling this */
-  if (!has_pollout) {
-    uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-    uv__stream_osx_interrupt_select(stream);
-  }
-
-  if (written == 0 && req_size != 0)
-    return UV_EAGAIN;
-  else
-    return written;
+  return uv__try_write(stream, bufs, nbufs, send_handle);
 }
 
 
-int uv_read_start(uv_stream_t* stream,
-                  uv_alloc_cb alloc_cb,
-                  uv_read_cb read_cb) {
+int uv__read_start(uv_stream_t* stream,
+                   uv_alloc_cb alloc_cb,
+                   uv_read_cb read_cb) {
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
       stream->type == UV_TTY);
-
-  if (stream->flags & UV_HANDLE_CLOSING)
-    return UV_EINVAL;
-
-  if (!(stream->flags & UV_HANDLE_READABLE))
-    return -ENOTCONN;
 
   /* The UV_HANDLE_READING flag is irrelevant of the state of the tcp - it just
    * expresses the desired state of the user.
@@ -1611,8 +1579,7 @@ int uv_read_stop(uv_stream_t* stream) {
 
   stream->flags &= ~UV_HANDLE_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
-  if (!uv__io_active(&stream->io_watcher, POLLOUT))
-    uv__handle_stop(stream);
+  uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
 
   stream->read_cb = NULL;

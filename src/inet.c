@@ -54,8 +54,7 @@ static int inet_ntop4(const unsigned char *src, char *dst, size_t size) {
   if (l <= 0 || (size_t) l >= size) {
     return UV_ENOSPC;
   }
-  strncpy(dst, tmp, size);
-  dst[size - 1] = '\0';
+  uv__strscpy(dst, tmp, size);
   return 0;
 }
 
@@ -137,14 +136,9 @@ static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
   if (best.base != -1 && (best.base + best.len) == ARRAY_SIZE(words))
     *tp++ = ':';
   *tp++ = '\0';
-
-  /*
-   * Check for overflow, copy, and we're done.
-   */
-  if ((size_t)(tp - tmp) > size) {
+  if ((size_t) (tp - tmp) > size)
     return UV_ENOSPC;
-  }
-  strcpy(dst, tmp);
+  uv__strscpy(dst, tmp, size);
   return 0;
 }
 

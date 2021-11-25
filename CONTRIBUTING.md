@@ -23,11 +23,11 @@ The stable branch is effectively frozen; patches that change the libuv
 API/ABI or affect the run-time behavior of applications get rejected.
 
 In case of doubt, open an issue in the [issue tracker][], post your question
-to the [libuv mailing list], or contact one of [project maintainers][] on [IRC][].
+to the [libuv discussions forum], or message the [libuv mailing list].
 
-Especially do so if you plan to work on something big.  Nothing is more
-frustrating than seeing your hard work go to waste because your vision
-does not align with that of a project maintainers.
+Especially do so if you plan to work on something big. Nothing is more
+frustrating than seeing your hard work go to waste because your vision does not
+align with that of the [project maintainers].
 
 
 ### BRANCH
@@ -48,11 +48,11 @@ the [Google C/C++ style guide]. Some of the key points, as well as some
 additional guidelines, are enumerated below.
 
 * Code that is specific to unix-y platforms should be placed in `src/unix`, and
-  declarations go into `include/uv-unix.h`.
+  declarations go into `include/uv/unix.h`.
 
 * Source code that is Windows-specific goes into `src/win`, and related
   publicly exported types, functions and macro declarations should generally
-  be declared in `include/uv-win.h`.
+  be declared in `include/uv/win.h`.
 
 * Names should be descriptive and concise.
 
@@ -142,7 +142,6 @@ Bug fixes and features should come with tests.  Add your tests in the
 If you add a new test file, it needs to be registered in three places:
 - `CMakeLists.txt`: add the file's name to the `uv_test_sources` list.
 - `Makefile.am`: add the file's name to the `test_run_tests_SOURCES` list.
-- `uv.gyp`: add the file's name to the `sources` list in the `run-tests` target.
 
 Look at other tests to see how they should be structured (license boilerplate,
 the way entry points are declared, etc.).
@@ -167,6 +166,6 @@ not send out notifications when you add commits.
 
 [issue tracker]: https://github.com/libuv/libuv/issues
 [libuv mailing list]: http://groups.google.com/group/libuv
-[IRC]: http://webchat.freenode.net/?channels=libuv
+[libuv discussions forum]: https://github.com/libuv/libuv/discussions
 [Google C/C++ style guide]: https://google.github.io/styleguide/cppguide.html
 [project maintainers]: https://github.com/libuv/libuv/blob/master/MAINTAINERS.md

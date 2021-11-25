@@ -4109,6 +4109,9 @@
 #endif
 
 /* from winternl.h */
+#if !defined(__UNICODE_STRING_DEFINED) && defined(__MINGW32__)
+#define __UNICODE_STRING_DEFINED
+#endif
 typedef struct _UNICODE_STRING {
   USHORT Length;
   USHORT MaximumLength;
@@ -4145,6 +4148,10 @@ typedef struct _REPARSE_DATA_BUFFER {
     struct {
       UCHAR  DataBuffer[1];
     } GenericReparseBuffer;
+    struct {
+      ULONG StringCount;
+      WCHAR StringList[1];
+    } AppExecLinkReparseBuffer;
   };
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
@@ -4428,6 +4435,10 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 # define SystemProcessorPerformanceInformation 8
 #endif
 
+#ifndef ProcessConsoleHostProcess
+# define ProcessConsoleHostProcess 49
+#endif
+
 #ifndef FILE_DEVICE_FILE_SYSTEM
 # define FILE_DEVICE_FILE_SYSTEM 0x00000009
 #endif
@@ -4505,11 +4516,17 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 #ifndef IO_REPARSE_TAG_SYMLINK
 # define IO_REPARSE_TAG_SYMLINK (0xA000000CL)
 #endif
+#ifndef IO_REPARSE_TAG_APPEXECLINK
+# define IO_REPARSE_TAG_APPEXECLINK (0x8000001BL)
+#endif
 
 typedef VOID (NTAPI *PIO_APC_ROUTINE)
              (PVOID ApcContext,
               PIO_STATUS_BLOCK IoStatusBlock,
               ULONG Reserved);
+
+typedef NTSTATUS (NTAPI *sRtlGetVersion)
+                 (PRTL_OSVERSIONINFOW lpVersionInformation);
 
 typedef ULONG (NTAPI *sRtlNtStatusToDosError)
               (NTSTATUS Status);
@@ -4566,6 +4583,13 @@ typedef NTSTATUS (NTAPI *sNtQueryDirectoryFile)
                   PUNICODE_STRING FileName,
                   BOOLEAN RestartScan
                 );
+
+typedef NTSTATUS (NTAPI *sNtQueryInformationProcess)
+                 (HANDLE ProcessHandle,
+                  UINT ProcessInformationClass,
+                  PVOID ProcessInformation,
+                  ULONG Length,
+                  PULONG ReturnLength);
 
 /*
  * Kernel32 headers
@@ -4688,8 +4712,21 @@ typedef HWINEVENTHOOK (WINAPI *sSetWinEventHook)
                        DWORD        idThread,
                        UINT         dwflags);
 
+/* From mstcpip.h */
+typedef struct _TCP_INITIAL_RTO_PARAMETERS {
+  USHORT Rtt;
+  UCHAR  MaxSynRetransmissions;
+} TCP_INITIAL_RTO_PARAMETERS, *PTCP_INITIAL_RTO_PARAMETERS;
+
+#ifndef TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS
+# define TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS ((UCHAR) -2)
+#endif
+#ifndef SIO_TCP_INITIAL_RTO
+# define  SIO_TCP_INITIAL_RTO _WSAIOW(IOC_VENDOR,17)
+#endif
 
 /* Ntdll function pointers */
+extern sRtlGetVersion pRtlGetVersion;
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
@@ -4697,6 +4734,7 @@ extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
+extern sNtQueryInformationProcess pNtQueryInformationProcess;
 
 /* Kernel32 function pointers */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;

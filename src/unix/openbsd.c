@@ -50,7 +50,7 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0) < 0) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0) return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -61,7 +61,6 @@ void uv_loadavg(double avg[3]) {
 int uv_exepath(char* buffer, size_t* size) {
   int mib[4];
   char **argsbuf = NULL;
-  char **argsbuf_tmp;
   size_t argsbuf_size = 100U;
   size_t exepath_size;
   pid_t mypid;
@@ -73,15 +72,14 @@ int uv_exepath(char* buffer, size_t* size) {
   mypid = getpid();
   for (;;) {
     err = UV_ENOMEM;
-    argsbuf_tmp = uv__realloc(argsbuf, argsbuf_size);
-    if (argsbuf_tmp == NULL)
+    argsbuf = uv__reallocf(argsbuf, argsbuf_size);
+    if (argsbuf == NULL)
       goto out;
-    argsbuf = argsbuf_tmp;
     mib[0] = CTL_KERN;
     mib[1] = KERN_PROC_ARGS;
     mib[2] = mypid;
     mib[3] = KERN_PROC_ARGV;
-    if (sysctl(mib, 4, argsbuf, &argsbuf_size, NULL, 0) == 0) {
+    if (sysctl(mib, ARRAY_SIZE(mib), argsbuf, &argsbuf_size, NULL, 0) == 0) {
       break;
     }
     if (errno != ENOMEM) {
@@ -117,7 +115,7 @@ uint64_t uv_get_free_memory(void) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_UVMEXP};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
     return UV__ERR(errno);
 
   return (uint64_t) info.free * sysconf(_SC_PAGESIZE);
@@ -129,10 +127,15 @@ uint64_t uv_get_total_memory(void) {
   int which[] = {CTL_HW, HW_PHYSMEM64};
   size_t size = sizeof(info);
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
     return UV__ERR(errno);
 
   return (uint64_t) info;
+}
+
+
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
 }
 
 
@@ -149,7 +152,7 @@ int uv_resident_set_memory(size_t* rss) {
   mib[4] = sizeof(struct kinfo_proc);
   mib[5] = 1;
 
-  if (sysctl(mib, 6, &kinfo, &size, NULL, 0) < 0)
+  if (sysctl(mib, ARRAY_SIZE(mib), &kinfo, &size, NULL, 0) < 0)
     return UV__ERR(errno);
 
   *rss = kinfo.p_vm_rssize * page_size;
@@ -163,7 +166,7 @@ int uv_uptime(double* uptime) {
   size_t size = sizeof(info);
   static int which[] = {CTL_KERN, KERN_BOOTTIME};
 
-  if (sysctl(which, 2, &info, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
     return UV__ERR(errno);
 
   now = time(NULL);
@@ -179,43 +182,38 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   uint64_t info[CPUSTATES];
   char model[512];
   int numcpus = 1;
-  int which[] = {CTL_HW,HW_MODEL,0};
+  int which[] = {CTL_HW,HW_MODEL};
+  int percpu[] = {CTL_KERN,KERN_CPTIME2,0};
   size_t size;
-  int i;
+  int i, j;
   uv_cpu_info_t* cpu_info;
 
   size = sizeof(model);
-  if (sysctl(which, 2, &model, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &model, &size, NULL, 0))
     return UV__ERR(errno);
 
-  which[1] = HW_NCPU;
+  which[1] = HW_NCPUONLINE;
   size = sizeof(numcpus);
-  if (sysctl(which, 2, &numcpus, &size, NULL, 0))
+  if (sysctl(which, ARRAY_SIZE(which), &numcpus, &size, NULL, 0))
     return UV__ERR(errno);
 
   *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos))
     return UV_ENOMEM;
 
+  i = 0;
   *count = numcpus;
 
   which[1] = HW_CPUSPEED;
   size = sizeof(cpuspeed);
-  if (sysctl(which, 2, &cpuspeed, &size, NULL, 0)) {
-    uv__free(*cpu_infos);
-    return UV__ERR(errno);
-  }
+  if (sysctl(which, ARRAY_SIZE(which), &cpuspeed, &size, NULL, 0))
+    goto error;
 
   size = sizeof(info);
-  which[0] = CTL_KERN;
-  which[1] = KERN_CPTIME2;
   for (i = 0; i < numcpus; i++) {
-    which[2] = i;
-    size = sizeof(info);
-    if (sysctl(which, 3, &info, &size, NULL, 0)) {
-      uv__free(*cpu_infos);
-      return UV__ERR(errno);
-    }
+    percpu[2] = i;
+    if (sysctl(percpu, ARRAY_SIZE(percpu), &info, &size, NULL, 0))
+      goto error;
 
     cpu_info = &(*cpu_infos)[i];
 
@@ -230,15 +228,13 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   }
 
   return 0;
-}
 
+error:
+  *count = 0;
+  for (j = 0; j < i; j++)
+    uv__free((*cpu_infos)[j].model);
 
-void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
-  int i;
-
-  for (i = 0; i < count; i++) {
-    uv__free(cpu_infos[i].model);
-  }
-
-  uv__free(cpu_infos);
+  uv__free(*cpu_infos);
+  *cpu_infos = NULL;
+  return UV__ERR(errno);
 }

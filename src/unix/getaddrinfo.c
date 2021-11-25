@@ -21,9 +21,6 @@
 /* Expose glibc-specific EAI_* error codes. Needs to be defined before we
  * include any headers.
  */
-#ifndef _GNU_SOURCE
-# define _GNU_SOURCE
-#endif
 
 #include "uv.h"
 #include "internal.h"
@@ -92,7 +89,9 @@ int uv__getaddrinfo_translate_error(int sys_err) {
   }
   assert(!"unknown EAI_* error code");
   abort();
+#ifndef __SUNPRO_C
   return 0;  /* Pacify compiler. */
+#endif
 }
 
 
@@ -179,7 +178,6 @@ int uv_getaddrinfo(uv_loop_t* loop,
     return UV_ENOMEM;
 
   uv__req_init(loop, req, UV_GETADDRINFO);
-  req->loop = loop;
   req->cb = cb;
   req->addrinfo = NULL;
   req->hints = NULL;

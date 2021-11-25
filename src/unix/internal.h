@@ -25,11 +25,13 @@
 #include "uv-common.h"
 
 #include <assert.h>
+#include <limits.h> /* _POSIX_PATH_MAX, PATH_MAX */
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
-#include <fcntl.h>  /* O_CLOEXEC, may be */
+#include <fcntl.h>  /* O_CLOEXEC and O_NONBLOCK, if supported. */
 #include <stdio.h>
 #include <errno.h>
+#include <sys/socket.h>
 
 #if defined(__linux__)
 # include "linux-syscalls.h"
@@ -54,6 +56,23 @@
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <AvailabilityMacros.h>
+#endif
+
+/*
+ * Define common detection for active Thread Sanitizer
+ * - clang uses __has_feature(thread_sanitizer)
+ * - gcc-7+ uses __SANITIZE_THREAD__
+ */
+#if defined(__has_feature)
+# if __has_feature(thread_sanitizer)
+#  define __SANITIZE_THREAD__ 1
+# endif
+#endif
+
+#if defined(PATH_MAX)
+# define UV__PATH_MAX PATH_MAX
+#else
+# define UV__PATH_MAX 8192
 #endif
 
 #if defined(__ANDROID__)
@@ -91,12 +110,9 @@ int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
  */
 #if defined(__clang__) ||                                                     \
     defined(__GNUC__) ||                                                      \
-    defined(__INTEL_COMPILER) ||                                              \
-    defined(__SUNPRO_C)
-# define UV_DESTRUCTOR(declaration) __attribute__((destructor)) declaration
+    defined(__INTEL_COMPILER)
 # define UV_UNUSED(declaration)     __attribute__((unused)) declaration
 #else
-# define UV_DESTRUCTOR(declaration) declaration
 # define UV_UNUSED(declaration)     declaration
 #endif
 
@@ -156,9 +172,11 @@ struct uv__stream_queued_fds_s {
     defined(__NetBSD__)
 #define uv__cloexec uv__cloexec_ioctl
 #define uv__nonblock uv__nonblock_ioctl
+#define UV__NONBLOCK_IS_IOCTL 1
 #else
 #define uv__cloexec uv__cloexec_fcntl
 #define uv__nonblock uv__nonblock_fcntl
+#define UV__NONBLOCK_IS_IOCTL 0
 #endif
 
 /* On Linux, uv__nonblock_fcntl() and uv__nonblock_ioctl() do not commute
@@ -180,6 +198,7 @@ int uv__nonblock_ioctl(int fd, int set);
 int uv__nonblock_fcntl(int fd, int set);
 int uv__close(int fd); /* preserves errno */
 int uv__close_nocheckstdio(int fd);
+int uv__close_nocancel(int fd);
 int uv__socket(int domain, int type, int protocol);
 ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
 void uv__make_close_pending(uv_handle_t* handle);
@@ -236,6 +255,7 @@ int uv__signal_loop_fork(uv_loop_t* loop);
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
 int uv__kqueue_init(uv_loop_t* loop);
+int uv__epoll_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);
@@ -248,12 +268,20 @@ void uv__poll_close(uv_poll_t* handle);
 void uv__process_close(uv_process_t* handle);
 void uv__stream_close(uv_stream_t* handle);
 void uv__tcp_close(uv_tcp_t* handle);
+size_t uv__thread_stack_size(void);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
+int uv__search_path(const char* prog, char* buf, size_t* buflen);
 
+/* random */
+int uv__random_devurandom(void* buf, size_t buflen);
+int uv__random_getrandom(void* buf, size_t buflen);
+int uv__random_getentropy(void* buf, size_t buflen);
+int uv__random_readpath(const char* path, void* buf, size_t buflen);
+int uv__random_sysctl(void* buf, size_t buflen);
 
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);
@@ -262,13 +290,6 @@ int uv___stream_fd(const uv_stream_t* handle);
 #define uv__stream_fd(handle) ((handle)->io_watcher.fd)
 #endif /* defined(__APPLE__) */
 
-#ifdef UV__O_NONBLOCK
-# define UV__F_NONBLOCK UV__O_NONBLOCK
-#else
-# define UV__F_NONBLOCK 1
-#endif
-
-int uv__make_socketpair(int fds[2], int flags);
 int uv__make_pipe(int fds[2], int flags);
 
 #if defined(__APPLE__)
@@ -305,5 +326,28 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         uv__peersockfunc func,
                         struct sockaddr* name,
                         int* namelen);
+
+#if defined(__linux__)            ||                                      \
+    defined(__FreeBSD__)          ||                                      \
+    defined(__FreeBSD_kernel__)   ||                                       \
+    defined(__DragonFly__)
+#define HAVE_MMSG 1
+struct uv__mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
+};
+
+int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
+int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
+#else
+#define HAVE_MMSG 0
+#endif
+
+#if defined(__sun)
+#if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L
+size_t strnlen(const char* s, size_t maxlen);
+#endif
+#endif
+
 
 #endif /* UV_UNIX_INTERNAL_H_ */

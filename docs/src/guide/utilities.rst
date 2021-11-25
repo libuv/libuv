@@ -87,6 +87,7 @@ JS object and can be ref/unrefed.
 
 .. rubric:: ref-timer/main.c
 .. literalinclude:: ../../code/ref-timer/main.c
+    :language: c
     :linenos:
     :lines: 5-8, 17-
     :emphasize-lines: 9
@@ -111,6 +112,7 @@ idle watcher to keep the UI operational.
 
 .. rubric:: idle-compute/main.c
 .. literalinclude:: ../../code/idle-compute/main.c
+    :language: c
     :linenos:
     :lines: 5-9, 34-
     :emphasize-lines: 13
@@ -123,6 +125,7 @@ keep calling the idle callback again.
 
 .. rubric:: idle-compute/main.c
 .. literalinclude:: ../../code/idle-compute/main.c
+    :language: c
     :linenos:
     :lines: 10-19
 
@@ -196,7 +199,7 @@ to access the underlying file descriptors and provide functions that process
 tasks in small increments as decided by your application. Some libraries though
 will not allow such access, providing only a standard blocking function which
 will perform the entire I/O transaction and only then return. It is unwise to
-use these in the event loop thread, use the :ref:`libuv-work-queue` instead. Of
+use these in the event loop thread, use the :ref:`threadpool` instead. Of
 course, this will also mean losing granular control on the library.
 
 The ``uv_poll`` section of libuv simply watches file descriptors using the
@@ -210,11 +213,12 @@ download files. Rather than give all control to libcurl, we'll instead be
 using the libuv event loop, and use the non-blocking, async multi_ interface to
 progress with the download whenever libuv notifies of I/O readiness.
 
-.. _libcurl: http://curl.haxx.se/libcurl/
-.. _multi: http://curl.haxx.se/libcurl/c/libcurl-multi.html
+.. _libcurl: https://curl.haxx.se/libcurl/
+.. _multi: https://curl.haxx.se/libcurl/c/libcurl-multi.html
 
 .. rubric:: uvwget/main.c - The setup
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 1-9,140-
     :emphasize-lines: 7,21,24-25
@@ -235,6 +239,7 @@ So we add each argument as an URL
 
 .. rubric:: uvwget/main.c - Adding urls
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 39-56
     :emphasize-lines: 13-14
@@ -243,7 +248,7 @@ We let libcurl directly write the data to a file, but much more is possible if
 you so desire.
 
 ``start_timeout`` will be called immediately the first time by libcurl, so
-things are set in motion. This simply starts a libuv `timer <Timers>`_ which
+things are set in motion. This simply starts a libuv `timer <#timers>`_ which
 drives ``curl_multi_socket_action`` with ``CURL_SOCKET_TIMEOUT`` whenever it
 times out. ``curl_multi_socket_action`` is what drives libcurl, and what we
 call whenever sockets change state. But before we go into that, we need to poll
@@ -251,6 +256,7 @@ on sockets whenever ``handle_socket`` is called.
 
 .. rubric:: uvwget/main.c - Setting up polling
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 102-140
     :emphasize-lines: 9,11,15,21,24
@@ -271,6 +277,7 @@ mask with the new value. ``curl_perform`` is the crux of this program.
 
 .. rubric:: uvwget/main.c - Driving libcurl.
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 81-95
     :emphasize-lines: 2,6-7,12
@@ -288,6 +295,7 @@ transfers are done.
 
 .. rubric:: uvwget/main.c - Reading transfer status.
 .. literalinclude:: ../../code/uvwget/main.c
+    :language: c
     :linenos:
     :lines: 58-79
     :emphasize-lines: 6,9-10,13-14
@@ -312,6 +320,7 @@ Let us first look at the interface provided to plugin authors.
 
 .. rubric:: plugin/plugin.h
 .. literalinclude:: ../../code/plugin/plugin.h
+    :language: c
     :linenos:
 
 You can similarly add more functions that plugin authors can use to do useful
@@ -319,6 +328,7 @@ things in your application [#]_. A sample plugin using this API is:
 
 .. rubric:: plugin/hello.c
 .. literalinclude:: ../../code/plugin/hello.c
+    :language: c
     :linenos:
 
 Our interface defines that all plugins should have an ``initialize`` function
@@ -340,6 +350,7 @@ This is done by using ``uv_dlopen`` to first load the shared library
 
 .. rubric:: plugin/main.c
 .. literalinclude:: ../../code/plugin/main.c
+    :language: c
     :linenos:
     :lines: 7-
     :emphasize-lines: 15, 18, 24
@@ -352,7 +363,7 @@ to get the error message.
 argument. ``init_plugin_function`` is a function pointer to the sort of
 function we are looking for in the application's plugins.
 
-.. _shared libraries: http://en.wikipedia.org/wiki/Shared_library#Shared_libraries
+.. _shared libraries: https://en.wikipedia.org/wiki/Shared_library#Shared_libraries
 
 TTY
 ---
@@ -365,7 +376,7 @@ implement the ANSI escape codes across all platforms. By this I mean that libuv
 converts ANSI codes to the Windows equivalent, and provides functions to get
 terminal information.
 
-.. _pretty standardised: http://en.wikipedia.org/wiki/ANSI_escape_sequences
+.. _pretty standardised: https://en.wikipedia.org/wiki/ANSI_escape_sequences
 
 The first thing to do is to initialize a ``uv_tty_t`` with the file descriptor
 it reads/writes from. This is achieved with::
@@ -393,6 +404,7 @@ Here is a simple example which prints white text on a red background:
 
 .. rubric:: tty/main.c
 .. literalinclude:: ../../code/tty/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 11-12,14,17,27
 
@@ -403,6 +415,7 @@ escape codes.
 
 .. rubric:: tty-gravity/main.c
 .. literalinclude:: ../../code/tty-gravity/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 19,25,38
 
@@ -422,7 +435,7 @@ As you can see this is very useful to produce nicely formatted output, or even
 console based arcade games if that tickles your fancy. For fancier control you
 can try `ncurses`_.
 
-.. _ncurses: http://www.gnu.org/software/ncurses/ncurses.html
+.. _ncurses: https://www.gnu.org/software/ncurses/ncurses.html
 
 .. versionchanged:: 1.23.1: the `readable` parameter is now unused and ignored.
                     The appropriate value will now be auto-detected from the kernel.
@@ -431,7 +444,7 @@ can try `ncurses`_.
 
 .. [#] I was first introduced to the term baton in this context, in Konstantin
        Käfer's excellent slides on writing node.js bindings --
-       http://kkaefer.github.com/node-cpp-modules/#baton
+       https://kkaefer.com/node-cpp-modules/#baton
 .. [#] mfp is My Fancy Plugin
 
 .. _libev man page: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#COMMON_OR_USEFUL_IDIOMS_OR_BOTH

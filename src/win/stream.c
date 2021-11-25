@@ -65,17 +65,10 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
 }
 
 
-int uv_read_start(uv_stream_t* handle, uv_alloc_cb alloc_cb,
-    uv_read_cb read_cb) {
+int uv__read_start(uv_stream_t* handle,
+                   uv_alloc_cb alloc_cb,
+                   uv_read_cb read_cb) {
   int err;
-
-  if (handle->flags & UV_HANDLE_READING) {
-    return UV_EALREADY;
-  }
-
-  if (!(handle->flags & UV_HANDLE_READABLE)) {
-    return UV_ENOTCONN;
-  }
 
   err = ERROR_INVALID_PARAMETER;
   switch (handle->type) {
@@ -195,18 +188,31 @@ int uv_try_write(uv_stream_t* stream,
 }
 
 
+int uv_try_write2(uv_stream_t* stream,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  uv_stream_t* send_handle) {
+  if (send_handle != NULL)
+    return UV_EAGAIN;
+  return uv_try_write(stream, bufs, nbufs);
+}
+
+
 int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   uv_loop_t* loop = handle->loop;
 
-  if (!(handle->flags & UV_HANDLE_WRITABLE)) {
-    return UV_EPIPE;
+  if (!(handle->flags & UV_HANDLE_WRITABLE) ||
+      handle->flags & UV_HANDLE_SHUTTING ||
+      uv__is_closing(handle)) {
+    return UV_ENOTCONN;
   }
 
-  UV_REQ_INIT(req, UV_SHUTDOWN);
+  UV_REQ_INIT(loop, req, UV_SHUTDOWN);
   req->handle = handle;
   req->cb = cb;
 
   handle->flags &= ~UV_HANDLE_WRITABLE;
+  handle->flags |= UV_HANDLE_SHUTTING;
   handle->stream.conn.shutdown_req = req;
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);

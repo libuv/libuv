@@ -170,7 +170,7 @@ static void loop_creating_worker(void* context) {
     int r;
 
     loop = malloc(sizeof(*loop));
-    ASSERT(loop != NULL);
+    ASSERT_NOT_NULL(loop);
     ASSERT(0 == uv_loop_init(loop));
 
     r = uv_signal_init(loop, &signal);
@@ -199,6 +199,11 @@ TEST_IMPL(signal_multiple_loops) {
      though it is supposed to be blocking.  Also the test hangs during
      thread setup occasionally.  */
   RETURN_SKIP("FIXME: This test needs more investigation on Cygwin");
+#endif
+/* TODO(gengjiawen): Fix test on QEMU. */
+#if defined(__QEMU__)
+  // See https://github.com/libuv/libuv/issues/2859
+  RETURN_SKIP("QEMU's signal emulation code is notoriously tricky");
 #endif
   uv_thread_t loop_creating_threads[NUM_LOOP_CREATING_THREADS];
   uv_thread_t signal_handling_threads[NUM_SIGNAL_HANDLING_THREADS];
@@ -295,4 +300,8 @@ TEST_IMPL(signal_multiple_loops) {
   return 0;
 }
 
-#endif  /* !_WIN32 */
+#else
+
+typedef int file_has_no_tests; /* ISO C forbids an empty translation unit. */
+
+#endif /* !_WIN32 */

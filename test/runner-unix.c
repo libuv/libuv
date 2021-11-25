@@ -26,7 +26,7 @@
 #include <stdint.h> /* uintptr_t */
 
 #include <errno.h>
-#include <unistd.h> /* readlink, usleep */
+#include <unistd.h> /* usleep */
 #include <string.h> /* strdup */
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,18 +67,12 @@ void notify_parent_process(void) {
 
 
 /* Do platform-specific initialization. */
-int platform_init(int argc, char **argv) {
+void platform_init(int argc, char **argv) {
   /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
   signal(SIGPIPE, SIG_IGN);
-
-  if (realpath(argv[0], executable_path) == NULL) {
-    perror("realpath");
-    return -1;
-  }
-
-  return 0;
+  snprintf(executable_path, sizeof(executable_path), "%s", argv[0]);
 }
 
 
@@ -203,7 +197,7 @@ static void* dowait(void* data) {
   process_info_t* p;
 
   for (i = 0; i < args->n; i++) {
-    p = (process_info_t*)(args->vec + i * sizeof(process_info_t));
+    p = &args->vec[i];
     if (p->terminated) continue;
     r = waitpid(p->pid, &p->status, 0);
     if (r < 0) {
@@ -329,7 +323,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
   } else {
     /* Timeout. Kill all the children. */
     for (i = 0; i < n; i++) {
-      p = (process_info_t*)(vec + i * sizeof(process_info_t));
+      p = &vec[i];
       kill(p->pid, SIGTERM);
     }
     retval = -2;
@@ -371,8 +365,8 @@ int process_copy_output(process_info_t* p, FILE* stream) {
   }
 
   /* TODO: what if the line is longer than buf */
-  while (fgets(buf, sizeof(buf), p->stdout_file) != NULL)
-    print_lines(buf, strlen(buf), stream);
+  while ((r = fread(buf, 1, sizeof(buf), p->stdout_file)) != 0)
+    print_lines(buf, r, stream);
 
   if (ferror(p->stdout_file)) {
     perror("read");
@@ -398,7 +392,8 @@ int process_read_last_line(process_info_t *p,
   buffer[0] = '\0';
 
   while (fgets(buffer, buffer_len, p->stdout_file) != NULL) {
-    for (ptr = buffer; *ptr && *ptr != '\r' && *ptr != '\n'; ptr++);
+    for (ptr = buffer; *ptr && *ptr != '\r' && *ptr != '\n'; ptr++)
+      ;
     *ptr = '\0';
   }
 
@@ -447,18 +442,4 @@ void rewind_cursor(void) {
 #else
   fprintf(stderr, "\033[2K\r");
 #endif
-}
-
-
-/* Pause the calling thread for a number of milliseconds. */
-void uv_sleep(int msec) {
-  int sec;
-  int usec;
-
-  sec = msec / 1000;
-  usec = (msec % 1000) * 1000;
-  if (sec > 0)
-    sleep(sec);
-  if (usec > 0)
-    usleep(usec);
 }

@@ -38,6 +38,14 @@
 # define TCP_KEEPALIVE 3
 #endif
 
+#ifndef MCAST_JOIN_SOURCE_GROUP
+# define MCAST_JOIN_SOURCE_GROUP 45
+#endif
+
+#ifndef MCAST_LEAVE_SOURCE_GROUP
+# define MCAST_LEAVE_SOURCE_GROUP 46
+#endif
+
 /*
  * TDI defines that are only in the DDK.
  * We only need receive flags so far.

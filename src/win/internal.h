@@ -99,8 +99,8 @@ void uv_udp_endgame(uv_loop_t* loop, uv_udp_t* handle);
 /*
  * Pipes
  */
-int uv_stdio_pipe_server(uv_loop_t* loop, uv_pipe_t* handle, DWORD access,
-    char* name, size_t nameSize);
+int uv__create_stdio_pipe_pair(uv_loop_t* loop,
+    uv_pipe_t* parent_pipe, HANDLE* child_pipe_ptr, unsigned int flags);
 
 int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 int uv_pipe_accept(uv_pipe_t* server, uv_stream_t* client);
@@ -223,6 +223,12 @@ int uv_translate_sys_error(int sys_errno);
 
 
 /*
+ * FS
+ */
+void uv_fs_init(void);
+
+
+/*
  * FS Event
  */
 void uv_process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
@@ -242,7 +248,7 @@ void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
  */
 void uv__util_init(void);
 
-uint64_t uv__hrtime(double scale);
+uint64_t uv__hrtime(unsigned int scale);
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
 int uv__getpwuid_r(uv_passwd_t* pwd);
 int uv__convert_utf16_to_utf8(const WCHAR* utf16, int utf16len, char** utf8);
@@ -255,6 +261,8 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         struct sockaddr* name,
                         int* namelen,
                         int delayed_error);
+
+int uv__random_rtlgenrandom(void* buf, size_t buflen);
 
 
 /*

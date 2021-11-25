@@ -21,6 +21,7 @@
 
 #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
 typedef intptr_t ssize_t;
+# define SSIZE_MAX INTPTR_MAX
 # define _SSIZE_T_
 # define _SSIZE_T_DEFINED
 #endif
@@ -167,6 +168,11 @@ typedef struct uv__dirent_s {
   char d_name[1];
 } uv__dirent_t;
 
+#define UV_DIR_PRIVATE_FIELDS \
+  HANDLE dir_handle;          \
+  WIN32_FIND_DATAW find_data; \
+  BOOL need_find_call;
+
 #define HAVE_DIRENT_TYPES
 #define UV__DT_DIR     UV_DIRENT_DIR
 #define UV__DT_FILE    UV_DIRENT_FILE
@@ -297,7 +303,8 @@ typedef struct {
   LPFN_ACCEPTEX func_acceptex;
 
 #define uv_tcp_connection_fields                                              \
-  uv_buf_t read_buffer;                                                       \
+  uv_tcp_accept_t* dummy1; /* Mirror of union field, keep as NULL */          \
+  unsigned int dummy2; /* Mirror of union field, keep as 0 */                 \
   LPFN_CONNECTEX func_connectex;
 
 #define UV_TCP_PRIVATE_FIELDS                                                 \
@@ -313,7 +320,6 @@ typedef struct {
   unsigned int reqs_pending;                                                  \
   int activecnt;                                                              \
   uv_req_t recv_req;                                                          \
-  uv_buf_t recv_buffer;                                                       \
   struct sockaddr_storage recv_from;                                          \
   int recv_from_len;                                                          \
   uv_udp_recv_cb recv_cb;                                                     \
@@ -328,11 +334,9 @@ typedef struct {
 
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
-  uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
   DWORD ipc_remote_pid;                                                       \
-  union {                                                                     \
+  struct {                                                                    \
     uint32_t payload_remaining;                                               \
-    uint64_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
   } ipc_data_frame;                                                           \
   void* ipc_xfer_queue[2];                                                    \
   int ipc_xfer_queue_length;                                                  \
@@ -372,7 +376,7 @@ typedef struct {
       /* eol conversion state */                                              \
       unsigned char previous_eol;                                             \
       /* ansi parser state */                                                 \
-      unsigned char ansi_parser_state;                                        \
+      unsigned short ansi_parser_state;                                       \
       unsigned char ansi_csi_argc;                                            \
       unsigned short ansi_csi_argv[4];                                        \
       COORD saved_position;                                                   \
@@ -516,17 +520,18 @@ typedef struct {
 #endif
 
 /* fs open() flags supported on this platform: */
-#define UV_FS_O_APPEND       _O_APPEND
-#define UV_FS_O_CREAT        _O_CREAT
-#define UV_FS_O_EXCL         _O_EXCL
-#define UV_FS_O_RANDOM       _O_RANDOM
-#define UV_FS_O_RDONLY       _O_RDONLY
-#define UV_FS_O_RDWR         _O_RDWR
-#define UV_FS_O_SEQUENTIAL   _O_SEQUENTIAL
-#define UV_FS_O_SHORT_LIVED  _O_SHORT_LIVED
-#define UV_FS_O_TEMPORARY    _O_TEMPORARY
-#define UV_FS_O_TRUNC        _O_TRUNC
-#define UV_FS_O_WRONLY       _O_WRONLY
+#define UV_FS_O_APPEND       0x0008
+#define UV_FS_O_CREAT        0x0100
+#define UV_FS_O_EXCL         0x0400
+#define UV_FS_O_FILEMAP      0x20000000
+#define UV_FS_O_RANDOM       0x0010
+#define UV_FS_O_RDONLY       0x0000
+#define UV_FS_O_RDWR         0x0002
+#define UV_FS_O_SEQUENTIAL   0x0020
+#define UV_FS_O_SHORT_LIVED  0x1000
+#define UV_FS_O_TEMPORARY    0x0040
+#define UV_FS_O_TRUNC        0x0200
+#define UV_FS_O_WRONLY       0x0001
 
 /* fs open() flags supported on other platforms (or mapped on this platform): */
 #define UV_FS_O_DIRECT       0x02000000 /* FILE_FLAG_NO_BUFFERING */

@@ -19,22 +19,21 @@
  * IN THE SOFTWARE.
  */
 
-#if !defined(_WIN32)
-
 #include "uv.h"
 #include "task.h"
-#include <fcntl.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 static unsigned int read_cb_called;
 
-static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   static char slab[1];
   buf->base = slab;
   buf->len = sizeof(slab);
 }
 
-static void read_cb(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
+static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   switch (++read_cb_called) {
   case 1:
     ASSERT(nread == 1);
@@ -51,15 +50,31 @@ static void read_cb(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf) {
 
 TEST_IMPL(close_fd) {
   uv_pipe_t pipe_handle;
-  int fd[2];
+  uv_fs_t req;
+  uv_buf_t bufs[1];
+  uv_os_fd_t fd[2];
+  bufs[0] = uv_buf_init("", 1);
 
-  ASSERT(0 == pipe(fd));
+  ASSERT(0 == uv_pipe(fd, 0, 0));
   ASSERT(0 == uv_pipe_init(uv_default_loop(), &pipe_handle, 0));
   ASSERT(0 == uv_pipe_open(&pipe_handle, fd[0]));
-  fd[0] = -1;  /* uv_pipe_open() takes ownership of the file descriptor. */
-  ASSERT(1 == write(fd[1], "", 1));
+  /* uv_pipe_open() takes ownership of the file descriptor. */
+#ifdef _WIN32
+  fd[0] = INVALID_HANDLE_VALUE;
+#else
+  fd[0] = -1;
+#endif
+
+  ASSERT(1 == uv_fs_write(NULL, &req, fd[1], bufs, 1, -1, NULL));
+  ASSERT(1 == req.result);
+  uv_fs_req_cleanup(&req);
+#ifdef _WIN32
+  ASSERT(0 != CloseHandle(fd[1]));
+  fd[1] = INVALID_HANDLE_VALUE;
+#else
   ASSERT(0 == close(fd[1]));
   fd[1] = -1;
+#endif
   ASSERT(0 == uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT(1 == read_cb_called);
@@ -72,5 +87,3 @@ TEST_IMPL(close_fd) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
-
-#endif  /* !defined(_WIN32) */
