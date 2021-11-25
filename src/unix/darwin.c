@@ -287,10 +287,10 @@ static int uv__get_cpu_speed(uint64_t* speed) {
           else if (len == 4) {
             uint32_t v;
             memcpy(&v, freq_ref_ptr, 4);
-            *speed = static_cast<uint64_t>(v);
-          }
-          else
+            *speed = v;
+          } else {
             *speed = 0;
+          }
 
           pCFRelease(freq_ref);
           pCFRelease(data);
