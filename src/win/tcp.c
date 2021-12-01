@@ -1650,7 +1650,7 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     err = WSAGetLastError();
     if (err == ERROR_IO_PENDING) {
       /* Result should complete immediately, since we already called connect,
-       * but emperically, we sometimes have to poll the kernel a couple times
+       * but empirically, we sometimes have to poll the kernel a couple times
        * until it notices that. */
       while (!WSAGetOverlappedResult(client1, &overlap, &bytes, FALSE, &flags)) {
         err = WSAGetLastError();
