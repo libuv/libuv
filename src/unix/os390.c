@@ -648,6 +648,14 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
     events = UV_CHANGE;
   else if (msg.__rfim_event == _RFIM_RENAME || msg.__rfim_event == _RFIM_UNLINK)
     events = UV_RENAME;
+  else if (msg.__rfim_event == 156)
+    /* TODO(gabylb): zos - this event should not happen, need to investigate.
+     *
+     * This event seems to occur when the watched file is [re]moved, or an
+     * editor (like vim) renames then creates the file on save (for vim, that's
+     * when backupcopy=no|auto).
+     */
+    events = UV_RENAME;
   else
     /* Some event that we are not interested in. */
     return 0;
