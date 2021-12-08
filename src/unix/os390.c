@@ -646,7 +646,7 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
   events = 0;
   if (msg.__rfim_event == _RFIM_ATTR || msg.__rfim_event == _RFIM_WRITE)
     events = UV_CHANGE;
-  else if (msg.__rfim_event == _RFIM_RENAME)
+  else if (msg.__rfim_event == _RFIM_RENAME || msg.__rfim_event == _RFIM_UNLINK)
     events = UV_RENAME;
   else
     /* Some event that we are not interested in. */
