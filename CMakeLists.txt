@@ -489,6 +489,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-idna.c
        test/test-ip4-addr.c
        test/test-ip6-addr.c
+       test/test-ip-name.c
        test/test-ipc-heavy-traffic-deadlock-bug.c
        test/test-ipc-send-recv.c
        test/test-ipc.c
@@ -502,7 +503,6 @@ if(LIBUV_BUILD_TESTS)
        test/test-multiple-listen.c
        test/test-mutexes.c
        test/test-not-readable-nor-writable-on-read-error.c
-       test/test-not-readable-on-eof.c
        test/test-not-writable-after-shutdown.c
        test/test-osx-select.c
        test/test-pass-always.c
@@ -530,6 +530,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-process-title.c
        test/test-queue-foreach-delete.c
        test/test-random.c
+       test/test-readable-on-eof.c
        test/test-ref.c
        test/test-run-nowait.c
        test/test-run-once.c
