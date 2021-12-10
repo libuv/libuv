@@ -258,7 +258,7 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
   // SRWLock does not need explicit destruction so long as there are no waiting threads
-  // See: https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks
+  // See: https://docs.microsoft.com/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks
 }
 
 
