@@ -249,7 +249,11 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
 }
 
 /* Ensure that the ABI for this type remains stable in v1.x */
+#ifdef _WIN64
 STATIC_ASSERT(sizeof(uv_rwlock_t) == 80);
+#else
+STATIC_ASSERT(sizeof(uv_rwlock_t) == 48);
+#endif
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
   memset(rwlock, 0, sizeof(*rwlock));
