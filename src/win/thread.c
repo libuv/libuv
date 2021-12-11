@@ -248,8 +248,11 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
   LeaveCriticalSection(mutex);
 }
 
+/* Ensure that the ABI for this type remains stable in v1.x */
+STATIC_ASSERT(sizeof(uv_rwlock_t) == 80);
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
+  memset(rwlock, 0, sizeof(*rwlock));
   InitializeSRWLock(&rwlock->state_.read_write_lock_);
 
   return 0;
@@ -257,8 +260,8 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  // SRWLock does not need explicit destruction so long as there are no waiting threads
-  // See: https://docs.microsoft.com/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks
+  /* SRWLock does not need explicit destruction so long as there are no waiting threads
+     See: https://docs.microsoft.com/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks */
 }
 
 

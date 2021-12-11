@@ -266,6 +266,8 @@ typedef union {
 typedef union {
   struct {
     SRWLOCK read_write_lock_;
+    /* TODO: retained for ABI compatibility; remove me in v2.x */
+    unsigned char padding_[72];
   } state_;
 } uv_rwlock_t;
 
