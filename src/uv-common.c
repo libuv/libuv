@@ -163,13 +163,9 @@ uv_buf_t uv_buf_init(char* base, unsigned int len) {
 
 
 static const char* uv__unknown_err_code(int err) {
-  char buf[32];
-  char* copy;
-
+  static char buf[32];
   snprintf(buf, sizeof(buf), "Unknown system error %d", err);
-  copy = uv__strdup(buf);
-
-  return copy != NULL ? copy : "Unknown system error";
+  return buf;
 }
 
 #define UV_ERR_NAME_GEN_R(name, _) \
