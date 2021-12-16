@@ -1680,6 +1680,22 @@ static ssize_t uv__fs_write_all(uv_fs_t* req) {
 }
 
 
+#ifdef __MVS__
+static ssize_t uv__fs_access(uv_fs_t* req) {
+  /* On z/OS, F_OK is 8 instead of 0, so separate the access checks here. */
+  int r = 0;
+
+  if (req->flags & F_OK)
+    r = access(req->path, F_OK);
+
+  if (r > -1)
+    r = access(req->path, req->flags & (R_OK | W_OK | X_OK));
+
+  return r;
+}
+#endif
+
+
 static void uv__fs_work(struct uv__work* w) {
   int retry_on_eintr;
   uv_fs_t* req;
@@ -1698,7 +1714,11 @@ static void uv__fs_work(struct uv__work* w) {
     break;
 
     switch (req->fs_type) {
+#ifdef __MVS__
+    X(ACCESS, uv__fs_access(req));
+#else
     X(ACCESS, access(req->path, req->flags));
+#endif
     X(CHMOD, chmod(req->path, req->mode));
     X(CHOWN, chown(req->path, req->uid, req->gid));
     X(CLOSE, uv__fs_close(req->file));
