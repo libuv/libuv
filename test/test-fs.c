@@ -1580,6 +1580,19 @@ TEST_IMPL(fs_access) {
   ASSERT(access_cb_count == 1);
   access_cb_count = 0; /* reset for the next test */
 
+  /* File should grant read and write permission */
+  r = uv_fs_access(NULL, &req, "test_file", F_OK | R_OK | W_OK, NULL);
+  ASSERT_EQ(r, 0);
+  ASSERT_EQ(req.result, 0);
+  uv_fs_req_cleanup(&req);
+
+  /* File should grant read and write permission */
+  r = uv_fs_access(loop, &req, "test_file", F_OK | R_OK | W_OK, access_cb);
+  ASSERT_EQ(r, 0);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(access_cb_count, 1);
+  access_cb_count = 0; /* reset for the next test */
+
   /* Close file */
   r = uv_fs_close(NULL, &req, file, NULL);
   ASSERT(r == 0);
