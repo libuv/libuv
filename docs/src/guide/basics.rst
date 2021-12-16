@@ -71,7 +71,7 @@ architecture of libuv and its background. If you have no prior experience with
 either libuv or libev, it is a quick, useful watch.
 
 libuv's event loop is explained in more detail in the `documentation
-<http://docs.libuv.org/en/v1.x/design.html#the-i-o-loop>`_.
+<https://docs.libuv.org/en/v1.x/design.html#the-i-o-loop>`_.
 
 .. raw:: html
 
@@ -108,6 +108,11 @@ Default loop
 A default loop is provided by libuv and can be accessed using
 ``uv_default_loop()``. You should use this loop if you only want a single
 loop.
+
+.. rubric:: default-loop/main.c
+.. literalinclude:: ../../code/default-loop/main.c
+    :language: c
+    :linenos:
 
 .. note::
 

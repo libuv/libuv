@@ -1,5 +1,6 @@
 examples=\
 	helloworld\
+	default-loop\
 	idle-basic\
 	uvcat\
 	uvtee\
