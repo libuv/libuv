@@ -26,7 +26,7 @@ examples=\
 	uvstop \
 	queue-cancel
 
-UV_PATH=$(shell pwd)/../libuv
+UV_PATH=$(shell pwd)/../..
 UV_LIB=$(UV_PATH)/.libs/libuv.a
 CFLAGS=-g -Wall -I$(UV_PATH)/include
 LIBS=
