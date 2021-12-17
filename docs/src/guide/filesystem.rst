@@ -288,6 +288,13 @@ a command whenever any of the watched files change::
 
     ./onchange <command> <file1> [file2] ...
 
+.. note::
+
+    Currently this example only works on OSX and Windows.
+    Refer to the `notes of uv_fs_event_start`_ function.
+
+.. _notes of uv_fs_event_start: https://docs.libuv.org/en/v1.x/fs_event.html#c.uv_fs_event_start
+
 The file change notification is started using ``uv_fs_event_init()``:
 
 .. rubric:: onchange/main.c - The setup
