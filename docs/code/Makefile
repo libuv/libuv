@@ -45,9 +45,13 @@ SHARED_LIB_FLAGS=-shared -Wl,-soname,libhello.so -o plugin/libhello.so
 PLUGIN_EXE_FLAGS=-Wl,-export-dynamic
 endif
 
-all: plugin/plugin proc-streams/test cgi/tick multi-echo-server/worker uvwget/uvwget
-	for dir in $(examples); do cd $$dir; echo "--- `pwd`"; gcc $(CFLAGS) -o $$dir main.c $(UV_LIB) $(LIBS); cd ..; done
 
+all: $(examples) plugin/plugin proc-streams/test cgi/tick multi-echo-server/worker uvwget/uvwget
+
+$(examples): % : %/main.c
+	gcc $(CFLAGS) -o $@/$@  $< $(UV_LIB) $(LIBS)
+
+plugin: plugin/plugin
 plugin/plugin: plugin/*.c
 	gcc $(CFLAGS) $(PLUGIN_EXE_FLAGS) -o plugin/plugin plugin/main.c $(UV_LIB) $(LIBS)
 	gcc -g -Wall -c -fPIC -o plugin/hello.o plugin/hello.c
@@ -62,6 +66,7 @@ cgi/tick: cgi/tick.c
 multi-echo-server/worker: multi-echo-server/worker.c
 	gcc $(CFLAGS) -o multi-echo-server/worker multi-echo-server/worker.c $(UV_LIB) $(LIBS)
 
+uvwget: uvwget/uvwget
 uvwget/uvwget: uvwget/main.c
 	gcc $(CFLAGS) `curl-config --cflags --libs` -o uvwget/uvwget uvwget/main.c $(UV_LIB) $(LIBS)
 
@@ -74,4 +79,4 @@ clean:
 	rm -rf multi-echo-server/worker multi-echo-server/worker.dSYM
 	rm -rf uvwget/uvwget uvwget/uvwget.dSYM
 
-.PHONY: clean
+.PHONY: clean all $(examples) plugin uvwget
