@@ -66,7 +66,7 @@ The ``result`` field of a ``uv_fs_t`` is the file descriptor in case of the
 .. literalinclude:: ../../code/uvcat/main.c
     :language: c
     :linenos:
-    :lines: 26-40
+    :lines: 26-39
     :emphasize-lines: 2,8,12
 
 In the case of a read call, you should pass an *initialized* buffer which will
@@ -91,7 +91,7 @@ callbacks.
 .. literalinclude:: ../../code/uvcat/main.c
     :language: c
     :linenos:
-    :lines: 16-24
+    :lines: 17-24
     :emphasize-lines: 6
 
 .. warning::
@@ -212,7 +212,7 @@ opened as bidirectional by default.
 .. literalinclude:: ../../code/uvtee/main.c
     :language: c
     :linenos:
-    :lines: 61-80
+    :lines: 62-80
     :emphasize-lines: 4,5,15
 
 The third argument of ``uv_pipe_init()`` should be set to 1 for IPC using named
