@@ -263,16 +263,14 @@ typedef union {
   } unused_; /* TODO: retained for ABI compatibility; remove me in v2.x. */
 } uv_cond_t;
 
-typedef union {
-  struct {
-    SRWLOCK read_write_lock_;
-    /* TODO: retained for ABI compatibility; remove me in v2.x */
+typedef struct {
+  SRWLOCK read_write_lock_;
+  /* TODO: retained for ABI compatibility; remove me in v2.x */
 #ifdef _WIN64
-    unsigned char padding_[72];
+  unsigned char padding_[72];
 #else
-    unsigned char padding_[44];
+  unsigned char padding_[44];
 #endif
-  } state_;
 } uv_rwlock_t;
 
 typedef struct {

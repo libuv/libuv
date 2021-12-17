@@ -257,7 +257,7 @@ STATIC_ASSERT(sizeof(uv_rwlock_t) == 48);
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
   memset(rwlock, 0, sizeof(*rwlock));
-  InitializeSRWLock(&rwlock->state_.read_write_lock_);
+  InitializeSRWLock(&rwlock->read_write_lock_);
 
   return 0;
 }
@@ -270,12 +270,12 @@ void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_rdlock(uv_rwlock_t* rwlock) {
-  AcquireSRWLockShared(&rwlock->state_.read_write_lock_);
+  AcquireSRWLockShared(&rwlock->read_write_lock_);
 }
 
 
 int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
-  if (!TryAcquireSRWLockShared(&rwlock->state_.read_write_lock_))
+  if (!TryAcquireSRWLockShared(&rwlock->read_write_lock_))
     return UV_EBUSY;
 
   return 0;
@@ -283,17 +283,17 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) {
-  ReleaseSRWLockShared(&rwlock->state_.read_write_lock_);
+  ReleaseSRWLockShared(&rwlock->read_write_lock_);
 }
 
 
 void uv_rwlock_wrlock(uv_rwlock_t* rwlock) {
-  AcquireSRWLockExclusive(&rwlock->state_.read_write_lock_);
+  AcquireSRWLockExclusive(&rwlock->read_write_lock_);
 }
 
 
 int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
-  if (!TryAcquireSRWLockExclusive(&rwlock->state_.read_write_lock_))
+  if (!TryAcquireSRWLockExclusive(&rwlock->read_write_lock_))
     return UV_EBUSY;
 
   return 0;
@@ -301,7 +301,7 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
-  ReleaseSRWLockExclusive(&rwlock->state_.read_write_lock_);
+  ReleaseSRWLockExclusive(&rwlock->read_write_lock_);
 }
 
 
