@@ -494,7 +494,8 @@ uint64_t uv_hrtime(void) {
 
 uint64_t uv__hrtime(unsigned int scale) {
   LARGE_INTEGER counter;
-  double scaled_freq, result;
+  double scaled_freq;
+  double result;
 
   assert(hrtime_frequency_ != 0);
   assert(scale != 0);

@@ -80,6 +80,7 @@ cmake-build-debug/
 cmake-build-release/
 
 xcuserdata
+*.xcodeproj
 *.xcworkspace
 CMakeCache.txt
 CTestTestfile.cmake

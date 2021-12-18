@@ -377,6 +377,10 @@ API
 
     Convert a binary structure containing an IPv6 address to a string.
 
+.. c:function:: int uv_ip_name(const struct sockaddr *src, char *dst, size_t size)
+
+    Convert a binary structure containing an IPv4 address or an IPv6 address to a string.
+
 .. c:function:: int uv_inet_ntop(int af, const void* src, char* dst, size_t size)
 .. c:function:: int uv_inet_pton(int af, const char* src, void* dst)
 
