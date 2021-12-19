@@ -182,8 +182,9 @@ int uv_thread_create_ex(uv_thread_t* tid,
 
 
 uv_thread_t uv_thread_self(void) {
+  uv_thread_t key;
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
-  uv_thread_t key = uv_key_get(&uv__current_thread_key);
+  key = uv_key_get(&uv__current_thread_key);
   if (key == NULL) {
       /* If the thread wasn't started by uv_thread_create (such as the main
        * thread), we assign an id to it now. */
