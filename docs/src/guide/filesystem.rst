@@ -331,7 +331,7 @@ The callback will receive the following arguments:
      even on those platforms.
   #. ``int events`` - one of ``UV_RENAME`` or ``UV_CHANGE``, or a bitwise OR of
      both.
-  #. ``int status`` - Currently 0.
+  #. ``int status`` - If ``status < 0``, there is an :ref:`libuv error<libuv-error-handling>`.
 
 In our example we simply print the arguments and run the command using
 ``system()``.
