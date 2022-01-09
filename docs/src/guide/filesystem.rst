@@ -329,7 +329,7 @@ The callback will receive the following arguments:
   #. ``const char *filename`` - If a directory is being monitored, this is the
      file which was changed. Only non-``null`` on Linux and Windows. May be ``null``
      even on those platforms.
-  #. ``int flags`` - one of ``UV_RENAME`` or ``UV_CHANGE``, or a bitwise OR of
+  #. ``int events`` - one of ``UV_RENAME`` or ``UV_CHANGE``, or a bitwise OR of
      both.
   #. ``int status`` - Currently 0.
 
