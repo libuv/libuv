@@ -13,7 +13,7 @@ Simple filesystem read/write is achieved using the ``uv_fs_*`` functions and the
     watchers registered with the event loop when application interaction is
     required.
 
-.. _thread pool: http://docs.libuv.org/en/v1.x/threadpool.html#thread-pool-work-scheduling
+.. _thread pool: https://docs.libuv.org/en/v1.x/threadpool.html#thread-pool-work-scheduling
 
 All filesystem functions have two forms - *synchronous* and *asynchronous*.
 

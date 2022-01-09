@@ -8,7 +8,7 @@ It is meant to cover the main areas of libuv, but is not a comprehensive
 reference discussing every function and data structure. The `official libuv
 documentation`_ may be consulted for full details.
 
-.. _official libuv documentation: http://docs.libuv.org/en/v1.x/
+.. _official libuv documentation: https://docs.libuv.org/en/v1.x/
 
 This book is still a work in progress, so sections may be incomplete, but
 I hope you will enjoy it as it grows.
