@@ -330,7 +330,7 @@ The callback will receive the following arguments:
      file which was changed. Only non-``null`` on Linux and Windows. May be ``null``
      even on those platforms.
   #. ``int flags`` - one of ``UV_RENAME`` or ``UV_CHANGE``, or a bitwise OR of
-       both.
+     both.
   #. ``int status`` - Currently 0.
 
 In our example we simply print the arguments and run the command using
