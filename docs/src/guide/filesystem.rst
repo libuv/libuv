@@ -193,7 +193,7 @@ and freed by the application.
 
 .. ERROR::
 
-    THIS PROGRAM DOES NOT ALWAYS WORK, NEED SOMETHING BETTER**
+    **THIS PROGRAM DOES NOT ALWAYS WORK, NEED SOMETHING BETTER**
 
 To demonstrate streams we will need to use ``uv_pipe_t``. This allows streaming
 local files [#]_. Here is a simple tee utility using libuv.  Doing all operations
