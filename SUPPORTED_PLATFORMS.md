@@ -11,7 +11,7 @@
 | z/OS | Tier 2 | >= V2R2 | Maintainers: @libuv/zos |
 | Linux with musl | Tier 2 | musl >= 1.0 | |
 | SmartOS | Tier 3 | >= 14.4 | |
-| Android | Tier 3 | NDK >= 24 | |
+| Android | Tier 3 | NDK >= r15b | |
 | MinGW | Tier 3 | MinGW32 and MinGW-w64 | |
 | SunOS | Tier 3 | Solaris 121 and later | |
 | Other | Tier 3 | N/A | |
