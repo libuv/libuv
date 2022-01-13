@@ -388,10 +388,8 @@ libuv_la_SOURCES += src/unix/aix-common.c \
 endif
 
 if ANDROID
-uvinclude_HEADERS += include/uv/android-ifaddrs.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
-libuv_la_SOURCES += src/unix/android-ifaddrs.c \
-                    src/unix/pthread-fixes.c
+libuv_la_SOURCES += src/unix/pthread-fixes.c
 endif
 
 if CYGWIN

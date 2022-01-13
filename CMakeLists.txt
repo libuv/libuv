@@ -215,7 +215,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
   list(APPEND uv_defines _GNU_SOURCE)
   list(APPEND uv_libraries dl)
   list(APPEND uv_sources
-       src/unix/android-ifaddrs.c
        src/unix/linux-core.c
        src/unix/linux-inotify.c
        src/unix/linux-syscalls.c
