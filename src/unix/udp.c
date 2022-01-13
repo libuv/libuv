@@ -201,6 +201,7 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
   for (k = 0; k < chunks; ++k) {
     iov[k].iov_base = buf->base + k * UV__UDP_DGRAM_MAXSIZE;
     iov[k].iov_len = UV__UDP_DGRAM_MAXSIZE;
+    memset(&msgs[k].msg_hdr, 0, sizeof(msgs[k].msg_hdr));
     msgs[k].msg_hdr.msg_iov = iov + k;
     msgs[k].msg_hdr.msg_iovlen = 1;
     msgs[k].msg_hdr.msg_name = peers + k;
@@ -655,16 +656,16 @@ int uv__udp_connect(uv_udp_t* handle,
 }
 
 /* From https://pubs.opengroup.org/onlinepubs/9699919799/functions/connect.html
- * Any of uv supported UNIXs kernel should be standardized, but the kernel 
+ * Any of uv supported UNIXs kernel should be standardized, but the kernel
  * implementation logic not same, let's use pseudocode to explain the udp
  * disconnect behaviors:
- * 
+ *
  * Predefined stubs for pseudocode:
  *   1. sodisconnect: The function to perform the real udp disconnect
  *   2. pru_connect: The function to perform the real udp connect
  *   3. so: The kernel object match with socket fd
  *   4. addr: The sockaddr parameter from user space
- * 
+ *
  * BSDs:
  *   if(sodisconnect(so) == 0) { // udp disconnect succeed
  *     if (addr->sa_len != so->addr->sa_len) return EINVAL;
@@ -694,13 +695,13 @@ int uv__udp_disconnect(uv_udp_t* handle) {
 #endif
 
     memset(&addr, 0, sizeof(addr));
-    
+
 #if defined(__MVS__)
     addr.ss_family = AF_UNSPEC;
 #else
     addr.sa_family = AF_UNSPEC;
 #endif
-    
+
     do {
       errno = 0;
       r = connect(handle->io_watcher.fd, (struct sockaddr*) &addr, sizeof(addr));
