@@ -417,6 +417,7 @@ if(LIBUV_BUILD_TESTS)
     test/benchmark-fs-stat.c
     test/benchmark-getaddrinfo.c
     test/benchmark-loop-count.c
+    test/benchmark-queue-work.c
     test/benchmark-million-async.c
     test/benchmark-million-timers.c
     test/benchmark-multi-accept.c
