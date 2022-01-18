@@ -32,22 +32,32 @@ static unsigned fastrand(void) {
   return g;
 }
 
-static void work_cb(uv_work_t* req) {
+#define SIZE (1024*1024)
+uv_work_t work[SIZE];
+
+static void work_single(uv_work_t* req) {
   req->data = &result;
   *(unsigned*)req->data = fastrand();
 }
 
-static void after_work_cb(uv_work_t* req, int status) {
+static void reschedule_work(uv_work_t* req, int status) {
   events++;
   if (!done)
-    ASSERT_EQ(0, uv_queue_work(req->loop, req, work_cb, after_work_cb));
+    ASSERT_EQ(0, uv_queue_work(req->loop, req, work_single, reschedule_work));
+}
+
+static void work_chained(uv_work_t* req) {
+  work_single(req);
+  events++;
+  if (!done) {
+    ASSERT_EQ(0, uv_queue_work(req->loop, &work[events % SIZE], work_chained, NULL));
+  }
 }
 
 static void timer_cb(uv_timer_t* handle) { done = 1; }
 
 BENCHMARK_IMPL(queue_work) {
   uv_timer_t timer_handle;
-  uv_work_t work;
   uv_loop_t* loop;
   int timeout;
 
@@ -57,10 +67,29 @@ BENCHMARK_IMPL(queue_work) {
   ASSERT_EQ(0, uv_timer_init(loop, &timer_handle));
   ASSERT_EQ(0, uv_timer_start(&timer_handle, timer_cb, timeout, 0));
 
-  ASSERT_EQ(0, uv_queue_work(loop, &work, work_cb, after_work_cb));
+  /* 
+   * schedule work unit and then reschedule next work unit
+   * in the main event loop callback
+   */
+  ASSERT_EQ(0, uv_queue_work(loop, &work[0], work_single, reschedule_work));
   ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
 
-  printf("%s async jobs in %.1f seconds (%s/s)\n", fmt(events), timeout / 1000.,
+  printf("%s ping-pong async jobs in %.1f seconds (%s/s)\n", fmt(events),
+         timeout / 1000., fmt(events / (timeout / 1000.)));
+  events = 0;
+  done = 0;
+
+  ASSERT_EQ(0, uv_timer_init(loop, &timer_handle));
+  ASSERT_EQ(0, uv_timer_start(&timer_handle, timer_cb, timeout, 0));
+
+  /*
+   * schedule work unit and then immediately reschedule next work unit
+   * without main event loop callback
+   */
+  ASSERT_EQ(0, uv_queue_work(loop, &work[0], work_chained, NULL));
+  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+
+  printf("%s chained async jobs in %.1f seconds (%s/s)\n", fmt(events), timeout / 1000.,
          fmt(events / (timeout / 1000.)));
 
   MAKE_VALGRIND_HAPPY();

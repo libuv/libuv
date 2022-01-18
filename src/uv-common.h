@@ -229,18 +229,16 @@ void uv__threadpool_cleanup(void);
 #define uv__has_active_reqs(loop)                                             \
   ((loop)->active_reqs.count > 0)
 
-#define uv__req_register(loop, req)                                           \
-  do {                                                                        \
-    (loop)->active_reqs.count++;                                              \
-  }                                                                           \
-  while (0)
+#define uv__req_register(loop, req)                                            \
+  do {                                                                         \
+    __atomic_fetch_add(&(loop)->active_reqs.count, 1, __ATOMIC_SEQ_CST);       \
+  } while (0)
 
-#define uv__req_unregister(loop, req)                                         \
-  do {                                                                        \
-    assert(uv__has_active_reqs(loop));                                        \
-    (loop)->active_reqs.count--;                                              \
-  }                                                                           \
-  while (0)
+#define uv__req_unregister(loop, req)                                          \
+  do {                                                                         \
+    assert(uv__has_active_reqs(loop));                                         \
+    __atomic_fetch_add(&(loop)->active_reqs.count, -1, __ATOMIC_SEQ_CST);      \
+  } while (0)
 
 #define uv__has_active_handles(loop)                                          \
   ((loop)->active_handles > 0)
