@@ -232,8 +232,8 @@ void uv__process_title_cleanup(void);
 void uv__signal_cleanup(void);
 void uv__threadpool_cleanup(void);
 
-#define uv__has_active_reqs(loop)                                             \
-  ((loop)->active_reqs.count > 0)
+#define uv__has_active_reqs(loop)                                              \
+  (uv__load_relaxed(&(loop)->active_reqs.count) > 0)
 
 #define uv__req_register(loop, req)                                            \
   do {                                                                         \
