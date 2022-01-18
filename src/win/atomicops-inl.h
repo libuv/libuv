@@ -23,8 +23,6 @@
 #define UV_WIN_ATOMICOPS_INL_H_
 
 #include "uv.h"
-#include "internal.h"
-
 
 /* Atomic set operation on char */
 #ifdef _MSC_VER /* MSVC */
@@ -34,13 +32,15 @@
  * and interlocked operations on larger targets might require the target to be
  * aligned. */
 #pragma intrinsic(_InterlockedOr8)
+#pragma intrinsic(_InterlockedExchangeAdd)
 
 static char INLINE uv__atomic_exchange_set(char volatile* target) {
   return _InterlockedOr8(target, 1);
 }
 
-#define uv__atomic_fetch_add(target, increment)                                \
-  __atomic_fetch_add(&(target), increment, __ATOMIC_RELAXED);
+static unsigned INLINE uv__atomic_fetch_add(unsigned volatile* target, int increment) {
+  return (int)_InterlockedExchangeAdd((volatile LONG*)target, (LONG)increment);
+}
 
 #else /* GCC, Clang in mingw mode */
 
@@ -60,7 +60,7 @@ static inline char uv__atomic_exchange_set(char volatile* target) {
 }
 
 #define uv__atomic_fetch_add(target, increment)                                \
-  InterlockedAddNoFence(&(target), increment)
+  __atomic_fetch_add(&(target), increment, __ATOMIC_RELAXED);
 
 #endif
 

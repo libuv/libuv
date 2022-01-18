@@ -29,15 +29,6 @@
 #include "winapi.h"
 #include "winsock.h"
 
-#ifdef _MSC_VER
-# define INLINE __inline
-# define UV_THREAD_LOCAL __declspec( thread )
-#else
-# define INLINE inline
-# define UV_THREAD_LOCAL __thread
-#endif
-
-
 #ifdef _DEBUG
 
 extern UV_THREAD_LOCAL int uv__crt_assert_enabled;

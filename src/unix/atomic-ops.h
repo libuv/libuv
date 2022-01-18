@@ -59,8 +59,9 @@ UV_UNUSED(static void cpu_relax(void)) {
 
 #if defined(__GNUC__)
 
-#define uv__atomic_fetch_add(target, increment)                                \
-  __atomic_fetch_add(&(target), increment, __ATOMIC_RELAXED);
+static unsigned uv__atomic_fetch_add(unsigned volatile* target, int increment) {
+  return __atomic_fetch_add(target, increment, __ATOMIC_RELAXED);
+}
 
 #endif
 

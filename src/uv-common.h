@@ -237,13 +237,13 @@ void uv__threadpool_cleanup(void);
 
 #define uv__req_register(loop, req)                                            \
   do {                                                                         \
-    uv__atomic_fetch_add((loop)->active_reqs.count, 1);                        \
+    uv__atomic_fetch_add(&(loop)->active_reqs.count, 1);                       \
   } while (0)
 
 #define uv__req_unregister(loop, req)                                          \
   do {                                                                         \
     assert(uv__has_active_reqs(loop));                                         \
-    uv__atomic_fetch_add((loop)->active_reqs.count, -1);                       \
+    uv__atomic_fetch_add(&(loop)->active_reqs.count, -1);                      \
   } while (0)
 
 #define uv__has_active_handles(loop)                                          \
