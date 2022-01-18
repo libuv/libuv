@@ -16,8 +16,6 @@
 #ifndef UV_ATOMIC_OPS_H_
 #define UV_ATOMIC_OPS_H_
 
-#include "internal.h"  /* UV_UNUSED */
-
 #if defined(__SUNPRO_C) || defined(__SUNPRO_CC)
 #include <atomic.h>
 #endif
@@ -58,5 +56,12 @@ UV_UNUSED(static void cpu_relax(void)) {
   __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
 #endif
 }
+
+#if defined(__GNUC__)
+
+#define uv__atomic_fetch_add(target, increment)                                \
+  __atomic_fetch_add(&(target), increment, __ATOMIC_RELAXED);
+
+#endif
 
 #endif  /* UV_ATOMIC_OPS_H_ */

@@ -108,18 +108,6 @@ int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
   }                                                                           \
   while (0)
 
-/* The __clang__ and __INTEL_COMPILER checks are superfluous because they
- * define __GNUC__. They are here to convey to you, dear reader, that these
- * macros are enabled when compiling with clang or icc.
- */
-#if defined(__clang__) ||                                                     \
-    defined(__GNUC__) ||                                                      \
-    defined(__INTEL_COMPILER)
-# define UV_UNUSED(declaration)     __attribute__((unused)) declaration
-#else
-# define UV_UNUSED(declaration)     declaration
-#endif
-
 /* Leans on the fact that, on Linux, POLLRDHUP == EPOLLRDHUP. */
 #ifdef POLLRDHUP
 # define UV__POLLRDHUP POLLRDHUP

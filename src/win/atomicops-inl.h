@@ -39,6 +39,9 @@ static char INLINE uv__atomic_exchange_set(char volatile* target) {
   return _InterlockedOr8(target, 1);
 }
 
+#define uv__atomic_fetch_add(target, increment)                                \
+  __atomic_fetch_add(&(target), increment, __ATOMIC_RELAXED);
+
 #else /* GCC, Clang in mingw mode */
 
 static inline char uv__atomic_exchange_set(char volatile* target) {
@@ -55,6 +58,9 @@ static inline char uv__atomic_exchange_set(char volatile* target) {
   return __sync_fetch_and_or(target, 1);
 #endif
 }
+
+#define uv__atomic_fetch_add(target, increment)                                \
+  InterlockedAddNoFence(&(target), increment)
 
 #endif
 

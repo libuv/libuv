@@ -42,6 +42,12 @@
 #include "queue.h"
 #include "strscpy.h"
 
+#if defined(_WIN32)
+#include "win/atomicops-inl.h"
+#else
+#include "unix/atomic-ops.h"
+#endif
+
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
 #else
@@ -231,13 +237,13 @@ void uv__threadpool_cleanup(void);
 
 #define uv__req_register(loop, req)                                            \
   do {                                                                         \
-    __atomic_fetch_add(&(loop)->active_reqs.count, 1, __ATOMIC_SEQ_CST);       \
+    uv__atomic_fetch_add((loop)->active_reqs.count, 1);                        \
   } while (0)
 
 #define uv__req_unregister(loop, req)                                          \
   do {                                                                         \
     assert(uv__has_active_reqs(loop));                                         \
-    __atomic_fetch_add(&(loop)->active_reqs.count, -1, __ATOMIC_SEQ_CST);      \
+    uv__atomic_fetch_add((loop)->active_reqs.count, -1);                       \
   } while (0)
 
 #define uv__has_active_handles(loop)                                          \
