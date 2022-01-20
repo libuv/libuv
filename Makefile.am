@@ -27,8 +27,8 @@ uvinclude_HEADERS = include/uv/errno.h \
 CLEANFILES =
 
 lib_LTLIBRARIES = libuv.la
-libuv_la_CFLAGS = @CFLAGS@
-libuv_la_LDFLAGS = -no-undefined -version-info 1:0:0
+libuv_la_CFLAGS = $(AM_CFLAGS)
+libuv_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined -version-info 1:0:0
 libuv_la_SOURCES = src/fs-poll.c \
                    src/heap-inl.h \
                    src/idna.c \
@@ -131,7 +131,7 @@ EXTRA_DIST = test/fixtures/empty_file \
 
 TESTS = test/run-tests
 check_PROGRAMS = test/run-tests
-test_run_tests_CFLAGS =
+test_run_tests_CFLAGS = $(AM_CFLAGS)
 
 if SUNOS
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
@@ -139,7 +139,7 @@ if SUNOS
 test_run_tests_CFLAGS += -pthreads
 endif
 
-test_run_tests_LDFLAGS =
+test_run_tests_LDFLAGS = $(AM_LDFLAGS)
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/echo-server.c \
                          test/run-tests.c \
