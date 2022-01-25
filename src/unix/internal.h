@@ -282,7 +282,7 @@ uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
 int uv__search_path(const char* prog, char* buf, size_t* buflen);
-void uv__chld(uv_signal_t* handle, int signum);
+void uv__wait_children(uv_loop_t* loop);
 
 /* random */
 int uv__random_devurandom(void* buf, size_t buflen);

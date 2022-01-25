@@ -286,9 +286,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       ev = events + i;
 #if defined(__APPLE__)
       if (ev->filter == EVFILT_PROC) {
-        uv_signal_t temp_handle;
-        temp_handle.loop = loop;
-        uv__chld(&temp_handle, SIGCHLD);
+        uv__wait_children(loop);
         nevents++;
         continue;
       }

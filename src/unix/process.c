@@ -50,9 +50,15 @@ extern char **environ;
 #endif
 
 
-void uv__chld(uv_signal_t* handle, int signum) {
+#if !defined(__APPLE__)
+static void uv__chld(uv_handle_t* handle, int signum) {
+  assert(signum == SIGCHLD);
+  uv__wait_children(handle->loop);
+}
+#endif
+
+void uv__wait_children(uv_loop_t* loop) {
   uv_process_t* process;
-  uv_loop_t* loop;
   int exit_status;
   int term_signal;
   int status;
@@ -61,10 +67,7 @@ void uv__chld(uv_signal_t* handle, int signum) {
   QUEUE* q;
   QUEUE* h;
 
-  assert(signum == SIGCHLD);
-
   QUEUE_INIT(&pending);
-  loop = handle->loop;
 
   h = &loop->process_handles;
   q = QUEUE_HEAD(h);
