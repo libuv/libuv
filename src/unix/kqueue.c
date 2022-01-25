@@ -284,6 +284,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
     for (i = 0; i < nfds; i++) {
       ev = events + i;
+#if defined(__APPLE__)
+      if (ev->filter == EVFILT_PROC) {
+        uv_signal_t temp_handle;
+        temp_handle.loop = loop;
+        uv__chld(&temp_handle, SIGCHLD);
+        nevents++;
+        continue;
+      }
+#endif
       fd = ev->ident;
       /* Skip invalidated events, see uv__platform_invalidate_fd */
       if (fd == -1)

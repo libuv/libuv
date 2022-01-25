@@ -50,7 +50,7 @@ extern char **environ;
 #endif
 
 
-static void uv__chld(uv_signal_t* handle, int signum) {
+void uv__chld(uv_signal_t* handle, int signum) {
   uv_process_t* process;
   uv_loop_t* loop;
   int exit_status;
@@ -348,8 +348,6 @@ int uv_spawn(uv_loop_t* loop,
   /* fork is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED. */
   return UV_ENOSYS;
 #else
-  sigset_t signewset;
-  sigset_t sigoldset;
   int signal_pipe[2] = { -1, -1 };
   int pipes_storage[8][2];
   int (*pipes)[2];
@@ -420,7 +418,9 @@ int uv_spawn(uv_loop_t* loop,
   if (err)
     goto error;
 
+#if !defined(__APPLE__)
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
+#endif
 
   /* Acquire write lock to prevent opening new fds in worker threads */
   uv_rwlock_wrlock(&loop->cloexec_lock);
@@ -448,6 +448,15 @@ int uv_spawn(uv_loop_t* loop,
 
   if (pthread_sigmask(SIG_SETMASK, &sigoldset, NULL) != 0)
     abort();
+
+#if defined(__APPLE__)
+  if (exec_errorno == 0) {
+    struct kevent event;
+    EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
+    if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL))
+      abort();
+  }
+#endif
 
   /* Release lock in parent process */
   uv_rwlock_wrunlock(&loop->cloexec_lock);

@@ -1891,6 +1891,44 @@ TEST_IMPL(spawn_quoted_path) {
 #endif
 }
 
+TEST_IMPL(spawn_exercise_sigchld_issue) {
+  int r;
+  int i;
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  // This test exercises a bug in the darwin kernel that causes SIGCHLD not to
+  // be delivered sometimes. Calling posix_spawn many times increases the
+  // likelihood of encountering this issue, so spin a few times to make this
+  // test more reliable.
+  for (i = 0; i < 100; i++) {
+    uv_process_options_t options = {0};
+    uv_process_t process;
+    options.file = args[0] = "program-that-had-better-not-exist";
+    args[1] = NULL;
+    args[2] = NULL;
+    args[3] = NULL;
+    args[4] = NULL;
+    options.args = args;
+    options.exit_cb = fail_cb;
+    options.flags = 0;
+    r = uv_spawn(uv_default_loop(), &process, &options);
+    ASSERT(r == UV_ENOENT || r == UV_EACCES);
+  }
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 /* Helper for child process of spawn_inherit_streams */
 #ifndef _WIN32
 void spawn_stdin_stdout(void) {
