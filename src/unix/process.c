@@ -421,7 +421,7 @@ int uv_spawn(uv_loop_t* loop,
   if (err)
     goto error;
 
-#if !defined(__APPLE__)
+#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 #endif
 
@@ -451,15 +451,6 @@ int uv_spawn(uv_loop_t* loop,
 
   if (pthread_sigmask(SIG_SETMASK, &sigoldset, NULL) != 0)
     abort();
-
-#if defined(__APPLE__)
-  if (exec_errorno == 0) {
-    struct kevent event;
-    EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
-    if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL))
-      abort();
-  }
-#endif
 
   /* Release lock in parent process */
   uv_rwlock_wrunlock(&loop->cloexec_lock);
@@ -509,6 +500,13 @@ int uv_spawn(uv_loop_t* loop,
   if (exec_errorno == 0) {
     QUEUE_INSERT_TAIL(&loop->process_handles, &process->queue);
     uv__handle_start(process);
+
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+    struct kevent event;
+    EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
+    if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL))
+      abort();
+#endif
   }
 
   process->pid = pid;
