@@ -351,6 +351,8 @@ int uv_spawn(uv_loop_t* loop,
   /* fork is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED. */
   return UV_ENOSYS;
 #else
+  sigset_t signewset;
+  sigset_t sigoldset;
   int signal_pipe[2] = { -1, -1 };
   int pipes_storage[8][2];
   int (*pipes)[2];
