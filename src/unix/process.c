@@ -49,6 +49,10 @@ extern char **environ;
 # include "zos-base.h"
 #endif
 
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <sys/event.h>
+#endif
+
 
 #if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
 static void uv__chld(uv_handle_t* handle, int signum) {
