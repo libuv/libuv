@@ -1914,14 +1914,16 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   dummy_options.flags = 0;
   for (i = 0; i < 100; i++) {
     r = uv_spawn(uv_default_loop(), &dummy_processes[i], &dummy_options);
-    ASSERT(r == UV_ENOENT || r == UV_EACCES);
+    if (r != UV_ENOENT)
+      ASSERT_EQ(r, UV_EACCES);
+    uv_close((uv_handle_t*) &dummy_processes[i], close_cb);
   }
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
 
   ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT(close_cb_called == 101);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
