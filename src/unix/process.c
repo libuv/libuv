@@ -55,7 +55,7 @@ extern char **environ;
 
 
 #if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
-static void uv__chld(uv_handle_t* handle, int signum) {
+static void uv__chld(uv_signal_t* handle, int signum) {
   assert(signum == SIGCHLD);
   uv__wait_children(handle->loop);
 }
