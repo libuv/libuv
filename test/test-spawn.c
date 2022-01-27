@@ -1894,6 +1894,8 @@ TEST_IMPL(spawn_quoted_path) {
 TEST_IMPL(spawn_exercise_sigchld_issue) {
   int r;
   int i;
+  uv_process_options_t options2 = {0};
+  uv_process_t process[100];
 
   init_process_options("spawn_helper1", exit_cb);
 
@@ -1904,16 +1906,11 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   // be delivered sometimes. Calling posix_spawn many times increases the
   // likelihood of encountering this issue, so spin a few times to make this
   // test more reliable.
-  uv_process_options_t options2 = {0};
   options2.file = args[0] = "program-that-had-better-not-exist";
   args[1] = NULL;
-  args[2] = NULL;
-  args[3] = NULL;
-  args[4] = NULL;
   options2.args = args;
   options2.exit_cb = fail_cb;
   options2.flags = 0;
-  uv_process_t process[100];
   for (i = 0; i < 100; i++) {
     r = uv_spawn(uv_default_loop(), &process[i], &options2);
     ASSERT(r == UV_ENOENT || r == UV_EACCES);
