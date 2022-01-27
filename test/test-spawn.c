@@ -1904,18 +1904,18 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   // be delivered sometimes. Calling posix_spawn many times increases the
   // likelihood of encountering this issue, so spin a few times to make this
   // test more reliable.
+  uv_process_options_t options2 = {0};
+  options2.file = args[0] = "program-that-had-better-not-exist";
+  args[1] = NULL;
+  args[2] = NULL;
+  args[3] = NULL;
+  args[4] = NULL;
+  options2.args = args;
+  options2.exit_cb = fail_cb;
+  options2.flags = 0;
   for (i = 0; i < 100; i++) {
-    uv_process_options_t options = {0};
     uv_process_t process;
-    options.file = args[0] = "program-that-had-better-not-exist";
-    args[1] = NULL;
-    args[2] = NULL;
-    args[3] = NULL;
-    args[4] = NULL;
-    options.args = args;
-    options.exit_cb = fail_cb;
-    options.flags = 0;
-    r = uv_spawn(uv_default_loop(), &process, &options);
+    r = uv_spawn(uv_default_loop(), &process, &options2);
     ASSERT(r == UV_ENOENT || r == UV_EACCES);
   }
 
