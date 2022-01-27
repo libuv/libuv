@@ -1896,6 +1896,7 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   int i;
   uv_process_options_t options2 = {0};
   uv_process_t process[100];
+  char* args[2];
 
   init_process_options("spawn_helper1", exit_cb);
 
