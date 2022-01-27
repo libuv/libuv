@@ -1913,9 +1913,9 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   options2.args = args;
   options2.exit_cb = fail_cb;
   options2.flags = 0;
+  uv_process_t process[100];
   for (i = 0; i < 100; i++) {
-    uv_process_t process;
-    r = uv_spawn(uv_default_loop(), &process, &options2);
+    r = uv_spawn(uv_default_loop(), &process[i], &options2);
     ASSERT(r == UV_ENOENT || r == UV_EACCES);
   }
 
