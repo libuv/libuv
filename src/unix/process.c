@@ -504,15 +504,15 @@ int uv_spawn(uv_loop_t* loop,
 
   /* Only activate this handle if exec() happened successfully */
   if (exec_errorno == 0) {
-    QUEUE_INSERT_TAIL(&loop->process_handles, &process->queue);
-    uv__handle_start(process);
-
 #if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
     struct kevent event;
     EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
     if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL))
       abort();
 #endif
+
+    QUEUE_INSERT_TAIL(&loop->process_handles, &process->queue);
+    uv__handle_start(process);
   }
 
   process->pid = pid;
