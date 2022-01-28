@@ -1901,7 +1901,7 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   init_process_options("spawn_helper1", exit_cb);
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   // This test exercises a bug in the darwin kernel that causes SIGCHLD not to
   // be delivered sometimes. Calling posix_spawn many times increases the
@@ -1920,10 +1920,10 @@ TEST_IMPL(spawn_exercise_sigchld_issue) {
   }
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 101);
+  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(close_cb_called, 101);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
