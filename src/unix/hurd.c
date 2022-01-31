@@ -71,6 +71,7 @@ int uv_resident_set_memory(size_t* rss) {
 }
 
 uint64_t uv_get_free_memory(void) {
+  kern_return_t err;
   uint64_t rc;
   struct vm_statistics vmstats;
   
@@ -84,6 +85,7 @@ uint64_t uv_get_free_memory(void) {
 
 
 uint64_t uv_get_total_memory(void) {
+  kern_return_t err;
   uint64_t rc;
   host_basic_info_data_t hbi;
   mach_msg_type_number_t cnt;
@@ -98,8 +100,32 @@ uint64_t uv_get_total_memory(void) {
 }
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  /* FIXME: read /proc/stat? */
+  kern_return_t err;
+  host_basic_info_data_t hbi;
+  mach_msg_type_number_t cnt;
+  
+  /* Get count of cpus  */
+  cnt = HOST_BASIC_INFO_COUNT;
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hbi, &cnt); 
+
+  if (err) {
+    err = UV_ERR(err);
+    goto abort;
+  }
+
+  /* XXX not implemented on the Hurd */
+  *cpu_infos = uv__calloc(hbi.avail_cpus, sizeof(**cpu_infos));
+  if (!(*cpu_infos)) {
+    err = UV_ENOMEM;
+    goto abort;
+  }
+
+  *count = hbi.avail_cpus;
+
+  return 0;
+  
+ abort:
   *cpu_infos = NULL;
   *count = 0;
-  return UV_ENOSYS;
+  return err;
 }
