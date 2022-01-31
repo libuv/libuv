@@ -459,7 +459,7 @@ libuv_la_SOURCES += src/unix/no-fsevents.c \
                     src/unix/posix-hrtime.c \
                     src/unix/posix-poll.c \
                     src/unix/procfs-exepath.c \
-                    src/unix/gnu.c
+                    src/unix/hurd.c
 endif
 
 if LINUX
