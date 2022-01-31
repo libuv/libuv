@@ -284,6 +284,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
     for (i = 0; i < nfds; i++) {
       ev = events + i;
+      if (ev->filter == EVFILT_PROC) {
+        uv__wait_children(loop);
+        nevents++;
+        continue;
+      }
       fd = ev->ident;
       /* Skip invalidated events, see uv__platform_invalidate_fd */
       if (fd == -1)
