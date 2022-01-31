@@ -456,10 +456,11 @@ endif
 if HURD
 uvinclude_HEADERS += include/uv/posix.h
 libuv_la_SOURCES += src/unix/no-fsevents.c \
+                    src/unix/no-proctitle.c \
                     src/unix/posix-hrtime.c \
                     src/unix/posix-poll.c \
                     src/unix/procfs-exepath.c \
-                    src/unix/hurd.c
+                    src/unix/gnu.c
 endif
 
 if LINUX
