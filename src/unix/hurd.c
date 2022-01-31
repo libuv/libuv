@@ -26,6 +26,7 @@
 
 #include <hurd.h>
 #include <hurd/process.h>
+#include <mach/task_info.h>
 
 #include <inttypes.h>
 #include <stddef.h>
@@ -46,65 +47,26 @@ int uv_exepath(char* buffer, size_t* size) {
       return UV__ERR(err);
   }    
 
-  *size = strncpy(buffer, buf, size) - buffer;
+  *size = strncpy(buffer, buf, *size) - buffer;
 
   return 0;  
 }
 
 int uv_resident_set_memory(size_t* rss) {
-  char buf[1024];
-  const char* s;
-  ssize_t n;
-  long val;
-  int fd;
-  int i;
+  kern_return_t err;
+  struct task_basic_info bi;
+  mach_msg_type_number_t count;
 
-  do
-    fd = open("/proc/self/stat", O_RDONLY);
-  while (fd == -1 && errno == EINTR);
+  count = TASK_BASIC_INFO_COUNT;
+  err = task_info(mach_task_self(), TASK_BASIC_INFO,
+		  (task_info_t)&bi, &count);
 
-  if (fd == -1)
-    return UV__ERR(errno);
+  if (err)
+    return UV__ERR(err);
 
-  do
-    n = read(fd, buf, sizeof(buf) - 1);
-  while (n == -1 && errno == EINTR);
+  *rss = bi.resident_size;
 
-  uv__close(fd);
-  if (n == -1)
-    return UV__ERR(errno);
-  buf[n] = '\0';
-
-  s = strchr(buf, ' ');
-  if (s == NULL)
-    goto err;
-
-  s += 1;
-  if (*s != '(')
-    goto err;
-
-  s = strchr(s, ')');
-  if (s == NULL)
-    goto err;
-
-  for (i = 1; i <= 22; i++) {
-    s = strchr(s + 1, ' ');
-    if (s == NULL)
-      goto err;
-  }
-
-  errno = 0;
-  val = strtol(s, NULL, 10);
-  if (errno != 0)
-    goto err;
-  if (val < 0)
-    goto err;
-
-  *rss = val * getpagesize();
   return 0;
-
-err:
-  return UV_EINVAL;
 }
 
 static int uv__slurp(const char* filename, char* buf, size_t len) {
