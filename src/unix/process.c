@@ -233,10 +233,11 @@ static void uv__write_errno(int error_fd) {
  * avoided. Since this isn't called on those targets, the function
  * doesn't even need to be defined for them.
  */
-static void uv__process_child_init(const uv_process_options_t* options,
-                                   int stdio_count,
-                                   int (*pipes)[2],
-                                   int error_fd) {
+static void uv__process_child_init(
+        const uv_process_options_t* options,
+        int stdio_count,
+        int (*pipes)[2],
+        int error_fd) {
   sigset_t signewset;
   int close_fd;
   int use_fd;
@@ -373,14 +374,14 @@ static uv__posix_spawn_fncs_t posix_spawn_fncs;
 static int posix_spawn_can_use_setsid;
 
 
-void uv__spawn_init_posix_spawn_fncs(void) {
+static void uv__spawn_init_posix_spawn_fncs(void) {
   /* Try to locate all non-portable functions at runtime */
   posix_spawn_fncs.file_actions.addchdir_np =
     dlsym(RTLD_DEFAULT, "posix_spawn_file_actions_addchdir_np");
 }
 
 
-void uv__spawn_init_can_use_setsid(void) {
+static void uv__spawn_init_can_use_setsid(void) {
   static const int MACOS_CATALINA_VERSION_MAJOR = 19;
   char version_str[256];
   char* version_major_str;
@@ -411,7 +412,7 @@ void uv__spawn_init_can_use_setsid(void) {
 }
 
 
-void uv__spawn_init_posix_spawn(void) {
+static void uv__spawn_init_posix_spawn(void) {
   /* Init handles to all potentially non-defined functions */
   uv__spawn_init_posix_spawn_fncs();
 
@@ -420,9 +421,10 @@ void uv__spawn_init_posix_spawn(void) {
 }
 
 
-int uv__spawn_set_posix_spawn_attrs(posix_spawnattr_t* attrs,
-                                    const uv__posix_spawn_fncs_t* posix_spawn_fncs,
-                                    const uv_process_options_t* options) {
+static int uv__spawn_set_posix_spawn_attrs(
+        posix_spawnattr_t* attrs,
+        const uv__posix_spawn_fncs_t* posix_spawn_fncs,
+        const uv_process_options_t* options) {
   int err;
   unsigned int flags;
   sigset_t signal_set;
@@ -491,11 +493,12 @@ error:
 }
 
 
-int uv__spawn_set_posix_spawn_file_actions(posix_spawn_file_actions_t* actions,
-                                           const uv__posix_spawn_fncs_t* posix_spawn_fncs,
-                                           const uv_process_options_t* options,
-                                           int stdio_count,
-                                           int (*pipes)[2]) {
+static int uv__spawn_set_posix_spawn_file_actions(
+        posix_spawn_file_actions_t* actions,
+        const uv__posix_spawn_fncs_t* posix_spawn_fncs,
+        const uv_process_options_t* options,
+        int stdio_count,
+        int (*pipes)[2]) {
   int fd;
   int err;
 
@@ -598,10 +601,11 @@ char* uv__spawn_find_path_in_env(char** env) {
 }
 
 
-int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
-                                posix_spawnattr_t* attrs,
-                                posix_spawn_file_actions_t* actions,
-                                pid_t* pid) {
+static int uv__spawn_resolve_and_spawn(
+        const uv_process_options_t* options,
+        posix_spawnattr_t* attrs,
+        posix_spawn_file_actions_t* actions,
+        pid_t* pid) {
   const char *p;
   const char *z;
   const char *path;
@@ -700,11 +704,12 @@ int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
 }
 
 
-int uv__spawn_and_init_child_posix_spawn(const uv_process_options_t* options,
-                                         int stdio_count,
-                                         int (*pipes)[2],
-                                         pid_t* pid,
-                                         const uv__posix_spawn_fncs_t* posix_spawn_fncs) {
+static int uv__spawn_and_init_child_posix_spawn(
+        const uv_process_options_t* options,
+        int stdio_count,
+        int (*pipes)[2],
+        pid_t* pid,
+        const uv__posix_spawn_fncs_t* posix_spawn_fncs) {
   int err;
   posix_spawnattr_t attrs;
   posix_spawn_file_actions_t actions;
@@ -739,11 +744,12 @@ error:
 }
 #endif
 
-int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
-                                  int stdio_count,
-                                  int (*pipes)[2],
-                                  int error_fd,
-                                  pid_t* pid) {
+static int uv__spawn_and_init_child_fork(
+        const uv_process_options_t* options,
+        int stdio_count,
+        int (*pipes)[2],
+        int error_fd,
+        pid_t* pid) {
   sigset_t signewset;
   sigset_t sigoldset;
 
@@ -781,12 +787,17 @@ int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
   return 0;
 }
 
-int uv__spawn_and_init_child(const uv_process_options_t* options,
-                             int stdio_count,
-                             int (*pipes)[2],
-                             int error_fd,
-                             pid_t* pid) {
+static int uv__spawn_and_init_child(
+        uv_loop_t* loop,
+        const uv_process_options_t* options,
+        int stdio_count,
+        int (*pipes)[2],
+        pid_t* pid) {
+  int signal_pipe[2] = { -1, -1 };
+  int status;
   int err;
+  int exec_errorno;
+  ssize_t r;
 
 #if defined(__APPLE__)
   uv_once(&posix_spawn_init_once, uv__spawn_init_posix_spawn);
@@ -805,10 +816,10 @@ int uv__spawn_and_init_child(const uv_process_options_t* options,
    * the macOS extension POSIX_SPAWN_CLOEXEC_DEFAULT that makes impossible to
    * leak descriptors to the child process. */
   err = uv__spawn_and_init_child_posix_spawn(options,
-                                              stdio_count,
-                                              pipes,
-                                              pid,
-                                              &posix_spawn_fncs);
+                                             stdio_count,
+                                             pipes,
+                                             pid,
+                                             &posix_spawn_fncs);
 
   /* The posix_spawn flow will return UV_ENOSYS if any of the posix_spawn_x_np
    * non-standard functions is both _needed_ and _undefined_. In those cases,
@@ -818,7 +829,65 @@ int uv__spawn_and_init_child(const uv_process_options_t* options,
 
 #endif
 
-  err = uv__spawn_and_init_child_fork(options, stdio_count, pipes, error_fd, pid);
+  /* This pipe is used by the parent to wait until
+   * the child has called `execve()`. We need this
+   * to avoid the following race condition:
+   *
+   *    if ((pid = fork()) > 0) {
+   *      kill(pid, SIGTERM);
+   *    }
+   *    else if (pid == 0) {
+   *      execve("/bin/cat", argp, envp);
+   *    }
+   *
+   * The parent sends a signal immediately after forking.
+   * Since the child may not have called `execve()` yet,
+   * there is no telling what process receives the signal,
+   * our fork or /bin/cat.
+   *
+   * To avoid ambiguity, we create a pipe with both ends
+   * marked close-on-exec. Then, after the call to `fork()`,
+   * the parent polls the read end until it EOFs or errors with EPIPE.
+   */
+  err = uv__make_pipe(signal_pipe, 0);
+  if (err)
+    return err;
+
+  /* Acquire write lock to prevent opening new fds in worker threads */
+  uv_rwlock_wrlock(&loop->cloexec_lock);
+
+  err = uv__spawn_and_init_child_fork(options, stdio_count, pipes, signal_pipe[1], pid);
+
+  /* Release lock in parent process */
+  uv_rwlock_wrunlock(&loop->cloexec_lock);
+
+  uv__close(signal_pipe[1]);
+
+  if (err == 0) {
+    do
+      r = read(signal_pipe[0], &exec_errorno, sizeof(exec_errorno));
+    while (r == -1 && errno == EINTR);
+
+    if (r == 0)
+      ; /* okay, EOF */
+    else if (r == sizeof(exec_errorno)) {
+      do
+        err = waitpid(*pid, &status, 0); /* okay, read errorno */
+      while (err == -1 && errno == EINTR);
+      assert(err == *pid);
+      err = exec_errorno;
+    } else if (r == -1 && errno == EPIPE) {
+      /* Something unknown happened to our child before spawn */
+      do
+        err = waitpid(*pid, &status, 0); /* okay, got EPIPE */
+      while (err == -1 && errno == EINTR);
+      assert(err == *pid);
+      err = UV_EPIPE;
+    } else
+      abort();
+  }
+
+  uv__close_nocheckstdio(signal_pipe[0]);
 
   return err;
 }
@@ -830,16 +899,13 @@ int uv_spawn(uv_loop_t* loop,
   /* fork is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED. */
   return UV_ENOSYS;
 #else
-  int signal_pipe[2] = { -1, -1 };
   int pipes_storage[8][2];
   int (*pipes)[2];
   int stdio_count;
-  ssize_t r;
   pid_t pid;
   int err;
   int exec_errorno;
   int i;
-  int status;
 
   assert(options->file != NULL);
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
@@ -852,6 +918,7 @@ int uv_spawn(uv_loop_t* loop,
 
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   QUEUE_INIT(&process->queue);
+  process->status = 0;
 
   stdio_count = options->stdio_count;
   if (stdio_count < 3)
@@ -876,68 +943,12 @@ int uv_spawn(uv_loop_t* loop,
       goto error;
   }
 
-  /* This pipe is used by the parent to wait until
-   * the child has called `execve()`. We need this
-   * to avoid the following race condition:
-   *
-   *    if ((pid = fork()) > 0) {
-   *      kill(pid, SIGTERM);
-   *    }
-   *    else if (pid == 0) {
-   *      execve("/bin/cat", argp, envp);
-   *    }
-   *
-   * The parent sends a signal immediately after forking.
-   * Since the child may not have called `execve()` yet,
-   * there is no telling what process receives the signal,
-   * our fork or /bin/cat.
-   *
-   * To avoid ambiguity, we create a pipe with both ends
-   * marked close-on-exec. Then, after the call to `fork()`,
-   * the parent polls the read end until it EOFs or errors with EPIPE.
-   */
-  err = uv__make_pipe(signal_pipe, 0);
-  if (err)
-    goto error;
-
 #if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 #endif
 
-  /* Acquire write lock to prevent opening new fds in worker threads */
-  uv_rwlock_wrlock(&loop->cloexec_lock);
-
   /* Spawn the child */
-  exec_errorno = uv__spawn_and_init_child(options, stdio_count, pipes, signal_pipe[1], &pid);
-
-  /* Release lock in parent process */
-  uv_rwlock_wrunlock(&loop->cloexec_lock);
-
-  uv__close(signal_pipe[1]);
-
-  process->status = 0;
-  if (exec_errorno == 0) {
-    do
-      r = read(signal_pipe[0], &exec_errorno, sizeof(exec_errorno));
-    while (r == -1 && errno == EINTR);
-
-    if (r == 0)
-      ; /* okay, EOF */
-    else if (r == sizeof(exec_errorno)) {
-      do
-        err = waitpid(pid, &status, 0); /* okay, read errorno */
-      while (err == -1 && errno == EINTR);
-      assert(err == pid);
-    } else if (r == -1 && errno == EPIPE) {
-      do
-        err = waitpid(pid, &status, 0); /* okay, got EPIPE */
-      while (err == -1 && errno == EINTR);
-      assert(err == pid);
-    } else
-      abort();
-  }
-
-  uv__close_nocheckstdio(signal_pipe[0]);
+  exec_errorno = uv__spawn_and_init_child(loop, options, stdio_count, pipes, &pid);
 
 #if 0
   /* This runs into a nodejs issue (it expects initialized streams, even if the
@@ -947,18 +958,9 @@ int uv_spawn(uv_loop_t* loop,
       goto error;
 #endif
 
-  for (i = 0; i < options->stdio_count; i++) {
-    err = uv__process_open_stream(options->stdio + i, pipes[i]);
-    if (err == 0)
-      continue;
-
-    while (i--)
-      uv__process_close_stream(options->stdio + i);
-
-    goto error;
-  }
-
-  /* Only activate this handle if exec() happened successfully */
+  /* Activate this handle if exec() happened successfully, even if we later
+   * fail to open a stdio handle. This ensures we can eventually reap the child
+   * with waitpid. */
   if (exec_errorno == 0) {
 #if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
     struct kevent event;
@@ -971,12 +973,22 @@ int uv_spawn(uv_loop_t* loop,
     }
 #endif
 
+    process->pid = pid;
+    process->exit_cb = options->exit_cb;
     QUEUE_INSERT_TAIL(&loop->process_handles, &process->queue);
     uv__handle_start(process);
   }
 
-  process->pid = pid;
-  process->exit_cb = options->exit_cb;
+  for (i = 0; i < options->stdio_count; i++) {
+    err = uv__process_open_stream(options->stdio + i, pipes[i]);
+    if (err == 0)
+      continue;
+
+    while (i--)
+      uv__process_close_stream(options->stdio + i);
+
+    goto error;
+  }
 
   if (pipes != pipes_storage)
     uv__free(pipes);
