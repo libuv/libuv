@@ -19,12 +19,37 @@
  * IN THE SOFTWARE.
  */
 
+#define _GNU_SOURCE 1
+
 #include "uv.h"
 #include "internal.h"
+
+#include <hurd.h>
+#include <hurd/process.h>
 
 #include <inttypes.h>
 #include <stddef.h>
 #include <unistd.h>
+#include <string.h>
+
+int uv_exepath(char* buffer, size_t* size) {
+  kern_return_t err;
+  string_t buf;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
+
+  if (*size - 1 > 0) {
+    err = proc_get_exe(getproc(), getpid(), buf);
+
+    if (err)
+      return UV__ERR(err);
+  }    
+
+  *size = strncpy(buffer, buf, size) - buffer;
+
+  return 0;  
+}
 
 int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
