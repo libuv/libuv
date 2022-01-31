@@ -27,6 +27,7 @@
 #include <hurd.h>
 #include <hurd/process.h>
 #include <mach/task_info.h>
+#include <mach/vm_statistics.h>
 
 #include <inttypes.h>
 #include <stddef.h>
@@ -69,68 +70,31 @@ int uv_resident_set_memory(size_t* rss) {
   return 0;
 }
 
-static int uv__slurp(const char* filename, char* buf, size_t len) {
-  ssize_t n;
-  int fd;
-
-  assert(len > 0);
-
-  fd = uv__open_cloexec(filename, O_RDONLY);
-  if (fd < 0)
-    return fd;
-
-  do
-    n = read(fd, buf, len - 1);
-  while (n == -1 && errno == EINTR);
-
-  if (uv__close_nocheckstdio(fd))
-    abort();
-
-  if (n < 0)
-    return UV__ERR(errno);
-
-  buf[n] = '\0';
-
-  return 0;
-}
-
-static uint64_t uv__read_proc_meminfo(const char* what) {
-  uint64_t rc;
-  char* p;
-  char buf[4096];  /* Large enough to hold all of /proc/meminfo. */
-
-  if (uv__slurp("/proc/meminfo", buf, sizeof(buf)))
-    return 0;
-
-  p = strstr(buf, what);
-
-  if (p == NULL)
-    return 0;
-
-  p += strlen(what);
-
-  rc = 0;
-  sscanf(p, "%" PRIu64 " kB", &rc);
-
-  return rc * 1024;
-}
-
-
 uint64_t uv_get_free_memory(void) {
   uint64_t rc;
+  struct vm_statistics vmstats;
+  
+  err = vm_statistics(mach_task_self(), &vmstats);
 
-  rc = uv__read_proc_meminfo("MemAvailable:");
-
-  return rc;
+  if (err)
+    return (uint64_t)-1;
+  
+  return vmstats.free_count * PAGE_SIZE;
 }
 
 
 uint64_t uv_get_total_memory(void) {
   uint64_t rc;
+  host_basic_info_data_t hbi;
+  mach_msg_type_number_t cnt;
+  
+  cnt = HOST_BASIC_INFO_COUNT;
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hbi, &cnt); 
 
-  rc = uv__read_proc_meminfo("MemTotal:");
+  if (err)
+    return (uint64_t)-1;
 
-  return rc;
+  return hbi.memory_size;
 }
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
