@@ -28,6 +28,7 @@
 #include <hurd/process.h>
 #include <mach/task_info.h>
 #include <mach/vm_statistics.h>
+#include <mach/vm_param.h>
 
 #include <inttypes.h>
 #include <stddef.h>
@@ -72,7 +73,6 @@ int uv_resident_set_memory(size_t* rss) {
 
 uint64_t uv_get_free_memory(void) {
   kern_return_t err;
-  uint64_t rc;
   struct vm_statistics vmstats;
   
   err = vm_statistics(mach_task_self(), &vmstats);
@@ -86,7 +86,6 @@ uint64_t uv_get_free_memory(void) {
 
 uint64_t uv_get_total_memory(void) {
   kern_return_t err;
-  uint64_t rc;
   host_basic_info_data_t hbi;
   mach_msg_type_number_t cnt;
   
@@ -109,7 +108,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hbi, &cnt); 
 
   if (err) {
-    err = UV_ERR(err);
+    err = UV__ERR(err);
     goto abort;
   }
 
