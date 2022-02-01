@@ -49,7 +49,9 @@ int uv_exepath(char* buffer, size_t* size) {
       return UV__ERR(err);
   }    
 
-  *size = strncpy(buffer, buf, *size) - buffer;
+  strncpy(buffer, buf, *size);
+
+  *size = strlen(buffer);
 
   return 0;  
 }
