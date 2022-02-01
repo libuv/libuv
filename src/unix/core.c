@@ -1036,6 +1036,32 @@ int uv__open_cloexec(const char* path, int flags) {
 }
 
 
+int uv__slurp(const char* filename, char* buf, size_t len) {
+  ssize_t n;
+  int fd;
+
+  assert(len > 0);
+
+  fd = uv__open_cloexec(filename, O_RDONLY);
+  if (fd < 0)
+    return fd;
+
+  do
+    n = read(fd, buf, len - 1);
+  while (n == -1 && errno == EINTR);
+
+  if (uv__close_nocheckstdio(fd))
+    abort();
+
+  if (n < 0)
+    return UV__ERR(errno);
+
+  buf[n] = '\0';
+
+  return 0;
+}
+
+
 int uv__dup2_cloexec(int oldfd, int newfd) {
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__linux__)
   int r;
@@ -1621,3 +1647,4 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   /* Out of tokens (path entries), and no match found */
   return UV_EINVAL;
 }
+

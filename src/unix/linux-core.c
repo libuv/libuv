@@ -211,31 +211,6 @@ err:
   return UV_EINVAL;
 }
 
-static int uv__slurp(const char* filename, char* buf, size_t len) {
-  ssize_t n;
-  int fd;
-
-  assert(len > 0);
-
-  fd = uv__open_cloexec(filename, O_RDONLY);
-  if (fd < 0)
-    return fd;
-
-  do
-    n = read(fd, buf, len - 1);
-  while (n == -1 && errno == EINTR);
-
-  if (uv__close_nocheckstdio(fd))
-    abort();
-
-  if (n < 0)
-    return UV__ERR(errno);
-
-  buf[n] = '\0';
-
-  return 0;
-}
-
 int uv_uptime(double* uptime) {
   static volatile int no_clock_boottime;
   char buf[128];
