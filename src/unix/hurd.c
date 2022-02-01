@@ -128,3 +128,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   *count = 0;
   return err;
 }
+
+uint64_t uv_get_constrained_memory(void) {
+  return 0;  /* Memory constraints are unknown. */
+}
