@@ -38,6 +38,7 @@
 int uv_exepath(char* buffer, size_t* size) {
   kern_return_t err;
   string_t buf;
+  size_t tocopy;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
@@ -47,13 +48,17 @@ int uv_exepath(char* buffer, size_t* size) {
 
     if (err)
       return UV__ERR(err);
-  }    
+  }
 
+  tocopy = strlen(buf);
   strncpy(buffer, buf, *size);
+
+  if (tocopy >= *size)
+    buffer[*size - 1] = 0;
 
   *size = strlen(buffer);
 
-  return 0;  
+  return 0;
 }
 
 int uv_resident_set_memory(size_t* rss) {
