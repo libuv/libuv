@@ -285,7 +285,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     for (i = 0; i < nfds; i++) {
       ev = events + i;
       if (ev->filter == EVFILT_PROC) {
-        uv__wait_children(loop);
+        loop->flags |= UV_LOOP_REAP_CHILDREN;
         nevents++;
         continue;
       }
@@ -380,6 +380,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       nevents++;
+    }
+
+    if (loop->flags & UV_LOOP_REAP_CHILDREN) {
+      loop->flags &= ~UV_LOOP_REAP_CHILDREN;
+      uv__wait_children(loop);
     }
 
     if (reset_timeout != 0) {
