@@ -100,11 +100,11 @@ struct thread_ctx {
    sequentially to processor groups as the processor groups fill. So there wil be no effect until
    the 64th thread is created on a system witth 128 HW threads (such as an AMD 64-core threadwripper). */
 
-#define MAX_PROCESSOR_GROUPS 8
+#define MAX_PROCESSOR_GROUPS 16    /* AFAIK there is no hardware with more than 8 */
 static int uv_num_win32_processor_groups = 1;
 static int uv_num_threads_per_processor_group[MAX_PROCESSOR_GROUPS];
 static uv_once_t uv_query_processor_groups_guard = UV_ONCE_INIT;
-static int uv_total_num_hwthreads = 0;						/* not used unless uv_num_win32_processor_groups > 1 */
+static int uv_total_num_hwthreads = 0;    /* not used unless uv_num_win32_processor_groups > 1 */
 static volatile LONG uv_win32_thread_creation_count = 0;
 static HMODULE uv_win32_kernel32_dll_handle;
 
@@ -132,27 +132,27 @@ static UINT __stdcall uv__thread_start(void* arg) {
   uv_key_set(&uv__current_thread_key, ctx.self);
 
   /* now, if there is more than one processor group, figure out which to assign it to. Note that this code will not execute on any system on which libuv does not 
-	 suffer from the win32 threadgroup problem */
+   suffer from the win32 threadgroup problem */
   if ( uv_num_win32_processor_groups > 1 )
   {
-	  LONG our_thread_index = InterlockedIncrement( &uv_win32_thread_creation_count );
-	  our_thread_index %= uv_total_num_hwthreads;			/* wrap around when we create more threads than their are HW threads */
-	  WORD processor_group_to_use = 0;
-	  while( our_thread_index > 0 )
-	  {
-		  our_thread_index -= uv_num_threads_per_processor_group[processor_group_to_use];
-		  if ( our_thread_index > 0 )
-		  {
-			  processor_group_to_use++;
-		  }
-	  }
-	  HANDLE our_thread_handle = GetCurrentThread();
-	  GROUP_AFFINITY old_affinity;
-	  if ( uv_win32_GetThreadGroupAffinity( our_thread_handle, &old_affinity ) )
-	  {
-		  old_affinity.Group = processor_group_to_use;
-		  uv_win32_SetThreadGroupAffinity( our_thread_handle, &old_affinity, NULL );
-	  }
+    LONG our_thread_index = InterlockedIncrement( &uv_win32_thread_creation_count );
+    our_thread_index %= uv_total_num_hwthreads;      /* wrap around when we create more threads than their are HW threads */
+    WORD processor_group_to_use = 0;
+    while( our_thread_index > 0 )
+    {
+      our_thread_index -= uv_num_threads_per_processor_group[processor_group_to_use];
+      if ( our_thread_index > 0 )
+      {
+        processor_group_to_use++;
+      }
+    }
+    HANDLE our_thread_handle = GetCurrentThread();
+    GROUP_AFFINITY old_affinity;
+    if ( uv_win32_GetThreadGroupAffinity( our_thread_handle, &old_affinity ) )
+    {
+      old_affinity.Group = processor_group_to_use;
+      uv_win32_SetThreadGroupAffinity( our_thread_handle, &old_affinity, NULL );
+    }
   }
   
   ctx.entry(ctx.arg);
@@ -162,42 +162,62 @@ static UINT __stdcall uv__thread_start(void* arg) {
 
 
 static void uv_init_processor_group_info( void ) {
-	/* Because not all  versions of win32 include the processor group entry points in kernel32, we will look for them in the dll instead of callig directly */
-	uv_win32_kernel32_dll_handle = LoadLibraryA( "kernel32" );
-	if ( ! uv_win32_kernel32_dll_handle )
-	{
-		/* failed to open kernel32? how are we even running? */
-		return;
-	}
+  /* Because not all  versions of win32 include the processor group entry points in kernel32, we will look for them in the dll instead of callig directly */
+  uv_win32_kernel32_dll_handle = LoadLibraryA( "kernel32" );
+  if ( ! uv_win32_kernel32_dll_handle )
+  {
+    /* failed to open kernel32? how are we even running? */
+    return;
+  }
 
-	/* find the functions in the dll. if not found, this is a very old windows machine that doesn't support these kinds of cpus */
-	uv_win32_GetActiveProcessorGroupCount = ( fnGetActiveProcessorGroupCount )
-		GetProcAddress( uv_win32_kernel32_dll_handle, "GetActiveProcessorGroupCount" );
-	uv_win32_SetThreadGroupAffinity = ( fnSetThreadGroupAffinity )
-		GetProcAddress( uv_win32_kernel32_dll_handle, "SetThreadGroupAffinity" );
-	uv_win32_GetMaximumProcessorCount = ( fnGetMaximumProcessorCount )
-		GetProcAddress( uv_win32_kernel32_dll_handle, "GetMaximumProcessorCount" );
-	uv_win32_GetThreadGroupAffinity = ( fnGetThreadGroupAffinity )
-		GetProcAddress( uv_win32_kernel32_dll_handle, "GetThreadGroupAffinity" );
-		
-	if ( uv_win32_SetThreadGroupAffinity && uv_win32_GetActiveProcessorGroupCount &&
-		 uv_win32_GetMaximumProcessorCount && uv_win32_GetThreadGroupAffinity )
-	{
-		uv_num_win32_processor_groups = uv_win32_GetActiveProcessorGroupCount();
-		if ( uv_num_win32_processor_groups > MAX_PROCESSOR_GROUPS )
-		{
-			uv_num_win32_processor_groups = MAX_PROCESSOR_GROUPS;
-		}
-		if ( uv_num_win32_processor_groups > 1 )
-		{
-			WORD grp;
-			for( grp = 0; grp < uv_num_win32_processor_groups; grp++ )
-			{
-				uv_num_threads_per_processor_group[grp] = uv_win32_GetMaximumProcessorCount( grp );
-				uv_total_num_hwthreads += uv_num_threads_per_processor_group[grp];
-			}
-		}
-	}
+  /* find the functions in the dll. if not found, this is a very old windows machine that doesn't support these kinds of cpus */
+  uv_win32_GetActiveProcessorGroupCount = ( fnGetActiveProcessorGroupCount )
+    GetProcAddress( uv_win32_kernel32_dll_handle, "GetActiveProcessorGroupCount" );
+  uv_win32_SetThreadGroupAffinity = ( fnSetThreadGroupAffinity )
+    GetProcAddress( uv_win32_kernel32_dll_handle, "SetThreadGroupAffinity" );
+  uv_win32_GetMaximumProcessorCount = ( fnGetMaximumProcessorCount )
+    GetProcAddress( uv_win32_kernel32_dll_handle, "GetMaximumProcessorCount" );
+  uv_win32_GetThreadGroupAffinity = ( fnGetThreadGroupAffinity )
+    GetProcAddress( uv_win32_kernel32_dll_handle, "GetThreadGroupAffinity" );
+    
+  if ( uv_win32_SetThreadGroupAffinity && uv_win32_GetActiveProcessorGroupCount &&
+     uv_win32_GetMaximumProcessorCount && uv_win32_GetThreadGroupAffinity )
+  {
+    uv_num_win32_processor_groups = uv_win32_GetActiveProcessorGroupCount();
+    if ( uv_num_win32_processor_groups > MAX_PROCESSOR_GROUPS )
+    {
+      uv_num_win32_processor_groups = MAX_PROCESSOR_GROUPS;
+    }
+    if ( uv_num_win32_processor_groups > 1 )
+    {
+      WORD grp;
+      for( grp = 0; grp < uv_num_win32_processor_groups; grp++ )
+      {
+        uv_num_threads_per_processor_group[grp] = uv_win32_GetMaximumProcessorCount( grp );
+        uv_total_num_hwthreads += uv_num_threads_per_processor_group[grp];
+       }
+      HANDLE our_thread_handle = GetCurrentThread();
+      GROUP_AFFINITY old_affinity;
+      if ( uv_win32_GetThreadGroupAffinity( our_thread_handle, &old_affinity ) )
+      {
+        /* See what processor group the main thread is part of, and start our thread counter so that the first N threads are assigned to that one. Allegedly,
+          windows might assign a group other than 0 to a starting process but I never saw it happen */
+        int main_thread_group = old_affinity.Group;
+        int starting_thread_index = 0;
+        int grp;
+
+        if ( main_thread_group > uv_num_win32_processor_groups )
+        {
+          main_thread_group = 0;        /* shouldn't happen but defend against out of range proc group */
+        }
+        for( grp = 0; grp < main_thread_group; grp++ )
+        {
+          starting_thread_index+= uv_num_threads_per_processor_group[grp];
+        }
+        uv_win32_thread_creation_count = starting_thread_index;
+      }
+    }
+  }
 }
 
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
