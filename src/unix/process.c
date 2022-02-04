@@ -49,10 +49,20 @@ extern char **environ;
 # include "zos-base.h"
 #endif
 
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <sys/event.h>
+#endif
 
+
+#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
 static void uv__chld(uv_signal_t* handle, int signum) {
+  assert(signum == SIGCHLD);
+  uv__wait_children(handle->loop);
+}
+#endif
+
+void uv__wait_children(uv_loop_t* loop) {
   uv_process_t* process;
-  uv_loop_t* loop;
   int exit_status;
   int term_signal;
   int status;
@@ -61,10 +71,7 @@ static void uv__chld(uv_signal_t* handle, int signum) {
   QUEUE* q;
   QUEUE* h;
 
-  assert(signum == SIGCHLD);
-
   QUEUE_INIT(&pending);
-  loop = handle->loop;
 
   h = &loop->process_handles;
   q = QUEUE_HEAD(h);
@@ -420,7 +427,9 @@ int uv_spawn(uv_loop_t* loop,
   if (err)
     goto error;
 
+#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
+#endif
 
   /* Acquire write lock to prevent opening new fds in worker threads */
   uv_rwlock_wrlock(&loop->cloexec_lock);
@@ -495,6 +504,17 @@ int uv_spawn(uv_loop_t* loop,
 
   /* Only activate this handle if exec() happened successfully */
   if (exec_errorno == 0) {
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+    struct kevent event;
+    EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
+    if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL)) {
+      if (errno != ESRCH)
+        abort();
+      /* Process already exited. Call waitpid on the next loop iteration. */
+      loop->flags |= UV_LOOP_REAP_CHILDREN;
+    }
+#endif
+
     QUEUE_INSERT_TAIL(&loop->process_handles, &process->queue);
     uv__handle_start(process);
   }

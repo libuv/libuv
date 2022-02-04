@@ -29,9 +29,9 @@
 #define CHECK_HANDLE(handle) \
   ASSERT((uv_udp_t*)(handle) == &recver || (uv_udp_t*)(handle) == &sender)
 
-#define BUFFER_MULTIPLIER 4
+#define BUFFER_MULTIPLIER 20
 #define MAX_DGRAM_SIZE (64 * 1024)
-#define NUM_SENDS 8
+#define NUM_SENDS 40
 #define EXPECTED_MMSG_ALLOCS (NUM_SENDS / BUFFER_MULTIPLIER)
 
 static uv_udp_t recver;

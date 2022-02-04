@@ -145,7 +145,8 @@ typedef struct uv__stream_queued_fds_s uv__stream_queued_fds_t;
 
 /* loop flags */
 enum {
-  UV_LOOP_BLOCK_SIGPROF = 1
+  UV_LOOP_BLOCK_SIGPROF = 0x1,
+  UV_LOOP_REAP_CHILDREN = 0x2
 };
 
 /* flags of excluding ifaddr */
@@ -282,6 +283,7 @@ uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
 int uv__search_path(const char* prog, char* buf, size_t* buflen);
+void uv__wait_children(uv_loop_t* loop);
 
 /* random */
 int uv__random_devurandom(void* buf, size_t buflen);

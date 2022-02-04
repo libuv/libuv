@@ -45,6 +45,10 @@
 
 #define HAVE_IFADDRS_H 1
 
+# if defined(__ANDROID_API__) && __ANDROID_API__ < 24
+# undef HAVE_IFADDRS_H
+#endif
+
 #ifdef __UCLIBC__
 # if __UCLIBC_MAJOR__ < 0 && __UCLIBC_MINOR__ < 9 && __UCLIBC_SUBLEVEL__ < 32
 #  undef HAVE_IFADDRS_H
@@ -52,11 +56,7 @@
 #endif
 
 #ifdef HAVE_IFADDRS_H
-# if defined(__ANDROID__)
-#  include "uv/android-ifaddrs.h"
-# else
-#  include <ifaddrs.h>
-# endif
+# include <ifaddrs.h>
 # include <sys/socket.h>
 # include <net/ethernet.h>
 # include <netpacket/packet.h>
@@ -788,7 +788,7 @@ uint64_t uv_get_free_memory(void) {
   struct sysinfo info;
   uint64_t rc;
 
-  rc = uv__read_proc_meminfo("MemFree:");
+  rc = uv__read_proc_meminfo("MemAvailable:");
 
   if (rc != 0)
     return rc;
