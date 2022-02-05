@@ -1121,6 +1121,46 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
 # pragma clang diagnostic ignored "-Wvla-extension"
 #endif
 
+static void uv__huperr(uv_stream_t* stream) {
+  /* For named pipes there's no equivalent error code, repurpose EPIPE */
+  int err_code = UV_EPIPE;
+  uv_buf_t buf = { NULL, 0 };
+
+  assert(uv__stream_fd(stream) >= 0);
+
+  /* If we're trying to write, that will pick up an error after this.
+   * That's a more natural place, so let it happen there. */
+  if (uv__io_active(&stream->io_watcher, POLLOUT)) {
+    uv__io_stop(stream->loop, &stream->io_watcher, POLLERR);
+    return;
+  }
+
+  if (stream->type == UV_TCP) {
+    socklen_t len = sizeof(int);
+    int gso_err;
+    do {
+      gso_err = getsockopt(uv__stream_fd(stream),
+                           SOL_SOCKET,
+                           SO_ERROR,
+                           &err_code,
+                           &len);
+    } while (gso_err < 0 && errno == EINTR);
+    /* What do we do now? Just assume EPIPE? */
+    if (gso_err != 0)
+      err_code = UV_EPIPE;
+    else
+      err_code = UV__ERR(err_code);
+  }
+
+  /* Even if getsockopt said no error/HUP, epoll said there was. */
+  stream->read_cb(stream, err_code, &buf);
+  /* Leave it up to the caller to properly close() and clean up the rest. */
+  uv__io_stop(stream->loop, &stream->io_watcher, POLLERR);
+  /* We can't read, we can't write either. */
+  uv__handle_stop(stream);
+  uv__stream_osx_interrupt_select(stream);
+}
+
 static void uv__read(uv_stream_t* stream) {
   uv_buf_t buf;
   ssize_t nread;
@@ -1310,7 +1350,17 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(uv__stream_fd(stream) >= 0);
 
+  /* We got an error or HUP and we've finished reading everything. */
+  if ((events & (POLLERR|POLLHUP)) &&
+      (stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) &&
+      !(stream->flags & UV_HANDLE_READING))
+    uv__huperr(stream);
+
+  if (uv__stream_fd(stream) == -1)
+    return;  /* read_cb closed stream from hup/err handler. */
+
   /* Ignore POLLHUP here. Even if it's set, there may still be data to read. */
+  /* We also just dealt with the POLLERR | POLLHUP after EOF case above. */
   if (events & (POLLIN | POLLERR | POLLHUP))
     uv__read(stream);
 
@@ -1568,18 +1618,26 @@ int uv__read_start(uv_stream_t* stream,
   return 0;
 }
 
-
 int uv_read_stop(uv_stream_t* stream) {
   if (!(stream->flags & UV_HANDLE_READING))
     return 0;
 
   stream->flags &= ~UV_HANDLE_READING;
-  uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
+  uv__io_stop(stream->loop, &stream->io_watcher, POLLIN | POLLERR);
   uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
 
   stream->read_cb = NULL;
   stream->alloc_cb = NULL;
+  return 0;
+}
+
+
+int uv_read_err_enable(uv_stream_t* stream) {
+  assert(uv__stream_fd(stream) >= 0);
+  assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE);
+  assert(stream->flags & UV_HANDLE_READING);
+  uv__io_start(stream->loop, &stream->io_watcher, POLLERR);
   return 0;
 }
 

@@ -516,6 +516,8 @@ UV_EXTERN int uv_read_start(uv_stream_t*,
                             uv_read_cb read_cb);
 UV_EXTERN int uv_read_stop(uv_stream_t*);
 
+UV_EXTERN int uv_read_err_enable(uv_stream_t*);
+
 UV_EXTERN int uv_write(uv_write_t* req,
                        uv_stream_t* handle,
                        const uv_buf_t bufs[],

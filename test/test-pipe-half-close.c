@@ -172,6 +172,7 @@ static void pipe_listen_connection_cb(uv_stream_t* handle, int status) {
   r = uv_accept(handle, (uv_stream_t*)&pipe_server);
   ASSERT(r == 0);
   uv_read_start((uv_stream_t*)&pipe_server, malloc_cb, pipe_server_read_cb);
+  uv_read_err_enable((uv_stream_t*)&pipe_server);
 }
 
 static void pipe_client_read_cb(uv_stream_t* stream,
@@ -220,6 +221,7 @@ TEST_IMPL(pipe_half_close) {
                  TEST_PIPENAME,
                  pipe_client_connect_cb);
   uv_read_start((uv_stream_t*)&pipe_client, malloc_cb, pipe_client_read_cb);
+  uv_read_err_enable((uv_stream_t*)&pipe_client);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
 

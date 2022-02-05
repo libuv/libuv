@@ -889,7 +889,8 @@ void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
 
 
 void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
+  assert(0 == (events & 
+               ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI | POLLERR)));
   assert(0 != events);
   assert(w->fd >= 0);
   assert(w->fd < INT_MAX);
@@ -917,7 +918,8 @@ void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
+  assert(0 == (events & 
+               ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI | POLLERR)));
   assert(0 != events);
 
   if (w->fd == -1)
@@ -948,7 +950,8 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
-  uv__io_stop(loop, w, POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI);
+  uv__io_stop(loop, w, 
+              POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI | POLLERR);
   QUEUE_REMOVE(&w->pending_queue);
 
   /* Remove stale events for this file descriptor */

@@ -171,6 +171,7 @@ static void tcp_listen_connection_cb(uv_stream_t* handle, int status) {
   r = uv_accept(handle, (uv_stream_t*)&tcp_server);
   ASSERT(r == 0);
   uv_read_start((uv_stream_t*)&tcp_server, malloc_cb, tcp_server_read_cb);
+  uv_read_err_enable((uv_stream_t*)&tcp_server);
 }
 
 static void tcp_client_read_cb(uv_stream_t* stream,
@@ -223,6 +224,7 @@ TEST_IMPL(tcp_half_close) {
                  (const struct sockaddr*) &addr,
                  tcp_client_connect_cb);
   uv_read_start((uv_stream_t*)&tcp_client, malloc_cb, tcp_client_read_cb);
+  uv_read_err_enable((uv_stream_t*)&tcp_client);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
 
