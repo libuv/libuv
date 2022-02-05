@@ -219,6 +219,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-pending-instances.c \
                          test/test-pipe-sendmsg.c \
                          test/test-pipe-server-close.c \
+                         test/test-pipe-half-close.c \
                          test/test-pipe-close-stdout-read-stdin.c \
                          test/test-pipe-set-non-blocking.c \
                          test/test-pipe-set-fchmod.c \
@@ -276,6 +277,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-try-write-error.c \
                          test/test-tcp-write-queue-order.c \
+                         test/test-tcp-half-close.c \
                          test/test-test-macros.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \

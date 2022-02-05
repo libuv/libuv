@@ -515,6 +515,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-pipe-pending-instances.c
        test/test-pipe-sendmsg.c
        test/test-pipe-server-close.c
+       test/test-pipe-half-close.c
        test/test-pipe-set-fchmod.c
        test/test-pipe-set-non-blocking.c
        test/test-platform-output.c
@@ -571,6 +572,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
+       test/test-tcp-half-close.c
        test/test-test-macros.c
        test/test-thread-equal.c
        test/test-thread.c
