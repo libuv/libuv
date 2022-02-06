@@ -40,12 +40,6 @@
 # define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
 #endif
 
-union uv__sockaddr {
-  struct sockaddr_in6 in6;
-  struct sockaddr_in in;
-  struct sockaddr addr;
-};
-
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_udp_t* handle);
