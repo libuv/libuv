@@ -460,7 +460,6 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/no-proctitle.c \
                     src/unix/posix-hrtime.c \
                     src/unix/posix-poll.c \
-                    src/unix/procfs-sysload.c \
                     src/unix/hurd.c
 endif
 
@@ -472,7 +471,6 @@ libuv_la_SOURCES += src/unix/linux-core.c \
                     src/unix/linux-syscalls.c \
                     src/unix/linux-syscalls.h \
                     src/unix/procfs-exepath.c \
-                    src/unix/procfs-sysload.c \
                     src/unix/proctitle.c \
                     src/unix/random-getrandom.c \
                     src/unix/random-sysctl-linux.c \

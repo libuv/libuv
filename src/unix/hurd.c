@@ -105,6 +105,31 @@ uint64_t uv_get_total_memory(void) {
   return hbi.memory_size;
 }
 
+
+int uv_uptime(double* uptime) {
+  char buf[128];
+
+  /* Try /proc/uptime first */
+  if (0 == uv__slurp("/proc/uptime", buf, sizeof(buf)))
+    if (1 == sscanf(buf, "%lf", uptime))
+      return 0;
+
+  /* Reimplement here code from procfs to calculate uptime if not mounted? */
+
+  return UV__ERR(EIO);
+}
+
+void uv_loadavg(double avg[3]) {
+  char buf[128];  /* Large enough to hold all of /proc/loadavg. */
+
+  if (0 == uv__slurp("/proc/loadavg", buf, sizeof(buf)))
+    if (3 == sscanf(buf, "%lf %lf %lf", &avg[0], &avg[1], &avg[2]))
+      return;
+
+  /* Reimplement here code from procfs to calculate loadavg if not mounted? */
+}
+
+
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   kern_return_t err;
   host_basic_info_data_t hbi;

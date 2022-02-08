@@ -211,6 +211,38 @@ err:
   return UV_EINVAL;
 }
 
+int uv_uptime(double* uptime) {
+  static volatile int no_clock_boottime;
+  char buf[128];
+  struct timespec now;
+  int r;
+
+  /* Try /proc/uptime first, then fallback to clock_gettime(). */
+
+  if (0 == uv__slurp("/proc/uptime", buf, sizeof(buf)))
+    if (1 == sscanf(buf, "%lf", uptime))
+      return 0;
+
+  /* Try CLOCK_BOOTTIME first, fall back to CLOCK_MONOTONIC if not available
+   * (pre-2.6.39 kernels). CLOCK_MONOTONIC doesn't increase when the system
+   * is suspended.
+   */
+  if (no_clock_boottime) {
+    retry_clock_gettime: r = clock_gettime(CLOCK_MONOTONIC, &now);
+  }
+  else if ((r = clock_gettime(CLOCK_BOOTTIME, &now)) && errno == EINVAL) {
+    no_clock_boottime = 1;
+    goto retry_clock_gettime;
+  }
+
+  if (r)
+    return UV__ERR(errno);
+
+  *uptime = now.tv_sec;
+  return 0;
+}
+
+
 static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
   unsigned int num;
   char buf[1024];
@@ -780,4 +812,21 @@ uint64_t uv_get_constrained_memory(void) {
    * limit is unknown.
    */
   return uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
+}
+
+
+void uv_loadavg(double avg[3]) {
+  struct sysinfo info;
+  char buf[128];  /* Large enough to hold all of /proc/loadavg. */
+
+  if (0 == uv__slurp("/proc/loadavg", buf, sizeof(buf)))
+    if (3 == sscanf(buf, "%lf %lf %lf", &avg[0], &avg[1], &avg[2]))
+      return;
+
+  if (sysinfo(&info) < 0)
+    return;
+
+  avg[0] = (double) info.loads[0] / 65536.0;
+  avg[1] = (double) info.loads[1] / 65536.0;
+  avg[2] = (double) info.loads[2] / 65536.0;
 }
