@@ -312,7 +312,7 @@ API
 
 .. c:function:: int uv_uptime(double* uptime)
 
-    Gets the current system uptime.
+    Gets the current system uptime. Depending on the system full or fractional seconds are returned.
 
 .. c:function:: int uv_getrusage(uv_rusage_t* rusage)
 
