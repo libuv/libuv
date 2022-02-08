@@ -85,7 +85,7 @@ uint64_t uv_get_free_memory(void) {
   err = vm_statistics(mach_task_self(), &vmstats);
 
   if (err)
-    return (uint64_t)-1;
+    return (uint64_t)0;
   
   return vmstats.free_count * PAGE_SIZE;
 }
@@ -100,7 +100,7 @@ uint64_t uv_get_total_memory(void) {
   err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hbi, &cnt); 
 
   if (err)
-    return (uint64_t)-1;
+    return (uint64_t)0;
 
   return hbi.memory_size;
 }
