@@ -56,10 +56,7 @@ int uv_exepath(char* buffer, size_t* size) {
 
   copied = uv__strscpy(buffer, exepath, *size);
 
-  /* do not return error on failure, since it is a current limit
-   * of the Hurd api being unable to return strings longer than
-   * 1024 elements, as such increasing the size of buffer wouldn't
-   * solve the problem for the caller */
+  /* do not return error on UV_E2BIG failure */
   *size = copied < 0 ? strlen(buffer) : (size_t)copied;
 
   return 0;
