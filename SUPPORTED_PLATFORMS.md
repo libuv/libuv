@@ -3,7 +3,7 @@
 |  System | Support type | Supported versions | Notes |
 |---|---|---|---|
 | GNU/Linux | Tier 1 | Linux >= 2.6.32 with glibc >= 2.12 | |
-| macOS | Tier 1 | macOS >= 10.7 | |
+| macOS | Tier 1 | macOS >= 10.15 | Current and previous macOS release |
 | Windows | Tier 1 | >= Windows 8 | VS 2015 and later are supported |
 | FreeBSD | Tier 1 | >= 10 | |
 | AIX | Tier 2 | >= 6 | Maintainers: @libuv/aix |
