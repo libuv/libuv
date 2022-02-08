@@ -34,29 +34,33 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 
 int uv_exepath(char* buffer, size_t* size) {
   kern_return_t err;
-  string_t buf;
-  size_t tocopy;
+  /* XXX in current Hurd, strings are char arrays of 1024 elements */
+  string_t exepath;
+  ssize_t copied;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
   if (*size - 1 > 0) {
-    err = proc_get_exe(getproc(), getpid(), buf);
+    /* XXX limited length of buffer in current Hurd, this API will probably
+     * evolve in the future */
+    err = proc_get_exe(getproc(), getpid(), exepath);
 
     if (err)
       return UV__ERR(err);
   }
 
-  tocopy = strlen(buf);
-  strncpy(buffer, buf, *size);
+  copied = uv__strscpy(buffer, exepath, *size);
 
-  if (tocopy >= *size)
-    buffer[*size - 1] = 0;
-
-  *size = strlen(buffer);
+  /* do not return error on failure, since it is a current limit
+   * of the Hurd api being unable to return strings longer than
+   * 1024 elements, as such increasing the size of buffer wouldn't
+   * solve the problem for the caller */
+  *size = copied < 0 ? strlen(buffer) : (size_t)copied;
 
   return 0;
 }
