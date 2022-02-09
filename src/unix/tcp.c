@@ -328,7 +328,7 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
 }
 
 
-int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
+int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   static int single_accept_cached = -1;
   unsigned long flags;
   int single_accept;

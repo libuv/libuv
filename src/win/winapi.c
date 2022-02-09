@@ -48,7 +48,7 @@ sSetWinEventHook pSetWinEventHook;
 /* ws2_32.dll function pointer */
 uv_sGetHostNameW pGetHostNameW;
 
-void uv_winapi_init(void) {
+void uv__winapi_init(void) {
   HMODULE ntdll_module;
   HMODULE powrprof_module;
   HMODULE user32_module;

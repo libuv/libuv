@@ -84,9 +84,11 @@ static int uv__loops_capacity;
 #define UV__LOOPS_CHUNK_SIZE 8
 static uv_mutex_t uv__loops_lock;
 
+
 static void uv__loops_init(void) {
   uv_mutex_init(&uv__loops_lock);
 }
+
 
 static int uv__loops_add(uv_loop_t* loop) {
   uv_loop_t** new_loops;
@@ -114,6 +116,7 @@ failed_loops_realloc:
   uv_mutex_unlock(&uv__loops_lock);
   return ERROR_OUTOFMEMORY;
 }
+
 
 static void uv__loops_remove(uv_loop_t* loop) {
   int loop_index;
@@ -173,7 +176,7 @@ void uv__wake_all_loops(void) {
   uv_mutex_unlock(&uv__loops_lock);
 }
 
-static void uv_init(void) {
+static void uv__init(void) {
   /* Tell Windows that we will handle critical errors. */
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
                SEM_NOOPENFILEERRORBOX);
@@ -199,19 +202,19 @@ static void uv_init(void) {
   /* Fetch winapi function pointers. This must be done first because other
    * initialization code might need these function pointers to be loaded.
    */
-  uv_winapi_init();
+  uv__winapi_init();
 
   /* Initialize winsock */
-  uv_winsock_init();
+  uv__winsock_init();
 
   /* Initialize FS */
-  uv_fs_init();
+  uv__fs_init();
 
   /* Initialize signal stuff */
-  uv_signals_init();
+  uv__signals_init();
 
   /* Initialize console */
-  uv_console_init();
+  uv__console_init();
 
   /* Initialize utilities */
   uv__util_init();
@@ -327,7 +330,7 @@ void uv_update_time(uv_loop_t* loop) {
 
 
 void uv__once_init(void) {
-  uv_once(&uv_init_guard_, uv_init);
+  uv_once(&uv_init_guard_, uv__init);
 }
 
 
@@ -467,8 +470,8 @@ static void uv__poll_wine(uv_loop_t* loop, DWORD timeout) {
 
     if (overlapped) {
       /* Package was dequeued */
-      req = uv_overlapped_to_req(overlapped);
-      uv_insert_pending_req(loop, req);
+      req = uv__overlapped_to_req(overlapped);
+      uv__insert_pending_req(loop, req);
 
       /* Some time might have passed waiting for I/O,
        * so update the loop time here.
@@ -552,8 +555,8 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
          * meant only to wake us up.
          */
         if (overlappeds[i].lpOverlapped) {
-          req = uv_overlapped_to_req(overlappeds[i].lpOverlapped);
-          uv_insert_pending_req(loop, req);
+          req = uv__overlapped_to_req(overlappeds[i].lpOverlapped);
+          uv__insert_pending_req(loop, req);
         }
       }
 
@@ -599,9 +602,9 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_update_time(loop);
     uv__run_timers(loop);
 
-    ran_pending = uv_process_reqs(loop);
-    uv_idle_invoke(loop);
-    uv_prepare_invoke(loop);
+    ran_pending = uv__process_reqs(loop);
+    uv__idle_invoke(loop);
+    uv__prepare_invoke(loop);
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
@@ -619,8 +622,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
      */
     uv__metrics_update_idle_time(loop);
 
-    uv_check_invoke(loop);
-    uv_process_endgames(loop);
+    uv__check_invoke(loop);
+    uv__process_endgames(loop);
 
     if (mode == UV_RUN_ONCE) {
       /* UV_RUN_ONCE implies forward progress: at least one callback must have
