@@ -132,13 +132,13 @@ void uv_winapi_init(void) {
       GetProcAddress(powrprof_module, "PowerRegisterSuspendResumeNotification");
   }
 
-  user32_module = LoadLibraryExA("user32.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  user32_module = GetModuleHandleA("user32.dll");
   if (user32_module != NULL) {
     pSetWinEventHook = (sSetWinEventHook)
       GetProcAddress(user32_module, "SetWinEventHook");
   }
 
-  ws2_32_module = LoadLibraryExA("ws2_32.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+  ws2_32_module = GetModuleHandleA("ws2_32.dll");
   if (ws2_32_module != NULL) {
     pGetHostNameW = (uv_sGetHostNameW) GetProcAddress(
         ws2_32_module,
