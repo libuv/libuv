@@ -13,7 +13,7 @@ Simple filesystem read/write is achieved using the ``uv_fs_*`` functions and the
     watchers registered with the event loop when application interaction is
     required.
 
-.. _thread pool: http://docs.libuv.org/en/v1.x/threadpool.html#thread-pool-work-scheduling
+.. _thread pool: https://docs.libuv.org/en/v1.x/threadpool.html#thread-pool-work-scheduling
 
 All filesystem functions have two forms - *synchronous* and *asynchronous*.
 
@@ -54,6 +54,7 @@ a callback for when the file is opened:
 
 .. rubric:: uvcat/main.c - opening a file
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
     :lines: 41-53
     :emphasize-lines: 4, 6-7
@@ -63,8 +64,9 @@ The ``result`` field of a ``uv_fs_t`` is the file descriptor in case of the
 
 .. rubric:: uvcat/main.c - read callback
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
-    :lines: 26-40
+    :lines: 26-39
     :emphasize-lines: 2,8,12
 
 In the case of a read call, you should pass an *initialized* buffer which will
@@ -87,8 +89,9 @@ callbacks.
 
 .. rubric:: uvcat/main.c - write callback
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
-    :lines: 16-24
+    :lines: 17-24
     :emphasize-lines: 6
 
 .. warning::
@@ -100,6 +103,7 @@ We set the dominos rolling in ``main()``:
 
 .. rubric:: uvcat/main.c
 .. literalinclude:: ../../code/uvcat/main.c
+    :language: c
     :linenos:
     :lines: 55-
     :emphasize-lines: 2
@@ -128,6 +132,7 @@ same patterns as the read/write/open calls, returning the result in the
     int uv_fs_copyfile(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, int flags, uv_fs_cb cb);
     int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb);
     int uv_fs_mkdtemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb);
+    int uv_fs_mkstemp(uv_loop_t* loop, uv_fs_t* req, const char* tpl, uv_fs_cb cb);
     int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
     int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, uv_fs_cb cb);
     int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent);
@@ -145,6 +150,7 @@ same patterns as the read/write/open calls, returning the result in the
     int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode, uv_fs_cb cb);
     int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb);
     int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_file file, double atime, double mtime, uv_fs_cb cb);
+    int uv_fs_lutime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb);
     int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
     int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb);
     int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, int flags, uv_fs_cb cb);
@@ -154,6 +160,7 @@ same patterns as the read/write/open calls, returning the result in the
     int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb);
     int uv_fs_fchown(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb);
     int uv_fs_lchown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb);
+    int uv_fs_statfs(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb);
 
 
 .. _buffers-and-streams:
@@ -186,7 +193,7 @@ and freed by the application.
 
 .. ERROR::
 
-    THIS PROGRAM DOES NOT ALWAYS WORK, NEED SOMETHING BETTER**
+    **THIS PROGRAM DOES NOT ALWAYS WORK, NEED SOMETHING BETTER**
 
 To demonstrate streams we will need to use ``uv_pipe_t``. This allows streaming
 local files [#]_. Here is a simple tee utility using libuv.  Doing all operations
@@ -203,8 +210,9 @@ opened as bidirectional by default.
 
 .. rubric:: uvtee/main.c - read on pipes
 .. literalinclude:: ../../code/uvtee/main.c
+    :language: c
     :linenos:
-    :lines: 61-80
+    :lines: 62-80
     :emphasize-lines: 4,5,15
 
 The third argument of ``uv_pipe_init()`` should be set to 1 for IPC using named
@@ -218,6 +226,7 @@ these buffers.
 
 .. rubric:: uvtee/main.c - reading buffers
 .. literalinclude:: ../../code/uvtee/main.c
+    :language: c
     :linenos:
     :lines: 19-22,44-60
 
@@ -242,6 +251,7 @@ point there is nothing to be read. Most applications will just ignore this.
 
 .. rubric:: uvtee/main.c - Write to pipe
 .. literalinclude:: ../../code/uvtee/main.c
+    :language: c
     :linenos:
     :lines: 9-13,23-42
 
@@ -278,10 +288,18 @@ a command whenever any of the watched files change::
 
     ./onchange <command> <file1> [file2] ...
 
+.. note::
+
+    Currently this example only works on OSX and Windows.
+    Refer to the `notes of uv_fs_event_start`_ function.
+
+.. _notes of uv_fs_event_start: https://docs.libuv.org/en/v1.x/fs_event.html#c.uv_fs_event_start
+
 The file change notification is started using ``uv_fs_event_init()``:
 
 .. rubric:: onchange/main.c - The setup
 .. literalinclude:: ../../code/onchange/main.c
+    :language: c
     :linenos:
     :lines: 26-
     :emphasize-lines: 15
@@ -292,8 +310,8 @@ argument, ``flags``, can be:
 .. code-block:: c
 
     /*
-    * Flags to be passed to uv_fs_event_start().
-    */
+     * Flags to be passed to uv_fs_event_start().
+     */
     enum uv_fs_event_flags {
         UV_FS_EVENT_WATCH_ENTRY = 1,
         UV_FS_EVENT_STAT = 2,
@@ -311,15 +329,16 @@ The callback will receive the following arguments:
   #. ``const char *filename`` - If a directory is being monitored, this is the
      file which was changed. Only non-``null`` on Linux and Windows. May be ``null``
      even on those platforms.
-  #. ``int flags`` - one of ``UV_RENAME`` or ``UV_CHANGE``, or a bitwise OR of
-       both.
-  #. ``int status`` - Currently 0.
+  #. ``int events`` - one of ``UV_RENAME`` or ``UV_CHANGE``, or a bitwise OR of
+     both.
+  #. ``int status`` - If ``status < 0``, there is an :ref:`libuv error<libuv-error-handling>`.
 
 In our example we simply print the arguments and run the command using
 ``system()``.
 
 .. rubric:: onchange/main.c - file change notification callback
 .. literalinclude:: ../../code/onchange/main.c
+    :language: c
     :linenos:
     :lines: 9-24
 

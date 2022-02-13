@@ -3,15 +3,24 @@ name: Sanitizer checks
 on: [push, pull_request]
 
 jobs:
-  asan:
+  sanitizers:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Setup
+        run: |
+          sudo apt-get install ninja-build
       - name: Envinfo
         run: npx envinfo
+      - name: TSAN
+        run: |
+          mkdir build-tsan
+          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake --build build-tsan
+          ./build-tsan/uv_run_tests_a || true # currently permit failures
       - name: ASAN
         run: |
-          mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
-          cmake --build . && ./uv_run_tests_a
-
+          mkdir build-asan
+          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-asan
+          ./build-asan/uv_run_tests_a

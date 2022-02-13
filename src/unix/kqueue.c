@@ -284,6 +284,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
     for (i = 0; i < nfds; i++) {
       ev = events + i;
+      if (ev->filter == EVFILT_PROC) {
+        loop->flags |= UV_LOOP_REAP_CHILDREN;
+        nevents++;
+        continue;
+      }
       fd = ev->ident;
       /* Skip invalidated events, see uv__platform_invalidate_fd */
       if (fd == -1)
@@ -326,6 +331,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
             if (errno != ENOENT)
               abort();
         }
+        if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
+          revents |= UV__POLLRDHUP;
       }
 
       if (ev->filter == EV_OOBAND) {
@@ -359,9 +366,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (ev->flags & EV_ERROR)
         revents |= POLLERR;
 
-      if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
-        revents |= UV__POLLRDHUP;
-
       if (revents == 0)
         continue;
 
@@ -376,6 +380,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       nevents++;
+    }
+
+    if (loop->flags & UV_LOOP_REAP_CHILDREN) {
+      loop->flags &= ~UV_LOOP_REAP_CHILDREN;
+      uv__wait_children(loop);
     }
 
     if (reset_timeout != 0) {

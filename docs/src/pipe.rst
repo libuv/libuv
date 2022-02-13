@@ -135,4 +135,4 @@ API
 
     Equivalent to :man:`pipe(2)` with the `O_CLOEXEC` flag set.
 
-    .. versionadded:: 1.x.0
+    .. versionadded:: 1.41.0

@@ -72,6 +72,7 @@ BENCHMARK_DECLARE (async_pummel_1)
 BENCHMARK_DECLARE (async_pummel_2)
 BENCHMARK_DECLARE (async_pummel_4)
 BENCHMARK_DECLARE (async_pummel_8)
+BENCHMARK_DECLARE (queue_work)
 BENCHMARK_DECLARE (spawn)
 BENCHMARK_DECLARE (thread_create)
 BENCHMARK_DECLARE (million_async)
@@ -81,7 +82,6 @@ HELPER_DECLARE    (tcp_pump_server)
 HELPER_DECLARE    (pipe_pump_server)
 HELPER_DECLARE    (tcp4_echo_server)
 HELPER_DECLARE    (pipe_echo_server)
-HELPER_DECLARE    (dns_server)
 
 TASK_LIST_START
   BENCHMARK_ENTRY  (sizes)
@@ -156,6 +156,7 @@ TASK_LIST_START
   BENCHMARK_ENTRY  (async_pummel_2)
   BENCHMARK_ENTRY  (async_pummel_4)
   BENCHMARK_ENTRY  (async_pummel_8)
+  BENCHMARK_ENTRY  (queue_work)
 
   BENCHMARK_ENTRY  (spawn)
   BENCHMARK_ENTRY  (thread_create)

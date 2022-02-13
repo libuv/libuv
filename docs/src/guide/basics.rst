@@ -42,7 +42,7 @@ as other activities and other I/O operations are kept waiting.
 
 One of the standard solutions is to use threads. Each blocking I/O operation is
 started in a separate thread (or in a thread pool). When the blocking function
-gets invoked in the thread, the processor can schedule another thread to run,
+gets invoked in the thread, the operating system can schedule another thread to run,
 which actually needs the CPU.
 
 The approach followed by libuv uses another style, which is the **asynchronous,
@@ -71,7 +71,7 @@ architecture of libuv and its background. If you have no prior experience with
 either libuv or libev, it is a quick, useful watch.
 
 libuv's event loop is explained in more detail in the `documentation
-<http://docs.libuv.org/en/v1.x/design.html#the-i-o-loop>`_.
+<https://docs.libuv.org/en/v1.x/design.html#the-i-o-loop>`_.
 
 .. raw:: html
 
@@ -87,6 +87,7 @@ nothing, except start a loop which will exit immediately.
 
 .. rubric:: helloworld/main.c
 .. literalinclude:: ../../code/helloworld/main.c
+    :language: c
     :linenos:
 
 This program quits immediately because it has no events to process. A libuv
@@ -108,6 +109,11 @@ A default loop is provided by libuv and can be accessed using
 ``uv_default_loop()``. You should use this loop if you only want a single
 loop.
 
+.. rubric:: default-loop/main.c
+.. literalinclude:: ../../code/default-loop/main.c
+    :language: c
+    :linenos:
+
 .. note::
 
     node.js uses the default loop as its main loop. If you are writing bindings
@@ -118,9 +124,9 @@ loop.
 Error handling
 --------------
 
-Initialization functions or synchronous functions which may fail return a negative number on error. Async functions that may fail will pass a status parameter to their callbacks. The error messages are defined as ``UV_E*`` `constants`_. 
+Initialization functions or synchronous functions which may fail return a negative number on error. Async functions that may fail will pass a status parameter to their callbacks. The error messages are defined as ``UV_E*`` `constants`_.
 
-.. _constants: http://docs.libuv.org/en/v1.x/errors.html#error-constants
+.. _constants: https://docs.libuv.org/en/v1.x/errors.html#error-constants
 
 You can use the ``uv_strerror(int)`` and ``uv_err_name(int)`` functions
 to get a ``const char *`` describing the error or the error name respectively.
@@ -133,7 +139,7 @@ Handles and Requests
 libuv works by the user expressing interest in particular events. This is
 usually done by creating a **handle** to an I/O device, timer or process.
 Handles are opaque structs named as ``uv_TYPE_t`` where type signifies what the
-handle is used for. 
+handle is used for.
 
 .. rubric:: libuv watchers
 .. code-block:: c
@@ -168,6 +174,16 @@ handle is used for.
     typedef struct uv_udp_send_s uv_udp_send_t;
     typedef struct uv_fs_s uv_fs_t;
     typedef struct uv_work_s uv_work_t;
+    typedef struct uv_random_s uv_random_t;
+
+    /* None of the above. */
+    typedef struct uv_env_item_s uv_env_item_t;
+    typedef struct uv_cpu_info_s uv_cpu_info_t;
+    typedef struct uv_interface_address_s uv_interface_address_t;
+    typedef struct uv_dirent_s uv_dirent_t;
+    typedef struct uv_passwd_s uv_passwd_t;
+    typedef struct uv_utsname_s uv_utsname_t;
+    typedef struct uv_statfs_s uv_statfs_t;
 
 
 Handles represent long-lived objects. Async operations on such handles are
@@ -202,6 +218,7 @@ event watchers are active.
 
 .. rubric:: idle-basic/main.c
 .. literalinclude:: ../../code/idle-basic/main.c
+    :language: c
     :emphasize-lines: 6,10,14-17
 
 Storing context
