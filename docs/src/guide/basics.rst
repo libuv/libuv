@@ -87,6 +87,7 @@ nothing, except start a loop which will exit immediately.
 
 .. rubric:: helloworld/main.c
 .. literalinclude:: ../../code/helloworld/main.c
+    :language: c
     :linenos:
 
 This program quits immediately because it has no events to process. A libuv
@@ -202,6 +203,7 @@ event watchers are active.
 
 .. rubric:: idle-basic/main.c
 .. literalinclude:: ../../code/idle-basic/main.c
+    :language: c
     :emphasize-lines: 6,10,14-17
 
 Storing context

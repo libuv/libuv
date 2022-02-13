@@ -54,7 +54,7 @@ static void alloc_cb(uv_handle_t* handle,
 
   /* Actually malloc to exercise free'ing the buffer later */
   buf->base = malloc(buffer_size);
-  ASSERT(buf->base != NULL);
+  ASSERT_NOT_NULL(buf->base);
   buf->len = buffer_size;
   alloc_cb_called++;
 }
@@ -74,16 +74,22 @@ static void recv_cb(uv_udp_t* handle,
                        unsigned flags) {
   ASSERT_GE(nread, 0);
 
-  if (nread > 0) {
-    ASSERT_EQ(nread, 4);
-    ASSERT(addr != NULL);
-    ASSERT_MEM_EQ("PING", rcvbuf->base, nread);
+  /* free and return if this is a mmsg free-only callback invocation */
+  if (flags & UV_UDP_MMSG_FREE) {
+    ASSERT_EQ(nread, 0);
+    ASSERT_NULL(addr);
+    free(rcvbuf->base);
+    return;
+  }
 
-    recv_cb_called++;
-    if (recv_cb_called == NUM_SENDS) {
-      uv_close((uv_handle_t*)handle, close_cb);
-      uv_close((uv_handle_t*)&sender, close_cb);
-    }
+  ASSERT_EQ(nread, 4);
+  ASSERT_NOT_NULL(addr);
+  ASSERT_MEM_EQ("PING", rcvbuf->base, nread);
+
+  recv_cb_called++;
+  if (recv_cb_called == NUM_SENDS) {
+    uv_close((uv_handle_t*)handle, close_cb);
+    uv_close((uv_handle_t*)&sender, close_cb);
   }
 
   /* Don't free if the buffer could be reused via mmsg */

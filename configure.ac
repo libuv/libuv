@@ -24,7 +24,11 @@ AC_ENABLE_SHARED
 AC_ENABLE_STATIC
 AC_PROG_CC
 AM_PROG_CC_C_O
-CC_FLAG_VISIBILITY #[-fvisibility=hidden]
+
+CC_ATTRIBUTE_VISIBILITY([default], [
+  CC_FLAG_VISIBILITY([CFLAGS="${CFLAGS} -fvisibility=hidden"])
+])
+CC_CHECK_CFLAGS_APPEND([-fno-strict-aliasing])
 CC_CHECK_CFLAGS_APPEND([-g])
 CC_CHECK_CFLAGS_APPEND([-std=gnu99])
 CC_CHECK_CFLAGS_APPEND([-Wall])
@@ -42,7 +46,7 @@ AX_PTHREAD([
     LIBS="$LIBS $PTHREAD_LIBS"
     CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 ])
-AC_CHECK_LIB([dl], [dlopen])
+AC_SEARCH_LIBS([dlopen], [dl])
 AC_SEARCH_LIBS([kstat_lookup], [kstat])
 AC_SEARCH_LIBS([gethostbyname], [nsl])
 AC_SEARCH_LIBS([perfstat_cpu], [perfstat])

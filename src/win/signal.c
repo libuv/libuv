@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include "uv.h"
 #include "internal.h"
