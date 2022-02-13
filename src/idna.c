@@ -21,6 +21,7 @@
 #include "idna.h"
 #include <assert.h>
 #include <string.h>
+#include <limits.h> /* UINT_MAX */
 
 static unsigned uv__utf8_decode1_slow(const char** p,
                                       const char* pe,
