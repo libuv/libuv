@@ -669,9 +669,9 @@ int uv__udp_connect(uv_udp_t* handle,
   } while (err == -1 && errno == EINTR);
 
   if (err) {
-      if(errno == EINPROGRESS)
-          handle->flags |= UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
-      return UV__ERR(errno);
+    if(errno == EINPROGRESS)
+      handle->flags |= UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
+    return UV__ERR(errno);
   }
 
   handle->flags |= UV_HANDLE_UDP_CONNECTED;
