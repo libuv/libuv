@@ -411,16 +411,16 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   QUEUE* q;
   ssize_t size;
 
-  if(handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
+  if (handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
     int sock_error = uv__udp_check_socket_connected(handle);
     if(sock_error == 0) {
-        handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
-        handle->flags |= UV_HANDLE_UDP_CONNECTED;
+      handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
+      handle->flags |= UV_HANDLE_UDP_CONNECTED;
     } else if(sock_error == UV__ERR(EINPROGRESS)) {
-        uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
-        return;
+      uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+      return;
     } else {
-        return;
+      return;
     }
   }
 
@@ -681,24 +681,24 @@ int uv__udp_connect(uv_udp_t* handle,
 
 
 int uv__udp_disconnect(uv_udp_t* handle) {
-    int r;
-    struct sockaddr addr;
+  int r;
+  struct sockaddr addr;
 
-    memset(&addr, 0, sizeof(addr));
+  memset(&addr, 0, sizeof(addr));
 
-    addr.sa_family = AF_UNSPEC;
+  addr.sa_family = AF_UNSPEC;
 
-    do {
-      errno = 0;
-      r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
-    } while (r == -1 && errno == EINTR);
+  do {
+    errno = 0;
+    r = connect(handle->io_watcher.fd, &addr, sizeof(addr));
+  } while (r == -1 && errno == EINTR);
 
-    if (r == -1 && errno != EAFNOSUPPORT)
-      return UV__ERR(errno);
+  if (r == -1 && errno != EAFNOSUPPORT)
+    return UV__ERR(errno);
 
-    handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
-    handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
-    return 0;
+  handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
+  handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
+  return 0;
 }
 
 
