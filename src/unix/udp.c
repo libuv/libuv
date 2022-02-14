@@ -414,13 +414,13 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   if (handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
     int sock_error = uv__udp_check_socket_connected(handle);
     if(sock_error == 0) {
-        handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
-        handle->flags |= UV_HANDLE_UDP_CONNECTED;
-    } else if(sock_error == UV__ERR(EINPROGRESS)) {
-        uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
-        return;
+      handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
+      handle->flags |= UV_HANDLE_UDP_CONNECTED;
+    } else if (sock_error == UV__ERR(EINPROGRESS)) {
+      uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+      return;
     } else {
-        return;
+      return;
     }
   }
 
