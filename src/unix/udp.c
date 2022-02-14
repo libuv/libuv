@@ -53,6 +53,8 @@ static void uv__udp_sendmsg(uv_udp_t* handle);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
                                        int domain,
                                        unsigned int flags);
+static int uv__udp_check_socket_connected(uv_udp_t* handle);
+
 
 #if HAVE_MMSG
 
@@ -411,6 +413,19 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   QUEUE* q;
   ssize_t size;
 
+  if (handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
+    int sock_error = uv__udp_check_socket_connected(handle);
+    if(sock_error == 0) {
+      handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
+      handle->flags |= UV_HANDLE_UDP_CONNECTED;
+    } else if (sock_error == UV__ERR(EINPROGRESS)) {
+      uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+      return;
+    } else {
+      return;
+    }
+  }
+
 #if HAVE_MMSG
   uv_once(&once, uv__udp_mmsg_init);
   if (uv__sendmmsg_avail) {
@@ -468,6 +483,14 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   }
 }
 
+static int uv__udp_check_socket_connected(uv_udp_t* handle) {
+    int error=0;
+    socklen_t error_size = sizeof(error);
+    if (!getsockopt(handle->io_watcher.fd, SOL_SOCKET, SO_ERROR, &error, &error_size)) {
+        return (error == 0) ? 0: UV__ERR(error);
+    }
+    return UV__ERR(errno);
+}
 /* On the BSDs, SO_REUSEPORT implies SO_REUSEADDR but with some additional
  * refinements for programs that use multicast.
  *
@@ -647,8 +670,11 @@ int uv__udp_connect(uv_udp_t* handle,
     err = connect(handle->io_watcher.fd, addr, addrlen);
   } while (err == -1 && errno == EINTR);
 
-  if (err)
+  if (err) {
+    if(errno == EINPROGRESS)
+      handle->flags |= UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
     return UV__ERR(errno);
+  }
 
   handle->flags |= UV_HANDLE_UDP_CONNECTED;
 
@@ -717,6 +743,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
     }
 
     handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
+    handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
     return 0;
 }
 
