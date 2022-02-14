@@ -411,7 +411,7 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   QUEUE* q;
   ssize_t size;
 
-  if(handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
+  if (handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
     int sock_error = uv__udp_check_socket_connected(handle);
     if(sock_error == 0) {
         handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
