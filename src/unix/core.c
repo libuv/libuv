@@ -385,7 +385,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
-      timeout = uv_backend_timeout(loop);
+      timeout = uv__backend_timeout(loop);
 
     uv__io_poll(loop, timeout);
 
