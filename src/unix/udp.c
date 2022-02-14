@@ -484,7 +484,7 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
 static int uv__udp_check_socket_connected(uv_udp_t* handle) {
     int error=0;
     socklen_t error_size = sizeof(error);
-    if(!getsockopt(handle->io_watcher.fd, SOL_SOCKET, SO_ERROR, &error, &error_size)) {
+    if (!getsockopt(handle->io_watcher.fd, SOL_SOCKET, SO_ERROR, &error, &error_size)) {
         return (error == 0) ? 0: UV__ERR(error);
     }
     return UV__ERR(errno);
