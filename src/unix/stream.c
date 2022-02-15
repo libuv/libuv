@@ -973,8 +973,20 @@ uv_handle_type uv__handle_type(int fd) {
   memset(&ss, 0, sizeof(ss));
   sslen = sizeof(ss);
 
-  if (getsockname(fd, (struct sockaddr*)&ss, &sslen))
+  if (getsockname(fd, (struct sockaddr*)&ss, &sslen)) {
+#if defined(_AIX)
+    // On aix, ibmi, receiving RST from TCP instead of FIN immediately puts
+    // fd into an error state, despite some readable bytes of data remaining.
+    // In such case getsockname will return EINVAL, even if sockaddr_storage is
+    // valid. We ignore this and return UV_TCP to receive the last readable
+    // bytes
+    if (errno == EINVAL) {
+      errno = 0;
+      return UV_TCP;
+    }
+#endif
     return UV_UNKNOWN_HANDLE;
+  }
 
   len = sizeof type;
 
