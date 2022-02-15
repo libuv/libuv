@@ -644,11 +644,11 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 
   switch (stream->type) {
   case UV_TCP:
-    err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+    err = uv__tcp_listen((uv_tcp_t*)stream, backlog, cb);
     break;
 
   case UV_NAMED_PIPE:
-    err = uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
+    err = uv__pipe_listen((uv_pipe_t*)stream, backlog, cb);
     break;
 
   default:

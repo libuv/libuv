@@ -244,12 +244,12 @@ int uv__dup2_cloexec(int oldfd, int newfd);
 int uv__open_cloexec(const char* path, int flags);
 
 /* tcp */
-int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
+int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
 int uv__tcp_nodelay(int fd, int on);
 int uv__tcp_keepalive(int fd, int on, unsigned int delay);
 
 /* pipe */
-int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
+int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 
 /* signal */
 void uv__signal_close(uv_signal_t* handle);
