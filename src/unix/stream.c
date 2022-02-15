@@ -976,7 +976,7 @@ uv_handle_type uv__handle_type(int fd) {
   if (getsockname(fd, (struct sockaddr*)&ss, &sslen)) {
 #if defined(_AIX)
     // On aix, ibmi, receiving RST from TCP instead of FIN immediately puts
-    // fd into an error state, despite some readable bytes of data remaining.
+    // fd into an error state.
     // In such case getsockname will return EINVAL, even if sockaddr_storage is
     // valid. We ignore this and return UV_TCP to receive the last readable
     // bytes
