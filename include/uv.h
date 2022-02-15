@@ -88,6 +88,7 @@ extern "C" {
   XX(EAI_PROTOCOL, "resolved protocol is unknown")                            \
   XX(EAI_SERVICE, "service not available for socket type")                    \
   XX(EAI_SOCKTYPE, "socket type not supported")                               \
+  XX(EINPROGRESS, "Operation now in progress")                                \
   XX(EALREADY, "connection already in progress")                              \
   XX(EBADF, "bad file descriptor")                                            \
   XX(EBUSY, "resource busy or locked")                                        \
