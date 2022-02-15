@@ -410,13 +410,14 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   struct msghdr h;
   QUEUE* q;
   ssize_t size;
+  int sock_error;
 
   if (handle->flags & UV_HANDLE_UDP_CONNECT_IN_PROGRESS) {
-    int sock_error = uv__udp_check_socket_connected(handle);
-    if(sock_error == 0) {
+    sock_error = uv__udp_check_socket_connected(handle);
+    if (sock_error == 0) {
       handle->flags &= ~UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
       handle->flags |= UV_HANDLE_UDP_CONNECTED;
-    } else if (sock_error == UV__ERR(EINPROGRESS)) {
+    } else if (sock_error == UV_EINPROGRESS) {
       uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
       return;
     } else {
@@ -482,12 +483,12 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
 }
 
 static int uv__udp_check_socket_connected(uv_udp_t* handle) {
-    int error=0;
-    socklen_t error_size = sizeof(error);
-    if (!getsockopt(handle->io_watcher.fd, SOL_SOCKET, SO_ERROR, &error, &error_size)) {
-        return (error == 0) ? 0: UV__ERR(error);
-    }
-    return UV__ERR(errno);
+  int error = 0;
+  socklen_t error_size = sizeof(error);
+  if (!getsockopt(handle->io_watcher.fd, SOL_SOCKET, SO_ERROR, &error, &error_size)) {
+    return error == 0 ? 0 : UV__ERR(error);
+  }
+  return UV__ERR(errno);
 }
 /* On the BSDs, SO_REUSEPORT implies SO_REUSEADDR but with some additional
  * refinements for programs that use multicast.
@@ -669,7 +670,7 @@ int uv__udp_connect(uv_udp_t* handle,
   } while (err == -1 && errno == EINTR);
 
   if (err) {
-    if(errno == EINPROGRESS)
+    if (errno == EINPROGRESS)
       handle->flags |= UV_HANDLE_UDP_CONNECT_IN_PROGRESS;
     return UV__ERR(errno);
   }
