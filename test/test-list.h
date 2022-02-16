@@ -546,6 +546,7 @@ TEST_DECLARE  (fork_socketpair)
 TEST_DECLARE  (fork_socketpair_started)
 TEST_DECLARE  (fork_signal_to_child)
 TEST_DECLARE  (fork_signal_to_child_closed)
+TEST_DECLARE  (fork_close_signal_in_child)
 #ifndef __APPLE__ /* This is forbidden in a fork child: The process has forked
                      and you cannot use this CoreFoundation functionality
                      safely. You MUST exec(). */
@@ -1184,6 +1185,7 @@ TASK_LIST_START
   TEST_ENTRY  (fork_socketpair_started)
   TEST_ENTRY  (fork_signal_to_child)
   TEST_ENTRY  (fork_signal_to_child_closed)
+  TEST_ENTRY  (fork_close_signal_in_child)
 #ifndef __APPLE__
   TEST_ENTRY  (fork_fs_events_child)
   TEST_ENTRY  (fork_fs_events_child_dir)
