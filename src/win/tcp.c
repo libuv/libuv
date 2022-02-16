@@ -66,7 +66,7 @@ static int uv__tcp_keepalive(uv_tcp_t* handle, SOCKET socket, int enable, unsign
     return WSAGetLastError();
   }
 
-  if (enable && setsockopt(socket,
+  if (enable && delay > 0 && setsockopt(socket,
                            IPPROTO_TCP,
                            TCP_KEEPALIVE,
                            (const char*)&delay,
