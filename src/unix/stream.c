@@ -978,8 +978,9 @@ uv_handle_type uv__handle_type(int fd) {
     // On aix, ibmi, receiving RST from TCP instead of FIN immediately puts
     // fd into an error state.
     // In such case getsockname will return EINVAL, even if sockaddr_storage is
-    // valid. We ignore this and return UV_TCP to receive the last readable
-    // bytes
+    // valid. In such cases, we will permit the user to open the connection as
+    // uv_tcp still, so that the user can get immediately notified of the error
+    // in their read callback and close this fd.
     if (errno == EINVAL) {
       errno = 0;
       return UV_TCP;
