@@ -279,7 +279,6 @@ void uv__tcp_close(uv_tcp_t* handle);
 size_t uv__thread_stack_size(void);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
-uv_handle_type uv__handle_type(int fd);
 FILE* uv__open_file(const char* path);
 int uv__getpwuid_r(uv_passwd_t* pwd);
 int uv__search_path(const char* prog, char* buf, size_t* buflen);

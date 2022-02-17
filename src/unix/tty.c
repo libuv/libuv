@@ -331,7 +331,7 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
 
 
 uv_handle_type uv_guess_handle(uv_file file) {
-  struct sockaddr sa;
+  struct sockaddr_storage ss;
   struct stat s;
   socklen_t len;
   int type;
@@ -361,12 +361,12 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (getsockopt(file, SOL_SOCKET, SO_TYPE, &type, &len))
     return UV_UNKNOWN_HANDLE;
 
-  len = sizeof(sa);
-  if (getsockname(file, &sa, &len))
+  len = sizeof(ss);
+  if (getsockname(file, (struct sockaddr *)&ss, &len))
     return UV_UNKNOWN_HANDLE;
 
   if (type == SOCK_DGRAM)
-    if (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)
+    if (ss.ss_family == AF_INET || ss.ss_family == AF_INET6)
       return UV_UDP;
 
   if (type == SOCK_STREAM) {
@@ -379,9 +379,9 @@ uv_handle_type uv_guess_handle(uv_file file) {
       return UV_NAMED_PIPE;
 #endif /* defined(_AIX) || defined(__DragonFly__) */
 
-    if (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)
+    if (ss.ss_family == AF_INET || ss.ss_family == AF_INET6)
       return UV_TCP;
-    if (sa.sa_family == AF_UNIX)
+    if (ss.ss_family == AF_UNIX)
       return UV_NAMED_PIPE;
   }
 
