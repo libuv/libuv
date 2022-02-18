@@ -147,6 +147,7 @@ TEST_DECLARE   (tcp_write_to_half_open_connection)
 TEST_DECLARE   (tcp_unexpected_read)
 TEST_DECLARE   (tcp_read_stop)
 TEST_DECLARE   (tcp_read_stop_start)
+TEST_DECLARE   (tcp_rst)
 TEST_DECLARE   (tcp_bind6_error_addrinuse)
 TEST_DECLARE   (tcp_bind6_error_addrnotavail)
 TEST_DECLARE   (tcp_bind6_error_fault)
@@ -722,6 +723,9 @@ TASK_LIST_START
   TEST_HELPER (tcp_read_stop, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_read_stop_start)
+
+  TEST_ENTRY  (tcp_rst)
+  TEST_HELPER (tcp_rst, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_bind6_error_addrinuse)
   TEST_ENTRY  (tcp_bind6_error_addrnotavail)
