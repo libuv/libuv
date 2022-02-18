@@ -342,8 +342,25 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (isatty(file))
     return UV_TTY;
 
-  if (fstat(file, &s))
+  if (fstat(file, &s)) {
+#if defined(__PASE__)
+    // On ibmi receiving RST from TCP instead of FIN immediately puts fd into
+    // an error state. fstat will return EINVAL, and getsockopt(SO_ERROR) will
+    // succeed and return option_value=ECONNRESET.
+    // In such cases, we will permit the user to open the connection as uv_tcp
+    // still, so that the user can get immediately notified of the error in
+    // their read callback and close this fd.
+    int option_value = 0;
+    socklen_t len = sizeof(option_value);
+    if (getsockopt(file, SOL_SOCKET, SO_ERROR, &option_value, &len))
+      return UV_UNKNOWN_HANDLE;
+    if (option_value == ECONNRESET) {
+      errno = 0;
+      return UV_TCP;
+    }
+#endif
     return UV_UNKNOWN_HANDLE;
+  }
 
   if (S_ISREG(s.st_mode))
     return UV_FILE;
@@ -357,12 +374,25 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (!S_ISSOCK(s.st_mode))
     return UV_UNKNOWN_HANDLE;
 
+  len = sizeof(ss);
+  if (getsockname(file, (struct sockaddr*)&ss, &len)) {
+#if defined(_AIX)
+    // On aix receiving RST from TCP instead of FIN immediately puts fd into
+    // an error state. In such case getsockname will return EINVAL, even if
+    // sockaddr_storage is valid.
+    // In such cases, we will permit the user to open the connection as uv_tcp
+    // still, so that the user can get immediately notified of the error in
+    // their read callback and close this fd.
+    if (errno == EINVAL) {
+      errno = 0;
+      return UV_TCP;
+    }
+#endif
+    return UV_UNKNOWN_HANDLE;
+  }
+
   len = sizeof(type);
   if (getsockopt(file, SOL_SOCKET, SO_TYPE, &type, &len))
-    return UV_UNKNOWN_HANDLE;
-
-  len = sizeof(ss);
-  if (getsockname(file, (struct sockaddr *)&ss, &len))
     return UV_UNKNOWN_HANDLE;
 
   if (type == SOCK_DGRAM)
