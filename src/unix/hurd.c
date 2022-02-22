@@ -138,7 +138,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   
   /* Get count of cpus  */
   cnt = HOST_BASIC_INFO_COUNT;
-  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hbi, &cnt); 
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
 
   if (err) {
     err = UV__ERR(err);
