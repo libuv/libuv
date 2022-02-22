@@ -86,7 +86,7 @@ uint64_t uv_get_free_memory(void) {
   err = vm_statistics(mach_task_self(), &vmstats);
 
   if (err)
-    return (uint64_t)0;
+    return 0;
   
   return vmstats.free_count * PAGE_SIZE;
 }
