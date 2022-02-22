@@ -57,7 +57,7 @@ int uv_exepath(char* buffer, size_t* size) {
   copied = uv__strscpy(buffer, exepath, *size);
 
   /* do not return error on UV_E2BIG failure */
-  *size = copied < 0 ? strlen(buffer) : (size_t)copied;
+  *size = copied < 0 ? strlen(buffer) : (size_t) copied;
 
   return 0;
 }
