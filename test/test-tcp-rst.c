@@ -25,7 +25,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 
 static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT_PTR_EQ((uv_tcp_t*)t, &tcp);
+  ASSERT_PTR_EQ((uv_tcp_t*) t, &tcp);
   ASSERT_EQ(nread, UV_ECONNRESET);
 
   uv_handle_type type = uv_guess_handle(t->io_watcher.fd);
