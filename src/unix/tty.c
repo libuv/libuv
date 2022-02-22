@@ -355,7 +355,6 @@ uv_handle_type uv_guess_handle(uv_file file) {
     if (getsockopt(file, SOL_SOCKET, SO_ERROR, &option_value, &len))
       return UV_UNKNOWN_HANDLE;
     if (option_value == ECONNRESET) {
-      errno = 0;
       return UV_TCP;
     }
 #endif
@@ -384,7 +383,6 @@ uv_handle_type uv_guess_handle(uv_file file) {
     // still, so that the user can get immediately notified of the error in
     // their read callback and close this fd.
     if (errno == EINVAL) {
-      errno = 0;
       return UV_TCP;
     }
 #endif
