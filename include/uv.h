@@ -1133,8 +1133,8 @@ struct uv_interface_address_s {
 
 struct uv_passwd_s {
   char* username;
-  long uid;
-  long gid;
+  unsigned long uid;
+  unsigned long gid;
   char* shell;
   char* homedir;
 };
