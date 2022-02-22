@@ -88,7 +88,7 @@ uint64_t uv_get_free_memory(void) {
   if (err)
     return 0;
   
-  return vmstats.free_count * PAGE_SIZE;
+  return vmstats.free_count * vm_page_size;
 }
 
 
