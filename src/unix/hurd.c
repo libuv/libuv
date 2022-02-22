@@ -98,7 +98,7 @@ uint64_t uv_get_total_memory(void) {
   mach_msg_type_number_t cnt;
   
   cnt = HOST_BASIC_INFO_COUNT;
-  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&hbi, &cnt); 
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
 
   if (err)
     return (uint64_t)0;
