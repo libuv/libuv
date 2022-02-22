@@ -1647,4 +1647,3 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   /* Out of tokens (path entries), and no match found */
   return UV_EINVAL;
 }
-
