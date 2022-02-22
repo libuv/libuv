@@ -69,7 +69,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   count = TASK_BASIC_INFO_COUNT;
   err = task_info(mach_task_self(), TASK_BASIC_INFO,
-		  (task_info_t)&bi, &count);
+		  (task_info_t) &bi, &count);
 
   if (err)
     return UV__ERR(err);
