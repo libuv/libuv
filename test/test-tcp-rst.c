@@ -10,16 +10,19 @@ static int called_connect_cb;
 static int called_shutdown_cb;
 static int called_close_cb;
 
+
 static void close_cb(uv_handle_t* handle) {
   ASSERT(handle == (uv_handle_t*) &tcp);
   called_close_cb++;
 }
+
 
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->base = malloc(size);
   buf->len = size;
   called_alloc_cb++;
 }
+
 
 static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   ASSERT_PTR_EQ((uv_tcp_t*)t, &tcp);
