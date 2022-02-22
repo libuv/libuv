@@ -41,7 +41,7 @@ static void connect_cb(uv_connect_t *req, int status) {
   ASSERT_PTR_EQ(req, &connect_req);
 
   /* Start reading from the connection so we receive the RST in uv__read. */
-  ASSERT_EQ(0, uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
+  ASSERT_EQ(0, uv_read_start((uv_stream_t*) &tcp, alloc_cb, read_cb));
 
   /* Write 'QSH' to receive RST from the echo server. */
   ASSERT_EQ(qbuf.len, uv_try_write((uv_stream_t*) &tcp, &qbuf, 1));
