@@ -101,7 +101,7 @@ uint64_t uv_get_total_memory(void) {
   err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
 
   if (err)
-    return (uint64_t)0;
+    return 0;
 
   return hbi.memory_size;
 }
