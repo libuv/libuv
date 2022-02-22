@@ -147,7 +147,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   /* XXX not implemented on the Hurd */
   *cpu_infos = uv__calloc(hbi.avail_cpus, sizeof(**cpu_infos));
-  if (!(*cpu_infos)) {
+  if (*cpu_infos == NULL) {
     err = UV_ENOMEM;
     goto abort;
   }
