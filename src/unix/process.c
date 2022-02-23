@@ -43,6 +43,7 @@
 # include <sys/sysctl.h>
 # include <dlfcn.h>
 # include <crt_externs.h>
+# include <xlocale.h>
 # define environ (*_NSGetEnviron())
 
 /* macOS 10.14 back does not define this constant */
@@ -234,10 +235,10 @@ static void uv__write_errno(int error_fd) {
  * doesn't even need to be defined for them.
  */
 static void uv__process_child_init(
-        const uv_process_options_t* options,
-        int stdio_count,
-        int (*pipes)[2],
-        int error_fd) {
+    const uv_process_options_t* options,
+    int stdio_count,
+    int (*pipes)[2],
+    int error_fd) {
   sigset_t signewset;
   int close_fd;
   int use_fd;
@@ -385,9 +386,6 @@ static void uv__spawn_init_can_use_setsid(void) {
   int r;
   int version_major;
 
-  /* By default, assume failure */
-  posix_spawn_can_use_setsid = 0;
-
   /* Get a version string */
   r = sysctlbyname("kern.osrelease", version_str, &version_str_size, NULL, 0);
   if (r != 0)
@@ -402,7 +400,7 @@ static void uv__spawn_init_can_use_setsid(void) {
   /* Parse the version major as a number. If it is greater than
    * the major version for macOS Catalina (aka macOS 10.15), then
    * the POSIX_SPAWN_SETSID flag is available */
-  version_major = atoi(version_major_str);
+  version_major = atoi_l(version_major_str, LC_C_LOCALE);
   if (version_major >= MACOS_CATALINA_VERSION_MAJOR)
     posix_spawn_can_use_setsid = 1;
 }
@@ -418,9 +416,9 @@ static void uv__spawn_init_posix_spawn(void) {
 
 
 static int uv__spawn_set_posix_spawn_attrs(
-        posix_spawnattr_t* attrs,
-        const uv__posix_spawn_fncs_t* posix_spawn_fncs,
-        const uv_process_options_t* options) {
+    posix_spawnattr_t* attrs,
+    const uv__posix_spawn_fncs_t* posix_spawn_fncs,
+    const uv_process_options_t* options) {
   int err;
   unsigned int flags;
   sigset_t signal_set;
@@ -432,25 +430,25 @@ static int uv__spawn_set_posix_spawn_attrs(
   }
 
   if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID)) {
-      /* kauth_cred_issuser currently requires exactly uid == 0 for these
-       * posixspawn_attrs (set_groups_np, setuid_np, setgid_np), which deviates
-       * from the normal specification of setuid (which also uses euid), and
-       * they are also undocumented syscalls, so we do not use them. */
+    /* kauth_cred_issuser currently requires exactly uid == 0 for these
+     * posixspawn_attrs (set_groups_np, setuid_np, setgid_np), which deviates
+     * from the normal specification of setuid (which also uses euid), and they
+     * are also undocumented syscalls, so we do not use them. */
     err = ENOSYS;
     goto error;
   }
 
   /* Set flags for spawn behavior
-    * 1) POSIX_SPAWN_CLOEXEC_DEFAULT: (Apple Extension) All descriptors in
-    * the parent will be treated as if they had been created with O_CLOEXEC.
-    * The only fds that will be passed on to the child are those manipulated
-    * by the file actions
-    * 2) POSIX_SPAWN_SETSIGDEF: Signals mentioned in spawn-sigdefault in
-    * the spawn attributes will be reset to behave as their default
-    * 3) POSIX_SPAWN_SETSIGMASK: Signal mask will be set to the value of
-    * spawn-sigmask in attributes
-    * 4) POSIX_SPAWN_SETSID: Make the process a new session leader if a
-    * detached session was requested. */
+   * 1) POSIX_SPAWN_CLOEXEC_DEFAULT: (Apple Extension) All descriptors in the
+   *    parent will be treated as if they had been created with O_CLOEXEC. The
+   *    only fds that will be passed on to the child are those manipulated by
+   *    the file actions
+   * 2) POSIX_SPAWN_SETSIGDEF: Signals mentioned in spawn-sigdefault in the
+   *    spawn attributes will be reset to behave as their default
+   * 3) POSIX_SPAWN_SETSIGMASK: Signal mask will be set to the value of
+   *    spawn-sigmask in attributes
+   * 4) POSIX_SPAWN_SETSID: Make the process a new session leader if a detached
+   *    session was requested. */
   flags = POSIX_SPAWN_CLOEXEC_DEFAULT |
           POSIX_SPAWN_SETSIGDEF |
           POSIX_SPAWN_SETSIGMASK;
@@ -469,13 +467,13 @@ static int uv__spawn_set_posix_spawn_attrs(
   if (err != 0)
     goto error;
 
-  /*  Reset all signal the child to their default behavior */
+  /* Reset all signal the child to their default behavior */
   sigfillset(&signal_set);
   err = posix_spawnattr_setsigdefault(attrs, &signal_set);
   if (err != 0)
     goto error;
 
-  /*  Reset the signal mask for all signals */
+  /* Reset the signal mask for all signals */
   sigemptyset(&signal_set);
   err = posix_spawnattr_setsigmask(attrs, &signal_set);
   if (err != 0)
@@ -490,11 +488,11 @@ error:
 
 
 static int uv__spawn_set_posix_spawn_file_actions(
-        posix_spawn_file_actions_t* actions,
-        const uv__posix_spawn_fncs_t* posix_spawn_fncs,
-        const uv_process_options_t* options,
-        int stdio_count,
-        int (*pipes)[2]) {
+    posix_spawn_file_actions_t* actions,
+    const uv__posix_spawn_fncs_t* posix_spawn_fncs,
+    const uv_process_options_t* options,
+    int stdio_count,
+    int (*pipes)[2]) {
   int fd;
   int fd2;
   int use_fd;
@@ -624,10 +622,10 @@ char* uv__spawn_find_path_in_env(char** env) {
 
 
 static int uv__spawn_resolve_and_spawn(
-        const uv_process_options_t* options,
-        posix_spawnattr_t* attrs,
-        posix_spawn_file_actions_t* actions,
-        pid_t* pid) {
+    const uv_process_options_t* options,
+    posix_spawnattr_t* attrs,
+    posix_spawn_file_actions_t* actions,
+    pid_t* pid) {
   const char *p;
   const char *z;
   const char *path;
@@ -727,11 +725,11 @@ static int uv__spawn_resolve_and_spawn(
 
 
 static int uv__spawn_and_init_child_posix_spawn(
-        const uv_process_options_t* options,
-        int stdio_count,
-        int (*pipes)[2],
-        pid_t* pid,
-        const uv__posix_spawn_fncs_t* posix_spawn_fncs) {
+    const uv_process_options_t* options,
+    int stdio_count,
+    int (*pipes)[2],
+    pid_t* pid,
+    const uv__posix_spawn_fncs_t* posix_spawn_fncs) {
   int err;
   posix_spawnattr_t attrs;
   posix_spawn_file_actions_t actions;
@@ -741,12 +739,11 @@ static int uv__spawn_and_init_child_posix_spawn(
     goto error;
 
   /* This may mutate pipes. */
-  err = uv__spawn_set_posix_spawn_file_actions(
-    &actions,
-    posix_spawn_fncs,
-    options,
-    stdio_count,
-    pipes);
+  err = uv__spawn_set_posix_spawn_file_actions(&actions,
+                                               posix_spawn_fncs,
+                                               options,
+                                               stdio_count,
+                                               pipes);
   if (err != 0) {
     (void) posix_spawnattr_destroy(&attrs);
     goto error;
@@ -769,11 +766,11 @@ error:
 #endif
 
 static int uv__spawn_and_init_child_fork(
-        const uv_process_options_t* options,
-        int stdio_count,
-        int (*pipes)[2],
-        int error_fd,
-        pid_t* pid) {
+    const uv_process_options_t* options,
+    int stdio_count,
+    int (*pipes)[2],
+    int error_fd,
+    pid_t* pid) {
   sigset_t signewset;
   sigset_t sigoldset;
 
@@ -812,11 +809,11 @@ static int uv__spawn_and_init_child_fork(
 }
 
 static int uv__spawn_and_init_child(
-        uv_loop_t* loop,
-        const uv_process_options_t* options,
-        int stdio_count,
-        int (*pipes)[2],
-        pid_t* pid) {
+    uv_loop_t* loop,
+    const uv_process_options_t* options,
+    int stdio_count,
+    int (*pipes)[2],
+    pid_t* pid) {
   int signal_pipe[2] = { -1, -1 };
   int status;
   int err;
