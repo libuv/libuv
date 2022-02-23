@@ -75,6 +75,16 @@ int main(int argc, char **argv) {
   platform_init(argc, argv);
   argv = uv_setup_args(argc, argv);
 
+  if ((argc == 2 || argc == 4) && strcmp(argv[1], "spawn_helper5") == 0) {
+    uv__check_nfd(4);
+  } else if ((argc == 2 || argc == 4) && strcmp(argv[1], "spawn_tcp_server_helper") == 0) {
+    uv__check_nfd(4);
+  } else if ((argc == 2 || argc == 4) && strcmp(argv[1], "spawn_helper8") == 0) {
+    /* skip */
+  } else {
+    uv__check_nfd(3);
+  }
+
   switch (argc) {
   case 1: return run_tests(0);
   case 2: return maybe_run_test(argc, argv);

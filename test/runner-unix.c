@@ -21,6 +21,7 @@
 
 #include "runner-unix.h"
 #include "runner.h"
+#include "task.h"
 
 #include <limits.h>
 #include <stdint.h> /* uintptr_t */
@@ -35,6 +36,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <fcntl.h>
 
 #include <sys/select.h>
 #include <sys/time.h>
@@ -48,6 +50,67 @@ static void closefd(int fd) {
 
   perror("close");
   abort();
+}
+
+
+static int uv__cloexec(int fd, int set) {
+  int flags;
+  int r;
+
+  do
+    r = fcntl(fd, F_GETFD);
+  while (r == -1 && errno == EINTR);
+
+  if (r == -1)
+    return errno;
+
+  /* Bail out now if already set/clear. */
+  if (!!(r & FD_CLOEXEC) == !!set)
+    return 0;
+
+  if (set)
+    flags = r | FD_CLOEXEC;
+  else
+    flags = r & ~FD_CLOEXEC;
+
+  do
+    r = fcntl(fd, F_SETFD, flags);
+  while (r == -1 && errno == EINTR);
+
+  if (r)
+    return errno;
+
+  return 0;
+}
+
+
+void uv__check_nfd(int nfd) {
+  const char *arg;
+  int fd;
+  int test_runner_fd = -1;
+  int mode;
+
+  arg = getenv("UV_TEST_RUNNER_FD");
+  if (arg) {
+    test_runner_fd = atoi(arg);
+    ASSERT_GE(test_runner_fd, nfd);
+  }
+
+  for (fd = 0; fd < 2048; fd++) {
+    do
+      mode = fcntl(fd, F_GETFL);
+    while (mode == -1 && errno == EINTR);
+
+    if (fd < nfd || fd == test_runner_fd) {
+      ASSERT_GE(mode, 0);
+    } else if (mode != -1 || errno != EBADF) {
+      /* Try to print some helpful debugging output before the abort. */
+      char args[32];
+      snprintf(args, sizeof(args), "lsof -p %u,%u", getpid(), getppid());
+      system(args);
+      ASSERT_EQ(fd, -1);
+    }
+  }
 }
 
 
@@ -109,11 +172,12 @@ int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   args[n++] = NULL;
 
   stdout_file = tmpfile();
-  stdout_fd = fileno(stdout_file);
   if (!stdout_file) {
     perror("tmpfile");
     return -1;
   }
+  stdout_fd = fileno(stdout_file);
+  uv__cloexec(stdout_fd, 1);
 
   if (is_helper) {
     if (pipe(pipefd)) {

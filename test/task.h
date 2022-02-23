@@ -323,9 +323,12 @@ extern int snprintf(char*, size_t, const char*, ...);
 
 #if defined(_WIN32)
 #define notify_parent_process() ((void) 0)
+#define uv__check_nfd(nfd) ((void) nfd)
 #else
 extern void notify_parent_process(void);
+extern void uv__check_nfd(int nfd);
 #endif
+
 
 /* Fully close a loop */
 static void close_walk_cb(uv_handle_t* handle, void* arg) {
