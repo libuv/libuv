@@ -495,7 +495,7 @@ static int uv__set_reuse(int fd) {
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
        return UV__ERR(errno);
   }
-#elif defined(SO_REUSEPORT) && !defined(__linux__)
+#elif defined(SO_REUSEPORT) && !defined(__linux__) && !defined(__GNU__)
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
     return UV__ERR(errno);
 #else
@@ -928,7 +928,8 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
     !defined(__NetBSD__) &&                                         \
     !defined(__ANDROID__) &&                                        \
     !defined(__DragonFly__) &&                                      \
-    !defined(__QNX__)
+    !defined(__QNX__) &&                                            \
+    !defined(__GNU__)
 static int uv__udp_set_source_membership4(uv_udp_t* handle,
                                           const struct sockaddr_in* multicast_addr,
                                           const char* interface_addr,
@@ -1120,7 +1121,8 @@ int uv_udp_set_source_membership(uv_udp_t* handle,
     !defined(__NetBSD__) &&                                         \
     !defined(__ANDROID__) &&                                        \
     !defined(__DragonFly__) &&                                      \
-    !defined(__QNX__)
+    !defined(__QNX__) &&                                            \
+    !defined(__GNU__)
   int err;
   union uv__sockaddr mcast_addr;
   union uv__sockaddr src_addr;
