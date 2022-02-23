@@ -275,22 +275,22 @@ static void uv__process_child_init(
     use_fd = pipes[fd][1];
     if (use_fd < 0 || use_fd >= fd)
       continue;
-    pipes[fd][1] = fcntl(use_fd, F_DUPFD, stdio_count);
+    pipes[fd][1] = fcntl(use_fd, F_DUPFD_CLOEXEC, stdio_count);
     if (pipes[fd][1] == -1)
       uv__write_errno(error_fd);
   }
 
   for (fd = 0; fd < stdio_count; fd++) {
-    close_fd = pipes[fd][0];
+    close_fd = -1;
     use_fd = pipes[fd][1];
 
     if (use_fd < 0) {
       if (fd >= 3)
         continue;
       else {
-        /* redirect stdin, stdout and stderr to /dev/null even if UV_IGNORE is
-         * set
-         */
+        /* Redirect stdin, stdout and stderr to /dev/null even if UV_IGNORE is
+         * set. */
+        uv__close_nocheckstdio(fd); /* Free up fd, if it happens to be open. */
         use_fd = open("/dev/null", fd == 0 ? O_RDONLY : O_RDWR);
         close_fd = use_fd;
 
@@ -299,26 +299,22 @@ static void uv__process_child_init(
       }
     }
 
-    if (fd == use_fd)
-      uv__cloexec_fcntl(use_fd, 0);
-    else
+    if (fd == use_fd) {
+      if (close_fd == -1)
+        uv__cloexec_fcntl(use_fd, 0);
+    }
+    else {
       fd = dup2(use_fd, fd);
+    }
 
     if (fd == -1)
       uv__write_errno(error_fd);
 
-    if (fd <= 2)
+    if (fd <= 2 && close_fd == -1)
       uv__nonblock_fcntl(fd, 0);
 
     if (close_fd >= stdio_count)
       uv__close(close_fd);
-  }
-
-  for (fd = 0; fd < stdio_count; fd++) {
-    use_fd = pipes[fd][1];
-
-    if (use_fd >= stdio_count)
-      uv__close(use_fd);
   }
 
   if (options->cwd != NULL && chdir(options->cwd))
@@ -500,6 +496,8 @@ static int uv__spawn_set_posix_spawn_file_actions(
         int stdio_count,
         int (*pipes)[2]) {
   int fd;
+  int fd2;
+  int use_fd;
   int err;
 
   err = posix_spawn_file_actions_init(actions);
@@ -520,61 +518,85 @@ static int uv__spawn_set_posix_spawn_file_actions(
       goto error;
   }
 
-  /* First, duplicate any required fd into orbit, out of the range of
-   * the descriptors that should be mapped in. */
-  for (fd = 0; fd < stdio_count; fd++) {
-    if (pipes[fd][1] < 0)
-      continue;
+  /* Do not return ENOSYS after this point, as we may mutate pipes. */
 
+  /* First duplicate low numbered fds, since it's not safe to duplicate them,
+   * they could get replaced. Example: swapping stdout and stderr; without
+   * this fd 2 (stderr) would be duplicated into fd 1, thus making both
+   * stdout and stderr go to the same fd, which was not the intention. */
+  for (fd = 0; fd < stdio_count; fd++) {
+    use_fd = pipes[fd][1];
+    if (use_fd < 0 || use_fd >= fd)
+      continue;
+    use_fd = stdio_count;
+    for (fd2 = 0; fd2 < stdio_count; fd2++) {
+      /* If we were not setting POSIX_SPAWN_CLOEXEC_DEFAULT, we would need to
+       * also consider whether fcntl(fd, F_GETFD) returned without the
+       * FD_CLOEXEC flag set. */
+      if (pipes[fd2][1] == use_fd) {
+        use_fd++;
+        fd2 = 0;
+      }
+    }
     err = posix_spawn_file_actions_adddup2(
       actions,
       pipes[fd][1],
-      stdio_count + fd);
+      use_fd);
+    assert(err != ENOSYS);
     if (err != 0)
       goto error;
+    pipes[fd][1] = use_fd;
   }
 
-  /*  Second, move the descriptors into their respective places */
+  /* Second, move the descriptors into their respective places */
   for (fd = 0; fd < stdio_count; fd++) {
-    if (pipes[fd][1] < 0)
-      continue;
-
-    err = posix_spawn_file_actions_adddup2(actions, stdio_count + fd, fd);
-    if (err != 0)
-      goto error;
-  }
-
-  /*  Finally, close all the superfluous descriptors */
-  for (fd = 0; fd < stdio_count; fd++) {
-    if (pipes[fd][1] < 0)
-      continue;
-
-    err = posix_spawn_file_actions_addclose(actions, stdio_count + fd);
-    if (err != 0)
-      goto error;
-  }
-
-  /*  Finally process the standard streams as per documentation */
-  for (fd = 0; fd < 3; fd++) {
-    int oflags;
-    const int mode = 0;
-
-    oflags = fd == 0 ? O_RDONLY : O_RDWR;
-
-    if (pipes[fd][1] != -1) {
-      /* If not ignored, make sure the fd is marked as non-blocking */
-      uv__nonblock_fcntl(pipes[fd][1], 0);
-    } else {
-      /* If ignored, redirect to (or from) /dev/null, */
-      err = posix_spawn_file_actions_addopen(
-        actions,
-        fd,
-        "/dev/null",
-        oflags,
-        mode);
-      if (err != 0)
-        goto error;
+    use_fd = pipes[fd][1];
+    if (use_fd < 0) {
+      if (fd >= 3)
+        continue;
+      else {
+        /* If ignored, redirect to (or from) /dev/null, */
+        err = posix_spawn_file_actions_addopen(
+          actions,
+          fd,
+          "/dev/null",
+          fd == 0 ? O_RDONLY : O_RDWR,
+          0);
+        assert(err != ENOSYS);
+        if (err != 0)
+          goto error;
+        continue;
+      }
     }
+
+    err = posix_spawn_file_actions_adddup2(actions, use_fd, fd);
+    assert(err != ENOSYS);
+    if (err != 0)
+      goto error;
+
+    /* Make sure the fd is marked as non-blocking (state shared between child
+     * and parent). */
+    uv__nonblock_fcntl(use_fd, 0);
+  }
+
+  /* Finally, close all the superfluous descriptors */
+  for (fd = 0; fd < stdio_count; fd++) {
+    use_fd = pipes[fd][1];
+    if (use_fd < stdio_count)
+      continue;
+
+    /* Check if we already closed this. */
+    for (fd2 = 0; fd2 < fd; fd2++) {
+      if (pipes[fd2][1] == use_fd)
+          break;
+    }
+    if (fd2 < fd)
+      continue;
+
+    err = posix_spawn_file_actions_addclose(actions, use_fd);
+    assert(err != ENOSYS);
+    if (err != 0)
+      goto error;
   }
 
   return 0;
@@ -718,6 +740,7 @@ static int uv__spawn_and_init_child_posix_spawn(
   if (err != 0)
     goto error;
 
+  /* This may mutate pipes. */
   err = uv__spawn_set_posix_spawn_file_actions(
     &actions,
     posix_spawn_fncs,
@@ -732,6 +755,7 @@ static int uv__spawn_and_init_child_posix_spawn(
   /* Try to spawn options->file resolving in the provided environment
    * if any */
   err = uv__spawn_resolve_and_spawn(options, &attrs, &actions, pid);
+  assert(err != ENOSYS);
 
   /* Destroy the actions/attributes */
   (void) posix_spawn_file_actions_destroy(&actions);
