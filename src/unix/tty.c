@@ -345,17 +345,16 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (fstat(file, &s)) {
 #if defined(__PASE__)
     // On ibmi receiving RST from TCP instead of FIN immediately puts fd into
-    // an error state. fstat will return EINVAL, and getsockopt(SO_ERROR) will
-    // succeed and return option_value=ECONNRESET.
+    // an error state. fstat will return EINVAL, getsockname will also return
+    // EINVAL, even if sockaddr_storage is valid. (If file does not refer to a
+    // socket, ENOTSOCK is returned instead.)
     // In such cases, we will permit the user to open the connection as uv_tcp
     // still, so that the user can get immediately notified of the error in
     // their read callback and close this fd.
-    int option_value = 0;
-    socklen_t len = sizeof(option_value);
-    if (getsockopt(file, SOL_SOCKET, SO_ERROR, &option_value, &len))
-      return UV_UNKNOWN_HANDLE;
-    if (option_value == ECONNRESET) {
-      return UV_TCP;
+    len = sizeof(ss);
+    if (getsockname(file, (struct sockaddr*) &ss, &len)) {
+      if (errno == EINVAL)
+        return UV_TCP;
     }
 #endif
     return UV_UNKNOWN_HANDLE;
