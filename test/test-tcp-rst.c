@@ -79,6 +79,7 @@ static void connect_cb(uv_connect_t *req, int status) {
  * RST. Test checks that uv_guess_handle still works on a reset TCP handle.
  */
 TEST_IMPL(tcp_rst) {
+#ifndef _WIN32
   struct sockaddr_in server_addr;
   int r;
 
@@ -104,4 +105,7 @@ TEST_IMPL(tcp_rst) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+#else
+  RETURN_SKIP("Unix only test");
+#endif
 }
