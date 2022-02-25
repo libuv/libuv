@@ -60,7 +60,7 @@ API
     Enable / disable TCP keep-alive. `delay` is the initial delay in seconds,
     ignored when `enable` is zero. 
     
-    A `delay` of 0 will imply using the system default setting for tcp keepalives,
+    A `delay` of 0 will imply using the system default setting for TCP keepalives,
     or if `delay` was previously set to a non-zero value, leave the value unchanged
     from the prior setting.
 
