@@ -84,6 +84,7 @@ extern char** environ;
 #endif
 
 #if defined(__linux__)
+# include <sched.h>
 # include <sys/syscall.h>
 # define uv__accept4 accept4
 #endif
@@ -1647,4 +1648,36 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
 
   /* Out of tokens (path entries), and no match found */
   return UV_EINVAL;
+}
+
+
+unsigned int uv_available_parallelism(void) {
+#ifdef __linux__
+  cpu_set_t set;
+  long rc;
+
+  memset(&set, 0, sizeof(set));
+
+  /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
+   * glibc it's... complicated... so for consistency try sched_getaffinity()
+   * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
+   */
+  if (0 == sched_getaffinity(0, sizeof(set), &set))
+    rc = CPU_COUNT(&set);
+  else
+    rc = sysconf(_SC_NPROCESSORS_ONLN);
+
+  if (rc < 1)
+    rc = 1;
+
+  return (unsigned) rc;
+#else  /* __linux__ */
+  long rc;
+
+  rc = sysconf(_SC_NPROCESSORS_ONLN);
+  if (rc < 1)
+    rc = 1;
+
+  return (unsigned) rc;
+#endif  /* __linux__ */
 }
