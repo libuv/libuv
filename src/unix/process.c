@@ -234,11 +234,10 @@ static void uv__write_errno(int error_fd) {
  * avoided. Since this isn't called on those targets, the function
  * doesn't even need to be defined for them.
  */
-static void uv__process_child_init(
-    const uv_process_options_t* options,
-    int stdio_count,
-    int (*pipes)[2],
-    int error_fd) {
+static void uv__process_child_init(const uv_process_options_t* options,
+                                   int stdio_count,
+                                   int (*pipes)[2],
+                                   int error_fd) {
   sigset_t signewset;
   int close_fd;
   int use_fd;
@@ -400,7 +399,7 @@ static void uv__spawn_init_can_use_setsid(void) {
   /* Parse the version major as a number. If it is greater than
    * the major version for macOS Catalina (aka macOS 10.15), then
    * the POSIX_SPAWN_SETSID flag is available */
-  version_major = atoi_l(version_major_str, LC_C_LOCALE);
+  version_major = atoi_l(version_major_str, NULL); /* Use LC_C_LOCALE */
   if (version_major >= MACOS_CATALINA_VERSION_MAJOR)
     posix_spawn_can_use_setsid = 1;
 }
@@ -567,7 +566,10 @@ static int uv__spawn_set_posix_spawn_file_actions(
       }
     }
 
-    err = posix_spawn_file_actions_adddup2(actions, use_fd, fd);
+    if (fd == use_fd)
+        err = posix_spawn_file_actions_addinherit_np(actions, fd);
+    else
+        err = posix_spawn_file_actions_adddup2(actions, use_fd, fd);
     assert(err != ENOSYS);
     if (err != 0)
       goto error;
@@ -621,11 +623,10 @@ char* uv__spawn_find_path_in_env(char** env) {
 }
 
 
-static int uv__spawn_resolve_and_spawn(
-    const uv_process_options_t* options,
-    posix_spawnattr_t* attrs,
-    posix_spawn_file_actions_t* actions,
-    pid_t* pid) {
+static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
+                                       posix_spawnattr_t* attrs,
+                                       posix_spawn_file_actions_t* actions,
+                                       pid_t* pid) {
   const char *p;
   const char *z;
   const char *path;
@@ -765,12 +766,11 @@ error:
 }
 #endif
 
-static int uv__spawn_and_init_child_fork(
-    const uv_process_options_t* options,
-    int stdio_count,
-    int (*pipes)[2],
-    int error_fd,
-    pid_t* pid) {
+static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
+                                         int stdio_count,
+                                         int (*pipes)[2],
+                                         int error_fd,
+                                         pid_t* pid) {
   sigset_t signewset;
   sigset_t sigoldset;
 
