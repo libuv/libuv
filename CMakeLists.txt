@@ -271,7 +271,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "kFreeBSD")
   list(APPEND uv_defines _GNU_SOURCE)
-  list(APPEND uv_libraries dl)
+  list(APPEND uv_libraries dl freebsd-glue)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
