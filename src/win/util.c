@@ -540,9 +540,8 @@ unsigned int uv_available_parallelism(void) {
   SYSTEM_INFO info;
   unsigned rc;
 
-  /* TODO(bnoordhuis) Should probably use GetLogicalProcessorInformationEx()
-   * to support systems with > 64 CPUs? On the other hand, uv_cpu_info() uses
-   * GetSystemInfo() too and so far no one has complained.
+  /* TODO(bnoordhuis) Use GetLogicalProcessorInformationEx() to support systems
+   * with > 64 CPUs? See https://github.com/libuv/libuv/pull/3458
    */
   GetSystemInfo(&info);
 
