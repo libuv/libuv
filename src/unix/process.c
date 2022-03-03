@@ -63,12 +63,12 @@ extern char **environ;
 # include "zos-base.h"
 #endif
 
-#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
 #include <sys/event.h>
 #endif
 
 
-#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
+#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__))
 static void uv__chld(uv_signal_t* handle, int signum) {
   assert(signum == SIGCHLD);
   uv__wait_children(handle->loop);
@@ -964,7 +964,7 @@ int uv_spawn(uv_loop_t* loop,
       goto error;
   }
 
-#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__))
+#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__))
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 #endif
 
@@ -983,7 +983,7 @@ int uv_spawn(uv_loop_t* loop,
    * fail to open a stdio handle. This ensures we can eventually reap the child
    * with waitpid. */
   if (exec_errorno == 0) {
-#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
     struct kevent event;
     EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
     if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL)) {
