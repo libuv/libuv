@@ -618,7 +618,8 @@ static uint64_t read_cpufreq(unsigned int cpunum) {
 
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
 #ifndef HAVE_IFADDRS_H
-  (void)ent; (void)exclude_type;
+  (void)ent;
+  (void)exclude_type;
   return UV_ENOSYS;
 #else
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
