@@ -616,6 +616,7 @@ static uint64_t read_cpufreq(unsigned int cpunum) {
 }
 
 
+#ifdef HAVE_IFADDRS_H
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
@@ -629,6 +630,7 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
     return exclude_type;
   return !exclude_type;
 }
+#endif
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 #ifndef HAVE_IFADDRS_H
