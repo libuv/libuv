@@ -616,12 +616,8 @@ static uint64_t read_cpufreq(unsigned int cpunum) {
 }
 
 
+#ifdef HAVE_IFADDRS_H
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
-#ifndef HAVE_IFADDRS_H
-  (void)ent;
-  (void)exclude_type;
-  return UV_ENOSYS;
-#else
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
   if (ent->ifa_addr == NULL)
@@ -633,8 +629,8 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (ent->ifa_addr->sa_family == PF_PACKET)
     return exclude_type;
   return !exclude_type;
-#endif
 }
+#endif
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 #ifndef HAVE_IFADDRS_H
