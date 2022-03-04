@@ -370,13 +370,23 @@ int uv_cancel(uv_req_t* req) {
     wreq = &((uv_fs_t*) req)->work_req;
     break;
   case UV_GETADDRINFO:
+#if defined(_USE_LIBINFO)
+    if (!uv__getaddrinfo_cancel((uv_getaddrinfo_t*) req))
+      return 0;
+#else
     loop =  ((uv_getaddrinfo_t*) req)->loop;
     wreq = &((uv_getaddrinfo_t*) req)->work_req;
     break;
+#endif
   case UV_GETNAMEINFO:
+#if defined(_USE_LIBINFO)
+    if (!uv__getnameinfo_cancel((uv_getnameinfo_t*) req))
+      return 0;
+#else
     loop = ((uv_getnameinfo_t*) req)->loop;
     wreq = &((uv_getnameinfo_t*) req)->work_req;
     break;
+#endif
   case UV_RANDOM:
     loop = ((uv_random_t*) req)->loop;
     wreq = &((uv_random_t*) req)->work_req;

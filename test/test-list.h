@@ -21,6 +21,7 @@
 
 #include "uv.h"
 
+TEST_DECLARE   (hash)
 TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (close_order)
@@ -540,6 +541,7 @@ TEST_DECLARE  (metrics_idle_time_thread)
 TEST_DECLARE  (metrics_idle_time_zero)
 
 TASK_LIST_START
+  TEST_ENTRY  (hash)
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
 #if 0
