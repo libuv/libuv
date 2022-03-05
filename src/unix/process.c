@@ -275,9 +275,20 @@ static void uv__process_child_init(const uv_process_options_t* options,
     use_fd = pipes[fd][1];
     if (use_fd < 0 || use_fd >= fd)
       continue;
+#ifdef F_DUPFD_CLOEXEC /* POSIX 2008 */
     pipes[fd][1] = fcntl(use_fd, F_DUPFD_CLOEXEC, stdio_count);
+#else
+    pipes[fd][1] = fcntl(use_fd, F_DUPFD, stdio_count);
+#endif
     if (pipes[fd][1] == -1)
       uv__write_errno(error_fd);
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+    n = uv__cloexec_fcntl(pipes[fd][1], 1);
+    if (n) {
+      uv__write_int(error_fd, n);
+      _exit(127);
+    }
+#endif
   }
 
   for (fd = 0; fd < stdio_count; fd++) {
@@ -300,8 +311,13 @@ static void uv__process_child_init(const uv_process_options_t* options,
     }
 
     if (fd == use_fd) {
-      if (close_fd == -1)
-        uv__cloexec_fcntl(use_fd, 0);
+      if (close_fd == -1) {
+        n = uv__cloexec_fcntl(use_fd, 0);
+        if (n) {
+          uv__write_int(error_fd, n);
+          _exit(127);
+        }
+      }
     }
     else {
       fd = dup2(use_fd, fd);
