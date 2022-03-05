@@ -1671,6 +1671,8 @@ unsigned int uv_available_parallelism(void) {
     rc = 1;
 
   return (unsigned) rc;
+#elif defined(__MVS__)
+  return 1;  /* TODO(bnoordhuis) Read from CSD_NUMBER_ONLINE_CPUS? */
 #else  /* __linux__ */
   long rc;
 
