@@ -281,6 +281,8 @@ TEST_DECLARE   (process_title_threadsafe)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
 TEST_DECLARE   (get_passwd)
+TEST_DECLARE   (get_passwd2)
+TEST_DECLARE   (get_group)
 TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (homedir)
 TEST_DECLARE   (tmpdir)
@@ -899,6 +901,8 @@ TASK_LIST_START
   TEST_ENTRY  (get_memory)
 
   TEST_ENTRY  (get_passwd)
+  TEST_ENTRY  (get_passwd2)
+  TEST_ENTRY  (get_group)
 
   TEST_ENTRY  (get_loadavg)
 

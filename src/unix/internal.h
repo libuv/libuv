@@ -312,7 +312,6 @@ size_t uv__thread_stack_size(void);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
 FILE* uv__open_file(const char* path);
-int uv__getpwuid_r(uv_passwd_t* pwd);
 int uv__search_path(const char* prog, char* buf, size_t* buflen);
 void uv__wait_children(uv_loop_t* loop);
 

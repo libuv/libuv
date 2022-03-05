@@ -999,8 +999,8 @@ int uv_os_homedir(char* buffer, size_t* size) {
   if (r != UV_ENOENT)
     return r;
 
-  /* USERPROFILE is not set, so call uv__getpwuid_r() */
-  r = uv__getpwuid_r(&pwd);
+  /* USERPROFILE is not set, so call uv_os_get_passwd() */
+  r = uv_os_get_passwd(&pwd);
 
   if (r != 0) {
     return r;
@@ -1084,17 +1084,6 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
 
   *size = bufsize - 1;
   return 0;
-}
-
-
-void uv_os_free_passwd(uv_passwd_t* pwd) {
-  if (pwd == NULL)
-    return;
-
-  uv__free(pwd->username);
-  uv__free(pwd->homedir);
-  pwd->username = NULL;
-  pwd->homedir = NULL;
 }
 
 
@@ -1194,7 +1183,7 @@ int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16) {
 }
 
 
-int uv__getpwuid_r(uv_passwd_t* pwd) {
+static int uv__getpwuid_r(uv_passwd_t* pwd) {
   HANDLE token;
   wchar_t username[UNLEN + 1];
   wchar_t *path;
@@ -1269,6 +1258,16 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
 int uv_os_get_passwd(uv_passwd_t* pwd) {
   return uv__getpwuid_r(pwd);
+}
+
+
+int uv_os_get_passwd2(uv_passwd_t* pwd, uv_uid_t uid) {
+  return UV_ENOTSUP;
+}
+
+
+int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
+  return UV_ENOTSUP;
 }
 
 
