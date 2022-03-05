@@ -29,11 +29,17 @@
 TEST_IMPL(tcp_flags) {
   uv_loop_t* loop;
   uv_tcp_t handle;
+  struct sockaddr_in addr;
   int r;
 
   loop = uv_default_loop();
 
   r = uv_tcp_init(loop, &handle);
+  ASSERT(r == 0);
+
+  r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
+  ASSERT(r == 0);
+  r = uv_tcp_bind(&handle, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0);
 
   r = uv_tcp_nodelay(&handle, 1);
