@@ -175,11 +175,9 @@ struct uv__stream_queued_fds_s {
     defined(__linux__) || \
     defined(__OpenBSD__) || \
     defined(__NetBSD__)
-#define uv__cloexec uv__cloexec_ioctl
 #define uv__nonblock uv__nonblock_ioctl
 #define UV__NONBLOCK_IS_IOCTL 1
 #else
-#define uv__cloexec uv__cloexec_fcntl
 #define uv__nonblock uv__nonblock_fcntl
 #define UV__NONBLOCK_IS_IOCTL 0
 #endif
@@ -197,8 +195,7 @@ struct uv__stream_queued_fds_s {
 #endif
 
 /* core */
-int uv__cloexec_ioctl(int fd, int set);
-int uv__cloexec_fcntl(int fd, int set);
+int uv__cloexec(int fd, int set);
 int uv__nonblock_ioctl(int fd, int set);
 int uv__nonblock_fcntl(int fd, int set);
 int uv__close(int fd); /* preserves errno */

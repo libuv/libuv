@@ -283,7 +283,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (pipes[fd][1] == -1)
       uv__write_errno(error_fd);
 #ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
-    n = uv__cloexec_fcntl(pipes[fd][1], 1);
+    n = uv__cloexec(pipes[fd][1], 1);
     if (n) {
       uv__write_int(error_fd, n);
       _exit(127);
@@ -312,7 +312,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
 
     if (fd == use_fd) {
       if (close_fd == -1) {
-        n = uv__cloexec_fcntl(use_fd, 0);
+        n = uv__cloexec(use_fd, 0);
         if (n) {
           uv__write_int(error_fd, n);
           _exit(127);
