@@ -216,16 +216,14 @@ static void uv__write_int(int fd, int val) {
     n = write(fd, &val, sizeof(val));
   while (n == -1 && errno == EINTR);
 
-  if (n == -1 && errno == EPIPE)
-    return; /* parent process has quit */
-
-  assert(n == sizeof(val));
+  /* The write might have failed (e.g. if the parent process has died),
+   * but we have nothing left but to _exit ourself now too. */
+  _exit(127);
 }
 
 
 static void uv__write_errno(int error_fd) {
   uv__write_int(error_fd, UV__ERR(errno));
-  _exit(127);
 }
 
 
@@ -284,10 +282,8 @@ static void uv__process_child_init(const uv_process_options_t* options,
       uv__write_errno(error_fd);
 #ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
     n = uv__cloexec(pipes[fd][1], 1);
-    if (n) {
+    if (n)
       uv__write_int(error_fd, n);
-      _exit(127);
-    }
 #endif
   }
 
@@ -313,10 +309,8 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (fd == use_fd) {
       if (close_fd == -1) {
         n = uv__cloexec(use_fd, 0);
-        if (n) {
+        if (n)
           uv__write_int(error_fd, n);
-          _exit(127);
-        }
       }
     }
     else {
@@ -368,7 +362,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
 #endif
 
   uv__write_errno(error_fd);
-  abort();
 }
 #endif
 
