@@ -387,30 +387,21 @@ static void uv__spawn_init_posix_spawn_fncs(void) {
 
 
 static void uv__spawn_init_can_use_setsid(void) {
-  static const int MACOS_CATALINA_VERSION_MAJOR = 19;
-  char version_str[256];
-  char* version_major_str;
-  size_t version_str_size = 256;
-  int r;
-  int version_major;
+  int which[] = {CTL_KERN, KERN_OSRELEASE};
+  unsigned major;
+  unsigned minor;
+  unsigned patch;
+  char buf[256];
+  size_t len;
 
-  /* Get a version string */
-  r = sysctlbyname("kern.osrelease", version_str, &version_str_size, NULL, 0);
-  if (r != 0)
+  len = sizeof(buf);
+  if (sysctl(which, ARRAY_SIZE(which), buf, &len, NULL, 0))
     return;
 
-  /* Try to get the major version number. If not found
-   * fall back to the fork/exec flow */
-  version_major_str = strtok(version_str, ".");
-  if (version_major_str == NULL)
+  if (3 != sscanf(buf, "%u.%u.%u", &major, &minor, &patch))
     return;
 
-  /* Parse the version major as a number. If it is greater than
-   * the major version for macOS Catalina (aka macOS 10.15), then
-   * the POSIX_SPAWN_SETSID flag is available */
-  version_major = atoi_l(version_major_str, NULL); /* Use LC_C_LOCALE */
-  if (version_major >= MACOS_CATALINA_VERSION_MAJOR)
-    posix_spawn_can_use_setsid = 1;
+  posix_spawn_can_use_setsid = (major >= 19);  /* macOS Catalina */
 }
 
 
