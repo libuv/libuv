@@ -101,7 +101,7 @@ void uv__wait_children(uv_loop_t* loop) {
     q = QUEUE_NEXT(q);
 
 #ifndef UV_USE_SIGCHLD
-    if ((process->flags | UV_HANDLE_REAP) == 0)
+    if ((process->flags & UV_HANDLE_REAP) == 0)
       continue;
     options = 0;
     process->flags &= ~UV_HANDLE_REAP;
