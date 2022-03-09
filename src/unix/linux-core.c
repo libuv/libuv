@@ -267,6 +267,7 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   unsigned int numcpus;
+  int numtries = 3;
   uv_cpu_info_t* ci;
   int err;
   FILE* statfile_fp;
@@ -278,33 +279,45 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   if (statfile_fp == NULL)
     return UV__ERR(errno);
 
-  err = uv__cpu_num(statfile_fp, &numcpus);
-  if (err < 0)
-    goto out;
+  while (numtries--) {
+    err = uv__cpu_num(statfile_fp, &numcpus);
+    if (err < 0)
+      goto out;
 
-  err = UV_ENOMEM;
-  ci = uv__calloc(numcpus, sizeof(*ci));
-  if (ci == NULL)
-    goto out;
+    err = UV_ENOMEM;
+    ci = uv__calloc(numcpus, sizeof(*ci));
+    if (ci == NULL)
+      goto out;
 
-  err = read_models(numcpus, ci);
-  if (err == 0)
-    err = read_times(statfile_fp, numcpus, ci);
+    err = read_models(numcpus, ci);
+    if (err == 0)
+      err = read_times(statfile_fp, numcpus, ci);
 
-  if (err) {
-    uv_free_cpu_info(ci, numcpus);
-    goto out;
+    /** The cpu_num observed from uv__cpu_num(), read_models() and read_times()
+     * may be different for online/offline CPU race. Restart the procedure if
+     * that is the case.
+     */
+    if (err == UV_EAGAIN) {
+      rewind(statfile_fp);
+      uv_free_cpu_info(ci, numcpus);
+      continue;
+    }
+    if (err) {
+      uv_free_cpu_info(ci, numcpus);
+      goto out;
+    }
+
+    /* read_models() on x86 also reads the CPU speed from /proc/cpuinfo.
+     * We don't check for errors here. Worst case, the field is left zero.
+     */
+    if (ci[0].speed == 0)
+      read_speeds(numcpus, ci);
+
+    *cpu_infos = ci;
+    *count = numcpus;
+    err = 0;
+    break;
   }
-
-  /* read_models() on x86 also reads the CPU speed from /proc/cpuinfo.
-   * We don't check for errors here. Worst case, the field is left zero.
-   */
-  if (ci[0].speed == 0)
-    read_speeds(numcpus, ci);
-
-  *cpu_infos = ci;
-  *count = numcpus;
-  err = 0;
 
 out:
 
@@ -587,7 +600,10 @@ static int read_times(FILE* statfile_fp,
     ts.irq  = irq * multiplier;
     ci[num++].cpu_times = ts;
   }
-  assert(num == numcpus);
+
+  if (num != numcpus) {
+    return UV_EAGAIN;
+  }
 
   return 0;
 }
