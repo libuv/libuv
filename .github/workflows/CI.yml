@@ -71,11 +71,9 @@ jobs:
           cmake --build .
           ls -lh
       - name: platform_output
-        shell: cmd
         run: |
           ./build/uv_run_tests platform_output
       - name: platform_output_a
-        shell: cmd
         run: |
           ./build/uv_run_tests_a platform_output
       - name: Test
