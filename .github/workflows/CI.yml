@@ -30,11 +30,11 @@ jobs:
       - name: platform_output
         shell: cmd
         run: |
-          cd build && uv_run_tests.exe platform_output
+          build\\Debug\\uv_run_tests.exe platform_output
       - name: platform_output_a
         shell: cmd
         run: |
-          cd build && uv_run_tests_a.exe platform_output
+          build\\Debug\\uv_run_tests_a.exe platform_output
       - name: Test
         shell: cmd
         run: |
@@ -73,11 +73,11 @@ jobs:
       - name: platform_output
         shell: cmd
         run: |
-          cd build && uv_run_tests platform_output
+          ./build/uv_run_tests platform_output
       - name: platform_output_a
         shell: cmd
         run: |
-          cd build && uv_run_tests_a platform_output
+          ./build/uv_run_tests_a platform_output
       - name: Test
         run: |
           cd build && ctest -V
