@@ -305,7 +305,10 @@ int uv_thread_setaffinity(uv_thread_t* tid,
       CPU_SET(i, &cpuset);
 
 #if defined(__ANDROID__)
-  r = sched_setaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset);
+  if (sched_setaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset))
+    r = errno;
+  else
+    r = 0;
 #else
   r = pthread_setaffinity_np(*tid, sizeof(cpuset), &cpuset);
 #endif
@@ -330,7 +333,10 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 
   CPU_ZERO(&cpuset);
 #if defined(__ANDROID__)
-  r = sched_getaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset);
+  if (sched_getaffinity(pthread_gettid_np(*tid), sizeof(cpuset), &cpuset))
+    r = errno;
+  else
+    r = 0;
 #else
   r = pthread_getaffinity_np(*tid, sizeof(cpuset), &cpuset);
 #endif
