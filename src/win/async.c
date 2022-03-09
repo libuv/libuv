@@ -27,7 +27,7 @@
 #include "req-inl.h"
 
 
-void uv_async_endgame(uv_loop_t* loop, uv_async_t* handle) {
+void uv__async_endgame(uv_loop_t* loop, uv_async_t* handle) {
   assert(handle->flags & UV_HANDLE_CLOSING);
   assert(!(handle->flags & UV_HANDLE_CLOSED));
   uv__handle_close(handle);
@@ -46,9 +46,9 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 }
 
 
-void uv_async_close(uv_loop_t* loop, uv_async_t* handle) {
+void uv__async_close(uv_loop_t* loop, uv_async_t* handle) {
   QUEUE_REMOVE(&handle->queue);
-  uv_want_endgame(loop, (uv_handle_t*) handle);
+  uv__want_endgame(loop, (uv_handle_t*) handle);
   uv__handle_closing(handle);
 }
 
@@ -67,8 +67,8 @@ int uv_async_send(uv_async_t* handle) {
 }
 
 
-void uv_process_async_wakeup_req(uv_loop_t* loop,
-                                 uv_req_t* req) {
+void uv__process_async_wakeup_req(uv_loop_t* loop,
+                                  uv_req_t* req) {
   QUEUE queue;
   QUEUE* q;
   uv_async_t* h;

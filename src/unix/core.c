@@ -87,6 +87,7 @@ extern char** environ;
 #endif
 
 #if defined(__linux__)
+# include <sched.h>
 # include <sys/syscall.h>
 # define uv__accept4 accept4
 #endif
@@ -328,35 +329,36 @@ uv_os_fd_t uv_backend_fd(const uv_loop_t* loop) {
 }
 
 
-int uv_backend_timeout(const uv_loop_t* loop) {
-  if (loop->stop_flag != 0)
-    return 0;
-
-  if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
-    return 0;
-
-  if (!QUEUE_EMPTY(&loop->idle_handles))
-    return 0;
-
-  if (!QUEUE_EMPTY(&loop->pending_queue))
-    return 0;
-
-  if (loop->closing_handles)
-    return 0;
-
-  return uv__next_timeout(loop);
-}
-
-
 static int uv__loop_alive(const uv_loop_t* loop) {
   return uv__has_active_handles(loop) ||
          uv__has_active_reqs(loop) ||
+         !QUEUE_EMPTY(&loop->pending_queue) ||
          loop->closing_handles != NULL;
 }
 
 
+static int uv__backend_timeout(const uv_loop_t* loop) {
+  if (loop->stop_flag == 0 &&
+      /* uv__loop_alive(loop) && */
+      (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
+      QUEUE_EMPTY(&loop->pending_queue) &&
+      QUEUE_EMPTY(&loop->idle_handles) &&
+      loop->closing_handles == NULL)
+    return uv__next_timeout(loop);
+  return 0;
+}
+
+
+int uv_backend_timeout(const uv_loop_t* loop) {
+  if (QUEUE_EMPTY(&loop->watcher_queue))
+    return uv__backend_timeout(loop);
+  /* Need to call uv_run to update the backend fd state. */
+  return 0;
+}
+
+
 int uv_loop_alive(const uv_loop_t* loop) {
-    return uv__loop_alive(loop);
+  return uv__loop_alive(loop);
 }
 
 
@@ -378,7 +380,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
-      timeout = uv_backend_timeout(loop);
+      timeout = uv__backend_timeout(loop);
 
     uv__io_poll(loop, timeout);
 
@@ -591,20 +593,6 @@ int uv__nonblock_ioctl(int fd, int set) {
 
   return 0;
 }
-
-
-int uv__cloexec_ioctl(int fd, int set) {
-  int r;
-
-  do
-    r = ioctl(fd, set ? FIOCLEX : FIONCLEX);
-  while (r == -1 && errno == EINTR);
-
-  if (r)
-    return UV__ERR(errno);
-
-  return 0;
-}
 #endif
 
 
@@ -639,25 +627,13 @@ int uv__nonblock_fcntl(int fd, int set) {
 }
 
 
-int uv__cloexec_fcntl(int fd, int set) {
+int uv__cloexec(int fd, int set) {
   int flags;
   int r;
 
-  do
-    r = fcntl(fd, F_GETFD);
-  while (r == -1 && errno == EINTR);
-
-  if (r == -1)
-    return UV__ERR(errno);
-
-  /* Bail out now if already set/clear. */
-  if (!!(r & FD_CLOEXEC) == !!set)
-    return 0;
-
+  flags = 0;
   if (set)
-    flags = r | FD_CLOEXEC;
-  else
-    flags = r & ~FD_CLOEXEC;
+    flags = FD_CLOEXEC;
 
   do
     r = fcntl(fd, F_SETFD, flags);
@@ -1027,6 +1003,32 @@ int uv__open_cloexec(const char* path, int flags) {
 
   return fd;
 #endif  /* O_CLOEXEC */
+}
+
+
+int uv__slurp(const char* filename, char* buf, size_t len) {
+  ssize_t n;
+  int fd;
+
+  assert(len > 0);
+
+  fd = uv__open_cloexec(filename, O_RDONLY);
+  if (fd < 0)
+    return fd;
+
+  do
+    n = read(fd, buf, len - 1);
+  while (n == -1 && errno == EINTR);
+
+  if (uv__close_nocheckstdio(fd))
+    abort();
+
+  if (n < 0)
+    return UV__ERR(errno);
+
+  buf[n] = '\0';
+
+  return 0;
 }
 
 
@@ -1640,4 +1642,38 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
 
   /* Out of tokens (path entries), and no match found */
   return UV_EINVAL;
+}
+
+
+unsigned int uv_available_parallelism(void) {
+#ifdef __linux__
+  cpu_set_t set;
+  long rc;
+
+  memset(&set, 0, sizeof(set));
+
+  /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
+   * glibc it's... complicated... so for consistency try sched_getaffinity()
+   * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
+   */
+  if (0 == sched_getaffinity(0, sizeof(set), &set))
+    rc = CPU_COUNT(&set);
+  else
+    rc = sysconf(_SC_NPROCESSORS_ONLN);
+
+  if (rc < 1)
+    rc = 1;
+
+  return (unsigned) rc;
+#elif defined(__MVS__)
+  return 1;  /* TODO(bnoordhuis) Read from CSD_NUMBER_ONLINE_CPUS? */
+#else  /* __linux__ */
+  long rc;
+
+  rc = sysconf(_SC_NPROCESSORS_ONLN);
+  if (rc < 1)
+    rc = 1;
+
+  return (unsigned) rc;
+#endif  /* __linux__ */
 }

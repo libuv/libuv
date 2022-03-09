@@ -46,11 +46,7 @@ static void thread_main(void* arg) {
     uv_fs_req_cleanup(&req);
   } while (n > 0 || (n == -1 && uv_errno == UV_EINTR));
 
-#ifdef _WIN32
-  ASSERT(n == UV_EOF);
-#else
   ASSERT(n == 0);
-#endif
 }
 
 

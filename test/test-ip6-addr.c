@@ -172,11 +172,11 @@ TEST_IMPL(ip6_invalid_interface) {
 }
 #endif
 
-#ifdef SIN6_LEN
 TEST_IMPL(ip6_sin6_len) {
   struct sockaddr_in6 s;
-  ASSERT(uv_ip6_addr("::", 0, &s) < 0);
+  ASSERT_EQ(0, uv_ip6_addr("::", 0, &s));
+#ifdef SIN6_LEN
   ASSERT(s.sin6_len == sizeof(s));
+#endif
   return 0;
 }
-#endif

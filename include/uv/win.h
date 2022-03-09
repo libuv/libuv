@@ -33,7 +33,14 @@ typedef intptr_t ssize_t;
 #endif
 
 #include <mswsock.h>
+// Disable the typedef in mstcpip.h of MinGW.
+#define _TCP_INITIAL_RTO_PARAMETERS _TCP_INITIAL_RTO_PARAMETERS__AVOID
+#define TCP_INITIAL_RTO_PARAMETERS TCP_INITIAL_RTO_PARAMETERS__AVOID
+#define PTCP_INITIAL_RTO_PARAMETERS PTCP_INITIAL_RTO_PARAMETERS__AVOID
 #include <ws2tcpip.h>
+#undef _TCP_INITIAL_RTO_PARAMETERS
+#undef TCP_INITIAL_RTO_PARAMETERS
+#undef PTCP_INITIAL_RTO_PARAMETERS
 #include <windows.h>
 
 #include <stdint.h>
@@ -110,7 +117,7 @@ typedef struct _AFD_POLL_INFO {
   AFD_POLL_HANDLE_INFO Handles[1];
 } AFD_POLL_INFO, *PAFD_POLL_INFO;
 
-#define UV_MSAFD_PROVIDER_COUNT 3
+#define UV_MSAFD_PROVIDER_COUNT 4
 
 
 /**
@@ -134,11 +141,7 @@ typedef CRITICAL_SECTION uv_mutex_t;
 
 typedef CONDITION_VARIABLE uv_cond_t;
 
-typedef struct {
-  unsigned int num_readers_;
-  CRITICAL_SECTION num_readers_lock_;
-  HANDLE write_semaphore_;
-} uv_rwlock_t;
+typedef SRWLOCK uv_rwlock_t;
 
 typedef struct {
   unsigned int n;

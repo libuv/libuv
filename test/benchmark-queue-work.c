@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -19,50 +19,49 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
 #include "task.h"
+#include "uv.h"
 
+static int done = 0;
+static unsigned events = 0;
+static unsigned result;
 
-TEST_IMPL(loop_update_time) {
-  uint64_t start;
-
-  start = uv_now(uv_default_loop());
-  while (uv_now(uv_default_loop()) - start < 1000)
-    ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
-
-  MAKE_VALGRIND_HAPPY();
-  return 0;
+static unsigned fastrand(void) {
+  static unsigned g = 0;
+  g = g * 214013 + 2531011;
+  return g;
 }
 
-static void cb(uv_timer_t* timer) {
-  uv_close((uv_handle_t*)timer, NULL);
+static void work_cb(uv_work_t* req) {
+  req->data = &result;
+  *(unsigned*)req->data = fastrand();
 }
 
-TEST_IMPL(loop_backend_timeout) {
-  uv_loop_t *loop = uv_default_loop();
-  uv_timer_t timer;
-  int r;
+static void after_work_cb(uv_work_t* req, int status) {
+  events++;
+  if (!done)
+    ASSERT_EQ(0, uv_queue_work(req->loop, req, work_cb, after_work_cb));
+}
 
-  /* The default loop has some internal watchers to initialize. */
-  loop->active_handles++;
-  r = uv_run(loop, UV_RUN_NOWAIT);
-  ASSERT_EQ(r, 1);
-  loop->active_handles--;
-  ASSERT_EQ(uv_loop_alive(loop), 0);
+static void timer_cb(uv_timer_t* handle) { done = 1; }
 
-  r = uv_timer_init(loop, &timer);
-  ASSERT_EQ(r, 0);
+BENCHMARK_IMPL(queue_work) {
+  uv_timer_t timer_handle;
+  uv_work_t work;
+  uv_loop_t* loop;
+  int timeout;
 
-  ASSERT_EQ(uv_loop_alive(loop), 0);
-  ASSERT_EQ(uv_backend_timeout(loop), 0);
+  loop = uv_default_loop();
+  timeout = 5000;
 
-  r = uv_timer_start(&timer, cb, 1000, 0); /* 1 sec */
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(uv_backend_timeout(loop), 1000);
+  ASSERT_EQ(0, uv_timer_init(loop, &timer_handle));
+  ASSERT_EQ(0, uv_timer_start(&timer_handle, timer_cb, timeout, 0));
 
-  r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(uv_backend_timeout(loop), 0);
+  ASSERT_EQ(0, uv_queue_work(loop, &work, work_cb, after_work_cb));
+  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+
+  printf("%s async jobs in %.1f seconds (%s/s)\n", fmt(events), timeout / 1000.,
+         fmt(events / (timeout / 1000.)));
 
   MAKE_VALGRIND_HAPPY();
   return 0;

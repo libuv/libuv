@@ -313,7 +313,7 @@ API
 
 .. c:function:: int uv_uptime(double* uptime)
 
-    Gets the current system uptime.
+    Gets the current system uptime. Depending on the system full or fractional seconds are returned.
 
 .. c:function:: int uv_getrusage(uv_rusage_t* rusage)
 
@@ -335,10 +335,29 @@ API
 
     .. versionadded:: 1.16.0
 
+.. c:function:: unsigned int uv_available_parallelism(void)
+
+    Returns an estimate of the default amount of parallelism a program should
+    use. Always returns a non-zero value.
+
+    On Linux, inspects the calling thread's CPU affinity mask to determine if
+    it has been pinned to specific CPUs.
+
+    On Windows, the available parallelism may be underreported on systems with
+    more than 64 logical CPUs.
+
+    On other platforms, reports the number of CPUs that the operating system
+    considers to be online.
+
+    .. versionadded:: 1.44.0
+
 .. c:function:: int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count)
 
     Gets information about the CPUs on the system. The `cpu_infos` array will
     have `count` elements and needs to be freed with :c:func:`uv_free_cpu_info`.
+
+    Use :c:func:`uv_available_parallelism` if you need to know how many CPUs
+    are available for threads or child processes.
 
 .. c:function:: void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count)
 
@@ -387,6 +406,10 @@ API
 .. c:function:: int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size)
 
     Convert a binary structure containing an IPv6 address to a string.
+
+.. c:function:: int uv_ip_name(const struct sockaddr *src, char *dst, size_t size)
+
+    Convert a binary structure containing an IPv4 address or an IPv6 address to a string.
 
 .. c:function:: int uv_inet_ntop(int af, const void* src, char* dst, size_t size)
 .. c:function:: int uv_inet_pton(int af, const char* src, void* dst)
@@ -745,7 +768,7 @@ API
       :man:`sysctl(2)`.
     - FreeBSD: `getrandom(2) <https://www.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2>_`,
       or `/dev/urandom` after reading from `/dev/random` once.
-    - NetBSD: `KERN_ARND` `sysctl(3) <https://netbsd.gw.com/cgi-bin/man-cgi?sysctl+3+NetBSD-current>_`
+    - NetBSD: `KERN_ARND` `sysctl(7) <https://man.netbsd.org/sysctl.7>_`
     - macOS, OpenBSD: `getentropy(2) <https://man.openbsd.org/getentropy.2>_`
       if available, or `/dev/urandom` after reading from `/dev/random` once.
     - AIX: `/dev/random`.

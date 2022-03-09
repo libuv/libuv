@@ -82,6 +82,7 @@ TEST_DECLARE   (ip6_pton)
 #ifndef _WIN32
 TEST_DECLARE   (ip6_invalid_interface)
 #endif
+TEST_DECLARE   (ip6_sin6_len)
 TEST_DECLARE   (connect_unspecified)
 TEST_DECLARE   (ipc_heavy_traffic_deadlock_bug)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -94,9 +95,6 @@ TEST_DECLARE   (ipc_send_recv_tcp)
 TEST_DECLARE   (ipc_send_recv_tcp_inprocess)
 TEST_DECLARE   (ipc_tcp_connection)
 TEST_DECLARE   (ipc_send_zero)
-#ifndef _WIN32
-TEST_DECLARE   (ipc_closed_handle)
-#endif
 TEST_DECLARE   (tcp_alloc_cb_fail)
 TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_vec)
@@ -163,6 +161,7 @@ TEST_DECLARE   (udp_alloc_cb_fail)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
 TEST_DECLARE   (udp_connect)
+TEST_DECLARE   (udp_connect6)
 TEST_DECLARE   (udp_create_early)
 TEST_DECLARE   (udp_create_early_bad_bind)
 TEST_DECLARE   (udp_create_early_bad_domain)
@@ -331,6 +330,7 @@ TEST_DECLARE   (spawn_reads_child_path)
 TEST_DECLARE   (spawn_inherit_streams)
 TEST_DECLARE   (spawn_quoted_path)
 TEST_DECLARE   (spawn_tcp_server)
+TEST_DECLARE   (spawn_exercise_sigchld_issue)
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (fs_poll_getpath)
 TEST_DECLARE   (fs_poll_close_request)
@@ -405,6 +405,7 @@ TEST_DECLARE   (fs_event_close_in_callback)
 TEST_DECLARE   (fs_event_start_and_close)
 TEST_DECLARE   (fs_event_error_reporting)
 TEST_DECLARE   (fs_event_getpath)
+TEST_DECLARE   (fs_event_stop_in_cb)
 TEST_DECLARE   (fs_scandir_empty_dir)
 TEST_DECLARE   (fs_scandir_non_existent_dir)
 TEST_DECLARE   (fs_scandir_file)
@@ -475,6 +476,7 @@ TEST_DECLARE   (poll_multiple_handles)
 
 TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
+TEST_DECLARE   (ip_name)
 
 TEST_DECLARE   (poll_close_doesnt_corrupt_stack)
 TEST_DECLARE   (poll_closesocket)
@@ -524,7 +526,7 @@ TEST_DECLARE   (getters_setters)
 
 TEST_DECLARE   (not_writable_after_shutdown)
 TEST_DECLARE   (not_readable_nor_writable_on_read_error)
-TEST_DECLARE   (not_readable_on_eof)
+TEST_DECLARE   (readable_on_eof)
 
 #ifndef _WIN32
 TEST_DECLARE  (fork_timer)
@@ -634,6 +636,7 @@ TASK_LIST_START
 #ifndef _WIN32
   TEST_ENTRY  (ip6_invalid_interface)
 #endif
+  TEST_ENTRY  (ip6_sin6_len)
   TEST_ENTRY  (connect_unspecified)
   TEST_ENTRY  (ipc_heavy_traffic_deadlock_bug)
   TEST_ENTRY  (ipc_listen_before_write)
@@ -646,9 +649,6 @@ TASK_LIST_START
   TEST_ENTRY  (ipc_send_recv_tcp_inprocess)
   TEST_ENTRY  (ipc_tcp_connection)
   TEST_ENTRY  (ipc_send_zero)
-#ifndef _WIN32
-  TEST_ENTRY  (ipc_closed_handle)
-#endif
 
   TEST_ENTRY  (tcp_alloc_cb_fail)
 
@@ -757,6 +757,7 @@ TASK_LIST_START
   TEST_ENTRY  (udp_bind)
   TEST_ENTRY  (udp_bind_reuseaddr)
   TEST_ENTRY  (udp_connect)
+  TEST_ENTRY  (udp_connect6)
   TEST_ENTRY  (udp_create_early)
   TEST_ENTRY  (udp_create_early_bad_bind)
   TEST_ENTRY  (udp_create_early_bad_domain)
@@ -974,6 +975,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_inherit_streams)
   TEST_ENTRY  (spawn_quoted_path)
   TEST_ENTRY  (spawn_tcp_server)
+  TEST_ENTRY  (spawn_exercise_sigchld_issue)
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (fs_poll_close_request)
@@ -1082,6 +1084,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_start_and_close)
   TEST_ENTRY_CUSTOM (fs_event_error_reporting, 0, 0, 60000)
   TEST_ENTRY  (fs_event_getpath)
+  TEST_ENTRY  (fs_event_stop_in_cb)
   TEST_ENTRY  (fs_scandir_empty_dir)
   TEST_ENTRY  (fs_scandir_non_existent_dir)
   TEST_ENTRY  (fs_scandir_file)
@@ -1136,6 +1139,7 @@ TASK_LIST_START
   TEST_ENTRY  (dlerror)
   TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)
+  TEST_ENTRY  (ip_name)
 
   TEST_ENTRY  (queue_foreach_delete)
 
@@ -1175,8 +1179,8 @@ TASK_LIST_START
   TEST_HELPER   (not_writable_after_shutdown, tcp4_echo_server)
   TEST_ENTRY    (not_readable_nor_writable_on_read_error)
   TEST_HELPER   (not_readable_nor_writable_on_read_error, tcp4_echo_server)
-  TEST_ENTRY    (not_readable_on_eof)
-  TEST_HELPER   (not_readable_on_eof, tcp4_echo_server)
+  TEST_ENTRY    (readable_on_eof)
+  TEST_HELPER   (readable_on_eof, tcp4_echo_server)
 
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)

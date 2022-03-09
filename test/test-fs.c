@@ -878,14 +878,19 @@ static void check_utime_ex(const char* path,
   } else {
     double st_atim;
     double st_mtim;
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__SUNPRO_C)
     /* TODO(vtjnash): would it be better to normalize this? */
     ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
     ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
 #endif
     st_atim = s->st_atim.tv_sec + s->st_atim.tv_nsec / 1e9;
     st_mtim = s->st_mtim.tv_sec + s->st_mtim.tv_nsec / 1e9;
-    ASSERT_DOUBLE_EQ(st_atim, atime);
+    /*
+     * Linux does not allow reading reliably the atime of a symlink
+     * since readlink() can update it
+     */
+    if (!test_lutime)
+      ASSERT_DOUBLE_EQ(st_atim, atime);
     ASSERT_DOUBLE_EQ(st_mtim, mtime);
   }
 
@@ -3124,9 +3129,6 @@ TEST_IMPL(fs_scandir_non_existent_dir) {
 }
 
 TEST_IMPL(fs_scandir_file) {
-#if defined(__ASAN__)
-  RETURN_SKIP("Test does not currently work in ASAN");
-#endif
   const char* path;
   int r;
 
@@ -3381,9 +3383,6 @@ static void fs_read_bufs(int add_flags) {
   uv_fs_req_cleanup(&close_req);
 }
 TEST_IMPL(fs_read_bufs) {
-#if defined(__ASAN__)
-  RETURN_SKIP("Test does not currently work in ASAN");
-#endif
   fs_read_bufs(0);
   fs_read_bufs(UV_FS_O_FILEMAP);
 

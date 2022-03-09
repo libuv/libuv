@@ -106,7 +106,7 @@ static UINT __stdcall uv__thread_start(void* arg) {
   uv__free(ctx_p);
 
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
-  uv_key_set(&uv__current_thread_key, (void*) ctx.self);
+  uv_key_set(&uv__current_thread_key, ctx.self);
 
   ctx.entry(ctx.arg);
 
@@ -266,8 +266,20 @@ int uv_thread_detach(uv_thread_t* tid) {
 
 
 uv_thread_t uv_thread_self(void) {
+  uv_thread_t key;
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
-  return (uv_thread_t) uv_key_get(&uv__current_thread_key);
+  key = uv_key_get(&uv__current_thread_key);
+  if (key == NULL) {
+      /* If the thread wasn't started by uv_thread_create (such as the main
+       * thread), we assign an id to it now. */
+      if (!DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+                           GetCurrentProcess(), &key, 0,
+                           FALSE, DUPLICATE_SAME_ACCESS)) {
+          uv_fatal_error(GetLastError(), "DuplicateHandle");
+      }
+      uv_key_set(&uv__current_thread_key, key);
+  }
+  return key;
 }
 
 
@@ -321,113 +333,52 @@ void uv_mutex_unlock(uv_mutex_t* mutex) {
   LeaveCriticalSection(mutex);
 }
 
-
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
-  /* Initialize the semaphore that acts as the write lock. */
-  HANDLE handle = CreateSemaphoreW(NULL, 1, 1, NULL);
-  if (handle == NULL)
-    return uv_translate_sys_error(GetLastError());
-  rwlock->write_semaphore_ = handle;
-
-  /* Initialize the critical section protecting the reader count. */
-  InitializeCriticalSection(&rwlock->num_readers_lock_);
-
-  /* Initialize the reader count. */
-  rwlock->num_readers_ = 0;
-
+  memset(rwlock, 0, sizeof(*rwlock));
+  InitializeSRWLock(rwlock);
   return 0;
 }
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  DeleteCriticalSection(&rwlock->num_readers_lock_);
-  CloseHandle(rwlock->write_semaphore_);
+  /* SRWLock does not need explicit destruction so long as there are no waiting threads
+     See: https://docs.microsoft.com/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks */
 }
 
 
 void uv_rwlock_rdlock(uv_rwlock_t* rwlock) {
-  /* Acquire the lock that protects the reader count. */
-  EnterCriticalSection(&rwlock->num_readers_lock_);
-
-  /* Increase the reader count, and lock for write if this is the first
-   * reader.
-   */
-  if (++rwlock->num_readers_ == 1) {
-    DWORD r = WaitForSingleObject(rwlock->write_semaphore_, INFINITE);
-    if (r != WAIT_OBJECT_0)
-      uv_fatal_error(GetLastError(), "WaitForSingleObject");
-  }
-
-  /* Release the lock that protects the reader count. */
-  LeaveCriticalSection(&rwlock->num_readers_lock_);
+  AcquireSRWLockShared(rwlock);
 }
 
 
 int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
-  int err;
-
-  if (!TryEnterCriticalSection(&rwlock->num_readers_lock_))
+  if (!TryAcquireSRWLockShared(rwlock))
     return UV_EBUSY;
 
-  err = 0;
-
-  if (rwlock->num_readers_ == 0) {
-    /* Currently there are no other readers, which means that the write lock
-     * needs to be acquired.
-     */
-    DWORD r = WaitForSingleObject(rwlock->write_semaphore_, 0);
-    if (r == WAIT_OBJECT_0)
-      rwlock->num_readers_++;
-    else if (r == WAIT_TIMEOUT)
-      err = UV_EBUSY;
-    else if (r == WAIT_FAILED)
-      uv_fatal_error(GetLastError(), "WaitForSingleObject");
-
-  } else {
-    /* The write lock has already been acquired because there are other
-     * active readers.
-     */
-    rwlock->num_readers_++;
-  }
-
-  LeaveCriticalSection(&rwlock->num_readers_lock_);
-  return err;
+  return 0;
 }
 
 
 void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) {
-  EnterCriticalSection(&rwlock->num_readers_lock_);
-
-  if (--rwlock->num_readers_ == 0) {
-    if (!ReleaseSemaphore(rwlock->write_semaphore_, 1, NULL))
-      uv_fatal_error(GetLastError(), "ReleaseSemaphore");
-  }
-
-  LeaveCriticalSection(&rwlock->num_readers_lock_);
+  ReleaseSRWLockShared(rwlock);
 }
 
 
 void uv_rwlock_wrlock(uv_rwlock_t* rwlock) {
-  DWORD r = WaitForSingleObject(rwlock->write_semaphore_, INFINITE);
-  if (r != WAIT_OBJECT_0)
-    uv_fatal_error(GetLastError(), "WaitForSingleObject");
+  AcquireSRWLockExclusive(rwlock);
 }
 
 
 int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
-  DWORD r = WaitForSingleObject(rwlock->write_semaphore_, 0);
-  if (r == WAIT_OBJECT_0)
-    return 0;
-  else if (r == WAIT_TIMEOUT)
+  if (!TryAcquireSRWLockExclusive(rwlock))
     return UV_EBUSY;
-  else
-    uv_fatal_error(GetLastError(), "WaitForSingleObject");
+
+  return 0;
 }
 
 
 void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
-  if (!ReleaseSemaphore(rwlock->write_semaphore_, 1, NULL))
-    uv_fatal_error(GetLastError(), "ReleaseSemaphore");
+  ReleaseSRWLockExclusive(rwlock);
 }
 
 
