@@ -1160,24 +1160,17 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   size_t name_size;
   size_t homedir_size;
   size_t shell_size;
-  long initsize;
   int r;
 
   if (pwd == NULL)
     return UV_EINVAL;
 
-  initsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-
-  if (initsize <= 0)
-    bufsize = 4096;
-  else
-    bufsize = (size_t) initsize;
-
   uid = geteuid();
-  buf = NULL;
 
-  for (;;) {
-    uv__free(buf);
+  /* Calling sysconf(_SC_GETPW_R_SIZE_MAX) would get the suggested size, but it
+   * is frequently 1024 or 4096, so we can just use that directly. The pwent
+   * will not usually be large. */
+  for (bufsize = 2000;; bufsize *= 2) {
     buf = uv__malloc(bufsize);
 
     if (buf == NULL)
@@ -1187,21 +1180,18 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
       r = getpwuid_r(uid, &pw, buf, bufsize, &result);
     while (r == EINTR);
 
+    if (r != 0 || result == NULL)
+      uv__free(buf);
+
     if (r != ERANGE)
       break;
-
-    bufsize *= 2;
   }
 
-  if (r != 0) {
-    uv__free(buf);
+  if (r != 0)
     return UV__ERR(r);
-  }
 
-  if (result == NULL) {
-    uv__free(buf);
+  if (result == NULL)
     return UV_ENOENT;
-  }
 
   /* Allocate memory for the username, shell, and home directory */
   name_size = strlen(pw.pw_name) + 1;
