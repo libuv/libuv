@@ -398,7 +398,8 @@ static void uv__spawn_init_can_use_setsid(void) {
   if (sysctl(which, ARRAY_SIZE(which), buf, &len, NULL, 0))
     return;
 
-  if (3 != sscanf(buf, "%u.%u.%u", &major, &minor, &patch))
+  /* NULL specifies to use LC_C_LOCALE */
+  if (3 != sscanf_l(buf, NULL, "%u.%u.%u", &major, &minor, &patch))
     return;
 
   posix_spawn_can_use_setsid = (major >= 19);  /* macOS Catalina */
