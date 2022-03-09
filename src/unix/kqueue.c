@@ -117,6 +117,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   unsigned int revents;
   QUEUE* q;
   uv__io_t* w;
+  uv_process_t* process;
   sigset_t* pset;
   sigset_t set;
   uint64_t base;
@@ -284,12 +285,22 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
     for (i = 0; i < nfds; i++) {
       ev = events + i;
+      fd = ev->ident;
+
+      /* Handle kevent NOTE_EXIT results */
       if (ev->filter == EVFILT_PROC) {
-        loop->flags |= UV_LOOP_REAP_CHILDREN;
+        QUEUE_FOREACH(q, &loop->process_handles) {
+          process = QUEUE_DATA(q, uv_process_t, queue);
+          if (process->pid == fd) {
+            process->flags |= UV_HANDLE_REAP;
+            loop->flags |= UV_LOOP_REAP_CHILDREN;
+            break;
+          }
+        }
         nevents++;
         continue;
       }
-      fd = ev->ident;
+
       /* Skip invalidated events, see uv__platform_invalidate_fd */
       if (fd == -1)
         continue;

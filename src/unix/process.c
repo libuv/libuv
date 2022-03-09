@@ -63,12 +63,18 @@ extern char **environ;
 # include "zos-base.h"
 #endif
 
-#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__APPLE__) || \
+    defined(__DragonFly__) || \
+    defined(__FreeBSD__) || \
+    defined(__NetBSD__) || \
+    defined(__OpenBSD__)
 #include <sys/event.h>
+#else
+#define UV_USE_SIGCHLD
 #endif
 
 
-#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__))
+#ifdef UV_USE_SIGCHLD
 static void uv__chld(uv_signal_t* handle, int signum) {
   assert(signum == SIGCHLD);
   uv__wait_children(handle->loop);
@@ -80,6 +86,7 @@ void uv__wait_children(uv_loop_t* loop) {
   int exit_status;
   int term_signal;
   int status;
+  int options;
   pid_t pid;
   QUEUE pending;
   QUEUE* q;
@@ -93,19 +100,33 @@ void uv__wait_children(uv_loop_t* loop) {
     process = QUEUE_DATA(q, uv_process_t, queue);
     q = QUEUE_NEXT(q);
 
+#ifndef UV_USE_SIGCHLD
+    if ((process->flags & UV_HANDLE_REAP) == 0)
+      continue;
+    options = 0;
+    process->flags &= ~UV_HANDLE_REAP;
+#else
+    options = WNOHANG;
+#endif
+
     do
-      pid = waitpid(process->pid, &status, WNOHANG);
+      pid = waitpid(process->pid, &status, options);
     while (pid == -1 && errno == EINTR);
 
-    if (pid == 0)
+#ifdef UV_USE_SIGCHLD
+    if (pid == 0) /* Not yet exited */
       continue;
+#endif
 
     if (pid == -1) {
       if (errno != ECHILD)
         abort();
+      /* The child died, and we missed it. This probably means someone else
+       * stole the waitpid from us. Handle this by not handling it at all. */
       continue;
     }
 
+    assert(pid == process->pid);
     process->status = status;
     QUEUE_REMOVE(&process->queue);
     QUEUE_INSERT_TAIL(&pending, &process->queue);
@@ -965,7 +986,7 @@ int uv_spawn(uv_loop_t* loop,
       goto error;
   }
 
-#if !(defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__))
+#ifdef UV_USE_SIGCHLD
   uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
 #endif
 
@@ -984,13 +1005,14 @@ int uv_spawn(uv_loop_t* loop,
    * fail to open a stdio handle. This ensures we can eventually reap the child
    * with waitpid. */
   if (exec_errorno == 0) {
-#if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
+#ifndef UV_USE_SIGCHLD
     struct kevent event;
     EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
     if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL)) {
       if (errno != ESRCH)
         abort();
       /* Process already exited. Call waitpid on the next loop iteration. */
+      process->flags |= UV_HANDLE_REAP;
       loop->flags |= UV_LOOP_REAP_CHILDREN;
     }
 #endif
