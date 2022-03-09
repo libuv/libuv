@@ -1,3 +1,14 @@
+2022.03.09, Version 1.44.1 (Stable)
+
+Changes since version 1.44.0:
+
+* process: simplify uv__write_int calls (Jameson Nash)
+
+* macos: don't use thread-unsafe strtok() (Ben Noordhuis)
+
+* process: fix hang after NOTE_EXIT (Jameson Nash)
+
+
 2022.03.07, Version 1.44.0 (Stable), d2bff508457336d808ba7148b33088f6acbfe0a6
 
 Changes since version 1.43.0:
