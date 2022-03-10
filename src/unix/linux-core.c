@@ -76,14 +76,14 @@
 #endif
 
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(FILE* statfile_fp,
-                      unsigned int numcpus,
-                      uv_cpu_info_t* ci);
+static unsigned int read_times(FILE* statfile_fp,
+                               unsigned int numcpus,
+                               uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static uint64_t read_cpufreq(unsigned int cpunum);
 
 int uv__platform_loop_init(uv_loop_t* loop) {
-  
+
   loop->inotify_fd = -1;
   loop->inotify_watchers = NULL;
 
@@ -267,9 +267,10 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   unsigned int numcpus;
-  int numtries = 3;
+  unsigned int numread;
   uv_cpu_info_t* ci;
   int err;
+  int i;
   FILE* statfile_fp;
 
   *cpu_infos = NULL;
@@ -279,7 +280,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   if (statfile_fp == NULL)
     return UV__ERR(errno);
 
-  while (numtries--) {
+  for (i = 0; i < 3; i += 1) {
     err = uv__cpu_num(statfile_fp, &numcpus);
     if (err < 0)
       goto out;
@@ -291,17 +292,18 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
     err = read_models(numcpus, ci);
     if (err == 0)
-      err = read_times(statfile_fp, numcpus, ci);
+      numread = read_times(statfile_fp, numcpus, ci);
 
     /** The cpu_num observed from uv__cpu_num(), read_models() and read_times()
      * may be different for online/offline CPU race. Restart the procedure if
      * that is the case.
      */
-    if (err == UV_EAGAIN) {
+    if (numread != numcpus) {
       rewind(statfile_fp);
       uv_free_cpu_info(ci, numcpus);
       continue;
     }
+
     if (err) {
       uv_free_cpu_info(ci, numcpus);
       goto out;
@@ -312,6 +314,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
      */
     if (ci[0].speed == 0)
       read_speeds(numcpus, ci);
+
 
     *cpu_infos = ci;
     *count = numcpus;
@@ -532,19 +535,21 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-static int read_times(FILE* statfile_fp,
-                      unsigned int numcpus,
-                      uv_cpu_info_t* ci) {
+/* Returns numcpus read.
+ */
+static unsigned int read_times(FILE* statfile_fp,
+                               unsigned int numcpus,
+                               uv_cpu_info_t* ci) {
   struct uv_cpu_times_s ts;
   unsigned int ticks;
   unsigned int multiplier;
+  unsigned int num;
   uint64_t user;
   uint64_t nice;
   uint64_t sys;
   uint64_t idle;
   uint64_t dummy;
   uint64_t irq;
-  uint64_t num;
   uint64_t len;
   char buf[1024];
 
@@ -601,11 +606,7 @@ static int read_times(FILE* statfile_fp,
     ci[num++].cpu_times = ts;
   }
 
-  if (num != numcpus) {
-    return UV_EAGAIN;
-  }
-
-  return 0;
+  return num;
 }
 
 
