@@ -319,7 +319,7 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
   if (handle->accepted_fd == -1)
     return UV_UNKNOWN_HANDLE;
   else
-    return uv__handle_type(handle->accepted_fd);
+    return uv_guess_handle(handle->accepted_fd);
 }
 
 
