@@ -27,11 +27,19 @@ jobs:
           cd build
           cmake .. -DBUILD_TESTING=ON -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
           cmake --build .
+      - name: platform_output
+        shell: cmd
+        run: |
+          build\\Debug\\uv_run_tests.exe platform_output
+      - name: platform_output_a
+        shell: cmd
+        run: |
+          build\\Debug\\uv_run_tests_a.exe platform_output
       - name: Test
         shell: cmd
         run: |
           cd build
-          ctest -C Debug --output-on-failure
+          ctest -C Debug -V
 
   build-android:
     runs-on: ubuntu-latest
@@ -62,6 +70,12 @@ jobs:
           cd build && cmake .. -DBUILD_TESTING=ON -G Ninja
           cmake --build .
           ls -lh
+      - name: platform_output
+        run: |
+          ./build/uv_run_tests platform_output
+      - name: platform_output_a
+        run: |
+          ./build/uv_run_tests_a platform_output
       - name: Test
         run: |
           cd build && ctest -V
