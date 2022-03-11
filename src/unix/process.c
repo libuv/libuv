@@ -812,11 +812,6 @@ static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
 
   *pid = fork();
 
-  if (*pid == -1) {
-    /* Failed to fork */
-    return UV__ERR(errno);
-  }
-
   if (*pid == 0) {
     /* Fork succeeded, in the child process */
     uv__process_child_init(options, stdio_count, pipes, error_fd);
@@ -825,6 +820,10 @@ static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
 
   if (pthread_sigmask(SIG_SETMASK, &sigoldset, NULL) != 0)
     abort();
+
+  if (*pid == -1)
+    /* Failed to fork */
+    return UV__ERR(errno);
 
   /* Fork succeeded, in the parent process */
   return 0;
