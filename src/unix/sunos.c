@@ -475,6 +475,7 @@ static void uv__fs_event_read(uv_loop_t* loop,
     assert((r == 0) && "unexpected port_get() error");
 
     if (uv__is_closing(handle)) {
+      uv__handle_stop(handle);
       uv__make_close_pending((uv_handle_t*) handle);
       break;
     }
@@ -562,7 +563,8 @@ static int uv__fs_event_stop(uv_fs_event_t* handle) {
   uv__free(handle->path);
   handle->path = NULL;
   handle->fo.fo_name = NULL;
-  uv__handle_stop(handle);
+  if (ret == 0)
+    uv__handle_stop(handle);
 
   return ret;
 }

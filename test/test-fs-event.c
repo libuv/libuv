@@ -923,6 +923,44 @@ TEST_IMPL(fs_event_close_with_pending_event) {
   return 0;
 }
 
+TEST_IMPL(fs_event_close_with_pending_delete_event) {
+#if defined(NO_FS_EVENTS)
+  RETURN_SKIP(NO_FS_EVENTS);
+#endif
+  uv_loop_t* loop;
+  int r;
+
+  loop = uv_default_loop();
+
+  create_dir("watch_dir");
+  create_file("watch_dir/file");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT(r == 0);
+  r = uv_fs_event_start(&fs_event, fs_event_fail, "watch_dir/file", 0);
+  ASSERT(r == 0);
+
+  /* Generate an fs event. */
+  remove("watch_dir/file");
+
+  /* Allow time for the remove event to propagate to the pending list. */
+  /* XXX - perhaps just for __sun? */
+  uv_sleep(1100);
+  uv_update_time(loop);
+
+  uv_close((uv_handle_t*)&fs_event, close_cb);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(close_cb_called == 1);
+
+  /* Clean up */
+  remove("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 TEST_IMPL(fs_event_close_in_callback) {
 #if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);
