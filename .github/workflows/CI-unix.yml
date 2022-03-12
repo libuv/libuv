@@ -150,3 +150,34 @@ jobs:
       - name: Test
         run: |
           ${{ matrix.config.qemu }} build/uv_run_tests_a
+
+  build-bsd:
+    runs-on: ubuntu-latest
+    name: build-${{ matrix.config.os }}-${{ matrix.config.version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          # The OS versions supported are specific to the version of the action
+          # https://github.com/cross-platform-actions/action/blob/master/changelog.md
+          - { os: freebsd, version: '13.1', install: 'pkg install -y' }
+          - { os: openbsd, version: '7.2',  install: 'pkg_add -I' }
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: cross-platform-actions/action@v0.9.0
+        with:
+          operating_system: ${{ matrix.config.os }}
+          version: ${{ matrix.config.version }}
+          run: |
+            sudo ${{ matrix.config.install }} cmake ninja
+            mkdir build
+            cd build
+            cmake .. -DBUILD_TESTING=ON -G Ninja
+            cmake --build .
+            ls -lh
+            ./uv_run_tests platform_output
+            ./uv_run_tests_a platform_output
+            ctest -V
