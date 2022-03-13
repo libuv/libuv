@@ -65,8 +65,8 @@ TEST_IMPL(metrics_idle_time) {
   idle_time = uv_metrics_idle_time(uv_default_loop());
 
   /* Permissive check that the idle time matches within the timeout ±500 ms. */
-  ASSERT((idle_time <= (timeout + 500) * UV_NS_TO_MS) &&
-         (idle_time >= (timeout - 500) * UV_NS_TO_MS));
+  ASSERT_LE(idle_time, (timeout + 500) * UV_NS_TO_MS);
+  ASSERT_GE(idle_time, (timeout - 500) * UV_NS_TO_MS);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
