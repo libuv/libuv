@@ -30,6 +30,7 @@
 #include <sys/msg.h>
 #include <sys/resource.h>
 #include "zos-base.h"
+#include "zos-sys-info.h"
 #if defined(__clang__)
 #include "csrsic.h"
 #else
@@ -65,9 +66,6 @@
 
 /* Total number of frames currently on all available frame queues. */
 #define RCEAFC_OFFSET     0x088
-
-/* CPC model length from the CSRSI Service. */
-#define CPCMODEL_LENGTH   16
 
 /* Pointer to the home (current) ASCB. */
 #define PSAAOLD           0x224
@@ -258,9 +256,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   idx = 0;
   while (idx < *count) {
     cpu_info->speed = *(int*)(info.siv1v2si22v1.si22v1cpucapability);
-    cpu_info->model = uv__malloc(CPCMODEL_LENGTH + 1);
-    memset(cpu_info->model, '\0', CPCMODEL_LENGTH + 1);
-    memcpy(cpu_info->model, info.siv1v2si11v1.si11v1cpcmodel, CPCMODEL_LENGTH);
+    cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
+    __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
     cpu_info->cpu_times.user = cpu_usage_avg;
     /* TODO: implement the following */
     cpu_info->cpu_times.sys = 0;
