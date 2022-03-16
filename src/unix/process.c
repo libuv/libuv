@@ -35,7 +35,7 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#if defined(__APPLE__) && !TARGET_OS_IPHONE
+#if defined(__APPLE__)
 # include <spawn.h>
 # include <paths.h>
 # include <sys/kauth.h>
