@@ -731,7 +731,20 @@ API
 
     Cross-platform implementation of :man:`gettimeofday(2)`. The timezone
     argument to `gettimeofday()` is not supported, as it is considered obsolete.
+    
+    Example:
 
+    ::
+        
+        /* Convert uv_timeval64_t to human readable string. */
+        char buffer[64] = {};
+        uv_timeval64_t tv;
+        if (uv_gettimeofday(&tv) == 0){
+            auto tm = localtime(&(tv.tv_sec));
+            strftime(buffer, sizeof(buffer), "time is: %Y-%m-%d %H:%M:%S\n", tm);
+            printf("%s", buffer);
+        }
+        
     .. versionadded:: 1.28.0
 
 .. c:function:: int uv_random(uv_loop_t* loop, uv_random_t* req, void* buf, size_t buflen, unsigned int flags, uv_random_cb cb)
