@@ -224,6 +224,52 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   }
 }
 
+#ifdef __MVS__
+/* TODO: Revisit once V2R5 Framework + CLIB Override lands in ZOSLIB. */
+static int os390_process_init_stdio(uv_stdio_container_t* container,
+                                    int pipes[2],
+                                    int i) {
+  int err = 0;
+
+  if (container->flags & UV_CREATE_PIPE) {
+    assert(container->data.stream != NULL);
+    if (container->data.stream->type != UV_NAMED_PIPE)
+      return UV_EINVAL;
+
+    if (i <= STDERR_FILENO && !((uv_pipe_t*)(container->data.stream))->ipc)
+      /* Use pipes on z/OS for stdio because:
+       * 1. socketpairs experience issues when dup'ing stderr.
+       * 2. socketpairs do not support ASCII/EBCDIC auto-conversion
+       *    using the ccsid tag.
+       */
+      err = uv__make_pipe(pipes, 0);
+    else
+      /* Continue using socket pairs for IPC pipes since data is ensured to be
+       * in ASCII and no autoconvert facilities are required.
+       */
+      err = uv_socketpair(SOCK_STREAM, 0, pipes, 0, 0);
+  } else
+    err = uv__process_init_stdio(container, pipes);
+
+  /* Since pipes are uni-directional, install stdin backwards so the right ends
+   * are dup'ed and closed appropiately.
+   */
+  if (i == STDIN_FILENO &&
+      (container->flags & (UV_INHERIT_FD | UV_INHERIT_STREAM)) == 0) {
+    int _t = pipes[0];
+    pipes[0] = pipes[1];
+    pipes[1] = _t;
+  }
+
+  /* Allow for auto-conversion between ASCII <-> EBCDIC processes. */
+  if ((i == STDOUT_FILENO || i == STDERR_FILENO) && !isatty(pipes[0]))
+    __chgfdccsid(pipes[0], 819);
+  else if (i == STDIN_FILENO && !isatty(pipes[1]))
+    __chgfdccsid(pipes[1], 819);
+
+  return err;
+}
+#endif
 
 static int uv__process_open_stream(uv_stdio_container_t* container,
                                    int pipefds[2]) {
@@ -999,7 +1045,12 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   for (i = 0; i < options->stdio_count; i++) {
+#ifdef __MVS__
+    err = os390_process_init_stdio(options->stdio + i, pipes[i], i);
+#else
     err = uv__process_init_stdio(options->stdio + i, pipes[i]);
+#endif
+
     if (err)
       goto error;
   }
