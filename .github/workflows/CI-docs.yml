@@ -1,0 +1,27 @@
+name: CI-docs
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '!docs/code/**'
+
+jobs:
+  docs-src:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup
+        run: |
+          sudo apt install python3.9 python3-virtualenv -y
+          python3.9 -mvirtualenv sphinx
+          . sphinx/bin/activate
+          pip install -r docs/requirements.txt
+      - name: html
+        run: |
+          . sphinx/bin/activate
+          make -C docs html
+      - name: linkcheck
+        run: |
+          . sphinx/bin/activate
+          make -C docs linkcheck
