@@ -14,6 +14,23 @@ on:
       - master
 
 jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: configure
+        run: |
+          ./autogen.sh
+          mkdir build
+          (cd build && ../configure)
+      - name: distcheck
+        continue-on-error: true # XXX: allow failure
+        run: |
+          make -C build distcheck
+      - name: dist
+        run: |
+          make -C build dist
+
   build-android:
     runs-on: ubuntu-latest
     container: reactnativecommunity/react-native-android:2020-5-20
@@ -36,7 +53,7 @@ jobs:
         run: npx envinfo
       - name: Setup
         run: |
-          brew install ninja
+          brew install ninja automake libtool
       - name: Build
         run: |
           mkdir build
@@ -52,6 +69,13 @@ jobs:
       - name: Test
         run: |
           cd build && ctest -V
+      - name: Autotools configure
+        if: always()
+        run: |
+          ./autogen.sh
+          mkdir build-auto
+          (cd build-auto && ../configure)
+          make -C build-auto -j4
 
   build-cross-qemu:
     runs-on: ubuntu-latest
