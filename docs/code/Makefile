@@ -1,3 +1,7 @@
+
+# Note: this is a poor example of libuv and Makefile usage, and does not
+# represent best-practices for either.
+
 examples=\
 	helloworld\
 	default-loop\
@@ -22,29 +26,28 @@ examples=\
 	tty\
 	tty-gravity\
 	interfaces\
-	locks \
-	signal \
-	uvstop \
+	locks\
+	signal\
+	uvstop\
 	queue-cancel
 
 UV_PATH=$(shell pwd)/../..
-UV_LIB=$(UV_PATH)/.libs/libuv.a
+UV_LIB="-L$(UV_PATH)/.libs" -luv
 CFLAGS=-g -Wall -I$(UV_PATH)/include
-LIBS=
+LIBS=-lpthread
 
 uname_S=$(shell uname -s)
 
 ifeq (Darwin, $(uname_S))
-CFLAGS+=-framework CoreServices
 SHARED_LIB_FLAGS=-bundle -undefined dynamic_lookup -o plugin/libhello.dylib
 endif
 
 ifeq (Linux, $(uname_S))
-LIBS=-lrt -ldl -lm -pthread -lcurl
 SHARED_LIB_FLAGS=-shared -Wl,-soname,libhello.so -o plugin/libhello.so
 PLUGIN_EXE_FLAGS=-Wl,-export-dynamic
 endif
 
+CURL_LIBS=$(shell curl-config --cflags --libs)
 
 all: $(examples) plugin/plugin proc-streams/test cgi/tick multi-echo-server/worker uvwget/uvwget
 
@@ -68,7 +71,7 @@ multi-echo-server/worker: multi-echo-server/worker.c
 
 uvwget: uvwget/uvwget
 uvwget/uvwget: uvwget/main.c
-	gcc $(CFLAGS) `curl-config --cflags --libs` -o uvwget/uvwget uvwget/main.c $(UV_LIB) $(LIBS)
+	gcc $(CFLAGS) -o uvwget/uvwget uvwget/main.c $(UV_LIB) $(CURL_LIBS) $(LIBS)
 
 clean:
 	for dir in $(examples); do cd $$dir; rm -f $$dir; rm -rf $$dir.dSYM; cd ..; done

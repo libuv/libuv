@@ -1,0 +1,23 @@
+name: CI-docs
+
+on:
+  pull_request:
+    paths:
+      - 'docs/code/**'
+
+jobs:
+  docs-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup
+        run: |
+          sudo apt-get install ninja-build libcurl4-openssl-dev -y
+          echo "Using curl: `curl-config --cflags --libs`"
+      - name: cmake libuv
+        run: |
+          cmake . -G Ninja -DBUILD_TESTING=OFF
+          cmake --build .
+      - name: docs-code
+        run: |
+          make -C docs/code UV_LIB="-L`pwd` -luv"
