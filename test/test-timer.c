@@ -63,7 +63,7 @@ static void once_cb(uv_timer_t* handle) {
 static void twice_close_cb(uv_handle_t* handle) {
   printf("TWICE_CLOSE_CB\n");
 
-  ASSERT(handle != NULL);
+  ASSERT_NOT_NULL(handle);
   ASSERT(0 == uv_is_active(handle));
 
   twice_close_cb_called++;
@@ -72,7 +72,7 @@ static void twice_close_cb(uv_handle_t* handle) {
 static void twice_cb(uv_timer_t* handle) {
   printf("TWICE_CB %d\n", twice_cb_called);
 
-  ASSERT(handle != NULL);
+  ASSERT_NOT_NULL(handle);
   ASSERT(0 == uv_is_active((uv_handle_t*) handle));
 
   twice_cb_called++;
