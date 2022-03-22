@@ -30,6 +30,7 @@ jobs:
       - name: Build android arm64
         run: |
           $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
+          ls -lh build
 
   build-macos:
     runs-on: macos-10.15
@@ -69,10 +70,9 @@ jobs:
           cd build-ios
           cmake .. -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
       - name: Build
-        continue-on-error: true # XXX: allow failure
         run: |
           cmake --build build-ios
-          ls -lh
+          ls -lh build-ios
 
   build-cross-qemu:
     runs-on: ubuntu-latest
@@ -123,7 +123,7 @@ jobs:
       - name: Build
         run: |
           cmake --build build
-          ls -lh
+          ls -lh build
       - name: Test
         run: |
           ${{ matrix.config.qemu }} build/uv_run_tests_a
