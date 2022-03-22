@@ -24,11 +24,9 @@
 
 static uv_tcp_t tcp;
 static uv_connect_t connect_req;
-static uv_shutdown_t shutdown_req;
 static uv_buf_t qbuf;
 static int called_alloc_cb;
 static int called_connect_cb;
-static int called_shutdown_cb;
 static int called_close_cb;
 
 
@@ -70,7 +68,6 @@ static void connect_cb(uv_connect_t *req, int status) {
   ASSERT_EQ(qbuf.len, uv_try_write((uv_stream_t*) &tcp, &qbuf, 1));
 
   called_connect_cb++;
-  ASSERT_EQ(called_shutdown_cb, 0);
 }
 
 
@@ -100,7 +97,6 @@ TEST_IMPL(tcp_rst) {
 
   ASSERT_EQ(called_alloc_cb, 1);
   ASSERT_EQ(called_connect_cb, 1);
-  ASSERT_EQ(called_shutdown_cb, 0);
   ASSERT_EQ(called_close_cb, 1);
 
   MAKE_VALGRIND_HAPPY();
