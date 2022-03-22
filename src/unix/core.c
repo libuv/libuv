@@ -586,6 +586,9 @@ int uv__accept(int sockfd) {
  * by making the system call directly. Musl libc is unaffected.
  */
 int uv__close_nocancel(int fd) {
+#if defined(__MVS__)
+  SAVE_ERRNO(epoll_file_close(fd));
+#endif
 #if defined(__APPLE__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
@@ -632,9 +635,6 @@ int uv__close_nocheckstdio(int fd) {
 
 int uv__close(int fd) {
   assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
-#if defined(__MVS__)
-  SAVE_ERRNO(epoll_file_close(fd));
-#endif
   return uv__close_nocheckstdio(fd);
 }
 
