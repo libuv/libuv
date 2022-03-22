@@ -5,7 +5,7 @@ on:
     paths:
       - '**'
       - '!docs/**'
-      - '!src/win/**'
+      - '!src/unix/**'
       - '!.**'
       - '.github/workflows/CI-win.yml'
   push:
