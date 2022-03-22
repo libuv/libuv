@@ -21,12 +21,15 @@ jobs:
       - uses: actions/checkout@v2
       - name: Envinfo
         run: npx envinfo
-      - name: Build android arm64
+      - name: Configure android arm64
         # see build options you can use in https://developer.android.com/ndk/guides/cmake
         run: |
-          mkdir build && cd build
+          mkdir build
+          cd build
           $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24 ..
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build .
+      - name: Build android arm64
+        run: |
+          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
 
   build-macos:
     runs-on: macos-10.15
@@ -37,11 +40,14 @@ jobs:
       - name: Setup
         run: |
           brew install ninja
-      - name: Build
+      - name: Configure
         run: |
           mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -G Ninja
-          cmake --build .
+          cd build
+          cmake .. -DBUILD_TESTING=ON -G Ninja
+      - name: Build
+        run: |
+          cmake --build build
           ls -lh
       - name: platform_output
         run: |
@@ -52,6 +58,21 @@ jobs:
       - name: Test
         run: |
           cd build && ctest -V
+
+  build-ios:
+    runs-on: macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure
+        run: |
+          mkdir build-ios
+          cd build-ios
+          cmake .. -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+      - name: Build
+        continue-on-error: true # XXX: allow failure
+        run: |
+          cmake --build build-ios
+          ls -lh
 
   build-cross-qemu:
     runs-on: ubuntu-latest
@@ -94,11 +115,14 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ${{ matrix.config.toolchain }} -y
-      - name: Build
+      - name: Configure with ${{ matrix.config.cc }}
         run: |
           mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
-          cmake --build .
+          cd build
+          cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
+      - name: Build
+        run: |
+          cmake --build build
           ls -lh
       - name: Test
         run: |
