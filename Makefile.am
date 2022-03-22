@@ -43,7 +43,9 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/uv-data-getter-setters.c \
                    src/uv-common.c \
                    src/uv-common.h \
-                   src/version.c
+                   src/version.c \
+                   src/strtok.c \
+                   src/strtok.h
 
 if SUNOS
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
@@ -250,6 +252,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
                          test/test-strscpy.c \
+                         test/test-strtok.c \
                          test/test-tcp-alloc-cb-fail.c \
                          test/test-tcp-bind-error.c \
                          test/test-tcp-bind6-error.c \

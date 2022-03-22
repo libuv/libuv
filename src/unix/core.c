@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "strtok.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -1546,6 +1547,7 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   char* cloned_path;
   char* path_env;
   char* token;
+  char* itr;
 
   if (buf == NULL || buflen == NULL || *buflen == 0)
     return UV_EINVAL;
@@ -1587,7 +1589,7 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   if (cloned_path == NULL)
     return UV_ENOMEM;
 
-  token = strtok(cloned_path, ":");
+  token = uv__strtok(cloned_path, ":", &itr);
   while (token != NULL) {
     snprintf(trypath, sizeof(trypath) - 1, "%s/%s", token, prog);
     if (realpath(trypath, abspath) == abspath) {
@@ -1606,7 +1608,7 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
         return 0;
       }
     }
-    token = strtok(NULL, ":");
+    token = uv__strtok(NULL, ":", &itr);
   }
   uv__free(cloned_path);
 

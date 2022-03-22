@@ -125,6 +125,7 @@ set(uv_sources
     src/inet.c
     src/random.c
     src/strscpy.c
+    src/strtok.c
     src/threadpool.c
     src/timer.c
     src/uv-common.c
@@ -562,6 +563,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-spawn.c
        test/test-stdio-over-pipes.c
        test/test-strscpy.c
+       test/test-strtok.c
        test/test-tcp-alloc-cb-fail.c
        test/test-tcp-bind-error.c
        test/test-tcp-bind6-error.c
