@@ -1087,7 +1087,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
 
     memset(&addr, 0, sizeof(addr));
 
-    err = connect(handle->socket, &addr, sizeof(addr));
+    err = connect(handle->socket, (struct sockaddr*) &addr, sizeof(addr));
     if (err)
       return uv_translate_sys_error(WSAGetLastError());
 
