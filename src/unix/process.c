@@ -526,13 +526,19 @@ static int uv__spawn_set_posix_spawn_file_actions(
   }
 
   /* Set the current working directory if requested */
+  err = ENOSYS;
   if (options->cwd != NULL) {
-    if (posix_spawn_fncs->file_actions.addchdir_np == NULL) {
-      err = ENOSYS;
+    if (posix_spawn_fncs->file_actions.addchdir_np == NULL)
       goto error;
-    }
 
-    err = posix_spawn_fncs->file_actions.addchdir_np(actions, options->cwd);
+  /* macOS 10.15 has a bug where configuring the working directory with
+   * posix_spawn_file_actions_addchdir_np() makes posix_spawn() fail with
+   * ENOENT even though the executable is spawned successfully. It appears a
+   * certain Cupertino company's QA process has ample room for improvement...
+   */
+#ifndef __APPLE__
+  err = posix_spawn_fncs->file_actions.addchdir_np(actions, options->cwd);
+#endif
     if (err != 0)
       goto error;
   }
