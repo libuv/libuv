@@ -315,7 +315,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     if (ci[0].speed == 0)
       read_speeds(numcpus, ci);
 
-
     *cpu_infos = ci;
     *count = numcpus;
     err = 0;
