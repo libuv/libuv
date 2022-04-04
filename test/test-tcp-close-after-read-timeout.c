@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv project and contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -33,8 +33,12 @@ static int on_close_called;
 static void on_connection(uv_stream_t* server, int status);
 
 static void on_client_connect(uv_connect_t* req, int status);
-static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
+static void on_client_alloc(uv_handle_t* handle,
+                            size_t suggested_size,
+                            uv_buf_t* buf);
+static void on_client_read(uv_stream_t* stream,
+                           ssize_t nread,
+                           const uv_buf_t* buf);
 static void on_client_timeout(uv_timer_t* handle);
 
 static void on_close(uv_handle_t* handle);
@@ -43,7 +47,7 @@ static void on_close(uv_handle_t* handle);
 static void on_client_connect(uv_connect_t* conn_req, int status) {
   int r;
 
-  r = uv_read_start((uv_stream_t*)&client, on_client_alloc, on_client_read);
+  r = uv_read_start((uv_stream_t*) &client, on_client_alloc, on_client_read);
   ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timer, on_client_timeout, 1000, 0);
@@ -51,14 +55,17 @@ static void on_client_connect(uv_connect_t* conn_req, int status) {
 }
 
 
-static void on_client_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+static void on_client_alloc(uv_handle_t* handle,
+                            size_t suggested_size,
+                            uv_buf_t* buf) {
   static char slab[8];
   buf->base = slab;
   buf->len = sizeof(slab);
 }
 
 
-static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+static void on_client_read(uv_stream_t* stream, ssize_t nread,
+                           const uv_buf_t* buf) {
   ASSERT_LT(nread, 0);
   read_cb_called++;
 }
@@ -67,9 +74,9 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* b
 static void on_client_timeout(uv_timer_t* handle) {
   ASSERT_EQ(handle, &timer);
   ASSERT_EQ(read_cb_called, 0);
-  uv_read_stop((uv_stream_t*)&client);
-  uv_close((uv_handle_t*)&client, on_close);
-  uv_close((uv_handle_t*)&timer, on_close);
+  uv_read_stop((uv_stream_t*) &client);
+  uv_close((uv_handle_t*) &client, on_close);
+  uv_close((uv_handle_t*) &timer, on_close);
 }
 
 
@@ -82,10 +89,12 @@ static void on_connection_alloc(uv_handle_t* handle,
 }
 
 
-static void on_connection_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+static void on_connection_read(uv_stream_t* stream,
+                               ssize_t nread,
+                               const uv_buf_t* buf) {
   ASSERT_EQ(nread, UV_EOF);
   read_cb_called++;
-  uv_close((uv_handle_t*)stream, on_close);
+  uv_close((uv_handle_t*) stream, on_close);
 }
 
 
@@ -93,15 +102,19 @@ static void on_connection(uv_stream_t* server, int status) {
   int r;
 
   ASSERT_EQ(status, 0);
-  ASSERT_EQ(uv_accept(server, (uv_stream_t*)&connection), 0);
+  ASSERT_EQ(uv_accept(server, (uv_stream_t*) &connection), 0);
 
-  r = uv_read_start((uv_stream_t*)&connection, on_connection_alloc, on_connection_read);
+  r = uv_read_start((uv_stream_t*) &connection,
+                    on_connection_alloc,
+                    on_connection_read);
   ASSERT_EQ(r, 0);
 }
 
 
 static void on_close(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*)&client || handle == (uv_handle_t*)&connection || handle == (uv_handle_t*)&timer);
+  ASSERT(handle == (uv_handle_t*) &client ||
+         handle == (uv_handle_t*) &connection ||
+         handle == (uv_handle_t*) &timer);
   on_close_called++;
 }
 
@@ -118,10 +131,10 @@ static void start_server(uv_loop_t* loop, uv_tcp_t* handle) {
   r = uv_tcp_bind(handle, (const struct sockaddr*) &addr, 0);
   ASSERT_EQ(r, 0);
 
-  r = uv_listen((uv_stream_t*)handle, 128, on_connection);
+  r = uv_listen((uv_stream_t*) handle, 128, on_connection);
   ASSERT_EQ(r, 0);
 
-  uv_unref((uv_handle_t*)handle);
+  uv_unref((uv_handle_t*) handle);
 }
 
 
