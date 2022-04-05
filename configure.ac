@@ -28,7 +28,9 @@ AM_PROG_CC_C_O
 CC_ATTRIBUTE_VISIBILITY([default], [
   CC_FLAG_VISIBILITY([CFLAGS="${CFLAGS} -fvisibility=hidden"])
 ])
-CC_CHECK_CFLAGS_APPEND([-fno-strict-aliasing])
+# Xlc has a flag "-f<filename>". Need to use CC_CHECK_FLAG_SUPPORTED_APPEND so
+# we exclude -fno-strict-aliasing for xlc
+CC_CHECK_FLAG_SUPPORTED_APPEND([-fno-strict-aliasing])
 CC_CHECK_CFLAGS_APPEND([-g])
 CC_CHECK_CFLAGS_APPEND([-std=gnu89])
 CC_CHECK_CFLAGS_APPEND([-Wall])
