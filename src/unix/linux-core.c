@@ -266,6 +266,7 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
+  static const int max_retry = 3;
   unsigned int numcpus;
   unsigned int numread;
   uv_cpu_info_t* ci;
@@ -280,7 +281,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   if (statfile_fp == NULL)
     return UV__ERR(errno);
 
-  for (i = 0; i < 3; i += 1) {
+  for (i = 0; i < max_retry; i += 1) {
     err = uv__cpu_num(statfile_fp, &numcpus);
     if (err < 0)
       goto out;
@@ -534,8 +535,7 @@ static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
 }
 
 
-/* Returns numcpus read.
- */
+/* Return numcpus read (always <= numcpus input as argument). */
 static unsigned int read_times(FILE* statfile_fp,
                                unsigned int numcpus,
                                uv_cpu_info_t* ci) {
