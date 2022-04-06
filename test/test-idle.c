@@ -99,9 +99,14 @@ TEST_IMPL(idle_starvation) {
 }
 
 
+static void idle_stop(uv_idle_t* handle) {
+  uv_idle_stop(handle);
+}
+
+
 TEST_IMPL(idle_check) {
   ASSERT_EQ(0, uv_idle_init(uv_default_loop(), &idle_handle));
-  ASSERT_EQ(0, uv_idle_start(&idle_handle, (uv_idle_cb) uv_idle_stop));
+  ASSERT_EQ(0, uv_idle_start(&idle_handle, idle_stop));
 
   ASSERT_EQ(0, uv_check_init(uv_default_loop(), &check_handle));
   ASSERT_EQ(0, uv_check_start(&check_handle, check_cb));
