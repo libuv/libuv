@@ -27,7 +27,7 @@ jobs:
         run: cmake -E make_directory ${{runner.workspace}}/docs/code/build
       - name: configure
         # you may like use Ninja on unix-like OS, but for windows, the only easy way is to use Visual Studio if you want Ninja
-        run: cmake ${{runner.workspace}}/docs/code
+        run: ls -lh .. && cmake ${{runner.workspace}}/docs/code
         working-directory: ${{runner.workspace}}/docs/code/build
       - name: build
         run: cmake --build .
