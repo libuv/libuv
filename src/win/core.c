@@ -592,7 +592,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
 int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   DWORD timeout;
   int r;
-  int ran_pending;
+  int can_sleep;
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -602,12 +602,14 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_update_time(loop);
     uv__run_timers(loop);
 
-    ran_pending = uv__process_reqs(loop);
+    can_sleep = loop->pending_reqs_tail == NULL && loop->idle_handles == NULL;
+
+    uv__process_reqs(loop);
     uv__idle_invoke(loop);
     uv__prepare_invoke(loop);
 
     timeout = 0;
-    if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
+    if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
     if (pGetQueuedCompletionStatusEx)
