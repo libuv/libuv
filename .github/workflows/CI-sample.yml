@@ -21,6 +21,8 @@ jobs:
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
       - name: setup
         run: cmake -E make_directory ${{runner.workspace}}/docs/code/build
       - name: configure
