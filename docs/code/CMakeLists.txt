@@ -16,21 +16,25 @@ set(SIMPLE_SAMPLES
         locks
         onchange
         pipe-echo-server
-        progress
-        queue-cancel
-        queue-work
         ref-timer
-        signal
         spawn
         tcp-echo-server
         thread-create
-        tty
-        tty-gravity
         udp-dhcp
         uvcat
         uvstop
         uvtee
         )
+IF (NOT WIN32)
+    list(APPEND SIMPLE_SAMPLES
+            signal
+            progress
+            queue-cancel
+            queue-work
+            tty
+            tty-gravity
+            )
+ENDIF()
 
 foreach (X IN LISTS SIMPLE_SAMPLES)
     add_executable(${X} ${X}/main.c)
