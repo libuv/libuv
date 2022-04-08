@@ -1411,7 +1411,7 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
   int writing;
 
   socket = tcp->socket;
-  reading = tcp->flags & UV_HANDLE_READING;
+  reading = tcp->flags & UV_HANDLE_READ_PENDING;
   writing = tcp->stream.conn.write_reqs_pending > 0;
   if (!reading && !writing)
     return;
@@ -1458,10 +1458,10 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
 
 void uv__tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
   if (tcp->flags & UV_HANDLE_CONNECTION) {
-    uv__tcp_try_cancel_reqs(tcp);
     if (tcp->flags & UV_HANDLE_READING) {
       uv_read_stop((uv_stream_t*) tcp);
     }
+    uv__tcp_try_cancel_reqs(tcp);
   } else {
     if (tcp->tcp.serv.accept_reqs != NULL) {
       /* First close the incoming sockets to cancel the accept operations before
