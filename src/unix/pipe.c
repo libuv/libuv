@@ -29,6 +29,23 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+struct uv__sockaddr_un_path {
+  char pad[offsetof(struct sockaddr_un, sun_path)];
+  char path[sizeof(((struct sockaddr_un*)0)->sun_path)];
+};
+
+union uv__sockaddr_un {
+  struct sockaddr sa;
+  struct uv__sockaddr_un_path up;
+};
+
+
+static void uv__prep_sockaddr_un(union uv__sockaddr_un* s, const char* path) {
+  memset(s, 0, sizeof(*s));
+  s->sa.sa_family = AF_UNIX;
+  uv__strscpy(s->up.path, path, sizeof(s->up.path));
+}
+
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
@@ -41,7 +58,7 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 
 
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
-  struct sockaddr_un saddr;
+  union uv__sockaddr_un saddr;
   const char* pipe_fname;
   int sockfd;
   int err;
@@ -65,11 +82,9 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     goto err_socket;
   sockfd = err;
 
-  memset(&saddr, 0, sizeof saddr);
-  uv__strscpy(saddr.sun_path, pipe_fname, sizeof(saddr.sun_path));
-  saddr.sun_family = AF_UNIX;
+  uv__prep_sockaddr_un(&saddr, pipe_fname);
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
+  if (bind(sockfd, &saddr.sa, sizeof(saddr))) {
     err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
@@ -174,7 +189,7 @@ void uv_pipe_connect(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,
                     uv_connect_cb cb) {
-  struct sockaddr_un saddr;
+  union uv__sockaddr_un saddr;
   int new_sock;
   int err;
   int r;
@@ -188,14 +203,10 @@ void uv_pipe_connect(uv_connect_t* req,
     handle->io_watcher.fd = err;
   }
 
-  memset(&saddr, 0, sizeof saddr);
-  uv__strscpy(saddr.sun_path, name, sizeof(saddr.sun_path));
-  saddr.sun_family = AF_UNIX;
+  uv__prep_sockaddr_un(&saddr, name);
 
-  do {
-    r = connect(uv__stream_fd(handle),
-                (struct sockaddr*)&saddr, sizeof saddr);
-  }
+  do
+    r = connect(uv__stream_fd(handle), &saddr.sa, sizeof(saddr));
   while (r == -1 && errno == EINTR);
 
   if (r == -1 && errno != EINPROGRESS) {
@@ -241,28 +252,28 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
                                     uv__peersockfunc func,
                                     char* buffer,
                                     size_t* size) {
-  struct sockaddr_un sa;
-  socklen_t addrlen;
+  union uv__sockaddr_un saddr;
+  int addrlen;
   int err;
 
-  addrlen = sizeof(sa);
-  memset(&sa, 0, addrlen);
+  addrlen = sizeof(saddr);
+  memset(&saddr, 0, sizeof(saddr));
   err = uv__getsockpeername((const uv_handle_t*) handle,
                             func,
-                            (struct sockaddr*) &sa,
-                            (int*) &addrlen);
+                            &saddr.sa,
+                            &addrlen);
   if (err < 0) {
     *size = 0;
     return err;
   }
 
 #if defined(__linux__)
-  if (sa.sun_path[0] == 0)
+  if (saddr.up.path[0] == 0)
     /* Linux abstract namespace */
-    addrlen -= offsetof(struct sockaddr_un, sun_path);
+    addrlen -= offsetof(struct uv__sockaddr_un_path, path);
   else
 #endif
-    addrlen = strlen(sa.sun_path);
+    addrlen = strlen(saddr.up.path);
 
 
   if ((size_t)addrlen >= *size) {
@@ -270,7 +281,7 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
     return UV_ENOBUFS;
   }
 
-  memcpy(buffer, sa.sun_path, addrlen);
+  memcpy(buffer, saddr.up.path, addrlen);
   *size = addrlen;
 
   /* only null-terminate if it's not an abstract socket */
