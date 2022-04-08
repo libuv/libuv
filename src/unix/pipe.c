@@ -31,7 +31,15 @@
 
 struct uv__sockaddr_un_path {
   char pad[offsetof(struct sockaddr_un, sun_path)];
+#ifdef SOCK_MAXADDRLEN
+  /* macOS and the BSDs support paths > sizeof(su.sun_path).
+   * SOCK_MAXADDRLEN is, to the best of my knowledge, always 255.
+   * Minus the two byte header, that leaves 253 bytes for the path.
+   */
+  char path[SOCK_MAXADDRLEN - offsetof(struct sockaddr_un, sun_path)];
+#else
   char path[sizeof(((struct sockaddr_un*)0)->sun_path)];
+#endif
 };
 
 union uv__sockaddr_un {
@@ -41,9 +49,18 @@ union uv__sockaddr_un {
 
 
 static void uv__prep_sockaddr_un(union uv__sockaddr_un* s, const char* path) {
+  size_t len;
+
+  len = 1 + strlen(path);
+  if (len > sizeof(s->up.path))
+    len = sizeof(s->up.path);
+
   memset(s, 0, sizeof(*s));
+#ifdef SOCK_MAXADDRLEN
+  s->sa.sa_len = len;
+#endif
   s->sa.sa_family = AF_UNIX;
-  uv__strscpy(s->up.path, path, sizeof(s->up.path));
+  memcpy(s->up.path, path, len);
 }
 
 
@@ -255,6 +272,7 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   union uv__sockaddr_un saddr;
   int addrlen;
   int err;
+  char* nul;
 
   addrlen = sizeof(saddr);
   memset(&saddr, 0, sizeof(saddr));
@@ -273,8 +291,12 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
     addrlen -= offsetof(struct uv__sockaddr_un_path, path);
   else
 #endif
-    addrlen = strlen(saddr.up.path);
-
+  {
+    nul = memchr(saddr.up.path, '\0', sizeof(saddr.up.path));
+    addrlen = (int) sizeof(saddr.up.path);
+    if (nul != NULL)
+      addrlen = nul - saddr.up.path;
+  }
 
   if ((size_t)addrlen >= *size) {
     *size = addrlen + 1;

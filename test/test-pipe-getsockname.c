@@ -25,12 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(__linux__)
-  #include <sys/socket.h>
-  #include <sys/un.h>
-#endif
-
 #ifndef _WIN32
+# include <sys/socket.h>  /* SOCK_MAXADDRLEN */
+# include <sys/un.h>
 # include <unistd.h>  /* close */
 #else
 # include <fcntl.h>
@@ -267,4 +264,49 @@ TEST_IMPL(pipe_getsockname_blocking) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+}
+
+
+static void long_path_connect_cb(uv_connect_t* req, int status) {
+  ASSERT_EQ(status, 0);
+  uv_close((uv_handle_t*) req->handle, NULL);
+}
+
+
+/* macOS and the BSDs support paths > sizeof(su.sun_path). */
+TEST_IMPL(pipe_getsockname_long_path) {
+#ifdef SOCK_MAXADDRLEN
+  char path[SOCK_MAXADDRLEN - offsetof(struct sockaddr_un, sun_path) + 1];
+  char name[SOCK_MAXADDRLEN - offsetof(struct sockaddr_un, sun_path) + 1];
+  uv_pipe_t server;
+  uv_pipe_t client;
+  uv_connect_t req;
+  size_t len;
+
+  memset(path, 'x', sizeof(path) - 1);
+  path[sizeof(path) - 1] = '\0';
+  unlink(path);
+
+  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &server, 0));
+  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &client, 0));
+  ASSERT_EQ(0, uv_pipe_bind(&server, path));
+  ASSERT_EQ(0, uv_listen((uv_stream_t*) &server, 0, (uv_connection_cb) abort));
+  uv_pipe_connect(&req, &client, path, long_path_connect_cb);
+
+  len = sizeof(name);
+  ASSERT_EQ(0, uv_pipe_getsockname(&server, name, &len));
+
+  ASSERT_EQ(len, sizeof(path) - 1);
+  ASSERT_MEM_EQ(path, name, len);
+
+  uv_close((uv_handle_t*) &server, NULL);
+  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  unlink(path);
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#else
+  (void) &long_path_connect_cb;
+  RETURN_SKIP("no long unix path support on this platform");
+#endif
 }
