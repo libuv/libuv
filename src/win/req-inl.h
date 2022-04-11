@@ -138,13 +138,13 @@ INLINE static void uv__insert_pending_req(uv_loop_t* loop, uv_req_t* req) {
   } while (0)
 
 
-INLINE static int uv__process_reqs(uv_loop_t* loop) {
+INLINE static void uv__process_reqs(uv_loop_t* loop) {
   uv_req_t* req;
   uv_req_t* first;
   uv_req_t* next;
 
   if (loop->pending_reqs_tail == NULL)
-    return 0;
+    return;
 
   first = loop->pending_reqs_tail->next_req;
   next = first;
@@ -214,8 +214,6 @@ INLINE static int uv__process_reqs(uv_loop_t* loop) {
         assert(0);
     }
   }
-
-  return 1;
 }
 
 #endif /* UV_WIN_REQ_INL_H_ */

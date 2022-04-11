@@ -104,6 +104,20 @@ AC_DEFUN([CC_CHECK_LDFLAGS], [
     [$2], [$3])
 ])
 
+dnl Check if flag is supported by both compiler and linker
+dnl If so, append it to AM_CFLAGS
+dnl CC_CHECK_FLAG_SUPPORTED_APPEND([FLAG])
+
+AC_DEFUN([CC_CHECK_FLAG_SUPPORTED_APPEND], [
+  CC_CHECK_CFLAGS([$1],
+    [CC_CHECK_LDFLAGS([$1],
+        [AM_CFLAGS="$AM_CFLAGS $1";
+         DEBUG_CFLAGS="$DEBUG_CFLAGS $1";
+         AC_SUBST([AM_CFLAGS])
+    ])
+  ])
+])
+
 dnl define the LDFLAGS_NOUNDEFINED variable with the correct value for
 dnl the current linker to avoid undefined references in a shared object.
 AC_DEFUN([CC_NOUNDEFINED], [
