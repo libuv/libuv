@@ -671,27 +671,25 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   if (options->env != NULL)
     env = options->env;
 
-  /* If options->file contains a slash, posix_spawn/posix_spawnp behave
-   * the same, and don't involve PATH resolution at all. Otherwise, if
-   * options->file does not include a slash, but no custom environment is
-   * to be used, the environment used for path resolution as well for the
-   * child process is that of the parent process, so posix_spawnp is the
-   * way to go. */
-  if (strchr(options->file, '/') != NULL || options->env == NULL) {
+  /* If options->file contains a slash, posix_spawn/posix_spawnp should behave
+   * the same, and do not involve PATH resolution at all. The libc
+   * `posix_spawnp` provided by Apple is buggy (since 10.15), so we now emulate it
+   * here, per https://github.com/libuv/libuv/pull/3583. */
+  if (strchr(options->file, '/') != NULL) {
     do
-      err = posix_spawnp(pid, options->file, actions, attrs, options->args, env);
+      err = posix_spawn(pid, options->file, actions, attrs, options->args, env);
     while (err == EINTR);
     return err;
   }
 
   /* Look for the definition of PATH in the provided env */
-  path = uv__spawn_find_path_in_env(options->env);
+  path = uv__spawn_find_path_in_env(env);
 
   /* The following resolution logic (execvpe emulation) is copied from
    * https://git.musl-libc.org/cgit/musl/tree/src/process/execvp.c
    * and adapted to work for our specific usage */
 
-  /* If no path was provided in options->env, use the default value
+  /* If no path was provided in env, use the default value
    * to look for the executable */
   if (path == NULL)
     path = _PATH_DEFPATH;
