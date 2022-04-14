@@ -540,15 +540,10 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
 }
 
 
-int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
-                      const char* filename, unsigned int flags) {
+static int os390_regfileint(uv_fs_event_t* handle, char* path) {
   uv__os390_epoll* ep;
   _RFIS reg_struct;
-  char* path;
   int rc;
-
-  if (uv__is_active(handle))
-    return UV_EINVAL;
 
   ep = handle->loop->ep;
   assert(ep->msg_queue != -1);
@@ -558,19 +553,38 @@ int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
   reg_struct.__rfis_type = 1;
   memcpy(reg_struct.__rfis_utok, &handle, sizeof(handle));
 
-  path = uv__strdup(filename);
-  if (path == NULL)
-    return UV_ENOMEM;
-
   rc = __w_pioctl(path, _IOCC_REGFILEINT, sizeof(reg_struct), &reg_struct);
   if (rc != 0)
     return UV__ERR(errno);
 
+  memcpy(handle->rfis_rftok, reg_struct.__rfis_rftok,
+         sizeof(handle->rfis_rftok));
+
+  return 0;
+}
+
+
+int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
+                      const char* filename, unsigned int flags) {
+  char* path;
+  int rc;
+
+  if (uv__is_active(handle))
+    return UV_EINVAL;
+
+  path = uv__strdup(filename);
+  if (path == NULL)
+    return UV_ENOMEM;
+
+  rc = os390_regfileint(handle, path);
+  if (rc != 0) {
+    uv__free(path);
+    return rc;
+  }
+
   uv__handle_start(handle);
   handle->path = path;
   handle->cb = cb;
-  memcpy(handle->rfis_rftok, reg_struct.__rfis_rftok,
-         sizeof(handle->rfis_rftok));
 
   return 0;
 }
@@ -603,6 +617,10 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
     abort();
 
   uv__handle_stop(handle);
+  if (handle->path != NULL) {
+    uv__free(handle->path);
+    handle->path = NULL;
+  }
 
   return 0;
 }
@@ -628,7 +646,15 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
   events = 0;
   if (msg.__rfim_event == _RFIM_ATTR || msg.__rfim_event == _RFIM_WRITE)
     events = UV_CHANGE;
-  else if (msg.__rfim_event == _RFIM_RENAME)
+  else if (msg.__rfim_event == _RFIM_RENAME || msg.__rfim_event == _RFIM_UNLINK)
+    events = UV_RENAME;
+  else if (msg.__rfim_event == 156)
+    /* TODO(gabylb): zos - this event should not happen, need to investigate.
+     *
+     * This event seems to occur when the watched file is [re]moved, or an
+     * editor (like vim) renames then creates the file on save (for vim, that's
+     * when backupcopy=no|auto).
+     */
     events = UV_RENAME;
   else
     /* Some event that we are not interested in. */
@@ -639,6 +665,14 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
    */
   __a2e_l(msg.__rfim_utok, sizeof(msg.__rfim_utok));
   handle = *(uv_fs_event_t**)(msg.__rfim_utok);
+  assert(handle != NULL);
+  /* The file is implicitly unregistered when the change notification is
+   * sent, only one notification is sent per registration. So we need to
+   * re-register interest in a file after each change notification we
+   * receive.
+   */
+  if (handle->path != NULL)
+    os390_regfileint(handle, handle->path);
   handle->cb(handle, uv__basename_r(handle->path), events, 0);
   return 1;
 }

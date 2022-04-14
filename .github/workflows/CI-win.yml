@@ -1,0 +1,51 @@
+name: CI-win
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/unix/**'
+      - '!.**'
+      - '.github/workflows/CI-win.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  build-windows:
+    runs-on: windows-${{ matrix.config.server }}
+    name: build-${{ matrix.config.toolchain}}-${{ matrix.config.arch}}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {toolchain: Visual Studio 16 2019, arch: Win32, server: 2019}
+          - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
+          - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Build
+        shell: cmd
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DBUILD_TESTING=ON -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
+          cmake --build .
+      - name: platform_output
+        shell: cmd
+        run: |
+          build\\Debug\\uv_run_tests.exe platform_output
+      - name: platform_output_a
+        shell: cmd
+        run: |
+          build\\Debug\\uv_run_tests_a.exe platform_output
+      - name: Test
+        shell: cmd
+        run: |
+          cd build
+          ctest -C Debug -V

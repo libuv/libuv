@@ -33,10 +33,10 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   err = ERROR_INVALID_PARAMETER;
   switch (stream->type) {
     case UV_TCP:
-      err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+      err = uv__tcp_listen((uv_tcp_t*)stream, backlog, cb);
       break;
     case UV_NAMED_PIPE:
-      err = uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
+      err = uv__pipe_listen((uv_pipe_t*)stream, backlog, cb);
       break;
     default:
       assert(0);
@@ -52,10 +52,10 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   err = ERROR_INVALID_PARAMETER;
   switch (server->type) {
     case UV_TCP:
-      err = uv_tcp_accept((uv_tcp_t*)server, (uv_tcp_t*)client);
+      err = uv__tcp_accept((uv_tcp_t*)server, (uv_tcp_t*)client);
       break;
     case UV_NAMED_PIPE:
-      err = uv_pipe_accept((uv_pipe_t*)server, client);
+      err = uv__pipe_accept((uv_pipe_t*)server, client);
       break;
     default:
       assert(0);
@@ -73,13 +73,13 @@ int uv__read_start(uv_stream_t* handle,
   err = ERROR_INVALID_PARAMETER;
   switch (handle->type) {
     case UV_TCP:
-      err = uv_tcp_read_start((uv_tcp_t*)handle, alloc_cb, read_cb);
+      err = uv__tcp_read_start((uv_tcp_t*)handle, alloc_cb, read_cb);
       break;
     case UV_NAMED_PIPE:
-      err = uv_pipe_read_start((uv_pipe_t*)handle, alloc_cb, read_cb);
+      err = uv__pipe_read_start((uv_pipe_t*)handle, alloc_cb, read_cb);
       break;
     case UV_TTY:
-      err = uv_tty_read_start((uv_tty_t*) handle, alloc_cb, read_cb);
+      err = uv__tty_read_start((uv_tty_t*) handle, alloc_cb, read_cb);
       break;
     default:
       assert(0);
@@ -97,7 +97,7 @@ int uv_read_stop(uv_stream_t* handle) {
 
   err = 0;
   if (handle->type == UV_TTY) {
-    err = uv_tty_read_stop((uv_tty_t*) handle);
+    err = uv__tty_read_stop((uv_tty_t*) handle);
   } else if (handle->type == UV_NAMED_PIPE) {
     uv__pipe_read_stop((uv_pipe_t*) handle);
   } else {
@@ -124,14 +124,14 @@ int uv_write(uv_write_t* req,
   err = ERROR_INVALID_PARAMETER;
   switch (handle->type) {
     case UV_TCP:
-      err = uv_tcp_write(loop, req, (uv_tcp_t*) handle, bufs, nbufs, cb);
+      err = uv__tcp_write(loop, req, (uv_tcp_t*) handle, bufs, nbufs, cb);
       break;
     case UV_NAMED_PIPE:
       err = uv__pipe_write(
           loop, req, (uv_pipe_t*) handle, bufs, nbufs, NULL, cb);
       break;
     case UV_TTY:
-      err = uv_tty_write(loop, req, (uv_tty_t*) handle, bufs, nbufs, cb);
+      err = uv__tty_write(loop, req, (uv_tty_t*) handle, bufs, nbufs, cb);
       break;
     default:
       assert(0);
@@ -217,7 +217,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
 
-  uv_want_endgame(loop, (uv_handle_t*)handle);
+  uv__want_endgame(loop, (uv_handle_t*)handle);
 
   return 0;
 }
