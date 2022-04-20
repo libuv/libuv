@@ -27,6 +27,9 @@
 /* Atomic set operation on char */
 #ifdef _MSC_VER /* MSVC */
 
+#define INLINE __inline
+#define UV_THREAD_LOCAL __declspec(thread)
+
 /* _InterlockedOr8 is supported by MSVC on x32 and x64. It is slightly less
  * efficient than InterlockedExchange, but InterlockedExchange8 does not exist,
  * and interlocked operations on larger targets might require the target to be
@@ -38,11 +41,15 @@ static char INLINE uv__atomic_exchange_set(char volatile* target) {
   return _InterlockedOr8(target, 1);
 }
 
+STATIC_ASSERT(sizeof(unsigned) <= sizeof(long));
 static unsigned INLINE uv__atomic_fetch_add(unsigned volatile* target, int increment) {
-  return (int)_InterlockedExchangeAdd((volatile LONG*)target, (LONG)increment);
+  return (unsigned)_InterlockedExchangeAdd((volatile LONG*)target, (LONG)increment);
 }
 
 #else /* GCC, Clang in mingw mode */
+
+#define INLINE inline
+#define UV_THREAD_LOCAL __thread
 
 static inline char uv__atomic_exchange_set(char volatile* target) {
 #if defined(__i386__) || defined(__x86_64__)

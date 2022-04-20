@@ -20,6 +20,16 @@
 #include <atomic.h>
 #endif
 
+/* The __clang__ and __INTEL_COMPILER checks are superfluous because they
+ * define __GNUC__. They are here to convey to you, dear reader, that these
+ * macros are enabled when compiling with clang or icc.
+ */
+#if defined(__clang__) || defined(__GNUC__) || defined(__INTEL_COMPILER)
+#define UV_UNUSED(declaration) __attribute__((unused)) declaration
+#else
+#define UV_UNUSED(declaration) declaration
+#endif
+
 UV_UNUSED(static int cmpxchgi(int* ptr, int oldval, int newval));
 UV_UNUSED(static void cpu_relax(void));
 

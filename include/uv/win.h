@@ -69,14 +69,6 @@ typedef struct pollfd {
 #include "uv/tree.h"
 #include "uv/threadpool.h"
 
-#ifdef _MSC_VER
-#define INLINE __inline
-#define UV_THREAD_LOCAL __declspec(thread)
-#else
-#define INLINE inline
-#define UV_THREAD_LOCAL __thread
-#endif
-
 #define MAX_PIPENAME_LEN 256
 
 #ifndef S_IFLNK
