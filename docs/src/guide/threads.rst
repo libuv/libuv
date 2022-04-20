@@ -204,6 +204,11 @@ getting them to play with an event loop library generally involves rolling your
 own system of running the task in a separate thread.  libuv just provides
 a convenient abstraction for this.
 
+Since libuv version `1.44.2`, ``uv_queue_work()`` can be called from a worker thread.
+In this case, when intending to schedule more work in an asynchronous way, one
+should ensure that an active handle remains always open or otherwise the event loop
+will exit.
+
 Here is a simple example inspired by `node.js is cancer`_. We are going to
 calculate fibonacci numbers, sleeping a bit along the way, but run it in
 a separate thread so that the blocking and CPU bound task does not prevent the
