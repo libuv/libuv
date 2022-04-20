@@ -42,12 +42,6 @@
 #include "queue.h"
 #include "strscpy.h"
 
-#if defined(_WIN32)
-#include "win/atomicops-inl.h"
-#else
-#include "unix/atomic-ops.h"
-#endif
-
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
 #else
@@ -65,6 +59,12 @@ extern int snprintf(char*, size_t, const char*, ...);
 
 #define STATIC_ASSERT(expr)                                                   \
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
+
+#if defined(_WIN32)
+#include "win/atomicops-inl.h"
+#else
+#include "unix/atomic-ops.h"
+#endif
 
 #if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
 #define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)
