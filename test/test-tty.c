@@ -454,12 +454,8 @@ TEST_IMPL(tty_pty) {
   ASSERT(uv_is_writable((uv_stream_t*) &slave_tty));
   ASSERT(uv_is_readable((uv_stream_t*) &master_tty));
   ASSERT(uv_is_writable((uv_stream_t*) &master_tty));
-  /* Check if the file descriptor was reopened. If it is,
-   * UV_HANDLE_BLOCKING_WRITES (value 0x100000) isn't set on flags.
-   */
-  ASSERT(0 == (slave_tty.flags & 0x100000));
-  /* The master_fd of a pty should never be reopened.
-   */
+  /* Check that UV_HANDLE_BLOCKING_WRITES (value 0x100000) is set. */
+  ASSERT(slave_tty.flags & 0x100000);
   ASSERT(master_tty.flags & 0x100000);
   ASSERT(0 == close(slave_fd));
   uv_close((uv_handle_t*) &slave_tty, NULL);

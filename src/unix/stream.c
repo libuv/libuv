@@ -694,13 +694,35 @@ static void uv__drain(uv_stream_t* stream) {
 }
 
 
-static ssize_t uv__writev(int fd, struct iovec* vec, size_t n) {
-  if (n == 1)
-    return write(fd, vec->iov_base, vec->iov_len);
-  else
-    return writev(fd, vec, n);
-}
+static ssize_t uv__sendmsg(int fd, struct iovec* iov, size_t iovcnt,
+                           int flags, int fd_to_send) {
+  struct cmsghdr* cmsg;
+  struct msghdr msg;
 
+  union {
+    struct cmsghdr cmsg;
+    char data[64];
+  } scratch;
+
+  STATIC_ASSERT(sizeof(scratch.cmsg) + sizeof(int) <= sizeof(scratch.data));
+
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = iov;
+  msg.msg_iovlen = iovcnt;
+
+  if (fd_to_send >= 0) {
+    msg.msg_control = &scratch.cmsg;
+    msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(fd_to_send));
+    memcpy(CMSG_DATA(cmsg), &fd_to_send, sizeof(fd_to_send));
+  }
+
+  return sendmsg(fd, &msg, flags);
+}
 
 static size_t uv__write_req_size(uv_write_t* req) {
   size_t size;
@@ -790,9 +812,12 @@ static int uv__try_write(uv_stream_t* stream,
                          unsigned int nbufs,
                          uv_stream_t* send_handle) {
   struct iovec* iov;
+  int fd_to_send;
   int iovmax;
   int iovcnt;
   ssize_t n;
+  int flags;
+  int fd;
 
   /*
    * Cast to iovec. We had to have our own uv_buf_t instead of iovec
@@ -807,57 +832,30 @@ static int uv__try_write(uv_stream_t* stream,
   if (iovcnt > iovmax)
     iovcnt = iovmax;
 
-  /*
-   * Now do the actual writev. Note that we've been updating the pointers
-   * inside the iov each time we write. So there is no need to offset it.
-   */
-  if (send_handle != NULL) {
-    int fd_to_send;
-    struct msghdr msg;
-    struct cmsghdr *cmsg;
-    union {
-      char data[64];
-      struct cmsghdr alias;
-    } scratch;
+  fd = uv__stream_fd(stream);
+  fd_to_send = -1;
+  flags = -1;
 
+  if (send_handle != NULL) {
     if (uv__is_closing(send_handle))
       return UV_EBADF;
 
     fd_to_send = uv__handle_fd((uv_handle_t*) send_handle);
-
-    memset(&scratch, 0, sizeof(scratch));
-
     assert(fd_to_send >= 0);
-
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = iovcnt;
-    msg.msg_flags = 0;
-
-    msg.msg_control = &scratch.alias;
-    msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));
-
-    cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(fd_to_send));
-
-    /* silence aliasing warning */
-    {
-      void* pv = CMSG_DATA(cmsg);
-      int* pi = pv;
-      *pi = fd_to_send;
-    }
-
-    do
-      n = sendmsg(uv__stream_fd(stream), &msg, 0);
-    while (n == -1 && errno == EINTR);
-  } else {
-    do
-      n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
-    while (n == -1 && errno == EINTR);
+    flags = 0;
   }
+
+  if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
+    flags = MSG_DONTWAIT;
+
+  do
+    if (flags != -1)
+      n = uv__sendmsg(fd, iov, iovcnt, flags, fd_to_send);
+    else if (n == 1)
+      n = write(fd, iov->iov_base, iov->iov_len);
+    else
+      n = writev(fd, iov, iovcnt);
+  while (n == -1 && errno == EINTR);
 
   if (n >= 0)
     return n;
@@ -889,7 +887,7 @@ static void uv__write(uv_stream_t* stream) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  for (;;) {
+  do {
     if (QUEUE_EMPTY(&stream->write_queue))
       return;
 
@@ -898,38 +896,23 @@ static void uv__write(uv_stream_t* stream) {
     assert(req->handle == stream);
 
     n = uv__try_write(stream,
-                      &(req->bufs[req->write_index]),
+                      &req->bufs[req->write_index],
                       req->nbufs - req->write_index,
                       req->send_handle);
+  } while (n >= 0 && !uv__write_req_update(stream, req, n));
 
-    /* Ensure the handle isn't sent again in case this is a partial write. */
-    if (n >= 0) {
-      req->send_handle = NULL;
-      if (uv__write_req_update(stream, req, n)) {
-        uv__write_req_finish(req);
-        return;  /* TODO(bnoordhuis) Start trying to write the next request. */
-      }
-    } else if (n != UV_EAGAIN)
-      break;
-
-    /* If this is a blocking stream, try again. */
-    if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
-      continue;
-
-    /* We're not done. */
+  if (n >= 0) {
+    req->send_handle = NULL;  /* Don't send twice. */
+    uv__write_req_finish(req);
+  } else if (n == UV_EAGAIN) {
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
-
-    /* Notify select() thread about state change */
     uv__stream_osx_interrupt_select(stream);
-
-    return;
+  } else {
+    req->error = n;
+    uv__write_req_finish(req);
+    uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
+    uv__stream_osx_interrupt_select(stream);
   }
-
-  req->error = n;
-  // XXX(jwn): this must call uv__stream_flush_write_queue(stream, n) here, since we won't generate any more events
-  uv__write_req_finish(req);
-  uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-  uv__stream_osx_interrupt_select(stream);
 }
 
 
@@ -1599,9 +1582,13 @@ void uv__stream_close(uv_stream_t* handle) {
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
   if (handle->io_watcher.fd != -1) {
-    /* Don't close stdio file descriptors.  Nothing good comes from it. */
+    /* Don't close stdio file descriptors, nothing good comes from it.
+     * Don't close uv_tty_t file descriptors for backwards compatibility
+     * with older libuv versions where the file descriptor was dup(2)'d.
+     */
     if (handle->io_watcher.fd > STDERR_FILENO)
-      uv__close(handle->io_watcher.fd);
+      if (handle->type != UV_TTY)
+        uv__close(handle->io_watcher.fd);
     handle->io_watcher.fd = -1;
   }
 
