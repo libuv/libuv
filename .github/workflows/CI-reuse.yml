@@ -1,0 +1,146 @@
+name: CI-reuse
+
+on:
+  workflow_call:
+    branches:
+    - v1.x
+  release:
+    tags:
+      - '*'
+
+jobs:
+  windows:
+    runs-on: windows-${{ matrix.config.server }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Build
+        shell: cmd
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DBUILD_TESTING=ON -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
+          cmake --build .
+      - name: platform_output
+        shell: cmd
+        run: |
+          build\\Debug\\uv_run_tests.exe platform_output
+      - name: platform_output_a
+        shell: cmd
+        run: |
+          build\\Debug\\uv_run_tests_a.exe platform_output
+      - name: Test
+        shell: cmd
+        run: |
+          cd build
+          ctest -C Debug -V
+      - name: Create binary archive from build
+        run: |
+             mkdir libuv-${{ github.event.release.tag_name }}\bin
+             mkdir libuv-${{ github.event.release.tag_name }}\lib
+             move include libuv-${{ github.event.release.tag_name }}\
+             move Release/uv_a.lib libuv-${{ github.event.release.tag_name }}\lib\
+             move Release/uv.lib libuv-${{ github.event.release.tag_name }}\lib\
+             move Release/uv.exp libuv-${{ github.event.release.tag_name }}\lib\
+             move Release/uv.dll libuv-${{ github.event.release.tag_name }}\bin\
+             7z a libuv-${{ github.event.release.tag_name }}.zip libuv-${{ github.event.release.tag_name }}\* -tzip -y
+      - name: Upload the windows binary artifacts
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: libuv-${{ github.event.release.tag_name }}.zip
+          asset_name: libuv-${{ github.event.release.tag_name }}-windows
+          tag: libuv-${{ github.event.release.tag_name }}-windows
+          overwrite: true
+          file_glob: true
+          body: "Windows binary - 'libuv' .dll, .lib, and .h headers."
+
+  macos:
+    runs-on: macos-10.15
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Setup
+        run: |
+          brew install ninja
+      - name: Configure
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DBUILD_TESTING=ON -G Ninja
+      - name: Build
+        run: |
+          cmake --build build
+          ls -lh
+      - name: platform_output
+        run: |
+          ./build/uv_run_tests platform_output
+      - name: platform_output_a
+        run: |
+          ./build/uv_run_tests_a platform_output
+      - name: Test
+        run: |
+          cd build && ctest -V
+
+  build-cross-qemu:
+    runs-on: ubuntu-latest
+    name: build-cross-qemu-${{ matrix.config.target }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {target: arm,     toolchain: gcc-arm-linux-gnueabi,     cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm-static     }
+          - {target: armhf,   toolchain: gcc-arm-linux-gnueabihf,   cc: arm-linux-gnueabihf-gcc,    qemu: qemu-arm-static     }
+          - {target: aarch64, toolchain: gcc-aarch64-linux-gnu,     cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64-static }
+          - {target: riscv64, toolchain: gcc-riscv64-linux-gnu,     cc: riscv64-linux-gnu-gcc,      qemu: qemu-riscv64-static }
+          - {target: ppc,     toolchain: gcc-powerpc-linux-gnu,     cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc-static     }
+          - {target: ppc64,   toolchain: gcc-powerpc64-linux-gnu,   cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64-static   }
+          - {target: ppc64le, toolchain: gcc-powerpc64le-linux-gnu, cc: powerpc64le-linux-gnu-gcc,  qemu: qemu-ppc64le-static }
+          - {target: s390x,   toolchain: gcc-s390x-linux-gnu,       cc: s390x-linux-gnu-gcc,        qemu: qemu-s390x-static   }
+          - {target: mips,    toolchain: gcc-mips-linux-gnu,          cc: mips-linux-gnu-gcc,         qemu: qemu-mips-static     }
+          - {target: mips64,  toolchain: gcc-mips64-linux-gnuabi64,   cc: mips64-linux-gnuabi64-gcc,  qemu: qemu-mips64-static   }
+          - {target: mipsel,  toolchain: gcc-mipsel-linux-gnu,        cc: mipsel-linux-gnu-gcc,       qemu: qemu-mipsel-static   }
+          - {target: mips64el,toolchain: gcc-mips64el-linux-gnuabi64, cc: mips64el-linux-gnuabi64-gcc,qemu: qemu-mips64el-static }
+          - {target: alpha,   toolchain: gcc-alpha-linux-gnu,       cc: alpha-linux-gnu-gcc,        qemu: qemu-alpha-static   }
+          - {target: arm (u64 slots),     toolchain: gcc-arm-linux-gnueabi,     cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm-static}
+          - {target: aarch64 (u64 slots), toolchain: gcc-aarch64-linux-gnu,     cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64-static}
+          - {target: ppc (u64 slots),     toolchain: gcc-powerpc-linux-gnu,     cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc-static}
+          - {target: ppc64 (u64 slots),   toolchain: gcc-powerpc64-linux-gnu,   cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64-static}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install QEMU
+        # this ensure install latest qemu on ubuntu, apt get version is old
+        env:
+          QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
+          QEMU_VER: "qemu-user-static_4\\.2-.*_amd64.deb$"
+        run: |
+          DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER | tail -1`
+          wget $QEMU_SRC/$DEB
+          sudo dpkg -i $DEB
+      - name: Install ${{ matrix.config.toolchain }}
+        run: |
+          sudo apt update
+          sudo apt install ${{ matrix.config.toolchain }} -y
+      - name: Configure with ${{ matrix.config.cc }}
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
+      - name: Build
+        run: |
+          cmake --build build
+          ls -lh build
+      - name: Test
+        run: |
+          ${{ matrix.config.qemu }} build/uv_run_tests_a
