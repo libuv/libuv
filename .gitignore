@@ -81,3 +81,4 @@ libuv-*.tar.*
 CMakeFiles/*
 CMakeCache.txt
 DartConfiguration.tcl
+vendor/
