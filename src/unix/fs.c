@@ -1181,7 +1181,8 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
     defined(_AIX71)               ||                                           \
     defined(__sun)                ||                                           \
     defined(__HAIKU__)            ||                                           \
-    defined(__GNU__)
+    defined(__GNU__)              ||                                           \
+    defined(__OpenBSD__)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
