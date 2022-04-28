@@ -50,7 +50,8 @@
     defined(__FreeBSD__)          ||                                      \
     defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
-    defined(__NetBSD__)
+    defined(__NetBSD__)           ||                                      \
+    defined(__linux__)
 # define HAVE_PREADV 1
 #else
 # define HAVE_PREADV 0
@@ -408,17 +409,25 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 
 
 #if !HAVE_PREADV
-static ssize_t uv__fs_preadv(uv_file fd,
-                             uv_buf_t* bufs,
-                             unsigned int nbufs,
-                             off_t off) {
+/* Wrapper to go from `void* buf` to `const void* buf`. */
+static ssize_t uv__fs_piov_pwrite(int fd, void* buf, size_t len, off_t off) {
+  return pwrite(fd, buf, len, off);
+}
+
+
+static ssize_t uv__fs_piov_emul(ssize_t (*op)(int, void*, size_t, off_t),
+                                uv_file fd,
+                                uv_buf_t* bufs,
+                                unsigned int nbufs,
+                                off_t off) {
   uv_buf_t* buf;
   uv_buf_t* end;
   ssize_t result;
   ssize_t rc;
   size_t pos;
 
-  assert(nbufs > 0);
+  if (nbufs == 0)
+    return 0;
 
   result = 0;
   pos = 0;
@@ -427,17 +436,17 @@ static ssize_t uv__fs_preadv(uv_file fd,
 
   for (;;) {
     do
-      rc = pread(fd, buf->base + pos, buf->len - pos, off + result);
+      rc = op(fd, buf->base + pos, buf->len - pos, off + result);
     while (rc == -1 && errno == EINTR);
 
     if (rc == 0)
       break;
 
-    if (rc == -1 && result == 0)
-      return UV__ERR(errno);
-
-    if (rc == -1)
-      break;  /* We read some data so return that, ignore the error. */
+    if (rc == -1) {
+      if (result > 0)
+        break;  /* Read or wrote data so return that, ignore error. */
+      return -1;
+    }
 
     pos += rc;
     result += rc;
@@ -454,13 +463,34 @@ static ssize_t uv__fs_preadv(uv_file fd,
 
   return result;
 }
+#endif  /* !HAVE_PREADV */
+
+
+static ssize_t uv__fs_preadv(uv_file fd,
+                             uv_buf_t* bufs,
+                             unsigned int nbufs,
+                             off_t off) {
+#if HAVE_PREADV
+  return preadv(fd, (struct iovec*) bufs, nbufs, off);
+#else
+  return uv__fs_piov_emul(pread, fd, bufs, nbufs, off);
 #endif
+}
+
+
+static ssize_t uv__fs_pwritev(uv_file fd,
+                              uv_buf_t* bufs,
+                              unsigned int nbufs,
+                              off_t off) {
+#if HAVE_PREADV
+  return pwritev(fd, (struct iovec*) bufs, nbufs, off);
+#else
+  return uv__fs_piov_emul(uv__fs_piov_pwrite, fd, bufs, nbufs, off);
+#endif
+}
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_preadv;
-#endif
   unsigned int iovmax;
   ssize_t result;
 
@@ -474,36 +504,12 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     else
       result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
-    if (req->nbufs == 1) {
+    if (req->nbufs == 1)
       result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-
-#if HAVE_PREADV
-    result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (uv__load_relaxed(&no_preadv)) retry:
-# endif
-    {
+    else
       result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
-    }
-# if defined(__linux__)
-    else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
-      if (result == -1 && errno == ENOSYS) {
-        uv__store_relaxed(&no_preadv, 1);
-        goto retry;
-      }
-    }
-# endif
-#endif
   }
 
-done:
   /* Early cleanup of bufs allocation, since we're done with it. */
   if (req->bufs != req->bufsml)
     uv__free(req->bufs);
@@ -1204,9 +1210,6 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_pwritev;
-#endif
   ssize_t r;
 
   /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
@@ -1226,35 +1229,12 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     else
       r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
   } else {
-    if (req->nbufs == 1) {
+    if (req->nbufs == 1)
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-#if HAVE_PREADV
-    r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (no_pwritev) retry:
-# endif
-    {
-      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-    }
-# if defined(__linux__)
-    else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
-        goto retry;
-      }
-    }
-# endif
-#endif
+    else
+      r = uv__fs_pwritev(req->file, req->bufs, req->nbufs, req->off);
   }
 
-done:
 #if defined(__APPLE__)
   if (pthread_mutex_unlock(&lock))
     abort();

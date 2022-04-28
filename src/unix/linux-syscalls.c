@@ -60,26 +60,6 @@
 # endif
 #endif /* __NR_utimensat */
 
-#ifndef __NR_preadv
-# if defined(__x86_64__)
-#  define __NR_preadv 295
-# elif defined(__i386__)
-#  define __NR_preadv 333
-# elif defined(__arm__)
-#  define __NR_preadv (UV_SYSCALL_BASE + 361)
-# endif
-#endif /* __NR_preadv */
-
-#ifndef __NR_pwritev
-# if defined(__x86_64__)
-#  define __NR_pwritev 296
-# elif defined(__i386__)
-#  define __NR_pwritev 334
-# elif defined(__arm__)
-#  define __NR_pwritev (UV_SYSCALL_BASE + 362)
-# endif
-#endif /* __NR_pwritev */
-
 #ifndef __NR_dup3
 # if defined(__x86_64__)
 #  define __NR_dup3 292
@@ -88,7 +68,7 @@
 # elif defined(__arm__)
 #  define __NR_dup3 (UV_SYSCALL_BASE + 358)
 # endif
-#endif /* __NR_pwritev */
+#endif /* __NR_dup3 */
 
 #ifndef __NR_copy_file_range
 # if defined(__x86_64__)
@@ -189,24 +169,6 @@ int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
   return syscall(__NR_recvmmsg, fd, mmsg, vlen, /* flags */ 0, /* timeout */ 0);
 #else
   return errno = ENOSYS, -1;
-#endif
-}
-
-
-ssize_t uv__preadv(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
-#if !defined(__NR_preadv) || defined(__ANDROID_API__) && __ANDROID_API__ < 24
-  return errno = ENOSYS, -1;
-#else
-  return syscall(__NR_preadv, fd, iov, iovcnt, (long)offset, (long)(offset >> 32));
-#endif
-}
-
-
-ssize_t uv__pwritev(int fd, const struct iovec *iov, int iovcnt, int64_t offset) {
-#if !defined(__NR_pwritev) || defined(__ANDROID_API__) && __ANDROID_API__ < 24
-  return errno = ENOSYS, -1;
-#else
-  return syscall(__NR_pwritev, fd, iov, iovcnt, (long)offset, (long)(offset >> 32));
 #endif
 }
 
