@@ -458,8 +458,8 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
   DWORD current_mode = 0;
   DWORD err = 0;
 
-  if (handle->flags & UV_HANDLE_PIPESERVER)
-    return UV_EINVAL;
+  assert(handle->flags & UV_HANDLE_CONNECTION);
+  assert(!(handle->flags & UV_HANDLE_PIPESERVER));
   if (handle->flags & UV_HANDLE_CLOSING)
     return UV_EINVAL;
   if (handle->handle != INVALID_HANDLE_VALUE)
@@ -476,18 +476,17 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
        */
       if (!GetNamedPipeHandleState(pipeHandle, &current_mode, NULL, NULL,
                                    NULL, NULL, 0)) {
-        return -1;
+        return uv_translate_sys_error(GetLastError());
       } else if (current_mode & PIPE_NOWAIT) {
-        SetLastError(ERROR_ACCESS_DENIED);
-        return -1;
+        return uv_translate_sys_error(ERROR_ACCESS_DENIED);
       }
     } else {
       /* If this returns ERROR_INVALID_PARAMETER we probably opened
        * something that is not a pipe. */
       if (err == ERROR_INVALID_PARAMETER) {
-        SetLastError(WSAENOTSOCK);
+        return uv_translate_sys_error(WSAENOTSOCK);
       }
-      return -1;
+      return uv_translate_sys_error(err);
     }
   }
 
@@ -498,10 +497,8 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
                                       sizeof(mode_info),
                                       FileModeInformation);
   if (nt_status != STATUS_SUCCESS) {
-    return -1;
+    return uv_translate_sys_error(err);
   }
-
-  uv__pipe_connection_init(handle);
 
   if (mode_info.Mode & FILE_SYNCHRONOUS_IO_ALERT ||
       mode_info.Mode & FILE_SYNCHRONOUS_IO_NONALERT) {
@@ -852,6 +849,18 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
+  req->u.connect.pipeHandle = INVALID_HANDLE_VALUE;
+  req->u.connect.duplex_flags = 0;
+
+  if (handle->flags & UV_HANDLE_PIPESERVER) {
+    err = ERROR_INVALID_PARAMETER;
+    goto error;
+  }
+  if (handle->flags & UV_HANDLE_CONNECTION) {
+    err = ERROR_PIPE_BUSY;
+    goto error;
+  }
+
 
   /* Convert name to UTF16. */
   nameSize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0) * sizeof(WCHAR);
@@ -891,15 +900,9 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     goto error;
   }
 
-  if (uv__set_pipe_handle(loop,
-                          (uv_pipe_t*) req->handle,
-                          pipeHandle,
-                          -1,
-                          duplex_flags)) {
-    err = GetLastError();
-    goto error;
-  }
-
+  uv__pipe_connection_init(handle);
+  req->u.connect.pipeHandle = pipeHandle;
+  req->u.connect.duplex_flags = duplex_flags;
   SET_REQ_SUCCESS(req);
   uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
@@ -938,7 +941,7 @@ void uv__pipe_interrupt_read(uv_pipe_t* handle) {
     /* Cancel asynchronous read. */
     r = CancelIoEx(handle->handle, &handle->read_req.u.io.overlapped);
     assert(r || GetLastError() == ERROR_NOT_FOUND);
-
+    (void)r;
   } else {
     /* Cancel synchronous read (which is happening in the thread pool). */
     HANDLE thread;
@@ -2146,7 +2149,6 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   int err;
 
   assert(handle->type == UV_NAMED_PIPE);
-  assert(handle->handle != INVALID_HANDLE_VALUE);
 
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
@@ -2158,11 +2160,11 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
     if (err)
       CloseHandle(pipeHandle);
   } else {
-    err = GET_REQ_ERROR(req);
+    err = uv_translate_sys_error(GET_REQ_ERROR(req));
   }
 
   if (req->cb)
-    req->cb(req, uv_translate_sys_error(err));
+    req->cb(req, err);
 
   DECREASE_PENDING_REQ_COUNT(handle);
 }
@@ -2208,7 +2210,7 @@ static void eof_timer_init(uv_pipe_t* pipe) {
   pipe->pipe.conn.eof_timer = (uv_timer_t*) uv__malloc(sizeof *pipe->pipe.conn.eof_timer);
 
   r = uv_timer_init(pipe->loop, pipe->pipe.conn.eof_timer);
-  assert(r == 0); /* timers can't fail */
+  assert(r == 0); (void)r; /* timers can't fail */
   pipe->pipe.conn.eof_timer->data = pipe;
   uv_unref((uv_handle_t*) pipe->pipe.conn.eof_timer);
 }
@@ -2288,9 +2290,14 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   IO_STATUS_BLOCK io_status;
   FILE_ACCESS_INFORMATION access;
   DWORD duplex_flags = 0;
+  int err;
 
   if (os_handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
+  if (pipe->flags & UV_HANDLE_PIPESERVER)
+    return UV_EINVAL;
+  if (pipe->flags & UV_HANDLE_CONNECTION)
+    return UV_EBUSY;
 
   uv__once_init();
   /* In order to avoid closing a stdio file descriptor 0-2, duplicate the
@@ -2336,14 +2343,16 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   if (access.AccessFlags & FILE_READ_DATA)
     duplex_flags |= UV_HANDLE_READABLE;
 
-  if (uv__set_pipe_handle(pipe->loop,
-                          pipe,
-                          os_handle,
-                          file,
-                          duplex_flags) == -1) {
+  uv__pipe_connection_init(pipe);
+  err = uv__set_pipe_handle(pipe->loop,
+                            pipe,
+                            os_handle,
+                            file,
+                            duplex_flags);
+  if (err) {
     if (file == -1)
       CloseHandle(os_handle);
-    return UV_EINVAL;
+    return err;
   }
 
   if (pipe->ipc) {
@@ -2368,6 +2377,47 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
 
   uv__once_init();
   name_info = NULL;
+
+  if (handle->name != NULL) {
+    /* The user might try to query the name before we are connected,
+     * and this is just easier to return the cached value if we have it. */
+    name_buf = handle->name;
+    name_len = wcslen(name_buf);
+
+    /* check how much space we need */
+    addrlen = WideCharToMultiByte(CP_UTF8,
+                                  0,
+                                  name_buf,
+                                  name_len,
+                                  NULL,
+                                  0,
+                                  NULL,
+                                  NULL);
+    if (!addrlen) {
+      *size = 0;
+      err = uv_translate_sys_error(GetLastError());
+      return err;
+    }
+
+    addrlen = WideCharToMultiByte(CP_UTF8,
+                                  0,
+                                  name_buf,
+                                  name_len,
+                                  buffer,
+                                  addrlen,
+                                  NULL,
+                                  NULL);
+    if (!addrlen) {
+      *size = 0;
+      err = uv_translate_sys_error(GetLastError());
+      return err;
+    }
+
+    *size = addrlen;
+    buffer[addrlen] = '\0';
+
+    return 0;
+  }
 
   if (handle->handle == INVALID_HANDLE_VALUE) {
     *size = 0;
@@ -2505,6 +2555,11 @@ int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
 
   if (handle->handle != INVALID_HANDLE_VALUE)
     return uv__pipe_getname(handle, buffer, size);
+
+  if (handle->flags & UV_HANDLE_CONNECTION) {
+    if (handle->name != NULL)
+      return uv__pipe_getname(handle, buffer, size);
+  }
 
   return UV_EBADF;
 }
