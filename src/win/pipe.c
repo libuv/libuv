@@ -121,10 +121,10 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 
 
 static void uv__pipe_connection_init(uv_pipe_t* handle) {
+  assert(!(handle->flags & UV_HANDLE_PIPESERVER));
   uv__connection_init((uv_stream_t*) handle);
   handle->read_req.data = handle;
   handle->pipe.conn.eof_timer = NULL;
-  assert(!(handle->flags & UV_HANDLE_PIPESERVER));
 }
 
 
@@ -827,9 +827,10 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
     SwitchToThread();
   }
 
-  if (pipeHandle != INVALID_HANDLE_VALUE &&
-      !uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags)) {
+  if (pipeHandle != INVALID_HANDLE_VALUE) {
     SET_REQ_SUCCESS(req);
+    req->u.connect.pipeHandle = pipeHandle;
+    req->u.connect.duplex_flags = duplex_flags;
   } else {
     SET_REQ_ERROR(req, GetLastError());
   }
@@ -2140,6 +2141,8 @@ void uv__process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
 
 void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_connect_t* req) {
+  HANDLE pipeHandle;
+  DWORD duplex_flags;
   int err;
 
   assert(handle->type == UV_NAMED_PIPE);
@@ -2148,7 +2151,13 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   err = 0;
-  if (!REQ_SUCCESS(req)) {
+  if (REQ_SUCCESS(req)) {
+    pipeHandle = req->u.connect.pipeHandle;
+    duplex_flags = req->u.connect.duplex_flags;
+    err = uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags);
+    if (err)
+      CloseHandle(pipeHandle);
+  } else {
     err = GET_REQ_ERROR(req);
   }
 
