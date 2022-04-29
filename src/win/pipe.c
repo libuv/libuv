@@ -389,6 +389,8 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   unsigned int client_flags;
   int err;
 
+  uv__pipe_connection_init(parent_pipe);
+
   server_pipe = INVALID_HANDLE_VALUE;
   client_pipe = INVALID_HANDLE_VALUE;
 
@@ -423,7 +425,6 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
     goto error;
   }
 
-  uv__pipe_connection_init(parent_pipe);
   parent_pipe->handle = server_pipe;
   *child_pipe_ptr = client_pipe;
 
@@ -860,7 +861,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     err = ERROR_PIPE_BUSY;
     goto error;
   }
-
+  uv__pipe_connection_init(handle);
 
   /* Convert name to UTF16. */
   nameSize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0) * sizeof(WCHAR);
@@ -900,7 +901,6 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
     goto error;
   }
 
-  uv__pipe_connection_init(handle);
   req->u.connect.pipeHandle = pipeHandle;
   req->u.connect.duplex_flags = duplex_flags;
   SET_REQ_SUCCESS(req);
@@ -1103,6 +1103,7 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
   } else {
     pipe_client = (uv_pipe_t*) client;
+    uv__pipe_connection_init(pipe_client);
 
     /* Find a connection instance that has been connected, but not yet
      * accepted. */
@@ -1114,7 +1115,6 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
     }
 
     /* Initialize the client handle and copy the pipeHandle to the client */
-    uv__pipe_connection_init(pipe_client);
     pipe_client->handle = req->pipeHandle;
     pipe_client->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
 
@@ -2299,6 +2299,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   if (pipe->flags & UV_HANDLE_CONNECTION)
     return UV_EBUSY;
 
+  uv__pipe_connection_init(pipe);
   uv__once_init();
   /* In order to avoid closing a stdio file descriptor 0-2, duplicate the
    * underlying OS handle and forget about the original fd.
@@ -2343,7 +2344,6 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   if (access.AccessFlags & FILE_READ_DATA)
     duplex_flags |= UV_HANDLE_READABLE;
 
-  uv__pipe_connection_init(pipe);
   err = uv__set_pipe_handle(pipe->loop,
                             pipe,
                             os_handle,
@@ -2397,6 +2397,10 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
       *size = 0;
       err = uv_translate_sys_error(GetLastError());
       return err;
+    } else if (addrlen >= *size) {
+      *size = addrlen + 1;
+      err = UV_ENOBUFS;
+      goto error;
     }
 
     addrlen = WideCharToMultiByte(CP_UTF8,
