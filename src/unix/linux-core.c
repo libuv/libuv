@@ -266,9 +266,9 @@ static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  static const int max_retry = 3;
+  static const int max_retry = 2;
   unsigned int numcpus;
-  unsigned int numread;
+  unsigned int numread = 0;
   uv_cpu_info_t* ci;
   int err;
   int i;
