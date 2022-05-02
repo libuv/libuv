@@ -644,11 +644,11 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 
   switch (stream->type) {
   case UV_TCP:
-    err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+    err = uv__tcp_listen((uv_tcp_t*)stream, backlog, cb);
     break;
 
   case UV_NAMED_PIPE:
-    err = uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
+    err = uv__pipe_listen((uv_pipe_t*)stream, backlog, cb);
     break;
 
   default:
@@ -961,49 +961,6 @@ static void uv__write_callbacks(uv_stream_t* stream) {
     if (req->cb)
       req->cb(req, req->error);
   }
-}
-
-
-uv_handle_type uv__handle_type(int fd) {
-  struct sockaddr_storage ss;
-  socklen_t sslen;
-  socklen_t len;
-  int type;
-
-  memset(&ss, 0, sizeof(ss));
-  sslen = sizeof(ss);
-
-  if (getsockname(fd, (struct sockaddr*)&ss, &sslen))
-    return UV_UNKNOWN_HANDLE;
-
-  len = sizeof type;
-
-  if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &len))
-    return UV_UNKNOWN_HANDLE;
-
-  if (type == SOCK_STREAM) {
-#if defined(_AIX) || defined(__DragonFly__)
-    /* on AIX/DragonFly the getsockname call returns an empty sa structure
-     * for sockets of type AF_UNIX.  For all other types it will
-     * return a properly filled in structure.
-     */
-    if (sslen == 0)
-      return UV_NAMED_PIPE;
-#endif
-    switch (ss.ss_family) {
-      case AF_UNIX:
-        return UV_NAMED_PIPE;
-      case AF_INET:
-      case AF_INET6:
-        return UV_TCP;
-      }
-  }
-
-  if (type == SOCK_DGRAM &&
-      (ss.ss_family == AF_INET || ss.ss_family == AF_INET6))
-    return UV_UDP;
-
-  return UV_UNKNOWN_HANDLE;
 }
 
 

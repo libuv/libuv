@@ -98,13 +98,13 @@ static void eof_timer_destroy(uv_pipe_t* pipe);
 static void eof_timer_close_cb(uv_handle_t* handle);
 
 
-static void uv_unique_pipe_name(char* ptr, char* name, size_t size) {
+static void uv__unique_pipe_name(char* ptr, char* name, size_t size) {
   snprintf(name, size, "\\\\?\\pipe\\uv\\%p-%lu", ptr, GetCurrentProcessId());
 }
 
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
-  uv_stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
+  uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
 
   handle->reqs_pending = 0;
   handle->handle = INVALID_HANDLE_VALUE;
@@ -120,8 +120,8 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 }
 
 
-static void uv_pipe_connection_init(uv_pipe_t* handle) {
-  uv_connection_init((uv_stream_t*) handle);
+static void uv__pipe_connection_init(uv_pipe_t* handle) {
+  uv__connection_init((uv_stream_t*) handle);
   handle->read_req.data = handle;
   handle->pipe.conn.eof_timer = NULL;
   assert(!(handle->flags & UV_HANDLE_PIPESERVER));
@@ -209,7 +209,7 @@ static int uv__pipe_server(
   int err;
 
   for (;;) {
-    uv_unique_pipe_name(random, name, nameSize);
+    uv__unique_pipe_name(random, name, nameSize);
 
     pipeHandle = CreateNamedPipeA(name,
       access | FILE_FLAG_FIRST_PIPE_INSTANCE,
@@ -427,7 +427,7 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
     goto error;
   }
 
-  uv_pipe_connection_init(parent_pipe);
+  uv__pipe_connection_init(parent_pipe);
   parent_pipe->handle = server_pipe;
   *child_pipe_ptr = client_pipe;
 
@@ -450,11 +450,11 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
 }
 
 
-static int uv_set_pipe_handle(uv_loop_t* loop,
-                              uv_pipe_t* handle,
-                              HANDLE pipeHandle,
-                              int fd,
-                              DWORD duplex_flags) {
+static int uv__set_pipe_handle(uv_loop_t* loop,
+                               uv_pipe_t* handle,
+                               HANDLE pipeHandle,
+                               int fd,
+                               DWORD duplex_flags) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_MODE_INFORMATION mode_info;
@@ -578,7 +578,7 @@ static DWORD WINAPI pipe_shutdown_thread_proc(void* parameter) {
 }
 
 
-void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
+void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
   int err;
   DWORD result;
   uv_shutdown_t* req;
@@ -630,7 +630,7 @@ void uv_pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
 
     if (pipe_info.OutboundQuota == pipe_info.WriteQuotaAvailable) {
       /* Short-circuit, no need to call FlushFileBuffers. */
-      uv_insert_pending_req(loop, (uv_req_t*) req);
+      uv__insert_pending_req(loop, (uv_req_t*) req);
       return;
     }
 
@@ -826,7 +826,7 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
   }
 
   if (pipeHandle != INVALID_HANDLE_VALUE &&
-      !uv_set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags)) {
+      !uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags)) {
     SET_REQ_SUCCESS(req);
   } else {
     SET_REQ_ERROR(req, GetLastError());
@@ -890,17 +890,17 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
 
   assert(pipeHandle != INVALID_HANDLE_VALUE);
 
-  if (uv_set_pipe_handle(loop,
-                         (uv_pipe_t*) req->handle,
-                         pipeHandle,
-                         -1,
-                         duplex_flags)) {
+  if (uv__set_pipe_handle(loop,
+                          (uv_pipe_t*) req->handle,
+                          pipeHandle,
+                          -1,
+                          duplex_flags)) {
     err = GetLastError();
     goto error;
   }
 
   SET_REQ_SUCCESS(req);
-  uv_insert_pending_req(loop, (uv_req_t*) req);
+  uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
   return;
@@ -916,7 +916,7 @@ error:
 
   /* Make this req pending reporting an error. */
   SET_REQ_ERROR(req, err);
-  uv_insert_pending_req(loop, (uv_req_t*) req);
+  uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
   return;
@@ -980,7 +980,7 @@ void uv__pipe_read_stop(uv_pipe_t* handle) {
 
 /* Cleans up uv_pipe_t (server or connection) and all resources associated with
  * it. */
-void uv_pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
+void uv__pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
   int i;
   HANDLE pipeHandle;
 
@@ -1013,7 +1013,7 @@ void uv_pipe_cleanup(uv_loop_t* loop, uv_pipe_t* handle) {
 }
 
 
-void uv_pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
+void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
   if (handle->flags & UV_HANDLE_READING) {
     handle->flags &= ~UV_HANDLE_READING;
     DECREASE_ACTIVE_COUNT(loop, handle);
@@ -1024,10 +1024,10 @@ void uv_pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
     DECREASE_ACTIVE_COUNT(loop, handle);
   }
 
-  uv_pipe_cleanup(loop, handle);
+  uv__pipe_cleanup(loop, handle);
 
   if (handle->reqs_pending == 0) {
-    uv_want_endgame(loop, (uv_handle_t*) handle);
+    uv__want_endgame(loop, (uv_handle_t*) handle);
   }
 
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
@@ -1035,13 +1035,13 @@ void uv_pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
 }
 
 
-static void uv_pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
+static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
     uv_pipe_accept_t* req, BOOL firstInstance) {
   assert(handle->flags & UV_HANDLE_LISTENING);
 
   if (!firstInstance && !pipe_alloc_accept(loop, handle, req, FALSE)) {
     SET_REQ_ERROR(req, GetLastError());
-    uv_insert_pending_req(loop, (uv_req_t*) req);
+    uv__insert_pending_req(loop, (uv_req_t*) req);
     handle->reqs_pending++;
     return;
   }
@@ -1061,7 +1061,7 @@ static void uv_pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
       /* Make this req pending reporting an error. */
       SET_REQ_ERROR(req, GetLastError());
     }
-    uv_insert_pending_req(loop, (uv_req_t*) req);
+    uv__insert_pending_req(loop, (uv_req_t*) req);
     handle->reqs_pending++;
     return;
   }
@@ -1071,7 +1071,7 @@ static void uv_pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
 }
 
 
-int uv_pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
+int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
   uv_loop_t* loop = server->loop;
   uv_pipe_t* pipe_client;
   uv_pipe_accept_t* req;
@@ -1110,7 +1110,7 @@ int uv_pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
     }
 
     /* Initialize the client handle and copy the pipeHandle to the client */
-    uv_pipe_connection_init(pipe_client);
+    uv__pipe_connection_init(pipe_client);
     pipe_client->handle = req->pipeHandle;
     pipe_client->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
 
@@ -1121,7 +1121,7 @@ int uv_pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
     server->handle = INVALID_HANDLE_VALUE;
     if (!(server->flags & UV_HANDLE_CLOSING)) {
-      uv_pipe_queue_accept(loop, server, req, FALSE);
+      uv__pipe_queue_accept(loop, server, req, FALSE);
     }
   }
 
@@ -1130,7 +1130,7 @@ int uv_pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
 
 /* Starts listening for connections for the given pipe. */
-int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
+int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   uv_loop_t* loop = handle->loop;
   int i;
 
@@ -1162,7 +1162,7 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   assert(handle->pipe.serv.accept_reqs[0].pipeHandle != INVALID_HANDLE_VALUE);
 
   for (i = 0; i < handle->pipe.serv.pending_instances; i++) {
-    uv_pipe_queue_accept(loop, handle, &handle->pipe.serv.accept_reqs[i], i == 0);
+    uv__pipe_queue_accept(loop, handle, &handle->pipe.serv.accept_reqs[i], i == 0);
   }
 
   return 0;
@@ -1306,7 +1306,7 @@ static void CALLBACK post_completion_write_wait(void* context, BOOLEAN timed_out
 }
 
 
-static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
+static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   uv_read_t* req;
   int result;
 
@@ -1365,15 +1365,15 @@ static void uv_pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   return;
 
 error:
-  uv_insert_pending_req(loop, (uv_req_t*)req);
+  uv__insert_pending_req(loop, (uv_req_t*)req);
   handle->flags |= UV_HANDLE_READ_PENDING;
   handle->reqs_pending++;
 }
 
 
-int uv_pipe_read_start(uv_pipe_t* handle,
-                       uv_alloc_cb alloc_cb,
-                       uv_read_cb read_cb) {
+int uv__pipe_read_start(uv_pipe_t* handle,
+                        uv_alloc_cb alloc_cb,
+                        uv_read_cb read_cb) {
   uv_loop_t* loop = handle->loop;
 
   handle->flags |= UV_HANDLE_READING;
@@ -1391,14 +1391,14 @@ int uv_pipe_read_start(uv_pipe_t* handle,
         uv_fatal_error(GetLastError(), "CreateEvent");
       }
     }
-    uv_pipe_queue_read(loop, handle);
+    uv__pipe_queue_read(loop, handle);
   }
 
   return 0;
 }
 
 
-static void uv_insert_non_overlapped_write_req(uv_pipe_t* handle,
+static void uv__insert_non_overlapped_write_req(uv_pipe_t* handle,
     uv_write_t* req) {
   req->next_req = NULL;
   if (handle->pipe.conn.non_overlapped_writes_tail) {
@@ -1434,7 +1434,7 @@ static uv_write_t* uv_remove_non_overlapped_write_req(uv_pipe_t* handle) {
 }
 
 
-static void uv_queue_non_overlapped_write(uv_pipe_t* handle) {
+static void uv__queue_non_overlapped_write(uv_pipe_t* handle) {
   uv_write_t* req = uv_remove_non_overlapped_write_req(handle);
   if (req) {
     if (!QueueUserWorkItem(&uv_pipe_writefile_thread_proc,
@@ -1575,9 +1575,9 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     return 0;
   } else if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     req->write_buffer = write_buf;
-    uv_insert_non_overlapped_write_req(handle, req);
+    uv__insert_non_overlapped_write_req(handle, req);
     if (handle->stream.conn.write_reqs_pending == 0) {
-      uv_queue_non_overlapped_write(handle);
+      uv__queue_non_overlapped_write(handle);
     }
 
     /* Request queued by the kernel. */
@@ -1790,7 +1790,7 @@ int uv__pipe_write(uv_loop_t* loop,
 }
 
 
-static void uv_pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
+static void uv__pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
     uv_buf_t buf) {
   /* If there is an eof timer running, we don't need it any more, so discard
    * it. */
@@ -1802,7 +1802,7 @@ static void uv_pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
 }
 
 
-static void uv_pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
+static void uv__pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
     uv_buf_t buf) {
   /* If there is an eof timer running, we don't need it any more, so discard
    * it. */
@@ -1814,12 +1814,12 @@ static void uv_pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
 }
 
 
-static void uv_pipe_read_error_or_eof(uv_loop_t* loop, uv_pipe_t* handle,
+static void uv__pipe_read_error_or_eof(uv_loop_t* loop, uv_pipe_t* handle,
     int error, uv_buf_t buf) {
   if (error == ERROR_BROKEN_PIPE) {
-    uv_pipe_read_eof(loop, handle, buf);
+    uv__pipe_read_eof(loop, handle, buf);
   } else {
-    uv_pipe_read_error(loop, handle, error, buf);
+    uv__pipe_read_error(loop, handle, error, buf);
   }
 }
 
@@ -1890,7 +1890,7 @@ static DWORD uv__pipe_read_data(uv_loop_t* loop,
 
   /* Read into the user buffer. */
   if (!ReadFile(handle->handle, buf.base, max_bytes, &bytes_read, NULL)) {
-    uv_pipe_read_error_or_eof(loop, handle, GetLastError(), buf);
+    uv__pipe_read_error_or_eof(loop, handle, GetLastError(), buf);
     return 0; /* Break out of read loop. */
   }
 
@@ -1977,14 +1977,14 @@ invalid:
   err = WSAECONNABORTED; /* Maps to UV_ECONNABORTED. */
 
 error:
-  uv_pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
+  uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
   return 0; /* Break out of read loop. */
 }
 
 
-void uv_process_pipe_read_req(uv_loop_t* loop,
-                              uv_pipe_t* handle,
-                              uv_req_t* req) {
+void uv__process_pipe_read_req(uv_loop_t* loop,
+                               uv_pipe_t* handle,
+                               uv_req_t* req) {
   assert(handle->type == UV_NAMED_PIPE);
 
   handle->flags &= ~(UV_HANDLE_READ_PENDING | UV_HANDLE_CANCELLATION_PENDING);
@@ -2005,7 +2005,7 @@ void uv_process_pipe_read_req(uv_loop_t* loop,
      * indicate an ERROR_OPERATION_ABORTED error. This error isn't relevant to
      * the user; we'll start a new zero-read at the end of this function. */
     if (err != ERROR_OPERATION_ABORTED)
-      uv_pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
+      uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
 
   } else {
     /* The zero-read completed without error, indicating there is data
@@ -2015,7 +2015,7 @@ void uv_process_pipe_read_req(uv_loop_t* loop,
     /* Get the number of bytes available. */
     avail = 0;
     if (!PeekNamedPipe(handle->handle, NULL, 0, NULL, &avail, NULL))
-      uv_pipe_read_error_or_eof(loop, handle, GetLastError(), uv_null_buf_);
+      uv__pipe_read_error_or_eof(loop, handle, GetLastError(), uv_null_buf_);
 
     /* Read until we've either read all the bytes available, or the 'reading'
      * flag is cleared. */
@@ -2044,12 +2044,12 @@ void uv_process_pipe_read_req(uv_loop_t* loop,
   /* Start another zero-read request if necessary. */
   if ((handle->flags & UV_HANDLE_READING) &&
       !(handle->flags & UV_HANDLE_READ_PENDING)) {
-    uv_pipe_queue_read(loop, handle);
+    uv__pipe_queue_read(loop, handle);
   }
 }
 
 
-void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
+void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_write_t* req) {
   int err;
 
@@ -2091,26 +2091,26 @@ void uv_process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&
       handle->pipe.conn.non_overlapped_writes_tail) {
     assert(handle->stream.conn.write_reqs_pending > 0);
-    uv_queue_non_overlapped_write(handle);
+    uv__queue_non_overlapped_write(handle);
   }
 
   if (handle->stream.conn.shutdown_req != NULL &&
       handle->stream.conn.write_reqs_pending == 0) {
-    uv_want_endgame(loop, (uv_handle_t*)handle);
+    uv__want_endgame(loop, (uv_handle_t*)handle);
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
 }
 
 
-void uv_process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
+void uv__process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_req_t* raw_req) {
   uv_pipe_accept_t* req = (uv_pipe_accept_t*) raw_req;
 
   assert(handle->type == UV_NAMED_PIPE);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
-    /* The req->pipeHandle should be freed already in uv_pipe_cleanup(). */
+    /* The req->pipeHandle should be freed already in uv__pipe_cleanup(). */
     assert(req->pipeHandle == INVALID_HANDLE_VALUE);
     DECREASE_PENDING_REQ_COUNT(handle);
     return;
@@ -2130,7 +2130,7 @@ void uv_process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
       req->pipeHandle = INVALID_HANDLE_VALUE;
     }
     if (!(handle->flags & UV_HANDLE_CLOSING)) {
-      uv_pipe_queue_accept(loop, handle, req, FALSE);
+      uv__pipe_queue_accept(loop, handle, req, FALSE);
     }
   }
 
@@ -2138,7 +2138,7 @@ void uv_process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
 }
 
 
-void uv_process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
+void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_connect_t* req) {
   int err;
 
@@ -2149,7 +2149,7 @@ void uv_process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   if (req->cb) {
     err = 0;
     if (REQ_SUCCESS(req)) {
-      uv_pipe_connection_init(handle);
+      uv__pipe_connection_init(handle);
     } else {
       err = GET_REQ_ERROR(req);
     }
@@ -2160,7 +2160,7 @@ void uv_process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
 }
 
 
-void uv_process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
+void uv__process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_shutdown_t* req) {
   assert(handle->type == UV_NAMED_PIPE);
 
@@ -2171,7 +2171,7 @@ void uv_process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
      * is readable and we haven't seen EOF come in ourselves. */
     eof_timer_init(handle);
 
-    /* If reading start the timer right now. Otherwise uv_pipe_queue_read will
+    /* If reading start the timer right now. Otherwise uv__pipe_queue_read will
      * start it. */
     if (handle->flags & UV_HANDLE_READ_PENDING) {
       eof_timer_start(handle);
@@ -2231,9 +2231,9 @@ static void eof_timer_cb(uv_timer_t* timer) {
   assert(pipe->type == UV_NAMED_PIPE);
 
   /* This should always be true, since we start the timer only in
-   * uv_pipe_queue_read after successfully calling ReadFile, or in
-   * uv_process_pipe_shutdown_req if a read is pending, and we always
-   * immediately stop the timer in uv_process_pipe_read_req. */
+   * uv__pipe_queue_read after successfully calling ReadFile, or in
+   * uv__process_pipe_shutdown_req if a read is pending, and we always
+   * immediately stop the timer in uv__process_pipe_read_req. */
   assert(pipe->flags & UV_HANDLE_READ_PENDING);
 
   /* If there are many packets coming off the iocp then the timer callback may
@@ -2254,7 +2254,7 @@ static void eof_timer_cb(uv_timer_t* timer) {
 
   /* Report the eof and update flags. This will get reported even if the user
    * stopped reading in the meantime. TODO: is that okay? */
-  uv_pipe_read_eof(loop, pipe, uv_null_buf_);
+  uv__pipe_read_eof(loop, pipe, uv_null_buf_);
 }
 
 
@@ -2328,15 +2328,15 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
     duplex_flags |= UV_HANDLE_READABLE;
 
   if (os_handle == INVALID_HANDLE_VALUE ||
-      uv_set_pipe_handle(pipe->loop,
-                         pipe,
-                         os_handle,
-                         file,
-                         duplex_flags) == -1) {
+      uv__set_pipe_handle(pipe->loop,
+                          pipe,
+                          os_handle,
+                          file,
+                          duplex_flags) == -1) {
     return UV_EINVAL;
   }
 
-  uv_pipe_connection_init(pipe);
+  uv__pipe_connection_init(pipe);
 
   if (pipe->ipc) {
     assert(!(pipe->flags & UV_HANDLE_NON_OVERLAPPED_PIPE));

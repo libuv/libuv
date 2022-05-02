@@ -43,7 +43,9 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/uv-data-getter-setters.c \
                    src/uv-common.c \
                    src/uv-common.h \
-                   src/version.c
+                   src/version.c \
+                   src/strtok.c \
+                   src/strtok.h
 
 if SUNOS
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers
@@ -250,11 +252,13 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
                          test/test-strscpy.c \
+                         test/test-strtok.c \
                          test/test-tcp-alloc-cb-fail.c \
                          test/test-tcp-bind-error.c \
                          test/test-tcp-bind6-error.c \
                          test/test-tcp-close-accept.c \
                          test/test-tcp-close-while-connecting.c \
+                         test/test-tcp-close-after-read-timeout.c \
                          test/test-tcp-close.c \
                          test/test-tcp-close-reset.c \
                          test/test-tcp-create-socket-early.c \
@@ -266,6 +270,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-open.c \
                          test/test-tcp-read-stop.c \
                          test/test-tcp-read-stop-start.c \
+                         test/test-tcp-rst.c \
                          test/test-tcp-shutdown-after-write.c \
                          test/test-tcp-unexpected-read.c \
                          test/test-tcp-oob.c \
@@ -455,9 +460,16 @@ endif
 
 if HURD
 uvinclude_HEADERS += include/uv/posix.h
-libuv_la_SOURCES += src/unix/no-fsevents.c \
+libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
+                    src/unix/no-fsevents.c \
+                    src/unix/no-proctitle.c \
                     src/unix/posix-hrtime.c \
-                    src/unix/posix-poll.c
+                    src/unix/posix-poll.c \
+                    src/unix/hurd.c
+endif
+
+if KFREEBSD
+libuv_la_CFLAGS += -D_GNU_SOURCE
 endif
 
 if LINUX
