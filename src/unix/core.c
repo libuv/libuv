@@ -667,28 +667,23 @@ int uv__cloexec(int fd, int set) {
 
 
 ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
-  struct cmsghdr* cmsg;
+#if defined(__ANDROID__)   || \
+    defined(__DragonFly__) || \
+    defined(__FreeBSD__)   || \
+    defined(__NetBSD__)    || \
+    defined(__OpenBSD__)   || \
+    defined(__linux__)
   ssize_t rc;
+  rc = recvmsg(fd, msg, flags | MSG_CMSG_CLOEXEC);
+  if (rc == -1)
+    return UV__ERR(errno);
+  return rc;
+#else
+  struct cmsghdr* cmsg;
   int* pfd;
   int* end;
-#if defined(__linux__)
-  static int no_msg_cmsg_cloexec;
-  if (0 == uv__load_relaxed(&no_msg_cmsg_cloexec)) {
-    rc = recvmsg(fd, msg, flags | 0x40000000);  /* MSG_CMSG_CLOEXEC */
-    if (rc != -1)
-      return rc;
-    if (errno != EINVAL)
-      return UV__ERR(errno);
-    rc = recvmsg(fd, msg, flags);
-    if (rc == -1)
-      return UV__ERR(errno);
-    uv__store_relaxed(&no_msg_cmsg_cloexec, 1);
-  } else {
-    rc = recvmsg(fd, msg, flags);
-  }
-#else
+  ssize_t rc;
   rc = recvmsg(fd, msg, flags);
-#endif
   if (rc == -1)
     return UV__ERR(errno);
   if (msg->msg_controllen == 0)
@@ -701,6 +696,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
            pfd += 1)
         uv__cloexec(*pfd, 1);
   return rc;
+#endif
 }
 
 
