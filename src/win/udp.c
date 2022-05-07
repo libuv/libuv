@@ -121,6 +121,10 @@ static int uv__udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     assert(!(handle->flags & UV_HANDLE_IPV6));
   }
 
+  if (handle->socket_created_cb) {
+    handle->socket_created_cb(handle, handle->socket_created_cb_p);
+  }
+
   return 0;
 }
 
@@ -140,6 +144,9 @@ int uv__udp_init_ex(uv_loop_t* loop,
   UV_REQ_INIT(&handle->recv_req, UV_UDP_RECV);
   handle->recv_req.data = handle;
 
+  handle->socket_created_cb = NULL;
+  handle->socket_created_cb_p = NULL;
+
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init.
    */
@@ -153,13 +160,6 @@ int uv__udp_init_ex(uv_loop_t* loop,
       err = WSAGetLastError();
       QUEUE_REMOVE(&handle->handle_queue);
       return uv_translate_sys_error(err);
-    }
-
-    if (handle->socket_created_cb) {
-      SOCKET cached_sock = handle->socket;
-      handle->socket = sock;
-      handle->socket_created_cb(handle, handle->socket_created_cb_p);
-      handle->socket = cached_sock;
     }
 
     err = uv__udp_set_socket(handle->loop, handle, sock, domain);
@@ -221,13 +221,6 @@ static int uv__udp_maybe_bind(uv_udp_t* handle,
     SOCKET sock = socket(addr->sa_family, SOCK_DGRAM, 0);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();
-    }
-
-    if (handle->socket_created_cb) {
-      SOCKET cached_sock = handle->socket;
-      handle->socket = sock;
-      handle->socket_created_cb(handle, handle->socket_created_cb_p);
-      handle->socket = cached_sock;
     }
 
     err = uv__udp_set_socket(handle->loop, handle, sock, addr->sa_family);

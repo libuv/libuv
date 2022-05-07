@@ -1059,9 +1059,8 @@ int uv__udp_init_ex(uv_loop_t* loop,
   QUEUE_INIT(&handle->write_queue);
   QUEUE_INIT(&handle->write_completed_queue);
 
-  if (handle->socket_created_cb && (uv__stream_fd(handle) >= 0)) {
-    handle->socket_created_cb(handle, handle->socket_created_cb_p);
-  }
+  handle->socket_created_cb = NULL;
+  handle->socket_created_cb_p = NULL;
 
   return 0;
 }

@@ -310,8 +310,15 @@ void uv_set_tcp_socket_created_cb(uv_tcp_t* handle,
                                   uv_tcp_socket_created_cb cb,
                                   void* p) {
   if (handle) {
-    handle->socket_created_cb = cb;
-    handle->socket_created_cb_p = p;
+    uv_os_fd_t fd = (uv_os_fd_t)-1;
+    if (uv_fileno((uv_handle_t*)handle, &fd) != 0) {
+      if (cb) {
+        cb(handle, p);
+      }
+    } else {
+      handle->socket_created_cb = cb;
+      handle->socket_created_cb_p = p;
+    }
   }
 }
 
@@ -508,8 +515,15 @@ void uv_set_udp_socket_created_cb(uv_udp_t* handle,
                                   uv_udp_socket_created_cb cb,
                                   void* p) {
   if (handle) {
-    handle->socket_created_cb = cb;
-    handle->socket_created_cb_p = p;
+    uv_os_fd_t fd = (uv_os_fd_t)-1;
+    if (uv_fileno((uv_handle_t*)handle, &fd) != 0) {
+      if (cb) {
+        cb(handle, p);
+      }
+    } else {
+      handle->socket_created_cb = cb;
+      handle->socket_created_cb_p = p;
+    }
   }
 }
 

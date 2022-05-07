@@ -147,6 +147,10 @@ static int uv__tcp_set_socket(uv_loop_t* loop,
     assert(!(handle->flags & UV_HANDLE_IPV6));
   }
 
+  if (handle->socket_created_cb) {
+      handle->socket_created_cb(handle, handle->socket_created_cb_p);
+  }
+
   return 0;
 }
 
@@ -172,6 +176,9 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
   handle->tcp.serv.processed_accepts = 0;
   handle->delayed_error = 0;
 
+  handle->socket_created_cb = NULL;
+  handle->socket_created_cb_p = NULL;
+
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv__stream_init.
    */
@@ -185,13 +192,6 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
       err = WSAGetLastError();
       QUEUE_REMOVE(&handle->handle_queue);
       return uv_translate_sys_error(err);
-    }
-
-    if (handle->socket_created_cb) {
-      SOCKET cached_sock = handle->socket;
-      handle->socket = sock;
-      handle->socket_created_cb(handle, handle->socket_created_cb_p);
-      handle->socket = cached_sock;
     }
 
     err = uv__tcp_set_socket(handle->loop, handle, sock, domain, 0);
@@ -310,13 +310,6 @@ static int uv__tcp_try_bind(uv_tcp_t* handle,
     sock = socket(addr->sa_family, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();
-    }
-
-    if (handle->socket_created_cb) {
-      SOCKET cached_sock = handle->socket;
-      handle->socket = sock;
-      handle->socket_created_cb(handle, handle->socket_created_cb_p);
-      handle->socket = cached_sock;
     }
 
     err = uv__tcp_set_socket(handle->loop, handle, sock, addr->sa_family, 0);
