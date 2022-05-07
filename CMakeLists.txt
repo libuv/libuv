@@ -122,6 +122,8 @@ list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
 list(APPEND uv_cflags ${lint-utf8-msvc} )
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 check_c_compiler_flag(-fno-strict-aliasing UV_F_STRICT_ALIASING)
 list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
 
