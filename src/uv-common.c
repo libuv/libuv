@@ -311,7 +311,7 @@ void uv_set_tcp_socket_created_cb(uv_tcp_t* handle,
                                   void* p) {
   if (handle) {
     uv_os_fd_t fd = (uv_os_fd_t)-1;
-    if (uv_fileno((uv_handle_t*)handle, &fd) != 0) {
+    if (uv_fileno((uv_handle_t*)handle, &fd) == 0) {
       if (cb) {
         cb(handle, p);
       }
