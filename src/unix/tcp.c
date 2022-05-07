@@ -128,6 +128,9 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
 
   uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
 
+  tcp->socket_created_cb = NULL;
+  tcp->socket_created_cb_p = NULL;
+
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv_stream_init.
    */
