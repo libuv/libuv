@@ -155,6 +155,13 @@ int uv__udp_init_ex(uv_loop_t* loop,
       return uv_translate_sys_error(err);
     }
 
+    if (handle->socket_created_cb) {
+      SOCKET cached_sock = handle->socket;
+      handle->socket = sock;
+      handle->socket_created_cb(handle, handle->socket_created_cb_p);
+      handle->socket = cached_sock;
+    }
+
     err = uv__udp_set_socket(handle->loop, handle, sock, domain);
     if (err) {
       closesocket(sock);
@@ -214,6 +221,13 @@ static int uv__udp_maybe_bind(uv_udp_t* handle,
     SOCKET sock = socket(addr->sa_family, SOCK_DGRAM, 0);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();
+    }
+
+    if (handle->socket_created_cb) {
+      SOCKET cached_sock = handle->socket;
+      handle->socket = sock;
+      handle->socket_created_cb(handle, handle->socket_created_cb_p);
+      handle->socket = cached_sock;
     }
 
     err = uv__udp_set_socket(handle->loop, handle, sock, addr->sa_family);

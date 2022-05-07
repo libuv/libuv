@@ -552,6 +552,10 @@ int uv__udp_bind(uv_udp_t* handle,
       return err;
     fd = err;
     handle->io_watcher.fd = fd;
+
+    if (handle->socket_created_cb) {
+      handle->socket_created_cb(handle, handle->socket_created_cb_p);
+    }
   }
 
   if (flags & UV_UDP_LINUX_RECVERR) {
@@ -1054,6 +1058,10 @@ int uv__udp_init_ex(uv_loop_t* loop,
   uv__io_init(&handle->io_watcher, uv__udp_io, fd);
   QUEUE_INIT(&handle->write_queue);
   QUEUE_INIT(&handle->write_completed_queue);
+
+  if (handle->socket_created_cb && (uv__stream_fd(handle) >= 0)) {
+    handle->socket_created_cb(handle, handle->socket_created_cb_p);
+  }
 
   return 0;
 }

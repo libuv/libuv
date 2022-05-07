@@ -187,6 +187,13 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
       return uv_translate_sys_error(err);
     }
 
+    if (handle->socket_created_cb) {
+      SOCKET cached_sock = handle->socket;
+      handle->socket = sock;
+      handle->socket_created_cb(handle, handle->socket_created_cb_p);
+      handle->socket = cached_sock;
+    }
+
     err = uv__tcp_set_socket(handle->loop, handle, sock, domain, 0);
     if (err) {
       closesocket(sock);
@@ -303,6 +310,13 @@ static int uv__tcp_try_bind(uv_tcp_t* handle,
     sock = socket(addr->sa_family, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();
+    }
+
+    if (handle->socket_created_cb) {
+      SOCKET cached_sock = handle->socket;
+      handle->socket = sock;
+      handle->socket_created_cb(handle, handle->socket_created_cb_p);
+      handle->socket = cached_sock;
     }
 
     err = uv__tcp_set_socket(handle->loop, handle, sock, addr->sa_family, 0);

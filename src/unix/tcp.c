@@ -39,6 +39,13 @@ static int new_socket(uv_tcp_t* handle, int domain, unsigned long flags) {
     return err;
   sockfd = err;
 
+  if (handle->socket_created_cb) {
+    int cached_fd = handle->io_watcher.fd;
+    handle->io_watcher.fd = sockfd;
+    handle->socket_created_cb(handle, handle->socket_created_cb_p);
+    handle->io_watcher.fd = cached_fd;
+  }
+
   err = uv__stream_open((uv_stream_t*) handle, sockfd, flags);
   if (err) {
     uv__close(sockfd);
