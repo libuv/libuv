@@ -464,7 +464,6 @@ if(LIBUV_BUILD_TESTS)
        test/test-async-null-cb.c
        test/test-async.c
        test/test-barrier.c
-       test/test-callback-order.c
        test/test-callback-stack.c
        test/test-close-fd.c
        test/test-close-order.c
