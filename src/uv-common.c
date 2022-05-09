@@ -512,7 +512,7 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 void uv_set_udp_socket_created_cb(uv_udp_t* handle, uv_udp_socket_created_cb cb, void* p) {
   if (handle) {
     uv_os_fd_t fd = (uv_os_fd_t)-1;
-    if (uv_fileno((uv_handle_t*)handle, &fd) != 0) {
+    if (uv_fileno((uv_handle_t*)handle, &fd) == 0) {
       if (cb) {
         cb(handle, p);
       }
