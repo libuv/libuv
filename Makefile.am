@@ -152,7 +152,6 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-async.c \
                          test/test-async-null-cb.c \
                          test/test-barrier.c \
-                         test/test-callback-order.c \
                          test/test-callback-stack.c \
                          test/test-close-fd.c \
                          test/test-close-order.c \
