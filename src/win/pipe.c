@@ -479,13 +479,13 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
                                    NULL, NULL, 0)) {
         return uv_translate_sys_error(GetLastError());
       } else if (current_mode & PIPE_NOWAIT) {
-        return uv_translate_sys_error(ERROR_ACCESS_DENIED);
+        return UV_EACCES;
       }
     } else {
       /* If this returns ERROR_INVALID_PARAMETER we probably opened
        * something that is not a pipe. */
       if (err == ERROR_INVALID_PARAMETER) {
-        return uv_translate_sys_error(WSAENOTSOCK);
+        return UV_ENOTSOCK;
       }
       return uv_translate_sys_error(err);
     }
