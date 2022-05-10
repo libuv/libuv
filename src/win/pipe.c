@@ -941,7 +941,7 @@ void uv__pipe_interrupt_read(uv_pipe_t* handle) {
     /* Cancel asynchronous read. */
     r = CancelIoEx(handle->handle, &handle->read_req.u.io.overlapped);
     assert(r || GetLastError() == ERROR_NOT_FOUND);
-    (void)r;
+    (void) r;
   } else {
     /* Cancel synchronous read (which is happening in the thread pool). */
     HANDLE thread;
@@ -2210,7 +2210,8 @@ static void eof_timer_init(uv_pipe_t* pipe) {
   pipe->pipe.conn.eof_timer = (uv_timer_t*) uv__malloc(sizeof *pipe->pipe.conn.eof_timer);
 
   r = uv_timer_init(pipe->loop, pipe->pipe.conn.eof_timer);
-  assert(r == 0); (void)r; /* timers can't fail */
+  assert(r == 0);  /* timers can't fail */
+  (void) r;
   pipe->pipe.conn.eof_timer->data = pipe;
   uv_unref((uv_handle_t*) pipe->pipe.conn.eof_timer);
 }
