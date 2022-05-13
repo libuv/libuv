@@ -617,6 +617,11 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     else
       uv__poll_wine(loop, timeout);
 
+    /* Process immediate callbacks (e.g. write_cb) a small fixed number of
+     * times to avoid loop starvation.*/
+    for (r = 0; r < 8 && loop->pending_reqs_tail != NULL; r++)
+      uv__process_reqs(loop);
+
     /* Run one final update on the provider_idle_time in case uv__poll*
      * returned because the timeout expired, but no events were received. This
      * call will be ignored if the provider_entry_time was either never set (if
