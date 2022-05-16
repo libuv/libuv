@@ -73,18 +73,142 @@ extern char **environ;
 #define UV_USE_SIGCHLD
 #endif
 
+static char* uv__find_reaper_env(char** env) {
+  char** env_iterator;
+  const char path_var[] = "LIBUV_INIT_REAPER=";
+
+  /* Look for an environment variable called LIBUV_INIT_REAPER in the
+   * provided env array, and return its value if found */
+  for (env_iterator = env; *env_iterator != NULL; env_iterator++) {
+    if (strncmp(*env_iterator, path_var, sizeof(path_var) - 1) == 0) {
+      /* Found "LIBUV_INIT_REAPER=" at the beginning of the string */
+      return *env_iterator + sizeof(path_var) - 1;
+    }
+  }
+
+  return NULL;
+}
+
+/*
+ * An environment variable called LIBUV_INIT_REAPER decides whether we are
+ * reaping all child processes.
+ *
+ * The possible values are:
+ *  LIBUV_INIT_REAPER=always     - always reap all child processes
+ *  LIBUV_INIT_REAPER=init-only  - only reap all child processes if we are pid 1
+ *  unset, or all other values   - only reap processes that libuv spawned
+*/
+static int libuv_is_reaper(void)
+{
+  static pid_t check_pid;
+  static char *reaper_env;
+  pid_t cur_pid;
+
+  cur_pid = getpid();
+  if (cur_pid != check_pid) {
+    reaper_env = uv__find_reaper_env(environ);
+    check_pid = cur_pid;
+  }
+
+  if (reaper_env == NULL)
+    return 0;
+
+  if (!strcmp(reaper_env, "always"))
+    return 1;
+
+  if (!strcmp(reaper_env, "init-only"))
+    return check_pid == 1;
+
+  return 0;
+}
+
+static void uv__finalize_processes(QUEUE* pending)
+{
+  uv_process_t* process;
+  QUEUE* q;
+  QUEUE* h;
+  int exit_status;
+  int term_signal;
+
+  h = pending;
+  q = QUEUE_HEAD(h);
+  while (q != h) {
+    process = QUEUE_DATA(q, uv_process_t, queue);
+    q = QUEUE_NEXT(q);
+
+    QUEUE_REMOVE(&process->queue);
+    QUEUE_INIT(&process->queue);
+    uv__handle_stop(process);
+
+    if (process->exit_cb == NULL)
+      continue;
+
+    exit_status = 0;
+    if (WIFEXITED(process->status))
+      exit_status = WEXITSTATUS(process->status);
+
+    term_signal = 0;
+    if (WIFSIGNALED(process->status))
+      term_signal = WTERMSIG(process->status);
+
+    process->exit_cb(process, exit_status, term_signal);
+  }
+  assert(QUEUE_EMPTY(pending));
+}
+
+static void uv__chld_init(uv_loop_t* loop) {
+  uv_process_t* process;
+  pid_t pid;
+  int status;
+  QUEUE pending;
+  QUEUE* q;
+  QUEUE* h;
+
+  QUEUE_INIT(&pending);
+
+  for (;;) {
+    do
+      pid = waitpid(-1, &status, WNOHANG);
+    while (pid == -1 && errno == EINTR);
+
+    if (pid == 0)
+      break;
+
+    if (pid == -1) {
+      if (errno != ECHILD)
+        abort();
+      break;
+    }
+
+    h = &loop->process_handles;
+    q = QUEUE_HEAD(h);
+
+    while (q != h) {
+      process = QUEUE_DATA(q, uv_process_t, queue);
+      if (process->pid == pid) {
+        QUEUE_REMOVE(&process->queue);
+        QUEUE_INSERT_TAIL(&pending, &process->queue);
+        break;
+      }
+      q = QUEUE_NEXT(q);
+    }
+  }
+
+  uv__finalize_processes(&pending);
+}
 
 #ifdef UV_USE_SIGCHLD
 static void uv__chld(uv_signal_t* handle, int signum) {
   assert(signum == SIGCHLD);
-  uv__wait_children(handle->loop);
+  if (libuv_is_reaper() == 1)
+    uv__chld_init(handle->loop);
+  else
+    uv__wait_children(handle->loop);
 }
 #endif
 
 void uv__wait_children(uv_loop_t* loop) {
   uv_process_t* process;
-  int exit_status;
-  int term_signal;
   int status;
   int options;
   pid_t pid;
@@ -132,30 +256,7 @@ void uv__wait_children(uv_loop_t* loop) {
     QUEUE_INSERT_TAIL(&pending, &process->queue);
   }
 
-  h = &pending;
-  q = QUEUE_HEAD(h);
-  while (q != h) {
-    process = QUEUE_DATA(q, uv_process_t, queue);
-    q = QUEUE_NEXT(q);
-
-    QUEUE_REMOVE(&process->queue);
-    QUEUE_INIT(&process->queue);
-    uv__handle_stop(process);
-
-    if (process->exit_cb == NULL)
-      continue;
-
-    exit_status = 0;
-    if (WIFEXITED(process->status))
-      exit_status = WEXITSTATUS(process->status);
-
-    term_signal = 0;
-    if (WIFSIGNALED(process->status))
-      term_signal = WTERMSIG(process->status);
-
-    process->exit_cb(process, exit_status, term_signal);
-  }
-  assert(QUEUE_EMPTY(&pending));
+  uv__finalize_processes(&pending);
 }
 
 /*
