@@ -278,7 +278,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   __net_ifconf6header_t ifc;
   __net_ifconf6entry_t* ifr;
   __net_ifconf6entry_t* p;
-  __net_ifconf6entry_t flg;
+  unsigned int i;
 
   *count = 0;
   /* Assume maximum buffer size allowable */
@@ -335,16 +335,24 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
 
     /* All conditions above must match count loop */
 
-    address->name = uv__strdup(p->__nif6e_name);
+    i = 0;
+    /* Ignore EBCDIC space (0x40) padding in name */
+    while (i < ARRAY_SIZE(p->__nif6e_name) &&
+           p->__nif6e_name[i] != 0x40 &&
+           p->__nif6e_name[i] != 0)
+      ++i;
+    address->name = uv__malloc(i + 1);
+    if (address->name == NULL)
+      return UV_ENOMEM;
+    memcpy(address->name, p->__nif6e_name, i);
+    address->name[i] = '\0';
+    __e2a_s(address->name);
 
-    if (p->__nif6e_addr.sin6_family == AF_INET6)
-      address->address.address6 = *((struct sockaddr_in6*) &p->__nif6e_addr);
-    else
-      address->address.address4 = *((struct sockaddr_in*) &p->__nif6e_addr);
+    address->address.address6 = *((struct sockaddr_in6*) &p->__nif6e_addr);
 
     /* TODO: Retrieve netmask using SIOCGIFNETMASK ioctl */
 
-    address->is_internal = flg.__nif6e_flags & _NIF6E_FLAGS_LOOPBACK ? 1 : 0;
+    address->is_internal = p->__nif6e_flags & _NIF6E_FLAGS_LOOPBACK ? 1 : 0;
     memset(address->phys_addr, 0, sizeof(address->phys_addr));
     address++;
   }
@@ -363,6 +371,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifreq* ifr;
   struct ifreq* p;
   int count_v6;
+  unsigned int i;
 
   *count = 0;
   *addresses = NULL;
@@ -455,13 +464,20 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     /* All conditions above must match count loop */
 
-    address->name = uv__strdup(p->ifr_name);
+    i = 0;
+    /* Ignore EBCDIC space (0x40) padding in name */
+    while (i < ARRAY_SIZE(p->ifr_name) &&
+           p->ifr_name[i] != 0x40 &&
+           p->ifr_name[i] != 0)
+      ++i;
+    address->name = uv__malloc(i + 1);
+    if (address->name == NULL)
+      return UV_ENOMEM;
+    memcpy(address->name, p->ifr_name, i);
+    address->name[i] = '\0';
+    __e2a_s(address->name);
 
-    if (p->ifr_addr.sa_family == AF_INET6) {
-      address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);
-    } else {
-      address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
-    }
+    address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
 
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
     memset(address->phys_addr, 0, sizeof(address->phys_addr));
