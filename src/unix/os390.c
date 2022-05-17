@@ -279,6 +279,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   __net_ifconf6entry_t* ifr;
   __net_ifconf6entry_t* p;
   unsigned int i;
+  int count_names;
   unsigned char netmask[16] = {0};
 
   *count = 0;
@@ -288,17 +289,27 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)))
     return UV__ERR(errno);
 
-  ifc.__nif6h_version = 1;
-  ifc.__nif6h_buflen = maxsize;
-  ifc.__nif6h_buffer = uv__calloc(1, maxsize);;
+  ifc.__nif6h_buffer = uv__calloc(1, maxsize);
 
-  if (ioctl(sockfd, SIOCGIFCONF6, &ifc) == -1) {
+  if (ifc.__nif6h_buffer == NULL) {
     uv__close(sockfd);
-    return UV__ERR(errno);
+    return UV_ENOMEM;
   }
 
+  ifc.__nif6h_version = 1;
+  ifc.__nif6h_buflen = maxsize;
 
-  *count = 0;
+  if (ioctl(sockfd, SIOCGIFCONF6, &ifc) == -1) {
+    /* This will error on a system that does not support IPv6. However, we want
+     * to treat this as there being 0 interfaces so we can continue to get IPv4
+     * interfaces in uv_interface_addresses(). So return 0 instead of the error.
+     */
+    uv__free(ifc.__nif6h_buffer);
+    uv__close(sockfd);
+    errno = 0;
+    return 0;
+  }
+
   ifr = (__net_ifconf6entry_t*)(ifc.__nif6h_buffer);
   while ((char*)ifr < (char*)ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
     p = ifr;
@@ -313,14 +324,22 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
     ++(*count);
   }
 
+  if ((*count) == 0) {
+    uv__free(ifc.__nif6h_buffer);
+    uv__close(sockfd);
+    return 0;
+  }
+
   /* Alloc the return interface structs */
-  *addresses = uv__malloc(*count * sizeof(uv_interface_address_t));
+  *addresses = uv__calloc(1, *count * sizeof(uv_interface_address_t));
   if (!(*addresses)) {
+    uv__free(ifc.__nif6h_buffer);
     uv__close(sockfd);
     return UV_ENOMEM;
   }
   address = *addresses;
 
+  count_names = 0;
   ifr = (__net_ifconf6entry_t*)(ifc.__nif6h_buffer);
   while ((char*)ifr < (char*)ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
     p = ifr;
@@ -341,11 +360,16 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
            p->__nif6e_name[i] != 0)
       ++i;
     address->name = uv__malloc(i + 1);
-    if (address->name == NULL)
+    if (address->name == NULL) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.__nif6h_buffer);
+      uv__close(sockfd);
       return UV_ENOMEM;
+    }
     memcpy(address->name, p->__nif6e_name, i);
     address->name[i] = '\0';
     __e2a_s(address->name);
+    count_names++;
 
     address->address.address6 = *((struct sockaddr_in6*) &p->__nif6e_addr);
 
@@ -360,10 +384,10 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
     address->netmask.netmask6.sin6_family = AF_INET6;
 
     address->is_internal = p->__nif6e_flags & _NIF6E_FLAGS_LOOPBACK ? 1 : 0;
-    memset(address->phys_addr, 0, sizeof(address->phys_addr));
     address++;
   }
 
+  uv__free(ifc.__nif6h_buffer);
   uv__close(sockfd);
   return 0;
 }
@@ -377,15 +401,18 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifreq flg;
   struct ifreq* ifr;
   struct ifreq* p;
+  uv_interface_address_t* addresses_v6;
   int count_v6;
   unsigned int i;
+  int rc;
+  int count_names;
 
   *count = 0;
   *addresses = NULL;
 
   /* get the ipv6 addresses first */
-  uv_interface_address_t* addresses_v6;
-  uv__interface_addresses_v6(&addresses_v6, &count_v6);
+  if ((rc = uv__interface_addresses_v6(&addresses_v6, &count_v6)) != 0)
+    return rc;
 
   /* now get the ipv4 addresses */
 
@@ -393,12 +420,27 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   maxsize = 16384;
 
   sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-  if (0 > sockfd)
+  if (0 > sockfd) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
     return UV__ERR(errno);
+  }
 
   ifc.ifc_req = uv__calloc(1, maxsize);
+
+  if (ifc.ifc_req == NULL) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
+    uv__close(sockfd);
+    return UV_ENOMEM;
+  }
+
   ifc.ifc_len = maxsize;
+
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
+    uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return UV__ERR(errno);
   }
@@ -419,6 +461,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
+      if (count_v6)
+        uv_free_interface_addresses(addresses_v6, count_v6);
+      uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV__ERR(errno);
     }
@@ -429,27 +474,35 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  if (*count == 0) {
+  if (*count == 0 && count_v6 == 0) {
+    uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return 0;
   }
 
   /* Alloc the return interface structs */
-  *addresses = uv__malloc((*count + count_v6) *
+  *addresses = uv__calloc(1, (*count + count_v6) *
                           sizeof(uv_interface_address_t));
 
   if (!(*addresses)) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
+    uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return UV_ENOMEM;
   }
   address = *addresses;
 
-  /* copy over the ipv6 addresses */
-  memcpy(address, addresses_v6, count_v6 * sizeof(uv_interface_address_t));
-  address += count_v6;
-  *count += count_v6;
-  uv__free(addresses_v6);
+  /* copy over the ipv6 addresses if any are found */
+  if (count_v6) {
+    memcpy(address, addresses_v6, count_v6 * sizeof(uv_interface_address_t));
+    address += count_v6;
+    *count += count_v6;
+    /* free ipv6 addresses, but keep address names */
+    uv__free(addresses_v6);
+  }
 
+  count_names = *count;
   ifr = ifc.ifc_req;
   while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
     p = ifr;
@@ -462,6 +515,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV_ENOSYS;
     }
@@ -478,15 +533,22 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
            p->ifr_name[i] != 0)
       ++i;
     address->name = uv__malloc(i + 1);
-    if (address->name == NULL)
+    if (address->name == NULL) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.ifc_req);
+      uv__close(sockfd);
       return UV_ENOMEM;
+    }
     memcpy(address->name, p->ifr_name, i);
     address->name[i] = '\0';
     __e2a_s(address->name);
+    count_names++;
 
     address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
 
     if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV__ERR(errno);
     }
@@ -494,13 +556,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address->netmask.netmask4 = *((struct sockaddr_in*) &p->ifr_addr);
     address->netmask.netmask4.sin_family = AF_INET;
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
-    memset(address->phys_addr, 0, sizeof(address->phys_addr));
     address++;
   }
 
 #undef ADDR_SIZE
 #undef MAX
 
+  uv__free(ifc.ifc_req);
   uv__close(sockfd);
   return 0;
 }
