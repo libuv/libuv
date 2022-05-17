@@ -279,6 +279,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   __net_ifconf6entry_t* ifr;
   __net_ifconf6entry_t* p;
   unsigned int i;
+  unsigned char netmask[16] = {0};
 
   *count = 0;
   /* Assume maximum buffer size allowable */
@@ -303,8 +304,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
     p = ifr;
     ifr = (__net_ifconf6entry_t*)((char*)ifr + ifc.__nif6h_entrylen);
 
-    if (!(p->__nif6e_addr.sin6_family == AF_INET6 ||
-          p->__nif6e_addr.sin6_family == AF_INET))
+    if (!(p->__nif6e_addr.sin6_family == AF_INET6))
       continue;
 
     if (!(p->__nif6e_flags & _NIF6E_FLAGS_ON_LINK_ACTIVE))
@@ -326,8 +326,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
     p = ifr;
     ifr = (__net_ifconf6entry_t*)((char*)ifr + ifc.__nif6h_entrylen);
 
-    if (!(p->__nif6e_addr.sin6_family == AF_INET6 ||
-          p->__nif6e_addr.sin6_family == AF_INET))
+    if (!(p->__nif6e_addr.sin6_family == AF_INET6))
       continue;
 
     if (!(p->__nif6e_flags & _NIF6E_FLAGS_ON_LINK_ACTIVE))
@@ -350,7 +349,15 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
 
     address->address.address6 = *((struct sockaddr_in6*) &p->__nif6e_addr);
 
-    /* TODO: Retrieve netmask using SIOCGIFNETMASK ioctl */
+    for (i = 0; i < (p->__nif6e_prefixlen / 8); i++)
+      netmask[i] = 0xFF;
+
+    if (p->__nif6e_prefixlen % 8)
+      netmask[i] = 0xFF << (8 - (p->__nif6e_prefixlen % 8));
+
+    address->netmask.netmask6.sin6_len = p->__nif6e_prefixlen;
+    memcpy(&(address->netmask.netmask6.sin6_addr), netmask, 16);
+    address->netmask.netmask6.sin6_family = AF_INET6;
 
     address->is_internal = p->__nif6e_flags & _NIF6E_FLAGS_LOOPBACK ? 1 : 0;
     memset(address->phys_addr, 0, sizeof(address->phys_addr));
@@ -479,6 +486,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
 
+    if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
+      uv__close(sockfd);
+      return UV__ERR(errno);
+    }
+
+    address->netmask.netmask4 = *((struct sockaddr_in*) &p->ifr_addr);
+    address->netmask.netmask4.sin_family = AF_INET;
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
     memset(address->phys_addr, 0, sizeof(address->phys_addr));
     address++;
