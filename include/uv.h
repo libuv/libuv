@@ -432,7 +432,6 @@ struct uv_shutdown_s {
 typedef void (*uv_socket_created_cb)(uv_handle_t* handle, void* p);
 UV_EXTERN void uv_set_socket_created_cb(uv_handle_t* handle, uv_socket_created_cb cb, void* p);
 
-
 #define UV_HANDLE_FIELDS                                                      \
   /* public */                                                                \
   void* data;                                                                 \
