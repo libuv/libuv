@@ -306,9 +306,9 @@ int uv_tcp_bind(uv_tcp_t* handle,
   return uv__tcp_bind(handle, addr, addrlen, flags);
 }
 
-void uv_set_tcp_socket_created_cb(uv_tcp_t* handle,
-                                  uv_tcp_socket_created_cb cb,
-                                  void* p) {
+void uv_set_socket_created_cb(uv_handle_t* handle,
+                              uv_socket_created_cb cb,
+                              void* p) {
   if (handle) {
     uv_os_fd_t fd = (uv_os_fd_t)-1;
     if (uv_fileno((uv_handle_t*)handle, &fd) == 0) {
@@ -316,8 +316,8 @@ void uv_set_tcp_socket_created_cb(uv_tcp_t* handle,
         cb(handle, p);
       }
     } else {
-      handle->socket_created_cb = cb;
-      handle->socket_created_cb_p = p;
+      handle->u.socket_created.cb = cb;
+      handle->u.socket_created.p = p;
     }
   }
 }
@@ -511,21 +511,6 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
     return uv__udp_recv_stop(handle);
 }
 
-void uv_set_udp_socket_created_cb(uv_udp_t* handle,
-                                  uv_udp_socket_created_cb cb,
-                                  void* p) {
-  if (handle) {
-    uv_os_fd_t fd = (uv_os_fd_t)-1;
-    if (uv_fileno((uv_handle_t*)handle, &fd) != 0) {
-      if (cb) {
-        cb(handle, p);
-      }
-    } else {
-      handle->socket_created_cb = cb;
-      handle->socket_created_cb_p = p;
-    }
-  }
-}
 
 void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   QUEUE queue;
