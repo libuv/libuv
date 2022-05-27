@@ -306,9 +306,9 @@ int uv_tcp_bind(uv_tcp_t* handle,
   return uv__tcp_bind(handle, addr, addrlen, flags);
 }
 
-void uv_set_socket_created_cb(uv_handle_t* handle,
-                              uv_socket_created_cb cb,
-                              void* p) {
+void uv_set_socket_create_cb(uv_handle_t* handle,
+                             uv_socket_create_cb cb,
+                             void* p) {
   if (handle) {
     uv_os_fd_t fd = (uv_os_fd_t)-1;
     if (uv_fileno((uv_handle_t*)handle, &fd) == 0) {
@@ -316,8 +316,8 @@ void uv_set_socket_created_cb(uv_handle_t* handle,
         cb(handle, p);
       }
     } else {
-      handle->u.socket_created.cb = cb;
-      handle->u.socket_created.p = p;
+      handle->u.socket_create.cb = cb;
+      handle->u.socket_create.p = p;
     }
   }
 }

@@ -121,8 +121,8 @@ static int uv__udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     assert(!(handle->flags & UV_HANDLE_IPV6));
   }
 
-  if (handle->u.socket_created.cb) {
-    handle->u.socket_created.cb((uv_handle_t*)handle, handle->u.socket_created.p);
+  if (handle->u.socket_create.cb) {
+    handle->u.socket_create.cb((uv_handle_t*)handle, handle->u.socket_create.p);
   }
 
   return 0;
@@ -144,8 +144,8 @@ int uv__udp_init_ex(uv_loop_t* loop,
   UV_REQ_INIT(&handle->recv_req, UV_UDP_RECV);
   handle->recv_req.data = handle;
 
-  handle->u.socket_created.cb = NULL;
-  handle->u.socket_created.p = NULL;
+  handle->u.socket_create.cb = NULL;
+  handle->u.socket_create.p = NULL;
 
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init.

@@ -429,8 +429,8 @@ struct uv_shutdown_s {
 };
 
 
-typedef void (*uv_socket_created_cb)(uv_handle_t* handle, void* p);
-UV_EXTERN void uv_set_socket_created_cb(uv_handle_t* handle, uv_socket_created_cb cb, void* p);
+typedef void (*uv_socket_create_cb)(uv_handle_t* handle, void* p);
+UV_EXTERN void uv_set_socket_create_cb(uv_handle_t* handle, uv_socket_create_cb cb, void* p);
 
 #define UV_HANDLE_FIELDS                                                      \
   /* public */                                                                \
@@ -444,9 +444,9 @@ UV_EXTERN void uv_set_socket_created_cb(uv_handle_t* handle, uv_socket_created_c
   union {                                                                     \
     int fd;                                                                   \
     struct {                                                                  \
-      uv_socket_created_cb cb;                                                \
+      uv_socket_create_cb cb;                                                 \
       void* p;                                                                \
-    } socket_created;                                                         \
+    } socket_create;                                                          \
     void* reserved[4];                                                        \
   } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
