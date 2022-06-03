@@ -553,6 +553,9 @@ UV_EXTERN int uv_stream_set_blocking(uv_stream_t* handle, int blocking);
 UV_EXTERN int uv_is_closing(const uv_handle_t* handle);
 
 
+typedef void (*uv_tcp_socket_created_cb)(uv_tcp_t* handle, void* p);
+UV_EXTERN void uv_set_tcp_socket_created_cb(uv_tcp_t* handle, uv_tcp_socket_created_cb cb, void* p);
+
 /*
  * uv_tcp_t is a subclass of uv_stream_t.
  *
@@ -562,6 +565,8 @@ struct uv_tcp_s {
   UV_HANDLE_FIELDS
   UV_STREAM_FIELDS
   UV_TCP_PRIVATE_FIELDS
+  uv_tcp_socket_created_cb socket_created_cb;
+  void* socket_created_cb_p;
 };
 
 UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
@@ -648,6 +653,9 @@ enum uv_udp_flags {
   UV_UDP_RECVMMSG = 256
 };
 
+typedef void (*uv_udp_socket_created_cb)(uv_udp_t* handle, void* p);
+UV_EXTERN void uv_set_udp_socket_created_cb(uv_udp_t* handle, uv_udp_socket_created_cb cb, void* p);
+
 typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
 typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
                                ssize_t nread,
@@ -669,6 +677,8 @@ struct uv_udp_s {
    */
   size_t send_queue_count;
   UV_UDP_PRIVATE_FIELDS
+  uv_udp_socket_created_cb socket_created_cb;
+  void* socket_created_cb_p;
 };
 
 /* uv_udp_send_t is a subclass of uv_req_t. */
@@ -1133,8 +1143,8 @@ struct uv_interface_address_s {
 
 struct uv_passwd_s {
   char* username;
-  long uid;
-  long gid;
+  unsigned long uid;
+  unsigned long gid;
   char* shell;
   char* homedir;
 };
@@ -1242,6 +1252,7 @@ UV_EXTERN uv_pid_t uv_os_getppid(void);
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 
+UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
 

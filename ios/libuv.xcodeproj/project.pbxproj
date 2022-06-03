@@ -136,6 +136,10 @@
 		3AE1E0B02070B01A00B52995 /* linux-syscalls.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30084B206FDE7400ABE7C2 /* linux-syscalls.h */; };
 		3AE1E0B12070B01A00B52995 /* spinlock.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A30085E206FDE7400ABE7C2 /* spinlock.h */; };
 		3AE1E0B22070B01A00B52995 /* uv-common.h in Headers */ = {isa = PBXBuildFile; fileRef = 3A300830206FDE7400ABE7C2 /* uv-common.h */; };
+		B6B94E872849F35300DDF9E4 /* strtok.c in Sources */ = {isa = PBXBuildFile; fileRef = B6B94E852849F35300DDF9E4 /* strtok.c */; };
+		B6B94E882849F35300DDF9E4 /* strtok.c in Sources */ = {isa = PBXBuildFile; fileRef = B6B94E852849F35300DDF9E4 /* strtok.c */; };
+		B6B94E892849F35300DDF9E4 /* strtok.h in Headers */ = {isa = PBXBuildFile; fileRef = B6B94E862849F35300DDF9E4 /* strtok.h */; };
+		B6B94E8A2849F35300DDF9E4 /* strtok.h in Headers */ = {isa = PBXBuildFile; fileRef = B6B94E862849F35300DDF9E4 /* strtok.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -240,6 +244,8 @@
 		3AA50F492247725A004026C4 /* uv-errno.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "uv-errno.h"; path = "include/uv/uv-errno.h"; sourceTree = "<group>"; };
 		3AA50F4C22477279004026C4 /* uv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uv.h; path = include/uv.h; sourceTree = "<group>"; };
 		3AE1E0722070ADF300B52995 /* libuv.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = libuv.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		B6B94E852849F35300DDF9E4 /* strtok.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = strtok.c; path = ../src/strtok.c; sourceTree = "<group>"; };
+		B6B94E862849F35300DDF9E4 /* strtok.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = strtok.h; path = ../src/strtok.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -309,6 +315,8 @@
 				3A9C7E9923D1F65D00D045ED /* random.c */,
 				3AA50F2D2246B58A004026C4 /* strscpy.c */,
 				3AA50F2C2246B58A004026C4 /* strscpy.h */,
+				B6B94E852849F35300DDF9E4 /* strtok.c */,
+				B6B94E862849F35300DDF9E4 /* strtok.h */,
 				3A30086A206FDE7400ABE7C2 /* threadpool.c */,
 				3AA50F292246B55B004026C4 /* timer.c */,
 				3A300834206FDE7400ABE7C2 /* unix */,
@@ -411,6 +419,7 @@
 				3AA50F1C2246B519004026C4 /* aix.h in Headers */,
 				3A30086E206FDE7400ABE7C2 /* heap-inl.h in Headers */,
 				3AA50F222246B519004026C4 /* sunos.h in Headers */,
+				B6B94E892849F35300DDF9E4 /* strtok.h in Headers */,
 				3AA50F1D2246B519004026C4 /* os390.h in Headers */,
 				3AA50F232246B519004026C4 /* android-ifaddrs.h in Headers */,
 				3A30086D206FDE7400ABE7C2 /* uv-common.h in Headers */,
@@ -429,6 +438,7 @@
 				3AE1E0922070AFDA00B52995 /* atomic-ops.h in Headers */,
 				3AE1E0AF2070B01A00B52995 /* internal.h in Headers */,
 				3AA50F3A2246B5FF004026C4 /* version.h in Headers */,
+				B6B94E8A2849F35300DDF9E4 /* strtok.h in Headers */,
 				3AA50F382246B5FF004026C4 /* darwin.h in Headers */,
 				3AA50F352246B59F004026C4 /* idna.h in Headers */,
 				3AA50F4B2247725A004026C4 /* uv-errno.h in Headers */,
@@ -564,6 +574,7 @@
 				3A300889206FDE7500ABE7C2 /* loop.c in Sources */,
 				3A30087D206FDE7500ABE7C2 /* fs.c in Sources */,
 				3A3008A6206FDE7500ABE7C2 /* threadpool.c in Sources */,
+				B6B94E872849F35300DDF9E4 /* strtok.c in Sources */,
 				3A300880206FDE7500ABE7C2 /* getnameinfo.c in Sources */,
 				3A3008A3206FDE7500ABE7C2 /* udp.c in Sources */,
 				3A300892206FDE7500ABE7C2 /* poll.c in Sources */,
@@ -609,6 +620,7 @@
 				3AE1E0972070AFE800B52995 /* dl.c in Sources */,
 				3AE1E0912070AFD700B52995 /* async.c in Sources */,
 				3AE1E0A12070AFFC00B52995 /* pipe.c in Sources */,
+				B6B94E882849F35300DDF9E4 /* strtok.c in Sources */,
 				3AE1E09F2070AFFC00B52995 /* loop.c in Sources */,
 				3AE1E0A82070AFFC00B52995 /* thread.c in Sources */,
 				3AE1E0A02070AFFC00B52995 /* no-proctitle.c in Sources */,
