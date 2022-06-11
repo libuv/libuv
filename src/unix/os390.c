@@ -529,11 +529,6 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__fs_event_close(uv_fs_event_t* handle) {
-  uv_fs_event_stop(handle);
-}
-
-
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
   return 0;
@@ -590,7 +585,7 @@ int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
 }
 
 
-int uv_fs_event_stop(uv_fs_event_t* handle) {
+int uv__fs_event_stop(uv_fs_event_t* handle) {
   uv__os390_epoll* ep;
   _RFIS reg_struct;
   int rc;
@@ -616,13 +611,37 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   if (rc != 0 && errno != EALREADY && errno != ENOENT)
     abort();
 
-  uv__handle_stop(handle);
   if (handle->path != NULL) {
     uv__free(handle->path);
     handle->path = NULL;
   }
 
+  if (rc != 0 && errno == EALREADY)
+    return -1;
+
+  uv__handle_stop(handle);
+
   return 0;
+}
+
+
+int uv_fs_event_stop(uv_fs_event_t* handle) {
+  uv__fs_event_stop(handle);
+  return 0;
+}
+
+
+void uv__fs_event_close(uv_fs_event_t* handle) {
+  /*
+   * If we were unable to unregister file interest here, then it is most likely
+   * that there is a pending queued change notification. When this happens, we
+   * don't want to complete the close as it will free the underlying memory for
+   * the handle, causing a use-after-free problem when the event is processed.
+   * We defer the final cleanup until after the event is consumed in
+   * os390_message_queue_handler().
+   */
+  if (uv__fs_event_stop(handle) == 0)
+    uv__make_close_pending((uv_handle_t*) handle);
 }
 
 
@@ -666,13 +685,25 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
   __a2e_l(msg.__rfim_utok, sizeof(msg.__rfim_utok));
   handle = *(uv_fs_event_t**)(msg.__rfim_utok);
   assert(handle != NULL);
+
+  assert((handle->flags & UV_HANDLE_CLOSED) == 0);
+  if (uv__is_closing(handle)) {
+    uv__handle_stop(handle);
+    uv__make_close_pending((uv_handle_t*) handle);
+    return 0;
+  } else if (handle->path == NULL) {
+    /* _RFIS_UNREG returned EALREADY. */
+    uv__handle_stop(handle);
+    return 0;
+  }
+
   /* The file is implicitly unregistered when the change notification is
    * sent, only one notification is sent per registration. So we need to
    * re-register interest in a file after each change notification we
    * receive.
    */
-  if (handle->path != NULL)
-    os390_regfileint(handle, handle->path);
+  assert(handle->path != NULL);
+  os390_regfileint(handle, handle->path);
   handle->cb(handle, uv__basename_r(handle->path), events, 0);
   return 1;
 }
@@ -830,6 +861,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       ep = loop->ep;
       if (pe->is_msg) {
         os390_message_queue_handler(ep);
+        nevents++;
         continue;
       }
 
