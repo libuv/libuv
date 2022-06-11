@@ -29,7 +29,9 @@
 
 int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
-
+  if (uv__is_closing(stream)) {
+    return UV_EINVAL;
+  }
   err = ERROR_INVALID_PARAMETER;
   switch (stream->type) {
     case UV_TCP:
