@@ -81,7 +81,8 @@ extern char** environ;
 #endif
 
 #if defined(__MVS__)
-#include <sys/ioctl.h>
+# include <sys/ioctl.h>
+# include "zos-sys-info.h"
 #endif
 
 #if defined(__linux__)
@@ -1647,7 +1648,13 @@ unsigned int uv_available_parallelism(void) {
 
   return (unsigned) rc;
 #elif defined(__MVS__)
-  return 1;  /* TODO(bnoordhuis) Read from CSD_NUMBER_ONLINE_CPUS? */
+  int rc;
+
+  rc = __get_num_online_cpus();
+  if (rc < 1)
+    rc = 1;
+
+  return (unsigned) rc;
 #else  /* __linux__ */
   long rc;
 
