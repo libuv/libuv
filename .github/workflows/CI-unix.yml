@@ -1,6 +1,17 @@
-name: CI
+name: CI-unix
 
-on: [push, pull_request]
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-unix.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
 
 jobs:
   build-android:
@@ -10,12 +21,58 @@ jobs:
       - uses: actions/checkout@v2
       - name: Envinfo
         run: npx envinfo
-      - name: Build android arm64
+      - name: Configure android arm64
         # see build options you can use in https://developer.android.com/ndk/guides/cmake
         run: |
-          mkdir build && cd build
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-21 ..
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build .
+          mkdir build
+          cd build
+          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24 ..
+      - name: Build android arm64
+        run: |
+          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
+          ls -lh build
+
+  build-macos:
+    runs-on: macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Setup
+        run: |
+          brew install ninja
+      - name: Configure
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DBUILD_TESTING=ON -G Ninja
+      - name: Build
+        run: |
+          cmake --build build
+          ls -lh
+      - name: platform_output
+        run: |
+          ./build/uv_run_tests platform_output
+      - name: platform_output_a
+        run: |
+          ./build/uv_run_tests_a platform_output
+      - name: Test
+        run: |
+          cd build && ctest -V
+
+  build-ios:
+    runs-on: macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure
+        run: |
+          mkdir build-ios
+          cd build-ios
+          cmake .. -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+      - name: Build
+        run: |
+          cmake --build build-ios
+          ls -lh build-ios
 
   build-cross-qemu:
     runs-on: ubuntu-latest
@@ -58,12 +115,15 @@ jobs:
         run: |
           sudo apt update
           sudo apt install ${{ matrix.config.toolchain }} -y
-      - name: Build
+      - name: Configure with ${{ matrix.config.cc }}
         run: |
           mkdir build
-          cd build && cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
-          cmake --build .
-          ls -lh
+          cd build
+          cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
+      - name: Build
+        run: |
+          cmake --build build
+          ls -lh build
       - name: Test
         run: |
           ${{ matrix.config.qemu }} build/uv_run_tests_a

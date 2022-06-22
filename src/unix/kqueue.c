@@ -117,6 +117,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   unsigned int revents;
   QUEUE* q;
   uv__io_t* w;
+  uv_process_t* process;
   sigset_t* pset;
   sigset_t set;
   uint64_t base;
@@ -285,6 +286,21 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     for (i = 0; i < nfds; i++) {
       ev = events + i;
       fd = ev->ident;
+
+      /* Handle kevent NOTE_EXIT results */
+      if (ev->filter == EVFILT_PROC) {
+        QUEUE_FOREACH(q, &loop->process_handles) {
+          process = QUEUE_DATA(q, uv_process_t, queue);
+          if (process->pid == fd) {
+            process->flags |= UV_HANDLE_REAP;
+            loop->flags |= UV_LOOP_REAP_CHILDREN;
+            break;
+          }
+        }
+        nevents++;
+        continue;
+      }
+
       /* Skip invalidated events, see uv__platform_invalidate_fd */
       if (fd == -1)
         continue;
@@ -326,6 +342,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
             if (errno != ENOENT)
               abort();
         }
+        if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
+          revents |= UV__POLLRDHUP;
       }
 
       if (ev->filter == EV_OOBAND) {
@@ -359,9 +377,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (ev->flags & EV_ERROR)
         revents |= POLLERR;
 
-      if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
-        revents |= UV__POLLRDHUP;
-
       if (revents == 0)
         continue;
 
@@ -376,6 +391,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       nevents++;
+    }
+
+    if (loop->flags & UV_LOOP_REAP_CHILDREN) {
+      loop->flags &= ~UV_LOOP_REAP_CHILDREN;
+      uv__wait_children(loop);
     }
 
     if (reset_timeout != 0) {
@@ -436,7 +456,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
   /* Invalidate events with same file descriptor */
   for (i = 0; i < nfds; i++)
-    if ((int) events[i].ident == fd)
+    if ((int) events[i].ident == fd && events[i].filter != EVFILT_PROC)
       events[i].ident = -1;
 }
 

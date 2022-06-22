@@ -242,6 +242,24 @@ static void uv__tty_make_raw(struct termios* tio) {
   tio->c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
   tio->c_cflag &= ~(CSIZE | PARENB);
   tio->c_cflag |= CS8;
+
+  /*
+   * By default, most software expects a pending read to block until at
+   * least one byte becomes available.  As per termio(7I), this requires
+   * setting the MIN and TIME parameters appropriately.
+   *
+   * As a somewhat unfortunate artifact of history, the MIN and TIME slots
+   * in the control character array overlap with the EOF and EOL slots used
+   * for canonical mode processing.  Because the EOF character needs to be
+   * the ASCII EOT value (aka Control-D), it has the byte value 4.  When
+   * switching to raw mode, this is interpreted as a MIN value of 4; i.e.,
+   * reads will block until at least four bytes have been input.
+   *
+   * Other platforms with a distinct MIN slot like Linux and FreeBSD appear
+   * to default to a MIN value of 1, so we'll force that value here:
+   */
+  tio->c_cc[VMIN] = 1;
+  tio->c_cc[VTIME] = 0;
 #else
   cfmakeraw(tio);
 #endif /* #ifdef __sun */
@@ -313,7 +331,7 @@ int uv_tty_get_winsize(uv_tty_t* tty, int* width, int* height) {
 
 
 uv_handle_type uv_guess_handle(uv_file file) {
-  struct sockaddr sa;
+  struct sockaddr_storage ss;
   struct stat s;
   socklen_t len;
   int type;
@@ -324,8 +342,23 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (isatty(file))
     return UV_TTY;
 
-  if (fstat(file, &s))
+  if (fstat(file, &s)) {
+#if defined(__PASE__)
+    // On ibmi receiving RST from TCP instead of FIN immediately puts fd into
+    // an error state. fstat will return EINVAL, getsockname will also return
+    // EINVAL, even if sockaddr_storage is valid. (If file does not refer to a
+    // socket, ENOTSOCK is returned instead.)
+    // In such cases, we will permit the user to open the connection as uv_tcp
+    // still, so that the user can get immediately notified of the error in
+    // their read callback and close this fd.
+    len = sizeof(ss);
+    if (getsockname(file, (struct sockaddr*) &ss, &len)) {
+      if (errno == EINVAL)
+        return UV_TCP;
+    }
+#endif
     return UV_UNKNOWN_HANDLE;
+  }
 
   if (S_ISREG(s.st_mode))
     return UV_FILE;
@@ -339,16 +372,28 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (!S_ISSOCK(s.st_mode))
     return UV_UNKNOWN_HANDLE;
 
+  len = sizeof(ss);
+  if (getsockname(file, (struct sockaddr*) &ss, &len)) {
+#if defined(_AIX)
+    // On aix receiving RST from TCP instead of FIN immediately puts fd into
+    // an error state. In such case getsockname will return EINVAL, even if
+    // sockaddr_storage is valid.
+    // In such cases, we will permit the user to open the connection as uv_tcp
+    // still, so that the user can get immediately notified of the error in
+    // their read callback and close this fd.
+    if (errno == EINVAL) {
+      return UV_TCP;
+    }
+#endif
+    return UV_UNKNOWN_HANDLE;
+  }
+
   len = sizeof(type);
   if (getsockopt(file, SOL_SOCKET, SO_TYPE, &type, &len))
     return UV_UNKNOWN_HANDLE;
 
-  len = sizeof(sa);
-  if (getsockname(file, &sa, &len))
-    return UV_UNKNOWN_HANDLE;
-
   if (type == SOCK_DGRAM)
-    if (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)
+    if (ss.ss_family == AF_INET || ss.ss_family == AF_INET6)
       return UV_UDP;
 
   if (type == SOCK_STREAM) {
@@ -361,9 +406,9 @@ uv_handle_type uv_guess_handle(uv_file file) {
       return UV_NAMED_PIPE;
 #endif /* defined(_AIX) || defined(__DragonFly__) */
 
-    if (sa.sa_family == AF_INET || sa.sa_family == AF_INET6)
+    if (ss.ss_family == AF_INET || ss.ss_family == AF_INET6)
       return UV_TCP;
-    if (sa.sa_family == AF_UNIX)
+    if (ss.ss_family == AF_UNIX)
       return UV_NAMED_PIPE;
   }
 

@@ -1,0 +1,41 @@
+name: Sanitizer checks
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!.**'
+      - '.github/workflows/sanitizer.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup
+        run: |
+          sudo apt-get install ninja-build
+      - name: Envinfo
+        run: npx envinfo
+      - name: TSAN Build
+        run: |
+          mkdir build-tsan
+          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake --build build-tsan
+      - name: TSAN Test
+        continue-on-error: true # currently permit failures
+        run: |
+          ./build-tsan/uv_run_tests_a
+      - name: ASAN Build
+        run: |
+          mkdir build-asan
+          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-asan
+      - name: ASAN Test
+        run: |
+          ./build-asan/uv_run_tests_a

@@ -27,6 +27,7 @@ exits. This is achieved using ``uv_spawn``.
 
 .. rubric:: spawn/main.c
 .. literalinclude:: ../../code/spawn/main.c
+    :language: c
     :linenos:
     :lines: 6-8,15-
     :emphasize-lines: 11,13-17
@@ -54,6 +55,7 @@ which caused the exit.
 
 .. rubric:: spawn/main.c
 .. literalinclude:: ../../code/spawn/main.c
+    :language: c
     :linenos:
     :lines: 9-12
     :emphasize-lines: 3
@@ -104,6 +106,7 @@ does not affect it.
 
 .. rubric:: detach/main.c
 .. literalinclude:: ../../code/detach/main.c
+    :language: c
     :linenos:
     :lines: 9-30
     :emphasize-lines: 12,19
@@ -140,6 +143,7 @@ stop watching. Here is a small example demonstrating the various possibilities:
 
 .. rubric:: signal/main.c
 .. literalinclude:: ../../code/signal/main.c
+    :language: c
     :linenos:
     :emphasize-lines: 17-18,27-28
 
@@ -172,6 +176,7 @@ which is:
 
 .. rubric:: proc-streams/test.c
 .. literalinclude:: ../../code/proc-streams/test.c
+    :language: c
 
 The actual program ``proc-streams`` runs this while sharing only ``stderr``.
 The file descriptors of the child process are set using the ``stdio`` field in
@@ -199,6 +204,7 @@ Then we set the ``fd`` to ``stderr``.
 
 .. rubric:: proc-streams/main.c
 .. literalinclude:: ../../code/proc-streams/main.c
+    :language: c
     :linenos:
     :lines: 15-17,27-
     :emphasize-lines: 6,10,11,12
@@ -217,12 +223,14 @@ A sample CGI script/executable is:
 
 .. rubric:: cgi/tick.c
 .. literalinclude:: ../../code/cgi/tick.c
+    :language: c
 
 The CGI server combines the concepts from this chapter and :doc:`networking` so
 that every client is sent ten ticks after which that connection is closed.
 
 .. rubric:: cgi/main.c
 .. literalinclude:: ../../code/cgi/main.c
+    :language: c
     :linenos:
     :lines: 49-63
     :emphasize-lines: 10
@@ -232,6 +240,7 @@ Here we simply accept the TCP connection and pass on the socket (*stream*) to
 
 .. rubric:: cgi/main.c
 .. literalinclude:: ../../code/cgi/main.c
+    :language: c
     :linenos:
     :lines: 16, 25-45
     :emphasize-lines: 8-9,18,20
@@ -266,10 +275,10 @@ Domain Socket`_, or derived from `mkfifo(1)`_, or it could actually be a
 This is intended for the purpose of allowing multiple libuv processes to
 communicate with IPC. This is discussed below.
 
-.. _pipe(7): http://man7.org/linux/man-pages/man7/pipe.7.html
-.. _mkfifo(1): http://man7.org/linux/man-pages/man1/mkfifo.1.html
-.. _socketpair(2): http://man7.org/linux/man-pages/man2/socketpair.2.html
-.. _Unix Domain Socket: http://man7.org/linux/man-pages/man7/unix.7.html
+.. _pipe(7): https://man7.org/linux/man-pages/man7/pipe.7.html
+.. _mkfifo(1): https://man7.org/linux/man-pages/man1/mkfifo.1.html
+.. _socketpair(2): https://man7.org/linux/man-pages/man2/socketpair.2.html
+.. _Unix Domain Socket: https://man7.org/linux/man-pages/man7/unix.7.html
 .. _Named Pipe: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
 
 
@@ -291,6 +300,7 @@ messaging is no different from TCP, so we'll re-use the echo server example.
 
 .. rubric:: pipe-echo-server/main.c
 .. literalinclude:: ../../code/pipe-echo-server/main.c
+    :language: c
     :linenos:
     :lines: 70-
     :emphasize-lines: 5,10,14
@@ -330,6 +340,7 @@ it by the master.
 
 .. rubric:: multi-echo-server/worker.c
 .. literalinclude:: ../../code/multi-echo-server/worker.c
+    :language: c
     :linenos:
     :lines: 7-9,81-
     :emphasize-lines: 6-8
@@ -343,6 +354,7 @@ standard input of the worker, we connect the pipe to ``stdin`` using
 
 .. rubric:: multi-echo-server/worker.c
 .. literalinclude:: ../../code/multi-echo-server/worker.c
+    :language: c
     :linenos:
     :lines: 51-79
     :emphasize-lines: 10,15,20
@@ -361,6 +373,7 @@ allow load balancing.
 
 .. rubric:: multi-echo-server/main.c
 .. literalinclude:: ../../code/multi-echo-server/main.c
+    :language: c
     :linenos:
     :lines: 9-13
 
@@ -369,6 +382,7 @@ master and the individual process.
 
 .. rubric:: multi-echo-server/main.c
 .. literalinclude:: ../../code/multi-echo-server/main.c
+    :language: c
     :linenos:
     :lines: 51,61-95
     :emphasize-lines: 17,20-21
@@ -387,6 +401,7 @@ worker in the round-robin.
 
 .. rubric:: multi-echo-server/main.c
 .. literalinclude:: ../../code/multi-echo-server/main.c
+    :language: c
     :linenos:
     :lines: 31-49
     :emphasize-lines: 9,12-13

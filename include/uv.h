@@ -45,6 +45,8 @@ extern "C" {
 # endif
 #elif __GNUC__ >= 4
 # define UV_EXTERN __attribute__((visibility("default")))
+#elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550) /* Sun Studio >= 8 */
+# define UV_EXTERN __global
 #else
 # define UV_EXTERN /* nothing */
 #endif
@@ -126,6 +128,7 @@ extern "C" {
   XX(ENOTEMPTY, "directory not empty")                                        \
   XX(ENOTSOCK, "socket operation on non-socket")                              \
   XX(ENOTSUP, "operation not supported on socket")                            \
+  XX(EOVERFLOW, "value too large for defined data type")                      \
   XX(EPERM, "operation not permitted")                                        \
   XX(EPIPE, "broken pipe")                                                    \
   XX(EPROTO, "protocol error")                                                \
@@ -148,6 +151,7 @@ extern "C" {
   XX(ENOTTY, "inappropriate ioctl for device")                                \
   XX(EFTYPE, "inappropriate file type or format")                             \
   XX(EILSEQ, "illegal byte sequence")                                         \
+  XX(ESOCKTNOSUPPORT, "socket type not supported")                            \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
@@ -475,6 +479,12 @@ UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
 
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
 
+UV_EXTERN int uv_pipe(uv_file fds[2], int read_flags, int write_flags);
+UV_EXTERN int uv_socketpair(int type,
+                            int protocol,
+                            uv_os_sock_t socket_vector[2],
+                            int flags0,
+                            int flags1);
 
 #define UV_STREAM_FIELDS                                                      \
   /* number of bytes queued for writing */                                    \
@@ -520,6 +530,10 @@ UV_EXTERN int uv_write2(uv_write_t* req,
 UV_EXTERN int uv_try_write(uv_stream_t* handle,
                            const uv_buf_t bufs[],
                            unsigned int nbufs);
+UV_EXTERN int uv_try_write2(uv_stream_t* handle,
+                            const uv_buf_t bufs[],
+                            unsigned int nbufs,
+                            uv_stream_t* send_handle);
 
 /* uv_write_t is a subclass of uv_req_t. */
 struct uv_write_s {
@@ -614,7 +628,20 @@ enum uv_udp_flags {
    * must not be freed by the recv_cb callback.
    */
   UV_UDP_MMSG_CHUNK = 8,
-
+  /*
+   * Indicates that the buffer provided has been fully utilized by recvmmsg and
+   * that it should now be freed by the recv_cb callback. When this flag is set
+   * in uv_udp_recv_cb, nread will always be 0 and addr will always be NULL.
+   */
+  UV_UDP_MMSG_FREE = 16,
+  /*
+   * Indicates if IP_RECVERR/IPV6_RECVERR will be set when binding the handle.
+   * This sets IP_RECVERR for IPv4 and IPV6_RECVERR for IPv6 UDP sockets on
+   * Linux. This stops the Linux kernel from suppressing some ICMP error
+   * messages and enables full ICMP error reporting for faster failover.
+   * This flag is no-op on platforms other than Linux.
+   */
+  UV_UDP_LINUX_RECVERR = 32,
   /*
    * Indicates that recvmmsg should be used, if available.
    */
@@ -865,6 +892,7 @@ UV_EXTERN int uv_timer_stop(uv_timer_t* handle);
 UV_EXTERN int uv_timer_again(uv_timer_t* handle);
 UV_EXTERN void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat);
 UV_EXTERN uint64_t uv_timer_get_repeat(const uv_timer_t* handle);
+UV_EXTERN uint64_t uv_timer_get_due_in(const uv_timer_t* handle);
 
 
 /*
@@ -926,10 +954,13 @@ typedef enum {
   UV_WRITABLE_PIPE  = 0x20,
 
   /*
-   * Open the child pipe handle in overlapped mode on Windows.
-   * On Unix it is silently ignored.
+   * When UV_CREATE_PIPE is specified, specifying UV_NONBLOCK_PIPE opens the
+   * handle in non-blocking mode in the child. This may cause loss of data,
+   * if the child is not designed to handle to encounter this mode,
+   * but can also be significantly more efficient.
    */
-  UV_OVERLAPPED_PIPE = 0x40
+  UV_NONBLOCK_PIPE  = 0x40,
+  UV_OVERLAPPED_PIPE = 0x40 /* old name, for compatibility */
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {
@@ -1102,8 +1133,8 @@ struct uv_interface_address_s {
 
 struct uv_passwd_s {
   char* username;
-  long uid;
-  long gid;
+  unsigned long uid;
+  unsigned long gid;
   char* shell;
   char* homedir;
 };
@@ -1211,6 +1242,7 @@ UV_EXTERN uv_pid_t uv_os_getppid(void);
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 
+UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
 
@@ -1629,6 +1661,7 @@ UV_EXTERN int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
 
 UV_EXTERN int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size);
 UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size);
+UV_EXTERN int uv_ip_name(const struct sockaddr* src, char* dst, size_t size);
 
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
 UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);
