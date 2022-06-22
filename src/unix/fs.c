@@ -1270,10 +1270,9 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   copyfile_flags_t flags;
 
   /* Don't overwrite the destination if its permissions disallow it. */
-  if (faccessat(AT_FDCWD, req->new_path, R_OK | W_OK, 0)) {
-    if (errno != ENOENT) {
+  if (faccessat(AT_FDCWD, req->new_path, R_OK | W_OK, AT_EACCESS)) {
+    if (errno != ENOENT)
       return UV__ERR(errno);
-    }
   }
 
   flags = COPYFILE_ALL;
