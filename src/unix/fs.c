@@ -1267,6 +1267,7 @@ done:
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
   /* On macOS, use the native copyfile(3). */
+  uv_fs_t fs_req;
   static int can_clone;
   copyfile_flags_t flags;
   uv_file dstfd;
