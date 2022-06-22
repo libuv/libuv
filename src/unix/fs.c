@@ -1336,7 +1336,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     return UV__ERR(errno);
   }
   return 0;
-#else
+#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
   uv_fs_t fs_req;
   uv_file srcfd;
   uv_file dstfd;
@@ -1500,7 +1500,7 @@ out:
 
   errno = UV__ERR(result);
   return -1;
-#endif
+#endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
 }
 
 static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
