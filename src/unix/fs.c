@@ -1267,82 +1267,37 @@ done:
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
   /* On macOS, use the native copyfile(3). */
-  uv_fs_t fs_req;
-  static int can_clone;
   copyfile_flags_t flags;
-  uv_file dstfd;
-  int dst_flags;
-  char buf[64];
-  size_t len;
-  int major;
-  int err;
+
+  /* Don't overwrite the destination if its permissions disallow it. */
+  if (faccessat(AT_FDCWD, req->new_path, R_OK | W_OK, 0)) {
+    if (errno != ENOENT) {
+      return UV__ERR(errno);
+    }
+  }
 
   flags = COPYFILE_ALL;
 
-  /* Check OS version. Cloning is only supported on macOS >= 10.12. */
-  if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-    if (can_clone == 0) {
-      len = sizeof(buf);
-      if (sysctlbyname("kern.osrelease", buf, &len, NULL, 0))
-        return UV__ERR(errno);
-
-      if (1 != sscanf(buf, "%d", &major))
-        abort();
-
-      can_clone = -1 + 2 * (major >= 16);  /* macOS >= 10.12 */
-    }
-
-    if (can_clone < 0)
-      return UV_ENOSYS;
-  }
-
-  /* copyfile() simply ignores COPYFILE_CLONE if it's not supported. */
   if (req->flags & UV_FS_COPYFILE_FICLONE)
-    flags |= 1 << 24;  /* COPYFILE_CLONE */
+    flags |= COPYFILE_CLONE;
 
   if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
-    flags |= 1 << 25;  /* COPYFILE_CLONE_FORCE */
+    flags |= COPYFILE_CLONE_FORCE;
 
-  dst_flags = O_WRONLY | O_CREAT;
-  /* Copyfile has its own, but let's do our own. */
   if (req->flags & UV_FS_COPYFILE_EXCL)
-    dst_flags |= O_EXCL;
+    flags |= COPYFILE_EXCL;
 
-  /* Copyfile(2) tries to chmod the file when a rw open fails. This causes
-   * nodejs/node#26936.
-   * Make it behave by doing our own open-test, because faccessat(2) is not
-   * present on OS X < 10.10. */
-  dstfd = uv_fs_open(NULL,
-                     &fs_req,
-                     req->new_path,
-                     dst_flags,
-                     S_IRWXU,
-                     NULL);
-  uv_fs_req_cleanup(&fs_req);
-
-  if (dstfd < 0) {
-    return dstfd;
-  } else {
-    err = uv__close_nocheckstdio(dstfd);
-    if (err) {
-      return err;
-    }
-    /* We might have created it. We also don't want clone to fail without
-     * UV_FS_COPYFILE_EXCL. */
-    unlink(req->new_path);
-  }
-
-  if (copyfile(req->path, req->new_path, NULL, flags)) {
+  if (copyfile(req->path, req->new_path, NULL, flags))
     return UV__ERR(errno);
-  }
+
   return 0;
 #else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
   uv_fs_t fs_req;
   uv_file srcfd;
   uv_file dstfd;
-  int dst_flags;
   struct stat src_statsbuf;
   struct stat dst_statsbuf;
+  int dst_flags;
   int result;
   int err;
   off_t bytes_to_send;
