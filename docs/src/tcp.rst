@@ -144,3 +144,10 @@ API
     Equivalent to :man:`socketpair(2)` with a domain of AF_UNIX.
 
     .. versionadded:: 1.41.0
+
+.. c:function:: int uv_tcp_timeout(uv_tcp_t* handle, unsigned int timeout)
+
+    Set retransmissions timeout(second) for a TCP connection which is established.
+
+    .. versionadded:: 1.44.1
+

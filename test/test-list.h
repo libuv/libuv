@@ -155,6 +155,7 @@ TEST_DECLARE   (tcp_bind6_error_fault)
 TEST_DECLARE   (tcp_bind6_error_inval)
 TEST_DECLARE   (tcp_bind6_localhost_ok)
 TEST_DECLARE   (tcp_write_ready)
+TEST_DECLARE   (tcp_timeout)
 TEST_DECLARE   (udp_alloc_cb_fail)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
@@ -737,6 +738,8 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_bind6_error_fault)
   TEST_ENTRY  (tcp_bind6_error_inval)
   TEST_ENTRY  (tcp_bind6_localhost_ok)
+
+  TEST_ENTRY  (tcp_timeout)
 
   TEST_ENTRY  (udp_alloc_cb_fail)
   TEST_ENTRY  (udp_bind)

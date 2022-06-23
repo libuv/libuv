@@ -280,6 +280,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-try-write-error.c \
                          test/test-tcp-write-queue-order.c \
+                         test/test-tcp-timeout.c \
                          test/test-test-macros.c \
                          test/test-thread-equal.c \
                          test/test-thread.c \

@@ -1694,3 +1694,31 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     assert(err);
     return uv_translate_sys_error(err);
 }
+
+
+int uv_tcp_timeout(uv_tcp_t* handle, unsigned int timeout) {
+  if (handle->socket == INVALID_SOCKET) {
+    return UV_EINVAL;
+  }
+  
+  #if defined(TCP_MAXRT)
+    if (setsockopt(handle->socket,
+                  IPPROTO_TCP,
+                  TCP_MAXRT,
+                  (const char*)&timeout,
+                  sizeof(timeout)) == -1) {
+      return WSAGetLastError();
+    }
+  #elif defined(TCP_MAXRTMS)
+    timeout = timeout * 1000;
+    if (setsockopt(handle->socket,
+                  IPPROTO_TCP,
+                  TCP_MAXRTMS,
+                  (const char*)&timeout,
+                  sizeof(timeout)) == -1) {
+      return WSAGetLastError();
+    }
+  #endif
+
+  return 0;
+}

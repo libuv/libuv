@@ -508,3 +508,25 @@ fail:
   uv__close(temp[1]);
   return err;
 }
+
+
+int uv_tcp_timeout(uv_tcp_t* handle, unsigned int timeout) {
+  int fd = uv__stream_fd(handle);
+
+  if (fd == -1) {
+    return UV_EINVAL;
+  }
+  
+  #if defined(TCP_USER_TIMEOUT)
+    timeout = timeout * 1000;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout, sizeof(timeout))) {
+      return UV__ERR(errno);
+    }
+  #elif defined(TCP_RXT_CONNDROPTIME)
+    if (setsockopt(fd, IPPROTO_TCP, TCP_RXT_CONNDROPTIME, &timeout, sizeof(timeout))) {
+      return UV__ERR(errno); 
+    }
+  #endif
+	return 0;
+}
+

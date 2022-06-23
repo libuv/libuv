@@ -591,6 +591,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
+       test/test-tcp-timeout.c
        test/test-test-macros.c
        test/test-thread-equal.c
        test/test-thread.c
