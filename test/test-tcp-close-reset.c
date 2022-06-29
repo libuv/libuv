@@ -25,6 +25,12 @@
 #include <errno.h>
 #include <string.h> /* memset */
 
+#ifdef _WIN32
+# define INVALID_FD (INVALID_HANDLE_VALUE)
+#else
+# define INVALID_FD (-1)
+#endif
+
 static uv_loop_t* loop;
 static uv_tcp_t tcp_server;
 static uv_tcp_t tcp_client;
@@ -62,9 +68,18 @@ static void do_write(uv_tcp_t* handle) {
 
 
 static void do_close(uv_tcp_t* handle) {
+  uv_os_fd_t fd;
+  int r;
+
   if (shutdown_before_close == 1) {
     ASSERT(0 == uv_shutdown(&shutdown_req, (uv_stream_t*) handle, shutdown_cb));
     ASSERT(UV_EINVAL == uv_tcp_close_reset(handle, close_cb));
+  } else if (shutdown_before_close == 2) {
+    r = uv_fileno((const uv_handle_t*) handle, &fd);
+    ASSERT(r == 0);
+    ASSERT(fd != INVALID_FD);
+    ASSERT(0 == shutdown(fd, SHUT_RDWR));
+    ASSERT(0 == uv_tcp_close_reset(handle, close_cb));
   } else {
     ASSERT(0 == uv_tcp_close_reset(handle, close_cb));
     ASSERT(UV_ENOTCONN == uv_shutdown(&shutdown_req, (uv_stream_t*) handle, shutdown_cb));
@@ -284,6 +299,33 @@ TEST_IMPL(tcp_close_reset_accepted_after_shutdown) {
   ASSERT(write_cb_called == 4);
   ASSERT(close_cb_called == 0);
   ASSERT(shutdown_cb_called == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+TEST_IMPL(tcp_close_reset_accepted_after_socket_shutdown) {
+  int r;
+
+  loop = uv_default_loop();
+
+  start_server(loop, &tcp_server);
+
+  client_close = 0;
+  shutdown_before_close = 2;
+
+  do_connect(loop, &tcp_client);
+
+  ASSERT(write_cb_called == 0);
+  ASSERT(close_cb_called == 0);
+  ASSERT(shutdown_cb_called == 0);
+
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(write_cb_called == 4);
+  ASSERT(close_cb_called == 1);
+  ASSERT(shutdown_cb_called == 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;

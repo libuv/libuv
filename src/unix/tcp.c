@@ -321,8 +321,16 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
     return UV_EINVAL;
 
   fd = uv__stream_fd(handle);
-  if (0 != setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)))
-    return UV__ERR(errno);
+  if (0 != setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l))) {
+    if (errno == EINVAL) {
+      /* Open Group Specifications Issue 7, 2018 edition states that
+       * EINVAL may mean the socket has been shut down already.
+       * Behavior observed on Solaris, illumos and macOS. */
+      errno = 0;
+    } else {
+      return UV__ERR(errno);
+    }
+  }
 
   uv_close((uv_handle_t*) handle, close_cb);
   return 0;
