@@ -184,14 +184,15 @@ int uv__tcp_bind(uv_tcp_t* tcp,
 #endif
 
   errno = 0;
-  if (bind(tcp->io_watcher.fd, addr, addrlen) && errno != EADDRINUSE) {
+  err = bind(tcp->io_watcher.fd, addr, addrlen);
+  if (err == -1 && errno != EADDRINUSE) {
     if (errno == EAFNOSUPPORT)
       /* OSX, other BSDs and SunoS fail with EAFNOSUPPORT when binding a
        * socket created with AF_INET to an AF_INET6 address or vice versa. */
       return UV_EINVAL;
     return UV__ERR(errno);
   }
-  tcp->delayed_error = UV__ERR(errno);
+  tcp->delayed_error = (err == -1) ? UV__ERR(errno) : 0;
 
   tcp->flags |= UV_HANDLE_BOUND;
   if (addr->sa_family == AF_INET6)
