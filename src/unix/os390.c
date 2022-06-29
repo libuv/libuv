@@ -1030,6 +1030,5 @@ int uv__io_fork(uv_loop_t* loop) {
   */
   loop->ep = NULL;
 
-  uv__platform_loop_delete(loop);
   return uv__platform_loop_init(loop);
 }
