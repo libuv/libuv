@@ -76,10 +76,10 @@ static void do_close(uv_tcp_t* handle) {
     ASSERT(UV_EINVAL == uv_tcp_close_reset(handle, close_cb));
   } else if (shutdown_before_close == 2) {
     r = uv_fileno((const uv_handle_t*) handle, &fd);
-    ASSERT(r == 0);
-    ASSERT(fd != INVALID_FD);
-    ASSERT(0 == shutdown(fd, SHUT_RDWR));
-    ASSERT(0 == uv_tcp_close_reset(handle, close_cb));
+    ASSERT_EQ(r, 0);
+    ASSERT_NE(fd, INVALID_FD);
+    ASSERT_EQ(0, shutdown(fd, SHUT_RDWR));
+    ASSERT_EQ(0, uv_tcp_close_reset(handle, close_cb));
   } else {
     ASSERT(0 == uv_tcp_close_reset(handle, close_cb));
     ASSERT(UV_ENOTCONN == uv_shutdown(&shutdown_req, (uv_stream_t*) handle, shutdown_cb));
@@ -316,16 +316,16 @@ TEST_IMPL(tcp_close_reset_accepted_after_socket_shutdown) {
 
   do_connect(loop, &tcp_client);
 
-  ASSERT(write_cb_called == 0);
-  ASSERT(close_cb_called == 0);
-  ASSERT(shutdown_cb_called == 0);
+  ASSERT_EQ(write_cb_called, 0);
+  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_EQ(shutdown_cb_called, 0);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
-  ASSERT(write_cb_called == 4);
-  ASSERT(close_cb_called == 1);
-  ASSERT(shutdown_cb_called == 0);
+  ASSERT_EQ(write_cb_called, 4);
+  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(shutdown_cb_called, 0);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
