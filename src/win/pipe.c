@@ -731,7 +731,9 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   if (!name) {
     return UV_EINVAL;
   }
-
+  if (uv__is_closing(handle)) {
+    return UV_EINVAL;
+  }
   if (!(handle->flags & UV_HANDLE_PIPESERVER)) {
     handle->pipe.serv.pending_instances = default_pending_pipe_instances;
   }
