@@ -81,7 +81,8 @@ extern char** environ;
 #endif
 
 #if defined(__MVS__)
-#include <sys/ioctl.h>
+# include <sys/ioctl.h>
+# include "zos-sys-info.h"
 #endif
 
 #if defined(__linux__)
@@ -160,10 +161,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
   case UV_FS_EVENT:
     uv__fs_event_close((uv_fs_event_t*)handle);
-#if defined(__sun)
+#if defined(__sun) || defined(__MVS__)
     /*
-     * On Solaris and illumos, we will not be able to dissociate the watcher
-     * for an event which is pending delivery, so we cannot always call
+     * On Solaris, illumos, and z/OS we will not be able to dissociate the
+     * watcher for an event which is pending delivery, so we cannot always call
      * uv__make_close_pending() straight away. The backend will call the
      * function once the event has cleared.
      */
@@ -403,6 +404,11 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
       timeout = uv__backend_timeout(loop);
 
     uv__io_poll(loop, timeout);
+
+    /* Process immediate callbacks (e.g. write_cb) a small fixed number of
+     * times to avoid loop starvation.*/
+    for (r = 0; r < 8 && !QUEUE_EMPTY(&loop->pending_queue); r++)
+      uv__run_pending(loop);
 
     /* Run one final update on the provider_idle_time in case uv__io_poll
      * returned because the timeout expired, but no events were received. This
@@ -1642,7 +1648,13 @@ unsigned int uv_available_parallelism(void) {
 
   return (unsigned) rc;
 #elif defined(__MVS__)
-  return 1;  /* TODO(bnoordhuis) Read from CSD_NUMBER_ONLINE_CPUS? */
+  int rc;
+
+  rc = __get_num_online_cpus();
+  if (rc < 1)
+    rc = 1;
+
+  return (unsigned) rc;
 #else  /* __linux__ */
   long rc;
 

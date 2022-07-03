@@ -1,0 +1,369 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{a03fa7b1-8dc1-4b06-9301-389d51386cb5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="unix">
+      <UniqueIdentifier>{f7b76919-cf24-4cd4-aa1c-f747e0b3e311}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\fs-poll.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\inet.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\threadpool.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\uv-common.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\uv-data-getter-setters.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\version.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\async.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\core.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\detect-wakeup.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\dl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\error.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\fs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\fs-event.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\getaddrinfo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\getnameinfo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\handle.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\loop-watcher.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\pipe.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\poll.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\process.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\process-stdio.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\signal.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\snprintf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\stream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\tcp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\thread.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\tty.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\udp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\util.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\winapi.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\win\winsock.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\timer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\strscpy.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\idna.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\aix.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\aix-common.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\android-ifaddrs.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\async.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\bsd-ifaddrs.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\bsd-proctitle.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\core.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\cygwin.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\darwin.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\darwin-proctitle.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\dl.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\freebsd.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\fs.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\fsevents.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\getaddrinfo.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\getnameinfo.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\ibmi.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\kqueue.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\linux-core.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\linux-inotify.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\linux-syscalls.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\loop.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\loop-watcher.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\netbsd.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\no-fsevents.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\no-proctitle.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\openbsd.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\os390.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\os390-syscalls.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\pipe.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\poll.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\posix-hrtime.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\posix-poll.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\process.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\procfs-exepath.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\proctitle.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\pthread-fixes.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\signal.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\stream.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\sunos.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\sysinfo-loadavg.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\sysinfo-memory.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\tcp.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\thread.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\tty.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\unix\udp.c">
+      <Filter>unix</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\random.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\heap-inl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\queue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\uv-common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\atomicops-inl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\handle-inl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\req-inl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\stream-inl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\winapi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\win\winsock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\strscpy.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\idna.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\aix.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\android-ifaddrs.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\bsd.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\darwin.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\errno.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\linux.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\os390.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\posix.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\stdint-msvc2008.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\sunos.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\threadpool.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\tree.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\unix.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\version.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv\win.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\uv.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\unix\atomic-ops.h">
+      <Filter>unix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\unix\internal.h">
+      <Filter>unix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\unix\linux-syscalls.h">
+      <Filter>unix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\unix\os390-syscalls.h">
+      <Filter>unix</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\unix\spinlock.h">
+      <Filter>unix</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

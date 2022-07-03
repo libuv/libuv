@@ -148,7 +148,7 @@ static int uv__tcp_set_socket(uv_loop_t* loop,
   }
 
   if (handle->u.socket_create.cb) {
-      handle->u.socket_create.cb((uv_handle_t*)handle, handle->u.socket_create.p);
+    handle->u.socket_create.cb((uv_handle_t*)handle, handle->u.socket_create.p);
   }
 
   return 0;

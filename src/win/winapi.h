@@ -23,6 +23,7 @@
 #define UV_WIN_WINAPI_H_
 
 #include <windows.h>
+#include <iphlpapi.h>
 
 
 /*

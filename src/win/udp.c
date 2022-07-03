@@ -1153,6 +1153,7 @@ int uv__udp_try_send(uv_udp_t* handle,
     err = uv__convert_to_localhost_if_unspecified(addr, &converted);
     if (err)
       return err;
+    addr = (const struct sockaddr*) &converted;
   }
 
   /* Already sending a message.*/
@@ -1176,7 +1177,7 @@ int uv__udp_try_send(uv_udp_t* handle,
                   nbufs,
                   &bytes,
                   0,
-                  (const struct sockaddr*) &converted,
+                  addr,
                   addrlen,
                   NULL,
                   NULL);

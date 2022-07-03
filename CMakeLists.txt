@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.4)
 project(libuv LANGUAGES C)
 
+set(LIBUVDIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "libuv library" FORCE)
+
 cmake_policy(SET CMP0057 NEW) # Enable IN_LIST operator
 cmake_policy(SET CMP0064 NEW) # Support if (TEST) operator
 
@@ -16,6 +18,10 @@ set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 90)
+
+cmake_dependent_option(LIBUV_BUILD_DLL
+        "Build DLL/so/dylib" ON
+        "CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
 
 cmake_dependent_option(LIBUV_BUILD_TESTS
   "Build the unit tests when BUILD_TESTING is enabled and we are the root project" ON
@@ -115,6 +121,8 @@ list(APPEND uv_cflags ${lint-no-hides-global-msvc})
 list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
 list(APPEND uv_cflags ${lint-utf8-msvc} )
+
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 check_c_compiler_flag(-fno-strict-aliasing UV_F_STRICT_ALIASING)
 list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
@@ -388,6 +396,8 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
 
+if(LIBUV_BUILD_DLL)
+
 add_library(uv SHARED ${uv_sources})
 target_compile_definitions(uv
   INTERFACE
@@ -407,6 +417,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 target_link_libraries(uv ${uv_libraries})
+
+endif(LIBUV_BUILD_DLL)
 
 add_library(uv_a STATIC ${uv_sources})
 target_compile_definitions(uv_a PRIVATE ${uv_defines})
@@ -464,7 +476,6 @@ if(LIBUV_BUILD_TESTS)
        test/test-async-null-cb.c
        test/test-async.c
        test/test-barrier.c
-       test/test-callback-order.c
        test/test-callback-stack.c
        test/test-close-fd.c
        test/test-close-order.c
@@ -659,6 +670,8 @@ if(LIBUV_BUILD_TESTS)
   endif()
 endif()
 
+if((UNIX OR MINGW) AND LIBUV_BUILD_DLL)
+
 # Now for some gibbering horrors from beyond the stars...
 foreach(lib IN LISTS uv_libraries)
   list(APPEND LIBS "-l${lib}")
@@ -689,6 +702,16 @@ install(TARGETS uv EXPORT libuvConfig
 install(TARGETS uv_a EXPORT libuvConfig
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(EXPORT libuvConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
+
+endif()
+
+if(MSVC AND LIBUV_BUILD_DLL)
+  install(DIRECTORY include/ DESTINATION include)
+  install(FILES LICENSE DESTINATION .)
+  install(TARGETS uv uv_a
+          RUNTIME DESTINATION lib/$<CONFIG>
+          ARCHIVE DESTINATION lib/$<CONFIG>)
+endif()
 
 if(MSVC)
   set(CMAKE_DEBUG_POSTFIX d)

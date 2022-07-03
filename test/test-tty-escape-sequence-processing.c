@@ -272,11 +272,12 @@ static void make_expect_screen_write(struct captured_screen* cs,
                                      COORD cursor_position,
                                      const char* text) {
   /* position of cursor */
+  size_t length, remain_length;
   char* start;
   start = cs->text + cs->si.width * (cursor_position.Y - 1) +
                 cursor_position.X - 1;
-  size_t length = strlen(text);
-  size_t remain_length = cs->si.length - (cs->text - start);
+  length = strlen(text);
+  remain_length = cs->si.length - (cs->text - start);
   length = length > remain_length ? remain_length : length;
   memcpy(start, text, length);
 }
@@ -285,10 +286,11 @@ static void make_expect_screen_set_attr(struct captured_screen* cs,
                                         COORD cursor_position,
                                         size_t length,
                                         WORD attr) {
+  size_t remain_length;
   WORD* start;
   start = cs->attributes + cs->si.width * (cursor_position.Y - 1) +
                 cursor_position.X - 1;
-  size_t remain_length = cs->si.length - (cs->attributes - start);
+  remain_length = cs->si.length - (cs->attributes - start);
   length = length > remain_length ? remain_length : length;
   while (length) {
     *start = attr;
