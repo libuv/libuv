@@ -344,13 +344,14 @@ uv_handle_type uv_guess_handle(uv_file file) {
 
   if (fstat(file, &s)) {
 #if defined(__PASE__)
-    // On ibmi receiving RST from TCP instead of FIN immediately puts fd into
-    // an error state. fstat will return EINVAL, getsockname will also return
-    // EINVAL, even if sockaddr_storage is valid. (If file does not refer to a
-    // socket, ENOTSOCK is returned instead.)
-    // In such cases, we will permit the user to open the connection as uv_tcp
-    // still, so that the user can get immediately notified of the error in
-    // their read callback and close this fd.
+    /* On ibmi receiving RST from TCP instead of FIN immediately puts fd into
+     * an error state. fstat will return EINVAL, getsockname will also return
+     * EINVAL, even if sockaddr_storage is valid. (If file does not refer to a
+     * socket, ENOTSOCK is returned instead.)
+     * In such cases, we will permit the user to open the connection as uv_tcp
+     * still, so that the user can get immediately notified of the error in
+     * their read callback and close this fd.
+     */
     len = sizeof(ss);
     if (getsockname(file, (struct sockaddr*) &ss, &len)) {
       if (errno == EINVAL)
@@ -375,12 +376,13 @@ uv_handle_type uv_guess_handle(uv_file file) {
   len = sizeof(ss);
   if (getsockname(file, (struct sockaddr*) &ss, &len)) {
 #if defined(_AIX)
-    // On aix receiving RST from TCP instead of FIN immediately puts fd into
-    // an error state. In such case getsockname will return EINVAL, even if
-    // sockaddr_storage is valid.
-    // In such cases, we will permit the user to open the connection as uv_tcp
-    // still, so that the user can get immediately notified of the error in
-    // their read callback and close this fd.
+    /* On aix receiving RST from TCP instead of FIN immediately puts fd into
+     * an error state. In such case getsockname will return EINVAL, even if
+     * sockaddr_storage is valid.
+     * In such cases, we will permit the user to open the connection as uv_tcp
+     * still, so that the user can get immediately notified of the error in
+     * their read callback and close this fd.
+     */
     if (errno == EINVAL) {
       return UV_TCP;
     }

@@ -705,10 +705,11 @@ int uv__udp_disconnect(uv_udp_t* handle) {
     do {
       errno = 0;
 #ifdef __PASE__
-      // On IBMi a connectionless transport socket can be disconnected by
-      // either setting the addr parameter to NULL or setting the
-      // addr_length parameter to zero, and issuing another connect().
-      // https://www.ibm.com/docs/en/i/7.4?topic=ssw_ibm_i_74/apis/connec.htm
+      /* On IBMi a connectionless transport socket can be disconnected by
+       * either setting the addr parameter to NULL or setting the
+       * addr_length parameter to zero, and issuing another connect().
+       * https://www.ibm.com/docs/en/i/7.4?topic=ssw_ibm_i_74/apis/connec.htm
+       */
       r = connect(handle->io_watcher.fd, (struct sockaddr*) NULL, 0);
 #else
       r = connect(handle->io_watcher.fd, (struct sockaddr*) &addr, sizeof(addr));
