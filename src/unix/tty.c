@@ -66,6 +66,19 @@ static int orig_termios_fd = -1;
 static struct termios orig_termios;
 static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
 
+int uv__tcsetattr(int fd, int how, const struct termios *term) {
+  int rc;
+
+  do
+    rc = tcsetattr(fd, how, term);
+  while (rc == -1 && errno == EINTR);
+
+  if (rc == -1)
+    return UV__ERR(errno);
+
+  return 0;
+}
+
 static int uv__tty_is_slave(const int fd) {
   int result;
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
@@ -268,13 +281,18 @@ static void uv__tty_make_raw(struct termios* tio) {
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   struct termios tmp;
   int fd;
+  int rc;
 
   if (tty->mode == (int) mode)
     return 0;
 
   fd = uv__stream_fd(tty);
   if (tty->mode == UV_TTY_MODE_NORMAL && mode != UV_TTY_MODE_NORMAL) {
-    if (tcgetattr(fd, &tty->orig_termios))
+    do
+      rc = tcgetattr(fd, &tty->orig_termios);
+    while (rc == -1 && errno == EINTR);
+
+    if (rc == -1)
       return UV__ERR(errno);
 
     /* This is used for uv_tty_reset_mode() */
@@ -304,11 +322,11 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   /* Apply changes after draining */
-  if (tcsetattr(fd, TCSADRAIN, &tmp))
-    return UV__ERR(errno);
+  rc = uv__tcsetattr(fd, TCSADRAIN, &tmp);
+  if (rc == 0)
+    tty->mode = mode;
 
-  tty->mode = mode;
-  return 0;
+  return rc;
 }
 
 
@@ -432,8 +450,7 @@ int uv_tty_reset_mode(void) {
 
   err = 0;
   if (orig_termios_fd != -1)
-    if (tcsetattr(orig_termios_fd, TCSANOW, &orig_termios))
-      err = UV__ERR(errno);
+    err = uv__tcsetattr(orig_termios_fd, TCSANOW, &orig_termios);
 
   uv_spinlock_unlock(&termios_spinlock);
   errno = saved_errno;
