@@ -924,7 +924,6 @@ static void uv__write(uv_stream_t* stream) {
   }
 
   req->error = n;
-  // XXX(jwn): this must call uv__stream_flush_write_queue(stream, n) here, since we won't generate any more events
   uv__write_req_finish(req);
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
   uv__stream_osx_interrupt_select(stream);
