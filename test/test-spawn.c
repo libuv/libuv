@@ -1675,9 +1675,6 @@ TEST_IMPL(closed_fd_events) {
   ASSERT(req.result == 1);
   uv_fs_req_cleanup(&req);
 
-#ifdef _WIN32
-  ASSERT(1 == uv_run(uv_default_loop(), UV_RUN_ONCE));
-#endif
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
 
   /* should have received just one byte */

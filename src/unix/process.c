@@ -1063,9 +1063,16 @@ int uv_process_kill(uv_process_t* process, int signum) {
 
 
 int uv_kill(int pid, int signum) {
-  if (kill(pid, signum))
+  if (kill(pid, signum)) {
+#if defined(__MVS__)
+    /* EPERM is returned if the process is a zombie. */
+    siginfo_t infop;
+    if (errno == EPERM &&
+        waitid(P_PID, pid, &infop, WNOHANG | WNOWAIT | WEXITED) == 0)
+      return 0;
+#endif
     return UV__ERR(errno);
-  else
+  } else
     return 0;
 }
 
