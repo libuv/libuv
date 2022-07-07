@@ -133,7 +133,7 @@ int uv__pipe_write(uv_loop_t* loop,
                    size_t nbufs,
                    uv_stream_t* send_handle,
                    uv_write_cb cb);
-void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t *req);
+void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t* req);
 
 void uv__process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_req_t* req);

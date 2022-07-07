@@ -172,7 +172,7 @@ INLINE static int uv__process_reqs(uv_loop_t* loop) {
         break;
 
       case UV_SHUTDOWN:
-        DELEGATE_STREAM_REQ(loop, (uv_shutdown_t*)req, shutdown, handle);
+        DELEGATE_STREAM_REQ(loop, (uv_shutdown_t*) req, shutdown, handle);
         break;
 
       case UV_UDP_RECV:

@@ -205,7 +205,7 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
 }
 
 
-void uv__process_tcp_shutdown_req(uv_loop_t * loop, uv_tcp_t * stream, uv_shutdown_t *req) {
+void uv__process_tcp_shutdown_req(uv_loop_t* loop, uv_tcp_t* stream, uv_shutdown_t *req) {
   int err;
 
   assert(req);

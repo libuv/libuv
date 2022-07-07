@@ -2269,7 +2269,7 @@ void uv__tty_close(uv_tty_t* handle) {
 }
 
 
-void uv__process_tty_shutdown_req(uv_loop_t* loop, uv_tty_t *stream, uv_shutdown_t* req) {
+void uv__process_tty_shutdown_req(uv_loop_t* loop, uv_tty_t* stream, uv_shutdown_t* req) {
   assert(stream->stream.conn.write_reqs_pending == 0);
   assert(req);
 
