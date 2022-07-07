@@ -1232,7 +1232,8 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  /* Initialize request */
+  /* Initialize request. The `shutdown(2)` call will always be deferred until
+   * `uv__drain`, just before the callback is run. */
   uv__req_init(stream->loop, req, UV_SHUTDOWN);
   req->handle = stream;
   req->cb = cb;
@@ -1240,8 +1241,8 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   stream->flags |= UV_HANDLE_SHUTTING;
   stream->flags &= ~UV_HANDLE_WRITABLE;
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
-  uv__stream_osx_interrupt_select(stream);
+  if (QUEUE_EMPTY(&stream->write_queue))
+    uv__io_feed(stream->loop, &stream->io_watcher);
 
   return 0;
 }
