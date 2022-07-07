@@ -659,17 +659,17 @@ static void uv__drain(uv_stream_t* stream) {
   uv_shutdown_t* req;
   int err;
 
-  if (!(stream->flags & UV_HANDLE_SHUTTING))
-    return;
-
   assert(QUEUE_EMPTY(&stream->write_queue));
-  req = stream->shutdown_req;
-  assert(req);
-
   if (!(stream->flags & UV_HANDLE_CLOSING)) {
     uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
   }
+
+  if (!(stream->flags & UV_HANDLE_SHUTTING))
+    return;
+
+  req = stream->shutdown_req;
+  assert(req);
 
   if ((stream->flags & UV_HANDLE_CLOSING) ||
       !(stream->flags & UV_HANDLE_SHUT)) {
