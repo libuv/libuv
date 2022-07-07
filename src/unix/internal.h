@@ -79,14 +79,6 @@
 # define UV__PATH_MAX 8192
 #endif
 
-#if defined(__ANDROID__)
-int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
-# ifdef pthread_sigmask
-# undef pthread_sigmask
-# endif
-# define pthread_sigmask(how, set, oldset) uv__pthread_sigmask(how, set, oldset)
-#endif
-
 #define ACCESS_ONCE(type, var)                                                \
   (*(volatile type*) &(var))
 
