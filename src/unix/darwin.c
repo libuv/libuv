@@ -198,13 +198,13 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return UV__ERR(errno);
   }
 
-  /* hw.cpufrequency seems to be missing on darwin/arm64 (Apple Silicon)
-   * but it should be okay to report 0, that's why we ignore errors.
-   * See https://github.com/libuv/libuv/issues/2911.
-   */
   cpuspeed = 0;
   size = sizeof(cpuspeed);
   sysctlbyname("hw.cpufrequency", &cpuspeed, &size, NULL, 0);
+  if (cpusize == 0)
+    /* If sysctl hw.cputype == CPU_TYPE_ARM64, the correct value is unavailable
+     * from Apple, but we can hard-code it here to a plausible value. */
+    cpuspeed = 2400000000;
 
   if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numcpus,
                           (processor_info_array_t*)&info,
