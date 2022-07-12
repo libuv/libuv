@@ -396,12 +396,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
     }
 
 #if defined(__linux__)
-    n = sched_setaffinity(0, sizeof(cpuset), &cpuset);
+    if (sched_setaffinity(0, sizeof(cpuset), &cpuset))
+      uv__write_errno(error_fd);
+#else
+    n = pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
     if (n)
       uv__write_int(error_fd, UV__ERR(n));
-#else
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset))
-      uv__write_errno(error_fd);
 #endif
   }
 #endif

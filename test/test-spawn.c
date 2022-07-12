@@ -1530,7 +1530,7 @@ TEST_IMPL(spawn_affinity) {
   cpu = cpumask_size;
 #ifdef _WIN32
   r = GetProcessAffinityMask(GetCurrentProcess(), &procmask, &sysmask);
-  ASSERT(r != 0);
+  ASSERT_NE(r, 0);
   for (i = 0; i < cpumask_size; ++i) {
     if (procmask & (((DWORD_PTR)1) << i)) {
       cpu = i;
@@ -1541,10 +1541,14 @@ TEST_IMPL(spawn_affinity) {
   CPU_ZERO(&cpuset);
 #ifdef __linux__
   r = sched_getaffinity(0, sizeof(cpuset), &cpuset);
+  if (r)
+    r = errno;
+  else
+    r = 0;
 #else
   r = pthread_getaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
 #endif
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   for (i = 0; i < cpumask_size; ++i) {
     if (CPU_ISSET(i, &cpuset)) {
       cpu = i;
@@ -1552,7 +1556,7 @@ TEST_IMPL(spawn_affinity) {
     }
   }
 #endif
-  ASSERT(cpu < cpumask_size);
+  ASSERT_LT(cpu, cpumask_size);
   snprintf(cpustr, sizeof(cpustr), "%d", cpu);
 
   init_process_options("spawn_helper_affinity", exit_cb);
