@@ -525,9 +525,9 @@ static INLINE uv_os_fd_t uv_convert_fd_to_handle(int fd) {
 
 
 #ifdef _WIN32
-#define UV_STDIN_FD    ((HANDLE)-10)
-#define UV_STDOUT_FD   ((HANDLE)-11)
-#define UV_STDERR_FD   ((HANDLE)-12)
+#define UV_STDIN_FD    ((HANDLE)(DWORD)-10)
+#define UV_STDOUT_FD   ((HANDLE)(DWORD)-11)
+#define UV_STDERR_FD   ((HANDLE)(DWORD)-12)
 #else
 #define UV_STDIN_FD    (0)
 #define UV_STDOUT_FD   (1)
