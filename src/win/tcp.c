@@ -205,73 +205,76 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* handle) {
 }
 
 
-void uv__tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
+void uv__process_tcp_shutdown_req(uv_loop_t* loop, uv_tcp_t* stream, uv_shutdown_t *req) {
   int err;
+
+  assert(req);
+  assert(stream->stream.conn.write_reqs_pending == 0);
+  assert(!(stream->flags & UV_HANDLE_SHUT));
+  assert(stream->flags & UV_HANDLE_CONNECTION);
+
+  stream->stream.conn.shutdown_req = NULL;
+  stream->flags &= ~UV_HANDLE_SHUTTING;
+  UNREGISTER_HANDLE_REQ(loop, stream, req);
+
+  err = 0;
+  if (stream->flags & UV_HANDLE_CLOSING)
+   /* The user destroyed the stream before we got to do the shutdown. */
+    err = UV_ECANCELED;
+  else if (shutdown(stream->socket, SD_SEND) == SOCKET_ERROR)
+    err = uv_translate_sys_error(WSAGetLastError());
+  else /* Success. */
+    stream->flags |= UV_HANDLE_SHUT;
+
+  if (req->cb)
+    req->cb(req, err);
+
+  DECREASE_PENDING_REQ_COUNT(stream);
+}
+
+
+void uv__tcp_endgame(uv_loop_t* loop, uv_tcp_t* handle) {
   unsigned int i;
   uv_tcp_accept_t* req;
 
-  if (handle->flags & UV_HANDLE_CONNECTION &&
-      handle->stream.conn.shutdown_req != NULL &&
-      handle->stream.conn.write_reqs_pending == 0) {
+  assert(handle->flags & UV_HANDLE_CLOSING);
+  assert(handle->reqs_pending == 0);
+  assert(!(handle->flags & UV_HANDLE_CLOSED));
+  assert(handle->socket == INVALID_SOCKET);
 
-    UNREGISTER_HANDLE_REQ(loop, handle, handle->stream.conn.shutdown_req);
-
-    err = 0;
-    if (handle->flags & UV_HANDLE_CLOSING) {
-      err = ERROR_OPERATION_ABORTED;
-    } else if (shutdown(handle->socket, SD_SEND) == SOCKET_ERROR) {
-      err = WSAGetLastError();
-    }
-
-    if (handle->stream.conn.shutdown_req->cb) {
-      handle->stream.conn.shutdown_req->cb(handle->stream.conn.shutdown_req,
-                               uv_translate_sys_error(err));
-    }
-
-    handle->stream.conn.shutdown_req = NULL;
-    DECREASE_PENDING_REQ_COUNT(handle);
-    return;
-  }
-
-  if (handle->flags & UV_HANDLE_CLOSING &&
-      handle->reqs_pending == 0) {
-    assert(!(handle->flags & UV_HANDLE_CLOSED));
-    assert(handle->socket == INVALID_SOCKET);
-
-    if (!(handle->flags & UV_HANDLE_CONNECTION) && handle->tcp.serv.accept_reqs) {
-      if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
-        for (i = 0; i < uv_simultaneous_server_accepts; i++) {
-          req = &handle->tcp.serv.accept_reqs[i];
-          if (req->wait_handle != INVALID_HANDLE_VALUE) {
-            UnregisterWait(req->wait_handle);
-            req->wait_handle = INVALID_HANDLE_VALUE;
-          }
-          if (req->event_handle != NULL) {
-            CloseHandle(req->event_handle);
-            req->event_handle = NULL;
-          }
+  if (!(handle->flags & UV_HANDLE_CONNECTION) && handle->tcp.serv.accept_reqs) {
+    if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
+      for (i = 0; i < uv_simultaneous_server_accepts; i++) {
+        req = &handle->tcp.serv.accept_reqs[i];
+        if (req->wait_handle != INVALID_HANDLE_VALUE) {
+          UnregisterWait(req->wait_handle);
+          req->wait_handle = INVALID_HANDLE_VALUE;
+        }
+        if (req->event_handle != NULL) {
+          CloseHandle(req->event_handle);
+          req->event_handle = NULL;
         }
       }
-
-      uv__free(handle->tcp.serv.accept_reqs);
-      handle->tcp.serv.accept_reqs = NULL;
     }
 
-    if (handle->flags & UV_HANDLE_CONNECTION &&
-        handle->flags & UV_HANDLE_EMULATE_IOCP) {
-      if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
-        UnregisterWait(handle->read_req.wait_handle);
-        handle->read_req.wait_handle = INVALID_HANDLE_VALUE;
-      }
-      if (handle->read_req.event_handle != NULL) {
-        CloseHandle(handle->read_req.event_handle);
-        handle->read_req.event_handle = NULL;
-      }
-    }
-
-    uv__handle_close(handle);
-    loop->active_tcp_streams--;
+    uv__free(handle->tcp.serv.accept_reqs);
+    handle->tcp.serv.accept_reqs = NULL;
   }
+
+  if (handle->flags & UV_HANDLE_CONNECTION &&
+      handle->flags & UV_HANDLE_EMULATE_IOCP) {
+    if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
+      UnregisterWait(handle->read_req.wait_handle);
+      handle->read_req.wait_handle = INVALID_HANDLE_VALUE;
+    }
+    if (handle->read_req.event_handle != NULL) {
+      CloseHandle(handle->read_req.event_handle);
+      handle->read_req.event_handle = NULL;
+    }
+  }
+
+  uv__handle_close(handle);
+  loop->active_tcp_streams--;
 }
 
 
@@ -1160,9 +1163,10 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
       closesocket(handle->socket);
       handle->socket = INVALID_SOCKET;
     }
-    if (handle->stream.conn.shutdown_req != NULL) {
-      uv__want_endgame(loop, (uv_handle_t*)handle);
-    }
+    if (handle->flags & UV_HANDLE_SHUTTING)
+      uv__process_tcp_shutdown_req(loop,
+                                   handle,
+                                   handle->stream.conn.shutdown_req);
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
@@ -1483,6 +1487,9 @@ void uv__tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
     DECREASE_ACTIVE_COUNT(loop, tcp);
   }
 
+  tcp->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
+  uv__handle_closing(tcp);
+
   /* If any overlapped req failed to cancel, calling `closesocket` now would
    * cause Win32 to send an RST packet. Try to avoid that for writes, if
    * possibly applicable, by waiting to process the completion notifications
@@ -1494,12 +1501,8 @@ void uv__tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
     tcp->socket = INVALID_SOCKET;
   }
 
-  tcp->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
-  uv__handle_closing(tcp);
-
-  if (tcp->reqs_pending == 0) {
-    uv__want_endgame(tcp->loop, (uv_handle_t*)tcp);
-  }
+  if (tcp->reqs_pending == 0)
+    uv__want_endgame(loop, (uv_handle_t*) tcp);
 }
 
 
