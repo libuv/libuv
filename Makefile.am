@@ -393,7 +393,6 @@ endif
 
 if ANDROID
 libuv_la_CFLAGS += -D_GNU_SOURCE
-libuv_la_SOURCES += src/unix/pthread-fixes.c
 endif
 
 if CYGWIN
@@ -546,8 +545,7 @@ libuv_la_CFLAGS += -D_UNIX03_THREADS \
                    -qXPLINK \
                    -qFLOAT=IEEE
 libuv_la_LDFLAGS += -qXPLINK
-libuv_la_SOURCES += src/unix/pthread-fixes.c \
-                    src/unix/os390.c \
+libuv_la_SOURCES += src/unix/os390.c \
                     src/unix/os390-syscalls.c \
                     src/unix/proctitle.c
 endif
