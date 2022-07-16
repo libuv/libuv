@@ -165,6 +165,7 @@ extern "C" {
   XX(TTY, tty)                                                                \
   XX(UDP, udp)                                                                \
   XX(SIGNAL, signal)                                                          \
+  XX(STRAND, strand)                                                          \
 
 #define UV_REQ_TYPE_MAP(XX)                                                   \
   XX(REQ, req)                                                                \
@@ -223,6 +224,7 @@ typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
+typedef struct uv_strand_s uv_strand_t;
 
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
@@ -1609,6 +1611,18 @@ UV_EXTERN int uv_signal_stop(uv_signal_t* handle);
 
 UV_EXTERN void uv_loadavg(double avg[3]);
 
+struct uv_strand_s {
+  UV_HANDLE_FIELDS
+  void* orig_data;
+  uv_work_cb orig_work_cb;
+  uv_after_work_cb orig_after_work_cb;
+  void* wq[2];
+};
+
+UV_EXTERN int uv_strand_init(uv_loop_t* loop, uv_strand_t* handle);
+UV_EXTERN int uv_strand_work(uv_strand_t* strand, uv_work_t* req,
+                             uv_work_cb work_cb,
+                             uv_after_work_cb after_work_cb);
 
 /*
  * Flags to be passed to uv_fs_event_start().

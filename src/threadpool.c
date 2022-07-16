@@ -391,3 +391,89 @@ int uv_cancel(uv_req_t* req) {
 
   return uv__work_cancel(loop, req, wreq);
 }
+
+static void uv__strand_work(uv_work_t* req);
+static void uv__strand_done(uv_work_t* req, int err);
+
+int uv_strand_init(uv_loop_t* loop, uv_strand_t* handle) {
+  uv__handle_init(loop, (uv_handle_t*)handle, UV_STRAND);
+  handle->orig_work_cb = NULL;
+  QUEUE_INIT(&handle->wq);
+  return 0;
+}
+
+static void uv__strand_queue_work(uv_strand_t* strand, uv_work_t* req) {
+  uv_once(&once, init_once);
+  strand->orig_data = req->data;
+  strand->orig_work_cb = req->work_cb;
+  strand->orig_after_work_cb = req->after_work_cb;
+  req->data = strand;
+  req->work_cb = uv__strand_work;
+  req->after_work_cb = uv__strand_done;
+  post(&req->work_req.wq, UV__WORK_CPU);
+}
+
+int uv_strand_work(uv_strand_t* strand, uv_work_t* req,
+                   uv_work_cb work_cb,
+                   uv_after_work_cb after_work_cb) {
+  struct uv__work* w = &req->work_req;
+
+  if (work_cb == NULL)
+    return UV_EINVAL;
+
+  uv__req_init(strand->loop, req, UV_WORK);
+  req->loop = strand->loop;
+  req->work_cb = work_cb;
+  req->after_work_cb = after_work_cb;
+  req->work_req.loop = strand->loop;
+  req->work_req.work = uv__queue_work;
+  req->work_req.done = uv__queue_done;
+
+  if (strand->orig_work_cb) {
+    QUEUE_INSERT_TAIL(&strand->wq, &w->wq);
+    return 0;
+  }
+
+  uv__strand_queue_work(strand, req);
+
+  return 0;
+}
+
+static void uv__strand_work(uv_work_t* req) {
+  uv_strand_t* strand = req->data;
+
+  req->data = strand->orig_data;
+  req->work_cb = strand->orig_work_cb;
+  req->after_work_cb = strand->orig_after_work_cb;
+
+  req->work_cb(req);
+
+  req->after_work_cb = uv__strand_done;
+  req->work_cb = uv__strand_work;
+  req->data = strand;
+}
+
+static void uv__strand_done(uv_work_t* req, int err) {
+  uv_strand_t* strand = req->data;
+  QUEUE* q;
+  struct uv__work* w;
+
+  req->data = strand->orig_data;
+  req->work_cb = strand->orig_work_cb;
+  req->after_work_cb = strand->orig_after_work_cb;
+
+  if (req->after_work_cb)
+    req->after_work_cb(req, err);
+
+  if (QUEUE_EMPTY(&strand->wq)) {
+    strand->orig_work_cb = NULL;
+    return;
+  }
+
+  q = QUEUE_HEAD(&strand->wq);
+  QUEUE_REMOVE(q);
+  w = container_of(q, struct uv__work, wq);
+  req = container_of(w, uv_work_t, work_req);
+
+  uv__strand_queue_work(strand, req);
+}
