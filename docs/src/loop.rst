@@ -28,10 +28,30 @@ Data types
             UV_RUN_NOWAIT
         } uv_run_mode;
 
+.. c:enum:: uv_loop_phase
+
+    All phases of event loop.
+
+    ::
+        enum uv_loop_phase {
+            TIMER_PHASE,
+            PENDING_PHASE,
+            IDLE_PHASE,
+            PREPARE_PHASE,
+            POLL_IO_PHASE,
+            CHECK_PHASE,
+            CLOSING_PHASE,
+        };
+
 .. c:type:: void (*uv_walk_cb)(uv_handle_t* handle, void* arg)
 
     Type definition for callback passed to :c:func:`uv_walk`.
 
+.. c:type:: void (*uv_loop_elapsed_time_callback)(uv_loop_t* loop,
+                                                  uint64_t time,
+                                                  enum uv_loop_phase pahse)
+
+    Type definition for callback passed to :c:func:`uv_set_loop_elapsed_time_callback`.
 
 Public members
 ^^^^^^^^^^^^^^
@@ -246,3 +266,10 @@ API
     Sets `loop->data` to `data`.
 
     .. versionadded:: 1.19.0
+
+.. c:function:: void uv_set_loop_elapsed_time_callback(uv_loop_t* loop,
+                                                       uv_loop_elapsed_time_callback callback)
+
+    Set the callback to collect elapsed time of every phase of event loop.
+
+    .. versionadded:: 1.44.3

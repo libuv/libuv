@@ -336,6 +336,22 @@ void uv__threadpool_cleanup(void);
 #define uv__get_loop_metrics(loop)                                            \
   (&uv__get_internal_fields(loop)->loop_metrics)
 
+#define uv__get_loop_elapsed_time(loop)                                       \
+  (&uv__get_internal_fields(loop)->elapsed_time)
+
+#define uv__loop_elapsed_time_wrapper(loop, phase, statement)                 \
+  {                                                                           \
+    uv__loop_elapsed_time_t* elapsed_time = uv__get_loop_elapsed_time(loop);  \
+    uv_loop_elapsed_time_callback callback = elapsed_time->callback;          \
+    if (callback) {                                                           \
+      uint64_t start_time = uv_hrtime();                                      \
+      statement;                                                              \
+      callback(loop, uv_hrtime() - start_time, phase);                        \
+    } else {                                                                  \
+      statement;                                                              \
+    }                                                                         \
+  }
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);
@@ -368,9 +384,16 @@ struct uv__loop_metrics_s {
 void uv__metrics_update_idle_time(uv_loop_t* loop);
 void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
 
+typedef struct uv__loop_elapsed_time_s uv__loop_elapsed_time_t;
+
+struct uv__loop_elapsed_time_s {
+  uv_loop_elapsed_time_callback callback;
+};
+
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
+  uv__loop_elapsed_time_t elapsed_time;
 };
 
 #endif /* UV_COMMON_H_ */

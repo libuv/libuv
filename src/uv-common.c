@@ -971,3 +971,9 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
     idle_time += uv_hrtime() - entry_time;
   return idle_time;
 }
+
+void uv_set_loop_elapsed_time_callback(uv_loop_t* loop,
+                                       uv_loop_elapsed_time_callback callback) {
+  uv__loop_elapsed_time_t* loop_elapsed_time = uv__get_loop_elapsed_time(loop);
+  loop_elapsed_time->callback = callback;
+}

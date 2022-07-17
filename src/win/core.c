@@ -475,11 +475,10 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
-    uv__run_timers(loop);
-
-    ran_pending = uv__process_reqs(loop);
-    uv__run_idle(loop);
-    uv__run_prepare(loop);
+    uv__loop_elapsed_time_wrapper(loop, TIMER_PHASE, uv__run_timers(loop))
+    uv__loop_elapsed_time_wrapper(loop, PENDING_PHASE, ran_pending = uv__process_reqs(loop))
+    uv__loop_elapsed_time_wrapper(loop, IDLE_PHASE, uv__run_idle(loop))
+    uv__loop_elapsed_time_wrapper(loop, PREPARE_PHASE, uv__run_prepare(loop))
 
     timeout = 0;
     if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
@@ -488,9 +487,9 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     if (timeout == -1)
         timeout = INFINITE;
     if (pGetQueuedCompletionStatusEx)
-      uv__poll(loop, timeout);
+      uv__loop_elapsed_time_wrapper(loop, POLL_IO_PHASE, uv__poll(loop, timeout))
     else
-      uv__poll_wine(loop, timeout);
+      uv__loop_elapsed_time_wrapper(loop, POLL_IO_PHASE, uv__poll_wine(loop, timeout))
 
     /* Run one final update on the provider_idle_time in case uv__poll*
      * returned because the timeout expired, but no events were received. This
@@ -499,8 +498,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
      */
     uv__metrics_update_idle_time(loop);
 
-    uv__run_check(loop);
-    uv__process_endgames(loop);
+    uv__loop_elapsed_time_wrapper(loop, CHECK_PHASE, uv__run_check(loop))
+    uv__loop_elapsed_time_wrapper(loop, CLOSING_PHASE, uv__process_endgames(loop))
 
     if (mode == UV_RUN_ONCE) {
       /* UV_RUN_ONCE implies forward progress: at least one callback must have
@@ -512,7 +511,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
        * the check.
        */
       uv_update_time(loop);
-      uv__run_timers(loop);
+      uv__loop_elapsed_time_wrapper(loop, TIMER_PHASE, uv__run_timers(loop))
     }
 
     r = uv__loop_alive(loop);

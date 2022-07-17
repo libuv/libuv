@@ -341,6 +341,20 @@ typedef void (*uv_random_cb)(uv_random_t* req,
                              void* buf,
                              size_t buflen);
 
+enum uv_loop_phase {
+  TIMER_PHASE,
+  PENDING_PHASE,
+  IDLE_PHASE,
+  PREPARE_PHASE,
+  POLL_IO_PHASE,
+  CHECK_PHASE,
+  CLOSING_PHASE,
+};
+
+typedef void (*uv_loop_elapsed_time_callback)(uv_loop_t* loop,
+                                               uint64_t time,
+                                               enum uv_loop_phase pahse);
+
 typedef struct {
   long tv_sec;
   long tv_nsec;
@@ -1341,6 +1355,9 @@ UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
 UV_EXTERN int uv_os_uname(uv_utsname_t* buffer);
 
 UV_EXTERN uint64_t uv_metrics_idle_time(uv_loop_t* loop);
+
+UV_EXTERN void uv_set_loop_elapsed_time_callback(uv_loop_t* loop,
+                                                 uv_loop_elapsed_time_callback callback);
 
 typedef enum {
   UV_FS_UNKNOWN = -1,
