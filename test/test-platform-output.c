@@ -152,22 +152,35 @@ TEST_IMPL(platform_output) {
   ASSERT_EQ(err, 0);
 
   err = uv_os_get_group(&grp, pwd.gid);
+#if defined(_WIN32)
+  ASSERT_EQ(err, UV_ENOTSUP);
+  ASSERT_EQ(pwd.uid, (unsigned long) -1);
+  ASSERT_EQ(pwd.gid, (unsigned long) -1);
+  (void) member;
+  grp.groupname = "ENOTSUP";
+#else
   ASSERT_EQ(err, 0);
   ASSERT_EQ(pwd.gid, grp.gid);
+#endif
 
   printf("uv_os_get_passwd:\n");
   printf("  euid: %ld\n", pwd.uid);
   printf("  gid: %ld (%s)\n", pwd.gid, grp.groupname);
+#if !defined(_WIN32)
   printf("    members: [");
   for (member = grp.members; *member != NULL; member++) {
     printf(" %s", *member);
   }
   printf(" ]\n");
+#endif
   printf("  username: %s\n", pwd.username);
-  printf("  shell: %s\n", pwd.shell);
+  if (pwd.shell != NULL) /* Not set on Windows */
+    printf("  shell: %s\n", pwd.shell);
   printf("  home directory: %s\n", pwd.homedir);
   uv_os_free_passwd(&pwd);
+#if !defined(_WIN32)
   uv_os_free_group(&grp);
+#endif
 
   pid = uv_os_getpid();
   ASSERT(pid > 0);
