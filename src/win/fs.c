@@ -2856,14 +2856,18 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
       uv__free(req->ptr);
   }
 
-  if (req->fs.info.bufs != req->fs.info.bufsml &&
-      ARRAY_SIZE(req->fs.info.bufs) > 0)
-    uv__free(req->fs.info.bufs);
+  if (req->fs_type != UV_FS_UTIME &&
+      req->fs_type != UV_FS_FUTIME &&
+      req->fs_type != UV_FS_LUTIME) {
+    if (req->fs.info.bufs != req->fs.info.bufsml)
+      uv__free(req->fs.info.bufs);
+    req->fs.info.new_pathw = NULL;
+    req->fs.info.bufs = NULL;
+    req->fs.info.nbufs = 0;
+  }
 
   req->path = NULL;
   req->file.pathw = NULL;
-  req->fs.info.new_pathw = NULL;
-  req->fs.info.bufs = NULL;
   req->ptr = NULL;
 
   req->flags |= UV_FS_CLEANEDUP;
