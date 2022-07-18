@@ -5,6 +5,9 @@ cmake_policy(SET CMP0064 NEW) # Support if (TEST) operator
 if(POLICY CMP0091)
   cmake_policy(SET CMP0091 NEW) # Enable MSVC_RUNTIME_LIBRARY setting
 endif()
+if(POLICY CMP0092)
+  cmake_policy(SET CMP0092 NEW) # disable /W3 warning, if possible
+endif()
 
 project(libuv LANGUAGES C)
 
@@ -33,7 +36,7 @@ cmake_dependent_option(LIBUV_BUILD_BENCH
 # Qemu Build
 option(QEMU "build for qemu" OFF)
 if(QEMU)
-  add_definitions(-D__QEMU__=1)
+  list(APPEND uv_defines __QEMU__=1)
 endif()
 
 # Note: these are mutually exclusive.
@@ -41,33 +44,39 @@ option(ASAN "Enable AddressSanitizer (ASan)" OFF)
 option(MSAN "Enable MemorySanitizer (MSan)" OFF)
 option(TSAN "Enable ThreadSanitizer (TSan)" OFF)
 
-if((ASAN OR TSAN) AND NOT (CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang"))
-  message(SEND_ERROR "Sanitizer support requires clang or gcc. Try again with -DCMAKE_C_COMPILER.")
-endif()
-
 if(MSAN AND NOT CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang")
   message(SEND_ERROR "MemorySanitizer requires clang. Try again with -DCMAKE_C_COMPILER=clang")
 endif()
 
 if(ASAN)
-  add_definitions(-D__ASAN__=1)
-  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+  list(APPEND uv_defines __ASAN__=1)
+  if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+  elseif(MSVC)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
+  else()
+    message(SEND_ERROR "AddressSanitizer support requires clang, gcc, or msvc. Try again with -DCMAKE_C_COMPILER.")
+  endif()
 endif()
 
 if(MSAN)
-  add_definitions(-D__MSAN__=1)
+  list(APPEND uv_defines __MSAN__=1)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=memory")
   set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=memory")
   set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=memory")
 endif()
 
 if(TSAN)
-  add_definitions(-D__TSAN__=1)
-  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
-  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
-  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+  list(APPEND uv_defines __TSAN__=1)
+  if(CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang")
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=thread")
+  else()
+    message(SEND_ERROR "ThreadSanitizer support requires clang or gcc. Try again with -DCMAKE_C_COMPILER.")
+  endif()
 endif()
 
 # Compiler check
