@@ -20,7 +20,7 @@ curl_context_t *create_curl_context(curl_socket_t sockfd) {
 
     context->sockfd = sockfd;
 
-    int r = uv_poll_init_socket(loop, &context->poll_handle, sockfd);
+    int r = uv_poll_init(loop, &context->poll_handle, sockfd);
     assert(r == 0);
     context->poll_handle.data = context;
 

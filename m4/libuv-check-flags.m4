@@ -73,6 +73,8 @@ AC_DEFUN([CC_CHECK_CFLAG_APPEND], [
 
   AS_IF([eval test x$]AS_TR_SH([cc_cv_cflags_$1])[ = xyes],
     [AM_CFLAGS="$AM_CFLAGS $1"; DEBUG_CFLAGS="$DEBUG_CFLAGS $1"; $2], [$3])
+
+  AC_SUBST([AM_CFLAGS])
 ])
 
 dnl CC_CHECK_CFLAGS_APPEND([FLAG1 FLAG2], [action-if-found], [action-if-not])
@@ -100,6 +102,20 @@ AC_DEFUN([CC_CHECK_LDFLAGS], [
 
   AS_IF([eval test x$]AS_TR_SH([cc_cv_ldflags_$1])[ = xyes],
     [$2], [$3])
+])
+
+dnl Check if flag is supported by both compiler and linker
+dnl If so, append it to AM_CFLAGS
+dnl CC_CHECK_FLAG_SUPPORTED_APPEND([FLAG])
+
+AC_DEFUN([CC_CHECK_FLAG_SUPPORTED_APPEND], [
+  CC_CHECK_CFLAGS([$1],
+    [CC_CHECK_LDFLAGS([$1],
+        [AM_CFLAGS="$AM_CFLAGS $1";
+         DEBUG_CFLAGS="$DEBUG_CFLAGS $1";
+         AC_SUBST([AM_CFLAGS])
+    ])
+  ])
 ])
 
 dnl define the LDFLAGS_NOUNDEFINED variable with the correct value for

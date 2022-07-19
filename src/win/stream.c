@@ -29,7 +29,9 @@
 
 int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
-
+  if (uv__is_closing(stream)) {
+    return UV_EINVAL;
+  }
   err = ERROR_INVALID_PARAMETER;
   switch (stream->type) {
     case UV_TCP:
@@ -217,7 +219,12 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
 
-  uv__want_endgame(loop, (uv_handle_t*)handle);
+  if (handle->stream.conn.write_reqs_pending == 0) {
+    if (handle->type == UV_NAMED_PIPE)
+      uv__pipe_shutdown(loop, (uv_pipe_t*) handle, req);
+    else
+      uv__insert_pending_req(loop, (uv_req_t*) req);
+  }
 
   return 0;
 }

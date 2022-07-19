@@ -10,7 +10,6 @@
 | IBM i | Tier 2 | >= IBM i 7.2 | Maintainers: @libuv/ibmi |
 | z/OS | Tier 2 | >= V2R2 | Maintainers: @libuv/zos |
 | Linux with musl | Tier 2 | musl >= 1.0 | |
-| SmartOS | Tier 3 | >= 14.4 | |
 | Android | Tier 3 | NDK >= r15b | Android 7.0, `-DANDROID_PLATFORM=android-24` |
 | MinGW | Tier 3 | MinGW32 and MinGW-w64 | |
 | SunOS | Tier 3 | Solaris 121 and later | |

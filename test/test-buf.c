@@ -22,7 +22,6 @@ TEST_IMPL(buf_large) {
   uv_buf_t buf;
 
   buf = uv_buf_init(NULL, SIZE_MAX);
-  ASSERT(buf.len == SIZE_MAX);
 #ifdef _WIN32
   WSABUF* wbuf;
 
@@ -33,6 +32,7 @@ TEST_IMPL(buf_large) {
 
   iobuf = (struct iovec*) &buf;
   ASSERT(iobuf->iov_len == buf.len);
+  ASSERT(buf.len == SIZE_MAX);
 
   /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
   ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));

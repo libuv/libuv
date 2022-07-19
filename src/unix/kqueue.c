@@ -456,7 +456,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
   /* Invalidate events with same file descriptor */
   for (i = 0; i < nfds; i++)
-    if ((int) events[i].ident == fd)
+    if ((int) events[i].ident == fd && events[i].filter != EVFILT_PROC)
       events[i].ident = -1;
 }
 

@@ -44,8 +44,6 @@ static void uv__loops_init(void) {
 }
 
 static void uv__loops_add(uv_loop_t* loop) {
-  uv_loop_t** new_loops;
-
   uv_mutex_lock(&uv__loops_lock);
   QUEUE_INSERT_TAIL(&uv__loops, &loop->loops_queue);
   uv_mutex_unlock(&uv__loops_lock);
@@ -467,7 +465,7 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
 int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   int timeout;
   int r;
-  int ran_pending;
+  int can_sleep;
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -477,12 +475,14 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_update_time(loop);
     uv__run_timers(loop);
 
-    ran_pending = uv__process_reqs(loop);
+    can_sleep = loop->pending_reqs_tail == NULL && QUEUE_EMPTY(&loop->idle_handles);
+
+    uv__process_reqs(loop);
     uv__run_idle(loop);
     uv__run_prepare(loop);
 
     timeout = 0;
-    if ((mode == UV_RUN_ONCE && !ran_pending) || mode == UV_RUN_DEFAULT)
+    if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
     if (timeout == -1)
@@ -491,6 +491,11 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
       uv__poll(loop, timeout);
     else
       uv__poll_wine(loop, timeout);
+
+    /* Process immediate callbacks (e.g. write_cb) a small fixed number of
+     * times to avoid loop starvation.*/
+    for (r = 0; r < 8 && loop->pending_reqs_tail != NULL; r++)
+      uv__process_reqs(loop);
 
     /* Run one final update on the provider_idle_time in case uv__poll*
      * returned because the timeout expired, but no events were received. This
