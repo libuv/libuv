@@ -333,7 +333,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (ev->filter == EVFILT_READ) {
         if (w->pevents & POLLIN) {
           revents |= POLLIN;
-          w->rcount = ev->data;
         } else {
           /* TODO batch up */
           struct kevent events[1];
@@ -349,7 +348,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (ev->filter == EV_OOBAND) {
         if (w->pevents & UV__POLLPRI) {
           revents |= UV__POLLPRI;
-          w->rcount = ev->data;
         } else {
           /* TODO batch up */
           struct kevent events[1];
@@ -363,7 +361,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (ev->filter == EVFILT_WRITE) {
         if (w->pevents & POLLOUT) {
           revents |= POLLOUT;
-          w->wcount = ev->data;
         } else {
           /* TODO batch up */
           struct kevent events[1];
