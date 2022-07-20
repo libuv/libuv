@@ -495,74 +495,32 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
 }
 
 
-#if defined(UV_HAVE_KQUEUE)
-# define UV_DEC_BACKLOG(w) w->rcount--;
-#else
-# define UV_DEC_BACKLOG(w) /* no-op */
-#endif /* defined(UV_HAVE_KQUEUE) */
-
-
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   uv_stream_t* stream;
   int err;
+  int fd;
 
   stream = container_of(w, uv_stream_t, io_watcher);
   assert(events & POLLIN);
   assert(stream->accepted_fd == -1);
   assert(!(stream->flags & UV_HANDLE_CLOSING));
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
+  fd = uv__stream_fd(stream);
+  err = uv__accept(fd);
 
-  /* connection_cb can close the server socket while we're
-   * in the loop so check it on each iteration.
-   */
-  while (uv__stream_fd(stream) != -1) {
-    assert(stream->accepted_fd == -1);
+  if (err == UV_EMFILE || err == UV_ENFILE)
+    err = uv__emfile_trick(loop, fd);  /* Shed load. */
 
-#if defined(UV_HAVE_KQUEUE)
-    if (w->rcount <= 0)
-      return;
-#endif /* defined(UV_HAVE_KQUEUE) */
+  if (err < 0)
+    return;
 
-    err = uv__accept(uv__stream_fd(stream));
-    if (err < 0) {
-      if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
-        return;  /* Not an error. */
+  stream->accepted_fd = err;
+  stream->connection_cb(stream, 0);
 
-      if (err == UV_ECONNABORTED)
-        continue;  /* Ignore. Nothing we can do about that. */
-
-      if (err == UV_EMFILE || err == UV_ENFILE) {
-        err = uv__emfile_trick(loop, uv__stream_fd(stream));
-        if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
-          break;
-      }
-
-      stream->connection_cb(stream, err);
-      continue;
-    }
-
-    UV_DEC_BACKLOG(w)
-    stream->accepted_fd = err;
-    stream->connection_cb(stream, 0);
-
-    if (stream->accepted_fd != -1) {
-      /* The user hasn't yet accepted called uv_accept() */
-      uv__io_stop(loop, &stream->io_watcher, POLLIN);
-      return;
-    }
-
-    if (stream->type == UV_TCP &&
-        (stream->flags & UV_HANDLE_TCP_SINGLE_ACCEPT)) {
-      /* Give other processes a chance to accept connections. */
-      struct timespec timeout = { 0, 1 };
-      nanosleep(&timeout, NULL);
-    }
-  }
+  if (stream->accepted_fd != -1)
+    /* The user hasn't yet accepted called uv_accept() */
+    uv__io_stop(loop, &stream->io_watcher, POLLIN);
 }
-
-
-#undef UV_DEC_BACKLOG
 
 
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
