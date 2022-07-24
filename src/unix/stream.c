@@ -623,7 +623,7 @@ static void uv__drain(uv_stream_t* stream) {
     uv__stream_osx_interrupt_select(stream);
   }
 
-  if (!(stream->flags & UV_HANDLE_SHUTTING))
+  if (!uv__is_stream_shutting(stream))
     return;
 
   req = stream->shutdown_req;
@@ -632,7 +632,6 @@ static void uv__drain(uv_stream_t* stream) {
   if ((stream->flags & UV_HANDLE_CLOSING) ||
       !(stream->flags & UV_HANDLE_SHUT)) {
     stream->shutdown_req = NULL;
-    stream->flags &= ~UV_HANDLE_SHUTTING;
     uv__req_unregister(stream->loop, req);
 
     err = 0;
@@ -1183,7 +1182,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
 
   if (!(stream->flags & UV_HANDLE_WRITABLE) ||
       stream->flags & UV_HANDLE_SHUT ||
-      stream->flags & UV_HANDLE_SHUTTING ||
+      uv__is_stream_shutting(stream) ||
       uv__is_closing(stream)) {
     return UV_ENOTCONN;
   }
@@ -1196,7 +1195,6 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
   req->handle = stream;
   req->cb = cb;
   stream->shutdown_req = req;
-  stream->flags |= UV_HANDLE_SHUTTING;
   stream->flags &= ~UV_HANDLE_WRITABLE;
 
   if (QUEUE_EMPTY(&stream->write_queue))
