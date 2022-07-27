@@ -148,6 +148,51 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 }
 
 
+static int uv__cwd(WCHAR** buf, DWORD *len) {
+  WCHAR* p;
+  DWORD n;
+  DWORD t;
+
+  t = GetCurrentDirectoryW(0, NULL);
+  for (;;) {
+    if (t == 0)
+      return uv_translate_sys_error(GetLastError());
+
+    /* |t| is the size of the buffer _including_ nul. */
+    p = uv__malloc(t * sizeof(*p));
+    if (p == NULL)
+      return UV_ENOMEM;
+
+    /* |n| is the size of the buffer _excluding_ nul but _only on success_.
+     * If |t| was too small because another thread changed the working
+     * directory, |n| is the size the buffer should be _including_ nul.
+     * It therefore follows we must resize when n >= t and fail when n == 0.
+     */
+    n = GetCurrentDirectoryW(t, p);
+    if (n > 0)
+      if (n < t)
+        break;
+
+    uv__free(p);
+    t = n;
+  }
+
+  /* The returned directory should not have a trailing slash, unless it points
+   * at a drive root, like c:\. Remove it if needed.
+   */
+  t = n - 1;
+  if (p[t] == L'\\' && !(n == 3 && p[1] == L':')) {
+    p[t] = L'\0';
+    n = t;
+  }
+
+  *buf = p;
+  *len = n;
+
+  return 0;
+}
+
+
 int uv_cwd(char* buffer, size_t* size) {
   DWORD utf16_len;
   WCHAR *utf16_buffer;
@@ -157,27 +202,9 @@ int uv_cwd(char* buffer, size_t* size) {
     return UV_EINVAL;
   }
 
-  utf16_len = GetCurrentDirectoryW(0, NULL);
-  if (utf16_len == 0) {
-    return uv_translate_sys_error(GetLastError());
-  }
-  utf16_buffer = uv__malloc(utf16_len * sizeof(WCHAR));
-  if (utf16_buffer == NULL) {
-    return UV_ENOMEM;
-  }
-
-  utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
-  if (utf16_len == 0) {
-    uv__free(utf16_buffer);
-    return uv_translate_sys_error(GetLastError());
-  }
-
-  /* The returned directory should not have a trailing slash, unless it points
-   * at a drive root, like c:\. Remove it if needed. */
-  if (utf16_buffer[utf16_len - 1] == L'\\' &&
-      !(utf16_len == 3 && utf16_buffer[1] == L':')) {
-    utf16_len--;
-    utf16_buffer[utf16_len] = L'\0';
+  r = uv__cwd(&utf16_buffer, &utf16_len);
+  if (r < 0) {
+    return r;
   }
 
   /* Check how much space we need */
@@ -220,8 +247,9 @@ int uv_cwd(char* buffer, size_t* size) {
 
 int uv_chdir(const char* dir) {
   WCHAR *utf16_buffer;
-  size_t utf16_len, new_utf16_len;
+  size_t utf16_len;
   WCHAR drive_letter, env_var[4];
+  int r;
 
   if (dir == NULL) {
     return UV_EINVAL;
@@ -259,29 +287,15 @@ int uv_chdir(const char* dir) {
   /* Windows stores the drive-local path in an "hidden" environment variable,
    * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
    * this, so we'll have to do it. */
-  new_utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
-  if (new_utf16_len > utf16_len ) {
-    uv__free(utf16_buffer);
-    utf16_buffer = uv__malloc(new_utf16_len * sizeof(WCHAR));
-    if (utf16_buffer == NULL) {
-      /* When updating the environment variable fails, return UV_OK anyway.
-       * We did successfully change current working directory, only updating
-       * hidden env variable failed. */
-      return 0;
-    }
-    new_utf16_len = GetCurrentDirectoryW(new_utf16_len, utf16_buffer);
-  }
-  if (utf16_len == 0) {
-    uv__free(utf16_buffer);
+  r = uv__cwd(&utf16_buffer, &utf16_len);
+  if (r == UV_ENOMEM) {
+    /* When updating the environment variable fails, return UV_OK anyway.
+     * We did successfully change current working directory, only updating
+     * hidden env variable failed. */
     return 0;
   }
-
-  /* The returned directory should not have a trailing slash, unless it points
-   * at a drive root, like c:\. Remove it if needed. */
-  if (utf16_buffer[utf16_len - 1] == L'\\' &&
-      !(utf16_len == 3 && utf16_buffer[1] == L':')) {
-    utf16_len--;
-    utf16_buffer[utf16_len] = L'\0';
+  if (r < 0) {
+    return r;
   }
 
   if (utf16_len < 2 || utf16_buffer[1] != L':') {
