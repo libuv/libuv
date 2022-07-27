@@ -121,9 +121,6 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     goto error;
   }
 
-  /* utf16_len contains the length, *not* including the terminating null. */
-  utf16_buffer[utf16_len] = L'\0';
-
   /* Convert to UTF-8 */
   utf8_len = WideCharToMultiByte(CP_UTF8,
                                  0,
@@ -174,9 +171,6 @@ int uv_cwd(char* buffer, size_t* size) {
     uv__free(utf16_buffer);
     return uv_translate_sys_error(GetLastError());
   }
-
-  /* utf16_len contains the length, *not* including the terminating null. */
-  utf16_buffer[utf16_len] = L'\0';
 
   /* The returned directory should not have a trailing slash, unless it points
    * at a drive root, like c:\. Remove it if needed. */
