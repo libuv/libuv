@@ -33,7 +33,7 @@ jobs:
           ls -lh build
 
   build-macos:
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Envinfo
@@ -61,7 +61,7 @@ jobs:
           cd build && ctest -V
 
   build-ios:
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Configure
