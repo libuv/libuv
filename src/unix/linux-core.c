@@ -898,7 +898,7 @@ static int uv__read_cgroups_proc_files(uv__cgroups_subsystem_info_t* info,
    * Length of the string contained in `buf` immediately after it's written by
    * getline().
    */
-  size_t buf_strlen;
+  int buf_strlen;
   /* Current allocated size of `buf`. */
   size_t buf_size;
 
