@@ -1143,6 +1143,8 @@ uint64_t uv_get_constrained_memory(void) {
   /* For v2 only. */
   uint64_t max;
   uint64_t high;
+  /* For fallback only. */
+  char buf[32];  /* Large enough to hold an encoded uint64_t. */
 
   rc = 0;
 
@@ -1167,6 +1169,15 @@ uint64_t uv_get_constrained_memory(void) {
     }
 
     uv__free(info.path);
+  }
+
+  if (rc == 0) {
+    /*
+     * It's possible we couldn't properly query cgroups because procfs wasn't mounted.
+     * In a last-ditch effort, just try reading /sys/fs/cgroup/memory/memory.limit_in_bytes
+     */
+    if (0 == uv__slurp("/sys/fs/cgroup/memory/memory.limit_in_bytes", buf, sizeof(buf)))
+      sscanf(buf, "%" PRIu64, &rc);
   }
 
   return rc;
