@@ -78,7 +78,6 @@ enum {
   /* Used by streams. */
   UV_HANDLE_LISTENING                   = 0x00000040,
   UV_HANDLE_CONNECTION                  = 0x00000080,
-  UV_HANDLE_SHUTTING                    = 0x00000100,
   UV_HANDLE_SHUT                        = 0x00000200,
   UV_HANDLE_READ_PARTIAL                = 0x00000400,
   UV_HANDLE_READ_EOF                    = 0x00000800,
@@ -257,6 +256,14 @@ void uv__threadpool_cleanup(void);
 
 #define uv__is_closing(h)                                                     \
   (((h)->flags & (UV_HANDLE_CLOSING | UV_HANDLE_CLOSED)) != 0)
+
+#if defined(_WIN32)
+# define uv__is_stream_shutting(h)                                            \
+  (h->stream.conn.shutdown_req != NULL)
+#else
+# define uv__is_stream_shutting(h)                                            \
+  (h->shutdown_req != NULL)
+#endif
 
 #define uv__handle_start(h)                                                   \
   do {                                                                        \

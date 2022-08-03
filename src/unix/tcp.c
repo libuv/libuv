@@ -317,7 +317,7 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
   struct linger l = { 1, 0 };
 
   /* Disallow setting SO_LINGER to zero due to some platform inconsistencies */
-  if (handle->flags & UV_HANDLE_SHUTTING)
+  if (uv__is_stream_shutting(handle))
     return UV_EINVAL;
 
   fd = uv__stream_fd(handle);

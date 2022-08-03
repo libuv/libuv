@@ -2069,9 +2069,9 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv__queue_non_overlapped_write(handle);
   }
 
-  if (handle->stream.conn.write_reqs_pending == 0)
-    if (handle->flags & UV_HANDLE_SHUTTING)
-      uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
+  if (handle->stream.conn.write_reqs_pending == 0 &&
+      uv__is_stream_shutting(handle))
+    uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
 
   DECREASE_PENDING_REQ_COUNT(handle);
 }
@@ -2149,7 +2149,6 @@ void uv__process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   /* Clear the shutdown_req field so we don't go here again. */
   handle->stream.conn.shutdown_req = NULL;
-  handle->flags &= ~UV_HANDLE_SHUTTING;
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
