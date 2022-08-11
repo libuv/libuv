@@ -22,12 +22,26 @@
 #ifndef UV_DARWIN_H
 #define UV_DARWIN_H
 
-#if defined(__APPLE__) && defined(__MACH__)
-# include <mach/mach.h>
-# include <mach/task.h>
-# include <mach/semaphore.h>
+#if defined(__APPLE__)
+# if defined(__MACH__)
+#  include <mach/mach.h>
+#  include <mach/task.h>
+#  include <mach/semaphore.h>
+#  define UV_PLATFORM_SEM_T semaphore_t
+# endif
+
 # include <TargetConditionals.h>
-# define UV_PLATFORM_SEM_T semaphore_t
+# include <AvailabilityMacros.h>
+# include <os/lock.h>
+
+# if defined (MAC_OS_VERSION_12_0)                                            \
+    && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_12_0)
+#  define UV_PREFER_UNFAIR_LOCK 1
+# endif
+
+# if defined(__aarch64__)
+#  define UV_PREFER_WAIT 1
+# endif
 #endif
 
 #define UV_IO_PRIVATE_PLATFORM_FIELDS                                         \
