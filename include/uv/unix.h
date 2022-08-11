@@ -322,10 +322,19 @@ typedef struct {
   uv_idle_cb idle_cb;                                                         \
   void* queue[2];                                                             \
 
+#if defined(UV_PREFER_WAIT)
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   uv_async_cb async_cb;                                                       \
   void* queue[2];                                                             \
   int pending;                                                                \
+  uv_mutex_t mutex;                                                           \
+  uv_cond_t not_busy;
+#else
+#define UV_ASYNC_PRIVATE_FIELDS                                               \
+  uv_async_cb async_cb;                                                       \
+  void* queue[2];                                                             \
+  int pending;
+#endif
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
   uv_timer_cb timer_cb;                                                       \

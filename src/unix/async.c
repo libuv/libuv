@@ -40,7 +40,9 @@
 
 static void uv__async_send(uv_loop_t* loop);
 static int uv__async_start(uv_loop_t* loop);
+#if !defined(UV_PREFER_WAIT)
 static void uv__cpu_relax(void);
+#endif
 
 
 int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
@@ -53,6 +55,12 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_ASYNC);
   handle->async_cb = async_cb;
   handle->pending = 0;
+#if defined(UV_PREFER_WAIT)
+  if (uv_cond_init(&handle->not_busy))
+    abort();
+  if (uv_mutex_init(&handle->mutex))
+    abort();
+#endif
 
   QUEUE_INSERT_TAIL(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
@@ -83,12 +91,38 @@ int uv_async_send(uv_async_t* handle) {
   expected = 1;
   if (!atomic_compare_exchange_strong(pending, &expected, 2))
     abort();
+#if defined(UV_PREFER_WAIT)
+  if (handle->pending != 1) {
+    uv_mutex_lock(&handle->mutex);
+    uv_cond_broadcast(&handle->not_busy);
+    uv_mutex_unlock(&handle->mutex);
+  }
+#endif
 
   return 0;
 }
 
+/* Only call uv__async_wait and uv__async_spin from the event loop thread. */
+#if defined(UV_PREFER_WAIT)
+/* For platforms where waiting is better than spin & yield */
+static int uv__async_wait(uv_async_t* handle) {
+  _Atomic int* pending;
+  int expected;
 
-/* Only call this from the event loop thread. */
+  pending = (_Atomic int*) &handle->pending;
+  uv_mutex_lock(&handle->mutex);
+  for (;;) {
+    expected = 2;
+    atomic_compare_exchange_strong(pending, &expected, 0);
+    if (expected != 1)
+      break;
+    uv_cond_wait(&handle->not_busy, &handle->mutex);
+  }
+  uv_mutex_unlock(&handle->mutex);
+  return expected;
+}
+#else
+/*  For platforms where spin & yield is better than waiting */
 static int uv__async_spin(uv_async_t* handle) {
   _Atomic int* pending;
   int expected;
@@ -122,10 +156,14 @@ static int uv__async_spin(uv_async_t* handle) {
     sched_yield();
   }
 }
-
+#endif
 
 void uv__async_close(uv_async_t* handle) {
+#if defined(UV_PREFER_WAIT)
+  uv__async_wait(handle);
+#else
   uv__async_spin(handle);
+#endif
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 }
@@ -166,7 +204,11 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     QUEUE_REMOVE(q);
     QUEUE_INSERT_TAIL(&loop->async_handles, q);
 
+#if defined(UV_PREFER_WAIT)
+    if (0 == uv__async_wait(h))
+#else
     if (0 == uv__async_spin(h))
+#endif
       continue;  /* Not pending. */
 
     if (h->async_cb == NULL)
@@ -264,7 +306,7 @@ void uv__async_stop(uv_loop_t* loop) {
   loop->async_io_watcher.fd = -1;
 }
 
-
+#if !defined(UV_PREFER_WAIT)
 static void uv__cpu_relax(void) {
 #if defined(__i386__) || defined(__x86_64__)
   __asm__ __volatile__ ("rep; nop" ::: "memory");  /* a.k.a. PAUSE */
@@ -276,3 +318,4 @@ static void uv__cpu_relax(void) {
   __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
 #endif
 }
+#endif
