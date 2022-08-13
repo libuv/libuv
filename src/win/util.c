@@ -1777,6 +1777,22 @@ int uv_os_uname(uv_utsname_t* buffer) {
     RegCloseKey(registry_key);
 
     if (r == ERROR_SUCCESS) {
+      /* Windows 11 shares dwMajorVersion with Windows 10
+       * this workaround tries to disambiguate that by checking
+       * if the dwBuildNumber is from Windows 11 releases (>= 22000).
+       *
+       * This workaround replaces the ProductName key value
+       * from "Windows 10 *" to "Windows 11 *" */
+      if (os_info.dwMajorVersion == 10 &&
+          os_info.dwBuildNumber >= 22000 &&
+          product_name_w_size >= ARRAY_SIZE(L"Windows 10")) {
+        /* If ProductName starts with "Windows 10" */
+        if (wcsncmp(product_name_w, L"Windows 10", ARRAY_SIZE(L"Windows 10") - 1) == 0) {
+          /* Bump 10 to 11 */
+          product_name_w[9] = '1';
+        }
+      }
+
       version_size = WideCharToMultiByte(CP_UTF8,
                                          0,
                                          product_name_w,
