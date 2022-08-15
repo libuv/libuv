@@ -2011,20 +2011,53 @@ TEST_IMPL(fs_link) {
 
 
 TEST_IMPL(fs_readlink) {
-  uv_fs_t req;
+  /* Must return UV_ENOENT on an inexistent file */
+  {
+    uv_fs_t req;
 
-  loop = uv_default_loop();
-  ASSERT(0 == uv_fs_readlink(loop, &req, "no_such_file", dummy_cb));
-  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(dummy_cb_count == 1);
-  ASSERT_NULL(req.ptr);
-  ASSERT(req.result == UV_ENOENT);
-  uv_fs_req_cleanup(&req);
+    loop = uv_default_loop();
+    ASSERT(0 == uv_fs_readlink(loop, &req, "no_such_file", dummy_cb));
+    ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+    ASSERT(dummy_cb_count == 1);
+    ASSERT_NULL(req.ptr);
+    ASSERT(req.result == UV_ENOENT);
+    uv_fs_req_cleanup(&req);
 
-  ASSERT(UV_ENOENT == uv_fs_readlink(NULL, &req, "no_such_file", NULL));
-  ASSERT_NULL(req.ptr);
-  ASSERT(req.result == UV_ENOENT);
-  uv_fs_req_cleanup(&req);
+    ASSERT(UV_ENOENT == uv_fs_readlink(NULL, &req, "no_such_file", NULL));
+    ASSERT_NULL(req.ptr);
+    ASSERT(req.result == UV_ENOENT);
+    uv_fs_req_cleanup(&req);
+  }
+
+  /* Must return UV_EINVAL on a non-symlink file */
+  {
+    int r;
+    uv_fs_t req;
+    uv_file file;
+
+    /* Setup */
+
+    /* Create a non-symlink file */
+    r = uv_fs_open(NULL, &req, "test_file", O_RDWR | O_CREAT,
+                   S_IWUSR | S_IRUSR, NULL);
+    ASSERT(r >= 0);
+    ASSERT(req.result >= 0);
+    file = req.result;
+    uv_fs_req_cleanup(&req);
+
+    r = uv_fs_close(NULL, &req, file, NULL);
+    ASSERT(r == 0);
+    ASSERT(req.result == 0);
+    uv_fs_req_cleanup(&req);
+
+    /* Test */
+    r = uv_fs_readlink(NULL, &req, "test_file", NULL);
+    ASSERT(r == UV_EINVAL);
+    uv_fs_req_cleanup(&req);
+
+    /* Cleanup */
+    unlink("test_file");
+  }
 
   MAKE_VALGRIND_HAPPY();
   return 0;
