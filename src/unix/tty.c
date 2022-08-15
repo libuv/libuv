@@ -64,11 +64,7 @@ static int isreallyatty(int file) {
 
 static int orig_termios_fd = -1;
 static struct termios orig_termios;
-#if defined(UV_PREFER_UNFAIR_LOCK)
-os_unfair_lock termios_unfair_lock = OS_UNFAIR_LOCK_INIT;
-#else
 static _Atomic int termios_spinlock;
-#endif
 
 int uv__tcsetattr(int fd, int how, const struct termios *term) {
   int rc;
@@ -284,9 +280,7 @@ static void uv__tty_make_raw(struct termios* tio) {
 
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   struct termios tmp;
-#if !defined(UV_PREFER_UNFAIR_LOCK)
   int expected;
-#endif
   int fd;
   int rc;
 
@@ -303,23 +297,16 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       return UV__ERR(errno);
 
     /* This is used for uv_tty_reset_mode() */
-#if defined(UV_PREFER_UNFAIR_LOCK)
-    os_unfair_lock_lock(&termios_unfair_lock);
-#else
     do
       expected = 0;
     while (!atomic_compare_exchange_strong(&termios_spinlock, &expected, 1));
-#endif
 
     if (orig_termios_fd == -1) {
       orig_termios = tty->orig_termios;
       orig_termios_fd = fd;
     }
-#if defined(UV_PREFER_UNFAIR_LOCK)
-    os_unfair_lock_unlock(&termios_unfair_lock);
-#else
+
     atomic_store(&termios_spinlock, 0);
-#endif
   }
 
   tmp = tty->orig_termios;
@@ -460,29 +447,20 @@ uv_handle_type uv_guess_handle(uv_file file) {
  */
 int uv_tty_reset_mode(void) {
   int saved_errno;
-#if !defined(UV_PREFER_UNFAIR_LOCK)
   int expected;
-#endif
   int err;
 
   saved_errno = errno;
-#if defined(UV_PREFER_UNFAIR_LOCK)
-  if (!os_unfair_lock_trylock(&termios_unfair_lock))
-#else
+
   expected = 0;
   if (!atomic_compare_exchange_strong(&termios_spinlock, &expected, 1))
-#endif
     return UV_EBUSY;  /* In uv_tty_set_mode(). */
 
   err = 0;
   if (orig_termios_fd != -1)
     err = uv__tcsetattr(orig_termios_fd, TCSANOW, &orig_termios);
 
-#if defined(UV_PREFER_UNFAIR_LOCK)
-  os_unfair_lock_unlock(&termios_unfair_lock);
-#else
   atomic_store(&termios_spinlock, 0);
-#endif
   errno = saved_errno;
 
   return err;

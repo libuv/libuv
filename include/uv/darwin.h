@@ -22,26 +22,12 @@
 #ifndef UV_DARWIN_H
 #define UV_DARWIN_H
 
-#if defined(__APPLE__)
-# if defined(__MACH__)
-#  include <mach/mach.h>
-#  include <mach/task.h>
-#  include <mach/semaphore.h>
-#  define UV_PLATFORM_SEM_T semaphore_t
-# endif
-
+#if defined(__APPLE__) && defined(__MACH__)
+# include <mach/mach.h>
+# include <mach/task.h>
+# include <mach/semaphore.h>
 # include <TargetConditionals.h>
-# include <AvailabilityMacros.h>
-# include <os/lock.h>
-
-# if defined (MAC_OS_VERSION_12_0)                                            \
-    && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_12_0)
-#  define UV_PREFER_UNFAIR_LOCK 1
-# endif
-
-# if defined(__aarch64__)
-#  define UV_PREFER_WAIT 1
-# endif
+# define UV_PLATFORM_SEM_T semaphore_t
 #endif
 
 #define UV_IO_PRIVATE_PLATFORM_FIELDS                                         \
@@ -69,6 +55,13 @@
 
 #define UV_STREAM_PRIVATE_PLATFORM_FIELDS                                     \
   void* select;                                                               \
+
+#if defined(__APPLE__) && defined(__aarch64__)
+# define UV_PREFER_WAIT 1
+# define UV_ASYNC_PRIVATE_PLATFORM_FIELDS                                     \
+  uv_mutex_t mutex;                                                           \
+  uv_cond_t not_busy;
+#endif
 
 #define UV_HAVE_KQUEUE 1
 
