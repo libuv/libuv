@@ -1539,6 +1539,26 @@ TEST_IMPL(fs_fstat) {
   return 0;
 }
 
+TEST_IMPL(fs_fstat_stdio) {
+  int fd;
+  int res;
+  uv_fs_t req;
+  uv_stat_t* st;
+
+  for (fd = 0; fd <= 2; ++fd) {
+    res = uv_fs_fstat(NULL, &req, fd, NULL);
+    ASSERT(res == 0);
+    ASSERT(req.result == 0);
+    st = req.ptr;
+    ASSERT(st->st_size == 0);
+    ASSERT(st->st_blocks == 0);
+    uv_fs_req_cleanup(&req);
+  }
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
 
 TEST_IMPL(fs_access) {
   int r;

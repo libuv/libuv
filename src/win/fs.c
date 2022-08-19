@@ -1915,6 +1915,50 @@ INLINE static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
 }
 
 
+INLINE static BOOL fs__is_stdio_fd(int fd) {
+  return fd >= 0 && fd <= 2;
+}
+
+
+INLINE static int fs__stat_stdio_fd(int fd, uv_stat_t* statbuf) {
+  int res;
+  struct stat stat;
+
+  res = fstat(fd, &stat);
+  if (res != 0) {
+    return res;
+  }
+
+  /* For more information on hardcoded values see fs__stat_handle. */
+  statbuf->st_dev = stat.st_dev;
+  statbuf->st_mode = stat.st_mode;
+  statbuf->st_nlink = stat.st_nlink;
+  statbuf->st_uid = 0;
+  statbuf->st_gid = 0;
+  statbuf->st_rdev = 0;
+  statbuf->st_ino = stat.st_ino;
+  statbuf->st_size = stat.st_size;
+  statbuf->st_blksize = 4096;
+  /* Standard I/O streams do not have on-disk allocation size. */
+  statbuf->st_blocks = 0;
+  statbuf->st_flags = 0;
+  statbuf->st_gen = 0;
+  statbuf->st_atim.tv_sec = stat.st_atime;
+  statbuf->st_atim.tv_nsec = 0;
+  statbuf->st_mtim.tv_sec = stat.st_mtime;
+  statbuf->st_mtim.tv_nsec = 0;
+  statbuf->st_ctim.tv_sec = stat.st_ctime;
+  statbuf->st_ctim.tv_nsec = 0;
+  /* Based on unix implementation using fstat to fetch the information,
+   * it is best to use ctime as birthtim (source: unix/fs.c uv__to_stat).
+   */
+  statbuf->st_birthtim.tv_sec = stat.st_ctime;
+  statbuf->st_birthtim.tv_nsec = 0;
+
+  return 0;
+}
+
+
 static void fs__stat(uv_fs_t* req) {
   fs__stat_prepare_path(req->file.pathw);
   fs__stat_impl(req, 0);
@@ -1941,8 +1985,15 @@ static void fs__fstat(uv_fs_t* req) {
   }
 
   if (fs__stat_handle(handle, &req->statbuf, 0) != 0) {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
-    return;
+    if (!fs__is_stdio_fd(fd)) {
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      return;
+    }
+
+    if (fs__stat_stdio_fd(fd, &req->statbuf) != 0) {
+      SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FUNCTION);
+      return;
+    }
   }
 
   req->ptr = &req->statbuf;
