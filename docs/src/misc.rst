@@ -119,7 +119,10 @@ Data types
         } uv_rusage_t;
 
     Members marked with `(X)` are unsupported on Windows.
-    See :man:`getrusage(2)` for supported fields on Unix
+    See :man:`getrusage(2)` for supported fields on UNIX-like platforms.
+
+    The maximum resident set size is reported in kilobytes, the unit most
+    platforms use natively.
 
 .. c:type:: uv_cpu_info_t
 

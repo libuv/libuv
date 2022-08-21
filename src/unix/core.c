@@ -986,6 +986,15 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_nivcsw = usage.ru_nivcsw;
 #endif
 
+  /* Most platforms report ru_maxrss in kilobytes; macOS and Solaris are
+   * the outliers because of course they are.
+   */
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  rusage->ru_maxrss /= 1024;                  /* macOS reports bytes. */
+#elif defined(__sun)
+  rusage->ru_maxrss /= getpagesize() / 1024;  /* Solaris reports pages. */
+#endif
+
   return 0;
 }
 
