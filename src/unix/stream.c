@@ -884,6 +884,7 @@ static void uv__write(uv_stream_t* stream) {
   QUEUE* q;
   uv_write_t* req;
   ssize_t n;
+  int cnt;
 
   assert(uv__stream_fd(stream) >= 0);
 
@@ -891,7 +892,7 @@ static void uv__write(uv_stream_t* stream) {
    * we can write it. This `cnt` mechanism does not need to change even we switch to edge-triggered
    * I/O.
    */
-  for (int cnt = 32; cnt > 0; cnt --) {
+  for (cnt = 32; cnt > 0; cnt --) {
     if (QUEUE_EMPTY(&stream->write_queue))
       return;
 
