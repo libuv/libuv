@@ -887,7 +887,11 @@ static void uv__write(uv_stream_t* stream) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  for (;;) {
+  /* Prevent loop starvation when the consumer of this stream read as fast as (or faster than)
+   * we can write it. This `cnt` mechanism does not need to change even we switch to edge-triggered
+   * I/O.
+   */
+  for (int cnt = 32; cnt > 0; cnt --) {
     if (QUEUE_EMPTY(&stream->write_queue))
       return;
 
@@ -905,7 +909,7 @@ static void uv__write(uv_stream_t* stream) {
       req->send_handle = NULL;
       if (uv__write_req_update(stream, req, n)) {
         uv__write_req_finish(req);
-        return;  /* TODO(bnoordhuis) Start trying to write the next request. */
+        continue;  /* Start trying to write the next request. */
       }
     } else if (n != UV_EAGAIN)
       break;
