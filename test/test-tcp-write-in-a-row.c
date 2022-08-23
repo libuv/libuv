@@ -33,7 +33,9 @@ static int connect_cb_called;
 static int close_cb_called;
 static int connection_cb_called;
 static int write_cb_called;
-static char data[1024 * 1024 * 10]; // 10 MB, which is large than the send buffer size and the recv buffer
+
+// 10 MB, which is large than the send buffer size and the recv buffer
+static char data[1024 * 1024 * 10];
 
 static void close_cb(uv_handle_t *handle)
 {
@@ -53,17 +55,21 @@ static void write_cb(uv_write_t *w, int status)
     uv_close((uv_handle_t *)&incoming, close_cb);
     uv_close((uv_handle_t *)&server, close_cb);
   }
+
+  free(w);
 }
 
 static void connect_cb(uv_connect_t *_, int status)
 {
   int r;
   uv_buf_t buf;
-  uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+  uv_write_t *req;
   size_t write_queue_size0, write_queue_size1;
 
   ASSERT(status == 0);
   connect_cb_called++;
+
+  req = (uv_write_t *)malloc(sizeof(uv_write_t));
 
   // fire a big write
   buf = uv_buf_init(data, sizeof(data));
