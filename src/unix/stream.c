@@ -892,7 +892,9 @@ static void uv__write(uv_stream_t* stream) {
    * we can write it. This `cnt` mechanism does not need to change even we switch to edge-triggered
    * I/O.
    */
-  for (cnt = 32; cnt > 0; cnt --) {
+  cnt = 32;
+
+  for (;;) {
     if (QUEUE_EMPTY(&stream->write_queue))
       return;
 
@@ -910,10 +912,13 @@ static void uv__write(uv_stream_t* stream) {
       req->send_handle = NULL;
       if (uv__write_req_update(stream, req, n)) {
         uv__write_req_finish(req);
-        continue;  /* Start trying to write the next request. */
+        if (cnt-- > 0) {
+          continue; /* Start trying to write the next request. */
+        }
+        return;
       }
     } else if (n != UV_EAGAIN)
-      break;
+      goto error;
 
     /* If this is a blocking stream, try again. */
     if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
@@ -928,6 +933,7 @@ static void uv__write(uv_stream_t* stream) {
     return;
   }
 
+error:
   req->error = n;
   uv__write_req_finish(req);
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
