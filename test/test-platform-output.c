@@ -122,6 +122,7 @@ TEST_IMPL(platform_output) {
   for (i = 0; i < count; i++) {
     printf("  name: %s\n", interfaces[i].name);
     printf("  internal: %d\n", interfaces[i].is_internal);
+    printf("  status: %s\n", (interfaces[i].status == UV_INTERFACE_UP ? "up" : "down"));
     printf("  physical address: ");
     printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
            (unsigned char)interfaces[i].phys_addr[0],
