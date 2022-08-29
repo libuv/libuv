@@ -36,7 +36,7 @@ static int write_cb_called;
 static uv_write_t small_write;
 static uv_write_t big_write;
 
-// 10 MB, which is large than the send buffer size and the recv buffer
+/* 10 MB, which is large than the send buffer size and the recv buffer */
 static char data[1024 * 1024 * 10];
 
 static void close_cb(uv_handle_t *handle) {
@@ -44,16 +44,16 @@ static void close_cb(uv_handle_t *handle) {
 }
 
 static void write_cb(uv_write_t *w, int status) {
-  // the small write should finish immediately after the big write
-  ASSERT_EQ(0, uv_stream_get_write_queue_size((uv_stream_t *)&client));
+  /* the small write should finish immediately after the big write */
+  ASSERT_EQ(0, uv_stream_get_write_queue_size((uv_stream_t*)&client));
 
   write_cb_called++;
 
   if (write_cb_called == 2) {
-    // we are done
-    uv_close((uv_handle_t *)&client, close_cb);
-    uv_close((uv_handle_t *)&incoming, close_cb);
-    uv_close((uv_handle_t *)&server, close_cb);
+    /* we are done */
+    uv_close((uv_handle_t*)&client, close_cb);
+    uv_close((uv_handle_t*)&incoming, close_cb);
+    uv_close((uv_handle_t*)&server, close_cb);
   }
 }
 
@@ -65,21 +65,21 @@ static void connect_cb(uv_connect_t *_, int status) {
   ASSERT_EQ(0, status);
   connect_cb_called++;
 
-  // fire a big write
+  /* fire a big write */
   buf = uv_buf_init(data, sizeof(data));
-  r = uv_write(&small_write, (uv_stream_t *)&client, &buf, 1, write_cb);
+  r = uv_write(&small_write, (uv_stream_t*)&client, &buf, 1, write_cb);
   ASSERT_EQ(0, r);
 
-  // check that the write process gets stuck
-  write_queue_size0 = uv_stream_get_write_queue_size((uv_stream_t *)&client);
+  /* check that the write process gets stuck */
+  write_queue_size0 = uv_stream_get_write_queue_size((uv_stream_t*)&client);
   ASSERT_GT(write_queue_size0, 0);
 
-  // fire a small write, which should be queued
+  /* fire a small write, which should be queued */
   buf = uv_buf_init("A", 1);
-  r = uv_write(&big_write, (uv_stream_t *)&client, &buf, 1, write_cb);
+  r = uv_write(&big_write, (uv_stream_t*)&client, &buf, 1, write_cb);
   ASSERT_EQ(0, r);
 
-  write_queue_size1 = uv_stream_get_write_queue_size((uv_stream_t *)&client);
+  write_queue_size1 = uv_stream_get_write_queue_size((uv_stream_t*)&client);
   ASSERT_EQ(write_queue_size1, write_queue_size0 + 1);
 }
 
@@ -97,8 +97,8 @@ static void connection_cb(uv_stream_t *tcp, int status) {
   connection_cb_called++;
 
   ASSERT_EQ(0, uv_tcp_init(tcp->loop, &incoming));
-  ASSERT_EQ(0, uv_accept(tcp, (uv_stream_t *)&incoming));
-  ASSERT_EQ(0, uv_read_start((uv_stream_t *)&incoming, alloc_cb, read_cb));
+  ASSERT_EQ(0, uv_accept(tcp, (uv_stream_t*)&incoming));
+  ASSERT_EQ(0, uv_read_start((uv_stream_t*)&incoming, alloc_cb, read_cb));
 }
 
 static void start_server(void) {
@@ -107,8 +107,8 @@ static void start_server(void) {
   ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   ASSERT_EQ(0, uv_tcp_init(uv_default_loop(), &server));
-  ASSERT_EQ(0, uv_tcp_bind(&server, (struct sockaddr *)&addr, 0));
-  ASSERT_EQ(0, uv_listen((uv_stream_t *)&server, 128, connection_cb));
+  ASSERT_EQ(0, uv_tcp_bind(&server, (struct sockaddr*)&addr, 0));
+  ASSERT_EQ(0, uv_listen((uv_stream_t*)&server, 128, connection_cb));
 }
 
 TEST_IMPL(tcp_write_in_a_row) {
@@ -126,7 +126,7 @@ TEST_IMPL(tcp_write_in_a_row) {
   ASSERT_EQ(0, uv_tcp_init(uv_default_loop(), &client));
   ASSERT_EQ(0, uv_tcp_connect(&connect_req,
                               &client,
-                              (struct sockaddr *)&addr,
+                              (struct sockaddr*)&addr,
                               connect_cb));
 
   ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
