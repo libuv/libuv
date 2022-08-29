@@ -89,11 +89,13 @@ int uv_async_send(uv_async_t* handle) {
 
   /* Tell the other thread we're done. */
   expected = 1;
+#if defined(UV_PREFER_WAIT)
+  uv_mutex_lock(&handle->mutex);
+#endif
   if (!atomic_compare_exchange_strong(pending, &expected, 2))
     abort();
 #if defined(UV_PREFER_WAIT)
   if (handle->pending != 1) {
-    uv_mutex_lock(&handle->mutex);
     uv_cond_broadcast(&handle->not_busy);
     uv_mutex_unlock(&handle->mutex);
   }
