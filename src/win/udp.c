@@ -424,8 +424,8 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     int from_len;
     int count;
 
-    /* Prevent loop starvation when the data comes in as fast as (or faster than)
-     * we can read it.
+    /* Prevent loop starvation when the data comes in as fast as
+     * (or faster than) we can read it.
      */
     count = 32;
 
@@ -437,7 +437,6 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
         handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
         goto done;
       }
-      assert(buf.base != NULL);
 
       memset(&from, 0, sizeof from);
       from_len = sizeof from;
@@ -479,14 +478,12 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
           handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
         }
       }
-
-      count--;
     } 
-    while (bytes > 0
-        && count > 0
-        /* recv_cb callback may decide to pause or close the handle */
-        && (handle->flags & UV_HANDLE_READING)
-        && !(handle->flags & UV_HANDLE_READ_PENDING));
+    while (bytes > 0 &&
+          count-- > 0 &&
+          /* recv_cb callback may decide to pause or close the handle */
+          (handle->flags & UV_HANDLE_READING) &&
+          !(handle->flags & UV_HANDLE_READ_PENDING));
   }
 
 done:
