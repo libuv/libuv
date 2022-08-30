@@ -847,7 +847,7 @@ static void uv__write(uv_stream_t* stream) {
 
   /* Prevent loop starvation when the consumer of this stream read as fast as
    * (or faster than) we can write it. This `count` mechanism does not need to
-   * change even we switch to edge-triggered I/O.
+   * change even if we switch to edge-triggered I/O.
    */
   count = 32;
 
