@@ -39,11 +39,11 @@ static uv_write_t big_write;
 /* 10 MB, which is large than the send buffer size and the recv buffer */
 static char data[1024 * 1024 * 10];
 
-static void close_cb(uv_handle_t *handle) {
+static void close_cb(uv_handle_t* handle) {
   close_cb_called++;
 }
 
-static void write_cb(uv_write_t *w, int status) {
+static void write_cb(uv_write_t* w, int status) {
   /* the small write should finish immediately after the big write */
   ASSERT_EQ(0, uv_stream_get_write_queue_size((uv_stream_t*) &client));
 
@@ -57,7 +57,7 @@ static void write_cb(uv_write_t *w, int status) {
   }
 }
 
-static void connect_cb(uv_connect_t *_, int status) {
+static void connect_cb(uv_connect_t* _, int status) {
   int r;
   uv_buf_t buf;
   size_t write_queue_size0, write_queue_size1;
@@ -83,16 +83,16 @@ static void connect_cb(uv_connect_t *_, int status) {
   ASSERT_EQ(write_queue_size1, write_queue_size0 + 1);
 }
 
-static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   static char base[1024];
 
   buf->base = base;
   buf->len = sizeof(base);
 }
 
-static void read_cb(uv_stream_t *tcp, ssize_t nread, const uv_buf_t *buf) {}
+static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {}
 
-static void connection_cb(uv_stream_t *tcp, int status) {
+static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT_EQ(0, status);
   connection_cb_called++;
 
