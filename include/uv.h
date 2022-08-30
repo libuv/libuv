@@ -31,6 +31,10 @@ extern "C" {
 #error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
 #endif
 
+#if defined(BUILDING_UV_SHARED)
+#undef HIDE_UV_SYMBOLS
+#endif
+  
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)
@@ -43,7 +47,7 @@ extern "C" {
     /* Building static library. */
 #   define UV_EXTERN /* nothing */
 # endif
-#elif __GNUC__ >= 4
+#elif __GNUC__ >= 4 && !defined(HIDE_UV_SYMBOLS)
 # define UV_EXTERN __attribute__((visibility("default")))
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550) /* Sun Studio >= 8 */
 # define UV_EXTERN __global
