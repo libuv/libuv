@@ -869,9 +869,9 @@ static void uv__write(uv_stream_t* stream) {
       req->send_handle = NULL;
       if (uv__write_req_update(stream, req, n)) {
         uv__write_req_finish(req);
-        if (count-- > 0) {
+        if (count-- > 0)
           continue; /* Start trying to write the next request. */
-        }
+
         return;
       }
     } else if (n != UV_EAGAIN)
