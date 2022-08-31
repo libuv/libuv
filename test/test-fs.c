@@ -2040,19 +2040,19 @@ TEST_IMPL(fs_readlink) {
     /* Create a non-symlink file */
     r = uv_fs_open(NULL, &req, "test_file", O_RDWR | O_CREAT,
                    S_IWUSR | S_IRUSR, NULL);
-    ASSERT(r >= 0);
-    ASSERT(req.result >= 0);
+    ASSERT_GE(r, 0);
+    ASSERT_GE(req.result, 0);
     file = req.result;
     uv_fs_req_cleanup(&req);
 
     r = uv_fs_close(NULL, &req, file, NULL);
-    ASSERT(r == 0);
-    ASSERT(req.result == 0);
+    ASSERT_EQ(r, 0);
+    ASSERT_EQ(req.result, 0);
     uv_fs_req_cleanup(&req);
 
     /* Test */
     r = uv_fs_readlink(NULL, &req, "test_file", NULL);
-    ASSERT(r == UV_EINVAL);
+    ASSERT_EQ(r, UV_EINVAL);
     uv_fs_req_cleanup(&req);
 
     /* Cleanup */
