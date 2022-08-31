@@ -102,7 +102,6 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_INSUFFICIENT_BUFFER:         return UV_EINVAL;
     case ERROR_INVALID_DATA:                return UV_EINVAL;
     case ERROR_INVALID_PARAMETER:           return UV_EINVAL;
-    case ERROR_NOT_A_REPARSE_POINT:         return UV_EINVAL;
     case ERROR_SYMLINK_NOT_SUPPORTED:       return UV_EINVAL;
     case WSAEINVAL:                         return UV_EINVAL;
     case WSAEPFNOSUPPORT:                   return UV_EINVAL;
