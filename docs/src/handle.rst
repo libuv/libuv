@@ -153,6 +153,10 @@ API
     In-progress requests, like uv_connect_t or uv_write_t, are cancelled and
     have their callbacks called asynchronously with status=UV_ECANCELED.
 
+    For stream-like handles where libuv still holds on to memory from an
+    earlier :c:type:`uv_alloc_cb` call, it calls c:type:`uv_read_cb` once
+    with `nread == 0` to indicate it is giving back the memory.
+
 .. c:function:: void uv_ref(uv_handle_t* handle)
 
     Reference the given handle. References are idempotent, that is, if a handle
