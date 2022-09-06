@@ -218,8 +218,8 @@ API
 
 .. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`preadv(2)`. One exception is that if you use an `offset` of `-1`, then it reads from the current file
-    position instead of first seeking.
+    Equivalent to :man:`preadv(2)`. if the `offset` argument is `-1`, then
+    the current file offset is used and updated.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
@@ -232,8 +232,8 @@ API
 
 .. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`pwritev(2)`. One exception is that if you use an `offset` of `-1`, then it writes to the current file
-    position instead of first seeking.
+    Equivalent to :man:`pwritev(2)`. if the `offset` argument is `-1`, then
+    the current file offset is used and updated.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
