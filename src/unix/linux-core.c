@@ -793,27 +793,61 @@ uint64_t uv_get_total_memory(void) {
 }
 
 
-static uint64_t uv__read_cgroups_uint64(const char* cgroup, const char* param) {
-  char filename[256];
+static uint64_t uv__read_uint64(const char* filename) {
   char buf[32];  /* Large enough to hold an encoded uint64_t. */
   uint64_t rc;
 
   rc = 0;
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/%s", cgroup, param);
   if (0 == uv__slurp(filename, buf, sizeof(buf)))
-    sscanf(buf, "%" PRIu64, &rc);
+    if (1 != sscanf(buf, "%" PRIu64, &rc))
+      if (0 == strcmp(buf, "max\n"))
+        rc = ~0ull;
 
   return rc;
 }
 
 
+/* This might return 0 if there was a problem getting the memory limit from
+ * cgroups. This is OK because a return value of 0 signifies that the memory
+ * limit is unknown.
+ */
+static uint64_t uv__get_constrained_memory_fallback(void) {
+  return uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+}
+
+
 uint64_t uv_get_constrained_memory(void) {
-  /*
-   * This might return 0 if there was a problem getting the memory limit from
-   * cgroups. This is OK because a return value of 0 signifies that the memory
-   * limit is unknown.
-   */
-  return uv__read_cgroups_uint64("memory", "memory.limit_in_bytes");
+  char filename[4097];
+  char buf[1024];
+  uint64_t high;
+  uint64_t max;
+  char* p;
+
+  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
+    return uv__get_constrained_memory_fallback();
+
+  if (memcmp(buf, "0::/", 4))
+    return uv__get_constrained_memory_fallback();
+
+  p = strchr(buf, '\n');
+  if (p != NULL)
+    *p = '\0';
+
+  p = buf + 4;
+
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.max", p);
+  max = uv__read_uint64(filename);
+
+  if (max == 0)
+    return uv__get_constrained_memory_fallback();
+
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.high", p);
+  high = uv__read_uint64(filename);
+
+  if (high == 0)
+    return uv__get_constrained_memory_fallback();
+
+  return high < max ? high : max;
 }
 
 
