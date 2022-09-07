@@ -17,12 +17,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #include "uv.h"
 #include "uv-common.h"
@@ -141,8 +136,9 @@ static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
   if (best.base != -1 && (best.base + best.len) == ARRAY_SIZE(words))
     *tp++ = ':';
   *tp++ = '\0';
-  if (UV_E2BIG == uv__strscpy(dst, tmp, size))
+  if ((size_t) (tp - tmp) > size)
     return UV_ENOSPC;
+  uv__strscpy(dst, tmp, size);
   return 0;
 }
 

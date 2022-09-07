@@ -65,14 +65,15 @@
 #define RDWR_BUF_SIZE   4096
 #define EQ(a,b)         (strcmp(a,b) == 0)
 
-static uv_mutex_t process_title_mutex;
-static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
+char* original_exepath = NULL;
+uv_mutex_t process_title_mutex;
+uv_once_t process_title_mutex_once = UV_ONCE_INIT;
 static void* args_mem = NULL;
 static char** process_argv = NULL;
 static int process_argc = 0;
 static char* process_title_ptr = NULL;
 
-static void init_process_title_mutex_once(void) {
+void init_process_title_mutex_once(void) {
   uv_mutex_init(&process_title_mutex);
 }
 
@@ -869,6 +870,7 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
 
 
 char** uv_setup_args(int argc, char** argv) {
+  char exepath[UV__PATH_MAX];
   char** new_argv;
   size_t size;
   char* s;
@@ -883,6 +885,15 @@ char** uv_setup_args(int argc, char** argv) {
    */
   process_argv = argv;
   process_argc = argc;
+
+  /* Use argv[0] to determine value for uv_exepath(). */
+  size = sizeof(exepath);
+  if (uv__search_path(argv[0], exepath, &size) == 0) {
+    uv_once(&process_title_mutex_once, init_process_title_mutex_once);
+    uv_mutex_lock(&process_title_mutex); 
+    original_exepath = uv__strdup(exepath);
+    uv_mutex_unlock(&process_title_mutex);
+  }
 
   /* Calculate how much memory we need for the argv strings. */
   size = 0;

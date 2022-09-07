@@ -121,9 +121,6 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
     goto error;
   }
 
-  /* utf16_len contains the length, *not* including the terminating null. */
-  utf16_buffer[utf16_len] = L'\0';
-
   /* Convert to UTF-8 */
   utf8_len = WideCharToMultiByte(CP_UTF8,
                                  0,
@@ -151,6 +148,51 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 }
 
 
+static int uv__cwd(WCHAR** buf, DWORD *len) {
+  WCHAR* p;
+  DWORD n;
+  DWORD t;
+
+  t = GetCurrentDirectoryW(0, NULL);
+  for (;;) {
+    if (t == 0)
+      return uv_translate_sys_error(GetLastError());
+
+    /* |t| is the size of the buffer _including_ nul. */
+    p = uv__malloc(t * sizeof(*p));
+    if (p == NULL)
+      return UV_ENOMEM;
+
+    /* |n| is the size of the buffer _excluding_ nul but _only on success_.
+     * If |t| was too small because another thread changed the working
+     * directory, |n| is the size the buffer should be _including_ nul.
+     * It therefore follows we must resize when n >= t and fail when n == 0.
+     */
+    n = GetCurrentDirectoryW(t, p);
+    if (n > 0)
+      if (n < t)
+        break;
+
+    uv__free(p);
+    t = n;
+  }
+
+  /* The returned directory should not have a trailing slash, unless it points
+   * at a drive root, like c:\. Remove it if needed.
+   */
+  t = n - 1;
+  if (p[t] == L'\\' && !(n == 3 && p[1] == L':')) {
+    p[t] = L'\0';
+    n = t;
+  }
+
+  *buf = p;
+  *len = n;
+
+  return 0;
+}
+
+
 int uv_cwd(char* buffer, size_t* size) {
   DWORD utf16_len;
   WCHAR *utf16_buffer;
@@ -160,30 +202,9 @@ int uv_cwd(char* buffer, size_t* size) {
     return UV_EINVAL;
   }
 
-  utf16_len = GetCurrentDirectoryW(0, NULL);
-  if (utf16_len == 0) {
-    return uv_translate_sys_error(GetLastError());
-  }
-  utf16_buffer = uv__malloc(utf16_len * sizeof(WCHAR));
-  if (utf16_buffer == NULL) {
-    return UV_ENOMEM;
-  }
-
-  utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
-  if (utf16_len == 0) {
-    uv__free(utf16_buffer);
-    return uv_translate_sys_error(GetLastError());
-  }
-
-  /* utf16_len contains the length, *not* including the terminating null. */
-  utf16_buffer[utf16_len] = L'\0';
-
-  /* The returned directory should not have a trailing slash, unless it points
-   * at a drive root, like c:\. Remove it if needed. */
-  if (utf16_buffer[utf16_len - 1] == L'\\' &&
-      !(utf16_len == 3 && utf16_buffer[1] == L':')) {
-    utf16_len--;
-    utf16_buffer[utf16_len] = L'\0';
+  r = uv__cwd(&utf16_buffer, &utf16_len);
+  if (r < 0) {
+    return r;
   }
 
   /* Check how much space we need */
@@ -226,8 +247,9 @@ int uv_cwd(char* buffer, size_t* size) {
 
 int uv_chdir(const char* dir) {
   WCHAR *utf16_buffer;
-  size_t utf16_len, new_utf16_len;
+  size_t utf16_len;
   WCHAR drive_letter, env_var[4];
+  int r;
 
   if (dir == NULL) {
     return UV_EINVAL;
@@ -265,29 +287,15 @@ int uv_chdir(const char* dir) {
   /* Windows stores the drive-local path in an "hidden" environment variable,
    * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
    * this, so we'll have to do it. */
-  new_utf16_len = GetCurrentDirectoryW(utf16_len, utf16_buffer);
-  if (new_utf16_len > utf16_len ) {
-    uv__free(utf16_buffer);
-    utf16_buffer = uv__malloc(new_utf16_len * sizeof(WCHAR));
-    if (utf16_buffer == NULL) {
-      /* When updating the environment variable fails, return UV_OK anyway.
-       * We did successfully change current working directory, only updating
-       * hidden env variable failed. */
-      return 0;
-    }
-    new_utf16_len = GetCurrentDirectoryW(new_utf16_len, utf16_buffer);
-  }
-  if (utf16_len == 0) {
-    uv__free(utf16_buffer);
+  r = uv__cwd(&utf16_buffer, &utf16_len);
+  if (r == UV_ENOMEM) {
+    /* When updating the environment variable fails, return UV_OK anyway.
+     * We did successfully change current working directory, only updating
+     * hidden env variable failed. */
     return 0;
   }
-
-  /* The returned directory should not have a trailing slash, unless it points
-   * at a drive root, like c:\. Remove it if needed. */
-  if (utf16_buffer[utf16_len - 1] == L'\\' &&
-      !(utf16_len == 3 && utf16_buffer[1] == L':')) {
-    utf16_len--;
-    utf16_buffer[utf16_len] = L'\0';
+  if (r < 0) {
+    return r;
   }
 
   if (utf16_len < 2 || utf16_buffer[1] != L':') {
@@ -531,103 +539,25 @@ int uv_resident_set_memory(size_t* rss) {
 
 
 int uv_uptime(double* uptime) {
-  BYTE stack_buffer[4096];
-  BYTE* malloced_buffer = NULL;
-  BYTE* buffer = (BYTE*) stack_buffer;
-  size_t buffer_size = sizeof(stack_buffer);
-  DWORD data_size;
+  *uptime = GetTickCount64() / 1000.0;
+  return 0;
+}
 
-  PERF_DATA_BLOCK* data_block;
-  PERF_OBJECT_TYPE* object_type;
-  PERF_COUNTER_DEFINITION* counter_definition;
 
-  DWORD i;
+unsigned int uv_available_parallelism(void) {
+  SYSTEM_INFO info;
+  unsigned rc;
 
-  for (;;) {
-    LONG result;
+  /* TODO(bnoordhuis) Use GetLogicalProcessorInformationEx() to support systems
+   * with > 64 CPUs? See https://github.com/libuv/libuv/pull/3458
+   */
+  GetSystemInfo(&info);
 
-    data_size = (DWORD) buffer_size;
-    result = RegQueryValueExW(HKEY_PERFORMANCE_DATA,
-                              L"2",
-                              NULL,
-                              NULL,
-                              buffer,
-                              &data_size);
-    if (result == ERROR_SUCCESS) {
-      break;
-    } else if (result != ERROR_MORE_DATA) {
-      *uptime = 0;
-      return uv_translate_sys_error(result);
-    }
+  rc = info.dwNumberOfProcessors;
+  if (rc < 1)
+    rc = 1;
 
-    buffer_size *= 2;
-    /* Don't let the buffer grow infinitely. */
-    if (buffer_size > 1 << 20) {
-      goto internalError;
-    }
-
-    uv__free(malloced_buffer);
-
-    buffer = malloced_buffer = (BYTE*) uv__malloc(buffer_size);
-    if (malloced_buffer == NULL) {
-      *uptime = 0;
-      return UV_ENOMEM;
-    }
-  }
-
-  if (data_size < sizeof(*data_block))
-    goto internalError;
-
-  data_block = (PERF_DATA_BLOCK*) buffer;
-
-  if (wmemcmp(data_block->Signature, L"PERF", 4) != 0)
-    goto internalError;
-
-  if (data_size < data_block->HeaderLength + sizeof(*object_type))
-    goto internalError;
-
-  object_type = (PERF_OBJECT_TYPE*) (buffer + data_block->HeaderLength);
-
-  if (object_type->NumInstances != PERF_NO_INSTANCES)
-    goto internalError;
-
-  counter_definition = (PERF_COUNTER_DEFINITION*) (buffer +
-      data_block->HeaderLength + object_type->HeaderLength);
-  for (i = 0; i < object_type->NumCounters; i++) {
-    if ((BYTE*) counter_definition + sizeof(*counter_definition) >
-        buffer + data_size) {
-      break;
-    }
-
-    if (counter_definition->CounterNameTitleIndex == 674 &&
-        counter_definition->CounterSize == sizeof(uint64_t)) {
-      if (counter_definition->CounterOffset + sizeof(uint64_t) > data_size ||
-          !(counter_definition->CounterType & PERF_OBJECT_TIMER)) {
-        goto internalError;
-      } else {
-        BYTE* address = (BYTE*) object_type + object_type->DefinitionLength +
-                        counter_definition->CounterOffset;
-        uint64_t value = *((uint64_t*) address);
-        *uptime = floor((double) (object_type->PerfTime.QuadPart - value) /
-                        (double) object_type->PerfFreq.QuadPart);
-        uv__free(malloced_buffer);
-        return 0;
-      }
-    }
-
-    counter_definition = (PERF_COUNTER_DEFINITION*)
-        ((BYTE*) counter_definition + counter_definition->ByteLength);
-  }
-
-  /* If we get here, the uptime value was not found. */
-  uv__free(malloced_buffer);
-  *uptime = 0;
-  return UV_ENOSYS;
-
- internalError:
-  uv__free(malloced_buffer);
-  *uptime = 0;
-  return UV_EIO;
+  return rc;
 }
 
 
@@ -1664,26 +1594,36 @@ int uv_os_unsetenv(const char* name) {
 
 
 int uv_os_gethostname(char* buffer, size_t* size) {
-  char buf[UV_MAXHOSTNAMESIZE];
+  WCHAR buf[UV_MAXHOSTNAMESIZE];
   size_t len;
+  char* utf8_str;
+  int convert_result;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
   uv__once_init(); /* Initialize winsock */
 
-  if (gethostname(buf, sizeof(buf)) != 0)
+  if (pGetHostNameW == NULL)
+    return UV_ENOSYS;
+
+  if (pGetHostNameW(buf, UV_MAXHOSTNAMESIZE) != 0)
     return uv_translate_sys_error(WSAGetLastError());
 
-  buf[sizeof(buf) - 1] = '\0'; /* Null terminate, just to be safe. */
-  len = strlen(buf);
+  convert_result = uv__convert_utf16_to_utf8(buf, -1, &utf8_str);
 
+  if (convert_result != 0)
+    return convert_result;
+
+  len = strlen(utf8_str);
   if (len >= *size) {
     *size = len + 1;
+    uv__free(utf8_str);
     return UV_ENOBUFS;
   }
 
-  memcpy(buffer, buf, len + 1);
+  memcpy(buffer, utf8_str, len + 1);
+  uv__free(utf8_str);
   *size = len;
   return 0;
 }
@@ -1837,6 +1777,22 @@ int uv_os_uname(uv_utsname_t* buffer) {
     RegCloseKey(registry_key);
 
     if (r == ERROR_SUCCESS) {
+      /* Windows 11 shares dwMajorVersion with Windows 10
+       * this workaround tries to disambiguate that by checking
+       * if the dwBuildNumber is from Windows 11 releases (>= 22000).
+       *
+       * This workaround replaces the ProductName key value
+       * from "Windows 10 *" to "Windows 11 *" */
+      if (os_info.dwMajorVersion == 10 &&
+          os_info.dwBuildNumber >= 22000 &&
+          product_name_w_size >= ARRAY_SIZE(L"Windows 10")) {
+        /* If ProductName starts with "Windows 10" */
+        if (wcsncmp(product_name_w, L"Windows 10", ARRAY_SIZE(L"Windows 10") - 1) == 0) {
+          /* Bump 10 to 11 */
+          product_name_w[9] = '1';
+        }
+      }
+
       version_size = WideCharToMultiByte(CP_UTF8,
                                          0,
                                          product_name_w,

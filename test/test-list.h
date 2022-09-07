@@ -22,7 +22,6 @@
 #include "uv.h"
 
 TEST_DECLARE   (platform_output)
-TEST_DECLARE   (callback_order)
 TEST_DECLARE   (close_order)
 TEST_DECLARE   (run_once)
 TEST_DECLARE   (run_nowait)
@@ -78,6 +77,7 @@ TEST_DECLARE   (tty_pty)
 TEST_DECLARE   (stdio_over_pipes)
 TEST_DECLARE   (stdio_emulate_iocp)
 TEST_DECLARE   (ip6_pton)
+TEST_DECLARE   (ip6_sin6_len)
 TEST_DECLARE   (connect_unspecified)
 TEST_DECLARE   (ipc_heavy_traffic_deadlock_bug)
 TEST_DECLARE   (ipc_listen_before_write)
@@ -90,9 +90,6 @@ TEST_DECLARE   (ipc_send_recv_tcp)
 TEST_DECLARE   (ipc_send_recv_tcp_inprocess)
 TEST_DECLARE   (ipc_tcp_connection)
 TEST_DECLARE   (ipc_send_zero)
-#ifndef _WIN32
-TEST_DECLARE   (ipc_closed_handle)
-#endif
 TEST_DECLARE   (tcp_alloc_cb_fail)
 TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_vec)
@@ -116,7 +113,8 @@ TEST_DECLARE   (tcp_open_bound)
 TEST_DECLARE   (tcp_open_connected)
 TEST_DECLARE   (tcp_connect_error_after_write)
 TEST_DECLARE   (tcp_shutdown_after_write)
-TEST_DECLARE   (tcp_bind_error_addrinuse)
+TEST_DECLARE   (tcp_bind_error_addrinuse_connect)
+TEST_DECLARE   (tcp_bind_error_addrinuse_listen)
 TEST_DECLARE   (tcp_bind_error_addrnotavail_1)
 TEST_DECLARE   (tcp_bind_error_addrnotavail_2)
 TEST_DECLARE   (tcp_bind_error_fault)
@@ -124,13 +122,18 @@ TEST_DECLARE   (tcp_bind_error_inval)
 TEST_DECLARE   (tcp_bind_localhost_ok)
 TEST_DECLARE   (tcp_bind_invalid_flags)
 TEST_DECLARE   (tcp_bind_writable_flags)
+TEST_DECLARE   (tcp_bind_or_listen_error_after_close)
 TEST_DECLARE   (tcp_listen_without_bind)
 TEST_DECLARE   (tcp_connect_error_fault)
 TEST_DECLARE   (tcp_connect_timeout)
+TEST_DECLARE   (tcp_local_connect_timeout)
+TEST_DECLARE   (tcp6_local_connect_timeout)
 TEST_DECLARE   (tcp_close_while_connecting)
+TEST_DECLARE   (tcp_close_after_read_timeout)
 TEST_DECLARE   (tcp_close)
 TEST_DECLARE   (tcp_close_reset_accepted)
 TEST_DECLARE   (tcp_close_reset_accepted_after_shutdown)
+TEST_DECLARE   (tcp_close_reset_accepted_after_socket_shutdown)
 TEST_DECLARE   (tcp_close_reset_client)
 TEST_DECLARE   (tcp_close_reset_client_after_shutdown)
 TEST_DECLARE   (tcp_create_early)
@@ -146,6 +149,7 @@ TEST_DECLARE   (tcp_write_to_half_open_connection)
 TEST_DECLARE   (tcp_unexpected_read)
 TEST_DECLARE   (tcp_read_stop)
 TEST_DECLARE   (tcp_read_stop_start)
+TEST_DECLARE   (tcp_rst)
 TEST_DECLARE   (tcp_bind6_error_addrinuse)
 TEST_DECLARE   (tcp_bind6_error_addrnotavail)
 TEST_DECLARE   (tcp_bind6_error_fault)
@@ -156,6 +160,7 @@ TEST_DECLARE   (udp_alloc_cb_fail)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
 TEST_DECLARE   (udp_connect)
+TEST_DECLARE   (udp_connect6)
 TEST_DECLARE   (udp_create_early)
 TEST_DECLARE   (udp_create_early_bad_bind)
 TEST_DECLARE   (udp_create_early_bad_domain)
@@ -189,6 +194,7 @@ TEST_DECLARE   (pipe_bind_error_addrnotavail)
 TEST_DECLARE   (pipe_bind_error_inval)
 TEST_DECLARE   (pipe_connect_multiple)
 TEST_DECLARE   (pipe_listen_without_bind)
+TEST_DECLARE   (pipe_bind_or_listen_error_after_close)
 TEST_DECLARE   (pipe_connect_bad_name)
 TEST_DECLARE   (pipe_connect_to_file)
 TEST_DECLARE   (pipe_connect_on_prepare)
@@ -203,6 +209,7 @@ TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_close_tcp)
 TEST_DECLARE   (shutdown_close_pipe)
 TEST_DECLARE   (shutdown_eof)
+TEST_DECLARE   (shutdown_simultaneous)
 TEST_DECLARE   (shutdown_twice)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (env_vars)
@@ -221,6 +228,7 @@ TEST_DECLARE   (timer_is_closing)
 TEST_DECLARE   (timer_null_callback)
 TEST_DECLARE   (timer_early_check)
 TEST_DECLARE   (idle_starvation)
+TEST_DECLARE   (idle_check)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
 TEST_DECLARE   (walk_handles)
@@ -283,6 +291,7 @@ TEST_DECLARE   (getnameinfo_basic_ip6)
 TEST_DECLARE   (getsockname_tcp)
 TEST_DECLARE   (getsockname_udp)
 TEST_DECLARE   (gettimeofday)
+TEST_DECLARE   (test_macros)
 TEST_DECLARE   (fail_always)
 TEST_DECLARE   (pass_always)
 TEST_DECLARE   (socket_buffer_size)
@@ -313,6 +322,8 @@ TEST_DECLARE   (spawn_reads_child_path)
 TEST_DECLARE   (spawn_inherit_streams)
 TEST_DECLARE   (spawn_quoted_path)
 TEST_DECLARE   (spawn_tcp_server)
+TEST_DECLARE   (spawn_exercise_sigchld_issue)
+TEST_DECLARE   (spawn_relative_path)
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (fs_poll_getpath)
 TEST_DECLARE   (fs_poll_close_request)
@@ -356,6 +367,7 @@ TEST_DECLARE   (fs_open_flags)
 TEST_DECLARE   (fs_fd_hash)
 #endif
 TEST_DECLARE   (fs_utime)
+TEST_DECLARE   (fs_utime_round)
 TEST_DECLARE   (fs_futime)
 TEST_DECLARE   (fs_lutime)
 TEST_DECLARE   (fs_file_open_append)
@@ -380,10 +392,12 @@ TEST_DECLARE   (fs_event_no_callback_after_close)
 TEST_DECLARE   (fs_event_no_callback_on_close)
 TEST_DECLARE   (fs_event_immediate_close)
 TEST_DECLARE   (fs_event_close_with_pending_event)
+TEST_DECLARE   (fs_event_close_with_pending_delete_event)
 TEST_DECLARE   (fs_event_close_in_callback)
 TEST_DECLARE   (fs_event_start_and_close)
 TEST_DECLARE   (fs_event_error_reporting)
 TEST_DECLARE   (fs_event_getpath)
+TEST_DECLARE   (fs_event_stop_in_cb)
 TEST_DECLARE   (fs_scandir_empty_dir)
 TEST_DECLARE   (fs_scandir_non_existent_dir)
 TEST_DECLARE   (fs_scandir_file)
@@ -415,6 +429,7 @@ TEST_DECLARE   (fs_invalid_mkdir_name)
 #endif
 TEST_DECLARE   (fs_get_system_error)
 TEST_DECLARE   (strscpy)
+TEST_DECLARE   (strtok)
 TEST_DECLARE   (threadpool_queue_work_simple)
 TEST_DECLARE   (threadpool_queue_work_einval)
 TEST_DECLARE   (threadpool_multiple_event_loops)
@@ -448,12 +463,17 @@ TEST_DECLARE   (poll_nested_epoll)
 #ifdef UV_HAVE_KQUEUE
 TEST_DECLARE   (poll_nested_kqueue)
 #endif
+TEST_DECLARE   (poll_multiple_handles)
 
 TEST_DECLARE   (ip4_addr)
 TEST_DECLARE   (ip6_addr_link_local)
+TEST_DECLARE   (ip_name)
 
 TEST_DECLARE   (poll_close_doesnt_corrupt_stack)
 TEST_DECLARE   (poll_closesocket)
+TEST_DECLARE   (close_fd)
+TEST_DECLARE   (closed_fd_events)
+TEST_DECLARE   (spawn_fs_open)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
 #if !defined(USING_UV_SHARED)
@@ -468,8 +488,6 @@ TEST_DECLARE   (ipc_listen_after_bind_twice)
 TEST_DECLARE   (win32_signum_number)
 #else
 TEST_DECLARE   (emfile)
-TEST_DECLARE   (close_fd)
-TEST_DECLARE   (spawn_fs_open)
 TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
@@ -478,7 +496,6 @@ TEST_DECLARE   (we_get_signals_mixed)
 TEST_DECLARE   (signal_multiple_loops)
 TEST_DECLARE   (signal_pending_on_close)
 TEST_DECLARE   (signal_close_loop_alive)
-TEST_DECLARE   (closed_fd_events)
 #endif
 #ifdef __APPLE__
 TEST_DECLARE   (osx_select)
@@ -500,7 +517,7 @@ TEST_DECLARE   (getters_setters)
 
 TEST_DECLARE   (not_writable_after_shutdown)
 TEST_DECLARE   (not_readable_nor_writable_on_read_error)
-TEST_DECLARE   (not_readable_on_eof)
+TEST_DECLARE   (readable_on_eof)
 
 #ifndef _WIN32
 TEST_DECLARE  (fork_timer)
@@ -522,6 +539,7 @@ TEST_DECLARE  (fork_threadpool_queue_work_simple)
 
 TEST_DECLARE  (idna_toascii)
 TEST_DECLARE  (utf8_decode1)
+TEST_DECLARE  (utf8_decode1_overrun)
 TEST_DECLARE  (uname)
 
 TEST_DECLARE  (metrics_idle_time)
@@ -531,9 +549,7 @@ TEST_DECLARE  (metrics_idle_time_zero)
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
-#if 0
-  TEST_ENTRY  (callback_order)
-#endif
+  TEST_ENTRY  (test_macros)
   TEST_ENTRY  (close_order)
   TEST_ENTRY  (run_once)
   TEST_ENTRY  (run_nowait)
@@ -567,7 +583,8 @@ TASK_LIST_START
 #ifndef _WIN32
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif
-  TEST_ENTRY  (pipe_set_non_blocking)
+  /* Seems to be either about 0.5s or 5s, depending on the OS. */
+  TEST_ENTRY_CUSTOM (pipe_set_non_blocking, 0, 0, 20000)
   TEST_ENTRY  (pipe_set_chmod)
   TEST_ENTRY  (tty)
 #ifdef _WIN32
@@ -600,6 +617,7 @@ TASK_LIST_START
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (stdio_emulate_iocp)
   TEST_ENTRY  (ip6_pton)
+  TEST_ENTRY  (ip6_sin6_len)
   TEST_ENTRY  (connect_unspecified)
   TEST_ENTRY  (ipc_heavy_traffic_deadlock_bug)
   TEST_ENTRY  (ipc_listen_before_write)
@@ -612,9 +630,6 @@ TASK_LIST_START
   TEST_ENTRY  (ipc_send_recv_tcp_inprocess)
   TEST_ENTRY  (ipc_tcp_connection)
   TEST_ENTRY  (ipc_send_zero)
-#ifndef _WIN32
-  TEST_ENTRY  (ipc_closed_handle)
-#endif
 
   TEST_ENTRY  (tcp_alloc_cb_fail)
 
@@ -671,7 +686,13 @@ TASK_LIST_START
   TEST_HELPER (tcp_shutdown_after_write, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_connect_error_after_write)
-  TEST_ENTRY  (tcp_bind_error_addrinuse)
+  TEST_ENTRY  (tcp_bind_error_addrinuse_connect)
+  /* tcp4_echo_server steals the port. It needs to be a separate process
+   * because libuv sets setsockopt(SO_REUSEADDR) that lets you steal an
+   * existing bind if it originates from the same process.
+   */
+  TEST_HELPER (tcp_bind_error_addrinuse_connect, tcp4_echo_server)
+  TEST_ENTRY  (tcp_bind_error_addrinuse_listen)
   TEST_ENTRY  (tcp_bind_error_addrnotavail_1)
   TEST_ENTRY  (tcp_bind_error_addrnotavail_2)
   TEST_ENTRY  (tcp_bind_error_fault)
@@ -679,13 +700,18 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_bind_localhost_ok)
   TEST_ENTRY  (tcp_bind_invalid_flags)
   TEST_ENTRY  (tcp_bind_writable_flags)
+  TEST_ENTRY  (tcp_bind_or_listen_error_after_close)
   TEST_ENTRY  (tcp_listen_without_bind)
   TEST_ENTRY  (tcp_connect_error_fault)
   TEST_ENTRY  (tcp_connect_timeout)
+  TEST_ENTRY  (tcp_local_connect_timeout)
+  TEST_ENTRY  (tcp6_local_connect_timeout)
   TEST_ENTRY  (tcp_close_while_connecting)
+  TEST_ENTRY  (tcp_close_after_read_timeout)
   TEST_ENTRY  (tcp_close)
   TEST_ENTRY  (tcp_close_reset_accepted)
   TEST_ENTRY  (tcp_close_reset_accepted_after_shutdown)
+  TEST_ENTRY  (tcp_close_reset_accepted_after_socket_shutdown)
   TEST_ENTRY  (tcp_close_reset_client)
   TEST_ENTRY  (tcp_close_reset_client_after_shutdown)
   TEST_ENTRY  (tcp_create_early)
@@ -705,6 +731,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (tcp_read_stop_start)
 
+  TEST_ENTRY  (tcp_rst)
+  TEST_HELPER (tcp_rst, tcp4_echo_server)
+
   TEST_ENTRY  (tcp_bind6_error_addrinuse)
   TEST_ENTRY  (tcp_bind6_error_addrnotavail)
   TEST_ENTRY  (tcp_bind6_error_fault)
@@ -715,6 +744,7 @@ TASK_LIST_START
   TEST_ENTRY  (udp_bind)
   TEST_ENTRY  (udp_bind_reuseaddr)
   TEST_ENTRY  (udp_connect)
+  TEST_ENTRY  (udp_connect6)
   TEST_ENTRY  (udp_create_early)
   TEST_ENTRY  (udp_create_early_bad_bind)
   TEST_ENTRY  (udp_create_early_bad_domain)
@@ -750,6 +780,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_bind_error_inval)
   TEST_ENTRY  (pipe_connect_multiple)
   TEST_ENTRY  (pipe_listen_without_bind)
+  TEST_ENTRY  (pipe_bind_or_listen_error_after_close)
   TEST_ENTRY  (pipe_getsockname)
   TEST_ENTRY  (pipe_getsockname_abstract)
   TEST_ENTRY  (pipe_getsockname_blocking)
@@ -766,6 +797,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (shutdown_eof)
   TEST_HELPER (shutdown_eof, tcp4_echo_server)
+
+  TEST_ENTRY  (shutdown_simultaneous)
+  TEST_HELPER (shutdown_simultaneous, tcp4_echo_server)
 
   TEST_ENTRY  (shutdown_twice)
   TEST_HELPER (shutdown_twice, tcp4_echo_server)
@@ -792,6 +826,7 @@ TASK_LIST_START
   TEST_ENTRY  (timer_early_check)
 
   TEST_ENTRY  (idle_starvation)
+  TEST_ENTRY  (idle_check)
 
   TEST_ENTRY  (ref)
   TEST_ENTRY  (idle_ref)
@@ -892,6 +927,7 @@ TASK_LIST_START
 #ifdef UV_HAVE_KQUEUE
   TEST_ENTRY  (poll_nested_kqueue)
 #endif
+  TEST_ENTRY  (poll_multiple_handles)
 
   TEST_ENTRY  (socket_buffer_size)
 
@@ -922,6 +958,8 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_inherit_streams)
   TEST_ENTRY  (spawn_quoted_path)
   TEST_ENTRY  (spawn_tcp_server)
+  TEST_ENTRY  (spawn_exercise_sigchld_issue)
+  TEST_ENTRY  (spawn_relative_path)
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (fs_poll_close_request)
@@ -933,6 +971,9 @@ TASK_LIST_START
 
   TEST_ENTRY  (poll_close_doesnt_corrupt_stack)
   TEST_ENTRY  (poll_closesocket)
+  TEST_ENTRY  (close_fd)
+  TEST_ENTRY  (closed_fd_events)
+  TEST_ENTRY  (spawn_fs_open)
 #ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
 #if !defined(USING_UV_SHARED)
@@ -947,8 +988,6 @@ TASK_LIST_START
   TEST_ENTRY  (win32_signum_number)
 #else
   TEST_ENTRY  (emfile)
-  TEST_ENTRY  (close_fd)
-  TEST_ENTRY  (spawn_fs_open)
   TEST_ENTRY  (spawn_setuid_setgid)
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
@@ -957,7 +996,6 @@ TASK_LIST_START
   TEST_ENTRY  (signal_multiple_loops)
   TEST_ENTRY  (signal_pending_on_close)
   TEST_ENTRY  (signal_close_loop_alive)
-  TEST_ENTRY  (closed_fd_events)
 #endif
 
 #ifdef __APPLE__
@@ -986,6 +1024,7 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (fs_chown)
   TEST_ENTRY  (fs_utime)
+  TEST_ENTRY  (fs_utime_round)
   TEST_ENTRY  (fs_futime)
   TEST_ENTRY  (fs_lutime)
   TEST_ENTRY  (fs_readlink)
@@ -1023,10 +1062,12 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_no_callback_on_close)
   TEST_ENTRY  (fs_event_immediate_close)
   TEST_ENTRY  (fs_event_close_with_pending_event)
+  TEST_ENTRY  (fs_event_close_with_pending_delete_event)
   TEST_ENTRY  (fs_event_close_in_callback)
   TEST_ENTRY  (fs_event_start_and_close)
   TEST_ENTRY_CUSTOM (fs_event_error_reporting, 0, 0, 60000)
   TEST_ENTRY  (fs_event_getpath)
+  TEST_ENTRY  (fs_event_stop_in_cb)
   TEST_ENTRY  (fs_scandir_empty_dir)
   TEST_ENTRY  (fs_scandir_non_existent_dir)
   TEST_ENTRY  (fs_scandir_file)
@@ -1058,6 +1099,7 @@ TASK_LIST_START
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (open_osfhandle_valid_handle)
   TEST_ENTRY  (strscpy)
+  TEST_ENTRY  (strtok)
   TEST_ENTRY  (threadpool_queue_work_simple)
   TEST_ENTRY  (threadpool_queue_work_einval)
   TEST_ENTRY_CUSTOM (threadpool_multiple_event_loops, 0, 0, 60000)
@@ -1079,6 +1121,7 @@ TASK_LIST_START
   TEST_ENTRY  (dlerror)
   TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)
+  TEST_ENTRY  (ip_name)
 
   TEST_ENTRY  (queue_foreach_delete)
 
@@ -1106,6 +1149,7 @@ TASK_LIST_START
 #endif
 
   TEST_ENTRY  (utf8_decode1)
+  TEST_ENTRY  (utf8_decode1_overrun)
   TEST_ENTRY  (uname)
 
 /* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
@@ -1117,8 +1161,8 @@ TASK_LIST_START
   TEST_HELPER   (not_writable_after_shutdown, tcp4_echo_server)
   TEST_ENTRY    (not_readable_nor_writable_on_read_error)
   TEST_HELPER   (not_readable_nor_writable_on_read_error, tcp4_echo_server)
-  TEST_ENTRY    (not_readable_on_eof)
-  TEST_HELPER   (not_readable_on_eof, tcp4_echo_server)
+  TEST_ENTRY    (readable_on_eof)
+  TEST_HELPER   (readable_on_eof, tcp4_echo_server)
 
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)

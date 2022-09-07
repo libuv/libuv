@@ -46,7 +46,7 @@
   do {                                                                        \
     if (req == NULL)                                                          \
       return UV_EINVAL;                                                       \
-    uv_fs_req_init(loop, req, subtype, cb);                                   \
+    uv__fs_req_init(loop, req, subtype, cb);                                  \
   }                                                                           \
   while (0)
 
@@ -92,30 +92,24 @@
     return;                                                                 \
   }
 
-#define MILLIONu (1000U * 1000U)
-#define BILLIONu (1000U * 1000U * 1000U)
+#define MILLION ((int64_t) 1000 * 1000)
+#define BILLION ((int64_t) 1000 * 1000 * 1000)
 
-#define FILETIME_TO_UINT(filetime)                                          \
-   (*((uint64_t*) &(filetime)) - (uint64_t) 116444736 * BILLIONu)
-
-#define FILETIME_TO_TIME_T(filetime)                                        \
-   (FILETIME_TO_UINT(filetime) / (10u * MILLIONu))
-
-#define FILETIME_TO_TIME_NS(filetime, secs)                                 \
-   ((FILETIME_TO_UINT(filetime) - (secs * (uint64_t) 10 * MILLIONu)) * 100U)
-
-#define FILETIME_TO_TIMESPEC(ts, filetime)                                  \
-   do {                                                                     \
-     (ts).tv_sec = (long) FILETIME_TO_TIME_T(filetime);                     \
-     (ts).tv_nsec = (long) FILETIME_TO_TIME_NS(filetime, (ts).tv_sec);      \
-   } while(0)
+static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
+  filetime -= 116444736 * BILLION;
+  ts->tv_sec = (long) (filetime / (10 * MILLION));
+  ts->tv_nsec = (long) ((filetime - ts->tv_sec * 10 * MILLION) * 100U);
+  if (ts->tv_nsec < 0) {
+    ts->tv_sec -= 1;
+    ts->tv_nsec += 1e9;
+  }
+}
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    uint64_t bigtime = ((uint64_t) ((time) * (uint64_t) 10 * MILLIONu)) +   \
-                       (uint64_t) 116444736 * BILLIONu;                     \
-    (filetime_ptr)->dwLowDateTime = bigtime & 0xFFFFFFFF;                   \
-    (filetime_ptr)->dwHighDateTime = bigtime >> 32;                         \
+    int64_t bigtime = ((time) * 10 * MILLION + 116444736 * BILLION);        \
+    (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
+    (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
 
 #define IS_SLASH(c) ((c) == L'\\' || (c) == L'/')
@@ -138,7 +132,7 @@ static int uv__file_symlink_usermode_flag = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGE
 static DWORD uv__allocation_granularity;
 
 
-void uv_fs_init(void) {
+void uv__fs_init(void) {
   SYSTEM_INFO system_info;
 
   GetSystemInfo(&system_info);
@@ -247,7 +241,7 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
 
 
 
-INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
+INLINE static void uv__fs_req_init(uv_loop_t* loop, uv_fs_t* req,
     uv_fs_type fs_type, const uv_fs_cb cb) {
   uv__once_init();
   UV_REQ_INIT(req, UV_FS);
@@ -764,7 +758,7 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
   void* view;
 
   if (rw_flags == UV_FS_O_WRONLY) {
-    SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
+    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
     return;
   }
   if (fd_info->is_directory) {
@@ -918,7 +912,11 @@ void fs__read(uv_fs_t* req) {
     SET_REQ_RESULT(req, bytes);
   } else {
     error = GetLastError();
-    if (error == ERROR_HANDLE_EOF) {
+    if (error == ERROR_ACCESS_DENIED) {
+      error = ERROR_INVALID_FLAGS;
+    }
+
+    if (error == ERROR_HANDLE_EOF || error == ERROR_BROKEN_PIPE) {
       SET_REQ_RESULT(req, bytes);
     } else {
       SET_REQ_WIN32_ERROR(req, error);
@@ -942,7 +940,7 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
   FILETIME ft;
 
   if (rw_flags == UV_FS_O_RDONLY) {
-    SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
+    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
     return;
   }
   if (fd_info->is_directory) {
@@ -1058,6 +1056,7 @@ void fs__write(uv_fs_t* req) {
   OVERLAPPED overlapped, *overlapped_ptr;
   LARGE_INTEGER offset_;
   DWORD bytes;
+  DWORD error;
   int result;
   unsigned int index;
   LARGE_INTEGER original_position;
@@ -1117,7 +1116,13 @@ void fs__write(uv_fs_t* req) {
   if (result || bytes > 0) {
     SET_REQ_RESULT(req, bytes);
   } else {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
+    error = GetLastError();
+
+    if (error == ERROR_ACCESS_DENIED) {
+      error = ERROR_INVALID_FLAGS;
+    }
+
+    SET_REQ_WIN32_ERROR(req, error);
   }
 }
 
@@ -1224,7 +1229,8 @@ void fs__mkdir(uv_fs_t* req) {
     SET_REQ_RESULT(req, 0);
   } else {
     SET_REQ_WIN32_ERROR(req, GetLastError());
-    if (req->sys_errno_ == ERROR_INVALID_NAME)
+    if (req->sys_errno_ == ERROR_INVALID_NAME ||
+        req->sys_errno_ == ERROR_DIRECTORY)
       req->result = UV_EINVAL;
   }
 }
@@ -1241,19 +1247,21 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   unsigned int tries, i;
   size_t len;
   uint64_t v;
-
+  char* path;
+  
+  path = (char*)req->path;
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
   if (len < num_x || wcsncmp(ep - num_x, L"XXXXXX", num_x)) {
     SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
-    return;
+    goto clobber;
   }
 
   tries = TMP_MAX;
   do {
     if (uv__random_rtlgenrandom((void *)&v, sizeof(v)) < 0) {
       SET_REQ_UV_ERROR(req, UV_EIO, ERROR_IO_DEVICE);
-      break;
+      goto clobber;
     }
 
     cp = ep - num_x;
@@ -1264,16 +1272,17 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
 
     if (func(req)) {
       if (req->result >= 0) {
-        len = strlen(req->path);
-        wcstombs((char*) req->path + len - num_x, ep - num_x, num_x);
+        len = strlen(path);
+        wcstombs(path + len - num_x, ep - num_x, num_x);
       }
-      break;
+      return;
     }
   } while (--tries);
 
-  if (tries == 0) {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
-  }
+  SET_REQ_WIN32_ERROR(req, GetLastError());
+
+clobber:
+  path[0] = '\0';
 }
 
 
@@ -1788,10 +1797,14 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
                         ((_S_IREAD | _S_IWRITE) >> 6);
 
-  FILETIME_TO_TIMESPEC(statbuf->st_atim, file_info.BasicInformation.LastAccessTime);
-  FILETIME_TO_TIMESPEC(statbuf->st_ctim, file_info.BasicInformation.ChangeTime);
-  FILETIME_TO_TIMESPEC(statbuf->st_mtim, file_info.BasicInformation.LastWriteTime);
-  FILETIME_TO_TIMESPEC(statbuf->st_birthtim, file_info.BasicInformation.CreationTime);
+  uv__filetime_to_timespec(&statbuf->st_atim,
+                           file_info.BasicInformation.LastAccessTime.QuadPart);
+  uv__filetime_to_timespec(&statbuf->st_ctim,
+                           file_info.BasicInformation.ChangeTime.QuadPart);
+  uv__filetime_to_timespec(&statbuf->st_mtim,
+                           file_info.BasicInformation.LastWriteTime.QuadPart);
+  uv__filetime_to_timespec(&statbuf->st_birthtim,
+                           file_info.BasicInformation.CreationTime.QuadPart);
 
   statbuf->st_ino = file_info.InternalInformation.IndexNumber.QuadPart;
 
@@ -1867,8 +1880,9 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                        NULL);
 
   if (handle == INVALID_HANDLE_VALUE)
-    ret = GetLastError();
-  else if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
+    return GetLastError();
+
+  if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
     ret = GetLastError();
   else
     ret = 0;
@@ -2286,13 +2300,13 @@ INLINE static DWORD fs__utime_impl_from_path(WCHAR* path,
                        flags,
                        NULL);
 
-  if (handle == INVALID_HANDLE_VALUE) {
+  if (handle == INVALID_HANDLE_VALUE)
+    return GetLastError();
+
+  if (fs__utime_handle(handle, atime, mtime) != 0)
     ret = GetLastError();
-  } else if (fs__utime_handle(handle, atime, mtime) != 0) {
-    ret = GetLastError();
-  } else {
+  else
     ret = 0;
-  }
 
   CloseHandle(handle);
   return ret;
