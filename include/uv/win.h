@@ -70,6 +70,11 @@ typedef struct pollfd {
 # define S_IFLNK 0xA000
 #endif
 
+// Define missing in Windows Kit Include\{VERSION}\ucrt\sys\stat.h
+#if defined(_CRT_INTERNAL_NONSTDC_NAMES) && _CRT_INTERNAL_NONSTDC_NAMES && !defined(S_IFIFO)
+# define S_IFIFO _S_IFIFO
+#endif
+
 /* Additional signals supported by uv_signal and or uv_kill. The CRT defines
  * the following signals already:
  *
