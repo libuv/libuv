@@ -405,6 +405,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv__backend_timeout(loop);
 
+    uv__metrics_inc_loop_count(loop);
+
     uv__io_poll(loop, timeout);
 
     /* Process immediate callbacks (e.g. write_cb) a small fixed number of
