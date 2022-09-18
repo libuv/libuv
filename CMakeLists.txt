@@ -226,8 +226,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
        src/unix/procfs-exepath.c
        src/unix/random-getentropy.c
        src/unix/random-getrandom.c
-       src/unix/random-sysctl-linux.c
-       src/unix/epoll.c)
+       src/unix/random-sysctl-linux.c)
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux")
@@ -287,8 +286,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
        src/unix/linux-syscalls.c
        src/unix/procfs-exepath.c
        src/unix/random-getrandom.c
-       src/unix/random-sysctl-linux.c
-       src/unix/epoll.c)
+       src/unix/random-sysctl-linux.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
