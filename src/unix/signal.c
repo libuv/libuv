@@ -33,7 +33,7 @@
 #endif
 
 typedef struct {
-  uv_signal_t* handle;
+  uint64_t handle_addr;
   int signum;
 } uv__signal_msg_t;
 
@@ -199,7 +199,7 @@ static void uv__signal_handler(int signum) {
     int r;
 
     msg.signum = signum;
-    msg.handle = handle;
+    msg.handle_addr = (uint64_t)(uintptr_t)handle;
 
     /* write() should be atomic for small data chunks, so the entire message
      * should be written at once. In theory the pipe could become full, in
@@ -454,7 +454,26 @@ static void uv__signal_event(uv_loop_t* loop,
 
     for (i = 0; i < end; i += sizeof(uv__signal_msg_t)) {
       msg = (uv__signal_msg_t*) (buf + i);
-      handle = msg->handle;
+      /* Passing pointers via pipes is not portable (it is not possible e.g. on
+       * CHERI-enabled architectures, where reading a pointer from a pipe will
+       * yield a non-dereferenceable value as it clears a hidden validity
+       * bit). To find the handler in a portable way, we look up it up inside
+       * uv__signal_tree using the address of the handler.
+       */
+      handle = NULL;
+      for (handle = uv__signal_first_handle(msg->signum);
+           handle != NULL && handle->signum == msg->signum;
+           handle = RB_NEXT(uv__signal_tree_s, &uv__signal_tree, handle)) {
+        if ((uint64_t)(uintptr_t)handle == msg->handle_addr)
+          break;
+      }
+      /* If we didn't find a handle, it's possible that it was closed (and
+       * removed from the list of active signal handlers) before we received
+       * the signal notification. It is not safe to invoke the handler now
+       * (it may reference data that has been freed), so we return early.
+       */
+      if (handle == NULL)
+        return;
 
       if (!uv__is_active(handle) || handle->signum == 0)
         return;
