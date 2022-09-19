@@ -371,14 +371,14 @@ static int uv__signal_start(uv_signal_t* handle,
    * Additionally, this avoids pending signals getting lost in the small
    * time frame that handle->signum == 0.
    */
-  if (signum == handle->signum) {
-    handle->signal_cb = signal_cb;
-    return 0;
-  }
-
-  /* If the signal handler was already active, stop it first. */
-  if (handle->signum != 0) {
-    uv__signal_stop(handle);
+  if (uv__is_active(handle)) {
+    if (signum == handle->signum) {
+      handle->signal_cb = signal_cb;
+      return 0;
+    } else {
+      /* If the signal handler was already active, stop it first. */
+      uv__signal_stop(handle);
+    }
   }
 
   uv__signal_block_and_lock(&saved_sigmask);
@@ -456,11 +456,11 @@ static void uv__signal_event(uv_loop_t* loop,
       msg = (uv__signal_msg_t*) (buf + i);
       handle = msg->handle;
 
-      if (msg->signum == handle->signum) {
-        assert(!(handle->flags & UV_HANDLE_CLOSING));
-        handle->signal_cb(handle, handle->signum);
-      }
-
+      if (!uv__is_active(handle) || handle->signum == 0)
+        return;
+      assert(msg->signum == handle->signum);
+      assert(!(handle->flags & UV_HANDLE_CLOSING));
+      handle->signal_cb(handle, handle->signum);
       handle->dispatched_signals++;
 
       if (handle->flags & UV_SIGNAL_ONE_SHOT)
@@ -526,7 +526,7 @@ static void uv__signal_stop(uv_signal_t* handle) {
   int ret;
 
   /* If the watcher wasn't started, this is a no-op. */
-  if (handle->signum == 0)
+  if (!uv__is_active(handle))
     return;
 
   uv__signal_block_and_lock(&saved_sigmask);
@@ -553,6 +553,9 @@ static void uv__signal_stop(uv_signal_t* handle) {
 
   uv__signal_unlock_and_unblock(&saved_sigmask);
 
+  /* The handler might use data that is deallocated after uv_signal_stop,
+   * so we set the signal number to zero to avoid delayed calls to the handler.
+   */
   handle->signum = 0;
   uv__handle_stop(handle);
 }

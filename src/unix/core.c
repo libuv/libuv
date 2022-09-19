@@ -284,16 +284,21 @@ static void uv__finish_close(uv_handle_t* handle) {
       break;
 
     case UV_SIGNAL:
-      /* If there are any caught signals "trapped" in the signal pipe,
-       * we can't call the close callback yet. Reinserting the handle
-       * into the closing queue makes the event loop spin but that's
-       * okay because we only need to deliver the pending events.
+      /* If we are closing a signal handler that has pending events, we have
+       * two options: we can ignore the pending signal or we could invoke the
+       * handler immediately now. We can't insert it back into the closing queue
+       * to process it later since that could result in use-after-free (e.g. if
+       * the handler uses handle->data and that is free()'d after calling
+       * uv_signal_stop()). To avoid indefinitely retaining a handle in the
+       * handle_queue, we simply ignore all further signals on this handle,
+       * since otherwise we would end up with an event loop that is permanently
+       * spinning.
        */
       sh = (uv_signal_t*) handle;
       if (sh->caught_signals > sh->dispatched_signals) {
-        handle->flags ^= UV_HANDLE_CLOSED;
-        uv__make_close_pending(handle);  /* Back into the queue. */
-        return;
+        /* Check that this handle was disabled correctly. */
+        assert(sh->signum == 0);
+        assert(!uv__is_active(sh));
       }
       break;
 

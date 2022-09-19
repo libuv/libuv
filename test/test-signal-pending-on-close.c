@@ -154,30 +154,16 @@ void worker_threadfunc(void* user_arg) {
   uv_sem_post(&wait_for_worker_thread); /* Thread initialization done. */
   uv_sem_wait(&wait_for_main_thread); /* Wait for raise(SIGUSR). */
   ASSERT_EQ(0, close_cb_called);
-#ifdef SIGNAL_HANDLER_BUG_HAS_BEEN_FIXED
   ASSERT_EQ(0, uv_run(&worker_loop, UV_RUN_ONCE));
-#else
-  ASSERT_EQ(1, uv_run(&worker_loop, UV_RUN_ONCE)); /* FIXME: this is wrong */
-#endif
   uv_sem_post(&wait_for_worker_thread); /* Completed uv_run(). */
 
+  /* We should not have any pending events after uv_run(): */
   ASSERT(!uv_is_active((uv_handle_t*)&worker_sig));
-#ifdef SIGNAL_HANDLER_BUG_HAS_BEEN_FIXED
   ASSERT_EQ(1, close_cb_called);
   ASSERT_EQ(0, uv_loop_alive(&worker_loop));
   ASSERT_EQ(2, worker_sig.caught_signals);
   ASSERT_EQ(1, worker_sig.dispatched_signals);
-#else
-  /* FIXME: we have call uv_run once more to ensure close_cb was called. */
-  ASSERT_EQ(0, close_cb_called);
-  /* Check that we have fewer dispatched signals than caught signals. */
-  ASSERT_EQ(2, worker_sig.caught_signals);
-  ASSERT_EQ(1, worker_sig.dispatched_signals);
-  ASSERT_EQ(0, uv_run(&worker_loop, UV_RUN_ONCE));
-  ASSERT_EQ(2, worker_sig.caught_signals);
-  ASSERT_EQ(2, worker_sig.dispatched_signals); /* FIXME: this is wrong */
-#endif
-  ASSERT_EQ(1, close_cb_called);
+
   ASSERT_EQ(0, uv_loop_alive(&worker_loop));
   ASSERT_EQ(0, uv_loop_close(&worker_loop));
 }
