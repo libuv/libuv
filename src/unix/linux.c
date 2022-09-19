@@ -1387,6 +1387,57 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
+static uint64_t uv__get_available_memory_fallback(void) {
+  uint64_t constrained;
+  uint64_t total;
+  uint64_t current;
+
+  constrained = uv__get_constrained_memory_fallback();
+
+  total = uv_get_total_memory();
+  if (constrained == 0 || constrained > total)
+    return uv_get_free_memory();
+
+  current = uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+  return constrained - current;
+}
+
+
+uint64_t uv_get_available_memory(void) {
+  char filename[4097];
+  char buf[1024];
+  uint64_t constrained;
+  uint64_t total;
+  uint64_t current;
+  char* p;
+
+  constrained = uv_get_constrained_memory();
+  if (constrained == 0)
+    return uv__get_available_memory_fallback();
+
+  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
+    return uv__get_available_memory_fallback();
+
+  if (memcmp(buf, "0::/", 4))
+    return uv__get_available_memory_fallback();
+
+  total = uv_get_total_memory();
+  if (constrained > total)
+    return uv_get_free_memory();
+
+  p = strchr(buf, '\n');
+  if (p != NULL)
+    *p = '\0';
+
+  p = buf + 4;
+
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.current", p);
+  current = uv__read_uint64(filename);
+
+  return constrained - current;
+}
+
+
 void uv_loadavg(double avg[3]) {
   struct sysinfo info;
   char buf[128];  /* Large enough to hold all of /proc/loadavg. */

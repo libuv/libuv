@@ -391,6 +391,11 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
+uint64_t uv_get_available_memory(void) {
+  return uv_get_free_memory();
+}
+
+
 void uv_loadavg(double avg[3]) {
   perfstat_cpu_total_t ps_total;
   int result = perfstat_cpu_total(NULL, &ps_total, sizeof(ps_total), 1);
