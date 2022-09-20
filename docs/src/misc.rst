@@ -204,6 +204,10 @@ Data types
 
     Random data request type.
 
+.. c:type:: uv_cpuset_t
+
+    Data type for cpu affinity mask.
+
 API
 ---
 
@@ -779,3 +783,27 @@ API
     Causes the calling thread to sleep for `msec` milliseconds.
 
     .. versionadded:: 1.34.0
+
+.. c:function:: int uv_os_getcpu(void)
+
+    Get the CPU on which the calling thread is running.
+
+    :returns: non-negative value on success, or -1 on failure.
+
+    .. versionadded:: 1.44.3
+
+.. c:function:: int uv_os_setaffinity(uv_pid_t pid, const uv_cpuset_t* cpusets)
+
+    Set the cpu affinity mask for the process with pid.
+
+    :returns: 0 on success, or -1 on failure.
+
+    .. versionadded:: 1.44.3
+
+.. c:function:: int uv_os_getaffinity(uv_pid_t pid, uv_cpuset_t* cpusets)
+
+    Get the cpu affinity mask for the process with pid.
+
+    :returns: 0 on success, or -1 on failure.
+
+    .. versionadded:: 1.44.3

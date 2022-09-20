@@ -1237,6 +1237,39 @@ UV_EXTERN uv_pid_t uv_os_getppid(void);
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 
+# define UV_SCHED_MAX_CPUS 1024
+typedef struct {
+    uint64_t __bits[UV_SCHED_MAX_CPUS / 64];
+} uv_cpuset_t;
+#define __UV_CPUELT(cpu)  ((cpu) / 64)
+#define __UV_CPUMASK(cpu)  ((uint64_t) 1 << ((cpu) % 64))
+#define UV_CPU_ZERO(cpusetp) \
+  do memset(cpusetp, '\0', sizeof(uv_cpuset_t)); while (0)
+#define UV_CPU_SET(cpu, cpusetp) \
+  ({ size_t __cpu = (cpu);                                           \
+     __cpu < UV_SCHED_MAX_CPUS                                       \
+      ? (( ((cpusetp)->__bits))[__UV_CPUELT (__cpu)]                 \
+       |= __UV_CPUMASK (__cpu))                                      \
+      : 0; })
+#define UV_CPU_CLR(cpu, cpusetp) \
+   ({ size_t __cpu = (cpu);                                          \
+      __cpu < UV_SCHED_MAX_CPUS                                      \
+      ? (( ((cpusetp)->__bits))[__UV_CPUELT (__cpu)]                 \
+       &= ~__UV_CPUMASK (__cpu))                                     \
+      : 0; })
+#define UV_CPU_ISSET(cpu, cpusetp) \
+   ({ size_t __cpu = (cpu);                                          \
+      __cpu < UV_SCHED_MAX_CPUS                                      \
+      ? (( ((cpusetp)->__bits))[__UV_CPUELT (__cpu)]                 \
+       & __UV_CPUMASK (__cpu)) != 0                                  \
+      : 0; })
+
+UV_EXTERN int uv_os_getcpu(void);
+UV_EXTERN int uv_os_setaffinity(uv_pid_t pid,
+                                const uv_cpuset_t* cpusets);
+UV_EXTERN int uv_os_getaffinity(uv_pid_t pid,
+                                uv_cpuset_t* cpusets);
+
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);

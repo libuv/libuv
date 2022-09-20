@@ -262,6 +262,9 @@ TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (process_priority)
+#ifdef __linux__
+TEST_DECLARE   (os_affinity)
+#endif
 TEST_DECLARE   (has_ref)
 TEST_DECLARE   (active)
 TEST_DECLARE   (embed)
@@ -857,6 +860,9 @@ TASK_LIST_START
   TEST_HELPER (pipe_ref4, pipe_echo_server)
   TEST_ENTRY  (process_ref)
   TEST_ENTRY  (process_priority)
+#ifdef __linux__
+  TEST_ENTRY  (os_affinity)
+#endif
   TEST_ENTRY  (has_ref)
 
   TEST_ENTRY  (loop_handles)

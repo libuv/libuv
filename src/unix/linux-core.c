@@ -1243,3 +1243,45 @@ void uv_loadavg(double avg[3]) {
   avg[1] = (double) info.loads[1] / 65536.0;
   avg[2] = (double) info.loads[2] / 65536.0;
 }
+
+int uv_os_getcpu(void) {
+  return sched_getcpu();
+}
+
+int uv_os_setaffinity(uv_pid_t pid, const uv_cpuset_t* cpusets) {
+  cpu_set_t mask;
+  int i = 0;
+  int nprocs = 0;
+
+  nprocs = get_nprocs();
+  CPU_ZERO(&mask);
+
+  for (i = 0; i < nprocs && i < UV_SCHED_MAX_CPUS; i++) {
+    if (UV_CPU_ISSET(i,cpusets))
+      CPU_SET(i, &mask);
+  }
+
+  return sched_setaffinity(pid, sizeof(cpu_set_t), &mask);
+}
+
+int uv_os_getaffinity(uv_pid_t pid, uv_cpuset_t* cpusets) {
+  cpu_set_t mask;
+  int i = 0;
+  int r = 0;
+  int nprocs = 0;
+
+  UV_CPU_ZERO(cpusets);
+  CPU_ZERO(&mask);
+
+  r = sched_getaffinity(pid, sizeof(cpu_set_t), &mask);
+  if (r != 0)
+    return -1;
+
+  nprocs = get_nprocs();
+  for (i = 0; i < nprocs && i < UV_SCHED_MAX_CPUS; i++) {
+    if (CPU_ISSET(i,&mask))
+      UV_CPU_SET(i, cpusets);
+  }
+
+  return 0;
+}
