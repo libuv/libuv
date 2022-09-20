@@ -650,14 +650,22 @@ static unsigned int* uv__get_nbufs(uv_fs_t* req) {
 
 void uv__fs_scandir_cleanup(uv_fs_t* req) {
   uv__dirent_t** dents;
+  unsigned int* nbufs;
+  unsigned int i;
+  unsigned int n;
 
-  unsigned int* nbufs = uv__get_nbufs(req);
+  if (req->result >= 0) {
+    dents = req->ptr;
+    nbufs = uv__get_nbufs(req);
 
-  dents = req->ptr;
-  if (*nbufs > 0 && *nbufs != (unsigned int) req->result)
-    (*nbufs)--;
-  for (; *nbufs < (unsigned int) req->result; (*nbufs)++)
-    uv__fs_scandir_free(dents[*nbufs]);
+    i = 0;
+    if (*nbufs > 0)
+      i = *nbufs - 1;
+
+    n = (unsigned int) req->result;
+    for (; i < n; i++)
+      uv__fs_scandir_free(dents[i]);
+  }
 
   uv__fs_scandir_free(req->ptr);
   req->ptr = NULL;

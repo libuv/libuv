@@ -2931,6 +2931,24 @@ TEST_IMPL(fs_scandir_file) {
 }
 
 
+/* Run in Valgrind. Should not leak when the iterator isn't exhausted. */
+TEST_IMPL(fs_scandir_early_exit) {
+  uv_dirent_t d;
+  uv_fs_t req;
+
+  ASSERT_LT(0, uv_fs_scandir(NULL, &req, "test/fixtures/one_file", 0, NULL));
+  ASSERT_NE(UV_EOF, uv_fs_scandir_next(&req, &d));
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_LT(0, uv_fs_scandir(NULL, &req, "test/fixtures", 0, NULL));
+  ASSERT_NE(UV_EOF, uv_fs_scandir_next(&req, &d));
+  uv_fs_req_cleanup(&req);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
 TEST_IMPL(fs_open_dir) {
   const char* path;
   uv_fs_t req;

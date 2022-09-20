@@ -120,6 +120,7 @@ endif  # WINNT
 EXTRA_DIST = test/fixtures/empty_file \
              test/fixtures/load_error.node \
              test/fixtures/lorem_ipsum.txt \
+             test/fixtures/one_file/one_file \
              include \
              docs \
              img \
