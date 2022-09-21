@@ -1067,10 +1067,11 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
     err = uv__tcp_xfer_import(
         (uv_tcp_t*) client, item->xfer_type, &item->xfer_info);
+    
+    uv__free(item);
+    
     if (err != 0)
       return err;
-
-    uv__free(item);
 
   } else {
     pipe_client = (uv_pipe_t*) client;
