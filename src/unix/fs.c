@@ -527,19 +527,12 @@ done:
 }
 
 
-#if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8)
-#define UV_CONST_DIRENT uv__dirent_t
-#else
-#define UV_CONST_DIRENT const uv__dirent_t
-#endif
-
-
-static int uv__fs_scandir_filter(UV_CONST_DIRENT* dent) {
+static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
 }
 
 
-static int uv__fs_scandir_sort(UV_CONST_DIRENT** a, UV_CONST_DIRENT** b) {
+static int uv__fs_scandir_sort(const uv__dirent_t** a, const uv__dirent_t** b) {
   return strcmp((*a)->d_name, (*b)->d_name);
 }
 
