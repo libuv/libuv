@@ -373,6 +373,14 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 #endif /* defined(__linux__) || defined(__FreeBSD__) */
 }
 
+int uv_thread_getcpu(void) {
+#if defined(__linux__) || defined(__FreeBSD__)
+  return sched_getcpu();
+#else
+  return -1;
+#endif
+}
+
 uv_thread_t uv_thread_self(void) {
   return pthread_self();
 }

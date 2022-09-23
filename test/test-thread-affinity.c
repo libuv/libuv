@@ -34,6 +34,7 @@ TEST_IMPL(thread_affinity) {
   char* cpumask;
   int ncpus;
   int r;
+  int c;
   uv_thread_t threads[3];
 
 #ifdef _WIN32
@@ -98,6 +99,19 @@ TEST_IMPL(thread_affinity) {
   ASSERT(cpumask[t2first + 1] == 0);
   ASSERT(cpumask[t2first + 2] == (ncpus >= 3));
   ASSERT(cpumask[t2first + 3] == 0);
+
+  c = uv_thread_getcpu();
+  ASSERT(c >= 0);
+
+  memset(cpumask, 0, cpumasksize);
+  cpumask[c] = 1;
+  r = uv_thread_setaffinity(&threads[0], cpumask, NULL, cpumasksize);
+  ASSERT(r == 0);
+
+  memset(cpumask, 0, cpumasksize);
+  r = uv_thread_getaffinity(&threads[0], cpumask, cpumasksize);
+  ASSERT(r == 0);
+  ASSERT(cpumask[c] == 1);
 
   free(cpumask);
 

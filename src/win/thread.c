@@ -252,6 +252,10 @@ int uv_thread_getaffinity(uv_thread_t* tid,
   return 0;
 }
 
+int uv_thread_getcpu(void) {
+  return GetCurrentProcessorNumber();
+}
+
 uv_thread_t uv_thread_self(void) {
   uv_thread_t key;
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
