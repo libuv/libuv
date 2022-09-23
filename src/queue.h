@@ -54,7 +54,7 @@ typedef void *QUEUE[2];
     QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);                                       \
     QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);                                       \
     QUEUE_PREV(h) = QUEUE_PREV(n);                                            \
-    QUEUE_PREV_NEXT(h) = (h);                                                 \
+    QUEUE_PREV_NEXT(n) = (h);                                                 \
   }                                                                           \
   while (0)
 
