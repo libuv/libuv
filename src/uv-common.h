@@ -34,7 +34,7 @@
 
 #include "uv.h"
 #include "uv/tree.h"
-#include "queue.h"
+#include "uv/queue.h"
 #include "strscpy.h"
 
 #if EDOM > 0

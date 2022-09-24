@@ -35,7 +35,6 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/idna.h \
                    src/inet.c \
                    src/loop-watcher.c \
-                   src/queue.h \
                    src/random.c \
                    src/strscpy.c \
                    src/strscpy.h \
@@ -56,7 +55,9 @@ endif
 
 if WINNT
 
-uvinclude_HEADERS += include/uv/win.h include/uv/tree.h
+uvinclude_HEADERS += include/uv/win.h \
+                     include/uv/tree.h \
+                     include/uv/queue.h
 AM_CPPFLAGS += -I$(top_srcdir)/src/win \
                -DWIN32_LEAN_AND_MEAN \
                -D_WIN32_WINNT=0x0602

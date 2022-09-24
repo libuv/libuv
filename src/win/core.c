@@ -24,8 +24,8 @@
 #include <stdlib.h>
 
 #include "uv.h"
+#include "uv/queue.h"
 #include "internal.h"
-#include "queue.h"
 #include "handle-inl.h"
 #include "heap-inl.h"
 #include "req-inl.h"
