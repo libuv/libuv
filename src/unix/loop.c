@@ -258,6 +258,9 @@ void uv__loop_interrupt(uv_loop_t* loop) {
 
   if (r == len)
     return;
+    
+  if (!uv_loop_alive(loop))
+    return;
 
   if (r == -1)
     if (errno == EAGAIN || errno == EWOULDBLOCK)
