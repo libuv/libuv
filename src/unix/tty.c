@@ -447,13 +447,11 @@ uv_handle_type uv_guess_handle(uv_file file) {
  */
 int uv_tty_reset_mode(void) {
   int saved_errno;
-  int expected;
   int err;
 
   saved_errno = errno;
 
-  expected = 0;
-  if (!atomic_compare_exchange_strong(&termios_spinlock, &expected, 1))
+  if (atomic_exchange(&termios_spinlock, 1))
     return UV_EBUSY;  /* In uv_tty_set_mode(). */
 
   err = 0;
