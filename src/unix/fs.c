@@ -491,7 +491,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 # if defined(__linux__)
     else {
       result = preadv(req->file,
-                      (struct iovec*)req->bufs,
+                      (struct iovec*) req->bufs,
                       req->nbufs,
                       req->off);
       if (result == -1 && errno == ENOSYS) {
