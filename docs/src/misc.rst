@@ -370,7 +370,7 @@ API
     Returns the maximum size of the mask used for process/thread affinities,
     or ``UV_ENOTSUP`` if affinities are not supported on the current platform.
 
-    .. versionadded:: 2.0.0
+    .. versionadded:: 1.45.0
 
 .. c:function:: int uv_interface_addresses(uv_interface_address_t** addresses, int* count)
 
