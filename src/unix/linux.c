@@ -36,12 +36,88 @@
 
 #include <net/if.h>
 #include <sys/epoll.h>
+#include <sys/inotify.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+
+#if defined(__arm__)
+# if defined(__thumb__) || defined(__ARM_EABI__)
+#  define UV_SYSCALL_BASE 0
+# else
+#  define UV_SYSCALL_BASE 0x900000
+# endif
+#endif /* __arm__ */
+
+#ifndef __NR_recvmmsg
+# if defined(__x86_64__)
+#  define __NR_recvmmsg 299
+# elif defined(__arm__)
+#  define __NR_recvmmsg (UV_SYSCALL_BASE + 365)
+# endif
+#endif /* __NR_recvmsg */
+
+#ifndef __NR_sendmmsg
+# if defined(__x86_64__)
+#  define __NR_sendmmsg 307
+# elif defined(__arm__)
+#  define __NR_sendmmsg (UV_SYSCALL_BASE + 374)
+# endif
+#endif /* __NR_sendmmsg */
+
+#ifndef __NR_copy_file_range
+# if defined(__x86_64__)
+#  define __NR_copy_file_range 326
+# elif defined(__i386__)
+#  define __NR_copy_file_range 377
+# elif defined(__s390__)
+#  define __NR_copy_file_range 375
+# elif defined(__arm__)
+#  define __NR_copy_file_range (UV_SYSCALL_BASE + 391)
+# elif defined(__aarch64__)
+#  define __NR_copy_file_range 285
+# elif defined(__powerpc__)
+#  define __NR_copy_file_range 379
+# elif defined(__arc__)
+#  define __NR_copy_file_range 285
+# endif
+#endif /* __NR_copy_file_range */
+
+#ifndef __NR_statx
+# if defined(__x86_64__)
+#  define __NR_statx 332
+# elif defined(__i386__)
+#  define __NR_statx 383
+# elif defined(__aarch64__)
+#  define __NR_statx 397
+# elif defined(__arm__)
+#  define __NR_statx (UV_SYSCALL_BASE + 397)
+# elif defined(__ppc__)
+#  define __NR_statx 383
+# elif defined(__s390__)
+#  define __NR_statx 379
+# endif
+#endif /* __NR_statx */
+
+#ifndef __NR_getrandom
+# if defined(__x86_64__)
+#  define __NR_getrandom 318
+# elif defined(__i386__)
+#  define __NR_getrandom 355
+# elif defined(__aarch64__)
+#  define __NR_getrandom 384
+# elif defined(__arm__)
+#  define __NR_getrandom (UV_SYSCALL_BASE + 384)
+# elif defined(__ppc__)
+#  define __NR_getrandom 359
+# elif defined(__s390__)
+#  define __NR_getrandom 349
+# endif
+#endif /* __NR_getrandom */
 
 #define HAVE_IFADDRS_H 1
 
@@ -75,12 +151,79 @@
 # define CLOCK_BOOTTIME 7
 #endif
 
+#define CAST(p) ((struct watcher_root*)(p))
+
+struct watcher_list {
+  RB_ENTRY(watcher_list) entry;
+  QUEUE watchers;
+  int iterating;
+  char* path;
+  int wd;
+};
+
+struct watcher_root {
+  struct watcher_list* rbh_root;
+};
+
+static void uv__inotify_read(uv_loop_t* loop,
+                             uv__io_t* w,
+                             unsigned int revents);
+static int compare_watchers(const struct watcher_list* a,
+                            const struct watcher_list* b);
+static void maybe_free_watcher_list(struct watcher_list* w,
+                                    uv_loop_t* loop);
 static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
 static int read_times(FILE* statfile_fp,
                       unsigned int numcpus,
                       uv_cpu_info_t* ci);
 static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
 static uint64_t read_cpufreq(unsigned int cpunum);
+
+RB_GENERATE_STATIC(watcher_root, watcher_list, entry, compare_watchers)
+
+
+ssize_t
+uv__fs_copy_file_range(int fd_in,
+                       off_t* off_in,
+                       int fd_out,
+                       off_t* off_out,
+                       size_t len,
+                       unsigned int flags)
+{
+#ifdef __NR_copy_file_range
+  return syscall(__NR_copy_file_range,
+                 fd_in,
+                 off_in,
+                 fd_out,
+                 off_out,
+                 len,
+                 flags);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
+
+
+int uv__statx(int dirfd,
+              const char* path,
+              int flags,
+              unsigned int mask,
+              struct uv__statx* statxbuf) {
+#if !defined(__NR_statx) || defined(__ANDROID_API__) && __ANDROID_API__ < 30
+  return errno = ENOSYS, -1;
+#else
+  return syscall(__NR_statx, dirfd, path, flags, mask, statxbuf);
+#endif
+}
+
+
+ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags) {
+#if !defined(__NR_getrandom) || defined(__ANDROID_API__) && __ANDROID_API__ < 28
+  return errno = ENOSYS, -1;
+#else
+  return syscall(__NR_getrandom, buf, buflen, flags);
+#endif
+}
 
 
 int uv__platform_loop_init(uv_loop_t* loop) {
@@ -1242,4 +1385,327 @@ void uv_loadavg(double avg[3]) {
   avg[0] = (double) info.loads[0] / 65536.0;
   avg[1] = (double) info.loads[1] / 65536.0;
   avg[2] = (double) info.loads[2] / 65536.0;
+}
+
+
+static int compare_watchers(const struct watcher_list* a,
+                            const struct watcher_list* b) {
+  if (a->wd < b->wd) return -1;
+  if (a->wd > b->wd) return 1;
+  return 0;
+}
+
+
+static int init_inotify(uv_loop_t* loop) {
+  int fd;
+
+  if (loop->inotify_fd != -1)
+    return 0;
+
+  fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+  if (fd < 0)
+    return UV__ERR(errno);
+
+  loop->inotify_fd = fd;
+  uv__io_init(&loop->inotify_read_watcher, uv__inotify_read, loop->inotify_fd);
+  uv__io_start(loop, &loop->inotify_read_watcher, POLLIN);
+
+  return 0;
+}
+
+
+int uv__inotify_fork(uv_loop_t* loop, void* old_watchers) {
+  /* Open the inotify_fd, and re-arm all the inotify watchers. */
+  int err;
+  struct watcher_list* tmp_watcher_list_iter;
+  struct watcher_list* watcher_list;
+  struct watcher_list tmp_watcher_list;
+  QUEUE queue;
+  QUEUE* q;
+  uv_fs_event_t* handle;
+  char* tmp_path;
+
+  if (old_watchers != NULL) {
+    /* We must restore the old watcher list to be able to close items
+     * out of it.
+     */
+    loop->inotify_watchers = old_watchers;
+
+    QUEUE_INIT(&tmp_watcher_list.watchers);
+    /* Note that the queue we use is shared with the start and stop()
+     * functions, making QUEUE_FOREACH unsafe to use. So we use the
+     * QUEUE_MOVE trick to safely iterate. Also don't free the watcher
+     * list until we're done iterating. c.f. uv__inotify_read.
+     */
+    RB_FOREACH_SAFE(watcher_list, watcher_root,
+                    CAST(&old_watchers), tmp_watcher_list_iter) {
+      watcher_list->iterating = 1;
+      QUEUE_MOVE(&watcher_list->watchers, &queue);
+      while (!QUEUE_EMPTY(&queue)) {
+        q = QUEUE_HEAD(&queue);
+        handle = QUEUE_DATA(q, uv_fs_event_t, watchers);
+        /* It's critical to keep a copy of path here, because it
+         * will be set to NULL by stop() and then deallocated by
+         * maybe_free_watcher_list
+         */
+        tmp_path = uv__strdup(handle->path);
+        assert(tmp_path != NULL);
+        QUEUE_REMOVE(q);
+        QUEUE_INSERT_TAIL(&watcher_list->watchers, q);
+        uv_fs_event_stop(handle);
+
+        QUEUE_INSERT_TAIL(&tmp_watcher_list.watchers, &handle->watchers);
+        handle->path = tmp_path;
+      }
+      watcher_list->iterating = 0;
+      maybe_free_watcher_list(watcher_list, loop);
+    }
+
+    QUEUE_MOVE(&tmp_watcher_list.watchers, &queue);
+    while (!QUEUE_EMPTY(&queue)) {
+        q = QUEUE_HEAD(&queue);
+        QUEUE_REMOVE(q);
+        handle = QUEUE_DATA(q, uv_fs_event_t, watchers);
+        tmp_path = handle->path;
+        handle->path = NULL;
+        err = uv_fs_event_start(handle, handle->cb, tmp_path, 0);
+        uv__free(tmp_path);
+        if (err)
+          return err;
+    }
+  }
+
+  return 0;
+}
+
+
+static struct watcher_list* find_watcher(uv_loop_t* loop, int wd) {
+  struct watcher_list w;
+  w.wd = wd;
+  return RB_FIND(watcher_root, CAST(&loop->inotify_watchers), &w);
+}
+
+
+static void maybe_free_watcher_list(struct watcher_list* w, uv_loop_t* loop) {
+  /* if the watcher_list->watchers is being iterated over, we can't free it. */
+  if ((!w->iterating) && QUEUE_EMPTY(&w->watchers)) {
+    /* No watchers left for this path. Clean up. */
+    RB_REMOVE(watcher_root, CAST(&loop->inotify_watchers), w);
+    inotify_rm_watch(loop->inotify_fd, w->wd);
+    uv__free(w);
+  }
+}
+
+
+static void uv__inotify_read(uv_loop_t* loop,
+                             uv__io_t* dummy,
+                             unsigned int events) {
+  const struct inotify_event* e;
+  struct watcher_list* w;
+  uv_fs_event_t* h;
+  QUEUE queue;
+  QUEUE* q;
+  const char* path;
+  ssize_t size;
+  const char *p;
+  /* needs to be large enough for sizeof(inotify_event) + strlen(path) */
+  char buf[4096];
+
+  for (;;) {
+    do
+      size = read(loop->inotify_fd, buf, sizeof(buf));
+    while (size == -1 && errno == EINTR);
+
+    if (size == -1) {
+      assert(errno == EAGAIN || errno == EWOULDBLOCK);
+      break;
+    }
+
+    assert(size > 0); /* pre-2.6.21 thing, size=0 == read buffer too small */
+
+    /* Now we have one or more inotify_event structs. */
+    for (p = buf; p < buf + size; p += sizeof(*e) + e->len) {
+      e = (const struct inotify_event*) p;
+
+      events = 0;
+      if (e->mask & (IN_ATTRIB|IN_MODIFY))
+        events |= UV_CHANGE;
+      if (e->mask & ~(IN_ATTRIB|IN_MODIFY))
+        events |= UV_RENAME;
+
+      w = find_watcher(loop, e->wd);
+      if (w == NULL)
+        continue; /* Stale event, no watchers left. */
+
+      /* inotify does not return the filename when monitoring a single file
+       * for modifications. Repurpose the filename for API compatibility.
+       * I'm not convinced this is a good thing, maybe it should go.
+       */
+      path = e->len ? (const char*) (e + 1) : uv__basename_r(w->path);
+
+      /* We're about to iterate over the queue and call user's callbacks.
+       * What can go wrong?
+       * A callback could call uv_fs_event_stop()
+       * and the queue can change under our feet.
+       * So, we use QUEUE_MOVE() trick to safely iterate over the queue.
+       * And we don't free the watcher_list until we're done iterating.
+       *
+       * First,
+       * tell uv_fs_event_stop() (that could be called from a user's callback)
+       * not to free watcher_list.
+       */
+      w->iterating = 1;
+      QUEUE_MOVE(&w->watchers, &queue);
+      while (!QUEUE_EMPTY(&queue)) {
+        q = QUEUE_HEAD(&queue);
+        h = QUEUE_DATA(q, uv_fs_event_t, watchers);
+
+        QUEUE_REMOVE(q);
+        QUEUE_INSERT_TAIL(&w->watchers, q);
+
+        h->cb(h, path, events, 0);
+      }
+      /* done iterating, time to (maybe) free empty watcher_list */
+      w->iterating = 0;
+      maybe_free_watcher_list(w, loop);
+    }
+  }
+}
+
+
+int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
+  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
+  return 0;
+}
+
+
+int uv_fs_event_start(uv_fs_event_t* handle,
+                      uv_fs_event_cb cb,
+                      const char* path,
+                      unsigned int flags) {
+  struct watcher_list* w;
+  size_t len;
+  int events;
+  int err;
+  int wd;
+
+  if (uv__is_active(handle))
+    return UV_EINVAL;
+
+  err = init_inotify(handle->loop);
+  if (err)
+    return err;
+
+  events = IN_ATTRIB
+         | IN_CREATE
+         | IN_MODIFY
+         | IN_DELETE
+         | IN_DELETE_SELF
+         | IN_MOVE_SELF
+         | IN_MOVED_FROM
+         | IN_MOVED_TO;
+
+  wd = inotify_add_watch(handle->loop->inotify_fd, path, events);
+  if (wd == -1)
+    return UV__ERR(errno);
+
+  w = find_watcher(handle->loop, wd);
+  if (w)
+    goto no_insert;
+
+  len = strlen(path) + 1;
+  w = uv__malloc(sizeof(*w) + len);
+  if (w == NULL)
+    return UV_ENOMEM;
+
+  w->wd = wd;
+  w->path = memcpy(w + 1, path, len);
+  QUEUE_INIT(&w->watchers);
+  w->iterating = 0;
+  RB_INSERT(watcher_root, CAST(&handle->loop->inotify_watchers), w);
+
+no_insert:
+  uv__handle_start(handle);
+  QUEUE_INSERT_TAIL(&w->watchers, &handle->watchers);
+  handle->path = w->path;
+  handle->cb = cb;
+  handle->wd = wd;
+
+  return 0;
+}
+
+
+int uv_fs_event_stop(uv_fs_event_t* handle) {
+  struct watcher_list* w;
+
+  if (!uv__is_active(handle))
+    return 0;
+
+  w = find_watcher(handle->loop, handle->wd);
+  assert(w != NULL);
+
+  handle->wd = -1;
+  handle->path = NULL;
+  uv__handle_stop(handle);
+  QUEUE_REMOVE(&handle->watchers);
+
+  maybe_free_watcher_list(w, handle->loop);
+
+  return 0;
+}
+
+
+void uv__fs_event_close(uv_fs_event_t* handle) {
+  uv_fs_event_stop(handle);
+}
+
+
+int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
+#if defined(__i386__)
+  unsigned long args[4];
+  int rc;
+
+  args[0] = (unsigned long) fd;
+  args[1] = (unsigned long) mmsg;
+  args[2] = (unsigned long) vlen;
+  args[3] = /* flags */ 0;
+
+  /* socketcall() raises EINVAL when SYS_SENDMMSG is not supported. */
+  rc = syscall(/* __NR_socketcall */ 102, 20 /* SYS_SENDMMSG */, args);
+  if (rc == -1)
+    if (errno == EINVAL)
+      errno = ENOSYS;
+
+  return rc;
+#elif defined(__NR_sendmmsg)
+  return syscall(__NR_sendmmsg, fd, mmsg, vlen, /* flags */ 0);
+#else
+  return errno = ENOSYS, -1;
+#endif
+}
+
+
+int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
+#if defined(__i386__)
+  unsigned long args[5];
+  int rc;
+
+  args[0] = (unsigned long) fd;
+  args[1] = (unsigned long) mmsg;
+  args[2] = (unsigned long) vlen;
+  args[3] = /* flags */ 0;
+  args[4] = /* timeout */ 0;
+
+  /* socketcall() raises EINVAL when SYS_RECVMMSG is not supported. */
+  rc = syscall(/* __NR_socketcall */ 102, 19 /* SYS_RECVMMSG */, args);
+  if (rc == -1)
+    if (errno == EINVAL)
+      errno = ENOSYS;
+
+  return rc;
+#elif defined(__NR_recvmmsg)
+  return syscall(__NR_recvmmsg, fd, mmsg, vlen, /* flags */ 0, /* timeout */ 0);
+#else
+  return errno = ENOSYS, -1;
+#endif
 }
