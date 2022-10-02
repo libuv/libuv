@@ -490,10 +490,10 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     }
 # if defined(__linux__)
     else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
+      result = preadv(req->file,
+                      (struct iovec*) req->bufs,
+                      req->nbufs,
+                      req->off);
       if (result == -1 && errno == ENOSYS) {
         uv__store_relaxed(&no_preadv, 1);
         goto retry;
@@ -1234,10 +1234,10 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     }
 # if defined(__linux__)
     else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
+      r = pwritev(req->file,
+                  (struct iovec*) req->bufs,
+                  req->nbufs,
+                  req->off);
       if (r == -1 && errno == ENOSYS) {
         no_pwritev = 1;
         goto retry;
