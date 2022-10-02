@@ -382,10 +382,6 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 }
 #endif /* defined(__linux__) || defined(UV_BSD_H) */
 
-int uv_thread_detach(uv_thread_t* tid) {
-  return UV__ERR(pthread_detach(*tid));
-}
-
 
 uv_thread_t uv_thread_self(void) {
   return pthread_self();

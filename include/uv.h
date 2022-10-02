@@ -1790,7 +1790,6 @@ UV_EXTERN int uv_thread_setaffinity(uv_thread_t* tid,
 UV_EXTERN int uv_thread_getaffinity(uv_thread_t* tid,
                                     char* cpumask,
                                     size_t mask_size);
-UV_EXTERN int uv_thread_detach(uv_thread_t* tid);
 UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);

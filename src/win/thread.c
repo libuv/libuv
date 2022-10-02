@@ -253,13 +253,6 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 }
 
 
-int uv_thread_detach(uv_thread_t* tid) {
-  CloseHandle(*tid);
-  *tid = 0;
-  return 0;
-}
-
-
 uv_thread_t uv_thread_self(void) {
   uv_thread_t key;
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);

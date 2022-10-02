@@ -119,14 +119,6 @@ Threads
 
     .. versionadded:: 1.45.0
 
-.. c:function:: int uv_thread_detach(uv_thread_t* tid)
-
-   Detaches the specified thread so it will be cleaned up on exit automatically;
-   joining it is no longer necessary (or possible).
-   Uses :man:`pthread_detach(3)` on Unix and CloseHandle() on Windows.
-
-    .. versionadded:: 1.45.0
-
 .. c:function:: uv_thread_t uv_thread_self(void)
 .. c:function:: int uv_thread_join(uv_thread_t *tid)
 .. c:function:: int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2)
