@@ -584,6 +584,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-rst.c
        test/test-tcp-shutdown-after-write.c
        test/test-tcp-try-write.c
+       test/test-tcp-write-in-a-row.c
        test/test-tcp-try-write-error.c
        test/test-tcp-unexpected-read.c
        test/test-tcp-write-after-connect.c

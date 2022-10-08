@@ -105,6 +105,7 @@ TEST_DECLARE   (tcp_write_after_connect)
 TEST_DECLARE   (tcp_writealot)
 TEST_DECLARE   (tcp_write_fail)
 TEST_DECLARE   (tcp_try_write)
+TEST_DECLARE   (tcp_write_in_a_row)
 TEST_DECLARE   (tcp_try_write_error)
 TEST_DECLARE   (tcp_write_queue_order)
 TEST_DECLARE   (tcp_open)
@@ -670,6 +671,7 @@ TASK_LIST_START
   TEST_HELPER (tcp_write_fail, tcp4_echo_server)
 
   TEST_ENTRY  (tcp_try_write)
+  TEST_ENTRY  (tcp_write_in_a_row)
   TEST_ENTRY  (tcp_try_write_error)
 
   TEST_ENTRY  (tcp_write_queue_order)

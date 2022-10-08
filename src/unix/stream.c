@@ -841,8 +841,15 @@ static void uv__write(uv_stream_t* stream) {
   QUEUE* q;
   uv_write_t* req;
   ssize_t n;
+  int count;
 
   assert(uv__stream_fd(stream) >= 0);
+
+  /* Prevent loop starvation when the consumer of this stream read as fast as
+   * (or faster than) we can write it. This `count` mechanism does not need to
+   * change even if we switch to edge-triggered I/O.
+   */
+  count = 32;
 
   for (;;) {
     if (QUEUE_EMPTY(&stream->write_queue))
@@ -862,10 +869,13 @@ static void uv__write(uv_stream_t* stream) {
       req->send_handle = NULL;
       if (uv__write_req_update(stream, req, n)) {
         uv__write_req_finish(req);
-        return;  /* TODO(bnoordhuis) Start trying to write the next request. */
+        if (count-- > 0)
+          continue; /* Start trying to write the next request. */
+
+        return;
       }
     } else if (n != UV_EAGAIN)
-      break;
+      goto error;
 
     /* If this is a blocking stream, try again. */
     if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
@@ -880,6 +890,7 @@ static void uv__write(uv_stream_t* stream) {
     return;
   }
 
+error:
   req->error = n;
   uv__write_req_finish(req);
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
