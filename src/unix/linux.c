@@ -1399,6 +1399,11 @@ static uint64_t uv__get_available_memory_fallback(void) {
     return uv_get_free_memory();
 
   current = uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+
+  /* usage_in_bytes can be higher than limit_in_bytes (for short bursts of time) */
+  if (constrained < current)
+    return 0;
+
   return constrained - current;
 }
 
