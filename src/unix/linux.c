@@ -1343,27 +1343,22 @@ static uint64_t uv__read_uint64(const char* filename) {
 }
 
 
-/* This might return 0 if there was a problem getting the memory limit from
- * cgroups. This is OK because a return value of 0 signifies that the memory
- * limit is unknown.
- */
-static uint64_t uv__get_constrained_memory_fallback(void) {
-  return uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+static void uv__get_cgroup1_memory_limits(char* buf, uint64_t* high,
+                                          uint64_t* max) {
+  /* This might return 0 if there was a problem getting the memory limit from
+  * cgroups. This is OK because a return value of 0 signifies that the memory
+  * limit is unknown.
+  */
+  *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
+  *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+
+  return;
 }
 
-
-uint64_t uv_get_constrained_memory(void) {
+static void uv__get_cgroup2_memory_limits(char* buf, uint64_t* high,
+                                          uint64_t* max) {
   char filename[4097];
-  char buf[1024];
-  uint64_t high;
-  uint64_t max;
   char* p;
-
-  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
-    return uv__get_constrained_memory_fallback();
-
-  if (memcmp(buf, "0::/", 4))
-    return uv__get_constrained_memory_fallback();
 
   p = strchr(buf, '\n');
   if (p != NULL)
@@ -1372,63 +1367,48 @@ uint64_t uv_get_constrained_memory(void) {
   p = buf + 4;
 
   snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.max", p);
-  max = uv__read_uint64(filename);
-
-  if (max == 0)
-    return uv__get_constrained_memory_fallback();
+  *max = uv__read_uint64(filename);
 
   snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.high", p);
-  high = uv__read_uint64(filename);
+  *high = uv__read_uint64(filename);
 
-  if (high == 0)
-    return uv__get_constrained_memory_fallback();
-
-  return high < max ? high : max;
+  return;
 }
 
+static uint64_t uv__get_cgroup_constrained_memory(char* buf) {
+  uint64_t high;
+  uint64_t max;
 
-static uint64_t uv__get_available_memory_fallback(void) {
-  uint64_t constrained;
-  uint64_t total;
-  uint64_t current;
+  /* In the case of cgroupv2, we'll only have a single entry. */
+  if (0 == memcmp(buf, "0::/", 4))
+    uv__get_cgroup2_memory_limits(buf, &high, &max);
+  else
+    uv__get_cgroup1_memory_limits(buf, &high, &max);
 
-  constrained = uv__get_constrained_memory_fallback();
-
-  total = uv_get_total_memory();
-  if (constrained == 0 || constrained > total)
-    return uv_get_free_memory();
-
-  current = uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
-
-  /* usage_in_bytes can be higher than limit_in_bytes (for short bursts of time) */
-  if (constrained < current)
+  if (high == 0 || max == 0)
     return 0;
 
-  return constrained - current;
+  return high < max ? high : max;
+
+}
+
+uint64_t uv_get_constrained_memory(void) {
+  char buf[1024];
+
+  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
+    return 0;
+
+  return uv__get_cgroup_constrained_memory(buf);
 }
 
 
-uint64_t uv_get_available_memory(void) {
+static uint64_t uv__get_cgroup1_current_memory(char* buf) {
+  return uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+}
+
+static uint64_t uv__get_cgroup2_current_memory(char* buf) {
   char filename[4097];
-  char buf[1024];
-  uint64_t constrained;
-  uint64_t total;
-  uint64_t current;
   char* p;
-
-  constrained = uv_get_constrained_memory();
-  if (constrained == 0)
-    return uv__get_available_memory_fallback();
-
-  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
-    return uv__get_available_memory_fallback();
-
-  if (memcmp(buf, "0::/", 4))
-    return uv__get_available_memory_fallback();
-
-  total = uv_get_total_memory();
-  if (constrained > total)
-    return uv_get_free_memory();
 
   p = strchr(buf, '\n');
   if (p != NULL)
@@ -1437,7 +1417,36 @@ uint64_t uv_get_available_memory(void) {
   p = buf + 4;
 
   snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.current", p);
-  current = uv__read_uint64(filename);
+  return uv__read_uint64(filename);
+}
+
+uint64_t uv_get_available_memory(void) {
+  char buf[1024];
+  uint64_t constrained;
+  uint64_t current;
+  uint64_t total;
+
+  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
+    return 0;
+
+  constrained = uv__get_cgroup_constrained_memory(buf);
+  if (constrained == 0)
+    return uv_get_free_memory();
+
+  total = uv_get_total_memory();
+  if (constrained > total)
+    return uv_get_free_memory();
+
+  /* In the case of cgroupv2, we'll only have a single entry. */
+  if (0 == memcmp(buf, "0::/", 4)) {
+    current = uv__get_cgroup2_current_memory(buf);
+  } else {
+    current = uv__get_cgroup1_current_memory(buf);
+  }
+
+  /* memory usage can be higher than the limit (for short bursts of time) */
+  if (constrained < current)
+    return 0;
 
   return constrained - current;
 }
