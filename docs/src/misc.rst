@@ -26,24 +26,24 @@ Data types
         .. note::
             On Windows this field is ULONG.
 
-.. c:type:: void* (*uv_malloc_func)(size_t size)
+.. c:type:: void* (*uv_malloc_func)(void* opaque, size_t size)
 
-        Replacement function for :man:`malloc(3)`.
+        Custom replacement function for :man:`malloc(3)`.
         See :c:func:`uv_replace_allocator`.
 
-.. c:type::  void* (*uv_realloc_func)(void* ptr, size_t size)
+.. c:type::  void* (*uv_realloc_func)(void* opaque, void* ptr, size_t size)
 
-        Replacement function for :man:`realloc(3)`.
+        Custom replacement function for :man:`realloc(3)`.
         See :c:func:`uv_replace_allocator`.
 
-.. c:type::  void* (*uv_calloc_func)(size_t count, size_t size)
+.. c:type::  void* (*uv_calloc_func)(void* opaque, size_t count, size_t size)
 
-        Replacement function for :man:`calloc(3)`.
+        Custom replacement  function for :man:`calloc(3)`.
         See :c:func:`uv_replace_allocator`.
 
-.. c:type:: void (*uv_free_func)(void* ptr)
+.. c:type:: void (*uv_free_func)(void* opaque, void* ptr)
 
-        Replacement function for :man:`free(3)`.
+        Custom replacement  function for :man:`free(3)`.
         See :c:func:`uv_replace_allocator`.
 
 .. c:type::  void (*uv_random_cb)(uv_random_t* req, int status, void* buf, size_t buflen)
@@ -195,6 +195,20 @@ Data types
             char* value;
         } uv_env_item_t;
 
+.. c:type:: uv_allocator_t
+
+    Data type for custom allocator.
+
+    ::
+
+        typedef struct uv_allocator_s {
+            uv_malloc_func malloc;
+            uv_realloc_func realloc;
+            uv_calloc_func calloc;
+            uv_free_func free;
+            void *opaque;
+        } uv_allocator_t;
+
 .. c:type:: uv_random_t
 
     Random data request type.
@@ -214,7 +228,7 @@ API
     STDIO file descriptor pseudo-handles ``UV_STDIN_FD``, ``UV_STDOUT_FD``, and ``UV_STDERR_FD``
     can be passed to any uv_os_fd_t field for cross-platform support of stdio.
 
-.. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_realloc_func realloc_func, uv_calloc_func calloc_func, uv_free_func free_func)
+.. c:function:: int uv_replace_allocator(uv_allocator_t* allocator)
 
     .. versionadded:: 1.6.0
 

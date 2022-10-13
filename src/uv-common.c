@@ -43,13 +43,34 @@ typedef struct {
   uv_realloc_func local_realloc;
   uv_calloc_func local_calloc;
   uv_free_func local_free;
+
+  /* User Opaque ptr for allocators referencing external data */
+  void* opaque;
 } uv__allocator_t;
 
+void* uv__default_malloc(void* opaque, size_t size) {
+  return malloc(size);
+}
+
+void* uv__default_realloc(void* opaque, void* ptr, size_t size) {
+  return realloc(ptr, size);
+}
+
+void* uv__default_calloc(void* opaque, size_t count, size_t size) {
+  return calloc(count, size);
+}
+
+void uv__default_free(void* opaque, void* ptr) {
+  free(ptr);
+}
+
 static uv__allocator_t uv__allocator = {
-  malloc,
-  realloc,
-  calloc,
-  free,
+  uv__default_malloc,
+  uv__default_realloc,
+  uv__default_calloc,
+  uv__default_free,
+
+  NULL,
 };
 
 char* uv__strdup(const char* s) {
@@ -72,9 +93,12 @@ char* uv__strndup(const char* s, size_t n) {
   return memcpy(m, s, len);
 }
 
+#define UV_ALLOCATOR_OPAQUE(allocator, func, ...) \
+    allocator.func(allocator.opaque, __VA_ARGS__)
+
 void* uv__malloc(size_t size) {
   if (size > 0)
-    return uv__allocator.local_malloc(size);
+    return UV_ALLOCATOR_OPAQUE(uv__allocator, local_malloc, size);
   return NULL;
 }
 
@@ -85,20 +109,22 @@ void uv__free(void* ptr) {
    * honors that assumption but custom allocators may not be so careful.
    */
   saved_errno = errno;
-  uv__allocator.local_free(ptr);
+  UV_ALLOCATOR_OPAQUE(uv__allocator, local_free, ptr);
   errno = saved_errno;
 }
 
 void* uv__calloc(size_t count, size_t size) {
-  return uv__allocator.local_calloc(count, size);
+  return UV_ALLOCATOR_OPAQUE(uv__allocator, local_calloc, count, size);
 }
 
 void* uv__realloc(void* ptr, size_t size) {
   if (size > 0)
-    return uv__allocator.local_realloc(ptr, size);
+    return UV_ALLOCATOR_OPAQUE(uv__allocator, local_realloc, ptr, size);
   uv__free(ptr);
   return NULL;
 }
+
+#undef UV_ALLOCATOR_OPAQUE
 
 void* uv__reallocf(void* ptr, size_t size) {
   void* newptr;
@@ -111,19 +137,21 @@ void* uv__reallocf(void* ptr, size_t size) {
   return newptr;
 }
 
-int uv_replace_allocator(uv_malloc_func malloc_func,
-                         uv_realloc_func realloc_func,
-                         uv_calloc_func calloc_func,
-                         uv_free_func free_func) {
-  if (malloc_func == NULL || realloc_func == NULL ||
-      calloc_func == NULL || free_func == NULL) {
+int uv_replace_allocator(uv_allocator_t* allocator) {
+  if (allocator == NULL ||
+    allocator->malloc == NULL ||
+    allocator->realloc == NULL ||
+    allocator->calloc == NULL ||
+    allocator->free == NULL) {
     return UV_EINVAL;
   }
 
-  uv__allocator.local_malloc = malloc_func;
-  uv__allocator.local_realloc = realloc_func;
-  uv__allocator.local_calloc = calloc_func;
-  uv__allocator.local_free = free_func;
+  uv__allocator.local_malloc = allocator->malloc;
+  uv__allocator.local_realloc = allocator->realloc;
+  uv__allocator.local_calloc = allocator->calloc;
+  uv__allocator.local_free = allocator->free;
+
+  uv__allocator.opaque = allocator->opaque;
 
   return 0;
 }

@@ -239,6 +239,7 @@ typedef struct uv_work_s uv_work_t;
 typedef struct uv_random_s uv_random_t;
 
 /* None of the above. */
+typedef struct uv_allocator_s uv_allocator_t;
 typedef struct uv_env_item_s uv_env_item_t;
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
@@ -262,17 +263,24 @@ typedef enum {
 UV_EXTERN unsigned int uv_version(void);
 UV_EXTERN const char* uv_version_string(void);
 
-typedef void* (*uv_malloc_func)(size_t size);
-typedef void* (*uv_realloc_func)(void* ptr, size_t size);
-typedef void* (*uv_calloc_func)(size_t count, size_t size);
-typedef void (*uv_free_func)(void* ptr);
+typedef void* (*uv_malloc_func)(void* opaque, size_t size);
+typedef void* (*uv_realloc_func)(void* opaque, void* ptr, size_t size);
+typedef void* (*uv_calloc_func)(void* opaque, size_t count, size_t size);
+typedef void (*uv_free_func)(void* opaque, void* ptr);
+
+struct uv_allocator_s {
+  uv_malloc_func malloc;
+  uv_realloc_func realloc;
+  uv_calloc_func calloc;
+  uv_free_func free;
+
+  /* User Opaque ptr */
+  void *opaque;
+};
 
 UV_EXTERN void uv_library_shutdown(void);
 
-UV_EXTERN int uv_replace_allocator(uv_malloc_func malloc_func,
-                                   uv_realloc_func realloc_func,
-                                   uv_calloc_func calloc_func,
-                                   uv_free_func free_func);
+UV_EXTERN int uv_replace_allocator(uv_allocator_t* allocator);
 
 UV_EXTERN uv_loop_t* uv_default_loop(void);
 UV_EXTERN int uv_loop_init(uv_loop_t* loop);
