@@ -33,6 +33,22 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#define uv__msan_unpoison(p, n)                                               \
+  do {                                                                        \
+    (void) (p);                                                               \
+    (void) (n);                                                               \
+  } while (0)
+
+#if defined(__has_feature)
+# if __has_feature(memory_sanitizer)
+#  include <sanitizer/msan_interface.h>
+#  undef uv__msan_unpoison
+#  define uv__msan_unpoison __msan_unpoison
+# endif
+#endif
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
@@ -339,6 +355,36 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
     return (char*) path;
 
   return s + 1;
+}
+
+UV_UNUSED(static int uv__fstat(int fd, struct stat* s)) {
+  int rc;
+
+  rc = fstat(fd, s);
+  if (rc >= 0)
+    uv__msan_unpoison(s, sizeof(*s));
+
+  return rc;
+}
+
+UV_UNUSED(static int uv__lstat(const char* path, struct stat* s)) {
+  int rc;
+
+  rc = lstat(path, s);
+  if (rc >= 0)
+    uv__msan_unpoison(s, sizeof(*s));
+
+  return rc;
+}
+
+UV_UNUSED(static int uv__stat(const char* path, struct stat* s)) {
+  int rc;
+
+  rc = stat(path, s);
+  if (rc >= 0)
+    uv__msan_unpoison(s, sizeof(*s));
+
+  return rc;
 }
 
 #if defined(__linux__)

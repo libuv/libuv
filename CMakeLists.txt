@@ -36,11 +36,17 @@ if(QEMU)
   add_definitions(-D__QEMU__=1)
 endif()
 
+# Note: these are mutually exclusive.
 option(ASAN "Enable AddressSanitizer (ASan)" OFF)
+option(MSAN "Enable MemorySanitizer (MSan)" OFF)
 option(TSAN "Enable ThreadSanitizer (TSan)" OFF)
 
 if((ASAN OR TSAN) AND NOT (CMAKE_C_COMPILER_ID MATCHES "AppleClang|GNU|Clang"))
   message(SEND_ERROR "Sanitizer support requires clang or gcc. Try again with -DCMAKE_C_COMPILER.")
+endif()
+
+if(MSAN AND NOT CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang")
+  message(SEND_ERROR "MemorySanitizer requires clang. Try again with -DCMAKE_C_COMPILER=clang")
 endif()
 
 if(ASAN)
@@ -48,6 +54,13 @@ if(ASAN)
   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
   set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+endif()
+
+if(MSAN)
+  add_definitions(-D__MSAN__=1)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -fsanitize=memory")
+  set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=memory")
+  set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=memory")
 endif()
 
 if(TSAN)

@@ -34,16 +34,18 @@
 #include <assert.h>
 #include <errno.h>
 
+#include <fcntl.h>
 #include <net/if.h>
 #include <sys/epoll.h>
 #include <sys/inotify.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/sysinfo.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
 #if defined(__arm__)
 # if defined(__thumb__) || defined(__ARM_EABI__)
@@ -212,7 +214,13 @@ int uv__statx(int dirfd,
 #if !defined(__NR_statx) || defined(__ANDROID_API__) && __ANDROID_API__ < 30
   return errno = ENOSYS, -1;
 #else
-  return syscall(__NR_statx, dirfd, path, flags, mask, statxbuf);
+  int rc;
+
+  rc = syscall(__NR_statx, dirfd, path, flags, mask, statxbuf);
+  if (rc >= 0)
+    uv__msan_unpoison(statxbuf, sizeof(*statxbuf));
+
+  return rc;
 #endif
 }
 
@@ -221,7 +229,13 @@ ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags) {
 #if !defined(__NR_getrandom) || defined(__ANDROID_API__) && __ANDROID_API__ < 28
   return errno = ENOSYS, -1;
 #else
-  return syscall(__NR_getrandom, buf, buflen, flags);
+  ssize_t rc;
+
+  rc = syscall(__NR_getrandom, buf, buflen, flags);
+  if (rc >= 0)
+    uv__msan_unpoison(buf, buflen);
+
+  return rc;
 #endif
 }
 
@@ -1685,6 +1699,35 @@ int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 }
 
 
+static void uv__recvmmsg_unpoison(struct uv__mmsghdr* mmsg, int rc) {
+  struct uv__mmsghdr* m;
+  struct msghdr* h;
+  struct iovec* v;
+  size_t j;
+  int i;
+
+  for (i = 0; i < rc; i++) {
+    m = mmsg + i;
+    uv__msan_unpoison(m, sizeof(*m));
+
+    h = &m->msg_hdr;
+    if (h->msg_name != NULL)
+      uv__msan_unpoison(h->msg_name, h->msg_namelen);
+
+    if (h->msg_iov != NULL)
+      uv__msan_unpoison(h->msg_iov, h->msg_iovlen * sizeof(*h->msg_iov));
+
+    for (j = 0; j < h->msg_iovlen; j++) {
+      v = h->msg_iov + j;
+      uv__msan_unpoison(v->iov_base, v->iov_len);
+    }
+
+    if (h->msg_control != NULL)
+      uv__msan_unpoison(h->msg_control, h->msg_controllen);
+  }
+}
+
+
 int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 #if defined(__i386__)
   unsigned long args[5];
@@ -1698,13 +1741,19 @@ int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
 
   /* socketcall() raises EINVAL when SYS_RECVMMSG is not supported. */
   rc = syscall(/* __NR_socketcall */ 102, 19 /* SYS_RECVMMSG */, args);
+  uv__recvmmsg_unpoison(mmsg, rc);
   if (rc == -1)
     if (errno == EINVAL)
       errno = ENOSYS;
 
   return rc;
 #elif defined(__NR_recvmmsg)
-  return syscall(__NR_recvmmsg, fd, mmsg, vlen, /* flags */ 0, /* timeout */ 0);
+  int rc;
+
+  rc = syscall(__NR_recvmmsg, fd, mmsg, vlen, /* flags */ 0, /* timeout */ 0);
+  uv__recvmmsg_unpoison(mmsg, rc);
+
+  return rc;
 #else
   return errno = ENOSYS, -1;
 #endif

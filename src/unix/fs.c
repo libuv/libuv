@@ -516,7 +516,7 @@ done:
   if (result == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
-    rc = fstat(req->file, &buf);
+    rc = uv__fstat(req->file, &buf);
     if (rc == 0 && S_ISDIR(buf.st_mode)) {
       errno = EISDIR;
     }
@@ -708,7 +708,7 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   /* We may not have a real PATH_MAX.  Read size of link.  */
   struct stat st;
   int ret;
-  ret = lstat(req->path, &st);
+  ret = uv__lstat(req->path, &st);
   if (ret != 0)
     return -1;
   if (!S_ISLNK(st.st_mode)) {
@@ -1281,7 +1281,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     return srcfd;
 
   /* Get the source file's mode. */
-  if (fstat(srcfd, &src_statsbuf)) {
+  if (uv__fstat(srcfd, &src_statsbuf)) {
     err = UV__ERR(errno);
     goto out;
   }
@@ -1309,7 +1309,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
      destination are not the same file. If they are the same, bail out early. */
   if ((req->flags & UV_FS_COPYFILE_EXCL) == 0) {
     /* Get the destination file's mode. */
-    if (fstat(dstfd, &dst_statsbuf)) {
+    if (uv__fstat(dstfd, &dst_statsbuf)) {
       err = UV__ERR(errno);
       goto out;
     }
@@ -1588,7 +1588,7 @@ static int uv__fs_stat(const char *path, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = stat(path, &pbuf);
+  ret = uv__stat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
@@ -1604,7 +1604,7 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = lstat(path, &pbuf);
+  ret = uv__lstat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
@@ -1620,7 +1620,7 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = fstat(fd, &pbuf);
+  ret = uv__fstat(fd, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 

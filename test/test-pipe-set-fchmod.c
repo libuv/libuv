@@ -22,6 +22,7 @@
 
 #include "uv.h"
 #include "task.h"
+#include <string.h>
 
 TEST_IMPL(pipe_set_chmod) {
   uv_pipe_t pipe_handle;
@@ -48,7 +49,8 @@ TEST_IMPL(pipe_set_chmod) {
   }
   ASSERT(r == 0);
 #ifndef _WIN32
-  stat(TEST_PIPENAME, &stat_buf);
+  memset(&stat_buf, 0, sizeof(stat_buf));
+  ASSERT_EQ(0, stat(TEST_PIPENAME, &stat_buf));
   ASSERT(stat_buf.st_mode & S_IRUSR);
   ASSERT(stat_buf.st_mode & S_IRGRP);
   ASSERT(stat_buf.st_mode & S_IROTH);
