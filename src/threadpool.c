@@ -191,6 +191,7 @@ void uv__threadpool_cleanup(void) {
 
 
 static void init_threads(void) {
+  uv_thread_options_t config;
   unsigned int i;
   const char* val;
   uv_sem_t sem;
@@ -226,8 +227,11 @@ static void init_threads(void) {
   if (uv_sem_init(&sem, 0))
     abort();
 
+  config.flags = UV_THREAD_HAS_STACK_SIZE;
+  config.stack_size = 8u << 20;  /* 8 MB */
+
   for (i = 0; i < nthreads; i++)
-    if (uv_thread_create(threads + i, worker, &sem))
+    if (uv_thread_create_ex(threads + i, &config, worker, &sem))
       abort();
 
   for (i = 0; i < nthreads; i++)
