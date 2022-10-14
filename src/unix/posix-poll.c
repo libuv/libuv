@@ -131,7 +131,7 @@ static void uv__pollfds_del(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+int uv__io_poll(uv_loop_t* loop, int timeout) {
   sigset_t* pset;
   sigset_t set;
   uint64_t time_base;
@@ -146,10 +146,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int fd;
   int user_timeout;
   int reset_timeout;
+  int did_work = 0;
 
   if (loop->nfds == 0) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
-    return;
+    return did_work;
   }
 
   /* Take queued watchers and add their fds to our poll fds array.  */
@@ -223,7 +224,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       assert(timeout != -1);
-      return;
+      return did_work;
     }
 
     if (nfds == -1) {
@@ -239,7 +240,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0)
-        return;
+        return did_work;
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
@@ -286,6 +287,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         } else {
           uv__metrics_update_idle_time(loop);
           w->cb(loop, w, pe->revents);
+          did_work = 1;
         }
 
         nevents++;
@@ -300,6 +302,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (have_signals != 0) {
       uv__metrics_update_idle_time(loop);
       loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+      did_work = 1;
     }
 
     loop->poll_fds_iterating = 0;
@@ -308,13 +311,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     uv__pollfds_del(loop, -1);
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      return did_work;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0)
-      return;
+      return did_work;
 
     if (timeout == 0)
-      return;
+      return did_work;
 
     if (timeout == -1)
       continue;
@@ -324,7 +327,7 @@ update_timeout:
 
     time_diff = loop->time - time_base;
     if (time_diff >= (uint64_t) timeout)
-      return;
+      return did_work;
 
     timeout -= time_diff;
   }

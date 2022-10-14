@@ -148,9 +148,10 @@ int uv__next_timeout(const uv_loop_t* loop) {
 }
 
 
-void uv__run_timers(uv_loop_t* loop) {
+int uv__run_timers(uv_loop_t* loop) {
   struct heap_node* heap_node;
   uv_timer_t* handle;
+  int did_work = 0;
 
   for (;;) {
     heap_node = heap_min((struct heap*) &loop->timer_heap);
@@ -164,7 +165,9 @@ void uv__run_timers(uv_loop_t* loop) {
     uv_timer_stop(handle);
     uv_timer_again(handle);
     handle->timer_cb(handle);
+    did_work = 1;
   }
+  return did_work;
 }
 
 
