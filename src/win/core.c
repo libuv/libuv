@@ -466,6 +466,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   int timeout;
   int r;
   int can_sleep;
+  int did_work = 0;
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -473,7 +474,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
 
   while (r != 0 && loop->stop_flag == 0) {
     uv_update_time(loop);
-    uv__run_timers(loop);
+    did_work += uv__run_timers(loop);
 
     can_sleep = loop->pending_reqs_tail == NULL && QUEUE_EMPTY(&loop->idle_handles);
 
@@ -496,6 +497,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
      * times to avoid loop starvation.*/
     for (r = 0; r < 8 && loop->pending_reqs_tail != NULL; r++)
       uv__process_reqs(loop);
+    did_work += r;
 
     /* Run one final update on the provider_idle_time in case uv__poll*
      * returned because the timeout expired, but no events were received. This
@@ -507,7 +509,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv__run_check(loop);
     uv__process_endgames(loop);
 
-    if (mode == UV_RUN_ONCE) {
+    if (mode == UV_RUN_ONCE && did_work == 0) {
       /* UV_RUN_ONCE implies forward progress: at least one callback must have
        * been invoked when it returns. uv__io_poll() can return without doing
        * I/O (meaning: no callbacks) when its timeout expires - which means we
