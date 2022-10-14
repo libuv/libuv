@@ -390,7 +390,7 @@ int uv__io_poll(uv_loop_t* loop, int timeout) {
       } else {
         uv__metrics_update_idle_time(loop);
         w->cb(loop, w, revents);
-        return did_work;
+        did_work = 1;
       }
 
       nevents++;
@@ -409,7 +409,7 @@ int uv__io_poll(uv_loop_t* loop, int timeout) {
     if (have_signals != 0) {
       uv__metrics_update_idle_time(loop);
       loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
-      return did_work;
+      did_work = 1;
     }
 
     loop->watchers[loop->nwatchers] = NULL;
