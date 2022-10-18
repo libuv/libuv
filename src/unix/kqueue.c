@@ -529,7 +529,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->realpath_len = 0;
   handle->cf_flags = flags;
 
-  if (fstat(fd, &statbuf))
+  if (uv__fstat(fd, &statbuf))
     goto fallback;
   /* FSEvents works only with directories */
   if (!(statbuf.st_mode & S_IFDIR))

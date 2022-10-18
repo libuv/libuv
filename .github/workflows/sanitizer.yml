@@ -14,7 +14,7 @@ on:
 
 jobs:
   sanitizers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - name: Setup
@@ -22,6 +22,25 @@ jobs:
           sudo apt-get install ninja-build
       - name: Envinfo
         run: npx envinfo
+
+      - name: ASAN Build
+        run: |
+          mkdir build-asan
+          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-asan
+      - name: ASAN Test
+        run: |
+          ./build-asan/uv_run_tests_a
+
+      - name: MSAN Build
+        run: |
+          mkdir build-msan
+          (cd build-msan && cmake .. -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-msan
+      - name: MSAN Test
+        run: |
+          ./build-msan/uv_run_tests_a
+
       - name: TSAN Build
         run: |
           mkdir build-tsan
@@ -31,11 +50,3 @@ jobs:
         continue-on-error: true # currently permit failures
         run: |
           ./build-tsan/uv_run_tests_a
-      - name: ASAN Build
-        run: |
-          mkdir build-asan
-          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
-          cmake --build build-asan
-      - name: ASAN Test
-        run: |
-          ./build-asan/uv_run_tests_a
