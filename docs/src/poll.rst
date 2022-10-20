@@ -102,7 +102,8 @@ API
     not close the socket while the handle is active. If the user does that
     anyway, the callback *may* be called reporting an error status, but this is
     **not** guaranteed. If `status == UV_EBADF` polling is discontinued for the
-    file handle, as if :c:func:`uv_poll_stop` had been called.
+    file handle and no further events will be reported, the user should
+    then call :c:func:`uv_close` on the handle.
 
     .. note::
         Calling :c:func:`uv_poll_start` on a handle that is already active is
