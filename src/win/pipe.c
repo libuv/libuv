@@ -1639,9 +1639,13 @@ static DWORD uv__pipe_get_ipc_remote_pid(uv_pipe_t* handle) {
   /* If the both ends of the IPC pipe are owned by the same process,
    * the remote end pid may not yet be set. If so, do it here.
    * TODO: this is weird; it'd probably better to use a handshake. */
-  if (*pid == 0)
-    *pid = GetCurrentProcessId();
-
+  if (*pid == 0) {
+    GetNamedPipeClientProcessId(handle->handle, pid);
+    if (*pid == GetCurrentProcessId()) {
+      GetNamedPipeServerProcessId(handle->handle, pid);
+    }
+  }
+  
   return *pid;
 }
 
@@ -2342,7 +2346,10 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
 
   if (pipe->ipc) {
     assert(!(pipe->flags & UV_HANDLE_NON_OVERLAPPED_PIPE));
-    pipe->pipe.conn.ipc_remote_pid = uv_os_getppid();
+    GetNamedPipeClientProcessId(os_handle, &pipe->pipe.conn.ipc_remote_pid);
+    if (pipe->pipe.conn.ipc_remote_pid == GetCurrentProcessId()) {
+      GetNamedPipeServerProcessId(os_handle, &pipe->pipe.conn.ipc_remote_pid);
+    }
     assert(pipe->pipe.conn.ipc_remote_pid != (DWORD)(uv_pid_t) -1);
   }
   return 0;
