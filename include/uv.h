@@ -1240,6 +1240,7 @@ UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
+UV_EXTERN int uv_cpumask_size(void);
 
 UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
                                      int* count);
@@ -1782,6 +1783,13 @@ UV_EXTERN int uv_thread_create_ex(uv_thread_t* tid,
                                   const uv_thread_options_t* params,
                                   uv_thread_cb entry,
                                   void* arg);
+UV_EXTERN int uv_thread_setaffinity(uv_thread_t* tid,
+                                    char* cpumask,
+                                    char* oldmask,
+                                    size_t mask_size);
+UV_EXTERN int uv_thread_getaffinity(uv_thread_t* tid,
+                                    char* cpumask,
+                                    size_t mask_size);
 UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
