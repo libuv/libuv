@@ -425,8 +425,7 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     int count;
 
     /* Prevent loop starvation when the data comes in as fast as
-     * (or faster than) we can read it.
-     */
+     * (or faster than) we can read it. */
     count = 32;
 
     do {
@@ -479,11 +478,11 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
         }
       }
     } 
-    while (bytes > 0 &&
-          count-- > 0 &&
-          /* recv_cb callback may decide to pause or close the handle */
-          (handle->flags & UV_HANDLE_READING) &&
-          !(handle->flags & UV_HANDLE_READ_PENDING));
+    while (err == ERROR_SUCCESS &&
+           count-- > 0 &&
+           /* The recv_cb callback may decide to pause or close the handle. */
+           (handle->flags & UV_HANDLE_READING) &&
+           !(handle->flags & UV_HANDLE_READ_PENDING));
   }
 
 done:
