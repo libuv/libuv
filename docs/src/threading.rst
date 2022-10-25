@@ -119,6 +119,12 @@ Threads
 
     .. versionadded:: 1.45.0
 
+.. c:function:: int uv_thread_getcpu(void)
+
+    Gets the CPU number on which the calling thread is running.
+
+    .. versionadded:: 1.45.0
+
 .. c:function:: uv_thread_t uv_thread_self(void)
 .. c:function:: int uv_thread_join(uv_thread_t *tid)
 .. c:function:: int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2)
