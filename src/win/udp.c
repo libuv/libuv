@@ -453,6 +453,7 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
                       NULL) != SOCKET_ERROR) {
 
         /* Message received */
+        err = ERROR_SUCCESS;
         handle->recv_cb(handle, bytes, &buf, (const struct sockaddr*) &from, 0);
       } else {
         err = WSAGetLastError();
