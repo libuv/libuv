@@ -147,6 +147,7 @@ extern "C" {
   XX(EFTYPE, "inappropriate file type or format")                             \
   XX(EILSEQ, "illegal byte sequence")                                         \
   XX(ESOCKTNOSUPPORT, "socket type not supported")                            \
+  XX(ENODATA, "no data available")                                            \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
