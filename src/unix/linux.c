@@ -1345,10 +1345,43 @@ static uint64_t uv__read_uint64(const char* filename) {
 
 static void uv__get_cgroup1_memory_limits(char* buf, uint64_t* high,
                                           uint64_t* max) {
-  /* This might return 0 if there was a problem getting the memory limit from
-  * cgroups. This is OK because a return value of 0 signifies that the memory
-  * limit is unknown.
-  */
+  char filename[4097];
+  char* p;
+  char* p_end;
+
+  /* Find out the path of the memory controller. */
+  p = strchr(buf, ':');
+  while (p != NULL && memcmp(p, ":memory:", 8)) {
+    p = strchr(p, '\n');
+    if (p != NULL)
+      p = strchr(p, ':');
+  }
+
+  if (p != NULL) {
+    p = p + 8;
+    p_end = strchr(p, '\n');
+    if (p_end != NULL)
+      *p_end = '\0';
+
+    /* If the memory controller is mounted, check limits there. */
+    snprintf(filename, sizeof(filename), "/sys/fs/cgroup/memory/%s/", p);
+    if (0 == access(filename, F_OK)) {
+      /* Calls to uv__read_uint64 might return 0 if there was a problem. This is
+       * OK because a return value of 0 signifies that the limit is unknown.
+       */
+      snprintf(filename, sizeof(filename),
+              "/sys/fs/cgroup/memory/%s/memory.soft_limit_in_bytes", p);
+      *high = uv__read_uint64(filename);
+
+      snprintf(filename, sizeof(filename),
+              "/sys/fs/cgroup/memory/%s/memory.limit_in_bytes", p);
+      *max = uv__read_uint64(filename);
+
+      return;
+    }
+  }
+
+  /* Fall back to the global limits of the memory controller. */
   *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
   *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
 }
