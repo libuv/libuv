@@ -43,6 +43,11 @@ TEST_IMPL(get_memory) {
 #else
   ASSERT(total_mem > free_mem);
 #endif
-  ASSERT_LE(available_mem, free_mem);
+  ASSERT_LE(available_mem, total_mem);
+  /* we'd really want to test if available <= free, but that is fragile:
+   * with no limit set, get_available calls and returns get_free; so if
+   * any memory was freed between our calls to get_free and get_available
+   * we would fail such a test test (as observed on CI).
+   */
   return 0;
 }
