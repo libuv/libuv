@@ -1351,8 +1351,6 @@ static void uv__get_cgroup1_memory_limits(char* buf, uint64_t* high,
   */
   *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
   *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
-
-  return;
 }
 
 static void uv__get_cgroup2_memory_limits(char* buf, uint64_t* high,
@@ -1371,8 +1369,6 @@ static void uv__get_cgroup2_memory_limits(char* buf, uint64_t* high,
 
   snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.high", p);
   *high = uv__read_uint64(filename);
-
-  return;
 }
 
 static uint64_t uv__get_cgroup_constrained_memory(char* buf) {
@@ -1389,7 +1385,6 @@ static uint64_t uv__get_cgroup_constrained_memory(char* buf) {
     return 0;
 
   return high < max ? high : max;
-
 }
 
 uint64_t uv_get_constrained_memory(void) {
@@ -1438,11 +1433,10 @@ uint64_t uv_get_available_memory(void) {
     return uv_get_free_memory();
 
   /* In the case of cgroupv2, we'll only have a single entry. */
-  if (0 == memcmp(buf, "0::/", 4)) {
+  if (0 == memcmp(buf, "0::/", 4))
     current = uv__get_cgroup2_current_memory(buf);
-  } else {
+  else
     current = uv__get_cgroup1_current_memory(buf);
-  }
 
   /* memory usage can be higher than the limit (for short bursts of time) */
   if (constrained < current)
