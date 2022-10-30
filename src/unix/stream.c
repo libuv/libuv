@@ -1061,16 +1061,21 @@ static void uv__read(uv_stream_t* stream) {
 
   is_ipc = stream->type == UV_NAMED_PIPE && ((uv_pipe_t*) stream)->ipc;
 
-  /* XXX: Maybe instead of having UV_HANDLE_READING we just test if
-   * tcp->read_cb is NULL or not?
-   */
-  while (stream->read_cb
-      && (stream->flags & UV_HANDLE_READING)
-      && (count-- > 0)) {
-    assert(stream->alloc_cb != NULL);
+  while (count-- > 0) {
+    if (!(stream->flags & UV_HANDLE_READING))
+      return;
 
+    assert(stream->alloc_cb != NULL);
     buf = uv_buf_init(NULL, 0);
     stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
+
+    /* In case stream->alloc_cb called uv_read_stop(). */
+    if (!(stream->flags & UV_HANDLE_READING)) {
+      if (buf.len > 0)
+        stream->read_cb(stream, 0, &buf);  /* Give back buffer. */
+      return;
+    }
+
     if (buf.base == NULL || buf.len == 0) {
       /* User indicates it can't or won't handle the read. */
       stream->read_cb(stream, UV_ENOBUFS, &buf);
@@ -1499,9 +1504,12 @@ int uv_read_stop(uv_stream_t* stream) {
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
-
-  stream->read_cb = NULL;
   stream->alloc_cb = NULL;
+
+  /* Don't zero stream->read_cb in case we are being called
+   * from stream->alloc_cb and need to hand back the buffer.
+   */
+
   return 0;
 }
 

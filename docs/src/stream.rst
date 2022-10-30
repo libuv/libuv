@@ -146,8 +146,11 @@ API
 
 .. c:function:: int uv_read_stop(uv_stream_t*)
 
-    Stop reading data from the stream. The :c:type:`uv_read_cb` callback will
-    no longer be called.
+    Stop reading data from the stream.
+
+    If libuv still owns memory from an earlier :c:type:`uv_alloc_cb` call, it
+    invokes the :c:type:`uv_read_cb` call once with `nread == 0` to give back
+    the memory. No further :c:type:`uv_read_cb` callbacks will be made.
 
     This function is idempotent and may be safely called on a stopped stream.
 

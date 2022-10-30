@@ -87,7 +87,8 @@ static void after_read(uv_stream_t* handle,
 
   if (nread < 0) {
     /* Error or EOF */
-    ASSERT_EQ(nread, UV_EOF);
+    if (nread != UV_ECONNRESET)
+      ASSERT_EQ(nread, UV_EOF);
 
     free(buf->base);
     sreq = malloc(sizeof* sreq);
