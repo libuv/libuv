@@ -343,9 +343,9 @@ typedef struct {
   uv_idle_t* next_idle_handle;                                                \
   /* This handle holds the peer sockets for the fast variant of uv_poll_t */  \
   SOCKET poll_peer_sockets[UV_MSAFD_PROVIDER_COUNT];                          \
-  /* Counter to keep track of active tcp streams */                           \
+  /* No longer used. */                                                       \
   unsigned int active_tcp_streams;                                            \
-  /* Counter to keep track of active udp streams */                           \
+  /* No longer used. */                                                       \
   unsigned int active_udp_streams;                                            \
   /* Counter to started timer */                                              \
   uint64_t timer_counter;                                                     \
