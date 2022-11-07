@@ -465,10 +465,6 @@ API
         The background story and some more details on these issues can be checked
         `here <https://github.com/nodejs/node/issues/7726>`_.
 
-    .. note::
-      This function is not implemented on Windows XP and Windows Server 2003.
-      On these systems, UV_ENOSYS is returned.
-
     .. versionadded:: 1.8.0
 
 .. c:function:: int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid, uv_gid_t gid, uv_fs_cb cb)

@@ -1401,7 +1401,7 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
                                                 uv_tcp_non_ifs_lsp_ipv4;
 
   /* If there are non-ifs LSPs then try to obtain a base handle for the socket.
-   * This will always fail on Windows XP/3k. */
+   */
   if (non_ifs_lsp) {
     DWORD bytes;
     if (WSAIoctl(socket,
