@@ -338,7 +338,7 @@ uint64_t uv_get_free_memory(void) {
   memory_status.dwLength = sizeof(memory_status);
 
   if (!GlobalMemoryStatusEx(&memory_status)) {
-     return -1;
+     return 0;
   }
 
   return (uint64_t)memory_status.ullAvailPhys;
@@ -350,7 +350,7 @@ uint64_t uv_get_total_memory(void) {
   memory_status.dwLength = sizeof(memory_status);
 
   if (!GlobalMemoryStatusEx(&memory_status)) {
-    return -1;
+    return 0;
   }
 
   return (uint64_t)memory_status.ullTotalPhys;

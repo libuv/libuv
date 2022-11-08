@@ -91,7 +91,7 @@ uint64_t uv_get_free_memory(void) {
   size_t size = sizeof(freecount);
 
   if (sysctlbyname("vm.stats.vm.v_free_count", &freecount, &size, NULL, 0))
-    return UV__ERR(errno);
+    return 0;
 
   return (uint64_t) freecount * sysconf(_SC_PAGESIZE);
 
@@ -105,7 +105,7 @@ uint64_t uv_get_total_memory(void) {
   size_t size = sizeof(info);
 
   if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
-    return UV__ERR(errno);
+    return 0;
 
   return (uint64_t) info;
 }
