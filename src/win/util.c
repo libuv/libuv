@@ -247,7 +247,7 @@ int uv_cwd(char* buffer, size_t* size) {
 
 int uv_chdir(const char* dir) {
   WCHAR *utf16_buffer;
-  size_t utf16_len;
+  DWORD utf16_len;
   WCHAR drive_letter, env_var[4];
   int r;
 
