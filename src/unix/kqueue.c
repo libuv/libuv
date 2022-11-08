@@ -186,6 +186,23 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
     }
 
+#if defined(_USE_LIBINFO)
+    if ((w->events & UV__POLLMACHPORT) == 0 &&
+        (w->pevents & UV__POLLMACHPORT) != 0) {
+      filter = EVFILT_MACHPORT;
+      fflags = 0;
+      op = EV_ADD | EV_ONESHOT;
+
+      EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
+
+      if (++nevents == ARRAY_SIZE(events)) {
+        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+          abort();
+        nevents = 0;
+      }
+    }
+#endif
+
     if ((w->events & POLLOUT) == 0 && (w->pevents & POLLOUT) != 0) {
       EV_SET(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 
@@ -337,6 +354,24 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       revents = 0;
+
+#if defined(_USE_LIBINFO)
+      if (ev->filter == EVFILT_MACHPORT) {
+        if (w->pevents & UV__POLLMACHPORT) {
+          revents |= UV__POLLMACHPORT;
+          w->rcount = ev->data;
+        } else {
+          /* TODO batch up */
+          struct kevent events[1];
+          EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
+          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
+            if (errno != ENOENT)
+              abort();
+        }
+        if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
+          revents |= UV__POLLRDHUP;
+      }
+#endif
 
       if (ev->filter == EVFILT_READ) {
         if (w->pevents & POLLIN)

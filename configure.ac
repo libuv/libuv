@@ -56,6 +56,10 @@ AC_SEARCH_LIBS([clock_gettime], [rt])
 AC_SEARCH_LIBS([sendfile], [sendfile])
 AC_SEARCH_LIBS([socket], [socket])
 AC_SYS_LARGEFILE
+AC_ARG_ENABLE(use-osx-async-libinfo,
+              AS_HELP_STRING([--disable-use-osx-async-libinfo],
+                             [don't use libinfo on OS X]),
+              , enable_use_osx_async_libinfo=yes)
 AM_CONDITIONAL([AIX],      [AS_CASE([$host_os],[aix*],          [true], [false])])
 AM_CONDITIONAL([ANDROID],  [AS_CASE([$host_os],[linux-android*],[true], [false])])
 AM_CONDITIONAL([CYGWIN],   [AS_CASE([$host_os],[cygwin*],       [true], [false])])
@@ -73,6 +77,7 @@ AM_CONDITIONAL([OS390],    [AS_CASE([$host_os],[openedition*],  [true], [false])
 AM_CONDITIONAL([OS400],    [AS_CASE([$host_os],[os400],         [true], [false])])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
+AM_CONDITIONAL([SHOULD_USE_LIBINFO],[test "x$enable_use_osx_async_libinfo" = "xyes"])
 AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
 ])
@@ -82,6 +87,13 @@ AS_CASE([$host_os], [kfreebsd*], [
 ])
 AS_CASE([$host_os], [haiku], [
     LIBS="$LIBS -lnetwork"
+])
+AM_COND_IF([DARWIN],[
+  AM_COND_IF([SHOULD_USE_LIBINFO], [
+    AC_CHECK_LIB([info], [getaddrinfo_async_start], [
+      CFLAGS="$CFLAGS -D_USE_LIBINFO=1"
+    ])
+  ])
 ])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])

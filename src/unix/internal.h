@@ -138,6 +138,12 @@
 # define UV__POLLPRI 0
 #endif
 
+#if defined(_USE_LIBINFO)
+# define UV__POLLMACHPORT 0x4000
+#else
+# define UV__POLLMACHPORT 0
+#endif
+
 #if !defined(O_CLOEXEC) && defined(__FreeBSD__)
 /*
  * It may be that we are just missing `__POSIX_VISIBLE >= 200809`.
@@ -443,5 +449,14 @@ uv__fs_copy_file_range(int fd_in,
                        unsigned int flags);
 #endif
 
+#if defined(_USE_LIBINFO)
+
+int uv__getaddrinfo_cancel(uv_getaddrinfo_t* req);
+int uv__getnameinfo_cancel(uv_getnameinfo_t* req);
+
+void uv__getaddrinfo_init(void);
+void uv__getnameinfo_init(void);
+
+#endif /* defined(_USE_LIBINFO) */
 
 #endif /* UV_UNIX_INTERNAL_H_ */

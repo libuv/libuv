@@ -185,7 +185,16 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   ASSERT(r == 0);
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
-  ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
+  /*
+   * This test only wants to be able to cancel the operation before
+   * the uv_getaddrinfo() has the chance to start the processing.
+   * Since depending on the platform uv_getaddrinfo() may not
+   * use a low prio thread at all, the `timeout` value is
+   * set to zero so it will executed as soon as possible,
+   * thus cancelling the uv_getaddrinfo() processing, before
+   * it has the chance to be completed.
+   */
+  ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 0, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(1 == timer_cb_called);
 
@@ -221,7 +230,16 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   ASSERT(r == 0);
 
   ASSERT(0 == uv_timer_init(loop, &ci.timer_handle));
-  ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
+  /*
+   * This test only wants to be able to cancel the operation before
+   * the uv_getnameinfo() has the chance to start the processing.
+   * Since depending on the platform uv_getnameinfo() may not
+   * use a low prio thread at all, the `timeout` value is
+   * set to zero so it will executed as soon as possible,
+   * thus cancelling the uv_getnameinfo() processing, before
+   * it has the chance to be completed.
+   */
+  ASSERT(0 == uv_timer_start(&ci.timer_handle, timer_cb, 0, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(1 == timer_cb_called);
 

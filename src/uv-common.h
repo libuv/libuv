@@ -36,6 +36,7 @@
 #include "uv/tree.h"
 #include "queue.h"
 #include "strscpy.h"
+#include "uv/hash.h"
 
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
@@ -349,6 +350,9 @@ void uv__threadpool_cleanup(void);
 #define uv__get_loop_metrics(loop)                                            \
   (&uv__get_internal_fields(loop)->loop_metrics)
 
+#define uv__get_loop_hash(loop)                                                \
+  (&uv__get_internal_fields(loop)->hash)
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);
@@ -373,6 +377,7 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
+  uv_hash_t hash;
 };
 
 #endif /* UV_COMMON_H_ */

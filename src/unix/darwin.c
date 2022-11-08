@@ -41,8 +41,22 @@ static mach_timebase_info_data_t timebase;
 
 typedef unsigned char UInt8;
 
+#if defined(_USE_LIBINFO)
+static uv_once_t once_libinfo = UV_ONCE_INIT;
+
+static void uv__init_libinfo(void) {
+  uv__getaddrinfo_init();
+  uv__getnameinfo_init();
+}
+#endif
+
+
 int uv__platform_loop_init(uv_loop_t* loop) {
   loop->cf_state = NULL;
+
+#if defined(_USE_LIBINFO)
+  uv_once(&once_libinfo, uv__init_libinfo);
+#endif
 
   if (uv__kqueue_init(loop))
     return UV__ERR(errno);

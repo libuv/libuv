@@ -32,6 +32,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "queue.h"
+#include "uv/hash.h"
 #include "handle-inl.h"
 #include "heap-inl.h"
 #include "req-inl.h"
@@ -365,6 +366,7 @@ void uv__loop_close(uv_loop_t* loop) {
 
   lfields = uv__get_internal_fields(loop);
   uv_mutex_destroy(&lfields->loop_metrics.lock);
+  uv_hash_clear(&lfields->hash);
   uv__free(lfields);
   loop->internal_fields = NULL;
 

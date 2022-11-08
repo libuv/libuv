@@ -32,9 +32,115 @@
 #include <string.h>
 #include <net/if.h> /* if_indextoname() */
 
+#if defined(_USE_LIBINFO)
+# include <dlfcn.h>
+#endif
+
 /* EAI_* constants. */
 #include <netdb.h>
 
+static void uv__getaddrinfo_common_done(uv_getaddrinfo_t* req, int status);
+
+#if defined(_USE_LIBINFO)
+
+typedef void getaddrinfo_async_callback(int32_t, struct addrinfo*, void*);
+static int32_t (*getaddrinfo_async_start)(mach_port_t*,
+                                          const char*,
+                                          const char*,
+                                          const struct addrinfo*,
+                                          getaddrinfo_async_callback,
+                                          void*);
+static int32_t (*getaddrinfo_async_handle_reply)(void*);
+static void (*getaddrinfo_async_cancel)(mach_port_t);
+
+void uv__getaddrinfo_init(void) {
+  void* handle = dlopen("libinfo.dylib", RTLD_LAZY | RTLD_LOCAL);
+
+  if (!handle)
+    return;
+
+  getaddrinfo_async_start = dlsym(handle, "getaddrinfo_async_start");
+  if (!getaddrinfo_async_start)
+    goto exit;
+  getaddrinfo_async_handle_reply = dlsym(handle, "getaddrinfo_async_handle_reply");
+  if (!getaddrinfo_async_handle_reply)
+    goto err_reply;
+  getaddrinfo_async_cancel = dlsym(handle, "getaddrinfo_async_cancel");
+  if (!getaddrinfo_async_cancel)
+    goto err_cancel;
+
+  dlclose(handle);
+  return;
+err_cancel:
+  getaddrinfo_async_handle_reply = NULL;
+err_reply:
+  getaddrinfo_async_start = NULL;
+exit:
+  dlclose(handle);
+}
+
+static void uv__getaddrinfo_async_done(int32_t status,
+                                       struct addrinfo* addrinfo,
+                                       void* context) {
+  uv_hash_t* hash;
+  uv_getaddrinfo_t* req;
+  uv__io_t* async_addrinfo_io;
+
+  req = context;
+  hash = uv__get_loop_hash(req->loop);
+  async_addrinfo_io = uv_hash_remove(hash, req);
+  assert(async_addrinfo_io != NULL);
+  uv_hash_remove(hash, async_addrinfo_io);
+
+  req->addrinfo = addrinfo;
+  if (status == UV_UNKNOWN || status == UV_EAI_CANCELED)
+    req->retcode = status;
+  else
+    req->retcode = uv__getaddrinfo_translate_error(status);
+  uv__io_close(req->loop, async_addrinfo_io);
+  uv__req_unregister(req->loop, req);
+  uv__free(async_addrinfo_io);
+  uv__getaddrinfo_common_done(req, status);
+}
+
+static void uv__getaddrinfo_async_work(uv_loop_t* loop,
+                                       uv__io_t* w,
+                                       unsigned int fflags) {
+  mach_msg_empty_rcv_t msg;
+  mach_msg_return_t status;
+  uv_hash_t* hash;
+  uv_getaddrinfo_t* req;
+
+  status = mach_msg(&msg.header,
+                    MACH_RCV_MSG,
+                    0,
+                    sizeof(msg),
+                    w->fd,
+                    MACH_MSG_TIMEOUT_NONE,
+                    MACH_PORT_NULL);
+  if (status != KERN_SUCCESS) {
+    hash = uv__get_loop_hash(loop);
+    req = uv_hash_find(hash, w);
+    assert(req != NULL);
+    uv__getaddrinfo_async_done(UV_UNKNOWN, NULL, req);
+  } else {
+    getaddrinfo_async_handle_reply(&msg);
+  }
+}
+
+int uv__getaddrinfo_cancel(uv_getaddrinfo_t* req) {
+  uv_hash_t* hash;
+  uv__io_t* async_addrinfo_io;
+
+  hash = uv__get_loop_hash(req->loop);
+  async_addrinfo_io = uv_hash_find(hash, req);
+  if (!async_addrinfo_io) return 1;
+  assert(async_addrinfo_io->fd != -1);
+  getaddrinfo_async_cancel(async_addrinfo_io->fd);
+  uv__getaddrinfo_async_done(UV_EAI_CANCELED, NULL, req);
+  return 0;
+}
+#endif
 
 int uv__getaddrinfo_translate_error(int sys_err) {
   switch (sys_err) {
@@ -95,22 +201,7 @@ int uv__getaddrinfo_translate_error(int sys_err) {
 }
 
 
-static void uv__getaddrinfo_work(struct uv__work* w) {
-  uv_getaddrinfo_t* req;
-  int err;
-
-  req = container_of(w, uv_getaddrinfo_t, work_req);
-  err = getaddrinfo(req->hostname, req->service, req->hints, &req->addrinfo);
-  req->retcode = uv__getaddrinfo_translate_error(err);
-}
-
-
-static void uv__getaddrinfo_done(struct uv__work* w, int status) {
-  uv_getaddrinfo_t* req;
-
-  req = container_of(w, uv_getaddrinfo_t, work_req);
-  uv__req_unregister(req->loop, req);
-
+static void uv__getaddrinfo_common_done(uv_getaddrinfo_t* req, int status) {
   /* See initialization in uv_getaddrinfo(). */
   if (req->hints)
     uv__free(req->hints);
@@ -134,6 +225,24 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
     req->cb(req, req->retcode, req->addrinfo);
 }
 
+
+static void uv__getaddrinfo_work(struct uv__work* w) {
+  uv_getaddrinfo_t* req;
+  int err;
+
+  req = container_of(w, uv_getaddrinfo_t, work_req);
+  err = getaddrinfo(req->hostname, req->service, req->hints, &req->addrinfo);
+  req->retcode = uv__getaddrinfo_translate_error(err);
+}
+
+
+static void uv__getaddrinfo_done(struct uv__work* w, int status) {
+  uv_getaddrinfo_t* req;
+
+  req = container_of(w, uv_getaddrinfo_t, work_req);
+  uv__req_unregister(req->loop, req);
+  uv__getaddrinfo_common_done(req, status);
+}
 
 int uv_getaddrinfo(uv_loop_t* loop,
                    uv_getaddrinfo_t* req,
@@ -203,6 +312,42 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->hostname = memcpy(buf + len, hostname, hostname_len);
 
   if (cb) {
+#if defined(_USE_LIBINFO)
+    if (getaddrinfo_async_start &&
+        getaddrinfo_async_handle_reply &&
+        getaddrinfo_async_cancel) {
+      int32_t get_addrinfo_result;
+      mach_port_t port;
+      uv_hash_t* hash;
+      uv__io_t* async_addrinfo_io;
+      int r;
+
+      hash = uv__get_loop_hash(req->loop);
+      async_addrinfo_io = uv__malloc(sizeof(uv__io_t));
+      if (async_addrinfo_io) {
+        r = uv_hash_insert(hash, req, async_addrinfo_io);
+        if (r) goto err_insert;
+        r = uv_hash_insert(hash, async_addrinfo_io, req);
+        if (r) goto err_insert_req;
+        get_addrinfo_result = getaddrinfo_async_start(&port,
+                                                      req->hostname,
+                                                      req->service,
+                                                      req->hints,
+                                                      uv__getaddrinfo_async_done,
+                                                      req);
+        if (get_addrinfo_result == 0) {
+          uv__io_init(async_addrinfo_io, uv__getaddrinfo_async_work, port);
+          uv__io_start(req->loop, async_addrinfo_io, UV__POLLMACHPORT);
+          return 0;
+        }
+        uv_hash_remove(hash, async_addrinfo_io);
+err_insert_req:
+        uv_hash_remove(hash, req);
+err_insert:
+        uv__free(async_addrinfo_io);
+      }
+    }
+#endif
     uv__work_submit(loop,
                     &req->work_req,
                     UV__WORK_SLOW_IO,

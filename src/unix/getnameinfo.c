@@ -24,8 +24,127 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(_USE_LIBINFO)
+# include <dlfcn.h>
+#endif
+
 #include "uv.h"
 #include "internal.h"
+
+static void uv__getnameinfo_common_done(uv_getnameinfo_t* req, int status);
+
+#if defined(_USE_LIBINFO)
+
+typedef void getnameinfo_async_callback(int32_t, char*, char*, void*);
+static int32_t (*getnameinfo_async_start)(mach_port_t*,
+                                          const struct sockaddr*,
+                                          size_t,
+                                          int,
+                                          getnameinfo_async_callback,
+                                          void*);
+static int32_t (*getnameinfo_async_handle_reply)(void*);
+static void (*getnameinfo_async_cancel)(mach_port_t);
+
+void uv__getnameinfo_init(void) {
+  void* handle = dlopen("libinfo.dylib", RTLD_LAZY | RTLD_LOCAL);
+
+  if (!handle)
+    return;
+
+  getnameinfo_async_start = dlsym(handle, "getnameinfo_async_start");
+  if (!getnameinfo_async_start)
+    goto exit;
+  getnameinfo_async_handle_reply = dlsym(handle,
+                                         "getnameinfo_async_handle_reply");
+  if (!getnameinfo_async_handle_reply)
+    goto err_reply;
+  getnameinfo_async_cancel = dlsym(handle, "getnameinfo_async_cancel");
+  if (!getnameinfo_async_cancel)
+    goto err_cancel;
+
+  dlclose(handle);
+  return;
+err_cancel:
+  getnameinfo_async_handle_reply = NULL;
+err_reply:
+  getnameinfo_async_start = NULL;
+exit:
+  dlclose(handle);
+}
+
+static void uv__getnameinfo_async_safe_copy(char* dst,
+                                            const char* src,
+                                            size_t dst_size) {
+  if (src)
+    uv__strscpy(dst, src, dst_size);
+  else
+    memset(dst, 0, dst_size);
+}
+
+static void uv__getnameinfo_async_done(int32_t status,
+                                       char* host,
+                                       char* service,
+                                       void* context) {
+  uv_getnameinfo_t* req;
+  uv_hash_t* hash;
+  uv__io_t* async_getnameinfo_io;
+
+  req = context;
+  hash = uv__get_loop_hash(req->loop);
+  async_getnameinfo_io = uv_hash_remove(hash, req);
+  assert(async_getnameinfo_io != NULL);
+  uv_hash_remove(hash, async_getnameinfo_io);
+
+  uv__getnameinfo_async_safe_copy(req->host, host, sizeof(req->host));
+  uv__getnameinfo_async_safe_copy(req->service, service, sizeof(req->service));
+  if (status == UV_UNKNOWN || status == UV_EAI_CANCELED)
+    req->retcode = status;
+  else
+    req->retcode = uv__getaddrinfo_translate_error(status);
+  uv__io_close(req->loop, async_getnameinfo_io);
+  uv__req_unregister(req->loop, req);
+  uv__free(async_getnameinfo_io);
+  uv__getnameinfo_common_done(req, status);
+}
+
+static void uv__getnameinfo_async_work(uv_loop_t* loop,
+                                       uv__io_t* w,
+                                       unsigned int fflags) {
+  mach_msg_empty_rcv_t msg;
+  mach_msg_return_t status;
+  uv_hash_t* hash;
+  uv_getaddrinfo_t* req;
+
+  status = mach_msg(&msg.header,
+                    MACH_RCV_MSG,
+                    0,
+                    sizeof(msg),
+                    w->fd,
+                    MACH_MSG_TIMEOUT_NONE,
+                    MACH_PORT_NULL);
+  if (status != KERN_SUCCESS) {
+    hash = uv__get_loop_hash(loop);
+    req = uv_hash_find(hash, w);
+    assert(req != NULL);
+    uv__getnameinfo_async_done(UV_UNKNOWN, NULL, NULL, req);
+  } else {
+    getnameinfo_async_handle_reply(&msg);
+  }
+}
+
+int uv__getnameinfo_cancel(uv_getnameinfo_t* req) {
+  uv_hash_t* hash;
+  uv__io_t* async_getnameinfo_io;
+
+  hash = uv__get_loop_hash(req->loop);
+  async_getnameinfo_io = uv_hash_find(hash, req);
+  if (!async_getnameinfo_io) return 1;
+  assert(async_getnameinfo_io->fd != -1);
+  getnameinfo_async_cancel(async_getnameinfo_io->fd);
+  uv__getnameinfo_async_done(UV_EAI_CANCELED, NULL, NULL, req);
+  return 0;
+}
+#endif
 
 
 static void uv__getnameinfo_work(struct uv__work* w) {
@@ -52,13 +171,9 @@ static void uv__getnameinfo_work(struct uv__work* w) {
   req->retcode = uv__getaddrinfo_translate_error(err);
 }
 
-static void uv__getnameinfo_done(struct uv__work* w, int status) {
-  uv_getnameinfo_t* req;
+static void uv__getnameinfo_common_done(uv_getnameinfo_t* req, int status) {
   char* host;
   char* service;
-
-  req = container_of(w, uv_getnameinfo_t, work_req);
-  uv__req_unregister(req->loop, req);
   host = service = NULL;
 
   if (status == UV_ECANCELED) {
@@ -73,6 +188,14 @@ static void uv__getnameinfo_done(struct uv__work* w, int status) {
     req->getnameinfo_cb(req, req->retcode, host, service);
 }
 
+static void uv__getnameinfo_done(struct uv__work* w, int status) {
+  uv_getnameinfo_t* req;
+
+  req = container_of(w, uv_getnameinfo_t, work_req);
+  uv__req_unregister(req->loop, req);
+  uv__getnameinfo_common_done(req, status);
+}
+
 /*
 * Entry point for getnameinfo
 * return 0 if a callback will be made
@@ -83,17 +206,21 @@ int uv_getnameinfo(uv_loop_t* loop,
                    uv_getnameinfo_cb getnameinfo_cb,
                    const struct sockaddr* addr,
                    int flags) {
+  size_t salen;
+
   if (req == NULL || addr == NULL)
     return UV_EINVAL;
 
   if (addr->sa_family == AF_INET) {
+    salen = sizeof(struct sockaddr_in);
     memcpy(&req->storage,
            addr,
-           sizeof(struct sockaddr_in));
+           salen);
   } else if (addr->sa_family == AF_INET6) {
+    salen = sizeof(struct sockaddr_in6);
     memcpy(&req->storage,
            addr,
-           sizeof(struct sockaddr_in6));
+           salen);
   } else {
     return UV_EINVAL;
   }
@@ -107,6 +234,45 @@ int uv_getnameinfo(uv_loop_t* loop,
   req->retcode = 0;
 
   if (getnameinfo_cb) {
+#if defined(_USE_LIBINFO)
+    if (getnameinfo_async_start &&
+        getnameinfo_async_handle_reply &&
+        getnameinfo_async_cancel) {
+      int32_t get_nameinfo_result;
+      mach_port_t port;
+      uv_hash_t* hash;
+      uv__io_t* async_getnameinfo_io;
+      int r;
+
+      hash = uv__get_loop_hash(req->loop);
+      async_getnameinfo_io = uv__malloc(sizeof(uv__io_t));
+      if (async_getnameinfo_io) {
+        r = uv_hash_insert(hash, req, async_getnameinfo_io);
+        if (r) goto err_insert;
+        r = uv_hash_insert(hash, async_getnameinfo_io, req);
+        if (r) goto err_insert_req;
+        get_nameinfo_result =
+          getnameinfo_async_start(&port,
+                                  (struct sockaddr*) &req->storage,
+                                  salen,
+                                  req->flags,
+                                  uv__getnameinfo_async_done,
+                                  req);
+        if (get_nameinfo_result == 0) {
+          uv__io_init(async_getnameinfo_io,
+                      uv__getnameinfo_async_work,
+                      port);
+          uv__io_start(req->loop, async_getnameinfo_io, UV__POLLMACHPORT);
+          return 0;
+        }
+        uv_hash_remove(hash, async_getnameinfo_io);
+err_insert_req:
+        uv_hash_remove(hash, req);
+err_insert:
+        uv__free(async_getnameinfo_io);
+      }
+    }
+#endif
     uv__work_submit(loop,
                     &req->work_req,
                     UV__WORK_SLOW_IO,
