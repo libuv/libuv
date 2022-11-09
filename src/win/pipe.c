@@ -792,15 +792,17 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
 
   /* We're here because CreateFile on a pipe returned ERROR_PIPE_BUSY. We wait
    * up to 30 seconds for the pipe to become available with WaitNamedPipe. */
-  while (WaitNamedPipeW(handle->name, 30000)) {
+  while (WaitNamedPipeW(req->u.connect.name, 30000)) {
     /* The pipe is now available, try to connect. */
-    pipeHandle = open_named_pipe(handle->name, &duplex_flags);
+    pipeHandle = open_named_pipe(req->u.connect.name, &duplex_flags);
     if (pipeHandle != INVALID_HANDLE_VALUE)
       break;
 
     SwitchToThread();
   }
 
+  uv__free(req->u.connect.name);
+  req->u.connect.name = NULL;
   if (pipeHandle != INVALID_HANDLE_VALUE) {
     SET_REQ_SUCCESS(req);
     req->u.connect.pipeHandle = pipeHandle;
@@ -828,6 +830,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   req->cb = cb;
   req->u.connect.pipeHandle = INVALID_HANDLE_VALUE;
   req->u.connect.duplex_flags = 0;
+  req->u.connect.name = NULL;
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
     err = ERROR_INVALID_PARAMETER;
@@ -859,10 +862,19 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   pipeHandle = open_named_pipe(handle->name, &duplex_flags);
   if (pipeHandle == INVALID_HANDLE_VALUE) {
     if (GetLastError() == ERROR_PIPE_BUSY) {
+      req->u.connect.name = uv__malloc(nameSize);
+      if (!req->u.connect.name) {
+        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+      }
+
+      memcpy(req->u.connect.name, handle->name, nameSize);
+
       /* Wait for the server to make a pipe instance available. */
       if (!QueueUserWorkItem(&pipe_connect_thread_proc,
                              req,
                              WT_EXECUTELONGFUNCTION)) {
+        uv__free(req->u.connect.name);
+        req->u.connect.name = NULL;
         err = GetLastError();
         goto error;
       }
@@ -2131,7 +2143,10 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   if (REQ_SUCCESS(req)) {
     pipeHandle = req->u.connect.pipeHandle;
     duplex_flags = req->u.connect.duplex_flags;
-    err = uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags);
+    if (handle->flags & UV_HANDLE_CLOSING)
+      err = UV_ECANCELED;
+    else
+      err = uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags);
     if (err)
       CloseHandle(pipeHandle);
   } else {
