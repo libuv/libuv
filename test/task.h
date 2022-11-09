@@ -50,9 +50,9 @@
 #define TEST_PORT_3 9125
 
 #ifdef _WIN32
-# define TEST_PIPENAME "\\\\?\\pipe\\uv-test"
-# define TEST_PIPENAME_2 "\\\\?\\pipe\\uv-test2"
-# define TEST_PIPENAME_3 "\\\\?\\pipe\\uv-test3"
+# define TEST_PIPENAME "\\\\.\\pipe\\uv-test"
+# define TEST_PIPENAME_2 "\\\\.\\pipe\\uv-test2"
+# define TEST_PIPENAME_3 "\\\\.\\pipe\\uv-test3"
 #else
 # define TEST_PIPENAME "/tmp/uv-test-sock"
 # define TEST_PIPENAME_2 "/tmp/uv-test-sock2"

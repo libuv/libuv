@@ -29,7 +29,7 @@
 static int connection_cb_called = 0;
 static int connect_cb_called = 0;
 
-#define NUM_CLIENTS 4
+#define NUM_CLIENTS 10
 
 typedef struct {
   uv_pipe_t pipe_handle;
