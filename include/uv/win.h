@@ -377,6 +377,7 @@ typedef struct {
       ULONG_PTR result; /* overlapped.Internal is reused to hold the result */\
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
+      WCHAR* name;                                                             \
     } connect;                                                                \
   } u;                                                                        \
   struct uv_req_s* next_req;
