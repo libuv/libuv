@@ -384,7 +384,13 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 
 int uv_thread_getcpu(void) {
 #if defined(__linux__) || defined(__FreeBSD__)
-  return sched_getcpu();
+  int cpu;
+
+  cpu = sched_getcpu();
+  if (cpu < 0)
+    return UV__ERR(errno);
+
+  return cpu;
 #else
   return UV_ENOTSUP;
 #endif

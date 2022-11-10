@@ -102,7 +102,7 @@ TEST_IMPL(thread_affinity) {
   ASSERT(cpumask[t2first + 3] == 0);
 
   c = uv_thread_getcpu();
-  ASSERT(c >= 0);
+  ASSERT_GE(c, 0);
 
   memset(cpumask, 0, cpumasksize);
   cpumask[c] = 1;
@@ -112,7 +112,7 @@ TEST_IMPL(thread_affinity) {
   memset(cpumask, 0, cpumasksize);
   r = uv_thread_getaffinity(&threads[0], cpumask, cpumasksize);
   ASSERT(r == 0);
-  for (i=0; i<cpumasksize; i++) {
+  for (i = 0; i < cpumasksize; i++) {
     if (i == c) ASSERT(cpumask[i] == 1);
     else ASSERT(cpumask[i] == 0);
   }

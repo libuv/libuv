@@ -123,6 +123,9 @@ Threads
 
     Gets the CPU number on which the calling thread is running.
 
+    .. note::
+        Currently only implemented on Windows, Linux and FreeBSD.
+
     .. versionadded:: 1.45.0
 
 .. c:function:: uv_thread_t uv_thread_self(void)
