@@ -321,9 +321,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       nevents++;
     }
 
+    uv__metrics_inc_events(loop, nevents);
     if (reset_timeout != 0) {
       timeout = user_timeout;
       reset_timeout = 0;
+      uv__metrics_inc_events_waiting(loop, nevents);
     }
 
     if (have_signals != 0) {

@@ -963,6 +963,15 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop) {
 }
 
 
+int uv_metrics_info(uv_loop_t* loop, uv_metrics_t* metrics) {
+  memcpy(metrics,
+         &uv__get_loop_metrics(loop)->metrics,
+         sizeof(*metrics));
+
+  return 0;
+}
+
+
 uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
   uv__loop_metrics_t* loop_metrics;
   uint64_t entry_time;

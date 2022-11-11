@@ -245,6 +245,9 @@ int uv_loop_init(uv_loop_t* loop) {
   err = uv_mutex_init(&lfields->loop_metrics.lock);
   if (err)
     goto fail_metrics_mutex_init;
+  memset(&lfields->loop_metrics.metrics,
+         0,
+         sizeof(lfields->loop_metrics.metrics));
 
   /* To prevent uninitialized memory access, loop->time must be initialized
    * to zero before calling uv_update_time for the first time.
@@ -454,6 +457,8 @@ static void uv__poll_wine(uv_loop_t* loop, DWORD timeout) {
                               timeout);
 
     if (reset_timeout != 0) {
+      if (overlapped && timeout == 0)
+        uv__metrics_inc_events_waiting(loop, 1);
       timeout = user_timeout;
       reset_timeout = 0;
     }
@@ -466,6 +471,8 @@ static void uv__poll_wine(uv_loop_t* loop, DWORD timeout) {
     uv__metrics_update_idle_time(loop);
 
     if (overlapped) {
+      uv__metrics_inc_events(loop, 1);
+
       /* Package was dequeued */
       req = uv__overlapped_to_req(overlapped);
       uv__insert_pending_req(loop, req);
@@ -508,6 +515,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
   int repeat;
   uint64_t timeout_time;
   uint64_t user_timeout;
+  uint64_t actual_timeout;
   int reset_timeout;
 
   timeout_time = loop->time + timeout;
@@ -521,6 +529,8 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
   }
 
   for (repeat = 0; ; repeat++) {
+    actual_timeout = timeout;
+
     /* Only need to set the provider_entry_time if timeout != 0. The function
      * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
      */
@@ -540,9 +550,9 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
     }
 
     /* Placed here because on success the loop will break whether there is an
-     * empty package or not, or if GetQueuedCompletionStatus returned early then
-     * the timeout will be updated and the loop will run again. In either case
-     * the idle time will need to be updated.
+     * empty package or not, or if pGetQueuedCompletionStatusEx returned early
+     * then the timeout will be updated and the loop will run again. In either
+     * case the idle time will need to be updated.
      */
     uv__metrics_update_idle_time(loop);
 
@@ -552,6 +562,10 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
          * meant only to wake us up.
          */
         if (overlappeds[i].lpOverlapped) {
+          uv__metrics_inc_events(loop, 1);
+          if (actual_timeout == 0)
+            uv__metrics_inc_events_waiting(loop, 1);
+
           req = uv__overlapped_to_req(overlappeds[i].lpOverlapped);
           uv__insert_pending_req(loop, req);
         }
@@ -608,6 +622,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     timeout = 0;
     if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
+
+    uv__metrics_inc_loop_count(loop);
 
     if (pGetQueuedCompletionStatusEx)
       uv__poll(loop, timeout);
