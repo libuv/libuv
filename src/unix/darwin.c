@@ -107,7 +107,7 @@ uint64_t uv_get_free_memory(void) {
 
   if (host_statistics(mach_host_self(), HOST_VM_INFO,
                       (host_info_t)&info, &count) != KERN_SUCCESS) {
-    return UV_EINVAL;  /* FIXME(bnoordhuis) Translate error. */
+    return 0;
   }
 
   return (uint64_t) info.free_count * sysconf(_SC_PAGESIZE);
@@ -120,7 +120,7 @@ uint64_t uv_get_total_memory(void) {
   size_t size = sizeof(info);
 
   if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
-    return UV__ERR(errno);
+    return 0;
 
   return (uint64_t) info;
 }
