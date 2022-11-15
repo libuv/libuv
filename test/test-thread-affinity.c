@@ -107,14 +107,16 @@ TEST_IMPL(thread_affinity) {
   memset(cpumask, 0, cpumasksize);
   cpumask[c] = 1;
   r = uv_thread_setaffinity(&threads[0], cpumask, NULL, cpumasksize);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   memset(cpumask, 0, cpumasksize);
   r = uv_thread_getaffinity(&threads[0], cpumask, cpumasksize);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   for (i = 0; i < cpumasksize; i++) {
-    if (i == c) ASSERT(cpumask[i] == 1);
-    else ASSERT(cpumask[i] == 0);
+    if (i == c)
+      ASSERT_EQ(1, cpumask[i]);
+    else
+      ASSERT_EQ(0, cpumask[i]);
   }
 
   free(cpumask);
