@@ -374,6 +374,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+  if(CMAKE_SYSTEM_VERSION STREQUAL "5.10")
+    list(APPEND uv_defines SUNOS_NO_IFADDRS)
+    list(APPEND uv_libraries rt)
+  endif()
   list(APPEND uv_defines __EXTENSIONS__ _XOPEN_SOURCE=500 _REENTRANT)
   list(APPEND uv_libraries kstat nsl sendfile socket)
   list(APPEND uv_sources

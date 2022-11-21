@@ -76,6 +76,9 @@ AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])
 AS_CASE([$host_os],[mingw*], [
     LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
 ])
+AS_CASE([$host_os], [solaris2.10], [
+    CFLAGS="$CFLAGS -DSUNOS_NO_IFADDRS"
+])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
 AS_CASE([$host_os], [kfreebsd*], [
     LIBS="$LIBS -lfreebsd-glue"
