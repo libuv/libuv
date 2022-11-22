@@ -33,7 +33,7 @@ jobs:
           ls -lh build
 
   build-macos:
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Envinfo
@@ -61,7 +61,7 @@ jobs:
           cd build && ctest -V
 
   build-ios:
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Configure
@@ -106,7 +106,7 @@ jobs:
         # this ensure install latest qemu on ubuntu, apt get version is old
         env:
           QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
-          QEMU_VER: "qemu-user-static_4\\.2-.*_amd64.deb$"
+          QEMU_VER: "qemu-user-static_7\\.0+dfsg-.*_amd64.deb$"
         run: |
           DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER | tail -1`
           wget $QEMU_SRC/$DEB

@@ -55,12 +55,7 @@ extern "C" {
 #include "uv/version.h"
 #include <stddef.h>
 #include <stdio.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #if defined(_WIN32)
 # include "uv/win.h"
@@ -152,6 +147,7 @@ extern "C" {
   XX(EFTYPE, "inappropriate file type or format")                             \
   XX(EILSEQ, "illegal byte sequence")                                         \
   XX(ESOCKTNOSUPPORT, "socket type not supported")                            \
+  XX(ENODATA, "no data available")                                            \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
@@ -249,6 +245,8 @@ typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_utsname_s uv_utsname_t;
 typedef struct uv_statfs_s uv_statfs_t;
+
+typedef struct uv_metrics_s uv_metrics_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL = 0,
@@ -1245,6 +1243,7 @@ UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
+UV_EXTERN int uv_cpumask_size(void);
 
 UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
                                      int* count);
@@ -1277,6 +1276,15 @@ UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
 
 UV_EXTERN int uv_os_uname(uv_utsname_t* buffer);
 
+struct uv_metrics_s {
+  uint64_t loop_count;
+  uint64_t events;
+  uint64_t events_waiting;
+  /* private */
+  uint64_t* reserved[13];
+};
+
+UV_EXTERN int uv_metrics_info(uv_loop_t* loop, uv_metrics_t* metrics);
 UV_EXTERN uint64_t uv_metrics_idle_time(uv_loop_t* loop);
 
 typedef enum {
@@ -1787,6 +1795,14 @@ UV_EXTERN int uv_thread_create_ex(uv_thread_t* tid,
                                   const uv_thread_options_t* params,
                                   uv_thread_cb entry,
                                   void* arg);
+UV_EXTERN int uv_thread_setaffinity(uv_thread_t* tid,
+                                    char* cpumask,
+                                    char* oldmask,
+                                    size_t mask_size);
+UV_EXTERN int uv_thread_getaffinity(uv_thread_t* tid,
+                                    char* cpumask,
+                                    size_t mask_size);
+UV_EXTERN int uv_thread_getcpu(void);
 UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);

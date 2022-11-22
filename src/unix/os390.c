@@ -807,6 +807,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct epoll_event* pe;
   struct epoll_event e;
   uv__os390_epoll* ep;
+  int have_signals;
   int real_timeout;
   QUEUE* q;
   uv__io_t* w;
@@ -869,6 +870,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
   int nevents = 0;
+  have_signals = 0;
 
   if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
@@ -983,18 +985,36 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         pe->events |= w->pevents & (POLLIN | POLLOUT);
 
       if (pe->events != 0) {
-        uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, pe->events);
+        /* Run signal watchers last.  This also affects child process watchers
+         * because those are implemented in terms of signal watchers.
+         */
+        if (w == &loop->signal_io_watcher) {
+          have_signals = 1;
+        } else {
+          uv__metrics_update_idle_time(loop);
+          w->cb(loop, w, pe->events);
+        }
         nevents++;
       }
     }
-    loop->watchers[loop->nwatchers] = NULL;
-    loop->watchers[loop->nwatchers + 1] = NULL;
 
+    uv__metrics_inc_events(loop, nevents);
     if (reset_timeout != 0) {
       timeout = user_timeout;
       reset_timeout = 0;
+      uv__metrics_inc_events_waiting(loop, nevents);
     }
+
+    if (have_signals != 0) {
+      uv__metrics_update_idle_time(loop);
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+    }
+
+    loop->watchers[loop->nwatchers] = NULL;
+    loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -1030,6 +1050,5 @@ int uv__io_fork(uv_loop_t* loop) {
   */
   loop->ep = NULL;
 
-  uv__platform_loop_delete(loop);
   return uv__platform_loop_init(loop);
 }

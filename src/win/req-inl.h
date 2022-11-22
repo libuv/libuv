@@ -172,12 +172,7 @@ INLINE static void uv__process_reqs(uv_loop_t* loop) {
         break;
 
       case UV_SHUTDOWN:
-        /* Tcp shutdown requests don't come here. */
-        assert(((uv_shutdown_t*) req)->handle->type == UV_NAMED_PIPE);
-        uv__process_pipe_shutdown_req(
-            loop,
-            (uv_pipe_t*) ((uv_shutdown_t*) req)->handle,
-            (uv_shutdown_t*) req);
+        DELEGATE_STREAM_REQ(loop, (uv_shutdown_t*) req, shutdown, handle);
         break;
 
       case UV_UDP_RECV:

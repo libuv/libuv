@@ -204,7 +204,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   uv_loop_t* loop = handle->loop;
 
   if (!(handle->flags & UV_HANDLE_WRITABLE) ||
-      handle->flags & UV_HANDLE_SHUTTING ||
+      uv__is_stream_shutting(handle) ||
       uv__is_closing(handle)) {
     return UV_ENOTCONN;
   }
@@ -214,12 +214,16 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   req->cb = cb;
 
   handle->flags &= ~UV_HANDLE_WRITABLE;
-  handle->flags |= UV_HANDLE_SHUTTING;
   handle->stream.conn.shutdown_req = req;
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
 
-  uv__want_endgame(loop, (uv_handle_t*)handle);
+  if (handle->stream.conn.write_reqs_pending == 0) {
+    if (handle->type == UV_NAMED_PIPE)
+      uv__pipe_shutdown(loop, (uv_pipe_t*) handle, req);
+    else
+      uv__insert_pending_req(loop, (uv_req_t*) req);
+  }
 
   return 0;
 }

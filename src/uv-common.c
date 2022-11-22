@@ -650,14 +650,22 @@ static unsigned int* uv__get_nbufs(uv_fs_t* req) {
 
 void uv__fs_scandir_cleanup(uv_fs_t* req) {
   uv__dirent_t** dents;
+  unsigned int* nbufs;
+  unsigned int i;
+  unsigned int n;
 
-  unsigned int* nbufs = uv__get_nbufs(req);
+  if (req->result >= 0) {
+    dents = req->ptr;
+    nbufs = uv__get_nbufs(req);
 
-  dents = req->ptr;
-  if (*nbufs > 0 && *nbufs != (unsigned int) req->result)
-    (*nbufs)--;
-  for (; *nbufs < (unsigned int) req->result; (*nbufs)++)
-    uv__fs_scandir_free(dents[*nbufs]);
+    i = 0;
+    if (*nbufs > 0)
+      i = *nbufs - 1;
+
+    n = (unsigned int) req->result;
+    for (; i < n; i++)
+      uv__fs_scandir_free(dents[i]);
+  }
 
   uv__fs_scandir_free(req->ptr);
   req->ptr = NULL;
@@ -952,6 +960,15 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop) {
   uv_mutex_lock(&loop_metrics->lock);
   loop_metrics->provider_entry_time = now;
   uv_mutex_unlock(&loop_metrics->lock);
+}
+
+
+int uv_metrics_info(uv_loop_t* loop, uv_metrics_t* metrics) {
+  memcpy(metrics,
+         &uv__get_loop_metrics(loop)->metrics,
+         sizeof(*metrics));
+
+  return 0;
 }
 
 

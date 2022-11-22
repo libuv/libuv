@@ -164,7 +164,7 @@ IPv6 stack only
 
 IPv6 sockets can be used for both IPv4 and IPv6 communication. If you want to
 restrict the socket to IPv6 only, pass the ``UV_UDP_IPV6ONLY`` flag to
-``uv_udp_bind`` [#]_.
+``uv_udp_bind``.
 
 Multicast
 ~~~~~~~~~
@@ -250,7 +250,6 @@ times, with each address being reported once.
 ----
 
 .. [#] https://beej.us/guide/bgnet/html/#broadcast-packetshello-world
-.. [#] on Windows only supported on Windows Vista and later.
 .. [#] https://www.tldp.org/HOWTO/Multicast-HOWTO-6.html#ss6.1
 .. [#] libuv use the system ``getaddrinfo`` in the libuv threadpool. libuv
     v0.8.0 and earlier also included c-ares_ as an alternative, but this has been

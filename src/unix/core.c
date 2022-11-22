@@ -72,6 +72,8 @@ extern char** environ;
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
+# include <sys/param.h>
+# include <sys/cpuset.h>
 # if defined(__FreeBSD__)
 #  define uv__accept4 accept4
 # endif
@@ -402,6 +404,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     timeout = 0;
     if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv__backend_timeout(loop);
+
+    uv__metrics_inc_loop_count(loop);
 
     uv__io_poll(loop, timeout);
 
@@ -867,11 +871,6 @@ void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
   w->fd = fd;
   w->events = 0;
   w->pevents = 0;
-
-#if defined(UV_HAVE_KQUEUE)
-  w->rcount = 0;
-  w->wcount = 0;
-#endif /* defined(UV_HAVE_KQUEUE) */
 }
 
 
@@ -989,6 +988,15 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_nsignals = usage.ru_nsignals;
   rusage->ru_nvcsw = usage.ru_nvcsw;
   rusage->ru_nivcsw = usage.ru_nivcsw;
+#endif
+
+  /* Most platforms report ru_maxrss in kilobytes; macOS and Solaris are
+   * the outliers because of course they are.
+   */
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  rusage->ru_maxrss /= 1024;                  /* macOS reports bytes. */
+#elif defined(__sun)
+  rusage->ru_maxrss /= getpagesize() / 1024;  /* Solaris reports pages. */
 #endif
 
   return 0;
@@ -1416,6 +1424,13 @@ uv_pid_t uv_os_getppid(void) {
   return getppid();
 }
 
+int uv_cpumask_size(void) {
+#if defined(__linux__) || defined(__FreeBSD__)
+  return CPU_SETSIZE;
+#else
+  return UV_ENOTSUP;
+#endif
+}
 
 int uv_os_getpriority(uv_pid_t pid, int* priority) {
   int r;

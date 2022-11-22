@@ -10,7 +10,7 @@
 * [H2O](https://github.com/h2o/h2o): An optimized HTTP server with support for HTTP/1.x and HTTP/2.
 * [Igropyr](https://github.com/guenchi/Igropyr): a async Scheme http server base on libuv.
 * [Julia](http://julialang.org/): Scientific computing programming language
-* [Kestrel](https://github.com/aspnet/AspNetCore/tree/master/src/Servers/Kestrel): web server (C# + libuv + [ASP.NET Core](http://github.com/aspnet))
+* [Kestrel](https://github.com/dotnet/aspnetcore/tree/main/src/Servers/Kestrel): web server (C# + libuv + [ASP.NET Core](http://github.com/aspnet))
 * [Knot DNS Resolver](https://www.knot-resolver.cz/): A minimalistic DNS caching resolver
 * [Lever](http://leverlanguage.com): runtime, libuv at the 0.9.0 release
 * [libnode](https://github.com/plenluno/libnode): C++ implementation of Node.js

@@ -30,12 +30,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stddef.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #include "uv.h"
 #include "uv/tree.h"
@@ -83,7 +78,6 @@ enum {
   /* Used by streams. */
   UV_HANDLE_LISTENING                   = 0x00000040,
   UV_HANDLE_CONNECTION                  = 0x00000080,
-  UV_HANDLE_SHUTTING                    = 0x00000100,
   UV_HANDLE_SHUT                        = 0x00000200,
   UV_HANDLE_READ_PARTIAL                = 0x00000400,
   UV_HANDLE_READ_EOF                    = 0x00000800,
@@ -263,6 +257,14 @@ void uv__threadpool_cleanup(void);
 #define uv__is_closing(h)                                                     \
   (((h)->flags & (UV_HANDLE_CLOSING | UV_HANDLE_CLOSED)) != 0)
 
+#if defined(_WIN32)
+# define uv__is_stream_shutting(h)                                            \
+  (h->stream.conn.shutdown_req != NULL)
+#else
+# define uv__is_stream_shutting(h)                                            \
+  (h->shutdown_req != NULL)
+#endif
+
 #define uv__handle_start(h)                                                   \
   do {                                                                        \
     if (((h)->flags & UV_HANDLE_ACTIVE) != 0) break;                          \
@@ -347,6 +349,21 @@ void uv__threadpool_cleanup(void);
 #define uv__get_loop_metrics(loop)                                            \
   (&uv__get_internal_fields(loop)->loop_metrics)
 
+#define uv__metrics_inc_loop_count(loop)                                      \
+  do {                                                                        \
+    uv__get_loop_metrics(loop)->metrics.loop_count++;                         \
+  } while (0)
+
+#define uv__metrics_inc_events(loop, e)                                       \
+  do {                                                                        \
+    uv__get_loop_metrics(loop)->metrics.events += (e);                        \
+  } while (0)
+
+#define uv__metrics_inc_events_waiting(loop, e)                               \
+  do {                                                                        \
+    uv__get_loop_metrics(loop)->metrics.events_waiting += (e);                \
+  } while (0)
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);
@@ -360,6 +377,7 @@ typedef struct uv__loop_metrics_s uv__loop_metrics_t;
 typedef struct uv__loop_internal_fields_s uv__loop_internal_fields_t;
 
 struct uv__loop_metrics_s {
+  uv_metrics_t metrics;
   uint64_t provider_entry_time;
   uint64_t provider_idle_time;
   uv_mutex_t lock;

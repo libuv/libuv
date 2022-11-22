@@ -1,3 +1,131 @@
+2022.07.12, Version 1.44.2 (Stable), 0c1fa696aa502eb749c2c4735005f41ba00a27b8
+
+Changes since version 1.44.1:
+
+* Add SHA to ChangeLog (Jameson Nash)
+
+* aix, ibmi: handle server hang when remote sends TCP RST (V-for-Vasili)
+
+* build: make CI a bit noisier (Jameson Nash)
+
+* process: reset the signal mask if the fork fails (Jameson Nash)
+
+* zos: implement cmpxchgi() using assembly (Shuowang (Wayne) Zhang)
+
+* build: AC_SUBST for AM_CFLAGS (Claes Nästén)
+
+* ibmi: Implement UDP disconnect (V-for-Vasili)
+
+* doc: update active maintainers list (Ben Noordhuis)
+
+* build: fix kFreeBSD build (James McCoy)
+
+* build: remove Windows 2016 workflows (Darshan Sen)
+
+* Revert "win,errors: remap ERROR_ACCESS_DENIED to UV_EACCES" (Darshan Sen)
+
+* unix: simplify getpwuid call (Jameson Nash)
+
+* build: filter CI by paths and branches (Jameson Nash)
+
+* build: add iOS to macos CI (Jameson Nash)
+
+* build: re-enable CI for windows changes (Jameson Nash)
+
+* process,iOS: fix build breakage in process.c (Denny C. Dai)
+
+* test: remove unused declarations in tcp_rst test (V-for-Vasili)
+
+* core: add thread-safe strtok implementation (Guilherme Íscaro)
+
+* win: fix incompatible-types warning (twosee)
+
+* test: fix flaky file watcher test (Ben Noordhuis)
+
+* build: fix AIX xlc autotools build (V-for-Vasili)
+
+* unix,win: fix UV_RUN_ONCE + uv_idle_stop loop hang (Ben Noordhuis)
+
+* win: fix unexpected ECONNRESET error on TCP socket (twosee)
+
+* doc: make sample cross-platform build (gengjiawen)
+
+* test: separate some static variables by test cases (Hannah Shi)
+
+* sunos: fs-event callback can be called after uv_close() (Andy Fiddaman)
+
+* uv: re-register interest in a file after change (Shuowang (Wayne) Zhang)
+
+* uv: register UV_RENAME event for _RFIM_UNLINK (Shuowang (Wayne) Zhang)
+
+* uv: register __rfim_event 156 as UV_RENAME (Shuowang (Wayne) Zhang)
+
+* doc: remove smartos from supported platforms (Ben Noordhuis)
+
+* macos: avoid posix_spawnp() cwd bug (Jameson Nash)
+
+* release: check versions of autogen scripts are newer (Jameson Nash)
+
+* test: rewrite embed test (Ben Noordhuis)
+
+* openbsd: use utimensat instead of lutimes (tuftedocelot)
+
+* doc: fix link to uvwget example main() function (blogdaren)
+
+* unix: use MSG_CMSG_CLOEXEC where supported (Ben Noordhuis)
+
+* test: remove disabled callback_order test (Ben Noordhuis)
+
+* win,pipe: fix bugs with pipe resource lifetime management (Jameson Nash)
+
+* loop: better align order-of-events behavior between platforms (Jameson Nash)
+
+* aix,test: uv_backend_fd is not supported by poll (V-for-Vasili)
+
+* kqueue: skip EVFILT_PROC when invalidating fds (chucksilvers)
+
+* darwin: fix atomic-ops.h ppc64 build (Sergey Fedorov)
+
+* zos: don't err when killing a zombie process (Shuowang (Wayne) Zhang)
+
+* zos: avoid fs event callbacks after uv_close() (Shuowang (Wayne) Zhang)
+
+* zos: correctly format interface addresses names (Shuowang (Wayne) Zhang)
+
+* zos: add uv_interface_addresses() netmask support (Shuowang (Wayne) Zhang)
+
+* zos: improve memory management of ip addresses (Shuowang (Wayne) Zhang)
+
+* tcp,pipe: fail `bind` or `listen` after `close` (theanarkh)
+
+* zos: implement uv_available_parallelism() (Shuowang (Wayne) Zhang)
+
+* udp,win: fix UDP compiler warning (Jameson Nash)
+
+* zos: fix early exit of epoll_wait() (Shuowang (Wayne) Zhang)
+
+* unix,tcp: fix errno handling in uv__tcp_bind() (Samuel Cabrero)
+
+* shutdown,unix: reduce code duplication (Jameson Nash)
+
+* unix: fix c99 comments (Ben Noordhuis)
+
+* unix: retry tcgetattr/tcsetattr() on EINTR (Ben Noordhuis)
+
+* docs: update introduction.rst (Ikko Ashimine)
+
+* unix,stream: optimize uv_shutdown() codepath (Jameson Nash)
+
+* zos: delay signal handling until after normal i/o (Shuowang (Wayne) Zhang)
+
+* stream: uv__drain() always needs to stop POLLOUT (Jameson Nash)
+
+* unix,tcp: allow EINVAL errno from setsockopt in uv_tcp_close_reset() (Stacey
+  Marshall)
+
+* win,shutdown: improve how shutdown is dispatched (Jameson Nash)
+
+
 2022.03.09, Version 1.44.1 (Stable), e8b7eb6908a847ffbe6ab2eec7428e43a0aa53a2
 
 Changes since version 1.44.0:

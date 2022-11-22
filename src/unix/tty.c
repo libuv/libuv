@@ -21,8 +21,8 @@
 
 #include "uv.h"
 #include "internal.h"
-#include "spinlock.h"
 
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
@@ -64,7 +64,20 @@ static int isreallyatty(int file) {
 
 static int orig_termios_fd = -1;
 static struct termios orig_termios;
-static uv_spinlock_t termios_spinlock = UV_SPINLOCK_INITIALIZER;
+static _Atomic int termios_spinlock;
+
+int uv__tcsetattr(int fd, int how, const struct termios *term) {
+  int rc;
+
+  do
+    rc = tcsetattr(fd, how, term);
+  while (rc == -1 && errno == EINTR);
+
+  if (rc == -1)
+    return UV__ERR(errno);
+
+  return 0;
+}
 
 static int uv__tty_is_slave(const int fd) {
   int result;
@@ -100,7 +113,7 @@ static int uv__tty_is_slave(const int fd) {
   }
 
   /* Lookup stat structure behind the file descriptor. */
-  if (fstat(fd, &sb) != 0)
+  if (uv__fstat(fd, &sb) != 0)
     abort();
 
   /* Assert character device. */
@@ -267,23 +280,33 @@ static void uv__tty_make_raw(struct termios* tio) {
 
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   struct termios tmp;
+  int expected;
   int fd;
+  int rc;
 
   if (tty->mode == (int) mode)
     return 0;
 
   fd = uv__stream_fd(tty);
   if (tty->mode == UV_TTY_MODE_NORMAL && mode != UV_TTY_MODE_NORMAL) {
-    if (tcgetattr(fd, &tty->orig_termios))
+    do
+      rc = tcgetattr(fd, &tty->orig_termios);
+    while (rc == -1 && errno == EINTR);
+
+    if (rc == -1)
       return UV__ERR(errno);
 
     /* This is used for uv_tty_reset_mode() */
-    uv_spinlock_lock(&termios_spinlock);
+    do
+      expected = 0;
+    while (!atomic_compare_exchange_strong(&termios_spinlock, &expected, 1));
+
     if (orig_termios_fd == -1) {
       orig_termios = tty->orig_termios;
       orig_termios_fd = fd;
     }
-    uv_spinlock_unlock(&termios_spinlock);
+
+    atomic_store(&termios_spinlock, 0);
   }
 
   tmp = tty->orig_termios;
@@ -304,11 +327,11 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   /* Apply changes after draining */
-  if (tcsetattr(fd, TCSADRAIN, &tmp))
-    return UV__ERR(errno);
+  rc = uv__tcsetattr(fd, TCSADRAIN, &tmp);
+  if (rc == 0)
+    tty->mode = mode;
 
-  tty->mode = mode;
-  return 0;
+  return rc;
 }
 
 
@@ -342,15 +365,16 @@ uv_handle_type uv_guess_handle(uv_file file) {
   if (isatty(file))
     return UV_TTY;
 
-  if (fstat(file, &s)) {
+  if (uv__fstat(file, &s)) {
 #if defined(__PASE__)
-    // On ibmi receiving RST from TCP instead of FIN immediately puts fd into
-    // an error state. fstat will return EINVAL, getsockname will also return
-    // EINVAL, even if sockaddr_storage is valid. (If file does not refer to a
-    // socket, ENOTSOCK is returned instead.)
-    // In such cases, we will permit the user to open the connection as uv_tcp
-    // still, so that the user can get immediately notified of the error in
-    // their read callback and close this fd.
+    /* On ibmi receiving RST from TCP instead of FIN immediately puts fd into
+     * an error state. fstat will return EINVAL, getsockname will also return
+     * EINVAL, even if sockaddr_storage is valid. (If file does not refer to a
+     * socket, ENOTSOCK is returned instead.)
+     * In such cases, we will permit the user to open the connection as uv_tcp
+     * still, so that the user can get immediately notified of the error in
+     * their read callback and close this fd.
+     */
     len = sizeof(ss);
     if (getsockname(file, (struct sockaddr*) &ss, &len)) {
       if (errno == EINVAL)
@@ -375,12 +399,13 @@ uv_handle_type uv_guess_handle(uv_file file) {
   len = sizeof(ss);
   if (getsockname(file, (struct sockaddr*) &ss, &len)) {
 #if defined(_AIX)
-    // On aix receiving RST from TCP instead of FIN immediately puts fd into
-    // an error state. In such case getsockname will return EINVAL, even if
-    // sockaddr_storage is valid.
-    // In such cases, we will permit the user to open the connection as uv_tcp
-    // still, so that the user can get immediately notified of the error in
-    // their read callback and close this fd.
+    /* On aix receiving RST from TCP instead of FIN immediately puts fd into
+     * an error state. In such case getsockname will return EINVAL, even if
+     * sockaddr_storage is valid.
+     * In such cases, we will permit the user to open the connection as uv_tcp
+     * still, so that the user can get immediately notified of the error in
+     * their read callback and close this fd.
+     */
     if (errno == EINVAL) {
       return UV_TCP;
     }
@@ -425,15 +450,15 @@ int uv_tty_reset_mode(void) {
   int err;
 
   saved_errno = errno;
-  if (!uv_spinlock_trylock(&termios_spinlock))
+
+  if (atomic_exchange(&termios_spinlock, 1))
     return UV_EBUSY;  /* In uv_tty_set_mode(). */
 
   err = 0;
   if (orig_termios_fd != -1)
-    if (tcsetattr(orig_termios_fd, TCSANOW, &orig_termios))
-      err = UV__ERR(errno);
+    err = uv__tcsetattr(orig_termios_fd, TCSANOW, &orig_termios);
 
-  uv_spinlock_unlock(&termios_spinlock);
+  atomic_store(&termios_spinlock, 0);
   errno = saved_errno;
 
   return err;

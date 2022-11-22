@@ -26,20 +26,33 @@
 
 #include <assert.h>
 #include <limits.h> /* _POSIX_PATH_MAX, PATH_MAX */
+#include <stdint.h>
 #include <stdlib.h> /* abort */
 #include <string.h> /* strrchr */
 #include <fcntl.h>  /* O_CLOEXEC and O_NONBLOCK, if supported. */
 #include <stdio.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#define uv__msan_unpoison(p, n)                                               \
+  do {                                                                        \
+    (void) (p);                                                               \
+    (void) (n);                                                               \
+  } while (0)
+
+#if defined(__has_feature)
+# if __has_feature(memory_sanitizer)
+#  include <sanitizer/msan_interface.h>
+#  undef uv__msan_unpoison
+#  define uv__msan_unpoison __msan_unpoison
+# endif
+#endif
 
 #if defined(__STRICT_ANSI__)
 # define inline __inline
 #endif
-
-#if defined(__linux__)
-# include "linux-syscalls.h"
-#endif /* __linux__ */
 
 #if defined(__MVS__)
 # include "os390-syscalls.h"
@@ -77,14 +90,6 @@
 # define UV__PATH_MAX PATH_MAX
 #else
 # define UV__PATH_MAX 8192
-#endif
-
-#if defined(__ANDROID__)
-int uv__pthread_sigmask(int how, const sigset_t* set, sigset_t* oset);
-# ifdef pthread_sigmask
-# undef pthread_sigmask
-# endif
-# define pthread_sigmask(how, set, oldset) uv__pthread_sigmask(how, set, oldset)
 #endif
 
 #define ACCESS_ONCE(type, var)                                                \
@@ -166,6 +171,37 @@ struct uv__stream_queued_fds_s {
   int fds[1];
 };
 
+#ifdef __linux__
+struct uv__statx_timestamp {
+  int64_t tv_sec;
+  uint32_t tv_nsec;
+  int32_t unused0;
+};
+
+struct uv__statx {
+  uint32_t stx_mask;
+  uint32_t stx_blksize;
+  uint64_t stx_attributes;
+  uint32_t stx_nlink;
+  uint32_t stx_uid;
+  uint32_t stx_gid;
+  uint16_t stx_mode;
+  uint16_t unused0;
+  uint64_t stx_ino;
+  uint64_t stx_size;
+  uint64_t stx_blocks;
+  uint64_t stx_attributes_mask;
+  struct uv__statx_timestamp stx_atime;
+  struct uv__statx_timestamp stx_btime;
+  struct uv__statx_timestamp stx_ctime;
+  struct uv__statx_timestamp stx_mtime;
+  uint32_t stx_rdev_major;
+  uint32_t stx_rdev_minor;
+  uint32_t stx_dev_major;
+  uint32_t stx_dev_minor;
+  uint64_t unused1[14];
+};
+#endif /* __linux__ */
 
 #if defined(_AIX) || \
     defined(__APPLE__) || \
@@ -258,7 +294,6 @@ int uv__signal_loop_fork(uv_loop_t* loop);
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
 int uv__kqueue_init(uv_loop_t* loop);
-int uv__epoll_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);
@@ -322,8 +357,51 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
   return s + 1;
 }
 
+UV_UNUSED(static int uv__fstat(int fd, struct stat* s)) {
+  int rc;
+
+  rc = fstat(fd, s);
+  if (rc >= 0)
+    uv__msan_unpoison(s, sizeof(*s));
+
+  return rc;
+}
+
+UV_UNUSED(static int uv__lstat(const char* path, struct stat* s)) {
+  int rc;
+
+  rc = lstat(path, s);
+  if (rc >= 0)
+    uv__msan_unpoison(s, sizeof(*s));
+
+  return rc;
+}
+
+UV_UNUSED(static int uv__stat(const char* path, struct stat* s)) {
+  int rc;
+
+  rc = stat(path, s);
+  if (rc >= 0)
+    uv__msan_unpoison(s, sizeof(*s));
+
+  return rc;
+}
+
 #if defined(__linux__)
 int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
+ssize_t
+uv__fs_copy_file_range(int fd_in,
+                       off_t* off_in,
+                       int fd_out,
+                       off_t* off_out,
+                       size_t len,
+                       unsigned int flags);
+int uv__statx(int dirfd,
+              const char* path,
+              int flags,
+              unsigned int mask,
+              struct uv__statx* statxbuf);
+ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags);
 #endif
 
 typedef int (*uv__peersockfunc)(int, struct sockaddr*, socklen_t*);
