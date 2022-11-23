@@ -1426,6 +1426,36 @@ uint64_t uv_get_constrained_memory(void) {
 
 
 static uint64_t uv__get_cgroup1_current_memory(char buf[static 1024]) {
+  char filename[4097];
+  uint64_t current;
+  char* p;
+  int n;
+
+  /* Seek to the memory controller line. */
+  p = strchr(buf, ':');
+  while (p != NULL && strncmp(p, ":memory:", 8)) {
+    p = strchr(p, '\n');
+    if (p != NULL)
+      p = strchr(p, ':');
+  }
+
+  if (p != NULL) {
+    /* Find out where the controller is mounted. */
+    p = p + 9;  /* skip :memory:/ */
+    n = (int) strcspn(p, "\n");
+
+    snprintf(filename, sizeof(filename),
+            "/sys/fs/cgroup/memory/%.*s/memory.usage_in_bytes", n, p);
+    current = uv__read_uint64(filename);
+
+    /* If the controller wasn't mounted, the reads above will have failed,
+     * as indicated by uv__read_uint64 returning 0.
+     */
+    if (current != 0)
+      return current;
+  }
+
+  /* Fall back to the usage of the global memory controller. */
   return uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
 }
 
