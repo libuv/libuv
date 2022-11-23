@@ -1343,76 +1343,71 @@ static uint64_t uv__read_uint64(const char* filename) {
 }
 
 
-static void uv__get_cgroup1_memory_limits(char* buf, uint64_t* high,
+static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
                                           uint64_t* max) {
   char filename[4097];
   char* p;
-  char* p_end;
+  int n;
 
-  /* Find out the path of the memory controller. */
+  /* Seek to the memory controller line. */
   p = strchr(buf, ':');
-  while (p != NULL && memcmp(p, ":memory:", 8)) {
+  while (p != NULL && strncmp(p, ":memory:", 8)) {
     p = strchr(p, '\n');
     if (p != NULL)
       p = strchr(p, ':');
   }
 
   if (p != NULL) {
-    p = p + 8;
-    p_end = strchr(p, '\n');
-    if (p_end != NULL)
-      *p_end = '\0';
+    /* Find out where the controller is mounted. */
+    p = p + 9;  /* skip :memory:/ */
+    n = (int) strcspn(p, "\n");
 
-    /* If the memory controller is mounted, check limits there. */
-    snprintf(filename, sizeof(filename), "/sys/fs/cgroup/memory/%s/", p);
-    if (0 == access(filename, F_OK)) {
-      /* Calls to uv__read_uint64 might return 0 if there was a problem. This is
-       * OK because a return value of 0 signifies that the limit is unknown.
-       */
-      snprintf(filename, sizeof(filename),
-              "/sys/fs/cgroup/memory/%s/memory.soft_limit_in_bytes", p);
-      *high = uv__read_uint64(filename);
+    snprintf(filename, sizeof(filename),
+            "/sys/fs/cgroup/memory/%.*s/memory.soft_limit_in_bytes", n, p);
+    *high = uv__read_uint64(filename);
 
-      snprintf(filename, sizeof(filename),
-              "/sys/fs/cgroup/memory/%s/memory.limit_in_bytes", p);
-      *max = uv__read_uint64(filename);
+    snprintf(filename, sizeof(filename),
+            "/sys/fs/cgroup/memory/%.*s/memory.limit_in_bytes", n, p);
+    *max = uv__read_uint64(filename);
 
-      return;
-    }
+    /* If the controller wasn't mounted, the reads above will have failed,
+     * as indicated by uv__read_uint64 returning 0.
+     */
+     if (*high != 0 && *max != 0)
+       return;
   }
 
-  /* Fall back to the global limits of the memory controller. */
+  /* Fall back to the limits of the global memory controller. */
   *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
   *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
 }
 
-static void uv__get_cgroup2_memory_limits(char* buf, uint64_t* high,
+static void uv__get_cgroup2_memory_limits(char buf[static 1024], uint64_t* high,
                                           uint64_t* max) {
   char filename[4097];
   char* p;
+  int n;
 
-  p = strchr(buf, '\n');
-  if (p != NULL)
-    *p = '\0';
+  /* Find out where the controller is mounted. */
+  p = buf + 4;  /* skip 0::/ */
+  n = (int) strcspn(p, "\n");
 
-  p = buf + 4;
-
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.max", p);
+  /* Read the memory limits of the controller. */
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%.*s/memory.max", n, p);
   *max = uv__read_uint64(filename);
-
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.high", p);
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%.*s/memory.high", n, p);
   *high = uv__read_uint64(filename);
 }
 
-static uint64_t uv__get_cgroup_constrained_memory(char* buf) {
+static uint64_t uv__get_cgroup_constrained_memory(char buf[static 1024]) {
   uint64_t high;
   uint64_t max;
 
   /* In the case of cgroupv2, we'll only have a single entry. */
-  if (0 == memcmp(buf, "0::/", 4))
-    uv__get_cgroup2_memory_limits(buf, &high, &max);
-  else
+  if (strncmp(buf, "0::/", 4))
     uv__get_cgroup1_memory_limits(buf, &high, &max);
+  else
+    uv__get_cgroup2_memory_limits(buf, &high, &max);
 
   if (high == 0 || max == 0)
     return 0;
@@ -1430,21 +1425,20 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
-static uint64_t uv__get_cgroup1_current_memory(char* buf) {
+static uint64_t uv__get_cgroup1_current_memory(char buf[static 1024]) {
   return uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
 }
 
-static uint64_t uv__get_cgroup2_current_memory(char* buf) {
+static uint64_t uv__get_cgroup2_current_memory(char buf[static 1024]) {
   char filename[4097];
   char* p;
+  int n;
 
-  p = strchr(buf, '\n');
-  if (p != NULL)
-    *p = '\0';
+  /* Find out where the controller is mounted. */
+  p = buf + 4;  /* skip 0::/ */
+  n = (int) strcspn(p, "\n");
 
-  p = buf + 4;
-
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%s/memory.current", p);
+  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%.*s/memory.current", n, p);
   return uv__read_uint64(filename);
 }
 
@@ -1466,10 +1460,10 @@ uint64_t uv_get_available_memory(void) {
     return uv_get_free_memory();
 
   /* In the case of cgroupv2, we'll only have a single entry. */
-  if (0 == memcmp(buf, "0::/", 4))
-    current = uv__get_cgroup2_current_memory(buf);
-  else
+  if (strncmp(buf, "0::/", 4))
     current = uv__get_cgroup1_current_memory(buf);
+  else
+    current = uv__get_cgroup2_current_memory(buf);
 
   /* memory usage can be higher than the limit (for short bursts of time) */
   if (constrained < current)
