@@ -561,7 +561,7 @@ API
 
 .. c:function:: uint64_t uv_get_constrained_memory(void)
 
-    Gets the amount of memory available to the process (in bytes) based on
+    Gets the total amount of memory available to the process (in bytes) based on
     limits imposed by the OS. If there is no such constraint, or the constraint
     is unknown, `0` is returned. Note that it is not unusual for this value to
     be less than or greater than :c:func:`uv_get_total_memory`.
@@ -571,6 +571,20 @@ API
         on cgroups if it is present, and on z/OS based on RLIMIT_MEMLIMIT.
 
     .. versionadded:: 1.29.0
+
+.. c:function:: uint64_t uv_get_available_memory(void)
+
+    Gets the amount of free memory that is still available to the process (in bytes).
+    This differs from :c:func:`uv_get_free_memory` in that it takes into account any
+    limits imposed by the OS. If there is no such constraint, or the constraint
+    is unknown, the amount returned will be identical to :c:func:`uv_get_free_memory`.
+
+    .. note::
+        This function currently only returns a value that is different from
+        what :c:func:`uv_get_free_memory` reports on Linux, based
+        on cgroups if it is present.
+
+    .. versionadded:: 1.45.0
 
 .. c:function:: uint64_t uv_hrtime(void)
 
