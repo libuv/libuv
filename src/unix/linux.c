@@ -1342,11 +1342,13 @@ static uint64_t uv__read_uint64(const char* filename) {
   return rc;
 }
 
+
 /* Given a buffer with the contents of a cgroup1 /proc/self/cgroups,
  * finds the location and length of the memory controller mount path.
  * This disregards the leading / for easy concatenation of paths.
  * Returns NULL if the memory controller wasn't found. */
-static char* uv__cgroup1_find_memory_controller(char buf[static 1024], int* n) {
+static char* uv__cgroup1_find_memory_controller(char buf[static 1024],
+                                                int* n) {
   char* p;
 
   /* Seek to the memory controller line. */
@@ -1376,11 +1378,11 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
   p = uv__cgroup1_find_memory_controller(buf, &n);
   if (p != NULL) {
     snprintf(filename, sizeof(filename),
-            "/sys/fs/cgroup/memory/%.*s/memory.soft_limit_in_bytes", n, p);
+             "/sys/fs/cgroup/memory/%.*s/memory.soft_limit_in_bytes", n, p);
     *high = uv__read_uint64(filename);
 
     snprintf(filename, sizeof(filename),
-            "/sys/fs/cgroup/memory/%.*s/memory.limit_in_bytes", n, p);
+             "/sys/fs/cgroup/memory/%.*s/memory.limit_in_bytes", n, p);
     *max = uv__read_uint64(filename);
 
     /* If the controller wasn't mounted, the reads above will have failed,
@@ -1471,7 +1473,8 @@ static uint64_t uv__get_cgroup2_current_memory(char buf[static 1024]) {
   p = buf + strlen("0::/");
   n = (int) strcspn(p, "\n");
 
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%.*s/memory.current", n, p);
+  snprintf(filename, sizeof(filename),
+           "/sys/fs/cgroup/%.*s/memory.current", n, p);
   return uv__read_uint64(filename);
 }
 
