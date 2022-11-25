@@ -267,5 +267,36 @@ static int maybe_run_test(int argc, char **argv) {
     return 0;
   }
 
+  if (strcmp(argv[1], "spawn_fs_open_inheritable_helper") == 0) {
+#ifdef _WIN32
+    uv_os_fd_t closed_fd;
+    uv_os_fd_t closed_fd2;
+    uv_os_fd_t stdio1_fd;
+    uv_os_fd_t stdio2_fd;
+    DWORD flags;
+    HMODULE kernelbase_module;
+    sCompareObjectHandles pCompareObjectHandles; /* Introduced in Windows 10 */
+    notify_parent_process();
+    ASSERT_EQ(sizeof(closed_fd), read(0, &closed_fd, sizeof(closed_fd)));
+    ASSERT_EQ(sizeof(closed_fd2), read(0, &closed_fd2, sizeof(closed_fd2)));
+    stdio1_fd = uv_get_osfhandle(1);
+    stdio2_fd = uv_get_osfhandle(2);
+    ASSERT_GT((intptr_t) closed_fd, 0);
+    ASSERT_GT((intptr_t) closed_fd2, 0);
+    ASSERT_GT((intptr_t) stdio1_fd, 0);
+    ASSERT_GT((intptr_t) stdio2_fd, 0);
+    ASSERT_EQ(0, GetHandleInformation(closed_fd, &flags));
+    ASSERT_EQ(0, GetHandleInformation(closed_fd, &flags));
+    ASSERT_NE(0, GetHandleInformation(stdio1_fd, &flags));
+    ASSERT_NE(0, GetHandleInformation(stdio2_fd, &flags));
+    kernelbase_module = GetModuleHandleA("kernelbase.dll");
+    pCompareObjectHandles = (sCompareObjectHandles)
+        GetProcAddress(kernelbase_module, "CompareObjectHandles");
+    ASSERT(pCompareObjectHandles == NULL ||
+           pCompareObjectHandles(stdio1_fd, stdio2_fd));
+#endif  /* !_WIN32 */
+    return 1;
+  }
+
   return run_test(argv[1], 0, 1);
 }

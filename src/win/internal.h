@@ -287,14 +287,20 @@ int uv__random_rtlgenrandom(void* buf, size_t buflen);
 /*
  * Process stdio handles.
  */
+typedef struct {
+  BYTE* buffer;
+  HANDLE* handles;
+} uv__stdio_t;
+
 int uv__stdio_create(uv_loop_t* loop,
                      const uv_process_options_t* options,
-                     BYTE** buffer_ptr);
-void uv__stdio_destroy(BYTE* buffer);
+                     uv__stdio_t* stdio);
+void uv__stdio_destroy(uv__stdio_t* stdio);
 void uv__stdio_noinherit(BYTE* buffer);
 int uv__stdio_verify(BYTE* buffer, WORD size);
 WORD uv__stdio_size(BYTE* buffer);
 HANDLE uv__stdio_handle(BYTE* buffer, int fd);
+int uv__stdio_count(BYTE* buffer);
 
 
 /*

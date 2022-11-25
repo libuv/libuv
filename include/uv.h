@@ -1061,7 +1061,14 @@ enum uv_process_flags {
    * option is only meaningful on Windows systems. On Unix it is silently
    * ignored.
    */
-  UV_PROCESS_WINDOWS_HIDE_GUI = (1 << 6)
+  UV_PROCESS_WINDOWS_HIDE_GUI = (1 << 6),
+  /*
+   * Only inherit the inheritable handles configured in
+   * uv_process_options_t.stdio. By default all the handles marked as inheritable
+   * will be inherited by the child process. This option is only meaningful on Windows
+   * systems. On Unix it is silently ignored.
+   */
+  UV_PROCESS_WINDOWS_INHERIT_SPECIFIC_HANDLES = (1 << 7)
 };
 
 /*

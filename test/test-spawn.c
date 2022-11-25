@@ -1638,6 +1638,83 @@ TEST_IMPL(spawn_fs_open) {
 }
 
 
+TEST_IMPL(spawn_fs_open_inheritable) {
+#ifndef _WIN32
+  RETURN_SKIP("Test for Windows");
+#else
+  int r;
+  uv_os_fd_t fd;
+  uv_file file;
+  uv_os_fd_t dup_fd;
+  uv_fs_t fs_req;
+  uv_pipe_t in;
+  uv_write_t write_req;
+  uv_write_t write_req2;
+  uv_buf_t buf;
+  uv_stdio_container_t stdio[3];
+
+  const char dev_null[] = "NUL";
+  HMODULE kernelbase_module;
+  sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
+
+  r = uv_fs_open(NULL, &fs_req, dev_null, O_RDWR, 0, NULL);
+  ASSERT_NE(r, -1);
+  file = (uv_file)fs_req.result;
+  fd = uv_get_osfhandle(file);
+  uv_fs_req_cleanup(&fs_req);
+
+  init_process_options("spawn_fs_open_inheritable_helper", exit_cb);
+
+  options.flags |= UV_PROCESS_WINDOWS_INHERIT_SPECIFIC_HANDLES;
+
+  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &in, 0));
+
+  options.stdio = stdio;
+
+  options.stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE;
+  options.stdio[0].data.stream = (uv_stream_t*) &in;
+
+  options.stdio[1].flags = UV_INHERIT_FD;
+  options.stdio[1].data.fd = file;
+
+  options.stdio[2].flags = UV_INHERIT_FD;
+  options.stdio[2].data.fd = file;
+
+  options.stdio_count = 3;
+
+  /* make an inheritable copy */
+  ASSERT_NE(0, DuplicateHandle(GetCurrentProcess(),
+                               fd, GetCurrentProcess(),
+                               &dup_fd,
+                               0,
+                               /* inherit */ TRUE,
+                               DUPLICATE_SAME_ACCESS));
+  kernelbase_module = GetModuleHandleA("kernelbase.dll");
+  pCompareObjectHandles = (sCompareObjectHandles)
+      GetProcAddress(kernelbase_module, "CompareObjectHandles");
+  ASSERT(pCompareObjectHandles == NULL || pCompareObjectHandles(fd, dup_fd));
+
+  ASSERT_EQ(0, uv_spawn(uv_default_loop(), &process, &options));
+
+  buf = uv_buf_init((char*) &fd, sizeof(fd));
+  ASSERT_EQ(0,
+            uv_write(&write_req, (uv_stream_t*) &in, &buf, 1, write_null_cb));
+
+  buf = uv_buf_init((char*) &dup_fd, sizeof(fd));
+  ASSERT_EQ(0, uv_write(&write_req2, (uv_stream_t*) &in, &buf, 1, write_cb));
+
+  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(0, uv_fs_close(NULL, &fs_req, r, NULL));
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(2, close_cb_called);  /* One for `in`, one for process */
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+#endif
+}
+
+
 TEST_IMPL(closed_fd_events) {
   uv_stdio_container_t stdio[3];
   uv_pipe_t pipe_handle;
