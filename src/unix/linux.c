@@ -55,22 +55,6 @@
 # endif
 #endif /* __arm__ */
 
-#ifndef __NR_recvmmsg
-# if defined(__x86_64__)
-#  define __NR_recvmmsg 299
-# elif defined(__arm__)
-#  define __NR_recvmmsg (UV_SYSCALL_BASE + 365)
-# endif
-#endif /* __NR_recvmsg */
-
-#ifndef __NR_sendmmsg
-# if defined(__x86_64__)
-#  define __NR_sendmmsg 307
-# elif defined(__arm__)
-#  define __NR_sendmmsg (UV_SYSCALL_BASE + 374)
-# endif
-#endif /* __NR_sendmmsg */
-
 #ifndef __NR_copy_file_range
 # if defined(__x86_64__)
 #  define __NR_copy_file_range 326
@@ -1795,90 +1779,4 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
 
 void uv__fs_event_close(uv_fs_event_t* handle) {
   uv_fs_event_stop(handle);
-}
-
-
-int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
-#if defined(__i386__)
-  unsigned long args[4];
-  int rc;
-
-  args[0] = (unsigned long) fd;
-  args[1] = (unsigned long) mmsg;
-  args[2] = (unsigned long) vlen;
-  args[3] = /* flags */ 0;
-
-  /* socketcall() raises EINVAL when SYS_SENDMMSG is not supported. */
-  rc = syscall(/* __NR_socketcall */ 102, 20 /* SYS_SENDMMSG */, args);
-  if (rc == -1)
-    if (errno == EINVAL)
-      errno = ENOSYS;
-
-  return rc;
-#elif defined(__NR_sendmmsg)
-  return syscall(__NR_sendmmsg, fd, mmsg, vlen, /* flags */ 0);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-static void uv__recvmmsg_unpoison(struct uv__mmsghdr* mmsg, int rc) {
-  struct uv__mmsghdr* m;
-  struct msghdr* h;
-  struct iovec* v;
-  size_t j;
-  int i;
-
-  for (i = 0; i < rc; i++) {
-    m = mmsg + i;
-    uv__msan_unpoison(m, sizeof(*m));
-
-    h = &m->msg_hdr;
-    if (h->msg_name != NULL)
-      uv__msan_unpoison(h->msg_name, h->msg_namelen);
-
-    if (h->msg_iov != NULL)
-      uv__msan_unpoison(h->msg_iov, h->msg_iovlen * sizeof(*h->msg_iov));
-
-    for (j = 0; j < h->msg_iovlen; j++) {
-      v = h->msg_iov + j;
-      uv__msan_unpoison(v->iov_base, v->iov_len);
-    }
-
-    if (h->msg_control != NULL)
-      uv__msan_unpoison(h->msg_control, h->msg_controllen);
-  }
-}
-
-
-int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
-#if defined(__i386__)
-  unsigned long args[5];
-  int rc;
-
-  args[0] = (unsigned long) fd;
-  args[1] = (unsigned long) mmsg;
-  args[2] = (unsigned long) vlen;
-  args[3] = /* flags */ 0;
-  args[4] = /* timeout */ 0;
-
-  /* socketcall() raises EINVAL when SYS_RECVMMSG is not supported. */
-  rc = syscall(/* __NR_socketcall */ 102, 19 /* SYS_RECVMMSG */, args);
-  uv__recvmmsg_unpoison(mmsg, rc);
-  if (rc == -1)
-    if (errno == EINVAL)
-      errno = ENOSYS;
-
-  return rc;
-#elif defined(__NR_recvmmsg)
-  int rc;
-
-  rc = syscall(__NR_recvmmsg, fd, mmsg, vlen, /* flags */ 0, /* timeout */ 0);
-  uv__recvmmsg_unpoison(mmsg, rc);
-
-  return rc;
-#else
-  return errno = ENOSYS, -1;
-#endif
 }
