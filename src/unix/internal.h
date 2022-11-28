@@ -411,22 +411,6 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         struct sockaddr* name,
                         int* namelen);
 
-#if defined(__linux__)            ||                                      \
-    defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel__)   ||                                       \
-    defined(__DragonFly__)
-#define HAVE_MMSG 1
-struct uv__mmsghdr {
-  struct msghdr msg_hdr;
-  unsigned int msg_len;
-};
-
-int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
-int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen);
-#else
-#define HAVE_MMSG 0
-#endif
-
 #if defined(__sun)
 #if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L
 size_t strnlen(const char* s, size_t maxlen);
