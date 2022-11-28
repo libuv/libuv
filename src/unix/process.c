@@ -55,7 +55,7 @@
 extern char **environ;
 #endif
 
-#if defined(__linux__) || defined(__GLIBC__)
+#if defined(__linux__)
 # include <grp.h>
 #endif
 

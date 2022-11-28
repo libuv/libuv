@@ -61,8 +61,7 @@ AM_CONDITIONAL([ANDROID],  [AS_CASE([$host_os],[linux-android*],[true], [false])
 AM_CONDITIONAL([CYGWIN],   [AS_CASE([$host_os],[cygwin*],       [true], [false])])
 AM_CONDITIONAL([DARWIN],   [AS_CASE([$host_os],[darwin*],       [true], [false])])
 AM_CONDITIONAL([DRAGONFLY],[AS_CASE([$host_os],[dragonfly*],    [true], [false])])
-AM_CONDITIONAL([FREEBSD],  [AS_CASE([$host_os],[*freebsd*],     [true], [false])])
-AM_CONDITIONAL([KFREEBSD], [AS_CASE([$host_os],[kfreebsd*],     [true], [false])])
+AM_CONDITIONAL([FREEBSD],  [AS_CASE([$host_os],[freebsd*],      [true], [false])])
 AM_CONDITIONAL([HAIKU],    [AS_CASE([$host_os],[haiku],         [true], [false])])
 AM_CONDITIONAL([HURD],     [AS_CASE([$host_os],[gnu*],          [true], [false])])
 AM_CONDITIONAL([LINUX],    [AS_CASE([$host_os],[linux*],        [true], [false])])
@@ -80,9 +79,6 @@ AS_CASE([$host_os], [solaris2.10], [
     CFLAGS="$CFLAGS -DSUNOS_NO_IFADDRS"
 ])
 AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
-AS_CASE([$host_os], [kfreebsd*], [
-    LIBS="$LIBS -lfreebsd-glue"
-])
 AS_CASE([$host_os], [haiku], [
     LIBS="$LIBS -lnetwork"
 ])

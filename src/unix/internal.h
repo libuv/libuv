@@ -207,7 +207,6 @@ struct uv__statx {
     defined(__APPLE__) || \
     defined(__DragonFly__) || \
     defined(__FreeBSD__) || \
-    defined(__FreeBSD_kernel__) || \
     defined(__linux__) || \
     defined(__OpenBSD__) || \
     defined(__NetBSD__)

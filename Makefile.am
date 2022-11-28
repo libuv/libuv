@@ -468,10 +468,6 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/hurd.c
 endif
 
-if KFREEBSD
-libuv_la_CFLAGS += -D_GNU_SOURCE
-endif
-
 if LINUX
 uvinclude_HEADERS += include/uv/linux.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
