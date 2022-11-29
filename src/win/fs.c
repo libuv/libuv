@@ -1729,6 +1729,12 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
   /* If NUL device is detected set all zeros in stat and return. */
   if (device_info.DeviceType == FILE_DEVICE_NULL) {
     memset(statbuf, 0, sizeof(uv_stat_t));
+    statbuf->st_mode = _S_IFCHR;
+    statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
+                        ((_S_IREAD | _S_IWRITE) >> 6);
+    statbuf->st_nlink = 1;
+    statbuf->st_blksize = 4096;    
+    statbuf->st_rdev = FILE_DEVICE_NULL << 16;
     return 0;
   }
 
