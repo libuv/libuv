@@ -1726,7 +1726,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     return -1;
   }
 
-  /* If NUL device is detected set all zeros in stat and return. */
+  /* If it's NUL device set fields as reasonable as possible and return. */
   if (device_info.DeviceType == FILE_DEVICE_NULL) {
     memset(statbuf, 0, sizeof(uv_stat_t));
     statbuf->st_mode = _S_IFCHR;
@@ -1960,7 +1960,7 @@ INLINE static int fs__fstat_handle(int fd, HANDLE handle, uv_stat_t* statbuf) {
     memset(statbuf, 0, sizeof(uv_stat_t));
     statbuf->st_mode = file_type == UV_TTY ? _S_IFCHR : _S_IFIFO;
     statbuf->st_nlink = 1;
-    statbuf->st_rdev = (file_type == UV_TTY ? FILE_DEVICE_SERIAL_PORT : FILE_DEVICE_NAMED_PIPE) << 16;
+    statbuf->st_rdev = (file_type == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16;
     statbuf->st_ino = (uint64_t)uv_get_osfhandle(fd);
     return 0;
 

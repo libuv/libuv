@@ -1561,8 +1561,7 @@ TEST_IMPL(fs_fstat_stdio) {
     case UV_NAMED_PIPE:
       ASSERT(st->st_mode == ft == UV_TTY ? S_IFCHR : S_IFIFO);
       ASSERT(st->st_nlink == 1);
-      ASSERT(st->st_dev == fd);
-      ASSERT(st->st_rdev == fd);
+      ASSERT(st->st_rdev == (ft == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16);
       break;
     default:
       break;
