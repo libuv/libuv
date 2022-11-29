@@ -1539,6 +1539,43 @@ TEST_IMPL(fs_fstat) {
 }
 
 
+TEST_IMPL(fs_fstat_stdio) {
+  int fd;
+  int res;
+  uv_fs_t req;
+#ifdef _WIN32
+  uv_stat_t* st;
+  DWORD ft;
+#endif
+
+  for (fd = 0; fd <= 2; ++fd) {
+    res = uv_fs_fstat(NULL, &req, fd, NULL);
+    ASSERT(res == 0);
+    ASSERT(req.result == 0);
+
+#ifdef _WIN32
+    st = req.ptr;
+    ft = uv_guess_handle(fd);
+    switch (ft) {
+    case UV_TTY:
+    case UV_NAMED_PIPE:
+      ASSERT(st->st_mode == ft == UV_TTY ? S_IFCHR : S_IFIFO);
+      ASSERT(st->st_nlink == 1);
+      ASSERT(st->st_rdev == (ft == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16);
+      break;
+    default:
+      break;
+    }
+#endif
+
+    uv_fs_req_cleanup(&req);
+  }
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
 TEST_IMPL(fs_access) {
   int r;
   uv_fs_t req;
