@@ -73,7 +73,7 @@ AM_CONDITIONAL([OS400],    [AS_CASE([$host_os],[os400],         [true], [false])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
 AS_CASE([$host_os],[mingw*], [
-    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32"
+    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -luserenv -luser32 -ldbghelp -lole32 -luuid"
 ])
 AS_CASE([$host_os], [solaris2.10], [
     CFLAGS="$CFLAGS -DSUNOS_NO_IFADDRS"

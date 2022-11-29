@@ -86,6 +86,7 @@ typedef struct pollfd {
  * variants (Linux and Darwin)
  */
 #define SIGHUP                1
+#define SIGQUIT               3
 #define SIGKILL               9
 #define SIGWINCH             28
 
