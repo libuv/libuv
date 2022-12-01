@@ -691,40 +691,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 }
 
 
-static int address_prefix_match(int family,
-                                struct sockaddr* address,
-                                struct sockaddr* prefix_address,
-                                int prefix_len) {
-  uint8_t* address_data;
-  uint8_t* prefix_address_data;
-  int i;
-
-  assert(address->sa_family == family);
-  assert(prefix_address->sa_family == family);
-
-  if (family == AF_INET6) {
-    address_data = (uint8_t*) &(((struct sockaddr_in6 *) address)->sin6_addr);
-    prefix_address_data =
-      (uint8_t*) &(((struct sockaddr_in6 *) prefix_address)->sin6_addr);
-  } else {
-    address_data = (uint8_t*) &(((struct sockaddr_in *) address)->sin_addr);
-    prefix_address_data =
-      (uint8_t*) &(((struct sockaddr_in *) prefix_address)->sin_addr);
-  }
-
-  for (i = 0; i < prefix_len >> 3; i++) {
-    if (address_data[i] != prefix_address_data[i])
-      return 0;
-  }
-
-  if (prefix_len % 8)
-    return prefix_address_data[i] ==
-      (address_data[i] & (0xff << (8 - prefix_len % 8)));
-
-  return 1;
-}
-
-
 int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     int* count_ptr) {
   IP_ADAPTER_ADDRESSES* win_address_buf;
