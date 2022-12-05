@@ -168,7 +168,10 @@ if(WIN32)
        advapi32
        iphlpapi
        userenv
-       ws2_32)
+       ws2_32
+       dbghelp
+       ole32
+       uuid)
   list(APPEND uv_sources
        src/win/async.c
        src/win/core.c
