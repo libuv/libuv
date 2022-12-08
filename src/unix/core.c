@@ -72,8 +72,8 @@ extern char** environ;
 # include <sys/filio.h>
 # include <sys/wait.h>
 # include <sys/param.h>
-# include <sys/cpuset.h>
 # if defined(__FreeBSD__)
+#  include <sys/cpuset.h>
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
