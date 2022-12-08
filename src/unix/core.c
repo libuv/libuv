@@ -1490,7 +1490,7 @@ uv_pid_t uv_os_getppid(void) {
 }
 
 int uv_cpumask_size(void) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if UV__CPU_AFFINITY_SUPPORTED
   return CPU_SETSIZE;
 #else
   return UV_ENOTSUP;

@@ -295,7 +295,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
   return UV__ERR(err);
 }
 
-#if defined(__linux__) || defined(__FreeBSD__)
+#if UV__CPU_AFFINITY_SUPPORTED
 
 int uv_thread_setaffinity(uv_thread_t* tid,
                           char* cpumask,
@@ -383,7 +383,7 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 #endif /* defined(__linux__) || defined(UV_BSD_H) */
 
 int uv_thread_getcpu(void) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if UV__CPU_AFFINITY_SUPPORTED
   int cpu;
 
   cpu = sched_getcpu();
