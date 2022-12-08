@@ -66,7 +66,7 @@ TEST_IMPL(tcp_connect_error_after_write) {
   fprintf(stderr, "This test is disabled on Windows for now.\n");
   fprintf(stderr, "See https://github.com/joyent/libuv/issues/444\n");
   return 0; /* windows slackers... */
-#endif
+#else
 
   ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   buf = uv_buf_init("TEST", 4);
@@ -95,4 +95,5 @@ TEST_IMPL(tcp_connect_error_after_write) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+#endif
 }

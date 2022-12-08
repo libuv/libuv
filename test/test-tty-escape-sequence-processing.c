@@ -1073,7 +1073,7 @@ TEST_IMPL(tty_set_style) {
 #if _MSC_VER >= 1920 && _MSC_VER <= 1929
   RETURN_SKIP("Broken on Microsoft Visual Studio 2019, to be investigated. "
               "See: https://github.com/libuv/libuv/issues/3304");
-#endif
+#else
 
   loop = uv_default_loop();
 
@@ -1239,6 +1239,7 @@ TEST_IMPL(tty_set_style) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+#endif
 }
 
 
@@ -1356,7 +1357,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
 #if _MSC_VER >= 1920 && _MSC_VER <= 1929
   RETURN_SKIP("Broken on Microsoft Visual Studio 2019, to be investigated. "
               "See: https://github.com/libuv/libuv/issues/3304");
-#endif
+#else
 
   loop = uv_default_loop();
 
@@ -1622,6 +1623,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+#endif
 }
 
 #else
