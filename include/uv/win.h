@@ -606,7 +606,7 @@ typedef struct {
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  BYTE* child_stdio_buffer;                                                   \
+  void* unused; /* TODO: retained for ABI compat; remove this in v2.x. */     \
   int exit_signal;                                                            \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \
