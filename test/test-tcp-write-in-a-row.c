@@ -114,7 +114,7 @@ static void start_server(void) {
 TEST_IMPL(tcp_write_in_a_row) {
 #if defined(_WIN32)
   RETURN_SKIP("tcp_write_in_a_row does not work on Windows");
-#endif
+#else
 
   uv_connect_t connect_req;
   struct sockaddr_in addr;
@@ -138,4 +138,5 @@ TEST_IMPL(tcp_write_in_a_row) {
 
   MAKE_VALGRIND_HAPPY();
   return 0;
+#endif
 }
