@@ -124,19 +124,6 @@
 # include <netpacket/packet.h>
 #endif /* HAVE_IFADDRS_H */
 
-/* Available from 2.6.32 onwards. */
-#ifndef CLOCK_MONOTONIC_COARSE
-# define CLOCK_MONOTONIC_COARSE 6
-#endif
-
-/* This is rather annoying: CLOCK_BOOTTIME lives in <linux/time.h> but we can't
- * include that file because it conflicts with <time.h>. We'll just have to
- * define it ourselves.
- */
-#ifndef CLOCK_BOOTTIME
-# define CLOCK_BOOTTIME 7
-#endif
-
 #define CAST(p) ((struct watcher_root*)(p))
 
 struct watcher_list {
@@ -732,30 +719,18 @@ err:
 }
 
 int uv_uptime(double* uptime) {
-  static volatile int no_clock_boottime;
-  char buf[128];
   struct timespec now;
-  int r;
+  char buf[128];
 
-  /* Try /proc/uptime first, then fallback to clock_gettime(). */
-
+  /* Consult /proc/uptime when present (common case), or fall back to
+   * clock_gettime. Why not always clock_gettime? It doesn't always return the
+   * right result under OpenVZ and possibly other containerized environments.
+   */
   if (0 == uv__slurp("/proc/uptime", buf, sizeof(buf)))
     if (1 == sscanf(buf, "%lf", uptime))
       return 0;
 
-  /* Try CLOCK_BOOTTIME first, fall back to CLOCK_MONOTONIC if not available
-   * (pre-2.6.39 kernels). CLOCK_MONOTONIC doesn't increase when the system
-   * is suspended.
-   */
-  if (no_clock_boottime) {
-    retry_clock_gettime: r = clock_gettime(CLOCK_MONOTONIC, &now);
-  }
-  else if ((r = clock_gettime(CLOCK_BOOTTIME, &now)) && errno == EINVAL) {
-    no_clock_boottime = 1;
-    goto retry_clock_gettime;
-  }
-
-  if (r)
+  if (clock_gettime(CLOCK_BOOTTIME, &now))
     return UV__ERR(errno);
 
   *uptime = now.tv_sec;
