@@ -232,7 +232,8 @@ static void fs_event_create_files_in_subdir(uv_timer_t* handle) {
   if (++fs_event_created < fs_event_file_count) {
     /* Create another file on a different event loop tick.  We do it this way
      * to avoid fs events coalescing into one fs event. */
-    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files_in_subdir, 1, 0));
+    ASSERT_EQ(0,
+              uv_timer_start(&timer, fs_event_create_files_in_subdir, 100, 0));
   }
 }
 
