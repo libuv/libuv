@@ -870,12 +870,12 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
       snprintf(*model, sizeof(*model), "%.*s", n, p);
 
     if (cpu < maxcpu)
-      (*cpus)[cpu].model = model-models;
+      (*cpus)[cpu].model = model - models;
 
 next:
-    do
-      fgets(buf, sizeof(buf), fp);
-    while (*buf != '\0' && *buf != '\n');
+    while (fgets(buf, sizeof(buf), fp))
+      if (*buf == '\n')
+        break;
   }
 
   fclose(fp);
