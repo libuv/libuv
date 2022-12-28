@@ -59,6 +59,10 @@ typedef struct {
   double mtime;
 } utime_check_t;
 
+typedef int (*fs_stat_func)(uv_loop_t* loop,
+                            uv_fs_t* req,
+                            const char* path,
+                            uv_fs_cb cb);
 
 static int dummy_cb_count;
 static int close_cb_count;
@@ -2509,7 +2513,7 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
   return 0;
 }
 
-TEST_IMPL(fs_lstat_windows_store_apps) {
+void fs_windows_store_apps(fs_stat_func fs_stat_func) {
   uv_loop_t* loop;
   char localappdata[MAX_PATH];
   char windowsapps_path[MAX_PATH];
@@ -2554,10 +2558,18 @@ TEST_IMPL(fs_lstat_windows_store_apps) {
                  dirent.name) < 0) {
       continue;
     }
-    ASSERT_EQ(uv_fs_lstat(loop, &stat_req, file_path, NULL), 0);
+    ASSERT_EQ(fs_stat_func(loop, &stat_req, file_path, NULL), 0);
   }
   MAKE_VALGRIND_HAPPY();
   return 0;
+}
+
+TEST_IMPL(fs_stat_windows_store_apps) {
+  fs_windows_store_apps(uv_fs_stat);
+}
+
+TEST_IMPL(fs_lstat_windows_store_apps) {
+  fs_windows_store_apps(uv_fs_lstat);
 }
 #endif
 

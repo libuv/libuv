@@ -1891,19 +1891,14 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                                             int do_lstat,
                                             uv_stat_t* statbuf) {
   HANDLE handle;
-  DWORD flags;
   DWORD ret;
-
-  flags = FILE_FLAG_BACKUP_SEMANTICS;
-  if (do_lstat)
-    flags |= FILE_FLAG_OPEN_REPARSE_POINT;
 
   handle = CreateFileW(path,
                        FILE_READ_ATTRIBUTES,
                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL,
                        OPEN_EXISTING,
-                       flags,
+                       FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
                        NULL);
 
   if (handle == INVALID_HANDLE_VALUE)
