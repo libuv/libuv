@@ -50,3 +50,12 @@ jobs:
         continue-on-error: true # currently permit failures
         run: |
           ./build-tsan/uv_run_tests_a
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          (cd build-ubsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a
