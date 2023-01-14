@@ -887,12 +887,17 @@ void uv_os_free_environ(uv_env_item_t* envitems, int count) {
 
 
 void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
+#ifdef __linux__
+  (void) &count;
+  uv__free(cpu_infos);
+#else
   int i;
 
   for (i = 0; i < count; i++)
     uv__free(cpu_infos[i].model);
 
   uv__free(cpu_infos);
+#endif  /* __linux__ */
 }
 
 

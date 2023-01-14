@@ -145,12 +145,6 @@ static int compare_watchers(const struct watcher_list* a,
                             const struct watcher_list* b);
 static void maybe_free_watcher_list(struct watcher_list* w,
                                     uv_loop_t* loop);
-static int read_models(unsigned int numcpus, uv_cpu_info_t* ci);
-static int read_times(FILE* statfile_fp,
-                      unsigned int numcpus,
-                      uv_cpu_info_t* ci);
-static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci);
-static uint64_t read_cpufreq(unsigned int cpunum);
 
 RB_GENERATE_STATIC(watcher_root, watcher_list, entry, compare_watchers)
 
@@ -738,376 +732,213 @@ int uv_uptime(double* uptime) {
 }
 
 
-static int uv__cpu_num(FILE* statfile_fp, unsigned int* numcpus) {
-  unsigned int num;
-  char buf[1024];
-
-  if (!fgets(buf, sizeof(buf), statfile_fp))
-    return UV_EIO;
-
-  num = 0;
-  while (fgets(buf, sizeof(buf), statfile_fp)) {
-    if (strncmp(buf, "cpu", 3))
-      break;
-    num++;
-  }
-
-  if (num == 0)
-    return UV_EIO;
-
-  *numcpus = num;
-  return 0;
-}
-
-
-int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  unsigned int numcpus;
-  uv_cpu_info_t* ci;
-  int err;
-  FILE* statfile_fp;
-
-  *cpu_infos = NULL;
-  *count = 0;
-
-  statfile_fp = uv__open_file("/proc/stat");
-  if (statfile_fp == NULL)
-    return UV__ERR(errno);
-
-  err = uv__cpu_num(statfile_fp, &numcpus);
-  if (err < 0)
-    goto out;
-
-  err = UV_ENOMEM;
-  ci = uv__calloc(numcpus, sizeof(*ci));
-  if (ci == NULL)
-    goto out;
-
-  err = read_models(numcpus, ci);
-  if (err == 0)
-    err = read_times(statfile_fp, numcpus, ci);
-
-  if (err) {
-    uv_free_cpu_info(ci, numcpus);
-    goto out;
-  }
-
-  /* read_models() on x86 also reads the CPU speed from /proc/cpuinfo.
-   * We don't check for errors here. Worst case, the field is left zero.
-   */
-  if (ci[0].speed == 0)
-    read_speeds(numcpus, ci);
-
-  *cpu_infos = ci;
-  *count = numcpus;
-  err = 0;
-
-out:
-
-  if (fclose(statfile_fp))
-    if (errno != EINTR && errno != EINPROGRESS)
-      abort();
-
-  return err;
-}
-
-
-static void read_speeds(unsigned int numcpus, uv_cpu_info_t* ci) {
-  unsigned int num;
-
-  for (num = 0; num < numcpus; num++)
-    ci[num].speed = read_cpufreq(num) / 1000;
-}
-
-
-/* Also reads the CPU frequency on ppc and x86. The other architectures only
- * have a BogoMIPS field, which may not be very accurate.
- *
- * Note: Simply returns on error, uv_cpu_info() takes care of the cleanup.
- */
-static int read_models(unsigned int numcpus, uv_cpu_info_t* ci) {
+int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
 #if defined(__PPC__)
   static const char model_marker[] = "cpu\t\t: ";
-  static const char speed_marker[] = "clock\t\t: ";
+#elif defined(__arm__)
+  static const char model_marker[] = "Processor\t: ";
+#elif defined(__aarch64__)
+  static const char model_marker[] = "CPU part\t: ";
+#elif defined(__mips__)
+  static const char model_marker[] = "cpu model\t\t: ";
 #else
   static const char model_marker[] = "model name\t: ";
-  static const char speed_marker[] = "cpu MHz\t\t: ";
 #endif
-  const char* inferred_model;
-  unsigned int model_idx;
-  unsigned int speed_idx;
-  unsigned int part_idx;
-  char buf[1024];
-  char* model;
+  static const char parts[] =
+#ifdef __aarch64__
+    "0x811\nARM810\n"       "0x920\nARM920\n"      "0x922\nARM922\n"
+    "0x926\nARM926\n"       "0x940\nARM940\n"      "0x946\nARM946\n"
+    "0x966\nARM966\n"       "0xa20\nARM1020\n"      "0xa22\nARM1022\n"
+    "0xa26\nARM1026\n"      "0xb02\nARM11 MPCore\n" "0xb36\nARM1136\n"
+    "0xb56\nARM1156\n"      "0xb76\nARM1176\n"      "0xc05\nCortex-A5\n"
+    "0xc07\nCortex-A7\n"    "0xc08\nCortex-A8\n"    "0xc09\nCortex-A9\n"
+    "0xc0d\nCortex-A17\n"   /* Originally A12 */
+    "0xc0f\nCortex-A15\n"   "0xc0e\nCortex-A17\n"   "0xc14\nCortex-R4\n"
+    "0xc15\nCortex-R5\n"    "0xc17\nCortex-R7\n"    "0xc18\nCortex-R8\n"
+    "0xc20\nCortex-M0\n"    "0xc21\nCortex-M1\n"    "0xc23\nCortex-M3\n"
+    "0xc24\nCortex-M4\n"    "0xc27\nCortex-M7\n"    "0xc60\nCortex-M0+\n"
+    "0xd01\nCortex-A32\n"   "0xd03\nCortex-A53\n"   "0xd04\nCortex-A35\n"
+    "0xd05\nCortex-A55\n"   "0xd06\nCortex-A65\n"   "0xd07\nCortex-A57\n"
+    "0xd08\nCortex-A72\n"   "0xd09\nCortex-A73\n"   "0xd0a\nCortex-A75\n"
+    "0xd0b\nCortex-A76\n"   "0xd0c\nNeoverse-N1\n"  "0xd0d\nCortex-A77\n"
+    "0xd0e\nCortex-A76AE\n" "0xd13\nCortex-R52\n"   "0xd20\nCortex-M23\n"
+    "0xd21\nCortex-M33\n"   "0xd41\nCortex-A78\n"   "0xd42\nCortex-A78AE\n"
+    "0xd4a\nNeoverse-E1\n"  "0xd4b\nCortex-A78C\n"
+#endif
+    "";
+  struct cpu {
+    unsigned long long freq, user, nice, sys, idle, irq;
+    unsigned model;
+  };
   FILE* fp;
-  int model_id;
+  char* p;
+  int found;
+  int n;
+  unsigned i;
+  unsigned cpu;
+  unsigned maxcpu;
+  unsigned size;
+  unsigned long long skip;
+  struct cpu (*cpus)[8192];  /* Kernel maximum. */
+  struct cpu* c;
+  struct cpu t;
+  char (*model)[64];
+  unsigned char bitmap[ARRAY_SIZE(*cpus) / 8];
+  /* Assumption: even big.LITTLE systems will have only a handful
+   * of different CPU models. Most systems will just have one.
+   */
+  char models[8][64];
+  char buf[1024];
 
-  /* Most are unused on non-ARM, non-MIPS and non-x86 architectures. */
-  (void) &model_marker;
-  (void) &speed_marker;
-  (void) &speed_idx;
-  (void) &part_idx;
-  (void) &model;
-  (void) &buf;
-  (void) &fp;
-  (void) &model_id;
+  memset(bitmap, 0, sizeof(bitmap));
+  memset(models, 0, sizeof(models));
+  snprintf(*models, sizeof(*models), "unknown");
+  maxcpu = 0;
 
-  model_idx = 0;
-  speed_idx = 0;
-  part_idx = 0;
+  cpus = uv__calloc(ARRAY_SIZE(*cpus), sizeof(**cpus));
+  if (cpus == NULL)
+    return UV_ENOMEM;
 
-#if defined(__arm__) || \
-    defined(__i386__) || \
-    defined(__mips__) || \
-    defined(__aarch64__) || \
-    defined(__PPC__) || \
-    defined(__x86_64__)
+  fp = uv__open_file("/proc/stat");
+  if (fp == NULL) {
+    uv__free(cpus);
+    return UV__ERR(errno);
+  }
+
+  fgets(buf, sizeof(buf), fp);  /* Skip first line. */
+
+  for (;;) {
+    memset(&t, 0, sizeof(t));
+
+    n = fscanf(fp, "cpu%u %llu %llu %llu %llu %llu %llu",
+               &cpu, &t.user, &t.nice, &t.sys, &t.idle, &skip, &t.irq);
+
+    if (n != 7)
+      break;
+
+    fgets(buf, sizeof(buf), fp);  /* Skip rest of line. */
+
+    if (cpu >= ARRAY_SIZE(*cpus))
+      continue;
+
+    (*cpus)[cpu] = t;
+
+    bitmap[cpu >> 3] |= 1 << (cpu & 7);
+
+    if (cpu >= maxcpu)
+      maxcpu = cpu + 1;
+  }
+
+  fclose(fp);
+
   fp = uv__open_file("/proc/cpuinfo");
   if (fp == NULL)
-    return UV__ERR(errno);
+    goto nocpuinfo;
 
-  while (fgets(buf, sizeof(buf), fp)) {
-    if (model_idx < numcpus) {
-      if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
-        model = buf + sizeof(model_marker) - 1;
-        model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
-        if (model == NULL) {
-          fclose(fp);
-          return UV_ENOMEM;
-        }
-        ci[model_idx++].model = model;
-        continue;
-      }
+  for (;;) {
+    if (1 != fscanf(fp, "processor\t: %u\n", &cpu))
+      break;  /* Parse error. */
+
+    found = 0;
+    while (!found && fgets(buf, sizeof(buf), fp))
+      found = !strncmp(buf, model_marker, sizeof(model_marker) - 1);
+
+    if (!found)
+      goto next;
+
+    p = buf + sizeof(model_marker) - 1;
+    n = (int) strcspn(p, "\n");
+
+    /* arm64: translate CPU part code to model name. */
+    if (*parts) {
+      p = memmem(parts, sizeof(parts) - 1, p, n + 1);
+      if (p == NULL)
+        p = "unknown";
+      else
+        p += n + 1;
+      n = (int) strcspn(p, "\n");
     }
-#if defined(__arm__) || defined(__mips__) || defined(__aarch64__)
-    if (model_idx < numcpus) {
-#if defined(__arm__)
-      /* Fallback for pre-3.8 kernels. */
-      static const char model_marker[] = "Processor\t: ";
-#elif defined(__aarch64__)
-      static const char part_marker[] = "CPU part\t: ";
 
-      /* Adapted from: https://github.com/karelzak/util-linux */
-      struct vendor_part {
-        const int id;
-        const char* name;
-      };
+    found = 0;
+    for (model = models; !found && model < ARRAY_END(models); model++)
+      found = !strncmp(p, *model, strlen(*model));
 
-      static const struct vendor_part arm_chips[] = {
-        { 0x811, "ARM810" },
-        { 0x920, "ARM920" },
-        { 0x922, "ARM922" },
-        { 0x926, "ARM926" },
-        { 0x940, "ARM940" },
-        { 0x946, "ARM946" },
-        { 0x966, "ARM966" },
-        { 0xa20, "ARM1020" },
-        { 0xa22, "ARM1022" },
-        { 0xa26, "ARM1026" },
-        { 0xb02, "ARM11 MPCore" },
-        { 0xb36, "ARM1136" },
-        { 0xb56, "ARM1156" },
-        { 0xb76, "ARM1176" },
-        { 0xc05, "Cortex-A5" },
-        { 0xc07, "Cortex-A7" },
-        { 0xc08, "Cortex-A8" },
-        { 0xc09, "Cortex-A9" },
-        { 0xc0d, "Cortex-A17" },  /* Originally A12 */
-        { 0xc0f, "Cortex-A15" },
-        { 0xc0e, "Cortex-A17" },
-        { 0xc14, "Cortex-R4" },
-        { 0xc15, "Cortex-R5" },
-        { 0xc17, "Cortex-R7" },
-        { 0xc18, "Cortex-R8" },
-        { 0xc20, "Cortex-M0" },
-        { 0xc21, "Cortex-M1" },
-        { 0xc23, "Cortex-M3" },
-        { 0xc24, "Cortex-M4" },
-        { 0xc27, "Cortex-M7" },
-        { 0xc60, "Cortex-M0+" },
-        { 0xd01, "Cortex-A32" },
-        { 0xd03, "Cortex-A53" },
-        { 0xd04, "Cortex-A35" },
-        { 0xd05, "Cortex-A55" },
-        { 0xd06, "Cortex-A65" },
-        { 0xd07, "Cortex-A57" },
-        { 0xd08, "Cortex-A72" },
-        { 0xd09, "Cortex-A73" },
-        { 0xd0a, "Cortex-A75" },
-        { 0xd0b, "Cortex-A76" },
-        { 0xd0c, "Neoverse-N1" },
-        { 0xd0d, "Cortex-A77" },
-        { 0xd0e, "Cortex-A76AE" },
-        { 0xd13, "Cortex-R52" },
-        { 0xd20, "Cortex-M23" },
-        { 0xd21, "Cortex-M33" },
-        { 0xd41, "Cortex-A78" },
-        { 0xd42, "Cortex-A78AE" },
-        { 0xd4a, "Neoverse-E1" },
-        { 0xd4b, "Cortex-A78C" },
-      };
+    if (!found)
+      goto next;
 
-      if (strncmp(buf, part_marker, sizeof(part_marker) - 1) == 0) {
-        model = buf + sizeof(part_marker) - 1;
+    if (**model == '\0')
+      snprintf(*model, sizeof(*model), "%.*s", n, p);
 
-        errno = 0;
-        model_id = strtol(model, NULL, 16);
-        if ((errno != 0) || model_id < 0) {
-          fclose(fp);
-          return UV_EINVAL;
-        }
+    if (cpu < maxcpu)
+      (*cpus)[cpu].model = model - models;
 
-        for (part_idx = 0; part_idx < ARRAY_SIZE(arm_chips); part_idx++) {
-          if (model_id == arm_chips[part_idx].id) {
-            model = uv__strdup(arm_chips[part_idx].name);
-            if (model == NULL) {
-              fclose(fp);
-              return UV_ENOMEM;
-            }
-            ci[model_idx++].model = model;
-            break;
-          }
-        }
-      }
-#else	/* defined(__mips__) */
-      static const char model_marker[] = "cpu model\t\t: ";
-#endif
-      if (strncmp(buf, model_marker, sizeof(model_marker) - 1) == 0) {
-        model = buf + sizeof(model_marker) - 1;
-        model = uv__strndup(model, strlen(model) - 1);  /* Strip newline. */
-        if (model == NULL) {
-          fclose(fp);
-          return UV_ENOMEM;
-        }
-        ci[model_idx++].model = model;
-        continue;
-      }
-    }
-#else  /* !__arm__ && !__mips__ && !__aarch64__ */
-    if (speed_idx < numcpus) {
-      if (strncmp(buf, speed_marker, sizeof(speed_marker) - 1) == 0) {
-        ci[speed_idx++].speed = atoi(buf + sizeof(speed_marker) - 1);
-        continue;
-      }
-    }
-#endif  /* __arm__ || __mips__ || __aarch64__ */
+next:
+    while (fgets(buf, sizeof(buf), fp))
+      if (*buf == '\n')
+        break;
   }
 
   fclose(fp);
-#endif  /* __arm__ || __i386__ || __mips__ || __PPC__ || __x86_64__ || __aarch__ */
+  fp = NULL;
 
-  /* Now we want to make sure that all the models contain *something* because
-   * it's not safe to leave them as null. Copy the last entry unless there
-   * isn't one, in that case we simply put "unknown" into everything.
-   */
-  inferred_model = "unknown";
-  if (model_idx > 0)
-    inferred_model = ci[model_idx - 1].model;
+nocpuinfo:
 
-  while (model_idx < numcpus) {
-    model = uv__strndup(inferred_model, strlen(inferred_model));
-    if (model == NULL)
-      return UV_ENOMEM;
-    ci[model_idx++].model = model;
+  n = 0;
+  for (cpu = 0; cpu < maxcpu; cpu++) {
+    if (!(bitmap[cpu >> 3] & (1 << (cpu & 7))))
+      continue;
+
+    n++;
+    snprintf(buf, sizeof(buf),
+             "/sys/devices/system/cpu/cpu%u/cpufreq/scaling_cur_freq", cpu);
+
+    fp = uv__open_file(buf);
+    if (fp == NULL)
+      continue;
+
+    fscanf(fp, "%llu", &(*cpus)[cpu].freq);
+    fclose(fp);
+    fp = NULL;
   }
 
-  return 0;
-}
+  size = n * sizeof(**ci) + sizeof(models);
+  *ci = uv__malloc(size);
+  *count = 0;
 
-
-static int read_times(FILE* statfile_fp,
-                      unsigned int numcpus,
-                      uv_cpu_info_t* ci) {
-  struct uv_cpu_times_s ts;
-  unsigned int ticks;
-  unsigned int multiplier;
-  uint64_t user;
-  uint64_t nice;
-  uint64_t sys;
-  uint64_t idle;
-  uint64_t dummy;
-  uint64_t irq;
-  uint64_t num;
-  uint64_t len;
-  char buf[1024];
-
-  ticks = (unsigned int)sysconf(_SC_CLK_TCK);
-  assert(ticks != (unsigned int) -1);
-  assert(ticks != 0);
-  multiplier = ((uint64_t)1000L / ticks);
-
-  rewind(statfile_fp);
-
-  if (!fgets(buf, sizeof(buf), statfile_fp))
-    abort();
-
-  num = 0;
-
-  while (fgets(buf, sizeof(buf), statfile_fp)) {
-    if (num >= numcpus)
-      break;
-
-    if (strncmp(buf, "cpu", 3))
-      break;
-
-    /* skip "cpu<num> " marker */
-    {
-      unsigned int n;
-      int r = sscanf(buf, "cpu%u ", &n);
-      assert(r == 1);
-      (void) r;  /* silence build warning */
-      for (len = sizeof("cpu0"); n /= 10; len++);
-    }
-
-    /* Line contains user, nice, system, idle, iowait, irq, softirq, steal,
-     * guest, guest_nice but we're only interested in the first four + irq.
-     *
-     * Don't use %*s to skip fields or %ll to read straight into the uint64_t
-     * fields, they're not allowed in C89 mode.
-     */
-    if (6 != sscanf(buf + len,
-                    "%" PRIu64 " %" PRIu64 " %" PRIu64
-                    "%" PRIu64 " %" PRIu64 " %" PRIu64,
-                    &user,
-                    &nice,
-                    &sys,
-                    &idle,
-                    &dummy,
-                    &irq))
-      abort();
-
-    ts.user = user * multiplier;
-    ts.nice = nice * multiplier;
-    ts.sys  = sys * multiplier;
-    ts.idle = idle * multiplier;
-    ts.irq  = irq * multiplier;
-    ci[num++].cpu_times = ts;
+  if (*ci == NULL) {
+    uv__free(cpus);
+    return UV_ENOMEM;
   }
-  assert(num == numcpus);
+
+  *count = n;
+  p = memcpy(*ci + n, models, sizeof(models));
+
+  i = 0;
+  for (cpu = 0; cpu < maxcpu; cpu++) {
+    if (!(bitmap[cpu >> 3] & (1 << (cpu & 7))))
+      continue;
+
+    c = *cpus + cpu;
+
+    (*ci)[i++] = (uv_cpu_info_t) {
+      .model     = p + c->model * sizeof(*model),
+      .speed     = c->freq / 1000,
+      /* Note: sysconf(_SC_CLK_TCK) is fixed at 100 Hz,
+       * therefore the multiplier is always 1000/100 = 10.
+       */
+      .cpu_times = (struct uv_cpu_times_s) {
+        .user = 10 * c->user,
+        .nice = 10 * c->nice,
+        .sys  = 10 * c->sys,
+        .idle = 10 * c->idle,
+        .irq  = 10 * c->irq,
+      },
+    };
+  }
+
+  uv__free(cpus);
 
   return 0;
-}
-
-
-static uint64_t read_cpufreq(unsigned int cpunum) {
-  uint64_t val;
-  char buf[1024];
-  FILE* fp;
-
-  snprintf(buf,
-           sizeof(buf),
-           "/sys/devices/system/cpu/cpu%u/cpufreq/scaling_cur_freq",
-           cpunum);
-
-  fp = uv__open_file(buf);
-  if (fp == NULL)
-    return 0;
-
-  if (fscanf(fp, "%" PRIu64, &val) != 1)
-    val = 0;
-
-  fclose(fp);
-
-  return val;
 }
 
 
