@@ -1303,7 +1303,8 @@ int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
   gr_mem = (char*) &grp->members[members + 1];
   for (r = 0; r < members; r++) {
     grp->members[r] = gr_mem;
-    gr_mem = stpcpy(gr_mem, gp.gr_mem[r]) + 1;
+    strcpy(gr_mem, gp.gr_mem[r]);
+    gr_mem += strlen(gr_mem) + 1;
   }
   assert(gr_mem == (char*)grp->members + mem_size);
 
