@@ -85,7 +85,6 @@ static void uv__init_global_job_handle(void) {
   info.BasicLimitInformation.LimitFlags =
       JOB_OBJECT_LIMIT_BREAKAWAY_OK |
       JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK |
-      JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION |
       JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
   uv_global_job_handle_ = CreateJobObjectW(&attr, NULL);
@@ -1067,7 +1066,7 @@ int uv_spawn(uv_loop_t* loop,
   startup.hStdOutput = uv__stdio_handle(process->child_stdio_buffer, 1);
   startup.hStdError = uv__stdio_handle(process->child_stdio_buffer, 2);
 
-  process_flags = CREATE_UNICODE_ENVIRONMENT;
+  process_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_DEFAULT_ERROR_MODE;
 
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_CONSOLE) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {

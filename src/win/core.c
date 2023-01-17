@@ -69,10 +69,6 @@ void uv__wake_all_loops() {
 }
 
 static void uv__init(void) {
-  /* Tell Windows that we will handle critical errors. */
-  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
-               SEM_NOOPENFILEERRORBOX);
-
   /* Initialize tracking of all uv loops */
   uv__loops_init();
 
