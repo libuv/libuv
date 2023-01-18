@@ -104,7 +104,7 @@ TEST_IMPL(utf8_decode1_overrun) {
   p = b;
   b[0] = 0x7F;
   ASSERT_EQ(0x7F, uv__utf8_decode1(&p, b + 1));
- ASSERT_PTR_EQ(p, b + 1);
+  ASSERT_PTR_EQ(p, b + 1);
 
   /* Multi-byte. */
   p = b;
