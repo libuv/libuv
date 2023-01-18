@@ -1675,9 +1675,6 @@ TEST_IMPL(closed_fd_events) {
   ASSERT(req.result == 1);
   uv_fs_req_cleanup(&req);
 
-#ifdef _WIN32
-  ASSERT(1 == uv_run(uv_default_loop(), UV_RUN_ONCE));
-#endif
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
 
   /* should have received just one byte */
@@ -1981,3 +1978,37 @@ void spawn_stdin_stdout(void) {
   }
 }
 #endif /* !_WIN32 */
+
+TEST_IMPL(spawn_relative_path) {
+  char* sep;
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  exepath_size = sizeof(exepath) - 2;
+  ASSERT_EQ(0, uv_exepath(exepath, &exepath_size));
+  exepath[exepath_size] = '\0';
+
+  /* Poor man's basename(3). */
+  sep = strrchr(exepath, '/');
+  if (sep == NULL)
+    sep = strrchr(exepath, '\\');
+  ASSERT_NOT_NULL(sep);
+
+  /* Split into dirname and basename and make basename relative. */
+  memmove(sep + 2, sep, 1 + strlen(sep));
+  sep[0] = '\0';
+  sep[1] = '.';
+  sep[2] = '/';
+
+  options.cwd = exepath;
+  options.file = options.args[0] = sep + 1;
+
+  ASSERT_EQ(0, uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}

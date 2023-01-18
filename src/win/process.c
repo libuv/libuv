@@ -144,7 +144,6 @@ static void uv__process_init(uv_loop_t* loop, uv_process_t* handle) {
   handle->exit_signal = 0;
   handle->wait_handle = INVALID_HANDLE_VALUE;
   handle->process_handle = INVALID_HANDLE_VALUE;
-  handle->child_stdio_buffer = NULL;
   handle->exit_cb_pending = 0;
 
   UV_REQ_INIT(&handle->exit_req, UV_PROCESS_EXIT);
@@ -947,9 +946,11 @@ int uv_spawn(uv_loop_t* loop,
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
   DWORD process_flags;
+  BYTE* child_stdio_buffer;
 
   uv__process_init(loop, process);
   process->exit_cb = options->exit_cb;
+  child_stdio_buffer = NULL;
 
   if (options->flags & (UV_PROCESS_SETGID | UV_PROCESS_SETUID)) {
     return UV_ENOTSUP;
@@ -1040,7 +1041,7 @@ int uv_spawn(uv_loop_t* loop,
     }
   }
 
-  err = uv__stdio_create(loop, options, &process->child_stdio_buffer);
+  err = uv__stdio_create(loop, options, &child_stdio_buffer);
   if (err)
     goto done;
 
@@ -1059,12 +1060,12 @@ int uv_spawn(uv_loop_t* loop,
   startup.lpTitle = NULL;
   startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 
-  startup.cbReserved2 = uv__stdio_size(process->child_stdio_buffer);
-  startup.lpReserved2 = (BYTE*) process->child_stdio_buffer;
+  startup.cbReserved2 = uv__stdio_size(child_stdio_buffer);
+  startup.lpReserved2 = (BYTE*) child_stdio_buffer;
 
-  startup.hStdInput = uv__stdio_handle(process->child_stdio_buffer, 0);
-  startup.hStdOutput = uv__stdio_handle(process->child_stdio_buffer, 1);
-  startup.hStdError = uv__stdio_handle(process->child_stdio_buffer, 2);
+  startup.hStdInput = uv__stdio_handle(child_stdio_buffer, 0);
+  startup.hStdOutput = uv__stdio_handle(child_stdio_buffer, 1);
+  startup.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
 
   process_flags = CREATE_UNICODE_ENVIRONMENT;
 
@@ -1178,10 +1179,10 @@ int uv_spawn(uv_loop_t* loop,
   uv__free(env);
   uv__free(alloc_path);
 
-  if (process->child_stdio_buffer != NULL) {
+  if (child_stdio_buffer != NULL) {
     /* Clean up child stdio handles. */
-    uv__stdio_destroy(process->child_stdio_buffer);
-    process->child_stdio_buffer = NULL;
+    uv__stdio_destroy(child_stdio_buffer);
+    child_stdio_buffer = NULL;
   }
 
   return uv_translate_sys_error(err);

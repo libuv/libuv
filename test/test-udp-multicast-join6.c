@@ -33,7 +33,6 @@
 #if defined(__APPLE__)          || \
     defined(_AIX)               || \
     defined(__MVS__)            || \
-    defined(__FreeBSD_kernel__) || \
     defined(__NetBSD__)         || \
     defined(__OpenBSD__)
   #define MULTICAST_ADDR "ff02::1%lo0"

@@ -413,7 +413,6 @@
 #elif defined(__APPLE__) || \
       defined(__DragonFly__) || \
       defined(__FreeBSD__) || \
-      defined(__FreeBSD_kernel__) || \
       defined(__NetBSD__) || \
       defined(__OpenBSD__)
 # define UV__EHOSTDOWN (-64)
@@ -455,6 +454,12 @@
 # define UV__ESOCKTNOSUPPORT UV__ERR(ESOCKTNOSUPPORT)
 #else
 # define UV__ESOCKTNOSUPPORT (-4025)
+#endif
+
+#if defined(ENODATA) && !defined(_WIN32)
+# define UV__ENODATA UV__ERR(ENODATA)
+#else
+# define UV__ENODATA (-4024)
 #endif
 
 #endif /* UV_ERRNO_H_ */

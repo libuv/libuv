@@ -184,14 +184,15 @@ int uv__tcp_bind(uv_tcp_t* tcp,
 #endif
 
   errno = 0;
-  if (bind(tcp->io_watcher.fd, addr, addrlen) && errno != EADDRINUSE) {
+  err = bind(tcp->io_watcher.fd, addr, addrlen);
+  if (err == -1 && errno != EADDRINUSE) {
     if (errno == EAFNOSUPPORT)
       /* OSX, other BSDs and SunoS fail with EAFNOSUPPORT when binding a
        * socket created with AF_INET to an AF_INET6 address or vice versa. */
       return UV_EINVAL;
     return UV__ERR(errno);
   }
-  tcp->delayed_error = UV__ERR(errno);
+  tcp->delayed_error = (err == -1) ? UV__ERR(errno) : 0;
 
   tcp->flags |= UV_HANDLE_BOUND;
   if (addr->sa_family == AF_INET6)
@@ -316,12 +317,20 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
   struct linger l = { 1, 0 };
 
   /* Disallow setting SO_LINGER to zero due to some platform inconsistencies */
-  if (handle->flags & UV_HANDLE_SHUTTING)
+  if (uv__is_stream_shutting(handle))
     return UV_EINVAL;
 
   fd = uv__stream_fd(handle);
-  if (0 != setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)))
-    return UV__ERR(errno);
+  if (0 != setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l))) {
+    if (errno == EINVAL) {
+      /* Open Group Specifications Issue 7, 2018 edition states that
+       * EINVAL may mean the socket has been shut down already.
+       * Behavior observed on Solaris, illumos and macOS. */
+      errno = 0;
+    } else {
+      return UV__ERR(errno);
+    }
+  }
 
   uv_close((uv_handle_t*) handle, close_cb);
   return 0;
@@ -329,23 +338,11 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
 
 
 int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
-  static int single_accept_cached = -1;
   unsigned long flags;
-  int single_accept;
   int err;
 
   if (tcp->delayed_error)
     return tcp->delayed_error;
-
-  single_accept = uv__load_relaxed(&single_accept_cached);
-  if (single_accept == -1) {
-    const char* val = getenv("UV_TCP_SINGLE_ACCEPT");
-    single_accept = (val != NULL && atoi(val) != 0);  /* Off by default. */
-    uv__store_relaxed(&single_accept_cached, single_accept);
-  }
-
-  if (single_accept)
-    tcp->flags |= UV_HANDLE_TCP_SINGLE_ACCEPT;
 
   flags = 0;
 #if defined(__MVS__)
@@ -451,10 +448,6 @@ int uv_tcp_keepalive(uv_tcp_t* handle, int on, unsigned int delay) {
 
 
 int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
-  if (enable)
-    handle->flags &= ~UV_HANDLE_TCP_SINGLE_ACCEPT;
-  else
-    handle->flags |= UV_HANDLE_TCP_SINGLE_ACCEPT;
   return 0;
 }
 

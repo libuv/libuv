@@ -132,7 +132,6 @@ static void (*pCFRunLoopWakeUp)(CFRunLoopRef);
 static CFStringRef (*pCFStringCreateWithFileSystemRepresentation)(
     CFAllocatorRef,
     const char*);
-static CFStringEncoding (*pCFStringGetSystemEncoding)(void);
 static CFStringRef (*pkCFRunLoopDefaultMode);
 static FSEventStreamRef (*pFSEventStreamCreate)(CFAllocatorRef,
                                                 FSEventStreamCallback,
@@ -141,7 +140,6 @@ static FSEventStreamRef (*pFSEventStreamCreate)(CFAllocatorRef,
                                                 FSEventStreamEventId,
                                                 CFTimeInterval,
                                                 FSEventStreamCreateFlags);
-static void (*pFSEventStreamFlushSync)(FSEventStreamRef);
 static void (*pFSEventStreamInvalidate)(FSEventStreamRef);
 static void (*pFSEventStreamRelease)(FSEventStreamRef);
 static void (*pFSEventStreamScheduleWithRunLoop)(FSEventStreamRef,
@@ -563,10 +561,8 @@ static int uv__fsevents_global_init(void) {
   V(core_foundation_handle, CFRunLoopStop);
   V(core_foundation_handle, CFRunLoopWakeUp);
   V(core_foundation_handle, CFStringCreateWithFileSystemRepresentation);
-  V(core_foundation_handle, CFStringGetSystemEncoding);
   V(core_foundation_handle, kCFRunLoopDefaultMode);
   V(core_services_handle, FSEventStreamCreate);
-  V(core_services_handle, FSEventStreamFlushSync);
   V(core_services_handle, FSEventStreamInvalidate);
   V(core_services_handle, FSEventStreamRelease);
   V(core_services_handle, FSEventStreamScheduleWithRunLoop);

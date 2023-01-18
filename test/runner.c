@@ -77,9 +77,7 @@ const char* fmt(double d) {
 int run_tests(int benchmark_output) {
   int actual;
   int total;
-  int passed;
   int failed;
-  int skipped;
   int current;
   int test_result;
   int skip;
@@ -102,9 +100,7 @@ int run_tests(int benchmark_output) {
   fflush(stdout);
 
   /* Run all tests. */
-  passed = 0;
   failed = 0;
-  skipped = 0;
   current = 1;
   for (task = TASKS; task->main; task++) {
     if (task->is_helper) {
@@ -113,8 +109,8 @@ int run_tests(int benchmark_output) {
 
     test_result = run_test(task->task_name, benchmark_output, current);
     switch (test_result) {
-    case TEST_OK: passed++; break;
-    case TEST_SKIP: skipped++; break;
+    case TEST_OK: break;
+    case TEST_SKIP: break;
     default: failed++;
     }
     current++;

@@ -66,6 +66,7 @@ static void uv__read(uv_stream_t* stream);
 static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 static void uv__write_callbacks(uv_stream_t* stream);
 static size_t uv__write_req_size(uv_write_t* req);
+static void uv__drain(uv_stream_t* stream);
 
 
 void uv__stream_init(uv_loop_t* loop,
@@ -453,17 +454,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
 
   uv__stream_flush_write_queue(stream, UV_ECANCELED);
   uv__write_callbacks(stream);
-
-  if (stream->shutdown_req) {
-    /* The ECANCELED error code is a lie, the shutdown(2) syscall is a
-     * fait accompli at this point. Maybe we should revisit this in v0.11.
-     * A possible reason for leaving it unchanged is that it informs the
-     * callee that the handle has been destroyed.
-     */
-    uv__req_unregister(stream->loop, stream->shutdown_req);
-    stream->shutdown_req->cb(stream->shutdown_req, UV_ECANCELED);
-    stream->shutdown_req = NULL;
-  }
+  uv__drain(stream);
 
   assert(stream->write_queue_size == 0);
 }
@@ -504,74 +495,32 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
 }
 
 
-#if defined(UV_HAVE_KQUEUE)
-# define UV_DEC_BACKLOG(w) w->rcount--;
-#else
-# define UV_DEC_BACKLOG(w) /* no-op */
-#endif /* defined(UV_HAVE_KQUEUE) */
-
-
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   uv_stream_t* stream;
   int err;
+  int fd;
 
   stream = container_of(w, uv_stream_t, io_watcher);
   assert(events & POLLIN);
   assert(stream->accepted_fd == -1);
   assert(!(stream->flags & UV_HANDLE_CLOSING));
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
+  fd = uv__stream_fd(stream);
+  err = uv__accept(fd);
 
-  /* connection_cb can close the server socket while we're
-   * in the loop so check it on each iteration.
-   */
-  while (uv__stream_fd(stream) != -1) {
-    assert(stream->accepted_fd == -1);
+  if (err == UV_EMFILE || err == UV_ENFILE)
+    err = uv__emfile_trick(loop, fd);  /* Shed load. */
 
-#if defined(UV_HAVE_KQUEUE)
-    if (w->rcount <= 0)
-      return;
-#endif /* defined(UV_HAVE_KQUEUE) */
+  if (err < 0)
+    return;
 
-    err = uv__accept(uv__stream_fd(stream));
-    if (err < 0) {
-      if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
-        return;  /* Not an error. */
+  stream->accepted_fd = err;
+  stream->connection_cb(stream, 0);
 
-      if (err == UV_ECONNABORTED)
-        continue;  /* Ignore. Nothing we can do about that. */
-
-      if (err == UV_EMFILE || err == UV_ENFILE) {
-        err = uv__emfile_trick(loop, uv__stream_fd(stream));
-        if (err == UV_EAGAIN || err == UV__ERR(EWOULDBLOCK))
-          break;
-      }
-
-      stream->connection_cb(stream, err);
-      continue;
-    }
-
-    UV_DEC_BACKLOG(w)
-    stream->accepted_fd = err;
-    stream->connection_cb(stream, 0);
-
-    if (stream->accepted_fd != -1) {
-      /* The user hasn't yet accepted called uv_accept() */
-      uv__io_stop(loop, &stream->io_watcher, POLLIN);
-      return;
-    }
-
-    if (stream->type == UV_TCP &&
-        (stream->flags & UV_HANDLE_TCP_SINGLE_ACCEPT)) {
-      /* Give other processes a chance to accept connections. */
-      struct timespec timeout = { 0, 1 };
-      nanosleep(&timeout, NULL);
-    }
-  }
+  if (stream->accepted_fd != -1)
+    /* The user hasn't yet accepted called uv_accept() */
+    uv__io_stop(loop, &stream->io_watcher, POLLIN);
 }
-
-
-#undef UV_DEC_BACKLOG
 
 
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
@@ -641,7 +590,9 @@ done:
 
 int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
-
+  if (uv__is_closing(stream)) {
+    return UV_EINVAL;
+  }
   switch (stream->type) {
   case UV_TCP:
     err = uv__tcp_listen((uv_tcp_t*)stream, backlog, cb);
@@ -667,25 +618,29 @@ static void uv__drain(uv_stream_t* stream) {
   int err;
 
   assert(QUEUE_EMPTY(&stream->write_queue));
-  uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-  uv__stream_osx_interrupt_select(stream);
+  if (!(stream->flags & UV_HANDLE_CLOSING)) {
+    uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
+    uv__stream_osx_interrupt_select(stream);
+  }
 
-  /* Shutdown? */
-  if ((stream->flags & UV_HANDLE_SHUTTING) &&
-      !(stream->flags & UV_HANDLE_CLOSING) &&
+  if (!uv__is_stream_shutting(stream))
+    return;
+
+  req = stream->shutdown_req;
+  assert(req);
+
+  if ((stream->flags & UV_HANDLE_CLOSING) ||
       !(stream->flags & UV_HANDLE_SHUT)) {
-    assert(stream->shutdown_req);
-
-    req = stream->shutdown_req;
     stream->shutdown_req = NULL;
-    stream->flags &= ~UV_HANDLE_SHUTTING;
     uv__req_unregister(stream->loop, req);
 
     err = 0;
-    if (shutdown(uv__stream_fd(stream), SHUT_WR))
+    if (stream->flags & UV_HANDLE_CLOSING)
+      /* The user destroyed the stream before we got to do the shutdown. */
+      err = UV_ECANCELED;
+    else if (shutdown(uv__stream_fd(stream), SHUT_WR))
       err = UV__ERR(errno);
-
-    if (err == 0)
+    else /* Success. */
       stream->flags |= UV_HANDLE_SHUT;
 
     if (req->cb != NULL)
@@ -886,8 +841,15 @@ static void uv__write(uv_stream_t* stream) {
   QUEUE* q;
   uv_write_t* req;
   ssize_t n;
+  int count;
 
   assert(uv__stream_fd(stream) >= 0);
+
+  /* Prevent loop starvation when the consumer of this stream read as fast as
+   * (or faster than) we can write it. This `count` mechanism does not need to
+   * change even if we switch to edge-triggered I/O.
+   */
+  count = 32;
 
   for (;;) {
     if (QUEUE_EMPTY(&stream->write_queue))
@@ -907,10 +869,13 @@ static void uv__write(uv_stream_t* stream) {
       req->send_handle = NULL;
       if (uv__write_req_update(stream, req, n)) {
         uv__write_req_finish(req);
-        return;  /* TODO(bnoordhuis) Start trying to write the next request. */
+        if (count-- > 0)
+          continue; /* Start trying to write the next request. */
+
+        return;
       }
     } else if (n != UV_EAGAIN)
-      break;
+      goto error;
 
     /* If this is a blocking stream, try again. */
     if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
@@ -925,8 +890,8 @@ static void uv__write(uv_stream_t* stream) {
     return;
   }
 
+error:
   req->error = n;
-  // XXX(jwn): this must call uv__stream_flush_write_queue(stream, n) here, since we won't generate any more events
   uv__write_req_finish(req);
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
   uv__stream_osx_interrupt_select(stream);
@@ -1228,23 +1193,23 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
 
   if (!(stream->flags & UV_HANDLE_WRITABLE) ||
       stream->flags & UV_HANDLE_SHUT ||
-      stream->flags & UV_HANDLE_SHUTTING ||
+      uv__is_stream_shutting(stream) ||
       uv__is_closing(stream)) {
     return UV_ENOTCONN;
   }
 
   assert(uv__stream_fd(stream) >= 0);
 
-  /* Initialize request */
+  /* Initialize request. The `shutdown(2)` call will always be deferred until
+   * `uv__drain`, just before the callback is run. */
   uv__req_init(stream->loop, req, UV_SHUTDOWN);
   req->handle = stream;
   req->cb = cb;
   stream->shutdown_req = req;
-  stream->flags |= UV_HANDLE_SHUTTING;
   stream->flags &= ~UV_HANDLE_WRITABLE;
 
-  uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
-  uv__stream_osx_interrupt_select(stream);
+  if (QUEUE_EMPTY(&stream->write_queue))
+    uv__io_feed(stream->loop, &stream->io_watcher);
 
   return 0;
 }

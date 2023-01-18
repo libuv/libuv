@@ -53,7 +53,7 @@ Code
 ----
 
 All the example code and the source of the book is included as part of
-the libuv_ project on Github.
+the libuv_ project on GitHub.
 Clone or Download libuv_, then build it::
 
     sh autogen.sh

@@ -29,7 +29,9 @@
 
 int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
-
+  if (uv__is_closing(stream)) {
+    return UV_EINVAL;
+  }
   err = ERROR_INVALID_PARAMETER;
   switch (stream->type) {
     case UV_TCP:
@@ -180,7 +182,7 @@ int uv_try_write(uv_stream_t* stream,
     case UV_TTY:
       return uv__tty_try_write((uv_tty_t*) stream, bufs, nbufs);
     case UV_NAMED_PIPE:
-      return UV_EAGAIN;
+      return uv__pipe_try_write((uv_pipe_t*) stream, bufs, nbufs);
     default:
       assert(0);
       return UV_ENOSYS;
@@ -202,7 +204,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   uv_loop_t* loop = handle->loop;
 
   if (!(handle->flags & UV_HANDLE_WRITABLE) ||
-      handle->flags & UV_HANDLE_SHUTTING ||
+      uv__is_stream_shutting(handle) ||
       uv__is_closing(handle)) {
     return UV_ENOTCONN;
   }
@@ -212,12 +214,16 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   req->cb = cb;
 
   handle->flags &= ~UV_HANDLE_WRITABLE;
-  handle->flags |= UV_HANDLE_SHUTTING;
   handle->stream.conn.shutdown_req = req;
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
 
-  uv__want_endgame(loop, (uv_handle_t*)handle);
+  if (handle->stream.conn.write_reqs_pending == 0) {
+    if (handle->type == UV_NAMED_PIPE)
+      uv__pipe_shutdown(loop, (uv_pipe_t*) handle, req);
+    else
+      uv__insert_pending_req(loop, (uv_req_t*) req);
+  }
 
   return 0;
 }

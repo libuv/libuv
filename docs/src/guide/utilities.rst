@@ -220,7 +220,7 @@ progress with the download whenever libuv notifies of I/O readiness.
 .. literalinclude:: ../../code/uvwget/main.c
     :language: c
     :linenos:
-    :lines: 1-9,140-
+    :lines: 1-9,142-
     :emphasize-lines: 7,21,24-25
 
 The way each library is integrated with libuv will vary. In the case of

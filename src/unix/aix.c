@@ -321,9 +321,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       nevents++;
     }
 
+    uv__metrics_inc_events(loop, nevents);
     if (reset_timeout != 0) {
       timeout = user_timeout;
       reset_timeout = 0;
+      uv__metrics_inc_events_waiting(loop, nevents);
     }
 
     if (have_signals != 0) {
@@ -389,6 +391,11 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
+uint64_t uv_get_available_memory(void) {
+  return uv_get_free_memory();
+}
+
+
 void uv_loadavg(double avg[3]) {
   perfstat_cpu_total_t ps_total;
   int result = perfstat_cpu_total(NULL, &ps_total, sizeof(ps_total), 1);
@@ -425,7 +432,7 @@ static char* uv__rawname(const char* cp, char (*dst)[FILENAME_MAX+1]) {
 static int uv__path_is_a_directory(char* filename) {
   struct stat statbuf;
 
-  if (stat(filename, &statbuf) < 0)
+  if (uv__stat(filename, &statbuf) < 0)
     return -1;  /* failed: not a directory, assume it is a file */
 
   if (statbuf.st_type == VDIR)

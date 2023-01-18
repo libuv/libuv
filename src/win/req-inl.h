@@ -138,13 +138,13 @@ INLINE static void uv__insert_pending_req(uv_loop_t* loop, uv_req_t* req) {
   } while (0)
 
 
-INLINE static int uv__process_reqs(uv_loop_t* loop) {
+INLINE static void uv__process_reqs(uv_loop_t* loop) {
   uv_req_t* req;
   uv_req_t* first;
   uv_req_t* next;
 
   if (loop->pending_reqs_tail == NULL)
-    return 0;
+    return;
 
   first = loop->pending_reqs_tail->next_req;
   next = first;
@@ -172,12 +172,7 @@ INLINE static int uv__process_reqs(uv_loop_t* loop) {
         break;
 
       case UV_SHUTDOWN:
-        /* Tcp shutdown requests don't come here. */
-        assert(((uv_shutdown_t*) req)->handle->type == UV_NAMED_PIPE);
-        uv__process_pipe_shutdown_req(
-            loop,
-            (uv_pipe_t*) ((uv_shutdown_t*) req)->handle,
-            (uv_shutdown_t*) req);
+        DELEGATE_STREAM_REQ(loop, (uv_shutdown_t*) req, shutdown, handle);
         break;
 
       case UV_UDP_RECV:
@@ -214,8 +209,6 @@ INLINE static int uv__process_reqs(uv_loop_t* loop) {
         assert(0);
     }
   }
-
-  return 1;
 }
 
 #endif /* UV_WIN_REQ_INL_H_ */

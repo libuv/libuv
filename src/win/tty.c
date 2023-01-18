@@ -23,12 +23,7 @@
 #include <io.h>
 #include <string.h>
 #include <stdlib.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #ifndef COMMON_LVB_REVERSE_VIDEO
 # define COMMON_LVB_REVERSE_VIDEO 0x4000
@@ -2237,11 +2232,13 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
     req->cb(req, uv_translate_sys_error(err));
   }
 
+
   handle->stream.conn.write_reqs_pending--;
-  if (handle->stream.conn.shutdown_req != NULL &&
-      handle->stream.conn.write_reqs_pending == 0) {
-    uv__want_endgame(loop, (uv_handle_t*)handle);
-  }
+  if (handle->stream.conn.write_reqs_pending == 0 &&
+      uv__is_stream_shutting(handle))
+    uv__process_tty_shutdown_req(loop,
+                                 handle,
+                                 handle->stream.conn.shutdown_req);
 
   DECREASE_PENDING_REQ_COUNT(handle);
 }
@@ -2262,43 +2259,42 @@ void uv__tty_close(uv_tty_t* handle) {
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   uv__handle_closing(handle);
 
-  if (handle->reqs_pending == 0) {
+  if (handle->reqs_pending == 0)
     uv__want_endgame(handle->loop, (uv_handle_t*) handle);
+}
+
+
+void uv__process_tty_shutdown_req(uv_loop_t* loop, uv_tty_t* stream, uv_shutdown_t* req) {
+  assert(stream->stream.conn.write_reqs_pending == 0);
+  assert(req);
+
+  stream->stream.conn.shutdown_req = NULL;
+  UNREGISTER_HANDLE_REQ(loop, stream, req);
+
+  /* TTY shutdown is really just a no-op */
+  if (req->cb) {
+    if (stream->flags & UV_HANDLE_CLOSING) {
+      req->cb(req, UV_ECANCELED);
+    } else {
+      req->cb(req, 0);
+    }
   }
+
+  DECREASE_PENDING_REQ_COUNT(stream);
 }
 
 
 void uv__tty_endgame(uv_loop_t* loop, uv_tty_t* handle) {
-  if (!(handle->flags & UV_HANDLE_TTY_READABLE) &&
-      handle->stream.conn.shutdown_req != NULL &&
-      handle->stream.conn.write_reqs_pending == 0) {
-    UNREGISTER_HANDLE_REQ(loop, handle, handle->stream.conn.shutdown_req);
+  assert(handle->flags & UV_HANDLE_CLOSING);
+  assert(handle->reqs_pending == 0);
 
-    /* TTY shutdown is really just a no-op */
-    if (handle->stream.conn.shutdown_req->cb) {
-      if (handle->flags & UV_HANDLE_CLOSING) {
-        handle->stream.conn.shutdown_req->cb(handle->stream.conn.shutdown_req, UV_ECANCELED);
-      } else {
-        handle->stream.conn.shutdown_req->cb(handle->stream.conn.shutdown_req, 0);
-      }
-    }
+  /* The wait handle used for raw reading should be unregistered when the
+   * wait callback runs. */
+  assert(!(handle->flags & UV_HANDLE_TTY_READABLE) ||
+         handle->tty.rd.read_raw_wait == NULL);
 
-    handle->stream.conn.shutdown_req = NULL;
-
-    DECREASE_PENDING_REQ_COUNT(handle);
-    return;
-  }
-
-  if (handle->flags & UV_HANDLE_CLOSING &&
-      handle->reqs_pending == 0) {
-    /* The wait handle used for raw reading should be unregistered when the
-     * wait callback runs. */
-    assert(!(handle->flags & UV_HANDLE_TTY_READABLE) ||
-           handle->tty.rd.read_raw_wait == NULL);
-
-    assert(!(handle->flags & UV_HANDLE_CLOSED));
-    uv__handle_close(handle);
-  }
+  assert(!(handle->flags & UV_HANDLE_CLOSED));
+  uv__handle_close(handle);
 }
 
 
