@@ -1,0 +1,64 @@
+name: CI-win
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/unix/**'
+      - '!.**'
+      - '.github/workflows/CI-win.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  build-windows:
+    runs-on: windows-${{ matrix.config.server }}
+    name: build-${{ join(matrix.config.*, '-') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {toolchain: Visual Studio 16 2019, arch: Win32, server: 2019}
+          - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
+          - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Build
+        shell: cmd
+        run:
+          cmake -S . -B build -DBUILD_TESTING=ON
+            -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
+            ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' || '' }}
+
+          cmake --build build --config RelWithDebInfo
+
+          ls -l build
+      - name: platform_output
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests.exe platform_output
+      - name: platform_output_a
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests_a.exe platform_output
+      - name: Test
+        # only valid with libuv-master with the fix for
+        # https://github.com/libuv/leps/blob/master/005-windows-handles-not-fd.md
+        if: ${{ matrix.config.config != 'ASAN' }}
+        shell: cmd
+        run:
+          cd build
+
+          ctest -C RelWithDebInfo -V
+      - name: Test only static
+        if: ${{ matrix.config.config == 'ASAN' }}
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests_a.exe

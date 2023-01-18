@@ -5,7 +5,7 @@
 libuv is a multi-platform support library with a focus on asynchronous I/O. It
 was primarily developed for use by [Node.js][], but it's also
 used by [Luvit](http://luvit.io/), [Julia](http://julialang.org/),
-[pyuv](https://github.com/saghul/pyuv), and [others](https://github.com/libuv/libuv/blob/v1.x/LINKS.md).
+[uvloop](https://github.com/MagicStack/uvloop), and [others](https://github.com/libuv/libuv/blob/v1.x/LINKS.md).
 
 ## Feature highlights
 
@@ -219,6 +219,15 @@ Note to OS X users:
 Make sure that you specify the architecture you wish to build for in the
 "ARCHS" flag. You can specify more than one by delimiting with a space
 (e.g. "x86_64 i386").
+
+### Install with vcpkg
+
+```bash
+$ git clone https://github.com/microsoft/vcpkg.git
+$ ./bootstrap-vcpkg.bat # for powershell
+$ ./bootstrap-vcpkg.sh # for bash
+$ ./vcpkg install libuv
+```
 
 ### Running tests
 

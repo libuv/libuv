@@ -98,10 +98,6 @@ static void sv_recv_cb(uv_udp_t* handle,
 
 
 TEST_IMPL(udp_connect) {
-#if defined(__PASE__)
-  RETURN_SKIP(
-      "IBMi PASE's UDP connection can not be disconnected with AF_UNSPEC.");
-#endif
   uv_udp_send_t req;
   struct sockaddr_in ext_addr;
   struct sockaddr_in tmp_addr;
@@ -124,7 +120,7 @@ TEST_IMPL(udp_connect) {
 
   buf = uv_buf_init("EXIT", 4);
 
-  /* connect() to INADDR_ANY fails on Windows wih WSAEADDRNOTAVAIL */
+  /* connect() to INADDR_ANY fails on Windows with WSAEADDRNOTAVAIL */
   ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &tmp_addr));
   r = uv_udp_connect(&client, (const struct sockaddr*) &tmp_addr);
 #ifdef _WIN32

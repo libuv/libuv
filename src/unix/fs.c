@@ -48,7 +48,6 @@
 
 #if defined(__DragonFly__)        ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # define HAVE_PREADV 1
@@ -79,7 +78,6 @@
 #if defined(__APPLE__)            ||                                      \
     defined(__DragonFly__)        ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # include <sys/param.h>
@@ -247,7 +245,8 @@ UV_UNUSED(static struct timeval uv__fs_to_timeval(double time)) {
 static ssize_t uv__fs_futime(uv_fs_t* req) {
 #if defined(__linux__)                                                        \
     || defined(_AIX71)                                                        \
-    || defined(__HAIKU__)
+    || defined(__HAIKU__)                                                     \
+    || defined(__GNU__)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
@@ -255,7 +254,6 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
-    || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)                                                   \
     || defined(__sun)
@@ -489,10 +487,10 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     }
 # if defined(__linux__)
     else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
+      result = preadv(req->file,
+                      (struct iovec*) req->bufs,
+                      req->nbufs,
+                      req->off);
       if (result == -1 && errno == ENOSYS) {
         uv__store_relaxed(&no_preadv, 1);
         goto retry;
@@ -515,7 +513,7 @@ done:
   if (result == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
-    rc = fstat(req->file, &buf);
+    rc = uv__fstat(req->file, &buf);
     if (rc == 0 && S_ISDIR(buf.st_mode)) {
       errno = EISDIR;
     }
@@ -526,19 +524,12 @@ done:
 }
 
 
-#if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8)
-#define UV_CONST_DIRENT uv__dirent_t
-#else
-#define UV_CONST_DIRENT const uv__dirent_t
-#endif
-
-
-static int uv__fs_scandir_filter(UV_CONST_DIRENT* dent) {
+static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
 }
 
 
-static int uv__fs_scandir_sort(UV_CONST_DIRENT** a, UV_CONST_DIRENT** b) {
+static int uv__fs_scandir_sort(const uv__dirent_t** a, const uv__dirent_t** b) {
   return strcmp((*a)->d_name, (*b)->d_name);
 }
 
@@ -714,7 +705,7 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   /* We may not have a real PATH_MAX.  Read size of link.  */
   struct stat st;
   int ret;
-  ret = lstat(req->path, &st);
+  ret = uv__lstat(req->path, &st);
   if (ret != 0)
     return -1;
   if (!S_ISLNK(st.st_mode)) {
@@ -946,6 +937,71 @@ static int uv__is_buggy_cephfs(int fd) {
 
   return uv__kernel_version() < /* 4.20.0 */ 0x041400;
 }
+
+
+static int uv__is_cifs_or_smb(int fd) {
+  struct statfs s;
+
+  if (-1 == fstatfs(fd, &s))
+    return 0;
+
+  switch ((unsigned) s.f_type) {
+  case 0x0000517Bu:  /* SMB */
+  case 0xFE534D42u:  /* SMB2 */
+  case 0xFF534D42u:  /* CIFS */
+    return 1;
+  }
+
+  return 0;
+}
+
+
+static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
+                                          int out_fd, size_t len) {
+  static int no_copy_file_range_support;
+  ssize_t r;
+
+  if (uv__load_relaxed(&no_copy_file_range_support)) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  r = uv__fs_copy_file_range(in_fd, off, out_fd, NULL, len, 0);
+
+  if (r != -1)
+    return r;
+
+  switch (errno) {
+  case EACCES:
+    /* Pre-4.20 kernels have a bug where CephFS uses the RADOS
+     * copy-from command when it shouldn't.
+     */
+    if (uv__is_buggy_cephfs(in_fd))
+      errno = ENOSYS;  /* Use fallback. */
+    break;
+  case ENOSYS:
+    uv__store_relaxed(&no_copy_file_range_support, 1);
+    break;
+  case EPERM:
+    /* It's been reported that CIFS spuriously fails.
+     * Consider it a transient error.
+     */
+    if (uv__is_cifs_or_smb(out_fd))
+      errno = ENOSYS;  /* Use fallback. */
+    break;
+  case ENOTSUP:
+  case EXDEV:
+    /* ENOTSUP - it could work on another file system type.
+     * EXDEV - it will not work when in_fd and out_fd are not on the same
+     *         mounted filesystem (pre Linux 5.3)
+     */
+    errno = ENOSYS;  /* Use fallback. */
+    break;
+  }
+
+  return -1;
+}
+
 #endif  /* __linux__ */
 
 
@@ -960,40 +1016,21 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
   {
     off_t off;
     ssize_t r;
+    size_t len;
+    int try_sendfile;
 
     off = req->off;
+    len = req->bufsml[0].len;
+    try_sendfile = 1;
 
 #ifdef __linux__
-    {
-      static int no_copy_file_range_support;
-
-      if (uv__load_relaxed(&no_copy_file_range_support) == 0) {
-        r = uv__fs_copy_file_range(in_fd, &off, out_fd, NULL, req->bufsml[0].len, 0);
-
-        if (r == -1 && errno == ENOSYS) {
-          /* ENOSYS - it will never work */
-          errno = 0;
-          uv__store_relaxed(&no_copy_file_range_support, 1);
-        } else if (r == -1 && errno == EACCES && uv__is_buggy_cephfs(in_fd)) {
-          /* EACCES - pre-4.20 kernels have a bug where CephFS uses the RADOS
-                      copy-from command when it shouldn't */
-          errno = 0;
-          uv__store_relaxed(&no_copy_file_range_support, 1);
-        } else if (r == -1 && (errno == ENOTSUP || errno == EXDEV)) {
-          /* ENOTSUP - it could work on another file system type */
-          /* EXDEV - it will not work when in_fd and out_fd are not on the same
-                     mounted filesystem (pre Linux 5.3) */
-          errno = 0;
-        } else {
-          goto ok;
-        }
-      }
-    }
+    r = uv__fs_try_copy_file_range(in_fd, &off, out_fd, len);
+    try_sendfile = (r == -1 && errno == ENOSYS);
 #endif
 
-    r = sendfile(out_fd, in_fd, &off, req->bufsml[0].len);
+    if (try_sendfile)
+      r = sendfile(out_fd, in_fd, &off, len);
 
-ok:
     /* sendfile() on SunOS returns EINVAL if the target fd is not a socket but
      * it still writes out data. Fortunately, we can detect it by checking if
      * the offset has been updated.
@@ -1014,10 +1051,7 @@ ok:
 
     return -1;
   }
-#elif defined(__APPLE__)           || \
-      defined(__DragonFly__)       || \
-      defined(__FreeBSD__)         || \
-      defined(__FreeBSD_kernel__)
+#elif defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__)
   {
     off_t len;
     ssize_t r;
@@ -1028,17 +1062,19 @@ ok:
      */
 
 #if defined(__FreeBSD__) || defined(__DragonFly__)
+#if defined(__FreeBSD__)
+    off_t off;
+
+    off = req->off;
+    r = uv__fs_copy_file_range(in_fd, &off, out_fd, NULL, req->bufsml[0].len, 0);
+    if (r >= 0) {
+        r = off - req->off;
+        req->off = off;
+        return r;
+    }
+#endif
     len = 0;
     r = sendfile(in_fd, out_fd, req->off, req->bufsml[0].len, NULL, &len, 0);
-#elif defined(__FreeBSD_kernel__)
-    len = 0;
-    r = bsd_sendfile(in_fd,
-                     out_fd,
-                     req->off,
-                     req->bufsml[0].len,
-                     NULL,
-                     &len,
-                     0);
 #else
     /* The darwin sendfile takes len as an input for the length to send,
      * so make sure to initialize it with the caller's value. */
@@ -1090,7 +1126,6 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
-    || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)
   struct timeval tv[2];
@@ -1122,7 +1157,9 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 #if defined(__linux__)            ||                                           \
     defined(_AIX71)               ||                                           \
     defined(__sun)                ||                                           \
-    defined(__HAIKU__)
+    defined(__HAIKU__)            ||                                           \
+    defined(__GNU__)              ||                                           \
+    defined(__OpenBSD__)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
@@ -1130,7 +1167,6 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 #elif defined(__APPLE__)          ||                                          \
       defined(__DragonFly__)      ||                                          \
       defined(__FreeBSD__)        ||                                          \
-      defined(__FreeBSD_kernel__) ||                                          \
       defined(__NetBSD__)
   struct timeval tv[2];
   tv[0] = uv__fs_to_timeval(req->atime);
@@ -1181,10 +1217,10 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     }
 # if defined(__linux__)
     else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
+      r = pwritev(req->file,
+                  (struct iovec*) req->bufs,
+                  req->nbufs,
+                  req->off);
       if (r == -1 && errno == ENOSYS) {
         no_pwritev = 1;
         goto retry;
@@ -1228,7 +1264,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     return srcfd;
 
   /* Get the source file's mode. */
-  if (fstat(srcfd, &src_statsbuf)) {
+  if (uv__fstat(srcfd, &src_statsbuf)) {
     err = UV__ERR(errno);
     goto out;
   }
@@ -1256,7 +1292,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
      destination are not the same file. If they are the same, bail out early. */
   if ((req->flags & UV_FS_COPYFILE_EXCL) == 0) {
     /* Get the destination file's mode. */
-    if (fstat(dstfd, &dst_statsbuf)) {
+    if (uv__fstat(dstfd, &dst_statsbuf)) {
       err = UV__ERR(errno);
       goto out;
     }
@@ -1277,22 +1313,15 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
 #ifdef __linux__
+    /* fchmod() on CIFS shares always fails with EPERM unless the share is
+     * mounted with "noperm". As fchmod() is a meaningless operation on such
+     * shares anyway, detect that condition and squelch the error.
+     */
     if (err != UV_EPERM)
       goto out;
 
-    {
-      struct statfs s;
-
-      /* fchmod() on CIFS shares always fails with EPERM unless the share is
-       * mounted with "noperm". As fchmod() is a meaningless operation on such
-       * shares anyway, detect that condition and squelch the error.
-       */
-      if (fstatfs(dstfd, &s) == -1)
-        goto out;
-
-      if ((unsigned) s.f_type != /* CIFS */ 0xFF534D42u)
-        goto out;
-    }
+    if (!uv__is_cifs_or_smb(dstfd))
+      goto out;
 
     err = 0;
 #else  /* !__linux__ */
@@ -1542,7 +1571,7 @@ static int uv__fs_stat(const char *path, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = stat(path, &pbuf);
+  ret = uv__stat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
@@ -1558,7 +1587,7 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = lstat(path, &pbuf);
+  ret = uv__lstat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
@@ -1574,7 +1603,7 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = fstat(fd, &pbuf);
+  ret = uv__fstat(fd, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
