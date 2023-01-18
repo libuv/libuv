@@ -62,3 +62,58 @@ jobs:
         shell: cmd
         run:
           build\\RelWithDebInfo\\uv_run_tests_a.exe
+
+  build-mingw:
+    runs-on: ubuntu-latest
+    name: build-mingw-${{ matrix.config.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {arch: i686,   server: 2022}
+          - {arch: x86_64, server: 2022}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install mingw32 environment
+        run: |
+          sudo apt update
+          sudo apt install mingw-w64 ninja-build -y
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DHOST_ARCH=${{ matrix.config.arch }} -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
+          cmake --build build
+          cmake --install build --prefix "`pwd`/build/usr"
+          mkdir -p build/usr/test
+          cp -a test/fixtures build/usr/test
+          cp -a build/uv_run_tests_a.exe build/uv_run_tests.exe build/usr/bin
+          # TODO: copy compiler support libraries, so we can run shared library tests
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mingw-${{ matrix.config.arch }}
+          path: build/usr/**/*
+          retention-days: 2
+
+  test-mingw:
+    runs-on: windows-${{ matrix.config.server }}
+    name: test-mingw-${{ matrix.config.arch }}
+    needs: build-mingw
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {arch: i686,   server: 2022}
+          - {arch: x86_64, server: 2022}
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: mingw-${{ matrix.config.arch }}
+      - name: Test
+        shell: cmd
+        run: |
+          bin\uv_run_tests_a.exe
+      #- name: Test
+      #  shell: cmd
+      #  run: |
+      #    bin\uv_run_tests.exe
