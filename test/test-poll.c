@@ -637,7 +637,7 @@ TEST_IMPL(poll_bad_fdtype) {
   uv_poll_t poll_handle;
   int fd;
 
-#if defined(_WIN32) || defined(__MINGW32__)
+#if defined(_WIN32)
   fd = open("test/fixtures/empty_file", O_RDONLY);
 #else
   fd = open(".", O_RDONLY);
