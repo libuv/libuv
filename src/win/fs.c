@@ -2662,7 +2662,10 @@ static void fs__readlink(uv_fs_t* req) {
   }
 
   if (fs__readlink_handle(handle, (char**) &req->ptr, NULL) != 0) {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
+    DWORD error = GetLastError();
+    SET_REQ_WIN32_ERROR(req, error);
+    if (error == ERROR_NOT_A_REPARSE_POINT)
+      req->result = UV_EINVAL;
     CloseHandle(handle);
     return;
   }
