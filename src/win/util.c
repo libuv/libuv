@@ -896,6 +896,15 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
         uv_address->netmask.netmask4.sin_family = AF_INET;
         uv_address->netmask.netmask4.sin_addr.s_addr = (prefix_len > 0) ?
             htonl(0xffffffff << (32 - prefix_len)) : 0;
+
+        /*
+         * This assumes contiguous bits in the netmask, which is asserted
+	 * in the calculation of the netmask above.
+         */
+        uv_address->broadcast.broadcast4.sin_family = AF_INET;
+        uv_address->broadcast.broadcast4.sin_addr.s_addr =
+             uv_address->address.address4.sin_addr.s_addr |
+            ~uv_address->netmask.netmask4.sin_addr.s_addr;
       }
 
       uv_address++;

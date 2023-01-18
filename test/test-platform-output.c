@@ -148,6 +148,13 @@ TEST_IMPL(platform_output) {
     } else {
       printf("  netmask: none\n");
     }
+
+    if (interfaces[i].broadcast.broadcast4.sin_family == AF_INET) {
+      uv_ip4_name(&interfaces[i].broadcast.broadcast4, buffer, sizeof(buffer));
+      printf("  broadcast: %s\n", buffer);
+    } else {
+      printf("  broadcast: none\n");
+    }
   }
   uv_free_interface_addresses(interfaces, count);
 

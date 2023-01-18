@@ -154,6 +154,9 @@ Data types
                 struct sockaddr_in netmask4;
                 struct sockaddr_in6 netmask6;
             } netmask;
+            union {
+                struct sockaddr_in broadcast4;
+            } broadcast;
         } uv_interface_address_t;
 
 .. c:type:: uv_passwd_t

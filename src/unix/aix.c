@@ -1219,6 +1219,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
       address->netmask.netmask4 = *((struct sockaddr_in*) &p->ifr_addr);
       /* Explicitly set family as the ioctl call appears to return it as 0. */
       address->netmask.netmask4.sin_family = AF_INET;
+
+      if ((flg.ifr_flags & IFF_BROADCAST) != 0 && p->ifr_broadaddr != NULL)
+	address->broadcast.broadcast4 = *((struct sockaddr_in*) &p->ifr_broadaddr);
     }
 
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
