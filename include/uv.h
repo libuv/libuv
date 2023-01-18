@@ -245,6 +245,7 @@ typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
+typedef struct uv_group_s uv_group_t;
 typedef struct uv_utsname_s uv_utsname_t;
 typedef struct uv_statfs_s uv_statfs_t;
 
@@ -1139,6 +1140,12 @@ struct uv_passwd_s {
   char* homedir;
 };
 
+struct uv_group_s {
+  char* groupname;
+  unsigned long gid;
+  char** members;
+};
+
 struct uv_utsname_s {
   char sysname[256];
   char release[256];
@@ -1219,6 +1226,9 @@ UV_EXTERN int uv_os_homedir(char* buffer, size_t* size);
 UV_EXTERN int uv_os_tmpdir(char* buffer, size_t* size);
 UV_EXTERN int uv_os_get_passwd(uv_passwd_t* pwd);
 UV_EXTERN void uv_os_free_passwd(uv_passwd_t* pwd);
+UV_EXTERN int uv_os_get_passwd2(uv_passwd_t* pwd, uv_uid_t uid);
+UV_EXTERN int uv_os_get_group(uv_group_t* grp, uv_uid_t gid);
+UV_EXTERN void uv_os_free_group(uv_group_t* grp);
 UV_EXTERN uv_pid_t uv_os_getpid(void);
 UV_EXTERN uv_pid_t uv_os_getppid(void);
 
