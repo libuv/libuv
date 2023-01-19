@@ -646,6 +646,10 @@ TEST_IMPL(fork_threadpool_queue_work_simple) {
   pid_t child_pid;
   uv_loop_t loop;
 
+#ifdef __TSAN__
+  RETURN_SKIP("ThreadSanitizer doesn't support multi-threaded fork");
+#endif
+
   /* Prime the pool and default loop. */
   assert_run_work(uv_default_loop());
 
