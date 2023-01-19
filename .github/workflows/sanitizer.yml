@@ -47,9 +47,10 @@ jobs:
           (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
           cmake --build build-tsan
       - name: TSAN Test
-        continue-on-error: true # currently permit failures
+        # Note: path must be absolute because some tests chdir.
+        # TSan exits with an error when it can't find the file.
         run: |
-          ./build-tsan/uv_run_tests_a
+          env TSAN_OPTIONS="suppressions=$PWD/tsansupp.txt" ./build-tsan/uv_run_tests_a
 
       - name: UBSAN Build
         run: |
