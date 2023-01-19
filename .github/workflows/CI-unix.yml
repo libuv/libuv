@@ -173,6 +173,7 @@ jobs:
           version: ${{ matrix.config.version }}
           run: |
             sudo ${{ matrix.config.install }} cmake ninja
+            sudo hostname -s ci-host
             mkdir build
             cd build
             cmake .. -DBUILD_TESTING=ON -G Ninja
