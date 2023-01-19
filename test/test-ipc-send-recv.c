@@ -76,10 +76,12 @@ static int write2_cb_called;
 static void alloc_cb(uv_handle_t* handle,
                      size_t suggested_size,
                      uv_buf_t* buf) {
-  /* we're not actually reading anything so a small buffer is okay */
-  static char slab[8];
-  buf->base = slab;
-  buf->len = sizeof(slab);
+  /* We're not actually reading anything so a small buffer is okay
+   * but it needs to be heap-allocated to appease TSan.
+   */
+  buf->len = 8;
+  buf->base = malloc(buf->len);
+  ASSERT_NOT_NULL(buf->base);
 }
 
 
@@ -90,6 +92,8 @@ static void recv_cb(uv_stream_t* handle,
   uv_pipe_t* pipe;
   int r;
   union handles* recv;
+
+  free(buf->base);
 
   pipe = (uv_pipe_t*) handle;
   ASSERT(pipe == &ctx.channel);
@@ -303,6 +307,8 @@ static void read_cb(uv_stream_t* handle,
   int r;
   union handles* recv;
   uv_write_t* write_req;
+
+  free(rdbuf->base);
 
   if (nread == UV_EOF || nread == UV_ECONNABORTED) {
     return;
