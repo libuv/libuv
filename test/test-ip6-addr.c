@@ -103,7 +103,7 @@ TEST_IMPL(ip6_addr_link_local) {
     fflush(stderr);
 
     ASSERT(0 == uv_ip6_addr(scoped_addr, TEST_PORT, &addr));
-    fprintf(stderr, "Got scope_id 0x%02x\n", addr.sin6_scope_id);
+    fprintf(stderr, "Got scope_id 0x%2x\n", (unsigned)addr.sin6_scope_id);
     fflush(stderr);
     ASSERT(iface_index == addr.sin6_scope_id);
   }
