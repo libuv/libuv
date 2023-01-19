@@ -211,6 +211,12 @@ TEST_IMPL(signal_multiple_loops) {
   // See https://github.com/libuv/libuv/issues/2859
   RETURN_SKIP("QEMU's signal emulation code is notoriously tricky");
 #endif
+#if defined(__TSAN__)
+  /* ThreadSanitizer complains - likely legitimately - about data races
+   * in uv__signal_compare() in src/unix/signal.c but that's pre-existing.
+   */
+  RETURN_SKIP("Fix test under ThreadSanitizer");
+#endif
   uv_thread_t loop_creating_threads[NUM_LOOP_CREATING_THREADS];
   uv_thread_t signal_handling_threads[NUM_SIGNAL_HANDLING_THREADS];
   enum signal_action action;
