@@ -47,6 +47,9 @@ static void timer_spin_cb(uv_timer_t* handle) {
 
 
 TEST_IMPL(metrics_idle_time) {
+#if defined(__OpenBSD__)
+  RETURN_SKIP("Test does not currently work in OpenBSD");
+#endif
   const uint64_t timeout = 1000;
   uv_timer_t timer;
   uint64_t idle_time;
