@@ -1,0 +1,25 @@
+name: CI-docs
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '!docs/code/**'
+      - '.github/workflows/CI-docs.yml'
+
+jobs:
+  docs-src:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip' # caching pip dependencies
+      - run: pip install -r docs/requirements.txt
+      - name: html
+        run: |
+          make -C docs html
+      - name: linkcheck
+        run: |
+          make -C docs linkcheck

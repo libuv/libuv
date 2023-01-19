@@ -126,6 +126,7 @@ EXTRA_DIST = test/fixtures/empty_file \
              img \
              CONTRIBUTING.md \
              LICENSE \
+             LICENSE-extra \
              README.md
 
 

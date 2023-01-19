@@ -731,6 +731,7 @@ configure_file(libuv-static.pc.in libuv-static.pc @ONLY)
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES LICENSE-extra DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(FILES ${PROJECT_BINARY_DIR}/libuv-static.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 install(TARGETS uv_a EXPORT libuvConfig
