@@ -419,6 +419,20 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
 endif()
 
+if(CYGWIN OR MSYS)
+  list(APPEND uv_defines _GNU_SOURCE)
+  list(APPEND uv_sources
+       src/unix/cygwin.c
+       src/unix/bsd-ifaddrs.c
+       src/unix/no-fsevents.c
+       src/unix/no-proctitle.c
+       src/unix/posix-hrtime.c
+       src/unix/posix-poll.c
+       src/unix/procfs-exepath.c
+       src/unix/sysinfo-loadavg.c
+       src/unix/sysinfo-memory.c)
+endif()
+
 if(LIBUV_BUILD_SHARED)
   add_library(uv SHARED ${uv_sources})
   target_compile_definitions(uv
@@ -439,6 +453,7 @@ if(LIBUV_BUILD_SHARED)
     set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
   endif()
   target_link_libraries(uv ${uv_libraries})
+  set_target_properties(uv PROPERTIES OUTPUT_NAME "uv")
 endif()
 
 add_library(uv_a STATIC ${uv_sources})
@@ -455,6 +470,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   set_target_properties(uv_a PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 target_link_libraries(uv_a ${uv_libraries})
+set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")
+if(MSVC)
+  set_target_properties(uv_a PROPERTIES PREFIX "lib")
+endif()
 
 if(LIBUV_BUILD_TESTS)
   # Small hack: use ${uv_test_sources} now to get the runner skeleton,
