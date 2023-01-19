@@ -3778,9 +3778,10 @@ static void test_fs_partial(int doread) {
     uv_fs_req_cleanup(&write_req);
   }
 
-  ASSERT(0 == memcmp(buffer, ctx.data, ctx.size));
-
   ASSERT(0 == uv_thread_join(&thread));
+
+  ASSERT_MEM_EQ(buffer, ctx.data, ctx.size);
+
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
   ASSERT(0 == close(pipe_fds[1]));
