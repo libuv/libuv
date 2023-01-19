@@ -152,6 +152,7 @@ jobs:
           ${{ matrix.config.qemu }} build/uv_run_tests_a
 
   build-bsd:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     name: build-${{ matrix.config.os }}-${{ matrix.config.version }}
 
