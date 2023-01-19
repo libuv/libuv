@@ -24,12 +24,8 @@ jobs:
           mkdir build
           (cd build && ../configure)
       - name: distcheck
-        continue-on-error: true # XXX: allow failure
         run: |
           make -C build distcheck
-      - name: dist
-        run: |
-          make -C build dist
 
   build-android:
     runs-on: ubuntu-latest
