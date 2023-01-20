@@ -153,7 +153,7 @@ jobs:
 
   build-bsd:
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.runner }}
     name: build-${{ matrix.config.os }}-${{ matrix.config.version }}
 
     strategy:
@@ -162,8 +162,8 @@ jobs:
         config:
           # The OS versions supported are specific to the version of the action
           # https://github.com/cross-platform-actions/action/blob/master/changelog.md
-          - { os: freebsd, version: '13.1', install: 'pkg install -y' }
-          - { os: openbsd, version: '7.2',  install: 'pkg_add -I' }
+          - { os: freebsd, version: '13.1', runner: 'ubuntu-latest', install: 'pkg install -y' }
+          - { os: openbsd, version: '7.2',  runner: 'macos-11', install: 'pkg_add -I' }
 
     steps:
       - uses: actions/checkout@v2
