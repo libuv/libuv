@@ -72,8 +72,8 @@ extern char** environ;
 # include <sys/filio.h>
 # include <sys/wait.h>
 # include <sys/param.h>
-# include <sys/cpuset.h>
 # if defined(__FreeBSD__)
+#  include <sys/cpuset.h>
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
@@ -1490,7 +1490,7 @@ uv_pid_t uv_os_getppid(void) {
 }
 
 int uv_cpumask_size(void) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if UV__CPU_AFFINITY_SUPPORTED
   return CPU_SETSIZE;
 #else
   return UV_ENOTSUP;

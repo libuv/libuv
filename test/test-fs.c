@@ -2788,8 +2788,8 @@ TEST_IMPL(fs_lutime) {
   loop = uv_default_loop();
   unlink(path);
   r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r >= 0);
-  ASSERT(req.result >= 0);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(req.result, 0);
   uv_fs_req_cleanup(&req);
   uv_fs_close(loop, &req, r, NULL);
 
@@ -2805,8 +2805,8 @@ TEST_IMPL(fs_lutime) {
         "Symlink creation requires elevated console (with admin rights)");
   }
 #endif
-  ASSERT(s == 0);
-  ASSERT(req.result == 0);
+  ASSERT_EQ(s, 0);
+  ASSERT_EQ(req.result, 0);
   uv_fs_req_cleanup(&req);
 
   /* Test the synchronous version. */
@@ -2820,12 +2820,12 @@ TEST_IMPL(fs_lutime) {
   r = uv_fs_lutime(NULL, &req, symlink_path, atime, mtime, NULL);
 #if (defined(_AIX) && !defined(_AIX71)) ||                                    \
      defined(__MVS__)
-  ASSERT(r == UV_ENOSYS);
+  ASSERT_EQ(r, UV_ENOSYS);
   RETURN_SKIP("lutime is not implemented for z/OS and AIX versions below 7.1");
 #endif
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   lutime_cb(&req);
-  ASSERT(lutime_cb_count == 1);
+  ASSERT_EQ(lutime_cb_count, 1);
 
   /* Test the asynchronous version. */
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 */
@@ -2835,9 +2835,9 @@ TEST_IMPL(fs_lutime) {
   checkme.path = symlink_path;
 
   r = uv_fs_lutime(loop, &req, symlink_path, atime, mtime, lutime_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(lutime_cb_count == 2);
+  ASSERT_EQ(lutime_cb_count, 2);
 
   /* Cleanup. */
   unlink(path);

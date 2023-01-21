@@ -371,7 +371,7 @@ UNUSED static int can_ipv6(void) {
 #endif
 
 #if !defined(__linux__) && \
-    !defined(__FreeBSD__) && \
+    !(defined(__FreeBSD__) && __FreeBSD_version >= 1301000) && \
     !defined(_WIN32)
 # define NO_CPU_AFFINITY \
   "affinity not supported on this platform."

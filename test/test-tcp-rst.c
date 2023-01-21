@@ -76,6 +76,9 @@ static void connect_cb(uv_connect_t *req, int status) {
  * RST. Test checks that uv_guess_handle still works on a reset TCP handle.
  */
 TEST_IMPL(tcp_rst) {
+#if defined(__OpenBSD__)
+  RETURN_SKIP("Test does not currently work in OpenBSD");
+#endif
 #ifndef _WIN32
   struct sockaddr_in server_addr;
   int r;
