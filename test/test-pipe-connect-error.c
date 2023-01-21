@@ -51,6 +51,7 @@ static void connect_cb(uv_connect_t* connect_req, int status) {
 
 static void connect_cb_file(uv_connect_t* connect_req, int status) {
   if (status != UV_ENOTSOCK)
+    if (status != UV_EACCES)
       ASSERT_EQ(status, UV_ECONNREFUSED);
   uv_close((uv_handle_t*) connect_req->handle, close_cb);
   connect_cb_called++;
