@@ -87,4 +87,5 @@ AC_CONFIG_FILES([Makefile libuv.pc])
 AC_CONFIG_LINKS([test/fixtures/empty_file:test/fixtures/empty_file])
 AC_CONFIG_LINKS([test/fixtures/load_error.node:test/fixtures/load_error.node])
 AC_CONFIG_LINKS([test/fixtures/lorem_ipsum.txt:test/fixtures/lorem_ipsum.txt])
+AC_CONFIG_LINKS([test/fixtures/one_file/one_file:test/fixtures/one_file/one_file])
 AC_OUTPUT
