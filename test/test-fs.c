@@ -4445,17 +4445,17 @@ TEST_IMPL(fs_wtf) {
   CloseHandle(file_handle);
 
   r = uv_fs_scandir(NULL, &scandir_req, "test_dir", 0, NULL);
-  ASSERT(r == 1);
-  ASSERT(scandir_req.result == 1);
-  ASSERT(scandir_req.ptr);
+  ASSERT_EQ(r, 1);
+  ASSERT_EQ(scandir_req.result, 1);
+  ASSERT_NOT_NULL(scandir_req.ptr);
   while (UV_EOF != uv_fs_scandir_next(&scandir_req, &dent)) {
     strcpy(test_file_buf, "test_dir\\");
     strcat(test_file_buf, dent.name);
     r = uv_fs_stat(NULL, &stat_req, test_file_buf, NULL);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
   }
   uv_fs_req_cleanup(&scandir_req);
-  ASSERT(!scandir_req.ptr);
+  ASSERT_NULL(scandir_req.ptr);
 
   /* clean-up */
   _wunlink(L"test_dir/hi\xD801\x0037");
