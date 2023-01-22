@@ -160,6 +160,10 @@ Data types
             size_t nentries;
         } uv_dir_t;
 
+.. c:type:: void (*uv_fs_cb)(uv_fs_t* req)
+
+    Callback called when a request is completed asynchronously.
+
 
 Public members
 ^^^^^^^^^^^^^^
@@ -218,7 +222,8 @@ API
 
 .. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`preadv(2)`.
+    Equivalent to :man:`preadv(2)`. If the `offset` argument is `-1`, then
+    the current file offset is used and updated.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
@@ -231,7 +236,8 @@ API
 
 .. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`pwritev(2)`.
+    Equivalent to :man:`pwritev(2)`. If the `offset` argument is `-1`, then
+    the current file offset is used and updated.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
@@ -462,10 +468,6 @@ API
 
         The background story and some more details on these issues can be checked
         `here <https://github.com/nodejs/node/issues/7726>`_.
-
-    .. note::
-      This function is not implemented on Windows XP and Windows Server 2003.
-      On these systems, UV_ENOSYS is returned.
 
     .. versionadded:: 1.8.0
 

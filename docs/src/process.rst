@@ -109,22 +109,54 @@ Data types
     ::
 
         typedef enum {
+            /*
+            * The following four options are mutually-exclusive, and define
+            * the operation to perform for the corresponding file descriptor
+            * in the child process:
+            */
+
+            /*
+            * No file descriptor will be provided (or redirected to
+            * `/dev/null` if it is fd 0, 1 or 2).
+            */
             UV_IGNORE = 0x00,
+
+            /*
+            * Open a new pipe into `data.stream`, per the flags below. The
+            * `data.stream` field must point to a uv_pipe_t object that has
+            * been initialized with `uv_pipe_init(loop, data.stream, ipc);`,
+            * but not yet opened or connected.
+            /*
             UV_CREATE_PIPE = 0x01,
+
+            /*
+            * The child process will be given a duplicate of the parent's
+            * file descriptor given by `data.fd`.
+            */
             UV_INHERIT_FD = 0x02,
+
+            /*
+            * The child process will be given a duplicate of the parent's
+            * file descriptor being used by the stream handle given by
+            * `data.stream`.
+            */
             UV_INHERIT_STREAM = 0x04,
+
             /*
             * When UV_CREATE_PIPE is specified, UV_READABLE_PIPE and UV_WRITABLE_PIPE
             * determine the direction of flow, from the child process' perspective. Both
             * flags may be specified to create a duplex data stream.
             */
             UV_READABLE_PIPE = 0x10,
-            UV_WRITABLE_PIPE = 0x20
+            UV_WRITABLE_PIPE = 0x20,
+
             /*
-             * Open the child pipe handle in overlapped mode on Windows.
-             * On Unix it is silently ignored.
-             */
-            UV_OVERLAPPED_PIPE = 0x40
+            * When UV_CREATE_PIPE is specified, specifying UV_NONBLOCK_PIPE opens the
+            * handle in non-blocking mode in the child. This may cause loss of data,
+            * if the child is not designed to handle to encounter this mode,
+            * but can also be significantly more efficient.
+            */
+            UV_NONBLOCK_PIPE = 0x40
         } uv_stdio_flags;
 
 

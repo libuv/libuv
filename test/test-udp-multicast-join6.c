@@ -33,7 +33,6 @@
 #if defined(__APPLE__)          || \
     defined(_AIX)               || \
     defined(__MVS__)            || \
-    defined(__FreeBSD_kernel__) || \
     defined(__NetBSD__)         || \
     defined(__OpenBSD__)
   #define MULTICAST_ADDR "ff02::1%lo0"
@@ -72,7 +71,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
-  ASSERT(req != NULL);
+  ASSERT_NOT_NULL(req);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
 
@@ -115,11 +114,11 @@ static void cl_recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer. Don't count towards cl_recv_cb_called */
-    ASSERT(addr == NULL);
+    ASSERT_NULL(addr);
     return;
   }
 
-  ASSERT(addr != NULL);
+  ASSERT_NOT_NULL(addr);
   ASSERT(nread == 4);
   ASSERT(!memcmp("PING", buf->base, nread));
 

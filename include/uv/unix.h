@@ -59,15 +59,14 @@
 # include "uv/darwin.h"
 #elif defined(__DragonFly__)       || \
       defined(__FreeBSD__)         || \
-      defined(__FreeBSD_kernel__)  || \
       defined(__OpenBSD__)         || \
       defined(__NetBSD__)
 # include "uv/bsd.h"
 #elif defined(__CYGWIN__) || \
       defined(__MSYS__)   || \
+      defined(__HAIKU__)  || \
+      defined(__QNX__)    || \
       defined(__GNU__)
-# include "uv/posix.h"
-#elif defined(__HAIKU__)
 # include "uv/posix.h"
 #endif
 

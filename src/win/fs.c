@@ -36,6 +36,8 @@
 #include "handle-inl.h"
 #include "fs-fd-hash-inl.h"
 
+#include <winioctl.h>
+
 
 #define UV_FS_FREE_PATHS         0x0002
 #define UV_FS_FREE_PTR           0x0008
@@ -46,7 +48,7 @@
   do {                                                                        \
     if (req == NULL)                                                          \
       return UV_EINVAL;                                                       \
-    uv_fs_req_init(loop, req, subtype, cb);                                   \
+    uv__fs_req_init(loop, req, subtype, cb);                                  \
   }                                                                           \
   while (0)
 
@@ -92,30 +94,24 @@
     return;                                                                 \
   }
 
-#define MILLIONu (1000U * 1000U)
-#define BILLIONu (1000U * 1000U * 1000U)
+#define MILLION ((int64_t) 1000 * 1000)
+#define BILLION ((int64_t) 1000 * 1000 * 1000)
 
-#define FILETIME_TO_UINT(filetime)                                          \
-   (*((uint64_t*) &(filetime)) - (uint64_t) 116444736 * BILLIONu)
-
-#define FILETIME_TO_TIME_T(filetime)                                        \
-   (FILETIME_TO_UINT(filetime) / (10u * MILLIONu))
-
-#define FILETIME_TO_TIME_NS(filetime, secs)                                 \
-   ((FILETIME_TO_UINT(filetime) - (secs * (uint64_t) 10 * MILLIONu)) * 100U)
-
-#define FILETIME_TO_TIMESPEC(ts, filetime)                                  \
-   do {                                                                     \
-     (ts).tv_sec = (long) FILETIME_TO_TIME_T(filetime);                     \
-     (ts).tv_nsec = (long) FILETIME_TO_TIME_NS(filetime, (ts).tv_sec);      \
-   } while(0)
+static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
+  filetime -= 116444736 * BILLION;
+  ts->tv_sec = (long) (filetime / (10 * MILLION));
+  ts->tv_nsec = (long) ((filetime - ts->tv_sec * 10 * MILLION) * 100U);
+  if (ts->tv_nsec < 0) {
+    ts->tv_sec -= 1;
+    ts->tv_nsec += 1e9;
+  }
+}
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    uint64_t bigtime = ((uint64_t) ((time) * (uint64_t) 10 * MILLIONu)) +   \
-                       (uint64_t) 116444736 * BILLIONu;                     \
-    (filetime_ptr)->dwLowDateTime = bigtime & 0xFFFFFFFF;                   \
-    (filetime_ptr)->dwHighDateTime = bigtime >> 32;                         \
+    int64_t bigtime = ((time) * 10 * MILLION + 116444736 * BILLION);        \
+    (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
+    (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
 
 #define IS_SLASH(c) ((c) == L'\\' || (c) == L'/')
@@ -138,7 +134,7 @@ static int uv__file_symlink_usermode_flag = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGE
 static DWORD uv__allocation_granularity;
 
 
-void uv_fs_init(void) {
+void uv__fs_init(void) {
   SYSTEM_INFO system_info;
 
   GetSystemInfo(&system_info);
@@ -292,7 +288,7 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
 
 
 
-INLINE static void uv_fs_req_init(uv_loop_t* loop, uv_fs_t* req,
+INLINE static void uv__fs_req_init(uv_loop_t* loop, uv_fs_t* req,
     uv_fs_type fs_type, const uv_fs_cb cb) {
   uv__once_init();
   UV_REQ_INIT(req, UV_FS);
@@ -859,7 +855,7 @@ void fs__read_filemap(uv_fs_t* req, struct uv__fd_info_s* fd_info) {
   void* view;
 
   if (rw_flags == UV_FS_O_WRONLY) {
-    SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
+    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
     return;
   }
   if (fd_info->is_directory) {
@@ -1013,7 +1009,11 @@ void fs__read(uv_fs_t* req) {
     SET_REQ_RESULT(req, bytes);
   } else {
     error = GetLastError();
-    if (error == ERROR_HANDLE_EOF) {
+    if (error == ERROR_ACCESS_DENIED) {
+      error = ERROR_INVALID_FLAGS;
+    }
+
+    if (error == ERROR_HANDLE_EOF || error == ERROR_BROKEN_PIPE) {
       SET_REQ_RESULT(req, bytes);
     } else {
       SET_REQ_WIN32_ERROR(req, error);
@@ -1037,7 +1037,7 @@ void fs__write_filemap(uv_fs_t* req, HANDLE file,
   FILETIME ft;
 
   if (rw_flags == UV_FS_O_RDONLY) {
-    SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
+    SET_REQ_WIN32_ERROR(req, ERROR_INVALID_FLAGS);
     return;
   }
   if (fd_info->is_directory) {
@@ -1153,6 +1153,7 @@ void fs__write(uv_fs_t* req) {
   OVERLAPPED overlapped, *overlapped_ptr;
   LARGE_INTEGER offset_;
   DWORD bytes;
+  DWORD error;
   int result;
   unsigned int index;
   LARGE_INTEGER original_position;
@@ -1212,7 +1213,13 @@ void fs__write(uv_fs_t* req) {
   if (result || bytes > 0) {
     SET_REQ_RESULT(req, bytes);
   } else {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
+    error = GetLastError();
+
+    if (error == ERROR_ACCESS_DENIED) {
+      error = ERROR_INVALID_FLAGS;
+    }
+
+    SET_REQ_WIN32_ERROR(req, error);
   }
 }
 
@@ -1319,7 +1326,8 @@ void fs__mkdir(uv_fs_t* req) {
     SET_REQ_RESULT(req, 0);
   } else {
     SET_REQ_WIN32_ERROR(req, GetLastError());
-    if (req->sys_errno_ == ERROR_INVALID_NAME)
+    if (req->sys_errno_ == ERROR_INVALID_NAME ||
+        req->sys_errno_ == ERROR_DIRECTORY)
       req->result = UV_EINVAL;
   }
 }
@@ -1338,7 +1346,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   uint64_t v;
   char* path;
   
-  path = req->path;
+  path = (char*)req->path;
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
   if (len < num_x || wcsncmp(ep - num_x, L"XXXXXX", num_x)) {
@@ -1787,10 +1795,35 @@ void fs__closedir(uv_fs_t* req) {
 INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     int do_lstat) {
   int target_length = 0;
+  FILE_FS_DEVICE_INFORMATION device_info;
   FILE_ALL_INFORMATION file_info;
   FILE_FS_VOLUME_INFORMATION volume_info;
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
+
+  nt_status = pNtQueryVolumeInformationFile(handle,
+                                            &io_status,
+                                            &device_info,
+                                            sizeof device_info,
+                                            FileFsDeviceInformation);
+
+  /* Buffer overflow (a warning status code) is expected here. */
+  if (NT_ERROR(nt_status)) {
+    SetLastError(pRtlNtStatusToDosError(nt_status));
+    return -1;
+  }
+
+  /* If it's NUL device set fields as reasonable as possible and return. */
+  if (device_info.DeviceType == FILE_DEVICE_NULL) {
+    memset(statbuf, 0, sizeof(uv_stat_t));
+    statbuf->st_mode = _S_IFCHR;
+    statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
+                        ((_S_IREAD | _S_IWRITE) >> 6);
+    statbuf->st_nlink = 1;
+    statbuf->st_blksize = 4096;    
+    statbuf->st_rdev = FILE_DEVICE_NULL << 16;
+    return 0;
+  }
 
   nt_status = pNtQueryInformationFile(handle,
                                       &io_status,
@@ -1879,10 +1912,14 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
                         ((_S_IREAD | _S_IWRITE) >> 6);
 
-  FILETIME_TO_TIMESPEC(statbuf->st_atim, file_info.BasicInformation.LastAccessTime);
-  FILETIME_TO_TIMESPEC(statbuf->st_ctim, file_info.BasicInformation.ChangeTime);
-  FILETIME_TO_TIMESPEC(statbuf->st_mtim, file_info.BasicInformation.LastWriteTime);
-  FILETIME_TO_TIMESPEC(statbuf->st_birthtim, file_info.BasicInformation.CreationTime);
+  uv__filetime_to_timespec(&statbuf->st_atim,
+                           file_info.BasicInformation.LastAccessTime.QuadPart);
+  uv__filetime_to_timespec(&statbuf->st_ctim,
+                           file_info.BasicInformation.ChangeTime.QuadPart);
+  uv__filetime_to_timespec(&statbuf->st_mtim,
+                           file_info.BasicInformation.LastWriteTime.QuadPart);
+  uv__filetime_to_timespec(&statbuf->st_birthtim,
+                           file_info.BasicInformation.CreationTime.QuadPart);
 
   statbuf->st_ino = file_info.InternalInformation.IndexNumber.QuadPart;
 
@@ -1958,8 +1995,9 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                        NULL);
 
   if (handle == INVALID_HANDLE_VALUE)
-    ret = GetLastError();
-  else if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
+    return GetLastError();
+
+  if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
     ret = GetLastError();
   else
     ret = 0;
@@ -1992,6 +2030,37 @@ INLINE static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
 }
 
 
+INLINE static int fs__fstat_handle(int fd, HANDLE handle, uv_stat_t* statbuf) {
+  DWORD file_type;
+
+  /* Each file type is processed differently. */
+  file_type = uv_guess_handle(fd);
+  switch (file_type) {
+  /* Disk files use the existing logic from fs__stat_handle. */
+  case UV_FILE:
+    return fs__stat_handle(handle, statbuf, 0);
+
+  /* Devices and pipes are processed identically. There is no more information
+   * for them from any API. Fields are set as reasonably as possible and the
+   * function returns. */
+  case UV_TTY:
+  case UV_NAMED_PIPE:
+    memset(statbuf, 0, sizeof(uv_stat_t));
+    statbuf->st_mode = file_type == UV_TTY ? _S_IFCHR : _S_IFIFO;
+    statbuf->st_nlink = 1;
+    statbuf->st_rdev = (file_type == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16;
+    statbuf->st_ino = (uint64_t) handle;
+    return 0;
+
+  /* If file type is unknown it is an error. */
+  case UV_UNKNOWN_HANDLE:
+  default:
+    SetLastError(ERROR_INVALID_HANDLE);
+    return -1;
+  }
+}
+
+
 static void fs__stat(uv_fs_t* req) {
   fs__stat_prepare_path(req->file.pathw);
   fs__stat_impl(req, 0);
@@ -2017,7 +2086,7 @@ static void fs__fstat(uv_fs_t* req) {
     return;
   }
 
-  if (fs__stat_handle(handle, &req->statbuf, 0) != 0) {
+  if (fs__fstat_handle(fd, handle, &req->statbuf) != 0) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     return;
   }
@@ -2377,13 +2446,13 @@ INLINE static DWORD fs__utime_impl_from_path(WCHAR* path,
                        flags,
                        NULL);
 
-  if (handle == INVALID_HANDLE_VALUE) {
+  if (handle == INVALID_HANDLE_VALUE)
+    return GetLastError();
+
+  if (fs__utime_handle(handle, atime, mtime) != 0)
     ret = GetLastError();
-  } else if (fs__utime_handle(handle, atime, mtime) != 0) {
-    ret = GetLastError();
-  } else {
+  else
     ret = 0;
-  }
 
   CloseHandle(handle);
   return ret;
@@ -2681,7 +2750,10 @@ static void fs__readlink(uv_fs_t* req) {
   }
 
   if (fs__readlink_handle(handle, (char**) &req->ptr, NULL) != 0) {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
+    DWORD error = GetLastError();
+    SET_REQ_WIN32_ERROR(req, error);
+    if (error == ERROR_NOT_A_REPARSE_POINT)
+      req->result = UV_EINVAL;
     CloseHandle(handle);
     return;
   }

@@ -1,0 +1,14 @@
+version: 2
+
+sphinx:
+  builder: html
+  configuration: null
+  fail_on_warning: false
+
+build:
+  tools:
+    python: "3.9"
+
+python:
+  install:
+    - requirements: docs/requirements.txt

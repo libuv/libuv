@@ -1,0 +1,32 @@
+name: ci-sample
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!.**'
+      - '.github/workflows/CI-sample.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v2
+      - name: setup
+        run: cmake -E make_directory ${{runner.workspace}}/libuv/docs/code/build
+      - name: configure
+        # you may like use Ninja on unix-like OS, but for windows, the only easy way is to use Visual Studio if you want Ninja
+        run: cmake ..
+        working-directory: ${{runner.workspace}}/libuv/docs/code/build
+      - name: build
+        run: cmake --build .
+        working-directory: ${{runner.workspace}}/libuv/docs/code/build

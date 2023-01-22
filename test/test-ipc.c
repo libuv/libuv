@@ -45,8 +45,6 @@ static int close_cb_called;
 static int connection_accepted;
 static int tcp_conn_read_cb_called;
 static int tcp_conn_write_cb_called;
-static int closed_handle_data_read;
-static int closed_handle_write;
 static int send_zero_write;
 
 typedef struct {
@@ -57,15 +55,6 @@ typedef struct {
 
 #define CONN_COUNT 100
 #define BACKLOG 128
-#define LARGE_SIZE 100000
-
-static uv_buf_t large_buf;
-static char buffer[LARGE_SIZE];
-static uv_write_t write_reqs[300];
-static int write_reqs_completed;
-
-static unsigned int write_until_data_queued(void);
-static void send_handle_and_close(void);
 
 
 static void close_server_conn_cb(uv_handle_t* handle) {
@@ -203,7 +192,7 @@ static void on_read(uv_stream_t* handle,
     /* Make sure that the expected data is correctly multiplexed. */
     ASSERT_MEM_EQ("hello\n", buf->base, nread);
 
-    outbuf = uv_buf_init("world\n", 6);
+    outbuf = uv_buf_init("foobar\n", 7);
     r = uv_write(&write_req, (uv_stream_t*)pipe, &outbuf, 1, NULL);
     ASSERT_EQ(r, 0);
 
@@ -417,26 +406,6 @@ static void on_read_connection(uv_stream_t* handle,
 }
 
 
-#ifndef _WIN32
-static void on_read_closed_handle(uv_stream_t* handle,
-                                  ssize_t nread,
-                                  const uv_buf_t* buf) {
-  if (nread == 0 || nread == UV_EOF) {
-    free(buf->base);
-    return;
-  }
-
-  if (nread < 0) {
-    printf("error recving on channel: %s\n", uv_strerror(nread));
-    abort();
-  }
-
-  closed_handle_data_read += nread;
-  free(buf->base);
-}
-#endif
-
-
 static void on_read_send_zero(uv_stream_t* handle,
                               ssize_t nread,
                               const uv_buf_t* buf) {
@@ -497,15 +466,6 @@ TEST_IMPL(ipc_tcp_connection) {
   ASSERT_EQ(exit_cb_called, 1);
   return r;
 }
-
-#ifndef _WIN32
-TEST_IMPL(ipc_closed_handle) {
-  int r;
-  r = run_ipc_test("ipc_helper_closed_handle", on_read_closed_handle);
-  ASSERT_EQ(r, 0);
-  return 0;
-}
-#endif
 
 
 #ifdef _WIN32
@@ -602,23 +562,6 @@ static void tcp_connection_write_cb(uv_write_t* req, int status) {
 }
 
 
-static void closed_handle_large_write_cb(uv_write_t* req, int status) {
-  ASSERT_EQ(status, 0);
-  ASSERT(closed_handle_data_read = LARGE_SIZE);
-  if (++write_reqs_completed == ARRAY_SIZE(write_reqs)) {
-    write_reqs_completed = 0;
-    if (write_until_data_queued() > 0)
-      send_handle_and_close();
-  }
-}
-
-
-static void closed_handle_write_cb(uv_write_t* req, int status) {
-  ASSERT_EQ(status, UV_EBADF);
-  closed_handle_write = 1;
-}
-
-
 static void send_zero_write_cb(uv_write_t* req, int status) {
   ASSERT_EQ(status, 0);
   send_zero_write++;
@@ -693,6 +636,11 @@ static void ipc_on_connection(uv_stream_t* server, int status) {
 }
 
 
+static void close_and_free_cb(uv_handle_t* handle) {
+  close_cb_called++;
+  free(handle);
+}
+
 static void ipc_on_connection_tcp_conn(uv_stream_t* server, int status) {
   int r;
   uv_buf_t buf;
@@ -721,7 +669,7 @@ static void ipc_on_connection_tcp_conn(uv_stream_t* server, int status) {
                     on_tcp_child_process_read);
   ASSERT_EQ(r, 0);
 
-  uv_close((uv_handle_t*)conn, close_cb);
+  uv_close((uv_handle_t*)conn, close_and_free_cb);
 }
 
 
@@ -829,76 +777,6 @@ int ipc_helper_tcp_connection(void) {
   MAKE_VALGRIND_HAPPY();
   return 0;
 }
-
-static unsigned int write_until_data_queued() {
-  unsigned int i;
-  int r;
-
-  i = 0;
-  do {
-    r = uv_write(&write_reqs[i],
-                 (uv_stream_t*)&channel,
-                 &large_buf,
-                 1,
-                 closed_handle_large_write_cb);
-    ASSERT_EQ(r, 0);
-    i++;
-  } while (channel.write_queue_size == 0 &&
-           i < ARRAY_SIZE(write_reqs));
-
-  return channel.write_queue_size;
-}
-
-static void send_handle_and_close() {
-  int r;
-  struct sockaddr_in addr;
-
-  r = uv_tcp_init(uv_default_loop(), &tcp_server);
-  ASSERT_EQ(r, 0);
-
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
-
-  r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
-
-  r = uv_write2(&write_req,
-                (uv_stream_t*)&channel,
-                &large_buf,
-                1,
-                (uv_stream_t*)&tcp_server,
-                closed_handle_write_cb);
-  ASSERT_EQ(r, 0);
-
-  uv_close((uv_handle_t*)&tcp_server, NULL);
-}
-
-int ipc_helper_closed_handle(void) {
-  int r;
-
-  memset(buffer, '.', LARGE_SIZE);
-  large_buf = uv_buf_init(buffer, LARGE_SIZE);
-
-  r = uv_pipe_init(uv_default_loop(), &channel, 1);
-  ASSERT_EQ(r, 0);
-
-  uv_pipe_open(&channel, 0);
-
-  ASSERT_EQ(1, uv_is_readable((uv_stream_t*) &channel));
-  ASSERT_EQ(1, uv_is_writable((uv_stream_t*) &channel));
-  ASSERT_EQ(0, uv_is_closing((uv_handle_t*) &channel));
-
-  if (write_until_data_queued() > 0)
-    send_handle_and_close();
-
-  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
-
-  ASSERT_EQ(closed_handle_write, 1);
-
-  MAKE_VALGRIND_HAPPY();
-  return 0;
-}
-
 
 int ipc_helper_bind_twice(void) {
   /*

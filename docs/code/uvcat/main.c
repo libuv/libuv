@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <uv.h>
 
 void on_read(uv_fs_t *req);

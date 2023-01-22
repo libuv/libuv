@@ -29,12 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #if !defined(_WIN32)
 # include <sys/time.h>
@@ -52,11 +47,12 @@
 
 #define TEST_PORT 9123
 #define TEST_PORT_2 9124
+#define TEST_PORT_3 9125
 
 #ifdef _WIN32
-# define TEST_PIPENAME "\\\\?\\pipe\\uv-test"
-# define TEST_PIPENAME_2 "\\\\?\\pipe\\uv-test2"
-# define TEST_PIPENAME_3 "\\\\?\\pipe\\uv-test3"
+# define TEST_PIPENAME "\\\\.\\pipe\\uv-test"
+# define TEST_PIPENAME_2 "\\\\.\\pipe\\uv-test2"
+# define TEST_PIPENAME_3 "\\\\.\\pipe\\uv-test3"
 #else
 # define TEST_PIPENAME "/tmp/uv-test-sock"
 # define TEST_PIPENAME_2 "/tmp/uv-test-sock2"
@@ -113,8 +109,8 @@ typedef enum {
 
 #define ASSERT_BASE(a, operator, b, type, conv)              \
  do {                                                        \
-  type eval_a = (type) (a);                                  \
-  type eval_b = (type) (b);                                  \
+  volatile type eval_a = (type) (a);                         \
+  volatile type eval_b = (type) (b);                         \
   if (!(eval_a operator eval_b)) {                           \
     fprintf(stderr,                                          \
             "Assertion failed in %s on line %d: `%s %s %s` " \
@@ -196,22 +192,26 @@ typedef enum {
   }                                                            \
  } while (0)
 
-#define ASSERT_INT_BASE(a, operator, b, type, conv)          \
- ASSERT_BASE(a, operator, b, type, conv)
+#define ASSERT_EQ(a, b) ASSERT_BASE(a, ==, b, int64_t, PRId64)
+#define ASSERT_GE(a, b) ASSERT_BASE(a, >=, b, int64_t, PRId64)
+#define ASSERT_GT(a, b) ASSERT_BASE(a, >, b, int64_t, PRId64)
+#define ASSERT_LE(a, b) ASSERT_BASE(a, <=, b, int64_t, PRId64)
+#define ASSERT_LT(a, b) ASSERT_BASE(a, <, b, int64_t, PRId64)
+#define ASSERT_NE(a, b) ASSERT_BASE(a, !=, b, int64_t, PRId64)
 
-#define ASSERT_EQ(a, b) ASSERT_INT_BASE(a, ==, b, int64_t, PRId64)
-#define ASSERT_GE(a, b) ASSERT_INT_BASE(a, >=, b, int64_t, PRId64)
-#define ASSERT_GT(a, b) ASSERT_INT_BASE(a, >, b, int64_t, PRId64)
-#define ASSERT_LE(a, b) ASSERT_INT_BASE(a, <=, b, int64_t, PRId64)
-#define ASSERT_LT(a, b) ASSERT_INT_BASE(a, <, b, int64_t, PRId64)
-#define ASSERT_NE(a, b) ASSERT_INT_BASE(a, !=, b, int64_t, PRId64)
+#define ASSERT_UINT64_EQ(a, b) ASSERT_BASE(a, ==, b, uint64_t, PRIu64)
+#define ASSERT_UINT64_GE(a, b) ASSERT_BASE(a, >=, b, uint64_t, PRIu64)
+#define ASSERT_UINT64_GT(a, b) ASSERT_BASE(a, >, b, uint64_t, PRIu64)
+#define ASSERT_UINT64_LE(a, b) ASSERT_BASE(a, <=, b, uint64_t, PRIu64)
+#define ASSERT_UINT64_LT(a, b) ASSERT_BASE(a, <, b, uint64_t, PRIu64)
+#define ASSERT_UINT64_NE(a, b) ASSERT_BASE(a, !=, b, uint64_t, PRIu64)
 
-#define ASSERT_UINT64_EQ(a, b) ASSERT_INT_BASE(a, ==, b, uint64_t, PRIu64)
-#define ASSERT_UINT64_GE(a, b) ASSERT_INT_BASE(a, >=, b, uint64_t, PRIu64)
-#define ASSERT_UINT64_GT(a, b) ASSERT_INT_BASE(a, >, b, uint64_t, PRIu64)
-#define ASSERT_UINT64_LE(a, b) ASSERT_INT_BASE(a, <=, b, uint64_t, PRIu64)
-#define ASSERT_UINT64_LT(a, b) ASSERT_INT_BASE(a, <, b, uint64_t, PRIu64)
-#define ASSERT_UINT64_NE(a, b) ASSERT_INT_BASE(a, !=, b, uint64_t, PRIu64)
+#define ASSERT_DOUBLE_EQ(a, b) ASSERT_BASE(a, ==, b, double, "f")
+#define ASSERT_DOUBLE_GE(a, b) ASSERT_BASE(a, >=, b, double, "f")
+#define ASSERT_DOUBLE_GT(a, b) ASSERT_BASE(a, >, b, double, "f")
+#define ASSERT_DOUBLE_LE(a, b) ASSERT_BASE(a, <=, b, double, "f")
+#define ASSERT_DOUBLE_LT(a, b) ASSERT_BASE(a, <, b, double, "f")
+#define ASSERT_DOUBLE_NE(a, b) ASSERT_BASE(a, !=, b, double, "f")
 
 #define ASSERT_STR_EQ(a, b) \
   ASSERT_BASE_STR(strcmp(a, b) == 0, a, == , b, char*, "s")
@@ -272,7 +272,7 @@ const char* fmt(double d);
 /* Reserved test exit codes. */
 enum test_status {
   TEST_OK = 0,
-  TEST_SKIP
+  TEST_SKIP = 7
 };
 
 #define RETURN_OK()                                                           \
@@ -368,6 +368,13 @@ UNUSED static int can_ipv6(void) {
 #elif defined(__CYGWIN__)
 # define NO_SELF_CONNECT \
   "Cygwin runtime hangs on listen+connect in same process."
+#endif
+
+#if !defined(__linux__) && \
+    !(defined(__FreeBSD__) && __FreeBSD_version >= 1301000) && \
+    !defined(_WIN32)
+# define NO_CPU_AFFINITY \
+  "affinity not supported on this platform."
 #endif
 
 #endif /* TASK_H_ */
