@@ -1,0 +1,122 @@
+name: CI-win
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/unix/**'
+      - '!.**'
+      - '.github/workflows/CI-win.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  build-windows:
+    runs-on: windows-${{ matrix.config.server }}
+    name: build-${{ join(matrix.config.*, '-') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {toolchain: Visual Studio 16 2019, arch: Win32, server: 2019}
+          - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
+          - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Envinfo
+        run: npx envinfo
+      - name: Build
+        shell: cmd
+        run:
+          cmake -S . -B build -DBUILD_TESTING=ON
+            -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
+            ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' || '' }}
+
+          cmake --build build --config RelWithDebInfo
+
+          ls -l build
+      - name: platform_output
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests.exe platform_output
+      - name: platform_output_a
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests_a.exe platform_output
+      - name: Test
+        # only valid with libuv-master with the fix for
+        # https://github.com/libuv/leps/blob/master/005-windows-handles-not-fd.md
+        if: ${{ matrix.config.config != 'ASAN' }}
+        shell: cmd
+        run:
+          cd build
+
+          ctest -C RelWithDebInfo -V
+      - name: Test only static
+        if: ${{ matrix.config.config == 'ASAN' }}
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests_a.exe
+
+  build-mingw:
+    runs-on: ubuntu-latest
+    name: build-mingw-${{ matrix.config.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {arch: i686,   server: 2022, libgcc: dw2 }
+          - {arch: x86_64, server: 2022, libgcc: seh }
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install mingw32 environment
+        run: |
+          sudo apt update
+          sudo apt install mingw-w64 ninja-build -y
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DHOST_ARCH=${{ matrix.config.arch }} -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
+          cmake --build build
+          cmake --install build --prefix "`pwd`/build/usr"
+          mkdir -p build/usr/test build/usr/bin
+          cp -av test/fixtures build/usr/test
+          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe \
+             `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libgcc_s_${{ matrix.config.libgcc }}-1.dll` \
+             `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libwinpthread-1.dll` \
+             `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \
+             build/usr/bin
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mingw-${{ matrix.config.arch }}
+          path: build/usr/**/*
+          retention-days: 2
+
+  test-mingw:
+    runs-on: windows-${{ matrix.config.server }}
+    name: test-mingw-${{ matrix.config.arch }}
+    needs: build-mingw
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {arch: i686,   server: 2022}
+          - {arch: x86_64, server: 2022}
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: mingw-${{ matrix.config.arch }}
+      - name: Test
+        shell: cmd
+        run: |
+          bin\uv_run_tests_a.exe
+      - name: Test
+        shell: cmd
+        run: |
+          bin\uv_run_tests.exe

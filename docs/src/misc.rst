@@ -119,7 +119,10 @@ Data types
         } uv_rusage_t;
 
     Members marked with `(X)` are unsupported on Windows.
-    See :man:`getrusage(2)` for supported fields on Unix
+    See :man:`getrusage(2)` for supported fields on UNIX-like platforms.
+
+    The maximum resident set size is reported in kilobytes, the unit most
+    platforms use natively.
 
 .. c:type:: uv_cpu_info_t
 
@@ -312,7 +315,7 @@ API
 
 .. c:function:: int uv_uptime(double* uptime)
 
-    Gets the current system uptime.
+    Gets the current system uptime. Depending on the system full or fractional seconds are returned.
 
 .. c:function:: int uv_getrusage(uv_rusage_t* rusage)
 
@@ -334,14 +337,40 @@ API
 
     .. versionadded:: 1.16.0
 
+.. c:function:: unsigned int uv_available_parallelism(void)
+
+    Returns an estimate of the default amount of parallelism a program should
+    use. Always returns a non-zero value.
+
+    On Linux, inspects the calling thread's CPU affinity mask to determine if
+    it has been pinned to specific CPUs.
+
+    On Windows, the available parallelism may be underreported on systems with
+    more than 64 logical CPUs.
+
+    On other platforms, reports the number of CPUs that the operating system
+    considers to be online.
+
+    .. versionadded:: 1.44.0
+
 .. c:function:: int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count)
 
     Gets information about the CPUs on the system. The `cpu_infos` array will
     have `count` elements and needs to be freed with :c:func:`uv_free_cpu_info`.
 
+    Use :c:func:`uv_available_parallelism` if you need to know how many CPUs
+    are available for threads or child processes.
+
 .. c:function:: void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count)
 
     Frees the `cpu_infos` array previously allocated with :c:func:`uv_cpu_info`.
+
+.. c:function:: int uv_cpumask_size(void)
+
+    Returns the maximum size of the mask used for process/thread affinities,
+    or ``UV_ENOTSUP`` if affinities are not supported on the current platform.
+
+    .. versionadded:: 1.45.0
 
 .. c:function:: int uv_interface_addresses(uv_interface_address_t** addresses, int* count)
 
@@ -376,6 +405,10 @@ API
 .. c:function:: int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size)
 
     Convert a binary structure containing an IPv6 address to a string.
+
+.. c:function:: int uv_ip_name(const struct sockaddr *src, char *dst, size_t size)
+
+    Convert a binary structure containing an IPv4 address or an IPv6 address to a string.
 
 .. c:function:: int uv_inet_ntop(int af, const void* src, char* dst, size_t size)
 .. c:function:: int uv_inet_pton(int af, const char* src, void* dst)
@@ -518,15 +551,17 @@ API
 
 .. c:function:: uint64_t uv_get_free_memory(void)
 
-    Gets the amount of free memory available in the system, as reported by the kernel (in bytes).
+    Gets the amount of free memory available in the system, as reported by
+    the kernel (in bytes). Returns 0 when unknown.
 
 .. c:function:: uint64_t uv_get_total_memory(void)
 
     Gets the total amount of physical memory in the system (in bytes).
+    Returns 0 when unknown.
 
 .. c:function:: uint64_t uv_get_constrained_memory(void)
 
-    Gets the amount of memory available to the process (in bytes) based on
+    Gets the total amount of memory available to the process (in bytes) based on
     limits imposed by the OS. If there is no such constraint, or the constraint
     is unknown, `0` is returned. Note that it is not unusual for this value to
     be less than or greater than :c:func:`uv_get_total_memory`.
@@ -536,6 +571,20 @@ API
         on cgroups if it is present, and on z/OS based on RLIMIT_MEMLIMIT.
 
     .. versionadded:: 1.29.0
+
+.. c:function:: uint64_t uv_get_available_memory(void)
+
+    Gets the amount of free memory that is still available to the process (in bytes).
+    This differs from :c:func:`uv_get_free_memory` in that it takes into account any
+    limits imposed by the OS. If there is no such constraint, or the constraint
+    is unknown, the amount returned will be identical to :c:func:`uv_get_free_memory`.
+
+    .. note::
+        This function currently only returns a value that is different from
+        what :c:func:`uv_get_free_memory` reports on Linux, based
+        on cgroups if it is present.
+
+    .. versionadded:: 1.45.0
 
 .. c:function:: uint64_t uv_hrtime(void)
 
@@ -732,7 +781,7 @@ API
       :man:`sysctl(2)`.
     - FreeBSD: `getrandom(2) <https://www.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2>_`,
       or `/dev/urandom` after reading from `/dev/random` once.
-    - NetBSD: `KERN_ARND` `sysctl(3) <https://netbsd.gw.com/cgi-bin/man-cgi?sysctl+3+NetBSD-current>_`
+    - NetBSD: `KERN_ARND` `sysctl(7) <https://man.netbsd.org/sysctl.7>_`
     - macOS, OpenBSD: `getentropy(2) <https://man.openbsd.org/getentropy.2>_`
       if available, or `/dev/urandom` after reading from `/dev/random` once.
     - AIX: `/dev/random`.

@@ -11,17 +11,17 @@ int main() {
 
     printf("Number of interfaces: %d\n", count);
     while (i--) {
-        uv_interface_address_t interface = info[i];
+        uv_interface_address_t interface_a = info[i];
 
-        printf("Name: %s\n", interface.name);
-        printf("Internal? %s\n", interface.is_internal ? "Yes" : "No");
+        printf("Name: %s\n", interface_a.name);
+        printf("Internal? %s\n", interface_a.is_internal ? "Yes" : "No");
         
-        if (interface.address.address4.sin_family == AF_INET) {
-            uv_ip4_name(&interface.address.address4, buf, sizeof(buf));
+        if (interface_a.address.address4.sin_family == AF_INET) {
+            uv_ip4_name(&interface_a.address.address4, buf, sizeof(buf));
             printf("IPv4 address: %s\n", buf);
         }
-        else if (interface.address.address4.sin_family == AF_INET6) {
-            uv_ip6_name(&interface.address.address6, buf, sizeof(buf));
+        else if (interface_a.address.address4.sin_family == AF_INET6) {
+            uv_ip6_name(&interface_a.address.address6, buf, sizeof(buf));
             printf("IPv6 address: %s\n", buf);
         }
 

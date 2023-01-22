@@ -76,10 +76,12 @@ static int write2_cb_called;
 static void alloc_cb(uv_handle_t* handle,
                      size_t suggested_size,
                      uv_buf_t* buf) {
-  /* we're not actually reading anything so a small buffer is okay */
-  static char slab[8];
-  buf->base = slab;
-  buf->len = sizeof(slab);
+  /* We're not actually reading anything so a small buffer is okay
+   * but it needs to be heap-allocated to appease TSan.
+   */
+  buf->len = 8;
+  buf->base = malloc(buf->len);
+  ASSERT_NOT_NULL(buf->base);
 }
 
 
@@ -90,6 +92,8 @@ static void recv_cb(uv_stream_t* handle,
   uv_pipe_t* pipe;
   int r;
   union handles* recv;
+
+  free(buf->base);
 
   pipe = (uv_pipe_t*) handle;
   ASSERT(pipe == &ctx.channel);
@@ -304,12 +308,18 @@ static void read_cb(uv_stream_t* handle,
   union handles* recv;
   uv_write_t* write_req;
 
+  free(rdbuf->base);
+
   if (nread == UV_EOF || nread == UV_ECONNABORTED) {
     return;
   }
 
+  ASSERT_GE(nread, 0);
+
   pipe = (uv_pipe_t*) handle;
-  do {
+  ASSERT_EQ(pipe, &ctx2.channel);
+
+  while (uv_pipe_pending_count(pipe) > 0) {
     if (++read_cb_count == 2) {
       recv = &ctx2.recv;
       write_req = &ctx2.write_req;
@@ -317,10 +327,6 @@ static void read_cb(uv_stream_t* handle,
       recv = &ctx2.recv2;
       write_req = &ctx2.write_req2;
     }
-
-    ASSERT(pipe == &ctx2.channel);
-    ASSERT(nread >= 0);
-    ASSERT(uv_pipe_pending_count(pipe) > 0);
 
     pending = uv_pipe_pending_type(pipe);
     ASSERT(pending == UV_NAMED_PIPE || pending == UV_TCP);
@@ -344,7 +350,7 @@ static void read_cb(uv_stream_t* handle,
                   &recv->stream,
                   write2_cb);
     ASSERT(r == 0);
-  } while (uv_pipe_pending_count(pipe) > 0);
+  }
 }
 
 static void send_recv_start(void) {

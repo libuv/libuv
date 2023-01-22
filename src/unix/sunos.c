@@ -65,9 +65,24 @@
 
 
 int uv__platform_loop_init(uv_loop_t* loop) {
-  loop->fs_fd = -1;
+  int err;
+  int fd;
 
-  return uv__epoll_init(loop);
+  loop->fs_fd = -1;
+  loop->backend_fd = -1;
+
+  fd = port_create();
+  if (fd == -1)
+    return UV__ERR(errno);
+
+  err = uv__cloexec(fd, 1);
+  if (err) {
+    uv__close(fd);
+    return err;
+  }
+  loop->backend_fd = fd;
+
+  return 0;
 }
 
 
@@ -93,6 +108,265 @@ int uv__io_fork(uv_loop_t* loop) {
 #endif
   uv__platform_loop_delete(loop);
   return uv__platform_loop_init(loop);
+}
+
+
+void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
+  struct port_event* events;
+  uintptr_t i;
+  uintptr_t nfds;
+
+  assert(loop->watchers != NULL);
+  assert(fd >= 0);
+
+  events = (struct port_event*) loop->watchers[loop->nwatchers];
+  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
+  if (events == NULL)
+    return;
+
+  /* Invalidate events with same file descriptor */
+  for (i = 0; i < nfds; i++)
+    if ((int) events[i].portev_object == fd)
+      events[i].portev_object = -1;
+}
+
+
+int uv__io_check_fd(uv_loop_t* loop, int fd) {
+  if (port_associate(loop->backend_fd, PORT_SOURCE_FD, fd, POLLIN, 0))
+    return UV__ERR(errno);
+
+  if (port_dissociate(loop->backend_fd, PORT_SOURCE_FD, fd)) {
+    perror("(libuv) port_dissociate()");
+    abort();
+  }
+
+  return 0;
+}
+
+
+void uv__io_poll(uv_loop_t* loop, int timeout) {
+  struct port_event events[1024];
+  struct port_event* pe;
+  struct timespec spec;
+  QUEUE* q;
+  uv__io_t* w;
+  sigset_t* pset;
+  sigset_t set;
+  uint64_t base;
+  uint64_t diff;
+  unsigned int nfds;
+  unsigned int i;
+  int saved_errno;
+  int have_signals;
+  int nevents;
+  int count;
+  int err;
+  int fd;
+  int user_timeout;
+  int reset_timeout;
+
+  if (loop->nfds == 0) {
+    assert(QUEUE_EMPTY(&loop->watcher_queue));
+    return;
+  }
+
+  while (!QUEUE_EMPTY(&loop->watcher_queue)) {
+    q = QUEUE_HEAD(&loop->watcher_queue);
+    QUEUE_REMOVE(q);
+    QUEUE_INIT(q);
+
+    w = QUEUE_DATA(q, uv__io_t, watcher_queue);
+    assert(w->pevents != 0);
+
+    if (port_associate(loop->backend_fd,
+                       PORT_SOURCE_FD,
+                       w->fd,
+                       w->pevents,
+                       0)) {
+      perror("(libuv) port_associate()");
+      abort();
+    }
+
+    w->events = w->pevents;
+  }
+
+  pset = NULL;
+  if (loop->flags & UV_LOOP_BLOCK_SIGPROF) {
+    pset = &set;
+    sigemptyset(pset);
+    sigaddset(pset, SIGPROF);
+  }
+
+  assert(timeout >= -1);
+  base = loop->time;
+  count = 48; /* Benchmarks suggest this gives the best throughput. */
+
+  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+    reset_timeout = 1;
+    user_timeout = timeout;
+    timeout = 0;
+  } else {
+    reset_timeout = 0;
+  }
+
+  for (;;) {
+    /* Only need to set the provider_entry_time if timeout != 0. The function
+     * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
+     */
+    if (timeout != 0)
+      uv__metrics_set_provider_entry_time(loop);
+
+    if (timeout != -1) {
+      spec.tv_sec = timeout / 1000;
+      spec.tv_nsec = (timeout % 1000) * 1000000;
+    }
+
+    /* Work around a kernel bug where nfds is not updated. */
+    events[0].portev_source = 0;
+
+    nfds = 1;
+    saved_errno = 0;
+
+    if (pset != NULL)
+      pthread_sigmask(SIG_BLOCK, pset, NULL);
+
+    err = port_getn(loop->backend_fd,
+                    events,
+                    ARRAY_SIZE(events),
+                    &nfds,
+                    timeout == -1 ? NULL : &spec);
+
+    if (pset != NULL)
+      pthread_sigmask(SIG_UNBLOCK, pset, NULL);
+
+    if (err) {
+      /* Work around another kernel bug: port_getn() may return events even
+       * on error.
+       */
+      if (errno == EINTR || errno == ETIME) {
+        saved_errno = errno;
+      } else {
+        perror("(libuv) port_getn()");
+        abort();
+      }
+    }
+
+    /* Update loop->time unconditionally. It's tempting to skip the update when
+     * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
+     * operating system didn't reschedule our process while in the syscall.
+     */
+    SAVE_ERRNO(uv__update_time(loop));
+
+    if (events[0].portev_source == 0) {
+      if (reset_timeout != 0) {
+        timeout = user_timeout;
+        reset_timeout = 0;
+      }
+
+      if (timeout == 0)
+        return;
+
+      if (timeout == -1)
+        continue;
+
+      goto update_timeout;
+    }
+
+    if (nfds == 0) {
+      assert(timeout != -1);
+      return;
+    }
+
+    have_signals = 0;
+    nevents = 0;
+
+    assert(loop->watchers != NULL);
+    loop->watchers[loop->nwatchers] = (void*) events;
+    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
+    for (i = 0; i < nfds; i++) {
+      pe = events + i;
+      fd = pe->portev_object;
+
+      /* Skip invalidated events, see uv__platform_invalidate_fd */
+      if (fd == -1)
+        continue;
+
+      assert(fd >= 0);
+      assert((unsigned) fd < loop->nwatchers);
+
+      w = loop->watchers[fd];
+
+      /* File descriptor that we've stopped watching, ignore. */
+      if (w == NULL)
+        continue;
+
+      /* Run signal watchers last.  This also affects child process watchers
+       * because those are implemented in terms of signal watchers.
+       */
+      if (w == &loop->signal_io_watcher) {
+        have_signals = 1;
+      } else {
+        uv__metrics_update_idle_time(loop);
+        w->cb(loop, w, pe->portev_events);
+      }
+
+      nevents++;
+
+      if (w != loop->watchers[fd])
+        continue;  /* Disabled by callback. */
+
+      /* Events Ports operates in oneshot mode, rearm timer on next run. */
+      if (w->pevents != 0 && QUEUE_EMPTY(&w->watcher_queue))
+        QUEUE_INSERT_TAIL(&loop->watcher_queue, &w->watcher_queue);
+    }
+
+    uv__metrics_inc_events(loop, nevents);
+    if (reset_timeout != 0) {
+      timeout = user_timeout;
+      reset_timeout = 0;
+      uv__metrics_inc_events_waiting(loop, nevents);
+    }
+
+    if (have_signals != 0) {
+      uv__metrics_update_idle_time(loop);
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+    }
+
+    loop->watchers[loop->nwatchers] = NULL;
+    loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
+
+    if (nevents != 0) {
+      if (nfds == ARRAY_SIZE(events) && --count != 0) {
+        /* Poll for more events but don't block this time. */
+        timeout = 0;
+        continue;
+      }
+      return;
+    }
+
+    if (saved_errno == ETIME) {
+      assert(timeout != -1);
+      return;
+    }
+
+    if (timeout == 0)
+      return;
+
+    if (timeout == -1)
+      continue;
+
+update_timeout:
+    assert(timeout > 0);
+
+    diff = loop->time - base;
+    if (diff >= (uint64_t) timeout)
+      return;
+
+    timeout -= diff;
+  }
 }
 
 
@@ -143,6 +417,11 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
+uint64_t uv_get_available_memory(void) {
+  return uv_get_free_memory();
+}
+
+
 void uv_loadavg(double avg[3]) {
   (void) getloadavg(avg, 3);
 }
@@ -151,7 +430,7 @@ void uv_loadavg(double avg[3]) {
 #if defined(PORT_SOURCE_FILE)
 
 static int uv__fs_event_rearm(uv_fs_event_t *handle) {
-  if (handle->fd == -1)
+  if (handle->fd == PORT_DELETED)
     return UV_EBADF;
 
   if (port_associate(handle->loop->fs_fd,
@@ -201,6 +480,12 @@ static void uv__fs_event_read(uv_loop_t* loop,
 
     handle = (uv_fs_event_t*) pe.portev_user;
     assert((r == 0) && "unexpected port_get() error");
+
+    if (uv__is_closing(handle)) {
+      uv__handle_stop(handle);
+      uv__make_close_pending((uv_handle_t*) handle);
+      break;
+    }
 
     events = 0;
     if (pe.portev_events & (FILE_ATTRIB | FILE_MODIFIED))
@@ -269,12 +554,14 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 }
 
 
-int uv_fs_event_stop(uv_fs_event_t* handle) {
+static int uv__fs_event_stop(uv_fs_event_t* handle) {
+  int ret = 0;
+
   if (!uv__is_active(handle))
     return 0;
 
-  if (handle->fd == PORT_FIRED || handle->fd == PORT_LOADED) {
-    port_dissociate(handle->loop->fs_fd,
+  if (handle->fd == PORT_LOADED) {
+    ret = port_dissociate(handle->loop->fs_fd,
                     PORT_SOURCE_FILE,
                     (uintptr_t) &handle->fo);
   }
@@ -283,13 +570,28 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   uv__free(handle->path);
   handle->path = NULL;
   handle->fo.fo_name = NULL;
-  uv__handle_stop(handle);
+  if (ret == 0)
+    uv__handle_stop(handle);
 
+  return ret;
+}
+
+int uv_fs_event_stop(uv_fs_event_t* handle) {
+  (void) uv__fs_event_stop(handle);
   return 0;
 }
 
 void uv__fs_event_close(uv_fs_event_t* handle) {
-  uv_fs_event_stop(handle);
+  /*
+   * If we were unable to dissociate the port here, then it is most likely
+   * that there is a pending queued event. When this happens, we don't want
+   * to complete the close as it will free the underlying memory for the
+   * handle, causing a use-after-free problem when the event is processed.
+   * We defer the final cleanup until after the event is consumed in
+   * uv__fs_event_read().
+   */
+  if (uv__fs_event_stop(handle) == 0)
+    uv__make_close_pending((uv_handle_t*) handle);
 }
 
 #else /* !defined(PORT_SOURCE_FILE) */
@@ -592,3 +894,14 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
 
   uv__free(addresses);
 }
+
+
+#if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L
+size_t strnlen(const char* s, size_t maxlen) {
+  const char* end;
+  end = memchr(s, '\0', maxlen);
+  if (end == NULL)
+    return maxlen;
+  return end - s;
+}
+#endif

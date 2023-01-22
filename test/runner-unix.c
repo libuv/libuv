@@ -333,8 +333,8 @@ int process_wait(process_info_t* vec, int n, int timeout) {
     abort();
 
 terminate:
-  close(args.pipe[0]);
-  close(args.pipe[1]);
+  closefd(args.pipe[0]);
+  closefd(args.pipe[1]);
   return retval;
 }
 
@@ -344,6 +344,7 @@ long int process_output_size(process_info_t *p) {
   /* Size of the p->stdout_file */
   struct stat buf;
 
+  memset(&buf, 0, sizeof(buf));
   int r = fstat(fileno(p->stdout_file), &buf);
   if (r < 0) {
     return -1;
