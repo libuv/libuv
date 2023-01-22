@@ -151,7 +151,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     }                                                                         \
     else {                                                                    \
       uv__fs_work(&req->work_req);                                            \
-      return (int)req->result;                                                \
+      return req->result;                                                     \
     }                                                                         \
   }                                                                           \
   while (0)
