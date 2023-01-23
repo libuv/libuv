@@ -1490,6 +1490,21 @@ int uv_os_unsetenv(const char* name) {
 }
 
 
+static int WSAAPI uv__gethostnamew_fallback(PWSTR name, int name_len) {
+  int result_len = name_len;
+  int error_code = NO_ERROR;
+
+  if (GetComputerNameW(name, (PDWORD)&result_len) == FALSE) {
+    error_code = WSAENETDOWN;
+    if (result_len >= name_len) {
+      error_code = WSAEFAULT;
+    }
+  }
+
+  return error_code;
+}
+
+
 int uv_os_gethostname(char* buffer, size_t* size) {
   WCHAR buf[UV_MAXHOSTNAMESIZE];
   size_t len;
@@ -1502,7 +1517,7 @@ int uv_os_gethostname(char* buffer, size_t* size) {
   uv__once_init(); /* Initialize winsock */
 
   if (pGetHostNameW == NULL)
-    return UV_ENOSYS;
+    pGetHostNameW = uv__gethostnamew_fallback;
 
   if (pGetHostNameW(buf, UV_MAXHOSTNAMESIZE) != 0)
     return uv_translate_sys_error(WSAGetLastError());
