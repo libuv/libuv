@@ -219,16 +219,6 @@ static void realpath_cb(uv_fs_t* req) {
   char test_file_abs_buf[PATHMAX];
   size_t test_file_abs_size = sizeof(test_file_abs_buf);
   ASSERT(req->fs_type == UV_FS_REALPATH);
-#ifdef _WIN32
-  /*
-   * Windows XP and Server 2003 don't support GetFinalPathNameByHandleW()
-   */
-  if (req->result == UV_ENOSYS) {
-    realpath_cb_count++;
-    uv_fs_req_cleanup(req);
-    return;
-  }
-#endif
   ASSERT(req->result == 0);
 
   uv_cwd(test_file_abs_buf, &test_file_abs_size);
@@ -770,11 +760,10 @@ TEST_IMPL(fs_file_loop) {
   r = uv_fs_symlink(NULL, &req, "test_symlink", "test_symlink", 0, NULL);
 #ifdef _WIN32
   /*
-   * Windows XP and Server 2003 don't support symlinks; we'll get UV_ENOTSUP.
-   * Starting with vista they are supported, but only when elevated, otherwise
+   * Symlinks are only suported but only when elevated, otherwise
    * we'll see UV_EPERM.
    */
-  if (r == UV_ENOTSUP || r == UV_EPERM)
+  if (r == UV_EPERM)
     return 0;
 #elif defined(__MSYS__)
   /* MSYS2's approximation of symlinks with copies does not work for broken
@@ -1239,6 +1228,8 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   ASSERT(r == 0);
   uv_fs_req_cleanup(&close_req);
 
+  memset(&s1, 0, sizeof(s1));
+  memset(&s2, 0, sizeof(s2));
   ASSERT(0 == stat("test_file", &s1));
   ASSERT(0 == stat("test_file2", &s2));
   ASSERT(s2.st_size == expected_size);
@@ -1393,6 +1384,13 @@ TEST_IMPL(fs_fstat) {
   struct stat t;
 #endif
 
+#if defined(__s390__) && defined(__QEMU__)
+  /* qemu-user-s390x has this weird bug where statx() reports nanoseconds
+   * but plain fstat() does not.
+   */
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+
   /* Setup. */
   unlink("test_file");
 
@@ -1406,6 +1404,7 @@ TEST_IMPL(fs_fstat) {
   uv_fs_req_cleanup(&req);
 
 #ifndef _WIN32
+  memset(&t, 0, sizeof(t));
   ASSERT(0 == fstat(file, &t));
   ASSERT(0 == uv_fs_fstat(NULL, &req, file, NULL));
   ASSERT(req.result == 0);
@@ -1534,6 +1533,43 @@ TEST_IMPL(fs_fstat) {
 
   /* Cleanup. */
   unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+TEST_IMPL(fs_fstat_stdio) {
+  int fd;
+  int res;
+  uv_fs_t req;
+#ifdef _WIN32
+  uv_stat_t* st;
+  DWORD ft;
+#endif
+
+  for (fd = 0; fd <= 2; ++fd) {
+    res = uv_fs_fstat(NULL, &req, fd, NULL);
+    ASSERT(res == 0);
+    ASSERT(req.result == 0);
+
+#ifdef _WIN32
+    st = req.ptr;
+    ft = uv_guess_handle(fd);
+    switch (ft) {
+    case UV_TTY:
+    case UV_NAMED_PIPE:
+      ASSERT(st->st_mode == ft == UV_TTY ? S_IFCHR : S_IFIFO);
+      ASSERT(st->st_nlink == 1);
+      ASSERT(st->st_rdev == (ft == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16);
+      break;
+    default:
+      break;
+    }
+#endif
+
+    uv_fs_req_cleanup(&req);
+  }
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -2011,20 +2047,53 @@ TEST_IMPL(fs_link) {
 
 
 TEST_IMPL(fs_readlink) {
-  uv_fs_t req;
+  /* Must return UV_ENOENT on an inexistent file */
+  {
+    uv_fs_t req;
 
-  loop = uv_default_loop();
-  ASSERT(0 == uv_fs_readlink(loop, &req, "no_such_file", dummy_cb));
-  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(dummy_cb_count == 1);
-  ASSERT_NULL(req.ptr);
-  ASSERT(req.result == UV_ENOENT);
-  uv_fs_req_cleanup(&req);
+    loop = uv_default_loop();
+    ASSERT(0 == uv_fs_readlink(loop, &req, "no_such_file", dummy_cb));
+    ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+    ASSERT(dummy_cb_count == 1);
+    ASSERT_NULL(req.ptr);
+    ASSERT(req.result == UV_ENOENT);
+    uv_fs_req_cleanup(&req);
 
-  ASSERT(UV_ENOENT == uv_fs_readlink(NULL, &req, "no_such_file", NULL));
-  ASSERT_NULL(req.ptr);
-  ASSERT(req.result == UV_ENOENT);
-  uv_fs_req_cleanup(&req);
+    ASSERT(UV_ENOENT == uv_fs_readlink(NULL, &req, "no_such_file", NULL));
+    ASSERT_NULL(req.ptr);
+    ASSERT(req.result == UV_ENOENT);
+    uv_fs_req_cleanup(&req);
+  }
+
+  /* Must return UV_EINVAL on a non-symlink file */
+  {
+    int r;
+    uv_fs_t req;
+    uv_file file;
+
+    /* Setup */
+
+    /* Create a non-symlink file */
+    r = uv_fs_open(NULL, &req, "test_file", O_RDWR | O_CREAT,
+                   S_IWUSR | S_IRUSR, NULL);
+    ASSERT_GE(r, 0);
+    ASSERT_GE(req.result, 0);
+    file = req.result;
+    uv_fs_req_cleanup(&req);
+
+    r = uv_fs_close(NULL, &req, file, NULL);
+    ASSERT_EQ(r, 0);
+    ASSERT_EQ(req.result, 0);
+    uv_fs_req_cleanup(&req);
+
+    /* Test */
+    r = uv_fs_readlink(NULL, &req, "test_file", NULL);
+    ASSERT_EQ(r, UV_EINVAL);
+    uv_fs_req_cleanup(&req);
+
+    /* Cleanup */
+    unlink("test_file");
+  }
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -2039,15 +2108,6 @@ TEST_IMPL(fs_realpath) {
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
   ASSERT(dummy_cb_count == 1);
   ASSERT_NULL(req.ptr);
-#ifdef _WIN32
-  /*
-   * Windows XP and Server 2003 don't support GetFinalPathNameByHandleW()
-   */
-  if (req.result == UV_ENOSYS) {
-    uv_fs_req_cleanup(&req);
-    RETURN_SKIP("realpath is not supported on Windows XP");
-  }
-#endif
   ASSERT(req.result == UV_ENOENT);
   uv_fs_req_cleanup(&req);
 
@@ -2158,15 +2218,6 @@ TEST_IMPL(fs_symlink) {
   uv_fs_req_cleanup(&req);
 
   r = uv_fs_realpath(NULL, &req, "test_file_symlink_symlink", NULL);
-#ifdef _WIN32
-  /*
-   * Windows XP and Server 2003 don't support GetFinalPathNameByHandleW()
-   */
-  if (r == UV_ENOSYS) {
-    uv_fs_req_cleanup(&req);
-    RETURN_SKIP("realpath is not supported on Windows XP");
-  }
-#endif
   ASSERT(r == 0);
 #ifdef _WIN32
   ASSERT(stricmp(req.ptr, test_file_abs_buf) == 0);
@@ -2216,15 +2267,6 @@ TEST_IMPL(fs_symlink) {
   ASSERT(readlink_cb_count == 1);
 
   r = uv_fs_realpath(loop, &req, "test_file", realpath_cb);
-#ifdef _WIN32
-  /*
-   * Windows XP and Server 2003 don't support GetFinalPathNameByHandleW()
-   */
-  if (r == UV_ENOSYS) {
-    uv_fs_req_cleanup(&req);
-    RETURN_SKIP("realpath is not supported on Windows XP");
-  }
-#endif
   ASSERT(r == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(realpath_cb_count == 1);
@@ -2325,15 +2367,6 @@ int test_symlink_dir_impl(int type) {
   uv_fs_req_cleanup(&req);
 
   r = uv_fs_realpath(NULL, &req, "test_dir_symlink", NULL);
-#ifdef _WIN32
-  /*
-   * Windows XP and Server 2003 don't support GetFinalPathNameByHandleW()
-   */
-  if (r == UV_ENOSYS) {
-    uv_fs_req_cleanup(&req);
-    RETURN_SKIP("realpath is not supported on Windows XP");
-  }
-#endif
   ASSERT(r == 0);
 #ifdef _WIN32
   ASSERT(strlen(req.ptr) == test_dir_abs_size - 5);
@@ -2755,8 +2788,8 @@ TEST_IMPL(fs_lutime) {
   loop = uv_default_loop();
   unlink(path);
   r = uv_fs_open(NULL, &req, path, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR, NULL);
-  ASSERT(r >= 0);
-  ASSERT(req.result >= 0);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(req.result, 0);
   uv_fs_req_cleanup(&req);
   uv_fs_close(loop, &req, r, NULL);
 
@@ -2772,8 +2805,8 @@ TEST_IMPL(fs_lutime) {
         "Symlink creation requires elevated console (with admin rights)");
   }
 #endif
-  ASSERT(s == 0);
-  ASSERT(req.result == 0);
+  ASSERT_EQ(s, 0);
+  ASSERT_EQ(req.result, 0);
   uv_fs_req_cleanup(&req);
 
   /* Test the synchronous version. */
@@ -2787,12 +2820,12 @@ TEST_IMPL(fs_lutime) {
   r = uv_fs_lutime(NULL, &req, symlink_path, atime, mtime, NULL);
 #if (defined(_AIX) && !defined(_AIX71)) ||                                    \
      defined(__MVS__)
-  ASSERT(r == UV_ENOSYS);
+  ASSERT_EQ(r, UV_ENOSYS);
   RETURN_SKIP("lutime is not implemented for z/OS and AIX versions below 7.1");
 #endif
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   lutime_cb(&req);
-  ASSERT(lutime_cb_count == 1);
+  ASSERT_EQ(lutime_cb_count, 1);
 
   /* Test the asynchronous version. */
   atime = mtime = 1291404900; /* 2010-12-03 20:35:00 */
@@ -2802,9 +2835,9 @@ TEST_IMPL(fs_lutime) {
   checkme.path = symlink_path;
 
   r = uv_fs_lutime(loop, &req, symlink_path, atime, mtime, lutime_cb);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(lutime_cb_count == 2);
+  ASSERT_EQ(lutime_cb_count, 2);
 
   /* Cleanup. */
   unlink(path);
@@ -2918,6 +2951,24 @@ TEST_IMPL(fs_scandir_file) {
   ASSERT(scandir_cb_count == 0);
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(scandir_cb_count == 1);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+
+
+/* Run in Valgrind. Should not leak when the iterator isn't exhausted. */
+TEST_IMPL(fs_scandir_early_exit) {
+  uv_dirent_t d;
+  uv_fs_t req;
+
+  ASSERT_LT(0, uv_fs_scandir(NULL, &req, "test/fixtures/one_file", 0, NULL));
+  ASSERT_NE(UV_EOF, uv_fs_scandir_next(&req, &d));
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_LT(0, uv_fs_scandir(NULL, &req, "test/fixtures", 0, NULL));
+  ASSERT_NE(UV_EOF, uv_fs_scandir_next(&req, &d));
+  uv_fs_req_cleanup(&req);
 
   MAKE_VALGRIND_HAPPY();
   return 0;
@@ -3682,9 +3733,9 @@ static void test_fs_partial(int doread) {
   ctx.doread = doread;
   ctx.interval = 1000;
   ctx.size = sizeof(test_buf) * iovcount;
-  ctx.data = malloc(ctx.size);
+  ctx.data = calloc(ctx.size, 1);
   ASSERT_NOT_NULL(ctx.data);
-  buffer = malloc(ctx.size);
+  buffer = calloc(ctx.size, 1);
   ASSERT_NOT_NULL(buffer);
 
   for (index = 0; index < iovcount; ++index)
@@ -3727,9 +3778,10 @@ static void test_fs_partial(int doread) {
     uv_fs_req_cleanup(&write_req);
   }
 
-  ASSERT(0 == memcmp(buffer, ctx.data, ctx.size));
-
   ASSERT(0 == uv_thread_join(&thread));
+
+  ASSERT_MEM_EQ(buffer, ctx.data, ctx.size);
+
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
   ASSERT(0 == close(pipe_fds[1]));

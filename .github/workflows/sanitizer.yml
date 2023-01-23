@@ -14,7 +14,7 @@ on:
 
 jobs:
   sanitizers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
       - name: Setup
@@ -22,15 +22,7 @@ jobs:
           sudo apt-get install ninja-build
       - name: Envinfo
         run: npx envinfo
-      - name: TSAN Build
-        run: |
-          mkdir build-tsan
-          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
-          cmake --build build-tsan
-      - name: TSAN Test
-        continue-on-error: true # currently permit failures
-        run: |
-          ./build-tsan/uv_run_tests_a
+
       - name: ASAN Build
         run: |
           mkdir build-asan
@@ -39,3 +31,32 @@ jobs:
       - name: ASAN Test
         run: |
           ./build-asan/uv_run_tests_a
+
+      - name: MSAN Build
+        run: |
+          mkdir build-msan
+          (cd build-msan && cmake .. -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-msan
+      - name: MSAN Test
+        run: |
+          ./build-msan/uv_run_tests_a
+
+      - name: TSAN Build
+        run: |
+          mkdir build-tsan
+          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake --build build-tsan
+      - name: TSAN Test
+        # Note: path must be absolute because some tests chdir.
+        # TSan exits with an error when it can't find the file.
+        run: |
+          env TSAN_OPTIONS="suppressions=$PWD/tsansupp.txt" ./build-tsan/uv_run_tests_a
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          (cd build-ubsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a

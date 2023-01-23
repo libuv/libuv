@@ -109,6 +109,21 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
+static void uv__kqueue_delete(int kqfd, const struct kevent *ev) {
+  struct kevent change;
+
+  EV_SET(&change, ev->ident, ev->filter, EV_DELETE, 0, 0, 0);
+
+  if (0 == kevent(kqfd, &change, 1, NULL, 0, NULL))
+    return;
+
+  if (errno == EBADF || errno == ENOENT)
+    return;
+
+  abort();
+}
+
+
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct kevent events[1024];
   struct kevent* ev;
@@ -307,15 +322,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       w = loop->watchers[fd];
 
       if (w == NULL) {
-        /* File descriptor that we've stopped watching, disarm it.
-         * TODO: batch up. */
-        struct kevent events[1];
-
-        EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-        if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
-          if (errno != EBADF && errno != ENOENT)
-            abort();
-
+        /* File descriptor that we've stopped watching, disarm it. */
+        uv__kqueue_delete(loop->backend_fd, ev);
         continue;
       }
 
@@ -331,47 +339,27 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       revents = 0;
 
       if (ev->filter == EVFILT_READ) {
-        if (w->pevents & POLLIN) {
+        if (w->pevents & POLLIN)
           revents |= POLLIN;
-          w->rcount = ev->data;
-        } else {
-          /* TODO batch up */
-          struct kevent events[1];
-          EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
-            if (errno != ENOENT)
-              abort();
-        }
+        else
+          uv__kqueue_delete(loop->backend_fd, ev);
+
         if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
           revents |= UV__POLLRDHUP;
       }
 
       if (ev->filter == EV_OOBAND) {
-        if (w->pevents & UV__POLLPRI) {
+        if (w->pevents & UV__POLLPRI)
           revents |= UV__POLLPRI;
-          w->rcount = ev->data;
-        } else {
-          /* TODO batch up */
-          struct kevent events[1];
-          EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
-            if (errno != ENOENT)
-              abort();
-        }
+        else
+          uv__kqueue_delete(loop->backend_fd, ev);
       }
 
       if (ev->filter == EVFILT_WRITE) {
-        if (w->pevents & POLLOUT) {
+        if (w->pevents & POLLOUT)
           revents |= POLLOUT;
-          w->wcount = ev->data;
-        } else {
-          /* TODO batch up */
-          struct kevent events[1];
-          EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
-          if (kevent(loop->backend_fd, events, 1, NULL, 0, NULL))
-            if (errno != ENOENT)
-              abort();
-        }
+        else
+          uv__kqueue_delete(loop->backend_fd, ev);
       }
 
       if (ev->flags & EV_ERROR)
@@ -398,9 +386,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       uv__wait_children(loop);
     }
 
+    uv__metrics_inc_events(loop, nevents);
     if (reset_timeout != 0) {
       timeout = user_timeout;
       reset_timeout = 0;
+      uv__metrics_inc_events_waiting(loop, nevents);
     }
 
     if (have_signals != 0) {
@@ -541,7 +531,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->realpath_len = 0;
   handle->cf_flags = flags;
 
-  if (fstat(fd, &statbuf))
+  if (uv__fstat(fd, &statbuf))
     goto fallback;
   /* FSEvents works only with directories */
   if (!(statbuf.st_mode & S_IFDIR))

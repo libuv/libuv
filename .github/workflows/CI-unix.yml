@@ -14,6 +14,19 @@ on:
       - master
 
 jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: configure
+        run: |
+          ./autogen.sh
+          mkdir build
+          (cd build && ../configure)
+      - name: distcheck
+        run: |
+          make -C build distcheck
+
   build-android:
     runs-on: ubuntu-latest
     container: reactnativecommunity/react-native-android:2020-5-20
@@ -33,14 +46,14 @@ jobs:
           ls -lh build
 
   build-macos:
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Envinfo
         run: npx envinfo
       - name: Setup
         run: |
-          brew install ninja
+          brew install ninja automake libtool
       - name: Configure
         run: |
           mkdir build
@@ -59,9 +72,16 @@ jobs:
       - name: Test
         run: |
           cd build && ctest -V
+      - name: Autotools configure
+        if: always()
+        run: |
+          ./autogen.sh
+          mkdir build-auto
+          (cd build-auto && ../configure)
+          make -C build-auto -j4
 
   build-ios:
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - uses: actions/checkout@v2
       - name: Configure
@@ -94,7 +114,6 @@ jobs:
           - {target: mips64,  toolchain: gcc-mips64-linux-gnuabi64,   cc: mips64-linux-gnuabi64-gcc,  qemu: qemu-mips64-static   }
           - {target: mipsel,  toolchain: gcc-mipsel-linux-gnu,        cc: mipsel-linux-gnu-gcc,       qemu: qemu-mipsel-static   }
           - {target: mips64el,toolchain: gcc-mips64el-linux-gnuabi64, cc: mips64el-linux-gnuabi64-gcc,qemu: qemu-mips64el-static }
-          - {target: alpha,   toolchain: gcc-alpha-linux-gnu,       cc: alpha-linux-gnu-gcc,        qemu: qemu-alpha-static   }
           - {target: arm (u64 slots),     toolchain: gcc-arm-linux-gnueabi,     cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm-static}
           - {target: aarch64 (u64 slots), toolchain: gcc-aarch64-linux-gnu,     cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64-static}
           - {target: ppc (u64 slots),     toolchain: gcc-powerpc-linux-gnu,     cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc-static}
@@ -106,7 +125,7 @@ jobs:
         # this ensure install latest qemu on ubuntu, apt get version is old
         env:
           QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
-          QEMU_VER: "qemu-user-static_4\\.2-.*_amd64.deb$"
+          QEMU_VER: "qemu-user-static_7\\.0+dfsg-.*_amd64.deb$"
         run: |
           DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER | tail -1`
           wget $QEMU_SRC/$DEB
@@ -127,3 +146,36 @@ jobs:
       - name: Test
         run: |
           ${{ matrix.config.qemu }} build/uv_run_tests_a
+
+  build-bsd:
+    timeout-minutes: 30
+    runs-on: ${{ matrix.config.runner }}
+    name: build-${{ matrix.config.os }}-${{ matrix.config.version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          # The OS versions supported are specific to the version of the action
+          # https://github.com/cross-platform-actions/action/blob/master/changelog.md
+          - { os: freebsd, version: '13.1', runner: 'ubuntu-latest', install: 'pkg install -y' }
+          - { os: openbsd, version: '7.2',  runner: 'macos-11', install: 'pkg_add -I' }
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: cross-platform-actions/action@v0.9.0
+        with:
+          operating_system: ${{ matrix.config.os }}
+          version: ${{ matrix.config.version }}
+          run: |
+            sudo ${{ matrix.config.install }} cmake ninja
+            sudo hostname -s ci-host
+            mkdir build
+            cd build
+            cmake .. -DBUILD_TESTING=ON -G Ninja
+            cmake --build .
+            ls -lh
+            ./uv_run_tests platform_output
+            ./uv_run_tests_a platform_output
+            ctest -V

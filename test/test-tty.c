@@ -28,7 +28,7 @@
 #else /*  Unix */
 # include <fcntl.h>
 # include <unistd.h>
-# if (defined(__linux__) || defined(__GLIBC__)) && !defined(__ANDROID__)
+# if defined(__linux__) && !defined(__ANDROID__)
 #  include <pty.h>
 # elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 #  include <util.h>
@@ -433,7 +433,6 @@ TEST_IMPL(tty_pty) {
 #if defined(__APPLE__)                            || \
     defined(__DragonFly__)                        || \
     defined(__FreeBSD__)                          || \
-    defined(__FreeBSD_kernel__)                   || \
     (defined(__linux__) && !defined(__ANDROID__)) || \
     defined(__NetBSD__)                           || \
     defined(__OpenBSD__)

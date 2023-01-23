@@ -98,6 +98,9 @@ static void sv_recv_cb(uv_udp_t* handle,
 
 
 TEST_IMPL(udp_connect6) {
+#if defined(__OpenBSD__)
+  RETURN_SKIP("Test does not currently work in OpenBSD");
+#endif
   uv_udp_send_t req;
   struct sockaddr_in6 ext_addr;
   struct sockaddr_in6 tmp_addr;

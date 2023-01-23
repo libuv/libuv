@@ -29,12 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #if !defined(_WIN32)
 # include <sys/time.h>
@@ -55,9 +50,9 @@
 #define TEST_PORT_3 9125
 
 #ifdef _WIN32
-# define TEST_PIPENAME "\\\\?\\pipe\\uv-test"
-# define TEST_PIPENAME_2 "\\\\?\\pipe\\uv-test2"
-# define TEST_PIPENAME_3 "\\\\?\\pipe\\uv-test3"
+# define TEST_PIPENAME "\\\\.\\pipe\\uv-test"
+# define TEST_PIPENAME_2 "\\\\.\\pipe\\uv-test2"
+# define TEST_PIPENAME_3 "\\\\.\\pipe\\uv-test3"
 #else
 # define TEST_PIPENAME "/tmp/uv-test-sock"
 # define TEST_PIPENAME_2 "/tmp/uv-test-sock2"
@@ -373,6 +368,13 @@ UNUSED static int can_ipv6(void) {
 #elif defined(__CYGWIN__)
 # define NO_SELF_CONNECT \
   "Cygwin runtime hangs on listen+connect in same process."
+#endif
+
+#if !defined(__linux__) && \
+    !(defined(__FreeBSD__) && __FreeBSD_version >= 1301000) && \
+    !defined(_WIN32)
+# define NO_CPU_AFFINITY \
+  "affinity not supported on this platform."
 #endif
 
 #endif /* TASK_H_ */

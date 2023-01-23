@@ -792,15 +792,17 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
 
   /* We're here because CreateFile on a pipe returned ERROR_PIPE_BUSY. We wait
    * up to 30 seconds for the pipe to become available with WaitNamedPipe. */
-  while (WaitNamedPipeW(handle->name, 30000)) {
+  while (WaitNamedPipeW(req->u.connect.name, 30000)) {
     /* The pipe is now available, try to connect. */
-    pipeHandle = open_named_pipe(handle->name, &duplex_flags);
+    pipeHandle = open_named_pipe(req->u.connect.name, &duplex_flags);
     if (pipeHandle != INVALID_HANDLE_VALUE)
       break;
 
     SwitchToThread();
   }
 
+  uv__free(req->u.connect.name);
+  req->u.connect.name = NULL;
   if (pipeHandle != INVALID_HANDLE_VALUE) {
     SET_REQ_SUCCESS(req);
     req->u.connect.pipeHandle = pipeHandle;
@@ -828,6 +830,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   req->cb = cb;
   req->u.connect.pipeHandle = INVALID_HANDLE_VALUE;
   req->u.connect.duplex_flags = 0;
+  req->u.connect.name = NULL;
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
     err = ERROR_INVALID_PARAMETER;
@@ -859,10 +862,19 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   pipeHandle = open_named_pipe(handle->name, &duplex_flags);
   if (pipeHandle == INVALID_HANDLE_VALUE) {
     if (GetLastError() == ERROR_PIPE_BUSY) {
+      req->u.connect.name = uv__malloc(nameSize);
+      if (!req->u.connect.name) {
+        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+      }
+
+      memcpy(req->u.connect.name, handle->name, nameSize);
+
       /* Wait for the server to make a pipe instance available. */
       if (!QueueUserWorkItem(&pipe_connect_thread_proc,
                              req,
                              WT_EXECUTELONGFUNCTION)) {
+        uv__free(req->u.connect.name);
+        req->u.connect.name = NULL;
         err = GetLastError();
         goto error;
       }
@@ -1067,10 +1079,11 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
     err = uv__tcp_xfer_import(
         (uv_tcp_t*) client, item->xfer_type, &item->xfer_info);
+    
+    uv__free(item);
+    
     if (err != 0)
       return err;
-
-    uv__free(item);
 
   } else {
     pipe_client = (uv_pipe_t*) client;
@@ -1638,9 +1651,13 @@ static DWORD uv__pipe_get_ipc_remote_pid(uv_pipe_t* handle) {
   /* If the both ends of the IPC pipe are owned by the same process,
    * the remote end pid may not yet be set. If so, do it here.
    * TODO: this is weird; it'd probably better to use a handshake. */
-  if (*pid == 0)
-    *pid = GetCurrentProcessId();
-
+  if (*pid == 0) {
+    GetNamedPipeClientProcessId(handle->handle, pid);
+    if (*pid == GetCurrentProcessId()) {
+      GetNamedPipeServerProcessId(handle->handle, pid);
+    }
+  }
+  
   return *pid;
 }
 
@@ -1762,6 +1779,82 @@ int uv__pipe_write(uv_loop_t* loop,
     assert(send_handle == NULL);
     return uv__pipe_write_data(loop, req, handle, bufs, nbufs, cb, 0);
   }
+}
+
+
+int uv__pipe_try_write(uv_pipe_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs) {
+  OVERLAPPED overlapped;
+  HANDLE event;
+  const uv_buf_t* buf;
+  int bytes_written;
+  unsigned int idx;
+  DWORD timeout;
+  DWORD err;
+
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    return UV_EAGAIN;
+  }
+
+  if (handle->stream.conn.write_reqs_pending > 0) {
+    return UV_EAGAIN;
+  }
+
+  timeout = 0;
+  if (handle->flags & UV_HANDLE_BLOCKING_WRITES) {
+    timeout = INFINITE;
+  }
+
+  memset(&overlapped, 0, sizeof(overlapped));
+
+  event = CreateEvent(NULL, FALSE, FALSE, NULL);
+  if (event == NULL) {
+    uv_fatal_error(GetLastError(), "CreateEvent");
+  }
+
+  overlapped.hEvent = (HANDLE)((uintptr_t)event | 1);
+
+  bytes_written = 0;
+  for (err = 0, idx = 0; idx < nbufs; err = 0, idx += 1) {
+    buf = &bufs[idx];
+
+    if (!WriteFile(handle->handle, buf->base, buf->len, NULL, &overlapped)) {
+      err = GetLastError();
+      if (err != ERROR_IO_PENDING) {
+        break;
+      }
+
+      err = WaitForSingleObject(event, timeout);
+      if (err != WAIT_OBJECT_0) {
+        CancelIoEx(handle->handle, &overlapped);
+      }
+    }
+      
+    if (GetOverlappedResult(handle->handle, &overlapped, &err, TRUE)) {
+      bytes_written += err;
+      if (err == buf->len)
+        continue;
+      err = WSAEWOULDBLOCK;  /* Ignored later. */
+    } else {
+      err = GetLastError();
+      if (err == ERROR_OPERATION_ABORTED) {
+        err = WSAEWOULDBLOCK;  /* Translates to UV_EAGAIN. */
+      }
+    }
+
+    break;
+  }
+
+  if (!CloseHandle(event)) {
+    uv_fatal_error(GetLastError(), "CloseHandle");
+  }
+
+  if (bytes_written == 0 && err != 0) {
+    return uv_translate_sys_error(err);
+  }
+
+  return bytes_written;
 }
 
 
@@ -2069,9 +2162,9 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv__queue_non_overlapped_write(handle);
   }
 
-  if (handle->stream.conn.write_reqs_pending == 0)
-    if (handle->flags & UV_HANDLE_SHUTTING)
-      uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
+  if (handle->stream.conn.write_reqs_pending == 0 &&
+      uv__is_stream_shutting(handle))
+    uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
 
   DECREASE_PENDING_REQ_COUNT(handle);
 }
@@ -2126,7 +2219,10 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   if (REQ_SUCCESS(req)) {
     pipeHandle = req->u.connect.pipeHandle;
     duplex_flags = req->u.connect.duplex_flags;
-    err = uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags);
+    if (handle->flags & UV_HANDLE_CLOSING)
+      err = UV_ECANCELED;
+    else
+      err = uv__set_pipe_handle(loop, handle, pipeHandle, -1, duplex_flags);
     if (err)
       CloseHandle(pipeHandle);
   } else {
@@ -2149,7 +2245,6 @@ void uv__process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   /* Clear the shutdown_req field so we don't go here again. */
   handle->stream.conn.shutdown_req = NULL;
-  handle->flags &= ~UV_HANDLE_SHUTTING;
   UNREGISTER_HANDLE_REQ(loop, handle, req);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
@@ -2342,7 +2437,10 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
 
   if (pipe->ipc) {
     assert(!(pipe->flags & UV_HANDLE_NON_OVERLAPPED_PIPE));
-    pipe->pipe.conn.ipc_remote_pid = uv_os_getppid();
+    GetNamedPipeClientProcessId(os_handle, &pipe->pipe.conn.ipc_remote_pid);
+    if (pipe->pipe.conn.ipc_remote_pid == GetCurrentProcessId()) {
+      GetNamedPipeServerProcessId(os_handle, &pipe->pipe.conn.ipc_remote_pid);
+    }
     assert(pipe->pipe.conn.ipc_remote_pid != (DWORD)(uv_pid_t) -1);
   }
   return 0;

@@ -33,17 +33,10 @@
 # if defined(__APPLE__) ||                                                    \
      defined(__DragonFly__) ||                                                \
      defined(__FreeBSD__) ||                                                  \
-     defined(__FreeBSD_kernel__) ||                                           \
      defined(__OpenBSD__) ||                                                  \
      defined(__NetBSD__)
 #  define HAVE_KQUEUE 1
 # endif
-#endif
-
-#if defined(__arm__)/* Increase the timeout so the test passes on arm CI bots */
-# define CREATE_TIMEOUT 100
-#else
-# define CREATE_TIMEOUT 1
 #endif
 
 static uv_fs_event_t fs_event;
@@ -163,10 +156,7 @@ static void fs_event_create_files(uv_timer_t* handle) {
   if (++fs_event_created < fs_event_file_count) {
     /* Create another file on a different event loop tick.  We do it this way
      * to avoid fs events coalescing into one fs event. */
-    ASSERT(0 == uv_timer_start(&timer,
-                               fs_event_create_files,
-                               CREATE_TIMEOUT,
-                               0));
+    ASSERT_EQ(0, uv_timer_start(&timer, fs_event_create_files, 100, 0));
   }
 }
 
@@ -242,7 +232,8 @@ static void fs_event_create_files_in_subdir(uv_timer_t* handle) {
   if (++fs_event_created < fs_event_file_count) {
     /* Create another file on a different event loop tick.  We do it this way
      * to avoid fs events coalescing into one fs event. */
-    ASSERT(0 == uv_timer_start(&timer, fs_event_create_files_in_subdir, 1, 0));
+    ASSERT_EQ(0,
+              uv_timer_start(&timer, fs_event_create_files_in_subdir, 100, 0));
   }
 }
 

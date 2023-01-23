@@ -48,7 +48,6 @@
 
 #if defined(__DragonFly__)        ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # define HAVE_PREADV 1
@@ -79,7 +78,6 @@
 #if defined(__APPLE__)            ||                                      \
     defined(__DragonFly__)        ||                                      \
     defined(__FreeBSD__)          ||                                      \
-    defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
     defined(__NetBSD__)
 # include <sys/param.h>
@@ -256,7 +254,6 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
-    || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)                                                   \
     || defined(__sun)
@@ -490,10 +487,10 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     }
 # if defined(__linux__)
     else {
-      result = uv__preadv(req->file,
-                          (struct iovec*)req->bufs,
-                          req->nbufs,
-                          req->off);
+      result = preadv(req->file,
+                      (struct iovec*) req->bufs,
+                      req->nbufs,
+                      req->off);
       if (result == -1 && errno == ENOSYS) {
         uv__store_relaxed(&no_preadv, 1);
         goto retry;
@@ -516,7 +513,7 @@ done:
   if (result == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
-    rc = fstat(req->file, &buf);
+    rc = uv__fstat(req->file, &buf);
     if (rc == 0 && S_ISDIR(buf.st_mode)) {
       errno = EISDIR;
     }
@@ -527,19 +524,12 @@ done:
 }
 
 
-#if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_8)
-#define UV_CONST_DIRENT uv__dirent_t
-#else
-#define UV_CONST_DIRENT const uv__dirent_t
-#endif
-
-
-static int uv__fs_scandir_filter(UV_CONST_DIRENT* dent) {
+static int uv__fs_scandir_filter(const uv__dirent_t* dent) {
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
 }
 
 
-static int uv__fs_scandir_sort(UV_CONST_DIRENT** a, UV_CONST_DIRENT** b) {
+static int uv__fs_scandir_sort(const uv__dirent_t** a, const uv__dirent_t** b) {
   return strcmp((*a)->d_name, (*b)->d_name);
 }
 
@@ -715,7 +705,7 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
   /* We may not have a real PATH_MAX.  Read size of link.  */
   struct stat st;
   int ret;
-  ret = lstat(req->path, &st);
+  ret = uv__lstat(req->path, &st);
   if (ret != 0)
     return -1;
   if (!S_ISLNK(st.st_mode)) {
@@ -1061,10 +1051,7 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
     return -1;
   }
-#elif defined(__APPLE__)           || \
-      defined(__DragonFly__)       || \
-      defined(__FreeBSD__)         || \
-      defined(__FreeBSD_kernel__)
+#elif defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__)
   {
     off_t len;
     ssize_t r;
@@ -1088,15 +1075,6 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 #endif
     len = 0;
     r = sendfile(in_fd, out_fd, req->off, req->bufsml[0].len, NULL, &len, 0);
-#elif defined(__FreeBSD_kernel__)
-    len = 0;
-    r = bsd_sendfile(in_fd,
-                     out_fd,
-                     req->off,
-                     req->bufsml[0].len,
-                     NULL,
-                     &len,
-                     0);
 #else
     /* The darwin sendfile takes len as an input for the length to send,
      * so make sure to initialize it with the caller's value. */
@@ -1148,7 +1126,6 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
-    || defined(__FreeBSD_kernel__)                                            \
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)
   struct timeval tv[2];
@@ -1190,7 +1167,6 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 #elif defined(__APPLE__)          ||                                          \
       defined(__DragonFly__)      ||                                          \
       defined(__FreeBSD__)        ||                                          \
-      defined(__FreeBSD_kernel__) ||                                          \
       defined(__NetBSD__)
   struct timeval tv[2];
   tv[0] = uv__fs_to_timeval(req->atime);
@@ -1241,10 +1217,10 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     }
 # if defined(__linux__)
     else {
-      r = uv__pwritev(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
+      r = pwritev(req->file,
+                  (struct iovec*) req->bufs,
+                  req->nbufs,
+                  req->off);
       if (r == -1 && errno == ENOSYS) {
         no_pwritev = 1;
         goto retry;
@@ -1288,7 +1264,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     return srcfd;
 
   /* Get the source file's mode. */
-  if (fstat(srcfd, &src_statsbuf)) {
+  if (uv__fstat(srcfd, &src_statsbuf)) {
     err = UV__ERR(errno);
     goto out;
   }
@@ -1316,7 +1292,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
      destination are not the same file. If they are the same, bail out early. */
   if ((req->flags & UV_FS_COPYFILE_EXCL) == 0) {
     /* Get the destination file's mode. */
-    if (fstat(dstfd, &dst_statsbuf)) {
+    if (uv__fstat(dstfd, &dst_statsbuf)) {
       err = UV__ERR(errno);
       goto out;
     }
@@ -1595,7 +1571,7 @@ static int uv__fs_stat(const char *path, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = stat(path, &pbuf);
+  ret = uv__stat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
@@ -1611,7 +1587,7 @@ static int uv__fs_lstat(const char *path, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = lstat(path, &pbuf);
+  ret = uv__lstat(path, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 
@@ -1627,7 +1603,7 @@ static int uv__fs_fstat(int fd, uv_stat_t *buf) {
   if (ret != UV_ENOSYS)
     return ret;
 
-  ret = fstat(fd, &pbuf);
+  ret = uv__fstat(fd, &pbuf);
   if (ret == 0)
     uv__to_stat(&pbuf, buf);
 

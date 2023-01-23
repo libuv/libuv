@@ -23,12 +23,7 @@
 #include <io.h>
 #include <string.h>
 #include <stdlib.h>
-
-#if defined(_MSC_VER) && _MSC_VER < 1600
-# include "uv/stdint-msvc2008.h"
-#else
-# include <stdint.h>
-#endif
+#include <stdint.h>
 
 #ifndef COMMON_LVB_REVERSE_VIDEO
 # define COMMON_LVB_REVERSE_VIDEO 0x4000
@@ -2239,11 +2234,11 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 
   handle->stream.conn.write_reqs_pending--;
-  if (handle->stream.conn.write_reqs_pending == 0)
-    if (handle->flags & UV_HANDLE_SHUTTING)
-      uv__process_tty_shutdown_req(loop,
-                                   handle,
-                                   handle->stream.conn.shutdown_req);
+  if (handle->stream.conn.write_reqs_pending == 0 &&
+      uv__is_stream_shutting(handle))
+    uv__process_tty_shutdown_req(loop,
+                                 handle,
+                                 handle->stream.conn.shutdown_req);
 
   DECREASE_PENDING_REQ_COUNT(handle);
 }
@@ -2274,7 +2269,6 @@ void uv__process_tty_shutdown_req(uv_loop_t* loop, uv_tty_t* stream, uv_shutdown
   assert(req);
 
   stream->stream.conn.shutdown_req = NULL;
-  stream->flags &= ~UV_HANDLE_SHUTTING;
   UNREGISTER_HANDLE_REQ(loop, stream, req);
 
   /* TTY shutdown is really just a no-op */
