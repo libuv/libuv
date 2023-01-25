@@ -24,9 +24,7 @@ jobs:
              mkdir libuv-${{ github.event.release.tag_name }}\bin
              mkdir libuv-${{ github.event.release.tag_name }}\lib
              move include libuv-${{ github.event.release.tag_name }}\
-             move Release/uv_a.lib libuv-${{ github.event.release.tag_name }}\lib\
              move Release/uv.lib libuv-${{ github.event.release.tag_name }}\lib\
-             move Release/uv.exp libuv-${{ github.event.release.tag_name }}\lib\
              move Release/uv.dll libuv-${{ github.event.release.tag_name }}\bin\
              7z a libuv-${{ github.event.release.tag_name }}.zip libuv-${{ github.event.release.tag_name }}\* -tzip -y
       - name: Upload the windows binary artifacts
