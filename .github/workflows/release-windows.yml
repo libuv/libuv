@@ -33,7 +33,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: libuv-${{ github.event.release.tag_name }}.zip
           asset_name: libuv-${{ github.event.release.tag_name }}-windows
-          tag: libuv-${{ github.event.release.tag_name }}-windows
+          tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
           body: "Windows binary - 'libuv' .dll, .lib, and .h headers."
