@@ -1818,6 +1818,7 @@ UV_EXTERN int uv_thread_getaffinity(uv_thread_t* tid,
 UV_EXTERN int uv_thread_getcpu(void);
 UV_EXTERN uv_thread_t uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
+UV_EXTERN int uv_thread_timedjoin(uv_thread_t *tid, uint64_t timeout);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
 
 /* The presence of these unions force similar struct layout. */

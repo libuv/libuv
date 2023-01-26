@@ -458,6 +458,9 @@ TEST_DECLARE   (thread_rwlock)
 TEST_DECLARE   (thread_rwlock_trylock)
 TEST_DECLARE   (thread_create)
 TEST_DECLARE   (thread_equal)
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__)) || defined(__FreeBSD__)
+TEST_DECLARE   (thread_timedjoin)
+#endif
 TEST_DECLARE   (thread_affinity)
 TEST_DECLARE   (dlerror)
 #if (defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))) && \
@@ -1140,6 +1143,9 @@ TASK_LIST_START
   TEST_ENTRY  (thread_rwlock_trylock)
   TEST_ENTRY  (thread_create)
   TEST_ENTRY  (thread_equal)
+#if defined(_WIN32) || (defined(__linux__) && !defined(__ANDROID__)) || defined(__FreeBSD__)
+  TEST_ENTRY  (thread_timedjoin)
+#endif
   TEST_ENTRY  (thread_affinity)
   TEST_ENTRY  (dlerror)
   TEST_ENTRY  (ip4_addr)

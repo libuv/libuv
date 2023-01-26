@@ -286,6 +286,23 @@ int uv_thread_join(uv_thread_t *tid) {
 }
 
 
+int uv_thread_timedjoin(uv_thread_t *tid, uint64_t timeout) {
+  DWORD r = WaitForSingleObject(*tid, (DWORD)(timeout / 1e6));
+  if (r == WAIT_TIMEOUT) {
+    return UV_ETIMEDOUT;
+  } else if (r) {
+    return uv_translate_sys_error(GetLastError());
+  }
+  else {
+    CloseHandle(*tid);
+    *tid = 0;
+    MemoryBarrier();  /* For feature parity with pthread_join(). */
+    return 0;
+  }
+}
+
+
+
 int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
   return *t1 == *t2;
 }

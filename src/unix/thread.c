@@ -404,6 +404,17 @@ int uv_thread_join(uv_thread_t *tid) {
   return UV__ERR(pthread_join(*tid, NULL));
 }
 
+int uv_thread_timedjoin(uv_thread_t *tid, uint64_t timeout) {
+#if (defined(__linux__) && !defined(__ANDROID__)) || defined(__FreeBSD__)
+  struct timespec ts;
+  ts.tv_sec = timeout / NANOSEC;
+  ts.tv_nsec = timeout % NANOSEC;
+  return UV__ERR(pthread_timedjoin_np(*tid, NULL, &ts));
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
 
 int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
   return pthread_equal(*t1, *t2);

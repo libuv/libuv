@@ -298,3 +298,27 @@ TEST_IMPL(thread_stack_size_explicit) {
 
   return 0;
 }
+
+static void wait_forever(void* arg) {
+  uv_sem_t* sem = (uv_sem_t*)arg;
+  uv_sem_wait(sem);
+}
+
+TEST_IMPL(thread_timedjoin) {
+  uv_thread_t thread;
+  uv_sem_t sem;
+
+  ASSERT(0 == uv_sem_init(&sem, 0));
+
+  ASSERT(0 == uv_thread_create(&thread, wait_forever, &sem));
+
+  ASSERT(UV_ETIMEDOUT == uv_thread_timedjoin(&thread, 1000000));
+
+  uv_sem_post(&sem);
+
+  ASSERT(0 == uv_thread_join(&thread));
+
+  uv_sem_destroy(&sem);
+
+  return 0;
+}
