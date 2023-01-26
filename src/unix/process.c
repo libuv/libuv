@@ -105,6 +105,7 @@ void uv__wait_children(uv_loop_t* loop) {
       continue;
     options = 0;
     process->flags &= ~UV_HANDLE_REAP;
+    loop->nfds--;
 #else
     options = WNOHANG;
 #endif
@@ -1012,6 +1013,7 @@ int uv_spawn(uv_loop_t* loop,
       process->flags |= UV_HANDLE_REAP;
       loop->flags |= UV_LOOP_REAP_CHILDREN;
     }
+    loop->nfds++;
 #endif
 
     process->pid = pid;

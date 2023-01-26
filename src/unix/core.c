@@ -361,6 +361,7 @@ static int uv__backend_timeout(const uv_loop_t* loop) {
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
       QUEUE_EMPTY(&loop->pending_queue) &&
       QUEUE_EMPTY(&loop->idle_handles) &&
+      (loop->flags & UV_LOOP_REAP_CHILDREN) == 0 &&
       loop->closing_handles == NULL)
     return uv__next_timeout(loop);
   return 0;
