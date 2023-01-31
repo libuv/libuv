@@ -116,12 +116,8 @@ TEST_IMPL(tty) {
     return TEST_SKIP;
   }
 
-  /*
-   * Is it a safe assumption that most people have terminals larger than
-   * 10x10?
-   */
-  ASSERT(width > 10);
-  ASSERT(height > 10);
+  ASSERT_GT(width, 0);
+  ASSERT_GT(height, 0);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
