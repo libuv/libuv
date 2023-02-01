@@ -296,6 +296,7 @@ int uv__kqueue_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);
+int uv__process_init(uv_loop_t* loop);
 
 /* various */
 void uv__async_close(uv_async_t* handle);
