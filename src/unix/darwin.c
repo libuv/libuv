@@ -28,6 +28,7 @@
 #include <dlfcn.h>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
+#include <mach/host_info.h>
 #include <mach-o/dyld.h> /* _NSGetExecutablePath */
 #include <sys/resource.h>
 #include <sys/sysctl.h>
@@ -102,27 +103,39 @@ int uv_exepath(char* buffer, size_t* size) {
 
 
 uint64_t uv_get_free_memory(void) {
-  vm_statistics_data_t info;
+  vm_statistics64_data_t info;
   mach_msg_type_number_t count = sizeof(info) / sizeof(integer_t);
+  uint64_t used;
+  uint64_t not_used;
+  uint64_t available;
 
-  if (host_statistics(mach_host_self(), HOST_VM_INFO,
-                      (host_info_t)&info, &count) != KERN_SUCCESS) {
+  if (host_statistics64(mach_host_self(), HOST_VM_INFO,
+                        (host_info64_t)&info, &count) != KERN_SUCCESS) {
     return 0;
   }
 
-  return (uint64_t) info.free_count * sysconf(_SC_PAGESIZE);
+  used = info.active_count;
+  used += info.inactive_count;
+  used += info.compressor_page_count;
+  used += info.speculative_count;
+  used += info.wire_count;
+  not_used = info.free_count + info.purgeable_count + info.external_page_count;
+  available = uv_get_total_memory() - (used - not_used) * sysconf(_SC_PAGESIZE);
+
+  return available;
 }
 
 
 uint64_t uv_get_total_memory(void) {
-  uint64_t info;
-  int which[] = {CTL_HW, HW_MEMSIZE};
-  size_t size = sizeof(info);
+  host_basic_info_data_t info;
+  mach_msg_type_number_t count = sizeof(info) / sizeof(integer_t);
 
-  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
+  if (host_info(mach_host_self(), HOST_BASIC_INFO,
+                (host_info_t) &info, &count) != KERN_SUCCESS) {
     return 0;
+  }
 
-  return (uint64_t) info;
+  return (uint64_t) info.max_mem * sysconf(_SC_PAGESIZE);
 }
 
 
