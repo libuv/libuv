@@ -274,11 +274,12 @@ typedef struct {
 } uv_rwlock_t;
 
 typedef struct {
-  unsigned int n;
-  unsigned int count;
+  unsigned threshold;
+  unsigned in;
   uv_mutex_t mutex;
-  uv_sem_t turnstile1;
-  uv_sem_t turnstile2;
+  /* TODO: in v2 make this a uv_cond_t, without unused_ */
+  CONDITION_VARIABLE cond;
+  unsigned out;
 } uv_barrier_t;
 
 typedef struct {
