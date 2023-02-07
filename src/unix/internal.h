@@ -92,6 +92,12 @@
 # define UV__PATH_MAX 8192
 #endif
 
+union uv__sockaddr {
+  struct sockaddr_in6 in6;
+  struct sockaddr_in in;
+  struct sockaddr addr;
+};
+
 #define ACCESS_ONCE(type, var)                                                \
   (*(volatile type*) &(var))
 
