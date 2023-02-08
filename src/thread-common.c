@@ -112,7 +112,8 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
   }
 
   last = (--b->out == 0);
-  uv_cond_broadcast((uv_cond_t*) &b->cond);
+  if (last)
+    uv_cond_broadcast((uv_cond_t*) &b->cond);
 
   uv_mutex_unlock(&b->mutex);
   return last;
