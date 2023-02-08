@@ -41,8 +41,8 @@ static void worker(void* arg) {
   if (c->delay)
     uv_sleep(c->delay);
 
-  for (i = 0; i <= c->niter; i++)
-      c->worker_barrier_wait_rval += uv_barrier_wait(&c->barrier);
+  for (i = 0; i < c->niter; i++)
+    c->worker_barrier_wait_rval += uv_barrier_wait(&c->barrier);
 }
 
 
@@ -51,6 +51,7 @@ TEST_IMPL(barrier_1) {
   worker_config wc;
 
   memset(&wc, 0, sizeof(wc));
+  wc.niter = 1;
 
   ASSERT_EQ(0, uv_barrier_init(&wc.barrier, 2));
   ASSERT_EQ(0, uv_thread_create(&thread, worker, &wc));
@@ -73,6 +74,7 @@ TEST_IMPL(barrier_2) {
 
   memset(&wc, 0, sizeof(wc));
   wc.delay = 100;
+  wc.niter = 1;
 
   ASSERT_EQ(0, uv_barrier_init(&wc.barrier, 2));
   ASSERT_EQ(0, uv_thread_create(&thread, worker, &wc));
@@ -99,13 +101,13 @@ TEST_IMPL(barrier_3) {
   ASSERT_EQ(0, uv_barrier_init(&wc.barrier, 2));
   ASSERT_EQ(0, uv_thread_create(&thread, worker, &wc));
 
-  for (i = 0; i <= wc.niter; i++)
-      wc.main_barrier_wait_rval += uv_barrier_wait(&wc.barrier);
+  for (i = 0; i < wc.niter; i++)
+    wc.main_barrier_wait_rval += uv_barrier_wait(&wc.barrier);
 
   ASSERT_EQ(0, uv_thread_join(&thread));
   uv_barrier_destroy(&wc.barrier);
 
-  ASSERT_EQ(wc.niter + 1, wc.main_barrier_wait_rval + wc.worker_barrier_wait_rval);
+  ASSERT_EQ(wc.niter, wc.main_barrier_wait_rval + wc.worker_barrier_wait_rval);
 
   return 0;
 }
@@ -116,7 +118,7 @@ static void serial_worker(void* data) {
 
   barrier = data;
   for (i = 0; i < 5; i++)
-      uv_barrier_wait(barrier);
+    uv_barrier_wait(barrier);
   if (uv_barrier_wait(barrier) > 0)
     uv_barrier_destroy(barrier);
 
@@ -137,7 +139,7 @@ TEST_IMPL(barrier_serial_thread) {
     ASSERT_EQ(0, uv_thread_create(&threads[i], serial_worker, &barrier));
 
   for (i = 0; i < 5; i++)
-      uv_barrier_wait(&barrier);
+    uv_barrier_wait(&barrier);
   if (uv_barrier_wait(&barrier) > 0)
     uv_barrier_destroy(&barrier);
 

@@ -40,6 +40,9 @@ int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
 #ifdef _WIN32
   uv_barrier_t* b;
   b = barrier;
+
+  if (barrier == NULL || count == 0)
+    return UV_EINVAL;
 #else
   struct _uv_barrier* b;
 
