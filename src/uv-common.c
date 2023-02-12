@@ -342,7 +342,7 @@ int uv_tcp_bind(uv_tcp_t* handle,
 }
 
 
-int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned flags) {
+int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned int flags) {
   unsigned extra_flags;
   int domain;
   int rc;
