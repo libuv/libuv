@@ -284,6 +284,10 @@ int uv_chdir(const char* dir) {
     return uv_translate_sys_error(GetLastError());
   }
 
+  /* uv__cwd() will return a new buffer. */
+  uv__free(utf16_buffer);
+  utf16_buffer = NULL;
+
   /* Windows stores the drive-local path in an "hidden" environment variable,
    * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
    * this, so we'll have to do it. */
