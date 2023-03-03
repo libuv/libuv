@@ -107,6 +107,6 @@ BENCHMARK_IMPL(million_async) {
           fmt(container->handles_seen));
   free(container);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }

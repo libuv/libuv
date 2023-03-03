@@ -116,7 +116,7 @@ static int test_async(int nthreads) {
 
   free(threads);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 

@@ -310,7 +310,7 @@ TEST_IMPL(signal_multiple_loops) {
    */
   ASSERT(loop_creation_counter >= NUM_LOOP_CREATING_THREADS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 

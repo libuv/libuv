@@ -63,6 +63,6 @@ BENCHMARK_IMPL(queue_work) {
   printf("%s async jobs in %.1f seconds (%s/s)\n", fmt(events), timeout / 1000.,
          fmt(events / (timeout / 1000.)));
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }

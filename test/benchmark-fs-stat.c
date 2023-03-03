@@ -131,6 +131,6 @@ BENCHMARK_IMPL(fs_stat) {
   warmup(path);
   sync_bench(path);
   async_bench(path);
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

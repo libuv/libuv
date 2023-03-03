@@ -102,7 +102,7 @@ TEST_IMPL(pipe_connect_multiple) {
   ASSERT(connection_cb_called == NUM_CLIENTS);
   ASSERT(connect_cb_called == NUM_CLIENTS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -173,6 +173,6 @@ TEST_IMPL(pipe_connect_close_multiple) {
   ASSERT_EQ(connection_cb_called, NUM_CLIENTS);
   ASSERT_EQ(connect_cb_called, NUM_CLIENTS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }

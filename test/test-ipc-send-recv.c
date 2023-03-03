@@ -223,7 +223,7 @@ static int run_ipc_send_recv_pipe(int inprocess) {
   r = run_test(inprocess);
   ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -264,7 +264,7 @@ static int run_ipc_send_recv_tcp(int inprocess) {
   r = run_test(inprocess);
   ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -416,7 +416,7 @@ int ipc_send_recv_helper(void) {
   r = run_ipc_send_recv_helper(uv_default_loop(), 0);
   ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
