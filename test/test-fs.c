@@ -4513,6 +4513,7 @@ TEST_IMPL(fs_statfs) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(statfs_cb_count == 2);
 
+  MAKE_VALGRIND_HAPPY();
   return 0;
 }
 
