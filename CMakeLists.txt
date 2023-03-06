@@ -166,6 +166,7 @@ set(uv_sources
     src/random.c
     src/strscpy.c
     src/strtok.c
+    src/thread-common.c
     src/threadpool.c
     src/timer.c
     src/uv-common.c
