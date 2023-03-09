@@ -37,6 +37,9 @@
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
 #  define ERROR_SYMLINK_NOT_SUPPORTED 1464
 # endif
+# ifndef S_IFIFO
+#  define S_IFIFO _S_IFIFO
+# endif
 # define unlink _unlink
 # define rmdir _rmdir
 # define open _open
