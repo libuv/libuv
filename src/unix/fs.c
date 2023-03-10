@@ -1306,7 +1306,19 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     /* Truncate the file in case the destination already existed. */
     if (ftruncate(dstfd, 0) != 0) {
       err = UV__ERR(errno);
-      goto out;
+
+      /* ftruncate() on ceph-fuse fails with EACCES when the file is created
+       * with read only permissions. Since ftruncate() on a newly created
+       * file is a meaningless operation anyway, detect that condition
+       * and squelch the error.
+       */
+      if (err != UV_EACCES)
+        goto out;
+
+      if (dst_statsbuf.st_size > 0)
+        goto out;
+
+      err = 0;
     }
   }
 
