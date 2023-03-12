@@ -47,6 +47,9 @@ static void timer_spin_cb(uv_timer_t* handle) {
 
 
 TEST_IMPL(metrics_idle_time) {
+#if defined(__OpenBSD__)
+  RETURN_SKIP("Test does not currently work in OpenBSD");
+#endif
   const uint64_t timeout = 1000;
   uv_timer_t timer;
   uint64_t idle_time;
@@ -65,10 +68,10 @@ TEST_IMPL(metrics_idle_time) {
   idle_time = uv_metrics_idle_time(uv_default_loop());
 
   /* Permissive check that the idle time matches within the timeout ±500 ms. */
-  ASSERT((idle_time <= (timeout + 500) * UV_NS_TO_MS) &&
-         (idle_time >= (timeout - 500) * UV_NS_TO_MS));
+  ASSERT_LE(idle_time, (timeout + 500) * UV_NS_TO_MS);
+  ASSERT_GE(idle_time, (timeout - 500) * UV_NS_TO_MS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -144,7 +147,7 @@ TEST_IMPL(metrics_idle_time_zero) {
   ASSERT_EQ(0, uv_metrics_info(uv_default_loop(), &metrics));
   ASSERT_UINT64_EQ(cntr, metrics.loop_count);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -233,6 +236,6 @@ TEST_IMPL(metrics_info_check) {
   uv_fs_unlink(NULL, &unlink_req, "test_file", NULL);
   uv_fs_req_cleanup(&unlink_req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

@@ -128,6 +128,39 @@ int uv_replace_allocator(uv_malloc_func malloc_func,
   return 0;
 }
 
+
+void uv_os_free_passwd(uv_passwd_t* pwd) {
+  if (pwd == NULL)
+    return;
+
+  /* On unix, the memory for name, shell, and homedir are allocated in a single
+   * uv__malloc() call. The base of the pointer is stored in pwd->username, so
+   * that is the field that needs to be freed.
+   */
+  uv__free(pwd->username);
+#ifdef _WIN32
+  uv__free(pwd->homedir);
+#endif
+  pwd->username = NULL;
+  pwd->shell = NULL;
+  pwd->homedir = NULL;
+}
+
+
+void uv_os_free_group(uv_group_t *grp) {
+  if (grp == NULL)
+    return;
+
+  /* The memory for is allocated in a single uv__malloc() call. The base of the
+   * pointer is stored in grp->members, so that is the only field that needs to
+   * be freed.
+   */
+  uv__free(grp->members);
+  grp->members = NULL;
+  grp->groupname = NULL;
+}
+
+
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
@@ -887,12 +920,17 @@ void uv_os_free_environ(uv_env_item_t* envitems, int count) {
 
 
 void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
+#ifdef __linux__
+  (void) &count;
+  uv__free(cpu_infos);
+#else
   int i;
 
   for (i = 0; i < count; i++)
     uv__free(cpu_infos[i].model);
 
   uv__free(cpu_infos);
+#endif  /* __linux__ */
 }
 
 

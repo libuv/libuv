@@ -48,12 +48,18 @@ extern int snprintf(char*, size_t, const char*, ...);
 #endif
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define ARRAY_END(a)  ((a) + ARRAY_SIZE(a))
 
 #define container_of(ptr, type, member) \
   ((type *) ((char *) (ptr) - offsetof(type, member)))
 
+/* C11 defines static_assert to be a macro which calls _Static_assert. */
+#if defined(static_assert)
+#define STATIC_ASSERT(expr) static_assert(expr, #expr)
+#else
 #define STATIC_ASSERT(expr)                                                   \
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
+#endif
 
 #if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
 #define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)

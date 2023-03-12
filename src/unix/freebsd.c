@@ -116,6 +116,11 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
+uint64_t uv_get_available_memory(void) {
+  return uv_get_free_memory();
+}
+
+
 void uv_loadavg(double avg[3]) {
   struct loadavg info;
   size_t size = sizeof(info);
@@ -263,30 +268,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   return 0;
 }
 
-
-int uv__sendmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
-#if __FreeBSD__ >= 11 && !defined(__DragonFly__)
-  return sendmmsg(fd,
-                  (struct mmsghdr*) mmsg,
-                  vlen,
-                  0 /* flags */);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
-
-
-int uv__recvmmsg(int fd, struct uv__mmsghdr* mmsg, unsigned int vlen) {
-#if __FreeBSD__ >= 11 && !defined(__DragonFly__)
-  return recvmmsg(fd,
-                  (struct mmsghdr*) mmsg,
-                  vlen,
-                  0 /* flags */,
-                  NULL /* timeout */);
-#else
-  return errno = ENOSYS, -1;
-#endif
-}
 
 ssize_t
 uv__fs_copy_file_range(int fd_in,

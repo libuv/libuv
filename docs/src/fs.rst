@@ -160,6 +160,10 @@ Data types
             size_t nentries;
         } uv_dir_t;
 
+.. c:type:: void (*uv_fs_cb)(uv_fs_t* req)
+
+    Callback called when a request is completed asynchronously.
+
 
 Public members
 ^^^^^^^^^^^^^^

@@ -70,6 +70,11 @@ typedef struct pollfd {
 # define S_IFLNK 0xA000
 #endif
 
+// Define missing in Windows Kit Include\{VERSION}\ucrt\sys\stat.h
+#if defined(_CRT_INTERNAL_NONSTDC_NAMES) && _CRT_INTERNAL_NONSTDC_NAMES && !defined(S_IFIFO)
+# define S_IFIFO _S_IFIFO
+#endif
+
 /* Additional signals supported by uv_signal and or uv_kill. The CRT defines
  * the following signals already:
  *
@@ -269,11 +274,12 @@ typedef struct {
 } uv_rwlock_t;
 
 typedef struct {
-  unsigned int n;
-  unsigned int count;
+  unsigned threshold;
+  unsigned in;
   uv_mutex_t mutex;
-  uv_sem_t turnstile1;
-  uv_sem_t turnstile2;
+  /* TODO: in v2 make this a uv_cond_t, without unused_ */
+  CONDITION_VARIABLE cond;
+  unsigned out;
 } uv_barrier_t;
 
 typedef struct {
@@ -601,7 +607,7 @@ typedef struct {
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  BYTE* child_stdio_buffer;                                                   \
+  void* unused; /* TODO: retained for ABI compat; remove this in v2.x. */     \
   int exit_signal;                                                            \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \

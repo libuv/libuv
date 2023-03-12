@@ -32,6 +32,7 @@
 * [pixie](https://github.com/pixie-lang/pixie): clojure-inspired lisp with a tracing JIT
 * [potion](https://github.com/perl11/potion)/[p2](https://github.com/perl11/p2): runtime
 * [racer](https://libraries.io/rubygems/racer): Ruby web server written as an C extension
+* [Socket Runtime](https://sockets.sh): A runtime for creating native cross-platform software on mobile and desktop using HTML, CSS, and JavaScript
 * [spider-gazelle](https://github.com/cotag/spider-gazelle): Ruby web server using libuv bindings
 * [Suave](http://suave.io/): A simple web development F# library providing a lightweight web server and a set of combinators to manipulate route flow and task composition
 * [Swish](https://github.com/becls/swish/): Concurrency engine with Erlang-like concepts. Includes a web server.

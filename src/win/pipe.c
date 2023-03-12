@@ -1782,6 +1782,82 @@ int uv__pipe_write(uv_loop_t* loop,
 }
 
 
+int uv__pipe_try_write(uv_pipe_t* handle,
+                       const uv_buf_t bufs[],
+                       unsigned int nbufs) {
+  OVERLAPPED overlapped;
+  HANDLE event;
+  const uv_buf_t* buf;
+  int bytes_written;
+  unsigned int idx;
+  DWORD timeout;
+  DWORD err;
+
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    return UV_EAGAIN;
+  }
+
+  if (handle->stream.conn.write_reqs_pending > 0) {
+    return UV_EAGAIN;
+  }
+
+  timeout = 0;
+  if (handle->flags & UV_HANDLE_BLOCKING_WRITES) {
+    timeout = INFINITE;
+  }
+
+  memset(&overlapped, 0, sizeof(overlapped));
+
+  event = CreateEvent(NULL, FALSE, FALSE, NULL);
+  if (event == NULL) {
+    uv_fatal_error(GetLastError(), "CreateEvent");
+  }
+
+  overlapped.hEvent = (HANDLE)((uintptr_t)event | 1);
+
+  bytes_written = 0;
+  for (err = 0, idx = 0; idx < nbufs; err = 0, idx += 1) {
+    buf = &bufs[idx];
+
+    if (!WriteFile(handle->handle, buf->base, buf->len, NULL, &overlapped)) {
+      err = GetLastError();
+      if (err != ERROR_IO_PENDING) {
+        break;
+      }
+
+      err = WaitForSingleObject(event, timeout);
+      if (err != WAIT_OBJECT_0) {
+        CancelIoEx(handle->handle, &overlapped);
+      }
+    }
+      
+    if (GetOverlappedResult(handle->handle, &overlapped, &err, TRUE)) {
+      bytes_written += err;
+      if (err == buf->len)
+        continue;
+      err = WSAEWOULDBLOCK;  /* Ignored later. */
+    } else {
+      err = GetLastError();
+      if (err == ERROR_OPERATION_ABORTED) {
+        err = WSAEWOULDBLOCK;  /* Translates to UV_EAGAIN. */
+      }
+    }
+
+    break;
+  }
+
+  if (!CloseHandle(event)) {
+    uv_fatal_error(GetLastError(), "CloseHandle");
+  }
+
+  if (bytes_written == 0 && err != 0) {
+    return uv_translate_sys_error(err);
+  }
+
+  return bytes_written;
+}
+
+
 static void uv__pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
     uv_buf_t buf) {
   /* If there is an eof timer running, we don't need it any more, so discard
