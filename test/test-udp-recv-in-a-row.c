@@ -116,6 +116,6 @@ TEST_IMPL(udp_recv_in_a_row) {
 
   ASSERT(check_cb_called);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

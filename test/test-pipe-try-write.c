@@ -136,7 +136,7 @@ static int pipe_try_write(void (*spammer)(uv_pipe_t*)) {
   uv_pipe_connect(&connect_req, &client.handle, TEST_PIPENAME, connect_cb);
   ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 

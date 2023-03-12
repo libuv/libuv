@@ -102,7 +102,7 @@ TEST_IMPL(tcp_rst) {
   ASSERT_EQ(called_connect_cb, 1);
   ASSERT_EQ(called_close_cb, 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 #else
   RETURN_SKIP("Unix only test");

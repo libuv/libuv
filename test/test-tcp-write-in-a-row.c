@@ -136,7 +136,7 @@ TEST_IMPL(tcp_write_in_a_row) {
   ASSERT_EQ(1, connection_cb_called);
   ASSERT_EQ(2, write_cb_called);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 #endif
 }

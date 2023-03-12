@@ -243,13 +243,13 @@ typedef enum {
 #define ASSERT_PTR_NE(a, b) \
   ASSERT_BASE(a, !=, b, void*, "p")
 
-/* This macro cleans up the main loop. This is used to avoid valgrind
- * warnings about memory being "leaked" by the main event loop.
+/* This macro cleans up the event loop. This is used to avoid valgrind
+ * warnings about memory being "leaked" by the event loop.
  */
-#define MAKE_VALGRIND_HAPPY()                       \
+#define MAKE_VALGRIND_HAPPY(loop)                   \
   do {                                              \
-    close_loop(uv_default_loop());                  \
-    ASSERT(0 == uv_loop_close(uv_default_loop()));  \
+    close_loop(loop);                               \
+    ASSERT(0 == uv_loop_close(loop));               \
     uv_library_shutdown();                          \
   } while (0)
 

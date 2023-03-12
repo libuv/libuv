@@ -432,7 +432,7 @@ TEST_IMPL(fs_event_watch_dir) {
   remove("watch_dir/file1");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -494,7 +494,7 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
   remove("watch_dir/subdir");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 #else
   RETURN_SKIP("Recursive directory watching not supported on this platform.");
@@ -541,7 +541,7 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
   remove("watch_dir/file1");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
 
   if (!has_shortnames)
     RETURN_SKIP("Was not able to address files with 8.3 short name.");
@@ -587,7 +587,7 @@ TEST_IMPL(fs_event_watch_file) {
   remove("watch_dir/file1");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -640,7 +640,7 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
   remove("watch_dir/file.jsx");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -664,7 +664,7 @@ TEST_IMPL(fs_event_watch_file_twice) {
   ASSERT(0 == uv_timer_start(&timer, timer_cb_watch_twice, 10, 0));
   ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -719,7 +719,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   /* Cleanup */
   remove("watch_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -745,7 +745,7 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 
   uv_close((uv_handle_t*) &fs_event, NULL);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 #endif
@@ -784,7 +784,7 @@ TEST_IMPL(fs_event_no_callback_after_close) {
   remove("watch_dir/file1");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -821,7 +821,7 @@ TEST_IMPL(fs_event_no_callback_on_close) {
   remove("watch_dir/file1");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -859,7 +859,7 @@ TEST_IMPL(fs_event_immediate_close) {
 
   ASSERT(close_cb_called == 2);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -894,7 +894,7 @@ TEST_IMPL(fs_event_close_with_pending_event) {
   remove("watch_dir/file");
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -932,7 +932,7 @@ TEST_IMPL(fs_event_close_with_pending_delete_event) {
   /* Clean up */
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -973,7 +973,7 @@ TEST_IMPL(fs_event_close_in_callback) {
   fs_event_unlink_files(NULL);
   remove("watch_dir/");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1008,7 +1008,7 @@ TEST_IMPL(fs_event_start_and_close) {
   ASSERT(close_cb_called == 2);
 
   remove("watch_dir/");
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1061,7 +1061,7 @@ TEST_IMPL(fs_event_getpath) {
   }
 
   remove("watch_dir/");
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1150,7 +1150,7 @@ TEST_IMPL(fs_event_error_reporting) {
   } while (i-- != 0);
 
   remove("watch_dir/");
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -1159,7 +1159,7 @@ TEST_IMPL(fs_event_error_reporting) {
 TEST_IMPL(fs_event_error_reporting) {
   /* No-op, needed only for FSEvents backend */
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -1182,7 +1182,7 @@ TEST_IMPL(fs_event_watch_invalid_path) {
   r = uv_fs_event_start(&fs_event, fs_event_cb_file, "", 0);
   ASSERT(r != 0);
   ASSERT(uv_is_active((uv_handle_t*) &fs_event) == 0);
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1228,6 +1228,6 @@ TEST_IMPL(fs_event_stop_in_cb) {
 
   remove(path);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
