@@ -30,6 +30,7 @@ static int twice_close_cb_called = 0;
 static int repeat_cb_called = 0;
 static int repeat_close_cb_called = 0;
 static int order_cb_called = 0;
+static int timer_check_double_call_called = 0;
 static uint64_t start_time;
 static uv_timer_t tiny_timer;
 static uv_timer_t huge_timer1;
@@ -364,6 +365,44 @@ TEST_IMPL(timer_early_check) {
 
   uv_close((uv_handle_t*) &timer_handle, NULL);
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+static void timer_check_double_call(uv_timer_t* handle) {
+  timer_check_double_call_called++;
+}
+
+TEST_IMPL(timer_no_double_call_once) {
+  uv_timer_t timer_handle;
+  const uint64_t timeout_ms = 10;
+
+  ASSERT_EQ(0, uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT_EQ(0, uv_timer_start(&timer_handle,
+                              timer_check_double_call,
+                              timeout_ms,
+                              timeout_ms));
+  uv_sleep(timeout_ms * 2);
+  ASSERT_EQ(1, uv_run(uv_default_loop(), UV_RUN_ONCE));
+  ASSERT_EQ(1, timer_check_double_call_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+TEST_IMPL(timer_no_double_call_nowait) {
+  uv_timer_t timer_handle;
+  const uint64_t timeout_ms = 10;
+
+  ASSERT_EQ(0, uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT_EQ(0, uv_timer_start(&timer_handle,
+                              timer_check_double_call,
+                              timeout_ms,
+                              timeout_ms));
+  uv_sleep(timeout_ms * 2);
+  ASSERT_EQ(1, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
+  ASSERT_EQ(1, timer_check_double_call_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
