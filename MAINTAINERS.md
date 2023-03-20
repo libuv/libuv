@@ -22,6 +22,8 @@ libuv is currently managed by the following individuals:
   - GPG key: 612F 0EAD 9401 6223 79DF  4402 F28C 3C8D A33C 03BE (pubkey-santigimeno)
 * **Saúl Ibarra Corretgé** ([@saghul](https://github.com/saghul))
   - GPG key: FDF5 1936 4458 319F A823  3DC9 410E 5553 AE9B C059 (pubkey-saghul)
+* **Trevor Norris** ([@trevnorris](https://github.com/trevnorris))
+  - GPG key: AEFC 279A 0C93 0676 7E58  29A1 251C A676 820D C7F3 (pubkey-trevnorris)
 
 ## Project Maintainers emeriti
 
