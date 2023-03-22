@@ -2,8 +2,6 @@ name: release-windows
 
 on:
   release:
-    tags:
-      - '*'
 
 jobs:
   windows:
