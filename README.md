@@ -338,7 +338,7 @@ See the [guidelines for contributing][].
 [CMake]: https://cmake.org/
 [node.js]: http://nodejs.org/
 [guidelines for contributing]: https://github.com/libuv/libuv/blob/master/CONTRIBUTING.md
-[libuv_banner]: https://raw.githubusercontent.com/libuv/libuv/master/img/banner.png
+[libuv_banner]: https://raw.githubusercontent.com/openjs-foundation/artwork/main/projects/libuv/libuv-logo-horizontal-color.svg
 [Visual C++ Build Tools]: https://visualstudio.microsoft.com/visual-cpp-build-tools/
 [Visual Studio 2015 Update 3]: https://www.visualstudio.com/vs/older-downloads/
 [Visual Studio 2017]: https://www.visualstudio.com/downloads/
