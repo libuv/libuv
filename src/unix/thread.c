@@ -55,124 +55,6 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
-#if defined(PTHREAD_BARRIER_SERIAL_THREAD)
-STATIC_ASSERT(sizeof(uv_barrier_t) == sizeof(pthread_barrier_t));
-#endif
-
-/* Note: guard clauses should match uv_barrier_t's in include/uv/unix.h. */
-#if defined(_AIX) || \
-    defined(__OpenBSD__) || \
-    !defined(PTHREAD_BARRIER_SERIAL_THREAD)
-int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  struct _uv_barrier* b;
-  int rc;
-
-  if (barrier == NULL || count == 0)
-    return UV_EINVAL;
-
-  b = uv__malloc(sizeof(*b));
-  if (b == NULL)
-    return UV_ENOMEM;
-
-  b->in = 0;
-  b->out = 0;
-  b->threshold = count;
-
-  rc = uv_mutex_init(&b->mutex);
-  if (rc != 0)
-    goto error2;
-
-  rc = uv_cond_init(&b->cond);
-  if (rc != 0)
-    goto error;
-
-  barrier->b = b;
-  return 0;
-
-error:
-  uv_mutex_destroy(&b->mutex);
-error2:
-  uv__free(b);
-  return rc;
-}
-
-
-int uv_barrier_wait(uv_barrier_t* barrier) {
-  struct _uv_barrier* b;
-  int last;
-
-  if (barrier == NULL || barrier->b == NULL)
-    return UV_EINVAL;
-
-  b = barrier->b;
-  uv_mutex_lock(&b->mutex);
-
-  if (++b->in == b->threshold) {
-    b->in = 0;
-    b->out = b->threshold;
-    uv_cond_signal(&b->cond);
-  } else {
-    do
-      uv_cond_wait(&b->cond, &b->mutex);
-    while (b->in != 0);
-  }
-
-  last = (--b->out == 0);
-  uv_cond_signal(&b->cond);
-
-  uv_mutex_unlock(&b->mutex);
-  return last;
-}
-
-
-void uv_barrier_destroy(uv_barrier_t* barrier) {
-  struct _uv_barrier* b;
-
-  b = barrier->b;
-  uv_mutex_lock(&b->mutex);
-
-  assert(b->in == 0);
-  while (b->out != 0)
-    uv_cond_wait(&b->cond, &b->mutex);
-
-  if (b->in != 0)
-    abort();
-
-  uv_mutex_unlock(&b->mutex);
-  uv_mutex_destroy(&b->mutex);
-  uv_cond_destroy(&b->cond);
-
-  uv__free(barrier->b);
-  barrier->b = NULL;
-}
-
-#else
-
-int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  return UV__ERR(pthread_barrier_init(barrier, NULL, count));
-}
-
-
-int uv_barrier_wait(uv_barrier_t* barrier) {
-  int rc;
-
-  rc = pthread_barrier_wait(barrier);
-  if (rc != 0)
-    if (rc != PTHREAD_BARRIER_SERIAL_THREAD)
-      abort();
-
-  return rc == PTHREAD_BARRIER_SERIAL_THREAD;
-}
-
-
-void uv_barrier_destroy(uv_barrier_t* barrier) {
-  if (pthread_barrier_destroy(barrier))
-    abort();
-}
-
-#endif
-
-
 /* Musl's PTHREAD_STACK_MIN is 2 KB on all architectures, which is
  * too small to safely receive signals on.
  *
@@ -696,7 +578,7 @@ static void uv__custom_sem_post(uv_sem_t* sem_) {
   uv_mutex_lock(&sem->mutex);
   sem->value++;
   if (sem->value == 1)
-    uv_cond_signal(&sem->cond);
+    uv_cond_signal(&sem->cond); /* Release one to replace us. */
   uv_mutex_unlock(&sem->mutex);
 }
 

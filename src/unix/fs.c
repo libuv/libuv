@@ -65,6 +65,7 @@
 #endif
 
 #if defined(__APPLE__)
+# include <copyfile.h>
 # include <sys/sysctl.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
@@ -1240,6 +1241,32 @@ done:
 }
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  /* On macOS, use the native copyfile(3). */
+  copyfile_flags_t flags;
+
+  /* Don't overwrite the destination if its permissions disallow it. */
+  if (faccessat(AT_FDCWD, req->new_path, R_OK | W_OK, AT_EACCESS)) {
+    if (errno != ENOENT)
+      return UV__ERR(errno);
+  }
+
+  flags = COPYFILE_ALL;
+
+  if (req->flags & UV_FS_COPYFILE_FICLONE)
+    flags |= COPYFILE_CLONE;
+
+  if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
+    flags |= COPYFILE_CLONE_FORCE;
+
+  if (req->flags & UV_FS_COPYFILE_EXCL)
+    flags |= COPYFILE_EXCL;
+
+  if (copyfile(req->path, req->new_path, NULL, flags))
+    return UV__ERR(errno);
+
+  return 0;
+#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
   uv_fs_t fs_req;
   uv_file srcfd;
   uv_file dstfd;
@@ -1306,7 +1333,19 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     /* Truncate the file in case the destination already existed. */
     if (ftruncate(dstfd, 0) != 0) {
       err = UV__ERR(errno);
-      goto out;
+
+      /* ftruncate() on ceph-fuse fails with EACCES when the file is created
+       * with read only permissions. Since ftruncate() on a newly created
+       * file is a meaningless operation anyway, detect that condition
+       * and squelch the error.
+       */
+      if (err != UV_EACCES)
+        goto out;
+
+      if (dst_statsbuf.st_size > 0)
+        goto out;
+
+      err = 0;
     }
   }
 
@@ -1403,6 +1442,7 @@ out:
 
   errno = UV__ERR(result);
   return -1;
+#endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
 }
 
 static void uv__to_stat(struct stat* src, uv_stat_t* dst) {

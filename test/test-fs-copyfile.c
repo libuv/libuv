@@ -220,5 +220,6 @@ TEST_IMPL(fs_copyfile) {
 #endif
 
   unlink(dst); /* Cleanup */
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }

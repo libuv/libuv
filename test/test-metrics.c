@@ -71,7 +71,7 @@ TEST_IMPL(metrics_idle_time) {
   ASSERT_LE(idle_time, (timeout + 500) * UV_NS_TO_MS);
   ASSERT_GE(idle_time, (timeout - 500) * UV_NS_TO_MS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -147,7 +147,7 @@ TEST_IMPL(metrics_idle_time_zero) {
   ASSERT_EQ(0, uv_metrics_info(uv_default_loop(), &metrics));
   ASSERT_UINT64_EQ(cntr, metrics.loop_count);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -236,6 +236,6 @@ TEST_IMPL(metrics_info_check) {
   uv_fs_unlink(NULL, &unlink_req, "test_file", NULL);
   uv_fs_req_cleanup(&unlink_req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

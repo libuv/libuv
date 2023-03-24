@@ -94,7 +94,7 @@ static int test_async_pummel(int nthreads) {
 
   free(tids);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
