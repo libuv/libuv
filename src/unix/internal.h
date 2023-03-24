@@ -393,7 +393,6 @@ UV_UNUSED(static int uv__stat(const char* path, struct stat* s)) {
 }
 
 #if defined(__linux__)
-int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
 ssize_t
 uv__fs_copy_file_range(int fd_in,
                        off_t* off_in,
