@@ -2,6 +2,7 @@ name: release-windows
 
 on:
   release:
+    types: [published]
 
 jobs:
   windows:
