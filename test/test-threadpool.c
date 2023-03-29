@@ -22,7 +22,10 @@
 #include "uv.h"
 #include "task.h"
 
+#define RECURS_SIZE 1000
+
 static int work_cb_count;
+static int work_cb_count2;
 static int after_work_cb_count;
 static uv_work_t work_req;
 static char data;
@@ -70,6 +73,75 @@ TEST_IMPL(threadpool_queue_work_einval) {
 
   ASSERT(work_cb_count == 0);
   ASSERT(after_work_cb_count == 0);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+static uv_work_t* create_work_inst(void) {
+  uv_work_t* req = malloc(sizeof(*req));
+  ASSERT_NOT_NULL(req);
+  return req;
+}
+
+
+/* This is necessary since uv_queue_work() requires the call to uv_after_work_cb
+ * to be called, even in the case the req was cancelled. Only then is it removed
+ * from the internal queue and able to be free'd by the user. */
+static void after_work_recurs_cb(uv_work_t* req, int status) {
+  ASSERT_OK(status);
+  free(req);
+  after_work_cb_count++;
+}
+
+
+static void req_work(uv_loop_t* loop, uv_work_cb cb) {
+  int r;
+  uv_work_t* req2 = create_work_inst();
+  r = uv_queue_work(loop, req2, cb, after_work_recurs_cb);
+  ASSERT_OK(r);
+}
+
+
+static void work_recurs_cb(uv_work_t* req) {
+  if (++work_cb_count >= RECURS_SIZE)
+    return;
+  req_work(req->loop, work_recurs_cb);
+}
+
+
+static void work_recurs2_cb(uv_work_t* req) {
+  if (++work_cb_count2 >= RECURS_SIZE)
+    return;
+  req_work(req->loop, work_recurs2_cb);
+}
+
+
+TEST_IMPL(threadpool_queue_recursive) {
+  uv_work_t* req1;
+  uv_work_t* req2;
+  int r;
+
+  req1 = create_work_inst();
+  req2 = create_work_inst();
+
+  r = uv_queue_work(uv_default_loop(),
+                    req1,
+                    work_recurs_cb,
+                    after_work_recurs_cb);
+  ASSERT_OK(r);
+  r = uv_queue_work(uv_default_loop(),
+                    req2,
+                    work_recurs2_cb,
+                    after_work_recurs_cb);
+  ASSERT_OK(r);
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  ASSERT_EQ(work_cb_count, RECURS_SIZE);
+  ASSERT_EQ(work_cb_count2, RECURS_SIZE);
+  ASSERT_EQ(after_work_cb_count, RECURS_SIZE * 2);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
