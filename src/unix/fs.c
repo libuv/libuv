@@ -1240,9 +1240,8 @@ done:
   return r;
 }
 
-static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
-  /* On macOS, use the native copyfile(3). */
+static ssize_t uv__fs_fcopyfile_mac(uv_fs_t* req, uv_file srcfd, uv_file dstfd) {
   copyfile_flags_t flags;
 
   /* Don't overwrite the destination if its permissions disallow it. */
@@ -1262,11 +1261,15 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   if (req->flags & UV_FS_COPYFILE_EXCL)
     flags |= COPYFILE_EXCL;
 
-  if (copyfile(req->path, req->new_path, NULL, flags))
+  if (fcopyfile(srcfd, dstfd, NULL, flags))
     return UV__ERR(errno);
 
   return 0;
-#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
+}
+
+#endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
+
+static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_t fs_req;
   uv_file srcfd;
   uv_file dstfd;
@@ -1348,6 +1351,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
       err = 0;
     }
   }
+
+  #if defined(__APPLE__) && !TARGET_OS_IPHONE
+    /* On macOS, use the native fcopyfile(3). */
+    return uv__fs_fcopyfile_mac(req, srcfd, dstfd);
+  #endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
@@ -1442,7 +1450,6 @@ out:
 
   errno = UV__ERR(result);
   return -1;
-#endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
 }
 
 static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
