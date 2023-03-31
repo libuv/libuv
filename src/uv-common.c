@@ -342,6 +342,23 @@ int uv_tcp_bind(uv_tcp_t* handle,
 }
 
 
+void uv_set_socket_create_cb(uv_handle_t* handle,
+                             uv_socket_create_cb cb,
+                             void* p) {
+  if (handle) {
+    uv_os_fd_t fd = (uv_os_fd_t)-1;
+    if (uv_fileno((uv_handle_t*)handle, &fd) == 0) {
+      if (cb) {
+        cb(handle, p);
+      }
+    } else {
+      handle->u.socket_create.cb = cb;
+      handle->u.socket_create.p = p;
+    }
+  }
+}
+
+
 int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned flags) {
   unsigned extra_flags;
   int domain;

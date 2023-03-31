@@ -139,6 +139,10 @@ static int uv__tcp_set_socket(uv_loop_t* loop,
     assert(!(handle->flags & UV_HANDLE_IPV6));
   }
 
+  if (handle->u.socket_create.cb) {
+    handle->u.socket_create.cb((uv_handle_t*)handle, handle->u.socket_create.p);
+  }
+
   return 0;
 }
 
@@ -163,6 +167,9 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
   handle->tcp.conn.func_connectex = NULL;
   handle->tcp.serv.processed_accepts = 0;
   handle->delayed_error = 0;
+
+  handle->u.socket_create.cb = NULL;
+  handle->u.socket_create.p = NULL;
 
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv__stream_init.

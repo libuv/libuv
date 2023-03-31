@@ -68,6 +68,10 @@ static int new_socket(uv_tcp_t* handle, int domain, unsigned int flags) {
     return err;
   }
 
+  if (handle->u.socket_create.cb) {
+    handle->u.socket_create.cb((uv_handle_t*)handle, handle->u.socket_create.p);
+  }
+
   if (flags & UV_HANDLE_BOUND)
     return maybe_bind_socket(sockfd);
 
@@ -116,6 +120,9 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
     return UV_EINVAL;
 
   uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
+
+  tcp->u.socket_create.cb = NULL;
+  tcp->u.socket_create.p = NULL;
 
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv_stream_init.
@@ -274,9 +281,15 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
   if (err)
     return err;
 
-  return uv__stream_open((uv_stream_t*)handle,
+  err = uv__stream_open((uv_stream_t*)handle,
                          sock,
                          UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
+
+  if (handle->u.socket_create.cb && (err == 0)) {
+    handle->u.socket_create.cb((uv_handle_t*)handle, handle->u.socket_create.p);
+  }
+
+  return err;
 }
 
 
