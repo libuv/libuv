@@ -58,6 +58,7 @@ static void worker(void* arg) {
   struct uv__work* w;
   struct uv__queue* q;
   int is_slow_work;
+  int has_loop;
 
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
@@ -119,14 +120,20 @@ static void worker(void* arg) {
     uv_mutex_unlock(&mutex);
 
     w = uv__queue_data(q, struct uv__work, wq);
+    /* Check this here in case the req is free'd during work(). */
+    has_loop = w->loop != NULL;
     w->work(w);
 
-    uv_mutex_lock(&w->loop->wq_mutex);
-    w->work = NULL;  /* Signal uv_cancel() that the work req is done
-                        executing. */
-    uv__queue_insert_tail(&w->loop->wq, &w->wq);
-    uv_async_send(&w->loop->wq_async);
-    uv_mutex_unlock(&w->loop->wq_mutex);
+    /* If there's no event loop attached to this work instance, then there's
+     * nothing event loop related to do. */
+    if (has_loop) {
+      uv_mutex_lock(&w->loop->wq_mutex);
+      w->work = NULL;  /* Signal uv_cancel() that the work req is done
+                          executing. */
+      uv__queue_insert_tail(&w->loop->wq, &w->wq);
+      uv_async_send(&w->loop->wq_async);
+      uv_mutex_unlock(&w->loop->wq_mutex);
+    }
 
     /* Lock `mutex` since that is expected at the start of the next
      * iteration. */
@@ -280,6 +287,9 @@ void uv__work_submit(uv_loop_t* loop,
  */
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
+  int is_work_done;
+
+  is_work_done = req->type == UV_WORK && ((uv_work_t*) req)->work_cb == NULL;
 
   uv_once(&once, init_once);  /* Ensure |mutex| is initialized. */
   uv_mutex_lock(&mutex);
@@ -289,8 +299,19 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   if (cancelled)
     uv__queue_remove(&w->wq);
 
+  /* If the req was queued without a uv_work_cb then remove it from the queue
+   * regardless. */
+  if (is_work_done && !uv__queue_empty(&w->wq)) {
+    uv__queue_remove(&w->wq);
+    uv__req_unregister(loop, req);
+  }
+
   uv_mutex_unlock(&w->loop->wq_mutex);
   uv_mutex_unlock(&mutex);
+
+  /* Nothing else to do if the req was queued without uv_work_cb. */
+  if (is_work_done)
+    return 0;
 
   if (!cancelled)
     return UV_EBUSY;
@@ -348,6 +369,16 @@ void uv__work_done(uv_async_t* handle) {
 static void uv__queue_work(struct uv__work* w) {
   uv_work_t* req = container_of(w, uv_work_t, work_req);
 
+  /* Remove the req from the queue if it was supplied without an after_work_cb.
+   * There is no need to worry about what might happen to the req if called
+   * with uv_cancel() because it will return UV_EINVAL. */
+  if (w->loop == NULL) {
+    uv_mutex_lock(&mutex);
+    w->work = NULL;
+    uv__queue_remove(&w->wq);
+    uv_mutex_unlock(&mutex);
+  }
+
   req->work_cb(req);
 }
 
@@ -365,12 +396,76 @@ static void uv__queue_done(struct uv__work* w, int err) {
 }
 
 
+int uv__queue_no_after_work(uv_work_t* req, uv_work_cb work_cb) {
+  /* Don't use uv__req_init() since we're not increasing the active req count on
+   * any given uv_loop_t. */
+  UV_REQ_INIT(req, UV_WORK);
+  req->loop = NULL;
+  req->work_cb = work_cb;
+  /* Queue'ing without uv__queue_done will cause the req to be removed from the
+   * queue before calling the uv_work_cb. */
+  uv__work_submit(NULL,
+                  &req->work_req,
+                  UV__WORK_CPU,
+                  uv__queue_work,
+                  NULL);
+  return 0;
+}
+
+
+int uv__queue_no_work_cb(uv_loop_t* loop,
+                         uv_work_t* req,
+                         uv_after_work_cb after_work_cb) {
+  struct uv__work* w;
+  int r;
+
+  w = &req->work_req;
+
+  uv__req_init(loop, req, UV_WORK);
+  req->loop = loop;
+  /* It's important this is set to NULL since it's used by uv__work_cancel()
+   * to identify that this uv_work_t has been queued without a uv_work_cb.
+   * Otherwise calling uv_cancel() will return UV_EBUSY. */
+  req->work_cb = NULL;
+  req->after_work_cb = after_work_cb;
+  /* Not calling into uv__work_submit since we don't need post() called. So
+   * set a few important fields here. */
+  w->loop = loop;
+  w->work = NULL;
+  w->done = uv__queue_done;
+
+  /* Insert this directly into the event loop's queue for execution and call
+   * to be executed. Since we're accessing the event loop off its thread we
+   * have to trust the user that the event loop is still valid. */
+  uv_mutex_lock(&loop->wq_mutex);
+  uv__queue_insert_tail(&loop->wq, &w->wq);
+  r = uv_async_send(&loop->wq_async);
+  uv_mutex_unlock(&loop->wq_mutex);
+
+  return r;
+}
+
+
 int uv_queue_work(uv_loop_t* loop,
                   uv_work_t* req,
                   uv_work_cb work_cb,
                   uv_after_work_cb after_work_cb) {
-  if (work_cb == NULL)
+  if (work_cb == NULL && after_work_cb == NULL)
     return UV_EINVAL;
+
+  if (after_work_cb == NULL) {
+    /* Instead of ignoring a loop, enforce that it's NULL so the user's code is
+     * explicit about only having the threadpool do work. */
+    if (loop != NULL)
+      return UV_EINVAL;
+    return uv__queue_no_after_work(req, work_cb);
+  }
+
+  if (loop == NULL)
+    return UV_EINVAL;
+
+  if (work_cb == NULL)
+    return uv__queue_no_work_cb(loop, req, after_work_cb);
 
   uv__req_init(loop, req, UV_WORK);
   req->loop = loop;
@@ -409,6 +504,13 @@ int uv_cancel(uv_req_t* req) {
   case UV_WORK:
     loop =  ((uv_work_t*) req)->loop;
     wreq = &((uv_work_t*) req)->work_req;
+    /* When a uv_work_t req is queued without an after_work_cb, safe removal
+     * isn't guaranteed. UV_EINVAL is returned as a courtesy, since uv_cancel()
+     * on such a req could lead to it being deallocated within the uv_work_cb.
+     * This might cause us to access invalid memory, as the req could have been
+     * freed between the uv_cancel() call and this point. */
+    if (wreq->loop == NULL)
+      return UV_EINVAL;
     break;
   default:
     return UV_EINVAL;

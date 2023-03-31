@@ -48,6 +48,8 @@ static unsigned done2_cb_called;
 static unsigned timer_cb_called;
 static uv_work_t pause_reqs[4];
 static uv_sem_t pause_sems[ARRAY_SIZE(pause_reqs)];
+static uv_sem_t work_sem;
+static uv_loop_t* main_loop;
 
 
 static void work_cb(uv_work_t* req) {
@@ -407,6 +409,60 @@ TEST_IMPL(threadpool_cancel_when_busy) {
   ASSERT_EQ(done_cb_called, 1);
 
   uv_sem_destroy(&sem_lock);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+static void no_after_cb(uv_work_t* req) {
+  uv_sem_post(&work_sem);
+}
+
+
+TEST_IMPL(threadpool_no_after_cb_cancel) {
+  uv_work_t req;
+
+  ASSERT_OK(uv_sem_init(&work_sem, 0));
+  ASSERT_OK(uv_queue_work(NULL, &req, no_after_cb, NULL));
+
+  ASSERT_EQ(uv_cancel((uv_req_t*)&req), UV_EINVAL);
+
+  uv_sem_wait(&work_sem);
+  uv_sem_destroy(&work_sem);
+
+  return 0;
+}
+
+
+static void after_task_done_cb(uv_work_t* req, int status) {
+  abort();
+}
+
+
+static void task_done_cb(uv_work_t* req) {
+  ASSERT_OK(uv_queue_work(main_loop, req, NULL, after_task_done_cb));
+  uv_sem_post(&work_sem);
+}
+
+
+TEST_IMPL(threadpool_cancel_after_work) {
+  uv_work_t req;
+
+  main_loop = uv_default_loop();
+
+  ASSERT_OK(uv_sem_init(&work_sem, 0));
+  ASSERT_OK(uv_queue_work(NULL, &req, task_done_cb, NULL));
+
+  uv_sem_wait(&work_sem);
+
+  ASSERT(uv_loop_alive(uv_default_loop()));
+  ASSERT_OK(uv_cancel((uv_req_t*)&req));
+  ASSERT(!uv_loop_alive(uv_default_loop()));
+
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  uv_sem_destroy(&work_sem);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
