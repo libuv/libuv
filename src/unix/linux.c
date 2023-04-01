@@ -47,14 +47,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#if defined(__arm__)
-# if defined(__thumb__) || defined(__ARM_EABI__)
-#  define UV_SYSCALL_BASE 0
-# else
-#  define UV_SYSCALL_BASE 0x900000
-# endif
-#endif /* __arm__ */
-
 #ifndef __NR_copy_file_range
 # if defined(__x86_64__)
 #  define __NR_copy_file_range 326
@@ -63,7 +55,7 @@
 # elif defined(__s390__)
 #  define __NR_copy_file_range 375
 # elif defined(__arm__)
-#  define __NR_copy_file_range (UV_SYSCALL_BASE + 391)
+#  define __NR_copy_file_range 391
 # elif defined(__aarch64__)
 #  define __NR_copy_file_range 285
 # elif defined(__powerpc__)
@@ -81,7 +73,7 @@
 # elif defined(__aarch64__)
 #  define __NR_statx 397
 # elif defined(__arm__)
-#  define __NR_statx (UV_SYSCALL_BASE + 397)
+#  define __NR_statx 397
 # elif defined(__ppc__)
 #  define __NR_statx 383
 # elif defined(__s390__)
@@ -97,7 +89,7 @@
 # elif defined(__aarch64__)
 #  define __NR_getrandom 384
 # elif defined(__arm__)
-#  define __NR_getrandom (UV_SYSCALL_BASE + 384)
+#  define __NR_getrandom 384
 # elif defined(__ppc__)
 #  define __NR_getrandom 359
 # elif defined(__s390__)
