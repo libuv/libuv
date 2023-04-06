@@ -214,7 +214,7 @@ API
     type of the stdio streams.
 
     For :man:`isatty(3)` equivalent functionality use this function and test
-    for ``UV_TTY``.
+    for `UV_TTY`.
 
 .. c:function:: int uv_replace_allocator(uv_malloc_func malloc_func, uv_realloc_func realloc_func, uv_calloc_func calloc_func, uv_free_func free_func)
 
@@ -228,8 +228,8 @@ API
     after all resources have been freed and thus libuv doesn't reference
     any allocated memory chunk.
 
-    On success, it returns 0, if any of the function pointers is NULL it
-    returns UV_EINVAL.
+    On success, it returns 0, if any of the function pointers is `NULL` it
+    returns `UV_EINVAL`.
 
     .. warning:: There is no protection against changing the allocator multiple
                  times. If the user changes it they are responsible for making
@@ -368,7 +368,7 @@ API
 .. c:function:: int uv_cpumask_size(void)
 
     Returns the maximum size of the mask used for process/thread affinities,
-    or ``UV_ENOTSUP`` if affinities are not supported on the current platform.
+    or `UV_ENOTSUP` if affinities are not supported on the current platform.
 
     .. versionadded:: 1.45.0
 
