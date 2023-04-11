@@ -448,7 +448,8 @@ static int uv__set_reuse(int fd) {
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
        return UV__ERR(errno);
   }
-#elif defined(SO_REUSEPORT) && !defined(__linux__) && !defined(__GNU__)
+#elif defined(SO_REUSEPORT) && !defined(__linux__) && !defined(__GNU__) && \
+	!defined(__sun__)
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
     return UV__ERR(errno);
 #else
