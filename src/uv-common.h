@@ -37,6 +37,10 @@
 #include "queue.h"
 #include "strscpy.h"
 
+#ifndef _MSC_VER
+# include <stdatomic.h>
+#endif
+
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
 #else
@@ -61,12 +65,12 @@ extern int snprintf(char*, size_t, const char*, ...);
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
 #endif
 
-#if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
-#define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)
-#define uv__store_relaxed(p, v) __atomic_store_n(p, v, __ATOMIC_RELAXED)
+#ifdef _MSC_VER
+#define uv__exchange_int_relaxed(p, v)                                        \
+  InterlockedExchangeNoFence((LONG volatile*)(p), v)
 #else
-#define uv__load_relaxed(p) (*p)
-#define uv__store_relaxed(p, v) do *p = v; while (0)
+#define uv__exchange_int_relaxed(p, v)                                        \
+  atomic_exchange_explicit((_Atomic int*)(p), v, memory_order_relaxed)
 #endif
 
 #define UV__UDP_DGRAM_MAXSIZE (64 * 1024)
