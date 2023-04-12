@@ -309,7 +309,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   static uv_once_t once = UV_ONCE_INIT;
   int r;
 #ifdef O_CLOEXEC
-  static int no_cloexec_support;
+  static _Atomic int no_cloexec_support;
 #endif
   static const char pattern[] = "XXXXXX";
   static const size_t pattern_size = sizeof(pattern) - 1;
@@ -334,7 +334,8 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   uv_once(&once, uv__mkostemp_initonce);
 
 #ifdef O_CLOEXEC
-  if (uv__load_relaxed(&no_cloexec_support) == 0 && uv__mkostemp != NULL) {
+  if (atomic_load_explicit(&no_cloexec_support, memory_order_relaxed) == 0 &&
+      uv__mkostemp != NULL) {
     r = uv__mkostemp(path, O_CLOEXEC);
 
     if (r >= 0)
@@ -347,7 +348,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
 
     /* We set the static variable so that next calls don't even
        try to use mkostemp. */
-    uv__store_relaxed(&no_cloexec_support, 1);
+    atomic_store_explicit(&no_cloexec_support, 1, memory_order_relaxed);
   }
 #endif  /* O_CLOEXEC */
 
@@ -457,7 +458,7 @@ static ssize_t uv__fs_preadv(uv_file fd,
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
 #if defined(__linux__)
-  static int no_preadv;
+  static _Atomic int no_preadv;
 #endif
   unsigned int iovmax;
   ssize_t result;
@@ -481,7 +482,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
 # if defined(__linux__)
-    if (uv__load_relaxed(&no_preadv)) retry:
+    if (atomic_load_explicit(&no_preadv, memory_order_relaxed)) retry:
 # endif
     {
       result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
@@ -493,7 +494,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
                       req->nbufs,
                       req->off);
       if (result == -1 && errno == ENOSYS) {
-        uv__store_relaxed(&no_preadv, 1);
+        atomic_store_explicit(&no_preadv, 1, memory_order_relaxed);
         goto retry;
       }
     }
@@ -899,14 +900,14 @@ out:
 
 #ifdef __linux__
 static unsigned uv__kernel_version(void) {
-  static unsigned cached_version;
+  static _Atomic unsigned cached_version;
   struct utsname u;
   unsigned version;
   unsigned major;
   unsigned minor;
   unsigned patch;
 
-  version = uv__load_relaxed(&cached_version);
+  version = atomic_load_explicit(&cached_version, memory_order_relaxed);
   if (version != 0)
     return version;
 
@@ -917,7 +918,7 @@ static unsigned uv__kernel_version(void) {
     return 0;
 
   version = major * 65536 + minor * 256 + patch;
-  uv__store_relaxed(&cached_version, version);
+  atomic_store_explicit(&cached_version, version, memory_order_relaxed);
 
   return version;
 }
@@ -959,10 +960,10 @@ static int uv__is_cifs_or_smb(int fd) {
 
 static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
                                           int out_fd, size_t len) {
-  static int no_copy_file_range_support;
+  static _Atomic int no_copy_file_range_support;
   ssize_t r;
 
-  if (uv__load_relaxed(&no_copy_file_range_support)) {
+  if (atomic_load_explicit(&no_copy_file_range_support, memory_order_relaxed)) {
     errno = ENOSYS;
     return -1;
   }
@@ -981,7 +982,7 @@ static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
       errno = ENOSYS;  /* Use fallback. */
     break;
   case ENOSYS:
-    uv__store_relaxed(&no_copy_file_range_support, 1);
+    atomic_store_explicit(&no_copy_file_range_support, 1, memory_order_relaxed);
     break;
   case EPERM:
     /* It's been reported that CIFS spuriously fails.
@@ -1530,14 +1531,14 @@ static int uv__fs_statx(int fd,
                         uv_stat_t* buf) {
   STATIC_ASSERT(UV_ENOSYS != -1);
 #ifdef __linux__
-  static int no_statx;
+  static _Atomic int no_statx;
   struct uv__statx statxbuf;
   int dirfd;
   int flags;
   int mode;
   int rc;
 
-  if (uv__load_relaxed(&no_statx))
+  if (atomic_load_explicit(&no_statx, memory_order_relaxed))
     return UV_ENOSYS;
 
   dirfd = AT_FDCWD;
@@ -1571,7 +1572,7 @@ static int uv__fs_statx(int fd,
      * implemented, rc might return 1 with 0 set as the error code in which
      * case we return ENOSYS.
      */
-    uv__store_relaxed(&no_statx, 1);
+    atomic_store_explicit(&no_statx, 1, memory_order_relaxed);
     return UV_ENOSYS;
   }
 

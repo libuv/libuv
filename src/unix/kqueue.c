@@ -60,7 +60,7 @@ int uv__kqueue_init(uv_loop_t* loop) {
 
 
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-static int uv__has_forked_with_cfrunloop;
+static _Atomic int uv__has_forked_with_cfrunloop;
 #endif
 
 int uv__io_fork(uv_loop_t* loop) {
@@ -82,7 +82,9 @@ int uv__io_fork(uv_loop_t* loop) {
        process. So we sidestep the issue by pretending like we never
        started it in the first place.
     */
-    uv__store_relaxed(&uv__has_forked_with_cfrunloop, 1);
+    atomic_store_explicit(&uv__has_forked_with_cfrunloop,
+                          1,
+                          memory_order_relaxed);
     uv__free(loop->cf_state);
     loop->cf_state = NULL;
   }
@@ -530,7 +532,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (!(statbuf.st_mode & S_IFDIR))
     goto fallback;
 
-  if (0 == uv__load_relaxed(&uv__has_forked_with_cfrunloop)) {
+  if (0 == atomic_load_explicit(&uv__has_forked_with_cfrunloop,
+                                memory_order_relaxed)) {
     int r;
     /* The fallback fd is no longer needed */
     uv__close_nocheckstdio(fd);
@@ -565,7 +568,8 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   uv__handle_stop(handle);
 
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-  if (0 == uv__load_relaxed(&uv__has_forked_with_cfrunloop))
+  if (0 == atomic_load_explicit(&uv__has_forked_with_cfrunloop,
+                                memory_order_relaxed))
     if (handle->cf_cb != NULL)
       r = uv__fsevents_close(handle);
 #endif

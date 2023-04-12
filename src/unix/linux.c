@@ -579,7 +579,7 @@ update_timeout:
 }
 
 uint64_t uv__hrtime(uv_clocktype_t type) {
-  static clock_t fast_clock_id = -1;
+  static _Atomic clock_t fast_clock_id = -1;
   struct timespec t;
   clock_t clock_id;
 
@@ -595,7 +595,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
   if (type != UV_CLOCK_FAST)
     goto done;
 
-  clock_id = uv__load_relaxed(&fast_clock_id);
+  clock_id = atomic_load_explicit(&fast_clock_id, memory_order_relaxed);
   if (clock_id != -1)
     goto done;
 
@@ -604,7 +604,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
     if (t.tv_nsec <= 1 * 1000 * 1000)
       clock_id = CLOCK_MONOTONIC_COARSE;
 
-  uv__store_relaxed(&fast_clock_id, clock_id);
+  atomic_store_explicit(&fast_clock_id, clock_id, memory_order_relaxed);
 
 done:
 

@@ -233,10 +233,10 @@ int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
-  static int iovmax_cached = -1;
+  static _Atomic int iovmax_cached = -1;
   int iovmax;
 
-  iovmax = uv__load_relaxed(&iovmax_cached);
+  iovmax = atomic_load_explicit(&iovmax_cached, memory_order_relaxed);
   if (iovmax != -1)
     return iovmax;
 
@@ -248,7 +248,7 @@ int uv__getiovmax(void) {
   if (iovmax == -1)
     iovmax = 1;
 
-  uv__store_relaxed(&iovmax_cached, iovmax);
+  atomic_store_explicit(&iovmax_cached, iovmax, memory_order_relaxed);
 
   return iovmax;
 #else
