@@ -198,6 +198,7 @@ typedef enum {
 #define ASSERT_LE(a, b) ASSERT_BASE(a, <=, b, int64_t, PRId64)
 #define ASSERT_LT(a, b) ASSERT_BASE(a, <, b, int64_t, PRId64)
 #define ASSERT_NE(a, b) ASSERT_BASE(a, !=, b, int64_t, PRId64)
+#define ASSERT_OK(a) ASSERT_BASE(a, ==, 0, int64_t, PRId64)
 
 #define ASSERT_UINT64_EQ(a, b) ASSERT_BASE(a, ==, b, uint64_t, PRIu64)
 #define ASSERT_UINT64_GE(a, b) ASSERT_BASE(a, >=, b, uint64_t, PRIu64)
