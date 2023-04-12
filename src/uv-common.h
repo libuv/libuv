@@ -68,9 +68,21 @@ extern int snprintf(char*, size_t, const char*, ...);
 #ifdef _MSC_VER
 #define uv__exchange_int_relaxed(p, v)                                        \
   InterlockedExchangeNoFence((LONG volatile*)(p), v)
+#define uv__load_int_relaxed(p)                                               \
+  InterlockedOrNoFence((LONG volatile*)(p), 0)
+#define uv__inc_int_relaxed(p)                                                \
+  InterlockedIncrement((LONG volatile*)(p))
+#define uv__dec_int_relaxed(p)                                                \
+  InterlockedDecrement((LONG volatile*)(p))
 #else
 #define uv__exchange_int_relaxed(p, v)                                        \
   atomic_exchange_explicit((_Atomic int*)(p), v, memory_order_relaxed)
+#define uv__load_int_relaxed(p)                                               \
+  atomic_load_explicit((_Atomic int*)(p), memory_order_relaxed)
+#define uv__inc_int_relaxed(p)                                                \
+  atomic_fetch_add_explicit((_Atomic int*)(p), 1, memory_order_relaxed)
+#define uv__dec_int_relaxed(p)                                                \
+  atomic_fetch_sub_explicit((_Atomic int*)(p), 1, memory_order_relaxed)
 #endif
 
 #define UV__UDP_DGRAM_MAXSIZE (64 * 1024)
@@ -231,18 +243,15 @@ void uv__signal_cleanup(void);
 void uv__threadpool_cleanup(void);
 
 #define uv__has_active_reqs(loop)                                             \
-  ((loop)->active_reqs.count > 0)
+  (uv__load_int_relaxed(&((loop)->active_reqs.count)) > 0)
 
 #define uv__req_register(loop, req)                                           \
-  do {                                                                        \
-    (loop)->active_reqs.count++;                                              \
-  }                                                                           \
-  while (0)
+  uv__inc_int_relaxed(&((loop)->active_reqs.count))
 
 #define uv__req_unregister(loop, req)                                         \
   do {                                                                        \
     assert(uv__has_active_reqs(loop));                                        \
-    (loop)->active_reqs.count--;                                              \
+    uv__dec_int_relaxed(&((loop)->active_reqs.count));                        \
   }                                                                           \
   while (0)
 
