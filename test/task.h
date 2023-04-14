@@ -266,8 +266,8 @@ typedef enum {
   int run_helper_##name(void);                                                \
   int run_helper_##name(void)
 
-/* Format big numbers nicely. WARNING: leaks memory. */
-const char* fmt(double d);
+/* Format big numbers nicely. */
+char* fmt(char (*buf)[32], double d);
 
 /* Reserved test exit codes. */
 enum test_status {
