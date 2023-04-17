@@ -556,6 +556,7 @@ TEST_DECLARE  (utf8_decode1_overrun)
 TEST_DECLARE  (uname)
 
 TEST_DECLARE  (metrics_info_check)
+TEST_DECLARE  (metrics_pool_events)
 TEST_DECLARE  (metrics_idle_time)
 TEST_DECLARE  (metrics_idle_time_thread)
 TEST_DECLARE  (metrics_idle_time_zero)
@@ -1192,6 +1193,7 @@ TASK_LIST_START
   TEST_HELPER   (readable_on_eof, tcp4_echo_server)
 
   TEST_ENTRY  (metrics_info_check)
+  TEST_ENTRY  (metrics_pool_events)
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)
   TEST_ENTRY  (metrics_idle_time_zero)

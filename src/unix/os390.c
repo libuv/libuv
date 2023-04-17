@@ -808,6 +808,7 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   static const int max_safe_timeout = 1789569;
+  uv__loop_internal_fields_t* lfields;
   struct epoll_event events[1024];
   struct epoll_event* pe;
   struct epoll_event e;
@@ -829,6 +830,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(QUEUE_EMPTY(&loop->watcher_queue));
     return;
   }
+
+  lfields = uv__get_internal_fields(loop);
 
   while (!QUEUE_EMPTY(&loop->watcher_queue)) {
     uv_stream_t* stream;
@@ -877,7 +880,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int nevents = 0;
   have_signals = 0;
 
-  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+  if (lfields->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -895,6 +898,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
       timeout = max_safe_timeout;
+
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
+     */
+    lfields->current_timeout = timeout;
 
     nfds = epoll_wait(loop->ep, events,
                       ARRAY_SIZE(events), timeout);
