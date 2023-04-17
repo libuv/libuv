@@ -834,12 +834,14 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
   uint32_t tail;
   uint32_t mask;
   uint32_t i;
+  int nevents;
 
   head = *iou->cqhead;
   tail = atomic_load_explicit((_Atomic uint32_t*) iou->cqtail,
                               memory_order_acquire);
   mask = iou->cqmask;
   cqe = iou->cqe;
+  nevents = 0;
 
   for (i = head; i != tail; i++) {
     e = &cqe[i & mask];
@@ -865,13 +867,16 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
 
     uv__metrics_update_idle_time(loop);
     req->cb(req);
+    nevents++;
   }
 
   atomic_store_explicit((_Atomic uint32_t*) iou->cqhead,
                         tail,
                         memory_order_release);
 
-  uv__metrics_inc_events(loop, 1);
+  uv__metrics_inc_events(loop, nevents);
+  if (uv__get_internal_fields(loop)->current_timeout == 0)
+    uv__metrics_inc_events_waiting(loop, nevents);
 }
 
 
@@ -969,6 +974,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
+
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
+     */
+    lfields->current_timeout = timeout;
 
     nfds = epoll_pwait(loop->backend_fd,
                        events,

@@ -421,6 +421,7 @@ struct uv__iou {
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
+  int current_timeout;
 #ifdef __linux__
   struct uv__iou iou;
 #endif  /* __linux__ */
