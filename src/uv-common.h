@@ -396,9 +396,34 @@ struct uv__loop_metrics_s {
 void uv__metrics_update_idle_time(uv_loop_t* loop);
 void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
 
+#ifdef __linux__
+struct uv__iou {
+  uint32_t* sqhead;
+  uint32_t* sqtail;
+  uint32_t* sqarray;
+  uint32_t sqmask;
+  uint32_t* sqflags;
+  uint32_t* cqhead;
+  uint32_t* cqtail;
+  uint32_t cqmask;
+  void* sq;   /* pointer to munmap() on event loop teardown */
+  void* cqe;  /* pointer to array of struct uv__io_uring_cqe */
+  void* sqe;  /* pointer to array of struct uv__io_uring_sqe */
+  size_t sqlen;
+  size_t cqlen;
+  size_t maxlen;
+  size_t sqelen;
+  int ringfd;
+  uint32_t in_flight;
+};
+#endif  /* __linux__ */
+
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
+#ifdef __linux__
+  struct uv__iou iou;
+#endif  /* __linux__ */
 };
 
 #endif /* UV_COMMON_H_ */
