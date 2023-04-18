@@ -56,10 +56,11 @@
 #endif
 
 #if defined(__linux__)
-# include "sys/utsname.h"
+# include <sys/sendfile.h>
+# include <sys/utsname.h>
 #endif
 
-#if defined(__linux__) || defined(__sun)
+#if defined(__sun)
 # include <sys/sendfile.h>
 # include <sys/sysmacros.h>
 #endif
@@ -1576,26 +1577,7 @@ static int uv__fs_statx(int fd,
     return UV_ENOSYS;
   }
 
-  buf->st_dev = makedev(statxbuf.stx_dev_major, statxbuf.stx_dev_minor);
-  buf->st_mode = statxbuf.stx_mode;
-  buf->st_nlink = statxbuf.stx_nlink;
-  buf->st_uid = statxbuf.stx_uid;
-  buf->st_gid = statxbuf.stx_gid;
-  buf->st_rdev = makedev(statxbuf.stx_rdev_major, statxbuf.stx_rdev_minor);
-  buf->st_ino = statxbuf.stx_ino;
-  buf->st_size = statxbuf.stx_size;
-  buf->st_blksize = statxbuf.stx_blksize;
-  buf->st_blocks = statxbuf.stx_blocks;
-  buf->st_atim.tv_sec = statxbuf.stx_atime.tv_sec;
-  buf->st_atim.tv_nsec = statxbuf.stx_atime.tv_nsec;
-  buf->st_mtim.tv_sec = statxbuf.stx_mtime.tv_sec;
-  buf->st_mtim.tv_nsec = statxbuf.stx_mtime.tv_nsec;
-  buf->st_ctim.tv_sec = statxbuf.stx_ctime.tv_sec;
-  buf->st_ctim.tv_nsec = statxbuf.stx_ctime.tv_nsec;
-  buf->st_birthtim.tv_sec = statxbuf.stx_btime.tv_sec;
-  buf->st_birthtim.tv_nsec = statxbuf.stx_btime.tv_nsec;
-  buf->st_flags = 0;
-  buf->st_gen = 0;
+  uv__statx_to_stat(&statxbuf, buf);
 
   return 0;
 #else
@@ -1886,6 +1868,9 @@ int uv_fs_lchown(uv_loop_t* loop,
 int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(FDATASYNC);
   req->file = file;
+  if (cb != NULL)
+    if (uv__iou_fs_fsync_or_fdatasync(loop, req, /* IORING_FSYNC_DATASYNC */ 1))
+      return 0;
   POST;
 }
 
@@ -1893,6 +1878,9 @@ int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(FSTAT);
   req->file = file;
+  if (cb != NULL)
+    if (uv__iou_fs_statx(loop, req, /* is_fstat */ 1, /* is_lstat */ 0))
+      return 0;
   POST;
 }
 
@@ -1900,6 +1888,9 @@ int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(FSYNC);
   req->file = file;
+  if (cb != NULL)
+    if (uv__iou_fs_fsync_or_fdatasync(loop, req, /* no flags */ 0))
+      return 0;
   POST;
 }
 
@@ -1946,6 +1937,9 @@ int uv_fs_lutime(uv_loop_t* loop,
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(LSTAT);
   PATH;
+  if (cb != NULL)
+    if (uv__iou_fs_statx(loop, req, /* is_fstat */ 0, /* is_lstat */ 1))
+      return 0;
   POST;
 }
 
@@ -2035,6 +2029,11 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
 
   req->off = off;
+
+  if (cb != NULL)
+    if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
+      return 0;
+
   POST;
 }
 
@@ -2142,6 +2141,9 @@ int uv_fs_sendfile(uv_loop_t* loop,
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(STAT);
   PATH;
+  if (cb != NULL)
+    if (uv__iou_fs_statx(loop, req, /* is_fstat */ 0, /* is_lstat */ 0))
+      return 0;
   POST;
 }
 
@@ -2205,6 +2207,11 @@ int uv_fs_write(uv_loop_t* loop,
   memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
 
   req->off = off;
+
+  if (cb != NULL)
+    if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
+      return 0;
+
   POST;
 }
 
