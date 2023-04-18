@@ -104,7 +104,7 @@ static void uv__getaddrinfo_work(struct uv__work* w) {
  */
 static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   uv_getaddrinfo_t* req;
-  int addrinfo_len = 0;
+  size_t addrinfo_len = 0;
   int name_len = 0;
   size_t addrinfo_struct_len = ALIGNED_SIZE(sizeof(struct addrinfo));
   struct addrinfoW* addrinfow_ptr;
@@ -431,7 +431,7 @@ int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size) {
                                 wname,
                                 -1,
                                 buffer,
-                                *size,
+                                (int)*size,
                                 NULL,
                                 NULL);
 

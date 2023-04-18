@@ -978,7 +978,7 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
     if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING) &&
         req->u.io.overlapped.InternalHigh != 0) {
       /* Read successful. TODO: read unicode, convert to utf-8 */
-      DWORD bytes = req->u.io.overlapped.InternalHigh;
+      DWORD bytes = (DWORD)req->u.io.overlapped.InternalHigh;
       handle->read_cb((uv_stream_t*) handle, bytes, &buf);
     }
     handle->flags &= ~UV_HANDLE_CANCELLATION_PENDING;
@@ -2216,7 +2216,7 @@ int uv__tty_try_write(uv_tty_t* handle,
   if (uv__tty_write_bufs(handle, bufs, nbufs, &error))
     return uv_translate_sys_error(error);
 
-  return uv__count_bufs(bufs, nbufs);
+  return (int)uv__count_bufs(bufs, nbufs);
 }
 
 

@@ -430,7 +430,7 @@ static void uv__poll_wine(uv_loop_t* loop, DWORD timeout) {
   uv_req_t* req;
   int repeat;
   uint64_t timeout_time;
-  uint64_t user_timeout;
+  DWORD user_timeout;
   int reset_timeout;
 
   timeout_time = loop->time + timeout;
@@ -514,7 +514,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
   ULONG i;
   int repeat;
   uint64_t timeout_time;
-  uint64_t user_timeout;
+  DWORD user_timeout;
   uint64_t actual_timeout;
   int reset_timeout;
 

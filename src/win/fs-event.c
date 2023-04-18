@@ -479,8 +479,8 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
             if (file_info->Action != FILE_ACTION_REMOVED &&
               file_info->Action != FILE_ACTION_RENAMED_OLD_NAME) {
               /* Construct a full path to the file. */
-              size = wcslen(handle->dirw) +
-                file_info->FileNameLength / sizeof(WCHAR) + 2;
+              size = (int)(wcslen(handle->dirw) +
+                file_info->FileNameLength / sizeof(WCHAR) + 2);
 
               filenamew = (WCHAR*)uv__malloc(size * sizeof(WCHAR));
               if (!filenamew) {

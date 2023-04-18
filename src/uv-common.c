@@ -712,7 +712,7 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
 
   /* Check to see if req passed */
   if (req->result < 0)
-    return req->result;
+    return (int)req->result;
 
   /* Ptr will be null if req was canceled or no files found */
   if (!req->ptr)

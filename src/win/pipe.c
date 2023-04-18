@@ -1267,7 +1267,7 @@ static void CALLBACK post_completion_read_wait(void* context, BOOLEAN timed_out)
   assert(!timed_out);
 
   if (!PostQueuedCompletionStatus(handle->loop->iocp,
-                                  req->u.io.overlapped.InternalHigh,
+                                  (DWORD)req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
     uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
@@ -1286,7 +1286,7 @@ static void CALLBACK post_completion_write_wait(void* context, BOOLEAN timed_out
   assert(!timed_out);
 
   if (!PostQueuedCompletionStatus(handle->loop->iocp,
-                                  req->u.io.overlapped.InternalHigh,
+                                  (DWORD)req->u.io.overlapped.InternalHigh,
                                   0,
                                   &req->u.io.overlapped)) {
     uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");
@@ -2465,7 +2465,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
     /* The user might try to query the name before we are connected,
      * and this is just easier to return the cached value if we have it. */
     name_buf = handle->name;
-    name_len = wcslen(name_buf);
+    name_len = (unsigned int)wcslen(name_buf);
 
     /* check how much space we need */
     addrlen = WideCharToMultiByte(CP_UTF8,
@@ -2591,7 +2591,7 @@ static int uv__pipe_getname(const uv_pipe_t* handle, char* buffer, size_t* size)
                                 name_buf,
                                 name_len,
                                 buffer+pipe_prefix_len,
-                                *size-pipe_prefix_len,
+                                (int)(*size-pipe_prefix_len),
                                 NULL,
                                 NULL);
   if (!addrlen) {

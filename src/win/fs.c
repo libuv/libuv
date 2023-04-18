@@ -64,7 +64,7 @@
       return 0;                                                               \
     } else {                                                                  \
       uv__fs_work(&req->work_req);                                            \
-      return req->result;                                                     \
+      return (int)req->result;                                                \
     }                                                                         \
   }                                                                           \
   while (0)
@@ -103,13 +103,14 @@ static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
   ts->tv_nsec = (long) ((filetime - ts->tv_sec * 10 * MILLION) * 100U);
   if (ts->tv_nsec < 0) {
     ts->tv_sec -= 1;
-    ts->tv_nsec += 1e9;
+    ts->tv_nsec += (long) 1e9;
   }
 }
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    int64_t bigtime = ((time) * 10 * MILLION + 116444736 * BILLION);        \
+    int64_t bigtime = (int64_t) ((time) * 10 * MILLION +                    \
+                                 116444736 * BILLION);                      \
     (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
     (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
@@ -207,7 +208,7 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
                                   path,
                                   -1,
                                   (WCHAR*) pos,
-                                  pathw_len);
+                                  (int)pathw_len);
     assert(r == (DWORD) pathw_len);
     req->file.pathw = (WCHAR*) pos;
     pos += r * sizeof(WCHAR);
@@ -221,7 +222,7 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
                                   new_path,
                                   -1,
                                   (WCHAR*) pos,
-                                  new_pathw_len);
+                                  (int)new_pathw_len);
     assert(r == (DWORD) new_pathw_len);
     req->fs.info.new_pathw = (WCHAR*) pos;
     pos += r * sizeof(WCHAR);
@@ -418,7 +419,7 @@ INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
       }
       w_target += len + 1;
     }
-    w_target_len = wcslen(w_target);
+    w_target_len = (DWORD)wcslen(w_target);
     if (w_target_len == 0) {
       SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
       return -1;
@@ -1458,7 +1459,7 @@ void fs__scandir(uv_fs_t* req) {
 
       /* Compute the space required to store the filename as UTF-8. */
       utf8_len = WideCharToMultiByte(
-          CP_UTF8, 0, &info->FileName[0], wchar_len, NULL, 0, NULL, NULL);
+          CP_UTF8, 0, &info->FileName[0], (int)wchar_len, NULL, 0, NULL, NULL);
       if (utf8_len == 0)
         goto win32_error;
 
@@ -1490,9 +1491,9 @@ void fs__scandir(uv_fs_t* req) {
       if (WideCharToMultiByte(CP_UTF8,
                               0,
                               &info->FileName[0],
-                              wchar_len,
+                              (int)wchar_len,
                               &dirent->d_name[0],
-                              utf8_len,
+                              (int)utf8_len,
                               NULL,
                               NULL) == 0)
         goto win32_error;
@@ -2177,7 +2178,9 @@ static void fs__sendfile(uv_fs_t* req) {
     result = -1;
   } else {
     while (length > 0) {
-      n = _read(fd_in, buf, length < buf_size ? length : buf_size);
+      n = _read(fd_in,
+                buf,
+                (unsigned int)(length < buf_size ? length : buf_size));
       if (n == 0) {
         break;
       } else if (n == -1) {
@@ -2439,7 +2442,7 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
   HANDLE handle = INVALID_HANDLE_VALUE;
   REPARSE_DATA_BUFFER *buffer = NULL;
   int created = 0;
-  int target_len;
+  size_t target_len;
   int is_absolute, is_long_path;
   int needed_buf_size, used_buf_size, used_data_size, path_buf_len;
   int start, len, i;
@@ -2464,10 +2467,10 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
   }
 
   /* Do a pessimistic calculation of the required buffer size */
-  needed_buf_size =
+  needed_buf_size = (int)(
       FIELD_OFFSET(REPARSE_DATA_BUFFER, MountPointReparseBuffer.PathBuffer) +
       JUNCTION_PREFIX_LEN * sizeof(WCHAR) +
-      2 * (target_len + 2) * sizeof(WCHAR);
+      2 * (target_len + 2) * sizeof(WCHAR));
 
   /* Allocate the buffer */
   buffer = (REPARSE_DATA_BUFFER*)uv__malloc(needed_buf_size);
@@ -2504,8 +2507,10 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
   len = path_buf_len - start;
 
   /* Set the info about the substitute name */
-  buffer->MountPointReparseBuffer.SubstituteNameOffset = start * sizeof(WCHAR);
-  buffer->MountPointReparseBuffer.SubstituteNameLength = len * sizeof(WCHAR);
+  buffer->MountPointReparseBuffer.SubstituteNameOffset =
+    (USHORT)(start * sizeof(WCHAR));
+  buffer->MountPointReparseBuffer.SubstituteNameLength =
+    (USHORT)(len * sizeof(WCHAR));
 
   /* Insert null terminator */
   path_buf[path_buf_len++] = L'\0';
@@ -2533,8 +2538,10 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
   }
 
   /* Set the info about the print name */
-  buffer->MountPointReparseBuffer.PrintNameOffset = start * sizeof(WCHAR);
-  buffer->MountPointReparseBuffer.PrintNameLength = len * sizeof(WCHAR);
+  buffer->MountPointReparseBuffer.PrintNameOffset =
+    (USHORT)(start * sizeof(WCHAR));
+  buffer->MountPointReparseBuffer.PrintNameLength =
+    (USHORT)(len * sizeof(WCHAR));
 
   /* Insert another null terminator */
   path_buf[path_buf_len++] = L'\0';
@@ -2806,7 +2813,7 @@ retry_get_disk_free_space:
     }
 retry_get_full_path_name:
     ret = GetFullPathNameW(req->file.pathw,
-                           len,
+                           (DWORD)len,
                            pathw,
                            &fpart);
     if (ret == 0) {
@@ -2955,7 +2962,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.file_flags = flags;
@@ -3045,7 +3052,7 @@ int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3060,7 +3067,7 @@ int uv_fs_mkdir(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.mode = mode;
@@ -3078,7 +3085,7 @@ int uv_fs_mkdtemp(uv_loop_t* loop,
   err = fs__capture_path(req, tpl, NULL, TRUE);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3095,7 +3102,7 @@ int uv_fs_mkstemp(uv_loop_t* loop,
   err = fs__capture_path(req, tpl, NULL, TRUE);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3109,7 +3116,7 @@ int uv_fs_rmdir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3124,7 +3131,7 @@ int uv_fs_scandir(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.file_flags = flags;
@@ -3141,7 +3148,7 @@ int uv_fs_opendir(uv_loop_t* loop,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
   POST;
 }
@@ -3184,7 +3191,7 @@ int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path,
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3199,7 +3206,7 @@ int uv_fs_symlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.file_flags = flags;
@@ -3215,7 +3222,7 @@ int uv_fs_readlink(uv_loop_t* loop, uv_fs_t* req, const char* path,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3236,7 +3243,7 @@ int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3251,7 +3258,7 @@ int uv_fs_chown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3273,7 +3280,7 @@ int uv_fs_lchown(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_uid_t uid,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3287,7 +3294,7 @@ int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3301,7 +3308,7 @@ int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3323,7 +3330,7 @@ int uv_fs_rename(uv_loop_t* loop, uv_fs_t* req, const char* path,
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;
@@ -3373,7 +3380,7 @@ int uv_fs_copyfile(uv_loop_t* loop,
   err = fs__capture_path(req, path, new_path, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.file_flags = flags;
@@ -3387,7 +3394,7 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file fd_out,
   req->file.fd = fd_in;
   req->fs.info.fd_out = fd_out;
   req->fs.info.offset = in_offset;
-  req->fs.info.bufsml[0].len = length;
+  req->fs.info.bufsml[0].len = (ULONG)length;
   POST;
 }
 
@@ -3403,7 +3410,7 @@ int uv_fs_access(uv_loop_t* loop,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.mode = flags;
@@ -3419,7 +3426,7 @@ int uv_fs_chmod(uv_loop_t* loop, uv_fs_t* req, const char* path, int mode,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.info.mode = mode;
@@ -3444,7 +3451,7 @@ int uv_fs_utime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.time.atime = atime;
@@ -3470,7 +3477,7 @@ int uv_fs_lutime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   req->fs.time.atime = atime;
@@ -3489,7 +3496,7 @@ int uv_fs_statfs(uv_loop_t* loop,
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
-    return req->result;
+    return (int)req->result;
   }
 
   POST;

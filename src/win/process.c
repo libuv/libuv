@@ -631,7 +631,7 @@ int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   }
   b_eq = wcschr(b, L'=');
   assert(b_eq);
-  nb = b_eq - b;
+  nb = (int)(b_eq - b);
 
   A = alloca((na+1) * sizeof(wchar_t));
   B = alloca((nb+1) * sizeof(wchar_t));
@@ -751,7 +751,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
       cmp = -1;
     } else {
       cmp = env_strncmp(required_vars[i].wide_eq,
-                       required_vars[i].len,
+                        (int)required_vars[i].len,
                         *ptr_copy);
     }
     if (cmp < 0) {
@@ -787,7 +787,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
       cmp = -1;
     } else {
       cmp = env_strncmp(required_vars[i].wide_eq,
-                        required_vars[i].len,
+                        (int)required_vars[i].len,
                         *ptr_copy);
     }
     if (cmp < 0) {
@@ -806,7 +806,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
       i++;
     } else {
       /* copy var from env_block */
-      len = wcslen(*ptr_copy) + 1;
+      len = (int)(wcslen(*ptr_copy) + 1);
       wmemcpy(ptr, *ptr_copy, len);
       ptr_copy++;
       if (cmp == 0)

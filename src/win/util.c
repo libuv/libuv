@@ -274,7 +274,7 @@ int uv_chdir(const char* dir) {
                           dir,
                           -1,
                           utf16_buffer,
-                          utf16_len) == 0) {
+                          (int)utf16_len) == 0) {
     uv__free(utf16_buffer);
     return uv_translate_sys_error(GetLastError());
   }
@@ -1045,7 +1045,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
   if (path == NULL) {
     return UV_ENOMEM;
   }
-  len  = GetTempPathW(len, path);
+  len = GetTempPathW((DWORD)len, path);
 
   if (len == 0) {
     uv__free(path);
@@ -1078,7 +1078,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
                                 path,
                                 -1,
                                 buffer,
-                                *size,
+                                (int)*size,
                                 NULL,
                                 NULL);
   uv__free(path);
@@ -1379,7 +1379,7 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
     if (var != fastvar)
       uv__free(var);
 
-    varlen = 1 + len;
+    varlen = (DWORD)(1 + len);
     var = uv__malloc(varlen * sizeof(*var));
 
     if (var == NULL) {
@@ -1417,7 +1417,7 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
                                 var,
                                 -1,
                                 buffer,
-                                *size,
+                                (int)*size,
                                 NULL,
                                 NULL);
 
@@ -1823,7 +1823,7 @@ int uv__random_rtlgenrandom(void* buf, size_t buflen) {
   if (buflen == 0)
     return 0;
 
-  if (SystemFunction036(buf, buflen) == FALSE)
+  if (SystemFunction036(buf, (ULONG)buflen) == FALSE)
     return UV_EIO;
 
   return 0;

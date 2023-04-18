@@ -311,5 +311,5 @@ long uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
   if (d < de)
     *d++ = '\0';
 
-  return d - ds;  /* Number of bytes written. */
+  return (long) (d - ds);  /* Number of bytes written. */
 }
