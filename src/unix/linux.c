@@ -348,7 +348,13 @@ int uv__io_uring_enter(int fd,
    * in newer kernels unless IORING_ENTER_EXT_ARG is set,
    * in which case it takes a struct io_uring_getevents_arg.
    */
-  return syscall(__NR_io_uring_enter, fd, to_submit, min_complete, flags, 0, 0);
+  return syscall(__NR_io_uring_enter,
+                 fd,
+                 to_submit,
+                 min_complete,
+                 flags,
+                 NULL,
+                 0L);
 }
 
 
