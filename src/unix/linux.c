@@ -147,6 +147,7 @@ enum {
   UV__IORING_OP_WRITEV = 2,
   UV__IORING_OP_FSYNC = 3,
   UV__IORING_OP_OPENAT = 18,
+  UV__IORING_OP_CLOSE = 19,
   UV__IORING_OP_STATX = 21,
 };
 
@@ -647,6 +648,25 @@ static void uv__iou_submit(struct uv__iou* iou) {
   if (flags & UV__IORING_SQ_NEED_WAKEUP)
     if (uv__io_uring_enter(iou->ringfd, 0, 0, UV__IORING_ENTER_SQ_WAKEUP))
       perror("libuv: io_uring_enter");  /* Can't happen. */
+}
+
+
+int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->fd = req->file;
+  sqe->opcode = UV__IORING_OP_CLOSE;
+
+  uv__iou_submit(iou);
+
+  return 1;
 }
 
 

@@ -94,6 +94,7 @@ static int known_broken(uv_req_t* req) {
 #ifdef __linux__
   /* TODO(bnoordhuis) make cancellation work with io_uring */
   switch (((uv_fs_t*) req)->fs_type) {
+    case UV_FS_CLOSE:
     case UV_FS_FDATASYNC:
     case UV_FS_FSTAT:
     case UV_FS_FSYNC:
