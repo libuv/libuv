@@ -2001,6 +2001,9 @@ int uv_fs_open(uv_loop_t* loop,
   PATH;
   req->flags = flags;
   req->mode = mode;
+  if (cb != NULL)
+    if (uv__iou_fs_open(loop, req))
+      return 0;
   POST;
 }
 
