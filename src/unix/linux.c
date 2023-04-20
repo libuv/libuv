@@ -876,15 +876,6 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
 
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
-  /* A bug in kernels < 2.6.37 makes timeouts larger than ~30 minutes
-   * effectively infinite on 32 bits architectures.  To avoid blocking
-   * indefinitely, we cap the timeout and poll again if necessary.
-   *
-   * Note that "30 minutes" is a simplification because it depends on
-   * the value of CONFIG_HZ.  The magic constant assumes CONFIG_HZ=1200,
-   * that being the largest value I have seen in the wild (and only once.)
-   */
-  static const int max_safe_timeout = 1789569;
   uv__loop_internal_fields_t* lfields;
   struct epoll_event events[1024];
   struct epoll_event* pe;
@@ -978,12 +969,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
-
-    /* See the comment for max_safe_timeout for an explanation of why
-     * this is necessary.  Executive summary: kernel bug workaround.
-     */
-    if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
-      timeout = max_safe_timeout;
 
     nfds = epoll_pwait(loop->backend_fd,
                        events,
