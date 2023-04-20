@@ -1821,6 +1821,9 @@ int uv_fs_chown(uv_loop_t* loop,
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(CLOSE);
   req->file = file;
+  if (cb != NULL)
+    if (uv__iou_fs_close(loop, req))
+      return 0;
   POST;
 }
 
