@@ -334,6 +334,7 @@ int uv__random_sysctl(void* buf, size_t buflen);
 int uv__iou_fs_fsync_or_fdatasync(uv_loop_t* loop,
                                   uv_fs_t* req,
                                   uint32_t fsync_flags);
+int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req);
 int uv__iou_fs_read_or_write(uv_loop_t* loop,
                              uv_fs_t* req,
                              int is_read);
@@ -343,6 +344,7 @@ int uv__iou_fs_statx(uv_loop_t* loop,
                      int is_lstat);
 #else
 #define uv__iou_fs_fsync_or_fdatasync(loop, req, fsync_flags) 0
+#define uv__iou_fs_open(loop, req) 0
 #define uv__iou_fs_read_or_write(loop, req, is_read) 0
 #define uv__iou_fs_statx(loop, req, is_fstat, is_lstat) 0
 #endif

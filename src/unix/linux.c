@@ -146,6 +146,7 @@ enum {
   UV__IORING_OP_READV = 1,
   UV__IORING_OP_WRITEV = 2,
   UV__IORING_OP_FSYNC = 3,
+  UV__IORING_OP_OPENAT = 18,
   UV__IORING_OP_STATX = 21,
 };
 
@@ -208,6 +209,7 @@ struct uv__io_uring_sqe {
   union {
     uint32_t rw_flags;
     uint32_t fsync_flags;
+    uint32_t open_flags;
     uint32_t statx_flags;
   };
   uint64_t user_data;
@@ -666,6 +668,28 @@ int uv__iou_fs_fsync_or_fdatasync(uv_loop_t* loop,
   sqe->fd = req->file;
   sqe->fsync_flags = fsync_flags;
   sqe->opcode = UV__IORING_OP_FSYNC;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->len = req->mode;
+  sqe->opcode = UV__IORING_OP_OPENAT;
+  sqe->open_flags = req->flags | O_CLOEXEC;
 
   uv__iou_submit(iou);
 

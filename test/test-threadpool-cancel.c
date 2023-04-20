@@ -98,6 +98,7 @@ static int known_broken(uv_req_t* req) {
     case UV_FS_FSTAT:
     case UV_FS_FSYNC:
     case UV_FS_LSTAT:
+    case UV_FS_OPEN:
     case UV_FS_READ:
     case UV_FS_STAT:
     case UV_FS_WRITE:
