@@ -1246,10 +1246,12 @@ done:
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 
 static int uv__fs_clonefile_mac(uv_fs_t* req) {
-  static _Atomic int no_clone_acl = 0;
+  static _Atomic int no_clone_acl;
   int flags;
 
-  flags = atomic_load_explicit(&no_clone_acl, memory_order_relaxed) ? 0 : UV__FS_CLONE_ACL;
+  flags = UV__FS_CLONE_ACL;
+  if (atomic_load_explicit(&no_clone_acl, memory_order_relaxed))
+    flags = 0;
 
   /* Note: clonefile() does not set the group ID on the destination
    * file correctly. */
@@ -1284,7 +1286,7 @@ static int uv__fs_fcopyfile_mac(uv_fs_t* req) {
     /* Return on success.
      * If an error occurred and force was set, return the error to the caller;
      * fall back to copyfile() when force was not set. */
-    if (rc == 0 || req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
+    if (rc == 0 || (req->flags & UV_FS_COPYFILE_FICLONE_FORCE))
       return rc;
 
     /* cloning failed. Inherit clonefile flags required for
