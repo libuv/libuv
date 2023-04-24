@@ -150,7 +150,39 @@ TEST_IMPL(fs_copyfile) {
   ASSERT(r == 0);
   handle_result(&req);
 
+  /* Copies file synchronously. Overwrites existing file with clone.
+   * On linux calls ioctl() and fails, fallback to uv_fs_sendfile (no copy-on-write).
+   * On mac calls clonefile() and succeeds (copy-on-write).
+   * On windows calls CopyFileW() (no copy-on-write)
+   */
+  unlink(dst);
+  touch_file(dst, 0);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE, NULL);
+  ASSERT(r == 0);
+  handle_result(&req);
+
+  /* Copies file synchronously. Fails to overwrite existing file with clone
+   * force.
+   * On linux calls ioctl() and errors.
+   * On mac calls clonefile() and succeeds.
+   * Not supported on windows.
+   */
+  unlink(dst);
+  touch_file(dst, 0);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE, NULL);
+  /* linux: EOPNOTSUPP | UV_ENOSYS,
+   * win: UV_ENOSYS
+   * mac: 0 */
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  ASSERT(r == 0);
+  handle_result(&req);
+#else
+  ASSERT((r == -EOPNOTSUPP) || (r == UV_ENOSYS));
+  uv_fs_req_cleanup(&req);
+#endif
+
   /* Fails to overwrites existing file. */
+  touch_file(dst, 0);
   ASSERT_EQ(uv_fs_chmod(NULL, &req, dst, 0644, NULL), 0);
   uv_fs_req_cleanup(&req);
   r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_EXCL, NULL);
@@ -177,9 +209,9 @@ TEST_IMPL(fs_copyfile) {
   unlink(dst);
   r = uv_fs_copyfile(loop, &req, fixture, dst, 0, handle_result);
   ASSERT(r == 0);
-  ASSERT(result_check_count == 5);
+  result_check_count = 0;
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT(result_check_count == 6);
+  ASSERT(result_check_count == 1);
   /* Ensure file is user-writable (not copied from src). */
   ASSERT_EQ(uv_fs_chmod(NULL, &req, dst, 0644, NULL), 0);
   uv_fs_req_cleanup(&req);
