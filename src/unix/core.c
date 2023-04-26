@@ -44,6 +44,7 @@
 #include <grp.h>
 #include <sys/utsname.h>
 #include <sys/time.h>
+#include <time.h> /* clock_gettime */
 
 #ifdef __sun
 # include <sys/filio.h>
@@ -106,6 +107,35 @@ STATIC_ASSERT(sizeof(((uv_buf_t*) 0)->len) ==
               sizeof(((struct iovec*) 0)->iov_len));
 STATIC_ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
 STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
+
+
+/* https://github.com/libuv/libuv/issues/1674 */
+int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
+  struct timespec t;
+  int r;
+
+  if (ts == NULL)
+    return UV_EFAULT;
+
+  switch (clock_id) {
+    default:
+      return UV_EINVAL;
+    case UV_CLOCK_MONOTONIC:
+      r = clock_gettime(CLOCK_MONOTONIC, &t);
+      break;
+    case UV_CLOCK_REALTIME:
+      r = clock_gettime(CLOCK_REALTIME, &t);
+      break;
+  }
+
+  if (r)
+    return UV__ERR(errno);
+
+  ts->tv_sec = t.tv_sec;
+  ts->tv_nsec = t.tv_nsec;
+
+  return 0;
+}
 
 
 uint64_t uv_hrtime(void) {
