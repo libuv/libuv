@@ -170,14 +170,14 @@ void uv__console_init(void) {
                                        0);
   if (uv__tty_console_handle != INVALID_HANDLE_VALUE) {
     CONSOLE_SCREEN_BUFFER_INFO sb_info;
-    QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
-                      NULL,
-                      WT_EXECUTELONGFUNCTION);
     uv_mutex_init(&uv__tty_console_resize_mutex);
     if (GetConsoleScreenBufferInfo(uv__tty_console_handle, &sb_info)) {
       uv__tty_console_width = sb_info.dwSize.X;
       uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
     }
+    QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
+                      NULL,
+                      WT_EXECUTELONGFUNCTION);
   }
 }
 
