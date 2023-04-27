@@ -289,6 +289,7 @@ TEST_DECLARE   (handle_fileno)
 TEST_DECLARE   (homedir)
 TEST_DECLARE   (tmpdir)
 TEST_DECLARE   (hrtime)
+TEST_DECLARE   (clock_gettime)
 TEST_DECLARE   (getaddrinfo_fail)
 TEST_DECLARE   (getaddrinfo_fail_sync)
 TEST_DECLARE   (getaddrinfo_basic)
@@ -918,6 +919,8 @@ TASK_LIST_START
   TEST_ENTRY  (tmpdir)
 
   TEST_ENTRY_CUSTOM (hrtime, 0, 0, 20000)
+
+  TEST_ENTRY  (clock_gettime)
 
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
   TEST_ENTRY_CUSTOM (getaddrinfo_fail_sync, 0, 0, 10000)

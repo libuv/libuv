@@ -345,11 +345,32 @@ typedef void (*uv_random_cb)(uv_random_t* req,
                              void* buf,
                              size_t buflen);
 
+typedef enum {
+  UV_CLOCK_MONOTONIC,
+  UV_CLOCK_REALTIME
+} uv_clock_id;
+
+/* XXX(bnoordhuis) not 2038-proof, https://github.com/libuv/libuv/issues/3864 */
 typedef struct {
   long tv_sec;
   long tv_nsec;
 } uv_timespec_t;
 
+typedef struct {
+  int64_t tv_sec;
+  int32_t tv_nsec;
+} uv_timespec64_t;
+
+/* XXX(bnoordhuis) not 2038-proof, https://github.com/libuv/libuv/issues/3864 */
+typedef struct {
+  long tv_sec;
+  long tv_usec;
+} uv_timeval_t;
+
+typedef struct {
+  int64_t tv_sec;
+  int32_t tv_usec;
+} uv_timeval64_t;
 
 typedef struct {
   uint64_t st_dev;
@@ -1192,16 +1213,6 @@ UV_EXTERN uv_os_fd_t uv_get_osfhandle(int fd);
 UV_EXTERN int uv_open_osfhandle(uv_os_fd_t os_fd);
 
 typedef struct {
-  long tv_sec;
-  long tv_usec;
-} uv_timeval_t;
-
-typedef struct {
-  int64_t tv_sec;
-  int32_t tv_usec;
-} uv_timeval64_t;
-
-typedef struct {
    uv_timeval_t ru_utime; /* user CPU time used */
    uv_timeval_t ru_stime; /* system CPU time used */
    uint64_t ru_maxrss;    /* maximum resident set size */
@@ -1732,6 +1743,7 @@ UV_EXTERN uint64_t uv_get_total_memory(void);
 UV_EXTERN uint64_t uv_get_constrained_memory(void);
 UV_EXTERN uint64_t uv_get_available_memory(void);
 
+UV_EXTERN int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts);
 UV_EXTERN uint64_t uv_hrtime(void);
 UV_EXTERN void uv_sleep(unsigned int msec);
 
