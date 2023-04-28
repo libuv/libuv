@@ -7,6 +7,8 @@ was primarily developed for use by [Node.js][], but it's also
 used by [Luvit](http://luvit.io/), [Julia](http://julialang.org/),
 [uvloop](https://github.com/MagicStack/uvloop), and [others](https://github.com/libuv/libuv/blob/v1.x/LINKS.md).
 
+> **Note** that UV stands for "Unicorn Velociraptor" (which's visible on the logo).
+
 ## Feature highlights
 
  * Full-featured event loop backed by epoll, kqueue, IOCP, event ports.
