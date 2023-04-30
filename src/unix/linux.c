@@ -604,6 +604,8 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
                                                 uv_fs_t* req) {
   struct uv__io_uring_sqe* sqe;
   uint32_t head;
+  uint32_t tail;
+  uint32_t mask;
   uint32_t slot;
 
   if (iou->ringfd == -1)
@@ -611,10 +613,13 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
 
   head = atomic_load_explicit((_Atomic uint32_t*) iou->sqhead,
                               memory_order_acquire);
-  if (head == *iou->sqtail + 1)
+  tail = *iou->sqtail;
+  mask = iou->sqmask;
+
+  if ((head & mask) == ((tail + 1) & mask))
     return NULL;  /* No room in ring buffer. TODO(bnoordhuis) maybe flush it? */
 
-  slot = *iou->sqtail & iou->sqmask;
+  slot = tail & mask;
   iou->sqarray[slot] = slot;  /* Identity mapping of index -> sqe. */
 
   sqe = iou->sqe;
