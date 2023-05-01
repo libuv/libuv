@@ -423,7 +423,9 @@ struct uv__loop_internal_fields_s {
   uv__loop_metrics_t loop_metrics;
   int current_timeout;
 #ifdef __linux__
+  struct uv__iou ctl;
   struct uv__iou iou;
+  void* inv;  /* used by uv__platform_invalidate_fd() */
 #endif  /* __linux__ */
 };
 
