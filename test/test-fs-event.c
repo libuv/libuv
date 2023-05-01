@@ -614,7 +614,7 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
   create_file("watch_dir/file.js");
   create_file("watch_dir/file.jsx");
 #if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_12)
-  /* Empirically, FSEvents seems to (reliably) report the preceeding
+  /* Empirically, FSEvents seems to (reliably) report the preceding
    * create_file events prior to macOS 10.11.6 in the subsequent fs_watch
    * creation, but that behavior hasn't been observed to occur on newer
    * versions. Give a long delay here to let the system settle before running
@@ -682,7 +682,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   remove("watch_file");
   create_file("watch_file");
 #if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_12)
-  /* Empirically, kevent seems to (sometimes) report the preceeding
+  /* Empirically, kevent seems to (sometimes) report the preceding
    * create_file events prior to macOS 10.11.6 in the subsequent fs_event_start
    * So let the system settle before running the test. */
   uv_sleep(1100);

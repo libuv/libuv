@@ -499,7 +499,7 @@ typedef struct {
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
 
-/* TODO: put the parser states in an union - TTY handles are always half-duplex
+/* TODO: put the parser states in a union - TTY handles are always half-duplex
  * so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   HANDLE handle;                                                              \
