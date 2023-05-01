@@ -1037,7 +1037,7 @@ static void uv__epoll_ctl_flush(int epollfd,
 
     fd = cqe->user_data >> 32;
     op = 3 & cqe->user_data;
-    oldslot = 0xFFFFFFFFu & (cqe->user_data >> 2);
+    oldslot = 255 & (cqe->user_data >> 2);
 
     if (op == EPOLL_CTL_DEL)
       continue;
