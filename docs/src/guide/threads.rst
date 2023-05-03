@@ -27,7 +27,7 @@ threads are different on all platforms, with different levels of completeness.
 
 This chapter makes the following assumption: **There is only one event loop,
 running in one thread (the main thread)**. No other thread interacts
-with the event loop (except using ``uv_async_send``).
+with the event loop (except using ``uv_async_send`` and ``uv_queue_work``).
 
 Core thread operations
 ----------------------
@@ -41,8 +41,8 @@ wait for it to close using ``uv_thread_join()``.
 .. literalinclude:: ../../code/thread-create/main.c
     :language: c
     :linenos:
-    :lines: 26-36
-    :emphasize-lines: 3-7
+    :lines: 25-36
+    :emphasize-lines: 5-9
 
 .. tip::
 
@@ -58,8 +58,8 @@ thread, scheduled pre-emptively by the operating system:
 .. literalinclude:: ../../code/thread-create/main.c
     :language: c
     :linenos:
-    :lines: 6-14
-    :emphasize-lines: 2
+    :lines: 5-13
+    :emphasize-lines: 3
 
 Unlike ``pthread_join()`` which allows the target thread to pass back a value to
 the calling thread using a second parameter, ``uv_thread_join()`` does not. To
