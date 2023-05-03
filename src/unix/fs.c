@@ -67,8 +67,7 @@
 
 #if defined(__APPLE__)
 # include <copyfile.h>
-# include <sys/clonefile.h>
-# define UV__FS_CLONE_ACL 0x0004
+# include <sys/sysctl.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
 # define FICLONE _IOW(0x94, 9, int)
@@ -1243,34 +1242,9 @@ done:
   return r;
 }
 
+static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
-
-static int uv__fs_clonefile_mac(uv_fs_t* req) {
-  static _Atomic int no_clone_acl;
-  int flags;
-
-  flags = UV__FS_CLONE_ACL;
-  if (atomic_load_explicit(&no_clone_acl, memory_order_relaxed))
-    flags = 0;
-
-  /* Note: clonefile() does not set the group ID on the destination
-   * file correctly. */
-  if (!clonefile(req->path, req->new_path, flags))
-    return 0;  /* success */
-
-  if (errno == EINVAL) {
-    atomic_store_explicit(&no_clone_acl, 1, memory_order_relaxed);
-    errno = 0;
-    /* UV__FS_CLONE_ACL flag not supported (macOS < 13); try without. */
-    if (!clonefile(req->path, req->new_path, 0))
-      return 0;  /* success */
-  }
-
-  return UV__ERR(errno);
-}
-
-static int uv__fs_fcopyfile_mac(uv_fs_t* req) {
-  int rc;
+  /* On macOS, use the native copyfile(3). */
   copyfile_flags_t flags;
 
   /* Don't overwrite the destination if its permissions disallow it. */
@@ -1279,38 +1253,22 @@ static int uv__fs_fcopyfile_mac(uv_fs_t* req) {
       return UV__ERR(errno);
   }
 
-  if ((req->flags & UV_FS_COPYFILE_FICLONE) ||
-      (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)) {
-    rc = uv__fs_clonefile_mac(req);
+  flags = COPYFILE_ALL;
 
-    /* Return on success.
-     * If an error occurred and force was set, return the error to the caller;
-     * fall back to copyfile() when force was not set. */
-    if (rc == 0 || (req->flags & UV_FS_COPYFILE_FICLONE_FORCE))
-      return rc;
+  if (req->flags & UV_FS_COPYFILE_FICLONE)
+    flags |= COPYFILE_CLONE;
 
-    /* cloning failed. Inherit clonefile flags required for
-       falling back to copyfile. */
-    flags = COPYFILE_ALL | COPYFILE_NOFOLLOW_SRC | COPYFILE_EXCL;
-  } else {
-    flags = COPYFILE_ALL;
-    if (req->flags & UV_FS_COPYFILE_EXCL)
-      flags |= COPYFILE_EXCL;
-  }
+  if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)
+    flags |= COPYFILE_CLONE_FORCE;
+
+  if (req->flags & UV_FS_COPYFILE_EXCL)
+    flags |= COPYFILE_EXCL;
 
   if (copyfile(req->path, req->new_path, NULL, flags))
     return UV__ERR(errno);
 
   return 0;
-}
-
-#endif /* defined(__APPLE__) && !TARGET_OS_IPHONE */
-
-static int uv__fs_copyfile(uv_fs_t* req) {
-#if defined(__APPLE__) && !TARGET_OS_IPHONE
-  /* On macOS, use the native clonefile(2)/copyfile(3). */
-  return uv__fs_fcopyfile_mac(req);
-#else
+#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
   uv_fs_t fs_req;
   uv_file srcfd;
   uv_file dstfd;
