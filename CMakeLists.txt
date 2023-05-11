@@ -358,18 +358,30 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
        src/unix/os390.c
        src/unix/os390-syscalls.c
        src/unix/os390-proctitle.c)
-  list(APPEND uv_cflags
-       -q64
-       -qascii
-       -qexportall
-       -qgonumber
-       -qlongname
-       -qlibansi
-       -qfloat=IEEE
-       -qtune=10
-       -qarch=10
-       -qasm
-       -qasmlib=sys1.maclib:sys1.modgen)
+  get_filename_component(COMP ${CMAKE_C_COMPILER} NAME CACHE)
+  if(${COMP} STREQUAL clang OR ${COMP} STREQUAL ibm-clang64)
+    list(APPEND uv_cflags
+      -fgnu-keywords
+      -fno-short-enums
+      -fzos-le-char-mode=ascii
+      -m64
+      -march=arch10
+      -mtune=arch10)
+  else()
+    list(APPEND uv_cflags
+      -fgnu-keywords
+      -q64
+      -qascii
+      -qexportall
+      -qgonumber
+      -qlongname
+      -qlibansi
+      -qfloat=IEEE
+      -qtune=10
+      -qarch=10
+      -qasm
+      -qasmlib=sys1.maclib:sys1.modgen)
+  endif()
   find_library(ZOSLIB
     NAMES zoslib
     PATHS ${ZOSLIB_DIR}
