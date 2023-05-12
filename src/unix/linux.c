@@ -1841,7 +1841,7 @@ static uint64_t uv__read_uint64(const char* filename) {
   if (0 == uv__slurp(filename, buf, sizeof(buf)))
     if (1 != sscanf(buf, "%" PRIu64, &rc))
       if (0 == strcmp(buf, "max\n"))
-        rc = ~0ull;
+        rc = UINT64_MAX;
 
   return rc;
 }
@@ -1877,6 +1877,7 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
   char filename[4097];
   char* p;
   int n;
+  uint64_t cgroup1_max;
 
   /* Find out where the controller is mounted. */
   p = uv__cgroup1_find_memory_controller(buf, &n);
@@ -1893,12 +1894,22 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
      * as indicated by uv__read_uint64 returning 0.
      */
      if (*high != 0 && *max != 0)
-       return;
+       goto update_limits;
   }
 
   /* Fall back to the limits of the global memory controller. */
   *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
   *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+
+  /* uv__read_uint64 detects cgroup2's "max", so we need to separately detect
+   * cgroup1's maximum value (which is derived from LONG_MAX and PAGE_SIZE).
+   */
+update_limits:
+  cgroup1_max = LONG_MAX & ~(sysconf(_SC_PAGESIZE) - 1);
+  if (*high == cgroup1_max)
+    *high = UINT64_MAX;
+  if (*max == cgroup1_max)
+    *max = UINT64_MAX;
 }
 
 static void uv__get_cgroup2_memory_limits(char buf[static 1024], uint64_t* high,

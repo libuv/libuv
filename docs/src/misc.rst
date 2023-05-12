@@ -586,8 +586,9 @@ API
 
     Gets the total amount of memory available to the process (in bytes) based on
     limits imposed by the OS. If there is no such constraint, or the constraint
-    is unknown, `0` is returned. Note that it is not unusual for this value to
-    be less than or greater than :c:func:`uv_get_total_memory`.
+    is unknown, `0` is returned. If there is a constraining mechanism, but there
+    is no constraint set, `UINT64_MAX` is returned. Note that it is not unusual
+    for this value to be less than or greater than :c:func:`uv_get_total_memory`.
 
     .. note::
         This function currently only returns a non-zero value on Linux, based
