@@ -662,6 +662,15 @@ static void stat_cb(uv_fs_t* req) {
   ASSERT(!req->ptr);
 }
 
+static void stat_batch_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_STAT || req->fs_type == UV_FS_LSTAT);
+  ASSERT(req->result == 0);
+  ASSERT(req->ptr);
+  stat_cb_count++;
+  uv_fs_req_cleanup(req);
+  ASSERT(!req->ptr);
+}
+
 
 static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
@@ -4538,5 +4547,29 @@ TEST_IMPL(fs_get_system_error) {
   ASSERT(system_error == ENOENT);
 #endif
 
+  return 0;
+}
+
+TEST_IMPL(fs_stat_batch_multiple) {
+  uv_fs_t req[300];
+  int r;
+  int i;
+
+  rmdir("test_dir");
+
+  r = uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0755, NULL);
+  ASSERT_EQ(r, 0);
+
+  loop = uv_default_loop();
+
+  for (i = 0; i < (int) ARRAY_SIZE(req); ++i) {
+    r = uv_fs_stat(loop, &req[i], "test_dir", stat_batch_cb);
+    ASSERT_EQ(r, 0);
+  }
+
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(stat_cb_count, ARRAY_SIZE(req));
+
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
