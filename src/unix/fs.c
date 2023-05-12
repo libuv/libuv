@@ -1282,10 +1282,11 @@ static int uv__fs_fcopyfile_mac(uv_fs_t* req) {
   if ((req->flags & UV_FS_COPYFILE_FICLONE) ||
       (req->flags & UV_FS_COPYFILE_FICLONE_FORCE)) {
 
-    /* Remove the destination before we create it. We don't care if the file
-     * doesn't exist, so we ignore ENOENT. */
-    if (remove(req->new_path) < 0 && errno != ENOENT)
-      return -1;
+    if (!(req->flags & UV_FS_COPYFILE_EXCL))
+      /* Remove the destination before we create it. We don't care if the file
+       * doesn't exist, so we ignore ENOENT. */
+      if (remove(req->new_path) < 0 && errno != ENOENT)
+        return -1;
 
     rc = uv__fs_clonefile_mac(req);
 
