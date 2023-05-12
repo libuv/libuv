@@ -686,7 +686,7 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   if (options->file == NULL)
     return ENOENT;
 
-  /* The environment for the child process is that of the parent unless overriden
+  /* The environment for the child process is that of the parent unless overridden
    * by options->env */
   char** env = environ;
   if (options->env != NULL)

@@ -2279,7 +2279,7 @@ static void fs__fchmod(uv_fs_t* req) {
         SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
         goto fchmod_cleanup;
       }
-      /* Remeber to clear the flag later on */
+      /* Remember to clear the flag later on */
       clear_archive_flag = 1;
   } else {
       clear_archive_flag = 0;

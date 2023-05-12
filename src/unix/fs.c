@@ -2198,7 +2198,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req == NULL)
     return;
 
-  /* Only necessary for asychronous requests, i.e., requests with a callback.
+  /* Only necessary for asynchronous requests, i.e., requests with a callback.
    * Synchronous ones don't copy their arguments and have req->path and
    * req->new_path pointing to user-owned memory.  UV_FS_MKDTEMP and
    * UV_FS_MKSTEMP are the exception to the rule, they always allocate memory.
