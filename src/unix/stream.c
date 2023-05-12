@@ -797,13 +797,7 @@ static int uv__try_write(uv_stream_t* stream,
     cmsg->cmsg_level = SOL_SOCKET;
     cmsg->cmsg_type = SCM_RIGHTS;
     cmsg->cmsg_len = CMSG_LEN(sizeof(fd_to_send));
-
-    /* silence aliasing warning */
-    {
-      void* pv = CMSG_DATA(cmsg);
-      int* pi = pv;
-      *pi = fd_to_send;
-    }
+    memcpy(CMSG_DATA(cmsg), &fd_to_send, sizeof(fd_to_send));
 
     do
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
@@ -989,46 +983,36 @@ static int uv__stream_queue_fd(uv_stream_t* stream, int fd) {
 
 static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
   struct cmsghdr* cmsg;
+  int fd;
+  int err;
+  size_t i;
+  size_t count;
 
   for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg)) {
-    char* start;
-    char* end;
-    int err;
-    void* pv;
-    int* pi;
-    unsigned int i;
-    unsigned int count;
-
     if (cmsg->cmsg_type != SCM_RIGHTS) {
       fprintf(stderr, "ignoring non-SCM_RIGHTS ancillary data: %d\n",
           cmsg->cmsg_type);
       continue;
     }
 
-    /* silence aliasing warning */
-    pv = CMSG_DATA(cmsg);
-    pi = pv;
-
-    /* Count available fds */
-    start = (char*) cmsg;
-    end = (char*) cmsg + cmsg->cmsg_len;
-    count = 0;
-    while (start + CMSG_LEN(count * sizeof(*pi)) < end)
-      count++;
-    assert(start + CMSG_LEN(count * sizeof(*pi)) == end);
+    assert(cmsg->cmsg_len >= CMSG_LEN(0));
+    count = cmsg->cmsg_len - CMSG_LEN(0);
+    assert(count % sizeof(fd) == 0);
+    count /= sizeof(fd);
 
     for (i = 0; i < count; i++) {
+      memcpy(&fd, (char*) CMSG_DATA(cmsg) + i * sizeof(fd), sizeof(fd));
       /* Already has accepted fd, queue now */
       if (stream->accepted_fd != -1) {
-        err = uv__stream_queue_fd(stream, pi[i]);
+        err = uv__stream_queue_fd(stream, fd);
         if (err != 0) {
           /* Close rest */
           for (; i < count; i++)
-            uv__close(pi[i]);
+            uv__close(fd);
           return err;
         }
       } else {
-        stream->accepted_fd = pi[i];
+        stream->accepted_fd = fd;
       }
     }
   }
