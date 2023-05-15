@@ -60,6 +60,16 @@ struct uv__stream_select_s {
 };
 #endif /* defined(__APPLE__) */
 
+union uv__cmsg {
+  struct cmsghdr hdr;
+  /* This cannot be larger because of the IBMi PASE limitation that
+   * the total size of control messages cannot exceed 256 bytes.
+   */
+  char pad[256];
+};
+
+STATIC_ASSERT(256 == sizeof(union uv__cmsg));
+
 static void uv__stream_connect(uv_stream_t*);
 static void uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
@@ -769,18 +779,14 @@ static int uv__try_write(uv_stream_t* stream,
   if (send_handle != NULL) {
     int fd_to_send;
     struct msghdr msg;
-    struct cmsghdr *cmsg;
-    union {
-      char data[64];
-      struct cmsghdr alias;
-    } scratch;
+    union uv__cmsg cmsg;
 
     if (uv__is_closing(send_handle))
       return UV_EBADF;
 
     fd_to_send = uv__handle_fd((uv_handle_t*) send_handle);
 
-    memset(&scratch, 0, sizeof(scratch));
+    memset(&cmsg, 0, sizeof(cmsg));
 
     assert(fd_to_send >= 0);
 
@@ -790,14 +796,13 @@ static int uv__try_write(uv_stream_t* stream,
     msg.msg_iovlen = iovcnt;
     msg.msg_flags = 0;
 
-    msg.msg_control = &scratch.alias;
+    msg.msg_control = &cmsg.hdr;
     msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));
 
-    cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(fd_to_send));
-    memcpy(CMSG_DATA(cmsg), &fd_to_send, sizeof(fd_to_send));
+    cmsg.hdr.cmsg_level = SOL_SOCKET;
+    cmsg.hdr.cmsg_type = SCM_RIGHTS;
+    cmsg.hdr.cmsg_len = CMSG_LEN(sizeof(fd_to_send));
+    memcpy(CMSG_DATA(&cmsg.hdr), &fd_to_send, sizeof(fd_to_send));
 
     do
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
@@ -972,15 +977,6 @@ static int uv__stream_queue_fd(uv_stream_t* stream, int fd) {
 }
 
 
-#if defined(__PASE__)
-/* on IBMi PASE the control message length can not exceed 256. */
-# define UV__CMSG_FD_COUNT 60
-#else
-# define UV__CMSG_FD_COUNT 64
-#endif
-#define UV__CMSG_FD_SIZE (UV__CMSG_FD_COUNT * sizeof(int))
-
-
 static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
   struct cmsghdr* cmsg;
   int fd;
@@ -1021,17 +1017,11 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
 }
 
 
-#ifdef __clang__
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wgnu-folding-constant"
-# pragma clang diagnostic ignored "-Wvla-extension"
-#endif
-
 static void uv__read(uv_stream_t* stream) {
   uv_buf_t buf;
   ssize_t nread;
   struct msghdr msg;
-  char cmsg_space[CMSG_SPACE(UV__CMSG_FD_SIZE)];
+  union uv__cmsg cmsg;
   int count;
   int err;
   int is_ipc;
@@ -1077,8 +1067,8 @@ static void uv__read(uv_stream_t* stream) {
       msg.msg_name = NULL;
       msg.msg_namelen = 0;
       /* Set up to receive a descriptor even if one isn't in the message */
-      msg.msg_controllen = sizeof(cmsg_space);
-      msg.msg_control = cmsg_space;
+      msg.msg_controllen = sizeof(cmsg);
+      msg.msg_control = &cmsg.hdr;
 
       do {
         nread = uv__recvmsg(uv__stream_fd(stream), &msg, 0);
@@ -1160,14 +1150,6 @@ static void uv__read(uv_stream_t* stream) {
     }
   }
 }
-
-
-#ifdef __clang__
-# pragma clang diagnostic pop
-#endif
-
-#undef UV__CMSG_FD_COUNT
-#undef UV__CMSG_FD_SIZE
 
 
 int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
