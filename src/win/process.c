@@ -1279,6 +1279,12 @@ static int uv__kill(HANDLE process_handle, int signum) {
         sym_options = SymGetOptions();
         SymSetOptions(sym_options | 0x40000000);
 
+/* patch for mingw under 12 */
+#ifdef __MINGW32__
+#ifndef MiniDumpWithAvxXStateContext
+#define MiniDumpWithAvxXStateContext 0x00200000
+#endif
+#endif
         /* We default to a fairly complete dump.  In the future, we may want to
          * allow clients to customize what kind of dump to create. */
         dump_options = MiniDumpWithFullMemory |
