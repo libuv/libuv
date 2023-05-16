@@ -37,6 +37,10 @@
 #include "queue.h"
 #include "strscpy.h"
 
+#ifndef _MSC_VER
+# include <stdatomic.h>
+#endif
+
 #if EDOM > 0
 # define UV__ERR(x) (-(x))
 #else
@@ -61,12 +65,12 @@ extern int snprintf(char*, size_t, const char*, ...);
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
 #endif
 
-#if defined(__GNUC__) && (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7)
-#define uv__load_relaxed(p) __atomic_load_n(p, __ATOMIC_RELAXED)
-#define uv__store_relaxed(p, v) __atomic_store_n(p, v, __ATOMIC_RELAXED)
+#ifdef _MSC_VER
+#define uv__exchange_int_relaxed(p, v)                                        \
+  InterlockedExchangeNoFence((LONG volatile*)(p), v)
 #else
-#define uv__load_relaxed(p) (*p)
-#define uv__store_relaxed(p, v) do *p = v; while (0)
+#define uv__exchange_int_relaxed(p, v)                                        \
+  atomic_exchange_explicit((_Atomic int*)(p), v, memory_order_relaxed)
 #endif
 
 #define UV__UDP_DGRAM_MAXSIZE (64 * 1024)
@@ -392,9 +396,37 @@ struct uv__loop_metrics_s {
 void uv__metrics_update_idle_time(uv_loop_t* loop);
 void uv__metrics_set_provider_entry_time(uv_loop_t* loop);
 
+#ifdef __linux__
+struct uv__iou {
+  uint32_t* sqhead;
+  uint32_t* sqtail;
+  uint32_t* sqarray;
+  uint32_t sqmask;
+  uint32_t* sqflags;
+  uint32_t* cqhead;
+  uint32_t* cqtail;
+  uint32_t cqmask;
+  void* sq;   /* pointer to munmap() on event loop teardown */
+  void* cqe;  /* pointer to array of struct uv__io_uring_cqe */
+  void* sqe;  /* pointer to array of struct uv__io_uring_sqe */
+  size_t sqlen;
+  size_t cqlen;
+  size_t maxlen;
+  size_t sqelen;
+  int ringfd;
+  uint32_t in_flight;
+};
+#endif  /* __linux__ */
+
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
+  int current_timeout;
+#ifdef __linux__
+  struct uv__iou ctl;
+  struct uv__iou iou;
+  void* inv;  /* used by uv__platform_invalidate_fd() */
+#endif  /* __linux__ */
 };
 
 #endif /* UV_COMMON_H_ */

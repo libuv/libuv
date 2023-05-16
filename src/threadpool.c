@@ -275,9 +275,13 @@ void uv__work_submit(uv_loop_t* loop,
 }
 
 
+/* TODO(bnoordhuis) teach libuv how to cancel file operations
+ * that go through io_uring instead of the thread pool.
+ */
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
+  uv_once(&once, init_once);  /* Ensure |mutex| is initialized. */
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
 
@@ -307,11 +311,14 @@ void uv__work_done(uv_async_t* handle) {
   QUEUE* q;
   QUEUE wq;
   int err;
+  int nevents;
 
   loop = container_of(handle, uv_loop_t, wq_async);
   uv_mutex_lock(&loop->wq_mutex);
   QUEUE_MOVE(&loop->wq, &wq);
   uv_mutex_unlock(&loop->wq_mutex);
+
+  nevents = 0;
 
   while (!QUEUE_EMPTY(&wq)) {
     q = QUEUE_HEAD(&wq);
@@ -320,6 +327,20 @@ void uv__work_done(uv_async_t* handle) {
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
     w->done(w, err);
+    nevents++;
+  }
+
+  /* This check accomplishes 2 things:
+   * 1. Even if the queue was empty, the call to uv__work_done() should count
+   *    as an event. Which will have been added by the event loop when
+   *    calling this callback.
+   * 2. Prevents accidental wrap around in case nevents == 0 events == 0.
+   */
+  if (nevents > 1) {
+    /* Subtract 1 to counter the call to uv__work_done(). */
+    uv__metrics_inc_events(loop, nevents - 1);
+    if (uv__get_internal_fields(loop)->current_timeout == 0)
+      uv__metrics_inc_events_waiting(loop, nevents - 1);
   }
 }
 

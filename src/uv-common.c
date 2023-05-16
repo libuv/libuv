@@ -944,7 +944,7 @@ __attribute__((destructor))
 void uv_library_shutdown(void) {
   static int was_shutdown;
 
-  if (uv__load_relaxed(&was_shutdown))
+  if (uv__exchange_int_relaxed(&was_shutdown, 1))
     return;
 
   uv__process_title_cleanup();
@@ -955,7 +955,6 @@ void uv_library_shutdown(void) {
 #else
   uv__threadpool_cleanup();
 #endif
-  uv__store_relaxed(&was_shutdown, 1);
 }
 
 

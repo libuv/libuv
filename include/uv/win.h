@@ -91,6 +91,7 @@ typedef struct pollfd {
  * variants (Linux and Darwin)
  */
 #define SIGHUP                1
+#define SIGQUIT               3
 #define SIGKILL               9
 #define SIGWINCH             28
 
@@ -274,11 +275,12 @@ typedef struct {
 } uv_rwlock_t;
 
 typedef struct {
-  unsigned int n;
-  unsigned int count;
+  unsigned threshold;
+  unsigned in;
   uv_mutex_t mutex;
-  uv_sem_t turnstile1;
-  uv_sem_t turnstile2;
+  /* TODO: in v2 make this a uv_cond_t, without unused_ */
+  CONDITION_VARIABLE cond;
+  unsigned out;
 } uv_barrier_t;
 
 typedef struct {
@@ -498,7 +500,7 @@ typedef struct {
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
 
-/* TODO: put the parser states in an union - TTY handles are always half-duplex
+/* TODO: put the parser states in a union - TTY handles are always half-duplex
  * so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   HANDLE handle;                                                              \

@@ -44,6 +44,7 @@
 #include <grp.h>
 #include <sys/utsname.h>
 #include <sys/time.h>
+#include <time.h> /* clock_gettime */
 
 #ifdef __sun
 # include <sys/filio.h>
@@ -106,6 +107,35 @@ STATIC_ASSERT(sizeof(((uv_buf_t*) 0)->len) ==
               sizeof(((struct iovec*) 0)->iov_len));
 STATIC_ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
 STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
+
+
+/* https://github.com/libuv/libuv/issues/1674 */
+int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
+  struct timespec t;
+  int r;
+
+  if (ts == NULL)
+    return UV_EFAULT;
+
+  switch (clock_id) {
+    default:
+      return UV_EINVAL;
+    case UV_CLOCK_MONOTONIC:
+      r = clock_gettime(CLOCK_MONOTONIC, &t);
+      break;
+    case UV_CLOCK_REALTIME:
+      r = clock_gettime(CLOCK_REALTIME, &t);
+      break;
+  }
+
+  if (r)
+    return UV__ERR(errno);
+
+  ts->tv_sec = t.tv_sec;
+  ts->tv_nsec = t.tv_nsec;
+
+  return 0;
+}
 
 
 uint64_t uv_hrtime(void) {
@@ -233,10 +263,10 @@ int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
-  static int iovmax_cached = -1;
+  static _Atomic int iovmax_cached = -1;
   int iovmax;
 
-  iovmax = uv__load_relaxed(&iovmax_cached);
+  iovmax = atomic_load_explicit(&iovmax_cached, memory_order_relaxed);
   if (iovmax != -1)
     return iovmax;
 
@@ -248,7 +278,7 @@ int uv__getiovmax(void) {
   if (iovmax == -1)
     iovmax = 1;
 
-  uv__store_relaxed(&iovmax_cached, iovmax);
+  atomic_store_explicit(&iovmax_cached, iovmax, memory_order_relaxed);
 
   return iovmax;
 #else
@@ -361,6 +391,7 @@ static int uv__backend_timeout(const uv_loop_t* loop) {
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
       QUEUE_EMPTY(&loop->pending_queue) &&
       QUEUE_EMPTY(&loop->idle_handles) &&
+      (loop->flags & UV_LOOP_REAP_CHILDREN) == 0 &&
       loop->closing_handles == NULL)
     return uv__next_timeout(loop);
   return 0;
@@ -389,10 +420,17 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   if (!r)
     uv__update_time(loop);
 
-  while (r != 0 && loop->stop_flag == 0) {
-    uv__update_time(loop);
+  /* Maintain backwards compatibility by processing timers before entering the
+   * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
+   * once, which should be done after polling in order to maintain proper
+   * execution order of the conceptual event loop. */
+  if (mode == UV_RUN_DEFAULT) {
+    if (r)
+      uv__update_time(loop);
     uv__run_timers(loop);
+  }
 
+  while (r != 0 && loop->stop_flag == 0) {
     can_sleep =
         QUEUE_EMPTY(&loop->pending_queue) && QUEUE_EMPTY(&loop->idle_handles);
 
@@ -423,18 +461,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__run_check(loop);
     uv__run_closing_handles(loop);
 
-    if (mode == UV_RUN_ONCE) {
-      /* UV_RUN_ONCE implies forward progress: at least one callback must have
-       * been invoked when it returns. uv__io_poll() can return without doing
-       * I/O (meaning: no callbacks) when its timeout expires - which means we
-       * have pending timers that satisfy the forward progress constraint.
-       *
-       * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
-       * the check.
-       */
-      uv__update_time(loop);
-      uv__run_timers(loop);
-    }
+    uv__update_time(loop);
+    uv__run_timers(loop);
 
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)

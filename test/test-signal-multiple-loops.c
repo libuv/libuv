@@ -208,8 +208,12 @@ TEST_IMPL(signal_multiple_loops) {
 #endif
 /* TODO(gengjiawen): Fix test on QEMU. */
 #if defined(__QEMU__)
-  // See https://github.com/libuv/libuv/issues/2859
+  /* See https://github.com/libuv/libuv/issues/2859 */
   RETURN_SKIP("QEMU's signal emulation code is notoriously tricky");
+#endif
+#if defined(__ASAN__) || defined(__MSAN__)
+  /* See https://github.com/libuv/libuv/issues/3956 */
+  RETURN_SKIP("Test is too slow to run under ASan or MSan");
 #endif
 #if defined(__TSAN__)
   /* ThreadSanitizer complains - likely legitimately - about data races
@@ -310,7 +314,7 @@ TEST_IMPL(signal_multiple_loops) {
    */
   ASSERT(loop_creation_counter >= NUM_LOOP_CREATING_THREADS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 

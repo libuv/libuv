@@ -34,6 +34,7 @@ typedef struct {
 static uint64_t last_events_count;
 static char test_buf[] = "test-buffer\n";
 static fs_reqs_t fs_reqs;
+static int pool_events_counter;
 
 
 static void timer_spin_cb(uv_timer_t* handle) {
@@ -71,7 +72,7 @@ TEST_IMPL(metrics_idle_time) {
   ASSERT_LE(idle_time, (timeout + 500) * UV_NS_TO_MS);
   ASSERT_GE(idle_time, (timeout - 500) * UV_NS_TO_MS);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -147,7 +148,7 @@ TEST_IMPL(metrics_idle_time_zero) {
   ASSERT_EQ(0, uv_metrics_info(uv_default_loop(), &metrics));
   ASSERT_UINT64_EQ(cntr, metrics.loop_count);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -236,6 +237,156 @@ TEST_IMPL(metrics_info_check) {
   uv_fs_unlink(NULL, &unlink_req, "test_file", NULL);
   uv_fs_req_cleanup(&unlink_req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+static void fs_prepare_cb(uv_prepare_t* handle) {
+  uv_metrics_t metrics;
+
+  ASSERT_OK(uv_metrics_info(uv_default_loop(), &metrics));
+
+  if (pool_events_counter == 1)
+    ASSERT_EQ(metrics.events, metrics.events_waiting);
+
+  if (pool_events_counter < 7)
+    return;
+
+  uv_prepare_stop(handle);
+  pool_events_counter = -42;
+}
+
+
+static void fs_stat_cb(uv_fs_t* req) {
+  uv_fs_req_cleanup(req);
+  pool_events_counter++;
+}
+
+
+static void fs_work_cb(uv_work_t* req) {
+}
+
+
+static void fs_after_work_cb(uv_work_t* req, int status) {
+  free(req);
+  pool_events_counter++;
+}
+
+
+static void fs_write_cb(uv_fs_t* req) {
+  uv_work_t* work1 = malloc(sizeof(*work1));
+  uv_work_t* work2 = malloc(sizeof(*work2));
+  pool_events_counter++;
+
+  uv_fs_req_cleanup(req);
+
+  ASSERT_OK(uv_queue_work(uv_default_loop(),
+                          work1,
+                          fs_work_cb,
+                          fs_after_work_cb));
+  ASSERT_OK(uv_queue_work(uv_default_loop(),
+                          work2,
+                          fs_work_cb,
+                          fs_after_work_cb));
+}
+
+
+static void fs_random_cb(uv_random_t* req, int status, void* buf, size_t len) {
+  pool_events_counter++;
+}
+
+
+static void fs_addrinfo_cb(uv_getaddrinfo_t* req,
+                           int status,
+                           struct addrinfo* res) {
+  uv_freeaddrinfo(req->addrinfo);
+  pool_events_counter++;
+}
+
+
+TEST_IMPL(metrics_pool_events) {
+  uv_buf_t iov;
+  uv_fs_t open_req;
+  uv_fs_t stat1_req;
+  uv_fs_t stat2_req;
+  uv_fs_t unlink_req;
+  uv_fs_t write_req;
+  uv_getaddrinfo_t addrinfo_req;
+  uv_metrics_t metrics;
+  uv_prepare_t prepare;
+  uv_random_t random_req;
+  int fd;
+  char rdata;
+
+  ASSERT_OK(uv_loop_configure(uv_default_loop(), UV_METRICS_IDLE_TIME));
+
+  uv_fs_unlink(NULL, &unlink_req, "test_file", NULL);
+  uv_fs_req_cleanup(&unlink_req);
+
+  ASSERT_OK(uv_prepare_init(uv_default_loop(), &prepare));
+  ASSERT_OK(uv_prepare_start(&prepare, fs_prepare_cb));
+
+  pool_events_counter = 0;
+  fd = uv_fs_open(NULL,
+                  &open_req,
+                  "test_file",
+                  O_WRONLY | O_CREAT,
+                  S_IRUSR | S_IWUSR,
+                  NULL);
+  ASSERT_GT(fd, 0);
+  uv_fs_req_cleanup(&open_req);
+
+  iov = uv_buf_init(test_buf, sizeof(test_buf));
+  ASSERT_OK(uv_fs_write(uv_default_loop(),
+                        &write_req,
+                        fd,
+                        &iov,
+                        1,
+                        0,
+                        fs_write_cb));
+  ASSERT_OK(uv_fs_stat(uv_default_loop(),
+                       &stat1_req,
+                       "test_file",
+                       fs_stat_cb));
+  ASSERT_OK(uv_fs_stat(uv_default_loop(),
+                       &stat2_req,
+                       "test_file",
+                       fs_stat_cb));
+  ASSERT_OK(uv_random(uv_default_loop(),
+                      &random_req,
+                      &rdata,
+                      1,
+                      0,
+                      fs_random_cb));
+  ASSERT_OK(uv_getaddrinfo(uv_default_loop(),
+                           &addrinfo_req,
+                           fs_addrinfo_cb,
+                           "example.invalid",
+                           NULL,
+                           NULL));
+
+  /* Sleep for a moment to hopefully force the events to complete before
+   * entering the event loop. */
+  uv_sleep(100);
+
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_OK(uv_metrics_info(uv_default_loop(), &metrics));
+  /* It's possible for uv__work_done() to execute one extra time even though the
+   * QUEUE has already been cleared out. This has to do with the way we use an
+   * uv_async to tell the event loop thread to process the worker pool QUEUE. */
+  ASSERT_GE(metrics.events, 7);
+  /* It's possible one of the other events also got stuck in the event queue, so
+   * check GE instead of EQ. Reason for 4 instead of 5 is because the call to
+   * uv_getaddrinfo() is racey and slow. So can't guarantee that it'll always
+   * execute before sleep completes. */
+  ASSERT_GE(metrics.events_waiting, 4);
+  ASSERT_EQ(pool_events_counter, -42);
+
+  uv_fs_unlink(NULL, &unlink_req, "test_file", NULL);
+  uv_fs_req_cleanup(&unlink_req);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

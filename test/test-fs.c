@@ -37,6 +37,9 @@
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
 #  define ERROR_SYMLINK_NOT_SUPPORTED 1464
 # endif
+# ifndef S_IFIFO
+#  define S_IFIFO _S_IFIFO
+# endif
 # define unlink _unlink
 # define rmdir _rmdir
 # define open _open
@@ -659,6 +662,15 @@ static void stat_cb(uv_fs_t* req) {
   ASSERT(!req->ptr);
 }
 
+static void stat_batch_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_STAT || req->fs_type == UV_FS_LSTAT);
+  ASSERT(req->result == 0);
+  ASSERT(req->ptr);
+  stat_cb_count++;
+  uv_fs_req_cleanup(req);
+  ASSERT(!req->ptr);
+}
+
 
 static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
@@ -720,7 +732,7 @@ TEST_IMPL(fs_file_noent) {
 
   /* TODO add EACCES test */
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -746,7 +758,7 @@ TEST_IMPL(fs_file_nametoolong) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(open_cb_count == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -788,7 +800,7 @@ TEST_IMPL(fs_file_loop) {
 
   unlink("test_symlink");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -955,7 +967,7 @@ TEST_IMPL(fs_file_async) {
   unlink("test_file");
   unlink("test_file2");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1045,7 +1057,7 @@ TEST_IMPL(fs_file_sync) {
   fs_file_sync(0);
   fs_file_sync(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -1081,7 +1093,7 @@ TEST_IMPL(fs_file_write_null_buffer) {
   fs_file_write_null_buffer(0);
   fs_file_write_null_buffer(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1176,7 +1188,7 @@ TEST_IMPL(fs_async_dir) {
   unlink("test_dir/file2");
   rmdir("test_dir");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1256,7 +1268,7 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, off_t expected_size) {
   unlink("test_file");
   unlink("test_file2");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1304,7 +1316,7 @@ TEST_IMPL(fs_mkdtemp) {
   uv_fs_req_cleanup(&mkdtemp_req1);
   uv_fs_req_cleanup(&mkdtemp_req2);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1336,6 +1348,8 @@ TEST_IMPL(fs_mkstemp) {
 
   /* Make sure that path is empty string */
   ASSERT_EQ(0, strlen(mkstemp_req3.path));
+
+  uv_fs_req_cleanup(&mkstemp_req3);
 
   /* We can write to the opened file */
   iov = uv_buf_init(test_buf, sizeof(test_buf));
@@ -1370,7 +1384,7 @@ TEST_IMPL(fs_mkstemp) {
   uv_fs_req_cleanup(&mkstemp_req1);
   uv_fs_req_cleanup(&mkstemp_req2);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1534,7 +1548,7 @@ TEST_IMPL(fs_fstat) {
   /* Cleanup. */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1571,7 +1585,7 @@ TEST_IMPL(fs_fstat_stdio) {
     uv_fs_req_cleanup(&req);
   }
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -1647,7 +1661,7 @@ TEST_IMPL(fs_access) {
   unlink("test_file");
   rmdir("test_dir");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1745,7 +1759,7 @@ TEST_IMPL(fs_chmod) {
   /* Cleanup. */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1804,7 +1818,7 @@ TEST_IMPL(fs_unlink_readonly) {
   uv_fs_req_cleanup(&req);
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -1862,7 +1876,7 @@ TEST_IMPL(fs_unlink_archive_readonly) {
   uv_fs_req_cleanup(&req);
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 #endif
@@ -1955,7 +1969,7 @@ TEST_IMPL(fs_chown) {
   unlink("test_file");
   unlink("test_file_link");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2041,7 +2055,7 @@ TEST_IMPL(fs_link) {
   unlink("test_file_link");
   unlink("test_file_link2");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2095,7 +2109,7 @@ TEST_IMPL(fs_readlink) {
     unlink("test_file");
   }
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2116,7 +2130,7 @@ TEST_IMPL(fs_realpath) {
   ASSERT(req.result == UV_ENOENT);
   uv_fs_req_cleanup(&req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2284,7 +2298,7 @@ TEST_IMPL(fs_symlink) {
   unlink("test_file_symlink2");
   unlink("test_file_symlink2_symlink");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2429,7 +2443,7 @@ int test_symlink_dir_impl(int type) {
   rmdir("test_dir");
   rmdir("test_dir_symlink");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2538,7 +2552,7 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
   unlink("test_dir/test_file");
   rmdir("test_dir");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2558,7 +2572,7 @@ TEST_IMPL(fs_lstat_windows_store_apps) {
   len = sizeof(localappdata);
   r = uv_os_getenv("LOCALAPPDATA", localappdata, &len);
   if (r == UV_ENOENT) {
-    MAKE_VALGRIND_HAPPY();
+    MAKE_VALGRIND_HAPPY(loop);
     return TEST_SKIP;
   }
   ASSERT_EQ(r, 0);
@@ -2569,11 +2583,11 @@ TEST_IMPL(fs_lstat_windows_store_apps) {
   ASSERT_GT(r, 0);
   if (uv_fs_opendir(loop, &req, windowsapps_path, NULL) != 0) {
     /* If we cannot read the directory, skip the test. */
-    MAKE_VALGRIND_HAPPY();
+    MAKE_VALGRIND_HAPPY(loop);
     return TEST_SKIP;
   }
   if (uv_fs_scandir(loop, &req, windowsapps_path, 0, NULL) <= 0) {
-    MAKE_VALGRIND_HAPPY();
+    MAKE_VALGRIND_HAPPY(loop);
     return TEST_SKIP;
   }
   while (uv_fs_scandir_next(&req, &dirent) != UV_EOF) {
@@ -2589,7 +2603,7 @@ TEST_IMPL(fs_lstat_windows_store_apps) {
     }
     ASSERT_EQ(uv_fs_lstat(loop, &stat_req, file_path, NULL), 0);
   }
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 #endif
@@ -2636,7 +2650,7 @@ TEST_IMPL(fs_utime) {
   /* Cleanup. */
   unlink(path);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2675,7 +2689,7 @@ TEST_IMPL(fs_utime_round) {
   check_utime(path, atime, mtime, /* test_lutime */ 0);
   unlink(path);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2706,7 +2720,7 @@ TEST_IMPL(fs_stat_root) {
   r = uv_fs_stat(NULL, &stat_req, "\\\\?\\C:\\", NULL);
   ASSERT(r == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 #endif
@@ -2769,7 +2783,7 @@ TEST_IMPL(fs_futime) {
   /* Cleanup. */
   unlink(path);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2843,7 +2857,7 @@ TEST_IMPL(fs_lutime) {
   unlink(path);
   unlink(symlink_path);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2859,7 +2873,7 @@ TEST_IMPL(fs_stat_missing_path) {
   ASSERT(req.result == UV_ENOENT);
   uv_fs_req_cleanup(&req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2896,7 +2910,7 @@ TEST_IMPL(fs_scandir_empty_dir) {
   uv_fs_rmdir(NULL, &req, path, NULL);
   uv_fs_req_cleanup(&req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2930,7 +2944,7 @@ TEST_IMPL(fs_scandir_non_existent_dir) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(scandir_cb_count == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2952,7 +2966,7 @@ TEST_IMPL(fs_scandir_file) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(scandir_cb_count == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -2970,7 +2984,7 @@ TEST_IMPL(fs_scandir_early_exit) {
   ASSERT_NE(UV_EOF, uv_fs_scandir_next(&req, &d));
   uv_fs_req_cleanup(&req);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3000,7 +3014,7 @@ TEST_IMPL(fs_open_dir) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(open_cb_count == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -3075,7 +3089,7 @@ TEST_IMPL(fs_file_open_append) {
   fs_file_open_append(0);
   fs_file_open_append(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3144,7 +3158,7 @@ TEST_IMPL(fs_rename_to_existing_file) {
   unlink("test_file");
   unlink("test_file2");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -3202,7 +3216,7 @@ TEST_IMPL(fs_read_bufs) {
   fs_read_bufs(0);
   fs_read_bufs(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3268,7 +3282,7 @@ TEST_IMPL(fs_read_file_eof) {
   fs_read_file_eof(0);
   fs_read_file_eof(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3362,7 +3376,7 @@ TEST_IMPL(fs_write_multiple_bufs) {
   fs_write_multiple_bufs(0);
   fs_write_multiple_bufs(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3469,7 +3483,7 @@ TEST_IMPL(fs_write_alotof_bufs) {
   fs_write_alotof_bufs(0);
   fs_write_alotof_bufs(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3585,7 +3599,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   fs_write_alotof_bufs_with_offset(0);
   fs_write_alotof_bufs_with_offset(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -3640,7 +3654,7 @@ TEST_IMPL(fs_read_dir) {
   /* Cleanup */
   rmdir("test_dir");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -3799,7 +3813,7 @@ static void test_fs_partial(int doread) {
   free(buffer);
   free(ctx.data);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
 }
 
 TEST_IMPL(fs_partial_read) {
@@ -3872,6 +3886,7 @@ TEST_IMPL(fs_read_write_null_arguments) {
   uv_run(loop, UV_RUN_DEFAULT);
   uv_fs_req_cleanup(&write_req);
 
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -3910,7 +3925,7 @@ TEST_IMPL(get_osfhandle_valid_handle) {
   /* Cleanup. */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -3956,7 +3971,7 @@ TEST_IMPL(open_osfhandle_valid_handle) {
   /* Cleanup. */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -3996,7 +4011,7 @@ TEST_IMPL(fs_file_pos_after_op_with_offset) {
   /* Cleanup */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -4095,7 +4110,7 @@ TEST_IMPL(fs_file_pos_write) {
   fs_file_pos_write(0);
   fs_file_pos_write(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -4135,7 +4150,7 @@ TEST_IMPL(fs_file_pos_append) {
   fs_file_pos_append(0);
   fs_file_pos_append(UV_FS_O_FILEMAP);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 #endif
@@ -4295,7 +4310,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
   /* Cleanup */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 #endif
@@ -4342,7 +4357,7 @@ TEST_IMPL(fs_file_flag_no_buffering) {
   /* Cleanup */
   unlink("test_file");
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 #endif
@@ -4428,7 +4443,7 @@ TEST_IMPL(fs_open_readonly_acl) {
     unlink("test_file_icacls");
     uv_os_free_passwd(&pwd);
     ASSERT(r == 0);
-    MAKE_VALGRIND_HAPPY();
+    MAKE_VALGRIND_HAPPY(loop);
     return 0;
 }
 #endif
@@ -4513,6 +4528,7 @@ TEST_IMPL(fs_statfs) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT(statfs_cb_count == 2);
 
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -4533,6 +4549,32 @@ TEST_IMPL(fs_get_system_error) {
 
   return 0;
 }
+
+
+TEST_IMPL(fs_stat_batch_multiple) {
+  uv_fs_t req[300];
+  int r;
+  int i;
+
+  rmdir("test_dir");
+
+  r = uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0755, NULL);
+  ASSERT_EQ(r, 0);
+
+  loop = uv_default_loop();
+
+  for (i = 0; i < (int) ARRAY_SIZE(req); ++i) {
+    r = uv_fs_stat(loop, &req[i], "test_dir", stat_batch_cb);
+    ASSERT_EQ(r, 0);
+  }
+
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(stat_cb_count, ARRAY_SIZE(req));
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
 
 #ifdef _WIN32
 TEST_IMPL(fs_wtf) {
@@ -4579,7 +4621,7 @@ TEST_IMPL(fs_wtf) {
   _wunlink(L"test_dir/hi\xD801\x0037");
   rmdir("test_dir");
 
-  MAKE_VALGRIND_HAPPY();
+  make_valgrind_happy();
   return 0;
 }
 #endif

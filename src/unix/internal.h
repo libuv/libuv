@@ -92,6 +92,12 @@
 # define UV__PATH_MAX 8192
 #endif
 
+union uv__sockaddr {
+  struct sockaddr_in6 in6;
+  struct sockaddr_in in;
+  struct sockaddr addr;
+};
+
 #define ACCESS_ONCE(type, var)                                                \
   (*(volatile type*) &(var))
 
@@ -296,6 +302,7 @@ int uv__kqueue_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd);
+int uv__process_init(uv_loop_t* loop);
 
 /* various */
 void uv__async_close(uv_async_t* handle);
@@ -321,6 +328,28 @@ int uv__random_getrandom(void* buf, size_t buflen);
 int uv__random_getentropy(void* buf, size_t buflen);
 int uv__random_readpath(const char* path, void* buf, size_t buflen);
 int uv__random_sysctl(void* buf, size_t buflen);
+
+/* io_uring */
+#ifdef __linux__
+int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req);
+int uv__iou_fs_fsync_or_fdatasync(uv_loop_t* loop,
+                                  uv_fs_t* req,
+                                  uint32_t fsync_flags);
+int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req);
+int uv__iou_fs_read_or_write(uv_loop_t* loop,
+                             uv_fs_t* req,
+                             int is_read);
+int uv__iou_fs_statx(uv_loop_t* loop,
+                     uv_fs_t* req,
+                     int is_fstat,
+                     int is_lstat);
+#else
+#define uv__iou_fs_close(loop, req) 0
+#define uv__iou_fs_fsync_or_fdatasync(loop, req, fsync_flags) 0
+#define uv__iou_fs_open(loop, req) 0
+#define uv__iou_fs_read_or_write(loop, req, is_read) 0
+#define uv__iou_fs_statx(loop, req, is_fstat, is_lstat) 0
+#endif
 
 #if defined(__APPLE__)
 int uv___stream_fd(const uv_stream_t* handle);
@@ -386,7 +415,6 @@ UV_UNUSED(static int uv__stat(const char* path, struct stat* s)) {
 }
 
 #if defined(__linux__)
-int uv__inotify_fork(uv_loop_t* loop, void* old_watchers);
 ssize_t
 uv__fs_copy_file_range(int fd_in,
                        off_t* off_in,
@@ -399,6 +427,7 @@ int uv__statx(int dirfd,
               int flags,
               unsigned int mask,
               struct uv__statx* statxbuf);
+void uv__statx_to_stat(const struct uv__statx* statxbuf, uv_stat_t* buf);
 ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags);
 #endif
 

@@ -40,12 +40,6 @@
 # define IPV6_DROP_MEMBERSHIP IPV6_LEAVE_GROUP
 #endif
 
-union uv__sockaddr {
-  struct sockaddr_in6 in6;
-  struct sockaddr_in in;
-  struct sockaddr addr;
-};
-
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_udp_t* handle);
@@ -454,7 +448,8 @@ static int uv__set_reuse(int fd) {
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
        return UV__ERR(errno);
   }
-#elif defined(SO_REUSEPORT) && !defined(__linux__) && !defined(__GNU__)
+#elif defined(SO_REUSEPORT) && !defined(__linux__) && !defined(__GNU__) && \
+	!defined(__sun__)
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
     return UV__ERR(errno);
 #else

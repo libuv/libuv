@@ -82,12 +82,9 @@ int uv_loop_init(uv_loop_t* loop) {
     goto fail_platform_init;
 
   uv__signal_global_once_init();
-  err = uv_signal_init(loop, &loop->child_watcher);
+  err = uv__process_init(loop);
   if (err)
     goto fail_signal_init;
-
-  uv__handle_unref(&loop->child_watcher);
-  loop->child_watcher.flags |= UV_HANDLE_INTERNAL;
   QUEUE_INIT(&loop->process_handles);
 
   err = uv_rwlock_init(&loop->cloexec_lock);

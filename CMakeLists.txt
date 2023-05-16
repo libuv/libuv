@@ -22,6 +22,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 90)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(LIBUV_BUILD_SHARED "Build shared lib" ON)
 
 cmake_dependent_option(LIBUV_BUILD_TESTS
@@ -166,6 +168,7 @@ set(uv_sources
     src/random.c
     src/strscpy.c
     src/strtok.c
+    src/thread-common.c
     src/threadpool.c
     src/timer.c
     src/uv-common.c
@@ -180,7 +183,10 @@ if(WIN32)
        advapi32
        iphlpapi
        userenv
-       ws2_32)
+       ws2_32
+       dbghelp
+       ole32
+       uuid)
   list(APPEND uv_sources
        src/win/async.c
        src/win/core.c

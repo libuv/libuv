@@ -329,8 +329,9 @@ static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
 
 
 /* Runs in CF thread */
-static int uv__fsevents_create_stream(uv_loop_t* loop, CFArrayRef paths) {
-  uv__cf_loop_state_t* state;
+static int uv__fsevents_create_stream(uv__cf_loop_state_t* state,
+                                      uv_loop_t* loop,
+                                      CFArrayRef paths) {
   FSEventStreamContext ctx;
   FSEventStreamRef ref;
   CFAbsoluteTime latency;
@@ -371,10 +372,7 @@ static int uv__fsevents_create_stream(uv_loop_t* loop, CFArrayRef paths) {
                              flags);
   assert(ref != NULL);
 
-  state = loop->cf_state;
-  pFSEventStreamScheduleWithRunLoop(ref,
-                                    state->loop,
-                                    *pkCFRunLoopDefaultMode);
+  pFSEventStreamScheduleWithRunLoop(ref, state->loop, *pkCFRunLoopDefaultMode);
   if (!pFSEventStreamStart(ref)) {
     pFSEventStreamInvalidate(ref);
     pFSEventStreamRelease(ref);
@@ -387,11 +385,7 @@ static int uv__fsevents_create_stream(uv_loop_t* loop, CFArrayRef paths) {
 
 
 /* Runs in CF thread */
-static void uv__fsevents_destroy_stream(uv_loop_t* loop) {
-  uv__cf_loop_state_t* state;
-
-  state = loop->cf_state;
-
+static void uv__fsevents_destroy_stream(uv__cf_loop_state_t* state) {
   if (state->fsevent_stream == NULL)
     return;
 
@@ -406,9 +400,9 @@ static void uv__fsevents_destroy_stream(uv_loop_t* loop) {
 
 
 /* Runs in CF thread, when there're new fsevent handles to add to stream */
-static void uv__fsevents_reschedule(uv_fs_event_t* handle,
+static void uv__fsevents_reschedule(uv__cf_loop_state_t* state,
+                                    uv_loop_t* loop,
                                     uv__cf_loop_signal_type_t type) {
-  uv__cf_loop_state_t* state;
   QUEUE* q;
   uv_fs_event_t* curr;
   CFArrayRef cf_paths;
@@ -417,7 +411,6 @@ static void uv__fsevents_reschedule(uv_fs_event_t* handle,
   int err;
   unsigned int path_count;
 
-  state = handle->loop->cf_state;
   paths = NULL;
   cf_paths = NULL;
   err = 0;
@@ -436,7 +429,7 @@ static void uv__fsevents_reschedule(uv_fs_event_t* handle,
   uv_mutex_unlock(&state->fsevent_mutex);
 
   /* Destroy previous FSEventStream */
-  uv__fsevents_destroy_stream(handle->loop);
+  uv__fsevents_destroy_stream(state);
 
   /* Any failure below will be a memory failure */
   err = UV_ENOMEM;
@@ -476,7 +469,7 @@ static void uv__fsevents_reschedule(uv_fs_event_t* handle,
       err = UV_ENOMEM;
       goto final;
     }
-    err = uv__fsevents_create_stream(handle->loop, cf_paths);
+    err = uv__fsevents_create_stream(state, loop, cf_paths);
   }
 
 final:
@@ -763,7 +756,7 @@ static void uv__cf_loop_cb(void* arg) {
     if (s->handle == NULL)
       pCFRunLoopStop(state->loop);
     else
-      uv__fsevents_reschedule(s->handle, s->type);
+      uv__fsevents_reschedule(state, loop, s->type);
 
     uv__free(s);
   }

@@ -31,6 +31,7 @@
 #include "internal.h"
 
 /* clang-format off */
+#include <sysinfoapi.h>
 #include <winsock2.h>
 #include <winperf.h>
 #include <iphlpapi.h>
@@ -284,6 +285,10 @@ int uv_chdir(const char* dir) {
     return uv_translate_sys_error(GetLastError());
   }
 
+  /* uv__cwd() will return a new buffer. */
+  uv__free(utf16_buffer);
+  utf16_buffer = NULL;
+
   /* Windows stores the drive-local path in an "hidden" environment variable,
    * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
    * this, so we'll have to do it. */
@@ -500,10 +505,42 @@ int uv_get_process_title(char* buffer, size_t size) {
 }
 
 
+/* https://github.com/libuv/libuv/issues/1674 */
+int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
+  FILETIME ft;
+  int64_t t;
+
+  if (ts == NULL)
+    return UV_EFAULT;
+
+  switch (clock_id) {
+    case UV_CLOCK_MONOTONIC:
+      uv__once_init();
+      t = uv__hrtime(UV__NANOSEC);
+      ts->tv_sec = t / 1000000000;
+      ts->tv_nsec = t % 1000000000;
+      return 0;
+    case UV_CLOCK_REALTIME:
+      GetSystemTimePreciseAsFileTime(&ft);
+      /* In 100-nanosecond increments from 1601-01-01 UTC because why not? */
+      t = (int64_t) ft.dwHighDateTime << 32 | ft.dwLowDateTime;
+      /* Convert to UNIX epoch, 1970-01-01. Still in 100 ns increments. */
+      t -= 116444736000000000ll;
+      /* Now convert to seconds and nanoseconds. */
+      ts->tv_sec = t / 10000000;
+      ts->tv_nsec = t % 10000000 * 100;
+      return 0;
+  }
+
+  return UV_EINVAL;
+}
+
+
 uint64_t uv_hrtime(void) {
   uv__once_init();
   return uv__hrtime(UV__NANOSEC);
 }
+
 
 uint64_t uv__hrtime(unsigned int scale) {
   LARGE_INTEGER counter;

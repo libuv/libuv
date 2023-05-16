@@ -179,6 +179,6 @@ TEST_IMPL(tcp_writealot) {
 
   free(send_buffer);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
