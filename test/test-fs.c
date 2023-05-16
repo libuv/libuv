@@ -4589,7 +4589,8 @@ TEST_IMPL(fs_wtf) {
 
   loop = uv_default_loop();
 
-  uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0777, NULL);
+  r = uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0777, NULL);
+  ASSERT_EQ(r, 0);
   uv_fs_req_cleanup(&mkdir_req);
 
   file_handle = CreateFileW(L"test_dir/hi\xD801\x0037",
@@ -4611,6 +4612,7 @@ TEST_IMPL(fs_wtf) {
   while (UV_EOF != uv_fs_scandir_next(&scandir_req, &dent)) {
     strcpy(test_file_buf, "test_dir\\");
     strcat(test_file_buf, dent.name);
+    printf("stat %s\n", test_file_buf);
     r = uv_fs_stat(NULL, &stat_req, test_file_buf, NULL);
     ASSERT_EQ(r, 0);
   }
@@ -4621,7 +4623,7 @@ TEST_IMPL(fs_wtf) {
   _wunlink(L"test_dir/hi\xD801\x0037");
   rmdir("test_dir");
 
-  make_valgrind_happy();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 #endif

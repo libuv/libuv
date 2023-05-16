@@ -154,7 +154,7 @@ static int32_t fs__decode_wtf8_char(const char** input) {
   b1 = **input;
   if (b1 <= 0x7f)
     return b1; /* ASCII code point */
-  if (b1 <= 0xbf)
+  if (b1 < 0xc2)
     return -1; /* invalid: continuation byte */
   code_point = b1;
 
@@ -162,32 +162,34 @@ static int32_t fs__decode_wtf8_char(const char** input) {
   if ((b2 & 0xc0) != 0x80)
     return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b2 & 0x3f);
-  if (b1 <= 0xc0)
+  if (b1 <= 0xdf)
     return 0x7ff & code_point; /* two-byte character */
 
   b3 = *++*input;
   if ((b3 & 0xc0) != 0x80)
     return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b3 & 0x3f);
-  if (b1 <= 0xe0)
+  if (b1 <= 0xef)
     return 0xffff & code_point; /* three-byte character */
 
   b4 = *++*input;
   if ((b4 & 0xc0) != 0x80)
     return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b4 & 0x3f);
-  if (code_point <= 0x3d0ffff) /* implies b1 <= 0xf0 */
-    return 0x1fffff & code_point; /* four-byte character */
+  if (b1 <= 0xf4)
+    if (code_point <= 0x10ffff)
+      return code_point; /* four-byte character */
 
   /* code point too large */
   return -1;
 }
 
 
-static int fs__get_length_wtf8(const char* source_ptr) {
-  int w_target_len = 0;
+static ssize_t fs__get_length_wtf8(const char* source_ptr) {
+  size_t w_target_len = 0;
+  int32_t code_point;
+
   do {
-    int32_t code_point;
     code_point = fs__decode_wtf8_char(&source_ptr);
     if (code_point < 0)
       return -1;
@@ -200,8 +202,9 @@ static int fs__get_length_wtf8(const char* source_ptr) {
 
 
 static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
+  int32_t code_point;
+
   do {
-    int32_t code_point;
     code_point = fs__decode_wtf8_char(&source_ptr);
     /* fs__get_length_wtf8 should have been called and checked first. */
     assert(code_point >= 0);
@@ -219,7 +222,10 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     const char* new_path, const int copy_path) {
   char* buf;
   char* pos;
-  ssize_t buf_sz = 0, path_len = 0, pathw_len = 0, new_pathw_len = 0;
+  ssize_t buf_sz = 0;
+  ssize_t path_len = 0;
+  ssize_t pathw_len = 0;
+  ssize_t new_pathw_len = 0;
 
   /* new_path can only be set if path is also set. */
   assert(new_path == NULL || path != NULL);
@@ -305,11 +311,12 @@ INLINE static void uv__fs_req_init(uv_loop_t* loop, uv_fs_t* req,
 
 
 static int32_t fs__get_surrogate_value(const WCHAR* w_source_ptr,
-    DWORD w_source_len) {
+                                       size_t w_source_len) {
   WCHAR u;
+  WCHAR next;
+
   u = w_source_ptr[0];
   if (u >= 0xd800 && u <= 0xdbff && w_source_len > 1) {
-    WCHAR next;
     next = w_source_ptr[1];
     if (next >= 0xdc00 && next <= 0xdfff)
       return 0x10000 + ((u - 0xd800) << 10) + (next - 0xdc00);
@@ -318,11 +325,13 @@ static int32_t fs__get_surrogate_value(const WCHAR* w_source_ptr,
 }
 
 
-static int fs__get_length_wide(const WCHAR* w_source_ptr, DWORD w_source_len) {
-  int target_len;
+static size_t fs__get_length_wide(const WCHAR* w_source_ptr,
+                                  size_t w_source_len) {
+  size_t target_len;
   int32_t code_point;
 
-  for (target_len = 0; w_source_len; w_source_len--, w_source_ptr++) {
+  target_len = 0;
+  for (; w_source_len; w_source_len--, w_source_ptr++) {
     code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
     /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(code_point >= 0);
@@ -342,14 +351,16 @@ static int fs__get_length_wide(const WCHAR* w_source_ptr, DWORD w_source_len) {
 }
 
 
-static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
-    char** target_ptr, int* target_len_ptr) {
-  int target_len;
+static int fs__wide_to_wtf8(WCHAR* w_source_ptr,
+                            size_t w_source_len,
+                            char** target_ptr,
+                            size_t* target_len_ptr) {
+  size_t target_len;
   char* target;
+  int32_t code_point;
+
   if (target_len_ptr == NULL || *target_len_ptr == 0) {
     target_len = fs__get_length_wide(w_source_ptr, w_source_len);
-    /* Can be invalid UTF-8 but must be valid WTF-8. */
-    assert(target_len >= 0);
 
     if (target_len_ptr != NULL) {
       *target_len_ptr = target_len;
@@ -374,7 +385,6 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
   }
 
   for (; w_source_len; w_source_len--, w_source_ptr++) {
-    int32_t code_point;
     code_point = fs__get_surrogate_value(w_source_ptr, w_source_len);
     /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(code_point >= 0);
@@ -403,8 +413,9 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr, DWORD w_source_len,
 }
 
 
-INLINE static int fs__readlink_handle(HANDLE handle, char** target_ptr,
-    int* target_len_ptr) {
+INLINE static int fs__readlink_handle(HANDLE handle,
+                                      char** target_ptr,
+                                      size_t* target_len_ptr) {
   char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
   REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*) buffer;
   WCHAR* w_target;
@@ -1524,7 +1535,7 @@ void fs__scandir(uv_fs_t* req) {
       uv__dirent_t* dirent;
 
       size_t wchar_len;
-      int wtf8_len;
+      size_t wtf8_len;
       char* wtf8;
 
       /* Obtain a pointer to the current directory entry. */
@@ -1554,8 +1565,6 @@ void fs__scandir(uv_fs_t* req) {
 
       /* Compute the space required to store the filename as WTF-8. */
       wtf8_len = fs__get_length_wide(&info->FileName[0], wchar_len);
-      /* Can be invalid UTF-8 but must be valid WTF-8. */
-      assert(wtf8_len >= 0);
 
       /* Resize the dirent array if needed. */
       if (dirents_used >= dirents_size) {
@@ -1794,7 +1803,7 @@ void fs__closedir(uv_fs_t* req) {
 
 INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     int do_lstat) {
-  int target_length = 0;
+  size_t target_length = 0;
   FILE_FS_DEVICE_INFORMATION device_info;
   FILE_ALL_INFORMATION file_info;
   FILE_FS_VOLUME_INFORMATION volume_info;
