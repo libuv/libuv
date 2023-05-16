@@ -152,32 +152,32 @@ static int32_t fs__decode_wtf8_char(const char** input) {
   uint8_t b4;
 
   b1 = **input;
-  if (b1 <= 0x7f)
+  if (b1 <= 0x7F)
     return b1; /* ASCII code point */
-  if (b1 < 0xc2)
+  if (b1 < 0xC2)
     return -1; /* invalid: continuation byte */
   code_point = b1;
 
   b2 = *++*input;
-  if ((b2 & 0xc0) != 0x80)
+  if ((b2 & 0xC0) != 0x80)
     return -1; /* invalid: not a continuation byte */
-  code_point = (code_point << 6) | (b2 & 0x3f);
-  if (b1 <= 0xdf)
-    return 0x7ff & code_point; /* two-byte character */
+  code_point = (code_point << 6) | (b2 & 0x3F);
+  if (b1 <= 0xDF)
+    return 0x7FF & code_point; /* two-byte character */
 
   b3 = *++*input;
-  if ((b3 & 0xc0) != 0x80)
+  if ((b3 & 0xC0) != 0x80)
     return -1; /* invalid: not a continuation byte */
-  code_point = (code_point << 6) | (b3 & 0x3f);
-  if (b1 <= 0xef)
-    return 0xffff & code_point; /* three-byte character */
+  code_point = (code_point << 6) | (b3 & 0x3F);
+  if (b1 <= 0xEF)
+    return 0xFFFF & code_point; /* three-byte character */
 
   b4 = *++*input;
-  if ((b4 & 0xc0) != 0x80)
+  if ((b4 & 0xC0) != 0x80)
     return -1; /* invalid: not a continuation byte */
-  code_point = (code_point << 6) | (b4 & 0x3f);
-  if (b1 <= 0xf4)
-    if (code_point <= 0x10ffff)
+  code_point = (code_point << 6) | (b4 & 0x3F);
+  if (b1 <= 0xF4)
+    if (code_point <= 0x10FFFF)
       return code_point; /* four-byte character */
 
   /* code point too large */
@@ -193,7 +193,7 @@ static ssize_t fs__get_length_wtf8(const char* source_ptr) {
     code_point = fs__decode_wtf8_char(&source_ptr);
     if (code_point < 0)
       return -1;
-    if (code_point > 0xffff)
+    if (code_point > 0xFFFF)
       w_target_len++;
     w_target_len++;
   } while (*source_ptr++);
@@ -209,8 +209,9 @@ static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
     /* fs__get_length_wtf8 should have been called and checked first. */
     assert(code_point >= 0);
     if (code_point > 0x10000) {
-      *w_target++ = (((code_point - 0x10000) >> 10) + 0xd800);
-      *w_target++ = ((code_point - 0x10000) & 0x3ff) + 0xdc00;
+      assert(code_point < 0x10FFFF);
+      *w_target++ = (((code_point - 0x10000) >> 10) + 0xD800);
+      *w_target++ = ((code_point - 0x10000) & 0x3FF) + 0xDC00;
     } else {
       *w_target++ = code_point;
     }
@@ -220,10 +221,10 @@ static void fs__wtf8_to_wide(const char* source_ptr, WCHAR* w_target) {
 
 INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     const char* new_path, const int copy_path) {
-  char* buf;
-  char* pos;
-  ssize_t buf_sz = 0;
-  ssize_t path_len = 0;
+  WCHAR* buf;
+  WCHAR* pos;
+  size_t buf_sz = 0;
+  size_t path_len = 0;
   ssize_t pathw_len = 0;
   ssize_t new_pathw_len = 0;
 
@@ -257,7 +258,7 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
     return 0;
   }
 
-  buf = (char*) uv__malloc(buf_sz);
+  buf = uv__malloc(buf_sz);
   if (buf == NULL) {
     return ERROR_OUTOFMEMORY;
   }
@@ -265,17 +266,17 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
   pos = buf;
 
   if (path != NULL) {
-    fs__wtf8_to_wide(path, (WCHAR*) pos);
-    req->file.pathw = (WCHAR*) pos;
-    pos += pathw_len * sizeof(WCHAR);
+    fs__wtf8_to_wide(path, pos);
+    req->file.pathw = pos;
+    pos += pathw_len;
   } else {
     req->file.pathw = NULL;
   }
 
   if (new_path != NULL) {
-    fs__wtf8_to_wide(new_path, (WCHAR*) pos);
-    req->fs.info.new_pathw = (WCHAR*) pos;
-    pos += new_pathw_len * sizeof(WCHAR);
+    fs__wtf8_to_wide(new_path, pos);
+    req->fs.info.new_pathw = pos;
+    pos += new_pathw_len;
   } else {
     req->fs.info.new_pathw = NULL;
   }
@@ -283,8 +284,8 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
   req->path = path;
   if (path != NULL && copy_path) {
     memcpy(pos, path, path_len);
-    assert(path_len == buf_sz - (pos - buf));
-    req->path = pos;
+    assert(path_len == buf_sz - (pos - buf) * sizeof(WCHAR));
+    req->path = (char*) pos;
   }
 
   req->flags |= UV_FS_FREE_PATHS;
@@ -316,10 +317,10 @@ static int32_t fs__get_surrogate_value(const WCHAR* w_source_ptr,
   WCHAR next;
 
   u = w_source_ptr[0];
-  if (u >= 0xd800 && u <= 0xdbff && w_source_len > 1) {
+  if (u >= 0xD800 && u <= 0xDBFF && w_source_len > 1) {
     next = w_source_ptr[1];
-    if (next >= 0xdc00 && next <= 0xdfff)
-      return 0x10000 + ((u - 0xd800) << 10) + (next - 0xdc00);
+    if (next >= 0xDC00 && next <= 0xDFFF)
+      return 0x10000 + ((u - 0xD800) << 10) + (next - 0xDC00);
   }
   return u;
 }
@@ -359,19 +360,20 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr,
   char* target;
   int32_t code_point;
 
-  if (target_len_ptr == NULL || *target_len_ptr == 0) {
+  /* If *target_ptr is provided, then *target_len_ptr must be its length
+   * (excluding space for null), otherwise we will compute the target_len_ptr
+   * length and may return a new allocation in *target_ptr if target_ptr is
+   * provided. */
+  if (target_ptr == NULL || *target_ptr == NULL) {
     target_len = fs__get_length_wide(w_source_ptr, w_source_len);
-
-    if (target_len_ptr != NULL) {
+    if (target_len_ptr != NULL)
       *target_len_ptr = target_len;
-    }
   } else {
     target_len = *target_len_ptr;
   }
 
-  if (target_ptr == NULL) {
+  if (target_ptr == NULL)
     return 0;
-  }
 
   if (*target_ptr == NULL) {
     target = uv__malloc(target_len + 1);
@@ -392,23 +394,25 @@ static int fs__wide_to_wtf8(WCHAR* w_source_ptr,
     if (code_point < 0x80) {
       *target++ = code_point;
     } else if (code_point < 0x800) {
-      *target++ = 0xc0 | (code_point >> 6);
-      *target++ = 0x80 | (code_point & 0x3f);
+      *target++ = 0xC0 | (code_point >> 6);
+      *target++ = 0x80 | (code_point & 0x3F);
     } else if (code_point < 0x10000) {
-      *target++ = 0xe0 | (code_point >> 12);
-      *target++ = 0x80 | ((code_point >> 6) & 0x3f);
-      *target++ = 0x80 | (code_point & 0x3f);
+      *target++ = 0xE0 | (code_point >> 12);
+      *target++ = 0x80 | ((code_point >> 6) & 0x3F);
+      *target++ = 0x80 | (code_point & 0x3F);
     } else {
-      *target++ = 0xf0 | (code_point >> 18);
-      *target++ = 0x80 | ((code_point >> 12) & 0x3f);
-      *target++ = 0x80 | ((code_point >> 6) & 0x3f);
-      *target++ = 0x80 | (code_point & 0x3f);
+      *target++ = 0xF0 | (code_point >> 18);
+      *target++ = 0x80 | ((code_point >> 12) & 0x3F);
+      *target++ = 0x80 | ((code_point >> 6) & 0x3F);
+      *target++ = 0x80 | (code_point & 0x3F);
       w_source_ptr++;
       w_source_len--;
     }
   }
+  assert((size_t) (target - *target_ptr) == target_len);
 
-  *target = '\0';
+  *target++ = '\0';
+
   return 0;
 }
 
@@ -545,6 +549,7 @@ INLINE static int fs__readlink_handle(HANDLE handle,
     return -1;
   }
 
+  assert(target_ptr == NULL || *target_ptr == NULL);
   return fs__wide_to_wtf8(w_target, w_target_len, target_ptr, target_len_ptr);
 }
 
@@ -2758,6 +2763,7 @@ static void fs__readlink(uv_fs_t* req) {
     return;
   }
 
+  assert(req->ptr == NULL);
   if (fs__readlink_handle(handle, (char**) &req->ptr, NULL) != 0) {
     DWORD error = GetLastError();
     SET_REQ_WIN32_ERROR(req, error);
@@ -2817,6 +2823,7 @@ static ssize_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
     return -1;
   }
 
+  assert(*realpath_ptr == NULL);
   r = fs__wide_to_wtf8(w_realpath_ptr, w_realpath_len, realpath_ptr, NULL);
   uv__free(w_realpath_buf);
   return r;
@@ -2837,6 +2844,7 @@ static void fs__realpath(uv_fs_t* req) {
     return;
   }
 
+  assert(req->ptr == NULL);
   if (fs__realpath_handle(handle, (char**) &req->ptr) == -1) {
     CloseHandle(handle);
     SET_REQ_WIN32_ERROR(req, GetLastError());

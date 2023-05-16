@@ -4610,8 +4610,7 @@ TEST_IMPL(fs_wtf) {
   ASSERT_EQ(scandir_req.result, 1);
   ASSERT_NOT_NULL(scandir_req.ptr);
   while (UV_EOF != uv_fs_scandir_next(&scandir_req, &dent)) {
-    strcpy(test_file_buf, "test_dir\\");
-    strcat(test_file_buf, dent.name);
+    snprintf(test_file_buf, sizeof(test_file_buf), "test_dir\\%s", dent.name);
     printf("stat %s\n", test_file_buf);
     r = uv_fs_stat(NULL, &stat_req, test_file_buf, NULL);
     ASSERT_EQ(r, 0);
