@@ -169,8 +169,11 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
                                     size_t ext_len,
                                     const WCHAR* cwd,
                                     size_t cwd_len) {
-  WCHAR *result, *result_pos;
+  WCHAR* result;
+  WCHAR* result_pos;
+  WCHAR* exename;
   DWORD attrs;
+
   if (dir_len > 2 &&
       ((dir[0] == L'\\' || dir[0] == L'/') &&
        (dir[1] == L'\\' || dir[1] == L'/'))) {
@@ -223,6 +226,7 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   }
 
   /* Copy filename */
+  exename = result_pos;
   wcsncpy(result_pos, name, name_len);
   result_pos += name_len;
 
@@ -241,13 +245,21 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   /* Null terminator */
   result_pos[0] = L'\0';
 
+  if (cwd_len > 0)
+    if (!NeedCurrentDirectoryForExePathW(exename))
+      goto fail;
+
   attrs = GetFileAttributesW(result);
 
-  if (attrs != INVALID_FILE_ATTRIBUTES &&
-      !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
-    return result;
-  }
+  if (attrs == INVALID_FILE_ATTRIBUTES)
+    goto fail;
 
+  if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+    goto fail;
+
+  return result;
+
+fail:
   uv__free(result);
   return NULL;
 }
