@@ -456,8 +456,14 @@
 # define UV__ESOCKTNOSUPPORT (-4025)
 #endif
 
+/* FreeBSD defines ENODATA in /usr/include/c++/v1/errno.h which is only visible
+ * if C++ is being used. Define it directly to avoid problems when integrating
+ * libuv in a C++ project.
+ */
 #if defined(ENODATA) && !defined(_WIN32)
 # define UV__ENODATA UV__ERR(ENODATA)
+#elif defined(__FreeBSD__)
+# define UV__ENODATA (-9919)
 #else
 # define UV__ENODATA (-4024)
 #endif
