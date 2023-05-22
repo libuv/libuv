@@ -150,6 +150,11 @@ enum {
   UV__IORING_OP_CLOSE = 19,
   UV__IORING_OP_STATX = 21,
   UV__IORING_OP_EPOLL_CTL = 29,
+  UV__IORING_OP_RENAMEAT = 35,
+  UV__IORING_OP_UNLINKAT = 36,
+  UV__IORING_OP_MKDIRAT = 37,
+  UV__IORING_OP_SYMLINKAT = 38,
+  UV__IORING_OP_LINKAT = 39,
 };
 
 enum {
@@ -160,6 +165,10 @@ enum {
 enum {
   UV__IORING_SQ_NEED_WAKEUP = 1u,
   UV__IORING_SQ_CQ_OVERFLOW = 2u,
+};
+
+enum {
+  UV__MKDIRAT_SYMLINKAT_LINKAT = 1u,
 };
 
 struct uv__io_cqring_offsets {
@@ -507,6 +516,10 @@ static void uv__iou_init(int epollfd,
   iou->sqelen = sqelen;
   iou->ringfd = ringfd;
   iou->in_flight = 0;
+  iou->flags = 0;
+
+  if (uv__kernel_version() >= /* 5.15.0 */ 0x050F00)
+    iou->flags |= UV__MKDIRAT_SYMLINKAT_LINKAT;
 
   for (i = 0; i <= iou->sqmask; i++)
     iou->sqarray[i] = i;  /* Slot -> sqe identity mapping. */
@@ -758,6 +771,55 @@ int uv__iou_fs_fsync_or_fdatasync(uv_loop_t* loop,
 }
 
 
+int uv__iou_fs_link(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  if (!(iou->flags & UV__MKDIRAT_SYMLINKAT_LINKAT))
+    return 0;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->addr2 = (uintptr_t) req->new_path;
+  sqe->len = AT_FDCWD;
+  sqe->opcode = UV__IORING_OP_LINKAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_mkdir(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  if (!(iou->flags & UV__MKDIRAT_SYMLINKAT_LINKAT))
+    return 0;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->len = req->mode;
+  sqe->opcode = UV__IORING_OP_MKDIRAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
 int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req) {
   struct uv__io_uring_sqe* sqe;
   struct uv__iou* iou;
@@ -773,6 +835,72 @@ int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req) {
   sqe->len = req->mode;
   sqe->opcode = UV__IORING_OP_OPENAT;
   sqe->open_flags = req->flags | O_CLOEXEC;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_rename(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->addr2 = (uintptr_t) req->new_path;
+  sqe->len = AT_FDCWD;
+  sqe->opcode = UV__IORING_OP_RENAMEAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_symlink(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  if (!(iou->flags & UV__MKDIRAT_SYMLINKAT_LINKAT))
+    return 0;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->addr2 = (uintptr_t) req->new_path;
+  sqe->opcode = UV__IORING_OP_SYMLINKAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_unlink(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->opcode = UV__IORING_OP_UNLINKAT;
 
   uv__iou_submit(iou);
 

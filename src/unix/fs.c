@@ -899,7 +899,7 @@ out:
 
 
 #ifdef __linux__
-static unsigned uv__kernel_version(void) {
+unsigned uv__kernel_version(void) {
   static _Atomic unsigned cached_version;
   struct utsname u;
   unsigned version;
@@ -1926,6 +1926,9 @@ int uv_fs_link(uv_loop_t* loop,
                uv_fs_cb cb) {
   INIT(LINK);
   PATH2;
+  if (cb != NULL)
+    if (uv__iou_fs_link(loop, req))
+      return 0;
   POST;
 }
 
@@ -1938,6 +1941,9 @@ int uv_fs_mkdir(uv_loop_t* loop,
   INIT(MKDIR);
   PATH;
   req->mode = mode;
+  if (cb != NULL)
+    if (uv__iou_fs_mkdir(loop, req))
+      return 0;
   POST;
 }
 
@@ -2089,6 +2095,9 @@ int uv_fs_rename(uv_loop_t* loop,
                  uv_fs_cb cb) {
   INIT(RENAME);
   PATH2;
+  if (cb != NULL)
+    if (uv__iou_fs_rename(loop, req))
+      return 0;
   POST;
 }
 
@@ -2135,6 +2144,9 @@ int uv_fs_symlink(uv_loop_t* loop,
   INIT(SYMLINK);
   PATH2;
   req->flags = flags;
+  if (cb != NULL)
+    if (uv__iou_fs_symlink(loop, req))
+      return 0;
   POST;
 }
 
@@ -2142,6 +2154,9 @@ int uv_fs_symlink(uv_loop_t* loop,
 int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(UNLINK);
   PATH;
+  if (cb != NULL)
+    if (uv__iou_fs_unlink(loop, req))
+      return 0;
   POST;
 }
 
