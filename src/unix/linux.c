@@ -385,6 +385,9 @@ int uv__io_uring_register(int fd, unsigned opcode, void* arg, unsigned nargs) {
 
 
 static int uv__use_io_uring(void) {
+#if defined(__ANDROID_API__)
+  return 0;  /* Possibly available but blocked by seccomp. */
+#else
   /* Ternary: unknown=0, yes=1, no=-1 */
   static _Atomic int use_io_uring;
   char* val;
@@ -399,6 +402,7 @@ static int uv__use_io_uring(void) {
   }
 
   return use > 0;
+#endif
 }
 
 
