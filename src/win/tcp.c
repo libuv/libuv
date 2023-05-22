@@ -204,7 +204,6 @@ void uv__process_tcp_shutdown_req(uv_loop_t* loop, uv_tcp_t* stream, uv_shutdown
   assert(stream->flags & UV_HANDLE_CONNECTION);
 
   stream->stream.conn.shutdown_req = NULL;
-  stream->flags &= ~UV_HANDLE_SHUTTING;
   UNREGISTER_HANDLE_REQ(loop, stream, req);
 
   err = 0;
@@ -519,7 +518,7 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
   struct linger l = { 1, 0 };
 
   /* Disallow setting SO_LINGER to zero due to some platform inconsistencies */
-  if (handle->flags & UV_HANDLE_SHUTTING)
+  if (uv__is_stream_shutting(handle))
     return UV_EINVAL;
 
   if (0 != setsockopt(handle->socket, SOL_SOCKET, SO_LINGER, (const char*)&l, sizeof(l)))
@@ -1101,7 +1100,7 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
       closesocket(handle->socket);
       handle->socket = INVALID_SOCKET;
     }
-    if (handle->flags & UV_HANDLE_SHUTTING)
+    if (uv__is_stream_shutting(handle))
       uv__process_tcp_shutdown_req(loop,
                                    handle,
                                    handle->stream.conn.shutdown_req);
@@ -1367,8 +1366,8 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
   non_ifs_lsp = (tcp->flags & UV_HANDLE_IPV6) ? uv_tcp_non_ifs_lsp_ipv6 :
                                                 uv_tcp_non_ifs_lsp_ipv4;
 
-  /* If there are non-ifs LSPs then try to obtain a base handle for the
-   * socket. */
+  /* If there are non-ifs LSPs then try to obtain a base handle for the socket.
+   */
   if (non_ifs_lsp) {
     DWORD bytes;
     if (WSAIoctl(socket,

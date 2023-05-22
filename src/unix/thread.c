@@ -55,104 +55,6 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
-/* Note: guard clauses should match uv_barrier_t's in include/uv/unix.h. */
-#if defined(_AIX) || \
-    defined(__OpenBSD__) || \
-    !defined(PTHREAD_BARRIER_SERIAL_THREAD)
-int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  int rc;
-
-  if (barrier == NULL || count == 0)
-    return UV_EINVAL;
-
-  barrier->in = 0;
-  barrier->out = 0;
-  barrier->threshold = count;
-
-  rc = uv_mutex_init(&barrier->mutex);
-  if (rc != 0)
-    return rc;
-
-  rc = uv_cond_init(&barrier->cond);
-  if (rc != 0)
-    goto error;
-
-  return 0;
-
-error:
-  pthread_mutex_destroy(&barrier->mutex);
-  return rc;
-}
-
-
-int uv_barrier_wait(uv_barrier_t* barrier) {
-  int last;
-
-  if (barrier == NULL)
-    return UV_EINVAL;
-
-  uv_mutex_lock(&barrier->mutex);
-
-  if (++barrier->in == barrier->threshold) {
-    barrier->in = 0;
-    barrier->out = barrier->threshold;
-    uv_cond_signal(&barrier->cond);
-  } else {
-    do
-      uv_cond_wait(&barrier->cond, &barrier->mutex);
-    while (barrier->in != 0);
-  }
-
-  last = (--barrier->out == 0);
-  uv_cond_signal(&barrier->cond);
-
-  uv_mutex_unlock(&barrier->mutex);
-  return last;
-}
-
-
-void uv_barrier_destroy(uv_barrier_t* barrier) {
-  uv_mutex_lock(&barrier->mutex);
-
-  assert(barrier->in == 0);
-  while (barrier->out != 0)
-    uv_cond_wait(&barrier->cond, &barrier->mutex);
-
-  if (barrier->in != 0)
-    abort();
-
-  uv_mutex_unlock(&barrier->mutex);
-  uv_mutex_destroy(&barrier->mutex);
-  uv_cond_destroy(&barrier->cond);
-}
-
-#else
-
-int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
-  return UV__ERR(pthread_barrier_init(barrier, NULL, count));
-}
-
-
-int uv_barrier_wait(uv_barrier_t* barrier) {
-  int rc;
-
-  rc = pthread_barrier_wait(barrier);
-  if (rc != 0)
-    if (rc != PTHREAD_BARRIER_SERIAL_THREAD)
-      abort();
-
-  return rc == PTHREAD_BARRIER_SERIAL_THREAD;
-}
-
-
-void uv_barrier_destroy(uv_barrier_t* barrier) {
-  if (pthread_barrier_destroy(barrier))
-    abort();
-}
-
-#endif
-
-
 /* Musl's PTHREAD_STACK_MIN is 2 KB on all architectures, which is
  * too small to safely receive signals on.
  *
@@ -275,8 +177,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
   return UV__ERR(err);
 }
 
-
-#if defined(__linux__) || defined(__FreeBSD__)
+#if UV__CPU_AFFINITY_SUPPORTED
 
 int uv_thread_setaffinity(uv_thread_t* tid,
                           char* cpumask,
@@ -361,7 +262,23 @@ int uv_thread_getaffinity(uv_thread_t* tid,
                           size_t mask_size) {
   return UV_ENOTSUP;
 }
-#endif /* defined(__linux__) || defined(UV_BSD_H) */
+#endif /* defined(UV__CPU_AFFINITY_SUPPORTED) */
+
+
+int uv_thread_getcpu(void) {
+#if UV__CPU_AFFINITY_SUPPORTED
+  int cpu;
+
+  cpu = sched_getcpu();
+  if (cpu < 0)
+    return UV__ERR(errno);
+
+  return cpu;
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
 
 int uv_thread_detach(uv_thread_t* tid) {
   return UV__ERR(pthread_detach(*tid));
@@ -371,6 +288,7 @@ int uv_thread_detach(uv_thread_t* tid) {
 uv_thread_t uv_thread_self(void) {
   return pthread_self();
 }
+
 
 int uv_thread_join(uv_thread_t *tid) {
   return UV__ERR(pthread_join(*tid, NULL));
@@ -668,7 +586,7 @@ static void uv__custom_sem_post(uv_sem_t* sem_) {
   uv_mutex_lock(&sem->mutex);
   sem->value++;
   if (sem->value == 1)
-    uv_cond_signal(&sem->cond);
+    uv_cond_signal(&sem->cond); /* Release one to replace us. */
   uv_mutex_unlock(&sem->mutex);
 }
 

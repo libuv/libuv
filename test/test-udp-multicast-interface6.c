@@ -77,7 +77,7 @@ TEST_IMPL(udp_multicast_interface6) {
   r = uv_udp_bind(&server, (const struct sockaddr*)&baddr, 0);
   ASSERT(r == 0);
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+#if defined(__APPLE__) || defined(__FreeBSD__)
   r = uv_udp_set_multicast_interface(&server, "::1%lo0");
 #elif defined(__MVS__)
   r = uv_udp_set_multicast_interface(&server, "::1%LOOPBACK6");
@@ -113,6 +113,6 @@ TEST_IMPL(udp_multicast_interface6) {
   ASSERT(sv_send_cb_called == 1);
   ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

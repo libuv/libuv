@@ -12,6 +12,12 @@ otherwise it will be performed asynchronously.
 All file operations are run on the threadpool. See :ref:`threadpool` for information
 on the threadpool size.
 
+Starting with libuv v1.45.0, some file operations on Linux are handed off to
+`io_uring <https://en.wikipedia.org/wiki/Io_uring>` when possible. Apart from
+a (sometimes significant) increase in throughput there should be no change in
+observable behavior. Libuv reverts to using its threadpool when the necessary
+kernel features are unavailable or unsuitable.
+
 .. note::
      On Windows `uv_fs_*` functions use utf-8 encoding.
 
@@ -24,7 +30,8 @@ Data types
 
 .. c:type:: uv_timespec_t
 
-    Portable equivalent of ``struct timespec``.
+    Y2K38-unsafe data type for storing times with nanosecond resolution.
+    Will be replaced with :c:type:`uv_timespec64_t` in libuv v2.0.
 
     ::
 
@@ -160,6 +167,10 @@ Data types
             size_t nentries;
         } uv_dir_t;
 
+.. c:type:: void (*uv_fs_cb)(uv_fs_t* req)
+
+    Callback called when a request is completed asynchronously.
+
 
 Public members
 ^^^^^^^^^^^^^^
@@ -215,7 +226,8 @@ API
 
 .. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`preadv(2)`.
+    Equivalent to :man:`preadv(2)`. If the `offset` argument is `-1`, then
+    the current file offset is used and updated.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
@@ -230,7 +242,8 @@ API
 
 .. c:function:: int uv_fs_write(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
-    Equivalent to :man:`pwritev(2)`.
+    Equivalent to :man:`pwritev(2)`. If the `offset` argument is `-1`, then
+    the current file offset is used and updated.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used

@@ -31,6 +31,7 @@ extern "C" {
 #error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
 #endif
 
+#ifndef UV_EXTERN
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)
@@ -50,6 +51,7 @@ extern "C" {
 #else
 # define UV_EXTERN /* nothing */
 #endif
+#endif /* UV_EXTERN */
 
 #include "uv/errno.h"
 #include "uv/version.h"
@@ -149,6 +151,7 @@ extern "C" {
   XX(EFTYPE, "inappropriate file type or format")                             \
   XX(EILSEQ, "illegal byte sequence")                                         \
   XX(ESOCKTNOSUPPORT, "socket type not supported")                            \
+  XX(ENODATA, "no data available")                                            \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
@@ -244,8 +247,11 @@ typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
+typedef struct uv_group_s uv_group_t;
 typedef struct uv_utsname_s uv_utsname_t;
 typedef struct uv_statfs_s uv_statfs_t;
+
+typedef struct uv_metrics_s uv_metrics_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL = 0,
@@ -341,11 +347,20 @@ typedef void (*uv_random_cb)(uv_random_t* req,
                              void* buf,
                              size_t buflen);
 
+typedef enum {
+  UV_CLOCK_MONOTONIC,
+  UV_CLOCK_REALTIME
+} uv_clock_id;
+
 typedef struct {
-  long tv_sec;
-  long tv_nsec;
+  int64_t tv_sec;
+  int32_t tv_nsec;
 } uv_timespec_t;
 
+typedef struct {
+  int64_t tv_sec;
+  int32_t tv_usec;
+} uv_timeval_t;
 
 typedef struct {
   uint64_t st_dev;
@@ -1211,6 +1226,12 @@ struct uv_passwd_s {
   char* gecos;
 };
 
+struct uv_group_s {
+  char* groupname;
+  unsigned long gid;
+  char** members;
+};
+
 struct uv_utsname_s {
   char sysname[256];
   char release[256];
@@ -1255,16 +1276,6 @@ UV_EXTERN int uv_resident_set_memory(size_t* rss);
 UV_EXTERN int uv_uptime(double* uptime);
 
 typedef struct {
-  long tv_sec;
-  long tv_usec;
-} uv_timeval_t;
-
-typedef struct {
-  int64_t tv_sec;
-  int32_t tv_usec;
-} uv_timeval64_t;
-
-typedef struct {
    uv_timeval_t ru_utime; /* user CPU time used */
    uv_timeval_t ru_stime; /* system CPU time used */
    uint64_t ru_maxrss;    /* maximum resident set size */
@@ -1289,6 +1300,9 @@ UV_EXTERN int uv_os_homedir(char* buffer, size_t* size);
 UV_EXTERN int uv_os_tmpdir(char* buffer, size_t* size);
 UV_EXTERN int uv_os_get_passwd(uv_passwd_t* pwd);
 UV_EXTERN void uv_os_free_passwd(uv_passwd_t* pwd);
+UV_EXTERN int uv_os_get_passwd2(uv_passwd_t* pwd, uv_uid_t uid);
+UV_EXTERN int uv_os_get_group(uv_group_t* grp, uv_uid_t gid);
+UV_EXTERN void uv_os_free_group(uv_group_t* grp);
 UV_EXTERN uv_pid_t uv_os_getpid(void);
 UV_EXTERN uv_pid_t uv_os_getppid(void);
 
@@ -1348,6 +1362,15 @@ UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
 
 UV_EXTERN int uv_os_uname(uv_utsname_t* buffer);
 
+struct uv_metrics_s {
+  uint64_t loop_count;
+  uint64_t events;
+  uint64_t events_waiting;
+  /* private */
+  uint64_t* reserved[13];
+};
+
+UV_EXTERN int uv_metrics_info(uv_loop_t* loop, uv_metrics_t* metrics);
 UV_EXTERN uint64_t uv_metrics_idle_time(uv_loop_t* loop);
 
 typedef enum {
@@ -1792,7 +1815,9 @@ UV_EXTERN int uv_chdir(const char* dir);
 UV_EXTERN uint64_t uv_get_free_memory(void);
 UV_EXTERN uint64_t uv_get_total_memory(void);
 UV_EXTERN uint64_t uv_get_constrained_memory(void);
+UV_EXTERN uint64_t uv_get_available_memory(void);
 
+UV_EXTERN int uv_clock_gettime(uv_clock_id clock_id, uv_timespec_t* ts);
 UV_EXTERN uint64_t uv_hrtime(void);
 UV_EXTERN void uv_sleep(unsigned int msec);
 
@@ -1846,7 +1871,7 @@ UV_EXTERN void uv_key_delete(uv_key_t* key);
 UV_EXTERN void* uv_key_get(uv_key_t* key);
 UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
 
-UV_EXTERN int uv_gettimeofday(uv_timeval64_t* tv);
+UV_EXTERN int uv_gettimeofday(uv_timeval_t* tv);
 
 typedef void (*uv_thread_cb)(void* arg);
 
@@ -1876,6 +1901,7 @@ UV_EXTERN int uv_thread_setaffinity(uv_thread_t* tid,
 UV_EXTERN int uv_thread_getaffinity(uv_thread_t* tid,
                                     char* cpumask,
                                     size_t mask_size);
+UV_EXTERN int uv_thread_getcpu(void);
 UV_EXTERN int uv_thread_detach(uv_thread_t* tid);
 UV_EXTERN int uv_thread_join(uv_thread_t* tid);
 UV_EXTERN uv_thread_t uv_thread_self(void);

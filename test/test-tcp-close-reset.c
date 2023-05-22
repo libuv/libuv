@@ -26,7 +26,7 @@
 #include <string.h> /* memset */
 
 #ifdef _WIN32
-# define INVALID_FD (INVALID_HANDLE_VALUE)
+# define INVALID_FD (uintptr_t) (INVALID_HANDLE_VALUE)
 #else
 # define INVALID_FD (-1)
 #endif
@@ -77,7 +77,7 @@ static void do_close(uv_tcp_t* handle) {
   } else if (shutdown_before_close == 2) {
     r = uv_fileno((const uv_handle_t*) handle, &fd);
     ASSERT_EQ(r, 0);
-    ASSERT_NE(fd, INVALID_FD);
+    ASSERT_NE((uintptr_t) fd, INVALID_FD);
 #ifdef _WIN32
     ASSERT_EQ(0, shutdown((SOCKET) fd, SD_BOTH));
 #else
@@ -223,7 +223,7 @@ TEST_IMPL(tcp_close_reset_client) {
   ASSERT(close_cb_called == 1);
   ASSERT(shutdown_cb_called == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -250,7 +250,7 @@ TEST_IMPL(tcp_close_reset_client_after_shutdown) {
   ASSERT(close_cb_called == 0);
   ASSERT(shutdown_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -277,7 +277,7 @@ TEST_IMPL(tcp_close_reset_accepted) {
   ASSERT(close_cb_called == 1);
   ASSERT(shutdown_cb_called == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -304,7 +304,7 @@ TEST_IMPL(tcp_close_reset_accepted_after_shutdown) {
   ASSERT(close_cb_called == 0);
   ASSERT(shutdown_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
@@ -331,6 +331,6 @@ TEST_IMPL(tcp_close_reset_accepted_after_socket_shutdown) {
   ASSERT_EQ(close_cb_called, 1);
   ASSERT_EQ(shutdown_cb_called, 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }

@@ -54,9 +54,15 @@ typedef intptr_t ssize_t;
 # define S_IFLNK 0xA000
 #endif
 
+// Define missing in Windows Kit Include\{VERSION}\ucrt\sys\stat.h
+#if defined(_CRT_INTERNAL_NONSTDC_NAMES) && _CRT_INTERNAL_NONSTDC_NAMES && !defined(S_IFIFO)
+# define S_IFIFO _S_IFIFO
+#endif
+
 /* Signals supported by uv_signal and or uv_kill */
 #define SIGHUP                1
 #define SIGINT                2
+#define SIGQUIT               3
 #define SIGILL                4
 #define SIGABRT_COMPAT        6
 #define SIGFPE                8
@@ -144,11 +150,12 @@ typedef CONDITION_VARIABLE uv_cond_t;
 typedef SRWLOCK uv_rwlock_t;
 
 typedef struct {
-  unsigned int n;
-  unsigned int count;
+  unsigned threshold;
+  unsigned in;
   uv_mutex_t mutex;
-  uv_sem_t turnstile1;
-  uv_sem_t turnstile2;
+  /* TODO: in v2 make this a uv_cond_t, without unused_ */
+  CONDITION_VARIABLE cond;
+  unsigned out;
 } uv_barrier_t;
 
 typedef struct {
@@ -248,6 +255,7 @@ typedef struct {
       ULONG_PTR result; /* overlapped.Internal is reused to hold the result */\
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
+      WCHAR* name;                                                             \
     } connect;                                                                \
   } u;                                                                        \
   struct uv_req_s* next_req;
@@ -361,7 +369,7 @@ typedef struct {
     struct { uv_pipe_connection_fields } conn;                                \
   } pipe;
 
-/* TODO: put the parser states in an union - TTY handles are always half-duplex
+/* TODO: put the parser states in a union - TTY handles are always half-duplex
  * so read-state can safely overlap write-state. */
 #define UV_TTY_PRIVATE_FIELDS                                                 \
   HANDLE handle;                                                              \
@@ -462,7 +470,7 @@ typedef struct {
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  BYTE* child_stdio_buffer;                                                   \
+  void* unused; /* TODO: retained for ABI compat; remove this in v2.x. */     \
   int exit_signal;                                                            \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \

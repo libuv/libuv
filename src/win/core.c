@@ -128,6 +128,9 @@ int uv_loop_init(uv_loop_t* loop) {
   err = uv_mutex_init(&lfields->loop_metrics.lock);
   if (err)
     goto fail_metrics_mutex_init;
+  memset(&lfields->loop_metrics.metrics,
+         0,
+         sizeof(lfields->loop_metrics.metrics));
 
   /* To prevent uninitialized memory access, loop->time must be initialized
    * to zero before calling uv_update_time for the first time.
@@ -281,7 +284,8 @@ int uv_backend_timeout(const uv_loop_t* loop) {
 }
 
 
-static void uv__poll_wine(uv_loop_t* loop, int timeout) {
+static void uv__poll_wine(uv_loop_t* loop, DWORD timeout) {
+  uv__loop_internal_fields_t* lfields;
   DWORD bytes;
   ULONG_PTR key;
   OVERLAPPED* overlapped;
@@ -291,9 +295,10 @@ static void uv__poll_wine(uv_loop_t* loop, int timeout) {
   uint64_t user_timeout;
   int reset_timeout;
 
+  lfields = uv__get_internal_fields(loop);
   timeout_time = loop->time + timeout;
 
-  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+  if (lfields->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -308,6 +313,12 @@ static void uv__poll_wine(uv_loop_t* loop, int timeout) {
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
 
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
+     */
+    lfields->current_timeout = timeout;
+
     GetQueuedCompletionStatus(loop->iocp,
                               &bytes,
                               &key,
@@ -315,6 +326,8 @@ static void uv__poll_wine(uv_loop_t* loop, int timeout) {
                               timeout);
 
     if (reset_timeout != 0) {
+      if (overlapped && timeout == 0)
+        uv__metrics_inc_events_waiting(loop, 1);
       timeout = user_timeout;
       reset_timeout = 0;
     }
@@ -327,6 +340,8 @@ static void uv__poll_wine(uv_loop_t* loop, int timeout) {
     uv__metrics_update_idle_time(loop);
 
     if (overlapped) {
+      uv__metrics_inc_events(loop, 1);
+
       /* Package was dequeued */
       req = container_of(overlapped, uv_req_t, u.io.overlapped);
       uv__insert_pending_req(loop, req);
@@ -360,7 +375,8 @@ static void uv__poll_wine(uv_loop_t* loop, int timeout) {
 }
 
 
-static void uv__poll(uv_loop_t* loop, int timeout) {
+static void uv__poll(uv_loop_t* loop, DWORD timeout) {
+  uv__loop_internal_fields_t* lfields;
   BOOL success;
   uv_req_t* req;
   OVERLAPPED_ENTRY overlappeds[128];
@@ -370,11 +386,13 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
   uint64_t timeout_time;
   BOOL gotwakeup = FALSE;
   uint64_t user_timeout;
+  uint64_t actual_timeout;
   int reset_timeout;
 
+  lfields = uv__get_internal_fields(loop);
   timeout_time = loop->time + timeout;
 
-  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+  if (lfields->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -383,11 +401,19 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
   }
 
   for (repeat = 0; ; repeat++) {
+    actual_timeout = timeout;
+
     /* Only need to set the provider_entry_time if timeout != 0. The function
      * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
      */
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
+
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
+     */
+    lfields->current_timeout = timeout;
 
     success = pGetQueuedCompletionStatusEx(loop->iocp,
                                            overlappeds,
@@ -402,9 +428,9 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
     }
 
     /* Placed here because on success the loop will break whether there is an
-     * empty package or not, or if GetQueuedCompletionStatus returned early then
-     * the timeout will be updated and the loop will run again. In either case
-     * the idle time will need to be updated.
+     * empty package or not, or if pGetQueuedCompletionStatusEx returned early
+     * then the timeout will be updated and the loop will run again. In either
+     * case the idle time will need to be updated.
      */
     uv__metrics_update_idle_time(loop);
 
@@ -414,6 +440,10 @@ static void uv__poll(uv_loop_t* loop, int timeout) {
          * meant only to wake us up.
          */
         if (overlappeds[i].lpOverlapped) {
+          uv__metrics_inc_events(loop, 1);
+          if (actual_timeout == 0)
+            uv__metrics_inc_events_waiting(loop, 1);
+
           req = container_of(overlappeds[i].lpOverlapped, uv_req_t, u.io.overlapped);
           /* If multiple async handles were triggered we might end up with
            * multiple UV_WAKEUP requests (IOCP completion events). They all
@@ -467,10 +497,17 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   if (!r)
     uv_update_time(loop);
 
-  while (r != 0 && loop->stop_flag == 0) {
-    uv_update_time(loop);
+  /* Maintain backwards compatibility by processing timers before entering the
+   * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
+   * once, which should be done after polling in order to maintain proper
+   * execution order of the conceptual event loop. */
+  if (mode == UV_RUN_DEFAULT) {
+    if (r)
+      uv_update_time(loop);
     uv__run_timers(loop);
+  }
 
+  while (r != 0 && loop->stop_flag == 0) {
     can_sleep = loop->pending_reqs_tail == NULL && QUEUE_EMPTY(&loop->idle_handles);
 
     uv__process_reqs(loop);
@@ -481,12 +518,12 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv_backend_timeout(loop);
 
-    if (timeout == -1)
-        timeout = INFINITE;
+    uv__metrics_inc_loop_count(loop);
+
     if (pGetQueuedCompletionStatusEx)
-      uv__poll(loop, timeout);
+      uv__poll(loop, timeout == -1 ? INFINITE : (DWORD) timeout);
     else
-      uv__poll_wine(loop, timeout);
+      uv__poll_wine(loop, timeout == -1 ? INFINITE : (DWORD) timeout);
 
     /* Process immediate callbacks (e.g. write_cb) a small fixed number of
      * times to avoid loop starvation.*/
@@ -503,18 +540,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv__run_check(loop);
     uv__process_endgames(loop);
 
-    if (mode == UV_RUN_ONCE) {
-      /* UV_RUN_ONCE implies forward progress: at least one callback must have
-       * been invoked when it returns. uv__io_poll() can return without doing
-       * I/O (meaning: no callbacks) when its timeout expires - which means we
-       * have pending timers that satisfy the forward progress constraint.
-       *
-       * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
-       * the check.
-       */
-      uv_update_time(loop);
-      uv__run_timers(loop);
-    }
+    uv_update_time(loop);
+    uv__run_timers(loop);
 
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)

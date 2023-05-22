@@ -68,7 +68,7 @@ TEST_IMPL(pipe_bind_error_addrinuse) {
 
   ASSERT(close_cb_called == 2);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -89,7 +89,7 @@ TEST_IMPL(pipe_bind_error_addrnotavail) {
 
   ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -111,7 +111,7 @@ TEST_IMPL(pipe_bind_error_inval) {
 
   ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -135,7 +135,7 @@ TEST_IMPL(pipe_listen_without_bind) {
 
   ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -159,7 +159,7 @@ TEST_IMPL(pipe_bind_error_long_path) {
 
   ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -176,6 +176,6 @@ TEST_IMPL(pipe_bind_or_listen_error_after_close) {
 
   ASSERT_EQ(uv_run(uv_default_loop(), UV_RUN_DEFAULT), 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

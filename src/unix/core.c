@@ -41,13 +41,13 @@
 #include <sys/uio.h> /* writev */
 #include <sys/resource.h> /* getrusage */
 #include <pwd.h>
-#include <sched.h>
+#include <grp.h>
 #include <sys/utsname.h>
 #include <sys/time.h>
+#include <time.h> /* clock_gettime */
 
 #ifdef __sun
 # include <sys/filio.h>
-# include <sys/types.h>
 # include <sys/wait.h>
 #endif
 
@@ -67,15 +67,14 @@ extern char** environ;
 
 #if defined(__DragonFly__)      || \
     defined(__FreeBSD__)        || \
-    defined(__FreeBSD_kernel__) || \
     defined(__NetBSD__)         || \
     defined(__OpenBSD__)
 # include <sys/sysctl.h>
 # include <sys/filio.h>
 # include <sys/wait.h>
 # include <sys/param.h>
-# include <sys/cpuset.h>
 # if defined(__FreeBSD__)
+#  include <sys/cpuset.h>
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
@@ -99,6 +98,35 @@ extern char** environ;
 #endif
 
 static void uv__run_pending(uv_loop_t* loop);
+
+
+
+int uv_clock_gettime(uv_clock_id clock_id, uv_timespec_t* ts) {
+  struct timespec t;
+  int r;
+
+  if (ts == NULL)
+    return UV_EFAULT;
+
+  switch (clock_id) {
+    default:
+      return UV_EINVAL;
+    case UV_CLOCK_MONOTONIC:
+      r = clock_gettime(CLOCK_MONOTONIC, &t);
+      break;
+    case UV_CLOCK_REALTIME:
+      r = clock_gettime(CLOCK_REALTIME, &t);
+      break;
+  }
+
+  if (r)
+    return UV__ERR(errno);
+
+  ts->tv_sec = t.tv_sec;
+  ts->tv_nsec = t.tv_nsec;
+
+  return 0;
+}
 
 
 uint64_t uv_hrtime(void) {
@@ -226,10 +254,10 @@ int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
 #elif defined(_SC_IOV_MAX)
-  static int iovmax_cached = -1;
+  static _Atomic int iovmax_cached = -1;
   int iovmax;
 
-  iovmax = uv__load_relaxed(&iovmax_cached);
+  iovmax = atomic_load_explicit(&iovmax_cached, memory_order_relaxed);
   if (iovmax != -1)
     return iovmax;
 
@@ -241,7 +269,7 @@ int uv__getiovmax(void) {
   if (iovmax == -1)
     iovmax = 1;
 
-  uv__store_relaxed(&iovmax_cached, iovmax);
+  atomic_store_explicit(&iovmax_cached, iovmax, memory_order_relaxed);
 
   return iovmax;
 #else
@@ -354,6 +382,7 @@ static int uv__backend_timeout(const uv_loop_t* loop) {
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
       QUEUE_EMPTY(&loop->pending_queue) &&
       QUEUE_EMPTY(&loop->idle_handles) &&
+      (loop->flags & UV_LOOP_REAP_CHILDREN) == 0 &&
       loop->closing_handles == NULL)
     return uv__next_timeout(loop);
   return 0;
@@ -382,10 +411,17 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   if (!r)
     uv__update_time(loop);
 
-  while (r != 0 && loop->stop_flag == 0) {
-    uv__update_time(loop);
+  /* Maintain backwards compatibility by processing timers before entering the
+   * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
+   * once, which should be done after polling in order to maintain proper
+   * execution order of the conceptual event loop. */
+  if (mode == UV_RUN_DEFAULT) {
+    if (r)
+      uv__update_time(loop);
     uv__run_timers(loop);
+  }
 
+  while (r != 0 && loop->stop_flag == 0) {
     can_sleep =
         QUEUE_EMPTY(&loop->pending_queue) && QUEUE_EMPTY(&loop->idle_handles);
 
@@ -396,6 +432,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     timeout = 0;
     if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv__backend_timeout(loop);
+
+    uv__metrics_inc_loop_count(loop);
 
     uv__io_poll(loop, timeout);
 
@@ -414,18 +452,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__run_check(loop);
     uv__run_closing_handles(loop);
 
-    if (mode == UV_RUN_ONCE) {
-      /* UV_RUN_ONCE implies forward progress: at least one callback must have
-       * been invoked when it returns. uv__io_poll() can return without doing
-       * I/O (meaning: no callbacks) when its timeout expires - which means we
-       * have pending timers that satisfy the forward progress constraint.
-       *
-       * UV_RUN_NOWAIT makes no guarantees about progress so it's omitted from
-       * the check.
-       */
-      uv__update_time(loop);
-      uv__run_timers(loop);
-    }
+    uv__update_time(loop);
+    uv__run_timers(loop);
 
     r = uv__loop_alive(loop);
     if (mode == UV_RUN_ONCE || mode == UV_RUN_NOWAIT)
@@ -861,11 +889,6 @@ void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
   w->fd = fd;
   w->events = 0;
   w->pevents = 0;
-
-#if defined(UV_HAVE_KQUEUE)
-  w->rcount = 0;
-  w->wcount = 0;
-#endif /* defined(UV_HAVE_KQUEUE) */
 }
 
 
@@ -985,6 +1008,15 @@ int uv_getrusage(uv_rusage_t* rusage) {
   rusage->ru_nivcsw = usage.ru_nivcsw;
 #endif
 
+  /* Most platforms report ru_maxrss in kilobytes; macOS and Solaris are
+   * the outliers because of course they are.
+   */
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  rusage->ru_maxrss /= 1024;                  /* macOS reports bytes. */
+#elif defined(__sun)
+  rusage->ru_maxrss /= getpagesize() / 1024;  /* Solaris reports pages. */
+#endif
+
   return 0;
 }
 
@@ -1084,8 +1116,8 @@ int uv_os_homedir(char* buffer, size_t* size) {
   if (r != UV_ENOENT)
     return r;
 
-  /* HOME is not set, so call uv__getpwuid_r() */
-  r = uv__getpwuid_r(&pwd);
+  /* HOME is not set, so call uv_os_get_passwd() */
+  r = uv_os_get_passwd(&pwd);
 
   if (r != 0) {
     return r;
@@ -1158,11 +1190,10 @@ return_buffer:
 }
 
 
-int uv__getpwuid_r(uv_passwd_t* pwd) {
+static int uv__getpwuid_r(uv_passwd_t *pwd, uid_t uid) {
   struct passwd pw;
   struct passwd* result;
   char* buf;
-  uid_t uid;
   size_t bufsize;
   size_t name_size;
   size_t homedir_size;
@@ -1172,8 +1203,6 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 
   if (pwd == NULL)
     return UV_EINVAL;
-
-  uid = geteuid();
 
   /* Calling sysconf(_SC_GETPW_R_SIZE_MAX) would get the suggested size, but it
    * is frequently 1024 or 4096, so we can just use that directly. The pwent
@@ -1258,25 +1287,93 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
 }
 
 
-void uv_os_free_passwd(uv_passwd_t* pwd) {
-  if (pwd == NULL)
-    return;
+int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
+  struct group gp;
+  struct group* result;
+  char* buf;
+  char* gr_mem;
+  size_t bufsize;
+  size_t name_size;
+  long members;
+  size_t mem_size;
+  int r;
 
-  /*
-    The memory for name, shell, homedir, and gecos are allocated in a single
-    uv__malloc() call. The base of the pointer is stored in pwd->username, so
-    that is the field that needs to be freed.
-  */
-  uv__free(pwd->username);
-  pwd->username = NULL;
-  pwd->shell = NULL;
-  pwd->homedir = NULL;
-  pwd->gecos = NULL;
+  if (grp == NULL)
+    return UV_EINVAL;
+
+  /* Calling sysconf(_SC_GETGR_R_SIZE_MAX) would get the suggested size, but it
+   * is frequently 1024 or 4096, so we can just use that directly. The pwent
+   * will not usually be large. */
+  for (bufsize = 2000;; bufsize *= 2) {
+    buf = uv__malloc(bufsize);
+
+    if (buf == NULL)
+      return UV_ENOMEM;
+
+    do
+      r = getgrgid_r(gid, &gp, buf, bufsize, &result);
+    while (r == EINTR);
+
+    if (r != 0 || result == NULL)
+      uv__free(buf);
+
+    if (r != ERANGE)
+      break;
+  }
+
+  if (r != 0)
+    return UV__ERR(r);
+
+  if (result == NULL)
+    return UV_ENOENT;
+
+  /* Allocate memory for the groupname and members. */
+  name_size = strlen(gp.gr_name) + 1;
+  members = 0;
+  mem_size = sizeof(char*);
+  for (r = 0; gp.gr_mem[r] != NULL; r++) {
+    mem_size += strlen(gp.gr_mem[r]) + 1 + sizeof(char*);
+    members++;
+  }
+
+  gr_mem = uv__malloc(name_size + mem_size);
+  if (gr_mem == NULL) {
+    uv__free(buf);
+    return UV_ENOMEM;
+  }
+
+  /* Copy the members */
+  grp->members = (char**) gr_mem;
+  grp->members[members] = NULL;
+  gr_mem = (char*) &grp->members[members + 1];
+  for (r = 0; r < members; r++) {
+    grp->members[r] = gr_mem;
+    strcpy(gr_mem, gp.gr_mem[r]);
+    gr_mem += strlen(gr_mem) + 1;
+  }
+  assert(gr_mem == (char*)grp->members + mem_size);
+
+  /* Copy the groupname */
+  grp->groupname = gr_mem;
+  memcpy(grp->groupname, gp.gr_name, name_size);
+  gr_mem += name_size;
+
+  /* Copy the gid */
+  grp->gid = gp.gr_gid;
+
+  uv__free(buf);
+
+  return 0;
 }
 
 
 int uv_os_get_passwd(uv_passwd_t* pwd) {
-  return uv__getpwuid_r(pwd);
+  return uv__getpwuid_r(pwd, geteuid());
+}
+
+
+int uv_os_get_passwd2(uv_passwd_t* pwd, uv_uid_t uid) {
+  return uv__getpwuid_r(pwd, uid);
 }
 
 
@@ -1430,7 +1527,7 @@ uv_pid_t uv_os_getppid(void) {
 }
 
 int uv_cpumask_size(void) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if UV__CPU_AFFINITY_SUPPORTED
   return CPU_SETSIZE;
 #else
   return UV_ENOTSUP;
@@ -1542,7 +1639,7 @@ int uv__getsockpeername(const uv_handle_t* handle,
   return 0;
 }
 
-int uv_gettimeofday(uv_timeval64_t* tv) {
+int uv_gettimeofday(uv_timeval_t* tv) {
   struct timeval time;
 
   if (tv == NULL)

@@ -59,7 +59,6 @@
 # include "uv/darwin.h"
 #elif defined(__DragonFly__)       || \
       defined(__FreeBSD__)         || \
-      defined(__FreeBSD_kernel__)  || \
       defined(__OpenBSD__)         || \
       defined(__NetBSD__)
 # include "uv/bsd.h"
@@ -226,7 +225,6 @@ typedef struct {
   void* check_handles[2];                                                     \
   void* idle_handles[2];                                                      \
   void* async_handles[2];                                                     \
-  void (*async_unused)(void);  /* TODO(bnoordhuis) Remove in libuv v2. */     \
   uv__io_t async_io_watcher;                                                  \
   int async_wfd;                                                              \
   struct {                                                                    \
@@ -315,6 +313,7 @@ typedef struct {
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   uv_async_cb async_cb;                                                       \
   void* queue[2];                                                             \
+  int busy;                                                                   \
   int pending;                                                                \
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \

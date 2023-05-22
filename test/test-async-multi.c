@@ -81,6 +81,6 @@ TEST_IMPL(async_multi) {
   ASSERT(async_cb_called == 2);
   ASSERT(close_cb_called == 4);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
