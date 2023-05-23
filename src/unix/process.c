@@ -148,6 +148,7 @@ void uv__wait_children(uv_loop_t* loop) {
     }
 
     assert(pid == process->pid);
+    process->pid = 0; // pid is no longer valid (or unique)
     process->status = status;
     QUEUE_REMOVE(&process->queue);
     QUEUE_INSERT_TAIL(&pending, &process->queue);
@@ -958,6 +959,10 @@ int uv_spawn(uv_loop_t* loop,
              const uv_process_options_t* options) {
 #if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   /* fork is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED. */
+  uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
+  QUEUE_INIT(&process->queue);
+  process->status = 0;
+  process->pid = 0;
   return UV_ENOSYS;
 #else
   int pipes_storage[8][2];
@@ -980,6 +985,7 @@ int uv_spawn(uv_loop_t* loop,
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
   QUEUE_INIT(&process->queue);
   process->status = 0;
+  process->pid = 0;
 
   stdio_count = options->stdio_count;
   if (stdio_count < 3)
@@ -1083,6 +1089,8 @@ error:
 
 
 int uv_process_kill(uv_process_t* process, int signum) {
+  if (process->pid == 0)
+    return UV_ESRCH;
   return uv_kill(process->pid, signum);
 }
 
@@ -1103,6 +1111,9 @@ int uv_kill(int pid, int signum) {
 
 
 void uv__process_close(uv_process_t* handle) {
+  /* Warning: if handle->pid != 0, the caller is creating a zombie that we
+   * cannot reap. We assume here that it is intentional, and that the user will
+   * be wise and cleanup later. */
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
 #ifdef UV_USE_SIGCHLD

@@ -81,8 +81,6 @@ static void fail_cb(uv_process_t* process,
 static void kill_cb(uv_process_t* process,
                     int64_t exit_status,
                     int term_signal) {
-  int err;
-
   printf("exit_cb\n");
   exit_cb_called++;
 #ifdef _WIN32
@@ -103,12 +101,9 @@ static void kill_cb(uv_process_t* process,
   uv_close((uv_handle_t*) process, close_cb);
 
   /*
-   * Sending signum == 0 should check if the
-   * child process is still alive, not kill it.
    * This process should be dead.
    */
-  err = uv_kill(process->pid, 0);
-  ASSERT(err == UV_ESRCH);
+  ASSERT(process->pid == 0);
 }
 
 static void detach_failure_cb(uv_process_t* process,
@@ -201,24 +196,15 @@ TEST_IMPL(spawn_fails) {
 #ifndef _WIN32
 TEST_IMPL(spawn_fails_check_for_waitpid_cleanup) {
   int r;
-  int status;
-  int err;
 
   init_process_options("", fail_cb);
   options.file = options.args[0] = "program-that-had-better-not-exist";
 
   r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(process.pid == 0);
   ASSERT(r == UV_ENOENT || r == UV_EACCES);
   ASSERT(0 == uv_is_active((uv_handle_t*) &process));
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-
-  /* verify the child is successfully cleaned up within libuv */
-  do
-    err = waitpid(process.pid, &status, 0);
-  while (err == -1 && errno == EINTR);
-
-  ASSERT(err == -1);
-  ASSERT(errno == ECHILD);
 
   uv_close((uv_handle_t*) &process, NULL);
   ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));

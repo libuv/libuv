@@ -165,7 +165,12 @@ Public members
 
 .. c:member:: int uv_process_t.pid
 
-    The PID of the spawned process. It's set after calling :c:func:`uv_spawn`.
+    The PID of the spawned process if it is alive. It is set after calling
+    :c:func:`uv_spawn` and cleared before calling :c:func:`exit_cb`. The value
+    is unique only while this is non-zero, otherwise, another process handle
+    may have already been reassigned the same number before the callback ran.
+
+    If you call :c:func:`uv_spawn`
 
 .. note::
     The :c:type:`uv_handle_t` members also apply.
@@ -259,6 +264,14 @@ API
     setgid specified, or not having enough memory to allocate for the new
     process.
 
+    Whether the call succeeds of fails, you must call :c:func:`uv_close` before
+    freeing the memory of handle (unlike other init function in libuv).
+
+    .. warning::
+        On unix, if `handle->pid != 0` when you call `uv_close`, you will create a
+        zombie that libuv cannot reap. You are responsible for calling
+        `waitpid` later. This is not relevant on Windows.
+
     .. versionchanged:: 1.24.0 Added `UV_PROCESS_WINDOWS_HIDE_CONSOLE` and
                         `UV_PROCESS_WINDOWS_HIDE_GUI` flags.
 
@@ -266,6 +279,10 @@ API
 
     Sends the specified signal to the given process handle. Check the documentation
     on :c:ref:`signal` for signal support, specially on Windows.
+
+    If the specified process is already dead, this will not kill a random
+    process. By contrast, `uv_kill` may kill an random process if you use a
+    cached value of :c:func:`uv_process_get_pid`.
 
 .. c:function:: int uv_kill(int pid, int signum)
 
