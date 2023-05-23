@@ -839,3 +839,48 @@ API
     Causes the calling thread to sleep for `msec` milliseconds.
 
     .. versionadded:: 1.34.0
+
+.. c:function:: void uv_sleep(unsigned int msec)
+
+String manipulation functions
+-----------------------------
+
+These string utilities are needed internally for dealing with Windows, and are
+exported to allow clients to work uniformly with this data when the libuv API
+is not complete.
+
+.. c:function:: size_t uv_utf16_length_as_wtf8(const uint16_t* w_source_ptr, size_t w_source_len)
+
+    Get the length of a UTF-16 (or UCS-2) `w_source_ptr` value after converting
+    it to WTF-8.
+
+    .. versionadded:: 1.46.0
+
+.. c:function:: int uv_utf16_to_wtf8(const uint16_t* w_source_ptr, size_t w_source_len, char** target_ptr, size_t* target_len_ptr)
+
+    Convert UTF-16 (or UCS-2) data in `w_source_ptr` to WTF-8 data in
+    `target_ptr`. The `w_source_len` count (in characters) gives the length of
+    `w_source_ptr`. If `target_ptr` is `NULL`, no result will be computed, but
+    the length (equal to `uv_utf16_length_as_wtf8`) will be stored in
+    `target_len_ptr`. If `*target_ptr` is `NULL`, space for the conversion will
+    be allocated and returned in `target_ptr` and the length will be returned
+    in `target_len_ptr`. Otherwise, the length must be passed in
+    `target_len_ptr`, which must be equal to the length that would be computed
+    here.
+
+    .. versionadded:: 1.46.0
+
+.. c:function:: ssize_t uv_wtf8_length_as_utf16(const char* source_ptr)
+
+    Get the length in characters of a NUL-terminated WTF-8 `source_ptr` value
+    after converting it to UTF-16 (or UCS-2), including NUL terminator.
+
+    .. versionadded:: 1.46.0
+
+.. c:function:: void uv_wtf8_to_utf16(const char* source_ptr, uint16_t* w_target, size_t w_target_len)
+
+    Convert NUL-terminated WTF-8 data in `source_ptr` to UTF-16 (or UCS-2) data
+    in `w_target`. The `w_target_len` count (in characters) must include space
+    for the NUL terminator.
+
+    .. versionadded:: 1.46.0
