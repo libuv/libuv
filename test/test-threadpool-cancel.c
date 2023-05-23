@@ -98,11 +98,16 @@ static int known_broken(uv_req_t* req) {
     case UV_FS_FDATASYNC:
     case UV_FS_FSTAT:
     case UV_FS_FSYNC:
+    case UV_FS_LINK:
     case UV_FS_LSTAT:
+    case UV_FS_MKDIR:
     case UV_FS_OPEN:
     case UV_FS_READ:
+    case UV_FS_RENAME:
     case UV_FS_STAT:
+    case UV_FS_SYMLINK:
     case UV_FS_WRITE:
+    case UV_FS_UNLINK:
       return 1;
     default:  /* Squelch -Wswitch warnings. */
       break;
