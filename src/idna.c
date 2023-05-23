@@ -313,7 +313,7 @@ static int uv__idna_toascii_label(const char* s, const char* se,
 }
 
 
-long uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
+ssize_t uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
   const char* si;
   const char* st;
   unsigned c;

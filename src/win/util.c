@@ -1033,14 +1033,13 @@ int uv__convert_utf8_to_utf16(const char* utf8, WCHAR** utf16) {
   if (utf8 == NULL)
     return UV_EINVAL;
 
-  /* Check how much space we need */
+  /* Check how much space we need (including NUL). */
   bufsize = uv_wtf8_length_as_utf16(utf8);
   if (bufsize < 0)
     return UV__EINVAL;
 
-  /* Allocate the destination buffer adding an extra byte for the terminating
-   * NULL. Our uv_wtf8_to_utf16 requires that this space be added. */
-  *utf16 = uv__malloc(sizeof(WCHAR) * (bufsize + 1));
+  /* Allocate the destination buffer. */
+  *utf16 = uv__malloc(sizeof(WCHAR) * bufsize);
 
   if (*utf16 == NULL)
     return UV_ENOMEM;
