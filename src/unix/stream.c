@@ -897,6 +897,10 @@ error:
 }
 
 
+#if defined(__GNUC__) && __GNUC__ >= 12
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
 static void uv__write_callbacks(uv_stream_t* stream) {
   uv_write_t* req;
   QUEUE* q;
@@ -926,7 +930,9 @@ static void uv__write_callbacks(uv_stream_t* stream) {
       req->cb(req, req->error);
   }
 }
-
+#if defined(__GNUC__) && __GNUC__ >= 12
+# pragma GCC diagnostic pop
+#endif
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
   stream->flags |= UV_HANDLE_READ_EOF;

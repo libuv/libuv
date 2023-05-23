@@ -531,7 +531,10 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
     return uv__udp_recv_stop(handle);
 }
 
-
+#if defined(__GNUC__) && __GNUC__ >= 12
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
 void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   QUEUE queue;
   QUEUE* q;
@@ -549,7 +552,9 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
     walk_cb(h, arg);
   }
 }
-
+#if defined(__GNUC__) && __GNUC__ >= 12
+# pragma GCC diagnostic pop
+#endif
 
 static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
   const char* type;
