@@ -403,12 +403,12 @@ void uv_wtf8_to_utf16(const char* source_ptr,
 
 
 static int32_t uv__get_surrogate_value(const uint16_t* w_source_ptr,
-                                       size_t w_source_len) {
+                                       ssize_t w_source_len) {
   uint16_t u;
   uint16_t next;
 
   u = w_source_ptr[0];
-  if (u >= 0xD800 && u <= 0xDBFF && w_source_len > 1) {
+  if (u >= 0xD800 && u <= 0xDBFF && w_source_len != 1) {
     next = w_source_ptr[1];
     if (next >= 0xDC00 && next <= 0xDFFF)
       return 0x10000 + ((u - 0xD800) << 10) + (next - 0xDC00);
@@ -418,15 +418,17 @@ static int32_t uv__get_surrogate_value(const uint16_t* w_source_ptr,
 
 
 size_t uv_utf16_length_as_wtf8(const uint16_t* w_source_ptr,
-                               size_t w_source_len) {
+                               ssize_t w_source_len) {
   size_t target_len;
   int32_t code_point;
 
   target_len = 0;
-  for (; w_source_len; w_source_len--, w_source_ptr++) {
+  while (w_source_len) {
     code_point = uv__get_surrogate_value(w_source_ptr, w_source_len);
     /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(code_point >= 0);
+    if (w_source_len < 0 && code_point == 0)
+      break;
     if (code_point < 0x80)
       target_len += 1;
     else if (code_point < 0x800)
@@ -436,23 +438,29 @@ size_t uv_utf16_length_as_wtf8(const uint16_t* w_source_ptr,
     else {
       target_len += 4;
       w_source_ptr++;
-      w_source_len--;
+      if (w_source_len > 0)
+        w_source_len--;
     }
+    w_source_ptr++;
+    if (w_source_len > 0)
+      w_source_len--;
   }
+
   return target_len;
 }
 
 
 int uv_utf16_to_wtf8(const uint16_t* w_source_ptr,
-                     size_t w_source_len,
+                     ssize_t w_source_len,
                      char** target_ptr,
                      size_t* target_len_ptr) {
   size_t target_len;
   char* target;
+  char* target_end;
   int32_t code_point;
 
   /* If *target_ptr is provided, then *target_len_ptr must be its length
-   * (excluding space for null), otherwise we will compute the target_len_ptr
+   * (excluding space for NUL), otherwise we will compute the target_len_ptr
    * length and may return a new allocation in *target_ptr if target_ptr is
    * provided. */
   if (target_ptr == NULL || *target_ptr == NULL) {
@@ -476,32 +484,70 @@ int uv_utf16_to_wtf8(const uint16_t* w_source_ptr,
     target = *target_ptr;
   }
 
-  for (; w_source_len; w_source_len--, w_source_ptr++) {
+  target_end = target + target_len;
+
+  while (target != target_end && w_source_len) {
     code_point = uv__get_surrogate_value(w_source_ptr, w_source_len);
     /* Can be invalid UTF-8 but must be valid WTF-8. */
     assert(code_point >= 0);
-
+    if (w_source_len < 0 && code_point == 0) {
+      w_source_len = 0;
+      break;
+    }
     if (code_point < 0x80) {
       *target++ = code_point;
     } else if (code_point < 0x800) {
       *target++ = 0xC0 | (code_point >> 6);
+      if (target == target_end)
+        break;
       *target++ = 0x80 | (code_point & 0x3F);
     } else if (code_point < 0x10000) {
       *target++ = 0xE0 | (code_point >> 12);
+      if (target == target_end)
+        break;
       *target++ = 0x80 | ((code_point >> 6) & 0x3F);
+      if (target == target_end)
+        break;
       *target++ = 0x80 | (code_point & 0x3F);
     } else {
       *target++ = 0xF0 | (code_point >> 18);
+      if (target == target_end)
+        break;
       *target++ = 0x80 | ((code_point >> 12) & 0x3F);
+      if (target == target_end)
+        break;
       *target++ = 0x80 | ((code_point >> 6) & 0x3F);
+      if (target == target_end)
+        break;
       *target++ = 0x80 | (code_point & 0x3F);
+      /* uv__get_surrogate_value consumed 2 input characters */
       w_source_ptr++;
-      w_source_len--;
+      if (w_source_len > 0)
+        w_source_len--;
     }
+    target_len = target - *target_ptr;
+    w_source_ptr++;
+    if (w_source_len > 0)
+      w_source_len--;
   }
-  assert((size_t) (target - *target_ptr) == target_len);
+
+  if (target != target_end && target_len_ptr != NULL)
+    /* Did not fill all of the provided buffer, so update the target_len_ptr
+     * output with the space used. */
+    *target_len_ptr = target - *target_ptr;
+
+  /* Check if input fit into target exactly. */
+  if (w_source_len < 0 && target == target_end && w_source_ptr[0] == 0)
+    w_source_len = 0;
 
   *target++ = '\0';
+
+  /* Characters remained after filling the buffer, compute the remaining length now. */
+  if (w_source_len) {
+    if (target_len_ptr != NULL)
+      *target_len_ptr = target_len + uv_utf16_length_as_wtf8(w_source_ptr, w_source_len);
+    return UV_ENOBUFS;
+  }
 
   return 0;
 }

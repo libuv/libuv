@@ -1886,16 +1886,16 @@ UV_EXTERN void* uv_loop_get_data(const uv_loop_t*);
 UV_EXTERN void uv_loop_set_data(uv_loop_t*, void* data);
 
 /* String utilities needed internally for dealing with Windows. */
-size_t uv_utf16_length_as_wtf8(const uint16_t* w_source_ptr,
-                               size_t w_source_len);
-int uv_utf16_to_wtf8(const uint16_t* w_source_ptr,
-                     size_t w_source_len,
-                     char** target_ptr,
-                     size_t* target_len_ptr);
-ssize_t uv_wtf8_length_as_utf16(const char* source_ptr);
-void uv_wtf8_to_utf16(const char* source_ptr,
-                      uint16_t* w_target,
-                      size_t w_target_len);
+size_t uv_utf16_length_as_wtf8(const uint16_t* utf16,
+                               ssize_t utf16_len);
+int uv_utf16_to_wtf8(const uint16_t* utf16,
+                     ssize_t utf16_len,
+                     char** wtf8_ptr,
+                     size_t* wtf8_len_ptr);
+ssize_t uv_wtf8_length_as_utf16(const char* wtf8);
+void uv_wtf8_to_utf16(const char* wtf8,
+                      uint16_t* utf16,
+                      size_t utf16_len);
 
 /* Don't export the private CPP symbols. */
 #undef UV_HANDLE_TYPE_PRIVATE
