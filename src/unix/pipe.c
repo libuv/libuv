@@ -230,7 +230,7 @@ out:
   uv__req_init(handle->loop, req, UV_CONNECT);
   req->handle = (uv_stream_t*)handle;
   req->cb = cb;
-  QUEUE_INIT(&req->queue);
+  uv__queue_init(&req->queue);
 
   /* Force callback to run on next tick in case of error. */
   if (err)

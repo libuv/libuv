@@ -255,8 +255,8 @@ int uv_loop_init(uv_loop_t* loop) {
   loop->time = 0;
   uv_update_time(loop);
 
-  QUEUE_INIT(&loop->wq);
-  QUEUE_INIT(&loop->handle_queue);
+  uv__queue_init(&loop->wq);
+  uv__queue_init(&loop->handle_queue);
   loop->active_reqs.count = 0;
   loop->active_handles = 0;
 
@@ -358,7 +358,7 @@ void uv__loop_close(uv_loop_t* loop) {
   }
 
   uv_mutex_lock(&loop->wq_mutex);
-  assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
+  assert(uv__queue_empty(&loop->wq) && "thread pool work queue not empty!");
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
   uv_mutex_destroy(&loop->wq_mutex);

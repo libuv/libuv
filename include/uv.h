@@ -59,6 +59,12 @@ extern "C" {
 #include <stdio.h>
 #include <stdint.h>
 
+/* Internal type, do not use. */
+struct uv__queue {
+  struct uv__queue* next;
+  struct uv__queue* prev;
+};
+
 #if defined(_WIN32)
 # include "uv/win.h"
 #else
@@ -459,7 +465,7 @@ struct uv_shutdown_s {
   uv_handle_type type;                                                        \
   /* private */                                                               \
   uv_close_cb close_cb;                                                       \
-  void* handle_queue[2];                                                      \
+  struct uv__queue handle_queue;                                              \
   union {                                                                     \
     int fd;                                                                   \
     void* reserved[4];                                                        \
@@ -1849,7 +1855,7 @@ struct uv_loop_s {
   void* data;
   /* Loop reference counting. */
   unsigned int active_handles;
-  void* handle_queue[2];
+  struct uv__queue handle_queue;
   union {
     void* unused;
     unsigned int count;
