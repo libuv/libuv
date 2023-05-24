@@ -411,16 +411,6 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   if (!r)
     uv__update_time(loop);
 
-  /* Maintain backwards compatibility by processing timers before entering the
-   * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
-   * once, which should be done after polling in order to maintain proper
-   * execution order of the conceptual event loop. */
-  if (mode == UV_RUN_DEFAULT) {
-    if (r)
-      uv__update_time(loop);
-    uv__run_timers(loop);
-  }
-
   while (r != 0 && loop->stop_flag == 0) {
     can_sleep =
         QUEUE_EMPTY(&loop->pending_queue) && QUEUE_EMPTY(&loop->idle_handles);

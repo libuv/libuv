@@ -40,7 +40,7 @@ static void close_cb(uv_handle_t* handle) {
 /* check_cb should run before any close_cb */
 static void check_cb(uv_check_t* handle) {
   ASSERT(check_cb_called == 0);
-  ASSERT(timer_cb_called == 1);
+  ASSERT(timer_cb_called == 0);
   ASSERT(close_cb_called == 0);
   uv_close((uv_handle_t*) handle, close_cb);
   uv_close((uv_handle_t*) &timer_handle2, close_cb);

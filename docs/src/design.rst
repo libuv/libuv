@@ -62,9 +62,6 @@ stages of a loop iteration:
 
 #. The loop concept of 'now' is initially set.
 
-#. Due timers are run if the loop was run with ``UV_RUN_DEFAULT``. All active timers scheduled
-   for a time before the loop's concept of *now* get their callbacks called.
-
 #. If the loop is *alive*  an iteration is started, otherwise the loop will exit immediately. So,
    when is a loop considered to be *alive*? If a loop has active and ref'd handles, active
    requests or closing handles it's considered to be *alive*.
