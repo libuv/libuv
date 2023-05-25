@@ -823,9 +823,19 @@ struct uv_pipe_s {
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
+UV_EXTERN int uv_pipe_bind2(uv_pipe_t* handle,
+                            const char* name,
+                            size_t namelen,
+                            unsigned int flags);
 UV_EXTERN void uv_pipe_connect(uv_connect_t* req,
                                uv_pipe_t* handle,
                                const char* name,
+                               uv_connect_cb cb);
+UV_EXTERN int uv_pipe_connect2(uv_connect_t* req,
+                               uv_pipe_t* handle,
+                               const char* name,
+                               size_t namelen,
+                               unsigned int flags,
                                uv_connect_cb cb);
 UV_EXTERN int uv_pipe_getsockname(const uv_pipe_t* handle,
                                   char* buffer,

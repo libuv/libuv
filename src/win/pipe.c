@@ -694,20 +694,42 @@ void uv_pipe_pending_instances(uv_pipe_t* handle, int count) {
 
 /* Creates a pipe server. */
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
+  return uv_pipe_bind2(handle, name, strlen(name), 0);
+}
+
+
+int uv_pipe_bind2(uv_pipe_t* handle,
+                  const char* name,
+                  size_t namelen,
+                  unsigned int flags) {
   uv_loop_t* loop = handle->loop;
   int i, err, nameSize;
   uv_pipe_accept_t* req;
+
+  if (flags != 0) {
+    return UV_EINVAL;
+  }
+
+  if (name == NULL) {
+    return UV_EINVAL;
+  }
+
+  if (namelen == 0) {
+    return UV_EINVAL;
+  }
+
+  if (*name == '\0') {
+    return UV_EINVAL;
+  }
 
   if (handle->flags & UV_HANDLE_BOUND) {
     return UV_EINVAL;
   }
 
-  if (!name) {
-    return UV_EINVAL;
-  }
   if (uv__is_closing(handle)) {
     return UV_EINVAL;
   }
+
   if (!(handle->flags & UV_HANDLE_PIPESERVER)) {
     handle->pipe.serv.pending_instances = default_pending_pipe_instances;
   }
@@ -818,12 +840,40 @@ static DWORD WINAPI pipe_connect_thread_proc(void* parameter) {
 }
 
 
-void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
-    const char* name, uv_connect_cb cb) {
+void uv_pipe_connect(uv_connect_t* req,
+                    uv_pipe_t* handle,
+                    const char* name,
+                    uv_connect_cb cb) {
+  uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+}
+
+
+int uv_pipe_connect2(uv_connect_t* req,
+                     uv_pipe_t* handle,
+                     const char* name,
+                     size_t namelen,
+                     unsigned int flags,
+                     uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int err, nameSize;
   HANDLE pipeHandle = INVALID_HANDLE_VALUE;
   DWORD duplex_flags;
+
+  if (flags != 0) {
+    return UV_EINVAL;
+  }
+
+  if (name == NULL) {
+    return UV_EINVAL;
+  }
+
+  if (namelen == 0) {
+    return UV_EINVAL;
+  }
+
+  if (*name == '\0') {
+    return UV_EINVAL;
+  }
 
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
@@ -882,7 +932,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
       REGISTER_HANDLE_REQ(loop, handle, req);
       handle->reqs_pending++;
 
-      return;
+      return 0;
     }
 
     err = GetLastError();
@@ -895,7 +945,7 @@ void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle,
   uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
-  return;
+  return 0;
 
 error:
   if (handle->name) {
@@ -911,7 +961,7 @@ error:
   uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle, req);
-  return;
+  return 0;
 }
 
 

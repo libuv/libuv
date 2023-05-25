@@ -304,7 +304,7 @@ typedef struct {
   struct uv__queue write_completed_queue;                                     \
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
-  const char* pipe_fname; /* strdup'ed */
+  const char* pipe_fname; /* NULL or strdup'ed */
 
 #define UV_POLL_PRIVATE_FIELDS                                                \
   uv__io_t io_watcher;
