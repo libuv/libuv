@@ -914,10 +914,14 @@ int uv__iou_fs_read_or_write(uv_loop_t* loop,
   struct uv__io_uring_sqe* sqe;
   struct uv__iou* iou;
 
-  /* For the moment, if iovcnt is greater than IOV_MAX, fallback to the
-   * threadpool. In the future we might take advantage of IOSQE_IO_LINK. */
-  if (req->nbufs > IOV_MAX)
-    return 0;
+  /* If iovcnt is greater than IOV_MAX, cap it to IOV_MAX on reads and fallback
+   * to the threadpool on writes */
+  if (req->nbufs > IOV_MAX) {
+    if (is_read)
+      req->nbufs = IOV_MAX;
+    else
+      return 0;
+  }
 
   iou = &uv__get_internal_fields(loop)->iou;
 
