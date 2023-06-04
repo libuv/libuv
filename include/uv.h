@@ -259,7 +259,11 @@ typedef struct uv_metrics_s uv_metrics_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL = 0,
-  UV_METRICS_IDLE_TIME
+  UV_METRICS_IDLE_TIME,
+  /* This flag is going away again. Use at your own risk. */
+#define UV_LOOP_EXPERIMENTAL_LINUX_ONLY_ERROR_UNLESS_IOURING \
+    UV_LOOP_EXPERIMENTAL_LINUX_ONLY_ERROR_UNLESS_IOURING
+  UV_LOOP_EXPERIMENTAL_LINUX_ONLY_ERROR_UNLESS_IOURING = 1 << 30
 } uv_loop_option;
 
 typedef enum {

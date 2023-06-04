@@ -126,6 +126,14 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   }                                                                           \
   while (0)
 
+#define FREEPATH                                                              \
+  do {                                                                        \
+    if (cb != NULL)                                                           \
+      uv__free((void*) req->path);                                            \
+    req->path = NULL;                                                         \
+  }                                                                           \
+  while (0)
+
 #define PATH2                                                                 \
   do {                                                                        \
     if (cb == NULL) {                                                         \
@@ -146,6 +154,15 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
   }                                                                           \
   while (0)
 
+#define FREEPATH2                                                             \
+  do {                                                                        \
+    if (cb != NULL)                                                           \
+      uv__free((void*) req->path);                                            \
+    req->path = NULL;                                                         \
+    req->new_path = NULL;                                                     \
+  }                                                                           \
+  while (0)
+
 #define POST                                                                  \
   do {                                                                        \
     if (cb != NULL) {                                                         \
@@ -163,6 +180,26 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
     }                                                                         \
   }                                                                           \
   while (0)
+
+#define FREEBUFS                                                              \
+  do {                                                                        \
+      if (req->bufs != req->bufsml)                                           \
+        uv__free(req->bufs);                                                  \
+      req->bufs = NULL;                                                       \
+      req->nbufs = 0;                                                         \
+  }                                                                           \
+  while (0)
+
+static int uv__iou_report_busy(uv_loop_t* loop) {
+#ifdef __linux__
+  uv__loop_internal_fields_t* lfields;
+  lfields = uv__get_internal_fields(loop);
+  return lfields->flags & UV_LOOP_EXPERIMENTAL_LINUX_ONLY_ERROR_UNLESS_IOURING;
+#else
+  (void) &loop;
+  return 0;
+#endif
+}
 
 
 static int uv__fs_close(int fd) {
@@ -1793,9 +1830,12 @@ int uv_fs_chown(uv_loop_t* loop,
 int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(CLOSE);
   req->file = file;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_close(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop))
+      return UV_EBUSY;
+  }
   POST;
 }
 
@@ -1843,9 +1883,12 @@ int uv_fs_lchown(uv_loop_t* loop,
 int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(FDATASYNC);
   req->file = file;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_fsync_or_fdatasync(loop, req, /* IORING_FSYNC_DATASYNC */ 1))
       return 0;
+    if (uv__iou_report_busy(loop))
+      return UV_EBUSY;
+  }
   POST;
 }
 
@@ -1853,9 +1896,12 @@ int uv_fs_fdatasync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(FSTAT);
   req->file = file;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_statx(loop, req, /* is_fstat */ 1, /* is_lstat */ 0))
       return 0;
+    if (uv__iou_report_busy(loop))
+      return UV_EBUSY;
+  }
   POST;
 }
 
@@ -1863,9 +1909,12 @@ int uv_fs_fstat(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
 int uv_fs_fsync(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb) {
   INIT(FSYNC);
   req->file = file;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_fsync_or_fdatasync(loop, req, /* no flags */ 0))
       return 0;
+    if (uv__iou_report_busy(loop))
+      return UV_EBUSY;
+  }
   POST;
 }
 
@@ -1912,9 +1961,14 @@ int uv_fs_lutime(uv_loop_t* loop,
 int uv_fs_lstat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(LSTAT);
   PATH;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_statx(loop, req, /* is_fstat */ 0, /* is_lstat */ 1))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -1926,9 +1980,14 @@ int uv_fs_link(uv_loop_t* loop,
                uv_fs_cb cb) {
   INIT(LINK);
   PATH2;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_link(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH2;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -1941,9 +2000,14 @@ int uv_fs_mkdir(uv_loop_t* loop,
   INIT(MKDIR);
   PATH;
   req->mode = mode;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_mkdir(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -1982,9 +2046,14 @@ int uv_fs_open(uv_loop_t* loop,
   PATH;
   req->flags = flags;
   req->mode = mode;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_open(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -2014,9 +2083,14 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
 
   req->off = off;
 
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEBUFS;
+      return UV_EBUSY;
+    }
+  }
 
   POST;
 }
@@ -2095,9 +2169,14 @@ int uv_fs_rename(uv_loop_t* loop,
                  uv_fs_cb cb) {
   INIT(RENAME);
   PATH2;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_rename(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH2;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -2128,9 +2207,14 @@ int uv_fs_sendfile(uv_loop_t* loop,
 int uv_fs_stat(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(STAT);
   PATH;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_statx(loop, req, /* is_fstat */ 0, /* is_lstat */ 0))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -2144,9 +2228,14 @@ int uv_fs_symlink(uv_loop_t* loop,
   INIT(SYMLINK);
   PATH2;
   req->flags = flags;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_symlink(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH2;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -2154,9 +2243,14 @@ int uv_fs_symlink(uv_loop_t* loop,
 int uv_fs_unlink(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb) {
   INIT(UNLINK);
   PATH;
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_unlink(loop, req))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEPATH;
+      return UV_EBUSY;
+    }
+  }
   POST;
 }
 
@@ -2201,9 +2295,14 @@ int uv_fs_write(uv_loop_t* loop,
 
   req->off = off;
 
-  if (cb != NULL)
+  if (cb != NULL) {
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
+    if (uv__iou_report_busy(loop)) {
+      FREEBUFS;
+      return UV_EBUSY;
+    }
+  }
 
   POST;
 }

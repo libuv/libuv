@@ -801,8 +801,15 @@ void uv__fs_readdir_cleanup(uv_fs_t* req) {
 
 
 int uv_loop_configure(uv_loop_t* loop, uv_loop_option option, ...) {
+  uv__loop_internal_fields_t* lfields;
   va_list ap;
   int err;
+
+  if (option == UV_LOOP_EXPERIMENTAL_LINUX_ONLY_ERROR_UNLESS_IOURING) {
+    lfields = uv__get_internal_fields(loop);
+    lfields->flags |= UV_LOOP_EXPERIMENTAL_LINUX_ONLY_ERROR_UNLESS_IOURING;
+    return 0;
+  }
 
   va_start(ap, option);
   /* Any platform-agnostic options should be handled here. */
