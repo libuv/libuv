@@ -289,13 +289,13 @@ UV_EXTERN int uv_loop_init(uv_loop_t* loop);
 UV_EXTERN int uv_loop_close(uv_loop_t* loop);
 /*
  * NOTE:
- *  This function is DEPRECATED (to be removed after 0.12), users should
+ *  This function is DEPRECATED, users should
  *  allocate the loop manually and use uv_loop_init instead.
  */
 UV_EXTERN uv_loop_t* uv_loop_new(void);
 /*
  * NOTE:
- *  This function is DEPRECATED (to be removed after 0.12). Users should use
+ *  This function is DEPRECATED. Users should use
  *  uv_loop_close and free the memory manually instead.
  */
 UV_EXTERN void uv_loop_delete(uv_loop_t*);
