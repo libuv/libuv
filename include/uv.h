@@ -807,6 +807,10 @@ inline int uv_tty_set_mode(uv_tty_t* handle, int mode) {
 
 UV_EXTERN uv_handle_type uv_guess_handle(uv_file file);
 
+enum {
+  UV_PIPE_NO_TRUNCATE = 1u << 0
+};
+
 /*
  * uv_pipe_t is a subclass of uv_stream_t.
  *
