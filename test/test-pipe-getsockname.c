@@ -170,30 +170,30 @@ TEST_IMPL(pipe_getsockname_abstract) {
 
   buflen = sizeof(buf);
   memset(buf, 0, sizeof(buf));
-  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &pipe_server, 0));
-  ASSERT_EQ(0, uv_pipe_bind2(&pipe_server, name, sizeof(name), 0));
-  ASSERT_EQ(0, uv_pipe_getsockname(&pipe_server, buf, &buflen));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_server, 0));
+  ASSERT_OK(uv_pipe_bind2(&pipe_server, name, sizeof(name), 0));
+  ASSERT_OK(uv_pipe_getsockname(&pipe_server, buf, &buflen));
   ASSERT_MEM_EQ(name, buf, sizeof(name));
-  ASSERT_EQ(0, uv_listen((uv_stream_t*) &pipe_server,
-                         0,
-                         pipe_server_connection_cb));
-  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &pipe_client, 0));
-  ASSERT_EQ(0, uv_pipe_connect2(&connect_req,
-                                &pipe_client,
-                                name,
-                                sizeof(name),
-                                0,
-                                pipe_client_connect_cb));
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_listen((uv_stream_t*) &pipe_server,
+                      0,
+                      pipe_server_connection_cb));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_client, 0));
+  ASSERT_OK(uv_pipe_connect2(&connect_req,
+                             &pipe_client,
+                             name,
+                             sizeof(name),
+                             0,
+                             pipe_client_connect_cb));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(1, pipe_client_connect_cb_called);
   ASSERT_EQ(2, pipe_close_cb_called);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 #else
   /* On other platforms it should simply fail with UV_EINVAL. */
-  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &pipe_server, 0));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_server, 0));
   ASSERT_EQ(UV_EINVAL, uv_pipe_bind2(&pipe_server, name, sizeof(name), 0));
-  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &pipe_client, 0));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_client, 0));
   uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
   ASSERT_EQ(UV_EINVAL, uv_pipe_connect2(&connect_req,
                                         &pipe_client,
@@ -202,7 +202,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
                                         0,
                                         (uv_connect_cb) abort));
   uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(2, pipe_close_cb_called);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
