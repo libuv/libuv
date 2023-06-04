@@ -201,7 +201,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
                                         sizeof(name),
                                         0,
                                         (uv_connect_cb) abort));
-  uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
+  uv_close((uv_handle_t*) &pipe_client, pipe_close_cb);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(2, pipe_close_cb_called);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
