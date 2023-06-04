@@ -65,14 +65,15 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (namelen == 0)
     return UV_EINVAL;
 
-  if (namelen > sizeof(saddr.sun_path))
-    return UV_EINVAL;
-
 #ifndef __linux__
   /* Abstract socket namespace only works on Linux. */
   if (*name == '\0')
     return UV_EINVAL;
 #endif
+
+  /* Truncate long paths. Documented behavior. */
+  if (namelen > sizeof(saddr.sun_path))
+    namelen = sizeof(saddr.sun_path);
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
@@ -229,14 +230,15 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (namelen == 0)
     return UV_EINVAL;
 
-  if (namelen > sizeof(saddr.sun_path))
-    return UV_EINVAL;
-
 #ifndef __linux__
   /* Abstract socket namespace only works on Linux. */
   if (*name == '\0')
     return UV_EINVAL;
 #endif
+
+  /* Truncate long paths. Documented behavior. */
+  if (namelen > sizeof(saddr.sun_path))
+    namelen = sizeof(saddr.sun_path);
 
   new_sock = (uv__stream_fd(handle) == -1);
 
