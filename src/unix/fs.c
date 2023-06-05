@@ -2014,7 +2014,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
 
     memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
   } else {
-    req->bufs = (uv_buf_t*)bufs; // Use bufs directly
+    req->bufs = (uv_buf_t*)bufs; /* Use bufs directly */
   }
 
   req->off = off;
@@ -2022,6 +2022,10 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   if (cb != NULL)
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
       return 0;
+  
+  /* Set req->bufs to NULL after the operation completes */
+  if (cb == NULL && req->bufs == (uv_buf_t*)bufs)
+    req->bufs = NULL;
 
   POST;
 }
@@ -2206,7 +2210,7 @@ int uv_fs_write(uv_loop_t* loop,
 
     memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
   } else {
-    req->bufs = (uv_buf_t*)bufs; // Use bufs directly
+    req->bufs = (uv_buf_t*)bufs; /* Use bufs directly */
   }
 
   req->off = off;
@@ -2214,6 +2218,10 @@ int uv_fs_write(uv_loop_t* loop,
   if (cb != NULL)
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
+  
+  /* Set req->bufs to NULL after the operation completes */
+  if (cb == NULL && req->bufs == (uv_buf_t*)bufs)
+    req->bufs = NULL;
 
   POST;
 }
@@ -2242,7 +2250,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
     uv__fs_scandir_cleanup(req);
 
-  if (req->bufs != req->bufsml)
+  if (req->bufs != req->bufsml && req->bufs != NULL)
     uv__free(req->bufs);
   req->bufs = NULL;
 
