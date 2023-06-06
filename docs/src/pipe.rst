@@ -74,6 +74,8 @@ API
     Supports Linux abstract namespace sockets. ``namelen`` must include
     the leading nul byte but not the trailing nul byte.
 
+    .. versionadded:: 1.46.0
+
     .. note::
         Paths on Unix get truncated to ``sizeof(sockaddr_un.sun_path)`` bytes,
         typically between 92 and 108 bytes, unless the ``UV_PIPE_NO_TRUNCATE``
@@ -101,6 +103,8 @@ API
 
     Supports Linux abstract namespace sockets. ``namelen`` must include
     the leading nul byte but not the trailing nul byte.
+
+    .. versionadded:: 1.46.0
 
     .. note::
         Paths on Unix get truncated to ``sizeof(sockaddr_un.sun_path)`` bytes,
