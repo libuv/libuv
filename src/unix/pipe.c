@@ -56,7 +56,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
   pipe_fname = NULL;
 
-  if (flags != 0)
+  if (flags & ~UV_PIPE_NO_TRUNCATE)
     return UV_EINVAL;
 
   if (name == NULL)
@@ -70,6 +70,10 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (*name == '\0')
     return UV_EINVAL;
 #endif
+
+  if (flags & UV_PIPE_NO_TRUNCATE)
+    if (namelen > sizeof(saddr.sun_path))
+      return UV_EINVAL;
 
   /* Truncate long paths. Documented behavior. */
   if (namelen > sizeof(saddr.sun_path))
@@ -221,7 +225,7 @@ int uv_pipe_connect2(uv_connect_t* req,
   int err;
   int r;
 
-  if (flags != 0)
+  if (flags & ~UV_PIPE_NO_TRUNCATE)
     return UV_EINVAL;
 
   if (name == NULL)
@@ -235,6 +239,10 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (*name == '\0')
     return UV_EINVAL;
 #endif
+
+  if (flags & UV_PIPE_NO_TRUNCATE)
+    if (namelen > sizeof(saddr.sun_path))
+      return UV_EINVAL;
 
   /* Truncate long paths. Documented behavior. */
   if (namelen > sizeof(saddr.sun_path))
