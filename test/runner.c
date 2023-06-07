@@ -37,28 +37,14 @@ static int compare_task(const void* va, const void* vb) {
 }
 
 
-const char* fmt(double d) {
-  static char buf[1024];
-  static char* p;
+char* fmt(char (*buf)[32], double d) {
   uint64_t v;
+  char* p;
 
-  if (p == NULL)
-    p = buf;
-
-  p += 31;
-
-  if (p >= buf + sizeof(buf))
-    return "<buffer too small>";
-
+  p = &(*buf)[32];
   v = (uint64_t) d;
 
-#if 0 /* works but we don't care about fractional precision */
-  if (d - v >= 0.01) {
-    *--p = '0' + (uint64_t) (d * 100) % 10;
-    *--p = '0' + (uint64_t) (d * 10) % 10;
-    *--p = '.';
-  }
-#endif
+  *--p = '\0';
 
   if (v == 0)
     *--p = '0';

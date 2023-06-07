@@ -1121,7 +1121,7 @@ TEST_IMPL(tty_set_style) {
     ASSERT(compare_screen(&tty_out, &actual, &expect));
   }
 
-  /* Set foregroud and background color */
+  /* Set foreground and background color */
   ASSERT(ARRAY_SIZE(fg_attrs) == ARRAY_SIZE(bg_attrs));
   length = ARRAY_SIZE(bg_attrs);
   for (i = 0; i < length; i++) {
@@ -1362,7 +1362,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
 
   initialize_tty(&tty_out);
 
-  /* CSI + finaly byte does not output anything */
+  /* CSI + finally byte does not output anything */
   cursor_pos.X = 1;
   cursor_pos.Y = 1;
   set_cursor_position(&tty_out, cursor_pos);
@@ -1375,7 +1375,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
   capture_screen(&tty_out, &actual);
   ASSERT(compare_screen(&tty_out, &actual, &expect));
 
-  /* CSI(C1) + finaly byte does not output anything */
+  /* CSI(C1) + finally byte does not output anything */
   cursor_pos.X = 1;
   cursor_pos.Y = 1;
   set_cursor_position(&tty_out, cursor_pos);
@@ -1388,7 +1388,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
   capture_screen(&tty_out, &actual);
   ASSERT(compare_screen(&tty_out, &actual, &expect));
 
-  /* CSI + intermediate byte + finaly byte does not output anything */
+  /* CSI + intermediate byte + finally byte does not output anything */
   cursor_pos.X = 1;
   cursor_pos.Y = 1;
   set_cursor_position(&tty_out, cursor_pos);
@@ -1401,7 +1401,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
   capture_screen(&tty_out, &actual);
   ASSERT(compare_screen(&tty_out, &actual, &expect));
 
-  /* CSI + parameter byte + finaly byte does not output anything */
+  /* CSI + parameter byte + finally byte does not output anything */
   cursor_pos.X = 1;
   cursor_pos.Y = 1;
   set_cursor_position(&tty_out, cursor_pos);
@@ -1605,7 +1605,7 @@ TEST_IMPL(tty_escape_sequence_processing) {
   capture_screen(&tty_out, &actual);
   ASSERT(compare_screen(&tty_out, &actual, &expect));
 
-  /* Finaly byte immedately after CSI [ are also output(#1874 1.) */
+  /* Finally byte immedately after CSI [ are also output(#1874 1.) */
   cursor_pos.X = expect.si.width / 2;
   cursor_pos.Y = expect.si.height / 2;
   set_cursor_position(&tty_out, cursor_pos);

@@ -12,6 +12,12 @@ otherwise it will be performed asynchronously.
 All file operations are run on the threadpool. See :ref:`threadpool` for information
 on the threadpool size.
 
+Starting with libuv v1.45.0, some file operations on Linux are handed off to
+`io_uring <https://en.wikipedia.org/wiki/Io_uring>` when possible. Apart from
+a (sometimes significant) increase in throughput there should be no change in
+observable behavior. Libuv reverts to using its threadpool when the necessary
+kernel features are unavailable or unsuitable.
+
 .. note::
      On Windows `uv_fs_*` functions use utf-8 encoding.
 
@@ -24,7 +30,8 @@ Data types
 
 .. c:type:: uv_timespec_t
 
-    Portable equivalent of ``struct timespec``.
+    Y2K38-unsafe data type for storing times with nanosecond resolution.
+    Will be replaced with :c:type:`uv_timespec64_t` in libuv v2.0.
 
     ::
 

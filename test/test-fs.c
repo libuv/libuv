@@ -662,6 +662,15 @@ static void stat_cb(uv_fs_t* req) {
   ASSERT(!req->ptr);
 }
 
+static void stat_batch_cb(uv_fs_t* req) {
+  ASSERT(req->fs_type == UV_FS_STAT || req->fs_type == UV_FS_LSTAT);
+  ASSERT(req->result == 0);
+  ASSERT(req->ptr);
+  stat_cb_count++;
+  uv_fs_req_cleanup(req);
+  ASSERT(!req->ptr);
+}
+
 
 static void sendfile_cb(uv_fs_t* req) {
   ASSERT(req == &sendfile_req);
@@ -1564,7 +1573,7 @@ TEST_IMPL(fs_fstat_stdio) {
     switch (ft) {
     case UV_TTY:
     case UV_NAMED_PIPE:
-      ASSERT(st->st_mode == ft == UV_TTY ? S_IFCHR : S_IFIFO);
+      ASSERT(st->st_mode == (ft == UV_TTY ? S_IFCHR : S_IFIFO));
       ASSERT(st->st_nlink == 1);
       ASSERT(st->st_rdev == (ft == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16);
       break;
@@ -4540,3 +4549,80 @@ TEST_IMPL(fs_get_system_error) {
 
   return 0;
 }
+
+
+TEST_IMPL(fs_stat_batch_multiple) {
+  uv_fs_t req[300];
+  int r;
+  int i;
+
+  rmdir("test_dir");
+
+  r = uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0755, NULL);
+  ASSERT_EQ(r, 0);
+
+  loop = uv_default_loop();
+
+  for (i = 0; i < (int) ARRAY_SIZE(req); ++i) {
+    r = uv_fs_stat(loop, &req[i], "test_dir", stat_batch_cb);
+    ASSERT_EQ(r, 0);
+  }
+
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(stat_cb_count, ARRAY_SIZE(req));
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+#ifdef _WIN32
+TEST_IMPL(fs_wtf) {
+  int r;
+  HANDLE file_handle;
+  uv_dirent_t dent;
+  static char test_file_buf[PATHMAX];
+
+  /* set-up */
+  _wunlink(L"test_dir/hi\xD801\x0037");
+  rmdir("test_dir");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0777, NULL);
+  ASSERT_EQ(r, 0);
+  uv_fs_req_cleanup(&mkdir_req);
+
+  file_handle = CreateFileW(L"test_dir/hi\xD801\x0037",
+                            GENERIC_WRITE | FILE_WRITE_ATTRIBUTES,
+                            0,
+                            NULL,
+                            CREATE_ALWAYS,
+                            FILE_FLAG_OPEN_REPARSE_POINT |
+                              FILE_FLAG_BACKUP_SEMANTICS,
+                            NULL);
+  ASSERT(file_handle != INVALID_HANDLE_VALUE);
+
+  CloseHandle(file_handle);
+
+  r = uv_fs_scandir(NULL, &scandir_req, "test_dir", 0, NULL);
+  ASSERT_EQ(r, 1);
+  ASSERT_EQ(scandir_req.result, 1);
+  ASSERT_NOT_NULL(scandir_req.ptr);
+  while (UV_EOF != uv_fs_scandir_next(&scandir_req, &dent)) {
+    snprintf(test_file_buf, sizeof(test_file_buf), "test_dir\\%s", dent.name);
+    printf("stat %s\n", test_file_buf);
+    r = uv_fs_stat(NULL, &stat_req, test_file_buf, NULL);
+    ASSERT_EQ(r, 0);
+  }
+  uv_fs_req_cleanup(&scandir_req);
+  ASSERT_NULL(scandir_req.ptr);
+
+  /* clean-up */
+  _wunlink(L"test_dir/hi\xD801\x0037");
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+#endif

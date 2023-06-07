@@ -60,7 +60,7 @@ int uv__kqueue_init(uv_loop_t* loop) {
 
 
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-static int uv__has_forked_with_cfrunloop;
+static _Atomic int uv__has_forked_with_cfrunloop;
 #endif
 
 int uv__io_fork(uv_loop_t* loop) {
@@ -82,7 +82,9 @@ int uv__io_fork(uv_loop_t* loop) {
        process. So we sidestep the issue by pretending like we never
        started it in the first place.
     */
-    uv__store_relaxed(&uv__has_forked_with_cfrunloop, 1);
+    atomic_store_explicit(&uv__has_forked_with_cfrunloop,
+                          1,
+                          memory_order_relaxed);
     uv__free(loop->cf_state);
     loop->cf_state = NULL;
   }
@@ -125,12 +127,13 @@ static void uv__kqueue_delete(int kqfd, const struct kevent *ev) {
 
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
+  uv__loop_internal_fields_t* lfields;
   struct kevent events[1024];
   struct kevent* ev;
   struct timespec spec;
   unsigned int nevents;
   unsigned int revents;
-  QUEUE* q;
+  struct uv__queue* q;
   uv__io_t* w;
   uv_process_t* process;
   sigset_t* pset;
@@ -149,18 +152,19 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int reset_timeout;
 
   if (loop->nfds == 0) {
-    assert(QUEUE_EMPTY(&loop->watcher_queue));
+    assert(uv__queue_empty(&loop->watcher_queue));
     return;
   }
 
+  lfields = uv__get_internal_fields(loop);
   nevents = 0;
 
-  while (!QUEUE_EMPTY(&loop->watcher_queue)) {
-    q = QUEUE_HEAD(&loop->watcher_queue);
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);
+  while (!uv__queue_empty(&loop->watcher_queue)) {
+    q = uv__queue_head(&loop->watcher_queue);
+    uv__queue_remove(q);
+    uv__queue_init(q);
 
-    w = QUEUE_DATA(q, uv__io_t, watcher_queue);
+    w = uv__queue_data(q, uv__io_t, watcher_queue);
     assert(w->pevents != 0);
     assert(w->fd >= 0);
     assert(w->fd < (int) loop->nwatchers);
@@ -220,7 +224,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
 
-  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+  if (lfields->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -242,6 +246,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (pset != NULL)
       pthread_sigmask(SIG_BLOCK, pset, NULL);
+
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
+     */
+    lfields->current_timeout = timeout;
 
     nfds = kevent(loop->backend_fd,
                   events,
@@ -297,8 +307,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       /* Handle kevent NOTE_EXIT results */
       if (ev->filter == EVFILT_PROC) {
-        QUEUE_FOREACH(q, &loop->process_handles) {
-          process = QUEUE_DATA(q, uv_process_t, queue);
+        uv__queue_foreach(q, &loop->process_handles) {
+          process = uv__queue_data(q, uv_process_t, queue);
           if (process->pid == fd) {
             process->flags |= UV_HANDLE_REAP;
             loop->flags |= UV_LOOP_REAP_CHILDREN;
@@ -530,7 +540,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (!(statbuf.st_mode & S_IFDIR))
     goto fallback;
 
-  if (0 == uv__load_relaxed(&uv__has_forked_with_cfrunloop)) {
+  if (0 == atomic_load_explicit(&uv__has_forked_with_cfrunloop,
+                                memory_order_relaxed)) {
     int r;
     /* The fallback fd is no longer needed */
     uv__close_nocheckstdio(fd);
@@ -565,7 +576,8 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   uv__handle_stop(handle);
 
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-  if (0 == uv__load_relaxed(&uv__has_forked_with_cfrunloop))
+  if (0 == atomic_load_explicit(&uv__has_forked_with_cfrunloop,
+                                memory_order_relaxed))
     if (handle->cf_cb != NULL)
       r = uv__fsevents_close(handle);
 #endif
