@@ -72,7 +72,7 @@ TEST_IMPL(pipe_connect_bad_name) {
   ASSERT_EQ(close_cb_called, 1);
   ASSERT_EQ(connect_cb_called, 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -92,6 +92,6 @@ TEST_IMPL(pipe_connect_to_file) {
   ASSERT_EQ(close_cb_called, 1);
   ASSERT_EQ(connect_cb_called, 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

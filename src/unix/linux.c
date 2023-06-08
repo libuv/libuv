@@ -27,6 +27,8 @@
 #include "internal.h"
 
 #include <inttypes.h>
+#include <stdatomic.h>
+#include <stddef.h>  /* offsetof */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,22 +40,28 @@
 #include <net/if.h>
 #include <sys/epoll.h>
 #include <sys/inotify.h>
+#include <sys/mman.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/sysinfo.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
-#if defined(__arm__)
-# if defined(__thumb__) || defined(__ARM_EABI__)
-#  define UV_SYSCALL_BASE 0
-# else
-#  define UV_SYSCALL_BASE 0x900000
-# endif
-#endif /* __arm__ */
+#ifndef __NR_io_uring_setup
+# define __NR_io_uring_setup 425
+#endif
+
+#ifndef __NR_io_uring_enter
+# define __NR_io_uring_enter 426
+#endif
+
+#ifndef __NR_io_uring_register
+# define __NR_io_uring_register 427
+#endif
 
 #ifndef __NR_copy_file_range
 # if defined(__x86_64__)
@@ -63,7 +71,7 @@
 # elif defined(__s390__)
 #  define __NR_copy_file_range 375
 # elif defined(__arm__)
-#  define __NR_copy_file_range (UV_SYSCALL_BASE + 391)
+#  define __NR_copy_file_range 391
 # elif defined(__aarch64__)
 #  define __NR_copy_file_range 285
 # elif defined(__powerpc__)
@@ -81,7 +89,7 @@
 # elif defined(__aarch64__)
 #  define __NR_statx 397
 # elif defined(__arm__)
-#  define __NR_statx (UV_SYSCALL_BASE + 397)
+#  define __NR_statx 397
 # elif defined(__ppc__)
 #  define __NR_statx 383
 # elif defined(__s390__)
@@ -97,7 +105,7 @@
 # elif defined(__aarch64__)
 #  define __NR_getrandom 384
 # elif defined(__arm__)
-#  define __NR_getrandom (UV_SYSCALL_BASE + 384)
+#  define __NR_getrandom 384
 # elif defined(__ppc__)
 #  define __NR_getrandom 359
 # elif defined(__s390__)
@@ -124,11 +132,141 @@
 # include <netpacket/packet.h>
 #endif /* HAVE_IFADDRS_H */
 
-#define CAST(p) ((struct watcher_root*)(p))
+enum {
+  UV__IORING_SETUP_SQPOLL = 2u,
+};
+
+enum {
+  UV__IORING_FEAT_SINGLE_MMAP = 1u,
+  UV__IORING_FEAT_NODROP = 2u,
+  UV__IORING_FEAT_RSRC_TAGS = 1024u,  /* linux v5.13 */
+};
+
+enum {
+  UV__IORING_OP_READV = 1,
+  UV__IORING_OP_WRITEV = 2,
+  UV__IORING_OP_FSYNC = 3,
+  UV__IORING_OP_OPENAT = 18,
+  UV__IORING_OP_CLOSE = 19,
+  UV__IORING_OP_STATX = 21,
+  UV__IORING_OP_EPOLL_CTL = 29,
+  UV__IORING_OP_RENAMEAT = 35,
+  UV__IORING_OP_UNLINKAT = 36,
+  UV__IORING_OP_MKDIRAT = 37,
+  UV__IORING_OP_SYMLINKAT = 38,
+  UV__IORING_OP_LINKAT = 39,
+};
+
+enum {
+  UV__IORING_ENTER_GETEVENTS = 1u,
+  UV__IORING_ENTER_SQ_WAKEUP = 2u,
+};
+
+enum {
+  UV__IORING_SQ_NEED_WAKEUP = 1u,
+  UV__IORING_SQ_CQ_OVERFLOW = 2u,
+};
+
+enum {
+  UV__MKDIRAT_SYMLINKAT_LINKAT = 1u,
+};
+
+struct uv__io_cqring_offsets {
+  uint32_t head;
+  uint32_t tail;
+  uint32_t ring_mask;
+  uint32_t ring_entries;
+  uint32_t overflow;
+  uint32_t cqes;
+  uint64_t reserved0;
+  uint64_t reserved1;
+};
+
+STATIC_ASSERT(40 == sizeof(struct uv__io_cqring_offsets));
+
+struct uv__io_sqring_offsets {
+  uint32_t head;
+  uint32_t tail;
+  uint32_t ring_mask;
+  uint32_t ring_entries;
+  uint32_t flags;
+  uint32_t dropped;
+  uint32_t array;
+  uint32_t reserved0;
+  uint64_t reserved1;
+};
+
+STATIC_ASSERT(40 == sizeof(struct uv__io_sqring_offsets));
+
+struct uv__io_uring_cqe {
+  uint64_t user_data;
+  int32_t res;
+  uint32_t flags;
+};
+
+STATIC_ASSERT(16 == sizeof(struct uv__io_uring_cqe));
+
+struct uv__io_uring_sqe {
+  uint8_t opcode;
+  uint8_t flags;
+  uint16_t ioprio;
+  int32_t fd;
+  union {
+    uint64_t off;
+    uint64_t addr2;
+  };
+  union {
+    uint64_t addr;
+  };
+  uint32_t len;
+  union {
+    uint32_t rw_flags;
+    uint32_t fsync_flags;
+    uint32_t open_flags;
+    uint32_t statx_flags;
+  };
+  uint64_t user_data;
+  union {
+    uint16_t buf_index;
+    uint64_t pad[3];
+  };
+};
+
+STATIC_ASSERT(64 == sizeof(struct uv__io_uring_sqe));
+STATIC_ASSERT(0 == offsetof(struct uv__io_uring_sqe, opcode));
+STATIC_ASSERT(1 == offsetof(struct uv__io_uring_sqe, flags));
+STATIC_ASSERT(2 == offsetof(struct uv__io_uring_sqe, ioprio));
+STATIC_ASSERT(4 == offsetof(struct uv__io_uring_sqe, fd));
+STATIC_ASSERT(8 == offsetof(struct uv__io_uring_sqe, off));
+STATIC_ASSERT(16 == offsetof(struct uv__io_uring_sqe, addr));
+STATIC_ASSERT(24 == offsetof(struct uv__io_uring_sqe, len));
+STATIC_ASSERT(28 == offsetof(struct uv__io_uring_sqe, rw_flags));
+STATIC_ASSERT(32 == offsetof(struct uv__io_uring_sqe, user_data));
+STATIC_ASSERT(40 == offsetof(struct uv__io_uring_sqe, buf_index));
+
+struct uv__io_uring_params {
+  uint32_t sq_entries;
+  uint32_t cq_entries;
+  uint32_t flags;
+  uint32_t sq_thread_cpu;
+  uint32_t sq_thread_idle;
+  uint32_t features;
+  uint32_t reserved[4];
+  struct uv__io_sqring_offsets sq_off;  /* 40 bytes */
+  struct uv__io_cqring_offsets cq_off;  /* 40 bytes */
+};
+
+STATIC_ASSERT(40 + 40 + 40 == sizeof(struct uv__io_uring_params));
+STATIC_ASSERT(40 == offsetof(struct uv__io_uring_params, sq_off));
+STATIC_ASSERT(80 == offsetof(struct uv__io_uring_params, cq_off));
+
+STATIC_ASSERT(EPOLL_CTL_ADD < 4);
+STATIC_ASSERT(EPOLL_CTL_DEL < 4);
+STATIC_ASSERT(EPOLL_CTL_MOD < 4);
 
 struct watcher_list {
   RB_ENTRY(watcher_list) entry;
-  QUEUE watchers;
+  struct uv__queue watchers;
   int iterating;
   char* path;
   int wd;
@@ -138,6 +276,7 @@ struct watcher_root {
   struct watcher_list* rbh_root;
 };
 
+static int uv__inotify_fork(uv_loop_t* loop, struct watcher_list* root);
 static void uv__inotify_read(uv_loop_t* loop,
                              uv__io_t* w,
                              unsigned int revents);
@@ -146,7 +285,28 @@ static int compare_watchers(const struct watcher_list* a,
 static void maybe_free_watcher_list(struct watcher_list* w,
                                     uv_loop_t* loop);
 
+static void uv__epoll_ctl_flush(int epollfd,
+                                struct uv__iou* ctl,
+                                struct epoll_event (*events)[256]);
+
+static void uv__epoll_ctl_prep(int epollfd,
+                               struct uv__iou* ctl,
+                               struct epoll_event (*events)[256],
+                               int op,
+                               int fd,
+                               struct epoll_event* e);
+
 RB_GENERATE_STATIC(watcher_root, watcher_list, entry, compare_watchers)
+
+
+static struct watcher_root* uv__inotify_watchers(uv_loop_t* loop) {
+  /* This cast works because watcher_root is a struct with a pointer as its
+   * sole member. Such type punning is unsafe in the presence of strict
+   * pointer aliasing (and is just plain nasty) but that is why libuv
+   * is compiled with -fno-strict-aliasing.
+   */
+  return (struct watcher_root*) &loop->inotify_watchers;
+}
 
 
 ssize_t
@@ -205,7 +365,195 @@ ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags) {
 }
 
 
+int uv__io_uring_setup(int entries, struct uv__io_uring_params* params) {
+  return syscall(__NR_io_uring_setup, entries, params);
+}
+
+
+int uv__io_uring_enter(int fd,
+                       unsigned to_submit,
+                       unsigned min_complete,
+                       unsigned flags) {
+  /* io_uring_enter used to take a sigset_t but it's unused
+   * in newer kernels unless IORING_ENTER_EXT_ARG is set,
+   * in which case it takes a struct io_uring_getevents_arg.
+   */
+  return syscall(__NR_io_uring_enter,
+                 fd,
+                 to_submit,
+                 min_complete,
+                 flags,
+                 NULL,
+                 0L);
+}
+
+
+int uv__io_uring_register(int fd, unsigned opcode, void* arg, unsigned nargs) {
+  return syscall(__NR_io_uring_register, fd, opcode, arg, nargs);
+}
+
+
+static int uv__use_io_uring(void) {
+#if defined(__ANDROID_API__)
+  return 0;  /* Possibly available but blocked by seccomp. */
+#else
+  /* Ternary: unknown=0, yes=1, no=-1 */
+  static _Atomic int use_io_uring;
+  char* val;
+  int use;
+
+  use = atomic_load_explicit(&use_io_uring, memory_order_relaxed);
+
+  if (use == 0) {
+    val = getenv("UV_USE_IO_URING");
+    use = val == NULL || atoi(val) ? 1 : -1;
+    atomic_store_explicit(&use_io_uring, use, memory_order_relaxed);
+  }
+
+  return use > 0;
+#endif
+}
+
+
+static void uv__iou_init(int epollfd,
+                         struct uv__iou* iou,
+                         uint32_t entries,
+                         uint32_t flags) {
+  struct uv__io_uring_params params;
+  struct epoll_event e;
+  size_t cqlen;
+  size_t sqlen;
+  size_t maxlen;
+  size_t sqelen;
+  uint32_t i;
+  char* sq;
+  char* sqe;
+  int ringfd;
+
+  sq = MAP_FAILED;
+  sqe = MAP_FAILED;
+
+  if (!uv__use_io_uring())
+    return;
+
+  /* SQPOLL required CAP_SYS_NICE until linux v5.12 relaxed that requirement.
+   * Mostly academic because we check for a v5.13 kernel afterwards anyway.
+   */
+  memset(&params, 0, sizeof(params));
+  params.flags = flags;
+
+  if (flags & UV__IORING_SETUP_SQPOLL)
+    params.sq_thread_idle = 10;  /* milliseconds */
+
+  /* Kernel returns a file descriptor with O_CLOEXEC flag set. */
+  ringfd = uv__io_uring_setup(entries, &params);
+  if (ringfd == -1)
+    return;
+
+  /* IORING_FEAT_RSRC_TAGS is used to detect linux v5.13 but what we're
+   * actually detecting is whether IORING_OP_STATX works with SQPOLL.
+   */
+  if (!(params.features & UV__IORING_FEAT_RSRC_TAGS))
+    goto fail;
+
+  /* Implied by IORING_FEAT_RSRC_TAGS but checked explicitly anyway. */
+  if (!(params.features & UV__IORING_FEAT_SINGLE_MMAP))
+    goto fail;
+
+  /* Implied by IORING_FEAT_RSRC_TAGS but checked explicitly anyway. */
+  if (!(params.features & UV__IORING_FEAT_NODROP))
+    goto fail;
+
+  sqlen = params.sq_off.array + params.sq_entries * sizeof(uint32_t);
+  cqlen =
+      params.cq_off.cqes + params.cq_entries * sizeof(struct uv__io_uring_cqe);
+  maxlen = sqlen < cqlen ? cqlen : sqlen;
+  sqelen = params.sq_entries * sizeof(struct uv__io_uring_sqe);
+
+  sq = mmap(0,
+            maxlen,
+            PROT_READ | PROT_WRITE,
+            MAP_SHARED | MAP_POPULATE,
+            ringfd,
+            0);  /* IORING_OFF_SQ_RING */
+
+  sqe = mmap(0,
+             sqelen,
+             PROT_READ | PROT_WRITE,
+             MAP_SHARED | MAP_POPULATE,
+             ringfd,
+             0x10000000ull);  /* IORING_OFF_SQES */
+
+  if (sq == MAP_FAILED || sqe == MAP_FAILED)
+    goto fail;
+
+  if (flags & UV__IORING_SETUP_SQPOLL) {
+    /* Only interested in completion events. To get notified when
+     * the kernel pulls items from the submission ring, add POLLOUT.
+     */
+    memset(&e, 0, sizeof(e));
+    e.events = POLLIN;
+    e.data.fd = ringfd;
+
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ringfd, &e))
+      goto fail;
+  }
+
+  iou->sqhead = (uint32_t*) (sq + params.sq_off.head);
+  iou->sqtail = (uint32_t*) (sq + params.sq_off.tail);
+  iou->sqmask = *(uint32_t*) (sq + params.sq_off.ring_mask);
+  iou->sqarray = (uint32_t*) (sq + params.sq_off.array);
+  iou->sqflags = (uint32_t*) (sq + params.sq_off.flags);
+  iou->cqhead = (uint32_t*) (sq + params.cq_off.head);
+  iou->cqtail = (uint32_t*) (sq + params.cq_off.tail);
+  iou->cqmask = *(uint32_t*) (sq + params.cq_off.ring_mask);
+  iou->sq = sq;
+  iou->cqe = sq + params.cq_off.cqes;
+  iou->sqe = sqe;
+  iou->sqlen = sqlen;
+  iou->cqlen = cqlen;
+  iou->maxlen = maxlen;
+  iou->sqelen = sqelen;
+  iou->ringfd = ringfd;
+  iou->in_flight = 0;
+  iou->flags = 0;
+
+  if (uv__kernel_version() >= /* 5.15.0 */ 0x050F00)
+    iou->flags |= UV__MKDIRAT_SYMLINKAT_LINKAT;
+
+  for (i = 0; i <= iou->sqmask; i++)
+    iou->sqarray[i] = i;  /* Slot -> sqe identity mapping. */
+
+  return;
+
+fail:
+  if (sq != MAP_FAILED)
+    munmap(sq, maxlen);
+
+  if (sqe != MAP_FAILED)
+    munmap(sqe, sqelen);
+
+  uv__close(ringfd);
+}
+
+
+static void uv__iou_delete(struct uv__iou* iou) {
+  if (iou->ringfd != -1) {
+    munmap(iou->sq, iou->maxlen);
+    munmap(iou->sqe, iou->sqelen);
+    uv__close(iou->ringfd);
+    iou->ringfd = -1;
+  }
+}
+
+
 int uv__platform_loop_init(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lfields;
+
+  lfields = uv__get_internal_fields(loop);
+  lfields->ctl.ringfd = -1;
+  lfields->iou.ringfd = -1;
+
   loop->inotify_watchers = NULL;
   loop->inotify_fd = -1;
   loop->backend_fd = epoll_create1(O_CLOEXEC);
@@ -213,65 +561,90 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   if (loop->backend_fd == -1)
     return UV__ERR(errno);
 
+  uv__iou_init(loop->backend_fd, &lfields->iou, 64, UV__IORING_SETUP_SQPOLL);
+  uv__iou_init(loop->backend_fd, &lfields->ctl, 256, 0);
+
   return 0;
 }
 
 
 int uv__io_fork(uv_loop_t* loop) {
   int err;
-  void* old_watchers;
+  struct watcher_list* root;
 
-  old_watchers = loop->inotify_watchers;
+  root = uv__inotify_watchers(loop)->rbh_root;
 
   uv__close(loop->backend_fd);
   loop->backend_fd = -1;
+
+  /* TODO(bnoordhuis) Loses items from the submission and completion rings. */
   uv__platform_loop_delete(loop);
 
   err = uv__platform_loop_init(loop);
   if (err)
     return err;
 
-  return uv__inotify_fork(loop, old_watchers);
+  return uv__inotify_fork(loop, root);
 }
 
 
 void uv__platform_loop_delete(uv_loop_t* loop) {
-  if (loop->inotify_fd == -1) return;
-  uv__io_stop(loop, &loop->inotify_read_watcher, POLLIN);
-  uv__close(loop->inotify_fd);
-  loop->inotify_fd = -1;
+  uv__loop_internal_fields_t* lfields;
+
+  lfields = uv__get_internal_fields(loop);
+  uv__iou_delete(&lfields->ctl);
+  uv__iou_delete(&lfields->iou);
+
+  if (loop->inotify_fd != -1) {
+    uv__io_stop(loop, &loop->inotify_read_watcher, POLLIN);
+    uv__close(loop->inotify_fd);
+    loop->inotify_fd = -1;
+  }
 }
 
 
-void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
+struct uv__invalidate {
+  struct epoll_event (*prep)[256];
   struct epoll_event* events;
+  int nfds;
+};
+
+
+void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
+  uv__loop_internal_fields_t* lfields;
+  struct uv__invalidate* inv;
   struct epoll_event dummy;
-  uintptr_t i;
-  uintptr_t nfds;
+  int i;
 
-  assert(loop->watchers != NULL);
-  assert(fd >= 0);
+  lfields = uv__get_internal_fields(loop);
+  inv = lfields->inv;
 
-  events = (struct epoll_event*) loop->watchers[loop->nwatchers];
-  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
-  if (events != NULL)
-    /* Invalidate events with same file descriptor */
-    for (i = 0; i < nfds; i++)
-      if (events[i].data.fd == fd)
-        events[i].data.fd = -1;
+  /* Invalidate events with same file descriptor */
+  if (inv != NULL)
+    for (i = 0; i < inv->nfds; i++)
+      if (inv->events[i].data.fd == fd)
+        inv->events[i].data.fd = -1;
 
   /* Remove the file descriptor from the epoll.
    * This avoids a problem where the same file description remains open
    * in another process, causing repeated junk epoll events.
    *
    * We pass in a dummy epoll_event, to work around a bug in old kernels.
+   *
+   * Work around a bug in kernels 3.10 to 3.19 where passing a struct that
+   * has the EPOLLWAKEUP flag set generates spurious audit syslog warnings.
    */
-  if (loop->backend_fd >= 0) {
-    /* Work around a bug in kernels 3.10 to 3.19 where passing a struct that
-     * has the EPOLLWAKEUP flag set generates spurious audit syslog warnings.
-     */
-    memset(&dummy, 0, sizeof(dummy));
+  memset(&dummy, 0, sizeof(dummy));
+
+  if (inv == NULL) {
     epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
+  } else {
+    uv__epoll_ctl_prep(loop->backend_fd,
+                       &lfields->ctl,
+                       inv->prep,
+                       EPOLL_CTL_DEL,
+                       fd,
+                       &dummy);
   }
 }
 
@@ -297,31 +670,573 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
-  /* A bug in kernels < 2.6.37 makes timeouts larger than ~30 minutes
-   * effectively infinite on 32 bits architectures.  To avoid blocking
-   * indefinitely, we cap the timeout and poll again if necessary.
-   *
-   * Note that "30 minutes" is a simplification because it depends on
-   * the value of CONFIG_HZ.  The magic constant assumes CONFIG_HZ=1200,
-   * that being the largest value I have seen in the wild (and only once.)
+/* Caller must initialize SQE and call uv__iou_submit(). */
+static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
+                                                uv_loop_t* loop,
+                                                uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  uint32_t head;
+  uint32_t tail;
+  uint32_t mask;
+  uint32_t slot;
+
+  if (iou->ringfd == -1)
+    return NULL;
+
+  head = atomic_load_explicit((_Atomic uint32_t*) iou->sqhead,
+                              memory_order_acquire);
+  tail = *iou->sqtail;
+  mask = iou->sqmask;
+
+  if ((head & mask) == ((tail + 1) & mask))
+    return NULL;  /* No room in ring buffer. TODO(bnoordhuis) maybe flush it? */
+
+  slot = tail & mask;
+  sqe = iou->sqe;
+  sqe = &sqe[slot];
+  memset(sqe, 0, sizeof(*sqe));
+  sqe->user_data = (uintptr_t) req;
+
+  /* Pacify uv_cancel(). */
+  req->work_req.loop = loop;
+  req->work_req.work = NULL;
+  req->work_req.done = NULL;
+  uv__queue_init(&req->work_req.wq);
+
+  uv__req_register(loop, req);
+  iou->in_flight++;
+
+  return sqe;
+}
+
+
+static void uv__iou_submit(struct uv__iou* iou) {
+  uint32_t flags;
+
+  atomic_store_explicit((_Atomic uint32_t*) iou->sqtail,
+                        *iou->sqtail + 1,
+                        memory_order_release);
+
+  flags = atomic_load_explicit((_Atomic uint32_t*) iou->sqflags,
+                               memory_order_acquire);
+
+  if (flags & UV__IORING_SQ_NEED_WAKEUP)
+    if (uv__io_uring_enter(iou->ringfd, 0, 0, UV__IORING_ENTER_SQ_WAKEUP))
+      if (errno != EOWNERDEAD)  /* Kernel bug. Harmless, ignore. */
+        perror("libuv: io_uring_enter(wakeup)");  /* Can't happen. */
+}
+
+
+int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->fd = req->file;
+  sqe->opcode = UV__IORING_OP_CLOSE;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_fsync_or_fdatasync(uv_loop_t* loop,
+                                  uv_fs_t* req,
+                                  uint32_t fsync_flags) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  /* Little known fact: setting seq->off and seq->len turns
+   * it into an asynchronous sync_file_range() operation.
    */
-  static const int max_safe_timeout = 1789569;
-  static int no_epoll_pwait_cached;
-  static int no_epoll_wait_cached;
-  int no_epoll_pwait;
-  int no_epoll_wait;
+  sqe->fd = req->file;
+  sqe->fsync_flags = fsync_flags;
+  sqe->opcode = UV__IORING_OP_FSYNC;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_link(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  if (!(iou->flags & UV__MKDIRAT_SYMLINKAT_LINKAT))
+    return 0;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->addr2 = (uintptr_t) req->new_path;
+  sqe->len = AT_FDCWD;
+  sqe->opcode = UV__IORING_OP_LINKAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_mkdir(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  if (!(iou->flags & UV__MKDIRAT_SYMLINKAT_LINKAT))
+    return 0;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->len = req->mode;
+  sqe->opcode = UV__IORING_OP_MKDIRAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->len = req->mode;
+  sqe->opcode = UV__IORING_OP_OPENAT;
+  sqe->open_flags = req->flags | O_CLOEXEC;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_rename(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->addr2 = (uintptr_t) req->new_path;
+  sqe->len = AT_FDCWD;
+  sqe->opcode = UV__IORING_OP_RENAMEAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_symlink(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  if (!(iou->flags & UV__MKDIRAT_SYMLINKAT_LINKAT))
+    return 0;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->addr2 = (uintptr_t) req->new_path;
+  sqe->opcode = UV__IORING_OP_SYMLINKAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_unlink(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = AT_FDCWD;
+  sqe->opcode = UV__IORING_OP_UNLINKAT;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_read_or_write(uv_loop_t* loop,
+                             uv_fs_t* req,
+                             int is_read) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  /* If iovcnt is greater than IOV_MAX, cap it to IOV_MAX on reads and fallback
+   * to the threadpool on writes */
+  if (req->nbufs > IOV_MAX) {
+    if (is_read)
+      req->nbufs = IOV_MAX;
+    else
+      return 0;
+  }
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->bufs;
+  sqe->fd = req->file;
+  sqe->len = req->nbufs;
+  sqe->off = req->off < 0 ? -1 : req->off;
+  sqe->opcode = is_read ? UV__IORING_OP_READV : UV__IORING_OP_WRITEV;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+int uv__iou_fs_statx(uv_loop_t* loop,
+                     uv_fs_t* req,
+                     int is_fstat,
+                     int is_lstat) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__statx* statxbuf;
+  struct uv__iou* iou;
+
+  statxbuf = uv__malloc(sizeof(*statxbuf));
+  if (statxbuf == NULL)
+    return 0;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL) {
+    uv__free(statxbuf);
+    return 0;
+  }
+
+  req->ptr = statxbuf;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->addr2 = (uintptr_t) statxbuf;
+  sqe->fd = AT_FDCWD;
+  sqe->len = 0xFFF; /* STATX_BASIC_STATS + STATX_BTIME */
+  sqe->opcode = UV__IORING_OP_STATX;
+
+  if (is_fstat) {
+    sqe->addr = (uintptr_t) "";
+    sqe->fd = req->file;
+    sqe->statx_flags |= 0x1000; /* AT_EMPTY_PATH */
+  }
+
+  if (is_lstat)
+    sqe->statx_flags |= AT_SYMLINK_NOFOLLOW;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
+void uv__statx_to_stat(const struct uv__statx* statxbuf, uv_stat_t* buf) {
+  buf->st_dev = makedev(statxbuf->stx_dev_major, statxbuf->stx_dev_minor);
+  buf->st_mode = statxbuf->stx_mode;
+  buf->st_nlink = statxbuf->stx_nlink;
+  buf->st_uid = statxbuf->stx_uid;
+  buf->st_gid = statxbuf->stx_gid;
+  buf->st_rdev = makedev(statxbuf->stx_rdev_major, statxbuf->stx_rdev_minor);
+  buf->st_ino = statxbuf->stx_ino;
+  buf->st_size = statxbuf->stx_size;
+  buf->st_blksize = statxbuf->stx_blksize;
+  buf->st_blocks = statxbuf->stx_blocks;
+  buf->st_atim.tv_sec = statxbuf->stx_atime.tv_sec;
+  buf->st_atim.tv_nsec = statxbuf->stx_atime.tv_nsec;
+  buf->st_mtim.tv_sec = statxbuf->stx_mtime.tv_sec;
+  buf->st_mtim.tv_nsec = statxbuf->stx_mtime.tv_nsec;
+  buf->st_ctim.tv_sec = statxbuf->stx_ctime.tv_sec;
+  buf->st_ctim.tv_nsec = statxbuf->stx_ctime.tv_nsec;
+  buf->st_birthtim.tv_sec = statxbuf->stx_btime.tv_sec;
+  buf->st_birthtim.tv_nsec = statxbuf->stx_btime.tv_nsec;
+  buf->st_flags = 0;
+  buf->st_gen = 0;
+}
+
+
+static void uv__iou_fs_statx_post(uv_fs_t* req) {
+  struct uv__statx* statxbuf;
+  uv_stat_t* buf;
+
+  buf = &req->statbuf;
+  statxbuf = req->ptr;
+  req->ptr = NULL;
+
+  if (req->result == 0) {
+    uv__msan_unpoison(statxbuf, sizeof(*statxbuf));
+    uv__statx_to_stat(statxbuf, buf);
+    req->ptr = buf;
+  }
+
+  uv__free(statxbuf);
+}
+
+
+static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
+  struct uv__io_uring_cqe* cqe;
+  struct uv__io_uring_cqe* e;
+  uv_fs_t* req;
+  uint32_t head;
+  uint32_t tail;
+  uint32_t mask;
+  uint32_t i;
+  uint32_t flags;
+  int nevents;
+  int rc;
+
+  head = *iou->cqhead;
+  tail = atomic_load_explicit((_Atomic uint32_t*) iou->cqtail,
+                              memory_order_acquire);
+  mask = iou->cqmask;
+  cqe = iou->cqe;
+  nevents = 0;
+
+  for (i = head; i != tail; i++) {
+    e = &cqe[i & mask];
+
+    req = (uv_fs_t*) (uintptr_t) e->user_data;
+    assert(req->type == UV_FS);
+
+    uv__req_unregister(loop, req);
+    iou->in_flight--;
+
+    /* io_uring stores error codes as negative numbers, same as libuv. */
+    req->result = e->res;
+
+    switch (req->fs_type) {
+      case UV_FS_FSTAT:
+      case UV_FS_LSTAT:
+      case UV_FS_STAT:
+        uv__iou_fs_statx_post(req);
+        break;
+      default:  /* Squelch -Wswitch warnings. */
+        break;
+    }
+
+    uv__metrics_update_idle_time(loop);
+    req->cb(req);
+    nevents++;
+  }
+
+  atomic_store_explicit((_Atomic uint32_t*) iou->cqhead,
+                        tail,
+                        memory_order_release);
+
+  /* Check whether CQE's overflowed, if so enter the kernel to make them
+   * available. Don't grab them immediately but in the next loop iteration to
+   * avoid loop starvation. */
+  flags = atomic_load_explicit((_Atomic uint32_t*) iou->sqflags,
+                               memory_order_acquire);
+
+  if (flags & UV__IORING_SQ_CQ_OVERFLOW) {
+    do
+      rc = uv__io_uring_enter(iou->ringfd, 0, 0, UV__IORING_ENTER_GETEVENTS);
+    while (rc == -1 && errno == EINTR);
+
+    if (rc < 0)
+      perror("libuv: io_uring_enter(getevents)");  /* Can't happen. */
+  }
+
+  uv__metrics_inc_events(loop, nevents);
+  if (uv__get_internal_fields(loop)->current_timeout == 0)
+    uv__metrics_inc_events_waiting(loop, nevents);
+}
+
+
+static void uv__epoll_ctl_prep(int epollfd,
+                               struct uv__iou* ctl,
+                               struct epoll_event (*events)[256],
+                               int op,
+                               int fd,
+                               struct epoll_event* e) {
+  struct uv__io_uring_sqe* sqe;
+  struct epoll_event* pe;
+  uint32_t mask;
+  uint32_t slot;
+
+  if (ctl->ringfd == -1) {
+    if (!epoll_ctl(epollfd, op, fd, e))
+      return;
+
+    if (op == EPOLL_CTL_DEL)
+      return;  /* Ignore errors, may be racing with another thread. */
+
+    if (op != EPOLL_CTL_ADD)
+      abort();
+
+    if (errno != EEXIST)
+      abort();
+
+    /* File descriptor that's been watched before, update event mask. */
+    if (!epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, e))
+      return;
+
+    abort();
+  } else {
+    mask = ctl->sqmask;
+    slot = (*ctl->sqtail)++ & mask;
+
+    pe = &(*events)[slot];
+    *pe = *e;
+
+    sqe = ctl->sqe;
+    sqe = &sqe[slot];
+
+    memset(sqe, 0, sizeof(*sqe));
+    sqe->addr = (uintptr_t) pe;
+    sqe->fd = epollfd;
+    sqe->len = op;
+    sqe->off = fd;
+    sqe->opcode = UV__IORING_OP_EPOLL_CTL;
+    sqe->user_data = op | slot << 2 | (int64_t) fd << 32;
+
+    if ((*ctl->sqhead & mask) == (*ctl->sqtail & mask))
+      uv__epoll_ctl_flush(epollfd, ctl, events);
+  }
+}
+
+
+static void uv__epoll_ctl_flush(int epollfd,
+                                struct uv__iou* ctl,
+                                struct epoll_event (*events)[256]) {
+  struct epoll_event oldevents[256];
+  struct uv__io_uring_cqe* cqe;
+  uint32_t oldslot;
+  uint32_t slot;
+  uint32_t n;
+  int fd;
+  int op;
+  int rc;
+
+  STATIC_ASSERT(sizeof(oldevents) == sizeof(*events));
+  assert(ctl->ringfd != -1);
+  assert(*ctl->sqhead != *ctl->sqtail);
+
+  n = *ctl->sqtail - *ctl->sqhead;
+  do
+    rc = uv__io_uring_enter(ctl->ringfd, n, n, UV__IORING_ENTER_GETEVENTS);
+  while (rc == -1 && errno == EINTR);
+
+  if (rc < 0)
+    perror("libuv: io_uring_enter(getevents)");  /* Can't happen. */
+
+  if (rc != (int) n)
+    abort();
+
+  assert(*ctl->sqhead == *ctl->sqtail);
+
+  memcpy(oldevents, *events, sizeof(*events));
+
+  /* Failed submissions are either EPOLL_CTL_DEL commands for file descriptors
+   * that have been closed, or EPOLL_CTL_ADD commands for file descriptors
+   * that we are already watching. Ignore the former and retry the latter
+   * with EPOLL_CTL_MOD.
+   */
+  while (*ctl->cqhead != *ctl->cqtail) {
+    slot = (*ctl->cqhead)++ & ctl->cqmask;
+
+    cqe = ctl->cqe;
+    cqe = &cqe[slot];
+
+    if (cqe->res == 0)
+      continue;
+
+    fd = cqe->user_data >> 32;
+    op = 3 & cqe->user_data;
+    oldslot = 255 & (cqe->user_data >> 2);
+
+    if (op == EPOLL_CTL_DEL)
+      continue;
+
+    if (op != EPOLL_CTL_ADD)
+      abort();
+
+    if (cqe->res != -EEXIST)
+      abort();
+
+    uv__epoll_ctl_prep(epollfd,
+                       ctl,
+                       events,
+                       EPOLL_CTL_MOD,
+                       fd,
+                       &oldevents[oldslot]);
+  }
+}
+
+
+void uv__io_poll(uv_loop_t* loop, int timeout) {
+  uv__loop_internal_fields_t* lfields;
   struct epoll_event events[1024];
+  struct epoll_event prep[256];
+  struct uv__invalidate inv;
   struct epoll_event* pe;
   struct epoll_event e;
+  struct uv__iou* ctl;
+  struct uv__iou* iou;
   int real_timeout;
-  QUEUE* q;
+  struct uv__queue* q;
   uv__io_t* w;
+  sigset_t* sigmask;
   sigset_t sigset;
-  uint64_t sigmask;
   uint64_t base;
+  int have_iou_events;
   int have_signals;
   int nevents;
+  int epollfd;
   int count;
   int nfds;
   int fd;
@@ -330,53 +1245,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int user_timeout;
   int reset_timeout;
 
-  if (loop->nfds == 0) {
-    assert(QUEUE_EMPTY(&loop->watcher_queue));
-    return;
-  }
+  lfields = uv__get_internal_fields(loop);
+  ctl = &lfields->ctl;
+  iou = &lfields->iou;
 
-  memset(&e, 0, sizeof(e));
-
-  while (!QUEUE_EMPTY(&loop->watcher_queue)) {
-    q = QUEUE_HEAD(&loop->watcher_queue);
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);
-
-    w = QUEUE_DATA(q, uv__io_t, watcher_queue);
-    assert(w->pevents != 0);
-    assert(w->fd >= 0);
-    assert(w->fd < (int) loop->nwatchers);
-
-    e.events = w->pevents;
-    e.data.fd = w->fd;
-
-    if (w->events == 0)
-      op = EPOLL_CTL_ADD;
-    else
-      op = EPOLL_CTL_MOD;
-
-    /* XXX Future optimization: do EPOLL_CTL_MOD lazily if we stop watching
-     * events, skip the syscall and squelch the events after epoll_wait().
-     */
-    if (epoll_ctl(loop->backend_fd, op, w->fd, &e)) {
-      if (errno != EEXIST)
-        abort();
-
-      assert(op == EPOLL_CTL_ADD);
-
-      /* We've reactivated a file descriptor that's been watched before. */
-      if (epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, w->fd, &e))
-        abort();
-    }
-
-    w->events = w->pevents;
-  }
-
-  sigmask = 0;
+  sigmask = NULL;
   if (loop->flags & UV_LOOP_BLOCK_SIGPROF) {
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGPROF);
-    sigmask |= 1 << (SIGPROF - 1);
+    sigmask = &sigset;
   }
 
   assert(timeout >= -1);
@@ -384,7 +1261,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
 
-  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+  if (lfields->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -393,56 +1270,56 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     user_timeout = 0;
   }
 
-  /* You could argue there is a dependency between these two but
-   * ultimately we don't care about their ordering with respect
-   * to one another. Worst case, we make a few system calls that
-   * could have been avoided because another thread already knows
-   * they fail with ENOSYS. Hardly the end of the world.
-   */
-  no_epoll_pwait = uv__load_relaxed(&no_epoll_pwait_cached);
-  no_epoll_wait = uv__load_relaxed(&no_epoll_wait_cached);
+  epollfd = loop->backend_fd;
+
+  memset(&e, 0, sizeof(e));
+
+  while (!uv__queue_empty(&loop->watcher_queue)) {
+    q = uv__queue_head(&loop->watcher_queue);
+    w = uv__queue_data(q, uv__io_t, watcher_queue);
+    uv__queue_remove(q);
+    uv__queue_init(q);
+
+    op = EPOLL_CTL_MOD;
+    if (w->events == 0)
+      op = EPOLL_CTL_ADD;
+
+    w->events = w->pevents;
+    e.events = w->pevents;
+    e.data.fd = w->fd;
+
+    uv__epoll_ctl_prep(epollfd, ctl, &prep, op, w->fd, &e);
+  }
+
+  inv.events = events;
+  inv.prep = &prep;
+  inv.nfds = -1;
 
   for (;;) {
+    if (loop->nfds == 0)
+      if (iou->in_flight == 0)
+        break;
+
+    /* All event mask mutations should be visible to the kernel before
+     * we enter epoll_pwait().
+     */
+    if (ctl->ringfd != -1)
+      while (*ctl->sqhead != *ctl->sqtail)
+        uv__epoll_ctl_flush(epollfd, ctl, &prep);
+
     /* Only need to set the provider_entry_time if timeout != 0. The function
      * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
      */
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
 
-    /* See the comment for max_safe_timeout for an explanation of why
-     * this is necessary.  Executive summary: kernel bug workaround.
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
      */
-    if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
-      timeout = max_safe_timeout;
+    lfields->current_timeout = timeout;
 
-    if (sigmask != 0 && no_epoll_pwait != 0)
-      if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
-        abort();
-
-    if (no_epoll_wait != 0 || (sigmask != 0 && no_epoll_pwait == 0)) {
-      nfds = epoll_pwait(loop->backend_fd,
-                         events,
-                         ARRAY_SIZE(events),
-                         timeout,
-                         &sigset);
-      if (nfds == -1 && errno == ENOSYS) {
-        uv__store_relaxed(&no_epoll_pwait_cached, 1);
-        no_epoll_pwait = 1;
-      }
-    } else {
-      nfds = epoll_wait(loop->backend_fd,
-                        events,
-                        ARRAY_SIZE(events),
-                        timeout);
-      if (nfds == -1 && errno == ENOSYS) {
-        uv__store_relaxed(&no_epoll_wait_cached, 1);
-        no_epoll_wait = 1;
-      }
-    }
-
-    if (sigmask != 0 && no_epoll_pwait != 0)
-      if (pthread_sigmask(SIG_UNBLOCK, &sigset, NULL))
-        abort();
+    nfds = epoll_pwait(epollfd, events, ARRAY_SIZE(events), timeout, sigmask);
 
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
@@ -462,7 +1339,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0)
-        return;
+        break;
 
       /* We may have been inside the system call for longer than |timeout|
        * milliseconds so we need to update the timestamp to avoid drift.
@@ -471,12 +1348,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (nfds == -1) {
-      if (errno == ENOSYS) {
-        /* epoll_wait() or epoll_pwait() failed, try the other system call. */
-        assert(no_epoll_wait == 0 || no_epoll_pwait == 0);
-        continue;
-      }
-
       if (errno != EINTR)
         abort();
 
@@ -489,27 +1360,18 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         continue;
 
       if (timeout == 0)
-        return;
+        break;
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
     }
 
+    have_iou_events = 0;
     have_signals = 0;
     nevents = 0;
 
-    {
-      /* Squelch a -Waddress-of-packed-member warning with gcc >= 9. */
-      union {
-        struct epoll_event* events;
-        uv__io_t* watchers;
-      } x;
-
-      x.events = events;
-      assert(loop->watchers != NULL);
-      loop->watchers[loop->nwatchers] = x.watchers;
-      loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
-    }
+    inv.nfds = nfds;
+    lfields->inv = &inv;
 
     for (i = 0; i < nfds; i++) {
       pe = events + i;
@@ -518,6 +1380,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       /* Skip invalidated events, see uv__platform_invalidate_fd */
       if (fd == -1)
         continue;
+
+      if (fd == iou->ringfd) {
+        uv__poll_io_uring(loop, iou);
+        have_iou_events = 1;
+        continue;
+      }
 
       assert(fd >= 0);
       assert((unsigned) fd < loop->nwatchers);
@@ -530,7 +1398,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          * Ignore all errors because we may be racing with another thread
          * when the file descriptor is closed.
          */
-        epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, pe);
+        uv__epoll_ctl_prep(epollfd, ctl, &prep, EPOLL_CTL_DEL, fd, pe);
         continue;
       }
 
@@ -587,11 +1455,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
     }
 
-    loop->watchers[loop->nwatchers] = NULL;
-    loop->watchers[loop->nwatchers + 1] = NULL;
+    lfields->inv = NULL;
+
+    if (have_iou_events != 0)
+      break;  /* Event loop should cycle now so don't poll again. */
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      break;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -599,11 +1469,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = 0;
         continue;
       }
-      return;
+      break;
     }
 
     if (timeout == 0)
-      return;
+      break;
 
     if (timeout == -1)
       continue;
@@ -613,14 +1483,18 @@ update_timeout:
 
     real_timeout -= (loop->time - base);
     if (real_timeout <= 0)
-      return;
+      break;
 
     timeout = real_timeout;
   }
+
+  if (ctl->ringfd != -1)
+    while (*ctl->sqhead != *ctl->sqtail)
+      uv__epoll_ctl_flush(epollfd, ctl, &prep);
 }
 
 uint64_t uv__hrtime(uv_clocktype_t type) {
-  static clock_t fast_clock_id = -1;
+  static _Atomic clock_t fast_clock_id = -1;
   struct timespec t;
   clock_t clock_id;
 
@@ -636,7 +1510,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
   if (type != UV_CLOCK_FAST)
     goto done;
 
-  clock_id = uv__load_relaxed(&fast_clock_id);
+  clock_id = atomic_load_explicit(&fast_clock_id, memory_order_relaxed);
   if (clock_id != -1)
     goto done;
 
@@ -645,7 +1519,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
     if (t.tv_nsec <= 1 * 1000 * 1000)
       clock_id = CLOCK_MONOTONIC_COARSE;
 
-  uv__store_relaxed(&fast_clock_id, clock_id);
+  atomic_store_explicit(&fast_clock_id, clock_id, memory_order_relaxed);
 
 done:
 
@@ -1127,7 +2001,7 @@ static uint64_t uv__read_uint64(const char* filename) {
   if (0 == uv__slurp(filename, buf, sizeof(buf)))
     if (1 != sscanf(buf, "%" PRIu64, &rc))
       if (0 == strcmp(buf, "max\n"))
-        rc = ~0ull;
+        rc = UINT64_MAX;
 
   return rc;
 }
@@ -1163,6 +2037,7 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
   char filename[4097];
   char* p;
   int n;
+  uint64_t cgroup1_max;
 
   /* Find out where the controller is mounted. */
   p = uv__cgroup1_find_memory_controller(buf, &n);
@@ -1179,12 +2054,22 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
      * as indicated by uv__read_uint64 returning 0.
      */
      if (*high != 0 && *max != 0)
-       return;
+       goto update_limits;
   }
 
   /* Fall back to the limits of the global memory controller. */
   *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
   *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+
+  /* uv__read_uint64 detects cgroup2's "max", so we need to separately detect
+   * cgroup1's maximum value (which is derived from LONG_MAX and PAGE_SIZE).
+   */
+update_limits:
+  cgroup1_max = LONG_MAX & ~(sysconf(_SC_PAGESIZE) - 1);
+  if (*high == cgroup1_max)
+    *high = UINT64_MAX;
+  if (*max == cgroup1_max)
+    *max = UINT64_MAX;
 }
 
 static void uv__get_cgroup2_memory_limits(char buf[static 1024], uint64_t* high,
@@ -1342,65 +2227,66 @@ static int init_inotify(uv_loop_t* loop) {
 }
 
 
-int uv__inotify_fork(uv_loop_t* loop, void* old_watchers) {
+static int uv__inotify_fork(uv_loop_t* loop, struct watcher_list* root) {
   /* Open the inotify_fd, and re-arm all the inotify watchers. */
   int err;
   struct watcher_list* tmp_watcher_list_iter;
   struct watcher_list* watcher_list;
   struct watcher_list tmp_watcher_list;
-  QUEUE queue;
-  QUEUE* q;
+  struct uv__queue queue;
+  struct uv__queue* q;
   uv_fs_event_t* handle;
   char* tmp_path;
 
-  if (old_watchers != NULL) {
-    /* We must restore the old watcher list to be able to close items
-     * out of it.
-     */
-    loop->inotify_watchers = old_watchers;
+  if (root == NULL)
+    return 0;
 
-    QUEUE_INIT(&tmp_watcher_list.watchers);
-    /* Note that the queue we use is shared with the start and stop()
-     * functions, making QUEUE_FOREACH unsafe to use. So we use the
-     * QUEUE_MOVE trick to safely iterate. Also don't free the watcher
-     * list until we're done iterating. c.f. uv__inotify_read.
-     */
-    RB_FOREACH_SAFE(watcher_list, watcher_root,
-                    CAST(&old_watchers), tmp_watcher_list_iter) {
-      watcher_list->iterating = 1;
-      QUEUE_MOVE(&watcher_list->watchers, &queue);
-      while (!QUEUE_EMPTY(&queue)) {
-        q = QUEUE_HEAD(&queue);
-        handle = QUEUE_DATA(q, uv_fs_event_t, watchers);
-        /* It's critical to keep a copy of path here, because it
-         * will be set to NULL by stop() and then deallocated by
-         * maybe_free_watcher_list
-         */
-        tmp_path = uv__strdup(handle->path);
-        assert(tmp_path != NULL);
-        QUEUE_REMOVE(q);
-        QUEUE_INSERT_TAIL(&watcher_list->watchers, q);
-        uv_fs_event_stop(handle);
+  /* We must restore the old watcher list to be able to close items
+   * out of it.
+   */
+  loop->inotify_watchers = root;
 
-        QUEUE_INSERT_TAIL(&tmp_watcher_list.watchers, &handle->watchers);
-        handle->path = tmp_path;
-      }
-      watcher_list->iterating = 0;
-      maybe_free_watcher_list(watcher_list, loop);
+  uv__queue_init(&tmp_watcher_list.watchers);
+  /* Note that the queue we use is shared with the start and stop()
+   * functions, making uv__queue_foreach unsafe to use. So we use the
+   * uv__queue_move trick to safely iterate. Also don't free the watcher
+   * list until we're done iterating. c.f. uv__inotify_read.
+   */
+  RB_FOREACH_SAFE(watcher_list, watcher_root,
+                  uv__inotify_watchers(loop), tmp_watcher_list_iter) {
+    watcher_list->iterating = 1;
+    uv__queue_move(&watcher_list->watchers, &queue);
+    while (!uv__queue_empty(&queue)) {
+      q = uv__queue_head(&queue);
+      handle = uv__queue_data(q, uv_fs_event_t, watchers);
+      /* It's critical to keep a copy of path here, because it
+       * will be set to NULL by stop() and then deallocated by
+       * maybe_free_watcher_list
+       */
+      tmp_path = uv__strdup(handle->path);
+      assert(tmp_path != NULL);
+      uv__queue_remove(q);
+      uv__queue_insert_tail(&watcher_list->watchers, q);
+      uv_fs_event_stop(handle);
+
+      uv__queue_insert_tail(&tmp_watcher_list.watchers, &handle->watchers);
+      handle->path = tmp_path;
     }
+    watcher_list->iterating = 0;
+    maybe_free_watcher_list(watcher_list, loop);
+  }
 
-    QUEUE_MOVE(&tmp_watcher_list.watchers, &queue);
-    while (!QUEUE_EMPTY(&queue)) {
-        q = QUEUE_HEAD(&queue);
-        QUEUE_REMOVE(q);
-        handle = QUEUE_DATA(q, uv_fs_event_t, watchers);
-        tmp_path = handle->path;
-        handle->path = NULL;
-        err = uv_fs_event_start(handle, handle->cb, tmp_path, 0);
-        uv__free(tmp_path);
-        if (err)
-          return err;
-    }
+  uv__queue_move(&tmp_watcher_list.watchers, &queue);
+  while (!uv__queue_empty(&queue)) {
+      q = uv__queue_head(&queue);
+      uv__queue_remove(q);
+      handle = uv__queue_data(q, uv_fs_event_t, watchers);
+      tmp_path = handle->path;
+      handle->path = NULL;
+      err = uv_fs_event_start(handle, handle->cb, tmp_path, 0);
+      uv__free(tmp_path);
+      if (err)
+        return err;
   }
 
   return 0;
@@ -1410,15 +2296,15 @@ int uv__inotify_fork(uv_loop_t* loop, void* old_watchers) {
 static struct watcher_list* find_watcher(uv_loop_t* loop, int wd) {
   struct watcher_list w;
   w.wd = wd;
-  return RB_FIND(watcher_root, CAST(&loop->inotify_watchers), &w);
+  return RB_FIND(watcher_root, uv__inotify_watchers(loop), &w);
 }
 
 
 static void maybe_free_watcher_list(struct watcher_list* w, uv_loop_t* loop) {
   /* if the watcher_list->watchers is being iterated over, we can't free it. */
-  if ((!w->iterating) && QUEUE_EMPTY(&w->watchers)) {
+  if ((!w->iterating) && uv__queue_empty(&w->watchers)) {
     /* No watchers left for this path. Clean up. */
-    RB_REMOVE(watcher_root, CAST(&loop->inotify_watchers), w);
+    RB_REMOVE(watcher_root, uv__inotify_watchers(loop), w);
     inotify_rm_watch(loop->inotify_fd, w->wd);
     uv__free(w);
   }
@@ -1431,8 +2317,8 @@ static void uv__inotify_read(uv_loop_t* loop,
   const struct inotify_event* e;
   struct watcher_list* w;
   uv_fs_event_t* h;
-  QUEUE queue;
-  QUEUE* q;
+  struct uv__queue queue;
+  struct uv__queue* q;
   const char* path;
   ssize_t size;
   const char *p;
@@ -1475,7 +2361,7 @@ static void uv__inotify_read(uv_loop_t* loop,
        * What can go wrong?
        * A callback could call uv_fs_event_stop()
        * and the queue can change under our feet.
-       * So, we use QUEUE_MOVE() trick to safely iterate over the queue.
+       * So, we use uv__queue_move() trick to safely iterate over the queue.
        * And we don't free the watcher_list until we're done iterating.
        *
        * First,
@@ -1483,13 +2369,13 @@ static void uv__inotify_read(uv_loop_t* loop,
        * not to free watcher_list.
        */
       w->iterating = 1;
-      QUEUE_MOVE(&w->watchers, &queue);
-      while (!QUEUE_EMPTY(&queue)) {
-        q = QUEUE_HEAD(&queue);
-        h = QUEUE_DATA(q, uv_fs_event_t, watchers);
+      uv__queue_move(&w->watchers, &queue);
+      while (!uv__queue_empty(&queue)) {
+        q = uv__queue_head(&queue);
+        h = uv__queue_data(q, uv_fs_event_t, watchers);
 
-        QUEUE_REMOVE(q);
-        QUEUE_INSERT_TAIL(&w->watchers, q);
+        uv__queue_remove(q);
+        uv__queue_insert_tail(&w->watchers, q);
 
         h->cb(h, path, events, 0);
       }
@@ -1512,6 +2398,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       const char* path,
                       unsigned int flags) {
   struct watcher_list* w;
+  uv_loop_t* loop;
   size_t len;
   int events;
   int err;
@@ -1520,7 +2407,9 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (uv__is_active(handle))
     return UV_EINVAL;
 
-  err = init_inotify(handle->loop);
+  loop = handle->loop;
+
+  err = init_inotify(loop);
   if (err)
     return err;
 
@@ -1533,11 +2422,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
          | IN_MOVED_FROM
          | IN_MOVED_TO;
 
-  wd = inotify_add_watch(handle->loop->inotify_fd, path, events);
+  wd = inotify_add_watch(loop->inotify_fd, path, events);
   if (wd == -1)
     return UV__ERR(errno);
 
-  w = find_watcher(handle->loop, wd);
+  w = find_watcher(loop, wd);
   if (w)
     goto no_insert;
 
@@ -1548,13 +2437,13 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   w->wd = wd;
   w->path = memcpy(w + 1, path, len);
-  QUEUE_INIT(&w->watchers);
+  uv__queue_init(&w->watchers);
   w->iterating = 0;
-  RB_INSERT(watcher_root, CAST(&handle->loop->inotify_watchers), w);
+  RB_INSERT(watcher_root, uv__inotify_watchers(loop), w);
 
 no_insert:
   uv__handle_start(handle);
-  QUEUE_INSERT_TAIL(&w->watchers, &handle->watchers);
+  uv__queue_insert_tail(&w->watchers, &handle->watchers);
   handle->path = w->path;
   handle->cb = cb;
   handle->wd = wd;
@@ -1575,7 +2464,7 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   handle->wd = -1;
   handle->path = NULL;
   uv__handle_stop(handle);
-  QUEUE_REMOVE(&handle->watchers);
+  uv__queue_remove(&handle->watchers);
 
   maybe_free_watcher_list(w, handle->loop);
 

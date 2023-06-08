@@ -38,6 +38,7 @@ libuv_la_SOURCES = src/fs-poll.c \
                    src/random.c \
                    src/strscpy.c \
                    src/strscpy.h \
+                   src/thread-common.c \
                    src/threadpool.c \
                    src/timer.c \
                    src/uv-data-getter-setters.c \
@@ -223,7 +224,6 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-close-stdout-read-stdin.c \
                          test/test-pipe-set-non-blocking.c \
                          test/test-pipe-set-fchmod.c \
-                         test/test-pipe-try-write.c \
                          test/test-platform-output.c \
                          test/test-poll.c \
                          test/test-poll-close.c \
