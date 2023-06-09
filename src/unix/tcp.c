@@ -374,6 +374,12 @@ int uv__tcp_nodelay(int fd, int on) {
 
 
 int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
+  int intvl;
+  int cnt;
+
+  (void) &intvl;
+  (void) &cnt;
+    
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)))
     return UV__ERR(errno);
 
@@ -393,13 +399,13 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
 #endif
 
 #ifdef TCP_KEEPINTVL
-  int intvl = 1;  /*  1 second; same as default on Win32 */
+  intvl = 1;  /*  1 second; same as default on Win32 */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
     return UV__ERR(errno);
 #endif
 
 #ifdef TCP_KEEPCNT
-  int cnt = 10;  /* 10 retries; same as hardcoded on Win32 */
+  cnt = 10;  /* 10 retries; same as hardcoded on Win32 */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
     return UV__ERR(errno);
 #endif
