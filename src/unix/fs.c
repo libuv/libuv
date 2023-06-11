@@ -457,7 +457,7 @@ static ssize_t uv__fs_preadv(uv_file fd,
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
+#if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
   static _Atomic int no_preadv;
 #endif
   unsigned int iovmax;
@@ -481,13 +481,13 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 #if HAVE_PREADV
     result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
-# if defined(__linux__)
+# if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
     if (atomic_load_explicit(&no_preadv, memory_order_relaxed)) retry:
 # endif
     {
       result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
     }
-# if defined(__linux__)
+# if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
     else {
       result = preadv(req->file,
                       (struct iovec*) req->bufs,
@@ -1182,7 +1182,7 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
+#if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
   static int no_pwritev;
 #endif
   ssize_t r;
@@ -1211,13 +1211,13 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
 #if HAVE_PREADV
     r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
-# if defined(__linux__)
+# if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
     if (no_pwritev) retry:
 # endif
     {
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
     }
-# if defined(__linux__)
+# if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
     else {
       r = pwritev(req->file,
                   (struct iovec*) req->bufs,

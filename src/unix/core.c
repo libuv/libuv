@@ -1272,6 +1272,10 @@ static int uv__getpwuid_r(uv_passwd_t *pwd, uid_t uid) {
 
 
 int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
+#if defined(__ANDROID__) && __ANDROID_API__ < 24
+  /* the getgrgid_r was added in Android N */
+  return UV_ENOSYS;
+#else
   struct group gp;
   struct group* result;
   char* buf;
@@ -1348,6 +1352,7 @@ int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
   uv__free(buf);
 
   return 0;
+#endif
 }
 
 
