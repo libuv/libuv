@@ -339,6 +339,9 @@ Error constants
 
     socket type not supported
 
+.. c:macro:: UV__EUNATCH
+
+    protocol driver not attached
 
 API
 ---
