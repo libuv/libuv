@@ -339,7 +339,7 @@ Error constants
 
     socket type not supported
 
-.. c:macro:: UV__EUNATCH
+.. c:macro:: UV_EUNATCH
 
     protocol driver not attached
 
