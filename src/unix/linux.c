@@ -1615,6 +1615,8 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
   static const char model_marker[] = "CPU part\t: ";
 #elif defined(__mips__)
   static const char model_marker[] = "cpu model\t\t: ";
+#elif defined(__loongarch__)
+  static const char model_marker[] = "cpu family\t\t: ";
 #else
   static const char model_marker[] = "model name\t: ";
 #endif
