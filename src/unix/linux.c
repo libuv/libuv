@@ -1681,7 +1681,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     return UV__ERR(errno);
   }
 
-  if (fgets(buf, sizeof(buf), fp)) {
+  if (fgets(buf, sizeof(buf), fp) == NULL) {
     fclose(fp);
     return UV_EINVAL;
   }  /* Skip first line. */
