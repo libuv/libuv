@@ -71,6 +71,7 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAEACCES:                         return UV_EACCES;
     case ERROR_ELEVATION_REQUIRED:          return UV_EACCES;
     case ERROR_CANT_ACCESS_FILE:            return UV_EACCES;
+    case ERROR_ACCESS_DENIED:               return UV_EACCES;
     case ERROR_ADDRESS_ALREADY_ASSOCIATED:  return UV_EADDRINUSE;
     case WSAEADDRINUSE:                     return UV_EADDRINUSE;
     case WSAEADDRNOTAVAIL:                  return UV_EADDRNOTAVAIL;
@@ -152,7 +153,6 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAENOTSOCK:                       return UV_ENOTSOCK;
     case ERROR_NOT_SUPPORTED:               return UV_ENOTSUP;
     case ERROR_BROKEN_PIPE:                 return UV_EOF;
-    case ERROR_ACCESS_DENIED:               return UV_EPERM;
     case ERROR_PRIVILEGE_NOT_HELD:          return UV_EPERM;
     case ERROR_BAD_PIPE:                    return UV_EPIPE;
     case ERROR_NO_DATA:                     return UV_EPIPE;
