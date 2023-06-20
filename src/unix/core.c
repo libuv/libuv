@@ -1593,12 +1593,13 @@ static int set_nice_for_calling_thread(int priority) {
     return UV_EINVAL;
 
   nice = 0 - priority * 2;
-
+#ifdef __linux__
   pid_t pid = gettid();
   r = setpriority(PRIO_PROCESS, pid, nice);
   if (r != 0) {
     return UV__ERR(errno);
   }
+#endif
   return 0;
 }
 
@@ -1658,7 +1659,8 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   }
 
   if (param.sched_priority != prio) {
-    r = pthread_setschedprio(tid, prio);
+    param.sched_priority = prio;
+    r = pthread_setschedparam(tid, policy, &param);
     if (r != 0)
       return UV__ERR(errno);  
   }
