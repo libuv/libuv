@@ -1157,7 +1157,7 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
 #if defined(__linux__)
-  static int no_pwritev;
+  static _Atomic int no_pwritev;
 #endif
   ssize_t r;
 
@@ -1186,7 +1186,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
 # if defined(__linux__)
-    if (no_pwritev) retry:
+    if (atomic_load_explicit(&no_pwritev, memory_order_relaxed)) retry:
 # endif
     {
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
@@ -1198,7 +1198,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
                   req->nbufs,
                   req->off);
       if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
+        atomic_store_explicit(&no_pwritev, 1, memory_order_relaxed);
         goto retry;
       }
     }
