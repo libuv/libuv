@@ -2063,7 +2063,7 @@ INLINE static int fs__fstat_handle(int fd, HANDLE handle, uv_stat_t* statbuf) {
     statbuf->st_mode = file_type == UV_TTY ? _S_IFCHR : _S_IFIFO;
     statbuf->st_nlink = 1;
     statbuf->st_rdev = (file_type == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16;
-    statbuf->st_ino = (uint64_t) handle;
+    statbuf->st_ino = (uintptr_t) handle;
     return 0;
 
   /* If file type is unknown it is an error. */

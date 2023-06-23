@@ -417,6 +417,8 @@ typedef struct {
 # define UV_FS_O_DIRECT       0x04000
 #elif defined(__linux__) && defined(__x86_64__)
 # define UV_FS_O_DIRECT       0x04000
+#elif defined(__linux__) && defined(__loongarch__)
+# define UV_FS_O_DIRECT       0x04000
 #elif defined(O_DIRECT)
 # define UV_FS_O_DIRECT       O_DIRECT
 #else
