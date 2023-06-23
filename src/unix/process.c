@@ -183,6 +183,11 @@ void uv__wait_children(uv_loop_t* loop) {
  * Used for initializing stdio streams like options.stdin_stream. Returns
  * zero on success. See also the cleanup section in uv_spawn().
  */
+#if !(defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH))
+/* execvp is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED, so must be
+ * avoided. Since this isn't called on those targets, the function
+ * doesn't even need to be defined for them.
+ */
 static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int mask;
   int fd;
@@ -269,11 +274,6 @@ static void uv__write_errno(int error_fd) {
 }
 
 
-#if !(defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH))
-/* execvp is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED, so must be
- * avoided. Since this isn't called on those targets, the function
- * doesn't even need to be defined for them.
- */
 static void uv__process_child_init(const uv_process_options_t* options,
                                    int stdio_count,
                                    int (*pipes)[2],
@@ -405,7 +405,6 @@ static void uv__process_child_init(const uv_process_options_t* options,
 
   uv__write_errno(error_fd);
 }
-#endif
 
 
 #if defined(__APPLE__)
@@ -952,6 +951,7 @@ static int uv__spawn_and_init_child(
 
   return err;
 }
+#endif /* ISN'T TARGET_OS_TV || TARGET_OS_WATCH */
 
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
