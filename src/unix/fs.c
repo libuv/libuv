@@ -1997,20 +1997,9 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
       return 0;
 
-  req->bufs = NULL;
+  if (cb == NULL)
+    req->bufs = NULL;
 
-  POST;
-}
-
-
-int uv_fs_scandir(uv_loop_t* loop,
-                  uv_fs_t* req,
-                  const char* path,
-                  int flags,
-                  uv_fs_cb cb) {
-  INIT(SCANDIR);
-  PATH;
-  req->flags = flags;
   POST;
 }
 
@@ -2191,7 +2180,8 @@ int uv_fs_write(uv_loop_t* loop,
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
 
-  req->bufs = NULL; 
+  if (cb == NULL)
+    req->bufs = NULL;
 
   POST;
 }
