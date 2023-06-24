@@ -1977,20 +1977,27 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   req->file = file;
 
   req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
-  if (req->bufs == NULL)
-    return UV_ENOMEM;
+  if (cb != NULL) {
+    req->bufs = req->bufsml;
+    if (nbufs > ARRAY_SIZE(req->bufsml))
+      req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+    if (req->bufs == NULL)
+      return UV_ENOMEM;
+
+    memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+  } else {
+    req->bufs = (uv_buf_t*)bufs;
+  }
 
   req->off = off;
 
   if (cb != NULL)
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
       return 0;
+
+  req->bufs = NULL;
 
   POST;
 }
@@ -2164,20 +2171,27 @@ int uv_fs_write(uv_loop_t* loop,
   req->file = file;
 
   req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
-  if (req->bufs == NULL)
-    return UV_ENOMEM;
+  if (cb != NULL) {
+    req->bufs = req->bufsml;
+    if (nbufs > ARRAY_SIZE(req->bufsml))
+      req->bufs = uv__malloc(nbufs * sizeof(*bufs));
 
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+    if (req->bufs == NULL)
+      return UV_ENOMEM;
+
+    memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+  } else {
+    req->bufs = (uv_buf_t*)bufs;
+  }
 
   req->off = off;
 
   if (cb != NULL)
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
+
+  req->bufs = NULL; 
 
   POST;
 }
