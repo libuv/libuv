@@ -1997,7 +1997,7 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
       return 0;
 
-  if (cb == NULL)
+  if (cb == NULL && req->bufs == (uv_buf_t*)bufs)
     req->bufs = NULL;
 
   POST;
@@ -2180,7 +2180,7 @@ int uv_fs_write(uv_loop_t* loop,
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
 
-  if (cb == NULL)
+  if (cb == NULL && req->bufs == (uv_buf_t*)bufs)
     req->bufs = NULL;
 
   POST;
