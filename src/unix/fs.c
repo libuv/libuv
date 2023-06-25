@@ -503,7 +503,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 
 done:
   /* Early cleanup of bufs allocation, since we're done with it. */
-  if (req->bufs != req->bufsml)
+  if (req->bufs != req->bufsml && req->cb != NULL)
     uv__free(req->bufs);
 
   req->bufs = NULL;
@@ -1629,7 +1629,7 @@ static ssize_t uv__fs_write_all(uv_fs_t* req) {
     total += result;
   }
 
-  if (bufs != req->bufsml)
+  if (bufs != req->bufsml && req->cb != NULL)
     uv__free(bufs);
 
   req->bufs = NULL;
@@ -1975,23 +1975,25 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
     return UV_EINVAL;
 
   req->file = file;
-
-  req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
-
-  if (req->bufs == NULL)
-    return UV_ENOMEM;
-
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
-
   req->off = off;
+  req->nbufs = nbufs;
 
-  if (cb != NULL)
+  if(cb != NULL) {
+    req->bufs = req->bufsml;
+    if (nbufs > ARRAY_SIZE(req->bufsml))
+      req->bufs = uv__malloc(nbufs * sizeof(*bufs));
+
+    if (req->bufs == NULL)
+      return UV_ENOMEM;
+
+    memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
       return 0;
-
+  } else {
+    req->bufs = (uv_buf_t*)bufs;
+  }
+  
   POST;
 }
 
@@ -2163,21 +2165,24 @@ int uv_fs_write(uv_loop_t* loop,
 
   req->file = file;
 
-  req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
-
-  if (req->bufs == NULL)
-    return UV_ENOMEM;
-
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
-
   req->off = off;
+  req->nbufs = nbufs;
 
-  if (cb != NULL)
+  if(cb != NULL) {
+    req->bufs = req->bufsml;
+    if (nbufs > ARRAY_SIZE(req->bufsml))
+      req->bufs = uv__malloc(nbufs * sizeof(*bufs));
+
+    if (req->bufs == NULL)
+      return UV_ENOMEM;
+
+    memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
+	} else {
+		req->bufs = (uv_buf_t*)bufs;
+	}
 
   POST;
 }
@@ -2206,7 +2211,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
     uv__fs_scandir_cleanup(req);
 
-  if (req->bufs != req->bufsml)
+  if (req->bufs != req->bufsml && req->bufs != NULL)
     uv__free(req->bufs);
   req->bufs = NULL;
 
