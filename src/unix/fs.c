@@ -2164,7 +2164,6 @@ int uv_fs_write(uv_loop_t* loop,
     return UV_EINVAL;
 
   req->file = file;
-
   req->off = off;
   req->nbufs = nbufs;
 
@@ -2180,9 +2179,9 @@ int uv_fs_write(uv_loop_t* loop,
 
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
       return 0;
-	} else {
-		req->bufs = (uv_buf_t*)bufs;
-	}
+  } else {
+    req->bufs = (uv_buf_t*)bufs;
+  }
 
   POST;
 }
