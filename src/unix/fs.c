@@ -62,7 +62,6 @@
 
 #if defined(__linux__)
 # include <sys/sendfile.h>
-# include <sys/utsname.h>
 #endif
 
 #if defined(__sun)
@@ -904,31 +903,6 @@ out:
 
 
 #ifdef __linux__
-unsigned uv__kernel_version(void) {
-  static _Atomic unsigned cached_version;
-  struct utsname u;
-  unsigned version;
-  unsigned major;
-  unsigned minor;
-  unsigned patch;
-
-  version = atomic_load_explicit(&cached_version, memory_order_relaxed);
-  if (version != 0)
-    return version;
-
-  if (-1 == uname(&u))
-    return 0;
-
-  if (3 != sscanf(u.release, "%u.%u.%u", &major, &minor, &patch))
-    return 0;
-
-  version = major * 65536 + minor * 256 + patch;
-  atomic_store_explicit(&cached_version, version, memory_order_relaxed);
-
-  return version;
-}
-
-
 /* Pre-4.20 kernels have a bug where CephFS uses the RADOS copy-from command
  * in copy_file_range() when it shouldn't. There is no workaround except to
  * fall back to a regular copy.
@@ -1188,7 +1162,7 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
 #if TRY_PREADV
-  static int no_pwritev;
+  static _Atomic int no_pwritev;
 #endif
   ssize_t r;
 
@@ -1217,7 +1191,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
 # if TRY_PREADV
-    if (no_pwritev) retry:
+    if (atomic_load_explicit(&no_pwritev, memory_order_relaxed)) retry:
 # endif
     {
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
@@ -1229,7 +1203,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
                   req->nbufs,
                   req->off);
       if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
+        atomic_store_explicit(&no_pwritev, 1, memory_order_relaxed);
         goto retry;
       }
     }
