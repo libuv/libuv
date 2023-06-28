@@ -508,7 +508,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 
 done:
   /* Early cleanup of bufs allocation, since we're done with it. */
-  if (req->bufs != req->bufsml)
+  if (req->bufs != req->bufsml && req->cb != NULL)
     uv__free(req->bufs);
 
   req->bufs = NULL;
@@ -1634,7 +1634,7 @@ static ssize_t uv__fs_write_all(uv_fs_t* req) {
     total += result;
   }
 
-  if (bufs != req->bufsml)
+  if (bufs != req->bufsml && req->cb != NULL)
     uv__free(bufs);
 
   req->bufs = NULL;
@@ -1967,6 +1967,29 @@ int uv_fs_open(uv_loop_t* loop,
   POST;
 }
 
+/* If it is a synchronous operation, i.e., a request without callback, use the
+  * caller's buffers. Otherwise, use bufsml or dynamically allocate memory.
+  */
+static int uv__fs_setup_rw_buffers(uv_fs_t* req,
+                                   const uv_buf_t bufs[],
+                                   unsigned int nbufs,
+                                   uv_fs_cb cb) {
+  if (cb == NULL) {
+    req->bufs = (uv_buf_t *) bufs;
+    return 0;
+  }
+
+  req->bufs = (nbufs > ARRAY_SIZE(req->bufsml))
+    ? uv__malloc(nbufs * sizeof(*bufs))
+    : req->bufsml;
+
+  if (req->bufs == NULL)
+    return UV_ENOMEM;
+
+  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
+
+  return 0;
+}
 
 int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
                uv_file file,
@@ -1975,23 +1998,18 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
                int64_t off,
                uv_fs_cb cb) {
   INIT(READ);
+  int r;
 
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
 
   req->file = file;
-
   req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
-
-  if (req->bufs == NULL)
-    return UV_ENOMEM;
-
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
-
   req->off = off;
+
+  r = uv__fs_setup_rw_buffers(req, bufs, nbufs, cb);
+  if (r)
+    return r;
 
   if (cb != NULL)
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
@@ -2162,23 +2180,18 @@ int uv_fs_write(uv_loop_t* loop,
                 int64_t off,
                 uv_fs_cb cb) {
   INIT(WRITE);
+  int r;
 
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
 
   req->file = file;
-
   req->nbufs = nbufs;
-  req->bufs = req->bufsml;
-  if (nbufs > ARRAY_SIZE(req->bufsml))
-    req->bufs = uv__malloc(nbufs * sizeof(*bufs));
-
-  if (req->bufs == NULL)
-    return UV_ENOMEM;
-
-  memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
-
   req->off = off;
+
+  r = uv__fs_setup_rw_buffers(req, bufs, nbufs, cb);
+  if (r)
+    return r;
 
   if (cb != NULL)
     if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 0))
@@ -2211,7 +2224,7 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
     uv__fs_scandir_cleanup(req);
 
-  if (req->bufs != req->bufsml)
+  if (req->bufs != req->bufsml && req->bufs != NULL && req->cb != NULL)
     uv__free(req->bufs);
   req->bufs = NULL;
 
