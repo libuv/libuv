@@ -90,6 +90,7 @@ extern char** environ;
 #if defined(__linux__)
 # include <sched.h>
 # include <sys/syscall.h>
+# define gettid() syscall(SYS_gettid)
 # define uv__accept4 accept4
 #endif
 
@@ -1557,6 +1558,122 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
   return 0;
 }
 
+/**
+ * If the function succeeds, the return value is 0.
+ * If the function fails, the return value is non-zero.
+ * for Linux, when schedule policy is SCHED_OTHER (default), priority is 0.
+ * So the output parameter priority is actually the nice value.
+*/
+int uv_thread_getpriority(uv_thread_t tid, int* priority) {
+  int r;
+  int policy;
+  struct sched_param param;
+
+  if (priority == NULL)
+    return UV_EINVAL;
+
+  r = pthread_getschedparam(tid, &policy, &param);
+  if (r != 0)
+    return UV__ERR(errno);
+
+#ifdef __linux__
+  if (SCHED_OTHER == policy && pthread_equal(tid, pthread_self())) {
+    pid_t pid = gettid();
+    errno = 0;
+    r = getpriority(PRIO_PROCESS, pid);
+    if (r == -1 && errno != 0)
+      return UV__ERR(errno);
+    *priority = r;
+    return 0;
+  }
+#endif
+
+  *priority = param.sched_priority;
+  return 0;
+}
+
+static int set_nice_for_calling_thread(int priority) {
+  int r;
+  int nice;
+  
+  if (priority < UV_THREAD_PRIORITY_LOWEST || priority > UV_THREAD_PRIORITY_HIGHEST)
+    return UV_EINVAL;
+
+  nice = 0 - priority * 2;
+#ifdef __linux__
+  pid_t pid = gettid();
+  r = setpriority(PRIO_PROCESS, pid, nice);
+  if (r != 0) {
+    return UV__ERR(errno);
+  }
+#endif
+  return 0;
+}
+
+/**
+ * If the function succeeds, the return value is 0.
+ * If the function fails, the return value is non-zero.
+*/
+int uv_thread_setpriority(uv_thread_t tid, int priority) {
+  int r;
+  int prio;
+  int policy;
+  struct sched_param param;
+
+  if (priority < UV_THREAD_PRIORITY_LOWEST || priority > UV_THREAD_PRIORITY_HIGHEST)
+    return UV_EINVAL;
+
+  r = pthread_getschedparam(tid, &policy, &param);
+  if (r != 0)
+    return UV__ERR(errno);
+
+#ifdef __linux__
+/**
+ * for Linux, when schedule policy is SCHED_OTHER (default), priority must be 0,
+ * we should set the nice value in this case.
+*/
+  if (SCHED_OTHER == policy && pthread_equal(tid, pthread_self())) {
+    return set_nice_for_calling_thread(priority);
+  }
+#endif
+
+  int min = sched_get_priority_min(policy);
+  int max = sched_get_priority_max(policy);
+
+  if (min == -1 || max == -1)
+    return UV__ERR(errno);
+
+  int range = max - min;
+
+  switch (priority) {
+    case UV_THREAD_PRIORITY_HIGHEST:
+      prio = max;
+      break;
+    case UV_THREAD_PRIORITY_ABOVE_NORMAL:
+      prio = min + range * 3 / 4;
+      break;
+    case UV_THREAD_PRIORITY_NORMAL:
+      prio = min + range / 2;
+      break;
+    case UV_THREAD_PRIORITY_BELOW_NORMAL:
+      prio = min + range / 4;
+      break;
+    case UV_THREAD_PRIORITY_LOWEST:
+      prio = min;
+      break;
+    default:
+      return 0;
+  }
+
+  if (param.sched_priority != prio) {
+    param.sched_priority = prio;
+    r = pthread_setschedparam(tid, policy, &param);
+    if (r != 0)
+      return UV__ERR(errno);  
+  }
+
+  return 0;
+}
 
 int uv_os_uname(uv_utsname_t* buffer) {
   struct utsname buf;

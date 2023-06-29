@@ -1284,6 +1284,15 @@ UV_EXTERN uv_pid_t uv_os_getppid(void);
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 
+# define UV_THREAD_PRIORITY_HIGHEST 2
+# define UV_THREAD_PRIORITY_ABOVE_NORMAL 1
+# define UV_THREAD_PRIORITY_NORMAL 0
+# define UV_THREAD_PRIORITY_BELOW_NORMAL -1
+# define UV_THREAD_PRIORITY_LOWEST -2
+
+UV_EXTERN int uv_thread_getpriority(uv_thread_t tid, int* priority);
+UV_EXTERN int uv_thread_setpriority(uv_thread_t tid, int priority);
+
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
