@@ -90,6 +90,7 @@ extern char** environ;
 #if defined(__linux__)
 # include <sched.h>
 # include <sys/syscall.h>
+# define gettid() syscall(SYS_gettid)
 # define uv__accept4 accept4
 #endif
 
