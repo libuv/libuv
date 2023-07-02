@@ -41,7 +41,7 @@ TEST_IMPL(cwd_and_chdir) {
   err = uv_cwd(buffer_orig, &size1);
   ASSERT(err == 0);
   ASSERT(size1 > 0);
-  ASSERT(buffer_orig[size1] != '/');
+  ASSERT(buffer_orig[size1 - 1] != '/');
 
   err = uv_chdir(buffer_orig);
   ASSERT(err == 0);
