@@ -80,14 +80,14 @@ TEST_IMPL(thread_priority) {
   ASSERT(priority >= min && priority <= max);
 #endif
 
-  r = uv_thread_setpriority(task_id, UV_THREAD_PRIORITY_HIGHEST);  
+  r = uv_thread_setpriority(task_id, UV_THREAD_PRIORITY_LOWEST);
   ASSERT(r == 0);
   r = uv_thread_getpriority(task_id, &priority);
   ASSERT(r == 0);
 #ifdef _WIN32
-  ASSERT(priority == THREAD_PRIORITY_HIGHEST);
+  ASSERT(priority == THREAD_PRIORITY_LOWEST);
 #else
-  ASSERT(priority == max);
+  ASSERT(priority == min);
 #endif
 
 /**
