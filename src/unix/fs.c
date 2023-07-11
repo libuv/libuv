@@ -55,9 +55,13 @@
 # define HAVE_PREADV 0
 #endif
 
+/* preadv() and pwritev() were added in Android N (level 24) */
+#if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
+# define TRY_PREADV 1
+#endif
+
 #if defined(__linux__)
 # include <sys/sendfile.h>
-# include <sys/utsname.h>
 #endif
 
 #if defined(__sun)
@@ -457,7 +461,7 @@ static ssize_t uv__fs_preadv(uv_file fd,
 
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
+#if TRY_PREADV
   static _Atomic int no_preadv;
 #endif
   unsigned int iovmax;
@@ -481,13 +485,13 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 #if HAVE_PREADV
     result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
-# if defined(__linux__)
+# if TRY_PREADV
     if (atomic_load_explicit(&no_preadv, memory_order_relaxed)) retry:
 # endif
     {
       result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
     }
-# if defined(__linux__)
+# if TRY_PREADV
     else {
       result = preadv(req->file,
                       (struct iovec*) req->bufs,
@@ -899,31 +903,6 @@ out:
 
 
 #ifdef __linux__
-unsigned uv__kernel_version(void) {
-  static _Atomic unsigned cached_version;
-  struct utsname u;
-  unsigned version;
-  unsigned major;
-  unsigned minor;
-  unsigned patch;
-
-  version = atomic_load_explicit(&cached_version, memory_order_relaxed);
-  if (version != 0)
-    return version;
-
-  if (-1 == uname(&u))
-    return 0;
-
-  if (3 != sscanf(u.release, "%u.%u.%u", &major, &minor, &patch))
-    return 0;
-
-  version = major * 65536 + minor * 256 + patch;
-  atomic_store_explicit(&cached_version, version, memory_order_relaxed);
-
-  return version;
-}
-
-
 /* Pre-4.20 kernels have a bug where CephFS uses the RADOS copy-from command
  * in copy_file_range() when it shouldn't. There is no workaround except to
  * fall back to a regular copy.
@@ -1182,8 +1161,8 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_pwritev;
+#if TRY_PREADV
+  static _Atomic int no_pwritev;
 #endif
   ssize_t r;
 
@@ -1211,20 +1190,20 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
 #if HAVE_PREADV
     r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
 #else
-# if defined(__linux__)
-    if (no_pwritev) retry:
+# if TRY_PREADV
+    if (atomic_load_explicit(&no_pwritev, memory_order_relaxed)) retry:
 # endif
     {
       r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
     }
-# if defined(__linux__)
+# if TRY_PREADV
     else {
       r = pwritev(req->file,
                   (struct iovec*) req->bufs,
                   req->nbufs,
                   req->off);
       if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
+        atomic_store_explicit(&no_pwritev, 1, memory_order_relaxed);
         goto retry;
       }
     }
