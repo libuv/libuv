@@ -1683,6 +1683,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
 
   if (fgets(buf, sizeof(buf), fp) == NULL) {
     fclose(fp);
+    fp = NULL;
     return UV_EINVAL;
   }  /* Skip first line. */
 
@@ -1697,6 +1698,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
 
     if (NULL == fgets(buf, sizeof(buf), fp)) {
       fclose(fp);
+      fp = NULL;
       return UV_EINVAL;
     }  /* Skip rest of line. */
 
@@ -1780,6 +1782,7 @@ nocpuinfo:
 
     if (fscanf(fp, "%llu", &(*cpus)[cpu].freq) == EOF) {
       fclose(fp);
+      fp = NULL;
       return UV_EINVAL;
     }
     fclose(fp);
