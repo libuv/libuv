@@ -262,6 +262,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (nfds == -1)
       assert(errno == EINTR);
+    else if (nfds == 0)
+      /* Unlimited timeout should only return with events or signal. */
+      assert(timeout != -1);
 
     if (pset != NULL)
       pthread_sigmask(SIG_UNBLOCK, pset, NULL);
@@ -286,8 +289,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         timeout = user_timeout;
         reset_timeout = 0;
       } else if (nfds == 0) {
-        /* Reached the user timeout value. */
-        assert(timeout != -1);
         return;
       }
 

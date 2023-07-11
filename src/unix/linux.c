@@ -1395,40 +1395,19 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     SAVE_ERRNO(uv__update_time(loop));
 
-    if (nfds == 0) {
+    if (nfds == -1)
+      assert(errno == EINTR);
+    else if (nfds == 0)
+      /* Unlimited timeout should only return with events or signal. */
       assert(timeout != -1);
 
+    if (nfds == 0 || nfds == -1) {
       if (reset_timeout != 0) {
         timeout = user_timeout;
         reset_timeout = 0;
+      } else if (nfds == 0) {
+        return;
       }
-
-      if (timeout == -1)
-        continue;
-
-      if (timeout == 0)
-        break;
-
-      /* We may have been inside the system call for longer than |timeout|
-       * milliseconds so we need to update the timestamp to avoid drift.
-       */
-      goto update_timeout;
-    }
-
-    if (nfds == -1) {
-      if (errno != EINTR)
-        abort();
-
-      if (reset_timeout != 0) {
-        timeout = user_timeout;
-        reset_timeout = 0;
-      }
-
-      if (timeout == -1)
-        continue;
-
-      if (timeout == 0)
-        break;
 
       /* Interrupted by a signal. Update timeout and poll again. */
       goto update_timeout;
@@ -1540,13 +1519,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       break;
     }
 
+update_timeout:
     if (timeout == 0)
       break;
 
     if (timeout == -1)
       continue;
 
-update_timeout:
     assert(timeout > 0);
 
     real_timeout -= (loop->time - base);
