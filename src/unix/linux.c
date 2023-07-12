@@ -48,6 +48,7 @@
 #include <sys/sysinfo.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -306,6 +307,31 @@ static struct watcher_root* uv__inotify_watchers(uv_loop_t* loop) {
    * is compiled with -fno-strict-aliasing.
    */
   return (struct watcher_root*) &loop->inotify_watchers;
+}
+
+
+unsigned uv__kernel_version(void) {
+  static _Atomic unsigned cached_version;
+  struct utsname u;
+  unsigned version;
+  unsigned major;
+  unsigned minor;
+  unsigned patch;
+
+  version = atomic_load_explicit(&cached_version, memory_order_relaxed);
+  if (version != 0)
+    return version;
+
+  if (-1 == uname(&u))
+    return 0;
+
+  if (3 != sscanf(u.release, "%u.%u.%u", &major, &minor, &patch))
+    return 0;
+
+  version = major * 65536 + minor * 256 + patch;
+  atomic_store_explicit(&cached_version, version, memory_order_relaxed);
+
+  return version;
 }
 
 
@@ -730,6 +756,17 @@ static void uv__iou_submit(struct uv__iou* iou) {
 int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req) {
   struct uv__io_uring_sqe* sqe;
   struct uv__iou* iou;
+
+  /* Work around a poorly understood bug in older kernels where closing a file
+   * descriptor pointing to /foo/bar results in ETXTBSY errors when trying to
+   * execve("/foo/bar") later on. The bug seems to have been fixed somewhere
+   * between 5.15.85 and 5.15.90. I couldn't pinpoint the responsible commit
+   * but good candidates are the several data race fixes. Interestingly, it
+   * seems to manifest only when running under Docker so the possibility of
+   * a Docker bug can't be completely ruled out either. Yay, computers.
+   */
+  if (uv__kernel_version() < /* 5.15.90 */ 0x050F5A)
+    return 0;
 
   iou = &uv__get_internal_fields(loop)->iou;
 
