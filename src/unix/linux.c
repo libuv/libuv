@@ -1681,10 +1681,8 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     return UV__ERR(errno);
   }
 
-  if (fgets(buf, sizeof(buf), fp) == NULL) {
-    fclose(fp);
-    fp = NULL;
-    return UV_EINVAL;
+  if (NULL == fgets(buf, sizeof(buf), fp)) {
+    abort();
   }  /* Skip first line. */
 
   for (;;) {
@@ -1697,9 +1695,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
       break;
 
     if (NULL == fgets(buf, sizeof(buf), fp)) {
-      fclose(fp);
-      fp = NULL;
-      return UV_EINVAL;
+      abort();
     }  /* Skip rest of line. */
 
     if (cpu >= ARRAY_SIZE(*cpus))
@@ -1780,7 +1776,7 @@ nocpuinfo:
     if (fp == NULL)
       continue;
 
-    if (fscanf(fp, "%llu", &(*cpus)[cpu].freq) == EOF) {
+    if (EOF == fscanf(fp, "%llu", &(*cpus)[cpu].freq)) {
       fclose(fp);
       fp = NULL;
       return UV_EINVAL;
