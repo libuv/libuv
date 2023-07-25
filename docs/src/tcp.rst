@@ -58,7 +58,11 @@ API
 .. c:function:: int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay)
 
     Enable / disable TCP keep-alive. `delay` is the initial delay in seconds,
-    ignored when `enable` is zero.
+    ignored when `enable` is zero. 
+    
+    A `delay` of 0 will imply using the system default setting for TCP keepalives,
+    or if `delay` was previously set to a non-zero value, leave the value unchanged
+    from the prior setting.
 
     After `delay` has been reached, 10 successive probes, each spaced 1 second
     from the previous one, will still happen. If the connection is still lost

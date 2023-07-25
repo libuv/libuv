@@ -378,7 +378,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
     return UV__ERR(errno);
 
 #ifdef TCP_KEEPIDLE
-  if (on) {
+  if (on && delay) { /* only attempt to change settings if delay is non-zero */
     int intvl = 1;  /*  1 second; same as default on Win32 */
     int cnt = 10;  /* 10 retries; same as hardcoded on Win32 */
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
