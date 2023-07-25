@@ -27,6 +27,9 @@
 #include <assert.h>
 #include <errno.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <ifaddrs.h>
 
 static int maybe_bind_socket(int fd) {
   union uv__sockaddr s;
@@ -198,11 +201,50 @@ int uv__tcp_bind(uv_tcp_t* tcp,
 }
 
 
+static int uv__is_ipv6_link_local(const struct sockaddr* addr) {
+  const struct sockaddr_in6* a6;
+  uint8_t b[2];
+
+  if (addr->sa_family != AF_INET6)
+    return 0;
+
+  a6 = (const struct sockaddr_in6*) addr;
+  memcpy(b, &a6->sin6_addr, sizeof(b));
+
+  return b[0] == 0xFE && b[1] == 0x80;
+}
+
+
+static int uv__ipv6_link_local_scope_id(void) {
+  struct sockaddr_in6* a6;
+  struct ifaddrs* ifa;
+  struct ifaddrs* p;
+  int rv;
+
+  if (getifaddrs(&ifa))
+    return 0;
+
+  for (p = ifa; p != NULL; p = p->ifa_next)
+    if (uv__is_ipv6_link_local(p->ifa_addr))
+      break;
+
+  rv = 0;
+  if (p != NULL) {
+    a6 = (struct sockaddr_in6*) p->ifa_addr;
+    rv = a6->sin6_scope_id;
+  }
+
+  freeifaddrs(ifa);
+  return rv;
+}
+
+
 int uv__tcp_connect(uv_connect_t* req,
                     uv_tcp_t* handle,
                     const struct sockaddr* addr,
                     unsigned int addrlen,
                     uv_connect_cb cb) {
+  struct sockaddr_in6 tmp6;
   int err;
   int r;
 
@@ -219,6 +261,14 @@ int uv__tcp_connect(uv_connect_t* req,
                          UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   if (err)
     return err;
+
+  if (uv__is_ipv6_link_local(addr)) {
+    memcpy(&tmp6, addr, sizeof(tmp6));
+    if (tmp6.sin6_scope_id == 0) {
+      tmp6.sin6_scope_id = uv__ipv6_link_local_scope_id();
+      addr = (void*) &tmp6;
+    }
+  }
 
   do {
     errno = 0;
