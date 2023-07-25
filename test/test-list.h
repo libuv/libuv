@@ -1055,6 +1055,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_unlink_archive_readonly)
 #endif
   TEST_ENTRY  (fs_chown)
+  TEST_ENTRY  (fs_link)
   TEST_ENTRY  (fs_utime)
   TEST_ENTRY  (fs_utime_round)
   TEST_ENTRY  (fs_futime)
