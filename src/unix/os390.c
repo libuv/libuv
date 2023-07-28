@@ -19,6 +19,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "uv.h"
 #include "internal.h"
 #include <sys/ioctl.h>
 #include <net/if.h>
@@ -257,6 +258,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   while (idx < *count) {
     cpu_info->speed = *(int*)(info.siv1v2si22v1.si22v1cpucapability);
     cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
+    if (cpu_info->model == NULL) {
+      uv_free_cpu_info(*cpu_infos, idx);
+      return UV_ENOMEM; 
+    }
     __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
     cpu_info->cpu_times.user = cpu_usage_avg;
     /* TODO: implement the following */
