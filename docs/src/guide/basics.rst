@@ -2,18 +2,18 @@ Basics of libuv
 ===============
 
 libuv enforces an **asynchronous**, **event-driven** style of programming.  Its
-core job is to provide an event loop and callback based notifications of I/O
-and other activities.  libuv offers core utilities like timers, non-blocking
+core job is to provide an event loop and callback-based notifications of I/O
+and other activities. libuv offers core utilities like timers, non-blocking
 networking support, asynchronous file system access, child processes and more.
 
 Event loops
 -----------
 
 In event-driven programming, an application expresses interest in certain events
-and respond to them when they occur. The responsibility of gathering events
+and responds to them when they occur. The responsibility of gathering events
 from the operating system or monitoring other sources of events is handled by
 libuv, and the user can register callbacks to be invoked when an event occurs.
-The event-loop usually keeps running *forever*. In pseudocode:
+The event loop usually keeps running *forever*. In pseudocode:
 
 .. code-block:: python
 
@@ -37,7 +37,7 @@ input/output functions (``read``, ``fprintf``, etc.) is that they are
 **blocking**. The actual write to a hard disk or reading from a network, takes
 a disproportionately long time compared to the speed of the processor. The
 functions don't return until the task is done, so that your program is doing
-nothing. For programs which require high performance this is a major roadblock
+nothing. For programs that require high performance, this is a major roadblock
 as other activities and other I/O operations are kept waiting.
 
 One of the standard solutions is to use threads. Each blocking I/O operation is
@@ -51,7 +51,7 @@ subsystems. For example, a normal ``read`` call on a socket would block until
 the sender actually sent something. Instead, the application can request the
 operating system to watch the socket and put an event notification in the
 queue. The application can inspect the events at its convenience (perhaps doing
-some number crunching before to use the processor to the maximum) and grab the
+some number crunching before using the processor to the maximum) and grab the
 data. It is **asynchronous** because the application expressed interest at one
 point, then used the data at another point (in time and space). It is
 **non-blocking** because the application process was free to do other tasks.
@@ -99,7 +99,7 @@ initializing it with ``uv_loop_init(uv_loop_t *)``. This allows you to plug in
 custom memory management. Remember to de-initialize the loop using
 ``uv_loop_close(uv_loop_t *)`` and then delete the storage. The examples never
 close loops since the program quits after the loop ends and the system will
-reclaim memory. Production grade projects, especially long running systems
+reclaim memory. Production grade projects, especially long-running systems
 programs, should take care to release correctly.
 
 Default loop
@@ -194,14 +194,14 @@ of individual actions. For example, an UDP socket is represented by
 a ``uv_udp_t``, while individual writes to the socket use a ``uv_udp_send_t``
 structure that is passed to the callback after the write is done.
 
-Handles are setup by a corresponding::
+Handles are set up by a corresponding::
 
     uv_TYPE_init(uv_loop_t *, uv_TYPE_t *)
 
 function.
 
-Callbacks are functions which are called by libuv whenever an event the watcher
-is interested in has taken place. Application specific logic will usually be
+Callbacks are functions that are called by libuv whenever an event the watcher
+is interested in has taken place. Application-specific logic will usually be
 implemented in the callback. For example, an IO watcher's callback will receive
 the data read from a file, a timer callback will be triggered on timeout and so
 on.
@@ -224,8 +224,8 @@ event watchers are active.
 Storing context
 +++++++++++++++
 
-In callback based programming style you'll often want to pass some 'context' --
-application specific information -- between the call site and the callback. All
+In callback-based programming style you'll often want to pass some 'context' --
+application-specific information -- between the call site and the callback. All
 handles and requests have a ``void* data`` member which you can set to the
 context and cast back in the callback. This is a common pattern used throughout
 the C library ecosystem. In addition ``uv_loop_t`` also has a similar data
