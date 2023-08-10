@@ -3217,7 +3217,7 @@ Changes since version 1.9.1:
 
 * zos: implement uv__io_check_fd (John Barboza)
 
-* unix: unneccessary use const qualifier in container_of (John Barboza)
+* unix: unnecessary use const qualifier in container_of (John Barboza)
 
 * win,tty: add support for ANSI codes in win10 v1511 (Imran Iqbal)
 
