@@ -1366,6 +1366,34 @@ TEST_IMPL(spawn_with_an_odd_path) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+
+TEST_IMPL(spawn_no_path) {
+  char* env[1];
+  WCHAR* old_path = NULL;
+  DWORD old_path_len;
+
+  if ((old_path_len = GetEnvironmentVariableW(L"PATH", NULL, 0)) > 0) {
+    old_path = malloc(old_path_len * sizeof(WCHAR));
+    GetEnvironmentVariableW(L"PATH", old_path, old_path_len);
+    SetEnvironmentVariableW(L"PATH", NULL);
+  }
+
+  init_process_options("spawn_helper1", exit_cb);
+  options.env = env;
+  env[0] = NULL;
+
+  ASSERT(0 == uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 1);
+
+  SetEnvironmentVariableW(L"PATH", old_path);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
 #endif
 
 #ifndef _WIN32

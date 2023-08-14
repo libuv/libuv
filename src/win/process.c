@@ -396,7 +396,7 @@ static WCHAR* search_path(const WCHAR *file,
                                   name_has_ext);
 
     while (result == NULL) {
-      if (*dir_end == L'\0') {
+      if (dir_end == NULL || *dir_end == L'\0') {
         break;
       }
 
@@ -1025,22 +1025,19 @@ int uv_spawn(uv_loop_t* loop,
     DWORD path_len, r;
 
     path_len = GetEnvironmentVariableW(L"PATH", NULL, 0);
-    if (path_len == 0) {
-      err = GetLastError();
-      goto done;
-    }
+    if (path_len != 0) {
+      alloc_path = (WCHAR*) uv__malloc(path_len * sizeof(WCHAR));
+      if (alloc_path == NULL) {
+        err = ERROR_OUTOFMEMORY;
+        goto done;
+      }
+      path = alloc_path;
 
-    alloc_path = (WCHAR*) uv__malloc(path_len * sizeof(WCHAR));
-    if (alloc_path == NULL) {
-      err = ERROR_OUTOFMEMORY;
-      goto done;
-    }
-    path = alloc_path;
-
-    r = GetEnvironmentVariableW(L"PATH", path, path_len);
-    if (r == 0 || r >= path_len) {
-      err = GetLastError();
-      goto done;
+      r = GetEnvironmentVariableW(L"PATH", path, path_len);
+      if (r == 0 || r >= path_len) {
+        err = GetLastError();
+        goto done;
+      }
     }
   }
 
