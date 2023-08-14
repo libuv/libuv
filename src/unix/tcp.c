@@ -424,28 +424,39 @@ int uv__tcp_nodelay(int fd, int on) {
 
 
 int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
+  int intvl;
+  int cnt;
+
+  (void) &intvl;
+  (void) &cnt;
+    
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)))
     return UV__ERR(errno);
 
+  if (!on)
+    return 0;
+
 #ifdef TCP_KEEPIDLE
-  if (on) {
-    int intvl = 1;  /*  1 second; same as default on Win32 */
-    int cnt = 10;  /* 10 retries; same as hardcoded on Win32 */
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
-      return UV__ERR(errno);
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
-      return UV__ERR(errno);
-    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
-      return UV__ERR(errno);
-  }
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
+    return UV__ERR(errno);
+/* Solaris/SmartOS, if you don't support keep-alive,
+ * then don't advertise it in your system headers...
+ */
+/* FIXME(bnoordhuis) That's possibly because sizeof(delay) should be 1. */
+#elif defined(TCP_KEEPALIVE) && !defined(__sun)
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &delay, sizeof(delay)))
+    return UV__ERR(errno);
 #endif
 
-  /* Solaris/SmartOS, if you don't support keep-alive,
-   * then don't advertise it in your system headers...
-   */
-  /* FIXME(bnoordhuis) That's possibly because sizeof(delay) should be 1. */
-#if defined(TCP_KEEPALIVE) && !defined(__sun)
-  if (on && setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &delay, sizeof(delay)))
+#ifdef TCP_KEEPINTVL
+  intvl = 1;  /*  1 second; same as default on Win32 */
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
+    return UV__ERR(errno);
+#endif
+
+#ifdef TCP_KEEPCNT
+  cnt = 10;  /* 10 retries; same as hardcoded on Win32 */
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
     return UV__ERR(errno);
 #endif
 
