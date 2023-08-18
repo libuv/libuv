@@ -31,12 +31,15 @@
 #include <stdio.h>
 
 #include "uv.h"
+
+/* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
+   be included before our "winapi.h", included via "internal.h" below. */
+#include <winioctl.h>
+
 #include "internal.h"
 #include "req-inl.h"
 #include "handle-inl.h"
 #include "fs-fd-hash-inl.h"
-
-#include <winioctl.h>
 
 
 #define UV_FS_FREE_PATHS         0x0002
