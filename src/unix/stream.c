@@ -1394,7 +1394,7 @@ int uv_write2(uv_write_t* req,
 }
 
 
-/* The buffers to be written must remain valid until the callback is called.
+/* The buffers to be written must not be accessed until the callback is called.
  * This is not required for the uv_buf_t array.
  */
 int uv_write(uv_write_t* req,
