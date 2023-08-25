@@ -79,6 +79,8 @@
 #  define __NR_copy_file_range 379
 # elif defined(__arc__)
 #  define __NR_copy_file_range 285
+# elif defined(__riscv)
+#  define __NR_copy_file_range 285
 # endif
 #endif /* __NR_copy_file_range */
 
@@ -95,6 +97,8 @@
 #  define __NR_statx 383
 # elif defined(__s390__)
 #  define __NR_statx 379
+# elif defined(__riscv)
+#  define __NR_statx 291
 # endif
 #endif /* __NR_statx */
 
@@ -111,6 +115,8 @@
 #  define __NR_getrandom 359
 # elif defined(__s390__)
 #  define __NR_getrandom 349
+# elif defined(__riscv)
+#  define __NR_getrandom 278
 # endif
 #endif /* __NR_getrandom */
 
