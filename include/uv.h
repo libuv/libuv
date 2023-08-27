@@ -1763,8 +1763,8 @@ UV_EXTERN int uv_fs_event_getpath(uv_fs_event_t* handle,
                                   char* buffer,
                                   size_t* size);
 
-UV_EXTERN int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
-UV_EXTERN int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
+UV_EXTERN int uv_ip4_addr(const char* ip, unsigned short port, struct sockaddr_in* addr);
+UV_EXTERN int uv_ip6_addr(const char* ip, unsigned short port, struct sockaddr_in6* addr);
 
 UV_EXTERN int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size);
 UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size);

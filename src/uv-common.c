@@ -252,7 +252,7 @@ const char* uv_strerror(int err) {
 #undef UV_STRERROR_GEN
 
 
-int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
+int uv_ip4_addr(const char* ip, unsigned short port, struct sockaddr_in* addr) {
   memset(addr, 0, sizeof(*addr));
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
@@ -263,7 +263,7 @@ int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
 }
 
 
-int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
+int uv_ip6_addr(const char* ip, unsigned short port, struct sockaddr_in6* addr) {
   char address_part[40];
   size_t address_part_size;
   const char* zone_index;
