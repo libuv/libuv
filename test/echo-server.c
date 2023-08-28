@@ -248,7 +248,7 @@ static void on_recv(uv_udp_t* handle,
   ASSERT(0 <= uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
 }
 
-static int tcp4_echo_start(int port) {
+static int tcp4_echo_start(unsigned short port) {
   struct sockaddr_in addr;
   int r;
 
@@ -282,7 +282,7 @@ static int tcp4_echo_start(int port) {
 }
 
 
-static int tcp6_echo_start(int port) {
+static int tcp6_echo_start(unsigned short port) {
   struct sockaddr_in6 addr6;
   int r;
 
@@ -317,7 +317,7 @@ static int tcp6_echo_start(int port) {
 }
 
 
-static int udp4_echo_start(int port) {
+static int udp4_echo_start(unsigned short port) {
   struct sockaddr_in addr;
   int r;
 
