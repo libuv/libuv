@@ -59,7 +59,7 @@ API
         If a path on Unix exceeds ``sizeof(sockaddr_un.sun_path)`` bytes, typically between
         92 and 108 bytes, ``uv_pipe_bind`` will fail with ``UV_ENAMETOOLONG``.
 
-    .. versionchanged: 2.0.0 long filenames will lead to an error rather than being truncated
+    .. versionchanged:: 2.0.0 long filenames will lead to an error rather than being truncated
 
 .. c:function:: void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle, const char* name, uv_connect_cb cb)
 
@@ -69,7 +69,7 @@ API
         If a path on Unix exceeds ``sizeof(sockaddr_un.sun_path)`` bytes, typically between
         92 and 108 bytes, ``uv_pipe_bind`` will fail with ``UV_ENAMETOOLONG``.
 
-    .. versionchanged: 2.0.0 long filenames will lead to an error rather than being truncated
+    .. versionchanged:: 2.0.0 long filenames will lead to an error rather than being truncated
 
 .. c:function:: int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size)
 
