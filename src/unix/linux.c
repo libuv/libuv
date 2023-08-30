@@ -323,10 +323,21 @@ unsigned uv__kernel_version(void) {
   unsigned major;
   unsigned minor;
   unsigned patch;
+  char v_sig[256];
 
   version = atomic_load_explicit(&cached_version, memory_order_relaxed);
   if (version != 0)
     return version;
+
+  /* Check /proc/version_signature first as it's the way to get the mainline
+   * kernel version in Ubuntu. The format is:
+   *   Ubuntu ubuntu_kernel_version mainline_kernel_version
+   * For example:
+   *   Ubuntu 5.15.0-79.86-generic 5.15.111
+   */
+  if (0 == uv__slurp("/proc/version_signature", v_sig, sizeof(v_sig)))
+    if (3 == sscanf(v_sig, "Ubuntu %*s %u.%u.%u", &major, &minor, &patch))
+      goto calculate_version;
 
   if (-1 == uname(&u))
     return 0;
@@ -359,6 +370,7 @@ unsigned uv__kernel_version(void) {
     }
   }
 
+calculate_version:
   version = major * 65536 + minor * 256 + patch;
   atomic_store_explicit(&cached_version, version, memory_order_relaxed);
 
