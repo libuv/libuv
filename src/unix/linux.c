@@ -324,6 +324,7 @@ unsigned uv__kernel_version(void) {
   unsigned minor;
   unsigned patch;
   char v_sig[256];
+  char* needle;
 
   version = atomic_load_explicit(&cached_version, memory_order_relaxed);
   if (version != 0)
@@ -341,6 +342,15 @@ unsigned uv__kernel_version(void) {
 
   if (-1 == uname(&u))
     return 0;
+
+  /* In Debian we need to check `version` instead of `release` to extract the
+   * mainline kernel version. This is an example of how it looks like:
+   *  #1 SMP Debian 5.10.46-4 (2021-08-03)
+   */
+  needle = strstr(u.version, "Debian ");
+  if (needle != NULL)
+    if (3 == sscanf(needle, "Debian %u.%u.%u", &major, &minor, &patch))
+      goto calculate_version;
 
   if (3 != sscanf(u.release, "%u.%u.%u", &major, &minor, &patch))
     return 0;
