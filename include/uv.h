@@ -1284,6 +1284,11 @@ UV_EXTERN uv_pid_t uv_os_getppid(void);
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
 UV_EXTERN int uv_os_setpriority(uv_pid_t pid, int priority);
 
+#if defined(__PASE__)
+# define UV_SCHED_PRIORITY_MIN 1
+# define UV_SCHED_PRIORITY_MAX 127
+#endif
+
 # define UV_THREAD_PRIORITY_HIGHEST 2
 # define UV_THREAD_PRIORITY_ABOVE_NORMAL 1
 # define UV_THREAD_PRIORITY_NORMAL 0

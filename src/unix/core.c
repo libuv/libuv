@@ -1637,8 +1637,13 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   }
 #endif
 
+#ifdef __PASE__
+  int min = UV_SCHED_PRIORITY_MIN;
+  int max = UV_SCHED_PRIORITY_MAX;
+#else
   int min = sched_get_priority_min(policy);
   int max = sched_get_priority_max(policy);
+#endif
 
   if (min == -1 || max == -1)
     return UV__ERR(errno);

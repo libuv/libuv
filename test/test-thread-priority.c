@@ -75,8 +75,13 @@ TEST_IMPL(thread_priority) {
   struct sched_param param;
   r = pthread_getschedparam(task_id, &policy, &param);
   ASSERT(r == 0);
+#ifdef __PASE__
+  int min = UV_SCHED_PRIORITY_MIN;
+  int max = UV_SCHED_PRIORITY_MAX;
+#else
   int min = sched_get_priority_min(policy);
   int max = sched_get_priority_max(policy);
+#endif
   ASSERT(priority >= min && priority <= max);
 #endif
 
