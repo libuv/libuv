@@ -1090,6 +1090,11 @@ static void uv__read(uv_stream_t* stream) {
         uv__stream_eof(stream, &buf);
         return;
 #endif
+#if !defined(__FreeBSD__) && !defined(__sun)
+      } else if (errno == EBADF && stream->flags & UV_HANDLE_READABLE_CLOSED) {
+        uv__stream_eof(stream, &buf);
+        return;
+#endif
       } else {
         /* Error. User should call uv_close(). */
         stream->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
@@ -1527,7 +1532,10 @@ void uv__stream_close(uv_stream_t* handle) {
   uv__io_close(handle->loop, &handle->io_watcher);
   uv_read_stop(handle);
   uv__handle_stop(handle);
-  handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
+  handle->flags &= ~(
+          UV_HANDLE_READABLE |
+          UV_HANDLE_WRITABLE |
+          UV_HANDLE_READABLE_CLOSED);
 
   if (handle->io_watcher.fd != -1) {
     /* Don't close stdio file descriptors.  Nothing good comes from it. */
