@@ -125,7 +125,7 @@ jobs:
         # this ensure install latest qemu on ubuntu, apt get version is old
         env:
           QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
-          QEMU_VER: "qemu-user-static_7\\.0+dfsg-.*_amd64.deb$"
+          QEMU_VER: "qemu-user-static_7\\.2+dfsg-.*_amd64.deb$"
         run: |
           DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER | tail -1`
           wget $QEMU_SRC/$DEB
