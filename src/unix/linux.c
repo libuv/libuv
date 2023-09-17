@@ -829,8 +829,10 @@ int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req) {
    * 6.1.0 (longterm). Starting with longterm 6.1.x, the issue seems to be
    * solved.
    */
-  if (kv < /* 5.15.90 */ 0x050F5A ||
-     (kv >= /* 5.16.0 */ 0x050A00 && kv < /* 6.1.0 */ 0x060100))
+  if (kv < /* 5.15.90 */ 0x050F5A)
+    return 0;
+
+  if (kv >= /* 5.16.0 */ 0x050A00 && kv < /* 6.1.0 */ 0x060100)
     return 0;
 
 
