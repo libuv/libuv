@@ -815,7 +815,9 @@ static void uv__iou_submit(struct uv__iou* iou) {
 int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req) {
   struct uv__io_uring_sqe* sqe;
   struct uv__iou* iou;
+  int kv;
 
+  kv = uv__kernel_version();
   /* Work around a poorly understood bug in older kernels where closing a file
    * descriptor pointing to /foo/bar results in ETXTBSY errors when trying to
    * execve("/foo/bar") later on. The bug seems to have been fixed somewhere
@@ -823,9 +825,16 @@ int uv__iou_fs_close(uv_loop_t* loop, uv_fs_t* req) {
    * but good candidates are the several data race fixes. Interestingly, it
    * seems to manifest only when running under Docker so the possibility of
    * a Docker bug can't be completely ruled out either. Yay, computers.
+   * Also, disable on non-longterm versions between 5.16.0 (non-longterm) and
+   * 6.1.0 (longterm). Starting with longterm 6.1.x, the issue seems to be
+   * solved.
    */
-  if (uv__kernel_version() < /* 5.15.90 */ 0x050F5A)
+  if (kv < /* 5.15.90 */ 0x050F5A)
     return 0;
+
+  if (kv >= /* 5.16.0 */ 0x050A00 && kv < /* 6.1.0 */ 0x060100)
+    return 0;
+
 
   iou = &uv__get_internal_fields(loop)->iou;
 
