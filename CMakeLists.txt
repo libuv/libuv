@@ -382,12 +382,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
       -qasm
       -qasmlib=sys1.maclib:sys1.modgen)
   endif()
-  find_library(ZOSLIB
-    NAMES zoslib
-    PATHS ${ZOSLIB_DIR}
-    PATH_SUFFIXES lib
-  )
-  list(APPEND uv_libraries ${ZOSLIB})
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
@@ -474,6 +468,12 @@ if(LIBUV_BUILD_SHARED)
   if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
     target_include_directories(uv PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
     set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
+      find_library(ZOSLIB
+      NAMES "libzoslib.x"
+      PATHS ${ZOSLIB_DIR}
+      PATH_SUFFIXES "lib"
+    )
+  target_link_libraries(uv ${ZOSLIB})
   endif()
   target_link_libraries(uv ${uv_libraries})
   set_target_properties(uv PROPERTIES OUTPUT_NAME "uv")
@@ -491,6 +491,12 @@ target_include_directories(uv_a
 if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   target_include_directories(uv_a PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
   set_target_properties(uv_a PROPERTIES LINKER_LANGUAGE CXX)
+  find_library(ZOSLIB_A
+    NAMES "libzoslib.a"
+    PATHS ${ZOSLIB_DIR}
+    PATH_SUFFIXES "lib"
+  )
+  target_link_libraries(uv_a ${ZOSLIB_A})
 endif()
 target_link_libraries(uv_a ${uv_libraries})
 set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")
