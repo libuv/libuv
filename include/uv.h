@@ -45,7 +45,11 @@ extern "C" {
 #   define UV_EXTERN /* nothing */
 # endif
 #elif __GNUC__ >= 4
+# if defined(BUILDING_UV_SHARED)
 # define UV_EXTERN __attribute__((visibility("default")))
+# else
+# define UV_EXTERN /* nothing */
+# endif
 #elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550) /* Sun Studio >= 8 */
 # define UV_EXTERN __global
 #else
