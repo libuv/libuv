@@ -358,16 +358,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
        src/unix/os390.c
        src/unix/os390-syscalls.c
        src/unix/os390-proctitle.c)
-  get_filename_component(COMP ${CMAKE_C_COMPILER} NAME CACHE)
-  if(${COMP} STREQUAL clang OR ${COMP} STREQUAL ibm-clang64)
-    list(APPEND uv_cflags
-      -fgnu-keywords
-      -fno-short-enums
-      -fzos-le-char-mode=ascii
-      -m64
-      -march=arch10
-      -mtune=arch10)
-  else()
+  if(${CMAKE_C_COMPILER} MATCHES xlclang)
     list(APPEND uv_cflags
       -fgnu-keywords
       -q64
@@ -381,6 +372,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
       -qarch=10
       -qasm
       -qasmlib=sys1.maclib:sys1.modgen)
+  else()
+    list(APPEND uv_cflags
+      -fgnu-keywords
+      -fno-short-enums
+      -fzos-le-char-mode=ascii
+      -m64
+      -march=arch10
+      -mtune=arch10)
   endif()
 endif()
 
