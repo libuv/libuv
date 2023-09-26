@@ -49,6 +49,9 @@ TEST_IMPL(tcp_connect6_error_fault) {
   int r;
   uv_connect_t req;
 
+  if (!can_ipv6())
+    RETURN_SKIP("IPv6 not supported");
+
   garbage_addr = (const struct sockaddr_in6*) &garbage;
 
   r = uv_tcp_init(uv_default_loop(), &server);
@@ -75,6 +78,9 @@ TEST_IMPL(tcp_connect6_link_local) {
   struct sockaddr_in6 addr;
   uv_connect_t req;
   uv_tcp_t server;
+
+  if (!can_ipv6())
+    RETURN_SKIP("IPv6 not supported");
 
 #if defined(__QEMU__)
   /* qemu's sockaddr_in6 translation is broken pre-qemu 8.0.0
