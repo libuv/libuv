@@ -111,7 +111,7 @@ static void uv__init_global_job_handle(void) {
     /* Make sure this handle is functional. The Windows kernel has a bug that
      * if the first use of AssignProcessToJobObject is for a Windows Store
      * program, subsequent attempts to use the handle with fail with
-     * INVALID_PARAMETER (87). This is possilby because all uses of the handle
+     * INVALID_PARAMETER (87). This is possibly because all uses of the handle
      * must be for the same Terminal Services session. We can ensure it is tied
      * to our current session now by adding ourself to it. We could remove
      * ourself afterwards, but there doesn't seem to be a reason to.
