@@ -138,9 +138,12 @@ TEST_IMPL(get_passwd2) {
 #if defined(__PASE__)
   // uid 0 is qsecofr on IBM i
   ASSERT_STR_EQ(pwd2.username, "qsecofr");
+#elif defined(__MVS__)
+  ASSERT_STR_EQ(pwd2.username, "BPXROOT");
 #else
   ASSERT_STR_EQ(pwd2.username, "root");
 #endif
+
   len = strlen(pwd2.homedir);
 # ifndef __PASE__
   ASSERT_GT(len, 0);
