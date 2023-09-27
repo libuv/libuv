@@ -60,28 +60,47 @@ static void close_cb(uv_handle_t* handle) {
 /* Verify that connecting to an unreachable address or port doesn't hang
  * the event loop.
  */
-TEST_IMPL(tcp_connect_timeout) {
+TEST_IMPL(tcp_connect_timeout)
+{
   struct sockaddr_in addr;
   int r;
+  int retry_count = 3;
+  int retry_delay = 100;
 
   ASSERT(0 == uv_ip4_addr("8.8.8.8", 9999, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
   ASSERT(r == 0);
 
-  r = uv_timer_start(&timer, timer_cb, 50, 0);
+  r = uv_timer_start(&timer, timer_cb, retry_delay, 0);
   ASSERT(r == 0);
 
   r = uv_tcp_init(uv_default_loop(), &conn);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(&connect_req,
-                     &conn,
-                     (const struct sockaddr*) &addr,
-                     connect_cb);
-  if (r == UV_ENETUNREACH)
-    RETURN_SKIP("Network unreachable.");
-  ASSERT(r == 0);
+  do
+  {
+    r = uv_tcp_connect(&connect_req,
+                       &conn,
+                       (const struct sockaddr *)&addr,
+                       connect_cb);
+
+    if (r == UV_ENETUNREACH)
+    {
+      if (--retry_count == 0)
+      {
+        RETURN_SKIP("Network unreachable after multiple retries.");
+      }
+      else
+      {
+        uv_sleep(retry_delay);
+        continue;
+      }
+    }
+
+    ASSERT(r == 0);
+    break;
+  } while (retry_count > 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r == 0);
