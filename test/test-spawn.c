@@ -1476,7 +1476,7 @@ TEST_IMPL(spawn_setuid_fails) {
   options.flags |= UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-#if defined(__CYGWIN__)
+#if defined(__CYGWIN__) || defined(__PASE__)
   ASSERT(r == UV_EINVAL);
 #else
   ASSERT(r == UV_EPERM);
@@ -1521,7 +1521,7 @@ TEST_IMPL(spawn_setgid_fails) {
 #endif
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-#if defined(__CYGWIN__) || defined(__MVS__)
+#if defined(__CYGWIN__) || defined(__MVS__) || defined(__PASE__)
   ASSERT(r == UV_EINVAL);
 #else
   ASSERT(r == UV_EPERM);
