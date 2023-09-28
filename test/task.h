@@ -250,7 +250,7 @@ typedef enum {
 #define MAKE_VALGRIND_HAPPY(loop)                   \
   do {                                              \
     close_loop(loop);                               \
-    ASSERT(0 == uv_loop_close(loop));               \
+    ASSERT_EQ(0, uv_loop_close(loop));              \
     uv_library_shutdown();                          \
   } while (0)
 

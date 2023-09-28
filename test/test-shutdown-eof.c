@@ -46,7 +46,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 
 static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT((uv_tcp_t*)t == &tcp);
+  ASSERT_PTR_EQ((uv_tcp_t*)t, &tcp);
 
   if (nread == 0) {
     free(buf->base);
@@ -54,14 +54,14 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   }
 
   if (!got_q) {
-    ASSERT(nread == 1);
+    ASSERT_EQ(nread, 1);
     ASSERT(!got_eof);
-    ASSERT(buf->base[0] == 'Q');
+    ASSERT_EQ(buf->base[0], 'Q');
     free(buf->base);
     got_q = 1;
     puts("got Q");
   } else {
-    ASSERT(nread == UV_EOF);
+    ASSERT_EQ(nread, UV_EOF);
     if (buf->base) {
       free(buf->base);
     }
@@ -72,21 +72,21 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void shutdown_cb(uv_shutdown_t *req, int status) {
-  ASSERT(req == &shutdown_req);
+  ASSERT_PTR_EQ(req, &shutdown_req);
 
-  ASSERT(called_connect_cb == 1);
+  ASSERT_EQ(called_connect_cb, 1);
   ASSERT(!got_eof);
-  ASSERT(called_tcp_close_cb == 0);
-  ASSERT(called_timer_close_cb == 0);
-  ASSERT(called_timer_cb == 0);
+  ASSERT_EQ(called_tcp_close_cb, 0);
+  ASSERT_EQ(called_timer_close_cb, 0);
+  ASSERT_EQ(called_timer_cb, 0);
 
   called_shutdown_cb++;
 }
 
 
 static void connect_cb(uv_connect_t *req, int status) {
-  ASSERT(status == 0);
-  ASSERT(req == &connect_req);
+  ASSERT_EQ(status, 0);
+  ASSERT_PTR_EQ(req, &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
   ASSERT_EQ(0, uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
@@ -107,37 +107,37 @@ static void connect_cb(uv_connect_t *req, int status) {
   uv_shutdown(&shutdown_req, (uv_stream_t*) &tcp, shutdown_cb);
 
   called_connect_cb++;
-  ASSERT(called_shutdown_cb == 0);
+  ASSERT_EQ(called_shutdown_cb, 0);
 }
 
 
 static void tcp_close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*) &tcp);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &tcp);
 
-  ASSERT(called_connect_cb == 1);
+  ASSERT_EQ(called_connect_cb, 1);
   ASSERT(got_q);
   ASSERT(got_eof);
-  ASSERT(called_timer_cb == 1);
+  ASSERT_EQ(called_timer_cb, 1);
 
   called_tcp_close_cb++;
 }
 
 
 static void timer_close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*) &timer);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &timer);
   called_timer_close_cb++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer);
+  ASSERT_PTR_EQ(handle, &timer);
   uv_close((uv_handle_t*) handle, timer_close_cb);
 
   /*
    * The most important assert of the test: we have not received
    * tcp_close_cb yet.
    */
-  ASSERT(called_tcp_close_cb == 0);
+  ASSERT_EQ(called_tcp_close_cb, 0);
   uv_close((uv_handle_t*) &tcp, tcp_close_cb);
 
   called_timer_cb++;
@@ -158,11 +158,11 @@ TEST_IMPL(shutdown_eof) {
   qbuf.len = 1;
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   uv_timer_start(&timer, timer_cb, 100, 0);
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
   r = uv_tcp_init(uv_default_loop(), &tcp);
   ASSERT(!r);
 
@@ -174,13 +174,13 @@ TEST_IMPL(shutdown_eof) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT(called_connect_cb == 1);
-  ASSERT(called_shutdown_cb == 1);
+  ASSERT_EQ(called_connect_cb, 1);
+  ASSERT_EQ(called_shutdown_cb, 1);
   ASSERT(got_eof);
   ASSERT(got_q);
-  ASSERT(called_tcp_close_cb == 1);
-  ASSERT(called_timer_close_cb == 1);
-  ASSERT(called_timer_cb == 1);
+  ASSERT_EQ(called_tcp_close_cb, 1);
+  ASSERT_EQ(called_timer_close_cb, 1);
+  ASSERT_EQ(called_timer_cb, 1);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

@@ -173,21 +173,21 @@ static void on_connection(uv_stream_t* server, int status) {
   if (status != 0) {
     fprintf(stderr, "Connect error %s\n", uv_err_name(status));
   }
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
 
   switch (serverType) {
   case TCP:
     stream = malloc(sizeof(uv_tcp_t));
     ASSERT_NOT_NULL(stream);
     r = uv_tcp_init(loop, (uv_tcp_t*)stream);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     break;
 
   case PIPE:
     stream = malloc(sizeof(uv_pipe_t));
     ASSERT_NOT_NULL(stream);
     r = uv_pipe_init(loop, (uv_pipe_t*)stream, 0);
-    ASSERT(r == 0);
+    ASSERT_EQ(r, 0);
     break;
 
   default:
@@ -199,15 +199,15 @@ static void on_connection(uv_stream_t* server, int status) {
   stream->data = server;
 
   r = uv_accept(server, stream);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_read_start(stream, echo_alloc, after_read);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 }
 
 
 static void on_server_close(uv_handle_t* handle) {
-  ASSERT(handle == server);
+  ASSERT_PTR_EQ(handle, server);
 }
 
 static uv_udp_send_t* send_alloc(void) {
@@ -221,7 +221,7 @@ static uv_udp_send_t* send_alloc(void) {
 
 static void on_send(uv_udp_send_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   req->data = send_freelist;
   send_freelist = req;
 }
@@ -239,20 +239,20 @@ static void on_recv(uv_udp_t* handle,
     return;
   }
 
-  ASSERT(nread > 0);
-  ASSERT(addr->sa_family == AF_INET);
+  ASSERT_GT(nread, 0);
+  ASSERT_EQ(addr->sa_family, AF_INET);
 
   req = send_alloc();
   ASSERT_NOT_NULL(req);
   sndbuf = uv_buf_init(rcvbuf->base, nread);
-  ASSERT(0 <= uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
+  ASSERT_LE(0, uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
 }
 
 static int tcp4_echo_start(int port) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", port, &addr));
+  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", port, &addr));
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
@@ -286,7 +286,7 @@ static int tcp6_echo_start(int port) {
   struct sockaddr_in6 addr6;
   int r;
 
-  ASSERT(0 == uv_ip6_addr("::1", port, &addr6));
+  ASSERT_EQ(0, uv_ip6_addr("::1", port, &addr6));
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
@@ -321,7 +321,7 @@ static int udp4_echo_start(int port) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("127.0.0.1", port, &addr));
+  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", port, &addr));
   server = (uv_handle_t*)&udpServer;
   serverType = UDP;
 

@@ -45,7 +45,7 @@ TEST_IMPL(hrtime) {
      * that the difference between the two hrtime values has a reasonable
      * lower bound.
      */
-    ASSERT(diff > (uint64_t) 25 * NANOSEC / MILLISEC);
+    ASSERT_UINT64_GT(diff, (uint64_t) 25 * NANOSEC / MILLISEC);
     --i;
   }
   return 0;

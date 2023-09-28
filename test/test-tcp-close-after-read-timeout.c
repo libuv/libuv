@@ -112,9 +112,9 @@ static void on_connection(uv_stream_t* server, int status) {
 
 
 static void on_close(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*) &client ||
-         handle == (uv_handle_t*) &connection ||
-         handle == (uv_handle_t*) &timer);
+  ASSERT_NE(handle == (uv_handle_t*) &client ||
+            handle == (uv_handle_t*) &connection ||
+            handle == (uv_handle_t*) &timer, 0);
   on_close_called++;
 }
 

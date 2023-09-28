@@ -30,7 +30,7 @@ static int num_ticks = 10;
 
 
 static void prepare_cb(uv_prepare_t* handle) {
-  ASSERT(handle == &prepare_handle);
+  ASSERT_PTR_EQ(handle, &prepare_handle);
   prepare_called++;
   if (prepare_called == num_ticks)
     uv_prepare_stop(handle);
@@ -38,7 +38,7 @@ static void prepare_cb(uv_prepare_t* handle) {
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer_handle);
+  ASSERT_PTR_EQ(handle, &timer_handle);
   timer_called++;
   if (timer_called == 1)
     uv_stop(uv_default_loop());
@@ -55,17 +55,17 @@ TEST_IMPL(loop_stop) {
   uv_timer_start(&timer_handle, timer_cb, 100, 100);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r != 0);
-  ASSERT(timer_called == 1);
+  ASSERT(r);
+  ASSERT_EQ(timer_called, 1);
 
   r = uv_run(uv_default_loop(), UV_RUN_NOWAIT);
-  ASSERT(r != 0);
-  ASSERT(prepare_called > 1);
+  ASSERT(r);
+  ASSERT_GT(prepare_called, 1);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
-  ASSERT(timer_called == 10);
-  ASSERT(prepare_called == 10);
+  ASSERT_EQ(r, 0);
+  ASSERT_EQ(timer_called, 10);
+  ASSERT_EQ(prepare_called, 10);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

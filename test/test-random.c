@@ -33,16 +33,16 @@ static void random_cb(uv_random_t* req, int status, void* buf, size_t buflen) {
 
   memset(zero, 0, sizeof(zero));
 
-  ASSERT(0 == status);
-  ASSERT(buf == (void*) scratch);
+  ASSERT_EQ(status, 0);
+  ASSERT_PTR_EQ(buf, (void*) scratch);
 
   if (random_cb_called == 0) {
-    ASSERT(buflen == 0);
-    ASSERT(0 == memcmp(scratch, zero, sizeof(zero)));
+    ASSERT_EQ(buflen, 0);
+    ASSERT_EQ(0, memcmp(scratch, zero, sizeof(zero)));
   } else {
-    ASSERT(buflen == sizeof(scratch));
+    ASSERT_EQ(buflen, sizeof(scratch));
     /* Buy a lottery ticket if you manage to trip this assertion. */
-    ASSERT(0 != memcmp(scratch, zero, sizeof(zero)));
+    ASSERT_NE(0, memcmp(scratch, zero, sizeof(zero)));
   }
 
   random_cb_called++;
@@ -54,21 +54,21 @@ TEST_IMPL(random_async) {
   uv_loop_t* loop;
 
   loop = uv_default_loop();
-  ASSERT(UV_EINVAL == uv_random(loop, &req, scratch, sizeof(scratch), -1,
-                                random_cb));
-  ASSERT(UV_E2BIG == uv_random(loop, &req, scratch, -1, -1, random_cb));
+  ASSERT_EQ(UV_EINVAL, uv_random(loop, &req, scratch, sizeof(scratch), -1,
+                                 random_cb));
+  ASSERT_EQ(UV_E2BIG, uv_random(loop, &req, scratch, -1, -1, random_cb));
 
-  ASSERT(0 == uv_random(loop, &req, scratch, 0, 0, random_cb));
-  ASSERT(0 == random_cb_called);
+  ASSERT_EQ(0, uv_random(loop, &req, scratch, 0, 0, random_cb));
+  ASSERT_EQ(random_cb_called, 0);
 
-  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(1 == random_cb_called);
+  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(random_cb_called, 1);
 
-  ASSERT(0 == uv_random(loop, &req, scratch, sizeof(scratch), 0, random_cb));
-  ASSERT(1 == random_cb_called);
+  ASSERT_EQ(0, uv_random(loop, &req, scratch, sizeof(scratch), 0, random_cb));
+  ASSERT_EQ(random_cb_called, 1);
 
-  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT(2 == random_cb_called);
+  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(random_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -79,15 +79,15 @@ TEST_IMPL(random_sync) {
   char zero[256];
   char buf[256];
 
-  ASSERT(UV_EINVAL == uv_random(NULL, NULL, buf, sizeof(buf), -1, NULL));
-  ASSERT(UV_E2BIG == uv_random(NULL, NULL, buf, -1, -1, NULL));
+  ASSERT_EQ(UV_EINVAL, uv_random(NULL, NULL, buf, sizeof(buf), -1, NULL));
+  ASSERT_EQ(UV_E2BIG, uv_random(NULL, NULL, buf, -1, -1, NULL));
 
   memset(buf, 0, sizeof(buf));
-  ASSERT(0 == uv_random(NULL, NULL, buf, sizeof(buf), 0, NULL));
+  ASSERT_EQ(0, uv_random(NULL, NULL, buf, sizeof(buf), 0, NULL));
 
   /* Buy a lottery ticket if you manage to trip this assertion. */
   memset(zero, 0, sizeof(zero));
-  ASSERT(0 != memcmp(buf, zero, sizeof(zero)));
+  ASSERT_NE(0, memcmp(buf, zero, sizeof(zero)));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

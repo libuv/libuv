@@ -27,7 +27,7 @@
 #include <string.h>
 
 #define CHECK_HANDLE(handle) \
-  ASSERT((uv_udp_t*)(handle) == &client || (uv_udp_t*)(handle) == &client2)
+  ASSERT_NE((uv_udp_t*)(handle) == &client || (uv_udp_t*)(handle) == &client2, 0)
 
 static uv_udp_t client;
 static uv_udp_t client2;
@@ -61,7 +61,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void send_cb(uv_udp_send_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  ASSERT(status == 0);
+  ASSERT_EQ(status, 0);
   ASSERT_EQ(status, 0);
   CHECK_HANDLE(req->handle);
   send_cb_called++;

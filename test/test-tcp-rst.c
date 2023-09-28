@@ -31,7 +31,7 @@ static int called_close_cb;
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*) &tcp);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &tcp);
   called_close_cb++;
 }
 

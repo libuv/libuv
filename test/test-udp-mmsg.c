@@ -27,7 +27,7 @@
 #include <string.h>
 
 #define CHECK_HANDLE(handle) \
-  ASSERT((uv_udp_t*)(handle) == &recver || (uv_udp_t*)(handle) == &sender)
+  ASSERT_NE((uv_udp_t*)(handle) == &recver || (uv_udp_t*)(handle) == &sender, 0)
 
 #define BUFFER_MULTIPLIER 20
 #define MAX_DGRAM_SIZE (64 * 1024)

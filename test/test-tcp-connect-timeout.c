@@ -38,14 +38,14 @@ static void close_cb(uv_handle_t* handle);
 
 
 static void connect_cb(uv_connect_t* req, int status) {
-  ASSERT(req == &connect_req);
-  ASSERT(status == UV_ECANCELED);
+  ASSERT_PTR_EQ(req, &connect_req);
+  ASSERT_EQ(status, UV_ECANCELED);
   connect_cb_called++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(handle == &timer);
+  ASSERT_PTR_EQ(handle, &timer);
   uv_close((uv_handle_t*)&conn, close_cb);
   uv_close((uv_handle_t*)&timer, close_cb);
 }
@@ -64,16 +64,16 @@ TEST_IMPL(tcp_connect_timeout) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT(0 == uv_ip4_addr("8.8.8.8", 9999, &addr));
+  ASSERT_EQ(0, uv_ip4_addr("8.8.8.8", 9999, &addr));
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_timer_start(&timer, timer_cb, 50, 0);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_init(uv_default_loop(), &conn);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_tcp_connect(&connect_req,
                      &conn,
@@ -81,10 +81,10 @@ TEST_IMPL(tcp_connect_timeout) {
                      connect_cb);
   if (r == UV_ENETUNREACH)
     RETURN_SKIP("Network unreachable.");
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -151,7 +151,7 @@ TEST_IMPL(tcp_local_connect_timeout) {
   ASSERT_EQ(r, 0);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_EQ(r, 0);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

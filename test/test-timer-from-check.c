@@ -32,49 +32,49 @@ static int timer_cb_called;
 
 
 static void prepare_cb(uv_prepare_t* handle) {
-  ASSERT(0 == uv_prepare_stop(&prepare_handle));
-  ASSERT(0 == prepare_cb_called);
-  ASSERT(1 == check_cb_called);
-  ASSERT(0 == timer_cb_called);
+  ASSERT_EQ(0, uv_prepare_stop(&prepare_handle));
+  ASSERT_EQ(prepare_cb_called, 0);
+  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(timer_cb_called, 0);
   prepare_cb_called++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
-  ASSERT(0 == uv_timer_stop(&timer_handle));
-  ASSERT(1 == prepare_cb_called);
-  ASSERT(1 == check_cb_called);
-  ASSERT(0 == timer_cb_called);
+  ASSERT_EQ(0, uv_timer_stop(&timer_handle));
+  ASSERT_EQ(prepare_cb_called, 1);
+  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(timer_cb_called, 0);
   timer_cb_called++;
 }
 
 
 static void check_cb(uv_check_t* handle) {
-  ASSERT(0 == uv_check_stop(&check_handle));
-  ASSERT(0 == uv_timer_stop(&timer_handle));  /* Runs before timer_cb. */
-  ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));
-  ASSERT(0 == uv_prepare_start(&prepare_handle, prepare_cb));
-  ASSERT(0 == prepare_cb_called);
-  ASSERT(0 == check_cb_called);
-  ASSERT(0 == timer_cb_called);
+  ASSERT_EQ(0, uv_check_stop(&check_handle));
+  ASSERT_EQ(0, uv_timer_stop(&timer_handle));  /* Runs before timer_cb. */
+  ASSERT_EQ(0, uv_timer_start(&timer_handle, timer_cb, 50, 0));
+  ASSERT_EQ(0, uv_prepare_start(&prepare_handle, prepare_cb));
+  ASSERT_EQ(prepare_cb_called, 0);
+  ASSERT_EQ(check_cb_called, 0);
+  ASSERT_EQ(timer_cb_called, 0);
   check_cb_called++;
 }
 
 
 TEST_IMPL(timer_from_check) {
-  ASSERT(0 == uv_prepare_init(uv_default_loop(), &prepare_handle));
-  ASSERT(0 == uv_check_init(uv_default_loop(), &check_handle));
-  ASSERT(0 == uv_check_start(&check_handle, check_cb));
-  ASSERT(0 == uv_timer_init(uv_default_loop(), &timer_handle));
-  ASSERT(0 == uv_timer_start(&timer_handle, timer_cb, 50, 0));
-  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT(1 == prepare_cb_called);
-  ASSERT(1 == check_cb_called);
-  ASSERT(1 == timer_cb_called);
+  ASSERT_EQ(0, uv_prepare_init(uv_default_loop(), &prepare_handle));
+  ASSERT_EQ(0, uv_check_init(uv_default_loop(), &check_handle));
+  ASSERT_EQ(0, uv_check_start(&check_handle, check_cb));
+  ASSERT_EQ(0, uv_timer_init(uv_default_loop(), &timer_handle));
+  ASSERT_EQ(0, uv_timer_start(&timer_handle, timer_cb, 50, 0));
+  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(prepare_cb_called, 1);
+  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(timer_cb_called, 1);
   uv_close((uv_handle_t*) &prepare_handle, NULL);
   uv_close((uv_handle_t*) &check_handle, NULL);
   uv_close((uv_handle_t*) &timer_handle, NULL);
-  ASSERT(0 == uv_run(uv_default_loop(), UV_RUN_ONCE));
+  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_ONCE));
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
