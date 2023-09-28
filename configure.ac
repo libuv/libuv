@@ -83,6 +83,9 @@ AS_CASE([$host_os], [netbsd*], [AC_CHECK_LIB([kvm], [kvm_open])])
 AS_CASE([$host_os], [haiku], [
     LIBS="$LIBS -lnetwork"
 ])
+AS_IF([test "x$enable_shared" = xyes],
+    [AC_DEFINE([BUILDING_UV_SHARED], [1], [Define if building a shared library])
+])
 AC_CHECK_HEADERS([sys/ahafs_evProds.h])
 AC_CONFIG_FILES([Makefile libuv.pc])
 AC_CONFIG_LINKS([test/fixtures/empty_file:test/fixtures/empty_file])
