@@ -29,7 +29,15 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+
+#if defined(__PASE__)
+#include <as400_protos.h>
+#define ifaddrs ifaddrs_pase
+#define getifaddrs Qp2getifaddrs
+#define freeifaddrs Qp2freeifaddrs
+#else
 #include <ifaddrs.h>
+#endif
 
 static int maybe_bind_socket(int fd) {
   union uv__sockaddr s;
