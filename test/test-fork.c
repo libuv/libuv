@@ -371,6 +371,47 @@ TEST_IMPL(fork_signal_to_child_closed) {
   return 0;
 }
 
+static void fork_signal_cb(uv_signal_t* h, int s) {
+  fork_signal_cb_called = s;
+}
+static void empty_close_cb(uv_handle_t* h){}
+
+TEST_IMPL(fork_close_signal_in_child) {
+  uv_loop_t loop;
+  uv_signal_t signal_handle;
+  pid_t child_pid;
+
+  ASSERT_EQ(0, uv_loop_init(&loop));
+  ASSERT_EQ(0, uv_signal_init(&loop, &signal_handle));
+  ASSERT_EQ(0, uv_signal_start(&signal_handle, &fork_signal_cb, SIGHUP));
+
+  ASSERT_EQ(0, kill(getpid(), SIGHUP));
+  child_pid = fork();
+  ASSERT_NE(child_pid, -1);
+  ASSERT_EQ(0, fork_signal_cb_called);
+
+  if (!child_pid) {
+    uv_loop_fork(&loop);
+    uv_close((uv_handle_t*)&signal_handle, &empty_close_cb);
+    uv_run(&loop, UV_RUN_DEFAULT);
+    /* Child doesn't receive the signal */
+    ASSERT_EQ(0, fork_signal_cb_called);
+  } else {
+    /* Parent. Runing once to receive the signal */
+    uv_run(&loop, UV_RUN_ONCE);
+    ASSERT_EQ(SIGHUP, fork_signal_cb_called);
+
+    /* loop should stop after closing the only handle */
+    uv_close((uv_handle_t*)&signal_handle, &empty_close_cb);
+    ASSERT_EQ(0, uv_run(&loop, UV_RUN_DEFAULT));
+
+    assert_wait_child(child_pid);
+  }
+
+  MAKE_VALGRIND_HAPPY(&loop);
+  return 0;
+}
+
 
 static void create_file(const char* name) {
   int r;
