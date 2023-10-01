@@ -1083,10 +1083,10 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_write(uv_fs_t* req) {
-#if TRY_PREADV
-  static _Atomic int no_pwritev;
-#endif
+static ssize_t uv__fs_write_do(int fd,
+                               const struct iovec* bufs,
+                               unsigned int nbufs,
+                               int64_t off) {
   ssize_t r;
 
   /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
@@ -1100,41 +1100,18 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     abort();
 #endif
 
-  if (req->off < 0) {
-    if (req->nbufs == 1)
-      r = write(req->file, req->bufs[0].base, req->bufs[0].len);
+  if (off < 0) {
+    if (nbufs == 1)
+      r = write(fd, bufs->iov_base, bufs->iov_len);
     else
-      r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
+      r = writev(fd, bufs, nbufs);
   } else {
-    if (req->nbufs == 1) {
-      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-#if HAVE_PREADV
-    r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if TRY_PREADV
-    if (atomic_load_explicit(&no_pwritev, memory_order_relaxed)) retry:
-# endif
-    {
-      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-    }
-# if TRY_PREADV
-    else {
-      r = pwritev(req->file,
-                  (struct iovec*) req->bufs,
-                  req->nbufs,
-                  req->off);
-      if (r == -1 && errno == ENOSYS) {
-        atomic_store_explicit(&no_pwritev, 1, memory_order_relaxed);
-        goto retry;
-      }
-    }
-# endif
-#endif
+    if (nbufs == 1)
+      r = pwrite(fd, bufs->iov_base, bufs->iov_len, off);
+    else
+      r = pwritev(fd, bufs, nbufs, off);
   }
 
-done:
 #if defined(__APPLE__)
   if (pthread_mutex_unlock(&lock))
     abort();
@@ -1142,6 +1119,15 @@ done:
 
   return r;
 }
+
+
+static ssize_t uv__fs_write(uv_fs_t* req) {
+  const struct iovec* iov;
+
+  iov = (const struct iovec*) req->bufs;
+  return uv__fs_write_do(req->file, iov, req->nbufs, req->off);
+}
+
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_t fs_req;
