@@ -46,20 +46,6 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#if defined(__DragonFly__)        ||                                      \
-    defined(__FreeBSD__)          ||                                      \
-    defined(__OpenBSD__)          ||                                      \
-    defined(__NetBSD__)
-# define HAVE_PREADV 1
-#else
-# define HAVE_PREADV 0
-#endif
-
-/* preadv() and pwritev() were added in Android N (level 24) */
-#if defined(__linux__) && !(defined(__ANDROID__) && __ANDROID_API__ < 24)
-# define TRY_PREADV 1
-#endif
-
 #if defined(__linux__)
 # include <sys/sendfile.h>
 #endif
@@ -410,121 +396,58 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
-#if !HAVE_PREADV
-static ssize_t uv__fs_preadv(uv_file fd,
-                             uv_buf_t* bufs,
-                             unsigned int nbufs,
-                             off_t off) {
-  uv_buf_t* buf;
-  uv_buf_t* end;
-  ssize_t result;
-  ssize_t rc;
-  size_t pos;
-
-  assert(nbufs > 0);
-
-  result = 0;
-  pos = 0;
-  buf = bufs + 0;
-  end = bufs + nbufs;
-
-  for (;;) {
-    do
-      rc = pread(fd, buf->base + pos, buf->len - pos, off + result);
-    while (rc == -1 && errno == EINTR);
-
-    if (rc == 0)
-      break;
-
-    if (rc == -1 && result == 0)
-      return UV__ERR(errno);
-
-    if (rc == -1)
-      break;  /* We read some data so return that, ignore the error. */
-
-    pos += rc;
-    result += rc;
-
-    if (pos < buf->len)
-      continue;
-
-    pos = 0;
-    buf += 1;
-
-    if (buf == end)
-      break;
-  }
-
-  return result;
-}
-#endif
-
-
-static ssize_t uv__fs_read(uv_fs_t* req) {
-#if TRY_PREADV
-  static _Atomic int no_preadv;
-#endif
+static ssize_t uv__fs_read_do(int fd,
+                              const struct iovec* bufs,
+                              unsigned int nbufs,
+                              int64_t off) {
   unsigned int iovmax;
   ssize_t result;
 
   iovmax = uv__getiovmax();
-  if (req->nbufs > iovmax)
-    req->nbufs = iovmax;
+  if (nbufs > iovmax)
+    nbufs = iovmax;
 
-  if (req->off < 0) {
-    if (req->nbufs == 1)
-      result = read(req->file, req->bufs[0].base, req->bufs[0].len);
+  if (off < 0) {
+    if (nbufs == 1)
+      result = read(fd, bufs->iov_base, bufs->iov_len);
     else
-      result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
+      result = readv(fd, bufs, nbufs);
   } else {
-    if (req->nbufs == 1) {
-      result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-
-#if HAVE_PREADV
-    result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if TRY_PREADV
-    if (atomic_load_explicit(&no_preadv, memory_order_relaxed)) retry:
-# endif
-    {
-      result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
-    }
-# if TRY_PREADV
-    else {
-      result = preadv(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (result == -1 && errno == ENOSYS) {
-        atomic_store_explicit(&no_preadv, 1, memory_order_relaxed);
-        goto retry;
-      }
-    }
-# endif
-#endif
+    if (nbufs == 1)
+      result = pread(fd, bufs->iov_base, bufs->iov_len, off);
+    else
+      result = preadv(fd, bufs, nbufs, off);
   }
-
-done:
-  /* Early cleanup of bufs allocation, since we're done with it. */
-  if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
-
-  req->bufs = NULL;
-  req->nbufs = 0;
 
 #ifdef __PASE__
   /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
   if (result == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
-    rc = uv__fstat(req->file, &buf);
+    rc = uv__fstat(fd, &buf);
     if (rc == 0 && S_ISDIR(buf.st_mode)) {
       errno = EISDIR;
     }
   }
 #endif
+
+  return result;
+}
+
+
+static ssize_t uv__fs_read(uv_fs_t* req) {
+  const struct iovec* iov;
+  ssize_t result;
+
+  iov = (const struct iovec*) req->bufs;
+  result = uv__fs_read_do(req->file, iov, req->nbufs, req->off);
+
+  /* Early cleanup of bufs allocation, since we're done with it. */
+  if (req->bufs != req->bufsml)
+    uv__free(req->bufs);
+
+  req->bufs = NULL;
+  req->nbufs = 0;
 
   return result;
 }
