@@ -105,6 +105,21 @@ static void uv__init_global_job_handle(void) {
                                &info,
                                sizeof info))
     uv_fatal_error(GetLastError(), "SetInformationJobObject");
+
+
+  if (!AssignProcessToJobObject(uv_global_job_handle_, GetCurrentProcess())) {
+    /* Make sure this handle is functional. The Windows kernel has a bug that
+     * if the first use of AssignProcessToJobObject is for a Windows Store
+     * program, subsequent attempts to use the handle with fail with
+     * INVALID_PARAMETER (87). This is possibly because all uses of the handle
+     * must be for the same Terminal Services session. We can ensure it is tied
+     * to our current session now by adding ourself to it. We could remove
+     * ourself afterwards, but there doesn't seem to be a reason to.
+     */
+    DWORD err = GetLastError();
+    if (err != ERROR_ACCESS_DENIED)
+      uv_fatal_error(err, "AssignProcessToJobObject");
+  }
 }
 
 
@@ -1099,6 +1114,7 @@ int uv_spawn(uv_loop_t* loop,
      * breakaway.
      */
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+    process_flags |= CREATE_SUSPENDED;
   }
 
   if (!CreateProcessW(application_path,
@@ -1115,11 +1131,6 @@ int uv_spawn(uv_loop_t* loop,
     err = GetLastError();
     goto done;
   }
-
-  /* Spawn succeeded. Beyond this point, failure is reported asynchronously. */
-
-  process->process_handle = info.hProcess;
-  process->pid = info.dwProcessId;
 
   /* If the process isn't spawned as detached, assign to the global job object
    * so windows will kill it when the parent process dies. */
@@ -1142,6 +1153,19 @@ int uv_spawn(uv_loop_t* loop,
         uv_fatal_error(err, "AssignProcessToJobObject");
     }
   }
+
+  if (process_flags & CREATE_SUSPENDED) {
+    if (ResumeThread(info.hThread) == ((DWORD)-1)) {
+      err = GetLastError();
+      TerminateProcess(info.hProcess, 1);
+      goto done;
+    }
+  }
+
+  /* Spawn succeeded. Beyond this point, failure is reported asynchronously. */
+
+  process->process_handle = info.hProcess;
+  process->pid = info.dwProcessId;
 
   /* Set IPC pid to all IPC pipes. */
   for (i = 0; i < options->stdio_count; i++) {
