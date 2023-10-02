@@ -1468,6 +1468,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (fd == iou->ringfd) {
         uv__poll_io_uring(loop, iou);
         have_iou_events = 1;
+        nevents++;
         continue;
       }
 
