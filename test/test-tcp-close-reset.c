@@ -62,7 +62,7 @@ static void do_write(uv_tcp_t* handle) {
   buf = uv_buf_init("PING", 4);
   for (i = 0; i < ARRAY_SIZE(write_reqs); i++) {
     r = uv_write(&write_reqs[i], (uv_stream_t*) handle, &buf, 1, write_cb);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 }
 
@@ -72,22 +72,22 @@ static void do_close(uv_tcp_t* handle) {
   int r;
 
   if (shutdown_before_close == 1) {
-    ASSERT_EQ(0, uv_shutdown(&shutdown_req,
-                             (uv_stream_t*) handle,
-                             shutdown_cb));
+    ASSERT_OK(uv_shutdown(&shutdown_req,
+                          (uv_stream_t*) handle,
+                          shutdown_cb));
     ASSERT_EQ(UV_EINVAL, uv_tcp_close_reset(handle, close_cb));
   } else if (shutdown_before_close == 2) {
     r = uv_fileno((const uv_handle_t*) handle, &fd);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
     ASSERT_NE(fd, INVALID_FD);
 #ifdef _WIN32
-    ASSERT_EQ(0, shutdown(fd, SD_BOTH));
+    ASSERT_OK(shutdown(fd, SD_BOTH));
 #else
-    ASSERT_EQ(0, shutdown(fd, SHUT_RDWR));
+    ASSERT_OK(shutdown(fd, SHUT_RDWR));
 #endif
-    ASSERT_EQ(0, uv_tcp_close_reset(handle, close_cb));
+    ASSERT_OK(uv_tcp_close_reset(handle, close_cb));
   } else {
-    ASSERT_EQ(0, uv_tcp_close_reset(handle, close_cb));
+    ASSERT_OK(uv_tcp_close_reset(handle, close_cb));
     ASSERT_EQ(UV_ENOTCONN, uv_shutdown(&shutdown_req, (uv_stream_t*) handle,
               shutdown_cb));
   }
@@ -119,7 +119,7 @@ static void connect_cb(uv_connect_t* conn_req, int status) {
 
 static void write_cb(uv_write_t* req, int status) {
   /* write callbacks should run before the close callback */
-  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_OK(close_cb_called);
   ASSERT_PTR_EQ(req->handle, (uv_stream_t*)&tcp_client);
   write_cb_called++;
 }
@@ -157,10 +157,10 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void connection_cb(uv_stream_t* server, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
-  ASSERT_EQ(0, uv_tcp_init(loop, &tcp_accepted));
-  ASSERT_EQ(0, uv_accept(server, (uv_stream_t*) &tcp_accepted));
+  ASSERT_OK(uv_tcp_init(loop, &tcp_accepted));
+  ASSERT_OK(uv_accept(server, (uv_stream_t*) &tcp_accepted));
 
   uv_read_start((uv_stream_t*) &tcp_accepted, alloc_cb, read_cb);
 }
@@ -170,16 +170,16 @@ static void start_server(uv_loop_t* loop, uv_tcp_t* handle) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(loop, handle);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_bind(handle, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_listen((uv_stream_t*)handle, 128, connection_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -187,16 +187,16 @@ static void do_connect(uv_loop_t* loop, uv_tcp_t* tcp_client) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_tcp_init(loop, tcp_client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_connect(&connect_req,
                      tcp_client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -215,16 +215,16 @@ TEST_IMPL(tcp_close_reset_client) {
 
   do_connect(loop, &tcp_client);
 
-  ASSERT_EQ(write_cb_called, 0);
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(write_cb_called);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(shutdown_cb_called);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(write_cb_called, 4);
   ASSERT_EQ(close_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(shutdown_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -242,15 +242,15 @@ TEST_IMPL(tcp_close_reset_client_after_shutdown) {
 
   do_connect(loop, &tcp_client);
 
-  ASSERT_EQ(write_cb_called, 0);
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(write_cb_called);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(shutdown_cb_called);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(write_cb_called, 4);
-  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_OK(close_cb_called);
   ASSERT_EQ(shutdown_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -269,16 +269,16 @@ TEST_IMPL(tcp_close_reset_accepted) {
 
   do_connect(loop, &tcp_client);
 
-  ASSERT_EQ(write_cb_called, 0);
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(write_cb_called);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(shutdown_cb_called);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(write_cb_called, 4);
   ASSERT_EQ(close_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(shutdown_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -296,15 +296,15 @@ TEST_IMPL(tcp_close_reset_accepted_after_shutdown) {
 
   do_connect(loop, &tcp_client);
 
-  ASSERT_EQ(write_cb_called, 0);
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(write_cb_called);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(shutdown_cb_called);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(write_cb_called, 4);
-  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_OK(close_cb_called);
   ASSERT_EQ(shutdown_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -323,16 +323,16 @@ TEST_IMPL(tcp_close_reset_accepted_after_socket_shutdown) {
 
   do_connect(loop, &tcp_client);
 
-  ASSERT_EQ(write_cb_called, 0);
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(write_cb_called);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(shutdown_cb_called);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(write_cb_called, 4);
   ASSERT_EQ(close_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 0);
+  ASSERT_OK(shutdown_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

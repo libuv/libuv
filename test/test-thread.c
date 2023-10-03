@@ -71,7 +71,7 @@ static void getaddrinfo_do(struct getaddrinfo_req* req) {
                      "localhost",
                      NULL,
                      NULL);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -80,7 +80,7 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
                            struct addrinfo* res) {
   struct getaddrinfo_req* req;
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   req = container_of(handle, struct getaddrinfo_req, handle);
   uv_freeaddrinfo(res);
@@ -94,7 +94,7 @@ static void fs_do(struct fs_req* req) {
   int r;
 
   r = uv_fs_stat(req->loop, &req->handle, ".", fs_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -115,7 +115,7 @@ static void do_work(void* arg) {
   size_t i;
   struct test_thread* thread = arg;
 
-  ASSERT_EQ(0, uv_loop_init(&loop));
+  ASSERT_OK(uv_loop_init(&loop));
 
   for (i = 0; i < ARRAY_SIZE(getaddrinfo_reqs); i++) {
     struct getaddrinfo_req* req = getaddrinfo_reqs + i;
@@ -131,8 +131,8 @@ static void do_work(void* arg) {
     fs_do(req);
   }
 
-  ASSERT_EQ(0, uv_run(&loop, UV_RUN_DEFAULT));
-  ASSERT_EQ(0, uv_loop_close(&loop));
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_loop_close(&loop));
   thread->thread_called = 1;
 }
 
@@ -148,10 +148,10 @@ TEST_IMPL(thread_create) {
   int r;
 
   r = uv_thread_create(&tid, thread_entry, (void *) 42);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_thread_join(&tid);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(thread_called, 1);
 
@@ -176,12 +176,12 @@ TEST_IMPL(threadpool_multiple_event_loops) {
 
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_create(&threads[i].thread_id, do_work, &threads[i]);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_join(&threads[i].thread_id);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
     ASSERT_EQ(threads[i].thread_called, 1);
   }
 
@@ -201,14 +201,14 @@ static void tls_thread(void* arg) {
 TEST_IMPL(thread_local_storage) {
   char name[] = "main";
   uv_thread_t threads[2];
-  ASSERT_EQ(0, uv_key_create(&tls_key));
+  ASSERT_OK(uv_key_create(&tls_key));
   ASSERT_NULL(uv_key_get(&tls_key));
   uv_key_set(&tls_key, name);
   ASSERT_EQ(name, uv_key_get(&tls_key));
-  ASSERT_EQ(0, uv_thread_create(threads + 0, tls_thread, threads + 0));
-  ASSERT_EQ(0, uv_thread_create(threads + 1, tls_thread, threads + 1));
-  ASSERT_EQ(0, uv_thread_join(threads + 0));
-  ASSERT_EQ(0, uv_thread_join(threads + 1));
+  ASSERT_OK(uv_thread_create(threads + 0, tls_thread, threads + 0));
+  ASSERT_OK(uv_thread_create(threads + 1, tls_thread, threads + 1));
+  ASSERT_OK(uv_thread_join(threads + 0));
+  ASSERT_OK(uv_thread_join(threads + 1));
   uv_key_delete(&tls_key);
   return 0;
 }
@@ -228,24 +228,24 @@ static void thread_check_stack(void* arg) {
   struct rlimit lim;
   size_t stack_size;
   pthread_attr_t attr;
-  ASSERT_EQ(0, getrlimit(RLIMIT_STACK, &lim));
+  ASSERT_OK(getrlimit(RLIMIT_STACK, &lim));
   if (lim.rlim_cur == RLIM_INFINITY)
     lim.rlim_cur = 2 << 20;  /* glibc default. */
-  ASSERT_EQ(0, pthread_getattr_np(pthread_self(), &attr));
-  ASSERT_EQ(0, pthread_attr_getstacksize(&attr, &stack_size));
+  ASSERT_OK(pthread_getattr_np(pthread_self(), &attr));
+  ASSERT_OK(pthread_attr_getstacksize(&attr, &stack_size));
   expected = arg == NULL ? 0 : ((uv_thread_options_t*)arg)->stack_size;
   if (expected == 0)
     expected = (size_t)lim.rlim_cur;
   ASSERT_GE(stack_size, expected);
-  ASSERT_EQ(0, pthread_attr_destroy(&attr));
+  ASSERT_OK(pthread_attr_destroy(&attr));
 #endif
 }
 
 
 TEST_IMPL(thread_stack_size) {
   uv_thread_t thread;
-  ASSERT_EQ(0, uv_thread_create(&thread, thread_check_stack, NULL));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create(&thread, thread_check_stack, NULL));
+  ASSERT_OK(uv_thread_join(&thread));
   return 0;
 }
 
@@ -255,42 +255,42 @@ TEST_IMPL(thread_stack_size_explicit) {
 
   options.flags = UV_THREAD_HAS_STACK_SIZE;
   options.stack_size = 1024 * 1024;
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                   thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 
   options.stack_size = 8 * 1024 * 1024;  /* larger than most default os sizes */
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                   thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 
   options.stack_size = 0;
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                   thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 
   options.stack_size = 42;
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                   thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 
 #ifdef PTHREAD_STACK_MIN
   options.stack_size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                   thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 
   options.stack_size = PTHREAD_STACK_MIN / 2 - 42;  /* unaligned size */
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                   thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 #endif
 
   /* unaligned size, should be larger than PTHREAD_STACK_MIN */
   options.stack_size = 1234567;
-  ASSERT_EQ(0, uv_thread_create_ex(&thread, &options,
-                                  thread_check_stack, &options));
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_create_ex(&thread, &options,
+                                thread_check_stack, &options));
+  ASSERT_OK(uv_thread_join(&thread));
 
   return 0;
 }

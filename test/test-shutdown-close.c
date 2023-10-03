@@ -52,11 +52,11 @@ static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(0, uv_is_closing((uv_handle_t*) req->handle));
+  ASSERT_OK(r);
+  ASSERT_OK(uv_is_closing((uv_handle_t*) req->handle));
   uv_close((uv_handle_t*) req->handle, close_cb);
   ASSERT_EQ(1, uv_is_closing((uv_handle_t*) req->handle));
 
@@ -69,16 +69,16 @@ TEST_IMPL(shutdown_close_tcp) {
   uv_tcp_t h;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   r = uv_tcp_init(uv_default_loop(), &h);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_tcp_connect(&connect_req,
                      &h,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(connect_cb_called, 1);
   ASSERT_EQ(shutdown_cb_called, 1);
@@ -94,10 +94,10 @@ TEST_IMPL(shutdown_close_pipe) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &h, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   uv_pipe_connect(&connect_req, &h, TEST_PIPENAME, connect_cb);
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(connect_cb_called, 1);
   ASSERT_EQ(shutdown_cb_called, 1);

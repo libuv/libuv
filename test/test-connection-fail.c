@@ -54,7 +54,7 @@ static void timer_cb(uv_timer_t* handle) {
    * but libuv hasn't automatically closed the socket. The user must
    * uv_close the handle manually.
    */
-  ASSERT_EQ(close_cb_calls, 0);
+  ASSERT_OK(close_cb_calls);
   ASSERT_EQ(connect_cb_calls, 1);
 
   /* Close the tcp handle. */
@@ -70,7 +70,7 @@ static void on_connect_with_close(uv_connect_t *req, int status) {
   ASSERT_EQ(status, UV_ECONNREFUSED);
   connect_cb_calls++;
 
-  ASSERT_EQ(close_cb_calls, 0);
+  ASSERT_OK(close_cb_calls);
   uv_close((uv_handle_t*)req->handle, on_close);
 }
 
@@ -81,7 +81,7 @@ static void on_connect_without_close(uv_connect_t *req, int status) {
 
   uv_timer_start(&timer, timer_cb, 100, 0);
 
-  ASSERT_EQ(close_cb_calls, 0);
+  ASSERT_OK(close_cb_calls);
 }
 
 
@@ -89,10 +89,10 @@ static void connection_fail(uv_connect_cb connect_cb) {
   struct sockaddr_in client_addr, server_addr;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", 0, &client_addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &client_addr));
 
   /* There should be no servers listening on this port. */
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
 
   /* Try to connect to the server and do NUM_PINGS ping-pongs. */
   r = uv_tcp_init(uv_default_loop(), &tcp);
@@ -100,7 +100,7 @@ static void connection_fail(uv_connect_cb connect_cb) {
 
   /* We are never doing multiple reads/connects at a time anyway. so these
    * handles can be pre-initialized. */
-  ASSERT_EQ(0, uv_tcp_bind(&tcp, (const struct sockaddr*) &client_addr, 0));
+  ASSERT_OK(uv_tcp_bind(&tcp, (const struct sockaddr*) &client_addr, 0));
 
   r = uv_tcp_connect(&req,
                      &tcp,
@@ -127,8 +127,8 @@ TEST_IMPL(connection_fail) {
 
   connection_fail(on_connect_with_close);
 
-  ASSERT_EQ(timer_close_cb_calls, 0);
-  ASSERT_EQ(timer_cb_calls, 0);
+  ASSERT_OK(timer_close_cb_calls);
+  ASSERT_OK(timer_cb_calls);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -149,7 +149,7 @@ TEST_IMPL(connection_fail_doesnt_auto_close) {
   int r;
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   connection_fail(on_connect_without_close);
 

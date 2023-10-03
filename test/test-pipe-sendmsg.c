@@ -45,7 +45,7 @@ static void set_nonblocking(uv_os_sock_t sock) {
 #ifdef _WIN32
   unsigned long on = 1;
   r = ioctlsocket(sock, FIONBIO, &on);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 #else
   int flags = fcntl(sock, F_GETFL, 0);
   ASSERT_GE(flags, 0);
@@ -87,14 +87,14 @@ static void read_cb(uv_stream_t* handle,
 
     ASSERT_LT(incoming_count, ARRAY_SIZE(incoming));
     inc = &incoming[incoming_count++];
-    ASSERT_EQ(0, uv_pipe_init(p->loop, inc, 0));
-    ASSERT_EQ(0, uv_accept(handle, (uv_stream_t*) inc));
+    ASSERT_OK(uv_pipe_init(p->loop, inc, 0));
+    ASSERT_OK(uv_accept(handle, (uv_stream_t*) inc));
   }
 
   if (incoming_count != ARRAY_SIZE(incoming))
     return;
 
-  ASSERT_EQ(0, uv_read_stop((uv_stream_t*) p));
+  ASSERT_OK(uv_read_stop((uv_stream_t*) p));
   uv_close((uv_handle_t*) p, close_cb);
   for (i = 0; i < ARRAY_SIZE(incoming); i++)
     uv_close((uv_handle_t*) &incoming[i], close_cb);
@@ -115,12 +115,12 @@ TEST_IMPL(pipe_sendmsg) {
   unsigned int i;
   uv_buf_t buf;
 
-  ASSERT_EQ(0, socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
+  ASSERT_OK(socketpair(AF_UNIX, SOCK_STREAM, 0, fds));
   for (i = 0; i < ARRAY_SIZE(send_fds); i += 2)
-    ASSERT_EQ(0, socketpair(AF_UNIX, SOCK_STREAM, 0, send_fds + i));
+    ASSERT_OK(socketpair(AF_UNIX, SOCK_STREAM, 0, send_fds + i));
   ASSERT_EQ(i, ARRAY_SIZE(send_fds));
-  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &p, 1));
-  ASSERT_EQ(0, uv_pipe_open(&p, fds[1]));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &p, 1));
+  ASSERT_OK(uv_pipe_open(&p, fds[1]));
 
   buf = uv_buf_init("X", 1);
   memset(&msg, 0, sizeof(msg));
@@ -146,7 +146,7 @@ TEST_IMPL(pipe_sendmsg) {
   }
 
   set_nonblocking(fds[1]);
-  ASSERT_EQ(0, uv_read_start((uv_stream_t*) &p, alloc_cb, read_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &p, alloc_cb, read_cb));
 
   do
     r = sendmsg(fds[0], &msg, 0);

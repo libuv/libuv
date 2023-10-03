@@ -366,7 +366,7 @@ static void initialize_tty(uv_tty_t* tty_out) {
   ASSERT_GE(ttyout_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyout_fd));
   r = uv_tty_init(uv_default_loop(), tty_out, ttyout_fd, 0); /* Writable. */
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 static void terminate_tty(uv_tty_t* tty_out) {
@@ -1334,7 +1334,7 @@ TEST_IMPL(tty_full_reset) {
   ASSERT(compare_screen(&tty_out, &actual, &expect));
   ASSERT_EQ(get_cursor_size(&tty_out), saved_cursor_size);
   ASSERT_EQ(get_cursor_visibility(&tty_out), saved_cursor_visibility);
-  ASSERT_EQ(actual.si.csbi.srWindow.Top, 0);
+  ASSERT_OK(actual.si.csbi.srWindow.Top);
 
   terminate_tty(&tty_out);
 

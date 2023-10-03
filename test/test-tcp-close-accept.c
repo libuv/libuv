@@ -47,7 +47,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   write_cb_called++;
 }
 
@@ -68,14 +68,14 @@ static void connect_cb(uv_connect_t* req, int status) {
     return;
   }
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT_LE(connect_reqs, req);
   ASSERT_LE(req, connect_reqs + ARRAY_SIZE(connect_reqs));
   i = req - connect_reqs;
 
   buf = uv_buf_init("x", 1);
   outgoing = (uv_stream_t*) &tcp_outgoing[i];
-  ASSERT_EQ(0, uv_write(&write_reqs[i], outgoing, &buf, 1, write_cb));
+  ASSERT_OK(uv_write(&write_reqs[i], outgoing, &buf, 1, write_cb));
 }
 
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
@@ -90,7 +90,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
   pending_incoming = (uv_tcp_t*) stream - &tcp_incoming[0];
   ASSERT_LT(pending_incoming, got_connections);
-  ASSERT_EQ(0, uv_read_stop(stream));
+  ASSERT_OK(uv_read_stop(stream));
   ASSERT_EQ(nread, 1);
 
   loop = stream->loop;
@@ -106,12 +106,12 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   uv_close((uv_handle_t*) &tcp_server, close_cb);
 
   /* Create new fd that should be one of the closed incomings */
-  ASSERT_EQ(0, uv_tcp_init(loop, &tcp_check));
-  ASSERT_EQ(0, uv_tcp_connect(&tcp_check_req,
-                              &tcp_check,
-                              (const struct sockaddr*) &addr,
-                              connect_cb));
-  ASSERT_EQ(0, uv_read_start((uv_stream_t*) &tcp_check, alloc_cb, read_cb));
+  ASSERT_OK(uv_tcp_init(loop, &tcp_check));
+  ASSERT_OK(uv_tcp_connect(&tcp_check_req,
+                           &tcp_check,
+                           (const struct sockaddr*) &addr,
+                           connect_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &tcp_check, alloc_cb, read_cb));
 }
 
 static void connection_cb(uv_stream_t* server, int status) {
@@ -126,8 +126,8 @@ static void connection_cb(uv_stream_t* server, int status) {
 
   /* Accept everyone */
   incoming = &tcp_incoming[got_connections++];
-  ASSERT_EQ(0, uv_tcp_init(server->loop, incoming));
-  ASSERT_EQ(0, uv_accept(server, (uv_stream_t*) incoming));
+  ASSERT_OK(uv_tcp_init(server->loop, incoming));
+  ASSERT_OK(uv_accept(server, (uv_stream_t*) incoming));
 
   if (got_connections != ARRAY_SIZE(tcp_incoming))
     return;
@@ -135,7 +135,7 @@ static void connection_cb(uv_stream_t* server, int status) {
   /* Once all clients are accepted - start reading */
   for (i = 0; i < ARRAY_SIZE(tcp_incoming); i++) {
     incoming = &tcp_incoming[i];
-    ASSERT_EQ(0, uv_read_start((uv_stream_t*) incoming, alloc_cb, read_cb));
+    ASSERT_OK(uv_read_start((uv_stream_t*) incoming, alloc_cb, read_cb));
   }
 }
 
@@ -162,22 +162,22 @@ TEST_IMPL(tcp_close_accept) {
    */
 
   loop = uv_default_loop();
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-  ASSERT_EQ(0, uv_tcp_init(loop, &tcp_server));
-  ASSERT_EQ(0, uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0));
-  ASSERT_EQ(0, uv_listen((uv_stream_t*) &tcp_server,
-                        ARRAY_SIZE(tcp_outgoing),
-                        connection_cb));
+  ASSERT_OK(uv_tcp_init(loop, &tcp_server));
+  ASSERT_OK(uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0));
+  ASSERT_OK(uv_listen((uv_stream_t*) &tcp_server,
+                      ARRAY_SIZE(tcp_outgoing),
+                      connection_cb));
 
   for (i = 0; i < ARRAY_SIZE(tcp_outgoing); i++) {
     client = tcp_outgoing + i;
 
-    ASSERT_EQ(0, uv_tcp_init(loop, client));
-    ASSERT_EQ(0, uv_tcp_connect(&connect_reqs[i],
-                                client,
-                                (const struct sockaddr*) &addr,
-                                connect_cb));
+    ASSERT_OK(uv_tcp_init(loop, client));
+    ASSERT_OK(uv_tcp_connect(&connect_reqs[i],
+                             client,
+                             (const struct sockaddr*) &addr,
+                             connect_cb));
   }
 
   uv_run(loop, UV_RUN_DEFAULT);

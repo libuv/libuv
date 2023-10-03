@@ -52,11 +52,11 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
   int r;
 
   ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   if (*buf == '\0') {  /* Linux abstract socket. */
     const char expected[] = "\0" TEST_PIPENAME;
@@ -82,7 +82,7 @@ static void pipe_server_connection_cb(uv_stream_t* handle, int status) {
   /* This function *may* be called, depending on whether accept or the
    * connection callback is called first.
    */
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 }
 
 
@@ -99,7 +99,7 @@ TEST_IMPL(pipe_getsockname) {
   ASSERT_NOT_NULL(loop);
 
   r = uv_pipe_init(loop, &pipe_server, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_server, buf, &len);
@@ -110,25 +110,25 @@ TEST_IMPL(pipe_getsockname) {
   ASSERT_EQ(r, UV_EBADF);
 
   r = uv_pipe_bind(&pipe_server, TEST_PIPENAME);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_server, buf, &len);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_NE(buf[len - 1], 0);
   ASSERT_EQ(buf[len], '\0');
-  ASSERT_EQ(memcmp(buf, TEST_PIPENAME, len), 0);
+  ASSERT_OK(memcmp(buf, TEST_PIPENAME, len));
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_server, buf, &len);
   ASSERT_EQ(r, UV_ENOTCONN);
 
   r = uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_pipe_init(loop, &pipe_client, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   len = sizeof buf;
   r = uv_pipe_getsockname(&pipe_client, buf, &len);
@@ -146,13 +146,13 @@ TEST_IMPL(pipe_getsockname) {
 
   len = sizeof buf;
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_NE(buf[len - 1], 0);
-  ASSERT_EQ(memcmp(buf, TEST_PIPENAME, len), 0);
+  ASSERT_OK(memcmp(buf, TEST_PIPENAME, len));
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(pipe_client_connect_cb_called, 1);
   ASSERT_EQ(pipe_close_cb_called, 2);
 
@@ -221,40 +221,40 @@ TEST_IMPL(pipe_getsockname_blocking) {
   ASSERT(r);
 
   r = uv_pipe_init(uv_default_loop(), &pipe_client, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   readfd = _open_osfhandle((intptr_t)readh, _O_RDONLY);
   ASSERT_NE(r, -1);
   r = uv_pipe_open(&pipe_client, readfd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_read_start((uv_stream_t*) &pipe_client,
                     (uv_alloc_cb) abort,
                     (uv_read_cb) abort);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   Sleep(100);
   r = uv_read_stop((uv_stream_t*)&pipe_client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   len1 = sizeof buf1;
   r = uv_pipe_getsockname(&pipe_client, buf1, &len1);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(len1, 0);  /* It's an annonymous pipe. */
+  ASSERT_OK(r);
+  ASSERT_OK(len1);  /* It's an annonymous pipe. */
 
   r = uv_read_start((uv_stream_t*)&pipe_client,
                     (uv_alloc_cb) abort,
                     (uv_read_cb) abort);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   Sleep(100);
 
   len2 = sizeof buf2;
   r = uv_pipe_getsockname(&pipe_client, buf2, &len2);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(len2, 0);  /* It's an annonymous pipe. */
+  ASSERT_OK(r);
+  ASSERT_OK(len2);  /* It's an annonymous pipe. */
 
   r = uv_read_stop((uv_stream_t*)&pipe_client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(len1, len2);
-  ASSERT_EQ(memcmp(buf1, buf2, len1), 0);
+  ASSERT_OK(memcmp(buf1, buf2, len1));
 
   pipe_close_cb_called = 0;
   uv_close((uv_handle_t*)&pipe_client, pipe_close_cb);

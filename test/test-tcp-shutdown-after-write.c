@@ -66,10 +66,10 @@ static void timer_cb(uv_timer_t* handle) {
 
   buf = uv_buf_init("TEST", 4);
   r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_shutdown(&shutdown_req, (uv_stream_t*)&conn, shutdown_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -80,22 +80,22 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
 static void connect_cb(uv_connect_t* req, int status) {
   int r;
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   connect_cb_called++;
 
   r = uv_read_start((uv_stream_t*)&conn, alloc_cb, read_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   write_cb_called++;
 }
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   shutdown_cb_called++;
   uv_close((uv_handle_t*)&conn, close_cb);
 }
@@ -106,26 +106,26 @@ TEST_IMPL(tcp_shutdown_after_write) {
   uv_loop_t* loop;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   loop = uv_default_loop();
 
   r = uv_timer_init(loop, &timer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_timer_start(&timer, timer_cb, 125, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_init(loop, &conn);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_connect(&connect_req,
                      &conn,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(connect_cb_called, 1);
   ASSERT_EQ(write_cb_called, 1);

@@ -46,8 +46,8 @@ TEST_IMPL(process_priority) {
     if (r == UV_EACCES)
       continue;
 
-    ASSERT_EQ(r, 0);
-    ASSERT_EQ(uv_os_getpriority(0, &priority), 0);
+    ASSERT_OK(r);
+    ASSERT_OK(uv_os_getpriority(0, &priority));
 
     /* Verify that the priority values match on Unix, and are range mapped
        on Windows. */
@@ -71,7 +71,7 @@ TEST_IMPL(process_priority) {
 #endif
 
     /* Verify that the current PID and 0 are equivalent. */
-    ASSERT_EQ(uv_os_getpriority(uv_os_getpid(), &r), 0);
+    ASSERT_OK(uv_os_getpriority(uv_os_getpid(), &r));
     ASSERT_EQ(priority, r);
   }
 

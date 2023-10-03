@@ -39,7 +39,7 @@ TEST_IMPL(run_nowait) {
 
   r = uv_run(uv_default_loop(), UV_RUN_NOWAIT);
   ASSERT(r);
-  ASSERT_EQ(timer_called, 0);
+  ASSERT_OK(timer_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

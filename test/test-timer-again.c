@@ -54,7 +54,7 @@ static void repeat_1_cb(uv_timer_t* handle) {
   repeat_1_cb_called++;
 
   r = uv_timer_again(&repeat_2);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   if (repeat_1_cb_called == 10) {
     uv_close((uv_handle_t*)handle, close_cb);
@@ -77,7 +77,7 @@ static void repeat_2_cb(uv_timer_t* handle) {
   repeat_2_cb_called++;
 
   if (uv_timer_get_repeat(&repeat_2) == 0) {
-    ASSERT_EQ(0, uv_is_active((uv_handle_t*) handle));
+    ASSERT_OK(uv_is_active((uv_handle_t*) handle));
     uv_close((uv_handle_t*)handle, close_cb);
     return;
   }
@@ -100,17 +100,17 @@ TEST_IMPL(timer_again) {
 
   /* Verify that it is not possible to uv_timer_again a never-started timer. */
   r = uv_timer_init(uv_default_loop(), &dummy);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_timer_again(&dummy);
   ASSERT_EQ(r, UV_EINVAL);
   uv_unref((uv_handle_t*)&dummy);
 
   /* Start timer repeat_1. */
   r = uv_timer_init(uv_default_loop(), &repeat_1);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_timer_start(&repeat_1, repeat_1_cb, 50, 0);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(uv_timer_get_repeat(&repeat_1), 0);
+  ASSERT_OK(r);
+  ASSERT_OK(uv_timer_get_repeat(&repeat_1));
 
   /* Actually make repeat_1 repeating. */
   uv_timer_set_repeat(&repeat_1, 50);
@@ -121,9 +121,9 @@ TEST_IMPL(timer_again) {
    * it should not time out until repeat_1 stops.
    */
   r = uv_timer_init(uv_default_loop(), &repeat_2);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_timer_start(&repeat_2, repeat_2_cb, 100, 100);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(uv_timer_get_repeat(&repeat_2), 100);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

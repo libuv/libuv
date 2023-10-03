@@ -119,15 +119,15 @@ static void udp_pinger_new(void) {
   pinger_t* pinger = malloc(sizeof(*pinger));
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &pinger->server_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &pinger->server_addr));
   pinger->state = 0;
   pinger->pongs = 0;
 
   /* Try to do NUM_PINGS ping-pongs (connection-less). */
   r = uv_udp_init(loop, &pinger->udp);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_udp_bind(&pinger->udp, (const struct sockaddr*) &pinger->server_addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   pinger->udp.data = pinger;
 

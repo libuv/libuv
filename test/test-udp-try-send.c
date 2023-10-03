@@ -70,7 +70,7 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT_EQ(nread, 4);
   ASSERT_NOT_NULL(addr);
 
-  ASSERT_EQ(memcmp("EXIT", rcvbuf->base, nread), 0);
+  ASSERT_OK(memcmp("EXIT", rcvbuf->base, nread));
   uv_close((uv_handle_t*) handle, close_cb);
   uv_close((uv_handle_t*) &client, close_cb);
 
@@ -84,21 +84,21 @@ TEST_IMPL(udp_try_send) {
   uv_buf_t buf;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   buf = uv_buf_init(buffer, sizeof(buffer));
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
@@ -113,8 +113,8 @@ TEST_IMPL(udp_try_send) {
   ASSERT_EQ(close_cb_called, 2);
   ASSERT_EQ(sv_recv_cb_called, 1);
 
-  ASSERT_EQ(client.send_queue_size, 0);
-  ASSERT_EQ(server.send_queue_size, 0);
+  ASSERT_OK(client.send_queue_size);
+  ASSERT_OK(server.send_queue_size);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

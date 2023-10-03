@@ -39,19 +39,19 @@ TEST_IMPL(cwd_and_chdir) {
 
   size1 = sizeof buffer_orig;
   err = uv_cwd(buffer_orig, &size1);
-  ASSERT_EQ(err, 0);
+  ASSERT_OK(err);
   ASSERT_GT(size1, 0);
   ASSERT_NE(buffer_orig[size1], '/');
 
   err = uv_chdir(buffer_orig);
-  ASSERT_EQ(err, 0);
+  ASSERT_OK(err);
 
   size2 = sizeof buffer_new;
   err = uv_cwd(buffer_new, &size2);
-  ASSERT_EQ(err, 0);
+  ASSERT_OK(err);
 
   ASSERT_EQ(size1, size2);
-  ASSERT_EQ(strcmp(buffer_orig, buffer_new), 0);
+  ASSERT_OK(strcmp(buffer_orig, buffer_new));
 
   return 0;
 }

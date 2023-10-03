@@ -59,11 +59,11 @@ TEST_IMPL(emfile) {
   }
 
   loop = uv_default_loop();
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-  ASSERT_EQ(0, uv_tcp_init(loop, &server_handle));
-  ASSERT_EQ(0, uv_tcp_init(loop, &client_handle));
-  ASSERT_EQ(0, uv_tcp_bind(&server_handle, (const struct sockaddr*) &addr, 0));
-  ASSERT_EQ(0, uv_listen((uv_stream_t*) &server_handle, 8, connection_cb));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_tcp_init(loop, &server_handle));
+  ASSERT_OK(uv_tcp_init(loop, &client_handle));
+  ASSERT_OK(uv_tcp_bind(&server_handle, (const struct sockaddr*) &addr, 0));
+  ASSERT_OK(uv_listen((uv_stream_t*) &server_handle, 8, connection_cb));
 
   /* Remember the first one so we can clean up afterwards. */
   do
@@ -79,11 +79,11 @@ TEST_IMPL(emfile) {
    * handling logic in src/unix/stream.c should ensure that connect_cb() runs
    * whereas connection_cb() should *not* run.
    */
-  ASSERT_EQ(0, uv_tcp_connect(&connect_req,
-                              &client_handle,
-                              (const struct sockaddr*) &addr,
-                              connect_cb));
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_tcp_connect(&connect_req,
+                           &client_handle,
+                           (const struct sockaddr*) &addr,
+                           connect_cb));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(connect_cb_called, 1);
 
   /* Close the dups again. Ignore errors in the unlikely event that the
@@ -108,7 +108,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   /* |status| should equal 0 because the connection should have been accepted,
    * it's just that the server immediately closes it again.
    */
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   connect_cb_called += 1;
   uv_close((uv_handle_t*) &server_handle, NULL);
   uv_close((uv_handle_t*) &client_handle, NULL);

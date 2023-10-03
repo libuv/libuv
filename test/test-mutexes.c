@@ -40,7 +40,7 @@ TEST_IMPL(thread_mutex) {
   int r;
 
   r = uv_mutex_init(&mutex);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_mutex_lock(&mutex);
   uv_mutex_unlock(&mutex);
@@ -55,11 +55,11 @@ TEST_IMPL(thread_mutex_recursive) {
   int r;
 
   r = uv_mutex_init_recursive(&mutex);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&mutex);
-  ASSERT_EQ(0, uv_mutex_trylock(&mutex));
+  ASSERT_OK(uv_mutex_trylock(&mutex));
 
   uv_mutex_unlock(&mutex);
   uv_mutex_unlock(&mutex);
@@ -75,7 +75,7 @@ TEST_IMPL(thread_rwlock) {
   int r;
 
   r = uv_rwlock_init(&rwlock);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_rwlock_rdlock(&rwlock);
   uv_rwlock_rdunlock(&rwlock);
@@ -116,18 +116,18 @@ static void thread_rwlock_trylock_peer(void* unused) {
   synchronize();
 
   /* Read lock held by other thread. */
-  ASSERT_EQ(0, uv_rwlock_tryrdlock(&rwlock));
+  ASSERT_OK(uv_rwlock_tryrdlock(&rwlock));
   uv_rwlock_rdunlock(&rwlock);
   ASSERT_EQ(UV_EBUSY, uv_rwlock_trywrlock(&rwlock));
   synchronize();
 
   /* Acquire write lock. */
-  ASSERT_EQ(0, uv_rwlock_trywrlock(&rwlock));
+  ASSERT_OK(uv_rwlock_trywrlock(&rwlock));
   synchronize();
 
   /* Release write lock and acquire read lock. */
   uv_rwlock_wrunlock(&rwlock);
-  ASSERT_EQ(0, uv_rwlock_tryrdlock(&rwlock));
+  ASSERT_OK(uv_rwlock_tryrdlock(&rwlock));
   synchronize();
 
   uv_rwlock_rdunlock(&rwlock);
@@ -139,22 +139,22 @@ static void thread_rwlock_trylock_peer(void* unused) {
 TEST_IMPL(thread_rwlock_trylock) {
   uv_thread_t thread;
 
-  ASSERT_EQ(0, uv_cond_init(&condvar));
-  ASSERT_EQ(0, uv_mutex_init(&mutex));
-  ASSERT_EQ(0, uv_rwlock_init(&rwlock));
+  ASSERT_OK(uv_cond_init(&condvar));
+  ASSERT_OK(uv_mutex_init(&mutex));
+  ASSERT_OK(uv_rwlock_init(&rwlock));
 
   uv_mutex_lock(&mutex);
-  ASSERT_EQ(0, uv_thread_create(&thread, thread_rwlock_trylock_peer, NULL));
+  ASSERT_OK(uv_thread_create(&thread, thread_rwlock_trylock_peer, NULL));
 
   /* Hold write lock. */
-  ASSERT_EQ(0, uv_rwlock_trywrlock(&rwlock));
+  ASSERT_OK(uv_rwlock_trywrlock(&rwlock));
   synchronize();  /* Releases the mutex to the other thread. */
 
   /* Release write lock and acquire read lock.  Pthreads doesn't support
    * the notion of upgrading or downgrading rwlocks, so neither do we.
    */
   uv_rwlock_wrunlock(&rwlock);
-  ASSERT_EQ(0, uv_rwlock_tryrdlock(&rwlock));
+  ASSERT_OK(uv_rwlock_tryrdlock(&rwlock));
   synchronize();
 
   /* Release read lock. */
@@ -167,12 +167,12 @@ TEST_IMPL(thread_rwlock_trylock) {
   synchronize();
 
   /* Read lock held by other thread. */
-  ASSERT_EQ(0, uv_rwlock_tryrdlock(&rwlock));
+  ASSERT_OK(uv_rwlock_tryrdlock(&rwlock));
   uv_rwlock_rdunlock(&rwlock);
   ASSERT_EQ(UV_EBUSY, uv_rwlock_trywrlock(&rwlock));
   synchronize();
 
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_join(&thread));
   uv_rwlock_destroy(&rwlock);
   uv_mutex_unlock(&mutex);
   uv_mutex_destroy(&mutex);

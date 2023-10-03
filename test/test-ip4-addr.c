@@ -30,13 +30,13 @@ TEST_IMPL(ip4_addr) {
   struct sockaddr_in addr;
   char dst[16];
 
-  ASSERT_EQ(0, uv_inet_ntop(AF_INET, "\xFF\xFF\xFF\xFF", dst, sizeof(dst)));
-  ASSERT_EQ(0, strcmp(dst, "255.255.255.255"));
+  ASSERT_OK(uv_inet_ntop(AF_INET, "\xFF\xFF\xFF\xFF", dst, sizeof(dst)));
+  ASSERT_OK(strcmp(dst, "255.255.255.255"));
   ASSERT_EQ(UV_ENOSPC, uv_inet_ntop(AF_INET, "\xFF\xFF\xFF\xFF",
                                     dst, sizeof(dst) - 1));
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-  ASSERT_EQ(0, uv_ip4_addr("255.255.255.255", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("255.255.255.255", TEST_PORT, &addr));
   ASSERT_EQ(UV_EINVAL, uv_ip4_addr("255.255.255*000", TEST_PORT, &addr));
   ASSERT_EQ(UV_EINVAL, uv_ip4_addr("255.255.255.256", TEST_PORT, &addr));
   ASSERT_EQ(UV_EINVAL, uv_ip4_addr("2555.0.0.0", TEST_PORT, &addr));

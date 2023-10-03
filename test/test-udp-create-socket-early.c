@@ -38,32 +38,32 @@ TEST_IMPL(udp_create_early) {
   uv_os_fd_t fd;
   int r, namelen;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init_ex(uv_default_loop(), &client, AF_INET);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_fileno((const uv_handle_t*) &client, &fd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_NE(fd, INVALID_FD);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
 #ifndef _WIN32
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(sockname.sin_family, AF_INET);
 #endif
 
   r = uv_udp_bind(&client, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(memcmp(&addr.sin_addr,
+  ASSERT_OK(r);
+  ASSERT_OK(memcmp(&addr.sin_addr,
                    &sockname.sin_addr,
-                   sizeof(addr.sin_addr)), 0);
+                   sizeof(addr.sin_addr)));
 
   uv_close((uv_handle_t*) &client, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -82,13 +82,13 @@ TEST_IMPL(udp_create_early_bad_bind) {
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init_ex(uv_default_loop(), &client, AF_INET6);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_fileno((const uv_handle_t*) &client, &fd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_NE(fd, INVALID_FD);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
@@ -98,7 +98,7 @@ TEST_IMPL(udp_create_early_bad_bind) {
     struct sockaddr_in6 sockname;
     namelen = sizeof sockname;
     r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
     ASSERT_EQ(sockname.sin6_family, AF_INET6);
   }
 #endif

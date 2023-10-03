@@ -36,9 +36,9 @@ TEST_IMPL(tmpdir) {
   len = sizeof tmpdir;
   tmpdir[0] = '\0';
 
-  ASSERT_EQ(strlen(tmpdir), 0);
+  ASSERT_OK(strlen(tmpdir));
   r = uv_os_tmpdir(tmpdir, &len);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(strlen(tmpdir), len);
   ASSERT_GT(len, 0);
   ASSERT_EQ(tmpdir[len], '\0');
@@ -71,11 +71,11 @@ TEST_IMPL(tmpdir) {
   const char *name = "TMP";
   char tmpdir_win[] = "C:\\xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
   r = uv_os_setenv(name, tmpdir_win);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   char tmpdirx[PATHMAX];
   size_t lenx = sizeof tmpdirx;
   r = uv_os_tmpdir(tmpdirx, &lenx);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 #endif
 
   return 0;

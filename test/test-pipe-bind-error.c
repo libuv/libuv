@@ -46,17 +46,17 @@ TEST_IMPL(pipe_bind_error_addrinuse) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &server1, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_pipe_bind(&server1, TEST_PIPENAME);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_pipe_init(uv_default_loop(), &server2, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_pipe_bind(&server2, TEST_PIPENAME);
   ASSERT_EQ(r, UV_EADDRINUSE);
 
   r = uv_listen((uv_stream_t*)&server1, SOMAXCONN, NULL);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_listen((uv_stream_t*)&server2, SOMAXCONN, NULL);
   ASSERT_EQ(r, UV_EINVAL);
 
@@ -77,7 +77,7 @@ TEST_IMPL(pipe_bind_error_addrnotavail) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &server, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_pipe_bind(&server, BAD_PIPENAME);
   ASSERT_EQ(r, UV_EACCES);
@@ -98,9 +98,9 @@ TEST_IMPL(pipe_bind_error_inval) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &server, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_pipe_bind(&server, TEST_PIPENAME);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_pipe_bind(&server, TEST_PIPENAME_2);
   ASSERT_EQ(r, UV_EINVAL);
 
@@ -123,7 +123,7 @@ TEST_IMPL(pipe_listen_without_bind) {
   int r;
 
   r = uv_pipe_init(uv_default_loop(), &server, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
   ASSERT_EQ(r, UV_EINVAL);
@@ -141,14 +141,14 @@ TEST_IMPL(pipe_listen_without_bind) {
 TEST_IMPL(pipe_bind_or_listen_error_after_close) {
   uv_pipe_t server;
 
-  ASSERT_EQ(uv_pipe_init(uv_default_loop(), &server, 0), 0);
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &server, 0));
   uv_close((uv_handle_t*) &server, NULL);
 
   ASSERT_EQ(uv_pipe_bind(&server, TEST_PIPENAME), UV_EINVAL);
 
   ASSERT_EQ(uv_listen((uv_stream_t*) &server, SOMAXCONN, NULL), UV_EINVAL);
 
-  ASSERT_EQ(uv_run(uv_default_loop(), UV_RUN_DEFAULT), 0);
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

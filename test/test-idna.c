@@ -31,7 +31,7 @@ TEST_IMPL(utf8_decode1) {
   /* ASCII. */
   p = b;
   snprintf(b, sizeof(b), "%c\x7F", 0x00);
-  ASSERT_EQ(0, uv__utf8_decode1(&p, b + sizeof(b)));
+  ASSERT_OK(uv__utf8_decode1(&p, b + sizeof(b)));
   ASSERT_EQ(p, b + 1);
   ASSERT_EQ(127, uv__utf8_decode1(&p, b + sizeof(b)));
   ASSERT_EQ(p, b + 2);
@@ -133,12 +133,12 @@ TEST_IMPL(utf8_decode1_overrun) {
     static const char s[] = "" input "";                                      \
     n = uv__idna_toascii(s, s + sizeof(s) - 1, d1, d1 + sizeof(d1));          \
     ASSERT_EQ(n, sizeof(expected));                                           \
-    ASSERT_EQ(0, memcmp(d1, expected, n));                                    \
+    ASSERT_OK(memcmp(d1, expected, n));                                       \
     /* Sanity check: encoding twice should not change the output. */          \
     n = uv__idna_toascii(d1, d1 + strlen(d1), d2, d2 + sizeof(d2));           \
     ASSERT_EQ(n, sizeof(expected));                                           \
-    ASSERT_EQ(0, memcmp(d2, expected, n));                                    \
-    ASSERT_EQ(0, memcmp(d1, d2, sizeof(d2)));                                 \
+    ASSERT_OK(memcmp(d2, expected, n));                                       \
+    ASSERT_OK(memcmp(d1, d2, sizeof(d2)));                                    \
   } while (0)
 
 TEST_IMPL(idna_toascii) {

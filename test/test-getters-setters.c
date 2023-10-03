@@ -30,9 +30,9 @@ int cookie3;
 
 
 TEST_IMPL(handle_type_name) {
-  ASSERT_EQ(strcmp(uv_handle_type_name(UV_NAMED_PIPE), "pipe"), 0);
-  ASSERT_EQ(strcmp(uv_handle_type_name(UV_UDP), "udp"), 0);
-  ASSERT_EQ(strcmp(uv_handle_type_name(UV_FILE), "file"), 0);
+  ASSERT_OK(strcmp(uv_handle_type_name(UV_NAMED_PIPE), "pipe"));
+  ASSERT_OK(strcmp(uv_handle_type_name(UV_UDP), "udp"));
+  ASSERT_OK(strcmp(uv_handle_type_name(UV_FILE), "file"));
   ASSERT_NULL(uv_handle_type_name(UV_HANDLE_TYPE_MAX));
   ASSERT_NULL(uv_handle_type_name(UV_HANDLE_TYPE_MAX + 1));
   ASSERT_NULL(uv_handle_type_name(UV_UNKNOWN_HANDLE));
@@ -41,9 +41,9 @@ TEST_IMPL(handle_type_name) {
 
 
 TEST_IMPL(req_type_name) {
-  ASSERT_EQ(strcmp(uv_req_type_name(UV_REQ), "req"), 0);
-  ASSERT_EQ(strcmp(uv_req_type_name(UV_UDP_SEND), "udp_send"), 0);
-  ASSERT_EQ(strcmp(uv_req_type_name(UV_WORK), "work"), 0);
+  ASSERT_OK(strcmp(uv_req_type_name(UV_REQ), "req"));
+  ASSERT_OK(strcmp(uv_req_type_name(UV_UDP_SEND), "udp_send"));
+  ASSERT_OK(strcmp(uv_req_type_name(UV_WORK), "work"));
   ASSERT_NULL(uv_req_type_name(UV_REQ_TYPE_MAX));
   ASSERT_NULL(uv_req_type_name(UV_REQ_TYPE_MAX + 1));
   ASSERT_NULL(uv_req_type_name(UV_UNKNOWN_REQ));
@@ -60,7 +60,7 @@ TEST_IMPL(getters_setters) {
   loop = malloc(uv_loop_size());
   ASSERT_NOT_NULL(loop);
   r = uv_loop_init(loop);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_loop_set_data(loop, &cookie1);
   ASSERT_PTR_EQ(loop->data, &cookie1);
@@ -68,7 +68,7 @@ TEST_IMPL(getters_setters) {
 
   pipe = malloc(uv_handle_size(UV_NAMED_PIPE));
   r = uv_pipe_init(loop, pipe, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(uv_handle_get_type((uv_handle_t*)pipe), UV_NAMED_PIPE);
 
   ASSERT_EQ(uv_handle_get_loop((uv_handle_t*)pipe), loop);
@@ -78,30 +78,30 @@ TEST_IMPL(getters_setters) {
   ASSERT_PTR_EQ(uv_handle_get_data((uv_handle_t*)pipe), &cookie1);
   ASSERT_PTR_EQ(pipe->data, &cookie1);
 
-  ASSERT_EQ(uv_stream_get_write_queue_size((uv_stream_t*)pipe), 0);
+  ASSERT_OK(uv_stream_get_write_queue_size((uv_stream_t*)pipe));
   pipe->write_queue_size++;
   ASSERT_EQ(uv_stream_get_write_queue_size((uv_stream_t*)pipe), 1);
   pipe->write_queue_size--;
   uv_close((uv_handle_t*)pipe, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   fs = malloc(uv_req_size(UV_FS));
   uv_fs_stat(loop, fs, ".", NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_EQ(uv_fs_get_type(fs), UV_FS_STAT);
-  ASSERT_EQ(uv_fs_get_result(fs), 0);
+  ASSERT_OK(uv_fs_get_result(fs));
   ASSERT_EQ(uv_fs_get_ptr(fs), uv_fs_get_statbuf(fs));
   ASSERT(uv_fs_get_statbuf(fs)->st_mode & S_IFDIR);
-  ASSERT_EQ(strcmp(uv_fs_get_path(fs), "."), 0);
+  ASSERT_OK(strcmp(uv_fs_get_path(fs), "."));
   uv_fs_req_cleanup(fs);
 
   r = uv_loop_close(loop);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   free(pipe);
   free(fs);

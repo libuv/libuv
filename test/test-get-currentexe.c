@@ -78,25 +78,25 @@ TEST_IMPL(get_currentexe) {
 
   size = 1;
   r = uv_exepath(buffer, &size);
-  ASSERT_EQ(r, 0);
-  ASSERT_EQ(size, 0);
+  ASSERT_OK(r);
+  ASSERT_OK(size);
   ASSERT_EQ(buffer[0], '\0');
 
   memset(buffer, -1, sizeof(buffer));
 
   size = 2;
   r = uv_exepath(buffer, &size);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(size, 1);
   ASSERT_NE(buffer[0], '\0');
   ASSERT_EQ(buffer[1], '\0');
 
   /* Verify uv_exepath is not affected by uv_set_process_title(). */
   r = uv_set_process_title("foobar");
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   size = sizeof(buffer);
   r = uv_exepath(buffer, &size);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   match = strstr(buffer, path);
   /* Verify that the path returned from uv_exepath is a subdirectory of

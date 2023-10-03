@@ -66,12 +66,12 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
   uv_tcp_t* tcp;
 
   ASSERT_PTR_EQ(req, &shutdown_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   tcp = (uv_tcp_t*)(req->handle);
 
   /* The write buffer should be empty by now. */
-  ASSERT_EQ(tcp->write_queue_size, 0);
+  ASSERT_OK(tcp->write_queue_size);
 
   /* Now we wait for the EOF */
   shutdown_cb_called++;
@@ -116,7 +116,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   int i, j, r;
 
   ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   stream = req->handle;
   connect_cb_called++;
@@ -131,16 +131,16 @@ static void connect_cb(uv_connect_t* req, int status) {
     }
 
     r = uv_write(write_req, stream, send_bufs, CHUNKS_PER_WRITE, write_cb);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 
   /* Shutdown on drain. */
   r = uv_shutdown(&shutdown_req, stream, shutdown_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   /* Start reading */
   r = uv_read_start(stream, alloc_cb, read_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -153,19 +153,19 @@ TEST_IMPL(tcp_writealot) {
   RETURN_SKIP("Test is too slow to run under ThreadSanitizer");
 #endif
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   send_buffer = calloc(1, TOTAL_BYTES);
   ASSERT_NOT_NULL(send_buffer);
 
   r = uv_tcp_init(uv_default_loop(), &client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_connect(&connect_req,
                      &client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

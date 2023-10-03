@@ -60,7 +60,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT(nested == 0 && "shutdown_cb must be called from a fresh stack");
 
   shutdown_cb_called++;
@@ -125,7 +125,7 @@ static void timer_cb(uv_timer_t* handle) {
 static void write_cb(uv_write_t* req, int status) {
   int r;
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT(nested == 0 && "write_cb must be called from a fresh stack");
 
   puts("Data written. 500ms timeout...");
@@ -136,9 +136,9 @@ static void write_cb(uv_write_t* req, int status) {
    * for the backend to use dirty stack for calling read_cb. */
   nested++;
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_timer_start(&timer, timer_cb, 500, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   nested--;
 
   write_cb_called++;
@@ -150,7 +150,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
   puts("Connected. Write some data to echo server...");
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT(nested == 0 && "connect_cb must be called from a fresh stack");
 
   nested++;
@@ -171,7 +171,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 TEST_IMPL(callback_stack) {
   struct sockaddr_in addr;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   if (uv_tcp_init(uv_default_loop(), &client)) {
     FATAL("uv_tcp_init failed");
@@ -191,7 +191,7 @@ TEST_IMPL(callback_stack) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(nested, 0);
+  ASSERT_OK(nested);
   ASSERT_NE(connect_cb_called == 1 && \
             "connect_cb must be called exactly once", 0);
   ASSERT_NE(write_cb_called == 1 && "write_cb must be called exactly once",

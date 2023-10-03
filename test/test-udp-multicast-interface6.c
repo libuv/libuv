@@ -44,7 +44,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   CHECK_HANDLE(req->handle);
 
   sv_send_cb_called++;
@@ -68,21 +68,21 @@ TEST_IMPL(udp_multicast_interface6) {
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
 
-  ASSERT_EQ(0, uv_ip6_addr("::1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip6_addr("::1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(0, uv_ip6_addr("::", 0, &baddr));
+  ASSERT_OK(uv_ip6_addr("::", 0, &baddr));
   r = uv_udp_bind(&server, (const struct sockaddr*)&baddr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
 #if defined(__APPLE__) || defined(__FreeBSD__)
   r = uv_udp_set_multicast_interface(&server, "::1%lo0");
 #else
   r = uv_udp_set_multicast_interface(&server, NULL);
 #endif
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   /* server sends "PING" */
   buf = uv_buf_init("PING", 4);
@@ -92,10 +92,10 @@ TEST_IMPL(udp_multicast_interface6) {
                   1,
                   (const struct sockaddr*)&addr,
                   sv_send_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(sv_send_cb_called, 0);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(sv_send_cb_called);
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

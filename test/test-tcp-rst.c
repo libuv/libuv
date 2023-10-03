@@ -48,7 +48,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   ASSERT_EQ(nread, UV_ECONNRESET);
 
   int fd;
-  ASSERT_EQ(0, uv_fileno((uv_handle_t*) t, &fd));
+  ASSERT_OK(uv_fileno((uv_handle_t*) t, &fd));
   uv_handle_type type = uv_guess_handle(fd);
   ASSERT_EQ(type, UV_TCP);
 
@@ -58,11 +58,11 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
 
 
 static void connect_cb(uv_connect_t *req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT_PTR_EQ(req, &connect_req);
 
   /* Start reading from the connection so we receive the RST in uv__read. */
-  ASSERT_EQ(0, uv_read_start((uv_stream_t*) &tcp, alloc_cb, read_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &tcp, alloc_cb, read_cb));
 
   /* Write 'QSH' to receive RST from the echo server. */
   ASSERT_EQ(qbuf.len, uv_try_write((uv_stream_t*) &tcp, &qbuf, 1));
@@ -86,15 +86,15 @@ TEST_IMPL(tcp_rst) {
   qbuf.base = "QSH";
   qbuf.len = 3;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
   r = uv_tcp_init(uv_default_loop(), &tcp);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_connect(&connect_req,
                      &tcp,
                      (const struct sockaddr*) &server_addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

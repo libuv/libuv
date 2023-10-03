@@ -40,7 +40,7 @@ static void worker(void* arg) {
     uv_sleep(c->delay);
 
   uv_mutex_lock(&c->mutex);
-  ASSERT_EQ(c->posted, 0);
+  ASSERT_OK(c->posted);
   uv_sem_post(&c->sem);
   c->posted = 1;
   uv_mutex_unlock(&c->mutex);
@@ -53,9 +53,9 @@ TEST_IMPL(semaphore_1) {
 
   memset(&wc, 0, sizeof(wc));
 
-  ASSERT_EQ(0, uv_sem_init(&wc.sem, 0));
-  ASSERT_EQ(0, uv_mutex_init(&wc.mutex));
-  ASSERT_EQ(0, uv_thread_create(&thread, worker, &wc));
+  ASSERT_OK(uv_sem_init(&wc.sem, 0));
+  ASSERT_OK(uv_mutex_init(&wc.mutex));
+  ASSERT_OK(uv_thread_create(&thread, worker, &wc));
 
   uv_sleep(100);
   uv_mutex_lock(&wc.mutex);
@@ -63,7 +63,7 @@ TEST_IMPL(semaphore_1) {
   uv_sem_wait(&wc.sem); /* should not block */
   uv_mutex_unlock(&wc.mutex); /* ergo, it should be ok to unlock after wait */
 
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
   uv_sem_destroy(&wc.sem);
 
@@ -78,13 +78,13 @@ TEST_IMPL(semaphore_2) {
   memset(&wc, 0, sizeof(wc));
   wc.delay = 100;
 
-  ASSERT_EQ(0, uv_sem_init(&wc.sem, 0));
-  ASSERT_EQ(0, uv_mutex_init(&wc.mutex));
-  ASSERT_EQ(0, uv_thread_create(&thread, worker, &wc));
+  ASSERT_OK(uv_sem_init(&wc.sem, 0));
+  ASSERT_OK(uv_mutex_init(&wc.mutex));
+  ASSERT_OK(uv_thread_create(&thread, worker, &wc));
 
   uv_sem_wait(&wc.sem);
 
-  ASSERT_EQ(0, uv_thread_join(&thread));
+  ASSERT_OK(uv_thread_join(&thread));
   uv_mutex_destroy(&wc.mutex);
   uv_sem_destroy(&wc.sem);
 
@@ -95,14 +95,14 @@ TEST_IMPL(semaphore_2) {
 TEST_IMPL(semaphore_3) {
   uv_sem_t sem;
 
-  ASSERT_EQ(0, uv_sem_init(&sem, 3));
+  ASSERT_OK(uv_sem_init(&sem, 3));
   uv_sem_wait(&sem); /* should not block */
   uv_sem_wait(&sem); /* should not block */
-  ASSERT_EQ(0, uv_sem_trywait(&sem));
+  ASSERT_OK(uv_sem_trywait(&sem));
   ASSERT_EQ(UV_EAGAIN, uv_sem_trywait(&sem));
 
   uv_sem_post(&sem);
-  ASSERT_EQ(0, uv_sem_trywait(&sem));
+  ASSERT_OK(uv_sem_trywait(&sem));
   ASSERT_EQ(UV_EAGAIN, uv_sem_trywait(&sem));
 
   uv_sem_destroy(&sem);

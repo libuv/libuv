@@ -90,7 +90,7 @@ static void pinger_close_cb(uv_handle_t* handle) {
 
 
 static void pinger_write_cb(uv_write_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   free(req);
 }
@@ -110,14 +110,14 @@ static void pinger_write_ping(pinger_t* pinger) {
 
 
 static void pinger_shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   pinger_shutdown_cb_called++;
 
   /*
    * The close callback has not been triggered yet. We must wait for EOF
    * until we close the connection.
    */
-  ASSERT_EQ(completed_pingers, 0);
+  ASSERT_OK(completed_pingers);
 }
 
 
@@ -166,7 +166,7 @@ static void pinger_read_cb(uv_stream_t* tcp,
 static void pinger_connect_cb(uv_connect_t* req, int status) {
   pinger_t *pinger = (pinger_t*)req->handle->data;
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   pinger_write_ping(pinger);
 
@@ -182,8 +182,8 @@ static void pinger_new(void) {
   pinger_t *pinger;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", 0, &client_addr));
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &client_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
   pinger = malloc(sizeof(*pinger));
   pinger->state = 0;
   pinger->pongs = 0;
@@ -194,9 +194,9 @@ static void pinger_new(void) {
 
   pinger->tcp.data = pinger;
 
-  ASSERT_EQ(0, uv_tcp_bind(&pinger->tcp,
-                           (const struct sockaddr*) &client_addr,
-                           0));
+  ASSERT_OK(uv_tcp_bind(&pinger->tcp,
+                        (const struct sockaddr*) &client_addr,
+                        0));
 
   r = uv_tcp_connect(&pinger->connect_req,
                      &pinger->tcp,

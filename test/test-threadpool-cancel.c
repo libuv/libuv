@@ -73,8 +73,8 @@ static void saturate_threadpool(void) {
 
   loop = uv_default_loop();
   for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1) {
-    ASSERT_EQ(0, uv_sem_init(pause_sems + i, 0));
-    ASSERT_EQ(0, uv_queue_work(loop, pause_reqs + i, work_cb, done_cb));
+    ASSERT_OK(uv_sem_init(pause_sems + i, 0));
+    ASSERT_OK(uv_queue_work(loop, pause_reqs + i, work_cb, done_cb));
   }
 }
 
@@ -205,20 +205,20 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   saturate_threadpool();
 
   r = uv_getaddrinfo(loop, reqs + 0, getaddrinfo_cb, "fail", NULL, NULL);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_getaddrinfo(loop, reqs + 1, getaddrinfo_cb, NULL, "fail", NULL);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_getaddrinfo(loop, reqs + 2, getaddrinfo_cb, "fail", "fail", NULL);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_getaddrinfo(loop, reqs + 3, getaddrinfo_cb, "fail", NULL, &hints);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(0, uv_timer_init(loop, &ci.timer_handle));
-  ASSERT_EQ(0, uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_timer_init(loop, &ci.timer_handle));
+  ASSERT_OK(uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(1, timer_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -234,27 +234,27 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   int r;
 
   r = uv_ip4_addr("127.0.0.1", 80, &addr4);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   INIT_CANCEL_INFO(&ci, reqs);
   loop = uv_default_loop();
   saturate_threadpool();
 
   r = uv_getnameinfo(loop, reqs + 0, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_getnameinfo(loop, reqs + 1, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_getnameinfo(loop, reqs + 2, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_getnameinfo(loop, reqs + 3, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(0, uv_timer_init(loop, &ci.timer_handle));
-  ASSERT_EQ(0, uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_timer_init(loop, &ci.timer_handle));
+  ASSERT_OK(uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(1, timer_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -268,16 +268,16 @@ TEST_IMPL(threadpool_cancel_random) {
 
   saturate_threadpool();
   loop = uv_default_loop();
-  ASSERT_EQ(0, uv_random(loop,
-                         &req.random_req,
-                         &req.buf,
-                         sizeof(req.buf),
-                         0,
-                         nop_random_cb));
-  ASSERT_EQ(0, uv_cancel((uv_req_t*) &req));
-  ASSERT_EQ(0, done_cb_called);
+  ASSERT_OK(uv_random(loop,
+                      &req.random_req,
+                      &req.buf,
+                      sizeof(req.buf),
+                      0,
+                      nop_random_cb));
+  ASSERT_OK(uv_cancel((uv_req_t*) &req));
+  ASSERT_OK(done_cb_called);
   unblock_threadpool();
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(1, done_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -296,11 +296,11 @@ TEST_IMPL(threadpool_cancel_work) {
   saturate_threadpool();
 
   for (i = 0; i < ARRAY_SIZE(reqs); i++)
-    ASSERT_EQ(0, uv_queue_work(loop, reqs + i, work2_cb, done2_cb));
+    ASSERT_OK(uv_queue_work(loop, reqs + i, work2_cb, done2_cb));
 
-  ASSERT_EQ(0, uv_timer_init(loop, &ci.timer_handle));
-  ASSERT_EQ(0, uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_timer_init(loop, &ci.timer_handle));
+  ASSERT_OK(uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(1, timer_cb_called);
   ASSERT_EQ(ARRAY_SIZE(reqs), done2_cb_called);
 
@@ -323,37 +323,37 @@ TEST_IMPL(threadpool_cancel_fs) {
 
   /* Needs to match ARRAY_SIZE(fs_reqs). */
   n = 0;
-  ASSERT_EQ(0, uv_fs_chmod(loop, reqs + n++, "/", 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_chown(loop, reqs + n++, "/", 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_close(loop, reqs + n++, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_fchmod(loop, reqs + n++, 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_fchown(loop, reqs + n++, 0, 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_fdatasync(loop, reqs + n++, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_fstat(loop, reqs + n++, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_fsync(loop, reqs + n++, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_ftruncate(loop, reqs + n++, 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_futime(loop, reqs + n++, 0, 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_link(loop, reqs + n++, "/", "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_lstat(loop, reqs + n++, "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_mkdir(loop, reqs + n++, "/", 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_open(loop, reqs + n++, "/", 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_read(loop, reqs + n++, -1, &iov, 1, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_scandir(loop, reqs + n++, "/", 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_readlink(loop, reqs + n++, "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_realpath(loop, reqs + n++, "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_rename(loop, reqs + n++, "/", "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_mkdir(loop, reqs + n++, "/", 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_sendfile(loop, reqs + n++, 0, 0, 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_stat(loop, reqs + n++, "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_symlink(loop, reqs + n++, "/", "/", 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_unlink(loop, reqs + n++, "/", fs_cb));
-  ASSERT_EQ(0, uv_fs_utime(loop, reqs + n++, "/", 0, 0, fs_cb));
-  ASSERT_EQ(0, uv_fs_write(loop, reqs + n++, -1, &iov, 1, 0, fs_cb));
+  ASSERT_OK(uv_fs_chmod(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT_OK(uv_fs_chown(loop, reqs + n++, "/", 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_close(loop, reqs + n++, 0, fs_cb));
+  ASSERT_OK(uv_fs_fchmod(loop, reqs + n++, 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_fchown(loop, reqs + n++, 0, 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_fdatasync(loop, reqs + n++, 0, fs_cb));
+  ASSERT_OK(uv_fs_fstat(loop, reqs + n++, 0, fs_cb));
+  ASSERT_OK(uv_fs_fsync(loop, reqs + n++, 0, fs_cb));
+  ASSERT_OK(uv_fs_ftruncate(loop, reqs + n++, 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_futime(loop, reqs + n++, 0, 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_link(loop, reqs + n++, "/", "/", fs_cb));
+  ASSERT_OK(uv_fs_lstat(loop, reqs + n++, "/", fs_cb));
+  ASSERT_OK(uv_fs_mkdir(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT_OK(uv_fs_open(loop, reqs + n++, "/", 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_read(loop, reqs + n++, -1, &iov, 1, 0, fs_cb));
+  ASSERT_OK(uv_fs_scandir(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT_OK(uv_fs_readlink(loop, reqs + n++, "/", fs_cb));
+  ASSERT_OK(uv_fs_realpath(loop, reqs + n++, "/", fs_cb));
+  ASSERT_OK(uv_fs_rename(loop, reqs + n++, "/", "/", fs_cb));
+  ASSERT_OK(uv_fs_mkdir(loop, reqs + n++, "/", 0, fs_cb));
+  ASSERT_OK(uv_fs_sendfile(loop, reqs + n++, 0, 0, 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_stat(loop, reqs + n++, "/", fs_cb));
+  ASSERT_OK(uv_fs_symlink(loop, reqs + n++, "/", "/", 0, fs_cb));
+  ASSERT_OK(uv_fs_unlink(loop, reqs + n++, "/", fs_cb));
+  ASSERT_OK(uv_fs_utime(loop, reqs + n++, "/", 0, 0, fs_cb));
+  ASSERT_OK(uv_fs_write(loop, reqs + n++, -1, &iov, 1, 0, fs_cb));
   ASSERT_EQ(n, ARRAY_SIZE(reqs));
 
-  ASSERT_EQ(0, uv_timer_init(loop, &ci.timer_handle));
-  ASSERT_EQ(0, uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_timer_init(loop, &ci.timer_handle));
+  ASSERT_OK(uv_timer_start(&ci.timer_handle, timer_cb, 10, 0));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(n, fs_cb_called);
   ASSERT_EQ(1, timer_cb_called);
 
@@ -369,11 +369,11 @@ TEST_IMPL(threadpool_cancel_single) {
 
   saturate_threadpool();
   loop = uv_default_loop();
-  ASSERT_EQ(0, uv_queue_work(loop, &req, (uv_work_cb) abort, nop_done_cb));
-  ASSERT_EQ(0, uv_cancel((uv_req_t*) &req));
-  ASSERT_EQ(0, done_cb_called);
+  ASSERT_OK(uv_queue_work(loop, &req, (uv_work_cb) abort, nop_done_cb));
+  ASSERT_OK(uv_cancel((uv_req_t*) &req));
+  ASSERT_OK(done_cb_called);
   unblock_threadpool();
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(1, done_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);

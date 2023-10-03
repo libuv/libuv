@@ -60,28 +60,28 @@ TEST_IMPL(udp_multicast_ttl) {
   struct sockaddr_in addr;
 
   r = uv_udp_init(uv_default_loop(), &server);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", 0, &addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &addr));
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_udp_set_multicast_ttl(&server, 32);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   /* server sends "PING" */
   buf = uv_buf_init("PING", 4);
-  ASSERT_EQ(0, uv_ip4_addr("239.255.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("239.255.0.1", TEST_PORT, &addr));
   r = uv_udp_send(&req,
                   &server,
                   &buf,
                   1,
                   (const struct sockaddr*) &addr,
                   sv_send_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(close_cb_called, 0);
-  ASSERT_EQ(sv_send_cb_called, 0);
+  ASSERT_OK(close_cb_called);
+  ASSERT_OK(sv_send_cb_called);
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

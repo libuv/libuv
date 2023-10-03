@@ -43,7 +43,7 @@ static void getaddrinfo_initiate(uv_getaddrinfo_t* handle);
 
 static void getaddrinfo_cb(uv_getaddrinfo_t* handle, int status,
     struct addrinfo* res) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   calls_completed++;
   if (calls_initiated < TOTAL_CALLS) {
     getaddrinfo_initiate(handle);
@@ -59,7 +59,7 @@ static void getaddrinfo_initiate(uv_getaddrinfo_t* handle) {
   calls_initiated++;
 
   r = uv_getaddrinfo(loop, handle, &getaddrinfo_cb, name, NULL, NULL);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 

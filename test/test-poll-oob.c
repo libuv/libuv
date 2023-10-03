@@ -70,7 +70,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
   int n;
   int fd;
 
-  ASSERT_EQ(0, uv_fileno((uv_handle_t*)handle, &fd));
+  ASSERT_OK(uv_fileno((uv_handle_t*)handle, &fd));
   memset(buffer, 0, 5);
 
   if (events & UV_PRIORITIZED) {
@@ -79,10 +79,10 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
     while (n == -1 && errno == EINTR);
     ASSERT(n >= 0 || errno != EINVAL);
     cli_pr_check = 1;
-    ASSERT_EQ(0, uv_poll_stop(&poll_req[0]));
-    ASSERT_EQ(0, uv_poll_start(&poll_req[0],
-                               UV_READABLE | UV_WRITABLE,
-                               poll_cb));
+    ASSERT_OK(uv_poll_stop(&poll_req[0]));
+    ASSERT_OK(uv_poll_start(&poll_req[0],
+                            UV_READABLE | UV_WRITABLE,
+                            poll_cb));
   }
   if (events & UV_READABLE) {
     if (fd == client_fd) {
@@ -91,13 +91,13 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
       while (n == -1 && errno == EINTR);
       ASSERT(n >= 0 || errno != EINVAL);
       if (cli_rd_check == 1) {
-        ASSERT_EQ(strncmp(buffer, "world", n), 0);
+        ASSERT_OK(strncmp(buffer, "world", n));
         ASSERT_EQ(n, 5);
         cli_rd_check = 2;
       }
       if (cli_rd_check == 0) {
         ASSERT_EQ(n, 4);
-        ASSERT_EQ(strncmp(buffer, "hello", n), 0);
+        ASSERT_OK(strncmp(buffer, "hello", n));
         cli_rd_check = 1;
         do {
           do
@@ -105,7 +105,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
           while (n == -1 && errno == EINTR);
           if (n > 0) {
             ASSERT_EQ(n, 5);
-            ASSERT_EQ(strncmp(buffer, "world", n), 0);
+            ASSERT_OK(strncmp(buffer, "world", n));
             cli_rd_check = 2;
           }
         } while (n > 0);
@@ -119,7 +119,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
       while (n == -1 && errno == EINTR);
       ASSERT(n >= 0 || errno != EINVAL);
       ASSERT_EQ(n, 3);
-      ASSERT_EQ(strncmp(buffer, "foo", n), 0);
+      ASSERT_OK(strncmp(buffer, "foo", n));
       srv_rd_check = 1;
       uv_poll_stop(&poll_req[1]);
     }
@@ -135,21 +135,21 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
 static void connection_cb(uv_stream_t* handle, int status) {
   int r;
 
-  ASSERT_EQ(status, 0);
-  ASSERT_EQ(0, uv_accept(handle, (uv_stream_t*) &peer_handle));
-  ASSERT_EQ(0, uv_fileno((uv_handle_t*) &peer_handle, &server_fd));
-  ASSERT_EQ(0, uv_poll_init_socket(uv_default_loop(),
-                                   &poll_req[0],
-                                   client_fd));
-  ASSERT_EQ(0, uv_poll_init_socket(uv_default_loop(),
-                                   &poll_req[1],
-                                   server_fd));
-  ASSERT_EQ(0, uv_poll_start(&poll_req[0],
-                             UV_PRIORITIZED | UV_READABLE | UV_WRITABLE,
-                             poll_cb));
-  ASSERT_EQ(0, uv_poll_start(&poll_req[1],
-                             UV_READABLE,
-                             poll_cb));
+  ASSERT_OK(status);
+  ASSERT_OK(uv_accept(handle, (uv_stream_t*) &peer_handle));
+  ASSERT_OK(uv_fileno((uv_handle_t*) &peer_handle, &server_fd));
+  ASSERT_OK(uv_poll_init_socket(uv_default_loop(),
+                                &poll_req[0],
+                                client_fd));
+  ASSERT_OK(uv_poll_init_socket(uv_default_loop(),
+                                &poll_req[1],
+                                server_fd));
+  ASSERT_OK(uv_poll_start(&poll_req[0],
+                          UV_PRIORITIZED | UV_READABLE | UV_WRITABLE,
+                          poll_cb));
+  ASSERT_OK(uv_poll_start(&poll_req[1],
+                          UV_READABLE,
+                          poll_cb));
   do {
     r = send(server_fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
@@ -160,7 +160,7 @@ static void connection_cb(uv_stream_t* handle, int status) {
   } while (r < 0 && errno == EINTR);
   ASSERT_EQ(r, 5);
 
-  ASSERT_EQ(0, uv_idle_start(&idle, idle_cb));
+  ASSERT_OK(uv_idle_start(&idle, idle_cb));
 }
 
 
@@ -169,18 +169,18 @@ TEST_IMPL(poll_oob) {
   int r = 0;
   uv_loop_t* loop;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   loop = uv_default_loop();
 
-  ASSERT_EQ(0, uv_tcp_init(loop, &server_handle));
-  ASSERT_EQ(0, uv_tcp_init(loop, &client_handle));
-  ASSERT_EQ(0, uv_tcp_init(loop, &peer_handle));
-  ASSERT_EQ(0, uv_idle_init(loop, &idle));
-  ASSERT_EQ(0, uv_tcp_bind(&server_handle, (const struct sockaddr*) &addr, 0));
-  ASSERT_EQ(0, uv_listen((uv_stream_t*) &server_handle, 1, connection_cb));
+  ASSERT_OK(uv_tcp_init(loop, &server_handle));
+  ASSERT_OK(uv_tcp_init(loop, &client_handle));
+  ASSERT_OK(uv_tcp_init(loop, &peer_handle));
+  ASSERT_OK(uv_idle_init(loop, &idle));
+  ASSERT_OK(uv_tcp_bind(&server_handle, (const struct sockaddr*) &addr, 0));
+  ASSERT_OK(uv_listen((uv_stream_t*) &server_handle, 1, connection_cb));
 
   /* Ensure two separate packets */
-  ASSERT_EQ(0, uv_tcp_nodelay(&client_handle, 1));
+  ASSERT_OK(uv_tcp_nodelay(&client_handle, 1));
 
   client_fd = socket(PF_INET, SOCK_STREAM, 0);
   ASSERT_GE(client_fd, 0);
@@ -188,9 +188,9 @@ TEST_IMPL(poll_oob) {
     errno = 0;
     r = connect(client_fd, (const struct sockaddr*)&addr, sizeof(addr));
   } while (r == -1 && errno == EINTR);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
-  ASSERT_EQ(0, uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
 
   ASSERT_EQ(ticks, kMaxTicks);
 

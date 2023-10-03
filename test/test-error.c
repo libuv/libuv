@@ -51,8 +51,8 @@ TEST_IMPL(error_message) {
   }
 
   ASSERT_NULL(strstr(uv_strerror(UV_EINVAL), "Success"));
-  ASSERT_EQ(strcmp(uv_strerror(1337), "Unknown error"), 0);
-  ASSERT_EQ(strcmp(uv_strerror(-1337), "Unknown error"), 0);
+  ASSERT_OK(strcmp(uv_strerror(1337), "Unknown error"));
+  ASSERT_OK(strcmp(uv_strerror(-1337), "Unknown error"));
 
   ASSERT_NULL(strstr(uv_strerror_r(UV_EINVAL, buf, sizeof(buf)), "Success"));
   ASSERT_NOT_NULL(strstr(uv_strerror_r(1337, buf, sizeof(buf)), "1337"));
@@ -76,7 +76,7 @@ TEST_IMPL(sys_error) {
   ASSERT_EQ(uv_translate_sys_error(UV_EINVAL), UV_EINVAL);
   ASSERT_EQ(uv_translate_sys_error(UV_ERANGE), UV_ERANGE);
   ASSERT_EQ(uv_translate_sys_error(UV_EACCES), UV_EACCES);
-  ASSERT_EQ(uv_translate_sys_error(0), 0);
+  ASSERT_OK(uv_translate_sys_error(0));
 
   return 0;
 }

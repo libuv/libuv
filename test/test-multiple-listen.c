@@ -38,7 +38,7 @@ static void close_cb(uv_handle_t* handle) {
 
 
 static void connection_cb(uv_stream_t* tcp, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   uv_close((uv_handle_t*)&server, close_cb);
   connection_cb_called++;
 }
@@ -48,25 +48,25 @@ static void start_server(void) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_listen((uv_stream_t*)&server, 128, connection_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_listen((uv_stream_t*)&server, 128, connection_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   free(req);
   uv_close((uv_handle_t*)&client, close_cb);
   connect_cb_called++;
@@ -78,17 +78,17 @@ static void client_connect(void) {
   uv_connect_t* connect_req = malloc(sizeof *connect_req);
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   ASSERT_NOT_NULL(connect_req);
 
   r = uv_tcp_init(uv_default_loop(), &client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_connect(connect_req,
                      &client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 

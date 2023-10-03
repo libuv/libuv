@@ -116,12 +116,12 @@ static uv_os_sock_t create_bound_socket (struct sockaddr_in bind_addr) {
     /* Allow reuse of the port. */
     int yes = 1;
     r = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 #endif
 
   r = bind(sock, (const struct sockaddr*) &bind_addr, sizeof bind_addr);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   return sock;
 }
@@ -163,12 +163,12 @@ static connection_context_t* create_connection_context(
   r = uv_poll_init_socket(uv_default_loop(), &context->poll_handle, sock);
   context->open_handles++;
   context->poll_handle.data = context;
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_timer_init(uv_default_loop(), &context->timer_handle);
   context->open_handles++;
   context->timer_handle.data = context;
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   return context;
 }
@@ -181,13 +181,13 @@ static void connection_close_cb(uv_handle_t* handle) {
     if (test_mode == DUPLEX || context->is_server_connection) {
       ASSERT_EQ(context->read, TRANSFER_BYTES);
     } else {
-      ASSERT_EQ(context->read, 0);
+      ASSERT_OK(context->read);
     }
 
     if (test_mode == DUPLEX || !context->is_server_connection) {
       ASSERT_EQ(context->sent, TRANSFER_BYTES);
     } else {
-      ASSERT_EQ(context->sent, 0);
+      ASSERT_OK(context->sent);
     }
 
     closed_connections++;
@@ -208,7 +208,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
   unsigned int new_events;
   int r;
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT(events & context->events);
   ASSERT(!(events & ~context->events));
 
@@ -403,7 +403,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
 #else
       r = shutdown(context->sock, SHUT_WR);
 #endif
-      ASSERT_EQ(r, 0);
+      ASSERT_OK(r);
       context->sent_fin = 1;
       new_events &= ~UV_WRITABLE;
     }
@@ -434,7 +434,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
   if (context->events != 0) {
     ASSERT_EQ(1, uv_is_active((uv_handle_t*) handle));
   } else {
-    ASSERT_EQ(0, uv_is_active((uv_handle_t*) handle));
+    ASSERT_OK(uv_is_active((uv_handle_t*) handle));
   }
 }
 
@@ -444,7 +444,7 @@ static void delay_timer_cb(uv_timer_t* timer) {
   int r;
 
   /* Timer should auto stop. */
-  ASSERT_EQ(0, uv_is_active((uv_handle_t*) timer));
+  ASSERT_OK(uv_is_active((uv_handle_t*) timer));
 
   /* Add the requested events to the poll mask. */
   ASSERT(context->delayed_events != 0);
@@ -454,7 +454,7 @@ static void delay_timer_cb(uv_timer_t* timer) {
   r = uv_poll_start(&context->poll_handle,
                     context->events,
                     connection_poll_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -471,7 +471,7 @@ static server_context_t* create_server_context(
 
   r = uv_poll_init_socket(uv_default_loop(), &context->poll_handle, sock);
   context->poll_handle.data = context;
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   return context;
 }
@@ -510,7 +510,7 @@ static void server_poll_cb(uv_poll_t* handle, int status, int events) {
   r = uv_poll_start(&connection_context->poll_handle,
                     UV_READABLE | UV_WRITABLE | UV_DISCONNECT,
                     connection_poll_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   if (++server_context->connections == NUM_CLIENTS) {
     close_socket(server_context->sock);
@@ -525,15 +525,15 @@ static void start_server(void) {
   uv_os_sock_t sock;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   sock = create_bound_socket(addr);
   context = create_server_context(sock);
 
   r = listen(sock, 100);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_poll_start(&context->poll_handle, UV_READABLE, server_poll_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -544,8 +544,8 @@ static void start_client(void) {
   struct sockaddr_in addr;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", 0, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &addr));
 
   sock = create_bound_socket(addr);
   context = create_connection_context(sock, 0);
@@ -554,7 +554,7 @@ static void start_client(void) {
   r = uv_poll_start(&context->poll_handle,
                     UV_READABLE | UV_WRITABLE | UV_DISCONNECT,
                     connection_poll_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = connect(sock, (struct sockaddr*) &server_addr, sizeof server_addr);
   ASSERT(r == 0 || got_eagain());
@@ -568,7 +568,7 @@ static void start_poll_test(void) {
   {
     struct WSAData wsa_data;
     int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 #endif
 
@@ -578,7 +578,7 @@ static void start_poll_test(void) {
     start_client();
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   /* Assert that at most five percent of the writable wakeups was spurious. */
   ASSERT_NE(spurious_writable_wakeups == 0 ||
@@ -644,7 +644,7 @@ TEST_IMPL(poll_bad_fdtype) {
 #endif
   ASSERT_NE(fd, -1);
   ASSERT_NE(0, uv_poll_init(uv_default_loop(), &poll_handle, fd));
-  ASSERT_EQ(0, close(fd));
+  ASSERT_OK(close(fd));
 #endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -660,13 +660,13 @@ TEST_IMPL(poll_nested_epoll) {
   fd = epoll_create(1);
   ASSERT_NE(fd, -1);
 
-  ASSERT_EQ(0, uv_poll_init(uv_default_loop(), &poll_handle, fd));
-  ASSERT_EQ(0, uv_poll_start(&poll_handle, UV_READABLE, (uv_poll_cb) abort));
+  ASSERT_OK(uv_poll_init(uv_default_loop(), &poll_handle, fd));
+  ASSERT_OK(uv_poll_start(&poll_handle, UV_READABLE, (uv_poll_cb) abort));
   ASSERT_NE(0, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
 
   uv_close((uv_handle_t*) &poll_handle, NULL);
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(0, close(fd));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(close(fd));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -682,13 +682,13 @@ TEST_IMPL(poll_nested_kqueue) {
   fd = kqueue();
   ASSERT_NE(fd, -1);
 
-  ASSERT_EQ(0, uv_poll_init(uv_default_loop(), &poll_handle, fd));
-  ASSERT_EQ(0, uv_poll_start(&poll_handle, UV_READABLE, (uv_poll_cb) abort));
+  ASSERT_OK(uv_poll_init(uv_default_loop(), &poll_handle, fd));
+  ASSERT_OK(uv_poll_start(&poll_handle, UV_READABLE, (uv_poll_cb) abort));
   ASSERT_NE(0, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
 
   uv_close((uv_handle_t*) &poll_handle, NULL);
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(0, close(fd));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(close(fd));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

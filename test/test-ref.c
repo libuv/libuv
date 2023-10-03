@@ -47,7 +47,7 @@ static void close_cb(uv_handle_t* handle) {
 static void do_close(void* handle) {
   close_cb_called = 0;
   uv_close((uv_handle_t*)handle, close_cb);
-  ASSERT_EQ(close_cb_called, 0);
+  ASSERT_OK(close_cb_called);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(close_cb_called, 1);
 }
@@ -84,7 +84,7 @@ static void write_cb(uv_write_t* req, int status) {
 static void connect_and_write(uv_connect_t* req, int status) {
   uv_buf_t buf = uv_buf_init(buffer, sizeof buffer);
   ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   uv_write(&write_req, req->handle, &buf, 1, write_cb);
   connect_cb_called++;
 }
@@ -93,7 +93,7 @@ static void connect_and_write(uv_connect_t* req, int status) {
 
 static void connect_and_shutdown(uv_connect_t* req, int status) {
   ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
   connect_cb_called++;
 }
@@ -259,7 +259,7 @@ TEST_IMPL(tcp_ref2b) {
 TEST_IMPL(tcp_ref3) {
   struct sockaddr_in addr;
   uv_tcp_t h;
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_tcp_init(uv_default_loop(), &h);
   uv_tcp_connect(&connect_req,
                  &h,
@@ -278,7 +278,7 @@ TEST_IMPL(tcp_ref3) {
 TEST_IMPL(tcp_ref4) {
   struct sockaddr_in addr;
   uv_tcp_t h;
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_tcp_init(uv_default_loop(), &h);
   uv_tcp_connect(&connect_req,
                  &h,
@@ -309,7 +309,7 @@ TEST_IMPL(udp_ref) {
 TEST_IMPL(udp_ref2) {
   struct sockaddr_in addr;
   uv_udp_t h;
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_udp_init(uv_default_loop(), &h);
   uv_udp_bind(&h, (const struct sockaddr*) &addr, 0);
   uv_udp_recv_start(&h, (uv_alloc_cb)fail_cb, (uv_udp_recv_cb)fail_cb);
@@ -327,7 +327,7 @@ TEST_IMPL(udp_ref3) {
   uv_udp_send_t req;
   uv_udp_t h;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   uv_udp_init(uv_default_loop(), &h);
   uv_udp_send(&req,
               &h,
@@ -410,7 +410,7 @@ TEST_IMPL(process_ref) {
   exepath_size = sizeof(exepath);
 
   r = uv_exepath(exepath, &exepath_size);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   argv[0] = exepath;
   options.file = exepath;
@@ -418,13 +418,13 @@ TEST_IMPL(process_ref) {
   options.exit_cb = NULL;
 
   r = uv_spawn(uv_default_loop(), &h, &options);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   r = uv_process_kill(&h, /* SIGTERM */ 15);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   do_close(&h);
 
@@ -439,7 +439,7 @@ TEST_IMPL(has_ref) {
   uv_ref((uv_handle_t*)&h);
   ASSERT_EQ(uv_has_ref((uv_handle_t*)&h), 1);
   uv_unref((uv_handle_t*)&h);
-  ASSERT_EQ(uv_has_ref((uv_handle_t*)&h), 0);
+  ASSERT_OK(uv_has_ref((uv_handle_t*)&h));
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

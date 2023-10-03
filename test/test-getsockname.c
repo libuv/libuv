@@ -73,7 +73,7 @@ static void after_read(uv_stream_t* handle,
 
   req = (uv_shutdown_t*) malloc(sizeof *req);
   r = uv_shutdown(req, handle, after_shutdown);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -84,22 +84,22 @@ static void check_sockname(struct sockaddr* addr, const char* compare_ip,
   char check_ip[17];
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr(compare_ip, compare_port, &compare_addr));
+  ASSERT_OK(uv_ip4_addr(compare_ip, compare_port, &compare_addr));
 
   /* Both addresses should be ipv4 */
   ASSERT_EQ(check_addr.sin_family, AF_INET);
   ASSERT_EQ(compare_addr.sin_family, AF_INET);
 
   /* Check if the ip matches */
-  ASSERT_EQ(memcmp(&check_addr.sin_addr,
+  ASSERT_OK(memcmp(&check_addr.sin_addr,
             &compare_addr.sin_addr,
-            sizeof compare_addr.sin_addr), 0);
+            sizeof compare_addr.sin_addr));
 
   /* Check if the port matches. If port == 0 anything goes. */
   ASSERT_NE(compare_port == 0 || check_addr.sin_port == compare_addr.sin_port, 0);
 
   r = uv_ip4_name(&check_addr, (char*) check_ip, sizeof check_ip);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   printf("%s: %s:%d\n", context, check_ip, ntohs(check_addr.sin_port));
 }
@@ -114,34 +114,34 @@ static void on_connection(uv_stream_t* server, int status) {
   if (status != 0) {
     fprintf(stderr, "Connect error %s\n", uv_err_name(status));
   }
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   handle = malloc(sizeof(*handle));
   ASSERT_NOT_NULL(handle);
 
   r = uv_tcp_init(loop, handle);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   /* associate server with stream */
   handle->data = server;
 
   r = uv_accept(server, (uv_stream_t*)handle);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   namelen = sizeof sockname;
   r = uv_tcp_getsockname(handle, &sockname, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&sockname, "127.0.0.1", server_port, "accepted socket");
   getsocknamecount_tcp++;
 
   namelen = sizeof peername;
   r = uv_tcp_getpeername(handle, &peername, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&peername, "127.0.0.1", connect_port, "accepted socket peer");
   getpeernamecount++;
 
   r = uv_read_start((uv_stream_t*)handle, alloc, after_read);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -149,17 +149,17 @@ static void on_connect(uv_connect_t* req, int status) {
   struct sockaddr sockname, peername;
   int r, namelen;
 
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   namelen = sizeof sockname;
   r = uv_tcp_getsockname((uv_tcp_t*) req->handle, &sockname, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&sockname, "127.0.0.1", 0, "connected socket");
   getsocknamecount_tcp++;
 
   namelen = sizeof peername;
   r = uv_tcp_getpeername((uv_tcp_t*) req->handle, &peername, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&peername, "127.0.0.1", server_port, "connected socket peer");
   getpeernamecount++;
 
@@ -173,7 +173,7 @@ static int tcp_listener(void) {
   int namelen;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", server_port, &addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", server_port, &addr));
 
   r = uv_tcp_init(loop, &tcpServer);
   if (r) {
@@ -196,7 +196,7 @@ static int tcp_listener(void) {
   memset(&sockname, -1, sizeof sockname);
   namelen = sizeof sockname;
   r = uv_tcp_getsockname(&tcpServer, &sockname, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&sockname, "0.0.0.0", server_port, "server socket");
   getsocknamecount_tcp++;
 
@@ -214,7 +214,7 @@ static void tcp_connector(void) {
   struct sockaddr sockname;
   int r, namelen;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", server_port, &server_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", server_port, &server_addr));
 
   r = uv_tcp_init(loop, &tcp);
   tcp.data = &connect_req;
@@ -255,7 +255,7 @@ static void udp_recv(uv_udp_t* handle,
   memset(&sockname, -1, sizeof sockname);
   namelen = sizeof(sockname);
   r = uv_udp_getsockname(&udp, &sockname, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&sockname, "0.0.0.0", 0, "udp receiving socket");
   getsocknamecount_udp++;
 
@@ -275,7 +275,7 @@ static int udp_listener(void) {
   int namelen;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("0.0.0.0", server_port, &addr));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", server_port, &addr));
 
   r = uv_udp_init(loop, &udpServer);
   if (r) {
@@ -292,12 +292,12 @@ static int udp_listener(void) {
   memset(&sockname, -1, sizeof sockname);
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&udpServer, &sockname, &namelen);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   check_sockname(&sockname, "0.0.0.0", server_port, "udp listener socket");
   getsocknamecount_udp++;
 
   r = uv_udp_recv_start(&udpServer, alloc, udp_recv);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   return 0;
 }
@@ -312,7 +312,7 @@ static void udp_sender(void) {
   ASSERT(!r);
 
   buf = uv_buf_init("PING", 4);
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", server_port, &server_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", server_port, &server_addr));
 
   r = uv_udp_send(&send_req,
                   &udp,
@@ -354,8 +354,8 @@ TEST_IMPL(getsockname_udp) {
 
   ASSERT_EQ(getsocknamecount_udp, 2);
 
-  ASSERT_EQ(udp.send_queue_size, 0);
-  ASSERT_EQ(udpServer.send_queue_size, 0);
+  ASSERT_OK(udp.send_queue_size);
+  ASSERT_OK(udpServer.send_queue_size);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

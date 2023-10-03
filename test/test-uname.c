@@ -43,24 +43,24 @@ TEST_IMPL(uname) {
 
   /* Verify the happy path. */
   r = uv_os_uname(&buffer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
 #ifndef _WIN32
   ASSERT_NE(uname(&buf), -1);
-  ASSERT_EQ(strcmp(buffer.sysname, buf.sysname), 0);
-  ASSERT_EQ(strcmp(buffer.version, buf.version), 0);
+  ASSERT_OK(strcmp(buffer.sysname, buf.sysname));
+  ASSERT_OK(strcmp(buffer.version, buf.version));
 
 # ifdef _AIX
   snprintf(temp, sizeof(temp), "%s.%s", buf.version, buf.release);
-  ASSERT_EQ(strcmp(buffer.release, temp), 0);
+  ASSERT_OK(strcmp(buffer.release, temp));
 # else
-  ASSERT_EQ(strcmp(buffer.release, buf.release), 0);
+  ASSERT_OK(strcmp(buffer.release, buf.release));
 # endif /* _AIX */
 
 # if defined(_AIX) || defined(__PASE__)
-  ASSERT_EQ(strcmp(buffer.machine, "ppc64"), 0);
+  ASSERT_OK(strcmp(buffer.machine, "ppc64"));
 # else
-  ASSERT_EQ(strcmp(buffer.machine, buf.machine), 0);
+  ASSERT_OK(strcmp(buffer.machine, buf.machine));
 # endif /* defined(_AIX) || defined(__PASE__) */
 
 #endif /* _WIN32 */

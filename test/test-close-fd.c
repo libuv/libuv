@@ -55,9 +55,9 @@ TEST_IMPL(close_fd) {
   uv_file fd[2];
   bufs[0] = uv_buf_init("", 1);
 
-  ASSERT_EQ(0, uv_pipe(fd, 0, 0));
-  ASSERT_EQ(0, uv_pipe_init(uv_default_loop(), &pipe_handle, 0));
-  ASSERT_EQ(0, uv_pipe_open(&pipe_handle, fd[0]));
+  ASSERT_OK(uv_pipe(fd, 0, 0));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_handle, 0));
+  ASSERT_OK(uv_pipe_open(&pipe_handle, fd[0]));
   /* uv_pipe_open() takes ownership of the file descriptor. */
   fd[0] = -1;
 
@@ -65,17 +65,17 @@ TEST_IMPL(close_fd) {
   ASSERT_EQ(req.result, 1);
   uv_fs_req_cleanup(&req);
 #ifdef _WIN32
-  ASSERT_EQ(0, _close(fd[1]));
+  ASSERT_OK(_close(fd[1]));
 #else
-  ASSERT_EQ(0, close(fd[1]));
+  ASSERT_OK(close(fd[1]));
 #endif
   fd[1] = -1;
-  ASSERT_EQ(0, uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(read_cb_called, 1);
-  ASSERT_EQ(0, uv_is_active((const uv_handle_t *) &pipe_handle));
-  ASSERT_EQ(0, uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_is_active((const uv_handle_t *) &pipe_handle));
+  ASSERT_OK(uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(read_cb_called, 2);
   ASSERT_NE(0, uv_is_closing((const uv_handle_t *) &pipe_handle));
 

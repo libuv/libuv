@@ -29,15 +29,15 @@ static void set_title(const char* title) {
   int err;
 
   err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT_EQ(err, 0);
+  ASSERT_OK(err);
 
   err = uv_set_process_title(title);
-  ASSERT_EQ(err, 0);
+  ASSERT_OK(err);
 
   err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT_EQ(err, 0);
+  ASSERT_OK(err);
 
-  ASSERT_EQ(strcmp(buffer, title), 0);
+  ASSERT_OK(strcmp(buffer, title));
 }
 
 
@@ -77,8 +77,8 @@ TEST_IMPL(process_title) {
 
 
 static void exit_cb(uv_process_t* process, int64_t status, int signo) {
-  ASSERT_EQ(status, 0);
-  ASSERT_EQ(signo, 0);
+  ASSERT_OK(status);
+  ASSERT_OK(signo);
   uv_close((uv_handle_t*) process, NULL);
 }
 
@@ -97,7 +97,7 @@ TEST_IMPL(process_title_big_argv) {
 #endif
 
   exepath_size = sizeof(exepath) - 1;
-  ASSERT_EQ(0, uv_exepath(exepath, &exepath_size));
+  ASSERT_OK(uv_exepath(exepath, &exepath_size));
   exepath[exepath_size] = '\0';
 
   memset(jumbo, 'x', sizeof(jumbo) - 1);
@@ -117,8 +117,8 @@ TEST_IMPL(process_title_big_argv) {
   options.args = args;
   options.exit_cb = exit_cb;
 
-  ASSERT_EQ(0, uv_spawn(uv_default_loop(), &process, &options));
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

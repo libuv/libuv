@@ -51,7 +51,7 @@ TEST_IMPL(poll_multiple_handles) {
   {
     struct WSAData wsa_data;
     int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 #endif
 
@@ -61,14 +61,14 @@ TEST_IMPL(poll_multiple_handles) {
 #else
   ASSERT_NE(sock, -1);
 #endif
-  ASSERT_EQ(0, uv_poll_init_socket(uv_default_loop(),
-                                   &first_poll_handle,
-                                   sock));
-  ASSERT_EQ(0, uv_poll_init_socket(uv_default_loop(),
-                                   &second_poll_handle,
-                                   sock));
+  ASSERT_OK(uv_poll_init_socket(uv_default_loop(),
+                                &first_poll_handle,
+                                sock));
+  ASSERT_OK(uv_poll_init_socket(uv_default_loop(),
+                                &second_poll_handle,
+                                sock));
 
-  ASSERT_EQ(0, uv_poll_start(&first_poll_handle, UV_READABLE, poll_cb));
+  ASSERT_OK(uv_poll_start(&first_poll_handle, UV_READABLE, poll_cb));
 
   /* We may not start polling while another polling handle is active
    * on that fd.
@@ -82,21 +82,21 @@ TEST_IMPL(poll_multiple_handles) {
 #endif
 
   /* After stopping the other polling handle, we now should be able to poll */
-  ASSERT_EQ(0, uv_poll_stop(&first_poll_handle));
-  ASSERT_EQ(0, uv_poll_start(&second_poll_handle, UV_READABLE, poll_cb));
+  ASSERT_OK(uv_poll_stop(&first_poll_handle));
+  ASSERT_OK(uv_poll_start(&second_poll_handle, UV_READABLE, poll_cb));
 
   /* Closing an already stopped polling handle is safe in any case */
   uv_close((uv_handle_t*) &first_poll_handle, close_cb);
 
   uv_unref((uv_handle_t*) &second_poll_handle);
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(close_cb_called, 1);
   uv_ref((uv_handle_t*) &second_poll_handle);
 
   ASSERT(uv_is_active((uv_handle_t*) &second_poll_handle));
   uv_close((uv_handle_t*) &second_poll_handle, close_cb);
 
-  ASSERT_EQ(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(close_cb_called, 2);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());

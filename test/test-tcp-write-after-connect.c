@@ -49,20 +49,20 @@ TEST_IMPL(tcp_write_after_connect) {
 #endif
 
   struct sockaddr_in sa;
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &sa));
-  ASSERT_EQ(0, uv_loop_init(&loop));
-  ASSERT_EQ(0, uv_tcp_init(&loop, &tcp_client));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &sa));
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_tcp_init(&loop, &tcp_client));
 
-  ASSERT_EQ(0, uv_tcp_connect(&connection_request,
-                              &tcp_client,
-                              (const struct sockaddr *)
-                              &sa,
-                              connect_cb));
+  ASSERT_OK(uv_tcp_connect(&connection_request,
+                           &tcp_client,
+                           (const struct sockaddr *)
+                           &sa,
+                           connect_cb));
 
-  ASSERT_EQ(0, uv_write(&write_request,
-                        (uv_stream_t *)&tcp_client,
-                        &buf, 1,
-                        write_cb));
+  ASSERT_OK(uv_write(&write_request,
+                     (uv_stream_t *)&tcp_client,
+                     &buf, 1,
+                     write_cb));
 
   uv_run(&loop, UV_RUN_DEFAULT);
 

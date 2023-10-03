@@ -34,9 +34,9 @@ TEST_IMPL(homedir) {
   /* Test the normal case */
   len = sizeof homedir;
   homedir[0] = '\0';
-  ASSERT_EQ(strlen(homedir), 0);
+  ASSERT_OK(strlen(homedir));
   r = uv_os_homedir(homedir, &len);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(strlen(homedir), len);
   ASSERT_GT(len, 0);
   ASSERT_EQ(homedir[len], '\0');

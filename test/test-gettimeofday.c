@@ -28,7 +28,7 @@ TEST_IMPL(gettimeofday) {
 
   tv.tv_sec = 0;
   r = uv_gettimeofday(&tv);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_NE(tv.tv_sec, 0);
 
   /* Test invalid input. */

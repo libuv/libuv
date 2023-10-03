@@ -46,22 +46,22 @@ static void connection_cb(uv_stream_t* server, int status) {
   uv_buf_t buf;
 
   ASSERT_PTR_EQ(server, (uv_stream_t*)&tcp_server);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   r = uv_tcp_init(server->loop, &tcp_peer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_accept(server, (uv_stream_t*)&tcp_peer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_read_start((uv_stream_t*)&tcp_peer, alloc_cb, read_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   buf.base = "hello\n";
   buf.len = 6;
 
   r = uv_write(&write_req, (uv_stream_t*)&tcp_peer, &buf, 1, write_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 }
 
 
@@ -89,7 +89,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_PTR_EQ(req, &connect_req);
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
 
   /* Close the client. */
   uv_close((uv_handle_t*)&tcp_client, NULL);
@@ -97,7 +97,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 
 static void write_cb(uv_write_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   write_cb_called++;
 }
 
@@ -107,31 +107,31 @@ TEST_IMPL(tcp_write_to_half_open_connection) {
   uv_loop_t* loop;
   int r;
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   loop = uv_default_loop();
   ASSERT_NOT_NULL(loop);
 
   r = uv_tcp_init(loop, &tcp_server);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 1, connection_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_init(loop, &tcp_client);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_tcp_connect(&connect_req,
                      &tcp_client,
                      (const struct sockaddr*) &addr,
                      connect_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   ASSERT_GT(write_cb_called, 0);
   ASSERT_GT(read_cb_called, 0);

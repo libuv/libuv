@@ -50,7 +50,7 @@ TEST_IMPL(poll_close) {
   {
     struct WSAData wsa_data;
     int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
   }
 #endif
 

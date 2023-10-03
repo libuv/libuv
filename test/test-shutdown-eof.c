@@ -76,20 +76,20 @@ static void shutdown_cb(uv_shutdown_t *req, int status) {
 
   ASSERT_EQ(called_connect_cb, 1);
   ASSERT(!got_eof);
-  ASSERT_EQ(called_tcp_close_cb, 0);
-  ASSERT_EQ(called_timer_close_cb, 0);
-  ASSERT_EQ(called_timer_cb, 0);
+  ASSERT_OK(called_tcp_close_cb);
+  ASSERT_OK(called_timer_close_cb);
+  ASSERT_OK(called_timer_cb);
 
   called_shutdown_cb++;
 }
 
 
 static void connect_cb(uv_connect_t *req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT_PTR_EQ(req, &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
-  ASSERT_EQ(0, uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
 
   /* Check error handling. */
   ASSERT_EQ(UV_EALREADY, uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
@@ -107,7 +107,7 @@ static void connect_cb(uv_connect_t *req, int status) {
   uv_shutdown(&shutdown_req, (uv_stream_t*) &tcp, shutdown_cb);
 
   called_connect_cb++;
-  ASSERT_EQ(called_shutdown_cb, 0);
+  ASSERT_OK(called_shutdown_cb);
 }
 
 
@@ -137,7 +137,7 @@ static void timer_cb(uv_timer_t* handle) {
    * The most important assert of the test: we have not received
    * tcp_close_cb yet.
    */
-  ASSERT_EQ(called_tcp_close_cb, 0);
+  ASSERT_OK(called_tcp_close_cb);
   uv_close((uv_handle_t*) &tcp, tcp_close_cb);
 
   called_timer_cb++;
@@ -158,11 +158,11 @@ TEST_IMPL(shutdown_eof) {
   qbuf.len = 1;
 
   r = uv_timer_init(uv_default_loop(), &timer);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   uv_timer_start(&timer, timer_cb, 100, 0);
 
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr));
   r = uv_tcp_init(uv_default_loop(), &tcp);
   ASSERT(!r);
 

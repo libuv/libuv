@@ -56,46 +56,46 @@ TEST_IMPL(handle_fileno) {
   uv_loop_t* loop;
 
   loop = uv_default_loop();
-  ASSERT_EQ(0, uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_idle_init(loop, &idle);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &idle, &fd);
   ASSERT_EQ(r, UV_EINVAL);
   uv_close((uv_handle_t*) &idle, NULL);
 
   r = uv_tcp_init(loop, &tcp);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &tcp, &fd);
   ASSERT_EQ(r, UV_EBADF);
   r = uv_tcp_bind(&tcp, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &tcp, &fd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   uv_close((uv_handle_t*) &tcp, NULL);
   r = uv_fileno((uv_handle_t*) &tcp, &fd);
   ASSERT_EQ(r, UV_EBADF);
 
   r = uv_udp_init(loop, &udp);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &udp, &fd);
   ASSERT_EQ(r, UV_EBADF);
   r = uv_udp_bind(&udp, (const struct sockaddr*) &addr, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &udp, &fd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   uv_close((uv_handle_t*) &udp, NULL);
   r = uv_fileno((uv_handle_t*) &udp, &fd);
   ASSERT_EQ(r, UV_EBADF);
 
   r = uv_pipe_init(loop, &pipe, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &pipe, &fd);
   ASSERT_EQ(r, UV_EBADF);
   r = uv_pipe_bind(&pipe, TEST_PIPENAME);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_fileno((uv_handle_t*) &pipe, &fd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   uv_close((uv_handle_t*) &pipe, NULL);
   r = uv_fileno((uv_handle_t*) &pipe, &fd);
   ASSERT_EQ(r, UV_EBADF);
@@ -106,11 +106,11 @@ TEST_IMPL(handle_fileno) {
     fflush(stderr);
   } else {
     r = uv_tty_init(loop, &tty, tty_fd, 0);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
     ASSERT(uv_is_readable((uv_stream_t*) &tty));
     ASSERT(!uv_is_writable((uv_stream_t*) &tty));
     r = uv_fileno((uv_handle_t*) &tty, &fd);
-    ASSERT_EQ(r, 0);
+    ASSERT_OK(r);
     uv_close((uv_handle_t*) &tty, NULL);
     r = uv_fileno((uv_handle_t*) &tty, &fd);
     ASSERT_EQ(r, UV_EBADF);

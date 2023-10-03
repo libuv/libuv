@@ -36,7 +36,7 @@ static void work_cb(uv_work_t* req) {
 
 
 static void after_work_cb(uv_work_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  ASSERT_OK(status);
   ASSERT_PTR_EQ(req, &work_req);
   ASSERT_PTR_EQ(req->data, &data);
   after_work_cb_count++;
@@ -48,7 +48,7 @@ TEST_IMPL(threadpool_queue_work_simple) {
 
   work_req.data = &data;
   r = uv_queue_work(uv_default_loop(), &work_req, work_cb, after_work_cb);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   ASSERT_EQ(work_cb_count, 1);
@@ -68,8 +68,8 @@ TEST_IMPL(threadpool_queue_work_einval) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(work_cb_count, 0);
-  ASSERT_EQ(after_work_cb_count, 0);
+  ASSERT_OK(work_cb_count);
+  ASSERT_OK(after_work_cb_count);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

@@ -55,7 +55,7 @@ TEST_IMPL(tcp_connect6_error_fault) {
   garbage_addr = (const struct sockaddr_in6*) &garbage;
 
   r = uv_tcp_init(uv_default_loop(), &server);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   r = uv_tcp_connect(&req,
                      &server,
                      (const struct sockaddr*) garbage_addr,
@@ -66,7 +66,7 @@ TEST_IMPL(tcp_connect6_error_fault) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(connect_cb_called, 0);
+  ASSERT_OK(connect_cb_called);
   ASSERT_EQ(close_cb_called, 1);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
