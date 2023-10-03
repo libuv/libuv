@@ -41,7 +41,6 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
-#include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -1089,17 +1088,6 @@ static ssize_t uv__fs_write_do(int fd,
                                int64_t off) {
   ssize_t r;
 
-  /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
-   * data loss. We can't use a per-file descriptor lock, the descriptor may be
-   * a dup().
-   */
-#if defined(__APPLE__)
-  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-  if (pthread_mutex_lock(&lock))
-    abort();
-#endif
-
   if (off < 0) {
     if (nbufs == 1)
       r = write(fd, bufs->iov_base, bufs->iov_len);
@@ -1111,11 +1099,6 @@ static ssize_t uv__fs_write_do(int fd,
     else
       r = pwritev(fd, bufs, nbufs, off);
   }
-
-#if defined(__APPLE__)
-  if (pthread_mutex_unlock(&lock))
-    abort();
-#endif
 
   return r;
 }
