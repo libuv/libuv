@@ -114,9 +114,9 @@ static const unsigned first_handle_number_fs_event = 0;
 
 #define END_ASSERTS(name)                                                     \
   do {                                                                        \
-    ASSERT_EQ(name##_cb_calls[0], 1);                                         \
+    ASSERT_EQ(1, name##_cb_calls[0]);                                         \
     ASSERT_OK(name##_cb_calls[1]);                                            \
-    ASSERT_EQ(name##_cb_calls[2], 1);                                         \
+    ASSERT_EQ(1, name##_cb_calls[2]);                                         \
   } while (0)
 
 DEFINE_GLOBALS_AND_CBS(idle, uv_idle_t* handle)
@@ -189,14 +189,14 @@ TEST_IMPL(queue_foreach_delete) {
 #endif
 
   r = uv_run(loop, UV_RUN_NOWAIT);
-  ASSERT_EQ(r, 1);
+  ASSERT_EQ(1, r);
 
   END_ASSERTS(idle);
   END_ASSERTS(prepare);
   END_ASSERTS(check);
 
 #ifdef __linux__
-  ASSERT_EQ(helper_timer_cb_calls, 1);
+  ASSERT_EQ(1, helper_timer_cb_calls);
 #endif
 
   MAKE_VALGRIND_HAPPY(loop);

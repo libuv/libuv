@@ -46,7 +46,7 @@ TEST_IMPL(loop_backend_timeout) {
   /* The default loop has some internal watchers to initialize. */
   loop->active_handles++;
   r = uv_run(loop, UV_RUN_NOWAIT);
-  ASSERT_EQ(r, 1);
+  ASSERT_EQ(1, r);
   loop->active_handles--;
   ASSERT_OK(uv_loop_alive(loop));
 
@@ -58,7 +58,7 @@ TEST_IMPL(loop_backend_timeout) {
 
   r = uv_timer_start(&timer, cb, 1000, 0); /* 1 sec */
   ASSERT_OK(r);
-  ASSERT_EQ(uv_backend_timeout(loop), 1000);
+  ASSERT_EQ(1000, uv_backend_timeout(loop));
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);

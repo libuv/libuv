@@ -78,7 +78,7 @@ static void cl_recv_cb(uv_udp_t* handle,
   }
 
   ASSERT_NOT_NULL(addr);
-  ASSERT_EQ(nread, 4);
+  ASSERT_EQ(4, nread);
   ASSERT(!memcmp("PONG", buf->base, nread));
 
   cl_recv_cb_called++;
@@ -136,7 +136,7 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT_OK(flags);
 
   ASSERT_NOT_NULL(addr);
-  ASSERT_EQ(nread, 4);
+  ASSERT_EQ(4, nread);
   ASSERT(!memcmp("PING", rcvbuf->base, nread));
 
   /* FIXME? `uv_udp_recv_stop` does what it says: recv_cb is not called
@@ -198,11 +198,11 @@ TEST_IMPL(udp_send_and_recv) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(cl_send_cb_called, 1);
-  ASSERT_EQ(cl_recv_cb_called, 1);
-  ASSERT_EQ(sv_send_cb_called, 1);
-  ASSERT_EQ(sv_recv_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(1, cl_send_cb_called);
+  ASSERT_EQ(1, cl_recv_cb_called);
+  ASSERT_EQ(1, sv_send_cb_called);
+  ASSERT_EQ(1, sv_recv_cb_called);
+  ASSERT_EQ(2, close_cb_called);
 
   ASSERT_OK(client.send_queue_size);
   ASSERT_OK(server.send_queue_size);

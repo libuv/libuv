@@ -94,10 +94,10 @@ TEST_IMPL(not_readable_nor_writable_on_read_error) {
 
   ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
 
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(read_cb_called, 1);
-  ASSERT_EQ(write_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, read_cb_called);
+  ASSERT_EQ(1, write_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
   return 0;

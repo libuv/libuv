@@ -127,11 +127,11 @@ TEST_IMPL(tcp_shutdown_after_write) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(write_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 1);
-  ASSERT_EQ(conn_close_cb_called, 1);
-  ASSERT_EQ(timer_close_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, write_cb_called);
+  ASSERT_EQ(1, shutdown_cb_called);
+  ASSERT_EQ(1, conn_close_cb_called);
+  ASSERT_EQ(1, timer_close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

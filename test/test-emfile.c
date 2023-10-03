@@ -84,7 +84,7 @@ TEST_IMPL(emfile) {
                            (const struct sockaddr*) &addr,
                            connect_cb));
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
 
   /* Close the dups again. Ignore errors in the unlikely event that the
    * file descriptors were not contiguous.
@@ -100,7 +100,7 @@ TEST_IMPL(emfile) {
 
 
 static void connection_cb(uv_stream_t* server_handle, int status) {
-  ASSERT_NE(0 && "connection_cb should not be called.", 0);
+  ASSERT(0 && "connection_cb should not be called.");
 }
 
 

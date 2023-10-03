@@ -29,7 +29,7 @@ TEST_IMPL(gettimeofday) {
   tv.tv_sec = 0;
   r = uv_gettimeofday(&tv);
   ASSERT_OK(r);
-  ASSERT_NE(tv.tv_sec, 0);
+  ASSERT_NE(0, tv.tv_sec);
 
   /* Test invalid input. */
   r = uv_gettimeofday(NULL);

@@ -98,9 +98,9 @@ TEST_IMPL(tcp_rst) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(called_alloc_cb, 1);
-  ASSERT_EQ(called_connect_cb, 1);
-  ASSERT_EQ(called_close_cb, 1);
+  ASSERT_EQ(1, called_alloc_cb);
+  ASSERT_EQ(1, called_connect_cb);
+  ASSERT_EQ(1, called_close_cb);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

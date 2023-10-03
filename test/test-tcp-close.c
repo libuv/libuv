@@ -129,7 +129,7 @@ TEST_IMPL(tcp_close) {
   printf("%d of %d write reqs seen\n", write_cb_called, NUM_WRITE_REQS);
 
   ASSERT_EQ(write_cb_called, NUM_WRITE_REQS);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

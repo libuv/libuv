@@ -175,8 +175,8 @@ TEST_IMPL(tcp_close_after_read_timeout) {
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(read_cb_called, 1);
-  ASSERT_EQ(on_close_called, 3);
+  ASSERT_EQ(1, read_cb_called);
+  ASSERT_EQ(3, on_close_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

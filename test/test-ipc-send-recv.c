@@ -112,7 +112,7 @@ static void recv_cb(uv_stream_t* handle,
      * acceptable value. */
     if (nread == UV_EOF) {
       /* UV_EOF is only acceptable for the final recv_cb call */
-      ASSERT_EQ(recv_cb_count, 2);
+      ASSERT_EQ(2, recv_cb_count);
     } else {
       ASSERT_GE(nread, 0);
       ASSERT_GT(uv_pipe_pending_count(pipe), 0);
@@ -193,7 +193,7 @@ static int run_test(int inprocess) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(recv_cb_count, 2);
+  ASSERT_EQ(2, recv_cb_count);
 
   if (inprocess) {
     r = uv_thread_join(&tid);

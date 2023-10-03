@@ -45,7 +45,7 @@ static void repeat_1_cb(uv_timer_t* handle) {
   int r;
 
   ASSERT_PTR_EQ(handle, &repeat_1);
-  ASSERT_EQ(uv_timer_get_repeat((uv_timer_t*)handle), 50);
+  ASSERT_EQ(50, uv_timer_get_repeat((uv_timer_t*)handle));
 
   fprintf(stderr, "repeat_1_cb called after %ld ms\n",
           (long int)(uv_now(uv_default_loop()) - start_time));
@@ -85,7 +85,7 @@ static void repeat_2_cb(uv_timer_t* handle) {
   fprintf(stderr, "uv_timer_get_repeat %ld ms\n",
           (long int)uv_timer_get_repeat(&repeat_2));
   fflush(stderr);
-  ASSERT_EQ(uv_timer_get_repeat(&repeat_2), 100);
+  ASSERT_EQ(100, uv_timer_get_repeat(&repeat_2));
 
   /* This shouldn't take effect immediately. */
   uv_timer_set_repeat(&repeat_2, 0);
@@ -114,7 +114,7 @@ TEST_IMPL(timer_again) {
 
   /* Actually make repeat_1 repeating. */
   uv_timer_set_repeat(&repeat_1, 50);
-  ASSERT_EQ(uv_timer_get_repeat(&repeat_1), 50);
+  ASSERT_EQ(50, uv_timer_get_repeat(&repeat_1));
 
   /*
    * Start another repeating timer. It'll be again()ed by the repeat_1 so
@@ -124,13 +124,13 @@ TEST_IMPL(timer_again) {
   ASSERT_OK(r);
   r = uv_timer_start(&repeat_2, repeat_2_cb, 100, 100);
   ASSERT_OK(r);
-  ASSERT_EQ(uv_timer_get_repeat(&repeat_2), 100);
+  ASSERT_EQ(100, uv_timer_get_repeat(&repeat_2));
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(repeat_1_cb_called, 10);
-  ASSERT_EQ(repeat_2_cb_called, 2);
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(10, repeat_1_cb_called);
+  ASSERT_EQ(2, repeat_2_cb_called);
+  ASSERT_EQ(2, close_cb_called);
 
   fprintf(stderr, "Test took %ld ms (expected ~700 ms)\n",
           (long int)(uv_now(uv_default_loop()) - start_time));

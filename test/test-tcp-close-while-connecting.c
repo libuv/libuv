@@ -84,9 +84,9 @@ TEST_IMPL(tcp_close_while_connecting) {
   ASSERT_OK(uv_timer_start(&timer2_handle, timer2_cb, 86400 * 1000, 0));
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
 
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(timer1_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, timer1_cb_called);
+  ASSERT_EQ(2, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
 

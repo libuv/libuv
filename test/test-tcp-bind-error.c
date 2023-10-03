@@ -69,8 +69,8 @@ TEST_IMPL(tcp_bind_error_addrinuse_connect) {
                                               &addrlen));
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -103,7 +103,7 @@ TEST_IMPL(tcp_bind_error_addrinuse_listen) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(2, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -128,7 +128,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_1) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -151,7 +151,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_2) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -176,7 +176,7 @@ TEST_IMPL(tcp_bind_error_fault) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -204,7 +204,7 @@ TEST_IMPL(tcp_bind_error_inval) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -292,7 +292,7 @@ TEST_IMPL(tcp_bind_writable_flags) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

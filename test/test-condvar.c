@@ -113,7 +113,7 @@ static int condvar_wait(worker_config* c, const int* flag) {
   do {
     uv_cond_wait(&c->cond, &c->mutex);
   } while (*flag == 0);
-  ASSERT_EQ(*flag, 1);
+  ASSERT_EQ(1, *flag);
 
   uv_mutex_unlock(&c->mutex);
 
@@ -178,7 +178,7 @@ static int condvar_timedwait(worker_config* c, const int* flag) {
     r = uv_cond_timedwait(&c->cond, &c->mutex, (uint64_t)(1 * 1e9)); /* 1 s */
     ASSERT_OK(r); /* Should not time out. */
   } while (*flag == 0);
-  ASSERT_EQ(*flag, 1);
+  ASSERT_EQ(1, *flag);
 
   uv_mutex_unlock(&c->mutex);
 

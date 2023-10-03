@@ -250,7 +250,7 @@ static void prepare_2_cb(uv_prepare_t* handle) {
    * stops itself immediately. A started watcher is not queued until the next
    * round, so when this callback is made (loop_iteration % 2 == 0) cannot be
    * true. */
-  ASSERT_NE(loop_iteration % 2, 0);
+  ASSERT_NE(0, loop_iteration % 2);
 
   r = uv_prepare_stop((uv_prepare_t*)handle);
   ASSERT_OK(r);
@@ -318,13 +318,13 @@ TEST_IMPL(loop_handles) {
   ASSERT_EQ(loop_iteration, ITERATIONS);
 
   ASSERT_EQ(prepare_1_cb_called, ITERATIONS);
-  ASSERT_EQ(prepare_1_close_cb_called, 1);
+  ASSERT_EQ(1, prepare_1_close_cb_called);
 
   ASSERT_EQ(prepare_2_cb_called, ITERATIONS / 2);
-  ASSERT_EQ(prepare_2_close_cb_called, 1);
+  ASSERT_EQ(1, prepare_2_close_cb_called);
 
   ASSERT_EQ(check_cb_called, ITERATIONS);
-  ASSERT_EQ(check_close_cb_called, 1);
+  ASSERT_EQ(1, check_close_cb_called);
 
   /* idle_1_cb should be called a lot */
   ASSERT_EQ(idle_1_close_cb_called, IDLE_COUNT);

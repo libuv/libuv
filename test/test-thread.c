@@ -153,7 +153,7 @@ TEST_IMPL(thread_create) {
   r = uv_thread_join(&tid);
   ASSERT_OK(r);
 
-  ASSERT_EQ(thread_called, 1);
+  ASSERT_EQ(1, thread_called);
 
   return 0;
 }
@@ -182,7 +182,7 @@ TEST_IMPL(threadpool_multiple_event_loops) {
   for (i = 0; i < ARRAY_SIZE(threads); i++) {
     r = uv_thread_join(&threads[i].thread_id);
     ASSERT_OK(r);
-    ASSERT_EQ(threads[i].thread_called, 1);
+    ASSERT_EQ(1, threads[i].thread_called);
   }
 
   return 0;

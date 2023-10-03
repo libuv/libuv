@@ -147,11 +147,11 @@ TEST_IMPL(timer) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(once_cb_called, 10);
-  ASSERT_EQ(once_close_cb_called, 10);
+  ASSERT_EQ(10, once_cb_called);
+  ASSERT_EQ(10, once_close_cb_called);
   printf("repeat_cb_called %d\n", repeat_cb_called);
-  ASSERT_EQ(repeat_cb_called, 5);
-  ASSERT_EQ(repeat_close_cb_called, 1);
+  ASSERT_EQ(5, repeat_cb_called);
+  ASSERT_EQ(1, repeat_close_cb_called);
 
   ASSERT_LE(500, uv_now(uv_default_loop()) - start_time);
 
@@ -173,7 +173,7 @@ TEST_IMPL(timer_start_twice) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(twice_cb_called, 1);
+  ASSERT_EQ(1, twice_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -221,7 +221,7 @@ TEST_IMPL(timer_order) {
   ASSERT_OK(uv_timer_start(&handle_b, order_cb_b, 0, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT_EQ(order_cb_called, 2);
+  ASSERT_EQ(2, order_cb_called);
 
   ASSERT_OK(uv_timer_stop(&handle_a));
   ASSERT_OK(uv_timer_stop(&handle_b));
@@ -235,7 +235,7 @@ TEST_IMPL(timer_order) {
   ASSERT_OK(uv_timer_start(&handle_a, order_cb_a, 0, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT_EQ(order_cb_called, 2);
+  ASSERT_EQ(2, order_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -309,11 +309,11 @@ TEST_IMPL(timer_run_once) {
   ASSERT_OK(uv_timer_init(uv_default_loop(), &timer_handle));
   ASSERT_OK(uv_timer_start(&timer_handle, timer_run_once_timer_cb, 0, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_ONCE));
-  ASSERT_EQ(timer_run_once_timer_cb_called, 1);
+  ASSERT_EQ(1, timer_run_once_timer_cb_called);
 
   ASSERT_OK(uv_timer_start(&timer_handle, timer_run_once_timer_cb, 1, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_ONCE));
-  ASSERT_EQ(timer_run_once_timer_cb_called, 2);
+  ASSERT_EQ(2, timer_run_once_timer_cb_called);
 
   uv_close((uv_handle_t*) &timer_handle, NULL);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_ONCE));

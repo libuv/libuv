@@ -91,7 +91,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   pending_incoming = (uv_tcp_t*) stream - &tcp_incoming[0];
   ASSERT_LT(pending_incoming, got_connections);
   ASSERT_OK(uv_read_stop(stream));
-  ASSERT_EQ(nread, 1);
+  ASSERT_EQ(1, nread);
 
   loop = stream->loop;
   read_cb_called++;
@@ -185,7 +185,7 @@ TEST_IMPL(tcp_close_accept) {
   ASSERT_EQ(ARRAY_SIZE(tcp_outgoing), got_connections);
   ASSERT_EQ((ARRAY_SIZE(tcp_outgoing) + 2), close_cb_called);
   ASSERT_EQ(ARRAY_SIZE(tcp_outgoing), write_cb_called);
-  ASSERT_EQ(read_cb_called, 1);
+  ASSERT_EQ(1, read_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

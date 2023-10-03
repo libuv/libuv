@@ -125,14 +125,14 @@ TEST_IMPL(tcp_write_queue_order) {
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(connection_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, connection_cb_called);
   ASSERT_GT(write_callbacks, 0);
   ASSERT_GT(write_cancelled_callbacks, 0);
   ASSERT_EQ(write_callbacks +
             write_error_callbacks +
             write_cancelled_callbacks, REQ_COUNT);
-  ASSERT_EQ(close_cb_called, 3);
+  ASSERT_EQ(3, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

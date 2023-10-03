@@ -34,7 +34,7 @@ static int timer_cb_called;
 static void prepare_cb(uv_prepare_t* handle) {
   ASSERT_OK(uv_prepare_stop(&prepare_handle));
   ASSERT_OK(prepare_cb_called);
-  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(1, check_cb_called);
   ASSERT_OK(timer_cb_called);
   prepare_cb_called++;
 }
@@ -42,8 +42,8 @@ static void prepare_cb(uv_prepare_t* handle) {
 
 static void timer_cb(uv_timer_t* handle) {
   ASSERT_OK(uv_timer_stop(&timer_handle));
-  ASSERT_EQ(prepare_cb_called, 1);
-  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(1, prepare_cb_called);
+  ASSERT_EQ(1, check_cb_called);
   ASSERT_OK(timer_cb_called);
   timer_cb_called++;
 }
@@ -68,9 +68,9 @@ TEST_IMPL(timer_from_check) {
   ASSERT_OK(uv_timer_init(uv_default_loop(), &timer_handle));
   ASSERT_OK(uv_timer_start(&timer_handle, timer_cb, 50, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(prepare_cb_called, 1);
-  ASSERT_EQ(check_cb_called, 1);
-  ASSERT_EQ(timer_cb_called, 1);
+  ASSERT_EQ(1, prepare_cb_called);
+  ASSERT_EQ(1, check_cb_called);
+  ASSERT_EQ(1, timer_cb_called);
   uv_close((uv_handle_t*) &prepare_handle, NULL);
   uv_close((uv_handle_t*) &check_handle, NULL);
   uv_close((uv_handle_t*) &timer_handle, NULL);

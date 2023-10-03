@@ -96,7 +96,7 @@ static void check_sockname(struct sockaddr* addr, const char* compare_ip,
             sizeof compare_addr.sin_addr));
 
   /* Check if the port matches. If port == 0 anything goes. */
-  ASSERT_NE(compare_port == 0 || check_addr.sin_port == compare_addr.sin_port, 0);
+  ASSERT(compare_port == 0 || check_addr.sin_port == compare_addr.sin_port);
 
   r = uv_ip4_name(&check_addr, (char*) check_ip, sizeof check_ip);
   ASSERT_OK(r);
@@ -334,8 +334,8 @@ TEST_IMPL(getsockname_tcp) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT_EQ(getsocknamecount_tcp, 3);
-  ASSERT_EQ(getpeernamecount, 3);
+  ASSERT_EQ(3, getsocknamecount_tcp);
+  ASSERT_EQ(3, getpeernamecount);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -352,7 +352,7 @@ TEST_IMPL(getsockname_udp) {
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT_EQ(getsocknamecount_udp, 2);
+  ASSERT_EQ(2, getsocknamecount_udp);
 
   ASSERT_OK(udp.send_queue_size);
   ASSERT_OK(udpServer.send_queue_size);

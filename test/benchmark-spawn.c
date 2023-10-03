@@ -58,7 +58,7 @@ static void maybe_spawn(void) {
 
 
 static void process_close_cb(uv_handle_t* handle) {
-  ASSERT_EQ(process_open, 1);
+  ASSERT_EQ(1, process_open);
   process_open = 0;
   maybe_spawn();
 }
@@ -67,7 +67,7 @@ static void process_close_cb(uv_handle_t* handle) {
 static void exit_cb(uv_process_t* process,
                     int64_t exit_status,
                     int term_signal) {
-  ASSERT_EQ(exit_status, 42);
+  ASSERT_EQ(42, exit_status);
   ASSERT_OK(term_signal);
   uv_close((uv_handle_t*)process, process_close_cb);
 }
@@ -82,7 +82,7 @@ static void on_alloc(uv_handle_t* handle,
 
 
 static void pipe_close_cb(uv_handle_t* pipe) {
-  ASSERT_EQ(pipe_open, 1);
+  ASSERT_EQ(1, pipe_open);
   pipe_open = 0;
   maybe_spawn();
 }
@@ -90,7 +90,7 @@ static void pipe_close_cb(uv_handle_t* pipe) {
 
 static void on_read(uv_stream_t* pipe, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
-    ASSERT_EQ(pipe_open, 1);
+    ASSERT_EQ(1, pipe_open);
     output_used += nread;
   } else if (nread < 0) {
     if (nread == UV_EOF) {

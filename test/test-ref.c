@@ -49,7 +49,7 @@ static void do_close(void* handle) {
   uv_close((uv_handle_t*)handle, close_cb);
   ASSERT_OK(close_cb_called);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 }
 
 
@@ -250,7 +250,7 @@ TEST_IMPL(tcp_ref2b) {
   uv_unref((uv_handle_t*)&h);
   uv_close((uv_handle_t*)&h, close_cb);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
@@ -267,8 +267,8 @@ TEST_IMPL(tcp_ref3) {
                  connect_and_shutdown);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, shutdown_cb_called);
   do_close(&h);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -286,9 +286,9 @@ TEST_IMPL(tcp_ref4) {
                  connect_and_write);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(write_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, write_cb_called);
+  ASSERT_EQ(1, shutdown_cb_called);
   do_close(&h);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -337,7 +337,7 @@ TEST_IMPL(udp_ref3) {
               (uv_udp_send_cb) req_cb);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(req_cb_called, 1);
+  ASSERT_EQ(1, req_cb_called);
   do_close(&h);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -374,8 +374,8 @@ TEST_IMPL(pipe_ref3) {
   uv_pipe_connect(&connect_req, &h, TEST_PIPENAME, connect_and_shutdown);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, shutdown_cb_called);
   do_close(&h);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -388,9 +388,9 @@ TEST_IMPL(pipe_ref4) {
   uv_pipe_connect(&connect_req, &h, TEST_PIPENAME, connect_and_write);
   uv_unref((uv_handle_t*)&h);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(write_cb_called, 1);
-  ASSERT_EQ(shutdown_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, write_cb_called);
+  ASSERT_EQ(1, shutdown_cb_called);
   do_close(&h);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -437,7 +437,7 @@ TEST_IMPL(has_ref) {
   uv_idle_t h;
   uv_idle_init(uv_default_loop(), &h);
   uv_ref((uv_handle_t*)&h);
-  ASSERT_EQ(uv_has_ref((uv_handle_t*)&h), 1);
+  ASSERT_EQ(1, uv_has_ref((uv_handle_t*)&h));
   uv_unref((uv_handle_t*)&h);
   ASSERT_OK(uv_has_ref((uv_handle_t*)&h));
   MAKE_VALGRIND_HAPPY(uv_default_loop());

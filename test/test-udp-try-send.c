@@ -67,7 +67,7 @@ static void sv_recv_cb(uv_udp_t* handle,
     return;
   }
 
-  ASSERT_EQ(nread, 4);
+  ASSERT_EQ(4, nread);
   ASSERT_NOT_NULL(addr);
 
   ASSERT_OK(memcmp("EXIT", rcvbuf->base, nread));
@@ -106,12 +106,12 @@ TEST_IMPL(udp_try_send) {
 
   buf = uv_buf_init("EXIT", 4);
   r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
-  ASSERT_EQ(r, 4);
+  ASSERT_EQ(4, r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 2);
-  ASSERT_EQ(sv_recv_cb_called, 1);
+  ASSERT_EQ(2, close_cb_called);
+  ASSERT_EQ(1, sv_recv_cb_called);
 
   ASSERT_OK(client.send_queue_size);
   ASSERT_OK(server.send_queue_size);

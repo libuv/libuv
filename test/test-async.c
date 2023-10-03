@@ -124,8 +124,8 @@ TEST_IMPL(async) {
   ASSERT_OK(r);
 
   ASSERT_GT(prepare_cb_called, 0);
-  ASSERT_EQ(async_cb_called, 3);
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(3, async_cb_called);
+  ASSERT_EQ(2, close_cb_called);
 
   ASSERT_OK(uv_thread_join(&thread));
 

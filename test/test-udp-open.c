@@ -116,7 +116,7 @@ static void recv_cb(uv_udp_t* handle,
   ASSERT_OK(flags);
 
   ASSERT_NOT_NULL(addr);
-  ASSERT_EQ(nread, 4);
+  ASSERT_EQ(4, nread);
   ASSERT_OK(memcmp("PING", buf->base, nread));
 
   r = uv_udp_recv_stop(handle);
@@ -183,8 +183,8 @@ TEST_IMPL(udp_open) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(send_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, send_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   ASSERT_OK(client.send_queue_size);
 
@@ -290,8 +290,8 @@ TEST_IMPL(udp_open_connect) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(send_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(1, send_cb_called);
+  ASSERT_EQ(2, close_cb_called);
 
   ASSERT_OK(client.send_queue_size);
 

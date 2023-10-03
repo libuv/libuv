@@ -64,7 +64,7 @@ static void setup(void) {
   /* empty_dir */
   r = uv_fs_rmdir(NULL, &rmdir_req, empty_dir, NULL);
   ASSERT(r == 0 || r == UV_ENOENT);
-  ASSERT_NE(rmdir_req.result == 0 || rmdir_req.result == UV_ENOENT, 0);
+  ASSERT(rmdir_req.result == 0 || rmdir_req.result == UV_ENOENT);
   uv_fs_req_cleanup(&rmdir_req);
 
   r = uv_fs_mkdir(NULL, &mkdir_req, empty_dir, 0755, NULL);
@@ -81,7 +81,7 @@ static void refresh(void) {
 
   r = uv_fs_unlink(NULL, &unlink_req, absent_file, NULL);
   ASSERT(r == 0 || r == UV_ENOENT);
-  ASSERT_NE(unlink_req.result == 0 || unlink_req.result == UV_ENOENT, 0);
+  ASSERT(unlink_req.result == 0 || unlink_req.result == UV_ENOENT);
   uv_fs_req_cleanup(&unlink_req);
 
   /* empty_file */
@@ -109,8 +109,8 @@ static void refresh(void) {
 
   iov = uv_buf_init("a", 1);
   r = uv_fs_write(NULL, &write_req, open_req.result, &iov, 1, -1, NULL);
-  ASSERT_EQ(r, 1);
-  ASSERT_EQ(write_req.result, 1);
+  ASSERT_EQ(1, r);
+  ASSERT_EQ(1, write_req.result);
   uv_fs_req_cleanup(&write_req);
 
   r = uv_fs_close(NULL, &close_req, open_req.result, NULL);
@@ -162,14 +162,14 @@ static void writeExpect(char *file, char *expected, int size) {
 
   iov = uv_buf_init("b", 1);
   r = uv_fs_write(NULL, &write_req, open_req.result, &iov, 1, -1, NULL);
-  ASSERT_EQ(r, 1);
-  ASSERT_EQ(write_req.result, 1);
+  ASSERT_EQ(1, r);
+  ASSERT_EQ(1, write_req.result);
   uv_fs_req_cleanup(&write_req);
 
   iov = uv_buf_init("c", 1);
   r = uv_fs_write(NULL, &write_req, open_req.result, &iov, 1, -1, NULL);
-  ASSERT_EQ(r, 1);
-  ASSERT_EQ(write_req.result, 1);
+  ASSERT_EQ(1, r);
+  ASSERT_EQ(1, write_req.result);
   uv_fs_req_cleanup(&write_req);
 
   r = uv_fs_close(NULL, &close_req, open_req.result, NULL);

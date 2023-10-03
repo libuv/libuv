@@ -124,9 +124,9 @@ TEST_IMPL(tcp_try_write) {
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 3);
-  ASSERT_EQ(connection_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(3, close_cb_called);
+  ASSERT_EQ(1, connection_cb_called);
   ASSERT_EQ(bytes_read, bytes_written);
   ASSERT_GT(bytes_written, 0);
 

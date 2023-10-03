@@ -54,8 +54,8 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   int r;
 
   ASSERT_EQ(nread, UV_EOF);
-  ASSERT_EQ(uv_is_readable(handle), 1);
-  ASSERT_EQ(uv_is_writable(handle), 1);
+  ASSERT_EQ(1, uv_is_readable(handle));
+  ASSERT_EQ(1, uv_is_writable(handle));
 
   if (++read_cb_called == 3) {
       uv_close((uv_handle_t*) handle, close_cb);
@@ -100,10 +100,10 @@ TEST_IMPL(readable_on_eof) {
 
   ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
 
-  ASSERT_EQ(connect_cb_called, 1);
-  ASSERT_EQ(read_cb_called, 3);
-  ASSERT_EQ(write_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(3, read_cb_called);
+  ASSERT_EQ(1, write_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
   return 0;

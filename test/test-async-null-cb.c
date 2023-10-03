@@ -58,7 +58,7 @@ TEST_IMPL(async_null_cb) {
   ASSERT_OK(uv_thread_create(&thread, thread_cb, NULL));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_OK(uv_thread_join(&thread));
-  ASSERT_EQ(check_cb_called, 1);
+  ASSERT_EQ(1, check_cb_called);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }

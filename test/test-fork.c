@@ -73,7 +73,7 @@ static void run_timer_loop_once(void) {
   ASSERT_OK(uv_timer_init(&loop, &timer_handle));
   ASSERT_OK(uv_timer_start(&timer_handle, timer_cb, 1, 0));
   ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
-  ASSERT_EQ(timer_cb_called, 1);
+  ASSERT_EQ(1, timer_cb_called);
   ASSERT_OK(uv_loop_close(&loop));
 }
 
@@ -158,7 +158,7 @@ TEST_IMPL(fork_socketpair) {
     ASSERT_OK(uv_poll_start(&poll_handle, UV_READABLE, socket_cb));
     printf("Going to run the loop in the child\n");
     ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-    ASSERT_EQ(socket_cb_called, 1);
+    ASSERT_EQ(1, socket_cb_called);
   }
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -224,7 +224,7 @@ TEST_IMPL(fork_socketpair_started) {
     socket_cb_read_fd = socket_fds[0];
     socket_cb_read_size = 3;
     ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-    ASSERT_EQ(socket_cb_called, 1);
+    ASSERT_EQ(1, socket_cb_called);
     printf("Buf %s\n", socket_cb_read_buf);
     ASSERT_OK(strcmp("hi\n", socket_cb_read_buf));
   }
@@ -359,7 +359,7 @@ TEST_IMPL(fork_signal_to_child_closed) {
        and exited, so this ASSERT is generous.
     */
     r = read(sync_pipe2[0], sync_buf, 1);
-    ASSERT_NE(-1 <= r && r <= 1, 0);
+    ASSERT(-1 <= r && r <= 1);
     ASSERT_OK(fork_signal_cb_called);
     printf("Exiting child \n");
     /* Note that we're deliberately not running the loop
@@ -475,7 +475,7 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
 #if defined(__APPLE__) || defined(__linux__)
   ASSERT_OK(strcmp(filename, "watch_file"));
 #else
-  ASSERT_NE(filename == NULL || strcmp(filename, "watch_file") == 0, 0);
+  ASSERT(filename == NULL || strcmp(filename, "watch_file") == 0);
 #endif
   uv_close((uv_handle_t*)handle, NULL);
 }
@@ -511,8 +511,8 @@ static void assert_watch_file_current_dir(uv_loop_t* const loop, int file_or_dir
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT_EQ(timer_cb_touch_called, 1);
-  ASSERT_EQ(fs_event_cb_called, 1);
+  ASSERT_EQ(1, timer_cb_touch_called);
+  ASSERT_EQ(1, fs_event_cb_called);
 
   /* Cleanup */
   remove("watch_file");
@@ -664,8 +664,8 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
     printf("Running loop in child \n");
     uv_run(loop, UV_RUN_DEFAULT);
 
-    ASSERT_EQ(timer_cb_touch_called, 1);
-    ASSERT_EQ(fs_event_cb_called, 1);
+    ASSERT_EQ(1, timer_cb_touch_called);
+    ASSERT_EQ(1, fs_event_cb_called);
 
     /* Cleanup */
     remove("watch_file");
@@ -708,8 +708,8 @@ static void assert_run_work(uv_loop_t* const loop) {
   printf("Running in %d\n", getpid());
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT_EQ(work_cb_count, 1);
-  ASSERT_EQ(after_work_cb_count, 1);
+  ASSERT_EQ(1, work_cb_count);
+  ASSERT_EQ(1, after_work_cb_count);
 
   /* cleanup  */
   work_cb_count = 0;

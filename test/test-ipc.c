@@ -289,7 +289,7 @@ void spawn_helper(uv_pipe_t* channel,
 
   r = uv_pipe_init(uv_default_loop(), channel, 1);
   ASSERT_OK(r);
-  ASSERT_NE(channel->ipc, 0);
+  ASSERT_NE(0, channel->ipc);
 
   exepath_size = sizeof(exepath);
   r = uv_exepath(exepath, &exepath_size);
@@ -434,10 +434,10 @@ TEST_IMPL(ipc_listen_before_write) {
   RETURN_SKIP(NO_SEND_HANDLE_ON_PIPE);
 #endif
   int r = run_ipc_test("ipc_helper_listen_before_write", on_read);
-  ASSERT_EQ(local_conn_accepted, 1);
-  ASSERT_EQ(remote_conn_accepted, 1);
-  ASSERT_EQ(read_cb_called, 1);
-  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(1, local_conn_accepted);
+  ASSERT_EQ(1, remote_conn_accepted);
+  ASSERT_EQ(1, read_cb_called);
+  ASSERT_EQ(1, exit_cb_called);
   return r;
 }
 
@@ -447,10 +447,10 @@ TEST_IMPL(ipc_listen_after_write) {
   RETURN_SKIP(NO_SEND_HANDLE_ON_PIPE);
 #endif
   int r = run_ipc_test("ipc_helper_listen_after_write", on_read);
-  ASSERT_EQ(local_conn_accepted, 1);
-  ASSERT_EQ(remote_conn_accepted, 1);
-  ASSERT_EQ(read_cb_called, 1);
-  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(1, local_conn_accepted);
+  ASSERT_EQ(1, remote_conn_accepted);
+  ASSERT_EQ(1, read_cb_called);
+  ASSERT_EQ(1, exit_cb_called);
   return r;
 }
 
@@ -460,10 +460,10 @@ TEST_IMPL(ipc_tcp_connection) {
   RETURN_SKIP(NO_SEND_HANDLE_ON_PIPE);
 #endif
   int r = run_ipc_test("ipc_helper_tcp_connection", on_read_connection);
-  ASSERT_EQ(read_cb_called, 1);
-  ASSERT_EQ(tcp_write_cb_called, 1);
-  ASSERT_EQ(tcp_read_cb_called, 1);
-  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(1, read_cb_called);
+  ASSERT_EQ(1, tcp_write_cb_called);
+  ASSERT_EQ(1, tcp_read_cb_called);
+  ASSERT_EQ(1, exit_cb_called);
   return r;
 }
 
@@ -487,7 +487,7 @@ TEST_IMPL(listen_with_simultaneous_accepts) {
 
   r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
   ASSERT_OK(r);
-  ASSERT_EQ(server.reqs_pending, 32);
+  ASSERT_EQ(32, server.reqs_pending);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -512,7 +512,7 @@ TEST_IMPL(listen_no_simultaneous_accepts) {
 
   r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
   ASSERT_OK(r);
-  ASSERT_EQ(server.reqs_pending, 1);
+  ASSERT_EQ(1, server.reqs_pending);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -523,8 +523,8 @@ TEST_IMPL(ipc_listen_after_bind_twice) {
   RETURN_SKIP(NO_SEND_HANDLE_ON_PIPE);
 #endif
   int r = run_ipc_test("ipc_helper_bind_twice", on_read_listen_after_bound_twice);
-  ASSERT_EQ(read_cb_called, 2);
-  ASSERT_EQ(exit_cb_called, 1);
+  ASSERT_EQ(2, read_cb_called);
+  ASSERT_EQ(1, exit_cb_called);
   return r;
 }
 #endif
@@ -718,8 +718,8 @@ int ipc_helper(int listen_after_write) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(connection_accepted, 1);
-  ASSERT_EQ(close_cb_called, 3);
+  ASSERT_EQ(1, connection_accepted);
+  ASSERT_EQ(3, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -770,9 +770,9 @@ int ipc_helper_tcp_connection(void) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(tcp_conn_read_cb_called, 1);
-  ASSERT_EQ(tcp_conn_write_cb_called, 1);
-  ASSERT_EQ(close_cb_called, 4);
+  ASSERT_EQ(1, tcp_conn_read_cb_called);
+  ASSERT_EQ(1, tcp_conn_write_cb_called);
+  ASSERT_EQ(4, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -850,7 +850,7 @@ int ipc_helper_send_zero(void) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(send_zero_write, 1);
+  ASSERT_EQ(1, send_zero_write);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

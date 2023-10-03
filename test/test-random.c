@@ -62,13 +62,13 @@ TEST_IMPL(random_async) {
   ASSERT_OK(random_cb_called);
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT_EQ(random_cb_called, 1);
+  ASSERT_EQ(1, random_cb_called);
 
   ASSERT_OK(uv_random(loop, &req, scratch, sizeof(scratch), 0, random_cb));
-  ASSERT_EQ(random_cb_called, 1);
+  ASSERT_EQ(1, random_cb_called);
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
-  ASSERT_EQ(random_cb_called, 2);
+  ASSERT_EQ(2, random_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

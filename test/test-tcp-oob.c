@@ -99,12 +99,12 @@ static void connection_cb(uv_stream_t* handle, int status) {
   do {
     r = send(fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
-  ASSERT_EQ(r, 5);
+  ASSERT_EQ(5, r);
 
   do {
     r = send(fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
-  ASSERT_EQ(r, 5);
+  ASSERT_EQ(5, r);
 
   ASSERT_OK(uv_stream_set_blocking((uv_stream_t*) &client_handle, 0));
 }

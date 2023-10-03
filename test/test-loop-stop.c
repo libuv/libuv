@@ -56,7 +56,7 @@ TEST_IMPL(loop_stop) {
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT(r);
-  ASSERT_EQ(timer_called, 1);
+  ASSERT_EQ(1, timer_called);
 
   r = uv_run(uv_default_loop(), UV_RUN_NOWAIT);
   ASSERT(r);
@@ -64,8 +64,8 @@ TEST_IMPL(loop_stop) {
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
-  ASSERT_EQ(timer_called, 10);
-  ASSERT_EQ(prepare_called, 10);
+  ASSERT_EQ(10, timer_called);
+  ASSERT_EQ(10, prepare_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -76,7 +76,7 @@ TEST_IMPL(loop_stop_before_run) {
   ASSERT_OK(uv_timer_init(uv_default_loop(), &timer_handle));
   ASSERT_OK(uv_timer_start(&timer_handle, (uv_timer_cb) abort, 0, 0));
   uv_stop(uv_default_loop());
-  ASSERT_NE(uv_run(uv_default_loop(), UV_RUN_DEFAULT), 0);
+  ASSERT_NE(0, uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

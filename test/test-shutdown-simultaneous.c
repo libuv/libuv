@@ -44,7 +44,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 static void shutdown_cb(uv_shutdown_t *req, int status) {
   ASSERT_PTR_EQ(req, &shutdown_req);
 
-  ASSERT_EQ(called_connect_cb, 1);
+  ASSERT_EQ(1, called_connect_cb);
   ASSERT_OK(called_tcp_close_cb);
 }
 
@@ -58,7 +58,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   }
 
   if (!got_q) {
-    ASSERT_EQ(nread, 4);
+    ASSERT_EQ(4, nread);
     ASSERT_OK(got_eof);
     ASSERT_MEM_EQ(buf->base, "QQSS", 4);
     free(buf->base);
@@ -125,10 +125,10 @@ TEST_IMPL(shutdown_simultaneous) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(called_connect_cb, 1);
-  ASSERT_EQ(called_shutdown_cb, 1);
-  ASSERT_EQ(got_eof, 1);
-  ASSERT_EQ(got_q, 1);
+  ASSERT_EQ(1, called_connect_cb);
+  ASSERT_EQ(1, called_shutdown_cb);
+  ASSERT_EQ(1, got_eof);
+  ASSERT_EQ(1, got_q);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

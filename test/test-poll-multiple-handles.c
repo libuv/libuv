@@ -90,14 +90,14 @@ TEST_IMPL(poll_multiple_handles) {
 
   uv_unref((uv_handle_t*) &second_poll_handle);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
   uv_ref((uv_handle_t*) &second_poll_handle);
 
   ASSERT(uv_is_active((uv_handle_t*) &second_poll_handle));
   uv_close((uv_handle_t*) &second_poll_handle, close_cb);
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(2, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

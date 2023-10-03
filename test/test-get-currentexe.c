@@ -87,7 +87,7 @@ TEST_IMPL(get_currentexe) {
   size = 2;
   r = uv_exepath(buffer, &size);
   ASSERT_OK(r);
-  ASSERT_EQ(size, 1);
+  ASSERT_EQ(1, size);
   ASSERT_NE(buffer[0], '\0');
   ASSERT_EQ(buffer[1], '\0');
 

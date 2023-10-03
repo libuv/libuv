@@ -160,9 +160,9 @@ TEST_IMPL(fs_poll) {
   ASSERT_OK(uv_fs_poll_start(&poll_handle, poll_cb, FIXTURE, 100));
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
 
-  ASSERT_EQ(poll_cb_called, 5);
-  ASSERT_EQ(timer_cb_called, 2);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(5, poll_cb_called);
+  ASSERT_EQ(2, timer_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -182,7 +182,7 @@ TEST_IMPL(fs_poll_getpath) {
   ASSERT_OK(uv_fs_poll_start(&poll_handle, poll_cb_fail, FIXTURE, 100));
   len = sizeof buf;
   ASSERT_OK(uv_fs_poll_getpath(&poll_handle, buf, &len));
-  ASSERT_NE(buf[len - 1], 0);
+  ASSERT_NE(0, buf[len - 1]);
   ASSERT_EQ(buf[len], '\0');
   ASSERT_OK(memcmp(buf, FIXTURE, len));
 
@@ -190,7 +190,7 @@ TEST_IMPL(fs_poll_getpath) {
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
 
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -210,7 +210,7 @@ TEST_IMPL(fs_poll_close_request) {
   uv_close((uv_handle_t*) &poll_handle, close_cb);
   while (close_cb_called == 0)
     uv_run(&loop, UV_RUN_ONCE);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
   return 0;
@@ -234,7 +234,7 @@ TEST_IMPL(fs_poll_close_request_multi_start_stop) {
   uv_close((uv_handle_t*) &poll_handle, close_cb);
   while (close_cb_called == 0)
     uv_run(&loop, UV_RUN_ONCE);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
   return 0;
@@ -258,7 +258,7 @@ TEST_IMPL(fs_poll_close_request_multi_stop_start) {
   uv_close((uv_handle_t*) &poll_handle, close_cb);
   while (close_cb_called == 0)
     uv_run(&loop, UV_RUN_ONCE);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
   return 0;
@@ -285,7 +285,7 @@ TEST_IMPL(fs_poll_close_request_stop_when_active) {
   /* Clean up after the test. */
   uv_close((uv_handle_t*) &poll_handle, close_cb);
   uv_run(&loop, UV_RUN_ONCE);
-  ASSERT_EQ(close_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
   return 0;

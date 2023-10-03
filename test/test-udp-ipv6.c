@@ -129,7 +129,7 @@ static void ipv6_recv_ok(uv_udp_t* handle,
   if (!is_from_client(addr) || (nread == 0 && addr == NULL))
     return;
 
-  ASSERT_EQ(nread, 9);
+  ASSERT_EQ(9, nread);
   ASSERT(!memcmp(buf->base, data, 9));
   recv_cb_called++;
 }
@@ -213,7 +213,7 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(close_cb_called, 3);
+  ASSERT_EQ(3, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
 }
@@ -239,8 +239,8 @@ TEST_IMPL(udp_dual_stack) {
 
   printf("recv_cb_called %d\n", recv_cb_called);
   printf("send_cb_called %d\n", send_cb_called);
-  ASSERT_EQ(recv_cb_called, 1);
-  ASSERT_EQ(send_cb_called, 1);
+  ASSERT_EQ(1, recv_cb_called);
+  ASSERT_EQ(1, send_cb_called);
 
   return 0;
 }
@@ -253,7 +253,7 @@ TEST_IMPL(udp_ipv6_only) {
   do_test(ipv6_recv_fail, UV_UDP_IPV6ONLY);
 
   ASSERT_OK(recv_cb_called);
-  ASSERT_EQ(send_cb_called, 1);
+  ASSERT_EQ(1, send_cb_called);
 
   return 0;
 }

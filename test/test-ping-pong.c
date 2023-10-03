@@ -376,7 +376,7 @@ static void pipe2_pinger_new(int vectored_writes) {
 
 static int run_ping_pong_test(void) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT_EQ(completed_pingers, 1);
+  ASSERT_EQ(1, completed_pingers);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

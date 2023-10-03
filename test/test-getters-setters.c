@@ -80,7 +80,7 @@ TEST_IMPL(getters_setters) {
 
   ASSERT_OK(uv_stream_get_write_queue_size((uv_stream_t*)pipe));
   pipe->write_queue_size++;
-  ASSERT_EQ(uv_stream_get_write_queue_size((uv_stream_t*)pipe), 1);
+  ASSERT_EQ(1, uv_stream_get_write_queue_size((uv_stream_t*)pipe));
   pipe->write_queue_size--;
   uv_close((uv_handle_t*)pipe, NULL);
 

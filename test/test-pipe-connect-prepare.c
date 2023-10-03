@@ -75,8 +75,8 @@ TEST_IMPL(pipe_connect_on_prepare) {
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
-  ASSERT_EQ(close_cb_called, 2);
-  ASSERT_EQ(connect_cb_called, 1);
+  ASSERT_EQ(2, close_cb_called);
+  ASSERT_EQ(1, connect_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

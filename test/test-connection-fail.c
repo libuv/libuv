@@ -55,7 +55,7 @@ static void timer_cb(uv_timer_t* handle) {
    * uv_close the handle manually.
    */
   ASSERT_OK(close_cb_calls);
-  ASSERT_EQ(connect_cb_calls, 1);
+  ASSERT_EQ(1, connect_cb_calls);
 
   /* Close the tcp handle. */
   uv_close((uv_handle_t*)&tcp, on_close);
@@ -110,8 +110,8 @@ static void connection_fail(uv_connect_cb connect_cb) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(connect_cb_calls, 1);
-  ASSERT_EQ(close_cb_calls, 1);
+  ASSERT_EQ(1, connect_cb_calls);
+  ASSERT_EQ(1, close_cb_calls);
 }
 
 
@@ -153,8 +153,8 @@ TEST_IMPL(connection_fail_doesnt_auto_close) {
 
   connection_fail(on_connect_without_close);
 
-  ASSERT_EQ(timer_close_cb_calls, 1);
-  ASSERT_EQ(timer_cb_calls, 1);
+  ASSERT_EQ(1, timer_close_cb_calls);
+  ASSERT_EQ(1, timer_cb_calls);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

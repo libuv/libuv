@@ -128,7 +128,7 @@ TEST_IMPL(fs_copyfile) {
   /* Verify that the src file did not get truncated. */
   r = uv_fs_stat(NULL, &req, src, NULL);
   ASSERT_OK(r);
-  ASSERT_EQ(req.statbuf.st_size, 12);
+  ASSERT_EQ(12, req.statbuf.st_size);
   uv_fs_req_cleanup(&req);
   unlink(src);
 
@@ -177,9 +177,9 @@ TEST_IMPL(fs_copyfile) {
   unlink(dst);
   r = uv_fs_copyfile(loop, &req, fixture, dst, 0, handle_result);
   ASSERT_OK(r);
-  ASSERT_EQ(result_check_count, 5);
+  ASSERT_EQ(5, result_check_count);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(result_check_count, 6);
+  ASSERT_EQ(6, result_check_count);
   /* Ensure file is user-writable (not copied from src). */
   ASSERT_OK(uv_fs_chmod(NULL, &req, dst, 0644, NULL));
   uv_fs_req_cleanup(&req);

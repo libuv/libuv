@@ -193,7 +193,7 @@ TEST_IMPL(udp_send_unreachable) {
 
   ASSERT_EQ(send_cb_called, (long)(can_recverr ? 4 : 2));
   ASSERT_EQ(recv_cb_called, alloc_cb_called);
-  ASSERT_EQ(timer_cb_called, 1);
+  ASSERT_EQ(1, timer_cb_called);
   ASSERT_EQ(close_cb_called, (long)(can_recverr ? 3 : 2));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());

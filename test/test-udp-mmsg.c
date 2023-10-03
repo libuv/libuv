@@ -87,7 +87,7 @@ static void recv_cb(uv_udp_t* handle,
     /* There can be no more available data for the time being. */
     ASSERT_NULL(addr);
   } else {
-    ASSERT_EQ(nread, 4);
+    ASSERT_EQ(4, nread);
     ASSERT_NOT_NULL(addr);
     ASSERT_MEM_EQ("PING", rcvbuf->base, nread);
     received_datagrams++;
@@ -130,7 +130,7 @@ TEST_IMPL(udp_mmsg) {
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
-  ASSERT_EQ(close_cb_called, 2);
+  ASSERT_EQ(2, close_cb_called);
   ASSERT_EQ(received_datagrams, NUM_SENDS);
 
   ASSERT_OK(sender.send_queue_size);

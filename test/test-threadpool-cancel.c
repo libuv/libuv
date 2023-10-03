@@ -405,7 +405,7 @@ TEST_IMPL(threadpool_cancel_when_busy) {
 
   ASSERT_EQ(uv_cancel((uv_req_t*) &req), UV_EBUSY);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(done_cb_called, 1);
+  ASSERT_EQ(1, done_cb_called);
 
   uv_sem_destroy(&sem_lock);
 

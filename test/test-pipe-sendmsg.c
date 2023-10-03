@@ -151,7 +151,7 @@ TEST_IMPL(pipe_sendmsg) {
   do
     r = sendmsg(fds[0], &msg, 0);
   while (r == -1 && errno == EINTR);
-  ASSERT_EQ(r, 1);
+  ASSERT_EQ(1, r);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(ARRAY_SIZE(incoming), incoming_count);

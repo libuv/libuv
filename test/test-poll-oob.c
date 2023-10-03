@@ -92,11 +92,11 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
       ASSERT(n >= 0 || errno != EINVAL);
       if (cli_rd_check == 1) {
         ASSERT_OK(strncmp(buffer, "world", n));
-        ASSERT_EQ(n, 5);
+        ASSERT_EQ(5, n);
         cli_rd_check = 2;
       }
       if (cli_rd_check == 0) {
-        ASSERT_EQ(n, 4);
+        ASSERT_EQ(4, n);
         ASSERT_OK(strncmp(buffer, "hello", n));
         cli_rd_check = 1;
         do {
@@ -104,7 +104,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
             n = recv(server_fd, &buffer, 5, 0);
           while (n == -1 && errno == EINTR);
           if (n > 0) {
-            ASSERT_EQ(n, 5);
+            ASSERT_EQ(5, n);
             ASSERT_OK(strncmp(buffer, "world", n));
             cli_rd_check = 2;
           }
@@ -118,7 +118,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
         n = recv(server_fd, &buffer, 3, 0);
       while (n == -1 && errno == EINTR);
       ASSERT(n >= 0 || errno != EINVAL);
-      ASSERT_EQ(n, 3);
+      ASSERT_EQ(3, n);
       ASSERT_OK(strncmp(buffer, "foo", n));
       srv_rd_check = 1;
       uv_poll_stop(&poll_req[1]);
@@ -128,7 +128,7 @@ static void poll_cb(uv_poll_t* handle, int status, int events) {
     do {
       n = send(client_fd, "foo", 3, 0);
     } while (n < 0 && errno == EINTR);
-    ASSERT_EQ(n, 3);
+    ASSERT_EQ(3, n);
   }
 }
 
@@ -153,12 +153,12 @@ static void connection_cb(uv_stream_t* handle, int status) {
   do {
     r = send(server_fd, "hello", 5, MSG_OOB);
   } while (r < 0 && errno == EINTR);
-  ASSERT_EQ(r, 5);
+  ASSERT_EQ(5, r);
 
   do {
     r = send(server_fd, "world", 5, 0);
   } while (r < 0 && errno == EINTR);
-  ASSERT_EQ(r, 5);
+  ASSERT_EQ(5, r);
 
   ASSERT_OK(uv_idle_start(&idle, idle_cb));
 }
@@ -195,13 +195,13 @@ TEST_IMPL(poll_oob) {
   ASSERT_EQ(ticks, kMaxTicks);
 
   /* Did client receive the POLLPRI message */
-  ASSERT_EQ(cli_pr_check, 1);
+  ASSERT_EQ(1, cli_pr_check);
   /* Did client receive the POLLIN message */
-  ASSERT_EQ(cli_rd_check, 2);
+  ASSERT_EQ(2, cli_rd_check);
   /* Could we write with POLLOUT and did the server receive our POLLOUT message
    * through POLLIN.
    */
-  ASSERT_EQ(srv_rd_check, 1);
+  ASSERT_EQ(1, srv_rd_check);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

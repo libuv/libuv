@@ -154,7 +154,7 @@ static void tty_raw_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 static void tty_raw_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
-    ASSERT_EQ(nread , 1);
+    ASSERT_EQ(1, nread );
     ASSERT_EQ(buf->base[0], ' ');
     uv_close((uv_handle_t*) tty_in, NULL);
   } else {
@@ -297,7 +297,7 @@ TEST_IMPL(tty_large_write) {
   bufs[0] = uv_buf_init(dummy, sizeof(dummy));
 
   r = uv_try_write((uv_stream_t*) &tty_out, bufs, 1);
-  ASSERT_EQ(r, 10000);
+  ASSERT_EQ(10000, r);
 
   uv_close((uv_handle_t*) &tty_out, NULL);
 

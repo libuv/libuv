@@ -104,7 +104,7 @@ TEST_IMPL(getaddrinfo_fail) {
                            NULL,
                            NULL));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  ASSERT_EQ(fail_cb_called, 1);
+  ASSERT_EQ(1, fail_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -151,7 +151,7 @@ TEST_IMPL(getaddrinfo_basic) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(getaddrinfo_cbs, 1);
+  ASSERT_EQ(1, getaddrinfo_cbs);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -207,7 +207,7 @@ TEST_IMPL(getaddrinfo_concurrent) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
-    ASSERT_EQ(callback_counts[i], 1);
+    ASSERT_EQ(1, callback_counts[i]);
   }
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());

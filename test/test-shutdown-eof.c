@@ -54,7 +54,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   }
 
   if (!got_q) {
-    ASSERT_EQ(nread, 1);
+    ASSERT_EQ(1, nread);
     ASSERT(!got_eof);
     ASSERT_EQ(buf->base[0], 'Q');
     free(buf->base);
@@ -74,7 +74,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
 static void shutdown_cb(uv_shutdown_t *req, int status) {
   ASSERT_PTR_EQ(req, &shutdown_req);
 
-  ASSERT_EQ(called_connect_cb, 1);
+  ASSERT_EQ(1, called_connect_cb);
   ASSERT(!got_eof);
   ASSERT_OK(called_tcp_close_cb);
   ASSERT_OK(called_timer_close_cb);
@@ -114,10 +114,10 @@ static void connect_cb(uv_connect_t *req, int status) {
 static void tcp_close_cb(uv_handle_t* handle) {
   ASSERT_PTR_EQ(handle, (uv_handle_t*) &tcp);
 
-  ASSERT_EQ(called_connect_cb, 1);
+  ASSERT_EQ(1, called_connect_cb);
   ASSERT(got_q);
   ASSERT(got_eof);
-  ASSERT_EQ(called_timer_cb, 1);
+  ASSERT_EQ(1, called_timer_cb);
 
   called_tcp_close_cb++;
 }
@@ -174,13 +174,13 @@ TEST_IMPL(shutdown_eof) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(called_connect_cb, 1);
-  ASSERT_EQ(called_shutdown_cb, 1);
+  ASSERT_EQ(1, called_connect_cb);
+  ASSERT_EQ(1, called_shutdown_cb);
   ASSERT(got_eof);
   ASSERT(got_q);
-  ASSERT_EQ(called_tcp_close_cb, 1);
-  ASSERT_EQ(called_timer_close_cb, 1);
-  ASSERT_EQ(called_timer_cb, 1);
+  ASSERT_EQ(1, called_tcp_close_cb);
+  ASSERT_EQ(1, called_timer_close_cb);
+  ASSERT_EQ(1, called_timer_cb);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

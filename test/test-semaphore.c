@@ -59,7 +59,7 @@ TEST_IMPL(semaphore_1) {
 
   uv_sleep(100);
   uv_mutex_lock(&wc.mutex);
-  ASSERT_EQ(wc.posted, 1);
+  ASSERT_EQ(1, wc.posted);
   uv_sem_wait(&wc.sem); /* should not block */
   uv_mutex_unlock(&wc.mutex); /* ergo, it should be ok to unlock after wait */
 

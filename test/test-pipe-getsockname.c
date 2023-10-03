@@ -116,7 +116,7 @@ TEST_IMPL(pipe_getsockname) {
   r = uv_pipe_getsockname(&pipe_server, buf, &len);
   ASSERT_OK(r);
 
-  ASSERT_NE(buf[len - 1], 0);
+  ASSERT_NE(0, buf[len - 1]);
   ASSERT_EQ(buf[len], '\0');
   ASSERT_OK(memcmp(buf, TEST_PIPENAME, len));
 
@@ -148,13 +148,13 @@ TEST_IMPL(pipe_getsockname) {
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
   ASSERT_OK(r);
 
-  ASSERT_NE(buf[len - 1], 0);
+  ASSERT_NE(0, buf[len - 1]);
   ASSERT_OK(memcmp(buf, TEST_PIPENAME, len));
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
-  ASSERT_EQ(pipe_client_connect_cb_called, 1);
-  ASSERT_EQ(pipe_close_cb_called, 2);
+  ASSERT_EQ(1, pipe_client_connect_cb_called);
+  ASSERT_EQ(2, pipe_close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -261,7 +261,7 @@ TEST_IMPL(pipe_getsockname_blocking) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  ASSERT_EQ(pipe_close_cb_called, 1);
+  ASSERT_EQ(1, pipe_close_cb_called);
 
   CloseHandle(writeh);
 #endif
