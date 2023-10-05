@@ -142,8 +142,9 @@ TEST_IMPL(get_passwd2) {
   ASSERT_STR_EQ(pwd2.username, "root");
 #endif
   len = strlen(pwd2.homedir);
+# ifndef __PASE__
   ASSERT_GT(len, 0);
-
+#endif
   len = strlen(pwd2.shell);
 # ifndef __PASE__
   ASSERT_GT(len, 0);
