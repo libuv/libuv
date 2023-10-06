@@ -135,11 +135,16 @@ TEST_IMPL(get_passwd2) {
 
   len = strlen(pwd2.username);
   ASSERT_GT(len, 0);
+#if defined(__PASE__)
+  // uid 0 is qsecofr on IBM i
+  ASSERT_STR_EQ(pwd2.username, "qsecofr");
+#else
   ASSERT_STR_EQ(pwd2.username, "root");
-
+#endif
   len = strlen(pwd2.homedir);
+# ifndef __PASE__
   ASSERT_GT(len, 0);
-
+#endif
   len = strlen(pwd2.shell);
 # ifndef __PASE__
   ASSERT_GT(len, 0);
