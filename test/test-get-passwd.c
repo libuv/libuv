@@ -39,7 +39,7 @@ TEST_IMPL(get_passwd) {
 
   /* Test the normal case */
   r = uv_os_get_passwd(&pwd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   len = strlen(pwd.username);
   ASSERT_GT(len, 0);
 
@@ -114,7 +114,7 @@ TEST_IMPL(get_passwd2) {
 
   /* Test the normal case */
   r = uv_os_get_passwd(&pwd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_os_get_passwd2(&pwd2, pwd.uid);
 
@@ -123,7 +123,7 @@ TEST_IMPL(get_passwd2) {
   (void) &len;
 
 #else
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(pwd.uid, pwd2.uid);
   ASSERT_STR_EQ(pwd.username, pwd2.username);
   ASSERT_STR_EQ(pwd.shell, pwd2.shell);
@@ -131,7 +131,7 @@ TEST_IMPL(get_passwd2) {
   uv_os_free_passwd(&pwd2);
 
   r = uv_os_get_passwd2(&pwd2, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   len = strlen(pwd2.username);
   ASSERT_GT(len, 0);
@@ -174,7 +174,7 @@ TEST_IMPL(get_group) {
   int r;
 
   r = uv_os_get_passwd(&pwd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_os_get_group(&grp, pwd.gid);
 
@@ -183,7 +183,7 @@ TEST_IMPL(get_group) {
   (void) &len;
 
 #else
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(pwd.gid, grp.gid);
 
   len = strlen(grp.groupname);
