@@ -71,7 +71,7 @@ TEST_IMPL(getters_setters) {
   ASSERT_OK(r);
   ASSERT_EQ(uv_handle_get_type((uv_handle_t*)pipe), UV_NAMED_PIPE);
 
-  ASSERT_EQ(uv_handle_get_loop((uv_handle_t*)pipe), loop);
+  ASSERT_PTR_EQ(uv_handle_get_loop((uv_handle_t*)pipe), loop);
   pipe->data = &cookie2;
   ASSERT_PTR_EQ(uv_handle_get_data((uv_handle_t*)pipe), &cookie2);
   uv_handle_set_data((uv_handle_t*)pipe, &cookie1);
@@ -95,7 +95,7 @@ TEST_IMPL(getters_setters) {
 
   ASSERT_EQ(uv_fs_get_type(fs), UV_FS_STAT);
   ASSERT_OK(uv_fs_get_result(fs));
-  ASSERT_EQ(uv_fs_get_ptr(fs), uv_fs_get_statbuf(fs));
+  ASSERT_PTR_EQ(uv_fs_get_ptr(fs), uv_fs_get_statbuf(fs));
   ASSERT(uv_fs_get_statbuf(fs)->st_mode & S_IFDIR);
   ASSERT_OK(strcmp(uv_fs_get_path(fs), "."));
   uv_fs_req_cleanup(fs);

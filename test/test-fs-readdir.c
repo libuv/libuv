@@ -295,7 +295,7 @@ static void non_empty_readdir_cb(uv_fs_t* req) {
                    non_empty_closedir_cb);
   } else {
     ASSERT_EQ(1, req->result);
-    ASSERT_EQ(dir->dirents, dirents);
+    ASSERT_PTR_EQ(dir->dirents, dirents);
     ASSERT(strcmp(dirents[0].name, "file1") == 0 ||
            strcmp(dirents[0].name, "file2") == 0 ||
            strcmp(dirents[0].name, "test_subdir") == 0);

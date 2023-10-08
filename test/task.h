@@ -244,6 +244,9 @@ typedef enum {
 #define ASSERT_PTR_NE(a, b) \
   ASSERT_BASE(a, !=, b, void*, "p")
 
+#define ASSERT_PTR_LT(a, b) \
+  ASSERT_BASE(a, <, b, void*, "p")
+
 /* This macro cleans up the event loop. This is used to avoid valgrind
  * warnings about memory being "leaked" by the event loop.
  */

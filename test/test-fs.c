@@ -2483,7 +2483,7 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
                            FILE_FLAG_OPEN_REPARSE_POINT |
                              FILE_FLAG_BACKUP_SEMANTICS,
                            NULL);
-  ASSERT_NE(file_handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(file_handle, INVALID_HANDLE_VALUE);
 
   memset(&reparse_buffer, 0, REPARSE_GUID_DATA_BUFFER_HEADER_SIZE);
   reparse_buffer.ReparseTag = REPARSE_TAG;
@@ -3915,7 +3915,7 @@ TEST_IMPL(get_osfhandle_valid_handle) {
 
   fd = uv_get_osfhandle(open_req1.result);
 #ifdef _WIN32
-  ASSERT_NE(fd, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(fd, INVALID_HANDLE_VALUE);
 #else
   ASSERT_GE(fd, 0);
 #endif
@@ -3954,7 +3954,7 @@ TEST_IMPL(open_osfhandle_valid_handle) {
 
   handle = uv_get_osfhandle(open_req1.result);
 #ifdef _WIN32
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
 #else
   ASSERT_GE(handle, 0);
 #endif
@@ -4604,7 +4604,7 @@ TEST_IMPL(fs_wtf) {
                             FILE_FLAG_OPEN_REPARSE_POINT |
                               FILE_FLAG_BACKUP_SEMANTICS,
                             NULL);
-  ASSERT_NE(file_handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(file_handle, INVALID_HANDLE_VALUE);
 
   CloseHandle(file_handle);
 

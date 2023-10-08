@@ -150,7 +150,7 @@ TEST_IMPL(tty_duplicate_vt100_fn_key) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
@@ -204,7 +204,7 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
@@ -270,7 +270,7 @@ TEST_IMPL(tty_composing_character) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));

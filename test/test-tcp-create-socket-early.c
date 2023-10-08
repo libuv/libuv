@@ -105,14 +105,16 @@ TEST_IMPL(tcp_create_early) {
 
   r = uv_fileno((const uv_handle_t*) &client, &fd);
   ASSERT_OK(r);
-  ASSERT_NE(fd, INVALID_FD);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
 #ifndef _WIN32
+  ASSERT_NE(fd, INVALID_FD);
   namelen = sizeof sockname;
   r = uv_tcp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
   ASSERT_OK(r);
   ASSERT_EQ(sockname.sin_family, AF_INET);
+#else
+  ASSERT_PTR_NE(fd, INVALID_FD);
 #endif
 
   r = uv_tcp_bind(&client, (const struct sockaddr*) &addr, 0);
@@ -149,10 +151,10 @@ TEST_IMPL(tcp_create_early_bad_bind) {
 
   r = uv_fileno((const uv_handle_t*) &client, &fd);
   ASSERT_OK(r);
-  ASSERT_NE(fd, INVALID_FD);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
 #ifndef _WIN32
+  ASSERT_NE(fd, INVALID_FD);
   {
     int namelen;
     struct sockaddr_in6 sockname;
@@ -161,6 +163,8 @@ TEST_IMPL(tcp_create_early_bad_bind) {
     ASSERT_OK(r);
     ASSERT_EQ(sockname.sin6_family, AF_INET6);
   }
+#else 
+  ASSERT_PTR_NE(fd, INVALID_FD);
 #endif
 
   r = uv_tcp_bind(&client, (const struct sockaddr*) &addr, 0);

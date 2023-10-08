@@ -57,7 +57,7 @@ TEST_IMPL(tty) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
 
   handle = CreateFileA("conout$",
@@ -67,7 +67,7 @@ TEST_IMPL(tty) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
 
 #else /* unix */
@@ -179,7 +179,7 @@ TEST_IMPL(tty_raw) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
@@ -235,7 +235,7 @@ TEST_IMPL(tty_empty_write) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
 
   ASSERT_GE(ttyout_fd, 0);
@@ -281,7 +281,7 @@ TEST_IMPL(tty_large_write) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
 
   ASSERT_GE(ttyout_fd, 0);
@@ -321,7 +321,7 @@ TEST_IMPL(tty_raw_cancel) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
   ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));

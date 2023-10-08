@@ -72,7 +72,7 @@ static void on_client_read(uv_stream_t* stream, ssize_t nread,
 
 
 static void on_client_timeout(uv_timer_t* handle) {
-  ASSERT_EQ(handle, &timer);
+  ASSERT_PTR_EQ(handle, &timer);
   ASSERT_OK(read_cb_called);
   uv_read_stop((uv_stream_t*) &client);
   uv_close((uv_handle_t*) &client, on_close);

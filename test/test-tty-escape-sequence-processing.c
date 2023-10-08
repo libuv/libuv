@@ -261,7 +261,7 @@ static void make_expect_screen_erase(struct captured_screen* cs,
   } else {
     ASSERT(FALSE);
   }
-  ASSERT_LT(start, end);
+  ASSERT_PTR_LT(start, end);
   ASSERT_LE(end - cs->text, cs->si.length);
   for (; start < end; start++) {
     *start = ' ';
@@ -360,7 +360,7 @@ static void initialize_tty(uv_tty_t* tty_out) {
                                      NULL,
                                      CONSOLE_TEXTMODE_BUFFER,
                                      NULL);
-  ASSERT_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
 
   ttyout_fd = _open_osfhandle((intptr_t) handle, 0);
   ASSERT_GE(ttyout_fd, 0);
