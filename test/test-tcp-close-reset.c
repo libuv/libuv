@@ -79,10 +79,11 @@ static void do_close(uv_tcp_t* handle) {
   } else if (shutdown_before_close == 2) {
     r = uv_fileno((const uv_handle_t*) handle, &fd);
     ASSERT_OK(r);
-    ASSERT_NE(fd, INVALID_FD);
 #ifdef _WIN32
+    ASSERT_PTR_NE(fd, INVALID_FD);
     ASSERT_OK(shutdown(fd, SD_BOTH));
 #else
+    ASSERT_NE(fd, INVALID_FD);
     ASSERT_OK(shutdown(fd, SHUT_RDWR));
 #endif
     ASSERT_OK(uv_tcp_close_reset(handle, close_cb));

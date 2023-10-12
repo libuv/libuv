@@ -1119,7 +1119,7 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
                                 65536,
                                 0,
                                 NULL);
-  ASSERT_NE(pipe_handle, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(pipe_handle, INVALID_HANDLE_VALUE);
 
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT_OK(r);
@@ -1994,8 +1994,8 @@ void spawn_stdin_stdout(void) {
   char* pbuf;
   HANDLE h_stdin = GetStdHandle(STD_INPUT_HANDLE);
   HANDLE h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
-  ASSERT_NE(h_stdin, INVALID_HANDLE_VALUE);
-  ASSERT_NE(h_stdout, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(h_stdin, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(h_stdout, INVALID_HANDLE_VALUE);
   for (;;) {
     DWORD n_read;
     DWORD n_written;

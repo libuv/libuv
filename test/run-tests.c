@@ -145,7 +145,7 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper3") == 0) {
     char buffer[256];
     notify_parent_process();
-    ASSERT_EQ(buffer, fgets(buffer, sizeof(buffer) - 1, stdin));
+    ASSERT_PTR_EQ(buffer, fgets(buffer, sizeof(buffer) - 1, stdin));
     buffer[sizeof(buffer) - 1] = '\0';
     fputs(buffer, stdout);
     return 1;

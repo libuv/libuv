@@ -192,7 +192,7 @@ TEST_IMPL(threadpool_multiple_event_loops) {
 static void tls_thread(void* arg) {
   ASSERT_NULL(uv_key_get(&tls_key));
   uv_key_set(&tls_key, arg);
-  ASSERT_EQ(arg, uv_key_get(&tls_key));
+  ASSERT_PTR_EQ(arg, uv_key_get(&tls_key));
   uv_key_set(&tls_key, NULL);
   ASSERT_NULL(uv_key_get(&tls_key));
 }
@@ -204,7 +204,7 @@ TEST_IMPL(thread_local_storage) {
   ASSERT_OK(uv_key_create(&tls_key));
   ASSERT_NULL(uv_key_get(&tls_key));
   uv_key_set(&tls_key, name);
-  ASSERT_EQ(name, uv_key_get(&tls_key));
+  ASSERT_PTR_EQ(name, uv_key_get(&tls_key));
   ASSERT_OK(uv_thread_create(threads + 0, tls_thread, threads + 0));
   ASSERT_OK(uv_thread_create(threads + 1, tls_thread, threads + 1));
   ASSERT_OK(uv_thread_join(threads + 0));
