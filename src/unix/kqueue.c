@@ -30,6 +30,9 @@
 #include <sys/types.h>
 #include <sys/event.h>
 #include <sys/time.h>
+#if defined(__FreeBSD__)
+#include <sys/user.h>
+#endif
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
@@ -480,6 +483,16 @@ static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
    */
   if (fcntl(handle->event_watcher.fd, F_GETPATH, pathbuf) == 0)
     path = uv__basename_r(pathbuf);
+#elif defined(F_KINFO)
+  /* We try to get the file info reference from the file descriptor.
+   * the struct's kf_structsize must be initialised beforehand
+   * whether with the KINFO_FILE_SIZE constant or this way.
+   */
+  struct kinfo_file kf;
+  kf.kf_structsize = sizeof(kf);
+
+  if (fcntl(handle->event_watcher.fd, F_KINFO, &kf) == 0)
+    path = uv__basename_r(kf.kf_path);
 #endif
   handle->cb(handle, path, events, 0);
 
