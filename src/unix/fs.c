@@ -441,9 +441,10 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   iov = (const struct iovec*) req->bufs;
   result = uv__fs_read_do(req->file, iov, req->nbufs, req->off);
 
-  /* Early cleanup of bufs allocation, since we're done with it. */
-  if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
+  /* We don't own the buffer list in the synchronous case. */
+  if (req->cb != NULL)
+    if (req->bufs != req->bufsml)
+      uv__free(req->bufs);
 
   req->bufs = NULL;
   req->nbufs = 0;
@@ -1871,9 +1872,14 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
 
+  req->off = off;
   req->file = file;
-
+  req->bufs = (uv_buf_t*) bufs;  /* Safe, doesn't mutate |bufs| */
   req->nbufs = nbufs;
+
+  if (cb == NULL)
+    goto post;
+
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
@@ -1883,12 +1889,10 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
 
   memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
 
-  req->off = off;
+  if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
+    return 0;
 
-  if (cb != NULL)
-    if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
-      return 0;
-
+post:
   POST;
 }
 
