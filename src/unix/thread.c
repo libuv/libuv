@@ -792,9 +792,10 @@ void uv_cond_broadcast(uv_cond_t* cond) {
 #if defined(__APPLE__) && defined(__MACH__)
 
 void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
-  errno = 0;
+  int r;
 
-  int r = pthread_cond_wait(cond, mutex);
+  errno = 0;
+  r = pthread_cond_wait(cond, mutex);
 
   /* Workaround for a bug in OS X at least up to 13.6
    * See https://github.com/libuv/libuv/issues/4165
