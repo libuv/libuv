@@ -79,7 +79,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
 TEST_IMPL(udp_send_hang_loop) {
   ASSERT_OK(uv_idle_init(uv_default_loop(), &idle_handle));
 
-  /* 192.0.2.0/8 is "TEST-NET" and reserved for documentation.
+  /* 192.0.2.0/24 is "TEST-NET" and reserved for documentation.
    * Good for us, though. Since we want to have something unreachable.
    */
   ASSERT_OK(uv_ip4_addr("192.0.2.3", TEST_PORT, &addr));
