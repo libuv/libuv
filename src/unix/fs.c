@@ -82,6 +82,13 @@
 # include <sys/statfs.h>
 #endif
 
+#if defined(__CYGWIN__) || defined(__HAIKU__) || defined(__sun)
+#define preadv(fd, bufs, nbufs, off)                                          \
+  pread(fd, (bufs)->iov_base, (bufs)->iov_len, off)
+#define pwritev(fd, bufs, nbufs, off)                                         \
+  pwrite(fd, (bufs)->iov_base, (bufs)->iov_len, off)
+#endif
+
 #if defined(_AIX) && _XOPEN_SOURCE <= 600
 extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 #endif
@@ -406,15 +413,16 @@ static ssize_t uv__fs_read_do(int fd,
   if (nbufs > iovmax)
     nbufs = iovmax;
 
+  result = 0;
   if (off < 0) {
     if (nbufs == 1)
       result = read(fd, bufs->iov_base, bufs->iov_len);
-    else
+    else if (nbufs > 1)
       result = readv(fd, bufs, nbufs);
   } else {
     if (nbufs == 1)
       result = pread(fd, bufs->iov_base, bufs->iov_len, off);
-    else
+    else if (nbufs > 1)
       result = preadv(fd, bufs, nbufs, off);
   }
 
@@ -1089,15 +1097,16 @@ static ssize_t uv__fs_write_do(int fd,
                                int64_t off) {
   ssize_t r;
 
+  r = 0;
   if (off < 0) {
     if (nbufs == 1)
       r = write(fd, bufs->iov_base, bufs->iov_len);
-    else
+    else if (nbufs > 1)
       r = writev(fd, bufs, nbufs);
   } else {
     if (nbufs == 1)
       r = pwrite(fd, bufs->iov_base, bufs->iov_len, off);
-    else
+    else if (nbufs > 1)
       r = pwritev(fd, bufs, nbufs, off);
   }
 
