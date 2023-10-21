@@ -402,12 +402,18 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_read_do(int fd,
-                              const struct iovec* bufs,
-                              unsigned int nbufs,
-                              int64_t off) {
+static ssize_t uv__fs_read(uv_fs_t* req) {
+  const struct iovec* bufs;
   unsigned int iovmax;
+  size_t nbufs;
   ssize_t r;
+  off_t off;
+  int fd;
+
+  fd = req->file;
+  off = req->off;
+  bufs = (const struct iovec*) req->bufs;
+  nbufs = req->nbufs;
 
   iovmax = uv__getiovmax();
   if (nbufs > iovmax)
@@ -438,17 +444,6 @@ static ssize_t uv__fs_read_do(int fd,
   }
 #endif
 
-  return r;
-}
-
-
-static ssize_t uv__fs_read(uv_fs_t* req) {
-  const struct iovec* iov;
-  ssize_t result;
-
-  iov = (const struct iovec*) req->bufs;
-  result = uv__fs_read_do(req->file, iov, req->nbufs, req->off);
-
   /* We don't own the buffer list in the synchronous case. */
   if (req->cb != NULL)
     if (req->bufs != req->bufsml)
@@ -457,7 +452,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   req->bufs = NULL;
   req->nbufs = 0;
 
-  return result;
+  return r;
 }
 
 
@@ -1091,11 +1086,17 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_write_do(int fd,
-                               const struct iovec* bufs,
-                               unsigned int nbufs,
-                               int64_t off) {
+static ssize_t uv__fs_write(uv_fs_t* req) {
+  const struct iovec* bufs;
+  size_t nbufs;
   ssize_t r;
+  off_t off;
+  int fd;
+
+  fd = req->file;
+  off = req->off;
+  bufs = (const struct iovec*) req->bufs;
+  nbufs = req->nbufs;
 
   r = 0;
   if (off < 0) {
@@ -1111,14 +1112,6 @@ static ssize_t uv__fs_write_do(int fd,
   }
 
   return r;
-}
-
-
-static ssize_t uv__fs_write(uv_fs_t* req) {
-  const struct iovec* iov;
-
-  iov = (const struct iovec*) req->bufs;
-  return uv__fs_write_do(req->file, iov, req->nbufs, req->off);
 }
 
 
