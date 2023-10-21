@@ -407,28 +407,28 @@ static ssize_t uv__fs_read_do(int fd,
                               unsigned int nbufs,
                               int64_t off) {
   unsigned int iovmax;
-  ssize_t result;
+  ssize_t r;
 
   iovmax = uv__getiovmax();
   if (nbufs > iovmax)
     nbufs = iovmax;
 
-  result = 0;
+  r = 0;
   if (off < 0) {
     if (nbufs == 1)
-      result = read(fd, bufs->iov_base, bufs->iov_len);
+      r = read(fd, bufs->iov_base, bufs->iov_len);
     else if (nbufs > 1)
-      result = readv(fd, bufs, nbufs);
+      r = readv(fd, bufs, nbufs);
   } else {
     if (nbufs == 1)
-      result = pread(fd, bufs->iov_base, bufs->iov_len, off);
+      r = pread(fd, bufs->iov_base, bufs->iov_len, off);
     else if (nbufs > 1)
-      result = preadv(fd, bufs, nbufs, off);
+      r = preadv(fd, bufs, nbufs, off);
   }
 
 #ifdef __PASE__
   /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
-  if (result == -1 && errno == EOPNOTSUPP) {
+  if (r == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
     rc = uv__fstat(fd, &buf);
@@ -438,7 +438,7 @@ static ssize_t uv__fs_read_do(int fd,
   }
 #endif
 
-  return result;
+  return r;
 }
 
 
