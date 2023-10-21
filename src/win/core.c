@@ -629,9 +629,8 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
    * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
    * once, which should be done after polling in order to maintain proper
    * execution order of the conceptual event loop. */
-  if (mode == UV_RUN_DEFAULT) {
-    if (r)
-      uv_update_time(loop);
+  if (mode == UV_RUN_DEFAULT && r != 0 && loop->stop_flag == 0) {
+    uv_update_time(loop);
     uv__run_timers(loop);
   }
 

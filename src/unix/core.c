@@ -424,9 +424,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
    * while loop for UV_RUN_DEFAULT. Otherwise timers only need to be executed
    * once, which should be done after polling in order to maintain proper
    * execution order of the conceptual event loop. */
-  if (mode == UV_RUN_DEFAULT) {
-    if (r)
-      uv__update_time(loop);
+  if (mode == UV_RUN_DEFAULT && r != 0 && loop->stop_flag == 0) {
+    uv__update_time(loop);
     uv__run_timers(loop);
   }
 
@@ -1272,6 +1271,10 @@ static int uv__getpwuid_r(uv_passwd_t *pwd, uid_t uid) {
 
 
 int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
+#if defined(__ANDROID__) && __ANDROID_API__ < 24
+  /* This function getgrgid_r() was added in Android N (level 24) */
+  return UV_ENOSYS;
+#else
   struct group gp;
   struct group* result;
   char* buf;
@@ -1348,6 +1351,7 @@ int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
   uv__free(buf);
 
   return 0;
+#endif
 }
 
 

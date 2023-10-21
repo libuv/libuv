@@ -41,23 +41,12 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/uio.h>
-#include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
 
-#if defined(__DragonFly__)        ||                                      \
-    defined(__FreeBSD__)          ||                                      \
-    defined(__OpenBSD__)          ||                                      \
-    defined(__NetBSD__)
-# define HAVE_PREADV 1
-#else
-# define HAVE_PREADV 0
-#endif
-
 #if defined(__linux__)
 # include <sys/sendfile.h>
-# include <sys/utsname.h>
 #endif
 
 #if defined(__sun)
@@ -406,121 +395,59 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
-#if !HAVE_PREADV
-static ssize_t uv__fs_preadv(uv_file fd,
-                             uv_buf_t* bufs,
-                             unsigned int nbufs,
-                             off_t off) {
-  uv_buf_t* buf;
-  uv_buf_t* end;
-  ssize_t result;
-  ssize_t rc;
-  size_t pos;
-
-  assert(nbufs > 0);
-
-  result = 0;
-  pos = 0;
-  buf = bufs + 0;
-  end = bufs + nbufs;
-
-  for (;;) {
-    do
-      rc = pread(fd, buf->base + pos, buf->len - pos, off + result);
-    while (rc == -1 && errno == EINTR);
-
-    if (rc == 0)
-      break;
-
-    if (rc == -1 && result == 0)
-      return UV__ERR(errno);
-
-    if (rc == -1)
-      break;  /* We read some data so return that, ignore the error. */
-
-    pos += rc;
-    result += rc;
-
-    if (pos < buf->len)
-      continue;
-
-    pos = 0;
-    buf += 1;
-
-    if (buf == end)
-      break;
-  }
-
-  return result;
-}
-#endif
-
-
-static ssize_t uv__fs_read(uv_fs_t* req) {
-#if defined(__linux__)
-  static _Atomic int no_preadv;
-#endif
+static ssize_t uv__fs_read_do(int fd,
+                              const struct iovec* bufs,
+                              unsigned int nbufs,
+                              int64_t off) {
   unsigned int iovmax;
   ssize_t result;
 
   iovmax = uv__getiovmax();
-  if (req->nbufs > iovmax)
-    req->nbufs = iovmax;
+  if (nbufs > iovmax)
+    nbufs = iovmax;
 
-  if (req->off < 0) {
-    if (req->nbufs == 1)
-      result = read(req->file, req->bufs[0].base, req->bufs[0].len);
+  if (off < 0) {
+    if (nbufs == 1)
+      result = read(fd, bufs->iov_base, bufs->iov_len);
     else
-      result = readv(req->file, (struct iovec*) req->bufs, req->nbufs);
+      result = readv(fd, bufs, nbufs);
   } else {
-    if (req->nbufs == 1) {
-      result = pread(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-
-#if HAVE_PREADV
-    result = preadv(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (atomic_load_explicit(&no_preadv, memory_order_relaxed)) retry:
-# endif
-    {
-      result = uv__fs_preadv(req->file, req->bufs, req->nbufs, req->off);
-    }
-# if defined(__linux__)
-    else {
-      result = preadv(req->file,
-                      (struct iovec*) req->bufs,
-                      req->nbufs,
-                      req->off);
-      if (result == -1 && errno == ENOSYS) {
-        atomic_store_explicit(&no_preadv, 1, memory_order_relaxed);
-        goto retry;
-      }
-    }
-# endif
-#endif
+    if (nbufs == 1)
+      result = pread(fd, bufs->iov_base, bufs->iov_len, off);
+    else
+      result = preadv(fd, bufs, nbufs, off);
   }
-
-done:
-  /* Early cleanup of bufs allocation, since we're done with it. */
-  if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
-
-  req->bufs = NULL;
-  req->nbufs = 0;
 
 #ifdef __PASE__
   /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
   if (result == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
-    rc = uv__fstat(req->file, &buf);
+    rc = uv__fstat(fd, &buf);
     if (rc == 0 && S_ISDIR(buf.st_mode)) {
       errno = EISDIR;
     }
   }
 #endif
+
+  return result;
+}
+
+
+static ssize_t uv__fs_read(uv_fs_t* req) {
+  const struct iovec* iov;
+  ssize_t result;
+
+  iov = (const struct iovec*) req->bufs;
+  result = uv__fs_read_do(req->file, iov, req->nbufs, req->off);
+
+  /* We don't own the buffer list in the synchronous case. */
+  if (req->cb != NULL)
+    if (req->bufs != req->bufsml)
+      uv__free(req->bufs);
+
+  req->bufs = NULL;
+  req->nbufs = 0;
 
   return result;
 }
@@ -899,31 +826,6 @@ out:
 
 
 #ifdef __linux__
-unsigned uv__kernel_version(void) {
-  static _Atomic unsigned cached_version;
-  struct utsname u;
-  unsigned version;
-  unsigned major;
-  unsigned minor;
-  unsigned patch;
-
-  version = atomic_load_explicit(&cached_version, memory_order_relaxed);
-  if (version != 0)
-    return version;
-
-  if (-1 == uname(&u))
-    return 0;
-
-  if (3 != sscanf(u.release, "%u.%u.%u", &major, &minor, &patch))
-    return 0;
-
-  version = major * 65536 + minor * 256 + patch;
-  atomic_store_explicit(&cached_version, version, memory_order_relaxed);
-
-  return version;
-}
-
-
 /* Pre-4.20 kernels have a bug where CephFS uses the RADOS copy-from command
  * in copy_file_range() when it shouldn't. There is no workaround except to
  * fall back to a regular copy.
@@ -1181,65 +1083,35 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_write(uv_fs_t* req) {
-#if defined(__linux__)
-  static int no_pwritev;
-#endif
+static ssize_t uv__fs_write_do(int fd,
+                               const struct iovec* bufs,
+                               unsigned int nbufs,
+                               int64_t off) {
   ssize_t r;
 
-  /* Serialize writes on OS X, concurrent write() and pwrite() calls result in
-   * data loss. We can't use a per-file descriptor lock, the descriptor may be
-   * a dup().
-   */
-#if defined(__APPLE__)
-  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-  if (pthread_mutex_lock(&lock))
-    abort();
-#endif
-
-  if (req->off < 0) {
-    if (req->nbufs == 1)
-      r = write(req->file, req->bufs[0].base, req->bufs[0].len);
+  if (off < 0) {
+    if (nbufs == 1)
+      r = write(fd, bufs->iov_base, bufs->iov_len);
     else
-      r = writev(req->file, (struct iovec*) req->bufs, req->nbufs);
+      r = writev(fd, bufs, nbufs);
   } else {
-    if (req->nbufs == 1) {
-      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-      goto done;
-    }
-#if HAVE_PREADV
-    r = pwritev(req->file, (struct iovec*) req->bufs, req->nbufs, req->off);
-#else
-# if defined(__linux__)
-    if (no_pwritev) retry:
-# endif
-    {
-      r = pwrite(req->file, req->bufs[0].base, req->bufs[0].len, req->off);
-    }
-# if defined(__linux__)
-    else {
-      r = pwritev(req->file,
-                  (struct iovec*) req->bufs,
-                  req->nbufs,
-                  req->off);
-      if (r == -1 && errno == ENOSYS) {
-        no_pwritev = 1;
-        goto retry;
-      }
-    }
-# endif
-#endif
+    if (nbufs == 1)
+      r = pwrite(fd, bufs->iov_base, bufs->iov_len, off);
+    else
+      r = pwritev(fd, bufs, nbufs, off);
   }
-
-done:
-#if defined(__APPLE__)
-  if (pthread_mutex_unlock(&lock))
-    abort();
-#endif
 
   return r;
 }
+
+
+static ssize_t uv__fs_write(uv_fs_t* req) {
+  const struct iovec* iov;
+
+  iov = (const struct iovec*) req->bufs;
+  return uv__fs_write_do(req->file, iov, req->nbufs, req->off);
+}
+
 
 static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_fs_t fs_req;
@@ -2000,9 +1872,14 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
 
+  req->off = off;
   req->file = file;
-
+  req->bufs = (uv_buf_t*) bufs;  /* Safe, doesn't mutate |bufs| */
   req->nbufs = nbufs;
+
+  if (cb == NULL)
+    goto post;
+
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
     req->bufs = uv__malloc(nbufs * sizeof(*bufs));
@@ -2012,12 +1889,10 @@ int uv_fs_read(uv_loop_t* loop, uv_fs_t* req,
 
   memcpy(req->bufs, bufs, nbufs * sizeof(*bufs));
 
-  req->off = off;
+  if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
+    return 0;
 
-  if (cb != NULL)
-    if (uv__iou_fs_read_or_write(loop, req, /* is_read */ 1))
-      return 0;
-
+post:
   POST;
 }
 

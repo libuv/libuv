@@ -31,12 +31,15 @@
 #include <stdio.h>
 
 #include "uv.h"
+
+/* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
+   be included before our "winapi.h", included via "internal.h" below. */
+#include <winioctl.h>
+
 #include "internal.h"
 #include "req-inl.h"
 #include "handle-inl.h"
 #include "fs-fd-hash-inl.h"
-
-#include <winioctl.h>
 
 
 #define UV_FS_FREE_PATHS         0x0002
@@ -176,9 +179,11 @@ static int32_t fs__decode_wtf8_char(const char** input) {
   if ((b4 & 0xC0) != 0x80)
     return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b4 & 0x3F);
-  if (b1 <= 0xF4)
+  if (b1 <= 0xF4) {
+    code_point &= 0x1FFFFF;
     if (code_point <= 0x10FFFF)
       return code_point; /* four-byte character */
+  }
 
   /* code point too large */
   return -1;
@@ -2063,7 +2068,7 @@ INLINE static int fs__fstat_handle(int fd, HANDLE handle, uv_stat_t* statbuf) {
     statbuf->st_mode = file_type == UV_TTY ? _S_IFCHR : _S_IFIFO;
     statbuf->st_nlink = 1;
     statbuf->st_rdev = (file_type == UV_TTY ? FILE_DEVICE_CONSOLE : FILE_DEVICE_NAMED_PIPE) << 16;
-    statbuf->st_ino = (uint64_t) handle;
+    statbuf->st_ino = (uintptr_t) handle;
     return 0;
 
   /* If file type is unknown it is an error. */

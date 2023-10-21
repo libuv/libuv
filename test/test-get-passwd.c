@@ -39,7 +39,7 @@ TEST_IMPL(get_passwd) {
 
   /* Test the normal case */
   r = uv_os_get_passwd(&pwd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   len = strlen(pwd.username);
   ASSERT_GT(len, 0);
 
@@ -114,15 +114,16 @@ TEST_IMPL(get_passwd2) {
 
   /* Test the normal case */
   r = uv_os_get_passwd(&pwd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_os_get_passwd2(&pwd2, pwd.uid);
 
 #ifdef _WIN32
   ASSERT_EQ(r, UV_ENOTSUP);
+  (void) &len;
 
 #else
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(pwd.uid, pwd2.uid);
   ASSERT_STR_EQ(pwd.username, pwd2.username);
   ASSERT_STR_EQ(pwd.shell, pwd2.shell);
@@ -130,15 +131,20 @@ TEST_IMPL(get_passwd2) {
   uv_os_free_passwd(&pwd2);
 
   r = uv_os_get_passwd2(&pwd2, 0);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   len = strlen(pwd2.username);
   ASSERT_GT(len, 0);
+#if defined(__PASE__)
+  // uid 0 is qsecofr on IBM i
+  ASSERT_STR_EQ(pwd2.username, "qsecofr");
+#else
   ASSERT_STR_EQ(pwd2.username, "root");
-
+#endif
   len = strlen(pwd2.homedir);
+# ifndef __PASE__
   ASSERT_GT(len, 0);
-
+#endif
   len = strlen(pwd2.shell);
 # ifndef __PASE__
   ASSERT_GT(len, 0);
@@ -173,15 +179,16 @@ TEST_IMPL(get_group) {
   int r;
 
   r = uv_os_get_passwd(&pwd);
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
 
   r = uv_os_get_group(&grp, pwd.gid);
 
 #ifdef _WIN32
   ASSERT_EQ(r, UV_ENOTSUP);
+  (void) &len;
 
 #else
-  ASSERT_EQ(r, 0);
+  ASSERT_OK(r);
   ASSERT_EQ(pwd.gid, grp.gid);
 
   len = strlen(grp.groupname);
