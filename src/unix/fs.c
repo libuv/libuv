@@ -82,7 +82,9 @@
 # include <sys/statfs.h>
 #endif
 
-#if defined(__CYGWIN__) || defined(__HAIKU__) || defined(__sun)
+#if defined(__CYGWIN__) ||                                                    \
+    (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
+    (defined(__sun) && !defined(__illumos__))
 #define preadv(fd, bufs, nbufs, off)                                          \
   pread(fd, (bufs)->iov_base, (bufs)->iov_len, off)
 #define pwritev(fd, bufs, nbufs, off)                                         \
