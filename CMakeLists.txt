@@ -478,7 +478,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
 endif()
 target_link_libraries(uv_a ${uv_libraries})
 set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")
-if(MSVC)
+if(WIN32)
   set_target_properties(uv_a PROPERTIES PREFIX "lib")
 endif()
 
