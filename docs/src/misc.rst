@@ -840,8 +840,6 @@ API
 
     .. versionadded:: 1.34.0
 
-.. c:function:: void uv_sleep(unsigned int msec)
-
 String manipulation functions
 -----------------------------
 
