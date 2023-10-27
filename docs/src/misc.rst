@@ -853,7 +853,7 @@ is not complete.
     WTF-8. If `utf16` is NUL terminated, `utf16_len` can be set to -1,
     otherwise it must be specified.
 
-    .. versionadded:: 1.46.0
+    .. versionadded:: 1.47.0
 
 .. c:function:: int uv_utf16_to_wtf8(const uint16_t* utf16, ssize_t utf16_len, char** wtf8_ptr, size_t* wtf8_len_ptr)
 
@@ -870,14 +870,14 @@ is not complete.
     `wtf8_len_ptr` will be the length of the required `wtf8_ptr` to contain the
     whole result.
 
-    .. versionadded:: 1.46.0
+    .. versionadded:: 1.47.0
 
 .. c:function:: ssize_t uv_wtf8_length_as_utf16(const char* wtf8)
 
     Get the length in characters of a NUL-terminated WTF-8 `wtf8` value
     after converting it to UTF-16 (or UCS-2), including NUL terminator.
 
-    .. versionadded:: 1.46.0
+    .. versionadded:: 1.47.0
 
 .. c:function:: void uv_wtf8_to_utf16(const char* utf8, uint16_t* utf16, size_t utf16_len)
 
@@ -885,4 +885,4 @@ is not complete.
     in `utf16`. The `utf16_len` count (in characters) must include space
     for the NUL terminator.
 
-    .. versionadded:: 1.46.0
+    .. versionadded:: 1.47.0
