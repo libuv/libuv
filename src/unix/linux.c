@@ -475,6 +475,9 @@ int uv__io_uring_register(int fd, unsigned opcode, void* arg, unsigned nargs) {
 static int uv__use_io_uring(void) {
 #if defined(__ANDROID_API__)
   return 0;  /* Possibly available but blocked by seccomp. */
+#elif defined(__arm__) && __SIZEOF_POINTER__ == 4
+  /* See https://github.com/libuv/libuv/issues/4158. */
+  return 0;  /* All 32 bits kernels appear buggy. */
 #else
   /* Ternary: unknown=0, yes=1, no=-1 */
   static _Atomic int use_io_uring;
