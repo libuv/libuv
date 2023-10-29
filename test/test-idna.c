@@ -20,6 +20,7 @@
  */
 
 #include "task.h"
+#define uv__malloc malloc
 #include "../src/idna.c"
 #include <string.h>
 
