@@ -95,3 +95,29 @@ jobs:
       - name: UBSAN Test
         run: |
           ./build-ubsan/uv_run_tests_a
+
+  sanitizers-windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup
+        run: |
+          choco install ninja
+
+      # Note: clang shipped with VS2022 has an issue where the UBSAN runtime doesn't link.
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "17"
+
+      - name: Envinfo
+        run: npx envinfo
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          cmake -B build-ubsan -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a

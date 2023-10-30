@@ -81,7 +81,7 @@ static void do_close(uv_tcp_t* handle) {
     ASSERT_OK(r);
 #ifdef _WIN32
     ASSERT_PTR_NE(fd, INVALID_FD);
-    ASSERT_OK(shutdown(fd, SD_BOTH));
+    ASSERT_OK(shutdown((SOCKET)fd, SD_BOTH));
 #else
     ASSERT_NE(fd, INVALID_FD);
     ASSERT_OK(shutdown(fd, SHUT_RDWR));
