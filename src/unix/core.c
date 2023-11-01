@@ -1739,25 +1739,174 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   return UV_EINVAL;
 }
 
+#define BUF_SIZE 1024
+
+static CpuResources uv__get_cpu_resources_cgroupv2(const char *cgroup) {
+#ifdef __linux__
+    CpuResources resources = {0, 0, 0};
+    char path[256];
+    char buf[BUF_SIZE];
+    unsigned int weight;
+    int cgroup_size;
+    char *cgroup_trimmed;
+
+    // Trim ending \n by replacing it with a 0
+    cgroup_trimmed = cgroup + strlen("0::/");          // Skip the prefix "0::/"
+    cgroup_size = (int)strcspn(cgroup_trimmed, "\n");  // Find the first slash
+
+    // Construct the path to the cpu.max file
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.max", cgroup_size,
+             cgroup_trimmed);
+
+    // Read cpu.max
+    if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+        char max_usage_str[16];
+        sscanf(buf, "%15s %lld", max_usage_str, &resources.period_length);
+        if (strcmp(max_usage_str, "max") == 0)
+            resources.quota_per_period = LLONG_MAX;
+        else
+            resources.quota_per_period = strtoll(max_usage_str, NULL, 10);
+    }
+
+    // Construct the path to the cpu.weight file
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.weight", cgroup_size,
+             cgroup_trimmed);
+
+    // Read cpu.weight
+    if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+        sscanf(buf, "%u", &weight);
+        resources.proportions = (double)weight / 100;
+    }
+
+    return resources;
+#else
+    // Other OS handling code here...
+    CpuResources resources = {0, 0, 0};
+    return resources;
+#endif
+}
+
+static char *uv__cgroup1_find_cpu_controller(const char *cgroup,
+                                             int *cgroup_size) {
+    char *cgroup_cpu;
+
+    /* Seek to the cpu controller line. */
+    cgroup_cpu = strchr(cgroup, ':');
+    while (cgroup_cpu != NULL && strncmp(cgroup_cpu, ":cpu,", 5)) {
+        cgroup_cpu = strchr(cgroup_cpu, '\n');
+        if (cgroup_cpu != NULL) cgroup_cpu = strchr(cgroup_cpu, ':');
+    }
+
+    if (cgroup_cpu != NULL) {
+        /* Determine the length of the mount path. */
+        cgroup_cpu = cgroup_cpu + strlen(":cpu,");
+        *cgroup_size = (int)strcspn(cgroup_cpu, "\n");
+    }
+
+    return cgroup_cpu;
+}
+
+static CpuResources uv__get_cpu_resources_cgroupv1(const char *cgroup) {
+#ifdef __linux__
+    CpuResources resources = {0, 0, 0};
+    char path[256];
+    char buf[BUF_SIZE];
+    unsigned int shares;
+    int cgroup_size;
+    char *cgroup_cpu;
+
+    cgroup_cpu = uv__cgroup1_find_cpu_controller(cgroup, &cgroup_size);
+
+    // Construct the path to the cpu.max file
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_quota_us",
+             cgroup_size, cgroup_cpu);
+
+    if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+        sscanf(buf, "%lld", &resources.quota_per_period);
+    }
+
+    // Construct the path to the cpu.cfs_period_us file
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_period_us",
+             cgroup_size, cgroup_cpu);
+
+    // Read cpu.cfs_period_us
+    if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+        sscanf(buf, "%lld", &resources.cfs_period_us);
+    }
+
+    // Construct the path to the cpu.shares file
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.shares", cgroup_size,
+             cgroup_cpu);
+
+    // Read cpu.shares
+    if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+        sscanf(buf, "%u", &shares);
+        resources.proportions = (double)shares / 1024;
+    }
+
+    return resources;
+#else
+    // Other OS handling code here...
+    CpuResources resources = {0, 0, 0};
+    return resources;
+#endif
+}
+
+CpuResources uv_get_cpu_resources() {
+#ifdef __linux__
+    char cgroup[1024];
+    char path[256];
+    char controllers[256];
+
+    // Read the cgroup from /proc/self/cgroup
+    strcpy(path, "/proc/self/cgroup");
+    if (uv__slurp(path, cgroup, sizeof(cgroup)) < 0) {
+        CpuResources resources = {0, 0, 0};
+        return resources;
+    }
+
+    // Check if the system is using cgroup v2
+    strcpy(path, "/sys/fs/cgroup/cgroup.controllers");
+    if (uv__slurp(path, controllers, sizeof(controllers)) >= 0) {
+        // The system is using cgroup v2
+        return uv__get_cpu_resources_cgroupv2(cgroup);
+    } else {
+        // The system is using cgroup v1
+        return uv__get_cpu_resources_cgroupv1(cgroup);
+    }
+#else
+    // Other OS handling code here...
+    CpuResources resources = {0, 0, 0};
+    return resources;
+#endif
+}
 
 unsigned int uv_available_parallelism(void) {
 #ifdef __linux__
-  cpu_set_t set;
-  long rc;
+    cpu_set_t set;
+    long rc;
 
-  memset(&set, 0, sizeof(set));
+    memset(&set, 0, sizeof(set));
 
-  /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
+    /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
    * glibc it's... complicated... so for consistency try sched_getaffinity()
    * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
-   */
-  if (0 == sched_getaffinity(0, sizeof(set), &set))
-    rc = CPU_COUNT(&set);
-  else
-    rc = sysconf(_SC_NPROCESSORS_ONLN);
+     */
+    if (0 == sched_getaffinity(0, sizeof(set), &set))
+        rc = CPU_COUNT(&set);
+    else
+        rc = sysconf(_SC_NPROCESSORS_ONLN);
 
-  if (rc < 1)
-    rc = 1;
+    CpuResources resources = uv_get_cpu_resources();
+    if (resources.period_length > 0) {
+        int rc_with_cgroup = (int)(resources.quota_per_period /
+                                   resources.period_length * resources.proportions);
+        if (rc_with_cgroup < rc) {
+            rc = rc_with_cgroup;
+        }
+    }
+    if (rc < 1) 
+      rc = 1;
 
   return (unsigned) rc;
 #elif defined(__MVS__)
