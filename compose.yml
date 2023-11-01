@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  docker-compose-example:
+    platform: "linux/amd64"
+    build:
+      context: .
+    user: "1000"
+    command: /libuv/docs/code/build/uv_run_tests_a platform_output
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+        reservations:
+          cpus: "0.25"
