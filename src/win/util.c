@@ -1506,7 +1506,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
   r = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
                     L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
                     0,
-                    KEY_QUERY_VALUE,
+                    KEY_QUERY_VALUE | KEY_WOW64_64KEY,
                     &registry_key);
 
   if (r == ERROR_SUCCESS) {
