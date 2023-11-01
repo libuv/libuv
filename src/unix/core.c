@@ -1864,25 +1864,40 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   return UV_EINVAL;
 }
 
+#ifndef __linux__
+  CpuResources uv_get_cpu_resources() {
+    CpuResources resources = {0, 0, 0};
+    return resources;
+  }
+#endif
+
 
 unsigned int uv_available_parallelism(void) {
 #ifdef __linux__
-  cpu_set_t set;
-  long rc;
+    cpu_set_t set;
+    long rc;
 
-  memset(&set, 0, sizeof(set));
+    memset(&set, 0, sizeof(set));
 
-  /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
+    /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
    * glibc it's... complicated... so for consistency try sched_getaffinity()
    * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
-   */
-  if (0 == sched_getaffinity(0, sizeof(set), &set))
-    rc = CPU_COUNT(&set);
-  else
-    rc = sysconf(_SC_NPROCESSORS_ONLN);
+     */
+    if (0 == sched_getaffinity(0, sizeof(set), &set))
+        rc = CPU_COUNT(&set);
+    else
+        rc = sysconf(_SC_NPROCESSORS_ONLN);
 
-  if (rc < 1)
-    rc = 1;
+    CpuResources resources = uv_get_cpu_resources();
+    if (resources.period_length > 0) {
+        int rc_with_cgroup = (int)(resources.quota_per_period /
+                                   resources.period_length * resources.proportions);
+        if (rc_with_cgroup < rc) {
+            rc = rc_with_cgroup;
+        }
+    }
+    if (rc < 1) 
+      rc = 1;
 
   return (unsigned) rc;
 #elif defined(__MVS__)

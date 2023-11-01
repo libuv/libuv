@@ -2270,6 +2270,131 @@ uint64_t uv_get_available_memory(void) {
 }
 
 
+#define BUF_SIZE 1024
+
+static CpuResources uv__get_cpu_resources_cgroupv2(const char *cgroup) {
+  CpuResources resources = {0, 0, 0};
+  char path[256];
+  char buf[BUF_SIZE];
+  unsigned int weight;
+  int cgroup_size;
+  char *cgroup_trimmed;
+
+  // Trim ending \n by replacing it with a 0
+  cgroup_trimmed = cgroup + strlen("0::/");          // Skip the prefix "0::/"
+  cgroup_size = (int)strcspn(cgroup_trimmed, "\n");  // Find the first slash
+
+  // Construct the path to the cpu.max file
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.max", cgroup_size,
+            cgroup_trimmed);
+
+  // Read cpu.max
+  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+      char max_usage_str[16];
+      sscanf(buf, "%15s %lld", max_usage_str, &resources.period_length);
+      if (strcmp(max_usage_str, "max") == 0)
+          resources.quota_per_period = LLONG_MAX;
+      else
+          resources.quota_per_period = strtoll(max_usage_str, NULL, 10);
+  }
+
+  // Construct the path to the cpu.weight file
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.weight", cgroup_size,
+            cgroup_trimmed);
+
+  // Read cpu.weight
+  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+      sscanf(buf, "%u", &weight);
+      resources.proportions = (double)weight / 100;
+  }
+
+  return resources;
+}
+
+static char *uv__cgroup1_find_cpu_controller(const char *cgroup,
+                                             int *cgroup_size) {
+  char *cgroup_cpu;
+
+  /* Seek to the cpu controller line. */
+  cgroup_cpu = strchr(cgroup, ':');
+  while (cgroup_cpu != NULL && strncmp(cgroup_cpu, ":cpu,", 5)) {
+      cgroup_cpu = strchr(cgroup_cpu, '\n');
+      if (cgroup_cpu != NULL) cgroup_cpu = strchr(cgroup_cpu, ':');
+  }
+
+  if (cgroup_cpu != NULL) {
+      /* Determine the length of the mount path. */
+      cgroup_cpu = cgroup_cpu + strlen(":cpu,");
+      *cgroup_size = (int)strcspn(cgroup_cpu, "\n");
+  }
+
+  return cgroup_cpu;
+}
+
+static CpuResources uv__get_cpu_resources_cgroupv1(const char *cgroup) {
+  CpuResources resources = {0, 0, 0};
+  char path[256];
+  char buf[BUF_SIZE];
+  unsigned int shares;
+  int cgroup_size;
+  char *cgroup_cpu;
+
+  cgroup_cpu = uv__cgroup1_find_cpu_controller(cgroup, &cgroup_size);
+
+  // Construct the path to the cpu.max file
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_quota_us",
+            cgroup_size, cgroup_cpu);
+
+  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+      sscanf(buf, "%lld", &resources.quota_per_period);
+  }
+
+  // Construct the path to the cpu.cfs_period_us file
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_period_us",
+            cgroup_size, cgroup_cpu);
+
+  // Read cpu.cfs_period_us
+  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+      sscanf(buf, "%lld", &resources.period_length);
+  }
+
+  // Construct the path to the cpu.shares file
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.shares", cgroup_size,
+            cgroup_cpu);
+
+  // Read cpu.shares
+  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
+      sscanf(buf, "%u", &shares);
+      resources.proportions = (double)shares / 1024;
+  }
+
+  return resources;
+}
+
+CpuResources uv_get_cpu_resources() {
+  char cgroup[1024];
+  char path[256];
+  char controllers[256];
+
+  // Read the cgroup from /proc/self/cgroup
+  strcpy(path, "/proc/self/cgroup");
+  if (uv__slurp(path, cgroup, sizeof(cgroup)) < 0) {
+      CpuResources resources = {0, 0, 0};
+      return resources;
+  }
+
+  // Check if the system is using cgroup v2
+  strcpy(path, "/sys/fs/cgroup/cgroup.controllers");
+  if (uv__slurp(path, controllers, sizeof(controllers)) >= 0) {
+      // The system is using cgroup v2
+      return uv__get_cpu_resources_cgroupv2(cgroup);
+  } else {
+      // The system is using cgroup v1
+      return uv__get_cpu_resources_cgroupv1(cgroup);
+  }
+}
+
+
 void uv_loadavg(double avg[3]) {
   struct sysinfo info;
   char buf[128];  /* Large enough to hold all of /proc/loadavg. */
