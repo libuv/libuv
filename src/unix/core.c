@@ -1831,7 +1831,7 @@ static CpuResources uv__get_cpu_resources_cgroupv1(const char *cgroup) {
 
     // Read cpu.cfs_period_us
     if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
-        sscanf(buf, "%lld", &resources.cfs_period_us);
+        sscanf(buf, "%lld", &resources.period_length);
     }
 
     // Construct the path to the cpu.shares file
