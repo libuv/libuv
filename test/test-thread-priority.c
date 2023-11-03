@@ -43,11 +43,7 @@ static void simple_task(void *args) {
 
     while (count) {
         count--;
-      #ifdef _WIN32
-        Sleep(1000);
-      #else
-        sleep(1);
-      #endif
+      uv_sleep(1000);
     }
 }
 
