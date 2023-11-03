@@ -1466,10 +1466,6 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
   return r;
 }
 
-/**
- * If the function succeeds, the return value is 0.
- * If the function fails, the return value is non-zero.
-*/
 int uv_thread_getpriority(uv_thread_t tid, int* priority) {
   int r;
 
