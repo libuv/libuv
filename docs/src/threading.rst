@@ -140,7 +140,6 @@ Threads
     The priority can be set to the following constants. UV_THREAD_PRIORITY_HIGHEST, 
     UV_THREAD_PRIORITY_ABOVE_NORMAL, UV_THREAD_PRIORITY_NORMAL, 
     UV_THREAD_PRIORITY_BELOW_NORMAL, UV_THREAD_PRIORITY_LOWEST.
-    For Linux, when schedule policy is SCHED_OTHER (default), it sets nice value internally.
 .. c:function:: int uv_thread_getpriority(uv_thread_t tid, int* priority)
     If the function succeeds, the return value is 0.
     If the function fails, the return value is non-zero.
