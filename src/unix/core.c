@@ -1568,6 +1568,9 @@ int uv_thread_getpriority(uv_thread_t tid, int* priority) {
   int r;
   int policy;
   struct sched_param param;
+#ifdef __linux__
+  pid_t pid = gettid();
+#endif
 
   if (priority == NULL)
     return UV_EINVAL;
@@ -1578,7 +1581,6 @@ int uv_thread_getpriority(uv_thread_t tid, int* priority) {
 
 #ifdef __linux__
   if (SCHED_OTHER == policy && pthread_equal(tid, pthread_self())) {
-    pid_t pid = gettid();
     errno = 0;
     r = getpriority(PRIO_PROCESS, pid);
     if (r == -1 && errno != 0)
@@ -1592,22 +1594,22 @@ int uv_thread_getpriority(uv_thread_t tid, int* priority) {
   return 0;
 }
 
+#ifdef __linux__
 static int set_nice_for_calling_thread(int priority) {
   int r;
   int nice;
-  
+
   if (priority < UV_THREAD_PRIORITY_LOWEST || priority > UV_THREAD_PRIORITY_HIGHEST)
     return UV_EINVAL;
 
-  nice = 0 - priority * 2;
-#ifdef __linux__
   pid_t pid = gettid();
+  nice = 0 - priority * 2;
   r = setpriority(PRIO_PROCESS, pid, nice);
   if (r != 0)
     return UV__ERR(errno);
-#endif
   return 0;
 }
+#endif
 
 /**
  * If the function succeeds, the return value is 0.
@@ -1615,6 +1617,9 @@ static int set_nice_for_calling_thread(int priority) {
 */
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
   int r;
+  int min;
+  int max;
+  int range;
   int prio;
   int policy;
   struct sched_param param;
@@ -1636,17 +1641,17 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
 #endif
 
 #ifdef __PASE__
-  int min = UV_SCHED_PRIORITY_MIN;
-  int max = UV_SCHED_PRIORITY_MAX;
+  min = 1;
+  max = 127;
 #else
-  int min = sched_get_priority_min(policy);
-  int max = sched_get_priority_max(policy);
+  min = sched_get_priority_min(policy);
+  max = sched_get_priority_max(policy);
 #endif
 
   if (min == -1 || max == -1)
     return UV__ERR(errno);
 
-  int range = max - min;
+  range = max - min;
 
   switch (priority) {
     case UV_THREAD_PRIORITY_HIGHEST:

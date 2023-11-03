@@ -37,28 +37,31 @@
 #include <unistd.h>
 #endif
 
+uv_sem_t sem;
 
 static void simple_task(void *args) {
-    int count = *((int*) args);
-
-    while (count) {
-        count--;
-      uv_sleep(1000);
-    }
+    uv_sem_wait(&sem);
+    printf("in simple_task\n");
 }
 
 TEST_IMPL(thread_priority) {
   int priority;
   int r;
+#ifndef _WIN32
+  int min;
+  int max;
+#endif
+  uv_thread_t task_id;
 
   /* Verify that passing a NULL pointer returns UV_EINVAL. */
   ASSERT_EQ(UV_EINVAL, uv_thread_getpriority(0, NULL));
 
-  int count = 2;
+  r = uv_sem_init(&sem, 1);
+  ASSERT(r == 0);
 
-  uv_thread_t task_id;
+  uv_sem_wait(&sem);
 
-  r = uv_thread_create(&task_id, simple_task, &count);
+  r = uv_thread_create(&task_id, simple_task, NULL);
   ASSERT(r == 0);
 
   r = uv_thread_getpriority(task_id, &priority);
@@ -71,11 +74,11 @@ TEST_IMPL(thread_priority) {
   r = pthread_getschedparam(task_id, &policy, &param);
   ASSERT(r == 0);
 #ifdef __PASE__
-  int min = UV_SCHED_PRIORITY_MIN;
-  int max = UV_SCHED_PRIORITY_MAX;
+  min = 1;
+  max = 127;
 #else
-  int min = sched_get_priority_min(policy);
-  int max = sched_get_priority_max(policy);
+  min = sched_get_priority_min(policy);
+  max = sched_get_priority_max(policy);
 #endif
   ASSERT(priority >= min && priority <= max);
 #endif
@@ -103,7 +106,12 @@ TEST_IMPL(thread_priority) {
   ASSERT(priority == (0 - UV_THREAD_PRIORITY_LOWEST * 2));
 #endif
 
-  uv_thread_join(&task_id);
+  uv_sem_post(&sem);
+
+  r = uv_thread_join(&task_id);
+  ASSERT_OK(r);
+
+  uv_sem_destroy(&sem);
 
   return 0;
 }
