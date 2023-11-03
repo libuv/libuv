@@ -1473,13 +1473,11 @@ int uv_thread_getpriority(uv_thread_t tid, int* priority) {
     return UV_EINVAL;
 
   r = GetThreadPriority(tid);
-  if (r == THREAD_PRIORITY_ERROR_RETURN) {
-    r = uv_translate_sys_error(GetLastError());
-  } else {
-    *priority = r;
-    r = 0;
-  }
-  return r;
+  if (r == THREAD_PRIORITY_ERROR_RETURN)
+    return uv_translate_sys_error(GetLastError());
+
+  *priority = r;
+  return 0;
 }
 
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
