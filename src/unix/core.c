@@ -1603,9 +1603,8 @@ static int set_nice_for_calling_thread(int priority) {
 #ifdef __linux__
   pid_t pid = gettid();
   r = setpriority(PRIO_PROCESS, pid, nice);
-  if (r != 0) {
+  if (r != 0)
     return UV__ERR(errno);
-  }
 #endif
   return 0;
 }
