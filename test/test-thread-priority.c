@@ -56,8 +56,7 @@ TEST_IMPL(thread_priority) {
   int r;
 
   /* Verify that passing a NULL pointer returns UV_EINVAL. */
-  r = uv_thread_getpriority(0, NULL);
-  ASSERT(r == UV_EINVAL);
+  ASSERT_EQ(UV_EINVAL, uv_thread_getpriority(0, NULL));
 
   int count = 2;
 
