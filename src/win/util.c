@@ -1503,17 +1503,10 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
       return 0;
   }
 
-/**
- * SetThreadPriority
- * If the function succeeds, the return value is nonzero.
- * If the function fails, the return value is zero. To get extended error information, call GetLastError.
-*/
-  if (r != 0) {
-    return 0;
-  } else {
-    r = uv_translate_sys_error(GetLastError());
-    return r;
-  }
+  if (r == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  return 0;
 }
 
 int uv_os_uname(uv_utsname_t* buffer) {
