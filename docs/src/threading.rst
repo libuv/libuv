@@ -142,7 +142,7 @@ Threads
     UV_THREAD_PRIORITY_BELOW_NORMAL, UV_THREAD_PRIORITY_LOWEST.
 .. c:function:: int uv_thread_getpriority(uv_thread_t tid, int* priority)
     If the function succeeds, the return value is 0.
-    If the function fails, the return value is non-zero.
+    If the function fails, the return value is less than zero.
     Retrieves the scheduling priority of the thread specified by tid. The value in the
     output parameter priority is platform dependent.
     For Linux, when schedule policy is SCHED_OTHER (default), priority is 0.
