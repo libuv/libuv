@@ -1631,9 +1631,8 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
  * for Linux, when schedule policy is SCHED_OTHER (default), priority must be 0,
  * we should set the nice value in this case.
 */
-  if (SCHED_OTHER == policy && pthread_equal(tid, pthread_self())) {
+  if (SCHED_OTHER == policy && pthread_equal(tid, pthread_self()))
     return set_nice_for_calling_thread(priority);
-  }
 #endif
 
 #ifdef __PASE__
