@@ -146,7 +146,6 @@ Threads
     Retrieves the scheduling priority of the thread specified by tid. The value in the
     output parameter priority is platform dependent.
     For Linux, when schedule policy is SCHED_OTHER (default), priority is 0.
-    So the output parameter priority is actually the nice value.  
 
 Thread-local storage
 ^^^^^^^^^^^^^^^^^^^^
