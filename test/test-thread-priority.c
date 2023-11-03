@@ -50,6 +50,8 @@ TEST_IMPL(thread_priority) {
 #ifndef _WIN32
   int min;
   int max;
+  int policy;
+  struct sched_param param;
 #endif
   uv_thread_t task_id;
 
@@ -69,8 +71,6 @@ TEST_IMPL(thread_priority) {
 #ifdef _WIN32
   ASSERT(priority == THREAD_PRIORITY_NORMAL);
 #else
-  int policy;
-  struct sched_param param;
   r = pthread_getschedparam(task_id, &policy, &param);
   ASSERT(r == 0);
 #ifdef __PASE__
