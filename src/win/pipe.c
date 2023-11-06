@@ -834,7 +834,19 @@ void uv_pipe_connect(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,
                     uv_connect_cb cb) {
-  uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+  uv_loop_t* loop;
+  int err;
+
+  err = uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+
+  if (err) {
+    loop = handle->loop;
+    /* Make this req pending reporting an error. */
+    SET_REQ_ERROR(req, err);
+    uv__insert_pending_req(loop, (uv_req_t*) req);
+    handle->reqs_pending++;
+    REGISTER_HANDLE_REQ(loop, handle, req);
+  }
 }
 
 
@@ -844,11 +856,19 @@ int uv_pipe_connect2(uv_connect_t* req,
                      size_t namelen,
                      unsigned int flags,
                      uv_connect_cb cb) {
-  uv_loop_t* loop = handle->loop;
+  uv_loop_t* loop;
   int err;
   size_t nameSize;
   HANDLE pipeHandle = INVALID_HANDLE_VALUE;
   DWORD duplex_flags;
+
+  loop = handle->loop;
+  UV_REQ_INIT(req, UV_CONNECT);
+  req->handle = (uv_stream_t*) handle;
+  req->cb = cb;
+  req->u.connect.pipeHandle = INVALID_HANDLE_VALUE;
+  req->u.connect.duplex_flags = 0;
+  req->u.connect.name = NULL;
 
   if (flags & ~UV_PIPE_NO_TRUNCATE) {
     return UV_EINVAL;
@@ -871,13 +891,6 @@ int uv_pipe_connect2(uv_connect_t* req,
       return UV_EINVAL;
     }
   }
-
-  UV_REQ_INIT(req, UV_CONNECT);
-  req->handle = (uv_stream_t*) handle;
-  req->cb = cb;
-  req->u.connect.pipeHandle = INVALID_HANDLE_VALUE;
-  req->u.connect.duplex_flags = 0;
-  req->u.connect.name = NULL;
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
     err = ERROR_INVALID_PARAMETER;
