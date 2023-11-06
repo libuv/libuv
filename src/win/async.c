@@ -39,7 +39,7 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   handle->async_sent = 0;
   handle->async_cb = async_cb;
 
-  QUEUE_INSERT_TAIL(&loop->async_handles, &handle->queue);
+  uv__queue_insert_tail(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
 
   return 0;
@@ -47,7 +47,7 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 
 
 void uv__async_close(uv_loop_t* loop, uv_async_t* handle) {
-  QUEUE_REMOVE(&handle->queue);
+  uv__queue_remove(&handle->queue);
   uv__want_endgame(loop, (uv_handle_t*) handle);
   uv__handle_closing(handle);
 }
@@ -69,19 +69,19 @@ int uv_async_send(uv_async_t* handle) {
 
 void uv__process_async_wakeup_req(uv_loop_t* loop,
                                   uv_req_t* req) {
-  QUEUE queue;
-  QUEUE* q;
+  struct uv__queue queue;
+  struct uv__queue* q;
   uv_async_t* h;
 
   assert(req->type == UV_WAKEUP);
 
-  QUEUE_MOVE(&loop->async_handles, &queue);
-  while (!QUEUE_EMPTY(&queue)) {
-    q = QUEUE_HEAD(&queue);
-    h = QUEUE_DATA(q, uv_async_t, queue);
+  uv__queue_move(&loop->async_handles, &queue);
+  while (!uv__queue_empty(&queue)) {
+    q = uv__queue_head(&queue);
+    h = uv__queue_data(q, uv_async_t, queue);
 
-    QUEUE_REMOVE(q);
-    QUEUE_INSERT_TAIL(&loop->async_handles, q);
+    uv__queue_remove(q);
+    uv__queue_insert_tail(&loop->async_handles, q);
 
     if (InterlockedExchange(&h->async_sent, 0) == 0)
       continue;

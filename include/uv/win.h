@@ -217,20 +217,20 @@ typedef struct {
   } timer_heap;                                                               \
   uint64_t timer_counter;                                                     \
   /* Lists of active loop (prepare / check / idle) watchers */                \
-  void* prepare_handles[2];                                                   \
-  void* check_handles[2];                                                     \
-  void* idle_handles[2];                                                      \
+  struct uv__queue prepare_handles;                                           \
+  struct uv__queue check_handles;                                             \
+  struct uv__queue idle_handles;                                              \
   /* This handle holds the peer sockets for the fast variant of uv_poll_t */  \
   SOCKET poll_peer_sockets[UV_MSAFD_PROVIDER_COUNT];                          \
   /* Threadpool */                                                            \
-  void* wq[2];                                                                \
+  struct uv__queue wq;                                                        \
   uv_mutex_t wq_mutex;                                                        \
   uv_async_t wq_async;                                                        \
   /* Async handle */                                                          \
   struct uv_req_s async_req;                                                  \
-  void* async_handles[2];                                                     \
+  struct uv__queue async_handles;                                             \
   /* Global queue of loops */                                                 \
-  void* loops_queue[2];
+  struct uv__queue loops_queue;
 
 #define UV_REQ_TYPE_PRIVATE                                                   \
   /* TODO: remove the req suffix */                                           \
@@ -355,7 +355,7 @@ typedef struct {
   struct {                                                                    \
     uint32_t payload_remaining;                                               \
   } ipc_data_frame;                                                           \
-  void* ipc_xfer_queue[2];                                                    \
+  struct uv__queue ipc_xfer_queue;                                            \
   int ipc_xfer_queue_length;                                                  \
   uv_write_t* non_overlapped_writes_tail;                                     \
   CRITICAL_SECTION readfile_thread_lock;                                      \
@@ -424,20 +424,20 @@ typedef struct {
   uint64_t start_id;
 
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
+  struct uv__queue queue;                                                     \
   uv_async_cb async_cb;                                                       \
   LONG volatile async_sent;
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
-  void* queue[2];                                                             \
+  struct uv__queue queue;                                                     \
   uv_prepare_cb prepare_cb;
 
 #define UV_CHECK_PRIVATE_FIELDS                                               \
-  void* queue[2];                                                             \
+  struct uv__queue queue;                                                     \
   uv_check_cb check_cb;
 
 #define UV_IDLE_PRIVATE_FIELDS                                                \
-  void* queue[2];                                                             \
+  struct uv__queue queue;                                                     \
   uv_idle_cb idle_cb;
 
 #define UV_HANDLE_PRIVATE_FIELDS                                              \

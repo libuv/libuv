@@ -34,34 +34,34 @@
 /* uv_once initialization guards */
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
-static void* uv__loops[2];
+static struct uv__queue uv__loops;
 static uv_mutex_t uv__loops_lock;
 
 
 static void uv__loops_init(void) {
   uv_mutex_init(&uv__loops_lock);
-  QUEUE_INIT(&uv__loops);
+  uv__queue_init(&uv__loops);
 }
 
 static void uv__loops_add(uv_loop_t* loop) {
   uv_mutex_lock(&uv__loops_lock);
-  QUEUE_INSERT_TAIL(&uv__loops, &loop->loops_queue);
+  uv__queue_insert_tail(&uv__loops, &loop->loops_queue);
   uv_mutex_unlock(&uv__loops_lock);
 }
 
 
 static void uv__loops_remove(uv_loop_t* loop) {
   uv_mutex_lock(&uv__loops_lock);
-  QUEUE_REMOVE(&loop->loops_queue);
+  uv__queue_remove(&loop->loops_queue);
   uv_mutex_unlock(&uv__loops_lock);
 }
 
 void uv__wake_all_loops() {
-  QUEUE* q;
+  struct uv__queue* q;
 
   uv_mutex_lock(&uv__loops_lock);
-  QUEUE_FOREACH(q, &uv__loops) {
-    uv_loop_t* loop = QUEUE_DATA(q, uv_loop_t, loops_queue);
+  uv__queue_foreach(q, &uv__loops) {
+    uv_loop_t* loop = uv__queue_data(q, uv_loop_t, loops_queue);
     if (loop->iocp != INVALID_HANDLE_VALUE)
       PostQueuedCompletionStatus(loop->iocp, 0, 0, NULL);
   }
@@ -138,8 +138,8 @@ int uv_loop_init(uv_loop_t* loop) {
   loop->time = 0;
   uv_update_time(loop);
 
-  QUEUE_INIT(&loop->wq);
-  QUEUE_INIT(&loop->handle_queue);
+  uv__queue_init(&loop->wq);
+  uv__queue_init(&loop->handle_queue);
   loop->active_reqs.count = 0;
   loop->active_handles = 0;
 
@@ -150,11 +150,11 @@ int uv_loop_init(uv_loop_t* loop) {
   heap_init((struct heap*) &loop->timer_heap);
   loop->timer_counter = 0;
 
-  QUEUE_INIT(&loop->check_handles);
-  QUEUE_INIT(&loop->prepare_handles);
-  QUEUE_INIT(&loop->idle_handles);
+  uv__queue_init(&loop->check_handles);
+  uv__queue_init(&loop->prepare_handles);
+  uv__queue_init(&loop->idle_handles);
 
-  QUEUE_INIT(&loop->async_handles);
+  uv__queue_init(&loop->async_handles);
   UV_REQ_INIT(loop, &loop->async_req, UV_WAKEUP);
 
   memset(&loop->poll_peer_sockets, 0, sizeof loop->poll_peer_sockets);
@@ -172,7 +172,7 @@ int uv_loop_init(uv_loop_t* loop) {
   uv__handle_unref(&loop->wq_async);
   loop->wq_async.flags |= UV_HANDLE_INTERNAL;
 
-  QUEUE_INIT(&loop->loops_queue);
+  uv__queue_init(&loop->loops_queue);
   uv__loops_add(loop);
 
   return 0;
@@ -222,7 +222,7 @@ void uv__loop_close(uv_loop_t* loop) {
   }
 
   uv_mutex_lock(&loop->wq_mutex);
-  assert(QUEUE_EMPTY(&loop->wq) && "thread pool work queue not empty!");
+  assert(uv__queue_empty(&loop->wq) && "thread pool work queue not empty!");
   assert(!uv__has_active_reqs(loop));
   uv_mutex_unlock(&loop->wq_mutex);
   uv_mutex_destroy(&loop->wq_mutex);
@@ -278,7 +278,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
       loop->pending_reqs_tail == NULL &&
       loop->endgame_handles == NULL &&
-      QUEUE_EMPTY(&loop->idle_handles))
+      uv__queue_empty(&loop->idle_handles))
     return uv__next_timeout(loop);
   return 0;
 }
@@ -498,7 +498,7 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv_update_time(loop);
 
   while (r != 0 && loop->stop_flag == 0) {
-    can_sleep = loop->pending_reqs_tail == NULL && QUEUE_EMPTY(&loop->idle_handles);
+    can_sleep = loop->pending_reqs_tail == NULL && uv__queue_empty(&loop->idle_handles);
 
     uv__process_reqs(loop);
     uv__run_idle(loop);
