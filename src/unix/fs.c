@@ -83,6 +83,7 @@
 #endif
 
 #if defined(__CYGWIN__) ||                                                    \
+    defined(__MVS__) ||                                                       \
     (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
     (defined(__sun) && !defined(__illumos__)) ||                              \
     (defined(__APPLE__) && !TARGET_OS_IPHONE &&                               \
