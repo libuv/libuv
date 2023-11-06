@@ -74,3 +74,5 @@ cmake-build-debug/
 
 # make dist output
 libuv-*.tar.*
+/dist.libuv.org/
+/libuv-release-tool/
