@@ -55,7 +55,7 @@ static uv_once_t uv__signal_global_init_guard = UV_ONCE_INIT;
 static struct uv__signal_tree_s uv__signal_tree =
     RB_INITIALIZER(uv__signal_tree);
 static int uv__signal_lock_pipefd[2] = { -1, -1 };
-static sighandler_t uv__signal_handlers[NSIG];
+static __sighandler_t uv__signal_handlers[NSIG];
 
 RB_GENERATE_STATIC(uv__signal_tree_s,
                    uv_signal_s, tree_entry,
@@ -248,7 +248,7 @@ static int uv__signal_register_handler(int signum, int oneshot) {
 static void uv__signal_unregister_handler(int signum) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
-  sighandler_t handler = uv__signal_handlers[signum];
+  __sighandler_t handler = uv__signal_handlers[signum];
 
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = handler ? handler : SIG_DFL;
