@@ -40,13 +40,12 @@
 uv_sem_t sem;
 
 static void simple_task(void *args) {
-    uv_sem_wait(&sem);
-    printf("in simple_task\n");
+  uv_sem_wait(&sem);
+  printf("in simple_task\n");
 }
 
 TEST_IMPL(thread_priority) {
   int priority;
-  int r;
 #ifndef _WIN32
   int min;
   int max;
@@ -57,22 +56,15 @@ TEST_IMPL(thread_priority) {
 
   /* Verify that passing a NULL pointer returns UV_EINVAL. */
   ASSERT_EQ(UV_EINVAL, uv_thread_getpriority(0, NULL));
-
-  r = uv_sem_init(&sem, 1);
-  ASSERT(r == 0);
-
+  ASSERT_OK(uv_sem_init(&sem, 1));
   uv_sem_wait(&sem);
+  ASSERT_OK(uv_thread_create(&task_id, simple_task, NULL));
+  ASSERT_OK(uv_thread_getpriority(task_id, &priority));
 
-  r = uv_thread_create(&task_id, simple_task, NULL);
-  ASSERT(r == 0);
-
-  r = uv_thread_getpriority(task_id, &priority);
-  ASSERT(r == 0);
 #ifdef _WIN32
-  ASSERT(priority == THREAD_PRIORITY_NORMAL);
+  ASSERT_EQ(priority, THREAD_PRIORITY_NORMAL);
 #else
-  r = pthread_getschedparam(task_id, &policy, &param);
-  ASSERT(r == 0);
+  ASSERT_OK(pthread_getschedparam(task_id, &policy, &param));
 #ifdef __PASE__
   min = 1;
   max = 127;
@@ -83,33 +75,29 @@ TEST_IMPL(thread_priority) {
   ASSERT(priority >= min && priority <= max);
 #endif
 
-  r = uv_thread_setpriority(task_id, UV_THREAD_PRIORITY_LOWEST);
-  ASSERT(r == 0);
-  r = uv_thread_getpriority(task_id, &priority);
-  ASSERT(r == 0);
+  ASSERT_OK(uv_thread_setpriority(task_id, UV_THREAD_PRIORITY_LOWEST));
+  ASSERT_OK(uv_thread_getpriority(task_id, &priority));
+
 #ifdef _WIN32
-  ASSERT(priority == THREAD_PRIORITY_LOWEST);
+  ASSERT_EQ(priority, THREAD_PRIORITY_LOWEST);
 #else
-  ASSERT(priority == min);
+  ASSERT_EQ(priority, min);
 #endif
 
 /**
  * test set nice value for the calling thread with default schedule policy
 */
 #ifdef __linux__
-  r = uv_thread_getpriority(pthread_self(), &priority);
-  ASSERT(r == 0);
-  ASSERT(priority == 0);
-  r = uv_thread_setpriority(pthread_self(), UV_THREAD_PRIORITY_LOWEST);
-  r = uv_thread_getpriority(pthread_self(), &priority);
-  ASSERT(r == 0);
-  ASSERT(priority == (0 - UV_THREAD_PRIORITY_LOWEST * 2));
+  ASSERT_OK(uv_thread_getpriority(pthread_self(), &priority));
+  ASSERT_EQ(priority, 0);
+  ASSERT_OK(uv_thread_setpriority(pthread_self(), UV_THREAD_PRIORITY_LOWEST));
+  ASSERT_OK(uv_thread_getpriority(pthread_self(), &priority));
+  ASSERT_EQ(priority, (0 - UV_THREAD_PRIORITY_LOWEST * 2));
 #endif
 
   uv_sem_post(&sem);
 
-  r = uv_thread_join(&task_id);
-  ASSERT_OK(r);
+  ASSERT_OK(uv_thread_join(&task_id));
 
   uv_sem_destroy(&sem);
 
