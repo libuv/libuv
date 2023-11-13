@@ -38,8 +38,6 @@ sNtQueryInformationProcess pNtQueryInformationProcess;
 
 /* Kernel32 function pointers */
 sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
-sGetThreadPriority pGetThreadPriority;
-sSetThreadPriority pSetThreadPriority;
 
 /* Powrprof.dll function pointer */
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
@@ -127,14 +125,6 @@ void uv__winapi_init(void) {
   pGetQueuedCompletionStatusEx = (sGetQueuedCompletionStatusEx) GetProcAddress(
       kernel32_module,
       "GetQueuedCompletionStatusEx");
-
-  pGetThreadPriority = (sGetThreadPriority) GetProcAddress(
-      kernel32_module,
-      "GetThreadPriority");
-
-  pSetThreadPriority = (sSetThreadPriority) GetProcAddress(
-      kernel32_module,
-      "SetThreadPriority");
 
   powrprof_module = LoadLibraryExA("powrprof.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
   if (powrprof_module != NULL) {

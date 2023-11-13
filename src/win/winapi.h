@@ -4674,15 +4674,6 @@ typedef BOOL (WINAPI *sGetQueuedCompletionStatusEx)
               DWORD dwMilliseconds,
               BOOL fAlertable);
 
-typedef int (*sGetThreadPriority)(
-  HANDLE hThread
-);
-
-typedef BOOL (*sSetThreadPriority)(
-  HANDLE hThread,
-  int    nPriority
-);
-
 /* from powerbase.h */
 #ifndef DEVICE_NOTIFY_CALLBACK
 # define DEVICE_NOTIFY_CALLBACK 2
@@ -4761,8 +4752,6 @@ extern sNtQueryInformationProcess pNtQueryInformationProcess;
 
 /* Kernel32 function pointers */
 extern sGetQueuedCompletionStatusEx pGetQueuedCompletionStatusEx;
-extern sGetThreadPriority pGetThreadPriority;
-extern sSetThreadPriority pSetThreadPriority;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
