@@ -57,5 +57,5 @@
   void* select;                                                               \
 
 #define UV_HAVE_KQUEUE 1
-
+#define DARWIN_CPU_VALUE 2400000000U
 #endif /* UV_DARWIN_H */

@@ -209,7 +209,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   if (cpuspeed == 0)
     /* If sysctl hw.cputype == CPU_TYPE_ARM64, the correct value is unavailable
      * from Apple, but we can hard-code it here to a plausible value. */
-    cpuspeed = 2400000000U;
+    cpuspeed = DARWIN_CPU_VALUE;
 
   if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numcpus,
                           (processor_info_array_t*)&info,
