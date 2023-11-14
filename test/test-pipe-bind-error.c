@@ -167,11 +167,11 @@ TEST_IMPL(pipe_overlong_path) {
   uv_pipe_t pipe;
   uv_connect_t req;
 
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
+
 #ifndef _WIN32
   char path[512];
-
   memset(path, '@', sizeof(path));
-  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
   ASSERT_EQ(UV_EINVAL,
             uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
   ASSERT_EQ(UV_EINVAL,
