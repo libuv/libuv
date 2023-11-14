@@ -265,12 +265,9 @@ static void uv__signal_unregister_handler(int signum) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
   
-  if (uv__sigaction_isset(signum)) {
-    sa = uv__sigactions.acts[signum];
-  } else {
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = SIG_DFL;
-  }
+  assert(uv__sigaction_isset(signum));
+  
+  sa = uv__sigactions.acts[signum];
 
   /* sigaction can only fail with EINVAL or EFAULT; an attempt to deregister a
    * signal implies that it was successfully registered earlier, so EINVAL
