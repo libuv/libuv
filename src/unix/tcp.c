@@ -30,6 +30,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#if 0
+
 #if defined(__PASE__)
 #include <as400_protos.h>
 #define ifaddrs ifaddrs_pase
@@ -37,6 +39,8 @@
 #define freeifaddrs Qp2freeifaddrs
 #else
 #include <ifaddrs.h>
+#endif
+
 #endif
 
 static int maybe_bind_socket(int fd) {
@@ -225,9 +229,10 @@ static int uv__is_ipv6_link_local(const struct sockaddr* addr) {
 
 static int uv__ipv6_link_local_scope_id(void) {
   struct sockaddr_in6* a6;
+  int rv;
+#if 0
   struct ifaddrs* ifa;
   struct ifaddrs* p;
-  int rv;
 
   if (getifaddrs(&ifa))
     return 0;
@@ -244,6 +249,29 @@ static int uv__ipv6_link_local_scope_id(void) {
   }
 
   freeifaddrs(ifa);
+#else
+  uv_interface_address_t* interfaces;
+  int count, i;
+
+  if (uv_interface_addresses(&interfaces, &count)) {
+    return 0;
+  }
+
+  rv = 0;
+
+  for (i = 0; i < count; i++) {
+    if (uv__is_ipv6_link_local((const struct sockaddr*) &interfaces[i].address.address6)) {
+      if (&interfaces[i].address.address6 != NULL) {
+        a6 = &interfaces[i].address.address6;
+        rv = a6->sin6_scope_id;
+      }
+      break;
+    }
+  }
+
+  uv_free_interface_addresses(interfaces, count);
+#endif
+
   return rv;
 }
 
