@@ -42,7 +42,7 @@ TEST_IMPL(platform_output) {
   int count;
   int i;
   int err;
-  CpuResources cpu_res;
+  uv__cpu_constraint constraint;
 
   err = uv_get_process_title(buffer, sizeof(buffer));
   ASSERT_OK(err);
@@ -87,12 +87,12 @@ TEST_IMPL(platform_output) {
   printf("  maximum resident set size: %llu\n",
          (unsigned long long)rusage.ru_maxrss);
 
-  cpu_res = uv_get_cpu_resources();
-  printf("uv_get_cpu_resources:\n");
+  constraint = uv__get_constrained_cpu();
+  printf("uv__get_constrained_cpu:\n");
   printf("  quota_per_period: %llu\n",
-         (unsigned long long)cpu_res.quota_per_period);
-  printf("  period_length: %llu\n", (unsigned long long)cpu_res.period_length);
-  printf("  proportions: %f\n", cpu_res.proportions);
+         (unsigned long long)constraint.quota_per_period);
+  printf("  period_length: %llu\n", (unsigned long long)constraint.period_length);
+  printf("  proportions: %f\n", constraint.proportions);
 
   par = uv_available_parallelism();
   ASSERT_GE(par, 1);

@@ -1865,9 +1865,9 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
 }
 
 #ifndef __linux__
-  CpuResources uv_get_cpu_resources() {
-    CpuResources resources = {0, 0, 0};
-    return resources;
+  uv__cpu_constraint uv__get_constrained_cpu() {
+    uv__cpu_constraint c = {0, 0, 0};
+    return c;
   }
 #endif
 
@@ -1888,10 +1888,10 @@ unsigned int uv_available_parallelism(void) {
     else
         rc = sysconf(_SC_NPROCESSORS_ONLN);
 
-    CpuResources resources = uv_get_cpu_resources();
-    if (resources.period_length > 0) {
-        int rc_with_cgroup = (int)(resources.quota_per_period /
-                                   resources.period_length * resources.proportions);
+    uv__cpu_constraint c = uv__get_constrained_cpu();
+    if (c.period_length > 0) {
+        int rc_with_cgroup = (int)(c.quota_per_period /
+                                   c.period_length * c.proportions);
         if (rc_with_cgroup < rc) {
             rc = rc_with_cgroup;
         }
