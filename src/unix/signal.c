@@ -56,7 +56,7 @@ static void uv__signal_stop(uv_signal_t* handle);
 static void uv__signal_unregister_handler(int signum);
 
 static void uv__sigaction_set(int signum, struct sigaction *sa);
-int uv__sigaction_isset(int signum);
+static int uv__sigaction_isset(int signum);
 
 static uv_once_t uv__signal_global_init_guard = UV_ONCE_INIT;
 static struct uv__signal_tree_s uv__signal_tree =
@@ -69,7 +69,7 @@ static void uv__sigaction_set(int signum, struct sigaction *sa) {
   uv__sigactions.acts_presented_flags[signum] = 1;
 }
 
-int uv__sigaction_isset(int signum) {
+static int uv__sigaction_isset(int signum) {
   return uv__sigactions.acts_presented_flags[signum] == 0 ? 0 : 1;
 }
 
