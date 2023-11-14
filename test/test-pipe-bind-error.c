@@ -33,6 +33,7 @@
 
 
 static int close_cb_called = 0;
+static int connect_cb_called = 0;
 
 
 static void close_cb(uv_handle_t* handle) {
@@ -154,6 +155,14 @@ TEST_IMPL(pipe_bind_or_listen_error_after_close) {
   return 0;
 }
 
+
+static void connect_overlong_cb(uv_connect_t* connect_req, int status) {
+  ASSERT_EQ(status, UV_EINVAL);
+  connect_cb_called++;
+  uv_close((uv_handle_t*) connect_req->handle, close_cb);
+}
+
+
 TEST_IMPL(pipe_overlong_path) {
   char path[512];
   uv_pipe_t pipe;
@@ -170,8 +179,16 @@ TEST_IMPL(pipe_overlong_path) {
                              sizeof(path),
                              UV_PIPE_NO_TRUNCATE,
                              (uv_connect_cb) abort));
-  uv_close((uv_handle_t*) &pipe, NULL);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_EQ(UV_EINVAL, uv_pipe_bind(&pipe, ""));
+  uv_pipe_connect(&req,
+                  &pipe,
+                  "",
+                  (uv_connect_cb) connect_overlong_cb);
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
