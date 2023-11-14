@@ -210,7 +210,22 @@ void uv_pipe_connect(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,
                     uv_connect_cb cb) {
-  uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+  int err;
+
+  err = uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+
+  if (err) {
+    handle->delayed_error = err;
+    handle->connect_req = req;
+
+    uv__req_init(handle->loop, req, UV_CONNECT);
+    req->handle = (uv_stream_t*) handle;
+    req->cb = cb;
+    uv__queue_init(&req->queue);
+
+    /* Force callback to run on next tick in case of error. */
+    uv__io_feed(handle->loop, &handle->io_watcher);
+  }
 }
 
 
@@ -295,7 +310,7 @@ out:
   handle->connect_req = req;
 
   uv__req_init(handle->loop, req, UV_CONNECT);
-  req->handle = (uv_stream_t*)handle;
+  req->handle = (uv_stream_t*) handle;
   req->cb = cb;
   uv__queue_init(&req->queue);
 
