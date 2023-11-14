@@ -37,6 +37,11 @@ typedef struct {
   int signum;
 } uv__signal_msg_t;
 
+typedef struct {
+  struct sigaction acts[NSIG];
+  char acts_presented_flags[NSIG];
+} uv__sigactions_t;
+
 RB_HEAD(uv__signal_tree_s, uv_signal_s);
 
 
@@ -55,7 +60,18 @@ static uv_once_t uv__signal_global_init_guard = UV_ONCE_INIT;
 static struct uv__signal_tree_s uv__signal_tree =
     RB_INITIALIZER(uv__signal_tree);
 static int uv__signal_lock_pipefd[2] = { -1, -1 };
-static struct sigaction uv__sigactions[NSIG];
+static uv__sigactions_t uv__sigactions;
+
+static void uv__sigaction_set(int signum, struct sigaction *sa)
+{
+  uv__sigactions.acts[signum] = *sa;
+  uv__sigactions.acts_presented_flags[signum] = 1;
+}
+
+int uv__sigaction_isset(int signum)
+{
+  return uv__sigactions.acts_presented_flags[signum] == 0 ? 0 : 1;
+}
 
 RB_GENERATE_STATIC(uv__signal_tree_s,
                    uv_signal_s, tree_entry,
@@ -239,7 +255,7 @@ static int uv__signal_register_handler(int signum, int oneshot) {
   if (sigaction(signum, &sa, &sa_old))
     return UV__ERR(errno);
 
-  uv__sigactions[signum] = sa_old;
+  uv__sigaction_set(signum, &sa_old);
 
   return 0;
 }
@@ -247,8 +263,12 @@ static int uv__signal_register_handler(int signum, int oneshot) {
 
 static void uv__signal_unregister_handler(int signum) {
   /* When this function is called, the signal lock must be held. */
-  struct sigaction sa = uv__sigactions[signum];
-  if (!sa.sa_handler) {
+  struct sigaction sa;
+  
+  if (uv__sigaction_isset(signum)) {
+    sa = uv__sigactions.acts[signum];
+  } else {
+    memset(&sa, 0, sizeof(sa));
     sa.sa_handler = SIG_DFL;
   }
 
