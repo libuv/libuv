@@ -722,12 +722,6 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
   }
 
-  if (flags & UV_PIPE_NO_TRUNCATE) {
-    if (namelen > 256) {
-      return UV_EINVAL;
-    }
-  }
-
   if (handle->flags & UV_HANDLE_BOUND) {
     return UV_EINVAL;
   }
@@ -884,12 +878,6 @@ int uv_pipe_connect2(uv_connect_t* req,
 
   if (*name == '\0') {
     return UV_EINVAL;
-  }
-
-  if (flags & UV_PIPE_NO_TRUNCATE) {
-    if (namelen > 256) {
-      return UV_EINVAL;
-    }
   }
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
