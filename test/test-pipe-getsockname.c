@@ -189,7 +189,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
   buflen = sizeof(buf);
   memset(buf, 0, sizeof(buf));
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_server, 0));
-  ASSERT_OK(uv_pipe_bind2(&pipe_server, name, sizeof(name), 0));
+  ASSERT_OK(uv_pipe_bind2(&pipe_server, name, sizeof(name) - 1, 0));
   ASSERT_OK(uv_pipe_getsockname(&pipe_server, buf, &buflen));
   ASSERT_MEM_EQ(name, buf, sizeof(name));
   ASSERT_OK(uv_listen((uv_stream_t*) &pipe_server,
@@ -199,7 +199,7 @@ TEST_IMPL(pipe_getsockname_abstract) {
   ASSERT_OK(uv_pipe_connect2(&connect_req,
                              &pipe_client,
                              name,
-                             sizeof(name),
+                             sizeof(name) - 1,
                              0,
                              pipe_client_connect_cb));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
