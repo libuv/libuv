@@ -32,14 +32,16 @@
 # define SA_RESTART 0
 #endif
 
+#define UV__NSIG 128
+
 typedef struct {
   uv_signal_t* handle;
   int signum;
 } uv__signal_msg_t;
 
 typedef struct {
-  struct sigaction acts[NSIG];
-  char acts_presented_flags[NSIG];
+  struct sigaction acts[UV__NSIG];
+  char acts_presented_flags[UV__NSIG];
 } uv__sigactions_t;
 
 RB_HEAD(uv__signal_tree_s, uv_signal_s);
