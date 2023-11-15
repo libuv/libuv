@@ -56,7 +56,7 @@ TEST_IMPL(tty) {
                          OPEN_EXISTING,
                          FILE_ATTRIBUTE_NORMAL,
                          NULL);
-  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(ttyin_fd, INVALID_HANDLE_VALUE);
 
   ttyout_fd = CreateFileA("conout$",
                           GENERIC_READ | GENERIC_WRITE,
@@ -65,7 +65,7 @@ TEST_IMPL(tty) {
                           OPEN_EXISTING,
                           FILE_ATTRIBUTE_NORMAL,
                           NULL);
-  ASSERT(ttyout_fd != INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(ttyout_fd, INVALID_HANDLE_VALUE);
 
 #else /* unix */
   ttyin_fd = open("/dev/tty", O_RDONLY, 0);
@@ -82,27 +82,27 @@ TEST_IMPL(tty) {
     return TEST_SKIP;
   }
 
-  ASSERT(ttyin_fd >= 0);
-  ASSERT(ttyout_fd >= 0);
+  ASSERT_GE(ttyin_fd, 0);
+  ASSERT_GE(ttyout_fd, 0);
 #endif
 
-  ASSERT(UV_UNKNOWN_HANDLE == uv_guess_handle((uv_os_fd_t)-1));
+  ASSERT_EQ(UV_UNKNOWN_HANDLE, uv_guess_handle((uv_os_fd_t) -1));
 
-  ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
-  ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyout_fd));
 
   r = uv_tty_init(loop, &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_OK(r);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_tty_init(loop, &tty_out, ttyout_fd, 0);  /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_OK(r);
   ASSERT(!uv_is_readable((uv_stream_t*) &tty_out));
   ASSERT(uv_is_writable((uv_stream_t*) &tty_out));
 
   r = uv_tty_get_winsize(&tty_out, &width, &height);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   printf("width=%d height=%d\n", width, height);
 
@@ -118,18 +118,18 @@ TEST_IMPL(tty) {
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   /* Turn off raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_NORMAL);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   /* Calling uv_tty_reset_mode() repeatedly should not clobber errno. */
   errno = 0;
-  ASSERT(0 == uv_tty_reset_mode());
-  ASSERT(0 == uv_tty_reset_mode());
-  ASSERT(0 == uv_tty_reset_mode());
-  ASSERT(0 == errno);
+  ASSERT_OK(uv_tty_reset_mode());
+  ASSERT_OK(uv_tty_reset_mode());
+  ASSERT_OK(uv_tty_reset_mode());
+  ASSERT_OK(errno);
 
   /* TODO check the actual mode! */
 
@@ -151,11 +151,11 @@ static void tty_raw_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 static void tty_raw_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
-    ASSERT(nread  == 1);
-    ASSERT(buf->base[0] == ' ');
+    ASSERT_EQ(1, nread );
+    ASSERT_EQ(buf->base[0], ' ');
     uv_close((uv_handle_t*) tty_in, NULL);
   } else {
-    ASSERT(nread == 0);
+    ASSERT_OK(nread);
   }
 }
 
@@ -169,29 +169,29 @@ TEST_IMPL(tty_raw) {
 
   /* Make sure we have an FD that refers to a tty */
   ttyin_fd = CreateFileA("conin$",
-                         GENERIC_READ | GENERIC_WRITE,
-                         FILE_SHARE_READ | FILE_SHARE_WRITE,
-                         NULL,
-                         OPEN_EXISTING,
-                         FILE_ATTRIBUTE_NORMAL,
-                         NULL);
-  ASSERT(ttyin_fd != INVALID_HANDLE_VALUE);
-  ASSERT(UV_TTY == uv_guess_handle(ttyin_fd));
+                       GENERIC_READ | GENERIC_WRITE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       NULL);
+  ASSERT_PTR_NE(ttyin_fd, INVALID_HANDLE_VALUE);
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
 
   r = uv_tty_init(loop, &tty_in, ttyin_fd, 1);  /* Readable. */
-  ASSERT(r == 0);
+  ASSERT_OK(r);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
   r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   /* Give uv_tty_line_read_thread time to block on ReadConsoleW */
   Sleep(100);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   /* Write ' ' that should be read in raw mode */
   record.EventType = KEY_EVENT;
@@ -227,12 +227,12 @@ TEST_IMPL(tty_empty_write) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT(ttyout_fd != INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(ttyout_fd, INVALID_HANDLE_VALUE);
 
-  ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyout_fd));
 
   r = uv_tty_init(loop, &tty_out, ttyout_fd, 0);  /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_OK(r);
   ASSERT(!uv_is_readable((uv_stream_t*) &tty_out));
   ASSERT(uv_is_writable((uv_stream_t*) &tty_out));
 
@@ -240,7 +240,7 @@ TEST_IMPL(tty_empty_write) {
   bufs[0].base = &dummy[0];
 
   r = uv_try_write((uv_stream_t*) &tty_out, bufs, 1);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   uv_close((uv_handle_t*) &tty_out, NULL);
 
@@ -268,12 +268,12 @@ TEST_IMPL(tty_large_write) {
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT(ttyout_fd != INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(ttyout_fd, INVALID_HANDLE_VALUE);
 
-  ASSERT(UV_TTY == uv_guess_handle(ttyout_fd));
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyout_fd));
 
   r = uv_tty_init(loop, &tty_out, ttyout_fd, 0);  /* Writable. */
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   memset(dummy, '.', sizeof(dummy) - 1);
   dummy[sizeof(dummy) - 1] = '\n';
@@ -281,7 +281,7 @@ TEST_IMPL(tty_large_write) {
   bufs[0] = uv_buf_init(dummy, sizeof(dummy));
 
   r = uv_try_write((uv_stream_t*) &tty_out, bufs, 1);
-  ASSERT(r == 10000);
+  ASSERT_EQ(10000, r);
 
   uv_close((uv_handle_t*) &tty_out, NULL);
 
@@ -294,28 +294,28 @@ TEST_IMPL(tty_large_write) {
 TEST_IMPL(tty_raw_cancel) {
   int r;
   uv_tty_t tty_in;
-  HANDLE handle;
+  HANDLE ttyin_fd;
 
   /* Make sure we have an FD that refers to a tty */
-  handle = CreateFileA("conin$",
+  ttyin_fd = CreateFileA("conin$",
                        GENERIC_READ | GENERIC_WRITE,
                        FILE_SHARE_READ | FILE_SHARE_WRITE,
                        NULL,
                        OPEN_EXISTING,
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
-  ASSERT(handle != INVALID_HANDLE_VALUE);
-  ASSERT(UV_TTY == uv_guess_handle(handle));
+  ASSERT_PTR_NE(ttyin_fd, INVALID_HANDLE_VALUE);
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
 
-  r = uv_tty_init(uv_default_loop(), &tty_in, handle, 1);  /* Readable. */
-  ASSERT(r == 0);
+  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
+  ASSERT_OK(r);
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
   r = uv_read_start((uv_stream_t*)&tty_in, tty_raw_alloc, tty_raw_read);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   r = uv_read_stop((uv_stream_t*) &tty_in);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -331,35 +331,35 @@ TEST_IMPL(tty_file) {
   uv_tty_t tty_wo;
   int fd;
 
-  ASSERT(0 == uv_loop_init(&loop));
+  ASSERT_OK(uv_loop_init(&loop));
 
   fd = open("test/fixtures/empty_file", O_RDONLY);
   if (fd != -1) {
-    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
-    ASSERT(0 == close(fd));
+    ASSERT_EQ(UV_EINVAL, uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT_OK(close(fd));
     /* test EBADF handling */
-    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT_EQ(UV_EINVAL, uv_tty_init(&loop, &tty, fd, 1));
   }
 
 /* Bug on AIX where '/dev/random' returns 1 from isatty() */
 #ifndef _AIX
   fd = open("/dev/random", O_RDONLY);
   if (fd != -1) {
-    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
-    ASSERT(0 == close(fd));
+    ASSERT_EQ(UV_EINVAL, uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT_OK(close(fd));
   }
 #endif /* _AIX */
 
   fd = open("/dev/zero", O_RDONLY);
   if (fd != -1) {
-    ASSERT(UV_EINVAL == uv_tty_init(&loop, &tty, fd, 1));
-    ASSERT(0 == close(fd));
+    ASSERT_EQ(UV_EINVAL, uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT_OK(close(fd));
   }
 
   fd = open("/dev/tty", O_RDWR);
   if (fd != -1) {
-    ASSERT(0 == uv_tty_init(&loop, &tty, fd, 1));
-    ASSERT(0 == close(fd)); /* TODO: it's indeterminate who owns fd now */
+    ASSERT_OK(uv_tty_init(&loop, &tty, fd, 1));
+    ASSERT_OK(close(fd)); /* TODO: it's indeterminate who owns fd now */
     ASSERT(uv_is_readable((uv_stream_t*) &tty));
     ASSERT(uv_is_writable((uv_stream_t*) &tty));
     uv_close((uv_handle_t*) &tty, NULL);
@@ -369,8 +369,8 @@ TEST_IMPL(tty_file) {
 
   fd = open("/dev/tty", O_RDONLY);
   if (fd != -1) {
-    ASSERT(0 == uv_tty_init(&loop, &tty_ro, fd, 1));
-    ASSERT(0 == close(fd)); /* TODO: it's indeterminate who owns fd now */
+    ASSERT_OK(uv_tty_init(&loop, &tty_ro, fd, 1));
+    ASSERT_OK(close(fd)); /* TODO: it's indeterminate who owns fd now */
     ASSERT(uv_is_readable((uv_stream_t*) &tty_ro));
     ASSERT(!uv_is_writable((uv_stream_t*) &tty_ro));
     uv_close((uv_handle_t*) &tty_ro, NULL);
@@ -380,8 +380,8 @@ TEST_IMPL(tty_file) {
 
   fd = open("/dev/tty", O_WRONLY);
   if (fd != -1) {
-    ASSERT(0 == uv_tty_init(&loop, &tty_wo, fd, 0));
-    ASSERT(0 == close(fd)); /* TODO: it's indeterminate who owns fd now */
+    ASSERT_OK(uv_tty_init(&loop, &tty_wo, fd, 0));
+    ASSERT_OK(close(fd)); /* TODO: it's indeterminate who owns fd now */
     ASSERT(!uv_is_readable((uv_stream_t*) &tty_wo));
     ASSERT(uv_is_writable((uv_stream_t*) &tty_wo));
     uv_close((uv_handle_t*) &tty_wo, NULL);
@@ -390,7 +390,7 @@ TEST_IMPL(tty_file) {
   }
 
 
-  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY(&loop);
 #endif
@@ -417,14 +417,14 @@ TEST_IMPL(tty_pty) {
   uv_loop_t loop;
   uv_tty_t master_tty, slave_tty;
 
-  ASSERT(0 == uv_loop_init(&loop));
+  ASSERT_OK(uv_loop_init(&loop));
 
   r = openpty(&master_fd, &slave_fd, NULL, NULL, &w);
   if (r != 0)
     RETURN_SKIP("No pty available, skipping.");
 
-  ASSERT(0 == uv_tty_init(&loop, &slave_tty, slave_fd, 0));
-  ASSERT(0 == uv_tty_init(&loop, &master_tty, master_fd, 0));
+  ASSERT_OK(uv_tty_init(&loop, &slave_tty, slave_fd, 0));
+  ASSERT_OK(uv_tty_init(&loop, &master_tty, master_fd, 0));
   ASSERT(uv_is_readable((uv_stream_t*) &slave_tty));
   ASSERT(uv_is_writable((uv_stream_t*) &slave_tty));
   ASSERT(uv_is_readable((uv_stream_t*) &master_tty));
@@ -432,16 +432,16 @@ TEST_IMPL(tty_pty) {
   /* Check if the file descriptor was reopened. If it is,
    * UV_HANDLE_BLOCKING_WRITES (value 0x100000) isn't set on flags.
    */
-  ASSERT(0 == (slave_tty.flags & 0x100000));
+  ASSERT_OK((slave_tty.flags & 0x100000));
   /* The master_fd of a pty should never be reopened.
    */
   ASSERT(master_tty.flags & 0x100000);
-  ASSERT(0 == close(slave_fd));
+  ASSERT_OK(close(slave_fd));
   uv_close((uv_handle_t*) &slave_tty, NULL);
-  ASSERT(0 == close(master_fd));
+  ASSERT_OK(close(master_fd));
   uv_close((uv_handle_t*) &master_tty, NULL);
 
-  ASSERT(0 == uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
 
   MAKE_VALGRIND_HAPPY(&loop);
 #endif
