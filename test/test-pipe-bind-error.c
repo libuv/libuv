@@ -164,12 +164,14 @@ static void connect_overlong_cb(uv_connect_t* connect_req, int status) {
 
 
 TEST_IMPL(pipe_overlong_path) {
-  char path[512];
   uv_pipe_t pipe;
   uv_connect_t req;
 
-  memset(path, '@', sizeof(path));
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
+
+#ifndef _WIN32
+  char path[512];
+  memset(path, '@', sizeof(path));
   ASSERT_EQ(UV_EINVAL,
             uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
   ASSERT_EQ(UV_EINVAL,
@@ -180,6 +182,7 @@ TEST_IMPL(pipe_overlong_path) {
                              UV_PIPE_NO_TRUNCATE,
                              (uv_connect_cb) abort));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+#endif
 
   ASSERT_EQ(UV_EINVAL, uv_pipe_bind(&pipe, ""));
   uv_pipe_connect(&req,
