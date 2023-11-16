@@ -30,6 +30,19 @@
 #include <stdlib.h>
 
 
+/* Does the file path contain embedded nul bytes? */
+static int includes_nul(const char *s, size_t n) {
+  if (n == 0)
+    return 0;
+#ifdef __linux__
+  /* Accept abstract socket namespace path ("\0/virtual/path"). */
+  s++;
+  n--;
+#endif
+  return NULL != memchr(s, '\0', n);
+}
+
+
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
   handle->shutdown_req = NULL;
@@ -65,11 +78,8 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (namelen == 0)
     return UV_EINVAL;
 
-#ifndef __linux__
-  /* Abstract socket namespace only works on Linux. */
-  if (*name == '\0')
+  if (includes_nul(name, namelen))
     return UV_EINVAL;
-#endif
 
   if (flags & UV_PIPE_NO_TRUNCATE)
     if (namelen > sizeof(saddr.sun_path))
@@ -91,9 +101,11 @@ int uv_pipe_bind2(uv_pipe_t* handle,
    * automatically since they're not real file system entities.
    */
   if (*name != '\0') {
-    pipe_fname = uv__strdup(name);
+    pipe_fname = uv__malloc(namelen + 1);
     if (pipe_fname == NULL)
       return UV_ENOMEM;
+    memcpy(pipe_fname, name, namelen);
+    pipe_fname[namelen] = '\0';
   }
 
   err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
@@ -117,7 +129,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
   /* Success. */
   handle->flags |= UV_HANDLE_BOUND;
-  handle->pipe_fname = pipe_fname; /* NULL or a strdup'ed copy. */
+  handle->pipe_fname = pipe_fname; /* NULL or a copy of |name| */
   handle->io_watcher.fd = sockfd;
   return 0;
 
@@ -249,11 +261,8 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (namelen == 0)
     return UV_EINVAL;
 
-#ifndef __linux__
-  /* Abstract socket namespace only works on Linux. */
-  if (*name == '\0')
+  if (includes_nul(name, namelen))
     return UV_EINVAL;
-#endif
 
   if (flags & UV_PIPE_NO_TRUNCATE)
     if (namelen > sizeof(saddr.sun_path))
