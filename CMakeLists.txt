@@ -467,7 +467,7 @@ if(LIBUV_BUILD_SHARED)
   if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
     target_include_directories(uv PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
     set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
-      find_library(ZOSLIB
+    find_library(ZOSLIB
       NAMES "libzoslib.x"
       PATHS ${ZOSLIB_DIR}
       PATH_SUFFIXES "lib"
