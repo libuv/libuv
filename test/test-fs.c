@@ -343,7 +343,7 @@ static void statfs_cb(uv_fs_t* req) {
   defined(__OpenBSD__) || defined(__NetBSD__)
   ASSERT_OK(stats->f_type);
 #else
-  ASSERT_GT(stats->f_type, 0);
+  ASSERT_UINT64_GT(stats->f_type, 0);
 #endif
 
   ASSERT_GT(stats->f_bsize, 0);
