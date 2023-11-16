@@ -79,10 +79,8 @@ static uint64_t hrtime_frequency_ = 0;
  */
 void uv__util_init(void) {
   LARGE_INTEGER perf_frequency;
-
   /* Initialize process title access mutex. */
   InitializeCriticalSection(&process_title_lock);
-
   /* Retrieve high-resolution timer frequency
    * and precompute its reciprocal.
    */
@@ -90,6 +88,7 @@ void uv__util_init(void) {
     hrtime_frequency_ = perf_frequency.QuadPart;
   } else {
     uv_fatal_error(GetLastError(), "QueryPerformanceFrequency");
+    DeleteCriticalSection(&process_title_lock);
   }
 }
 
