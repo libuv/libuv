@@ -30,17 +30,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#if 0
+#if !defined(_AIX)
+#include <ifaddrs.h>
+#endif
 
 #if defined(__PASE__)
 #include <as400_protos.h>
 #define ifaddrs ifaddrs_pase
 #define getifaddrs Qp2getifaddrs
 #define freeifaddrs Qp2freeifaddrs
-#else
-#include <ifaddrs.h>
-#endif
-
 #endif
 
 static int maybe_bind_socket(int fd) {
@@ -230,26 +228,8 @@ static int uv__is_ipv6_link_local(const struct sockaddr* addr) {
 static int uv__ipv6_link_local_scope_id(void) {
   struct sockaddr_in6* a6;
   int rv;
-#if 0
-  struct ifaddrs* ifa;
-  struct ifaddrs* p;
-
-  if (getifaddrs(&ifa))
-    return 0;
-
-  for (p = ifa; p != NULL; p = p->ifa_next)
-    if (p->ifa_addr != NULL)
-      if (uv__is_ipv6_link_local(p->ifa_addr))
-        break;
-
-  rv = 0;
-  if (p != NULL) {
-    a6 = (struct sockaddr_in6*) p->ifa_addr;
-    rv = a6->sin6_scope_id;
-  }
-
-  freeifaddrs(ifa);
-#else
+  // AIX path fallback to use uv_interface_addresses
+#if defined (_AIX) && !defined(__PASE__)
   uv_interface_address_t* interfaces;
   int count, i;
 
@@ -270,6 +250,26 @@ static int uv__ipv6_link_local_scope_id(void) {
   }
 
   uv_free_interface_addresses(interfaces, count);
+
+#else
+  struct ifaddrs* ifa;
+  struct ifaddrs* p;
+
+  if (getifaddrs(&ifa))
+    return 0;
+
+  for (p = ifa; p != NULL; p = p->ifa_next)
+    if (p->ifa_addr != NULL)
+      if (uv__is_ipv6_link_local(p->ifa_addr))
+        break;
+
+  rv = 0;
+  if (p != NULL) {
+    a6 = (struct sockaddr_in6*) p->ifa_addr;
+    rv = a6->sin6_scope_id;
+  }
+
+  freeifaddrs(ifa);
 #endif
 
   return rv;
