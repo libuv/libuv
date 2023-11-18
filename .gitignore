@@ -37,6 +37,8 @@ vgcore.*
 /test-driver
 Makefile
 Makefile.in
+/compile_commands.json
+/.cache
 
 /build/
 
