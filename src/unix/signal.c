@@ -32,10 +32,17 @@
 # define SA_RESTART 0
 #endif
 
+#define UV__NSIG 128
+
 typedef struct {
   uv_signal_t* handle;
   int signum;
 } uv__signal_msg_t;
+
+typedef struct {
+  struct sigaction acts[UV__NSIG];
+  char acts_presented_flags[UV__NSIG];
+} uv__sigactions_t;
 
 RB_HEAD(uv__signal_tree_s, uv_signal_s);
 
@@ -50,11 +57,23 @@ static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2);
 static void uv__signal_stop(uv_signal_t* handle);
 static void uv__signal_unregister_handler(int signum);
 
+static void uv__sigaction_set(int signum, struct sigaction *sa);
+static int uv__sigaction_isset(int signum);
 
 static uv_once_t uv__signal_global_init_guard = UV_ONCE_INIT;
 static struct uv__signal_tree_s uv__signal_tree =
     RB_INITIALIZER(uv__signal_tree);
 static int uv__signal_lock_pipefd[2] = { -1, -1 };
+static uv__sigactions_t uv__sigactions;
+
+static void uv__sigaction_set(int signum, struct sigaction *sa) {
+  uv__sigactions.acts[signum] = *sa;
+  uv__sigactions.acts_presented_flags[signum] = 1;
+}
+
+static int uv__sigaction_isset(int signum) {
+  return uv__sigactions.acts_presented_flags[signum] == 0 ? 0 : 1;
+}
 
 RB_GENERATE_STATIC(uv__signal_tree_s,
                    uv_signal_s, tree_entry,
@@ -224,6 +243,7 @@ static void uv__signal_handler(int signum) {
 static int uv__signal_register_handler(int signum, int oneshot) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
+  struct sigaction sa_old;
 
   /* XXX use a separate signal stack? */
   memset(&sa, 0, sizeof(sa));
@@ -234,9 +254,10 @@ static int uv__signal_register_handler(int signum, int oneshot) {
   if (oneshot)
     sa.sa_flags |= SA_RESETHAND;
 
-  /* XXX save old action so we can restore it later on? */
-  if (sigaction(signum, &sa, NULL))
+  if (sigaction(signum, &sa, &sa_old))
     return UV__ERR(errno);
+
+  uv__sigaction_set(signum, &sa_old);
 
   return 0;
 }
@@ -245,9 +266,10 @@ static int uv__signal_register_handler(int signum, int oneshot) {
 static void uv__signal_unregister_handler(int signum) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
-
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_handler = SIG_DFL;
+  
+  assert(uv__sigaction_isset(signum));
+  
+  sa = uv__sigactions.acts[signum];
 
   /* sigaction can only fail with EINVAL or EFAULT; an attempt to deregister a
    * signal implies that it was successfully registered earlier, so EINVAL

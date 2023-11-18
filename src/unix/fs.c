@@ -82,6 +82,16 @@
 # include <sys/statfs.h>
 #endif
 
+#if defined(__CYGWIN__) ||                                                    \
+    (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
+    (defined(__sun) && !defined(__illumos__)) ||                              \
+    (defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED <= 101300)
+#define preadv(fd, bufs, nbufs, off)                                          \
+  pread(fd, (bufs)->iov_base, (bufs)->iov_len, off)
+#define pwritev(fd, bufs, nbufs, off)                                         \
+  pwrite(fd, (bufs)->iov_base, (bufs)->iov_len, off)
+#endif
+
 #if defined(_AIX) && _XOPEN_SOURCE <= 600
 extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 #endif
@@ -395,32 +405,39 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_read_do(int fd,
-                              const struct iovec* bufs,
-                              unsigned int nbufs,
-                              int64_t off) {
+static ssize_t uv__fs_read(uv_fs_t* req) {
+  const struct iovec* bufs;
   unsigned int iovmax;
-  ssize_t result;
+  size_t nbufs;
+  ssize_t r;
+  off_t off;
+  int fd;
+
+  fd = req->file;
+  off = req->off;
+  bufs = (const struct iovec*) req->bufs;
+  nbufs = req->nbufs;
 
   iovmax = uv__getiovmax();
   if (nbufs > iovmax)
     nbufs = iovmax;
 
+  r = 0;
   if (off < 0) {
     if (nbufs == 1)
-      result = read(fd, bufs->iov_base, bufs->iov_len);
-    else
-      result = readv(fd, bufs, nbufs);
+      r = read(fd, bufs->iov_base, bufs->iov_len);
+    else if (nbufs > 1)
+      r = readv(fd, bufs, nbufs);
   } else {
     if (nbufs == 1)
-      result = pread(fd, bufs->iov_base, bufs->iov_len, off);
-    else
-      result = preadv(fd, bufs, nbufs, off);
+      r = pread(fd, bufs->iov_base, bufs->iov_len, off);
+    else if (nbufs > 1)
+      r = preadv(fd, bufs, nbufs, off);
   }
 
 #ifdef __PASE__
   /* PASE returns EOPNOTSUPP when reading a directory, convert to EISDIR */
-  if (result == -1 && errno == EOPNOTSUPP) {
+  if (r == -1 && errno == EOPNOTSUPP) {
     struct stat buf;
     ssize_t rc;
     rc = uv__fstat(fd, &buf);
@@ -430,17 +447,6 @@ static ssize_t uv__fs_read_do(int fd,
   }
 #endif
 
-  return result;
-}
-
-
-static ssize_t uv__fs_read(uv_fs_t* req) {
-  const struct iovec* iov;
-  ssize_t result;
-
-  iov = (const struct iovec*) req->bufs;
-  result = uv__fs_read_do(req->file, iov, req->nbufs, req->off);
-
   /* We don't own the buffer list in the synchronous case. */
   if (req->cb != NULL)
     if (req->bufs != req->bufsml)
@@ -449,7 +455,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
   req->bufs = NULL;
   req->nbufs = 0;
 
-  return result;
+  return r;
 }
 
 
@@ -1083,33 +1089,32 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
 }
 
 
-static ssize_t uv__fs_write_do(int fd,
-                               const struct iovec* bufs,
-                               unsigned int nbufs,
-                               int64_t off) {
+static ssize_t uv__fs_write(uv_fs_t* req) {
+  const struct iovec* bufs;
+  size_t nbufs;
   ssize_t r;
+  off_t off;
+  int fd;
 
+  fd = req->file;
+  off = req->off;
+  bufs = (const struct iovec*) req->bufs;
+  nbufs = req->nbufs;
+
+  r = 0;
   if (off < 0) {
     if (nbufs == 1)
       r = write(fd, bufs->iov_base, bufs->iov_len);
-    else
+    else if (nbufs > 1)
       r = writev(fd, bufs, nbufs);
   } else {
     if (nbufs == 1)
       r = pwrite(fd, bufs->iov_base, bufs->iov_len, off);
-    else
+    else if (nbufs > 1)
       r = pwritev(fd, bufs, nbufs, off);
   }
 
   return r;
-}
-
-
-static ssize_t uv__fs_write(uv_fs_t* req) {
-  const struct iovec* iov;
-
-  iov = (const struct iovec*) req->bufs;
-  return uv__fs_write_do(req->file, iov, req->nbufs, req->off);
 }
 
 

@@ -186,7 +186,8 @@ if(WIN32)
        ws2_32
        dbghelp
        ole32
-       uuid)
+       uuid
+       shell32)
   list(APPEND uv_sources
        src/win/async.c
        src/win/core.c
@@ -477,7 +478,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
 endif()
 target_link_libraries(uv_a ${uv_libraries})
 set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")
-if(MSVC)
+if(WIN32)
   set_target_properties(uv_a PROPERTIES PREFIX "lib")
 endif()
 
@@ -654,6 +655,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-thread-affinity.c
        test/test-thread-equal.c
        test/test-thread.c
+       test/test-thread-priority.c
        test/test-threadpool-cancel.c
        test/test-threadpool.c
        test/test-timer-again.c

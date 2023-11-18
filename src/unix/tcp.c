@@ -233,8 +233,9 @@ static int uv__ipv6_link_local_scope_id(void) {
     return 0;
 
   for (p = ifa; p != NULL; p = p->ifa_next)
-    if (uv__is_ipv6_link_local(p->ifa_addr))
-      break;
+    if (p->ifa_addr != NULL)
+      if (uv__is_ipv6_link_local(p->ifa_addr))
+        break;
 
   rv = 0;
   if (p != NULL) {

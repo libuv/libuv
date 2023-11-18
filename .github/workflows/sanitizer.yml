@@ -13,7 +13,7 @@ on:
       - master
 
 jobs:
-  sanitizers:
+  sanitizers-linux:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
@@ -56,6 +56,67 @@ jobs:
         run: |
           mkdir build-ubsan
           (cd build-ubsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a
+
+  sanitizers-macos:
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Envinfo
+        run: npx envinfo
+
+      - name: ASAN Build
+        run: |
+          mkdir build-asan
+          (cd build-asan && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-asan
+      - name: ASAN Test
+        run: |
+          ./build-asan/uv_run_tests_a
+
+      - name: TSAN Build
+        run: |
+          mkdir build-tsan
+          (cd build-tsan && cmake .. -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake --build build-tsan
+      - name: TSAN Test
+        run: |
+          ./build-tsan/uv_run_tests_a
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          (cd build-ubsan && cmake .. -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a
+
+  sanitizers-windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup
+        run: |
+          choco install ninja
+
+      # Note: clang shipped with VS2022 has an issue where the UBSAN runtime doesn't link.
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "17"
+
+      - name: Envinfo
+        run: npx envinfo
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          cmake -B build-ubsan -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-ubsan
       - name: UBSAN Test
         run: |

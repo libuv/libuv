@@ -405,6 +405,8 @@ TEST_IMPL(fs_event_watch_dir) {
   RETURN_SKIP(NO_FS_EVENTS);
 #elif defined(__MVS__)
   RETURN_SKIP("Directory watching not supported on this platform.");
+#elif defined(__APPLE__) && defined(__TSAN__)
+  RETURN_SKIP("Times out under TSAN.");
 #endif
 
   uv_loop_t* loop = uv_default_loop();
@@ -443,7 +445,9 @@ TEST_IMPL(fs_event_watch_dir) {
 
 
 TEST_IMPL(fs_event_watch_dir_recursive) {
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__) && defined(__TSAN__)
+  RETURN_SKIP("Times out under TSAN.");
+#elif defined(__APPLE__) || defined(_WIN32)
   uv_loop_t* loop;
   int r;
   uv_fs_event_t fs_event_root;
@@ -946,6 +950,8 @@ TEST_IMPL(fs_event_close_in_callback) {
   RETURN_SKIP(NO_FS_EVENTS);
 #elif defined(__MVS__)
   RETURN_SKIP("Directory watching not supported on this platform.");
+#elif defined(__APPLE__) && defined(__TSAN__)
+  RETURN_SKIP("Times out under TSAN.");
 #endif
   uv_loop_t* loop;
   int r;
