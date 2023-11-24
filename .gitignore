@@ -75,11 +75,5 @@ cmake-build-debug/
 
 # make dist output
 libuv-*.tar.*
-*.cmake
-*.rule
-*.stamp
-*.depend
-CMakeFiles/*
-CMakeCache.txt
-DartConfiguration.tcl
-vendor/
+/dist.libuv.org/
+/libuv-release-tool/
