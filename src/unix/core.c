@@ -1547,6 +1547,7 @@ int uv_os_getpriority(uv_pid_t pid, int* priority) {
   return 0;
 }
 
+
 int uv_os_setpriority(uv_pid_t pid, int priority) {
   if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)
     return UV_EINVAL;

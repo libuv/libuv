@@ -30,9 +30,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-/* ifaddrs is not implemented on AIX and IBM i PASE */
-#if !defined(_AIX)
-#include <ifaddrs.h>
+/* ifaddrs is not implemented on AIX, z/OS and IBM i PASE */
+#if !defined(__MVS__) && !defined(_AIX)
+# include <ifaddrs.h>
 #endif
 
 static int maybe_bind_socket(int fd) {
@@ -222,8 +222,8 @@ static int uv__is_ipv6_link_local(const struct sockaddr* addr) {
 static int uv__ipv6_link_local_scope_id(void) {
   struct sockaddr_in6* a6;
   int rv;
-#if defined(_AIX)
-  /* AIX & IBM i do not have ifaddrs
+#if defined(_AIX) || defined(__MVS__)
+  /* AIX, z/OS & IBM i do not have ifaddrs
    * so fallback to use uv_interface_addresses */
   uv_interface_address_t* interfaces;
   uv_interface_address_t* ifa;
@@ -262,7 +262,7 @@ static int uv__ipv6_link_local_scope_id(void) {
   }
 
   freeifaddrs(ifa);
-#endif /* defined(_AIX) */
+#endif /* defined(_AIX) || defined(__MVS__)*/
 
   return rv;
 }
