@@ -44,6 +44,7 @@ static void simple_task(void *args) {
   printf("in simple_task\n");
 }
 
+#if !defined(__MVS__)
 TEST_IMPL(thread_priority) {
   int priority;
 #ifndef _WIN32
@@ -103,3 +104,4 @@ TEST_IMPL(thread_priority) {
 
   return 0;
 }
+#endif
