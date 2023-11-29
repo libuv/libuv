@@ -10,6 +10,12 @@
 .vscode/
 *.VC.db
 *.VC.opendb
+*.cmake
+*.pc
+*.ninja 
+*.ninja_log
+*.ninja_deps
+*.DS_Store
 core
 vgcore.*
 .buildstamp
@@ -37,6 +43,8 @@ vgcore.*
 /test-driver
 Makefile
 Makefile.in
+CMakeCache.txt
+
 
 /build/
 
@@ -57,6 +65,7 @@ test_file_*
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+DartConfiguration.tcl
 _UpgradeReport_Files/
 UpgradeLog*.XML
 Debug
