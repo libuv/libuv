@@ -38,7 +38,10 @@ API
 
     Start the timer. `timeout` and `repeat` are in milliseconds.
 
-    If `timeout` is zero, the callback fires on the next event loop iteration.
+    If `timeout` is zero, it is changed to one. Previous versions of the
+    documentation claimed that such a timer would "run on the next event
+    loop iteration" but that did not actually work as advertised.
+
     If `repeat` is non-zero, the callback fires first after `timeout`
     milliseconds and then repeatedly after `repeat` milliseconds.
 
@@ -46,6 +49,8 @@ API
         Does not update the event loop's concept of "now". See :c:func:`uv_update_time` for more information.
 
         If the timer is already active, it is simply updated.
+
+    .. versionchanged:: 1.48.0 a timeout of zero is changed to one
 
 .. c:function:: int uv_timer_stop(uv_timer_t* handle)
 

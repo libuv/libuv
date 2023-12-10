@@ -76,6 +76,9 @@ int uv_timer_start(uv_timer_t* handle,
   if (uv__is_active(handle))
     uv_timer_stop(handle);
 
+  if (timeout == 0)
+    timeout = 1;
+
   clamped_timeout = handle->loop->time + timeout;
   if (clamped_timeout < timeout)
     clamped_timeout = (uint64_t) -1;
