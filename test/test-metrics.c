@@ -124,21 +124,22 @@ TEST_IMPL(metrics_idle_time_thread) {
 }
 
 
-static void timer_noop_cb(uv_timer_t* handle) {
+static void idle_noop_cb(uv_idle_t* handle) {
   (*(int*) handle->data)++;
+  uv_idle_stop(handle);
 }
 
 
 TEST_IMPL(metrics_idle_time_zero) {
   uv_metrics_t metrics;
-  uv_timer_t timer;
+  uv_idle_t idle;
   int cntr;
 
   cntr = 0;
-  timer.data = &cntr;
+  idle.data = &cntr;
   ASSERT_OK(uv_loop_configure(uv_default_loop(), UV_METRICS_IDLE_TIME));
-  ASSERT_OK(uv_timer_init(uv_default_loop(), &timer));
-  ASSERT_OK(uv_timer_start(&timer, timer_noop_cb, 0, 0));
+  ASSERT_OK(uv_idle_init(uv_default_loop(), &idle));
+  ASSERT_OK(uv_idle_start(&idle, idle_noop_cb));
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 

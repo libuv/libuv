@@ -131,8 +131,8 @@ DEFINE_GLOBALS_AND_CBS(fs_event,
                        int status)
 
 static const char watched_dir[] = ".";
-static uv_timer_t timer;
-static unsigned helper_timer_cb_calls;
+static uv_idle_t idle_helper;
+static unsigned idle_helper_cb_calls;
 
 
 static void init_and_start_fs_events(uv_loop_t* loop) {
@@ -150,19 +150,20 @@ static void init_and_start_fs_events(uv_loop_t* loop) {
   }
 }
 
-static void helper_timer_cb(uv_timer_t* thandle) {
+static void idle_helper_cb(uv_idle_t* handle) {
   int r;
   uv_fs_t fs_req;
 
   /* fire all fs_events */
-  r = uv_fs_utime(thandle->loop, &fs_req, watched_dir, 0, 0, NULL);
+  r = uv_fs_utime(handle->loop, &fs_req, watched_dir, 0, 0, NULL);
   ASSERT_OK(r);
   ASSERT_OK(fs_req.result);
   ASSERT_EQ(fs_req.fs_type, UV_FS_UTIME);
   ASSERT_OK(strcmp(fs_req.path, watched_dir));
   uv_fs_req_cleanup(&fs_req);
 
-  helper_timer_cb_calls++;
+  idle_helper_cb_calls++;
+  uv_idle_stop(handle);
 }
 #endif
 
@@ -180,11 +181,11 @@ TEST_IMPL(queue_foreach_delete) {
 #ifdef __linux__
   init_and_start_fs_events(loop);
 
-  /* helper timer to trigger async and fs_event callbacks */
-  r = uv_timer_init(loop, &timer);
+  /* helper to trigger async and fs_event callbacks */
+  r = uv_idle_init(loop, &idle_helper);
   ASSERT_OK(r);
 
-  r = uv_timer_start(&timer, helper_timer_cb, 0, 0);
+  r = uv_idle_start(&idle_helper, idle_helper_cb);
   ASSERT_OK(r);
 #endif
 
@@ -196,7 +197,7 @@ TEST_IMPL(queue_foreach_delete) {
   END_ASSERTS(check);
 
 #ifdef __linux__
-  ASSERT_EQ(1, helper_timer_cb_calls);
+  ASSERT_EQ(1, idle_helper_cb_calls);
 #endif
 
   MAKE_VALGRIND_HAPPY(loop);
