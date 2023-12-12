@@ -37,12 +37,16 @@
 #include <errno.h>
 
 #include <fcntl.h>
+#include <ifaddrs.h>
+#include <net/ethernet.h>
 #include <net/if.h>
+#include <netpacket/packet.h>
 #include <sys/epoll.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
 #include <sys/param.h>
 #include <sys/prctl.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/sysinfo.h>
@@ -119,25 +123,6 @@
 #  define __NR_getrandom 278
 # endif
 #endif /* __NR_getrandom */
-
-#define HAVE_IFADDRS_H 1
-
-# if defined(__ANDROID_API__) && __ANDROID_API__ < 24
-# undef HAVE_IFADDRS_H
-#endif
-
-#ifdef __UCLIBC__
-# if __UCLIBC_MAJOR__ < 0 && __UCLIBC_MINOR__ < 9 && __UCLIBC_SUBLEVEL__ < 32
-#  undef HAVE_IFADDRS_H
-# endif
-#endif
-
-#ifdef HAVE_IFADDRS_H
-# include <ifaddrs.h>
-# include <sys/socket.h>
-# include <net/ethernet.h>
-# include <netpacket/packet.h>
-#endif /* HAVE_IFADDRS_H */
 
 enum {
   UV__IORING_SETUP_SQPOLL = 2u,
@@ -1916,7 +1901,6 @@ nocpuinfo:
 }
 
 
-#ifdef HAVE_IFADDRS_H
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
@@ -1930,14 +1914,8 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
     return exclude_type;
   return !exclude_type;
 }
-#endif
 
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-#ifndef HAVE_IFADDRS_H
-  *count = 0;
-  *addresses = NULL;
-  return UV_ENOSYS;
-#else
   struct ifaddrs *addrs, *ent;
   uv_interface_address_t* address;
   int i;
@@ -2016,7 +1994,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   freeifaddrs(addrs);
 
   return 0;
-#endif
 }
 
 
