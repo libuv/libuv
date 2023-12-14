@@ -233,9 +233,8 @@ static int uv__ipv6_link_local_scope_id(void) {
   uv_interface_address_t* interfaces;
   int count, i;
 
-  if (uv_interface_addresses(&interfaces, &count)) {
+  if (uv_interface_addresses(&interfaces, &count))
     return 0;
-  }
 
   rv = 0;
 
