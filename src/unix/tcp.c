@@ -224,7 +224,7 @@ static int uv__ipv6_link_local_scope_id(void) {
 #if defined(_AIX)
   /* AIX & IBM i do not have ifaddrs
    * so fallback to use uv_interface_addresses */
-  uv_interface_address_t* interfaces;
+  uv_interface_address_t* interfaces, ifa;
   int count, i;
 
   if (uv_interface_addresses(&interfaces, &count))
@@ -232,12 +232,9 @@ static int uv__ipv6_link_local_scope_id(void) {
 
   rv = 0;
 
-  for (i = 0; i < count; i++) {
-    if (uv__is_ipv6_link_local((const struct sockaddr*) &interfaces[i].address.address6)) {
-      if (&interfaces[i].address.address6 != NULL) {
-        a6 = &interfaces[i].address.address6;
-        rv = a6->sin6_scope_id;
-      }
+  for (ifa = interfaces; ifa != &interfaces[count]; ifa++) {
+    if (uv__is_ipv6_link_local((struct sockaddr*) &ifa->address)) {
+      rv = ifa->address.address6.sin6_scope_id;
       break;
     }
   }
