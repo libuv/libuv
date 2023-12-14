@@ -34,13 +34,6 @@
 #include <ifaddrs.h>
 #endif
 
-#if defined(__PASE__)
-#include <as400_protos.h>
-#define ifaddrs ifaddrs_pase
-#define getifaddrs Qp2getifaddrs
-#define freeifaddrs Qp2freeifaddrs
-#endif
-
 static int maybe_bind_socket(int fd) {
   union uv__sockaddr s;
   socklen_t slen;
@@ -228,8 +221,9 @@ static int uv__is_ipv6_link_local(const struct sockaddr* addr) {
 static int uv__ipv6_link_local_scope_id(void) {
   struct sockaddr_in6* a6;
   int rv;
-  // AIX path fallback to use uv_interface_addresses
-#if defined (_AIX) && !defined(__PASE__)
+#if defined(_AIX)
+  /* AIX & IBM i do not have ifaddrs
+   * so fallback to use uv_interface_addresses */
   uv_interface_address_t* interfaces;
   int count, i;
 
@@ -269,7 +263,7 @@ static int uv__ipv6_link_local_scope_id(void) {
   }
 
   freeifaddrs(ifa);
-#endif
+#endif /* defined(_AIX) */
 
   return rv;
 }
