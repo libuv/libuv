@@ -104,11 +104,10 @@ static void timer_stop(uv_timer_t* handle) {
 
 
 int uv_timer_stop(uv_timer_t* handle) {
-  if (uv__is_active(handle)) {
+  if (uv__is_active(handle))
     timer_stop(handle);
-  } else {
+  else
     uv__queue_remove(&handle->node.queue);
-  }
   return 0;
 }
 
