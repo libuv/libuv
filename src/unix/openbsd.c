@@ -243,3 +243,8 @@ error:
   *cpu_infos = NULL;
   return UV__ERR(errno);
 }
+
+
+void uv_battery_info(uv_battery_info_t* battery) {
+  return UV_ENOSYS;
+}

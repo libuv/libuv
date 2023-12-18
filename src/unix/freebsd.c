@@ -288,3 +288,8 @@ uv__fs_copy_file_range(int fd_in,
 	return errno = ENOSYS, -1;
 #endif
 }
+
+
+int uv_battery_info(uv_battery_info_t* info) {
+  return UV_ENOSYS;
+}
