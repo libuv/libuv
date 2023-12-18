@@ -41,8 +41,11 @@ typedef uint64_t FSEventStreamEventId;
 typedef unsigned CFStringEncoding;
 typedef void* CFAllocatorRef;
 typedef void* CFArrayRef;
+typedef void* CFBooleanRef;
 typedef void* CFBundleRef;
 typedef void* CFDictionaryRef;
+typedef void* CFNumberRef;
+typedef void* CFNumberType;
 typedef void* CFRunLoopRef;
 typedef void* CFRunLoopSourceRef;
 typedef void* CFStringRef;
@@ -71,6 +74,8 @@ struct FSEventStreamContext {
 
 static const CFStringEncoding kCFStringEncodingUTF8 = 0x8000100;
 static const OSStatus noErr = 0;
+
+static const int pkCFNumberIntType = 9;
 
 static const FSEventStreamEventId kFSEventStreamEventIdSinceNow = -1;
 

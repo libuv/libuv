@@ -37,6 +37,7 @@ TEST_IMPL(platform_output) {
   uv_passwd_t pwd;
   uv_group_t grp;
   uv_utsname_t uname;
+  uv_battery_info_t battery;
   unsigned par;
   char* const* member;
   int count;
@@ -196,6 +197,16 @@ TEST_IMPL(platform_output) {
   printf("  release: %s\n", uname.release);
   printf("  version: %s\n", uname.version);
   printf("  machine: %s\n", uname.machine);
+
+  err = uv_battery_info(&battery);
+  if (err != UV_ENOSYS) {
+    ASSERT_OK(err);
+    printf("uv_battery_info:\n");
+    printf("  level: %ld\n", battery.level);
+    printf("  is_charging: %d\n", battery.is_charging);
+    printf("  discharge_time_in_secs: %ld\n", battery.discharge_time_in_secs);
+    printf("  charge_time_in_secs: %ld\n", battery.charge_time_in_secs);
+  }
 
   return 0;
 }
