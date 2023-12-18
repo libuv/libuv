@@ -37,6 +37,7 @@ TEST_IMPL(platform_output) {
   uv_passwd_t pwd;
   uv_group_t grp;
   uv_utsname_t uname;
+  uv_battery_info_t battery;
   unsigned par;
   char* const* member;
   int count;
@@ -196,6 +197,13 @@ TEST_IMPL(platform_output) {
   printf("  release: %s\n", uname.release);
   printf("  version: %s\n", uname.version);
   printf("  machine: %s\n", uname.machine);
+
+#if defined(__APPLE__)
+  err = uv_battery_info(&battery);
+  printf("uv_battery_info:\n");
+  printf("  charging: %d\n", battery.charging);
+  ASSERT_OK(err);
+#endif
 
   return 0;
 }

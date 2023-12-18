@@ -255,6 +255,8 @@ typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_group_s uv_group_t;
 typedef struct uv_utsname_s uv_utsname_t;
 typedef struct uv_statfs_s uv_statfs_t;
+typedef struct uv_battery_info_s uv_battery_info_t;
+
 
 typedef struct uv_metrics_s uv_metrics_t;
 
@@ -1160,6 +1162,10 @@ struct uv_cpu_info_s {
   struct uv_cpu_times_s cpu_times;
 };
 
+struct uv_battery_info_s {
+  int charging;
+};
+
 struct uv_interface_address_s {
   char* name;
   char phys_addr[6];
@@ -1295,6 +1301,7 @@ enum {
 UV_EXTERN int uv_thread_getpriority(uv_thread_t tid, int* priority);
 UV_EXTERN int uv_thread_setpriority(uv_thread_t tid, int priority);
 
+UV_EXTERN int uv_battery_info(uv_battery_info_t* battery_info);
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
