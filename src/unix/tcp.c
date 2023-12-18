@@ -224,7 +224,8 @@ static int uv__ipv6_link_local_scope_id(void) {
 #if defined(_AIX)
   /* AIX & IBM i do not have ifaddrs
    * so fallback to use uv_interface_addresses */
-  uv_interface_address_t* interfaces, ifa;
+  uv_interface_address_t* interfaces;
+  uv_interface_address_t* ifa;
   int count, i;
 
   if (uv_interface_addresses(&interfaces, &count))
