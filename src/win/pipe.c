@@ -106,8 +106,8 @@ static int includes_nul(const char *s, size_t n) {
 }
 
 
-static void uv__unique_pipe_name(char* ptr, char* name, size_t size) {
-  snprintf(name, size, "\\\\?\\pipe\\uv\\%p-%lu", ptr, GetCurrentProcessId());
+static void uv__unique_pipe_name(unsigned long long ptr, char* name, size_t size) {
+  snprintf(name, size, "\\\\?\\pipe\\uv\\%llu-%lu", ptr, GetCurrentProcessId());
 }
 
 
@@ -208,7 +208,7 @@ static void close_pipe(uv_pipe_t* pipe) {
 
 static int uv__pipe_server(
     HANDLE* pipeHandle_ptr, DWORD access,
-    char* name, size_t nameSize, char* random) {
+    char* name, size_t nameSize, unsigned long long random) {
   HANDLE pipeHandle;
   int err;
 
@@ -249,7 +249,7 @@ static int uv__pipe_server(
 static int uv__create_pipe_pair(
     HANDLE* server_pipe_ptr, HANDLE* client_pipe_ptr,
     unsigned int server_flags, unsigned int client_flags,
-    int inherit_client, char* random) {
+    int inherit_client, unsigned long long random) {
   /* allowed flags are: UV_READABLE_PIPE | UV_WRITABLE_PIPE | UV_NONBLOCK_PIPE */
   char pipe_name[64];
   SECURITY_ATTRIBUTES sa;
@@ -357,7 +357,12 @@ int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
   /* TODO: better source of local randomness than &fds? */
   read_flags |= UV_READABLE_PIPE;
   write_flags |= UV_WRITABLE_PIPE;
-  err = uv__create_pipe_pair(&readh, &writeh, read_flags, write_flags, 0, (char*) &fds[0]);
+  err = uv__create_pipe_pair(&readh,
+                             &writeh,
+                             read_flags,
+                             write_flags,
+                             0,
+                             (uintptr_t) &fds[0]);
   if (err != 0)
     return err;
   temp[0] = _open_osfhandle((intptr_t) readh, 0);
@@ -421,7 +426,7 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   }
 
   err = uv__create_pipe_pair(&server_pipe, &client_pipe,
-          server_flags, client_flags, 1, (char*) server_pipe);
+          server_flags, client_flags, 1, (uintptr_t) server_pipe);
   if (err)
     goto error;
 
