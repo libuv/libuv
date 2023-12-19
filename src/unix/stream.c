@@ -698,7 +698,8 @@ static int uv__write_req_update(uv_stream_t* stream,
 
   do {
     len = n < buf->len ? n : buf->len;
-    buf->base += len;
+    if (buf->len != 0)
+      buf->base += len;
     buf->len -= len;
     buf += (buf->len == 0);  /* Advance to next buffer if this one is empty. */
     n -= len;
