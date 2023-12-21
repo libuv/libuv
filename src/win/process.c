@@ -377,11 +377,13 @@ static WCHAR* search_path(const WCHAR *file,
   } else {
     dir_end = path;
 
-    /* The file is really only a name; look in cwd first, then scan path */
-    result = path_search_walk_ext(L"", 0,
-                                  file, file_len,
-                                  cwd, cwd_len,
-                                  name_has_ext);
+    if (NeedCurrentDirectoryForExePathW(L"")) {
+      /* The file is really only a name; look in cwd first, then scan path */
+      result = path_search_walk_ext(L"", 0,
+                                    file, file_len,
+                                    cwd, cwd_len,
+                                    name_has_ext);
+    }
 
     while (result == NULL) {
       if (dir_end == NULL || *dir_end == L'\0') {
@@ -1210,9 +1212,18 @@ static int uv__kill(HANDLE process_handle, int signum) {
                          (PVOID) dump_folder,
                          &dump_folder_len);
       if (ret != ERROR_SUCCESS) {
+        /* Workaround for missing uuid.dll on MinGW. */
+        static const GUID FOLDERID_LocalAppData_libuv = {
+          0xf1b32785, 0x6fba, 0x4fcf,
+              {0x9d, 0x55, 0x7b, 0x8e, 0x7f, 0x15, 0x70, 0x91}
+        };
+
         /* Default value for `dump_folder` is `%LOCALAPPDATA%\CrashDumps`. */
         WCHAR* localappdata;
-        SHGetKnownFolderPath(&FOLDERID_LocalAppData, 0, NULL, &localappdata);
+        SHGetKnownFolderPath(&FOLDERID_LocalAppData_libuv,
+                             0,
+                             NULL,
+                             &localappdata);
         _snwprintf_s(dump_folder,
                      sizeof(dump_folder),
                      _TRUNCATE,

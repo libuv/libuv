@@ -186,7 +186,6 @@ if(WIN32)
        ws2_32
        dbghelp
        ole32
-       uuid
        shell32)
   list(APPEND uv_sources
        src/win/async.c

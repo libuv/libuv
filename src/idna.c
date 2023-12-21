@@ -400,6 +400,7 @@ void uv_wtf8_to_utf16(const char* source_ptr,
     }
   } while (*source_ptr++);
 
+  (void)w_target_len;
   assert(w_target_len == 0);
 }
 
