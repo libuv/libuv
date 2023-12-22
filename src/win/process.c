@@ -26,7 +26,7 @@
 #include <signal.h>
 #include <limits.h>
 #include <wchar.h>
-#include <malloc.h>    /* alloca */
+#include <malloc.h>    /* _alloca */
 
 #include "uv.h"
 #include "internal.h"
@@ -511,7 +511,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
     }
   }
   target[0] = L'\0';
-  wcsrev(start);
+  _wcsrev(start);
   *(target++) = L'"';
   return target;
 }
@@ -615,8 +615,8 @@ int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   assert(b_eq);
   nb = b_eq - b;
 
-  A = alloca((na+1) * sizeof(wchar_t));
-  B = alloca((nb+1) * sizeof(wchar_t));
+  A = _alloca((na+1) * sizeof(wchar_t));
+  B = _alloca((nb+1) * sizeof(wchar_t));
 
   r = LCMapStringW(LOCALE_INVARIANT, LCMAP_UPPERCASE, a, na, A, na);
   assert(r==na);
@@ -693,7 +693,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   if (dst_copy == NULL && env_len > 0) {
     return UV_ENOMEM;
   }
-  env_copy = alloca(env_block_count * sizeof(WCHAR*));
+  env_copy = _alloca(env_block_count * sizeof(WCHAR*));
 
   ptr = dst_copy;
   ptr_copy = env_copy;

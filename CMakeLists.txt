@@ -161,6 +161,11 @@ list(APPEND uv_cflags ${lint-utf8-msvc} )
 check_c_compiler_flag(-fno-strict-aliasing UV_F_STRICT_ALIASING)
 list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
 
+if (MSVC)
+  # Error on calling undeclared functions.
+  list(APPEND uv_cflags "/we4013")
+endif()
+
 set(uv_sources
     src/fs-poll.c
     src/idna.c
@@ -176,7 +181,7 @@ set(uv_sources
     src/version.c)
 
 if(WIN32)
-  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0602)
+  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0602 _CRT_DECLARE_NONSTDC_NAMES=0)
   list(APPEND uv_libraries
        psapi
        user32
