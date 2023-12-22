@@ -220,10 +220,6 @@ static int uv__is_ipv6_link_local(const struct sockaddr* addr) {
 
 
 static int uv__ipv6_link_local_scope_id(void) {
-/* disable link local on AIX & PASE for now */
-#if defined(_AIX)
-  return 0;
-#else
   struct sockaddr_in6* a6;
   int rv;
 #if defined(_AIX)
@@ -269,7 +265,6 @@ static int uv__ipv6_link_local_scope_id(void) {
 #endif /* defined(_AIX) */
 
   return rv;
-#endif
 }
 
 
