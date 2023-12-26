@@ -60,8 +60,8 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
 
   if (*buf == '\0') {  /* Linux abstract socket. */
     const char expected[] = "\0" TEST_PIPENAME;
-    ASSERT_GE(len, sizeof(expected));
-    ASSERT_MEM_EQ(buf, expected, sizeof(expected));
+    ASSERT_EQ(len, sizeof(expected) - 1);
+    ASSERT_MEM_EQ(buf, expected, len);
   } else {
     ASSERT_NE(0, buf[len - 1]);
     ASSERT_MEM_EQ(buf, TEST_PIPENAME, len);
@@ -191,7 +191,8 @@ TEST_IMPL(pipe_getsockname_abstract) {
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_server, 0));
   ASSERT_OK(uv_pipe_bind2(&pipe_server, name, sizeof(name) - 1, 0));
   ASSERT_OK(uv_pipe_getsockname(&pipe_server, buf, &buflen));
-  ASSERT_MEM_EQ(name, buf, sizeof(name));
+  ASSERT_UINT64_EQ(sizeof(name) - 1, buflen);
+  ASSERT_MEM_EQ(name, buf, buflen);
   ASSERT_OK(uv_listen((uv_stream_t*) &pipe_server,
                       0,
                       pipe_server_connection_cb));
