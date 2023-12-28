@@ -1155,6 +1155,12 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
     uv__req_unregister(loop, req);
     iou->in_flight--;
 
+    /* If the op is not supported by the kernel retry using the thread pool */
+    if (e->res == -EOPNOTSUPP) {
+      uv__fs_post(loop, req);
+      continue;
+    }
+
     /* io_uring stores error codes as negative numbers, same as libuv. */
     req->result = e->res;
 
