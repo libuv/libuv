@@ -1163,7 +1163,11 @@ struct uv_cpu_info_s {
 };
 
 struct uv_battery_info_s {
-  int charging;
+  int is_charging;
+  int charge_time_in_secs;
+  int discharge_time_in_secs;
+  int level;
+  void* reserved[7];
 };
 
 struct uv_interface_address_s {

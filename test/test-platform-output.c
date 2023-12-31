@@ -198,12 +198,13 @@ TEST_IMPL(platform_output) {
   printf("  version: %s\n", uname.version);
   printf("  machine: %s\n", uname.machine);
 
-#if defined(__APPLE__)
   err = uv_battery_info(&battery);
-  printf("uv_battery_info:\n");
-  printf("  charging: %d\n", battery.charging);
   ASSERT_OK(err);
-#endif
+  printf("uv_battery_info:\n");
+  printf("  is_charging: %d\n", battery.is_charging);
+  printf("  charge_time_in_secs: %d\n", battery.charge_time_in_secs);
+  printf("  discharge_time_in_secs: %d\n", battery.discharge_time_in_secs);
+  printf("  level: %d\n", battery.level);
 
   return 0;
 }

@@ -190,6 +190,7 @@ if(WIN32)
        shell32)
   list(APPEND uv_sources
        src/win/async.c
+       src/win/battery.c
        src/win/core.c
        src/win/detect-wakeup.c
        src/win/dl.c
