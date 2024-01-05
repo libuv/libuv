@@ -19,6 +19,19 @@
  * IN THE SOFTWARE.
  */
 
+/* Not all types of file descriptors work with poll(2) and kqueue(2),
+ * presumably because the richest company on Earth couldn't allocate
+ * resources to add support for them. Programming is hard, we understand.
+ * Libuv detects and relegates such file descriptors to a separate handler
+ * thread that polls them like it's 1979 again using select(2) but fd_sets
+ * have an inescapable upper bound. We increase said bound and hope and
+ * assume that's enough for everyday use but it remains a sad fact of life
+ * that some file descriptors won't work on macOS.
+ */
+#if defined(__APPLE__)
+#define FD_SETSIZE 32768
+#endif
+
 #include "uv.h"
 #include "internal.h"
 
@@ -289,6 +302,9 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   int max_fd;
   size_t sread_sz;
   size_t swrite_sz;
+
+  if (fd >= FD_SETSIZE)
+    return UV_EINVAL;
 
   kq = kqueue();
   if (kq == -1) {
