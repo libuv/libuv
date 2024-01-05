@@ -303,9 +303,6 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
   size_t sread_sz;
   size_t swrite_sz;
 
-  if (fd >= FD_SETSIZE)
-    return UV_EINVAL;
-
   kq = kqueue();
   if (kq == -1) {
     perror("(libuv) kqueue()");
@@ -331,6 +328,8 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
     return 0;
 
   /* At this point we definitely know that this fd won't work with kqueue */
+  if (fd >= FD_SETSIZE)
+    return UV_EINVAL;
 
   /*
    * Create fds for io watcher and to interrupt the select() loop.
