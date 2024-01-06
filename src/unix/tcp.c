@@ -535,7 +535,6 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
 #ifdef TCP_KEEPIDLE
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
     return UV__ERR(errno);
-/* FIXME(bnoordhuis) That's possibly because sizeof(delay) should be 1. */
 #elif defined(TCP_KEEPALIVE)
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &delay, sizeof(delay)))
     return UV__ERR(errno);
